@@ -36,6 +36,7 @@ defmodule Ockam.SecureChannel.Channel do
   alias Ockam.SecureChannel.IdentityProof
   alias Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol, as: XX
   alias Ockam.SecureChannel.Messages
+  alias Ockam.SecureChannel.Messages.PayloadParts
   alias Ockam.Session.Spawner
   alias Ockam.Worker
 
@@ -89,11 +90,14 @@ defmodule Ockam.SecureChannel.Channel do
     field(:trust_policies, trust_policies())
     field(:additional_metadata, map())
     field(:channel_state, Handshaking.t() | Established.t())
+    field(:payload_parts, map())
 
     field(:authorities, [Identity.t()])
   end
 
   @handshake_timeout 30_000
+
+  @max_payload_size 48 * 1024
 
   @type listener_opt ::
           {:responder_authorization, authorization()}
@@ -405,7 +409,8 @@ defmodule Ockam.SecureChannel.Channel do
         identity: identity,
         trust_policies: trust_policies,
         additional_metadata: additional_metadata,
-        authorities: authorities
+        authorities: authorities,
+        payload_parts: %{}
       }
 
       complete_inner_setup(state, options, key_exchange_state, tref)
@@ -550,6 +555,67 @@ defmodule Ockam.SecureChannel.Channel do
             | channel_state: %{channel_state | decrypt_st: decrypt_st}
           })
 
+        {:ok, %Messages.PayloadPart{payload_uuid: payload_uuid, current_part_number: current_part_number, total_number_of_parts: total_number_of_parts, onward_route: onward_route, return_route: return_route, payload: payload} = part} ->
+          # Get the parts for the current payload UUID
+          Logger.debug(
+            "Received part #{current_part_number}/#{total_number_of_parts} for message #{payload_uuid}"
+          )
+          parts =
+            case Map.fetch(state.payload_parts, part.payload_uuid) do
+              {:ok, parts} ->
+                Logger.debug("Store received part #{current_part_number}/#{total_number_of_parts} for message #{part.payload_uuid} until all parts have been received")
+                case PayloadParts.update(
+                       parts,
+                       current_part_number,
+                       total_number_of_parts,
+                       onward_route,
+                       return_route,
+                       payload
+                     ) do
+                  {:ok, parts} ->
+                    parts
+
+                  {:error, message} ->
+                    Logger.debug("got no new parts, updating current_part_number #{current_part_number}")
+                    Logger.error(message)
+                    parts
+                end
+
+              :error ->
+                if current_part_number > total_number_of_parts do
+                  Logger.error(
+                    "The part #{current_part_number}/#{total_number_of_parts} is incorrect: the current_part_number is greater than the total number of parts"
+                  )
+
+                  {:ok, channel_state}
+                else
+                  %PayloadParts{
+                    uuid: payload_uuid,
+                    parts: %{current_part_number => payload},
+                    onward_route: onward_route,
+                    return_route: return_route,
+                    expected_total_number_of_parts: total_number_of_parts
+                  }
+                end
+            end
+
+          case PayloadParts.complete(parts) do
+            {:ok, payload} ->
+              Logger.debug("The message #{payload_uuid} is now complete with part #{current_part_number}/#{total_number_of_parts}")
+              message = struct(Ockam.Message, Map.from_struct(payload))
+
+              handle_decrypted_message(message, %Channel{
+                state
+                | channel_state: %{channel_state | decrypt_st: decrypt_st},
+                  payload_parts: Map.delete(state.payload_parts, parts.uuid)
+              })
+
+            :error ->
+              Logger.debug("The message #{payload_uuid} is not complete with part #{current_part_number}/#{total_number_of_parts}")
+              {:ok, %Channel{
+                state | payload_parts: Map.put(state.payload_parts, payload_uuid, parts) } }
+          end
+
         {:ok, :close} ->
           Logger.debug("Peer closed secure channel, terminating #{inspect(state.address)}")
           {:stop, :normal, channel_state}
@@ -620,8 +686,22 @@ defmodule Ockam.SecureChannel.Channel do
   end
 
   defp send_over_encrypted_channel(message, encrypt_st, peer_route) do
-    payload = struct(Messages.Payload, Map.from_struct(message))
-    send_payload_over_encrypted_channel(payload, encrypt_st, peer_route)
+    if byte_size(message.payload) > @max_payload_size do
+      Logger.debug("message size #{byte_size(message.payload)}, max size: #{@max_payload_size}")
+      payload_parts = Bits.chunks(message.payload, @max_payload_size)
+      payload_uuid = UUID.uuid4()
+      total_number_of_parts = length(payload_parts)
+      base_part = struct(Messages.PayloadPart, Map.from_struct(message))
+      Enum.with_index(payload_parts, fn(part, index) ->
+        Logger.debug("sending part #{index + 1}/#{total_number_of_parts} for message #{payload_uuid}")
+        base_part = %{ base_part | payload_uuid: payload_uuid, current_part_number: index + 1, total_number_of_parts: total_number_of_parts, payload: part }
+        send_payload_over_encrypted_channel(base_part, encrypt_st, peer_route)
+      end)
+
+    else
+      payload = struct(Messages.Payload, Map.from_struct(message))
+      send_payload_over_encrypted_channel(payload, encrypt_st, peer_route)
+    end
   end
 
   defp send_payload_over_encrypted_channel(payload, encrypt_st, peer_route) do
@@ -662,5 +742,25 @@ defmodule Ockam.SecureChannel.Channel do
       {:ok, result, ""} -> {:ok, result}
       error -> {:error, {:invalid_bare_data, type, error}}
     end
+  end
+end
+
+# This is a utility module to split a large binary into an enumerable of binaries
+# of a given size. The last element might have a size that is small than the requested size
+defmodule Bits do
+  # Chunk the binary into parts of n _bytes_
+  def chunks(binary, n) do
+    do_chunks(binary, n * 8, [])
+  end
+
+  # Chunk the binary into parts of n _bits_ when there is possibly a leftover
+  # of a smaller size
+  defp do_chunks(binary, n, acc) when bit_size(binary) <= n do
+    Enum.reverse([binary | acc])
+  end
+
+  defp do_chunks(binary, n, acc) do
+    <<chunk::size(n), rest::bitstring>> = binary
+    do_chunks(rest, n, [<<chunk::size(n)>> | acc])
   end
 end

@@ -43,6 +43,135 @@ defmodule Ockam.SecureChannel.Messages do
     end
   end
 
+  defmodule PayloadPart do
+    @moduledoc """
+    Part of a secure channel message carrying user data
+    """
+    use TypedStruct
+
+    typedstruct do
+      plugin(TypedCBOR.Plugin, encode_as: :list)
+      field(:onward_route, list(Address.t()), minicbor: [key: 0, schema: {:list, AddressSchema}])
+      field(:return_route, list(Address.t()), minicbor: [key: 1, schema: {:list, AddressSchema}])
+      field(:payload, binary(), minicbor: [key: 2])
+      field(:payload_uuid, String.t(), minicbor: [key: 3])
+      field(:current_part_number, integer(), minicbor: [key: 4])
+      field(:total_number_of_parts, integer(), minicbor: [key: 5])
+    end
+  end
+
+  defmodule PayloadParts do
+    @moduledoc """
+    List of payload parts received for a given payload UUID
+    """
+
+    use TypedStruct
+
+    typedstruct do
+      field(:uuid, String.t())
+      field(:parts, map())
+      field(:onward_route, Ockam.Address.route())
+      field(:return_route, Ockam.Address.route())
+      field(:expected_total_number_of_parts, integer())
+    end
+
+    # Check if the current part can be added to the other parts and return the updated PayloadParts
+    def update(
+          self,
+          current_part_number,
+          total_number_of_parts,
+          onward_route,
+          return_route,
+          payload
+        ) do
+      Logger.debug("updating current_part_number #{current_part_number}")
+      if is_valid_part(
+           self,
+           current_part_number,
+           total_number_of_parts,
+           onward_route,
+           return_route
+         ) do
+        {:ok, %{self | parts: Map.put(self.parts, current_part_number, payload)}}
+      else
+        {:error}
+      end
+    end
+
+    # Check if all the payload parts have been received and return the concatenated payload
+    def complete(%__MODULE__{
+          parts: parts,
+          onward_route: onward_route,
+          return_route: return_route,
+          expected_total_number_of_parts: expected_total_number_of_parts
+        }) do
+      if Kernel.map_size(parts) == expected_total_number_of_parts do
+        # get all the parts, sorted by key
+        keys = Map.keys(parts)
+        sorted_keys = Enum.sort(keys)
+        values = Enum.map(sorted_keys, &Map.get(parts, &1))
+        payload = Enum.reduce(values, <<>>, fn binary, acc -> <<acc::binary, binary::binary>> end)
+        result = %Payload{
+            onward_route: onward_route,
+            return_route: return_route,
+            payload: payload,
+          }
+        {:ok, result}
+      else
+        :error
+      end
+    end
+
+    # Return :ok if the current part can be added to the other parts
+    def is_valid_part(
+          self,
+          current_part_number,
+          total_number_of_parts,
+          onward_route,
+          return_route
+        ) do
+      cond do
+        self.onward_route != onward_route ->
+          Logger.error(
+            "Incorrect onward route for part #{current_part_number}/#{total_number_of_parts} of message #{self.uuid}. Expected: #{inspect(self.onward_route)}, Got: #{inspect(onward_route)}"
+          )
+
+          false
+
+        self.return_route != return_route ->
+          Logger.error(
+            "Incorrect return route for part #{current_part_number}/#{total_number_of_parts} of message #{self.uuid}. Expected: #{inspect(self.return_route)}, Got: #{inspect(return_route)}"
+          )
+
+          false
+
+        self.expected_total_number_of_parts != total_number_of_parts ->
+          Logger.error(
+            "Incorrect total number of parts for part #{current_part_number}/#{total_number_of_parts} of message #{self.uuid}. Expected: #{self.expected_total_number_of_parts}, Got: #{total_number_of_parts}"
+          )
+
+          false
+
+        self.expected_total_number_of_parts < current_part_number ->
+          Logger.error(
+            "Incorrect part number for part #{current_part_number} of message #{self.uuid}. It should less or equal than #{total_number_of_parts}"
+          )
+
+          false
+
+        Map.has_key?(self.parts, current_part_number) ->
+          Logger.warn(
+            "The part #{current_part_number} has already been received for message #{self.uuid}"
+          )
+
+          true
+
+        true ->
+          true
+      end
+    end
+  end
+
   defmodule RefreshCredentials do
     @moduledoc """
     Secure channel message refreshing sender credentials
@@ -74,7 +203,8 @@ defmodule Ockam.SecureChannel.Messages do
                 [
                   {Ockam.SecureChannel.Messages.Payload, 0},
                   {Ockam.SecureChannel.Messages.RefreshCredentials, 1},
-                  close: 2
+                  {:close, 2},
+                  {Ockam.SecureChannel.Messages.PayloadPart, 3}
                 ]}
 
   def decode(encoded) do

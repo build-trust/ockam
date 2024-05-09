@@ -1,7 +1,10 @@
 defmodule Ockam.SecureChannel.Messages.Tests do
   use ExUnit.Case, async: true
   doctest Ockam.SecureChannel.Messages
+  alias Ockam.Address
   alias Ockam.SecureChannel.Messages
+  alias Ockam.SecureChannel.Messages.Payload
+  alias Ockam.SecureChannel.Messages.PayloadParts
 
   describe "Ockam.SecureChannel.Messages.RefreshCredentials" do
     test "refresh credential can be parsed" do
@@ -22,6 +25,94 @@ defmodule Ockam.SecureChannel.Messages.Tests do
       {:ok, b} = Base.decode16(hex_msg, case: :lower)
       {:ok, :close} = Messages.decode(b)
       {:ok, ^b} = Messages.encode(:close)
+    end
+  end
+
+  describe "Ockam.SecureChannel.Messages.PayloadParts" do
+    test "A payload part can be validated" do
+      parts = %PayloadParts{
+        uuid: UUID.uuid4(),
+        parts: %{1 => <<1, 2, 3>>},
+        onward_route: Address.parse_route!("0#onward_route"),
+        return_route: Address.parse_route!("0#return_route"),
+        expected_total_number_of_parts: 3
+      }
+
+      # this part is ok
+      assert PayloadParts.is_valid_part(
+               parts,
+               2,
+               3,
+               Address.parse_route!("0#onward_route"),
+               Address.parse_route!("0#return_route")
+             )
+
+      # this part has an incorrect part number
+      assert !PayloadParts.is_valid_part(
+               parts,
+               4,
+               3,
+               Address.parse_route!("0#onward_route"),
+               Address.parse_route!("0#return_route")
+             )
+
+      # this part has an incorrect onward route
+      assert !PayloadParts.is_valid_part(
+               parts,
+               2,
+               3,
+               Address.parse_route!("0#onward_route_x"),
+               Address.parse_route!("0#return_route")
+             )
+
+      # this part has an incorrect return route
+      assert !PayloadParts.is_valid_part(
+               parts,
+               2,
+               3,
+               Address.parse_route!("0#onward_route"),
+               Address.parse_route!("0#return_route_x")
+             )
+    end
+
+    test "When all the parts have been received, the payload is complete" do
+      parts = %PayloadParts{
+        uuid: UUID.uuid4(),
+        parts: %{2 => <<4, 5, 6>>},
+        onward_route: Address.parse_route!("0#onward_route"),
+        return_route: Address.parse_route!("0#return_route"),
+        expected_total_number_of_parts: 3
+      }
+
+      # add part 3
+      {:ok, parts} =
+        PayloadParts.update(
+          parts,
+          3,
+          3,
+          Address.parse_route!("0#onward_route"),
+          Address.parse_route!("0#return_route"),
+          <<7, 8, 9>>
+        )
+
+      # the payload is not yet complete
+      assert :error = PayloadParts.complete(parts)
+
+      # add part 1
+      {:ok, parts} =
+        PayloadParts.update(
+          parts,
+          1,
+          3,
+          Address.parse_route!("0#onward_route"),
+          Address.parse_route!("0#return_route"),
+          <<1, 2, 3>>
+        )
+
+      # the payload is now complete and assembled in the right order
+      # even if the parts have been received in a different order
+      assert {:ok, %Payload{payload: payload}} = PayloadParts.complete(parts)
+      assert <<1, 2, 3, 4, 5, 6, 7, 8, 9>> = payload
     end
   end
 end

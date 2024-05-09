@@ -607,6 +607,33 @@ defmodule Ockam.SecureChannel.Tests do
     assert bob_new_attributes == AttributeStorage.get_attributes(bob_id)
   end
 
+  test "send large messages over secure channel", %{alice: alice, bob: bob} do
+    {:ok, listener} = create_secure_channel_listener(alice)
+
+    {:ok, channel} = create_secure_channel([listener], bob)
+
+    assert {:ok, alice} == SecureChannel.get_remote_identity(channel)
+    assert {:ok, Identity.get_identifier(alice)} == SecureChannel.get_remote_identity_id(channel)
+
+    assert {:ok, alice, Identity.get_identifier(alice)} ==
+             SecureChannel.get_remote_identity_with_id(channel)
+
+    {:ok, me} = Ockam.Node.register_random_address()
+    message = String.duplicate("PING!", 15000)
+    Router.route(message, [channel, me], [me])
+
+    assert_receive %Ockam.Message{
+      onward_route: [^me],
+      payload: actual_message,
+      return_route: _return_route,
+      local_metadata: %{identity_id: id, identity: _identity, channel: :secure_channel}
+    }
+
+    actual_message = :binary.bin_to_list(actual_message) |> :unicode.characters_to_list(:utf8) |> to_string()
+    assert actual_message == message
+    assert id == Identity.get_identifier(bob)
+  end
+
   defp create_secure_channel_listener() do
     {:ok, identity} = Identity.create()
     create_secure_channel_listener(identity)
