@@ -227,15 +227,15 @@ EOF
 
   # On machine A
   MACHINE_A="$OCKAM_HOME"
-  run_success bash -c "$OCKAM project ticket --usage-count 10 --attribute component=db --relay ${relay_name} > ${MACHINE_A}/db.ticket"
-  run_success bash -c "$OCKAM project ticket --usage-count 10 --attribute component=web > ${MACHINE_A}/webapp.ticket"
+  run_success bash -c "$OCKAM project ticket --usage-count 10 --attribute component.db --relay ${relay_name} > ${MACHINE_A}/db.ticket"
+  run_success bash -c "$OCKAM project ticket --usage-count 10 --attribute component.web > ${MACHINE_A}/webapp.ticket"
 
   # Machine B
   setup_home_dir
   run_success $OCKAM identity create db
   run_success $OCKAM project enroll "${MACHINE_A}/db.ticket" --identity db
   run_success $OCKAM node create db --identity db
-  run_success $OCKAM tcp-outlet create --to "$PG_HOST:$PG_PORT" --allow '(= subject.component "web")'
+  run_success $OCKAM tcp-outlet create --to "$PG_HOST:$PG_PORT" --allow 'component.web'
   run_success $OCKAM relay create "$relay_name"
 
   # Machine C
@@ -244,7 +244,7 @@ EOF
   run_success $OCKAM identity create web
   run_success $OCKAM project enroll ${MACHINE_A}/webapp.ticket --identity web
   run_success $OCKAM node create web --identity web
-  run_success $OCKAM tcp-inlet create --from "$OCKAM_PG_PORT_MACHINE_C" --via $relay_name --allow '(= subject.component "db")'
+  run_success $OCKAM tcp-inlet create --from "$OCKAM_PG_PORT_MACHINE_C" --via $relay_name --allow 'component.db'
 
   export FLASK_PORT="$(random_port)"
   export APP_PG_PORT="$OCKAM_PG_PORT_MACHINE_C"
