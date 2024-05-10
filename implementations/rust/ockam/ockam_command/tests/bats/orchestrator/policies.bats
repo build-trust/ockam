@@ -21,8 +21,8 @@ teardown() {
   # Admin
   relay_name="$(random_str)"
   db_ticket=$($OCKAM project ticket --usage-count 10 --relay $relay_name)
-  web_ticket=$($OCKAM project ticket --usage-count 10 --attribute component.web=true)
-  dashboard_ticket=$($OCKAM project ticket --usage-count 10 --attribute component.dashboard=true)
+  web_ticket=$($OCKAM project ticket --usage-count 10 --attribute component.web)
+  dashboard_ticket=$($OCKAM project ticket --usage-count 10 --attribute component.dashboard)
 
   # DB
   setup_home_dir
@@ -50,7 +50,7 @@ teardown() {
   # Admin
   relay_name="$(random_str)"
   db_ticket=$($OCKAM project ticket --usage-count 10 --relay $relay_name)
-  web_ticket=$($OCKAM project ticket --usage-count 10 --attribute component.web=true)
+  web_ticket=$($OCKAM project ticket --usage-count 10 --attribute component.web)
 
   # DB
   setup_home_dir

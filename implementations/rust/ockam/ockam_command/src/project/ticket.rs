@@ -145,7 +145,8 @@ impl TicketCommand {
         for attr in &self.attributes {
             let mut parts = attr.splitn(2, '=');
             let key = parts.next().ok_or(miette!("key expected"))?;
-            let value = parts.next().ok_or(miette!("value expected)"))?;
+            // If no value is provided we assume that the attribute is a boolean attribute set to "true"
+            let value = parts.next().unwrap_or("true");
             attributes.insert(key.to_string(), value.to_string());
         }
         if let Some(relay_name) = self.allowed_relay_name.clone() {
