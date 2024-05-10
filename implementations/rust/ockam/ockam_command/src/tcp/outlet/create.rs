@@ -62,6 +62,7 @@ pub struct CreateCommand {
     /// You can check the fallback policy with `ockam policy show --resource-type tcp-outlet`.
     #[arg(
         hide = true,
+        long,
         visible_alias = "policy_expression",
         display_order = 904,
         id = "POLICY_EXPRESSION"
