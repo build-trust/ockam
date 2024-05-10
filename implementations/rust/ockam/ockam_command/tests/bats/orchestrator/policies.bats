@@ -21,8 +21,8 @@ teardown() {
   # Admin
   relay_name="$(random_str)"
   db_ticket=$($OCKAM project ticket --usage-count 10 --relay $relay_name)
-  web_ticket=$($OCKAM project ticket --usage-count 10 --attribute component=web)
-  dashboard_ticket=$($OCKAM project ticket --usage-count 10 --attribute component=dashboard)
+  web_ticket=$($OCKAM project ticket --usage-count 10 --attribute component.web=true)
+  dashboard_ticket=$($OCKAM project ticket --usage-count 10 --attribute component.dashboard=true)
 
   # DB
   setup_home_dir
@@ -50,7 +50,7 @@ teardown() {
   # Admin
   relay_name="$(random_str)"
   db_ticket=$($OCKAM project ticket --usage-count 10 --relay $relay_name)
-  web_ticket=$($OCKAM project ticket --usage-count 10 --attribute component=web)
+  web_ticket=$($OCKAM project ticket --usage-count 10 --attribute component.web=true)
 
   # DB
   setup_home_dir
@@ -76,6 +76,6 @@ teardown() {
   run_success curl -sfI --retry-connrefused --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$inlet_port"
 
   # Update the policy for the outlet and try again. It will fail because the local policy is not satisfied
-  run_success $OCKAM policy create --resource-type outlet --allow 'componen.NOT_web'
+  run_success $OCKAM policy create --resource-type tcp-outlet --allow 'component.NOT_web'
   run_failure curl -sfI -m 3 "127.0.0.1:$inlet_port"
 }
