@@ -8049,18 +8049,18 @@ checksum = "af190c94f2773fdb3729c55b007a722abb5384da03bc0986df4c289bf5567e96"
 
 [[package]]
 name = "wasm-encoder"
-version = "0.206.0"
+version = "0.207.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d759312e1137f199096d80a70be685899cd7d3d09c572836bb2e9b69b4dc3b1e"
+checksum = "d996306fb3aeaee0d9157adbe2f670df0236caf19f6728b221e92d0f27b3fe17"
 dependencies = [
  "leb128",
 ]
 
 [[package]]
 name = "wast"
-version = "206.0.0"
+version = "207.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "68586953ee4960b1f5d84ebf26df3b628b17e6173bc088e0acfbce431469795a"
+checksum = "0e40be9fd494bfa501309487d2dc0b3f229be6842464ecbdc54eac2679c84c93"
 dependencies = [
  "bumpalo",
  "leb128",
