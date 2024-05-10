@@ -66,7 +66,7 @@ r3bl_tuify = "0.1"
 rand = "0.8"
 regex = "1.10.4"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls-native-roots"] }
-serde = { version = "1.0.199", features = ["derive"] }
+serde = { version = "1.0.201", features = ["derive"] }
 serde_json = "1.0.117"
 sha2 = "0.10.8"
 sqlx = { version = "0.7.4", features = ["runtime-tokio", "sqlite"] }
