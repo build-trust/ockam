@@ -18,8 +18,8 @@ use crate::secure_channel::api::{EncryptionRequest, EncryptionResponse};
 use crate::secure_channel::encryptor::{Encryptor, SIZE_OF_ENCRYPT_OVERHEAD};
 use crate::{
     ChangeHistoryRepository, CredentialRetriever, Identifier, IdentityError, Nonce,
-    PlaintextPayloadMessage, RefreshCredentialsMessage, SecureChannelMessageV1,
-    SecureChannelMessageV2, UuidCbor,
+    PlaintextPayloadMessage, PlaintextPayloadPartMessage, RefreshCredentialsMessage,
+    SecureChannelMessageV1, SecureChannelMessageV2, UuidCbor,
 };
 
 /// Maximum size for a secure channel payload.
@@ -196,18 +196,15 @@ impl EncryptorWorker {
             debug!("The message payload is larger than {MAX_SECURE_CHANNEL_PAYLOAD_SIZE} bytes. Splitting it in {total_number_of_parts} (payload UUID: {uuid})");
             for (part_number, part) in parts.enumerate() {
                 let part_number = part_number + 1;
-                let part = PlaintextPayloadMessage {
+
+                let msg = SecureChannelMessageV2::PayloadPart(PlaintextPayloadPartMessage {
                     onward_route: onward_route.clone(),
                     return_route: return_route.clone(),
                     payload: part,
-                };
-
-                let msg = SecureChannelMessageV2::PayloadPart {
-                    part,
                     payload_uuid: UuidCbor::new(uuid),
                     current_part_number: part_number as u32,
                     total_number_of_parts: total_number_of_parts as u32,
-                };
+                });
                 let encoded_payload = minicbor::to_vec(&msg)?;
                 self.handle_encrypt_message(ctx, encoded_payload).await?;
                 debug!("Sent part {part_number} for payload {uuid}");

@@ -570,12 +570,12 @@ defmodule Ockam.SecureChannel.Channel do
 
         {:ok,
          %Messages.PayloadPart{
-           payload_uuid: payload_uuid,
-           current_part_number: current_part_number,
-           total_number_of_parts: total_number_of_parts,
            onward_route: onward_route,
            return_route: return_route,
-           payload: payload
+           payload: payload,
+           payload_uuid: payload_uuid,
+           current_part_number: current_part_number,
+           total_number_of_parts: total_number_of_parts
          }} ->
           # Get the parts for the current payload UUID
           Logger.debug(
@@ -732,7 +732,6 @@ defmodule Ockam.SecureChannel.Channel do
       payload_parts = Bits.chunks(message.payload, @max_payload_size)
       payload_uuid = UUID.uuid4()
       total_number_of_parts = length(payload_parts)
-      base_part = struct(Messages.PayloadPart, Map.from_struct(message))
       with_index = Enum.with_index(payload_parts)
 
       List.foldl(with_index, {:ok, encrypt_st}, fn part_index, current_state ->
@@ -743,12 +742,13 @@ defmodule Ockam.SecureChannel.Channel do
           "sending part #{part_number}/#{total_number_of_parts} for message #{payload_uuid}"
         )
 
-        payload_part = %{
-          base_part
-          | payload_uuid: payload_uuid,
-            current_part_number: part_number,
-            total_number_of_parts: total_number_of_parts,
-            payload: part
+        payload_part = %Messages.PayloadPart{
+          onward_route: message.onward_route,
+          return_route: message.return_route,
+          payload: part,
+          payload_uuid: payload_uuid,
+          current_part_number: part_number,
+          total_number_of_parts: total_number_of_parts
         }
 
         send_payload_part_over_encrypted_channel(payload_part, current_state, peer_route)

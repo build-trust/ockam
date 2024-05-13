@@ -4,6 +4,7 @@ defmodule Ockam.SecureChannel.Messages.Tests do
   alias Ockam.Address
   alias Ockam.SecureChannel.Messages
   alias Ockam.SecureChannel.Messages.Payload
+  alias Ockam.SecureChannel.Messages.PayloadPart
   alias Ockam.SecureChannel.Messages.PayloadParts
 
   describe "Ockam.SecureChannel.Messages.RefreshCredentials" do
@@ -28,7 +29,85 @@ defmodule Ockam.SecureChannel.Messages.Tests do
     end
   end
 
+  describe "Ockam.SecureChannel.Messages.Payload" do
+    test "A payload can be encoded then decoded" do
+      expected = %Payload{
+        onward_route: [%Address{type: 1, value: "onward_route"}],
+        return_route: [%Address{type: 1, value: "return_route"}],
+        payload: <<1, 2, 3>>
+      }
+
+      {:ok, encoded} = Messages.encode(expected)
+
+      # sanity check and use this value on the Rust side in messages.rs
+      as_hex = Base.encode16(encoded, case: :lower)
+
+      assert as_hex ==
+               "8200818381a20101028c186f186e1877186118721864185f1872186f18751874186581a20101028c18721865187418751872186e185f1872186f18751874186543010203"
+
+      {:ok, actual} = Messages.decode(encoded)
+      assert actual == expected
+    end
+
+    test "A payload can be decoded from rust" do
+      hex_msg =
+        "8200818381a20101028c186f186e1877186118721864185f1872186f18751874186581a20101028c18721865187418751872186e185f1872186f18751874186543010203"
+
+      expected = %Payload{
+        onward_route: [%Address{type: 1, value: "onward_route"}],
+        return_route: [%Address{type: 1, value: "return_route"}],
+        payload: <<1, 2, 3>>
+      }
+
+      {:ok, b} = Base.decode16(hex_msg, case: :lower)
+      {:ok, actual} = Messages.decode(b)
+
+      assert actual == expected
+    end
+  end
+
   describe "Ockam.SecureChannel.Messages.PayloadParts" do
+    test "A payload part can be encoded then decoded" do
+      expected = %PayloadPart{
+        onward_route: [%Address{type: 1, value: "onward_route"}],
+        return_route: [%Address{type: 1, value: "return_route"}],
+        payload: <<1, 2, 3>>,
+        current_part_number: 1,
+        total_number_of_parts: 3,
+        payload_uuid: "24922fc8-ea4c-4387-b069-e2b296e0de7d"
+      }
+
+      {:ok, encoded} = Messages.encode(expected)
+
+      # sanity check and use this value on the Rust side in messages.rs
+      as_hex = Base.encode16(encoded, case: :lower)
+
+      assert as_hex ==
+               "8203818681a20101028c186f186e1877186118721864185f1872186f18751874186581a20101028c18721865187418751872186e185f1872186f187518741865430102030103782432343932326663382d656134632d343338372d623036392d653262323936653064653764"
+
+      {:ok, actual} = Messages.decode(encoded)
+      assert actual == expected
+    end
+
+    test "A payload part can be decoded from rust" do
+      hex_msg =
+        "8203818681a20101028c186f186e1877186118721864185f1872186f18751874186581a20101028c18721865187418751872186e185f1872186f187518741865430102030103782432343932326663382d656134632d343338372d623036392d653262323936653064653764"
+
+      expected = %PayloadPart{
+        onward_route: [%Address{type: 1, value: "onward_route"}],
+        return_route: [%Address{type: 1, value: "return_route"}],
+        payload: <<1, 2, 3>>,
+        current_part_number: 1,
+        total_number_of_parts: 3,
+        payload_uuid: "24922fc8-ea4c-4387-b069-e2b296e0de7d"
+      }
+
+      {:ok, b} = Base.decode16(hex_msg, case: :lower)
+      {:ok, actual} = Messages.decode(b)
+
+      assert actual == expected
+    end
+
     test "A payload part can be validated" do
       parts = %PayloadParts{
         uuid: UUID.uuid4(),

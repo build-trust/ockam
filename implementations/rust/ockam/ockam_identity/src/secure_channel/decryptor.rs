@@ -13,8 +13,8 @@ use crate::secure_channel::nonce_tracker::NonceTracker;
 use crate::secure_channel::{Addresses, Role};
 use crate::{
     DecryptionRequest, DecryptionResponse, Identities, IdentityError,
-    IdentitySecureChannelLocalInfo, Nonce, PlaintextPayloadMessage, RefreshCredentialsMessage,
-    SecureChannelMessageV1, SecureChannelMessageV2,
+    IdentitySecureChannelLocalInfo, Nonce, PlaintextPayloadMessage, PlaintextPayloadPartMessage,
+    RefreshCredentialsMessage, SecureChannelMessageV1, SecureChannelMessageV2,
 };
 
 use crate::secure_channel::encryptor_worker::SecureChannelSharedState;
@@ -147,6 +147,7 @@ impl DecryptorHandler {
     /// If all the parts of a given payload (as determined by the payload uuid) have been received
     /// then the full payload is returned by the collector and the payload is handled
     /// via the handle_payload method.
+    #[allow(clippy::too_many_arguments)]
     async fn handle_payload_part<'a>(
         &mut self,
         ctx: &mut Context,
@@ -245,9 +246,9 @@ impl DecryptorHandler {
         let decrypted_msg: SecureChannelMessageV2 =
             match minicbor::decode::<SecureChannelMessageV2>(&decrypted_payload) {
                 Ok(v) => v,
-                Err(e1) => match minicbor::decode::<SecureChannelMessageV1>(&decrypted_payload) {
-                    Ok(v) => v.to_v2(),
-                    Err(e2) => return Err(Error::new(Origin::Api, Kind::Serialization, format!("cannot decode a secure channel message, either as V1: {e1:?}, or V2: {e2:?}"))),
+                Err(e2) => match minicbor::decode::<SecureChannelMessageV1>(&decrypted_payload) {
+                    Ok(v) => v.into_v2(),
+                    Err(e1) => return Err(Error::new(Origin::Api, Kind::Serialization, format!("cannot decode a secure channel message, either as V2: {e2:?}, or V1: {e1:?}"))),
                 }
             };
         match decrypted_msg {
@@ -255,17 +256,24 @@ impl DecryptorHandler {
                 self.handle_payload(ctx, decrypted_msg, nonce, encrypted_msg_return_route)
                     .await?
             }
-            SecureChannelMessageV2::PayloadPart {
-                part,
+            SecureChannelMessageV2::PayloadPart(PlaintextPayloadPartMessage {
+                onward_route,
+                return_route,
+                payload,
                 payload_uuid,
                 current_part_number,
                 total_number_of_parts,
-            } => {
+            }) => {
+                let part = PlaintextPayloadMessage {
+                    onward_route,
+                    return_route,
+                    payload,
+                };
                 self.handle_payload_part(
                     ctx,
                     nonce,
                     encrypted_msg_return_route,
-                    part.clone(),
+                    part,
                     payload_uuid.into(),
                     current_part_number,
                     total_number_of_parts,

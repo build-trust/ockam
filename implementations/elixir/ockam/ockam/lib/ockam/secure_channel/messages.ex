@@ -54,9 +54,9 @@ defmodule Ockam.SecureChannel.Messages do
       field(:onward_route, list(Address.t()), minicbor: [key: 0, schema: {:list, AddressSchema}])
       field(:return_route, list(Address.t()), minicbor: [key: 1, schema: {:list, AddressSchema}])
       field(:payload, binary(), minicbor: [key: 2])
-      field(:payload_uuid, String.t(), minicbor: [key: 3])
-      field(:current_part_number, integer(), minicbor: [key: 4])
-      field(:total_number_of_parts, integer(), minicbor: [key: 5])
+      field(:current_part_number, integer(), minicbor: [key: 3])
+      field(:total_number_of_parts, integer(), minicbor: [key: 4])
+      field(:payload_uuid, String.t(), minicbor: [key: 5])
     end
   end
 
