@@ -1,0 +1,35 @@
+# https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/configuring-openid-connect-in-amazon-web-services
+name: Allow AWS Upload
+description: Allow AWS Upload
+
+inputs:
+  aws_role:
+    description: AWS role full id
+    default: 'true'
+  aws_role_session_name:
+    description: AWS role session name
+    default: 'true'
+  aws_region:
+    description: AWS region
+    default: us-east-1
+  bucket_name:
+    description: AWS bucket name to upload assets
+    default: ockam_releases
+  file_name:
+    description: File name to upload. Note, file must be in the same path
+  release_version:
+    description: Release version, e.g. 0.22.0
+
+runs:
+  using: composite
+  steps:
+    - uses: aws-actions/configure-aws-credentials@v3
+      with:
+        role-to-assume: ${{ inputs.aws_role }}
+        role-session-name: ${{ inputs.aws_role_session_name }}
+        aws-region: ${{ inputs.aws_region }}
+    # Upload a file to AWS s3
+    - shell: bash
+      if: ${{ inputs.file_name }}
+      run: |
+        aws s3api put-object --bucket ${{ inputs.bucket_name }} --key ${{ inputs.release_version }}/${{ inputs.file_name }} --body ${{ inputs.file_name }}
