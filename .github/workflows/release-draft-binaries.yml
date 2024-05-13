@@ -27,7 +27,12 @@ jobs:
     environment: release
     outputs:
       upload_url: ${{ steps.release_upload_url.outputs.upload_url }}
-      tag_name: ${{ steps.release_version.outputs.tag_name }}
+      version: ${{ steps.release_version.outputs.version }}
+    env:
+      BUCKET_NAME: ${{ vars.AWS_BUCKET_NAME }}
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      AWS_ROLE: ${{ vars.AWS_ROLE }}
+
     steps:
       - name: Checkout Ockam
         uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29
@@ -58,7 +63,6 @@ jobs:
 
           text="Ockam $ockam_version"
 
-
           text="$text
 
           # Homebrew
@@ -80,6 +84,8 @@ jobs:
           docker pull ghcr.io/build-trust/ockam:$ockam_version
           \`\`\`"
 
+          url_head="https://${{ env.BUCKET_NAME }}.s3.amazonaws.com/${ockam_version}"
+
           text="$text
 
           # Precompiled Binaries
@@ -87,11 +93,11 @@ jobs:
           \`\`\`bash
           # download sha256sums.txt
           curl --proto '=https' --tlsv1.2 -sSfL -O \\
-            https://github.com/build-trust/ockam/releases/download/ockam_v${ockam_version}/sha256sums.txt
+            ${url_head}/sha256sums.txt
 
           # download sha256sums.txt.sig
           curl --proto '=https' --tlsv1.2 -sSfL -O \\
-            https://github.com/build-trust/ockam/releases/download/ockam_v${ockam_version}/sha256sums.txt.sig
+            ${url_head}/sha256sums.txt.sig
 
           # download our release public key
           curl --proto '=https' --tlsv1.2 -sSfL -o ockam.pub \\
@@ -102,7 +108,7 @@ jobs:
 
           # download ockam command binary for your architecture
           curl --proto '=https' --tlsv1.2 -sSfL -O \\
-            https://github.com/build-trust/ockam/releases/download/ockam_v${ockam_version}/ockam.x86_64-unknown-linux-gnu
+            ${url_head}/ockam.x86_64-unknown-linux-gnu
 
           # verify that the sha256 hash of the downloaded binary is the same as
           # the corresponding hash mentioned in sha256sums.txt
@@ -176,8 +182,13 @@ jobs:
       CODE_SIGN_IDENTITY: ${{ vars.CODE_SIGN_IDENTITY }}
       NOTARIZATION_EMAIL: ${{ vars.NOTARIZATION_EMAIL }}
       NOTARIZATION_PASSWORD: ${{ secrets.NOTARIZATION_PASSWORD }}
+      BUCKET_NAME: ${{ vars.AWS_BUCKET_NAME }}
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      AWS_ROLE: ${{ vars.AWS_ROLE }}
+
     permissions:
       contents: write
+      id-token: write # This is required for requesting the JWT
 
     strategy:
       fail-fast: false
@@ -304,7 +315,7 @@ jobs:
           cosign sign-blob --yes --key env://PRIVATE_KEY "${{ env.ASSET_OCKAM_APP_DMG }}" > "${{ env.ASSET_OCKAM_APP_DMG }}.sig"
         fi
 
-    - name: Upload CLI release archive
+    - name: Upload CLI release archive to GitHub
       uses: actions/upload-release-asset@ef2adfe8cb8ebfa540930c452c576b3819990faa
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -314,7 +325,7 @@ jobs:
         asset_name: ${{ env.ASSET_OCKAM_CLI }}
         asset_content_type: application/octet-stream
 
-    - name: Upload CLI Signature
+    - name: Upload CLI Signature to GitHub
       uses: actions/upload-release-asset@ef2adfe8cb8ebfa540930c452c576b3819990faa
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -324,7 +335,29 @@ jobs:
         asset_name: ${{ env.ASSET_OCKAM_CLI }}.sig
         asset_content_type: application/octet-stream
 
-    - name: Upload MacOS App release
+
+    - name: Upload CLI release archive to AWS
+      uses: ./.github/actions/aws_upload
+      with:
+        aws_role: ${{ env.AWS_ROLE }}
+        aws_role_session_name: aws_upload
+        aws_region: ${{ env.AWS_REGION }}
+        bucket_name: ${{ env.BUCKET_NAME }}
+        file_name: ${{ env.ASSET_OCKAM_CLI }}
+        release_version: "v${{ needs.create_release.outputs.version }}"
+
+
+    - name: Upload CLI Signature to AWS
+      uses: ./.github/actions/aws_upload
+      with:
+        aws_role: ${{ env.AWS_ROLE }}
+        aws_role_session_name: aws_upload
+        aws_region: ${{ env.AWS_REGION }}
+        bucket_name: ${{ env.BUCKET_NAME }}
+        file_name: ${{ env.ASSET_OCKAM_CLI }}.sig
+        release_version: "v${{ needs.create_release.outputs.version }}"
+
+    - name: Upload MacOS App release to GitHub
       uses: actions/upload-release-asset@ef2adfe8cb8ebfa540930c452c576b3819990faa
       if: ${{ env.ASSET_OCKAM_APP_DMG }}
       env:
@@ -335,7 +368,7 @@ jobs:
         asset_name: ${{ env.ASSET_OCKAM_APP_DMG }}
         asset_content_type: application/octet-stream
 
-    - name: Upload MacOS App release Signature
+    - name: Upload MacOS App release Signature to GitHub
       uses: actions/upload-release-asset@ef2adfe8cb8ebfa540930c452c576b3819990faa
       if: ${{ env.ASSET_OCKAM_APP_DMG }}
       env:
@@ -347,12 +380,42 @@ jobs:
         asset_content_type: application/octet-stream
 
 
+    - name: Upload MacOS App release to AWS
+      uses: ./.github/actions/aws_upload
+      if: ${{ env.ASSET_OCKAM_APP_DMG }}
+      with:
+        aws_role: ${{ env.AWS_ROLE }}
+        aws_role_session_name: aws_upload
+        aws_region: ${{ env.AWS_REGION }}
+        bucket_name: ${{ env.BUCKET_NAME }}
+        file_name: ${{ env.ASSET_OCKAM_APP_DMG }}
+        release_version: "v${{ needs.create_release.outputs.version }}"
+
+
+    - name: Upload MacOS App release Signature to AWS
+      uses: ./.github/actions/aws_upload
+      if: ${{ env.ASSET_OCKAM_APP_DMG }}
+      with:
+        aws_role: ${{ env.AWS_ROLE }}
+        aws_role_session_name: aws_upload
+        aws_region: ${{ env.AWS_REGION }}
+        bucket_name: ${{ env.BUCKET_NAME }}
+        file_name: ${{ env.ASSET_OCKAM_APP_DMG }}.sig
+        release_version: "v${{ needs.create_release.outputs.version }}"
+
+
   build_elixir_nifs:
     name: Build Elixir NIFs
     needs: create_release
     environment: release
     permissions:
       contents: write
+      id-token: write # This is required for requesting the JWT
+
+    env:
+      BUCKET_NAME: ${{ vars.AWS_BUCKET_NAME }}
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      AWS_ROLE: ${{ vars.AWS_ROLE }}
 
     strategy:
       fail-fast: false
@@ -381,10 +444,10 @@ jobs:
         run: cargo install --version 0.2.4 cross
 
       - shell: bash
-        if: inputs.platform_operating_system == 'ubuntu-22.04'
+        if: matrix.job.target == 'ubuntu-20.04'
         run: |
           set -x
-          use_cross_build=${{ inputs.use_cross_build }}
+          use_cross_build=${{ matrix.job.use-cross }}
           if [[ $use_cross_build != true ]]; then
             sudo apt update
             sudo apt -y --no-install-recommends install libclang-dev clang
@@ -434,7 +497,7 @@ jobs:
         run: |
           cosign sign-blob --yes --key env://PRIVATE_KEY ${{ env.FILE_NAME }} > "${{ env.FILE_NAME }}.sig"
 
-      - name: Upload Library
+      - name: Upload NIF to GitHub
         uses: actions/upload-release-asset@ef2adfe8cb8ebfa540930c452c576b3819990faa
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -444,7 +507,7 @@ jobs:
           asset_name: "${{ env.FILE_NAME }}"
           asset_content_type: application/octet-stream
 
-      - name: Upload Signature
+      - name: Upload NIF Signature to GitHub
         uses: actions/upload-release-asset@ef2adfe8cb8ebfa540930c452c576b3819990faa
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -454,6 +517,26 @@ jobs:
           asset_name: ${{ env.FILE_NAME }}.sig
           asset_content_type: application/octet-stream
 
+      - name: Upload NIF to AWS
+        uses: ./.github/actions/aws_upload
+        with:
+          aws_role: ${{ env.AWS_ROLE }}
+          aws_role_session_name: aws_upload
+          aws_region: ${{ env.AWS_REGION }}
+          bucket_name: ${{ env.BUCKET_NAME }}
+          file_name: "${{ env.FILE_NAME }}"
+          release_version: "v${{ needs.create_release.outputs.version }}"
+
+      - name: Upload NIF Signature to AWS
+        uses: ./.github/actions/aws_upload
+        with:
+          aws_role: ${{ env.AWS_ROLE }}
+          aws_role_session_name: aws_upload
+          aws_region: ${{ env.AWS_REGION }}
+          bucket_name: ${{ env.BUCKET_NAME }}
+          file_name: "${{ env.FILE_NAME }}.sig"
+          release_version: "v${{ needs.create_release.outputs.version }}"
+
   sign_release:
     name: Sign All Assets
     needs: [build_release, create_release, build_elixir_nifs]
@@ -461,12 +544,30 @@ jobs:
     environment: release
     permissions:
       contents: write
+      id-token: write # This is required for requesting the JWT
+    env:
+      BUCKET_NAME: ${{ vars.AWS_BUCKET_NAME }}
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      AWS_ROLE: ${{ vars.AWS_ROLE }}
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@44c2b7a8a4ea60a981eaca3cf939b5f4305c123b
+        with:
+          ref: ${{ github.event.inputs.release_branch }}
+          path: aws
+
+      - name: Login to AWS
+        uses: ./aws/.github/actions/aws_upload
+        with:
+          aws_role: ${{ env.AWS_ROLE }}
+          aws_role_session_name: aws_upload
+          aws_region: ${{ env.AWS_REGION }}
+
       - name: Fetch All Assets
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release download ${{ needs.create_release.outputs.tag_name }} -R ${{ github.repository_owner }}/ockam
+        run: aws s3 sync s3://${{ env.BUCKET_NAME }}/v${{ needs.create_release.outputs.version }} . && ls
 
       - name: Generate File SHASum
         run: shasum -a 256 *ockam* > sha256sums.txt
@@ -482,7 +583,7 @@ jobs:
           COSIGN_PASSWORD: '${{ secrets.COSIGN_PRIVATE_KEY_PASSWORD }}'
         run: cosign sign-blob --yes --key env://PRIVATE_KEY sha256sums.txt > sha256sums.txt.sig
 
-      - name: Upload SHASum File
+      - name: Upload SHASum File to GitHub
         uses: actions/upload-release-asset@ef2adfe8cb8ebfa540930c452c576b3819990faa
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -492,7 +593,7 @@ jobs:
           asset_name: sha256sums.txt
           asset_content_type: application/octet-stream
 
-      - name: Upload SHASum Signature File
+      - name: Upload SHASum Signature File to GitHub
         uses: actions/upload-release-asset@ef2adfe8cb8ebfa540930c452c576b3819990faa
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -501,3 +602,23 @@ jobs:
           asset_path: sha256sums.txt.sig
           asset_name: sha256sums.txt.sig
           asset_content_type: application/octet-stream
+
+      - name: Upload SHASum File to AWS
+        uses: ./aws/.github/actions/aws_upload
+        with:
+          aws_role: ${{ env.AWS_ROLE }}
+          aws_role_session_name: aws_upload
+          aws_region: ${{ env.AWS_REGION }}
+          bucket_name: ${{ env.BUCKET_NAME }}
+          file_name: sha256sums.txt
+          release_version: "v${{ needs.create_release.outputs.version }}"
+
+      - name: Upload SHASum Signature File to AWS
+        uses: ./aws/.github/actions/aws_upload
+        with:
+          aws_role: ${{ env.AWS_ROLE }}
+          aws_role_session_name: aws_upload
+          aws_region: ${{ env.AWS_REGION }}
+          bucket_name: ${{ env.BUCKET_NAME }}
+          file_name: sha256sums.txt.sig
+          release_version: "v${{ needs.create_release.outputs.version }}"

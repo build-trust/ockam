@@ -30,6 +30,11 @@ if [[ -z $OWNER ]]; then
 fi
 release_name="release_$(date +'%d-%m-%Y')_$(date +'%s')"
 
+if [[ -z $OCKAM_RELEASE_URL ]]; then
+  echo "Please set Ockam AWS release URL e.g. https://ockam-release.s3.amazonaws.com"
+  exit 1
+fi
+
 # Ensure all executables are installed
 executables_installed=true
 if ! command -v jq &>/dev/null; then
@@ -329,7 +334,9 @@ if [[ $IS_DRAFT_RELEASE == true ]]; then
 
   temp_dir=$(mktemp -d)
   pushd "$temp_dir"
-  gh release download "$latest_tag_name" -p sha256sums.txt -R $OWNER/ockam
+
+  version="${latest_tag_name//ockam_/}"
+  curl -O -R "${OCKAM_RELEASE_URL}/${version}/sha256sums.txt"
 
   # TODO Ensure that SHA are cosign verified
   while read -r line; do
