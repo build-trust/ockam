@@ -17,5 +17,6 @@ kafka-outlet:
   bootstrap-server: ${redpanda_address}:9092
 EOF
 
-# Create the Ockam node in foreground mode.
-ockam node create -f ./ockam.yaml
+# Create the Ockam node
+ockam node create ./ockam.yaml
+tail -f /dev/null
