@@ -7,6 +7,7 @@ defmodule OckamRustElixirNifs.Native do
     otp_app: :ockam_rust_elixir_nifs,
     crate: "ockam_rust_elixir_nifs",
     path: "../../../rust/ockam/ockam_rust_elixir_nifs",
+    features: ["aws-lc"],
     force_build: System.get_env("OCKAM_DOWNLOAD_NIF") == nil,
     version: version,
     load_from: {:ockam_rust_elixir_nifs, "priv/native/libockam_rust_elixir_nifs"},

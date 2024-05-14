@@ -43,7 +43,7 @@ in {
 
         ASDF_ELIXIR_VERSION = lib.optional cfg.shadowAsdf "system";
         ASDF_ERLANG_VERSION = lib.optional cfg.shadowAsdf "system";
-        inherit (config.devShells.rust) OCKAM_DISABLE_UPGRADE_CHECK RUSTFLAGS RUST_SRC_PATH;
+        inherit (config.devShells.rust) OCKAM_DISABLE_UPGRADE_CHECK RUSTFLAGS RUST_SRC_PATH LIBCLANG_PATH;
         inherit (config.devShells.tooling) BATS_LIB;
       };
     };

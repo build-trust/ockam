@@ -1,6 +1,7 @@
 [build]
-pre-build = [ # additional commands to run prior to building the package
+# additional commands to run prior to building the package
+pre-build = [
   "apt update",
   # libclang-dev is required when building with `aws-lc` feature
-  "apt -y --no-install-recommends install libclang-dev clang",
+  "DEBIAN_FRONTEND=noninteractive apt -y --no-install-recommends install libclang-dev clang",
 ]
