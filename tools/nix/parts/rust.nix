@@ -34,6 +34,7 @@ in {
       devShells = let
         compilerTools = with pkgs; [
           clang
+          libclang
           cmake
           lld
         ];
@@ -94,6 +95,7 @@ in {
           OCKAM_DISABLE_UPGRADE_CHECK = lib.optional cfg.disableUpgradeCheck true;
           RUSTFLAGS = "--cfg tokio_unstable -Cdebuginfo=0 -Dwarnings";
           CARGO_INCREMENTAL = 0;
+          LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
         };
       in {
         rust = pkgs.mkShell {
@@ -107,7 +109,7 @@ in {
 
           inherit (config.devShells.tooling) BATS_LIB;
 
-          inherit (envVars) CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER OCKAM_DISABLE_UPGRADE_CHECK RUSTFLAGS CARGO_INCREMENTAL;
+          inherit (envVars) CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER OCKAM_DISABLE_UPGRADE_CHECK RUSTFLAGS CARGO_INCREMENTAL LIBCLANG_PATH;
 
           DYLD_FALLBACK_LIBRARY_PATH = "${toolchain}/lib";
           RUST_SRC_PATH = lib.optional cfg.rustAnalyzer "${toolchain}/lib/rustlib/src/rust/library";
@@ -122,7 +124,7 @@ in {
             ]
             ++ nightlyTooling
             ++ sharedInputs;
-          inherit (envVars) CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER OCKAM_DISABLE_UPGRADE_CHECK RUSTFLAGS CARGO_INCREMENTAL;
+          inherit (envVars) CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER OCKAM_DISABLE_UPGRADE_CHECK RUSTFLAGS CARGO_INCREMENTAL LIBCLANG_PATH;
           DYLD_FALLBACK_LIBRARY_PATH = "${nightlyToolchain}/lib";
           RUST_SRC_PATH = lib.optional cfg.rustAnalyzer "${nightlyToolchain}/lib/rustlib/src/rust/library";
         };
