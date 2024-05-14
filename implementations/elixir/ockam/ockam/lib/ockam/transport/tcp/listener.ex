@@ -29,7 +29,11 @@ if Code.ensure_loaded?(:ranch) do
       protocol_options = [packet: 2, nodelay: true, handler_options: handler_options]
 
       with {:ok, _apps} <- Application.ensure_all_started(:ranch) do
-        start_listener(ref, transport, transport_options, protocol, protocol_options)
+        {:ok, listener_address} =
+          start_listener(ref, transport, transport_options, protocol, protocol_options)
+
+        :ranch.set_max_connections(ref, 1_000_000)
+        {:ok, listener_address}
       end
     end
 
