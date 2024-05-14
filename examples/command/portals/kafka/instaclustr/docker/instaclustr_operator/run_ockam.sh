@@ -16,5 +16,6 @@ kafka-outlet:
   bootstrap-server: ${INSTACLUSTER_ADDRESS}
 EOF
 
-# Create the Ockam node in foreground mode.
-ockam node create -f ./ockam.yaml
+# Create the Ockam node
+ockam node create ./ockam.yaml
+tail -f /dev/null

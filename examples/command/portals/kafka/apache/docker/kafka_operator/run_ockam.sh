@@ -21,4 +21,6 @@ kafka-inlet:
   to: /secure/api
 EOF
 
-ockam node create -f ./ockam.yaml
+# Create the Ockam node
+ockam node create ./ockam.yaml
+tail -f /dev/null
