@@ -1,0 +1,7 @@
+```sh
+# To list the kafka inlet on the default node
+$ ockam kafka-inlet list
+
+# To list the kafka inlet on a specific node
+$ ockam kafka-inlet list --at n
+```

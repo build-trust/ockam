@@ -15,9 +15,9 @@ use tracing::{debug, error};
 use ockam::{Address, Context, NodeBuilder};
 use ockam_api::cli_state::CliState;
 use ockam_api::cli_state::CliStateError;
-use ockam_api::colors::OckamColor;
+use ockam_api::colors::{color_primary, OckamColor};
 use ockam_api::config::lookup::{InternetAddress, LookupMeta};
-use ockam_api::ConnectionStatus;
+use ockam_api::{fmt_warn, ConnectionStatus};
 use ockam_core::{DenyAll, OpenTelemetryContext};
 use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Project, Space, Tcp};
 use ockam_multiaddr::{proto::Node, MultiAddr, Protocol};
@@ -221,6 +221,15 @@ pub fn colorize_connection_status(status: ConnectionStatus) -> CString {
         ConnectionStatus::Down => text.color(OckamColor::Failure.color()),
         ConnectionStatus::Degraded => text.color(OckamColor::Failure.color()),
     }
+}
+
+pub fn print_deprecated_warning(opts: &CommandGlobalOpts, old: &str, new: &str) -> Result<()> {
+    opts.terminal.write_line(fmt_warn!(
+        "{} is deprecated. Please use {} instead",
+        color_primary(old),
+        color_primary(new)
+    ))?;
+    Ok(())
 }
 
 #[cfg(test)]

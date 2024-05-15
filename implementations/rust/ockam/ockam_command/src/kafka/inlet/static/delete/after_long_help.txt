@@ -1,0 +1,7 @@
+```sh
+# To delete a kafka inlet on the default node
+$ ockam kafka-inlet delete kcaddr
+
+# To delete a kafka inlet on a specific node
+$ ockam kafka-inlet delete kcaddr --at n
+```

@@ -23,7 +23,6 @@ use crate::environment::EnvironmentCommand;
 use crate::flow_control::FlowControlCommand;
 use crate::identity::IdentityCommand;
 use crate::kafka::consumer::KafkaConsumerCommand;
-use crate::kafka::direct::KafkaDirectCommand;
 use crate::kafka::inlet::KafkaInletCommand;
 use crate::kafka::outlet::KafkaOutletCommand;
 use crate::kafka::producer::KafkaProducerCommand;
@@ -87,7 +86,6 @@ pub enum OckamSubcommand {
     KafkaOutlet(KafkaOutletCommand),
 
     KafkaConsumer(KafkaConsumerCommand),
-    KafkaDirect(KafkaDirectCommand),
     KafkaProducer(KafkaProducerCommand),
 
     SecureChannelListener(SecureChannelListenerCommand),
@@ -142,7 +140,6 @@ impl OckamSubcommand {
             OckamSubcommand::KafkaInlet(c) => c.run(opts),
             OckamSubcommand::KafkaConsumer(c) => c.run(opts),
             OckamSubcommand::KafkaProducer(c) => c.run(opts),
-            OckamSubcommand::KafkaDirect(c) => c.run(opts),
 
             OckamSubcommand::SecureChannelListener(c) => c.run(opts),
             OckamSubcommand::SecureChannel(c) => c.run(opts),
@@ -272,7 +269,6 @@ impl OckamSubcommand {
             OckamSubcommand::KafkaInlet(c) => c.name(),
             OckamSubcommand::KafkaOutlet(c) => c.name(),
             OckamSubcommand::KafkaConsumer(c) => c.name(),
-            OckamSubcommand::KafkaDirect(c) => c.name(),
             OckamSubcommand::KafkaProducer(c) => c.name(),
             OckamSubcommand::SecureChannelListener(c) => c.name(),
             OckamSubcommand::SecureChannel(c) => c.name(),
