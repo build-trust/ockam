@@ -9,9 +9,9 @@ mod create;
 mod delete;
 mod list;
 
-/// Manage Kafka Producers
+/// Manage Kafka Producers [DEPRECATED]
 #[derive(Clone, Debug, Args)]
-#[command(arg_required_else_help = true, subcommand_required = true)]
+#[command(hide = true, arg_required_else_help = true, subcommand_required = true)]
 pub struct KafkaProducerCommand {
     #[command(subcommand)]
     subcommand: KafkaProducerSubcommand,

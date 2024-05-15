@@ -12,18 +12,14 @@ use crate::node::NodeOpts;
 use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts};
 
-const PREVIEW_TAG: &str = include_str!("../../static/preview_tag.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/list/after_long_help.txt");
 
-/// List Kafka Consumers
+/// List Kafka Inlets
 #[derive(Args, Clone, Debug)]
-#[command(
-before_help = docs::before_help(PREVIEW_TAG),
-after_long_help = docs::after_help(AFTER_LONG_HELP)
-)]
+#[command(after_long_help = docs::after_help(AFTER_LONG_HELP))]
 pub struct ListCommand {
     #[command(flatten)]
-    node_opts: NodeOpts,
+    pub node_opts: NodeOpts,
 }
 
 impl ListCommand {
@@ -34,7 +30,7 @@ impl ListCommand {
     }
 
     pub fn name(&self) -> String {
-        "list kafka direct".into()
+        "list kafka inlets".into()
     }
 
     async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
@@ -42,17 +38,17 @@ impl ListCommand {
         let services: Vec<ServiceStatus> = node
             .ask(
                 ctx,
-                Request::get(format!("/node/services/{}", DefaultAddress::KAFKA_DIRECT)),
+                Request::get(format!("/node/services/{}", DefaultAddress::KAFKA_INLET)),
             )
             .await?;
         if services.is_empty() {
             opts.terminal
                 .stdout()
-                .plain(fmt_err!("No Kafka Direct Client found on this node"))
+                .plain(fmt_err!("No Kafka Inlets found on this node"))
                 .write_line()?;
         } else {
             let mut buf = String::new();
-            buf.push_str("Kafka Direct Clients:\n");
+            buf.push_str("Kafka Inlets:\n");
             for service in services {
                 buf.push_str(&format!("{:2}Address: {}\n", "", service.addr));
             }

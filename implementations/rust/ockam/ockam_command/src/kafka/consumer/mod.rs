@@ -10,8 +10,9 @@ mod delete;
 mod list;
 
 /// Manage Kafka Consumers
+/// [DEPRECATED]
 #[derive(Clone, Debug, Args)]
-#[command(arg_required_else_help = true, subcommand_required = true)]
+#[command(hide = true, arg_required_else_help = true, subcommand_required = true)]
 pub struct KafkaConsumerCommand {
     #[command(subcommand)]
     subcommand: KafkaConsumerSubcommand,

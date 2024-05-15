@@ -19,7 +19,7 @@ use ockam_core::api::Request;
 use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
 
-use crate::kafka::util::make_brokers_port_range;
+use crate::kafka::make_brokers_port_range;
 use crate::node::util::initialize_default_node;
 use crate::service::start::start_service_impl;
 use crate::util::process_nodes_multiaddr;

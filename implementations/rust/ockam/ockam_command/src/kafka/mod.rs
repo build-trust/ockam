@@ -1,10 +1,10 @@
 use std::{net::SocketAddr, str::FromStr};
 
 use ockam_api::nodes::service::default_address::DefaultAddress;
+use ockam_api::port_range::PortRange;
 use ockam_multiaddr::MultiAddr;
 
 pub(crate) mod consumer;
-pub(crate) mod direct;
 pub(crate) mod inlet;
 pub(crate) mod outlet;
 pub(crate) mod producer;
@@ -52,4 +52,10 @@ fn kafka_default_consumer_server() -> SocketAddr {
 fn kafka_default_producer_server() -> SocketAddr {
     SocketAddr::from_str(KAFKA_DEFAULT_PRODUCER_SERVER)
         .expect("Failed to parse default producer server")
+}
+
+pub(crate) fn make_brokers_port_range(bootstrap_server: &SocketAddr) -> PortRange {
+    let boostrap_server_port = bootstrap_server.port();
+    // we can unwrap here because we know that range start <= range end
+    PortRange::new(boostrap_server_port + 1, boostrap_server_port + 100).unwrap()
 }
