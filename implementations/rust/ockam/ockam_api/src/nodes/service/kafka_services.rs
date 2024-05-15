@@ -1,6 +1,3 @@
-use std::net::IpAddr;
-
-use crate::cli_state::random_name;
 use ockam::{Address, Context, Result};
 use ockam_abac::PolicyExpression::FullExpression;
 use ockam_core::api::{Error, Response};
@@ -21,16 +18,36 @@ use crate::kafka::{
 use crate::kafka::{OutletManagerService, PrefixRelayService};
 use crate::nodes::models::portal::OutletAccessControl;
 use crate::nodes::models::services::{
-    DeleteServiceRequest, StartKafkaDirectRequest, StartKafkaOutletRequest, StartKafkaRequest,
-    StartServiceRequest,
+    DeleteServiceRequest, StartKafkaInletRequest, StartKafkaOutletRequest, StartServiceRequest,
 };
 use crate::nodes::registry::{KafkaServiceInfo, KafkaServiceKind};
 use crate::nodes::service::default_address::DefaultAddress;
 use crate::nodes::InMemoryNode;
-use crate::nodes::NodeManager;
 use crate::port_range::PortRange;
 
 impl NodeManagerWorker {
+    pub(super) async fn start_kafka_inlet_service(
+        &self,
+        context: &Context,
+        body: StartServiceRequest<StartKafkaInletRequest>,
+    ) -> Result<Response<()>, Response<Error>> {
+        let request = body.request();
+        match self
+            .node_manager
+            .start_kafka_inlet_service(
+                context,
+                Address::from_string(body.address()),
+                request.bind_address(),
+                request.brokers_port_range(),
+                request.project_route(),
+            )
+            .await
+        {
+            Ok(_) => Ok(Response::ok().body(())),
+            Err(e) => Err(Response::internal_error_no_request(&e.to_string())),
+        }
+    }
+
     pub(super) async fn start_kafka_outlet_service(
         &self,
         context: &Context,
@@ -41,84 +58,7 @@ impl NodeManagerWorker {
             .start_kafka_outlet_service(
                 context,
                 Address::from_string(body.address()),
-                body.request().bootstrap_server_addr,
-            )
-            .await
-        {
-            Ok(_) => Ok(Response::ok().body(())),
-            Err(e) => Err(Response::internal_error_no_request(&e.to_string())),
-        }
-    }
-
-    pub(super) async fn start_kafka_direct_service(
-        &self,
-        context: &Context,
-        body: StartServiceRequest<StartKafkaDirectRequest>,
-    ) -> Result<Response<()>, Response<Error>> {
-        let request = body.request();
-        match self
-            .node_manager
-            .start_kafka_direct_service(
-                context,
-                Address::from_string(body.address()),
-                request.bind_address().ip(),
-                request.bind_address().port(),
-                request.brokers_port_range(),
-                *request.bootstrap_server_addr(),
-                request.consumer_route(),
-            )
-            .await
-        {
-            Ok(_) => Ok(Response::ok().body(())),
-            Err(e) => Err(Response::internal_error_no_request(&e.to_string())),
-        }
-    }
-
-    pub(super) async fn start_kafka_consumer_service(
-        &self,
-        context: &Context,
-        body: StartServiceRequest<StartKafkaRequest>,
-    ) -> Result<Response<()>, Response<Error>> {
-        let request = body.request();
-        match self
-            .node_manager
-            .start_kafka_service(
-                context,
-                Address::from_string(body.address()),
-                request.bootstrap_server_addr().ip(),
-                request.bootstrap_server_addr().port(),
-                request.brokers_port_range(),
-                request.project_route(),
-                KafkaServiceKind::Consumer,
-            )
-            .await
-        {
-            Ok(_) => Ok(Response::ok().body(())),
-            Err(e) => Err(Response::internal_error_no_request(&e.to_string())),
-        }
-    }
-
-    pub(super) async fn start_kafka_producer_service(
-        &mut self,
-        context: &Context,
-        body: StartServiceRequest<StartKafkaRequest>,
-    ) -> Result<Response<()>, Response<Error>> {
-        let request = body.request();
-        let outlet_node_multiaddr: MultiAddr = match request.project_route().to_string().parse() {
-            Ok(multiaddr) => multiaddr,
-            Err(e) => return Err(Response::bad_request_no_request(&e.to_string())),
-        };
-
-        match self
-            .node_manager
-            .start_kafka_service(
-                context,
-                Address::from_string(body.address()),
-                request.bootstrap_server_addr().ip(),
-                request.bootstrap_server_addr().port(),
-                request.brokers_port_range(),
-                outlet_node_multiaddr,
-                KafkaServiceKind::Producer,
+                body.request().bootstrap_server_addr(),
             )
             .await
         {
@@ -156,141 +96,14 @@ impl NodeManagerWorker {
 
 impl InMemoryNode {
     #[allow(clippy::too_many_arguments)]
-    pub async fn start_kafka_direct_service(
+    pub async fn start_kafka_inlet_service(
         &self,
         context: &Context,
         local_interceptor_address: Address,
-        bind_ip: IpAddr,
-        server_bootstrap_port: u16,
-        brokers_port_range: (u16, u16),
-        bootstrap_server_addr: SocketAddr,
-        consumer_route: Option<MultiAddr>,
-    ) -> Result<()> {
-        let default_secure_channel_listener_flow_control_id = context
-            .flow_controls()
-            .get_flow_control_with_spawner(&DefaultAddress::SECURE_CHANNEL_LISTENER.into())
-            .ok_or_else(|| {
-                ApiError::core("Unable to get flow control for secure channel listener")
-            })?;
-
-        let project_authority = self
-            .project_authority
-            .clone()
-            .ok_or(ApiError::core("NodeManager has no authority"))?;
-
-        let default_policy_expression = kafka_default_policy_expression();
-        let outlet_policy_expression = match &consumer_route {
-            None => Some(default_policy_expression),
-            Some(r) => {
-                if let Some(project) = r
-                    .first()
-                    .and_then(|v| v.cast::<Project>().map(|p| p.to_string()))
-                {
-                    let (_, project_identifier) = self.resolve_project(&project).await?;
-                    Some(kafka_policy_expression(&project_identifier))
-                } else {
-                    Some(default_policy_expression)
-                }
-            }
-        };
-        let outlet_policy_expression = outlet_policy_expression.map(FullExpression);
-
-        OutletManagerService::create(
-            context,
-            self.secure_channels.clone(),
-            project_authority.clone(),
-            default_secure_channel_listener_flow_control_id,
-            outlet_policy_expression.clone(),
-        )
-        .await?;
-        self.create_outlet(
-            context,
-            HostnamePort::from_socket_addr(bootstrap_server_addr)?,
-            false,
-            Some(KAFKA_OUTLET_BOOTSTRAP_ADDRESS.into()),
-            false,
-            OutletAccessControl::WithPolicyExpression(outlet_policy_expression.clone()),
-        )
-        .await?;
-
-        let secure_channels = self.secure_channels.clone();
-        let consumer_node_addr = match consumer_route {
-            Some(route) => ConsumerNodeAddr::Direct(route),
-            None => ConsumerNodeAddr::None,
-        };
-
-        let secure_channel_controller = KafkaSecureChannelControllerImpl::new(
-            secure_channels,
-            consumer_node_addr,
-            project_authority,
-        );
-
-        let inlet_controller = KafkaInletController::new(
-            "/secure/api".parse()?,
-            route![local_interceptor_address.clone()],
-            route![KAFKA_OUTLET_INTERCEPTOR_ADDRESS],
-            bind_ip,
-            PortRange::try_from(brokers_port_range)
-                .map_err(|_| ApiError::core("invalid port range"))?,
-            outlet_policy_expression.clone(),
-        );
-
-        // since we cannot call APIs of node manager via message due to the read/write lock
-        // we need to call it directly
-        self.create_inlet(
-            context,
-            SocketAddr::new(bind_ip, server_bootstrap_port).to_string(),
-            route![local_interceptor_address.clone()],
-            route![
-                KAFKA_OUTLET_INTERCEPTOR_ADDRESS,
-                KAFKA_OUTLET_BOOTSTRAP_ADDRESS
-            ],
-            "/secure/api".parse()?,
-            random_name(),
-            outlet_policy_expression,
-            None,
-            None,
-            true,
-        )
-        .await?;
-
-        KafkaPortalListener::create(
-            context,
-            inlet_controller,
-            secure_channel_controller.into_trait(),
-            local_interceptor_address.clone(),
-        )
-        .await?;
-
-        {
-            self.registry
-                .kafka_services
-                .insert(
-                    local_interceptor_address,
-                    KafkaServiceInfo::new(KafkaServiceKind::Direct),
-                )
-                .await;
-        }
-
-        Ok(())
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    pub async fn start_kafka_service(
-        &self,
-        context: &Context,
-        local_interceptor_address: Address,
-        bind_ip: IpAddr,
-        server_bootstrap_port: u16,
+        bind_address: SocketAddr,
         brokers_port_range: (u16, u16),
         outlet_node_multiaddr: MultiAddr,
-        kind: KafkaServiceKind,
     ) -> Result<()> {
-        debug!(
-            "outlet_node_multiaddr: {}",
-            outlet_node_multiaddr.to_string()
-        );
-
         let project_authority = self
             .project_authority
             .clone()
@@ -318,27 +131,26 @@ impl InMemoryNode {
             outlet_node_multiaddr.clone(),
             route![local_interceptor_address.clone()],
             route![KAFKA_OUTLET_INTERCEPTOR_ADDRESS],
-            bind_ip,
+            bind_address.ip(),
             PortRange::try_from(brokers_port_range)
                 .map_err(|_| ApiError::core("invalid port range"))?,
             inlet_policy_expression.clone(),
         );
 
-        // tldr: the alias for the inlet must be unique and we want to keep it readable.
+        // tldr: the alias for the inlet must be unique, and we want to keep it readable.
         // This function will create an inlet for either a producer or a consumer.
         // Since the policy is hardcoded (see the expression above) and it's the same
-        // for both type of services, we could just share the policy. However, since the
+        // for both types of services, we could just share the policy. However, since the
         // alias must be unique amongst all the registered inlets, it must be unique to
         // allow the user to use multiple producers or consumers within the same node.
         // For that reason, we add a prefix based on the service kind to have better
         // readability and a random component at the end to keep it unique.
-        let inlet_alias = format!("kafka-{}-inlet-{}", kind, random_string());
+        let inlet_alias = format!("kafka-inlet-{}", random_string());
 
-        // since we cannot call APIs of node manager via message due to the read/write lock
-        // we need to call it directly
+        // create the kafka bootstrap inlet
         self.create_inlet(
             context,
-            SocketAddr::new(bind_ip, server_bootstrap_port).to_string(),
+            bind_address.to_string(),
             route![local_interceptor_address.clone()],
             route![
                 KAFKA_OUTLET_INTERCEPTOR_ADDRESS,
@@ -364,15 +176,16 @@ impl InMemoryNode {
         {
             self.registry
                 .kafka_services
-                .insert(local_interceptor_address, KafkaServiceInfo::new(kind))
+                .insert(
+                    local_interceptor_address,
+                    KafkaServiceInfo::new(KafkaServiceKind::Inlet),
+                )
                 .await;
         }
 
         Ok(())
     }
-}
 
-impl NodeManager {
     pub async fn start_kafka_outlet_service(
         &self,
         context: &Context,

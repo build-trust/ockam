@@ -132,31 +132,13 @@ impl NodeManagerWorker {
                 self.delete_kafka_service(ctx, dec.decode()?, KafkaServiceKind::Outlet)
                     .await,
             )?,
-            (Post, ["node", "services", DefaultAddress::KAFKA_CONSUMER]) => encode_response(
+            (Post, ["node", "services", DefaultAddress::KAFKA_INLET]) => encode_response(
                 req,
-                self.start_kafka_consumer_service(ctx, dec.decode()?).await,
+                self.start_kafka_inlet_service(ctx, dec.decode()?).await,
             )?,
-            (Delete, ["node", "services", DefaultAddress::KAFKA_CONSUMER]) => encode_response(
+            (Delete, ["node", "services", DefaultAddress::KAFKA_INLET]) => encode_response(
                 req,
-                self.delete_kafka_service(ctx, dec.decode()?, KafkaServiceKind::Consumer)
-                    .await,
-            )?,
-            (Post, ["node", "services", DefaultAddress::KAFKA_PRODUCER]) => encode_response(
-                req,
-                self.start_kafka_producer_service(ctx, dec.decode()?).await,
-            )?,
-            (Delete, ["node", "services", DefaultAddress::KAFKA_PRODUCER]) => encode_response(
-                req,
-                self.delete_kafka_service(ctx, dec.decode()?, KafkaServiceKind::Producer)
-                    .await,
-            )?,
-            (Post, ["node", "services", DefaultAddress::KAFKA_DIRECT]) => encode_response(
-                req,
-                self.start_kafka_direct_service(ctx, dec.decode()?).await,
-            )?,
-            (Delete, ["node", "services", DefaultAddress::KAFKA_DIRECT]) => encode_response(
-                req,
-                self.delete_kafka_service(ctx, dec.decode()?, KafkaServiceKind::Direct)
+                self.delete_kafka_service(ctx, dec.decode()?, KafkaServiceKind::Inlet)
                     .await,
             )?,
             (Get, ["node", "services"]) => encode_response(req, self.list_services().await)?,

@@ -13,10 +13,7 @@ impl DefaultAddress {
     pub const ENROLLMENT_TOKEN_ACCEPTOR: &'static str = "enrollment_token_acceptor";
     pub const OKTA_IDENTITY_PROVIDER: &'static str = "okta";
     pub const KAFKA_OUTLET: &'static str = "kafka_outlet";
-    pub const KAFKA_CONSUMER: &'static str = "kafka_consumer";
     pub const KAFKA_INLET: &'static str = "kafka_inlet";
-    pub const KAFKA_PRODUCER: &'static str = "kafka_producer";
-    pub const KAFKA_DIRECT: &'static str = "kafka_direct";
 
     pub fn is_valid(name: &str) -> bool {
         matches!(name, |Self::OUTLET_SERVICE| Self::RELAY_SERVICE
@@ -29,10 +26,8 @@ impl DefaultAddress {
             | Self::ENROLLMENT_TOKEN_ISSUER
             | Self::ENROLLMENT_TOKEN_ACCEPTOR
             | Self::OKTA_IDENTITY_PROVIDER
-            | Self::KAFKA_CONSUMER
-            | Self::KAFKA_PRODUCER
-            | Self::KAFKA_OUTLET
-            | Self::KAFKA_DIRECT)
+            | Self::KAFKA_INLET
+            | Self::KAFKA_OUTLET)
     }
 
     pub fn iter() -> impl Iterator<Item = &'static str> {
@@ -48,10 +43,8 @@ impl DefaultAddress {
             Self::ENROLLMENT_TOKEN_ISSUER,
             Self::ENROLLMENT_TOKEN_ACCEPTOR,
             Self::OKTA_IDENTITY_PROVIDER,
-            Self::KAFKA_CONSUMER,
-            Self::KAFKA_PRODUCER,
+            Self::KAFKA_INLET,
             Self::KAFKA_OUTLET,
-            Self::KAFKA_DIRECT,
         ]
         .iter()
         .copied()
@@ -86,7 +79,7 @@ mod test {
         assert!(DefaultAddress::is_valid(
             DefaultAddress::OKTA_IDENTITY_PROVIDER
         ));
-        assert!(DefaultAddress::is_valid(DefaultAddress::KAFKA_CONSUMER));
-        assert!(DefaultAddress::is_valid(DefaultAddress::KAFKA_PRODUCER));
+        assert!(DefaultAddress::is_valid(DefaultAddress::KAFKA_INLET));
+        assert!(DefaultAddress::is_valid(DefaultAddress::KAFKA_OUTLET));
     }
 }

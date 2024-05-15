@@ -7,9 +7,7 @@ use ockam_multiaddr::MultiAddr;
 
 use crate::util::print_deprecated_warning;
 use crate::{
-    kafka::{
-        kafka_default_producer_server, kafka_default_project_route, kafka_producer_default_addr,
-    },
+    kafka::{kafka_default_producer_server, kafka_default_project_route, kafka_inlet_default_addr},
     node::NodeOpts,
     util::parsers::socket_addr_parser,
     Command, CommandGlobalOpts,
@@ -21,7 +19,7 @@ pub struct CreateCommand {
     #[command(flatten)]
     node_opts: NodeOpts,
     /// The local address of the service
-    #[arg(long, default_value_t = kafka_producer_default_addr())]
+    #[arg(long, default_value_t = kafka_inlet_default_addr())]
     addr: String,
     /// The address where to bind and where the client will connect to alongside its port, <address>:<port>.
     /// In case just a port is specified, the default loopback address (127.0.0.1) will be used
@@ -43,9 +41,8 @@ impl CreateCommand {
             node_opts: self.node_opts,
             addr: self.addr,
             from: self.bootstrap_server,
-            bootstrap_server: None,
             brokers_port_range: self.brokers_port_range,
-            to: Some(self.project_route),
+            to: self.project_route,
             consumer: None,
         }
         .run(opts)

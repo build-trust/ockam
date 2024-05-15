@@ -1,14 +1,12 @@
+use crate::kafka::kafka_default_project_route;
 use async_trait::async_trait;
 use std::net::SocketAddr;
 use std::sync::Arc;
 
 use clap::{command, Args};
 use colorful::Colorful;
-use miette::miette;
 use ockam_api::colors::OckamColor;
-use ockam_api::nodes::models::services::{
-    StartKafkaDirectRequest, StartKafkaRequest, StartServiceRequest,
-};
+use ockam_api::nodes::models::services::{StartKafkaInletRequest, StartServiceRequest};
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_api::{fmt_log, fmt_ok};
 use tokio::sync::Mutex;
@@ -24,7 +22,7 @@ use crate::node::util::initialize_default_node;
 use crate::service::start::start_service_impl;
 use crate::util::process_nodes_multiaddr;
 use crate::{
-    kafka::{kafka_default_consumer_server, kafka_inlet_default_addr},
+    kafka::{kafka_default_inlet_bind_address, kafka_inlet_default_addr},
     node::NodeOpts,
     util::parsers::socket_addr_parser,
     Command, CommandGlobalOpts,
@@ -40,21 +38,18 @@ pub struct CreateCommand {
     pub addr: String,
     /// The address where to bind and where the client will connect to alongside its port, <address>:<port>.
     /// In case just a port is specified, the default loopback address (127.0.0.1:4000) will be used
-    #[arg(long, default_value_t = kafka_default_consumer_server(), value_parser = socket_addr_parser)]
+    #[arg(long, default_value_t = kafka_default_inlet_bind_address(), value_parser = socket_addr_parser)]
     pub from: SocketAddr,
-    /// The address of the kafka bootstrap broker, conflicts with --to
-    #[arg(long, required_unless_present = "to")]
-    pub bootstrap_server: Option<String>,
     /// Local port range dynamically allocated to kafka brokers, must not overlap with the
     /// bootstrap port
     #[arg(long)]
     pub brokers_port_range: Option<PortRange>,
     /// The route to the Kafka outlet node, either the project in ockam orchestrator or a rust node, expected something like /project/<name>.
-    /// Conflicts with --bootstrap-server
-    #[arg(long, required_unless_present = "bootstrap_server", conflicts_with_all = ["bootstrap_server","consumer"])]
-    pub to: Option<MultiAddr>,
-    /// The route to the Kafka consumer node, valid only when --bootstrap-server is specified
-    #[arg(long, requires = "bootstrap_server")]
+    /// Use self when the Kafka outlet is local.
+    #[arg(long, default_value_t = kafka_default_project_route())]
+    pub to: MultiAddr,
+    /// The route to a single Kafka consumer node
+    #[arg(long)]
     pub consumer: Option<MultiAddr>,
 }
 
@@ -72,58 +67,23 @@ impl Command for CreateCommand {
         let at_node = self.node_opts.at_node.clone();
         let addr = self.addr.clone();
 
-        let direct_future;
-        let consumer_future;
-        if let Some(bootstrap_server) = self.bootstrap_server {
-            // TODO: allow arbitrary endpoints
-            let bootstrap_server = bootstrap_server.parse().unwrap();
+        let inlet_creation_future;
+        let is_finished = is_finished.clone();
+        let to = process_nodes_multiaddr(&self.to, &opts.state).await?;
+        {
             let is_finished = is_finished.clone();
-
-            if self.to.is_some() {
-                return Err(miette!("Cannot specify both --bootstrap-server and --to").into());
-            }
-
-            // Creates a direct kafka service
-            consumer_future = None;
-            direct_future = Some(async move {
+            inlet_creation_future = Some(async move {
                 let node = BackgroundNodeClient::create(ctx, &opts.state, &at_node).await?;
 
-                let payload = StartKafkaDirectRequest::new(
-                    self.from,
-                    bootstrap_server,
-                    brokers_port_range,
-                    self.consumer.clone(),
-                );
+                let payload = StartKafkaInletRequest::new(self.from, brokers_port_range, to);
                 let payload = StartServiceRequest::new(payload, &addr);
-                let req = Request::post("/node/services/kafka_direct").body(payload);
-                start_service_impl(ctx, &node, "KafkaDirect", req).await?;
+                let req = Request::post("/node/services/kafka_inlet").body(payload);
+                start_service_impl(ctx, &node, "KafkaInlet", req).await?;
 
                 *is_finished.lock().await = true;
-
                 Ok(())
             });
-        } else if let Some(to) = self.to {
-            let is_finished = is_finished.clone();
-            let to = process_nodes_multiaddr(&to, &opts.state).await?;
-            let is_finished = is_finished.clone();
-
-            // Creates a Kafka consumer service (can also be used as a producer)
-            direct_future = None;
-            consumer_future = Some(async move {
-                let node = BackgroundNodeClient::create(ctx, &opts.state, &at_node).await?;
-
-                let payload = StartKafkaRequest::new(self.from, brokers_port_range, to);
-                let payload = StartServiceRequest::new(payload, &addr);
-                let req = Request::post("/node/services/kafka_consumer").body(payload);
-                start_service_impl(ctx, &node, "KafkaConsumer", req).await?;
-
-                *is_finished.lock().await = true;
-
-                Ok(())
-            });
-        } else {
-            return Err(miette!("Must specify either --bootstrap-server or --to").into());
-        };
+        }
 
         opts.terminal
             .write_line(&fmt_log!("Creating KafkaInlet service...\n"))?;
@@ -151,11 +111,7 @@ impl Command for CreateCommand {
             ),
         ];
         let progress_output = opts.terminal.loop_messages(&msgs, &is_finished);
-        if let Some(direct_future) = direct_future {
-            let (_, _) = try_join!(direct_future, progress_output)?;
-        } else {
-            let (_, _) = try_join!(consumer_future.unwrap(), progress_output)?;
-        }
+        let (_, _) = try_join!(inlet_creation_future.unwrap(), progress_output)?;
 
         opts.terminal
             .stdout()

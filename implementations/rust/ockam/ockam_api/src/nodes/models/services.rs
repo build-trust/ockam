@@ -55,7 +55,7 @@ impl DeleteServiceRequest {
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct StartKafkaOutletRequest {
-    #[n(1)] pub bootstrap_server_addr: SocketAddr,
+    #[n(1)] bootstrap_server_addr: SocketAddr,
 }
 
 impl StartKafkaOutletRequest {
@@ -65,83 +65,43 @@ impl StartKafkaOutletRequest {
         }
     }
 
-    pub fn bootstrap_server_addr(&self) -> &SocketAddr {
-        &self.bootstrap_server_addr
-    }
-}
-
-#[derive(Debug, Clone, Decode, Encode)]
-#[rustfmt::skip]
-#[cbor(map)]
-pub struct StartKafkaRequest {
-    #[n(1)] pub bootstrap_server_addr: SocketAddr,
-    #[n(2)] brokers_port_range: (u16, u16),
-    #[n(3)] project_route: MultiAddr,
-}
-
-impl StartKafkaRequest {
-    pub fn new(
-        bootstrap_server_addr: SocketAddr,
-        brokers_port_range: impl Into<(u16, u16)>,
-        project_route: MultiAddr,
-    ) -> Self {
-        Self {
-            bootstrap_server_addr,
-            brokers_port_range: brokers_port_range.into(),
-            project_route,
-        }
-    }
-
     pub fn bootstrap_server_addr(&self) -> SocketAddr {
         self.bootstrap_server_addr
     }
-    pub fn brokers_port_range(&self) -> (u16, u16) {
-        self.brokers_port_range
-    }
-    pub fn project_route(&self) -> MultiAddr {
-        self.project_route.clone()
-    }
 }
 
 #[derive(Debug, Clone, Decode, Encode)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct StartKafkaDirectRequest {
+pub struct StartKafkaInletRequest {
     #[n(1)] bind_address: SocketAddr,
-    #[n(2)] bootstrap_server_addr: SocketAddr,
-    #[n(3)] brokers_port_range: (u16, u16),
-    #[n(4)] consumer_route: Option<MultiAddr>,
+    #[n(2)] brokers_port_range: (u16, u16),
+    #[n(3)] kafka_outlet_route: MultiAddr,
 }
 
-impl StartKafkaDirectRequest {
+impl StartKafkaInletRequest {
     pub fn new(
         bind_address: SocketAddr,
-        bootstrap_server_addr: SocketAddr,
         brokers_port_range: impl Into<(u16, u16)>,
-        consumer_route: Option<MultiAddr>,
+        kafka_outlet_route: MultiAddr,
     ) -> Self {
         Self {
             bind_address,
-            bootstrap_server_addr,
             brokers_port_range: brokers_port_range.into(),
-            consumer_route,
+            kafka_outlet_route,
         }
     }
 
     pub fn bind_address(&self) -> SocketAddr {
         self.bind_address
     }
-    pub fn bootstrap_server_addr(&self) -> &SocketAddr {
-        &self.bootstrap_server_addr
-    }
     pub fn brokers_port_range(&self) -> (u16, u16) {
         self.brokers_port_range
     }
-    pub fn consumer_route(&self) -> Option<MultiAddr> {
-        self.consumer_route.clone()
+    pub fn project_route(&self) -> MultiAddr {
+        self.kafka_outlet_route.clone()
     }
 }
-
 /// Request body when instructing a node to start an Uppercase service
 #[derive(Debug, Clone, Decode, Encode)]
 #[rustfmt::skip]
