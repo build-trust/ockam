@@ -20,6 +20,7 @@ use crate::{
 
 use crate::secure_channel::encryptor_worker::SecureChannelSharedState;
 use crate::secure_channel::payload_collector::PayloadCollector;
+use crate::utils::now;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_vault::{AeadSecretKeyHandle, VaultForSecureChannels};
 use tracing::{debug, info, trace, warn};
@@ -165,6 +166,7 @@ impl DecryptorHandler {
                 &part.onward_route,
                 &part.return_route,
                 part.payload.to_vec(),
+                now()?,
                 current_part_number,
                 total_number_of_parts,
             )
