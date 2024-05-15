@@ -798,6 +798,7 @@ where
 
 #[cfg(test)]
 mod tests {
+    use crate::{MultiAddr, Protocol, Registry};
     use tinyvec::TinyVec;
 
     #[test]
@@ -814,5 +815,14 @@ mod tests {
         assert!(b.is_inline());
         assert_eq!(a, b);
         assert_eq!(v, t);
+    }
+
+    #[test]
+    fn self_multiaddr() {
+        let multiaddr = MultiAddr::try_from_str("self", Registry::default()).unwrap();
+        assert_eq!("/secure/api", multiaddr.to_string());
+        let proto = multiaddr.first().unwrap();
+        assert_eq!(crate::proto::Secure::CODE, proto.code);
+        assert_eq!(b"api", *proto.data());
     }
 }
