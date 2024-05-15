@@ -150,10 +150,11 @@ TransportMessage::start_trace
             └── Echoer::handle_message
                 └── EncryptorWorker::handle_message
                     └── handle_encrypt
-                        ├── encrypt
-                        |   └── aead_encrypt
-                        └── TcpSendWorker::handle_message
-                            └── TransportMessage::end_trace
+                        └── handle_encrypt_message
+                            ├── encrypt
+                            |   └── aead_encrypt
+                            └── TcpSendWorker::handle_message
+                                └── TransportMessage::end_trace
 
 TransportMessage::start_trace
 └── TcpRecvProcessor::process
@@ -198,10 +199,11 @@ root
     └── MessageSender::handle_message
         └── EncryptorWorker::handle_message
             └── handle_encrypt
-                ├── encrypt
-                |   └── aead_encrypt
-                └── TcpSendWorker::handle_message
-                    └── TransportMessage::end_trace
+                └── handle_encrypt_message
+                    ├── encrypt
+                    |   └── aead_encrypt
+                    └── TcpSendWorker::handle_message
+                        └── TransportMessage::end_trace
 "#;
     pretty_assertions::assert_eq!(format!("\n{actual}"), expected);
 }

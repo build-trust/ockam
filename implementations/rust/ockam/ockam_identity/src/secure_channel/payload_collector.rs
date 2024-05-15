@@ -1,8 +1,9 @@
-use std::sync::Arc;
 use tracing::{debug, warn};
-use uuid::Uuid;
 
 use ockam_core::compat::collections::HashMap;
+use ockam_core::compat::sync::Arc;
+use ockam_core::compat::uuid::Uuid;
+use ockam_core::compat::vec::Vec;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::Error;
 use ockam_core::{Result, Route};
@@ -198,10 +199,11 @@ mod tests {
     use super::*;
     use ockam_core::route;
     use ockam_core::Result;
+    use uuid::uuid;
 
     #[test]
     fn test_validate_update_and_complete() {
-        let uuid = Uuid::parse_str("02f09a3f-1624-3b1d-8409-44eff7708208").unwrap();
+        let uuid = uuid!("02f09a3f-1624-3b1d-8409-44eff7708208");
 
         // In this test we expect to receive 3 parts. The received order is 2, 3, 1
 
@@ -265,10 +267,10 @@ mod tests {
     async fn test_payload_collector() -> Result<()> {
         let collector = PayloadCollector::new();
 
-        let uuid1 = Uuid::parse_str("02f09a3f-1624-3b1d-8409-44eff7708201").unwrap();
-        let uuid2 = Uuid::parse_str("02f09a3f-1624-3b1d-8409-44eff7708202").unwrap();
-        let uuid3 = Uuid::parse_str("02f09a3f-1624-3b1d-8409-44eff7708203").unwrap();
-        let uuid4 = Uuid::parse_str("02f09a3f-1624-3b1d-8409-44eff7708204").unwrap();
+        let uuid1 = uuid!("02f09a3f-1624-3b1d-8409-44eff7708201");
+        let uuid2 = uuid!("02f09a3f-1624-3b1d-8409-44eff7708202");
+        let uuid3 = uuid!("02f09a3f-1624-3b1d-8409-44eff7708203");
+        let uuid4 = uuid!("02f09a3f-1624-3b1d-8409-44eff7708204");
 
         let result = collector
             .update(

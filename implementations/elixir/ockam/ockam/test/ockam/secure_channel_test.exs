@@ -619,7 +619,7 @@ defmodule Ockam.SecureChannel.Tests do
              SecureChannel.get_remote_identity_with_id(channel)
 
     {:ok, me} = Ockam.Node.register_random_address()
-    message = String.duplicate("PING!", 15000)
+    message = String.duplicate("PING!", 15_000)
     Router.route(message, [channel, me], [me])
 
     assert_receive %Ockam.Message{

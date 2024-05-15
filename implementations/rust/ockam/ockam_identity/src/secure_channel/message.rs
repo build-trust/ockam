@@ -1,10 +1,10 @@
 use crate::models::{ChangeHistory, CredentialAndPurposeKey};
-use core::str::FromStr;
 use minicbor::encode::{Error, Write};
 use minicbor::{Decode, Decoder, Encode, Encoder};
+use ockam_core::compat::string::String;
+use ockam_core::compat::uuid::Uuid;
 use ockam_core::compat::vec::Vec;
 use ockam_core::Route;
-use uuid::Uuid;
 
 /// Secure Channel Message format.
 #[derive(Debug, Encode, Decode, Clone)]
@@ -91,7 +91,7 @@ impl<'b, C> Decode<'b, C> for UuidCbor {
     fn decode(d: &mut Decoder<'b>, ctx: &mut C) -> Result<Self, minicbor::decode::Error> {
         let bs = String::decode(d, ctx)?;
         Ok(UuidCbor(
-            Uuid::from_str(&bs).map_err(minicbor::decode::Error::message)?,
+            Uuid::parse_str(&bs).map_err(minicbor::decode::Error::message)?,
         ))
     }
 }
@@ -124,6 +124,7 @@ pub struct RefreshCredentialsMessage {
 mod tests {
     use super::*;
     use ockam_core::route;
+    use uuid::uuid;
 
     #[test]
     fn a_payload_can_be_encoded_then_decoded() {
@@ -165,7 +166,7 @@ mod tests {
             payload: &[1, 2, 3],
             current_part_number: 1,
             total_number_of_parts: 3,
-            payload_uuid: UuidCbor(Uuid::from_str("24922fc8-ea4c-4387-b069-e2b296e0de7d").unwrap()),
+            payload_uuid: UuidCbor(uuid!("24922fc8-ea4c-4387-b069-e2b296e0de7d")),
         });
 
         let encoded = minicbor::to_vec(expected.clone()).unwrap();
@@ -190,7 +191,7 @@ mod tests {
             payload: &[1, 2, 3],
             current_part_number: 1,
             total_number_of_parts: 3,
-            payload_uuid: UuidCbor(Uuid::from_str("24922fc8-ea4c-4387-b069-e2b296e0de7d").unwrap()),
+            payload_uuid: UuidCbor(uuid!("24922fc8-ea4c-4387-b069-e2b296e0de7d")),
         });
 
         assert_eq!(actual, expected);

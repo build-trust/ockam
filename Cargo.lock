@@ -4579,6 +4579,7 @@ dependencies = [
  "tracing-opentelemetry",
  "tracing-subscriber",
  "utcnow",
+ "uuid",
 ]
 
 [[package]]

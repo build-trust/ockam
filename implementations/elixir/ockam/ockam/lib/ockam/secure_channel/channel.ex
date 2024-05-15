@@ -568,90 +568,8 @@ defmodule Ockam.SecureChannel.Channel do
             | channel_state: %{channel_state | decrypt_st: decrypt_st}
           })
 
-        {:ok,
-         %Messages.PayloadPart{
-           onward_route: onward_route,
-           return_route: return_route,
-           payload: payload,
-           payload_uuid: payload_uuid,
-           current_part_number: current_part_number,
-           total_number_of_parts: total_number_of_parts
-         }} ->
-          # Get the parts for the current payload UUID
-          Logger.debug(
-            "Received part #{current_part_number}/#{total_number_of_parts} for message #{payload_uuid}"
-          )
-
-          parts =
-            case Map.fetch(state.payload_parts, payload_uuid) do
-              {:ok, parts} ->
-                Logger.debug(
-                  "Store received part #{current_part_number}/#{total_number_of_parts} for message #{payload_uuid} until all parts have been received"
-                )
-
-                case PayloadParts.update(
-                       parts,
-                       current_part_number,
-                       total_number_of_parts,
-                       onward_route,
-                       return_route,
-                       payload
-                     ) do
-                  {:ok, parts} ->
-                    parts
-
-                  {:error, message} ->
-                    Logger.debug(
-                      "got no new parts, updating current_part_number #{current_part_number}"
-                    )
-
-                    Logger.error(message)
-                    parts
-                end
-
-              :error ->
-                if current_part_number > total_number_of_parts do
-                  Logger.error(
-                    "The part #{current_part_number}/#{total_number_of_parts} is incorrect: the current_part_number is greater than the total number of parts"
-                  )
-
-                  {:ok, channel_state}
-                else
-                  %PayloadParts{
-                    uuid: payload_uuid,
-                    parts: %{current_part_number => payload},
-                    onward_route: onward_route,
-                    return_route: return_route,
-                    expected_total_number_of_parts: total_number_of_parts
-                  }
-                end
-            end
-
-          case PayloadParts.complete(parts) do
-            {:ok, payload} ->
-              Logger.debug(
-                "The message #{payload_uuid} is now complete with part #{current_part_number}/#{total_number_of_parts}"
-              )
-
-              message = struct(Ockam.Message, Map.from_struct(payload))
-
-              handle_decrypted_message(message, %Channel{
-                state
-                | channel_state: %{channel_state | decrypt_st: decrypt_st},
-                  payload_parts: Map.delete(state.payload_parts, parts.uuid)
-              })
-
-            :error ->
-              Logger.debug(
-                "The message #{payload_uuid} is not complete with part #{current_part_number}/#{total_number_of_parts}"
-              )
-
-              {:ok,
-               %Channel{
-                 state
-                 | payload_parts: Map.put(state.payload_parts, payload_uuid, parts)
-               }}
-          end
+        {:ok, %Messages.PayloadPart{} = part} ->
+          handle_inner_message_part(part, channel_state, decrypt_st)
 
         {:ok, :close} ->
           Logger.debug("Peer closed secure channel, terminating #{inspect(state.address)}")
@@ -685,6 +603,95 @@ defmodule Ockam.SecureChannel.Channel do
       error ->
         Logger.warning("Failed to decrypt message, discarded: #{inspect(error)}")
         {:ok, state}
+    end
+  end
+
+  defp handle_inner_message_part(
+         %Messages.PayloadPart{
+           onward_route: onward_route,
+           return_route: return_route,
+           payload: payload,
+           payload_uuid: payload_uuid,
+           current_part_number: current_part_number,
+           total_number_of_parts: total_number_of_parts
+         },
+         %Channel{channel_state: channel_state} = state,
+         decrypt_st
+       ) do
+    # Get the parts for the current payload UUID
+    Logger.debug(
+      "Received part #{current_part_number}/#{total_number_of_parts} for message #{payload_uuid}"
+    )
+
+    parts =
+      case Map.fetch(state.payload_parts, payload_uuid) do
+        {:ok, parts} ->
+          Logger.debug(
+            "Store received part #{current_part_number}/#{total_number_of_parts} for message #{payload_uuid} until all parts have been received"
+          )
+
+          case PayloadParts.update(
+                 parts,
+                 current_part_number,
+                 total_number_of_parts,
+                 onward_route,
+                 return_route,
+                 payload
+               ) do
+            {:ok, parts} ->
+              parts
+
+            {:error, message} ->
+              Logger.debug(
+                "got no new parts, updating current_part_number #{current_part_number}"
+              )
+
+              Logger.error(message)
+              parts
+          end
+
+        :error ->
+          if current_part_number > total_number_of_parts do
+            Logger.error(
+              "The part #{current_part_number}/#{total_number_of_parts} is incorrect: the current_part_number is greater than the total number of parts"
+            )
+
+            {:ok, channel_state}
+          else
+            %PayloadParts{
+              uuid: payload_uuid,
+              parts: %{current_part_number => payload},
+              onward_route: onward_route,
+              return_route: return_route,
+              expected_total_number_of_parts: total_number_of_parts
+            }
+          end
+      end
+
+    case PayloadParts.complete(parts) do
+      {:ok, payload} ->
+        Logger.debug(
+          "The message #{payload_uuid} is now complete with part #{current_part_number}/#{total_number_of_parts}"
+        )
+
+        message = struct(Ockam.Message, Map.from_struct(payload))
+
+        handle_decrypted_message(message, %Channel{
+          state
+          | channel_state: %{channel_state | decrypt_st: decrypt_st},
+            payload_parts: Map.delete(state.payload_parts, parts.uuid)
+        })
+
+      :error ->
+        Logger.debug(
+          "The message #{payload_uuid} is not complete with part #{current_part_number}/#{total_number_of_parts}"
+        )
+
+        {:ok,
+         %Channel{
+           state
+           | payload_parts: Map.put(state.payload_parts, payload_uuid, parts)
+         }}
     end
   end
 
@@ -808,9 +815,12 @@ defmodule Ockam.SecureChannel.Channel do
   end
 end
 
-# This is a utility module to split a large binary into an enumerable of binaries
-# of a given size. The last element might have a size that is small than the requested size
 defmodule Bits do
+  @moduledoc """
+  This is a utility module to split a large binary into an enumerable of binaries
+  of a given size. The last element might have a size that is small than the requested size
+  """
+
   # Chunk the binary into parts of n _bytes_
   def chunks(binary, n) do
     do_chunks(binary, n * 8, [])

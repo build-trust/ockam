@@ -2,10 +2,10 @@ use core::sync::atomic::{AtomicBool, Ordering};
 
 use tracing::{debug, error, info, warn};
 use tracing_attributes::instrument;
-use uuid::Uuid;
 
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::sync::{Arc, RwLock};
+use ockam_core::compat::uuid::Uuid;
 use ockam_core::compat::vec::Vec;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{async_trait, route, Decodable, Error, LocalMessage, Route};

@@ -1,5 +1,6 @@
 use core::sync::atomic::Ordering;
 use ockam_core::compat::sync::Arc;
+use ockam_core::compat::uuid::Uuid;
 use ockam_core::compat::vec::Vec;
 use ockam_core::{route, Any, Error, Result, Route, Routed};
 use ockam_core::{Decodable, LocalMessage};
@@ -23,7 +24,6 @@ use ockam_core::errcode::{Kind, Origin};
 use ockam_vault::{AeadSecretKeyHandle, VaultForSecureChannels};
 use tracing::{debug, info, trace, warn};
 use tracing_attributes::instrument;
-use uuid::Uuid;
 
 pub(crate) struct DecryptorHandler {
     //for debug purposes only
@@ -236,10 +236,8 @@ impl DecryptorHandler {
 
         // Decode raw payload binary
         let payload = msg.into_payload();
-        let payload =
-            ockam_core::bare::read_slice(payload.as_slice(), &mut 0).ok_or_else(|| {
-                ockam_core::Error::new(Origin::Transport, Kind::Protocol, "Invalid message")
-            })?;
+        let payload = ockam_core::bare::read_slice(payload.as_slice(), &mut 0)
+            .ok_or_else(|| Error::new(Origin::Transport, Kind::Protocol, "Invalid message"))?;
 
         // Decrypt the binary
         let (decrypted_payload, nonce) = self.decryptor.decrypt(payload).await?;

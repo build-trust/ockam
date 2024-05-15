@@ -413,3 +413,56 @@ pub mod future {
         }
     }
 }
+
+/// Provides a Uuid implementation for std
+#[cfg(feature = "std")]
+pub mod uuid {
+    pub use uuid::Uuid;
+}
+
+/// Provides a Uuid implementation for no_std environments
+#[cfg(not(feature = "std"))]
+pub mod uuid {
+    use crate::alloc::string::ToString;
+    use crate::compat::rand::RngCore;
+    use crate::errcode::{Kind, Origin};
+    use core::fmt::{Display, Formatter};
+
+    /// Uuid implementation for no_std. Not suitable for production! (see the rand module above)
+    #[derive(Debug, Clone, Eq, PartialEq, Hash, Copy)]
+    pub struct Uuid([u8; 16]);
+
+    impl Uuid {
+        /// Create a Uuid V4
+        pub fn new_v4() -> Uuid {
+            let mut bytes = [0; 16];
+            crate::compat::rand::thread_rng().fill_bytes(&mut bytes);
+            Uuid(bytes)
+        }
+
+        /// Create a string from a Uuid
+        pub fn to_string(&self) -> crate::compat::string::String {
+            hex::encode(self.0.as_slice())
+        }
+
+        /// Create a Uuid from a string
+        pub fn parse_str(s: &str) -> crate::Result<Uuid> {
+            match &s.as_bytes() {
+                [a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p] => Ok(Uuid([
+                    *a, *b, *c, *d, *e, *f, *g, *h, *i, *j, *k, *l, *m, *n, *o, *p,
+                ])),
+                _ => Err(crate::Error::new(
+                    Origin::Core,
+                    Kind::Serialization,
+                    "incorrect UUID, must have 16 bytes".to_string(),
+                )),
+            }
+        }
+    }
+
+    impl Display for Uuid {
+        fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+            self.to_string().fmt(f)
+        }
+    }
+}
