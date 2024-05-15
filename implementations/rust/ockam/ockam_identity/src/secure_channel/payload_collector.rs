@@ -4,6 +4,7 @@ use crate::models::DurationInSeconds;
 use crate::utils::now;
 use crate::TimestampInSeconds;
 use ockam_core::compat::collections::HashMap;
+use ockam_core::compat::string::String;
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::uuid::Uuid;
 use ockam_core::compat::vec::Vec;
@@ -62,6 +63,7 @@ impl PayloadCollector {
     ///  - If the new part completes the full payload then the payload is assembled and returned
     ///  - If the part is the first one for a given payload UUID (and there are more expected parts)
     ///    then a new PayloadParts struct is created to track all the parts for that message payload
+    #[allow(clippy::too_many_arguments)]
     pub async fn update(
         &self,
         payload_uuid: Uuid,
@@ -122,7 +124,7 @@ impl PayloadCollector {
         };
 
         // Keep only the payload parts that have been recently updated
-        let before: Vec<Uuid> = all_parts.keys().map(|k| k.clone()).collect();
+        let before: Vec<Uuid> = all_parts.keys().copied().collect();
         all_parts.retain(|_, parts| parts.last_update.add(self.max_payload_part_update) >= now);
         let after: Vec<&Uuid> = all_parts.keys().collect();
         if before.len() != after.len() {

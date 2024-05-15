@@ -32,8 +32,8 @@ defmodule Ockam.SecureChannel.Messages.Tests do
   describe "Ockam.SecureChannel.Messages.Payload" do
     test "A payload can be encoded then decoded" do
       expected = %Payload{
-        onward_route: [%Address{type: 1, value: "onward_route"}],
-        return_route: [%Address{type: 1, value: "return_route"}],
+        onward_route: Address.parse_route!("1#onward_route"),
+        return_route: Address.parse_route!("1#return_route"),
         payload: <<1, 2, 3>>
       }
 
@@ -54,8 +54,8 @@ defmodule Ockam.SecureChannel.Messages.Tests do
         "8200818381a20101028c186f186e1877186118721864185f1872186f18751874186581a20101028c18721865187418751872186e185f1872186f18751874186543010203"
 
       expected = %Payload{
-        onward_route: [%Address{type: 1, value: "onward_route"}],
-        return_route: [%Address{type: 1, value: "return_route"}],
+        onward_route: Address.parse_route!("1#onward_route"),
+        return_route: Address.parse_route!("1#return_route"),
         payload: <<1, 2, 3>>
       }
 
@@ -69,8 +69,8 @@ defmodule Ockam.SecureChannel.Messages.Tests do
   describe "Ockam.SecureChannel.Messages.PayloadParts" do
     test "A payload part can be encoded then decoded" do
       expected = %PayloadPart{
-        onward_route: [%Address{type: 1, value: "onward_route"}],
-        return_route: [%Address{type: 1, value: "return_route"}],
+        onward_route: Address.parse_route!("1#onward_route"),
+        return_route: Address.parse_route!("1#return_route"),
         payload: <<1, 2, 3>>,
         current_part_number: 1,
         total_number_of_parts: 3,
@@ -94,8 +94,8 @@ defmodule Ockam.SecureChannel.Messages.Tests do
         "8203818681a20101028c186f186e1877186118721864185f1872186f18751874186581a20101028c18721865187418751872186e185f1872186f187518741865430102030103782432343932326663382d656134632d343338372d623036392d653262323936653064653764"
 
       expected = %PayloadPart{
-        onward_route: [%Address{type: 1, value: "onward_route"}],
-        return_route: [%Address{type: 1, value: "return_route"}],
+        onward_route: Address.parse_route!("1#onward_route"),
+        return_route: Address.parse_route!("1#return_route"),
         payload: <<1, 2, 3>>,
         current_part_number: 1,
         total_number_of_parts: 3,
@@ -112,9 +112,10 @@ defmodule Ockam.SecureChannel.Messages.Tests do
       parts = %PayloadParts{
         uuid: UUID.uuid4(),
         parts: %{1 => <<1, 2, 3>>},
-        onward_route: Address.parse_route!("0#onward_route"),
-        return_route: Address.parse_route!("0#return_route"),
-        expected_total_number_of_parts: 3
+        onward_route: Address.parse_route!("1#onward_route"),
+        return_route: Address.parse_route!("1#return_route"),
+        expected_total_number_of_parts: 3,
+        last_update: DateTime.utc_now()
       }
 
       # this part is ok
@@ -122,8 +123,8 @@ defmodule Ockam.SecureChannel.Messages.Tests do
                parts,
                2,
                3,
-               Address.parse_route!("0#onward_route"),
-               Address.parse_route!("0#return_route")
+               Address.parse_route!("1#onward_route"),
+               Address.parse_route!("1#return_route")
              )
 
       # this part has an incorrect part number
@@ -131,8 +132,8 @@ defmodule Ockam.SecureChannel.Messages.Tests do
                parts,
                4,
                3,
-               Address.parse_route!("0#onward_route"),
-               Address.parse_route!("0#return_route")
+               Address.parse_route!("1#onward_route"),
+               Address.parse_route!("1#return_route")
              )
 
       # this part has an incorrect onward route
@@ -140,8 +141,8 @@ defmodule Ockam.SecureChannel.Messages.Tests do
                parts,
                2,
                3,
-               Address.parse_route!("0#onward_route_x"),
-               Address.parse_route!("0#return_route")
+               Address.parse_route!("1#onward_route_x"),
+               Address.parse_route!("1#return_route")
              )
 
       # this part has an incorrect return route
@@ -149,44 +150,52 @@ defmodule Ockam.SecureChannel.Messages.Tests do
                parts,
                2,
                3,
-               Address.parse_route!("0#onward_route"),
-               Address.parse_route!("0#return_route_x")
+               Address.parse_route!("1#onward_route"),
+               Address.parse_route!("1#return_route_x")
              )
     end
 
     test "When all the parts have been received, the payload is complete" do
-      parts = %PayloadParts{
-        uuid: UUID.uuid4(),
-        parts: %{2 => <<4, 5, 6>>},
-        onward_route: Address.parse_route!("0#onward_route"),
-        return_route: Address.parse_route!("0#return_route"),
-        expected_total_number_of_parts: 3
+      uuid = UUID.uuid4()
+
+      # part 2 is the first received
+      part_2 = %PayloadPart{
+        onward_route: Address.parse_route!("1#onward_route"),
+        return_route: Address.parse_route!("1#return_route"),
+        payload: <<4, 5, 6>>,
+        current_part_number: 2,
+        total_number_of_parts: 3,
+        payload_uuid: uuid
       }
 
+      parts = PayloadParts.initialize(part_2, DateTime.utc_now())
+
       # add part 3
-      {:ok, parts} =
-        PayloadParts.update(
-          parts,
-          3,
-          3,
-          Address.parse_route!("0#onward_route"),
-          Address.parse_route!("0#return_route"),
-          <<7, 8, 9>>
-        )
+      part_3 = %PayloadPart{
+        current_part_number: 3,
+        total_number_of_parts: 3,
+        onward_route: Address.parse_route!("1#onward_route"),
+        return_route: Address.parse_route!("1#return_route"),
+        payload: <<7, 8, 9>>,
+        payload_uuid: uuid
+      }
+
+      {:ok, parts} = PayloadParts.update(parts, part_3, DateTime.utc_now())
 
       # the payload is not yet complete
       assert :error = PayloadParts.complete(parts)
 
       # add part 1
-      {:ok, parts} =
-        PayloadParts.update(
-          parts,
-          1,
-          3,
-          Address.parse_route!("0#onward_route"),
-          Address.parse_route!("0#return_route"),
-          <<1, 2, 3>>
-        )
+      part_1 = %PayloadPart{
+        current_part_number: 1,
+        total_number_of_parts: 3,
+        onward_route: Address.parse_route!("1#onward_route"),
+        return_route: Address.parse_route!("1#return_route"),
+        payload: <<1, 2, 3>>,
+        payload_uuid: uuid
+      }
+
+      {:ok, parts} = PayloadParts.update(parts, part_1, DateTime.utc_now())
 
       # the payload is now complete and assembled in the right order
       # even if the parts have been received in a different order

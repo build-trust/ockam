@@ -73,16 +73,42 @@ defmodule Ockam.SecureChannel.Messages do
       field(:onward_route, Ockam.Address.route())
       field(:return_route, Ockam.Address.route())
       field(:expected_total_number_of_parts, integer())
+      field(:last_update, DateTime.t())
+    end
+
+    # Start a new list of payload parts from the first received part
+    def initialize(
+          %PayloadPart{
+            current_part_number: current_part_number,
+            total_number_of_parts: total_number_of_parts,
+            onward_route: onward_route,
+            return_route: return_route,
+            payload: payload,
+            payload_uuid: payload_uuid
+          },
+          now
+        ) do
+      %PayloadParts{
+        uuid: payload_uuid,
+        parts: %{current_part_number => payload},
+        onward_route: onward_route,
+        return_route: return_route,
+        expected_total_number_of_parts: total_number_of_parts,
+        last_update: now
+      }
     end
 
     # Check if the current part can be added to the other parts and return the updated PayloadParts
     def update(
           self,
-          current_part_number,
-          total_number_of_parts,
-          onward_route,
-          return_route,
-          payload
+          %PayloadPart{
+            current_part_number: current_part_number,
+            total_number_of_parts: total_number_of_parts,
+            onward_route: onward_route,
+            return_route: return_route,
+            payload: payload
+          },
+          now
         ) do
       Logger.debug("updating current_part_number #{current_part_number}")
 
@@ -93,7 +119,8 @@ defmodule Ockam.SecureChannel.Messages do
            onward_route,
            return_route
          ) do
-        {:ok, %{self | parts: Map.put(self.parts, current_part_number, payload)}}
+        {:ok,
+         %{self | parts: Map.put(self.parts, current_part_number, payload), last_update: now}}
       else
         {:error}
       end

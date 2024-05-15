@@ -2,13 +2,17 @@ defmodule Ockam.SecureChannel.Tests do
   use ExUnit.Case, async: true
   doctest Ockam.SecureChannel
 
+  alias Ockam.Address
   alias Ockam.Credential.AttributeStorageETS, as: AttributeStorage
   alias Ockam.Identity
   alias Ockam.Message
   alias Ockam.Node
   alias Ockam.Router
   alias Ockam.SecureChannel
+  alias Ockam.SecureChannel.Channel
   alias Ockam.SecureChannel.Crypto
+  alias Ockam.SecureChannel.Messages.PayloadPart
+  alias Ockam.SecureChannel.Messages.PayloadParts
   alias Ockam.Tests.Helpers.Echoer
 
   setup do
@@ -634,6 +638,102 @@ defmodule Ockam.SecureChannel.Tests do
 
     assert actual_message == message
     assert id == Identity.get_identifier(bob)
+  end
+
+  test "stale messages must be removed" do
+    uuid1 = "24922fc8-ea4c-4387-b069-e2b296e0de71"
+    uuid2 = "24922fc8-ea4c-4387-b069-e2b296e0de72"
+
+    {:ok, time_1} = DateTime.from_unix(1)
+    {:ok, time_5} = DateTime.from_unix(5)
+    {:ok, time_20} = DateTime.from_unix(20)
+    {:ok, time_35} = DateTime.from_unix(35)
+    max_payload_part_update = 10
+
+    # The first part for the first message is received at time = 1
+    part_1_1 = %PayloadPart{
+      onward_route: Address.parse_route!("1#onward_route"),
+      return_route: Address.parse_route!("1#return_route"),
+      payload: <<1, 2, 3>>,
+      current_part_number: 1,
+      total_number_of_parts: 3,
+      payload_uuid: uuid1
+    }
+
+    message1_parts = PayloadParts.initialize(part_1_1, time_1)
+
+    # The second part for the first message is received at time = 5
+    part_1_2 = %PayloadPart{
+      onward_route: Address.parse_route!("1#onward_route"),
+      return_route: Address.parse_route!("1#return_route"),
+      payload: <<1, 2, 3>>,
+      current_part_number: 2,
+      total_number_of_parts: 3,
+      payload_uuid: uuid1
+    }
+
+    {:ok, message1_parts} = PayloadParts.update(message1_parts, part_1_2, time_5)
+    state_payload_parts = %{uuid1 => message1_parts}
+
+    {:ok, state_payload_parts1} =
+      Channel.get_complete_payload(
+        message1_parts,
+        state_payload_parts,
+        time_5,
+        max_payload_part_update
+      )
+
+    assert ^state_payload_parts1 = %{uuid1 => message1_parts}
+
+    # The second part for the second message is received at time = 20
+    # This means that the part already received for message one was received 20 - 1 seconds ago = 19s
+    # which is greater to 10s. So all the parts for message 1 must be removed
+    # The second part for the first message is received at time = 5
+    part_2_2 = %PayloadPart{
+      onward_route: Address.parse_route!("1#onward_route"),
+      return_route: Address.parse_route!("1#return_route"),
+      payload: <<1, 2, 3>>,
+      current_part_number: 2,
+      total_number_of_parts: 2,
+      payload_uuid: uuid2
+    }
+
+    message2_parts = PayloadParts.initialize(part_2_2, time_20)
+    state_payload_parts2 = %{uuid1 => message1_parts, uuid2 => message2_parts}
+
+    {:ok, state_payload_parts3} =
+      Channel.get_complete_payload(
+        message2_parts,
+        state_payload_parts2,
+        time_20,
+        max_payload_part_update
+      )
+
+    assert ^state_payload_parts3 = %{uuid2 => message2_parts}
+
+    # The last part for message 2 has been received at time = 35
+    # This is more than 10s after the previous part for message 2
+    # but when the collector receives the part the last_update attribute is set to time = 35
+    part_1_2 = %PayloadPart{
+      onward_route: Address.parse_route!("1#onward_route"),
+      return_route: Address.parse_route!("1#return_route"),
+      payload: <<1, 2, 3>>,
+      current_part_number: 1,
+      total_number_of_parts: 2,
+      payload_uuid: uuid2
+    }
+
+    {:ok, message2_parts} = PayloadParts.update(message2_parts, part_1_2, time_35)
+
+    {:ok, _message, state_payload_parts4} =
+      Channel.get_complete_payload(
+        message2_parts,
+        state_payload_parts3,
+        time_35,
+        max_payload_part_update
+      )
+
+    assert ^state_payload_parts4 = %{}
   end
 
   defp create_secure_channel_listener() do
