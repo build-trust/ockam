@@ -164,10 +164,8 @@ impl NodeManager {
                 list.push(ServiceStatus::new(
                     address.address(),
                     match info.kind() {
-                        KafkaServiceKind::Consumer => DefaultAddress::KAFKA_CONSUMER,
-                        KafkaServiceKind::Producer => DefaultAddress::KAFKA_PRODUCER,
+                        KafkaServiceKind::Inlet => DefaultAddress::KAFKA_INLET,
                         KafkaServiceKind::Outlet => DefaultAddress::KAFKA_OUTLET,
-                        KafkaServiceKind::Direct => DefaultAddress::KAFKA_DIRECT,
                     },
                 ))
             });

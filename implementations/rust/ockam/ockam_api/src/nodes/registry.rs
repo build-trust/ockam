@@ -95,19 +95,15 @@ pub(crate) struct HopServiceInfo {}
 
 #[derive(Eq, PartialEq, Clone)]
 pub enum KafkaServiceKind {
-    Consumer,
-    Producer,
+    Inlet,
     Outlet,
-    Direct,
 }
 
 impl Display for KafkaServiceKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            KafkaServiceKind::Consumer => write!(f, "consumer"),
-            KafkaServiceKind::Producer => write!(f, "producer"),
+            KafkaServiceKind::Inlet => write!(f, "inlet"),
             KafkaServiceKind::Outlet => write!(f, "outlet"),
-            KafkaServiceKind::Direct => write!(f, "direct"),
         }
     }
 }
