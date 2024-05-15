@@ -110,13 +110,18 @@ impl<'a> Iterator for StrIter<'a> {
         if self.string.is_empty() {
             return None;
         }
-        let (prefix, value) = match self.string.split_once('/') {
-            Some(("", s)) => match s.split_once('/') {
-                Some((p, r)) => (p, r),
-                None => (s, ""),
-            },
-            Some((p, s)) => (p, s),
-            None => (self.string, ""),
+        let (prefix, value) = if self.string == "self" {
+            // TODO: once packet generated locally bypass ABAC rules, return None
+            ("secure", "api")
+        } else {
+            match self.string.split_once('/') {
+                Some(("", s)) => match s.split_once('/') {
+                    Some((p, r)) => (p, r),
+                    None => (s, ""),
+                },
+                Some((p, s)) => (p, s),
+                None => (self.string, ""),
+            }
         };
         if let Some(codec) = self.registry.get_by_prefix(prefix) {
             match codec.split_str(prefix, value) {
