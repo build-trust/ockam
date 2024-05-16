@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::identity::CreateCommand;
 use crate::run::parser::building_blocks::{ArgsToCommands, ResourcesContainer};
 use crate::run::parser::resource::utils::parse_cmd_from_args;
+
 use crate::{identity, Command, OckamSubcommand};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -14,6 +15,13 @@ pub struct Identities {
 }
 
 impl Identities {
+    pub fn into_parsed_commands(self) -> Result<Vec<CreateCommand>> {
+        match self.identities {
+            Some(c) => c.into_commands(Self::get_subcommand),
+            None => Ok(vec![]),
+        }
+    }
+
     fn get_subcommand(args: &[String]) -> Result<CreateCommand> {
         if let OckamSubcommand::Identity(cmd) = parse_cmd_from_args(CreateCommand::NAME, args)? {
             if let identity::IdentitySubcommand::Create(c) = cmd.subcommand {
@@ -24,13 +32,6 @@ impl Identities {
             "Failed to parse {} command",
             color_primary(CreateCommand::NAME)
         )))
-    }
-
-    pub fn parse_commands(self) -> Result<Vec<CreateCommand>> {
-        match self.identities {
-            Some(c) => c.into_commands(Self::get_subcommand),
-            None => Ok(vec![]),
-        }
     }
 }
 
@@ -44,7 +45,7 @@ mod tests {
     fn single_identity_config() {
         let test = |c: &str| {
             let parsed: Identities = serde_yaml::from_str(c).unwrap();
-            let cmds = parsed.parse_commands().unwrap();
+            let cmds = parsed.into_parsed_commands().unwrap();
             assert_eq!(cmds.len(), 1);
             let cmd = cmds.into_iter().next().unwrap();
             assert_eq!(cmd.name, "i1");
@@ -75,7 +76,7 @@ mod tests {
     fn multiple_identity_config() {
         let test = |c: &str| {
             let parsed: Identities = serde_yaml::from_str(c).unwrap();
-            let cmds = parsed.parse_commands().unwrap();
+            let cmds = parsed.into_parsed_commands().unwrap();
             assert_eq!(cmds.len(), 2);
             assert_eq!(cmds[0].name, "i1");
             assert_eq!(cmds[1].name, "i2");

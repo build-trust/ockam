@@ -13,7 +13,7 @@ use tracing::instrument;
 use ockam_api::cli_state::random_name;
 use ockam_api::colors::color_primary;
 use ockam_api::fmt_ok;
-use ockam_core::{opentelemetry_context_parser, AsyncTryClone, OpenTelemetryContext};
+use ockam_core::{opentelemetry_context_parser, OpenTelemetryContext};
 use ockam_node::Context;
 
 use crate::node::create::config::ConfigArgs;
@@ -158,23 +158,22 @@ impl Command for CreateCommand {
 
     async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> Result<()> {
         self.parse_args()?;
-        let ctx = ctx.async_try_clone().await.into_diagnostic()?;
         if self.has_name_arg() {
             if self.foreground_args.foreground {
-                self.foreground_mode(&ctx, opts).await?
+                self.foreground_mode(ctx, opts).await?
             } else {
-                self.background_mode(&ctx, opts).await?
+                self.background_mode(ctx, opts).await?
             }
         } else {
-            self.run_config(&ctx, opts).await?
+            self.run_config(ctx, opts).await?
         }
         Ok(())
     }
 }
 
 impl CreateCommand {
-    // Return true if the `name` argument is a node name, false if it's a config file path or URL
-    // Or if the node configuration was provided inline
+    /// Return true if the `name` argument is a node name, false if it's a config file path or URL,
+    /// or if the node configuration was provided inline
     fn has_name_arg(&self) -> bool {
         is_url(&self.name).is_none()
             && std::fs::metadata(&self.name).is_err()

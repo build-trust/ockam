@@ -50,7 +50,7 @@ pub enum ProjectSubcommand {
     Information(InfoCommand),
     Ticket(TicketCommand),
     Addon(AddonCommand),
-    Enroll(Box<EnrollCommand>),
+    Enroll(EnrollCommand),
 }
 
 impl ProjectCommand {

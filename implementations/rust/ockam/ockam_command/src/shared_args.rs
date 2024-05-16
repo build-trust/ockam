@@ -33,12 +33,17 @@ pub struct TrustOpts {
 #[derive(Clone, Debug, Args, Default, PartialEq)]
 pub struct RetryOpts {
     /// Number of times to retry the command
-    #[arg(hide = true, long)]
+    #[arg(hide = true, long, alias = "retry")]
     retry_count: Option<u32>,
 
     /// Delay between retries
     #[arg(hide = true, long, value_parser = duration_parser)]
-    pub retry_delay: Option<Duration>,
+    retry_delay: Option<Duration>,
+
+    /// Disable retry for the command,
+    /// no matter if it's enabled via arguments or environment variables
+    #[arg(hide = true, long, default_value_t = false)]
+    no_retry: bool,
 }
 
 impl RetryOpts {
@@ -47,6 +52,9 @@ impl RetryOpts {
     /// If the value is not set, it will try to get the value from
     /// the `OCKAM_COMMAND_RETRY_COUNT` environment variable
     pub fn retry_count(&self) -> Option<u32> {
+        if self.no_retry {
+            return None;
+        }
         match self.retry_count {
             Some(count) => Some(count),
             None => get_env::<String>("OCKAM_COMMAND_RETRY_COUNT")
@@ -61,6 +69,9 @@ impl RetryOpts {
     /// If the value is not set, it will try to get the value from
     /// the `OCKAM_COMMAND_RETRY_DELAY` environment variable
     pub fn retry_delay(&self) -> Option<Duration> {
+        if self.no_retry {
+            return None;
+        }
         match self.retry_delay {
             Some(delay) => Some(delay),
             None => get_env::<String>("OCKAM_COMMAND_RETRY_DELAY")

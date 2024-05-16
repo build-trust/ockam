@@ -1,3 +1,4 @@
+use std::cmp::min;
 use std::ops::Add;
 use std::path::PathBuf;
 use std::time::Duration;
@@ -327,7 +328,10 @@ pub trait Command: Clone + Sized + Send + Sync + 'static {
                         return Ok(());
                     }
                 };
-            let retry_delay_jitter = Duration::from_secs(2);
+            let retry_delay_jitter = min(
+                Duration::from_secs_f64(retry_delay.as_secs_f64() * 0.5),
+                Duration::from_secs(5),
+            );
             while retry_count > 0 {
                 let cmd = self.clone();
                 match cmd.async_run(ctx, opts.clone()).await {

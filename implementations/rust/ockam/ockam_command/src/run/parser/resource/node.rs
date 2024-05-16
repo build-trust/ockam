@@ -8,6 +8,7 @@ use crate::node::CreateCommand;
 use crate::run::parser::building_blocks::{as_command_args, ArgKey, ArgValue};
 
 use crate::run::parser::resource::utils::parse_cmd_from_args;
+use crate::run::parser::resource::Resource;
 use crate::{node, Command, OckamSubcommand};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -30,36 +31,10 @@ pub struct Node {
     pub project: Option<ArgValue>,
 }
 
-impl Node {
-    pub const NAME_ARG: &'static str = "name";
-}
+impl Resource<CreateCommand> for Node {
+    const COMMAND_NAME: &'static str = CreateCommand::NAME;
 
-impl Node {
-    /// Return the node name if defined
-    pub fn name(&self) -> Option<String> {
-        self.name
-            .clone()
-            .map(|v| match v {
-                ArgValue::String(s) => Some(s),
-                _ => None,
-            })
-            .unwrap_or(None)
-    }
-
-    fn get_subcommand(args: &[String]) -> Result<CreateCommand> {
-        if let OckamSubcommand::Node(cmd) = parse_cmd_from_args(CreateCommand::NAME, args)? {
-            if let node::NodeSubcommand::Create(c) = cmd.subcommand {
-                return Ok(c);
-            }
-        }
-        Err(miette!(format!(
-            "Failed to parse {} command",
-            color_primary(CreateCommand::NAME)
-        )))
-    }
-
-    pub fn parse_commands(self) -> Result<Vec<CreateCommand>> {
-        // Convert the struct into a map of key-value pairs
+    fn args(self) -> Vec<String> {
         let mut args: BTreeMap<ArgKey, ArgValue> = BTreeMap::new();
         if let Some(name) = self.name {
             args.insert("name".into(), name);
@@ -92,7 +67,7 @@ impl Node {
             args.insert("project".to_string(), project);
         }
         if args.is_empty() {
-            return Ok(vec![]);
+            return vec![];
         }
 
         // Convert the map into a list of cli args
@@ -102,7 +77,38 @@ impl Node {
             cmd_args.push(name.to_string());
         }
         cmd_args.extend(as_command_args(args));
-        Ok(vec![Self::get_subcommand(&cmd_args)?])
+        cmd_args
+    }
+}
+
+impl Node {
+    pub const NAME_ARG: &'static str = "name";
+
+    /// Return the node name if defined
+    pub fn name(&self) -> Option<String> {
+        self.name
+            .clone()
+            .map(|v| match v {
+                ArgValue::String(s) => Some(s),
+                _ => None,
+            })
+            .unwrap_or(None)
+    }
+
+    pub fn into_parsed_commands(self) -> Result<Vec<CreateCommand>> {
+        Ok(vec![Self::get_subcommand(&self.args())?])
+    }
+
+    fn get_subcommand(args: &[String]) -> Result<CreateCommand> {
+        if let OckamSubcommand::Node(cmd) = parse_cmd_from_args(CreateCommand::NAME, args)? {
+            if let node::NodeSubcommand::Create(c) = cmd.subcommand {
+                return Ok(c);
+            }
+        }
+        Err(miette!(format!(
+            "Failed to parse {} command",
+            color_primary(CreateCommand::NAME)
+        )))
     }
 }
 
@@ -114,7 +120,7 @@ mod tests {
     fn node_config() {
         let test = |c: &str| {
             let parsed: Node = serde_yaml::from_str(c).unwrap();
-            let cmds = parsed.parse_commands().unwrap();
+            let cmds = parsed.into_parsed_commands().unwrap();
             assert_eq!(cmds.len(), 1);
             let cmd = cmds.into_iter().next().unwrap();
             assert_eq!(cmd.name, "n1");

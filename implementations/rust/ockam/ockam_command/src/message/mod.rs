@@ -2,7 +2,7 @@ use clap::{Args, Subcommand};
 
 pub use send::SendCommand;
 
-use crate::CommandGlobalOpts;
+use crate::{Command, CommandGlobalOpts};
 
 mod send;
 

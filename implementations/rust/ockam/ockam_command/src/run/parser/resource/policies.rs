@@ -27,7 +27,7 @@ impl Policies {
         )))
     }
 
-    pub fn parse_commands(self) -> Result<Vec<CreateCommand>> {
+    pub fn into_parsed_commands(self) -> Result<Vec<CreateCommand>> {
         match self.policies {
             Some(c) => c.into_commands(Self::get_subcommand),
             None => Ok(vec![]),
@@ -48,7 +48,7 @@ mod tests {
               expression: (= subject.component "c1")
         "#;
         let parsed: Policies = serde_yaml::from_str(config).unwrap();
-        let cmds = parsed.parse_commands().unwrap();
+        let cmds = parsed.into_parsed_commands().unwrap();
         assert_eq!(cmds.len(), 1);
         assert_eq!(cmds[0].at.as_ref().unwrap(), "n1");
         assert_eq!(cmds[0].resource.as_ref().unwrap().as_str(), "r1");
@@ -70,7 +70,7 @@ mod tests {
                 expression: (= subject.component "c3")
         "#;
         let parsed: Policies = serde_yaml::from_str(config).unwrap();
-        let cmds = parsed.parse_commands().unwrap();
+        let cmds = parsed.into_parsed_commands().unwrap();
         assert_eq!(cmds.len(), 3);
 
         assert_eq!(cmds[0].at.as_ref().unwrap(), "n1");

@@ -28,7 +28,7 @@ EOF
   ## The default identity is already enrolled, so the enrollment step should be skipped
   run_success "$OCKAM" node create "$OCKAM_HOME/config.yaml" \
     --enrollment-ticket "$OCKAM_HOME/enrollment.ticket"
-  run_success "$OCKAM" message send --timeout 5 hello --to "/node/n1/secure/api/service/echo"
+  run_success "$OCKAM" message send hello --timeout 5 --to "/node/n1/secure/api/service/echo"
 }
 
 @test "nodes - create with config, non-admin enrolling twice with the project doesn't return error" {
@@ -53,6 +53,26 @@ EOF
   run_success "$OCKAM" node create "$BATS_TEST_DIRNAME/fixtures/node-create.basic.config.yaml" \
     --enrollment-ticket "$ticket_path" \
     --variable SERVICE_PORT="$PYTHON_SERVER_PORT"
+  run_success curl -sfI --retry-connrefused --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$CLIENT_PORT"
+}
+
+@test "nodes - create with config in foreground" {
+  # Admin: create enrollment ticket that can be reused a few times
+  ADMIN_HOME_DIR="$OCKAM_HOME"
+  ticket_path="$ADMIN_HOME_DIR/enrollment.ticket"
+  export RELAY_NAME=$(random_str)
+  $OCKAM project ticket --usage-count 10 --relay $RELAY_NAME >"$ticket_path"
+
+  # User: create a node in the foreground with a portal and using an enrollment ticket
+  setup_home_dir
+  export CLIENT_PORT=$(random_port)
+
+  ## Create node and try to reach it
+  run_success "$OCKAM" node create "$BATS_TEST_DIRNAME/fixtures/node-create.basic.config.yaml" \
+    --enrollment-ticket "$ticket_path" \
+    --variable SERVICE_PORT="$PYTHON_SERVER_PORT" &
+  sleep 1
+  run_success "$OCKAM" message send hello --timeout 2 --to "/node/n1/secure/api/service/echo"
   run_success curl -sfI --retry-connrefused --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$CLIENT_PORT"
 }
 

@@ -27,7 +27,10 @@ impl Relays {
         )))
     }
 
-    pub fn parse_commands(self, default_node_name: &Option<String>) -> Result<Vec<CreateCommand>> {
+    pub fn into_parsed_commands(
+        self,
+        default_node_name: &Option<String>,
+    ) -> Result<Vec<CreateCommand>> {
         match self.relays {
             Some(c) => {
                 let mut cmds = c.into_commands(Self::get_subcommand)?;
@@ -57,7 +60,7 @@ mod tests {
             let parsed: Relays = serde_yaml::from_str(c).unwrap();
             let default_node_name = "n1".to_string();
             let cmds = parsed
-                .parse_commands(&Some(default_node_name.clone()))
+                .into_parsed_commands(&Some(default_node_name.clone()))
                 .unwrap();
             assert_eq!(cmds.len(), 1);
             let cmd = cmds.into_iter().next().unwrap();
@@ -97,7 +100,7 @@ mod tests {
             let parsed: Relays = serde_yaml::from_str(c).unwrap();
             let default_node_name = "n1".to_string();
             let cmds = parsed
-                .parse_commands(&Some(default_node_name.clone()))
+                .into_parsed_commands(&Some(default_node_name.clone()))
                 .unwrap();
             assert_eq!(cmds.len(), 2);
             assert_eq!(cmds[0].relay_name, "r1");
