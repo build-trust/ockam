@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use clap::Args;
 use miette::{Context as _, IntoDiagnostic};
 use tracing::info;
@@ -12,10 +13,10 @@ use ockam_multiaddr::MultiAddr;
 use crate::project::util::{
     clean_projects_multiaddr, get_projects_secure_channels_from_config_lookup,
 };
-use crate::shared_args::TimeoutArg;
 use crate::shared_args::{IdentityOpts, TrustOpts};
-use crate::util::{async_cmd, clean_nodes_multiaddr};
-use crate::{docs, CommandGlobalOpts};
+use crate::shared_args::{RetryOpts, TimeoutArg};
+use crate::util::clean_nodes_multiaddr;
+use crate::{docs, Command, CommandGlobalOpts, Error};
 
 const LONG_ABOUT: &str = include_str!("./static/send/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/send/after_long_help.txt");
@@ -28,6 +29,8 @@ long_about = docs::about(LONG_ABOUT),
 after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct SendCommand {
+    pub message: String,
+
     /// The node to send messages from
     #[arg(short, long, value_name = "NODE", value_parser = extract_address_value)]
     from: Option<String>,
@@ -43,7 +46,8 @@ pub struct SendCommand {
     #[command(flatten)]
     pub timeout: TimeoutArg,
 
-    pub message: String,
+    #[command(flatten)]
+    pub retry_opts: RetryOpts,
 
     #[command(flatten)]
     identity_opts: IdentityOpts,
@@ -52,22 +56,20 @@ pub struct SendCommand {
     pub trust_opts: TrustOpts,
 }
 
-impl SendCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |ctx| async move {
-            self.async_run(&ctx, opts).await
-        })
+#[async_trait]
+impl Command for SendCommand {
+    const NAME: &'static str = "message send";
+
+    fn retry_opts(&self) -> Option<RetryOpts> {
+        Some(self.retry_opts.clone())
     }
 
-    pub fn name(&self) -> String {
-        "message send".into()
-    }
-
-    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
         // Process `--to` Multiaddr
         let (to, meta) = clean_nodes_multiaddr(&self.to, &opts.state)
             .await
-            .context("Argument '--to' is invalid")?;
+            .context("Argument '--to' is invalid")
+            .map_err(Error::Retry)?;
 
         let msg_bytes = if self.hex {
             hex::decode(self.message.clone())
@@ -83,7 +85,8 @@ impl SendCommand {
             BackgroundNodeClient::create_to_node(ctx, &opts.state, node.as_str())
                 .await?
                 .send_message(ctx, &to, msg_bytes, Some(self.timeout.timeout))
-                .await?
+                .await
+                .map_err(Error::Retry)?
         } else {
             let identity_name = opts
                 .state
@@ -113,12 +116,15 @@ impl SendCommand {
                 Some(identity_name),
                 Some(self.timeout.timeout),
             )
-            .await?;
+            .await
+            .context("Failed to resolve projects from '--to' address")
+            .map_err(Error::Retry)?;
             let to = clean_projects_multiaddr(to, projects_sc)?;
             info!("sending to {to}");
             node_manager
                 .send_message(ctx, &to, msg_bytes, Some(self.timeout.timeout))
-                .await?
+                .await
+                .map_err(Error::Retry)?
         };
 
         let result = if self.hex {

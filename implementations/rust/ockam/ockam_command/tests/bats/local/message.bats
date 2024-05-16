@@ -15,6 +15,9 @@ teardown() {
 # ===== TESTS
 
 @test "message - send messages between local nodes" {
+  # Fail to send a message to a non-existent node
+  run_failure "$OCKAM" message send "$msg" --no-retry --timeout 5 --to /node/n1/service/uppercase
+
   # Send from a temporary node to a background node
   run_success "$OCKAM" node create n1
   msg=$(random_str)

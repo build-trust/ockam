@@ -148,7 +148,7 @@ mod tests {
         };
         let config_recipe = cmd.create_config_recipe();
         let config = Config::parse(config_recipe.as_str()).unwrap();
-        config.project_enroll.parse_commands().unwrap();
-        config.tcp_inlets.parse_commands(&None).unwrap();
+        config.project_enroll.into_parsed_commands().unwrap();
+        config.tcp_inlets.into_parsed_commands(&None).unwrap();
     }
 }

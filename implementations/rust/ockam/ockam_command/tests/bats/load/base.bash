@@ -1,39 +1,5 @@
 #!/bin/bash
 
-# Disable the opentelemetry export to improve performances
-export OCKAM_OPENTELEMETRY_EXPORT=false
-
-# Set QUIET to 1 to suppress user-facing logging written at stderr
-export QUIET=1
-
-# Ockam binary to use
-if [[ -z $OCKAM ]]; then
-  export OCKAM=ockam
-fi
-
-# Setup base directory for CLI state
-if [[ -z $OCKAM_HOME ]]; then
-  export OCKAM_HOME_BASE="$HOME/.ockam"
-else
-  export OCKAM_HOME_BASE="$OCKAM_HOME"
-fi
-if [ ! -d "$OCKAM_HOME_BASE" ]; then
-  echo "Ockam CLI directory $OCKAM_HOME_BASE does not exist. Creating..." >&3
-  mkdir -p "$OCKAM_HOME_BASE"
-fi
-mkdir -p "$OCKAM_HOME_BASE/.tmp"
-
-if [[ -z $BATS_LIB ]]; then
-  export BATS_LIB=$(brew --prefix)/lib # macos
-  # export BATS_LIB=$NVM_DIR/versions/node/v18.8.0/lib/node_modules # linux
-fi
-
-if [[ -z $PYTHON_SERVER_PORT ]]; then
-  export PYTHON_SERVER_PORT=5000
-fi
-
-mkdir -p "$HOME/.bats-tests"
-
 # Load bats extensions
 load_bats_ext() {
   load "$BATS_LIB/bats-support/load.bash"
@@ -43,6 +9,11 @@ load_bats_ext() {
 setup_python_server() {
   p=$(python_pid_file_path)
   if [[ ! -f "$p" ]]; then
+    if ! [ -x "$(command -v uploadserver)" ]; then
+      echo 'Error: uploadserver is not installed.' >&2
+      exit 1
+    fi
+
     # Create python server in the OCKAM_HOME_BASE directory
     pushd $OCKAM_HOME_BASE
     touch "$p"
@@ -143,3 +114,37 @@ run_failure() {
 }
 
 bats_require_minimum_version 1.5.0
+
+# Disable the opentelemetry export to improve performances
+export OCKAM_OPENTELEMETRY_EXPORT=false
+
+# Set QUIET to 1 to suppress user-facing logging written at stderr
+export QUIET=1
+
+# Ockam binary to use
+if [[ -z $OCKAM ]]; then
+  export OCKAM=ockam
+fi
+
+# Setup base directory for CLI state
+if [[ -z $OCKAM_HOME ]]; then
+  export OCKAM_HOME_BASE="$HOME/.ockam"
+else
+  export OCKAM_HOME_BASE="$OCKAM_HOME"
+fi
+if [ ! -d "$OCKAM_HOME_BASE" ]; then
+  echo "Ockam CLI directory $OCKAM_HOME_BASE does not exist. Creating..." >&3
+  mkdir -p "$OCKAM_HOME_BASE"
+fi
+mkdir -p "$OCKAM_HOME_BASE/.tmp"
+
+if [[ -z $BATS_LIB ]]; then
+  export BATS_LIB=$(brew --prefix)/lib # macos
+  # export BATS_LIB=$NVM_DIR/versions/node/v18.8.0/lib/node_modules # linux
+fi
+
+if [[ -z $PYTHON_SERVER_PORT ]]; then
+  export PYTHON_SERVER_PORT=$(random_port)
+fi
+
+mkdir -p "$HOME/.bats-tests"

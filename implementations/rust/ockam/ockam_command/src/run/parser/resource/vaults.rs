@@ -1,10 +1,12 @@
 use miette::{miette, Result};
+
 use ockam_api::colors::color_primary;
 use serde::{Deserialize, Serialize};
 
 use crate::run::parser::building_blocks::{ArgsToCommands, ResourcesContainer};
 
 use crate::run::parser::resource::utils::parse_cmd_from_args;
+
 use crate::vault::CreateCommand;
 use crate::{vault, Command, OckamSubcommand};
 
@@ -27,7 +29,7 @@ impl Vaults {
         )))
     }
 
-    pub fn parse_commands(self) -> Result<Vec<CreateCommand>> {
+    pub fn into_parsed_commands(self) -> Result<Vec<CreateCommand>> {
         match self.vaults {
             Some(c) => c.into_commands(Self::get_subcommand),
             None => Ok(vec![]),
@@ -45,7 +47,7 @@ mod tests {
     fn single_vault_config() {
         let test = |c: &str| {
             let parsed: Vaults = serde_yaml::from_str(c).unwrap();
-            let cmds = parsed.parse_commands().unwrap();
+            let cmds = parsed.into_parsed_commands().unwrap();
             assert_eq!(cmds.len(), 1);
             assert_eq!(cmds[0].name.as_ref().unwrap(), "v1");
         };
@@ -76,7 +78,7 @@ mod tests {
     fn multiple_vaults_config() {
         let test = |c: &str| {
             let parsed: Vaults = serde_yaml::from_str(c).unwrap();
-            let cmds = parsed.parse_commands().unwrap();
+            let cmds = parsed.into_parsed_commands().unwrap();
             assert_eq!(cmds.len(), 2);
             assert_eq!(cmds[0].name.as_ref().unwrap(), "v1");
             assert_eq!(cmds[1].name.as_ref().unwrap(), "v2");

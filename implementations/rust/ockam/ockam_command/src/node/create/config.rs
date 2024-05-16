@@ -1,22 +1,25 @@
+use crate::node::show::is_node_up;
 use crate::node::CreateCommand;
 use crate::run::parser::building_blocks::ArgValue;
 use crate::run::parser::config::ConfigParser;
+
 use crate::run::parser::resource::*;
 use crate::run::parser::Version;
 use crate::value_parsers::{async_parse_path_or_url, parse_enrollment_ticket, parse_key_val};
 use crate::CommandGlobalOpts;
 use clap::Args;
-use colorful::Colorful;
+
 use miette::{miette, IntoDiagnostic};
 use ockam_api::cli_state::journeys::APPLICATION_EVENT_COMMAND_CONFIGURATION_FILE;
 use ockam_api::cli_state::{random_name, EnrollmentTicket};
-use ockam_api::fmt_err;
+
+use ockam_api::nodes::BackgroundNodeClient;
+
 use ockam_core::AsyncTryClone;
 use ockam_node::Context;
 use serde::{Deserialize, Serialize};
-use tokio_retry::strategy::FixedInterval;
-use tokio_retry::Retry;
-use tracing::{error, instrument, Span};
+
+use tracing::{debug, instrument, Span};
 
 #[derive(Clone, Debug, Args, Default)]
 pub struct ConfigArgs {
@@ -42,6 +45,7 @@ impl CreateCommand {
     /// Run the creation of a node using a node configuration
     #[instrument(skip_all)]
     pub async fn run_config(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        debug!("Running node create with a node config");
         let mut node_config = self.get_node_config().await?;
         node_config.merge(&self)?;
 
@@ -164,6 +168,7 @@ impl NodeConfig {
     }
 
     pub async fn run(self, ctx: &Context, opts: &CommandGlobalOpts) -> miette::Result<()> {
+        debug!("Running node config");
         // Parse then run commands
         for section in self.parse_commands()? {
             section.run(ctx, opts).await?
@@ -176,40 +181,49 @@ impl NodeConfig {
         ctx: &Context,
         opts: &CommandGlobalOpts,
     ) -> miette::Result<()> {
-        let node: ParsedCommands = self.node.clone().parse_commands()?.into();
-        let node_name = self.node.name();
-        let other_sections: Vec<ParsedCommands> = vec![
-            self.project_enroll.parse_commands()?.into(),
-            self.policies.parse_commands()?.into(),
-            self.tcp_outlets.parse_commands(&node_name)?.into(),
-            self.tcp_inlets.parse_commands(&node_name)?.into(),
-            self.kafka_inlet.parse_commands(&node_name)?.into(),
-            self.kafka_outlet.parse_commands(&node_name)?.into(),
-            self.relays.parse_commands(&node_name)?.into(),
-        ];
-        let ctx_clone = ctx.async_try_clone().await.into_diagnostic()?;
-        let opts_clone = opts.clone();
-        tokio::spawn(async { Self::run_sections(ctx_clone, opts_clone, other_sections).await });
-        node.run(ctx, opts).await?;
-        Ok(())
-    }
+        debug!("Running node config in foreground mode");
+        // First, run the `project enroll` commands to prepare the identity and project data
+        self.project_enroll
+            .run_in_subprocess(opts.global_args.quiet)?
+            .wait()
+            .await
+            .into_diagnostic()?;
 
-    async fn run_sections(
-        ctx: Context,
-        opts: CommandGlobalOpts,
-        sections: Vec<ParsedCommands>,
-    ) -> miette::Result<()> {
-        for cmds in sections {
-            let retry_strategy = FixedInterval::from_millis(500).take(25);
-            if let Err(e) =
-                Retry::spawn(retry_strategy, || async { cmds.run(&ctx, &opts).await }).await
-            {
-                error!("Command failed: {e:?}");
-                let _ = opts
-                    .terminal
-                    .write_line(&fmt_err!("Command failed with error: {e:?}"));
-            }
+        let node_name = self.node.name();
+
+        // Next, run the 'node create' command
+        let mut child = self.node.run_in_subprocess(opts.global_args.quiet)?;
+
+        // Wait for the node to be up
+        let is_up = {
+            let node_name = node_name
+                .as_ref()
+                .expect("Node name should be set to the default value");
+            let ctx = ctx.async_try_clone().await.into_diagnostic()?;
+            let mut node =
+                BackgroundNodeClient::create_to_node(&ctx, &opts.state, node_name).await?;
+            is_node_up(&ctx, &mut node, true).await?
+        };
+        if !is_up {
+            return Err(miette!("Node failed to start"));
         }
+
+        // Run the other sections
+        let other_sections: Vec<ParsedCommands> = vec![
+            self.policies.into_parsed_commands()?.into(),
+            self.relays.into_parsed_commands(&node_name)?.into(),
+            self.tcp_inlets.into_parsed_commands(&node_name)?.into(),
+            self.tcp_outlets.into_parsed_commands(&node_name)?.into(),
+            self.kafka_inlet.into_parsed_commands(&node_name)?.into(),
+            self.kafka_outlet.into_parsed_commands(&node_name)?.into(),
+        ];
+        for cmds in other_sections {
+            cmds.run(ctx, opts).await?;
+        }
+
+        // Block on the foreground node
+        child.wait().await.into_diagnostic()?;
+        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
         Ok(())
     }
 
@@ -217,14 +231,14 @@ impl NodeConfig {
     fn parse_commands(self) -> miette::Result<Vec<ParsedCommands>> {
         let node_name = self.node.name();
         Ok(vec![
-            self.project_enroll.parse_commands()?.into(),
-            self.node.parse_commands()?.into(),
-            self.relays.parse_commands(&node_name)?.into(),
-            self.policies.parse_commands()?.into(),
-            self.tcp_inlets.parse_commands(&node_name)?.into(),
-            self.tcp_outlets.parse_commands(&node_name)?.into(),
-            self.kafka_inlet.parse_commands(&node_name)?.into(),
-            self.kafka_outlet.parse_commands(&node_name)?.into(),
+            self.project_enroll.into_parsed_commands()?.into(),
+            self.node.into_parsed_commands()?.into(),
+            self.policies.into_parsed_commands()?.into(),
+            self.relays.into_parsed_commands(&node_name)?.into(),
+            self.tcp_inlets.into_parsed_commands(&node_name)?.into(),
+            self.tcp_outlets.into_parsed_commands(&node_name)?.into(),
+            self.kafka_inlet.into_parsed_commands(&node_name)?.into(),
+            self.kafka_outlet.into_parsed_commands(&node_name)?.into(),
         ])
     }
 }
@@ -272,7 +286,7 @@ mod tests {
         // No node config, cli args should be used
         let mut config = NodeConfig::parse("").unwrap();
         config.merge(&cli_args).unwrap();
-        let node = config.node.parse_commands().unwrap().pop().unwrap();
+        let node = config.node.into_parsed_commands().unwrap().pop().unwrap();
         assert_eq!(node.tcp_listener_address, "127.0.0.1:1234");
         assert_eq!(
             config.project_enroll.ticket,
@@ -289,7 +303,7 @@ mod tests {
         )
         .unwrap();
         config.merge(&cli_args).unwrap();
-        let node = config.node.parse_commands().unwrap().pop().unwrap();
+        let node = config.node.into_parsed_commands().unwrap().pop().unwrap();
         assert_eq!(node.name, "n1");
         assert_eq!(node.tcp_listener_address, "127.0.0.1:5555".to_string());
         assert_eq!(

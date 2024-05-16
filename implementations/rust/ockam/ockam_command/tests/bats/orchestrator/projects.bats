@@ -131,7 +131,7 @@ teardown() {
   assert_output "hello"
 
   # m2 is not a member,  must not be able to contact the project' service
-  run_failure $OCKAM message send --timeout 5 --identity m2 --to /project/default/service/echo hello
+  run_failure $OCKAM message send --no-retry --timeout 5 --identity m2 --to /project/default/service/echo hello
 }
 
 @test "projects - list addons" {

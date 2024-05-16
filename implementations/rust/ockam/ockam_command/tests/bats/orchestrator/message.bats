@@ -48,7 +48,7 @@ teardown() {
 
   # m2 is not a member, must not be able to contact the project' service
   run_success "$OCKAM" identity create m2
-  run_failure "$OCKAM" message send --timeout 5 --identity m2 --to /project/default/service/echo "$msg"
+  run_failure "$OCKAM" message send --no-retry --timeout 5 --identity m2 --to /project/default/service/echo "$msg"
 }
 
 @test "message - send a hex encoded message to a project node from an embedded node" {

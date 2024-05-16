@@ -50,13 +50,13 @@ teardown() {
   run_success "$OCKAM" node create attacker --identity attacker --authority-identity $attacker_identity
 
   # Fail, attacker won't present any credential
-  run_failure $OCKAM message send --timeout 2 --from attacker --identity attacker --to "/dnsaddr/127.0.0.1/tcp/$port/secure/api/service/echo" $msg
+  run_failure $OCKAM message send --no-retry --timeout 2 --from attacker --identity attacker --to "/dnsaddr/127.0.0.1/tcp/$port/secure/api/service/echo" $msg
 
   # Fail, attacker will present an invalid credential (self signed rather than signed by authority)
   attacker_cred=$($OCKAM credential issue --as attacker --for $attacker_identifier --encoding hex)
   run_success "$OCKAM" credential store --at attacker --issuer "$attacker_identifier" --scope "test" --credential $attacker_cred
 
-  run_failure $OCKAM message send --timeout 2 --from attacker --identity attacker --to "/dnsaddr/127.0.0.1/tcp/$port/secure/api/service/echo" $msg
+  run_failure $OCKAM message send --no-retry --timeout 2 --from attacker --identity attacker --to "/dnsaddr/127.0.0.1/tcp/$port/secure/api/service/echo" $msg
 }
 
 @test "trust - online authority; Credential Exchange is performed" {
@@ -99,5 +99,5 @@ teardown() {
   run_success "$OCKAM" message send --timeout 2 --identity bob --to "/dnsaddr/127.0.0.1/tcp/$auth_port/secure/api/service/echo" $msg
   assert_output "$msg"
 
-  run_failure "$OCKAM" message send --timeout 2 --identity attacker --to /dnsaddr/127.0.0.1/tcp/$node_port/secure/api/service/echo $msg
+  run_failure "$OCKAM" message send --no-retry --timeout 2 --identity attacker --to /dnsaddr/127.0.0.1/tcp/$node_port/secure/api/service/echo $msg
 }

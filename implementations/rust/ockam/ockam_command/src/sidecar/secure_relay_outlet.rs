@@ -150,9 +150,9 @@ mod tests {
         };
         let config_recipe = cmd.create_config_recipe();
         let config = Config::parse(config_recipe.as_str()).unwrap();
-        config.project_enroll.parse_commands().unwrap();
-        config.policies.parse_commands().unwrap();
-        config.tcp_outlets.parse_commands(&None).unwrap();
-        config.relays.parse_commands(&None).unwrap();
+        config.project_enroll.into_parsed_commands().unwrap();
+        config.policies.into_parsed_commands().unwrap();
+        config.tcp_outlets.into_parsed_commands(&None).unwrap();
+        config.relays.into_parsed_commands(&None).unwrap();
     }
 }

@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::run::parser::building_blocks::{ArgsToCommands, ResourceNameOrMap};
 
 use crate::run::parser::resource::utils::parse_cmd_from_args;
+
 use crate::tcp::outlet::create::CreateCommand;
 use crate::{tcp::outlet, Command, OckamSubcommand};
 
@@ -27,7 +28,10 @@ impl TcpOutlets {
         )))
     }
 
-    pub fn parse_commands(self, default_node_name: &Option<String>) -> Result<Vec<CreateCommand>> {
+    pub fn into_parsed_commands(
+        self,
+        default_node_name: &Option<String>,
+    ) -> Result<Vec<CreateCommand>> {
         match self.tcp_outlets {
             Some(c) => {
                 let mut cmds = c.into_commands_with_name_arg(Self::get_subcommand, Some("from"))?;
@@ -64,7 +68,7 @@ mod tests {
         let parsed: TcpOutlets = serde_yaml::from_str(config).unwrap();
         let default_node_name = "n1".to_string();
         let cmds = parsed
-            .parse_commands(&Some(default_node_name.clone()))
+            .into_parsed_commands(&Some(default_node_name.clone()))
             .unwrap();
         assert_eq!(cmds.len(), 2);
         assert_eq!(cmds[0].from.clone().unwrap(), "to1");

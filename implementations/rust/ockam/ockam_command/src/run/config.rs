@@ -54,7 +54,6 @@ impl Config {
     /// For more details about the parsing, see the [parser](crate::run::parser) module.
     /// You can also check examples of valid configuration files in the demo folder of this module.
     pub async fn run(self, ctx: &Context, opts: &CommandGlobalOpts) -> miette::Result<()> {
-        // Parse commands and run them
         for cmd in self.parse_commands()? {
             cmd.run(ctx, opts).await?
         }
@@ -62,18 +61,18 @@ impl Config {
     }
 
     // Build commands and return validation errors
-    pub fn parse_commands(self) -> miette::Result<Vec<ParsedCommands>> {
+    fn parse_commands(self) -> miette::Result<Vec<ParsedCommands>> {
         Ok(vec![
-            self.vaults.parse_commands()?.into(),
-            self.identities.parse_commands()?.into(),
-            self.project_enroll.parse_commands()?.into(),
-            self.nodes.parse_commands()?.into(),
-            self.relays.parse_commands(&None)?.into(),
-            self.policies.parse_commands()?.into(),
-            self.tcp_outlets.parse_commands(&None)?.into(),
-            self.tcp_inlets.parse_commands(&None)?.into(),
-            self.kafka_inlet.parse_commands(&None)?.into(),
-            self.kafka_outlet.parse_commands(&None)?.into(),
+            self.vaults.into_parsed_commands()?.into(),
+            self.identities.into_parsed_commands()?.into(),
+            self.project_enroll.into_parsed_commands()?.into(),
+            self.nodes.into_parsed_commands()?.into(),
+            self.relays.into_parsed_commands(&None)?.into(),
+            self.policies.into_parsed_commands()?.into(),
+            self.tcp_outlets.into_parsed_commands(&None)?.into(),
+            self.tcp_inlets.into_parsed_commands(&None)?.into(),
+            self.kafka_inlet.into_parsed_commands(&None)?.into(),
+            self.kafka_outlet.into_parsed_commands(&None)?.into(),
         ])
     }
 
