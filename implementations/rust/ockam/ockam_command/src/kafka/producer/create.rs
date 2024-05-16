@@ -44,6 +44,9 @@ impl CreateCommand {
             brokers_port_range: self.brokers_port_range,
             to: self.project_route,
             consumer: None,
+            consumer_relay: None,
+            publishing_relay: None,
+            avoid_publishing: false,
         }
         .run(opts)
     }

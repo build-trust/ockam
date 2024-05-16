@@ -1,4 +1,4 @@
-use minicbor::Decoder;
+use minicbor::{Decode, Decoder, Encode};
 
 use ockam::identity::{
     DecryptionRequest, DecryptionResponse, EncryptionRequest, EncryptionResponse, Identifier,
@@ -158,21 +158,31 @@ impl<F: RelayCreator> Clone for KafkaSecureChannelControllerImpl<F> {
 }
 
 /// Describe how to reach the consumer node: either directly or through a relay
-#[derive(Clone)]
-pub(crate) enum ConsumerNodeAddr {
-    Direct(MultiAddr),
-    Relay(MultiAddr),
-    None,
+#[derive(Debug, Clone, Decode, Encode)]
+#[rustfmt::skip]
+#[cbor(map)]
+pub enum ConsumerResolution {
+    #[n(1)] None,
+    #[n(2)] SingleNode(#[n(1)] MultiAddr),
+    #[n(3)] ViaRelay(#[n(1)] MultiAddr),
+}
+
+#[derive(Debug, Clone, Decode, Encode)]
+#[rustfmt::skip]
+#[cbor(map)]
+pub enum ConsumerPublishing {
+    #[n(1)] None,
+    #[n(2)] Relay(#[n(1)] MultiAddr),
 }
 
 type TopicPartition = (String, i32);
 
 struct InnerSecureChannelControllerImpl<F: RelayCreator> {
-    // we identity the secure channel instance by using the decryptor of the consumer
+    // we identify the secure channel instance by using the decryptor address of the consumer
     // which is known to both parties
     topic_encryptor_map: HashMap<TopicPartition, Address>,
     // describes how to reach the consumer node
-    consumer_node_multiaddr: ConsumerNodeAddr,
+    consumer_resolution: ConsumerResolution,
     topic_relay_set: HashSet<TopicPartition>,
     relay_creator: Option<F>,
     secure_channels: Arc<SecureChannels>,
@@ -182,12 +192,13 @@ struct InnerSecureChannelControllerImpl<F: RelayCreator> {
 impl KafkaSecureChannelControllerImpl<NodeManagerRelayCreator> {
     pub(crate) fn new(
         secure_channels: Arc<SecureChannels>,
-        consumer_node_multiaddr: ConsumerNodeAddr,
+        consumer_resolution: ConsumerResolution,
+        consumer_publishing: ConsumerPublishing,
         authority_identifier: Identifier,
     ) -> KafkaSecureChannelControllerImpl<NodeManagerRelayCreator> {
-        let relay_creator = match consumer_node_multiaddr.clone() {
-            ConsumerNodeAddr::Direct(_) | ConsumerNodeAddr::None => None,
-            ConsumerNodeAddr::Relay(mut orchestrator_multiaddr) => {
+        let relay_creator = match consumer_publishing.clone() {
+            ConsumerPublishing::None => None,
+            ConsumerPublishing::Relay(mut orchestrator_multiaddr) => {
                 orchestrator_multiaddr
                     .push_back(Service::new(KAFKA_OUTLET_CONSUMERS))
                     .unwrap();
@@ -198,7 +209,7 @@ impl KafkaSecureChannelControllerImpl<NodeManagerRelayCreator> {
         };
         Self::new_extended(
             secure_channels,
-            consumer_node_multiaddr,
+            consumer_resolution,
             relay_creator,
             authority_identifier,
         )
@@ -209,7 +220,7 @@ impl<F: RelayCreator> KafkaSecureChannelControllerImpl<F> {
     /// to manually specify `RelayCreator`, for testing purposes
     pub(crate) fn new_extended(
         secure_channels: Arc<SecureChannels>,
-        consumer_node_multiaddr: ConsumerNodeAddr,
+        consumer_resolution: ConsumerResolution,
         relay_creator: Option<F>,
         authority_identifier: Identifier,
     ) -> KafkaSecureChannelControllerImpl<F> {
@@ -225,7 +236,7 @@ impl<F: RelayCreator> KafkaSecureChannelControllerImpl<F> {
                 topic_relay_set: Default::default(),
                 secure_channels,
                 relay_creator,
-                consumer_node_multiaddr,
+                consumer_resolution,
                 access_control,
             })),
         }
@@ -326,25 +337,24 @@ impl<F: RelayCreator> KafkaSecureChannelControllerImpl<F> {
 
         let mut inner = self.inner.lock().await;
 
-        // when we are using direct mode, there is only one consumer, and the same
-        // secure channel is used for all topics
-        let topic_partition_key = match &inner.consumer_node_multiaddr {
-            ConsumerNodeAddr::Direct(_) | ConsumerNodeAddr::None => ("".to_string(), 0i32),
-            ConsumerNodeAddr::Relay(_) => (topic_name.to_string(), partition),
+        // when we have only one consumer, we use the same secure channel for all topics
+        let topic_partition_key = match &inner.consumer_resolution {
+            ConsumerResolution::SingleNode(_) | ConsumerResolution::None => ("".to_string(), 0i32),
+            ConsumerResolution::ViaRelay(_) => (topic_name.to_string(), partition),
         };
 
         let encryptor_address = {
             if let Some(encryptor_address) = inner.topic_encryptor_map.get(&topic_partition_key) {
                 encryptor_address.clone()
             } else {
-                let destination = match inner.consumer_node_multiaddr.clone() {
-                    ConsumerNodeAddr::Direct(mut destination) => {
+                let destination = match inner.consumer_resolution.clone() {
+                    ConsumerResolution::SingleNode(mut destination) => {
                         debug!("creating new direct secure channel to consumer");
                         destination
                             .push_back(Service::new(DefaultAddress::SECURE_CHANNEL_LISTENER))?;
                         destination
                     }
-                    ConsumerNodeAddr::Relay(mut destination) => {
+                    ConsumerResolution::ViaRelay(mut destination) => {
                         // consumer__ prefix is added by the orchestrator
                         let topic_partition_address = format!("consumer__{topic_name}_{partition}");
 
@@ -357,11 +367,11 @@ impl<F: RelayCreator> KafkaSecureChannelControllerImpl<F> {
                             .push_back(Service::new(DefaultAddress::SECURE_CHANNEL_LISTENER))?;
                         destination
                     }
-                    ConsumerNodeAddr::None => {
+                    ConsumerResolution::None => {
                         return Err(Error::new(
                             Origin::Transport,
                             Kind::Invalid,
-                            "cannot encrypt messages when consumer is not specified",
+                            "cannot encrypt messages with consumer key when consumer route resolution is not set",
                         ));
                     }
                 };

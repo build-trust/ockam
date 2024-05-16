@@ -2,6 +2,7 @@ use crate::colors::{color_primary, color_warn};
 
 use crate::output::Output;
 
+use crate::kafka::{ConsumerPublishing, ConsumerResolution};
 use minicbor::{Decode, Encode};
 use ockam_core::compat::net::SocketAddr;
 use ockam_core::Address;
@@ -77,6 +78,8 @@ pub struct StartKafkaInletRequest {
     #[n(1)] bind_address: SocketAddr,
     #[n(2)] brokers_port_range: (u16, u16),
     #[n(3)] kafka_outlet_route: MultiAddr,
+    #[n(4)] consumer_resolution: ConsumerResolution,
+    #[n(5)] consumer_publishing: ConsumerPublishing,
 }
 
 impl StartKafkaInletRequest {
@@ -84,11 +87,15 @@ impl StartKafkaInletRequest {
         bind_address: SocketAddr,
         brokers_port_range: impl Into<(u16, u16)>,
         kafka_outlet_route: MultiAddr,
+        consumer_resolution: ConsumerResolution,
+        consumer_publishing: ConsumerPublishing,
     ) -> Self {
         Self {
             bind_address,
             brokers_port_range: brokers_port_range.into(),
             kafka_outlet_route,
+            consumer_resolution,
+            consumer_publishing,
         }
     }
 
@@ -100,6 +107,14 @@ impl StartKafkaInletRequest {
     }
     pub fn project_route(&self) -> MultiAddr {
         self.kafka_outlet_route.clone()
+    }
+
+    pub fn consumer_resolution(&self) -> ConsumerResolution {
+        self.consumer_resolution.clone()
+    }
+
+    pub fn consumer_publishing(&self) -> ConsumerPublishing {
+        self.consumer_publishing.clone()
     }
 }
 /// Request body when instructing a node to start an Uppercase service

@@ -19,7 +19,8 @@ use ockam_core::Address;
 pub(crate) use outlet_service::prefix_relay::PrefixRelayService;
 pub(crate) use outlet_service::OutletManagerService;
 pub(crate) use portal_listener::KafkaPortalListener;
-pub(crate) use secure_channel_map::ConsumerNodeAddr;
+pub use secure_channel_map::ConsumerPublishing;
+pub use secure_channel_map::ConsumerResolution;
 pub(crate) use secure_channel_map::KafkaSecureChannelControllerImpl;
 
 pub const KAFKA_OUTLET_CONSUMERS: &str = "kafka_consumers";
