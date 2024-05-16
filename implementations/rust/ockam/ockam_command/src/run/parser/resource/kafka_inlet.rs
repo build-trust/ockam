@@ -62,6 +62,8 @@ mod tests {
             kafka-inlet:
               from: 127.0.0.1:9092
               to: /project/default
+              consumer-relay: /ip4/192.168.1.1/tcp/4000
+              publishing-relay: /ip4/192.168.1.2/tcp/4000
               at: node_name
         "#;
         let parsed: KafkaInlet = serde_yaml::from_str(named).unwrap();
@@ -75,15 +77,24 @@ mod tests {
             SocketAddr::from_str("127.0.0.1:9092").unwrap()
         );
         assert_eq!(
-            cmds[0].to.as_ref().unwrap(),
+            &cmds[0].to,
             &MultiAddr::from_string("/project/default").unwrap(),
         );
+        assert_eq!(
+            cmds[0].consumer_relay.as_ref().unwrap(),
+            &MultiAddr::from_string("/ip4/192.168.1.1/tcp/4000").unwrap(),
+        );
+        assert_eq!(
+            cmds[0].publishing_relay.as_ref().unwrap(),
+            &MultiAddr::from_string("/ip4/192.168.1.2/tcp/4000").unwrap(),
+        );
         assert_eq!(cmds[0].node_opts.at_node, Some("node_name".to_string()));
+        assert!(!cmds[0].avoid_publishing);
 
         let unnamed = r#"
             kafka-inlet:
-              bootstrap-server: my-kafka.example.com:9092
               consumer: /dnsaddr/kafka-outlet.local/tcp/5000
+              avoid-publishing: true
         "#;
         let parsed: KafkaInlet = serde_yaml::from_str(unnamed).unwrap();
         let cmds = parsed
@@ -91,13 +102,10 @@ mod tests {
             .unwrap();
         assert_eq!(cmds.len(), 1);
         assert_eq!(
-            cmds[0].bootstrap_server.as_ref().unwrap(),
-            "my-kafka.example.com:9092"
-        );
-        assert_eq!(
             cmds[0].consumer.as_ref().unwrap(),
             &MultiAddr::from_string("/dnsaddr/kafka-outlet.local/tcp/5000").unwrap(),
         );
+        assert!(cmds[0].avoid_publishing);
         assert_eq!(cmds[0].node_opts.at_node, Some(default_node_name));
     }
 }

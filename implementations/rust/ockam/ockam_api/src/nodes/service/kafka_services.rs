@@ -11,9 +11,10 @@ use ockam_transport_tcp::HostnamePort;
 use super::NodeManagerWorker;
 use crate::error::ApiError;
 use crate::kafka::{
-    kafka_default_policy_expression, kafka_policy_expression, ConsumerNodeAddr,
-    KafkaInletController, KafkaPortalListener, KafkaSecureChannelControllerImpl,
-    KAFKA_OUTLET_BOOTSTRAP_ADDRESS, KAFKA_OUTLET_INTERCEPTOR_ADDRESS,
+    kafka_default_policy_expression, kafka_policy_expression, ConsumerPublishing,
+    ConsumerResolution, KafkaInletController, KafkaPortalListener,
+    KafkaSecureChannelControllerImpl, KAFKA_OUTLET_BOOTSTRAP_ADDRESS,
+    KAFKA_OUTLET_INTERCEPTOR_ADDRESS,
 };
 use crate::kafka::{OutletManagerService, PrefixRelayService};
 use crate::nodes::models::portal::OutletAccessControl;
@@ -40,6 +41,8 @@ impl NodeManagerWorker {
                 request.bind_address(),
                 request.brokers_port_range(),
                 request.project_route(),
+                request.consumer_resolution(),
+                request.consumer_publishing(),
             )
             .await
         {
@@ -103,6 +106,8 @@ impl InMemoryNode {
         bind_address: SocketAddr,
         brokers_port_range: (u16, u16),
         outlet_node_multiaddr: MultiAddr,
+        consumer_resolution: ConsumerResolution,
+        consumer_publishing: ConsumerPublishing,
     ) -> Result<()> {
         let project_authority = self
             .project_authority
@@ -112,7 +117,8 @@ impl InMemoryNode {
         let secure_channels = self.secure_channels.clone();
         let secure_channel_controller = KafkaSecureChannelControllerImpl::new(
             secure_channels,
-            ConsumerNodeAddr::Relay(outlet_node_multiaddr.clone()),
+            consumer_resolution,
+            consumer_publishing,
             project_authority,
         );
 

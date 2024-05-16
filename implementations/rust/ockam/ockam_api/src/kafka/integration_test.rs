@@ -43,7 +43,7 @@ mod test {
     use crate::kafka::protocol_aware::utils::{encode_request, encode_response};
     use crate::kafka::secure_channel_map::RelayCreator;
     use crate::kafka::{
-        ConsumerNodeAddr, KafkaInletController, KafkaPortalListener,
+        ConsumerResolution, KafkaInletController, KafkaPortalListener,
         KafkaSecureChannelControllerImpl,
     };
     use crate::test_utils::NodeManagerHandle;
@@ -78,7 +78,7 @@ mod test {
             .unwrap();
         let secure_channel_controller = KafkaSecureChannelControllerImpl::new_extended(
             handler.secure_channels.clone(),
-            ConsumerNodeAddr::Relay(MultiAddr::try_from("/service/api")?),
+            ConsumerResolution::ViaRelay(MultiAddr::try_from("/service/api")?),
             Some(HopRelayCreator {}),
             project_authority,
         );

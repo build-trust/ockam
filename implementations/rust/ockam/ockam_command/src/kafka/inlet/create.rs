@@ -6,6 +6,7 @@ use std::sync::Arc;
 use clap::{command, Args};
 use colorful::Colorful;
 use ockam_api::colors::OckamColor;
+use ockam_api::kafka::{ConsumerPublishing, ConsumerResolution};
 use ockam_api::nodes::models::services::{StartKafkaInletRequest, StartServiceRequest};
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_api::{fmt_log, fmt_ok};
@@ -46,11 +47,28 @@ pub struct CreateCommand {
     pub brokers_port_range: Option<PortRange>,
     /// The route to the Kafka outlet node, either the project in ockam orchestrator or a rust node, expected something like /project/<name>.
     /// Use self when the Kafka outlet is local.
-    #[arg(long, default_value_t = kafka_default_project_route())]
+    #[arg(long, default_value_t = kafka_default_project_route(), value_name = "ROUTE")]
     pub to: MultiAddr,
-    /// The route to a single Kafka consumer node
-    #[arg(long)]
+    /// The direct route to a single Kafka consumer node instead of using a relay for their
+    /// resolution. A single encryption key will be exchanged with the provided consumer.
+    #[arg(long, conflicts_with = "consumer-relay", value_name = "ROUTE")]
     pub consumer: Option<MultiAddr>,
+    /// The route to the Kafka consumer relay node.
+    /// Encryption keys will be exchanged passing through this relay based on topic
+    /// and partition name.
+    /// By default, this parameter uses the value of `to`.
+    #[arg(long, name = "consumer-relay", value_name = "ROUTE")]
+    pub consumer_relay: Option<MultiAddr>,
+    /// The route to the Kafka consumer relay node which will be used to make this consumer
+    /// available to producers.
+    /// By default, this parameter uses the value of `consumer-relay`.
+    #[arg(long, name = "publishing-relay", value_name = "ROUTE")]
+    pub publishing_relay: Option<MultiAddr>,
+    /// Avoid publishing the consumer in the relay.
+    /// This is useful to avoid the creation of an unused relay when the consumer is directly
+    /// referenced by the producer.
+    #[arg(long, name = "avoid-publishing", conflicts_with = "publishing-relay")]
+    pub avoid_publishing: bool,
 }
 
 #[async_trait]
@@ -75,7 +93,33 @@ impl Command for CreateCommand {
             inlet_creation_future = Some(async move {
                 let node = BackgroundNodeClient::create(ctx, &opts.state, &at_node).await?;
 
-                let payload = StartKafkaInletRequest::new(self.from, brokers_port_range, to);
+                let consumer_resolution;
+                if let Some(route) = self.consumer {
+                    consumer_resolution = ConsumerResolution::SingleNode(route);
+                } else if let Some(route) = &self.consumer_relay {
+                    consumer_resolution = ConsumerResolution::ViaRelay(route.clone());
+                } else {
+                    consumer_resolution = ConsumerResolution::ViaRelay(to.clone());
+                }
+
+                let consumer_publishing;
+                if self.avoid_publishing {
+                    consumer_publishing = ConsumerPublishing::None;
+                } else if let Some(route) = self.publishing_relay {
+                    consumer_publishing = ConsumerPublishing::Relay(route);
+                } else if let Some(route) = self.consumer_relay {
+                    consumer_publishing = ConsumerPublishing::Relay(route);
+                } else {
+                    consumer_publishing = ConsumerPublishing::Relay(to.clone());
+                }
+
+                let payload = StartKafkaInletRequest::new(
+                    self.from,
+                    brokers_port_range,
+                    to,
+                    consumer_resolution,
+                    consumer_publishing,
+                );
                 let payload = StartServiceRequest::new(payload, &addr);
                 let req = Request::post("/node/services/kafka_inlet").body(payload);
                 start_service_impl(ctx, &node, "KafkaInlet", req).await?;

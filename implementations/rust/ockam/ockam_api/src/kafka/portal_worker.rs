@@ -460,7 +460,7 @@ mod test {
     use crate::kafka::inlet_controller::KafkaInletController;
     use crate::kafka::portal_worker::KafkaPortalWorker;
     use crate::kafka::secure_channel_map::KafkaSecureChannelControllerImpl;
-    use crate::kafka::ConsumerNodeAddr;
+    use crate::kafka::{ConsumerPublishing, ConsumerResolution};
     use crate::port_range::PortRange;
     use ockam::MessageReceiveOptions;
 
@@ -749,7 +749,8 @@ mod test {
         let secure_channels = secure_channels().await.unwrap();
         let secure_channel_controller = KafkaSecureChannelControllerImpl::new(
             secure_channels,
-            ConsumerNodeAddr::Relay(MultiAddr::default()),
+            ConsumerResolution::ViaRelay(MultiAddr::default()),
+            ConsumerPublishing::None,
             authority_identifier,
         )
         .into_trait();
@@ -809,7 +810,8 @@ mod test {
 
         let secure_channel_controller = KafkaSecureChannelControllerImpl::new(
             handle.secure_channels.clone(),
-            ConsumerNodeAddr::Relay(MultiAddr::default()),
+            ConsumerResolution::ViaRelay(MultiAddr::default()),
+            ConsumerPublishing::None,
             project_authority,
         )
         .into_trait();
