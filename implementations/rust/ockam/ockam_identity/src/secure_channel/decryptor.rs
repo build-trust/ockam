@@ -243,6 +243,9 @@ impl DecryptorHandler {
 
         // Decrypt the binary
         let (decrypted_payload, nonce) = self.decryptor.decrypt(payload).await?;
+
+        // Try to decode version V2 first (the version supporting large messages)
+        // and fallback to version V1 if V2 cannot be decoded, for backward compatibility.
         let decrypted_msg: SecureChannelMessageV2 =
             match minicbor::decode::<SecureChannelMessageV2>(&decrypted_payload) {
                 Ok(v) => v,

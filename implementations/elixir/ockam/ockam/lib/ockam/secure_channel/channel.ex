@@ -421,8 +421,6 @@ defmodule Ockam.SecureChannel.Channel do
   end
 
   defp complete_inner_setup(%Channel{role: :initiator} = state, options, xx, tref) do
-    Logger.debug("complete_inner_setup - initiator")
-
     with {:ok, waiter} <- Keyword.fetch(options, :waiter),
          {:ok, init_route} <- Keyword.fetch(options, :route) do
       continue_handshake({:continue, xx}, %Channel{
@@ -434,8 +432,6 @@ defmodule Ockam.SecureChannel.Channel do
   end
 
   defp complete_inner_setup(%Channel{role: :responder} = state, options, xx, tref) do
-    Logger.debug("complete_inner_setup - responder")
-
     with {:ok, init_message} <- Keyword.fetch(options, :init_message) do
       handle_inner_message_impl(init_message, %Channel{
         state
@@ -526,13 +522,10 @@ defmodule Ockam.SecureChannel.Channel do
   # Check result of the handshake step, send handshake data to the peer if there is a message to exchange,
   # and possible move to another state
   defp continue_handshake({:complete, _key_agreements} = r, state) do
-    Logger.debug("continue_handshake - complete")
     next_handshake_state(r, state)
   end
 
   defp continue_handshake({:continue, key_exchange_state}, state) do
-    Logger.debug("continue_handshake - continue")
-
     with {:ok, data, next} <- XX.out_payload(key_exchange_state) do
       msg = %{
         payload: :bare.encode(data, :data),
@@ -546,8 +539,6 @@ defmodule Ockam.SecureChannel.Channel do
   end
 
   defp handle_inner_message_impl(message, %Channel{channel_state: %Handshaking{xx: xx}} = state) do
-    Logger.debug("handle_inner_message_impl - handshaking")
-
     with {:ok, data} <- bare_decode_strict(message.payload, :data),
          {:ok, next} <- XX.in_payload(xx, data) do
       continue_handshake(next, %Channel{state | peer_route: message.return_route})
@@ -555,15 +546,12 @@ defmodule Ockam.SecureChannel.Channel do
   end
 
   defp handle_inner_message_impl(message, %Channel{channel_state: channel_state} = state) do
-    Logger.debug("handle_inner_message_impl - normal state")
-
     with {:ok, ciphertext} <- bare_decode_strict(message.payload, :data),
          {:ok, plaintext, decrypt_st} <-
            Decryptor.decrypt("", ciphertext, channel_state.decrypt_st) do
       case Messages.decode(plaintext) do
         {:ok, %Messages.Payload{} = payload} ->
           message = struct(Ockam.Message, Map.from_struct(payload))
-          Logger.debug("Received regular message")
 
           handle_decrypted_message(message, %Channel{
             state
@@ -611,6 +599,8 @@ defmodule Ockam.SecureChannel.Channel do
     end
   end
 
+  # This method processes a payload part, when the original payload
+  # was to large to be sent in one piece
   defp handle_inner_message_part(
          %Messages.PayloadPart{
            current_part_number: current_part_number,
@@ -620,11 +610,12 @@ defmodule Ockam.SecureChannel.Channel do
          %Channel{} = state,
          now
        ) do
-    # Get the parts for the current payload UUID
+    # Get the parts already received for the current payload UUID
     Logger.debug(
       "Received part #{current_part_number}/#{total_number_of_parts} for message #{payload_uuid}"
     )
 
+    # Update the tracked parts
     case update_parts(payload_part, state, now) do
       {:error} ->
         state
@@ -726,7 +717,6 @@ defmodule Ockam.SecureChannel.Channel do
 
   defp handle_outer_message_impl(message, %Channel{channel_state: %Established{} = e} = state) do
     message = Message.forward(message)
-    Logger.debug("handle_outer_message_impl")
 
     with {:ok, encrypt_st} <-
            send_over_encrypted_channel(
@@ -744,9 +734,6 @@ defmodule Ockam.SecureChannel.Channel do
   end
 
   defp send_over_encrypted_channel(message, encrypt_st, peer_route) do
-    Logger.debug("check the size of the payload")
-    Logger.debug("check the size of the payload, max size: #{@max_payload_size}")
-
     if byte_size(message.payload) > @max_payload_size do
       Logger.debug("message size #{byte_size(message.payload)}, max size: #{@max_payload_size}")
       payload_parts = Bits.chunks(message.payload, @max_payload_size)
@@ -827,7 +814,7 @@ defmodule Ockam.SecureChannel.Channel do
     end
   end
 
-  # Remove received payload parts when they are too old
+  # Remove the received payload parts that are too old
   defp remove_old_parts(parts, now, max_payload_part_update) do
     uuids_before = Map.keys(parts)
 
@@ -854,7 +841,7 @@ end
 defmodule Bits do
   @moduledoc """
   This is a utility module to split a large binary into an enumerable of binaries
-  of a given size. The last element might have a size that is small than the requested size
+  of a given size. The last element might have a size that is smaller than the requested size
   """
 
   # Chunk the binary into parts of n _bytes_

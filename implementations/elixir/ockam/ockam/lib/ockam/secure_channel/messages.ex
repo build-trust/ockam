@@ -45,7 +45,7 @@ defmodule Ockam.SecureChannel.Messages do
 
   defmodule PayloadPart do
     @moduledoc """
-    Part of a secure channel message carrying user data
+    Part of a secure channel message payload
     """
     use TypedStruct
 

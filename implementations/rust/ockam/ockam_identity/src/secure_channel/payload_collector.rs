@@ -13,8 +13,8 @@ use ockam_core::Error;
 use ockam_core::{Result, Route};
 use ockam_node::compat::asynchronous::RwLock;
 
-/// If more that MAX_PAYLOAD_PART_UPDATE has elapsed between an update and the one before
-/// We consider that the message will never be completed and we drop all the parts
+/// If more that MAX_PAYLOAD_PART_UPDATE has elapsed between an update and the next one
+/// We consider that the message will never be completed and we drop all the parts.
 const MAX_PAYLOAD_PART_UPDATE: DurationInSeconds = DurationInSeconds(60);
 
 /// The PayloadCollector stores payload parts that can be possibly received out of order.
@@ -28,15 +28,14 @@ const MAX_PAYLOAD_PART_UPDATE: DurationInSeconds = DurationInSeconds(60);
 ///   - The number of the current part
 ///   - The total number of parts
 ///
-/// When a part is received:
+/// When a part is received, the PayloadCollector:
 ///
-///  - It is checks for consistency with other parts of the same message (same onward_route, same return_route, same total number of parts)
-///  - If the part has already been received, a warning is emitted but no error is raised
-///  - If that part is the last one that was expected for this message, the full payload is reconstituted
+///  - Checks for consistency with other parts of the same message (same onward_route, same return_route, same total number of parts)
+///  - If the part has already been received, it emits a warning but no error is raised
+///  - If that part is the last one that was expected for this message, it returns the full payload, reconstituted from all the parts
 ///
 /// `max_payload_part_update` is used to decide when messages that are still incomplete should
-/// stopped being tracked. The clean up is only performed when a new update happens if
-/// we received a part for another message.
+/// stopped being tracked. The clean up is only performed when we receive a part for another message.
 ///
 pub struct PayloadCollector {
     parts: Arc<RwLock<HashMap<Uuid, PayloadParts>>>,
@@ -59,7 +58,8 @@ impl PayloadCollector {
         }
     }
 
-    /// Update the tracked payloads with a new payload part
+    /// Update the tracked payloads with a new payload part:
+    ///
     ///  - If the new part completes the full payload then the payload is assembled and returned
     ///  - If the part is the first one for a given payload UUID (and there are more expected parts)
     ///    then a new PayloadParts struct is created to track all the parts for that message payload

@@ -189,6 +189,9 @@ impl EncryptorWorker {
         let _ = onward_route.step();
 
         let payload = msg.into_payload();
+
+        // If the current payload is too large, split it
+        // into several parts and send them independently.
         if payload.len() > MAX_SECURE_CHANNEL_PAYLOAD_SIZE {
             let uuid = Uuid::new_v4();
             let parts = payload.chunks(MAX_SECURE_CHANNEL_PAYLOAD_SIZE);
