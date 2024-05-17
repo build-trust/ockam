@@ -135,10 +135,9 @@ defmodule Ockam.SecureChannel.Messages do
         }) do
       if Kernel.map_size(parts) == expected_total_number_of_parts do
         # get all the parts, sorted by key
-        keys = Map.keys(parts)
-        sorted_keys = Enum.sort(keys)
-        values = Enum.map(sorted_keys, &Map.get(parts, &1))
-        payload = Enum.reduce(values, <<>>, fn binary, acc -> <<acc::binary, binary::binary>> end)
+        sorted_keys = parts |> Map.keys() |> Enum.sort()
+        iodata = for key <- sorted_keys, do: Map.get(parts, key)
+        payload = IO.iodata_to_binary(iodata)
 
         result = %Payload{
           onward_route: onward_route,
