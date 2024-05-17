@@ -76,6 +76,10 @@ defmodule Ockam.SecureChannel.Messages do
       field(:last_update, DateTime.t())
     end
 
+    # We only 2000 parts for a given multi-part message
+    # Given the SecureChannel.@max_payload_part_size, this means that a message can have a size around 100Mb maximum
+    @max_number_of_parts 2000
+
     # Start a new list of payload parts from the first received part
     def initialize(
           %PayloadPart{
@@ -88,14 +92,26 @@ defmodule Ockam.SecureChannel.Messages do
           },
           now
         ) do
-      %PayloadParts{
+      parts = %PayloadParts{
         uuid: payload_uuid,
-        parts: %{current_part_number => payload},
+        parts: %{},
         onward_route: onward_route,
         return_route: return_route,
         expected_total_number_of_parts: total_number_of_parts,
         last_update: now
       }
+
+      if is_valid_part(
+           parts,
+           current_part_number,
+           total_number_of_parts,
+           onward_route,
+           return_route
+         ) do
+        {:ok, %{parts | parts: %{current_part_number => payload}}}
+      else
+        {:error}
+      end
     end
 
     # Check if the current part can be added to the other parts and return the updated PayloadParts
@@ -190,10 +206,17 @@ defmodule Ockam.SecureChannel.Messages do
 
         Map.has_key?(self.parts, current_part_number) ->
           Logger.warn(
-            "The part #{current_part_number} has already been received for message #{self.uuid}"
+            "The part #{current_part_number}/#{total_number_of_parts} has already been received for message #{self.uuid}}"
           )
 
           true
+
+        total_number_of_parts > @max_number_of_parts ->
+          Logger.error(
+            "Received the part #{current_part_number}/#{total_number_of_parts} of message #{self.uuid}. The total number of parts should be less or equal to #{@max_number_of_parts}"
+          )
+
+          false
 
         true ->
           true

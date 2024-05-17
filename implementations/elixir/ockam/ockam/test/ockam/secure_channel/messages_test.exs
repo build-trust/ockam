@@ -168,7 +168,7 @@ defmodule Ockam.SecureChannel.Messages.Tests do
         payload_uuid: uuid
       }
 
-      parts = PayloadParts.initialize(part_2, DateTime.utc_now())
+      {:ok, parts} = PayloadParts.initialize(part_2, DateTime.utc_now())
 
       # add part 3
       part_3 = %PayloadPart{
@@ -201,6 +201,23 @@ defmodule Ockam.SecureChannel.Messages.Tests do
       # even if the parts have been received in a different order
       assert {:ok, %Payload{payload: payload}} = PayloadParts.complete(parts)
       assert <<1, 2, 3, 4, 5, 6, 7, 8, 9>> = payload
+    end
+
+    test "The size of a multipart messages is limited" do
+      uuid = UUID.uuid4()
+
+      # first part of a message with 2001 parts
+      part = %PayloadPart{
+        onward_route: Address.parse_route!("1#onward_route"),
+        return_route: Address.parse_route!("1#return_route"),
+        payload: <<4, 5, 6>>,
+        current_part_number: 1,
+        total_number_of_parts: 2001,
+        payload_uuid: uuid
+      }
+
+      result = PayloadParts.initialize(part, DateTime.utc_now())
+      assert result = :error
     end
   end
 end

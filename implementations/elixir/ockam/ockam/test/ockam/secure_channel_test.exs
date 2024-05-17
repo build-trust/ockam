@@ -660,7 +660,7 @@ defmodule Ockam.SecureChannel.Tests do
       payload_uuid: uuid1
     }
 
-    message1_parts = PayloadParts.initialize(part_1_1, time_1)
+    {:ok, message1_parts} = PayloadParts.initialize(part_1_1, time_1)
 
     # The second part for the first message is received at time = 5
     part_1_2 = %PayloadPart{
@@ -698,7 +698,7 @@ defmodule Ockam.SecureChannel.Tests do
       payload_uuid: uuid2
     }
 
-    message2_parts = PayloadParts.initialize(part_2_2, time_20)
+    {:ok, message2_parts} = PayloadParts.initialize(part_2_2, time_20)
     state_payload_parts2 = %{uuid1 => message1_parts, uuid2 => message2_parts}
 
     {:ok, state_payload_parts3} =
@@ -734,6 +734,39 @@ defmodule Ockam.SecureChannel.Tests do
       )
 
     assert ^state_payload_parts4 = %{}
+  end
+
+  test "The number of tracked multipart messages is limited" do
+    # start tracking 10 messages
+    state =
+      Enum.reduce(1..10, %Channel{payload_parts: %{}}, fn _i, state ->
+        part = %PayloadPart{
+          onward_route: Address.parse_route!("1#onward_route"),
+          return_route: Address.parse_route!("1#return_route"),
+          payload: <<1, 2, 3>>,
+          current_part_number: 1,
+          total_number_of_parts: 2,
+          payload_uuid: UUID.uuid4()
+        }
+
+        {:ok, state} = Channel.handle_inner_message_part(part, state, DateTime.utc_now())
+        state
+      end)
+
+    assert map_size(state.payload_parts) == 10
+
+    # the part 11th message is not accepted
+    part = %PayloadPart{
+      onward_route: Address.parse_route!("1#onward_route"),
+      return_route: Address.parse_route!("1#return_route"),
+      payload: <<1, 2, 3>>,
+      current_part_number: 1,
+      total_number_of_parts: 2,
+      payload_uuid: UUID.uuid4()
+    }
+
+    {:ok, state} = Channel.handle_inner_message_part(part, state, DateTime.utc_now())
+    assert map_size(state.payload_parts) == 10
   end
 
   defp create_secure_channel_listener() do

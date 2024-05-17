@@ -97,10 +97,13 @@ defmodule Ockam.SecureChannel.Channel do
   @handshake_timeout 30_000
 
   # 48 * 1024
-  @max_payload_size 49_152
+  @max_payload_part_size 49_152
 
   # 60 seconds
   @max_payload_part_update 60
+
+  # We only allow 10 multi-part messages to be tracked a a given time
+  @max_number_of_tracked_payloads 10
 
   @type listener_opt ::
           {:responder_authorization, authorization()}
@@ -601,15 +604,15 @@ defmodule Ockam.SecureChannel.Channel do
 
   # This method processes a payload part, when the original payload
   # was to large to be sent in one piece
-  defp handle_inner_message_part(
-         %Messages.PayloadPart{
-           current_part_number: current_part_number,
-           total_number_of_parts: total_number_of_parts,
-           payload_uuid: payload_uuid
-         } = payload_part,
-         %Channel{} = state,
-         now
-       ) do
+  def handle_inner_message_part(
+        %Messages.PayloadPart{
+          current_part_number: current_part_number,
+          total_number_of_parts: total_number_of_parts,
+          payload_uuid: payload_uuid
+        } = payload_part,
+        %Channel{} = state,
+        now
+      ) do
     # Get the parts already received for the current payload UUID
     Logger.debug(
       "Received part #{current_part_number}/#{total_number_of_parts} for message #{payload_uuid}"
@@ -618,7 +621,7 @@ defmodule Ockam.SecureChannel.Channel do
     # Update the tracked parts
     case update_parts(payload_part, state, now) do
       {:error} ->
-        state
+        {:ok, state}
 
       {:ok, parts} ->
         case get_complete_payload(parts, state.payload_parts, now, @max_payload_part_update) do
@@ -641,40 +644,48 @@ defmodule Ockam.SecureChannel.Channel do
 
   # Update the list of received parts with the current part
   # and return the list of updated parts for the current payload UUID
-  defp update_parts(
-         %Messages.PayloadPart{
-           payload_uuid: payload_uuid,
-           current_part_number: current_part_number,
-           total_number_of_parts: total_number_of_parts
-         } = part,
-         %Channel{} = state,
-         now
-       ) do
-    case Map.fetch(state.payload_parts, payload_uuid) do
-      {:ok, parts} ->
-        Logger.debug(
-          "Store received part #{current_part_number}/#{total_number_of_parts} for message #{payload_uuid} until all parts have been received"
-        )
+  def update_parts(
+        %Messages.PayloadPart{
+          payload_uuid: payload_uuid,
+          current_part_number: current_part_number,
+          total_number_of_parts: total_number_of_parts
+        } = part,
+        %Channel{} = state,
+        now
+      ) do
+    if map_size(state.payload_parts) >= @max_number_of_tracked_payloads do
+      message =
+        "Reached the maximum number of incomplete payloads being tracked: #{@max_number_of_tracked_payloads}"
 
-        case PayloadParts.update(parts, part, now) do
-          {:ok, parts} ->
-            {:ok, parts}
-
-          {:error, message} ->
-            Logger.error(message)
-            {:ok, parts}
-        end
-
-      :error ->
-        if current_part_number > total_number_of_parts do
-          Logger.error(
-            "The part #{current_part_number}/#{total_number_of_parts} is incorrect: the current_part_number is greater than the total number of parts"
+      Logger.warn(message)
+      {:error}
+    else
+      case Map.fetch(state.payload_parts, payload_uuid) do
+        {:ok, parts} ->
+          Logger.debug(
+            "Store received part #{current_part_number}/#{total_number_of_parts} for message #{payload_uuid} until all parts have been received"
           )
 
-          {:error}
-        else
-          {:ok, PayloadParts.initialize(part, now)}
-        end
+          case PayloadParts.update(parts, part, now) do
+            {:ok, parts} ->
+              {:ok, parts}
+
+            {:error, message} ->
+              Logger.error(message)
+              {:ok, parts}
+          end
+
+        :error ->
+          if current_part_number > total_number_of_parts do
+            Logger.error(
+              "The part #{current_part_number}/#{total_number_of_parts} is incorrect: the current_part_number is greater than the total number of parts"
+            )
+
+            {:error}
+          else
+            PayloadParts.initialize(part, now)
+          end
+      end
     end
   end
 
@@ -734,9 +745,11 @@ defmodule Ockam.SecureChannel.Channel do
   end
 
   defp send_over_encrypted_channel(message, encrypt_st, peer_route) do
-    if byte_size(message.payload) > @max_payload_size do
-      Logger.debug("message size #{byte_size(message.payload)}, max size: #{@max_payload_size}")
-      payload_parts = Bits.chunks(message.payload, @max_payload_size)
+    message_size = byte_size(message.payload)
+
+    if message_size > @max_payload_part_size do
+      Logger.debug("message size #{message_size}, maximum part size: #{@max_payload_part_size}")
+      payload_parts = Bits.chunks(message.payload, @max_payload_part_size)
       payload_uuid = UUID.uuid4()
       total_number_of_parts = length(payload_parts)
       with_index = Enum.with_index(payload_parts)
@@ -820,7 +833,8 @@ defmodule Ockam.SecureChannel.Channel do
 
     result =
       Map.filter(parts, fn {_uuid, ps} ->
-        DateTime.add(ps.last_update, max_payload_part_update, :second) >= now
+        max_allowed_time = DateTime.add(ps.last_update, max_payload_part_update, :second)
+        DateTime.to_unix(max_allowed_time, :second) >= DateTime.to_unix(now, :second)
       end)
 
     uuids_after = Map.keys(parts)
