@@ -49,14 +49,12 @@ impl<T: TerminalWriter + Debug, W> Terminal<T, W> {
         if !self.logging_enabled {
             return;
         }
-        let msg = strip_ansi_escapes::strip_str(msg.as_ref());
-        let msg = msg
-            .trim()
-            .trim_start_matches(['✔', '✗', '>', '!'])
-            .trim_end_matches(['\n', '\r'])
-            .trim();
-        if !msg.is_empty() {
-            info!("{msg}");
+        for line in msg.as_ref().lines() {
+            let msg = strip_ansi_escapes::strip_str(line);
+            let msg = msg.trim().trim_start_matches(['✔', '✗', '>', '!']).trim();
+            if !msg.is_empty() {
+                info!("{msg}");
+            }
         }
     }
 }
