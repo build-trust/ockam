@@ -156,8 +156,8 @@ impl DecryptorHandler {
         encrypted_msg_return_route: Route,
         part: PlaintextPayloadMessage<'a>,
         payload_uuid: Uuid,
-        current_part_number: u32,
-        total_number_of_parts: u32,
+        current_part_number: u16,
+        total_number_of_parts: u16,
     ) -> Result<()> {
         if let Some(payload) = self
             .payload_collector

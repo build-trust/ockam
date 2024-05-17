@@ -205,8 +205,8 @@ impl EncryptorWorker {
                     return_route: return_route.clone(),
                     payload: part,
                     payload_uuid: UuidCbor::new(uuid),
-                    current_part_number: part_number as u32,
-                    total_number_of_parts: total_number_of_parts as u32,
+                    current_part_number: part_number as u16,
+                    total_number_of_parts: total_number_of_parts as u16,
                 });
                 let encoded_payload = minicbor::to_vec(&msg)?;
                 self.handle_encrypt_message(ctx, encoded_payload).await?;

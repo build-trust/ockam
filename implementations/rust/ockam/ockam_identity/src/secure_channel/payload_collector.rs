@@ -17,6 +17,13 @@ use ockam_node::compat::asynchronous::RwLock;
 /// We consider that the message will never be completed and we drop all the parts.
 const MAX_PAYLOAD_PART_UPDATE: DurationInSeconds = DurationInSeconds(60);
 
+/// Maximum number of parts which can be received, given the current MAX_SECURE_CHANNEL_PAYLOAD_SIZE
+/// This makes the maximum size of a message around 100Mb
+const MAX_NUMBER_OF_PARTS: u16 = 2000;
+
+/// Maximum number of independent messages that are tracked at a given time
+const MAX_NUMBER_OF_TRACKED_PAYLOADS: u8 = 10;
+
 /// The PayloadCollector stores payload parts that can be possibly received out of order.
 ///
 /// A secure channel message payload can indeed be divided in several parts when it is too large.
@@ -71,12 +78,19 @@ impl PayloadCollector {
         return_route: &Route,
         payload: Vec<u8>,
         now: TimestampInSeconds,
-        current_part_number: u32,
-        total_number_of_parts: u32,
+        current_part_number: u16,
+        total_number_of_parts: u16,
     ) -> Result<Option<Vec<u8>>> {
         debug!(onward_route = %onward_route, return_route = %return_route, "receiving a new payload part for message {payload_uuid}: {current_part_number}/{total_number_of_parts}");
 
         let mut all_parts = self.parts.write().await;
+
+        if all_parts.len() >= MAX_NUMBER_OF_TRACKED_PAYLOADS.into() {
+            let message = format!("Reached the maximum number of incomplete payloads being tracked: {MAX_NUMBER_OF_TRACKED_PAYLOADS}");
+            warn!(message);
+            return Err(Error::new(Origin::Channel, Kind::Invalid, message));
+        }
+
         // We temporarily remove the list of tracked parts for the UUID.
         // We add it back later if the list is still incomplete.
         // There might be a better way where all the updates are done in place.
@@ -109,14 +123,20 @@ impl PayloadCollector {
                     warn!("One message has been received and the payload is complete. However a multipart payload should have at least 2 parts");
                     Ok(Some(payload))
                 } else {
-                    let mut payloads_parts = PayloadParts::new(
+                    let mut payload_parts = PayloadParts::new(
                         &payload_uuid,
                         onward_route,
                         return_route,
                         total_number_of_parts,
                     )?;
-                    payloads_parts.update(now, current_part_number, payload)?;
-                    all_parts.insert(payload_uuid, payloads_parts);
+                    payload_parts.validate(
+                        onward_route,
+                        return_route,
+                        current_part_number,
+                        total_number_of_parts,
+                    )?;
+                    payload_parts.update(now, current_part_number, payload)?;
+                    all_parts.insert(payload_uuid, payload_parts);
                     debug!("Storing the first part of the payload for message {payload_uuid}: {current_part_number}/{total_number_of_parts}");
                     Ok(None)
                 }
@@ -157,10 +177,10 @@ impl PayloadCollector {
 /// List of received payload parts for a given message payload
 struct PayloadParts {
     uuid: Uuid,
-    parts: HashMap<u32, Vec<u8>>,
+    parts: HashMap<u16, Vec<u8>>,
     onward_route: Route,
     return_route: Route,
-    expected_total_number_of_parts: u32,
+    expected_total_number_of_parts: u16,
     last_update: TimestampInSeconds,
 }
 
@@ -170,7 +190,7 @@ impl PayloadParts {
         uuid: &Uuid,
         onward_route: &Route,
         return_route: &Route,
-        expected_total_number: u32,
+        expected_total_number: u16,
     ) -> Result<PayloadParts> {
         Ok(PayloadParts {
             uuid: *uuid,
@@ -188,8 +208,8 @@ impl PayloadParts {
         &self,
         onward_route: &Route,
         return_route: &Route,
-        current_part_number: u32,
-        total_number_of_parts: u32,
+        current_part_number: u16,
+        total_number_of_parts: u16,
     ) -> Result<()> {
         // check that the part routes and the other parts routes are the same
         if &self.onward_route != onward_route {
@@ -203,6 +223,9 @@ impl PayloadParts {
         };
         if self.expected_total_number_of_parts < current_part_number {
             return Err(Error::new(Origin::Channel, Kind::Conflict, format!("Incorrect part number for part {current_part_number} of message {}. It should less or equal than {total_number_of_parts}", &self.uuid)));
+        };
+        if total_number_of_parts > MAX_NUMBER_OF_PARTS {
+            return Err(Error::new(Origin::Channel, Kind::Conflict, format!("Received the part {current_part_number}/{total_number_of_parts} of message {}. The total number of parts should be less or equal to {}", &self.uuid, MAX_NUMBER_OF_PARTS)));
         };
         if self.parts.contains_key(&current_part_number) {
             warn!(
@@ -219,7 +242,7 @@ impl PayloadParts {
     fn update(
         &mut self,
         now: TimestampInSeconds,
-        current_payload_number: u32,
+        current_payload_number: u16,
         payload: Vec<u8>,
     ) -> Result<usize> {
         self.parts.insert(current_payload_number, payload);
@@ -228,15 +251,15 @@ impl PayloadParts {
     }
 
     /// Check the current payload part would make the full payload complete
-    fn is_complete_with(&self, current_payload_number: u32) -> bool {
+    fn is_complete_with(&self, current_payload_number: u16) -> bool {
         !self.parts.contains_key(&current_payload_number)
-            && self.parts.len() as u32 == self.expected_total_number_of_parts - 1
+            && self.parts.len() as u16 == self.expected_total_number_of_parts - 1
     }
 
     /// Use the current payload part and all the previously received ones to reconstitute the whole
     /// payload
-    fn complete(self, current_payload_number: u32, payload: Vec<u8>) -> Result<Vec<u8>> {
-        let mut values: Vec<(u32, Vec<u8>)> = self.parts.into_iter().collect();
+    fn complete(self, current_payload_number: u16, payload: Vec<u8>) -> Result<Vec<u8>> {
+        let mut values: Vec<(u16, Vec<u8>)> = self.parts.into_iter().collect();
         values.push((current_payload_number, payload));
         values.sort_by_key(|kv| kv.0);
         let mut result: Vec<u8> = vec![];
@@ -534,6 +557,62 @@ mod tests {
         );
         assert_eq!(collector.payloads_number().await?, 0);
 
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_collector_limits() -> Result<()> {
+        // A message that is too large cannot be collected
+        let collector = PayloadCollector::new();
+
+        let uuid1 = uuid!("02f09a3f-1624-3b1d-8409-44eff7708201");
+        let result = collector
+            .update(
+                uuid1,
+                &route!["onward1"],
+                &route!["return1"],
+                "1/100000,".as_bytes().to_vec(),
+                now()?,
+                1,
+                // only 2000 parts can be accepted for a given message
+                2001,
+            )
+            .await;
+        assert!(result.is_err(), "{result:?}");
+        assert_eq!(collector.payloads_number().await?, 0);
+
+        // If too many messages are currently being tracked, we can not accept a new one
+
+        // Collect 10 messages
+        for uuid in (0..10).map(|_| Uuid::new_v4()) {
+            collector
+                .update(
+                    uuid,
+                    &route!["onward1"],
+                    &route!["return1"],
+                    "x".as_bytes().to_vec(),
+                    now()?,
+                    1,
+                    2,
+                )
+                .await?;
+        }
+        assert_eq!(collector.payloads_number().await?, 10);
+
+        // try to add another one
+        let result = collector
+            .update(
+                Uuid::new_v4(),
+                &route!["onward1"],
+                &route!["return1"],
+                "x".as_bytes().to_vec(),
+                now()?,
+                1,
+                2,
+            )
+            .await;
+        assert!(result.is_err(), "{result:?}");
+        assert_eq!(collector.payloads_number().await?, 10);
         Ok(())
     }
 }

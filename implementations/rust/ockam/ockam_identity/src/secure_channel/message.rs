@@ -57,9 +57,9 @@ pub struct PlaintextPayloadPartMessage<'a> {
     #[cbor(with = "minicbor::bytes")]
     #[b(2)] pub payload: &'a [u8],
     /// Number for this part
-    #[n(3)] pub current_part_number: u32,
+    #[n(3)] pub current_part_number: u16,
     /// Total number of expected parts
-    #[n(4)] pub total_number_of_parts: u32,
+    #[n(4)] pub total_number_of_parts: u16,
     /// Message UUID, used to identify which parts belong to which message
     #[n(5)] pub payload_uuid: UuidCbor,
 }
