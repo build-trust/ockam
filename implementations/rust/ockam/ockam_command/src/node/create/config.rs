@@ -200,7 +200,7 @@ impl NodeConfig {
         sections: Vec<ParsedCommands>,
     ) -> miette::Result<()> {
         for cmds in sections {
-            let retry_strategy = FixedInterval::from_millis(500).take(25);
+            let retry_strategy = FixedInterval::from_millis(500).take(1200); // 10 minutes
             if let Err(e) =
                 Retry::spawn(retry_strategy, || async { cmds.run(&ctx, &opts).await }).await
             {
