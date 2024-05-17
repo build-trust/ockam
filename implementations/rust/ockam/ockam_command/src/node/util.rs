@@ -10,6 +10,7 @@ use ockam_core::env::get_env_with_default;
 use ockam_node::Context;
 
 use crate::node::CreateCommand;
+use crate::run::parser::resource::utils::subprocess_stdio;
 use crate::shared_args::TrustOpts;
 use crate::{Command as CommandTrait, CommandGlobalOpts};
 
@@ -169,22 +170,10 @@ pub async fn run_ockam(args: Vec<String>, quiet: bool) -> miette::Result<()> {
             .into()
     });
 
-    let stdio = || {
-        if quiet {
-            // If we're running in quiet mode, we don't need to propagate
-            // the stdout/stderr to the child process
-            Stdio::null()
-        } else {
-            // Otherwise, we need to inherit the stdout/stderr of the parent process
-            // to see the output written in the child process
-            Stdio::inherit()
-        }
-    };
-
     Command::new(ockam_exe)
         .args(args)
-        .stdout(stdio())
-        .stderr(stdio())
+        .stdout(subprocess_stdio(quiet))
+        .stderr(subprocess_stdio(quiet))
         .stdin(Stdio::null())
         .spawn()
         .into_diagnostic()
