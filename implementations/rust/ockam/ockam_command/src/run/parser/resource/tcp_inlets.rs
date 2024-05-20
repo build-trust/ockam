@@ -29,7 +29,7 @@ impl TcpInlets {
 
     pub fn into_parsed_commands(
         self,
-        default_node_name: &Option<String>,
+        default_node_name: Option<&String>,
     ) -> Result<Vec<CreateCommand>> {
         match self.tcp_inlets {
             Some(c) => {
@@ -38,7 +38,7 @@ impl TcpInlets {
                 if let Some(node_name) = default_node_name.as_ref() {
                     for cmd in cmds.iter_mut() {
                         if cmd.at.is_none() {
-                            cmd.at = Some(node_name.clone())
+                            cmd.at = Some(node_name.to_string())
                         }
                     }
                 }
@@ -70,7 +70,7 @@ mod tests {
         let parsed: TcpInlets = serde_yaml::from_str(named).unwrap();
         let default_node_name = "n1".to_string();
         let cmds = parsed
-            .into_parsed_commands(&Some(default_node_name.clone()))
+            .into_parsed_commands(Some(&default_node_name))
             .unwrap();
         assert_eq!(cmds.len(), 2);
         assert_eq!(cmds[0].alias, "ti1");
@@ -84,7 +84,7 @@ mod tests {
             cmds[1].from,
             SocketAddr::from_str("127.0.0.1:6061").unwrap()
         );
-        assert_eq!(cmds[1].at, Some(default_node_name.clone()));
+        assert_eq!(cmds[1].at.as_ref(), Some(&default_node_name));
 
         let unnamed = r#"
             tcp_inlets:
@@ -94,7 +94,7 @@ mod tests {
         "#;
         let parsed: TcpInlets = serde_yaml::from_str(unnamed).unwrap();
         let cmds = parsed
-            .into_parsed_commands(&Some(default_node_name.clone()))
+            .into_parsed_commands(Some(&default_node_name))
             .unwrap();
         assert_eq!(cmds.len(), 2);
         assert_eq!(
@@ -106,6 +106,6 @@ mod tests {
             cmds[1].from,
             SocketAddr::from_str("127.0.0.1:6061").unwrap()
         );
-        assert_eq!(cmds[1].at, Some(default_node_name));
+        assert_eq!(cmds[1].at.as_ref(), Some(&default_node_name));
     }
 }

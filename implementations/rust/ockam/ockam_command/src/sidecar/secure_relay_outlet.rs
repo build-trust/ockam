@@ -152,7 +152,7 @@ mod tests {
         let config = Config::parse(config_recipe.as_str()).unwrap();
         config.project_enroll.into_parsed_commands().unwrap();
         config.policies.into_parsed_commands().unwrap();
-        config.tcp_outlets.into_parsed_commands(&None).unwrap();
-        config.relays.into_parsed_commands(&None).unwrap();
+        config.tcp_outlets.into_parsed_commands(None).unwrap();
+        config.relays.into_parsed_commands(None).unwrap();
     }
 }
