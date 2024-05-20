@@ -67,12 +67,12 @@ impl Config {
             self.identities.into_parsed_commands()?.into(),
             self.project_enroll.into_parsed_commands()?.into(),
             self.nodes.into_parsed_commands()?.into(),
-            self.relays.into_parsed_commands(&None)?.into(),
+            self.relays.into_parsed_commands(None)?.into(),
             self.policies.into_parsed_commands()?.into(),
-            self.tcp_outlets.into_parsed_commands(&None)?.into(),
-            self.tcp_inlets.into_parsed_commands(&None)?.into(),
-            self.kafka_inlet.into_parsed_commands(&None)?.into(),
-            self.kafka_outlet.into_parsed_commands(&None)?.into(),
+            self.tcp_outlets.into_parsed_commands(None)?.into(),
+            self.tcp_inlets.into_parsed_commands(None)?.into(),
+            self.kafka_inlet.into_parsed_commands(None)?.into(),
+            self.kafka_outlet.into_parsed_commands(None)?.into(),
         ])
     }
 

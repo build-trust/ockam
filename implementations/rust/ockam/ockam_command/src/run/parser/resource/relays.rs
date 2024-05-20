@@ -29,7 +29,7 @@ impl Relays {
 
     pub fn into_parsed_commands(
         self,
-        default_node_name: &Option<String>,
+        default_node_name: Option<&String>,
     ) -> Result<Vec<CreateCommand>> {
         match self.relays {
             Some(c) => {
@@ -37,7 +37,7 @@ impl Relays {
                 if let Some(node_name) = default_node_name {
                     for cmd in cmds.iter_mut() {
                         if cmd.to.is_none() {
-                            cmd.to = Some(node_name.clone());
+                            cmd.to = Some(node_name.to_string());
                         }
                     }
                 };
@@ -60,7 +60,7 @@ mod tests {
             let parsed: Relays = serde_yaml::from_str(c).unwrap();
             let default_node_name = "n1".to_string();
             let cmds = parsed
-                .into_parsed_commands(&Some(default_node_name.clone()))
+                .into_parsed_commands(Some(&default_node_name))
                 .unwrap();
             assert_eq!(cmds.len(), 1);
             let cmd = cmds.into_iter().next().unwrap();
@@ -68,7 +68,7 @@ mod tests {
 
             // if the 'to' value has not been explicitly set, use the default node name
             if cmd.to != Some("outlet-node".to_string()) {
-                assert_eq!(cmd.to, Some(default_node_name));
+                assert_eq!(cmd.to, Some(default_node_name.to_string()));
             }
         };
 
@@ -100,14 +100,14 @@ mod tests {
             let parsed: Relays = serde_yaml::from_str(c).unwrap();
             let default_node_name = "n1".to_string();
             let cmds = parsed
-                .into_parsed_commands(&Some(default_node_name.clone()))
+                .into_parsed_commands(Some(&default_node_name))
                 .unwrap();
             assert_eq!(cmds.len(), 2);
             assert_eq!(cmds[0].relay_name, "r1");
-            assert_eq!(cmds[0].to, Some(default_node_name.clone()));
+            assert_eq!(cmds[0].to.as_ref(), Some(&default_node_name));
 
             assert_eq!(cmds[1].relay_name, "r2");
-            assert_eq!(cmds[1].to, Some(default_node_name));
+            assert_eq!(cmds[1].to.as_ref(), Some(&default_node_name));
         };
 
         // Name only

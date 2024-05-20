@@ -31,7 +31,7 @@ impl KafkaOutlet {
 
     pub fn into_parsed_commands(
         self,
-        default_node_name: &Option<String>,
+        default_node_name: Option<&String>,
     ) -> Result<Vec<CreateCommand>> {
         match self.kafka_outlet {
             Some(c) => {
@@ -39,7 +39,7 @@ impl KafkaOutlet {
                 if let Some(node_name) = default_node_name {
                     for cmd in cmds.iter_mut() {
                         if cmd.node_opts.at_node.is_none() {
-                            cmd.node_opts.at_node = Some(node_name.clone())
+                            cmd.node_opts.at_node = Some(node_name.to_string())
                         }
                     }
                 }
@@ -67,7 +67,7 @@ mod tests {
         let parsed: KafkaOutlet = serde_yaml::from_str(named).unwrap();
         let default_node_name = "n1".to_string();
         let cmds = parsed
-            .into_parsed_commands(&Some(default_node_name.clone()))
+            .into_parsed_commands(Some(&default_node_name))
             .unwrap();
         assert_eq!(cmds.len(), 1);
         assert_eq!(
@@ -84,8 +84,8 @@ mod tests {
         let parsed: KafkaOutlet = serde_yaml::from_str(named).unwrap();
         let default_node_name = "n1".to_string();
         let cmds = parsed
-            .into_parsed_commands(&Some(default_node_name.clone()))
+            .into_parsed_commands(Some(&default_node_name))
             .unwrap();
-        assert_eq!(cmds[0].node_opts.at_node, Some(default_node_name));
+        assert_eq!(cmds[0].node_opts.at_node.as_ref(), Some(&default_node_name));
     }
 }
