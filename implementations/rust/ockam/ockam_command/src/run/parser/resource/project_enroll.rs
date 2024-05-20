@@ -4,7 +4,6 @@ use ockam_api::colors::color_primary;
 use serde::{Deserialize, Serialize};
 
 use crate::project::EnrollCommand;
-
 use crate::run::parser::resource::utils::parse_cmd_from_args;
 use crate::run::parser::resource::Resource;
 use crate::{Command, OckamSubcommand};
@@ -18,8 +17,8 @@ impl Resource<EnrollCommand> for ProjectEnroll {
     const COMMAND_NAME: &'static str = EnrollCommand::NAME;
 
     fn args(self) -> Vec<String> {
-        if let Some(path_or_contents) = &self.ticket {
-            vec![path_or_contents.clone()]
+        if let Some(path_or_contents) = self.ticket {
+            vec![path_or_contents]
         } else {
             vec![]
         }

@@ -186,25 +186,20 @@ impl NodeConfig {
     ) -> miette::Result<()> {
         debug!("Running node config in foreground mode");
         // First, run the `project enroll` commands to prepare the identity and project data
-        if !self
-            .project_enroll
-            .run_in_subprocess(opts.global_args.quiet)?
-            .wait()
-            .await
-            .into_diagnostic()?
-            .success()
+        if self.project_enroll.ticket.is_some()
+            && !self
+                .project_enroll
+                .run_in_subprocess(opts.global_args.quiet)?
+                .wait()
+                .await
+                .into_diagnostic()?
+                .success()
         {
             return Err(miette!("Project enroll failed"));
         }
 
         // Next, run the 'node create' command
         let child = self.node.run_in_subprocess(opts.global_args.quiet)?;
-        ctrlc::set_handler(move || {
-            // Swallow ctrl+c signal, as it's handled by the child process.
-            // This prevents the current process from handling the signal and, for example,
-            // add a newline to the terminal before the child process has finished writing its output.
-        })
-        .expect("Error setting Ctrl+C handler");
 
         // Wait for the node to be up
         let is_up = {
@@ -216,6 +211,12 @@ impl NodeConfig {
         if !is_up {
             return Err(miette!("Node failed to start"));
         }
+        ctrlc::set_handler(move || {
+            // Swallow ctrl+c signal, as it's handled by the child process.
+            // This prevents the current process from handling the signal and, for example,
+            // add a newline to the terminal before the child process has finished writing its output.
+        })
+        .expect("Error setting Ctrl+C handler");
 
         // Run the other sections
         let node_name = Some(node_name);
