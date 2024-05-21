@@ -36,15 +36,15 @@ run() {
         -H 'Content-Type: application/json' \
         -d '{"virtual_cluster_name": "ockam_demo", "virtual_cluster_type": "serverless", "virtual_cluster_region": "us-east-1", "virtual_cluster_cloud_provider": "aws"}')
 
-    request_body=$(jq '. | {"credentials_name": "ockam_demo", "is_cluster_superuser":true, "agent_pool_id": .agent_pool_id, "virtual_cluster_id": .virtual_cluster_id}' <<< $cluster_detail)
+    request_body=$(docker run -i ghcr.io/jqlang/jq '. | {"credentials_name": "ockam_demo", "is_cluster_superuser":true, "agent_pool_id": .agent_pool_id, "virtual_cluster_id": .virtual_cluster_id}' <<< $cluster_detail)
 
     cluster_credential=$(curl --silent --show-error --fail https://api.prod.us-east-1.warpstream.com/api/v1/create_virtual_cluster_credentials \
         -H "warpstream-api-key: $WARPSTREAM_API_KEY" \
         -H 'Content-Type: application/json' \
         -d "$request_body")
 
-    bootstrap_username=$(jq -r '.username' <<< $cluster_credential)
-    bootstrap_password=$(jq -r '.password' <<< $cluster_credential)
+    bootstrap_username=$(docker run -i ghcr.io/jqlang/jq -r '.username' <<< $cluster_credential)
+    bootstrap_password=$(docker run -i ghcr.io/jqlang/jq -r '.password' <<< $cluster_credential)
 
     # Creates an End-to-End encrypted relay for our Wrapstream Kafka service.
     ockam project addon configure confluent --bootstrap-server serverless.warpstream.com:9092
@@ -76,17 +76,17 @@ cleanup() {
     clusters=$(curl --silent --show-error --fail https://api.prod.us-east-1.warpstream.com/api/v1/list_virtual_clusters \
         -H "warpstream-api-key: $WARPSTREAM_API_KEY" \
         -H 'Content-Type: application/json')
-    cluster_len=$(jq '.virtual_clusters|length' <<< $clusters)
+    cluster_len=$(docker run -i ghcr.io/jqlang/jq '.virtual_clusters|length' <<< $clusters)
     echo "$cluster_len"
 
     for ((c=0; c<$cluster_len; c++)); do
-        cluster_name=$(jq -r ".virtual_clusters.[${c}].name" <<< $clusters)
-        cluster_id=$(jq -r ".virtual_clusters.[${c}].id" <<< $clusters)
+        cluster_name=$(docker run -i ghcr.io/jqlang/jq -r ".virtual_clusters.[${c}].name" <<< $clusters)
+        cluster_id=$(docker run -i ghcr.io/jqlang/jq -r ".virtual_clusters.[${c}].id" <<< $clusters)
 
         if [[ "$cluster_name" == *"ockam_demo"* ]]; then
             echo "Deleting cluster wrapstream cluster $cluster_name"
 
-            request_body=$(jq "{\"virtual_cluster_id\": \"$cluster_id\", \"virtual_cluster_name\": \"$cluster_name\"}" <<< "{}")
+            request_body=$(docker run -i ghcr.io/jqlang/jq "{\"virtual_cluster_id\": \"$cluster_id\", \"virtual_cluster_name\": \"$cluster_name\"}" <<< "{}")
 
             curl --silent --show-error --fail https://api.prod.us-east-1.warpstream.com/api/v1/delete_virtual_cluster \
                 -H "warpstream-api-key: $WARPSTREAM_API_KEY" \
@@ -104,7 +104,7 @@ if ! type ockam &>/dev/null; then
 fi
 
 # Check that tools we we need installed.
-for c in docker curl jq; do
+for c in docker curl; do
     if ! type "$c" &>/dev/null; then echo "ERROR: Please install: $c" && exit 1; fi
 done
 
