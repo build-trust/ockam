@@ -721,7 +721,7 @@ pub(crate) async fn make_node_manager(
                 None,
                 true,
             ),
-            NodeManagerTransportOptions::new(listener.flow_control_id().clone(), tcp),
+            NodeManagerTransportOptions::new(listener.flow_control_id().clone(), tcp, None),
             trust_options,
         )
         .await

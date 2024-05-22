@@ -392,9 +392,19 @@ impl NodeManager {
 
         if secure_channel_type == SecureChannelType::KeyExchangeAndMessages {
             // TODO: Clean
-            // Add Echoer, Uppercase and Cred Exch as a consumer by default
+            // Add Echoer as a consumer by default
             ctx.flow_controls()
                 .add_consumer(DefaultAddress::ECHO_SERVICE, listener.flow_control_id());
+
+            // TODO: PUNCTURE Make optional?
+            ctx.flow_controls().add_consumer(
+                DefaultAddress::UDP_PUNCTURE_NEGOTIATION_LISTENER,
+                listener.flow_control_id(),
+            );
+
+            // Add ourselves to allow tunneling
+            ctx.flow_controls()
+                .add_consumer(address, listener.flow_control_id());
 
             ctx.flow_controls().add_consumer(
                 DefaultAddress::UPPERCASE_SERVICE,

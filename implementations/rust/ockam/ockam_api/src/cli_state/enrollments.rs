@@ -258,6 +258,3 @@ impl EnrollmentTicket {
         Ok(hex::encode(serialized))
     }
 }
-
-#[cfg(test)]
-mod tests {}

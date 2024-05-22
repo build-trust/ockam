@@ -78,6 +78,7 @@ pub async fn spawn_node(opts: &CommandGlobalOpts, cmd: CreateCommand) -> miette:
         tcp_listener_address: address,
         enable_http_server,
         http_server_port,
+        enable_udp,
         launch_config,
         trust_opts,
         opentelemetry_context,
@@ -153,6 +154,10 @@ pub async fn spawn_node(opts: &CommandGlobalOpts, cmd: CreateCommand) -> miette:
     if let Some(http_server_port) = http_server_port {
         args.push("--http-server-port".to_string());
         args.push(http_server_port.to_string());
+    }
+
+    if enable_udp {
+        args.push("--enable-udp".to_string());
     }
 
     args.push(name.to_owned());

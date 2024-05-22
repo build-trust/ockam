@@ -18,9 +18,13 @@ use crate::{ApiError, CliState, DefaultAddress};
 use miette::IntoDiagnostic;
 use ockam::identity::{
     CachedCredentialRetrieverCreator, CredentialRetrieverCreator, Identifier,
-    MemoryCredentialRetrieverCreator, RemoteCredentialRetrieverCreator, SecureChannels,
+    MemoryCredentialRetrieverCreator, RemoteCredentialRetrieverCreator, SecureChannelListener,
+    SecureChannels,
 };
 use ockam::tcp::TcpTransport;
+use ockam::udp::{
+    UdpPunctureNegotiationListener, UdpPunctureNegotiationListenerOptions, UdpTransport,
+};
 use ockam::{RelayService, RelayServiceOptions};
 use ockam_abac::expr::str;
 use ockam_abac::{
@@ -28,7 +32,7 @@ use ockam_abac::{
 };
 use ockam_core::flow_control::FlowControlId;
 use ockam_core::{
-    AllowAll, AsyncTryClone, CachedIncomingAccessControl, CachedOutgoingAccessControl,
+    route, AllowAll, AsyncTryClone, CachedIncomingAccessControl, CachedOutgoingAccessControl,
     IncomingAccessControl, OutgoingAccessControl,
 };
 use ockam_multiaddr::MultiAddr;
@@ -48,7 +52,9 @@ pub struct NodeManager {
     pub(super) node_identifier: Identifier,
     pub(super) api_transport_flow_control_id: FlowControlId,
     pub(crate) tcp_transport: TcpTransport,
+    pub(crate) udp_transport: Option<UdpTransport>,
     pub(crate) secure_channels: Arc<SecureChannels>,
+    pub(crate) api_sc_listener: Option<SecureChannelListener>,
     pub(crate) credential_retriever_creators: CredentialRetrieverCreators,
     pub(super) project_authority: Option<Identifier>,
     pub(crate) registry: Arc<Registry>,
@@ -145,7 +151,9 @@ impl NodeManager {
             node_identifier,
             api_transport_flow_control_id: transport_options.api_transport_flow_control_id,
             tcp_transport: transport_options.tcp_transport,
+            udp_transport: transport_options.udp_transport.clone(),
             secure_channels,
+            api_sc_listener: None,
             credential_retriever_creators,
             project_authority: trust_options.project_authority,
             registry,
@@ -165,6 +173,28 @@ impl NodeManager {
                 .map_err(|e| ApiError::core(e.to_string()))?;
         }
 
+        if let Some(udp_transport) = transport_options.udp_transport.as_ref() {
+            let rendezvous_route = route![
+                DefaultAddress::get_rendezvous_server_address(),
+                DefaultAddress::RENDEZVOUS_SERVICE
+            ];
+            UdpPunctureNegotiationListener::create(
+                ctx,
+                DefaultAddress::UDP_PUNCTURE_NEGOTIATION_LISTENER,
+                udp_transport,
+                rendezvous_route,
+                UdpPunctureNegotiationListenerOptions::new(), // FIXME
+            )
+            .await?;
+
+            if let Some(api_sc_listener) = &s.api_sc_listener {
+                ctx.flow_controls().add_consumer(
+                    DefaultAddress::RENDEZVOUS_SERVICE,
+                    api_sc_listener.flow_control_id(),
+                );
+            }
+        }
+
         info!("created a node manager for the node: {}", s.node_name);
 
         Ok(s)
@@ -174,7 +204,7 @@ impl NodeManager {
         &self,
         ctx: &Context,
         api_flow_control_id: &FlowControlId,
-    ) -> ockam_core::Result<()> {
+    ) -> ockam_core::Result<SecureChannelListener> {
         // Start services
         ctx.flow_controls()
             .add_consumer(DefaultAddress::UPPERCASE_SERVICE, api_flow_control_id);
@@ -224,7 +254,7 @@ impl NodeManager {
 
         RelayService::create(ctx, DefaultAddress::RELAY_SERVICE, options).await?;
 
-        Ok(())
+        Ok(secure_channel_listener)
     }
 
     async fn initialize_services(
@@ -235,8 +265,10 @@ impl NodeManager {
         let api_flow_control_id = self.api_transport_flow_control_id.clone();
 
         if start_default_services {
-            self.initialize_default_services(ctx, &api_flow_control_id)
-                .await?;
+            self.api_sc_listener = Some(
+                self.initialize_default_services(ctx, &api_flow_control_id)
+                    .await?,
+            );
         }
 
         // Always start the echoer service as ockam_api::Medic assumes it will be
@@ -547,13 +579,19 @@ pub struct ApiTransport {
 pub struct NodeManagerTransportOptions {
     api_transport_flow_control_id: FlowControlId,
     tcp_transport: TcpTransport,
+    udp_transport: Option<UdpTransport>,
 }
 
 impl NodeManagerTransportOptions {
-    pub fn new(api_transport_flow_control_id: FlowControlId, tcp_transport: TcpTransport) -> Self {
+    pub fn new(
+        api_transport_flow_control_id: FlowControlId,
+        tcp_transport: TcpTransport,
+        udp_transport: Option<UdpTransport>,
+    ) -> Self {
         Self {
             api_transport_flow_control_id,
             tcp_transport,
+            udp_transport,
         }
     }
 }

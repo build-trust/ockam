@@ -190,7 +190,7 @@ impl State {
                     None,
                     false,
                 ),
-                NodeManagerTransportOptions::new(listener.flow_control_id().clone(), tcp),
+                NodeManagerTransportOptions::new(listener.flow_control_id().clone(), tcp, None),
                 trust_options,
             )
             .await?,

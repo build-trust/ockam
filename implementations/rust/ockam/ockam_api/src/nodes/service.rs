@@ -13,12 +13,12 @@ pub mod kafka_services;
 pub mod messages;
 mod node_services;
 pub(crate) mod policy;
-pub mod portals;
 mod projects;
 pub mod relay;
 mod secure_channel;
+pub mod tcp_inlets;
+pub mod tcp_outlets;
 mod transport;
-mod udp_puncture;
 pub mod workers;
 
 mod http;

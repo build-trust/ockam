@@ -18,7 +18,7 @@ use ockam_api::cli_state::journeys::{
 };
 use ockam_api::colors::color_primary;
 use ockam_api::nodes::models::portal::OutletStatus;
-use ockam_api::nodes::service::portals::Outlets;
+use ockam_api::nodes::service::tcp_outlets::Outlets;
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_api::{fmt_log, fmt_ok};
 
