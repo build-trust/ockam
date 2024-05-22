@@ -1,3 +1,6 @@
+use ockam::udp::UDP;
+use ockam_core::Address;
+
 pub struct DefaultAddress;
 
 impl DefaultAddress {
@@ -9,6 +12,8 @@ impl DefaultAddress {
     pub const HOP_SERVICE: &'static str = "hop";
     pub const SECURE_CHANNEL_LISTENER: &'static str = "api";
     pub const KEY_EXCHANGER_LISTENER: &'static str = "key_exchanger";
+    pub const UDP_PUNCTURE_NEGOTIATION_LISTENER: &'static str = "udp";
+    pub const RENDEZVOUS_SERVICE: &'static str = "rendezvous";
     pub const DIRECT_AUTHENTICATOR: &'static str = "direct_authenticator";
     pub const CREDENTIAL_ISSUER: &'static str = "credential_issuer";
     pub const ENROLLMENT_TOKEN_ISSUER: &'static str = "enrollment_token_issuer";
@@ -16,6 +21,12 @@ impl DefaultAddress {
     pub const OKTA_IDENTITY_PROVIDER: &'static str = "okta";
     pub const KAFKA_OUTLET: &'static str = "kafka_outlet";
     pub const KAFKA_INLET: &'static str = "kafka_inlet";
+
+    pub fn get_rendezvous_server_address() -> Address {
+        let server_address =
+            std::env::var("OCKAM_RENDEZVOUS_SERVER").unwrap_or("127.0.0.1:4000".to_string());
+        (UDP, server_address).into()
+    }
 
     pub fn is_valid(name: &str) -> bool {
         matches!(name, |Self::OUTLET_SERVICE| Self::RELAY_SERVICE

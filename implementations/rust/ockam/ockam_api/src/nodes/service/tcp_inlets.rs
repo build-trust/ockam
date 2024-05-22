@@ -2,29 +2,31 @@ use std::net::SocketAddr;
 use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
+use tokio::task::JoinHandle;
 
 use tokio::time::timeout;
 
 use crate::address::get_free_address_for;
+use crate::DefaultAddress;
 use ockam::identity::Identifier;
-use ockam::tcp::{TcpInletOptions, TcpOutletOptions};
-use ockam::transport::HostnamePort;
-use ockam::{Address, Result};
+use ockam::tcp::TcpInletOptions;
+use ockam::udp::{UdpPunctureNegotiation, UdpTransport};
+use ockam::Result;
 use ockam_abac::{Action, PolicyExpression, Resource, ResourceType};
-use ockam_core::api::{Error, Reply, Request, RequestHeader, Response};
+use ockam_core::api::{Error, Reply, Request, Response};
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::{async_trait, route, AsyncTryClone, Route};
+use ockam_core::{
+    async_trait, route, AsyncTryClone, IncomingAccessControl, OutgoingAccessControl, Route,
+};
 use ockam_multiaddr::proto::Project as ProjectProto;
 use ockam_multiaddr::{MultiAddr, Protocol};
 use ockam_node::Context;
+use ockam_transport_tcp::TcpInlet;
 
 use crate::error::ApiError;
 use crate::nodes::connection::Connection;
-use crate::nodes::models::portal::{
-    CreateInlet, CreateOutlet, InletStatus, OutletAccessControl, OutletStatus,
-};
-use crate::nodes::registry::{InletInfo, OutletInfo};
-use crate::nodes::service::default_address::DefaultAddress;
+use crate::nodes::models::portal::{CreateInlet, InletStatus};
+use crate::nodes::registry::InletInfo;
 use crate::nodes::{BackgroundNodeClient, InMemoryNode};
 use crate::session::sessions::{
     ConnectionStatus, CurrentInletStatus, ReplacerOutcome, ReplacerOutputKind, Session,
@@ -32,9 +34,8 @@ use crate::session::sessions::{
 };
 use crate::session::MedicHandle;
 
-use super::{NodeManager, NodeManagerWorker};
+use super::{NodeManager, NodeManagerWorker, SecureChannelType};
 
-/// INLETS
 impl NodeManagerWorker {
     pub(super) async fn get_inlets(&self) -> Result<Response<Vec<InletStatus>>, Response<Error>> {
         let inlets = self.node_manager.list_inlets().await;
@@ -58,6 +59,8 @@ impl NodeManagerWorker {
             policy_expression,
             wait_connection,
             secure_channel_identifier,
+            enable_udp_puncture,
+            disable_tcp_fallback,
         } = create_inlet;
         match self
             .node_manager
@@ -73,6 +76,8 @@ impl NodeManagerWorker {
                 authorized,
                 wait_connection,
                 secure_channel_identifier,
+                enable_udp_puncture,
+                disable_tcp_fallback,
             )
             .await
         {
@@ -104,232 +109,6 @@ impl NodeManagerWorker {
     }
 }
 
-/// OUTLETS
-impl NodeManagerWorker {
-    #[instrument(skip_all)]
-    pub(super) async fn create_outlet(
-        &self,
-        ctx: &Context,
-        create_outlet: CreateOutlet,
-    ) -> Result<Response<OutletStatus>, Response<Error>> {
-        let CreateOutlet {
-            hostname_port,
-            worker_addr,
-            reachable_from_default_secure_channel,
-            policy_expression,
-            tls,
-        } = create_outlet;
-
-        match self
-            .node_manager
-            .create_outlet(
-                ctx,
-                hostname_port,
-                tls,
-                worker_addr,
-                reachable_from_default_secure_channel,
-                OutletAccessControl::WithPolicyExpression(policy_expression),
-            )
-            .await
-        {
-            Ok(outlet_status) => Ok(Response::ok().body(outlet_status)),
-            Err(e) => Err(Response::bad_request_no_request(&format!("{e:?}"))),
-        }
-    }
-
-    pub(super) async fn delete_outlet(
-        &self,
-        worker_addr: &Address,
-    ) -> Result<Response<OutletStatus>, Response<Error>> {
-        match self.node_manager.delete_outlet(worker_addr).await {
-            Ok(res) => match res {
-                Some(outlet_info) => Ok(Response::ok().body(OutletStatus::new(
-                    outlet_info.socket_addr,
-                    outlet_info.worker_addr.clone(),
-                    None,
-                ))),
-                None => Err(Response::bad_request_no_request(&format!(
-                    "Outlet with address {worker_addr} not found"
-                ))),
-            },
-            Err(e) => Err(Response::bad_request_no_request(&format!("{e:?}"))),
-        }
-    }
-
-    pub(super) async fn show_outlet(
-        &self,
-        worker_addr: &Address,
-    ) -> Result<Response<OutletStatus>, Response<Error>> {
-        match self.node_manager.show_outlet(worker_addr).await {
-            Some(outlet) => Ok(Response::ok().body(outlet)),
-            None => Err(Response::not_found_no_request(&format!(
-                "Outlet with address {worker_addr} not found"
-            ))),
-        }
-    }
-
-    pub(super) async fn get_outlets(&self, req: &RequestHeader) -> Response<Vec<OutletStatus>> {
-        Response::ok()
-            .with_headers(req)
-            .body(self.node_manager.list_outlets().await)
-    }
-}
-
-/// OUTLETS
-impl NodeManager {
-    #[instrument(skip(self, ctx))]
-    #[allow(clippy::too_many_arguments)]
-    #[instrument(skip_all)]
-    pub async fn create_outlet(
-        &self,
-        ctx: &Context,
-        hostname_port: HostnamePort,
-        tls: bool,
-        worker_addr: Option<Address>,
-        reachable_from_default_secure_channel: bool,
-        access_control: OutletAccessControl,
-    ) -> Result<OutletStatus> {
-        let worker_addr = self
-            .registry
-            .outlets
-            .generate_worker_addr(worker_addr)
-            .await;
-
-        info!(
-            "Handling request to create outlet portal at {}:{} with worker {:?}",
-            &hostname_port.hostname(),
-            hostname_port.port(),
-            worker_addr
-        );
-
-        // Check registry for a duplicated key
-        if self.registry.outlets.contains_key(&worker_addr).await {
-            let message = format!("A TCP outlet with address '{worker_addr}' already exists");
-            return Err(ockam_core::Error::new(
-                Origin::Node,
-                Kind::AlreadyExists,
-                message,
-            ));
-        }
-
-        let (incoming_ac, outgoing_ac) = match access_control {
-            OutletAccessControl::AccessControl((incoming_ac, outgoing_ac)) => {
-                (incoming_ac, outgoing_ac)
-            }
-            OutletAccessControl::WithPolicyExpression(expression) => {
-                self.access_control(
-                    ctx,
-                    self.project_authority(),
-                    Resource::new(worker_addr.address(), ResourceType::TcpOutlet),
-                    Action::HandleMessage,
-                    expression,
-                )
-                .await?
-            }
-        };
-
-        let options = {
-            let options = TcpOutletOptions::new()
-                .with_incoming_access_control(incoming_ac)
-                .with_outgoing_access_control(outgoing_ac)
-                .with_tls(tls);
-            let options = if self.project_authority().is_none() {
-                options.as_consumer(&self.api_transport_flow_control_id)
-            } else {
-                options
-            };
-            if reachable_from_default_secure_channel {
-                // Accept messages from the default secure channel listener
-                if let Some(flow_control_id) = ctx
-                    .flow_controls()
-                    .get_flow_control_with_spawner(&DefaultAddress::SECURE_CHANNEL_LISTENER.into())
-                {
-                    options.as_consumer(&flow_control_id)
-                } else {
-                    options
-                }
-            } else {
-                options
-            }
-        };
-
-        let socket_addr = hostname_port.to_socket_addr()?;
-        let res = self
-            .tcp_transport
-            .create_tcp_outlet(worker_addr.clone(), hostname_port, options)
-            .await;
-
-        Ok(match res {
-            Ok(_) => {
-                // TODO: Use better way to store outlets?
-                self.registry
-                    .outlets
-                    .insert(
-                        worker_addr.clone(),
-                        OutletInfo::new(&socket_addr, Some(&worker_addr)),
-                    )
-                    .await;
-
-                self.cli_state
-                    .create_tcp_outlet(&self.node_name, &socket_addr, &worker_addr, &None)
-                    .await?
-            }
-            Err(e) => {
-                warn!(at = %socket_addr, err = %e, "Failed to create TCP outlet");
-                let message = format!("Failed to create outlet: {}", e);
-                return Err(ockam_core::Error::new(
-                    Origin::Node,
-                    Kind::Internal,
-                    message,
-                ));
-            }
-        })
-    }
-
-    pub async fn delete_outlet(&self, worker_addr: &Address) -> Result<Option<OutletInfo>> {
-        info!(%worker_addr, "Handling request to delete outlet portal");
-        if let Some(deleted_outlet) = self.registry.outlets.remove(worker_addr).await {
-            debug!(%worker_addr, "Successfully removed outlet from node registry");
-
-            self.cli_state
-                .delete_tcp_outlet(&self.node_name, worker_addr)
-                .await?;
-            self.resources()
-                .delete_resource(&worker_addr.address().into())
-                .await?;
-
-            if let Err(e) = self
-                .tcp_transport
-                .stop_outlet(deleted_outlet.worker_addr.clone())
-                .await
-            {
-                warn!(%worker_addr, %e, "Failed to stop outlet worker");
-            }
-            trace!(%worker_addr, "Successfully stopped outlet");
-            Ok(Some(deleted_outlet))
-        } else {
-            warn!(%worker_addr, "Outlet not found in the node registry");
-            Ok(None)
-        }
-    }
-
-    pub(super) async fn show_outlet(&self, worker_addr: &Address) -> Option<OutletStatus> {
-        info!(%worker_addr, "Handling request to show outlet portal");
-        if let Some(outlet_to_show) = self.registry.outlets.get(worker_addr).await {
-            debug!(%worker_addr, "Outlet not found in node registry");
-            Some(OutletStatus::new(
-                outlet_to_show.socket_addr,
-                outlet_to_show.worker_addr.clone(),
-                None,
-            ))
-        } else {
-            error!(%worker_addr, "Outlet not found in the node registry");
-            None
-        }
-    }
-}
-
-/// INLETS
 impl NodeManager {
     #[allow(clippy::too_many_arguments)]
     #[instrument(skip_all)]
@@ -346,6 +125,9 @@ impl NodeManager {
         authorized: Option<Identifier>,
         wait_connection: bool,
         secure_channel_identifier: Option<Identifier>,
+        enable_udp_puncture: bool,
+        // TODO: Introduce mode enum
+        disable_tcp_fallback: bool,
     ) -> Result<InletStatus> {
         info!("Handling request to create inlet portal");
         debug! {
@@ -354,8 +136,20 @@ impl NodeManager {
             suffix = %suffix_route,
             outlet_addr = %outlet_addr,
             %alias,
+            %enable_udp_puncture,
+            %disable_tcp_fallback,
             "Creating inlet portal"
         }
+
+        let udp_transport = if enable_udp_puncture {
+            Some(self.udp_transport.clone().ok_or(ockam_core::Error::new(
+                Origin::Transport,
+                Kind::Invalid,
+                "Can't enable UDP puncture or non UDP node",
+            ))?)
+        } else {
+            None
+        };
 
         // the port could be zero, to simplify the following code we
         // resolve the address to a full socket address
@@ -401,6 +195,7 @@ impl NodeManager {
 
         let replacer = InletSessionReplacer {
             node_manager: self.clone(),
+            udp_transport,
             context: Arc::new(ctx.async_try_clone().await?),
             listen_addr: listen_addr.to_string(),
             outlet_addr: outlet_addr.clone(),
@@ -411,8 +206,10 @@ impl NodeManager {
             resource: Resource::new(alias.clone(), ResourceType::TcpInlet),
             policy_expression,
             secure_channel_identifier,
+            disable_tcp_fallback,
             connection: None,
-            inlet_address: None,
+            inlet: None,
+            handle: None,
         };
 
         let _ = self
@@ -584,6 +381,8 @@ impl InMemoryNode {
         authorized: Option<Identifier>,
         wait_connection: bool,
         secure_channel_identifier: Option<Identifier>,
+        enable_udp_puncture: bool,
+        disable_tcp_fallback: bool,
     ) -> Result<InletStatus> {
         self.node_manager
             .create_inlet(
@@ -598,6 +397,8 @@ impl InMemoryNode {
                 authorized,
                 wait_connection,
                 secure_channel_identifier,
+                enable_udp_puncture,
+                disable_tcp_fallback,
             )
             .await
     }
@@ -605,6 +406,7 @@ impl InMemoryNode {
 
 struct InletSessionReplacer {
     node_manager: Arc<NodeManager>,
+    udp_transport: Option<UdpTransport>,
     context: Arc<Context>,
     listen_addr: String,
     outlet_addr: MultiAddr,
@@ -615,10 +417,188 @@ struct InletSessionReplacer {
     resource: Resource,
     policy_expression: Option<PolicyExpression>,
     secure_channel_identifier: Option<Identifier>,
+    disable_tcp_fallback: bool,
 
     // current status
     connection: Option<Connection>,
-    inlet_address: Option<Address>,
+    inlet: Option<Arc<TcpInlet>>,
+    handle: Option<JoinHandle<()>>,
+}
+
+impl InletSessionReplacer {
+    fn enable_udp_puncture(&self) -> bool {
+        self.udp_transport.is_some()
+    }
+
+    async fn access_control(
+        &self,
+    ) -> Result<(
+        Arc<dyn IncomingAccessControl>,
+        Arc<dyn OutgoingAccessControl>,
+    )> {
+        let authority = {
+            if let Some(p) = self.outlet_addr.first() {
+                if let Some(p) = p.cast::<ProjectProto>() {
+                    if let Ok(p) = self
+                        .node_manager
+                        .cli_state
+                        .projects()
+                        .get_project_by_name(&p)
+                        .await
+                    {
+                        Some(p.authority_identifier()?)
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        }
+        .or(self.node_manager.project_authority());
+
+        self.node_manager
+            .access_control(
+                &self.context,
+                authority,
+                self.resource.clone(),
+                Action::HandleMessage,
+                self.policy_expression.clone(),
+            )
+            .await
+    }
+
+    async fn spawn_udp_puncture(
+        &mut self,
+        connection: &Connection,
+        inlet: Arc<TcpInlet>, // TODO: PUNCTURE Replace with a RwLock
+        disable_tcp_fallback: bool,
+    ) -> Result<()> {
+        let udp_transport = self.udp_transport.as_ref().ok_or(ockam_core::Error::new(
+            Origin::Node,
+            Kind::Invalid,
+            "Couldn't create inlet with puncture",
+        ))?;
+
+        let mut main_route = connection.route()?;
+        // FIXME: PUNCTURE trimming outlet part, but doesn't look good
+        let main_route: Route = main_route.modify().pop_back().into();
+
+        // FIXME: PUNCTURE don't assume listener address here
+        let sc_side_route = route![main_route.clone(), DefaultAddress::SECURE_CHANNEL_LISTENER];
+
+        // TODO: PUNCTURE make it a part of Replacer's state
+        let sc_side = self
+            .node_manager
+            .create_secure_channel_internal(
+                &self.context,
+                sc_side_route,
+                &self.node_manager.identifier(),
+                self.authorized.clone().map(|authorized| vec![authorized]),
+                None,
+                // FIXME: PUNCTURE what is the right timeout here?
+                Some(self.wait_for_outlet_duration),
+                SecureChannelType::KeyExchangeAndMessages,
+            )
+            .await?;
+
+        let rendezvous_route = route![
+            DefaultAddress::get_rendezvous_server_address(),
+            DefaultAddress::RENDEZVOUS_SERVICE
+        ];
+
+        let (mut receiver, sender) = UdpPunctureNegotiation::start_negotiation(
+            &self.context,
+            route![
+                main_route.clone(),
+                DefaultAddress::UDP_PUNCTURE_NEGOTIATION_LISTENER
+            ],
+            udp_transport,
+            rendezvous_route,
+        )
+        .await?;
+
+        let mut receiver_clone = sender.subscribe();
+
+        let handle = self.context.runtime().spawn(async move {
+            let mut last_route = None;
+
+            loop {
+                match receiver.recv().await {
+                    Ok(route) => {
+                        if Some(&route) == last_route.as_ref() {
+                            debug!("Route did not change, skipping");
+                            continue;
+                        }
+
+                        // TODO: PUNCTURE add more meaningful return type from receiver
+                        if !route.is_empty() {
+                            info!("Updating route to UDP: {}", route);
+
+                            // TODO: PUNCTURE monitor this side as well?
+                            //  Also monitored on the UDP puncture level
+                            // TODO: PUNCTURE handle error
+                            let _res = sc_side.update_remote_node_route(route.clone());
+
+                            let _res = inlet.unpause(route![sc_side.clone()]);
+                        // TODO: PUNCTURE handle error
+                        } else if disable_tcp_fallback {
+                            error!("UDP puncture failed. TCP fallback is disabled.");
+                            inlet.pause();
+                        } else {
+                            info!("Updating route to TCP");
+
+                            let _res = inlet.unpause(route![main_route.clone()]);
+                            // TODO: PUNCTURE handle error
+                        }
+
+                        last_route = Some(route);
+                    }
+                    // TODO: PUNCTURE handle more errors (overflow)
+                    Err(err) => {
+                        if disable_tcp_fallback {
+                            // TODO: PUNCTURE improve logging
+
+                            error!(
+                                "Error waiting for the UDP puncture. TCP fallback is disabled. \
+                                Error: {}",
+                                err
+                            );
+
+                            inlet.pause();
+                        } else {
+                            info!("Error. Updating route to TCP");
+
+                            let _res = inlet.unpause(route![main_route.clone()]);
+                            // TODO: PUNCTURE handle error
+                        }
+
+                        break;
+                    }
+                }
+            }
+        });
+
+        self.handle = Some(handle);
+
+        // Wait for the completion
+        if disable_tcp_fallback {
+            match receiver_clone.recv().await {
+                Ok(route) if !route.is_empty() => {}
+                _ => {
+                    return Err(ockam_core::Error::new(
+                        Origin::Node,
+                        Kind::Invalid,
+                        "Couldn't create inlet with puncture",
+                    ))?
+                }
+            }
+        }
+
+        Ok(())
+    }
 }
 
 #[async_trait]
@@ -633,41 +613,7 @@ impl SessionReplacer for InletSessionReplacer {
         self.close().await;
         debug!(%self.outlet_addr, "creating new tcp inlet");
 
-        // create the access_control
-        let (incoming_ac, outgoing_ac) = {
-            let authority = {
-                if let Some(p) = self.outlet_addr.first() {
-                    if let Some(p) = p.cast::<ProjectProto>() {
-                        let projects = self
-                            .node_manager
-                            .cli_state
-                            .projects()
-                            .get_projects_grouped_by_name()
-                            .await?;
-                        if let Some(p) = projects.get(&*p) {
-                            Some(p.authority_identifier()?)
-                        } else {
-                            None
-                        }
-                    } else {
-                        None
-                    }
-                } else {
-                    None
-                }
-            }
-            .or(self.node_manager.project_authority());
-
-            self.node_manager
-                .access_control(
-                    &self.context,
-                    authority,
-                    self.resource.clone(),
-                    Action::HandleMessage,
-                    self.policy_expression.clone(),
-                )
-                .await?
-        };
+        let (incoming_ac, outgoing_ac) = self.access_control().await?;
 
         // The future that recreates the inlet:
         let future = async {
@@ -696,16 +642,30 @@ impl SessionReplacer for InletSessionReplacer {
                 .with_incoming_access_control(incoming_ac)
                 .with_outgoing_access_control(outgoing_ac);
 
+            let options = if self.enable_udp_puncture() && self.disable_tcp_fallback {
+                options.paused()
+            } else {
+                options
+            };
+
             // TODO: Instead just update the route in the existing inlet
             // Finally, attempt to create a new inlet using the new route:
-            let inlet_address = self
+            let inlet = self
                 .node_manager
                 .tcp_transport
                 .create_inlet(self.listen_addr.clone(), normalized_route.clone(), options)
                 .await?
-                .processor_address()
                 .clone();
-            self.inlet_address = Some(inlet_address.clone());
+            let inlet_address = inlet.processor_address().clone();
+            let inlet = Arc::new(inlet);
+            self.inlet = Some(inlet.clone());
+
+            if self.enable_udp_puncture() {
+                info!("Spawning UDP puncture future");
+                self.spawn_udp_puncture(&connection, inlet, self.disable_tcp_fallback)
+                    .await?;
+                info!("Spawned UDP puncture future");
+            }
 
             Ok(ReplacerOutcome {
                 ping_route: connection.transport_route(),
@@ -730,6 +690,7 @@ impl SessionReplacer for InletSessionReplacer {
             Ok(Ok(route)) => Ok(route),
         }
     }
+
     async fn close(&mut self) {
         if let Some(connection) = self.connection.take() {
             let result = connection.close(&self.context, &self.node_manager).await;
@@ -738,16 +699,20 @@ impl SessionReplacer for InletSessionReplacer {
             }
         }
 
-        if let Some(inlet_address) = self.inlet_address.take() {
+        if let Some(inlet) = self.inlet.take() {
             // The previous inlet worker needs to be stopped:
             let result = self
                 .node_manager
                 .tcp_transport
-                .stop_inlet(inlet_address.clone())
+                .stop_inlet(inlet.processor_address().clone())
                 .await;
 
             if let Err(err) = result {
-                error!(?err, "Failed to remove inlet with address {inlet_address}");
+                error!(
+                    ?err,
+                    "Failed to remove inlet with address {}",
+                    inlet.processor_address()
+                );
             }
         }
     }
@@ -767,6 +732,8 @@ pub trait Inlets {
         wait_for_outlet_timeout: Duration,
         wait_connection: bool,
         secure_channel_identifier: &Option<Identifier>,
+        enable_udp_puncture: bool,
+        disable_tcp_fallback: bool,
     ) -> miette::Result<Reply<InletStatus>>;
 
     async fn show_inlet(&self, ctx: &Context, alias: &str) -> miette::Result<Reply<InletStatus>>;
@@ -787,6 +754,8 @@ impl Inlets for BackgroundNodeClient {
         wait_for_outlet_timeout: Duration,
         wait_connection: bool,
         secure_channel_identifier: &Option<Identifier>,
+        enable_udp_puncture: bool,
+        disable_tcp_fallback: bool,
     ) -> miette::Result<Reply<InletStatus>> {
         let request = {
             let via_project = outlet_addr.matches(0, &[ProjectProto::CODE.into()]);
@@ -798,6 +767,8 @@ impl Inlets for BackgroundNodeClient {
                     route![],
                     route![],
                     wait_connection,
+                    enable_udp_puncture,
+                    disable_tcp_fallback,
                 )
             } else {
                 CreateInlet::to_node(
@@ -808,6 +779,8 @@ impl Inlets for BackgroundNodeClient {
                     route![],
                     authorized_identifier.clone(),
                     wait_connection,
+                    enable_udp_puncture,
+                    disable_tcp_fallback,
                 )
             };
             if let Some(e) = policy_expression.as_ref() {
@@ -830,38 +803,5 @@ impl Inlets for BackgroundNodeClient {
     async fn delete_inlet(&self, ctx: &Context, inlet_alias: &str) -> miette::Result<Reply<()>> {
         let request = Request::delete(format!("/node/inlet/{inlet_alias}"));
         self.tell_and_get_reply(ctx, request).await
-    }
-}
-
-#[async_trait]
-pub trait Outlets {
-    async fn create_outlet(
-        &self,
-        ctx: &Context,
-        to: HostnamePort,
-        tls: bool,
-        from: Option<&Address>,
-        policy_expression: Option<PolicyExpression>,
-    ) -> miette::Result<OutletStatus>;
-}
-
-#[async_trait]
-impl Outlets for BackgroundNodeClient {
-    #[instrument(skip_all, fields(to = % to, from = ? from))]
-    async fn create_outlet(
-        &self,
-        ctx: &Context,
-        to: HostnamePort,
-        tls: bool,
-        from: Option<&Address>,
-        policy_expression: Option<PolicyExpression>,
-    ) -> miette::Result<OutletStatus> {
-        let mut payload = CreateOutlet::new(to, tls, from.cloned(), true);
-        if let Some(policy_expression) = policy_expression {
-            payload.set_policy_expression(policy_expression);
-        }
-        let req = Request::post("/node/outlet").body(payload);
-        let result: OutletStatus = self.ask(ctx, req).await?;
-        Ok(result)
     }
 }

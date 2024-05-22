@@ -12,7 +12,7 @@ use ockam_api::address::get_free_address;
 use ockam_api::authenticator::direct::{
     OCKAM_ROLE_ATTRIBUTE_ENROLLER_VALUE, OCKAM_ROLE_ATTRIBUTE_KEY,
 };
-use ockam_api::nodes::service::portals::Inlets;
+use ockam_api::nodes::service::tcp_inlets::Inlets;
 use ockam_api::ConnectionStatus;
 use ockam_core::api::Reply;
 use ockam_multiaddr::MultiAddr;
@@ -224,6 +224,8 @@ impl AppState {
                 Duration::from_secs(5),
                 true,
                 &None,
+                false,
+                false,
             )
             .await
             .map_err(|err| {

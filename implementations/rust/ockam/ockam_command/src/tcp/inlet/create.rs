@@ -20,7 +20,7 @@ use ockam_api::cli_state::journeys::{
 use ockam_api::cli_state::{random_name, CliState};
 use ockam_api::colors::color_primary;
 use ockam_api::nodes::models::portal::InletStatus;
-use ockam_api::nodes::service::portals::Inlets;
+use ockam_api::nodes::service::tcp_inlets::Inlets;
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_api::{fmt_info, fmt_log, fmt_ok, fmt_warn, ConnectionStatus};
 use ockam_core::api::{Reply, Status};
@@ -109,6 +109,15 @@ pub struct CreateCommand {
     /// Create the TCP Inlet without waiting for the TCP Outlet to connect
     #[arg(long, default_value = "false")]
     no_connection_wait: bool,
+
+    /// Enable UDP NAT puncture.
+    #[arg(long, value_name = "BOOL", default_value_t = false)]
+    pub enable_udp_puncture: bool,
+
+    /// Disable fallback to TCP.
+    /// TCP won't be used to transfer data between the Inlet and the Outlet.
+    #[arg(long, value_name = "BOOL", default_value_t = false)]
+    pub disable_tcp_fallback: bool,
 }
 
 pub(crate) fn default_from_addr() -> SocketAddr {
@@ -153,6 +162,8 @@ impl Command for CreateCommand {
                         cmd.connection_wait,
                         !cmd.no_connection_wait,
                         &cmd.secure_channel_identifier(&opts.state).await?,
+                        cmd.enable_udp_puncture,
+                        cmd.disable_tcp_fallback,
                     )
                     .await?;
 

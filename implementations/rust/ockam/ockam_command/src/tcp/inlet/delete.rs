@@ -8,7 +8,7 @@ use crate::{docs, Command, CommandGlobalOpts};
 use ockam::Context;
 use ockam_api::colors::OckamColor;
 use ockam_api::nodes::models::portal::InletStatus;
-use ockam_api::nodes::service::portals::Inlets;
+use ockam_api::nodes::service::tcp_inlets::Inlets;
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_api::terminal::{Terminal, TerminalStream};
 use ockam_api::{color, fmt_ok};

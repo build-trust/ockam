@@ -7,7 +7,7 @@ use miette::IntoDiagnostic;
 use ockam::Context;
 use ockam_api::fmt_ok;
 use ockam_api::nodes::models::portal::InletStatus;
-use ockam_api::nodes::service::portals::Inlets;
+use ockam_api::nodes::service::tcp_inlets::Inlets;
 use ockam_api::nodes::BackgroundNodeClient;
 
 use crate::node::NodeOpts;

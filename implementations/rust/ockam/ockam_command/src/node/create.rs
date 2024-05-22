@@ -77,6 +77,10 @@ pub struct CreateCommand {
     #[arg(long, value_name = "PORT", conflicts_with = "enable_http_server")]
     pub http_server_port: Option<u16>,
 
+    /// Enable UDP transport puncture.
+    #[arg(long, value_name = "BOOL", default_value_t = false)]
+    pub enable_udp: bool,
+
     /// A configuration in JSON format to set up the node services.
     /// Node configuration is run asynchronously and may take several
     /// seconds to complete.
@@ -112,6 +116,7 @@ impl Default for CreateCommand {
             },
             tcp_listener_address: node_manager_defaults.tcp_listener_address,
             enable_http_server: false,
+            enable_udp: false,
             http_server_port: None,
             launch_config: None,
             identity: None,

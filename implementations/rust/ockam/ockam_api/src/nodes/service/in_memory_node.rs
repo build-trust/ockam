@@ -6,7 +6,6 @@ use miette::IntoDiagnostic;
 
 use ockam::identity::SecureChannels;
 use ockam::tcp::{TcpListenerOptions, TcpTransport};
-use ockam::udp::UdpTransport;
 use ockam::{Context, Result};
 use ockam_core::compat::{string::String, sync::Arc};
 use ockam_core::errcode::Kind;
@@ -129,7 +128,6 @@ impl InMemoryNode {
     ) -> miette::Result<InMemoryNode> {
         let defaults = NodeManagerDefaults::default();
 
-        let udp = UdpTransport::create(ctx).await.into_diagnostic()?;
         let tcp = TcpTransport::create(ctx).await.into_diagnostic()?;
         let tcp_listener = tcp
             .listen(
@@ -163,7 +161,7 @@ impl InMemoryNode {
                 http_server_port,
                 false,
             ),
-            NodeManagerTransportOptions::new(tcp_listener.flow_control_id().clone(), tcp, udp),
+            NodeManagerTransportOptions::new(tcp_listener.flow_control_id().clone(), tcp, None),
             trust_options,
         )
         .await
