@@ -53,6 +53,7 @@ pub(crate) struct SecureChannelSharedState {
 
 pub(crate) struct EncryptorWorker {
     role: &'static str, // For debug purposes only
+    key_exchange_only: bool,
     addresses: Addresses,
     encryptor: Encryptor,
     my_identifier: Identifier,
@@ -66,6 +67,7 @@ impl EncryptorWorker {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         role: &'static str,
+        key_exchange_only: bool,
         addresses: Addresses,
         encryptor: Encryptor,
         my_identifier: Identifier,
@@ -76,6 +78,7 @@ impl EncryptorWorker {
     ) -> Self {
         Self {
             role,
+            key_exchange_only,
             addresses,
             encryptor,
             my_identifier,
@@ -343,7 +346,13 @@ impl Worker for EncryptorWorker {
     ) -> Result<()> {
         let msg_addr = msg.msg_addr();
 
-        if msg_addr == self.addresses.encryptor {
+        if self.key_exchange_only {
+            if msg_addr == self.addresses.encryptor_api {
+                self.handle_encrypt_api(ctx, msg).await?;
+            } else {
+                return Err(IdentityError::UnknownChannelMsgDestination)?;
+            }
+        } else if msg_addr == self.addresses.encryptor {
             self.handle_encrypt(ctx, msg).await?;
         } else if msg_addr == self.addresses.encryptor_api {
             self.handle_encrypt_api(ctx, msg).await?;

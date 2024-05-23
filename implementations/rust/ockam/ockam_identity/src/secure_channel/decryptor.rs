@@ -41,17 +41,24 @@ impl DecryptorHandler {
         identities: Arc<Identities>,
         authority: Option<Identifier>,
         role: Role,
+        key_exchange_only: bool,
         addresses: Addresses,
         key: AeadSecretKeyHandle,
         vault: Arc<dyn VaultForSecureChannels>,
         their_identity_id: Identifier,
         shared_state: SecureChannelSharedState,
     ) -> Self {
+        let decryptor = if key_exchange_only {
+            Decryptor::new_naive(key, vault)
+        } else {
+            Decryptor::new(key, vault)
+        };
+
         Self {
             role,
             addresses,
             their_identity_id,
-            decryptor: Decryptor::new(key, vault),
+            decryptor,
             identities,
             authority,
             shared_state,
@@ -223,7 +230,8 @@ impl DecryptorHandler {
 pub(crate) struct Decryptor {
     vault: Arc<dyn VaultForSecureChannels>,
     key_tracker: KeyTracker,
-    nonce_tracker: NonceTracker,
+    nonce_tracker: Option<NonceTracker>,
+    rekeying: bool,
 }
 
 impl Decryptor {
@@ -231,7 +239,18 @@ impl Decryptor {
         Self {
             vault,
             key_tracker: KeyTracker::new(key, KEY_RENEWAL_INTERVAL),
-            nonce_tracker: NonceTracker::new(),
+            nonce_tracker: Some(NonceTracker::new()),
+            rekeying: true,
+        }
+    }
+
+    /// Creates a new Decryptor without rekeying and nonce tracking
+    pub fn new_naive(key: AeadSecretKeyHandle, vault: Arc<dyn VaultForSecureChannels>) -> Self {
+        Self {
+            vault,
+            key_tracker: KeyTracker::new(key, KEY_RENEWAL_INTERVAL),
+            nonce_tracker: None,
+            rekeying: false,
         }
     }
 
@@ -242,14 +261,22 @@ impl Decryptor {
         }
 
         let nonce = Nonce::try_from(&payload[..8])?;
-        let nonce_tracker = self.nonce_tracker.mark(nonce)?;
-
-        // get the key corresponding to the current nonce and
-        // rekey if necessary
-        let key = if let Some(key) = self.key_tracker.get_key(nonce)? {
-            key
+        let nonce_tracker = if let Some(nonce_tracker) = &self.nonce_tracker {
+            Some(nonce_tracker.mark(nonce)?)
         } else {
-            Encryptor::rekey(&self.vault, &self.key_tracker.current_key).await?
+            None
+        };
+
+        let key = if self.rekeying {
+            // get the key corresponding to the current nonce and
+            // rekey if necessary
+            if let Some(key) = self.key_tracker.get_key(nonce)? {
+                key
+            } else {
+                Encryptor::rekey(&self.vault, &self.key_tracker.current_key).await?
+            }
+        } else {
+            self.key_tracker.current_key.clone()
         };
 
         // to improve protection against connection disruption attacks, we want to validate the

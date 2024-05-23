@@ -26,6 +26,7 @@ pub struct SecureChannelOptions {
     // To obtain our credentials
     pub(crate) credential_retriever_creator: Option<Arc<dyn CredentialRetrieverCreator>>,
     pub(crate) timeout: Duration,
+    pub(crate) key_exchange_only: bool,
 }
 
 impl fmt::Debug for SecureChannelOptions {
@@ -44,6 +45,7 @@ impl SecureChannelOptions {
             authority: None,
             credential_retriever_creator: None,
             timeout: DEFAULT_TIMEOUT,
+            key_exchange_only: false,
         }
     }
 
@@ -58,6 +60,9 @@ impl SecureChannelOptions {
         mut self,
         credential_retriever_creator: Arc<dyn CredentialRetrieverCreator>,
     ) -> Result<Self> {
+        if self.key_exchange_only {
+            return Err(IdentityError::CredentialRetrieverCreatorAlreadySet.into());
+        }
         if self.credential_retriever_creator.is_some() {
             return Err(IdentityError::CredentialRetrieverCreatorAlreadySet.into());
         }
@@ -87,6 +92,19 @@ impl SecureChannelOptions {
     /// Freshly generated [`FlowControlId`]
     pub fn producer_flow_control_id(&self) -> FlowControlId {
         self.flow_control_id.clone()
+    }
+
+    /// The secure channel will be used to exchange key only.
+    /// In this mode, the secure channel cannot be used to exchange messages, and key rotation
+    /// is disabled.
+    ///
+    /// Conflicts with [`with_credential_retriever_creator`] and [`with_credential`]
+    pub fn key_exchange_only(mut self) -> Result<Self> {
+        if self.credential_retriever_creator.is_some() {
+            return Err(IdentityError::CredentialRetrieverCreatorAlreadySet.into());
+        }
+        self.key_exchange_only = true;
+        Ok(self)
     }
 }
 
@@ -151,6 +169,7 @@ pub struct SecureChannelListenerOptions {
     pub(crate) authority: Option<Identifier>,
     // To obtain our credentials
     pub(crate) credential_retriever_creator: Option<Arc<dyn CredentialRetrieverCreator>>,
+    pub(crate) key_exchange_only: bool,
 }
 
 impl fmt::Debug for SecureChannelListenerOptions {
@@ -171,6 +190,7 @@ impl SecureChannelListenerOptions {
             trust_policy: Arc::new(TrustEveryonePolicy),
             authority: None,
             credential_retriever_creator: None,
+            key_exchange_only: false,
         }
     }
 
@@ -188,6 +208,9 @@ impl SecureChannelListenerOptions {
         mut self,
         credential_retriever_creator: Arc<dyn CredentialRetrieverCreator>,
     ) -> Result<Self> {
+        if self.key_exchange_only {
+            return Err(IdentityError::CredentialRetrieverCreatorAlreadySet.into());
+        }
         if self.credential_retriever_creator.is_some() {
             return Err(IdentityError::CredentialRetrieverCreatorAlreadySet.into());
         }
@@ -217,6 +240,19 @@ impl SecureChannelListenerOptions {
     /// Freshly generated [`FlowControlId`]
     pub fn spawner_flow_control_id(&self) -> FlowControlId {
         self.flow_control_id.clone()
+    }
+
+    /// The listener will be used to exchange key only.
+    /// In this mode, the secure channel cannot be used to exchange messages, and key rotation
+    /// is disabled.
+    ///
+    /// Conflicts with [`with_credential_retriever_creator`] and [`with_credential`]
+    pub fn key_exchange_only(mut self) -> Result<Self> {
+        if self.credential_retriever_creator.is_some() {
+            return Err(IdentityError::CredentialRetrieverCreatorAlreadySet.into());
+        }
+        self.key_exchange_only = true;
+        Ok(self)
     }
 }
 

@@ -11,9 +11,10 @@ pub(crate) struct Encryptor {
     key: AeadSecretKeyHandle,
     nonce: Nonce,
     vault: Arc<dyn VaultForSecureChannels>,
+    rekeying: bool,
 }
 
-// To simplify the implementation we use the same constant for the size of the message
+// To simplify the implementation, we use the same constant for the size of the message
 // window we accept with the message period used to rekey.
 // This means we only need to keep the current key and the previous one.
 pub(crate) const KEY_RENEWAL_INTERVAL: u64 = 32;
@@ -53,7 +54,10 @@ impl Encryptor {
 
         self.nonce.increment()?;
 
-        if current_nonce.value() > 0 && current_nonce.value() % KEY_RENEWAL_INTERVAL == 0 {
+        if self.rekeying
+            && current_nonce.value() > 0
+            && current_nonce.value() % KEY_RENEWAL_INTERVAL == 0
+        {
             let new_key = Self::rekey(&self.vault, &self.key).await?;
             let old_key = core::mem::replace(&mut self.key, new_key);
             self.vault.delete_aead_secret_key(old_key).await?;
@@ -78,8 +82,14 @@ impl Encryptor {
         key: AeadSecretKeyHandle,
         nonce: Nonce,
         vault: Arc<dyn VaultForSecureChannels>,
+        rekeying: bool,
     ) -> Self {
-        Self { key, nonce, vault }
+        Self {
+            key,
+            nonce,
+            vault,
+            rekeying,
+        }
     }
 
     #[instrument(skip_all)]

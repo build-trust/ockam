@@ -157,6 +157,10 @@ impl InMemoryNode {
             producer_policy_access_control,
         );
 
+        self.node_manager
+            .start_key_exchanger_service(context, DefaultAddress::KEY_EXCHANGER_LISTENER.into())
+            .await?;
+
         let inlet_policy_expression = if let Some(inlet_policy_expression) = inlet_policy_expression
         {
             Some(inlet_policy_expression)

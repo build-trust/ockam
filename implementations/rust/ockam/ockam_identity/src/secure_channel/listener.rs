@@ -100,6 +100,7 @@ impl Worker for SecureChannelListenerWorker {
             None,
             None,
             Role::Responder,
+            self.options.key_exchange_only,
             RemoteRoute::create(),
         )
         .await?;

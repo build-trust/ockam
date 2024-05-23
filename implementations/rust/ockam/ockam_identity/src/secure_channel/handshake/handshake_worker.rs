@@ -44,6 +44,7 @@ pub(crate) struct HandshakeWorker {
     identifier: Identifier,
     addresses: Addresses,
     role: Role,
+    key_exchange_only: bool,
     remote_route: Option<Route>,
     decryptor_handler: Option<DecryptorHandler>,
 
@@ -137,6 +138,7 @@ impl HandshakeWorker {
         remote_route: Option<Route>,
         timeout: Option<Duration>,
         role: Role,
+        key_exchange_only: bool,
         encryptor_remote_route: Arc<RwLock<RemoteRoute>>,
     ) -> Result<()> {
         let vault = secure_channels.identities.vault().secure_channel_vault;
@@ -187,6 +189,7 @@ impl HandshakeWorker {
             state_machine,
             identifier: identifier.clone(),
             role,
+            key_exchange_only,
             remote_route: remote_route.clone(),
             addresses: addresses.clone(),
             decryptor_handler: None,
@@ -287,7 +290,14 @@ impl HandshakeWorker {
     async fn handle_decrypt(&mut self, context: &mut Context, message: Routed<Any>) -> Result<()> {
         let decryptor_handler = self.decryptor_handler.as_mut().unwrap();
         let msg_addr = message.msg_addr();
-        if msg_addr == self.addresses.decryptor_remote {
+
+        if self.key_exchange_only {
+            if msg_addr == self.addresses.decryptor_api {
+                decryptor_handler.handle_decrypt_api(context, message).await
+            } else {
+                Err(IdentityError::UnknownChannelMsgDestination)?
+            }
+        } else if msg_addr == self.addresses.decryptor_remote {
             decryptor_handler.handle_decrypt(context, message).await
         } else if msg_addr == self.addresses.decryptor_api {
             decryptor_handler.handle_decrypt_api(context, message).await
@@ -348,6 +358,7 @@ impl HandshakeWorker {
             self.secure_channels.identities.clone(),
             self.authority.clone(),
             self.role,
+            self.key_exchange_only,
             self.addresses.clone(),
             handshake_results.handshake_keys.decryption_key,
             self.secure_channels.identities.vault().secure_channel_vault,
@@ -357,14 +368,17 @@ impl HandshakeWorker {
 
         // create a separate encryptor worker which will be started independently
         {
+            let rekeying = !self.key_exchange_only;
             self.shared_state.remote_route.write().unwrap().route = self.remote_route()?;
             let encryptor = EncryptorWorker::new(
                 self.role.str(),
+                self.key_exchange_only,
                 self.addresses.clone(),
                 Encryptor::new(
                     handshake_results.handshake_keys.encryption_key,
                     0.into(),
                     self.secure_channels.identities.vault().secure_channel_vault,
+                    rekeying,
                 ),
                 self.identifier.clone(),
                 self.change_history_repository.clone(),
