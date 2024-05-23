@@ -278,6 +278,46 @@ impl NodeManager {
 
 /// SECURE CHANNEL LISTENERS
 impl NodeManager {
+    pub(super) async fn start_key_exchanger_service(
+        &self,
+        context: &Context,
+        address: Address,
+    ) -> Result<SecureChannelListener> {
+        // skip creation if it already exists
+        if let Some(listener) = self.registry.secure_channel_listeners.get(&address).await {
+            return Ok(listener);
+        }
+
+        let options = SecureChannelListenerOptions::new()
+            .as_consumer(&self.api_transport_flow_control_id)
+            .with_trust_policy(TrustEveryonePolicy);
+
+        let named_identity = self
+            .cli_state
+            .get_named_identity_by_identifier(&self.identifier())
+            .await?;
+        let identifier = self.identifier();
+        let vault = self
+            .cli_state
+            .get_named_vault(&named_identity.vault_name())
+            .await?
+            .vault()
+            .await?;
+        let secure_channels = self.build_secure_channels(vault).await?;
+        let listener = secure_channels
+            .create_secure_channel_listener(context, &identifier, address.clone(), options)
+            .await?;
+
+        info!("Key Exchanger listener was initialized at {address}");
+
+        self.registry
+            .secure_channel_listeners
+            .insert(address.clone(), listener.clone())
+            .await;
+
+        Ok(listener)
+    }
+
     pub async fn create_secure_channel_listener(
         &self,
         address: Address,

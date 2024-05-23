@@ -137,6 +137,7 @@ impl SecureChannels {
             Some(route),
             Some(options.timeout),
             Role::Initiator,
+            options.key_exchange_only,
             encryptor_remote_route.clone(),
         )
         .await?;

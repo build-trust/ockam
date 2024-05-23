@@ -146,7 +146,7 @@ mod tests {
         let key_on_v2 = vault2.convert_secret_buffer_to_aead_key(key_on_v2).await?;
 
         Ok((
-            Encryptor::new(key_on_v1, 0.into(), vault1),
+            Encryptor::new(key_on_v1, 0.into(), vault1, true),
             Decryptor::new(key_on_v2, vault2),
         ))
     }
