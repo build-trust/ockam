@@ -31,7 +31,7 @@ fi
 release_name="release_$(date +'%d-%m-%Y')_$(date +'%s')"
 
 if [[ -z $OCKAM_RELEASE_URL ]]; then
-  echo "Please set Ockam AWS release URL e.g. https://ockam-release.s3.amazonaws.com"
+  echo "Please set Ockam AWS release URL e.g. https://ockam-releases.s3.amazonaws.com"
   exit 1
 fi
 

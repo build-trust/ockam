@@ -14,7 +14,7 @@ inputs:
     default: us-east-1
   bucket_name:
     description: AWS bucket name to upload assets
-    default: ockam_releases
+    default: ockam-releases
   file_name:
     description: File name to upload. Note, file must be in the same path
   release_version:
