@@ -48,6 +48,21 @@ Run the healthcheck:
 docker run --rm -it ockam-healthcheck:latest
 ```
 
+## Ockam
+
+```
+docker build \
+  --tag ockam:latest \
+  --tag ghcr.io/build-trust/ockam:latest \
+  --file tools/docker/ockam/Dockerfile .
+```
+
+Run Ockam binary:
+
+```
+docker run --rm -it ockam:latest --help
+```
+
 ## Rendezvous
 ```
 docker build \
