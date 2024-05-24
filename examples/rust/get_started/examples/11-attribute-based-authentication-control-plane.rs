@@ -90,14 +90,14 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     // 3. create an access control policy checking the value of the "component" attribute of the caller
     let incoming_access_control = IncomingAbac::create_name_value(
         node.identities_attributes(),
-        project.authority_identifier(),
+        Some(project.authority_identifier()),
         "component",
         "edge",
     );
     let outgoing_access_control = OutgoingAbac::create_name_value(
         node.context(),
         node.identities_attributes(),
-        project.authority_identifier(),
+        Some(project.authority_identifier()),
         "component",
         "edge",
     )

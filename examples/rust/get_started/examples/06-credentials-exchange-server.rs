@@ -84,10 +84,20 @@ async fn main(ctx: Context) -> Result<()> {
         DefaultAddress::ECHO_SERVICE,
         &sc_listener_options.spawner_flow_control_id(),
     );
-    let allow_production_incoming =
-        IncomingAbac::create_name_value(node.identities_attributes(), issuer.clone(), "cluster", "production");
-    let allow_production_outgoing =
-        OutgoingAbac::create_name_value(&ctx, node.identities_attributes(), issuer, "cluster", "production").await?;
+    let allow_production_incoming = IncomingAbac::create_name_value(
+        node.identities_attributes(),
+        Some(issuer.clone()),
+        "cluster",
+        "production",
+    );
+    let allow_production_outgoing = OutgoingAbac::create_name_value(
+        &ctx,
+        node.identities_attributes(),
+        Some(issuer),
+        "cluster",
+        "production",
+    )
+    .await?;
     node.start_worker_with_access_control(
         DefaultAddress::ECHO_SERVICE,
         Echoer,
