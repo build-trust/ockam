@@ -37,14 +37,14 @@ pub const ABAC_IDENTIFIER_KEY: &str = "identifier";
 #[derive(Clone)]
 pub struct Abac {
     identities_attributes: Arc<IdentitiesAttributes>,
-    authority: Identifier,
+    authority: Option<Identifier>,
     environment: Env,
 }
 
 /// Debug implementation printing out the policy expression only
 impl Debug for Abac {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "Authority: {}", self.authority)
+        write!(f, "Authority: {:?}", self.authority)
     }
 }
 
@@ -52,7 +52,7 @@ impl Abac {
     /// Create a new AccessControl using a specific policy for checking attributes
     pub fn new(
         identities_attributes: Arc<IdentitiesAttributes>,
-        authority: Identifier,
+        authority: Option<Identifier>,
         environment: Env,
     ) -> Self {
         Self {
@@ -128,7 +128,7 @@ impl Abac {
         Self::is_identity_authorized_static(
             self.identities_attributes.clone(),
             &self.environment,
-            &self.authority,
+            self.authority.as_ref(),
             identifier,
             expression,
         )
@@ -139,7 +139,7 @@ impl Abac {
     pub async fn is_identity_authorized_static(
         identities_attributes: Arc<IdentitiesAttributes>,
         environment: &Env,
-        authority: &Identifier,
+        authority: Option<&Identifier>,
         identifier: &Identifier,
         expression: &Expr,
     ) -> Result<bool> {
@@ -153,67 +153,69 @@ impl Abac {
         );
 
         // Get identity attributes and populate the environment:
-        match identities_attributes
-            .get_attributes(identifier, authority)
-            .await?
-        {
-            Some(attrs) => {
-                environment.put(
-                    subject_has_credential_attribute().to_string(),
-                    Expr::CONST_TRUE,
-                );
+        if let Some(authority) = authority {
+            match identities_attributes
+                .get_attributes(identifier, authority)
+                .await?
+            {
+                Some(attrs) => {
+                    environment.put(
+                        subject_has_credential_attribute().to_string(),
+                        Expr::CONST_TRUE,
+                    );
 
-                for (key, value) in attrs.attrs() {
-                    let key = match from_utf8(key) {
-                        Ok(key) => key,
-                        Err(_) => {
-                            warn! {
-                                policy = %expression,
-                                id     = %identifier,
-                                "attribute key is not utf-8"
-                            }
-                            continue;
-                        }
-                    };
-                    if key.find(|c: char| c.is_whitespace()).is_some() {
-                        warn! {
-                            policy = %expression,
-                            id     = %identifier,
-                            key    = %key,
-                            "attribute key with whitespace ignored"
-                        }
-                    }
-                    match str::from_utf8(value) {
-                        Ok(s) => {
-                            if environment.contains(key) {
+                    for (key, value) in attrs.attrs() {
+                        let key = match from_utf8(key) {
+                            Ok(key) => key,
+                            Err(_) => {
                                 warn! {
                                     policy = %expression,
                                     id     = %identifier,
-                                    key    = %key,
-                                    "attribute already present"
+                                    "attribute key is not utf-8"
                                 }
-                            } else {
-                                environment
-                                    .put(format!("{}.{key}", SUBJECT_KEY), str(s.to_string()));
+                                continue;
                             }
-                        }
-                        Err(e) => {
+                        };
+                        if key.find(|c: char| c.is_whitespace()).is_some() {
                             warn! {
                                 policy = %expression,
                                 id     = %identifier,
                                 key    = %key,
-                                err    = %e,
-                                "failed to interpret attribute as string"
+                                "attribute key with whitespace ignored"
+                            }
+                        }
+                        match str::from_utf8(value) {
+                            Ok(s) => {
+                                if environment.contains(key) {
+                                    warn! {
+                                        policy = %expression,
+                                        id     = %identifier,
+                                        key    = %key,
+                                        "attribute already present"
+                                    }
+                                } else {
+                                    environment
+                                        .put(format!("{}.{key}", SUBJECT_KEY), str(s.to_string()));
+                                }
+                            }
+                            Err(e) => {
+                                warn! {
+                                    policy = %expression,
+                                    id     = %identifier,
+                                    key    = %key,
+                                    err    = %e,
+                                    "failed to interpret attribute as string"
+                                }
                             }
                         }
                     }
                 }
-            }
-            None => {
-                environment.put(
-                    subject_has_credential_attribute().to_string(),
-                    Expr::CONST_FALSE,
-                );
+                None => {
+                    environment.put(
+                        subject_has_credential_attribute().to_string(),
+                        Expr::CONST_FALSE,
+                    );
+                }
             }
         }
 
@@ -242,6 +244,7 @@ impl Abac {
                     policy = %expression,
                     id     = %identifier,
                     err    = %e,
+                    env    = %environment,
                     "policy evaluation failed"
                 }
                 Ok(false)

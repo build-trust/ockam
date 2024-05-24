@@ -120,14 +120,9 @@ impl InMemoryNode {
         consumer_policy_expression: Option<PolicyExpression>,
         producer_policy_expression: Option<PolicyExpression>,
     ) -> Result<()> {
-        let project_authority = self
-            .project_authority
-            .clone()
-            .ok_or(ApiError::core("NodeManager has no authority"))?;
-
         let consumer_policy_access_control = self
             .policy_access_control(
-                project_authority.clone(),
+                self.project_authority().clone(),
                 Resource::new(
                     format!("kafka-consumer-{}", local_interceptor_address.address()),
                     ResourceType::KafkaConsumer,
@@ -139,7 +134,7 @@ impl InMemoryNode {
 
         let producer_policy_access_control = self
             .policy_access_control(
-                project_authority.clone(),
+                self.project_authority().clone(),
                 Resource::new(
                     format!("kafka-producer-{}", local_interceptor_address.address()),
                     ResourceType::KafkaProducer,
@@ -217,7 +212,7 @@ impl InMemoryNode {
 
         let policy_access_control = self
             .policy_access_control(
-                project_authority,
+                self.project_authority().clone(),
                 Resource::new(
                     local_interceptor_address.to_string(),
                     ResourceType::TcpInlet,
@@ -269,14 +264,9 @@ impl InMemoryNode {
         )
         .await?;
 
-        let project_authority = self
-            .project_authority
-            .clone()
-            .ok_or(ApiError::core("NodeManager has no authority"))?;
-
         let policy_access_control = self
             .policy_access_control(
-                project_authority,
+                self.project_authority().clone(),
                 Resource::new(service_address.to_string(), ResourceType::TcpOutlet),
                 Action::HandleMessage,
                 outlet_policy_expression.clone(),

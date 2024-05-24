@@ -780,7 +780,7 @@ mod test {
             Resource::new("arbitrary-resource-name", ResourceType::KafkaConsumer),
             Action::HandleMessage,
             Env::new(),
-            authority_identifier.clone(),
+            Some(authority_identifier.clone()),
         );
 
         let producer_policy_access_control = policies.make_policy_access_control(
@@ -788,7 +788,7 @@ mod test {
             Resource::new("arbitrary-resource-name", ResourceType::KafkaProducer),
             Action::HandleMessage,
             Env::new(),
-            authority_identifier.clone(),
+            Some(authority_identifier.clone()),
         );
 
         let secure_channel_controller = KafkaSecureChannelControllerImpl::new(
@@ -858,7 +858,7 @@ mod test {
         let consumer_policy_access_control = handle
             .node_manager
             .policy_access_control(
-                project_authority.clone(),
+                Some(project_authority.clone()),
                 Resource::new("arbitrary-resource-name", ResourceType::KafkaConsumer),
                 Action::HandleMessage,
                 None,
@@ -868,7 +868,7 @@ mod test {
         let producer_policy_access_control = handle
             .node_manager
             .policy_access_control(
-                project_authority.clone(),
+                Some(project_authority.clone()),
                 Resource::new("arbitrary-resource-name", ResourceType::KafkaProducer),
                 Action::HandleMessage,
                 None,
