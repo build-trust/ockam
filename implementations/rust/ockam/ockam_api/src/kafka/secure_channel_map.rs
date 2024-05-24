@@ -4,7 +4,7 @@ use ockam::identity::{
     DecryptionRequest, DecryptionResponse, EncryptionRequest, EncryptionResponse,
     SecureChannelRegistryEntry, SecureChannels,
 };
-use ockam_abac::ManualPolicyAccessControl;
+use ockam_abac::PolicyAccessControl;
 use ockam_core::api::{Request, ResponseHeader, Status};
 use ockam_core::compat::collections::{HashMap, HashSet};
 use ockam_core::compat::sync::Arc;
@@ -186,8 +186,8 @@ struct InnerSecureChannelControllerImpl<F: RelayCreator> {
     topic_relay_set: HashSet<TopicPartition>,
     relay_creator: Option<F>,
     secure_channels: Arc<SecureChannels>,
-    consumer_manual_policy: ManualPolicyAccessControl,
-    producer_manual_policy: ManualPolicyAccessControl,
+    consumer_policy_access_control: PolicyAccessControl,
+    producer_policy_access_control: PolicyAccessControl,
 }
 
 impl KafkaSecureChannelControllerImpl<NodeManagerRelayCreator> {
@@ -195,8 +195,8 @@ impl KafkaSecureChannelControllerImpl<NodeManagerRelayCreator> {
         secure_channels: Arc<SecureChannels>,
         consumer_resolution: ConsumerResolution,
         consumer_publishing: ConsumerPublishing,
-        consumer_manual_policy: ManualPolicyAccessControl,
-        producer_manual_policy: ManualPolicyAccessControl,
+        consumer_policy_access_control: PolicyAccessControl,
+        producer_policy_access_control: PolicyAccessControl,
     ) -> KafkaSecureChannelControllerImpl<NodeManagerRelayCreator> {
         let relay_creator = match consumer_publishing.clone() {
             ConsumerPublishing::None => None,
@@ -213,8 +213,8 @@ impl KafkaSecureChannelControllerImpl<NodeManagerRelayCreator> {
             secure_channels,
             consumer_resolution,
             relay_creator,
-            consumer_manual_policy,
-            producer_manual_policy,
+            consumer_policy_access_control,
+            producer_policy_access_control,
         )
     }
 }
@@ -225,8 +225,8 @@ impl<F: RelayCreator> KafkaSecureChannelControllerImpl<F> {
         secure_channels: Arc<SecureChannels>,
         consumer_resolution: ConsumerResolution,
         relay_creator: Option<F>,
-        consumer_manual_policy: ManualPolicyAccessControl,
-        producer_manual_policy: ManualPolicyAccessControl,
+        consumer_policy_access_control: PolicyAccessControl,
+        producer_policy_access_control: PolicyAccessControl,
     ) -> KafkaSecureChannelControllerImpl<F> {
         Self {
             inner: Arc::new(Mutex::new(InnerSecureChannelControllerImpl {
@@ -234,8 +234,8 @@ impl<F: RelayCreator> KafkaSecureChannelControllerImpl<F> {
                 topic_relay_set: Default::default(),
                 secure_channels,
                 relay_creator,
-                consumer_manual_policy,
-                producer_manual_policy,
+                consumer_policy_access_control,
+                producer_policy_access_control,
                 consumer_resolution,
             })),
         }
@@ -422,7 +422,7 @@ impl<F: RelayCreator> KafkaSecureChannelControllerImpl<F> {
 
         if let Some(entry) = record {
             let authorized = inner
-                .consumer_manual_policy
+                .consumer_policy_access_control
                 .is_identity_authorized(entry.their_id())
                 .await?;
 
@@ -470,7 +470,7 @@ impl<F: RelayCreator> KafkaSecureChannelControllerImpl<F> {
             })?;
 
         let authorized = inner
-            .producer_manual_policy
+            .producer_policy_access_control
             .is_identity_authorized(entry.their_id())
             .await?;
 

@@ -125,7 +125,7 @@ impl InMemoryNode {
             .clone()
             .ok_or(ApiError::core("NodeManager has no authority"))?;
 
-        let consumer_manual_policy = self
+        let consumer_policy_access_control = self
             .policy_access_control(
                 project_authority.clone(),
                 Resource::new(
@@ -135,10 +135,9 @@ impl InMemoryNode {
                 Action::HandleMessage,
                 consumer_policy_expression,
             )
-            .await?
-            .create_manual();
+            .await?;
 
-        let producer_manual_policy = self
+        let producer_policy_access_control = self
             .policy_access_control(
                 project_authority.clone(),
                 Resource::new(
@@ -148,15 +147,14 @@ impl InMemoryNode {
                 Action::HandleMessage,
                 producer_policy_expression,
             )
-            .await?
-            .create_manual();
+            .await?;
 
         let secure_channel_controller = KafkaSecureChannelControllerImpl::new(
             self.secure_channels.clone(),
             consumer_resolution,
             consumer_publishing,
-            consumer_manual_policy,
-            producer_manual_policy,
+            consumer_policy_access_control,
+            producer_policy_access_control,
         );
 
         let inlet_policy_expression = if let Some(inlet_policy_expression) = inlet_policy_expression
@@ -207,7 +205,7 @@ impl InMemoryNode {
             ],
             outlet_node_multiaddr,
             inlet_alias,
-            inlet_policy_expression,
+            inlet_policy_expression.clone(),
             None,
             None,
             true,
@@ -219,6 +217,9 @@ impl InMemoryNode {
             inlet_controller,
             secure_channel_controller.into_trait(),
             local_interceptor_address.clone(),
+            self.secure_channels(),
+            self.project_authority.clone().unwrap(), // FIXME
+            inlet_policy_expression,
         )
         .await?;
 

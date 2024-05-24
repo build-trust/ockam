@@ -4,10 +4,10 @@ use crate::kafka::protocol_aware::OutletInterceptorImpl;
 use crate::kafka::KAFKA_OUTLET_INTERCEPTOR_ADDRESS;
 use ockam::identity::{Identifier, SecureChannels};
 use ockam::{Any, Context, Result, Routed, Worker};
-use ockam_abac::IncomingAbac;
 use ockam_abac::PolicyExpression;
-use ockam_core::flow_control::{FlowControlId, FlowControlOutgoingAccessControl, FlowControls};
-use ockam_core::{Address, IncomingAccessControl};
+use ockam_abac::{IncomingAbac, OutgoingAbac};
+use ockam_core::flow_control::{FlowControlId, FlowControls};
+use ockam_core::{Address, IncomingAccessControl, OutgoingAccessControl};
 use ockam_node::WorkerBuilder;
 use std::sync::Arc;
 
@@ -17,7 +17,8 @@ use std::sync::Arc;
 /// this implementation was created to allow local usage.
 pub(crate) struct OutletManagerService {
     outlet_controller: KafkaOutletController,
-    incoming_access_control: Arc<dyn IncomingAccessControl>,
+    request_incoming_access_control: Arc<dyn IncomingAccessControl>,
+    response_outgoing_access_control: Arc<dyn OutgoingAccessControl>,
     spawner_flow_control_id: FlowControlId,
 }
 
@@ -38,42 +39,54 @@ impl OutletManagerService {
             &default_secure_channel_listener_flow_control_id,
         );
 
-        let flow_control_id = FlowControls::generate_flow_control_id();
         let spawner_flow_control_id = FlowControls::generate_flow_control_id();
 
         flow_controls.add_spawner(worker_address.clone(), &spawner_flow_control_id);
 
-        let incoming_access_control = if let Some(policy_expression) = policy_expression.clone() {
-            IncomingAbac::create(
-                secure_channels.identities().identities_attributes(),
-                authority_identifier,
-                policy_expression.into(),
-            )
-        } else {
-            IncomingAbac::check_credential_only(
-                secure_channels.identities().identities_attributes(),
-                authority_identifier,
-            )
-        };
+        // TODO: Should be policy access control
+        let (incoming_access_control, outgoing_access_control) =
+            if let Some(policy_expression) = policy_expression.clone() {
+                (
+                    IncomingAbac::create(
+                        secure_channels.identities().identities_attributes(),
+                        authority_identifier.clone(),
+                        policy_expression.clone().into(),
+                    ),
+                    OutgoingAbac::create(
+                        context,
+                        secure_channels.identities().identities_attributes(),
+                        authority_identifier,
+                        policy_expression.into(),
+                    )
+                    .await?,
+                )
+            } else {
+                (
+                    IncomingAbac::check_credential_only(
+                        secure_channels.identities().identities_attributes(),
+                        authority_identifier.clone(),
+                    ),
+                    OutgoingAbac::check_credential_only(
+                        context,
+                        secure_channels.identities().identities_attributes(),
+                        authority_identifier,
+                    )
+                    .await?,
+                )
+            };
 
-        // TOOD: Should we add outgoing?
         let worker = OutletManagerService {
             outlet_controller: KafkaOutletController::new(policy_expression, tls),
-            incoming_access_control: Arc::new(incoming_access_control),
+            request_incoming_access_control: Arc::new(incoming_access_control),
+            response_outgoing_access_control: Arc::new(outgoing_access_control),
             spawner_flow_control_id: spawner_flow_control_id.clone(),
         };
 
-        let incoming = worker.incoming_access_control.clone();
-        let outgoing = Arc::new(FlowControlOutgoingAccessControl::new(
-            flow_controls,
-            flow_control_id.clone(),
-            Some(spawner_flow_control_id),
-        ));
+        let incoming = worker.request_incoming_access_control.clone();
 
         WorkerBuilder::new(worker)
             .with_address(worker_address)
             .with_incoming_access_control_arc(incoming)
-            .with_outgoing_access_control_arc(outgoing)
             .start(context)
             .await
             .map(|_| ())
@@ -113,7 +126,8 @@ impl Worker for OutletManagerService {
             &context.flow_controls().clone(),
             secure_channel_flow_control_id,
             Some(self.spawner_flow_control_id.clone()),
-            self.incoming_access_control.clone(),
+            self.request_incoming_access_control.clone(),
+            self.response_outgoing_access_control.clone(),
         )
         .await?;
 
