@@ -2,10 +2,8 @@ use crate::kafka::outlet_controller::KafkaOutletController;
 use crate::kafka::portal_worker::KafkaPortalWorker;
 use crate::kafka::protocol_aware::OutletInterceptorImpl;
 use crate::kafka::KAFKA_OUTLET_INTERCEPTOR_ADDRESS;
-use ockam::identity::{Identifier, SecureChannels};
 use ockam::{Any, Context, Result, Routed, Worker};
 use ockam_abac::PolicyExpression;
-use ockam_abac::{IncomingAbac, OutgoingAbac};
 use ockam_core::flow_control::{FlowControlId, FlowControls};
 use ockam_core::{Address, IncomingAccessControl, OutgoingAccessControl};
 use ockam_node::WorkerBuilder;
@@ -25,10 +23,10 @@ pub(crate) struct OutletManagerService {
 impl OutletManagerService {
     pub(crate) async fn create(
         context: &Context,
-        secure_channels: Arc<SecureChannels>,
-        authority_identifier: Identifier,
         default_secure_channel_listener_flow_control_id: FlowControlId,
         policy_expression: Option<PolicyExpression>,
+        request_incoming_access_control: Arc<dyn IncomingAccessControl>,
+        response_outgoing_access_control: Arc<dyn OutgoingAccessControl>,
         tls: bool,
     ) -> Result<()> {
         let flow_controls = context.flow_controls();
@@ -43,42 +41,10 @@ impl OutletManagerService {
 
         flow_controls.add_spawner(worker_address.clone(), &spawner_flow_control_id);
 
-        // TODO: Should be policy access control
-        let (incoming_access_control, outgoing_access_control) =
-            if let Some(policy_expression) = policy_expression.clone() {
-                (
-                    IncomingAbac::create(
-                        secure_channels.identities().identities_attributes(),
-                        authority_identifier.clone(),
-                        policy_expression.clone().into(),
-                    ),
-                    OutgoingAbac::create(
-                        context,
-                        secure_channels.identities().identities_attributes(),
-                        authority_identifier,
-                        policy_expression.into(),
-                    )
-                    .await?,
-                )
-            } else {
-                (
-                    IncomingAbac::check_credential_only(
-                        secure_channels.identities().identities_attributes(),
-                        authority_identifier.clone(),
-                    ),
-                    OutgoingAbac::check_credential_only(
-                        context,
-                        secure_channels.identities().identities_attributes(),
-                        authority_identifier,
-                    )
-                    .await?,
-                )
-            };
-
         let worker = OutletManagerService {
             outlet_controller: KafkaOutletController::new(policy_expression, tls),
-            request_incoming_access_control: Arc::new(incoming_access_control),
-            response_outgoing_access_control: Arc::new(outgoing_access_control),
+            request_incoming_access_control,
+            response_outgoing_access_control,
             spawner_flow_control_id: spawner_flow_control_id.clone(),
         };
 

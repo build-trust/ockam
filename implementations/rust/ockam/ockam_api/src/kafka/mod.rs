@@ -30,9 +30,6 @@ pub const KAFKA_OUTLET_BOOTSTRAP_ADDRESS: &str = "kafka_bootstrap";
 pub fn kafka_outlet_address(broker_id: i32) -> Address {
     format!("kafka_outlet_{}", broker_id).into()
 }
-pub fn kafka_default_policy_expression() -> Expr {
-    subject_has_credential_policy_expression()
-}
 
 pub fn kafka_policy_expression(project_identifier: &Identifier) -> Expr {
     or([
@@ -40,6 +37,6 @@ pub fn kafka_policy_expression(project_identifier: &Identifier) -> Expr {
             subject_identifier_attribute(),
             str(project_identifier.to_string()),
         ]),
-        kafka_default_policy_expression(),
+        subject_has_credential_policy_expression(),
     ])
 }

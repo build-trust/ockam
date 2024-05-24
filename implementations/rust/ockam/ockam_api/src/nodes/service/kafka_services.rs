@@ -9,13 +9,13 @@ use ockam_multiaddr::proto::Project;
 use ockam_multiaddr::MultiAddr;
 use ockam_transport_tcp::HostnamePort;
 use std::str::FromStr;
+use std::sync::Arc;
 
 use super::NodeManagerWorker;
 use crate::error::ApiError;
 use crate::kafka::{
-    kafka_default_policy_expression, kafka_policy_expression, ConsumerPublishing,
-    ConsumerResolution, KafkaInletController, KafkaPortalListener,
-    KafkaSecureChannelControllerImpl, KAFKA_OUTLET_BOOTSTRAP_ADDRESS,
+    kafka_policy_expression, ConsumerPublishing, ConsumerResolution, KafkaInletController,
+    KafkaPortalListener, KafkaSecureChannelControllerImpl, KAFKA_OUTLET_BOOTSTRAP_ADDRESS,
     KAFKA_OUTLET_INTERCEPTOR_ADDRESS,
 };
 use crate::kafka::{OutletManagerService, PrefixRelayService};
@@ -169,9 +169,7 @@ impl InMemoryNode {
                 &project_identifier,
             )))
         } else {
-            Some(PolicyExpression::FullExpression(
-                kafka_default_policy_expression(),
-            ))
+            None
         };
 
         let inlet_controller = KafkaInletController::new(
@@ -212,26 +210,35 @@ impl InMemoryNode {
         )
         .await?;
 
+        let policy_access_control = self
+            .policy_access_control(
+                project_authority,
+                Resource::new(
+                    local_interceptor_address.to_string(),
+                    ResourceType::TcpInlet,
+                ),
+                Action::HandleMessage,
+                inlet_policy_expression,
+            )
+            .await?;
+
         KafkaPortalListener::create(
             context,
             inlet_controller,
             secure_channel_controller.into_trait(),
             local_interceptor_address.clone(),
-            self.secure_channels(),
-            self.project_authority.clone().unwrap(), // FIXME
-            inlet_policy_expression,
+            Arc::new(policy_access_control.create_incoming()),
+            Arc::new(policy_access_control.create_outgoing(context).await?),
         )
         .await?;
 
-        {
-            self.registry
-                .kafka_services
-                .insert(
-                    local_interceptor_address,
-                    KafkaServiceInfo::new(KafkaServiceKind::Inlet),
-                )
-                .await;
-        }
+        self.registry
+            .kafka_services
+            .insert(
+                local_interceptor_address,
+                KafkaServiceInfo::new(KafkaServiceKind::Inlet),
+            )
+            .await;
 
         Ok(())
     }
@@ -262,12 +269,21 @@ impl InMemoryNode {
             .clone()
             .ok_or(ApiError::core("NodeManager has no authority"))?;
 
+        let policy_access_control = self
+            .policy_access_control(
+                project_authority,
+                Resource::new(service_address.to_string(), ResourceType::TcpOutlet),
+                Action::HandleMessage,
+                outlet_policy_expression.clone(),
+            )
+            .await?;
+
         OutletManagerService::create(
             context,
-            self.secure_channels.clone(),
-            project_authority,
             default_secure_channel_listener_flow_control_id,
             outlet_policy_expression.clone(),
+            Arc::new(policy_access_control.create_incoming()),
+            Arc::new(policy_access_control.create_outgoing(context).await?),
             tls,
         )
         .await?;
