@@ -770,7 +770,7 @@ mod test {
                 Resource::new("arbitrary-resource-name", ResourceType::KafkaConsumer),
                 Action::HandleMessage,
                 Env::new(),
-                authority_identifier.clone(),
+                Some(authority_identifier.clone()),
             )
             .create_manual();
 
@@ -780,7 +780,7 @@ mod test {
                 Resource::new("arbitrary-resource-name", ResourceType::KafkaProducer),
                 Action::HandleMessage,
                 Env::new(),
-                authority_identifier.clone(),
+                Some(authority_identifier.clone()),
             )
             .create_manual();
 
@@ -849,7 +849,7 @@ mod test {
         let consumer_manual_policy = handle
             .node_manager
             .policy_access_control(
-                project_authority.clone(),
+                Some(project_authority.clone()),
                 Resource::new("arbitrary-resource-name", ResourceType::KafkaConsumer),
                 Action::HandleMessage,
                 None,
@@ -860,7 +860,7 @@ mod test {
         let producer_manual_policy = handle
             .node_manager
             .policy_access_control(
-                project_authority.clone(),
+                Some(project_authority.clone()),
                 Resource::new("arbitrary-resource-name", ResourceType::KafkaProducer),
                 Action::HandleMessage,
                 None,

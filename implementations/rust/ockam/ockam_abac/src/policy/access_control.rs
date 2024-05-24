@@ -43,7 +43,7 @@ impl PolicyAccessControl {
     pub fn new(
         policies: Policies,
         identities_attributes: Arc<IdentitiesAttributes>,
-        authority: Identifier,
+        authority: Option<Identifier>,
         env: Env,
         resource: Resource,
         action: Action,

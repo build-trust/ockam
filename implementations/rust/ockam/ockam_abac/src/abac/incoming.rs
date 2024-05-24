@@ -26,7 +26,7 @@ impl IncomingAbac {
     /// a message has an authenticated attribute that resolves the expression to `true`
     pub fn create(
         identities_attributes: Arc<IdentitiesAttributes>,
-        authority: Identifier,
+        authority: Option<Identifier>,
         expression: Expr,
     ) -> Self {
         let abac = Abac::new(identities_attributes, authority, Env::new());
@@ -38,7 +38,7 @@ impl IncomingAbac {
     /// a message has an authenticated attribute with the correct name and value
     pub fn create_name_value(
         identities_attributes: Arc<IdentitiesAttributes>,
-        authority: Identifier,
+        authority: Option<Identifier>,
         attribute_name: &str,
         attribute_value: &str,
     ) -> Self {
@@ -56,7 +56,7 @@ impl IncomingAbac {
         identities_attributes: Arc<IdentitiesAttributes>,
         authority: Identifier,
     ) -> Self {
-        Self::create(identities_attributes, authority, true.into())
+        Self::create(identities_attributes, Some(authority), true.into())
     }
 
     /// Returns true if the sender of the message is validated by the expression stored in AbacAccessControl

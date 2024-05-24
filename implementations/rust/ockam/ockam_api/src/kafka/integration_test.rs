@@ -81,7 +81,7 @@ mod test {
         let consumer_manual_policy = handler
             .node_manager
             .policy_access_control(
-                project_authority.clone(),
+                Some(project_authority.clone()),
                 Resource::new(listener_address.address(), ResourceType::KafkaConsumer),
                 Action::HandleMessage,
                 None,
@@ -92,7 +92,7 @@ mod test {
         let producer_manual_policy = handler
             .node_manager
             .policy_access_control(
-                project_authority.clone(),
+                Some(project_authority.clone()),
                 Resource::new(listener_address.address(), ResourceType::KafkaProducer),
                 Action::HandleMessage,
                 None,

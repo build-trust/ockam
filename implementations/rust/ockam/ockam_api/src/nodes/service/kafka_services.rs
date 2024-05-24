@@ -120,14 +120,9 @@ impl InMemoryNode {
         consumer_policy_expression: Option<PolicyExpression>,
         producer_policy_expression: Option<PolicyExpression>,
     ) -> Result<()> {
-        let project_authority = self
-            .project_authority
-            .clone()
-            .ok_or(ApiError::core("NodeManager has no authority"))?;
-
         let consumer_manual_policy = self
             .policy_access_control(
-                project_authority.clone(),
+                self.project_authority().clone(),
                 Resource::new(
                     format!("kafka-consumer-{}", local_interceptor_address.address()),
                     ResourceType::KafkaConsumer,
@@ -140,7 +135,7 @@ impl InMemoryNode {
 
         let producer_manual_policy = self
             .policy_access_control(
-                project_authority.clone(),
+                self.project_authority().clone(),
                 Resource::new(
                     format!("kafka-producer-{}", local_interceptor_address.address()),
                     ResourceType::KafkaProducer,
@@ -151,6 +146,16 @@ impl InMemoryNode {
             .await?
             .create_manual();
 
+        println!(
+            "PABLO: kafka_services.rs: producer manual policy : {:?} {:?}",
+            self.project_authority(),
+            producer_manual_policy
+        );
+        println!(
+            "PABLO: kafka_services.rs: consumer manual policy : {:?} {:?}",
+            self.project_authority(),
+            consumer_manual_policy
+        );
         let secure_channel_controller = KafkaSecureChannelControllerImpl::new(
             self.secure_channels.clone(),
             consumer_resolution,
@@ -170,11 +175,18 @@ impl InMemoryNode {
             Some(PolicyExpression::FullExpression(kafka_policy_expression(
                 &project_identifier,
             )))
-        } else {
+        } else if self.project_authority().is_some() {
             Some(PolicyExpression::FullExpression(
                 kafka_default_policy_expression(),
             ))
+        } else {
+            // If there is no expression give, and this node is not part of a project (no authority is setup)
+            None
         };
+        println!(
+            "PABLO: kafka_services.rs: Inlet policy expression: {:?}",
+            inlet_policy_expression
+        );
 
         let inlet_controller = KafkaInletController::new(
             outlet_node_multiaddr.clone(),
@@ -256,15 +268,10 @@ impl InMemoryNode {
         )
         .await?;
 
-        let project_authority = self
-            .project_authority
-            .clone()
-            .ok_or(ApiError::core("NodeManager has no authority"))?;
-
         OutletManagerService::create(
             context,
             self.secure_channels.clone(),
-            project_authority,
+            self.project_authority().clone(),
             default_secure_channel_listener_flow_control_id,
             outlet_policy_expression.clone(),
             tls,

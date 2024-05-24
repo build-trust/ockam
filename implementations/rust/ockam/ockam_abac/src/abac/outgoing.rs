@@ -38,7 +38,7 @@ impl OutgoingAbac {
     pub async fn create(
         ctx: &Context,
         identities_attributes: Arc<IdentitiesAttributes>,
-        authority: Identifier,
+        authority: Option<Identifier>,
         expression: Expr,
     ) -> Result<Self> {
         let ctx = ctx
@@ -58,7 +58,7 @@ impl OutgoingAbac {
     pub async fn create_name_value(
         ctx: &Context,
         identities_attributes: Arc<IdentitiesAttributes>,
-        authority: Identifier,
+        authority: Option<Identifier>,
         attribute_name: &str,
         attribute_value: &str,
     ) -> Result<Self> {
@@ -77,7 +77,7 @@ impl OutgoingAbac {
         identities_attributes: Arc<IdentitiesAttributes>,
         authority: Identifier,
     ) -> Result<Self> {
-        Self::create(ctx, identities_attributes, authority, true.into()).await
+        Self::create(ctx, identities_attributes, Some(authority), true.into()).await
     }
 
     /// Returns true if the sender of the message is validated by the expression stored in AbacAccessControl

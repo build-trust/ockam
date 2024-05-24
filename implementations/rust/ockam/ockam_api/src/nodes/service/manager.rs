@@ -392,7 +392,7 @@ impl NodeManager {
         let resource_name_str = resource.resource_name.as_str();
         let resource_type_str = resource.resource_type.to_string();
         let action_str = action.as_ref();
-        if let Some(authority) = authority {
+        if authority.is_some() || expression.is_some() {
             let policy_access_control = self
                 .policy_access_control(authority, resource, action, expression)
                 .await?;
@@ -411,6 +411,10 @@ impl NodeManager {
                 }
             }
         } else {
+            // If no expression is given, assume it's AllowAll, but only if no authority
+            // was set neither. Why: not sure, but to behave as it was previusly if there
+            // is an authority set.  If there is no authority, but still some expression,
+            // we use the provided policy expression
             warn! {
                 resource_name = resource_name_str,
                 resource_type = resource_type_str,
@@ -431,11 +435,16 @@ impl NodeManager {
 
     pub async fn policy_access_control(
         &self,
-        authority: Identifier,
+        authority: Option<Identifier>,
         resource: Resource,
         action: Action,
         expression: Option<PolicyExpression>,
     ) -> ockam_core::Result<PolicyAccessControl> {
+        println!(
+            "PABLO: policy_access_control {:?} {:?}",
+            authority, expression
+        );
+
         let resource_name_str = resource.resource_name.as_str();
         let action_str = action.as_ref();
 

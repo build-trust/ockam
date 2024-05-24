@@ -7,7 +7,7 @@ use ockam::{Any, Context, Result, Routed, Worker};
 use ockam_abac::IncomingAbac;
 use ockam_abac::PolicyExpression;
 use ockam_core::flow_control::{FlowControlId, FlowControlOutgoingAccessControl, FlowControls};
-use ockam_core::{Address, IncomingAccessControl};
+use ockam_core::{Address, AllowAll, IncomingAccessControl};
 use ockam_node::WorkerBuilder;
 use std::sync::Arc;
 
@@ -25,7 +25,7 @@ impl OutletManagerService {
     pub(crate) async fn create(
         context: &Context,
         secure_channels: Arc<SecureChannels>,
-        authority_identifier: Identifier,
+        authority_identifier: Option<Identifier>,
         default_secure_channel_listener_flow_control_id: FlowControlId,
         policy_expression: Option<PolicyExpression>,
         tls: bool,
@@ -43,23 +43,26 @@ impl OutletManagerService {
 
         flow_controls.add_spawner(worker_address.clone(), &spawner_flow_control_id);
 
-        let incoming_access_control = if let Some(policy_expression) = policy_expression.clone() {
-            IncomingAbac::create(
-                secure_channels.identities().identities_attributes(),
-                authority_identifier,
-                policy_expression.into(),
-            )
-        } else {
-            IncomingAbac::check_credential_only(
-                secure_channels.identities().identities_attributes(),
-                authority_identifier,
-            )
-        };
+        let incoming_access_control: Arc<dyn IncomingAccessControl> =
+            if let Some(policy_expression) = policy_expression.clone() {
+                Arc::new(IncomingAbac::create(
+                    secure_channels.identities().identities_attributes(),
+                    authority_identifier,
+                    policy_expression.into(),
+                ))
+            } else if let Some(authority_identifier) = authority_identifier {
+                Arc::new(IncomingAbac::check_credential_only(
+                    secure_channels.identities().identities_attributes(),
+                    authority_identifier,
+                ))
+            } else {
+                Arc::new(AllowAll)
+            };
 
         // TOOD: Should we add outgoing?
         let worker = OutletManagerService {
             outlet_controller: KafkaOutletController::new(policy_expression, tls),
-            incoming_access_control: Arc::new(incoming_access_control),
+            incoming_access_control,
             spawner_flow_control_id: spawner_flow_control_id.clone(),
         };
 
