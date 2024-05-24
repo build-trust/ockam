@@ -31,10 +31,10 @@ mod test {
     use ockam::compat::tokio::io::DuplexStream;
     use ockam::Context;
     use ockam_abac::{Action, Resource, ResourceType};
-    use ockam_core::async_trait;
     use ockam_core::compat::sync::Arc;
     use ockam_core::route;
     use ockam_core::Address;
+    use ockam_core::{async_trait, AllowAll};
     use ockam_multiaddr::proto::Service;
     use ockam_multiaddr::MultiAddr;
     use ockam_node::compat::tokio;
@@ -132,9 +132,8 @@ mod test {
             inlet_controller,
             secure_channel_controller.into_trait(),
             listener_address,
-            handler.secure_channels.clone(),
-            project_authority.clone(),
-            None,
+            Arc::new(AllowAll),
+            Arc::new(AllowAll),
         )
         .await?;
 

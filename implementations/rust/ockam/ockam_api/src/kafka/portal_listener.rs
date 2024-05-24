@@ -1,5 +1,3 @@
-use ockam::identity::{Identifier, SecureChannels};
-use ockam_abac::{IncomingAbac, OutgoingAbac, PolicyExpression};
 use ockam_core::compat::sync::Arc;
 use ockam_core::{
     route, Address, Any, IncomingAccessControl, OutgoingAccessControl, Routed, Worker,
@@ -83,48 +81,15 @@ impl KafkaPortalListener {
         inlet_controller: KafkaInletController,
         secure_channel_controller: Arc<dyn KafkaSecureChannelController>,
         listener_address: Address,
-        secure_channels: Arc<SecureChannels>,
-        authority_identifier: Identifier,
-        policy_expression: Option<PolicyExpression>,
+        incoming_access_control: Arc<dyn IncomingAccessControl>,
+        outgoing_access_control: Arc<dyn OutgoingAccessControl>,
     ) -> ockam_core::Result<()> {
-        // TODO: Should be policy access control
-        let (incoming_access_control, outgoing_access_control) =
-            if let Some(policy_expression) = policy_expression.clone() {
-                (
-                    IncomingAbac::create(
-                        secure_channels.identities().identities_attributes(),
-                        authority_identifier.clone(),
-                        policy_expression.clone().into(),
-                    ),
-                    OutgoingAbac::create(
-                        context,
-                        secure_channels.identities().identities_attributes(),
-                        authority_identifier,
-                        policy_expression.into(),
-                    )
-                    .await?,
-                )
-            } else {
-                (
-                    IncomingAbac::check_credential_only(
-                        secure_channels.identities().identities_attributes(),
-                        authority_identifier.clone(),
-                    ),
-                    OutgoingAbac::check_credential_only(
-                        context,
-                        secure_channels.identities().identities_attributes(),
-                        authority_identifier,
-                    )
-                    .await?,
-                )
-            };
-
         let s = Self {
             inlet_controller,
             secure_channel_controller,
             uuid_to_name: Default::default(),
-            request_outgoing_access_control: Arc::new(outgoing_access_control),
-            response_incoming_access_control: Arc::new(incoming_access_control),
+            request_outgoing_access_control: outgoing_access_control,
+            response_incoming_access_control: incoming_access_control,
         };
 
         context.start_worker(listener_address, s).await
