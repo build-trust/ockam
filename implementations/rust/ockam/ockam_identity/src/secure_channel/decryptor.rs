@@ -231,7 +231,6 @@ pub(crate) struct Decryptor {
     vault: Arc<dyn VaultForSecureChannels>,
     key_tracker: KeyTracker,
     nonce_tracker: Option<NonceTracker>,
-    rekeying: bool,
 }
 
 impl Decryptor {
@@ -240,7 +239,6 @@ impl Decryptor {
             vault,
             key_tracker: KeyTracker::new(key, KEY_RENEWAL_INTERVAL),
             nonce_tracker: Some(NonceTracker::new()),
-            rekeying: true,
         }
     }
 
@@ -250,7 +248,6 @@ impl Decryptor {
             vault,
             key_tracker: KeyTracker::new(key, KEY_RENEWAL_INTERVAL),
             nonce_tracker: None,
-            rekeying: false,
         }
     }
 
@@ -267,7 +264,8 @@ impl Decryptor {
             None
         };
 
-        let key = if self.rekeying {
+        let rekeying = self.nonce_tracker.is_some();
+        let key = if rekeying {
             // get the key corresponding to the current nonce and
             // rekey if necessary
             if let Some(key) = self.key_tracker.get_key(nonce)? {

@@ -186,6 +186,54 @@ impl NodeManager {
         Ok(sc)
     }
 
+    pub async fn create_key_exchange_secure_channel(
+        &self,
+        ctx: &Context,
+        addr: MultiAddr,
+        identity_name: Option<String>,
+        authorized_identifiers: Option<Vec<Identifier>>,
+        timeout: Option<Duration>,
+    ) -> Result<SecureChannel> {
+        let identifier = self.get_identifier_by_name(identity_name.clone()).await?;
+        let connection_ctx = Arc::new(ctx.async_try_clone().await?);
+        let connection = self
+            .make_connection(connection_ctx, &addr, identifier.clone(), None, timeout)
+            .await?;
+
+        let sc_route = connection.route()?;
+        let options = SecureChannelOptions::new().key_exchange_only()?;
+
+        let options = if let Some(timeout) = timeout {
+            options.with_timeout(timeout)
+        } else {
+            options
+        };
+
+        let options = match self.project_authority() {
+            Some(project_authority) => options.with_authority(project_authority),
+            None => options,
+        };
+
+        let options = match authorized_identifiers.clone() {
+            Some(ids) => options.with_trust_policy(TrustMultiIdentifiersPolicy::new(ids)),
+            None => options.with_trust_policy(TrustEveryonePolicy),
+        };
+
+        let sc = self
+            .secure_channels
+            .create_secure_channel(ctx, &identifier, sc_route.clone(), options)
+            .await?;
+
+        debug!(%sc_route, %sc, "Created secure channel");
+
+        self.registry
+            .secure_channels
+            .insert(sc_route, sc.clone(), authorized_identifiers)
+            .await;
+
+        Ok(sc)
+    }
+
     pub(crate) async fn create_secure_channel_internal(
         &self,
         ctx: &Context,
@@ -289,6 +337,7 @@ impl NodeManager {
         }
 
         let options = SecureChannelListenerOptions::new()
+            .key_exchange_only()?
             .as_consumer(&self.api_transport_flow_control_id)
             .with_trust_policy(TrustEveryonePolicy);
 

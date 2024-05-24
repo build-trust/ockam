@@ -1,5 +1,5 @@
 use crate::kafka::portal_worker::InterceptError;
-use crate::kafka::secure_channel_map::KafkaSecureChannelController;
+use crate::kafka::secure_channel_map::controller::KafkaSecureChannelControllerImpl;
 use crate::kafka::KafkaInletController;
 use bytes::BytesMut;
 use kafka_protocol::messages::ApiKey;
@@ -51,7 +51,7 @@ pub(crate) trait KafkaMessageInterceptor: Send + Sync + 'static {
 pub(crate) struct InletInterceptorImpl {
     request_map: Arc<Mutex<HashMap<CorrelationId, RequestInfo>>>,
     uuid_to_name: TopicUuidMap,
-    secure_channel_controller: Arc<dyn KafkaSecureChannelController>,
+    secure_channel_controller: KafkaSecureChannelControllerImpl,
     inlet_map: KafkaInletController,
 }
 
@@ -85,7 +85,7 @@ struct MessageWrapper {
 
 impl InletInterceptorImpl {
     pub(crate) fn new(
-        secure_channel_controller: Arc<dyn KafkaSecureChannelController>,
+        secure_channel_controller: KafkaSecureChannelControllerImpl,
         uuid_to_name: TopicUuidMap,
         inlet_map: KafkaInletController,
     ) -> InletInterceptorImpl {

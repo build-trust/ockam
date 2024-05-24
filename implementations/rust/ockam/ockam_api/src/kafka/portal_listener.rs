@@ -1,20 +1,20 @@
-use ockam_core::compat::sync::Arc;
 use ockam_core::{
     route, Address, Any, IncomingAccessControl, OutgoingAccessControl, Routed, Worker,
 };
 use ockam_node::Context;
+use std::sync::Arc;
 use tracing::trace;
 
 use crate::kafka::inlet_controller::KafkaInletController;
 use crate::kafka::portal_worker::KafkaPortalWorker;
 use crate::kafka::protocol_aware::TopicUuidMap;
-use crate::kafka::secure_channel_map::KafkaSecureChannelController;
+use crate::kafka::secure_channel_map::controller::KafkaSecureChannelControllerImpl;
 
 /// First point of ingress of kafka connections, at the first message it spawns new stateful workers
 /// to take care of the connection.
 pub(crate) struct KafkaPortalListener {
     inlet_controller: KafkaInletController,
-    secure_channel_controller: Arc<dyn KafkaSecureChannelController>,
+    secure_channel_controller: KafkaSecureChannelControllerImpl,
     uuid_to_name: TopicUuidMap,
     request_outgoing_access_control: Arc<dyn OutgoingAccessControl>,
     response_incoming_access_control: Arc<dyn IncomingAccessControl>,
@@ -79,7 +79,7 @@ impl KafkaPortalListener {
     pub(crate) async fn create(
         context: &Context,
         inlet_controller: KafkaInletController,
-        secure_channel_controller: Arc<dyn KafkaSecureChannelController>,
+        secure_channel_controller: KafkaSecureChannelControllerImpl,
         listener_address: Address,
         incoming_access_control: Arc<dyn IncomingAccessControl>,
         outgoing_access_control: Arc<dyn OutgoingAccessControl>,

@@ -34,37 +34,21 @@ mod test {
     use ockam_core::compat::sync::Arc;
     use ockam_core::route;
     use ockam_core::Address;
-    use ockam_core::{async_trait, AllowAll};
+    use ockam_core::AllowAll;
     use ockam_multiaddr::proto::Service;
     use ockam_multiaddr::MultiAddr;
     use ockam_node::compat::tokio;
     use ockam_transport_tcp::{TcpInletOptions, TcpOutletOptions};
 
-    use crate::hop::Hop;
     use crate::kafka::protocol_aware::utils::{encode_request, encode_response};
-    use crate::kafka::secure_channel_map::RelayCreator;
+    use crate::kafka::secure_channel_map::controller::KafkaSecureChannelControllerImpl;
     use crate::kafka::{
-        ConsumerResolution, KafkaInletController, KafkaPortalListener,
-        KafkaSecureChannelControllerImpl,
+        ConsumerPublishing, ConsumerResolution, KafkaInletController, KafkaPortalListener,
     };
     use crate::test_utils::NodeManagerHandle;
 
     // TODO: upgrade to 13 by adding a metadata request to map uuid<=>topic_name
     const TEST_KAFKA_API_VERSION: i16 = 12;
-
-    struct HopRelayCreator {}
-
-    #[async_trait]
-    impl RelayCreator for HopRelayCreator {
-        async fn create_relay(&self, context: &Context, alias: String) -> ockam::Result<()> {
-            trace!("creating mock relay for: {alias}");
-            // replicating the same logic of the orchestrator by adding consumer__
-            context
-                .start_worker(Address::from_string(format!("consumer__{alias}")), Hop)
-                .await?;
-            Ok(())
-        }
-    }
 
     async fn create_kafka_service(
         context: &Context,
@@ -98,10 +82,11 @@ mod test {
             )
             .await?;
 
-        let secure_channel_controller = KafkaSecureChannelControllerImpl::new_extended(
+        let secure_channel_controller = KafkaSecureChannelControllerImpl::new(
+            (*handler.node_manager).clone(),
             handler.secure_channels.clone(),
             ConsumerResolution::ViaRelay(MultiAddr::try_from("/service/api")?),
-            Some(HopRelayCreator {}),
+            ConsumerPublishing::None,
             consumer_policy_access_control,
             producer_policy_access_control,
         );
@@ -130,7 +115,7 @@ mod test {
         KafkaPortalListener::create(
             context,
             inlet_controller,
-            secure_channel_controller.into_trait(),
+            secure_channel_controller,
             listener_address,
             Arc::new(AllowAll),
             Arc::new(AllowAll),

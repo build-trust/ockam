@@ -9,7 +9,7 @@ mod outlet_service;
 mod portal_listener;
 mod portal_worker;
 mod protocol_aware;
-mod secure_channel_map;
+pub(crate) mod secure_channel_map;
 
 pub(crate) use inlet_controller::KafkaInletController;
 use ockam::identity::Identifier;
@@ -21,7 +21,6 @@ pub(crate) use outlet_service::OutletManagerService;
 pub(crate) use portal_listener::KafkaPortalListener;
 pub use secure_channel_map::ConsumerPublishing;
 pub use secure_channel_map::ConsumerResolution;
-pub(crate) use secure_channel_map::KafkaSecureChannelControllerImpl;
 
 pub const KAFKA_OUTLET_CONSUMERS: &str = "kafka_consumers";
 pub const KAFKA_OUTLET_INTERCEPTOR_ADDRESS: &str = "kafka_interceptor";

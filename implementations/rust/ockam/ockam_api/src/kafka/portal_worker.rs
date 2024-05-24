@@ -15,7 +15,7 @@ use ockam_transport_tcp::{PortalMessage, MAX_PAYLOAD_SIZE};
 use crate::kafka::inlet_controller::KafkaInletController;
 use crate::kafka::length_delimited::{length_encode, KafkaMessageDecoder};
 use crate::kafka::protocol_aware::{InletInterceptorImpl, KafkaMessageInterceptor, TopicUuidMap};
-use crate::kafka::secure_channel_map::KafkaSecureChannelController;
+use crate::kafka::secure_channel_map::controller::KafkaSecureChannelControllerImpl;
 use crate::kafka::KAFKA_OUTLET_BOOTSTRAP_ADDRESS;
 
 /// By default, kafka supports up to 1MB messages. 16MB is the maximum suggested
@@ -380,7 +380,7 @@ impl KafkaPortalWorker {
     #[allow(clippy::too_many_arguments)]
     pub(crate) async fn create_inlet_side_kafka_portal(
         context: &mut Context,
-        secure_channel_controller: Arc<dyn KafkaSecureChannelController>,
+        secure_channel_controller: KafkaSecureChannelControllerImpl,
         uuid_to_name: TopicUuidMap,
         inlet_map: KafkaInletController,
         max_kafka_message_size: Option<u32>,
@@ -452,7 +452,7 @@ mod test {
     use kafka_protocol::protocol::Decodable;
     use kafka_protocol::protocol::Encodable as KafkaEncodable;
     use kafka_protocol::protocol::StrBytes;
-    use ockam::identity::{secure_channels, Identifier};
+    use ockam::identity::Identifier;
     use ockam_core::compat::sync::{Arc, Mutex};
     use ockam_core::{route, Address, AllowAll, NeutralMessage, Routed, Worker};
     use ockam_multiaddr::MultiAddr;
@@ -464,9 +464,10 @@ mod test {
 
     use crate::kafka::inlet_controller::KafkaInletController;
     use crate::kafka::portal_worker::KafkaPortalWorker;
-    use crate::kafka::secure_channel_map::KafkaSecureChannelControllerImpl;
+    use crate::kafka::secure_channel_map::controller::KafkaSecureChannelControllerImpl;
     use crate::kafka::{ConsumerPublishing, ConsumerResolution};
     use crate::port_range::PortRange;
+    use crate::test_utils::NodeManagerHandle;
     use ockam::MessageReceiveOptions;
     use ockam_abac::{
         Action, Env, Policies, Resource, ResourcePolicySqlxDatabase, ResourceType,
@@ -506,7 +507,8 @@ mod test {
     async fn kafka_portal_worker__ping_pong_pass_through__should_pass(
         context: &mut Context,
     ) -> ockam::Result<()> {
-        let portal_inlet_address = setup_only_worker(context).await;
+        let handle = crate::test_utils::start_manager_for_tests(context, None, None).await?;
+        let portal_inlet_address = setup_only_worker(context, &handle).await;
 
         context
             .send(
@@ -542,7 +544,8 @@ mod test {
     async fn kafka_portal_worker__pieces_of_kafka_message__message_assembled(
         context: &mut Context,
     ) -> ockam::Result<()> {
-        let portal_inlet_address = setup_only_worker(context).await;
+        let handle = crate::test_utils::start_manager_for_tests(context, None, None).await?;
+        let portal_inlet_address = setup_only_worker(context, &handle).await;
 
         let mut request_buffer = BytesMut::new();
         encode(
@@ -583,7 +586,8 @@ mod test {
     async fn kafka_portal_worker__double_kafka_message__message_assembled(
         context: &mut Context,
     ) -> ockam::Result<()> {
-        let portal_inlet_address = setup_only_worker(context).await;
+        let handle = crate::test_utils::start_manager_for_tests(context, None, None).await?;
+        let portal_inlet_address = setup_only_worker(context, &handle).await;
 
         let mut request_buffer = BytesMut::new();
         encode(
@@ -619,7 +623,8 @@ mod test {
     async fn kafka_portal_worker__bigger_than_limit_kafka_message__error(
         context: &mut Context,
     ) -> ockam::Result<()> {
-        let portal_inlet_address = setup_only_worker(context).await;
+        let handle = crate::test_utils::start_manager_for_tests(context, None, None).await?;
+        let portal_inlet_address = setup_only_worker(context, &handle).await;
 
         // with the message container it goes well over the max allowed message kafka size
         let mut zero_buffer: Vec<u8> = Vec::new();
@@ -671,7 +676,8 @@ mod test {
     async fn kafka_portal_worker__almost_over_limit_than_limit_kafka_message__two_kafka_message_pass(
         context: &mut Context,
     ) -> ockam::Result<()> {
-        let portal_inlet_address = setup_only_worker(context).await;
+        let handle = crate::test_utils::start_manager_for_tests(context, None, None).await?;
+        let portal_inlet_address = setup_only_worker(context, &handle).await;
 
         // let's build the message to 90% of max. size
         let mut zero_buffer: Vec<u8> = Vec::new();
@@ -740,7 +746,7 @@ mod test {
         Ok(())
     }
 
-    async fn setup_only_worker(context: &mut Context) -> Address {
+    async fn setup_only_worker(context: &mut Context, handle: &NodeManagerHandle) -> Address {
         let inlet_map = KafkaInletController::new(
             MultiAddr::default(),
             route![],
@@ -755,7 +761,7 @@ mod test {
             "I0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
         )
         .unwrap();
-        let secure_channels = secure_channels().await.unwrap();
+        let secure_channels = handle.secure_channels.clone();
 
         let database = SqlxDatabase::in_memory("kafka").await.unwrap();
         let policies = Policies::new(
@@ -786,13 +792,13 @@ mod test {
         );
 
         let secure_channel_controller = KafkaSecureChannelControllerImpl::new(
+            (*handle.node_manager).clone(),
             secure_channels,
             ConsumerResolution::ViaRelay(MultiAddr::default()),
             ConsumerPublishing::None,
             consumer_policy_access_control,
             producer_policy_access_control,
-        )
-        .into_trait();
+        );
 
         KafkaPortalWorker::create_inlet_side_kafka_portal(
             context,
@@ -870,13 +876,13 @@ mod test {
             .await?;
 
         let secure_channel_controller = KafkaSecureChannelControllerImpl::new(
+            (*handle.node_manager).clone(),
             handle.secure_channels.clone(),
             ConsumerResolution::ViaRelay(MultiAddr::default()),
             ConsumerPublishing::None,
             consumer_policy_access_control,
             producer_policy_access_control,
-        )
-        .into_trait();
+        );
 
         let inlet_map = KafkaInletController::new(
             MultiAddr::default(),
