@@ -1,7 +1,5 @@
 use crate::abac::Abac;
-use crate::policy::{
-    IncomingPolicyAccessControl, ManualPolicyAccessControl, OutgoingPolicyAccessControl,
-};
+use crate::policy::{IncomingPolicyAccessControl, OutgoingPolicyAccessControl};
 use crate::{Action, Env, Policies, Resource};
 use core::fmt;
 use core::fmt::{Debug, Formatter};
@@ -9,6 +7,7 @@ use ockam_core::compat::sync::Arc;
 use ockam_core::{Address, DenyAll, Result};
 use ockam_identity::{Identifier, IdentitiesAttributes};
 use ockam_node::Context;
+use tracing::debug;
 
 /// Evaluates a policy expression against an environment of attributes.
 ///
@@ -78,9 +77,26 @@ impl PolicyAccessControl {
         })
     }
 
-    pub fn create_manual(&self) -> ManualPolicyAccessControl {
-        ManualPolicyAccessControl {
-            policy_access_control: self.clone(),
-        }
+    pub async fn is_identity_authorized(&self, identifier: &Identifier) -> Result<bool> {
+        // Load the policy expression for resource and action:
+        let expression = if let Some(expr) = self
+            .policies
+            .get_expression_for_resource(&self.resource, &self.action)
+            .await?
+        {
+            expr
+        } else {
+            // If no expression exists for this resource and action, access is denied:
+            debug! {
+                resource = %self.resource,
+                action   = %self.action,
+                "no policy found; access denied"
+            }
+            return Ok(false);
+        };
+
+        self.abac
+            .is_identity_authorized(identifier, &expression)
+            .await
     }
 }

@@ -31,8 +31,7 @@ pub use error::{EvalError, ParseError};
 pub use eval::eval;
 pub use expr::Expr;
 pub use policy::{
-    storage::*, ManualPolicyAccessControl, Policies, PolicyAccessControl, ResourcePolicy,
-    ResourceTypePolicy, Resources,
+    storage::*, Policies, PolicyAccessControl, ResourcePolicy, ResourceTypePolicy, Resources,
 };
 pub use policy_expr::*;
 pub use resource::{Resource, ResourceType};

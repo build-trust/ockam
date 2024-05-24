@@ -6,7 +6,8 @@ use ockam_core::flow_control::{FlowControlId, FlowControlOutgoingAccessControl, 
 use ockam_core::{
     errcode::{Kind, Origin},
     route, Address, AllowSourceAddress, AnyIncomingAccessControl, Encodable, Error,
-    IncomingAccessControl, LocalInfo, LocalMessage, NeutralMessage, Route, Routed, Worker,
+    IncomingAccessControl, LocalInfo, LocalMessage, NeutralMessage, OutgoingAccessControl, Route,
+    Routed, Worker,
 };
 use ockam_node::{Context, WorkerBuilder};
 use ockam_transport_tcp::{PortalMessage, MAX_PAYLOAD_SIZE};
@@ -305,7 +306,8 @@ impl KafkaPortalWorker {
         flow_controls: &FlowControls,
         secure_channel_flow_control_id: Option<FlowControlId>,
         spawner_flow_control_id: Option<FlowControlId>,
-        incoming_access_control: Arc<dyn IncomingAccessControl>,
+        request_incoming_access_control: Arc<dyn IncomingAccessControl>,
+        response_outgoing_access_control: Arc<dyn OutgoingAccessControl>,
     ) -> ockam_core::Result<Address> {
         let requests_worker_address = Address::random_tagged("KafkaPortalWorker.requests");
         let responses_worker_address = Address::random_tagged("KafkaPortalWorker.responses");
@@ -342,11 +344,6 @@ impl KafkaPortalWorker {
             vec![],
         );
 
-        // we need to receive the first message from the listener
-        if let Some(spawner_flow_control_id) = spawner_flow_control_id.as_ref() {
-            flow_controls.add_consumer(requests_worker_address.clone(), spawner_flow_control_id);
-        }
-
         if let Some(secure_channel_flow_control_id) = secure_channel_flow_control_id.as_ref() {
             flow_controls.add_consumer(
                 requests_worker_address.clone(),
@@ -359,7 +356,7 @@ impl KafkaPortalWorker {
             .with_address(requests_worker_address.clone())
             .with_incoming_access_control_arc(Arc::new(AnyIncomingAccessControl::new(vec![
                 Arc::new(AllowSourceAddress(responses_worker_address.clone())),
-                incoming_access_control,
+                request_incoming_access_control,
             ])))
             .with_outgoing_access_control_arc(Arc::new(FlowControlOutgoingAccessControl::new(
                 flow_controls,
@@ -371,6 +368,7 @@ impl KafkaPortalWorker {
 
         WorkerBuilder::new(response_worker)
             .with_address(responses_worker_address)
+            .with_outgoing_access_control_arc(response_outgoing_access_control)
             .start(context)
             .await?;
 
@@ -388,6 +386,8 @@ impl KafkaPortalWorker {
         max_kafka_message_size: Option<u32>,
         flow_control_id: Option<FlowControlId>,
         inlet_responder_route: Route,
+        request_outgoing_access_control: Arc<dyn OutgoingAccessControl>,
+        response_incoming_access_control: Arc<dyn IncomingAccessControl>,
     ) -> ockam_core::Result<Address> {
         let shared_protocol_state = Arc::new(InletInterceptorImpl::new(
             secure_channel_controller,
@@ -418,8 +418,10 @@ impl KafkaPortalWorker {
             fixed_onward_route: Some(inlet_responder_route),
         };
 
-        context
-            .start_worker(requests_worker_address.clone(), request_worker)
+        WorkerBuilder::new(request_worker)
+            .with_address(requests_worker_address.clone())
+            .with_outgoing_access_control_arc(request_outgoing_access_control)
+            .start(context)
             .await?;
 
         if let Some(flow_control_id) = flow_control_id {
@@ -427,8 +429,11 @@ impl KafkaPortalWorker {
             flow_controls.add_consumer(responses_worker_address.clone(), &flow_control_id);
             flow_controls.add_consumer(KAFKA_OUTLET_BOOTSTRAP_ADDRESS, &flow_control_id);
         }
-        context
-            .start_worker(responses_worker_address, response_worker)
+
+        WorkerBuilder::new(response_worker)
+            .with_address(responses_worker_address)
+            .with_incoming_access_control_arc(response_incoming_access_control)
+            .start(context)
             .await?;
 
         Ok(requests_worker_address)
@@ -449,7 +454,7 @@ mod test {
     use kafka_protocol::protocol::StrBytes;
     use ockam::identity::{secure_channels, Identifier};
     use ockam_core::compat::sync::{Arc, Mutex};
-    use ockam_core::{route, Address, NeutralMessage, Routed, Worker};
+    use ockam_core::{route, Address, AllowAll, NeutralMessage, Routed, Worker};
     use ockam_multiaddr::MultiAddr;
     use ockam_node::Context;
     use ockam_transport_tcp::{PortalMessage, MAX_PAYLOAD_SIZE};
@@ -764,32 +769,28 @@ mod test {
             )),
         );
 
-        let consumer_manual_policy = policies
-            .make_policy_access_control(
-                secure_channels.identities().identities_attributes(),
-                Resource::new("arbitrary-resource-name", ResourceType::KafkaConsumer),
-                Action::HandleMessage,
-                Env::new(),
-                authority_identifier.clone(),
-            )
-            .create_manual();
+        let consumer_policy_access_control = policies.make_policy_access_control(
+            secure_channels.identities().identities_attributes(),
+            Resource::new("arbitrary-resource-name", ResourceType::KafkaConsumer),
+            Action::HandleMessage,
+            Env::new(),
+            authority_identifier.clone(),
+        );
 
-        let producer_manual_policy = policies
-            .make_policy_access_control(
-                secure_channels.identities().identities_attributes(),
-                Resource::new("arbitrary-resource-name", ResourceType::KafkaProducer),
-                Action::HandleMessage,
-                Env::new(),
-                authority_identifier.clone(),
-            )
-            .create_manual();
+        let producer_policy_access_control = policies.make_policy_access_control(
+            secure_channels.identities().identities_attributes(),
+            Resource::new("arbitrary-resource-name", ResourceType::KafkaProducer),
+            Action::HandleMessage,
+            Env::new(),
+            authority_identifier.clone(),
+        );
 
         let secure_channel_controller = KafkaSecureChannelControllerImpl::new(
             secure_channels,
             ConsumerResolution::ViaRelay(MultiAddr::default()),
             ConsumerPublishing::None,
-            consumer_manual_policy,
-            producer_manual_policy,
+            consumer_policy_access_control,
+            producer_policy_access_control,
         )
         .into_trait();
 
@@ -801,6 +802,8 @@ mod test {
             Some(TEST_MAX_KAFKA_MESSAGE_SIZE),
             None,
             route![context.address()],
+            Arc::new(AllowAll),
+            Arc::new(AllowAll),
         )
         .await
         .unwrap()
@@ -846,7 +849,7 @@ mod test {
             .project_authority()
             .unwrap();
 
-        let consumer_manual_policy = handle
+        let consumer_policy_access_control = handle
             .node_manager
             .policy_access_control(
                 project_authority.clone(),
@@ -854,10 +857,9 @@ mod test {
                 Action::HandleMessage,
                 None,
             )
-            .await?
-            .create_manual();
+            .await?;
 
-        let producer_manual_policy = handle
+        let producer_policy_access_control = handle
             .node_manager
             .policy_access_control(
                 project_authority.clone(),
@@ -865,15 +867,14 @@ mod test {
                 Action::HandleMessage,
                 None,
             )
-            .await?
-            .create_manual();
+            .await?;
 
         let secure_channel_controller = KafkaSecureChannelControllerImpl::new(
             handle.secure_channels.clone(),
             ConsumerResolution::ViaRelay(MultiAddr::default()),
             ConsumerPublishing::None,
-            consumer_manual_policy,
-            producer_manual_policy,
+            consumer_policy_access_control,
+            producer_policy_access_control,
         )
         .into_trait();
 
@@ -893,6 +894,8 @@ mod test {
             None,
             None,
             route![context.address()],
+            Arc::new(AllowAll),
+            Arc::new(AllowAll),
         )
         .await?;
 

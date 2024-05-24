@@ -78,7 +78,7 @@ mod test {
             .project_authority()
             .unwrap();
 
-        let consumer_manual_policy = handler
+        let consumer_policy_access_control = handler
             .node_manager
             .policy_access_control(
                 project_authority.clone(),
@@ -86,10 +86,9 @@ mod test {
                 Action::HandleMessage,
                 None,
             )
-            .await?
-            .create_manual();
+            .await?;
 
-        let producer_manual_policy = handler
+        let producer_policy_access_control = handler
             .node_manager
             .policy_access_control(
                 project_authority.clone(),
@@ -97,15 +96,14 @@ mod test {
                 Action::HandleMessage,
                 None,
             )
-            .await?
-            .create_manual();
+            .await?;
 
         let secure_channel_controller = KafkaSecureChannelControllerImpl::new_extended(
             handler.secure_channels.clone(),
             ConsumerResolution::ViaRelay(MultiAddr::try_from("/service/api")?),
             Some(HopRelayCreator {}),
-            consumer_manual_policy,
-            producer_manual_policy,
+            consumer_policy_access_control,
+            producer_policy_access_control,
         );
 
         let mut interceptor_multiaddr = MultiAddr::default();
@@ -134,6 +132,9 @@ mod test {
             inlet_controller,
             secure_channel_controller.into_trait(),
             listener_address,
+            handler.secure_channels.clone(),
+            project_authority.clone(),
+            None,
         )
         .await?;
 
