@@ -7,7 +7,7 @@ impl DefaultAddress {
     pub const ECHO_SERVICE: &'static str = "echo";
     pub const HOP_SERVICE: &'static str = "hop";
     pub const SECURE_CHANNEL_LISTENER: &'static str = "api";
-    pub const KEY_EXCHANGER_LISTENER: &'static str = "key_exchange_listener";
+    pub const KEY_EXCHANGER_LISTENER: &'static str = "key_exchanger";
     pub const DIRECT_AUTHENTICATOR: &'static str = "direct_authenticator";
     pub const CREDENTIAL_ISSUER: &'static str = "credential_issuer";
     pub const ENROLLMENT_TOKEN_ISSUER: &'static str = "enrollment_token_issuer";

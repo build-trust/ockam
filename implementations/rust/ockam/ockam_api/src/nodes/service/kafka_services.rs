@@ -13,10 +13,10 @@ use std::sync::Arc;
 
 use super::NodeManagerWorker;
 use crate::error::ApiError;
+use crate::kafka::secure_channel_map::controller::KafkaSecureChannelControllerImpl;
 use crate::kafka::{
     kafka_policy_expression, ConsumerPublishing, ConsumerResolution, KafkaInletController,
-    KafkaPortalListener, KafkaSecureChannelControllerImpl, KAFKA_OUTLET_BOOTSTRAP_ADDRESS,
-    KAFKA_OUTLET_INTERCEPTOR_ADDRESS,
+    KafkaPortalListener, KAFKA_OUTLET_BOOTSTRAP_ADDRESS, KAFKA_OUTLET_INTERCEPTOR_ADDRESS,
 };
 use crate::kafka::{OutletManagerService, PrefixRelayService};
 use crate::nodes::models::portal::OutletAccessControl;
@@ -150,6 +150,7 @@ impl InMemoryNode {
             .await?;
 
         let secure_channel_controller = KafkaSecureChannelControllerImpl::new(
+            self.node_manager.clone(),
             self.secure_channels.clone(),
             consumer_resolution,
             consumer_publishing,
@@ -229,7 +230,7 @@ impl InMemoryNode {
         KafkaPortalListener::create(
             context,
             inlet_controller,
-            secure_channel_controller.into_trait(),
+            secure_channel_controller,
             local_interceptor_address.clone(),
             Arc::new(policy_access_control.create_incoming()),
             Arc::new(policy_access_control.create_outgoing(context).await?),

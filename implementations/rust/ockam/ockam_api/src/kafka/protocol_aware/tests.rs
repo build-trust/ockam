@@ -4,60 +4,26 @@ mod test {
     use crate::kafka::protocol_aware::utils::{encode_request, encode_response};
     use crate::kafka::protocol_aware::InletInterceptorImpl;
     use crate::kafka::protocol_aware::KafkaMessageInterceptor;
-    use crate::kafka::secure_channel_map::{KafkaEncryptedContent, KafkaSecureChannelController};
+    use crate::kafka::secure_channel_map::controller::KafkaSecureChannelControllerImpl;
+    use crate::kafka::{ConsumerPublishing, ConsumerResolution};
     use crate::port_range::PortRange;
     use kafka_protocol::messages::ApiKey;
     use kafka_protocol::messages::BrokerId;
     use kafka_protocol::messages::{ApiVersionsRequest, MetadataRequest, MetadataResponse};
     use kafka_protocol::messages::{ApiVersionsResponse, RequestHeader, ResponseHeader};
     use kafka_protocol::protocol::{Builder, StrBytes};
-    use ockam_core::compat::sync::Arc;
+    use ockam_abac::{Action, Env, Resource, ResourceType};
     use ockam_core::route;
-    use ockam_core::{async_trait, Address};
     use ockam_multiaddr::MultiAddr;
     use ockam_node::Context;
-
-    struct DummySecureChannelController;
-
-    #[async_trait]
-    impl KafkaSecureChannelController for DummySecureChannelController {
-        async fn encrypt_content_for(
-            &self,
-            _context: &mut Context,
-            _topic_name: &str,
-            _partition_id: i32,
-            content: Vec<u8>,
-        ) -> ockam_core::Result<KafkaEncryptedContent> {
-            Ok(KafkaEncryptedContent {
-                content,
-                consumer_decryptor_address: Address::from_string("arbitrary string"),
-            })
-        }
-
-        async fn decrypt_content_for(
-            &self,
-            _context: &mut Context,
-            _consumer_decryptor_address: &Address,
-            encrypted_content: Vec<u8>,
-        ) -> ockam_core::Result<Vec<u8>> {
-            Ok(encrypted_content)
-        }
-
-        async fn start_relays_for(
-            &self,
-            _context: &mut Context,
-            _topic_id: &str,
-            _partitions: Vec<i32>,
-        ) -> ockam_core::Result<()> {
-            Ok(())
-        }
-    }
 
     #[allow(non_snake_case)]
     #[ockam_macros::test(timeout = 5_000)]
     async fn interceptor__basic_messages_with_several_api_versions__parsed_correctly(
         context: &mut Context,
     ) -> ockam::Result<()> {
+        let handle = crate::test_utils::start_manager_for_tests(context, None, None).await?;
+
         let inlet_map = KafkaInletController::new(
             MultiAddr::default(),
             route![],
@@ -67,11 +33,36 @@ mod test {
             None,
         );
 
-        let interceptor = InletInterceptorImpl::new(
-            Arc::new(DummySecureChannelController {}),
-            Default::default(),
-            inlet_map,
+        let secure_channels = handle.node_manager.secure_channels();
+        let policies = handle.node_manager.policies();
+
+        let consumer_policy_access_control = policies.make_policy_access_control(
+            secure_channels.identities().identities_attributes(),
+            Resource::new("arbitrary-resource-name", ResourceType::KafkaConsumer),
+            Action::HandleMessage,
+            Env::new(),
+            handle.node_manager.identifier(),
         );
+
+        let producer_policy_access_control = policies.make_policy_access_control(
+            secure_channels.identities().identities_attributes(),
+            Resource::new("arbitrary-resource-name", ResourceType::KafkaProducer),
+            Action::HandleMessage,
+            Env::new(),
+            handle.node_manager.identifier(),
+        );
+
+        let secure_channel_controller = KafkaSecureChannelControllerImpl::new(
+            (*handle.node_manager).clone(),
+            secure_channels,
+            ConsumerResolution::None,
+            ConsumerPublishing::None,
+            consumer_policy_access_control,
+            producer_policy_access_control,
+        );
+
+        let interceptor =
+            InletInterceptorImpl::new(secure_channel_controller, Default::default(), inlet_map);
 
         let mut correlation_id = 0;
 

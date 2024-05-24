@@ -52,6 +52,7 @@ impl Connection {
     }
 
     pub fn add_default_consumers(&self, ctx: Arc<Context>) {
+        self.add_consumer(ctx.clone(), &DefaultAddress::KEY_EXCHANGER_LISTENER.into());
         self.add_consumer(ctx.clone(), &DefaultAddress::SECURE_CHANNEL_LISTENER.into());
         self.add_consumer(ctx.clone(), &DefaultAddress::UPPERCASE_SERVICE.into());
         self.add_consumer(ctx, &DefaultAddress::ECHO_SERVICE.into());
