@@ -1,5 +1,6 @@
 use async_trait::async_trait;
 use std::net::SocketAddr;
+use std::net::ToSocketAddrs;
 
 use clap::{command, Args};
 use colorful::Colorful;
@@ -30,8 +31,14 @@ pub struct CreateCommand {
     #[arg(long, default_value_t = kafka_default_outlet_addr())]
     pub addr: String,
     /// The address of the kafka bootstrap broker
-    #[arg(long, default_value_t = kafka_default_outlet_server())]
+    #[arg(long, default_value_t = kafka_default_outlet_server(), value_parser=host_port)]
     pub bootstrap_server: SocketAddr,
+}
+
+fn host_port(s: &str) -> Result<SocketAddr, String> {
+    s.to_socket_addrs()
+        .map(|mut sockaddrs| sockaddrs.next().unwrap())
+        .map_err(|err| format!("Error resolving {}: {}", s, err))
 }
 
 #[async_trait]
