@@ -4,13 +4,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 0.111.0 - 2024-05-24
+## 0.111.0 - 2024-05-25
 
 ### Added
 
 - Improve output of `node show` and `status` commands
 - Add more log messages
 - Implement updating route to the responder in the existing sc
+- Introducing a variant of the secure channel which only exchange keys
+- Using key exchanger in kafka secure channel map
 - Updated dependencies
 
 ## 0.110.0 - 2024-04-30

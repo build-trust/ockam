@@ -4,13 +4,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 0.57.0 - 2024-05-24
+## 0.57.0 - 2024-05-25
 
 ### Added
 
 - Create a parser for boolean expressions
 - Add the possibility to use boolean expressions for policy expressions
 - Address review comments
+- Added abac rules to kafka inlet and oulet
+- Introduce granular ac for kafka portal worker
+- Allow kafka portals to anchor trust on identities
 - Updated dependencies
 
 ## 0.56.0 - 2024-04-30
