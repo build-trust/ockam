@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 0.67.0 - 2024-05-24
+## 0.67.0 - 2024-05-25
 
 ### Added
 
@@ -20,6 +20,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improvements for commands' output to standardize their formatting
 - Removed consumer/producer/direct services and added inlet service
 - Introduced consumer resolution and publishing concepts and implementation
+- Added abac rules to kafka inlet and oulet
+- Introduce granular ac for kafka portal worker
+- Added policy access control usage
+- Introducing a variant of the secure channel which only exchange keys
+- Using key exchanger in kafka secure channel map
+- Allow kafka portals to anchor trust on identities
 - Updated dependencies
 
 ### Changed
