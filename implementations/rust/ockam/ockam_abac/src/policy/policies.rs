@@ -9,7 +9,7 @@ use ockam_core::compat::vec::Vec;
 use ockam_core::Result;
 use ockam_identity::{Identifier, IdentitiesAttributes};
 use strum::IntoEnumIterator;
-use tracing::debug;
+use tracing::{debug, instrument};
 
 #[derive(Clone)]
 pub struct Policies {
@@ -28,7 +28,7 @@ impl Policies {
         }
     }
 
-    //TODO #[instrument(skip_all, fields(resource = %resource, action = %action, env = %env, authority = %authority))]
+    #[instrument(skip_all, fields(resource = %resource, action = %action, env = %env, authority = ?authority))]
     pub fn make_policy_access_control(
         &self,
         identities_attributes: Arc<IdentitiesAttributes>,
