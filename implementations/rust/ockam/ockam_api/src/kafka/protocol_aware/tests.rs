@@ -41,7 +41,7 @@ mod test {
             Resource::new("arbitrary-resource-name", ResourceType::KafkaConsumer),
             Action::HandleMessage,
             Env::new(),
-            handle.node_manager.identifier(),
+            Some(handle.node_manager.identifier()),
         );
 
         let producer_policy_access_control = policies.make_policy_access_control(
@@ -49,7 +49,7 @@ mod test {
             Resource::new("arbitrary-resource-name", ResourceType::KafkaProducer),
             Action::HandleMessage,
             Env::new(),
-            handle.node_manager.identifier(),
+            Some(handle.node_manager.identifier()),
         );
 
         let secure_channel_controller = KafkaSecureChannelControllerImpl::new(
