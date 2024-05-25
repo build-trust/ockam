@@ -412,7 +412,7 @@ impl NodeManager {
             }
         } else {
             // If no expression is given, assume it's AllowAll, but only if no authority
-            // was set neither. Why: not sure, but to behave as it was previusly if there
+            // was set neither. Why: not sure, but to behave as it was previously if there
             // is an authority set.  If there is no authority, but still some expression,
             // we use the provided policy expression
             warn! {
