@@ -49,7 +49,7 @@ http-body-util = "0"
 hyper = { version = "1", default-features = false, features = ["server", "http1"] }
 hyper-util = { version = "0", default-features = false, features = ["server", "http1", "tokio"] }
 indicatif = "0.17"
-itertools = "0.12.1"
+itertools = "0.13.0"
 kafka-protocol = "0.10"
 log = "0.4"
 miette = "7"
@@ -134,7 +134,7 @@ cddl-cat = "0.6.1"
 fake = { version = "2", features = ['derive', 'uuid'] }
 hex = "0.4.3"
 indexmap = "2.2.6"
-itertools = "0.12.1"
+itertools = "0.13.0"
 mockall = "0.12"
 multimap = "0.10.0"
 ockam_macros = { path = "../ockam_macros", features = ["std"] }
