@@ -368,7 +368,13 @@ impl HandshakeWorker {
 
         // create a separate encryptor worker which will be started independently
         {
-            let rekeying = !self.key_exchange_only;
+            let (rekeying, credential_retriever) = if self.key_exchange_only {
+                // only the initial exchange is needed for key exchange only
+                (false, None)
+            } else {
+                (true, self.credential_retriever.clone())
+            };
+
             self.shared_state.remote_route.write().unwrap().route = self.remote_route()?;
             let encryptor = EncryptorWorker::new(
                 self.role.str(),
@@ -382,7 +388,7 @@ impl HandshakeWorker {
                 ),
                 self.identifier.clone(),
                 self.change_history_repository.clone(),
-                self.credential_retriever.clone(),
+                credential_retriever,
                 handshake_results.presented_credential,
                 self.shared_state.clone(),
             );

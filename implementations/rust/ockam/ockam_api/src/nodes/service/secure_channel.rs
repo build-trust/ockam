@@ -30,6 +30,12 @@ use crate::nodes::registry::SecureChannelInfo;
 use crate::nodes::service::default_address::DefaultAddress;
 use crate::nodes::{NodeManager, NodeManagerWorker};
 
+#[derive(PartialOrd, PartialEq, Debug)]
+pub enum SecureChannelType {
+    KeyExchangeAndMessages,
+    KeyExchangeOnly,
+}
+
 /// SECURE CHANNELS
 impl NodeManagerWorker {
     pub async fn list_secure_channels(&self) -> Result<Response<Vec<String>>, Response<Error>> {
@@ -59,6 +65,7 @@ impl NodeManagerWorker {
                 authorized_identifiers,
                 credential,
                 timeout,
+                SecureChannelType::KeyExchangeAndMessages,
             )
             .await
             .map(|secure_channel| {
@@ -118,7 +125,13 @@ impl NodeManagerWorker {
 
         let response = self
             .node_manager
-            .create_secure_channel_listener(addr, authorized_identifiers, identity_name, ctx)
+            .create_secure_channel_listener(
+                addr,
+                authorized_identifiers,
+                identity_name,
+                ctx,
+                SecureChannelType::KeyExchangeAndMessages,
+            )
             .await
             .map(|_| Response::ok())?;
         Ok(response)
@@ -156,6 +169,7 @@ impl NodeManagerWorker {
 
 /// SECURE CHANNELS
 impl NodeManager {
+    #[allow(clippy::too_many_arguments)]
     pub async fn create_secure_channel(
         &self,
         ctx: &Context,
@@ -164,6 +178,7 @@ impl NodeManager {
         authorized_identifiers: Option<Vec<Identifier>>,
         credential: Option<CredentialAndPurposeKey>,
         timeout: Option<Duration>,
+        secure_channel_type: SecureChannelType,
     ) -> Result<SecureChannel> {
         let identifier = self.get_identifier_by_name(identity_name.clone()).await?;
 
@@ -179,6 +194,7 @@ impl NodeManager {
                 authorized_identifiers,
                 credential,
                 timeout,
+                secure_channel_type,
             )
             .await?;
 
@@ -186,54 +202,7 @@ impl NodeManager {
         Ok(sc)
     }
 
-    pub async fn create_key_exchange_secure_channel(
-        &self,
-        ctx: &Context,
-        addr: MultiAddr,
-        identity_name: Option<String>,
-        authorized_identifiers: Option<Vec<Identifier>>,
-        timeout: Option<Duration>,
-    ) -> Result<SecureChannel> {
-        let identifier = self.get_identifier_by_name(identity_name.clone()).await?;
-        let connection_ctx = Arc::new(ctx.async_try_clone().await?);
-        let connection = self
-            .make_connection(connection_ctx, &addr, identifier.clone(), None, timeout)
-            .await?;
-
-        let sc_route = connection.route()?;
-        let options = SecureChannelOptions::new().key_exchange_only()?;
-
-        let options = if let Some(timeout) = timeout {
-            options.with_timeout(timeout)
-        } else {
-            options
-        };
-
-        let options = match self.project_authority() {
-            Some(project_authority) => options.with_authority(project_authority),
-            None => options,
-        };
-
-        let options = match authorized_identifiers.clone() {
-            Some(ids) => options.with_trust_policy(TrustMultiIdentifiersPolicy::new(ids)),
-            None => options.with_trust_policy(TrustEveryonePolicy),
-        };
-
-        let sc = self
-            .secure_channels
-            .create_secure_channel(ctx, &identifier, sc_route.clone(), options)
-            .await?;
-
-        debug!(%sc_route, %sc, "Created secure channel");
-
-        self.registry
-            .secure_channels
-            .insert(sc_route, sc.clone(), authorized_identifiers)
-            .await;
-
-        Ok(sc)
-    }
-
+    #[allow(clippy::too_many_arguments)]
     pub(crate) async fn create_secure_channel_internal(
         &self,
         ctx: &Context,
@@ -242,6 +211,7 @@ impl NodeManager {
         authorized_identifiers: Option<Vec<Identifier>>,
         credential: Option<CredentialAndPurposeKey>,
         timeout: Option<Duration>,
+        secure_channel_type: SecureChannelType,
     ) -> Result<SecureChannel> {
         debug!(%sc_route, "Creating secure channel");
         let options = SecureChannelOptions::new();
@@ -270,6 +240,12 @@ impl NodeManager {
         let options = match authorized_identifiers.clone() {
             Some(ids) => options.with_trust_policy(TrustMultiIdentifiersPolicy::new(ids)),
             None => options.with_trust_policy(TrustEveryonePolicy),
+        };
+
+        let options = if secure_channel_type == SecureChannelType::KeyExchangeOnly {
+            options.key_exchange_only()
+        } else {
+            options
         };
 
         let sc = self
@@ -336,35 +312,14 @@ impl NodeManager {
             return Ok(listener);
         }
 
-        let options = SecureChannelListenerOptions::new()
-            .key_exchange_only()?
-            .as_consumer(&self.api_transport_flow_control_id)
-            .with_trust_policy(TrustEveryonePolicy);
-
-        let named_identity = self
-            .cli_state
-            .get_named_identity_by_identifier(&self.identifier())
-            .await?;
-        let identifier = self.identifier();
-        let vault = self
-            .cli_state
-            .get_named_vault(&named_identity.vault_name())
-            .await?
-            .vault()
-            .await?;
-        let secure_channels = self.build_secure_channels(vault).await?;
-        let listener = secure_channels
-            .create_secure_channel_listener(context, &identifier, address.clone(), options)
-            .await?;
-
-        info!("Key Exchanger listener was initialized at {address}");
-
-        self.registry
-            .secure_channel_listeners
-            .insert(address.clone(), listener.clone())
-            .await;
-
-        Ok(listener)
+        self.create_secure_channel_listener(
+            address.clone(),
+            None,
+            None,
+            context,
+            SecureChannelType::KeyExchangeOnly,
+        )
+        .await
     }
 
     pub async fn create_secure_channel_listener(
@@ -373,6 +328,7 @@ impl NodeManager {
         authorized_identifiers: Option<Vec<Identifier>>,
         identity_name: Option<String>,
         ctx: &Context,
+        secure_channel_type: SecureChannelType,
     ) -> Result<SecureChannelListener> {
         debug!(
             "Handling request to create a new secure channel listener: {}",
@@ -416,6 +372,12 @@ impl NodeManager {
             }
         };
 
+        let options = if secure_channel_type == SecureChannelType::KeyExchangeOnly {
+            options.key_exchange_only()
+        } else {
+            options
+        };
+
         let listener = secure_channels
             .create_secure_channel_listener(ctx, &identifier, address.clone(), options)
             .await?;
@@ -427,15 +389,17 @@ impl NodeManager {
             .insert(address.clone(), listener.clone())
             .await;
 
-        // TODO: Clean
-        // Add Echoer, Uppercase and Cred Exch as a consumer by default
-        ctx.flow_controls()
-            .add_consumer(DefaultAddress::ECHO_SERVICE, listener.flow_control_id());
+        if secure_channel_type == SecureChannelType::KeyExchangeAndMessages {
+            // TODO: Clean
+            // Add Echoer, Uppercase and Cred Exch as a consumer by default
+            ctx.flow_controls()
+                .add_consumer(DefaultAddress::ECHO_SERVICE, listener.flow_control_id());
 
-        ctx.flow_controls().add_consumer(
-            DefaultAddress::UPPERCASE_SERVICE,
-            listener.flow_control_id(),
-        );
+            ctx.flow_controls().add_consumer(
+                DefaultAddress::UPPERCASE_SERVICE,
+                listener.flow_control_id(),
+            );
+        }
 
         Ok(listener)
     }

@@ -9,6 +9,7 @@ use ockam_multiaddr::proto::Project;
 use ockam_multiaddr::{Match, MultiAddr, Protocol};
 use ockam_node::Context;
 
+use crate::nodes::service::SecureChannelType;
 use ockam::identity::Identifier;
 use std::time::Duration;
 
@@ -71,6 +72,7 @@ impl Instantiator for ProjectInstantiator {
                 Some(vec![project_identifier]),
                 None,
                 self.timeout,
+                SecureChannelType::KeyExchangeAndMessages,
             )
             .await?;
 

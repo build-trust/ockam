@@ -2,6 +2,7 @@ use crate::kafka::secure_channel_map::controller::{
     InnerSecureChannelControllerImpl, KafkaSecureChannelControllerImpl,
 };
 use crate::kafka::ConsumerResolution;
+use crate::nodes::service::SecureChannelType;
 use crate::DefaultAddress;
 use ockam::identity::SecureChannelRegistryEntry;
 use ockam_core::errcode::{Kind, Origin};
@@ -22,7 +23,15 @@ impl KafkaSecureChannelControllerImpl {
 
         let secure_channel = inner
             .node_manager
-            .create_secure_channel(context, destination, None, None, None, None)
+            .create_secure_channel(
+                context,
+                destination,
+                None,
+                None,
+                None,
+                None,
+                SecureChannelType::KeyExchangeAndMessages,
+            )
             .await?;
 
         Ok(secure_channel.encryptor_address().clone())
@@ -38,7 +47,15 @@ impl KafkaSecureChannelControllerImpl {
 
         let secure_channel = inner
             .node_manager
-            .create_key_exchange_secure_channel(context, destination, None, None, None)
+            .create_secure_channel(
+                context,
+                destination,
+                None,
+                None,
+                None,
+                None,
+                SecureChannelType::KeyExchangeOnly,
+            )
             .await?;
 
         Ok(secure_channel.encryptor_address().clone())
