@@ -144,6 +144,11 @@ impl LoggingConfiguration {
         }
     }
 
+    /// Set the log level crates
+    pub fn set_log_level(self, level: Level) -> LoggingConfiguration {
+        LoggingConfiguration { level, ..self }
+    }
+
     /// Create an EnvFilter which keeps only the log messages
     ///
     ///  - for the configured level
@@ -319,7 +324,7 @@ fn get_log_level(
         None => get_env_with_default(
             variable_name,
             LevelVar {
-                level: Level::TRACE,
+                level: Level::DEBUG,
             },
         )
         .map(|l| l.level),

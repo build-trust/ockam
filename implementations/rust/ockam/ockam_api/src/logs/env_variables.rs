@@ -86,6 +86,14 @@ pub(crate) const OCKAM_FOREGROUND_LOG_EXPORT_SCHEDULED_DELAY: &str =
 pub(crate) const OCKAM_BACKGROUND_LOG_EXPORT_SCHEDULED_DELAY: &str =
     "OCKAM_BACKGROUND_LOG_EXPORT_SCHEDULED_DELAY";
 
+/// Size of the queue used to batch spans.
+/// Accepted values, u16. For example: 2048
+pub(crate) const OCKAM_SPAN_EXPORT_QUEUE_SIZE: &str = "OCKAM_SPAN_EXPORT_QUEUE_SIZE";
+
+/// Size of the queue used to batch log records.
+/// Accepted values, u16. For example: 2048
+pub(crate) const OCKAM_LOG_EXPORT_QUEUE_SIZE: &str = "OCKAM_LOG_EXPORT_QUEUE_SIZE";
+
 ///
 /// OPENTELEMETRY COLLECTOR ERRORS CONFIGURATION
 ///

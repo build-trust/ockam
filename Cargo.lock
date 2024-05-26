@@ -2622,6 +2622,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "flexi_logger"
+version = "0.28.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f248c29a6d4bc5d065c9e9068d858761a0dcd796759f7801cc14db35db23abd8"
+dependencies = [
+ "chrono",
+ "glob",
+ "is-terminal",
+ "log",
+ "nu-ansi-term 0.49.0",
+ "regex",
+ "thiserror",
+]
+
+[[package]]
 name = "float-ord"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4392,6 +4407,7 @@ dependencies = [
  "dialoguer",
  "either",
  "fake",
+ "flexi_logger",
  "futures 0.3.30",
  "gethostname 0.4.3",
  "hex",
@@ -4403,6 +4419,7 @@ dependencies = [
  "indicatif",
  "itertools 0.12.1",
  "kafka-protocol",
+ "log",
  "miette",
  "minicbor",
  "mockall",

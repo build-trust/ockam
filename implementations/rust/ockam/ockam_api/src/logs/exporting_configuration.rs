@@ -28,6 +28,10 @@ pub struct ExportingConfiguration {
     span_export_scheduled_delay: Duration,
     /// Maximum time to wait until sending the current batch of logs
     log_export_scheduled_delay: Duration,
+    /// Size of the queue used to batch spans
+    span_export_queue_size: u16,
+    /// Size of the queue used to batch logs
+    log_export_queue_size: u16,
     /// Url of the OpenTelemetry collector
     opentelemetry_endpoint: Url,
     /// True if the user is an Ockam developer
@@ -66,6 +70,16 @@ impl ExportingConfiguration {
         self.span_export_scheduled_delay
     }
 
+    /// Size of the queue used for batching spans
+    pub fn span_export_queue_size(&self) -> u16 {
+        self.span_export_queue_size
+    }
+
+    /// Size of the queue used for batching log records
+    pub fn log_export_queue_size(&self) -> u16 {
+        self.log_export_queue_size
+    }
+
     /// Return the URL where to export spans and log records
     pub fn opentelemetry_endpoint(&self) -> Url {
         self.opentelemetry_endpoint.clone()
@@ -83,6 +97,8 @@ impl ExportingConfiguration {
             log_export_timeout: span_export_timeout()?,
             span_export_scheduled_delay: foreground_span_export_scheduled_delay()?,
             log_export_scheduled_delay: foreground_log_export_scheduled_delay()?,
+            span_export_queue_size: span_export_queue_size()?,
+            log_export_queue_size: log_export_queue_size()?,
             opentelemetry_endpoint: opentelemetry_endpoint()?,
             is_ockam_developer: is_ockam_developer()?,
         })
@@ -99,6 +115,8 @@ impl ExportingConfiguration {
             log_export_timeout: log_export_timeout()?,
             span_export_scheduled_delay: background_span_export_scheduled_delay()?,
             log_export_scheduled_delay: background_log_export_scheduled_delay()?,
+            span_export_queue_size: span_export_queue_size()?,
+            log_export_queue_size: log_export_queue_size()?,
             opentelemetry_endpoint: opentelemetry_endpoint()?,
             is_ockam_developer: is_ockam_developer()?,
         })
@@ -112,6 +130,8 @@ impl ExportingConfiguration {
             log_export_timeout: DEFAULT_EXPORT_TIMEOUT,
             span_export_scheduled_delay: DEFAULT_FOREGROUND_EXPORT_SCHEDULED_DELAY,
             log_export_scheduled_delay: DEFAULT_FOREGROUND_EXPORT_SCHEDULED_DELAY,
+            span_export_queue_size: DEFAULT_SPAN_EXPORT_QUEUE_SIZE,
+            log_export_queue_size: DEFAULT_LOG_EXPORT_QUEUE_SIZE,
             opentelemetry_endpoint: Self::default_opentelemetry_endpoint()?,
             is_ockam_developer: is_ockam_developer()?,
         })
@@ -236,6 +256,16 @@ fn background_span_export_scheduled_delay() -> ockam_core::Result<Duration> {
         OCKAM_BACKGROUND_SPAN_EXPORT_SCHEDULED_DELAY,
         DEFAULT_BACKGROUND_EXPORT_SCHEDULED_DELAY,
     )
+}
+
+/// Return the size of the queue used to batch spans, defined by an environment variable
+fn span_export_queue_size() -> ockam_core::Result<u16> {
+    get_env_with_default(OCKAM_SPAN_EXPORT_QUEUE_SIZE, DEFAULT_SPAN_EXPORT_QUEUE_SIZE)
+}
+
+/// Return the size of the queue used to batch log records, defined by an environment variable
+fn log_export_queue_size() -> ockam_core::Result<u16> {
+    get_env_with_default(OCKAM_LOG_EXPORT_QUEUE_SIZE, DEFAULT_LOG_EXPORT_QUEUE_SIZE)
 }
 
 /// Return the export timeout for log records, defined by an environment variable
