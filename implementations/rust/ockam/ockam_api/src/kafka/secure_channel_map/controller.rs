@@ -114,7 +114,7 @@ impl KafkaSecureChannelControllerImpl {
                     if inner.topic_relay_set.contains(&topic_key) {
                         continue;
                     }
-                    let alias = format!("{topic_name}_{partition}");
+                    let alias = format!("consumer_{topic_name}_{partition}");
                     Self::create_relay(&inner, context, where_to_publish.clone(), alias).await?;
                     inner.topic_relay_set.insert(topic_key);
                 }

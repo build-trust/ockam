@@ -16,13 +16,11 @@ use ockam::identity::Identifier;
 use ockam_abac::expr::{eq, or, str};
 use ockam_abac::{subject_has_credential_policy_expression, subject_identifier_attribute, Expr};
 use ockam_core::Address;
-pub(crate) use outlet_service::prefix_relay::PrefixRelayService;
 pub(crate) use outlet_service::OutletManagerService;
 pub(crate) use portal_listener::KafkaPortalListener;
 pub use secure_channel_map::ConsumerPublishing;
 pub use secure_channel_map::ConsumerResolution;
 
-pub const KAFKA_OUTLET_CONSUMERS: &str = "kafka_consumers";
 pub const KAFKA_OUTLET_INTERCEPTOR_ADDRESS: &str = "kafka_interceptor";
 pub const KAFKA_OUTLET_BOOTSTRAP_ADDRESS: &str = "kafka_bootstrap";
 

@@ -64,9 +64,6 @@ impl KafkaSecureChannelControllerImpl {
         topic_name: &str,
         partition: i32,
     ) -> ockam_core::Result<SecureChannelRegistryEntry> {
-        // here we should have the orchestrator address and expect relays to be
-        // present in the orchestrator with the format "consumer__{topic_name}_{partition}"
-
         let mut inner = self.inner.lock().await;
 
         // when we have only one consumer, we use the same secure channel for all topics
@@ -97,8 +94,9 @@ impl KafkaSecureChannelControllerImpl {
                         destination
                     }
                     ConsumerResolution::ViaRelay(mut destination) => {
-                        // consumer__ prefix is added by the orchestrator
-                        let topic_partition_address = format!("consumer__{topic_name}_{partition}");
+                        // consumer_ is the arbitrary chosen prefix by both parties
+                        let topic_partition_address =
+                            format!("forward_to_consumer_{topic_name}_{partition}");
                         debug!(
                             "creating new secure channel via relay to {topic_partition_address}"
                         );

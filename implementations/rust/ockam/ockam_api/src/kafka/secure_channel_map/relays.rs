@@ -13,9 +13,12 @@ impl KafkaSecureChannelControllerImpl {
         relay_service: MultiAddr,
         alias: String,
     ) -> ockam_core::Result<()> {
-        let is_rust = {
+        let is_rust_node = {
             // we might create a relay in the producer passing through a project relay
-            !(relay_service.starts_with(Project::CODE) && relay_service.len() == 1)
+            !(relay_service.starts_with(Project::CODE)
+                && relay_service
+                    .last()
+                    .map_or(false, |p| p.code() == Project::CODE))
         };
 
         let relay_info = inner
@@ -24,7 +27,7 @@ impl KafkaSecureChannelControllerImpl {
                 context,
                 &relay_service,
                 alias.clone(),
-                is_rust,
+                is_rust_node,
                 None,
                 Some(alias.clone()),
             )
