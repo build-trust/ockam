@@ -40,6 +40,7 @@ colorful = "0.2"
 colors-transform = "0.2"
 dialoguer = "0.11"
 either = { version = "1.11.0", default-features = false }
+flexi_logger = "0.28"
 futures = { version = "0.3.30", features = [] }
 gethostname = "0.4.3"
 hex = { version = "0.4.3", default-features = false, features = ["alloc", "serde"] }
@@ -50,6 +51,7 @@ hyper-util = { version = "0", default-features = false, features = ["server", "h
 indicatif = "0.17"
 itertools = "0.12.1"
 kafka-protocol = "0.10"
+log = "0.4"
 miette = "7"
 minicbor = { version = "0.24.0", features = ["alloc", "derive"] }
 nix = { version = "0.28", features = ["signal"] }

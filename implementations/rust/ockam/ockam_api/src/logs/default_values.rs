@@ -42,3 +42,9 @@ pub(crate) const DEFAULT_FOREGROUND_EXPORT_SCHEDULED_DELAY: Duration = Duration:
 
 // Maximum time between the export of batches
 pub(crate) const DEFAULT_BACKGROUND_EXPORT_SCHEDULED_DELAY: Duration = Duration::from_secs(1);
+
+// Size of the queue used to batch spans.
+pub(crate) const DEFAULT_SPAN_EXPORT_QUEUE_SIZE: u16 = 2048;
+
+// Size of the queue used to batch logs.
+pub(crate) const DEFAULT_LOG_EXPORT_QUEUE_SIZE: u16 = 2048;

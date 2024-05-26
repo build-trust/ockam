@@ -15,7 +15,7 @@ CLI Behavior
 Logging
 - OCKAM_LOG (deprecated, use OCKAM_LOGGING and OCKAM_LOG_LEVEL instead): a `string` that defines the verbosity of the logs when the `--verbose` argument is not passed: `info`, `warn`, `error`, `debug` or `trace`.
 - OCKAM_LOGGING: set this variable to any value in order to enable logging.
-- OCKAM_LOG_LEVEL: a `string` that defines the verbosity of the logs when the `--verbose` argument is not passed: `info`, `warn`, `error`, `debug` or `trace`. Default value: `trace`.
+- OCKAM_LOG_LEVEL: a `string` that defines the verbosity of the logs when the `--verbose` argument is not passed: `info`, `warn`, `error`, `debug` or `trace`. Default value: `debug`.
 - OCKAM_LOG_FORMAT: a `string` that overrides the default format of the logs: `default`, `json`, or `pretty`. Default value: `default`.
 - OCKAM_LOG_MAX_SIZE_MB: an `integer` that defines the maximum size of a log file in MB. Default value `100`.
 - OCKAM_LOG_MAX_FILES: an `integer` that defines the maximum number of log files to keep per node. Default value `60`.
@@ -31,7 +31,9 @@ Tracing
 - OCKAM_LOG_EXPORT_TIMEOUT: Timeout for trying to export log records. Default value: `5s`.
 - OCKAM_FOREGROUND_SPAN_EXPORT_SCHEDULED_DELAY: Timeout for exporting the current batch of spans. Default value: `1000s` (this value is high to avoid a deadlock in the tracing library).
 - OCKAM_BACKGROUND_SPAN_EXPORT_SCHEDULED_DELAY: Timeout for exporting the current batch of spans. Default value: `5s`.
-- OCKAM_TRACING_GLOBAL_ERROR_HANDLER: Configuration for printing tracing/logging errors: `console`, `logfile`, `off`. Default value: `console`.
+- OCKAM_SPAN_EXPORT_QUEUE_SIZE: Size of the queue used to store batched spans before export. When the queue is full, spans are dropped. Default value: `2048`
+- OCKAM_LOG_EXPORT_QUEUE_SIZE: Size of the queue used to store batched log records before export. When the queue is full, log records are dropped. Default value: `2048`
+- OCKAM_TRACING_GLOBAL_ERROR_HANDLER: Configuration for printing tracing/logging errors: `console`, `logfile`, `off`. Default value: `logfile`.
 
 Devs Usage
 - OCKAM: a `string` that defines the path to the ockam binary to use.

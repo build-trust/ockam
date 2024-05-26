@@ -234,6 +234,7 @@ fn create_opentelemetry_tracing_layer<
         .with_max_export_timeout(exporting_configuration.span_export_timeout())
         .with_scheduled_delay(exporting_configuration.span_export_scheduled_delay())
         .with_max_concurrent_exports(8)
+        .with_max_queue_size(exporting_configuration.span_export_queue_size() as usize)
         .build();
     let is_ockam_developer = exporting_configuration.is_ockam_developer();
     Executor::execute_future(async move {
@@ -264,11 +265,13 @@ fn create_opentelemetry_logging_layer<L: LogExporter + Send + 'static>(
     let app = app_name.to_string();
     let log_export_timeout = exporting_configuration.log_export_timeout();
     let log_export_scheduled_delay = exporting_configuration.log_export_scheduled_delay();
+    let log_export_queue_size = exporting_configuration.log_export_queue_size();
     Executor::execute_future(async move {
         let config = sdk::logs::Config::default().with_resource(make_resource(app));
         let batch_config = logs::BatchConfigBuilder::default()
             .with_max_export_timeout(log_export_timeout)
             .with_scheduled_delay(log_export_scheduled_delay)
+            .with_max_queue_size(log_export_queue_size as usize)
             .build();
         let log_processor =
             BatchLogProcessor::builder(log_exporter, opentelemetry_sdk::runtime::Tokio)
@@ -338,17 +341,57 @@ where
 /// They are either:
 ///
 ///  - printed on the console
-///  - logged to the current log file
+///  - logged to a log file
 ///  - not printed at all
 ///
 fn set_global_error_handler(logging_configuration: &LoggingConfiguration) {
     if let Err(e) = match logging_configuration.global_error_handler() {
-        GlobalErrorHandler::Off => global::set_error_handler(|_| ()),
-        GlobalErrorHandler::Console => global::set_error_handler(|e| println!("{e}")),
-        GlobalErrorHandler::LogFile => global::set_error_handler(move |e| error!("{e}")),
+        GlobalErrorHandler::Off => global::set_error_handler(|_| ()).map_err(|e| format!("{e:?}")),
+        GlobalErrorHandler::Console => global::set_error_handler(|e| println!("{e}"))
+            .map_err(|e| format!("logging error: {e:?}")),
+        GlobalErrorHandler::LogFile => match logging_configuration.log_dir() {
+            Some(log_dir) => {
+                use flexi_logger::*;
+                let file_spec = FileSpec::default()
+                    .directory(log_dir)
+                    .basename("logging_tracing_errors");
+                match Logger::try_with_str("info") {
+                    Ok(logger) => {
+                        // make sure that the log file is rolled every 3 days to avoid
+                        // accumulating error messages
+                        match logger
+                            .log_to_file(file_spec)
+                            .append()
+                            .rotate(
+                                Criterion::Age(Age::Day),
+                                Naming::Timestamps,
+                                Cleanup::KeepLogFiles(3),
+                            )
+                            .build()
+                        {
+                            Ok((log, _logger_handle)) => global::set_error_handler(move |e| {
+                                log.log(
+                                    &Record::builder()
+                                        .level(Level::Error)
+                                        .module_path(Some("ockam_api::logs::setup"))
+                                        .args(format_args!("{e:?}"))
+                                        .build(),
+                                )
+                            })
+                            .map_err(|e| format!("{e:?}")),
+                            Err(e) => Err(format!("{e:?}")),
+                        }
+                    }
+                    Err(e) => Err(format!("{e:?}")),
+                }
+            }
+            None => {
+                global::set_error_handler(|e| println!("ERROR! {e}")).map_err(|e| format!("{e:?}"))
+            }
+        },
     } {
-        println!("cannot set a error handler for logging: {e}");
-    }
+        println!("cannot set a global error handler for logging: {e}");
+    };
 }
 
 /// Create a Tracer using the provided span exporter
