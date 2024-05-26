@@ -55,7 +55,7 @@ impl Resource<CreateCommand> for Node {
             args.insert("tcp-listener-address".to_string(), tcp_listener_address);
         }
         if let Some(enable_http_server) = self.enable_http_server {
-            args.insert("tcp-listener-address".to_string(), enable_http_server);
+            args.insert("enable-http-server".to_string(), enable_http_server);
         }
         if let Some(http_server_port) = self.http_server_port {
             args.insert("http-server-port".to_string(), http_server_port);
