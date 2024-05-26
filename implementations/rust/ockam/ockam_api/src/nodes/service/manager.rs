@@ -10,6 +10,7 @@ use crate::nodes::registry::Registry;
 use crate::nodes::service::http::HttpServer;
 use crate::nodes::service::{
     CredentialRetrieverCreators, NodeManagerCredentialRetrieverOptions, NodeManagerTrustOptions,
+    SecureChannelType,
 };
 
 use crate::session::MedicHandle;
@@ -194,6 +195,7 @@ impl NodeManager {
             None, // Not checking identifiers here in favor of credential check
             None,
             ctx,
+            SecureChannelType::KeyExchangeAndMessages,
         )
         .await?;
 

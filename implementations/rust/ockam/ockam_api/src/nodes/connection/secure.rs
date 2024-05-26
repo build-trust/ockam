@@ -5,6 +5,7 @@ use crate::nodes::connection::{Changes, Instantiator};
 use crate::nodes::NodeManager;
 use crate::{local_multiaddr_to_route, try_address_to_multiaddr};
 
+use crate::nodes::service::SecureChannelType;
 use ockam::identity::Identifier;
 use ockam_core::{async_trait, route, AsyncTryClone, Error, Route};
 use ockam_multiaddr::proto::Secure;
@@ -60,6 +61,7 @@ impl Instantiator for SecureChannelInstantiator {
                 self.authorized_identities.clone(),
                 None,
                 self.timeout,
+                SecureChannelType::KeyExchangeAndMessages,
             )
             .await?;
 

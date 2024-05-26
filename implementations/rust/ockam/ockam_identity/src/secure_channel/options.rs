@@ -60,9 +60,6 @@ impl SecureChannelOptions {
         mut self,
         credential_retriever_creator: Arc<dyn CredentialRetrieverCreator>,
     ) -> Result<Self> {
-        if self.key_exchange_only {
-            return Err(IdentityError::CredentialRetrieverCreatorAlreadySet.into());
-        }
         if self.credential_retriever_creator.is_some() {
             return Err(IdentityError::CredentialRetrieverCreatorAlreadySet.into());
         }
@@ -96,15 +93,10 @@ impl SecureChannelOptions {
 
     /// The secure channel will be used to exchange key only.
     /// In this mode, the secure channel cannot be used to exchange messages, and key rotation
-    /// is disabled.
-    ///
-    /// Conflicts with [`with_credential_retriever_creator`] and [`with_credential`]
-    pub fn key_exchange_only(mut self) -> Result<Self> {
-        if self.credential_retriever_creator.is_some() {
-            return Err(IdentityError::CredentialRetrieverCreatorAlreadySet.into());
-        }
+    /// is disabled along with automatic credential refresh.
+    pub fn key_exchange_only(mut self) -> Self {
         self.key_exchange_only = true;
-        Ok(self)
+        self
     }
 }
 
@@ -208,9 +200,6 @@ impl SecureChannelListenerOptions {
         mut self,
         credential_retriever_creator: Arc<dyn CredentialRetrieverCreator>,
     ) -> Result<Self> {
-        if self.key_exchange_only {
-            return Err(IdentityError::CredentialRetrieverCreatorAlreadySet.into());
-        }
         if self.credential_retriever_creator.is_some() {
             return Err(IdentityError::CredentialRetrieverCreatorAlreadySet.into());
         }
@@ -244,15 +233,10 @@ impl SecureChannelListenerOptions {
 
     /// The listener will be used to exchange key only.
     /// In this mode, the secure channel cannot be used to exchange messages, and key rotation
-    /// is disabled.
-    ///
-    /// Conflicts with [`with_credential_retriever_creator`] and [`with_credential`]
-    pub fn key_exchange_only(mut self) -> Result<Self> {
-        if self.credential_retriever_creator.is_some() {
-            return Err(IdentityError::CredentialRetrieverCreatorAlreadySet.into());
-        }
+    /// is disabled along with automatic credential refresh.
+    pub fn key_exchange_only(mut self) -> Self {
         self.key_exchange_only = true;
-        Ok(self)
+        self
     }
 }
 
