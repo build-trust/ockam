@@ -14,11 +14,11 @@ use std::sync::Arc;
 use super::NodeManagerWorker;
 use crate::error::ApiError;
 use crate::kafka::secure_channel_map::controller::KafkaSecureChannelControllerImpl;
+use crate::kafka::OutletManagerService;
 use crate::kafka::{
     kafka_policy_expression, ConsumerPublishing, ConsumerResolution, KafkaInletController,
     KafkaPortalListener, KAFKA_OUTLET_BOOTSTRAP_ADDRESS, KAFKA_OUTLET_INTERCEPTOR_ADDRESS,
 };
-use crate::kafka::{OutletManagerService, PrefixRelayService};
 use crate::nodes::models::portal::OutletAccessControl;
 use crate::nodes::models::services::{
     DeleteServiceRequest, StartKafkaInletRequest, StartKafkaOutletRequest, StartServiceRequest,
@@ -257,12 +257,6 @@ impl InMemoryNode {
             .ok_or_else(|| {
                 ApiError::core("Unable to get flow control for secure channel listener")
             })?;
-
-        PrefixRelayService::create(
-            context,
-            default_secure_channel_listener_flow_control_id.clone(),
-        )
-        .await?;
 
         let policy_access_control = self
             .policy_access_control(
