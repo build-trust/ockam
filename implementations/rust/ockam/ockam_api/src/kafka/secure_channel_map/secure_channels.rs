@@ -218,33 +218,52 @@ impl KafkaSecureChannelControllerImpl {
 
     /// Returns the secure channel entry for the consumer decryptor address and validate it
     /// against the producer manual policy.
-    pub(crate) async fn get_secure_channel_for(
+    pub(crate) async fn get_secure_channel_decryptor_api_address_for(
         &self,
+        ctx: &Context,
         consumer_decryptor_address: &Address,
-    ) -> ockam_core::Result<SecureChannelRegistryEntry> {
+    ) -> ockam_core::Result<Address> {
         let inner = self.inner.lock().await;
-        let entry = inner
+        let (decryptor_api_address, their_identifier) = match inner
             .secure_channels
             .secure_channel_registry()
             .get_channel_by_decryptor_address(consumer_decryptor_address)
-            .ok_or_else(|| {
-                Error::new(
-                    Origin::Channel,
-                    Kind::Unknown,
-                    format!(
-                        "secure channel decrypt doesn't exists: {}",
-                        consumer_decryptor_address.address()
+        {
+            Some(entry) => (
+                entry.decryptor_api_address().clone(),
+                entry.their_id().clone(),
+            ),
+            None => {
+                match inner
+                    .secure_channels
+                    .start_persisted_secure_channel_decryptor(ctx, consumer_decryptor_address)
+                    .await
+                {
+                    Ok(sc) => (
+                        sc.decryptor_api_address().clone(),
+                        sc.their_identifier().clone(),
                     ),
-                )
-            })?;
+                    Err(_) => {
+                        return Err(Error::new(
+                            Origin::Channel,
+                            Kind::Unknown,
+                            format!(
+                                "secure channel decrypt doesn't exists: {}",
+                                consumer_decryptor_address.address()
+                            ),
+                        ));
+                    }
+                }
+            }
+        };
 
         let authorized = inner
             .producer_policy_access_control
-            .is_identity_authorized(entry.their_id())
+            .is_identity_authorized(&their_identifier)
             .await?;
 
         if authorized {
-            Ok(entry)
+            Ok(decryptor_api_address)
         } else {
             Err(Error::new(
                 Origin::Transport,
