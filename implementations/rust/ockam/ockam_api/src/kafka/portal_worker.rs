@@ -5,9 +5,9 @@ use ockam_core::compat::sync::Arc;
 use ockam_core::flow_control::{FlowControlId, FlowControlOutgoingAccessControl, FlowControls};
 use ockam_core::{
     errcode::{Kind, Origin},
-    route, Address, AllowSourceAddress, AnyIncomingAccessControl, Encodable, Error,
-    IncomingAccessControl, LocalInfo, LocalMessage, NeutralMessage, OutgoingAccessControl, Route,
-    Routed, Worker,
+    route, Address, AllowOnwardAddress, AllowSourceAddress, AnyIncomingAccessControl,
+    AnyOutgoingAccessControl, Encodable, Error, IncomingAccessControl, LocalInfo, LocalMessage,
+    NeutralMessage, OutgoingAccessControl, Route, Routed, Worker,
 };
 use ockam_node::{Context, WorkerBuilder};
 use ockam_transport_tcp::{PortalMessage, MAX_PAYLOAD_SIZE};
@@ -366,9 +366,17 @@ impl KafkaPortalWorker {
             .start(context)
             .await?;
 
+        // allow forwarding the `pong` message to the other worker
+        let response_outgoing_access_control = {
+            AnyOutgoingAccessControl::new(vec![
+                Arc::new(AllowOnwardAddress::new(requests_worker_address.clone())),
+                response_outgoing_access_control,
+            ])
+        };
+
         WorkerBuilder::new(response_worker)
             .with_address(responses_worker_address)
-            .with_outgoing_access_control_arc(response_outgoing_access_control)
+            .with_outgoing_access_control(response_outgoing_access_control)
             .start(context)
             .await?;
 
