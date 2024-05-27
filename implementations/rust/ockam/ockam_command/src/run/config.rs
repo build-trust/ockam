@@ -271,26 +271,30 @@ mod tests {
                 })),
             },
             kafka_inlet: KafkaInlet {
-                kafka_inlet: Some(UnnamedResources::Single(Args {
-                    args: vec![
-                        ("from".to_string(), "9092".into()),
-                        ("at".to_string(), "n".into()),
-                        ("to".to_string(), "/project/project_name".into()),
-                        ("port-range".to_string(), "1000-2000".into()),
-                    ]
-                    .into_iter()
-                    .collect(),
-                })),
+                kafka_inlet: Some(ResourceNameOrMap::RandomlyNamedMap(
+                    UnnamedResources::Single(Args {
+                        args: vec![
+                            ("from".to_string(), "9092".into()),
+                            ("at".to_string(), "n".into()),
+                            ("to".to_string(), "/project/project_name".into()),
+                            ("port-range".to_string(), "1000-2000".into()),
+                        ]
+                        .into_iter()
+                        .collect(),
+                    }),
+                )),
             },
             kafka_outlet: KafkaOutlet {
-                kafka_outlet: Some(UnnamedResources::Single(Args {
-                    args: vec![
-                        ("bootstrap-server".to_string(), "192.168.1.1:9092".into()),
-                        ("at".to_string(), "n".into()),
-                    ]
-                    .into_iter()
-                    .collect(),
-                })),
+                kafka_outlet: Some(ResourceNameOrMap::RandomlyNamedMap(
+                    UnnamedResources::Single(Args {
+                        args: vec![
+                            ("bootstrap-server".to_string(), "192.168.1.1:9092".into()),
+                            ("at".to_string(), "n".into()),
+                        ]
+                        .into_iter()
+                        .collect(),
+                    }),
+                )),
             },
             relays: Relays {
                 relays: Some(ResourcesContainer::List(vec![
