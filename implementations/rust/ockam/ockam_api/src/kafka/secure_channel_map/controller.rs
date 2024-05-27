@@ -72,13 +72,16 @@ impl KafkaSecureChannelControllerImpl {
         consumer_decryptor_address: &Address,
         encrypted_content: Vec<u8>,
     ) -> ockam_core::Result<Vec<u8>> {
-        let secure_channel_entry = self
-            .get_secure_channel_for(consumer_decryptor_address)
+        let secure_channel_decryptor_api_address = self
+            .get_or_load_secure_channel_decryptor_api_address_for(
+                context,
+                consumer_decryptor_address,
+            )
             .await?;
 
         let decrypt_response = context
             .send_and_receive(
-                route![secure_channel_entry.decryptor_api_address().clone()],
+                route![secure_channel_decryptor_api_address],
                 DecryptionRequest(encrypted_content),
             )
             .await?;
