@@ -1,9 +1,16 @@
+use crate::IdentityError;
 use core::fmt::{Display, Formatter};
+use ockam_core::Error;
 
-#[derive(Copy, Clone, Debug)]
-pub(crate) enum Role {
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+pub enum Role {
     Initiator,
     Responder,
+}
+
+impl Role {
+    pub const INITIATOR: &'static str = "initiator";
+    pub const RESPONDER: &'static str = "responder";
 }
 
 impl Display for Role {
@@ -20,18 +27,30 @@ impl Display for Role {
     }
 }
 
+impl TryFrom<&str> for Role {
+    type Error = Error;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match value {
+            Self::INITIATOR => Ok(Self::Initiator),
+            Self::RESPONDER => Ok(Self::Responder),
+            _ => Err(IdentityError::UnknownRole)?,
+        }
+    }
+}
+
 impl Role {
     pub fn is_initiator(&self) -> bool {
         match self {
-            Role::Initiator => true,
-            Role::Responder => false,
+            Self::Initiator => true,
+            Self::Responder => false,
         }
     }
 
     pub fn str(&self) -> &'static str {
         match self {
-            Role::Initiator => "initiator",
-            Role::Responder => "responder",
+            Self::Initiator => Self::INITIATOR,
+            Self::Responder => Self::RESPONDER,
         }
     }
 }

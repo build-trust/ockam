@@ -1,13 +1,13 @@
 use std::time::Duration;
 
 use ockam::identity::models::CredentialAndPurposeKey;
-use ockam::identity::TrustEveryonePolicy;
 use ockam::identity::Vault;
 use ockam::identity::{
     Identifier, Identities, SecureChannelListenerOptions, SecureChannelOptions, SecureChannels,
     TrustMultiIdentifiersPolicy,
 };
 use ockam::identity::{SecureChannel, SecureChannelListener};
+use ockam::identity::{SecureChannelSqlxDatabase, TrustEveryonePolicy};
 use ockam::{Address, Result, Route};
 use ockam_core::api::{Error, Response};
 use ockam_core::compat::sync::Arc;
@@ -453,6 +453,7 @@ impl NodeManager {
         Ok(Arc::new(SecureChannels::new(
             identities,
             self.secure_channels.secure_channel_registry(),
+            Arc::new(SecureChannelSqlxDatabase::new(self.cli_state.database())),
         )))
     }
 }

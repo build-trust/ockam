@@ -59,6 +59,12 @@ pub trait VaultForSecureChannels: Send + Sync + 'static {
         aad: &[u8],
     ) -> Result<Vec<u8>>;
 
+    /// Persist an existing AEAD key.
+    async fn persist_aead_key(&self, secret_key_handle: &AeadSecretKeyHandle) -> Result<()>;
+
+    /// Load an AEAD key from the storage.
+    async fn load_aead_key(&self, secret_key_handle: &AeadSecretKeyHandle) -> Result<()>;
+
     /// Generate a fresh static (persisted) X25519 Key.
     async fn generate_static_x25519_secret_key(&self) -> Result<X25519SecretKeyHandle>;
 

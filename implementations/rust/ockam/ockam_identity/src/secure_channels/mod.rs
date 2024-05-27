@@ -4,8 +4,10 @@ mod common;
 pub mod secure_channels;
 mod secure_channels_builder;
 mod secure_client;
+mod storage;
 
 pub use common::*;
 pub use secure_channels::*;
 pub use secure_channels_builder::*;
 pub use secure_client::*;
+pub use storage::*;

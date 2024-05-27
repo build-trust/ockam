@@ -1,7 +1,7 @@
 use minicbor::bytes::ByteSlice;
-use ockam::identity::identities;
 use ockam::identity::models::CredentialAndPurposeKey;
 use ockam::identity::utils::now;
+use ockam::identity::{identities, SecureChannelSqlxDatabase};
 use ockam::identity::{
     Identities, SecureChannelListenerOptions, SecureChannelOptions, SecureChannels,
 };
@@ -55,7 +55,10 @@ async fn credential(ctx: &mut Context) -> Result<()> {
         .with_purpose_keys_repository(identities.purpose_keys_repository())
         .with_cached_credential_repository(identities.cached_credentials_repository())
         .build();
-    let secure_channels = SecureChannels::from_identities(identities.clone());
+    let secure_channels = SecureChannels::from_identities(
+        identities.clone(),
+        Arc::new(SecureChannelSqlxDatabase::create().await?),
+    );
     let identities_verification = identities.identities_verification();
 
     // Create the CredentialIssuer:
