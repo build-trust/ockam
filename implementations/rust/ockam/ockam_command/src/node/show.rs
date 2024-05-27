@@ -141,6 +141,17 @@ pub async fn get_node_resources(
     }
 }
 
+// Wait for a node to be up. We wait until the IS_NODE_ACCESSIBLE_TIMEOUT is passed and return `false`
+// if the node is not up after that time.
+pub async fn wait_until_node_is_up(
+    ctx: &Context,
+    cli_state: &CliState,
+    node_name: String,
+) -> Result<bool> {
+    let mut node = BackgroundNodeClient::create(ctx, cli_state, &Some(node_name)).await?;
+    is_node_up(ctx, &mut node, true).await
+}
+
 /// Send message(s) to a node to determine if it is 'up' and
 /// responding to requests.
 ///

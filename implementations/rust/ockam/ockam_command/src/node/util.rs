@@ -9,6 +9,7 @@ use tracing::info;
 use ockam_core::env::get_env_with_default;
 use ockam_node::Context;
 
+use crate::node::show::wait_until_node_is_up;
 use crate::node::CreateCommand;
 use crate::run::parser::resource::utils::subprocess_stdio;
 use crate::shared_args::TrustOpts;
@@ -56,6 +57,8 @@ pub async fn initialize_default_node(
         cmd.async_run(ctx, opts.clone()).await?;
         opts.terminal.write_line("")?;
     }
+    let node_name = opts.state.get_default_node().await?;
+    wait_until_node_is_up(ctx, &opts.state, node_name.name()).await?;
     Ok(())
 }
 
