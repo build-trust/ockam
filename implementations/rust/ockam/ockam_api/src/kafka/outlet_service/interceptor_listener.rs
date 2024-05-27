@@ -5,7 +5,7 @@ use crate::kafka::KAFKA_OUTLET_INTERCEPTOR_ADDRESS;
 use ockam::{Any, Context, Result, Routed, Worker};
 use ockam_abac::PolicyExpression;
 use ockam_core::flow_control::{FlowControlId, FlowControls};
-use ockam_core::{Address, AllowAll, IncomingAccessControl, OutgoingAccessControl};
+use ockam_core::{Address, IncomingAccessControl, OutgoingAccessControl};
 use ockam_node::WorkerBuilder;
 use std::sync::Arc;
 
@@ -26,7 +26,7 @@ impl OutletManagerService {
         default_secure_channel_listener_flow_control_id: FlowControlId,
         policy_expression: Option<PolicyExpression>,
         request_incoming_access_control: Arc<dyn IncomingAccessControl>,
-        _response_outgoing_access_control: Arc<dyn OutgoingAccessControl>,
+        response_outgoing_access_control: Arc<dyn OutgoingAccessControl>,
         tls: bool,
     ) -> Result<()> {
         let flow_controls = context.flow_controls();
@@ -44,9 +44,7 @@ impl OutletManagerService {
         let worker = OutletManagerService {
             outlet_controller: KafkaOutletController::new(policy_expression, tls),
             request_incoming_access_control,
-            //TODO FIXME: make this work, if needed.
-            //response_outgoing_access_control,
-            response_outgoing_access_control: Arc::new(AllowAll),
+            response_outgoing_access_control,
             spawner_flow_control_id: spawner_flow_control_id.clone(),
         };
 
