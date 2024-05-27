@@ -304,6 +304,21 @@ impl VaultForSecureChannels for SoftwareVaultForSecureChannels {
         aes.decrypt_message(cipher_text, nonce, aad)
     }
 
+    async fn export_aead_key(&self, secret_key_handle: &AeadSecretKeyHandle) -> Result<AeadSecret> {
+        self.get_aead_secret(secret_key_handle).await
+    }
+
+    async fn import_aead_key(&self, secret: AeadSecret) -> Result<AeadSecretKeyHandle> {
+        let handle = Self::generate_aead_handle();
+
+        self.ephemeral_aead_secrets
+            .write()
+            .unwrap()
+            .insert(handle.clone(), secret);
+
+        Ok(handle)
+    }
+
     async fn generate_static_x25519_secret_key(&self) -> Result<X25519SecretKeyHandle> {
         let secret = Self::generate_x25519_secret();
 

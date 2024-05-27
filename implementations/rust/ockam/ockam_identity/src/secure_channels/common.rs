@@ -1,5 +1,5 @@
 use crate::secure_channel::{Addresses, RemoteRoute};
-use crate::SecureChannelOptions;
+use crate::{Identifier, SecureChannelOptions};
 use core::fmt;
 use core::fmt::Formatter;
 use minicbor::{Decode, Encode};
@@ -12,8 +12,10 @@ use serde::Serialize;
 #[derive(Debug, Clone)]
 pub struct SecureChannel {
     flow_controls: FlowControls,
+    their_identifier: Identifier,
     encryptor_remote_route: Arc<RwLock<RemoteRoute>>,
     addresses: Addresses,
+    is_key_exchange_only: bool,
     flow_control_id: FlowControlId,
 }
 
@@ -37,14 +39,18 @@ impl SecureChannel {
     /// Constructor.
     pub(crate) fn new(
         flow_controls: FlowControls,
+        their_identifier: Identifier,
         encryptor_remote_route: Arc<RwLock<RemoteRoute>>,
         addresses: Addresses,
+        is_key_exchange_only: bool,
         flow_control_id: FlowControlId,
     ) -> Self {
         Self {
             flow_controls,
+            their_identifier,
             encryptor_remote_route,
             addresses,
+            is_key_exchange_only,
             flow_control_id,
         }
     }
@@ -61,6 +67,16 @@ impl SecureChannel {
     /// a message without sending it
     pub fn encryptor_api_address(&self) -> &Address {
         &self.addresses.encryptor_api
+    }
+    /// API [`Address`] of the corresponding`DecryptorWorker` Worker that can be used to decrypt
+    /// a message without sending it
+    pub fn decryptor_api_address(&self) -> &Address {
+        &self.addresses.decryptor_api
+    }
+    /// API [`Address`] of the corresponding`DecryptorWorker` Worker that can be used to decrypt
+    /// a message without sending it
+    pub fn decryptor_remote_address(&self) -> &Address {
+        &self.addresses.decryptor_remote
     }
     /// Update route to the node on the other side in case transport changes happened
     pub fn update_remote_node_route(&self, new_route: Route) -> Result<()> {
@@ -92,6 +108,15 @@ impl SecureChannel {
 
         Ok(())
     }
+    /// This secure channel is used only for handshake, further encryption happens using
+    /// api address. Encryption part may be absent.
+    pub fn is_key_exchange_only(&self) -> bool {
+        self.is_key_exchange_only
+    }
+    /// The Identifier of the other side
+    pub fn their_identifier(&self) -> &Identifier {
+        &self.their_identifier
+    }
 }
 
 /// Result of [`super::SecureChannels::create_secure_channel_listener()`] call.
@@ -101,6 +126,7 @@ impl SecureChannel {
 pub struct SecureChannelListener {
     #[n(1)] address: Address,
     #[n(2)] flow_control_id: FlowControlId,
+    #[n(3)] is_key_exchange_only: bool,
 }
 
 impl fmt::Display for SecureChannelListener {
@@ -115,9 +141,14 @@ impl fmt::Display for SecureChannelListener {
 
 impl SecureChannelListener {
     /// Constructor.
-    pub fn new(address: Address, flow_control_id: FlowControlId) -> Self {
+    pub fn new(
+        address: Address,
+        is_key_exchange_only: bool,
+        flow_control_id: FlowControlId,
+    ) -> Self {
         Self {
             address,
+            is_key_exchange_only,
             flow_control_id,
         }
     }
@@ -130,5 +161,10 @@ impl SecureChannelListener {
     /// Freshly generated [`FlowControlId`]
     pub fn flow_control_id(&self) -> &FlowControlId {
         &self.flow_control_id
+    }
+    /// This secure channel listener is used only for handshake, further encryption happens using
+    /// api address. Encryption part may be absent.
+    pub fn is_key_exchange_only(&self) -> bool {
+        self.is_key_exchange_only
     }
 }

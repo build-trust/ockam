@@ -10,11 +10,13 @@ use crate::secure_channel::handshake_worker::HandshakeWorker;
 use crate::secure_channel::options::SecureChannelListenerOptions;
 use crate::secure_channel::role::Role;
 use crate::secure_channels::secure_channels::SecureChannels;
+use crate::SecureChannelRepository;
 
 pub(crate) struct SecureChannelListenerWorker {
     secure_channels: Arc<SecureChannels>,
     identifier: Identifier,
     options: SecureChannelListenerOptions,
+    secure_channel_repository: Option<Arc<dyn SecureChannelRepository>>,
 }
 
 impl SecureChannelListenerWorker {
@@ -23,10 +25,17 @@ impl SecureChannelListenerWorker {
         identifier: Identifier,
         options: SecureChannelListenerOptions,
     ) -> Self {
+        let secure_channel_repository = if options.is_persistent {
+            Some(secure_channels.secure_channel_repository())
+        } else {
+            None
+        };
+
         Self {
             secure_channels,
             identifier,
             options,
+            secure_channel_repository,
         }
     }
 
@@ -102,6 +111,7 @@ impl Worker for SecureChannelListenerWorker {
             None,
             Role::Responder,
             self.options.key_exchange_only,
+            self.secure_channel_repository.clone(),
             RemoteRoute::create(),
         )
         .await?;

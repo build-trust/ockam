@@ -68,6 +68,10 @@ pub enum IdentityError {
     AddressIsNotSubscribedForThatCredentialRetriever,
     /// Credential retriever couldn't return a credential
     NoCredential,
+    /// Persistence is currently only supported for key exchange only channels
+    PersistentSupportIsLimited,
+    /// Secure Channel not found in the storage
+    PersistentSecureChannelNotFound,
 }
 
 impl ockam_core::compat::error::Error for IdentityError {}

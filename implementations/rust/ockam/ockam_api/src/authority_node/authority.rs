@@ -14,7 +14,8 @@ use crate::authenticator::{
 };
 use ockam::identity::utils::now;
 use ockam::identity::{
-    Identifier, Identities, SecureChannelListenerOptions, SecureChannels, TrustEveryonePolicy,
+    Identifier, Identities, SecureChannelListenerOptions, SecureChannelSqlxDatabase,
+    SecureChannels, TrustEveryonePolicy,
 };
 use ockam_core::compat::sync::Arc;
 use ockam_core::env::get_env;
@@ -65,17 +66,21 @@ impl Authority {
         debug!(?configuration, "creating the authority");
 
         // create the database
+        let node_name = "authority";
         let database_path = &configuration.database_path;
         Self::create_ockam_directory_if_necessary(database_path)?;
         let database = SqlxDatabase::create(database_path).await?;
         let members = Arc::new(AuthorityMembersSqlxDatabase::new(database.clone()));
         let tokens = Arc::new(AuthorityEnrollmentTokenSqlxDatabase::new(database.clone()));
+        let secure_channel_repository =
+            Arc::new(SecureChannelSqlxDatabase::new(database.clone(), node_name));
 
         Self::bootstrap_repository(members.clone(), configuration).await?;
 
-        let identities = Identities::create_with_node(database, "authority").build();
+        let identities = Identities::create_with_node(database, node_name).build();
 
-        let secure_channels = SecureChannels::from_identities(identities.clone());
+        let secure_channels =
+            SecureChannels::from_identities(identities.clone(), secure_channel_repository);
 
         let identifier = configuration.identifier();
         info!(identifier=%identifier, "retrieved the authority identifier");

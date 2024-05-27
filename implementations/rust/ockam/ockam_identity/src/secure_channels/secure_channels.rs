@@ -1,24 +1,29 @@
+use core::sync::atomic::AtomicBool;
 use ockam_core::compat::sync::Arc;
+use ockam_core::flow_control::FlowControls;
 use ockam_core::Result;
 use ockam_core::{Address, Route};
-use ockam_node::Context;
+use ockam_node::{Context, WorkerBuilder};
+use tracing::info;
 
 use crate::identities::Identities;
 use crate::models::Identifier;
 use crate::secure_channel::handshake_worker::HandshakeWorker;
 use crate::secure_channel::{
-    Addresses, RemoteRoute, Role, SecureChannelListenerOptions, SecureChannelListenerWorker,
-    SecureChannelOptions, SecureChannelRegistry,
+    Addresses, DecryptorHandler, RemoteRoute, Role, SecureChannelListenerOptions,
+    SecureChannelListenerWorker, SecureChannelOptions, SecureChannelRegistry,
+    SecureChannelSharedState,
 };
 #[cfg(feature = "storage")]
 use crate::SecureChannelsBuilder;
-use crate::{SecureChannel, SecureChannelListener, Vault};
+use crate::{IdentityError, SecureChannel, SecureChannelListener, SecureChannelRepository, Vault};
 
 /// Identity implementation
 #[derive(Clone)]
 pub struct SecureChannels {
     pub(crate) identities: Arc<Identities>,
     pub(crate) secure_channel_registry: SecureChannelRegistry,
+    pub(crate) secure_channel_repository: Arc<dyn SecureChannelRepository>,
 }
 
 impl SecureChannels {
@@ -26,16 +31,25 @@ impl SecureChannels {
     pub fn new(
         identities: Arc<Identities>,
         secure_channel_registry: SecureChannelRegistry,
+        secure_channel_repository: Arc<dyn SecureChannelRepository>,
     ) -> Self {
         Self {
             identities,
             secure_channel_registry,
+            secure_channel_repository,
         }
     }
 
     /// Constructor
-    pub fn from_identities(identities: Arc<Identities>) -> Arc<Self> {
-        Arc::new(Self::new(identities, SecureChannelRegistry::default()))
+    pub fn from_identities(
+        identities: Arc<Identities>,
+        secure_channel_repository: Arc<dyn SecureChannelRepository>,
+    ) -> Arc<Self> {
+        Arc::new(Self::new(
+            identities,
+            SecureChannelRegistry::default(),
+            secure_channel_repository,
+        ))
     }
 
     /// Return the identities services associated to this service
@@ -53,12 +67,18 @@ impl SecureChannels {
         self.secure_channel_registry.clone()
     }
 
+    /// Return the secure channel repository
+    pub fn secure_channel_repository(&self) -> Arc<dyn SecureChannelRepository> {
+        self.secure_channel_repository.clone()
+    }
+
     /// Create a builder for secure channels
     #[cfg(feature = "storage")]
     pub async fn builder() -> Result<SecureChannelsBuilder> {
         Ok(SecureChannelsBuilder {
             identities_builder: Identities::builder().await?,
             registry: SecureChannelRegistry::new(),
+            secure_channel_repository: Arc::new(crate::SecureChannelSqlxDatabase::create().await?),
         })
     }
 }
@@ -74,6 +94,7 @@ impl SecureChannels {
     ) -> Result<SecureChannelListener> {
         let address = address.into();
         let options = options.into();
+        let key_exchange_only = options.key_exchange_only;
         let flow_control_id = options.flow_control_id.clone();
 
         SecureChannelListenerWorker::create(
@@ -85,7 +106,11 @@ impl SecureChannels {
         )
         .await?;
 
-        Ok(SecureChannelListener::new(address, flow_control_id))
+        Ok(SecureChannelListener::new(
+            address,
+            key_exchange_only,
+            flow_control_id,
+        ))
     }
 
     /// Initiate a SecureChannel using `Route` to the SecureChannel listener and [`SecureChannelOptions`]
@@ -123,8 +148,14 @@ impl SecureChannels {
             None => None,
         };
 
+        let secure_channel_repository = if options.is_persistent {
+            Some(self.secure_channel_repository())
+        } else {
+            None
+        };
+
         let encryptor_remote_route = RemoteRoute::create();
-        HandshakeWorker::create(
+        let their_identifier = HandshakeWorker::create(
             ctx,
             Arc::new(self.clone()),
             addresses.clone(),
@@ -138,16 +169,109 @@ impl SecureChannels {
             Some(options.timeout),
             Role::Initiator,
             options.key_exchange_only,
+            secure_channel_repository,
             encryptor_remote_route.clone(),
         )
-        .await?;
+        .await?
+        .unwrap(); // FIXME
 
         Ok(SecureChannel::new(
             ctx.flow_controls().clone(),
+            their_identifier,
             encryptor_remote_route,
             addresses,
+            options.key_exchange_only,
             flow_control_id,
         ))
+    }
+
+    /// Start a decryptor side for a previously existed and persisted secure channel
+    /// Only decryptor api part is started
+    pub async fn start_persisted_secure_channel_decryptor(
+        &self,
+        ctx: &Context,
+        decryptor_remote_address: &Address,
+    ) -> Result<SecureChannel> {
+        info!(
+            "Starting persisted secure channel: {}",
+            decryptor_remote_address
+        );
+
+        let Some(persisted_secure_channel) = self
+            .secure_channel_repository
+            .get(decryptor_remote_address)
+            .await?
+        else {
+            return Err(IdentityError::PersistentSecureChannelNotFound)?;
+        };
+
+        let decryption_key = persisted_secure_channel.decryption_key().clone();
+
+        let decryption_key = self
+            .vault()
+            .secure_channel_vault
+            .import_aead_key(decryption_key)
+            .await?;
+
+        let my_identifier = persisted_secure_channel.my_identifier();
+        let their_identifier = persisted_secure_channel.their_identifier();
+        let role = persisted_secure_channel.role();
+        let shared_state = SecureChannelSharedState {
+            remote_route: RemoteRoute::create(),                 // Unused
+            should_send_close: Arc::new(AtomicBool::new(false)), // FIXME
+        };
+
+        let mut addresses = Addresses::generate(role);
+        // FIXME: All other addresses except these two are random and incorrect, we don't use them
+        //  for now though
+        addresses.decryptor_remote = persisted_secure_channel.decryptor_remote().clone();
+        addresses.decryptor_api = persisted_secure_channel.decryptor_api().clone();
+
+        let decryptor_handler = DecryptorHandler::new(
+            self.identities(),
+            None, // We don't need authority, we won't verify any credentials
+            role,
+            true,
+            addresses.clone(),
+            decryption_key,
+            self.vault().secure_channel_vault.clone(),
+            their_identifier.clone(),
+            shared_state.clone(),
+        );
+
+        let decryptor_worker = HandshakeWorker::new(
+            Arc::new(self.clone()),
+            None, // No callback will happen
+            None,
+            my_identifier.clone(),
+            addresses.clone(),
+            role,
+            true,
+            None, // No remote interaction
+            Some(decryptor_handler),
+            None, // We don't need authority, we won't verify any credentials
+            self.identities.change_history_repository(),
+            None, // We don't need credential retriever, we won't present any credentials
+            // Key exchange only secure channel's state is unchanged after the initial creation, so no need to update it
+            None,
+            shared_state.clone(),
+        );
+
+        WorkerBuilder::new(decryptor_worker)
+            .with_address(addresses.decryptor_api.clone()) // We only need API address here
+            .start(ctx)
+            .await?;
+
+        let sc = SecureChannel::new(
+            ctx.flow_controls().clone(),
+            their_identifier.clone(),
+            shared_state.remote_route,
+            addresses.clone(),
+            true,
+            FlowControls::generate_flow_control_id(), // This is random and doesn't matter
+        );
+
+        Ok(sc)
     }
 
     /// Stop a SecureChannel given an encryptor address

@@ -1,5 +1,5 @@
 use crate::{
-    AeadSecretKeyHandle, HashOutput, HkdfOutput, SecretBufferHandle, X25519PublicKey,
+    AeadSecret, AeadSecretKeyHandle, HashOutput, HkdfOutput, SecretBufferHandle, X25519PublicKey,
     X25519SecretKeyHandle,
 };
 
@@ -58,6 +58,12 @@ pub trait VaultForSecureChannels: Send + Sync + 'static {
         nonce: &[u8],
         aad: &[u8],
     ) -> Result<Vec<u8>>;
+
+    /// Export an existing AEAD key to save to an external storage
+    async fn export_aead_key(&self, secret_key_handle: &AeadSecretKeyHandle) -> Result<AeadSecret>;
+
+    /// Import an AEAD key
+    async fn import_aead_key(&self, secret: AeadSecret) -> Result<AeadSecretKeyHandle>;
 
     /// Generate a fresh static (persisted) X25519 Key.
     async fn generate_static_x25519_secret_key(&self) -> Result<X25519SecretKeyHandle>;

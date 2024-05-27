@@ -17,7 +17,7 @@ use crate::{
 
 /// Interface for a state machine in a key exchange protocol
 #[async_trait]
-pub(super) trait StateMachine: Send + Sync + 'static {
+pub(crate) trait StateMachine: Send + Sync + 'static {
     async fn on_event(&mut self, event: Event) -> Result<Action>;
     fn get_handshake_results(&self) -> Option<HandshakeResults>;
 }
@@ -25,21 +25,21 @@ pub(super) trait StateMachine: Send + Sync + 'static {
 /// Events received by the state machine, either initializing the state machine
 /// or receiving a message from the other party
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(super) enum Event {
+pub(crate) enum Event {
     Initialize,
     ReceivedMessage(Vec<u8>),
 }
 
 /// Outcome of processing an event: either no action or a message to send to the other party
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(super) enum Action {
+pub(crate) enum Action {
     NoAction,
     SendMessage(Vec<u8>),
 }
 
 /// List of possible states for the initiator or responder sides of the exchange
 #[derive(Debug, Clone)]
-pub(super) enum Status {
+pub(crate) enum Status {
     Initial,
     WaitingForMessage1,
     WaitingForMessage2,
@@ -49,7 +49,7 @@ pub(super) enum Status {
 
 /// At the end of a successful handshake a pair of encryption/decryption keys is available
 #[derive(Debug, Clone)]
-pub(super) struct HandshakeKeys {
+pub(crate) struct HandshakeKeys {
     pub(super) encryption_key: AeadSecretKeyHandle,
     pub(super) decryption_key: AeadSecretKeyHandle,
 }
@@ -57,7 +57,7 @@ pub(super) struct HandshakeKeys {
 /// The end result of a handshake with identity/credentials exchange is
 /// a pair of encryption/decryption keys + the identity of the other party
 #[derive(Debug, Clone)]
-pub(super) struct HandshakeResults {
+pub(crate) struct HandshakeResults {
     pub(super) handshake_keys: HandshakeKeys,
     pub(super) their_identifier: Identifier,
     pub(super) presented_credential: Option<CredentialAndPurposeKey>,

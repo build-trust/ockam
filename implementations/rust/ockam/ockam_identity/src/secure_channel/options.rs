@@ -27,6 +27,8 @@ pub struct SecureChannelOptions {
     pub(crate) credential_retriever_creator: Option<Arc<dyn CredentialRetrieverCreator>>,
     pub(crate) timeout: Duration,
     pub(crate) key_exchange_only: bool,
+    // Secure Channel will be persisted (currently only supported for key_exchange_only = true)
+    pub(crate) is_persistent: bool,
 }
 
 impl fmt::Debug for SecureChannelOptions {
@@ -46,6 +48,7 @@ impl SecureChannelOptions {
             credential_retriever_creator: None,
             timeout: DEFAULT_TIMEOUT,
             key_exchange_only: false,
+            is_persistent: false,
         }
     }
 
@@ -97,6 +100,16 @@ impl SecureChannelOptions {
     pub fn key_exchange_only(mut self) -> Self {
         self.key_exchange_only = true;
         self
+    }
+
+    /// Secure Channel will be persisted after a successful handshake
+    /// NOTE: Currently only supported after setting key_exchange_only = true
+    pub fn persist(mut self) -> Result<Self> {
+        if !self.key_exchange_only {
+            return Err(IdentityError::PersistentSupportIsLimited.into());
+        }
+        self.is_persistent = true;
+        Ok(self)
     }
 }
 
@@ -162,6 +175,8 @@ pub struct SecureChannelListenerOptions {
     // To obtain our credentials
     pub(crate) credential_retriever_creator: Option<Arc<dyn CredentialRetrieverCreator>>,
     pub(crate) key_exchange_only: bool,
+    // Secure Channel will be persisted (currently only supported for key_exchange_only = true)
+    pub(crate) is_persistent: bool,
 }
 
 impl fmt::Debug for SecureChannelListenerOptions {
@@ -183,6 +198,7 @@ impl SecureChannelListenerOptions {
             authority: None,
             credential_retriever_creator: None,
             key_exchange_only: false,
+            is_persistent: false,
         }
     }
 
@@ -237,6 +253,16 @@ impl SecureChannelListenerOptions {
     pub fn key_exchange_only(mut self) -> Self {
         self.key_exchange_only = true;
         self
+    }
+
+    /// Secure Channel will be persisted after a successful handshake
+    /// NOTE: Currently only supported after setting key_exchange_only = true
+    pub fn persist(mut self) -> Result<Self> {
+        if !self.key_exchange_only {
+            return Err(IdentityError::PersistentSupportIsLimited.into());
+        }
+        self.is_persistent = true;
+        Ok(self)
     }
 }
 
