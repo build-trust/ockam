@@ -68,6 +68,14 @@ pub enum IdentityError {
     AddressIsNotSubscribedForThatCredentialRetriever,
     /// Credential retriever couldn't return a credential
     NoCredential,
+    /// Persistence is currently only supported for key exchange only channels
+    PersistentSupportIsLimited,
+    /// Secure Channel not found in the storage
+    PersistentSecureChannelNotFound,
+    /// Unknown Secure Channel Role value
+    UnknownRole,
+    /// Handshake ended up in an internal invalid state
+    HandshakeInternalError,
 }
 
 impl ockam_core::compat::error::Error for IdentityError {}

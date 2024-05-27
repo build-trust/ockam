@@ -33,6 +33,8 @@ pub enum VaultError {
     InvalidSha256Len,
     /// Invalid Signature Size
     InvalidSignatureSize,
+    /// Aead secret was not found in the storage
+    AeadSecretNotFound,
 }
 
 impl ockam_core::compat::error::Error for VaultError {}
@@ -54,6 +56,7 @@ impl core::fmt::Display for VaultError {
             Self::KeyNotFound => write!(f, "key not found"),
             Self::InvalidSha256Len => write!(f, "invalid sha256 len"),
             Self::InvalidSignatureSize => write!(f, "invalid signature len"),
+            Self::AeadSecretNotFound => write!(f, "aead secret was not found in the storage"),
         }
     }
 }

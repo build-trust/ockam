@@ -11,7 +11,8 @@ use ockam_core::{
 use ockam_core::{Result, Worker};
 use ockam_node::callback::CallbackSender;
 use ockam_node::{Context, WorkerBuilder};
-use tracing::{debug, error, info};
+use ockam_vault::AeadSecretKeyHandle;
+use tracing::{debug, error, info, warn};
 use tracing_attributes::instrument;
 
 use crate::models::Identifier;
@@ -31,17 +32,18 @@ use crate::secure_channel::handshake::initiator_state_machine::InitiatorStateMac
 use crate::secure_channel::handshake::responder_state_machine::ResponderStateMachine;
 use crate::secure_channel::{Addresses, Role};
 use crate::{
-    ChangeHistoryRepository, CredentialRetriever, IdentityError, SecureChannelPurposeKey,
-    SecureChannelRegistryEntry, SecureChannels, TrustPolicy, IDENTITY_SECURE_CHANNEL_IDENTIFIER,
+    ChangeHistoryRepository, CredentialRetriever, IdentityError, PersistedSecureChannel,
+    SecureChannelPurposeKey, SecureChannelRegistryEntry, SecureChannelRepository, SecureChannels,
+    TrustPolicy, IDENTITY_SECURE_CHANNEL_IDENTIFIER,
 };
 
 /// This struct implements a Worker receiving and sending messages
 /// on one side of the secure channel creation as specified with its role: INITIATOR or RESPONDER
 pub(crate) struct HandshakeWorker {
     secure_channels: Arc<SecureChannels>,
-    callback_sender: Option<CallbackSender<()>>,
-    state_machine: Box<dyn StateMachine>,
-    identifier: Identifier,
+    callback_sender: Option<CallbackSender<Identifier>>,
+    state_machine: Option<Box<dyn StateMachine>>,
+    my_identifier: Identifier,
     addresses: Addresses,
     role: Role,
     key_exchange_only: bool,
@@ -52,6 +54,8 @@ pub(crate) struct HandshakeWorker {
     change_history_repository: Arc<dyn ChangeHistoryRepository>,
 
     credential_retriever: Option<Arc<dyn CredentialRetriever>>,
+
+    secure_channel_repository: Option<Arc<dyn SecureChannelRepository>>,
 
     shared_state: SecureChannelSharedState,
 }
@@ -68,22 +72,26 @@ impl Worker for HandshakeWorker {
             credential_retriever.initialize().await?;
         }
 
-        match self.state_machine.on_event(Initialize).await? {
-            SendMessage(message) => {
-                debug!(
-                    "remote route {:?}, decryptor remote {:?}",
-                    self.remote_route.clone(),
-                    self.addresses.decryptor_remote.clone()
-                );
-                context
-                    .send_from_address(
-                        self.remote_route()?,
-                        message,
-                        self.addresses.decryptor_remote.clone(),
-                    )
-                    .await
+        if let Some(state_machine) = self.state_machine.as_mut() {
+            match state_machine.on_event(Initialize).await? {
+                SendMessage(message) => {
+                    debug!(
+                        "remote route {:?}, decryptor remote {:?}",
+                        self.remote_route.clone(),
+                        self.addresses.decryptor_remote.clone()
+                    );
+                    context
+                        .send_from_address(
+                            self.remote_route()?,
+                            message,
+                            self.addresses.decryptor_remote.clone(),
+                        )
+                        .await
+                }
+                Action::NoAction => Ok(()),
             }
-            Action::NoAction => Ok(()),
+        } else {
+            Ok(())
         }
     }
 
@@ -129,7 +137,7 @@ impl HandshakeWorker {
         context: &Context,
         secure_channels: Arc<SecureChannels>,
         addresses: Addresses,
-        identifier: Identifier,
+        my_identifier: Identifier,
         purpose_key: SecureChannelPurposeKey,
         trust_policy: Arc<dyn TrustPolicy>,
         decryptor_outgoing_access_control: Arc<dyn OutgoingAccessControl>,
@@ -139,8 +147,9 @@ impl HandshakeWorker {
         timeout: Option<Duration>,
         role: Role,
         key_exchange_only: bool,
+        secure_channel_repository: Option<Arc<dyn SecureChannelRepository>>,
         encryptor_remote_route: Arc<RwLock<RemoteRoute>>,
-    ) -> Result<()> {
+    ) -> Result<Option<Identifier>> {
         let vault = secure_channels.identities.vault().secure_channel_vault;
         let identities = secure_channels.identities();
 
@@ -149,7 +158,7 @@ impl HandshakeWorker {
                 InitiatorStateMachine::new(
                     vault,
                     identities.clone(),
-                    identifier.clone(),
+                    my_identifier.clone(),
                     purpose_key,
                     credential_retriever.clone(),
                     trust_policy,
@@ -162,7 +171,7 @@ impl HandshakeWorker {
                 ResponderStateMachine::new(
                     vault,
                     identities.clone(),
-                    identifier.clone(),
+                    my_identifier.clone(),
                     purpose_key,
                     credential_retriever.clone(),
                     trust_policy,
@@ -186,8 +195,8 @@ impl HandshakeWorker {
         let worker = Self {
             secure_channels,
             callback_sender,
-            state_machine,
-            identifier: identifier.clone(),
+            state_machine: Some(state_machine),
+            my_identifier: my_identifier.clone(),
             role,
             key_exchange_only,
             remote_route: remote_route.clone(),
@@ -196,6 +205,7 @@ impl HandshakeWorker {
             credential_retriever,
             authority,
             change_history_repository: identities.change_history_repository(),
+            secure_channel_repository,
             shared_state,
         };
 
@@ -214,27 +224,34 @@ impl HandshakeWorker {
 
         // before sending messages make sure that the handshake is finished and
         // the encryptor worker is ready
-        if role.is_initiator() {
+        let their_identifier = if role.is_initiator() {
             if let Some(callback_waiter) = callback_waiter {
                 // wait until the handshake is finished
                 if let Some(timeout) = timeout {
                     let res = callback_waiter.receive_timeout(timeout).await;
 
-                    if let Some(err) = res.err() {
-                        error!(
+                    match res {
+                        Ok(their_identifier) => Some(their_identifier),
+                        Err(err) => {
+                            error!(
                             "Timeout {:?} reached when creating secure channel for: {}. Encryptor: {}",
-                            timeout, identifier, addresses.encryptor
+                            timeout, my_identifier, addresses.encryptor
                         );
 
-                        return Err(err);
+                            return Err(err);
+                        }
                     }
                 } else {
-                    callback_waiter.receive().await?;
+                    Some(callback_waiter.receive().await?)
                 }
+            } else {
+                None
             }
-        }
+        } else {
+            None
+        };
 
-        Ok(())
+        Ok(their_identifier)
     }
 
     /// This function is instrumented as handle_message to make as if there were 2 workers
@@ -249,8 +266,11 @@ impl HandshakeWorker {
         message: Routed<Any>,
     ) -> Result<()> {
         let payload = message.payload();
+
         if let SendMessage(send_message) = self
             .state_machine
+            .as_mut()
+            .ok_or(IdentityError::HandshakeInternalError)?
             .on_event(ReceivedMessage(Vec::<u8>::decode(payload)?))
             .await?
         {
@@ -270,11 +290,17 @@ impl HandshakeWorker {
         };
 
         // if we reached the final state we can make a pair of encryptor/decryptor
-        if let Some(final_state) = self.state_machine.get_handshake_results() {
+        if let Some(final_state) = self
+            .state_machine
+            .as_ref()
+            .ok_or(IdentityError::HandshakeInternalError)?
+            .get_handshake_results()
+        {
             // start the encryptor worker and return the decryptor
+            let their_identifier = final_state.their_identifier.clone();
             self.decryptor_handler = Some(self.finalize(context, final_state).await?);
             if let Some(callback_sender) = self.callback_sender.take() {
-                callback_sender.send(())?;
+                callback_sender.send(their_identifier)?;
             }
         };
 
@@ -353,6 +379,8 @@ impl HandshakeWorker {
         context: &Context,
         handshake_results: HandshakeResults,
     ) -> Result<DecryptorHandler> {
+        let their_identifier = handshake_results.their_identifier.clone();
+
         // create a decryptor to delegate the processing of all messages after the handshake
         let decryptor = DecryptorHandler::new(
             self.secure_channels.identities.clone(),
@@ -360,7 +388,7 @@ impl HandshakeWorker {
             self.role,
             self.key_exchange_only,
             self.addresses.clone(),
-            handshake_results.handshake_keys.decryption_key,
+            handshake_results.handshake_keys.decryption_key.clone(),
             self.secure_channels.identities.vault().secure_channel_vault,
             handshake_results.their_identifier.clone(),
             self.shared_state.clone(),
@@ -386,7 +414,7 @@ impl HandshakeWorker {
                     self.secure_channels.identities.vault().secure_channel_vault,
                     rekeying,
                 ),
-                self.identifier.clone(),
+                self.my_identifier.clone(),
                 self.change_history_repository.clone(),
                 credential_retriever,
                 handshake_results.presented_credential,
@@ -409,8 +437,6 @@ impl HandshakeWorker {
                 Arc::new(DenyAll),
             );
 
-            let their_identifier = handshake_results.their_identifier.clone();
-
             WorkerBuilder::new(encryptor)
                 .with_mailboxes(Mailboxes::new(
                     main_mailbox,
@@ -426,6 +452,12 @@ impl HandshakeWorker {
                 .start(context)
                 .await?;
         }
+
+        self.persist(
+            their_identifier,
+            &handshake_results.handshake_keys.decryption_key,
+        )
+        .await;
 
         info!(
             "Initialized SecureChannel {} at local: {}, remote: {}",
@@ -447,7 +479,7 @@ impl HandshakeWorker {
             self.addresses.decryptor_remote.clone(),
             self.addresses.decryptor_api.clone(),
             self.role.is_initiator(),
-            self.identifier.clone(),
+            self.my_identifier.clone(),
             handshake_results.their_identifier,
             their_decryptor_address,
         );
@@ -457,5 +489,89 @@ impl HandshakeWorker {
             .register_channel(info)?;
 
         Ok(decryptor)
+    }
+
+    async fn persist(&self, their_identifier: Identifier, decryption_key: &AeadSecretKeyHandle) {
+        let Some(repository) = &self.secure_channel_repository else {
+            info!(
+                "Skipping persistence. Local: {}, Remote: {}",
+                self.addresses.encryptor, &self.addresses.decryptor_remote
+            );
+            return;
+        };
+
+        let sc = PersistedSecureChannel::new(
+            self.role,
+            self.my_identifier.clone(),
+            their_identifier,
+            self.addresses.decryptor_remote.clone(),
+            self.addresses.decryptor_api.clone(),
+            decryption_key.clone(),
+        );
+        match repository.put(sc).await {
+            Ok(_) => {
+                info!(
+                    "Successfully persisted secure channel. Local: {}, Remote: {}",
+                    self.addresses.encryptor, &self.addresses.decryptor_remote,
+                );
+            }
+            Err(err) => {
+                warn!(
+                    "Error while persisting secure channel: {err}. Local: {}, Remote: {}",
+                    self.addresses.encryptor, &self.addresses.decryptor_remote
+                );
+
+                return;
+            }
+        }
+
+        if let Err(err) = self
+            .secure_channels
+            .identities
+            .vault()
+            .secure_channel_vault
+            .persist_aead_key(decryption_key)
+            .await
+        {
+            warn!(
+                "Error persisting secure channel key: {err}. Local: {}, Remote: {}",
+                self.addresses.encryptor, &self.addresses.decryptor_remote
+            );
+        };
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn new(
+        secure_channels: Arc<SecureChannels>,
+        callback_sender: Option<CallbackSender<Identifier>>,
+        state_machine: Option<Box<dyn StateMachine>>,
+        my_identifier: Identifier,
+        addresses: Addresses,
+        role: Role,
+        key_exchange_only: bool,
+        remote_route: Option<Route>,
+        decryptor_handler: Option<DecryptorHandler>,
+        authority: Option<Identifier>,
+        change_history_repository: Arc<dyn ChangeHistoryRepository>,
+        credential_retriever: Option<Arc<dyn CredentialRetriever>>,
+        secure_channel_repository: Option<Arc<dyn SecureChannelRepository>>,
+        shared_state: SecureChannelSharedState,
+    ) -> Self {
+        Self {
+            secure_channels,
+            callback_sender,
+            state_machine,
+            my_identifier,
+            addresses,
+            role,
+            key_exchange_only,
+            remote_route,
+            decryptor_handler,
+            authority,
+            change_history_repository,
+            credential_retriever,
+            secure_channel_repository,
+            shared_state,
+        }
     }
 }

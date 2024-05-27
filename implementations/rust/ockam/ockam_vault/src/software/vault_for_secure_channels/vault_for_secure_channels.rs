@@ -27,17 +27,17 @@ pub struct SoftwareVaultForSecureChannels {
     ephemeral_buffer_secrets: Arc<RwLock<BTreeMap<SecretBufferHandle, BufferSecret>>>,
     ephemeral_aead_secrets: Arc<RwLock<BTreeMap<AeadSecretKeyHandle, AeadSecret>>>,
     ephemeral_x25519_secrets: Arc<RwLock<BTreeMap<X25519SecretKeyHandle, X25519SecretKey>>>,
-    static_x25519_secrets: Arc<dyn SecretsRepository>,
+    secrets_repository: Arc<dyn SecretsRepository>,
 }
 
 impl SoftwareVaultForSecureChannels {
     /// Constructor
-    pub fn new(repository: Arc<dyn SecretsRepository>) -> Self {
+    pub fn new(secrets_repository: Arc<dyn SecretsRepository>) -> Self {
         Self {
             ephemeral_buffer_secrets: Default::default(),
             ephemeral_aead_secrets: Default::default(),
             ephemeral_x25519_secrets: Default::default(),
-            static_x25519_secrets: repository,
+            secrets_repository,
         }
     }
 
@@ -59,7 +59,7 @@ impl SoftwareVaultForSecureChannels {
         let public_key = Self::compute_public_key_from_secret(&secret);
         let handle = Self::compute_handle_for_public_key(&public_key);
 
-        self.static_x25519_secrets
+        self.secrets_repository
             .store_x25519_secret(&handle, secret)
             .await?;
 
@@ -91,7 +91,7 @@ impl SoftwareVaultForSecureChannels {
     /// Return the total number of static x25519 secrets present in the Vault
     pub async fn number_of_static_x25519_secrets(&self) -> Result<usize> {
         Ok(self
-            .static_x25519_secrets
+            .secrets_repository
             .get_x25519_secret_handles()
             .await?
             .len())
@@ -188,7 +188,7 @@ impl SoftwareVaultForSecureChannels {
         }
 
         Ok(self
-            .static_x25519_secrets
+            .secrets_repository
             .get_x25519_secret(handle)
             .await?
             .ok_or(VaultError::KeyNotFound)?)
@@ -304,6 +304,32 @@ impl VaultForSecureChannels for SoftwareVaultForSecureChannels {
         aes.decrypt_message(cipher_text, nonce, aad)
     }
 
+    #[instrument(skip_all)]
+    async fn persist_aead_key(&self, secret_key_handle: &AeadSecretKeyHandle) -> Result<()> {
+        let secret = self.get_aead_secret(secret_key_handle).await?;
+        self.secrets_repository
+            .store_aead_secret(secret_key_handle, secret)
+            .await
+    }
+
+    #[instrument(skip_all)]
+    async fn load_aead_key(&self, secret_key_handle: &AeadSecretKeyHandle) -> Result<()> {
+        let Some(secret) = self
+            .secrets_repository
+            .get_aead_secret(secret_key_handle)
+            .await?
+        else {
+            return Err(VaultError::AeadSecretNotFound)?;
+        };
+
+        self.ephemeral_aead_secrets
+            .write()
+            .unwrap()
+            .insert(secret_key_handle.clone(), secret);
+
+        Ok(())
+    }
+
     async fn generate_static_x25519_secret_key(&self) -> Result<X25519SecretKeyHandle> {
         let secret = Self::generate_x25519_secret();
 
@@ -314,11 +340,9 @@ impl VaultForSecureChannels for SoftwareVaultForSecureChannels {
         &self,
         secret_key_handle: X25519SecretKeyHandle,
     ) -> Result<bool> {
-        Ok(self
-            .static_x25519_secrets
+        self.secrets_repository
             .delete_x25519_secret(&secret_key_handle)
-            .await?
-            .is_some())
+            .await
     }
 
     async fn generate_ephemeral_x25519_secret_key(&self) -> Result<X25519SecretKeyHandle> {

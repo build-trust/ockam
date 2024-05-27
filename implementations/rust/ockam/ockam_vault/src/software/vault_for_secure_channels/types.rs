@@ -38,6 +38,9 @@ impl BufferSecret {
 
 cfg_if! {
     if #[cfg(any(not(feature = "disable_default_noise_protocol"), feature = "OCKAM_XX_25519_AES256_GCM_SHA256"))] {
+        /// AEAD type string.
+        pub const AEAD_TYPE: &str = "AES256_GCM";
+
         /// AES256 private key length.
         pub const AES256_SECRET_LENGTH: usize = 32;
 
@@ -51,6 +54,9 @@ cfg_if! {
         #[derive(Eq, PartialEq, Clone, Zeroize, ZeroizeOnDrop)]
         pub struct AeadSecret(pub [u8; AEAD_SECRET_LENGTH]);
     } else if #[cfg(feature = "OCKAM_XX_25519_AES128_GCM_SHA256")] {
+        /// AEAD type string.
+        pub const AEAD_TYPE: &'static str = "AES128_GCM";
+
         /// AES128 private key length.
         pub const AES128_SECRET_LENGTH: usize = 16;
 

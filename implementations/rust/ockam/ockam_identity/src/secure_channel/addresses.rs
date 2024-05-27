@@ -6,7 +6,7 @@ use crate::secure_channel::role::Role;
 // and identity secure channel encryptor&decryptor.
 // Now this logic is merged into one encryptor&decryptor pair, but for backwards
 // compatibility each of them have more addresses to simulate old behaviour.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct Addresses {
     // Used to send decrypted messages and secure channel creation completion notification
     pub(crate) decryptor_internal: Address,

@@ -9,6 +9,17 @@ pub const SHA256_LENGTH: usize = 32;
 /// SHA-256 Output.
 pub struct Sha256Output(pub [u8; SHA256_LENGTH]);
 
+/// Handle to an AES-256 Secret Key.
+#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
+pub struct AeadSecretKeyHandle(pub AeadSecretKeyHandleType);
+
+impl AeadSecretKeyHandle {
+    /// Constructor
+    pub fn new(handle: HandleToSecret) -> Self {
+        Self(AeadSecretKeyHandleType::new(handle))
+    }
+}
+
 cfg_if! {
     if #[cfg(any(not(feature = "disable_default_noise_protocol"), feature = "OCKAM_XX_25519_AES256_GCM_SHA256"))] {
         /// Hash used for Noise handshake.
@@ -24,9 +35,15 @@ cfg_if! {
         #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
         pub struct Aes256GcmSecretKeyHandle(pub HandleToSecret);
 
+        impl Aes256GcmSecretKeyHandle {
+            /// Constructor
+            pub fn new(handle: HandleToSecret) -> Self {
+                Self(handle)
+            }
+        }
+
         /// Handle to a AEAD Secret Key.
-        #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
-        pub struct AeadSecretKeyHandle(pub Aes256GcmSecretKeyHandle);
+        pub type AeadSecretKeyHandleType = Aes256GcmSecretKeyHandle;
     } else if #[cfg(feature = "OCKAM_XX_25519_AES128_GCM_SHA256")] {
         /// Hash used for Noise handshake.
         pub struct HashOutput(pub Sha256Output);
@@ -41,9 +58,15 @@ cfg_if! {
         #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
         pub struct Aes128GcmSecretKeyHandle(pub HandleToSecret);
 
+        impl Aes128GcmSecretKeyHandle {
+            /// Constructor
+            pub fn new(handle: HandleToSecret) -> Self {
+                Self(handle)
+            }
+        }
+
         /// Handle to a AEAD Secret Key.
-        #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
-        pub struct AeadSecretKeyHandle(pub Aes128GcmSecretKeyHandle);
+        pub type AeadSecretKeyHandleType = Aes128GcmSecretKeyHandle;
     } else if #[cfg(feature = "OCKAM_XX_25519_ChaChaPolyBLAKE2s")] {
         /// Blake2s digest length
         pub const BLAKE2S_LENGTH: usize = 32;
@@ -64,8 +87,14 @@ cfg_if! {
         #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
         pub struct Chacha20Poly1305SecretKeyHandle(pub HandleToSecret);
 
+        impl Chacha20Poly1305SecretKeyHandle {
+            /// Constructor
+            pub fn new(handle: HandleToSecret) -> Self {
+                Self(handle)
+            }
+        }
+
         /// Handle to a AEAD Secret Key.
-        #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
-        pub struct AeadSecretKeyHandle(pub Chacha20Poly1305SecretKeyHandle);
+        pub type AeadSecretKeyHandleType = Chacha20Poly1305SecretKeyHandle;
     }
 }

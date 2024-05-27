@@ -22,6 +22,7 @@ pub mod trust_policy;
 pub use access_control::*;
 pub(crate) use addresses::*;
 pub use api::*;
+pub(crate) use decryptor::*;
 pub(crate) use encryptor_worker::*;
 pub(crate) use handshake::*;
 pub(crate) use listener::*;

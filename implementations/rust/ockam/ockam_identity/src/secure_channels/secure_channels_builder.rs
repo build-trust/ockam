@@ -7,7 +7,10 @@ use crate::identities::ChangeHistoryRepository;
 use crate::purpose_keys::storage::PurposeKeysRepository;
 use crate::secure_channel::SecureChannelRegistry;
 use crate::secure_channels::SecureChannels;
-use crate::{CredentialRepository, IdentitiesBuilder, IdentityAttributesRepository, Vault};
+use crate::{
+    CredentialRepository, IdentitiesBuilder, IdentityAttributesRepository, SecureChannelRepository,
+    Vault,
+};
 
 /// This struct supports all the services related to secure channels
 #[derive(Clone)]
@@ -15,6 +18,7 @@ pub struct SecureChannelsBuilder {
     // FIXME: This is very strange dependency
     pub(crate) identities_builder: IdentitiesBuilder,
     pub(crate) registry: SecureChannelRegistry,
+    pub(crate) secure_channel_repository: Arc<dyn SecureChannelRepository>,
 }
 
 /// Create default, in-memory, secure channels (mostly for examples and testing)
@@ -80,6 +84,15 @@ impl SecureChannelsBuilder {
         self
     }
 
+    /// Set a specific secure channels repository
+    pub fn with_secure_channel_repository(
+        mut self,
+        repository: Arc<dyn SecureChannelRepository>,
+    ) -> Self {
+        self.secure_channel_repository = repository;
+        self
+    }
+
     /// Set a specific channel registry
     pub fn with_secure_channels_registry(mut self, registry: SecureChannelRegistry) -> Self {
         self.registry = registry;
@@ -90,6 +103,10 @@ impl SecureChannelsBuilder {
     /// Build secure channels
     pub fn build(self) -> Arc<SecureChannels> {
         let identities = self.identities_builder.build();
-        Arc::new(SecureChannels::new(identities, self.registry.clone()))
+        Arc::new(SecureChannels::new(
+            identities,
+            self.registry,
+            self.secure_channel_repository,
+        ))
     }
 }

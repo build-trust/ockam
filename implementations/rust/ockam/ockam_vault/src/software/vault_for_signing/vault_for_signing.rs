@@ -140,7 +140,6 @@ impl VaultForSigning for SoftwareVaultForSigning {
         self.secrets
             .delete_signing_secret(&signing_secret_key_handle)
             .await
-            .map(|s| s.is_some())
     }
 }
 
