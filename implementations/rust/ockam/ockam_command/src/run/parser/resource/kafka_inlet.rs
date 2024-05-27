@@ -1,5 +1,5 @@
 use crate::kafka::inlet::create::CreateCommand;
-use crate::run::parser::building_blocks::{ArgsToCommands, UnnamedResources};
+use crate::run::parser::building_blocks::{ArgsToCommands, ResourceNameOrMap};
 
 use crate::run::parser::resource::utils::parse_cmd_from_args;
 use crate::{kafka::inlet, Command, OckamSubcommand};
@@ -9,8 +9,8 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct KafkaInlet {
-    #[serde(alias = "kafka-inlet")]
-    pub kafka_inlet: Option<UnnamedResources>,
+    #[serde(alias = "kafka-inlets", alias = "kafka-inlet")]
+    pub kafka_inlet: Option<ResourceNameOrMap>,
 }
 
 impl KafkaInlet {
@@ -33,7 +33,7 @@ impl KafkaInlet {
     ) -> Result<Vec<CreateCommand>> {
         match self.kafka_inlet {
             Some(c) => {
-                let mut cmds = c.into_commands(Self::get_subcommand)?;
+                let mut cmds = c.into_commands_with_name_arg(Self::get_subcommand, Some("addr"))?;
                 if let Some(node_name) = default_node_name {
                     for cmd in cmds.iter_mut() {
                         if cmd.node_opts.at_node.is_none() {
@@ -58,7 +58,7 @@ mod tests {
 
     #[test]
     fn kafka_inlet_config() {
-        let named = r#"
+        let unnamed = r#"
             kafka-inlet:
               from: 127.0.0.1:9092
               to: /project/default
@@ -66,7 +66,7 @@ mod tests {
               publishing-relay: /ip4/192.168.1.2/tcp/4000
               at: node_name
         "#;
-        let parsed: KafkaInlet = serde_yaml::from_str(named).unwrap();
+        let parsed: KafkaInlet = serde_yaml::from_str(unnamed).unwrap();
         let default_node_name = "n1".to_string();
         let cmds = parsed
             .into_parsed_commands(Some(&default_node_name))
@@ -91,12 +91,31 @@ mod tests {
         assert_eq!(cmds[0].node_opts.at_node, Some("node_name".to_string()));
         assert!(!cmds[0].avoid_publishing);
 
-        let unnamed = r#"
+        let named = r#"
             kafka-inlet:
-              consumer: /dnsaddr/kafka-outlet.local/tcp/5000
-              avoid-publishing: true
+              ki:
+                consumer: /dnsaddr/kafka-outlet.local/tcp/5000
+                avoid-publishing: true
         "#;
-        let parsed: KafkaInlet = serde_yaml::from_str(unnamed).unwrap();
+        let parsed: KafkaInlet = serde_yaml::from_str(named).unwrap();
+        let cmds = parsed
+            .into_parsed_commands(Some(&default_node_name))
+            .unwrap();
+        assert_eq!(cmds.len(), 1);
+        assert_eq!(cmds[0].addr, "ki");
+        assert_eq!(
+            cmds[0].consumer.as_ref().unwrap(),
+            &MultiAddr::from_string("/dnsaddr/kafka-outlet.local/tcp/5000").unwrap(),
+        );
+        assert!(cmds[0].avoid_publishing);
+        assert_eq!(cmds[0].node_opts.at_node, Some(default_node_name.clone()));
+
+        let list = r#"
+            kafka-inlet:
+              - consumer: /dnsaddr/kafka-outlet.local/tcp/5000
+                avoid-publishing: true
+        "#;
+        let parsed: KafkaInlet = serde_yaml::from_str(list).unwrap();
         let cmds = parsed
             .into_parsed_commands(Some(&default_node_name))
             .unwrap();
