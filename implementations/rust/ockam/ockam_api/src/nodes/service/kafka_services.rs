@@ -312,6 +312,7 @@ impl InMemoryNode {
         address: Address,
         kind: KafkaServiceKind,
     ) -> Result<DeleteKafkaServiceResult> {
+        debug!(address = %address, kind = %kind, "Deleting kafka service");
         match self.registry.kafka_services.get(&address).await {
             None => Ok(DeleteKafkaServiceResult::ServiceNotFound { address, kind }),
             Some(e) => {
