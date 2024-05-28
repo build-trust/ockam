@@ -3,6 +3,7 @@ use sqlx::pool::PoolOptions;
 use sqlx::sqlite::SqliteConnectOptions;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 
 use ockam_core::errcode::{Kind, Origin};
 use sqlx::{ConnectOptions, SqlitePool};
@@ -138,7 +139,8 @@ impl SqlxDatabase {
         let options = SqliteConnectOptions::new()
             .filename(path)
             .create_if_missing(true)
-            .log_statements(LevelFilter::Debug);
+            .log_statements(LevelFilter::Trace)
+            .log_slow_statements(LevelFilter::Trace, Duration::from_secs(1));
         let pool = SqlitePool::connect_with(options)
             .await
             .map_err(Self::map_sql_err)?;
