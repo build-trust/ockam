@@ -16,7 +16,7 @@ use crate::secure_channel::{
 };
 #[cfg(feature = "storage")]
 use crate::SecureChannelsBuilder;
-use crate::{IdentityError, SecureChannel, SecureChannelListener, SecureChannelRepository, Vault};
+use crate::{IdentityError, SecureChannel, SecureChannelListener, SecureChannelRegistryEntry, SecureChannelRepository, Vault};
 
 /// Identity implementation
 #[derive(Clone)]
@@ -270,6 +270,20 @@ impl SecureChannels {
             true,
             FlowControls::generate_flow_control_id(), // This is random and doesn't matter
         );
+
+        let info = SecureChannelRegistryEntry::new(
+            addresses.encryptor.clone(),
+            addresses.encryptor_api.clone(),
+            addresses.decryptor_remote.clone(),
+            addresses.decryptor_api.clone(),
+            role.is_initiator(),
+            my_identifier.clone(),
+            their_identifier.clone(),
+            addresses.decryptor_remote.clone(), //TODO what to put here??
+        );
+
+        self.secure_channel_registry()
+            .register_channel(info)?;
 
         Ok(sc)
     }
