@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 0.111.0 - 2024-05-27
+## 0.111.0 - 2024-05-28
 
 ### Added
 
@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Implement updating route to the responder in the existing sc
 - Introducing a variant of the secure channel which only exchange keys
 - Using key exchanger in kafka secure channel map
+- Add secure channel persistence
+- Add secure channel persistence to kafka
 - Updated dependencies
 
 ### Fixed
