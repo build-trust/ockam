@@ -16,7 +16,10 @@ use crate::secure_channel::{
 };
 #[cfg(feature = "storage")]
 use crate::SecureChannelsBuilder;
-use crate::{IdentityError, SecureChannel, SecureChannelListener, SecureChannelRegistryEntry, SecureChannelRepository, Vault};
+use crate::{
+    IdentityError, SecureChannel, SecureChannelListener, SecureChannelRegistryEntry,
+    SecureChannelRepository, Vault,
+};
 
 /// Identity implementation
 #[derive(Clone)]
@@ -282,8 +285,7 @@ impl SecureChannels {
             addresses.decryptor_remote.clone(), //TODO what to put here??
         );
 
-        self.secure_channel_registry()
-            .register_channel(info)?;
+        self.secure_channel_registry().register_channel(info)?;
 
         Ok(sc)
     }
