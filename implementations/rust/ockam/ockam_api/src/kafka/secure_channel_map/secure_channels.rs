@@ -268,7 +268,10 @@ impl KafkaSecureChannelControllerImpl {
             Err(Error::new(
                 Origin::Transport,
                 Kind::Invalid,
-                "unauthorized secure channel for producer with identifier {}",
+                format!(
+                    "unauthorized secure channel for producer with identifier {}",
+                    their_identifier
+                ),
             ))
         }
     }
