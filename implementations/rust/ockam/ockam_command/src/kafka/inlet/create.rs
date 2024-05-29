@@ -5,12 +5,13 @@ use std::sync::Arc;
 
 use clap::{command, Args};
 use colorful::Colorful;
+use miette::miette;
 use ockam_abac::PolicyExpression;
 use ockam_api::colors::OckamColor;
 use ockam_api::kafka::{ConsumerPublishing, ConsumerResolution};
 use ockam_api::nodes::models::services::{StartKafkaInletRequest, StartServiceRequest};
 use ockam_api::nodes::BackgroundNodeClient;
-use ockam_api::{fmt_log, fmt_ok, fmt_warn};
+use ockam_api::{fmt_log, fmt_ok};
 use tokio::sync::Mutex;
 use tokio::try_join;
 
@@ -101,19 +102,19 @@ impl Command for CreateCommand {
         let brokers_port_range = self
             .brokers_port_range
             .unwrap_or_else(|| make_brokers_port_range(&self.from));
-        if (brokers_port_range.end() - brokers_port_range.start()) < 100 {
-            opts.terminal.write_line(fmt_warn!(
-                "The brokers ports range has been trimmed down to '{}-{}' because \
-            the max port number {} was exceeded",
-                brokers_port_range.start(),
-                brokers_port_range.end(),
-                u16::MAX
-            ))?;
-            opts.terminal.write_line(fmt_log!(
-                "Consider changing the bootstrap server \
-                port to a lower value that has at least 100 free ports after it\n"
-            ))?;
+
+        // The bootstrap port can't overlap with the brokers port range
+        if self.from.port() >= brokers_port_range.start()
+            && self.from.port() <= brokers_port_range.end()
+        {
+            return Err(miette!(
+                "The bootstrap port {} can't overlap with the brokers port range {}",
+                self.from.port(),
+                brokers_port_range.to_string()
+            )
+            .into());
         }
+
         let at_node = self.node_opts.at_node.clone();
         let addr = self.addr.clone();
 
