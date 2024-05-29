@@ -21,6 +21,13 @@ impl KafkaSecureChannelControllerImpl {
                     .map_or(false, |p| p.code() == Project::CODE))
         };
 
+        // FIXME: move `forward_to_` prefix to the relay service
+        let alias = if is_rust_node {
+            "forward_to_".to_string() + &alias
+        } else {
+            alias
+        };
+
         let relay_info = inner
             .node_manager
             .create_relay(

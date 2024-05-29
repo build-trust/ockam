@@ -181,21 +181,25 @@ impl NodeManager {
         self.start_uppercase_service_impl(ctx, DefaultAddress::UPPERCASE_SERVICE.into())
             .await?;
 
+        let secure_channel_listener = self
+            .create_secure_channel_listener(
+                DefaultAddress::SECURE_CHANNEL_LISTENER.into(),
+                None, // Not checking identifiers here in favor of credential check
+                None,
+                ctx,
+                SecureChannelType::KeyExchangeAndMessages,
+            )
+            .await?;
+
+        let sc_flow_id = secure_channel_listener.flow_control_id();
         RelayService::create(
             ctx,
             DefaultAddress::RELAY_SERVICE,
             RelayServiceOptions::new()
                 .service_as_consumer(api_flow_control_id)
-                .relay_as_consumer(api_flow_control_id),
-        )
-        .await?;
-
-        self.create_secure_channel_listener(
-            DefaultAddress::SECURE_CHANNEL_LISTENER.into(),
-            None, // Not checking identifiers here in favor of credential check
-            None,
-            ctx,
-            SecureChannelType::KeyExchangeAndMessages,
+                .relay_as_consumer(api_flow_control_id)
+                .service_as_consumer(sc_flow_id)
+                .relay_as_consumer(sc_flow_id),
         )
         .await?;
 
