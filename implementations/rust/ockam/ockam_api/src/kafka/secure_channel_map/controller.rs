@@ -89,7 +89,7 @@ impl KafkaSecureChannelControllerImpl {
         let decrypted_content = match decrypt_response {
             DecryptionResponse::Ok(p) => p,
             DecryptionResponse::Err(cause) => {
-                error!("cannot decrypt kafka message: closing connection");
+                error!("cannot decrypt kafka message: {:?}", cause);
                 return Err(cause);
             }
         };
