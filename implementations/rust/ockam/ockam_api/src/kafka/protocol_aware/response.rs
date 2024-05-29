@@ -21,6 +21,8 @@ use crate::kafka::portal_worker::InterceptError;
 use crate::kafka::protocol_aware::utils::{decode_body, encode_response};
 use crate::kafka::protocol_aware::{InletInterceptorImpl, MessageWrapper, RequestInfo};
 
+const OCKAM_UNDECRYPTED: &str = "ockam.undecrypted";
+
 impl InletInterceptorImpl {
     pub(crate) async fn intercept_response_impl(
         &self,
@@ -235,7 +237,7 @@ impl InletInterceptorImpl {
                                     InterceptError::Io(Error::from(ErrorKind::InvalidData))
                                 })?;
 
-                            let decrypted_content = self
+                            match self
                                 .secure_channel_controller
                                 .decrypt_content_for(
                                     context,
@@ -243,9 +245,18 @@ impl InletInterceptorImpl {
                                     message_wrapper.content,
                                 )
                                 .await
-                                .map_err(InterceptError::Ockam)?;
-
-                            record.value = Some(decrypted_content.into());
+                            {
+                                Ok(decrypted_content) => {
+                                    record.value = Some(decrypted_content.into())
+                                }
+                                Err(_) => {
+                                    record.value = Some(record_value);
+                                    record.headers.insert(
+                                        StrBytes::from_string(OCKAM_UNDECRYPTED.to_string()),
+                                        Some(Bytes::from_static("true".as_bytes())),
+                                    );
+                                }
+                            }
                         }
                     }
 
