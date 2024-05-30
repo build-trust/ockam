@@ -14,10 +14,8 @@ use ockam_node::Context;
 use std::convert::TryFrom;
 use std::io::{Error, ErrorKind};
 
-use ockam_core::errcode::{Kind, Origin};
 use ockam_core::flow_control::FlowControlId;
 use tinyvec::alloc;
-use tokio::net::lookup_host;
 use tracing::warn;
 
 use crate::kafka::portal_worker::InterceptError;
@@ -157,21 +155,9 @@ impl KafkaMessageInterceptor for OutletInterceptorImpl {
 
                 for (broker_id, metadata) in response.brokers {
                     let address = format!("{}:{}", metadata.host.as_str(), metadata.port);
-                    let socket_addr = lookup_host(&address)
-                        .await
-                        .ok()
-                        .and_then(|mut i| i.next())
-                        .ok_or_else(|| {
-                            InterceptError::Ockam(ockam_core::Error::new(
-                                Origin::Ockam,
-                                Kind::Invalid,
-                                format!("cannot resolve broker {broker_id:?} address {address}"),
-                            ))
-                        })?;
-
                     let outlet_address = self
                         .outlet_controller
-                        .assert_outlet_for_broker(context, broker_id.0, socket_addr)
+                        .assert_outlet_for_broker(context, broker_id.0, address)
                         .await
                         .map_err(InterceptError::Ockam)?;
 

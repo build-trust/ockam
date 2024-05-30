@@ -138,7 +138,7 @@ mockall = "0.12"
 multimap = "0.10.0"
 ockam_macros = { path = "../ockam_macros", features = ["std"] }
 ockam_transport_core = { path = "../ockam_transport_core" }
-ockam_transport_tcp = { path = "../ockam_transport_tcp" }
+ockam_transport_tcp = { path = "../ockam_transport_tcp", default-features = false }
 once_cell = { version = "1", default-features = false }
 opentelemetry_sdk = { version = "0.22.1", features = ["logs", "metrics", "trace", "rt-tokio", "testing"], default-features = false }
 pretty_assertions = "1.4.0"

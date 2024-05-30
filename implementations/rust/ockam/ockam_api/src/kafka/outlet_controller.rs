@@ -13,6 +13,7 @@ use ockam_core::{Address, Result};
 use ockam_node::Context;
 use ockam_transport_tcp::HostnamePort;
 use std::net::SocketAddr;
+use std::str::FromStr;
 
 type BrokerId = i32;
 
@@ -52,14 +53,14 @@ impl KafkaOutletController {
         &self,
         context: &Context,
         broker_id: BrokerId,
-        socket_addr: SocketAddr,
+        address: String,
     ) -> Result<Address> {
         let outlet_address = kafka_outlet_address(broker_id);
         let mut inner = self.inner.lock().await;
         if !inner.broker_map.contains_key(&broker_id) {
             let socket_address = Self::request_outlet_creation(
                 context,
-                socket_addr,
+                address,
                 kafka_outlet_address(broker_id),
                 self.policy_expression.clone(),
                 self.tls,
@@ -72,12 +73,12 @@ impl KafkaOutletController {
 
     async fn request_outlet_creation(
         context: &Context,
-        socket_address: SocketAddr,
+        kafka_address: String,
         worker_address: Address,
         policy_expression: Option<PolicyExpression>,
         tls: bool,
     ) -> Result<SocketAddr> {
-        let hostname_port = HostnamePort::from_socket_addr(socket_address)?;
+        let hostname_port = HostnamePort::from_str(&kafka_address)?;
         let mut payload = CreateOutlet::new(hostname_port, tls, Some(worker_address), false);
         if let Some(expr) = policy_expression {
             payload.set_policy_expression(expr);

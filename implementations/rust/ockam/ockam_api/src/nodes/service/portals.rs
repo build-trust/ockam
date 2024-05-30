@@ -192,10 +192,11 @@ impl NodeManager {
             .generate_worker_addr(worker_addr)
             .await;
 
-        let socket_addr = hostname_port.to_socket_addr()?;
         info!(
-            "Handling request to create outlet portal at {:?} with worker {:?}",
-            &socket_addr, worker_addr
+            "Handling request to create outlet portal at {}:{} with worker {:?}",
+            &hostname_port.hostname(),
+            hostname_port.port(),
+            worker_addr
         );
 
         // Check registry for a duplicated key
@@ -249,6 +250,7 @@ impl NodeManager {
             }
         };
 
+        let socket_addr = hostname_port.to_socket_addr()?;
         let res = self
             .tcp_transport
             .create_tcp_outlet(worker_addr.clone(), hostname_port, options)
