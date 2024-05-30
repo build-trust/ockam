@@ -22,6 +22,7 @@ ticket: ${ENROLLMENT_TICKET}
 kafka-inlet:
   from: 127.0.0.1:9092
   to: /project/default/service/forward_to_instaclustr/secure/api
+  consumer-relay: /project/default
 EOF
 
 # optional, reduces warnings in the log and order the output

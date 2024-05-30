@@ -19,7 +19,7 @@ services:
     networks:
       - redpanda_operator
   redpanda:
-    image: docker.redpanda.com/redpandadata/redpanda:v23.1.13
+    image: docker.redpanda.com/redpandadata/redpanda:v24.1.5
     environment:
       ENROLLMENT_TICKET: ${ENROLLMENT_TICKET:-}
     command:
@@ -56,7 +56,7 @@ services:
       - 19644:9644
   console:
     container_name: redpanda-console
-    image: docker.redpanda.com/redpandadata/console:v2.2.4
+    image: docker.redpanda.com/redpandadata/console:v2.6.0
     networks:
       - redpanda_operator
     entrypoint: /bin/sh
