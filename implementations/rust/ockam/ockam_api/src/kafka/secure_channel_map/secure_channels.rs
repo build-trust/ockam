@@ -243,12 +243,12 @@ impl KafkaSecureChannelControllerImpl {
                         sc.decryptor_api_address().clone(),
                         sc.their_identifier().clone(),
                     ),
-                    Err(_) => {
+                    Err(e) => {
                         return Err(Error::new(
                             Origin::Channel,
                             Kind::Unknown,
                             format!(
-                                "secure channel decryptor doesn't exist: {}",
+                                "secure channel decryptor {} can not be retrieved: {e:?}",
                                 decryptor_remote_address.address()
                             ),
                         ));
