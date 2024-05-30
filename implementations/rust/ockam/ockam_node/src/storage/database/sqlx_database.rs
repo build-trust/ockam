@@ -2,7 +2,7 @@ use core::fmt::{Debug, Formatter};
 use sqlx::pool::PoolOptions;
 use sqlx::sqlite::SqliteConnectOptions;
 use std::ops::Deref;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use ockam_core::errcode::{Kind, Origin};
 use sqlx::{ConnectOptions, SqlitePool};
@@ -27,6 +27,8 @@ use ockam_core::{Error, Result};
 pub struct SqlxDatabase {
     /// Pool of connections to the database
     pub pool: Arc<SqlitePool>,
+
+    path: Option<PathBuf>,
 }
 
 impl Debug for SqlxDatabase {
@@ -117,15 +119,18 @@ impl SqlxDatabase {
         // FIXME: We should be careful if we run multiple nodes in one process
         let db = SqlxDatabase {
             pool: Arc::new(pool),
+            path: None,
         };
         Ok(db)
     }
 
     async fn create_at(path: &Path) -> Result<Self> {
+        let path = path.to_path_buf();
         // Creates database file if it doesn't exist
-        let pool = Self::create_connection_pool(path).await?;
+        let pool = Self::create_connection_pool(path.as_path()).await?;
         Ok(SqlxDatabase {
             pool: Arc::new(pool),
+            path: Some(path),
         })
     }
 
@@ -150,6 +155,11 @@ impl SqlxDatabase {
             .await
             .map_err(Self::map_sql_err)?;
         Ok(pool)
+    }
+
+    /// Path to the db file
+    pub fn path(&self) -> Option<&Path> {
+        self.path.as_deref()
     }
 
     /// Map a sqlx error into an ockam error

@@ -223,6 +223,28 @@ impl CliState {
         std::fs::remove_file(vault.path())?;
         Ok(())
     }
+
+    /// Move a vault file to another location if the vault is not the default vault
+    /// contained in the main database
+    #[instrument(skip_all, fields(vault_name = named_vault.name, path = named_vault.path.to_string_lossy().to_string()))]
+    pub async fn make_vault(&self, named_vault: NamedVault) -> Result<Vault> {
+        let db = if Some(named_vault.path.as_path()) == self.database_ref().path() {
+            self.database()
+        } else {
+            // TODO: Avoid creating multiple dbs with the same file
+            SqlxDatabase::create(named_vault.path.as_path()).await?
+        };
+
+        let mut vault = Vault::create_with_database(db);
+        if named_vault.is_kms {
+            let aws_vault = Arc::new(AwsSigningVault::create().await?);
+            vault.identity_vault = aws_vault.clone();
+            vault.credential_vault = aws_vault;
+            Ok(vault)
+        } else {
+            Ok(vault)
+        }
+    }
 }
 
 /// Builder functions
@@ -377,23 +399,6 @@ impl NamedVault {
     /// Return true if this vault is a KMS vault
     pub fn is_kms(&self) -> bool {
         self.is_kms
-    }
-
-    pub async fn vault(&self) -> Result<Vault> {
-        let mut vault = Vault::create_with_database(self.database().await?);
-        if self.is_kms {
-            let aws_vault = Arc::new(AwsSigningVault::create().await?);
-            vault.identity_vault = aws_vault.clone();
-            vault.credential_vault = aws_vault;
-            Ok(vault)
-        } else {
-            Ok(vault)
-        }
-    }
-
-    async fn database(&self) -> Result<SqlxDatabase> {
-        // FIXME: We should really have one instance of the SqlxDatabase per process
-        Ok(SqlxDatabase::create(self.path.as_path()).await?)
     }
 }
 

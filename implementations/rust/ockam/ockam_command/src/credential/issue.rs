@@ -67,12 +67,8 @@ impl IssueCommand {
             .get_identifier_by_optional_name(&self.as_identity)
             .await?;
 
-        let vault = opts
-            .state
-            .get_named_vault_or_default(&self.vault)
-            .await?
-            .vault()
-            .await?;
+        let named_vault = opts.state.get_named_vault_or_default(&self.vault).await?;
+        let vault = opts.state.make_vault(named_vault).await?;
         let identities = opts.state.make_identities(vault).await?;
 
         let mut attributes_builder = AttributesBuilder::with_schema(PROJECT_MEMBER_SCHEMA);
