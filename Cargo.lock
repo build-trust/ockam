@@ -1061,7 +1061,7 @@ dependencies = [
  "bitflags 2.5.0",
  "cexpr",
  "clang-sys",
- "itertools 0.10.5",
+ "itertools 0.12.1",
  "lazy_static",
  "lazycell",
  "log",
@@ -5506,7 +5506,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "19de2de2a00075bf566bee3bd4db014b11587e84184d3f7a791bc17f1a8e9e48"
 dependencies = [
  "anyhow",
- "itertools 0.10.5",
+ "itertools 0.12.1",
  "proc-macro2",
  "quote",
  "syn 2.0.61",
@@ -5647,9 +5647,9 @@ dependencies = [
 
 [[package]]
 name = "r3bl_tui"
-version = "0.5.3"
+version = "0.5.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "487afbab05529635c4c2dd095fff480de1fda849945c66267143775bfc4168e7"
+checksum = "73b2c52f5b83c5d0d22f4945bd62edc38702cf771bd15c0b06e152a7eb7a8ee1"
 dependencies = [
  "chrono",
  "colorgrad",
