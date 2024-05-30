@@ -49,6 +49,9 @@ pub mod debugger;
 /// Callback utility
 pub mod callback;
 
+/// Helper workers
+pub mod workers;
+
 mod async_drop;
 mod context;
 mod delayed;

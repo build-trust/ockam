@@ -1,5 +1,6 @@
 use ockam_core::compat::rand::{self, Rng};
-use ockam_core::{route, Result, Routed, Worker};
+use ockam_core::{route, Result};
+use ockam_node::workers::Echoer;
 use ockam_node::Context;
 use ockam_transport_websocket::{WebSocketTransport, WS};
 
@@ -23,16 +24,4 @@ async fn send_receive(ctx: &mut Context) -> Result<()> {
         assert_eq!(reply, msg, "Should receive the same message");
     };
     Ok(())
-}
-
-pub struct Echoer;
-
-#[ockam_core::worker]
-impl Worker for Echoer {
-    type Message = String;
-    type Context = Context;
-
-    async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<String>) -> Result<()> {
-        ctx.send(msg.return_route(), msg.into_body()?).await
-    }
 }

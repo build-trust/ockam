@@ -101,7 +101,6 @@ mod error;
 mod relay_service;
 
 pub mod remote;
-pub mod workers;
 
 /// Access Control
 pub mod access_control {
@@ -123,6 +122,11 @@ pub mod compat {
     pub use ockam_core::compat::*;
     pub use ockam_node::compat::*;
     pub use ockam_node::tokio;
+}
+
+/// Helper workers
+pub mod workers {
+    pub use ockam_node::workers::*;
 }
 
 #[cfg(feature = "ockam_vault")]

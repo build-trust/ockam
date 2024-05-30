@@ -1,20 +1,9 @@
 use core::time::Duration;
 use ockam_core::compat::rand::{self, Rng};
-use ockam_core::{route, Result, Routed, Worker};
+use ockam_core::{route, Result};
+use ockam_node::workers::Echoer;
 use ockam_node::Context;
 use ockam_transport_tcp::{TcpConnectionOptions, TcpListenerOptions, TcpTransport};
-
-pub struct Echoer;
-
-#[ockam_core::worker]
-impl Worker for Echoer {
-    type Message = String;
-    type Context = Context;
-
-    async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<String>) -> Result<()> {
-        ctx.send(msg.return_route(), msg.into_body()?).await
-    }
-}
 
 #[allow(non_snake_case)]
 #[ockam_macros::test]
