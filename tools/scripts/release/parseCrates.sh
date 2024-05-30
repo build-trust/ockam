@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Example Usage:
 # cargo deny --all-features list --config=tools/cargo-deny/deny.toml --layout=crate --format json | ./tools/scripts/release/parseCrates.sh
@@ -18,6 +18,8 @@ INPUT=$(jq "." $1)
 # "adler 1.0.2 registry+https://github.com/rust-lang/crates.io-index"
 regex="(.*) [0-9]+\.[0-9]+\.[0-9]+ \(*(.*)\+(.*)"
 
+declare -A crates
+
 while IFS= read -r key; do
   if [[ $key =~ $regex ]]; then
 
@@ -25,6 +27,12 @@ while IFS= read -r key; do
     crate_source=${BASH_REMATCH[2]}
     url=${BASH_REMATCH[3]}
     license=$(jq --arg key "$key" --raw-output '.[$key].licenses | join(", ")' <<<$INPUT)
+
+    if [[ ! -z ${crates[$crate_name]} ]]; then
+      continue
+    fi
+
+    crates[$crate_name]='true'
 
     # Strip URL of trailing )
     url="${url//\)/}"
