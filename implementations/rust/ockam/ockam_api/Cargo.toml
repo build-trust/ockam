@@ -134,7 +134,6 @@ cddl-cat = "0.6.1"
 fake = { version = "2", features = ['derive', 'uuid'] }
 hex = "0.4.3"
 indexmap = "2.2.6"
-itertools = "0.13.0"
 mockall = "0.12"
 multimap = "0.10.0"
 ockam_macros = { path = "../ockam_macros", features = ["std"] }
