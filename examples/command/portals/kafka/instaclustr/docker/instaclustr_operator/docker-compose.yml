@@ -15,6 +15,7 @@ services:
     environment:
       ENROLLMENT_TICKET: ${ENROLLMENT_TICKET:-}
       INSTACLUSTER_ADDRESS: ${BOOTSTRAPSERVER}:9092
+      OCKAM_DEVELOPER: ${OCKAM_DEVELOPER:-false}
     networks:
       - instaclustr_operator
   kafka-ui:

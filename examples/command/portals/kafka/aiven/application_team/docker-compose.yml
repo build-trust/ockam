@@ -16,6 +16,7 @@ services:
       ENROLLMENT_TICKET: ${CONSUMER_ENROLLMENT_TICKET:-}
       KAFKA_CLUSTER_API_KEY: ${KAFKA_CLUSTER_API_KEY:-}
       KAFKA_CLUSTER_API_SECRET: ${KAFKA_CLUSTER_API_SECRET:-}
+      OCKAM_DEVELOPER: ${OCKAM_DEVELOPER:-false}
     networks:
       - application_team
     command:
@@ -45,6 +46,7 @@ services:
       ENROLLMENT_TICKET: ${PRODUCER_ENROLLMENT_TICKET:-}
       KAFKA_CLUSTER_API_KEY: ${KAFKA_CLUSTER_API_KEY:-}
       KAFKA_CLUSTER_API_SECRET: ${KAFKA_CLUSTER_API_SECRET:-}
+      OCKAM_DEVELOPER: ${OCKAM_DEVELOPER:-false}
     networks:
       - application_team
     command:
