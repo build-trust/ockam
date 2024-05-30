@@ -243,36 +243,50 @@ impl CommonStateMachine {
         credentials: Vec<CredentialAndPurposeKey>,
     ) -> Result<()> {
         debug!("verifying {} credentials", credentials.len());
-        if let Some(authority) = &authority {
-            debug!("Got an Authority to check the credentials");
-            for credential in &credentials {
-                let result = identities
-                    .credentials()
-                    .credentials_verification()
-                    .receive_presented_credential(
-                        their_identifier,
-                        &[authority.clone()],
-                        credential,
-                    )
-                    .await;
 
-                if let Some(err) = result.err() {
-                    warn!("a credential could not be validated {}", err.to_string());
-                    // TODO: consider the possibility of keep going when a credential validation fails
-                    return Err(IdentityError::SecureChannelVerificationFailedIncorrectCredential)?;
+        // Let's complete the handshake and keep the secure channel open even if we could not
+        // verify credentials. The individual resources' access controls won't allow
+        // unauthorized users to interact with them. However, there can be other resources that
+        // allow users without credential to interact.
+
+        let Some(authority) = &authority else {
+            if !credentials.is_empty() {
+                warn!("credentials were presented, but Authority is missing");
+            }
+            return Ok(());
+        };
+
+        if credentials.is_empty() {
+            debug!(
+                "no credentials were received from {}. Expected authority: {}",
+                their_identifier, authority
+            );
+            return Ok(());
+        };
+
+        for credential in &credentials {
+            let res = identities
+                .credentials()
+                .credentials_verification()
+                .receive_presented_credential(their_identifier, &[authority.clone()], credential)
+                .await;
+
+            match res {
+                Ok(_) => {
+                    debug!(
+                        "Successfully validated credential from {}",
+                        their_identifier,
+                    );
+                }
+                Err(err) => {
+                    warn!(
+                        "a credential from {} could not be validated {}",
+                        their_identifier,
+                        err.to_string()
+                    );
                 }
             }
-            if credentials.is_empty() {
-                debug!(
-                    "no credentials were received from the authority {} for {}",
-                    authority, their_identifier
-                );
-            };
-        } else if !credentials.is_empty() {
-            warn!("credentials were presented, but Authority is missing");
-            // we cannot validate credentials without an Authority
-            return Err(IdentityError::SecureChannelVerificationFailedMissingAuthority)?;
-        };
+        }
 
         Ok(())
     }

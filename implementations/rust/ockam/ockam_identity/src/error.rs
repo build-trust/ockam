@@ -38,10 +38,6 @@ pub enum IdentityError {
     UnknownPurposeKeyAttestationVersion,
     /// Invalid data_type value for PurposeKeyAttestation
     InvalidPurposeKeyAttestationDataType,
-    /// A credential was rejected by the Authority
-    SecureChannelVerificationFailedIncorrectCredential,
-    /// Credentials could not be checked because the Authority is missing
-    SecureChannelVerificationFailedMissingAuthority,
     /// SecureChannelTrustCheckFailed
     SecureChannelTrustCheckFailed,
     /// Invalid Nonce value
