@@ -64,6 +64,10 @@ impl CliState {
         self.database.clone()
     }
 
+    pub fn database_ref(&self) -> &SqlxDatabase {
+        &self.database
+    }
+
     pub fn database_path(&self) -> PathBuf {
         Self::make_database_path(&self.dir)
     }

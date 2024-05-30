@@ -39,11 +39,10 @@ impl CliState {
         };
 
         let vault = self.get_named_vault(vault_name).await?;
-        let identities = self.make_identities(vault.vault().await?).await?;
+        let identities = self.make_identities(self.make_vault(vault).await?).await?;
         let identity = identities.identities_creation().create_identity().await?;
 
-        self.store_named_identity(&identity, name, &vault.name())
-            .await
+        self.store_named_identity(&identity, name, vault_name).await
     }
 
     /// Create an identity associated with a name, using the default vault
@@ -81,7 +80,7 @@ impl CliState {
         ));
 
         // create the identity
-        let identities = self.make_identities(vault.vault().await?).await?;
+        let identities = self.make_identities(self.make_vault(vault).await?).await?;
         let identifier = identities
             .identities_creation()
             .identity_builder()
@@ -192,11 +191,8 @@ impl CliState {
         match named_identity {
             Some(identity) => {
                 let change_history = self.get_change_history(&identity.identifier()).await?;
-                let identity_vault = self
-                    .get_named_vault(&identity.vault_name)
-                    .await?
-                    .vault()
-                    .await?;
+                let named_vault = self.get_named_vault(&identity.vault_name).await?;
+                let identity_vault = self.make_vault(named_vault).await?;
                 Ok(Identity::import_from_change_history(
                     Some(&identity.identifier()),
                     change_history,

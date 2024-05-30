@@ -72,11 +72,8 @@ pub async fn start_manager_for_tests(
 
     // Premise: we need an identity and a credential before the node manager starts.
     let identifier = cli_state.get_node(&node_name).await?.identifier();
-    let vault = cli_state
-        .get_or_create_default_named_vault()
-        .await?
-        .vault()
-        .await?;
+    let named_vault = cli_state.get_or_create_default_named_vault().await?;
+    let vault = cli_state.make_vault(named_vault).await?;
     let identities = cli_state.make_identities(vault).await?;
 
     let attributes = AttributesBuilder::with_schema(PROJECT_MEMBER_SCHEMA).build();

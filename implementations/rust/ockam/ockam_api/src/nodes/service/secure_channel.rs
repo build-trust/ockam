@@ -345,12 +345,11 @@ impl NodeManager {
             }
         };
         let identifier = named_identity.identifier();
-        let vault = self
+        let named_vault = self
             .cli_state
             .get_named_vault(&named_identity.vault_name())
-            .await?
-            .vault()
             .await?;
+        let vault = self.cli_state.make_vault(named_vault).await?;
         let secure_channels = self.build_secure_channels(vault).await?;
 
         let options =
