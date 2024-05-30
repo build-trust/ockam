@@ -1,6 +1,7 @@
-use crate::{Context, Result, Routed, Worker};
+use crate::Context;
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::string::String;
+use ockam_core::{Result, Routed, Worker};
 
 /// A worker which accepts `String`s, and echos them (and the address) to
 /// the `debug!` log.
@@ -8,7 +9,7 @@ use ockam_core::compat::string::String;
 /// Mostly intended for use when debugging.
 pub struct Echoer;
 
-#[crate::worker]
+#[ockam_core::worker]
 impl Worker for Echoer {
     type Context = Context;
     type Message = String;
