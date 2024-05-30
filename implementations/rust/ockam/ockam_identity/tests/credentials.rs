@@ -11,6 +11,7 @@ use ockam_identity::{
     CredentialAccessControl, SecureChannelListenerOptions, SecureChannelOptions,
     TrustIdentifierPolicy,
 };
+use ockam_node::workers::Echoer;
 use ockam_node::{Context, WorkerBuilder};
 
 #[ockam_macros::test]
@@ -239,6 +240,145 @@ async fn access_control(ctx: &mut Context) -> Result<()> {
         .await?;
     ctx.sleep(Duration::from_millis(100)).await;
     assert_eq!(counter.load(Ordering::Relaxed), 1);
+
+    Ok(())
+}
+
+#[allow(non_snake_case)]
+#[ockam_macros::test]
+async fn missing_authority__handshake_should_succeed(ctx: &mut Context) -> Result<()> {
+    let secure_channels = secure_channels().await?;
+    let identities = secure_channels.identities();
+    let identities_creation = identities.identities_creation();
+    let identities_attributes = identities.identities_attributes();
+    let credentials = identities.credentials();
+
+    let authority = identities_creation.create_identity().await?;
+    let server = identities_creation.create_identity().await?;
+    let client = identities_creation.create_identity().await?;
+
+    let credential = credentials
+        .credentials_creation()
+        .issue_credential(
+            &authority,
+            &client,
+            AttributesBuilder::with_schema(CredentialSchemaIdentifier(0))
+                .with_attribute("is_superuser", "true")
+                .build(),
+            Duration::from_secs(60 * 60),
+        )
+        .await?;
+
+    let listener = secure_channels
+        .create_secure_channel_listener(
+            ctx,
+            &server,
+            "listener",
+            SecureChannelListenerOptions::new(),
+        )
+        .await?;
+
+    let sc = secure_channels
+        .create_secure_channel(
+            ctx,
+            &client,
+            route!["listener"],
+            SecureChannelOptions::new().with_credential(credential)?,
+        )
+        .await?;
+
+    ctx.sleep(Duration::from_millis(200)).await;
+
+    // No attributes because we didn't provide authority to the responder
+    let attrs = identities_attributes
+        .get_attributes(&client, &authority)
+        .await?;
+
+    assert!(attrs.is_none());
+
+    // However secure channel should be operational anyways
+
+    ctx.start_worker("echo", Echoer).await?;
+    ctx.flow_controls()
+        .add_consumer("echo", listener.flow_control_id());
+
+    let msg: String = ctx
+        .send_and_receive(route![sc, "echo"], "Test".to_string())
+        .await?;
+    assert_eq!(msg, "Test".to_string());
+
+    Ok(())
+}
+
+#[allow(non_snake_case)]
+#[ockam_macros::test]
+async fn invalid_credential__handshake_should_succeed(ctx: &mut Context) -> Result<()> {
+    let secure_channels = secure_channels().await?;
+    let identities = secure_channels.identities();
+    let identities_creation = identities.identities_creation();
+    let identities_attributes = identities.identities_attributes();
+    let credentials = identities.credentials();
+
+    let authority = identities_creation.create_identity().await?;
+    let authority_wrong = identities_creation.create_identity().await?;
+    let server = identities_creation.create_identity().await?;
+    let client = identities_creation.create_identity().await?;
+
+    let credential = credentials
+        .credentials_creation()
+        .issue_credential(
+            &authority_wrong,
+            &client,
+            AttributesBuilder::with_schema(CredentialSchemaIdentifier(0))
+                .with_attribute("is_superuser", "true")
+                .build(),
+            Duration::from_secs(60 * 60),
+        )
+        .await?;
+
+    let listener = secure_channels
+        .create_secure_channel_listener(
+            ctx,
+            &server,
+            "listener",
+            SecureChannelListenerOptions::new().with_authority(authority.clone()),
+        )
+        .await?;
+
+    let sc = secure_channels
+        .create_secure_channel(
+            ctx,
+            &client,
+            route!["listener"],
+            SecureChannelOptions::new().with_credential(credential)?,
+        )
+        .await?;
+
+    ctx.sleep(Duration::from_millis(200)).await;
+
+    // No attributes because we provided wrong signature
+    let attrs = identities_attributes
+        .get_attributes(&client, &authority)
+        .await?;
+
+    assert!(attrs.is_none());
+
+    let attrs = identities_attributes
+        .get_attributes(&client, &authority_wrong)
+        .await?;
+
+    assert!(attrs.is_none());
+
+    // However secure channel should be operational anyways
+
+    ctx.start_worker("echo", Echoer).await?;
+    ctx.flow_controls()
+        .add_consumer("echo", listener.flow_control_id());
+
+    let msg: String = ctx
+        .send_and_receive(route![sc, "echo"], "Test".to_string())
+        .await?;
+    assert_eq!(msg, "Test".to_string());
 
     Ok(())
 }
