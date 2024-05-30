@@ -1,4 +1,5 @@
 use miette::IntoDiagnostic;
+use ockam_core::errcode::{Kind, Origin};
 use serde::Deserialize;
 
 use crate::run::parser::Variables;
@@ -10,6 +11,17 @@ pub trait ConfigParser<'de>: Deserialize<'de> {
     }
     /// Parses a given yaml configuration
     fn parse(contents: &'de str) -> miette::Result<Self> {
-        serde_yaml::from_str(contents).into_diagnostic()
+        serde_yaml::from_str(contents)
+            .map_err(|e| {
+                ockam_core::Error::new(
+                    Origin::Api,
+                    Kind::Serialization,
+                    format!(
+                        "could not parse the node configuration file: {e:?}\n\n{}",
+                        contents
+                    ),
+                )
+            })
+            .into_diagnostic()
     }
 }
