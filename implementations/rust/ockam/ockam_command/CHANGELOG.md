@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.125.0 - 2024-05-30
+
+### Added
+
+- Create a portal for exporting traces when a project exists
+- Make `default` vault reuse `SqlxDatabase` instance
+- Print a resolved configuration file when it cannot be parsed
+- Fixed tls tcp outlets and kafka outlets
+- Updated dependencies
+
+### Fixed
+
+- Avoid arithmetic overflow when calculating the range of the kafka brokers ports
+
 ## 0.124.0 - 2024-05-28
 
 ### Added
