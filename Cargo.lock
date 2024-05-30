@@ -4548,7 +4548,7 @@ dependencies = [
  "rand",
  "regex",
  "reqwest",
- "rustls 0.23.5",
+ "rustls 0.22.4",
  "rustls-native-certs 0.7.0",
  "rustls-pki-types",
  "semver 1.0.23",
