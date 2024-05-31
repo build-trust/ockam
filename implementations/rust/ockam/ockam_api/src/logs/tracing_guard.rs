@@ -47,7 +47,6 @@ impl TracingGuard {
 
     pub fn shutdown(&self) {
         global::shutdown_tracer_provider();
-        global::shutdown_logger_provider();
     }
 
     /// Export the current batches of spans and log records

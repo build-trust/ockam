@@ -101,6 +101,7 @@ impl OckamCommand {
                             .span_context()
                             .clone(),
                         vec![],
+                        0,
                     )]);
                 let span = tracer.build_with_context(span_builder, &context);
                 let cx = Context::current_with_span(span);

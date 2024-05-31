@@ -10,7 +10,6 @@ use opentelemetry_sdk::propagation::TraceContextPropagator;
 use opentelemetry_sdk::trace::{BatchConfig, BatchConfigBuilder, BatchSpanProcessor};
 use opentelemetry_sdk::{self as sdk};
 use opentelemetry_sdk::{logs, Resource};
-use opentelemetry_semantic_conventions::SCHEMA_URL;
 use std::io::{empty, stdout};
 use tonic::metadata::*;
 use tracing_appender::non_blocking::NonBlocking;
@@ -267,7 +266,7 @@ fn create_opentelemetry_logging_layer<L: LogExporter + Send + 'static>(
     exporting_configuration: &ExportingConfiguration,
     log_exporter: L,
 ) -> (
-    OpenTelemetryTracingBridge<LoggerProvider, opentelemetry_sdk::logs::Logger>,
+    OpenTelemetryTracingBridge<LoggerProvider, logs::Logger>,
     LoggerProvider,
 ) {
     let app = app_name.to_string();
@@ -276,7 +275,7 @@ fn create_opentelemetry_logging_layer<L: LogExporter + Send + 'static>(
     let log_export_queue_size = exporting_configuration.log_export_queue_size();
     let log_export_cutoff = exporting_configuration.log_export_cutoff();
     Executor::execute_future(async move {
-        let config = sdk::logs::Config::default().with_resource(make_resource(app));
+        let config = logs::Config::default().with_resource(make_resource(app));
         let batch_config = logs::BatchConfigBuilder::default()
             .with_max_export_timeout(log_export_timeout)
             .with_scheduled_delay(log_export_scheduled_delay)
@@ -419,12 +418,7 @@ fn create_tracer<S: SpanExporter + 'static>(
         .with_span_processor(span_processor)
         .with_config(trace_config)
         .build();
-    let tracer = provider.versioned_tracer(
-        "ockam",
-        Some(env!("CARGO_PKG_VERSION")),
-        Some(SCHEMA_URL),
-        None,
-    );
+    let tracer = provider.tracer_builder("ockam").build();
     let _ = global::set_tracer_provider(provider.clone());
     (tracer, provider)
 }

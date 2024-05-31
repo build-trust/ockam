@@ -154,13 +154,14 @@ impl TransportMessage {
             SpanBuilder::from_name("TransportMessage::start_trace").with_links(vec![Link::new(
                 _tracing_context.extract().span().span_context().clone(),
                 vec![],
+                0,
             )]);
         let span = tracer.build_with_context(span_builder, &Context::default());
         let cx = Context::current_with_span(span);
 
         // create a span to close the previous trace and link it to the new trace
         let span_builder = SpanBuilder::from_name("TransportMessage::end_trace")
-            .with_links(vec![Link::new(cx.span().span_context().clone(), vec![])]);
+            .with_links(vec![Link::new(cx.span().span_context().clone(), vec![], 0)]);
         let _ = tracer.build_with_context(span_builder, &_tracing_context.extract());
 
         // create the new opentelemetry context
