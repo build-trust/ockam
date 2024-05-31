@@ -6,7 +6,7 @@ use kafka_protocol::messages::fetch_response::FetchResponse;
 use kafka_protocol::messages::find_coordinator_response::FindCoordinatorResponse;
 use kafka_protocol::messages::metadata_response::MetadataResponse;
 use kafka_protocol::messages::response_header::ResponseHeader;
-use kafka_protocol::messages::ApiKey;
+use kafka_protocol::messages::{ApiKey, ApiVersionsResponse};
 use kafka_protocol::protocol::buf::ByteBuf;
 use kafka_protocol::protocol::{Decodable, StrBytes};
 use kafka_protocol::records::{
@@ -68,6 +68,13 @@ impl InletInterceptorImpl {
             );
 
             match request_info.request_api_key {
+                ApiKey::ApiVersionsKey => {
+                    let response: ApiVersionsResponse =
+                        decode_body(&mut buffer, request_info.request_api_version)?;
+                    debug!("api versions response header: {:?}", header);
+                    debug!("api versions response: {:#?}", response);
+                }
+
                 ApiKey::FetchKey => {
                     return self
                         .handle_fetch_response(context, &mut buffer, &request_info, &header)

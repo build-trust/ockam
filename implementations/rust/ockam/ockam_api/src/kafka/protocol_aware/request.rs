@@ -63,6 +63,17 @@ impl InletInterceptorImpl {
         );
 
         match api_key {
+            ApiKey::ApiVersionsKey => {
+                debug!("api versions request: {:?}", header);
+                self.request_map.lock().unwrap().insert(
+                    header.correlation_id,
+                    RequestInfo {
+                        request_api_key: api_key,
+                        request_api_version: header.request_api_version,
+                    },
+                );
+            }
+
             ApiKey::ProduceKey => {
                 return self
                     .handle_produce_request(context, &mut buffer, &header)
