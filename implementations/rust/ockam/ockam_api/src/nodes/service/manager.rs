@@ -23,7 +23,7 @@ use ockam::identity::{
 use ockam::{RelayService, RelayServiceOptions};
 use ockam_abac::expr::str;
 use ockam_abac::{
-    Action, Env, Policies, PolicyAccessControl, PolicyExpression, Resource, Resources,
+    Action, Env, Policies, PolicyAccessControl, PolicyExpression, Resource, ResourceType, Resources,
 };
 use ockam_core::flow_control::FlowControlId;
 use ockam_core::{
@@ -181,23 +181,47 @@ impl NodeManager {
         self.start_uppercase_service_impl(ctx, DefaultAddress::UPPERCASE_SERVICE.into())
             .await?;
 
-        RelayService::create(
-            ctx,
-            DefaultAddress::RELAY_SERVICE,
-            RelayServiceOptions::new()
-                .service_as_consumer(api_flow_control_id)
-                .relay_as_consumer(api_flow_control_id),
-        )
-        .await?;
+        let secure_channel_listener = self
+            .create_secure_channel_listener(
+                DefaultAddress::SECURE_CHANNEL_LISTENER.into(),
+                None, // Not checking identifiers here in favor of credential check
+                None,
+                ctx,
+                SecureChannelType::KeyExchangeAndMessages,
+            )
+            .await?;
 
-        self.create_secure_channel_listener(
-            DefaultAddress::SECURE_CHANNEL_LISTENER.into(),
-            None, // Not checking identifiers here in favor of credential check
-            None,
-            ctx,
-            SecureChannelType::KeyExchangeAndMessages,
-        )
-        .await?;
+        let options = RelayServiceOptions::new()
+            .service_as_consumer(api_flow_control_id)
+            .relay_as_consumer(api_flow_control_id)
+            .prefix("forward_to_");
+
+        let options = if let Some(authority) = &self.project_authority {
+            let policy_access_control = self
+                .policy_access_control(
+                    self.project_authority.clone(),
+                    Resource::new(DefaultAddress::RELAY_SERVICE, ResourceType::Relay),
+                    Action::HandleMessage,
+                    None,
+                )
+                .await?;
+
+            let sc_flow_id = secure_channel_listener.flow_control_id();
+            options
+                .service_as_consumer(sc_flow_id)
+                .relay_as_consumer(sc_flow_id)
+                .with_service_incoming_access_control(Arc::new(
+                    policy_access_control.create_incoming(),
+                ))
+                .authority(
+                    authority.clone(),
+                    self.secure_channels.identities().identities_attributes(),
+                )
+        } else {
+            options
+        };
+
+        RelayService::create(ctx, DefaultAddress::RELAY_SERVICE, options).await?;
 
         Ok(())
     }

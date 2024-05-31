@@ -1,7 +1,10 @@
+use crate::alloc::string::ToString;
+use alloc::string::String;
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
 use ockam_core::flow_control::{FlowControlId, FlowControls};
 use ockam_core::{Address, AllowAll, IncomingAccessControl};
+use ockam_identity::{Identifier, IdentitiesAttributes};
 
 /// Trust Options for a Forwarding Service
 pub struct RelayServiceOptions {
@@ -9,6 +12,13 @@ pub struct RelayServiceOptions {
     pub(super) relays_incoming_access_control: Arc<dyn IncomingAccessControl>,
     pub(super) consumer_service: Vec<FlowControlId>,
     pub(super) consumer_relay: Vec<FlowControlId>,
+    pub(super) prefix: String,
+    pub(super) authority_validation: Option<AuthorityValidation>,
+}
+
+pub(super) struct AuthorityValidation {
+    pub(super) authority: Identifier,
+    pub(super) identities_attributes: Arc<IdentitiesAttributes>,
 }
 
 impl RelayServiceOptions {
@@ -19,6 +29,8 @@ impl RelayServiceOptions {
             relays_incoming_access_control: Arc::new(AllowAll),
             consumer_service: vec![],
             consumer_relay: vec![],
+            prefix: "".to_string(),
+            authority_validation: None,
         }
     }
 
@@ -69,6 +81,25 @@ impl RelayServiceOptions {
         access_control: Arc<dyn IncomingAccessControl>,
     ) -> Self {
         self.relays_incoming_access_control = access_control;
+        self
+    }
+
+    /// Set Authority and IdentitiesAttributes
+    pub fn authority(
+        mut self,
+        authority: Identifier,
+        identities_attributes: Arc<IdentitiesAttributes>,
+    ) -> Self {
+        self.authority_validation = Some(AuthorityValidation {
+            authority,
+            identities_attributes,
+        });
+        self
+    }
+
+    /// Set Prefix for the Relay Service
+    pub fn prefix(mut self, prefix: &str) -> Self {
+        self.prefix = prefix.to_string();
         self
     }
 
