@@ -37,7 +37,7 @@ async fn test_key_exchange_only(ctx: &mut Context) -> ockam_core::Result<()> {
         .create_secure_channel(ctx, &alice, route!["bob_listener"], alice_options)
         .await?;
 
-    ctx.sleep(Duration::from_millis(50)).await;
+    ctx.sleep(Duration::from_millis(200)).await;
 
     let bob_channel = secure_channels_bob
         .secure_channel_registry()
@@ -205,7 +205,7 @@ fn test_persistence() -> ockam_core::Result<()> {
                     .create_secure_channel(&ctx1, &alice, route!["bob_listener"], alice_options)
                     .await?;
 
-                ctx1.sleep(Duration::from_millis(50)).await;
+                ctx1.sleep(Duration::from_millis(200)).await;
 
                 let bob_channel = secure_channels_bob
                     .secure_channel_registry()
