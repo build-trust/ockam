@@ -130,7 +130,7 @@ impl CliState {
             let span_builder = SpanBuilder::from_name(event.to_string())
                 .with_start_time(start_time)
                 .with_end_time(end_time)
-                .with_links(vec![Link::new(event_span_context.clone(), vec![])]);
+                .with_links(vec![Link::new(event_span_context.clone(), vec![], 0)]);
             let span = tracer.build_with_context(span_builder, &journey.extract_context());
             let cx = Context::current_with_span(span);
             let _guard = cx.attach();
@@ -386,6 +386,7 @@ impl CliState {
                     .span_context()
                     .clone(),
                 vec![],
+                0,
             )])
         };
         let span = tracer.build_with_context(span_builder, &Context::default());

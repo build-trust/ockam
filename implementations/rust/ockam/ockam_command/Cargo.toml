@@ -77,7 +77,7 @@ ockam_transport_tcp = { path = "../ockam_transport_tcp", version = "^0.115.0", d
 ockam_vault = { path = "../ockam_vault", version = "^0.110.0", default-features = false, features = ["storage", "std"] }
 once_cell = "1.19"
 open = "5.1.3"
-opentelemetry = { version = "0.22.0", features = ["metrics", "trace"] }
+opentelemetry = { version = "0.23.0", features = ["metrics", "trace"] }
 pem-rfc7468 = { version = "0.7.0", features = ["std"] }
 r3bl_rs_utils_core = "0.9.12"
 r3bl_tui = "0.5.5"
