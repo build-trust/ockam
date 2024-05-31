@@ -170,9 +170,7 @@ impl CreateCommand {
             .map(|p| p.name().to_string());
         let at = Self::parse_arg_at(&opts.state, self.at, default_project_name.as_deref()).await?;
         self.project_relay |= at.starts_with(Project::CODE);
-        let relay_name = Self::parse_arg_relay_name(self.relay_name, !self.project_relay)?;
         self.at = at.to_string();
-        self.relay_name = relay_name;
         Ok(self)
     }
 
@@ -193,15 +191,6 @@ impl CreateCommand {
         }
         let ma = MultiAddr::from_str(&at).map_err(|_| Error::arg_validation("at", at, None))?;
         process_nodes_multiaddr(&ma, state).await
-    }
-
-    fn parse_arg_relay_name(relay_name: impl Into<String>, at_rust_node: bool) -> Result<String> {
-        let relay_name = relay_name.into();
-        if at_rust_node {
-            Ok(format!("forward_to_{relay_name}"))
-        } else {
-            Ok(relay_name)
-        }
     }
 }
 
@@ -257,16 +246,5 @@ mod tests {
         assert!(res.contains("/ip4/127.0.0.1/tcp/"));
 
         Ok(())
-    }
-
-    #[tokio::test]
-    async fn test_parse_arg_relay_name() {
-        // `--at` is a local route
-        let res = CreateCommand::parse_arg_relay_name("relay", true).unwrap();
-        assert_eq!(res, "forward_to_relay");
-
-        // `--at` is a remote route
-        let res = CreateCommand::parse_arg_relay_name("relay", false).unwrap();
-        assert_eq!(res, "relay");
     }
 }

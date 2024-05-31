@@ -53,13 +53,13 @@ teardown() {
 
   # Create and show it
   run_success "$OCKAM" relay create blue --at /node/n1 --to /node/n2
-  run_success "$OCKAM" relay show forward_to_blue --at /node/n2 --output json
+  run_success "$OCKAM" relay show blue --at /node/n2 --output json
   assert_output --regexp "\"relay_route\".* => 0#forward_to_blue"
   assert_output --partial "\"remote_address\":\"/service/forward_to_blue\""
   assert_output --regexp "\"worker_address\":\"/service/.*"
 
   ## Try to show a non-existing relay
-  run_failure "$OCKAM" relay show forward_to_r --at /node/n2
+  run_failure "$OCKAM" relay show red --at /node/n2
   assert_output --partial "not found"
 
   # Create another one and list both
@@ -69,11 +69,11 @@ teardown() {
   assert_output --partial "\"remote_address\":\"forward_to_red\""
 
   # Delete the first
-  run_success "$OCKAM" relay delete -y forward_to_blue --at /node/n2
+  run_success "$OCKAM" relay delete -y blue --at /node/n2
   run_success "$OCKAM" relay list --to /node/n2 --output json
   refute_output --partial "\"remote_address\":\"forward_to_blue\""
   assert_output --partial "\"remote_address\":\"forward_to_red\""
 
   ## Try to delete twice
-  run_failure "$OCKAM" relay delete -y forward_to_blue --at /node/n2
+  run_failure "$OCKAM" relay delete -y blue --at /node/n2
 }

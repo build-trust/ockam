@@ -3,7 +3,6 @@ use crate::{Context, OckamError};
 use ockam_core::compat::{
     boxed::Box,
     string::{String, ToString},
-    vec::Vec,
 };
 use ockam_core::{Any, Decodable, Result, Routed, Worker};
 use tracing::{debug, info};
@@ -56,12 +55,12 @@ impl Worker for RemoteRelay {
                 Err(_) => {
                     debug!("RemoteRelay received service message");
 
-                    let payload = Vec::<u8>::decode(local_message.payload_ref())
+                    let payload = String::decode(local_message.payload_ref())
                         .map_err(|_| OckamError::InvalidHubResponse)?;
-                    let payload =
-                        String::from_utf8(payload).map_err(|_| OckamError::InvalidHubResponse)?;
                     // using ends_with() instead of == to allow for prefixes
-                    if !payload.ends_with(&self.registration_payload) {
+                    if self.registration_payload != "register"
+                        && !payload.ends_with(&self.registration_payload)
+                    {
                         return Err(OckamError::InvalidHubResponse)?;
                     }
 
