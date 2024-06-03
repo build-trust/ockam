@@ -78,7 +78,7 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
       - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@8cdf194da984e4f12b2f8c36d1fa107c1dd67f5c
+        uses: DeterminateSystems/nix-installer-action@7993355175c2765e5733dae74f3e0786fe0e5c4f
 
       - name: Checkout
         uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29
