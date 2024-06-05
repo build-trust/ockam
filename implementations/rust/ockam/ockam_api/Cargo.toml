@@ -55,7 +55,7 @@ log = "0.4"
 miette = "7"
 minicbor = { version = "0.24.0", features = ["alloc", "derive"] }
 nix = { version = "0.28", features = ["signal"] }
-open = "5.1.3"
+open = "5.1.4"
 opentelemetry = { version = "0.23.0", features = ["logs", "metrics", "trace"] }
 opentelemetry-appender-tracing = { version = "0.4.0" }
 opentelemetry-otlp = { version = "0.16.0", features = ["logs", "metrics", "trace", "grpc-tonic", "tls", "tls-roots"], default-features = false }
