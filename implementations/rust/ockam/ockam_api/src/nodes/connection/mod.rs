@@ -2,6 +2,7 @@ mod plain_tcp;
 mod project;
 mod secure;
 
+use ockam::tcp::TcpConnection;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::flow_control::FlowControlId;
 use ockam_core::Result;
@@ -9,7 +10,6 @@ use ockam_core::{async_trait, route, Address, Route, LOCAL};
 use ockam_multiaddr::proto::Service;
 use ockam_multiaddr::{Match, MultiAddr, Protocol};
 use ockam_node::Context;
-use ockam_transport_tcp::TcpConnection;
 
 use crate::error::ApiError;
 use crate::local_multiaddr_to_route;

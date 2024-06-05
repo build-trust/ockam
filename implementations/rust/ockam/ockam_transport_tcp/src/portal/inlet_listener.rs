@@ -1,11 +1,11 @@
 use crate::portal::addresses::{Addresses, PortalType};
-use crate::{portal::TcpPortalWorker, HostnamePort, TcpInlet, TcpInletOptions, TcpRegistry};
+use crate::{portal::TcpPortalWorker, TcpInlet, TcpInletOptions, TcpRegistry};
 use ockam_core::compat::net::SocketAddr;
 use ockam_core::compat::sync::{Arc, RwLock};
 use ockam_core::{async_trait, compat::boxed::Box};
 use ockam_core::{Address, Processor, Result, Route};
 use ockam_node::Context;
-use ockam_transport_core::TransportError;
+use ockam_transport_core::{HostnamePort, TransportError};
 use tokio::net::TcpListener;
 use tracing::{debug, error, instrument};
 

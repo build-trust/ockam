@@ -2,7 +2,7 @@ use std::net::{SocketAddrV4, SocketAddrV6};
 
 use miette::miette;
 
-use ockam::TcpTransport;
+use ockam::tcp::{TcpConnection, TcpConnectionOptions, TcpTransport, TCP};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::flow_control::FlowControlId;
 use ockam_core::{Address, Error, Result, Route, TransportType, LOCAL};
@@ -10,7 +10,6 @@ use ockam_multiaddr::proto::{
     DnsAddr, Ip4, Ip6, Node, Project, Secure, Service, Space, Tcp, Worker,
 };
 use ockam_multiaddr::{Code, MultiAddr, Protocol};
-use ockam_transport_tcp::{TcpConnection, TcpConnectionOptions, TCP};
 
 use crate::error::ApiError;
 

@@ -1,6 +1,7 @@
 // This node routes a message, to a worker on a different node, over the tcp transport.
 
-use ockam::{node, route, Context, Result, TcpConnectionOptions, TcpTransportExtension};
+use ockam::tcp::{TcpConnectionOptions, TcpTransportExtension};
+use ockam::{node, route, Context, Result};
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {

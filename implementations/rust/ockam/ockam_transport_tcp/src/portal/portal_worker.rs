@@ -2,9 +2,7 @@ use crate::portal::addresses::{Addresses, PortalType};
 use crate::portal::portal_worker::ReadHalfMaybeTls::{ReadHalfNoTls, ReadHalfWithTls};
 use crate::portal::portal_worker::WriteHalfMaybeTls::{WriteHalfNoTls, WriteHalfWithTls};
 use crate::transport::{connect, connect_tls};
-use crate::{
-    portal::TcpPortalRecvProcessor, HostnamePort, PortalInternalMessage, PortalMessage, TcpRegistry,
-};
+use crate::{portal::TcpPortalRecvProcessor, PortalInternalMessage, PortalMessage, TcpRegistry};
 use ockam_core::compat::{boxed::Box, sync::Arc};
 use ockam_core::{
     async_trait, AllowOnwardAddress, AllowSourceAddress, Decodable, DenyAll, IncomingAccessControl,
@@ -12,7 +10,7 @@ use ockam_core::{
 };
 use ockam_core::{Any, Result, Route, Routed, Worker};
 use ockam_node::{Context, ProcessorBuilder, WorkerBuilder};
-use ockam_transport_core::TransportError;
+use ockam_transport_core::{HostnamePort, TransportError};
 use std::time::Duration;
 use tokio::io::{AsyncRead, AsyncWriteExt, ReadHalf, WriteHalf};
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};

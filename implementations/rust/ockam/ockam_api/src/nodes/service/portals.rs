@@ -7,6 +7,8 @@ use tokio::time::timeout;
 
 use crate::address::get_free_address_for;
 use ockam::identity::Identifier;
+use ockam::tcp::{TcpInletOptions, TcpOutletOptions};
+use ockam::transport::HostnamePort;
 use ockam::{Address, Result};
 use ockam_abac::{Action, PolicyExpression, Resource, ResourceType};
 use ockam_core::api::{Error, Reply, Request, RequestHeader, Response};
@@ -15,7 +17,6 @@ use ockam_core::{async_trait, route, AsyncTryClone, Route};
 use ockam_multiaddr::proto::Project as ProjectProto;
 use ockam_multiaddr::{MultiAddr, Protocol};
 use ockam_node::Context;
-use ockam_transport_tcp::{HostnamePort, TcpInletOptions, TcpOutletOptions};
 
 use crate::error::ApiError;
 use crate::nodes::connection::Connection;

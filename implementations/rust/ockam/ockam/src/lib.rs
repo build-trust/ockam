@@ -82,15 +82,30 @@ pub use ockam_node::{
     NodeBuilder, WorkerBuilder,
 };
 #[cfg(feature = "ockam_transport_tcp")]
-pub use ockam_transport_tcp::{
-    TcpConnectionOptions, TcpInletOptions, TcpListenerOptions, TcpOutletOptions, TcpTransport,
-    TcpTransportExtension,
-};
+/// TCP transport
+pub mod tcp {
+    pub use ockam_transport_tcp::{
+        TcpConnection, TcpConnectionMode, TcpConnectionOptions, TcpInletOptions, TcpListener,
+        TcpListenerInfo, TcpListenerOptions, TcpOutletOptions, TcpSenderInfo, TcpTransport,
+        TcpTransportExtension, TCP,
+    };
+}
+#[cfg(feature = "ockam_transport_udp")]
+/// UDP transport
+pub mod udp {
+    pub use ockam_transport_udp::{
+        UdpBindArguments, UdpBindOptions, UdpPunctureNegotiation, UdpPunctureNegotiationListener,
+        UdpPunctureNegotiationListenerOptions, UdpTransport, UdpTransportExtension, UDP,
+    };
+}
 pub use relay_service::{RelayService, RelayServiceOptions};
 
 /// Transport
 pub mod transport {
-    pub use ockam_transport_core::Transport;
+    #[cfg(feature = "std")]
+    pub use ockam_transport_core::resolve_peer;
+
+    pub use ockam_transport_core::{parse_socket_addr, HostnamePort, Transport};
 }
 
 // ---

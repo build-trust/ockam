@@ -52,7 +52,7 @@ impl TcpOutlets {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ockam_transport_tcp::HostnamePort;
+    use ockam::transport::HostnamePort;
 
     #[test]
     fn tcp_outlet_config() {

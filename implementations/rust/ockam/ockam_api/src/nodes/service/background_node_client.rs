@@ -4,11 +4,11 @@ use std::time::Duration;
 use miette::{miette, IntoDiagnostic};
 use minicbor::{Decode, Encode};
 
+use ockam::tcp::{TcpConnection, TcpConnectionOptions, TcpTransport};
 use ockam_core::api::{Reply, Request};
 use ockam_core::Route;
 use ockam_node::api::Client;
 use ockam_node::Context;
-use ockam_transport_tcp::{TcpConnection, TcpConnectionOptions, TcpTransport};
 
 use crate::cli_state::CliState;
 use crate::nodes::NODEMANAGER_ADDR;

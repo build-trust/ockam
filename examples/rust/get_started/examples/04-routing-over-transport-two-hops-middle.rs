@@ -4,7 +4,8 @@
 // It then runs forever waiting to route messages.
 
 use hello_ockam::Relay;
-use ockam::{node, Context, Result, TcpConnectionOptions, TcpListenerOptions, TcpTransportExtension};
+use ockam::tcp::{TcpConnectionOptions, TcpListenerOptions, TcpTransportExtension};
+use ockam::{node, Context, Result};
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {

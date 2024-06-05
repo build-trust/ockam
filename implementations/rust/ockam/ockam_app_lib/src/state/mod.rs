@@ -7,8 +7,10 @@ use tokio::sync::RwLock;
 use tracing::{error, info, trace, warn};
 
 pub use kind::StateKind;
+use ockam::tcp::{TcpListenerOptions, TcpTransport};
+use ockam::AsyncTryClone;
 use ockam::Context;
-use ockam::{NodeBuilder, TcpListenerOptions, TcpTransport};
+use ockam::NodeBuilder;
 use ockam_api::cli_state::CliState;
 use ockam_api::cloud::enroll::auth0::UserInfo;
 use ockam_api::cloud::project::Project;
@@ -17,7 +19,6 @@ use ockam_api::logs::TracingGuard;
 use ockam_api::nodes::models::portal::OutletStatus;
 use ockam_api::nodes::service::{NodeManagerGeneralOptions, NodeManagerTransportOptions};
 use ockam_api::nodes::{BackgroundNodeClient, InMemoryNode, NodeManagerWorker, NODEMANAGER_ADDR};
-use ockam_core::AsyncTryClone;
 
 use crate::api::notification::rust::{Notification, NotificationCallback};
 use crate::api::state::rust::{

@@ -11,11 +11,11 @@ use sysinfo::{Pid, ProcessStatus, System};
 
 use ockam::identity::utils::now;
 use ockam::identity::Identifier;
+use ockam::tcp::TcpListener;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::Error;
 use ockam_multiaddr::proto::{DnsAddr, Node, Tcp};
 use ockam_multiaddr::MultiAddr;
-use ockam_transport_tcp::TcpListener;
 
 use crate::cli_state::{random_name, NamedVault, Result};
 use crate::cli_state::{CliState, CliStateError};

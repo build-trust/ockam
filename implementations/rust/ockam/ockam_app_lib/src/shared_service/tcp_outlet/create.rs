@@ -1,10 +1,10 @@
 use crate::state::AppState;
 use crate::Error;
 use miette::{IntoDiagnostic, WrapErr};
+use ockam::transport::{resolve_peer, HostnamePort};
+use ockam::Address;
 use ockam_api::address::extract_address_value;
 use ockam_api::nodes::models::portal::OutletAccessControl;
-use ockam_core::Address;
-use ockam_transport_tcp::{resolve_peer, HostnamePort};
 use std::sync::Arc;
 use tracing::{debug, info};
 

@@ -8,7 +8,8 @@ use clap::{Args, Parser, Subcommand};
 
 use ockam::abac::tokio::runtime::Runtime;
 use ockam::compat::tokio;
-use ockam::{Context, NodeBuilder, TcpListenerOptions, TcpTransport};
+use ockam::tcp::{TcpListenerOptions, TcpTransport};
+use ockam::{Context, NodeBuilder};
 use ockam_api::nodes::service::{NodeManagerGeneralOptions, NodeManagerTransportOptions};
 use ockam_api::nodes::{InMemoryNode, NodeManagerWorker, NODEMANAGER_ADDR};
 use ockam_api::CliState;

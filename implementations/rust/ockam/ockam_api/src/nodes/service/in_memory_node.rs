@@ -5,11 +5,12 @@ use futures::executor;
 use miette::IntoDiagnostic;
 
 use ockam::identity::SecureChannels;
-use ockam::{Context, Result, TcpTransport};
+use ockam::tcp::{TcpListenerOptions, TcpTransport};
+use ockam::udp::UdpTransport;
+use ockam::{Context, Result};
 use ockam_core::compat::{string::String, sync::Arc};
 use ockam_core::errcode::Kind;
 use ockam_multiaddr::MultiAddr;
-use ockam_transport_tcp::TcpListenerOptions;
 
 use crate::cli_state::journeys::{NODE_NAME, USER_EMAIL, USER_NAME};
 use crate::cli_state::random_name;
@@ -128,6 +129,7 @@ impl InMemoryNode {
     ) -> miette::Result<InMemoryNode> {
         let defaults = NodeManagerDefaults::default();
 
+        let udp = UdpTransport::create(ctx).await.into_diagnostic()?;
         let tcp = TcpTransport::create(ctx).await.into_diagnostic()?;
         let tcp_listener = tcp
             .listen(
@@ -161,7 +163,7 @@ impl InMemoryNode {
                 http_server_port,
                 false,
             ),
-            NodeManagerTransportOptions::new(tcp_listener.flow_control_id().clone(), tcp),
+            NodeManagerTransportOptions::new(tcp_listener.flow_control_id().clone(), tcp, udp),
             trust_options,
         )
         .await

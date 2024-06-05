@@ -1,5 +1,5 @@
 use minicbor::{Decode, Encode};
-use ockam_transport_tcp::TcpConnectionMode;
+use ockam::tcp::TcpConnectionMode;
 use std::fmt::{self, Display};
 
 /// Encode which type of transport is being requested

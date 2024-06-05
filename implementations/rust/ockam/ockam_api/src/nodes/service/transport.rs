@@ -1,9 +1,9 @@
 use std::net::SocketAddr;
 
+use ockam::tcp::{TcpConnectionOptions, TcpListenerOptions};
 use ockam::Result;
 use ockam_core::api::{Error, RequestHeader, Response};
 use ockam_node::Context;
-use ockam_transport_tcp::{TcpConnectionOptions, TcpListenerOptions};
 
 use super::{NodeManager, NodeManagerWorker};
 use crate::nodes::models::transport::{

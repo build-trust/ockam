@@ -1,7 +1,7 @@
 use ockam::identity::{SecureChannelOptions, Vault};
+use ockam::tcp::{TcpConnectionOptions, TcpTransportExtension};
 use ockam::vault::{EdDSACurve25519SecretKey, SigningSecret, SoftwareVaultForSigning};
-use ockam::{route, Context, Result, TcpConnectionOptions};
-use ockam::{Node, TcpTransportExtension};
+use ockam::{route, Context, Node, Result};
 use ockam_api::enroll::enrollment::Enrollment;
 use ockam_api::nodes::NodeManager;
 use ockam_api::DefaultAddress;

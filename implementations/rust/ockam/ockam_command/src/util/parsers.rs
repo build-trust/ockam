@@ -6,9 +6,9 @@ use std::time::Duration;
 use miette::miette;
 
 use ockam::identity::Identifier;
+use ockam::transport::resolve_peer;
 use ockam_api::config::lookup::InternetAddress;
 use ockam_core::env::parse_duration;
-use ockam_transport_tcp::resolve_peer;
 
 use crate::util::validators::cloud_resource_name_validator;
 use crate::Result;

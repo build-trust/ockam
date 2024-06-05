@@ -1,3 +1,4 @@
+use ockam::transport::HostnamePort;
 use ockam::{Address, Context, Result};
 use ockam_abac::PolicyExpression;
 use ockam_abac::{Action, Resource, ResourceType};
@@ -7,7 +8,6 @@ use ockam_core::compat::rand::random_string;
 use ockam_core::route;
 use ockam_multiaddr::proto::Project;
 use ockam_multiaddr::MultiAddr;
-use ockam_transport_tcp::HostnamePort;
 use std::str::FromStr;
 use std::sync::Arc;
 

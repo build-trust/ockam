@@ -3,8 +3,8 @@
 use file_transfer::{FileData, FileDescription};
 use ockam::errcode::{Kind, Origin};
 use ockam::identity::SecureChannelOptions;
-use ockam::{node, route, Context, Result};
-use ockam::{Error, TcpConnectionOptions, TcpTransportExtension};
+use ockam::tcp::{TcpConnectionOptions, TcpTransportExtension};
+use ockam::{node, route, Context, Error, Result};
 
 use std::path::PathBuf;
 
