@@ -9,8 +9,8 @@ use miette::{miette, IntoDiagnostic};
 use tokio::time::{sleep, Duration};
 use tracing::{debug, info, instrument};
 
-use ockam::{Address, TcpListenerOptions};
-use ockam::{Context, TcpTransport};
+use ockam::tcp::{TcpListenerOptions, TcpTransport};
+use ockam::{Address, Context};
 use ockam_api::colors::color_primary;
 use ockam_api::nodes::InMemoryNode;
 use ockam_api::nodes::{

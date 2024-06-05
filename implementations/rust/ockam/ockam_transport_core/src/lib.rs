@@ -14,7 +14,11 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 mod error;
+mod hostname_port;
+mod resolve_peer;
 mod transport;
 
 pub use error::TransportError;
+pub use hostname_port::*;
+pub use resolve_peer::*;
 pub use transport::*;

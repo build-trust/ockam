@@ -31,7 +31,7 @@ all-features = false
 rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
-default = ["std", "ockam_transport_tcp", "storage", "rust-crypto"]
+default = ["std", "ockam_transport_tcp", "ockam_transport_udp", "storage", "rust-crypto"]
 software_vault = ["ockam_identity/software_vault"]
 storage = ["ockam_identity/storage"]
 OCKAM_XX_25519_AES256_GCM_SHA256 = ["ockam_identity/OCKAM_XX_25519_AES256_GCM_SHA256"]
@@ -49,8 +49,9 @@ std = [
   "ockam_macros/std",
   "ockam_vault/std",
   "ockam_identity/std",
-  "ockam_transport_tcp?/std",
   "ockam_transport_core/std",
+  "ockam_transport_tcp?/std",
+  "ockam_transport_udp?/std",
   "ockam_abac/std",
   "rand/default",
   "serde/std",
@@ -95,6 +96,7 @@ ockam_macros = { path = "../ockam_macros", version = "^0.34.0", default_features
 ockam_node = { path = "../ockam_node", version = "^0.119.0", default-features = false }
 ockam_transport_core = { path = "../ockam_transport_core", version = "^0.84.0", default-features = false }
 ockam_transport_tcp = { path = "../ockam_transport_tcp", version = "^0.117.0", default-features = false, optional = true }
+ockam_transport_udp = { path = "../ockam_transport_udp", version = "^0.61.0", default-features = false, optional = true }
 ockam_vault = { path = "../ockam_vault", version = "^0.112.0", default_features = false, optional = true }
 rand = { version = "0.8", default-features = false }
 serde = { version = "1.0", default-features = false, features = ["derive"] }

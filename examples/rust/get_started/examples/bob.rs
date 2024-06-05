@@ -1,6 +1,7 @@
 use ockam::identity::SecureChannelListenerOptions;
 use ockam::remote::RemoteRelayOptions;
-use ockam::{node, Routed, TcpConnectionOptions, TcpTransportExtension, Worker};
+use ockam::tcp::{TcpConnectionOptions, TcpTransportExtension};
+use ockam::{node, Routed, Worker};
 use ockam::{Context, Result};
 
 struct Echoer;

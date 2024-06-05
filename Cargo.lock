@@ -4475,6 +4475,7 @@ dependencies = [
  "ockam_node",
  "ockam_transport_core",
  "ockam_transport_tcp",
+ "ockam_transport_udp",
  "ockam_vault",
  "rand",
  "rand_xorshift",
@@ -4615,7 +4616,6 @@ dependencies = [
  "ockam_api",
  "ockam_core",
  "ockam_multiaddr",
- "ockam_transport_tcp",
  "serde",
  "serde_json",
  "sqlx",
@@ -4652,7 +4652,6 @@ dependencies = [
  "ockam_macros",
  "ockam_multiaddr",
  "ockam_node",
- "ockam_transport_tcp",
  "ockam_vault",
  "once_cell",
  "open",
@@ -4873,7 +4872,9 @@ dependencies = [
 name = "ockam_transport_core"
 version = "0.84.0"
 dependencies = [
+ "minicbor",
  "ockam_core",
+ "regex",
 ]
 
 [[package]]
@@ -4881,7 +4882,6 @@ name = "ockam_transport_tcp"
 version = "0.117.0"
 dependencies = [
  "cfg-if",
- "minicbor",
  "ockam_core",
  "ockam_macros",
  "ockam_node",

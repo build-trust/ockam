@@ -3,6 +3,7 @@ use crate::nodes::models::portal::{CreateOutlet, OutletStatus};
 use crate::nodes::NODEMANAGER_ADDR;
 use minicbor::Decoder;
 use ockam::compat::tokio::sync::Mutex;
+use ockam::transport::HostnamePort;
 use ockam_abac::PolicyExpression;
 use ockam_core::api::{Request, ResponseHeader, Status};
 use ockam_core::compat::collections::HashMap;
@@ -11,7 +12,6 @@ use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{route, Error};
 use ockam_core::{Address, Result};
 use ockam_node::Context;
-use ockam_transport_tcp::HostnamePort;
 use std::net::SocketAddr;
 use std::str::FromStr;
 

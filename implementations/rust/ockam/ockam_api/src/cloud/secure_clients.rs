@@ -5,12 +5,12 @@ use std::time::Duration;
 use ockam::identity::{
     CredentialRetrieverCreator, Identifier, SecureChannels, SecureClient, DEFAULT_TIMEOUT,
 };
+use ockam::tcp::TcpTransport;
 use ockam_core::compat::sync::Arc;
 use ockam_core::env::{get_env, get_env_with_default, FromString};
 use ockam_core::{Result, Route};
 use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
-use ockam_transport_tcp::TcpTransport;
 
 use crate::error::ApiError;
 use crate::multiaddr_to_transport_route;

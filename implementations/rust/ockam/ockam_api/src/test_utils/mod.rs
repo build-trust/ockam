@@ -17,9 +17,10 @@ use tracing::{error, info};
 
 use ockam::identity::utils::AttributesBuilder;
 use ockam::identity::SecureChannels;
+use ockam::tcp::{TcpListenerOptions, TcpTransport};
+use ockam::transport::HostnamePort;
 use ockam::Result;
 use ockam_core::AsyncTryClone;
-use ockam_transport_tcp::{HostnamePort, TcpListenerOptions, TcpTransport};
 
 use crate::authenticator::credential_issuer::{DEFAULT_CREDENTIAL_VALIDITY, PROJECT_MEMBER_SCHEMA};
 use crate::cli_state::{random_name, CliState};

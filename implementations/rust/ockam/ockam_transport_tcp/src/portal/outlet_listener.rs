@@ -1,8 +1,8 @@
 use crate::portal::addresses::{Addresses, PortalType};
-use crate::{portal::TcpPortalWorker, HostnamePort, PortalMessage, TcpOutletOptions, TcpRegistry};
+use crate::{portal::TcpPortalWorker, PortalMessage, TcpOutletOptions, TcpRegistry};
 use ockam_core::{async_trait, Address, DenyAll, NeutralMessage, Result, Routed, Worker};
 use ockam_node::{Context, WorkerBuilder};
-use ockam_transport_core::TransportError;
+use ockam_transport_core::{HostnamePort, TransportError};
 use tracing::{debug, instrument};
 
 /// A TCP Portal Outlet listen worker

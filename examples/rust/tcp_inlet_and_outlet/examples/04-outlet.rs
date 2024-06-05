@@ -1,6 +1,7 @@
 use ockam::identity::SecureChannelListenerOptions;
 use ockam::remote::RemoteRelayOptions;
-use ockam::{node, Context, Result, TcpConnectionOptions, TcpOutletOptions, TcpTransportExtension};
+use ockam::tcp::{TcpConnectionOptions, TcpOutletOptions, TcpTransportExtension};
+use ockam::{node, Context, Result};
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {

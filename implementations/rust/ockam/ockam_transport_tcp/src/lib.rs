@@ -29,7 +29,6 @@ pub(crate) use workers::*;
 pub use options::{TcpConnectionOptions, TcpListenerOptions};
 pub use portal::{PortalInternalMessage, PortalMessage, MAX_PAYLOAD_SIZE};
 pub use registry::*;
-pub use transport::common::*;
 pub use transport::*;
 
 pub(crate) const CLUSTER_NAME: &str = "_internals.transport.tcp";

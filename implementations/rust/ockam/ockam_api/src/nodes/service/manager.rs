@@ -20,6 +20,7 @@ use ockam::identity::{
     CachedCredentialRetrieverCreator, CredentialRetrieverCreator, Identifier,
     MemoryCredentialRetrieverCreator, RemoteCredentialRetrieverCreator, SecureChannels,
 };
+use ockam::tcp::TcpTransport;
 use ockam::{RelayService, RelayServiceOptions};
 use ockam_abac::expr::str;
 use ockam_abac::{
@@ -32,7 +33,6 @@ use ockam_core::{
 };
 use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
-use ockam_transport_tcp::TcpTransport;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;

@@ -20,7 +20,7 @@ default = ["std"]
 
 # Feature (enabled by default): "std" enables functionality expected to
 # be available on a standard platform.
-std = ["ockam_core/std"]
+std = ["ockam_core/std", "regex/std"]
 
 # Feature: "no_std" enables functionality required for platforms
 # without the standard library.
@@ -31,4 +31,6 @@ no_std = ["ockam_core/no_std"]
 alloc = ["ockam_core/alloc"]
 
 [dependencies]
+minicbor = "0.24"
 ockam_core = { path = "../ockam_core", version = "^0.111.0", default_features = false }
+regex = { version = "1.10.3", default-features = false }

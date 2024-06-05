@@ -3,7 +3,8 @@
 
 use hello_ockam::Echoer;
 use ockam::identity::SecureChannelListenerOptions;
-use ockam::{node, Context, Result, TcpListenerOptions, TcpTransportExtension};
+use ockam::tcp::{TcpListenerOptions, TcpTransportExtension};
+use ockam::{node, Context, Result};
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {

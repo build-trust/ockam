@@ -1,14 +1,14 @@
 pub(crate) mod common;
 mod connection;
-mod hostname_port;
 mod lifecycle;
 mod listener;
 mod portals;
 
-pub use common::*;
-pub use hostname_port::*;
+pub(crate) use common::*;
 
 pub use crate::portal::options::*;
+pub use connection::*;
+pub use listener::*;
 pub use portals::*;
 
 use crate::TcpRegistry;

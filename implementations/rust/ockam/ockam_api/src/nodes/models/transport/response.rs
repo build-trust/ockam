@@ -3,12 +3,12 @@ use crate::nodes::models::transport::{TransportMode, TransportType};
 use crate::nodes::service::ApiTransport;
 use crate::output::Output;
 use minicbor::{Decode, Encode};
+use ockam::tcp::{TcpConnection, TcpListener, TcpListenerInfo, TcpSenderInfo};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::flow_control::FlowControlId;
 use ockam_core::{Error, Result};
 use ockam_multiaddr::proto::Worker;
 use ockam_multiaddr::MultiAddr;
-use ockam_transport_tcp::{TcpConnection, TcpListener, TcpListenerInfo, TcpSenderInfo};
 use std::fmt::{Display, Formatter};
 use std::net::SocketAddrV4;
 

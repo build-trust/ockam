@@ -7,7 +7,8 @@ use ockam::identity::{
     SecureChannelOptions, TrustMultiIdentifiersPolicy,
 };
 use ockam::remote::RemoteRelayOptions;
-use ockam::{node, Context, Result, TcpOutletOptions, TcpTransportExtension};
+use ockam::tcp::{TcpOutletOptions, TcpTransportExtension};
+use ockam::{node, Context, Result};
 use ockam_api::authenticator::enrollment_tokens::TokenAcceptor;
 use ockam_api::authenticator::one_time_code::OneTimeCode;
 use ockam_api::nodes::NodeManager;

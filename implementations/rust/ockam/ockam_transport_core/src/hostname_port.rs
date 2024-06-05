@@ -1,9 +1,10 @@
-use crate::resolve_peer;
 use core::fmt::{Display, Formatter};
+use core::net::SocketAddr;
 use core::str::FromStr;
 use minicbor::{Decode, Encode};
+use ockam_core::compat::format;
+use ockam_core::compat::string::{String, ToString};
 use ockam_core::errcode::{Kind, Origin};
-use std::net::SocketAddr;
 
 /// Hostname and port
 #[derive(Debug, Clone, PartialEq, Eq, Encode, Decode)]
@@ -29,8 +30,9 @@ impl HostnamePort {
     }
 
     /// Return a socket address from a hostname and port
+    #[cfg(feature = "std")]
     pub fn to_socket_addr(&self) -> ockam_core::Result<SocketAddr> {
-        resolve_peer(self.to_string())
+        crate::resolve_peer(self.to_string())
     }
 
     /// Return the hostname
@@ -100,7 +102,7 @@ impl FromStr for HostnamePort {
 }
 
 impl Display for HostnamePort {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         f.write_str(&format!("{}:{}", self.hostname, self.port))
     }
 }
@@ -108,6 +110,7 @@ impl Display for HostnamePort {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::resolve_peer;
     use core::str::FromStr;
 
     #[test]

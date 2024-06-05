@@ -17,6 +17,7 @@ use ockam::identity::{
     Identifier, Identities, SecureChannelListenerOptions, SecureChannelSqlxDatabase,
     SecureChannels, TrustEveryonePolicy,
 };
+use ockam::tcp::{TcpListenerOptions, TcpTransport};
 use ockam_core::compat::sync::Arc;
 use ockam_core::env::get_env;
 use ockam_core::errcode::{Kind, Origin};
@@ -24,7 +25,6 @@ use ockam_core::flow_control::FlowControlId;
 use ockam_core::{Error, Result};
 use ockam_node::database::SqlxDatabase;
 use ockam_node::Context;
-use ockam_transport_tcp::{TcpListenerOptions, TcpTransport};
 
 use crate::authority_node::Configuration;
 use crate::echoer::Echoer;

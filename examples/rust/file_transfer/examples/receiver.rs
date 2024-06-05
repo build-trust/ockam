@@ -3,9 +3,10 @@
 use file_transfer::FileData;
 use ockam::identity::SecureChannelListenerOptions;
 use ockam::remote::RemoteRelayOptions;
+use ockam::tcp::{TcpConnectionOptions, TcpTransportExtension};
 use ockam::{
     errcode::{Kind, Origin},
-    node, Context, Error, Result, Routed, TcpConnectionOptions, TcpTransportExtension, Worker,
+    node, Context, Error, Result, Routed, Worker,
 };
 use tokio::fs::OpenOptions;
 use tokio::io::AsyncWriteExt;

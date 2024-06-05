@@ -7,10 +7,10 @@ use std::time::Duration;
 
 use minicbor::{Decode, Encode};
 use ockam::identity::Identifier;
+use ockam::transport::HostnamePort;
 use ockam_abac::PolicyExpression;
 use ockam_core::{Address, IncomingAccessControl, OutgoingAccessControl, Route};
 use ockam_multiaddr::MultiAddr;
-use ockam_transport_tcp::HostnamePort;
 use serde::{Deserialize, Serialize};
 
 use crate::colors::color_primary;

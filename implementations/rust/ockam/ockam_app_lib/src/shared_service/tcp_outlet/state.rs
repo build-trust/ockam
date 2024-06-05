@@ -4,9 +4,9 @@ use tracing::{debug, error};
 #[cfg(test)]
 use crate::incoming_services::PersistentIncomingService;
 use crate::state::{AppState, ModelState};
+use ockam::transport::HostnamePort;
+use ockam::Address;
 use ockam_api::nodes::models::portal::{OutletAccessControl, OutletStatus};
-use ockam_core::Address;
-use ockam_transport_tcp::HostnamePort;
 
 impl ModelState {
     pub fn add_tcp_outlet(&mut self, status: OutletStatus) {

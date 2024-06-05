@@ -18,6 +18,7 @@ mod projects;
 pub mod relay;
 mod secure_channel;
 mod transport;
+mod udp_puncture;
 pub mod workers;
 
 mod http;
