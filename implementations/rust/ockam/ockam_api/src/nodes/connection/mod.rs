@@ -231,10 +231,13 @@ impl ConnectionBuilder {
             while start < self.current_multiaddr.len() - length {
                 if self.current_multiaddr.matches(start, &codes) {
                     // the transport route should include only the pieces before the match
-                    self.transport_route = self.recalculate_transport_route(
-                        self.current_multiaddr.split(start).0,
-                        false,
-                    )?;
+                    self.transport_route = self
+                        .recalculate_transport_route(
+                            &ctx,
+                            self.current_multiaddr.split(start).0,
+                            false,
+                        )
+                        .await?;
                     let mut changes = instantiator
                         .instantiate(
                             ctx.clone(),
@@ -267,8 +270,9 @@ impl ConnectionBuilder {
             }
         }
 
-        self.transport_route =
-            self.recalculate_transport_route(self.current_multiaddr.clone(), true)?;
+        self.transport_route = self
+            .recalculate_transport_route(&ctx, self.current_multiaddr.clone(), true)
+            .await?;
 
         Ok(Self {
             original_multiaddr: self.original_multiaddr,
@@ -281,8 +285,9 @@ impl ConnectionBuilder {
     }
 
     /// Calculate a 'transport route' from the [`MultiAddr`]
-    fn recalculate_transport_route(
+    async fn recalculate_transport_route(
         &self,
+        ctx: &Context,
         current_before: MultiAddr,
         last_pass: bool,
     ) -> Result<Route, ockam_core::Error> {
@@ -295,12 +300,23 @@ impl ConnectionBuilder {
                 if let Some(service) = protocol.cast::<Service>() {
                     let address = Address::new(LOCAL, &*service);
                     let is_last = peekable.peek().is_none();
+
                     // we usually want to skip the last entry since it's normally the destination
                     // but when a suffix route is appended (like in the inlet) is used
                     // the last piece could actually be a transport, in this case we allow
-                    // last piece only if it's a just created secure channel
-                    if last_pass && is_last && !self.secure_channel_encryptors.contains(&address) {
-                        break;
+                    // last piece only if it's a terminal (a service connecting to another node)
+                    if last_pass && is_last {
+                        let is_terminal = ctx
+                            .read_metadata(address.clone())
+                            .await
+                            .ok()
+                            .flatten()
+                            .map(|m| m.is_terminal)
+                            .unwrap_or(false);
+
+                        if !is_terminal {
+                            break;
+                        }
                     }
                     route = route.append(address);
                 }

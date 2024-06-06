@@ -3,6 +3,7 @@ pub struct DefaultAddress;
 impl DefaultAddress {
     pub const OUTLET_SERVICE: &'static str = "outlet";
     pub const RELAY_SERVICE: &'static str = "forwarding_service";
+    pub const STATIC_RELAY_SERVICE: &'static str = "static_forwarding_service";
     pub const UPPERCASE_SERVICE: &'static str = "uppercase";
     pub const ECHO_SERVICE: &'static str = "echo";
     pub const HOP_SERVICE: &'static str = "hop";
@@ -18,6 +19,7 @@ impl DefaultAddress {
 
     pub fn is_valid(name: &str) -> bool {
         matches!(name, |Self::OUTLET_SERVICE| Self::RELAY_SERVICE
+            | Self::STATIC_RELAY_SERVICE
             | Self::UPPERCASE_SERVICE
             | Self::ECHO_SERVICE
             | Self::HOP_SERVICE
@@ -36,6 +38,7 @@ impl DefaultAddress {
         [
             Self::OUTLET_SERVICE,
             Self::RELAY_SERVICE,
+            Self::STATIC_RELAY_SERVICE,
             Self::UPPERCASE_SERVICE,
             Self::ECHO_SERVICE,
             Self::HOP_SERVICE,
@@ -63,6 +66,9 @@ mod test {
         assert!(!DefaultAddress::is_valid("foo"));
         assert!(DefaultAddress::is_valid(DefaultAddress::OUTLET_SERVICE));
         assert!(DefaultAddress::is_valid(DefaultAddress::RELAY_SERVICE));
+        assert!(DefaultAddress::is_valid(
+            DefaultAddress::STATIC_RELAY_SERVICE
+        ));
         assert!(DefaultAddress::is_valid(DefaultAddress::UPPERCASE_SERVICE));
         assert!(DefaultAddress::is_valid(DefaultAddress::ECHO_SERVICE));
         assert!(DefaultAddress::is_valid(DefaultAddress::HOP_SERVICE));

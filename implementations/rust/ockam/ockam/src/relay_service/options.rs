@@ -14,6 +14,7 @@ pub struct RelayServiceOptions {
     pub(super) consumer_relay: Vec<FlowControlId>,
     pub(super) prefix: String,
     pub(super) authority_validation: Option<AuthorityValidation>,
+    pub(super) aliases: Vec<Address>,
 }
 
 pub(super) struct AuthorityValidation {
@@ -31,6 +32,7 @@ impl RelayServiceOptions {
             consumer_relay: vec![],
             prefix: "".to_string(),
             authority_validation: None,
+            aliases: vec![],
         }
     }
 
@@ -100,6 +102,12 @@ impl RelayServiceOptions {
     /// Set Prefix for the Relay Service
     pub fn prefix(mut self, prefix: &str) -> Self {
         self.prefix = prefix.to_string();
+        self
+    }
+
+    /// Add an alias for the Relay Service
+    pub fn alias(mut self, alias: impl Into<Address>) -> Self {
+        self.aliases.push(alias.into());
         self
     }
 

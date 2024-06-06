@@ -29,7 +29,7 @@ impl State {
                 let context = self.context.clone();
                 join_set.spawn(async move {
                     let id = Self::random_id();
-                    node.create_relay(&context, &project_addr, id.clone(), false, None, Some(id))
+                    node.create_relay(&context, &project_addr, id.clone(), None, Some(id))
                         .await
                 });
             }

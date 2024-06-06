@@ -39,10 +39,6 @@ impl Worker for RemoteRelay {
             )
             .await?;
 
-            if let Some(heartbeat) = &mut self.heartbeat {
-                heartbeat.schedule(self.heartbeat_interval).await?;
-            }
-
             Ok(())
         } else if msg.msg_addr() == self.addresses.main_remote {
             let return_route = msg.return_route();
@@ -87,10 +83,6 @@ impl Worker for RemoteRelay {
                         self.completion_msg_sent = true;
                     }
 
-                    if let Some(heartbeat) = &mut self.heartbeat {
-                        heartbeat.schedule(self.heartbeat_interval).await?;
-                    }
-
                     Ok(())
                 }
                 Ok(next) if next == &self.addresses.main_remote => {
@@ -106,12 +98,6 @@ impl Worker for RemoteRelay {
                     // Send the message on its onward_route
                     ctx.forward_from_address(local_message, self.addresses.main_internal.clone())
                         .await?;
-
-                    // We received message from the other node, our registration is still alive, let's reset
-                    // heartbeat timer
-                    if let Some(heartbeat) = &mut self.heartbeat {
-                        heartbeat.schedule(self.heartbeat_interval).await?;
-                    }
 
                     Ok(())
                 }

@@ -3,7 +3,8 @@ use crate::relay_service::relay::Relay;
 use crate::{Context, RelayServiceOptions};
 use alloc::string::String;
 use ockam_core::compat::boxed::Box;
-use ockam_core::{Address, DenyAll, Encodable, Result, Routed, Worker};
+use ockam_core::compat::sync::Arc;
+use ockam_core::{Address, DenyAll, Encodable, Mailbox, Mailboxes, Result, Routed, Worker};
 use ockam_identity::IdentitySecureChannelLocalInfo;
 use ockam_node::WorkerBuilder;
 
@@ -24,17 +25,30 @@ impl RelayService {
         options: RelayServiceOptions,
     ) -> Result<()> {
         let address = address.into();
-
         options.setup_flow_control_for_relay_service(ctx.flow_controls(), &address);
 
-        let service_incoming_access_control = options.service_incoming_access_control.clone();
+        let mut additional_mailboxes = vec![];
+        for alias in &options.aliases {
+            options.setup_flow_control_for_relay_service(ctx.flow_controls(), alias);
+            additional_mailboxes.push(Mailbox::new(
+                alias.clone(),
+                options.service_incoming_access_control.clone(),
+                Arc::new(DenyAll),
+            ));
+        }
 
+        let service_incoming_access_control = options.service_incoming_access_control.clone();
         let s = Self { options };
 
         WorkerBuilder::new(s)
-            .with_address(address.clone())
-            .with_incoming_access_control_arc(service_incoming_access_control)
-            .with_outgoing_access_control(DenyAll)
+            .with_mailboxes(Mailboxes::new(
+                Mailbox::new(
+                    address.clone(),
+                    service_incoming_access_control,
+                    Arc::new(DenyAll),
+                ),
+                additional_mailboxes,
+            ))
             .start(ctx)
             .await?;
 

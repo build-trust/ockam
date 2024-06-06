@@ -62,3 +62,20 @@ teardown() {
   run_success "$OCKAM" relay create $relay_name_blue --to /node/admin_node
   run_success "$OCKAM" relay create $relay_name_green --to /node/admin_node
 }
+
+@test "relay - create relay between rust nodes requires credentials" {
+  relay_name=$(random_str)
+  relay_ticket_path="$OCKAM_HOME/relay.ticket"
+
+  run_success bash -c "$OCKAM project ticket --usage-count 1 --relay $relay_name > $relay_ticket_path"
+
+  setup_home_dir
+  $OCKAM project enroll $relay_ticket_path
+
+  run_success "$OCKAM" node create blue
+  run_success "$OCKAM" node create red
+
+  # fail with a different relay name
+  run_failure "$OCKAM" relay create --at /node/blue/secure/api --to red unauthorized_relay_name
+  run_success "$OCKAM" relay create --at /node/blue/secure/api --to red $relay_name
+}

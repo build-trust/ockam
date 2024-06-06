@@ -192,6 +192,7 @@ impl NodeManager {
             .await?;
 
         let options = RelayServiceOptions::new()
+            .alias(DefaultAddress::STATIC_RELAY_SERVICE)
             .service_as_consumer(api_flow_control_id)
             .relay_as_consumer(api_flow_control_id)
             .prefix("forward_to_");

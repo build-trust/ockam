@@ -88,7 +88,6 @@ impl AppState {
                             context,
                             &project_address,
                             relay_alias.clone(),
-                            false,
                             None,
                             Some(relay_alias),
                         )

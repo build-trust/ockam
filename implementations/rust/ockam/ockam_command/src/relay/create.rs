@@ -100,7 +100,6 @@ impl Command for CreateCommand {
                     alias.clone(),
                     cmd.authorized,
                     Some(cmd.relay_address.unwrap_or(alias)),
-                    !cmd.project_relay,
                 )
                 .await
                 .map_err(Error::Retry)?
