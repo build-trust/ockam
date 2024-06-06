@@ -134,10 +134,8 @@ impl Medic {
                                 .with_payload(encoded_message);
 
                             let sender = ctx.clone();
-                            self.pings.spawn(async move {
-                                log::trace!("sending ping");
-                                (key, sender.forward(local_message).await)
-                            });
+                            self.pings
+                                .spawn(async move { (key, sender.forward(local_message).await) });
                         };
                     } else {
                         // We reached the maximum number of failures

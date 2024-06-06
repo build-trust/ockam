@@ -21,28 +21,24 @@ pub struct CreateRelay {
     #[n(1)] pub(crate) address: MultiAddr,
     /// Relay alias.
     #[n(2)] pub(crate) alias: String,
-    /// Forwarding service is at rust node.
-    #[n(3)] pub(crate) at_rust_node: bool,
     /// An authorised identity for secure channels.
     /// Only set for non-project addresses as for projects the project's
     /// authorised identity will be used.
-    #[n(4)] pub(crate) authorized: Option<Identifier>,
+    #[n(3)] pub(crate) authorized: Option<Identifier>,
     /// Relay address.
-    #[n(5)] pub(crate) relay_address: Option<String>,
+    #[n(4)] pub(crate) relay_address: Option<String>,
 }
 
 impl CreateRelay {
     pub fn new(
         address: MultiAddr,
         alias: String,
-        at_rust_node: bool,
         auth: Option<Identifier>,
         relay_address: Option<String>,
     ) -> Self {
         Self {
             address,
             alias,
-            at_rust_node,
             authorized: auth,
             relay_address,
         }
@@ -54,10 +50,6 @@ impl CreateRelay {
 
     pub fn alias(&self) -> &str {
         &self.alias
-    }
-
-    pub fn at_rust_node(&self) -> bool {
-        self.at_rust_node
     }
 
     pub fn authorized(&self) -> Option<Identifier> {
@@ -81,21 +73,18 @@ pub struct RelayInfo {
     #[n(5)] connection_status: ConnectionStatus,
     #[n(6)] destination_address: MultiAddr,
     #[n(7)] alias: String,
-    #[n(8)] at_rust_node: bool,
-    #[n(9)] last_failure: Option<String>,
+    #[n(8)] last_failure: Option<String>,
 }
 
 impl RelayInfo {
     pub fn new(
         destination_address: MultiAddr,
         alias: String,
-        at_rust_node: bool,
         connection_status: ConnectionStatus,
     ) -> Self {
         Self {
             destination_address,
             alias,
-            at_rust_node,
             forwarding_route: None,
             remote_address: None,
             worker_address: None,
@@ -114,7 +103,6 @@ impl RelayInfo {
             connection_status: self.connection_status,
             destination_address: self.destination_address,
             alias: self.alias,
-            at_rust_node: self.at_rust_node,
             last_failure: self.last_failure,
         }
     }
@@ -128,7 +116,6 @@ impl RelayInfo {
             connection_status: self.connection_status,
             destination_address: self.destination_address,
             alias: self.alias,
-            at_rust_node: self.at_rust_node,
             last_failure: Some(last_failure),
         }
     }
@@ -143,10 +130,6 @@ impl RelayInfo {
 
     pub fn alias(&self) -> &str {
         &self.alias
-    }
-
-    pub fn at_rust_node(&self) -> bool {
-        self.at_rust_node
     }
 
     pub fn forwarding_route(&self) -> &Option<String> {

@@ -163,7 +163,6 @@ impl OutletInfo {
 pub struct RegistryRelayInfo {
     pub(crate) destination_address: MultiAddr,
     pub(crate) alias: String,
-    pub(crate) at_rust_node: bool,
     pub(crate) session: Session,
 }
 
@@ -172,7 +171,6 @@ impl From<RegistryRelayInfo> for RelayInfo {
         let relay_info = RelayInfo::new(
             registry_relay_info.destination_address.clone(),
             registry_relay_info.alias.clone(),
-            registry_relay_info.at_rust_node,
             registry_relay_info.session.connection_status(),
         );
 

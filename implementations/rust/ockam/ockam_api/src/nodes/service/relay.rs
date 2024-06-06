@@ -9,7 +9,7 @@ use ockam::remote::{RemoteRelay, RemoteRelayOptions};
 use ockam::Result;
 use ockam_core::api::{Error, Request, RequestHeader, Response};
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::{async_trait, Address, AsyncTryClone};
+use ockam_core::{async_trait, route, Address, AsyncTryClone};
 use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
 
@@ -37,20 +37,12 @@ impl NodeManagerWorker {
         let CreateRelay {
             address,
             alias,
-            at_rust_node,
             authorized,
             relay_address,
         } = create_relay;
         match self
             .node_manager
-            .create_relay(
-                ctx,
-                &address,
-                alias,
-                at_rust_node,
-                authorized,
-                relay_address,
-            )
+            .create_relay(ctx, &address, alias, authorized, relay_address)
             .await
         {
             Ok(body) => Ok(Response::ok().with_headers(req).body(body)),
@@ -127,7 +119,6 @@ impl NodeManager {
         ctx: &Context,
         addr: &MultiAddr,
         alias: String,
-        at_rust_node: bool,
         authorized: Option<Identifier>,
         relay_address: Option<String>,
     ) -> Result<RelayInfo> {
@@ -144,7 +135,6 @@ impl NodeManager {
             node_manager: self.clone(),
             context: Arc::new(ctx.async_try_clone().await?),
             addr: addr.clone(),
-            at_rust_node,
             relay_address,
             connection: None,
             relay_worker_address: None,
@@ -165,7 +155,6 @@ impl NodeManager {
         let registry_relay_info = RegistryRelayInfo {
             destination_address: addr.clone(),
             alias: alias.clone(),
-            at_rust_node,
             session,
         };
 
@@ -235,12 +224,11 @@ impl InMemoryNode {
         ctx: &Context,
         address: &MultiAddr,
         alias: String,
-        at_rust_node: bool,
         authorized: Option<Identifier>,
         relay_address: Option<String>,
     ) -> Result<RelayInfo> {
         self.node_manager
-            .create_relay(ctx, address, alias, at_rust_node, authorized, relay_address)
+            .create_relay(ctx, address, alias, authorized, relay_address)
             .await
     }
 
@@ -258,14 +246,13 @@ struct RelaySessionReplacer {
     connection: Option<Connection>,
     relay_worker_address: Option<Address>,
     addr: MultiAddr,
-    at_rust_node: bool,
     authorized: Option<Identifier>,
 }
 
 #[async_trait]
 impl SessionReplacer for RelaySessionReplacer {
     async fn create(&mut self) -> std::result::Result<ReplacerOutcome, ockam_core::Error> {
-        debug!(addr = self.addr.to_string(), relay_address = ?self.relay_address, at_rust_node = ?self.at_rust_node, "Handling CreateRelay request");
+        debug!(addr = self.addr.to_string(), relay_address = ?self.relay_address, "Handling CreateRelay request");
         let connection = self
             .node_manager
             .make_connection(
@@ -287,19 +274,7 @@ impl SessionReplacer for RelaySessionReplacer {
         let route = connection.route()?;
         let options = RemoteRelayOptions::new();
 
-        let relay_info = if self.at_rust_node {
-            if let Some(relay_address) = self.relay_address.as_ref() {
-                RemoteRelay::create_static_without_heartbeats(
-                    &self.context,
-                    route.clone(),
-                    relay_address,
-                    options,
-                )
-                .await
-            } else {
-                RemoteRelay::create(&self.context, route.clone(), options).await
-            }
-        } else if let Some(relay_address) = self.relay_address.as_ref() {
+        let relay_info = if let Some(relay_address) = self.relay_address.as_ref() {
             RemoteRelay::create_static(&self.context, route.clone(), relay_address, options).await
         } else {
             RemoteRelay::create(&self.context, route.clone(), options).await
@@ -307,8 +282,11 @@ impl SessionReplacer for RelaySessionReplacer {
 
         self.relay_worker_address = Some(relay_info.worker_address().clone());
 
+        // ping back to this node to verify the full route
+        let ping_route = route![connection.transport_route(), relay_info.remote_address()];
+
         Ok(ReplacerOutcome {
-            ping_route: connection.transport_route(),
+            ping_route,
             kind: ReplacerOutputKind::Relay(relay_info),
         })
     }
@@ -343,7 +321,6 @@ pub trait Relays {
         alias: String,
         authorized: Option<Identifier>,
         relay_address: Option<String>,
-        at_rust_node: bool,
     ) -> miette::Result<RelayInfo>;
 }
 
@@ -356,15 +333,8 @@ impl Relays for BackgroundNodeClient {
         alias: String,
         authorized: Option<Identifier>,
         relay_address: Option<String>,
-        at_rust_node: bool,
     ) -> miette::Result<RelayInfo> {
-        let body = CreateRelay::new(
-            address.clone(),
-            alias,
-            at_rust_node,
-            authorized,
-            relay_address,
-        );
+        let body = CreateRelay::new(address.clone(), alias, authorized, relay_address);
         self.ask(ctx, Request::post("/node/relay").body(body)).await
     }
 }
