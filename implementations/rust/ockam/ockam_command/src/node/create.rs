@@ -12,7 +12,7 @@ use tracing::instrument;
 
 use ockam_api::cli_state::random_name;
 use ockam_api::colors::color_primary;
-use ockam_api::fmt_ok;
+use ockam_api::{fmt_log, fmt_ok};
 use ockam_core::{opentelemetry_context_parser, OpenTelemetryContext};
 use ockam_node::Context;
 
@@ -212,6 +212,14 @@ impl CreateCommand {
                 )
             )?;
         }
+        writeln!(
+            buf,
+            "\n{}",
+            fmt_log!(
+                "To see more details on this Node, run: {}",
+                color_primary(format!("ockam node show {}", node_name))
+            )
+        )?;
         Ok(buf)
     }
 }
