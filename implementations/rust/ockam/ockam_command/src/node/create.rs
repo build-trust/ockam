@@ -42,7 +42,7 @@ after_long_help = docs::after_help(AFTER_LONG_HELP)
 pub struct CreateCommand {
     /// Name of the node or a configuration to set up the node.
     /// The configuration can be either a path to a local file or a URL.
-    #[arg(value_name = "NAME_OR_CONFIG", hide_default_value = true, default_value_t = random_name())]
+    #[arg(value_name = "NAME_OR_CONFIGURATION", hide_default_value = true, default_value_t = random_name())]
     pub name: String,
 
     #[command(flatten)]
@@ -106,7 +106,7 @@ impl Default for CreateCommand {
             skip_is_running_check: false,
             name: random_name(),
             config_args: ConfigArgs {
-                node_config: None,
+                configuration: None,
                 enrollment_ticket: None,
                 variables: vec![],
             },
@@ -177,7 +177,7 @@ impl CreateCommand {
     fn has_name_arg(&self) -> bool {
         is_url(&self.name).is_none()
             && std::fs::metadata(&self.name).is_err()
-            && self.config_args.node_config.is_none()
+            && self.config_args.configuration.is_none()
     }
 
     fn parse_args(&self) -> miette::Result<()> {

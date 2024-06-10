@@ -140,7 +140,7 @@ force_kill_node() {
 }
 
 @test "node - create a node with an inline configuration" {
-  run_success "$OCKAM" node create --node-config "{name: n, tcp-outlets: {db-outlet: {to: 5432, at: n}}}"
+  run_success "$OCKAM" node create --configuration "{name: n, tcp-outlets: {db-outlet: {to: 5432, at: n}}}"
   run_success $OCKAM node show n --output json
   assert_output --partial "\"name\":\"n\""
   assert_output --partial "127.0.0.1:5432"
@@ -149,14 +149,14 @@ force_kill_node() {
 @test "node - node in foreground with configuration is deleted if something fails" {
   # The config file has a typo in the "to" address to trigger an error after the node is created.
   # The command should return an error and the node should be deleted.
-  run_failure "$OCKAM" node create --node-config "{name: n, tcp-outlets: {db-outlet: {to: \"localhosst:3000\"}}}"
+  run_failure "$OCKAM" node create --configuration "{name: n, tcp-outlets: {db-outlet: {to: \"localhosst:3000\"}}}"
   run_success $OCKAM node show n --output json
   assert_output --partial "[]"
 }
 
 @test "node - create two nodes with the same inline configuration" {
-  run_success "$OCKAM" node create --node-config "{tcp-outlets: {to: 8080}}"
-  run_success "$OCKAM" node create --node-config "{tcp-outlets: {to: 8080}}"
+  run_success "$OCKAM" node create --configuration "{tcp-outlets: {to: 8080}}"
+  run_success "$OCKAM" node create --configuration "{tcp-outlets: {to: 8080}}"
 
   # each node must have its own outlet
   node_names="$($OCKAM node list --output json | jq -r 'map(.node_name) | join(" ")')"
@@ -167,7 +167,7 @@ force_kill_node() {
 }
 
 @test "node - return error if passed variable has no value" {
-  run_failure "$OCKAM" node create --node-config "{name: n}" --variable MY_VAR=
+  run_failure "$OCKAM" node create --configuration "{name: n}" --variable MY_VAR=
   assert_output --partial "Empty value for variable 'MY_VAR'"
 }
 

@@ -19,8 +19,8 @@ use tracing::{debug, instrument, Span};
 #[derive(Clone, Debug, Args, Default)]
 pub struct ConfigArgs {
     /// Inline node configuration
-    #[arg(long, value_name = "YAML")]
-    pub node_config: Option<String>,
+    #[arg(long, visible_alias = "node-config", value_name = "YAML")]
+    pub configuration: Option<String>,
 
     /// A path, URL or inlined hex-encoded enrollment ticket to use for the Ockam Identity associated to this node.
     /// When passed, the identity will be given a project membership credential.
@@ -64,7 +64,7 @@ impl CreateCommand {
     ///  - an inline configuration
     #[instrument(skip_all, fields(app.event.command.configuration_file))]
     pub async fn get_node_config(&self) -> miette::Result<NodeConfig> {
-        let contents = match self.config_args.node_config.clone() {
+        let contents = match self.config_args.configuration.clone() {
             Some(contents) => contents,
             None => async_parse_path_or_url(&self.name).await?,
         };
