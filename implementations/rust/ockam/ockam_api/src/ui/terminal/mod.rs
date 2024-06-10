@@ -319,7 +319,7 @@ impl<W: TerminalWriter + Debug> Terminal<W, ToStdOut> {
         self
     }
 
-    pub fn write_line(self) -> Result<()> {
+    pub fn write_line(mut self) -> Result<()> {
         // Check that there is at least one output format defined
         if self.mode.output.plain.is_none()
             && self.mode.output.machine.is_none()
@@ -363,10 +363,16 @@ impl<W: TerminalWriter + Debug> Terminal<W, ToStdOut> {
             },
         };
 
+        // Remove any trailing newline characters.
+        // A newline will be added if stdout is a TTY.
+        let msg = msg.trim_end_matches('\n');
+
         if self.logging_enabled {
             self.log_msg(msg);
-        } else {
+        } else if self.stdout.is_tty() {
             self.stdout.write_line(msg)?;
+        } else {
+            self.stdout.write(msg)?;
         }
         Ok(())
     }

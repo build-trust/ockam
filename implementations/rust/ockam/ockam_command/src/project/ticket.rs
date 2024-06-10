@@ -122,14 +122,13 @@ impl Command for TicketCommand {
         let ticket_serialized = ticket.hex_encoded().into_diagnostic()?;
 
         opts.terminal
-            .write_line(fmt_ok!("Created enrollment ticket."))?;
+            .write_line(fmt_ok!("Created enrollment ticket\n"))?;
         opts.terminal.write_line(fmt_log!(
             "You can use it to enroll another machine using: {}",
             color_primary("ockam project enroll")
         ))?;
 
         opts.terminal
-            .clone()
             .stdout()
             .machine(ticket_serialized)
             .write_line()?;

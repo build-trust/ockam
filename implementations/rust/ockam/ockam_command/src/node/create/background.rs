@@ -5,10 +5,10 @@ use tracing::{debug, instrument};
 use ockam::Context;
 use ockam_api::cli_state::journeys::{JourneyEvent, NODE_NAME};
 use ockam_api::colors::color_primary;
+use ockam_api::fmt_warn;
 use ockam_api::logs::CurrentSpan;
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_api::terminal::notification::NotificationHandler;
-use ockam_api::{fmt_log, fmt_warn};
 use ockam_core::OpenTelemetryContext;
 
 use crate::node::show::get_node_resources;
@@ -89,11 +89,6 @@ impl CreateCommand {
             .machine(&node_name)
             .json(serde_json::to_string(&node_resources).into_diagnostic()?)
             .write_line()?;
-
-        opts.terminal.write_line(fmt_log!(
-            "To see more details on this Node, run: {}",
-            color_primary(format!("ockam node show {}", node_name))
-        ))?;
 
         Ok(())
     }
