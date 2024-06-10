@@ -9,7 +9,7 @@ $ ockam node create n
 $ ockam node create config.yaml
 
 # To create a new node with an inline configuration
-$ ockam node create --node-config "{name: n1, tcp-outlet: {db-outlet: {to: '127.0.0.1:5432'}}}"
+$ ockam node create --configuration "{name: n1, tcp-outlet: {db-outlet: {to: '127.0.0.1:5432'}}}"
 ```
 
 An example of a configuration file is:
