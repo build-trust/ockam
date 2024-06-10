@@ -1,8 +1,6 @@
 use core::fmt;
-use core::fmt::Write;
 use std::fmt::Formatter;
 
-use colorful::Colorful;
 use minicbor::Encode;
 use serde::{Serialize, Serializer};
 
@@ -11,33 +9,11 @@ use ockam::identity::models::{
     PurposeKeyAttestationData, PurposePublicKey, VersionedData,
 };
 use ockam::identity::{Credential, Identifier, Identity};
-use ockam_api::cloud::project::Project;
 use ockam_api::output::{human_readable_time, Output};
 
 use ockam_vault::{
     ECDSASHA256CurveP256PublicKey, EdDSACurve25519PublicKey, VerifyingPublicKey, X25519PublicKey,
 };
-
-#[derive(Debug, Clone, Serialize)]
-pub struct ProjectConfigCompact(pub Project);
-
-impl Output for ProjectConfigCompact {
-    fn item(&self) -> ockam_api::Result<String> {
-        let pi = self.0.project_identifier()?.to_string();
-        let ar = self
-            .0
-            .authority_multiaddr()
-            .map(|r| r.to_string())
-            .unwrap_or_else(|_| "N/A".to_string());
-        let ai = self.0.authority_identifier()?.to_string();
-        let mut w = String::new();
-        writeln!(w, "{}: {}", "Project ID".bold(), self.0.project_id())?;
-        writeln!(w, "{}: {}", "Project Identifier".bold(), pi)?;
-        writeln!(w, "{}: {}", "Authority address".bold(), ar)?;
-        write!(w, "{}: {}", "Authority Identifier".bold(), ai)?;
-        Ok(w)
-    }
-}
 
 pub struct X25519PublicKeyDisplay(pub X25519PublicKey);
 

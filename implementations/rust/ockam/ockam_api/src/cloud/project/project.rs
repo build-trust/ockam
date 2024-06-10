@@ -1,15 +1,15 @@
-use colorful::Colorful;
-use serde::{Serialize, Serializer};
+use serde::Serialize;
 use std::fmt::Write;
 use std::str::FromStr;
 
 use crate::cloud::enroll::auth0::UserInfo;
 use crate::cloud::project::models::ProjectModel;
 use crate::cloud::share::RoleInShare;
-use crate::colors::OckamColor;
 use crate::error::ApiError;
 use crate::output::Output;
 
+use crate::colors::color_primary;
+use crate::terminal::fmt;
 use ockam::identity::{Identifier, Identity, Vault};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{Error, Result};
@@ -18,23 +18,23 @@ use ockam_node::tokio;
 
 pub(super) const TARGET: &str = "ockam_api::cloud::project";
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Project {
+    #[serde(flatten)]
     model: ProjectModel,
+    #[serde(skip)]
     project_identity: Option<Identity>,
+    #[serde(skip)]
     project_multiaddr: Option<MultiAddr>,
+    #[serde(rename = "access_address")]
     project_socket_addr: Option<String>,
+    #[serde(skip)]
     authority_identity: Option<Identity>,
+    #[serde(skip)]
     authority_multiaddr: Option<MultiAddr>,
-}
-
-impl Serialize for Project {
-    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        self.model.serialize(serializer)
-    }
+    #[serde(rename = "authority_access_address")]
+    authority_socket_addr: Option<String>,
+    egress_allow_list: Vec<String>,
 }
 
 impl Project {
@@ -51,25 +51,26 @@ impl Project {
             None => None,
         };
 
+        let mut egress_allow_list = vec![];
         let project_socket_addr;
         let project_multiaddr;
         if model.access_route.is_empty() {
             project_socket_addr = None;
             project_multiaddr = None;
         } else {
-            let pm = MultiAddr::from_str(&model.access_route)
+            let multiaddr = MultiAddr::from_str(&model.access_route)
                 .map_err(|e| ApiError::core(e.to_string()))?;
 
             // Converts the `access_route` MultiAddr into a single Address, which will
             // return the host and port of the project node.
             // Ex: if access_route is "/dnsaddr/node.dnsaddr.com/tcp/4000/service/api",
             // then this will return the string "node.dnsaddr.com:4000".
-            project_socket_addr = Some(
-                pm.to_socket_addr()
-                    .map_err(|e| ApiError::core(e.to_string()))?,
-            );
-
-            project_multiaddr = Some(pm);
+            let socket_addr = multiaddr
+                .to_socket_addr()
+                .map_err(|e| ApiError::core(e.to_string()))?;
+            project_socket_addr = Some(socket_addr.clone());
+            egress_allow_list.push(socket_addr);
+            project_multiaddr = Some(multiaddr);
         }
 
         let authority_identity = match &model.authority_identity {
@@ -84,12 +85,23 @@ impl Project {
             None => None,
         };
 
-        let authority_multiaddr = match &model.authority_access_route {
-            Some(authority_access_route) => Some(
-                MultiAddr::from_str(authority_access_route)
-                    .map_err(|e| ApiError::core(e.to_string()))?,
-            ),
-            None => None,
+        let authority_socket_addr;
+        let authority_multiaddr;
+        match &model.authority_access_route {
+            Some(authority_access_route) => {
+                let multiaddr = MultiAddr::from_str(authority_access_route)
+                    .map_err(|e| ApiError::core(e.to_string()))?;
+                let socket_addr = multiaddr
+                    .to_socket_addr()
+                    .map_err(|e| ApiError::core(e.to_string()))?;
+                authority_socket_addr = Some(socket_addr.clone());
+                egress_allow_list.push(socket_addr);
+                authority_multiaddr = Some(multiaddr)
+            }
+            None => {
+                authority_socket_addr = None;
+                authority_multiaddr = None;
+            }
         };
 
         let s = Self {
@@ -99,6 +111,8 @@ impl Project {
             project_socket_addr,
             authority_identity,
             authority_multiaddr,
+            authority_socket_addr,
+            egress_allow_list,
         };
 
         Ok(s)
@@ -235,41 +249,121 @@ impl Project {
 
 impl Output for Project {
     fn item(&self) -> crate::Result<String> {
-        let mut w = String::new();
-        write!(w, "Project")?;
-        write!(w, "\n  Id: {}", self.project_id())?;
-        write!(w, "\n  Name: {}", self.name())?;
-        write!(w, "\n  Project route: {}", self.project_multiaddr()?)?;
-        write!(
-            w,
-            "\n  Identity identifier: {}",
-            self.project_identifier()
-                .as_ref()
-                .map(|i| i.to_string())
-                .unwrap_or_default()
+        let mut f = String::new();
+        write!(f, "{}{}", fmt::PADDING, color_primary(self.name()))?;
+        writeln!(f, ":")?;
+        writeln!(
+            f,
+            "{}{}Id: {}",
+            fmt::PADDING,
+            fmt::INDENTATION,
+            self.project_id()
         )?;
-        write!(
-            w,
-            "\n  Version: {}",
+        writeln!(
+            f,
+            "{}{}Name: {}",
+            fmt::PADDING,
+            fmt::INDENTATION,
+            self.name()
+        )?;
+        writeln!(
+            f,
+            "{}{}Space: {}",
+            fmt::PADDING,
+            fmt::INDENTATION,
+            self.space_name()
+        )?;
+        writeln!(
+            f,
+            "{}{}Route: {}",
+            fmt::PADDING,
+            fmt::INDENTATION,
+            self.project_multiaddr()
+                .map(|m| m.to_string())
+                .unwrap_or("N/A".to_string())
+        )?;
+        writeln!(
+            f,
+            "{}{}Address: {}",
+            fmt::PADDING,
+            fmt::INDENTATION,
+            self.project_multiaddr()
+                .map(|m| m.to_socket_addr().unwrap_or("N/A".to_string()))
+                .unwrap_or("N/A".to_string())
+        )?;
+        writeln!(
+            f,
+            "{}{}Identifier: {}",
+            fmt::PADDING,
+            fmt::INDENTATION,
+            self.project_identifier()
+                .map(|i| i.to_string())
+                .unwrap_or("N/A".to_string())
+        )?;
+        writeln!(
+            f,
+            "{}{}Version: {}",
+            fmt::PADDING,
+            fmt::INDENTATION,
             self.model().version.as_deref().unwrap_or("N/A")
         )?;
-        write!(w, "\n  Running: {}", self.model().running.unwrap_or(false))?;
-        Ok(w)
+        writeln!(
+            f,
+            "{}{}Is running: {}",
+            fmt::PADDING,
+            fmt::INDENTATION,
+            self.model().running.unwrap_or(false)
+        )?;
+        writeln!(
+            f,
+            "{}{}Authority route: {}",
+            fmt::PADDING,
+            fmt::INDENTATION,
+            self.authority_multiaddr()
+                .map(|m| m.to_string())
+                .unwrap_or("N/A".to_string())
+        )?;
+        writeln!(
+            f,
+            "{}{}Authority address: {}",
+            fmt::PADDING,
+            fmt::INDENTATION,
+            self.authority_multiaddr()
+                .map(|m| m.to_socket_addr().unwrap_or("N/A".to_string()))
+                .unwrap_or("N/A".to_string())
+        )?;
+        writeln!(
+            f,
+            "{}{}Authority identifier: {}",
+            fmt::PADDING,
+            fmt::INDENTATION,
+            self.authority_identifier()
+                .map(|i| i.to_string())
+                .unwrap_or("N/A".to_string())
+        )?;
+        writeln!(
+            f,
+            "{}{}Egress allow list: {}",
+            fmt::PADDING,
+            fmt::INDENTATION,
+            self.egress_allow_list.join(", ")
+        )?;
+        Ok(f)
     }
 
     fn as_list_item(&self) -> crate::Result<String> {
-        let output = format!(
-            r#"Project {}
-Space {}"#,
-            self.name()
-                .to_string()
-                .color(OckamColor::PrimaryResource.color()),
-            self.space_name()
-                .to_string()
-                .color(OckamColor::PrimaryResource.color()),
-        );
-
-        Ok(output)
+        let mut f = String::new();
+        writeln!(f, "Id: {}", self.project_id())?;
+        writeln!(f, "Name: {}", self.name())?;
+        writeln!(f, "Space: {}", self.space_name())?;
+        writeln!(
+            f,
+            "Route: {}",
+            self.project_multiaddr()
+                .map(|m| m.to_string())
+                .unwrap_or("N/A".to_string())
+        )?;
+        Ok(f)
     }
 }
 

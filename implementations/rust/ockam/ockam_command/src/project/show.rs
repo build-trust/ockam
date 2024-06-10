@@ -10,7 +10,6 @@ use ockam_api::output::Output;
 use ockam_api::terminal::{Terminal, TerminalStream};
 use ockam_core::AsyncTryClone;
 
-use crate::output::ProjectConfigCompact;
 use crate::shared_args::{IdentityOpts, RetryOpts};
 use crate::terminal::tui::ShowCommandTui;
 use crate::tui::PluralTerm;
@@ -124,12 +123,11 @@ impl ShowCommandTui for ShowTui {
             .get_project_by_name(&self.ctx, item_name)
             .await
             .map_err(Error::Retry)?;
-        let project_output = ProjectConfigCompact(project);
 
         self.terminal()
             .stdout()
-            .plain(project_output.item()?)
-            .json(serde_json::to_string(&project_output).into_diagnostic()?)
+            .plain(project.item()?)
+            .json(serde_json::to_string(&project).into_diagnostic()?)
             .write_line()?;
         Ok(())
     }

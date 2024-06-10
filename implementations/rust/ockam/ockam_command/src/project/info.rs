@@ -8,7 +8,7 @@ use ockam_api::output::Output;
 
 use crate::shared_args::IdentityOpts;
 use crate::util::async_cmd;
-use crate::{docs, output::ProjectConfigCompact, CommandGlobalOpts};
+use crate::{docs, CommandGlobalOpts};
 
 /// Show project details
 #[derive(Clone, Debug, Args)]
@@ -36,11 +36,10 @@ impl InfoCommand {
     async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         let node = InMemoryNode::start(ctx, &opts.state).await?;
         let project = node.get_project_by_name(ctx, &self.name).await?;
-        let info = ProjectConfigCompact(project);
         opts.terminal
             .stdout()
-            .plain(info.item()?)
-            .json(serde_json::to_string(&info).into_diagnostic()?)
+            .plain(project.item()?)
+            .json(serde_json::to_string(&project).into_diagnostic()?)
             .write_line()?;
         Ok(())
     }
