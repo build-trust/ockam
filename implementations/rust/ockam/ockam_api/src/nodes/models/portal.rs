@@ -51,6 +51,9 @@ pub struct CreateInlet {
     #[n(8)] pub(crate) policy_expression: Option<PolicyExpression>,
     /// Create the inlet and wait for the outlet to connect
     #[n(9)] pub(crate) wait_connection: bool,
+    /// The identifier to be used to create the secure channel.
+    /// If not set, the node's identifier will be used.
+    #[n(10)] pub(crate) secure_channel_identifier: Option<Identifier>,
 }
 
 impl CreateInlet {
@@ -72,6 +75,7 @@ impl CreateInlet {
             wait_for_outlet_duration: None,
             policy_expression: None,
             wait_connection,
+            secure_channel_identifier: None,
         }
     }
 
@@ -94,6 +98,7 @@ impl CreateInlet {
             wait_for_outlet_duration: None,
             policy_expression: None,
             wait_connection,
+            secure_channel_identifier: None,
         }
     }
 
@@ -103,6 +108,10 @@ impl CreateInlet {
 
     pub fn set_policy_expression(&mut self, expression: PolicyExpression) {
         self.policy_expression = Some(expression);
+    }
+
+    pub fn set_secure_channel_identifier(&mut self, identifier: Identifier) {
+        self.secure_channel_identifier = Some(identifier);
     }
 
     pub fn listen_addr(&self) -> String {

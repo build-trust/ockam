@@ -56,6 +56,7 @@ impl NodeManagerWorker {
             wait_for_outlet_duration,
             policy_expression,
             wait_connection,
+            secure_channel_identifier,
         } = create_inlet;
         match self
             .node_manager
@@ -70,6 +71,7 @@ impl NodeManagerWorker {
                 wait_for_outlet_duration,
                 authorized,
                 wait_connection,
+                secure_channel_identifier,
             )
             .await
         {
@@ -342,6 +344,7 @@ impl NodeManager {
         wait_for_outlet_duration: Option<Duration>,
         authorized: Option<Identifier>,
         wait_connection: bool,
+        secure_channel_identifier: Option<Identifier>,
     ) -> Result<InletStatus> {
         info!("Handling request to create inlet portal");
         debug! {
@@ -406,6 +409,7 @@ impl NodeManager {
             wait_for_outlet_duration: wait_for_outlet_duration.unwrap_or(MAX_CONNECT_TIME),
             resource: Resource::new(alias.clone(), ResourceType::TcpInlet),
             policy_expression,
+            secure_channel_identifier,
             connection: None,
             inlet_address: None,
         };
@@ -578,6 +582,7 @@ impl InMemoryNode {
         wait_for_outlet_duration: Option<Duration>,
         authorized: Option<Identifier>,
         wait_connection: bool,
+        secure_channel_identifier: Option<Identifier>,
     ) -> Result<InletStatus> {
         self.node_manager
             .create_inlet(
@@ -591,6 +596,7 @@ impl InMemoryNode {
                 wait_for_outlet_duration,
                 authorized,
                 wait_connection,
+                secure_channel_identifier,
             )
             .await
     }
@@ -607,6 +613,7 @@ struct InletSessionReplacer {
     wait_for_outlet_duration: Duration,
     resource: Resource,
     policy_expression: Option<PolicyExpression>,
+    secure_channel_identifier: Option<Identifier>,
 
     // current status
     connection: Option<Connection>,
@@ -668,7 +675,9 @@ impl SessionReplacer for InletSessionReplacer {
                 .make_connection(
                     self.context.clone(),
                     &self.outlet_addr,
-                    self.node_manager.identifier(),
+                    self.secure_channel_identifier
+                        .clone()
+                        .unwrap_or(self.node_manager.identifier()),
                     self.authorized.clone(),
                     Some(self.wait_for_outlet_duration),
                 )
@@ -755,7 +764,8 @@ pub trait Inlets {
         authorized_identifier: &Option<Identifier>,
         policy_expression: &Option<PolicyExpression>,
         wait_for_outlet_timeout: Duration,
-        validate: bool,
+        wait_connection: bool,
+        secure_channel_identifier: &Option<Identifier>,
     ) -> miette::Result<Reply<InletStatus>>;
 
     async fn show_inlet(&self, ctx: &Context, alias: &str) -> miette::Result<Reply<InletStatus>>;
@@ -775,6 +785,7 @@ impl Inlets for BackgroundNodeClient {
         policy_expression: &Option<PolicyExpression>,
         wait_for_outlet_timeout: Duration,
         wait_connection: bool,
+        secure_channel_identifier: &Option<Identifier>,
     ) -> miette::Result<Reply<InletStatus>> {
         let request = {
             let via_project = outlet_addr.matches(0, &[ProjectProto::CODE.into()]);
@@ -800,6 +811,9 @@ impl Inlets for BackgroundNodeClient {
             };
             if let Some(e) = policy_expression.as_ref() {
                 payload.set_policy_expression(e.clone())
+            }
+            if let Some(identifier) = secure_channel_identifier {
+                payload.set_secure_channel_identifier(identifier.clone())
             }
             payload.set_wait_ms(wait_for_outlet_timeout.as_millis() as u64);
             Request::post("/node/inlet").body(payload)
