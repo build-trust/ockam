@@ -52,7 +52,7 @@ teardown() {
 }
 
 @test "message - send a hex encoded message to a project node from an embedded node" {
-  msg=$(random_str)
+  msg=$(random_hex_str)
   run_success "$OCKAM" message send "$msg" --to /project/default/service/echo --hex
   assert_output "$msg"
 }

@@ -77,9 +77,14 @@ to_uppercase() {
   echo "$1" | tr 'a-z' 'A-Z'
 }
 
-# Returns a random name
+# Returns a random letter-only string
 random_str() {
   echo "$(LC_ALL=C tr -dc 'a-zA-Z' </dev/urandom | head -c 10)"
+}
+
+# Returns a random hex string
+random_hex_str() {
+  echo "$(openssl rand -hex 4)"
 }
 
 # Returns a random port
