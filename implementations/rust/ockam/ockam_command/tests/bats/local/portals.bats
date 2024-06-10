@@ -450,3 +450,24 @@ teardown() {
   # Consequent attempt fails
   run_failure curl -sS -m 20 -X POST "http://127.0.0.1:$inlet_port/upload" -F "files=@$OCKAM_HOME_BASE/.tmp/$tmp_dir_name/$file_name"
 }
+
+@test "portals - create inlet with specific identifier" {
+  run_success "$OCKAM" node create n
+  alt=$("$OCKAM" identity create alt)
+  run_success "$OCKAM" tcp-outlet create --to "$PYTHON_SERVER_PORT" --allow "(= subject.identifier \"$alt\")"
+
+  # Create an inlet with the node's identifier, without a secure channel. It shouldn't be allowed to connect
+  port="$(random_port)"
+  run_success "$OCKAM" tcp-inlet create --from "127.0.0.1:$port" --to /node/n/service/outlet
+  run_failure curl -sfI -m 3 "127.0.0.1:$port"
+
+  # Same as before, but through a secure channel. It shouldn't be allowed to connect
+  port="$(random_port)"
+  run_success "$OCKAM" tcp-inlet create --from "127.0.0.1:$port" --to /node/n/secure/api/service/outlet
+  run_failure curl -sfI -m 3 "127.0.0.1:$port"
+
+  # Create an inlet with the alt's identifier. Now it should be allowed to connect
+  port="$(random_port)"
+  run_success "$OCKAM" tcp-inlet create --from "127.0.0.1:$port" --to /node/n/secure/api/service/outlet --identity alt
+  run_success curl -sfI --retry-connrefused --retry-delay 5 --retry 2 -m 5 "127.0.0.1:$port"
+}

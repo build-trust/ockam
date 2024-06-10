@@ -70,7 +70,11 @@ pub struct CreateCommand {
     #[arg(long, display_order = 900, id = "RELAY_NAME")]
     pub via: Option<String>,
 
-    /// Authorized identity for secure channel connection
+    /// Identity to be used to create the secure channel. If not set, the node's identity will be used.
+    #[arg(long, value_name = "IDENTITY_NAME", display_order = 900)]
+    pub identity: Option<String>,
+
+    /// Authorized identifier for secure channel connection
     #[arg(long, name = "AUTHORIZED", display_order = 900)]
     pub authorized: Option<Identifier>,
 
@@ -148,6 +152,7 @@ impl Command for CreateCommand {
                         &cmd.allow,
                         cmd.connection_wait,
                         !cmd.no_connection_wait,
+                        &cmd.secure_channel_identifier(&opts.state).await?,
                     )
                     .await?;
 
@@ -222,6 +227,17 @@ impl Command for CreateCommand {
 impl CreateCommand {
     fn to(&self) -> MultiAddr {
         MultiAddr::from_str(&self.to).unwrap()
+    }
+
+    async fn secure_channel_identifier(
+        &self,
+        state: &CliState,
+    ) -> miette::Result<Option<Identifier>> {
+        if let Some(identity_name) = self.identity.as_ref() {
+            Ok(Some(state.get_identifier_by_name(identity_name).await?))
+        } else {
+            Ok(None)
+        }
     }
 
     async fn add_inlet_created_event(
