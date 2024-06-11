@@ -54,7 +54,7 @@ teardown() {
   run_success $OCKAM policy create --resource my_policy --allow 'component.db or component.web'
   run_success $OCKAM policy show my_policy
   assert_output --partial "my_policy"
-  assert_output --partial '"expression":"(or (= subject.component.db \"true\") (= subject.component.web \"true\"))"}'
+  assert_output --partial '"expression":"(or (= subject.component.db \"true\") (= subject.component.web \"true\"))"'
 }
 
 @test "policies - create policy with an incorrect policy expression" {

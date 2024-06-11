@@ -17,7 +17,7 @@ use ockam_api::enroll::enrollment::{EnrollStatus, Enrollment};
 use ockam_api::enroll::oidc_service::OidcService;
 use ockam_api::enroll::okta_oidc_provider::OktaOidcProvider;
 use ockam_api::nodes::InMemoryNode;
-use ockam_api::output::{human_readable_time, OutputFormat};
+use ockam_api::output::human_readable_time;
 use ockam_api::terminal::fmt;
 use ockam_api::{fmt_log, fmt_ok};
 
@@ -76,7 +76,7 @@ impl Command for EnrollCommand {
     }
 
     async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
-        if opts.global_args.output_format == OutputFormat::Json {
+        if opts.global_args.output_format()?.is_json() {
             return Err(miette::miette!(
                 "This command does not support JSON output. Please try running it again without '--output json'."
             ).into());

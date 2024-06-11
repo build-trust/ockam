@@ -7,7 +7,6 @@ use serde_json::json;
 use ockam::{route, Context};
 use ockam_api::address::extract_address_value;
 use ockam_api::nodes::BackgroundNodeClient;
-use ockam_api::output::OutputFormat;
 use ockam_api::{nodes::models::secure_channel::DeleteSecureChannelResponse, route_to_multiaddr};
 use ockam_core::{Address, AddressParseError};
 
@@ -56,7 +55,7 @@ impl DeleteCommand {
         address: &Address,
         options: &CommandGlobalOpts,
         response: DeleteSecureChannelResponse,
-    ) {
+    ) -> miette::Result<()> {
         match response.channel {
             Some(address) => {
                 let route = &route![address];
@@ -69,7 +68,7 @@ impl DeleteCommand {
                         }
 
                         // if output format is json, write json to stdout.
-                        if options.global_args.output_format == OutputFormat::Json {
+                        if options.global_args.output_format()?.is_json() {
                             let json = json!([{ "address": multiaddr.to_string() }]);
                             println!("{json}");
                         }
@@ -78,7 +77,7 @@ impl DeleteCommand {
                         // and output format is plain then write a plain info to stderr.
                         if options.terminal.is_tty()
                             && !options.global_args.quiet
-                            && options.global_args.output_format == OutputFormat::Plain
+                            && options.global_args.output_format()?.is_json()
                         {
                             if options.global_args.no_color {
                                 eprintln!("\n  Deleted Secure Channel:");
@@ -102,7 +101,7 @@ impl DeleteCommand {
                         // and output format is plain then write a plain info to stderr.
                         if options.terminal.is_tty()
                             && !options.global_args.quiet
-                            && options.global_args.output_format == OutputFormat::Plain
+                            && options.global_args.output_format()?.is_plain()
                         {
                             eprintln!(
                                 "Could not convert returned secure channel route {route} into a multiaddr"
@@ -120,7 +119,7 @@ impl DeleteCommand {
                 // and output format is plain then write a plain info to stderr.
                 if options.terminal.is_tty()
                     && !options.global_args.quiet
-                    && options.global_args.output_format == OutputFormat::Plain
+                    && options.global_args.output_format()?.is_plain()
                 {
                     eprintln!(
                         "Could not find secure channel with address {} at node {}",
@@ -131,6 +130,7 @@ impl DeleteCommand {
                 println!("channel with address {address} not found")
             }
         }
+        Ok(())
     }
 
     async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
@@ -142,7 +142,7 @@ impl DeleteCommand {
             let address = &self.address;
             let response: DeleteSecureChannelResponse =
                 node.ask(ctx, api::delete_secure_channel(address)).await?;
-            self.print_output(&node.node_name(), address, &opts, response);
+            self.print_output(&node.node_name(), address, &opts, response)?;
         }
         Ok(())
     }

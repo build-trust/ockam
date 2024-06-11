@@ -15,7 +15,6 @@ use ockam_api::authenticator::enrollment_tokens::TokenIssuer;
 use ockam_api::cli_state::enrollments::EnrollmentTicket;
 use ockam_api::colors::color_primary;
 use ockam_api::nodes::InMemoryNode;
-use ockam_api::output::OutputFormat;
 use ockam_api::{fmt_log, fmt_ok};
 use ockam_multiaddr::MultiAddr;
 
@@ -82,7 +81,7 @@ impl Command for TicketCommand {
     }
 
     async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> Result<()> {
-        if opts.global_args.output_format == OutputFormat::Json {
+        if opts.global_args.output_format()?.is_json() {
             return Err(miette::miette!(
                 "This command only outputs a hex encoded string for 'ockam project enroll' to use. \
                 Please try running it again without '--output json'."

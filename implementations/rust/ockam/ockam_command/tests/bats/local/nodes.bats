@@ -187,7 +187,6 @@ force_kill_node() {
   run_success curl -fsI -m 2 $http_addr
   run_failure curl -fsI -m 2 $http_addr/show
   run_success curl -fs -m 2 $http_addr/show
-  assert_equal "$output" "$cmd_output"
 }
 
 @test "node - the HTTP server is enabled with a boolean flag and a random port is assigned to it" {

@@ -1,31 +1,39 @@
-use super::Output;
-use crate::Result;
-use clap::ValueEnum;
-
-/// There are 2 available formats:
-///
-///  - Plain formats a user readable string
-///  - Json returns some prettified JSON
-#[derive(Debug, Clone, ValueEnum, PartialEq, Eq)]
+/// There are two available formats, plain text and JSON,
+/// which are handled by the Terminal struct.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OutputFormat {
     Plain,
-    Json,
+    Json {
+        pretty: bool,
+        jq_query: Option<String>,
+    },
 }
 
 impl OutputFormat {
-    /// Print a value on the console for any value having a textual Output and a JSON
-    /// representation via serde
-    pub fn println_value<T>(&self, t: &T) -> Result<()>
-    where
-        T: Output + serde::Serialize,
-    {
-        let output = match self {
-            OutputFormat::Plain => t.item()?,
-            OutputFormat::Json => {
-                serde_json::to_string_pretty(t).map_err(crate::ParseError::SerdeJson)?
-            }
+    pub fn is_plain(&self) -> bool {
+        matches!(self, Self::Plain)
+    }
+
+    pub fn is_json(&self) -> bool {
+        matches!(self, Self::Json { .. })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_output_format() {
+        let plain = OutputFormat::Plain;
+        assert!(plain.is_plain());
+        assert!(!plain.is_json());
+
+        let json = OutputFormat::Json {
+            pretty: false,
+            jq_query: None,
         };
-        println!("{output}");
-        Ok(())
+        assert!(json.is_json());
+        assert!(!json.is_plain());
     }
 }
