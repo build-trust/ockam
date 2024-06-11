@@ -82,7 +82,7 @@ pem-rfc7468 = { version = "0.7.0", features = ["std"] }
 r3bl_rs_utils_core = "0.9.12"
 r3bl_tui = "0.5.5"
 rand = "0.8"
-regex = "1.10.4"
+regex = "1.10.5"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls-native-roots", "blocking"] }
 rustls = { version = "0.23.5", default-features = false }
 rustls-native-certs = "0.7.0"
