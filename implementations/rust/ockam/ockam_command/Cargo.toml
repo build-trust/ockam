@@ -56,7 +56,7 @@ path = "src/bin/ockam.rs"
 arboard = "3.4.0"
 async-trait = "0.1"
 clap = { version = "4.5", features = ["derive", "cargo", "wrap_help"] }
-clap_complete = "4.5.2"
+clap_complete = "4.5.5"
 clap_mangen = "0.2.21"
 colorful = "0.2"
 console = "0.15.8"
