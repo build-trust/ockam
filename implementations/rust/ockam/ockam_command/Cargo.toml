@@ -84,7 +84,7 @@ r3bl_tui = "0.5.5"
 rand = "0.8"
 regex = "1.10.5"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls-native-roots", "blocking"] }
-rustls = { version = "0.23.5", default-features = false }
+rustls = { version = "0.23.7", default-features = false }
 rustls-native-certs = "0.7.0"
 rustls-pki-types = "1.7.0"
 semver = "1.0.23"
