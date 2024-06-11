@@ -91,25 +91,34 @@ impl OidcServiceExt for OidcService {
                         )
                     },
                 );
-            opts.terminal.write_line(&otc_string)?.write(fmt_log!(
-                "Press {} to open {} in your browser.\n",
-                " ENTER ↵ ".bg_white().black().blink(),
-                color_uri(&device_code.verification_uri)
-            ))?;
+            opts.terminal.write_line(&otc_string)?;
 
-            let mut input = String::new();
-            match stdin().read_line(&mut input) {
-                Ok(_) => {
-                    opts.terminal.write_line(&fmt_log!(
-                        "Opening {}, in your browser, to begin activating this machine...\n",
-                        color_uri(&device_code.verification_uri)
-                    ))?;
+            if opts.terminal.can_ask_for_user_input() {
+                opts.terminal.write(fmt_log!(
+                    "Press {} to open {} in your browser.\n",
+                    " ENTER ↵ ".bg_white().black().blink(),
+                    color_uri(&device_code.verification_uri)
+                ))?;
+
+                let mut input = String::new();
+                match stdin().read_line(&mut input) {
+                    Ok(_) => {
+                        opts.terminal.write_line(&fmt_log!(
+                            "Opening {}, in your browser, to begin activating this machine...\n",
+                            color_uri(&device_code.verification_uri)
+                        ))?;
+                    }
+                    Err(_e) => {
+                        return Err(miette!(
+                            "Couldn't read user input or enter keypress from stdin"
+                        ))?;
+                    }
                 }
-                Err(_e) => {
-                    return Err(miette!(
-                        "Couldn't read user input or enter keypress from stdin"
-                    ))?;
-                }
+            } else {
+                opts.terminal.write_line(&fmt_log!(
+                    "Open {} in your browser to begin activating this machine.\n",
+                    color_uri(&device_code.verification_uri)
+                ))?;
             }
         }
 
