@@ -1,5 +1,5 @@
-use clap::ArgAction;
 use clap::Args;
+use clap::{ArgAction, ValueEnum};
 use ockam_api::output::OutputFormat;
 
 use ockam_core::env::get_env_with_default;
@@ -47,9 +47,17 @@ pub struct GlobalArgs {
     /// the stdout is a tty or not. For instance, if stdout is redirected to a file, the output
     /// is usually an identifier that can be used as input for other commands. If stdout is a tty,
     /// the output will contain human-readable information about the command execution.
-    /// The 'json' format is a one-line JSON object, which can be made more readable using a tool like jq.
-    #[arg(global = true, long = "output", value_enum, default_value = "plain")]
-    pub output_format: OutputFormat,
+    /// The 'json' format can be customized witht he `--jq` and `--pretty` options.
+    #[arg(global = true, long = "output", value_enum)]
+    pub output_format: Option<OutputFormatArg>,
+
+    /// jq query to apply to the JSON output of the command
+    #[arg(global = true, long = "jq")]
+    pub jq_query: Option<String>,
+
+    /// Pretty print the JSON output of the command
+    #[arg(global = true, long)]
+    pub pretty: bool,
 
     // if test_argument_parser is true, command arguments are checked
     // but the command is not executed.
@@ -77,7 +85,9 @@ impl Default for GlobalArgs {
             verbose: 0,
             no_color: no_color_default_value(),
             no_input: no_input_default_value(),
-            output_format: OutputFormat::Plain,
+            output_format: None,
+            jq_query: None,
+            pretty: false,
             test_argument_parser: false,
         }
     }
@@ -89,4 +99,27 @@ impl GlobalArgs {
         clone.quiet = true;
         clone
     }
+
+    pub fn output_format(&self) -> miette::Result<OutputFormat> {
+        match (&self.jq_query, &self.output_format) {
+            (None, Some(OutputFormatArg::Plain)) | (None, None) => Ok(OutputFormat::Plain),
+            (None, Some(OutputFormatArg::Json)) => Ok(OutputFormat::Json {
+                pretty: self.pretty,
+                jq_query: None,
+            }),
+            (Some(_), Some(OutputFormatArg::Plain)) => {
+                Err(miette::miette!("Cannot use --jq with --output plain"))
+            }
+            (Some(_), Some(OutputFormatArg::Json)) | (Some(_), None) => Ok(OutputFormat::Json {
+                pretty: self.pretty,
+                jq_query: self.jq_query.clone(),
+            }),
+        }
+    }
+}
+
+#[derive(Debug, Clone, ValueEnum, PartialEq, Eq)]
+pub enum OutputFormatArg {
+    Plain,
+    Json,
 }

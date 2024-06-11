@@ -99,6 +99,7 @@ This file contains attributions for any 3rd-party open source code used in this 
 | cfg-if | MIT, Apache-2.0 | https://crates.io/crates/cfg-if |
 | cfg_aliases | MIT | https://crates.io/crates/cfg_aliases |
 | chrono | MIT, Apache-2.0 | https://crates.io/crates/chrono |
+| chumsky | MIT | https://crates.io/crates/chumsky |
 | chunked_transfer | MIT, Apache-2.0 | https://crates.io/crates/chunked_transfer |
 | cipher | MIT, Apache-2.0 | https://crates.io/crates/cipher |
 | clang-sys | Apache-2.0 | https://crates.io/crates/clang-sys |
@@ -174,6 +175,7 @@ This file contains attributions for any 3rd-party open source code used in this 
 | downcast-rs | MIT, Apache-2.0 | https://crates.io/crates/downcast-rs |
 | duct | MIT | https://crates.io/crates/duct |
 | dunce | CC0-1.0, MIT-0, Apache-2.0 | https://crates.io/crates/dunce |
+| dyn-clone | MIT, Apache-2.0 | https://crates.io/crates/dyn-clone |
 | ecdsa | Apache-2.0, MIT | https://crates.io/crates/ecdsa |
 | ed25519 | Apache-2.0, MIT | https://crates.io/crates/ed25519 |
 | ed25519-dalek | BSD-3-Clause | https://crates.io/crates/ed25519-dalek |
@@ -240,6 +242,7 @@ This file contains attributions for any 3rd-party open source code used in this 
 | heck | MIT, Apache-2.0 | https://crates.io/crates/heck |
 | hermit-abi | MIT, Apache-2.0 | https://crates.io/crates/hermit-abi |
 | hex | MIT, Apache-2.0 | https://crates.io/crates/hex |
+| hifijson | MIT | https://crates.io/crates/hifijson |
 | hkdf | MIT, Apache-2.0 | https://crates.io/crates/hkdf |
 | hmac | MIT, Apache-2.0 | https://crates.io/crates/hmac |
 | home | MIT, Apache-2.0 | https://crates.io/crates/home |
@@ -272,6 +275,11 @@ This file contains attributions for any 3rd-party open source code used in this 
 | is_ci | ISC | https://crates.io/crates/is_ci |
 | itertools | MIT, Apache-2.0 | https://crates.io/crates/itertools |
 | itoa | MIT, Apache-2.0 | https://crates.io/crates/itoa |
+| jaq-core | MIT | https://crates.io/crates/jaq-core |
+| jaq-interpret | MIT | https://crates.io/crates/jaq-interpret |
+| jaq-parse | MIT | https://crates.io/crates/jaq-parse |
+| jaq-std | MIT | https://crates.io/crates/jaq-std |
+| jaq-syn | MIT | https://crates.io/crates/jaq-syn |
 | jni | MIT, Apache-2.0 | https://crates.io/crates/jni |
 | jni-sys | MIT, Apache-2.0 | https://crates.io/crates/jni-sys |
 | jni-utils | BSD-3-Clause | https://crates.io/crates/jni-utils |

@@ -26,7 +26,6 @@ use ockam_api::colors::{color_primary, color_uri, OckamColor};
 use ockam_api::enroll::enrollment::{EnrollStatus, Enrollment};
 use ockam_api::enroll::oidc_service::OidcService;
 use ockam_api::nodes::InMemoryNode;
-use ockam_api::output::OutputFormat;
 use ockam_api::terminal::notification::NotificationHandler;
 use ockam_api::{fmt_log, fmt_ok, fmt_warn};
 use ockam_api::{fmt_separator, CliState};
@@ -90,7 +89,7 @@ impl EnrollCommand {
     }
 
     async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
-        if opts.global_args.output_format == OutputFormat::Json {
+        if opts.global_args.output_format()?.is_json() {
             return Err(miette::miette!(
             "This command is interactive and requires you to open a web browser to complete enrollment. \
             Please try running it again without '--output json'."

@@ -20,8 +20,10 @@ use miette::WrapErr;
 use miette::{miette, IntoDiagnostic};
 use ockam_core::env::get_env_with_default;
 
+use jaq_interpret::{Ctx, FilterT, ParseCtx, RcIter, Val};
 use r3bl_rs_utils_core::*;
 use r3bl_tuify::*;
+use serde::Serialize;
 use tokio::sync::Mutex;
 use tokio::time::sleep;
 use tracing::warn;
@@ -314,8 +316,14 @@ impl<W: TerminalWriter + Debug> Terminal<W, ToStdOut> {
         self
     }
 
+    pub fn json_obj<T: Serialize>(mut self, msg: T) -> Result<Self> {
+        self.mode.output.json = Some(serde_json::to_value(msg).into_diagnostic()?);
+        Ok(self)
+    }
+
+    // This function is deprecated in favor of the `json_obj` function above.
     pub fn json<T: Display>(mut self, msg: T) -> Self {
-        self.mode.output.json = Some(msg.to_string());
+        self.mode.output.json = Some(serde_json::from_str(&msg.to_string()).unwrap());
         self
     }
 
@@ -328,9 +336,13 @@ impl<W: TerminalWriter + Debug> Terminal<W, ToStdOut> {
             return Err(miette!("At least one output format must be defined"))?;
         }
 
-        let plain = self.mode.output.plain.as_ref();
-        let machine = self.mode.output.machine.as_ref();
-        let json = self.mode.output.json.as_ref();
+        let plain = self.mode.output.plain.clone();
+        let machine = self.mode.output.machine.clone();
+        let json = self.mode.output.json.clone();
+        let (pretty, jq_query) = match self.output_format.clone() {
+            OutputFormat::Json { pretty, jq_query } => (pretty, jq_query),
+            _ => (false, None),
+        };
 
         let msg = match self.output_format {
             OutputFormat::Plain => {
@@ -339,7 +351,9 @@ impl<W: TerminalWriter + Debug> Terminal<W, ToStdOut> {
                     match (plain, machine, json) {
                         (Some(plain), _, _) => plain,
                         (None, Some(machine), _) => machine,
-                        (None, None, Some(json)) => json,
+                        (None, None, Some(json)) => {
+                            self.process_json_output(json, pretty, jq_query.as_ref())?
+                        }
                         _ => unreachable!(),
                     }
                 }
@@ -347,14 +361,16 @@ impl<W: TerminalWriter + Debug> Terminal<W, ToStdOut> {
                 else {
                     match (machine, json, plain) {
                         (Some(machine), _, _) => machine,
-                        (None, Some(json), _) => json,
+                        (None, Some(json), _) => {
+                            self.process_json_output(json, pretty, jq_query.as_ref())?
+                        }
                         (None, None, Some(plain)) => plain,
                         _ => unreachable!(),
                     }
                 }
             }
-            OutputFormat::Json => match json {
-                Some(json) => json,
+            OutputFormat::Json { .. } => match json {
+                Some(json) => self.process_json_output(json, pretty, jq_query.as_ref())?,
                 // If not set, no fallback is provided
                 None => {
                     warn!("JSON output is not defined for this command");
@@ -375,6 +391,55 @@ impl<W: TerminalWriter + Debug> Terminal<W, ToStdOut> {
             self.stdout.write(msg)?;
         }
         Ok(())
+    }
+
+    fn process_json_output(
+        &self,
+        json: serde_json::Value,
+        pretty: bool,
+        jq_query: Option<&String>,
+    ) -> Result<String> {
+        match jq_query {
+            Some(jq_query) => {
+                let filter = {
+                    let mut ctx = ParseCtx::new(Vec::new());
+                    ctx.insert_natives(jaq_core::core());
+                    ctx.insert_defs(jaq_std::std());
+                    let (filter, errs) = jaq_parse::parse(jq_query, jaq_parse::main());
+                    if !errs.is_empty() {
+                        let error_message = errs
+                            .iter()
+                            .map(|e| e.to_string())
+                            .collect::<Vec<_>>()
+                            .join(", ");
+                        return Err(miette!(error_message))?;
+                    }
+                    match filter {
+                        Some(filter) => ctx.compile(filter),
+                        None => return Err(miette!("Failed to parse jq query"))?,
+                    }
+                };
+                let inputs = RcIter::new(core::iter::empty());
+                let mut output = filter.run((Ctx::new([], &inputs), Val::from(json)));
+                let mut ret = Vec::<serde_json::Value>::new();
+                while let Some(Ok(val)) = output.next() {
+                    ret.push(val.into());
+                }
+                match ret.len() {
+                    1 if pretty => Ok(serde_json::to_string_pretty(&ret[0]).into_diagnostic()?),
+                    1 if !pretty => Ok(serde_json::to_string(&ret[0]).into_diagnostic()?),
+                    _ if pretty => Ok(serde_json::to_string_pretty(&ret).into_diagnostic()?),
+                    _ => Ok(serde_json::to_string(&ret).into_diagnostic()?),
+                }
+            }
+            None => {
+                if pretty {
+                    Ok(serde_json::to_string_pretty(&json).into_diagnostic()?)
+                } else {
+                    Ok(serde_json::to_string(&json).into_diagnostic()?)
+                }
+            }
+        }
     }
 }
 
@@ -453,7 +518,7 @@ pub struct ToStdOut {
 struct Output {
     plain: Option<String>,
     machine: Option<String>,
-    json: Option<String>,
+    json: Option<serde_json::Value>,
 }
 
 impl Output {

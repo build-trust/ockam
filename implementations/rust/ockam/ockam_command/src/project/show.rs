@@ -127,7 +127,7 @@ impl ShowCommandTui for ShowTui {
         self.terminal()
             .stdout()
             .plain(project.item()?)
-            .json(serde_json::to_string(&project).into_diagnostic()?)
+            .json_obj(project)?
             .write_line()?;
         Ok(())
     }
