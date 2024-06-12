@@ -1,5 +1,5 @@
 use crate::database::migrations::RustMigration;
-use crate::database::{FromSqlxError, ToSqlxType, ToVoid};
+use crate::database::{FromSqlxError, ToVoid};
 use ockam_core::{async_trait, Result};
 use sqlx::*;
 
@@ -17,7 +17,7 @@ impl RustMigration for RemoveOrphanResources {
         Self::version()
     }
 
-    async fn migrate(&self, connection: &mut SqliteConnection) -> Result<bool> {
+    async fn migrate(&self, connection: &mut AnyConnection) -> Result<bool> {
         Self::migrate(connection).await
     }
 }
@@ -33,7 +33,7 @@ impl RemoveOrphanResources {
         "migration_20240313100000_remove_orphan_resources"
     }
 
-    pub(crate) async fn migrate(connection: &mut SqliteConnection) -> Result<bool> {
+    pub(crate) async fn migrate(connection: &mut AnyConnection) -> Result<bool> {
         let mut transaction = Connection::begin(&mut *connection).await.into_core()?;
 
         // Get existing node names
@@ -53,9 +53,9 @@ impl RemoveOrphanResources {
         for resource in resources {
             if !node_names.iter().any(|n| n.name == resource.node_name) {
                 query("DELETE FROM resource WHERE resource_name = ? AND resource_type = ? AND node_name = ?")
-                    .bind(resource.resource_name.to_sql())
-                    .bind(resource.resource_type.to_sql())
-                    .bind(resource.node_name.to_sql())
+                    .bind(resource.resource_name)
+                    .bind(resource.resource_type)
+                    .bind(resource.node_name)
                     .execute(&mut *transaction)
                     .await
                     .void()?;
@@ -86,8 +86,8 @@ mod test {
     use crate::database::migrations::node_migration_set::NodeMigrationSet;
     use crate::database::{MigrationSet, SqlxDatabase};
     use ockam_core::compat::rand::random_string;
+    use sqlx::any::AnyArguments;
     use sqlx::query::Query;
-    use sqlx::sqlite::SqliteArguments;
     use tempfile::NamedTempFile;
 
     use super::*;
@@ -108,11 +108,11 @@ mod test {
 
         // insert a node
         query("INSERT INTO node (name, identifier, verbosity, is_default, is_authority) VALUES (?, ?, ?, ?, ?)")
-            .bind("n1".to_sql())
-            .bind(random_string().to_sql())
-            .bind(0.to_sql())
-            .bind(false.to_sql())
-            .bind(false.to_sql())
+            .bind("n1")
+            .bind(random_string())
+            .bind(0)
+            .bind(false)
+            .bind(false)
             .execute(&mut *connection)
             .await
             .void()?;
@@ -160,11 +160,11 @@ mod test {
     fn insert_resource(
         resource: &str,
         node_name: &str,
-    ) -> Query<'static, Sqlite, SqliteArguments<'static>> {
+    ) -> Query<'static, Any, AnyArguments<'static>> {
         let resource_type = random_string();
         query("INSERT INTO resource (resource_name, resource_type, node_name) VALUES (?, ?, ?)")
-            .bind(resource.to_sql())
-            .bind(resource_type.to_sql())
-            .bind(node_name.to_sql())
+            .bind(resource.to_string())
+            .bind(resource_type)
+            .bind(node_name.to_string())
     }
 }

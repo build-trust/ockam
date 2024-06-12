@@ -93,7 +93,7 @@ impl<'de> Deserialize<'de> for OneTimeCode {
 
 impl ToSqlxType for OneTimeCode {
     fn to_sql(&self) -> SqlxType {
-        self.to_string().to_sql()
+        SqlxType::Text(self.to_string())
     }
 }
 

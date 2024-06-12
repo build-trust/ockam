@@ -1,9 +1,9 @@
-use sqlx::sqlite::SqliteRow;
+use sqlx::any::AnyRow;
 use sqlx::*;
 
 use ockam_core::async_trait;
 use ockam_core::Result;
-use ockam_node::database::{FromSqlxError, SqlxDatabase, ToSqlxType, ToVoid};
+use ockam_node::database::{Boolean, FromSqlxError, SqlxDatabase, ToVoid};
 
 use crate::cloud::space::Space;
 
@@ -34,25 +34,26 @@ impl SpacesRepository for SpacesSqlxDatabase {
 
         let query1 =
             query_scalar("SELECT EXISTS (SELECT 1 FROM space WHERE is_default=$1 AND space_id=$2)")
-                .bind(true.to_sql())
-                .bind(space.id.to_sql());
-        let is_already_default: bool = query1.fetch_one(&mut *transaction).await.into_core()?;
+                .bind(true)
+                .bind(&space.id);
+        let is_already_default: Boolean = query1.fetch_one(&mut *transaction).await.into_core()?;
+        let is_already_default = is_already_default.to_bool();
 
         let query2 = query("INSERT OR REPLACE INTO space VALUES (?, ?, ?)")
-            .bind(space.id.to_sql())
-            .bind(space.name.to_sql())
-            .bind(is_already_default.to_sql());
+            .bind(&space.id)
+            .bind(&space.name)
+            .bind(is_already_default);
         query2.execute(&mut *transaction).await.void()?;
 
         // remove any existing users related to that space if any
-        let query3 = query("DELETE FROM user_space WHERE space_id=$1").bind(space.id.to_sql());
+        let query3 = query("DELETE FROM user_space WHERE space_id=$1").bind(&space.id);
         query3.execute(&mut *transaction).await.void()?;
 
         // store the users associated to that space
         for user_email in &space.users {
             let query4 = query("INSERT OR REPLACE INTO user_space VALUES (?, ?)")
-                .bind(user_email.to_sql())
-                .bind(space.id.to_sql());
+                .bind(user_email)
+                .bind(&space.id);
             query4.execute(&mut *transaction).await.void()?;
         }
 
@@ -60,8 +61,8 @@ impl SpacesRepository for SpacesSqlxDatabase {
     }
 
     async fn get_space(&self, space_id: &str) -> Result<Option<Space>> {
-        let query = query("SELECT space_name FROM space WHERE space_id=$1").bind(space_id.to_sql());
-        let row: Option<SqliteRow> = query
+        let query = query("SELECT space_name FROM space WHERE space_id=$1").bind(space_id);
+        let row: Option<AnyRow> = query
             .fetch_optional(&*self.database.pool)
             .await
             .into_core()?;
@@ -77,14 +78,14 @@ impl SpacesRepository for SpacesSqlxDatabase {
     async fn get_space_by_name(&self, name: &str) -> Result<Option<Space>> {
         let mut transaction = self.database.begin().await.into_core()?;
 
-        let query1 = query_as("SELECT space_id, space_name FROM space WHERE space_name=$1")
-            .bind(name.to_sql());
+        let query1 =
+            query_as("SELECT space_id, space_name FROM space WHERE space_name=$1").bind(name);
         let row: Option<SpaceRow> = query1.fetch_optional(&mut *transaction).await.into_core()?;
         let space = match row.map(|r| r.space()) {
             Some(mut space) => {
                 let query2 =
                     query_as("SELECT space_id, user_email FROM user_space WHERE space_id=$1")
-                        .bind(space.id.to_sql());
+                        .bind(&space.id);
                 let rows: Vec<UserSpaceRow> =
                     query2.fetch_all(&mut *transaction).await.into_core()?;
                 let users = rows.into_iter().map(|r| r.user_email).collect();
@@ -106,7 +107,7 @@ impl SpacesRepository for SpacesSqlxDatabase {
         let mut spaces = vec![];
         for space_row in row {
             let query2 = query_as("SELECT space_id, user_email FROM user_space WHERE space_id=$1")
-                .bind(space_row.space_id.to_sql());
+                .bind(&space_row.space_id);
             let rows: Vec<UserSpaceRow> = query2.fetch_all(&mut *transaction).await.into_core()?;
             let users = rows.into_iter().map(|r| r.user_email).collect();
             spaces.push(space_row.space_with_user_emails(users))
@@ -118,8 +119,8 @@ impl SpacesRepository for SpacesSqlxDatabase {
     }
 
     async fn get_default_space(&self) -> Result<Option<Space>> {
-        let query = query("SELECT space_name FROM space WHERE is_default=$1").bind(true.to_sql());
-        let row: Option<SqliteRow> = query
+        let query = query("SELECT space_name FROM space WHERE is_default=$1").bind(true);
+        let row: Option<AnyRow> = query
             .fetch_optional(&*self.database.pool)
             .await
             .into_core()?;
@@ -134,14 +135,14 @@ impl SpacesRepository for SpacesSqlxDatabase {
         let mut transaction = self.database.begin().await.into_core()?;
         // set the space as the default one
         let query1 = query("UPDATE space SET is_default = ? WHERE space_id = ?")
-            .bind(true.to_sql())
-            .bind(space_id.to_sql());
+            .bind(true)
+            .bind(space_id);
         query1.execute(&mut *transaction).await.void()?;
 
         // set all the others as non-default
         let query2 = query("UPDATE space SET is_default = ? WHERE space_id <> ?")
-            .bind(false.to_sql())
-            .bind(space_id.to_sql());
+            .bind(false)
+            .bind(space_id);
         query2.execute(&mut *transaction).await.void()?;
         transaction.commit().await.void()
     }
@@ -149,10 +150,10 @@ impl SpacesRepository for SpacesSqlxDatabase {
     async fn delete_space(&self, space_id: &str) -> Result<()> {
         let mut transaction = self.database.begin().await.into_core()?;
 
-        let query1 = query("DELETE FROM space WHERE space_id=?").bind(space_id.to_sql());
+        let query1 = query("DELETE FROM space WHERE space_id=?").bind(space_id);
         query1.execute(&mut *transaction).await.void()?;
 
-        let query2 = query("DELETE FROM user_space WHERE space_id=?").bind(space_id.to_sql());
+        let query2 = query("DELETE FROM user_space WHERE space_id=?").bind(space_id);
         query2.execute(&mut *transaction).await.void()?;
 
         transaction.commit().await.void()

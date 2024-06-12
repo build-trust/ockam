@@ -39,7 +39,7 @@ impl CredentialSqlxDatabase {
     /// Return all cached credentials for the given node
     pub async fn get_all(&self) -> Result<Vec<(CredentialAndPurposeKey, String)>> {
         let query = query_as("SELECT credential, scope FROM credential WHERE node_name=?")
-            .bind(self.node_name.to_sql());
+            .bind(self.node_name.clone());
 
         let cached_credential: Vec<CachedCredentialAndScopeRow> =
             query.fetch_all(&*self.database.pool).await.into_core()?;
@@ -69,8 +69,8 @@ impl CredentialRepository for CredentialSqlxDatabase {
             )
             .bind(subject.to_sql())
             .bind(issuer.to_sql())
-            .bind(scope.to_sql())
-            .bind(self.node_name.to_sql());
+            .bind(scope)
+            .bind(self.node_name.clone());
         let cached_credential: Option<CachedCredentialRow> = query
             .fetch_optional(&*self.database.pool)
             .await
@@ -91,10 +91,10 @@ impl CredentialRepository for CredentialSqlxDatabase {
             )
             .bind(subject.to_sql())
             .bind(issuer.to_sql())
-            .bind(scope.to_sql())
-            .bind(credential.encode_as_cbor_bytes()?.to_sql())
+            .bind(scope)
+            .bind(credential.encode_as_cbor_bytes()?)
             .bind(expires_at.to_sql())
-            .bind(self.node_name.to_sql());
+            .bind(self.node_name.clone());
         query.execute(&*self.database.pool).await.void()
     }
 
@@ -102,8 +102,8 @@ impl CredentialRepository for CredentialSqlxDatabase {
         let query = query("DELETE FROM credential WHERE subject_identifier=$1 AND issuer_identifier=$2 AND scope=$3 AND node_name=$4")
             .bind(subject.to_sql())
             .bind(issuer.to_sql())
-            .bind(scope.to_sql())
-            .bind(self.node_name.to_sql());
+            .bind(scope)
+            .bind(self.node_name.clone());
         query.execute(&*self.database.pool).await.void()
     }
 }

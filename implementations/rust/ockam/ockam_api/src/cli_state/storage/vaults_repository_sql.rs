@@ -4,9 +4,10 @@ use std::str::FromStr;
 use sqlx::*;
 
 use crate::cli_state::{NamedVault, VaultsRepository};
-use ockam::{FromSqlxError, SqlxDatabase, ToSqlxType, ToVoid};
+use ockam::{FromSqlxError, SqlxDatabase, ToVoid};
 use ockam_core::async_trait;
 use ockam_core::Result;
+use ockam_node::database::{Boolean, ToSqlxType};
 
 #[derive(Clone)]
 pub struct VaultsSqlxDatabase {
@@ -29,10 +30,10 @@ impl VaultsSqlxDatabase {
 impl VaultsRepository for VaultsSqlxDatabase {
     async fn store_vault(&self, name: &str, path: &Path, is_kms: bool) -> Result<NamedVault> {
         let query = query("INSERT INTO vault VALUES (?1, ?2, ?3, ?4)")
-            .bind(name.to_sql())
+            .bind(name)
             .bind(path.to_sql())
-            .bind(true.to_sql())
-            .bind(is_kms.to_sql());
+            .bind(true)
+            .bind(is_kms);
         query.execute(&*self.database.pool).await.void()?;
 
         Ok(NamedVault::new(name, path.into(), is_kms))
@@ -41,19 +42,18 @@ impl VaultsRepository for VaultsSqlxDatabase {
     async fn update_vault(&self, name: &str, path: &Path) -> Result<()> {
         let query = query("UPDATE vault SET path=$1 WHERE name=$2")
             .bind(path.to_sql())
-            .bind(name.to_sql());
+            .bind(name);
         query.execute(&*self.database.pool).await.void()
     }
 
     /// Delete a vault by name
     async fn delete_named_vault(&self, name: &str) -> Result<()> {
-        let query = query("DELETE FROM vault WHERE name=?").bind(name.to_sql());
+        let query = query("DELETE FROM vault WHERE name=?").bind(name);
         query.execute(&*self.database.pool).await.void()
     }
 
     async fn get_named_vault(&self, name: &str) -> Result<Option<NamedVault>> {
-        let query =
-            query_as("SELECT name, path, is_kms FROM vault WHERE name = $1").bind(name.to_sql());
+        let query = query_as("SELECT name, path, is_kms FROM vault WHERE name = $1").bind(name);
         let row: Option<VaultRow> = query
             .fetch_optional(&*self.database.pool)
             .await
@@ -84,7 +84,7 @@ impl VaultsRepository for VaultsSqlxDatabase {
 pub(crate) struct VaultRow {
     name: String,
     path: String,
-    is_kms: bool,
+    is_kms: Boolean,
 }
 
 impl VaultRow {
@@ -92,7 +92,7 @@ impl VaultRow {
         Ok(NamedVault::new(
             &self.name,
             PathBuf::from_str(self.path.as_str()).unwrap(),
-            self.is_kms,
+            self.is_kms.to_bool(),
         ))
     }
 }

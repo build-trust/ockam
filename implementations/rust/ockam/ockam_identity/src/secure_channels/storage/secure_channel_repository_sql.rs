@@ -41,7 +41,7 @@ impl SecureChannelRepository for SecureChannelSqlxDatabase {
         let query = query_as(
             "SELECT role, my_identifier, their_identifier, decryptor_remote_address, decryptor_api_address, decryption_key_handle FROM secure_channel WHERE decryptor_remote_address=$1"
             )
-            .bind(decryptor_remote_address.to_string().to_sql());
+            .bind(decryptor_remote_address.to_string());
         let secure_channel: Option<SecureChannelRow> = query
             .fetch_optional(&*self.database.pool)
             .await
@@ -54,8 +54,8 @@ impl SecureChannelRepository for SecureChannelSqlxDatabase {
         let query = query(
             "INSERT OR REPLACE INTO secure_channel (role, my_identifier, their_identifier, decryptor_remote_address, decryptor_api_address, decryption_key_handle) VALUES (?, ?, ?, ?, ?, ?)"
             )
-            .bind(secure_channel.role().str().to_sql())
-            .bind(secure_channel.my_identifier().to_string().to_sql())
+            .bind(secure_channel.role().str())
+            .bind(secure_channel.my_identifier().to_sql())
             .bind(secure_channel.their_identifier().to_sql())
             .bind(secure_channel.decryptor_remote().to_sql())
             .bind(secure_channel.decryptor_api().to_sql())
@@ -65,7 +65,7 @@ impl SecureChannelRepository for SecureChannelSqlxDatabase {
 
     async fn delete(&self, decryptor_remote_address: &Address) -> Result<()> {
         let query = query("DELETE FROM secure_channel WHERE decryptor_remote_address=$1")
-            .bind(decryptor_remote_address.to_string().to_sql());
+            .bind(decryptor_remote_address.to_sql());
         query.execute(&*self.database.pool).await.void()
     }
 }

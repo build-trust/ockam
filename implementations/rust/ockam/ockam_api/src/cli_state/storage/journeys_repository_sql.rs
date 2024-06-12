@@ -6,7 +6,7 @@ use crate::cli_state::JourneysRepository;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::Result;
 use ockam_core::{async_trait, OpenTelemetryContext};
-use ockam_node::database::{FromSqlxError, SqlxDatabase, ToSqlxType, ToVoid};
+use ockam_node::database::{FromSqlxError, Nullable, SqlxDatabase, ToSqlxType, ToVoid};
 
 #[derive(Clone)]
 pub struct JourneysSqlxDatabase {
@@ -32,13 +32,13 @@ impl JourneysSqlxDatabase {
 impl JourneysRepository for JourneysSqlxDatabase {
     async fn store_project_journey(&self, project_journey: ProjectJourney) -> Result<()> {
         let query = query("INSERT OR REPLACE INTO project_journey VALUES (?, ?, ?, ?)")
-            .bind(project_journey.project_id().to_sql())
-            .bind(project_journey.opentelemetry_context().to_string().to_sql())
+            .bind(project_journey.project_id())
+            .bind(project_journey.opentelemetry_context().to_string())
             .bind(project_journey.start().to_sql())
             .bind(
                 project_journey
                     .previous_opentelemetry_context()
-                    .map(|c| c.to_string().to_sql()),
+                    .map(|c| c.to_string()),
             );
         query.execute(&*self.database.pool).await.void()
     }
@@ -56,7 +56,7 @@ impl JourneysRepository for JourneysSqlxDatabase {
         ORDER BY start_datetime DESC \
         LIMIT 1 OFFSET 0",
         )
-        .bind(project_id.to_sql())
+        .bind(project_id)
         .bind(now.to_sql());
         let row: Option<ProjectJourneyRow> = query
             .fetch_optional(&*self.database.pool)
@@ -66,19 +66,18 @@ impl JourneysRepository for JourneysSqlxDatabase {
     }
 
     async fn delete_project_journeys(&self, project_id: &str) -> Result<()> {
-        let query =
-            query("DELETE FROM project_journey where project_id = ?").bind(project_id.to_sql());
+        let query = query("DELETE FROM project_journey where project_id = ?").bind(project_id);
         query.execute(&*self.database.pool).await.void()
     }
 
     async fn store_host_journey(&self, host_journey: Journey) -> Result<()> {
         let query = query("INSERT OR REPLACE INTO host_journey VALUES (?, ?, ?)")
-            .bind(host_journey.opentelemetry_context().to_string().to_sql())
+            .bind(host_journey.opentelemetry_context().to_string())
             .bind(host_journey.start().to_sql())
             .bind(
                 host_journey
                     .previous_opentelemetry_context()
-                    .map(|c| c.to_string().to_sql()),
+                    .map(|c| c.to_string()),
             );
         query.execute(&*self.database.pool).await.void()
     }
@@ -109,7 +108,7 @@ struct ProjectJourneyRow {
     project_id: String,
     opentelemetry_context: String,
     start_datetime: String,
-    previous_opentelemetry_context: Option<String>,
+    previous_opentelemetry_context: Nullable<String>,
 }
 
 impl ProjectJourneyRow {
@@ -128,7 +127,7 @@ impl ProjectJourneyRow {
 
     fn previous_opentelemetry_context(&self) -> Result<Option<OpenTelemetryContext>> {
         self.previous_opentelemetry_context
-            .clone()
+            .to_option()
             .map(|c| c.try_into())
             .transpose()
     }
@@ -147,7 +146,7 @@ impl ProjectJourneyRow {
 struct HostJourneyRow {
     opentelemetry_context: String,
     start_datetime: String,
-    previous_opentelemetry_context: Option<String>,
+    previous_opentelemetry_context: Nullable<String>,
 }
 
 impl HostJourneyRow {
@@ -165,7 +164,7 @@ impl HostJourneyRow {
 
     fn previous_opentelemetry_context(&self) -> Result<Option<OpenTelemetryContext>> {
         self.previous_opentelemetry_context
-            .clone()
+            .to_option()
             .map(|c| c.try_into())
             .transpose()
     }

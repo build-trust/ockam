@@ -55,7 +55,7 @@ pub(crate) struct AuthorityMemberRow {
     attributes: Vec<u8>,
     added_by: String,
     added_at: i64,
-    is_pre_trusted: bool,
+    is_pre_trusted: i32,
 }
 
 impl TryFrom<AuthorityMemberRow> for AuthorityMember {
@@ -67,7 +67,7 @@ impl TryFrom<AuthorityMemberRow> for AuthorityMember {
             minicbor::decode(&value.attributes)?,
             Identifier::from_str(&value.added_by)?,
             TimestampInSeconds(value.added_at as u64),
-            value.is_pre_trusted,
+            value.is_pre_trusted == 1,
         );
 
         Ok(member)

@@ -18,7 +18,7 @@ impl RustMigration for UpdatePolicyExpressions {
         Self::version()
     }
 
-    async fn migrate(&self, connection: &mut SqliteConnection) -> Result<bool> {
+    async fn migrate(&self, connection: &mut AnyConnection) -> Result<bool> {
         Self::migrate_policy_expressions(connection).await
     }
 }
@@ -34,9 +34,7 @@ impl UpdatePolicyExpressions {
         "migration_20240503100000_update_policy_expressions"
     }
 
-    pub(crate) async fn migrate_policy_expressions(
-        connection: &mut SqliteConnection,
-    ) -> Result<bool> {
+    pub(crate) async fn migrate_policy_expressions(connection: &mut AnyConnection) -> Result<bool> {
         let mut transaction = Connection::begin(&mut *connection).await.into_core()?;
         query("UPDATE resource_policy SET expression = '(= subject.has_credential \"true\")' WHERE expression = 'subject.has_credential'").execute(&mut *transaction).await.void()?;
         query("UPDATE resource_type_policy SET expression = '(= subject.has_credential \"true\")' WHERE expression = 'subject.has_credential'").execute(&mut *transaction).await.void()?;
@@ -52,10 +50,9 @@ impl UpdatePolicyExpressions {
 mod test {
     use crate::database::migrations::node_migration_set::NodeMigrationSet;
     use crate::database::{MigrationSet, SqlxDatabase};
-    use crate::storage::database::sqlx_types::ToSqlxType;
     use ockam_core::compat::rand::random_string;
+    use sqlx::any::{AnyArguments, AnyRow};
     use sqlx::query::Query;
-    use sqlx::sqlite::{SqliteArguments, SqliteRow};
     use tempfile::NamedTempFile;
 
     use super::*;
@@ -92,7 +89,7 @@ mod test {
             .await?;
 
         // check that the update was successful for resource policies
-        let rows: Vec<SqliteRow> = query("SELECT expression FROM resource_policy")
+        let rows: Vec<AnyRow> = query("SELECT expression FROM resource_policy")
             .fetch_all(&mut *connection)
             .await
             .into_core()?;
@@ -104,7 +101,7 @@ mod test {
         }));
 
         // check that the update was successful for resource type policies
-        let rows: Vec<SqliteRow> = query("SELECT expression FROM resource_type_policy")
+        let rows: Vec<AnyRow> = query("SELECT expression FROM resource_type_policy")
             .fetch_all(&mut *connection)
             .await
             .into_core()?;
@@ -127,27 +124,25 @@ mod test {
     }
 
     /// HELPERS
-    fn insert_resource_policy(resource: &str) -> Query<'static, Sqlite, SqliteArguments<'static>> {
+    fn insert_resource_policy(resource: &str) -> Query<'static, Any, AnyArguments<'static>> {
         let action = "handle_message";
         let expression = "subject.has_credential";
         let node_name = random_string();
         query("INSERT INTO resource_policy (resource_name, action, expression, node_name) VALUES (?, ?, ?, ?)")
-            .bind(resource.to_sql())
-            .bind(action.to_sql())
-            .bind(expression.to_sql())
-            .bind(node_name.to_sql())
+            .bind(resource.to_string())
+            .bind(action)
+            .bind(expression)
+            .bind(node_name)
     }
 
-    fn insert_resource_type_policy(
-        resource: &str,
-    ) -> Query<'static, Sqlite, SqliteArguments<'static>> {
+    fn insert_resource_type_policy(resource: &str) -> Query<'static, Any, AnyArguments<'static>> {
         let action = "handle_message";
         let expression = "subject.has_credential";
         let node_name = random_string();
         query("INSERT INTO resource_type_policy (resource_type, action, expression, node_name) VALUES (?, ?, ?, ?)")
-            .bind(resource.to_sql())
-            .bind(action.to_sql())
-            .bind(expression.to_sql())
-            .bind(node_name.to_sql())
+            .bind(resource.to_string())
+            .bind(action)
+            .bind(expression)
+            .bind(node_name)
     }
 }

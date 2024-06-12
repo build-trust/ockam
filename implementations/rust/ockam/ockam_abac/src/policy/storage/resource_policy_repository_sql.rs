@@ -48,8 +48,8 @@ impl ResourcePoliciesRepository for ResourcePolicySqlxDatabase {
         )
         .bind(resource_name.to_sql())
         .bind(action.to_sql())
-        .bind(expression.to_string().to_sql())
-        .bind(self.node_name.to_sql());
+        .bind(expression.to_string())
+        .bind(&self.node_name);
         query.execute(&*self.database.pool).await.void()
     }
 
@@ -63,7 +63,7 @@ impl ResourcePoliciesRepository for ResourcePolicySqlxDatabase {
             FROM resource_policy
             WHERE node_name=$1 and resource_name=$2 and action=$3"#,
         )
-        .bind(self.node_name.to_sql())
+        .bind(&self.node_name)
         .bind(resource_name.to_sql())
         .bind(action.to_sql());
         let row: Option<PolicyRow> = query
@@ -79,7 +79,7 @@ impl ResourcePoliciesRepository for ResourcePolicySqlxDatabase {
             FROM resource_policy
             WHERE node_name=$1"#,
         )
-        .bind(self.node_name.to_sql());
+        .bind(&self.node_name);
         let row: Vec<PolicyRow> = query.fetch_all(&*self.database.pool).await.into_core()?;
         row.into_iter()
             .map(|r| r.try_into())
@@ -95,7 +95,7 @@ impl ResourcePoliciesRepository for ResourcePolicySqlxDatabase {
             FROM resource_policy
             WHERE node_name=$1 and resource_name=$2"#,
         )
-        .bind(self.node_name.to_sql())
+        .bind(&self.node_name)
         .bind(resource_name.to_sql());
         let row: Vec<PolicyRow> = query.fetch_all(&*self.database.pool).await.into_core()?;
         row.into_iter()
@@ -108,7 +108,7 @@ impl ResourcePoliciesRepository for ResourcePolicySqlxDatabase {
             r#"DELETE FROM resource_policy
             WHERE node_name=? and resource_name=? and action=?"#,
         )
-        .bind(self.node_name.to_sql())
+        .bind(&self.node_name)
         .bind(resource_name.to_sql())
         .bind(action.to_sql());
         query.execute(&*self.database.pool).await.void()

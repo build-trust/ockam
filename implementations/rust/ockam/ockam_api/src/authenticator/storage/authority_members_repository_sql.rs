@@ -53,7 +53,7 @@ impl AuthorityMembersRepository for AuthorityMembersSqlxDatabase {
     async fn delete_member(&self, identifier: &Identifier) -> Result<()> {
         let query = query("DELETE FROM authority_member WHERE identifier=? AND is_pre_trusted=?")
             .bind(identifier.to_sql())
-            .bind(false.to_sql());
+            .bind(false);
         query.execute(&*self.database.pool).await.void()
     }
 
@@ -62,8 +62,8 @@ impl AuthorityMembersRepository for AuthorityMembersSqlxDatabase {
             .bind(member.identifier().to_sql())
             .bind(member.added_by().to_sql())
             .bind(member.added_at().to_sql())
-            .bind(member.is_pre_trusted().to_sql())
-            .bind(minicbor::to_vec(member.attributes())?.to_sql());
+            .bind(member.is_pre_trusted())
+            .bind(minicbor::to_vec(member.attributes())?);
 
         query.execute(&*self.database.pool).await.void()
     }
@@ -73,8 +73,7 @@ impl AuthorityMembersRepository for AuthorityMembersSqlxDatabase {
         pre_trusted_identities: &PreTrustedIdentities,
     ) -> Result<()> {
         let mut transaction = self.database.begin().await.into_core()?;
-        let query1 =
-            query("DELETE FROM authority_member WHERE is_pre_trusted=?").bind(true.to_sql());
+        let query1 = query("DELETE FROM authority_member WHERE is_pre_trusted=?").bind(true);
         query1.execute(&mut *transaction).await.void()?;
 
         for (identifier, pre_trusted_identity) in pre_trusted_identities.deref() {
@@ -83,8 +82,8 @@ impl AuthorityMembersRepository for AuthorityMembersSqlxDatabase {
                     .bind(identifier.to_sql())
                     .bind(pre_trusted_identity.attested_by().to_sql())
                     .bind(pre_trusted_identity.added_at().to_sql())
-                    .bind(true.to_sql())
-                    .bind(minicbor::to_vec(pre_trusted_identity.attrs())?.to_sql());
+                    .bind(true)
+                    .bind(minicbor::to_vec(pre_trusted_identity.attrs())?);
 
             query2.execute(&mut *transaction).await.void()?;
         }

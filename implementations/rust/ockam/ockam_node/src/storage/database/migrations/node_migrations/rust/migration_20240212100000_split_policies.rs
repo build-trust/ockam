@@ -1,5 +1,5 @@
 use crate::database::migrations::RustMigration;
-use crate::database::{FromSqlxError, ToSqlxType, ToVoid};
+use crate::database::{FromSqlxError, ToVoid};
 use ockam_core::{async_trait, Result};
 use sqlx::*;
 
@@ -18,7 +18,7 @@ impl RustMigration for SplitPolicies {
         Self::version()
     }
 
-    async fn migrate(&self, connection: &mut SqliteConnection) -> Result<bool> {
+    async fn migrate(&self, connection: &mut AnyConnection) -> Result<bool> {
         Self::migrate_policies(connection).await
     }
 }
@@ -34,8 +34,10 @@ impl SplitPolicies {
         "migration_20240212100000_migrate_policies"
     }
 
-    pub(crate) async fn migrate_policies(connection: &mut SqliteConnection) -> Result<bool> {
-        let mut transaction = Connection::begin(&mut *connection).await.into_core()?;
+    pub(crate) async fn migrate_policies(connection: &mut AnyConnection) -> Result<bool> {
+        let mut transaction = sqlx::Connection::begin(&mut *connection)
+            .await
+            .into_core()?;
 
         let query_policies =
             query_as("SELECT resource_name, action, expression, node_name FROM resource_policy");
@@ -47,10 +49,10 @@ impl SplitPolicies {
         for row in rows {
             if row.resource_name == "tcp-outlet" || row.resource_name == "tcp-inlet" {
                 query("INSERT INTO resource_type_policy (resource_type, action, expression, node_name) VALUES (?, ?, ?, ?)")
-                    .bind(row.resource_name.to_sql())
-                    .bind(row.action.to_sql())
-                    .bind(row.expression.to_sql())
-                    .bind(row.node_name.to_sql())
+                    .bind(row.resource_name)
+                    .bind(row.action)
+                    .bind(row.expression)
+                    .bind(row.node_name)
                     .execute(&mut *transaction)
                     .await
                     .void()?;
@@ -84,8 +86,8 @@ mod test {
     use crate::database::migrations::node_migration_set::NodeMigrationSet;
     use crate::database::{MigrationSet, SqlxDatabase};
     use ockam_core::compat::rand::random_string;
+    use sqlx::any::AnyArguments;
     use sqlx::query::Query;
-    use sqlx::sqlite::SqliteArguments;
     use tempfile::NamedTempFile;
 
     use super::*;
@@ -168,14 +170,14 @@ mod test {
     }
 
     /// HELPERS
-    fn insert_policy(resource: &str) -> Query<'static, Sqlite, SqliteArguments<'static>> {
+    fn insert_policy(resource: &str) -> Query<Any, AnyArguments> {
         let action = "handle_message";
         let expression = random_string();
         let node_name = random_string();
         query("INSERT INTO resource_policy (resource_name, action, expression, node_name) VALUES (?, ?, ?, ?)")
-            .bind(resource.to_sql())
-            .bind(action.to_sql())
-            .bind(expression.to_sql())
-            .bind(node_name.to_sql())
+            .bind(resource)
+            .bind(action)
+            .bind(expression)
+            .bind(node_name)
     }
 }

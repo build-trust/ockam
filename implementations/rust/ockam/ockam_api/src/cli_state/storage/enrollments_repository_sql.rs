@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use sqlx::sqlite::SqliteRow;
+use sqlx::any::AnyRow;
 use sqlx::FromRow;
 use sqlx::*;
 use time::OffsetDateTime;
@@ -9,6 +9,7 @@ use ockam::identity::Identifier;
 use ockam::{FromSqlxError, SqlxDatabase, ToSqlxType, ToVoid};
 use ockam_core::async_trait;
 use ockam_core::Result;
+use ockam_node::database::{Boolean, Nullable};
 
 use crate::cli_state::enrollments::IdentityEnrollment;
 use crate::cli_state::EnrollmentsRepository;
@@ -97,8 +98,8 @@ impl EnrollmentsRepository for EnrollmentsSqlxDatabase {
               named_identity.is_default = ?
             "#,
         )
-        .bind(true.to_sql());
-        let result: Option<SqliteRow> = query
+        .bind(true);
+        let result: Option<AnyRow> = query
             .fetch_optional(&*self.database.pool)
             .await
             .into_core()?;
@@ -119,8 +120,8 @@ impl EnrollmentsRepository for EnrollmentsSqlxDatabase {
               named_identity.name = ?
             "#,
         )
-        .bind(name.to_sql());
-        let result: Option<SqliteRow> = query
+        .bind(name);
+        let result: Option<AnyRow> = query
             .fetch_optional(&*self.database.pool)
             .await
             .into_core()?;
@@ -132,9 +133,9 @@ impl EnrollmentsRepository for EnrollmentsSqlxDatabase {
 pub struct EnrollmentRow {
     identifier: String,
     name: String,
-    email: Option<String>,
-    is_default: bool,
-    enrolled_at: Option<i64>,
+    email: Nullable<String>,
+    is_default: Boolean,
+    enrolled_at: Nullable<i64>,
 }
 
 impl EnrollmentRow {
@@ -142,14 +143,14 @@ impl EnrollmentRow {
         let identifier = Identifier::from_str(self.identifier.as_str())?;
         let email = self
             .email
-            .as_ref()
+            .to_option()
             .map(|e| EmailAddress::parse(e.as_str()))
             .transpose()?;
 
         Ok(IdentityEnrollment::new(
             identifier,
             self.name.clone(),
-            self.is_default,
+            self.is_default.to_bool(),
             self.enrolled_at(),
             email,
         ))
@@ -157,6 +158,7 @@ impl EnrollmentRow {
 
     fn enrolled_at(&self) -> Option<OffsetDateTime> {
         self.enrolled_at
+            .to_option()
             .map(|at| OffsetDateTime::from_unix_timestamp(at).unwrap_or(OffsetDateTime::now_utc()))
     }
 }

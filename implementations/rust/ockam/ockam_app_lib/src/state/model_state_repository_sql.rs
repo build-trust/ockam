@@ -5,7 +5,7 @@ use std::sync::Arc;
 use sqlx::*;
 use tracing::debug;
 
-use ockam::{FromSqlxError, SqlxDatabase, ToSqlxType, ToVoid};
+use ockam::{Boolean, FromSqlxError, Nullable, SqlxDatabase, ToSqlxType, ToVoid};
 use ockam_api::nodes::models::portal::OutletStatus;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::Error;
@@ -45,7 +45,7 @@ impl ModelStateRepository for ModelStateSqlxDatabase {
 
         // remove previous tcp_outlet_status state
         query("DELETE FROM tcp_outlet_status where node_name = ?")
-            .bind(node_name.to_sql())
+            .bind(node_name)
             .execute(&mut *transaction)
             .await
             .void()?;
@@ -53,10 +53,10 @@ impl ModelStateRepository for ModelStateSqlxDatabase {
         // re-insert the new state
         for tcp_outlet_status in &model_state.tcp_outlets {
             let query = query("INSERT OR REPLACE INTO tcp_outlet_status VALUES (?, ?, ?, ?)")
-                .bind(node_name.to_sql())
+                .bind(node_name)
                 .bind(tcp_outlet_status.socket_addr.to_sql())
                 .bind(tcp_outlet_status.worker_addr.to_sql())
-                .bind(tcp_outlet_status.payload.as_ref().map(|p| p.to_sql()));
+                .bind(tcp_outlet_status.payload.as_ref());
             query.execute(&mut *transaction).await.void()?;
         }
 
@@ -69,9 +69,9 @@ impl ModelStateRepository for ModelStateSqlxDatabase {
         // re-insert the new state
         for incoming_service in &model_state.incoming_services {
             let query = query("INSERT OR REPLACE INTO incoming_service VALUES (?, ?, ?)")
-                .bind(incoming_service.invitation_id.to_sql())
-                .bind(incoming_service.enabled.to_sql())
-                .bind(incoming_service.name.as_ref().map(|n| n.to_sql()));
+                .bind(&incoming_service.invitation_id)
+                .bind(incoming_service.enabled)
+                .bind(incoming_service.name.as_ref());
             query.execute(&mut *transaction).await.void()?;
         }
         transaction.commit().await.void()?;
@@ -83,7 +83,7 @@ impl ModelStateRepository for ModelStateSqlxDatabase {
         let query1 = query_as(
             "SELECT socket_addr, worker_addr, payload FROM tcp_outlet_status WHERE node_name = ?",
         )
-        .bind(node_name.to_sql());
+        .bind(node_name);
         let result: Vec<TcpOutletStatusRow> =
             query1.fetch_all(&*self.database.pool).await.into_core()?;
         let tcp_outlets = result
@@ -109,7 +109,7 @@ impl ModelStateRepository for ModelStateSqlxDatabase {
 struct TcpOutletStatusRow {
     socket_addr: String,
     worker_addr: String,
-    payload: Option<String>,
+    payload: Nullable<String>,
 }
 
 impl TcpOutletStatusRow {
@@ -120,7 +120,7 @@ impl TcpOutletStatusRow {
         Ok(OutletStatus {
             socket_addr,
             worker_addr,
-            payload: self.payload.clone(),
+            payload: self.payload.to_option(),
         })
     }
 }
@@ -129,16 +129,16 @@ impl TcpOutletStatusRow {
 #[derive(sqlx::FromRow)]
 struct PersistentIncomingServiceRow {
     invitation_id: String,
-    enabled: bool,
-    name: Option<String>,
+    enabled: Boolean,
+    name: Nullable<String>,
 }
 
 impl PersistentIncomingServiceRow {
     fn persistent_incoming_service(&self) -> Result<PersistentIncomingService> {
         Ok(PersistentIncomingService {
             invitation_id: self.invitation_id.clone(),
-            enabled: self.enabled,
-            name: self.name.clone(),
+            enabled: self.enabled.to_bool(),
+            name: self.name.to_option(),
         })
     }
 }

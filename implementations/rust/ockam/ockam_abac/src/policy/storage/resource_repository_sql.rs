@@ -42,7 +42,7 @@ impl ResourcesRepository for ResourcesSqlxDatabase {
         )
         .bind(resource.resource_name.to_sql())
         .bind(resource.resource_type.to_sql())
-        .bind(self.node_name.to_sql());
+        .bind(&self.node_name);
         query.execute(&*self.database.pool).await.void()
     }
 
@@ -52,7 +52,7 @@ impl ResourcesRepository for ResourcesSqlxDatabase {
             FROM resource
             WHERE node_name=$1 and resource_name=$2"#,
         )
-        .bind(self.node_name.to_sql())
+        .bind(&self.node_name)
         .bind(resource_name.to_sql());
         let row: Option<ResourceRow> = query
             .fetch_optional(&*self.database.pool)
@@ -68,7 +68,7 @@ impl ResourcesRepository for ResourcesSqlxDatabase {
             r#"DELETE FROM resource
             WHERE node_name=? and resource_name=?"#,
         )
-        .bind(self.node_name.to_sql())
+        .bind(&self.node_name)
         .bind(resource_name.to_sql());
         query.execute(&mut *transaction).await.void()?;
 
@@ -76,7 +76,7 @@ impl ResourcesRepository for ResourcesSqlxDatabase {
             r#"DELETE FROM resource_policy
             WHERE node_name=? and resource_name=?"#,
         )
-        .bind(self.node_name.to_sql())
+        .bind(&self.node_name)
         .bind(resource_name.to_sql());
         query.execute(&mut *transaction).await.void()?;
 

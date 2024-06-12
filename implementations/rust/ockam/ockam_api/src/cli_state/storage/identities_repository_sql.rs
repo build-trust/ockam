@@ -5,7 +5,7 @@ use sqlx::*;
 use ockam::identity::Identifier;
 use ockam_core::async_trait;
 use ockam_core::Result;
-use ockam_node::database::{FromSqlxError, SqlxDatabase, ToSqlxType, ToVoid};
+use ockam_node::database::{Boolean, FromSqlxError, SqlxDatabase, ToSqlxType, ToVoid};
 
 use crate::cli_state::{IdentitiesRepository, NamedIdentity};
 
@@ -42,15 +42,16 @@ impl IdentitiesRepository for IdentitiesSqlxDatabase {
         let query1 = query_scalar(
             "SELECT EXISTS(SELECT 1 FROM named_identity WHERE is_default=$1 AND name=$2)",
         )
-        .bind(true.to_sql())
-        .bind(name.to_sql());
-        let is_already_default: bool = query1.fetch_one(&mut *transaction).await.into_core()?;
+        .bind(true)
+        .bind(name);
+        let is_already_default: i32 = query1.fetch_one(&mut *transaction).await.into_core()?;
+        let is_already_default = is_already_default == 1;
 
         let query2 = query("INSERT OR REPLACE INTO named_identity VALUES (?, ?, ?, ?)")
             .bind(identifier.to_sql())
-            .bind(name.to_sql())
-            .bind(vault_name.to_sql())
-            .bind(is_already_default.to_sql());
+            .bind(name)
+            .bind(vault_name)
+            .bind(is_already_default);
         query2.execute(&mut *transaction).await.void()?;
 
         transaction.commit().await.void()?;
@@ -70,7 +71,7 @@ impl IdentitiesRepository for IdentitiesSqlxDatabase {
         let query1 = query_as(
             "SELECT identifier, name, vault_name, is_default FROM named_identity WHERE name=$1",
         )
-        .bind(name.to_sql());
+        .bind(name);
         let row: Option<NamedIdentityRow> =
             query1.fetch_optional(&mut *transaction).await.into_core()?;
         let named_identity = row.map(|r| r.named_identity()).transpose()?;
@@ -81,7 +82,7 @@ impl IdentitiesRepository for IdentitiesSqlxDatabase {
 
             // otherwise delete it and set another identity as the default
             Some(named_identity) => {
-                let query2 = query("DELETE FROM named_identity WHERE name=?").bind(name.to_sql());
+                let query2 = query("DELETE FROM named_identity WHERE name=?").bind(name);
                 query2.execute(&mut *transaction).await.void()?;
 
                 // if the deleted identity was the default one, select another identity to be the default one
@@ -94,8 +95,8 @@ impl IdentitiesRepository for IdentitiesSqlxDatabase {
                     {
                         let query3 =
                             query("UPDATE named_identity SET is_default = ? WHERE name = ?")
-                                .bind(true.to_sql())
-                                .bind(other_name.to_sql());
+                                .bind(true)
+                                .bind(other_name);
                         query3.execute(&mut *transaction).await.void()?
                     }
                 }
@@ -122,7 +123,7 @@ impl IdentitiesRepository for IdentitiesSqlxDatabase {
         let query = query_as(
             "SELECT identifier, name, vault_name, is_default FROM named_identity WHERE name=$1",
         )
-        .bind(name.to_sql());
+        .bind(name);
         let row: Option<NamedIdentityRow> = query
             .fetch_optional(&*self.database.pool)
             .await
@@ -147,7 +148,7 @@ impl IdentitiesRepository for IdentitiesSqlxDatabase {
         let query = query_as(
             "SELECT identifier, name, vault_name, is_default FROM named_identity WHERE name=$1",
         )
-        .bind(name.to_sql());
+        .bind(name);
         let row: Option<NamedIdentityRow> = query
             .fetch_optional(&*self.database.pool)
             .await
@@ -178,7 +179,7 @@ impl IdentitiesRepository for IdentitiesSqlxDatabase {
         &self,
         vault_name: &str,
     ) -> Result<Vec<NamedIdentity>> {
-        let query = query_as("SELECT identifier, name, vault_name, is_default FROM named_identity WHERE vault_name=?").bind(vault_name.to_sql());
+        let query = query_as("SELECT identifier, name, vault_name, is_default FROM named_identity WHERE vault_name=?").bind(vault_name);
         let row: Vec<NamedIdentityRow> = query.fetch_all(&*self.database.pool).await.into_core()?;
         row.iter().map(|r| r.named_identity()).collect()
     }
@@ -187,14 +188,14 @@ impl IdentitiesRepository for IdentitiesSqlxDatabase {
         let mut transaction = self.database.begin().await.into_core()?;
         // set the identifier as the default one
         let query1 = query("UPDATE named_identity SET is_default = ? WHERE name = ?")
-            .bind(true.to_sql())
-            .bind(name.to_sql());
+            .bind(true)
+            .bind(name);
         query1.execute(&mut *transaction).await.void()?;
 
         // set all the others as non-default
         let query2 = query("UPDATE named_identity SET is_default = ? WHERE name <> ?")
-            .bind(false.to_sql())
-            .bind(name.to_sql());
+            .bind(false)
+            .bind(name);
         query2.execute(&mut *transaction).await.void()?;
         transaction.commit().await.void()
     }
@@ -203,13 +204,13 @@ impl IdentitiesRepository for IdentitiesSqlxDatabase {
         let mut transaction = self.database.begin().await.into_core()?;
         // set the identifier as the default one
         let query1 = query("UPDATE named_identity SET is_default = ? WHERE identifier = ?")
-            .bind(true.to_sql())
+            .bind(true)
             .bind(identifier.to_sql());
         query1.execute(&mut *transaction).await.void()?;
 
         // set all the others as non-default
         let query2 = query("UPDATE named_identity SET is_default = ? WHERE identifier <> ?")
-            .bind(false.to_sql())
+            .bind(false)
             .bind(identifier.to_sql());
         query2.execute(&mut *transaction).await.void()?;
         transaction.commit().await.void()
@@ -217,7 +218,7 @@ impl IdentitiesRepository for IdentitiesSqlxDatabase {
 
     async fn get_default_named_identity(&self) -> Result<Option<NamedIdentity>> {
         let query =
-            query_as("SELECT identifier, name, vault_name, is_default FROM named_identity WHERE is_default=$1").bind(true.to_sql());
+            query_as("SELECT identifier, name, vault_name, is_default FROM named_identity WHERE is_default=$1").bind(true);
         let row: Option<NamedIdentityRow> = query
             .fetch_optional(&*self.database.pool)
             .await
@@ -231,7 +232,7 @@ pub(crate) struct NamedIdentityRow {
     identifier: String,
     name: String,
     vault_name: String,
-    is_default: bool,
+    is_default: Boolean,
 }
 
 impl NamedIdentityRow {
@@ -253,7 +254,7 @@ impl NamedIdentityRow {
             self.identifier()?,
             self.name.clone(),
             self.vault_name.clone(),
-            self.is_default,
+            self.is_default.to_bool(),
         ))
     }
 }

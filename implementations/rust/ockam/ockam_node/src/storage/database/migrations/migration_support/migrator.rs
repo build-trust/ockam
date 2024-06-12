@@ -1,9 +1,9 @@
 use ockam_core::compat::collections::HashSet;
 use ockam_core::compat::time::now;
 use ockam_core::errcode::{Kind, Origin};
+use sqlx::any::AnyRow;
 use sqlx::migrate::{AppliedMigration, Migrate, Migration as SqlxMigration};
-use sqlx::sqlite::SqliteRow;
-use sqlx::{query, Row, SqliteConnection, SqlitePool};
+use sqlx::{query, Any, AnyConnection, Pool, Row};
 use std::cmp::Ordering;
 use time::OffsetDateTime;
 
@@ -67,11 +67,7 @@ impl Migrator {
 }
 
 impl Migrator {
-    async fn run_migrations(
-        &self,
-        connection: &mut SqliteConnection,
-        up_to: Version,
-    ) -> Result<()> {
+    async fn run_migrations(&self, connection: &mut AnyConnection, up_to: Version) -> Result<()> {
         connection.ensure_migrations_table().await.into_core()?;
 
         let version = connection.dirty_version().await.into_core()?;
@@ -133,13 +129,12 @@ impl Migrator {
 
 impl Migrator {
     pub(crate) async fn has_migrated(
-        connection: &mut SqliteConnection,
+        connection: &mut AnyConnection,
         migration_name: &str,
     ) -> Result<bool> {
-        let query = query("SELECT COUNT(*) FROM _rust_migrations WHERE name=?")
-            .bind(migration_name.to_sql());
-        let count_raw: Option<SqliteRow> =
-            query.fetch_optional(&mut *connection).await.into_core()?;
+        let query =
+            query("SELECT COUNT(*) FROM _rust_migrations WHERE name=?").bind(migration_name);
+        let count_raw: Option<AnyRow> = query.fetch_optional(&mut *connection).await.into_core()?;
 
         if let Some(count_raw) = count_raw {
             let count: i64 = count_raw.get(0);
@@ -150,7 +145,7 @@ impl Migrator {
     }
 
     pub(crate) async fn mark_as_migrated(
-        connection: &mut SqliteConnection,
+        connection: &mut AnyConnection,
         migration_name: &str,
     ) -> Result<()> {
         let now = now()?;
@@ -158,7 +153,7 @@ impl Migrator {
             ockam_core::Error::new(Origin::Node, Kind::Internal, "Can't convert timestamp")
         })?;
         let query = query("INSERT OR REPLACE INTO _rust_migrations (name, run_on) VALUES (?, ?)")
-            .bind(migration_name.to_sql())
+            .bind(migration_name)
             .bind(now.to_sql());
         query.execute(&mut *connection).await.void()?;
 
@@ -168,23 +163,22 @@ impl Migrator {
 
 impl Migrator {
     /// Run migrations up to the specified version (inclusive)
-    pub(crate) async fn migrate_up_to(&self, pool: &SqlitePool, up_to: Version) -> Result<()> {
+    pub(crate) async fn migrate_up_to(&self, pool: &Pool<Any>, up_to: Version) -> Result<()> {
         let mut connection = pool.acquire().await.into_core()?;
 
-        // Apparently does nothing for sqlite...
+        // This lock is only effective for Postgres
         connection.lock().await.into_core()?;
 
         let res = self.run_migrations(&mut connection, up_to).await;
 
         connection.unlock().await.into_core()?;
-
         res?;
 
         Ok(())
     }
 
     /// Run all migrations
-    pub async fn migrate(&self, pool: &SqlitePool) -> Result<()> {
+    pub async fn migrate(&self, pool: &Pool<Any>) -> Result<()> {
         self.migrate_up_to(pool, i64::MAX).await
     }
 }
@@ -194,7 +188,7 @@ impl Migrator {
     /// Run migrations up to the specified version (inclusive) but skip the last rust migration
     pub(crate) async fn migrate_up_to_skip_last_rust_migration(
         mut self,
-        pool: &SqlitePool,
+        pool: &Pool<Any>,
         up_to: Version,
     ) -> Result<()> {
         self.rust_migrations.retain(|m| m.version() < up_to);
@@ -224,7 +218,7 @@ impl NextMigration<'_> {
 
     async fn apply_sql_migration<'a>(
         migration: &'a SqlxMigration,
-        connection: &mut SqliteConnection,
+        connection: &mut AnyConnection,
         applied_migrations: &[AppliedMigration],
     ) -> Result<()> {
         if migration.migration_type.is_down_migration() {
@@ -255,7 +249,7 @@ impl NextMigration<'_> {
 
     async fn apply_rust_migration(
         migration: &dyn RustMigration,
-        connection: &mut SqliteConnection,
+        connection: &mut AnyConnection,
     ) -> Result<()> {
         if Migrator::has_migrated(connection, migration.name()).await? {
             return Ok(());
@@ -369,7 +363,7 @@ mod tests {
             self.version
         }
 
-        async fn migrate(&self, _connection: &mut SqliteConnection) -> Result<bool> {
+        async fn migrate(&self, _connection: &mut AnyConnection) -> Result<bool> {
             Ok(true)
         }
     }

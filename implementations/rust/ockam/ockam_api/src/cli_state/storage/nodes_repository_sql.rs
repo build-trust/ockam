@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use sqlx::sqlite::SqliteRow;
+use sqlx::any::AnyRow;
 use sqlx::*;
 
 use ockam::identity::Identifier;
@@ -8,6 +8,7 @@ use ockam::{FromSqlxError, SqlxDatabase, ToSqlxType, ToVoid};
 use ockam_core::async_trait;
 
 use ockam_core::Result;
+use ockam_node::database::{Boolean, Nullable};
 
 use crate::cli_state::{NodeInfo, NodesRepository};
 use crate::config::lookup::InternetAddress;
@@ -33,23 +34,23 @@ impl NodesSqlxDatabase {
 impl NodesRepository for NodesSqlxDatabase {
     async fn store_node(&self, node_info: &NodeInfo) -> Result<()> {
         let query = query("INSERT OR REPLACE INTO node VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)")
-            .bind(node_info.name().to_sql())
+            .bind(node_info.name())
             .bind(node_info.identifier().to_sql())
             .bind(node_info.verbosity().to_sql())
-            .bind(node_info.is_default().to_sql())
-            .bind(node_info.is_authority_node().to_sql())
+            .bind(node_info.is_default())
+            .bind(node_info.is_authority_node())
             .bind(
                 node_info
                     .tcp_listener_address()
                     .as_ref()
-                    .map(|a| a.to_string().to_sql()),
+                    .map(|a| a.to_string()),
             )
             .bind(node_info.pid().map(|p| p.to_sql()))
             .bind(
                 node_info
                     .http_server_address()
                     .as_ref()
-                    .map(|a| a.to_string().to_sql()),
+                    .map(|a| a.to_string()),
             );
         Ok(query.execute(&*self.database.pool).await.void()?)
     }
@@ -61,7 +62,7 @@ impl NodesRepository for NodesSqlxDatabase {
     }
 
     async fn get_node(&self, node_name: &str) -> Result<Option<NodeInfo>> {
-        let query = query_as("SELECT name, identifier, verbosity, is_default, is_authority, tcp_listener_address, pid, http_server_address FROM node WHERE name = ?").bind(node_name.to_sql());
+        let query = query_as("SELECT name, identifier, verbosity, is_default, is_authority, tcp_listener_address, pid, http_server_address FROM node WHERE name = ?").bind(node_name);
         let row: Option<NodeRow> = query
             .fetch_optional(&*self.database.pool)
             .await
@@ -76,7 +77,7 @@ impl NodesRepository for NodesSqlxDatabase {
     }
 
     async fn get_default_node(&self) -> Result<Option<NodeInfo>> {
-        let query = query_as("SELECT name, identifier, verbosity, is_default, is_authority, tcp_listener_address, pid, http_server_address FROM node WHERE is_default = ?").bind(true.to_sql());
+        let query = query_as("SELECT name, identifier, verbosity, is_default, is_authority, tcp_listener_address, pid, http_server_address FROM node WHERE is_default = ?").bind(true);
         let row: Option<NodeRow> = query
             .fetch_optional(&*self.database.pool)
             .await
@@ -85,26 +86,28 @@ impl NodesRepository for NodesSqlxDatabase {
     }
 
     async fn is_default_node(&self, node_name: &str) -> Result<bool> {
-        let query = query("SELECT is_default FROM node WHERE name = ?").bind(node_name.to_sql());
-        let row: Option<SqliteRow> = query
+        let query = query("SELECT is_default FROM node WHERE name = ?").bind(node_name);
+        let row: Option<AnyRow> = query
             .fetch_optional(&*self.database.pool)
             .await
             .into_core()?;
-        Ok(row.map(|r| r.get(0)).unwrap_or(false))
+        Ok(row
+            .map(|r| r.get::<Boolean, usize>(0).to_bool())
+            .unwrap_or(false))
     }
 
     async fn set_default_node(&self, node_name: &str) -> Result<()> {
         let mut transaction = self.database.begin().await.into_core()?;
         // set the node as the default one
         let query1 = query("UPDATE node SET is_default = ? WHERE name = ?")
-            .bind(true.to_sql())
-            .bind(node_name.to_sql());
+            .bind(true)
+            .bind(node_name);
         query1.execute(&mut *transaction).await.void()?;
 
         // set all the others as non-default
         let query2 = query("UPDATE node SET is_default = ? WHERE name <> ?")
-            .bind(false.to_sql())
-            .bind(node_name.to_sql());
+            .bind(false)
+            .bind(node_name);
         query2.execute(&mut *transaction).await.void()?;
         transaction.commit().await.void()
     }
@@ -112,37 +115,33 @@ impl NodesRepository for NodesSqlxDatabase {
     async fn delete_node(&self, node_name: &str) -> Result<()> {
         let mut transaction = self.database.begin().await.into_core()?;
 
-        let query = query("DELETE FROM node WHERE name=?").bind(node_name.to_sql());
+        let query = query("DELETE FROM node WHERE name=?").bind(node_name);
+        query.execute(&mut *transaction).await.void()?;
+
+        let query = sqlx::query("DELETE FROM credential WHERE node_name=?").bind(node_name);
+        query.execute(&mut *transaction).await.void()?;
+
+        let query = sqlx::query("DELETE FROM resource WHERE node_name=?").bind(node_name);
+        query.execute(&mut *transaction).await.void()?;
+
+        let query = sqlx::query("DELETE FROM resource_policy WHERE node_name=?").bind(node_name);
         query.execute(&mut *transaction).await.void()?;
 
         let query =
-            sqlx::query("DELETE FROM credential WHERE node_name=?").bind(node_name.to_sql());
-        query.execute(&mut *transaction).await.void()?;
-
-        let query = sqlx::query("DELETE FROM resource WHERE node_name=?").bind(node_name.to_sql());
+            sqlx::query("DELETE FROM resource_type_policy WHERE node_name=?").bind(node_name);
         query.execute(&mut *transaction).await.void()?;
 
         let query =
-            sqlx::query("DELETE FROM resource_policy WHERE node_name=?").bind(node_name.to_sql());
+            sqlx::query("DELETE FROM identity_attributes WHERE node_name=?").bind(node_name);
         query.execute(&mut *transaction).await.void()?;
 
-        let query = sqlx::query("DELETE FROM resource_type_policy WHERE node_name=?")
-            .bind(node_name.to_sql());
+        let query = sqlx::query("DELETE FROM tcp_inlet WHERE node_name=?").bind(node_name);
         query.execute(&mut *transaction).await.void()?;
 
-        let query = sqlx::query("DELETE FROM identity_attributes WHERE node_name=?")
-            .bind(node_name.to_sql());
+        let query = sqlx::query("DELETE FROM tcp_outlet_status WHERE node_name=?").bind(node_name);
         query.execute(&mut *transaction).await.void()?;
 
-        let query = sqlx::query("DELETE FROM tcp_inlet WHERE node_name=?").bind(node_name.to_sql());
-        query.execute(&mut *transaction).await.void()?;
-
-        let query =
-            sqlx::query("DELETE FROM tcp_outlet_status WHERE node_name=?").bind(node_name.to_sql());
-        query.execute(&mut *transaction).await.void()?;
-
-        let query =
-            sqlx::query("DELETE FROM node_project WHERE node_name=?").bind(node_name.to_sql());
+        let query = sqlx::query("DELETE FROM node_project WHERE node_name=?").bind(node_name);
         query.execute(&mut *transaction).await.void()?;
 
         transaction.commit().await.void()
@@ -154,8 +153,8 @@ impl NodesRepository for NodesSqlxDatabase {
         address: &InternetAddress,
     ) -> Result<()> {
         let query = query("UPDATE node SET tcp_listener_address = ? WHERE name = ?")
-            .bind(address.to_string().to_sql())
-            .bind(node_name.to_sql());
+            .bind(address.to_string())
+            .bind(node_name);
         query.execute(&*self.database.pool).await.void()
     }
 
@@ -165,15 +164,15 @@ impl NodesRepository for NodesSqlxDatabase {
         address: &InternetAddress,
     ) -> Result<()> {
         let query = query("UPDATE node SET http_server_address = ? WHERE name = ?")
-            .bind(address.to_string().to_sql())
-            .bind(node_name.to_sql());
+            .bind(address.to_string())
+            .bind(node_name);
         query.execute(&*self.database.pool).await.void()
     }
 
     async fn set_as_authority_node(&self, node_name: &str) -> Result<()> {
         let query = query("UPDATE node SET is_authority = ? WHERE name = ?")
-            .bind(true.to_sql())
-            .bind(node_name.to_sql());
+            .bind(true)
+            .bind(node_name);
         query.execute(&*self.database.pool).await.void()
     }
 
@@ -194,26 +193,26 @@ impl NodesRepository for NodesSqlxDatabase {
     async fn set_node_pid(&self, node_name: &str, pid: u32) -> Result<()> {
         let query = query("UPDATE node SET pid = ? WHERE name = ?")
             .bind(pid.to_sql())
-            .bind(node_name.to_sql());
+            .bind(node_name);
         query.execute(&*self.database.pool).await.void()
     }
 
     async fn set_no_node_pid(&self, node_name: &str) -> Result<()> {
-        let query = query("UPDATE node SET pid = NULL WHERE name = ?").bind(node_name.to_sql());
+        let query = query("UPDATE node SET pid = NULL WHERE name = ?").bind(node_name);
         query.execute(&*self.database.pool).await.void()
     }
 
     async fn set_node_project_name(&self, node_name: &str, project_name: &str) -> Result<()> {
         let query = query("INSERT OR REPLACE INTO node_project VALUES (?1, ?2)")
-            .bind(node_name.to_sql())
-            .bind(project_name.to_sql());
+            .bind(node_name)
+            .bind(project_name);
         Ok(query.execute(&*self.database.pool).await.void()?)
     }
 
     async fn get_node_project_name(&self, node_name: &str) -> Result<Option<String>> {
-        let query = query("SELECT project_name FROM node_project WHERE node_name = ?")
-            .bind(node_name.to_sql());
-        let row: Option<SqliteRow> = query
+        let query =
+            query("SELECT project_name FROM node_project WHERE node_name = ?").bind(node_name);
+        let row: Option<AnyRow> = query
             .fetch_optional(&*self.database.pool)
             .await
             .into_core()?;
@@ -228,33 +227,33 @@ impl NodesRepository for NodesSqlxDatabase {
 pub(crate) struct NodeRow {
     name: String,
     identifier: String,
-    verbosity: u8,
-    is_default: bool,
-    is_authority: bool,
-    tcp_listener_address: Option<String>,
-    pid: Option<u32>,
-    http_server_address: Option<String>,
+    verbosity: i64,
+    is_default: Boolean,
+    is_authority: Boolean,
+    tcp_listener_address: Nullable<String>,
+    pid: Nullable<i64>,
+    http_server_address: Nullable<String>,
 }
 
 impl NodeRow {
     pub(crate) fn node_info(&self) -> Result<NodeInfo> {
         let tcp_listener_address = self
             .tcp_listener_address
-            .as_ref()
-            .and_then(|a| InternetAddress::new(a));
+            .to_option()
+            .and_then(|a| InternetAddress::new(&a));
         let http_server_address = self
             .http_server_address
-            .as_ref()
-            .and_then(|a| InternetAddress::new(a));
+            .to_option()
+            .and_then(|a| InternetAddress::new(&a));
 
         Ok(NodeInfo::new(
             self.name.clone(),
             Identifier::from_str(&self.identifier.clone())?,
-            self.verbosity,
-            self.is_default,
-            self.is_authority,
+            self.verbosity as u8,
+            self.is_default.to_bool(),
+            self.is_authority.to_bool(),
             tcp_listener_address,
-            self.pid,
+            self.pid.to_option().map(|p| p as u32),
             http_server_address,
         ))
     }

@@ -1,7 +1,7 @@
 use core::str::FromStr;
 
+use sqlx::any::AnyArguments;
 use sqlx::query::Query;
-use sqlx::sqlite::SqliteArguments;
 use sqlx::*;
 use tracing::debug;
 
@@ -122,7 +122,7 @@ impl ChangeHistorySqlxDatabase {
     fn insert_query<'a>(
         identifier: &Identifier,
         change_history: &ChangeHistory,
-    ) -> Query<'a, Sqlite, SqliteArguments<'a>> {
+    ) -> Query<'a, Any, AnyArguments<'a>> {
         query("INSERT OR REPLACE INTO identity VALUES (?, ?)")
             .bind(identifier.to_sql())
             .bind(change_history.to_sql())
@@ -133,13 +133,13 @@ impl ChangeHistorySqlxDatabase {
 
 impl ToSqlxType for Identifier {
     fn to_sql(&self) -> SqlxType {
-        self.to_string().to_sql()
+        SqlxType::Text(self.to_string())
     }
 }
 
 impl ToSqlxType for ChangeHistory {
     fn to_sql(&self) -> SqlxType {
-        self.export_as_string().unwrap().to_sql()
+        SqlxType::Text(self.export_as_string().unwrap())
     }
 }
 

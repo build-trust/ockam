@@ -5,7 +5,7 @@ use tracing::debug;
 
 use ockam_core::async_trait;
 use ockam_core::Result;
-use ockam_node::database::{FromSqlxError, SqlxDatabase, SqlxType, ToSqlxType, ToVoid};
+use ockam_node::database::{FromSqlxError, Nullable, SqlxDatabase, SqlxType, ToSqlxType, ToVoid};
 
 use crate::models::Identifier;
 use crate::{AttributesEntry, IdentityAttributesRepository, TimestampInSeconds};
@@ -49,7 +49,7 @@ impl IdentityAttributesRepository for IdentityAttributesSqlxDatabase {
             )
             .bind(identity.to_sql())
             .bind(attested_by.to_sql())
-            .bind(self.node_name.to_sql());
+            .bind(&self.node_name);
         let identity_attributes: Option<IdentityAttributesRow> = query
             .fetch_optional(&*self.database.pool)
             .await
@@ -62,11 +62,11 @@ impl IdentityAttributesRepository for IdentityAttributesSqlxDatabase {
             "INSERT OR REPLACE INTO identity_attributes (identifier, attributes, added, expires, attested_by, node_name) VALUES (?, ?, ?, ?, ?, ?)"
             )
             .bind(subject.to_sql())
-            .bind(minicbor::to_vec(entry.attrs())?.to_sql())
+            .bind(minicbor::to_vec(entry.attrs())?)
             .bind(entry.added_at().to_sql())
             .bind(entry.expires_at().map(|e| e.to_sql()))
             .bind(entry.attested_by().map(|e| e.to_sql()))
-            .bind(self.node_name.to_sql());
+            .bind(&self.node_name);
         query.execute(&*self.database.pool).await.void()
     }
 
@@ -74,7 +74,7 @@ impl IdentityAttributesRepository for IdentityAttributesSqlxDatabase {
     async fn delete_expired_attributes(&self, now: TimestampInSeconds) -> Result<()> {
         let query = query("DELETE FROM identity_attributes WHERE expires<=? AND node_name=?")
             .bind(now.to_sql())
-            .bind(self.node_name.to_sql());
+            .bind(&self.node_name);
         query.execute(&*self.database.pool).await.void()
     }
 }
@@ -93,8 +93,8 @@ struct IdentityAttributesRow {
     identifier: String,
     attributes: Vec<u8>,
     added: i64,
-    expires: Option<i64>,
-    attested_by: Option<String>,
+    expires: Nullable<i64>,
+    attested_by: Nullable<String>,
 }
 
 impl IdentityAttributesRow {
@@ -107,10 +107,13 @@ impl IdentityAttributesRow {
         let attributes =
             minicbor::decode(self.attributes.as_slice()).map_err(SqlxDatabase::map_decode_err)?;
         let added = TimestampInSeconds(self.added as u64);
-        let expires = self.expires.map(|v| TimestampInSeconds(v as u64));
+        let expires = self
+            .expires
+            .to_option()
+            .map(|v| TimestampInSeconds(v as u64));
         let attested_by = self
             .attested_by
-            .clone()
+            .to_option()
             .map(|v| Identifier::from_str(&v))
             .transpose()?;
 

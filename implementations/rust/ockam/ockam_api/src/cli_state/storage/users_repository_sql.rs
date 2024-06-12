@@ -3,7 +3,7 @@ use sqlx::*;
 use crate::cloud::email_address::EmailAddress;
 use ockam_core::async_trait;
 use ockam_core::Result;
-use ockam_node::database::{FromSqlxError, SqlxDatabase, ToSqlxType, ToVoid};
+use ockam_node::database::{Boolean, FromSqlxError, SqlxDatabase, ToSqlxType, ToVoid};
 
 use crate::cloud::enroll::auth0::UserInfo;
 
@@ -34,26 +34,27 @@ impl UsersRepository for UsersSqlxDatabase {
 
         let query1 =
             query_scalar("SELECT EXISTS(SELECT email FROM user WHERE is_default=$1 AND email=$2)")
-                .bind(true.to_sql())
+                .bind(true)
                 .bind(user.email.to_sql());
-        let is_already_default: bool = query1.fetch_one(&mut *transaction).await.into_core()?;
+        let is_already_default: Boolean = query1.fetch_one(&mut *transaction).await.into_core()?;
+        let is_already_default = is_already_default.to_bool();
 
         let query2 = query("INSERT OR REPLACE INTO user VALUES ($1, $2, $3, $4, $5, $6, $7, $8)")
             .bind(user.email.to_sql())
-            .bind(user.sub.to_sql())
-            .bind(user.nickname.to_sql())
-            .bind(user.name.to_sql())
-            .bind(user.picture.to_sql())
-            .bind(user.updated_at.to_sql())
-            .bind(user.email_verified.to_sql())
-            .bind(is_already_default.to_sql());
+            .bind(&user.sub)
+            .bind(&user.nickname)
+            .bind(&user.name)
+            .bind(&user.picture)
+            .bind(&user.updated_at)
+            .bind(user.email_verified)
+            .bind(is_already_default);
         query2.execute(&mut *transaction).await.void()?;
 
         transaction.commit().await.void()
     }
 
     async fn get_default_user(&self) -> Result<Option<UserInfo>> {
-        let query = query_as("SELECT email, sub, nickname, name, picture, updated_at, email_verified, is_default FROM user WHERE is_default=$1").bind(true.to_sql());
+        let query = query_as("SELECT email, sub, nickname, name, picture, updated_at, email_verified, is_default FROM user WHERE is_default=$1").bind(true);
         let row: Option<UserRow> = query
             .fetch_optional(&*self.database.pool)
             .await
@@ -63,7 +64,7 @@ impl UsersRepository for UsersSqlxDatabase {
 
     async fn set_default_user(&self, email: &EmailAddress) -> Result<()> {
         let query = query("UPDATE user SET is_default = ? WHERE email = ?")
-            .bind(true.to_sql())
+            .bind(true)
             .bind(email.to_sql());
         query.execute(&*self.database.pool).await.void()
     }
@@ -100,9 +101,9 @@ struct UserRow {
     name: String,
     picture: String,
     updated_at: String,
-    email_verified: bool,
+    email_verified: Boolean,
     #[allow(unused)]
-    is_default: bool,
+    is_default: Boolean,
 }
 
 impl UserRow {
@@ -114,7 +115,7 @@ impl UserRow {
             name: self.name.clone(),
             picture: self.picture.clone(),
             updated_at: self.updated_at.clone(),
-            email_verified: self.email_verified,
+            email_verified: self.email_verified.to_bool(),
         })
     }
 }

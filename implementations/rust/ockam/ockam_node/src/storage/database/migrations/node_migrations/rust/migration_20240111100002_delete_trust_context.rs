@@ -1,5 +1,5 @@
 use crate::database::migrations::RustMigration;
-use crate::database::{FromSqlxError, ToSqlxType, ToVoid};
+use crate::database::{FromSqlxError, ToVoid};
 use core::fmt;
 use minicbor::{Decode, Encode};
 use ockam_core::{async_trait, Result};
@@ -21,7 +21,7 @@ impl RustMigration for PolicyTrustContextId {
         Self::version()
     }
 
-    async fn migrate(&self, connection: &mut SqliteConnection) -> Result<bool> {
+    async fn migrate(&self, connection: &mut AnyConnection) -> Result<bool> {
         Self::migrate_update_policies(connection).await
     }
 }
@@ -39,8 +39,10 @@ impl PolicyTrustContextId {
 
     /// This migration updates policies to not rely on trust_context_id,
     /// also introduces `node_name` and  replicates policy for each existing node
-    pub(crate) async fn migrate_update_policies(connection: &mut SqliteConnection) -> Result<bool> {
-        let mut transaction = Connection::begin(&mut *connection).await.into_core()?;
+    pub(crate) async fn migrate_update_policies(connection: &mut AnyConnection) -> Result<bool> {
+        let mut transaction = sqlx::Connection::begin(&mut *connection)
+            .await
+            .into_core()?;
 
         let query_node_names = query_as("SELECT name FROM node");
         let node_names: Vec<NodeNameRow> = query_node_names
@@ -62,10 +64,10 @@ impl PolicyTrustContextId {
             };
             for node_name in &node_names {
                 let insert = query("INSERT INTO policy (resource, action, expression, node_name) VALUES (?, ?, ?, ?)")
-                    .bind(row.resource.to_sql())
-                    .bind(row.action.to_sql())
-                    .bind(expression.to_sql())
-                    .bind(node_name.to_sql());
+                    .bind(row.resource.clone())
+                    .bind(row.action.clone())
+                    .bind(expression.clone())
+                    .bind(node_name);
 
                 insert.execute(&mut *transaction).await.void()?;
             }
@@ -192,8 +194,8 @@ struct PolicyRow {
 mod test {
     use crate::database::migrations::node_migration_set::NodeMigrationSet;
     use crate::database::{MigrationSet, SqlxDatabase};
+    use sqlx::any::AnyArguments;
     use sqlx::query::Query;
-    use sqlx::sqlite::SqliteArguments;
     use tempfile::NamedTempFile;
 
     use super::*;
@@ -268,7 +270,7 @@ mod test {
             let rows: Vec<PolicyRowNew> = query_as(
                 "SELECT resource, action, expression, node_name FROM policy WHERE node_name = ?",
             )
-            .bind(node_name.to_sql())
+            .bind(node_name)
             .fetch_all(&mut *connection)
             .await
             .into_core()?;
@@ -302,19 +304,19 @@ mod test {
         resource: String,
         action: String,
         expression: Vec<u8>,
-    ) -> Query<'static, Sqlite, SqliteArguments<'static>> {
+    ) -> Query<'static, Any, AnyArguments<'static>> {
         query("INSERT INTO policy_old (resource, action, expression) VALUES (?, ?, ?)")
-            .bind(resource.to_sql())
-            .bind(action.to_sql())
-            .bind(expression.to_sql())
+            .bind(resource)
+            .bind(action)
+            .bind(expression)
     }
 
-    fn insert_node(name: String) -> Query<'static, Sqlite, SqliteArguments<'static>> {
+    fn insert_node(name: String) -> Query<'static, Any, AnyArguments<'static>> {
         query("INSERT INTO node (name, identifier, verbosity, is_default, is_authority) VALUES (?, ?, ?, ?, ?)")
-            .bind(name.to_sql())
-            .bind("I_TEST".to_string().to_sql())
-            .bind(1.to_sql())
-            .bind(0.to_sql())
-            .bind(false.to_sql())
+            .bind(name)
+            .bind("I_TEST".to_string())
+            .bind(1)
+            .bind(0)
+            .bind(false)
     }
 }

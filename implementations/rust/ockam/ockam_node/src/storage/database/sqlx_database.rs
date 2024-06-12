@@ -1,12 +1,14 @@
 use core::fmt::{Debug, Formatter};
-use sqlx::pool::PoolOptions;
-use sqlx::sqlite::SqliteConnectOptions;
+use core::str::FromStr;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use ockam_core::errcode::{Kind, Origin};
-use sqlx::{ConnectOptions, SqlitePool};
+use sqlx::any::{install_default_drivers, AnyConnectOptions};
+use sqlx::pool::PoolOptions;
+use sqlx::{Any, ConnectOptions, Pool};
+use tempfile::NamedTempFile;
 use tokio_retry::strategy::{jitter, FixedInterval};
 use tokio_retry::Retry;
 use tracing::debug;
@@ -15,6 +17,7 @@ use tracing::log::LevelFilter;
 use crate::database::migrations::application_migration_set::ApplicationMigrationSet;
 use crate::database::migrations::node_migration_set::NodeMigrationSet;
 use crate::database::migrations::MigrationSet;
+use ockam_core::compat::rand::random_string;
 use ockam_core::compat::sync::Arc;
 use ockam_core::{Error, Result};
 
@@ -27,8 +30,7 @@ use ockam_core::{Error, Result};
 #[derive(Clone)]
 pub struct SqlxDatabase {
     /// Pool of connections to the database
-    pub pool: Arc<SqlitePool>,
-
+    pub pool: Arc<Pool<Any>>,
     path: Option<PathBuf>,
 }
 
@@ -39,7 +41,7 @@ impl Debug for SqlxDatabase {
 }
 
 impl Deref for SqlxDatabase {
-    type Target = SqlitePool;
+    type Target = Pool<Any>;
 
     fn deref(&self) -> &Self::Target {
         &self.pool
@@ -135,25 +137,33 @@ impl SqlxDatabase {
         })
     }
 
-    pub(crate) async fn create_connection_pool(path: &Path) -> Result<SqlitePool> {
-        let options = SqliteConnectOptions::new()
-            .filename(path)
-            .create_if_missing(true)
-            .log_statements(LevelFilter::Trace)
-            .log_slow_statements(LevelFilter::Trace, Duration::from_secs(1));
-        let pool = SqlitePool::connect_with(options)
+    pub(crate) async fn create_connection_pool(path: &Path) -> Result<Pool<Any>> {
+        install_default_drivers();
+        let url_string = &path.as_os_str().to_str().ok_or(Error::new(
+            Origin::Api,
+            Kind::Invalid,
+            format!("incorrect database url {path:?}"),
+        ))?;
+        let connection_url = format!("sqlite:file://{url_string}?mode=rwc");
+        debug!("connecting to {connection_url}");
+        let options = AnyConnectOptions::from_str(&connection_url)
+            .map_err(Self::map_sql_err)?
+            .log_statements(LevelFilter::Debug);
+        let pool = Pool::connect_with(options)
             .await
             .map_err(Self::map_sql_err)?;
         Ok(pool)
     }
 
-    pub(crate) async fn create_in_memory_connection_pool() -> Result<SqlitePool> {
+    pub(crate) async fn create_in_memory_connection_pool() -> Result<Pool<Any>> {
+        install_default_drivers();
         // SQLite in-memory DB get wiped if there is no connection to it.
         // The below setting tries to ensure there is always an open connection
         let pool_options = PoolOptions::new().idle_timeout(None).max_lifetime(None);
 
+        let file_name = random_string();
         let pool = pool_options
-            .connect("sqlite::memory:")
+            .connect(format!("sqlite:file:{file_name}?mode=memory&cache=shared").as_str())
             .await
             .map_err(Self::map_sql_err)?;
         Ok(pool)
@@ -223,15 +233,20 @@ impl<T> ToVoid<T> for core::result::Result<T, sqlx::error::Error> {
     }
 }
 
+/// Create a temporary database file that won't be cleaned-up automatically
+pub fn create_temp_db_file() -> Result<PathBuf> {
+    let (_, path) = NamedTempFile::new()
+        .map_err(|e| Error::new(Origin::Core, Kind::Io, format!("{e:?}")))?
+        .keep()
+        .map_err(|e| Error::new(Origin::Core, Kind::Io, format!("{e:?}")))?;
+    Ok(path)
+}
+
 #[cfg(test)]
-mod tests {
-    use sqlx::sqlite::SqliteQueryResult;
-    use sqlx::FromRow;
-    use tempfile::NamedTempFile;
-
-    use crate::database::ToSqlxType;
-
+pub mod tests {
     use super::*;
+    use sqlx::any::AnyQueryResult;
+    use sqlx::FromRow;
 
     /// This is a sanity check to test that the database can be created with a file path
     /// and that migrations are running ok, at least for one table
@@ -249,8 +264,8 @@ mod tests {
     /// This test checks that we can run a query and return an entity
     #[tokio::test]
     async fn test_query() -> Result<()> {
-        let db_file = NamedTempFile::new().unwrap();
-        let db = SqlxDatabase::create(db_file.path()).await?;
+        let db_file = create_temp_db_file()?;
+        let db = SqlxDatabase::create(db_file).await?;
 
         insert_identity(&db).await.unwrap();
 
@@ -280,10 +295,10 @@ mod tests {
     }
 
     /// HELPERS
-    async fn insert_identity(db: &SqlxDatabase) -> Result<SqliteQueryResult> {
+    async fn insert_identity(db: &SqlxDatabase) -> Result<AnyQueryResult> {
         sqlx::query("INSERT INTO identity VALUES (?1, ?2)")
             .bind("Ifa804b7fca12a19eed206ae180b5b576860ae651")
-            .bind("123".to_sql())
+            .bind("123")
             .execute(&*db.pool)
             .await
             .into_core()

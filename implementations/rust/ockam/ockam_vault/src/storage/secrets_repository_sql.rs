@@ -52,7 +52,7 @@ impl SecretsRepository for SecretsSqlxDatabase {
 
         let query = query("INSERT OR REPLACE INTO signing_secret VALUES (?, ?, ?)")
             .bind(handle.to_sql())
-            .bind(secret_type.to_sql())
+            .bind(secret_type)
             .bind(secret.to_sql());
         query.execute(&*self.database.pool).await.void()
     }
@@ -136,7 +136,7 @@ impl SecretsRepository for SecretsSqlxDatabase {
         let query =
             query("INSERT OR REPLACE INTO aead_secret(handle, type, secret) VALUES (?, ?, ?)")
                 .bind(handle.to_sql())
-                .bind(AEAD_TYPE.to_sql())
+                .bind(AEAD_TYPE)
                 .bind(secret.to_sql());
         query.execute(&*self.database.pool).await.void()
     }
@@ -151,7 +151,7 @@ impl SecretsRepository for SecretsSqlxDatabase {
     async fn get_aead_secret(&self, handle: &AeadSecretKeyHandle) -> Result<Option<AeadSecret>> {
         let query = query_as("SELECT secret FROM aead_secret WHERE handle=? AND type=?")
             .bind(handle.to_sql())
-            .bind(AEAD_TYPE.to_sql());
+            .bind(AEAD_TYPE);
         let row: Option<AeadSecretRow> = query
             .fetch_optional(&*self.database.pool)
             .await
@@ -191,7 +191,7 @@ impl ToSqlxType for SigningSecretKeyHandle {
 
 impl ToSqlxType for X25519SecretKeyHandle {
     fn to_sql(&self) -> SqlxType {
-        self.0.value().to_sql()
+        SqlxType::Blob(self.0.value().clone())
     }
 }
 
@@ -203,7 +203,7 @@ impl ToSqlxType for AeadSecretKeyHandle {
 
 impl ToSqlxType for HandleToSecret {
     fn to_sql(&self) -> SqlxType {
-        self.value().to_sql()
+        SqlxType::Blob(self.value().clone())
     }
 }
 
@@ -215,7 +215,7 @@ impl ToSqlxType for X25519SecretKey {
 
 impl ToSqlxType for AeadSecret {
     fn to_sql(&self) -> SqlxType {
-        self.0.to_vec().to_sql()
+        SqlxType::Blob(self.0.to_vec().clone())
     }
 }
 

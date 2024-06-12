@@ -12,7 +12,7 @@ use crate::authenticator::{
 };
 
 /// Implementation of [`AuthorityEnrollmentTokenRepository`] trait based on an underlying database
-/// using sqlx as its API, and Sqlite as its driver
+/// using sqlx as its API
 #[derive(Clone)]
 pub struct AuthorityEnrollmentTokenSqlxDatabase {
     database: SqlxDatabase,
@@ -91,12 +91,12 @@ impl AuthorityEnrollmentTokenRepository for AuthorityEnrollmentTokenSqlxDatabase
             "INSERT OR REPLACE INTO authority_enrollment_token (one_time_code, reference, issued_by, created_at, expires_at, ttl_count, attributes) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
         )
         .bind(token.one_time_code.to_sql())
-        .bind(token.reference.map(|r| r.to_sql()))
+        .bind(token.reference)
         .bind(token.issued_by.to_sql())
         .bind(token.created_at.to_sql())
         .bind(token.expires_at.to_sql())
         .bind(token.ttl_count.to_sql())
-        .bind(minicbor::to_vec(token.attrs)?.to_sql());
+        .bind(minicbor::to_vec(token.attrs)?);
 
         query.execute(&*self.database.pool).await.void()
     }

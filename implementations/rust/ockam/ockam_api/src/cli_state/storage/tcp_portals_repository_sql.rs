@@ -45,10 +45,10 @@ impl TcpPortalsRepository for TcpPortalsSqlxDatabase {
         tcp_inlet: &TcpInlet,
     ) -> ockam_core::Result<()> {
         let query = query("INSERT OR REPLACE INTO tcp_inlet VALUES (?, ?, ?, ?)")
-            .bind(node_name.to_sql())
-            .bind(tcp_inlet.bind_addr().to_string().to_sql())
-            .bind(tcp_inlet.outlet_addr().to_string().to_sql())
-            .bind(tcp_inlet.alias().to_sql());
+            .bind(node_name)
+            .bind(tcp_inlet.bind_addr().to_string())
+            .bind(tcp_inlet.outlet_addr().to_string())
+            .bind(tcp_inlet.alias());
         query.execute(&*self.database.pool).await.void()?;
         Ok(())
     }
@@ -61,8 +61,8 @@ impl TcpPortalsRepository for TcpPortalsSqlxDatabase {
         let query = query_as(
             "SELECT bind_addr, outlet_addr, alias FROM tcp_inlet WHERE node_name = ? AND alias = ?",
         )
-        .bind(node_name.to_sql())
-        .bind(alias.to_sql());
+        .bind(node_name)
+        .bind(alias);
         let result: Option<TcpInletRow> = query
             .fetch_optional(&*self.database.pool)
             .await
@@ -72,8 +72,8 @@ impl TcpPortalsRepository for TcpPortalsSqlxDatabase {
 
     async fn delete_tcp_inlet(&self, node_name: &str, alias: &str) -> ockam_core::Result<()> {
         let query = query("DELETE FROM tcp_inlet WHERE node_name = ? AND alias = ?")
-            .bind(node_name.to_sql())
-            .bind(alias.to_sql());
+            .bind(node_name)
+            .bind(alias);
         query.execute(&*self.database.pool).await.into_core()?;
         Ok(())
     }
@@ -84,10 +84,10 @@ impl TcpPortalsRepository for TcpPortalsSqlxDatabase {
         tcp_outlet_status: &OutletStatus,
     ) -> ockam_core::Result<()> {
         let query = query("INSERT OR REPLACE INTO tcp_outlet_status VALUES (?, ?, ?, ?)")
-            .bind(node_name.to_sql())
+            .bind(node_name)
             .bind(tcp_outlet_status.socket_addr.to_sql())
             .bind(tcp_outlet_status.worker_addr.to_sql())
-            .bind(tcp_outlet_status.payload.as_ref().map(|p| p.to_sql()));
+            .bind(tcp_outlet_status.payload.as_ref());
         query.execute(&*self.database.pool).await.void()?;
         Ok(())
     }
@@ -98,7 +98,7 @@ impl TcpPortalsRepository for TcpPortalsSqlxDatabase {
         worker_addr: &Address,
     ) -> ockam_core::Result<Option<OutletStatus>> {
         let query = query_as("SELECT socket_addr, worker_addr, payload FROM tcp_outlet_status WHERE node_name = ? AND worker_addr = ?")
-            .bind(node_name.to_sql())
+            .bind(node_name)
             .bind(worker_addr.to_sql());
         let result: Option<TcpOutletStatusRow> = query
             .fetch_optional(&*self.database.pool)
@@ -113,7 +113,7 @@ impl TcpPortalsRepository for TcpPortalsSqlxDatabase {
         worker_addr: &Address,
     ) -> ockam_core::Result<()> {
         let query = query("DELETE FROM tcp_outlet_status WHERE node_name = ? AND worker_addr = ?")
-            .bind(node_name.to_sql())
+            .bind(node_name)
             .bind(worker_addr.to_sql());
         query.execute(&*self.database.pool).await.into_core()?;
         Ok(())
