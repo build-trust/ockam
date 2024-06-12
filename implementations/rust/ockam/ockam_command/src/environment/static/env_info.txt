@@ -21,6 +21,20 @@ Logging
 - OCKAM_LOG_MAX_FILES: an `integer` that defines the maximum number of log files to keep per node. Default value `60`.
 - OCKAM_LOG_CRATES_FILTER: a filter for log messages based on crate names: `all`, `default`, comma-separated list of crate names. Default value: `default`, i.e. the list of `ockam` crates.
 
+Database
+- OCKAM_POSTGRES_HOST: Postgres database host. Example: 'localhost'.
+- OCKAM_POSTGRES_PORT: Postgres database port. Example: 5432.
+- OCKAM_POSTGRES_DATABASE_NAME: Postgres database name. Default value: 'postgres'.
+- OCKAM_POSTGRES_USER: Postgres database user. If it is not set, no authorization will be used to access the database.
+- OCKAM_POSTGRES_PASSWORD: Postgres database password. If it is not set, no authorization will be used to access the database.
+
+- OCKAM_LOGGING: set this variable to any value in order to enable logging.
+- OCKAM_LOG_LEVEL: a `string` that defines the verbosity of the logs when the `--verbose` argument is not passed: `info`, `warn`, `error`, `debug` or `trace`. Default value: `debug`.
+- OCKAM_LOG_FORMAT: a `string` that overrides the default format of the logs: `default`, `json`, or `pretty`. Default value: `default`.
+- OCKAM_LOG_MAX_SIZE_MB: an `integer` that defines the maximum size of a log file in MB. Default value `100`.
+- OCKAM_LOG_MAX_FILES: an `integer` that defines the maximum number of log files to keep per node. Default value `60`.
+- OCKAM_LOG_CRATES_FILTER: a filter for log messages based on crate names: `all`, `default`, comma-separated list of crate names. Default value: `default`, i.e. the list of `ockam` crates.
+
 Tracing
 - OCKAM_OPENTELEMETRY_EXPORT: set this variable to a false value to disable tracing: `0`, `false`, `no`. Default value: `true`
 - OCKAM_OPENTELEMETRY_ENDPOINT: the URL of an OpenTelemetry collector accepting gRPC.

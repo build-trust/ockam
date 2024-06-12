@@ -155,18 +155,13 @@ impl CliState {
     ///  - remove the node log files
     #[instrument(skip_all, fields(node_name = node_name))]
     pub async fn remove_node(&self, node_name: &str) -> Result<()> {
-        // don't try to remove a node on a non-existent database
-        if !self.database_path().exists() {
-            return Ok(());
-        };
-
         // remove the node from the database
         let repository = self.nodes_repository();
         let node_exists = repository.get_node(node_name).await.is_ok();
-        repository.delete_node(node_name).await?;
 
         // set another node as the default node
         if node_exists {
+            repository.delete_node(node_name).await?;
             let other_nodes = repository.get_nodes().await?;
             if let Some(other_node) = other_nodes.first() {
                 repository.set_default_node(&other_node.name()).await?;

@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use async_trait::async_trait;
 use clap::Args;
 use colorful::Colorful;
+use ockam_api::cli_state::UseAwsKms;
 use ockam_api::{fmt_info, fmt_ok};
 
 use ockam_node::Context;
@@ -39,19 +40,17 @@ impl Command for CreateCommand {
             "This is the first vault to be created in this environment. It will be set as the default vault"
         ))?;
         }
-        let vault = if self.aws_kms {
-            opts.state.create_kms_vault(&self.name, &self.path).await?
-        } else {
-            opts.state
-                .create_named_vault(&self.name, &self.path)
-                .await?
-        };
+
+        let vault = opts
+            .state
+            .create_named_vault(self.name, self.path, UseAwsKms::from(self.aws_kms))
+            .await?;
 
         opts.terminal
             .stdout()
             .plain(fmt_ok!("Vault created with name '{}'!", vault.name()))
             .machine(vault.name())
-            .json(serde_json::json!({ "name": &self.name }))
+            .json(serde_json::json!({ "name": &vault.name() }))
             .write_line()?;
         Ok(())
     }

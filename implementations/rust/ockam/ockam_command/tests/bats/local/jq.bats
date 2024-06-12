@@ -19,7 +19,7 @@ teardown() {
 
   run_success "$OCKAM" vault show v1 --output json --jq .
   assert_output --partial "\"name\":\"v1\""
-  assert_output --partial "\"is_kms\":false"
+  assert_output --partial "\"use_aws_kms\":\"No\""
 
   run_success "$OCKAM" vault show v1 --output json --jq .vault.name
   assert_output --partial "v1"

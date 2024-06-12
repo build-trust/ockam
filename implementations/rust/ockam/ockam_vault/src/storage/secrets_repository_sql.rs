@@ -1,3 +1,5 @@
+use sqlx::database::HasArguments;
+use sqlx::encode::IsNull;
 use sqlx::*;
 use tracing::debug;
 use zeroize::{Zeroize, ZeroizeOnDrop};
@@ -6,7 +8,7 @@ use ockam_core::async_trait;
 use ockam_core::compat::vec::Vec;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::Result;
-use ockam_node::database::{FromSqlxError, SqlxDatabase, SqlxType, ToSqlxType, ToVoid};
+use ockam_node::database::{FromSqlxError, SqlxDatabase, ToVoid};
 
 use crate::storage::secrets_repository::SecretsRepository;
 
@@ -50,15 +52,21 @@ impl SecretsRepository for SecretsSqlxDatabase {
             SigningSecretKeyHandle::ECDSASHA256CurveP256(_) => EC_DSA_SHA256_CURVE_P256.into(),
         };
 
-        let query = query("INSERT OR REPLACE INTO signing_secret VALUES (?, ?, ?)")
-            .bind(handle.to_sql())
-            .bind(secret_type.to_sql())
-            .bind(secret.to_sql());
+        let query = query(
+            r#"
+            INSERT INTO signing_secret (handle, secret_type, secret)
+            VALUES ($1, $2, $3)
+            ON CONFLICT (handle)
+            DO UPDATE SET secret_type = $2, secret = $3"#,
+        )
+        .bind(handle)
+        .bind(secret_type)
+        .bind(secret);
         query.execute(&*self.database.pool).await.void()
     }
 
     async fn delete_signing_secret(&self, handle: &SigningSecretKeyHandle) -> Result<bool> {
-        let query = query("DELETE FROM signing_secret WHERE handle = ?").bind(handle.to_sql());
+        let query = query("DELETE FROM signing_secret WHERE handle = $1").bind(handle);
         let res = query.execute(&*self.database.pool).await.into_core()?;
 
         Ok(res.rows_affected() != 0)
@@ -69,8 +77,8 @@ impl SecretsRepository for SecretsSqlxDatabase {
         handle: &SigningSecretKeyHandle,
     ) -> Result<Option<SigningSecret>> {
         let query =
-            query_as("SELECT handle, secret_type, secret FROM signing_secret WHERE handle=?")
-                .bind(handle.to_sql());
+            query_as("SELECT handle, secret_type, secret FROM signing_secret WHERE handle = $1")
+                .bind(handle);
         let row: Option<SigningSecretRow> = query
             .fetch_optional(&*self.database.pool)
             .await
@@ -93,14 +101,20 @@ impl SecretsRepository for SecretsSqlxDatabase {
         handle: &X25519SecretKeyHandle,
         secret: X25519SecretKey,
     ) -> Result<()> {
-        let query = query("INSERT OR REPLACE INTO x25519_secret VALUES (?, ?)")
-            .bind(handle.to_sql())
-            .bind(secret.to_sql());
+        let query = query(
+            r#"
+        INSERT INTO x25519_secret (handle, secret)
+        VALUES ($1, $2)
+        ON CONFLICT (handle)
+        DO UPDATE SET secret = $2"#,
+        )
+        .bind(handle)
+        .bind(secret);
         query.execute(&*self.database.pool).await.void()
     }
 
     async fn delete_x25519_secret(&self, handle: &X25519SecretKeyHandle) -> Result<bool> {
-        let query = query("DELETE FROM x25519_secret WHERE handle = ?").bind(handle.to_sql());
+        let query = query("DELETE FROM x25519_secret WHERE handle = $1").bind(handle);
         let res = query.execute(&*self.database.pool).await.into_core()?;
 
         Ok(res.rows_affected() != 0)
@@ -110,8 +124,8 @@ impl SecretsRepository for SecretsSqlxDatabase {
         &self,
         handle: &X25519SecretKeyHandle,
     ) -> Result<Option<X25519SecretKey>> {
-        let query = query_as("SELECT handle, secret FROM x25519_secret WHERE handle=?")
-            .bind(handle.to_sql());
+        let query =
+            query_as("SELECT handle, secret FROM x25519_secret WHERE handle = $1").bind(handle);
         let row: Option<X25519SecretRow> = query
             .fetch_optional(&*self.database.pool)
             .await
@@ -133,25 +147,30 @@ impl SecretsRepository for SecretsSqlxDatabase {
         handle: &AeadSecretKeyHandle,
         secret: AeadSecret,
     ) -> Result<()> {
-        let query =
-            query("INSERT OR REPLACE INTO aead_secret(handle, type, secret) VALUES (?, ?, ?)")
-                .bind(handle.to_sql())
-                .bind(AEAD_TYPE.to_sql())
-                .bind(secret.to_sql());
+        let query = query(
+            r#"
+                INSERT INTO aead_secret (handle, type, secret)
+                VALUES ($1, $2, $3)
+                ON CONFLICT (handle)
+                DO UPDATE SET type = $2, secret = $3"#,
+        )
+        .bind(handle)
+        .bind(AEAD_TYPE)
+        .bind(secret);
         query.execute(&*self.database.pool).await.void()
     }
 
     async fn delete_aead_secret(&self, handle: &AeadSecretKeyHandle) -> Result<bool> {
-        let query = query("DELETE FROM aead_secret WHERE handle = ?").bind(handle.to_sql());
+        let query = query("DELETE FROM aead_secret WHERE handle = $1").bind(handle);
         let res = query.execute(&*self.database.pool).await.into_core()?;
 
         Ok(res.rows_affected() != 0)
     }
 
     async fn get_aead_secret(&self, handle: &AeadSecretKeyHandle) -> Result<Option<AeadSecret>> {
-        let query = query_as("SELECT secret FROM aead_secret WHERE handle=? AND type=?")
-            .bind(handle.to_sql())
-            .bind(AEAD_TYPE.to_sql());
+        let query = query_as("SELECT secret FROM aead_secret WHERE handle = $1 AND type = $2")
+            .bind(handle)
+            .bind(AEAD_TYPE);
         let row: Option<AeadSecretRow> = query
             .fetch_optional(&*self.database.pool)
             .await
@@ -174,48 +193,87 @@ impl SecretsRepository for SecretsSqlxDatabase {
     }
 }
 
-impl ToSqlxType for SigningSecret {
-    fn to_sql(&self) -> SqlxType {
-        match self {
-            SigningSecret::EdDSACurve25519(k) => k.key().to_sql(),
-            SigningSecret::ECDSASHA256CurveP256(k) => k.key().to_sql(),
-        }
+impl Type<Any> for SigningSecret {
+    fn type_info() -> <Any as Database>::TypeInfo {
+        <Vec<u8> as Type<Any>>::type_info()
     }
 }
 
-impl ToSqlxType for SigningSecretKeyHandle {
-    fn to_sql(&self) -> SqlxType {
-        self.handle().to_sql()
+impl Encode<'_, Any> for SigningSecret {
+    fn encode_by_ref(&self, buf: &mut <Any as HasArguments>::ArgumentBuffer) -> IsNull {
+        <Vec<u8> as Encode<'_, Any>>::encode_by_ref(&self.key().to_vec(), buf)
     }
 }
 
-impl ToSqlxType for X25519SecretKeyHandle {
-    fn to_sql(&self) -> SqlxType {
-        self.0.value().to_sql()
+impl Type<Any> for SigningSecretKeyHandle {
+    fn type_info() -> <Any as Database>::TypeInfo {
+        <HandleToSecret as Type<Any>>::type_info()
     }
 }
 
-impl ToSqlxType for AeadSecretKeyHandle {
-    fn to_sql(&self) -> SqlxType {
-        self.0 .0.to_sql()
+impl Encode<'_, Any> for SigningSecretKeyHandle {
+    fn encode_by_ref(&self, buf: &mut <Any as HasArguments>::ArgumentBuffer) -> IsNull {
+        <HandleToSecret as Encode<'_, Any>>::encode_by_ref(self.handle(), buf)
     }
 }
 
-impl ToSqlxType for HandleToSecret {
-    fn to_sql(&self) -> SqlxType {
-        self.value().to_sql()
+impl Type<Any> for HandleToSecret {
+    fn type_info() -> <Any as Database>::TypeInfo {
+        <Vec<u8> as Type<Any>>::type_info()
     }
 }
 
-impl ToSqlxType for X25519SecretKey {
-    fn to_sql(&self) -> SqlxType {
-        self.key().to_sql()
+impl Encode<'_, Any> for HandleToSecret {
+    fn encode_by_ref(&self, buf: &mut <Any as HasArguments>::ArgumentBuffer) -> IsNull {
+        <Vec<u8> as Encode<'_, Any>>::encode_by_ref(self.value(), buf)
     }
 }
 
-impl ToSqlxType for AeadSecret {
-    fn to_sql(&self) -> SqlxType {
-        self.0.to_vec().to_sql()
+impl Type<Any> for X25519SecretKeyHandle {
+    fn type_info() -> <Any as Database>::TypeInfo {
+        <HandleToSecret as Type<Any>>::type_info()
+    }
+}
+
+impl Encode<'_, Any> for X25519SecretKeyHandle {
+    fn encode_by_ref(&self, buf: &mut <Any as HasArguments>::ArgumentBuffer) -> IsNull {
+        <HandleToSecret as Encode<'_, Any>>::encode_by_ref(&self.0, buf)
+    }
+}
+
+impl Type<Any> for AeadSecretKeyHandle {
+    fn type_info() -> <Any as Database>::TypeInfo {
+        <HandleToSecret as Type<Any>>::type_info()
+    }
+}
+
+impl Encode<'_, Any> for AeadSecretKeyHandle {
+    fn encode_by_ref(&self, buf: &mut <Any as HasArguments>::ArgumentBuffer) -> IsNull {
+        <HandleToSecret as Encode<'_, Any>>::encode_by_ref(&self.0 .0, buf)
+    }
+}
+
+impl Type<Any> for X25519SecretKey {
+    fn type_info() -> <Any as Database>::TypeInfo {
+        <Vec<u8> as Type<Any>>::type_info()
+    }
+}
+
+impl Encode<'_, Any> for X25519SecretKey {
+    fn encode_by_ref(&self, buf: &mut <Any as HasArguments>::ArgumentBuffer) -> IsNull {
+        <Vec<u8> as Encode<'_, Any>>::encode_by_ref(&self.key().to_vec(), buf)
+    }
+}
+
+impl Type<Any> for AeadSecret {
+    fn type_info() -> <Any as Database>::TypeInfo {
+        <Vec<u8> as Type<Any>>::type_info()
+    }
+}
+
+impl Encode<'_, Any> for AeadSecret {
+    fn encode_by_ref(&self, buf: &mut <Any as HasArguments>::ArgumentBuffer) -> IsNull {
+        <Vec<u8> as Encode<'_, Any>>::encode_by_ref(&self.0.to_vec(), buf)
     }
 }
 

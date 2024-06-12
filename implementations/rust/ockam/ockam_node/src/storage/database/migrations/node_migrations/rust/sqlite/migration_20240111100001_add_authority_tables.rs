@@ -1,5 +1,5 @@
 use crate::database::migrations::RustMigration;
-use crate::database::{FromSqlxError, ToSqlxType, ToVoid};
+use crate::database::{Boolean, FromSqlxError, Nullable, ToVoid};
 use ockam_core::{async_trait, Result};
 use sqlx::*;
 
@@ -17,7 +17,7 @@ impl RustMigration for AuthorityAttributes {
         Self::version()
     }
 
-    async fn migrate(&self, connection: &mut SqliteConnection) -> Result<bool> {
+    async fn migrate(&self, connection: &mut AnyConnection) -> Result<bool> {
         Self::migrate_authority_attributes_to_members(connection).await
     }
 }
@@ -36,7 +36,7 @@ impl AuthorityAttributes {
 
     /// Duplicate all attributes entry for every known node
     pub(crate) async fn migrate_authority_attributes_to_members(
-        connection: &mut SqliteConnection,
+        connection: &mut AnyConnection,
     ) -> Result<bool> {
         let mut transaction = Connection::begin(&mut *connection).await.into_core()?;
 
@@ -46,27 +46,27 @@ impl AuthorityAttributes {
             .await
             .into_core()?;
 
-        for node_name in node_names.into_iter().filter(|n| n.is_authority) {
+        for node_name in node_names.into_iter().filter(|n| n.is_authority.to_bool()) {
             let rows: Vec<IdentityAttributesRow> =
-                query_as("SELECT identifier, attributes, added, attested_by FROM identity_attributes WHERE node_name=?")
-                    .bind(node_name.name.to_sql())
+                query_as("SELECT identifier, attributes, added, attested_by FROM identity_attributes WHERE node_name = $1")
+                    .bind(node_name.name.clone())
                     .fetch_all(&mut *transaction)
                     .await
                     .into_core()?;
 
             for row in rows {
-                let insert = query("INSERT INTO authority_member (identifier, added_by, added_at, is_pre_trusted, attributes) VALUES (?, ?, ?, ?, ?)")
-                        .bind(row.identifier.to_sql())
-                        .bind(row.attested_by.clone().map(|e| e.to_sql()))
-                        .bind((row.added as u64).to_sql())
-                        .bind(0.to_sql())
-                        .bind(row.attributes.to_sql());
+                let insert = query("INSERT INTO authority_member (identifier, added_by, added_at, is_pre_trusted, attributes) VALUES ($1, $2, $3, $4, $5)")
+                        .bind(row.identifier)
+                        .bind(row.attested_by.to_option())
+                        .bind(row.added)
+                        .bind(0)
+                        .bind(row.attributes);
 
                 insert.execute(&mut *transaction).await.void()?;
             }
 
-            query("DELETE FROM identity_attributes WHERE node_name=?")
-                .bind(node_name.name.to_sql())
+            query("DELETE FROM identity_attributes WHERE node_name = $1")
+                .bind(node_name.name.clone())
                 .execute(&mut *transaction)
                 .await
                 .void()?;
@@ -84,21 +84,21 @@ struct IdentityAttributesRow {
     identifier: String,
     attributes: Vec<u8>,
     added: i64,
-    attested_by: Option<String>,
+    attested_by: Nullable<String>,
 }
 
 #[derive(FromRow)]
 struct NodeNameRow {
     name: String,
-    is_authority: bool,
+    is_authority: Boolean,
 }
 
 #[cfg(test)]
 mod test {
     use crate::database::migrations::node_migration_set::NodeMigrationSet;
-    use crate::database::{MigrationSet, SqlxDatabase};
+    use crate::database::{DatabaseType, MigrationSet, SqlxDatabase};
+    use sqlx::any::AnyArguments;
     use sqlx::query::Query;
-    use sqlx::sqlite::SqliteArguments;
     use std::collections::BTreeMap;
     use tempfile::NamedTempFile;
 
@@ -108,19 +108,19 @@ mod test {
     struct MemberRow {
         identifier: String,
         attributes: Vec<u8>,
-        added_by: Option<String>,
+        added_by: Nullable<String>,
         added_at: i64,
-        is_pre_trusted: bool,
+        is_pre_trusted: Boolean,
     }
 
     #[tokio::test]
     async fn test_migration() -> Result<()> {
         let db_file = NamedTempFile::new().unwrap();
-        let pool = SqlxDatabase::create_connection_pool(db_file.path()).await?;
+        let pool = SqlxDatabase::create_sqlite_connection_pool(db_file.path()).await?;
 
         let mut connection = pool.acquire().await.into_core()?;
 
-        NodeMigrationSet
+        NodeMigrationSet::new(DatabaseType::Sqlite)
             .create_migrator()?
             .migrate_up_to_skip_last_rust_migration(&pool, AuthorityAttributes::version())
             .await?;
@@ -154,15 +154,15 @@ mod test {
         insert.execute(&mut *connection).await.void()?;
 
         // apply migrations
-        NodeMigrationSet
+        NodeMigrationSet::new(DatabaseType::Sqlite)
             .create_migrator()?
             .migrate_up_to(&pool, AuthorityAttributes::version())
             .await?;
 
         // check data
         let rows1: Vec<IdentityAttributesRow> =
-            query_as("SELECT identifier, attributes, added, attested_by FROM identity_attributes WHERE node_name = ?")
-                .bind(regular_node_name.to_sql())
+            query_as("SELECT identifier, attributes, added, attested_by FROM identity_attributes WHERE node_name = $1")
+                .bind(regular_node_name)
                 .fetch_all(&mut *connection)
                 .await
                 .into_core()?;
@@ -170,8 +170,8 @@ mod test {
         assert_eq!(rows1[0].attributes, attributes1);
 
         let rows2: Vec<IdentityAttributesRow> =
-            query_as("SELECT identifier, attributes, added, attested_by FROM identity_attributes WHERE node_name = ?")
-                .bind(authority_node_name.to_sql())
+            query_as("SELECT identifier, attributes, added, attested_by FROM identity_attributes WHERE node_name = $1")
+                .bind(authority_node_name)
                 .fetch_all(&mut *connection)
                 .await
                 .into_core()?;
@@ -185,9 +185,12 @@ mod test {
         let member = &rows3[0];
 
         assert_eq!(member.identifier, "identifier1".to_string());
-        assert_eq!(member.added_by, Some("authority_id".to_string()));
+        assert_eq!(
+            member.added_by.to_option(),
+            Some("authority_id".to_string())
+        );
         assert_eq!(member.added_at, 1);
-        assert!(!member.is_pre_trusted);
+        assert!(!member.is_pre_trusted.to_bool());
         assert_eq!(member.attributes, attributes2);
 
         Ok(())
@@ -203,25 +206,22 @@ mod test {
         identifier: &str,
         attributes: Vec<u8>,
         node_name: String,
-    ) -> Query<Sqlite, SqliteArguments> {
-        query("INSERT INTO identity_attributes (identifier, attributes, added, expires, attested_by, node_name) VALUES (?, ?, ?, ?, ?, ?)")
-            .bind(identifier.to_sql())
-            .bind(attributes.to_sql())
-            .bind(1.to_sql())
-            .bind(Some(2).map(|e| e.to_sql()))
-            .bind(Some("authority_id").map(|e| e.to_sql()))
-            .bind(node_name.to_sql())
+    ) -> Query<Any, AnyArguments> {
+        query("INSERT INTO identity_attributes (identifier, attributes, added, expires, attested_by, node_name) VALUES ($1, $2, $3, $4, $5, $6)")
+            .bind(identifier)
+            .bind(attributes)
+            .bind(1)
+            .bind(Some(2))
+            .bind(Some("authority_id"))
+            .bind(node_name)
     }
 
-    fn insert_node(
-        name: String,
-        is_authority: bool,
-    ) -> Query<'static, Sqlite, SqliteArguments<'static>> {
-        query("INSERT INTO node (name, identifier, verbosity, is_default, is_authority) VALUES (?, ?, ?, ?, ?)")
-            .bind(name.to_sql())
-            .bind("I_TEST".to_string().to_sql())
-            .bind(1.to_sql())
-            .bind(0.to_sql())
-            .bind(is_authority.to_sql())
+    fn insert_node(name: String, is_authority: bool) -> Query<'static, Any, AnyArguments<'static>> {
+        query("INSERT INTO node (name, identifier, verbosity, is_default, is_authority) VALUES ($1, $2, $3, $4, $5)")
+            .bind(name)
+            .bind("I_TEST".to_string())
+            .bind(1)
+            .bind(0)
+            .bind(is_authority)
     }
 }

@@ -45,7 +45,7 @@ mod test {
     use crate::kafka::{
         ConsumerPublishing, ConsumerResolution, KafkaInletController, KafkaPortalListener,
     };
-    use crate::test_utils::NodeManagerHandle;
+    use crate::test_utils::{NodeManagerHandle, TestNode};
 
     // TODO: upgrade to 13 by adding a metadata request to map uuid<=>topic_name
     const TEST_KAFKA_API_VERSION: i16 = 12;
@@ -131,6 +131,7 @@ mod test {
     async fn producer__flow_with_mock_kafka__content_encryption_and_decryption(
         context: &mut Context,
     ) -> ockam::Result<()> {
+        TestNode::clean().await?;
         let handle = crate::test_utils::start_manager_for_tests(context, None, None).await?;
 
         let consumer_bootstrap_port = create_kafka_service(

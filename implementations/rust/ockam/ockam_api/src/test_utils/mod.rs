@@ -21,6 +21,7 @@ use ockam::tcp::{TcpListenerOptions, TcpTransport};
 use ockam::transport::HostnamePort;
 use ockam::Result;
 use ockam_core::AsyncTryClone;
+use ockam_node::database::{DatabaseConfiguration, SqlxDatabase};
 
 use crate::authenticator::credential_issuer::{DEFAULT_CREDENTIAL_VALIDITY, PROJECT_MEMBER_SCHEMA};
 use crate::cli_state::{random_name, CliState};
@@ -42,7 +43,9 @@ pub struct NodeManagerHandle {
 
 impl Drop for NodeManagerHandle {
     fn drop(&mut self) {
-        self.cli_state.delete().expect("cannot delete cli state");
+        self.cli_state
+            .delete_local_data()
+            .expect("cannot delete cli state");
     }
 }
 
@@ -63,7 +66,7 @@ pub async fn start_manager_for_tests(
         )
         .await?;
 
-    let cli_state = CliState::test().await?;
+    let cli_state = CliState::system().await?;
 
     let node_name = random_name();
     cli_state
@@ -202,6 +205,18 @@ pub struct TestNode {
 }
 
 impl TestNode {
+    /// If the database being used for the tests is Postgres then it is shared across all the tests and
+    /// needs be cleaned-up before a test is executed
+    pub async fn clean() -> Result<()> {
+        if let Some(configuration) = DatabaseConfiguration::postgres()? {
+            let db = SqlxDatabase::create_no_migration(&configuration)
+                .await
+                .unwrap();
+            db.drop_all_postgres_tables().await?;
+        };
+        Ok(())
+    }
+
     pub async fn create(runtime: Arc<Runtime>, listen_addr: Option<&str>) -> Self {
         let (mut context, mut executor) = NodeBuilder::new().with_runtime(runtime.clone()).build();
         runtime.spawn(async move {

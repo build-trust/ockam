@@ -1,5 +1,4 @@
 use core::fmt::{Debug, Formatter};
-
 use minicbor::{Decode, Encode};
 
 use crate::alloc::string::ToString;

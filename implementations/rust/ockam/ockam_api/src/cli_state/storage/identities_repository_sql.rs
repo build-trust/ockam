@@ -5,7 +5,7 @@ use sqlx::*;
 use ockam::identity::Identifier;
 use ockam_core::async_trait;
 use ockam_core::Result;
-use ockam_node::database::{FromSqlxError, SqlxDatabase, ToSqlxType, ToVoid};
+use ockam_node::database::{Boolean, FromSqlxError, SqlxDatabase, ToVoid};
 
 use crate::cli_state::{IdentitiesRepository, NamedIdentity};
 
@@ -40,17 +40,24 @@ impl IdentitiesRepository for IdentitiesSqlxDatabase {
         let mut transaction = self.database.begin().await.into_core()?;
 
         let query1 = query_scalar(
-            "SELECT EXISTS(SELECT 1 FROM named_identity WHERE is_default=$1 AND name=$2)",
+            "SELECT EXISTS(SELECT 1 FROM named_identity WHERE is_default = $1 AND name = $2)",
         )
-        .bind(true.to_sql())
-        .bind(name.to_sql());
-        let is_already_default: bool = query1.fetch_one(&mut *transaction).await.into_core()?;
+        .bind(true)
+        .bind(name);
+        let is_already_default: Boolean = query1.fetch_one(&mut *transaction).await.into_core()?;
+        let is_already_default = is_already_default.to_bool();
 
-        let query2 = query("INSERT OR REPLACE INTO named_identity VALUES (?, ?, ?, ?)")
-            .bind(identifier.to_sql())
-            .bind(name.to_sql())
-            .bind(vault_name.to_sql())
-            .bind(is_already_default.to_sql());
+        let query2 = query(
+            r#"
+        INSERT INTO named_identity (identifier, name, vault_name, is_default)
+        VALUES ($1, $2, $3, $4)
+        ON CONFLICT (identifier)
+        DO UPDATE SET name = $2, vault_name = $3, is_default = $4"#,
+        )
+        .bind(identifier)
+        .bind(name)
+        .bind(vault_name)
+        .bind(is_already_default);
         query2.execute(&mut *transaction).await.void()?;
 
         transaction.commit().await.void()?;
@@ -68,9 +75,9 @@ impl IdentitiesRepository for IdentitiesSqlxDatabase {
 
         // get the named identity
         let query1 = query_as(
-            "SELECT identifier, name, vault_name, is_default FROM named_identity WHERE name=$1",
+            "SELECT identifier, name, vault_name, is_default FROM named_identity WHERE name = $1",
         )
-        .bind(name.to_sql());
+        .bind(name);
         let row: Option<NamedIdentityRow> =
             query1.fetch_optional(&mut *transaction).await.into_core()?;
         let named_identity = row.map(|r| r.named_identity()).transpose()?;
@@ -81,7 +88,7 @@ impl IdentitiesRepository for IdentitiesSqlxDatabase {
 
             // otherwise delete it and set another identity as the default
             Some(named_identity) => {
-                let query2 = query("DELETE FROM named_identity WHERE name=?").bind(name.to_sql());
+                let query2 = query("DELETE FROM named_identity WHERE name = $1").bind(name);
                 query2.execute(&mut *transaction).await.void()?;
 
                 // if the deleted identity was the default one, select another identity to be the default one
@@ -93,9 +100,9 @@ impl IdentitiesRepository for IdentitiesSqlxDatabase {
                             .into_core()?
                     {
                         let query3 =
-                            query("UPDATE named_identity SET is_default = ? WHERE name = ?")
-                                .bind(true.to_sql())
-                                .bind(other_name.to_sql());
+                            query("UPDATE named_identity SET is_default = $1 WHERE name = $2")
+                                .bind(true)
+                                .bind(other_name);
                         query3.execute(&mut *transaction).await.void()?
                     }
                 }
@@ -120,9 +127,9 @@ impl IdentitiesRepository for IdentitiesSqlxDatabase {
 
     async fn get_identifier(&self, name: &str) -> Result<Option<Identifier>> {
         let query = query_as(
-            "SELECT identifier, name, vault_name, is_default FROM named_identity WHERE name=$1",
+            "SELECT identifier, name, vault_name, is_default FROM named_identity WHERE name = $1",
         )
-        .bind(name.to_sql());
+        .bind(name);
         let row: Option<NamedIdentityRow> = query
             .fetch_optional(&*self.database.pool)
             .await
@@ -135,7 +142,7 @@ impl IdentitiesRepository for IdentitiesSqlxDatabase {
         identifier: &Identifier,
     ) -> Result<Option<String>> {
         let query =
-            query_as("SELECT identifier, name, vault_name, is_default FROM named_identity WHERE identifier=$1").bind(identifier.to_sql());
+            query_as("SELECT identifier, name, vault_name, is_default FROM named_identity WHERE identifier = $1").bind(identifier);
         let row: Option<NamedIdentityRow> = query
             .fetch_optional(&*self.database.pool)
             .await
@@ -145,9 +152,9 @@ impl IdentitiesRepository for IdentitiesSqlxDatabase {
 
     async fn get_named_identity(&self, name: &str) -> Result<Option<NamedIdentity>> {
         let query = query_as(
-            "SELECT identifier, name, vault_name, is_default FROM named_identity WHERE name=$1",
+            "SELECT identifier, name, vault_name, is_default FROM named_identity WHERE name = $1",
         )
-        .bind(name.to_sql());
+        .bind(name);
         let row: Option<NamedIdentityRow> = query
             .fetch_optional(&*self.database.pool)
             .await
@@ -160,7 +167,7 @@ impl IdentitiesRepository for IdentitiesSqlxDatabase {
         identifier: &Identifier,
     ) -> Result<Option<NamedIdentity>> {
         let query =
-            query_as("SELECT identifier, name, vault_name, is_default FROM named_identity WHERE identifier=$1").bind(identifier.to_sql());
+            query_as("SELECT identifier, name, vault_name, is_default FROM named_identity WHERE identifier = $1").bind(identifier);
         let row: Option<NamedIdentityRow> = query
             .fetch_optional(&*self.database.pool)
             .await
@@ -178,7 +185,7 @@ impl IdentitiesRepository for IdentitiesSqlxDatabase {
         &self,
         vault_name: &str,
     ) -> Result<Vec<NamedIdentity>> {
-        let query = query_as("SELECT identifier, name, vault_name, is_default FROM named_identity WHERE vault_name=?").bind(vault_name.to_sql());
+        let query = query_as("SELECT identifier, name, vault_name, is_default FROM named_identity WHERE vault_name = $1").bind(vault_name);
         let row: Vec<NamedIdentityRow> = query.fetch_all(&*self.database.pool).await.into_core()?;
         row.iter().map(|r| r.named_identity()).collect()
     }
@@ -186,15 +193,15 @@ impl IdentitiesRepository for IdentitiesSqlxDatabase {
     async fn set_as_default(&self, name: &str) -> Result<()> {
         let mut transaction = self.database.begin().await.into_core()?;
         // set the identifier as the default one
-        let query1 = query("UPDATE named_identity SET is_default = ? WHERE name = ?")
-            .bind(true.to_sql())
-            .bind(name.to_sql());
+        let query1 = query("UPDATE named_identity SET is_default = $1 WHERE name = $2")
+            .bind(true)
+            .bind(name);
         query1.execute(&mut *transaction).await.void()?;
 
         // set all the others as non-default
-        let query2 = query("UPDATE named_identity SET is_default = ? WHERE name <> ?")
-            .bind(false.to_sql())
-            .bind(name.to_sql());
+        let query2 = query("UPDATE named_identity SET is_default = $1 WHERE name <> $2")
+            .bind(false)
+            .bind(name);
         query2.execute(&mut *transaction).await.void()?;
         transaction.commit().await.void()
     }
@@ -202,22 +209,22 @@ impl IdentitiesRepository for IdentitiesSqlxDatabase {
     async fn set_as_default_by_identifier(&self, identifier: &Identifier) -> Result<()> {
         let mut transaction = self.database.begin().await.into_core()?;
         // set the identifier as the default one
-        let query1 = query("UPDATE named_identity SET is_default = ? WHERE identifier = ?")
-            .bind(true.to_sql())
-            .bind(identifier.to_sql());
+        let query1 = query("UPDATE named_identity SET is_default = $1 WHERE identifier = $2")
+            .bind(true)
+            .bind(identifier);
         query1.execute(&mut *transaction).await.void()?;
 
         // set all the others as non-default
-        let query2 = query("UPDATE named_identity SET is_default = ? WHERE identifier <> ?")
-            .bind(false.to_sql())
-            .bind(identifier.to_sql());
+        let query2 = query("UPDATE named_identity SET is_default = $1 WHERE identifier <> $2")
+            .bind(false)
+            .bind(identifier);
         query2.execute(&mut *transaction).await.void()?;
         transaction.commit().await.void()
     }
 
     async fn get_default_named_identity(&self) -> Result<Option<NamedIdentity>> {
         let query =
-            query_as("SELECT identifier, name, vault_name, is_default FROM named_identity WHERE is_default=$1").bind(true.to_sql());
+            query_as("SELECT identifier, name, vault_name, is_default FROM named_identity WHERE is_default = $1").bind(true);
         let row: Option<NamedIdentityRow> = query
             .fetch_optional(&*self.database.pool)
             .await
@@ -231,7 +238,7 @@ pub(crate) struct NamedIdentityRow {
     identifier: String,
     name: String,
     vault_name: String,
-    is_default: bool,
+    is_default: Boolean,
 }
 
 impl NamedIdentityRow {
@@ -253,7 +260,7 @@ impl NamedIdentityRow {
             self.identifier()?,
             self.name.clone(),
             self.vault_name.clone(),
-            self.is_default,
+            self.is_default.to_bool(),
         ))
     }
 }
@@ -262,121 +269,130 @@ impl NamedIdentityRow {
 mod tests {
     use ockam::identity::identities;
     use ockam_core::compat::sync::Arc;
+    use ockam_node::database::with_dbs;
 
     use super::*;
 
     #[tokio::test]
     async fn test_identities_repository_named_identities() -> Result<()> {
-        let repository = create_repository().await?;
+        with_dbs(|db| async move {
+            let repository: Arc<dyn IdentitiesRepository> =
+                Arc::new(IdentitiesSqlxDatabase::new(db));
 
-        // A name can be associated to an identity
-        let identifier1 = create_identity().await?;
-        repository
-            .store_named_identity(&identifier1, "name1", "vault")
-            .await?;
+            // A name can be associated to an identity
+            let identifier1 = create_identity().await?;
+            repository
+                .store_named_identity(&identifier1, "name1", "vault")
+                .await?;
 
-        let identifier2 = create_identity().await?;
-        repository
-            .store_named_identity(&identifier2, "name2", "vault")
-            .await?;
+            let identifier2 = create_identity().await?;
+            repository
+                .store_named_identity(&identifier2, "name2", "vault")
+                .await?;
 
-        let result = repository.get_identifier("name1").await?;
-        assert_eq!(result, Some(identifier1.clone()));
+            let result = repository.get_identifier("name1").await?;
+            assert_eq!(result, Some(identifier1.clone()));
 
-        let result = repository
-            .get_identity_name_by_identifier(&identifier1)
-            .await?;
-        assert_eq!(result, Some("name1".into()));
+            let result = repository
+                .get_identity_name_by_identifier(&identifier1)
+                .await?;
+            assert_eq!(result, Some("name1".into()));
 
-        let result = repository.get_named_identity("name2").await?;
-        assert_eq!(result.map(|n| n.identifier()), Some(identifier2.clone()));
+            let result = repository.get_named_identity("name2").await?;
+            assert_eq!(result.map(|n| n.identifier()), Some(identifier2.clone()));
 
-        let result = repository.get_named_identities().await?;
-        assert_eq!(
-            result.iter().map(|n| n.identifier()).collect::<Vec<_>>(),
-            vec![identifier1.clone(), identifier2.clone()]
-        );
+            let result = repository.get_named_identities().await?;
+            assert_eq!(
+                result.iter().map(|n| n.identifier()).collect::<Vec<_>>(),
+                vec![identifier1.clone(), identifier2.clone()]
+            );
 
-        repository.delete_identity("name1").await?;
-        let result = repository.get_named_identities().await?;
-        assert_eq!(
-            result.iter().map(|n| n.identifier()).collect::<Vec<_>>(),
-            vec![identifier2.clone()]
-        );
+            repository.delete_identity("name1").await?;
+            let result = repository.get_named_identities().await?;
+            assert_eq!(
+                result.iter().map(|n| n.identifier()).collect::<Vec<_>>(),
+                vec![identifier2.clone()]
+            );
 
-        Ok(())
+            Ok(())
+        })
+        .await
     }
 
     #[tokio::test]
     async fn test_identities_repository_default_identities() -> Result<()> {
-        let repository = create_repository().await?;
+        with_dbs(|db| async move {
+            let repository: Arc<dyn IdentitiesRepository> =
+                Arc::new(IdentitiesSqlxDatabase::new(db));
 
-        // A name can be associated to an identity
-        let identifier1 = create_identity().await?;
-        let named_identity1 = repository
-            .store_named_identity(&identifier1, "name1", "vault")
-            .await?;
+            // A name can be associated to an identity
+            let identifier1 = create_identity().await?;
+            let named_identity1 = repository
+                .store_named_identity(&identifier1, "name1", "vault")
+                .await?;
 
-        let identifier2 = create_identity().await?;
-        let named_identity2 = repository
-            .store_named_identity(&identifier2, "name2", "vault")
-            .await?;
+            let identifier2 = create_identity().await?;
+            let named_identity2 = repository
+                .store_named_identity(&identifier2, "name2", "vault")
+                .await?;
 
-        // An identity can be marked as being the default one
-        repository
-            .set_as_default_by_identifier(&identifier1)
-            .await?;
-        let result = repository.get_default_named_identity().await?;
-        assert_eq!(result, Some(named_identity1.set_as_default()));
+            // An identity can be marked as being the default one
+            repository
+                .set_as_default_by_identifier(&identifier1)
+                .await?;
+            let result = repository.get_default_named_identity().await?;
+            assert_eq!(result, Some(named_identity1.set_as_default()));
 
-        // An identity can be marked as being the default one by passing its name
-        repository.set_as_default("name2").await?;
-        let result = repository.get_default_named_identity().await?;
-        assert_eq!(result, Some(named_identity2.set_as_default()));
+            // An identity can be marked as being the default one by passing its name
+            repository.set_as_default("name2").await?;
+            let result = repository.get_default_named_identity().await?;
+            assert_eq!(result, Some(named_identity2.set_as_default()));
 
-        let result = repository.get_named_identity("name1").await?;
-        assert!(!result.unwrap().is_default());
+            let result = repository.get_named_identity("name1").await?;
+            assert!(!result.unwrap().is_default());
 
-        let result = repository.get_default_named_identity().await?;
-        assert_eq!(result.map(|i| i.name()), Some("name2".to_string()));
+            let result = repository.get_default_named_identity().await?;
+            assert_eq!(result.map(|i| i.name()), Some("name2".to_string()));
 
-        Ok(())
+            Ok(())
+        })
+        .await
     }
 
     #[tokio::test]
     async fn test_get_identities_by_vault_name() -> Result<()> {
-        let repository = create_repository().await?;
+        with_dbs(|db| async move {
+            let repository: Arc<dyn IdentitiesRepository> =
+                Arc::new(IdentitiesSqlxDatabase::new(db));
 
-        // A name can be associated to an identity
-        let identifier1 = create_identity().await?;
-        repository
-            .store_named_identity(&identifier1, "name1", "vault1")
-            .await?;
+            // A name can be associated to an identity
+            let identifier1 = create_identity().await?;
+            repository
+                .store_named_identity(&identifier1, "name1", "vault1")
+                .await?;
 
-        let identifier2 = create_identity().await?;
-        repository
-            .store_named_identity(&identifier2, "name2", "vault2")
-            .await?;
+            let identifier2 = create_identity().await?;
+            repository
+                .store_named_identity(&identifier2, "name2", "vault2")
+                .await?;
 
-        let identifier3 = create_identity().await?;
-        repository
-            .store_named_identity(&identifier3, "name3", "vault1")
-            .await?;
+            let identifier3 = create_identity().await?;
+            repository
+                .store_named_identity(&identifier3, "name3", "vault1")
+                .await?;
 
-        let result = repository
-            .get_named_identities_by_vault_name("vault1")
-            .await?;
-        let names: Vec<String> = result.iter().map(|i| i.name()).collect();
-        assert_eq!(names, vec!["name1", "name3"]);
+            let result = repository
+                .get_named_identities_by_vault_name("vault1")
+                .await?;
+            let names: Vec<String> = result.iter().map(|i| i.name()).collect();
+            assert_eq!(names, vec!["name1", "name3"]);
 
-        Ok(())
+            Ok(())
+        })
+        .await
     }
 
     /// HELPERS
-    async fn create_repository() -> Result<Arc<dyn IdentitiesRepository>> {
-        Ok(Arc::new(IdentitiesSqlxDatabase::create().await?))
-    }
-
     async fn create_identity() -> Result<Identifier> {
         let identities = identities().await?;
         identities.identities_creation().create_identity().await

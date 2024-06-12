@@ -2,6 +2,7 @@ use ockam::identity::{Identifier, TimestampInSeconds};
 use ockam_core::compat::collections::BTreeMap;
 use ockam_core::compat::str::FromStr;
 use ockam_core::{Error, Result};
+use ockam_node::database::Boolean;
 
 /// Project member stored on the Authority node
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -52,10 +53,10 @@ impl AuthorityMember {
 #[derive(sqlx::FromRow)]
 pub(crate) struct AuthorityMemberRow {
     identifier: String,
-    attributes: Vec<u8>,
     added_by: String,
     added_at: i64,
-    is_pre_trusted: bool,
+    is_pre_trusted: Boolean,
+    attributes: Vec<u8>,
 }
 
 impl TryFrom<AuthorityMemberRow> for AuthorityMember {
@@ -67,7 +68,7 @@ impl TryFrom<AuthorityMemberRow> for AuthorityMember {
             minicbor::decode(&value.attributes)?,
             Identifier::from_str(&value.added_by)?,
             TimestampInSeconds(value.added_at as u64),
-            value.is_pre_trusted,
+            value.is_pre_trusted.to_bool(),
         );
 
         Ok(member)

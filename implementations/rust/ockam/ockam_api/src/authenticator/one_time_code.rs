@@ -8,7 +8,6 @@ use ockam_core::compat::string::{String, ToString};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::Error;
 use ockam_core::Result;
-use ockam_node::database::{SqlxType, ToSqlxType};
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 
@@ -88,12 +87,6 @@ impl<'de> Deserialize<'de> for OneTimeCode {
     {
         let s = String::deserialize(deserializer)?;
         OneTimeCode::from_str(s.as_str()).map_err(serde::de::Error::custom)
-    }
-}
-
-impl ToSqlxType for OneTimeCode {
-    fn to_sql(&self) -> SqlxType {
-        self.to_string().to_sql()
     }
 }
 
