@@ -27,6 +27,7 @@ pub fn measure_message_latency_two_nodes() {
 
     let result: ockam::Result<()> = runtime_cloned.block_on(async move {
         let test_body = async move {
+            TestNode::clean().await?;
             let mut first_node = TestNode::create(runtime.clone(), None).await;
             let second_node = TestNode::create(runtime.clone(), None).await;
 
@@ -124,6 +125,7 @@ pub fn measure_buffer_latency_two_nodes_portal() {
         let test_body = async move {
             let echo_server_handle = start_tcp_echo_server().await;
 
+            TestNode::clean().await?;
             let first_node = TestNode::create(runtime.clone(), None).await;
             let second_node = TestNode::create(runtime.clone(), None).await;
 

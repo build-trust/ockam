@@ -192,6 +192,7 @@ This file contains attributions for any 3rd-party open source code used in this 
 | equivalent | Apache-2.0, MIT | https://crates.io/crates/equivalent |
 | errno | MIT, Apache-2.0 | https://crates.io/crates/errno |
 | error-code | BSL-1.0 | https://crates.io/crates/error-code |
+| etcetera | MIT, Apache-2.0 | https://crates.io/crates/etcetera |
 | event-listener | Apache-2.0, MIT | https://crates.io/crates/event-listener |
 | event-listener-strategy | Apache-2.0, MIT | https://crates.io/crates/event-listener-strategy |
 | fastrand | Apache-2.0, MIT | https://crates.io/crates/fastrand |
@@ -199,6 +200,7 @@ This file contains attributions for any 3rd-party open source code used in this 
 | fdeflate | MIT, Apache-2.0 | https://crates.io/crates/fdeflate |
 | ff | MIT, Apache-2.0 | https://crates.io/crates/ff |
 | fiat-crypto | MIT, Apache-2.0, BSD-1-Clause | https://crates.io/crates/fiat-crypto |
+| finl_unicode | MIT, Apache-2.0 | https://crates.io/crates/finl_unicode |
 | flate2 | MIT, Apache-2.0 | https://crates.io/crates/flate2 |
 | flexi_logger | MIT, Apache-2.0 | https://crates.io/crates/flexi_logger |
 | flume | Apache-2.0, MIT | https://crates.io/crates/flume |
@@ -487,11 +489,12 @@ This file contains attributions for any 3rd-party open source code used in this 
 | spin | MIT | https://crates.io/crates/spin |
 | spki | Apache-2.0, MIT | https://crates.io/crates/spki |
 | sqlformat | MIT, Apache-2.0 | https://crates.io/crates/sqlformat |
-| sqlx | MIT, Apache-2.0 | https://crates.io/crates/sqlx |
-| sqlx-core | MIT, Apache-2.0 | https://crates.io/crates/sqlx-core |
-| sqlx-macros | MIT, Apache-2.0 | https://crates.io/crates/sqlx-macros |
-| sqlx-macros-core | MIT, Apache-2.0 | https://crates.io/crates/sqlx-macros-core |
-| sqlx-sqlite | MIT, Apache-2.0 | https://crates.io/crates/sqlx-sqlite |
+| sqlx | MIT, Apache-2.0 | https://github.com/etorreborre/sqlx?rev=5fec648d2de0cbeed738dcf1c6f5bc9194fc439b |
+| sqlx-core | MIT, Apache-2.0 | https://github.com/etorreborre/sqlx?rev=5fec648d2de0cbeed738dcf1c6f5bc9194fc439b |
+| sqlx-macros | MIT, Apache-2.0 | https://github.com/etorreborre/sqlx?rev=5fec648d2de0cbeed738dcf1c6f5bc9194fc439b |
+| sqlx-macros-core | MIT, Apache-2.0 | https://github.com/etorreborre/sqlx?rev=5fec648d2de0cbeed738dcf1c6f5bc9194fc439b |
+| sqlx-postgres | MIT, Apache-2.0 | https://github.com/etorreborre/sqlx?rev=5fec648d2de0cbeed738dcf1c6f5bc9194fc439b |
+| sqlx-sqlite | MIT, Apache-2.0 | https://github.com/etorreborre/sqlx?rev=5fec648d2de0cbeed738dcf1c6f5bc9194fc439b |
 | stable_deref_trait | MIT, Apache-2.0 | https://crates.io/crates/stable_deref_trait |
 | static_assertions | MIT, Apache-2.0 | https://crates.io/crates/static_assertions |
 | stm32-device-signature | MIT, Apache-2.0 | https://crates.io/crates/stm32-device-signature |
@@ -500,6 +503,7 @@ This file contains attributions for any 3rd-party open source code used in this 
 | stm32h7 | MIT, Apache-2.0 | https://crates.io/crates/stm32h7 |
 | stm32h7xx-hal | 0BSD | https://crates.io/crates/stm32h7xx-hal |
 | str-buf | BSL-1.0 | https://crates.io/crates/str-buf |
+| stringprep | MIT, Apache-2.0 | https://crates.io/crates/stringprep |
 | strip-ansi-escapes | Apache-2.0, MIT | https://crates.io/crates/strip-ansi-escapes |
 | strsim | MIT | https://crates.io/crates/strsim |
 | strum | MIT | https://crates.io/crates/strum |
@@ -586,6 +590,7 @@ This file contains attributions for any 3rd-party open source code used in this 
 | waker-fn | Apache-2.0, MIT | https://crates.io/crates/waker-fn |
 | walkdir | Unlicense, MIT | https://crates.io/crates/walkdir |
 | want | MIT | https://crates.io/crates/want |
+| wasite | Apache-2.0, BSL-1.0, MIT | https://crates.io/crates/wasite |
 | wasm-bindgen | MIT, Apache-2.0 | https://crates.io/crates/wasm-bindgen |
 | wasm-bindgen-backend | MIT, Apache-2.0 | https://crates.io/crates/wasm-bindgen-backend |
 | wasm-bindgen-futures | MIT, Apache-2.0 | https://crates.io/crates/wasm-bindgen-futures |
@@ -604,6 +609,7 @@ This file contains attributions for any 3rd-party open source code used in this 
 | web-time | MIT, Apache-2.0 | https://crates.io/crates/web-time |
 | weezl | MIT, Apache-2.0 | https://crates.io/crates/weezl |
 | which | MIT | https://crates.io/crates/which |
+| whoami | Apache-2.0, BSL-1.0, MIT | https://crates.io/crates/whoami |
 | winapi | MIT, Apache-2.0 | https://crates.io/crates/winapi |
 | winapi-i686-pc-windows-gnu | MIT, Apache-2.0 | https://crates.io/crates/winapi-i686-pc-windows-gnu |
 | winapi-util | Unlicense, MIT | https://crates.io/crates/winapi-util |

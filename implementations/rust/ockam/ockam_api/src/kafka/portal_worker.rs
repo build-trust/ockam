@@ -477,7 +477,7 @@ mod test {
     use crate::kafka::secure_channel_map::controller::KafkaSecureChannelControllerImpl;
     use crate::kafka::{ConsumerPublishing, ConsumerResolution};
     use crate::port_range::PortRange;
-    use crate::test_utils::NodeManagerHandle;
+    use crate::test_utils::{NodeManagerHandle, TestNode};
     use ockam::MessageReceiveOptions;
     use ockam_abac::{
         Action, Env, Policies, Resource, ResourcePolicySqlxDatabase, ResourceType,
@@ -517,6 +517,7 @@ mod test {
     async fn kafka_portal_worker__ping_pong_pass_through__should_pass(
         context: &mut Context,
     ) -> ockam::Result<()> {
+        TestNode::clean().await?;
         let handle = crate::test_utils::start_manager_for_tests(context, None, None).await?;
         let portal_inlet_address = setup_only_worker(context, &handle).await;
 
@@ -554,6 +555,7 @@ mod test {
     async fn kafka_portal_worker__pieces_of_kafka_message__message_assembled(
         context: &mut Context,
     ) -> ockam::Result<()> {
+        TestNode::clean().await?;
         let handle = crate::test_utils::start_manager_for_tests(context, None, None).await?;
         let portal_inlet_address = setup_only_worker(context, &handle).await;
 
@@ -596,6 +598,7 @@ mod test {
     async fn kafka_portal_worker__double_kafka_message__message_assembled(
         context: &mut Context,
     ) -> ockam::Result<()> {
+        TestNode::clean().await?;
         let handle = crate::test_utils::start_manager_for_tests(context, None, None).await?;
         let portal_inlet_address = setup_only_worker(context, &handle).await;
 
@@ -633,6 +636,7 @@ mod test {
     async fn kafka_portal_worker__bigger_than_limit_kafka_message__error(
         context: &mut Context,
     ) -> ockam::Result<()> {
+        TestNode::clean().await?;
         let handle = crate::test_utils::start_manager_for_tests(context, None, None).await?;
         let portal_inlet_address = setup_only_worker(context, &handle).await;
 
@@ -686,6 +690,7 @@ mod test {
     async fn kafka_portal_worker__almost_over_limit_than_limit_kafka_message__two_kafka_message_pass(
         context: &mut Context,
     ) -> ockam::Result<()> {
+        TestNode::clean().await?;
         let handle = crate::test_utils::start_manager_for_tests(context, None, None).await?;
         let portal_inlet_address = setup_only_worker(context, &handle).await;
 
@@ -859,6 +864,7 @@ mod test {
     async fn kafka_portal_worker__metadata_exchange__response_changed(
         context: &mut Context,
     ) -> ockam::Result<()> {
+        TestNode::clean().await?;
         let handle = crate::test_utils::start_manager_for_tests(context, None, None).await?;
         let project_authority = handle
             .node_manager

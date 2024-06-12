@@ -1,11 +1,13 @@
 use core::str::FromStr;
+use sqlx::database::HasArguments;
+use sqlx::encode::IsNull;
 use sqlx::*;
 use tracing::debug;
 
 use ockam_core::async_trait;
 use ockam_core::compat::vec::Vec;
 use ockam_core::Result;
-use ockam_node::database::{FromSqlxError, SqlxDatabase, SqlxType, ToSqlxType, ToVoid};
+use ockam_node::database::{FromSqlxError, SqlxDatabase, ToVoid};
 
 use crate::policy::ResourceTypePolicy;
 use crate::{Action, Expr, ResourceType, ResourceTypePoliciesRepository};
@@ -44,13 +46,16 @@ impl ResourceTypePoliciesRepository for ResourceTypePolicySqlxDatabase {
         expression: &Expr,
     ) -> Result<()> {
         let query = query(
-            r#"INSERT OR REPLACE INTO
-            resource_type_policy VALUES (?, ?, ?, ?)"#,
+            r#"INSERT INTO
+            resource_type_policy (resource_type, action, expression, node_name)
+            VALUES ($1, $2, $3, $4)
+            ON CONFLICT (node_name, resource_type, action)
+            DO UPDATE SET expression = $3"#,
         )
-        .bind(resource_type.to_sql())
-        .bind(action.to_sql())
-        .bind(expression.to_string().to_sql())
-        .bind(self.node_name.to_sql());
+        .bind(resource_type)
+        .bind(action)
+        .bind(expression)
+        .bind(&self.node_name);
         query.execute(&*self.database.pool).await.void()
     }
 
@@ -62,11 +67,11 @@ impl ResourceTypePoliciesRepository for ResourceTypePolicySqlxDatabase {
         let query = query_as(
             r#"SELECT resource_type, action, expression
             FROM resource_type_policy
-            WHERE node_name=$1 and resource_type=$2 and action=$3"#,
+            WHERE node_name = $1 and resource_type = $2 and action = $3"#,
         )
-        .bind(self.node_name.to_sql())
-        .bind(resource_type.to_sql())
-        .bind(action.to_sql());
+        .bind(&self.node_name)
+        .bind(resource_type)
+        .bind(action);
         let row: Option<PolicyRow> = query
             .fetch_optional(&*self.database.pool)
             .await
@@ -77,9 +82,9 @@ impl ResourceTypePoliciesRepository for ResourceTypePolicySqlxDatabase {
     async fn get_policies(&self) -> Result<Vec<ResourceTypePolicy>> {
         let query = query_as(
             r#"SELECT resource_type, action, expression
-            FROM resource_type_policy where node_name=$1"#,
+            FROM resource_type_policy where node_name = $1"#,
         )
-        .bind(self.node_name.to_sql());
+        .bind(&self.node_name);
         let row: Vec<PolicyRow> = query.fetch_all(&*self.database.pool).await.into_core()?;
         row.into_iter()
             .map(|r| r.try_into())
@@ -92,10 +97,10 @@ impl ResourceTypePoliciesRepository for ResourceTypePolicySqlxDatabase {
     ) -> Result<Vec<ResourceTypePolicy>> {
         let query = query_as(
             r#"SELECT resource_type, action, expression
-            FROM resource_type_policy where node_name=$1 and resource_type=$2"#,
+            FROM resource_type_policy where node_name = $1 and resource_type = $2"#,
         )
-        .bind(self.node_name.to_sql())
-        .bind(resource_type.to_sql());
+        .bind(&self.node_name)
+        .bind(resource_type);
         let row: Vec<PolicyRow> = query.fetch_all(&*self.database.pool).await.into_core()?;
         row.into_iter()
             .map(|r| r.try_into())
@@ -105,12 +110,50 @@ impl ResourceTypePoliciesRepository for ResourceTypePolicySqlxDatabase {
     async fn delete_policy(&self, resource_type: &ResourceType, action: &Action) -> Result<()> {
         let query = query(
             r#"DELETE FROM resource_type_policy
-            WHERE node_name=? and resource_type=? and action=?"#,
+            WHERE node_name = $1 and resource_type = $2 and action = $3"#,
         )
-        .bind(self.node_name.to_sql())
-        .bind(resource_type.to_sql())
-        .bind(action.to_sql());
+        .bind(&self.node_name)
+        .bind(resource_type)
+        .bind(action);
         query.execute(&*self.database.pool).await.void()
+    }
+}
+
+// Database serialization / deserialization
+
+impl Type<Any> for ResourceType {
+    fn type_info() -> <Any as Database>::TypeInfo {
+        <String as Type<Any>>::type_info()
+    }
+}
+
+impl Encode<'_, Any> for ResourceType {
+    fn encode_by_ref(&self, buf: &mut <Any as HasArguments>::ArgumentBuffer) -> IsNull {
+        <String as Encode<'_, Any>>::encode_by_ref(&self.to_string(), buf)
+    }
+}
+
+impl Type<Any> for Action {
+    fn type_info() -> <Any as Database>::TypeInfo {
+        <String as Type<Any>>::type_info()
+    }
+}
+
+impl sqlx::Encode<'_, Any> for Action {
+    fn encode_by_ref(&self, buf: &mut <Any as HasArguments>::ArgumentBuffer) -> IsNull {
+        <String as Encode<'_, Any>>::encode_by_ref(&self.to_string(), buf)
+    }
+}
+
+impl Type<Any> for Expr {
+    fn type_info() -> <Any as Database>::TypeInfo {
+        <String as Type<Any>>::type_info()
+    }
+}
+
+impl Encode<'_, Any> for Expr {
+    fn encode_by_ref(&self, buf: &mut <Any as HasArguments>::ArgumentBuffer) -> IsNull {
+        <String as Encode<'_, Any>>::encode_by_ref(&self.to_string(), buf)
     }
 }
 
@@ -145,14 +188,6 @@ impl TryFrom<PolicyRow> for ResourceTypePolicy {
             row.action()?,
             row.expression()?,
         ))
-    }
-}
-
-// Database serialization / deserialization
-
-impl ToSqlxType for ResourceType {
-    fn to_sql(&self) -> SqlxType {
-        SqlxType::Text(self.to_string())
     }
 }
 

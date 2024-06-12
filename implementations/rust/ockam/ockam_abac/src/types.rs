@@ -37,6 +37,10 @@ macro_rules! define {
             pub fn as_str(&self) -> &str {
                 &self.0
             }
+
+            pub fn to_string(&self) -> String {
+                self.as_str().to_string()
+            }
         }
 
         impl From<&str> for $t {

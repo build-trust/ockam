@@ -1,6 +1,4 @@
 use std::collections::BTreeMap;
-use std::path::Path;
-
 use tracing::info;
 
 use crate::authenticator::credential_issuer::CredentialIssuerWorker;
@@ -20,9 +18,8 @@ use ockam::identity::{
 use ockam::tcp::{TcpListenerOptions, TcpTransport};
 use ockam_core::compat::sync::Arc;
 use ockam_core::env::get_env;
-use ockam_core::errcode::{Kind, Origin};
 use ockam_core::flow_control::FlowControlId;
-use ockam_core::{Error, Result};
+use ockam_core::Result;
 use ockam_node::database::SqlxDatabase;
 use ockam_node::Context;
 
@@ -67,9 +64,7 @@ impl Authority {
 
         // create the database
         let node_name = "authority";
-        let database_path = &configuration.database_path;
-        Self::create_ockam_directory_if_necessary(database_path)?;
-        let database = SqlxDatabase::create(database_path).await?;
+        let database = SqlxDatabase::create(&configuration.database_configuration).await?;
         let members = Arc::new(AuthorityMembersSqlxDatabase::new(database.clone()));
         let tokens = Arc::new(AuthorityEnrollmentTokenSqlxDatabase::new(database.clone()));
         let secure_channel_repository = Arc::new(SecureChannelSqlxDatabase::new(database.clone()));
@@ -315,15 +310,6 @@ impl Authority {
 
 /// Private Authority functions
 impl Authority {
-    /// Create a directory to save storage files if they haven't been  created before
-    fn create_ockam_directory_if_necessary(path: &Path) -> Result<()> {
-        let parent = path.parent().unwrap();
-        if !parent.exists() {
-            std::fs::create_dir_all(parent).map_err(|e| Error::new(Origin::Node, Kind::Io, e))?;
-        }
-        Ok(())
-    }
-
     /// Make an identities repository pre-populated with the attributes of some trusted
     /// identities. The values either come from the command line or are read directly from a file
     /// every time we try to retrieve some attributes

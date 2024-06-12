@@ -21,6 +21,7 @@ use tracing::info;
 
 #[ockam_macros::test]
 async fn inlet_outlet_local_successful(context: &mut Context) -> ockam::Result<()> {
+    TestNode::clean().await?;
     let echo_server_handle = start_tcp_echo_server().await;
     let node_manager_handle = start_manager_for_tests(context, None, None).await?;
 
@@ -96,6 +97,7 @@ fn portal_node_goes_down_reconnect() {
         let test_body = async move {
             let echo_server_handle = start_tcp_echo_server().await;
 
+            TestNode::clean().await?;
             let first_node = TestNode::create(runtime_cloned.clone(), None).await;
             let second_node = TestNode::create(runtime_cloned.clone(), None).await;
 
@@ -237,6 +239,7 @@ fn portal_low_bandwidth_connection_keep_working_for_60s() {
         let test_body = async move {
             let echo_server_handle = start_tcp_echo_server().await;
 
+            TestNode::clean().await?;
             let first_node = TestNode::create(runtime_cloned.clone(), None).await;
             let second_node = TestNode::create(runtime_cloned, None).await;
 
@@ -354,6 +357,7 @@ fn portal_heavy_load_exchanged() {
         let test_body = async move {
             let echo_server_handle = start_tcp_echo_server().await;
 
+            TestNode::clean().await?;
             let first_node = TestNode::create(runtime_cloned.clone(), None).await;
             let second_node = TestNode::create(runtime_cloned, None).await;
 
@@ -496,6 +500,7 @@ fn test_portal_payload_transfer(outgoing_disruption: Disruption, incoming_disrup
         let test_body = async move {
             let echo_server_handle = start_tcp_echo_server().await;
 
+            TestNode::clean().await?;
             let first_node = TestNode::create(runtime_cloned.clone(), None).await;
             let second_node = TestNode::create(runtime_cloned, None).await;
 

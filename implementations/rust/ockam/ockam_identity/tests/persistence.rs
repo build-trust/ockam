@@ -162,11 +162,12 @@ fn test_persistence() -> ockam_core::Result<()> {
     let data = executor1
         .execute(async move {
             let data = std::panic::AssertUnwindSafe(async {
-                let db_alice = SqlxDatabase::create(db_file_alice_path_clone.as_path()).await?;
+                let db_alice =
+                    SqlxDatabase::create_sqlite(db_file_alice_path_clone.as_path()).await?;
                 let secure_channel_repository_alice =
                     Arc::new(SecureChannelSqlxDatabase::new(db_alice.clone()));
                 let secrets_repository_alice = Arc::new(SecretsSqlxDatabase::new(db_alice));
-                let db_bob = SqlxDatabase::create(db_file_bob_path_clone.as_path()).await?;
+                let db_bob = SqlxDatabase::create_sqlite(db_file_bob_path_clone.as_path()).await?;
                 let secure_channel_repository_bob =
                     Arc::new(SecureChannelSqlxDatabase::new(db_bob.clone()));
                 let secrets_repository_bob = Arc::new(SecretsSqlxDatabase::new(db_bob));
@@ -288,11 +289,11 @@ fn test_persistence() -> ockam_core::Result<()> {
     executor2
         .execute(async move {
             let res = std::panic::AssertUnwindSafe(async {
-                let db_alice = SqlxDatabase::create(db_file_alice_path.as_path()).await?;
+                let db_alice = SqlxDatabase::create_sqlite(db_file_alice_path.as_path()).await?;
                 let secure_channel_repository_alice =
                     Arc::new(SecureChannelSqlxDatabase::new(db_alice.clone()));
                 let secrets_repository_alice = Arc::new(SecretsSqlxDatabase::new(db_alice));
-                let db_bob = SqlxDatabase::create(db_file_bob_path.as_path()).await?;
+                let db_bob = SqlxDatabase::create_sqlite(db_file_bob_path.as_path()).await?;
                 let secure_channel_repository_bob =
                     Arc::new(SecureChannelSqlxDatabase::new(db_bob.clone()));
                 let secrets_repository_bob = Arc::new(SecretsSqlxDatabase::new(db_bob));

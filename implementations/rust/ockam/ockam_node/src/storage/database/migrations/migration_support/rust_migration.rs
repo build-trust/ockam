@@ -1,5 +1,5 @@
 use core::fmt::Debug;
-use sqlx::SqliteConnection;
+use sqlx::AnyConnection;
 
 use ockam_core::{async_trait, Result};
 
@@ -13,5 +13,5 @@ pub trait RustMigration: Debug + Send + Sync {
     fn version(&self) -> i64;
 
     /// Execute the migration
-    async fn migrate(&self, connection: &mut SqliteConnection) -> Result<bool>;
+    async fn migrate(&self, connection: &mut AnyConnection) -> Result<bool>;
 }

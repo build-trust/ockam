@@ -392,7 +392,7 @@ impl CreateCommand {
 
         let configuration = authority_node::Configuration {
             identifier: node.identifier(),
-            database_path: opts.state.database_path(),
+            database_configuration: opts.state.database_configuration()?,
             project_identifier: self.project_identifier.clone(),
             tcp_listener_address: self.tcp_listener_address.clone(),
             secure_channel_listener_name: None,

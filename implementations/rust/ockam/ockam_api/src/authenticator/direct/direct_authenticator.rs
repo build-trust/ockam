@@ -90,9 +90,10 @@ impl DirectAuthenticator {
                 "{} is trying to add member {}, but {} is not an enroller",
                 enroller, identifier, enroller
             );
-            return Ok(Either::Right(DirectAuthenticatorError(
-                "Non-enroller is trying to add a member".to_string(),
-            )));
+            return Ok(Either::Right(DirectAuthenticatorError(format!(
+                "Non-enroller {} is trying to add a member {}",
+                enroller, identifier
+            ))));
         }
 
         let attrs = attributes

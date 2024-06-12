@@ -1,13 +1,15 @@
 use core::str::FromStr;
 
+use sqlx::any::AnyArguments;
+use sqlx::database::HasArguments;
+use sqlx::encode::IsNull;
 use sqlx::query::Query;
-use sqlx::sqlite::SqliteArguments;
 use sqlx::*;
 use tracing::debug;
 
 use ockam_core::async_trait;
 use ockam_core::Result;
-use ockam_node::database::{FromSqlxError, SqlxDatabase, SqlxType, ToSqlxType, ToVoid};
+use ockam_node::database::{FromSqlxError, SqlxDatabase, ToVoid};
 
 use crate::models::{ChangeHistory, Identifier};
 use crate::{ChangeHistoryRepository, Identity, IdentityError, IdentityHistoryComparison, Vault};
@@ -37,8 +39,8 @@ impl ChangeHistoryRepository for ChangeHistorySqlxDatabase {
     async fn update_identity(&self, identity: &Identity, ignore_older: bool) -> Result<()> {
         let mut transaction = self.database.begin().await.into_core()?;
         let query1 =
-            query_as("SELECT identifier, change_history FROM identity WHERE identifier=$1")
-                .bind(identity.identifier().to_sql());
+            query_as("SELECT identifier, change_history FROM identity WHERE identifier = $1")
+                .bind(identity.identifier());
         let row: Option<ChangeHistoryRow> =
             query1.fetch_optional(&mut *transaction).await.into_core()?;
 
@@ -91,19 +93,20 @@ impl ChangeHistoryRepository for ChangeHistorySqlxDatabase {
 
     async fn delete_change_history(&self, identifier: &Identifier) -> Result<()> {
         let mut transaction = self.database.begin().await.into_core()?;
-        let query1 = query("DELETE FROM identity where identifier=?").bind(identifier.to_sql());
+        let query1 = query("DELETE FROM identity where identifier = $1").bind(identifier);
         query1.execute(&mut *transaction).await.void()?;
 
         let query2 =
-            query("DELETE FROM identity_attributes where identifier=?").bind(identifier.to_sql());
+            query("DELETE FROM identity_attributes where identifier = $1").bind(identifier);
         query2.execute(&mut *transaction).await.void()?;
         transaction.commit().await.void()?;
         Ok(())
     }
 
     async fn get_change_history(&self, identifier: &Identifier) -> Result<Option<ChangeHistory>> {
-        let query = query_as("SELECT identifier, change_history FROM identity WHERE identifier=$1")
-            .bind(identifier.to_sql());
+        let query =
+            query_as("SELECT identifier, change_history FROM identity WHERE identifier = $1")
+                .bind(identifier);
         let row: Option<ChangeHistoryRow> = query
             .fetch_optional(&*self.database.pool)
             .await
@@ -120,26 +123,44 @@ impl ChangeHistoryRepository for ChangeHistorySqlxDatabase {
 
 impl ChangeHistorySqlxDatabase {
     fn insert_query<'a>(
-        identifier: &Identifier,
-        change_history: &ChangeHistory,
-    ) -> Query<'a, Sqlite, SqliteArguments<'a>> {
-        query("INSERT OR REPLACE INTO identity VALUES (?, ?)")
-            .bind(identifier.to_sql())
-            .bind(change_history.to_sql())
+        identifier: &'a Identifier,
+        change_history: &'a ChangeHistory,
+    ) -> Query<'a, Any, AnyArguments<'a>> {
+        query(
+            r#"
+            INSERT INTO identity (identifier, change_history)
+            VALUES ($1, $2)
+            ON CONFLICT (identifier)
+            DO UPDATE SET change_history = $2"#,
+        )
+        .bind(identifier)
+        .bind(change_history)
     }
 }
 
 // Database serialization / deserialization
 
-impl ToSqlxType for Identifier {
-    fn to_sql(&self) -> SqlxType {
-        self.to_string().to_sql()
+impl Type<Any> for Identifier {
+    fn type_info() -> <Any as Database>::TypeInfo {
+        <String as Type<Any>>::type_info()
     }
 }
 
-impl ToSqlxType for ChangeHistory {
-    fn to_sql(&self) -> SqlxType {
-        self.export_as_string().unwrap().to_sql()
+impl Encode<'_, Any> for Identifier {
+    fn encode_by_ref(&self, buf: &mut <Any as HasArguments>::ArgumentBuffer) -> IsNull {
+        <String as Encode<'_, Any>>::encode_by_ref(&self.to_string(), buf)
+    }
+}
+
+impl Type<Any> for ChangeHistory {
+    fn type_info() -> <Any as Database>::TypeInfo {
+        <String as Type<Any>>::type_info()
+    }
+}
+
+impl Encode<'_, Any> for ChangeHistory {
+    fn encode_by_ref(&self, buf: &mut <Any as HasArguments>::ArgumentBuffer) -> IsNull {
+        <String as Encode<'_, Any>>::encode_by_ref(&self.export_as_string().unwrap(), buf)
     }
 }
 
@@ -167,6 +188,7 @@ mod tests {
     use crate::{identities, Identity};
 
     use ockam_core::compat::sync::Arc;
+    use ockam_node::database::with_dbs;
 
     fn orchestrator_identity() -> (Identifier, ChangeHistory) {
         let identifier = Identifier::from_str(
@@ -180,69 +202,77 @@ mod tests {
 
     #[tokio::test]
     async fn test_identities_repository_has_orchestrator_history() -> Result<()> {
-        // Clean repository should already have the orchestartor change history
-        let repository = create_repository().await?;
+        with_dbs(|db| async move {
+            // Clean repository should already have the Orchestrator change history
+            let repository: Arc<dyn ChangeHistoryRepository> =
+                Arc::new(ChangeHistorySqlxDatabase::new(db));
 
-        let (orchestrator_identifier, orchestrator_change_history) = orchestrator_identity();
+            let (orchestrator_identifier, orchestrator_change_history) = orchestrator_identity();
 
-        // the change history can be retrieved
-        let result = repository
-            .get_change_history(&orchestrator_identifier)
-            .await?;
-        assert_eq!(result.as_ref(), Some(&orchestrator_change_history));
+            // the change history can be retrieved
+            let result = repository
+                .get_change_history(&orchestrator_identifier)
+                .await?;
+            assert_eq!(result.as_ref(), Some(&orchestrator_change_history));
 
-        let result = repository.get_change_histories().await?;
-        assert_eq!(result, vec![orchestrator_change_history]);
+            let result = repository.get_change_histories().await?;
+            assert_eq!(result, vec![orchestrator_change_history]);
 
-        Ok(())
+            Ok(())
+        })
+        .await
     }
 
     #[tokio::test]
     async fn test_identities_repository() -> Result<()> {
-        let identity1 = create_identity().await?;
-        let identity2 = create_identity().await?;
-        let repository = create_repository().await?;
+        with_dbs(|db| async move {
+            let repository: Arc<dyn ChangeHistoryRepository> =
+                Arc::new(ChangeHistorySqlxDatabase::new(db));
+            let identity1 = create_identity().await?;
+            let identity2 = create_identity().await?;
 
-        // store and retrieve an identity
-        repository
-            .store_change_history(identity1.identifier(), identity1.change_history().clone())
-            .await?;
+            // store and retrieve an identity
+            repository
+                .store_change_history(identity1.identifier(), identity1.change_history().clone())
+                .await?;
 
-        // the change history can be retrieved
-        let result = repository
-            .get_change_history(identity1.identifier())
-            .await?;
-        assert_eq!(result, Some(identity1.change_history().clone()));
+            // the change history can be retrieved
+            let result = repository
+                .get_change_history(identity1.identifier())
+                .await?;
+            assert_eq!(result, Some(identity1.change_history().clone()));
 
-        // trying to retrieve a missing identity returns None
-        let result = repository
-            .get_change_history(identity2.identifier())
-            .await?;
-        assert_eq!(result, None);
+            // trying to retrieve a missing identity returns None
+            let result = repository
+                .get_change_history(identity2.identifier())
+                .await?;
+            assert_eq!(result, None);
 
-        // the repository can return the list of all change histories
-        let (_orchestrator_identifier, orchestrator_change_history) = orchestrator_identity();
-        repository
-            .store_change_history(identity2.identifier(), identity2.change_history().clone())
-            .await?;
-        let result = repository.get_change_histories().await?;
-        assert_eq!(
-            result,
-            vec![
-                orchestrator_change_history,
-                identity1.change_history().clone(),
-                identity2.change_history().clone(),
-            ]
-        );
-        // a change history can also be deleted from the repository
-        repository
-            .delete_change_history(identity2.identifier())
-            .await?;
-        let result = repository
-            .get_change_history(identity2.identifier())
-            .await?;
-        assert_eq!(result, None);
-        Ok(())
+            // the repository can return the list of all change histories
+            let (_orchestrator_identifier, orchestrator_change_history) = orchestrator_identity();
+            repository
+                .store_change_history(identity2.identifier(), identity2.change_history().clone())
+                .await?;
+            let result = repository.get_change_histories().await?;
+            assert_eq!(
+                result,
+                vec![
+                    orchestrator_change_history,
+                    identity1.change_history().clone(),
+                    identity2.change_history().clone(),
+                ]
+            );
+            // a change history can also be deleted from the repository
+            repository
+                .delete_change_history(identity2.identifier())
+                .await?;
+            let result = repository
+                .get_change_history(identity2.identifier())
+                .await?;
+            assert_eq!(result, None);
+            Ok(())
+        })
+        .await
     }
 
     #[tokio::test]
@@ -288,10 +318,6 @@ mod tests {
     }
 
     /// HELPERS
-    async fn create_repository() -> Result<Arc<dyn ChangeHistoryRepository>> {
-        Ok(Arc::new(ChangeHistorySqlxDatabase::create().await?))
-    }
-
     async fn create_identity() -> Result<Identity> {
         let identities = identities().await?;
         let identifier = identities.identities_creation().create_identity().await?;

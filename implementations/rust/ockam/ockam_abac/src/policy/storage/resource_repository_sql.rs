@@ -1,10 +1,12 @@
 use core::str::FromStr;
+use sqlx::database::HasArguments;
+use sqlx::encode::IsNull;
 use sqlx::*;
 use tracing::debug;
 
 use ockam_core::async_trait;
 use ockam_core::Result;
-use ockam_node::database::{FromSqlxError, SqlxDatabase, ToSqlxType, ToVoid};
+use ockam_node::database::{FromSqlxError, SqlxDatabase, ToVoid};
 
 use crate::{Resource, ResourceName, ResourceType, ResourcesRepository};
 
@@ -37,12 +39,14 @@ impl ResourcesSqlxDatabase {
 impl ResourcesRepository for ResourcesSqlxDatabase {
     async fn store_resource(&self, resource: &Resource) -> Result<()> {
         let query = query(
-            r#"INSERT OR REPLACE INTO resource
-            VALUES (?, ?, ?)"#,
+            r#"
+            INSERT INTO resource (resource_name, resource_type, node_name)
+            VALUES ($1, $2, $3)
+            ON CONFLICT DO NOTHING"#,
         )
-        .bind(resource.resource_name.to_sql())
-        .bind(resource.resource_type.to_sql())
-        .bind(self.node_name.to_sql());
+        .bind(&resource.resource_name)
+        .bind(&resource.resource_type)
+        .bind(&self.node_name);
         query.execute(&*self.database.pool).await.void()
     }
 
@@ -50,10 +54,10 @@ impl ResourcesRepository for ResourcesSqlxDatabase {
         let query = query_as(
             r#"SELECT resource_name, resource_type
             FROM resource
-            WHERE node_name=$1 and resource_name=$2"#,
+            WHERE node_name = $1 and resource_name = $2"#,
         )
-        .bind(self.node_name.to_sql())
-        .bind(resource_name.to_sql());
+        .bind(&self.node_name)
+        .bind(resource_name);
         let row: Option<ResourceRow> = query
             .fetch_optional(&*self.database.pool)
             .await
@@ -66,21 +70,35 @@ impl ResourcesRepository for ResourcesSqlxDatabase {
 
         let query = query(
             r#"DELETE FROM resource
-            WHERE node_name=? and resource_name=?"#,
+            WHERE node_name = $1 and resource_name = $2"#,
         )
-        .bind(self.node_name.to_sql())
-        .bind(resource_name.to_sql());
+        .bind(&self.node_name)
+        .bind(resource_name);
         query.execute(&mut *transaction).await.void()?;
 
         let query = sqlx::query(
             r#"DELETE FROM resource_policy
-            WHERE node_name=? and resource_name=?"#,
+            WHERE node_name = $1 and resource_name = $2"#,
         )
-        .bind(self.node_name.to_sql())
-        .bind(resource_name.to_sql());
+        .bind(&self.node_name)
+        .bind(resource_name);
         query.execute(&mut *transaction).await.void()?;
 
         transaction.commit().await.void()
+    }
+}
+
+// Database serialization / deserialization
+
+impl Type<Any> for ResourceName {
+    fn type_info() -> <Any as Database>::TypeInfo {
+        <String as Type<Any>>::type_info()
+    }
+}
+
+impl sqlx::Encode<'_, Any> for ResourceName {
+    fn encode_by_ref(&self, buf: &mut <Any as HasArguments>::ArgumentBuffer) -> IsNull {
+        <String as sqlx::Encode<'_, Any>>::encode_by_ref(&self.to_string(), buf)
     }
 }
 

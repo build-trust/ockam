@@ -1,9 +1,11 @@
+use sqlx::database::HasArguments;
+use sqlx::encode::IsNull;
 use sqlx::*;
 use tracing::debug;
 
 use ockam_core::async_trait;
 use ockam_core::Result;
-use ockam_node::database::{FromSqlxError, SqlxDatabase, ToSqlxType, ToVoid};
+use ockam_node::database::{FromSqlxError, SqlxDatabase, ToVoid};
 
 use crate::models::{CredentialAndPurposeKey, Identifier};
 use crate::{CredentialRepository, TimestampInSeconds};
@@ -38,8 +40,8 @@ impl CredentialSqlxDatabase {
 impl CredentialSqlxDatabase {
     /// Return all cached credentials for the given node
     pub async fn get_all(&self) -> Result<Vec<(CredentialAndPurposeKey, String)>> {
-        let query = query_as("SELECT credential, scope FROM credential WHERE node_name=?")
-            .bind(self.node_name.to_sql());
+        let query = query_as("SELECT credential, scope FROM credential WHERE node_name = $1")
+            .bind(self.node_name.clone());
 
         let cached_credential: Vec<CachedCredentialAndScopeRow> =
             query.fetch_all(&*self.database.pool).await.into_core()?;
@@ -65,12 +67,12 @@ impl CredentialRepository for CredentialSqlxDatabase {
         scope: &str,
     ) -> Result<Option<CredentialAndPurposeKey>> {
         let query = query_as(
-            "SELECT credential FROM credential WHERE subject_identifier=$1 AND issuer_identifier=$2 AND scope=$3 AND node_name=$4"
+            "SELECT credential FROM credential WHERE subject_identifier = $1 AND issuer_identifier = $2 AND scope = $3 AND node_name = $4"
             )
-            .bind(subject.to_sql())
-            .bind(issuer.to_sql())
-            .bind(scope.to_sql())
-            .bind(self.node_name.to_sql());
+            .bind(subject)
+            .bind(issuer)
+            .bind(scope)
+            .bind(self.node_name.clone());
         let cached_credential: Option<CachedCredentialRow> = query
             .fetch_optional(&*self.database.pool)
             .await
@@ -87,24 +89,52 @@ impl CredentialRepository for CredentialSqlxDatabase {
         credential: CredentialAndPurposeKey,
     ) -> Result<()> {
         let query = query(
-            "INSERT OR REPLACE INTO credential (subject_identifier, issuer_identifier, scope, credential, expires_at, node_name) VALUES (?, ?, ?, ?, ?, ?)"
-            )
-            .bind(subject.to_sql())
-            .bind(issuer.to_sql())
-            .bind(scope.to_sql())
-            .bind(credential.encode_as_cbor_bytes()?.to_sql())
-            .bind(expires_at.to_sql())
-            .bind(self.node_name.to_sql());
+            r#"INSERT INTO credential (subject_identifier, issuer_identifier, scope, credential, expires_at, node_name)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            ON CONFLICT (subject_identifier, issuer_identifier, scope)
+            DO UPDATE SET credential = $4, expires_at = $5, node_name = $6"#)
+            .bind(subject)
+            .bind(issuer)
+            .bind(scope)
+            .bind(credential)
+            .bind(expires_at)
+            .bind(self.node_name.clone());
         query.execute(&*self.database.pool).await.void()
     }
 
     async fn delete(&self, subject: &Identifier, issuer: &Identifier, scope: &str) -> Result<()> {
-        let query = query("DELETE FROM credential WHERE subject_identifier=$1 AND issuer_identifier=$2 AND scope=$3 AND node_name=$4")
-            .bind(subject.to_sql())
-            .bind(issuer.to_sql())
-            .bind(scope.to_sql())
-            .bind(self.node_name.to_sql());
+        let query = query("DELETE FROM credential WHERE subject_identifier = $1 AND issuer_identifier = $2 AND scope = $3 AND node_name = $4")
+            .bind(subject)
+            .bind(issuer)
+            .bind(scope)
+            .bind(self.node_name.clone());
         query.execute(&*self.database.pool).await.void()
+    }
+}
+
+// Database serialization / deserialization
+
+impl Type<Any> for CredentialAndPurposeKey {
+    fn type_info() -> <Any as Database>::TypeInfo {
+        <Vec<u8> as Type<Any>>::type_info()
+    }
+}
+
+impl Encode<'_, Any> for CredentialAndPurposeKey {
+    fn encode_by_ref(&self, buf: &mut <Any as HasArguments>::ArgumentBuffer) -> IsNull {
+        <Vec<u8> as Encode<'_, Any>>::encode_by_ref(&self.encode_as_cbor_bytes().unwrap(), buf)
+    }
+}
+
+impl Type<Any> for TimestampInSeconds {
+    fn type_info() -> <Any as Database>::TypeInfo {
+        <i64 as Type<Any>>::type_info()
+    }
+}
+
+impl Encode<'_, Any> for TimestampInSeconds {
+    fn encode_by_ref(&self, buf: &mut <Any as HasArguments>::ArgumentBuffer) -> IsNull {
+        <i64 as Encode<'_, Any>>::encode_by_ref(&(self.0 as i64), buf)
     }
 }
 
@@ -138,6 +168,7 @@ impl CachedCredentialAndScopeRow {
 #[cfg(test)]
 mod tests {
     use ockam_core::compat::sync::Arc;
+    use ockam_node::database::with_dbs;
     use std::time::Duration;
 
     use super::*;
@@ -147,68 +178,73 @@ mod tests {
 
     #[tokio::test]
     async fn test_cached_credential_repository() -> Result<()> {
-        let scope = "test".to_string();
-        let repository = Arc::new(CredentialSqlxDatabase::create().await?);
+        with_dbs(|db| async move {
+            let credentials_database = CredentialSqlxDatabase::new(db, "node");
+            let repository: Arc<dyn CredentialRepository> = Arc::new(credentials_database.clone());
 
-        let all = repository.get_all().await?;
-        assert_eq!(all.len(), 0);
+            let scope = "test".to_string();
 
-        let identities = identities().await?;
+            let all = credentials_database.get_all().await?;
+            assert_eq!(all.len(), 0);
 
-        let issuer = identities.identities_creation().create_identity().await?;
-        let subject = identities.identities_creation().create_identity().await?;
+            let identities = identities().await?;
 
-        let attributes1 = AttributesBuilder::with_schema(CredentialSchemaIdentifier(1))
-            .with_attribute("key1", "value1")
-            .build();
-        let credential1 = identities
-            .credentials()
-            .credentials_creation()
-            .issue_credential(&issuer, &subject, attributes1, Duration::from_secs(60 * 60))
-            .await?;
+            let issuer = identities.identities_creation().create_identity().await?;
+            let subject = identities.identities_creation().create_identity().await?;
 
-        repository
-            .put(
-                &subject,
-                &issuer,
-                &scope,
-                credential1.get_credential_data()?.expires_at,
-                credential1.clone(),
-            )
-            .await?;
+            let attributes1 = AttributesBuilder::with_schema(CredentialSchemaIdentifier(1))
+                .with_attribute("key1", "value1")
+                .build();
+            let credential1 = identities
+                .credentials()
+                .credentials_creation()
+                .issue_credential(&issuer, &subject, attributes1, Duration::from_secs(60 * 60))
+                .await?;
 
-        let all = repository.get_all().await?;
-        assert_eq!(all.len(), 1);
+            repository
+                .put(
+                    &subject,
+                    &issuer,
+                    &scope,
+                    credential1.get_credential_data()?.expires_at,
+                    credential1.clone(),
+                )
+                .await?;
 
-        let credential2 = repository.get(&subject, &issuer, &scope).await?;
-        assert_eq!(credential2, Some(credential1));
+            let all = credentials_database.get_all().await?;
+            assert_eq!(all.len(), 1);
 
-        let attributes2 = AttributesBuilder::with_schema(CredentialSchemaIdentifier(1))
-            .with_attribute("key2", "value2")
-            .build();
-        let credential3 = identities
-            .credentials()
-            .credentials_creation()
-            .issue_credential(&issuer, &subject, attributes2, Duration::from_secs(60 * 60))
-            .await?;
-        repository
-            .put(
-                &subject,
-                &issuer,
-                &scope,
-                credential3.get_credential_data()?.expires_at,
-                credential3.clone(),
-            )
-            .await?;
-        let all = repository.get_all().await?;
-        assert_eq!(all.len(), 1);
-        let credential4 = repository.get(&subject, &issuer, &scope).await?;
-        assert_eq!(credential4, Some(credential3));
+            let credential2 = repository.get(&subject, &issuer, &scope).await?;
+            assert_eq!(credential2, Some(credential1));
 
-        repository.delete(&subject, &issuer, &scope).await?;
-        let result = repository.get(&subject, &issuer, &scope).await?;
-        assert_eq!(result, None);
+            let attributes2 = AttributesBuilder::with_schema(CredentialSchemaIdentifier(1))
+                .with_attribute("key2", "value2")
+                .build();
+            let credential3 = identities
+                .credentials()
+                .credentials_creation()
+                .issue_credential(&issuer, &subject, attributes2, Duration::from_secs(60 * 60))
+                .await?;
+            repository
+                .put(
+                    &subject,
+                    &issuer,
+                    &scope,
+                    credential3.get_credential_data()?.expires_at,
+                    credential3.clone(),
+                )
+                .await?;
+            let all = credentials_database.get_all().await?;
+            assert_eq!(all.len(), 1);
+            let credential4 = repository.get(&subject, &issuer, &scope).await?;
+            assert_eq!(credential4, Some(credential3));
 
-        Ok(())
+            repository.delete(&subject, &issuer, &scope).await?;
+            let result = repository.get(&subject, &issuer, &scope).await?;
+            assert_eq!(result, None);
+
+            Ok(())
+        })
+        .await
     }
 }

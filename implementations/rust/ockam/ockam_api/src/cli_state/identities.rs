@@ -66,8 +66,8 @@ impl CliState {
     ) -> Result<NamedIdentity> {
         let vault = self.get_named_vault(vault_name).await?;
 
-        // Check that the vault is an KMS vault
-        if !vault.is_kms() {
+        // Check that the vault is an AWS KMS vault
+        if !vault.use_aws_kms() {
             return Err(Error::new(
                 Origin::Api,
                 Kind::Misuse,

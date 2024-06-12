@@ -58,10 +58,13 @@ impl Drop for InMemoryNode {
         // because in that case they can be restarted
         if !self.persistent {
             executor::block_on(async {
-                self.node_manager
-                    .delete_node()
+                // We need to recreate the CliState here to make sure that
+                // we get a fresh connection to the database (otherwise this code blocks)
+                let cli_state = CliState::create(self.cli_state.dir()).await.unwrap();
+                cli_state
+                    .remove_node(&self.node_name)
                     .await
-                    .unwrap_or_else(|e| panic!("cannot delete the node {}: {e:?}", self.node_name))
+                    .unwrap_or_else(|e| panic!("cannot delete the node {}: {e:?}", self.node_name));
             });
         }
     }

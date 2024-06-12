@@ -19,22 +19,22 @@ teardown() {
 
   run_success "$OCKAM" vault show v1 --output json
   assert_output --partial "\"name\":\"v1\""
-  assert_output --partial "\"is_kms\":false"
+  assert_output --partial "\"use_aws_kms\":\"No\""
 
   run_success "$OCKAM" vault list --output json
   assert_output --partial "\"name\":\"v1\""
-  assert_output --partial "\"is_kms\":false"
+  assert_output --partial "\"use_aws_kms\":\"No\""
 
   run_success "$OCKAM" vault create v2
 
   run_success "$OCKAM" vault show v2 --output json
   assert_output --partial "\"name\":\"v2\""
-  assert_output --partial "\"is_kms\":false"
+  assert_output --partial "\"use_aws_kms\":\"No\""
 
   run_success "$OCKAM" vault list --output json
   assert_output --partial "\"name\":\"v1\""
   assert_output --partial "\"name\":\"v2\""
-  assert_output --partial "\"is_kms\":false"
+  assert_output --partial "\"use_aws_kms\":\"No\""
 }
 
 @test "vault - CRUD" {
