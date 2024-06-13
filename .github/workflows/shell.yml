@@ -45,7 +45,7 @@ jobs:
     name: Shell - lint_shellcheck
     runs-on: ubuntu-20.04
     steps:
-      - uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
         with:
           ref: ${{ github.event.inputs.commit_sha }}
       - run: shellcheck -S error $(find . -not -path "./examples/command/*" -iname "*.sh" -o -name "*.bash")
@@ -56,7 +56,7 @@ jobs:
     name: Shell - lint_shfmt
     runs-on: ubuntu-20.04
     steps:
-      - uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
         with:
           ref: ${{ github.event.inputs.commit_sha }}
 
