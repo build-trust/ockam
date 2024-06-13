@@ -43,6 +43,7 @@ impl NodeManagerWorker {
                 request.bind_address(),
                 request.brokers_port_range(),
                 request.project_route(),
+                request.encrypt_content(),
                 request.consumer_resolution(),
                 request.consumer_publishing(),
                 request.inlet_policy_expression(),
@@ -114,6 +115,7 @@ impl InMemoryNode {
         bind_address: SocketAddr,
         brokers_port_range: (u16, u16),
         outlet_node_multiaddr: MultiAddr,
+        encrypt_content: bool,
         consumer_resolution: ConsumerResolution,
         consumer_publishing: ConsumerPublishing,
         inlet_policy_expression: Option<PolicyExpression>,
@@ -225,6 +227,7 @@ impl InMemoryNode {
 
         KafkaPortalListener::create(
             context,
+            encrypt_content,
             inlet_controller,
             secure_channel_controller,
             local_interceptor_address.clone(),

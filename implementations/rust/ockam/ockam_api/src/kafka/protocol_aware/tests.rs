@@ -61,8 +61,12 @@ mod test {
             producer_policy_access_control,
         );
 
-        let interceptor =
-            InletInterceptorImpl::new(secure_channel_controller, Default::default(), inlet_map);
+        let interceptor = InletInterceptorImpl::new(
+            secure_channel_controller,
+            Default::default(),
+            inlet_map,
+            true,
+        );
 
         let mut correlation_id = 0;
 

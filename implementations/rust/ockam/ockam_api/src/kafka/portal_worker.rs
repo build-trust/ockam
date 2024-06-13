@@ -388,6 +388,7 @@ impl KafkaPortalWorker {
     #[allow(clippy::too_many_arguments)]
     pub(crate) async fn create_inlet_side_kafka_portal(
         context: &mut Context,
+        encrypt_content: bool,
         secure_channel_controller: KafkaSecureChannelControllerImpl,
         uuid_to_name: TopicUuidMap,
         inlet_map: KafkaInletController,
@@ -401,6 +402,7 @@ impl KafkaPortalWorker {
             secure_channel_controller,
             uuid_to_name,
             inlet_map,
+            encrypt_content,
         ));
 
         let requests_worker_address = Address::random_tagged("KafkaPortalWorker.requests");
@@ -810,6 +812,7 @@ mod test {
 
         KafkaPortalWorker::create_inlet_side_kafka_portal(
             context,
+            true,
             secure_channel_controller,
             Default::default(),
             inlet_map,
@@ -902,6 +905,7 @@ mod test {
         );
         let portal_inlet_address = KafkaPortalWorker::create_inlet_side_kafka_portal(
             context,
+            true,
             secure_channel_controller,
             Default::default(),
             inlet_map.clone(),

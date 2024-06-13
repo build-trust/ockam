@@ -53,6 +53,7 @@ pub(crate) struct InletInterceptorImpl {
     uuid_to_name: TopicUuidMap,
     secure_channel_controller: KafkaSecureChannelControllerImpl,
     inlet_map: KafkaInletController,
+    encrypt_content: bool,
 }
 
 #[async_trait]
@@ -88,12 +89,14 @@ impl InletInterceptorImpl {
         secure_channel_controller: KafkaSecureChannelControllerImpl,
         uuid_to_name: TopicUuidMap,
         inlet_map: KafkaInletController,
+        encrypt_content: bool,
     ) -> InletInterceptorImpl {
         Self {
             request_map: Arc::new(Mutex::new(Default::default())),
             uuid_to_name,
             secure_channel_controller,
             inlet_map,
+            encrypt_content,
         }
     }
 }
