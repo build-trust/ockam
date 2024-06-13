@@ -76,9 +76,11 @@ impl InletInterceptorImpl {
                 }
 
                 ApiKey::FetchKey => {
-                    return self
-                        .handle_fetch_response(context, &mut buffer, &request_info, &header)
-                        .await;
+                    if self.encrypt_content {
+                        return self
+                            .handle_fetch_response(context, &mut buffer, &request_info, &header)
+                            .await;
+                    }
                 }
 
                 ApiKey::FindCoordinatorKey => {

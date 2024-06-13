@@ -95,11 +95,12 @@ pub struct StartKafkaInletRequest {
     #[n(1)] bind_address: SocketAddr,
     #[n(2)] brokers_port_range: (u16, u16),
     #[n(3)] kafka_outlet_route: MultiAddr,
-    #[n(4)] consumer_resolution: ConsumerResolution,
-    #[n(5)] consumer_publishing: ConsumerPublishing,
-    #[n(6)] inlet_policy_expression: Option<PolicyExpression>,
-    #[n(7)] consumer_policy_expression: Option<PolicyExpression>,
-    #[n(8)] producer_policy_expression: Option<PolicyExpression>,
+    #[n(4)] encrypt_content: bool,
+    #[n(5)] consumer_resolution: ConsumerResolution,
+    #[n(6)] consumer_publishing: ConsumerPublishing,
+    #[n(7)] inlet_policy_expression: Option<PolicyExpression>,
+    #[n(8)] consumer_policy_expression: Option<PolicyExpression>,
+    #[n(9)] producer_policy_expression: Option<PolicyExpression>,
 }
 
 impl StartKafkaInletRequest {
@@ -108,6 +109,7 @@ impl StartKafkaInletRequest {
         bind_address: SocketAddr,
         brokers_port_range: impl Into<(u16, u16)>,
         kafka_outlet_route: MultiAddr,
+        encrypt_content: bool,
         consumer_resolution: ConsumerResolution,
         consumer_publishing: ConsumerPublishing,
         inlet_policy_expression: Option<PolicyExpression>,
@@ -118,6 +120,7 @@ impl StartKafkaInletRequest {
             bind_address,
             brokers_port_range: brokers_port_range.into(),
             kafka_outlet_route,
+            encrypt_content,
             consumer_resolution,
             consumer_publishing,
             inlet_policy_expression,
@@ -134,6 +137,10 @@ impl StartKafkaInletRequest {
     }
     pub fn project_route(&self) -> MultiAddr {
         self.kafka_outlet_route.clone()
+    }
+
+    pub fn encrypt_content(&self) -> bool {
+        self.encrypt_content
     }
 
     pub fn consumer_resolution(&self) -> ConsumerResolution {

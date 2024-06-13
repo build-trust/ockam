@@ -18,6 +18,7 @@ pub(crate) struct KafkaPortalListener {
     uuid_to_name: TopicUuidMap,
     request_outgoing_access_control: Arc<dyn OutgoingAccessControl>,
     response_incoming_access_control: Arc<dyn IncomingAccessControl>,
+    encrypt_content: bool,
 }
 
 #[ockam::worker]
@@ -49,6 +50,7 @@ impl Worker for KafkaPortalListener {
 
         let worker_address = KafkaPortalWorker::create_inlet_side_kafka_portal(
             context,
+            self.encrypt_content,
             self.secure_channel_controller.clone(),
             self.uuid_to_name.clone(),
             self.inlet_controller.clone(),
@@ -78,6 +80,7 @@ impl Worker for KafkaPortalListener {
 impl KafkaPortalListener {
     pub(crate) async fn create(
         context: &Context,
+        encrypt_content: bool,
         inlet_controller: KafkaInletController,
         secure_channel_controller: KafkaSecureChannelControllerImpl,
         listener_address: Address,
@@ -90,6 +93,7 @@ impl KafkaPortalListener {
             uuid_to_name: Default::default(),
             request_outgoing_access_control: outgoing_access_control,
             response_incoming_access_control: incoming_access_control,
+            encrypt_content,
         };
 
         context.start_worker(listener_address, s).await

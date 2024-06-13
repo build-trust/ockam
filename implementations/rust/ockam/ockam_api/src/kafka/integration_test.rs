@@ -114,6 +114,7 @@ mod test {
 
         KafkaPortalListener::create(
             context,
+            true,
             inlet_controller,
             secure_channel_controller,
             listener_address,

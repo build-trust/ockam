@@ -75,9 +75,11 @@ impl InletInterceptorImpl {
             }
 
             ApiKey::ProduceKey => {
-                return self
-                    .handle_produce_request(context, &mut buffer, &header)
-                    .await;
+                if self.encrypt_content {
+                    return self
+                        .handle_produce_request(context, &mut buffer, &header)
+                        .await;
+                }
             }
             ApiKey::FetchKey => {
                 self.handle_fetch_request(context, &mut buffer, &header)

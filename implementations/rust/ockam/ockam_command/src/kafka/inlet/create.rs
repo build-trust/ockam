@@ -71,6 +71,16 @@ pub struct CreateCommand {
     /// referenced by the producer.
     #[arg(long, name = "avoid-publishing", conflicts_with = "publishing-relay")]
     pub avoid_publishing: bool,
+    /// Disable end-to-end kafka messages encryption between producer and consumer.
+    /// Use it when you want a plain kafka portal, the communication itself will still be
+    /// encrypted.
+    #[arg(
+        long,
+        name = "disable-content-encryption",
+        value_name = "BOOL",
+        default_value_t = true
+    )]
+    pub disable_content_encryption: bool,
     /// Policy expression that will be used for access control to the Kafka Inlet.
     /// If you don't provide it, the policy set for the "tcp-inlet" resource type will be used.
     ///
@@ -150,6 +160,7 @@ impl Command for CreateCommand {
                     self.from,
                     brokers_port_range,
                     to,
+                    !self.disable_content_encryption,
                     consumer_resolution,
                     consumer_publishing,
                     self.inlet_policy_expression,
