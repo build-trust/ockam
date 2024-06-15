@@ -1,0 +1,23 @@
+input:
+  generate:
+    count: 1000
+    interval: "@every 1s"
+    mapping: |
+      root = {
+        "_producer": hostname(),
+        "data": { "email": fake("email"), "message": fake("sentence") }
+      }
+
+output:
+  ockam_kafka:
+    seed_brokers: ["${REDPANDA_BOOTSTRAP_SERVER}"]
+    topic: topic_A
+    ockam_route_to_consumer: /project/default/service/forward_to_consumer/secure/api
+    ockam_allow_consumer: consumer
+    ockam_enrollment_ticket: ${OCKAM_ENROLLMENT_TICKET}
+    tls:
+      enabled: true
+    sasl:
+      - mechanism: SCRAM-SHA-256
+        username: "${REDPANDA_USERNAME}"
+        password: "${REDPANDA_PASSWORD}"

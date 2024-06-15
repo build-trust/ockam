@@ -1,0 +1,40 @@
+logger:
+  level: ALL
+  format: logfmt
+  add_timestamp: false
+  static_fields:
+    '@service': benthos
+
+input:
+  ockam_kafka:
+    seed_brokers: [${REDPANDA_BROKER}]
+    topics: [topic_A]
+    consumer_group: example_group
+    ockam_allow_producer: producer
+    ockam_relay: consumer
+    ockam_enrollment_ticket: ${OCKAM_ENROLLMENT_TICKET}
+    tls:
+      enabled: true
+    sasl:
+      - mechanism: SCRAM-SHA-256
+        password: ${REDPANDA_PASSWORD}
+        username: ${REDPANDA_USERNAME}
+
+pipeline:
+  processors:
+    - bloblang: |
+        root = this
+        root.data.message = this.data.message.uppercase()
+
+output:
+  sql_insert:
+    driver: snowflake
+    dsn: "${SNOWFLAKE_HOST}:${SNOWFLAKE_PORT}/${SNOWFLAKE_DATABASE}/${SNOWFLAKE_SCHEMA}?authenticator=OAUTH&account=${SNOWFLAKE_ACCOUNT}&token=${SNOWFLAKE_TOKEN}&warehouse=${SNOWFLAKE_WAREHOUSE}"
+    table: KAFKA_MESSAGES
+    columns: [ ID, EMAIL, MESSAGE ]
+    args_mapping: |
+      root = [
+        meta("kafka_offset"),
+        data.email,
+        this.data.message
+      ]

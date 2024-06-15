@@ -1,0 +1,18 @@
+input:
+  generate:
+    count: 1000
+    interval: "@every 1s"
+    mapping: |
+      root = {
+        "_producer": hostname(),
+        "data": { "email": fake("email"), "message": fake("sentence") }
+      }
+
+output:
+  ockam_kafka:
+    topic: topic_A
+    ockam_route_to_consumer: /project/default/service/forward_to_consumer/secure/api
+    ockam_allow_consumer: consumer
+    ockam_allow: kafka-outlet
+    ockam_enrollment_ticket: ${OCKAM_ENROLLMENT_TICKET}
+    ockam_route_to_kafka_outlet: /project/default/service/forward_to_redpanda/secure/api
