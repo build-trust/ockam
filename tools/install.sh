@@ -281,7 +281,7 @@ add_to_path() {
 }
 
 main() {
-  local _version=""
+  local _version="$OCKAM_VERSION"
   install_path="$HOME/.ockam"
   local _modify_path="true"
 
