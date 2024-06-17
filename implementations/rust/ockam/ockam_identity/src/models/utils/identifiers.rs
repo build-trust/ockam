@@ -227,7 +227,7 @@ mod test {
         }
 
         fn check_encode_decode(id: Identifier) -> bool {
-            id == minicbor::decode(&minicbor::to_vec(&id).unwrap()).unwrap()
+            id == minicbor::decode(&ockam_core::cbor_encode_preallocate(&id).unwrap()).unwrap()
         }
 
         fn check_serialize_deserialize(id: Identifier) -> bool {

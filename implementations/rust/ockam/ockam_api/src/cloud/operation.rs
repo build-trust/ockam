@@ -1,6 +1,6 @@
 use crate::cloud::{ControllerClient, HasSecureClient, ORCHESTRATOR_AWAIT_TIMEOUT};
 use miette::{miette, IntoDiagnostic};
-use minicbor::{Decode, Encode};
+use minicbor::{CborLen, Decode, Encode};
 use ockam_core::api::Request;
 use ockam_core::async_trait;
 use ockam_node::Context;
@@ -9,7 +9,7 @@ use tokio_retry::strategy::FixedInterval;
 use tokio_retry::Retry;
 use tracing::trace;
 
-#[derive(Encode, Decode, Serialize, Deserialize, Debug, Clone)]
+#[derive(Encode, Decode, CborLen, Serialize, Deserialize, Debug, Clone)]
 #[cbor(map)]
 pub struct Operation {
     #[cbor(n(1))]
@@ -33,14 +33,14 @@ impl Operation {
     }
 }
 
-#[derive(Encode, Decode, Serialize, Deserialize, Debug, Default, Clone)]
+#[derive(Encode, Decode, CborLen, Serialize, Deserialize, Debug, Default, Clone)]
 #[cbor(map)]
 pub struct CreateOperationResponse {
     #[cbor(n(1))]
     pub operation_id: String,
 }
 
-#[derive(Encode, Decode, Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Encode, Decode, CborLen, Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[rustfmt::skip]
 #[cbor(index_only)]
 pub enum Status {

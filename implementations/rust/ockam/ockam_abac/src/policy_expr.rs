@@ -2,7 +2,7 @@ use crate::policy_expr::PolicyExpression::{BooleanExpression, FullExpression};
 use crate::{BooleanExpr, Expr};
 #[cfg(feature = "std")]
 use core::str::FromStr;
-use minicbor::{Decode, Encode};
+use minicbor::{CborLen, Decode, Encode};
 #[cfg(feature = "std")]
 use ockam_core::compat::fmt::{Display, Formatter};
 #[cfg(feature = "std")]
@@ -11,7 +11,7 @@ use ockam_core::Result;
 /// A Policy expression can either be represented with
 ///   - A full expression with string valued attributes, contain operator, etc...
 ///   - A simpler boolean expression with just and / or / not operators acting on boolean attributes
-#[derive(Debug, Clone, Decode, Encode)]
+#[derive(Debug, Clone, Encode, Decode, CborLen)]
 pub enum PolicyExpression {
     #[n(0)]
     FullExpression(#[n(0)] Expr),

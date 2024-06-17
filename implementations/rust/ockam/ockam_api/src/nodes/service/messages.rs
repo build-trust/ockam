@@ -4,7 +4,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tracing::trace;
 
-use minicbor::{Decode, Encode};
+use minicbor::{CborLen, Decode, Encode};
 
 use ockam_core::api::{Error, Request, Response};
 use ockam_core::{self, async_trait, AsyncTryClone, Result};
@@ -100,7 +100,7 @@ impl NodeManagerWorker {
     }
 }
 
-#[derive(Encode, Decode, Debug)]
+#[derive(Encode, Decode, CborLen, Debug)]
 #[cfg_attr(test, derive(Clone))]
 #[rustfmt::skip]
 #[cbor(map)]

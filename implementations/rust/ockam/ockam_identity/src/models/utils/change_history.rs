@@ -40,7 +40,7 @@ impl ChangeData {
 impl ChangeHistory {
     /// Export [`ChangeHistory`] to a binary format using CBOR
     pub fn export(&self) -> Result<Vec<u8>> {
-        Ok(minicbor::to_vec(self)?)
+        ockam_core::cbor_encode_preallocate(self)
     }
 
     /// Export [`ChangeHistory`] to a hex encoded string

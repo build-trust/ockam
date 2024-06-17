@@ -40,7 +40,7 @@ quickcheck! {
     }
 
     fn cbor(a: Addr) -> bool {
-        let byts = minicbor::to_vec(&a.0).unwrap();
+        let byts = ockam_core::cbor_encode_preallocate(&a.0).unwrap();
         let addr = minicbor::decode(&byts).unwrap();
         a.0 == addr
     }

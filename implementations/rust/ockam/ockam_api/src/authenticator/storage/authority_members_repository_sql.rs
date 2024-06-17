@@ -68,7 +68,7 @@ impl AuthorityMembersRepository for AuthorityMembersSqlxDatabase {
             .bind(member.added_by())
             .bind(member.added_at())
             .bind(member.is_pre_trusted())
-            .bind(minicbor::to_vec(member.attributes())?);
+            .bind(ockam_core::cbor_encode_preallocate(member.attributes())?);
 
         query.execute(&*self.database.pool).await.void()
     }
@@ -92,7 +92,7 @@ impl AuthorityMembersRepository for AuthorityMembersSqlxDatabase {
                     .bind(pre_trusted_identity.attested_by())
                     .bind(pre_trusted_identity.added_at())
                     .bind(true)
-                    .bind(minicbor::to_vec(pre_trusted_identity.attrs())?);
+                    .bind(ockam_core::cbor_encode_preallocate(pre_trusted_identity.attrs())?);
 
             query2.execute(&mut *transaction).await.void()?;
         }

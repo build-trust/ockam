@@ -3,7 +3,7 @@ use std::fmt::Formatter;
 use std::sync::Arc;
 use std::time::Duration;
 
-use minicbor::{Decode, Encode};
+use minicbor::{CborLen, Decode, Encode};
 use ockam::remote::RemoteRelayInfo;
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
@@ -85,7 +85,7 @@ pub struct InnerSession {
     last_outcome: Option<ReplacerOutcome>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Encode, Decode, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Encode, Decode, CborLen, Serialize, Deserialize)]
 pub enum ConnectionStatus {
     #[n(0)]
     Down,
@@ -221,7 +221,7 @@ impl Session {
     }
 }
 
-#[derive(Debug, Default, Copy, Clone, Encode, Decode, PartialEq, Eq)]
+#[derive(Debug, Default, Copy, Clone, Encode, Decode, CborLen, PartialEq, Eq)]
 #[cbor(transparent)]
 pub struct Ping(#[n(0)] u64);
 

@@ -1,4 +1,4 @@
-use minicbor::{Decode, Encode};
+use minicbor::{CborLen, Decode, Encode};
 use ockam_core::compat::collections::VecDeque;
 use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Tcp};
 use ockam_multiaddr::MultiAddr;
@@ -19,7 +19,7 @@ pub type Name = String;
 
 /// A generic lookup
 /// An internet address abstraction (v6/v4/dns)
-#[derive(Clone, Debug, Serialize, Deserialize, Decode, Encode, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, Serialize, Deserialize, Encode, Decode, CborLen, PartialEq, Eq, Hash)]
 #[rustfmt::skip]
 #[serde(untagged)]
 pub enum InternetAddress {

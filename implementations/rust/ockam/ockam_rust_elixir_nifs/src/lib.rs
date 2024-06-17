@@ -246,7 +246,7 @@ fn attest_secure_channel_key<'a>(
             .await
     })
     .map_err(|e| Error::Term(Box::new((atoms::attest_error(), e.to_string()))))?;
-    let encoded = minicbor::to_vec(purpose_key.attestation())
+    let encoded = ockam_core::cbor_encode_preallocate(purpose_key.attestation())
         .map_err(|e| Error::Term(Box::new((atoms::attestation_encode_error(), e.to_string()))))?;
     let mut exp_binary = NewBinary::new(env, encoded.len());
     exp_binary.copy_from_slice(&encoded);
@@ -352,7 +352,7 @@ fn issue_credential<'a>(
             .map_err(|e| (atoms::credential_issuing_error(), e.to_string()))
     })
     .map_err(|reason| Error::Term(Box::new(reason)))?;
-    let encoded = minicbor::to_vec(credential_and_purpose_key)
+    let encoded = ockam_core::cbor_encode_preallocate(credential_and_purpose_key)
         .map_err(|e| Error::Term(Box::new((atoms::credential_encode_error(), e.to_string()))))?;
     let mut binary = NewBinary::new(env, encoded.len());
     binary.copy_from_slice(&encoded);

@@ -1,5 +1,5 @@
 use crate::models::{ChangeHash, TimestampInSeconds};
-use minicbor::{Decode, Encode};
+use minicbor::{CborLen, Decode, Encode};
 use ockam_core::compat::vec::Vec;
 use ockam_vault::{
     ECDSASHA256CurveP256PublicKey, ECDSASHA256CurveP256Signature, EdDSACurve25519PublicKey,
@@ -7,7 +7,7 @@ use ockam_vault::{
 };
 
 /// Identity Change History
-#[derive(Clone, Debug, PartialEq, Eq, Encode, Decode)]
+#[derive(Clone, Debug, PartialEq, Eq, Encode, Decode, CborLen)]
 #[rustfmt::skip]
 #[cbor(transparent)]
 pub struct ChangeHistory(#[n(0)] pub Vec<Change>);
@@ -16,7 +16,7 @@ pub struct ChangeHistory(#[n(0)] pub Vec<Change>);
 pub const CHANGE_DATA_TYPE: u8 = 1;
 
 /// Individual Identity change which implies replacing the old key
-#[derive(Clone, Debug, PartialEq, Eq, Encode, Decode)]
+#[derive(Clone, Debug, PartialEq, Eq, Encode, Decode, CborLen)]
 #[rustfmt::skip]
 pub struct Change {
     /// CBOR serialized [`super::VersionedData`]
@@ -32,7 +32,7 @@ pub struct Change {
 }
 
 /// [`Change`] signature
-#[derive(Clone, Debug, PartialEq, Eq, Encode, Decode)]
+#[derive(Clone, Debug, PartialEq, Eq, Encode, Decode, CborLen)]
 #[rustfmt::skip]
 pub enum ChangeSignature {
     /// Signature using EdDSA Ed25519
@@ -42,7 +42,7 @@ pub enum ChangeSignature {
 }
 
 /// Data inside a [`Change`]
-#[derive(Clone, Debug, PartialEq, Eq, Encode, Decode)]
+#[derive(Clone, Debug, PartialEq, Eq, Encode, Decode, CborLen)]
 #[rustfmt::skip]
 pub struct ChangeData {
     /// [`ChangeHash`] linking this [`Change`] to a previous
@@ -65,7 +65,7 @@ pub struct ChangeData {
 }
 
 /// [`Change`]'s public key
-#[derive(Clone, Debug, PartialEq, Eq, Encode, Decode)]
+#[derive(Clone, Debug, PartialEq, Eq, Encode, Decode, CborLen)]
 #[rustfmt::skip]
 pub enum PrimaryPublicKey {
     /// EdDSA Ed25519 Public Key

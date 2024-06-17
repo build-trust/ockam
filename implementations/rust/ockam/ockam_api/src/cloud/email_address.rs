@@ -1,4 +1,4 @@
-use minicbor::{Decode, Encode};
+use minicbor::{CborLen, Decode, Encode};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{Error, Result};
 use regex::Regex;
@@ -15,7 +15,7 @@ use std::fmt::Display;
 /// However we currently receive lowercase email addresses from the Controller in `ProjectUserRole`,
 /// and we need to make a case insensitive comparison when comparing with an email address in
 /// `UserInfo`.
-#[derive(Debug, Clone, Eq, Ord, PartialOrd, Decode, Deserialize, Encode, Serialize)]
+#[derive(Debug, Clone, Eq, Ord, PartialOrd, Deserialize, Encode, Decode, CborLen, Serialize)]
 #[cbor(transparent)]
 #[serde(transparent)]
 pub struct EmailAddress(#[n(0)] String);

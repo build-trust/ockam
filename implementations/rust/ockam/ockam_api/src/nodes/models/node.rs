@@ -7,7 +7,7 @@ use crate::nodes::models::services::ServiceStatus;
 use crate::nodes::models::transport::TransportStatus;
 use crate::output::Output;
 use crate::terminal::fmt;
-use minicbor::{Decode, Encode};
+use minicbor::{CborLen, Decode, Encode};
 use ockam::identity::{Identifier, SecureChannelListener};
 use ockam_core::Result;
 use ockam_multiaddr::MultiAddr;
@@ -17,7 +17,7 @@ use crate::config::lookup::InternetAddress;
 use std::fmt::{Display, Formatter};
 
 /// Response body for a node status request
-#[derive(Debug, Clone, Serialize, Decode, Encode)]
+#[derive(Debug, Clone, Serialize, Encode, Decode, CborLen)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct NodeStatus {
@@ -46,7 +46,7 @@ impl From<&NodeInfo> for NodeStatus {
     }
 }
 
-#[derive(Debug, Serialize, Decode, Encode)]
+#[derive(Debug, Serialize, Encode, Decode, CborLen)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct NodeResources {
@@ -191,7 +191,7 @@ impl Display for NodeResources {
     }
 }
 
-#[derive(Debug, Serialize, Decode, Encode)]
+#[derive(Debug, Serialize, Encode, Decode, CborLen)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct RouteToNode {

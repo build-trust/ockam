@@ -1,6 +1,6 @@
 use colorful::Colorful;
 use miette::IntoDiagnostic;
-use minicbor::{Decode, Encode};
+use minicbor::{CborLen, Decode, Encode};
 use serde::Serialize;
 use std::fmt::Write;
 
@@ -16,7 +16,7 @@ use crate::output::{comma_separated, Output};
 
 const TARGET: &str = "ockam_api::cloud::space";
 
-#[derive(Encode, Decode, Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Encode, Decode, CborLen, Serialize, Debug, Clone, PartialEq, Eq)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct Space {
@@ -67,7 +67,7 @@ impl Output for Space {
     }
 }
 
-#[derive(Encode, Decode, Debug)]
+#[derive(Encode, Decode, CborLen, Debug)]
 #[cfg_attr(test, derive(Clone))]
 #[rustfmt::skip]
 #[cbor(map)]

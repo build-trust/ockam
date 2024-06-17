@@ -1,4 +1,4 @@
-use minicbor::{Decode, Encode};
+use minicbor::{CborLen, Decode, Encode};
 use serde::{Deserialize, Serialize};
 use std::fmt::Write;
 
@@ -12,7 +12,7 @@ use ockam_node::Context;
 const TARGET: &str = "ockam_api::cloud::subscription";
 const API_SERVICE: &str = "subscriptions";
 
-#[derive(Encode, Decode, Debug)]
+#[derive(Encode, Decode, CborLen, Debug)]
 #[cfg_attr(test, derive(Clone))]
 #[rustfmt::skip]
 #[cbor(map)]
@@ -50,7 +50,7 @@ impl ActivateSubscription {
     }
 }
 
-#[derive(Encode, Decode, Serialize, Deserialize, Debug)]
+#[derive(Encode, Decode, CborLen, Serialize, Deserialize, Debug)]
 #[cfg_attr(test, derive(Clone))]
 #[cbor(map)]
 pub struct Subscription {

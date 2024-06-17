@@ -94,7 +94,10 @@ impl Type<Any> for AttributesEntry {
 
 impl Encode<'_, Any> for AttributesEntry {
     fn encode_by_ref(&self, buf: &mut <Any as HasArguments>::ArgumentBuffer) -> IsNull {
-        <Vec<u8> as Encode<'_, Any>>::encode_by_ref(&minicbor::to_vec(self.attrs()).unwrap(), buf)
+        <Vec<u8> as Encode<'_, Any>>::encode_by_ref(
+            &ockam_core::cbor_encode_preallocate(self.attrs()).unwrap(),
+            buf,
+        )
     }
 }
 

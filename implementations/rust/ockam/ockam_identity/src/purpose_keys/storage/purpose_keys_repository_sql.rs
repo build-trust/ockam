@@ -113,7 +113,10 @@ impl Type<Any> for PurposeKeyAttestation {
 
 impl Encode<'_, Any> for PurposeKeyAttestation {
     fn encode_by_ref(&self, buf: &mut <Any as HasArguments>::ArgumentBuffer) -> IsNull {
-        <Vec<u8> as Encode<'_, Any>>::encode_by_ref(&minicbor::to_vec(self).unwrap(), buf)
+        <Vec<u8> as Encode<'_, Any>>::encode_by_ref(
+            &ockam_core::cbor_encode_preallocate(self).unwrap(),
+            buf,
+        )
     }
 }
 

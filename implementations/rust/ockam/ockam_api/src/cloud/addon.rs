@@ -1,5 +1,5 @@
 use miette::IntoDiagnostic;
-use minicbor::{Decode, Encode};
+use minicbor::{CborLen, Decode, Encode};
 use serde::{Deserialize, Serialize};
 use std::fmt::Write;
 
@@ -16,7 +16,7 @@ use crate::Result;
 const TARGET: &str = "ockam_api::cloud::addon";
 const API_SERVICE: &str = "projects";
 
-#[derive(Encode, Decode, Serialize, Deserialize, Debug)]
+#[derive(Encode, Decode, CborLen, Serialize, Deserialize, Debug)]
 #[cfg_attr(test, derive(Clone))]
 #[cbor(map)]
 pub struct Addon {
@@ -40,7 +40,7 @@ impl Output for Addon {
     }
 }
 
-#[derive(Encode, Decode, Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+#[derive(Encode, Decode, CborLen, Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct KafkaConfig {
@@ -65,7 +65,7 @@ impl quickcheck::Arbitrary for KafkaConfig {
     }
 }
 
-#[derive(Encode, Decode, Serialize, Deserialize, Debug)]
+#[derive(Encode, Decode, CborLen, Serialize, Deserialize, Debug)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct DisableAddon {

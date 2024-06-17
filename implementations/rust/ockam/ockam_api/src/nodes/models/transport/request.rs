@@ -1,7 +1,7 @@
-use minicbor::{Decode, Encode};
+use minicbor::{CborLen, Decode, Encode};
 
 /// Request body when instructing a node to create a transport
-#[derive(Debug, Clone, Decode, Encode, PartialEq, Eq)]
+#[derive(Debug, Clone, Encode, Decode, CborLen, PartialEq, Eq)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct CreateTcpConnection {
@@ -16,7 +16,7 @@ impl CreateTcpConnection {
 }
 
 /// Request body when instructing a node to create a transport
-#[derive(Debug, Clone, Decode, Encode, PartialEq, Eq)]
+#[derive(Debug, Clone, Encode, Decode, CborLen, PartialEq, Eq)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct CreateTcpListener {
@@ -31,7 +31,7 @@ impl CreateTcpListener {
 }
 
 /// Request to delete a transport
-#[derive(Debug, Clone, Decode, Encode)]
+#[derive(Debug, Clone, Encode, Decode, CborLen)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct DeleteTransport {
