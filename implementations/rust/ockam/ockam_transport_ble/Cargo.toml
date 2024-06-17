@@ -84,13 +84,13 @@ pic32mx1xxfxxxb = ["pic32", "pic32-hal/pic32mx1xxfxxxb"]
 pic32mx2xxfxxxb = ["pic32", "pic32-hal/pic32mx2xxfxxxb"]
 
 [dependencies]
-ockam_core = { path = "../ockam_core", version = "^0.111.0", default_features = false }
-ockam_node = { path = "../ockam_node", version = "^0.119.0", default_features = false }
-ockam_transport_core = { path = "../ockam_transport_core", version = "^0.84.0", default_features = false }
+ockam_core = { path = "../ockam_core", version = "^0.111.0", default-features = false }
+ockam_node = { path = "../ockam_node", version = "^0.119.0", default-features = false }
+ockam_transport_core = { path = "../ockam_transport_core", version = "^0.84.0", default-features = false }
 
 futures = { version = "0.3.30", default-features = false }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
-tracing = { version = "0.1", default_features = false }
+tracing = { version = "0.1", default-features = false }
 
 # Target os: TODO move this into its own "Ockam Addon" crate
 btleplug = { version = "0.11.5", optional = true }

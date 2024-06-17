@@ -32,7 +32,7 @@ alloc = []
 bytes = "1.6.0"
 futures-util = "0.3"
 minicbor = "0.24"
-ockam_core = { path = "../ockam_core", version = "^0.111.0", default_features = false }
+ockam_core = { path = "../ockam_core", version = "^0.111.0", default-features = false }
 ockam_node = { path = "../ockam_node", version = "^0.119.0" }
 ockam_transport_core = { path = "../ockam_transport_core", version = "^0.84.0" }
 rand = "0.8"
