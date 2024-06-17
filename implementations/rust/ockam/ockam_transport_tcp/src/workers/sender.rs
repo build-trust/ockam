@@ -1,19 +1,23 @@
 use crate::workers::Addresses;
-use crate::{TcpConnectionMode, TcpRegistry, TcpSenderInfo};
+use crate::{TcpConnectionMode, TcpProtocolVersion, TcpRegistry, TcpSenderInfo};
 use ockam_core::flow_control::FlowControlId;
 use ockam_core::{
     async_trait,
     compat::{net::SocketAddr, sync::Arc},
-    AllowAll, AllowSourceAddress, DenyAll,
+    AllowAll, AllowSourceAddress, DenyAll, LocalMessage,
 };
 use ockam_core::{Any, Decodable, Mailbox, Mailboxes, Message, Result, Routed, Worker};
 use ockam_node::{Context, WorkerBuilder};
 
-use ockam_transport_core::encode_transport_message;
+use crate::transport_message::TcpTransportMessage;
+use ockam_transport_core::TransportError;
 use serde::{Deserialize, Serialize};
 use tokio::io::AsyncWriteExt;
 use tokio::net::tcp::OwnedWriteHalf;
 use tracing::{info, instrument, trace, warn};
+
+/// 16 MB
+pub const MAX_MESSAGE_SIZE: usize = 16 * 1024 * 1024;
 
 #[derive(Serialize, Deserialize, Message, Clone)]
 pub(crate) enum TcpSendWorkerMsg {
@@ -114,6 +118,30 @@ impl TcpSendWorker {
 
         Ok(())
     }
+
+    fn serialize_message(&self, local_message: LocalMessage) -> Result<Vec<u8>> {
+        // Create a message buffer with prepended length
+        let transport_message = TcpTransportMessage::from(local_message);
+
+        let msg_len = minicbor::len(&transport_message);
+
+        if msg_len > MAX_MESSAGE_SIZE {
+            return Err(TransportError::MessageLengthExceeded)?;
+        }
+
+        let len = 4 /* len */ + msg_len;
+
+        let msg_len_u32 =
+            u32::try_from(msg_len).map_err(|_| TransportError::MessageLengthExceeded)?;
+
+        let mut vec = vec![0u8; len];
+
+        vec[..4].copy_from_slice(&msg_len_u32.to_be_bytes());
+        minicbor::encode(&transport_message, &mut vec[4..])
+            .map_err(|_| TransportError::Encoding)?;
+
+        Ok(vec)
+    }
 }
 
 #[async_trait]
@@ -132,6 +160,22 @@ impl Worker for TcpSendWorker {
             self.mode,
             self.receiver_flow_control_id.clone(),
         ));
+
+        // First thing send our protocol version
+        if self
+            .write_half
+            .write_u8(TcpProtocolVersion::V1.into())
+            .await
+            .is_err()
+        {
+            warn!(
+                "Failed to send protocol version to peer {}",
+                self.socket_address
+            );
+            self.stop(ctx).await?;
+
+            return Ok(());
+        }
 
         Ok(())
     }
@@ -181,11 +225,18 @@ impl Worker for TcpSendWorker {
             // Remove our own address from the route so the other end
             // knows what to do with the incoming message
             local_message = local_message.pop_front_onward_route()?;
-            // Create a message buffer with prepended length
-            let transport_message = local_message.into_transport_message();
-            let msg = encode_transport_message(transport_message)?;
 
-            if self.write_half.write_all(msg.as_slice()).await.is_err() {
+            let msg = match self.serialize_message(local_message) {
+                Ok(msg) => msg,
+                Err(err) => {
+                    // Close the stream
+                    self.stop(ctx).await?;
+
+                    return Err(err);
+                }
+            };
+
+            if self.write_half.write_all(&msg).await.is_err() {
                 warn!("Failed to send message to peer {}", self.socket_address);
                 self.stop(ctx).await?;
 

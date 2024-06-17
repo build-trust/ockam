@@ -10,8 +10,8 @@ use ockam_core::flow_control::FlowControls;
 #[cfg(feature = "std")]
 use ockam_core::OpenTelemetryContext;
 use ockam_core::{
-    async_trait, Address, AddressAndMetadata, AddressMetadata, Error, Mailboxes, ProtocolVersion,
-    RelayMessage, Result, TransportType,
+    async_trait, Address, AddressAndMetadata, AddressMetadata, Error, Mailboxes, RelayMessage,
+    Result, TransportType,
 };
 
 #[cfg(feature = "std")]
@@ -35,8 +35,6 @@ pub struct Context {
     pub(super) flow_controls: FlowControls,
     #[cfg(feature = "std")]
     pub(super) tracing_context: OpenTelemetryContext,
-    /// Protocol version of the message currently being processed by a worker
-    pub(super) protocol_version: ProtocolVersion,
 }
 
 /// This trait can be used to integrate transports into a node
@@ -104,20 +102,10 @@ impl Context {
         self.tracing_context.clone()
     }
 
-    /// Return the protocol version of the message being processed
-    pub fn protocol_version(&self) -> ProtocolVersion {
-        self.protocol_version
-    }
-
     /// Set the current tracing context
     #[cfg(feature = "std")]
     pub fn set_tracing_context(&mut self, tracing_context: OpenTelemetryContext) {
         self.tracing_context = tracing_context
-    }
-
-    /// Set the current protocol version
-    pub fn set_protocol_version(&mut self, protocol_version: ProtocolVersion) {
-        self.protocol_version = protocol_version
     }
 }
 

@@ -38,6 +38,8 @@ pub const PROTOCOL_VERSION_V1: ProtocolVersion = 1;
 /// See `ockam_transport_tcp::workers::sender::TcpSendWorker` for a usage example.
 ///
 #[derive(Debug, Clone, Eq, PartialEq, Message)]
+// TODO: This should be deleted in favor of transport-specific structures
+//  defined at transport crates
 pub struct TransportMessage {
     /// The transport protocol version.
     pub version: ProtocolVersion,

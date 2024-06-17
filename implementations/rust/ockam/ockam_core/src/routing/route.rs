@@ -3,13 +3,13 @@ use crate::{
     Address, Result, RouteError, TransportType,
 };
 use core::fmt::{self, Display};
-use minicbor::{Decode, Encode};
+use minicbor::{CborLen, Decode, Encode};
 use serde::{Deserialize, Serialize};
 
 /// A full route to a peer.
-#[derive(Serialize, Deserialize, Decode, Encode, Debug, Clone, Hash, Ord, PartialOrd, Eq, PartialEq)]
-#[rustfmt::skip]
+#[derive(Serialize, Deserialize, Encode, Decode, CborLen, Debug, Clone, Hash, Ord, PartialOrd, Eq, PartialEq)]
 #[cbor(transparent)]
+#[rustfmt::skip]
 pub struct Route {
     #[n(0)] inner: VecDeque<Address>,
 }
@@ -43,7 +43,7 @@ impl Route {
     /// # pub const TCP: TransportType = TransportType::new(1);
     /// // ["1#alice", "0#bob"]
     /// let route = route![
-    ///     Address::new(TCP, "alice"),
+    ///     Address::new_with_string(TCP, "alice"),
     ///     "bob",
     /// ];
     /// ```
@@ -251,6 +251,11 @@ impl Route {
     /// Return true if all the addresses composing that route are local addresses
     pub fn is_local(&self) -> bool {
         self.iter().all(|a| a.is_local())
+    }
+
+    /// Return inner VecDeque
+    pub fn inner(self) -> VecDeque<Address> {
+        self.inner
     }
 }
 

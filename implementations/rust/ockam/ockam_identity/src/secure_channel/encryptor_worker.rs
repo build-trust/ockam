@@ -7,7 +7,7 @@ use ockam_core::compat::boxed::Box;
 use ockam_core::compat::sync::{Arc, RwLock};
 use ockam_core::compat::vec::Vec;
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::{async_trait, route, Decodable, Error, LocalMessage, Route};
+use ockam_core::{async_trait, route, CowBytes, Decodable, Error, LocalMessage, Route};
 use ockam_core::{Any, Result, Routed, Worker};
 use ockam_node::Context;
 
@@ -185,11 +185,11 @@ impl EncryptorWorker {
         // Remove our address
         let _ = onward_route.step();
 
-        let payload = msg.into_payload();
+        let payload = CowBytes::from(msg.into_payload());
         let msg = PlaintextPayloadMessage {
             onward_route,
             return_route,
-            payload: &payload,
+            payload,
         };
         let msg = SecureChannelMessage::Payload(msg);
 

@@ -84,7 +84,7 @@ impl Processor for UdpReceiverProcessor {
 
                 return_route
             }
-            None => return_route.append(Address::new(UDP, addr.to_string())),
+            None => return_route.append(Address::new_with_string(UDP, addr.to_string())),
         };
 
         let return_route = return_route.append_route(msg.return_route());

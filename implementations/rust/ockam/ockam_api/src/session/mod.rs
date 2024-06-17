@@ -264,7 +264,7 @@ impl Collector {
     const NAME: &'static str = "ockam.ping.collector";
 
     fn address() -> Address {
-        Address::new(LOCAL, Self::NAME)
+        Address::new_with_string(LOCAL, Self::NAME)
     }
 }
 

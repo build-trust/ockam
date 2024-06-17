@@ -1,10 +1,22 @@
 use core::fmt::{self, Debug, Display};
-use minicbor::{Decode, Encode};
+use minicbor::{CborLen, Decode, Encode};
 use serde::{Deserialize, Serialize};
 
 /// The transport type of an [`Address`](crate::Address).
 #[derive(
-    Serialize, Deserialize, Decode, Encode, Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash,
+    Serialize,
+    Deserialize,
+    Decode,
+    Encode,
+    CborLen,
+    Debug,
+    Copy,
+    Clone,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
 )]
 #[serde(transparent)]
 #[cbor(transparent)]
@@ -17,6 +29,11 @@ impl TransportType {
     /// Create a new transport type.
     pub const fn new(n: u8) -> Self {
         TransportType(n)
+    }
+
+    /// Raw value
+    pub fn value(&self) -> u8 {
+        self.0
     }
 
     /// Is this the local transport type?

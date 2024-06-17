@@ -1,4 +1,4 @@
-use crate::{Address, LocalMessage, ProtocolVersion, Route};
+use crate::{Address, LocalMessage, Route};
 
 /// A message addressed to the relay responsible for delivery of the
 /// wrapped [`LocalMessage`]
@@ -49,11 +49,6 @@ impl RelayMessage {
     /// Payload
     pub fn payload(&self) -> &[u8] {
         self.local_msg.payload_ref()
-    }
-
-    /// Protocol version
-    pub fn protocol_version(&self) -> ProtocolVersion {
-        self.local_msg.protocol_version()
     }
 
     /// Local message
