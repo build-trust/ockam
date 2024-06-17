@@ -1,4 +1,4 @@
-use minicbor::{Decode, Encode};
+use minicbor::{CborLen, Decode, Encode};
 
 use ockam_core::Address;
 use ockam_multiaddr::MultiAddr;
@@ -15,7 +15,7 @@ pub(crate) struct KafkaEncryptedContent {
 }
 
 /// Describe how to reach the consumer node: either directly or through a relay
-#[derive(Debug, Clone, Decode, Encode)]
+#[derive(Debug, Clone, Encode, Decode, CborLen)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub enum ConsumerResolution {
@@ -24,7 +24,7 @@ pub enum ConsumerResolution {
     #[n(3)] ViaRelay(#[n(1)] MultiAddr),
 }
 
-#[derive(Debug, Clone, Decode, Encode)]
+#[derive(Debug, Clone, Encode, Decode, CborLen)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub enum ConsumerPublishing {

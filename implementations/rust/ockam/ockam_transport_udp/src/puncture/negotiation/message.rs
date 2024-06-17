@@ -1,7 +1,7 @@
-use minicbor::{Decode, Encode};
+use minicbor::{CborLen, Decode, Encode};
 use ockam_core::{Decodable, Encodable, Message, Result};
 
-#[derive(Encode, Decode, Debug, Clone)]
+#[derive(Encode, Decode, CborLen, Debug, Clone)]
 #[rustfmt::skip]
 pub(crate) enum UdpPunctureNegotiationMessage {
     /// UDP Puncture negotiation starts with initiator sending this message
@@ -21,7 +21,7 @@ pub(crate) enum UdpPunctureNegotiationMessage {
 
 impl Encodable for UdpPunctureNegotiationMessage {
     fn encode(self) -> Result<Vec<u8>> {
-        Ok(minicbor::to_vec(self)?)
+        ockam_core::cbor_encode_preallocate(self)
     }
 }
 

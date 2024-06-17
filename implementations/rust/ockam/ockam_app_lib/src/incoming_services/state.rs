@@ -1,6 +1,6 @@
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
-use minicbor::{Decode, Encode};
+use minicbor::{CborLen, Decode, Encode};
 use serde::{Deserialize, Serialize};
 use tracing::warn;
 
@@ -14,7 +14,7 @@ use crate::state::{AppState, ModelState};
 /// A Socket port number
 pub type Port = u16;
 
-#[derive(Clone, Debug, Decode, Encode, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Encode, Decode, CborLen, Serialize, Deserialize, PartialEq)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct PersistentIncomingService {

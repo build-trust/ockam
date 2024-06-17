@@ -118,10 +118,10 @@ impl IdentitiesKeys {
             attestations_valid_until: identity_options.attestations_valid_until,
         };
 
-        let change_data = minicbor::to_vec(&change_data)?;
+        let change_data = ockam_core::cbor_encode_preallocate(&change_data)?;
 
         let versioned_data = Change::create_versioned_data(change_data);
-        let versioned_data = minicbor::to_vec(&versioned_data)?;
+        let versioned_data = ockam_core::cbor_encode_preallocate(&versioned_data)?;
 
         let hash = self.verifying_vault.sha256(&versioned_data).await?;
 

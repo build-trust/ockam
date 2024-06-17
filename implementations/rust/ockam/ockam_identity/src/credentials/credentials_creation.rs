@@ -60,10 +60,10 @@ impl CredentialsCreation {
             created_at,
             expires_at,
         };
-        let credential_data = minicbor::to_vec(credential_data)?;
+        let credential_data = ockam_core::cbor_encode_preallocate(credential_data)?;
 
         let versioned_data = Credential::create_versioned_data(credential_data);
-        let versioned_data = minicbor::to_vec(&versioned_data)?;
+        let versioned_data = ockam_core::cbor_encode_preallocate(&versioned_data)?;
 
         let versioned_data_hash = self.verifying_vault.sha256(&versioned_data).await?;
 

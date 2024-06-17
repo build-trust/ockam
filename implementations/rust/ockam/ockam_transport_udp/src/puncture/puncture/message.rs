@@ -1,8 +1,8 @@
-use minicbor::{Decode, Encode};
+use minicbor::{CborLen, Decode, Encode};
 use ockam_core::{Decodable, Encodable, Message, Result, Route};
 
 /// Internal message type for UDP Puncture
-#[derive(Encode, Decode, Debug, Clone)]
+#[derive(Encode, Decode, CborLen, Debug, Clone)]
 #[rustfmt::skip]
 pub(crate) enum PunctureMessage {
     #[n(0)] Ping,
@@ -15,7 +15,7 @@ pub(crate) enum PunctureMessage {
 }
 impl Encodable for PunctureMessage {
     fn encode(self) -> Result<Vec<u8>> {
-        Ok(minicbor::to_vec(self)?)
+        ockam_core::cbor_encode_preallocate(self)
     }
 }
 

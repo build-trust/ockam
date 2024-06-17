@@ -2,7 +2,7 @@ use crate::colors::{color_primary, color_warn};
 use crate::kafka::{ConsumerPublishing, ConsumerResolution};
 use crate::output::Output;
 use crate::terminal::fmt;
-use minicbor::{Decode, Encode};
+use minicbor::{CborLen, Decode, Encode};
 use ockam_abac::PolicyExpression;
 use ockam_core::compat::net::SocketAddr;
 use ockam_core::Address;
@@ -11,7 +11,7 @@ use serde::Serialize;
 use std::fmt::Display;
 use std::fmt::Write;
 
-#[derive(Debug, Clone, Decode, Encode)]
+#[derive(Debug, Clone, Encode, Decode, CborLen)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct StartServiceRequest<T> {
@@ -36,7 +36,7 @@ impl<T> StartServiceRequest<T> {
     }
 }
 
-#[derive(Debug, Clone, Decode, Encode)]
+#[derive(Debug, Clone, Encode, Decode, CborLen)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct DeleteServiceRequest {
@@ -53,7 +53,7 @@ impl DeleteServiceRequest {
     }
 }
 
-#[derive(Debug, Clone, Decode, Encode)]
+#[derive(Debug, Clone, Encode, Decode, CborLen)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct StartKafkaOutletRequest {
@@ -88,7 +88,7 @@ impl StartKafkaOutletRequest {
     }
 }
 
-#[derive(Debug, Clone, Decode, Encode)]
+#[derive(Debug, Clone, Encode, Decode, CborLen)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct StartKafkaInletRequest {
@@ -165,7 +165,7 @@ impl StartKafkaInletRequest {
 }
 
 /// Request body when instructing a node to start an Uppercase service
-#[derive(Debug, Clone, Decode, Encode)]
+#[derive(Debug, Clone, Encode, Decode, CborLen)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct StartUppercaseServiceRequest {
@@ -179,7 +179,7 @@ impl StartUppercaseServiceRequest {
 }
 
 /// Request body when instructing a node to start an Echoer service
-#[derive(Debug, Clone, Decode, Encode)]
+#[derive(Debug, Clone, Encode, Decode, CborLen)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct StartEchoerServiceRequest {
@@ -193,7 +193,7 @@ impl StartEchoerServiceRequest {
 }
 
 /// Request body when instructing a node to start a Hop service
-#[derive(Debug, Clone, Decode, Encode)]
+#[derive(Debug, Clone, Encode, Decode, CborLen)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct StartHopServiceRequest {
@@ -206,7 +206,7 @@ impl StartHopServiceRequest {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Decode, Encode)]
+#[derive(Debug, Clone, Serialize, Encode, Decode, CborLen)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct ServiceStatus {

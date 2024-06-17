@@ -1,4 +1,4 @@
-use minicbor::{Decode, Encode};
+use minicbor::{CborLen, Decode, Encode};
 
 /// EdDSACurve25519 signature length.
 pub const EDDSA_CURVE25519_SIGNATURE_LENGTH: usize = 64;
@@ -6,7 +6,7 @@ pub const EDDSA_CURVE25519_SIGNATURE_LENGTH: usize = 64;
 pub const ECDSA_SHA256_CURVEP256_SIGNATURE_LENGTH: usize = 64;
 
 /// A cryptographic signature.
-#[derive(Encode, Decode)]
+#[derive(Encode, Decode, CborLen)]
 #[rustfmt::skip]
 pub enum Signature {
     /// An EdDSA signature using Curve 25519.
@@ -22,7 +22,7 @@ pub enum Signature {
 ///
 /// [1]: https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.186-5.pdf
 /// [2]: https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-186.pdf
-#[derive(Encode, Decode, PartialEq, Eq, Clone, Debug)]
+#[derive(Encode, Decode, CborLen, PartialEq, Eq, Clone, Debug)]
 #[cbor(transparent)]
 pub struct EdDSACurve25519Signature(
     #[cbor(n(0), with = "minicbor::bytes")] pub [u8; EDDSA_CURVE25519_SIGNATURE_LENGTH],
@@ -37,7 +37,7 @@ pub struct EdDSACurve25519Signature(
 /// [1]: https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.186-5.pdf
 /// [2]: https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf
 /// [3]: https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-186.pdf
-#[derive(Encode, Decode, PartialEq, Eq, Clone, Debug)]
+#[derive(Encode, Decode, CborLen, PartialEq, Eq, Clone, Debug)]
 #[cbor(transparent)]
 pub struct ECDSASHA256CurveP256Signature(
     #[cbor(n(0), with = "minicbor::bytes")] pub [u8; ECDSA_SHA256_CURVEP256_SIGNATURE_LENGTH],

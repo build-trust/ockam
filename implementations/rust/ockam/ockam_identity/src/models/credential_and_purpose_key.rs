@@ -1,4 +1,4 @@
-use minicbor::{Decode, Encode};
+use minicbor::{CborLen, Decode, Encode};
 
 use ockam_core::compat::string::String;
 use ockam_core::compat::vec::Vec;
@@ -11,7 +11,7 @@ use crate::TimestampInSeconds;
 
 /// [`Credential`] and the corresponding [`PurposeKeyAttestation`] that was used to issue that
 /// [`Credential`] and will be used to verify it
-#[derive(Clone, Debug, PartialEq, Eq, Encode, Decode)]
+#[derive(Clone, Debug, PartialEq, Eq, Encode, Decode, CborLen)]
 #[rustfmt::skip]
 pub struct CredentialAndPurposeKey {
     /// [`Credential`]
@@ -29,7 +29,7 @@ impl CredentialAndPurposeKey {
 
     /// Encode the credential as a CBOR bytes
     pub fn encode_as_cbor_bytes(&self) -> Result<Vec<u8>> {
-        Ok(minicbor::to_vec(self)?)
+        ockam_core::cbor_encode_preallocate(self)
     }
 
     /// Decode the credential from bytes

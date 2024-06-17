@@ -1,8 +1,8 @@
-use minicbor::{Decode, Encode};
+use minicbor::{CborLen, Decode, Encode};
 use ockam_core::{Decodable, Encodable, Encoded, Message, Result};
 
 /// Request type for UDP Puncture Rendezvous service
-#[derive(Encode, Decode, Debug)]
+#[derive(Encode, Decode, CborLen, Debug)]
 #[rustfmt::skip]
 pub enum RendezvousRequest {
     /// Ping service to see if it is reachable and working.
@@ -13,7 +13,7 @@ pub enum RendezvousRequest {
 
 impl Encodable for RendezvousRequest {
     fn encode(self) -> Result<Encoded> {
-        Ok(minicbor::to_vec(self)?)
+        ockam_core::cbor_encode_preallocate(self)
     }
 }
 
@@ -26,7 +26,7 @@ impl Decodable for RendezvousRequest {
 impl Message for RendezvousRequest {}
 
 /// Response type for UDP Puncture Rendezvous service
-#[derive(Encode, Decode, Debug)]
+#[derive(Encode, Decode, CborLen, Debug)]
 #[rustfmt::skip]
 pub enum RendezvousResponse {
     #[n(0)] Pong,
@@ -35,7 +35,7 @@ pub enum RendezvousResponse {
 
 impl Encodable for RendezvousResponse {
     fn encode(self) -> Result<Encoded> {
-        Ok(minicbor::to_vec(self)?)
+        ockam_core::cbor_encode_preallocate(self)
     }
 }
 

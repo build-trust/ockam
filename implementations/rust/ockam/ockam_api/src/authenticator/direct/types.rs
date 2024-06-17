@@ -1,9 +1,9 @@
-use minicbor::{Decode, Encode};
+use minicbor::{CborLen, Decode, Encode};
 use ockam::identity::Identifier;
 use std::collections::BTreeMap;
 use std::time::Duration;
 
-#[derive(Debug, Decode, Encode)]
+#[derive(Debug, Encode, Decode, CborLen)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct AddMember {
@@ -33,7 +33,7 @@ impl AddMember {
     }
 }
 
-#[derive(Debug, Decode, Encode)]
+#[derive(Debug, Encode, Decode, CborLen)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct CreateToken {

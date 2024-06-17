@@ -3,11 +3,11 @@ use crate::compat::rand::Rng;
 use crate::compat::string::{String, ToString};
 use core::fmt;
 use core::fmt::Formatter;
-use minicbor::{Decode, Encode};
+use minicbor::{CborLen, Decode, Encode};
 use serde::{Deserialize, Serialize};
 
 /// Unique random identifier of a Flow Control
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Decode, Encode)]
+#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Encode, Decode, CborLen)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct FlowControlId {

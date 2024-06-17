@@ -2,9 +2,9 @@ use crate::colors::OckamColor;
 use crate::output::Output;
 use crate::Result;
 use colorful::Colorful;
-use minicbor::{Decode, Encode};
+use minicbor::{CborLen, Decode, Encode};
 
-#[derive(Debug, Clone, Decode, Encode)]
+#[derive(Debug, Clone, Encode, Decode, CborLen)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct WorkerStatus {
@@ -29,7 +29,7 @@ impl Output for WorkerStatus {
 }
 
 /// Response body for listing workers
-#[derive(Debug, Clone, Decode, Encode)]
+#[derive(Debug, Clone, Encode, Decode, CborLen)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct WorkerList {
