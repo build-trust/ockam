@@ -94,7 +94,7 @@ tracing = { version = "0.1", default_features = false }
 tracing-attributes = { version = "0.1", default_features = false }
 
 [dev-dependencies]
-ockam_transport_tcp = { path = "../ockam_transport_tcp", default-features = false }
+ockam_transport_tcp = { path = "../ockam_transport_tcp" }
 ockam_vault = { path = "../ockam_vault" }
 ockam_vault_aws = { path = "../ockam_vault_aws" }
 quickcheck = "1.0.3"
