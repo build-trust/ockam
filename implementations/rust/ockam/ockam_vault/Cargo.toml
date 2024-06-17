@@ -80,11 +80,11 @@ ed25519-dalek = { version = "2.1", default-features = false, features = ["fast",
 hex = { version = "0.4", default-features = false }
 hkdf = { version = "0.12", default-features = false }
 minicbor = { version = "0.24.1", features = ["derive"] }
-ockam_core = { path = "../ockam_core", version = "^0.111.0", default_features = false }
+ockam_core = { path = "../ockam_core", version = "^0.111.0", default-features = false }
 ockam_macros = { path = "../ockam_macros", version = "^0.34.0", default-features = false }
-ockam_node = { path = "../ockam_node", version = "^0.119.0", default_features = false, optional = true }
+ockam_node = { path = "../ockam_node", version = "^0.119.0", default-features = false, optional = true }
 # ECDSA providers:
-p256 = { version = "0.13.2", default_features = false }
+p256 = { version = "0.13.2", default-features = false }
 rand = { version = "0.8", default-features = false }
 rand_pcg = { version = "0.3.1", default-features = false, optional = true }
 serde = { version = "1", default-features = false, features = ["derive"] }
@@ -92,7 +92,7 @@ sha2 = { version = "0.10", default-features = false }
 sqlx = { git = "https://github.com/etorreborre/sqlx", rev = "5fec648d2de0cbeed738dcf1c6f5bc9194fc439b", optional = true }
 static_assertions = "1.1.0"
 tracing = { version = "0.1", default-features = false }
-x25519-dalek = { version = "2.0.1", default_features = false, features = ["precomputed-tables", "static_secrets", "zeroize"] }
+x25519-dalek = { version = "2.0.1", default-features = false, features = ["precomputed-tables", "static_secrets", "zeroize"] }
 zeroize = { version = "1.8.1", features = ["zeroize_derive"] }
 
 [dev-dependencies]
