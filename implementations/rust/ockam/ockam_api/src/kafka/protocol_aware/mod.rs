@@ -3,7 +3,7 @@ use crate::kafka::secure_channel_map::controller::KafkaSecureChannelControllerIm
 use crate::kafka::KafkaInletController;
 use bytes::BytesMut;
 use kafka_protocol::messages::ApiKey;
-use minicbor::{Decode, Encode};
+use minicbor::{CborLen, Decode, Encode};
 use ockam_core::compat::{
     collections::HashMap,
     fmt::Debug,
@@ -75,7 +75,7 @@ impl KafkaMessageInterceptor for InletInterceptorImpl {
     }
 }
 
-#[derive(Debug, Clone, Decode, Encode)]
+#[derive(Debug, Clone, Encode, Decode, CborLen)]
 #[rustfmt::skip]
 /// Wraps the content within every record batch
 struct MessageWrapper {

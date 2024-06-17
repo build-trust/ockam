@@ -1,7 +1,7 @@
 use either::Either;
 use minicbor::decode::{self, Decoder};
 use minicbor::encode::{self, Encoder, Write};
-use minicbor::{Decode, Encode};
+use minicbor::{CborLen, Decode, Encode};
 use ockam_core::compat::string::{String, ToString};
 use serde::{Serialize, Serializer};
 use str_buf::StrBuf;
@@ -73,6 +73,12 @@ macro_rules! define {
             }
         }
 
+        impl<C> CborLen<C> for $t {
+            fn cbor_len(&self, ctx: &mut C) -> usize {
+                self.as_str().cbor_len(ctx)
+            }
+        }
+
         impl<'a, C> Decode<'a, C> for $t {
             fn decode(d: &mut Decoder<'a>, _: &mut C) -> Result<$t, decode::Error> {
                 let s = d.str()?;
@@ -94,7 +100,9 @@ macro_rules! define {
 define!(Subject);
 define!(ResourceName);
 
-#[derive(Clone, Debug, Decode, Encode, PartialEq, Eq, EnumString, Display, EnumIter, AsRefStr)]
+#[derive(
+    Clone, Debug, Encode, Decode, CborLen, PartialEq, Eq, EnumString, Display, EnumIter, AsRefStr,
+)]
 #[cbor(index_only)]
 pub enum Action {
     #[n(1)]

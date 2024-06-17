@@ -108,7 +108,10 @@ mod tests {
             )
             .await?;
 
-        println!("{}", hex::encode(minicbor::to_vec(&credential)?));
+        println!(
+            "{}",
+            hex::encode(ockam_core::cbor_encode_preallocate(&credential)?)
+        );
 
         let _res = credentials
             .credentials_verification()

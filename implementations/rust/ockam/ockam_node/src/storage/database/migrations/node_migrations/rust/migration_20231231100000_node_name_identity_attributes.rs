@@ -181,10 +181,10 @@ mod test {
 
     /// HELPERS
     fn create_attributes(identifier: &str) -> Result<Vec<u8>> {
-        Ok(minicbor::to_vec(BTreeMap::from([
+        ockam_core::cbor_encode_preallocate(BTreeMap::from([
             ("name".as_bytes().to_vec(), identifier.as_bytes().to_vec()),
             ("age".as_bytes().to_vec(), identifier.as_bytes().to_vec()),
-        ]))?)
+        ]))
     }
 
     fn insert_query(identifier: &str, attributes: Vec<u8>) -> Query<Sqlite, SqliteArguments> {

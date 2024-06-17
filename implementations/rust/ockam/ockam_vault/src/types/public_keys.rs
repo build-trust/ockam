@@ -1,4 +1,4 @@
-use minicbor::{Decode, Encode};
+use minicbor::{CborLen, Decode, Encode};
 
 /// X25519 public key length.
 pub const X25519_PUBLIC_KEY_LENGTH: usize = 32;
@@ -10,7 +10,7 @@ pub const EDDSA_CURVE25519_PUBLIC_KEY_LENGTH: usize = 32;
 pub const ECDSA_SHA256_CURVEP256_PUBLIC_KEY_LENGTH: usize = 65;
 
 /// A public key for verifying signatures.
-#[derive(Encode, Decode, Debug, Clone, PartialEq, Eq)]
+#[derive(Encode, Decode, CborLen, Debug, Clone, PartialEq, Eq)]
 #[rustfmt::skip]
 pub enum VerifyingPublicKey {
     /// Curve25519 Public Key for verifying EdDSA signatures.
@@ -27,7 +27,7 @@ pub enum VerifyingPublicKey {
 /// [1]: https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.186-5.pdf
 /// [2]: https://ed25519.cr.yp.to/papers.html
 /// [2]: https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-186.pdf
-#[derive(Encode, Decode, Clone, Debug, PartialEq, Eq)]
+#[derive(Encode, Decode, CborLen, Clone, Debug, PartialEq, Eq)]
 #[cbor(transparent)]
 pub struct EdDSACurve25519PublicKey(
     #[cbor(n(0), with = "minicbor::bytes")] pub [u8; EDDSA_CURVE25519_PUBLIC_KEY_LENGTH],
@@ -47,7 +47,7 @@ pub struct EdDSACurve25519PublicKey(
 /// [2]: https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.186-5.pdf
 /// [3]: https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf
 /// [4]: https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-186.pdf
-#[derive(Encode, Decode, Clone, Debug, PartialEq, Eq)]
+#[derive(Encode, Decode, CborLen, Clone, Debug, PartialEq, Eq)]
 #[cbor(transparent)]
 pub struct ECDSASHA256CurveP256PublicKey(
     #[cbor(n(0), with = "minicbor::bytes")] pub [u8; ECDSA_SHA256_CURVEP256_PUBLIC_KEY_LENGTH],
@@ -60,7 +60,7 @@ pub struct ECDSASHA256CurveP256PublicKey(
 ///
 /// [1]: https://datatracker.ietf.org/doc/html/rfc7748
 /// [2]: https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-186.pdf
-#[derive(Encode, Decode, Clone, Debug, PartialEq, Eq)]
+#[derive(Encode, Decode, CborLen, Clone, Debug, PartialEq, Eq)]
 #[cbor(transparent)]
 pub struct X25519PublicKey(
     #[cbor(n(0), with = "minicbor::bytes")] pub [u8; X25519_PUBLIC_KEY_LENGTH],

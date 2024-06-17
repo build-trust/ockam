@@ -1,4 +1,4 @@
-use minicbor::{Decode, Encode};
+use minicbor::{CborLen, Decode, Encode};
 use tokio::task::JoinHandle;
 use tracing as log;
 
@@ -31,7 +31,7 @@ pub struct Medic {
     replacements: JoinSet<(String, Result<ReplacerOutcome, Error>)>,
 }
 
-#[derive(Debug, Clone, Encode, Decode)]
+#[derive(Debug, Clone, Encode, Decode, CborLen)]
 #[rustfmt::skip]
 pub struct Message {
     #[n(0)] key: String,
@@ -244,7 +244,7 @@ impl Message {
 
 impl Encodable for Message {
     fn encode(self) -> Result<Vec<u8>, Error> {
-        minicbor::to_vec(self).map_err(Error::from)
+        ockam_core::cbor_encode_preallocate(self).map_err(Error::from)
     }
 }
 

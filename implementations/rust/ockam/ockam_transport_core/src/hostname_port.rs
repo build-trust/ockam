@@ -1,13 +1,13 @@
 use core::fmt::{Display, Formatter};
 use core::net::SocketAddr;
 use core::str::FromStr;
-use minicbor::{Decode, Encode};
+use minicbor::{CborLen, Decode, Encode};
 use ockam_core::compat::format;
 use ockam_core::compat::string::{String, ToString};
 use ockam_core::errcode::{Kind, Origin};
 
 /// Hostname and port
-#[derive(Debug, Clone, PartialEq, Eq, Encode, Decode)]
+#[derive(Debug, Clone, PartialEq, Eq, Encode, Decode, CborLen)]
 pub struct HostnamePort {
     #[n(0)]
     hostname: String,

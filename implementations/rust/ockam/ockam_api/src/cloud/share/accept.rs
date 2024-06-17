@@ -1,16 +1,16 @@
-use minicbor::{Decode, Encode};
+use minicbor::{CborLen, Decode, Encode};
 use serde::Serialize;
 
 use super::RoleInShare;
 
-#[derive(Clone, Debug, Decode, Encode, Serialize)]
+#[derive(Clone, Debug, Encode, Decode, CborLen, Serialize)]
 #[cbor(map)]
 #[rustfmt::skip]
 pub struct AcceptInvitation {
     #[n(1)] pub id: String,
 }
 
-#[derive(Clone, Debug, Decode, Encode, Serialize)]
+#[derive(Clone, Debug, Encode, Decode, CborLen, Serialize)]
 #[cbor(map)]
 #[rustfmt::skip]
 pub struct AcceptedInvitation {

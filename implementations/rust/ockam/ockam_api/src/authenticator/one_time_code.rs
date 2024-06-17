@@ -1,7 +1,7 @@
 use crate::cloud::enroll::auth0::OidcToken;
 use core::str::FromStr;
 use minicbor::bytes::ByteArray;
-use minicbor::{Decode, Encode};
+use minicbor::{CborLen, Decode, Encode};
 use ockam_core::compat::rand;
 use ockam_core::compat::rand::RngCore;
 use ockam_core::compat::string::{String, ToString};
@@ -15,7 +15,7 @@ use std::fmt::{Display, Formatter};
 /// A one-time code can be used to enroll
 /// a node with some authenticated attributes
 /// It can be retrieve with a command like `ockam project ticket --attribute component=control`
-#[derive(Debug, Clone, Decode, Encode, PartialEq, Eq)]
+#[derive(Debug, Clone, Encode, Decode, CborLen, PartialEq, Eq)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct OneTimeCode {

@@ -62,7 +62,7 @@ impl IdentityAttributesRepository for IdentityAttributesSqlxDatabase {
             "INSERT OR REPLACE INTO identity_attributes (identifier, attributes, added, expires, attested_by, node_name) VALUES (?, ?, ?, ?, ?, ?)"
             )
             .bind(subject.to_sql())
-            .bind(minicbor::to_vec(entry.attrs())?.to_sql())
+            .bind(ockam_core::cbor_encode_preallocate(entry.attrs())?.to_sql())
             .bind(entry.added_at().to_sql())
             .bind(entry.expires_at().map(|e| e.to_sql()))
             .bind(entry.attested_by().map(|e| e.to_sql()))

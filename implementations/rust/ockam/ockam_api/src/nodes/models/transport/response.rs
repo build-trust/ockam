@@ -2,7 +2,7 @@ use crate::colors::color_primary;
 use crate::nodes::models::transport::{TransportMode, TransportType};
 use crate::nodes::service::ApiTransport;
 use crate::output::Output;
-use minicbor::{Decode, Encode};
+use minicbor::{CborLen, Decode, Encode};
 use ockam::tcp::{TcpConnection, TcpListener, TcpListenerInfo, TcpSenderInfo};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::flow_control::FlowControlId;
@@ -13,7 +13,7 @@ use std::fmt::{Display, Formatter};
 use std::net::SocketAddrV4;
 
 /// Response body when interacting with a transport
-#[derive(Debug, Clone, Decode, Encode, serde::Serialize)]
+#[derive(Debug, Clone, Encode, Decode, CborLen, serde::Serialize)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct TransportStatus {

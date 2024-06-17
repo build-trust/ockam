@@ -1,7 +1,7 @@
 use crate::{Expr, SUBJECT_KEY};
 #[cfg(feature = "std")]
 use core::str::FromStr;
-use minicbor::{Decode, Encode};
+use minicbor::{CborLen, Decode, Encode};
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::fmt::*;
 use ockam_core::compat::format;
@@ -34,7 +34,7 @@ const NAME_FORMAT: &str =
 ///  - Printed as a string
 ///  - Transformed into a policy expression where names become boolean attributes set to the value 'true'.
 ///
-#[derive(Debug, Clone, Decode, Encode)]
+#[derive(Debug, Clone, Encode, Decode, CborLen)]
 pub enum BooleanExpr {
     #[n(0)]
     Name(#[n(0)] String),

@@ -2,7 +2,7 @@ use crate::secure_channel::{Addresses, RemoteRoute};
 use crate::{Identifier, SecureChannelOptions};
 use core::fmt;
 use core::fmt::Formatter;
-use minicbor::{Decode, Encode};
+use minicbor::{CborLen, Decode, Encode};
 use ockam_core::compat::sync::{Arc, RwLock};
 use ockam_core::flow_control::{FlowControlId, FlowControls};
 use ockam_core::{route, Address, Result, Route};
@@ -119,7 +119,7 @@ impl SecureChannel {
 }
 
 /// Result of [`super::SecureChannels::create_secure_channel_listener()`] call.
-#[derive(Debug, Clone, Decode, Encode, Serialize)]
+#[derive(Debug, Clone, Encode, Decode, CborLen, Serialize)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct SecureChannelListener {

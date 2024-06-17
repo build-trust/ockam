@@ -1,4 +1,4 @@
-use minicbor::{decode, encode, Decode, Decoder, Encode, Encoder};
+use minicbor::{decode, encode, CborLen, Decode, Decoder, Encode, Encoder};
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt::{Display, Formatter};
 use std::ops::Deref;
@@ -41,6 +41,12 @@ impl<C> Encode<C> for Url {
         ctx: &mut C,
     ) -> Result<(), encode::Error<W::Error>> {
         self.0.as_str().encode(e, ctx)
+    }
+}
+
+impl<C> CborLen<C> for Url {
+    fn cbor_len(&self, ctx: &mut C) -> usize {
+        self.0.as_str().cbor_len(ctx)
     }
 }
 

@@ -2,7 +2,7 @@ use colorful::Colorful;
 
 use std::time::Duration;
 
-use minicbor::{Decode, Encode};
+use minicbor::{CborLen, Decode, Encode};
 use serde::Serialize;
 
 use ockam::identity::models::CredentialAndPurposeKey;
@@ -20,7 +20,7 @@ use crate::{route_to_multiaddr, try_route_to_multiaddr};
 //Requests
 
 /// Request body when instructing a node to create a Secure Channel
-#[derive(Debug, Clone, Decode, Encode)]
+#[derive(Debug, Clone, Encode, Decode, CborLen)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct CreateSecureChannelRequest {
@@ -49,7 +49,7 @@ impl CreateSecureChannelRequest {
 }
 
 /// Request body when instructing a node to delete a Secure Channel
-#[derive(Debug, Clone, Decode, Encode)]
+#[derive(Debug, Clone, Encode, Decode, CborLen)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct DeleteSecureChannelRequest {
@@ -65,7 +65,7 @@ impl DeleteSecureChannelRequest {
 }
 
 /// Request body when instructing a node to show a Secure Channel
-#[derive(Debug, Clone, Decode, Encode)]
+#[derive(Debug, Clone, Encode, Decode, CborLen)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct ShowSecureChannelRequest {
@@ -81,7 +81,7 @@ impl ShowSecureChannelRequest {
 }
 
 /// Request body when instructing a node to delete a Secure Channel Listener
-#[derive(Debug, Clone, Decode, Encode)]
+#[derive(Debug, Clone, Encode, Decode, CborLen)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct DeleteSecureChannelListenerRequest {
@@ -97,7 +97,7 @@ impl DeleteSecureChannelListenerRequest {
 }
 
 /// Request body to show a Secure Channel Listener
-#[derive(Debug, Clone, Decode, Encode)]
+#[derive(Debug, Clone, Encode, Decode, CborLen)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct ShowSecureChannelListenerRequest {
@@ -115,7 +115,7 @@ impl ShowSecureChannelListenerRequest {
 // Responses
 
 /// Response body when instructing a node to create a Secure Channel
-#[derive(Debug, Clone, Decode, Encode)]
+#[derive(Debug, Clone, Encode, Decode, CborLen)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct CreateSecureChannelResponse {
@@ -148,7 +148,7 @@ impl Output for CreateSecureChannelResponse {
     }
 }
 
-#[derive(Debug, Clone, Decode, Encode)]
+#[derive(Debug, Clone, Encode, Decode, CborLen)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct CreateSecureChannelListenerRequest {
@@ -172,7 +172,7 @@ impl CreateSecureChannelListenerRequest {
 }
 
 /// Response body when deleting a Secure Channel Listener
-#[derive(Debug, Clone, Decode, Encode)]
+#[derive(Debug, Clone, Encode, Decode, CborLen)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct DeleteSecureChannelListenerResponse {
@@ -196,7 +196,7 @@ impl Output for SecureChannelListener {
     }
 }
 
-#[derive(Debug, Clone, Decode, Encode)]
+#[derive(Debug, Clone, Encode, Decode, CborLen)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct DeleteSecureChannelResponse {
@@ -211,7 +211,7 @@ impl DeleteSecureChannelResponse {
     }
 }
 
-#[derive(Debug, Clone, Decode, Encode, Serialize)]
+#[derive(Debug, Clone, Encode, Decode, CborLen, Serialize)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct ShowSecureChannelResponse {

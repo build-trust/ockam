@@ -1,7 +1,7 @@
 use crate::database::migrations::RustMigration;
 use crate::database::{FromSqlxError, ToSqlxType, ToVoid};
 use core::fmt;
-use minicbor::{Decode, Encode};
+use minicbor::{CborLen, Decode, Encode};
 use ockam_core::{async_trait, Result};
 use regex::Regex;
 use sqlx::*;
@@ -96,7 +96,7 @@ impl PolicyTrustContextId {
 }
 
 #[allow(missing_docs)]
-#[derive(Debug, Clone, Encode, Decode)]
+#[derive(Debug, Clone, Encode, Decode, CborLen)]
 #[rustfmt::skip]
 pub enum Expr {
     #[n(1)] Str   (#[n(0)] String),

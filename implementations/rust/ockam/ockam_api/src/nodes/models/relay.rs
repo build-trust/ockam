@@ -1,5 +1,5 @@
 use colorful::Colorful;
-use minicbor::{Decode, Encode};
+use minicbor::{CborLen, Decode, Encode};
 
 use ockam::identity::Identifier;
 use ockam::remote::RemoteRelayInfo;
@@ -13,7 +13,7 @@ use crate::output::{colorize_connection_status, Output};
 use crate::{route_to_multiaddr, ConnectionStatus};
 
 /// Request body when instructing a node to create a relay
-#[derive(Debug, Clone, Decode, Encode)]
+#[derive(Debug, Clone, Encode, Decode, CborLen)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct CreateRelay {
@@ -62,7 +62,7 @@ impl CreateRelay {
 }
 
 /// Response body when creating a relay
-#[derive(Debug, Clone, Decode, Encode, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Encode, Decode, CborLen, serde::Serialize, serde::Deserialize)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct RelayInfo {

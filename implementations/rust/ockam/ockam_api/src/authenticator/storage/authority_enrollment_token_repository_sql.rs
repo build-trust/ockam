@@ -96,7 +96,7 @@ impl AuthorityEnrollmentTokenRepository for AuthorityEnrollmentTokenSqlxDatabase
         .bind(token.created_at.to_sql())
         .bind(token.expires_at.to_sql())
         .bind(token.ttl_count.to_sql())
-        .bind(minicbor::to_vec(token.attrs)?.to_sql());
+        .bind(ockam_core::cbor_encode_preallocate(token.attrs)?.to_sql());
 
         query.execute(&*self.database.pool).await.void()
     }

@@ -3,13 +3,13 @@ use crate::error::ParseError;
 use crate::output::Output;
 use crate::Result;
 use colorful::Colorful;
-use minicbor::{Decode, Encode};
+use minicbor::{CborLen, Decode, Encode};
 use serde::{Deserialize, Serialize};
 use std::fmt::Write;
 use time::format_description::well_known::Iso8601;
 use time::PrimitiveDateTime;
 
-#[derive(Encode, Decode, Serialize, Deserialize, Debug)]
+#[derive(Encode, Decode, CborLen, Serialize, Deserialize, Debug)]
 #[cbor(map)]
 pub struct Token {
     #[cbor(n(1))]

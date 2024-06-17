@@ -3,12 +3,12 @@ use crate::EvalError;
 use cfg_if::cfg_if;
 use core::cmp::Ordering;
 use core::fmt;
-use minicbor::{Decode, Encode};
+use minicbor::{CborLen, Decode, Encode};
 use ockam_core::compat::string::String;
 use ockam_core::compat::vec::{vec, Vec};
 use serde::Serialize;
 
-#[derive(Debug, Clone, Encode, Decode)]
+#[derive(Debug, Clone, Encode, Decode, CborLen)]
 #[rustfmt::skip]
 pub enum Expr {
     #[n(1)] Str   (#[n(0)] String),
@@ -37,7 +37,7 @@ impl Serialize for Expr {
     }
 }
 
-#[derive(Debug, Clone, Encode, Decode)]
+#[derive(Debug, Clone, Encode, Decode, CborLen)]
 #[rustfmt::skip]
 pub enum Val {
     #[n(1)] Str   (#[n(0)] String),

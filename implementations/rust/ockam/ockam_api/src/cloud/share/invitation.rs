@@ -3,14 +3,14 @@ use crate::cli_state::EnrollmentTicket;
 use crate::cloud::email_address::EmailAddress;
 use crate::error::ApiError;
 use crate::output::Output;
-use minicbor::{Decode, Encode};
+use minicbor::{CborLen, Decode, Encode};
 use ockam::identity::Identifier;
 use serde::{Deserialize, Serialize};
 use std::{fmt::Display, str::FromStr};
 use time::format_description::well_known::iso8601::Iso8601;
 use time::OffsetDateTime;
 
-#[derive(Clone, Debug, Eq, PartialEq, Decode, Deserialize, Encode, Serialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Decode, Encode, CborLen, Deserialize, Serialize)]
 #[cbor(index_only)]
 #[rustfmt::skip]
 pub enum RoleInShare {
@@ -42,7 +42,7 @@ impl FromStr for RoleInShare {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Decode, Deserialize, Encode, Serialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Decode, Encode, CborLen, Deserialize, Serialize)]
 #[cbor(index_only)]
 #[rustfmt::skip]
 pub enum ShareScope {
@@ -74,7 +74,7 @@ impl FromStr for ShareScope {
     }
 }
 
-#[derive(Clone, Debug, Decode, Encode, Deserialize, Serialize)]
+#[derive(Clone, Debug, Encode, Decode, CborLen, Deserialize, Serialize)]
 #[cbor(map)]
 #[rustfmt::skip]
 pub struct InvitationWithAccess {
@@ -90,7 +90,7 @@ impl PartialEq for InvitationWithAccess {
 
 impl Eq for InvitationWithAccess {}
 
-#[derive(Clone, Debug, Decode, Encode, Deserialize, Serialize, PartialEq)]
+#[derive(Clone, Debug, Encode, Decode, CborLen, Deserialize, Serialize, PartialEq)]
 #[cbor(map)]
 #[rustfmt::skip]
 pub struct ReceivedInvitation {
@@ -118,7 +118,7 @@ impl Output for ReceivedInvitation {
     }
 }
 
-#[derive(Clone, Debug, Decode, Encode, Deserialize, Serialize, PartialEq)]
+#[derive(Clone, Debug, Encode, Decode, CborLen, Deserialize, Serialize, PartialEq)]
 #[cbor(map)]
 #[rustfmt::skip]
 pub struct SentInvitation {
@@ -163,7 +163,7 @@ fn is_expired(date: &str) -> ockam_core::Result<bool> {
     Ok(date < now)
 }
 
-#[derive(Clone, Debug, Decode, Encode, Deserialize, Serialize, PartialEq)]
+#[derive(Clone, Debug, Encode, Decode, CborLen, Deserialize, Serialize, PartialEq)]
 #[cbor(map)]
 #[rustfmt::skip]
 pub struct ServiceAccessDetails {

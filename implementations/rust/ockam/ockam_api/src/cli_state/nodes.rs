@@ -1,4 +1,4 @@
-use minicbor::{Decode, Encode};
+use minicbor::{CborLen, Decode, Encode};
 use std::fmt::{Display, Formatter};
 use std::path::PathBuf;
 use std::process;
@@ -457,7 +457,7 @@ impl CliState {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Serialize, Decode, Encode)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Encode, Decode, CborLen)]
 #[serde(rename_all = "lowercase", tag = "status", content = "pid")]
 pub enum NodeProcessStatus {
     #[n(0)]

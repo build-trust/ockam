@@ -1,4 +1,4 @@
-use minicbor::{Decode, Encode};
+use minicbor::{CborLen, Decode, Encode};
 use serde::{Deserialize, Serialize};
 
 use crate::Result;
@@ -10,7 +10,7 @@ use ockam::identity::Identifier;
 
 use super::{RoleInShare, ShareScope};
 
-#[derive(Clone, Debug, Decode, Encode, Serialize)]
+#[derive(Clone, Debug, Encode, Decode, CborLen, Serialize)]
 #[cbor(map)]
 #[rustfmt::skip]
 pub struct CreateInvitation {
@@ -22,7 +22,7 @@ pub struct CreateInvitation {
     #[n(6)] pub target_id: String,
 }
 
-#[derive(Clone, Debug, Decode, Encode, Deserialize, Serialize)]
+#[derive(Clone, Debug, Encode, Decode, CborLen, Deserialize, Serialize)]
 #[cbor(map)]
 #[rustfmt::skip]
 pub struct CreateServiceInvitation {

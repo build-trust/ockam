@@ -1,16 +1,16 @@
-use minicbor::{Decode, Encode};
+use minicbor::{CborLen, Decode, Encode};
 use serde::{Deserialize, Serialize};
 
 use super::{InvitationWithAccess, ReceivedInvitation, SentInvitation};
 
-#[derive(Clone, Debug, Decode, Encode, Serialize)]
+#[derive(Clone, Debug, Encode, Decode, CborLen, Serialize)]
 #[cbor(map)]
 #[rustfmt::skip]
 pub struct ListInvitations {
     #[n(1)] pub kind: InvitationListKind,
 }
 
-#[derive(Clone, Debug, PartialEq, Decode, Deserialize, Encode, Serialize)]
+#[derive(Clone, Debug, PartialEq, Decode, Encode, CborLen, Deserialize, Serialize)]
 #[cbor(index_only)]
 #[rustfmt::skip]
 pub enum InvitationListKind {
@@ -20,7 +20,7 @@ pub enum InvitationListKind {
     #[n(3)] Accepted,
 }
 
-#[derive(Clone, Debug, Decode, Encode, Serialize)]
+#[derive(Clone, Debug, Encode, Decode, CborLen, Serialize)]
 #[cbor(map)]
 #[rustfmt::skip]
 pub struct InvitationList {

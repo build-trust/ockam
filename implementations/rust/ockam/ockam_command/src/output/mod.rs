@@ -1,7 +1,7 @@
 use core::fmt;
 use std::fmt::Formatter;
 
-use minicbor::Encode;
+use minicbor::{CborLen, Encode};
 use serde::{Serialize, Serializer};
 
 use ockam::identity::models::{
@@ -195,7 +195,7 @@ impl fmt::Display for PurposeKeyDisplay {
     }
 }
 
-#[derive(Encode)]
+#[derive(Encode, CborLen)]
 #[cbor(transparent)]
 pub struct CredentialAndPurposeKeyDisplay(#[n(0)] pub CredentialAndPurposeKey);
 

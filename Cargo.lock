@@ -4832,6 +4832,7 @@ dependencies = [
  "hex",
  "lazy_static",
  "minicbor",
+ "ockam_core",
  "ockam_identity",
  "ockam_vault",
  "ockam_vault_aws",

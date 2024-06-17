@@ -196,7 +196,7 @@ mod test {
     /// HELPERS
     fn create_attributes(attributes: Vec<(Vec<u8>, Vec<u8>)>) -> Result<Vec<u8>> {
         let map: BTreeMap<Vec<u8>, Vec<u8>> = attributes.into_iter().collect();
-        Ok(minicbor::to_vec(map)?)
+        ockam_core::cbor_encode_preallocate(map)
     }
 
     fn insert_query(

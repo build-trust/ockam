@@ -45,7 +45,7 @@ impl PurposeKeysRepository for PurposeKeysSqlxDatabase {
         let query = query("INSERT OR REPLACE INTO purpose_key VALUES (?, ?, ?)")
             .bind(subject.to_sql())
             .bind(purpose.to_sql())
-            .bind(minicbor::to_vec(purpose_key_attestation)?.to_sql());
+            .bind(ockam_core::cbor_encode_preallocate(purpose_key_attestation)?.to_sql());
         query.execute(&*self.database.pool).await.void()
     }
 
