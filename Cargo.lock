@@ -662,9 +662,9 @@ dependencies = [
 
 [[package]]
 name = "aws-sdk-kms"
-version = "1.26.0"
+version = "1.31.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b5a6b58615203957a253a180b81db9427cb4b623fc8bab8dcac42369239f7716"
+checksum = "4663b78b8a9d1444186c36dbea8219283515d6fbe270074723da3edf43baea43"
 dependencies = [
  "aws-credential-types",
  "aws-runtime",
