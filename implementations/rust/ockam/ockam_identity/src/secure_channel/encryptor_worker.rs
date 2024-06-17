@@ -7,7 +7,9 @@ use ockam_core::compat::boxed::Box;
 use ockam_core::compat::sync::{Arc, RwLock};
 use ockam_core::compat::vec::Vec;
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::{async_trait, route, CowBytes, Decodable, Error, LocalMessage, Route};
+use ockam_core::{
+    async_trait, route, CowBytes, Decodable, Error, LocalMessage, NeutralMessage, Route,
+};
 use ockam_core::{Any, Result, Routed, Worker};
 use ockam_node::Context;
 
@@ -18,6 +20,7 @@ use crate::secure_channel::encryptor::{Encryptor, SIZE_OF_ENCRYPT_OVERHEAD};
 use crate::{
     ChangeHistoryRepository, CredentialRetriever, Identifier, IdentityError, Nonce,
     PlaintextPayloadMessage, RefreshCredentialsMessage, SecureChannelMessage,
+    SecureChannelPaddedMessage,
 };
 
 /// Wrap last received (during successful decryption) nonce and current route to the remote in a
@@ -90,24 +93,16 @@ impl EncryptorWorker {
     }
 
     /// Encrypt the message
-    async fn encrypt(&mut self, ctx: &Context, msg: SecureChannelMessage<'_>) -> Result<Vec<u8>> {
-        let payload = minicbor::to_vec(&msg)?;
-        let mut buffer = Vec::new();
-        self.encrypt_to(ctx, &mut buffer, &payload).await?;
-        Ok(buffer)
-    }
-
-    async fn encrypt_to(
+    async fn encrypt(
         &mut self,
         ctx: &Context,
-        destination: &mut Vec<u8>,
-        payload: &[u8],
-    ) -> Result<()> {
-        // by reserving the capacity beforehand, we can avoid copying memory later
-        destination.reserve(SIZE_OF_ENCRYPT_OVERHEAD + payload.len());
+        msg: SecureChannelPaddedMessage<'_>,
+    ) -> Result<Vec<u8>> {
+        let payload = ockam_core::cbor_encode_preallocate(&msg)?;
+        let mut destination = Vec::with_capacity(SIZE_OF_ENCRYPT_OVERHEAD + payload.len());
 
-        match self.encryptor.encrypt(destination, payload).await {
-            Ok(()) => Ok(()),
+        match self.encryptor.encrypt(&mut destination, &payload).await {
+            Ok(()) => Ok(destination),
             // If encryption failed, that means we have some internal error,
             // and we may be in an invalid state, it's better to stop the Worker
             Err(err) => {
@@ -191,39 +186,11 @@ impl EncryptorWorker {
             return_route,
             payload,
         };
+
         let msg = SecureChannelMessage::Payload(msg);
+        let msg = Self::add_padding(msg);
 
-        let payload = {
-            // This is a workaround to keep backcompatibility with an extra
-            // bare encoding of the raw message (Vec<u8>).
-            // In bare, a variable length array is simply represented by a
-            // variable length integer followed by the raw bytes.
-            // The idea is first to calculate the size of the encrypted payload,
-            // so we can calculate the size of the variable length integer.
-            // The goal is to prepend the variable length integer to the buffer
-            // before it's actually written, so we can write the whole encrypted
-            // payload without any extra copies.
-
-            let encoded_payload = minicbor::to_vec(&msg)?;
-            // we assume this calculation is exact
-            let encrypted_payload_size = SIZE_OF_ENCRYPT_OVERHEAD + encoded_payload.len();
-            let variable_length_integer =
-                ockam_core::bare::size_of_variable_length(encrypted_payload_size as u64);
-            let mut buffer = Vec::with_capacity(encrypted_payload_size + variable_length_integer);
-
-            ockam_core::bare::write_variable_length_integer(
-                &mut buffer,
-                encrypted_payload_size as u64,
-            );
-
-            self.encrypt_to(ctx, &mut buffer, &encoded_payload).await?;
-            assert_eq!(
-                buffer.len() - variable_length_integer,
-                encrypted_payload_size
-            );
-
-            buffer
-        };
+        let payload = self.encrypt(ctx, msg).await?;
 
         let remote_route = self.shared_state.remote_route.read().unwrap().route.clone();
         // Decryptor doesn't need the return_route since it has `self.remote_route` as well
@@ -292,6 +259,7 @@ impl EncryptorWorker {
             credentials: vec![credential.clone()],
         };
         let msg = SecureChannelMessage::RefreshCredentials(msg);
+        let msg = Self::add_padding(msg);
 
         let msg = self.encrypt(ctx, msg).await?;
 
@@ -302,8 +270,12 @@ impl EncryptorWorker {
 
         let remote_route = self.shared_state.remote_route.read().unwrap().route.clone();
         // Send the message to the decryptor on the other side
-        ctx.send_from_address(remote_route, msg, self.addresses.encryptor.clone())
-            .await?;
+        ctx.send_from_address(
+            remote_route,
+            NeutralMessage::from(msg),
+            self.addresses.encryptor.clone(),
+        )
+        .await?;
 
         self.last_presented_credential = Some(credential);
 
@@ -312,16 +284,34 @@ impl EncryptorWorker {
 
     async fn send_close_channel(&mut self, ctx: &Context) -> Result<()> {
         let msg = SecureChannelMessage::Close;
+        let msg = Self::add_padding(msg);
 
         // Encrypt the message
         let msg = self.encrypt(ctx, msg).await?;
 
         let remote_route = self.shared_state.remote_route.read().unwrap().route.clone();
         // Send the message to the decryptor on the other side
-        ctx.send_from_address(remote_route, msg, self.addresses.encryptor.clone())
-            .await?;
+        ctx.send_from_address(
+            remote_route,
+            NeutralMessage::from(msg),
+            self.addresses.encryptor.clone(),
+        )
+        .await?;
 
         Ok(())
+    }
+
+    fn add_padding(msg: SecureChannelMessage) -> SecureChannelPaddedMessage {
+        // Naїve padding of 0 to 255 zeros
+        // let padding_length: u8 = ockam_core::compat::rand::random();
+        // let padding = vec![0u8; padding_length as usize];
+
+        let padding = vec![];
+
+        SecureChannelPaddedMessage {
+            message: msg,
+            padding: padding.into(),
+        }
     }
 }
 
