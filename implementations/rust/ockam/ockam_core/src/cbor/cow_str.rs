@@ -4,7 +4,7 @@ use crate::compat::string::String;
 
 use core::fmt::{self, Display, Formatter};
 use core::ops::Deref;
-use minicbor::{Decode, Encode};
+use minicbor::{CborLen, Decode, Encode};
 use serde::{Deserialize, Serialize};
 
 /// A new type around `Cow<'_, str>` that borrows from input.
@@ -13,7 +13,18 @@ use serde::{Deserialize, Serialize};
 /// from input so using it in types like `Option`, `Vec<_>` etc will not produce
 /// owned element values.
 #[derive(
-    Debug, Clone, Encode, Decode, Serialize, Deserialize, Eq, PartialOrd, Ord, Hash, Default,
+    Debug,
+    Clone,
+    Encode,
+    Decode,
+    CborLen,
+    Serialize,
+    Deserialize,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Default,
 )]
 #[cbor(transparent)]
 #[serde(transparent)]

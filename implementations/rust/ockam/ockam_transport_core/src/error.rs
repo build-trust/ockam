@@ -40,7 +40,11 @@ pub enum TransportError {
     InvalidRouterResponseType,
     /// Excessive length of header, possible DoS attack
     /// https://github.com/advisories/GHSA-9mcr-873m-xcxp
-    AttackAttmept,
+    AttackAttempt,
+    /// Invalid protocol version
+    InvalidProtocolVersion,
+    /// Message is longer than allowed
+    MessageLengthExceeded,
 }
 
 impl ockam_core::compat::error::Error for TransportError {}
@@ -62,7 +66,9 @@ impl core::fmt::Display for TransportError {
             Self::GenericIo => write!(f, "generic I/O failure"),
             Self::PortalInvalidState => write!(f, "portal entered invalid state"),
             Self::InvalidRouterResponseType => write!(f, "router responded with invalid type"),
-            Self::AttackAttmept => write!(f, "excessive length of header, possible DoS attack"),
+            Self::AttackAttempt => write!(f, "excessive length of header, possible DoS attack"),
+            Self::InvalidProtocolVersion => write!(f, "invalid protocol version"),
+            Self::MessageLengthExceeded => write!(f, "message length exceeded"),
         }
     }
 }
@@ -87,7 +93,9 @@ impl From<TransportError> for Error {
             GenericIo => Kind::Io,
             PortalInvalidState => Kind::Invalid,
             InvalidRouterResponseType => Kind::Invalid,
-            AttackAttmept => Kind::Misuse,
+            AttackAttempt => Kind::Misuse,
+            InvalidProtocolVersion => Kind::Invalid,
+            MessageLengthExceeded => Kind::Unsupported,
         };
 
         Error::new(Origin::Transport, kind, err)

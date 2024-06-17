@@ -20,14 +20,17 @@ extern crate alloc;
 
 mod options;
 mod portal;
+mod protocol_version;
 mod registry;
 mod transport;
-
+mod transport_message;
 mod workers;
+
 pub(crate) use workers::*;
 
 pub use options::{TcpConnectionOptions, TcpListenerOptions};
 pub use portal::{PortalInternalMessage, PortalMessage, MAX_PAYLOAD_SIZE};
+pub use protocol_version::*;
 pub use registry::*;
 pub use transport::*;
 

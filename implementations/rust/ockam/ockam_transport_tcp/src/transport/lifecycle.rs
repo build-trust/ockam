@@ -162,7 +162,7 @@ mod tests {
         });
 
         let resolved = tcp
-            .resolve_address(Address::new(TCP, local_address.clone()))
+            .resolve_address(Address::new_with_string(TCP, local_address.clone()))
             .await?;
 
         // there are 2 additional workers
@@ -175,7 +175,7 @@ mod tests {
 
         // trying to resolve the address a second time should still work
         let _route = tcp
-            .resolve_address(Address::new(TCP, local_address))
+            .resolve_address(Address::new_with_string(TCP, local_address))
             .await?;
 
         tokio::time::sleep(Duration::from_millis(250)).await;
@@ -199,7 +199,7 @@ mod tests {
         });
 
         let result = tcp
-            .resolve_address(Address::new(
+            .resolve_address(Address::new_with_string(
                 TCP,
                 format!("localhost:{}", socket_address.port()),
             ))

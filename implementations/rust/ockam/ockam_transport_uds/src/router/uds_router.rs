@@ -103,9 +103,9 @@ impl UdsRouter {
             None => return Err(TransportError::InvalidAddress)?,
         };
 
-        let uds_address = Address::new(UDS, str_path);
+        let uds_address = Address::new_with_string(UDS, str_path);
         let mut accepts = vec![uds_address];
-        accepts.extend(pathnames.iter().map(|p| Address::new(UDS, p)));
+        accepts.extend(pathnames.iter().map(|p| Address::new_with_string(UDS, p)));
 
         let self_addr = pair.tx_addr();
         self.handle_register(accepts, self_addr.clone()).await?;
@@ -229,7 +229,7 @@ impl UdsRouter {
             }
         };
 
-        let uds_address = Address::new(UDS, path_str);
+        let uds_address = Address::new_with_string(UDS, path_str);
 
         if let Some(n) = self.map.get(&uds_address).cloned() {
             return Ok(n);

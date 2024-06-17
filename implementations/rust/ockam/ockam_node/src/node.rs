@@ -4,7 +4,7 @@ use ockam_core::compat::sync::Arc;
 use ockam_core::flow_control::FlowControls;
 #[cfg(feature = "std")]
 use ockam_core::OpenTelemetryContext;
-use ockam_core::{Address, AllowAll, Mailbox, Mailboxes, LATEST_PROTOCOL_VERSION};
+use ockam_core::{Address, AllowAll, Mailbox, Mailboxes};
 
 /// A minimal worker implementation that does nothing
 pub struct NullWorker;
@@ -122,7 +122,6 @@ impl NodeBuilder {
         // The root application worker needs a mailbox and relay to accept
         // messages from workers, and to buffer incoming transcoded data.
         let (ctx, sender, _) = Context::new(
-            LATEST_PROTOCOL_VERSION,
             rt.handle().clone(),
             exe.sender(),
             Mailboxes::new(

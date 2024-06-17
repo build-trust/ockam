@@ -142,7 +142,7 @@ mod tests {
 
         /// This implementation simply marks each address as a local address
         async fn resolve_address(&self, address: Address) -> Result<Address> {
-            Ok(Address::new(LOCAL, address.address()))
+            Ok(Address::new(LOCAL, address.inner()))
         }
 
         async fn disconnect(&self, _address: Address) -> Result<()> {

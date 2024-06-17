@@ -142,7 +142,7 @@ async fn find_terminal_for_worker(context: &mut Context) -> Result<()> {
         "terminal_worker".into()
     );
 
-    let remote = Address::new(TransportType::new(1), "127.0.0.1");
+    let remote = Address::new_with_string(TransportType::new(1), "127.0.0.1");
     assert!(context
         .find_terminal_address(route![
             "simple_worker",
