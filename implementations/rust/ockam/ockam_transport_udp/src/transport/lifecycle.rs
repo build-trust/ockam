@@ -89,7 +89,7 @@ mod tests {
         let socket_address = socket.local_addr().unwrap().to_string();
 
         let resolved = udp
-            .resolve_address(Address::new(UDP, socket_address.clone()))
+            .resolve_address(Address::new_with_string(UDP, socket_address.clone()))
             .await?;
 
         // there are 2 additional workers
@@ -102,7 +102,7 @@ mod tests {
 
         // trying to resolve the address a second time should still work
         let _route = udp
-            .resolve_address(Address::new(UDP, socket_address))
+            .resolve_address(Address::new_with_string(UDP, socket_address))
             .await?;
 
         tokio::time::sleep(Duration::from_millis(250)).await;
@@ -120,7 +120,7 @@ mod tests {
         let socket_address = socket.local_addr().unwrap();
 
         let result = udp
-            .resolve_address(Address::new(
+            .resolve_address(Address::new_with_string(
                 UDP,
                 format!("localhost:{}", socket_address.port()),
             ))

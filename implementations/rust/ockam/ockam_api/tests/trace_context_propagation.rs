@@ -79,14 +79,14 @@ fn test_context_propagation_across_workers_and_nodes() {
     //  - 1 for the sent message
     let actual = display_traces(spans);
     let expected = r#"
-TransportMessage::start_trace
+TcpTransportMessage::start_trace
 └── TcpRecvProcessor::process
 
-TransportMessage::start_trace
+TcpTransportMessage::start_trace
 └── TcpRecvProcessor::process
     └── Echoer::handle_message
         └── TcpSendWorker::handle_message
-            └── TransportMessage::end_trace
+            └── TcpTransportMessage::end_trace
 
 root
 └── send_echo_message
@@ -98,7 +98,7 @@ root
     ├── TcpRecvProcessor::start
     └── MessageSender::handle_message
         └── TcpSendWorker::handle_message
-            └── TransportMessage::end_trace
+            └── TcpTransportMessage::end_trace
 "#;
     pretty_assertions::assert_eq!(format!("\n{actual}"), expected);
 }
@@ -118,7 +118,7 @@ fn test_context_propagation_across_workers_and_nodes_over_secure_channel() {
     //    (if any, sometimes the received message is just a shutdown signal)
     let actual = display_traces(spans);
     let expected = r#"
-TransportMessage::start_trace
+TcpTransportMessage::start_trace
 └── TcpRecvProcessor::process
     └── DecryptorWorker::handle_message
         └── handle_decrypt
@@ -128,7 +128,7 @@ TransportMessage::start_trace
                 ├── aead_decrypt
                 └── update_key
 
-TransportMessage::start_trace
+TcpTransportMessage::start_trace
 └── TcpRecvProcessor::process
     └── DecryptorWorker::handle_message
         └── handle_decrypt
@@ -138,7 +138,7 @@ TransportMessage::start_trace
                 ├── aead_decrypt
                 └── update_key
 
-TransportMessage::start_trace
+TcpTransportMessage::start_trace
 └── TcpRecvProcessor::process
     └── DecryptorWorker::handle_message
         └── handle_decrypt
@@ -153,9 +153,9 @@ TransportMessage::start_trace
                         ├── encrypt
                         |   └── aead_encrypt
                         └── TcpSendWorker::handle_message
-                            └── TransportMessage::end_trace
+                            └── TcpTransportMessage::end_trace
 
-TransportMessage::start_trace
+TcpTransportMessage::start_trace
 └── TcpRecvProcessor::process
     └── HandshakeWorker::handle_message
         ├── aead_decrypt
@@ -163,7 +163,7 @@ TransportMessage::start_trace
         ├── aead_decrypt
         └── delete_aead_secret_key
 
-TransportMessage::start_trace
+TcpTransportMessage::start_trace
 └── TcpRecvProcessor::process
     └── HandshakeWorker::handle_message
         ├── aead_decrypt
@@ -174,16 +174,16 @@ TransportMessage::start_trace
         ├── aead_encrypt
         ├── delete_aead_secret_key
         └── TcpSendWorker::handle_message
-            └── TransportMessage::end_trace
+            └── TcpTransportMessage::end_trace
 
-TransportMessage::start_trace
+TcpTransportMessage::start_trace
 └── TcpRecvProcessor::process
     └── HandshakeWorker::handle_message
         ├── aead_encrypt
         ├── delete_aead_secret_key
         ├── aead_encrypt
         └── TcpSendWorker::handle_message
-            └── TransportMessage::end_trace
+            └── TcpTransportMessage::end_trace
 
 root
 └── send_echo_message_over_secure_channel
@@ -194,14 +194,14 @@ root
     ├── TcpSendWorker::start
     ├── TcpRecvProcessor::start
     ├── TcpSendWorker::handle_message
-    |   └── TransportMessage::end_trace
+    |   └── TcpTransportMessage::end_trace
     └── MessageSender::handle_message
         └── EncryptorWorker::handle_message
             └── handle_encrypt
                 ├── encrypt
                 |   └── aead_encrypt
                 └── TcpSendWorker::handle_message
-                    └── TransportMessage::end_trace
+                    └── TcpTransportMessage::end_trace
 "#;
     pretty_assertions::assert_eq!(format!("\n{actual}"), expected);
 }
@@ -231,7 +231,7 @@ async fn send_echo_message(ctx: Context, message: &str) -> ockam_core::Result<St
     let node2 = node(ctx.async_try_clone().await?).await?;
     let tcp2 = node2.create_tcp_transport().await?;
     let tcp_sender = tcp2
-        .resolve_address(Address::new(TCP, "127.0.0.1:4000".to_string()))
+        .resolve_address(Address::new_with_string(TCP, "127.0.0.1:4000"))
         .await?;
 
     let message_sender = MessageSender {
@@ -283,7 +283,7 @@ async fn send_echo_message_over_secure_channel(
     let identity2 = node2.create_identity().await?;
     let tcp2 = node2.create_tcp_transport().await?;
     let tcp_sender = tcp2
-        .resolve_address(Address::new(TCP, "127.0.0.1:4000".to_string()))
+        .resolve_address(Address::new_with_string(TCP, "127.0.0.1:4000"))
         .await?;
     let channel = node2
         .create_secure_channel(

@@ -1,16 +1,21 @@
-use crate::workers::Addresses;
-use crate::{TcpConnectionMode, TcpReceiverInfo, TcpRegistry, TcpSendWorkerMsg};
+use crate::transport_message::TcpTransportMessage;
+use crate::workers::{Addresses, MAX_MESSAGE_SIZE};
+use crate::{
+    TcpConnectionMode, TcpProtocolVersion, TcpReceiverInfo, TcpRegistry, TcpSendWorkerMsg,
+};
+use core::fmt::Display;
 use ockam_core::compat::net::SocketAddr;
 use ockam_core::compat::sync::Arc;
 use ockam_core::flow_control::FlowControlId;
 use ockam_core::{
-    async_trait, AllowOnwardAddress, DenyAll, Mailbox, Mailboxes, OutgoingAccessControl,
+    async_trait, AllowOnwardAddress, DenyAll, LocalMessage, Mailbox, Mailboxes,
+    OutgoingAccessControl,
 };
-use ockam_core::{LocalMessage, Processor, Result, TransportMessage};
+use ockam_core::{Processor, Result};
 use ockam_node::{Context, ProcessorBuilder};
 use ockam_transport_core::TransportError;
 use tokio::{io::AsyncReadExt, net::tcp::OwnedReadHalf};
-use tracing::{error, info, instrument, trace};
+use tracing::{info, instrument, trace};
 
 /// A TCP receiving message processor
 ///
@@ -89,6 +94,20 @@ impl TcpRecvProcessor {
 
         Ok(())
     }
+
+    async fn notify_sender_stream_dropped(&self, ctx: &Context, msg: impl Display) -> Result<()> {
+        info!(
+            "Connection to peer '{}' was closed; dropping stream. {}",
+            self.socket_address, msg
+        );
+
+        ctx.send_from_address(
+            self.addresses.sender_internal_address().clone(),
+            TcpSendWorkerMsg::ConnectionClosed,
+            self.addresses.receiver_internal_address().clone(),
+        )
+        .await
+    }
 }
 
 #[async_trait]
@@ -106,6 +125,30 @@ impl Processor for TcpRecvProcessor {
             self.mode,
             self.flow_control_id.clone(),
         ));
+
+        let protocol_version = match self.read_half.read_u8().await {
+            Ok(p) => p,
+            Err(e) => {
+                self.notify_sender_stream_dropped(ctx, e).await?;
+                return Err(TransportError::GenericIo)?;
+            }
+        };
+
+        let _protocol_version = match TcpProtocolVersion::try_from(protocol_version) {
+            Ok(v) => v,
+            Err(err) => {
+                self.notify_sender_stream_dropped(
+                    ctx,
+                    format!(
+                        "Received protocol message is unsupported: {}",
+                        protocol_version
+                    ),
+                )
+                .await?;
+
+                return Err(err)?;
+            }
+        };
 
         Ok(())
     }
@@ -130,47 +173,63 @@ impl Processor for TcpRecvProcessor {
     ///    killed by the user or node.
     #[instrument(skip_all, name = "TcpRecvProcessor::process", fields(worker = %ctx.address()))]
     async fn process(&mut self, ctx: &mut Context) -> Result<bool> {
-        // Run in a loop until TcpWorkerPair::stop() is called
-        // First read a message length header...
-        let len = match self.read_half.read_u16().await {
-            Ok(len) => len,
-            Err(_e) => {
-                info!(
-                    "Connection to peer '{}' was closed; dropping stream",
-                    self.socket_address
-                );
+        // Read the message length
+        let len = match self.read_half.read_u32().await {
+            Ok(l) => l,
+            Err(e) => {
+                self.notify_sender_stream_dropped(ctx, e).await?;
+                return Ok(false);
+            }
+        };
 
-                // Notify sender tx is closed
-                ctx.send_from_address(
-                    self.addresses.sender_internal_address().clone(),
-                    TcpSendWorkerMsg::ConnectionClosed,
-                    self.addresses.receiver_internal_address().clone(),
+        let len_usize = match usize::try_from(len) {
+            Ok(l) => l,
+            Err(_) => {
+                self.notify_sender_stream_dropped(
+                    ctx,
+                    format!("Received message len doesn't fit usize: {}", len),
                 )
                 .await?;
                 return Ok(false);
             }
         };
 
+        if len_usize > MAX_MESSAGE_SIZE {
+            self.notify_sender_stream_dropped(
+                ctx,
+                format!(
+                    "Received message is larger than allow: {} > {}",
+                    len_usize, MAX_MESSAGE_SIZE
+                ),
+            )
+            .await?;
+            return Ok(false);
+        }
+
         trace!("Received message header for {} bytes", len);
 
         // Allocate a buffer of that size
-        let mut buf = vec![0; len as usize];
+        let mut buf = vec![0; len_usize];
 
         // Then read into the buffer
         match self.read_half.read_exact(&mut buf).await {
             Ok(_) => {}
-            _ => {
-                error!("Failed to receive message of length: {}", len);
-                return Ok(true);
+            Err(e) => {
+                self.notify_sender_stream_dropped(ctx, e).await?;
+                return Ok(false);
             }
         }
 
         // Deserialize the message now
-        let transport_message = TransportMessage::decode_message(buf).map_err(|e| {
-            error!("{e:?}");
-            TransportError::RecvBadMessage
-        })?;
-        let local_message = LocalMessage::from_transport_message(transport_message);
+        let transport_message: TcpTransportMessage = match minicbor::decode(&buf) {
+            Ok(msg) => msg,
+            Err(e) => {
+                self.notify_sender_stream_dropped(ctx, e).await?;
+                return Ok(false);
+            }
+        };
+
+        let local_message = LocalMessage::from(transport_message);
         if !local_message.has_next_on_onward_route() {
             trace!("Got heartbeat message from: {}", self.socket_address);
             return Ok(true);
@@ -186,6 +245,7 @@ impl Processor for TcpRecvProcessor {
         // Forward the message to the next hop in the route
         ctx.forward_from_address(local_message, self.addresses.receiver_address().clone())
             .await?;
+
         Ok(true)
     }
 }

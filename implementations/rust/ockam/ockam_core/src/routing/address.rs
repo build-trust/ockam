@@ -7,7 +7,7 @@ use crate::{AddressParseError, AddressParseErrorKind, Result, TransportType, LOC
 use core::fmt::{self, Debug, Display};
 use core::ops::Deref;
 use core::str::from_utf8;
-use minicbor::{Decode, Encode};
+use minicbor::{CborLen, Decode, Encode};
 use serde::{Deserialize, Serialize};
 
 /// A generic address type.
@@ -29,13 +29,15 @@ use serde::{Deserialize, Serialize};
 /// * `"0#alice"` represents a local worker with the address: `alice`.
 /// * `"1#carol"` represents a remote worker with the address `carol`, reachable over TCP transport.
 ///
-#[derive(Serialize, Deserialize, Decode, Encode, Clone, Hash, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(
+    Serialize, Deserialize, Encode, Decode, CborLen, Clone, Hash, Ord, PartialOrd, Eq, PartialEq,
+)]
 #[rustfmt::skip]
-#[cbor(map)] // TODO: Switch to an array eventually
 pub struct Address {
-    #[n(1)] tt: TransportType,
-    // It's binary but in most cases we assume it to be an UTF-8 string
-    #[n(2)] inner: Vec<u8>,
+    #[n(0)] tt: TransportType,
+    // It's binary but in most cases we assume it to be a UTF-8 string
+    #[cbor(with = "minicbor::bytes")]
+    #[n(1)] inner: Vec<u8>,
 }
 
 impl Address {
@@ -47,13 +49,18 @@ impl Address {
     /// # use ockam_core::{Address, TransportType};
     /// # pub const TCP: TransportType = TransportType::new(1);
     /// // create a new remote worker address from a transport type and data
-    /// let tcp_worker: Address = Address::new(TCP, "carol");
+    /// let tcp_worker: Address = Address::new_with_string(TCP, "carol");
     /// ```
-    pub fn new<S: Into<String>>(tt: TransportType, data: S) -> Self {
+    pub fn new_with_string(tt: TransportType, data: impl Into<String>) -> Self {
         Self {
             tt,
             inner: data.into().as_bytes().to_vec(),
         }
+    }
+
+    /// Constructor
+    pub fn new(tt: TransportType, inner: Vec<u8>) -> Self {
+        Self { tt, inner }
     }
 
     /// Parses an address from a string.
@@ -139,6 +146,11 @@ impl Address {
     /// Check if address is local
     pub fn is_local(&self) -> bool {
         self.tt == LOCAL
+    }
+
+    /// Take inner Vec
+    pub fn inner(self) -> Vec<u8> {
+        self.inner
     }
 }
 

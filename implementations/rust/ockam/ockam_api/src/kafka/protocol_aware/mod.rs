@@ -77,11 +77,10 @@ impl KafkaMessageInterceptor for InletInterceptorImpl {
 
 #[derive(Debug, Clone, Decode, Encode)]
 #[rustfmt::skip]
-#[cbor(map)]
 /// Wraps the content within every record batch
 struct MessageWrapper {
-    #[n(1)] consumer_decryptor_address: Address,
-    #[n(2)] content: Vec<u8>
+    #[n(0)] consumer_decryptor_address: Address,
+    #[n(1)] content: Vec<u8>
 }
 
 impl InletInterceptorImpl {

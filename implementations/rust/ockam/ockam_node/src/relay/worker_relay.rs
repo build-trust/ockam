@@ -74,7 +74,6 @@ where
                 // that same tracing context will be passed along when a LocalMessage will be created
                 // (see send_from_address_impl)
                 self.ctx.set_tracing_context(tracing_context.clone());
-                self.ctx.set_protocol_version(relay_msg.protocol_version());
 
                 self.worker
                     .handle_message(&mut self.ctx, Self::wrap_direct_message(relay_msg))
@@ -83,7 +82,6 @@ where
                     .with_context(tracing_context.update().extract())
                     .await?;
             } else {
-                self.ctx.set_protocol_version(relay_msg.protocol_version());
                 let routed = Self::wrap_direct_message(relay_msg);
                 self.worker
                     .handle_message(&mut self.ctx, routed)
