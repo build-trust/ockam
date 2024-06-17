@@ -32,5 +32,5 @@ alloc = ["ockam_core/alloc"]
 
 [dependencies]
 minicbor = "0.24"
-ockam_core = { path = "../ockam_core", version = "^0.111.0", default_features = false }
+ockam_core = { path = "../ockam_core", version = "^0.111.0", default-features = false }
 regex = { version = "1.10.3", default-features = false }
