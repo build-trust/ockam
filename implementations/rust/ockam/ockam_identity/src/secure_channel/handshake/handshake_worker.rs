@@ -1,12 +1,12 @@
 use core::sync::atomic::AtomicBool;
 use core::time::Duration;
+use ockam_core::compat::boxed::Box;
 use ockam_core::compat::string::ToString;
 use ockam_core::compat::sync::{Arc, RwLock};
-use ockam_core::compat::{boxed::Box, vec::Vec};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{
-    AllowAll, Any, Decodable, DenyAll, Error, Mailbox, Mailboxes, OutgoingAccessControl, Route,
-    Routed,
+    AllowAll, Any, DenyAll, Error, Mailbox, Mailboxes, NeutralMessage, OutgoingAccessControl,
+    Route, Routed,
 };
 use ockam_core::{Result, Worker};
 use ockam_node::callback::CallbackSender;
@@ -83,7 +83,7 @@ impl Worker for HandshakeWorker {
                     context
                         .send_from_address(
                             self.remote_route()?,
-                            message,
+                            NeutralMessage::from(message),
                             self.addresses.decryptor_remote.clone(),
                         )
                         .await
@@ -265,25 +265,26 @@ impl HandshakeWorker {
         context: &mut Context,
         message: Routed<Any>,
     ) -> Result<()> {
-        let payload = message.payload();
+        let return_route = message.return_route();
+        let payload = message.into_payload();
 
         if let SendMessage(send_message) = self
             .state_machine
             .as_mut()
             .ok_or(IdentityError::HandshakeInternalError)?
-            .on_event(ReceivedMessage(Vec::<u8>::decode(payload)?))
+            .on_event(ReceivedMessage(payload))
             .await?
         {
             // set the remote route by taking the most up to date message return route
             // In the case of the initiator the first return route mentions the secure channel listener
             // address so we need to wait for the return route corresponding to the remote handshake worker
             // when it has been spawned
-            self.remote_route = Some(message.return_route());
+            self.remote_route = Some(return_route);
 
             context
                 .send_from_address(
                     self.remote_route()?,
-                    send_message,
+                    NeutralMessage::from(send_message),
                     self.addresses.decryptor_remote.clone(),
                 )
                 .await?

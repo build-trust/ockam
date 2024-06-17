@@ -129,7 +129,8 @@ impl TcpSendWorker {
             return Err(TransportError::MessageLengthExceeded)?;
         }
 
-        let len = 4 /* len */ + msg_len;
+        // Prepending message with u32 (4 bytes) length
+        let len = 4 + msg_len;
 
         let msg_len_u32 =
             u32::try_from(msg_len).map_err(|_| TransportError::MessageLengthExceeded)?;
