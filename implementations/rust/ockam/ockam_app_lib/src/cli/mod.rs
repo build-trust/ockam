@@ -83,6 +83,7 @@ pub(crate) fn check_ockam_executable() -> Result<()> {
     match duct::cmd!(ockam_path, "--version")
         .stderr_null()
         .stdout_capture()
+        .env("OCKAM_LOGGING", "false")
         .run()
     {
         Err(e) => {
