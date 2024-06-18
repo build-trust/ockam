@@ -77,7 +77,7 @@ chrono = { version = "0.4", optional = true }
 fs2 = { version = "0.4.3", optional = true }
 futures = { version = "0.3.30", default-features = false }
 heapless = { version = "0.8", features = ["mpmc_large"], optional = true }
-minicbor = { version = "0.24.0", features = ["derive"] }
+minicbor = { version = "0.24.1", features = ["derive"] }
 ockam_core = { path = "../ockam_core", version = "^0.110.0", default_features = false }
 ockam_executor = { path = "../ockam_executor", version = "^0.79.0", default-features = false, optional = true }
 ockam_macros = { path = "../ockam_macros", version = "^0.34.0" }
