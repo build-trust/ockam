@@ -90,7 +90,7 @@ tracing-core = { version = "0.1.32", default-features = false }
 tracing-error = "0.2.0"
 tracing-opentelemetry = "0.24.0"
 tracing-subscriber = { version = "0.3.18", features = ["json"] }
-url = "2.4.1"
+url = "2.5.1"
 
 ockam_multiaddr = { path = "../ockam_multiaddr", version = "0.54.0", features = ["cbor", "serde"] }
 ockam_transport_tcp = { path = "../ockam_transport_tcp", version = "^0.116.0", default-features = false, features = ["std"] }
