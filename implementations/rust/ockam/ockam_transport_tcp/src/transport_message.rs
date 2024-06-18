@@ -1,17 +1,9 @@
 use cfg_if::cfg_if;
 use minicbor::{CborLen, Decode, Encode};
-use ockam_core::compat::string::{String, ToString};
+use ockam_core::compat::string::String;
 #[cfg(feature = "std")]
 use ockam_core::OpenTelemetryContext;
-#[cfg(feature = "std")]
-use ockam_core::OCKAM_TRACER_NAME;
 use ockam_core::{CowBytes, LocalMessage, Route};
-#[cfg(feature = "std")]
-use opentelemetry::{
-    global,
-    trace::{Link, SpanBuilder, TraceContextExt, Tracer},
-    Context,
-};
 
 /// TCP transport message type.
 #[derive(Debug, Clone, Eq, PartialEq, Encode, Decode, CborLen)]
@@ -39,38 +31,11 @@ impl<'a> TcpTransportMessage<'a> {
         }
     }
 
-    /// Return a TcpTransportMessage with a new tracing context:
-    ///    - A new trace is started
-    ///    - The previous trace and the new trace are linked together
-    ///
-    /// We start a new trace here in order to make sure that each transport message is always
-    /// associated to a globally unique trace id and then cannot be correlated with another transport
-    /// message that would leave the same node for example.
-    ///
-    /// We can still navigate the two created traces as one thanks to their link.
+    /// Specify the tracing context
     #[cfg(feature = "std")]
-    pub fn start_new_tracing_context(self, _tracing_context: OpenTelemetryContext) -> Self {
-        // start a new trace for this transport message, and link it to the previous trace, via the current tracing context
-        let tracer = global::tracer(OCKAM_TRACER_NAME);
-        let span_builder =
-            SpanBuilder::from_name("TcpTransportMessage::start_trace").with_links(vec![Link::new(
-                _tracing_context.extract().span().span_context().clone(),
-                vec![],
-                0,
-            )]);
-        let span = tracer.build_with_context(span_builder, &Context::default());
-        let cx = Context::current_with_span(span);
-
-        // create a span to close the previous trace and link it to the new trace
-        let span_builder = SpanBuilder::from_name("TcpTransportMessage::end_trace")
-            .with_links(vec![Link::new(cx.span().span_context().clone(), vec![], 0)]);
-        let _ = tracer.build_with_context(span_builder, &_tracing_context.extract());
-
-        // create the new opentelemetry context
-        let tracing_context = OpenTelemetryContext::inject(&cx);
-
+    pub fn with_tracing_context(self, tracing_context: String) -> Self {
         Self {
-            tracing_context: Some(tracing_context.to_string()),
+            tracing_context: Some(tracing_context),
             ..self
         }
     }
@@ -111,7 +76,8 @@ impl From<LocalMessage> for TcpTransportMessage<'_> {
         cfg_if! {
             if #[cfg(feature = "std")] {
                 // make sure to pass the latest tracing context
-                transport_message.start_new_tracing_context(value.tracing_context.update())
+                let new_tracing_context = LocalMessage::start_new_tracing_context(value.tracing_context.update(), "TcpTransportMessage");
+                transport_message.with_tracing_context(new_tracing_context)
             } else {
                 transport_message
             }
