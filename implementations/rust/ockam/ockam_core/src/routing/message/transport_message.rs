@@ -3,17 +3,9 @@ use crate::compat::string::String;
 use crate::errcode::{Kind, Origin};
 #[cfg(feature = "std")]
 use crate::OpenTelemetryContext;
-#[cfg(feature = "std")]
-use crate::OCKAM_TRACER_NAME;
 use crate::{compat::vec::Vec, Decodable, Encodable, Encoded, Message, Route};
 use crate::{Error, Result};
 use core::fmt::{self, Display, Formatter};
-#[cfg(feature = "std")]
-use opentelemetry::{
-    global,
-    trace::{Link, SpanBuilder, TraceContextExt, Tracer},
-    Context,
-};
 
 /// Version for transport messages
 pub type ProtocolVersion = u8;
@@ -104,6 +96,15 @@ impl TransportMessage {
         }
     }
 
+    /// Specify the tracing context
+    #[cfg(feature = "std")]
+    pub fn with_tracing_context(self, tracing_context: String) -> Self {
+        Self {
+            tracing_context: Some(tracing_context),
+            ..self
+        }
+    }
+
     /// Decode the transport message according to the first byte, which is the version number
     pub fn decode_message(buf: Vec<u8>) -> Result<TransportMessage> {
         if buf.is_empty() {
@@ -136,42 +137,6 @@ impl TransportMessage {
                 Kind::Serialization,
                 format!("Unsupported version: {v}"),
             )),
-        }
-    }
-
-    /// Return a TransportMessage with a new tracing context:
-    ///    - A new trace is started
-    ///    - The previous trace and the new trace are linked together
-    ///
-    /// We start a new trace here in order to make sure that each transport message is always
-    /// associated to a globally unique trace id and then cannot be correlated with another transport
-    /// message that would leave the same node for example.
-    ///
-    /// We can still navigate the two created traces as one thanks to their link.
-    #[cfg(feature = "std")]
-    pub fn start_new_tracing_context(self, _tracing_context: OpenTelemetryContext) -> Self {
-        // start a new trace for this transport message, and link it to the previous trace, via the current tracing context
-        let tracer = global::tracer(OCKAM_TRACER_NAME);
-        let span_builder =
-            SpanBuilder::from_name("TransportMessage::start_trace").with_links(vec![Link::new(
-                _tracing_context.extract().span().span_context().clone(),
-                vec![],
-                0,
-            )]);
-        let span = tracer.build_with_context(span_builder, &Context::default());
-        let cx = Context::current_with_span(span);
-
-        // create a span to close the previous trace and link it to the new trace
-        let span_builder = SpanBuilder::from_name("TransportMessage::end_trace")
-            .with_links(vec![Link::new(cx.span().span_context().clone(), vec![], 0)]);
-        let _ = tracer.build_with_context(span_builder, &_tracing_context.extract());
-
-        // create the new opentelemetry context
-        let tracing_context = OpenTelemetryContext::inject(&cx);
-
-        Self {
-            tracing_context: Some(tracing_context.to_string()),
-            ..self
         }
     }
 
