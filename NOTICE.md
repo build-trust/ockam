@@ -385,7 +385,6 @@ This file contains attributions for any 3rd-party open source code used in this 
 | piper | MIT, Apache-2.0 | https://crates.io/crates/piper |
 | pkcs8 | Apache-2.0, MIT | https://crates.io/crates/pkcs8 |
 | pkg-config | MIT, Apache-2.0 | https://crates.io/crates/pkg-config |
-| platforms | Apache-2.0, MIT | https://crates.io/crates/platforms |
 | plist | MIT | https://crates.io/crates/plist |
 | png | MIT, Apache-2.0 | https://crates.io/crates/png |
 | polling | Apache-2.0, MIT | https://crates.io/crates/polling |
