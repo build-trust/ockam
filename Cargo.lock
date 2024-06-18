@@ -2645,9 +2645,9 @@ dependencies = [
 
 [[package]]
 name = "flexi_logger"
-version = "0.28.3"
+version = "0.28.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e66e9fce047f849b42d25931c6442c10605a828a43b1419d3a9d89cfcf55d3f7"
+checksum = "be7e34f5ab91a424df2053c5c047e2e25bd4ff9f87a7402ee6892d4e02afe492"
 dependencies = [
  "chrono",
  "glob",
