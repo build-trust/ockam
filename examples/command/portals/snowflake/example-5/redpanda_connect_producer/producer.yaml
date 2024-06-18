@@ -1,0 +1,14 @@
+input:
+  generate:
+    count: 1000
+    interval: "@every 1s"
+    mapping: |
+      root = {
+        "_producer": hostname(),
+        "data": { "email": fake("email"), "message": fake("sentence") }
+      }
+
+output:
+  kafka_franz:
+    topic: topic_A
+    seed_brokers: ["127.0.0.1:19092"]
