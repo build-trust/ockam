@@ -146,6 +146,7 @@ impl SecureClient {
         {
             Ok(bytes) => Response::parse_response_reply::<R>(bytes.as_slice()),
             Err(err) => {
+                // TODO: we should return a Reply::Failed(timeout) error here
                 error!("Error during SecureClient::ask to {} {}", api_service, err);
                 Err(err)
             }
@@ -166,15 +167,16 @@ impl SecureClient {
         let request_header = req.header().clone();
         let bytes = self
             .request_with_timeout(ctx, api_service, req, self.request_timeout)
+            // TODO: we should return a Reply::Failed(timeout) error here
             .await?;
         let (response, decoder) = Response::parse_response_header(bytes.as_slice())?;
-        if !response.is_ok() {
+        if response.is_ok() {
+            Ok(Successful(()))
+        } else {
             Ok(Reply::Failed(
                 Error::from_failed_request(&request_header, &response.parse_err_msg(decoder)),
                 response.status(),
             ))
-        } else {
-            Ok(Successful(()))
         }
     }
 

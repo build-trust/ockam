@@ -20,9 +20,13 @@ pub trait Members {
         attributes: BTreeMap<String, String>,
     ) -> miette::Result<()>;
 
-    async fn delete_member(&self, ctx: &Context, identifier: Identifier) -> miette::Result<()>;
+    async fn show_member(
+        &self,
+        ctx: &Context,
+        identifier: Identifier,
+    ) -> miette::Result<AttributesEntry>;
 
-    async fn delete_all_members(&self, ctx: &Context, except: Identifier) -> miette::Result<()>;
+    async fn delete_member(&self, ctx: &Context, identifier: Identifier) -> miette::Result<()>;
 
     async fn list_member_ids(&self, ctx: &Context) -> miette::Result<Vec<Identifier>>;
 
@@ -49,6 +53,20 @@ impl Members for AuthorityNodeClient {
             .into_diagnostic()
     }
 
+    async fn show_member(
+        &self,
+        ctx: &Context,
+        identifier: Identifier,
+    ) -> miette::Result<AttributesEntry> {
+        let req = Request::get(format!("/{identifier}"));
+        self.get_secure_client()
+            .ask(ctx, DefaultAddress::DIRECT_AUTHENTICATOR, req)
+            .await
+            .into_diagnostic()?
+            .success()
+            .into_diagnostic()
+    }
+
     async fn delete_member(&self, ctx: &Context, identifier: Identifier) -> miette::Result<()> {
         let req = Request::delete(format!("/{identifier}"));
         self.get_secure_client()
@@ -57,18 +75,6 @@ impl Members for AuthorityNodeClient {
             .into_diagnostic()?
             .success()
             .into_diagnostic()
-    }
-
-    async fn delete_all_members(&self, ctx: &Context, except: Identifier) -> miette::Result<()> {
-        let member_ids = self.list_member_ids(ctx).await?;
-        for id in member_ids {
-            if id != except {
-                if let Err(e) = self.delete_member(ctx, id.clone()).await {
-                    warn!("Failed to delete member {}: {}", id, e);
-                }
-            }
-        }
-        Ok(())
     }
 
     async fn list_member_ids(&self, ctx: &Context) -> miette::Result<Vec<Identifier>> {

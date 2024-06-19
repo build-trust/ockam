@@ -84,7 +84,7 @@ impl CreateCommand {
             .wrap_err(format!("Could not convert {} into route", &self.to))?;
         let identity_name = opts
             .state
-            .get_identity_name_or_default(&self.identity_opts.identity)
+            .get_identity_name_or_default(&self.identity_opts.identity_name)
             .await?;
 
         let projects_sc = get_projects_secure_channels_from_config_lookup(
@@ -126,7 +126,7 @@ impl CreateCommand {
         let create_secure_channel = async {
             let identity_name = opts
                 .state
-                .get_identity_name_or_default(&self.identity_opts.identity)
+                .get_identity_name_or_default(&self.identity_opts.identity_name)
                 .await?;
             let payload = CreateSecureChannelRequest::new(
                 &to,

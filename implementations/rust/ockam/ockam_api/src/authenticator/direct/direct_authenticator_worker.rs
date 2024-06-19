@@ -36,8 +36,8 @@ impl DirectAuthenticatorWorker {
 
 #[ockam_core::worker]
 impl Worker for DirectAuthenticatorWorker {
-    type Context = Context;
     type Message = Vec<u8>;
+    type Context = Context;
 
     async fn handle_message(&mut self, c: &mut Context, m: Routed<Self::Message>) -> Result<()> {
         let secure_channel_info = match IdentitySecureChannelLocalInfo::find_info(m.local_message())
@@ -94,6 +94,15 @@ impl Worker for DirectAuthenticatorWorker {
                     Either::Left(entries) => {
                         Response::ok().with_headers(&req).body(entries).to_vec()?
                     }
+                    Either::Right(error) => Response::forbidden(&req, &error.0).to_vec()?,
+                }
+            }
+            (Some(Method::Get), [id]) | (Some(Method::Get), ["members", id]) => {
+                let identifier = Identifier::try_from(id.to_string())?;
+                let res = self.authenticator.show_member(&from, &identifier).await?;
+
+                match res {
+                    Either::Left(body) => Response::ok().with_headers(&req).body(body).to_vec()?,
                     Either::Right(error) => Response::forbidden(&req, &error.0).to_vec()?,
                 }
             }

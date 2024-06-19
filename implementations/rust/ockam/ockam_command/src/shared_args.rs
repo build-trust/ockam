@@ -6,9 +6,9 @@ use std::time::Duration;
 
 #[derive(Clone, Debug, Args)]
 pub struct IdentityOpts {
-    /// Run the command as the given Identity name
-    #[arg(global = true, value_name = "IDENTITY_NAME", long)]
-    pub identity: Option<String>,
+    /// Run the command as the given Identity
+    #[arg(global = true, value_name = "IDENTITY_NAME", long = "identity")]
+    pub identity_name: Option<String>,
 }
 
 #[derive(Clone, Debug, Args, Default, PartialEq)]

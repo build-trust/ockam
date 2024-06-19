@@ -67,14 +67,14 @@ async fn create_project_client(
     let node = InMemoryNode::start_with_project_name_and_identity(
         ctx,
         &opts.state,
-        identity_opts.identity.clone(),
+        identity_opts.identity_name.clone(),
         trust_opts.project_name.clone(),
     )
     .await?;
 
     let identity = opts
         .state
-        .get_identity_name_or_default(&identity_opts.identity)
+        .get_identity_name_or_default(&identity_opts.identity_name)
         .await?;
     let project = opts
         .state

@@ -1,4 +1,7 @@
 ```sh
 # Delete a member
 $ ockam project-member delete I6c20e814b56579306f55c64e8747e6c1b4a53d9a3f4ca83c252cc2fbfc72fa94
+
+# Delete all members, expect the member associated with your own identifier
+$ ockam project-member delete --all
 ```

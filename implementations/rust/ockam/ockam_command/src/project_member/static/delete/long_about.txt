@@ -1,1 +1,3 @@
-This deletes a member from a given Project Membership Authority node.
+This deletes the passed member from a given Project Membership Authority node.
+
+You can also use the `--all` flag to delete all members from a given Project Membership Authority node, except the member associated with your own identifier.

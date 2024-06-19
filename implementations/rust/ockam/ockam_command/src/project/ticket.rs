@@ -100,7 +100,7 @@ impl Command for TicketCommand {
 
         let identity = opts
             .state
-            .get_identity_name_or_default(&self.identity_opts.identity)
+            .get_identity_name_or_default(&self.identity_opts.identity_name)
             .await?;
 
         let authority_node_client = node

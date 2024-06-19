@@ -1,17 +1,16 @@
 use async_trait::async_trait;
 use clap::Args;
 
-use ockam::identity::{AttributesEntry, Identifier};
 use ockam::Context;
-use ockam_api::authenticator::direct::Members;
-use ockam_api::nodes::InMemoryNode;
+use ockam_api::authenticator::direct::{
+    Members, OCKAM_ROLE_ATTRIBUTE_ENROLLER_VALUE, OCKAM_ROLE_ATTRIBUTE_KEY,
+};
 use ockam_multiaddr::MultiAddr;
 
 use crate::shared_args::IdentityOpts;
 use crate::{docs, Command, CommandGlobalOpts, Result};
-use ockam_api::output::Output;
 
-use super::{create_authority_client, get_project};
+use super::{authority_client, MemberOutput};
 
 const LONG_ABOUT: &str = include_str!("./static/list/long_about.txt");
 
@@ -24,9 +23,13 @@ pub struct ListCommand {
     #[command(flatten)]
     identity_opts: IdentityOpts,
 
-    /// Which project members to request
+    /// The route to the Project to list members from
     #[arg(long, short, value_name = "ROUTE_TO_PROJECT")]
     to: Option<MultiAddr>,
+
+    /// Return only the enroller members
+    #[arg(long, visible_alias = "enroller")]
+    enrollers: bool,
 }
 
 #[async_trait]
@@ -34,45 +37,32 @@ impl Command for ListCommand {
     const NAME: &'static str = "project-member list";
 
     async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> Result<()> {
-        let project = get_project(&opts.state, &self.to).await?;
-
-        let node = InMemoryNode::start_with_project_name(
-            ctx,
-            &opts.state,
-            Some(project.name().to_string()),
-        )
-        .await?;
-
-        let authority_node_client =
-            create_authority_client(&node, &opts.state, &self.identity_opts, &project).await?;
+        let (authority_node_client, _) =
+            authority_client(ctx, &opts, &self.identity_opts, &self.to).await?;
 
         let members = authority_node_client
             .list_members(ctx)
             .await?
             .into_iter()
-            .map(|i| MemberOutput(i.0, i.1))
-            .collect();
+            .filter(|(_, a)| {
+                !self.enrollers
+                    || a.deserialized_key_value_attrs().contains(&format!(
+                        "{}={}",
+                        OCKAM_ROLE_ATTRIBUTE_KEY, OCKAM_ROLE_ATTRIBUTE_ENROLLER_VALUE
+                    ))
+            })
+            .map(|(i, a)| MemberOutput::new(i, a))
+            .collect::<Vec<_>>();
 
-        print_members(&opts, members)?;
+        let plain = opts
+            .terminal
+            .build_list(&members, "No members found on the Authority node")?;
+        opts.terminal
+            .stdout()
+            .plain(plain)
+            .json_obj(&members)?
+            .write_line()?;
 
         Ok(())
     }
-}
-
-struct MemberOutput(Identifier, AttributesEntry);
-
-impl Output for MemberOutput {
-    fn item(&self) -> ockam_api::Result<String> {
-        Ok(format!("{}: {}", self.0, self.1))
-    }
-}
-
-fn print_members(opts: &CommandGlobalOpts, member_ids: Vec<MemberOutput>) -> miette::Result<()> {
-    let plain = opts
-        .terminal
-        .build_list(&member_ids, "No members found on that Authority node.")?;
-
-    opts.terminal.clone().stdout().plain(plain).write_line()?;
-
-    Ok(())
 }
