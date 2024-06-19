@@ -32,7 +32,7 @@ services:
           "'./run.sh cleanup' to remove all containers.";
           echo "";
           kafka-console-consumer.sh --topic demo --bootstrap-server 127.0.0.1:9092 --consumer.config kafka.config --max-messages 8;
-          if [ "$?" == "0" ]; then
+          if [ "$$?" == "0" ]; then
             echo "The example run was successful 🥳";
           fi;
           echo "Messages received successfully, please Ctrl+C to exit";
