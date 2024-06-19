@@ -1,10 +1,10 @@
 use crate::portal::addresses::{Addresses, PortalType};
-use crate::{portal::TcpPortalWorker, HostnamePort, TcpInlet, TcpInletOptions, TcpRegistry};
+use crate::{portal::TcpPortalWorker, TcpInlet, TcpInletOptions, TcpRegistry};
 use ockam_core::compat::net::SocketAddr;
 use ockam_core::compat::sync::{Arc, RwLock};
 use ockam_core::{async_trait, compat::boxed::Box};
 use ockam_core::{Address, Processor, Result, Route};
-use ockam_node::Context;
+use ockam_node::{Context, HostnamePort};
 use ockam_transport_core::TransportError;
 use tokio::net::TcpListener;
 use tracing::{debug, error, instrument};
@@ -106,7 +106,7 @@ impl Processor for TcpInletListenProcessor {
             ctx,
             self.registry.clone(),
             stream,
-            HostnamePort::from_socket_addr(socket_addr)?,
+            HostnamePort::from_socket_addr(socket_addr),
             outlet_listener_route,
             addresses,
             self.options.incoming_access_control.clone(),

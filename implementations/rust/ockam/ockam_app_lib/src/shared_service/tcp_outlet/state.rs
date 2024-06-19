@@ -6,7 +6,6 @@ use crate::incoming_services::PersistentIncomingService;
 use crate::state::{AppState, ModelState};
 use ockam_api::nodes::models::portal::{OutletAccessControl, OutletStatus};
 use ockam_core::Address;
-use ockam_transport_tcp::HostnamePort;
 
 impl ModelState {
     pub fn add_tcp_outlet(&mut self, status: OutletStatus) {
@@ -69,8 +68,7 @@ impl AppState {
             let _ = node_manager
                 .create_outlet(
                     &context,
-                    HostnamePort::from_socket_addr(tcp_outlet.socket_addr)
-                        .expect("cannot parse the socket address as a hostname and port"),
+                    tcp_outlet.to,
                     false,
                     Some(tcp_outlet.worker_addr.clone()),
                     true,

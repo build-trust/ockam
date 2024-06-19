@@ -14,8 +14,8 @@ use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{async_trait, route, AsyncTryClone, Route};
 use ockam_multiaddr::proto::Project as ProjectProto;
 use ockam_multiaddr::{MultiAddr, Protocol};
-use ockam_node::Context;
-use ockam_transport_tcp::{HostnamePort, TcpInletOptions, TcpOutletOptions};
+use ockam_node::{Context, HostnamePort};
+use ockam_transport_tcp::{TcpInletOptions, TcpOutletOptions};
 
 use crate::error::ApiError;
 use crate::nodes::connection::Connection;
@@ -143,7 +143,7 @@ impl NodeManagerWorker {
         match self.node_manager.delete_outlet(worker_addr).await {
             Ok(res) => match res {
                 Some(outlet_info) => Ok(Response::ok().body(OutletStatus::new(
-                    outlet_info.socket_addr,
+                    outlet_info.hostname_port,
                     outlet_info.worker_addr.clone(),
                     None,
                 ))),
@@ -252,10 +252,9 @@ impl NodeManager {
             }
         };
 
-        let socket_addr = hostname_port.to_socket_addr()?;
         let res = self
             .tcp_transport
-            .create_tcp_outlet(worker_addr.clone(), hostname_port, options)
+            .create_tcp_outlet(worker_addr.clone(), hostname_port.clone(), options)
             .await;
 
         Ok(match res {
@@ -265,16 +264,16 @@ impl NodeManager {
                     .outlets
                     .insert(
                         worker_addr.clone(),
-                        OutletInfo::new(&socket_addr, Some(&worker_addr)),
+                        OutletInfo::new(hostname_port.clone(), Some(&worker_addr)),
                     )
                     .await;
 
                 self.cli_state
-                    .create_tcp_outlet(&self.node_name, &socket_addr, &worker_addr, &None)
+                    .create_tcp_outlet(&self.node_name, hostname_port.clone(), &worker_addr, &None)
                     .await?
             }
             Err(e) => {
-                warn!(at = %socket_addr, err = %e, "Failed to create TCP outlet");
+                warn!(at = %hostname_port, err = %e, "Failed to create TCP outlet");
                 let message = format!("Failed to create outlet: {}", e);
                 return Err(ockam_core::Error::new(
                     Origin::Node,
@@ -317,7 +316,7 @@ impl NodeManager {
         if let Some(outlet_to_show) = self.registry.outlets.get(worker_addr).await {
             debug!(%worker_addr, "Outlet not found in node registry");
             Some(OutletStatus::new(
-                outlet_to_show.socket_addr,
+                outlet_to_show.hostname_port,
                 outlet_to_show.worker_addr.clone(),
                 None,
             ))

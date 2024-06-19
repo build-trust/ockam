@@ -8,10 +8,10 @@ use tracing::debug;
 use crate::nodes::models::portal::OutletStatus;
 use ockam::{FromSqlxError, SqlxDatabase, ToSqlxType, ToVoid};
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::Error;
 use ockam_core::Result;
 use ockam_core::{async_trait, Address};
 use ockam_multiaddr::MultiAddr;
+use ockam_node::HostnamePort;
 
 use crate::cli_state::storage::tcp_portals_repository::TcpPortalsRepository;
 use crate::cli_state::TcpInlet;
@@ -85,7 +85,7 @@ impl TcpPortalsRepository for TcpPortalsSqlxDatabase {
     ) -> ockam_core::Result<()> {
         let query = query("INSERT OR REPLACE INTO tcp_outlet_status VALUES (?, ?, ?, ?)")
             .bind(node_name.to_sql())
-            .bind(tcp_outlet_status.socket_addr.to_sql())
+            .bind(tcp_outlet_status.to.to_sql())
             .bind(tcp_outlet_status.worker_addr.to_sql())
             .bind(tcp_outlet_status.payload.as_ref().map(|p| p.to_sql()));
         query.execute(&*self.database.pool).await.void()?;
@@ -160,11 +160,10 @@ struct TcpOutletStatusRow {
 
 impl TcpOutletStatusRow {
     fn tcp_outlet_status(&self) -> Result<OutletStatus> {
-        let socket_addr = SocketAddr::from_str(&self.socket_addr)
-            .map_err(|e| Error::new(Origin::Application, Kind::Serialization, e.to_string()))?;
+        let hostname_port = HostnamePort::from_str(&self.socket_addr)?;
         let worker_addr = Address::from_string(&self.worker_addr);
         Ok(OutletStatus {
-            socket_addr,
+            to: hostname_port,
             worker_addr,
             payload: self.payload.clone(),
         })
@@ -174,6 +173,7 @@ impl TcpOutletStatusRow {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ockam_node::HostnamePort;
 
     #[tokio::test]
     async fn test_repository() -> Result<()> {
@@ -195,7 +195,7 @@ mod tests {
 
         let worker_addr = Address::from_str("worker_addr").unwrap();
         let tcp_outlet_status = OutletStatus::new(
-            SocketAddr::from_str("127.0.0.1:80").unwrap(),
+            HostnamePort::new("127.0.0.1", 80),
             worker_addr.clone(),
             Some("payload".to_string()),
         );

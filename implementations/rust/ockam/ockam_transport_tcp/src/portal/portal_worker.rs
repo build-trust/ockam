@@ -2,16 +2,14 @@ use crate::portal::addresses::{Addresses, PortalType};
 use crate::portal::portal_worker::ReadHalfMaybeTls::{ReadHalfNoTls, ReadHalfWithTls};
 use crate::portal::portal_worker::WriteHalfMaybeTls::{WriteHalfNoTls, WriteHalfWithTls};
 use crate::transport::{connect, connect_tls};
-use crate::{
-    portal::TcpPortalRecvProcessor, HostnamePort, PortalInternalMessage, PortalMessage, TcpRegistry,
-};
+use crate::{portal::TcpPortalRecvProcessor, PortalInternalMessage, PortalMessage, TcpRegistry};
 use ockam_core::compat::{boxed::Box, sync::Arc};
 use ockam_core::{
     async_trait, AllowOnwardAddress, AllowSourceAddress, Decodable, DenyAll, IncomingAccessControl,
     Mailbox, Mailboxes, OutgoingAccessControl,
 };
 use ockam_core::{Any, Result, Route, Routed, Worker};
-use ockam_node::{Context, ProcessorBuilder, WorkerBuilder};
+use ockam_node::{Context, HostnamePort, ProcessorBuilder, WorkerBuilder};
 use ockam_transport_core::TransportError;
 use std::time::Duration;
 use tokio::io::{AsyncRead, AsyncWriteExt, ReadHalf, WriteHalf};
@@ -380,7 +378,7 @@ impl TcpPortalWorker {
             self.read_half = Some(ReadHalfWithTls(rx));
         } else {
             debug!("Connect to {}", self.hostname_port);
-            let (rx, tx) = connect(self.hostname_port.to_socket_addr()?).await?;
+            let (rx, tx) = connect(&self.hostname_port).await?;
             self.write_half = Some(WriteHalfNoTls(tx));
             self.read_half = Some(ReadHalfNoTls(rx));
         }

@@ -1,12 +1,14 @@
-use crate::resolve_peer;
+use crate::database::{SqlxType, ToSqlxType};
+use alloc::string::String;
 use core::fmt::{Display, Formatter};
 use core::str::FromStr;
 use minicbor::{Decode, Encode};
 use ockam_core::errcode::{Kind, Origin};
-use std::net::SocketAddr;
+use serde::{Deserialize, Serialize};
+use std::net::{IpAddr, SocketAddr};
 
 /// Hostname and port
-#[derive(Debug, Clone, PartialEq, Eq, Encode, Decode)]
+#[derive(Debug, Clone, PartialEq, Eq, Encode, Decode, Serialize, Deserialize)]
 pub struct HostnamePort {
     #[n(0)]
     hostname: String,
@@ -24,13 +26,15 @@ impl HostnamePort {
     }
 
     /// Return a hostname and port from a socket address
-    pub fn from_socket_addr(socket_addr: SocketAddr) -> ockam_core::Result<HostnamePort> {
-        HostnamePort::from_str(&socket_addr.to_string())
-    }
-
-    /// Return a socket address from a hostname and port
-    pub fn to_socket_addr(&self) -> ockam_core::Result<SocketAddr> {
-        resolve_peer(self.to_string())
+    pub fn from_socket_addr(socket_addr: SocketAddr) -> HostnamePort {
+        let ip = match socket_addr.ip() {
+            IpAddr::V4(ip) => ip.to_string(),
+            IpAddr::V6(ip) => format!("[{ip}]"),
+        };
+        Self {
+            hostname: ip,
+            port: socket_addr.port(),
+        }
     }
 
     /// Return the hostname
@@ -41,6 +45,12 @@ impl HostnamePort {
     /// Return the port
     pub fn port(&self) -> u16 {
         self.port
+    }
+}
+
+impl Display for HostnamePort {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&format!("{}:{}", self.hostname, self.port))
     }
 }
 
@@ -57,6 +67,12 @@ impl TryFrom<&str> for HostnamePort {
 
     fn try_from(value: &str) -> ockam_core::Result<Self> {
         FromStr::from_str(value)
+    }
+}
+
+impl ToSqlxType for HostnamePort {
+    fn to_sql(&self) -> SqlxType {
+        SqlxType::Text(self.to_string())
     }
 }
 
@@ -99,16 +115,11 @@ impl FromStr for HostnamePort {
     }
 }
 
-impl Display for HostnamePort {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&format!("{}:{}", self.hostname, self.port))
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use core::str::FromStr;
+    use std::net::SocketAddr;
 
     #[test]
     fn test_hostname_port() -> ockam_core::Result<()> {
@@ -128,9 +139,9 @@ mod tests {
         let actual = HostnamePort::from_str("80")?;
         assert_eq!(actual, HostnamePort::new("127.0.0.1", 80));
 
-        let socket_addr = resolve_peer("76.76.21.21:8080".to_string()).unwrap();
-        let actual = HostnamePort::from_socket_addr(socket_addr).ok();
-        assert_eq!(actual, Some(HostnamePort::new("76.76.21.21", 8080)));
+        let socket_addr = SocketAddr::from_str("76.76.21.21:8080").unwrap();
+        let actual = HostnamePort::from_socket_addr(socket_addr);
+        assert_eq!(actual, HostnamePort::new("76.76.21.21", 8080));
 
         let actual = HostnamePort::from_str("[2001:db8:85a3::8a2e:370:7334]:8080")?;
         assert_eq!(
@@ -139,10 +150,10 @@ mod tests {
         );
 
         let socket_addr = SocketAddr::from_str("[2001:db8:85a3::8a2e:370:7334]:8080").unwrap();
-        let actual = HostnamePort::from_socket_addr(socket_addr).ok();
+        let actual = HostnamePort::from_socket_addr(socket_addr);
         assert_eq!(
             actual,
-            Some(HostnamePort::new("[2001:db8:85a3::8a2e:370:7334]", 8080))
+            HostnamePort::new("[2001:db8:85a3::8a2e:370:7334]", 8080)
         );
 
         Ok(())

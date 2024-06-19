@@ -3,6 +3,7 @@ use crate::transport::connect;
 use crate::workers::{Addresses, TcpRecvProcessor, TcpSendWorker};
 use crate::{TcpConnectionMode, TcpConnectionOptions, TcpTransport};
 use ockam_core::{Address, Result};
+use ockam_node::HostnamePort;
 use tracing::debug;
 
 impl TcpTransport {
@@ -24,9 +25,10 @@ impl TcpTransport {
         options: TcpConnectionOptions,
     ) -> Result<TcpConnection> {
         let peer = peer.into();
-        let socket = resolve_peer(peer.clone())?;
+        let socket_address = resolve_peer(peer.clone())?;
+        let hostname_port = HostnamePort::from_socket_addr(socket_address);
         debug!("Connecting to {}", peer.clone());
-        let (read_half, write_half) = connect(socket).await?;
+        let (read_half, write_half) = connect(&hostname_port).await?;
 
         let mode = TcpConnectionMode::Outgoing;
         let addresses = Addresses::generate(mode);
@@ -41,7 +43,7 @@ impl TcpTransport {
             self.registry.clone(),
             write_half,
             &addresses,
-            socket,
+            socket_address,
             mode,
             &flow_control_id,
         )
@@ -52,7 +54,7 @@ impl TcpTransport {
             self.registry.clone(),
             read_half,
             &addresses,
-            socket,
+            socket_address,
             mode,
             &flow_control_id,
             receiver_outgoing_access_control,
@@ -62,7 +64,7 @@ impl TcpTransport {
         Ok(TcpConnection::new(
             addresses.sender_address().clone(),
             addresses.receiver_address().clone(),
-            socket,
+            socket_address,
             mode,
             flow_control_id,
         ))

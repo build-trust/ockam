@@ -36,10 +36,7 @@ async fn inlet_outlet_local_successful(context: &mut Context) -> ockam::Result<(
         )
         .await?;
 
-    assert_eq!(
-        outlet_status.socket_addr,
-        echo_server_handle.chosen_addr.to_socket_addr()?
-    );
+    assert_eq!(outlet_status.to, echo_server_handle.chosen_addr);
     assert_eq!(outlet_status.worker_addr.address(), "outlet");
 
     let inlet_status = node_manager_handle

@@ -71,6 +71,11 @@ mod worker_builder;
 #[cfg(feature = "std")]
 pub mod runtime;
 
+#[cfg(feature = "std")]
+mod hostname_port;
+#[cfg(feature = "std")]
+pub use hostname_port::HostnamePort;
+
 pub use context::*;
 pub use delayed::*;
 pub use error::*;

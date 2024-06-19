@@ -37,11 +37,12 @@ rust-crypto = ["ockam_api/rust-crypto", "ockam_transport_tcp/ring"]
 duct = "0.13.7"
 miette = { version = "7.2.0", features = ["fancy-no-backtrace"] }
 minicbor = { version = "0.24.1", features = ["alloc", "derive"] }
-ockam = { path = "../ockam", version = "^0.126.0", features = ["software_vault"] }
-ockam_api = { path = "../ockam_api", version = "0.69.0", default-features = false, features = ["std"] }
-ockam_core = { path = "../ockam_core", version = "^0.110.0" }
-ockam_multiaddr = { path = "../ockam_multiaddr", version = "0.54.0", features = ["cbor", "serde"] }
-ockam_transport_tcp = { path = "../ockam_transport_tcp", version = "^0.116.0", default-features = false, features = ["std"] }
+ockam = { path = "../ockam", features = ["software_vault"] }
+ockam_api = { path = "../ockam_api", default-features = false, features = ["std"] }
+ockam_core = { path = "../ockam_core" }
+ockam_multiaddr = { path = "../ockam_multiaddr", features = ["cbor", "serde"] }
+ockam_node = { path = "../ockam_node" }
+ockam_transport_tcp = { path = "../ockam_transport_tcp", default-features = false, features = ["std"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 sqlx = { version = "0.7.4", features = ["runtime-tokio", "sqlite", "migrate"] }

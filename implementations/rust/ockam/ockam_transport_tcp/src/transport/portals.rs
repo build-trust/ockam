@@ -1,14 +1,12 @@
 use crate::portal::TcpInletListenProcessor;
 use crate::transport::common::parse_socket_addr;
-use crate::{
-    portal::TcpOutletListenWorker, HostnamePort, TcpInletOptions, TcpOutletOptions, TcpTransport,
-};
+use crate::{portal::TcpOutletListenWorker, TcpInletOptions, TcpOutletOptions, TcpTransport};
 use core::fmt;
 use core::fmt::{Debug, Formatter};
 use ockam_core::compat::net::SocketAddr;
 use ockam_core::compat::sync::{Arc, RwLock};
 use ockam_core::{route, Address, Error, Result, Route};
-use ockam_node::Context;
+use ockam_node::{Context, HostnamePort};
 use tracing::instrument;
 
 impl TcpTransport {
@@ -75,7 +73,7 @@ impl TcpTransport {
     /// Pair of corresponding Inlet and Outlet is called Portal.
     ///
     /// ```rust
-    /// use ockam_transport_tcp::{HostnamePort, TcpOutletOptions, TcpTransport};
+    /// use ockam_transport_tcp::{TcpOutletOptions, TcpTransport};
     /// # use ockam_node::Context;
     /// # use ockam_core::{AllowAll, Result};
     /// # async fn test(ctx: Context) -> Result<()> {
@@ -130,7 +128,7 @@ impl TcpTransport {
 
     /// Stop outlet at addr
     /// ```rust
-    /// use ockam_transport_tcp::{HostnamePort, TcpOutletOptions, TcpTransport};
+    /// use ockam_transport_tcp::{TcpOutletOptions, TcpTransport};
     /// # use ockam_node::Context;
     /// # use ockam_core::{AllowAll, Result};
     /// # async fn test(ctx: Context) -> Result<()> {

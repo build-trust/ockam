@@ -343,7 +343,9 @@ impl NodeManager {
             .entries()
             .await
             .iter()
-            .map(|(_, info)| OutletStatus::new(info.socket_addr, info.worker_addr.clone(), None))
+            .map(|(_, info)| {
+                OutletStatus::new(info.hostname_port.clone(), info.worker_addr.clone(), None)
+            })
             .collect()
     }
 

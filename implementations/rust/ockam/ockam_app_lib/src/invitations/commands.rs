@@ -1,12 +1,10 @@
-use std::net::SocketAddr;
-use std::str::FromStr;
-
 use miette::IntoDiagnostic;
 use ockam_api::cloud::email_address::EmailAddress;
 use tracing::{debug, info, trace, warn};
 
 use ockam_api::cloud::share::{CreateServiceInvitation, InvitationListKind, Invitations};
 use ockam_core::Address;
+use ockam_node::HostnamePort;
 
 use crate::api::notification::rust::Notification;
 use crate::api::notification::Kind;
@@ -198,10 +196,10 @@ impl AppState {
         let outlet_socket_addr = outlets
             .iter()
             .find(|o| &o.worker_addr == outlet_worker_addr)
-            .map(|o| o.socket_addr.to_string());
+            .map(|o| o.to.clone());
 
-        if let Some(outlet_socket_addr) = outlet_socket_addr {
-            self.create_service_invitation_by_socket_addr(recipient_email, outlet_socket_addr)
+        if let Some(hostname_port) = outlet_socket_addr {
+            self.create_service_invitation_by_socket_addr(recipient_email, hostname_port)
                 .await
         } else {
             Err(format!("Cannot find service '{}'", outlet_worker_addr))
@@ -211,11 +209,11 @@ impl AppState {
     pub async fn create_service_invitation_by_socket_addr(
         &self,
         recipient_email: EmailAddress,
-        outlet_socket_addr: String,
+        hostname_port: HostnamePort,
     ) -> Result<(), String> {
         info!(
             ?recipient_email,
-            ?outlet_socket_addr,
+            ?hostname_port,
             "creating service invitation"
         );
 
@@ -235,13 +233,9 @@ impl AppState {
             .await
             .map_err(|e| e.to_string())?;
 
-        let socket_addr = SocketAddr::from_str(outlet_socket_addr.as_str())
-            .into_diagnostic()
-            .map_err(|e| format!("Cannot parse the outlet address as a socket address: {e}"))?;
-
         let invite_args = self
             .build_args_for_create_service_invitation(
-                &socket_addr,
+                hostname_port,
                 &recipient_email,
                 enrollment_ticket,
             )

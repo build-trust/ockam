@@ -1,4 +1,3 @@
-use std::net::SocketAddr;
 use std::str::FromStr;
 use std::sync::Arc;
 
@@ -7,9 +6,8 @@ use tracing::debug;
 
 use ockam::{FromSqlxError, SqlxDatabase, ToSqlxType, ToVoid};
 use ockam_api::nodes::models::portal::OutletStatus;
-use ockam_core::errcode::{Kind, Origin};
-use ockam_core::Error;
 use ockam_core::{async_trait, Address};
+use ockam_node::HostnamePort;
 
 use crate::incoming_services::PersistentIncomingService;
 use crate::state::model::ModelState;
@@ -54,7 +52,7 @@ impl ModelStateRepository for ModelStateSqlxDatabase {
         for tcp_outlet_status in &model_state.tcp_outlets {
             let query = query("INSERT OR REPLACE INTO tcp_outlet_status VALUES (?, ?, ?, ?)")
                 .bind(node_name.to_sql())
-                .bind(tcp_outlet_status.socket_addr.to_sql())
+                .bind(tcp_outlet_status.to.to_sql())
                 .bind(tcp_outlet_status.worker_addr.to_sql())
                 .bind(tcp_outlet_status.payload.as_ref().map(|p| p.to_sql()));
             query.execute(&mut *transaction).await.void()?;
@@ -114,11 +112,10 @@ struct TcpOutletStatusRow {
 
 impl TcpOutletStatusRow {
     fn tcp_outlet_status(&self) -> Result<OutletStatus> {
-        let socket_addr = SocketAddr::from_str(&self.socket_addr)
-            .map_err(|e| Error::new(Origin::Application, Kind::Serialization, e.to_string()))?;
+        let hostname_port = HostnamePort::from_str(&self.socket_addr)?;
         let worker_addr = Address::from_string(&self.worker_addr);
         Ok(OutletStatus {
-            socket_addr,
+            to: hostname_port,
             worker_addr,
             payload: self.payload.clone(),
         })

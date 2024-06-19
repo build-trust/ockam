@@ -4613,6 +4613,7 @@ dependencies = [
  "ockam_api",
  "ockam_core",
  "ockam_multiaddr",
+ "ockam_node",
  "ockam_transport_tcp",
  "serde",
  "serde_json",
@@ -4879,14 +4880,12 @@ name = "ockam_transport_tcp"
 version = "0.116.0"
 dependencies = [
  "cfg-if",
- "minicbor",
  "ockam_core",
  "ockam_macros",
  "ockam_node",
  "ockam_transport_core",
  "opentelemetry",
  "rand",
- "regex",
  "rustls-native-certs 0.7.0",
  "serde",
  "socket2 0.5.7",

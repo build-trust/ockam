@@ -4,7 +4,8 @@ use miette::{IntoDiagnostic, WrapErr};
 use ockam_api::address::extract_address_value;
 use ockam_api::nodes::models::portal::OutletAccessControl;
 use ockam_core::Address;
-use ockam_transport_tcp::{resolve_peer, HostnamePort};
+use ockam_node::HostnamePort;
+use ockam_transport_tcp::resolve_peer;
 use std::sync::Arc;
 use tracing::{debug, info};
 
@@ -36,7 +37,7 @@ impl AppState {
         match node_manager
             .create_outlet(
                 &self.context(),
-                HostnamePort::from_socket_addr(socket_addr)?,
+                HostnamePort::from_socket_addr(socket_addr),
                 false,
                 Some(worker_addr.clone()),
                 true,

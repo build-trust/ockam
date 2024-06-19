@@ -7,7 +7,7 @@ use ockam_core::compat::rand::random_string;
 use ockam_core::route;
 use ockam_multiaddr::proto::Project;
 use ockam_multiaddr::MultiAddr;
-use ockam_transport_tcp::HostnamePort;
+use ockam_node::HostnamePort;
 use std::str::FromStr;
 use std::sync::Arc;
 

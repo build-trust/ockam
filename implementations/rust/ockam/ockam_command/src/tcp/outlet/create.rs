@@ -20,7 +20,7 @@ use ockam_api::nodes::service::portals::Outlets;
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_api::{fmt_log, fmt_ok};
 use ockam_core::Address;
-use ockam_transport_tcp::HostnamePort;
+use ockam_node::HostnamePort;
 
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
