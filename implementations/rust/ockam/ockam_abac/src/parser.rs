@@ -106,7 +106,7 @@ pub fn parse(s: &str) -> Result<Option<Expr>, ParseError> {
                             ctrl.push(Op::Next)
                         }
                         TokenKind::Id => {
-                            ctrl.push(Op::Value(Expr::Ident(token.id(s).to_string())));
+                            ctrl.push(Op::Value(Expr::Ident(token.id(s)?.to_string())));
                             ctrl.push(Op::Next)
                         }
                         TokenKind::Keyword => {
@@ -125,6 +125,15 @@ pub fn parse(s: &str) -> Result<Option<Expr>, ParseError> {
                                 ctrl.push(Op::Next)
                             } else {
                                 return Err(ParseError::message(format!("invalid reserved token '{reserved}'")))
+                            }
+                        }
+                        TokenKind::Annotation => {
+                            let annotation = token.annotation(s)?;
+                            if ident_pattern().is_match(annotation.as_ref()) {
+                                ctrl.push(Op::Value(Expr::Ident(annotation.to_string())));
+                                ctrl.push(Op::Next)
+                            } else {
+                                return Err(ParseError::message(format!("invalid annotation token '{annotation}'")))
                             }
                         }
                     }
