@@ -281,8 +281,8 @@ EOF
 
   run_success "$OCKAM" project-member list --identity enroller
   assert_output --partial "$enroller_identifier"
-  assert_output --partial "attrs: \"ockam-role=enroller\""
-  assert_output --partial "attested_by: \"$authority_identifier\""
+  assert_output --partial "\"ockam-role\":\"enroller\""
+  assert_output --partial "\"attested_by\":\"$authority_identifier\""
 
   run_success "$OCKAM" project-member add "$m_identifier" --identity enroller --attribute key=value --relay="*"
 
@@ -291,14 +291,20 @@ EOF
   assert_output --partial "$m_identifier"
 
   run_success "$OCKAM" project-member list --identity enroller
-  assert_output --partial "$enroller_identifier"
-  assert_output --partial "attrs: \"ockam-role=enroller\""
-  assert_output --partial "attested_by: \"$authority_identifier\""
+  assert_output --partial "\"identifier\":\"$enroller_identifier\""
+  assert_output --partial "\"ockam-role\":\"enroller\""
+  assert_output --partial "\"attested_by\":\"$authority_identifier\""
 
-  assert_output --partial "$m_identifier"
-  assert_output --partial "key=value"
-  assert_output --partial "ockam-relay=*"
-  assert_output --partial "attested_by: \"$enroller_identifier\""
+  assert_output --partial "\"identifier\":\"$m_identifier\""
+  assert_output --partial "\"key\":\"value\""
+  assert_output --partial "\"ockam-relay\":\"*\""
+  assert_output --partial "\"attested_by\":\"$enroller_identifier\""
+
+  run_success "$OCKAM" project-member show "$m_identifier" --identity enroller
+  assert_output --partial "\"identifier\":\"$m_identifier\""
+  assert_output --partial "\"key\":\"value\""
+  assert_output --partial "\"ockam-relay\":\"*\""
+  assert_output --partial "\"attested_by\":\"$enroller_identifier\""
 
   run_success "$OCKAM" project-member delete "$m_identifier" --identity enroller
 }

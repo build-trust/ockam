@@ -1,24 +1,26 @@
+use async_trait::async_trait;
 use clap::Args;
 use colorful::Colorful;
 use miette::miette;
+use serde::Serialize;
+use std::fmt::Display;
+use tracing::warn;
 
 use ockam::identity::Identifier;
 use ockam::Context;
 use ockam_api::authenticator::direct::Members;
 use ockam_api::colors::color_primary;
-use ockam_api::nodes::InMemoryNode;
-use ockam_api::{fmt_err, fmt_ok};
+use ockam_api::{fmt_info, fmt_ok};
 use ockam_multiaddr::MultiAddr;
 
-use super::{create_authority_client, get_project};
+use super::authority_client;
 use crate::shared_args::IdentityOpts;
-use crate::util::async_cmd;
-use crate::{docs, CommandGlobalOpts};
+use crate::{docs, Command, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/delete/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
 
-/// Add members to a Project, as an authorized enroller, directly, or via an enrollment ticket
+/// Remove members from a Project
 #[derive(Clone, Debug, Args)]
 #[command(
 long_about = docs::about(LONG_ABOUT),
@@ -28,78 +30,147 @@ pub struct DeleteCommand {
     #[command(flatten)]
     identity_opts: IdentityOpts,
 
-    /// Which project's member to delete
+    /// The route of the Project that the member belongs to
     #[arg(long, short, value_name = "ROUTE_TO_PROJECT")]
     to: Option<MultiAddr>,
 
+    /// The Identifier of the member to delete
     #[arg(value_name = "IDENTIFIER")]
     member: Option<Identifier>,
 
-    /// Delete all members of the project except the default identity
+    /// Delete all members of the Project except the current default Identity
     #[arg(long, conflicts_with = "member")]
     all: bool,
 }
 
-impl DeleteCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |ctx| async move {
-            self.async_run(&ctx, opts).await
-        })
-    }
+#[async_trait]
+impl Command for DeleteCommand {
+    const NAME: &'static str = "project-member delete";
 
-    pub fn name(&self) -> String {
-        "project-member delete".into()
-    }
-
-    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
-        let identity = opts
-            .state
-            .get_named_identity_or_default(&self.identity_opts.identity)
-            .await?;
-
-        let project = get_project(&opts.state, &self.to).await?;
-
-        let node = InMemoryNode::start_with_project_name(
-            ctx,
-            &opts.state,
-            Some(project.name().to_string()),
-        )
-        .await?;
-
-        let authority_node_client =
-            create_authority_client(&node, &opts.state, &self.identity_opts, &project).await?;
-
-        match (&self.member, self.all) {
-            (Some(member), _) => {
-                authority_node_client
-                    .delete_member(ctx, member.clone())
-                    .await?;
-                opts.terminal.stdout().plain(fmt_ok!(
-                    "Identifier {} is no longer a member of the Project. It won't be able to get a credential and access Project resources, like portals of other members",
-                    color_primary(member.to_string())
-                ));
-            }
-            (None, true) => {
-                if !opts
-                    .state
-                    .is_identity_enrolled(&Some(identity.name()))
-                    .await?
-                {
-                    return Err(miette!(fmt_err!(
-                        "You need to use an enrolled identity to delete all the members from a project."
-                    )));
-                }
-                authority_node_client
-                    .delete_all_members(ctx, identity.identifier())
-                    .await?;
-                opts.terminal.stdout().plain(fmt_ok!(
-                    "All identifiers except {} are no longer members of the Project.",
-                    color_primary(identity.identifier().to_string())
-                ));
-            }
-            _ => unreachable!(),
+    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+        if self.member.is_none() && !self.all {
+            return Err(miette!(
+                "You need to specify either an identifier to delete or use the --all flag to delete all the members from a project."
+            ).into());
         }
 
+        let (authority_node_client, project_name) =
+            authority_client(ctx, &opts, &self.identity_opts, &self.to).await?;
+
+        let identity = opts
+            .state
+            .get_named_identity_or_default(&self.identity_opts.identity_name)
+            .await?;
+
+        let mut output = DeleteMemberOutput {
+            project: project_name.clone(),
+            identifiers: vec![],
+        };
+
+        // Delete the passed member
+        if let Some(member) = &self.member {
+            authority_node_client
+                .delete_member(ctx, member.clone())
+                .await?;
+            output.identifiers.push(member.clone());
+        }
+        // Try to delete all members except the current default identity
+        else if self.all {
+            if !opts
+                .state
+                .is_identity_enrolled(&Some(identity.name()))
+                .await?
+            {
+                return Err(miette!(
+                        "You need to use an enrolled identity to delete all the members from a Project."
+                    ).into());
+            }
+            let self_identifier = identity.identifier();
+            let member_identifiers = authority_node_client.list_member_ids(ctx).await?;
+            if !member_identifiers.is_empty() {
+                opts.terminal.write_line(fmt_info!(
+                    "Found {} members in the Project {}",
+                    member_identifiers.len(),
+                    project_name
+                ))?;
+            }
+
+            let members_to_delete = member_identifiers
+                .into_iter()
+                .filter(|id| id != &self_identifier)
+                .collect::<Vec<_>>();
+
+            let pb = opts.terminal.progress_bar();
+            for identifier in members_to_delete.into_iter() {
+                if let Some(pb) = &pb {
+                    pb.set_message(format!("Trying to delete member {identifier}..."));
+                }
+                if let Err(e) = authority_node_client
+                    .delete_member(ctx, identifier.clone())
+                    .await
+                {
+                    warn!("Failed to delete member {}: {}", identifier, e);
+                } else {
+                    output.identifiers.push(identifier.clone());
+                }
+            }
+        } else {
+            unreachable!("Either a member or the --all flag should be set");
+        }
+
+        opts.terminal
+            .stdout()
+            .plain(output.to_string())
+            .json_obj(&output)?
+            .write_line()?;
+
+        Ok(())
+    }
+}
+
+#[derive(Serialize)]
+struct DeleteMemberOutput {
+    project: String,
+    identifiers: Vec<Identifier>,
+}
+
+impl Display for DeleteMemberOutput {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match &self.identifiers[..] {
+            [] => {
+                writeln!(
+                    f,
+                    "{}",
+                    fmt_ok!(
+                        "There are no members that can be deleted from the Project {}",
+                        self.project
+                    )
+                )?;
+            }
+            [identifier] => {
+                writeln!(
+                    f,
+                    "{}",
+                    fmt_ok!(
+                        "Identifier {} is no longer a member of the Project. \
+                        It won't be able to get a credential and access Project resources, \
+                        like portals of other members",
+                        color_primary(identifier.to_string())
+                    )
+                )?;
+            }
+            _ => {
+                writeln!(
+                    f,
+                    "{}",
+                    fmt_ok!(
+                        "{} members were deleted from the Project {}",
+                        &self.identifiers.len(),
+                        self.project
+                    )
+                )?;
+            }
+        }
         Ok(())
     }
 }

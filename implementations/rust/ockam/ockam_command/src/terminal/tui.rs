@@ -255,6 +255,7 @@ pub enum PluralTerm {
     Inlet,
     Outlet,
     Policy,
+    Member,
 }
 
 impl PluralTerm {
@@ -269,6 +270,7 @@ impl PluralTerm {
             PluralTerm::Inlet => "inlet",
             PluralTerm::Outlet => "outlet",
             PluralTerm::Policy => "policy",
+            PluralTerm::Member => "member",
         }
     }
 
@@ -283,6 +285,7 @@ impl PluralTerm {
             PluralTerm::Inlet => "inlets",
             PluralTerm::Outlet => "outlets",
             PluralTerm::Policy => "policies",
+            PluralTerm::Member => "members",
         }
     }
 }

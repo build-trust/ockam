@@ -49,7 +49,7 @@ impl CreateCommand {
     async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         if !opts
             .state
-            .is_identity_enrolled(&self.identity_opts.identity)
+            .is_identity_enrolled(&self.identity_opts.identity_name)
             .await?
         {
             return Err(miette!(

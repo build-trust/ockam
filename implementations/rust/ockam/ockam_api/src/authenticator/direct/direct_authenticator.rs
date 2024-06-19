@@ -134,6 +134,47 @@ impl DirectAuthenticator {
     }
 
     #[instrument(skip_all, fields(enroller = %enroller))]
+    pub async fn show_member(
+        &self,
+        enroller: &Identifier,
+        identifier: &Identifier,
+    ) -> Result<DirectAuthenticatorResult<AttributesEntry>> {
+        let check = EnrollerAccessControlChecks::check_identifier(
+            self.members.clone(),
+            self.identities_attributes.clone(),
+            enroller,
+            &self.account_authority,
+        )
+        .await?;
+
+        if !check.is_enroller {
+            warn!("Non-enroller {} is trying to retrieve a member", enroller);
+            return Ok(Either::Right(DirectAuthenticatorError(
+                "Non-enroller is trying to retrieve a member".to_string(),
+            )));
+        }
+
+        match self.members.get_member(identifier).await? {
+            Some(member) => {
+                let entry = AttributesEntry::new(
+                    member.attributes().clone(),
+                    member.added_at(),
+                    None,
+                    Some(member.added_by().clone()),
+                );
+                Ok(Either::Left(entry))
+            }
+            None => {
+                warn!("Member {} not found", identifier);
+                Ok(Either::Right(DirectAuthenticatorError(format!(
+                    "Member {} not found",
+                    identifier
+                ))))
+            }
+        }
+    }
+
+    #[instrument(skip_all, fields(enroller = %enroller))]
     pub async fn list_members(
         &self,
         enroller: &Identifier,
