@@ -1,6 +1,5 @@
 #[macro_use]
 pub mod fmt;
-pub mod background;
 pub mod notification;
 pub mod term;
 
@@ -16,13 +15,12 @@ use crate::{Result, UiError};
 
 use colorful::Colorful;
 use indicatif::{ProgressBar, ProgressDrawTarget, ProgressStyle};
-use miette::WrapErr;
 use miette::{miette, IntoDiagnostic};
 use ockam_core::env::get_env_with_default;
 
 use jaq_interpret::{Ctx, FilterT, ParseCtx, RcIter, Val};
-use r3bl_rs_utils_core::*;
-use r3bl_tuify::*;
+use r3bl_rs_utils_core::{ch, ChUnit};
+use r3bl_tuify::{get_size, select_from_list, SelectionMode, StyleSheet};
 use serde::Serialize;
 use tokio::sync::Mutex;
 use tokio::time::sleep;
@@ -53,7 +51,11 @@ impl<T: TerminalWriter + Debug, W> Terminal<T, W> {
         }
         for line in msg.as_ref().lines() {
             let msg = strip_ansi_escapes::strip_str(line);
-            let msg = msg.trim().trim_start_matches(['✔', '✗', '>', '!']).trim();
+            let msg = msg
+                .trim()
+                .trim_start_matches(['✔', '✗', '>', '!'])
+                .trim_end_matches('\n')
+                .trim();
             if !msg.is_empty() {
                 info!("{msg}");
             }
@@ -71,14 +73,11 @@ pub struct TerminalStream<T: Write + Debug + Clone> {
 
 impl<T: Write + Debug + Clone> TerminalStream<T> {
     pub fn prepare_msg(&self, msg: impl AsRef<str>) -> Result<String> {
-        let mut buffer = Vec::new();
-        write!(buffer, "{}", msg.as_ref())?;
         if self.no_color {
-            buffer = strip_ansi_escapes::strip(&buffer);
+            Ok(strip_ansi_escapes::strip_str(msg.as_ref()))
+        } else {
+            Ok(msg.as_ref().to_string())
         }
-        Ok(String::from_utf8(buffer)
-            .into_diagnostic()
-            .wrap_err("Invalid UTF-8")?)
     }
 }
 
@@ -379,16 +378,17 @@ impl<W: TerminalWriter + Debug> Terminal<W, ToStdOut> {
             },
         };
 
-        // Remove any trailing newline characters.
-        // A newline will be added if stdout is a TTY.
-        let msg = msg.trim_end_matches('\n');
-
         if self.logging_enabled {
             self.log_msg(msg);
-        } else if self.stdout.is_tty() {
-            self.stdout.write_line(msg)?;
         } else {
-            self.stdout.write(msg)?;
+            // Remove any trailing newline characters.
+            // A newline will be added if stdout is a TTY.
+            let msg = msg.trim_end().trim_end_matches('\n');
+            if self.stdout.is_tty() {
+                self.stdout.write_line(msg)?;
+            } else {
+                self.stdout.write(msg)?;
+            }
         }
         Ok(())
     }
