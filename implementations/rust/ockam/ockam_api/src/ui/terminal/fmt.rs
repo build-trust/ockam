@@ -1,9 +1,16 @@
 /// Left padding for all terminal output
-pub const PADDING: &str = "     ";
+pub const PADDING: &str = "    ";
 /// Left padding for all terminal output that starts with an icon
-pub const ICON_PADDING: &str = "   ";
+pub const ICON_PADDING: &str = "  ";
 /// A two-space indentation for nested terminal output
 pub const INDENTATION: &str = "  ";
+
+pub fn get_separator_width() -> usize {
+    std::cmp::min(
+        r3bl_tuify::get_terminal_width() - PADDING.len(),
+        r3bl_tuify::DEFAULT_WIDTH,
+    )
+}
 
 #[macro_export]
 macro_rules! fmt_log {
@@ -86,14 +93,14 @@ macro_rules! fmt_heading {
         $crate::terminal::PADDING,
         format!("{}", $input),
         $crate::terminal::PADDING,
-        "─".repeat(85).dim().light_gray())
+        "─".repeat($crate::terminal::get_separator_width()).dim().light_gray())
     };
     ($input:expr, $($args:expr),+) => {
         format!("\n{}{}\n{}{}",
         $crate::terminal::PADDING,
         format!($input, $($args),+),
         $crate::terminal::PADDING,
-        "─".repeat(85).dim().light_gray())
+        "─".repeat($crate::terminal::get_separator_width()).dim().light_gray())
     };
 }
 
@@ -103,7 +110,10 @@ macro_rules! fmt_separator {
         format!(
             "\n{}{}",
             $crate::terminal::PADDING,
-            "─".repeat(85).dim().light_gray()
+            "─"
+                .repeat($crate::terminal::get_separator_width())
+                .dim()
+                .light_gray()
         )
     };
 }
