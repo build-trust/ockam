@@ -47,7 +47,7 @@ pub struct GlobalArgs {
     /// the stdout is a tty or not. For instance, if stdout is redirected to a file, the output
     /// is usually an identifier that can be used as input for other commands. If stdout is a tty,
     /// the output will contain human-readable information about the command execution.
-    /// The 'json' format can be customized witht he `--jq` and `--pretty` options.
+    /// The 'json' format can be customized with the `--jq` and `--pretty` options.
     #[arg(global = true, long = "output", value_enum)]
     pub output_format: Option<OutputFormatArg>,
 

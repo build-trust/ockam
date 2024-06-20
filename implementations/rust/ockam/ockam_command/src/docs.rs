@@ -27,9 +27,11 @@ If you have questions, as you explore, join us on the contributors
 discord channel https://discord.ockam.io
 ";
 
-static SYNTAX_SET: Lazy<SyntaxSet> = Lazy::new(SyntaxSet::load_defaults_newlines);
 static HEADER_RE: Lazy<Regex> =
     Lazy::new(|| Regex::new("^(Examples|Learn More|Feedback):$".into()));
+
+static SYNTAX_SET: Lazy<SyntaxSet> = Lazy::new(SyntaxSet::load_defaults_newlines);
+
 static THEME: Lazy<SyntectTheme> = Lazy::new(|| {
     let mut theme_set = ThemeSet::load_defaults();
     let default_theme = theme_set.themes.remove("base16-ocean.dark").unwrap_or(
@@ -98,37 +100,32 @@ fn render(body: &str) -> &'static str {
 /// Use a shell syntax highlighter to render the fenced code blocks in terminals
 fn process_terminal_docs(input: String) -> String {
     let mut output: Vec<String> = Vec::new();
-    let mut code_highlighter = FencedCodeBlockHighlighter::new();
 
     for line in LinesWithEndings::from(&input) {
-        // TODO: disabled because the syntax is adding some unexpected newlines
-        // if code_highlighter.in_fenced_block(line) {
-        if false {
-            output.push(code_highlighter.highlight(line));
+        // Bold and underline known headers
+        if HEADER_RE.is_match(line) {
+            output.push(line.to_string().bold().underlined().to_string());
         }
-        // The line is not part of a fenced block, so process normally.
+        // Underline H4 headers
+        else if line.starts_with("#### ") {
+            output.push(line.replace("#### ", "").underlined().to_string());
+        }
+        // Remove H5 headers prefix
+        else if line.starts_with("##### ") {
+            output.push(line.replace("##### ", "").to_string());
+        }
+        // No processing
         else {
-            // Bold and underline known headers
-            if HEADER_RE.is_match(line) {
-                output.push(line.to_string().bold().underlined().to_string());
-            }
-            // Underline H4 headers
-            else if line.starts_with("#### ") {
-                output.push(line.replace("#### ", "").underlined().to_string());
-            }
-            // Remove H5 headers prefix
-            else if line.starts_with("##### ") {
-                output.push(line.replace("##### ", "").to_string());
-            }
-            // No processing
-            else {
-                output.push(line.to_string());
-            }
+            output.push(line.to_string());
         }
     }
     output.join("")
 }
 
+// WARNING: The syntax highlighting is disabled because it has some issues in specific
+// machines. For example, in `t2.micro aws Linux us-west-1`, it fails to set the background
+// color to the terminal, which adds `11;rgb:0000/0000/0000` before and after the command.
+// For now, the syntax highlighting will not be used.
 struct FencedCodeBlockHighlighter<'a> {
     inner: HighlightLines<'a>,
     in_fenced_block: bool,
