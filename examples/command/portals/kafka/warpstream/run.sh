@@ -31,10 +31,28 @@ run() {
     # Create a Cluster in Warpstream
     if [[ -z $WARPSTREAM_API_KEY ]]; then echo "ERROR: Please provide your Warpstream API key as an environment variable 'WARPSTREAM_API_KEY'" && exit 1; fi;
 
-    cluster_detail=$(curl --silent --show-error --fail https://api.prod.us-east-1.warpstream.com/api/v1/create_virtual_cluster \
+    response=$(curl --silent --show-error --write-out "\n%{http_code}" https://api.prod.us-east-1.warpstream.com/api/v1/create_virtual_cluster \
         -H "warpstream-api-key: $WARPSTREAM_API_KEY" \
         -H 'Content-Type: application/json' \
-        -d '{"virtual_cluster_name": "ockam_demo", "virtual_cluster_type": "serverless", "virtual_cluster_region": "us-east-1", "virtual_cluster_cloud_provider": "aws"}')
+        -d '{"virtual_cluster_name": "ockam_demo", "virtual_cluster_type": "serverless", "virtual_cluster_region": "us-east-1", "virtual_cluster_cloud_provider": "aws"}' 2>/dev/null)
+
+    http_code=$(tail -n1 <<< "$response")
+    cluster_detail=$(sed '$ d' <<< "$response")
+
+    if [ "$http_code" -eq 200 ]; then
+        echo "Cluster created successfully."
+    elif [ "$http_code" -eq 400 ]; then
+        error_code=$(echo "$cluster_detail" | jq -r '.code')
+        error_message=$(echo "$cluster_detail" | jq -r '.message')
+        if [ "$error_code" = "virtual_cluster_name_duplicate" ]; then
+            echo "Response: $cluster_detail"
+            echo "Error: Cluster already exists. To proceed, delete the existing cluster and try again."
+        else
+            echo "Error creating cluster. Response: $cluster_detail. Please check your input and try again."
+        fi
+    else
+        echo "Unexpected error (HTTP $http_code): $cluster_detail. Please check your connection and try again."
+    fi
 
     request_body=$(docker run -i ghcr.io/jqlang/jq '. | {"credentials_name": "ockam_demo", "is_cluster_superuser":true, "agent_pool_id": .agent_pool_id, "virtual_cluster_id": .virtual_cluster_id}' <<< $cluster_detail)
 
