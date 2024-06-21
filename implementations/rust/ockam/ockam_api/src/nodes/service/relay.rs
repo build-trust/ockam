@@ -282,8 +282,8 @@ impl SessionReplacer for RelaySessionReplacer {
 
         self.relay_worker_address = Some(relay_info.worker_address().clone());
 
-        // ping back to this node to verify the full route
-        let ping_route = route![connection.transport_route(), relay_info.remote_address()];
+        // ping directly the other node
+        let ping_route = route![connection.transport_route()];
 
         Ok(ReplacerOutcome {
             ping_route,
