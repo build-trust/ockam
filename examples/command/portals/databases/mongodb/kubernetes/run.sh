@@ -97,11 +97,15 @@ run() {
 build_and_load_docker_image() {
     tag="$1"; dockerfile="$2"; context="$3"; cluster="$4"
 
+    if [[ -z $OCKAM_VERSION ]]; then
+        export OCKAM_VERSION="latest"
+    fi
+
     # Use --load option only if docker buildx is available.
     if docker buildx ls &>/dev/null; then
-        docker build --load --file "$dockerfile" --tag "$tag" "$context"
+        docker build --build-arg OCKAM_VERSION="$OCKAM_VERSION" --load --file "$dockerfile" --tag "$tag" "$context"
     else
-        docker build --file "$dockerfile" --tag "$tag" "$context"
+        docker build --build-arg OCKAM_VERSION="$OCKAM_VERSION" --file "$dockerfile" --tag "$tag" "$context"
     fi
 
     kind load docker-image "$tag" --name "$cluster"

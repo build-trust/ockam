@@ -29,6 +29,7 @@ run() {
     ockam enroll
 
     # Create a Cluster in Warpstream
+    echo "$WARPSTREAM_API_KEY $OCKAM_VERSION"
     if [[ -z $WARPSTREAM_API_KEY ]]; then echo "ERROR: Please provide your Warpstream API key as an environment variable 'WARPSTREAM_API_KEY'" && exit 1; fi;
 
     cluster_detail=$(curl --silent --show-error --fail https://api.prod.us-east-1.warpstream.com/api/v1/create_virtual_cluster \
@@ -70,7 +71,7 @@ run() {
 # Cleanup after the example - `./run.sh cleanup`
 # Remove all containers and images pulled or created by docker compose.
 cleanup() {
-    if [[ -z $WARPSTREAM_API_KEY ]]; then echo "ERROR: Please provide your Warpstream API key as an environment variable 'WARPSTREAM_API_KEY'" && exit 1; fi;
+    if [[ -z $WARPSTREAM_API_KEY ]]; then echo "ERROR: Please provide your Warpstream API key" && exit 1; fi;
     pushd application_team; docker compose down --rmi all --remove-orphans; popd
 
     clusters=$(curl --silent --show-error --fail https://api.prod.us-east-1.warpstream.com/api/v1/list_virtual_clusters \

@@ -26,8 +26,8 @@ async function connect(attempts = 100, waitTimeBetweenAttempts = 10000) {
 }
 
 async function run() {
-    const client = await connect();
-    try {
+  const client = await connect();
+  try {
     const database = client.db('sample');
     const users = database.collection('users');
 

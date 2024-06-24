@@ -9,7 +9,9 @@
 # Read bank_corp/run_ockam.sh and analysis_corp/run_ockam.sh to understand
 # how each node is set up.
 
-FROM ghcr.io/build-trust/ockam as builder
+ARG OCKAM_VERSION=latest
+
+FROM ghcr.io/build-trust/ockam:${OCKAM_VERSION} as builder
 
 FROM cgr.dev/chainguard/bash
 COPY --from=builder /ockam /usr/local/bin/ockam

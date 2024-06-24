@@ -8,9 +8,12 @@ services:
   # Read kafka_ockam.dockerfile and run_ockam.sh to understand
   # how the node is set up.
   consumer:
+    container_name: application_team-consumer
     build:
       context: .
       dockerfile: ../kafka_ockam.dockerfile
+      args:
+        OCKAM_VERSION: ${OCKAM_VERSION:-latest}
     environment:
       ENROLLMENT_TICKET: ${CONSUMER_ENROLLMENT_TICKET:-}
       OCKAM_DEVELOPER: ${OCKAM_DEVELOPER:-false}
@@ -25,10 +28,12 @@ services:
           echo "Press Ctrl+C to stop the container at any time, then execute "\
           "'./run.sh cleanup' to remove all containers.";
           echo "";
-          kafka-console-consumer.sh --topic demo --bootstrap-server 127.0.0.1:9092 --max-messages 8;
-          if [ "$?" == "0" ]; then
-            echo "The example run was successful 🥳";
+          kafka-console-consumer.sh --topic demo --timeout-ms 50000 --bootstrap-server 127.0.0.1:9092 --max-messages 8 | tee output.txt;
+          if [[ ! -s output.txt ]]; then
+            echo "Failed to receive messages";
+            exit 1;
           fi;
+          echo "The example run was successful 🥳.";
           echo "Messages received successfully, please Ctrl+C to exit";
           tail -f /dev/null;
         )
@@ -36,6 +41,7 @@ services:
       - application_team
 
   producer:
+    container_name: application_team-producer
     build:
       context: .
       dockerfile: ../kafka_ockam.dockerfile
@@ -47,6 +53,7 @@ services:
     command:
       - -c
       - (
+          set -e;
           MESSAGES=(
             "Message - 🔥"
             "Message - 🌟"

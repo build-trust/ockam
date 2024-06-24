@@ -33,7 +33,7 @@ run() {
     sg_id=$(aws ec2 create-security-group --group-name "${name}-sg" --vpc-id "$vpc_id" --query 'GroupId' \
         --description "Allow TCP egress and Postgres ingress")
     aws ec2 authorize-security-group-egress --group-id "$sg_id" --cidr 0.0.0.0/0 --protocol tcp --port 0-65535
-    aws ec2 authorize-security-group-ingress --group-id "$sg_id" --cidr "${my_ip}/32" --protocol tcp --port 22
+    aws ec2 authorize-security-group-ingress --group-id "$sg_id" --cidr "0.0.0.0/0" --protocol tcp --port 22
 
     # ----------------------------------------------------------------------------------------------------------------
     # CREATE INSTANCE
@@ -45,15 +45,15 @@ run() {
     aws ec2 create-key-pair --key-name "${name}-key" --query 'KeyMaterial' > key.pem
     chmod 400 key.pem
 
-    sed "s/\$ENROLLMENT_TICKET/${enrollment_ticket}/g" run_ockam.sh > run_ockam_temp.sh
-    cat run_repoaccess.sh run_ockam_temp.sh > user_data.sh
+    sed "s/\$ENROLLMENT_TICKET/${enrollment_ticket}/g" run_ockam.sh > user_data1.sh
+    sed "s/\$OCKAM_VERSION/${OCKAM_VERSION}/g" user_data1.sh > user_data2.sh
+    cat run_repoaccess.sh user_data2.sh > user_data.sh
     instance_id=$(aws ec2 run-instances --image-id "$ami_id" --instance-type c5n.large \
         --subnet-id "$subnet_id" --security-group-ids "$sg_id" \
         --key-name "${name}-key" --user-data file://user_data.sh --query 'Instances[0].InstanceId')
     aws ec2 create-tags --resources "$instance_id" --tags "Key=Name,Value=${name}-ec2-instance"
     aws ec2 wait instance-running --instance-ids "$instance_id"
     ip=$(aws ec2 describe-instances --instance-ids "$instance_id" --query 'Reservations[0].Instances[0].PublicIpAddress')
-    rm -f run_ockam_temp.sh user_data.sh
 
     until scp -o StrictHostKeyChecking=no -i ./key.pem ./app.js "ec2-user@$ip:app.js"; do sleep 10; done
     until scp -o StrictHostKeyChecking=no -i ./key.pem ../bank_corp/gitlab_rsa "ec2-user@$ip:gitlab_rsa"; do sleep 10; done
@@ -70,7 +70,8 @@ cleanup() {
     # ----------------------------------------------------------------------------------------------------------------
     # DELETE INSTANCE
 
-    rm -f run_ockam_temp.sh user_data.sh
+    rm -rf user_data*.sh
+    rm -rf run_repoaccess.sh
     instance_ids=$(aws ec2 describe-instances --filters "Name=tag:Name,Values=${name}-ec2-instance" \
         --query "Reservations[*].Instances[*].InstanceId")
     for i in $instance_ids; do

@@ -1,4 +1,6 @@
-FROM ghcr.io/build-trust/ockam as builder
+ARG OCKAM_VERSION=latest
+
+FROM ghcr.io/build-trust/ockam:${OCKAM_VERSION} as builder
 FROM alpine:3
 COPY --from=builder /ockam /usr/local/bin/ockam
 

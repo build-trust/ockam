@@ -14,6 +14,8 @@ services:
     build:
       context: .
       dockerfile: ../ockam.dockerfile
+      args:
+        OCKAM_VERSION: ${OCKAM_VERSION:-latest}
     environment:
       ENROLLMENT_TICKET: ${ENROLLMENT_TICKET:-}
       OCKAM_DEVELOPER: ${OCKAM_DEVELOPER:-false}
@@ -26,6 +28,7 @@ services:
   # the app is doing.
   app:
     depends_on: [ockam]
+    container_name: analysis_corp-app
     build:
       context: .
       dockerfile: app.dockerfile

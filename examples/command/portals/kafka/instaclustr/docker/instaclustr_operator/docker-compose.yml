@@ -12,6 +12,8 @@ services:
     build:
       context: .
       dockerfile: ../ockam.dockerfile
+      args:
+        OCKAM_VERSION: ${OCKAM_VERSION:-latest}
     environment:
       ENROLLMENT_TICKET: ${ENROLLMENT_TICKET:-}
       INSTACLUSTER_ADDRESS: ${BOOTSTRAPSERVER}:9092

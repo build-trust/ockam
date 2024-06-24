@@ -10,7 +10,7 @@ const uri = "mongodb://127.0.0.1:17017/mydb"
 //
 // Since all the containers may take a few seconds to start up.
 // We'll attempt to connect in a loop once every 10 seconds by default.
-async function connect(attempts = 100, waitTimeBetweenAttempts = 10000) {
+async function connect(attempts = 5, waitTimeBetweenAttempts = 10000) {
   while (attempts--) {
     const client = new MongoClient(uri);
     try {

@@ -39,7 +39,7 @@ run() {
 
     # Allow SSH from the machine where this script is running, so we can provision instances.
     my_ip=$(curl -s https://checkip.amazonaws.com)
-    aws ec2 authorize-security-group-ingress --group-id "$sg_id" --cidr "${my_ip}/32" --protocol tcp --port 22
+    aws ec2 authorize-security-group-ingress --group-id "$sg_id" --cidr "0.0.0.0/0" --protocol tcp --port 22
 
     # ----------------------------------------------------------------------------------------------------------------
     # CREATE INFLUXDB DATABASE
@@ -73,14 +73,14 @@ run() {
     chmod 400 key.pem
 
     sed "s/\$ENROLLMENT_TICKET/${enrollment_ticket}/g" run_ockam.sh > user_data1.sh
-    sed "s/\$INFLUXDB_ADDRESS/${db_endpoint}/g" user_data1.sh > user_data.sh
+    sed "s/\$OCKAM_VERSION/${OCKAM_VERSION}/g" user_data1.sh > user_data2.sh
+    sed "s/\$INFLUXDB_ADDRESS/${db_endpoint}/g" user_data2.sh > user_data.sh
     instance_id=$(aws ec2 run-instances --image-id "$ami_id" --instance-type c5n.large \
         --subnet-id "$subnet_id" --security-group-ids "$sg_id" \
         --key-name "${name}-key" --user-data file://user_data.sh  --query 'Instances[0].InstanceId')
     aws ec2 create-tags --resources "$instance_id" --tags "Key=Name,Value=${name}-ec2-instance"
     aws ec2 wait instance-running --instance-ids "$instance_id"
     ip=$(aws ec2 describe-instances --instance-ids "$instance_id" --query 'Reservations[0].Instances[0].PublicIpAddress')
-    rm -f user_data.sh user_data1.sh
 
     scp -o StrictHostKeyChecking=no -i ./key.pem "ec2-user@$ip:token.txt" ../datastream_corp/token.txt
 }
@@ -90,7 +90,7 @@ cleanup() {
     # ----------------------------------------------------------------------------------------------------------------
     # DELETE INSTANCE
 
-    rm -f user_data.sh user_data1.sh
+    rm -f user_data*.sh
     instance_ids=$(aws ec2 describe-instances --filters "Name=tag:Name,Values=${name}-ec2-instance" \
         --query "Reservations[*].Instances[*].InstanceId")
     for i in $instance_ids; do

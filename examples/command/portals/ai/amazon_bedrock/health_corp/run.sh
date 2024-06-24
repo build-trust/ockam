@@ -44,14 +44,14 @@ run() {
     aws ec2 create-key-pair --key-name "${name}-key" --query 'KeyMaterial' > key.pem
     chmod 400 key.pem
 
-    sed "s/\$ENROLLMENT_TICKET/${enrollment_ticket}/g" run_ockam.sh > user_data.sh
+    sed "s/\$ENROLLMENT_TICKET/${enrollment_ticket}/g" run_ockam.sh > user_data1.sh
+    sed "s/\$OCKAM_VERSION/${OCKAM_VERSION}/g" user_data1.sh > user_data.sh
     instance_id=$(aws ec2 run-instances --image-id "$ami_id" --instance-type c5n.large \
         --subnet-id "$subnet_id" --security-group-ids "$sg_id" \
         --key-name "${name}-key" --user-data file://user_data.sh --query 'Instances[0].InstanceId')
     aws ec2 create-tags --resources "$instance_id" --tags "Key=Name,Value=${name}-ec2-instance"
     aws ec2 wait instance-running --instance-ids "$instance_id"
     ip=$(aws ec2 describe-instances --instance-ids "$instance_id" --query 'Reservations[0].Instances[0].PublicIpAddress')
-    rm -f user_data.sh
 
     until scp -o StrictHostKeyChecking=no -i ./key.pem ./client.js "ec2-user@$ip:client.js"; do sleep 10; done
     ssh -o StrictHostKeyChecking=no -i ./key.pem "ec2-user@$ip" \
@@ -65,7 +65,7 @@ cleanup() {
     # ----------------------------------------------------------------------------------------------------------------
     # DELETE INSTANCE
 
-    rm -f user_data.sh
+    rm -rf user_data*.sh
     instance_ids=$(aws ec2 describe-instances --filters "Name=tag:Name,Values=${name}-ec2-instance" \
         --query "Reservations[].Instances[?State.Name!='terminated'].InstanceId[]")
     for i in $instance_ids; do

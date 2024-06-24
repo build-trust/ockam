@@ -44,7 +44,8 @@ run() {
     aws ec2 create-key-pair --key-name "${name}-key" --query 'KeyMaterial' > key.pem
     chmod 400 key.pem
 
-    sed "s/\$ENROLLMENT_TICKET/${enrollment_ticket}/g" run_ockam.sh > user_data.sh
+    sed "s/\$ENROLLMENT_TICKET/${enrollment_ticket}/g" run_ockam.sh > user_data1.sh
+    sed "s/\$OCKAM_VERSION/${OCKAM_VERSION}/g" user_data1.sh > user_data.sh
     instance_id=$(aws ec2 run-instances --image-id "$ami_id" --instance-type t2.micro \
         --subnet-id "$subnet_id" --security-group-ids "$sg_id" \
         --key-name "${name}-key" --user-data file://user_data.sh --query 'Instances[0].InstanceId')
