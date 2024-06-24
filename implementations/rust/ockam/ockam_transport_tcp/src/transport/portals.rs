@@ -1,4 +1,4 @@
-use crate::portal::TcpInletListenProcessor;
+use crate::portal::{InletSharedState, TcpInletListenProcessor};
 use crate::{portal::TcpOutletListenWorker, TcpInletOptions, TcpOutletOptions, TcpTransport};
 use core::fmt;
 use core::fmt::{Debug, Formatter};
@@ -150,7 +150,7 @@ impl TcpTransport {
 pub struct TcpInlet {
     socket_address: SocketAddr,
     processor_address: Address,
-    outlet_listener_route: Arc<RwLock<Route>>,
+    outlet_state: Arc<RwLock<InletSharedState>>,
 }
 
 impl fmt::Display for TcpInlet {
@@ -168,12 +168,12 @@ impl TcpInlet {
     pub fn new(
         socket_address: SocketAddr,
         processor_address: Address,
-        outlet_listener_route: Arc<RwLock<Route>>,
+        outlet_state: Arc<RwLock<InletSharedState>>,
     ) -> Self {
         Self {
             socket_address,
             processor_address,
-            outlet_listener_route,
+            outlet_state,
         }
     }
 
@@ -187,20 +187,37 @@ impl TcpInlet {
         &self.processor_address
     }
 
+    fn build_new_full_route(new_route: Route, old_route: &Route) -> Result<Route> {
+        let their_outlet_address = old_route.recipient()?;
+        Ok(route![new_route, their_outlet_address])
+    }
+
     /// Update the route to the outlet node.
     /// This is useful if we re-create a secure channel if because, e.g., the other node wasn't
     /// reachable, or if we want to switch transport, e.g., from relayed to UDP NAT puncture.
     ///  NOTE: Existing TCP connections will still use the old route,
     ///        only newly accepted connections will use the new route.
     pub fn update_outlet_node_route(&self, new_route: Route) -> Result<()> {
-        let mut remote_route = self.outlet_listener_route.write().unwrap();
+        let mut outlet_state = self.outlet_state.write().unwrap();
 
-        let old_route = remote_route.clone();
+        outlet_state.route = Self::build_new_full_route(new_route, &outlet_state.route)?;
 
-        let their_outlet_address = old_route.recipient()?;
-        let new_route = route![new_route, their_outlet_address];
+        Ok(())
+    }
 
-        *remote_route = new_route;
+    /// Pause TCP Inlet, all incoming TCP streams will be dropped.
+    pub fn pause(&self) {
+        let mut outlet_state = self.outlet_state.write().unwrap();
+
+        outlet_state.is_paused = true;
+    }
+
+    /// Unpause TCP Inlet and update the outlet route.
+    pub fn unpause(&self, new_route: Route) -> Result<()> {
+        let mut outlet_state = self.outlet_state.write().unwrap();
+
+        outlet_state.route = Self::build_new_full_route(new_route, &outlet_state.route)?;
+        outlet_state.is_paused = false;
 
         Ok(())
     }

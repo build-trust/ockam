@@ -8,6 +8,7 @@ use ockam_core::{Address, AllowAll, IncomingAccessControl, OutgoingAccessControl
 pub struct TcpInletOptions {
     pub(super) incoming_access_control: Arc<dyn IncomingAccessControl>,
     pub(super) outgoing_access_control: Arc<dyn OutgoingAccessControl>,
+    pub(super) is_paused: bool,
 }
 
 impl TcpInletOptions {
@@ -16,7 +17,14 @@ impl TcpInletOptions {
         Self {
             incoming_access_control: Arc::new(AllowAll),
             outgoing_access_control: Arc::new(AllowAll),
+            is_paused: false,
         }
+    }
+
+    /// Set TCP inlet to paused mode after start. No unpause call [`TcpInlet::unpause`]
+    pub fn paused(mut self) -> Self {
+        self.is_paused = true;
+        self
     }
 
     /// Set Incoming Access Control
