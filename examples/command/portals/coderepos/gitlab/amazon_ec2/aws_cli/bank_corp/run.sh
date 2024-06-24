@@ -39,8 +39,8 @@ run() {
     sg_id=$(aws ec2 create-security-group --group-name "${name}-sg" --vpc-id "$vpc_id" --query 'GroupId' \
         --description "Allow TCP egress and gitlab ingress")
     aws ec2 authorize-security-group-egress --group-id "$sg_id" --cidr 0.0.0.0/0 --protocol tcp --port 0-65535
-    aws ec2 authorize-security-group-ingress --group-id "$sg_id" --cidr "${my_ip}/32" --protocol tcp --port 22
-    aws ec2 authorize-security-group-ingress --group-id "$sg_id" --cidr "${my_ip}/32" --protocol tcp --port 80
+    aws ec2 authorize-security-group-ingress --group-id "$sg_id" --cidr "0.0.0.0/0" --protocol tcp --port 22
+    aws ec2 authorize-security-group-ingress --group-id "$sg_id" --cidr "0.0.0.0/0" --protocol tcp --port 80
 
     # ----------------------------------------------------------------------------------------------------------------
     # CREATE INSTANCE
@@ -54,10 +54,12 @@ run() {
     aws ec2 create-key-pair --key-name "${name}-key" --query 'KeyMaterial' > key.pem
     chmod 400 key.pem
 
-    sed "s/\$ENROLLMENT_TICKET/${enrollment_ticket}/g" run_ockam.sh > run_ockam_temp.sh
+    sed "s/\$ENROLLMENT_TICKET/${enrollment_ticket}/g" run_ockam.sh > user_data1.sh
+    sed "s/\$OCKAM_VERSION/${OCKAM_VERSION}/g" user_data1.sh > user_data2.sh
     sed "s|PUBLIC_KEY=\$SSH_PUBLIC_KEY|PUBLIC_KEY='$SSH_PUBLIC_KEY'|g" run_gitlab.sh > run_gitlab_temp.sh
 
-    cat run_gitlab_temp.sh run_ockam_temp.sh > user_data.sh
+    cat run_gitlab_temp.sh user_data2.sh > user_data.sh
+
     instance_id=$(aws ec2 run-instances --image-id "$ami_id" --instance-type c5n.large \
         --subnet-id "$subnet1_id" --security-group-ids "$sg_id" \
         --key-name "${name}-key" --user-data file://user_data.sh --query 'Instances[0].InstanceId')
@@ -66,7 +68,6 @@ run() {
     ip=$(aws ec2 describe-instances --instance-ids "$instance_id" --query 'Reservations[0].Instances[0].PublicIpAddress')
     sleep 180
     check_gitlab_availability "$ip"
-    rm -f user_data.sh run_gitlab_temp.sh run_ockam_temp.sh
 }
 
 check_gitlab_availability() {
@@ -100,7 +101,8 @@ cleanup() {
     # ----------------------------------------------------------------------------------------------------------------
     # DELETE INSTANCE
 
-    rm -f user_data.sh run_gitlab_temp.sh run_ockam_temp.sh
+    rm -rf user_data*.sh
+    rm -rf run_gitlab_temp.sh
     rm -f gitlab_rsa gitlab_rsa.pub
     instance_ids=$(aws ec2 describe-instances --filters "Name=tag:Name,Values=${name}-gitlab-ec2" \
         --query "Reservations[*].Instances[*].InstanceId")

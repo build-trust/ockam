@@ -98,4 +98,3 @@ curl -X POST -H "Content-Type: application/json" -H "Authorization: Bearer $ACCE
 
 echo "SSH key added successfully."
 echo "Setup complete"
-

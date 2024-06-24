@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -e
+set -ex
 
 # This script, `./run.sh ...` is invoked on a developer’s work machine.
 #

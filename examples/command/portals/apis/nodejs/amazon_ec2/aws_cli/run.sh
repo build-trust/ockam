@@ -44,6 +44,10 @@ run() {
     travel_app_corp_ticket=$(ockam project ticket --usage-count 1 --expires-in 60m \
         --attribute "monitoring-api-inlet=true")
 
+    if [[ -n "$OCKAM_VERSION" ]]; then
+        export OCKAM_VERSION="v${OCKAM_VERSION}";
+    fi
+
     # Invoke `monitoring_corp/run.sh` in the directory that has monitoring_corp's configuration. Pass the above
     # enrollment ticket as the first argument to run.sh script. Read monitoring_corp/run.sh to understand the parts
     # that are provisioned in monitoring_corp's virtual private cloud.

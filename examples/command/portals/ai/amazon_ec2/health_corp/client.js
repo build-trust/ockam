@@ -21,6 +21,7 @@ async function run() {
 
     const answer = await queryResponse.json();
     console.log(answer['answer']);
+    console.log("\nThe example run was successful 🥳.");
   } catch (error) {
     console.log("Error:", error.message);
   }

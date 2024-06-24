@@ -22,6 +22,7 @@ while ! ./influx bucket list; do sleep 10; done
 ./influx auth create --all-access --json | jq -r .token > token.txt
 
 # Install Ockam Command
+export OCKAM_VERSION="$OCKAM_VERSION"
 curl --proto '=https' --tlsv1.2 -sSfL https://install.command.ockam.io | bash
 source "$HOME/.ockam/env"
 

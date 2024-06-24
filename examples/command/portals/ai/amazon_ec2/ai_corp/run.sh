@@ -47,7 +47,8 @@ run() {
     # make sure that the current region supports the instance required to run the model
     check_if_instance_type_available g5g.2xlarge
 
-    sed "s/\$ENROLLMENT_TICKET/${enrollment_ticket}/g" run_ockam.sh > user_data.sh
+    sed "s/\$ENROLLMENT_TICKET/${enrollment_ticket}/g" run_ockam.sh > user_data1.sh
+    sed "s/\$OCKAM_VERSION/${OCKAM_VERSION}/g" user_data1.sh > user_data.sh
     instance_id=$(aws ec2 run-instances --image-id "$ami_id" --instance-type g5g.2xlarge \
         --subnet-id "$subnet_id" --security-group-ids "$sg_id" \
         --key-name "${name}-key" --user-data file://user_data.sh --query 'Instances[0].InstanceId')
@@ -115,7 +116,7 @@ cleanup() {
     # ----------------------------------------------------------------------------------------------------------------
     # DELETE INSTANCE
 
-    rm -f user_data.sh
+    rm -f user_data*.sh
     instance_ids=$(aws ec2 describe-instances --filters "Name=tag:Name,Values=${name}-ec2-instance" \
         --query "Reservations[*].Instances[*].InstanceId")
     for i in $instance_ids; do
@@ -132,8 +133,7 @@ cleanup() {
     # DELETE NETWORK
 
     vpc_ids=$(aws ec2 describe-vpcs \
-        --filters "Name=tag:Name,Values=${name}-vpc") \
-        --query 'Vpcs[*].VpcId'
+        --filters "Name=tag:Name,Values=${name}-vpc" --query 'Vpcs[*].VpcId') \
 
     for vpc_id in $vpc_ids; do
         internet_gateways=$(aws ec2 describe-internet-gateways \

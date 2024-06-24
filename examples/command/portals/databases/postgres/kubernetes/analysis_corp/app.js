@@ -53,8 +53,8 @@ async function run() {
 
     console.log(
       "\nThe example run was successful 🥳.\n" +
-        "\nThe app connected with the database through an encrypted portal." +
-        "\nCreated a table, inserted some data, and querried it back.\n",
+      "\nThe app connected with the database through an encrypted portal." +
+      "\nCreated a table, inserted some data, and querried it back.\n",
     );
   } catch (err) {
     console.error("Error:", err.message);

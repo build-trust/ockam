@@ -1,3 +1,6 @@
+ARG OCKAM_VERSION=latest
+
+FROM ghcr.io/build-trust/ockam:${OCKAM_VERSION} as builder
 FROM alpine:3
 
 # Install Kafka client
@@ -19,8 +22,7 @@ RUN mirror=$(curl --stderr /dev/null https://www.apache.org/dyn/closer.cgi\?as_j
 ENV PATH "/sbin:/opt/kafka/bin/:$PATH"
 
 # Install Ockam
-RUN curl --proto '=https' --tlsv1.2 -sSfL https://install.command.ockam.io | bash -s
-ENV PATH "/root/.ockam/bin:$PATH"
+COPY --from=builder /ockam /usr/local/bin/ockam
 
 # Copy the script that will be used as entrypoint
 COPY run_ockam.sh /run_ockam.sh

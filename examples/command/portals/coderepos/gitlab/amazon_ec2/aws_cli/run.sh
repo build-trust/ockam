@@ -44,6 +44,10 @@ run() {
     analysis_corp_ticket=$(ockam project ticket --usage-count 1 --expires-in 60m \
         --attribute "gitlab-inlet=true")
 
+    if [[ -n "$OCKAM_VERSION" ]]; then
+        export OCKAM_VERSION="v${OCKAM_VERSION}";
+    fi
+
     # Invoke `bank_corp/run.sh` in the directory that has bank_corp's configuration. Pass the above enrollment ticket
     # as the first argument to run.sh script. Read bank_corp/run.sh to understand the parts that are provisioned in
     # bank_corp's virtual private cloud.

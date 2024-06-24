@@ -8,7 +8,9 @@
 #
 # Read redpanda_operator/run_ockam.sh how the node is set up.
 
-FROM ghcr.io/build-trust/ockam as builder
+ARG OCKAM_VERSION=latest
+
+FROM ghcr.io/build-trust/ockam:${OCKAM_VERSION} as builder
 
 FROM cgr.dev/chainguard/wolfi-base
 RUN apk add --update --no-cache bind-tools bash
