@@ -107,7 +107,7 @@ which = "6.0.1"
 [dev-dependencies]
 assert_cmd = "2"
 ockam_macros = { path = "../ockam_macros", version = "^0.34.0" }
-proptest = "1.4.0"
+proptest = "1.5.0"
 tempfile = "3.10.1"
 time = { version = "0.3", default-features = false, features = ["std", "local-offset"] }
 
