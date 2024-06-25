@@ -11,8 +11,6 @@ export OCKAM_VERSION="$OCKAM_VERSION"
 curl --proto '=https' --tlsv1.2 -sSfL https://install.command.ockam.io | bash
 source "$HOME/.ockam/env"
 
-ockam --version
-
 # Run `ockam project enroll ...`
 #
 # The `project enroll` command creates a new vault and generates a cryptographic identity with
@@ -41,8 +39,7 @@ cat << EOF > outlet.yaml
 tcp-outlet:
   to: "$POSTGRES_ADDRESS:5432"
   allow: '(= subject.postgres-inlet "true")'
-
-relay: postgres
+  relay: postgres
 EOF
 
 ockam node create outlet.yaml

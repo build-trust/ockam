@@ -10,7 +10,6 @@ set -ex
 export OCKAM_VERSION="$OCKAM_VERSION"
 curl --proto '=https' --tlsv1.2 -sSfL https://install.command.ockam.io | bash
 source "$HOME/.ockam/env"
-ockam --version
 
 # Run `ockam project enroll ...`
 #

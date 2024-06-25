@@ -35,7 +35,6 @@ run() {
     # Create a security group to allow:
     #   - TCP egress to the Internet
     #   - Gitlab Access from local machine
-    my_ip=$(curl -4 -s https://httpbin.org/ip | jq -r '.origin')
     sg_id=$(aws ec2 create-security-group --group-name "${name}-sg" --vpc-id "$vpc_id" --query 'GroupId' \
         --description "Allow TCP egress and gitlab ingress")
     aws ec2 authorize-security-group-egress --group-id "$sg_id" --cidr 0.0.0.0/0 --protocol tcp --port 0-65535
