@@ -554,9 +554,9 @@ checksum = "f1fdabc7756949593fe60f30ec81974b613357de856987752631dea1e3394c80"
 
 [[package]]
 name = "aws-config"
-version = "1.5.2"
+version = "1.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d93c287bea7af470c96d21e1dcf4b207ac760932477ebdf47720232047991685"
+checksum = "2368fb843e9eec932f7789d64d0e05850f4a79067188c657e572f1f5a7589df0"
 dependencies = [
  "aws-credential-types",
  "aws-runtime",
@@ -684,9 +684,9 @@ dependencies = [
 
 [[package]]
 name = "aws-sdk-sso"
-version = "1.32.0"
+version = "1.33.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "478ca2bd3e86c871854be2e9aaf01bb9a1fa08e05619d42bb53681d436317744"
+checksum = "b8aee358b755b2738b3ffb8a5b54ee991b28c8a07483a0ff7d49a58305cc2609"
 dependencies = [
  "aws-credential-types",
  "aws-runtime",
@@ -706,9 +706,9 @@ dependencies = [
 
 [[package]]
 name = "aws-sdk-ssooidc"
-version = "1.33.0"
+version = "1.34.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d9e8c910bb3c6144f6e81f44a7e2db4432eac41434bf61c7cf74a18dd45d9606"
+checksum = "1d5ce026f0ae73e06b20be5932150dd0e9b063417fd7c3acf5ca97018b9cbd64"
 dependencies = [
  "aws-credential-types",
  "aws-runtime",
@@ -728,9 +728,9 @@ dependencies = [
 
 [[package]]
 name = "aws-sdk-sts"
-version = "1.32.0"
+version = "1.33.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d34d8ea0b83fee44f8e1628b57dde00fb2261b1c85297d3bccf728fcd3d2dbf5"
+checksum = "c820248cb02e4ea83630ad2e43d0721cdbccedba5ac902cd0b6fb84d7271f205"
 dependencies = [
  "aws-credential-types",
  "aws-runtime",
@@ -900,15 +900,14 @@ dependencies = [
 
 [[package]]
 name = "aws-types"
-version = "1.3.1"
+version = "1.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6f734808d43702a67e57d478a12e227d4d038d0b90c9005a78c87890d3805922"
+checksum = "2009a9733865d0ebf428a314440bbe357cc10d0c16d86a8e15d32e9b47c1e80e"
 dependencies = [
  "aws-credential-types",
  "aws-smithy-async",
  "aws-smithy-runtime-api",
  "aws-smithy-types",
- "http 0.2.12",
  "rustc_version 0.4.0",
  "tracing",
 ]
