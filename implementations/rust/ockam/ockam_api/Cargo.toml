@@ -153,4 +153,4 @@ tempfile = "3.10.1"
 tokio = { version = "1.38.0", features = ["full"] }
 tracing-core = "0.1.32"
 treeline = "0.1.0"
-uuid = "1.8.0"
+uuid = "1.9.1"
