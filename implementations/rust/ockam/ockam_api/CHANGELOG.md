@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.70.0 - 2024-06-25
+
+### Added
+
+- Add `identity` arg to `tcp-inlet create` to customize secure channel identifier
+- Add `disable-content-encryption` flag to the kafka-inlet create command
+- Exposed and added `ockam-rely` attribute validation for relay service
+- Unified relay creation logic for project and rust
+- Adapt the width of separator lines depending on the terminal width
+- Updated dependencies
+
+### Fixed
+
+- Do not create instance of `HighlightLines` struct to prevent unexpected behaviors
+- Ping directly the other node in relay rather than self-ping
+- Terminal width detection, which was returning invalid values on ci
+
 ## 0.69.0 - 2024-06-11
 
 ### Added
