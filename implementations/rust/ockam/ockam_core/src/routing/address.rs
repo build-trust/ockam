@@ -73,6 +73,7 @@ impl Address {
     /// let tcp_worker: Address = Address::from_string("1#carol");
     /// ```
     pub fn from_string<S: Into<String>>(s: S) -> Self {
+        // FIXME: This should not panic...
         s.into()
             .parse::<Address>()
             .unwrap_or_else(|e| panic!("Invalid address string {e}"))
