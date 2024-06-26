@@ -1,58 +1,50 @@
 use async_trait::async_trait;
 use clap::Args;
-use colorful::Colorful;
 use console::Term;
-use ockam_api::colors::color_primary;
-use ockam_api::{fmt_ok, DefaultAddress};
+use miette::miette;
+use ockam_api::DefaultAddress;
 
-use ockam_api::nodes::models::services::{DeleteServiceRequest, ServiceStatus};
+use ockam_api::nodes::models::services::ServiceStatus;
 use ockam_api::nodes::BackgroundNodeClient;
+use ockam_api::output::Output;
 use ockam_api::terminal::{Terminal, TerminalStream};
 use ockam_core::api::Request;
 use ockam_node::Context;
 
-use crate::tui::{DeleteCommandTui, PluralTerm};
+use crate::tui::{PluralTerm, ShowCommandTui};
 use crate::{node::NodeOpts, Command, CommandGlobalOpts};
 
-/// Delete a Kafka Outlet
+/// Show a Kafka Outlet
 #[derive(Clone, Debug, Args)]
-pub struct DeleteCommand {
+pub struct ShowCommand {
     #[command(flatten)]
     pub node_opts: NodeOpts,
 
-    /// Kafka outlet service address
+    /// Kafka Outlet service address
     pub address: Option<String>,
-
-    /// Confirm the deletion without prompting
-    #[arg(display_order = 901, long, short)]
-    pub(crate) yes: bool,
-
-    /// Delete all the Kafka Outlets
-    #[arg(long, short)]
-    pub(crate) all: bool,
 }
 
 #[async_trait]
-impl Command for DeleteCommand {
-    const NAME: &'static str = "kafka-outlet delete";
+impl Command for ShowCommand {
+    const NAME: &'static str = "kafka-outlet show";
 
     async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
-        Ok(DeleteTui::run(ctx, opts, &self).await?)
+        Ok(ShowTui::run(ctx, opts, &self).await?)
     }
 }
 
-struct DeleteTui<'a> {
+struct ShowTui<'a> {
     ctx: &'a Context,
     opts: CommandGlobalOpts,
     node: BackgroundNodeClient,
-    cmd: &'a DeleteCommand,
+    cmd: &'a ShowCommand,
 }
 
-impl<'a> DeleteTui<'a> {
+impl<'a> ShowTui<'a> {
     pub async fn run(
         ctx: &'a Context,
         opts: CommandGlobalOpts,
-        cmd: &'a DeleteCommand,
+        cmd: &'a ShowCommand,
     ) -> miette::Result<()> {
         let node = BackgroundNodeClient::create(ctx, &opts.state, &cmd.node_opts.at_node).await?;
         let tui = Self {
@@ -61,28 +53,26 @@ impl<'a> DeleteTui<'a> {
             node,
             cmd,
         };
-        tui.delete().await
+        tui.show().await
     }
 }
 
 #[async_trait]
-impl<'a> DeleteCommandTui for DeleteTui<'a> {
+impl<'a> ShowCommandTui for ShowTui<'a> {
     const ITEM_NAME: PluralTerm = PluralTerm::KafkaOutlet;
 
     fn cmd_arg_item_name(&self) -> Option<String> {
         self.cmd.address.clone()
     }
 
-    fn cmd_arg_delete_all(&self) -> bool {
-        self.cmd.all
-    }
-
-    fn cmd_arg_confirm_deletion(&self) -> bool {
-        self.cmd.yes
-    }
-
     fn terminal(&self) -> Terminal<TerminalStream<Term>> {
         self.opts.terminal.clone()
+    }
+
+    async fn get_arg_item_name_or_default(&self) -> miette::Result<String> {
+        Ok(self
+            .cmd_arg_item_name()
+            .unwrap_or(DefaultAddress::KAFKA_OUTLET.to_string()))
     }
 
     async fn list_items_names(&self) -> miette::Result<Vec<String>> {
@@ -97,23 +87,22 @@ impl<'a> DeleteCommandTui for DeleteTui<'a> {
         Ok(addresses)
     }
 
-    async fn delete_single(&self, item_name: &str) -> miette::Result<()> {
-        self.node
-            .tell(
+    async fn show_single(&self, item_name: &str) -> miette::Result<()> {
+        let outlets: Vec<ServiceStatus> = self
+            .node
+            .ask(
                 self.ctx,
-                Request::delete(format!("/node/services/{}", DefaultAddress::KAFKA_OUTLET))
-                    .body(DeleteServiceRequest::new(item_name)),
+                Request::get(format!("/node/services/{}", DefaultAddress::KAFKA_OUTLET)),
             )
             .await?;
-        let node_name = self.node.node_name();
+        let outlet = outlets
+            .into_iter()
+            .find(|i| i.addr == item_name)
+            .ok_or_else(|| miette!("Kafka Outlet not found"))?;
         self.terminal()
             .stdout()
-            .plain(fmt_ok!(
-                "Kafka Outlet with address {} on Node {} has been deleted",
-                color_primary(item_name),
-                color_primary(&node_name)
-            ))
-            .json(serde_json::json!({ "address": item_name, "node": node_name }))
+            .plain(outlet.item()?)
+            .json_obj(&outlet)?
             .write_line()?;
         Ok(())
     }

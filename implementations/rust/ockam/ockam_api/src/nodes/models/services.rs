@@ -1,8 +1,7 @@
 use crate::colors::{color_primary, color_warn};
-
-use crate::output::Output;
-
 use crate::kafka::{ConsumerPublishing, ConsumerResolution};
+use crate::output::Output;
+use crate::terminal::fmt;
 use minicbor::{Decode, Encode};
 use ockam_abac::PolicyExpression;
 use ockam_core::compat::net::SocketAddr;
@@ -10,6 +9,7 @@ use ockam_core::Address;
 use ockam_multiaddr::MultiAddr;
 use serde::Serialize;
 use std::fmt::Display;
+use std::fmt::Write;
 
 #[derive(Debug, Clone, Decode, Encode)]
 #[rustfmt::skip]
@@ -237,6 +237,14 @@ impl Display for ServiceStatus {
 
 impl Output for ServiceStatus {
     fn item(&self) -> crate::Result<String> {
-        Ok(format!("{}", self))
+        let mut f = String::new();
+        writeln!(f, "{}{}", fmt::PADDING, self)?;
+        Ok(f)
+    }
+
+    fn as_list_item(&self) -> crate::Result<String> {
+        let mut f = String::new();
+        writeln!(f, "{}", self)?;
+        Ok(f)
     }
 }

@@ -2,12 +2,12 @@ use clap::Args;
 
 use crate::node::NodeOpts;
 use crate::util::print_deprecated_warning;
-use crate::{docs, CommandGlobalOpts};
+use crate::{docs, Command, CommandGlobalOpts};
 
 const PREVIEW_TAG: &str = include_str!("../../static/preview_tag.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/list/after_long_help.txt");
 
-/// List Kafka Consumers
+/// List Kafka Consumers.
 /// [DEPRECATED]
 #[derive(Args, Clone, Debug)]
 #[command(

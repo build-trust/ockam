@@ -163,15 +163,15 @@ impl Default for ErrorReportHandler {
 }
 
 impl miette::ReportHandler for ErrorReportHandler {
-    fn debug(&self, error: &dyn Diagnostic, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+    fn debug(&self, error: &dyn Diagnostic, f: &mut Formatter<'_>) -> core::fmt::Result {
         if f.alternate() {
             return Debug::fmt(error, f);
         }
 
         writeln!(f, "\n{}\n", fmt_heading!("Error:".red()))?;
 
-        // Try to extract the source message from the error, and disregard the rest. If
-        // possible replace the new lines w/ fmt_log! outputs.
+        // Try to extract the source message from the error, and disregard the rest.
+        // If possible, replace the new lines w/ fmt_log! outputs.
         let error_message = match error.source() {
             Some(err) => format!("{}", err),
             None => format!("{}", error),
@@ -183,11 +183,6 @@ impl miette::ReportHandler for ErrorReportHandler {
         if let Some(help) = error.help() {
             writeln!(f, "{}", fmt_log!("{}", help))?;
         }
-
-        // TODO: wait until we have the dedicated documentation page for errors
-        // if let Some(url) = error.url() {
-        //     writeln!(f, "{}", fmt_log!("{}", url))?;
-        // }
 
         // Output the error code and version code.
         let code_as_str = match error.code() {

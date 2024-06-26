@@ -103,7 +103,7 @@ impl ShowTui {
 
 #[ockam_core::async_trait]
 impl ShowCommandTui for ShowTui {
-    const ITEM_NAME: PluralTerm = PluralTerm::Outlet;
+    const ITEM_NAME: PluralTerm = PluralTerm::TcpOutlet;
 
     fn cmd_arg_item_name(&self) -> Option<String> {
         self.cmd.alias.clone()
@@ -142,7 +142,7 @@ impl ShowCommandTui for ShowTui {
             .ask(&self.ctx, Request::get(format!("/node/outlet/{item_name}")))
             .await?;
         let info = OutletInformation {
-            node_name: self.node.node_name().to_string(),
+            node_name: self.node.node_name(),
             worker_addr: outlet_status.worker_address().into_diagnostic()?,
             socket_addr: outlet_status.socket_addr,
         };

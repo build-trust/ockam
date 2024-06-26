@@ -713,6 +713,7 @@ impl Response {
     }
 
     pub fn internal_error_no_request(msg: &str) -> Response<Error> {
+        error!(%msg);
         let e = Error::new_without_path().with_message(msg);
         Response::builder(Id::default(), Status::InternalServerError).body(e)
     }

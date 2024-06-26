@@ -13,7 +13,8 @@ use crate::{
     Command, CommandGlobalOpts,
 };
 
-/// Create a new Kafka Consumer. Kafka clients v3.7.0 and earlier are supported. You can find the version you have with 'kafka-console-consumer.sh --version'.
+/// Create a new Kafka Consumer. Kafka clients v3.7.0 and earlier are supported.
+/// You can find the version you have with 'kafka-console-consumer.sh --version'.
 /// [DEPRECATED]
 #[derive(Clone, Debug, Args)]
 pub struct CreateCommand {

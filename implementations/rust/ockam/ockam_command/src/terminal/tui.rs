@@ -252,8 +252,10 @@ pub enum PluralTerm {
     Relay,
     Space,
     Project,
-    Inlet,
-    Outlet,
+    TcpInlet,
+    TcpOutlet,
+    KafkaInlet,
+    KafkaOutlet,
     Policy,
 }
 
@@ -266,8 +268,10 @@ impl PluralTerm {
             PluralTerm::Relay => "relay",
             PluralTerm::Space => "space",
             PluralTerm::Project => "project",
-            PluralTerm::Inlet => "inlet",
-            PluralTerm::Outlet => "outlet",
+            PluralTerm::TcpInlet => "tcp inlet",
+            PluralTerm::TcpOutlet => "tcp outlet",
+            PluralTerm::KafkaInlet => "kafka inlet",
+            PluralTerm::KafkaOutlet => "kafka outlet",
             PluralTerm::Policy => "policy",
         }
     }
@@ -280,8 +284,10 @@ impl PluralTerm {
             PluralTerm::Relay => "relays",
             PluralTerm::Space => "spaces",
             PluralTerm::Project => "projects",
-            PluralTerm::Inlet => "inlets",
-            PluralTerm::Outlet => "outlets",
+            PluralTerm::TcpInlet => "tcp inlets",
+            PluralTerm::TcpOutlet => "tcp outlets",
+            PluralTerm::KafkaInlet => "kafka inlets",
+            PluralTerm::KafkaOutlet => "kafka outlets",
             PluralTerm::Policy => "policies",
         }
     }

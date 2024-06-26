@@ -11,10 +11,10 @@ setup_suite() {
   get_project_data
 
   # Remove all project members except for the enrolled identity
-  OCKAM_HOME=$OCKAM_HOME_BASE $OCKAM project-member delete --all
+  OCKAM_HOME=$OCKAM_HOME_BASE $OCKAM project-member delete --all || true
 
   # Remove all nodes from the root OCKAM_HOME directory
-  OCKAM_HOME=$OCKAM_HOME_BASE $OCKAM node delete --all --force --yes
+  OCKAM_HOME=$OCKAM_HOME_BASE $OCKAM node delete --all --force --yes || true
 }
 
 teardown_suite() {

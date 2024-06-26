@@ -2,18 +2,16 @@ use async_trait::async_trait;
 use clap::Args;
 use colorful::Colorful;
 use console::Term;
-use miette::IntoDiagnostic;
 
 use crate::{docs, Command, CommandGlobalOpts};
 use ockam::Context;
-use ockam_api::colors::OckamColor;
+use ockam_api::colors::color_primary;
+use ockam_api::fmt_ok;
 use ockam_api::nodes::models::portal::InletStatus;
 use ockam_api::nodes::service::portals::Inlets;
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_api::terminal::{Terminal, TerminalStream};
-use ockam_api::{color, fmt_ok};
 use ockam_core::api::Request;
-use ockam_core::AsyncTryClone;
 
 use crate::node::NodeOpts;
 use crate::tcp::util::alias_parser;
@@ -39,8 +37,8 @@ pub struct DeleteCommand {
     #[arg(display_order = 901, long, short)]
     yes: bool,
 
-    /// Delete all the TCP Inlet
-    #[arg(long, short, group = "tcp-inlets")]
+    /// Delete all the TCP Inlets
+    #[arg(long, short)]
     all: bool,
 }
 
@@ -49,29 +47,24 @@ impl Command for DeleteCommand {
     const NAME: &'static str = "tcp-inlet delete";
 
     async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
-        Ok(DeleteTui::run(
-            ctx.async_try_clone().await.into_diagnostic()?,
-            opts,
-            self.clone(),
-        )
-        .await?)
+        Ok(DeleteTui::run(ctx, opts, &self).await?)
     }
 }
 
-struct DeleteTui {
-    ctx: Context,
+struct DeleteTui<'a> {
+    ctx: &'a Context,
     opts: CommandGlobalOpts,
     node: BackgroundNodeClient,
-    cmd: DeleteCommand,
+    cmd: &'a DeleteCommand,
 }
 
-impl DeleteTui {
+impl<'a> DeleteTui<'a> {
     pub async fn run(
-        ctx: Context,
+        ctx: &'a Context,
         opts: CommandGlobalOpts,
-        cmd: DeleteCommand,
+        cmd: &'a DeleteCommand,
     ) -> miette::Result<()> {
-        let node = BackgroundNodeClient::create(&ctx, &opts.state, &cmd.node_opts.at_node).await?;
+        let node = BackgroundNodeClient::create(ctx, &opts.state, &cmd.node_opts.at_node).await?;
         let tui = Self {
             ctx,
             opts,
@@ -83,8 +76,8 @@ impl DeleteTui {
 }
 
 #[ockam_core::async_trait]
-impl DeleteCommandTui for DeleteTui {
-    const ITEM_NAME: PluralTerm = PluralTerm::Inlet;
+impl<'a> DeleteCommandTui for DeleteTui<'a> {
+    const ITEM_NAME: PluralTerm = PluralTerm::TcpInlet;
 
     fn cmd_arg_item_name(&self) -> Option<String> {
         self.cmd.alias.clone()
@@ -103,24 +96,22 @@ impl DeleteCommandTui for DeleteTui {
     }
 
     async fn list_items_names(&self) -> miette::Result<Vec<String>> {
-        let inlets: Vec<InletStatus> = self
-            .node
-            .ask(&self.ctx, Request::get("/node/inlet"))
-            .await?;
+        let inlets: Vec<InletStatus> = self.node.ask(self.ctx, Request::get("/node/inlet")).await?;
         let names = inlets.into_iter().map(|i| i.alias).collect();
         Ok(names)
     }
 
     async fn delete_single(&self, item_name: &str) -> miette::Result<()> {
         let node_name = self.node.node_name();
-        self.node.delete_inlet(&self.ctx, item_name).await?;
+        self.node.delete_inlet(self.ctx, item_name).await?;
         self.terminal()
             .stdout()
             .plain(fmt_ok!(
-                "TCP inlet with alias {} on Node {} has been deleted",
-                color!(item_name, OckamColor::PrimaryResource),
-                color!(node_name, OckamColor::PrimaryResource)
+                "TCP Inlet with alias {} on Node {} has been deleted",
+                color_primary(item_name),
+                color_primary(&node_name)
             ))
+            .json(serde_json::json!({ "alias": item_name, "node": node_name }))
             .write_line()?;
         Ok(())
     }
