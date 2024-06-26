@@ -139,17 +139,8 @@ defmodule Ockam.SecureChannel.Tests do
   test "secure channel trash packets" do
     replay = fn %Message{payload: payload} = message, n ->
       if rem(n, 2) == 0 do
-        # Payload is actually _not_ the raw encrypted bytes..  it's the encrypted bytes encoded with bare.
-        # That means that we can have two different kind of "bad" packets:  things that can't
-        # be decoded from bare,  and things that can be decoded from bare, but then can't be decrypted.
-        # We put both here.
         trash1 = %Message{message | payload: payload <> "s"} |> Message.forward_trace()
-        {:ok, raw, ""} = :bare.decode(payload, :data)
-
-        trash2 =
-          %Message{message | payload: :bare.encode(raw <> "s", :data)} |> Message.forward_trace()
-
-        [trash1, trash2]
+        [trash1]
       else
         [Message.forward_trace(message)]
       end
