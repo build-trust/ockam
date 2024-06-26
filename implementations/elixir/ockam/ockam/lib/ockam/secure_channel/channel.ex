@@ -520,7 +520,7 @@ defmodule Ockam.SecureChannel.Channel do
   defp continue_handshake({:continue, key_exchange_state}, state) do
     with {:ok, data, next} <- XX.out_payload(key_exchange_state) do
       msg = %{
-        payload: :bare.encode(data, :data),
+        payload: data,
         onward_route: state.peer_route,
         return_route: [state.inner_address]
       }
@@ -531,55 +531,54 @@ defmodule Ockam.SecureChannel.Channel do
   end
 
   defp handle_inner_message_impl(message, %Channel{channel_state: %Handshaking{xx: xx}} = state) do
-    with {:ok, data} <- bare_decode_strict(message.payload, :data),
-         {:ok, next} <- XX.in_payload(xx, data) do
+    with {:ok, next} <- XX.in_payload(xx, message.payload) do
       continue_handshake(next, %Channel{state | peer_route: message.return_route})
     end
   end
 
   defp handle_inner_message_impl(message, %Channel{channel_state: channel_state} = state) do
-    with {:ok, ciphertext} <- bare_decode_strict(message.payload, :data),
-         {:ok, plaintext, decrypt_st} <-
-           Decryptor.decrypt("", ciphertext, channel_state.decrypt_st) do
-      case Messages.decode(plaintext) do
-        {:ok, %Messages.Payload{} = payload} ->
-          message = struct(Ockam.Message, Map.from_struct(payload))
+    case Decryptor.decrypt("", message.payload, channel_state.decrypt_st) do
+      {:ok, plaintext, decrypt_st} ->
+        case Messages.decode(plaintext) do
+          {:ok, %Messages.Payload{} = payload} ->
+            message = struct(Ockam.Message, Map.from_struct(payload))
 
-          handle_decrypted_message(message, %Channel{
-            state
-            | channel_state: %{channel_state | decrypt_st: decrypt_st}
-          })
+            handle_decrypted_message(message, %Channel{
+              state
+              | channel_state: %{channel_state | decrypt_st: decrypt_st}
+            })
 
-        {:ok, :close} ->
-          Logger.debug("Peer closed secure channel, terminating #{inspect(state.address)}")
-          {:stop, :normal, channel_state}
+          {:ok, :close} ->
+            Logger.debug("Peer closed secure channel, terminating #{inspect(state.address)}")
+            {:stop, :normal, channel_state}
 
-        ## TODO: add tests
-        {:ok, %Messages.RefreshCredentials{contact: contact, credentials: credentials}} ->
-          with {:ok, peer_identity, peer_identity_id} <- Identity.validate_contact_data(contact),
-               true <- peer_identity_id == channel_state.peer_identity_id,
-               :ok <- process_credentials(credentials, peer_identity_id, state.authorities) do
-            {:ok,
-             %Channel{
-               state
-               | channel_state: %{
-                   channel_state
-                   | peer_identity: peer_identity,
-                     decrypt_st: decrypt_st
-                 }
-             }}
-          else
-            error ->
-              Logger.warning("Invalid credential refresh: #{inspect(error)}")
-              {:stop, {:error, :invalid_credential_refresh}, state}
-          end
+          ## TODO: add tests
+          {:ok, %Messages.RefreshCredentials{contact: contact, credentials: credentials}} ->
+            with {:ok, peer_identity, peer_identity_id} <-
+                   Identity.validate_contact_data(contact),
+                 true <- peer_identity_id == channel_state.peer_identity_id,
+                 :ok <- process_credentials(credentials, peer_identity_id, state.authorities) do
+              {:ok,
+               %Channel{
+                 state
+                 | channel_state: %{
+                     channel_state
+                     | peer_identity: peer_identity,
+                       decrypt_st: decrypt_st
+                   }
+               }}
+            else
+              error ->
+                Logger.warning("Invalid credential refresh: #{inspect(error)}")
+                {:stop, {:error, :invalid_credential_refresh}, state}
+            end
 
-        {:error, reason} ->
-          {:error, reason}
-      end
-    else
-      # The message couldn't be decrypted.  State remains unchanged
+          {:error, reason} ->
+            {:error, reason}
+        end
+
       error ->
+        # The message couldn't be decrypted.  State remains unchanged
         Logger.warning("Failed to decrypt message, discarded: #{inspect(error)}")
         {:ok, state}
     end
@@ -627,7 +626,6 @@ defmodule Ockam.SecureChannel.Channel do
   defp send_payload_over_encrypted_channel(payload, encrypt_st, peer_route) do
     with {:ok, encoded} <- Messages.encode(payload),
          {:ok, ciphertext, encrypt_st} <- Encryptor.encrypt("", encoded, encrypt_st) do
-      ciphertext = :bare.encode(ciphertext, :data)
       envelope = %{onward_route: peer_route, return_route: [], payload: ciphertext}
       Router.route(envelope)
       {:ok, encrypt_st}
@@ -655,12 +653,5 @@ defmodule Ockam.SecureChannel.Channel do
       |> Keyword.merge(address_prefix: "ISC_R_", role: :responder, restart_type: :temporary)
 
     Keyword.merge(opts, worker_mod: __MODULE__, worker_options: worker_opts)
-  end
-
-  defp bare_decode_strict(data, type) do
-    case :bare.decode(data, type) do
-      {:ok, result, ""} -> {:ok, result}
-      error -> {:error, {:invalid_bare_data, type, error}}
-    end
   end
 end

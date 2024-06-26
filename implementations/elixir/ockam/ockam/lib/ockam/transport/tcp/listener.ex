@@ -26,7 +26,7 @@ if Code.ensure_loaded?(:ranch) do
       transport = :ranch_tcp
       transport_options = :ranch.normalize_opts(port: port, ip: ip)
       protocol = Ockam.Transport.TCP.Handler
-      protocol_options = [packet: 2, nodelay: true, handler_options: handler_options]
+      protocol_options = [nodelay: true, handler_options: handler_options]
 
       with {:ok, _apps} <- Application.ensure_all_started(:ranch) do
         {:ok, listener_address} =
