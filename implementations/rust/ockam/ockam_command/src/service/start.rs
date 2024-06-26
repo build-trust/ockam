@@ -71,7 +71,7 @@ impl StartCommand {
 pub(crate) async fn start_service_impl<T>(
     ctx: &Context,
     node: &BackgroundNodeClient,
-    serv_name: &str,
+    service_name: &str,
     req: Request<T>,
 ) -> Result<()>
 where
@@ -80,15 +80,15 @@ where
     Ok(node
         .tell(ctx, req)
         .await
-        .map_err(|e| miette!("Failed to start {} service: {e:?}", serv_name))?)
+        .map_err(|e| miette!("Failed to start {service_name} service: {e}"))?)
 }
 
 /// Public so `ockam_command::node::create` can use it.
 pub async fn start_hop_service(
     ctx: &Context,
     node: &BackgroundNodeClient,
-    serv_addr: &str,
+    service_addr: &str,
 ) -> Result<()> {
-    let req = api::start_hop_service(serv_addr);
+    let req = api::start_hop_service(service_addr);
     start_service_impl(ctx, node, "Hop", req).await
 }

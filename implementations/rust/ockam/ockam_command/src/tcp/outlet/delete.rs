@@ -1,7 +1,7 @@
+use async_trait::async_trait;
 use clap::Args;
 use colorful::Colorful;
 use console::Term;
-use miette::IntoDiagnostic;
 
 use ockam::Context;
 use ockam_api::colors::color_primary;
@@ -10,15 +10,13 @@ use ockam_api::nodes::models::portal::OutletStatus;
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_api::terminal::{Terminal, TerminalStream};
 use ockam_core::api::Request;
-use ockam_core::AsyncTryClone;
 
 use crate::node::NodeOpts;
 use crate::tcp::util::alias_parser;
-use crate::{docs, CommandGlobalOpts};
+use crate::{docs, Command, CommandGlobalOpts};
 
 use crate::terminal::tui::DeleteCommandTui;
 use crate::tui::PluralTerm;
-use crate::util::async_cmd;
 
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
 const LONG_ABOUT: &str = include_str!("./static/delete/long_about.txt");
@@ -49,20 +47,29 @@ pub struct DeleteCommand {
     all: bool,
 }
 
-pub struct DeleteTui {
-    ctx: Context,
+#[async_trait]
+impl Command for DeleteCommand {
+    const NAME: &'static str = "tcp-outlet delete";
+
+    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+        Ok(DeleteTui::run(ctx, opts, &self).await?)
+    }
+}
+
+pub struct DeleteTui<'a> {
+    ctx: &'a Context,
     opts: CommandGlobalOpts,
-    cmd: DeleteCommand,
+    cmd: &'a DeleteCommand,
     node: BackgroundNodeClient,
 }
 
-impl DeleteTui {
+impl<'a> DeleteTui<'a> {
     pub async fn run(
-        ctx: Context,
+        ctx: &'a Context,
         opts: CommandGlobalOpts,
-        cmd: DeleteCommand,
+        cmd: &'a DeleteCommand,
     ) -> miette::Result<()> {
-        let node = BackgroundNodeClient::create(&ctx, &opts.state, &cmd.node_opts.at_node).await?;
+        let node = BackgroundNodeClient::create(ctx, &opts.state, &cmd.node_opts.at_node).await?;
         let tui = Self {
             ctx,
             opts,
@@ -73,30 +80,9 @@ impl DeleteTui {
     }
 }
 
-impl DeleteCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |ctx| async move {
-            self.async_run(&ctx, opts).await
-        })
-    }
-
-    pub fn name(&self) -> String {
-        "tcp-outlet delete".into()
-    }
-
-    pub async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
-        DeleteTui::run(
-            ctx.async_try_clone().await.into_diagnostic()?,
-            opts,
-            self.clone(),
-        )
-        .await
-    }
-}
-
-#[ockam_core::async_trait]
-impl DeleteCommandTui for DeleteTui {
-    const ITEM_NAME: PluralTerm = PluralTerm::Outlet;
+#[async_trait]
+impl<'a> DeleteCommandTui for DeleteTui<'a> {
+    const ITEM_NAME: PluralTerm = PluralTerm::TcpOutlet;
 
     fn cmd_arg_item_name(&self) -> Option<String> {
         self.cmd.alias.clone()
@@ -117,7 +103,7 @@ impl DeleteCommandTui for DeleteTui {
     async fn list_items_names(&self) -> miette::Result<Vec<String>> {
         let res: Vec<OutletStatus> = self
             .node
-            .ask(&self.ctx, Request::get("/node/outlet"))
+            .ask(self.ctx, Request::get("/node/outlet"))
             .await?;
         let items_names: Vec<String> = res
             .iter()
@@ -130,14 +116,14 @@ impl DeleteCommandTui for DeleteTui {
         let node_name = self.node.node_name();
         self.node
             .tell(
-                &self.ctx,
+                self.ctx,
                 Request::delete(format!("/node/outlet/{item_name}")),
             )
             .await?;
         self.terminal()
             .stdout()
             .plain(fmt_ok!(
-                "Outlet with alias {} on node {} has been deleted",
+                "TCP Outlet with alias {} on node {} has been deleted",
                 color_primary(item_name),
                 color_primary(&node_name)
             ))

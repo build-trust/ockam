@@ -1,6 +1,7 @@
 use core::str::FromStr;
 use ockam_core::compat::fmt::Formatter;
 use ockam_core::compat::io::{Error, ErrorKind};
+use serde::{Deserialize, Serialize};
 
 /// Represents a range of port, inclusive start, inclusive end.
 /// Always guarantee that end is bigger than start and at least 1 port in the range
@@ -13,6 +14,19 @@ pub struct PortRange {
 impl core::fmt::Display for PortRange {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}-{}", self.start, self.end)
+    }
+}
+
+impl Serialize for PortRange {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(&self.to_string())
+    }
+}
+
+impl<'de> Deserialize<'de> for PortRange {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let text = String::deserialize(deserializer)?;
+        PortRange::from_str(&text).map_err(serde::de::Error::custom)
     }
 }
 

@@ -323,7 +323,15 @@ impl InMemoryNode {
             None => Ok(DeleteKafkaServiceResult::ServiceNotFound { address, kind }),
             Some(e) => {
                 if kind.eq(e.kind()) {
-                    ctx.stop_worker(address.clone()).await?;
+                    match e.kind() {
+                        KafkaServiceKind::Inlet => {
+                            ctx.stop_worker(address.clone()).await?;
+                        }
+                        KafkaServiceKind::Outlet => {
+                            ctx.stop_worker(KAFKA_OUTLET_INTERCEPTOR_ADDRESS).await?;
+                            ctx.stop_worker(KAFKA_OUTLET_BOOTSTRAP_ADDRESS).await?;
+                        }
+                    }
                     self.registry.kafka_services.remove(&address).await;
                     Ok(DeleteKafkaServiceResult::ServiceDeleted)
                 } else {

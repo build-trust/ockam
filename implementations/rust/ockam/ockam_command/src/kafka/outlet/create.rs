@@ -2,14 +2,17 @@ use async_trait::async_trait;
 
 use clap::{command, Args};
 use colorful::Colorful;
-use tokio::{sync::Mutex, try_join};
+use miette::miette;
+use serde::Serialize;
+use std::fmt::Write;
 
 use ockam::Context;
 use ockam_abac::PolicyExpression;
-use ockam_api::colors::OckamColor;
+use ockam_api::colors::{color_primary, color_warn};
 use ockam_api::nodes::models::services::StartKafkaOutletRequest;
 use ockam_api::nodes::models::services::StartServiceRequest;
 use ockam_api::nodes::BackgroundNodeClient;
+use ockam_api::output::Output;
 use ockam_api::{fmt_log, fmt_ok};
 use ockam_core::api::Request;
 
@@ -17,7 +20,6 @@ use crate::node::util::initialize_default_node;
 use crate::{
     kafka::{kafka_default_outlet_addr, kafka_default_outlet_server},
     node::NodeOpts,
-    service::start::start_service_impl,
     Command, CommandGlobalOpts,
 };
 
@@ -26,15 +28,19 @@ use crate::{
 pub struct CreateCommand {
     #[command(flatten)]
     pub node_opts: NodeOpts,
+
     /// The local address of the service
     #[arg(long, default_value_t = kafka_default_outlet_addr())]
     pub addr: String,
+
     /// The address of the kafka bootstrap broker
     #[arg(long, default_value_t = kafka_default_outlet_server())]
     pub bootstrap_server: String,
-    /// If tls is set then the outlet will establish a TLS connection over TCP
+
+    /// If set, the outlet will establish a TLS connection over TCP
     #[arg(long, id = "BOOLEAN")]
     pub tls: bool,
+
     /// Policy expression that will be used for access control to the Kafka Outlet.
     /// If you don't provide it, the policy set for the "tcp-outlet" resource type will be used.
     ///
@@ -49,10 +55,16 @@ impl Command for CreateCommand {
 
     async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
         initialize_default_node(ctx, &opts).await?;
-        opts.terminal
-            .write_line(&fmt_log!("Creating KafkaOutlet service"))?;
-        let is_finished = Mutex::new(false);
-        let send_req = async {
+
+        let outlet = {
+            let pb = opts.terminal.progress_bar();
+            if let Some(pb) = pb.as_ref() {
+                pb.set_message(format!(
+                    "Creating Kafka Outlet to bootstrap server {}...\n",
+                    color_primary(&self.bootstrap_server)
+                ));
+            }
+
             let payload = StartKafkaOutletRequest::new(
                 self.bootstrap_server.clone(),
                 self.tls,
@@ -62,43 +74,62 @@ impl Command for CreateCommand {
             let req = Request::post("/node/services/kafka_outlet").body(payload);
             let node =
                 BackgroundNodeClient::create(ctx, &opts.state, &self.node_opts.at_node).await?;
+            node.tell(ctx, req)
+                .await
+                .map_err(|e| miette!("Failed to start Kafka Outlet: {e}"))?;
 
-            start_service_impl(ctx, &node, "KafkaOutlet", req).await?;
-            *is_finished.lock().await = true;
-
-            Ok(())
+            KafkaOutletOutput {
+                node_name: node.node_name(),
+                bootstrap_server: self.bootstrap_server.clone(),
+            }
         };
-
-        let msgs = vec![
-            format!(
-                "Building KafkaOutlet service {}",
-                &self
-                    .addr
-                    .to_string()
-                    .color(OckamColor::PrimaryResource.color())
-            ),
-            format!(
-                "Starting KafkaOutlet service, connecting to {}",
-                &self
-                    .bootstrap_server
-                    .to_string()
-                    .color(OckamColor::PrimaryResource.color())
-            ),
-        ];
-        let progress_output = opts.terminal.loop_messages(&msgs, &is_finished);
-        let (_, _) = try_join!(send_req, progress_output)?;
 
         opts.terminal
             .stdout()
-            .plain(fmt_ok!(
-                "KafkaOutlet service started at {}\n",
-                &self
-                    .bootstrap_server
-                    .to_string()
-                    .color(OckamColor::PrimaryResource.color())
-            ))
+            .plain(outlet.item()?)
+            .json_obj(outlet)?
             .write_line()?;
 
         Ok(())
+    }
+}
+
+#[derive(Serialize)]
+struct KafkaOutletOutput {
+    node_name: String,
+    bootstrap_server: String,
+}
+
+impl Output for KafkaOutletOutput {
+    fn item(&self) -> ockam_api::Result<String> {
+        let mut f = String::new();
+        writeln!(
+            f,
+            "{}\n{}\n",
+            fmt_ok!(
+                "Created a new Kafka Outlet in the Node {}",
+                color_primary(&self.node_name)
+            ),
+            fmt_log!(
+                "bound to the bootstrap server at {}",
+                color_primary(&self.bootstrap_server)
+            ),
+        )?;
+
+        writeln!(
+            f,
+            "{}\n{}",
+            fmt_log!(
+                "{}",
+                color_warn("Kafka clients v3.7.0 and earlier are supported")
+            ),
+            fmt_log!(
+                "{}: {}",
+                color_warn("You can find the version you have with"),
+                color_primary("kafka-topics.sh --version")
+            )
+        )?;
+
+        Ok(f)
     }
 }

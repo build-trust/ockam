@@ -13,7 +13,9 @@ use crate::{
     Command, CommandGlobalOpts,
 };
 
-/// Create a new Kafka Producer. Kafka clients v3.7.0 and earlier are supported. You can find the version you have with 'kafka-console-producer.sh --version'. [DEPRECATED]
+/// Create a new Kafka Producer. Kafka clients v3.7.0 and earlier are supported.
+/// You can find the version you have with 'kafka-console-producer.sh --version'.
+/// [DEPRECATED]
 #[derive(Clone, Debug, Args)]
 pub struct CreateCommand {
     #[command(flatten)]
