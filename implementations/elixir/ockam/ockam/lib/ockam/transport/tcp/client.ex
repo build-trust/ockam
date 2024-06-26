@@ -4,7 +4,7 @@ defmodule Ockam.Transport.TCP.Client do
 
   alias Ockam.Address
   alias Ockam.Message
-  alias Ockam.Transport.TCP
+  alias Ockam.Transport.TCP.TransportMessage
   alias Ockam.Transport.TCPAddress
   alias Ockam.Wire
 
@@ -47,13 +47,17 @@ defmodule Ockam.Transport.TCP.Client do
       case :gen_tcp.connect(inet_address, port, [
              :binary,
              protocol,
-             active: @active,
              send_timeout: @send_timeout,
-             packet: 2,
-             nodelay: true
+             nodelay: true,
+             active: false
            ]) do
         {:ok, socket} ->
+          # Connection Header, version "1"
+          :ok = :gen_tcp.send(socket, <<1>>)
+          {:ok, <<1>>} = :gen_tcp.recv(socket, 1, 5000)
+
           :gen_tcp.controlling_process(socket, self())
+          :ok = :inet.setopts(socket, active: @active, packet: 4)
 
           state =
             Map.merge(state, %{
@@ -95,7 +99,7 @@ defmodule Ockam.Transport.TCP.Client do
   @impl true
   def handle_info({:tcp, socket, data}, %{socket: socket} = state) do
     ## TODO: send/receive message in multiple TCP packets
-    case Wire.decode(data, :tcp) do
+    case TransportMessage.decode(data) do
       {:ok, message} ->
         forwarded_message =
           message
@@ -170,16 +174,8 @@ defmodule Ockam.Transport.TCP.Client do
   defp encode_and_send_over_tcp(message, state) do
     forwarded_message = Message.forward(message)
 
-    with {:ok, encoded_message} <- Wire.encode(forwarded_message) do
-      ## TODO: send/receive message in multiple TCP packets
-      case byte_size(encoded_message) <= TCP.packed_size_limit() do
-        true ->
-          send_over_tcp(encoded_message, state)
-
-        false ->
-          Logger.error("Message to big for TCP: #{inspect(message)}")
-          {:error, {:message_too_big, message}}
-      end
+    with {:ok, encoded_message} <- TransportMessage.encode(forwarded_message) do
+      send_over_tcp(encoded_message, state)
     end
   end
 

@@ -45,6 +45,10 @@ defmodule Ockam.TypedCBOR.Plugin do
     %{schema: {:enum, mappings}, required: true}
   end
 
+  defp field_schema({:variant_enum, mappings}, t) when is_list(t) do
+    %{schema: {:variant_enum, mappings}, required: true}
+  end
+
   defp field_schema(schema, t) when is_list(t),
     do: raise("provider schema #{inspect(schema)} must match enum type #{inspect(t)}")
 

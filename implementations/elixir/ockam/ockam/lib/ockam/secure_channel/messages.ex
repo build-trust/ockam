@@ -14,10 +14,10 @@ defmodule Ockam.SecureChannel.Messages do
     """
     use TypedStruct
 
-    @address_schema {:struct,
+    @address_schema {:struct_values,
                      %{
-                       type: %{key: 1, schema: :integer, required: true},
-                       value: %{key: 2, schema: :charlist, required: true}
+                       type: %{key: 0, schema: :integer, required: true},
+                       value: %{key: 1, schema: :binary, required: true}
                      }}
     def from_cbor_term(term) do
       addr = TypedCBOR.from_cbor_term(@address_schema, term)
@@ -70,18 +70,36 @@ defmodule Ockam.SecureChannel.Messages do
     end
   end
 
-  @enum_schema {:variant_enum,
-                [
-                  {Ockam.SecureChannel.Messages.Payload, 0},
-                  {Ockam.SecureChannel.Messages.RefreshCredentials, 1},
-                  close: 2
-                ]}
+  defmodule PaddedMessage do
+    @moduledoc """
+    Top-level secure channel message, with padding support.
+    """
+    use TypedStruct
+
+    @enum_schema {:variant_enum,
+                  [
+                    {Ockam.SecureChannel.Messages.Payload, 0},
+                    {Ockam.SecureChannel.Messages.RefreshCredentials, 1},
+                    close: 2
+                  ]}
+    typedstruct do
+      plugin(TypedCBOR.Plugin, encode_as: :list)
+
+      field(:message, %Ockam.SecureChannel.Messages.Payload{} | %RefreshCredentials{} | :close,
+        minicbor: [key: 0, schema: @enum_schema]
+      )
+
+      field(:padding, binary(), minicbor: [key: 1, schema: :binary])
+    end
+  end
 
   def decode(encoded) do
-    TypedCBOR.decode_strict(@enum_schema, encoded)
+    with {:ok, %PaddedMessage{message: message}} <- PaddedMessage.decode_strict(encoded) do
+      {:ok, message}
+    end
   end
 
   def encode(msg) do
-    TypedCBOR.encode(@enum_schema, msg)
+    PaddedMessage.encode(%PaddedMessage{message: msg, padding: <<>>})
   end
 end
