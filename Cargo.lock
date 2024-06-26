@@ -3624,9 +3624,9 @@ dependencies = [
 
 [[package]]
 name = "jaq-interpret"
-version = "1.4.0"
+version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1bbde0d83ef94bb43e862a845e9ecc3fb87210d11b1a844850a9d1a678a496cf"
+checksum = "2fe95ec3c24af3fd9f3dd1091593f5e49b003a66c496a8aa39d764d0a06ae17b"
 dependencies = [
  "ahash",
  "dyn-clone",
