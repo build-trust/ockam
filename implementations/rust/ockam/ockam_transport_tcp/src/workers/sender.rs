@@ -123,23 +123,35 @@ impl TcpSendWorker {
         // Create a message buffer with prepended length
         let transport_message = TcpTransportMessage::from(local_message);
 
-        let msg_len = minicbor::len(&transport_message);
+        // Due to minicbor bug this value is bigger than should be for structures having
+        // #[cbor(transparent)] attribute. So, this code accounts for that.
+        let max_expected_payload_len = minicbor::len(&transport_message);
 
-        if msg_len > MAX_MESSAGE_SIZE {
+        const LENGTH_VALUE_SIZE: usize = 4; // u32
+        let mut vec = Vec::with_capacity(LENGTH_VALUE_SIZE + max_expected_payload_len);
+
+        // Let's write zeros instead of actual length, since we don't know it yet.
+        vec.extend_from_slice(&[0u8; LENGTH_VALUE_SIZE]);
+
+        // Append encoded payload
+        minicbor::encode(&transport_message, &mut vec).map_err(|_| TransportError::Encoding)?;
+
+        // Should not ever happen...
+        if vec.len() < LENGTH_VALUE_SIZE {
+            return Err(TransportError::Encoding)?;
+        }
+
+        let payload_len = vec.len() - LENGTH_VALUE_SIZE;
+
+        if payload_len > MAX_MESSAGE_SIZE {
             return Err(TransportError::MessageLengthExceeded)?;
         }
 
-        // Prepending message with u32 (4 bytes) length
-        let len = 4 + msg_len;
+        let payload_len_u32 =
+            u32::try_from(payload_len).map_err(|_| TransportError::MessageLengthExceeded)?;
 
-        let msg_len_u32 =
-            u32::try_from(msg_len).map_err(|_| TransportError::MessageLengthExceeded)?;
-
-        let mut vec = vec![0u8; len];
-
-        vec[..4].copy_from_slice(&msg_len_u32.to_be_bytes());
-        minicbor::encode(&transport_message, &mut vec[4..])
-            .map_err(|_| TransportError::Encoding)?;
+        // Replace zeros with actual length
+        vec[..LENGTH_VALUE_SIZE].copy_from_slice(&payload_len_u32.to_be_bytes());
 
         Ok(vec)
     }

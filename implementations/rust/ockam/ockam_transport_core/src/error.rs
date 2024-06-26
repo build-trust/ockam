@@ -45,6 +45,8 @@ pub enum TransportError {
     InvalidProtocolVersion,
     /// Message is longer than allowed
     MessageLengthExceeded,
+    /// Should not happen
+    EncodingInternalError,
 }
 
 impl ockam_core::compat::error::Error for TransportError {}
@@ -69,6 +71,7 @@ impl core::fmt::Display for TransportError {
             Self::AttackAttempt => write!(f, "excessive length of header, possible DoS attack"),
             Self::InvalidProtocolVersion => write!(f, "invalid protocol version"),
             Self::MessageLengthExceeded => write!(f, "message length exceeded"),
+            Self::EncodingInternalError => write!(f, "encoding internal error"),
         }
     }
 }
@@ -96,6 +99,7 @@ impl From<TransportError> for Error {
             AttackAttempt => Kind::Misuse,
             InvalidProtocolVersion => Kind::Invalid,
             MessageLengthExceeded => Kind::Unsupported,
+            EncodingInternalError => Kind::Internal,
         };
 
         Error::new(Origin::Transport, kind, err)
