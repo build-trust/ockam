@@ -1,4 +1,5 @@
 use crate::portal::addresses::Addresses;
+use crate::TlsCertificateProvider;
 use ockam_core::compat::sync::Arc;
 use ockam_core::flow_control::{FlowControlId, FlowControls};
 use ockam_core::{Address, AllowAll, IncomingAccessControl, OutgoingAccessControl};
@@ -9,6 +10,7 @@ pub struct TcpInletOptions {
     pub(super) incoming_access_control: Arc<dyn IncomingAccessControl>,
     pub(super) outgoing_access_control: Arc<dyn OutgoingAccessControl>,
     pub(super) is_paused: bool,
+    pub(super) tls_certificate_provider: Option<Arc<dyn TlsCertificateProvider>>,
 }
 
 impl TcpInletOptions {
@@ -18,12 +20,23 @@ impl TcpInletOptions {
             incoming_access_control: Arc::new(AllowAll),
             outgoing_access_control: Arc::new(AllowAll),
             is_paused: false,
+            tls_certificate_provider: None,
         }
     }
 
     /// Set TCP inlet to paused mode after start. No unpause call [`TcpInlet::unpause`]
     pub fn paused(mut self) -> Self {
         self.is_paused = true;
+        self
+    }
+
+    /// Set TLS certificate provider.
+    /// Whe omitted the inlet will be clear-text
+    pub fn with_tls_certificate_provider(
+        mut self,
+        tls_certificate: Arc<dyn TlsCertificateProvider>,
+    ) -> Self {
+        self.tls_certificate_provider = Some(tls_certificate);
         self
     }
 

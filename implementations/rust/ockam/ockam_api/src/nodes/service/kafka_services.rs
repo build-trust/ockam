@@ -216,6 +216,7 @@ impl InMemoryNode {
             None,
             false,
             false,
+            None,
         )
         .await?;
 

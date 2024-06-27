@@ -27,6 +27,7 @@ impl Inlets for BackgroundNodeClient {
         secure_channel_identifier: &Option<Identifier>,
         enable_udp_puncture: bool,
         disable_tcp_fallback: bool,
+        tls_certificate_provider: &Option<MultiAddr>,
     ) -> miette::Result<Reply<InletStatus>> {
         let request = {
             let via_project = outlet_addr.matches(0, &[ProjectProto::CODE.into()]);
@@ -59,6 +60,9 @@ impl Inlets for BackgroundNodeClient {
             }
             if let Some(identifier) = secure_channel_identifier {
                 payload.set_secure_channel_identifier(identifier.clone())
+            }
+            if let Some(tls_provider) = tls_certificate_provider {
+                payload.set_tls_certificate_provider(tls_provider.clone())
             }
             payload.set_wait_ms(wait_for_outlet_timeout.as_millis() as u64);
             Request::post("/node/inlet").body(payload)

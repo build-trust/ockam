@@ -9,7 +9,7 @@ use tracing::debug;
 
 use ockam::Context;
 use ockam_api::authenticator::direct::{
-    OCKAM_ROLE_ATTRIBUTE_ENROLLER_VALUE, OCKAM_ROLE_ATTRIBUTE_KEY,
+    OCKAM_ROLE_ATTRIBUTE_ENROLLER_VALUE, OCKAM_ROLE_ATTRIBUTE_KEY, OCKAM_TLS_ATTRIBUTE_KEY,
 };
 use ockam_api::authenticator::enrollment_tokens::TokenIssuer;
 use ockam_api::cli_state::enrollments::EnrollmentTicket;
@@ -67,6 +67,10 @@ pub struct TicketCommand {
     /// Add the enroller role to your ticket. If you specify it, this flag is transformed into the attributes `--attribute ockam-role=enroller`. This role allows the Identity using the ticket to enroll other Identities into the Project, typically something that only admins can do
     #[arg(long = "enroller")]
     enroller: bool,
+
+    /// Allows the access to the TLS certificate of the Project, this flag is transformed into the attributes `--attribute ockam-tls-certificate=true`
+    #[arg(long = "tls")]
+    tls: bool,
 
     #[command(flatten)]
     retry_opts: RetryOpts,
@@ -155,6 +159,11 @@ impl TicketCommand {
                 OCKAM_ROLE_ATTRIBUTE_ENROLLER_VALUE.to_string(),
             );
         }
+
+        if self.tls {
+            attributes.insert(OCKAM_TLS_ATTRIBUTE_KEY.to_string(), "true".to_string());
+        }
+
         Ok(attributes)
     }
 }

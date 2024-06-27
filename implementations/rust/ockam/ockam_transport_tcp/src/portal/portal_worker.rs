@@ -53,12 +53,12 @@ pub(crate) struct TcpPortalWorker {
     is_tls: bool,
 }
 
-enum ReadHalfMaybeTls {
+pub(crate) enum ReadHalfMaybeTls {
     ReadHalfNoTls(OwnedReadHalf),
     ReadHalfWithTls(ReadHalf<TlsStream<TcpStream>>),
 }
 
-enum WriteHalfMaybeTls {
+pub(crate) enum WriteHalfMaybeTls {
     WriteHalfNoTls(OwnedWriteHalf),
     WriteHalfWithTls(WriteHalf<TlsStream<TcpStream>>),
 }
@@ -70,7 +70,7 @@ impl TcpPortalWorker {
     pub(super) async fn start_new_inlet(
         ctx: &Context,
         registry: TcpRegistry,
-        stream: TcpStream,
+        streams: (ReadHalfMaybeTls, WriteHalfMaybeTls),
         hostname_port: HostnamePort,
         ping_route: Route,
         addresses: Addresses,
@@ -83,7 +83,7 @@ impl TcpPortalWorker {
             hostname_port,
             false,
             State::SendPing { ping_route },
-            Some(stream),
+            Some(streams),
             addresses,
             incoming_access_control,
             outgoing_access_control,
@@ -127,12 +127,12 @@ impl TcpPortalWorker {
         hostname_port: HostnamePort,
         is_tls: bool,
         state: State,
-        stream: Option<TcpStream>,
+        streams: Option<(ReadHalfMaybeTls, WriteHalfMaybeTls)>,
         addresses: Addresses,
         incoming_access_control: Arc<dyn IncomingAccessControl>,
         outgoing_access_control: Arc<dyn OutgoingAccessControl>,
     ) -> Result<()> {
-        let portal_type = if stream.is_some() {
+        let portal_type = if streams.is_some() {
             PortalType::Inlet
         } else {
             PortalType::Outlet
@@ -143,12 +143,11 @@ impl TcpPortalWorker {
             addresses.sender_remote
         );
 
-        let (rx, tx) = match stream {
+        let (rx, tx) = match streams {
             // A TcpStream is provided in case of an inlet
-            Some(s) => {
-                debug!("Connected to {} (with no TLS)", &hostname_port);
-                let (rx, tx) = s.into_split();
-                (Some(ReadHalfNoTls(rx)), Some(WriteHalfNoTls(tx)))
+            Some((rx, tx)) => {
+                debug!("Connected to {}", &hostname_port);
+                (Some(rx), Some(tx))
             }
             None => (None, None),
         };

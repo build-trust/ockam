@@ -128,6 +128,18 @@ pub struct CreateCommand {
         default_value_t = false
     )]
     pub no_tcp_fallback: bool,
+
+    #[arg(long, value_name = "BOOL", default_value_t = false)]
+    /// Enable TLS for the TCP Inlet.
+    /// Uses the default project TLS certificate provider, `/project/default/service/tls_certificate_provider`.
+    /// To specify a different certificate provider, use `--tls-certificate-provider`.
+    /// Requires `ockam-tls-certificate` credential attribute.
+    pub tls: bool,
+
+    #[arg(long, value_name = "ROUTE")]
+    /// Enable TLS for the TCP Inlet using the provided certificate provider.
+    /// Requires `ockam-tls-certificate` credential attribute.
+    pub tls_certificate_provider: Option<MultiAddr>,
 }
 
 pub(crate) fn default_from_addr() -> HostnamePort {
@@ -160,6 +172,18 @@ impl Command for CreateCommand {
                 ));
             }
 
+            let tls_certificate_provider =
+                if let Some(tls_certificate_provider) = &cmd.tls_certificate_provider {
+                    Some(tls_certificate_provider.clone())
+                } else if cmd.tls {
+                    Some(
+                        MultiAddr::from_str("/project/default/service/tls_certificate_provider")
+                            .unwrap(),
+                    )
+                } else {
+                    None
+                };
+
             loop {
                 let result: Reply<InletStatus> = node
                     .create_inlet(
@@ -174,6 +198,7 @@ impl Command for CreateCommand {
                         &cmd.secure_channel_identifier(&opts.state).await?,
                         cmd.udp,
                         cmd.no_tcp_fallback,
+                        &tls_certificate_provider,
                     )
                     .await?;
 

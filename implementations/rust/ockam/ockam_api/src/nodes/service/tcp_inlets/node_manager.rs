@@ -39,6 +39,7 @@ impl NodeManager {
         enable_udp_puncture: bool,
         // TODO: Introduce mode enum
         disable_tcp_fallback: bool,
+        tls_certificate_provider: Option<MultiAddr>,
     ) -> Result<InletStatus> {
         info!("Handling request to create inlet portal");
         debug! {
@@ -118,6 +119,7 @@ impl NodeManager {
             policy_expression,
             secure_channel_identifier,
             disable_tcp_fallback,
+            tls_certificate_provider,
             inlet: None,
             connection: None,
             main_route: None,

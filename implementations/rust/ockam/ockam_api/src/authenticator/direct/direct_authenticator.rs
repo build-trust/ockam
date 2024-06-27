@@ -17,6 +17,9 @@ pub const OCKAM_ROLE_ATTRIBUTE_KEY: &str = "ockam-role";
 /// the corresponding key is [`OCKAM_ROLE_ATTRIBUTE_KEY`]
 pub const OCKAM_ROLE_ATTRIBUTE_ENROLLER_VALUE: &str = "enroller";
 
+/// Identity attribute key that indicates the privileges to access the project TLS certificate
+pub const OCKAM_TLS_ATTRIBUTE_KEY: &str = "ockam-tls-certificate";
+
 pub struct DirectAuthenticatorError(pub String);
 
 pub type DirectAuthenticatorResult<T> = Either<T, DirectAuthenticatorError>;

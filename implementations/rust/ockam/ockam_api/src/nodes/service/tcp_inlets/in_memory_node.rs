@@ -28,6 +28,7 @@ impl InMemoryNode {
         secure_channel_identifier: Option<Identifier>,
         enable_udp_puncture: bool,
         disable_tcp_fallback: bool,
+        tls_certificate_provider: Option<MultiAddr>,
     ) -> Result<InletStatus> {
         self.node_manager
             .create_inlet(
@@ -44,6 +45,7 @@ impl InMemoryNode {
                 secure_channel_identifier,
                 enable_udp_puncture,
                 disable_tcp_fallback,
+                tls_certificate_provider,
             )
             .await
     }
