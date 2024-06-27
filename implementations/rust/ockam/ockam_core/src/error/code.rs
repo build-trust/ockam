@@ -315,6 +315,10 @@ pub enum Kind {
     //
     // That said, until we finish migrating over to this, it's expected that
     // we'll need to add several new variants to all of these.
+    /// Indicate that the resource is not ready yet.
+    ///
+    /// Specifics should be available on error payload.
+    NotReady = 17,
 }
 
 // Helper macro for converting a number into an enum variant with that value.
@@ -392,7 +396,8 @@ impl Kind {
             Protocol,
             Serialization,
             Other,
-            Parse
+            Parse,
+            NotReady
         })
     }
 }

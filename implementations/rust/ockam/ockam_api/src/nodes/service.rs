@@ -21,6 +21,7 @@ pub mod tcp_outlets;
 mod transport;
 pub mod workers;
 
+mod certificate_provider;
 mod http;
 mod manager;
 mod trust;

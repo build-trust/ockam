@@ -30,9 +30,9 @@ pub(crate) use workers::*;
 
 pub use options::{TcpConnectionOptions, TcpListenerOptions};
 pub use portal::{
-    Direction, PortalInletInterceptor, PortalInterceptor, PortalInterceptorFactory,
-    PortalInterceptorWorker, PortalInternalMessage, PortalMessage, PortalOutletInterceptor,
-    MAX_PAYLOAD_SIZE,
+    new_certificate_provider_cache, Direction, PortalInletInterceptor, PortalInterceptor,
+    PortalInterceptorFactory, PortalInterceptorWorker, PortalInternalMessage, PortalMessage,
+    PortalOutletInterceptor, TlsCertificate, TlsCertificateProvider, MAX_PAYLOAD_SIZE,
 };
 pub use protocol_version::*;
 pub use registry::*;

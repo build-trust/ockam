@@ -57,6 +57,7 @@ async fn inlet_outlet_local_successful(context: &mut Context) -> ockam::Result<(
             None,
             false,
             false,
+            None,
         )
         .await?;
 
@@ -132,6 +133,7 @@ fn portal_node_goes_down_reconnect() {
                     None,
                     false,
                     false,
+                    None,
                 )
                 .await?;
 
@@ -286,6 +288,7 @@ fn portal_low_bandwidth_connection_keep_working_for_60s() {
                     None,
                     false,
                     false,
+                    None,
                 )
                 .await?;
 
@@ -397,6 +400,7 @@ fn portal_heavy_load_exchanged() {
                     None,
                     false,
                     false,
+                    None,
                 )
                 .await?;
 
@@ -547,6 +551,7 @@ fn test_portal_payload_transfer(outgoing_disruption: Disruption, incoming_disrup
                     None,
                     false,
                     false,
+                    None,
                 )
                 .await?;
 

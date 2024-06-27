@@ -54,10 +54,12 @@ pub struct CreateInlet {
     /// If not set, the node's identifier will be used.
     #[n(10)] pub(crate) secure_channel_identifier: Option<Identifier>,
     /// Enable UDP NAT puncture.
-    #[n(11)] pub enable_udp_puncture: bool,
+    #[n(11)] pub(crate) enable_udp_puncture: bool,
     /// Disable fallback to TCP.
     /// TCP won't be used to transfer data between the Inlet and the Outlet.
-    #[n(12)] pub disable_tcp_fallback: bool,
+    #[n(12)] pub(crate) disable_tcp_fallback: bool,
+    /// TLS certificate provider route.
+    #[n(13)] pub(crate) tls_certificate_provider: Option<MultiAddr>,
 }
 
 impl CreateInlet {
@@ -85,6 +87,7 @@ impl CreateInlet {
             secure_channel_identifier: None,
             enable_udp_puncture,
             disable_tcp_fallback,
+            tls_certificate_provider: None,
         }
     }
 
@@ -113,7 +116,12 @@ impl CreateInlet {
             secure_channel_identifier: None,
             enable_udp_puncture,
             disable_tcp_fallback,
+            tls_certificate_provider: None,
         }
+    }
+
+    pub fn set_tls_certificate_provider(&mut self, provider: MultiAddr) {
+        self.tls_certificate_provider = Some(provider);
     }
 
     pub fn set_wait_ms(&mut self, ms: u64) {

@@ -1,3 +1,5 @@
+use crate::nodes::service::certificate_provider::ProjectCertificateProvider;
+use ockam_transport_tcp::new_certificate_provider_cache;
 use std::sync::{Arc, Weak};
 use std::time::Duration;
 
@@ -39,6 +41,7 @@ pub(super) struct InletSessionReplacer {
     pub(super) policy_expression: Option<PolicyExpression>,
     pub(super) secure_channel_identifier: Option<Identifier>,
     pub(super) disable_tcp_fallback: bool,
+    pub(super) tls_certificate_provider: Option<MultiAddr>,
 
     // current status
     pub(super) inlet: Option<Arc<TcpInlet>>,
@@ -107,6 +110,14 @@ impl InletSessionReplacer {
 
         let options = if self.udp_puncture_enabled() && self.disable_tcp_fallback {
             options.paused()
+        } else {
+            options
+        };
+
+        let options = if let Some(tls_provider) = &self.tls_certificate_provider {
+            options.with_tls_certificate_provider(new_certificate_provider_cache(Arc::new(
+                ProjectCertificateProvider::new(self.node_manager.clone(), tls_provider.clone()),
+            )))
         } else {
             options
         };

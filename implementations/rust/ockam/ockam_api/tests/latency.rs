@@ -163,6 +163,7 @@ pub fn measure_buffer_latency_two_nodes_portal() {
                     None,
                     false,
                     false,
+                    None,
                 )
                 .await?;
 
