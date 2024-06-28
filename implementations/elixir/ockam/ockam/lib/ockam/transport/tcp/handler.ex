@@ -30,8 +30,8 @@ defmodule Ockam.Transport.TCP.Handler do
 
     # Header, protocol version "1" must be the first thing exchanged.
     # It isn't send anymore after the initial exchange.
-    {:ok, <<1>>} = transport.recv(socket, 1, 5000)
     transport.send(socket, <<1>>)
+    {:ok, <<1>>} = transport.recv(socket, 1, 5000)
 
     :ok =
       :inet.setopts(socket, [
