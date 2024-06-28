@@ -108,7 +108,7 @@ impl RemoteRelay {
         Ok(resp)
     }
 
-    /// Create and start new ephemeral RemoteRelay at random address with given Ockam Hub route
+    /// Create and start new ephemeral RemoteRelay at random address with given Ockam Orchestrator route
     pub async fn create(
         ctx: &Context,
         hub_route: impl Into<Route>,
