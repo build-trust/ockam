@@ -3649,9 +3649,9 @@ dependencies = [
 
 [[package]]
 name = "jaq-std"
-version = "1.4.0"
+version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6d80737e5c3dfdc0cb0ef05ec35ac1eaccd7e79ad712d1f934995ccf6a2cda39"
+checksum = "fddeea4693478ff1ed94db36cc93342f00a29b8331c7aa70eaf413babec067af"
 dependencies = [
  "bincode",
  "jaq-parse",
