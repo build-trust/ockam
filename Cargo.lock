@@ -3607,9 +3607,9 @@ checksum = "49f1f14873335454500d59611f1cf4a4b0f786f9ac11f4312a78e4cf2566695b"
 
 [[package]]
 name = "jaq-core"
-version = "1.4.0"
+version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eaadb25ab6563759089aa897f8b8d609d108a8531d742b17a2a80220de685440"
+checksum = "55a709d92f9ee9851e079e2528fbfeb2065224b2138659c8f0d9038cdbf233a5"
 dependencies = [
  "aho-corasick",
  "base64 0.22.1",
