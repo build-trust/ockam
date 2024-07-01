@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.118.0 - 2024-07-01
+
+### Added
+
+- Improve transport imports
+- Add possibility to pause `TCP` inlets
+- Change tcp protocol serialization
+- Add secure channel padding and optimize encoding
+- Updated dependencies
+
+### Fixed
+
+- Account for `minicbor` length calculation bug
+
 ## 0.117.0 - 2024-06-25
 
 ### Added

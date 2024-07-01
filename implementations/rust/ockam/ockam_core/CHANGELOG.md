@@ -4,6 +4,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.112.0 - 2024-07-01
+
+### Added
+
+- Add `FIXME` to `ockam_core`
+- Change tcp protocol serialization
+- Optimize cbor encoding by preallocating memory
+- Updated dependencies
+
+### Changed
+
+- `project-member` commands, and adds the `show` command
+- `kafka-*` commands
+
+### Fixed
+
+- Account for `minicbor` length calculation bug
+
 ## 0.111.0 - 2024-06-25
 
 ### Added
