@@ -1,6 +1,6 @@
 [package]
 name = "ockam_vault_aws"
-version = "0.38.0"
+version = "0.39.0"
 authors = ["Ockam Developers"]
 categories = [
   "cryptography",
@@ -58,10 +58,10 @@ rust-crypto = ["ockam_vault/rust-crypto"]
 [dependencies]
 aws-config = { version = "1.5.3", default-features = false, features = ["rustls", "rt-tokio"] }
 aws-sdk-kms = { version = "1.34.0", default-features = false, features = ["rustls"] }
-ockam_core = { path = "../ockam_core", version = "^0.111.0", default-features = false }
+ockam_core = { path = "../ockam_core", version = "^0.112.0", default-features = false }
 ockam_macros = { path = "../ockam_macros", version = "^0.34.0", default-features = false }
-ockam_node = { path = "../ockam_node", version = "^0.119.0", default-features = false }
-ockam_vault = { path = "../ockam_vault", version = "^0.112.0", default-features = false }
+ockam_node = { path = "../ockam_node", version = "^0.120.0", default-features = false }
+ockam_vault = { path = "../ockam_vault", version = "^0.113.0", default-features = false }
 p256 = { version = "0.13.2", default-features = false }
 sha2 = { version = "0.10", default-features = false }
 thiserror = { version = "1.0.61" }
