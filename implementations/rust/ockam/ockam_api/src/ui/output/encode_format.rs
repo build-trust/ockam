@@ -14,21 +14,17 @@ pub enum EncodeFormat {
 }
 
 impl EncodeFormat {
-    /// Print an encodable value on the console
-    pub fn println_value<T>(&self, e: &T) -> Result<()>
+    pub fn encode_value<T>(&self, value: &T) -> Result<String>
     where
         T: Encode<()> + CborLen<()> + Output,
     {
-        let o = match self {
-            EncodeFormat::Plain => e.item().wrap_err("Failed serialize output")?,
+        Ok(match self {
+            EncodeFormat::Plain => value.item().wrap_err("Failed serialize output")?,
             EncodeFormat::Hex => {
                 let bytes =
-                    ockam_core::cbor_encode_preallocate(e).expect("Unable to encode response");
+                    ockam_core::cbor_encode_preallocate(value).expect("Unable to encode response");
                 hex::encode(bytes)
             }
-        };
-
-        println!("{o}");
-        Ok(())
+        })
     }
 }

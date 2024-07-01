@@ -4,9 +4,10 @@ use miette::{miette, IntoDiagnostic};
 use ockam::identity::utils::AttributesBuilder;
 use ockam::identity::Identifier;
 use ockam_api::authenticator::credential_issuer::PROJECT_MEMBER_SCHEMA;
-use ockam_api::output::EncodeFormat;
+use ockam_api::output::{EncodeFormat, Output};
 use ockam_core::compat::collections::HashMap;
 
+use crate::credential::CredentialOutput;
 use crate::output::CredentialAndPurposeKeyDisplay;
 use crate::util::async_cmd;
 use crate::util::parsers::duration_parser;
@@ -89,8 +90,16 @@ impl IssueCommand {
             .await
             .into_diagnostic()?;
 
-        self.encode_format
-            .println_value(&CredentialAndPurposeKeyDisplay(credential))?;
+        let machine = self
+            .encode_format
+            .encode_value(&CredentialAndPurposeKeyDisplay(credential.clone()))?;
+        let output = CredentialOutput::from_credential(credential)?;
+        opts.terminal
+            .stdout()
+            .plain(output.item()?)
+            .json_obj(output)?
+            .machine(machine)
+            .write_line()?;
 
         Ok(())
     }
