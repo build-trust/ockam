@@ -104,6 +104,21 @@ impl DatabaseConfiguration {
         }
     }
 
+    /// Create a new Postgres database configuration with all the necessary parameters
+    pub fn new_postgres(
+        host: impl Into<String>,
+        port: u16,
+        database_name: impl Into<String>,
+        user: &Option<DatabaseUser>,
+    ) -> Self {
+        DatabaseConfiguration::Postgres {
+            host: host.into(),
+            port,
+            database_name: database_name.into(),
+            user: user.clone(),
+        }
+    }
+
     /// Create a local sqlite configuration
     pub fn sqlite(path: &Path) -> DatabaseConfiguration {
         DatabaseConfiguration::Sqlite {

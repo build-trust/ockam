@@ -6,9 +6,9 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use ockam_core::errcode::{Kind, Origin};
-use sqlx::any::{install_default_drivers, AnyConnectOptions};
+use sqlx::any::{install_default_drivers, AnyConnectOptions, AnyRow};
 use sqlx::pool::PoolOptions;
-use sqlx::{Any, ConnectOptions, Pool};
+use sqlx::{Any, AnyPool, ConnectOptions, Pool};
 use tempfile::NamedTempFile;
 use tokio_retry::strategy::{jitter, FixedInterval};
 use tokio_retry::Retry;
@@ -19,10 +19,12 @@ use crate::database::database_configuration::DatabaseConfiguration;
 use crate::database::migrations::application_migration_set::ApplicationMigrationSet;
 use crate::database::migrations::node_migration_set::NodeMigrationSet;
 use crate::database::migrations::MigrationSet;
-use crate::database::DatabaseType;
+use crate::database::{DatabaseType, DatabaseUser};
 use ockam_core::compat::rand::random_string;
 use ockam_core::compat::sync::Arc;
 use ockam_core::{Error, Result};
+
+const DEFAULT_DATABASE_NAME: &str = "postgres";
 
 /// The SqlxDatabase struct is used to create a database:
 ///   - at a given path
@@ -203,16 +205,50 @@ impl SqlxDatabase {
         configuration: &DatabaseConfiguration,
     ) -> Result<Pool<Any>> {
         install_default_drivers();
-        let connection_string = configuration.connection_string();
-        debug!("connecting to {connection_string}");
-        let options = AnyConnectOptions::from_str(&connection_string)
-            .map_err(Self::map_sql_err)?
-            .log_statements(LevelFilter::Trace)
-            .log_slow_statements(LevelFilter::Trace, Duration::from_secs(1));
-        let pool = Pool::connect_with(options)
-            .await
-            .map_err(Self::map_sql_err)?;
-        Ok(pool)
+        match configuration {
+            DatabaseConfiguration::Postgres {
+                host,
+                port,
+                database_name,
+                user,
+            } => Self::create_connection_pool_for_postgres(host, port, database_name, user).await,
+            DatabaseConfiguration::Sqlite { .. } => {
+                Self::create_any_connection_pool(&configuration.connection_string()).await
+            }
+        }
+    }
+
+    /// When we create the connection pool for Postgres we must first make sure that the
+    /// requested database instance exists. Otherwise we create it.
+    async fn create_connection_pool_for_postgres(
+        host: &String,
+        port: &u16,
+        database_name: &String,
+        user: &Option<DatabaseUser>,
+    ) -> Result<Pool<Any>> {
+        // If the database name is not the default database name
+        // then connect first to the default database and create the database
+        if *database_name != DEFAULT_DATABASE_NAME.to_string() {
+            let default_configuration =
+                DatabaseConfiguration::new_postgres(host, *port, DEFAULT_DATABASE_NAME, user);
+            let pool = Self::create_any_connection_pool(&default_configuration.connection_string())
+                .await?;
+
+            let exists_query = format!(
+                "SELECT 1 FROM pg_database WHERE datistemplate = false and datname = '{}'",
+                database_name
+            );
+            let result: Option<AnyRow> = sqlx::query(&exists_query)
+                .fetch_optional(&pool)
+                .await
+                .into_core()?;
+            if result.is_none() {
+                let create_query = format!("CREATE DATABASE \"{}\"", database_name);
+                sqlx::query(&create_query).execute(&pool).await.void()?;
+            };
+        }
+        let configuration = DatabaseConfiguration::new_postgres(host, *port, database_name, user);
+        Self::create_any_connection_pool(&configuration.connection_string()).await
     }
 
     /// Create a connection for a SQLite database
@@ -293,6 +329,16 @@ impl SqlxDatabase {
                     .void()
             }
         }
+    }
+
+    /// Create a connection pool from a connection string
+    async fn create_any_connection_pool(connection_string: &str) -> Result<AnyPool> {
+        debug!("connecting to {connection_string}");
+        let options = AnyConnectOptions::from_str(connection_string)
+            .map_err(Self::map_sql_err)?
+            .log_statements(LevelFilter::Trace)
+            .log_slow_statements(LevelFilter::Trace, Duration::from_secs(1));
+        Pool::connect_with(options).await.map_err(Self::map_sql_err)
     }
 }
 
