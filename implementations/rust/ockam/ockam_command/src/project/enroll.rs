@@ -6,10 +6,11 @@ use clap::Args;
 use colorful::Colorful;
 use miette::Context as _;
 use miette::{miette, IntoDiagnostic};
+use serde::Serialize;
 
-use ockam::identity::models::CredentialData;
 use ockam::Context;
 use ockam_api::cli_state::enrollments::EnrollmentTicket;
+use ockam_api::cli_state::NamedIdentity;
 use ockam_api::cloud::project::models::OktaAuth0;
 use ockam_api::cloud::project::Project;
 use ockam_api::colors::color_primary;
@@ -17,10 +18,11 @@ use ockam_api::enroll::enrollment::{EnrollStatus, Enrollment};
 use ockam_api::enroll::oidc_service::OidcService;
 use ockam_api::enroll::okta_oidc_provider::OktaOidcProvider;
 use ockam_api::nodes::InMemoryNode;
-use ockam_api::output::human_readable_time;
+use ockam_api::output::{human_readable_time, Output};
 use ockam_api::terminal::fmt;
 use ockam_api::{fmt_log, fmt_ok};
 
+use crate::credential::CredentialOutput;
 use crate::enroll::OidcServiceExt;
 use crate::shared_args::{IdentityOpts, RetryOpts, TrustOpts};
 use crate::value_parsers::parse_enrollment_ticket;
@@ -76,12 +78,6 @@ impl Command for EnrollCommand {
     }
 
     async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
-        if opts.global_args.output_format()?.is_json() {
-            return Err(miette::miette!(
-                "This command does not support JSON output. Please try running it again without '--output json'."
-            ).into());
-        }
-
         let identity = opts
             .state
             .get_named_identity_or_default(&self.identity_opts.identity_name)
@@ -143,8 +139,7 @@ impl Command for EnrollCommand {
         let credential = authority_node_client
             .issue_credential(ctx)
             .await
-            .map_err(Error::Retry)?
-            .get_credential_data()
+            .map_err(Error::Retry)
             .into_diagnostic()
             .wrap_err("Failed to decode the credential received from the project authority")?;
 
@@ -159,8 +154,17 @@ impl Command for EnrollCommand {
         };
 
         // Output
-        let plain = self.plain_output(&identity.name(), &project_name, &credential)?;
-        opts.terminal.clone().stdout().plain(plain).write_line()?;
+        let output = ProjectEnrollOutput::new(
+            identity,
+            project_name,
+            CredentialOutput::from_credential(credential)?,
+        );
+        opts.terminal
+            .clone()
+            .stdout()
+            .plain(output.item()?)
+            .json_obj(output)?
+            .write_line()?;
 
         Ok(())
     }
@@ -193,52 +197,64 @@ impl EnrollCommand {
 
         Ok(project)
     }
+}
 
-    fn plain_output(
-        &self,
-        identity_name: &str,
-        project_name: &str,
-        credential: &CredentialData,
-    ) -> Result<String> {
-        let mut buf = String::new();
+#[derive(Serialize)]
+struct ProjectEnrollOutput {
+    identity: NamedIdentity,
+    project_name: String,
+    credential: CredentialOutput,
+}
+
+impl ProjectEnrollOutput {
+    fn new(identity: NamedIdentity, project_name: String, credential: CredentialOutput) -> Self {
+        Self {
+            identity,
+            project_name,
+            credential,
+        }
+    }
+}
+
+impl Output for ProjectEnrollOutput {
+    fn item(&self) -> ockam_api::Result<String> {
+        let mut f = String::new();
         writeln!(
-            buf,
+            f,
             "{}",
             fmt_ok!(
                 "Successfully enrolled identity {} to the {} project.\n",
-                color_primary(identity_name),
-                color_primary(project_name)
+                color_primary(self.identity.name()),
+                color_primary(&self.project_name)
             )
         )?;
 
         writeln!(
-            buf,
+            f,
             "{}",
             fmt_log!("The identity has a credential in this project")
         )?;
         writeln!(
-            buf,
+            f,
             "{}",
             fmt_log!(
                 "created at {} that expires at {}\n",
-                color_primary(human_readable_time(credential.created_at)),
-                color_primary(human_readable_time(credential.expires_at))
+                color_primary(human_readable_time(self.credential.created_at)),
+                color_primary(human_readable_time(self.credential.expires_at))
             )
         )?;
 
-        if !credential.subject_attributes.map.is_empty() {
+        if !&self.credential.attributes.is_empty() {
             writeln!(
-                buf,
+                f,
                 "{}",
                 fmt_log!(
                     "The following attributes are attested by the project's membership authority:"
                 )
             )?;
-            for (k, v) in credential.subject_attributes.map.iter() {
-                let k = std::str::from_utf8(k).unwrap_or("**binary**");
-                let v = std::str::from_utf8(v).unwrap_or("**binary**");
+            for (k, v) in self.credential.attributes.iter() {
                 writeln!(
-                    buf,
+                    f,
                     "{}",
                     fmt_log!(
                         "{}{}",
@@ -248,7 +264,7 @@ impl EnrollCommand {
                 )?;
             }
         }
-        Ok(buf)
+        Ok(f)
     }
 }
 
