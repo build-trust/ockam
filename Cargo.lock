@@ -4504,7 +4504,7 @@ dependencies = [
  "rustyline",
  "rustyline-derive",
  "serde",
- "sqlx",
+ "sqlx-etorreborre",
  "str-buf",
  "strum 0.26.3",
  "tempfile",
@@ -4582,7 +4582,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
- "sqlx",
+ "sqlx-etorreborre",
  "strip-ansi-escapes",
  "sysinfo",
  "tempfile",
@@ -4618,7 +4618,7 @@ dependencies = [
  "ockam_multiaddr",
  "serde",
  "serde_json",
- "sqlx",
+ "sqlx-etorreborre",
  "tempfile",
  "thiserror",
  "tokio",
@@ -4758,7 +4758,7 @@ dependencies = [
  "serde_bare",
  "serde_json",
  "sha2",
- "sqlx",
+ "sqlx-etorreborre",
  "tempfile",
  "tokio",
  "tokio-retry",
@@ -4813,7 +4813,7 @@ dependencies = [
  "regex",
  "serde",
  "serde_json",
- "sqlx",
+ "sqlx-etorreborre",
  "tempfile",
  "time",
  "tokio",
@@ -4966,7 +4966,7 @@ dependencies = [
  "serde_bare",
  "serde_json",
  "sha2",
- "sqlx",
+ "sqlx-etorreborre",
  "static_assertions",
  "tempfile",
  "tokio",
@@ -6847,21 +6847,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "sqlx"
-version = "0.7.4"
-source = "git+https://github.com/etorreborre/sqlx?rev=5fec648d2de0cbeed738dcf1c6f5bc9194fc439b#5fec648d2de0cbeed738dcf1c6f5bc9194fc439b"
-dependencies = [
- "sqlx-core",
- "sqlx-macros",
- "sqlx-mysql",
- "sqlx-postgres",
- "sqlx-sqlite",
-]
-
-[[package]]
 name = "sqlx-core"
 version = "0.7.4"
-source = "git+https://github.com/etorreborre/sqlx?rev=5fec648d2de0cbeed738dcf1c6f5bc9194fc439b#5fec648d2de0cbeed738dcf1c6f5bc9194fc439b"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "24ba59a9342a3d9bab6c56c118be528b27c9b60e490080e9711a04dccac83ef6"
 dependencies = [
  "ahash",
  "atoi",
@@ -6897,9 +6886,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "sqlx-etorreborre"
+version = "0.7.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1285d9eefdc4de724ef9d22430070d97bc3ac04da81095ed80bf5bbda51dc049"
+dependencies = [
+ "sqlx-core",
+ "sqlx-macros",
+ "sqlx-mysql",
+ "sqlx-postgres",
+ "sqlx-sqlite",
+]
+
+[[package]]
 name = "sqlx-macros"
 version = "0.7.4"
-source = "git+https://github.com/etorreborre/sqlx?rev=5fec648d2de0cbeed738dcf1c6f5bc9194fc439b#5fec648d2de0cbeed738dcf1c6f5bc9194fc439b"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4ea40e2345eb2faa9e1e5e326db8c34711317d2b5e08d0d5741619048a803127"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -6911,7 +6914,8 @@ dependencies = [
 [[package]]
 name = "sqlx-macros-core"
 version = "0.7.4"
-source = "git+https://github.com/etorreborre/sqlx?rev=5fec648d2de0cbeed738dcf1c6f5bc9194fc439b#5fec648d2de0cbeed738dcf1c6f5bc9194fc439b"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5833ef53aaa16d860e92123292f1f6a3d53c34ba8b1969f152ef1a7bb803f3c8"
 dependencies = [
  "dotenvy",
  "either",
@@ -6936,7 +6940,8 @@ dependencies = [
 [[package]]
 name = "sqlx-mysql"
 version = "0.7.4"
-source = "git+https://github.com/etorreborre/sqlx?rev=5fec648d2de0cbeed738dcf1c6f5bc9194fc439b#5fec648d2de0cbeed738dcf1c6f5bc9194fc439b"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1ed31390216d20e538e447a7a9b959e06ed9fc51c37b514b46eb758016ecd418"
 dependencies = [
  "atoi",
  "base64 0.21.7",
@@ -6977,7 +6982,8 @@ dependencies = [
 [[package]]
 name = "sqlx-postgres"
 version = "0.7.4"
-source = "git+https://github.com/etorreborre/sqlx?rev=5fec648d2de0cbeed738dcf1c6f5bc9194fc439b#5fec648d2de0cbeed738dcf1c6f5bc9194fc439b"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7c824eb80b894f926f89a0b9da0c7f435d27cdd35b8c655b114e58223918577e"
 dependencies = [
  "atoi",
  "base64 0.21.7",
@@ -7014,7 +7020,8 @@ dependencies = [
 [[package]]
 name = "sqlx-sqlite"
 version = "0.7.4"
-source = "git+https://github.com/etorreborre/sqlx?rev=5fec648d2de0cbeed738dcf1c6f5bc9194fc439b#5fec648d2de0cbeed738dcf1c6f5bc9194fc439b"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b244ef0a8414da0bed4bb1910426e890b19e5e9bccc27ada6b797d05c55ae0aa"
 dependencies = [
  "atoi",
  "flume",

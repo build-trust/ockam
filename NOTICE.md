@@ -489,12 +489,12 @@ This file contains attributions for any 3rd-party open source code used in this 
 | spin | MIT | https://crates.io/crates/spin |
 | spki | Apache-2.0, MIT | https://crates.io/crates/spki |
 | sqlformat | MIT, Apache-2.0 | https://crates.io/crates/sqlformat |
-| sqlx | MIT, Apache-2.0 | https://github.com/etorreborre/sqlx?rev=5fec648d2de0cbeed738dcf1c6f5bc9194fc439b |
-| sqlx-core | MIT, Apache-2.0 | https://github.com/etorreborre/sqlx?rev=5fec648d2de0cbeed738dcf1c6f5bc9194fc439b |
-| sqlx-macros | MIT, Apache-2.0 | https://github.com/etorreborre/sqlx?rev=5fec648d2de0cbeed738dcf1c6f5bc9194fc439b |
-| sqlx-macros-core | MIT, Apache-2.0 | https://github.com/etorreborre/sqlx?rev=5fec648d2de0cbeed738dcf1c6f5bc9194fc439b |
-| sqlx-postgres | MIT, Apache-2.0 | https://github.com/etorreborre/sqlx?rev=5fec648d2de0cbeed738dcf1c6f5bc9194fc439b |
-| sqlx-sqlite | MIT, Apache-2.0 | https://github.com/etorreborre/sqlx?rev=5fec648d2de0cbeed738dcf1c6f5bc9194fc439b |
+| sqlx-core | MIT, Apache-2.0 | https://crates.io/crates/sqlx-core |
+| sqlx-etorreborre | MIT, Apache-2.0 | https://crates.io/crates/sqlx-etorreborre |
+| sqlx-macros | MIT, Apache-2.0 | https://crates.io/crates/sqlx-macros |
+| sqlx-macros-core | MIT, Apache-2.0 | https://crates.io/crates/sqlx-macros-core |
+| sqlx-postgres | MIT, Apache-2.0 | https://crates.io/crates/sqlx-postgres |
+| sqlx-sqlite | MIT, Apache-2.0 | https://crates.io/crates/sqlx-sqlite |
 | stable_deref_trait | MIT, Apache-2.0 | https://crates.io/crates/stable_deref_trait |
 | static_assertions | MIT, Apache-2.0 | https://crates.io/crates/static_assertions |
 | stm32-device-signature | MIT, Apache-2.0 | https://crates.io/crates/stm32-device-signature |
