@@ -87,11 +87,11 @@ impl BleRouterHandle {
         let servicenames;
 
         // Try to parse as BleAddr
-        if let Ok(p) = crate::parse_ble_addr(peer_str) {
+        if let Ok(p) = crate::parse_ble_addr(peer_str.clone()) {
             peer_addr = p;
             servicenames = vec![];
         } else {
-            return Err(TransportError::InvalidAddress)?;
+            return Err(TransportError::InvalidAddress(peer_str))?;
         }
 
         Ok((peer_addr, servicenames))

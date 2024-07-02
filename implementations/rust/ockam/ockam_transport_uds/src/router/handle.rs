@@ -160,11 +160,11 @@ impl UdsRouterHandle {
         let pathnames;
 
         // Then continue working on resolve_route, so that the UdsRouter can have a complete worker definition which requires `handle_message`
-        if let Ok(p) = parse_socket_addr(peer_str) {
+        if let Ok(p) = parse_socket_addr(peer_str.clone()) {
             peer_addr = p;
             pathnames = vec![];
         } else {
-            return Err(TransportError::InvalidAddress)?;
+            return Err(TransportError::InvalidAddress(peer_str))?;
         }
 
         Ok((peer_addr, pathnames))

@@ -63,7 +63,9 @@ impl UdpTransport {
         // This transport only supports IPv4
         if !arguments.bind_address.is_ipv4() {
             error!(local_addr = %arguments.bind_address, "This transport only supports IPv4");
-            return Err(TransportError::InvalidAddress)?;
+            return Err(TransportError::InvalidAddress(
+                arguments.bind_address.to_string(),
+            ))?;
         }
 
         // Bind new socket

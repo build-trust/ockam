@@ -78,7 +78,7 @@ impl Worker for UdpSenderWorker {
         // into an error state
         if peer.port() == 0 {
             warn!(peer_addr = %peer, "Will not send to address");
-            return Err(TransportError::InvalidAddress)?;
+            return Err(TransportError::InvalidAddress(peer.to_string()))?;
         }
 
         // Send

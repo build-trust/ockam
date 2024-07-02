@@ -35,5 +35,5 @@ impl FromStr for BleAddr {
 pub fn parse_ble_addr<S: AsRef<str>>(s: S) -> ockam_core::Result<BleAddr> {
     Ok(s.as_ref()
         .parse()
-        .map_err(|_| TransportError::InvalidAddress)?)
+        .map_err(|_| TransportError::InvalidAddress(s.as_ref().to_string()))?)
 }

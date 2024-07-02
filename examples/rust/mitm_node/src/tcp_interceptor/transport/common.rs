@@ -21,9 +21,9 @@ pub(super) fn resolve_peer(peer: String) -> Result<SocketAddr> {
     }
 
     // Nothing worked, return an error
-    Err(TransportError::InvalidAddress)?
+    Err(TransportError::InvalidAddress(peer))?
 }
 
 pub(super) fn parse_socket_addr(s: &str) -> Result<SocketAddr> {
-    Ok(s.parse().map_err(|_| TransportError::InvalidAddress)?)
+    Ok(s.parse().map_err(|_| TransportError::InvalidAddress(s.to_string()))?)
 }

@@ -143,7 +143,7 @@ impl Worker for WebSocketRouter {
                 }
             };
         } else {
-            return Err(TransportError::InvalidAddress)?;
+            return Err(TransportError::InvalidAddress(msg_addr.to_string()))?;
         }
 
         Ok(())
@@ -193,7 +193,14 @@ impl WebSocketRouter {
         // Otherwise, the router is not being used properly and returns an error.
         else {
             error!("Tried to register a new client without passing any `Address`");
-            return Err(TransportError::InvalidAddress)?;
+            return Err(TransportError::InvalidAddress(
+                accepts
+                    .iter()
+                    .map(|a| a.to_string())
+                    .collect::<Vec<String>>()
+                    .join(", ")
+                    .to_string(),
+            ))?;
         }
 
         // Do not connect twice.
