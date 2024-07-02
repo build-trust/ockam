@@ -51,13 +51,15 @@ impl ProjectsRepository for ProjectsSqlxDatabase {
     async fn store_project(&self, project: &ProjectModel) -> Result<()> {
         let mut transaction = self.database.begin().await.into_core()?;
 
-        let query1 = query_scalar(
-            "SELECT EXISTS(SELECT 1 FROM project WHERE is_default = $1 AND project_id = $2)",
-        )
-        .bind(true)
-        .bind(project.id.clone());
-        let is_already_default: Boolean = query1.fetch_one(&mut *transaction).await.into_core()?;
-        let is_already_default = is_already_default.to_bool();
+        // Is there a default project already?
+        let query1 = query("SELECT project_id FROM project WHERE is_default = $1").bind(true);
+        let project_id: Option<String> = query1
+            .fetch_optional(&mut *transaction)
+            .await
+            .into_core()?
+            .map(|row| row.get(0));
+        // The project is set as the default one if no other default project exists already
+        let is_default = project_id.is_none() || project_id == Some(project.id.clone());
 
         let query2 = query(
             r#"
@@ -68,7 +70,7 @@ impl ProjectsRepository for ProjectsSqlxDatabase {
         )
             .bind(&project.id)
             .bind(&project.name)
-            .bind(is_already_default)
+            .bind(is_default)
             .bind(&project.space_id)
             .bind(&project.space_name)
             .bind(&project.identity)
@@ -519,6 +521,10 @@ mod test {
                 ],
             );
             repository.store_project(&project1).await?;
+            // The first stored project is the default one
+            let result = repository.get_default_project().await?;
+            assert_eq!(result, Some(project1.clone()));
+
             repository.store_project(&project2).await?;
 
             // retrieve them as a list or by name
@@ -529,10 +535,6 @@ mod test {
             assert_eq!(result, Some(project1.clone()));
 
             // a project can be marked as the default project
-            repository.set_default_project("1").await?;
-            let result = repository.get_default_project().await?;
-            assert_eq!(result, Some(project1.clone()));
-
             repository.set_default_project("2").await?;
             let result = repository.get_default_project().await?;
             assert_eq!(result, Some(project2.clone()));
