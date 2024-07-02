@@ -55,4 +55,24 @@ impl RendezvousClient {
 
         Ok(a)
     }
+
+    /// Query the Rendezvous service
+    pub async fn ping(&self) -> Result<()> {
+        let res = self
+            .ctx
+            .send_and_receive_extended::<RendezvousResponse>(
+                self.rendezvous_route.clone(),
+                RendezvousRequest::Ping,
+                MessageSendReceiveOptions::new().with_timeout(QUICK_TIMEOUT),
+            )
+            .await?
+            .into_body()?;
+
+        match res {
+            RendezvousResponse::Pong => {}
+            _ => return Err(PunctureError::RendezvousResponseInvalidMessageType)?,
+        };
+
+        Ok(())
+    }
 }

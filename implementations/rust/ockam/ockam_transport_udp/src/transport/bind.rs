@@ -42,12 +42,26 @@ impl UdpBindArguments {
         Ok(self)
     }
 
+    /// Set local bind address
+    pub fn with_bind_socket_address(mut self, bind_address: SocketAddr) -> Self {
+        self.bind_address = bind_address;
+
+        self
+    }
+
     /// Set peer address if we communicate with one specific peer
     pub fn with_peer_address(mut self, peer_address: impl AsRef<str>) -> Result<Self> {
         let peer_address = resolve_peer(peer_address.as_ref().to_string())?;
         self.peer_address = Some(peer_address);
 
         Ok(self)
+    }
+
+    /// Set peer address if we communicate with one specific peer
+    pub fn with_peer_socket_address(mut self, peer_address: SocketAddr) -> Self {
+        self.peer_address = Some(peer_address);
+
+        self
     }
 }
 
