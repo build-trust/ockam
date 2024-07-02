@@ -3,10 +3,12 @@ use crate::workers::{Addresses, TcpRecvProcessor, TcpSendWorker};
 use crate::{TcpConnectionMode, TcpConnectionOptions, TcpTransport};
 use core::fmt;
 use core::fmt::Formatter;
+use core::str::FromStr;
+use ockam_core::errcode::{Kind, Origin};
 use ockam_core::flow_control::FlowControlId;
 use ockam_core::{Address, Result};
 use ockam_node::Context;
-use ockam_transport_core::resolve_peer;
+use ockam_transport_core::HostnamePort;
 use std::net::SocketAddr;
 use tracing::debug;
 
@@ -100,10 +102,13 @@ impl TcpTransport {
         peer: impl Into<String>,
         options: TcpConnectionOptions,
     ) -> Result<TcpConnection> {
-        let peer = peer.into();
-        let socket = resolve_peer(peer.clone())?;
+        let peer = HostnamePort::from_str(&peer.into())?;
         debug!("Connecting to {}", peer.clone());
-        let (read_half, write_half) = connect(socket).await?;
+
+        let (read_half, write_half) = connect(&peer).await?;
+        let socket = read_half
+            .peer_addr()
+            .map_err(|e| ockam_core::Error::new(Origin::Transport, Kind::Internal, e))?;
 
         let mode = TcpConnectionMode::Outgoing;
         let addresses = Addresses::generate(mode);

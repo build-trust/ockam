@@ -1,4 +1,5 @@
 use core::fmt::{Display, Formatter};
+use core::net::IpAddr;
 use core::net::SocketAddr;
 use core::str::FromStr;
 use minicbor::{CborLen, Decode, Encode};
@@ -25,8 +26,15 @@ impl HostnamePort {
     }
 
     /// Return a hostname and port from a socket address
-    pub fn from_socket_addr(socket_addr: SocketAddr) -> ockam_core::Result<HostnamePort> {
-        HostnamePort::from_str(&socket_addr.to_string())
+    pub fn from_socket_addr(socket_addr: SocketAddr) -> HostnamePort {
+        let ip = match socket_addr.ip() {
+            IpAddr::V4(ip) => ip.to_string(),
+            IpAddr::V6(ip) => format!("[{ip}]"),
+        };
+        Self {
+            hostname: ip,
+            port: socket_addr.port(),
+        }
     }
 
     /// Return a socket address from a hostname and port
@@ -43,6 +51,30 @@ impl HostnamePort {
     /// Return the port
     pub fn port(&self) -> u16 {
         self.port
+    }
+}
+
+#[cfg(feature = "std")]
+mod serde {
+    use super::*;
+    use ::serde::{Deserialize, Deserializer, Serialize, Serializer};
+    impl Serialize for HostnamePort {
+        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: Serializer,
+        {
+            serializer.serialize_str(&self.to_string())
+        }
+    }
+
+    impl<'de> Deserialize<'de> for HostnamePort {
+        fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+        where
+            D: Deserializer<'de>,
+        {
+            let s = String::deserialize(deserializer)?;
+            HostnamePort::from_str(&s).map_err(::serde::de::Error::custom)
+        }
     }
 }
 
@@ -132,8 +164,8 @@ mod tests {
         assert_eq!(actual, HostnamePort::new("127.0.0.1", 80));
 
         let socket_addr = resolve_peer("76.76.21.21:8080".to_string()).unwrap();
-        let actual = HostnamePort::from_socket_addr(socket_addr).ok();
-        assert_eq!(actual, Some(HostnamePort::new("76.76.21.21", 8080)));
+        let actual = HostnamePort::from_socket_addr(socket_addr);
+        assert_eq!(actual, HostnamePort::from_str("76.76.21.21:8080").unwrap());
 
         let actual = HostnamePort::from_str("[2001:db8:85a3::8a2e:370:7334]:8080")?;
         assert_eq!(
@@ -142,10 +174,10 @@ mod tests {
         );
 
         let socket_addr = SocketAddr::from_str("[2001:db8:85a3::8a2e:370:7334]:8080").unwrap();
-        let actual = HostnamePort::from_socket_addr(socket_addr).ok();
+        let actual = HostnamePort::from_socket_addr(socket_addr);
         assert_eq!(
             actual,
-            Some(HostnamePort::new("[2001:db8:85a3::8a2e:370:7334]", 8080))
+            HostnamePort::new("[2001:db8:85a3::8a2e:370:7334]", 8080)
         );
 
         Ok(())

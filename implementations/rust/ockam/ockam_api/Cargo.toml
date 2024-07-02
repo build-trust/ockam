@@ -107,6 +107,7 @@ tracing-subscriber = { version = "0.3.18", features = ["json"] }
 url = "2.5.2"
 
 ockam_multiaddr = { path = "../ockam_multiaddr", version = "0.56.0", features = ["cbor", "serde"] }
+ockam_transport_core = { path = "../ockam_transport_core" }
 ockam_transport_tcp = { path = "../ockam_transport_tcp", version = "^0.119.0", default-features = false, features = ["std"] }
 tonic = "0.11"
 

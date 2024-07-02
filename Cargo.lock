@@ -4897,6 +4897,7 @@ dependencies = [
  "minicbor",
  "ockam_core",
  "regex",
+ "serde",
 ]
 
 [[package]]

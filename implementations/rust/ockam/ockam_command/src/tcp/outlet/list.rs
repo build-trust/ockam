@@ -77,7 +77,7 @@ impl ListCommand {
             .map(|outlet| {
                 Ok(serde_json::json!({
                     "from": outlet.worker_address()?,
-                    "to": outlet.socket_addr,
+                    "to": outlet.to,
                 }))
             })
             .flat_map(|res: Result<_, ockam_core::Error>| res.ok())

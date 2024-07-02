@@ -81,7 +81,7 @@ teardown() {
 
   run_success $OCKAM tcp-outlet show outlet --at /node/n1
   assert_output --partial "\"worker_addr\":\"/service/outlet\""
-  assert_output --partial "\"socket_addr\":\"127.0.0.1:$port_1\""
+  assert_output --partial "\"to\":\"127.0.0.1:$port_1\""
 
   run_success $OCKAM tcp-outlet delete "outlet" --yes
 
