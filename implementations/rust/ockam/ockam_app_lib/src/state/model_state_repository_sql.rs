@@ -1,14 +1,12 @@
-use std::net::SocketAddr;
 use std::str::FromStr;
 use std::sync::Arc;
 
 use sqlx::*;
 use tracing::debug;
 
+use ockam::transport::HostnamePort;
 use ockam::{Boolean, FromSqlxError, Nullable, SqlxDatabase, ToVoid};
 use ockam_api::nodes::models::portal::OutletStatus;
-use ockam_core::errcode::{Kind, Origin};
-use ockam_core::Error;
 use ockam_core::{async_trait, Address};
 
 use crate::incoming_services::PersistentIncomingService;
@@ -59,7 +57,7 @@ impl ModelStateRepository for ModelStateSqlxDatabase {
                  ON CONFLICT DO NOTHING"#,
             )
             .bind(node_name)
-            .bind(tcp_outlet_status.socket_addr.to_string())
+            .bind(tcp_outlet_status.to.to_string())
             .bind(tcp_outlet_status.worker_addr.to_string())
             .bind(tcp_outlet_status.payload.as_ref());
             query.execute(&mut *transaction).await.void()?;
@@ -125,11 +123,10 @@ struct TcpOutletStatusRow {
 
 impl TcpOutletStatusRow {
     fn tcp_outlet_status(&self) -> Result<OutletStatus> {
-        let socket_addr = SocketAddr::from_str(&self.socket_addr)
-            .map_err(|e| Error::new(Origin::Application, Kind::Serialization, e.to_string()))?;
+        let to = HostnamePort::from_str(&self.socket_addr)?;
         let worker_addr = Address::from_string(&self.worker_addr);
         Ok(OutletStatus {
-            socket_addr,
+            to,
             worker_addr,
             payload: self.payload.to_option(),
         })

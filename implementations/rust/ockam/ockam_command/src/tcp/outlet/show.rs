@@ -1,6 +1,5 @@
 use async_trait::async_trait;
 use core::fmt::Write;
-use std::net::SocketAddr;
 
 use clap::Args;
 use console::Term;
@@ -60,7 +59,7 @@ impl Command for ShowCommand {
 struct OutletInformation {
     node_name: String,
     worker_addr: MultiAddr,
-    socket_addr: SocketAddr,
+    to: String,
 }
 
 impl Output for OutletInformation {
@@ -69,7 +68,7 @@ impl Output for OutletInformation {
         write!(w, "Outlet")?;
         write!(w, "\n  On Node: {}", self.node_name)?;
         write!(w, "\n  From address: {}", self.worker_addr)?;
-        write!(w, "\n  To TCP server: {}", self.socket_addr)?;
+        write!(w, "\n  To TCP server: {}", self.to)?;
         Ok(w)
     }
 }
@@ -144,7 +143,7 @@ impl ShowCommandTui for ShowTui {
         let info = OutletInformation {
             node_name: self.node.node_name(),
             worker_addr: outlet_status.worker_address().into_diagnostic()?,
-            socket_addr: outlet_status.socket_addr,
+            to: outlet_status.to.to_string(),
         };
         self.terminal()
             .stdout()

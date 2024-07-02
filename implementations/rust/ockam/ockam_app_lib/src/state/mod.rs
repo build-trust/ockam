@@ -529,8 +529,8 @@ impl AppState {
                 .into_iter()
                 .map(|outlet| LocalService {
                     name: outlet.worker_addr.address().to_string(),
-                    address: outlet.socket_addr.ip().to_string(),
-                    port: outlet.socket_addr.port(),
+                    address: outlet.to.hostname().to_string(),
+                    port: outlet.to.port(),
                     scheme: None,
                     shared_with: vec![],
                     available: true,

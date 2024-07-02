@@ -36,7 +36,7 @@ impl AppState {
         match node_manager
             .create_outlet(
                 &self.context(),
-                HostnamePort::from_socket_addr(socket_addr)?,
+                HostnamePort::from_socket_addr(socket_addr),
                 false,
                 Some(worker_addr.clone()),
                 true,

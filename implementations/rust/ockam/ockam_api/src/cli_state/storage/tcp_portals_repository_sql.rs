@@ -5,6 +5,8 @@ use std::sync::Arc;
 use sqlx::*;
 use tracing::debug;
 
+use crate::cli_state::storage::tcp_portals_repository::TcpPortalsRepository;
+use crate::cli_state::TcpInlet;
 use crate::nodes::models::portal::OutletStatus;
 use ockam::{FromSqlxError, SqlxDatabase, ToVoid};
 use ockam_core::errcode::{Kind, Origin};
@@ -12,9 +14,7 @@ use ockam_core::Error;
 use ockam_core::Result;
 use ockam_core::{async_trait, Address};
 use ockam_multiaddr::MultiAddr;
-
-use crate::cli_state::storage::tcp_portals_repository::TcpPortalsRepository;
-use crate::cli_state::TcpInlet;
+use ockam_transport_core::HostnamePort;
 
 #[derive(Clone)]
 pub struct TcpPortalsSqlxDatabase {
@@ -95,7 +95,7 @@ impl TcpPortalsRepository for TcpPortalsSqlxDatabase {
             ON CONFLICT DO NOTHING"#,
         )
         .bind(node_name)
-        .bind(tcp_outlet_status.socket_addr.to_string())
+        .bind(tcp_outlet_status.to.to_string())
         .bind(tcp_outlet_status.worker_addr.to_string())
         .bind(tcp_outlet_status.payload.as_ref());
         query.execute(&*self.database.pool).await.void()?;
@@ -171,11 +171,11 @@ struct TcpOutletStatusRow {
 
 impl TcpOutletStatusRow {
     fn tcp_outlet_status(&self) -> Result<OutletStatus> {
-        let socket_addr = SocketAddr::from_str(&self.socket_addr)
+        let to = HostnamePort::from_str(&self.socket_addr)
             .map_err(|e| Error::new(Origin::Application, Kind::Serialization, e.to_string()))?;
         let worker_addr = Address::from_string(&self.worker_addr);
         Ok(OutletStatus {
-            socket_addr,
+            to,
             worker_addr,
             payload: self.payload.clone(),
         })
@@ -208,7 +208,7 @@ mod tests {
 
             let worker_addr = Address::from_str("worker_addr").unwrap();
             let tcp_outlet_status = OutletStatus::new(
-                SocketAddr::from_str("127.0.0.1:80").unwrap(),
+                HostnamePort::from_str("127.0.0.1:80").unwrap(),
                 worker_addr.clone(),
                 Some("payload".to_string()),
             );

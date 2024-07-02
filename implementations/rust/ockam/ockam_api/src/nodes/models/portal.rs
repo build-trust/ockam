@@ -1,7 +1,6 @@
 //! Inlets and outlet request/response types
 
 use std::fmt::{Display, Formatter};
-use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -268,20 +267,16 @@ impl Output for InletStatus {
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct OutletStatus {
-    #[n(1)] pub socket_addr: SocketAddr,
+    #[n(1)] pub to: HostnamePort,
     #[n(2)] pub worker_addr: Address,
     /// An optional status payload
     #[n(3)] pub payload: Option<String>,
 }
 
 impl OutletStatus {
-    pub fn new(
-        socket_addr: SocketAddr,
-        worker_addr: Address,
-        payload: impl Into<Option<String>>,
-    ) -> Self {
+    pub fn new(to: HostnamePort, worker_addr: Address, payload: impl Into<Option<String>>) -> Self {
         Self {
-            socket_addr,
+            to,
             worker_addr,
             payload: payload.into(),
         }
@@ -311,7 +306,7 @@ impl Display for OutletStatus {
                     .map_err(|_| std::fmt::Error)?
                     .to_string()
             ),
-            color_primary(self.socket_addr.to_string()),
+            color_primary(self.to.to_string()),
         )
     }
 }

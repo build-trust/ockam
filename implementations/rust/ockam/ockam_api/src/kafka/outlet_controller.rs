@@ -12,7 +12,6 @@ use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{route, Error};
 use ockam_core::{Address, Result};
 use ockam_node::Context;
-use std::net::SocketAddr;
 use std::str::FromStr;
 
 type BrokerId = i32;
@@ -29,7 +28,7 @@ pub(crate) struct KafkaOutletController {
 
 #[derive(Debug)]
 struct KafkaOutletMapInner {
-    broker_map: HashMap<BrokerId, SocketAddr>,
+    broker_map: HashMap<BrokerId, HostnamePort>,
 }
 
 impl KafkaOutletController {
@@ -58,7 +57,7 @@ impl KafkaOutletController {
         let outlet_address = kafka_outlet_address(broker_id);
         let mut inner = self.inner.lock().await;
         if !inner.broker_map.contains_key(&broker_id) {
-            let socket_address = Self::request_outlet_creation(
+            let hostname_port = Self::request_outlet_creation(
                 context,
                 address,
                 kafka_outlet_address(broker_id),
@@ -66,7 +65,7 @@ impl KafkaOutletController {
                 self.tls,
             )
             .await?;
-            inner.broker_map.insert(broker_id, socket_address);
+            inner.broker_map.insert(broker_id, hostname_port);
         }
         Ok(outlet_address)
     }
@@ -77,7 +76,7 @@ impl KafkaOutletController {
         worker_address: Address,
         policy_expression: Option<PolicyExpression>,
         tls: bool,
-    ) -> Result<SocketAddr> {
+    ) -> Result<HostnamePort> {
         let hostname_port = HostnamePort::from_str(&kafka_address)?;
         let mut payload = CreateOutlet::new(hostname_port, tls, Some(worker_address), false);
         if let Some(expr) = policy_expression {
@@ -109,7 +108,7 @@ impl KafkaOutletController {
             ))
         } else {
             let status: OutletStatus = decoder.decode()?;
-            Ok(status.socket_addr)
+            Ok(status.to)
         }
     }
 }

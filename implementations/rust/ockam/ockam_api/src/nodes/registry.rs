@@ -8,9 +8,9 @@ use ockam_core::compat::collections::BTreeMap;
 use ockam_core::{Address, Route};
 use ockam_multiaddr::MultiAddr;
 use ockam_node::compat::asynchronous::RwLock;
+use ockam_transport_core::HostnamePort;
 use std::borrow::Borrow;
 use std::fmt::Display;
-use std::net::SocketAddr;
 
 #[derive(Default)]
 pub(crate) struct SecureChannelRegistry {
@@ -142,20 +142,17 @@ impl InletInfo {
 
 #[derive(Clone)]
 pub struct OutletInfo {
-    pub(crate) socket_addr: SocketAddr,
+    pub(crate) to: HostnamePort,
     pub(crate) worker_addr: Address,
 }
 
 impl OutletInfo {
-    pub(crate) fn new(socket_addr: &SocketAddr, worker_addr: Option<&Address>) -> Self {
+    pub(crate) fn new(to: HostnamePort, worker_addr: Option<&Address>) -> Self {
         let worker_addr = match worker_addr {
             Some(addr) => addr.clone(),
             None => Address::from_string(""),
         };
-        Self {
-            socket_addr: *socket_addr,
-            worker_addr,
-        }
+        Self { to, worker_addr }
     }
 }
 
@@ -366,6 +363,6 @@ mod tests {
     }
 
     fn outlet_info(worker_addr: Address) -> OutletInfo {
-        OutletInfo::new(&SocketAddr::from(([127, 0, 0, 1], 0)), Some(&worker_addr))
+        OutletInfo::new(HostnamePort::new("127.0.0.1", 0), Some(&worker_addr))
     }
 }

@@ -147,9 +147,9 @@ force_kill_node() {
 }
 
 @test "node - node in foreground with configuration is deleted if something fails" {
-  # The config file has a typo in the "to" address to trigger an error after the node is created.
+  # The config file has invalid port to trigger an error after the node is created.
   # The command should return an error and the node should be deleted.
-  run_failure "$OCKAM" node create --configuration "{name: n, tcp-outlets: {db-outlet: {to: \"localhosst:3000\"}}}"
+  run_failure "$OCKAM" node create --configuration "{name: n, tcp-outlets: {db-outlet: {to: \"localhost:65536\"}}}"
   run_success $OCKAM node show n --output json
   assert_output --partial "[]"
 }

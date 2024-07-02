@@ -378,7 +378,7 @@ impl TcpPortalWorker {
             self.read_half = Some(ReadHalfWithTls(rx));
         } else {
             debug!("Connect to {}", self.hostname_port);
-            let (rx, tx) = connect(self.hostname_port.to_socket_addr()?).await?;
+            let (rx, tx) = connect(&self.hostname_port).await?;
             self.write_half = Some(WriteHalfNoTls(tx));
             self.read_half = Some(ReadHalfNoTls(rx));
         }

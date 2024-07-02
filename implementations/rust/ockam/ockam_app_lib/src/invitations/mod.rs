@@ -1,10 +1,8 @@
-use std::net::SocketAddr;
-
-use tracing::{debug, warn};
-
+use ockam::transport::HostnamePort;
 use ockam_api::cli_state::enrollments::EnrollmentTicket;
 use ockam_api::cloud::email_address::EmailAddress;
 use ockam_api::cloud::share::CreateServiceInvitation;
+use tracing::{debug, warn};
 
 use crate::state::{AppState, NODE_NAME};
 use crate::Error;
@@ -15,11 +13,11 @@ pub(crate) mod state;
 impl AppState {
     pub(crate) async fn build_args_for_create_service_invitation(
         &self,
-        outlet_socket_addr: &SocketAddr,
+        to: &HostnamePort,
         recipient_email: &EmailAddress,
         enrollment_ticket: EnrollmentTicket,
     ) -> crate::Result<CreateServiceInvitation> {
-        debug!(%outlet_socket_addr, %recipient_email, "preparing payload to send invitation");
+        debug!(%to, %recipient_email, "preparing payload to send invitation");
         let cli_state = self.state().await;
         let service_route = self
             .model(|m| {
@@ -28,13 +26,11 @@ impl AppState {
                 }
                 m.tcp_outlets
                     .iter()
-                    .find(|o| o.socket_addr == *outlet_socket_addr)
+                    .find(|o| &o.to == to)
                     .map(|o| o.worker_address())
             })
             .await
-            .ok_or::<Error>(
-                format!("The outlet {outlet_socket_addr} wasn't found in the App state").into(),
-            )??;
+            .ok_or::<Error>(format!("The outlet {to} wasn't found in the App state").into())??;
         let project = cli_state.projects().get_default_project().await?;
 
         Ok(CreateServiceInvitation::new(
