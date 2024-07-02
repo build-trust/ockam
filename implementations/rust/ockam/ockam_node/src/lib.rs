@@ -101,3 +101,8 @@ where
 
 #[cfg(not(feature = "std"))]
 pub use crate::tokio::runtime::{block_future, spawn};
+
+/// This is a temporary workaround until the fixes done
+/// in https://github.com/launchbadge/sqlx/pull/3298 are released
+#[cfg(feature = "std")]
+extern crate sqlx_etorreborre as sqlx;
