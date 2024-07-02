@@ -2,6 +2,7 @@ use cfg_if::cfg_if;
 use ockam_core::compat::net::SocketAddr;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{Error, Result};
+use ockam_node::compat::asynchronous::resolve_peer;
 use ockam_transport_core::{HostnamePort, TransportError};
 use socket2::{SockRef, TcpKeepalive};
 use std::sync::Arc;
@@ -61,7 +62,7 @@ pub(crate) async fn connect_tls(
     ReadHalf<TlsStream<TcpStream>>,
     WriteHalf<TlsStream<TcpStream>>,
 )> {
-    let socket_address = hostname_port.to_socket_addr()?;
+    let socket_address = resolve_peer(hostname_port).await?;
     debug!(hostname_port = %hostname_port, addr = %socket_address, "Trying to connect using TLS");
 
     // create a tcp stream

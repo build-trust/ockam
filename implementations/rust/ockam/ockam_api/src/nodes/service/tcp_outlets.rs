@@ -5,6 +5,7 @@ use ockam_abac::{Action, PolicyExpression, Resource, ResourceType};
 use ockam_core::api::{Error, Request, RequestHeader, Response};
 use ockam_core::async_trait;
 use ockam_core::errcode::{Kind, Origin};
+use ockam_node::compat::asynchronous::resolve_peer;
 use ockam_node::Context;
 
 use crate::nodes::models::portal::{CreateOutlet, OutletAccessControl, OutletStatus};
@@ -161,7 +162,7 @@ impl NodeManager {
             }
         };
 
-        let socket_addr = hostname_port.to_socket_addr()?;
+        let socket_addr = resolve_peer(&hostname_port).await?;
         let res = self
             .tcp_transport
             .create_tcp_outlet(worker_addr.clone(), hostname_port, options)

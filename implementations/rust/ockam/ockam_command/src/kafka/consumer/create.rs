@@ -1,17 +1,14 @@
-use std::net::SocketAddr;
-
 use clap::{command, Args};
-
+use ockam::transport::HostnamePort;
 use ockam_api::port_range::PortRange;
 use ockam_multiaddr::MultiAddr;
 
-use crate::util::print_deprecated_warning;
-use crate::{
-    kafka::{kafka_default_consumer_server, kafka_default_project_route, kafka_inlet_default_addr},
-    node::NodeOpts,
-    util::parsers::socket_addr_parser,
-    Command, CommandGlobalOpts,
+use crate::kafka::{
+    kafka_default_consumer_server, kafka_default_project_route, kafka_inlet_default_addr,
 };
+use crate::util::parsers::hostname_parser;
+use crate::util::print_deprecated_warning;
+use crate::{node::NodeOpts, Command, CommandGlobalOpts};
 
 /// Create a new Kafka Consumer. Kafka clients v3.7.0 and earlier are supported.
 /// You can find the version you have with 'kafka-console-consumer.sh --version'.
@@ -26,8 +23,8 @@ pub struct CreateCommand {
     addr: String,
     /// The address where to bind and where the client will connect to alongside its port, <address>:<port>.
     /// In case just a port is specified, the default loopback address (127.0.0.1) will be used
-    #[arg(long, default_value_t = kafka_default_consumer_server(), value_parser = socket_addr_parser)]
-    bootstrap_server: SocketAddr,
+    #[arg(long, default_value_t = kafka_default_consumer_server(), value_parser = hostname_parser)]
+    bootstrap_server: HostnamePort,
     /// Local port range dynamically allocated to kafka brokers, must not overlap with the
     /// bootstrap port
     #[arg(long)]

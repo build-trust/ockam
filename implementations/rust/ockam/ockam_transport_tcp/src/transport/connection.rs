@@ -5,8 +5,8 @@ use core::fmt;
 use core::fmt::Formatter;
 use ockam_core::flow_control::FlowControlId;
 use ockam_core::{Address, Result};
+use ockam_node::compat::asynchronous::resolve_peer;
 use ockam_node::Context;
-use ockam_transport_core::resolve_peer;
 use std::net::SocketAddr;
 use tracing::debug;
 
@@ -101,7 +101,7 @@ impl TcpTransport {
         options: TcpConnectionOptions,
     ) -> Result<TcpConnection> {
         let peer = peer.into();
-        let socket = resolve_peer(peer.clone())?;
+        let socket = resolve_peer(peer.clone()).await?;
         debug!("Connecting to {}", peer.clone());
         let (read_half, write_half) = connect(socket).await?;
 

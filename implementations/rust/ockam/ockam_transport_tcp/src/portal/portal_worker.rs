@@ -9,6 +9,7 @@ use ockam_core::{
     Mailbox, Mailboxes, OutgoingAccessControl,
 };
 use ockam_core::{Any, Result, Route, Routed, Worker};
+use ockam_node::compat::asynchronous::resolve_peer;
 use ockam_node::{Context, ProcessorBuilder, WorkerBuilder};
 use ockam_transport_core::{HostnamePort, TransportError};
 use std::time::Duration;
@@ -378,7 +379,8 @@ impl TcpPortalWorker {
             self.read_half = Some(ReadHalfWithTls(rx));
         } else {
             debug!("Connect to {}", self.hostname_port);
-            let (rx, tx) = connect(self.hostname_port.to_socket_addr()?).await?;
+            let peer = resolve_peer(&self.hostname_port).await?;
+            let (rx, tx) = connect(peer).await?;
             self.write_half = Some(WriteHalfNoTls(tx));
             self.read_half = Some(ReadHalfNoTls(rx));
         }

@@ -4,7 +4,7 @@ use crate::run::parser::building_blocks::ArgValue;
 use crate::run::parser::config::ConfigParser;
 use crate::run::parser::resource::*;
 use crate::run::parser::Version;
-use crate::value_parsers::{async_parse_path_or_url, parse_enrollment_ticket, parse_key_val};
+use crate::value_parsers::{load_path_or_url, parse_key_val, parse_or_load_enrollment_ticket};
 use crate::CommandGlobalOpts;
 use clap::Args;
 use miette::{miette, IntoDiagnostic};
@@ -25,7 +25,7 @@ pub struct ConfigArgs {
     /// A path, URL or inlined hex-encoded enrollment ticket to use for the Ockam Identity associated to this node.
     /// When passed, the identity will be given a project membership credential.
     /// Check the `project ticket` command for more information about enrollment tickets.
-    #[arg(long, value_name = "ENROLLMENT TICKET", value_parser = parse_enrollment_ticket)]
+    #[arg(long, value_name = "ENROLLMENT TICKET", value_parser = parse_or_load_enrollment_ticket)]
     pub enrollment_ticket: Option<EnrollmentTicket>,
 
     /// Key-value pairs defining environment variables used in the Node configuration.
@@ -66,7 +66,7 @@ impl CreateCommand {
     pub async fn get_node_config(&self) -> miette::Result<NodeConfig> {
         let contents = match self.config_args.configuration.clone() {
             Some(contents) => contents,
-            None => async_parse_path_or_url(&self.name).await?,
+            None => load_path_or_url(&self.name)?,
         };
         // Set environment variables from the cli command args
         // This needs to be done before parsing the configuration

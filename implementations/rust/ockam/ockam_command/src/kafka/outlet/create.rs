@@ -6,6 +6,7 @@ use miette::miette;
 use serde::Serialize;
 use std::fmt::Write;
 
+use ockam::transport::HostnamePort;
 use ockam::Context;
 use ockam_abac::PolicyExpression;
 use ockam_api::colors::{color_primary, color_warn};
@@ -16,12 +17,10 @@ use ockam_api::output::Output;
 use ockam_api::{fmt_log, fmt_ok};
 use ockam_core::api::Request;
 
+use crate::kafka::{kafka_default_outlet_addr, kafka_default_outlet_server};
 use crate::node::util::initialize_default_node;
-use crate::{
-    kafka::{kafka_default_outlet_addr, kafka_default_outlet_server},
-    node::NodeOpts,
-    Command, CommandGlobalOpts,
-};
+use crate::util::parsers::hostname_parser;
+use crate::{node::NodeOpts, Command, CommandGlobalOpts};
 
 /// Create a new Kafka Outlet
 #[derive(Clone, Debug, Args)]
@@ -34,8 +33,8 @@ pub struct CreateCommand {
     pub addr: String,
 
     /// The address of the kafka bootstrap broker
-    #[arg(long, default_value_t = kafka_default_outlet_server())]
-    pub bootstrap_server: String,
+    #[arg(long, default_value_t = kafka_default_outlet_server(), value_parser = hostname_parser)]
+    pub bootstrap_server: HostnamePort,
 
     /// If set, the outlet will establish a TLS connection over TCP
     #[arg(long, id = "BOOLEAN")]
@@ -61,7 +60,7 @@ impl Command for CreateCommand {
             if let Some(pb) = pb.as_ref() {
                 pb.set_message(format!(
                     "Creating Kafka Outlet to bootstrap server {}...\n",
-                    color_primary(&self.bootstrap_server)
+                    color_primary(self.bootstrap_server.to_string())
                 ));
             }
 
@@ -97,7 +96,7 @@ impl Command for CreateCommand {
 #[derive(Serialize)]
 struct KafkaOutletOutput {
     node_name: String,
-    bootstrap_server: String,
+    bootstrap_server: HostnamePort,
 }
 
 impl Output for KafkaOutletOutput {
@@ -112,7 +111,7 @@ impl Output for KafkaOutletOutput {
             ),
             fmt_log!(
                 "bound to the bootstrap server at {}",
-                color_primary(&self.bootstrap_server)
+                color_primary(self.bootstrap_server.to_string())
             ),
         )?;
 

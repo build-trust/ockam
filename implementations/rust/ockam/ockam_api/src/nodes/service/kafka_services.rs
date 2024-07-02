@@ -8,7 +8,6 @@ use ockam_core::compat::rand::random_string;
 use ockam_core::route;
 use ockam_multiaddr::proto::Project;
 use ockam_multiaddr::MultiAddr;
-use std::str::FromStr;
 use std::sync::Arc;
 
 use super::NodeManagerWorker;
@@ -253,7 +252,7 @@ impl InMemoryNode {
         &self,
         context: &Context,
         service_address: Address,
-        bootstrap_server_addr: String,
+        bootstrap_server_addr: HostnamePort,
         tls: bool,
         outlet_policy_expression: Option<PolicyExpression>,
     ) -> Result<()> {
@@ -286,7 +285,7 @@ impl InMemoryNode {
         if let Err(e) = self
             .create_outlet(
                 context,
-                HostnamePort::from_str(&bootstrap_server_addr)?,
+                bootstrap_server_addr,
                 tls,
                 Some(KAFKA_OUTLET_BOOTSTRAP_ADDRESS.into()),
                 false,

@@ -7,6 +7,7 @@ use ockam_abac::PolicyExpression;
 use ockam_core::compat::net::SocketAddr;
 use ockam_core::Address;
 use ockam_multiaddr::MultiAddr;
+use ockam_transport_core::HostnamePort;
 use serde::Serialize;
 use std::fmt::Display;
 use std::fmt::Write;
@@ -57,14 +58,14 @@ impl DeleteServiceRequest {
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct StartKafkaOutletRequest {
-    #[n(1)] bootstrap_server_addr: String,
+    #[n(1)] bootstrap_server_addr: HostnamePort,
     #[n(2)] tls: bool,
     #[n(3)] policy_expression: Option<PolicyExpression>,
 }
 
 impl StartKafkaOutletRequest {
     pub fn new(
-        bootstrap_server_addr: String,
+        bootstrap_server_addr: HostnamePort,
         tls: bool,
         policy_expression: Option<PolicyExpression>,
     ) -> Self {
@@ -75,7 +76,7 @@ impl StartKafkaOutletRequest {
         }
     }
 
-    pub fn bootstrap_server_addr(&self) -> String {
+    pub fn bootstrap_server_addr(&self) -> HostnamePort {
         self.bootstrap_server_addr.clone()
     }
 

@@ -194,7 +194,7 @@ pub async fn start_tcp_echo_server() -> EchoServerHandle {
     }
 
     EchoServerHandle {
-        chosen_addr: HostnamePort::from_socket_addr(chosen_addr).unwrap(),
+        chosen_addr: HostnamePort::try_from(chosen_addr).unwrap(),
         close,
     }
 }

@@ -69,7 +69,7 @@ impl AppState {
             let _ = node_manager
                 .create_outlet(
                     &context,
-                    HostnamePort::from_socket_addr(tcp_outlet.socket_addr)
+                    HostnamePort::try_from(tcp_outlet.socket_addr)
                         .expect("cannot parse the socket address as a hostname and port"),
                     false,
                     Some(tcp_outlet.worker_addr.clone()),

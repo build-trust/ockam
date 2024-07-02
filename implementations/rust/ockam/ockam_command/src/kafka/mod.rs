@@ -1,9 +1,11 @@
-use std::cmp::min;
-use std::{net::SocketAddr, str::FromStr};
-
+use ockam::transport::HostnamePort;
 use ockam_api::nodes::service::default_address::DefaultAddress;
 use ockam_api::port_range::PortRange;
 use ockam_multiaddr::MultiAddr;
+use ockam_transport_core::StaticHostnamePort;
+use std::cmp::min;
+use std::string::ToString;
+use std::{net::SocketAddr, str::FromStr};
 
 pub(crate) mod consumer;
 pub(crate) mod inlet;
@@ -11,11 +13,15 @@ pub(crate) mod outlet;
 pub(crate) mod producer;
 pub(crate) mod util;
 
-const KAFKA_DEFAULT_BOOTSTRAP_ADDRESS: &str = "127.0.0.1:9092";
+const KAFKA_DEFAULT_BOOTSTRAP_ADDRESS: StaticHostnamePort =
+    StaticHostnamePort::new("127.0.0.1", 9092);
 const KAFKA_DEFAULT_PROJECT_ROUTE: &str = "/project/default";
-const KAFKA_DEFAULT_CONSUMER_SERVER: &str = "127.0.0.1:4000";
-const KAFKA_DEFAULT_INLET_BIND_ADDRESS: &str = "127.0.0.1:4000";
-const KAFKA_DEFAULT_PRODUCER_SERVER: &str = "127.0.0.1:5000";
+const KAFKA_DEFAULT_CONSUMER_SERVER: StaticHostnamePort =
+    StaticHostnamePort::new("127.0.0.1", 4000);
+const KAFKA_DEFAULT_INLET_BIND_ADDRESS: StaticHostnamePort =
+    StaticHostnamePort::new("127.0.0.1", 4000);
+const KAFKA_DEFAULT_PRODUCER_SERVER: StaticHostnamePort =
+    StaticHostnamePort::new("127.0.0.1", 5000);
 
 fn kafka_default_outlet_addr() -> String {
     DefaultAddress::KAFKA_OUTLET.to_string()
@@ -29,23 +35,20 @@ fn kafka_default_project_route() -> MultiAddr {
     MultiAddr::from_str(KAFKA_DEFAULT_PROJECT_ROUTE).expect("Failed to parse default project route")
 }
 
-fn kafka_default_outlet_server() -> String {
-    KAFKA_DEFAULT_BOOTSTRAP_ADDRESS.to_string()
+fn kafka_default_outlet_server() -> HostnamePort {
+    KAFKA_DEFAULT_BOOTSTRAP_ADDRESS.into()
 }
 
-fn kafka_default_consumer_server() -> SocketAddr {
-    SocketAddr::from_str(KAFKA_DEFAULT_CONSUMER_SERVER)
-        .expect("Failed to parse default consumer server")
+fn kafka_default_consumer_server() -> HostnamePort {
+    KAFKA_DEFAULT_CONSUMER_SERVER.into()
 }
 
-fn kafka_default_inlet_bind_address() -> SocketAddr {
-    SocketAddr::from_str(KAFKA_DEFAULT_INLET_BIND_ADDRESS)
-        .expect("Failed to parse default consumer server")
+fn kafka_default_inlet_bind_address() -> HostnamePort {
+    KAFKA_DEFAULT_INLET_BIND_ADDRESS.into()
 }
 
-fn kafka_default_producer_server() -> SocketAddr {
-    SocketAddr::from_str(KAFKA_DEFAULT_PRODUCER_SERVER)
-        .expect("Failed to parse default producer server")
+fn kafka_default_producer_server() -> HostnamePort {
+    KAFKA_DEFAULT_PRODUCER_SERVER.into()
 }
 
 pub(crate) fn make_brokers_port_range(bootstrap_server: &SocketAddr) -> PortRange {

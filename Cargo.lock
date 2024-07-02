@@ -4652,6 +4652,7 @@ dependencies = [
  "ockam_macros",
  "ockam_multiaddr",
  "ockam_node",
+ "ockam_transport_core",
  "ockam_vault",
  "once_cell",
  "open",
@@ -4874,7 +4875,7 @@ version = "0.85.0"
 dependencies = [
  "minicbor",
  "ockam_core",
- "regex",
+ "serde",
 ]
 
 [[package]]

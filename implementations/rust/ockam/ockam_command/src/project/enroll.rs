@@ -7,9 +7,13 @@ use colorful::Colorful;
 use miette::Context as _;
 use miette::{miette, IntoDiagnostic};
 
+use crate::enroll::OidcServiceExt;
+use crate::shared_args::{IdentityOpts, RetryOpts, TrustOpts};
+use crate::value_parsers::parse_or_load_enrollment_ticket;
+use crate::{docs, Command, CommandGlobalOpts, Error, Result};
 use ockam::identity::models::CredentialData;
 use ockam::Context;
-use ockam_api::cli_state::enrollments::EnrollmentTicket;
+use ockam_api::cli_state::EnrollmentTicket;
 use ockam_api::cloud::project::models::OktaAuth0;
 use ockam_api::cloud::project::Project;
 use ockam_api::colors::color_primary;
@@ -20,11 +24,6 @@ use ockam_api::nodes::InMemoryNode;
 use ockam_api::output::human_readable_time;
 use ockam_api::terminal::fmt;
 use ockam_api::{fmt_log, fmt_ok};
-
-use crate::enroll::OidcServiceExt;
-use crate::shared_args::{IdentityOpts, RetryOpts, TrustOpts};
-use crate::value_parsers::parse_enrollment_ticket;
-use crate::{docs, Command, CommandGlobalOpts, Error, Result};
 
 const LONG_ABOUT: &str = include_str!("./static/enroll/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/enroll/after_long_help.txt");
@@ -37,7 +36,12 @@ after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct EnrollCommand {
     /// Path, URL or inlined hex-encoded enrollment ticket
-    #[arg(display_order = 800, group = "authentication_method", value_name = "ENROLLMENT TICKET", value_parser = parse_enrollment_ticket)]
+    #[arg(
+        display_order = 800,
+        group = "authentication_method",
+        value_name = "ENROLLMENT TICKET",
+        value_parser = parse_or_load_enrollment_ticket
+    )]
     pub enrollment_ticket: Option<EnrollmentTicket>,
 
     #[command(flatten)]

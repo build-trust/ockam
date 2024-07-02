@@ -2,8 +2,9 @@ use super::{Addresses, TransportMessageCodec};
 use crate::UDP;
 use futures_util::{stream::SplitSink, SinkExt};
 use ockam_core::{async_trait, Any, Result, Routed, TransportMessage, Worker};
+use ockam_node::compat::asynchronous::resolve_peer;
 use ockam_node::Context;
-use ockam_transport_core::{resolve_peer, TransportError};
+use ockam_transport_core::TransportError;
 use std::net::SocketAddr;
 use tokio_util::udp::UdpFramed;
 use tracing::{error, trace, warn};
@@ -71,7 +72,7 @@ impl Worker for UdpSenderWorker {
                 return Err(TransportError::UnknownRoute)?;
             }
 
-            resolve_peer(peer_addr.address().to_string())?
+            resolve_peer(peer_addr.address().to_string()).await?
         };
 
         // Error on conditions that _might_ put the sink

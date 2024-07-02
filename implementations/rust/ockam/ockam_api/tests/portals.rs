@@ -8,6 +8,7 @@ use ockam_core::compat::rand::RngCore;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{route, Address, AllowAll, Error};
 use ockam_multiaddr::MultiAddr;
+use ockam_node::compat::asynchronous::resolve_peer;
 use ockam_node::Context;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -39,7 +40,7 @@ async fn inlet_outlet_local_successful(context: &mut Context) -> ockam::Result<(
 
     assert_eq!(
         outlet_status.socket_addr,
-        echo_server_handle.chosen_addr.to_socket_addr()?
+        resolve_peer(&echo_server_handle.chosen_addr).await?
     );
     assert_eq!(outlet_status.worker_addr.address(), "outlet");
 

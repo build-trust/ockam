@@ -3,9 +3,11 @@ use core::net::SocketAddr;
 use ockam_core::compat::string::ToString;
 use ockam_core::Result;
 
-/// Resolve the given peer to a [`SocketAddr`](std::net::SocketAddr)
+/// Synchronously resolve the given peer to a [`SocketAddr`](std::net::SocketAddr)
+/// TODO: Remove this in favor of async version in `ockam_node`
 #[cfg(feature = "std")]
-pub fn resolve_peer(peer: String) -> Result<SocketAddr> {
+pub fn resolve_peer_sync(peer: impl ToString) -> Result<SocketAddr> {
+    let peer = peer.to_string();
     // Try to parse as SocketAddr
     if let Ok(p) = parse_socket_addr(&peer) {
         return Ok(p);
@@ -22,7 +24,7 @@ pub fn resolve_peer(peer: String) -> Result<SocketAddr> {
             }
             if let Some(p) = iter.find(|x| x.is_ipv6()) {
                 return Ok(p);
-            };
+            }
             Err(TransportError::InvalidAddress(format!(
                 "cannot resolve address: {peer}. No IP4 or IP6 address found."
             )))?
