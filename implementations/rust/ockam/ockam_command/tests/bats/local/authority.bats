@@ -52,7 +52,7 @@ teardown() {
   run "$OCKAM" identity create m3
   run "$OCKAM" identity create m4
   run "$OCKAM" identity create m5
-  run "$OCKAM" identity create m7
+  run "$OCKAM" identity create m6
 
   account_authority_full=$($OCKAM identity show account_authority --full --encoding hex)
   account_authority_identifier=$($OCKAM identity show account_authority)
@@ -120,14 +120,14 @@ EOF
 
   # admin can enroll new enrollers
   token3=$($OCKAM project ticket --identity admin --enroller)
-  run_success "$OCKAM" project enroll $token3 --identity m7
+  run_success "$OCKAM" project enroll $token3 --identity m6
   assert_output --partial "enroller"
 
   # New enroller can enroll members
-  run_success "$OCKAM" project ticket --identity m7
+  run_success "$OCKAM" project ticket --identity m6
 
   # Enroller can't enroll new enrollers
-  run "$OCKAM" project ticket --enroller --identity m7
+  run "$OCKAM" project ticket --enroller --identity m6
   assert_failure
 
   run "$OCKAM" project enroll $token2 --identity m5
