@@ -56,7 +56,14 @@ impl BleRouter {
         if let Some(f) = accepts.first().cloned() {
             debug!("BLE registration request: {} => {}", f, self_addr);
         } else {
-            return Err(TransportError::InvalidAddress)?;
+            return Err(TransportError::InvalidAddress(
+                accepts
+                    .iter()
+                    .map(|a| a.to_string())
+                    .collect::<Vec<String>>()
+                    .join(", ")
+                    .to_string(),
+            ))?;
         }
 
         for accept in &accepts {
@@ -123,7 +130,7 @@ impl Worker for BleRouter {
                 }
             };
         } else {
-            return Err(TransportError::InvalidAddress)?;
+            return Err(TransportError::InvalidAddress(msg_addr.to_string()))?;
         }
 
         Ok(())

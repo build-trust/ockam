@@ -1,14 +1,15 @@
 use ockam_core::{
     compat::io,
+    compat::string::String,
     errcode::{Kind, Origin},
     Error,
 };
 
 /// A Transport worker specific error type
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum TransportError {
     /// Failed to send a malformed message
-    SendBadMessage = 1,
+    SendBadMessage,
     /// Failed to receive a malformed message
     RecvBadMessage,
     /// Failed to bind to the desired socket
@@ -24,7 +25,7 @@ pub enum TransportError {
     /// Failed to route to an unknown recipient
     UnknownRoute,
     /// Failed to parse the socket address
-    InvalidAddress,
+    InvalidAddress(String),
     /// Failed to read message (buffer exhausted) or failed to send it (size is too big)
     Capacity,
     /// Failed to encode message
@@ -61,7 +62,9 @@ impl core::fmt::Display for TransportError {
             Self::PeerNotFound => write!(f, "connection peer was not found"),
             Self::PeerBusy => write!(f, "connection peer is busy"),
             Self::UnknownRoute => write!(f, "message routing failed (unknown recipient)"),
-            Self::InvalidAddress => write!(f, "failed to parse the socket address"),
+            Self::InvalidAddress(address) => {
+                write!(f, "failed to parse the socket address {}", address)
+            }
             Self::Capacity => write!(f, "failed to read message (buffer exhausted)"),
             Self::Encoding => write!(f, "failed to encode message"),
             Self::Protocol => write!(f, "violation in transport protocol"),
@@ -89,7 +92,7 @@ impl From<TransportError> for Error {
             PeerNotFound => Kind::Misuse,
             PeerBusy => Kind::Io,
             UnknownRoute => Kind::Misuse,
-            InvalidAddress => Kind::Misuse,
+            InvalidAddress(_) => Kind::Misuse,
             Capacity => Kind::ResourceExhausted,
             Encoding => Kind::Serialization,
             Protocol => Kind::Protocol,

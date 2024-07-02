@@ -184,7 +184,7 @@ impl Worker for UdsSendWorker {
                 debug!("Failed to determine peer path.");
                 self.stop_and_unregister(ctx).await?;
 
-                return Err(TransportError::InvalidAddress)?;
+                return Err(TransportError::InvalidAddress(format!("{:?}", self.peer)))?;
             }
         };
 

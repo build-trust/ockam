@@ -95,12 +95,16 @@ impl UdsRouter {
 
         let path = match pair.peer().as_pathname() {
             Some(p) => p,
-            None => return Err(TransportError::InvalidAddress)?,
+            None => return Err(TransportError::InvalidAddress(format!("{:?}", pair.peer())))?,
         };
 
         let str_path = match path.to_str() {
             Some(s) => s,
-            None => return Err(TransportError::InvalidAddress)?,
+            None => {
+                return Err(TransportError::InvalidAddress(
+                    path.to_string_lossy().to_string(),
+                ))?
+            }
         };
 
         let uds_address = Address::new_with_string(UDS, str_path);
@@ -214,7 +218,7 @@ impl UdsRouter {
             Some(p) => p,
             None => {
                 error!("Failed to resolve route.");
-                return Err(TransportError::InvalidAddress)?;
+                return Err(TransportError::InvalidAddress(format!("{:?}", peer_addr)))?;
             }
         };
 
@@ -225,7 +229,9 @@ impl UdsRouter {
                     "Failed to resolve route, invalid path provided: {}",
                     path.display()
                 );
-                return Err(TransportError::InvalidAddress)?;
+                return Err(TransportError::InvalidAddress(
+                    path.to_string_lossy().to_string(),
+                ))?;
             }
         };
 
@@ -296,7 +302,7 @@ impl Worker for UdsRouter {
                 "UDS router received a message for an invalid address: {}",
                 msg_addr
             );
-            return Err(TransportError::InvalidAddress)?;
+            return Err(TransportError::InvalidAddress(msg_addr.to_string()))?;
         }
 
         Ok(())

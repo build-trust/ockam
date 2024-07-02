@@ -1,5 +1,6 @@
 use crate::TransportError;
 use core::net::SocketAddr;
+use ockam_core::compat::string::ToString;
 use ockam_core::Result;
 
 /// Resolve the given peer to a [`SocketAddr`](std::net::SocketAddr)
@@ -13,22 +14,28 @@ pub fn resolve_peer(peer: String) -> Result<SocketAddr> {
     use ockam_core::compat::net::ToSocketAddrs;
 
     // Try to resolve hostname
-    if let Ok(mut iter) = peer.to_socket_addrs() {
-        // Prefer ip4
-        if let Some(p) = iter.find(|x| x.is_ipv4()) {
-            return Ok(p);
+    match peer.to_socket_addrs() {
+        Ok(mut iter) => {
+            // Prefer ip4
+            if let Some(p) = iter.find(|x| x.is_ipv4()) {
+                return Ok(p);
+            }
+            if let Some(p) = iter.find(|x| x.is_ipv6()) {
+                return Ok(p);
+            };
+            Err(TransportError::InvalidAddress(format!(
+                "cannot resolve address: {peer}. No IP4 or IP6 address found."
+            )))?
         }
-        if let Some(p) = iter.find(|x| x.is_ipv6()) {
-            return Ok(p);
-        }
+        Err(e) => Err(TransportError::InvalidAddress(format!(
+            "cannot resolve address: {peer}: {e:?}"
+        )))?,
     }
-
-    // Nothing worked, return an error
-    Err(TransportError::InvalidAddress)?
 }
 
 pub fn parse_socket_addr(s: &str) -> Result<SocketAddr> {
-    Ok(s.parse().map_err(|_| TransportError::InvalidAddress)?)
+    Ok(s.parse()
+        .map_err(|_| TransportError::InvalidAddress(s.to_string()))?)
 }
 
 #[cfg(test)]
@@ -49,31 +56,52 @@ mod test {
     fn test_parse_socket_address() {
         let result = parse_socket_addr("hostname:port");
         assert!(result.is_err());
-        assert_transport_error(result, TransportError::InvalidAddress);
+        assert_transport_error(
+            result,
+            TransportError::InvalidAddress("hostname:port".to_string()),
+        );
 
         let result = parse_socket_addr("example.com");
         assert!(result.is_err());
-        assert_transport_error(result, TransportError::InvalidAddress);
+        assert_transport_error(
+            result,
+            TransportError::InvalidAddress("example.com".to_string()),
+        );
 
         let result = parse_socket_addr("example.com:80");
         assert!(result.is_err());
-        assert_transport_error(result, TransportError::InvalidAddress);
+        assert_transport_error(
+            result,
+            TransportError::InvalidAddress("example.com:80".to_string()),
+        );
 
         let result = parse_socket_addr("127.0.0.1");
         assert!(result.is_err());
-        assert_transport_error(result, TransportError::InvalidAddress);
+        assert_transport_error(
+            result,
+            TransportError::InvalidAddress("127.0.0.1".to_string()),
+        );
 
         let result = parse_socket_addr("127.0.0.1:port");
         assert!(result.is_err());
-        assert_transport_error(result, TransportError::InvalidAddress);
+        assert_transport_error(
+            result,
+            TransportError::InvalidAddress("127.0.0.1:port".to_string()),
+        );
 
         let result = parse_socket_addr("127.0.1:80");
         assert!(result.is_err());
-        assert_transport_error(result, TransportError::InvalidAddress);
+        assert_transport_error(
+            result,
+            TransportError::InvalidAddress("127.0.1:80".to_string()),
+        );
 
         let result = parse_socket_addr("127.0.0.1:65536");
         assert!(result.is_err());
-        assert_transport_error(result, TransportError::InvalidAddress);
+        assert_transport_error(
+            result,
+            TransportError::InvalidAddress("127.0.0.1:65536".to_string()),
+        );
 
         let result = parse_socket_addr("127.0.0.1:0");
         assert!(result.is_ok());
