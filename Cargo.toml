@@ -1,6 +1,7 @@
 [workspace]
 resolver = "2"
 members = [
+  "examples/rust/rendezvous",
   "examples/rust/file_transfer",
   "examples/rust/get_started",
   "examples/rust/tcp_inlet_and_outlet",

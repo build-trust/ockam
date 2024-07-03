@@ -4926,7 +4926,6 @@ dependencies = [
  "bytes 1.6.0",
  "futures-util",
  "minicbor",
- "ockam",
  "ockam_core",
  "ockam_macros",
  "ockam_node",
@@ -6029,6 +6028,18 @@ name = "regex-syntax"
 version = "0.8.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7a66a03ae7c801facd77a29370b4faec201768915ac14a721ba36f20bc9c209b"
+
+[[package]]
+name = "rendezvous"
+version = "0.1.0"
+dependencies = [
+ "ockam",
+ "ockam_core",
+ "ockam_macros",
+ "ockam_node",
+ "ockam_transport_udp",
+ "tracing",
+]
 
 [[package]]
 name = "reqwest"
