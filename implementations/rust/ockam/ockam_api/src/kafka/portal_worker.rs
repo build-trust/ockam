@@ -766,7 +766,7 @@ mod test {
             MultiAddr::default(),
             route![],
             route![],
-            [255, 255, 255, 255].into(),
+            "255.255.255.255".to_string(),
             PortRange::new(0, 0).unwrap(),
             None,
         );
@@ -905,7 +905,7 @@ mod test {
             MultiAddr::default(),
             route![],
             route![],
-            [127, 0, 0, 1].into(),
+            "127.0.0.1".to_string(),
             PortRange::new(0, 0).unwrap(),
             None,
         );
@@ -1023,7 +1023,7 @@ mod test {
             assert_eq!(0, broker.port);
 
             let address = inlet_map.retrieve_inlet(1).await.expect("inlet not found");
-            assert_eq!("127.0.0.1".to_string(), address.ip().to_string());
+            assert_eq!("127.0.0.1".to_string(), address.hostname());
             assert_eq!(0, address.port());
         } else {
             panic!("invalid message type")

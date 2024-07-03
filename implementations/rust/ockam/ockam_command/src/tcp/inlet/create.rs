@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::str::FromStr;
 use std::time::Duration;
 
@@ -10,6 +9,7 @@ use miette::{miette, IntoDiagnostic};
 use tracing::trace;
 
 use ockam::identity::Identifier;
+use ockam::transport::HostnamePort;
 use ockam::Context;
 use ockam_abac::PolicyExpression;
 use ockam_api::address::extract_address_value;
@@ -33,7 +33,7 @@ use crate::tcp::util::alias_parser;
 use crate::{docs, Command, CommandGlobalOpts, Error};
 
 use crate::util::parsers::duration_parser;
-use crate::util::parsers::socket_addr_parser;
+use crate::util::parsers::hostname_parser;
 use crate::util::{find_available_port, port_is_free_guard, process_nodes_multiaddr};
 
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
@@ -47,8 +47,8 @@ pub struct CreateCommand {
     pub at: Option<String>,
 
     /// Address on which to accept TCP connections.
-    #[arg(long, display_order = 900, id = "SOCKET_ADDRESS", hide_default_value = true, default_value_t = default_from_addr(), value_parser = socket_addr_parser)]
-    pub from: SocketAddr,
+    #[arg(long, display_order = 900, id = "SOCKET_ADDRESS", hide_default_value = true, default_value_t = default_from_addr(), value_parser = hostname_parser)]
+    pub from: HostnamePort,
 
     /// Route to a TCP Outlet or the name of the TCP Outlet service you want to connect to.
     ///
@@ -120,9 +120,9 @@ pub struct CreateCommand {
     pub disable_tcp_fallback: bool,
 }
 
-pub(crate) fn default_from_addr() -> SocketAddr {
+pub(crate) fn default_from_addr() -> HostnamePort {
     let port = find_available_port().expect("Failed to find available port");
-    SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), port)
+    HostnamePort::new("127.0.0.1", port)
 }
 
 fn default_to_addr() -> String {
@@ -154,7 +154,7 @@ impl Command for CreateCommand {
                 let result: Reply<InletStatus> = node
                     .create_inlet(
                         ctx,
-                        &cmd.from.to_string(),
+                        &cmd.from,
                         &cmd.to(),
                         &cmd.alias,
                         &cmd.authorized,
@@ -271,7 +271,10 @@ impl CreateCommand {
     }
 
     async fn parse_args(mut self, opts: &CommandGlobalOpts) -> miette::Result<Self> {
-        port_is_free_guard(&self.from)?;
+        let from = ockam_node::compat::asynchronous::resolve_peer(self.from.to_string())
+            .await
+            .into_diagnostic()?;
+        port_is_free_guard(&from)?;
         self.to = Self::parse_arg_to(&opts.state, self.to, self.via.as_ref()).await?;
         if self.to().matches(0, &[proto::Project::CODE.into()]) && self.authorized.is_some() {
             return Err(miette!(

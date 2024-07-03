@@ -1,8 +1,7 @@
-use std::net::SocketAddr;
-
 use clap::Args;
 use colorful::Colorful;
 use indoc::formatdoc;
+use ockam::transport::HostnamePort;
 use ockam_api::fmt_info;
 
 use crate::{docs, CommandGlobalOpts};
@@ -11,7 +10,7 @@ use ockam_node::Context;
 use crate::run::Config;
 use crate::tcp::inlet::create::default_from_addr;
 use crate::util::async_cmd;
-use crate::util::parsers::socket_addr_parser;
+use crate::util::parsers::hostname_parser;
 
 const LONG_ABOUT: &str = include_str!("./static/secure_relay_inlet/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/secure_relay_inlet/after_long_help.txt");
@@ -28,8 +27,8 @@ pub struct SecureRelayInlet {
     pub service_name: String,
 
     /// Address on which to accept tcp connections.
-    #[arg(long, display_order = 900, id = "SOCKET_ADDRESS", default_value_t = default_from_addr(), value_parser = socket_addr_parser)]
-    from: SocketAddr,
+    #[arg(long, display_order = 900, id = "SOCKET_ADDRESS", default_value_t = default_from_addr(), value_parser = hostname_parser)]
+    from: HostnamePort,
 
     /// Just print the recipe and exit
     #[arg(long)]
@@ -123,14 +122,10 @@ impl SecureRelayInlet {
 
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr;
-
+    use super::*;
+    use crate::run::parser::config::ConfigParser;
     use ockam_api::authenticator::one_time_code::OneTimeCode;
     use ockam_api::cli_state::EnrollmentTicket;
-
-    use crate::run::parser::config::ConfigParser;
-
-    use super::*;
 
     #[test]
     fn test_that_recipe_is_valid() {
@@ -139,7 +134,7 @@ mod tests {
 
         let cmd = SecureRelayInlet {
             service_name: "service_name".to_string(),
-            from: SocketAddr::from_str("127.0.0.1:8080").unwrap(),
+            from: HostnamePort::new("127.0.0.1", 8080),
             dry_run: false,
             enroll: Enroll {
                 enroll_ticket: Some(enrollment_ticket_hex),

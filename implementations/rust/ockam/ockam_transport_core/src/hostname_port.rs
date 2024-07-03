@@ -6,21 +6,39 @@ use minicbor::{CborLen, Decode, Encode};
 use ockam_core::compat::format;
 use ockam_core::compat::string::{String, ToString};
 use ockam_core::errcode::{Kind, Origin};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+
+/// [`HostnamePort`]'s static counterpart usable for const values.
+pub struct StaticHostnamePort {
+    hostname: &'static str,
+    port: u16,
+}
+
+impl StaticHostnamePort {
+    pub const fn new(hostname: &'static str, port: u16) -> Self {
+        Self { hostname, port }
+    }
+}
+
+impl From<StaticHostnamePort> for HostnamePort {
+    fn from(value: StaticHostnamePort) -> Self {
+        Self::new(value.hostname, value.port)
+    }
+}
 
 /// Hostname and port
 #[derive(Debug, Clone, PartialEq, Eq, Encode, Decode, CborLen)]
+#[rustfmt::skip]
 pub struct HostnamePort {
-    #[n(0)]
-    hostname: String,
-    #[n(1)]
-    port: u16,
+    #[n(0)] hostname: String,
+    #[n(1)] port: u16,
 }
 
 impl HostnamePort {
     /// Create a new HostnamePort
-    pub fn new(hostname: &str, port: u16) -> HostnamePort {
-        HostnamePort {
-            hostname: hostname.to_string(),
+    pub fn new(hostname: impl Into<String>, port: u16) -> HostnamePort {
+        Self {
+            hostname: hostname.into(),
             port,
         }
     }
@@ -37,12 +55,6 @@ impl HostnamePort {
         }
     }
 
-    /// Return a socket address from a hostname and port
-    #[cfg(feature = "std")]
-    pub fn to_socket_addr(&self) -> ockam_core::Result<SocketAddr> {
-        crate::resolve_peer(self.to_string())
-    }
-
     /// Return the hostname
     pub fn hostname(&self) -> String {
         self.hostname.clone()
@@ -54,27 +66,28 @@ impl HostnamePort {
     }
 }
 
-#[cfg(feature = "std")]
-mod serde {
-    use super::*;
-    use ::serde::{Deserialize, Deserializer, Serialize, Serializer};
-    impl Serialize for HostnamePort {
-        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: Serializer,
-        {
-            serializer.serialize_str(&self.to_string())
-        }
+impl Serialize for HostnamePort {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&self.to_string())
     }
+}
 
-    impl<'de> Deserialize<'de> for HostnamePort {
-        fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-        where
-            D: Deserializer<'de>,
-        {
-            let s = String::deserialize(deserializer)?;
-            HostnamePort::from_str(&s).map_err(::serde::de::Error::custom)
-        }
+impl<'de> Deserialize<'de> for HostnamePort {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        HostnamePort::from_str(&s).map_err(serde::de::Error::custom)
+    }
+}
+
+impl From<SocketAddr> for HostnamePort {
+    fn from(value: SocketAddr) -> Self {
+        HostnamePort::from_socket_addr(value)
     }
 }
 
@@ -180,6 +193,23 @@ mod tests {
             HostnamePort::new("[2001:db8:85a3::8a2e:370:7334]", 8080)
         );
 
+        let socket_addr = SocketAddr::from_str("[::1]:8080").unwrap();
+        let actual = HostnamePort::from_socket_addr(socket_addr);
+        assert_eq!(actual, HostnamePort::new("[::1]", 8080));
+        assert_eq!(actual.to_string(), "[::1]:8080");
+
+        let hostname_port = HostnamePort::from_str("xn--74h.com:80").unwrap();
+        assert_eq!(hostname_port.hostname(), "xn--74h.com");
+        assert_eq!(hostname_port.port(), 80);
+
         Ok(())
+    }
+
+    #[test]
+    fn test_invalid_inputs() {
+        // we only validate the port, not the hostname
+        assert!(HostnamePort::from_str("invalid").is_err());
+        assert!(HostnamePort::from_str("192.168.0.1:invalid").is_err());
+        assert!(HostnamePort::from_str("192.168.0.1:9999:extra").is_err());
     }
 }

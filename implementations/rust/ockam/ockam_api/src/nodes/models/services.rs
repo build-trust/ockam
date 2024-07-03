@@ -4,9 +4,9 @@ use crate::output::Output;
 use crate::terminal::fmt;
 use minicbor::{CborLen, Decode, Encode};
 use ockam_abac::PolicyExpression;
-use ockam_core::compat::net::SocketAddr;
 use ockam_core::Address;
 use ockam_multiaddr::MultiAddr;
+use ockam_transport_core::HostnamePort;
 use serde::Serialize;
 use std::fmt::Display;
 use std::fmt::Write;
@@ -57,14 +57,14 @@ impl DeleteServiceRequest {
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct StartKafkaOutletRequest {
-    #[n(1)] bootstrap_server_addr: String,
+    #[n(1)] bootstrap_server_addr: HostnamePort,
     #[n(2)] tls: bool,
     #[n(3)] policy_expression: Option<PolicyExpression>,
 }
 
 impl StartKafkaOutletRequest {
     pub fn new(
-        bootstrap_server_addr: String,
+        bootstrap_server_addr: HostnamePort,
         tls: bool,
         policy_expression: Option<PolicyExpression>,
     ) -> Self {
@@ -75,7 +75,7 @@ impl StartKafkaOutletRequest {
         }
     }
 
-    pub fn bootstrap_server_addr(&self) -> String {
+    pub fn bootstrap_server_addr(&self) -> HostnamePort {
         self.bootstrap_server_addr.clone()
     }
 
@@ -92,7 +92,7 @@ impl StartKafkaOutletRequest {
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct StartKafkaInletRequest {
-    #[n(1)] bind_address: SocketAddr,
+    #[n(1)] bind_address: HostnamePort,
     #[n(2)] brokers_port_range: (u16, u16),
     #[n(3)] kafka_outlet_route: MultiAddr,
     #[n(4)] encrypt_content: bool,
@@ -106,7 +106,7 @@ pub struct StartKafkaInletRequest {
 impl StartKafkaInletRequest {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
-        bind_address: SocketAddr,
+        bind_address: HostnamePort,
         brokers_port_range: impl Into<(u16, u16)>,
         kafka_outlet_route: MultiAddr,
         encrypt_content: bool,
@@ -129,8 +129,8 @@ impl StartKafkaInletRequest {
         }
     }
 
-    pub fn bind_address(&self) -> SocketAddr {
-        self.bind_address
+    pub fn bind_address(&self) -> HostnamePort {
+        self.bind_address.clone()
     }
     pub fn brokers_port_range(&self) -> (u16, u16) {
         self.brokers_port_range

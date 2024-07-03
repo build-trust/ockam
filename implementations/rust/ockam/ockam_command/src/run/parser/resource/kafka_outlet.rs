@@ -67,7 +67,10 @@ mod tests {
             .into_parsed_commands(Some(&default_node_name))
             .unwrap();
         assert_eq!(cmds.len(), 1);
-        assert_eq!(cmds[0].bootstrap_server, "192.168.0.100:9092".to_string(),);
+        assert_eq!(
+            cmds[0].bootstrap_server.to_string(),
+            "192.168.0.100:9092".to_string(),
+        );
         assert_eq!(cmds[0].node_opts.at_node.as_ref().unwrap(), "node_name");
 
         let named = r#"
