@@ -41,14 +41,4 @@ tokio-util = { version = "0.7.11", features = ["net", "codec"] }
 tracing = { version = "0.1", default-features = false }
 
 [dev-dependencies]
-ockam = { path = "../ockam", version = "^0.129.0" }
 ockam_macros = { path = "../ockam_macros", version = "^0.34.0" }
-
-[[example]]
-name = "client"
-
-[[example]]
-name = "echo_server"
-
-[[example]]
-name = "rendezvous_server"
