@@ -6,9 +6,9 @@ use tokio::{sync::Mutex, try_join};
 
 use crate::{docs, CommandGlobalOpts};
 use ockam::identity::models::CredentialAndPurposeKey;
-use ockam::identity::DEFAULT_TIMEOUT;
 use ockam::{identity::Identifier, route, Context};
 use ockam_api::address::extract_address_value;
+use ockam_api::cloud::get_default_timeout;
 use ockam_api::colors::OckamColor;
 use ockam_api::nodes::models::secure_channel::{
     CreateSecureChannelRequest, CreateSecureChannelResponse,
@@ -93,7 +93,7 @@ impl CreateCommand {
             node,
             &meta,
             Some(identity_name),
-            Some(DEFAULT_TIMEOUT),
+            Some(get_default_timeout().into_diagnostic()?),
         )
         .await?;
         clean_projects_multiaddr(to, projects_sc)

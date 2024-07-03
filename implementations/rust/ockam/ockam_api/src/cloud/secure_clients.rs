@@ -2,15 +2,13 @@ use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 use std::time::Duration;
 
-use ockam::identity::{
-    CredentialRetrieverCreator, Identifier, SecureChannels, SecureClient, DEFAULT_TIMEOUT,
-};
+use ockam::identity::{CredentialRetrieverCreator, Identifier, SecureChannels, SecureClient};
 use ockam::tcp::TcpTransport;
 use ockam_core::compat::sync::Arc;
 use ockam_core::env::{get_env, get_env_with_default, FromString};
 use ockam_core::{Result, Route};
 use ockam_multiaddr::MultiAddr;
-use ockam_node::Context;
+use ockam_node::{Context, DEFAULT_TIMEOUT};
 
 use crate::error::ApiError;
 use crate::multiaddr_to_transport_route;
@@ -18,6 +16,7 @@ use crate::nodes::NodeManager;
 
 pub const OCKAM_CONTROLLER_ADDR: &str = "OCKAM_CONTROLLER_ADDR";
 pub const DEFAULT_CONTROLLER_ADDRESS: &str = "/dnsaddr/orchestrator.ockam.io/tcp/6252/service/api";
+pub const OCKAM_DEFAULT_TIMEOUT: &str = "OCKAM_DEFAULT_TIMEOUT";
 
 /// If it's present, its contents will be used and will have priority over the contents
 /// from ./static/controller.id.
@@ -43,20 +42,6 @@ impl Display for CredentialsEnabled {
 }
 
 impl NodeManager {
-    #[instrument(skip_all)]
-    pub(crate) async fn create_controller_client(
-        &self,
-        timeout: Option<Duration>,
-    ) -> Result<ControllerClient> {
-        NodeManager::controller_node_client(
-            &self.tcp_transport,
-            self.secure_channels.clone(),
-            &self.identifier(),
-            timeout,
-        )
-        .await
-    }
-
     #[instrument(skip_all, fields(authority_identifier = %authority_identifier.clone(), authority_route = %authority_route.clone(), caller = %caller_identifier.clone()))]
     pub(crate) async fn make_authority_node_client(
         &self,
@@ -121,10 +106,10 @@ impl NodeManager {
 
     #[instrument(skip_all, fields(caller = %caller_identifier.clone()))]
     pub async fn controller_node_client(
+        &self,
         tcp_transport: &TcpTransport,
         secure_channels: Arc<SecureChannels>,
         caller_identifier: &Identifier,
-        timeout: Option<Duration>,
     ) -> Result<ControllerClient> {
         let controller_route = Self::controller_route().await?;
         let controller_identifier = Self::load_controller_identifier()?;
@@ -137,8 +122,8 @@ impl NodeManager {
                 controller_route,
                 &controller_identifier,
                 caller_identifier,
-                timeout.unwrap_or(DEFAULT_TIMEOUT),
-                timeout.unwrap_or(DEFAULT_TIMEOUT),
+                get_default_timeout()?,
+                get_default_timeout()?,
             ),
         })
     }
@@ -166,8 +151,8 @@ impl NodeManager {
                 authority_route,
                 authority_identifier,
                 caller_identifier,
-                DEFAULT_TIMEOUT,
-                DEFAULT_TIMEOUT,
+                get_default_timeout()?,
+                get_default_timeout()?,
             ),
         })
     }
@@ -195,8 +180,8 @@ impl NodeManager {
                 project_route,
                 project_identifier,
                 caller_identifier,
-                DEFAULT_TIMEOUT,
-                DEFAULT_TIMEOUT,
+                get_default_timeout()?,
+                get_default_timeout()?,
             ),
         })
     }
@@ -222,8 +207,8 @@ impl NodeManager {
                 route,
                 identifier,
                 caller_identifier,
-                DEFAULT_TIMEOUT,
-                DEFAULT_TIMEOUT,
+                get_default_timeout()?,
+                get_default_timeout()?,
             ),
         })
     }
@@ -253,6 +238,10 @@ impl NodeManager {
             ))
         })
     }
+}
+
+pub fn get_default_timeout() -> Result<Duration> {
+    get_env_with_default::<Duration>(OCKAM_DEFAULT_TIMEOUT, DEFAULT_TIMEOUT)
 }
 
 pub struct AuthorityNodeClient {
@@ -307,6 +296,20 @@ impl AuthorityNodeClient {
     pub fn new(secure_client: SecureClient) -> Self {
         Self { secure_client }
     }
+
+    /// Change the secure channel creation timeout
+    pub fn with_secure_channel_timeout(self, timeout: &Duration) -> Self {
+        Self {
+            secure_client: self.secure_client.with_secure_channel_timeout(timeout),
+        }
+    }
+
+    /// Change the request timeout
+    pub fn with_request_timeout(self, timeout: &Duration) -> Self {
+        Self {
+            secure_client: self.secure_client.with_request_timeout(timeout),
+        }
+    }
 }
 
 impl ProjectNodeClient {
@@ -317,16 +320,58 @@ impl ProjectNodeClient {
     pub fn new(secure_client: SecureClient) -> Self {
         Self { secure_client }
     }
+
+    /// Change the secure channel creation timeout
+    pub fn with_secure_channel_timeout(self, timeout: &Duration) -> Self {
+        Self {
+            secure_client: self.secure_client.with_secure_channel_timeout(timeout),
+        }
+    }
+
+    /// Change the request timeout
+    pub fn with_request_timeout(self, timeout: &Duration) -> Self {
+        Self {
+            secure_client: self.secure_client.with_request_timeout(timeout),
+        }
+    }
 }
 
 impl ControllerClient {
     pub fn new(secure_client: SecureClient) -> Self {
         Self { secure_client }
     }
+
+    /// Change the secure channel creation timeout
+    pub fn with_secure_channel_timeout(self, timeout: &Duration) -> Self {
+        Self {
+            secure_client: self.secure_client.with_secure_channel_timeout(timeout),
+        }
+    }
+
+    /// Change the request timeout
+    pub fn with_request_timeout(self, timeout: &Duration) -> Self {
+        Self {
+            secure_client: self.secure_client.with_request_timeout(timeout),
+        }
+    }
 }
 
 impl GenericSecureClient {
     pub fn new(secure_client: SecureClient) -> Self {
         Self { secure_client }
+    }
+
+    /// Change the secure channel creation timeout
+    pub fn with_secure_channel_timeout(self, timeout: &Duration) -> Self {
+        Self {
+            secure_client: self.secure_client.with_secure_channel_timeout(timeout),
+        }
+    }
+
+    /// Change the request timeout
+    pub fn with_request_timeout(self, timeout: &Duration) -> Self {
+        Self {
+            secure_client: self.secure_client.with_request_timeout(timeout),
+        }
     }
 }

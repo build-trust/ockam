@@ -1,5 +1,6 @@
 use std::fmt::{Debug, Formatter, Write};
 use std::sync::Arc;
+use std::time::Duration;
 
 use async_trait::async_trait;
 use clap::Args;
@@ -25,6 +26,7 @@ use ockam_api::{fmt_log, fmt_ok};
 use crate::credential::CredentialOutput;
 use crate::enroll::OidcServiceExt;
 use crate::shared_args::{IdentityOpts, RetryOpts, TrustOpts};
+use crate::util::parsers::duration_parser;
 use crate::value_parsers::parse_enrollment_ticket;
 use crate::{docs, Command, CommandGlobalOpts, Error, Result};
 
@@ -55,6 +57,10 @@ pub struct EnrollCommand {
 
     #[command(flatten)]
     pub retry_opts: RetryOpts,
+
+    /// Override the default timeout duration in environments where enrollment can take a long time
+    #[arg(long, value_name = "TIMEOUT", default_value = "120s", value_parser = duration_parser)]
+    pub timeout: Duration,
 }
 
 /// This custom Debug instance hides the enrollment ticket
@@ -65,6 +71,7 @@ impl Debug for EnrollCommand {
             .field("trust_opts", &self.trust_opts)
             .field("okta", &self.okta)
             .field("retry_opts", &self.retry_opts)
+            .field("timeout", &self.timeout)
             .finish()
     }
 }
@@ -90,7 +97,9 @@ impl Command for EnrollCommand {
             &opts.state,
             Some(project.name().to_string()),
         )
-        .await?;
+        .await?
+        .with_timeout(self.timeout);
+
         let authority_node_client = node
             .create_authority_client(&project, Some(identity.name()))
             .await?;

@@ -64,6 +64,7 @@ Devs Usage
 - OCKAM_DEVELOPER: a `boolean` specifying if the current user is an Ockam developer (for more accurate metrics).
 - OCKAM_OPENTELEMETRY_EXPORT_DEBUG: a `boolean` specifying if debug messages must be printed to the console when the OpenTelemetry export is configured.
 - OCKAM_OPENTELEMETRY_EXPORT_VIA_PORTAL: a `boolean` specifying if traces must be exported via a portal when a project exists (this feature flag is set to `false` for now)
+- OCKAM_DEFAULT_TIMEOUT: a `Duration` used to timeout secure channels creation and API requests. Default value: `120s`.
 
 Internal (to enable some special behavior in the logic)
 - OCKAM_HELP_RENDER_MARKDOWN: a `boolean` to control the markdown rendering of the commands documentation.

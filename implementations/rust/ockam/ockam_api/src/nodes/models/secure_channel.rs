@@ -6,7 +6,7 @@ use minicbor::{CborLen, Decode, Encode};
 use serde::Serialize;
 
 use ockam::identity::models::CredentialAndPurposeKey;
-use ockam::identity::{Identifier, SecureChannel, SecureChannelListener, DEFAULT_TIMEOUT};
+use ockam::identity::{Identifier, SecureChannel, SecureChannelListener};
 use ockam_core::flow_control::FlowControlId;
 use ockam_core::{route, Address, Result};
 use ockam_multiaddr::MultiAddr;
@@ -41,7 +41,7 @@ impl CreateSecureChannelRequest {
         Self {
             addr: addr.to_owned(),
             authorized_identifiers,
-            timeout: Some(DEFAULT_TIMEOUT),
+            timeout: None,
             identity_name,
             credential,
         }
