@@ -93,12 +93,14 @@ impl Enrollment for SecureClient {
             .into_diagnostic()?;
         match reply {
             Reply::Successful(_) => Ok(EnrollStatus::EnrolledSuccessfully),
-            Reply::Failed(e, Some(Status::BadRequest)) => {
-                debug!("enrolling with a token returned a BadRequest response: {e:?}");
-                Ok(EnrollStatus::AlreadyEnrolled)
+            Reply::Failed(e, Some(s)) => {
+                error!("enrolling with a token returned an error: {e:?}");
+                Ok(EnrollStatus::UnexpectedStatus(e.to_string(), s))
             }
-            Reply::Failed(e, Some(s)) => Ok(EnrollStatus::UnexpectedStatus(e.to_string(), s)),
-            Reply::Failed(e, _) => Ok(EnrollStatus::FailedNoStatus(e.to_string())),
+            Reply::Failed(e, _) => {
+                error!("enrolling with a token returned an error: {e:?}");
+                Ok(EnrollStatus::FailedNoStatus(e.to_string()))
+            }
         }
     }
 
