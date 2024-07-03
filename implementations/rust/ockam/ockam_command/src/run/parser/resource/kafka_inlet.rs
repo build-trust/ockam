@@ -51,9 +51,9 @@ impl KafkaInlet {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ockam::transport::HostnamePort;
     use ockam_core::env::FromString;
     use ockam_multiaddr::MultiAddr;
-    use std::net::SocketAddr;
     use std::str::FromStr;
 
     #[test]
@@ -74,7 +74,7 @@ mod tests {
         assert_eq!(cmds.len(), 1);
         assert_eq!(
             cmds[0].from,
-            SocketAddr::from_str("127.0.0.1:9092").unwrap()
+            HostnamePort::from_str("127.0.0.1:9092").unwrap()
         );
         assert_eq!(
             &cmds[0].to,

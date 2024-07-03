@@ -30,7 +30,7 @@ mod test {
             MultiAddr::default(),
             route![],
             route![],
-            [127, 0, 0, 1].into(),
+            "127.0.0.1".to_string(),
             PortRange::new(0, 0).unwrap(),
             None,
         );

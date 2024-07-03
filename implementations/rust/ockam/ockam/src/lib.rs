@@ -107,7 +107,9 @@ pub mod transport {
     #[cfg(feature = "std")]
     pub use ockam_transport_core::resolve_peer;
 
-    pub use ockam_transport_core::{parse_socket_addr, HostnamePort, Transport};
+    pub use ockam_transport_core::{
+        parse_socket_addr, HostnamePort, StaticHostnamePort, Transport,
+    };
 }
 
 // ---

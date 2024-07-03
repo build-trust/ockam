@@ -1,11 +1,11 @@
 use crate::kafka::kafka_default_project_route;
 use async_trait::async_trait;
 use std::fmt::Write;
-use std::net::SocketAddr;
 
 use clap::{command, Args};
 use colorful::Colorful;
 use miette::miette;
+use ockam::transport::HostnamePort;
 use ockam_abac::PolicyExpression;
 use ockam_api::colors::{color_primary, color_warn};
 use ockam_api::config::lookup::InternetAddress;
@@ -13,13 +13,12 @@ use ockam_api::kafka::{ConsumerPublishing, ConsumerResolution};
 use ockam_api::nodes::models::services::{StartKafkaInletRequest, StartServiceRequest};
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_api::output::Output;
-use ockam_api::{fmt_log, fmt_ok};
-use serde::Serialize;
-
 use ockam_api::port_range::PortRange;
+use ockam_api::{fmt_log, fmt_ok};
 use ockam_core::api::Request;
 use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
+use serde::Serialize;
 
 use crate::kafka::make_brokers_port_range;
 use crate::node::util::initialize_default_node;
@@ -27,7 +26,7 @@ use crate::util::process_nodes_multiaddr;
 use crate::{
     kafka::{kafka_default_inlet_bind_address, kafka_inlet_default_addr},
     node::NodeOpts,
-    util::parsers::socket_addr_parser,
+    util::parsers::hostname_parser,
     Command, CommandGlobalOpts,
 };
 
@@ -45,8 +44,8 @@ pub struct CreateCommand {
 
     /// The address where to bind and where the client will connect to alongside its port, <address>:<port>.
     /// In case just a port is specified, the default loopback address (127.0.0.1:4000) will be used
-    #[arg(long, default_value_t = kafka_default_inlet_bind_address(), value_parser = socket_addr_parser)]
-    pub from: SocketAddr,
+    #[arg(long, default_value_t = kafka_default_inlet_bind_address(), value_parser = hostname_parser)]
+    pub from: HostnamePort,
 
     /// Local port range dynamically allocated to kafka brokers, must not overlap with the
     /// bootstrap port
@@ -174,7 +173,7 @@ impl Command for CreateCommand {
             }
 
             let payload = StartKafkaInletRequest::new(
-                self.from,
+                self.from.clone(),
                 brokers_port_range,
                 to.clone(),
                 !self.disable_content_encryption,
@@ -192,7 +191,8 @@ impl Command for CreateCommand {
 
             KafkaInletOutput {
                 node_name: node.node_name(),
-                from: self.from.into(),
+                from: InternetAddress::new(&self.from.to_string())
+                    .ok_or(miette!("Invalid address"))?,
                 brokers_port_range,
                 to,
             }

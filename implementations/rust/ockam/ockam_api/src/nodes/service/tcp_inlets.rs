@@ -1,5 +1,3 @@
-use std::net::SocketAddr;
-use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::task::JoinHandle;
@@ -21,6 +19,7 @@ use ockam_core::{
 use ockam_multiaddr::proto::Project as ProjectProto;
 use ockam_multiaddr::{MultiAddr, Protocol};
 use ockam_node::Context;
+use ockam_transport_core::HostnamePort;
 use ockam_transport_tcp::TcpInlet;
 
 use crate::error::ApiError;
@@ -115,7 +114,7 @@ impl NodeManager {
     pub async fn create_inlet(
         self: &Arc<Self>,
         ctx: &Context,
-        listen_addr: String,
+        listen_addr: HostnamePort,
         prefix_route: Route,
         suffix_route: Route,
         outlet_addr: MultiAddr,
@@ -153,9 +152,9 @@ impl NodeManager {
 
         // the port could be zero, to simplify the following code we
         // resolve the address to a full socket address
-        let socket_addr = SocketAddr::from_str(&listen_addr)
-            .map_err(|err| ockam_core::Error::new(Origin::Transport, Kind::Invalid, err))?;
-        let listen_addr = if listen_addr.ends_with(":0") {
+        let socket_addr =
+            ockam_node::compat::asynchronous::resolve_peer(listen_addr.to_string()).await?;
+        let listen_addr = if listen_addr.port() == 0 {
             get_free_address_for(&socket_addr.ip().to_string())
                 .map_err(|err| ockam_core::Error::new(Origin::Transport, Kind::Invalid, err))?
         } else {
@@ -371,7 +370,7 @@ impl InMemoryNode {
     pub async fn create_inlet(
         &self,
         ctx: &Context,
-        listen_addr: String,
+        listen_addr: HostnamePort,
         prefix_route: Route,
         suffix_route: Route,
         outlet_addr: MultiAddr,
@@ -724,7 +723,7 @@ pub trait Inlets {
     async fn create_inlet(
         &self,
         ctx: &Context,
-        listen_addr: &str,
+        listen_addr: &HostnamePort,
         outlet_addr: &MultiAddr,
         alias: &str,
         authorized_identifier: &Option<Identifier>,
@@ -746,7 +745,7 @@ impl Inlets for BackgroundNodeClient {
     async fn create_inlet(
         &self,
         ctx: &Context,
-        listen_addr: &str,
+        listen_addr: &HostnamePort,
         outlet_addr: &MultiAddr,
         alias: &str,
         authorized_identifier: &Option<Identifier>,
@@ -761,7 +760,7 @@ impl Inlets for BackgroundNodeClient {
             let via_project = outlet_addr.matches(0, &[ProjectProto::CODE.into()]);
             let mut payload = if via_project {
                 CreateInlet::via_project(
-                    listen_addr.into(),
+                    listen_addr.clone(),
                     outlet_addr.clone(),
                     alias.into(),
                     route![],
@@ -772,7 +771,7 @@ impl Inlets for BackgroundNodeClient {
                 )
             } else {
                 CreateInlet::to_node(
-                    listen_addr.into(),
+                    listen_addr.clone(),
                     outlet_addr.clone(),
                     alias.into(),
                     route![],

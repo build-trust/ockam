@@ -13,6 +13,7 @@ use ockam_core::env::FromString;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{route, Address, AllowAll, Error, NeutralMessage};
 use ockam_multiaddr::MultiAddr;
+use ockam_transport_core::HostnamePort;
 
 /// These tests serve as a benchmark for the message roundtrip latency.
 /// In order for the result to be reliable, use the --profile release
@@ -148,7 +149,7 @@ pub fn measure_buffer_latency_two_nodes_portal() {
                 .node_manager
                 .create_inlet(
                     &first_node.context,
-                    "127.0.0.1:0".to_string(),
+                    HostnamePort::new("127.0.0.1", 0),
                     route![],
                     route![],
                     second_node_listen_address

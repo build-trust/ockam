@@ -25,7 +25,7 @@ use crate::{route_to_multiaddr, try_address_to_multiaddr};
 #[cbor(map)]
 pub struct CreateInlet {
     /// The address the portal should listen at.
-    #[n(1)] pub(crate) listen_addr: String,
+    #[n(1)] pub(crate) listen_addr: HostnamePort,
     /// The peer address.
     /// This can either be the address of an already
     /// created outlet, or a forwarding mechanism via ockam cloud.
@@ -63,7 +63,7 @@ pub struct CreateInlet {
 impl CreateInlet {
     #[allow(clippy::too_many_arguments)]
     pub fn via_project(
-        listen: String,
+        listen: HostnamePort,
         to: MultiAddr,
         alias: String,
         prefix_route: Route,
@@ -90,7 +90,7 @@ impl CreateInlet {
 
     #[allow(clippy::too_many_arguments)]
     pub fn to_node(
-        listen: String,
+        listen: HostnamePort,
         to: MultiAddr,
         alias: String,
         prefix_route: Route,
@@ -128,7 +128,7 @@ impl CreateInlet {
         self.secure_channel_identifier = Some(identifier);
     }
 
-    pub fn listen_addr(&self) -> String {
+    pub fn listen_addr(&self) -> HostnamePort {
         self.listen_addr.clone()
     }
 

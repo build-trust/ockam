@@ -104,7 +104,7 @@ impl NodeManager {
             .await;
 
         info!(
-            "Handling request to create outlet portal at {to} with worker {:?}",
+            "Handling request to create outlet portal to {to} with worker {:?}",
             worker_addr
         );
 

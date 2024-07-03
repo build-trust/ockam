@@ -1,4 +1,4 @@
-use crate::util::parsers::socket_addr_parser;
+use crate::util::parsers::hostname_parser;
 use miette::{miette, Context, IntoDiagnostic};
 use ockam_api::cli_state::EnrollmentTicket;
 use std::str::FromStr;
@@ -68,7 +68,7 @@ pub fn is_url(value: &str) -> Option<Url> {
     }
     // If the value is a socket address, try to parse it as a URL
     if let Some(socket_addr) = value.split('/').next() {
-        if socket_addr.contains(':') && socket_addr_parser(socket_addr).is_ok() {
+        if socket_addr.contains(':') && hostname_parser(socket_addr).is_ok() {
             let uri = format!("http://{value}");
             return Url::parse(&uri).ok();
         }

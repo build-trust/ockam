@@ -3,12 +3,10 @@ use ockam::{Address, Context, Result};
 use ockam_abac::PolicyExpression;
 use ockam_abac::{Action, Resource, ResourceType};
 use ockam_core::api::{Error, Response};
-use ockam_core::compat::net::SocketAddr;
 use ockam_core::compat::rand::random_string;
 use ockam_core::route;
 use ockam_multiaddr::proto::Project;
 use ockam_multiaddr::MultiAddr;
-use std::str::FromStr;
 use std::sync::Arc;
 
 use super::NodeManagerWorker;
@@ -112,7 +110,7 @@ impl InMemoryNode {
         &self,
         context: &Context,
         local_interceptor_address: Address,
-        bind_address: SocketAddr,
+        bind_address: HostnamePort,
         brokers_port_range: (u16, u16),
         outlet_node_multiaddr: MultiAddr,
         encrypt_content: bool,
@@ -178,7 +176,7 @@ impl InMemoryNode {
             outlet_node_multiaddr.clone(),
             route![local_interceptor_address.clone()],
             route![KAFKA_OUTLET_INTERCEPTOR_ADDRESS],
-            bind_address.ip(),
+            bind_address.hostname(),
             PortRange::try_from(brokers_port_range)
                 .map_err(|_| ApiError::core("invalid port range"))?,
             inlet_policy_expression.clone(),
@@ -197,7 +195,7 @@ impl InMemoryNode {
         // create the kafka bootstrap inlet
         self.create_inlet(
             context,
-            bind_address.to_string(),
+            bind_address,
             route![local_interceptor_address.clone()],
             route![
                 KAFKA_OUTLET_INTERCEPTOR_ADDRESS,
@@ -253,7 +251,7 @@ impl InMemoryNode {
         &self,
         context: &Context,
         service_address: Address,
-        bootstrap_server_addr: String,
+        bootstrap_server_addr: HostnamePort,
         tls: bool,
         outlet_policy_expression: Option<PolicyExpression>,
     ) -> Result<()> {
@@ -286,7 +284,7 @@ impl InMemoryNode {
         if let Err(e) = self
             .create_outlet(
                 context,
-                HostnamePort::from_str(&bootstrap_server_addr)?,
+                bootstrap_server_addr,
                 tls,
                 Some(KAFKA_OUTLET_BOOTSTRAP_ADDRESS.into()),
                 false,

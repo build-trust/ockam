@@ -1,9 +1,6 @@
+/// Async public re-exports and utils
 #[cfg(feature = "std")]
-/// Async Mutex and RwLock
-pub mod asynchronous {
-    pub use tokio::sync::Mutex;
-    pub use tokio::sync::RwLock;
-}
+pub mod asynchronous;
 
 /// FutureExt
 pub mod futures {
