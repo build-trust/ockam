@@ -27,7 +27,7 @@ Add this to your `Cargo.toml`:
 
 ```
 [dependencies]
-ockam_transport_core = "0.85.0"
+ockam_transport_core = "0.86.0"
 ```
 
 ## License
