@@ -2,10 +2,10 @@
 name = "ockam_abac"
 version = "0.62.0"
 authors = ["Ockam Developers"]
-categories = ["cryptography", "authorization"]
+categories = ["cryptography"]
 edition = "2021"
 homepage = "https://github.com/build-trust/ockam"
-keywords = ["ockam", "crypto", "encryption", "authorization"]
+keywords = ["ockam", "cryptography", "encryption", "authorization"]
 license = "Apache-2.0"
 publish = true
 readme = "README.md"
