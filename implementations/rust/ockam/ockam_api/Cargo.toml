@@ -75,7 +75,7 @@ reqwest = { version = "0.12", default-features = false, features = ["json", "rus
 serde = { version = "1.0.203", features = ["derive"] }
 serde_json = "1.0.118"
 sha2 = "0.10.8"
-sqlx-etorreborre = { version = "0.7.5" }
+sqlx-etorreborre = { version = "0.7.8" }
 strip-ansi-escapes = "0.2"
 sysinfo = "0.30"
 thiserror = "1.0"

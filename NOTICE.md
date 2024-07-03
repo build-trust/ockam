@@ -200,7 +200,6 @@ This file contains attributions for any 3rd-party open source code used in this 
 | fdeflate | MIT, Apache-2.0 | https://crates.io/crates/fdeflate |
 | ff | MIT, Apache-2.0 | https://crates.io/crates/ff |
 | fiat-crypto | MIT, Apache-2.0, BSD-1-Clause | https://crates.io/crates/fiat-crypto |
-| finl_unicode | MIT, Apache-2.0 | https://crates.io/crates/finl_unicode |
 | flate2 | MIT, Apache-2.0 | https://crates.io/crates/flate2 |
 | flexi_logger | MIT, Apache-2.0 | https://crates.io/crates/flexi_logger |
 | flume | Apache-2.0, MIT | https://crates.io/crates/flume |
@@ -275,6 +274,7 @@ This file contains attributions for any 3rd-party open source code used in this 
 | is-terminal | MIT | https://crates.io/crates/is-terminal |
 | is-wsl | MIT | https://crates.io/crates/is-wsl |
 | is_ci | ISC | https://crates.io/crates/is_ci |
+| is_terminal_polyfill | MIT, Apache-2.0 | https://crates.io/crates/is_terminal_polyfill |
 | itertools | MIT, Apache-2.0 | https://crates.io/crates/itertools |
 | itoa | MIT, Apache-2.0 | https://crates.io/crates/itoa |
 | jaq-core | MIT | https://crates.io/crates/jaq-core |
@@ -299,7 +299,6 @@ This file contains attributions for any 3rd-party open source code used in this 
 | libloading | ISC | https://crates.io/crates/libloading |
 | libm | MIT, Apache-2.0 | https://crates.io/crates/libm |
 | libsqlite3-sys | MIT | https://crates.io/crates/libsqlite3-sys |
-| line-wrap | Apache-2.0 | https://crates.io/crates/line-wrap |
 | linked-hash-map | MIT, Apache-2.0 | https://crates.io/crates/linked-hash-map |
 | linux-raw-sys | Apache-2.0 WITH LLVM-exception, Apache-2.0, MIT | https://crates.io/crates/linux-raw-sys |
 | lock_api | MIT, Apache-2.0 | https://crates.io/crates/lock_api |
@@ -491,6 +490,9 @@ This file contains attributions for any 3rd-party open source code used in this 
 | sqlformat | MIT, Apache-2.0 | https://crates.io/crates/sqlformat |
 | sqlx-core | MIT, Apache-2.0 | https://crates.io/crates/sqlx-core |
 | sqlx-etorreborre | MIT, Apache-2.0 | https://crates.io/crates/sqlx-etorreborre |
+| sqlx-etorreborre-core | MIT, Apache-2.0 | https://crates.io/crates/sqlx-etorreborre-core |
+| sqlx-etorreborre-postgres | MIT, Apache-2.0 | https://crates.io/crates/sqlx-etorreborre-postgres |
+| sqlx-etorreborre-sqlite | MIT, Apache-2.0 | https://crates.io/crates/sqlx-etorreborre-sqlite |
 | sqlx-macros | MIT, Apache-2.0 | https://crates.io/crates/sqlx-macros |
 | sqlx-macros-core | MIT, Apache-2.0 | https://crates.io/crates/sqlx-macros-core |
 | sqlx-postgres | MIT, Apache-2.0 | https://crates.io/crates/sqlx-postgres |
@@ -563,6 +565,7 @@ This file contains attributions for any 3rd-party open source code used in this 
 | unicode-ident | MIT, Apache-2.0, Unicode-DFS-2016 | https://crates.io/crates/unicode-ident |
 | unicode-linebreak | Apache-2.0 | https://crates.io/crates/unicode-linebreak |
 | unicode-normalization | MIT, Apache-2.0 | https://crates.io/crates/unicode-normalization |
+| unicode-properties | MIT, Apache-2.0 | https://crates.io/crates/unicode-properties |
 | unicode-segmentation | MIT, Apache-2.0 | https://crates.io/crates/unicode-segmentation |
 | unicode-width | MIT, Apache-2.0 | https://crates.io/crates/unicode-width |
 | unicode_categories | MIT, Apache-2.0 | https://crates.io/crates/unicode_categories |

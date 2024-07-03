@@ -68,7 +68,18 @@ metrics = []
 # message flows within Ockam apps.
 debugger = ["ockam_core/debugger"]
 
-storage = ["std", "time", "serde_json", "sqlx-etorreborre", "tokio-retry", "regex", "tempfile"]
+storage = [
+  "std",
+  "time",
+  "serde_json",
+  "sqlx-etorreborre",
+  "sqlx-etorreborre-core",
+  "sqlx-etorreborre-sqlite",
+  "sqlx-etorreborre-postgres",
+  "tokio-retry",
+  "regex",
+  "tempfile",
+]
 
 [dependencies]
 cfg-if = "1.0.0"
@@ -85,7 +96,10 @@ opentelemetry = { version = "0.23.0", features = ["logs", "metrics", "trace"], o
 regex = { version = "1.10.5", default-features = false, optional = true }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 serde_json = { version = "1", optional = true }
-sqlx-etorreborre = { version = "0.7.5", optional = true, features = ["postgres", "sqlite", "any", "migrate", "runtime-tokio"] }
+sqlx-etorreborre = { version = "0.7.9", optional = true, features = ["postgres", "sqlite", "any", "migrate", "runtime-tokio"] }
+sqlx-etorreborre-core = { version = "0.7.9", optional = true }
+sqlx-etorreborre-postgres = { version = "0.7.9", optional = true }
+sqlx-etorreborre-sqlite = { version = "0.7.9", optional = true }
 tempfile = { version = "3.10.1", optional = true }
 time = { version = "0.3.36", default-features = false, optional = true }
 tokio = { version = "1.38", default-features = false, optional = true, features = ["sync", "time", "rt", "rt-multi-thread", "macros"] }

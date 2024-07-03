@@ -106,3 +106,12 @@ pub use crate::tokio::runtime::{block_future, spawn};
 /// in https://github.com/launchbadge/sqlx/pull/3298 are released
 #[cfg(feature = "std")]
 extern crate sqlx_etorreborre as sqlx;
+
+#[cfg(feature = "std")]
+extern crate sqlx_etorreborre_postgres as sqlx_postgres;
+
+#[cfg(feature = "std")]
+extern crate sqlx_etorreborre_core as sqlx_core;
+
+#[cfg(feature = "std")]
+extern crate sqlx_etorreborre_sqlite as sqlx_sqlite;
