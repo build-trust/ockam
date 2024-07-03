@@ -459,40 +459,38 @@ pub mod tests {
     /// This test checks that we can run a query and return an entity
     #[tokio::test]
     async fn test_query() -> Result<()> {
-        let db_file = NamedTempFile::new().unwrap();
-        let db_file = db_file.path();
-        let db = SqlxDatabase::create_sqlite(db_file).await?;
+        with_dbs(|db| async move {
+            insert_identity(&db).await.unwrap();
 
-        insert_identity(&db).await.unwrap();
+            // successful query
+            let result: Option<IdentifierRow> =
+                sqlx::query_as("SELECT identifier, name, vault_name, is_default FROM named_identity WHERE identifier = $1")
+                    .bind("Ifa804b7fca12a19eed206ae180b5b576860ae651")
+                    .fetch_optional(&*db.pool)
+                    .await
+                    .unwrap();
+            assert_eq!(
+                result,
+                Some(IdentifierRow {
+                    identifier: "Ifa804b7fca12a19eed206ae180b5b576860ae651".into(),
+                    name: "identity-1".to_string(),
+                    vault_name: "vault-1".to_string(),
+                    // This line tests the proper deserialization of a Boolean
+                    // in SQLite where a Boolean maps to an INTEGER
+                    is_default: Boolean::new(true),
+                })
+            );
 
-        // successful query
-        let result: Option<IdentifierRow> =
-            sqlx::query_as("SELECT identifier, name, vault_name, is_default FROM named_identity WHERE identifier = $1")
-                .bind("Ifa804b7fca12a19eed206ae180b5b576860ae651")
-                .fetch_optional(&*db.pool)
-                .await
-                .unwrap();
-        assert_eq!(
-            result,
-            Some(IdentifierRow {
-                identifier: "Ifa804b7fca12a19eed206ae180b5b576860ae651".into(),
-                name: "identity-1".to_string(),
-                vault_name: "vault-1".to_string(),
-                // This line tests the proper deserialization of a Boolean
-                // in SQLite where a Boolean maps to an INTEGER
-                is_default: Boolean::new(true),
-            })
-        );
-
-        // failed query
-        let result: Option<IdentifierRow> =
-            sqlx::query_as("SELECT identifier FROM named_identity WHERE identifier = $1")
-                .bind("x")
-                .fetch_optional(&*db.pool)
-                .await
-                .unwrap();
-        assert_eq!(result, None);
-        Ok(())
+            // failed query
+            let result: Option<IdentifierRow> =
+                sqlx::query_as("SELECT identifier FROM named_identity WHERE identifier = $1")
+                    .bind("x")
+                    .fetch_optional(&*db.pool)
+                    .await
+                    .unwrap();
+            assert_eq!(result, None);
+            Ok(())
+        }).await
     }
 
     /// HELPERS

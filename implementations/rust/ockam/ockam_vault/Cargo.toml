@@ -89,7 +89,7 @@ rand = { version = "0.8", default-features = false }
 rand_pcg = { version = "0.3.1", default-features = false, optional = true }
 serde = { version = "1", default-features = false, features = ["derive"] }
 sha2 = { version = "0.10", default-features = false }
-sqlx-etorreborre = { version = "0.7.5", optional = true }
+sqlx-etorreborre = { version = "0.7.8", optional = true }
 static_assertions = "1.1.0"
 tracing = { version = "0.1", default-features = false }
 x25519-dalek = { version = "2.0.1", default-features = false, features = ["precomputed-tables", "static_secrets", "zeroize"] }
