@@ -2,8 +2,22 @@
 name = "ockam_rust_elixir_nifs"
 version = "0.117.0"
 authors = ["Ockam Developers"]
+categories = [
+  "cryptography",
+  "asynchronous",
+  "authentication",
+  "network-programming",
+  "embedded",
+]
 edition = "2021"
 homepage = "https://github.com/ockam-network/ockam/implementations/rust/ockam/ockam_rust_elixir_nifs"
+keywords = [
+  "ockam",
+  "crypto",
+  "cryptography",
+  "network-programming",
+  "encryption",
+]
 license = "Apache-2.0"
 publish = false
 repository = "https://github.com/ockam-network/ockam"

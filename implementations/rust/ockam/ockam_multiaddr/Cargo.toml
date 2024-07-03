@@ -2,8 +2,22 @@
 name = "ockam_multiaddr"
 version = "0.56.0"
 authors = ["Ockam Developers"]
+categories = [
+  "cryptography",
+  "asynchronous",
+  "authentication",
+  "network-programming",
+  "embedded",
+]
 edition = "2021"
 homepage = "https://github.com/ockam-network/ockam/implementations/rust/ockam/ockam_multiaddr"
+keywords = [
+  "ockam",
+  "crypto",
+  "cryptography",
+  "network-programming",
+  "encryption",
+]
 license = "Apache-2.0"
 publish = true
 repository = "https://github.com/ockam-network/ockam"
