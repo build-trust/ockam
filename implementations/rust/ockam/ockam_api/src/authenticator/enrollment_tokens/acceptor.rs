@@ -57,9 +57,9 @@ impl EnrollmentTokenAcceptor {
                     "Error using an enrollment token received from {}. Error: {}",
                     from, err
                 );
-                return Ok(Either::Right(EnrollmentTokenAcceptorError(
-                    "Error using the enrollment token".to_string(),
-                )));
+                return Ok(Either::Right(EnrollmentTokenAcceptorError(format!(
+                    "Error using the enrollment token: {err:?}"
+                ))));
             }
         };
 
