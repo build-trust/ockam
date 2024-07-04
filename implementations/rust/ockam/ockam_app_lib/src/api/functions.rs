@@ -164,7 +164,11 @@ extern "C" fn share_local_service(name: *const c_char, emails: *const c_char) ->
             match EmailAddress::parse(&email) {
                 Ok(email_address) => {
                     result = app_state
-                        .create_service_invitation_by_alias(email_address, &worker_addr)
+                        .create_service_invitation_by_alias(
+                            &app_state.context(),
+                            email_address,
+                            &worker_addr,
+                        )
                         .await;
                 }
                 Err(e) => {

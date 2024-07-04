@@ -101,7 +101,7 @@ impl Command for EnrollCommand {
         .with_timeout(self.timeout);
 
         let authority_node_client = node
-            .create_authority_client(&project, Some(identity.name()))
+            .create_authority_client(ctx, &project, Some(identity.name()))
             .await?;
 
         // Enroll

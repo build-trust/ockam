@@ -96,7 +96,7 @@ pub(super) async fn authority_client(
         InMemoryNode::start_with_project_name(ctx, &opts.state, Some(project.name().to_string()))
             .await?;
     Ok((
-        create_authority_client(&node, &opts.state, identity_opts, &project).await?,
+        create_authority_client(ctx, &node, &opts.state, identity_opts, &project).await?,
         project.name().to_string(),
     ))
 }
@@ -135,6 +135,7 @@ pub(super) async fn get_project(
 }
 
 pub(super) async fn create_authority_client(
+    ctx: &Context,
     node: &NodeManager,
     cli_state: &CliState,
     identity_opts: &IdentityOpts,
@@ -145,7 +146,7 @@ pub(super) async fn create_authority_client(
         .await?;
 
     Ok(node
-        .create_authority_client(project, Some(identity))
+        .create_authority_client(ctx, project, Some(identity))
         .await?)
 }
 

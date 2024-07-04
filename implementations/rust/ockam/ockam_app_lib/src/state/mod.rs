@@ -382,12 +382,13 @@ impl AppState {
 
     pub async fn authority_node(
         &self,
+        ctx: &Context,
         project: &Project,
         caller_identity_name: Option<String>,
     ) -> Result<AuthorityNodeClient> {
         let node_manager = self.node_manager.read().await;
         Ok(node_manager
-            .create_authority_client(project, caller_identity_name)
+            .create_authority_client(ctx, project, caller_identity_name)
             .await?)
     }
 

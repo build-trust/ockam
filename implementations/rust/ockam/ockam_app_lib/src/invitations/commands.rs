@@ -2,6 +2,7 @@ use std::net::SocketAddr;
 use std::str::FromStr;
 
 use miette::IntoDiagnostic;
+use ockam::Context;
 use ockam_api::cloud::email_address::EmailAddress;
 use tracing::{debug, info, trace, warn};
 
@@ -189,6 +190,7 @@ impl AppState {
 
     pub async fn create_service_invitation_by_alias(
         &self,
+        ctx: &Context,
         recipient_email: EmailAddress,
         outlet_worker_addr: &Address,
     ) -> Result<(), String> {
@@ -201,7 +203,7 @@ impl AppState {
             .map(|o| o.socket_addr.to_string());
 
         if let Some(outlet_socket_addr) = outlet_socket_addr {
-            self.create_service_invitation_by_socket_addr(recipient_email, outlet_socket_addr)
+            self.create_service_invitation_by_socket_addr(ctx, recipient_email, outlet_socket_addr)
                 .await
         } else {
             Err(format!("Cannot find service '{}'", outlet_worker_addr))
@@ -210,6 +212,7 @@ impl AppState {
 
     pub async fn create_service_invitation_by_socket_addr(
         &self,
+        ctx: &Context,
         recipient_email: EmailAddress,
         outlet_socket_addr: String,
     ) -> Result<(), String> {
@@ -231,7 +234,7 @@ impl AppState {
         }?;
 
         let enrollment_ticket = self
-            .create_enrollment_ticket(&project_id, &recipient_email)
+            .create_enrollment_ticket(ctx, &project_id, &recipient_email)
             .await
             .map_err(|e| e.to_string())?;
 
