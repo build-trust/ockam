@@ -193,17 +193,9 @@ impl ProjectsOrchestratorApi for InMemoryNode {
         ctx: &Context,
         project: Project,
     ) -> miette::Result<Project> {
-        let project = self
-            .create_controller()
-            .await?
-            .wait_until_project_is_ready(ctx, project.model())
-            .await?;
-        let project = self
-            .cli_state
-            .projects()
-            .import_and_store_project(project.clone())
-            .await?;
-        Ok(project)
+        self.node_manager
+            .wait_until_project_is_ready(ctx, &project)
+            .await
     }
 }
 
