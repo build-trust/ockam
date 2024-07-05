@@ -234,7 +234,7 @@ impl HandshakeWorker {
                         Ok(their_identifier) => Some(their_identifier),
                         Err(err) => {
                             error!(
-                            "Timeout {:?} reached when creating secure channel for: {}. Encryptor: {}",
+                            "Timeout {:?} or error reached when creating secure channel for: {}. Encryptor: {}. Error: {err:?}",
                             timeout, my_identifier, addresses.encryptor
                         );
 
