@@ -123,14 +123,12 @@ impl TcpSendWorker {
         // Create a message buffer with prepended length
         let transport_message = TcpTransportMessage::from(local_message);
 
-        // Due to minicbor bug this value is bigger than should be for structures having
-        // #[cbor(transparent)] attribute. So, this code accounts for that.
-        let max_expected_payload_len = minicbor::len(&transport_message);
+        let expected_payload_len = minicbor::len(&transport_message);
 
         const LENGTH_VALUE_SIZE: usize = 4; // u32
-        let mut vec = Vec::with_capacity(LENGTH_VALUE_SIZE + max_expected_payload_len);
+        let mut vec = Vec::with_capacity(LENGTH_VALUE_SIZE + expected_payload_len);
 
-        // Let's write zeros instead of actual length, since we don't know it yet.
+        // Let's write zeros instead of actual length, since we don't know the exact size yet.
         vec.extend_from_slice(&[0u8; LENGTH_VALUE_SIZE]);
 
         // Append encoded payload

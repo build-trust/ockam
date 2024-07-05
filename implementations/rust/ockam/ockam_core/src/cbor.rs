@@ -17,10 +17,8 @@ pub fn cbor_encode_preallocate<T>(x: T) -> Result<Vec<u8>>
 where
     T: Encode<()> + CborLen<()>,
 {
-    // Due to minicbor bug this value is bigger than should be for structures having
-    // #[cbor(transparent)] attribute.
-    let max_expected_len = minicbor::len(&x);
-    let mut output = Vec::with_capacity(max_expected_len);
+    let expected_len = minicbor::len(&x);
+    let mut output = Vec::with_capacity(expected_len);
     minicbor::encode(x, &mut output)?;
     Ok(output)
 }
