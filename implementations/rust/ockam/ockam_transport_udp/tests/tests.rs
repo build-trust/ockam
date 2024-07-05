@@ -1,6 +1,7 @@
 use ockam_core::compat::rand::{self, Rng};
 use ockam_core::{route, Result, Routed, Worker};
 use ockam_node::{Context, MessageSendReceiveOptions};
+use ockam_transport_core::MAXIMUM_MESSAGE_LENGTH;
 use ockam_transport_udp::{UdpBindArguments, UdpBindOptions, UdpTransport, UDP};
 use std::net::SocketAddr;
 use std::time::Duration;
@@ -364,6 +365,57 @@ async fn send_receive_two_known_udp_peers(ctx: &mut Context) -> Result<()> {
             assert_eq!(reply, msg, "Should receive the same message");
         }
     };
+    Ok(())
+}
+
+#[ockam_macros::test]
+async fn send_receive_large_message(ctx: &mut Context) -> Result<()> {
+    // Find available ports
+    let bind_addrs = utils::available_local_ports(2).await?;
+    debug!("bind_addrs = {:?}", bind_addrs);
+
+    // Transport
+    let transport = UdpTransport::create(ctx).await?;
+
+    ctx.start_worker("echoer", Echoer::new(false)).await?;
+    let bind1 = transport
+        .bind(
+            UdpBindArguments::new()
+                .with_bind_address(bind_addrs[0].to_string())?
+                .with_peer_address(bind_addrs[1].to_string())?,
+            UdpBindOptions::new(),
+        )
+        .await?;
+    let bind2 = transport
+        .bind(
+            UdpBindArguments::new()
+                .with_bind_address(bind_addrs[1].to_string())?
+                .with_peer_address(bind_addrs[0].to_string())?,
+            UdpBindOptions::new(),
+        )
+        .await?;
+
+    ctx.flow_controls()
+        .add_consumer("echoer", bind1.flow_control_id());
+
+    let msg: String = rand::thread_rng()
+        .sample_iter(&rand::distributions::Alphanumeric)
+        .take(MAXIMUM_MESSAGE_LENGTH)
+        .map(char::from)
+        .collect();
+
+    let r = route![bind2.sender_address().clone(), "echoer"];
+    let reply = ctx
+        .send_and_receive_extended::<String>(
+            r,
+            msg.clone(),
+            MessageSendReceiveOptions::new().with_timeout(TIMEOUT),
+        )
+        .await?
+        .into_body()?;
+
+    assert_eq!(reply, msg, "Should receive the same message");
+
     Ok(())
 }
 

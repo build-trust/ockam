@@ -4923,8 +4923,7 @@ dependencies = [
 name = "ockam_transport_udp"
 version = "0.63.0"
 dependencies = [
- "bytes 1.6.0",
- "futures-util",
+ "cfg-if",
  "minicbor",
  "ockam_core",
  "ockam_macros",
@@ -4932,7 +4931,6 @@ dependencies = [
  "ockam_transport_core",
  "rand",
  "tokio",
- "tokio-util",
  "tracing",
 ]
 
