@@ -17,10 +17,10 @@ extern crate core;
 #[cfg(feature = "alloc")]
 extern crate alloc;
 
+mod messages;
 mod options;
 mod puncture;
 mod transport;
-
 mod workers;
 
 pub use options::UdpBindOptions;

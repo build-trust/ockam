@@ -1,8 +1,7 @@
-use crate::workers::{Addresses, TransportMessageCodec, UdpReceiverProcessor, UdpSenderWorker};
+use crate::workers::{split_socket, Addresses, UdpReceiverProcessor, UdpSenderWorker};
 use crate::{UdpBindOptions, UdpTransport};
 use core::fmt;
 use core::fmt::Formatter;
-use futures_util::StreamExt;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::flow_control::FlowControlId;
 use ockam_core::{Address, AllowAll, DenyAll, Error, Result};
@@ -10,7 +9,6 @@ use ockam_node::{ProcessorBuilder, WorkerBuilder};
 use ockam_transport_core::{parse_socket_addr, resolve_peer, TransportError};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use tokio::net::UdpSocket;
-use tokio_util::udp::UdpFramed;
 use tracing::{debug, error};
 
 /// UDP bind arguments
@@ -86,7 +84,7 @@ impl UdpTransport {
             .map_err(|_| Error::new(Origin::Transport, Kind::Io, "invalid local address"))?;
 
         // Split socket into sink and stream
-        let (sink, stream) = UdpFramed::new(socket, TransportMessageCodec).split();
+        let (socket_read, socket_write) = split_socket(socket);
 
         let addresses = Addresses::generate();
 
@@ -101,7 +99,7 @@ impl UdpTransport {
         let receiver_outgoing_access_control =
             options.create_receiver_outgoing_access_control(self.ctx.flow_controls());
 
-        let sender = UdpSenderWorker::new(addresses.clone(), sink, arguments.peer_address);
+        let sender = UdpSenderWorker::new(addresses.clone(), socket_write, arguments.peer_address);
         WorkerBuilder::new(sender)
             .with_address(addresses.sender_address().clone())
             .with_incoming_access_control(AllowAll)
@@ -109,7 +107,8 @@ impl UdpTransport {
             .start(&self.ctx)
             .await?;
 
-        let receiver = UdpReceiverProcessor::new(addresses.clone(), stream, arguments.peer_address);
+        let receiver =
+            UdpReceiverProcessor::new(addresses.clone(), socket_read, arguments.peer_address);
         ProcessorBuilder::new(receiver)
             .with_address(addresses.receiver_address().clone())
             .with_incoming_access_control(DenyAll)
