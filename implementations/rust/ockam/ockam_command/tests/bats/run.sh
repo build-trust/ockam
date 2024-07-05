@@ -4,8 +4,7 @@ set -e
 rm -rf "$HOME/.bats-tests"
 mkdir -p "$HOME/.bats-tests"
 
-export BATS_TEST_RETRIES=2
-export BATS_TEST_TIMEOUT=240
+export BATS_TEST_TIMEOUT=300
 
 current_directory=$(dirname "$0")
 

@@ -85,13 +85,13 @@ impl RetryOpts {
 #[derive(Debug, Clone, Args)]
 pub struct TimeoutArg {
     /// Override the default timeout duration that the command will wait for a response
-    #[arg(long, value_name = "TIMEOUT", default_value = "5s", value_parser = duration_parser)]
+    #[arg(long, value_name = "TIMEOUT", default_value = "10s", value_parser = duration_parser)]
     pub(crate) timeout: Duration,
 }
 
 #[derive(Debug, Clone, Args)]
 pub struct OptionalTimeoutArg {
     /// Override the default timeout duration that the command will wait for a response
-    #[arg(long, value_name = "TIMEOUT", default_value = "5s", value_parser = duration_parser)]
+    #[arg(long, value_name = "TIMEOUT", default_value = "10s", value_parser = duration_parser)]
     pub(crate) timeout: Option<Duration>,
 }

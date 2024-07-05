@@ -103,7 +103,7 @@ pub async fn check_project_readiness(
     node: &InMemoryNode,
     project: Project,
 ) -> Result<Project> {
-    // Total of 10 Mins sleep strategy with 5 second intervals between each retry
+    // Total of 20 Mins sleep strategy with 5 second intervals between each retry
     let retry_strategy = FixedInterval::from_millis(5000)
         .take((ORCHESTRATOR_AWAIT_TIMEOUT.as_millis() / 5000) as usize);
 
