@@ -493,6 +493,34 @@ pub mod tests {
         }).await
     }
 
+    #[tokio::test]
+    async fn test_create_pool_with_relative_and_absolute_paths() -> Result<()> {
+        install_default_drivers();
+        let relative = Path::new("relative");
+        let connection_string = DatabaseConfiguration::sqlite(relative).connection_string();
+        let options =
+            AnyConnectOptions::from_str(&connection_string).map_err(SqlxDatabase::map_sql_err)?;
+
+        let pool = Pool::<Any>::connect_with(options)
+            .await
+            .map_err(SqlxDatabase::map_sql_err);
+        assert!(pool.is_ok());
+
+        let absolute = std::fs::canonicalize(relative).unwrap();
+        let connection_string = DatabaseConfiguration::sqlite(&absolute).connection_string();
+        let options =
+            AnyConnectOptions::from_str(&connection_string).map_err(SqlxDatabase::map_sql_err)?;
+
+        let pool = Pool::<Any>::connect_with(options)
+            .await
+            .map_err(SqlxDatabase::map_sql_err);
+        assert!(pool.is_ok());
+
+        let _ = std::fs::remove_file(absolute);
+
+        Ok(())
+    }
+
     /// HELPERS
     async fn insert_identity(db: &SqlxDatabase) -> Result<AnyQueryResult> {
         sqlx::query("INSERT INTO named_identity (identifier, name, vault_name, is_default) VALUES ($1, $2, $3, $4)")
