@@ -180,7 +180,7 @@ impl DatabaseConfiguration {
 
     fn create_sqlite_on_disk_connection_string(path: &Path) -> String {
         let url_string = &path.to_string_lossy().to_string();
-        format!("sqlite:file://{url_string}?mode=rwc")
+        format!("sqlite://{url_string}?mode=rwc")
     }
 
     fn create_postgres_connection_string(
