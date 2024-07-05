@@ -123,6 +123,9 @@ bats_require_minimum_version 1.5.0
 # Disable the opentelemetry export to improve performances
 export OCKAM_OPENTELEMETRY_EXPORT=false
 
+# Set a high timeout for CI tests
+export OCKAM_DEFAULT_TIMEOUT=5m
+
 # Set QUIET to 1 to suppress user-facing logging written at stderr
 export QUIET=1
 

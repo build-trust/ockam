@@ -550,11 +550,6 @@ async fn get_user_project(
     let project = check_project_readiness(opts, ctx, node, project).await?;
     // store the updated project
     opts.state.projects().store_project(project.clone()).await?;
-    // set the project as the default one
-    opts.state
-        .projects()
-        .set_default_project(project.project_id())
-        .await?;
 
     opts.terminal.write_line(&fmt_ok!(
         "Marked this new Project as your default Project, on this machine."

@@ -2,13 +2,15 @@ use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 use std::time::Duration;
 
-use ockam::identity::{CredentialRetrieverCreator, Identifier, SecureChannels, SecureClient};
+use ockam::identity::{
+    get_default_timeout, CredentialRetrieverCreator, Identifier, SecureChannels, SecureClient,
+};
 use ockam::tcp::TcpTransport;
 use ockam_core::compat::sync::Arc;
 use ockam_core::env::{get_env, get_env_with_default, FromString};
 use ockam_core::{Result, Route};
 use ockam_multiaddr::MultiAddr;
-use ockam_node::{Context, DEFAULT_TIMEOUT};
+use ockam_node::Context;
 
 use crate::error::ApiError;
 use crate::multiaddr_to_transport_route;
@@ -16,7 +18,6 @@ use crate::nodes::NodeManager;
 
 pub const OCKAM_CONTROLLER_ADDR: &str = "OCKAM_CONTROLLER_ADDR";
 pub const DEFAULT_CONTROLLER_ADDRESS: &str = "/dnsaddr/orchestrator.ockam.io/tcp/6252/service/api";
-pub const OCKAM_DEFAULT_TIMEOUT: &str = "OCKAM_DEFAULT_TIMEOUT";
 
 /// If it's present, its contents will be used and will have priority over the contents
 /// from ./static/controller.id.
@@ -122,8 +123,8 @@ impl NodeManager {
                 controller_route,
                 &controller_identifier,
                 caller_identifier,
-                get_default_timeout()?,
-                get_default_timeout()?,
+                get_default_timeout(),
+                get_default_timeout(),
             ),
         })
     }
@@ -151,8 +152,8 @@ impl NodeManager {
                 authority_route,
                 authority_identifier,
                 caller_identifier,
-                get_default_timeout()?,
-                get_default_timeout()?,
+                get_default_timeout(),
+                get_default_timeout(),
             ),
         })
     }
@@ -180,8 +181,8 @@ impl NodeManager {
                 project_route,
                 project_identifier,
                 caller_identifier,
-                get_default_timeout()?,
-                get_default_timeout()?,
+                get_default_timeout(),
+                get_default_timeout(),
             ),
         })
     }
@@ -207,8 +208,8 @@ impl NodeManager {
                 route,
                 identifier,
                 caller_identifier,
-                get_default_timeout()?,
-                get_default_timeout()?,
+                get_default_timeout(),
+                get_default_timeout(),
             ),
         })
     }
@@ -238,10 +239,6 @@ impl NodeManager {
             ))
         })
     }
-}
-
-pub fn get_default_timeout() -> Result<Duration> {
-    get_env_with_default::<Duration>(OCKAM_DEFAULT_TIMEOUT, DEFAULT_TIMEOUT)
 }
 
 pub struct AuthorityNodeClient {

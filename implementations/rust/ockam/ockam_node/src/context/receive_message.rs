@@ -130,7 +130,7 @@ impl Context {
             MessageWait::Timeout(timeout_duration) => {
                 timeout(timeout_duration, async { self.next_from_mailbox().await })
                     .await
-                    .map_err(|e| NodeError::Data.with_elapsed(e))?
+                    .map_err(|_| NodeError::Data.with_timeout(timeout_duration))?
             }
             MessageWait::Blocking => self.next_from_mailbox().await,
         }

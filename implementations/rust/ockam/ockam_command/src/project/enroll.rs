@@ -62,7 +62,7 @@ pub struct EnrollCommand {
     pub retry_opts: RetryOpts,
 
     /// Override the default timeout duration in environments where enrollment can take a long time
-    #[arg(long, value_name = "TIMEOUT", default_value = "120s", value_parser = duration_parser)]
+    #[arg(long, value_name = "TIMEOUT", default_value = "240s", value_parser = duration_parser)]
     pub timeout: Duration,
 }
 

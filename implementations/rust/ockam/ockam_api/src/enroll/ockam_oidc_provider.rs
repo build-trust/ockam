@@ -1,3 +1,4 @@
+use ockam::identity::get_default_timeout;
 use ockam_core::env::get_env_with_default;
 use ockam_core::Result;
 use std::time::Duration;
@@ -22,7 +23,7 @@ pub struct OckamOidcProvider {
 
 impl Default for OckamOidcProvider {
     fn default() -> Self {
-        OckamOidcProvider::new(Duration::from_secs(120))
+        OckamOidcProvider::new(get_default_timeout())
     }
 }
 

@@ -1,6 +1,8 @@
 use crate::channel_types;
 use crate::channel_types::{OneshotReceiver, OneshotSender};
 use core::time::Duration;
+use ockam_core::compat::fmt::Debug;
+use ockam_core::compat::string::String;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::Error;
 
