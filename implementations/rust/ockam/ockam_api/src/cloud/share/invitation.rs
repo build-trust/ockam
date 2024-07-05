@@ -1,14 +1,13 @@
 use crate::address::extract_address_value;
 use crate::cli_state::EnrollmentTicket;
 use crate::cloud::email_address::EmailAddress;
+use crate::date::is_expired;
 use crate::error::ApiError;
 use crate::output::Output;
 use minicbor::{CborLen, Decode, Encode};
 use ockam::identity::Identifier;
 use serde::{Deserialize, Serialize};
 use std::{fmt::Display, str::FromStr};
-use time::format_description::well_known::iso8601::Iso8601;
-use time::OffsetDateTime;
 
 #[derive(Clone, Debug, Eq, PartialEq, Decode, Encode, CborLen, Deserialize, Serialize)]
 #[cbor(index_only)]
@@ -149,20 +148,6 @@ impl Output for SentInvitation {
     }
 }
 
-/// Check if a string that represents an Iso8601 date is expired, using the `time` crate
-fn is_expired(date: &str) -> ockam_core::Result<bool> {
-    // Add the Z timezone to the date, as the `time` crate requires it
-    let date = if date.ends_with('Z') {
-        date.to_string()
-    } else {
-        format!("{}Z", date)
-    };
-    let now = OffsetDateTime::now_utc();
-    let date = OffsetDateTime::parse(&date, &Iso8601::DEFAULT)
-        .map_err(|e| ApiError::core(e.to_string()))?;
-    Ok(date < now)
-}
-
 #[derive(Clone, Debug, Encode, Decode, CborLen, Deserialize, Serialize, PartialEq)]
 #[cbor(map)]
 #[rustfmt::skip]
@@ -192,7 +177,9 @@ impl ServiceAccessDetails {
 
 #[cfg(test)]
 mod test {
-    use super::*;
+    use crate::date::is_expired;
+    use time::format_description::well_known::Iso8601;
+    use time::OffsetDateTime;
 
     #[test]
     fn test_is_expired() {

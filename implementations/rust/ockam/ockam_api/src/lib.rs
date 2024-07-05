@@ -43,6 +43,7 @@ pub mod logs;
 mod schema;
 mod session;
 
+mod date;
 mod rendezvous_healthcheck;
 pub mod test_utils;
 mod ui;

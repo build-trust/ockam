@@ -9,8 +9,10 @@ pub use utils::*;
 
 use crate::Result;
 
+use crate::terminal::fmt;
+use itertools::Itertools;
 use ockam_core::api::Reply;
-use std::fmt::Write;
+use std::fmt::{Display, Write};
 
 /// Trait to control how a given type will be printed in the UI layer.
 ///
@@ -37,10 +39,34 @@ use std::fmt::Write;
 /// }
 /// ```
 pub trait Output {
+    /// Format to use when the item is printed as a standalone item
     fn item(&self) -> Result<String>;
 
+    /// Format to use when the item is part of a list.
+    /// By default, the list representation is the same as the standalone representation
+    /// but removing the padding of each line.
     fn as_list_item(&self) -> Result<String> {
-        self.item()
+        Ok(self
+            .item()?
+            .lines()
+            .map(|l| l.strip_prefix(fmt::PADDING).unwrap_or(l))
+            .join("\n"))
+    }
+
+    /// Adds padding to each line of the Display output
+    fn padded_display(&self) -> String
+    where
+        Self: Display,
+    {
+        self.iter_output().pad().to_string()
+    }
+
+    /// Returns an iterator over the lines of the Display output
+    fn iter_output(&self) -> OutputIter
+    where
+        Self: Display,
+    {
+        OutputIter::new(self.to_string())
     }
 }
 
@@ -79,5 +105,41 @@ impl<T: Output> Output for Reply<T> {
                 Ok(output)
             }
         }
+    }
+}
+
+pub struct OutputIter {
+    contents: String,
+}
+
+impl Display for OutputIter {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.contents)
+    }
+}
+
+impl OutputIter {
+    pub fn new(contents: String) -> Self {
+        Self { contents }
+    }
+
+    pub fn pad(self) -> Self {
+        let contents = self
+            .contents
+            .lines()
+            .map(|s| format!("{}{}", fmt::PADDING, s))
+            .collect::<Vec<String>>()
+            .join("\n");
+        Self { contents }
+    }
+
+    pub fn indent(self) -> Self {
+        let contents = self
+            .contents
+            .lines()
+            .map(|s| format!("{}{}", fmt::INDENTATION, s))
+            .collect::<Vec<String>>()
+            .join("\n");
+        Self { contents }
     }
 }

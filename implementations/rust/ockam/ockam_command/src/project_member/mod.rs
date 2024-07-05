@@ -191,30 +191,32 @@ impl MemberOutput {
             attributes,
         }
     }
+}
 
-    fn to_string(&self, padding: &str) -> ockam_api::Result<String> {
+impl Output for MemberOutput {
+    fn item(&self) -> ockam_api::Result<String> {
         let mut f = String::new();
         writeln!(
             f,
             "{}{}",
-            padding,
+            fmt::PADDING,
             color_primary(self.identifier.to_string())
         )?;
 
         if self.attributes.attrs().is_empty() {
-            writeln!(f, "{}Has no attributes", padding)?;
+            writeln!(f, "{}Has no attributes", fmt::PADDING)?;
         } else {
             let attributes = self.attributes.deserialized_key_value_attrs();
             writeln!(
                 f,
                 "{}With attributes: {}",
-                padding,
+                fmt::PADDING,
                 color_primary(attributes.join(", "))
             )?;
             writeln!(
                 f,
                 "{}{}Added at: {}",
-                padding,
+                fmt::PADDING,
                 fmt::INDENTATION,
                 color_warn(self.attributes.added_at().to_string())
             )?;
@@ -222,7 +224,7 @@ impl MemberOutput {
                 writeln!(
                     f,
                     "{}{}Expires at: {}",
-                    padding,
+                    fmt::PADDING,
                     fmt::INDENTATION,
                     color_warn(expires_at.to_string())
                 )?;
@@ -231,22 +233,12 @@ impl MemberOutput {
                 writeln!(
                     f,
                     "{}{}Attested by: {}",
-                    padding,
+                    fmt::PADDING,
                     fmt::INDENTATION,
                     color_primary(attested_by.to_string())
                 )?;
             }
         }
         Ok(f)
-    }
-}
-
-impl Output for MemberOutput {
-    fn item(&self) -> ockam_api::Result<String> {
-        self.to_string(fmt::PADDING)
-    }
-
-    fn as_list_item(&self) -> ockam_api::Result<String> {
-        self.to_string("")
     }
 }

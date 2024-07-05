@@ -14,6 +14,12 @@ use tokio::sync::Mutex;
 use tokio::try_join;
 use tracing::{error, info, instrument, warn};
 
+use crate::enroll::OidcServiceExt;
+use crate::error::Error;
+use crate::operation::util::check_for_project_completion;
+use crate::project::util::check_project_readiness;
+use crate::util::async_cmd;
+use crate::{docs, CommandGlobalOpts, Result};
 use ockam::Context;
 use ockam_api::cli_state::journeys::{JourneyEvent, USER_EMAIL, USER_NAME};
 use ockam_api::cli_state::random_name;
@@ -29,13 +35,6 @@ use ockam_api::nodes::InMemoryNode;
 use ockam_api::terminal::notification::NotificationHandler;
 use ockam_api::{fmt_log, fmt_ok, fmt_warn};
 use ockam_api::{fmt_separator, CliState};
-
-use crate::enroll::OidcServiceExt;
-use crate::error::Error;
-use crate::operation::util::check_for_project_completion;
-use crate::project::util::check_project_readiness;
-use crate::util::async_cmd;
-use crate::{docs, CommandGlobalOpts, Result};
 
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/after_long_help.txt");
@@ -417,7 +416,7 @@ async fn get_user_space(
     let progress_output = opts.terminal.loop_messages(&message, &is_finished);
 
     let (spaces, _) = try_join!(get_spaces, progress_output)?;
-
+    let mut is_new = false;
     // If the identity has no spaces, create one
     let space = match spaces.first() {
         None => {
@@ -449,6 +448,7 @@ async fn get_user_space(
                 "Created a new Space named {}.",
                 color_primary(space.name.clone())
             ))?;
+            is_new = true;
             space
         }
         Some(space) => {
@@ -463,12 +463,9 @@ async fn get_user_space(
         "Marked {} as your default Space, on this machine.\n",
         color_primary(space.name.clone())
     ))?;
-
-    opts.terminal.write_line(fmt_log!("This Space does not have a Subscription attached to it."))?
-        .write_line(fmt_log!("As a courtesy, we created a temporary Space for you, so you can continue to build.\n"))?
-        .write_line(fmt_log!("Please subscribe to an Ockam plan within two weeks {}", color_uri("https://www.ockam.io/pricing")))?
-        .write_line(fmt_log!("{}\n", "If you don't subscribe in that time, your Space and all Projects will be permanently deleted.".color(OckamColor::FmtWARNBackground.color())))?;
-
+    if let Ok(msg) = space.subscription_status_message(is_new) {
+        opts.terminal.write_line(msg)?;
+    }
     Ok(Some(space))
 }
 
