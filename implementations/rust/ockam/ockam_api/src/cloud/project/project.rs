@@ -184,8 +184,8 @@ impl Project {
                 Origin::Api,
                 Kind::NotFound,
                 format!(
-                    "no identity has been set for the project authority {}",
-                    self.model.name
+                    "no identity has been set for the project authority: {:?}",
+                    self
                 ),
             )),
         }

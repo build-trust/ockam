@@ -191,7 +191,7 @@ impl miette::ReportHandler for ErrorReportHandler {
         };
 
         // TODO: Display the cause of the error in a nicely formatted way; skip for now.
-        // Self::print_causes(f, error)?;
+        Self::print_causes(f, error)?;
 
         let code_message = format!("Error code: {}", code_as_str).dark_gray();
         let version_message = format!("version: {}", Version::short()).dark_gray();
