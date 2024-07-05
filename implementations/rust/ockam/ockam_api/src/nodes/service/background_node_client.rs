@@ -11,6 +11,7 @@ use ockam_node::api::Client;
 use ockam_node::Context;
 
 use crate::cli_state::CliState;
+use crate::cloud::get_default_timeout;
 use crate::nodes::NODEMANAGER_ADDR;
 
 /// This struct represents a Client to a node that has been started
@@ -73,7 +74,7 @@ impl BackgroundNodeClient {
             cli_state: cli_state.clone(),
             node_name: node_name.to_string(),
             to: NODEMANAGER_ADDR.into(),
-            timeout: Some(Duration::from_secs(30)),
+            timeout: Some(get_default_timeout().into_diagnostic()?),
             tcp_transport: Arc::new(tcp_transport.clone()),
         })
     }
