@@ -3,7 +3,7 @@ use clap::{Args, Subcommand};
 use miette::{miette, IntoDiagnostic};
 
 use ockam::Context;
-use ockam_api::cloud::subscription::{Subscription, Subscriptions};
+use ockam_api::cloud::subscription::{SubscriptionLegacy, Subscriptions};
 use ockam_api::cloud::ControllerClient;
 
 use ockam_api::nodes::InMemoryNode;
@@ -92,7 +92,7 @@ pub(crate) async fn get_subscription_by_id_or_space_id(
     ctx: &Context,
     subscription_id: Option<String>,
     space_id: Option<String>,
-) -> Result<Option<Subscription>> {
+) -> Result<Option<SubscriptionLegacy>> {
     match (subscription_id, space_id) {
         (Some(subscription_id), _) => Ok(Some(
             controller

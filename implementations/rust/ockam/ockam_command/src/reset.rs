@@ -21,7 +21,7 @@ pub struct ResetCommand {
     yes: bool,
 
     /// Remove your spaces from the Orchestrator
-    #[arg(long)]
+    #[arg(long, short)]
     all: bool,
 }
 

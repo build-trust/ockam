@@ -3,6 +3,7 @@ use ockam_core::Error;
 
 use crate::cli_state::CliState;
 use crate::cloud::space::Space;
+use crate::cloud::subscription::Subscription;
 
 use super::Result;
 
@@ -13,12 +14,14 @@ impl CliState {
         space_id: &str,
         space_name: &str,
         users: Vec<&str>,
+        subscription: Option<&Subscription>,
     ) -> Result<Space> {
         let repository = self.spaces_repository();
         let space = Space {
             id: space_id.to_string(),
             name: space_name.to_string(),
             users: users.iter().map(|u| u.to_string()).collect(),
+            subscription: subscription.cloned(),
         };
 
         repository.store_space(&space).await?;
@@ -96,13 +99,26 @@ mod test {
 
         // the first created space becomes the default
         let space1 = cli
-            .store_space("1", "name1", vec!["me@ockam.io", "you@ockam.io"])
+            .store_space(
+                "1",
+                "name1",
+                vec!["me@ockam.io", "you@ockam.io"],
+                Some(&Subscription::new(
+                    "name1".to_string(),
+                    false,
+                    None,
+                    None,
+                    None,
+                )),
+            )
             .await?;
         let result = cli.get_default_space().await?;
         assert_eq!(result, space1);
 
         // the store method can be used to update a space
-        let updated_space1 = cli.store_space("1", "name1", vec!["them@ockam.io"]).await?;
+        let updated_space1 = cli
+            .store_space("1", "name1", vec!["them@ockam.io"], None)
+            .await?;
         let result = cli.get_default_space().await?;
         assert_eq!(result, updated_space1);
 

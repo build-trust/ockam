@@ -1,13 +1,12 @@
-use sqlx::any::AnyRow;
-use sqlx::*;
-
+use super::SpacesRepository;
+use crate::cloud::space::Space;
+use crate::cloud::subscription::Subscription;
 use ockam_core::async_trait;
 use ockam_core::Result;
-use ockam_node::database::{Boolean, FromSqlxError, SqlxDatabase, ToVoid};
-
-use crate::cloud::space::Space;
-
-use super::SpacesRepository;
+use ockam_node::database::{Boolean, FromSqlxError, Nullable, SqlxDatabase, ToVoid};
+use sqlx::any::AnyRow;
+use sqlx::*;
+use time::OffsetDateTime;
 
 #[derive(Clone)]
 pub struct SpacesSqlxDatabase {
@@ -24,6 +23,15 @@ impl SpacesSqlxDatabase {
     /// Create a new in-memory database
     pub async fn create() -> Result<Self> {
         Ok(Self::new(SqlxDatabase::in_memory("spaces").await?))
+    }
+
+    async fn query_subscription(&self, space_id: &str) -> Result<Option<Subscription>> {
+        let query = query_as("SELECT space_id, name, is_free_trial, marketplace, start_date, end_date FROM subscription WHERE space_id = $1").bind(space_id);
+        let row: Option<SubscriptionRow> = query
+            .fetch_optional(&*self.database.pool)
+            .await
+            .into_core()?;
+        Ok(row.map(|r| r.subscription()))
     }
 }
 
@@ -69,6 +77,31 @@ impl SpacesRepository for SpacesSqlxDatabase {
             query4.execute(&mut *transaction).await.void()?;
         }
 
+        // store the subscription if any
+        if let Some(subscription) = &space.subscription {
+            let start_date = subscription.start_date();
+            let end_date = subscription.end_date();
+            let query = query(
+                r"
+             INSERT INTO subscription (space_id, name, is_free_trial, marketplace, start_date, end_date)
+             VALUES ($1, $2, $3, $4, $5, $6)
+             ON CONFLICT (space_id)
+             DO UPDATE SET space_id = $1, name = $2, is_free_trial = $3, marketplace = $4, start_date = $5, end_date = $6",
+            )
+                .bind(&space.id)
+                .bind(&subscription.name)
+                .bind(subscription.is_free_trial)
+                .bind(&subscription.marketplace)
+                .bind(start_date.map(|d| d.unix_timestamp()))
+                .bind(end_date.map(|d| d.unix_timestamp()));
+            query.execute(&mut *transaction).await.void()?;
+        }
+        // remove the subscription
+        else {
+            let query = query("DELETE FROM subscription WHERE space_id = $1").bind(&space.id);
+            query.execute(&mut *transaction).await.void()?;
+        }
+
         transaction.commit().await.void()
     }
 
@@ -95,6 +128,7 @@ impl SpacesRepository for SpacesSqlxDatabase {
         let row: Option<SpaceRow> = query1.fetch_optional(&mut *transaction).await.into_core()?;
         let space = match row.map(|r| r.space()) {
             Some(mut space) => {
+                // retrieve the users
                 let query2 =
                     query_as("SELECT space_id, user_email FROM user_space WHERE space_id = $1")
                         .bind(&space.id);
@@ -102,6 +136,10 @@ impl SpacesRepository for SpacesSqlxDatabase {
                     query2.fetch_all(&mut *transaction).await.into_core()?;
                 let users = rows.into_iter().map(|r| r.user_email).collect();
                 space.users = users;
+
+                // retrieve the subscription
+                space.subscription = self.query_subscription(&space.id).await?;
+
                 Some(space)
             }
             None => None,
@@ -114,16 +152,20 @@ impl SpacesRepository for SpacesSqlxDatabase {
         let mut transaction = self.database.begin().await.into_core()?;
 
         let query = query_as("SELECT space_id, space_name FROM space");
-        let row: Vec<SpaceRow> = query.fetch_all(&mut *transaction).await.into_core()?;
+        let rows: Vec<SpaceRow> = query.fetch_all(&mut *transaction).await.into_core()?;
 
         let mut spaces = vec![];
-        for space_row in row {
+        for row in rows {
             let query2 =
                 query_as("SELECT space_id, user_email FROM user_space WHERE space_id = $1")
-                    .bind(&space_row.space_id);
+                    .bind(&row.space_id);
             let rows: Vec<UserSpaceRow> = query2.fetch_all(&mut *transaction).await.into_core()?;
             let users = rows.into_iter().map(|r| r.user_email).collect();
-            spaces.push(space_row.space_with_user_emails(users))
+            let subscription = self.query_subscription(&row.space_id).await?;
+            let mut space = row.space();
+            space.users = users;
+            space.subscription = subscription;
+            spaces.push(space);
         }
 
         transaction.commit().await.void()?;
@@ -169,6 +211,9 @@ impl SpacesRepository for SpacesSqlxDatabase {
         let query2 = query("DELETE FROM user_space WHERE space_id = $1").bind(space_id);
         query2.execute(&mut *transaction).await.void()?;
 
+        let query3 = query("DELETE FROM subscription WHERE space_id = $1").bind(space_id);
+        query3.execute(&mut *transaction).await.void()?;
+
         transaction.commit().await.void()
     }
 }
@@ -184,14 +229,11 @@ struct SpaceRow {
 
 impl SpaceRow {
     pub(crate) fn space(&self) -> Space {
-        self.space_with_user_emails(vec![])
-    }
-
-    pub(crate) fn space_with_user_emails(&self, user_emails: Vec<String>) -> Space {
         Space {
             id: self.space_id.clone(),
             name: self.space_name.clone(),
-            users: user_emails,
+            users: vec![],
+            subscription: None,
         }
     }
 }
@@ -204,22 +246,52 @@ struct UserSpaceRow {
     user_email: String,
 }
 
+/// Low-level representation of a row in the subscription table
+#[derive(sqlx::FromRow)]
+pub(super) struct SubscriptionRow {
+    #[allow(unused)]
+    space_id: String,
+    name: String,
+    is_free_trial: Boolean,
+    marketplace: Nullable<String>,
+    start_date: Nullable<i64>,
+    end_date: Nullable<i64>,
+}
+
+impl SubscriptionRow {
+    pub(crate) fn subscription(&self) -> Subscription {
+        Subscription::new(
+            self.name.clone(),
+            self.is_free_trial.to_bool(),
+            self.marketplace.to_option(),
+            self.start_date
+                .to_option()
+                .and_then(|t| OffsetDateTime::from_unix_timestamp(t).ok()),
+            self.end_date
+                .to_option()
+                .and_then(|t| OffsetDateTime::from_unix_timestamp(t).ok()),
+        )
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
     use ockam_node::database::with_dbs;
-    use std::sync::Arc;
+    use std::ops::Add;
+    use time::ext::NumericalDuration;
 
     #[tokio::test]
     async fn test_repository() -> Result<()> {
         with_dbs(|db| async move {
-            let repository: Arc<dyn SpacesRepository> = Arc::new(SpacesSqlxDatabase::new(db));
+            let repository = SpacesSqlxDatabase::new(db);
 
             // create and store 2 spaces
             let space1 = Space {
                 id: "1".to_string(),
                 name: "name1".to_string(),
                 users: vec!["me@ockam.io".to_string(), "you@ockam.io".to_string()],
+                subscription: None,
             };
             let mut space2 = Space {
                 id: "2".to_string(),
@@ -229,10 +301,23 @@ mod test {
                     "him@ockam.io".to_string(),
                     "her@ockam.io".to_string(),
                 ],
+                subscription: Some(Subscription::new(
+                    "premium".to_string(),
+                    false,
+                    Some("aws".to_string()),
+                    Some(OffsetDateTime::now_utc()),
+                    Some(OffsetDateTime::now_utc().add(2.days())),
+                )),
             };
 
             repository.store_space(&space1).await?;
             repository.store_space(&space2).await?;
+
+            // subscription is stored
+            let result = repository.query_subscription("1").await?;
+            assert_eq!(result, None);
+            let result = repository.query_subscription("2").await?;
+            assert_eq!(result, Some(space2.subscription.clone().unwrap()));
 
             // retrieve them as a vector or by name
             let result = repository.get_spaces().await?;
@@ -263,6 +348,13 @@ mod test {
 
             let result = repository.get_spaces().await?;
             assert_eq!(result, vec![space1.clone()]);
+
+            // subscription is deleted
+            let result = repository.query_subscription("1").await?;
+            assert_eq!(result, None);
+            let result = repository.query_subscription("2").await?;
+            assert_eq!(result, None);
+
             Ok(())
         })
         .await

@@ -1,16 +1,12 @@
+use async_trait::async_trait;
 use clap::Args;
-use miette::IntoDiagnostic;
-use opentelemetry::trace::FutureExt;
-use tokio::sync::Mutex;
-use tokio::try_join;
 
 use ockam::Context;
 use ockam_api::cloud::space::Spaces;
 use ockam_api::nodes::InMemoryNode;
 
 use crate::shared_args::IdentityOpts;
-use crate::util::async_cmd;
-use crate::{docs, CommandGlobalOpts};
+use crate::{docs, Command, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/list/long_about.txt");
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
@@ -28,44 +24,30 @@ pub struct ListCommand {
     pub identity_opts: IdentityOpts,
 }
 
-impl ListCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |ctx| async move {
-            self.async_run(&ctx, opts).await
-        })
-    }
+#[async_trait]
+impl Command for ListCommand {
+    const NAME: &'static str = "space list";
 
-    pub fn name(&self) -> String {
-        "space list".into()
-    }
-
-    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
-        let is_finished: Mutex<bool> = Mutex::new(false);
+    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
         let node = InMemoryNode::start(ctx, &opts.state).await?;
 
-        let get_spaces = async {
-            let spaces = node.get_spaces(ctx).await?;
-            *is_finished.lock().await = true;
-            Ok(spaces)
-        }
-        .with_current_context();
-
-        let output_messages = vec![format!("Listing Spaces...\n",)];
-
-        let progress_output = opts.terminal.loop_messages(&output_messages, &is_finished);
-
-        let (spaces, _) = try_join!(get_spaces, progress_output)?;
+        let spaces = {
+            let pb = opts.terminal.progress_bar();
+            if let Some(pb) = pb.as_ref() {
+                pb.set_message("Listing spaces...");
+            }
+            node.get_spaces(ctx).await?
+        };
 
         let plain = opts.terminal.build_list(
             &spaces,
             "No spaces found. Run 'ockam enroll' to get a space and a project",
         )?;
-        let json = serde_json::to_string(&spaces).into_diagnostic()?;
 
         opts.terminal
             .stdout()
             .plain(plain)
-            .json(json)
+            .json_obj(&spaces)?
             .write_line()?;
         Ok(())
     }

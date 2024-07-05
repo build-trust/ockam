@@ -1,18 +1,20 @@
-use colorful::Colorful;
 use miette::IntoDiagnostic;
 use minicbor::{CborLen, Decode, Encode};
 use serde::Serialize;
-use std::fmt::Write;
+use std::fmt::{Display, Formatter, Write};
 
 use ockam_core::api::Request;
 use ockam_core::async_trait;
 use ockam_node::Context;
 
 use crate::cloud::project::{Project, ProjectsOrchestratorApi};
+use crate::cloud::subscription::Subscription;
 use crate::cloud::{ControllerClient, HasSecureClient};
-use crate::colors::OckamColor;
+use crate::colors::{color_primary, color_uri, color_warn};
+use crate::fmt_log;
 use crate::nodes::InMemoryNode;
 use crate::output::{comma_separated, Output};
+use crate::terminal::fmt;
 
 const TARGET: &str = "ockam_api::cloud::space";
 
@@ -23,6 +25,7 @@ pub struct Space {
     #[n(1)] pub id: String,
     #[n(2)] pub name: String,
     #[n(3)] pub users: Vec<String>,
+    #[n(4)] pub subscription: Option<Subscription>,
 }
 
 impl Space {
@@ -33,37 +36,92 @@ impl Space {
     pub fn space_name(&self) -> String {
         self.name.clone()
     }
+
+    pub fn has_subscription(&self) -> bool {
+        self.subscription.is_some()
+    }
+
+    pub fn is_in_free_trial_subscription(&self) -> bool {
+        self.subscription.is_none()
+            || self
+                .subscription
+                .as_ref()
+                .map(|s| s.is_free_trial)
+                .unwrap_or_default()
+    }
+
+    pub fn subscription_status_message(&self, space_is_new: bool) -> crate::Result<String> {
+        let mut f = String::new();
+        if let Some(subscription) = &self.subscription {
+            writeln!(
+                f,
+                "{}",
+                fmt_log!(
+                    "This Space has a {} Subscription attached to it.",
+                    color_primary(&subscription.name)
+                )
+            )?;
+            if subscription.is_free_trial {
+                if space_is_new {
+                    writeln!(f)?;
+                    writeln!(f, "{}", fmt_log!("As a courtesy, we created a temporary Space for you, so you can continue to build.\n"))?;
+                    writeln!(
+                        f,
+                        "{}",
+                        fmt_log!(
+                            "Please subscribe to an Ockam plan within two weeks {}",
+                            color_uri("https://www.ockam.io/pricing")
+                        )
+                    )?;
+                    writeln!(f, "{}", fmt_log!("{}", color_warn("If you don't subscribe in that time, your Space and all associated Projects will be permanently deleted.")))?;
+                } else if let (Some(start_date), Some(end_date)) =
+                    (&subscription.start_date(), &subscription.end_date())
+                {
+                    writeln!(f)?;
+                    writeln!(
+                        f,
+                        "{}",
+                        fmt_log!(
+                            "Your free trial started on {} and will end on {}.\n",
+                            start_date,
+                            end_date
+                        )
+                    )?;
+                    writeln!(f, "{}", fmt_log!("Please subscribe to an Ockam plan before the trial ends to avoid any service interruptions {}", color_uri("https://www.ockam.io/pricing")))?;
+                    writeln!(f, "{}", fmt_log!("{}", color_warn("If you don't subscribe in that time, your Space and all associated Projects will be permanently deleted.")))?;
+                }
+            }
+        } else {
+            writeln!(
+                f,
+                "{}",
+                fmt_log!("This Space does not have a Subscription attached to it.")
+            )?;
+        }
+        Ok(f)
+    }
+}
+
+impl Display for Space {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "{}", color_primary(&self.name))?;
+        writeln!(f, "{}Id: {}", fmt::INDENTATION, color_primary(&self.id))?;
+        writeln!(
+            f,
+            "{}Users: {}",
+            fmt::INDENTATION,
+            comma_separated(&self.users)
+        )?;
+        if let Some(subscription) = &self.subscription {
+            write!(f, "{}", subscription.iter_output().indent())?;
+        }
+        Ok(())
+    }
 }
 
 impl Output for Space {
     fn item(&self) -> crate::Result<String> {
-        let mut w = String::new();
-        write!(w, "Space")?;
-        write!(w, "\n  Id: {}", self.id)?;
-        write!(w, "\n  Name: {}", self.name)?;
-        write!(w, "\n  Users: {}", comma_separated(&self.users))?;
-        Ok(w)
-    }
-
-    fn as_list_item(&self) -> crate::Result<String> {
-        let mut output = String::new();
-        writeln!(
-            output,
-            "Space {}",
-            self.name
-                .to_string()
-                .color(OckamColor::PrimaryResource.color())
-        )?;
-        writeln!(
-            output,
-            "Id {}",
-            self.id
-                .to_string()
-                .color(OckamColor::PrimaryResource.color())
-        )?;
-        write!(output, "{}", comma_separated(&self.users))?;
-
-        Ok(output)
+        Ok(self.padded_display())
     }
 }
 
@@ -118,6 +176,7 @@ impl Spaces for InMemoryNode {
                 &space.id,
                 &space.name,
                 space.users.iter().map(|u| u.as_ref()).collect(),
+                space.subscription.as_ref(),
             )
             .await?;
         Ok(space)
@@ -132,6 +191,7 @@ impl Spaces for InMemoryNode {
                 &space.id,
                 &space.name,
                 space.users.iter().map(|u| u.as_ref()).collect(),
+                space.subscription.as_ref(),
             )
             .await?;
         Ok(space)
@@ -189,6 +249,7 @@ impl Spaces for InMemoryNode {
                     &space.id,
                     &space.name,
                     space.users.iter().map(|u| u.as_ref()).collect(),
+                    space.subscription.as_ref(),
                 )
                 .await?;
 
@@ -281,6 +342,7 @@ pub mod tests {
                 id: String::arbitrary(g),
                 name: String::arbitrary(g),
                 users: vec![String::arbitrary(g), String::arbitrary(g)],
+                subscription: bool::arbitrary(g).then(|| Subscription::arbitrary(g)),
             }
         }
     }

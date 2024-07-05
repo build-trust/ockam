@@ -241,10 +241,4 @@ impl Output for ServiceStatus {
         writeln!(f, "{}{}", fmt::PADDING, self)?;
         Ok(f)
     }
-
-    fn as_list_item(&self) -> crate::Result<String> {
-        let mut f = String::new();
-        writeln!(f, "{}", self)?;
-        Ok(f)
-    }
 }
