@@ -24,10 +24,10 @@ async fn main(ctx: Context) -> Result<()> {
 
     // Combine the tcp address of the node and the forwarding_address to get a route
     // to Bob's secure channel listener.
-    let node_in_hub = tcp
+    let node_in_orchestrator = tcp
         .connect("1.node.ockam.network:4000", TcpConnectionOptions::new())
         .await?;
-    let route_to_bob_listener = route![node_in_hub, forwarding_address, "listener"];
+    let route_to_bob_listener = route![node_in_orchestrator, forwarding_address, "listener"];
 
     // As Alice, connect to Bob's secure channel listener, and perform an
     // Authenticated Key Exchange to establish an encrypted secure channel with Bob.

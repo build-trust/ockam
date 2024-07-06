@@ -49,8 +49,10 @@ async fn main(ctx: Context) -> Result<()> {
     //
     // All messages that arrive at that forwarding address will be sent to this program
     // using the TCP connection we created as a client.
-    let node_in_hub = tcp.connect("1.node.ockam.network:4000", tcp_options).await?;
-    let relay = node.create_relay(node_in_hub, RemoteRelayOptions::new()).await?;
+    let node_in_orchestrator = tcp.connect("1.node.ockam.network:4000", tcp_options).await?;
+    let relay = node
+        .create_relay(node_in_orchestrator, RemoteRelayOptions::new())
+        .await?;
     println!("\n[✓] RemoteRelay was created on the node at: 1.node.ockam.network:4000");
     println!("Forwarding address in Hub is:");
     println!("{}", relay.remote_address());

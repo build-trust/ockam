@@ -65,7 +65,7 @@ impl RemoteRelay {
     /// Create and start static RemoteRelay at predefined address with given Ockam Orchestrator route
     pub async fn create_static(
         ctx: &Context,
-        hub_route: impl Into<Route>,
+        orchestrator_route: impl Into<Route>,
         alias: impl Into<String>,
         options: RemoteRelayOptions,
     ) -> Result<RemoteRelayInfo> {
@@ -79,7 +79,7 @@ impl RemoteRelay {
             ))
             .await?;
 
-        let registration_route = route![hub_route.into(), "static_forwarding_service"];
+        let registration_route = route![orchestrator_route.into(), "static_forwarding_service"];
 
         let flow_control_id =
             options.setup_flow_control(ctx.flow_controls(), &addresses, registration_route.next()?);
@@ -108,10 +108,10 @@ impl RemoteRelay {
         Ok(resp)
     }
 
-    /// Create and start new ephemeral RemoteRelay at random address with given Ockam Hub route
+    /// Create and start new ephemeral RemoteRelay at random address with given Ockam Orchestrator route
     pub async fn create(
         ctx: &Context,
-        hub_route: impl Into<Route>,
+        orchestrator_route: impl Into<Route>,
         options: RemoteRelayOptions,
     ) -> Result<RemoteRelayInfo> {
         let addresses = Addresses::generate(RelayType::Ephemeral);
@@ -124,7 +124,7 @@ impl RemoteRelay {
             ))
             .await?;
 
-        let registration_route = route![hub_route, "forwarding_service"];
+        let registration_route = route![orchestrator_route, "forwarding_service"];
 
         let flow_control_id =
             options.setup_flow_control(ctx.flow_controls(), &addresses, registration_route.next()?);
