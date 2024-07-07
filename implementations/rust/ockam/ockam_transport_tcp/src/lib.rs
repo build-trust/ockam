@@ -38,3 +38,6 @@ pub(crate) const CLUSTER_NAME: &str = "_internals.transport.tcp";
 
 /// Transport type for TCP addresses
 pub const TCP: ockam_core::TransportType = ockam_core::TransportType::new(1);
+
+/// 16 MB
+pub const MAX_MESSAGE_SIZE: usize = 16 * 1024 * 1024;

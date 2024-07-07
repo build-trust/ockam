@@ -2,16 +2,13 @@ use super::{Addresses, UdpSocketWrite};
 use crate::messages::{
     RoutingNumber, UdpRoutingMessage, UdpTransportMessage, CURRENT_VERSION, MAX_PAYLOAD_SIZE,
 };
-use crate::UDP;
+use crate::{MAX_MESSAGE_SIZE, UDP};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{async_trait, Any, Error, LocalMessage, Result, Routed, Worker};
 use ockam_node::Context;
 use ockam_transport_core::{resolve_peer, TransportError};
 use std::net::SocketAddr;
 use tracing::{error, trace, warn};
-
-/// 16 MB
-pub const MAX_MESSAGE_SIZE: usize = 16 * 1024 * 1024;
 
 /// A sender for the UDP transport
 ///

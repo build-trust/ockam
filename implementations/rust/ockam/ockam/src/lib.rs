@@ -87,7 +87,7 @@ pub mod tcp {
     pub use ockam_transport_tcp::{
         TcpConnection, TcpConnectionMode, TcpConnectionOptions, TcpInletOptions, TcpListener,
         TcpListenerInfo, TcpListenerOptions, TcpOutletOptions, TcpSenderInfo, TcpTransport,
-        TcpTransportExtension, TCP,
+        TcpTransportExtension, MAX_MESSAGE_SIZE, TCP,
     };
 }
 #[cfg(feature = "ockam_transport_udp")]
@@ -95,7 +95,8 @@ pub mod tcp {
 pub mod udp {
     pub use ockam_transport_udp::{
         UdpBindArguments, UdpBindOptions, UdpPunctureNegotiation, UdpPunctureNegotiationListener,
-        UdpPunctureNegotiationListenerOptions, UdpTransport, UdpTransportExtension, UDP,
+        UdpPunctureNegotiationListenerOptions, UdpTransport, UdpTransportExtension,
+        MAX_MESSAGE_SIZE, UDP,
     };
 }
 pub use relay_service::{RelayService, RelayServiceOptions};
