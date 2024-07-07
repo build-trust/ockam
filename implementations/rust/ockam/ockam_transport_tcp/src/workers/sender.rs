@@ -1,5 +1,5 @@
 use crate::workers::Addresses;
-use crate::{TcpConnectionMode, TcpProtocolVersion, TcpRegistry, TcpSenderInfo};
+use crate::{TcpConnectionMode, TcpProtocolVersion, TcpRegistry, TcpSenderInfo, MAX_MESSAGE_SIZE};
 use ockam_core::flow_control::FlowControlId;
 use ockam_core::{
     async_trait,
@@ -15,9 +15,6 @@ use serde::{Deserialize, Serialize};
 use tokio::io::AsyncWriteExt;
 use tokio::net::tcp::OwnedWriteHalf;
 use tracing::{info, instrument, trace, warn};
-
-/// 16 MB
-pub const MAX_MESSAGE_SIZE: usize = 16 * 1024 * 1024;
 
 #[derive(Serialize, Deserialize, Message, Clone)]
 pub(crate) enum TcpSendWorkerMsg {

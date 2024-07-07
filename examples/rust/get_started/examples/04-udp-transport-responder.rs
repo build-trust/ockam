@@ -2,8 +2,8 @@
 // It then runs forever waiting for messages.
 
 use hello_ockam::Echoer;
+use ockam::udp::{UdpBindArguments, UdpBindOptions, UdpTransportExtension};
 use ockam::{node, Context, Result};
-use ockam_transport_udp::{UdpBindArguments, UdpBindOptions, UdpTransportExtension};
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {

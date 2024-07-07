@@ -1,7 +1,8 @@
 use crate::transport_message::TcpTransportMessage;
-use crate::workers::{Addresses, MAX_MESSAGE_SIZE};
+use crate::workers::Addresses;
 use crate::{
     TcpConnectionMode, TcpProtocolVersion, TcpReceiverInfo, TcpRegistry, TcpSendWorkerMsg,
+    MAX_MESSAGE_SIZE,
 };
 use core::fmt::Display;
 use ockam_core::compat::net::SocketAddr;
