@@ -17,11 +17,11 @@ use ockam_core::{opentelemetry_context_parser, OpenTelemetryContext};
 use ockam_node::Context;
 
 use crate::node::create::config::ConfigArgs;
-use crate::node::foreground::ForegroundArgs;
 use crate::node::util::NodeManagerDefaults;
 use crate::service::config::Config;
 use crate::shared_args::TrustOpts;
 use crate::util::embedded_node_that_is_not_stopped;
+use crate::util::foreground_args::ForegroundArgs;
 use crate::util::{async_cmd, local_cmd};
 use crate::value_parsers::is_url;
 use crate::{docs, Command, CommandGlobalOpts, Result};

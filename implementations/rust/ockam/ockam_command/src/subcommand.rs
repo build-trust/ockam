@@ -36,6 +36,7 @@ use crate::policy::PolicyCommand;
 use crate::project::ProjectCommand;
 use crate::project_member::ProjectMemberCommand;
 use crate::relay::RelayCommand;
+use crate::rendezvous_server::RendezvousServerCommand;
 use crate::reset::ResetCommand;
 use crate::run::RunCommand;
 use crate::secure_channel::listener::SecureChannelListenerCommand;
@@ -81,6 +82,8 @@ pub enum OckamSubcommand {
     TcpConnection(TcpConnectionCommand),
     TcpOutlet(TcpOutletCommand),
     TcpInlet(TcpInletCommand),
+
+    RendezvousServer(RendezvousServerCommand),
 
     KafkaInlet(KafkaInletCommand),
     KafkaOutlet(KafkaOutletCommand),
@@ -136,6 +139,8 @@ impl OckamSubcommand {
             OckamSubcommand::TcpConnection(c) => c.run(opts),
             OckamSubcommand::TcpOutlet(c) => c.run(opts),
             OckamSubcommand::TcpInlet(c) => c.run(opts),
+
+            OckamSubcommand::RendezvousServer(c) => c.run(opts),
 
             OckamSubcommand::KafkaInlet(c) => c.run(opts),
             OckamSubcommand::KafkaConsumer(c) => c.run(opts),
@@ -266,6 +271,7 @@ impl OckamSubcommand {
             OckamSubcommand::TcpConnection(c) => c.name(),
             OckamSubcommand::TcpOutlet(c) => c.name(),
             OckamSubcommand::TcpInlet(c) => c.name(),
+            OckamSubcommand::RendezvousServer(c) => c.name(),
             OckamSubcommand::KafkaInlet(c) => c.name(),
             OckamSubcommand::KafkaOutlet(c) => c.name(),
             OckamSubcommand::KafkaConsumer(c) => c.name(),

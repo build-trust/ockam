@@ -55,6 +55,7 @@ mod policy;
 mod project;
 mod project_member;
 mod relay;
+mod rendezvous_server;
 mod reset;
 mod run;
 mod secure_channel;

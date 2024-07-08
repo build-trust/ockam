@@ -13,13 +13,9 @@ ockam_core = { path = "../../../implementations/rust/ockam/ockam_core" }
 ockam_macros = { path = "../../../implementations/rust/ockam/ockam_macros" }
 ockam_node = { path = "../../../implementations/rust/ockam/ockam_node" }
 ockam_transport_udp = { path = "../../../implementations/rust/ockam/ockam_transport_udp" }
-tracing = { version = "0.1", default-features = false }
 
 [[bin]]
 name = "client"
 
 [[bin]]
 name = "echo_server"
-
-[[bin]]
-name = "rendezvous_server"
