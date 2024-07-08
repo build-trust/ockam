@@ -9,6 +9,7 @@ RUN set -ex; \
 FROM cgr.dev/chainguard/wolfi-base
 COPY --from=binary /work/target/x86_64-unknown-linux-musl/release/examples/rendezvous_server /opt/rendezvous_server
 
-EXPOSE 4000
+EXPOSE 4000/udp
+EXPOSE 4001/tcp
 
 CMD ["/opt/rendezvous_server"]
