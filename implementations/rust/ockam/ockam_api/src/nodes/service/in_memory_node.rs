@@ -286,3 +286,22 @@ impl Default for NodeManagerDefaults {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[ockam::test]
+    async fn test_start_twice(ctx: &mut Context) -> Result<()> {
+        let cli = CliState::test().await?;
+
+        let node_manager1 = InMemoryNode::start(ctx, &cli).await;
+        assert!(node_manager1.is_ok());
+
+        let node_manager2 = InMemoryNode::start(ctx, &cli).await;
+        if let Err(e) = node_manager2 {
+            panic!("cannot start the node manager a second time: {e:?}");
+        }
+        Ok(())
+    }
+}

@@ -41,21 +41,21 @@ pub(super) async fn exec(
         }
     };
 
-    reply
-        .send(RouterReply::ok())
-        .await
-        .map_err(|_| NodeError::NodeState(NodeReason::Unknown).internal())?;
-
     // If we are dropping a real worker, then we simply close the
     // mailbox channel to trigger a graceful worker self-shutdown.
     //
     // For detached workers (i.e. Context's without a mailbox relay
     // running) we simply drop the record
     if !detached {
-        record.drop_sender();
+        record.stop().await?
     } else {
         router.map.free_address(primary_address);
     }
+
+    reply
+        .send(RouterReply::ok())
+        .await
+        .map_err(|_| NodeError::NodeState(NodeReason::Unknown).internal())?;
 
     Ok(())
 }

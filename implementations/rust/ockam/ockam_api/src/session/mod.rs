@@ -58,10 +58,16 @@ impl Medic {
     }
 
     pub async fn start(self, ctx: Context) -> Result<JoinHandle<()>, Error> {
+        // Stop a collector that was previously started if there is any
+        if ctx.is_worker_registered_at(Collector::address()).await? {
+            Self::stop(&ctx).await?
+        };
+
         let ctx = ctx
             .new_detached(Address::random_tagged("Medic.ctx"), DenyAll, AllowAll)
             .await?;
         let (tx, ping_receiver) = mpsc::channel(32);
+
         WorkerBuilder::new(Collector(tx))
             .with_address(Collector::address())
             .with_outgoing_access_control(DenyAll)

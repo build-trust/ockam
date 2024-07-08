@@ -153,6 +153,22 @@ impl Context {
             .take_workers()
     }
 
+    /// Return true if a worker is already registered at this address
+    pub async fn is_worker_registered_at(&self, address: Address) -> Result<bool> {
+        let (msg, mut reply_rx) = NodeMessage::is_worker_registered_at(address.clone());
+
+        self.sender
+            .send(msg)
+            .await
+            .map_err(NodeError::from_send_err)?;
+
+        reply_rx
+            .recv()
+            .await
+            .ok_or_else(|| NodeError::NodeState(NodeReason::Unknown).internal())??
+            .take_worker_is_registered()
+    }
+
     /// Send a shutdown acknowledgement to the router
     pub(crate) async fn send_stop_ack(&self) -> Result<()> {
         self.sender
