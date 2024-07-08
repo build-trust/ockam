@@ -8,7 +8,7 @@ use tracing::instrument;
 
 /// Start a Rendezvous server in foreground
 #[derive(Clone, Debug, Args)]
-pub struct StartCommand {
+pub struct CreateCommand {
     #[command(flatten)]
     pub foreground_args: ForegroundArgs,
 
@@ -32,8 +32,8 @@ pub struct StartCommand {
 }
 
 #[async_trait]
-impl Command for StartCommand {
-    const NAME: &'static str = "rendezvous-server start";
+impl Command for CreateCommand {
+    const NAME: &'static str = "rendezvous create";
 
     #[instrument(skip_all)]
     fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {

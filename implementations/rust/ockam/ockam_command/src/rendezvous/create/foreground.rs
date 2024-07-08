@@ -1,7 +1,7 @@
 use miette::IntoDiagnostic;
 use tracing::{error, info, instrument};
 
-use crate::rendezvous_server::start::StartCommand;
+use crate::rendezvous::create::CreateCommand;
 use crate::util::foreground_args::wait_for_exit_signal;
 use crate::CommandGlobalOpts;
 use colorful::Colorful;
@@ -10,7 +10,7 @@ use ockam::udp::{RendezvousService, UdpBindArguments, UdpBindOptions, UdpTranspo
 use ockam::Context;
 use ockam_api::{fmt_ok, DefaultAddress, RendezvousHealthcheck};
 
-impl StartCommand {
+impl CreateCommand {
     #[instrument(skip_all)]
     pub(super) async fn foreground_mode(
         &self,

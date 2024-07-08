@@ -17,7 +17,7 @@ teardown() {
 
 @test "rendezvous server - rendezvous server responds to a healthcheck" {
   port="$(random_port)"
-  "$OCKAM" rendezvous-server start --healthcheck="127.0.0.1:$port" &
+  "$OCKAM" rendezvous create --healthcheck="127.0.0.1:$port" &
   RENDEZVOUS_SERVER_PID=$!
 
   sleep 1
@@ -29,7 +29,7 @@ teardown() {
 @test "rendezvous server - local TCP portal over UDP puncture" {
   port="$(random_port)"
   inlet_port="$(random_port)"
-  "$OCKAM" rendezvous-server start --udp="127.0.0.1:$port" --healthcheck="127.0.0.1:0" &
+  "$OCKAM" rendezvous create --udp="127.0.0.1:$port" --healthcheck="127.0.0.1:0" &
   RENDEZVOUS_SERVER_PID=$!
 
   sleep 1
