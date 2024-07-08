@@ -9,15 +9,70 @@ export BATS_TEST_TIMEOUT=240
 
 current_directory=$(dirname "$0")
 
-echo "Running local suite..."
-bats "$current_directory/local" --timing -j 3
+# The arguments are the names of the suites to run.
+# If no arguments are passed, all suites are run.
+if [ $# -eq 0 ]; then
+  local_suite=true
+  orchestrator_enroll_suite=true
+  orchestrator_suite=true
+  serial_suite=true
+  examples_suite=true
+else
+  local_suite=false
+  orchestrator_enroll_suite=false
+  orchestrator_suite=false
+  serial_suite=false
+  examples_suite=false
+fi
+
+for suite in "$@"; do
+  case $suite in
+  local)
+    local_suite=true
+    ;;
+  orchestrator_enroll)
+    orchestrator_enroll_suite=true
+    ;;
+  orchestrator)
+    orchestrator_suite=true
+    ;;
+  serial)
+    serial_suite=true
+    ;;
+  serial)
+    examples_suite=true
+    ;;
+  *)
+    echo "Unknown suite: $suite"
+    exit 1
+    ;;
+  esac
+done
+
+if [ "$local_suite" = true ]; then
+  echo "Running local suite..."
+  bats "$current_directory/local" --timing -j 3
+fi
 
 if [ -z "${ORCHESTRATOR_TESTS}" ]; then
   exit 0
 fi
 
-echo "Running orchestrator suite..."
-bats "$current_directory/orchestrator" --timing
+if [ "$orchestrator_enroll_suite" = true ]; then
+  echo "Running orchestrator_enroll suite..."
+  bats "$current_directory/orchestrator_enroll" --timing
+fi
 
-echo "Running serial suite..."
-bats "$current_directory/serial" --timing
+if [ "$orchestrator_suite" = true ]; then
+  bats "$current_directory/orchestrator" --timing
+fi
+
+if [ "$serial_suite" = true ]; then
+  echo "Running serial suite..."
+  bats "$current_directory/serial" --timing
+fi
+
+if [ "$examples_suite" = true ]; then
+  echo "Running examples suite..."
+  bats "$current_directory/examples" --timing
+fi
