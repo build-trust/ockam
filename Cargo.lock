@@ -2938,6 +2938,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "gethostname"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dc3655aa6818d65bc620d6911f05aa7b6aeb596291e1e9f79e52df85583d1e30"
+dependencies = [
+ "rustix 0.38.34",
+ "windows-targets 0.52.5",
+]
+
+[[package]]
 name = "getrandom"
 version = "0.2.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4550,7 +4560,7 @@ dependencies = [
  "fake",
  "flexi_logger",
  "futures 0.3.30",
- "gethostname 0.4.3",
+ "gethostname 0.5.0",
  "hex",
  "home",
  "http-body-util",
