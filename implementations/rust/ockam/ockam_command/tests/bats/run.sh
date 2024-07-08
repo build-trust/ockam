@@ -39,7 +39,7 @@ for suite in "$@"; do
   serial)
     serial_suite=true
     ;;
-  serial)
+  examples)
     examples_suite=true
     ;;
   *)
