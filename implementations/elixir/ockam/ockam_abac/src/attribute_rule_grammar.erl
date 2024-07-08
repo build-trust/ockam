@@ -100,7 +100,7 @@ end end).
 
 -spec 'name'(input(), index()) -> parse_result().
 'name'(Input, Index) ->
-  p(Input, Index, 'name', fun(I,D) -> (p_one_or_more(p_charclass(<<"[a-z0-9_]">>)))(I,D) end, fun(Node, Idx) ->transform('name', Node, Idx) end).
+  p(Input, Index, 'name', fun(I,D) -> (p_one_or_more(p_charclass(<<"[a-z0-9_-]">>)))(I,D) end, fun(Node, Idx) ->transform('name', Node, Idx) end).
 
 -spec 'value'(input(), index()) -> parse_result().
 'value'(Input, Index) ->
