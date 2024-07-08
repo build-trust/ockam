@@ -29,6 +29,8 @@ pub enum NodeMessage {
     },
     /// Return a list of all worker addresses
     ListWorkers(SmallSender<NodeReplyResult>),
+    /// Return a list of all worker addresses
+    IsWorkerRegisteredAt(SmallSender<NodeReplyResult>, Address),
     /// Add an existing address to a cluster
     SetCluster(Address, String, SmallSender<NodeReplyResult>),
     /// Stop an existing worker
@@ -71,6 +73,7 @@ impl fmt::Display for NodeMessage {
         match self {
             NodeMessage::StartWorker { .. } => write!(f, "StartWorker"),
             NodeMessage::ListWorkers(_) => write!(f, "ListWorkers"),
+            NodeMessage::IsWorkerRegisteredAt(_, _) => write!(f, "IsWorkerRegisteredAt"),
             NodeMessage::SetCluster(_, _, _) => write!(f, "SetCluster"),
             NodeMessage::StopWorker(_, _, _) => write!(f, "StopWorker"),
             NodeMessage::StartProcessor { .. } => write!(f, "StartProcessor"),
@@ -148,6 +151,12 @@ impl NodeMessage {
         (Self::ListWorkers(tx), rx)
     }
 
+    /// Check if a worker is already registered at a given address
+    pub fn is_worker_registered_at(address: Address) -> (Self, SmallReceiver<NodeReplyResult>) {
+        let (tx, rx) = small_channel();
+        (Self::IsWorkerRegisteredAt(tx, address), rx)
+    }
+
     /// Create a set cluster message and reply receiver
     pub fn set_cluster(addr: Address, label: String) -> (Self, SmallReceiver<NodeReplyResult>) {
         let (tx, rx) = small_channel();
@@ -206,6 +215,8 @@ pub enum RouterReply {
     Ok,
     /// A list of worker addresses
     Workers(Vec<Address>),
+    /// Return true if there is a worker already registered at a given Address
+    WorkerIsRegisteredAtAddress(bool),
     /// Message sender to a specific worker
     Sender {
         /// The address a message is being sent to
@@ -310,6 +321,11 @@ impl RouterReply {
         Ok(Self::Workers(v))
     }
 
+    /// Return [RouterReply::WorkerIsRegistered] for a given address
+    pub fn worker_is_registered_at_address(registered: bool) -> NodeReplyResult {
+        Ok(Self::WorkerIsRegisteredAtAddress(registered))
+    }
+
     /// Returns [RouterReply::TerminalAddress] for the given address
     pub fn terminal_address(address: Option<AddressAndMetadata>) -> NodeReplyResult {
         Ok(Self::TerminalAddress(address))
@@ -337,6 +353,14 @@ impl RouterReply {
     pub fn take_workers(self) -> Result<Vec<Address>> {
         match self {
             Self::Workers(w) => Ok(w),
+            _ => Err(NodeError::NodeState(NodeReason::Unknown).internal()),
+        }
+    }
+
+    /// Consume the wrapper and return a bool
+    pub fn take_worker_is_registered(self) -> Result<bool> {
+        match self {
+            Self::WorkerIsRegisteredAtAddress(b) => Ok(b),
             _ => Err(NodeError::NodeState(NodeReason::Unknown).internal()),
         }
     }

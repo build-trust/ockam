@@ -127,21 +127,26 @@ impl Router {
     }
 
     async fn check_addr_not_exist(
-        &self,
+        &mut self,
         addr: &Address,
         reply: &SmallSender<NodeReplyResult>,
     ) -> Result<()> {
-        if self.map.address_records_map().contains_key(addr) {
-            let node = NodeError::Address(addr.clone());
+        match self.map.address_records_map().get(addr) {
+            Some(record) => {
+                if record.check() {
+                    let node = NodeError::Address(addr.clone());
+                    reply
+                        .send(Err(node.clone().already_exists()))
+                        .await
+                        .map_err(|_| NodeError::NodeState(NodeReason::Unknown).internal())?;
 
-            reply
-                .send(Err(node.clone().already_exists()))
-                .await
-                .map_err(|_| NodeError::NodeState(NodeReason::Unknown).internal())?;
-
-            Err(node.already_exists())
-        } else {
-            Ok(())
+                    Err(node.already_exists())
+                } else {
+                    self.map.free_address(addr.clone());
+                    Ok(())
+                }
+            }
+            None => Ok(()),
         }
     }
 
@@ -260,6 +265,13 @@ impl Router {
             ListWorkers(sender) => sender
                 .send(RouterReply::workers(
                     self.map.address_records_map().keys().cloned().collect(),
+                ))
+                .await
+                .map_err(|_| NodeError::NodeState(NodeReason::Unknown).internal())?,
+
+            IsWorkerRegisteredAt(sender, address) => sender
+                .send(RouterReply::worker_is_registered_at_address(
+                    self.map.address_records_map().contains_key(&address),
                 ))
                 .await
                 .map_err(|_| NodeError::NodeState(NodeReason::Unknown).internal())?,

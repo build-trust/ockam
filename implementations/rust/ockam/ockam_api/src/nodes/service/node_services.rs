@@ -202,6 +202,10 @@ impl NodeManager {
             )));
         }
 
+        if ctx.is_worker_registered_at(addr.clone()).await? {
+            ctx.stop_worker(addr.clone()).await?
+        };
+
         let (incoming_ac, outgoing_ac) = self
             .access_control(
                 ctx,
