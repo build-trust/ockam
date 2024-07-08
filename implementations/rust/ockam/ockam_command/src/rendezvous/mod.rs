@@ -1,20 +1,20 @@
-mod start;
+mod create;
 
 use clap::{Args, Subcommand};
 
-use start::StartCommand;
+use create::CreateCommand;
 
 use crate::{Command, CommandGlobalOpts};
 
 /// Manage Rendezvous server
 #[derive(Clone, Debug, Args)]
 #[command(arg_required_else_help = true, subcommand_required = true)]
-pub struct RendezvousServerCommand {
+pub struct RendezvousCommand {
     #[command(subcommand)]
-    pub subcommand: RendezvousServerSubcommand,
+    pub subcommand: RendezvousSubcommand,
 }
 
-impl RendezvousServerCommand {
+impl RendezvousCommand {
     pub fn name(&self) -> String {
         self.subcommand.name()
     }
@@ -22,23 +22,23 @@ impl RendezvousServerCommand {
 
 #[derive(Clone, Debug, Subcommand)]
 #[allow(clippy::large_enum_variant)]
-pub enum RendezvousServerSubcommand {
+pub enum RendezvousSubcommand {
     #[command(display_order = 800)]
-    Start(StartCommand),
+    Create(CreateCommand),
 }
 
-impl RendezvousServerSubcommand {
+impl RendezvousSubcommand {
     pub fn name(&self) -> String {
         match self {
-            RendezvousServerSubcommand::Start(c) => c.name(),
+            RendezvousSubcommand::Create(c) => c.name(),
         }
     }
 }
 
-impl RendezvousServerCommand {
+impl RendezvousCommand {
     pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
-            RendezvousServerSubcommand::Start(c) => c.run(opts),
+            RendezvousSubcommand::Create(c) => c.run(opts),
         }
     }
 }
