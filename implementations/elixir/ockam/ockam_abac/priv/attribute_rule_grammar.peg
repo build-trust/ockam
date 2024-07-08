@@ -46,7 +46,7 @@ if_rule <- open 'if' space* rule rule rule close
 attribute <- type '.' name  space*
 `[Type, _, Name, _] = Node, {binary_to_atom(Type), iolist_to_binary(Name)}`;
 type <- 'action' / 'subject' / 'resource';
-name <- [a-z0-9_]+;
+name <- [a-z0-9_-]+;
 
 value <- (string / boolean / number) space*
 `[Val, _Space] = Node, Val`;
