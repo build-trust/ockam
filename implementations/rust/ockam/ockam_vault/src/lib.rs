@@ -105,4 +105,4 @@ compile_error! {"OCKAM_XX_25519_AES128_GCM_SHA256 is not supported yet"}
 /// This is a temporary workaround until the fixes done
 /// in https://github.com/launchbadge/sqlx/pull/3298 are released
 #[cfg(feature = "std")]
-extern crate sqlx_etorreborre as sqlx;
+extern crate sqlx_build_trust as sqlx;
