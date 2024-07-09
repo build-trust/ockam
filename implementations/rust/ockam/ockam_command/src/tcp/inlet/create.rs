@@ -129,14 +129,14 @@ pub struct CreateCommand {
     )]
     pub no_tcp_fallback: bool,
 
-    #[arg(long, value_name = "BOOL", default_value_t = false)]
+    #[arg(long, value_name = "BOOL", default_value_t = false, hide = true)]
     /// Enable TLS for the TCP Inlet.
     /// Uses the default project TLS certificate provider, `/project/default/service/tls_certificate_provider`.
     /// To specify a different certificate provider, use `--tls-certificate-provider`.
     /// Requires `ockam-tls-certificate` credential attribute.
     pub tls: bool,
 
-    #[arg(long, value_name = "ROUTE")]
+    #[arg(long, value_name = "ROUTE", hide = true)]
     /// Enable TLS for the TCP Inlet using the provided certificate provider.
     /// Requires `ockam-tls-certificate` credential attribute.
     pub tls_certificate_provider: Option<MultiAddr>,

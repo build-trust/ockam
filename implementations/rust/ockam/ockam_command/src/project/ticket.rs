@@ -69,7 +69,7 @@ pub struct TicketCommand {
     enroller: bool,
 
     /// Allows the access to the TLS certificate of the Project, this flag is transformed into the attributes `--attribute ockam-tls-certificate=true`
-    #[arg(long = "tls")]
+    #[arg(long = "tls", hide = true)]
     tls: bool,
 
     #[command(flatten)]
