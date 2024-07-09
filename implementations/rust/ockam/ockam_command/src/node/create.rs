@@ -70,16 +70,26 @@ pub struct CreateCommand {
 
     /// Enable the HTTP server for the node that will listen to in a random free port.
     /// To specify a port, use `--http-server-port` instead.
-    #[arg(long, value_name = "BOOL", default_value_t = false)]
-    pub enable_http_server: bool,
+    #[arg(
+        long,
+        visible_alias = "enable-http-server",
+        value_name = "BOOL",
+        default_value_t = false
+    )]
+    pub http_server: bool,
 
     /// Enable the HTTP server at the given port.
-    #[arg(long, value_name = "PORT", conflicts_with = "enable_http_server")]
+    #[arg(long, value_name = "PORT", conflicts_with = "http_server")]
     pub http_server_port: Option<u16>,
 
     /// Enable UDP transport puncture.
-    #[arg(long, value_name = "BOOL", default_value_t = false)]
-    pub enable_udp: bool,
+    #[arg(
+        long,
+        visible_alias = "enable-udp",
+        value_name = "BOOL",
+        default_value_t = false
+    )]
+    pub udp: bool,
 
     /// A configuration in JSON format to set up the node services.
     /// Node configuration is run asynchronously and may take several
@@ -115,9 +125,9 @@ impl Default for CreateCommand {
                 variables: vec![],
             },
             tcp_listener_address: node_manager_defaults.tcp_listener_address,
-            enable_http_server: false,
-            enable_udp: false,
+            http_server: false,
             http_server_port: None,
+            udp: false,
             launch_config: None,
             identity: None,
             trust_opts: node_manager_defaults.trust_opts,

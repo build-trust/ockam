@@ -36,11 +36,11 @@ teardown() {
 
   export OCKAM_RENDEZVOUS_SERVER="127.0.0.1:$port"
 
-  run_success "$OCKAM" node create bob --enable-udp
+  run_success "$OCKAM" node create bob --udp
   run_success "$OCKAM" tcp-outlet create --at bob --to "$PYTHON_SERVER_PORT"
 
-  run_success "$OCKAM" node create alice --enable-udp
-  run_success "$OCKAM" tcp-inlet create --at alice --enable-udp-puncture --disable-tcp-fallback --from "$inlet_port" --to /node/bob/secure/api/service/outlet
+  run_success "$OCKAM" node create alice --udp
+  run_success "$OCKAM" tcp-inlet create --at alice --udp --no-tcp-fallback --from "$inlet_port" --to /node/bob/secure/api/service/outlet
 
   run_success curl -sfI --retry-connrefused --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$inlet_port"
 }

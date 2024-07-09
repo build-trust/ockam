@@ -111,13 +111,23 @@ pub struct CreateCommand {
     no_connection_wait: bool,
 
     /// Enable UDP NAT puncture.
-    #[arg(long, value_name = "BOOL", default_value_t = false)]
-    pub enable_udp_puncture: bool,
+    #[arg(
+        long,
+        visible_alias = "enable-udp-puncture",
+        value_name = "BOOL",
+        default_value_t = false
+    )]
+    pub udp: bool,
 
     /// Disable fallback to TCP.
     /// TCP won't be used to transfer data between the Inlet and the Outlet.
-    #[arg(long, value_name = "BOOL", default_value_t = false)]
-    pub disable_tcp_fallback: bool,
+    #[arg(
+        long,
+        visible_alias = "disable-tcp-fallback",
+        value_name = "BOOL",
+        default_value_t = false
+    )]
+    pub no_tcp_fallback: bool,
 }
 
 pub(crate) fn default_from_addr() -> HostnamePort {
@@ -162,8 +172,8 @@ impl Command for CreateCommand {
                         cmd.connection_wait,
                         !cmd.no_connection_wait,
                         &cmd.secure_channel_identifier(&opts.state).await?,
-                        cmd.enable_udp_puncture,
-                        cmd.disable_tcp_fallback,
+                        cmd.udp,
+                        cmd.no_tcp_fallback,
                     )
                     .await?;
 
