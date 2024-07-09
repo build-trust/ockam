@@ -84,7 +84,7 @@ impl CreateCommand {
 
         let http_server_port = if let Some(port) = self.http_server_port {
             Some(port)
-        } else if self.enable_http_server {
+        } else if self.http_server {
             if let Some(addr) = node_info.http_server_address() {
                 Some(addr.port())
             } else {
@@ -94,7 +94,7 @@ impl CreateCommand {
             None
         };
 
-        let udp_transport = if self.enable_udp {
+        let udp_transport = if self.udp {
             Some(UdpTransport::create(ctx).await.into_diagnostic()?)
         } else {
             None

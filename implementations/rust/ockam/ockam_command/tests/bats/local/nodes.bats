@@ -180,7 +180,7 @@ force_kill_node() {
 }
 
 @test "node - check the contents returned from the HTTP server endpoints" {
-  run_success $OCKAM node create --enable-http-server
+  run_success $OCKAM node create --http-server
   run_success $OCKAM node show --output json
   cmd_output="$output"
   http_addr="$(echo $cmd_output | jq -r .http_server_address)"
@@ -190,7 +190,7 @@ force_kill_node() {
 }
 
 @test "node - the HTTP server is enabled with a boolean flag and a random port is assigned to it" {
-  run_success $OCKAM node create --enable-http-server
+  run_success $OCKAM node create --http-server
   run_success $OCKAM node show --output json
   http_addr="$(echo $output | jq -r .http_server_address)"
   run_success curl -fsI -m 2 $http_addr
