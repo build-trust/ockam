@@ -4906,7 +4906,6 @@ version = "0.86.0"
 dependencies = [
  "minicbor",
  "ockam_core",
- "regex",
  "serde",
 ]
 

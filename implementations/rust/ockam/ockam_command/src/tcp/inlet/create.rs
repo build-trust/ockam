@@ -8,6 +8,10 @@ use colorful::Colorful;
 use miette::{miette, IntoDiagnostic};
 use tracing::trace;
 
+use crate::node::util::initialize_default_node;
+use crate::shared_args::OptionalTimeoutArg;
+use crate::tcp::util::alias_parser;
+use crate::{docs, Command, CommandGlobalOpts, Error};
 use ockam::identity::Identifier;
 use ockam::transport::HostnamePort;
 use ockam::Context;
@@ -26,11 +30,7 @@ use ockam_api::{fmt_info, fmt_log, fmt_ok, fmt_warn, ConnectionStatus};
 use ockam_core::api::{Reply, Status};
 use ockam_multiaddr::proto;
 use ockam_multiaddr::{MultiAddr, Protocol as _};
-
-use crate::node::util::initialize_default_node;
-use crate::shared_args::OptionalTimeoutArg;
-use crate::tcp::util::alias_parser;
-use crate::{docs, Command, CommandGlobalOpts, Error};
+use ockam_node::compat::asynchronous::resolve_peer;
 
 use crate::util::parsers::duration_parser;
 use crate::util::parsers::hostname_parser;
@@ -281,7 +281,7 @@ impl CreateCommand {
     }
 
     async fn parse_args(mut self, opts: &CommandGlobalOpts) -> miette::Result<Self> {
-        let from = ockam_node::compat::asynchronous::resolve_peer(self.from.to_string())
+        let from = resolve_peer(self.from.to_string())
             .await
             .into_diagnostic()?;
         port_is_free_guard(&from)?;

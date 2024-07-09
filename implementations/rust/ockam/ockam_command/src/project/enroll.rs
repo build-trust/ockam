@@ -10,8 +10,7 @@ use miette::{miette, IntoDiagnostic};
 use serde::Serialize;
 
 use ockam::Context;
-use ockam_api::cli_state::enrollments::EnrollmentTicket;
-use ockam_api::cli_state::NamedIdentity;
+use ockam_api::cli_state::{EnrollmentTicket, NamedIdentity};
 use ockam_api::cloud::project::models::OktaAuth0;
 use ockam_api::cloud::project::Project;
 use ockam_api::colors::color_primary;
@@ -41,8 +40,12 @@ after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct EnrollCommand {
     /// Path, URL or inlined hex-encoded enrollment ticket
-    #[arg(display_order = 800, group = "authentication_method", value_name = "ENROLLMENT TICKET", value_parser = parse_enrollment_ticket)]
-    pub enrollment_ticket: Option<EnrollmentTicket>,
+    #[arg(
+        display_order = 800,
+        group = "authentication_method",
+        value_name = "ENROLLMENT TICKET"
+    )]
+    pub enrollment_ticket: Option<String>,
 
     #[command(flatten)]
     pub identity_opts: IdentityOpts,
@@ -85,11 +88,19 @@ impl Command for EnrollCommand {
     }
 
     async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+        let enrollment_ticket = if let Some(enrollment_ticket) = self.enrollment_ticket.as_ref() {
+            Some(parse_enrollment_ticket(enrollment_ticket).await?)
+        } else {
+            None
+        };
+
         let identity = opts
             .state
             .get_named_identity_or_default(&self.identity_opts.identity_name)
             .await?;
-        let project = self.store_project(&opts).await?;
+        let project = self
+            .store_project(&opts, enrollment_ticket.as_ref())
+            .await?;
 
         // Create secure channel to the project's authority node
         let node = InMemoryNode::start_with_project_name(
@@ -105,7 +116,7 @@ impl Command for EnrollCommand {
             .await?;
 
         // Enroll
-        if let Some(tkn) = self.enrollment_ticket.as_ref() {
+        if let Some(tkn) = enrollment_ticket.as_ref() {
             match authority_node_client
                 .present_token(ctx, &tkn.one_time_code)
                 .await?
@@ -180,9 +191,13 @@ impl Command for EnrollCommand {
 }
 
 impl EnrollCommand {
-    async fn store_project(&self, opts: &CommandGlobalOpts) -> Result<Project> {
+    async fn store_project(
+        &self,
+        opts: &CommandGlobalOpts,
+        enrollment_ticket: Option<&EnrollmentTicket>,
+    ) -> Result<Project> {
         // Retrieve project info from the enrollment ticket or project.json in the case of okta auth
-        let project = if let Some(ticket) = &self.enrollment_ticket {
+        let project = if let Some(ticket) = enrollment_ticket {
             let project = ticket
                 .project
                 .as_ref()

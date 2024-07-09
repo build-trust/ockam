@@ -49,7 +49,9 @@ impl Transport for UdpTransport {
         if address.transport_type() == UDP {
             Ok(self
                 .bind(
-                    UdpBindArguments::new().with_peer_address(address.address())?,
+                    UdpBindArguments::new()
+                        .with_peer_address(address.address())
+                        .await?,
                     UdpBindOptions::new(),
                 )
                 .await?

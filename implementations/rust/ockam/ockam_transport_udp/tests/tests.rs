@@ -248,7 +248,9 @@ async fn send_receive_one_known_udp_peer(ctx: &mut Context) -> Result<()> {
         .await?;
     let bind2 = transport
         .bind(
-            UdpBindArguments::new().with_peer_address(bind1.bind_address().to_string())?,
+            UdpBindArguments::new()
+                .with_peer_address(bind1.bind_address().to_string())
+                .await?,
             UdpBindOptions::new(),
         )
         .await?;
@@ -313,7 +315,8 @@ async fn send_receive_two_known_udp_peers(ctx: &mut Context) -> Result<()> {
         .bind(
             UdpBindArguments::new()
                 .with_bind_address(bind_addrs[0].to_string())?
-                .with_peer_address(bind_addrs[1].to_string())?,
+                .with_peer_address(bind_addrs[1].to_string())
+                .await?,
             UdpBindOptions::new(),
         )
         .await?;
@@ -321,7 +324,8 @@ async fn send_receive_two_known_udp_peers(ctx: &mut Context) -> Result<()> {
         .bind(
             UdpBindArguments::new()
                 .with_bind_address(bind_addrs[1].to_string())?
-                .with_peer_address(bind_addrs[0].to_string())?,
+                .with_peer_address(bind_addrs[0].to_string())
+                .await?,
             UdpBindOptions::new(),
         )
         .await?;
@@ -382,7 +386,8 @@ async fn send_receive_large_message(ctx: &mut Context) -> Result<()> {
         .bind(
             UdpBindArguments::new()
                 .with_bind_address(bind_addrs[0].to_string())?
-                .with_peer_address(bind_addrs[1].to_string())?,
+                .with_peer_address(bind_addrs[1].to_string())
+                .await?,
             UdpBindOptions::new(),
         )
         .await?;
@@ -390,7 +395,8 @@ async fn send_receive_large_message(ctx: &mut Context) -> Result<()> {
         .bind(
             UdpBindArguments::new()
                 .with_bind_address(bind_addrs[1].to_string())?
-                .with_peer_address(bind_addrs[0].to_string())?,
+                .with_peer_address(bind_addrs[0].to_string())
+                .await?,
             UdpBindOptions::new(),
         )
         .await?;

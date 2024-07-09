@@ -124,7 +124,7 @@ impl Processor for TcpInletListenProcessor {
             ctx,
             self.registry.clone(),
             stream,
-            HostnamePort::from_socket_addr(socket_addr),
+            HostnamePort::from(socket_addr),
             outlet_shared_state.route,
             addresses,
             self.options.incoming_access_control.clone(),

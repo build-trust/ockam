@@ -1,7 +1,8 @@
 use crate::state::AppState;
 use crate::Error;
 use miette::{IntoDiagnostic, WrapErr};
-use ockam::transport::{resolve_peer, HostnamePort};
+use ockam::compat::asynchronous::resolve_peer;
+use ockam::transport::HostnamePort;
 use ockam::Address;
 use ockam_api::address::extract_address_value;
 use ockam_api::nodes::models::portal::OutletAccessControl;
@@ -20,7 +21,7 @@ impl AppState {
         } else {
             format!("{DEFAULT_HOST}:{to}")
         };
-        let socket_addr = resolve_peer(addr).into_diagnostic().wrap_err(
+        let socket_addr = resolve_peer(addr).await.into_diagnostic().wrap_err(
             "Invalid address. The expected formats are 'host:port', 'ip:port' or 'port'",
         )?;
         let worker_addr: Address = extract_address_value(&from)
@@ -36,7 +37,7 @@ impl AppState {
         match node_manager
             .create_outlet(
                 &self.context(),
-                HostnamePort::from_socket_addr(socket_addr),
+                HostnamePort::from(socket_addr),
                 false,
                 Some(worker_addr.clone()),
                 true,
