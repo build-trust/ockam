@@ -25,7 +25,7 @@ std = [
   "tracing/std",
   "either/use_std",
   "once_cell/std",
-  "sqlx-etorreborre",
+  "sqlx-build-trust",
   "regex",
   "tokio",
   "wast",
@@ -50,7 +50,7 @@ ockam_executor = { version = "0.81.0", path = "../ockam_executor", default-featu
 regex = { version = "1.10.5", default-features = false, optional = true }
 rustyline = { version = "14.0.0", optional = true }
 rustyline-derive = { version = "0.10.0", optional = true }
-sqlx-etorreborre = { version = "0.7.8", optional = true }
+sqlx-build-trust = { version = "0.7.8", optional = true }
 str-buf = "3.0.3"
 tokio = { version = "1.38", default-features = false, optional = true, features = ["sync", "time", "rt", "rt-multi-thread", "macros"] }
 tracing = { version = "0.1", default-features = false, features = ["attributes"] }

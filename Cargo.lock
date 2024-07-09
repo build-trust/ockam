@@ -4533,7 +4533,7 @@ dependencies = [
  "rustyline",
  "rustyline-derive",
  "serde",
- "sqlx-etorreborre",
+ "sqlx-build-trust",
  "str-buf",
  "strum 0.26.3",
  "tempfile",
@@ -4611,7 +4611,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
- "sqlx-etorreborre",
+ "sqlx-build-trust",
  "strip-ansi-escapes",
  "sysinfo",
  "tempfile",
@@ -4647,7 +4647,7 @@ dependencies = [
  "ockam_multiaddr",
  "serde",
  "serde_json",
- "sqlx-etorreborre",
+ "sqlx-build-trust",
  "tempfile",
  "thiserror",
  "tokio",
@@ -4787,7 +4787,7 @@ dependencies = [
  "serde_bare",
  "serde_json",
  "sha2",
- "sqlx-etorreborre",
+ "sqlx-build-trust",
  "tempfile",
  "tokio",
  "tokio-retry",
@@ -4842,10 +4842,10 @@ dependencies = [
  "regex",
  "serde",
  "serde_json",
- "sqlx-etorreborre",
- "sqlx-etorreborre-core",
- "sqlx-etorreborre-postgres",
- "sqlx-etorreborre-sqlite",
+ "sqlx-build-trust",
+ "sqlx-build-trust-core",
+ "sqlx-build-trust-postgres",
+ "sqlx-build-trust-sqlite",
  "tempfile",
  "time",
  "tokio",
@@ -4996,7 +4996,7 @@ dependencies = [
  "serde_bare",
  "serde_json",
  "sha2",
- "sqlx-etorreborre",
+ "sqlx-build-trust",
  "static_assertions",
  "tempfile",
  "tokio",
@@ -6886,6 +6886,119 @@ dependencies = [
 ]
 
 [[package]]
+name = "sqlx-build-trust"
+version = "0.7.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "456022815881e35396cbf7d436c34bdebe793f5257473f5de12addf5f6bcec68"
+dependencies = [
+ "sqlx-build-trust-core",
+ "sqlx-build-trust-postgres",
+ "sqlx-build-trust-sqlite",
+ "sqlx-macros",
+ "sqlx-mysql",
+]
+
+[[package]]
+name = "sqlx-build-trust-core"
+version = "0.7.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0964c046ec146abbc59a0a1c3825be627ae03f10ecaf30827f38d7a10431a17f"
+dependencies = [
+ "ahash",
+ "atoi",
+ "byteorder",
+ "bytes 1.6.0",
+ "crc",
+ "crossbeam-queue",
+ "either",
+ "event-listener 2.5.3",
+ "futures-channel",
+ "futures-core",
+ "futures-intrusive",
+ "futures-io",
+ "futures-util",
+ "hashlink",
+ "hex",
+ "indexmap 2.2.6",
+ "log",
+ "memchr",
+ "once_cell",
+ "paste",
+ "percent-encoding",
+ "serde",
+ "serde_json",
+ "sha2",
+ "smallvec",
+ "sqlformat",
+ "thiserror",
+ "tokio",
+ "tokio-stream",
+ "tracing",
+ "url",
+]
+
+[[package]]
+name = "sqlx-build-trust-postgres"
+version = "0.7.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "44a444f6c38cfd307a43e8b2ce4d14d575d13b08fe086c314aaeffb62b8e806e"
+dependencies = [
+ "atoi",
+ "base64 0.21.7",
+ "bitflags 2.6.0",
+ "byteorder",
+ "crc",
+ "dotenvy",
+ "etcetera",
+ "futures-channel",
+ "futures-core",
+ "futures-io",
+ "futures-util",
+ "hex",
+ "hkdf",
+ "hmac",
+ "home",
+ "itoa",
+ "log",
+ "md-5",
+ "memchr",
+ "once_cell",
+ "rand",
+ "serde",
+ "serde_json",
+ "sha2",
+ "smallvec",
+ "sqlx-build-trust-core",
+ "stringprep",
+ "thiserror",
+ "tracing",
+ "whoami",
+]
+
+[[package]]
+name = "sqlx-build-trust-sqlite"
+version = "0.7.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "44104674a7a2c50ea20ab78e2843e8f2159772942933977d085282f2f61799ab"
+dependencies = [
+ "atoi",
+ "flume",
+ "futures-channel",
+ "futures-core",
+ "futures-executor",
+ "futures-intrusive",
+ "futures-util",
+ "libsqlite3-sys",
+ "log",
+ "percent-encoding",
+ "serde",
+ "sqlx-build-trust-core",
+ "tracing",
+ "url",
+ "urlencoding",
+]
+
+[[package]]
 name = "sqlx-core"
 version = "0.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6922,119 +7035,6 @@ dependencies = [
  "tokio-stream",
  "tracing",
  "url",
-]
-
-[[package]]
-name = "sqlx-etorreborre"
-version = "0.7.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "498b3e35381ce9fef96300c73e465d146d21c7fab9ab36b2900cb36d9a86db88"
-dependencies = [
- "sqlx-etorreborre-core",
- "sqlx-etorreborre-postgres",
- "sqlx-etorreborre-sqlite",
- "sqlx-macros",
- "sqlx-mysql",
-]
-
-[[package]]
-name = "sqlx-etorreborre-core"
-version = "0.7.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f08c8b6be7f10f9f7f4d78ad3f2df2208c6b83f9fa0031b9cde335776dbc6dcf"
-dependencies = [
- "ahash",
- "atoi",
- "byteorder",
- "bytes 1.6.0",
- "crc",
- "crossbeam-queue",
- "either",
- "event-listener 2.5.3",
- "futures-channel",
- "futures-core",
- "futures-intrusive",
- "futures-io",
- "futures-util",
- "hashlink",
- "hex",
- "indexmap 2.2.6",
- "log",
- "memchr",
- "once_cell",
- "paste",
- "percent-encoding",
- "serde",
- "serde_json",
- "sha2",
- "smallvec",
- "sqlformat",
- "thiserror",
- "tokio",
- "tokio-stream",
- "tracing",
- "url",
-]
-
-[[package]]
-name = "sqlx-etorreborre-postgres"
-version = "0.7.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e3d8577d7574295ef852be45b2b86e12c21f2c2b71a49be2246c6c7d22b21a1f"
-dependencies = [
- "atoi",
- "base64 0.21.7",
- "bitflags 2.6.0",
- "byteorder",
- "crc",
- "dotenvy",
- "etcetera",
- "futures-channel",
- "futures-core",
- "futures-io",
- "futures-util",
- "hex",
- "hkdf",
- "hmac",
- "home",
- "itoa",
- "log",
- "md-5",
- "memchr",
- "once_cell",
- "rand",
- "serde",
- "serde_json",
- "sha2",
- "smallvec",
- "sqlx-etorreborre-core",
- "stringprep",
- "thiserror",
- "tracing",
- "whoami",
-]
-
-[[package]]
-name = "sqlx-etorreborre-sqlite"
-version = "0.7.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "750e626f70d31af675dda59927edf9296f09c64cb33939a0af212314710afad7"
-dependencies = [
- "atoi",
- "flume",
- "futures-channel",
- "futures-core",
- "futures-executor",
- "futures-intrusive",
- "futures-util",
- "libsqlite3-sys",
- "log",
- "percent-encoding",
- "serde",
- "sqlx-etorreborre-core",
- "tracing",
- "url",
- "urlencoding",
 ]
 
 [[package]]

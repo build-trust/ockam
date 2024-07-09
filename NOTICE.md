@@ -488,11 +488,11 @@ This file contains attributions for any 3rd-party open source code used in this 
 | spin | MIT | https://crates.io/crates/spin |
 | spki | Apache-2.0, MIT | https://crates.io/crates/spki |
 | sqlformat | MIT, Apache-2.0 | https://crates.io/crates/sqlformat |
+| sqlx-build-trust | MIT, Apache-2.0 | https://crates.io/crates/sqlx-build-trust |
+| sqlx-build-trust-core | MIT, Apache-2.0 | https://crates.io/crates/sqlx-build-trust-core |
+| sqlx-build-trust-postgres | MIT, Apache-2.0 | https://crates.io/crates/sqlx-build-trust-postgres |
+| sqlx-build-trust-sqlite | MIT, Apache-2.0 | https://crates.io/crates/sqlx-build-trust-sqlite |
 | sqlx-core | MIT, Apache-2.0 | https://crates.io/crates/sqlx-core |
-| sqlx-etorreborre | MIT, Apache-2.0 | https://crates.io/crates/sqlx-etorreborre |
-| sqlx-etorreborre-core | MIT, Apache-2.0 | https://crates.io/crates/sqlx-etorreborre-core |
-| sqlx-etorreborre-postgres | MIT, Apache-2.0 | https://crates.io/crates/sqlx-etorreborre-postgres |
-| sqlx-etorreborre-sqlite | MIT, Apache-2.0 | https://crates.io/crates/sqlx-etorreborre-sqlite |
 | sqlx-macros | MIT, Apache-2.0 | https://crates.io/crates/sqlx-macros |
 | sqlx-macros-core | MIT, Apache-2.0 | https://crates.io/crates/sqlx-macros-core |
 | sqlx-postgres | MIT, Apache-2.0 | https://crates.io/crates/sqlx-postgres |
