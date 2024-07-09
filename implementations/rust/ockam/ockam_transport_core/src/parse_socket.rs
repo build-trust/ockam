@@ -3,36 +3,6 @@ use core::net::SocketAddr;
 use ockam_core::compat::string::ToString;
 use ockam_core::Result;
 
-/// Resolve the given peer to a [`SocketAddr`](std::net::SocketAddr)
-#[cfg(feature = "std")]
-pub fn resolve_peer(peer: String) -> Result<SocketAddr> {
-    // Try to parse as SocketAddr
-    if let Ok(p) = parse_socket_addr(&peer) {
-        return Ok(p);
-    }
-
-    use ockam_core::compat::net::ToSocketAddrs;
-
-    // Try to resolve hostname
-    match peer.to_socket_addrs() {
-        Ok(mut iter) => {
-            // Prefer ip4
-            if let Some(p) = iter.find(|x| x.is_ipv4()) {
-                return Ok(p);
-            }
-            if let Some(p) = iter.find(|x| x.is_ipv6()) {
-                return Ok(p);
-            };
-            Err(TransportError::InvalidAddress(format!(
-                "cannot resolve address: {peer}. No IP4 or IP6 address found."
-            )))?
-        }
-        Err(e) => Err(TransportError::InvalidAddress(format!(
-            "cannot resolve address: {peer}: {e:?}"
-        )))?,
-    }
-}
-
 pub fn parse_socket_addr(s: &str) -> Result<SocketAddr> {
     Ok(s.parse()
         .map_err(|_| TransportError::InvalidAddress(s.to_string()))?)

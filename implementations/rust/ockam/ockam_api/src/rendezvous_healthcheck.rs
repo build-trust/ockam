@@ -128,7 +128,9 @@ impl RendezvousHealthcheckTask {
         let bind = self
             .udp
             .bind(
-                UdpBindArguments::new().with_peer_address(self.peer.clone())?,
+                UdpBindArguments::new()
+                    .with_peer_address(self.peer.clone())
+                    .await?,
                 UdpBindOptions::new(),
             )
             .await?;

@@ -4,12 +4,12 @@ use crate::run::parser::building_blocks::ArgValue;
 use crate::run::parser::config::ConfigParser;
 use crate::run::parser::resource::*;
 use crate::run::parser::Version;
-use crate::value_parsers::{async_parse_path_or_url, parse_enrollment_ticket, parse_key_val};
+use crate::value_parsers::{parse_key_val, parse_path_or_url};
 use crate::CommandGlobalOpts;
 use clap::Args;
 use miette::{miette, IntoDiagnostic};
 use ockam_api::cli_state::journeys::APPLICATION_EVENT_COMMAND_CONFIGURATION_FILE;
-use ockam_api::cli_state::{random_name, EnrollmentTicket};
+use ockam_api::cli_state::random_name;
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_core::AsyncTryClone;
 use ockam_node::Context;
@@ -25,8 +25,8 @@ pub struct ConfigArgs {
     /// A path, URL or inlined hex-encoded enrollment ticket to use for the Ockam Identity associated to this node.
     /// When passed, the identity will be given a project membership credential.
     /// Check the `project ticket` command for more information about enrollment tickets.
-    #[arg(long, value_name = "ENROLLMENT TICKET", value_parser = parse_enrollment_ticket)]
-    pub enrollment_ticket: Option<EnrollmentTicket>,
+    #[arg(long, value_name = "ENROLLMENT TICKET")]
+    pub enrollment_ticket: Option<String>,
 
     /// Key-value pairs defining environment variables used in the Node configuration.
     /// The variables passed here will have precedence over global environment variables.
@@ -66,7 +66,7 @@ impl CreateCommand {
     pub async fn get_node_config(&self) -> miette::Result<NodeConfig> {
         let contents = match self.config_args.configuration.clone() {
             Some(contents) => contents,
-            None => async_parse_path_or_url(&self.name).await?,
+            None => parse_path_or_url(&self.name).await?,
         };
         // Set environment variables from the cli command args
         // This needs to be done before parsing the configuration
@@ -136,7 +136,7 @@ impl NodeConfig {
         // Set the enrollment ticket from the cli command
         // overriding the one from the config file.
         if let Some(ticket) = &cli_args.config_args.enrollment_ticket {
-            self.project_enroll.ticket = Some(ticket.hex_encoded()?);
+            self.project_enroll.ticket = Some(ticket.clone());
         }
 
         // Merge the node arguments from the config with the cli command args.
@@ -288,7 +288,7 @@ mod tests {
         let cli_args = CreateCommand {
             tcp_listener_address: "127.0.0.1:1234".to_string(),
             config_args: ConfigArgs {
-                enrollment_ticket: Some(enrollment_ticket.clone()),
+                enrollment_ticket: Some(enrollment_ticket.hex_encoded().unwrap()),
                 ..Default::default()
             },
             ..Default::default()

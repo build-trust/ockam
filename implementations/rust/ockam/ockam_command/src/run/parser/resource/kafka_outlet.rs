@@ -53,6 +53,7 @@ impl KafkaOutlet {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ockam::transport::HostnamePort;
 
     #[test]
     fn kafka_outlet_config() {
@@ -68,8 +69,8 @@ mod tests {
             .unwrap();
         assert_eq!(cmds.len(), 1);
         assert_eq!(
-            cmds[0].bootstrap_server.to_string(),
-            "192.168.0.100:9092".to_string(),
+            cmds[0].bootstrap_server,
+            HostnamePort::new("192.168.0.100", 9092),
         );
         assert_eq!(cmds[0].node_opts.at_node.as_ref().unwrap(), "node_name");
 

@@ -124,8 +124,6 @@ impl SecureRelayOutlet {
 
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr;
-
     use ockam_api::authenticator::one_time_code::OneTimeCode;
     use ockam_api::cli_state::EnrollmentTicket;
 
@@ -140,7 +138,7 @@ mod tests {
 
         let cmd = SecureRelayOutlet {
             service_name: "service_name".to_string(),
-            to: HostnamePort::from_str("127.0.0.1:8080").unwrap(),
+            to: HostnamePort::new("127.0.0.1", 8080),
             dry_run: false,
             enroll: Enroll {
                 enroll_ticket: Some(enrollment_ticket_hex),

@@ -257,4 +257,11 @@ impl EnrollmentTicket {
             .map_err(|_err| ApiError::core("Failed to authenticate with Okta"))?;
         Ok(hex::encode(serialized))
     }
+
+    pub fn from_hex(hex: &str) -> Result<Self> {
+        let data = hex::decode(hex)
+            .map_err(|_err| ApiError::core("Failed to decode EnrollmentTicket hex"))?;
+        Ok(serde_json::from_slice(&data)
+            .map_err(|_err| ApiError::core("Failed to decode EnrollmentTicket json"))?)
+    }
 }
