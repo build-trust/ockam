@@ -450,6 +450,14 @@ impl CliState {
     pub fn node_dir(&self, node_name: &str) -> PathBuf {
         Self::make_node_dir_path(&self.dir(), node_name)
     }
+
+    /// Return a log path to be used for a given command
+    pub fn command_log_path(command_name: &str) -> Result<PathBuf> {
+        Ok(Self::make_command_log_path(
+            &CliState::default_dir()?,
+            command_name,
+        ))
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Serialize, Encode, Decode, CborLen)]
