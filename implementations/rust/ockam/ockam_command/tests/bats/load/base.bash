@@ -126,6 +126,9 @@ export OCKAM_OPENTELEMETRY_EXPORT=false
 # Set a high timeout for CI tests
 export OCKAM_DEFAULT_TIMEOUT=5m
 
+# Set OCKAM_LOGGING to true so that command logs are persisted
+export OCKAM_LOGGING=true
+
 # Set QUIET to 1 to suppress user-facing logging written at stderr
 export QUIET=1
 
