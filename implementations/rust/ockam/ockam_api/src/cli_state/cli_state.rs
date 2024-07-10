@@ -269,14 +269,24 @@ impl CliState {
         Self::make_nodes_dir_path(root_path).join(node_name)
     }
 
+    pub(super) fn make_command_log_path(root_path: &Path, command_name: &str) -> PathBuf {
+        Self::make_commands_log_dir_path(root_path).join(command_name)
+    }
+
     pub(super) fn make_nodes_dir_path(root_path: &Path) -> PathBuf {
         root_path.join("nodes")
+    }
+
+    pub(super) fn make_commands_log_dir_path(root_path: &Path) -> PathBuf {
+        root_path.join("commands")
     }
 
     /// Delete the state files
     fn delete_at(root_path: &Path) -> Result<()> {
         // Delete nodes logs
         let _ = std::fs::remove_dir_all(Self::make_nodes_dir_path(root_path));
+        // Delete command logs
+        let _ = std::fs::remove_dir_all(Self::make_commands_log_dir_path(root_path));
         // Delete the nodes database, keep the application database
         if let Some(path) = Self::make_database_configuration(root_path)?.path() {
             std::fs::remove_file(path)?

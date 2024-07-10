@@ -157,6 +157,11 @@ impl CommandGlobalOpts {
             } else {
                 Colored::Off
             };
+            let log_path = if preferred_log_level.is_some() {
+                None
+            } else {
+                Some(CliState::command_log_path(cmd.name().as_str())?)
+            };
             Ok(
                 logging_configuration(preferred_log_level, colored, log_path, crates)
                     .into_diagnostic()?,

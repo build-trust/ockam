@@ -126,6 +126,9 @@ export OCKAM_OPENTELEMETRY_EXPORT=false
 # Set QUIET to 1 to suppress user-facing logging written at stderr
 export QUIET=1
 
+# Set NO_COLOR to 1 to suppress colored messages in log files
+export NO_COLOR=1
+
 # Ockam binary to use
 if [[ -z $OCKAM ]]; then
   export OCKAM=ockam
