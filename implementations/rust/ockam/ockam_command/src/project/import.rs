@@ -4,7 +4,7 @@ use colorful::Colorful;
 use miette::IntoDiagnostic;
 
 use ockam_api::cloud::project::models::ProjectModel;
-use ockam_api::{fmt_err, fmt_ok};
+use ockam_api::fmt_ok;
 
 use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts};
@@ -39,28 +39,16 @@ impl ImportCommand {
     async fn async_run(&self, opts: CommandGlobalOpts) -> miette::Result<()> {
         let file_content = std::fs::read_to_string(&self.project_file).into_diagnostic()?;
         let project: ProjectModel = serde_json::from_str(&file_content).into_diagnostic()?;
-        let result = opts
-            .state
+        opts.state
             .projects()
             .import_and_store_project(project.clone())
-            .await;
+            .await?;
 
-        match result {
-            Ok(_) => opts
-                .terminal
-                .stdout()
-                .plain(fmt_ok!("Successfully imported project {}", &project.name))
-                .write_line()?,
-            Err(e) => opts
-                .terminal
-                .stdout()
-                .plain(fmt_err!(
-                    "The project {} could not be imported: {}",
-                    &self.project_file,
-                    e.to_string()
-                ))
-                .write_line()?,
-        };
+        opts.terminal
+            .stdout()
+            .plain(fmt_ok!("Successfully imported project {}", &project.name))
+            .write_line()?;
+
         Ok(())
     }
 }
