@@ -18,7 +18,7 @@ use ockam_transport_tcp::{TcpInletOptions, TcpTransportExtension};
 /// This node supports an "edge" server which can connect to a "control" node
 /// in order to connect its TCP inlet to the "control" node TCP outlet
 ///
-/// The connections go through the Ockam Orchestrator, via the control node Relay.
+/// The connections go through the Ockam Orchestrator , via the control node Relay.
 ///
 /// This example shows how to:
 ///
