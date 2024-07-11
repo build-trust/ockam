@@ -1,7 +1,9 @@
 use crate::cloud::addon::KafkaConfig;
 use crate::cloud::email_address::EmailAddress;
 use crate::cloud::share::{RoleInShare, ShareScope};
+use crate::colors::color_primary;
 use crate::minicbor_url::Url;
+use crate::output::Output;
 use minicbor::{CborLen, Decode, Encode};
 use ockam::identity::Identifier;
 use serde::{Deserialize, Serialize};
@@ -151,6 +153,27 @@ impl OktaConfig {
             client_id: client_id.to_string(),
             attributes: Vec::new(),
         }
+    }
+}
+
+#[derive(Decode, Serialize, Deserialize, Debug, Default, Clone, Eq, PartialEq)]
+#[cbor(map)]
+pub struct AdminInfo {
+    /// The email of a space or project Admin
+    #[cbor(n(1))]
+    pub email: String,
+}
+
+impl Display for AdminInfo {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Admin with email {}", color_primary(&self.email),)?;
+        Ok(())
+    }
+}
+
+impl Output for AdminInfo {
+    fn item(&self) -> crate::Result<String> {
+        Ok(format!("{}", self))
     }
 }
 

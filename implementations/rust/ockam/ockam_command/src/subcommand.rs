@@ -34,6 +34,7 @@ use crate::node::NodeCommand;
 use crate::node::NodeSubcommand;
 use crate::policy::PolicyCommand;
 use crate::project::ProjectCommand;
+use crate::project_admin::ProjectAdminCommand;
 use crate::project_member::ProjectMemberCommand;
 use crate::relay::RelayCommand;
 use crate::rendezvous::RendezvousCommand;
@@ -47,6 +48,7 @@ use crate::share::ShareCommand;
 use crate::shared_args::RetryOpts;
 use crate::sidecar::SidecarCommand;
 use crate::space::SpaceCommand;
+use crate::space_admin::SpaceAdminCommand;
 use crate::status::StatusCommand;
 use crate::subscription::SubscriptionCommand;
 use crate::tcp::connection::TcpConnectionCommand;
@@ -64,8 +66,10 @@ pub enum OckamSubcommand {
     #[command(display_order = 800)]
     Enroll(EnrollCommand),
     Space(SpaceCommand),
+    SpaceAdmin(SpaceAdminCommand),
     Project(ProjectCommand),
     ProjectMember(ProjectMemberCommand),
+    ProjectAdmin(ProjectAdminCommand),
     Sidecar(SidecarCommand),
     Admin(AdminCommand),
     #[cfg(feature = "orchestrator")]
@@ -121,8 +125,10 @@ impl OckamSubcommand {
         match self {
             OckamSubcommand::Enroll(c) => c.run(opts),
             OckamSubcommand::Space(c) => c.run(opts),
+            OckamSubcommand::SpaceAdmin(c) => c.run(opts),
             OckamSubcommand::Project(c) => c.run(opts),
             OckamSubcommand::ProjectMember(c) => c.run(opts),
+            OckamSubcommand::ProjectAdmin(c) => c.run(opts),
             OckamSubcommand::Admin(c) => c.run(opts),
             #[cfg(feature = "orchestrator")]
             OckamSubcommand::Share(c) => c.run(opts),
@@ -270,8 +276,10 @@ impl OckamSubcommand {
             OckamSubcommand::Node(c) => c.name(),
             OckamSubcommand::Enroll(c) => c.name(),
             OckamSubcommand::Space(c) => c.name(),
+            OckamSubcommand::SpaceAdmin(c) => c.name(),
             OckamSubcommand::Project(c) => c.name(),
             OckamSubcommand::ProjectMember(c) => c.name(),
+            OckamSubcommand::ProjectAdmin(c) => c.name(),
             OckamSubcommand::Sidecar(c) => c.name(),
             OckamSubcommand::Admin(c) => c.name(),
             #[cfg(feature = "orchestrator")]

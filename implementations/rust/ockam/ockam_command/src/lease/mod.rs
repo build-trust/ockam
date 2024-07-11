@@ -64,7 +64,7 @@ async fn create_project_client(
     identity_opts: &IdentityOpts,
     trust_opts: &TrustOpts,
 ) -> miette::Result<ProjectNodeClient> {
-    let node = InMemoryNode::start_with_project_name_and_identity(
+    let node = InMemoryNode::start_with_identity_and_project_name(
         ctx,
         &opts.state,
         identity_opts.identity_name.clone(),

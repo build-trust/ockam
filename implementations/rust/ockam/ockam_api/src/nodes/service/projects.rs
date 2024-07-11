@@ -1,10 +1,10 @@
+use crate::cloud::email_address::EmailAddress;
+use crate::cloud::project::models::{AdminInfo, OrchestratorVersionInfo};
+use crate::cloud::project::{Project, ProjectsOrchestratorApi};
+use crate::nodes::InMemoryNode;
 use miette::IntoDiagnostic;
 use ockam_core::async_trait;
 use ockam_node::Context;
-
-use crate::cloud::project::models::OrchestratorVersionInfo;
-use crate::cloud::project::{Project, ProjectsOrchestratorApi};
-use crate::nodes::InMemoryNode;
 
 #[async_trait]
 impl ProjectsOrchestratorApi for InMemoryNode {
@@ -196,6 +196,41 @@ impl ProjectsOrchestratorApi for InMemoryNode {
         self.node_manager
             .wait_until_project_is_ready(ctx, &project)
             .await
+    }
+
+    async fn add_project_admin(
+        &self,
+        ctx: &Context,
+        project_id: &str,
+        email: &EmailAddress,
+    ) -> miette::Result<AdminInfo> {
+        let controller = self.create_controller().await?;
+        let res = controller.add_project_admin(ctx, project_id, email).await?;
+        self.get_project(ctx, project_id).await?;
+        Ok(res)
+    }
+
+    async fn list_project_admins(
+        &self,
+        ctx: &Context,
+        project_id: &str,
+    ) -> miette::Result<Vec<AdminInfo>> {
+        let controller = self.create_controller().await?;
+        controller.list_project_admins(ctx, project_id).await
+    }
+
+    async fn delete_project_admin(
+        &self,
+        ctx: &Context,
+        project_id: &str,
+        email: &EmailAddress,
+    ) -> miette::Result<()> {
+        let controller = self.create_controller().await?;
+        controller
+            .delete_project_admin(ctx, project_id, email)
+            .await?;
+        self.get_project(ctx, project_id).await?;
+        Ok(())
     }
 }
 

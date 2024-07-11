@@ -27,7 +27,7 @@ pub struct DeleteCommand {
     #[arg(display_order = 901, long, short)]
     yes: bool,
 
-    #[arg(long, short)]
+    #[arg(long)]
     all: bool,
 }
 

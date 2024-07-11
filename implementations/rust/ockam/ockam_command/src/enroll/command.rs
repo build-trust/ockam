@@ -126,7 +126,8 @@ impl EnrollCommand {
 
         let identity_name = identity.name();
         let identifier = identity.identifier();
-        let node = InMemoryNode::start_with_identity(ctx, &opts.state, &identity_name).await?;
+        let node = InMemoryNode::start_with_identity(ctx, &opts.state, Some(identity_name.clone()))
+            .await?;
 
         let user_info = self.enroll_identity(ctx, &opts, &node).await?;
 

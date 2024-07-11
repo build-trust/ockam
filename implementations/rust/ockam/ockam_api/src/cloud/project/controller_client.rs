@@ -3,12 +3,14 @@ use crate::cloud::project::models::CreateProject;
 use crate::cloud::project::models::{OrchestratorVersionInfo, ProjectModel};
 use crate::cloud::{ControllerClient, HasSecureClient, ORCHESTRATOR_AWAIT_TIMEOUT};
 
+use super::models::AdminInfo;
 use super::project::TARGET;
 
 use miette::{miette, IntoDiagnostic};
 use tokio_retry::strategy::FixedInterval;
 use tokio_retry::Retry;
 
+use crate::cloud::email_address::EmailAddress;
 use crate::cloud::project::Project;
 use ockam_core::api::Request;
 use ockam_node::Context;
@@ -70,6 +72,130 @@ impl ControllerClient {
             .await
             .into_diagnostic()?
             .miette_success("get orchestrator version")
+    }
+
+    pub async fn add_space_admin(
+        &self,
+        ctx: &Context,
+        space_id: &str,
+        email: &EmailAddress,
+    ) -> miette::Result<AdminInfo> {
+        trace!(target: TARGET, "adding new space administrator");
+        let admins: Vec<AdminInfo> = self
+            .get_secure_client()
+            .ask(
+                ctx,
+                "spaces",
+                Request::put(format!("/v0/{space_id}/admins/{email}")),
+            )
+            .await
+            .into_diagnostic()?
+            .miette_success("add space admins")?;
+        admins
+            .into_iter()
+            .find(|a| a.email == email.to_string())
+            .ok_or(miette!(
+                "A user with email {email} was not added to space {space_id}"
+            ))
+    }
+
+    pub async fn list_space_admins(
+        &self,
+        ctx: &Context,
+        space_id: &str,
+    ) -> miette::Result<Vec<AdminInfo>> {
+        trace!(target: TARGET, "listing space administrators");
+        self.get_secure_client()
+            .ask(
+                ctx,
+                "spaces",
+                Request::get(format!("/v0/{space_id}/admins")),
+            )
+            .await
+            .into_diagnostic()?
+            .miette_success("get space admins")
+    }
+
+    pub async fn delete_space_admin(
+        &self,
+        ctx: &Context,
+        space_id: &str,
+        email: &EmailAddress,
+    ) -> miette::Result<()> {
+        trace!(target: TARGET, "deleting space administrator");
+        let _admins: Vec<AdminInfo> = self
+            .get_secure_client()
+            .ask(
+                ctx,
+                "spaces",
+                Request::delete(format!("/v0/{space_id}/admins/{email}")),
+            )
+            .await
+            .into_diagnostic()?
+            .miette_success("delete space admins")?;
+        Ok(())
+    }
+
+    pub async fn add_project_admin(
+        &self,
+        ctx: &Context,
+        project_id: &str,
+        email: &EmailAddress,
+    ) -> miette::Result<AdminInfo> {
+        trace!(target: TARGET, "adding new project administrator");
+        let admins: Vec<AdminInfo> = self
+            .get_secure_client()
+            .ask(
+                ctx,
+                "projects",
+                Request::put(format!("/v0/{project_id}/admins/{email}")),
+            )
+            .await
+            .into_diagnostic()?
+            .miette_success("add project admins")?;
+        admins
+            .into_iter()
+            .find(|a| a.email == email.to_string())
+            .ok_or(miette!(
+                "A user with email {email} was not added to proejct {project_id}"
+            ))
+    }
+
+    pub async fn list_project_admins(
+        &self,
+        ctx: &Context,
+        project_id: &str,
+    ) -> miette::Result<Vec<AdminInfo>> {
+        trace!(target: TARGET, "listing project administrators");
+        self.get_secure_client()
+            .ask(
+                ctx,
+                "projects",
+                Request::get(format!("/v0/{project_id}/admins")),
+            )
+            .await
+            .into_diagnostic()?
+            .miette_success("get project admins")
+    }
+
+    pub async fn delete_project_admin(
+        &self,
+        ctx: &Context,
+        project_id: &str,
+        email: &EmailAddress,
+    ) -> miette::Result<()> {
+        trace!(target: TARGET, "deleting project administrator");
+        let _admins: Vec<AdminInfo> = self
+            .get_secure_client()
+            .ask(
+                ctx,
+                "projects",
+                Request::delete(format!("/v0/{project_id}/admins/{email}")),
+            )
+            .await
+            .into_diagnostic()?
+            .miette_success("delete project admins")?;
+        Ok(())
     }
 
     #[instrument(skip_all)]

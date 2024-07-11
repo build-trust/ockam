@@ -7,6 +7,8 @@ use ockam_core::api::Request;
 use ockam_core::async_trait;
 use ockam_node::Context;
 
+use crate::cloud::email_address::EmailAddress;
+use crate::cloud::project::models::AdminInfo;
 use crate::cloud::project::{Project, ProjectsOrchestratorApi};
 use crate::cloud::subscription::Subscription;
 use crate::cloud::{ControllerClient, HasSecureClient};
@@ -158,6 +160,26 @@ pub trait Spaces {
     async fn delete_space_by_name(&self, ctx: &Context, space_name: &str) -> miette::Result<()>;
 
     async fn get_spaces(&self, ctx: &Context) -> miette::Result<Vec<Space>>;
+
+    async fn add_space_admin(
+        &self,
+        ctx: &Context,
+        space_id: &str,
+        email: &EmailAddress,
+    ) -> miette::Result<AdminInfo>;
+
+    async fn list_space_admins(
+        &self,
+        ctx: &Context,
+        space_id: &str,
+    ) -> miette::Result<Vec<AdminInfo>>;
+
+    async fn delete_space_admin(
+        &self,
+        ctx: &Context,
+        space_id: &str,
+        email: &EmailAddress,
+    ) -> miette::Result<()>;
 }
 
 #[async_trait]
@@ -261,6 +283,39 @@ impl Spaces for InMemoryNode {
             }
         }
         Ok(spaces)
+    }
+
+    async fn add_space_admin(
+        &self,
+        ctx: &Context,
+        space_id: &str,
+        email: &EmailAddress,
+    ) -> miette::Result<AdminInfo> {
+        let controller = self.create_controller().await?;
+        let res = controller.add_space_admin(ctx, space_id, email).await?;
+        self.get_space(ctx, space_id).await?;
+        Ok(res)
+    }
+
+    async fn list_space_admins(
+        &self,
+        ctx: &Context,
+        space_id: &str,
+    ) -> miette::Result<Vec<AdminInfo>> {
+        let controller = self.create_controller().await?;
+        controller.list_space_admins(ctx, space_id).await
+    }
+
+    async fn delete_space_admin(
+        &self,
+        ctx: &Context,
+        space_id: &str,
+        email: &EmailAddress,
+    ) -> miette::Result<()> {
+        let controller = self.create_controller().await?;
+        controller.delete_space_admin(ctx, space_id, email).await?;
+        self.get_space(ctx, space_id).await?;
+        Ok(())
     }
 }
 

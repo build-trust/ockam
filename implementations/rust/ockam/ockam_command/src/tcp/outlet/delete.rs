@@ -43,7 +43,7 @@ pub struct DeleteCommand {
     yes: bool,
 
     /// Delete all the TCP Outlets
-    #[arg(long, short, group = "tcp-outlets")]
+    #[arg(long, group = "tcp-outlets")]
     all: bool,
 }
 

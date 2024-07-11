@@ -25,7 +25,7 @@ pub struct DeleteCommand {
     node_name: Option<String>,
 
     /// Terminate all node processes and delete all node configurations
-    #[arg(long, short, group = "nodes")]
+    #[arg(long, group = "nodes")]
     all: bool,
 
     /// Terminate node process(es) immediately (uses SIGKILL instead of SIGTERM)

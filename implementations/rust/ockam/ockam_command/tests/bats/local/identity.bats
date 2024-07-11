@@ -59,7 +59,7 @@ teardown() {
   run_failure "$OCKAM" identity delete i1 --yes
 
   # Delete all and check that the list is empty
-  run_success "$OCKAM" identity delete -a --yes
+  run_success "$OCKAM" identity delete --all --yes
 
   run_success "$OCKAM" identity list --output json
   assert_output --partial "[]"
