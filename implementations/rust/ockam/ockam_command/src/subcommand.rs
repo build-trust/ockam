@@ -184,6 +184,20 @@ impl OckamSubcommand {
         }
     }
 
+    /// Return true if this command represents the execution of a foreground node
+    pub fn is_foreground_node(&self) -> bool {
+        match self {
+            OckamSubcommand::Node(cmd) => match &cmd.subcommand {
+                NodeSubcommand::Create(cmd) => !cmd.foreground_args.child_process,
+                _ => false,
+            },
+            OckamSubcommand::Authority(cmd) => match &cmd.subcommand {
+                AuthoritySubcommand::Create(cmd) => !cmd.child_process,
+            },
+            _ => false,
+        }
+    }
+
     /// Return true if this command represents the execution of a background node
     pub fn is_background_node(&self) -> bool {
         match self {

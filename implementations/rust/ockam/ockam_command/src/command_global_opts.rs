@@ -152,16 +152,18 @@ impl CommandGlobalOpts {
             Ok(LoggingConfiguration::background(log_path, crates).into_diagnostic()?)
         } else {
             let preferred_log_level = verbose_log_level(global_args.verbose);
-            let colored = if !global_args.no_color && is_tty {
-                Colored::On
-            } else {
-                Colored::Off
-            };
-            let log_path = if preferred_log_level.is_some() {
+            let log_path = if preferred_log_level.is_some() || cmd.is_foreground_node() {
                 None
             } else {
                 Some(CliState::command_log_path(cmd.name().as_str())?)
             };
+
+            let colored = if !global_args.no_color && is_tty && log_path.is_none() {
+                Colored::On
+            } else {
+                Colored::Off
+            };
+
             Ok(
                 logging_configuration(preferred_log_level, colored, log_path, crates)
                     .into_diagnostic()?,
