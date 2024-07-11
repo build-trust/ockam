@@ -31,7 +31,8 @@ use tracing::warn;
 pub struct Terminal<T: TerminalWriter + Debug, WriteMode = ToStdErr> {
     stdout: T,
     stderr: T,
-    pub logging_enabled: bool,
+    logging_enabled: bool,
+    logging_goes_to_file: bool,
     quiet: bool,
     no_input: bool,
     output_format: OutputFormat,
@@ -45,11 +46,11 @@ impl<T: TerminalWriter + Debug, W> Terminal<T, W> {
         self.quiet
     }
 
-    fn log_msg(&self, msg: impl AsRef<str>) {
+    fn log_msg(&self, msg: &str) {
         if !self.logging_enabled {
             return;
         }
-        for line in msg.as_ref().lines() {
+        for line in msg.lines() {
             let msg = strip_ansi_escapes::strip_str(line);
             let msg = msg
                 .trim()
@@ -96,6 +97,7 @@ pub trait TerminalWriter: Clone {
 impl<W: TerminalWriter + Debug> Terminal<W> {
     pub fn new(
         logging_enabled: bool,
+        logging_goes_to_file: bool,
         quiet: bool,
         no_color: bool,
         no_input: bool,
@@ -110,6 +112,7 @@ impl<W: TerminalWriter + Debug> Terminal<W> {
             stdout,
             stderr,
             logging_enabled,
+            logging_goes_to_file,
             quiet,
             no_input,
             output_format,
@@ -119,8 +122,15 @@ impl<W: TerminalWriter + Debug> Terminal<W> {
         }
     }
 
-    pub fn quiet(logging_enabled: bool) -> Self {
-        Self::new(logging_enabled, true, false, false, OutputFormat::Plain)
+    pub fn quiet(logging_enabled: bool, logging_goes_to_file: bool) -> Self {
+        Self::new(
+            logging_enabled,
+            logging_goes_to_file,
+            true,
+            false,
+            false,
+            OutputFormat::Plain,
+        )
     }
 
     /// Prompt the user for a confirmation.
@@ -219,37 +229,38 @@ impl<W: TerminalWriter + Debug> Terminal<W, ToStdErr> {
         self.stderr.is_tty()
     }
 
+    /// Return true if log messages are emitted to the console
+    fn logging_to_console_only(&self) -> bool {
+        self.logging_enabled && !self.logging_goes_to_file
+    }
+
+    /// Return true if we can write to stderr
+    /// We can write to stderr unless:
+    ///  - all the messages are logged to the console
+    ///  - or quiet is true
+    fn can_write_to_stderr(&self) -> bool {
+        !self.logging_to_console_only() && !self.is_quiet()
+    }
+
     pub fn write(&self, msg: impl AsRef<str>) -> Result<()> {
-        if self.quiet {
-            return Ok(());
-        }
-        if self.logging_enabled {
-            self.log_msg(msg);
-        } else {
+        self.log_msg(msg.as_ref());
+        if self.can_write_to_stderr() {
             self.stderr.clone().write(msg)?;
         }
         Ok(())
     }
 
     pub fn rewrite(&self, msg: impl AsRef<str>) -> Result<()> {
-        if self.quiet {
-            return Ok(());
-        }
-        if self.logging_enabled {
-            self.log_msg(msg);
-        } else {
+        self.log_msg(msg.as_ref());
+        if self.can_write_to_stderr() {
             self.stderr.clone().rewrite(msg)?;
         }
         Ok(())
     }
 
     pub fn write_line(&self, msg: impl AsRef<str>) -> Result<&Self> {
-        if self.quiet {
-            return Ok(self);
-        }
-        if self.logging_enabled {
-            self.log_msg(msg);
-        } else {
+        self.log_msg(msg.as_ref());
+        if self.can_write_to_stderr() {
             self.stderr.write_line(msg)?;
         }
         Ok(self)
@@ -287,6 +298,7 @@ impl<W: TerminalWriter + Debug> Terminal<W, ToStdErr> {
             stdout: self.stdout,
             stderr: self.stderr,
             logging_enabled: self.logging_enabled,
+            logging_goes_to_file: self.logging_goes_to_file,
             quiet: self.quiet,
             no_input: self.no_input,
             output_format: self.output_format,
@@ -324,6 +336,17 @@ impl<W: TerminalWriter + Debug> Terminal<W, ToStdOut> {
     pub fn json<T: Display>(mut self, msg: T) -> Self {
         self.mode.output.json = Some(serde_json::from_str(&msg.to_string()).unwrap());
         self
+    }
+
+    /// Return true if log messages are emitted to the console
+    fn logging_to_console_only(&self) -> bool {
+        self.logging_enabled && !self.logging_goes_to_file
+    }
+
+    /// Return true if we can write to stdout
+    /// We can write to stdout unless all the messages are logged to the console
+    fn can_write_to_stdout(&self) -> bool {
+        !self.logging_to_console_only()
     }
 
     pub fn write_line(mut self) -> Result<()> {
@@ -378,12 +401,12 @@ impl<W: TerminalWriter + Debug> Terminal<W, ToStdOut> {
             },
         };
 
-        if self.logging_enabled {
-            self.log_msg(msg);
-        } else {
-            // Remove any trailing newline characters.
-            // A newline will be added if stdout is a TTY.
-            let msg = msg.trim_end().trim_end_matches('\n');
+        self.log_msg(&msg);
+
+        // Remove any trailing newline characters.
+        // A newline will be added if stdout is a TTY.
+        let msg = msg.trim_end().trim_end_matches('\n');
+        if self.can_write_to_stdout() {
             if self.stdout.is_tty() {
                 self.stdout.write_line(msg)?;
             } else {
@@ -446,7 +469,7 @@ impl<W: TerminalWriter + Debug> Terminal<W, ToStdOut> {
 // Extensions
 impl<W: TerminalWriter + Debug> Terminal<W> {
     pub fn can_use_progress_bar(&self) -> bool {
-        !self.logging_enabled && !self.quiet && self.stderr.is_tty()
+        self.stderr.is_tty() && self.can_write_to_stderr()
     }
 
     pub fn progress_bar(&self) -> Option<ProgressBar> {

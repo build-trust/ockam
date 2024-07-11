@@ -53,6 +53,7 @@ impl CommandGlobalOpts {
         let tracing_configuration = Self::make_tracing_configuration(cmd)?;
         let terminal = Terminal::new(
             logging_configuration.is_enabled(),
+            logging_configuration.log_dir().is_some(),
             global_args.quiet,
             global_args.no_color,
             global_args.no_input,
