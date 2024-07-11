@@ -2,6 +2,7 @@ use miette::IntoDiagnostic;
 use minicbor::{CborLen, Decode, Encode};
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
+use std::fmt::{Debug, Formatter};
 
 use crate::cloud::enroll::enrollment_token::{
     AuthenticateEnrollmentToken, EnrollmentToken, RequestEnrollmentToken,
@@ -16,11 +17,17 @@ use ockam_node::Context;
 #[allow(dead_code)]
 const TARGET: &str = "ockam_api::cloud::enroll";
 
-#[derive(Encode, Decode, CborLen, Serialize, Deserialize, Debug, Clone)]
+#[derive(Encode, Decode, CborLen, Serialize, Deserialize, Clone)]
 #[cfg_attr(test, derive(PartialEq, Eq))]
 #[cbor(transparent)]
 #[serde(transparent)]
 pub struct Token(#[n(0)] pub String);
+
+impl Debug for Token {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.write_str("{TOKEN}")
+    }
+}
 
 impl Token {
     pub fn new(token: impl Into<String>) -> Self {
