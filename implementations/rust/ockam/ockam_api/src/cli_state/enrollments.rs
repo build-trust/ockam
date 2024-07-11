@@ -78,6 +78,17 @@ impl CliState {
         }
     }
 
+    /// Return enrollment information of the identity with the given name
+    pub async fn get_identity_enrollment(&self, name: &str) -> Result<Option<IdentityEnrollment>> {
+        let identifier = self.get_identifier_by_name(name).await?;
+        let repository = self.enrollment_repository();
+        Ok(repository
+            .get_enrolled_identities()
+            .await?
+            .into_iter()
+            .find(|e| e.identifier() == &identifier))
+    }
+
     /// Return true if the user is enrolled.
     /// At the moment this check only verifies that there is a default project.
     /// This project should be the project that is created at the end of the enrollment procedure

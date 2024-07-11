@@ -31,7 +31,7 @@ pub struct DeleteCommand {
     pub(crate) yes: bool,
 
     /// Delete all the Kafka Inlets
-    #[arg(long, short)]
+    #[arg(long)]
     pub(crate) all: bool,
 }
 

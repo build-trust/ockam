@@ -97,8 +97,8 @@ impl InMemoryNode {
         .await
     }
 
-    /// Start an in memory node with some project and identity
-    pub async fn start_with_project_name_and_identity(
+    /// Start an in memory node with some identity and project
+    pub async fn start_with_identity_and_project_name(
         ctx: &Context,
         cli_state: &CliState,
         identity: Option<String>,
@@ -112,9 +112,10 @@ impl InMemoryNode {
     pub async fn start_with_identity(
         ctx: &Context,
         cli_state: &CliState,
-        identity_name: &str,
+        identity: Option<String>,
     ) -> miette::Result<InMemoryNode> {
-        Self::start_node(ctx, cli_state, identity_name, None, None, None, None).await
+        let identity = cli_state.get_identity_name_or_default(&identity).await?;
+        Self::start_node(ctx, cli_state, &identity, None, None, None, None).await
     }
 
     /// Start an in memory node

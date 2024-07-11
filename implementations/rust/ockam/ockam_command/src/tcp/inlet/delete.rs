@@ -38,7 +38,7 @@ pub struct DeleteCommand {
     yes: bool,
 
     /// Delete all the TCP Inlets
-    #[arg(long, short)]
+    #[arg(long)]
     all: bool,
 }
 

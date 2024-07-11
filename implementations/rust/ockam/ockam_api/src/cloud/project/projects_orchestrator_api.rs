@@ -1,4 +1,5 @@
-use crate::cloud::project::models::OrchestratorVersionInfo;
+use crate::cloud::email_address::EmailAddress;
+use crate::cloud::project::models::{AdminInfo, OrchestratorVersionInfo};
 use crate::cloud::project::Project;
 use ockam_core::async_trait;
 use ockam_node::Context;
@@ -59,4 +60,24 @@ pub trait ProjectsOrchestratorApi {
         ctx: &Context,
         project: Project,
     ) -> miette::Result<Project>;
+
+    async fn add_project_admin(
+        &self,
+        ctx: &Context,
+        project_id: &str,
+        email: &EmailAddress,
+    ) -> miette::Result<AdminInfo>;
+
+    async fn list_project_admins(
+        &self,
+        ctx: &Context,
+        project_id: &str,
+    ) -> miette::Result<Vec<AdminInfo>>;
+
+    async fn delete_project_admin(
+        &self,
+        ctx: &Context,
+        project_id: &str,
+        email: &EmailAddress,
+    ) -> miette::Result<()>;
 }

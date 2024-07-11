@@ -136,3 +136,18 @@ teardown() {
   run_success "$OCKAM" project addon list --project default
   assert_output --partial "Id: okta"
 }
+
+@test "projects - CRUD admins" {
+  run_success "$OCKAM" project-admin add ockam.admin.test@ockam.io
+  assert_output --partial "ockam.admin.test@ockam.io"
+
+  run_failure "$OCKAM" project-admin add "not_an_email"
+
+  run_success "$OCKAM" project-admin list --output json
+  assert_output --partial "\"email\":\"ockam.admin.test@ockam.io\""
+
+  run_success "$OCKAM" project-admin delete ockam.admin.test@ockam.io --yes
+
+  run_success "$OCKAM" project-admin list --output json
+  refute_output --partial "ockam.admin.test@ockam.io"
+}
