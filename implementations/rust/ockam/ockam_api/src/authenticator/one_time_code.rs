@@ -1,29 +1,28 @@
-use crate::cloud::enroll::auth0::OidcToken;
 use core::str::FromStr;
 use minicbor::bytes::ByteArray;
 use minicbor::{CborLen, Decode, Encode};
 use ockam_core::compat::rand;
 use ockam_core::compat::rand::RngCore;
-use ockam_core::compat::string::{String, ToString};
+use ockam_core::compat::string::String;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::Error;
 use ockam_core::Result;
 use serde::{Deserialize, Serialize};
-use std::fmt::{Display, Formatter};
+use std::fmt::{Debug, Formatter};
 
 /// A one-time code can be used to enroll
 /// a node with some authenticated attributes
 /// It can be retrieve with a command like `ockam project ticket --attribute component=control`
-#[derive(Debug, Clone, Encode, Decode, CborLen, PartialEq, Eq)]
+#[derive(Clone, Encode, Decode, CborLen, PartialEq, Eq)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct OneTimeCode {
     #[n(1)] code: ByteArray<32>,
 }
 
-impl Display for OidcToken {
+impl Debug for OneTimeCode {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&self.access_token.0)
+        f.write_str("{ONE_TIME_CODE}")
     }
 }
 
@@ -49,6 +48,12 @@ impl From<[u8; 32]> for OneTimeCode {
     }
 }
 
+impl From<&OneTimeCode> for String {
+    fn from(value: &OneTimeCode) -> Self {
+        hex::encode(value.code())
+    }
+}
+
 impl FromStr for OneTimeCode {
     type Err = Error;
 
@@ -63,20 +68,12 @@ impl FromStr for OneTimeCode {
     }
 }
 
-impl ToString for OneTimeCode {
-    /// Return the OneTimeCode as a String
-    /// It is encoded as hexadecimal
-    fn to_string(&self) -> String {
-        hex::encode(self.code())
-    }
-}
-
 impl Serialize for OneTimeCode {
     fn serialize<S>(&self, serializer: S) -> core::result::Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
     {
-        serializer.serialize_str(self.to_string().as_str())
+        serializer.serialize_str(String::from(self).as_str())
     }
 }
 
@@ -103,7 +100,7 @@ mod test {
 
     #[quickcheck]
     fn test_from_to_string(one_time_code: OneTimeCode) -> bool {
-        OneTimeCode::from_str(one_time_code.to_string().as_str()).ok() == Some(one_time_code)
+        OneTimeCode::from_str(&String::from(&one_time_code)).ok() == Some(one_time_code)
     }
 
     impl Arbitrary for OneTimeCode {
