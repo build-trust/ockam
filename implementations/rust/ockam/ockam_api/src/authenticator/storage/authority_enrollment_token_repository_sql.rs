@@ -119,7 +119,7 @@ impl Type<Any> for OneTimeCode {
 
 impl sqlx::Encode<'_, Any> for OneTimeCode {
     fn encode_by_ref(&self, buf: &mut <Any as HasArguments>::ArgumentBuffer) -> IsNull {
-        <String as sqlx::Encode<'_, Any>>::encode_by_ref(&self.to_string(), buf)
+        <String as sqlx::Encode<'_, Any>>::encode_by_ref(&String::from(self), buf)
     }
 }
 
@@ -191,7 +191,7 @@ mod tests {
                 Arc::new(AuthorityEnrollmentTokenSqlxDatabase::new(db));
 
             let one_time_code = OneTimeCode::new();
-            let reference = Some(OneTimeCode::new().to_string());
+            let reference = Some(String::from(&OneTimeCode::new()));
 
             let issued_by = Identifier::from_str(
                 "I0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",

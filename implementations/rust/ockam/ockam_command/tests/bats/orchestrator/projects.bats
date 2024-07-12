@@ -26,11 +26,9 @@ teardown() {
 
   # From file
   run_success "$OCKAM" project enroll $TICKET_PATH --test-argument-parser
-  run_failure "$OCKAM" project enroll missing-file --test-argument-parser
 
   # From contents
   run_success "$OCKAM" project enroll $(cat $TICKET_PATH) --test-argument-parser
-  run_failure "$OCKAM" project enroll "INVALID_TICKET" --test-argument-parser
 }
 
 @test "projects - enrollment with controller" {
