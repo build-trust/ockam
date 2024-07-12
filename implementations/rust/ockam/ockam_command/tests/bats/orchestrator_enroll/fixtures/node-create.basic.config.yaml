@@ -1,3 +1,8 @@
+variables:
+  NODE_NAME: n1
+
+name: $NODE_NAME
+
 relay: $RELAY_NAME
 
 tcp-outlet:

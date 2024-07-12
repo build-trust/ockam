@@ -354,6 +354,11 @@ pub trait Command: Clone + Sized + Send + Sync + 'static {
                     Ok(_) => break,
                     Err(Error::Retry(inner)) => {
                         retry_count -= 1;
+                        // return the last error if there are no more retries
+                        if retry_count == 0 {
+                            return Err(inner);
+                        };
+
                         let delay = retry_delay.add(jitter(retry_delay_jitter));
                         warn!(
                             "Command failed, retrying in {} seconds: {inner:?}",
