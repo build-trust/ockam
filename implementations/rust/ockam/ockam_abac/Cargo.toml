@@ -54,7 +54,7 @@ sqlx-build-trust = { version = "0.7.8", optional = true }
 str-buf = "3.0.3"
 tokio = { version = "1.38", default-features = false, optional = true, features = ["sync", "time", "rt", "rt-multi-thread", "macros"] }
 tracing = { version = "0.1", default-features = false, features = ["attributes"] }
-wast = { version = "212.0.0", default-features = false, optional = true }
+wast = { version = "213.0.0", default-features = false, optional = true }
 winnow = { version = "0.6.13", default-features = false, optional = true, features = ["alloc"] }
 
 [dev-dependencies]
