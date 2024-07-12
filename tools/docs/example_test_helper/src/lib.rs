@@ -46,6 +46,7 @@ use cfg_if::cfg_if;
 use duct::unix::HandleExt;
 use duct::{cmd, Handle};
 use regex::Regex;
+use std::net::TcpListener;
 use std::time::SystemTime;
 use std::{fs, io};
 use std::{fs::File, io::Read, thread::sleep, time::Duration};
@@ -324,6 +325,12 @@ impl CmdRunner {
         }
         Err(Error::Timeout)
     }
+}
+
+pub fn find_available_port() -> u16 {
+    let listener = TcpListener::bind("127.0.0.1:0").expect("Failed to bind to address");
+    let address = listener.local_addr().expect("Failed to get local address");
+    address.port()
 }
 
 #[cfg(test)]

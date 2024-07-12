@@ -1,10 +1,8 @@
-use example_test_helper::{CmdBuilder, Error};
-use ockam::compat::rand;
-use ockam::compat::rand::Rng;
+use example_test_helper::{find_available_port, CmdBuilder, Error};
 
 #[test]
 fn run_01_inlet_outlet_one_process() -> Result<(), Error> {
-    let port = rand::thread_rng().gen_range(10000..65535);
+    let port = find_available_port();
     // Spawn example, wait for it to start up
     let runner = CmdBuilder::new(&format!(
         "cargo run --locked --example 01-inlet-outlet 127.0.0.1:{port} ockam.io:80"
@@ -24,8 +22,8 @@ fn run_01_inlet_outlet_one_process() -> Result<(), Error> {
 
 #[test]
 fn run_02_inlet_outlet_separate_processes() -> Result<(), Error> {
-    let routing_port = rand::thread_rng().gen_range(10000..65535);
-    let inlet_port = rand::thread_rng().gen_range(10000..65535);
+    let routing_port = find_available_port();
+    let inlet_port = find_available_port();
     // Spawn outlet, wait for it to start up
     let outlet = CmdBuilder::new(&format!(
         "cargo run --locked --example 02-outlet ockam.io:80 {routing_port}"
@@ -55,8 +53,8 @@ fn run_02_inlet_outlet_separate_processes() -> Result<(), Error> {
 #[test]
 #[ignore]
 fn run_03_inlet_outlet_separate_processes_secure_channel() -> Result<(), Error> {
-    let routing_port = rand::thread_rng().gen_range(10000..65535);
-    let inlet_port = rand::thread_rng().gen_range(10000..65535);
+    let routing_port = find_available_port();
+    let inlet_port = find_available_port();
     // Spawn outlet, wait for it to start up
     let outlet = CmdBuilder::new(&format!(
         "cargo run --locked --example 03-outlet ockam.io:80 {routing_port}"
@@ -85,8 +83,8 @@ fn run_03_inlet_outlet_separate_processes_secure_channel() -> Result<(), Error> 
 
 #[test]
 #[ignore]
-fn run_04_inlet_outlet_seperate_processes_secure_channel_via_ockam_orchestrator() -> Result<(), Error> {
-    let port = rand::thread_rng().gen_range(10000..65535);
+fn run_04_inlet_outlet_separate_processes_secure_channel_via_ockam_orchestrator() -> Result<(), Error> {
+    let port = find_available_port();
     // Spawn outlet, wait for it to start up, grab dynamic forwarding address
     let outlet = CmdBuilder::new("cargo run --locked --example 04-outlet ockam.io:80").spawn()?;
     outlet.match_stdout(r"(?i)RemoteRelay was created on the node")?;
