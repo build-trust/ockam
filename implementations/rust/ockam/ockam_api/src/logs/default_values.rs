@@ -44,10 +44,10 @@ pub(crate) const DEFAULT_FOREGROUND_EXPORT_SCHEDULED_DELAY: Duration = Duration:
 pub(crate) const DEFAULT_BACKGROUND_EXPORT_SCHEDULED_DELAY: Duration = Duration::from_secs(1);
 
 // Size of the queue used to batch spans.
-pub(crate) const DEFAULT_SPAN_EXPORT_QUEUE_SIZE: u16 = 2048;
+pub(crate) const DEFAULT_SPAN_EXPORT_QUEUE_SIZE: u16 = 32768;
 
 // Size of the queue used to batch logs.
-pub(crate) const DEFAULT_LOG_EXPORT_QUEUE_SIZE: u16 = 2048;
+pub(crate) const DEFAULT_LOG_EXPORT_QUEUE_SIZE: u16 = 32768;
 
 // Maximum time for sending log record batches when using a portal
 pub(crate) const DEFAULT_FOREGROUND_LOG_EXPORT_PORTAL_CUTOFF: Duration = Duration::from_millis(300);
