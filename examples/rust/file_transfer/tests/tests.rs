@@ -45,7 +45,7 @@ fn medium_file_transfer_large_chunks() -> Result<(), Error> {
 
 fn do_file_transfer(file_size: u32, chunk_size: Option<u32>) -> Result<(), Error> {
     // Spawn receiver, wait for & grab dynamic forwarding address
-    let receiver = CmdBuilder::new("cargo run --example receiver").spawn()?;
+    let receiver = CmdBuilder::new("cargo run --locked --example receiver").spawn()?;
     let fwd_address = receiver.match_stdout(r"(?m)^FWD_(\w+)$")?.swap_remove(0).unwrap();
     println!("Forwarding address: {fwd_address}");
 
@@ -74,7 +74,7 @@ fn do_file_transfer(file_size: u32, chunk_size: Option<u32>) -> Result<(), Error
     }
 
     // Spawn sender
-    let mut cmd_line = format!("cargo run --example sender {source_path} --address {fwd_address}");
+    let mut cmd_line = format!("cargo run --locked --example sender {source_path} --address {fwd_address}");
     if let Some(val) = chunk_size {
         let _ = write!(cmd_line, " --chunk-size {val}");
     }
