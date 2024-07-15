@@ -1,0 +1,16 @@
+definition_version: 1
+native_app:
+   name: cdc_publisher
+   artifacts:
+      - src: *
+        dest: ./
+      - services/cdccdc_publisher.yaml
+   package:
+      name: na_spcs_tutorial_pkg
+      role: cdc_role
+      warehouse: cdc_warehouse
+   application:
+      name: na_spcs_tutorial_app
+      debug: false
+      role: cdc_role
+      warehouse: cdc_warehouse

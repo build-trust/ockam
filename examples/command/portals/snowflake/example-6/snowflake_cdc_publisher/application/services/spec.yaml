@@ -1,0 +1,12 @@
+spec:
+  container:
+  - name: cdc_publisher
+    image: /cdc_image_database/cdc_image_schema/cdc_image_repository/cdc_service:cdc
+    readinessProbe:
+      port: 8000
+      path: /healthcheck
+  - name: ockam
+    image: /cdc_image_database/cdc_image_schema/cdc_image_repository/ockam:cdc
+    readinessProbe:
+      port: 4200
+      path: /healthcheck
