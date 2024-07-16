@@ -441,17 +441,4 @@ fn import_signing_secret(secret: Binary) -> NifResult<String> {
     })
 }
 
-rustler::init!(
-    "Elixir.OckamRustElixirNifs.Native",
-    [
-        create_identity,
-        attest_secure_channel_key,
-        verify_secure_channel_key_attestation,
-        check_identity,
-        issue_credential,
-        verify_credential,
-        import_signing_secret,
-        setup_aws_kms
-    ],
-    load = load
-);
+rustler::init!("Elixir.OckamRustElixirNifs.Native", load = load);

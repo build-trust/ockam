@@ -280,6 +280,7 @@ This file contains attributions for any 3rd-party open source code used in this 
 | indicatif | MIT | https://crates.io/crates/indicatif |
 | indoc | MIT, Apache-2.0 | https://crates.io/crates/indoc |
 | inout | MIT, Apache-2.0 | https://crates.io/crates/inout |
+| inventory | MIT, Apache-2.0 | https://crates.io/crates/inventory |
 | iovec | MIT, Apache-2.0 | https://crates.io/crates/iovec |
 | ipnet | MIT, Apache-2.0 | https://crates.io/crates/ipnet |
 | is-docker | MIT | https://crates.io/crates/is-docker |
@@ -443,7 +444,6 @@ This file contains attributions for any 3rd-party open source code used in this 
 | rustix | Apache-2.0 WITH LLVM-exception, Apache-2.0, MIT | https://crates.io/crates/rustix |
 | rustler | MIT, Apache-2.0 | https://crates.io/crates/rustler |
 | rustler_codegen | MIT, Apache-2.0 | https://crates.io/crates/rustler_codegen |
-| rustler_sys | MIT, Apache-2.0 | https://crates.io/crates/rustler_sys |
 | rustls | Apache-2.0, ISC, MIT | https://crates.io/crates/rustls |
 | rustls-native-certs | Apache-2.0, ISC, MIT | https://crates.io/crates/rustls-native-certs |
 | rustls-pemfile | Apache-2.0, ISC, MIT | https://crates.io/crates/rustls-pemfile |
@@ -579,7 +579,6 @@ This file contains attributions for any 3rd-party open source code used in this 
 | unicode-width | MIT, Apache-2.0 | https://crates.io/crates/unicode-width |
 | unicode_categories | MIT, Apache-2.0 | https://crates.io/crates/unicode_categories |
 | universal-hash | MIT, Apache-2.0 | https://crates.io/crates/universal-hash |
-| unreachable | MIT, Apache-2.0 | https://crates.io/crates/unreachable |
 | unsafe-libyaml | MIT | https://crates.io/crates/unsafe-libyaml |
 | unsigned-varint | MIT | https://crates.io/crates/unsigned-varint |
 | untrusted | ISC | https://crates.io/crates/untrusted |
