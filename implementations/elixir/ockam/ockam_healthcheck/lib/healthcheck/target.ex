@@ -11,7 +11,7 @@ defmodule Ockam.Healthcheck.Target do
     :name,
     :host,
     :port,
-    api_worker: "api",
+    api_route: ["api"],
     healthcheck_worker: "healthcheck"
   ]
 end

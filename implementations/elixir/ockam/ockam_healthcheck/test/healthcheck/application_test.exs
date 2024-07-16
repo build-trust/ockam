@@ -12,7 +12,7 @@ defmodule Ockam.Healthcheck.Application.Test do
     [{"name": "mytarget",
       "host":"localhost",
       "port": 4000,
-      "api_worker": "api",
+      "api_route": ["api"],
       "healthcheck_worker": "healthcheck",
       "crontab": "* * * * *"}]
     """
@@ -35,8 +35,9 @@ defmodule Ockam.Healthcheck.Application.Test do
            } = target
 
     ## Default fields
-    assert %ScheduledTarget{target: %Target{api_worker: "api", healthcheck_worker: "healthcheck"}} =
-             target
+    assert %ScheduledTarget{
+             target: %Target{api_route: ["api"], healthcheck_worker: "healthcheck"}
+           } = target
 
     encoded_body = "ZHRlc3Q="
 
@@ -47,7 +48,7 @@ defmodule Ockam.Healthcheck.Application.Test do
       "path": "/",
       "method": "post",
       "body": "#{encoded_body}",
-      "api_worker": "api",
+      "api_route": ["api"],
       "healthcheck_worker": "healthcheck",
       "crontab": "* * * * *"}]
     """
@@ -61,7 +62,7 @@ defmodule Ockam.Healthcheck.Application.Test do
                port: 4000,
                method: :post,
                body: body,
-               api_worker: "api",
+               api_route: ["api"],
                healthcheck_worker: "healthcheck",
                path: "/"
              },

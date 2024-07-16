@@ -14,6 +14,6 @@ defmodule Ockam.Healthcheck.APIEndpointTarget do
     :method,
     :body,
     :healthcheck_worker,
-    api_worker: "api"
+    api_route: ["api"]
   ]
 end

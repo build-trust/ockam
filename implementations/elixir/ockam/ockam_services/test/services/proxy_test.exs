@@ -56,7 +56,7 @@ defmodule Test.Services.ProxyTest do
 
     tcp_clients_count = Enum.count(tcp_clients())
 
-    forward_route = [TCPAddress.new("localhost", lport), echo_address]
+    forward_route = [TCPAddress.new("localhost", lport)]
 
     {:ok, proxy_address} = Proxy.create(forward_route: forward_route)
 
@@ -66,11 +66,11 @@ defmodule Test.Services.ProxyTest do
 
     {:ok, my_address} = Ockam.Node.register_random_address()
 
-    Router.route("Hi echo proxy!", [proxy_address], [my_address])
+    Router.route("Hi echo proxy!", [proxy_address, echo_address], [my_address])
 
     assert_receive %Message{
                      onward_route: [^my_address],
-                     return_route: [^proxy_address],
+                     return_route: [^proxy_address, ^echo_address],
                      payload: "Hi echo proxy!"
                    },
                    2000
@@ -78,11 +78,11 @@ defmodule Test.Services.ProxyTest do
     assert Enum.count(tcp_clients()) == tcp_clients_count + 1
 
     ## Make sure we don't leak the TCP connections
-    Router.route("Hi echo proxy take2!", [proxy_address], [my_address])
+    Router.route("Hi echo proxy take2!", [proxy_address, echo_address], [my_address])
 
     assert_receive %Message{
                      onward_route: [^my_address],
-                     return_route: [^proxy_address],
+                     return_route: [^proxy_address, ^echo_address],
                      payload: "Hi echo proxy take2!"
                    },
                    2000
@@ -91,14 +91,31 @@ defmodule Test.Services.ProxyTest do
   end
 
   test "proxy provider" do
-    System.put_env("SERVICE_PROXY_remote_echo", "1#localhost:4000;0#echo")
-    [spec] = Ockam.Services.Provider.Proxy.child_spec(:proxy, [])
+    route = [TCPAddress.new("localhost", 4000), "echo"]
+
+    [spec] =
+      Ockam.Services.Provider.Proxy.child_spec(:proxy,
+        address: "remote_echo",
+        forward_route: route
+      )
 
     assert %{
              id: :proxy_remote_echo,
              start:
                {Ockam.Services.Proxy, :start_link,
-                [[address: "remote_echo", forward_route: "1#localhost:4000;0#echo"]]}
+                [[address: "remote_echo", forward_route: ^route]]}
            } = spec
+
+    %{
+      id: :proxy_remote_echo,
+      start:
+        {Ockam.Services.Proxy, :start_link,
+         [
+           [
+             address: "remote_echo",
+             forward_route: [%Ockam.Address{type: 1, value: "localhost:4000"}, "echo"]
+           ]
+         ]}
+    }
   end
 end
