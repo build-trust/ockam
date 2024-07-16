@@ -44,11 +44,11 @@ defmodule Ockam.Healthcheck do
   end
 
   def ping_target(target, timeout) do
-    %{host: host, port: port, api_worker: api_worker, healthcheck_worker: healthcheck_worker} =
+    %{host: host, port: port, api_route: api_route, healthcheck_worker: healthcheck_worker} =
       target
 
     with_tcp(host, port, fn conn ->
-      with_channel(conn, api_worker, fn channel ->
+      with_channel(conn, api_route, fn channel ->
         {:ok, me} = Ockam.Node.register_random_address()
         ref = inspect(make_ref())
         Ockam.Router.route(ref, [channel, healthcheck_worker], [me])
@@ -82,12 +82,12 @@ defmodule Ockam.Healthcheck do
       method: method,
       body: body,
       port: port,
-      api_worker: api_worker,
+      api_route: api_route,
       healthcheck_worker: healthcheck_worker
     } = target
 
     with_tcp(host, port, fn conn ->
-      with_channel(conn, api_worker, fn channel ->
+      with_channel(conn, api_route, fn channel ->
         case Ockam.API.Client.sync_request(
                method,
                path,
@@ -148,17 +148,17 @@ defmodule Ockam.Healthcheck do
     end
   end
 
-  defp with_channel(tcp_conn, api_worker, fun) do
+  defp with_channel(tcp_conn, api_route, fun) do
     with_conn(
-      fn -> connect_secure_channel(tcp_conn, api_worker) end,
+      fn -> connect_secure_channel(tcp_conn, api_route) end,
       fun,
       fn chan -> Ockam.SecureChannel.disconnect(chan) end,
       :secure_channel_error
     )
   end
 
-  defp connect_secure_channel(tcp_conn, api_worker) do
-    api_route = [tcp_conn, api_worker]
+  defp connect_secure_channel(tcp_conn, api_route) do
+    api_route = [tcp_conn | api_route]
 
     with {:ok, {identity, keypair, attestation}} <- get_healthcheck_identity() do
       case SecureChannel.create_channel(

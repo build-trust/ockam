@@ -38,7 +38,7 @@ defmodule Ockam.Healthcheck.Test do
       name: "target",
       host: "localhost",
       port: port,
-      api_worker: "api",
+      api_route: ["api"],
       healthcheck_worker: "healthcheck"
     }
 
@@ -81,7 +81,7 @@ defmodule Ockam.Healthcheck.Test do
       name: "target",
       host: "localhost",
       port: port,
-      api_worker: "api",
+      api_route: ["api"],
       healthcheck_worker: "not_healthcheck"
     }
 
@@ -124,7 +124,7 @@ defmodule Ockam.Healthcheck.Test do
       name: "target",
       host: "localhost",
       port: port,
-      api_worker: "api",
+      api_route: ["api"],
       healthcheck_worker: "endpoint",
       path: "/ok",
       method: :get
@@ -168,7 +168,7 @@ defmodule Ockam.Healthcheck.Test do
       name: "target",
       host: "localhost",
       port: port,
-      api_worker: "api",
+      api_route: ["api"],
       healthcheck_worker: "endpoint",
       path: "/error",
       method: :get
@@ -212,7 +212,7 @@ defmodule Ockam.Healthcheck.Test do
       name: "target",
       host: "localhost",
       port: port,
-      api_worker: "not_api",
+      api_route: ["not_api"],
       healthcheck_worker: "healthcheck"
     }
 
@@ -225,7 +225,7 @@ defmodule Ockam.Healthcheck.Test do
       name: "target",
       host: "localhost",
       port: 1234,
-      api_worker: "api",
+      api_route: ["api"],
       healthcheck_worker: "healthcheck"
     }
 

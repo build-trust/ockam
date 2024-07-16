@@ -27,7 +27,7 @@ defmodule Ockam.Healthcheck.ScheduledTarget do
         } = target
       )
       when is_integer(port) do
-    api_worker = Map.get(target, "api_worker", "api")
+    api_route = Map.get(target, "api_route", ["api"])
     body = target |> Map.get("body") |> decode_body()
     method = String.to_existing_atom(method)
 
@@ -40,7 +40,7 @@ defmodule Ockam.Healthcheck.ScheduledTarget do
          path: path,
          method: method,
          body: body,
-         api_worker: api_worker,
+         api_route: api_route,
          healthcheck_worker: healthcheck_worker
        },
        crontab: crontab
@@ -49,7 +49,7 @@ defmodule Ockam.Healthcheck.ScheduledTarget do
 
   def parse(%{"name" => name, "host" => host, "port" => port, "crontab" => crontab} = target)
       when is_integer(port) do
-    api_worker = Map.get(target, "api_worker", "api")
+    api_route = Map.get(target, "api_route", ["api"])
     healthcheck_worker = Map.get(target, "healthcheck_worker", "healthcheck")
 
     {:ok,
@@ -58,7 +58,7 @@ defmodule Ockam.Healthcheck.ScheduledTarget do
          name: name,
          host: host,
          port: port,
-         api_worker: api_worker,
+         api_route: api_route,
          healthcheck_worker: healthcheck_worker
        },
        crontab: crontab

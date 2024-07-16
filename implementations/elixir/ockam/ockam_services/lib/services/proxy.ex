@@ -4,17 +4,7 @@ defmodule Ockam.Services.Proxy do
   (potentially on other nodes)
 
   Forwards messages to the `forward_route`, tracing own inner_address in the return route
-  Forwards messages from the inner address, replacing return route with own outer address
-
-  -OR:[outer_address],RR:return_route-> proxy -OR:forward_route,RR:[inner_address] ; return_route->
-  -OR:[inner_address] ; onward_route,RR:return_route-> proxy -OR:onward_route;RR:[outer_address]->
-
-  Limitations:
-  - proxy worker address should be terminal in the forwarding messages, onward_route will be ignored
-  - return route of inner messages is replaced with the proxy outer address
-
-  Due to these limitations, it may be not possible to establish sessions over the proxy workers.
-  Please use `Ockam.Services.Forwarding` or `Ockam.Services.StaticForwarding` to set up sessions.
+  Forwards messages from the inner address.
 
   Forwarding to TCP addresses:
 
@@ -96,7 +86,8 @@ defmodule Ockam.Services.Proxy do
 
   @impl true
   def handle_outer_message(message, state) do
-    forward_route = Map.get(state, :forward_route)
+    [_ | rest] = message.onward_route
+    forward_route = Map.get(state, :forward_route) ++ rest
     inner_address = Map.get(state, :inner_address)
 
     forwarded_message =
@@ -109,7 +100,8 @@ defmodule Ockam.Services.Proxy do
   @impl true
   def handle_inner_message(message, state) do
     outer_address = Map.get(state, :address)
-    return_route = [outer_address]
+    [_ | rest] = message.return_route
+    return_route = [outer_address] ++ rest
 
     forwarded_message = Message.forward(message) |> Map.put(:return_route, return_route)
 

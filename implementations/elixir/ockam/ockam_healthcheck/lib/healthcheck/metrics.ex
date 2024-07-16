@@ -17,7 +17,7 @@ defmodule Ockam.Healthcheck.Metrics do
           :target_port,
           :target_method,
           :target_path,
-          :api_worker,
+          :api_route,
           :healthcheck_worker
         ],
         tag_values: &expand_target/1
@@ -33,7 +33,7 @@ defmodule Ockam.Healthcheck.Metrics do
           :target_port,
           :target_method,
           :target_path,
-          :api_worker,
+          :api_route,
           :healthcheck_worker
         ],
         tag_values: &expand_target/1
@@ -49,7 +49,7 @@ defmodule Ockam.Healthcheck.Metrics do
           :target_port,
           :target_method,
           :target_path,
-          :api_worker,
+          :api_route,
           :healthcheck_worker,
           :reason
         ],
@@ -80,7 +80,7 @@ defmodule Ockam.Healthcheck.Metrics do
       target_port: Map.get(target, :port, 0),
       target_method: Map.get(target, :method, ""),
       target_path: Map.get(target, :path, ""),
-      api_worker: Map.get(target, :api_worker, ""),
+      api_route: Map.get(target, :api_route, ""),
       healthcheck_worker: Map.get(target, :healthcheck_worker, "")
     })
   end
