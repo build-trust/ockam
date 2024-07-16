@@ -1,18 +1,16 @@
+use async_trait::async_trait;
 use clap::Args;
 use console::Term;
-use miette::IntoDiagnostic;
 
-use crate::{docs, CommandGlobalOpts};
+use crate::{docs, Command, CommandGlobalOpts};
 use ockam::Context;
 use ockam_api::cloud::space::Spaces;
 use ockam_api::nodes::InMemoryNode;
 use ockam_api::terminal::{Terminal, TerminalStream};
-use ockam_core::AsyncTryClone;
 
 use crate::shared_args::IdentityOpts;
 use crate::terminal::tui::ShowCommandTui;
 use crate::tui::PluralTerm;
-use crate::util::async_cmd;
 use ockam_api::output::Output;
 
 const LONG_ABOUT: &str = include_str!("./static/show/long_about.txt");
@@ -35,41 +33,29 @@ pub struct ShowCommand {
     pub identity_opts: IdentityOpts,
 }
 
-impl ShowCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |ctx| async move {
-            self.async_run(&ctx, opts).await
-        })
-    }
+#[async_trait]
+impl Command for ShowCommand {
+    const NAME: &'static str = "space show";
 
-    pub fn name(&self) -> String {
-        "space show".into()
-    }
-
-    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
-        ShowTui::run(
-            ctx.async_try_clone().await.into_diagnostic()?,
-            opts,
-            self.clone(),
-        )
-        .await
+    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+        Ok(ShowTui::run(ctx, opts, self).await?)
     }
 }
 
-pub struct ShowTui {
-    ctx: Context,
+pub struct ShowTui<'a> {
+    ctx: &'a Context,
     opts: CommandGlobalOpts,
     space_name: Option<String>,
     node: InMemoryNode,
 }
 
-impl ShowTui {
+impl<'a> ShowTui<'a> {
     pub async fn run(
-        ctx: Context,
+        ctx: &'a Context,
         opts: CommandGlobalOpts,
         cmd: ShowCommand,
     ) -> miette::Result<()> {
-        let node = InMemoryNode::start(&ctx, &opts.state).await?;
+        let node = InMemoryNode::start(ctx, &opts.state).await?;
         let tui = Self {
             ctx,
             opts,
@@ -81,7 +67,7 @@ impl ShowTui {
 }
 
 #[ockam_core::async_trait]
-impl ShowCommandTui for ShowTui {
+impl<'a> ShowCommandTui for ShowTui<'a> {
     const ITEM_NAME: PluralTerm = PluralTerm::Space;
 
     fn cmd_arg_item_name(&self) -> Option<String> {
@@ -103,7 +89,7 @@ impl ShowCommandTui for ShowTui {
     async fn list_items_names(&self) -> miette::Result<Vec<String>> {
         Ok(self
             .node
-            .get_spaces(&self.ctx)
+            .get_spaces(self.ctx)
             .await?
             .iter()
             .map(|s| s.space_name())
@@ -111,11 +97,11 @@ impl ShowCommandTui for ShowTui {
     }
 
     async fn show_single(&self, item_name: &str) -> miette::Result<()> {
-        let space = self.node.get_space_by_name(&self.ctx, item_name).await?;
+        let space = self.node.get_space_by_name(self.ctx, item_name).await?;
         self.terminal()
             .stdout()
             .plain(space.item()?)
-            .json(serde_json::to_string(&space).into_diagnostic()?)
+            .json_obj(&space)?
             .machine(&space.name)
             .write_line()?;
         Ok(())

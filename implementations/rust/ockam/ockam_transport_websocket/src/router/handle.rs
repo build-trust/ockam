@@ -68,6 +68,7 @@ impl WebSocketRouterHandle {
     }
 
     /// Return the peer's `SocketAddr` and `hostnames` given a plain `String` address.
+    // TODO: Remove in favor of `ockam_node::compat::asynchronous::resolve_peer`
     pub(crate) fn resolve_peer(peer: impl Into<String>) -> Result<(SocketAddr, Vec<String>)> {
         let peer_str = peer.into();
         let peer_addr;
@@ -84,12 +85,12 @@ impl WebSocketRouterHandle {
             if let Some(p) = iter.find(|x| x.is_ipv4()) {
                 peer_addr = p;
             } else {
-                return Err(TransportError::InvalidAddress)?;
+                return Err(TransportError::InvalidAddress(peer_str))?;
             }
 
             hostnames = vec![peer_str];
         } else {
-            return Err(TransportError::InvalidAddress)?;
+            return Err(TransportError::InvalidAddress(peer_str))?;
         }
 
         Ok((peer_addr, hostnames))

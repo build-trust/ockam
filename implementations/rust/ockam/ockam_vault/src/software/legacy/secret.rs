@@ -1,5 +1,5 @@
 use core::fmt;
-use minicbor::{Decode, Encode};
+use minicbor::{CborLen, Decode, Encode};
 use ockam_core::compat::string::String;
 use ockam_core::compat::vec::Vec;
 use ockam_core::hex_encoding;
@@ -11,7 +11,7 @@ use zeroize::{Zeroize, ZeroizeOnDrop};
 pub type KeyId = String;
 
 /// Binary representation of a Secret.
-#[derive(Serialize, Clone, Zeroize, ZeroizeOnDrop, Encode, Decode)]
+#[derive(Serialize, Clone, Zeroize, ZeroizeOnDrop, Encode, Decode, CborLen)]
 #[cbor(transparent)]
 pub struct Secret(
     #[serde(with = "hex_encoding")]

@@ -154,17 +154,18 @@ impl UdsRouterHandle {
     }
 
     /// Resolve the given peer to a [`SocketAddr`](std::os::unix::net::SocketAddr)
+    // TODO: Remove in favor of `ockam_node::compat::asynchronous::resolve_peer`
     pub(crate) fn resolve_peer(peer: impl Into<String>) -> Result<(SocketAddr, Vec<String>)> {
         let peer_str = peer.into();
         let peer_addr;
         let pathnames;
 
         // Then continue working on resolve_route, so that the UdsRouter can have a complete worker definition which requires `handle_message`
-        if let Ok(p) = parse_socket_addr(peer_str) {
+        if let Ok(p) = parse_socket_addr(peer_str.clone()) {
             peer_addr = p;
             pathnames = vec![];
         } else {
-            return Err(TransportError::InvalidAddress)?;
+            return Err(TransportError::InvalidAddress(peer_str))?;
         }
 
         Ok((peer_addr, pathnames))

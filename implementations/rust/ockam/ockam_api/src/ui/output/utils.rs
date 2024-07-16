@@ -5,10 +5,14 @@ use colorful::Colorful;
 use ockam::identity::TimestampInSeconds;
 
 pub fn comma_separated<T: AsRef<str>>(data: &[T]) -> String {
-    data.iter()
-        .map(AsRef::as_ref)
-        .collect::<Vec<_>>()
-        .join(", ")
+    if data.is_empty() {
+        "-".to_string()
+    } else {
+        data.iter()
+            .map(AsRef::as_ref)
+            .collect::<Vec<_>>()
+            .join(", ")
+    }
 }
 
 pub fn human_readable_time(time: TimestampInSeconds) -> String {
@@ -47,6 +51,15 @@ pub fn colorize_connection_status(status: ConnectionStatus) -> CString {
     }
 }
 
+pub fn indent(indent: impl Into<String>, text: impl Into<String>) -> String {
+    let indent: String = indent.into();
+    text.into()
+        .split('\n')
+        .map(|line| format!("{indent}{line}"))
+        .collect::<Vec<String>>()
+        .join("\n")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -56,5 +69,11 @@ mod tests {
         let data = vec!["a", "b", "c"];
         let result = comma_separated(&data);
         assert_eq!(result, "a, b, c");
+    }
+
+    #[test]
+    fn test_indent() {
+        let result = indent("---", "line1\nthen line2\n and finally line3");
+        assert_eq!(result, "---line1\n---then line2\n--- and finally line3");
     }
 }

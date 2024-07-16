@@ -26,7 +26,8 @@ pub const UDS: TransportType = TransportType::new(5);
 pub const CLUSTER_NAME: &str = "_internals.transport.uds";
 
 fn parse_socket_addr<S: AsRef<str>>(s: S) -> Result<SocketAddr> {
-    Ok(SocketAddr::from_pathname(s.as_ref()).map_err(|_| TransportError::InvalidAddress)?)
+    Ok(SocketAddr::from_pathname(s.as_ref())
+        .map_err(|_| TransportError::InvalidAddress(s.as_ref().to_string()))?)
 }
 
 fn std_socket_addr_from_tokio(sock_addr: &TokioSocketAddr) -> Result<SocketAddr> {
@@ -34,7 +35,7 @@ fn std_socket_addr_from_tokio(sock_addr: &TokioSocketAddr) -> Result<SocketAddr>
         Some(p) => p,
         None => {
             error!("Error retrieving path from tokio Socket Addr");
-            Err(TransportError::InvalidAddress)?
+            Err(TransportError::InvalidAddress(format!("{:?}", sock_addr)))?
         }
     };
 
@@ -42,7 +43,9 @@ fn std_socket_addr_from_tokio(sock_addr: &TokioSocketAddr) -> Result<SocketAddr>
         Ok(s) => s,
         Err(e) => {
             error!("Error parsing std SocketAddr from Tokio SocketAddr: {}", e);
-            Err(TransportError::InvalidAddress)?
+            Err(TransportError::InvalidAddress(
+                path.to_string_lossy().to_string(),
+            ))?
         }
     };
 
@@ -52,12 +55,14 @@ fn std_socket_addr_from_tokio(sock_addr: &TokioSocketAddr) -> Result<SocketAddr>
 fn address_from_socket_addr(sock_addr: &SocketAddr) -> Result<Address> {
     let path = match sock_addr.as_pathname() {
         Some(p) => p,
-        None => Err(TransportError::InvalidAddress)?,
+        None => Err(TransportError::InvalidAddress(format!("{:?}", sock_addr)))?,
     };
 
     let path_str = match path.to_str() {
         Some(s) => s,
-        None => Err(TransportError::InvalidAddress)?,
+        None => Err(TransportError::InvalidAddress(
+            path.to_string_lossy().to_string(),
+        ))?,
     };
 
     let address: Address = format!("{UDS}#{path_str}").into();

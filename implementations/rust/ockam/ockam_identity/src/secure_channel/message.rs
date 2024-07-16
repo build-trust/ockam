@@ -1,14 +1,24 @@
 use crate::models::{ChangeHistory, CredentialAndPurposeKey};
-use minicbor::{Decode, Encode};
+use minicbor::{CborLen, Decode, Encode};
 use ockam_core::compat::vec::Vec;
-use ockam_core::Route;
+use ockam_core::{CowBytes, Route};
 
 /// Secure Channel Message format.
-#[derive(Debug, Encode, Decode, Clone)]
+#[derive(Debug, Encode, Decode, CborLen, Clone)]
+#[rustfmt::skip]
+pub struct SecureChannelPaddedMessage<'a> {
+    /// Message itself.
+    #[b(0)] pub message: SecureChannelMessage<'a>,
+    /// Padding to reduce leaking of the message size.
+    #[b(1)] pub padding: CowBytes<'a>,
+}
+
+/// Secure Channel Message format.
+#[derive(Debug, Encode, Decode, CborLen, Clone)]
 #[rustfmt::skip]
 pub enum SecureChannelMessage<'a> {
     /// Encrypted payload message.
-    #[n(0)] Payload(#[b(0)] PlaintextPayloadMessage<'a>),
+    #[b(0)] Payload(#[b(0)] PlaintextPayloadMessage<'a>),
     /// Present credentials one more time.
     #[n(1)] RefreshCredentials(#[n(0)] RefreshCredentialsMessage),
     /// Close the channel.
@@ -16,7 +26,7 @@ pub enum SecureChannelMessage<'a> {
 }
 
 /// Secure Channel Message format.
-#[derive(Debug, Encode, Decode, Clone)]
+#[derive(Debug, Encode, Decode, CborLen, Clone)]
 #[rustfmt::skip]
 pub struct PlaintextPayloadMessage<'a> {
     /// Onward route of the message.
@@ -24,12 +34,11 @@ pub struct PlaintextPayloadMessage<'a> {
     /// Return route of the message.
     #[n(1)] pub return_route: Route,
     /// Untyped binary payload.
-    #[cbor(with = "minicbor::bytes")]
-    #[b(2)] pub payload: &'a [u8],
+    #[b(2)] pub payload: CowBytes<'a>,
 }
 
 /// Secure Channel Message format.
-#[derive(Debug, Encode, Decode, Clone)]
+#[derive(Debug, Encode, Decode, CborLen, Clone)]
 #[rustfmt::skip]
 pub struct RefreshCredentialsMessage {
     /// Exported identity

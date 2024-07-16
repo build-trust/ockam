@@ -16,7 +16,7 @@ async fn main(ctx: Context) -> Result<()> {
     let udp = node.create_udp_transport().await?;
     let udp_bind = udp
         .bind(
-            UdpBindArguments::new().with_peer_address("localhost:3000")?,
+            UdpBindArguments::new().with_peer_address("localhost:3000").await?,
             UdpBindOptions::new(),
         )
         .await?;

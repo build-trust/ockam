@@ -231,6 +231,8 @@ defmodule Ockam.TypedCBOR do
     struct =
       values
       |> Enum.with_index(&{&2, &1})
+      # field not present
+      |> Enum.filter(fn {_, v} -> v != nil end)
       |> Enum.into(%{})
 
     from_cbor_term({:struct, fields}, struct)

@@ -1,5 +1,7 @@
 use core::str::FromStr;
 
+use sqlx::database::HasArguments;
+use sqlx::encode::IsNull;
 use sqlx::*;
 use tracing::debug;
 
@@ -8,7 +10,7 @@ use ockam_core::compat::string::{String, ToString};
 use ockam_core::compat::vec::Vec;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::Result;
-use ockam_node::database::{FromSqlxError, SqlxDatabase, SqlxType, ToSqlxType, ToVoid};
+use ockam_node::database::{FromSqlxError, SqlxDatabase, ToVoid};
 
 use crate::identity::IdentityConstants;
 use crate::models::{Identifier, PurposeKeyAttestation};
@@ -42,17 +44,23 @@ impl PurposeKeysRepository for PurposeKeysSqlxDatabase {
         purpose: Purpose,
         purpose_key_attestation: &PurposeKeyAttestation,
     ) -> Result<()> {
-        let query = query("INSERT OR REPLACE INTO purpose_key VALUES (?, ?, ?)")
-            .bind(subject.to_sql())
-            .bind(purpose.to_sql())
-            .bind(minicbor::to_vec(purpose_key_attestation)?.to_sql());
+        let query = query(
+            r#"
+            INSERT INTO purpose_key (identifier, purpose, purpose_key_attestation)
+            VALUES ($1, $2, $3)
+            ON CONFLICT (identifier, purpose)
+            DO UPDATE SET purpose_key_attestation = $3"#,
+        )
+        .bind(subject)
+        .bind(purpose)
+        .bind(purpose_key_attestation);
         query.execute(&*self.database.pool).await.void()
     }
 
     async fn delete_purpose_key(&self, subject: &Identifier, purpose: Purpose) -> Result<()> {
-        let query = query("DELETE FROM purpose_key WHERE identifier = ? and purpose = ?")
-            .bind(subject.to_sql())
-            .bind(purpose.to_sql());
+        let query = query("DELETE FROM purpose_key WHERE identifier = $1 and purpose = $2")
+            .bind(subject)
+            .bind(purpose);
         query.execute(&*self.database.pool).await.void()
     }
 
@@ -61,9 +69,9 @@ impl PurposeKeysRepository for PurposeKeysSqlxDatabase {
         identifier: &Identifier,
         purpose: Purpose,
     ) -> Result<Option<PurposeKeyAttestation>> {
-        let query = query_as("SELECT identifier, purpose, purpose_key_attestation FROM purpose_key WHERE identifier=$1 and purpose=$2")
-            .bind(identifier.to_sql())
-            .bind(purpose.to_sql());
+        let query = query_as("SELECT identifier, purpose, purpose_key_attestation FROM purpose_key WHERE identifier = $1 and purpose = $2")
+            .bind(identifier)
+            .bind(purpose);
         let row: Option<PurposeKeyRow> = query
             .fetch_optional(&*self.database.pool)
             .await
@@ -80,6 +88,37 @@ impl PurposeKeysRepository for PurposeKeysSqlxDatabase {
 }
 
 // Database serialization / deserialization
+
+impl Type<Any> for Purpose {
+    fn type_info() -> <Any as Database>::TypeInfo {
+        <String as Type<Any>>::type_info()
+    }
+}
+
+impl Encode<'_, Any> for Purpose {
+    fn encode_by_ref(&self, buf: &mut <Any as HasArguments>::ArgumentBuffer) -> IsNull {
+        let purpose = match self {
+            Purpose::SecureChannel => IdentityConstants::SECURE_CHANNEL_PURPOSE_KEY,
+            Purpose::Credentials => IdentityConstants::CREDENTIALS_PURPOSE_KEY,
+        };
+        <String as Encode<'_, Any>>::encode_by_ref(&purpose.to_string(), buf)
+    }
+}
+
+impl Type<Any> for PurposeKeyAttestation {
+    fn type_info() -> <Any as Database>::TypeInfo {
+        <Vec<u8> as Type<Any>>::type_info()
+    }
+}
+
+impl Encode<'_, Any> for PurposeKeyAttestation {
+    fn encode_by_ref(&self, buf: &mut <Any as HasArguments>::ArgumentBuffer) -> IsNull {
+        <Vec<u8> as Encode<'_, Any>>::encode_by_ref(
+            &ockam_core::cbor_encode_preallocate(self).unwrap(),
+            buf,
+        )
+    }
+}
 
 #[derive(FromRow)]
 pub(crate) struct PurposeKeyRow {
@@ -112,19 +151,6 @@ impl PurposeKeyRow {
 
     pub(crate) fn purpose_key_attestation(&self) -> Result<PurposeKeyAttestation> {
         Ok(minicbor::decode(self.purpose_key_attestation.as_slice())?)
-    }
-}
-
-impl ToSqlxType for Purpose {
-    fn to_sql(&self) -> SqlxType {
-        match self {
-            Purpose::SecureChannel => {
-                SqlxType::Text(IdentityConstants::SECURE_CHANNEL_PURPOSE_KEY.to_string())
-            }
-            Purpose::Credentials => {
-                SqlxType::Text(IdentityConstants::CREDENTIALS_PURPOSE_KEY.to_string())
-            }
-        }
     }
 }
 

@@ -1,5 +1,4 @@
 use std::io::{Error, ErrorKind};
-use std::net::SocketAddr;
 
 use bytes::{Bytes, BytesMut};
 use kafka_protocol::messages::fetch_response::FetchResponse;
@@ -149,7 +148,7 @@ impl InletInterceptorImpl {
         trace!("metadata response before: {:?}", &response);
 
         for (broker_id, info) in response.brokers.iter_mut() {
-            let inlet_address: SocketAddr = inlet_map
+            let inlet_address = inlet_map
                 .assert_inlet_for_broker(context, broker_id.0)
                 .await
                 .map_err(InterceptError::Ockam)?;
@@ -160,8 +159,7 @@ impl InletInterceptorImpl {
                 broker_id.0
             );
 
-            let ip_address = inlet_address.ip().to_string();
-            info.host = StrBytes::from_string(ip_address);
+            info.host = StrBytes::from_string(inlet_address.hostname());
             info.port = inlet_address.port() as i32;
         }
         trace!("metadata response after: {:?}", &response);
@@ -185,28 +183,26 @@ impl InletInterceptorImpl {
         let mut response: FindCoordinatorResponse =
             decode_body(buffer, request_info.request_api_version)?;
 
-        // similarly to metadata, we want to expressed the coordinator using
+        // similarly to metadata, we want to express the coordinator using
         // local sidecar ip address
         // the format changed to array since version 4
         if request_info.request_api_version >= 4 {
             for coordinator in response.coordinators.iter_mut() {
-                let inlet_address: SocketAddr = inlet_map
+                let inlet_address = inlet_map
                     .assert_inlet_for_broker(context, coordinator.node_id.0)
                     .await
                     .map_err(InterceptError::Ockam)?;
 
-                let ip_address = inlet_address.ip().to_string();
-                coordinator.host = StrBytes::from_string(ip_address);
+                coordinator.host = StrBytes::from_string(inlet_address.hostname());
                 coordinator.port = inlet_address.port() as i32;
             }
         } else {
-            let inlet_address: SocketAddr = inlet_map
+            let inlet_address = inlet_map
                 .assert_inlet_for_broker(context, response.node_id.0)
                 .await
                 .map_err(InterceptError::Ockam)?;
 
-            let ip_address = inlet_address.ip().to_string();
-            response.host = StrBytes::from_string(ip_address);
+            response.host = StrBytes::from_string(inlet_address.hostname());
             response.port = inlet_address.port() as i32;
         }
 

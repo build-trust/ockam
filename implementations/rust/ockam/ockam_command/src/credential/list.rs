@@ -1,11 +1,10 @@
 use clap::Args;
-use colorful::Colorful;
 use miette::IntoDiagnostic;
 
 use ockam::identity::{CredentialSqlxDatabase, Identifier};
-use ockam_api::colors::OckamColor;
+use ockam_api::colors::color_primary;
 
-use crate::credential::CredentialOutput;
+use crate::credential::LocalCredentialOutput;
 use crate::node::NodeOpts;
 use crate::util::async_cmd;
 use crate::util::parsers::identity_identifier_parser;
@@ -49,18 +48,22 @@ impl ListCommand {
 
         let credentials = credentials
             .into_iter()
-            .map(|c| CredentialOutput::from_credential(c.0, c.1, true))
-            .collect::<Result<Vec<CredentialOutput>>>()?;
+            .map(|c| LocalCredentialOutput::from_credential(c.0, c.1, true))
+            .collect::<Result<Vec<LocalCredentialOutput>>>()?;
 
         let list = opts.terminal.build_list(
             &credentials,
             &format!(
-                "No Credentials found for vault: {}",
-                node_name.color(OckamColor::PrimaryResource.color())
+                "No Credentials found for node: {}",
+                color_primary(node_name)
             ),
         )?;
 
-        opts.terminal.stdout().plain(list).write_line()?;
+        opts.terminal
+            .stdout()
+            .plain(list)
+            .json_obj(credentials)?
+            .write_line()?;
 
         Ok(())
     }

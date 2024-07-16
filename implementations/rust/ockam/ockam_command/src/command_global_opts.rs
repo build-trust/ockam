@@ -53,6 +53,7 @@ impl CommandGlobalOpts {
         let tracing_configuration = Self::make_tracing_configuration(cmd)?;
         let terminal = Terminal::new(
             logging_configuration.is_enabled(),
+            logging_configuration.log_dir().is_some(),
             global_args.quiet,
             global_args.no_color,
             global_args.no_input,
@@ -152,11 +153,18 @@ impl CommandGlobalOpts {
             Ok(LoggingConfiguration::background(log_path, crates).into_diagnostic()?)
         } else {
             let preferred_log_level = verbose_log_level(global_args.verbose);
-            let colored = if !global_args.no_color && is_tty {
+            let log_path = if preferred_log_level.is_some() || cmd.is_foreground_node() {
+                None
+            } else {
+                Some(CliState::command_log_path(cmd.name().as_str())?)
+            };
+
+            let colored = if !global_args.no_color && is_tty && log_path.is_none() {
                 Colored::On
             } else {
                 Colored::Off
             };
+
             Ok(
                 logging_configuration(preferred_log_level, colored, log_path, crates)
                     .into_diagnostic()?,

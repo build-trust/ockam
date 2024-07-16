@@ -4,7 +4,7 @@ use crate::{
 };
 use core::fmt;
 use core::fmt::{Display, Formatter};
-use minicbor::{Decode, Encode};
+use minicbor::{CborLen, Decode, Encode};
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
 
@@ -74,7 +74,7 @@ impl SecretAttributes {
 }
 
 /// All possible [`SecretType`]s
-#[derive(Serialize, Deserialize, Copy, Clone, Debug, Encode, Decode, Eq, PartialEq, Zeroize, PartialOrd, Ord)]
+#[derive(Serialize, Deserialize, Copy, Clone, Debug, Encode, Decode, CborLen, Eq, PartialEq, Zeroize, PartialOrd, Ord)]
 #[rustfmt::skip]
 #[cbor(index_only)]
 pub enum SecretType {

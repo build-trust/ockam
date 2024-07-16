@@ -147,9 +147,9 @@ force_kill_node() {
 }
 
 @test "node - node in foreground with configuration is deleted if something fails" {
-  # The config file has a typo in the "to" address to trigger an error after the node is created.
+  # The config file has invalid port to trigger an error after the node is created.
   # The command should return an error and the node should be deleted.
-  run_failure "$OCKAM" node create --configuration "{name: n, tcp-outlets: {db-outlet: {to: \"localhosst:3000\"}}}"
+  run_failure "$OCKAM" node create --configuration "{name: n, tcp-outlets: {db-outlet: {to: \"localhost:65536\"}}}"
   run_success $OCKAM node show n --output json
   assert_output --partial "[]"
 }
@@ -180,7 +180,7 @@ force_kill_node() {
 }
 
 @test "node - check the contents returned from the HTTP server endpoints" {
-  run_success $OCKAM node create --enable-http-server
+  run_success $OCKAM node create --http-server
   run_success $OCKAM node show --output json
   cmd_output="$output"
   http_addr="$(echo $cmd_output | jq -r .http_server_address)"
@@ -190,7 +190,7 @@ force_kill_node() {
 }
 
 @test "node - the HTTP server is enabled with a boolean flag and a random port is assigned to it" {
-  run_success $OCKAM node create --enable-http-server
+  run_success $OCKAM node create --http-server
   run_success $OCKAM node show --output json
   http_addr="$(echo $output | jq -r .http_server_address)"
   run_success curl -fsI -m 2 $http_addr

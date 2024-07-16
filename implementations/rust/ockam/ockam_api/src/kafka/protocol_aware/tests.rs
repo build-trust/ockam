@@ -7,6 +7,7 @@ mod test {
     use crate::kafka::secure_channel_map::controller::KafkaSecureChannelControllerImpl;
     use crate::kafka::{ConsumerPublishing, ConsumerResolution};
     use crate::port_range::PortRange;
+    use crate::test_utils::TestNode;
     use kafka_protocol::messages::ApiKey;
     use kafka_protocol::messages::BrokerId;
     use kafka_protocol::messages::{ApiVersionsRequest, MetadataRequest, MetadataResponse};
@@ -22,13 +23,14 @@ mod test {
     async fn interceptor__basic_messages_with_several_api_versions__parsed_correctly(
         context: &mut Context,
     ) -> ockam::Result<()> {
+        TestNode::clean().await?;
         let handle = crate::test_utils::start_manager_for_tests(context, None, None).await?;
 
         let inlet_map = KafkaInletController::new(
             MultiAddr::default(),
             route![],
             route![],
-            [127, 0, 0, 1].into(),
+            "127.0.0.1".to_string(),
             PortRange::new(0, 0).unwrap(),
             None,
         );

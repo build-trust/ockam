@@ -1,6 +1,6 @@
 [package]
 name = "ockam_core"
-version = "0.111.0"
+version = "0.112.0"
 authors = ["Ockam Developers"]
 categories = [
   "cryptography",
@@ -71,7 +71,7 @@ error-traces = [
 debugger = []
 
 [dependencies]
-async-trait = "0.1.80"
+async-trait = "0.1.81"
 backtrace = { version = "0.3", default-features = false, features = ["std", "serialize-serde"], optional = true }
 cfg-if = "1.0"
 core2 = { version = "0.4.0", default-features = false, optional = true }
@@ -80,7 +80,7 @@ hashbrown = { version = "0.14", default-features = false, features = ["ahash", "
 hex = { version = "0.4", default-features = false, optional = true }
 miette = { version = "7", optional = true }
 minicbor = { version = "0.24.1", features = ["derive"] }
-ockam_macros = { path = "../ockam_macros", version = "^0.34.0", default_features = false }
+ockam_macros = { path = "../ockam_macros", version = "^0.34.0", default-features = false }
 once_cell = { version = "1", optional = true, default-features = false }
 opentelemetry = { version = "0.23.0", features = ["logs", "metrics", "trace"], optional = true }
 rand = { version = "0.8", default-features = false }
@@ -91,7 +91,7 @@ serde_bare = { version = "0.5.0", default-features = false }
 serde_json = { version = "1", optional = true }
 spin = { version = "0.9.8", default-features = false, features = ["mutex", "rwlock", "spin_mutex"], optional = true }
 strum = { version = "0.26.3", default-features = false, features = ["derive"] }
-tinyvec = { version = "1.6.0", features = ["rustc_1_57"] }
+tinyvec = { version = "1.8.0", features = ["rustc_1_57"] }
 tracing = { version = "0.1", default-features = false }
 tracing-error = { version = "0.2", default-features = false, optional = true }
 tracing-opentelemetry = { version = "0.24.0", optional = true }

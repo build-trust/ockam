@@ -69,6 +69,7 @@ EOF
 
   ## Create node and try to reach it
   run_success "$OCKAM" node create "$BATS_TEST_DIRNAME/fixtures/node-create.basic.config.yaml" \
+    --foreground \
     --enrollment-ticket "$ticket_path" \
     --variable SERVICE_PORT="$PYTHON_SERVER_PORT" &
   sleep 1

@@ -3,6 +3,7 @@ use std::time::Duration;
 
 use miette::{miette, IntoDiagnostic};
 use minicbor::{Decode, Encode};
+use ockam::identity::get_default_timeout;
 
 use ockam::tcp::{TcpConnection, TcpConnectionOptions, TcpTransport};
 use ockam_core::api::{Reply, Request};
@@ -73,7 +74,7 @@ impl BackgroundNodeClient {
             cli_state: cli_state.clone(),
             node_name: node_name.to_string(),
             to: NODEMANAGER_ADDR.into(),
-            timeout: Some(Duration::from_secs(30)),
+            timeout: Some(get_default_timeout()),
             tcp_transport: Arc::new(tcp_transport.clone()),
         })
     }

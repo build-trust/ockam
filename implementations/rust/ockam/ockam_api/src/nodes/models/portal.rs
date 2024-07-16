@@ -1,11 +1,10 @@
 //! Inlets and outlet request/response types
 
 use std::fmt::{Display, Formatter};
-use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
 
-use minicbor::{Decode, Encode};
+use minicbor::{CborLen, Decode, Encode};
 use ockam::identity::Identifier;
 use ockam::transport::HostnamePort;
 use ockam_abac::PolicyExpression;
@@ -21,12 +20,12 @@ use crate::session::sessions::ConnectionStatus;
 use crate::{route_to_multiaddr, try_address_to_multiaddr};
 
 /// Request body to create an inlet
-#[derive(Clone, Debug, Decode, Encode)]
+#[derive(Clone, Debug, Encode, Decode, CborLen)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct CreateInlet {
     /// The address the portal should listen at.
-    #[n(1)] pub(crate) listen_addr: String,
+    #[n(1)] pub(crate) listen_addr: HostnamePort,
     /// The peer address.
     /// This can either be the address of an already
     /// created outlet, or a forwarding mechanism via ockam cloud.
@@ -64,7 +63,7 @@ pub struct CreateInlet {
 impl CreateInlet {
     #[allow(clippy::too_many_arguments)]
     pub fn via_project(
-        listen: String,
+        listen: HostnamePort,
         to: MultiAddr,
         alias: String,
         prefix_route: Route,
@@ -91,7 +90,7 @@ impl CreateInlet {
 
     #[allow(clippy::too_many_arguments)]
     pub fn to_node(
-        listen: String,
+        listen: HostnamePort,
         to: MultiAddr,
         alias: String,
         prefix_route: Route,
@@ -129,7 +128,7 @@ impl CreateInlet {
         self.secure_channel_identifier = Some(identifier);
     }
 
-    pub fn listen_addr(&self) -> String {
+    pub fn listen_addr(&self) -> HostnamePort {
         self.listen_addr.clone()
     }
 
@@ -159,7 +158,7 @@ impl CreateInlet {
 }
 
 /// Request body to create an outlet
-#[derive(Clone, Debug, Decode, Encode)]
+#[derive(Clone, Debug, Encode, Decode, CborLen)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct CreateOutlet {
@@ -200,7 +199,7 @@ impl CreateOutlet {
 }
 
 /// Response body when interacting with a portal endpoint
-#[derive(Clone, Debug, Decode, Encode, Serialize)]
+#[derive(Clone, Debug, Encode, Decode, CborLen, Serialize)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct InletStatus {
@@ -264,24 +263,20 @@ impl Output for InletStatus {
 }
 
 /// Response body when interacting with a portal endpoint
-#[derive(Clone, Debug, Decode, Encode, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Encode, Decode, CborLen, Serialize, Deserialize, PartialEq)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct OutletStatus {
-    #[n(1)] pub socket_addr: SocketAddr,
+    #[n(1)] pub to: HostnamePort,
     #[n(2)] pub worker_addr: Address,
     /// An optional status payload
     #[n(3)] pub payload: Option<String>,
 }
 
 impl OutletStatus {
-    pub fn new(
-        socket_addr: SocketAddr,
-        worker_addr: Address,
-        payload: impl Into<Option<String>>,
-    ) -> Self {
+    pub fn new(to: HostnamePort, worker_addr: Address, payload: impl Into<Option<String>>) -> Self {
         Self {
-            socket_addr,
+            to,
             worker_addr,
             payload: payload.into(),
         }
@@ -311,7 +306,7 @@ impl Display for OutletStatus {
                     .map_err(|_| std::fmt::Error)?
                     .to_string()
             ),
-            color_primary(self.socket_addr.to_string()),
+            color_primary(self.to.to_string()),
         )
     }
 }

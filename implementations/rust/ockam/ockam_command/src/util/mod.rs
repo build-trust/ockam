@@ -26,6 +26,7 @@ use crate::{CommandGlobalOpts, Result};
 
 pub mod api;
 pub mod exitcode;
+pub mod foreground_args;
 pub mod parsers;
 pub mod validators;
 

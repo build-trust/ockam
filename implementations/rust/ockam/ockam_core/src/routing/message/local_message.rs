@@ -1,9 +1,7 @@
 #[cfg(feature = "std")]
 use crate::OpenTelemetryContext;
-use crate::{
-    compat::vec::Vec, route, Address, Message, ProtocolVersion, Route, TransportMessage,
-    PROTOCOL_VERSION_V1,
-};
+use crate::{compat::vec::Vec, route, Address, Message, Route, TransportMessage};
+
 use crate::{LocalInfo, Result};
 use cfg_if::cfg_if;
 use serde::{Deserialize, Serialize};
@@ -43,29 +41,22 @@ use serde::{Deserialize, Serialize};
 ///
 #[derive(Serialize, Deserialize, Debug, Clone, Hash, Ord, PartialOrd, Eq, PartialEq, Message)]
 pub struct LocalMessage {
-    /// Protocol version which should be used on the return route
-    protocol_version: ProtocolVersion,
     /// Onward message route.
-    onward_route: Route,
+    pub onward_route: Route,
     /// Return message route. This field must be populated by routers handling this message along the way.
-    return_route: Route,
+    pub return_route: Route,
     /// The message payload.
-    payload: Vec<u8>,
+    pub payload: Vec<u8>,
     /// Local information added by workers to give additional context to the message
-    /// independently from its payload. For example this can be used to store the identifier that
+    /// independently of its payload. For example this can be used to store the identifier that
     /// was used to encrypt the payload
-    local_info: Vec<LocalInfo>,
+    pub local_info: Vec<LocalInfo>,
     /// Local tracing context
     #[cfg(feature = "std")]
-    tracing_context: OpenTelemetryContext,
+    pub tracing_context: OpenTelemetryContext,
 }
 
 impl LocalMessage {
-    /// Return the protocol version on the return route
-    pub fn protocol_version(&self) -> ProtocolVersion {
-        self.protocol_version
-    }
-
     /// Return the message onward route
     pub fn onward_route(&self) -> Route {
         self.onward_route.clone()
@@ -208,13 +199,11 @@ impl LocalMessage {
                     .with_onward_route(transport_message.onward_route)
                     .with_return_route(transport_message.return_route)
                     .with_payload(transport_message.payload)
-                    .with_protocol_version(transport_message.version)
                 } else {
                 LocalMessage::new()
                     .with_onward_route(transport_message.onward_route)
                     .with_return_route(transport_message.return_route)
                     .with_payload(transport_message.payload)
-                    .with_protocol_version(transport_message.version)
             }
         }
     }
@@ -222,7 +211,8 @@ impl LocalMessage {
     /// Create a [`TransportMessage`] from a [`LocalMessage`]
     pub fn into_transport_message(self) -> TransportMessage {
         let transport_message = TransportMessage::new(
-            self.protocol_version,
+            // TODO: This whole function should go away as we move TransportMessage to individual crates
+            1,
             self.onward_route,
             self.return_route,
             self.payload,
@@ -232,11 +222,51 @@ impl LocalMessage {
         cfg_if! {
             if #[cfg(feature = "std")] {
                 // make sure to pass the latest tracing context
-                transport_message.start_new_tracing_context(self.tracing_context.update())
+                let new_tracing_context = Self::start_new_tracing_context(self.tracing_context.update(), "TransportMessage");
+                transport_message.with_tracing_context(new_tracing_context)
             } else {
                 transport_message
             }
         }
+    }
+
+    /// - A new trace is started
+    /// - The previous trace and the new trace are linked together
+    ///
+    /// We start a new trace here in order to make sure that each transport message is always
+    /// associated to a globally unique trace id and then cannot be correlated with another transport
+    /// message that would leave the same node for example.
+    ///
+    /// We can still navigate the two created traces as one thanks to their link.
+    #[cfg(feature = "std")]
+    pub fn start_new_tracing_context(
+        tracing_context: OpenTelemetryContext,
+        span_prefix: &str,
+    ) -> String {
+        use crate::OCKAM_TRACER_NAME;
+        use opentelemetry::trace::{Link, SpanBuilder, TraceContextExt, Tracer};
+        use opentelemetry::{global, Context};
+
+        // start a new trace for this transport message, and link it to the previous trace, via the current tracing context
+        let tracer = global::tracer(OCKAM_TRACER_NAME);
+        let span_builder = SpanBuilder::from_name(format!("{}::start_trace", span_prefix))
+            .with_links(vec![Link::new(
+                tracing_context.extract().span().span_context().clone(),
+                vec![],
+                0,
+            )]);
+        let span = tracer.build_with_context(span_builder, &Context::default());
+        let cx = Context::current_with_span(span);
+
+        // create a span to close the previous trace and link it to the new trace
+        let span_builder = SpanBuilder::from_name(format!("{}::end_trace", span_prefix))
+            .with_links(vec![Link::new(cx.span().span_context().clone(), vec![], 0)]);
+        let _ = tracer.build_with_context(span_builder, &tracing_context.extract());
+
+        // create the new opentelemetry context
+        let new_tracing_context = OpenTelemetryContext::inject(&cx);
+
+        new_tracing_context.to_string()
     }
 }
 
@@ -255,7 +285,6 @@ impl LocalMessage {
         local_info: Vec<LocalInfo>,
     ) -> Self {
         LocalMessage {
-            protocol_version: PROTOCOL_VERSION_V1,
             onward_route,
             return_route,
             payload,
@@ -302,14 +331,6 @@ impl LocalMessage {
     pub fn with_tracing_context(self, tracing_context: OpenTelemetryContext) -> Self {
         Self {
             tracing_context,
-            ..self
-        }
-    }
-
-    /// Specify the version for the message
-    pub fn with_protocol_version(self, protocol_version: ProtocolVersion) -> Self {
-        Self {
-            protocol_version,
             ..self
         }
     }

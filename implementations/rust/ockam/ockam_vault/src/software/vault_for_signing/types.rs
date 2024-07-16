@@ -47,6 +47,16 @@ pub enum SigningSecret {
     ECDSASHA256CurveP256(ECDSASHA256CurveP256SecretKey),
 }
 
+impl SigningSecret {
+    /// Return the secret key
+    pub fn key(&self) -> &[u8; 32] {
+        match self {
+            SigningSecret::EdDSACurve25519(k) => k.key(),
+            SigningSecret::ECDSASHA256CurveP256(k) => k.key(),
+        }
+    }
+}
+
 const_assert_eq!(
     ed25519_dalek::SECRET_KEY_LENGTH,
     EDDSA_CURVE25519_SECRET_KEY_LENGTH

@@ -87,25 +87,26 @@ pub mod tcp {
     pub use ockam_transport_tcp::{
         TcpConnection, TcpConnectionMode, TcpConnectionOptions, TcpInletOptions, TcpListener,
         TcpListenerInfo, TcpListenerOptions, TcpOutletOptions, TcpSenderInfo, TcpTransport,
-        TcpTransportExtension, TCP,
+        TcpTransportExtension, MAX_MESSAGE_SIZE, TCP,
     };
 }
 #[cfg(feature = "ockam_transport_udp")]
 /// UDP transport
 pub mod udp {
     pub use ockam_transport_udp::{
-        UdpBindArguments, UdpBindOptions, UdpPunctureNegotiation, UdpPunctureNegotiationListener,
-        UdpPunctureNegotiationListenerOptions, UdpTransport, UdpTransportExtension, UDP,
+        RendezvousClient, RendezvousService, UdpBindArguments, UdpBindOptions,
+        UdpPunctureNegotiation, UdpPunctureNegotiationListener,
+        UdpPunctureNegotiationListenerOptions, UdpTransport, UdpTransportExtension,
+        MAX_MESSAGE_SIZE, UDP,
     };
 }
 pub use relay_service::{RelayService, RelayServiceOptions};
 
 /// Transport
 pub mod transport {
-    #[cfg(feature = "std")]
-    pub use ockam_transport_core::resolve_peer;
-
-    pub use ockam_transport_core::{parse_socket_addr, HostnamePort, Transport};
+    pub use ockam_transport_core::{
+        parse_socket_addr, HostnamePort, StaticHostnamePort, Transport,
+    };
 }
 
 // ---

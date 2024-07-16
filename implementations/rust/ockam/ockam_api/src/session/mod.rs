@@ -1,4 +1,4 @@
-use minicbor::{Decode, Encode};
+use minicbor::{CborLen, Decode, Encode};
 use tokio::task::JoinHandle;
 use tracing as log;
 
@@ -31,7 +31,7 @@ pub struct Medic {
     replacements: JoinSet<(String, Result<ReplacerOutcome, Error>)>,
 }
 
-#[derive(Debug, Clone, Encode, Decode)]
+#[derive(Debug, Clone, Encode, Decode, CborLen)]
 #[rustfmt::skip]
 pub struct Message {
     #[n(0)] key: String,
@@ -58,10 +58,16 @@ impl Medic {
     }
 
     pub async fn start(self, ctx: Context) -> Result<JoinHandle<()>, Error> {
+        // Stop a collector that was previously started if there is any
+        if ctx.is_worker_registered_at(Collector::address()).await? {
+            Self::stop(&ctx).await?
+        };
+
         let ctx = ctx
             .new_detached(Address::random_tagged("Medic.ctx"), DenyAll, AllowAll)
             .await?;
         let (tx, ping_receiver) = mpsc::channel(32);
+
         WorkerBuilder::new(Collector(tx))
             .with_address(Collector::address())
             .with_outgoing_access_control(DenyAll)
@@ -244,7 +250,7 @@ impl Message {
 
 impl Encodable for Message {
     fn encode(self) -> Result<Vec<u8>, Error> {
-        minicbor::to_vec(self).map_err(Error::from)
+        ockam_core::cbor_encode_preallocate(self).map_err(Error::from)
     }
 }
 
@@ -264,7 +270,7 @@ impl Collector {
     const NAME: &'static str = "ockam.ping.collector";
 
     fn address() -> Address {
-        Address::new(LOCAL, Self::NAME)
+        Address::new_with_string(LOCAL, Self::NAME)
     }
 }
 

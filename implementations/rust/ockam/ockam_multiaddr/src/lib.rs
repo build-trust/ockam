@@ -740,6 +740,12 @@ impl<C> minicbor::Encode<C> for MultiAddr {
     }
 }
 
+impl<C> minicbor::CborLen<C> for MultiAddr {
+    fn cbor_len(&self, ctx: &mut C) -> usize {
+        self.as_ref().cbor_len(ctx)
+    }
+}
+
 #[cfg(feature = "cbor")]
 impl<'b, C> minicbor::Decode<'b, C> for MultiAddr {
     fn decode(d: &mut minicbor::Decoder<'b>, _: &mut C) -> Result<Self, minicbor::decode::Error> {

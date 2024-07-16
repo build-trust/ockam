@@ -298,7 +298,7 @@ impl ConnectionBuilder {
         while let Some(protocol) = peekable.next() {
             if protocol.code() == Service::CODE {
                 if let Some(service) = protocol.cast::<Service>() {
-                    let address = Address::new(LOCAL, &*service);
+                    let address = Address::new_with_string(LOCAL, &*service);
                     let is_last = peekable.peek().is_none();
 
                     // we usually want to skip the last entry since it's normally the destination

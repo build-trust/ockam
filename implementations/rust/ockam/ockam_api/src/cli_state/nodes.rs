@@ -1,4 +1,4 @@
-use minicbor::{Decode, Encode};
+use minicbor::{CborLen, Decode, Encode};
 use std::fmt::{Display, Formatter};
 use std::path::PathBuf;
 use std::process;
@@ -155,18 +155,13 @@ impl CliState {
     ///  - remove the node log files
     #[instrument(skip_all, fields(node_name = node_name))]
     pub async fn remove_node(&self, node_name: &str) -> Result<()> {
-        // don't try to remove a node on a non-existent database
-        if !self.database_path().exists() {
-            return Ok(());
-        };
-
         // remove the node from the database
         let repository = self.nodes_repository();
         let node_exists = repository.get_node(node_name).await.is_ok();
-        repository.delete_node(node_name).await?;
 
         // set another node as the default node
         if node_exists {
+            repository.delete_node(node_name).await?;
             let other_nodes = repository.get_nodes().await?;
             if let Some(other_node) = other_nodes.first() {
                 repository.set_default_node(&other_node.name()).await?;
@@ -455,9 +450,17 @@ impl CliState {
     pub fn node_dir(&self, node_name: &str) -> PathBuf {
         Self::make_node_dir_path(&self.dir(), node_name)
     }
+
+    /// Return a log path to be used for a given command
+    pub fn command_log_path(command_name: &str) -> Result<PathBuf> {
+        Ok(Self::make_command_log_path(
+            &CliState::default_dir()?,
+            command_name,
+        ))
+    }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Serialize, Decode, Encode)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Encode, Decode, CborLen)]
 #[serde(rename_all = "lowercase", tag = "status", content = "pid")]
 pub enum NodeProcessStatus {
     #[n(0)]

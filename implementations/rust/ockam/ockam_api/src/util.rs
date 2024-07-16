@@ -25,7 +25,7 @@ pub fn local_multiaddr_to_route(ma: &MultiAddr) -> Result<Route> {
                     Kind::Invalid,
                     format!("incorrect worker address {ma})",),
                 ))?;
-                rb = rb.append(Address::new(LOCAL, &*local))
+                rb = rb.append(Address::new_with_string(LOCAL, &*local))
             }
             Service::CODE => {
                 let local = p.cast::<Service>().ok_or(Error::new(
@@ -33,7 +33,7 @@ pub fn local_multiaddr_to_route(ma: &MultiAddr) -> Result<Route> {
                     Kind::Invalid,
                     format!("incorrect service address {ma})",),
                 ))?;
-                rb = rb.append(Address::new(LOCAL, &*local))
+                rb = rb.append(Address::new_with_string(LOCAL, &*local))
             }
             Secure::CODE => {
                 let local = p.cast::<Secure>().ok_or(Error::new(
@@ -41,7 +41,7 @@ pub fn local_multiaddr_to_route(ma: &MultiAddr) -> Result<Route> {
                     Kind::Invalid,
                     format!("incorrect secure address {ma})",),
                 ))?;
-                rb = rb.append(Address::new(LOCAL, &*local))
+                rb = rb.append(Address::new_with_string(LOCAL, &*local))
             }
 
             Node::CODE => {
@@ -178,15 +178,15 @@ pub async fn multiaddr_to_route(
             }
             Worker::CODE => {
                 let local = p.cast::<Worker>()?;
-                rb = rb.append(Address::new(LOCAL, &*local))
+                rb = rb.append(Address::new_with_string(LOCAL, &*local))
             }
             Service::CODE => {
                 let local = p.cast::<Service>()?;
-                rb = rb.append(Address::new(LOCAL, &*local))
+                rb = rb.append(Address::new_with_string(LOCAL, &*local))
             }
             Secure::CODE => {
                 let local = p.cast::<Secure>()?;
-                rb = rb.append(Address::new(LOCAL, &*local))
+                rb = rb.append(Address::new_with_string(LOCAL, &*local))
             }
             other => {
                 error!(target: "ockam_api", code = %other, "unsupported protocol");
@@ -216,13 +216,16 @@ pub fn multiaddr_to_transport_route(ma: &MultiAddr) -> Option<Route> {
                 let ip4 = p.cast::<Ip4>()?;
                 let port = it.next()?.cast::<Tcp>()?;
                 let socket_addr = SocketAddrV4::new(*ip4, *port);
-                route = route.append(Address::new(TCP, socket_addr.to_string()))
+                route = route.append(Address::new_with_string(TCP, socket_addr.to_string()))
             }
             Ip6::CODE => {
                 let ip6 = p.cast::<Ip6>()?;
                 let port = it.next()?.cast::<Tcp>()?;
                 let socket_addr = SocketAddrV6::new(*ip6, *port, 0, 0);
-                route = route.append(Address::new(TransportType::new(1), socket_addr.to_string()))
+                route = route.append(Address::new_with_string(
+                    TransportType::new(1),
+                    socket_addr.to_string(),
+                ))
             }
             DnsAddr::CODE => {
                 let host = p.cast::<DnsAddr>()?;
@@ -230,7 +233,7 @@ pub fn multiaddr_to_transport_route(ma: &MultiAddr) -> Option<Route> {
                     if p.code() == Tcp::CODE {
                         let port = p.cast::<Tcp>()?;
                         let addr = format!("{}:{}", &*host, *port);
-                        route = route.append(Address::new(TransportType::new(1), addr));
+                        route = route.append(Address::new_with_string(TransportType::new(1), addr));
                         let _ = it.next();
                         continue;
                     }
@@ -238,15 +241,15 @@ pub fn multiaddr_to_transport_route(ma: &MultiAddr) -> Option<Route> {
             }
             Worker::CODE => {
                 let local = p.cast::<Worker>()?;
-                route = route.append(Address::new(LOCAL, &*local))
+                route = route.append(Address::new_with_string(LOCAL, &*local))
             }
             Service::CODE => {
                 let local = p.cast::<Service>()?;
-                route = route.append(Address::new(LOCAL, &*local))
+                route = route.append(Address::new_with_string(LOCAL, &*local))
             }
             Secure::CODE => {
                 let local = p.cast::<Secure>()?;
-                route = route.append(Address::new(LOCAL, &*local))
+                route = route.append(Address::new_with_string(LOCAL, &*local))
             }
             other => {
                 error!(target: "ockam_api", code = %other, "unsupported protocol");
@@ -264,11 +267,11 @@ pub fn multiaddr_to_addr(ma: &MultiAddr) -> Option<Address> {
     match p.code() {
         Worker::CODE => {
             let local = p.cast::<Worker>()?;
-            Some(Address::new(LOCAL, &*local))
+            Some(Address::new_with_string(LOCAL, &*local))
         }
         Service::CODE => {
             let local = p.cast::<Service>()?;
-            Some(Address::new(LOCAL, &*local))
+            Some(Address::new_with_string(LOCAL, &*local))
         }
         _ => None,
     }

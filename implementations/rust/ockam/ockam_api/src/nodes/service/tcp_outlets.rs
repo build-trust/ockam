@@ -53,7 +53,7 @@ impl NodeManagerWorker {
         match self.node_manager.delete_outlet(worker_addr).await {
             Ok(res) => match res {
                 Some(outlet_info) => Ok(Response::ok().body(OutletStatus::new(
-                    outlet_info.socket_addr,
+                    outlet_info.to,
                     outlet_info.worker_addr.clone(),
                     None,
                 ))),
@@ -91,7 +91,7 @@ impl NodeManager {
     pub async fn create_outlet(
         &self,
         ctx: &Context,
-        hostname_port: HostnamePort,
+        to: HostnamePort,
         tls: bool,
         worker_addr: Option<Address>,
         reachable_from_default_secure_channel: bool,
@@ -104,9 +104,7 @@ impl NodeManager {
             .await;
 
         info!(
-            "Handling request to create outlet portal at {}:{} with worker {:?}",
-            &hostname_port.hostname(),
-            hostname_port.port(),
+            "Handling request to create outlet portal to {to} with worker {:?}",
             worker_addr
         );
 
@@ -161,10 +159,9 @@ impl NodeManager {
             }
         };
 
-        let socket_addr = hostname_port.to_socket_addr()?;
         let res = self
             .tcp_transport
-            .create_tcp_outlet(worker_addr.clone(), hostname_port, options)
+            .create_tcp_outlet(worker_addr.clone(), to.clone(), options)
             .await;
 
         Ok(match res {
@@ -174,16 +171,16 @@ impl NodeManager {
                     .outlets
                     .insert(
                         worker_addr.clone(),
-                        OutletInfo::new(&socket_addr, Some(&worker_addr)),
+                        OutletInfo::new(to.clone(), Some(&worker_addr)),
                     )
                     .await;
 
                 self.cli_state
-                    .create_tcp_outlet(&self.node_name, &socket_addr, &worker_addr, &None)
+                    .create_tcp_outlet(&self.node_name, &to, &worker_addr, &None)
                     .await?
             }
             Err(e) => {
-                warn!(at = %socket_addr, err = %e, "Failed to create TCP outlet");
+                warn!(at = %to, err = %e, "Failed to create TCP outlet");
                 let message = format!("Failed to create outlet: {}", e);
                 return Err(ockam_core::Error::new(
                     Origin::Node,
@@ -226,7 +223,7 @@ impl NodeManager {
         if let Some(outlet_to_show) = self.registry.outlets.get(worker_addr).await {
             debug!(%worker_addr, "Outlet not found in node registry");
             Some(OutletStatus::new(
-                outlet_to_show.socket_addr,
+                outlet_to_show.to,
                 outlet_to_show.worker_addr.clone(),
                 None,
             ))

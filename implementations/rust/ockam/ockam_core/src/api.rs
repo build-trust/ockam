@@ -5,7 +5,7 @@ use hashbrown::HashMap;
 
 use minicbor::data::Type;
 use minicbor::encode::{self, Encoder, Write};
-use minicbor::{Decode, Decoder, Encode};
+use minicbor::{CborLen, Decode, Decoder, Encode};
 use serde::{Serialize, Serializer};
 use tinyvec::ArrayVec;
 
@@ -18,7 +18,7 @@ use crate::errcode::{Kind, Origin};
 use crate::Result;
 
 /// A request header.
-#[derive(Debug, Clone, Encode, Decode)]
+#[derive(Debug, Clone, Encode, Decode, CborLen)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct RequestHeader {
@@ -54,7 +54,7 @@ impl RequestHeader {
 }
 
 /// The response header.
-#[derive(Debug, Clone, Encode, Decode)]
+#[derive(Debug, Clone, Encode, Decode, CborLen)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct ResponseHeader {
@@ -203,12 +203,12 @@ impl<T> Reply<T> {
 }
 
 /// A request/response identifier.
-#[derive(Debug, Default, Copy, Clone, Encode, Decode, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Default, Copy, Clone, Encode, Decode, CborLen, PartialEq, Eq, PartialOrd, Ord)]
 #[cbor(transparent)]
 pub struct Id(#[n(0)] u32);
 
 /// Request methods.
-#[derive(Debug, Copy, Clone, Encode, Decode)]
+#[derive(Debug, Copy, Clone, Encode, Decode, CborLen)]
 #[rustfmt::skip]
 #[cbor(index_only)]
 pub enum Method {
@@ -232,7 +232,7 @@ impl Display for Method {
 }
 
 /// The response status codes.
-#[derive(Debug, Copy, Clone, Encode, Decode, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Copy, Clone, Encode, Decode, CborLen, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[non_exhaustive]
 #[rustfmt::skip]
 #[cbor(index_only)]
@@ -335,7 +335,7 @@ impl ResponseHeader {
 }
 
 /// An error type used in response bodies.
-#[derive(Debug, Clone, Default, Encode, Decode)]
+#[derive(Debug, Clone, Default, Encode, Decode, CborLen)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct Error {
@@ -862,6 +862,7 @@ mod tests {
     use quickcheck::{quickcheck, Arbitrary, Gen, TestResult};
 
     use crate::cbor::schema::tests::validate_with_schema;
+    use crate::cbor_encode_preallocate;
 
     use super::*;
 
@@ -879,9 +880,9 @@ mod tests {
         }
 
         fn type_check(a: RequestHeader, b: ResponseHeader, c: Error) -> TestResult {
-            let cbor_a = minicbor::to_vec(a).unwrap();
-            let cbor_b = minicbor::to_vec(b).unwrap();
-            let cbor_c = minicbor::to_vec(c).unwrap();
+            let cbor_a = cbor_encode_preallocate(a).unwrap();
+            let cbor_b = cbor_encode_preallocate(b).unwrap();
+            let cbor_c = cbor_encode_preallocate(c).unwrap();
             assert!(minicbor::decode::<ResponseHeader>(&cbor_a).is_err());
             assert!(minicbor::decode::<Error>(&cbor_a).is_err());
             assert!(minicbor::decode::<RequestHeader>(&cbor_b).is_err());

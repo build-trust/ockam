@@ -1,12 +1,13 @@
-use std::path::{Path, PathBuf};
-use std::str::FromStr;
+use std::path::PathBuf;
 
 use sqlx::*;
 
-use crate::cli_state::{NamedVault, VaultsRepository};
-use ockam::{FromSqlxError, SqlxDatabase, ToSqlxType, ToVoid};
+use ockam::{FromSqlxError, SqlxDatabase, ToVoid};
 use ockam_core::async_trait;
 use ockam_core::Result;
+use ockam_node::database::{Boolean, Nullable};
+
+use crate::cli_state::{NamedVault, UseAwsKms, VaultType, VaultsRepository};
 
 #[derive(Clone)]
 pub struct VaultsSqlxDatabase {
@@ -27,33 +28,47 @@ impl VaultsSqlxDatabase {
 
 #[async_trait]
 impl VaultsRepository for VaultsSqlxDatabase {
-    async fn store_vault(&self, name: &str, path: &Path, is_kms: bool) -> Result<NamedVault> {
-        let query = query("INSERT INTO vault VALUES (?1, ?2, ?3, ?4)")
-            .bind(name.to_sql())
-            .bind(path.to_sql())
-            .bind(true.to_sql())
-            .bind(is_kms.to_sql());
-        query.execute(&*self.database.pool).await.void()?;
+    async fn store_vault(&self, name: &str, vault_type: VaultType) -> Result<NamedVault> {
+        let mut transaction = self.database.begin().await.into_core()?;
 
-        Ok(NamedVault::new(name, path.into(), is_kms))
+        let query1 =
+            query_scalar("SELECT EXISTS(SELECT 1 FROM vault WHERE is_default = $1)").bind(true);
+        let default_exists: Boolean = query1.fetch_one(&mut *transaction).await.into_core()?;
+        let default_exists = default_exists.to_bool();
+
+        let query = query(
+            r#"
+        INSERT INTO
+            vault (name, path, is_default, is_kms)
+            VALUES ($1, $2, $3, $4)
+            ON CONFLICT (name)
+            DO UPDATE SET path = $2, is_default = $3, is_kms = $4"#,
+        )
+        .bind(name)
+        .bind(vault_type.path().map(|p| p.to_string_lossy().to_string()))
+        .bind(!default_exists)
+        .bind(vault_type.use_aws_kms());
+        query.execute(&mut *transaction).await.void()?;
+
+        transaction.commit().await.void()?;
+        Ok(NamedVault::new(name, vault_type, !default_exists))
     }
 
-    async fn update_vault(&self, name: &str, path: &Path) -> Result<()> {
-        let query = query("UPDATE vault SET path=$1 WHERE name=$2")
-            .bind(path.to_sql())
-            .bind(name.to_sql());
+    async fn update_vault(&self, name: &str, vault_type: VaultType) -> Result<()> {
+        let query = query("UPDATE vault SET path = $1, is_kms = $2 WHERE name = $3")
+            .bind(vault_type.path().map(|p| p.to_string_lossy().to_string()))
+            .bind(vault_type.use_aws_kms())
+            .bind(name);
         query.execute(&*self.database.pool).await.void()
     }
 
-    /// Delete a vault by name
     async fn delete_named_vault(&self, name: &str) -> Result<()> {
-        let query = query("DELETE FROM vault WHERE name=?").bind(name.to_sql());
+        let query = query("DELETE FROM vault WHERE name = $1").bind(name);
         query.execute(&*self.database.pool).await.void()
     }
 
-    async fn get_named_vault(&self, name: &str) -> Result<Option<NamedVault>> {
-        let query =
-            query_as("SELECT name, path, is_kms FROM vault WHERE name = $1").bind(name.to_sql());
+    async fn get_database_vault(&self) -> Result<Option<NamedVault>> {
+        let query = query_as("SELECT name, path, is_default, is_kms FROM vault WHERE path is NULL");
         let row: Option<VaultRow> = query
             .fetch_optional(&*self.database.pool)
             .await
@@ -61,9 +76,9 @@ impl VaultsRepository for VaultsSqlxDatabase {
         row.map(|r| r.named_vault()).transpose()
     }
 
-    async fn get_named_vault_with_path(&self, path: &Path) -> Result<Option<NamedVault>> {
+    async fn get_named_vault(&self, name: &str) -> Result<Option<NamedVault>> {
         let query =
-            query_as("SELECT name, path, is_kms FROM vault WHERE path = $1").bind(path.to_sql());
+            query_as("SELECT name, path, is_default, is_kms FROM vault WHERE name = $1").bind(name);
         let row: Option<VaultRow> = query
             .fetch_optional(&*self.database.pool)
             .await
@@ -72,7 +87,7 @@ impl VaultsRepository for VaultsSqlxDatabase {
     }
 
     async fn get_named_vaults(&self) -> Result<Vec<NamedVault>> {
-        let query = query_as("SELECT name, path, is_kms FROM vault");
+        let query = query_as("SELECT name, path, is_default, is_kms FROM vault");
         let rows: Vec<VaultRow> = query.fetch_all(&*self.database.pool).await.into_core()?;
         rows.iter().map(|r| r.named_vault()).collect()
     }
@@ -83,84 +98,93 @@ impl VaultsRepository for VaultsSqlxDatabase {
 #[derive(FromRow)]
 pub(crate) struct VaultRow {
     name: String,
-    path: String,
-    is_kms: bool,
+    path: Nullable<String>,
+    is_default: Boolean,
+    is_kms: Boolean,
 }
 
 impl VaultRow {
     pub(crate) fn named_vault(&self) -> Result<NamedVault> {
         Ok(NamedVault::new(
             &self.name,
-            PathBuf::from_str(self.path.as_str()).unwrap(),
-            self.is_kms,
+            self.vault_type(),
+            self.is_default(),
         ))
+    }
+
+    pub(crate) fn vault_type(&self) -> VaultType {
+        match self.path.to_option() {
+            None => VaultType::database(UseAwsKms::from(self.is_kms.to_bool())),
+            Some(p) => VaultType::local_file(
+                PathBuf::from(p).as_path(),
+                UseAwsKms::from(self.is_kms.to_bool()),
+            ),
+        }
+    }
+
+    pub(crate) fn is_default(&self) -> bool {
+        self.is_default.to_bool()
     }
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
+    use ockam_node::database::with_dbs;
     use std::sync::Arc;
 
     #[tokio::test]
     async fn test_repository() -> Result<()> {
-        let repository = create_repository().await?;
+        with_dbs(|db| async move {
+            let repository: Arc<dyn VaultsRepository> = Arc::new(VaultsSqlxDatabase::new(db));
 
-        // A vault can be defined with a path and stored under a specific name
-        let named_vault1 = repository
-            .store_vault("vault1", Path::new("path"), false)
-            .await?;
-        let expected = NamedVault::new("vault1", Path::new("path").into(), false);
-        assert_eq!(named_vault1, expected);
+            // A vault can be defined with a path and stored under a specific name
+            let vault_type = VaultType::local_file("path", UseAwsKms::No);
+            let named_vault1 = repository.store_vault("vault1", vault_type.clone()).await?;
+            let expected = NamedVault::new("vault1", vault_type.clone(), true);
+            assert_eq!(named_vault1, expected);
 
-        // A vault with the same name can not be created twice
-        let result = repository
-            .store_vault("vault1", Path::new("path"), false)
-            .await;
-        assert!(result.is_err());
+            // The vault can then be retrieved with its name
+            let result = repository.get_named_vault("vault1").await?;
+            assert_eq!(result, Some(named_vault1.clone()));
 
-        // The vault can then be retrieved with its name
-        let result = repository.get_named_vault("vault1").await?;
-        assert_eq!(result, Some(named_vault1.clone()));
+            // Another vault can be created.
+            // It is not the default vault
+            let vault_type = VaultType::local_file("path2", UseAwsKms::No);
+            let named_vault2 = repository.store_vault("vault2", vault_type.clone()).await?;
+            let expected = NamedVault::new("vault2", vault_type.clone(), false);
+            // it is not the default vault
+            assert_eq!(named_vault2, expected);
 
-        // The vault can then be retrieved with its path
-        let result = repository
-            .get_named_vault_with_path(Path::new("path"))
-            .await?;
-        assert_eq!(result, Some(named_vault1.clone()));
+            // The first vault can be set at another path
+            let vault_type = VaultType::local_file("path2", UseAwsKms::No);
+            repository
+                .update_vault("vault1", vault_type.clone())
+                .await?;
+            let result = repository.get_named_vault("vault1").await?;
+            assert_eq!(result, Some(NamedVault::new("vault1", vault_type, true)));
 
-        // The vault can be set at another path
-        repository
-            .update_vault("vault1", Path::new("path2"))
-            .await?;
-        let result = repository.get_named_vault("vault1").await?;
-        assert_eq!(
-            result,
-            Some(NamedVault::new("vault1", Path::new("path2").into(), false))
-        );
-
-        // The vault can also be deleted
-        repository.delete_named_vault("vault1").await?;
-        let result = repository.get_named_vault("vault1").await?;
-        assert_eq!(result, None);
-        Ok(())
+            // The first vault can be deleted
+            repository.delete_named_vault("vault1").await?;
+            let result = repository.get_named_vault("vault1").await?;
+            assert_eq!(result, None);
+            Ok(())
+        })
+        .await
     }
 
     #[tokio::test]
     async fn test_store_kms_vault() -> Result<()> {
-        let repository = create_repository().await?;
+        with_dbs(|db| async move {
+            let repository: Arc<dyn VaultsRepository> = Arc::new(VaultsSqlxDatabase::new(db));
 
-        // A KMS vault can be created by setting the kms flag to true
-        let kms = repository
-            .store_vault("kms", Path::new("path"), true)
-            .await?;
-        let expected = NamedVault::new("kms", Path::new("path").into(), true);
-        assert_eq!(kms, expected);
-        Ok(())
-    }
-
-    /// HELPERS
-    async fn create_repository() -> Result<Arc<dyn VaultsRepository>> {
-        Ok(Arc::new(VaultsSqlxDatabase::create().await?))
+            // It is possible to create a vault storing its signing keys in an AWS KMS
+            let vault_type = VaultType::database(UseAwsKms::Yes);
+            let kms = repository.store_vault("kms", vault_type.clone()).await?;
+            let expected = NamedVault::new("kms", vault_type, true);
+            assert_eq!(kms, expected);
+            Ok(())
+        })
+        .await
     }
 }

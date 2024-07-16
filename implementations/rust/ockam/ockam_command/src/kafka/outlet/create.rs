@@ -6,6 +6,7 @@ use miette::miette;
 use serde::Serialize;
 use std::fmt::Write;
 
+use ockam::transport::HostnamePort;
 use ockam::Context;
 use ockam_abac::PolicyExpression;
 use ockam_api::colors::{color_primary, color_warn};
@@ -35,7 +36,7 @@ pub struct CreateCommand {
 
     /// The address of the kafka bootstrap broker
     #[arg(long, default_value_t = kafka_default_outlet_server())]
-    pub bootstrap_server: String,
+    pub bootstrap_server: HostnamePort,
 
     /// If set, the outlet will establish a TLS connection over TCP
     #[arg(long, id = "BOOLEAN")]
@@ -61,7 +62,7 @@ impl Command for CreateCommand {
             if let Some(pb) = pb.as_ref() {
                 pb.set_message(format!(
                     "Creating Kafka Outlet to bootstrap server {}...\n",
-                    color_primary(&self.bootstrap_server)
+                    color_primary(self.bootstrap_server.to_string())
                 ));
             }
 
@@ -80,7 +81,7 @@ impl Command for CreateCommand {
 
             KafkaOutletOutput {
                 node_name: node.node_name(),
-                bootstrap_server: self.bootstrap_server.clone(),
+                bootstrap_server: self.bootstrap_server.to_string(),
             }
         };
 

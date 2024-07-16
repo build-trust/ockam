@@ -1,12 +1,12 @@
-use ockam_core::errcode::{Kind, Origin};
-use ockam_core::Address;
-use ockam_multiaddr::MultiAddr;
-use std::net::SocketAddr;
-
 use super::Result;
 use crate::cli_state::TcpInlet;
 use crate::nodes::models::portal::OutletStatus;
 use crate::CliState;
+use ockam_core::errcode::{Kind, Origin};
+use ockam_core::Address;
+use ockam_multiaddr::MultiAddr;
+use ockam_transport_core::HostnamePort;
+use std::net::SocketAddr;
 
 impl CliState {
     /// Create a TCP inlet
@@ -53,12 +53,11 @@ impl CliState {
     pub async fn create_tcp_outlet(
         &self,
         node_name: &str,
-        socket_addr: &SocketAddr,
+        to: &HostnamePort,
         worker_addr: &Address,
         payload: &Option<String>,
     ) -> Result<OutletStatus> {
-        let tcp_outlet_status =
-            OutletStatus::new(*socket_addr, worker_addr.clone(), payload.clone());
+        let tcp_outlet_status = OutletStatus::new(to.clone(), worker_addr.clone(), payload.clone());
 
         self.tcp_portals_repository()
             .store_tcp_outlet(node_name, &tcp_outlet_status)

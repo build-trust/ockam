@@ -1,13 +1,11 @@
-use std::env::current_exe;
-use std::process::{Command, Stdio};
-
 use miette::IntoDiagnostic;
 use miette::{miette, Context as _};
-use rand::random;
-use tracing::info;
-
 use ockam_core::env::get_env_with_default;
 use ockam_node::Context;
+use rand::random;
+use std::env::current_exe;
+use std::process::{Command, Stdio};
+use tracing::info;
 
 use crate::node::show::wait_until_node_is_up;
 use crate::node::CreateCommand;
@@ -76,9 +74,9 @@ pub async fn spawn_node(opts: &CommandGlobalOpts, cmd: CreateCommand) -> miette:
         name,
         identity: identity_name,
         tcp_listener_address: address,
-        enable_http_server,
+        http_server,
         http_server_port,
-        enable_udp,
+        udp,
         launch_config,
         trust_opts,
         opentelemetry_context,
@@ -147,8 +145,8 @@ pub async fn spawn_node(opts: &CommandGlobalOpts, cmd: CreateCommand) -> miette:
         args.push(opentelemetry_context.to_string());
     }
 
-    if enable_http_server {
-        args.push("--enable-http-server".to_string());
+    if http_server {
+        args.push("--http-server".to_string());
     }
 
     if let Some(http_server_port) = http_server_port {
@@ -156,8 +154,8 @@ pub async fn spawn_node(opts: &CommandGlobalOpts, cmd: CreateCommand) -> miette:
         args.push(http_server_port.to_string());
     }
 
-    if enable_udp {
-        args.push("--enable-udp".to_string());
+    if udp {
+        args.push("--udp".to_string());
     }
 
     args.push(name.to_owned());

@@ -5,7 +5,7 @@ defmodule Ockam.Transport.TCP.Handler do
 
   alias Ockam.Message
   alias Ockam.Telemetry
-  alias Ockam.Transport.TCP
+  alias Ockam.Transport.TCP.TransportMessage
 
   require Logger
 
@@ -28,11 +28,16 @@ defmodule Ockam.Transport.TCP.Handler do
 
     {:ok, socket} = :ranch.handshake(ref, ranch_options)
 
+    # Header, protocol version "1" must be the first thing exchanged.
+    # It isn't send anymore after the initial exchange.
+    transport.send(socket, <<1>>)
+    {:ok, <<1>>} = transport.recv(socket, 1, 5000)
+
     :ok =
       :inet.setopts(socket, [
         {:active, @active},
         {:send_timeout, @send_timeout},
-        {:packet, 2},
+        {:packet, 4},
         {:nodelay, true}
       ])
 
@@ -91,7 +96,7 @@ defmodule Ockam.Transport.TCP.Handler do
       metadata: %{address: address}
     )
 
-    case Ockam.Wire.decode(data, :tcp) do
+    case TransportMessage.decode(data) do
       {:ok, decoded} ->
         forwarded_message =
           decoded
@@ -99,14 +104,13 @@ defmodule Ockam.Transport.TCP.Handler do
 
         send_to_router(forwarded_message)
         Telemetry.emit_event(function_name, metadata: %{name: "decoded_data"})
+        {:noreply, state, idle_timeout}
 
-      {:error, %Ockam.Wire.DecodeError{} = e} ->
+      {:error, e} ->
         start_time = Telemetry.emit_start_event(function_name)
         Telemetry.emit_exception_event(function_name, start_time, e)
-        raise e
+        {:stop, {:error, e}, state}
     end
-
-    {:noreply, state, idle_timeout}
   end
 
   def handle_info({:tcp_closed, socket}, %{socket: socket, transport: transport} = state) do
@@ -165,23 +169,8 @@ defmodule Ockam.Transport.TCP.Handler do
        ) do
     forwarded_message = Message.forward(message)
 
-    case Ockam.Wire.encode(forwarded_message) do
-      {:ok, encoded} ->
-        ## TODO: send/receive message in multiple TCP packets
-        case byte_size(encoded) <= TCP.packed_size_limit() do
-          true ->
-            tcp_wrapper.wrap_tcp_call(transport, :send, [socket, encoded])
-
-          false ->
-            Logger.error("Message to big for TCP: #{inspect(message)}")
-            raise {:message_too_big, message}
-        end
-
-      a ->
-        Logger.error("TCP transport send error #{inspect(a)}")
-        raise a
-    end
-
+    {:ok, encoded} = TransportMessage.encode(forwarded_message)
+    :ok = tcp_wrapper.wrap_tcp_call(transport, :send, [socket, encoded])
     {:ok, state}
   end
 

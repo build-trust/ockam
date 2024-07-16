@@ -17,10 +17,10 @@ extern crate core;
 #[cfg(feature = "alloc")]
 extern crate alloc;
 
+mod messages;
 mod options;
 mod puncture;
 mod transport;
-
 mod workers;
 
 pub use options::UdpBindOptions;
@@ -31,3 +31,6 @@ pub(crate) const CLUSTER_NAME: &str = "_internals.transport.udp";
 
 /// Transport type for UDP addresses
 pub const UDP: ockam_core::TransportType = ockam_core::TransportType::new(2);
+
+/// 16 MB
+pub const MAX_MESSAGE_SIZE: usize = 16 * 1024 * 1024;

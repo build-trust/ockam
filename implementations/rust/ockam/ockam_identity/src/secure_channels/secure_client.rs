@@ -101,7 +101,7 @@ impl SecureClient {
         &self.client_identifier
     }
 
-    /// Secure Channel cretion timeout
+    /// Secure Channel creation timeout
     pub fn secure_channel_timeout(&self) -> Duration {
         self.secure_channel_timeout
     }
@@ -109,6 +109,22 @@ impl SecureClient {
     /// Request timeout
     pub fn request_timeout(&self) -> Duration {
         self.request_timeout
+    }
+
+    /// Change the secure channel creation timeout
+    pub fn with_secure_channel_timeout(self, timeout: &Duration) -> Self {
+        Self {
+            secure_channel_timeout: *timeout,
+            ..self
+        }
+    }
+
+    /// Change the request timeout
+    pub fn with_request_timeout(self, timeout: &Duration) -> Self {
+        Self {
+            request_timeout: *timeout,
+            ..self
+        }
     }
 }
 

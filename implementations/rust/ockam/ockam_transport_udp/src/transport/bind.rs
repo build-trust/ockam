@@ -1,16 +1,15 @@
-use crate::workers::{Addresses, TransportMessageCodec, UdpReceiverProcessor, UdpSenderWorker};
+use crate::workers::{split_socket, Addresses, UdpReceiverProcessor, UdpSenderWorker};
 use crate::{UdpBindOptions, UdpTransport};
 use core::fmt;
 use core::fmt::Formatter;
-use futures_util::StreamExt;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::flow_control::FlowControlId;
 use ockam_core::{Address, AllowAll, DenyAll, Error, Result};
+use ockam_node::compat::asynchronous::resolve_peer;
 use ockam_node::{ProcessorBuilder, WorkerBuilder};
-use ockam_transport_core::{parse_socket_addr, resolve_peer, TransportError};
+use ockam_transport_core::{parse_socket_addr, TransportError};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use tokio::net::UdpSocket;
-use tokio_util::udp::UdpFramed;
 use tracing::{debug, error};
 
 /// UDP bind arguments
@@ -44,12 +43,26 @@ impl UdpBindArguments {
         Ok(self)
     }
 
+    /// Set local bind address
+    pub fn with_bind_socket_address(mut self, bind_address: SocketAddr) -> Self {
+        self.bind_address = bind_address;
+
+        self
+    }
+
     /// Set peer address if we communicate with one specific peer
-    pub fn with_peer_address(mut self, peer_address: impl AsRef<str>) -> Result<Self> {
-        let peer_address = resolve_peer(peer_address.as_ref().to_string())?;
+    pub async fn with_peer_address(mut self, peer_address: impl AsRef<str>) -> Result<Self> {
+        let peer_address = resolve_peer(peer_address.as_ref().to_string()).await?;
         self.peer_address = Some(peer_address);
 
         Ok(self)
+    }
+
+    /// Set peer address if we communicate with one specific peer
+    pub fn with_peer_socket_address(mut self, peer_address: SocketAddr) -> Self {
+        self.peer_address = Some(peer_address);
+
+        self
     }
 }
 
@@ -63,7 +76,9 @@ impl UdpTransport {
         // This transport only supports IPv4
         if !arguments.bind_address.is_ipv4() {
             error!(local_addr = %arguments.bind_address, "This transport only supports IPv4");
-            return Err(TransportError::InvalidAddress)?;
+            return Err(TransportError::InvalidAddress(
+                arguments.bind_address.to_string(),
+            ))?;
         }
 
         // Bind new socket
@@ -84,7 +99,7 @@ impl UdpTransport {
             .map_err(|_| Error::new(Origin::Transport, Kind::Io, "invalid local address"))?;
 
         // Split socket into sink and stream
-        let (sink, stream) = UdpFramed::new(socket, TransportMessageCodec).split();
+        let (socket_read, socket_write) = split_socket(socket);
 
         let addresses = Addresses::generate();
 
@@ -99,7 +114,7 @@ impl UdpTransport {
         let receiver_outgoing_access_control =
             options.create_receiver_outgoing_access_control(self.ctx.flow_controls());
 
-        let sender = UdpSenderWorker::new(addresses.clone(), sink, arguments.peer_address);
+        let sender = UdpSenderWorker::new(addresses.clone(), socket_write, arguments.peer_address);
         WorkerBuilder::new(sender)
             .with_address(addresses.sender_address().clone())
             .with_incoming_access_control(AllowAll)
@@ -107,7 +122,8 @@ impl UdpTransport {
             .start(&self.ctx)
             .await?;
 
-        let receiver = UdpReceiverProcessor::new(addresses.clone(), stream, arguments.peer_address);
+        let receiver =
+            UdpReceiverProcessor::new(addresses.clone(), socket_read, arguments.peer_address);
         ProcessorBuilder::new(receiver)
             .with_address(addresses.receiver_address().clone())
             .with_incoming_access_control(DenyAll)

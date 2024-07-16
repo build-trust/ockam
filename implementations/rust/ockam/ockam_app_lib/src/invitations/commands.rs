@@ -1,12 +1,10 @@
-use std::net::SocketAddr;
-use std::str::FromStr;
-
 use miette::IntoDiagnostic;
+use ockam::transport::HostnamePort;
+use ockam::Context;
 use ockam_api::cloud::email_address::EmailAddress;
-use tracing::{debug, info, trace, warn};
-
 use ockam_api::cloud::share::{CreateServiceInvitation, InvitationListKind, Invitations};
 use ockam_core::Address;
+use tracing::{debug, info, trace, warn};
 
 use crate::api::notification::rust::Notification;
 use crate::api::notification::Kind;
@@ -189,19 +187,20 @@ impl AppState {
 
     pub async fn create_service_invitation_by_alias(
         &self,
+        ctx: &Context,
         recipient_email: EmailAddress,
         outlet_worker_addr: &Address,
     ) -> Result<(), String> {
         let node_manager = self.node_manager().await;
         let outlets = node_manager.list_outlets().await;
 
-        let outlet_socket_addr = outlets
-            .iter()
+        let to = outlets
+            .into_iter()
             .find(|o| &o.worker_addr == outlet_worker_addr)
-            .map(|o| o.socket_addr.to_string());
+            .map(|o| o.to);
 
-        if let Some(outlet_socket_addr) = outlet_socket_addr {
-            self.create_service_invitation_by_socket_addr(recipient_email, outlet_socket_addr)
+        if let Some(to) = to {
+            self.create_service_invitation_by_socket_addr(ctx, recipient_email, to)
                 .await
         } else {
             Err(format!("Cannot find service '{}'", outlet_worker_addr))
@@ -210,14 +209,11 @@ impl AppState {
 
     pub async fn create_service_invitation_by_socket_addr(
         &self,
+        ctx: &Context,
         recipient_email: EmailAddress,
-        outlet_socket_addr: String,
+        to: HostnamePort,
     ) -> Result<(), String> {
-        info!(
-            ?recipient_email,
-            ?outlet_socket_addr,
-            "creating service invitation"
-        );
+        info!(?recipient_email, ?to, "creating service invitation");
 
         let project_id = {
             // TODO: How might this degrade for users who have multiple spaces and projects?
@@ -231,20 +227,12 @@ impl AppState {
         }?;
 
         let enrollment_ticket = self
-            .create_enrollment_ticket(&project_id, &recipient_email)
+            .create_enrollment_ticket(ctx, &project_id, &recipient_email)
             .await
             .map_err(|e| e.to_string())?;
 
-        let socket_addr = SocketAddr::from_str(outlet_socket_addr.as_str())
-            .into_diagnostic()
-            .map_err(|e| format!("Cannot parse the outlet address as a socket address: {e}"))?;
-
         let invite_args = self
-            .build_args_for_create_service_invitation(
-                &socket_addr,
-                &recipient_email,
-                enrollment_ticket,
-            )
+            .build_args_for_create_service_invitation(&to, &recipient_email, enrollment_ticket)
             .await
             .map_err(|e| e.to_string())?;
 

@@ -5,8 +5,8 @@ use serde_json::json;
 use tokio::{sync::Mutex, try_join};
 
 use crate::{docs, CommandGlobalOpts};
+use ockam::identity::get_default_timeout;
 use ockam::identity::models::CredentialAndPurposeKey;
-use ockam::identity::DEFAULT_TIMEOUT;
 use ockam::{identity::Identifier, route, Context};
 use ockam_api::address::extract_address_value;
 use ockam_api::colors::OckamColor;
@@ -93,7 +93,7 @@ impl CreateCommand {
             node,
             &meta,
             Some(identity_name),
-            Some(DEFAULT_TIMEOUT),
+            Some(get_default_timeout()),
         )
         .await?;
         clean_projects_multiaddr(to, projects_sc)

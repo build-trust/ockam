@@ -1,6 +1,6 @@
 [package]
 name = "ockam_identity"
-version = "0.114.0"
+version = "0.116.0"
 authors = ["Ockam Developers"]
 categories = ["cryptography", "authentication"]
 edition = "2021"
@@ -67,34 +67,34 @@ alloc = [
   "serde_bare/alloc",
 ]
 
-storage = ["ockam_vault/storage", "sqlx", "tokio-retry"]
+storage = ["ockam_vault/storage", "sqlx-build-trust", "tokio-retry"]
 aws-lc = ["ockam_vault?/aws-lc"]
 rust-crypto = ["ockam_vault?/rust-crypto"]
 
 [dependencies]
-async-trait = "0.1.80"
+async-trait = "0.1.81"
 cfg-if = "1.0.0"
 chrono = { version = "0.4.38", default-features = false }
 delegate = "0.12.0"
 hex = { version = "0.4", default-features = false }
 minicbor = { version = "0.24.1", features = ["alloc", "derive"] }
-ockam_core = { path = "../ockam_core", version = "^0.111.0", default-features = false }
+ockam_core = { path = "../ockam_core", version = "^0.112.0", default-features = false }
 ockam_macros = { path = "../ockam_macros", version = "^0.34.0", default-features = false }
-ockam_node = { path = "../ockam_node", version = "^0.119.0", default-features = false }
-ockam_transport_core = { path = "../ockam_transport_core", version = "^0.84.0", default_features = false }
-ockam_vault = { path = "../ockam_vault", version = "^0.112.0", default-features = false, optional = true }
+ockam_node = { path = "../ockam_node", version = "^0.121.0", default-features = false }
+ockam_transport_core = { path = "../ockam_transport_core", version = "^0.86.0", default-features = false }
+ockam_vault = { path = "../ockam_vault", version = "^0.114.0", default-features = false, optional = true }
 rand = { version = "0.8", default-features = false }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 serde_bare = { version = "0.5.0", default-features = false, features = ["alloc"] }
 serde_json = { version = "1.0", optional = true }
 sha2 = { version = "0.10", default-features = false }
-sqlx = { version = "0.7.4", optional = true }
+sqlx-build-trust = { version = "0.7.5", optional = true }
 tokio-retry = { version = "0.3.0", default-features = false, optional = true }
-tracing = { version = "0.1", default_features = false }
-tracing-attributes = { version = "0.1", default_features = false }
+tracing = { version = "0.1", default-features = false }
+tracing-attributes = { version = "0.1", default-features = false }
 
 [dev-dependencies]
-ockam_transport_tcp = { path = "../ockam_transport_tcp", default-features = false }
+ockam_transport_tcp = { path = "../ockam_transport_tcp" }
 ockam_vault = { path = "../ockam_vault" }
 ockam_vault_aws = { path = "../ockam_vault_aws" }
 quickcheck = "1.0.3"

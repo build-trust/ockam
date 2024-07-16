@@ -2,12 +2,12 @@ use crate::cloud::addon::KafkaConfig;
 use crate::cloud::email_address::EmailAddress;
 use crate::cloud::share::{RoleInShare, ShareScope};
 use crate::minicbor_url::Url;
-use minicbor::{Decode, Encode};
+use minicbor::{CborLen, Decode, Encode};
 use ockam::identity::Identifier;
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 
-#[derive(Encode, Decode, Serialize, Deserialize, Debug, Default, Clone, Eq, PartialEq)]
+#[derive(Encode, Decode, CborLen, Serialize, Deserialize, Debug, Default, Clone, Eq, PartialEq)]
 #[cbor(map)]
 pub struct ProjectModel {
     #[cbor(n(1))]
@@ -61,7 +61,7 @@ pub struct ProjectModel {
     pub project_change_history: Option<String>,
 }
 
-#[derive(Encode, Decode, Debug)]
+#[derive(Encode, Decode, CborLen, Debug)]
 #[cfg_attr(test, derive(Clone))]
 #[rustfmt::skip]
 #[cbor(map)]
@@ -76,7 +76,7 @@ impl CreateProject {
     }
 }
 
-#[derive(Encode, Decode, Serialize, Deserialize, Debug)]
+#[derive(Encode, Decode, CborLen, Serialize, Deserialize, Debug)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct InfluxDBTokenLeaseManagerConfig {
@@ -115,7 +115,7 @@ impl InfluxDBTokenLeaseManagerConfig {
     }
 }
 
-#[derive(Encode, Decode, Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
+#[derive(Encode, Decode, CborLen, Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct OktaConfig {
@@ -176,7 +176,7 @@ impl OrchestratorVersionInfo {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Decode, Deserialize, Encode, Serialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Decode, Encode, CborLen, Deserialize, Serialize)]
 #[cbor(map)]
 #[rustfmt::skip]
 pub struct ProjectUserRole {

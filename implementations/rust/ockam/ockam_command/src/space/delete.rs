@@ -1,21 +1,19 @@
+use async_trait::async_trait;
 use clap::Args;
 use colorful::Colorful;
 use console::Term;
-use miette::IntoDiagnostic;
 
-use crate::{docs, CommandGlobalOpts};
+use crate::{docs, Command, CommandGlobalOpts};
 use ockam::Context;
 use ockam_api::cloud::space::Spaces;
 use ockam_api::colors::OckamColor;
 use ockam_api::nodes::InMemoryNode;
 use ockam_api::terminal::{Terminal, TerminalStream};
 use ockam_api::{color, fmt_ok};
-use ockam_core::AsyncTryClone;
 
 use crate::shared_args::IdentityOpts;
 use crate::terminal::tui::DeleteCommandTui;
 use crate::tui::PluralTerm;
-use crate::util::async_cmd;
 
 const LONG_ABOUT: &str = include_str!("./static/delete/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
@@ -39,41 +37,29 @@ pub struct DeleteCommand {
     yes: bool,
 }
 
-impl DeleteCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |ctx| async move {
-            self.async_run(&ctx, opts).await
-        })
-    }
+#[async_trait]
+impl Command for DeleteCommand {
+    const NAME: &'static str = "space delete";
 
-    pub fn name(&self) -> String {
-        "space delete".into()
-    }
-
-    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
-        DeleteTui::run(
-            ctx.async_try_clone().await.into_diagnostic()?,
-            opts,
-            self.clone(),
-        )
-        .await
+    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+        Ok(DeleteTui::run(ctx, opts, self).await?)
     }
 }
 
-pub struct DeleteTui {
-    ctx: Context,
+pub struct DeleteTui<'a> {
+    ctx: &'a Context,
     opts: CommandGlobalOpts,
     node: InMemoryNode,
     cmd: DeleteCommand,
 }
 
-impl DeleteTui {
+impl<'a> DeleteTui<'a> {
     pub async fn run(
-        ctx: Context,
+        ctx: &'a Context,
         opts: CommandGlobalOpts,
         cmd: DeleteCommand,
     ) -> miette::Result<()> {
-        let node = InMemoryNode::start(&ctx, &opts.state).await?;
+        let node = InMemoryNode::start(ctx, &opts.state).await?;
         let tui = Self {
             ctx,
             opts,
@@ -85,7 +71,7 @@ impl DeleteTui {
 }
 
 #[ockam_core::async_trait]
-impl DeleteCommandTui for DeleteTui {
+impl<'a> DeleteCommandTui for DeleteTui<'a> {
     const ITEM_NAME: PluralTerm = PluralTerm::Space;
 
     fn cmd_arg_item_name(&self) -> Option<String> {
@@ -116,7 +102,7 @@ impl DeleteCommandTui for DeleteTui {
     }
 
     async fn delete_single(&self, item_name: &str) -> miette::Result<()> {
-        self.node.delete_space_by_name(&self.ctx, item_name).await?;
+        self.node.delete_space_by_name(self.ctx, item_name).await?;
 
         self.terminal()
             .stdout()

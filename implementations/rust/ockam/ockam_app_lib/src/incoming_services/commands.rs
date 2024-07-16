@@ -6,8 +6,7 @@ use miette::IntoDiagnostic;
 use ockam::abac::expr::{eq, ident, str};
 use ockam::abac::PolicyExpression::FullExpression;
 use ockam::abac::SUBJECT_KEY;
-use tracing::{debug, error, info, warn};
-
+use ockam::transport::HostnamePort;
 use ockam_api::address::get_free_address;
 use ockam_api::authenticator::direct::{
     OCKAM_ROLE_ATTRIBUTE_ENROLLER_VALUE, OCKAM_ROLE_ATTRIBUTE_KEY,
@@ -16,6 +15,7 @@ use ockam_api::nodes::service::tcp_inlets::Inlets;
 use ockam_api::ConnectionStatus;
 use ockam_core::api::Reply;
 use ockam_multiaddr::MultiAddr;
+use tracing::{debug, error, info, warn};
 
 use crate::background_node::BackgroundNodeClientTrait;
 use crate::incoming_services::state::{IncomingService, Port};
@@ -215,7 +215,7 @@ impl AppState {
         inlet_node
             .create_inlet(
                 &self.context(),
-                &bind_address.to_string(),
+                &HostnamePort::from(bind_address),
                 &MultiAddr::from_str(&service.service_route(Some(project_name.as_str())))
                     .into_diagnostic()?,
                 &inlet_alias,

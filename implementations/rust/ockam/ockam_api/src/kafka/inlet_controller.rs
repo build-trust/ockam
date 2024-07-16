@@ -1,7 +1,10 @@
 use core::str::FromStr;
 use minicbor::Decoder;
-use ockam_core::compat::net::IpAddr;
 
+use crate::kafka::kafka_outlet_address;
+use crate::nodes::models::portal::{CreateInlet, InletStatus};
+use crate::nodes::NODEMANAGER_ADDR;
+use crate::port_range::PortRange;
 use ockam::compat::tokio::sync::Mutex;
 use ockam_abac::PolicyExpression;
 use ockam_core::api::{Request, ResponseHeader, Status};
@@ -14,11 +17,7 @@ use ockam_core::{route, Error};
 use ockam_core::{Result, Route};
 use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
-
-use crate::kafka::kafka_outlet_address;
-use crate::nodes::models::portal::{CreateInlet, InletStatus};
-use crate::nodes::NODEMANAGER_ADDR;
-use crate::port_range::PortRange;
+use ockam_transport_core::HostnamePort;
 
 type BrokerId = i32;
 
@@ -33,10 +32,10 @@ pub(crate) struct KafkaInletController {
 
 #[derive(Debug)]
 struct KafkaInletMapInner {
-    broker_map: HashMap<BrokerId, SocketAddr>,
+    broker_map: HashMap<BrokerId, HostnamePort>,
     port_range: PortRange,
     current_port: u16,
-    bind_ip: IpAddr,
+    bind_hostname: String,
     outlet_node_multiaddr: MultiAddr,
     local_interceptor_route: Route,
     remote_interceptor_route: Route,
@@ -47,7 +46,7 @@ impl KafkaInletController {
         outlet_node_multiaddr: MultiAddr,
         local_interceptor_route: Route,
         remote_interceptor_route: Route,
-        bind_ip: IpAddr,
+        bind_hostname: String,
         port_range: PortRange,
         policy_expression: Option<PolicyExpression>,
     ) -> KafkaInletController {
@@ -57,7 +56,7 @@ impl KafkaInletController {
                 broker_map: HashMap::new(),
                 current_port: port_range.start(),
                 port_range,
-                bind_ip,
+                bind_hostname,
                 local_interceptor_route,
                 remote_interceptor_route,
             })),
@@ -66,9 +65,9 @@ impl KafkaInletController {
     }
 
     #[cfg(test)]
-    pub(crate) async fn retrieve_inlet(&self, broker_id: BrokerId) -> Option<SocketAddr> {
+    pub(crate) async fn retrieve_inlet(&self, broker_id: BrokerId) -> Option<HostnamePort> {
         let inner = self.inner.lock().await;
-        inner.broker_map.get(&broker_id).copied()
+        inner.broker_map.get(&broker_id).cloned()
     }
 
     /// Asserts the presence of an inlet for a broker.
@@ -78,10 +77,10 @@ impl KafkaInletController {
         &self,
         context: &Context,
         broker_id: BrokerId,
-    ) -> Result<SocketAddr> {
+    ) -> Result<HostnamePort> {
         let mut inner = self.inner.lock().await;
         if let Some(address) = inner.broker_map.get(&broker_id) {
-            Ok(*address)
+            Ok(address.clone())
         } else {
             if inner.current_port > inner.port_range.end() {
                 // we don't have any port left for the broker!
@@ -92,10 +91,11 @@ impl KafkaInletController {
                 ));
             }
 
-            let socket_address = SocketAddr::new(inner.bind_ip, inner.current_port);
+            let inlet_bind_address =
+                HostnamePort::new(inner.bind_hostname.clone(), inner.current_port);
             Self::request_inlet_creation(
                 context,
-                socket_address,
+                inlet_bind_address.clone(),
                 inner.outlet_node_multiaddr.clone(),
                 inner.local_interceptor_route.clone(),
                 route![
@@ -107,22 +107,24 @@ impl KafkaInletController {
             .await?;
 
             inner.current_port += 1;
-            inner.broker_map.insert(broker_id, socket_address);
+            inner
+                .broker_map
+                .insert(broker_id, inlet_bind_address.clone());
 
-            Ok(socket_address)
+            Ok(inlet_bind_address)
         }
     }
 
     async fn request_inlet_creation(
         context: &Context,
-        socket_address: SocketAddr,
+        inlet_bind_address: HostnamePort,
         to: MultiAddr,
         prefix: Route,
         suffix: Route,
         policy_expression: Option<PolicyExpression>,
     ) -> Result<SocketAddr> {
         let mut payload = CreateInlet::to_node(
-            socket_address.to_string(),
+            inlet_bind_address,
             to,
             format!("kafka-inlet-{}", random_string()),
             prefix,

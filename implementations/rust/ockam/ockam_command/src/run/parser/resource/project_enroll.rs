@@ -72,7 +72,7 @@ mod tests {
         assert_eq!(cmds.len(), 1);
         assert_eq!(
             cmds[0].enrollment_ticket.as_ref().unwrap(),
-            &enrollment_ticket
+            &enrollment_ticket_hex
         );
 
         // As path
@@ -86,7 +86,7 @@ mod tests {
         assert_eq!(cmds.len(), 1);
         assert_eq!(
             cmds[0].enrollment_ticket.as_ref().unwrap(),
-            &enrollment_ticket
+            file_path.to_str().unwrap()
         );
     }
 }

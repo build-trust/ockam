@@ -1,9 +1,9 @@
 mod addresses;
-mod codec;
 mod receiver;
 mod sender;
+mod socket_split;
 
 pub(crate) use addresses::*;
-pub(crate) use codec::*;
 pub(crate) use receiver::*;
 pub(crate) use sender::*;
+pub(crate) use socket_split::*;

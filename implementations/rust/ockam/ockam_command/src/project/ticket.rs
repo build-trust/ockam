@@ -104,7 +104,7 @@ impl Command for TicketCommand {
             .await?;
 
         let authority_node_client = node
-            .create_authority_client(&project, Some(identity))
+            .create_authority_client(ctx, &project, Some(identity))
             .await?;
 
         let attributes = self.attributes()?;

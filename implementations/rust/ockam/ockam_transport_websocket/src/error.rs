@@ -6,7 +6,7 @@ use ockam_transport_core::TransportError;
 use tokio_tungstenite::tungstenite::Error as TungsteniteError;
 
 /// A WebSocket connection worker specific error type.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 #[non_exhaustive]
 pub(crate) enum WebSocketError {
     /// A wrapped transport error.
@@ -47,15 +47,19 @@ impl From<TungsteniteError> for WebSocketError {
             TungsteniteError::ConnectionClosed => Self::Transport(TransportError::ConnectionDrop),
             TungsteniteError::AlreadyClosed => Self::Transport(TransportError::ConnectionDrop),
             TungsteniteError::Io(_) => Self::Transport(TransportError::GenericIo),
-            TungsteniteError::Url(_) => Self::Transport(TransportError::InvalidAddress),
-            TungsteniteError::HttpFormat(_) => Self::Transport(TransportError::InvalidAddress),
+            TungsteniteError::Url(u) => {
+                Self::Transport(TransportError::InvalidAddress(u.to_string()))
+            }
+            TungsteniteError::HttpFormat(h) => {
+                Self::Transport(TransportError::InvalidAddress(h.to_string()))
+            }
             TungsteniteError::Capacity(_) => Self::Transport(TransportError::Capacity),
             TungsteniteError::Utf8 => Self::Transport(TransportError::Encoding),
             TungsteniteError::Protocol(_) => Self::Transport(TransportError::Protocol),
             TungsteniteError::WriteBufferFull(_) => Self::Transport(TransportError::SendBadMessage),
             TungsteniteError::Http(_) => Self::Http,
             TungsteniteError::Tls(_) => Self::Tls,
-            TungsteniteError::AttackAttempt => Self::Transport(TransportError::AttackAttmept),
+            TungsteniteError::AttackAttempt => Self::Transport(TransportError::AttackAttempt),
         }
     }
 }
@@ -77,7 +81,7 @@ mod test {
         .into_iter()
         .collect::<HashMap<_, _>>();
         for (_expected_code, ws_err) in ws_errors_map {
-            let _err: Error = ws_err.into();
+            let _err: Error = ws_err.clone().into();
             if let WebSocketError::Transport(_) = ws_err {
                 // assert_eq!(err.code(), TransportError::DOMAIN_CODE + expected_code);
             }

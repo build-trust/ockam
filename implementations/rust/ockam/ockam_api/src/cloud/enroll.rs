@@ -1,7 +1,8 @@
 use miette::IntoDiagnostic;
-use minicbor::{Decode, Encode};
+use minicbor::{CborLen, Decode, Encode};
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
+use std::fmt::{Debug, Formatter};
 
 use crate::cloud::enroll::enrollment_token::{
     AuthenticateEnrollmentToken, EnrollmentToken, RequestEnrollmentToken,
@@ -16,11 +17,17 @@ use ockam_node::Context;
 #[allow(dead_code)]
 const TARGET: &str = "ockam_api::cloud::enroll";
 
-#[derive(Encode, Decode, Serialize, Deserialize, Debug, Clone)]
+#[derive(Encode, Decode, CborLen, Serialize, Deserialize, Clone)]
 #[cfg_attr(test, derive(PartialEq, Eq))]
 #[cbor(transparent)]
 #[serde(transparent)]
 pub struct Token(#[n(0)] pub String);
+
+impl Debug for Token {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.write_str("{TOKEN}")
+    }
+}
 
 impl Token {
     pub fn new(token: impl Into<String>) -> Self {
@@ -144,7 +151,7 @@ pub mod auth0 {
         }
     }
 
-    #[derive(Encode, Decode, Debug)]
+    #[derive(Encode, Decode, CborLen, Debug)]
     #[cfg_attr(test, derive(Clone))]
     #[rustfmt::skip]
     #[cbor(map)]
@@ -164,7 +171,7 @@ pub mod auth0 {
 
     // Auxiliary types
 
-    #[derive(serde::Deserialize, Encode, Decode, Debug, Clone)]
+    #[derive(serde::Deserialize, Encode, Decode, CborLen, Debug, Clone)]
     #[cfg_attr(test, derive(PartialEq, Eq))]
     #[rustfmt::skip]
     #[cbor(index_only)]
@@ -197,7 +204,7 @@ pub mod enrollment_token {
         }
     }
 
-    #[derive(Encode, Decode, Serialize, Debug)]
+    #[derive(Encode, Decode, CborLen, Serialize, Debug)]
     #[cfg_attr(test, derive(Clone))]
     #[rustfmt::skip]
     #[cbor(map)]

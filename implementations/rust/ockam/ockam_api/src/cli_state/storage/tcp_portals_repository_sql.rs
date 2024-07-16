@@ -5,16 +5,16 @@ use std::sync::Arc;
 use sqlx::*;
 use tracing::debug;
 
+use crate::cli_state::storage::tcp_portals_repository::TcpPortalsRepository;
+use crate::cli_state::TcpInlet;
 use crate::nodes::models::portal::OutletStatus;
-use ockam::{FromSqlxError, SqlxDatabase, ToSqlxType, ToVoid};
+use ockam::{FromSqlxError, SqlxDatabase, ToVoid};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::Error;
 use ockam_core::Result;
 use ockam_core::{async_trait, Address};
 use ockam_multiaddr::MultiAddr;
-
-use crate::cli_state::storage::tcp_portals_repository::TcpPortalsRepository;
-use crate::cli_state::TcpInlet;
+use ockam_transport_core::HostnamePort;
 
 #[derive(Clone)]
 pub struct TcpPortalsSqlxDatabase {
@@ -44,11 +44,16 @@ impl TcpPortalsRepository for TcpPortalsSqlxDatabase {
         node_name: &str,
         tcp_inlet: &TcpInlet,
     ) -> ockam_core::Result<()> {
-        let query = query("INSERT OR REPLACE INTO tcp_inlet VALUES (?, ?, ?, ?)")
-            .bind(node_name.to_sql())
-            .bind(tcp_inlet.bind_addr().to_string().to_sql())
-            .bind(tcp_inlet.outlet_addr().to_string().to_sql())
-            .bind(tcp_inlet.alias().to_sql());
+        let query = query(
+            r#"
+            INSERT INTO tcp_inlet (node_name, bind_addr, outlet_addr, alias)
+            VALUES ($1, $2, $3, $4)
+            ON CONFLICT DO NOTHING"#,
+        )
+        .bind(node_name)
+        .bind(tcp_inlet.bind_addr().to_string())
+        .bind(tcp_inlet.outlet_addr().to_string())
+        .bind(tcp_inlet.alias());
         query.execute(&*self.database.pool).await.void()?;
         Ok(())
     }
@@ -59,10 +64,10 @@ impl TcpPortalsRepository for TcpPortalsSqlxDatabase {
         alias: &str,
     ) -> ockam_core::Result<Option<TcpInlet>> {
         let query = query_as(
-            "SELECT bind_addr, outlet_addr, alias FROM tcp_inlet WHERE node_name = ? AND alias = ?",
+            "SELECT bind_addr, outlet_addr, alias FROM tcp_inlet WHERE node_name = $1 AND alias = $2",
         )
-        .bind(node_name.to_sql())
-        .bind(alias.to_sql());
+        .bind(node_name)
+        .bind(alias);
         let result: Option<TcpInletRow> = query
             .fetch_optional(&*self.database.pool)
             .await
@@ -71,9 +76,9 @@ impl TcpPortalsRepository for TcpPortalsSqlxDatabase {
     }
 
     async fn delete_tcp_inlet(&self, node_name: &str, alias: &str) -> ockam_core::Result<()> {
-        let query = query("DELETE FROM tcp_inlet WHERE node_name = ? AND alias = ?")
-            .bind(node_name.to_sql())
-            .bind(alias.to_sql());
+        let query = query("DELETE FROM tcp_inlet WHERE node_name = $1 AND alias = $2")
+            .bind(node_name)
+            .bind(alias);
         query.execute(&*self.database.pool).await.into_core()?;
         Ok(())
     }
@@ -83,11 +88,16 @@ impl TcpPortalsRepository for TcpPortalsSqlxDatabase {
         node_name: &str,
         tcp_outlet_status: &OutletStatus,
     ) -> ockam_core::Result<()> {
-        let query = query("INSERT OR REPLACE INTO tcp_outlet_status VALUES (?, ?, ?, ?)")
-            .bind(node_name.to_sql())
-            .bind(tcp_outlet_status.socket_addr.to_sql())
-            .bind(tcp_outlet_status.worker_addr.to_sql())
-            .bind(tcp_outlet_status.payload.as_ref().map(|p| p.to_sql()));
+        let query = query(
+            r#"
+            INSERT INTO tcp_outlet_status (node_name, socket_addr, worker_addr, payload)
+            VALUES ($1, $2, $3, $4)
+            ON CONFLICT DO NOTHING"#,
+        )
+        .bind(node_name)
+        .bind(tcp_outlet_status.to.to_string())
+        .bind(tcp_outlet_status.worker_addr.to_string())
+        .bind(tcp_outlet_status.payload.as_ref());
         query.execute(&*self.database.pool).await.void()?;
         Ok(())
     }
@@ -97,9 +107,9 @@ impl TcpPortalsRepository for TcpPortalsSqlxDatabase {
         node_name: &str,
         worker_addr: &Address,
     ) -> ockam_core::Result<Option<OutletStatus>> {
-        let query = query_as("SELECT socket_addr, worker_addr, payload FROM tcp_outlet_status WHERE node_name = ? AND worker_addr = ?")
-            .bind(node_name.to_sql())
-            .bind(worker_addr.to_sql());
+        let query = query_as("SELECT socket_addr, worker_addr, payload FROM tcp_outlet_status WHERE node_name = $1 AND worker_addr = $2")
+            .bind(node_name)
+            .bind(worker_addr.to_string());
         let result: Option<TcpOutletStatusRow> = query
             .fetch_optional(&*self.database.pool)
             .await
@@ -112,9 +122,10 @@ impl TcpPortalsRepository for TcpPortalsSqlxDatabase {
         node_name: &str,
         worker_addr: &Address,
     ) -> ockam_core::Result<()> {
-        let query = query("DELETE FROM tcp_outlet_status WHERE node_name = ? AND worker_addr = ?")
-            .bind(node_name.to_sql())
-            .bind(worker_addr.to_sql());
+        let query =
+            query("DELETE FROM tcp_outlet_status WHERE node_name = $1 AND worker_addr = $2")
+                .bind(node_name)
+                .bind(worker_addr.to_string());
         query.execute(&*self.database.pool).await.into_core()?;
         Ok(())
     }
@@ -160,11 +171,11 @@ struct TcpOutletStatusRow {
 
 impl TcpOutletStatusRow {
     fn tcp_outlet_status(&self) -> Result<OutletStatus> {
-        let socket_addr = SocketAddr::from_str(&self.socket_addr)
+        let to = HostnamePort::from_str(&self.socket_addr)
             .map_err(|e| Error::new(Origin::Application, Kind::Serialization, e.to_string()))?;
         let worker_addr = Address::from_string(&self.worker_addr);
         Ok(OutletStatus {
-            socket_addr,
+            to,
             worker_addr,
             payload: self.payload.clone(),
         })
@@ -174,52 +185,47 @@ impl TcpOutletStatusRow {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ockam_node::database::with_dbs;
 
     #[tokio::test]
     async fn test_repository() -> Result<()> {
-        let db = create_database().await?;
-        let repository = create_repository(db.clone());
+        with_dbs(|db| async move {
+            let repository: Arc<dyn TcpPortalsRepository> =
+                Arc::new(TcpPortalsSqlxDatabase::new(db));
 
-        let tcp_inlet = TcpInlet::new(
-            &SocketAddr::from_str("127.0.0.1:80").unwrap(),
-            &MultiAddr::from_str("/node/outlet").unwrap(),
-            "alias",
-        );
-        repository.store_tcp_inlet("node_name", &tcp_inlet).await?;
-        let actual = repository.get_tcp_inlet("node_name", "alias").await?;
-        assert_eq!(actual, Some(tcp_inlet.clone()));
+            let tcp_inlet = TcpInlet::new(
+                &SocketAddr::from_str("127.0.0.1:80").unwrap(),
+                &MultiAddr::from_str("/node/outlet").unwrap(),
+                "alias",
+            );
+            repository.store_tcp_inlet("node_name", &tcp_inlet).await?;
+            let actual = repository.get_tcp_inlet("node_name", "alias").await?;
+            assert_eq!(actual, Some(tcp_inlet.clone()));
 
-        repository.delete_tcp_inlet("node_name", "alias").await?;
-        let actual = repository.get_tcp_inlet("node_name", "alias").await?;
-        assert_eq!(actual, None);
+            repository.delete_tcp_inlet("node_name", "alias").await?;
+            let actual = repository.get_tcp_inlet("node_name", "alias").await?;
+            assert_eq!(actual, None);
 
-        let worker_addr = Address::from_str("worker_addr").unwrap();
-        let tcp_outlet_status = OutletStatus::new(
-            SocketAddr::from_str("127.0.0.1:80").unwrap(),
-            worker_addr.clone(),
-            Some("payload".to_string()),
-        );
-        repository
-            .store_tcp_outlet("node_name", &tcp_outlet_status)
-            .await?;
-        let actual = repository.get_tcp_outlet("node_name", &worker_addr).await?;
-        assert_eq!(actual, Some(tcp_outlet_status.clone()));
+            let worker_addr = Address::from_str("worker_addr").unwrap();
+            let tcp_outlet_status = OutletStatus::new(
+                HostnamePort::from_str("127.0.0.1:80").unwrap(),
+                worker_addr.clone(),
+                Some("payload".to_string()),
+            );
+            repository
+                .store_tcp_outlet("node_name", &tcp_outlet_status)
+                .await?;
+            let actual = repository.get_tcp_outlet("node_name", &worker_addr).await?;
+            assert_eq!(actual, Some(tcp_outlet_status.clone()));
 
-        repository
-            .delete_tcp_outlet("node_name", &worker_addr)
-            .await?;
-        let actual = repository.get_tcp_outlet("node_name", &worker_addr).await?;
-        assert_eq!(actual, None);
+            repository
+                .delete_tcp_outlet("node_name", &worker_addr)
+                .await?;
+            let actual = repository.get_tcp_outlet("node_name", &worker_addr).await?;
+            assert_eq!(actual, None);
 
-        Ok(())
-    }
-
-    /// HELPERS
-    fn create_repository(db: SqlxDatabase) -> Arc<dyn TcpPortalsRepository> {
-        Arc::new(TcpPortalsSqlxDatabase::new(db))
-    }
-
-    async fn create_database() -> Result<SqlxDatabase> {
-        SqlxDatabase::in_memory("test").await
+            Ok(())
+        })
+        .await
     }
 }

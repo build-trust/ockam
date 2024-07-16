@@ -1,15 +1,14 @@
-use std::path::{Path, PathBuf};
-
 use rand::random;
-
-use cli_state::error::Result;
-use ockam::SqlxDatabase;
-use ockam_core::env::get_env_with_default;
-use ockam_node::database::application_migration_set::ApplicationMigrationSet;
-use ockam_node::Executor;
+use std::path::{Path, PathBuf};
 use tokio::sync::broadcast::{channel, Receiver, Sender};
 
-use crate::cli_state::{self, CliStateError};
+use ockam::SqlxDatabase;
+use ockam_core::env::get_env_with_default;
+use ockam_node::database::DatabaseConfiguration;
+use ockam_node::Executor;
+
+use crate::cli_state::error::Result;
+use crate::cli_state::CliStateError;
 use crate::logs::ExportingEnabled;
 use crate::terminal::notification::Notification;
 
@@ -68,16 +67,24 @@ impl CliState {
         &self.database
     }
 
-    pub fn database_path(&self) -> PathBuf {
-        Self::make_database_path(&self.dir)
+    pub fn database_configuration(&self) -> Result<DatabaseConfiguration> {
+        Self::make_database_configuration(&self.dir)
+    }
+
+    pub fn is_database_path(&self, path: &Path) -> bool {
+        let database_configuration = self.database_configuration().ok();
+        match database_configuration {
+            Some(c) => c.path() == Some(path.to_path_buf()),
+            None => false,
+        }
     }
 
     pub fn application_database(&self) -> SqlxDatabase {
         self.application_database.clone()
     }
 
-    pub fn application_database_path(&self) -> PathBuf {
-        Self::make_application_database_path(&self.dir)
+    pub fn application_database_configuration(&self) -> Result<DatabaseConfiguration> {
+        Self::make_application_database_configuration(&self.dir)
     }
 
     pub fn subscribe_to_notifications(&self) -> Receiver<Notification> {
@@ -118,17 +125,24 @@ impl CliState {
         self.delete_all_named_identities().await?;
         self.delete_all_nodes(true).await?;
         self.delete_all_named_vaults().await?;
-        self.delete()
+        self.delete().await
     }
 
     /// Removes all the directories storing state without loading the current state
+    /// The database data is only removed if the database is a SQLite one
     pub fn hard_reset() -> Result<()> {
         let dir = Self::default_dir()?;
         Self::delete_at(&dir)
     }
 
     /// Delete the local database and log files
-    pub fn delete(&self) -> Result<()> {
+    pub async fn delete(&self) -> Result<()> {
+        self.database.drop_postgres_node_tables().await?;
+        self.delete_local_data()
+    }
+
+    /// Delete the local data on disk: sqlite database file and log files
+    pub fn delete_local_data(&self) -> Result<()> {
         Self::delete_at(&self.dir)
     }
 
@@ -139,7 +153,8 @@ impl CliState {
     }
 
     /// Backup and reset is used to save aside
-    /// some corrupted local state for later inspection and then reset the state
+    /// some corrupted local state for later inspection and then reset the state.
+    /// The database is backed-up only if it is a SQLite database.
     pub fn backup_and_reset() -> Result<()> {
         let dir = Self::default_dir()?;
 
@@ -189,12 +204,10 @@ impl CliState {
     /// Create a new CliState where the data is stored at a given path
     pub async fn create(dir: PathBuf) -> Result<Self> {
         std::fs::create_dir_all(&dir)?;
-        let database = SqlxDatabase::create(Self::make_database_path(&dir)).await?;
-        let application_database = SqlxDatabase::create_with_migration(
-            Self::make_application_database_path(&dir),
-            ApplicationMigrationSet,
-        )
-        .await?;
+        let database = SqlxDatabase::create(&Self::make_database_configuration(&dir)?).await?;
+        let configuration = Self::make_application_database_configuration(&dir)?;
+        let application_database =
+            SqlxDatabase::create_application_database(&configuration).await?;
         debug!("Opened the main database with options {:?}", database);
         debug!(
             "Opened the application database with options {:?}",
@@ -230,28 +243,54 @@ impl CliState {
         }
     }
 
-    pub(super) fn make_database_path(root_path: &Path) -> PathBuf {
-        root_path.join("database.sqlite3")
+    /// If the postgres database is configured, return the postgres configuration
+    pub(super) fn make_database_configuration(root_path: &Path) -> Result<DatabaseConfiguration> {
+        match DatabaseConfiguration::postgres()? {
+            Some(configuration) => Ok(configuration),
+            None => Ok(DatabaseConfiguration::sqlite(
+                root_path.join("database.sqlite3").as_path(),
+            )),
+        }
     }
 
-    pub(super) fn make_application_database_path(root_path: &Path) -> PathBuf {
-        root_path.join("application_database.sqlite3")
+    /// If the postgres database is configured, return the postgres configuration
+    pub(super) fn make_application_database_configuration(
+        root_path: &Path,
+    ) -> Result<DatabaseConfiguration> {
+        match DatabaseConfiguration::postgres()? {
+            Some(configuration) => Ok(configuration),
+            None => Ok(DatabaseConfiguration::sqlite(
+                root_path.join("application_database.sqlite3").as_path(),
+            )),
+        }
     }
 
     pub(super) fn make_node_dir_path(root_path: &Path, node_name: &str) -> PathBuf {
         Self::make_nodes_dir_path(root_path).join(node_name)
     }
 
+    pub(super) fn make_command_log_path(root_path: &Path, command_name: &str) -> PathBuf {
+        Self::make_commands_log_dir_path(root_path).join(command_name)
+    }
+
     pub(super) fn make_nodes_dir_path(root_path: &Path) -> PathBuf {
         root_path.join("nodes")
+    }
+
+    pub(super) fn make_commands_log_dir_path(root_path: &Path) -> PathBuf {
+        root_path.join("commands")
     }
 
     /// Delete the state files
     fn delete_at(root_path: &Path) -> Result<()> {
         // Delete nodes logs
         let _ = std::fs::remove_dir_all(Self::make_nodes_dir_path(root_path));
+        // Delete command logs
+        let _ = std::fs::remove_dir_all(Self::make_commands_log_dir_path(root_path));
         // Delete the nodes database, keep the application database
-        let _ = std::fs::remove_file(Self::make_database_path(root_path));
+        if let Some(path) = Self::make_database_configuration(root_path)?.path() {
+            std::fs::remove_file(path)?
+        };
         Ok(())
     }
 
@@ -279,6 +318,9 @@ pub fn random_name() -> String {
 mod tests {
     use super::*;
     use itertools::Itertools;
+    use ockam_node::database::DatabaseType;
+    use sqlx::any::AnyRow;
+    use sqlx::Row;
     use std::fs;
     use tempfile::NamedTempFile;
 
@@ -286,6 +328,11 @@ mod tests {
     async fn test_reset() -> Result<()> {
         let db_file = NamedTempFile::new().unwrap();
         let cli_state_directory = db_file.path().parent().unwrap().join(random_name());
+        let db = SqlxDatabase::create(&CliState::make_database_configuration(
+            &cli_state_directory,
+        )?)
+        .await?;
+        db.drop_all_postgres_tables().await?;
         let cli = CliState::create(cli_state_directory.clone()).await?;
 
         // create 2 vaults
@@ -310,16 +357,18 @@ mod tests {
             .await?;
 
         let file_names = list_file_names(&cli_state_directory);
-        assert_eq!(
-            file_names.iter().sorted().as_slice(),
-            [
+        let expected = match cli.database_configuration()?.database_type() {
+            DatabaseType::Sqlite => vec![
                 "vault-vault2".to_string(),
                 "application_database.sqlite3".to_string(),
-                "database.sqlite3".to_string()
-            ]
-            .iter()
-            .sorted()
-            .as_slice()
+                "database.sqlite3".to_string(),
+            ],
+            DatabaseType::Postgres => vec!["vault-vault2".to_string()],
+        };
+
+        assert_eq!(
+            file_names.iter().sorted().as_slice(),
+            expected.iter().sorted().as_slice()
         );
 
         // reset the local state
@@ -327,10 +376,25 @@ mod tests {
         let result = fs::read_dir(&cli_state_directory);
         assert!(result.is_ok(), "the cli state directory is not deleted");
 
-        // only the application database must remain
-        let file_names = list_file_names(&cli_state_directory);
-        assert_eq!(file_names, vec!["application_database.sqlite3".to_string()]);
-
+        match cli.database_configuration()?.database_type() {
+            DatabaseType::Sqlite => {
+                // When the database is SQLite, only the application database must remain
+                let file_names = list_file_names(&cli_state_directory);
+                let expected = vec!["application_database.sqlite3".to_string()];
+                assert_eq!(file_names, expected);
+            }
+            DatabaseType::Postgres => {
+                // When the database is Postgres, only the journey tables must remain
+                let tables: Vec<AnyRow> = sqlx::query(
+                    "SELECT tablename::text FROM pg_tables WHERE schemaname = 'public'",
+                )
+                .fetch_all(&*db.pool)
+                .await
+                .unwrap();
+                let actual: Vec<String> = tables.iter().map(|r| r.get(0)).sorted().collect();
+                assert_eq!(actual, vec!["host_journey", "project_journey"]);
+            }
+        };
         Ok(())
     }
 

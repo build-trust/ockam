@@ -52,7 +52,7 @@ teardown() {
   run "$OCKAM" identity create m3
   run "$OCKAM" identity create m4
   run "$OCKAM" identity create m5
-  run "$OCKAM" identity create m7
+  run "$OCKAM" identity create m6
 
   account_authority_full=$($OCKAM identity show account_authority --full --encoding hex)
   account_authority_identifier=$($OCKAM identity show account_authority)
@@ -85,7 +85,8 @@ teardown() {
   "access_route": "/dnsaddr/127.0.0.1/tcp/4000/service/api",
   "users": [],
   "space_id": "1",
-  "identity": "I6c20e814b56579306f55c64e8747e6c1b4a53d9aa1b2c3d4e5f6a6b5c4d3e2f1",
+  "identity": "I923829d0397a06fa862be5a87b7966959b8ef99ab6455b843ca9131a747b4819",
+  "project_change_history": "81825837830101583285f68200815820f405e06d988fa8039cce1cd0ae607e46847c1b64bc459ca9d89dd9b21ae30681f41a654cebe91a7818eee98200815840494c9b70e8a9ad5593fceb478f722a513b4bd39fa70f4265d584253bc24617d0eb498ce532273f6d0d5326921e013696fce57c20cc6c4008f74b816810f0b009",
   "authority_access_route": "/dnsaddr/127.0.0.1/tcp/$port/service/api",
   "authority_identity": "$authority_identity_full",
   "version": "605c4632ded93eb17edeeef31fa3860db225b3ab-2023-12-05",
@@ -98,7 +99,7 @@ EOF
   run_success $OCKAM project import --project-file $OCKAM_HOME/project.json
 
   run_success "$OCKAM" project enroll --identity admin
-  assert_output --partial "ockam-relay=*"
+  assert_output --partial "\"ockam-relay\":\"*\""
   assert_output --partial "admin"
 
   # m1 is a member (its on the set of pre-trusted identifiers) so it can get it's own credential
@@ -120,14 +121,14 @@ EOF
 
   # admin can enroll new enrollers
   token3=$($OCKAM project ticket --identity admin --enroller)
-  run_success "$OCKAM" project enroll $token3 --identity m7
+  run_success "$OCKAM" project enroll $token3 --identity m6
   assert_output --partial "enroller"
 
   # New enroller can enroll members
-  run_success "$OCKAM" project ticket --identity m7
+  run_success "$OCKAM" project ticket --identity m6
 
   # Enroller can't enroll new enrollers
-  run "$OCKAM" project ticket --enroller --identity m7
+  run "$OCKAM" project ticket --enroller --identity m6
   assert_failure
 
   run "$OCKAM" project enroll $token2 --identity m5
@@ -157,7 +158,8 @@ EOF
   "access_route": "/dnsaddr/127.0.0.1/tcp/4000/service/api",
   "users": [],
   "space_id": "1",
-  "identity": "I6c20e814b56579306f55c64e8747e6c1b4a53d9aa1b2c3d4e5f6a6b5c4d3e2f1",
+  "identity": "I923829d0397a06fa862be5a87b7966959b8ef99ab6455b843ca9131a747b4819",
+  "project_change_history": "81825837830101583285f68200815820f405e06d988fa8039cce1cd0ae607e46847c1b64bc459ca9d89dd9b21ae30681f41a654cebe91a7818eee98200815840494c9b70e8a9ad5593fceb478f722a513b4bd39fa70f4265d584253bc24617d0eb498ce532273f6d0d5326921e013696fce57c20cc6c4008f74b816810f0b009",
   "authority_access_route": "/dnsaddr/127.0.0.1/tcp/$port/service/api",
   "authority_identity": "$authority_identity_full",
   "version": "605c4632ded93eb17edeeef31fa3860db225b3ab-2023-12-05",
@@ -215,7 +217,8 @@ EOF
   "access_route": "/dnsaddr/127.0.0.1/tcp/4000/service/api",
   "users": [],
   "space_id": "1",
-  "identity": "I6c20e814b56579306f55c64e8747e6c1b4a53d9aa1b2c3d4e5f6a6b5c4d3e2f1",
+  "identity": "I923829d0397a06fa862be5a87b7966959b8ef99ab6455b843ca9131a747b4819",
+  "project_change_history": "81825837830101583285f68200815820f405e06d988fa8039cce1cd0ae607e46847c1b64bc459ca9d89dd9b21ae30681f41a654cebe91a7818eee98200815840494c9b70e8a9ad5593fceb478f722a513b4bd39fa70f4265d584253bc24617d0eb498ce532273f6d0d5326921e013696fce57c20cc6c4008f74b816810f0b009",
   "authority_access_route": "/dnsaddr/127.0.0.1/tcp/$port/service/api",
   "authority_identity": "$authority_identity_full",
   "version": "605c4632ded93eb17edeeef31fa3860db225b3ab-2023-12-05",
@@ -264,7 +267,8 @@ EOF
   "access_route": "/dnsaddr/127.0.0.1/tcp/4000/service/api",
   "users": [],
   "space_id": "1",
-  "identity": "I6c20e814b56579306f55c64e8747e6c1b4a53d9aa1b2c3d4e5f6a6b5c4d3e2f1",
+  "identity": "I923829d0397a06fa862be5a87b7966959b8ef99ab6455b843ca9131a747b4819",
+  "project_change_history": "81825837830101583285f68200815820f405e06d988fa8039cce1cd0ae607e46847c1b64bc459ca9d89dd9b21ae30681f41a654cebe91a7818eee98200815840494c9b70e8a9ad5593fceb478f722a513b4bd39fa70f4265d584253bc24617d0eb498ce532273f6d0d5326921e013696fce57c20cc6c4008f74b816810f0b009",
   "authority_access_route": "/dnsaddr/127.0.0.1/tcp/$port/service/api",
   "authority_identity": "$authority_identity_full",
   "version": "605c4632ded93eb17edeeef31fa3860db225b3ab-2023-12-05",

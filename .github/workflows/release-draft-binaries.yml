@@ -53,7 +53,7 @@ jobs:
         env:
           GIT_TAG: '${{ github.event.inputs.git_tag }}'
         run: |
-          cargo install tomlq
+          cargo install tomlq@0.1.0
           set -x
           source tools/scripts/release/crates-to-publish.sh
 
@@ -472,7 +472,7 @@ jobs:
 
       - name: Rename Build
         run: |
-          cargo install tomlq
+          cargo install tomlq@0.1.0
           ockam_version=$(eval "tomlq package.version -f implementations/rust/ockam/ockam/Cargo.toml")
 
           final_name="libockam_rust_elixir_nifs-v${ockam_version}-nif-2.15-${{ matrix.job.target }}.so"

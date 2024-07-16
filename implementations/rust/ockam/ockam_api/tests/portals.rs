@@ -9,6 +9,7 @@ use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{route, Address, AllowAll, Error};
 use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
+use ockam_transport_core::HostnamePort;
 use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
@@ -21,6 +22,7 @@ use tracing::info;
 
 #[ockam_macros::test]
 async fn inlet_outlet_local_successful(context: &mut Context) -> ockam::Result<()> {
+    TestNode::clean().await?;
     let echo_server_handle = start_tcp_echo_server().await;
     let node_manager_handle = start_manager_for_tests(context, None, None).await?;
 
@@ -36,17 +38,14 @@ async fn inlet_outlet_local_successful(context: &mut Context) -> ockam::Result<(
         )
         .await?;
 
-    assert_eq!(
-        outlet_status.socket_addr,
-        echo_server_handle.chosen_addr.to_socket_addr()?
-    );
+    assert_eq!(outlet_status.to, echo_server_handle.chosen_addr);
     assert_eq!(outlet_status.worker_addr.address(), "outlet");
 
     let inlet_status = node_manager_handle
         .node_manager
         .create_inlet(
             context,
-            "127.0.0.1:0".to_string(),
+            HostnamePort::new("127.0.0.1", 0),
             route![],
             route![],
             MultiAddr::from_str("/secure/api/service/outlet")?,
@@ -96,6 +95,7 @@ fn portal_node_goes_down_reconnect() {
         let test_body = async move {
             let echo_server_handle = start_tcp_echo_server().await;
 
+            TestNode::clean().await?;
             let first_node = TestNode::create(runtime_cloned.clone(), None).await;
             let second_node = TestNode::create(runtime_cloned.clone(), None).await;
 
@@ -118,7 +118,7 @@ fn portal_node_goes_down_reconnect() {
                 .node_manager
                 .create_inlet(
                     &first_node.context,
-                    "127.0.0.1:0".to_string(),
+                    HostnamePort::new("127.0.0.1", 0),
                     route![],
                     route![],
                     second_node_listen_address
@@ -237,6 +237,7 @@ fn portal_low_bandwidth_connection_keep_working_for_60s() {
         let test_body = async move {
             let echo_server_handle = start_tcp_echo_server().await;
 
+            TestNode::clean().await?;
             let first_node = TestNode::create(runtime_cloned.clone(), None).await;
             let second_node = TestNode::create(runtime_cloned, None).await;
 
@@ -271,7 +272,7 @@ fn portal_low_bandwidth_connection_keep_working_for_60s() {
                 .node_manager
                 .create_inlet(
                     &first_node.context,
-                    "127.0.0.1:0".to_string(),
+                    HostnamePort::new("127.0.0.1", 0),
                     route![],
                     route![],
                     InternetAddress::from(passthrough_server_handle.chosen_addr)
@@ -354,6 +355,7 @@ fn portal_heavy_load_exchanged() {
         let test_body = async move {
             let echo_server_handle = start_tcp_echo_server().await;
 
+            TestNode::clean().await?;
             let first_node = TestNode::create(runtime_cloned.clone(), None).await;
             let second_node = TestNode::create(runtime_cloned, None).await;
 
@@ -381,7 +383,7 @@ fn portal_heavy_load_exchanged() {
                 .node_manager
                 .create_inlet(
                     &first_node.context,
-                    "127.0.0.1:0".to_string(),
+                    HostnamePort::new("127.0.0.1", 0),
                     route![],
                     route![],
                     second_node_listen_address
@@ -496,6 +498,7 @@ fn test_portal_payload_transfer(outgoing_disruption: Disruption, incoming_disrup
         let test_body = async move {
             let echo_server_handle = start_tcp_echo_server().await;
 
+            TestNode::clean().await?;
             let first_node = TestNode::create(runtime_cloned.clone(), None).await;
             let second_node = TestNode::create(runtime_cloned, None).await;
 
@@ -530,7 +533,7 @@ fn test_portal_payload_transfer(outgoing_disruption: Disruption, incoming_disrup
                 .node_manager
                 .create_inlet(
                     &first_node.context,
-                    "127.0.0.1:0".to_string(),
+                    HostnamePort::new("127.0.0.1", 0),
                     route![],
                     route![],
                     InternetAddress::from(passthrough_server_handle.chosen_addr)

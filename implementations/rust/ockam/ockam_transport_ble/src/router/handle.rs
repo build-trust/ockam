@@ -81,17 +81,18 @@ impl BleRouterHandle {
         .await
     }
 
+    // TODO: Remove in favor of `ockam_node::compat::asynchronous::resolve_peer`
     pub(crate) fn resolve_peer(peer: impl Into<String>) -> Result<(BleAddr, Vec<String>)> {
         let peer_str = peer.into();
         let peer_addr;
         let servicenames;
 
         // Try to parse as BleAddr
-        if let Ok(p) = crate::parse_ble_addr(peer_str) {
+        if let Ok(p) = crate::parse_ble_addr(peer_str.clone()) {
             peer_addr = p;
             servicenames = vec![];
         } else {
-            return Err(TransportError::InvalidAddress)?;
+            return Err(TransportError::InvalidAddress(peer_str))?;
         }
 
         Ok((peer_addr, servicenames))

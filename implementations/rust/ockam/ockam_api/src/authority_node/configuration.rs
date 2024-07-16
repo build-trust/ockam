@@ -1,5 +1,3 @@
-use std::path::PathBuf;
-
 use ockam::identity::models::ChangeHistory;
 use serde::{Deserialize, Serialize};
 
@@ -7,6 +5,7 @@ use ockam::identity::Identifier;
 use ockam_core::compat::collections::HashMap;
 use ockam_core::compat::fmt;
 use ockam_core::compat::fmt::{Display, Formatter};
+use ockam_node::database::DatabaseConfiguration;
 
 use crate::authenticator::PreTrustedIdentities;
 use crate::config::lookup::InternetAddress;
@@ -19,7 +18,7 @@ pub struct Configuration {
     pub identifier: Identifier,
 
     /// path where the database should be stored
-    pub database_path: PathBuf,
+    pub database_configuration: DatabaseConfiguration,
 
     /// Project id on the Orchestrator node
     pub project_identifier: String,

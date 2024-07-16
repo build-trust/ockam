@@ -2,6 +2,7 @@ use crate::authenticator::one_time_code::OneTimeCode;
 use ockam::identity::{Identifier, TimestampInSeconds};
 use ockam_core::compat::str::FromStr;
 use ockam_core::{Error, Result};
+use ockam_node::database::Nullable;
 use std::collections::BTreeMap;
 
 #[derive(Clone, Eq, PartialEq)]
@@ -35,7 +36,7 @@ impl EnrollmentToken {
 #[derive(sqlx::FromRow)]
 pub(crate) struct EnrollmentTokenRow {
     one_time_code: String,
-    reference: Option<String>,
+    reference: Nullable<String>,
     issued_by: String,
     created_at: i64,
     expires_at: i64,
@@ -49,7 +50,7 @@ impl TryFrom<EnrollmentTokenRow> for EnrollmentToken {
     fn try_from(value: EnrollmentTokenRow) -> Result<Self, Self::Error> {
         let member = EnrollmentToken {
             one_time_code: OneTimeCode::from_str(&value.one_time_code)?,
-            reference: value.reference,
+            reference: value.reference.to_option(),
             issued_by: Identifier::from_str(&value.issued_by)?,
             created_at: TimestampInSeconds(value.created_at as u64),
             expires_at: TimestampInSeconds(value.expires_at as u64),

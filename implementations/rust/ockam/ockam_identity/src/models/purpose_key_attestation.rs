@@ -2,7 +2,7 @@ use ockam_core::compat::vec::Vec;
 
 use crate::models::{ChangeHash, Identifier, TimestampInSeconds};
 
-use minicbor::{Decode, Encode};
+use minicbor::{CborLen, Decode, Encode};
 use ockam_vault::{
     ECDSASHA256CurveP256PublicKey, ECDSASHA256CurveP256Signature, EdDSACurve25519PublicKey,
     EdDSACurve25519Signature, X25519PublicKey,
@@ -13,7 +13,7 @@ pub const PURPOSE_KEY_ATTESTATION_DATA_TYPE: u8 = 2;
 
 /// Self-signed Attestation of an [`super::super::identity::Identity`] associating
 /// a [`super::super::purpose_key::PurposeKey`] with itself
-#[derive(Clone, Debug, PartialEq, Eq, Encode, Decode)]
+#[derive(Clone, Debug, PartialEq, Eq, Encode, Decode, CborLen)]
 #[rustfmt::skip]
 pub struct PurposeKeyAttestation {
     /// CBOR serialized [`super::VersionedData`]
@@ -26,7 +26,7 @@ pub struct PurposeKeyAttestation {
 }
 
 /// Signature over data field using a key from [`super::super::identity::Identity`]
-#[derive(Clone, Debug, PartialEq, Eq, Encode, Decode)]
+#[derive(Clone, Debug, PartialEq, Eq, Encode, Decode, CborLen)]
 #[rustfmt::skip]
 pub enum PurposeKeyAttestationSignature {
     /// Signature using EdDSA Ed25519 key from the corresponding [`super::super::identity::Identity`]
@@ -36,7 +36,7 @@ pub enum PurposeKeyAttestationSignature {
 }
 
 /// Data inside a [`PurposeKeyAttestation`]
-#[derive(Clone, Debug, PartialEq, Eq, Encode, Decode)]
+#[derive(Clone, Debug, PartialEq, Eq, Encode, Decode, CborLen)]
 #[rustfmt::skip]
 pub struct PurposeKeyAttestationData {
     /// [`Identifier`] of the [`super::super::identity::Identity`] this Purpose Key belongs to
@@ -53,7 +53,7 @@ pub struct PurposeKeyAttestationData {
 }
 
 /// [`PurposeKeyAttestation`]'s public key
-#[derive(Clone, Debug, PartialEq, Eq, Encode, Decode)]
+#[derive(Clone, Debug, PartialEq, Eq, Encode, Decode, CborLen)]
 #[rustfmt::skip]
 pub enum PurposePublicKey {
     /// Key dedicated to creation of Secure Channels
@@ -64,7 +64,7 @@ pub enum PurposePublicKey {
 }
 
 /// Key dedicated to signing [`super::Credential`]s
-#[derive(Clone, Debug, PartialEq, Eq, Encode, Decode)]
+#[derive(Clone, Debug, PartialEq, Eq, Encode, Decode, CborLen)]
 #[rustfmt::skip]
 pub enum CredentialVerifyingKey {
     /// Curve25519 Public Key for verifying EdDSA signatures.

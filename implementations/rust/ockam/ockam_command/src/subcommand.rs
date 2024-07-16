@@ -36,6 +36,7 @@ use crate::policy::PolicyCommand;
 use crate::project::ProjectCommand;
 use crate::project_member::ProjectMemberCommand;
 use crate::relay::RelayCommand;
+use crate::rendezvous::RendezvousCommand;
 use crate::reset::ResetCommand;
 use crate::run::RunCommand;
 use crate::secure_channel::listener::SecureChannelListenerCommand;
@@ -81,6 +82,8 @@ pub enum OckamSubcommand {
     TcpConnection(TcpConnectionCommand),
     TcpOutlet(TcpOutletCommand),
     TcpInlet(TcpInletCommand),
+
+    Rendezvous(RendezvousCommand),
 
     KafkaInlet(KafkaInletCommand),
     KafkaOutlet(KafkaOutletCommand),
@@ -137,6 +140,8 @@ impl OckamSubcommand {
             OckamSubcommand::TcpOutlet(c) => c.run(opts),
             OckamSubcommand::TcpInlet(c) => c.run(opts),
 
+            OckamSubcommand::Rendezvous(c) => c.run(opts),
+
             OckamSubcommand::KafkaInlet(c) => c.run(opts),
             OckamSubcommand::KafkaConsumer(c) => c.run(opts),
             OckamSubcommand::KafkaProducer(c) => c.run(opts),
@@ -176,6 +181,20 @@ impl OckamSubcommand {
                 _ => None,
             },
             _ => None,
+        }
+    }
+
+    /// Return true if this command represents the execution of a foreground node
+    pub fn is_foreground_node(&self) -> bool {
+        match self {
+            OckamSubcommand::Node(cmd) => match &cmd.subcommand {
+                NodeSubcommand::Create(cmd) => !cmd.foreground_args.child_process,
+                _ => false,
+            },
+            OckamSubcommand::Authority(cmd) => match &cmd.subcommand {
+                AuthoritySubcommand::Create(cmd) => !cmd.child_process,
+            },
+            _ => false,
         }
     }
 
@@ -266,6 +285,7 @@ impl OckamSubcommand {
             OckamSubcommand::TcpConnection(c) => c.name(),
             OckamSubcommand::TcpOutlet(c) => c.name(),
             OckamSubcommand::TcpInlet(c) => c.name(),
+            OckamSubcommand::Rendezvous(c) => c.name(),
             OckamSubcommand::KafkaInlet(c) => c.name(),
             OckamSubcommand::KafkaOutlet(c) => c.name(),
             OckamSubcommand::KafkaConsumer(c) => c.name(),
@@ -334,6 +354,11 @@ pub trait Command: Clone + Sized + Send + Sync + 'static {
                     Ok(_) => break,
                     Err(Error::Retry(inner)) => {
                         retry_count -= 1;
+                        // return the last error if there are no more retries
+                        if retry_count == 0 {
+                            return Err(inner);
+                        };
+
                         let delay = retry_delay.add(jitter(retry_delay_jitter));
                         warn!(
                             "Command failed, retrying in {} seconds: {inner:?}",

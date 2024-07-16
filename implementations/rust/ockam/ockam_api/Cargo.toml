@@ -1,9 +1,23 @@
 [package]
 name = "ockam_api"
-version = "0.70.0"
+version = "0.72.0"
 authors = ["Ockam Developers"]
+categories = [
+  "cryptography",
+  "asynchronous",
+  "authentication",
+  "network-programming",
+  "embedded",
+]
 edition = "2021"
 homepage = "https://github.com/ockam-network/ockam"
+keywords = [
+  "ockam",
+  "crypto",
+  "cryptography",
+  "network-programming",
+  "encryption",
+]
 license = "Apache-2.0"
 publish = true
 repository = "https://github.com/ockam-network/ockam/implementations/rust/ockam/ockam_api"
@@ -39,10 +53,10 @@ clap = { version = "4.5", default-features = false, features = ["derive"] }
 colorful = "0.2"
 colors-transform = "0.2"
 dialoguer = "0.11"
-either = { version = "1.12.0", default-features = false }
+either = { version = "1.13.0", default-features = false }
 flexi_logger = "0.28"
 futures = { version = "0.3.30", features = [] }
-gethostname = "0.4.3"
+gethostname = "0.5.0"
 hex = { version = "0.4.3", default-features = false, features = ["alloc", "serde"] }
 home = "0.5"
 http-body-util = "0"
@@ -59,7 +73,7 @@ log = "0.4"
 miette = "7"
 minicbor = { version = "0.24.1", features = ["alloc", "derive"] }
 nix = { version = "0.29", features = ["signal"] }
-open = "5.1.4"
+open = "5.3.0"
 opentelemetry = { version = "0.23.0", features = ["logs", "metrics", "trace"] }
 opentelemetry-appender-tracing = { version = "0.4.0" }
 opentelemetry-otlp = { version = "0.16.0", features = ["logs", "metrics", "trace", "grpc-tonic", "tls", "tls-roots"], default-features = false }
@@ -75,13 +89,13 @@ reqwest = { version = "0.12", default-features = false, features = ["json", "rus
 serde = { version = "1.0.203", features = ["derive"] }
 serde_json = "1.0.118"
 sha2 = "0.10.8"
-sqlx = { version = "0.7.4", features = ["runtime-tokio", "sqlite"] }
+sqlx-build-trust = { version = "0.7.8" }
 strip-ansi-escapes = "0.2"
 sysinfo = "0.30"
 thiserror = "1.0"
 time = { version = "0.3.36", default-features = false, features = ["std", "formatting", "local-offset", "macros"] }
 tiny_http = "0.12.0"
-tinyvec = { version = "1.6.0", features = ["rustc_1_57"] }
+tinyvec = { version = "1.8.0", features = ["rustc_1_57"] }
 tokio = { version = "1.38.0", features = ["full"] }
 tokio-retry = "0.3.0"
 tracing = { version = "0.1", default-features = false }
@@ -92,24 +106,25 @@ tracing-opentelemetry = "0.24.0"
 tracing-subscriber = { version = "0.3.18", features = ["json"] }
 url = "2.5.2"
 
-ockam_multiaddr = { path = "../ockam_multiaddr", version = "0.55.0", features = ["cbor", "serde"] }
-ockam_transport_tcp = { path = "../ockam_transport_tcp", version = "^0.117.0", default-features = false, features = ["std"] }
+ockam_multiaddr = { path = "../ockam_multiaddr", version = "0.56.0", features = ["cbor", "serde"] }
+ockam_transport_core = { path = "../ockam_transport_core" }
+ockam_transport_tcp = { path = "../ockam_transport_tcp", version = "^0.119.0", default-features = false, features = ["std"] }
 tonic = "0.11"
 
 [dependencies.ockam_core]
-version = "0.111.0"
+version = "0.112.0"
 path = "../ockam_core"
 default-features = false
 features = ["no_std", "alloc"]
 
 [dependencies.ockam_node]
-version = "0.119.0"
+version = "0.121.0"
 path = "../ockam_node"
 default-features = false
 features = ["no_std", "alloc"]
 
 [dependencies.ockam_vault]
-version = "0.112.0"
+version = "0.114.0"
 path = "../ockam_vault"
 default-features = false
 # FIXME: ockam_vault's dependency curve25519-dalek has non-additive features which
@@ -117,19 +132,19 @@ default-features = false
 features = ["std", "storage"]
 
 [dependencies.ockam_vault_aws]
-version = "0.38.0"
+version = "0.40.0"
 path = "../ockam_vault_aws"
 default-features = false
 features = ["std"]
 
 [dependencies.ockam]
-version = "^0.127.0"
+version = "^0.129.0"
 path = "../ockam"
 default-features = false
 features = ["std", "ockam_transport_tcp", "ockam_transport_udp", "storage"]
 
 [dependencies.ockam_abac]
-version = "0.60.0"
+version = "0.62.0"
 path = "../ockam_abac"
 default-features = false
 
@@ -153,4 +168,4 @@ tempfile = "3.10.1"
 tokio = { version = "1.38.0", features = ["full"] }
 tracing-core = "0.1.32"
 treeline = "0.1.0"
-uuid = "1.9.1"
+uuid = "1.10.0"

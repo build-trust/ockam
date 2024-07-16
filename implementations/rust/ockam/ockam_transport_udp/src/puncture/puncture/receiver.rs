@@ -61,7 +61,7 @@ impl UdpPunctureReceiverWorker {
         options: UdpPunctureOptions,
         redirect_first_message_to_transport: bool,
     ) -> Result<()> {
-        let peer_udp_address = Address::new(UDP, peer_udp_address);
+        let peer_udp_address = Address::new_with_string(UDP, peer_udp_address);
 
         let peer_route = route![bind.sender_address().clone(), peer_udp_address];
 

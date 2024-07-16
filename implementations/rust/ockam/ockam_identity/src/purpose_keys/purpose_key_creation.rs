@@ -136,10 +136,10 @@ impl PurposeKeyCreation {
             expires_at,
         };
 
-        let attestation_data_binary = minicbor::to_vec(&attestation_data)?;
+        let attestation_data_binary = ockam_core::cbor_encode_preallocate(&attestation_data)?;
 
         let versioned_data = PurposeKeyAttestation::create_versioned_data(attestation_data_binary);
-        let versioned_data = minicbor::to_vec(&versioned_data)?;
+        let versioned_data = ockam_core::cbor_encode_preallocate(&versioned_data)?;
 
         let versioned_data_hash = self.vault.verifying_vault.sha256(&versioned_data).await?;
 

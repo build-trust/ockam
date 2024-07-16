@@ -4,6 +4,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.129.0 - 2024-07-03
+
+### Added
+
+- Updated dependencies
+
+### Changed
+
+- Improve output of `project enroll` and `credential` commands
+
+## 0.128.0 - 2024-07-01
+
+### Added
+
+- Improve transport imports
+- Integrate `UDP` puncture into `ockam_api`
+- Add delete and list commands for kafka-outlet
+- Use the any driver for sqlx to add support for postgres
+- Optimize cbor encoding by preallocating memory
+- Updated dependencies
+
+### Changed
+
+- `project-member` commands, and adds the `show` command
+- `kafka-*` commands
+
 ## 0.127.0 - 2024-06-25
 
 ### Added

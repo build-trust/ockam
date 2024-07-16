@@ -1,5 +1,6 @@
-use crate::tokio::{sync::mpsc::error::SendError, time::error::Elapsed};
+use crate::tokio::sync::mpsc::error::SendError;
 use core::fmt;
+use core::time::Duration;
 use ockam_core::{
     compat::error::Error as StdError,
     errcode::{Kind, Origin},
@@ -56,10 +57,15 @@ impl NodeError {
         .context("SendError", err)
     }
 
-    /// Create an ockam_core::Error from a tokio::Elapsed
+    /// Create an ockam_core::Error an elapsed timeout
     #[track_caller]
-    pub(crate) fn with_elapsed(self, err: Elapsed) -> Error {
-        Error::new(Origin::Node, Kind::Timeout, err).context("Type", self)
+    pub(crate) fn with_timeout(self, duration: Duration) -> Error {
+        Error::new(
+            Origin::Node,
+            Kind::Timeout,
+            format!("timeout: {duration:?}"),
+        )
+        .context("Type", self)
     }
 }
 

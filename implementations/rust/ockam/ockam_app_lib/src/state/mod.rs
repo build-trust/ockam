@@ -382,12 +382,13 @@ impl AppState {
 
     pub async fn authority_node(
         &self,
+        ctx: &Context,
         project: &Project,
         caller_identity_name: Option<String>,
     ) -> Result<AuthorityNodeClient> {
         let node_manager = self.node_manager.read().await;
         Ok(node_manager
-            .create_authority_client(project, caller_identity_name)
+            .create_authority_client(ctx, project, caller_identity_name)
             .await?)
     }
 
@@ -528,8 +529,8 @@ impl AppState {
                 .into_iter()
                 .map(|outlet| LocalService {
                     name: outlet.worker_addr.address().to_string(),
-                    address: outlet.socket_addr.ip().to_string(),
-                    port: outlet.socket_addr.port(),
+                    address: outlet.to.hostname().to_string(),
+                    port: outlet.to.port(),
                     scheme: None,
                     shared_with: vec![],
                     available: true,

@@ -5,7 +5,7 @@ use crate::secure_channel::Role;
 use crate::Identifier;
 use ockam_core::{async_trait, Address};
 use ockam_core::{Error, Result};
-use ockam_node::database::{FromSqlxError, SqlxDatabase, ToSqlxType, ToVoid};
+use ockam_node::database::{FromSqlxError, SqlxDatabase, ToVoid};
 use ockam_vault::{AeadSecretKeyHandle, HandleToSecret};
 
 use crate::secure_channels::storage::secure_channel_repository::{
@@ -39,9 +39,9 @@ impl SecureChannelRepository for SecureChannelSqlxDatabase {
         decryptor_remote_address: &Address,
     ) -> Result<Option<PersistedSecureChannel>> {
         let query = query_as(
-            "SELECT role, my_identifier, their_identifier, decryptor_remote_address, decryptor_api_address, decryption_key_handle FROM secure_channel WHERE decryptor_remote_address=$1"
+            "SELECT role, my_identifier, their_identifier, decryptor_remote_address, decryptor_api_address, decryption_key_handle FROM secure_channel WHERE decryptor_remote_address = $1"
             )
-            .bind(decryptor_remote_address.to_string().to_sql());
+            .bind(decryptor_remote_address.to_string());
         let secure_channel: Option<SecureChannelRow> = query
             .fetch_optional(&*self.database.pool)
             .await
@@ -52,20 +52,23 @@ impl SecureChannelRepository for SecureChannelSqlxDatabase {
 
     async fn put(&self, secure_channel: PersistedSecureChannel) -> Result<()> {
         let query = query(
-            "INSERT OR REPLACE INTO secure_channel (role, my_identifier, their_identifier, decryptor_remote_address, decryptor_api_address, decryption_key_handle) VALUES (?, ?, ?, ?, ?, ?)"
+            r#"INSERT INTO secure_channel (role, my_identifier, their_identifier, decryptor_remote_address, decryptor_api_address, decryption_key_handle)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            ON CONFLICT (decryptor_remote_address)
+            DO UPDATE SET role = $1, my_identifier = $2, their_identifier = $3, decryptor_api_address = $5, decryption_key_handle = $6"#
             )
-            .bind(secure_channel.role().str().to_sql())
-            .bind(secure_channel.my_identifier().to_string().to_sql())
-            .bind(secure_channel.their_identifier().to_sql())
-            .bind(secure_channel.decryptor_remote().to_sql())
-            .bind(secure_channel.decryptor_api().to_sql())
-            .bind(secure_channel.decryption_key_handle().to_sql());
+            .bind(secure_channel.role().str())
+            .bind(secure_channel.my_identifier())
+            .bind(secure_channel.their_identifier())
+            .bind(secure_channel.decryptor_remote().to_string())
+            .bind(secure_channel.decryptor_api().to_string())
+            .bind(secure_channel.decryption_key_handle());
         query.execute(&*self.database.pool).await.void()
     }
 
     async fn delete(&self, decryptor_remote_address: &Address) -> Result<()> {
-        let query = query("DELETE FROM secure_channel WHERE decryptor_remote_address=$1")
-            .bind(decryptor_remote_address.to_string().to_sql());
+        let query = query("DELETE FROM secure_channel WHERE decryptor_remote_address = $1")
+            .bind(decryptor_remote_address.to_string());
         query.execute(&*self.database.pool).await.void()
     }
 }

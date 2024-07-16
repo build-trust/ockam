@@ -95,17 +95,21 @@ impl UdsRouter {
 
         let path = match pair.peer().as_pathname() {
             Some(p) => p,
-            None => return Err(TransportError::InvalidAddress)?,
+            None => return Err(TransportError::InvalidAddress(format!("{:?}", pair.peer())))?,
         };
 
         let str_path = match path.to_str() {
             Some(s) => s,
-            None => return Err(TransportError::InvalidAddress)?,
+            None => {
+                return Err(TransportError::InvalidAddress(
+                    path.to_string_lossy().to_string(),
+                ))?
+            }
         };
 
-        let uds_address = Address::new(UDS, str_path);
+        let uds_address = Address::new_with_string(UDS, str_path);
         let mut accepts = vec![uds_address];
-        accepts.extend(pathnames.iter().map(|p| Address::new(UDS, p)));
+        accepts.extend(pathnames.iter().map(|p| Address::new_with_string(UDS, p)));
 
         let self_addr = pair.tx_addr();
         self.handle_register(accepts, self_addr.clone()).await?;
@@ -214,7 +218,7 @@ impl UdsRouter {
             Some(p) => p,
             None => {
                 error!("Failed to resolve route.");
-                return Err(TransportError::InvalidAddress)?;
+                return Err(TransportError::InvalidAddress(format!("{:?}", peer_addr)))?;
             }
         };
 
@@ -225,11 +229,13 @@ impl UdsRouter {
                     "Failed to resolve route, invalid path provided: {}",
                     path.display()
                 );
-                return Err(TransportError::InvalidAddress)?;
+                return Err(TransportError::InvalidAddress(
+                    path.to_string_lossy().to_string(),
+                ))?;
             }
         };
 
-        let uds_address = Address::new(UDS, path_str);
+        let uds_address = Address::new_with_string(UDS, path_str);
 
         if let Some(n) = self.map.get(&uds_address).cloned() {
             return Ok(n);
@@ -296,7 +302,7 @@ impl Worker for UdsRouter {
                 "UDS router received a message for an invalid address: {}",
                 msg_addr
             );
-            return Err(TransportError::InvalidAddress)?;
+            return Err(TransportError::InvalidAddress(msg_addr.to_string()))?;
         }
 
         Ok(())

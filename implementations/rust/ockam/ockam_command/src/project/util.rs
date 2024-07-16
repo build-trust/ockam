@@ -103,7 +103,7 @@ pub async fn check_project_readiness(
     node: &InMemoryNode,
     project: Project,
 ) -> Result<Project> {
-    // Total of 10 Mins sleep strategy with 5 second intervals between each retry
+    // Total of 20 Mins sleep strategy with 5 second intervals between each retry
     let retry_strategy = FixedInterval::from_millis(5000)
         .take((ORCHESTRATOR_AWAIT_TIMEOUT.as_millis() / 5000) as usize);
 
@@ -212,7 +212,7 @@ async fn check_authority_node_accessible(
     retry_strategy: Take<FixedInterval>,
     spinner_option: Option<ProgressBar>,
 ) -> Result<Project> {
-    let authority_node = node.create_authority_client(&project, None).await?;
+    let authority_node = node.create_authority_client(ctx, &project, None).await?;
 
     if let Some(spinner) = spinner_option.as_ref() {
         spinner.set_message("Establishing secure channel to project authority...");

@@ -4,18 +4,17 @@ use std::time::Duration;
 use futures::executor;
 use miette::IntoDiagnostic;
 
-use ockam::identity::SecureChannels;
+use ockam::identity::{Identifier, SecureChannels};
 use ockam::tcp::{TcpListenerOptions, TcpTransport};
 use ockam::{Context, Result};
 use ockam_core::compat::{string::String, sync::Arc};
 use ockam_core::errcode::Kind;
 use ockam_multiaddr::MultiAddr;
 
-use crate::cli_state::journeys::{NODE_NAME, USER_EMAIL, USER_NAME};
 use crate::cli_state::random_name;
 use crate::cli_state::CliState;
-use crate::cloud::ControllerClient;
-use crate::logs::CurrentSpan;
+use crate::cloud::project::Project;
+use crate::cloud::{AuthorityNodeClient, ControllerClient, CredentialsEnabled, ProjectNodeClient};
 use crate::nodes::service::default_address::DefaultAddress;
 use crate::nodes::service::{
     NodeManagerGeneralOptions, NodeManagerTransportOptions, NodeManagerTrustOptions,
@@ -58,10 +57,13 @@ impl Drop for InMemoryNode {
         // because in that case they can be restarted
         if !self.persistent {
             executor::block_on(async {
-                self.node_manager
-                    .delete_node()
+                // We need to recreate the CliState here to make sure that
+                // we get a fresh connection to the database (otherwise this code blocks)
+                let cli_state = CliState::create(self.cli_state.dir()).await.unwrap();
+                cli_state
+                    .remove_node(&self.node_name)
                     .await
-                    .unwrap_or_else(|e| panic!("cannot delete the node {}: {e:?}", self.node_name))
+                    .unwrap_or_else(|e| panic!("cannot delete the node {}: {e:?}", self.node_name));
             });
         }
     }
@@ -171,19 +173,6 @@ impl InMemoryNode {
         Ok(node_manager)
     }
 
-    /// Return a Controller client to send requests to the Controller
-    pub async fn create_controller(&self) -> miette::Result<ControllerClient> {
-        if let Ok(user) = self.cli_state.get_default_user().await {
-            CurrentSpan::set_attribute(USER_NAME, &user.name);
-            CurrentSpan::set_attribute(USER_EMAIL, &user.email.to_string());
-        }
-        CurrentSpan::set_attribute(NODE_NAME, &self.node_manager.node_name);
-
-        self.create_controller_client(self.timeout)
-            .await
-            .into_diagnostic()
-    }
-
     pub fn with_timeout(mut self, timeout: Duration) -> Self {
         self.timeout = Some(timeout);
         self
@@ -226,6 +215,62 @@ impl InMemoryNode {
     pub fn secure_channels(&self) -> Arc<SecureChannels> {
         self.secure_channels.clone()
     }
+
+    /// Return a Controller client to send requests to the Controller
+    pub async fn create_controller(&self) -> miette::Result<ControllerClient> {
+        let client = self.node_manager.create_controller().await?;
+        if let Some(timeout) = self.timeout {
+            Ok(client
+                .with_request_timeout(&timeout)
+                .with_secure_channel_timeout(&timeout))
+        } else {
+            Ok(client)
+        }
+    }
+
+    pub async fn create_authority_client(
+        &self,
+        ctx: &Context,
+        project: &Project,
+        caller_identity_name: Option<String>,
+    ) -> miette::Result<AuthorityNodeClient> {
+        let client = self
+            .node_manager
+            .create_authority_client(ctx, project, caller_identity_name)
+            .await?;
+        if let Some(timeout) = self.timeout {
+            Ok(client
+                .with_request_timeout(&timeout)
+                .with_secure_channel_timeout(&timeout))
+        } else {
+            Ok(client)
+        }
+    }
+
+    pub async fn create_project_client(
+        &self,
+        project_identifier: &Identifier,
+        project_multiaddr: &MultiAddr,
+        caller_identity_name: Option<String>,
+        credentials_enabled: CredentialsEnabled,
+    ) -> miette::Result<ProjectNodeClient> {
+        let client = self
+            .node_manager
+            .create_project_client(
+                project_identifier,
+                project_multiaddr,
+                caller_identity_name,
+                credentials_enabled,
+            )
+            .await?;
+        if let Some(timeout) = self.timeout {
+            Ok(client
+                .with_request_timeout(&timeout)
+                .with_secure_channel_timeout(&timeout))
+        } else {
+            Ok(client)
+        }
+    }
 }
 
 pub struct NodeManagerDefaults {
@@ -239,5 +284,24 @@ impl Default for NodeManagerDefaults {
             node_name: random_name(),
             tcp_listener_address: "127.0.0.1:0".to_string(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[ockam::test]
+    async fn test_start_twice(ctx: &mut Context) -> Result<()> {
+        let cli = CliState::test().await?;
+
+        let node_manager1 = InMemoryNode::start(ctx, &cli).await;
+        assert!(node_manager1.is_ok());
+
+        let node_manager2 = InMemoryNode::start(ctx, &cli).await;
+        if let Err(e) = node_manager2 {
+            panic!("cannot start the node manager a second time: {e:?}");
+        }
+        Ok(())
     }
 }

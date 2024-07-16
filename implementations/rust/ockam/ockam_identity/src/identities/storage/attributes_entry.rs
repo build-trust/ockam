@@ -2,7 +2,7 @@ use crate::alloc::string::ToString;
 use crate::models::{Identifier, TimestampInSeconds};
 use crate::utils::now;
 use core::fmt::{Display, Formatter};
-use minicbor::{Decode, Encode};
+use minicbor::{CborLen, Decode, Encode};
 use ockam_core::compat::borrow::ToOwned;
 use ockam_core::compat::string::String;
 use ockam_core::compat::{collections::BTreeMap, vec::Vec};
@@ -11,7 +11,7 @@ use serde::ser::SerializeMap;
 use serde::{Deserialize, Serialize};
 
 /// An entry on the AuthenticatedIdentities table.
-#[derive(Debug, Clone, Encode, Decode, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Encode, Decode, CborLen, PartialEq, Eq, Serialize, Deserialize)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct AttributesEntry {

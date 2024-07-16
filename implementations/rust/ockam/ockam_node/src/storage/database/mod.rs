@@ -1,7 +1,9 @@
+mod database_configuration;
 mod migrations;
 mod sqlx_database;
-mod sqlx_types;
+mod sqlx_from_row_types;
 
+pub use database_configuration::*;
 pub use migrations::*;
 pub use sqlx_database::*;
-pub use sqlx_types::*;
+pub use sqlx_from_row_types::*;

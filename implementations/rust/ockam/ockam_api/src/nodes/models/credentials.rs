@@ -1,9 +1,9 @@
 //! Credential request/response types
 
-use minicbor::{Decode, Encode};
+use minicbor::{CborLen, Decode, Encode};
 use ockam_multiaddr::MultiAddr;
 
-#[derive(Clone, Debug, Decode, Encode)]
+#[derive(Clone, Debug, Encode, Decode, CborLen)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct GetCredentialRequest {
@@ -24,7 +24,7 @@ impl GetCredentialRequest {
     }
 }
 
-#[derive(Clone, Debug, Decode, Encode)]
+#[derive(Clone, Debug, Encode, Decode, CborLen)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct PresentCredentialRequest {

@@ -1,5 +1,4 @@
-use ockam::{errcode::Origin, Error};
-use ockam_core::Result;
+use ockam_core::{errcode::Origin, Error, Result};
 use std::net::SocketAddr;
 use tokio::net::UdpSocket;
 

@@ -173,7 +173,56 @@ jobs:
         uses: ./.github/actions/nix_upload_store
         if: ${{ steps.nix-installer.outputs.cache-hit != 'true' }}
 
+  test_postgres:
+    name: Rust - test_postgres${{ matrix.test_projects != 'stable' && format('_{0}', matrix.test_projects) || '' }}
+    runs-on: ubuntu-22.04
+    services:
+      postgres:
+        image: postgres:latest
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: test
+        ports:
+          - 5432:5432
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
 
+    defaults:
+      run:
+        shell: nix develop ./tools/nix#rust${{ matrix.test_projects == 'nightly' && '_nightly' || '' }} --keep CI --ignore-environment --command bash {0}
+    strategy:
+      fail-fast: false
+      matrix:
+        test_projects:
+          - stable
+    steps:
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
+        with:
+          ref: ${{ github.event.inputs.commit_sha }}
+
+      - name: Install Nix
+        uses: ./.github/actions/cache_nix
+        with:
+          cache-unique-id: ${{ matrix.test_projects }}
+        id: nix-installer
+
+      - uses: ./.github/actions/cache_rust
+        with:
+          job_name: "${{ github.job }}-${{ matrix.test_projects }}"
+
+      - name: Run postgres test on ${{ matrix.test_projects }}
+        run: |
+          pg_ctl -D /var/lib/postgresql/data -l logfile start
+          export OCKAM_POSTGRES_HOST=localhost
+          export OCKAM_POSTGRES_PORT=5432
+          export OCKAM_POSTGRES_DATABASE_NAME=test
+          export OCKAM_POSTGRES_USER=postgres
+          export OCKAM_POSTGRES_PASSWORD=password
+          make -f implementations/rust/Makefile test_postgres
+
+      - name: Nix Upload Store
+        uses: ./.github/actions/nix_upload_store
+        if: ${{ steps.nix-installer.outputs.cache-hit != 'true' }}
 
   check:
     name: Rust - check_${{ matrix.check_projects }}
@@ -271,7 +320,7 @@ jobs:
           ockam --version
           echo $(which ockam)
           echo $BATS_TEST_RETRIES
-          bash implementations/rust/ockam/ockam_command/tests/bats/run.sh
+          bash implementations/rust/ockam/ockam_command/tests/bats/run.sh local
         env:
           OCKAM_DISABLE_UPGRADE_CHECK: 1
           BATS_TEST_RETRIES: 2

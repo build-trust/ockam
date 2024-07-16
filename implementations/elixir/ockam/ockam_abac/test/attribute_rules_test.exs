@@ -6,6 +6,10 @@ defmodule Ockam.ABAC.AttributeRule.Tests do
   alias Ockam.ABAC.Request
 
   describe "single attribute rule" do
+    test "names can contain letters, numbers, underscores and dashes" do
+      {:ok, rule} = AttributeRule.parse("(= subject.foo-1_2-3 \"bar\")")
+    end
+
     test "eq rule" do
       request_matching = %Request{
         action_id: ActionId.new("", ""),

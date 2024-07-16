@@ -5,7 +5,7 @@ use tracing::debug;
 use ockam_core::async_trait;
 use ockam_core::compat::vec::Vec;
 use ockam_core::Result;
-use ockam_node::database::{FromSqlxError, SqlxDatabase, SqlxType, ToSqlxType, ToVoid};
+use ockam_node::database::{FromSqlxError, SqlxDatabase, ToVoid};
 
 use crate::{Action, Expr, ResourceName, ResourcePoliciesRepository, ResourcePolicy};
 
@@ -43,13 +43,15 @@ impl ResourcePoliciesRepository for ResourcePolicySqlxDatabase {
         expression: &Expr,
     ) -> Result<()> {
         let query = query(
-            r#"INSERT OR REPLACE INTO resource_policy
-            VALUES (?, ?, ?, ?)"#,
+            r#"INSERT INTO resource_policy (resource_name, action, expression, node_name)
+            VALUES ($1, $2, $3, $4)
+            ON CONFLICT (resource_name, action, node_name)
+            DO UPDATE SET expression = $3"#,
         )
-        .bind(resource_name.to_sql())
-        .bind(action.to_sql())
-        .bind(expression.to_string().to_sql())
-        .bind(self.node_name.to_sql());
+        .bind(resource_name)
+        .bind(action)
+        .bind(expression)
+        .bind(&self.node_name);
         query.execute(&*self.database.pool).await.void()
     }
 
@@ -61,11 +63,11 @@ impl ResourcePoliciesRepository for ResourcePolicySqlxDatabase {
         let query = query_as(
             r#"SELECT resource_name, action, expression
             FROM resource_policy
-            WHERE node_name=$1 and resource_name=$2 and action=$3"#,
+            WHERE node_name = $1 and resource_name = $2 and action = $3"#,
         )
-        .bind(self.node_name.to_sql())
-        .bind(resource_name.to_sql())
-        .bind(action.to_sql());
+        .bind(&self.node_name)
+        .bind(resource_name)
+        .bind(action);
         let row: Option<PolicyRow> = query
             .fetch_optional(&*self.database.pool)
             .await
@@ -77,9 +79,9 @@ impl ResourcePoliciesRepository for ResourcePolicySqlxDatabase {
         let query = query_as(
             r#"SELECT resource_name, action, expression
             FROM resource_policy
-            WHERE node_name=$1"#,
+            WHERE node_name = $1"#,
         )
-        .bind(self.node_name.to_sql());
+        .bind(&self.node_name);
         let row: Vec<PolicyRow> = query.fetch_all(&*self.database.pool).await.into_core()?;
         row.into_iter()
             .map(|r| r.try_into())
@@ -93,10 +95,10 @@ impl ResourcePoliciesRepository for ResourcePolicySqlxDatabase {
         let query = query_as(
             r#"SELECT resource_name, action, expression
             FROM resource_policy
-            WHERE node_name=$1 and resource_name=$2"#,
+            WHERE node_name = $1 and resource_name = $2"#,
         )
-        .bind(self.node_name.to_sql())
-        .bind(resource_name.to_sql());
+        .bind(&self.node_name)
+        .bind(resource_name);
         let row: Vec<PolicyRow> = query.fetch_all(&*self.database.pool).await.into_core()?;
         row.into_iter()
             .map(|r| r.try_into())
@@ -106,26 +108,12 @@ impl ResourcePoliciesRepository for ResourcePolicySqlxDatabase {
     async fn delete_policy(&self, resource_name: &ResourceName, action: &Action) -> Result<()> {
         let query = query(
             r#"DELETE FROM resource_policy
-            WHERE node_name=? and resource_name=? and action=?"#,
+            WHERE node_name = $1 and resource_name = $2 and action = $3"#,
         )
-        .bind(self.node_name.to_sql())
-        .bind(resource_name.to_sql())
-        .bind(action.to_sql());
+        .bind(&self.node_name)
+        .bind(resource_name)
+        .bind(action);
         query.execute(&*self.database.pool).await.void()
-    }
-}
-
-// Database serialization / deserialization
-
-impl ToSqlxType for ResourceName {
-    fn to_sql(&self) -> SqlxType {
-        SqlxType::Text(self.as_str().to_string())
-    }
-}
-
-impl ToSqlxType for Action {
-    fn to_sql(&self) -> SqlxType {
-        SqlxType::Text(self.to_string())
     }
 }
 

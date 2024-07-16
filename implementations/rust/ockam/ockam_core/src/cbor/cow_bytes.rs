@@ -2,7 +2,7 @@ use crate::compat::borrow::Cow;
 use crate::compat::vec::Vec;
 
 use core::ops::Deref;
-use minicbor::{Decode, Encode};
+use minicbor::{CborLen, Decode, Encode};
 use serde::{Deserialize, Serialize};
 
 /// A new type around `Cow<'_, [u8]>` that borrows from input.
@@ -11,7 +11,18 @@ use serde::{Deserialize, Serialize};
 /// from input so using it in types like `Option`, `Vec<_>` etc will not produce
 /// owned element values.
 #[derive(
-    Debug, Clone, Encode, Decode, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash,
+    Debug,
+    Clone,
+    Encode,
+    Decode,
+    CborLen,
+    Serialize,
+    Deserialize,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
 )]
 #[cbor(transparent)]
 #[serde(transparent)]
@@ -32,7 +43,7 @@ impl CowBytes<'_> {
         CowBytes(Cow::Owned(self.0.to_vec()))
     }
 
-    /// Turn into owned CowStr
+    /// Turn into owned CowBytes
     pub fn into_owned(self) -> Vec<u8> {
         self.0.into_owned()
     }

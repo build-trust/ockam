@@ -1,14 +1,12 @@
-use std::net::SocketAddr;
 use std::str::FromStr;
 use std::sync::Arc;
 
 use sqlx::*;
 use tracing::debug;
 
-use ockam::{FromSqlxError, SqlxDatabase, ToSqlxType, ToVoid};
+use ockam::transport::HostnamePort;
+use ockam::{Boolean, FromSqlxError, Nullable, SqlxDatabase, ToVoid};
 use ockam_api::nodes::models::portal::OutletStatus;
-use ockam_core::errcode::{Kind, Origin};
-use ockam_core::Error;
 use ockam_core::{async_trait, Address};
 
 use crate::incoming_services::PersistentIncomingService;
@@ -44,19 +42,24 @@ impl ModelStateRepository for ModelStateSqlxDatabase {
         let mut transaction = self.database.begin().await.into_core()?;
 
         // remove previous tcp_outlet_status state
-        query("DELETE FROM tcp_outlet_status where node_name = ?")
-            .bind(node_name.to_sql())
+        query("DELETE FROM tcp_outlet_status where node_name = $1")
+            .bind(node_name)
             .execute(&mut *transaction)
             .await
             .void()?;
 
         // re-insert the new state
         for tcp_outlet_status in &model_state.tcp_outlets {
-            let query = query("INSERT OR REPLACE INTO tcp_outlet_status VALUES (?, ?, ?, ?)")
-                .bind(node_name.to_sql())
-                .bind(tcp_outlet_status.socket_addr.to_sql())
-                .bind(tcp_outlet_status.worker_addr.to_sql())
-                .bind(tcp_outlet_status.payload.as_ref().map(|p| p.to_sql()));
+            let query = query(
+                r#"
+                 INSERT INTO tcp_outlet_status (node_name, socket_addr, worker_addr, payload)
+                 VALUES ($1, $2, $3, $4)
+                 ON CONFLICT DO NOTHING"#,
+            )
+            .bind(node_name)
+            .bind(tcp_outlet_status.to.to_string())
+            .bind(tcp_outlet_status.worker_addr.to_string())
+            .bind(tcp_outlet_status.payload.as_ref());
             query.execute(&mut *transaction).await.void()?;
         }
 
@@ -68,10 +71,16 @@ impl ModelStateRepository for ModelStateSqlxDatabase {
 
         // re-insert the new state
         for incoming_service in &model_state.incoming_services {
-            let query = query("INSERT OR REPLACE INTO incoming_service VALUES (?, ?, ?)")
-                .bind(incoming_service.invitation_id.to_sql())
-                .bind(incoming_service.enabled.to_sql())
-                .bind(incoming_service.name.as_ref().map(|n| n.to_sql()));
+            let query = query(
+                r#"
+                 INSERT INTO incoming_service (invitation_id, enabled, name)
+                 VALUES ($1, $2, $3)
+                 ON CONFLICT (invitation_id)
+                 DO UPDATE SET enabled = $2, name = $3"#,
+            )
+            .bind(&incoming_service.invitation_id)
+            .bind(incoming_service.enabled)
+            .bind(incoming_service.name.as_ref());
             query.execute(&mut *transaction).await.void()?;
         }
         transaction.commit().await.void()?;
@@ -81,9 +90,9 @@ impl ModelStateRepository for ModelStateSqlxDatabase {
 
     async fn load(&self, node_name: &str) -> Result<ModelState> {
         let query1 = query_as(
-            "SELECT socket_addr, worker_addr, payload FROM tcp_outlet_status WHERE node_name = ?",
+            "SELECT socket_addr, worker_addr, payload FROM tcp_outlet_status WHERE node_name = $1",
         )
-        .bind(node_name.to_sql());
+        .bind(node_name);
         let result: Vec<TcpOutletStatusRow> =
             query1.fetch_all(&*self.database.pool).await.into_core()?;
         let tcp_outlets = result
@@ -109,18 +118,17 @@ impl ModelStateRepository for ModelStateSqlxDatabase {
 struct TcpOutletStatusRow {
     socket_addr: String,
     worker_addr: String,
-    payload: Option<String>,
+    payload: Nullable<String>,
 }
 
 impl TcpOutletStatusRow {
     fn tcp_outlet_status(&self) -> Result<OutletStatus> {
-        let socket_addr = SocketAddr::from_str(&self.socket_addr)
-            .map_err(|e| Error::new(Origin::Application, Kind::Serialization, e.to_string()))?;
+        let to = HostnamePort::from_str(&self.socket_addr)?;
         let worker_addr = Address::from_string(&self.worker_addr);
         Ok(OutletStatus {
-            socket_addr,
+            to,
             worker_addr,
-            payload: self.payload.clone(),
+            payload: self.payload.to_option(),
         })
     }
 }
@@ -129,101 +137,97 @@ impl TcpOutletStatusRow {
 #[derive(sqlx::FromRow)]
 struct PersistentIncomingServiceRow {
     invitation_id: String,
-    enabled: bool,
-    name: Option<String>,
+    enabled: Boolean,
+    name: Nullable<String>,
 }
 
 impl PersistentIncomingServiceRow {
     fn persistent_incoming_service(&self) -> Result<PersistentIncomingService> {
         Ok(PersistentIncomingService {
             invitation_id: self.invitation_id.clone(),
-            enabled: self.enabled,
-            name: self.name.clone(),
+            enabled: self.enabled.to_bool(),
+            name: self.name.to_option(),
         })
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use ockam::with_dbs;
     use ockam_api::nodes::models::portal::OutletStatus;
     use ockam_core::Address;
 
-    use super::*;
-
     #[tokio::test]
-    async fn store_and_load() -> Result<()> {
-        let db = create_database().await?;
-        let repository = create_repository(db.clone());
-        let node_name = "node";
+    async fn store_and_load() -> ockam_core::Result<()> {
+        with_dbs(|db| async move {
+            let repository: Arc<dyn ModelStateRepository> =
+                Arc::new(ModelStateSqlxDatabase::new(db.clone()));
 
-        let mut state = ModelState::default();
-        repository.store(node_name, &state).await?;
-        let loaded = repository.load(node_name).await?;
-        assert!(state.tcp_outlets.is_empty());
-        assert_eq!(state, loaded);
+            let node_name = "node";
 
-        // Add a tcp outlet
-        state.add_tcp_outlet(OutletStatus::new(
-            "127.0.0.1:1001".parse()?,
-            Address::from_string("s1"),
-            None,
-        ));
-        // Add an incoming service
-        state.add_incoming_service(PersistentIncomingService {
-            invitation_id: "1235".to_string(),
-            enabled: true,
-            name: Some("aws".to_string()),
-        });
-        repository.store(node_name, &state).await?;
-        let loaded = repository.load(node_name).await?;
-        assert_eq!(state.tcp_outlets.len(), 1);
-        assert_eq!(state.incoming_services.len(), 1);
-        assert_eq!(state, loaded);
+            let mut state = ModelState::default();
+            repository.store(node_name, &state).await.unwrap();
+            let loaded = repository.load(node_name).await.unwrap();
+            assert!(state.tcp_outlets.is_empty());
+            assert_eq!(state, loaded);
 
-        // Add a few more
-        for i in 2..=5 {
+            // Add a tcp outlet
             state.add_tcp_outlet(OutletStatus::new(
-                format!("127.0.0.1:100{i}").parse().unwrap(),
-                Address::from_string(format!("s{i}")),
+                "127.0.0.1:1001".parse().unwrap(),
+                Address::from_string("s1"),
                 None,
             ));
+            // Add an incoming service
+            state.add_incoming_service(PersistentIncomingService {
+                invitation_id: "1235".to_string(),
+                enabled: true,
+                name: Some("aws".to_string()),
+            });
             repository.store(node_name, &state).await.unwrap();
-        }
-        let loaded = repository.load(node_name).await?;
-        assert_eq!(state.tcp_outlets.len(), 5);
-        assert_eq!(state, loaded);
+            let loaded = repository.load(node_name).await.unwrap();
+            assert_eq!(state.tcp_outlets.len(), 1);
+            assert_eq!(state.incoming_services.len(), 1);
+            assert_eq!(state, loaded);
 
-        // Reload from DB scratch to emulate an app restart
-        let repository = create_repository(db);
-        let loaded = repository.load(node_name).await?;
-        assert_eq!(state.tcp_outlets.len(), 5);
-        assert_eq!(state.incoming_services.len(), 1);
-        assert_eq!(state, loaded);
+            // Add a few more
+            for i in 2..=5 {
+                state.add_tcp_outlet(OutletStatus::new(
+                    format!("127.0.0.1:100{i}").parse().unwrap(),
+                    Address::from_string(format!("s{i}")),
+                    None,
+                ));
+                repository.store(node_name, &state).await.unwrap();
+            }
+            let loaded = repository.load(node_name).await.unwrap();
+            assert_eq!(state.tcp_outlets.len(), 5);
+            assert_eq!(state, loaded);
 
-        // Remove some values from the current state
-        let _ = state.tcp_outlets.split_off(2);
-        state.add_incoming_service(PersistentIncomingService {
-            invitation_id: "4567".to_string(),
-            enabled: true,
-            name: Some("aws".to_string()),
-        });
+            // Reload from DB scratch to emulate an app restart
+            let repository: Arc<dyn ModelStateRepository> =
+                Arc::new(ModelStateSqlxDatabase::new(db));
+            let loaded = repository.load(node_name).await.unwrap();
+            assert_eq!(state.tcp_outlets.len(), 5);
+            assert_eq!(state.incoming_services.len(), 1);
+            assert_eq!(state, loaded);
 
-        repository.store(node_name, &state).await?;
-        let loaded = repository.load(node_name).await?;
+            // Remove some values from the current state
+            let _ = state.tcp_outlets.split_off(2);
+            state.add_incoming_service(PersistentIncomingService {
+                invitation_id: "4567".to_string(),
+                enabled: true,
+                name: Some("aws".to_string()),
+            });
 
-        assert_eq!(state.tcp_outlets.len(), 2);
-        assert_eq!(state.incoming_services.len(), 2);
-        assert_eq!(state, loaded);
+            repository.store(node_name, &state).await.unwrap();
+            let loaded = repository.load(node_name).await.unwrap();
 
-        Ok(())
-    }
+            assert_eq!(state.tcp_outlets.len(), 2);
+            assert_eq!(state.incoming_services.len(), 2);
+            assert_eq!(state, loaded);
 
-    /// HELPERS
-    fn create_repository(db: SqlxDatabase) -> Arc<dyn ModelStateRepository> {
-        Arc::new(ModelStateSqlxDatabase::new(db))
-    }
-
-    async fn create_database() -> Result<SqlxDatabase> {
-        Ok(SqlxDatabase::in_memory("enrollments-test").await?)
+            Ok(())
+        })
+        .await
     }
 }

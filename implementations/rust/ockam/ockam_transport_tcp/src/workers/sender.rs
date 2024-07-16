@@ -1,15 +1,16 @@
 use crate::workers::Addresses;
-use crate::{TcpConnectionMode, TcpRegistry, TcpSenderInfo};
+use crate::{TcpConnectionMode, TcpProtocolVersion, TcpRegistry, TcpSenderInfo, MAX_MESSAGE_SIZE};
 use ockam_core::flow_control::FlowControlId;
 use ockam_core::{
     async_trait,
     compat::{net::SocketAddr, sync::Arc},
-    AllowAll, AllowSourceAddress, DenyAll,
+    AllowAll, AllowSourceAddress, DenyAll, LocalMessage,
 };
 use ockam_core::{Any, Decodable, Mailbox, Mailboxes, Message, Result, Routed, Worker};
 use ockam_node::{Context, WorkerBuilder};
 
-use ockam_transport_core::encode_transport_message;
+use crate::transport_message::TcpTransportMessage;
+use ockam_transport_core::TransportError;
 use serde::{Deserialize, Serialize};
 use tokio::io::AsyncWriteExt;
 use tokio::net::tcp::OwnedWriteHalf;
@@ -114,6 +115,41 @@ impl TcpSendWorker {
 
         Ok(())
     }
+
+    fn serialize_message(&self, local_message: LocalMessage) -> Result<Vec<u8>> {
+        // Create a message buffer with prepended length
+        let transport_message = TcpTransportMessage::from(local_message);
+
+        let expected_payload_len = minicbor::len(&transport_message);
+
+        const LENGTH_VALUE_SIZE: usize = 4; // u32
+        let mut vec = Vec::with_capacity(LENGTH_VALUE_SIZE + expected_payload_len);
+
+        // Let's write zeros instead of actual length, since we don't know the exact size yet.
+        vec.extend_from_slice(&[0u8; LENGTH_VALUE_SIZE]);
+
+        // Append encoded payload
+        minicbor::encode(&transport_message, &mut vec).map_err(|_| TransportError::Encoding)?;
+
+        // Should not ever happen...
+        if vec.len() < LENGTH_VALUE_SIZE {
+            return Err(TransportError::Encoding)?;
+        }
+
+        let payload_len = vec.len() - LENGTH_VALUE_SIZE;
+
+        if payload_len > MAX_MESSAGE_SIZE {
+            return Err(TransportError::MessageLengthExceeded)?;
+        }
+
+        let payload_len_u32 =
+            u32::try_from(payload_len).map_err(|_| TransportError::MessageLengthExceeded)?;
+
+        // Replace zeros with actual length
+        vec[..LENGTH_VALUE_SIZE].copy_from_slice(&payload_len_u32.to_be_bytes());
+
+        Ok(vec)
+    }
 }
 
 #[async_trait]
@@ -132,6 +168,22 @@ impl Worker for TcpSendWorker {
             self.mode,
             self.receiver_flow_control_id.clone(),
         ));
+
+        // First thing send our protocol version
+        if self
+            .write_half
+            .write_u8(TcpProtocolVersion::V1.into())
+            .await
+            .is_err()
+        {
+            warn!(
+                "Failed to send protocol version to peer {}",
+                self.socket_address
+            );
+            self.stop(ctx).await?;
+
+            return Ok(());
+        }
 
         Ok(())
     }
@@ -181,11 +233,18 @@ impl Worker for TcpSendWorker {
             // Remove our own address from the route so the other end
             // knows what to do with the incoming message
             local_message = local_message.pop_front_onward_route()?;
-            // Create a message buffer with prepended length
-            let transport_message = local_message.into_transport_message();
-            let msg = encode_transport_message(transport_message)?;
 
-            if self.write_half.write_all(msg.as_slice()).await.is_err() {
+            let msg = match self.serialize_message(local_message) {
+                Ok(msg) => msg,
+                Err(err) => {
+                    // Close the stream
+                    self.stop(ctx).await?;
+
+                    return Err(err);
+                }
+            };
+
+            if self.write_half.write_all(&msg).await.is_err() {
                 warn!("Failed to send message to peer {}", self.socket_address);
                 self.stop(ctx).await?;
 

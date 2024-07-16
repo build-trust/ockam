@@ -46,7 +46,7 @@ impl VerifyCommand {
     }
 
     async fn async_run(&self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        let (is_valid, plain_text) = match verify_credential(
+        let (is_valid, plain) = match verify_credential(
             &opts,
             self.issuer(),
             &self.credential,
@@ -55,15 +55,12 @@ impl VerifyCommand {
         .await
         {
             Ok(_) => (true, fmt_ok!("Credential is valid")),
-            Err(e) => (
-                false,
-                fmt_err!("Credential is not valid\n") + &fmt_log!("{}", e),
-            ),
+            Err(e) => (false, fmt_err!("{e}")),
         };
 
         opts.terminal
             .stdout()
-            .plain(plain_text)
+            .plain(plain)
             .json(serde_json::json!({ "is_valid": is_valid }))
             .machine(is_valid.to_string())
             .write_line()?;
@@ -110,7 +107,7 @@ pub async fn verify_credential(
         .await;
 
         *is_finished.lock().await = true;
-        result.map_err(|e| e.wrap_err("Credential is invalid"))
+        result.map_err(|e| e.wrap_err("Credential is not valid"))
     };
 
     let output_messages = vec!["Verifying credential...".to_string()];

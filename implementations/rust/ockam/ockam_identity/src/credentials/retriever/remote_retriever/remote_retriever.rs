@@ -14,8 +14,8 @@ use ockam_transport_core::Transport;
 use crate::models::CredentialAndPurposeKey;
 use crate::utils::now;
 use crate::{
-    CachedCredentialRetriever, Identifier, RemoteCredentialRetrieverInfo, SecureChannels,
-    SecureClient, TimestampInSeconds, DEFAULT_CREDENTIAL_CLOCK_SKEW_GAP,
+    get_default_timeout, CachedCredentialRetriever, Identifier, RemoteCredentialRetrieverInfo,
+    SecureChannels, SecureClient, TimestampInSeconds, DEFAULT_CREDENTIAL_CLOCK_SKEW_GAP,
 };
 
 /// This is the default interval before a credential expiration when we'll query for
@@ -28,9 +28,6 @@ pub const DEFAULT_MIN_REFRESH_CREDENTIAL_INTERVAL: Duration = Duration::from_sec
 
 /// Default timeout for requesting credential from the authority
 pub const DEFAULT_CREDENTIAL_REQUEST_TIMEOUT: Duration = Duration::from_secs(15);
-
-/// Default timeout for creating secure channel to the authority
-pub const DEFAULT_CREDENTIAL_SECURE_CHANNEL_CREATION_TIMEOUT: Duration = Duration::from_secs(30);
 
 /// Start refresh in the background before it expires
 pub const DEFAULT_CREDENTIAL_PROACTIVE_REFRESH_GAP: TimestampInSeconds = TimestampInSeconds(60);
@@ -54,8 +51,8 @@ pub struct RemoteCredentialRetrieverTimingOptions {
 impl Default for RemoteCredentialRetrieverTimingOptions {
     fn default() -> Self {
         Self {
-            request_timeout: DEFAULT_CREDENTIAL_REQUEST_TIMEOUT,
-            secure_channel_creation_timeout: DEFAULT_CREDENTIAL_SECURE_CHANNEL_CREATION_TIMEOUT,
+            request_timeout: get_default_timeout(),
+            secure_channel_creation_timeout: get_default_timeout(),
             min_refresh_interval: DEFAULT_MIN_REFRESH_CREDENTIAL_INTERVAL,
             proactive_refresh_gap: DEFAULT_PROACTIVE_REFRESH_CREDENTIAL_TIME_GAP,
             clock_skew_gap: DEFAULT_CREDENTIAL_CLOCK_SKEW_GAP,

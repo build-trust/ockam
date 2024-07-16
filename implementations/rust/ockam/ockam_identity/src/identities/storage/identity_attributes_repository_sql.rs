@@ -1,11 +1,13 @@
 use core::str::FromStr;
 
+use sqlx::database::HasArguments;
+use sqlx::encode::IsNull;
 use sqlx::*;
 use tracing::debug;
 
 use ockam_core::async_trait;
 use ockam_core::Result;
-use ockam_node::database::{FromSqlxError, SqlxDatabase, SqlxType, ToSqlxType, ToVoid};
+use ockam_node::database::{FromSqlxError, Nullable, SqlxDatabase, ToVoid};
 
 use crate::models::Identifier;
 use crate::{AttributesEntry, IdentityAttributesRepository, TimestampInSeconds};
@@ -45,11 +47,11 @@ impl IdentityAttributesRepository for IdentityAttributesSqlxDatabase {
         attested_by: &Identifier,
     ) -> Result<Option<AttributesEntry>> {
         let query = query_as(
-            "SELECT identifier, attributes, added, expires, attested_by FROM identity_attributes WHERE identifier=$1 AND attested_by=$2 AND node_name=$3"
+            "SELECT identifier, attributes, added, expires, attested_by FROM identity_attributes WHERE identifier = $1 AND attested_by = $2 AND node_name = $3"
             )
-            .bind(identity.to_sql())
-            .bind(attested_by.to_sql())
-            .bind(self.node_name.to_sql());
+            .bind(identity)
+            .bind(attested_by)
+            .bind(&self.node_name);
         let identity_attributes: Option<IdentityAttributesRow> = query
             .fetch_optional(&*self.database.pool)
             .await
@@ -59,31 +61,43 @@ impl IdentityAttributesRepository for IdentityAttributesSqlxDatabase {
 
     async fn put_attributes(&self, subject: &Identifier, entry: AttributesEntry) -> Result<()> {
         let query = query(
-            "INSERT OR REPLACE INTO identity_attributes (identifier, attributes, added, expires, attested_by, node_name) VALUES (?, ?, ?, ?, ?, ?)"
-            )
-            .bind(subject.to_sql())
-            .bind(minicbor::to_vec(entry.attrs())?.to_sql())
-            .bind(entry.added_at().to_sql())
-            .bind(entry.expires_at().map(|e| e.to_sql()))
-            .bind(entry.attested_by().map(|e| e.to_sql()))
-            .bind(self.node_name.to_sql());
+            r#"
+            INSERT INTO identity_attributes (identifier, attributes, added, expires, attested_by, node_name)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            ON CONFLICT (identifier, node_name)
+            DO UPDATE SET attributes = $2, added = $3, expires = $4, attested_by = $5, node_name = $6"#)
+            .bind(subject)
+            .bind(&entry)
+            .bind(entry.added_at())
+            .bind(entry.expires_at())
+            .bind(entry.attested_by())
+            .bind(&self.node_name);
         query.execute(&*self.database.pool).await.void()
     }
 
     // This query is regularly invoked by IdentitiesAttributes to make sure that we expire attributes regularly
     async fn delete_expired_attributes(&self, now: TimestampInSeconds) -> Result<()> {
-        let query = query("DELETE FROM identity_attributes WHERE expires<=? AND node_name=?")
-            .bind(now.to_sql())
-            .bind(self.node_name.to_sql());
+        let query = query("DELETE FROM identity_attributes WHERE expires <= $1 AND node_name = $2")
+            .bind(now)
+            .bind(&self.node_name);
         query.execute(&*self.database.pool).await.void()
     }
 }
 
 // Database serialization / deserialization
 
-impl ToSqlxType for TimestampInSeconds {
-    fn to_sql(&self) -> SqlxType {
-        self.0.to_sql()
+impl Type<Any> for AttributesEntry {
+    fn type_info() -> <Any as Database>::TypeInfo {
+        <Vec<u8> as Type<Any>>::type_info()
+    }
+}
+
+impl Encode<'_, Any> for AttributesEntry {
+    fn encode_by_ref(&self, buf: &mut <Any as HasArguments>::ArgumentBuffer) -> IsNull {
+        <Vec<u8> as Encode<'_, Any>>::encode_by_ref(
+            &ockam_core::cbor_encode_preallocate(self.attrs()).unwrap(),
+            buf,
+        )
     }
 }
 
@@ -93,8 +107,8 @@ struct IdentityAttributesRow {
     identifier: String,
     attributes: Vec<u8>,
     added: i64,
-    expires: Option<i64>,
-    attested_by: Option<String>,
+    expires: Nullable<i64>,
+    attested_by: Nullable<String>,
 }
 
 impl IdentityAttributesRow {
@@ -107,10 +121,13 @@ impl IdentityAttributesRow {
         let attributes =
             minicbor::decode(self.attributes.as_slice()).map_err(SqlxDatabase::map_decode_err)?;
         let added = TimestampInSeconds(self.added as u64);
-        let expires = self.expires.map(|v| TimestampInSeconds(v as u64));
+        let expires = self
+            .expires
+            .to_option()
+            .map(|v| TimestampInSeconds(v as u64));
         let attested_by = self
             .attested_by
-            .clone()
+            .to_option()
             .map(|v| Identifier::from_str(&v))
             .transpose()?;
 
@@ -127,6 +144,7 @@ impl IdentityAttributesRow {
 mod tests {
     use ockam_core::compat::collections::BTreeMap;
     use ockam_core::compat::sync::Arc;
+    use ockam_node::database::with_dbs;
     use std::ops::Add;
 
     use super::*;
@@ -135,96 +153,106 @@ mod tests {
 
     #[tokio::test]
     async fn test_identities_attributes_repository() -> Result<()> {
-        let repository = create_repository().await?;
-        let now = now()?;
+        with_dbs(|db| async move {
+            let repository: Arc<dyn IdentityAttributesRepository> =
+                Arc::new(IdentityAttributesSqlxDatabase::new(db, "node"));
 
-        // store and retrieve attributes by identity
-        let identifier1 = create_identity().await?;
-        let attributes1 = create_attributes_entry(&identifier1, now, Some(2.into())).await?;
-        let identifier2 = create_identity().await?;
-        let attributes2 = create_attributes_entry(&identifier2, now, Some(2.into())).await?;
+            let now = now()?;
 
-        repository
-            .put_attributes(&identifier1, attributes1.clone())
-            .await?;
-        repository
-            .put_attributes(&identifier2, attributes2.clone())
-            .await?;
+            // store and retrieve attributes by identity
+            let identifier1 = create_identity().await?;
+            let attributes1 = create_attributes_entry(&identifier1, now, Some(2.into())).await?;
+            let identifier2 = create_identity().await?;
+            let attributes2 = create_attributes_entry(&identifier2, now, Some(2.into())).await?;
 
-        let result = repository
-            .get_attributes(&identifier1, &identifier1)
-            .await?;
-        assert_eq!(result, Some(attributes1.clone()));
+            repository
+                .put_attributes(&identifier1, attributes1.clone())
+                .await?;
+            repository
+                .put_attributes(&identifier2, attributes2.clone())
+                .await?;
 
-        let result = repository
-            .get_attributes(&identifier2, &identifier2)
-            .await?;
-        assert_eq!(result, Some(attributes2.clone()));
+            let result = repository
+                .get_attributes(&identifier1, &identifier1)
+                .await?;
+            assert_eq!(result, Some(attributes1.clone()));
 
-        Ok(())
+            let result = repository
+                .get_attributes(&identifier2, &identifier2)
+                .await?;
+            assert_eq!(result, Some(attributes2.clone()));
+
+            Ok(())
+        })
+        .await
     }
 
     #[tokio::test]
     async fn test_delete_expired_attributes() -> Result<()> {
-        let repository = create_repository().await?;
-        let now = now()?;
+        with_dbs(|db| async move {
+            let repository: Arc<dyn IdentityAttributesRepository> =
+                Arc::new(IdentityAttributesSqlxDatabase::new(db, "node"));
 
-        // store some attributes with and without an expiry date
-        let identifier1 = create_identity().await?;
-        let identifier2 = create_identity().await?;
-        let identifier3 = create_identity().await?;
-        let identifier4 = create_identity().await?;
-        let attributes1 = create_attributes_entry(&identifier1, now, Some(1.into())).await?;
-        let attributes2 = create_attributes_entry(&identifier2, now, Some(10.into())).await?;
-        let attributes3 = create_attributes_entry(&identifier3, now, Some(100.into())).await?;
-        let attributes4 = create_attributes_entry(&identifier4, now, None).await?;
+            let now = now()?;
 
-        repository
-            .put_attributes(&identifier1, attributes1.clone())
-            .await?;
-        repository
-            .put_attributes(&identifier2, attributes2.clone())
-            .await?;
-        repository
-            .put_attributes(&identifier3, attributes3.clone())
-            .await?;
-        repository
-            .put_attributes(&identifier4, attributes4.clone())
-            .await?;
+            // store some attributes with and without an expiry date
+            let identifier1 = create_identity().await?;
+            let identifier2 = create_identity().await?;
+            let identifier3 = create_identity().await?;
+            let identifier4 = create_identity().await?;
+            let attributes1 = create_attributes_entry(&identifier1, now, Some(1.into())).await?;
+            let attributes2 = create_attributes_entry(&identifier2, now, Some(10.into())).await?;
+            let attributes3 = create_attributes_entry(&identifier3, now, Some(100.into())).await?;
+            let attributes4 = create_attributes_entry(&identifier4, now, None).await?;
 
-        // delete all the attributes with an expiry date <= now + 10
-        // only attributes1 and attributes2 must be deleted
-        repository.delete_expired_attributes(now.add(10)).await?;
+            repository
+                .put_attributes(&identifier1, attributes1.clone())
+                .await?;
+            repository
+                .put_attributes(&identifier2, attributes2.clone())
+                .await?;
+            repository
+                .put_attributes(&identifier3, attributes3.clone())
+                .await?;
+            repository
+                .put_attributes(&identifier4, attributes4.clone())
+                .await?;
 
-        let result = repository
-            .get_attributes(&identifier1, &identifier1)
-            .await?;
-        assert_eq!(result, None);
+            // delete all the attributes with an expiry date <= now + 10
+            // only attributes1 and attributes2 must be deleted
+            repository.delete_expired_attributes(now.add(10)).await?;
 
-        let result = repository
-            .get_attributes(&identifier2, &identifier2)
-            .await?;
-        assert_eq!(result, None);
+            let result = repository
+                .get_attributes(&identifier1, &identifier1)
+                .await?;
+            assert_eq!(result, None);
 
-        let result = repository
-            .get_attributes(&identifier3, &identifier3)
-            .await?;
-        assert_eq!(
-            result,
-            Some(attributes3),
-            "attributes 3 are not expired yet"
-        );
+            let result = repository
+                .get_attributes(&identifier2, &identifier2)
+                .await?;
+            assert_eq!(result, None);
 
-        let result = repository
-            .get_attributes(&identifier4, &identifier4)
-            .await?;
-        assert_eq!(
-            result,
-            Some(attributes4),
-            "attributes 4 have no expiry date"
-        );
+            let result = repository
+                .get_attributes(&identifier3, &identifier3)
+                .await?;
+            assert_eq!(
+                result,
+                Some(attributes3),
+                "attributes 3 are not expired yet"
+            );
 
-        Ok(())
+            let result = repository
+                .get_attributes(&identifier4, &identifier4)
+                .await?;
+            assert_eq!(
+                result,
+                Some(attributes4),
+                "attributes 4 have no expiry date"
+            );
+
+            Ok(())
+        })
+        .await
     }
 
     /// HELPERS
@@ -247,9 +275,5 @@ mod tests {
     async fn create_identity() -> Result<Identifier> {
         let identities = identities().await?;
         identities.identities_creation().create_identity().await
-    }
-
-    async fn create_repository() -> Result<Arc<dyn IdentityAttributesRepository>> {
-        Ok(Arc::new(IdentityAttributesSqlxDatabase::create().await?))
     }
 }

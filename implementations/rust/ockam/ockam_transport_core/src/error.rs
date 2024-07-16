@@ -1,14 +1,15 @@
 use ockam_core::{
     compat::io,
+    compat::string::String,
     errcode::{Kind, Origin},
     Error,
 };
 
 /// A Transport worker specific error type
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum TransportError {
     /// Failed to send a malformed message
-    SendBadMessage = 1,
+    SendBadMessage,
     /// Failed to receive a malformed message
     RecvBadMessage,
     /// Failed to bind to the desired socket
@@ -24,7 +25,7 @@ pub enum TransportError {
     /// Failed to route to an unknown recipient
     UnknownRoute,
     /// Failed to parse the socket address
-    InvalidAddress,
+    InvalidAddress(String),
     /// Failed to read message (buffer exhausted) or failed to send it (size is too big)
     Capacity,
     /// Failed to encode message
@@ -40,7 +41,13 @@ pub enum TransportError {
     InvalidRouterResponseType,
     /// Excessive length of header, possible DoS attack
     /// https://github.com/advisories/GHSA-9mcr-873m-xcxp
-    AttackAttmept,
+    AttackAttempt,
+    /// Invalid protocol version
+    InvalidProtocolVersion,
+    /// Message is longer than allowed
+    MessageLengthExceeded,
+    /// Should not happen
+    EncodingInternalError,
 }
 
 impl ockam_core::compat::error::Error for TransportError {}
@@ -55,14 +62,19 @@ impl core::fmt::Display for TransportError {
             Self::PeerNotFound => write!(f, "connection peer was not found"),
             Self::PeerBusy => write!(f, "connection peer is busy"),
             Self::UnknownRoute => write!(f, "message routing failed (unknown recipient)"),
-            Self::InvalidAddress => write!(f, "failed to parse the socket address"),
+            Self::InvalidAddress(address) => {
+                write!(f, "failed to parse the socket address {}", address)
+            }
             Self::Capacity => write!(f, "failed to read message (buffer exhausted)"),
             Self::Encoding => write!(f, "failed to encode message"),
             Self::Protocol => write!(f, "violation in transport protocol"),
             Self::GenericIo => write!(f, "generic I/O failure"),
             Self::PortalInvalidState => write!(f, "portal entered invalid state"),
             Self::InvalidRouterResponseType => write!(f, "router responded with invalid type"),
-            Self::AttackAttmept => write!(f, "excessive length of header, possible DoS attack"),
+            Self::AttackAttempt => write!(f, "excessive length of header, possible DoS attack"),
+            Self::InvalidProtocolVersion => write!(f, "invalid protocol version"),
+            Self::MessageLengthExceeded => write!(f, "message length exceeded"),
+            Self::EncodingInternalError => write!(f, "encoding internal error"),
         }
     }
 }
@@ -80,14 +92,17 @@ impl From<TransportError> for Error {
             PeerNotFound => Kind::Misuse,
             PeerBusy => Kind::Io,
             UnknownRoute => Kind::Misuse,
-            InvalidAddress => Kind::Misuse,
+            InvalidAddress(_) => Kind::Misuse,
             Capacity => Kind::ResourceExhausted,
             Encoding => Kind::Serialization,
             Protocol => Kind::Protocol,
             GenericIo => Kind::Io,
             PortalInvalidState => Kind::Invalid,
             InvalidRouterResponseType => Kind::Invalid,
-            AttackAttmept => Kind::Misuse,
+            AttackAttempt => Kind::Misuse,
+            InvalidProtocolVersion => Kind::Invalid,
+            MessageLengthExceeded => Kind::Unsupported,
+            EncodingInternalError => Kind::Internal,
         };
 
         Error::new(Origin::Transport, kind, err)

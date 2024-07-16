@@ -1,3 +1,5 @@
+use cfg_if::cfg_if;
+
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
 use ockam_core::flow_control::{FlowControlId, FlowControlOutgoingAccessControl, FlowControls};
@@ -13,9 +15,15 @@ use crate::{
 use core::fmt;
 use core::fmt::Formatter;
 use core::time::Duration;
+#[cfg(feature = "std")]
+use ockam_core::env::get_env_with_default;
 
 /// This is the default timeout for creating a secure channel
-pub const DEFAULT_TIMEOUT: Duration = Duration::from_secs(120);
+pub(super) const DEFAULT_TIMEOUT: Duration = Duration::from_secs(120);
+
+/// Environment variable name for changing the default timeout used to create secure channels
+/// or make a request
+pub const OCKAM_DEFAULT_TIMEOUT: &str = "OCKAM_DEFAULT_TIMEOUT";
 
 /// Trust options for a Secure Channel
 pub struct SecureChannelOptions {
@@ -323,5 +331,18 @@ impl SecureChannelListenerOptions {
         );
 
         Arc::new(ac)
+    }
+}
+
+/// Return a default timeout for creating secure channels or make a request
+pub fn get_default_timeout() -> Duration {
+    cfg_if! {
+        if #[cfg(feature = "std")] {
+            get_env_with_default::<Duration>(OCKAM_DEFAULT_TIMEOUT, DEFAULT_TIMEOUT)
+              .ok()
+              .unwrap_or(DEFAULT_TIMEOUT)
+        } else {
+            DEFAULT_TIMEOUT
+        }
     }
 }

@@ -324,7 +324,7 @@ impl AddressRecord {
                 .await
                 .map_err(|_| NodeError::NodeState(NodeReason::Unknown).internal())?;
         } else {
-            self.sender = None;
+            self.drop_sender();
         }
         self.state = AddressState::Stopping;
         Ok(())

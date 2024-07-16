@@ -7,18 +7,20 @@ use miette::IntoDiagnostic;
 use serde::Serialize;
 use tracing::warn;
 
+use crate::node::show::get_node_resources;
+use crate::shared_args::TimeoutArg;
+use crate::version::Version;
+use crate::Result;
+use crate::{Command, CommandGlobalOpts};
 use ockam::Context;
 use ockam_api::cli_state::{EnrollmentFilter, IdentityEnrollment};
 use ockam_api::cloud::project::models::OrchestratorVersionInfo;
+use ockam_api::cloud::space::Space;
 use ockam_api::colors::color_primary;
 use ockam_api::nodes::models::node::NodeResources;
 use ockam_api::nodes::{BackgroundNodeClient, InMemoryNode};
+use ockam_api::output::Output;
 use ockam_api::{fmt_heading, fmt_log, fmt_separator, fmt_warn};
-
-use crate::node::show::get_node_resources;
-use crate::shared_args::TimeoutArg;
-use crate::Result;
-use crate::{Command, CommandGlobalOpts};
 
 /// Display information about the system's status
 #[derive(Clone, Debug, Args)]
@@ -34,18 +36,18 @@ impl Command for StatusCommand {
     async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> Result<()> {
         let identities_details = self.get_identities_details(&opts).await?;
         let nodes = self.get_nodes_resources(ctx, &opts).await?;
-        let orchestrator_version = {
-            let node = InMemoryNode::start(ctx, &opts.state)
-                .await?
-                .with_timeout(self.timeout.timeout);
-            let controller = node.create_controller().await?;
-            controller
-                .get_orchestrator_version_info(ctx)
-                .await
-                .map_err(|e| warn!(%e, "Failed to retrieve orchestrator version"))
-                .unwrap_or_default()
-        };
-        let status = StatusData::from_parts(orchestrator_version, identities_details, nodes)?;
+        let node = InMemoryNode::start(ctx, &opts.state)
+            .await?
+            .with_timeout(self.timeout.timeout);
+        let controller = node.create_controller().await?;
+        let orchestrator_version = controller
+            .get_orchestrator_version_info(ctx)
+            .await
+            .map_err(|e| warn!(%e, "Failed to retrieve orchestrator version"))
+            .unwrap_or_default();
+        let spaces = opts.state.get_spaces().await?;
+        let status =
+            StatusData::from_parts(orchestrator_version, spaces, identities_details, nodes)?;
         opts.terminal
             .stdout()
             .plain(&status)
@@ -91,8 +93,9 @@ impl StatusCommand {
 
 #[derive(Serialize)]
 struct StatusData {
-    #[serde(flatten)]
+    ockam_version: Version,
     orchestrator_version: OrchestratorVersionInfo,
+    spaces: Vec<Space>,
     identities: Vec<IdentityEnrollment>,
     nodes: Vec<NodeResources>,
 }
@@ -100,11 +103,14 @@ struct StatusData {
 impl StatusData {
     fn from_parts(
         orchestrator_version: OrchestratorVersionInfo,
+        spaces: Vec<Space>,
         identities: Vec<IdentityEnrollment>,
         nodes: Vec<NodeResources>,
     ) -> Result<Self> {
         Ok(Self {
+            ockam_version: Version,
             orchestrator_version,
+            spaces,
             identities,
             nodes,
         })
@@ -113,6 +119,14 @@ impl StatusData {
 
 impl Display for StatusData {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(
+            f,
+            "{}",
+            fmt_log!(
+                "Ockam version: {}",
+                color_primary(self.ockam_version.to_string())
+            )
+        )?;
         writeln!(
             f,
             "{}",
@@ -129,6 +143,24 @@ impl Display for StatusData {
                 color_primary(self.orchestrator_version.project_version())
             )
         )?;
+
+        if self.spaces.is_empty() {
+            writeln!(f, "{}", fmt_separator!())?;
+            writeln!(f, "{}", fmt_warn!("No spaces found"))?;
+            writeln!(
+                f,
+                "{}",
+                fmt_log!("Consider running `ockam enroll` or `ockam space create` to create your first space.")
+            )?;
+        } else {
+            writeln!(f, "{}", fmt_heading!("Spaces"))?;
+            for (idx, space) in self.spaces.iter().enumerate() {
+                if idx > 0 {
+                    writeln!(f)?;
+                }
+                writeln!(f, "{}", space.iter_output().pad())?;
+            }
+        }
 
         if self.identities.is_empty() {
             writeln!(f, "{}", fmt_separator!())?;

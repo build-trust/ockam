@@ -1,5 +1,4 @@
 use cfg_if::cfg_if;
-use ockam_core::compat::net::SocketAddr;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{Error, Result};
 use ockam_transport_core::{HostnamePort, TransportError};
@@ -16,20 +15,20 @@ use tracing::{debug, instrument};
 
 /// Connect to a socket address via a regular TcpStream
 #[instrument(skip_all)]
-pub(crate) async fn connect(socket_address: SocketAddr) -> Result<(OwnedReadHalf, OwnedWriteHalf)> {
-    Ok(create_tcp_stream(socket_address).await?.into_split())
+pub(crate) async fn connect(to: &HostnamePort) -> Result<(OwnedReadHalf, OwnedWriteHalf)> {
+    Ok(create_tcp_stream(to).await?.into_split())
 }
 
 /// Create a TCP stream to a given socket address
-pub(crate) async fn create_tcp_stream(socket_address: SocketAddr) -> Result<TcpStream> {
-    debug!(addr = %socket_address, "Connecting");
-    let connection = match TcpStream::connect(socket_address).await {
+pub(crate) async fn create_tcp_stream(to: &HostnamePort) -> Result<TcpStream> {
+    debug!(addr = %to, "Connecting");
+    let connection = match TcpStream::connect(to.to_string()).await {
         Ok(c) => {
-            debug!(addr = %socket_address, "Connected");
+            debug!(addr = %to, "Connected");
             c
         }
         Err(e) => {
-            debug!(addr = %socket_address, err = %e, "Failed to connect");
+            debug!(addr = %to, err = %e, "Failed to connect");
             return Err(TransportError::from(e))?;
         }
     };
@@ -56,26 +55,25 @@ pub(crate) async fn create_tcp_stream(socket_address: SocketAddr) -> Result<TcpS
 #[allow(clippy::type_complexity)]
 #[instrument(skip_all)]
 pub(crate) async fn connect_tls(
-    hostname_port: &HostnamePort,
+    to: &HostnamePort,
 ) -> Result<(
     ReadHalf<TlsStream<TcpStream>>,
     WriteHalf<TlsStream<TcpStream>>,
 )> {
-    let socket_address = hostname_port.to_socket_addr()?;
-    debug!(hostname_port = %hostname_port, addr = %socket_address, "Trying to connect using TLS");
+    debug!(to = %to, "Trying to connect using TLS");
 
     // create a tcp stream
-    let connection = create_tcp_stream(socket_address).await?;
+    let connection = create_tcp_stream(to).await?;
 
     // create a TLS connector
     let tls_connector = create_tls_connector().await?;
 
     // parse destination hostname
-    let hostname = ServerName::try_from(hostname_port.hostname()).map_err(|e| {
+    let hostname = ServerName::try_from(to.hostname()).map_err(|e| {
         Error::new(
             Origin::Transport,
             Kind::Io,
-            format!("Cannot create a ServerName from {hostname_port}: {e:?}"),
+            format!("Cannot create a ServerName from {to}: {e:?}"),
         )
     })?;
 
@@ -87,10 +85,10 @@ pub(crate) async fn connect_tls(
             Error::new(
                 Origin::Transport,
                 Kind::Io,
-                format!("Cannot connect using TLS to {hostname_port}: {e:?}"),
+                format!("Cannot connect using TLS to {to}: {e:?}"),
             )
         })?;
-    debug!("Connected using TLS to {hostname_port}");
+    debug!("Connected using TLS to {to}");
 
     Ok(tokio::io::split(TlsStream::from(client_tls_stream)))
 }
