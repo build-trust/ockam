@@ -4592,7 +4592,7 @@ dependencies = [
  "ockam_vault_aws",
  "once_cell",
  "open",
- "opentelemetry",
+ "opentelemetry 0.24.0",
  "opentelemetry-appender-tracing",
  "opentelemetry-otlp",
  "opentelemetry-semantic-conventions",
@@ -4684,7 +4684,7 @@ dependencies = [
  "ockam_vault",
  "once_cell",
  "open",
- "opentelemetry",
+ "opentelemetry 0.24.0",
  "pem-rfc7468",
  "proptest",
  "r3bl_rs_utils_core",
@@ -4730,7 +4730,7 @@ dependencies = [
  "minicbor",
  "ockam_macros",
  "once_cell",
- "opentelemetry",
+ "opentelemetry 0.24.0",
  "proptest",
  "quickcheck",
  "rand",
@@ -4838,7 +4838,7 @@ dependencies = [
  "ockam_macros",
  "ockam_transport_core",
  "once_cell",
- "opentelemetry",
+ "opentelemetry 0.24.0",
  "regex",
  "serde",
  "serde_json",
@@ -4919,7 +4919,7 @@ dependencies = [
  "ockam_macros",
  "ockam_node",
  "ockam_transport_core",
- "opentelemetry",
+ "opentelemetry 0.24.0",
  "rand",
  "rustls-native-certs 0.7.1",
  "serde",
@@ -5089,13 +5089,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "opentelemetry"
+version = "0.24.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4c365a63eec4f55b7efeceb724f1336f26a9cf3427b70e59e2cd2a5b947fba96"
+dependencies = [
+ "futures-core",
+ "futures-sink",
+ "js-sys",
+ "once_cell",
+ "pin-project-lite",
+ "thiserror",
+]
+
+[[package]]
 name = "opentelemetry-appender-tracing"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "be314095f27dde46fca7038b023457d2b3459e1c39033dacc2ec1b31df11a61c"
 dependencies = [
  "once_cell",
- "opentelemetry",
+ "opentelemetry 0.23.0",
  "tracing",
  "tracing-core",
  "tracing-subscriber",
@@ -5110,7 +5124,7 @@ dependencies = [
  "async-trait",
  "futures-core",
  "http 0.2.12",
- "opentelemetry",
+ "opentelemetry 0.23.0",
  "opentelemetry-proto",
  "opentelemetry_sdk",
  "prost",
@@ -5125,7 +5139,7 @@ version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "984806e6cf27f2b49282e2a05e288f30594f3dbc74eb7a6e99422bc48ed78162"
 dependencies = [
- "opentelemetry",
+ "opentelemetry 0.23.0",
  "opentelemetry_sdk",
  "prost",
  "tonic",
@@ -5151,7 +5165,7 @@ dependencies = [
  "glob",
  "lazy_static",
  "once_cell",
- "opentelemetry",
+ "opentelemetry 0.23.0",
  "ordered-float",
  "percent-encoding",
  "rand",
@@ -7947,7 +7961,7 @@ checksum = "f68803492bf28ab40aeccaecc7021096bd256baf7ca77c3d425d89b35a7be4e4"
 dependencies = [
  "js-sys",
  "once_cell",
- "opentelemetry",
+ "opentelemetry 0.23.0",
  "opentelemetry_sdk",
  "smallvec",
  "tracing",
