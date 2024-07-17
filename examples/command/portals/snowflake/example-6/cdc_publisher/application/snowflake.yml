@@ -1,0 +1,19 @@
+definition_version: 1
+
+native_app:
+  name: cdc_publisher
+  artifacts:
+  - src: services/*
+    dest: ./
+  - services/spec.yml
+  package:
+    name: cdc_publisher_pkg
+    role: cdc_role
+    warehouse: cdc_warehouse
+  application:
+    name: cdc_publisher
+    debug: true
+    role: cdc_role
+    warehouse: cdc_warehouse
+    post_deploy:
+    - sql_script: cdc_publisher/application/services/post_deploy.sql

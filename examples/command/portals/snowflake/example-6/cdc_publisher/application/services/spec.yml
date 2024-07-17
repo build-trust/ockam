@@ -1,0 +1,14 @@
+spec:
+  container:
+  - name: cdc-publisher
+    image: /cdc_database/cdc_schema/cdc_repository/cdc_publisher:cdc
+    env:
+      KAFKA_BOOTSTRAP_SERVERS: 127.0.0.1:9092
+      KAFKA_TOPIC_NAME: test-topic
+      SNOWFLAKE_WAREHOUSE: cdc_warehouse
+      JOB_SUCCESS_SLEEP_TIME: 10
+      JOB_ERROR_SLEEP_TIME: 2
+      LOG_LEVEL: INFO
+
+  - name: ockam-inlet
+    image: /cdc_database/cdc_schema/cdc_repository/ockam_inlet:cdc

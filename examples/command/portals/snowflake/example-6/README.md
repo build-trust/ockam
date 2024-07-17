@@ -37,13 +37,13 @@ In order to run this example you need to install the following:
 ockam enroll
 
 # Create an enrollment ticket for the node that will run inside the native application.
-INLET_TICKET="$(ockam project ticket --usage-count 1 --expires-in 10h --attribute snowflake-kafka-inlet)"
+export INLET_TICKET="$(ockam project ticket --usage-count 1 --expires-in 10h --attribute snowflake-kafka-inlet)"
 
 # Create an enrollment ticket for the node that will run alongside the Kafka broker.
-OUTLET_TICKET="$(ockam project ticket --usage-count 1 --expires-in 10h --attribute snowflake-kafka-outlet --relay kafka")
+export OUTLET_TICKET="$(ockam project ticket --usage-count 1 --expires-in 10h --attribute snowflake-kafka-outlet --relay kafka)"
 
 # Print the egress allow list for your Ockam project. You will use them later in this example.
-EGRESS_ALLOW_LIST="$(ockam project show --jq .egress_allow_list)"
+export EGRESS_ALLOW_LIST="$(ockam project show --jq .egress_allow_list | sed "s/\"/'/g" | sed "s/\[/(/g" | sed "s/\]/)/g")"
 ```
 
 ## Choose between creating an Amazon MSK vs Kafka cluster running on local machine
@@ -52,7 +52,7 @@ On the Kafka side, you can either decide to use the Kafka managed service from
 Amazon ([MSK](https://aws.amazon.com/msk/),
 or install a local Kafka broker just for this example.
 
-### Setup Amazon MSK, or
+### Setup Amazon MSK
 
 Run the provided Cloudformation template to create:
 
@@ -67,19 +67,18 @@ aws cloudformation create-stack \
     --region us-west-1 \
     --stack-name $STACK_NAME \
     --template-body file://./msk-private-cluster.yaml \
-    --parameters ParameterKey=EnrollmentTicket,ParameterValue=OUTLET_TICKET \
+    --parameters ParameterKey=EnrollmentTicket,ParameterValue=$OUTLET_TICKET \
     --capabilities CAPABILITY_IAM
 
 cd -
 ```
 
-### Setup Apache Kafka with Ockam
+### Setup Apache Kafka
 
 Otherwise you can start a local Apache Kafka Server with Ockam, via the provided Docker compose file:
 
 ```sh
-en
-echo; pushd docker_kafka; ENROLLMENT_TICKET=$(cat ../outlet.ticket) docker compose up ; popd
+docker compose -f ./docker_kafka/docker-compose.yml up &> /dev/null &
 ```
 
 In that case Docker compose starts two processes:
@@ -87,264 +86,86 @@ In that case Docker compose starts two processes:
 1. A Kafka broker.
 2. An Ockam outlet node which will receive encrypted data from Snowflake.
 
-- View console at http://localhost:8080/
+You can check that the Kafka broker started properly by opening up the console at http://localhost:8080
 
 ## Setup Snowflake
 
-Now
-Snowflake tables and objects
+On the Snowflake side we need to:
 
-```sql
+1. Create a database and some tables that we will update to generate data change events.
+2. Deploy the `cdc_publisher` application.
 
-USE ROLE ACCOUNTADMIN;
+### Create the database
 
--- CREATE ROLES
-CREATE OR REPLACE ROLE CDC_TEST_ROLE;
-
--- CREATE DATABASE
-CREATE DATABASE IF NOT EXISTS CDC_TEST_DB;
-
--- CREATE WAREHOUSE
-CREATE OR REPLACE WAREHOUSE CDC_TEST_WH WITH WAREHOUSE_SIZE='X-SMALL';
-
--- CREATE SCHEMA
-CREATE SCHEMA IF NOT EXISTS CDC_TEST_SCHEMA;
-
--- CREATE COMPUTE POOL
-CREATE COMPUTE POOL CDC_TEST_CP
-  MIN_NODES = 1
-  MAX_NODES = 5
-  INSTANCE_FAMILY = CPU_X64_XS;
-
--- WAIT
-DESCRIBE COMPUTE POOL CDC_TEST_CP;
-
--- CREATE IMAGE REPOSITORY
-CREATE IMAGE REPOSITORY IF NOT EXISTS CDC_TEST_REPO;
-
--- Note repository_url value to be used to build and publish consumer image to snowflake
-SHOW IMAGE REPOSITORIES;
-
--- GRANTS
-GRANT ROLE CDC_TEST_ROLE TO ROLE ACCOUNTADMIN;
-GRANT ALL ON DATABASE CDC_TEST_DB TO ROLE CDC_TEST_ROLE;
-GRANT ALL ON WAREHOUSE CDC_TEST_WH TO ROLE CDC_TEST_ROLE;
-GRANT ALL ON SCHEMA CDC_TEST_SCHEMA TO ROLE CDC_TEST_ROLE;
-GRANT ALL ON COMPUTE POOL CDC_TEST_CP TO ROLE CDC_TEST_ROLE;
-GRANT READ ON IMAGE REPOSITORY CDC_TEST_REPO TO ROLE CDC_TEST_ROLE;
-GRANT CREATE INTEGRATION ON ACCOUNT TO ROLE CDC_TEST_ROLE;
-
-
-USE ROLE CDC_TEST_ROLE;
-USE DATABASE CDC_TEST_DB;
-USE WAREHOUSE CDC_TEST_WH;
-USE SCHEMA CDC_TEST_SCHEMA;
-
--- CREATE TABLE
-CREATE OR REPLACE TABLE CDC_TEST_TABLE (
-    KEY VARCHAR(256),
-    VALUE VARCHAR(256)
-);
-GRANT ALL ON TABLE CDC_TEST_TABLE TO ROLE CDC_TEST_ROLE;
-
--- CREATE STREAM
-CREATE OR REPLACE STREAM CDC_TEST_TABLE_STREAM ON TABLE CDC_TEST_TABLE;
-GRANT ALL ON STREAM CDC_TEST_TABLE_STREAM TO ROLE CDC_TEST_ROLE;
+First you need to create a version of the SQL creation script containing your Snowflake user name with:
 
 ```
+export USER_NAME=<your user name here>
 
-## Build and push Python application Image
+cat ./cdc_publisher/database.sql | envsubst | snow sql --stdin
+```
+
+### Build the native application
+
+The native application uses two Docker images:
+
+1. One image for the service which stream data change events from Snowflake tables.
+2. One image for the Ockam node which encrypts the data before it is sent to Kafka.
+
+The first image is built with:
+
+```
+docker build --rm --platform linux/amd64 -t cdc_publisher:cdc ./cdc_publisher/application/services/cdc_publisher 
+```
+
+The second image is built with:
+
+```
+docker build --rm --platform linux/amd64 -t ockam_inlet:cdc ./cdc_publisher/application/services/ockam_inlet 
+```
+
+Then we publish those images to the Snowflake image repository created in the previous section.
+First, we get the repository URL:
 
 ```sh
-cd snowflake_cdc_publisher
+# Login
+snow spcs image-registry login
 
-# Use the value of the repository_url from SHOW IMAGE REPOSITORIES command
-docker login <repository_url>
-docker build --rm --platform linux/amd64 -t <repository_url>/snowflake_cdc_kafka_bridge .
-docker push <repository_url>/snowflake_cdc_kafka_bridge
-
-cd -
+# Get the repository URL
+export REPOSITORY_URL="$(snow spcs image-repository url cdc_database.cdc_schema.cdc_repository --role cdc_role)"
 ```
 
-## Deploy Snowflake CDC Publisher with Ockam in Snowpark Container services
+We tag each image with the repository URL:
 
-> [!IMPORTANT]
-> Replace `TODO` values in `VALUE_LIST` with the output of `ockam project show --jq .egress_allow_list` command in
-> previous step.
-
-```sh
-#Example
-VALUE_LIST = ("k8s-XXX.amazonaws.com:4XXX","k8s-XXX.amazonaws.com:4XXX");
+```shell
+docker tag cdc_publisher:cdc $REPOSITORY_URL/cdc_publisher:cdc
+docker tag ockam_inlet:cdc $REPOSITORY_URL/ockam_inlet:cdc
 ```
 
-> [!IMPORTANT]
-> Replace `<OCKAM_ENROLLMENT_TICKET>` with the contents of `inlet.ticket` generated in previous step
+We push the images to the repository:
 
-```sql
-
-USE ROLE CDC_TEST_ROLE;
-USE DATABASE CDC_TEST_DB;
-USE WAREHOUSE CDC_TEST_WH;
-USE SCHEMA CDC_TEST_SCHEMA;
-
-CREATE OR REPLACE NETWORK RULE CDC_TEST_OSCP_OUT
-TYPE = 'HOST_PORT' MODE= 'EGRESS'
-VALUE_LIST = ('ocsp.snowflakecomputing.com:80');
-
-
--- Update VALUE_LIST with ockam egress details
-CREATE NETWORK RULE CDC_TEST_OCKAM_OUT TYPE = 'HOST_PORT' MODE = 'EGRESS'
-VALUE_LIST = ('TODO:TODO', 'TODO:TODO');
-
-
--- Create access integration
-USE ROLE ACCOUNTADMIN;
-
-CREATE OR REPLACE EXTERNAL ACCESS INTEGRATION CDC_TEST_EXTERNAL_ACCESS_INT
-ALLOWED_NETWORK_RULES = (CDC_TEST_OSCP_OUT, CDC_TEST_OCKAM_OUT)
-ENABLED = true;
-
-GRANT USAGE ON INTEGRATION CDC_TEST_EXTERNAL_ACCESS_INT TO ROLE CDC_TEST_ROLE;
-
--- Create service
-USE ROLE CDC_TEST_ROLE;
-
-DROP SERVICE IF EXISTS SNOWFLAKE_CDC_KAFKA_BRIDGE;
-
-CREATE SERVICE SNOWFLAKE_CDC_KAFKA_BRIDGE
-  IN COMPUTE POOL CDC_TEST_CP
-  FROM SPECIFICATION
-$$
-    spec:
-      containers:
-      - name: publisher
-        image: /cdc_test_db/cdc_test_schema/cdc_test_repo/snowflake_cdc_kafka_bridge
-        env:
-          STREAM_NAME: CDC_TEST_DB.CDC_TEST_SCHEMA.CDC_TEST_TABLE_STREAM
-          KAFKA_BOOTSTRAP_SERVERS: 127.0.0.1:9092
-          KAFKA_TOPIC_NAME: test-topic
-          SNOWFLAKE_WAREHOUSE: CDC_TEST_WH
-          JOB_SUCCESS_SLEEP_TIME: 30
-          JOB_ERROR_SLEEP_TIME: 60
-          OCKAM_DISABLE_UPGRADE_CHECK: true
-          OCKAM_OPENTELEMETRY_EXPORT: false
-          ENROLLMENT_TICKET: "<OCKAM_ENROLLMENT_TICKET>"
-$$
-EXTERNAL_ACCESS_INTEGRATIONS = (CDC_TEST_EXTERNAL_ACCESS_INT)
-MIN_INSTANCES=1
-MAX_INSTANCES=1;
-
-SHOW SERVICES;
-SELECT SYSTEM$GET_SERVICE_STATUS('SNOWFLAKE_CDC_KAFKA_BRIDGE');
-DESCRIBE SERVICE SNOWFLAKE_CDC_KAFKA_BRIDGE;
-CALL SYSTEM$GET_SERVICE_LOGS('SNOWFLAKE_CDC_KAFKA_BRIDGE', '0', 'publisher', 1000);
--- Client runs every 30 seconds and pick up changes from CDC_TEST_TABLE_STREAM
+```shell
+docker push $REPOSITORY_URL/cdc_publisher:cdc
+docker push $REPOSITORY_URL/ockam_inlet:cdc
 ```
 
-Upon kafka client successfully connecting to Kafka server, you will see `INFO - Kafka producer created successfully` in
-the logs
+We can run the following command to confirm that the images have been correctly uploaded:
 
-## Update table and verify
-
-```sql
--- Insert records
-INSERT INTO CDC_TEST_TABLE
-SELECT UUID_STRING(), randstr(255, RANDOM())
-FROM TABLE(GENERATOR(ROWCOUNT => 100));
-
--- Verify Test Table and CDC Table
-SELECT * FROM CDC_TEST_TABLE;
-SELECT * FROM CDC_TEST_TABLE_STREAM;
-
--- Publisher checks for changes every 30 seconds. Looks at logs and check that changes have been published
-CALL SYSTEM$GET_SERVICE_LOGS('SNOWFLAKE_CDC_KAFKA_BRIDGE', '0', 'publisher', 100);
-
+```shell
+snow spcs image-repository list-images cdc_database.cdc_schema.cdc_repository --role cdc_role
 ```
 
-- Check for service log messages indicating successful delivery of changes to kafka
+## Deploy the application
 
-```sh
-# Sample logs
-...
-2024-07-02 XXX - INFO - Found 100 changes in stream CDC_TEST_DB.CDC_TEST_SCHEMA.CDC_TEST_TABLE_STREAM
-2024-07-02 XXX - INFO - Successfully queued 100 changes for Kafka topic test-topic
-2024-07-02 XXX - INFO - Message delivered to test-topic [partition: 0] at offset 0
-...
+Now we can deploy and instantiate the application:
 
+```shell
+snow app run --project ./cdc_publisher/application
 ```
 
-- Make few more changes
+If that step is successful you should see a message like:
 
-```sql
--- Insert, Update and Delete
-INSERT INTO CDC_TEST_TABLE (key, value) VALUES
-('key1', 'value1');
-
-UPDATE CDC_TEST_TABLE SET value = 'updated_value1' WHERE key = 'key1';
-
--- Clear existing data
-TRUNCATE TABLE CDC_TEST_TABLE;
-
-```
-
-- View messages in Kafka server
-    - Local Kafka messages can be viewed at http://localhost:8080
-
-- View messages in Amazon MSK
-    - Select the region you have deployed the Cloudformation stack to.
-    - Obtain the `Bootstrap server address` from Amazon MSK -> Clusters -> `PrivateMSKCluster` -> View Client
-      Information.
-    - Connect to EC2 machine named `MSK-Client-Instance` via Session Manager and run below commands to view messages.
-  ```sh
-   sudo su
-   # Replace TODO with the bootstrap server address obtained in previous step
-   export BOOTSTRAP_SERVERS="TODO"
-   /opt/kafka_2.13-3.5.1/bin/kafka-console-consumer.sh --bootstrap-server $BOOTSTRAP_SERVERS --topic test-topic --from-beginning
-   # You can make further changes to the table and see the messages appear in ~30 seconds
-  ```
-
-# Cleanup
-
-- AWS MSK
-
-```sh
-cd amazon_msk
-STACK_NAME=test-msk
-aws cloudformation delete-stack --stack-name $STACK_NAME --region us-west-1
-cd -
-```
-
-- Local machine
-
-```sh
-rm inlet.ticket outlet.ticket
-```
-
-```sh
-# Run if a local cluster was created
-pushd docker_kafka; docker compose down --rmi all --remove-orphans; popd
-```
-
-- Snowflake
-
-```sql
-USE ROLE CDC_TEST_ROLE;
-USE DATABASE CDC_TEST_DB;
-USE WAREHOUSE CDC_TEST_WH;
-USE SCHEMA CDC_TEST_SCHEMA;
-
-DROP SERVICE IF EXISTS SNOWFLAKE_CDC_KAFKA_BRIDGE;
-DROP TABLE CDC_TEST_TABLE;
-DROP STREAM CDC_TEST_TABLE_STREAM;
-
-USE ROLE ACCOUNTADMIN;
-
-DROP NETWORK RULE IF EXISTS CDC_TEST_OSCP_OUT;
-DROP NETWORK RULE IF EXISTS CDC_TEST_OCKAM_OUT;
-DROP INTEGRATION IF EXISTS CDC_TEST_EXTERNAL_ACCESS_INT;
-DROP COMPUTE POOL IF EXISTS CDC_TEST_CP;
-DROP SCHEMA IF EXISTS CDC_TEST_SCHEMA;
-DROP WAREHOUSE IF EXISTS CDC_TEST_WH;
-DROP DATABASE IF EXISTS CDC_TEST_DB;
-DROP ROLE IF EXISTS CDC_TEST_ROLE;
+```shell
+Your application object (cdc_publisher) is now available:
+https://app.snowflake.com/HYCWVDM/ekb57526/#/apps/application/CDC_PUBLISHER
 ```

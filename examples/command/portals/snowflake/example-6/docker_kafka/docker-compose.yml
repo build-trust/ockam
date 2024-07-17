@@ -8,54 +8,54 @@ services:
   kafka:
     image: 'bitnami/kafka:latest'
     networks:
-      - kafka_operator
+    - kafka_operator
     ports:
-      - "9092:9092"
+    - "9092:9092"
     environment:
-      - KAFKA_CFG_NODE_ID=0
-      - KAFKA_CFG_PROCESS_ROLES=controller,broker
-      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093
-      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
-      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
-      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=0@kafka:9093
-      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
-      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=PLAINTEXT
-      - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true
+    - KAFKA_CFG_NODE_ID=0
+    - KAFKA_CFG_PROCESS_ROLES=controller,broker
+    - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093
+    - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
+    - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+    - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=0@kafka:9093
+    - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+    - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=PLAINTEXT
+    - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true
 
   kafka-ui:
     depends_on: [kafka]
     image: provectuslabs/kafka-ui
     container_name: kafka-ui
     ports:
-      - "8080:8080"
+    - "8080:8080"
     environment:
       KAFKA_CLUSTERS_0_NAME: DemoKafkaCluster
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
     networks:
-      - kafka_operator
+    - kafka_operator
 
   ockam:
     depends_on: [kafka]
     image: ghcr.io/build-trust/ockam
     environment:
-      ENROLLMENT_TICKET: $OUTLET_TICKET
+      OUTLET_TICKET: ${OUTLET_TICKET:-}
       OCKAM_DEVELOPER: ${OCKAM_DEVELOPER:-false}
     command:
-      - node
-      - create
-      - --foreground
-      - --node-config
-      - |
-        name: kafka_outlet_node
-        ticket: ${ENROLLMENT_TICKET}
-
-        # This node will be reachable in the project
-        # using the address 'forward_to_kafka'.
-        relay: kafka
-
-        # Declare a Kafka Outlet, with a local destination.
-        kafka-outlet:
-          bootstrap-server: kafka:9092
-          allow: snowflake-kafka-inlet
+    - node
+    - create
+    - --foreground
+    - --node-config
+    - |
+      name: kafka_outlet_node
+      ticket: ${OUTLET_TICKET}
+      
+      # This node will be reachable in the project
+      # using the address 'forward_to_kafka'.
+      relay: kafka
+      
+      # Declare a Kafka Outlet, with a local destination.
+      kafka-outlet:
+        bootstrap-server: kafka:9092
+        allow: snowflake-kafka-inlet
     networks:
-      - kafka_operator
+    - kafka_operator
