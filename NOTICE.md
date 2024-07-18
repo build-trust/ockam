@@ -267,6 +267,7 @@ This file contains attributions for any 3rd-party open source code used in this 
 | inout | MIT, Apache-2.0 | https://crates.io/crates/inout |
 | instant | BSD-3-Clause | https://crates.io/crates/instant |
 | interpolator | MIT, Apache-2.0 | https://crates.io/crates/interpolator |
+| inventory | MIT, Apache-2.0 | https://crates.io/crates/inventory |
 | io-lifetimes | Apache-2.0 WITH LLVM-exception, Apache-2.0, MIT | https://crates.io/crates/io-lifetimes |
 | iovec | MIT, Apache-2.0 | https://crates.io/crates/iovec |
 | ipnet | MIT, Apache-2.0 | https://crates.io/crates/ipnet |
