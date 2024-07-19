@@ -26,21 +26,11 @@ fi
 
 for suite in "$@"; do
   case $suite in
-  local)
-    local_suite=true
-    ;;
-  orchestrator_enroll)
-    orchestrator_enroll_suite=true
-    ;;
-  orchestrator)
-    orchestrator_suite=true
-    ;;
-  serial)
-    serial_suite=true
-    ;;
-  examples)
-    examples_suite=true
-    ;;
+  local) local_suite=true ;;
+  orchestrator_enroll) orchestrator_enroll_suite=true ;;
+  orchestrator) orchestrator_suite=true ;;
+  serial) serial_suite=true ;;
+  examples) examples_suite=true ;;
   *)
     echo "Unknown suite: $suite"
     exit 1

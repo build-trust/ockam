@@ -5,12 +5,13 @@ use std::str::FromStr;
 use crate::cloud::enroll::auth0::UserInfo;
 use crate::cloud::project::models::ProjectModel;
 use crate::cloud::share::RoleInShare;
+use crate::colors::color_primary;
 use crate::error::ApiError;
 use crate::output::Output;
-
-use crate::colors::color_primary;
 use crate::terminal::fmt;
+
 use ockam::identity::{Identifier, Identity, Vault};
+use ockam_core::compat::collections::HashSet;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{Error, Result};
 use ockam_multiaddr::MultiAddr;
@@ -51,7 +52,7 @@ impl Project {
             None => None,
         };
 
-        let mut egress_allow_list = vec![];
+        let mut egress_allow_list = HashSet::new();
         let project_socket_addr;
         let project_multiaddr;
         if model.access_route.is_empty() {
@@ -69,7 +70,7 @@ impl Project {
                 .to_socket_addr()
                 .map_err(|e| ApiError::core(e.to_string()))?;
             project_socket_addr = Some(socket_addr.clone());
-            egress_allow_list.push(socket_addr);
+            egress_allow_list.insert(socket_addr);
             project_multiaddr = Some(multiaddr);
         }
 
@@ -95,7 +96,7 @@ impl Project {
                     .to_socket_addr()
                     .map_err(|e| ApiError::core(e.to_string()))?;
                 authority_socket_addr = Some(socket_addr.clone());
-                egress_allow_list.push(socket_addr);
+                egress_allow_list.insert(socket_addr);
                 authority_multiaddr = Some(multiaddr)
             }
             None => {
@@ -112,7 +113,7 @@ impl Project {
             authority_identity,
             authority_multiaddr,
             authority_socket_addr,
-            egress_allow_list,
+            egress_allow_list: egress_allow_list.into_iter().collect(),
         };
 
         Ok(s)
