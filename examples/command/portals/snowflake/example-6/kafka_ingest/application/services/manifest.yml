@@ -1,0 +1,39 @@
+manifest_version: 1
+
+artifacts:
+   setup_script: application_setup.sql
+   readme: README.md
+   container_services:
+      images:
+      - /ki_database/ki_schema/ki_repository/kafka_consumer:ki
+      - /ki_database/ki_schema/ki_repository/ockam_kafka_inlet:ki
+
+configuration:
+   trace_level: ALWAYS
+   log_level: DEBUG
+
+privileges:
+- BIND SERVICE ENDPOINT:
+    description: "A service that can respond to requests from public endpoints."
+    required_at_setup: true
+- CREATE COMPUTE POOL:
+     description: "Permission to create compute pools for running services"
+     required_at_setup: true
+
+references:
+   - target_table:
+       label: "Target table"
+       description: "The table where Kafka events must be stored"
+       privileges:
+       - SELECT
+       - INSERT
+       object_type: TABLE
+       register_callback: application.register_reference
+   - ockam_external_access:
+       label: "Ockam external access"
+       description: "This is required to access the Ockam project"
+       privileges:
+       - USAGE
+       object_type: EXTERNAL ACCESS INTEGRATION
+       register_callback: application.register_reference
+       configuration_callback: application.get_external_access

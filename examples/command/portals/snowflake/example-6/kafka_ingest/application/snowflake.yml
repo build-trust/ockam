@@ -1,0 +1,19 @@
+definition_version: 1
+
+native_app:
+   name: kafka_ingest
+   artifacts:
+      - src: services/*
+        dest: ./
+      - services/spec.yml
+   package:
+      name: kafka_ingest_pkg
+      role: ki_role
+      warehouse: ki_warehouse
+   application:
+      name: kafka_ingest
+      debug: true
+      role: ki_role
+      warehouse: ki_warehouse
+      post_deploy:
+        - sql_script: kafka_ingest/application/services/post_deploy.sql

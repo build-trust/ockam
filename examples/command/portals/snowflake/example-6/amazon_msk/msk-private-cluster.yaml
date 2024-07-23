@@ -1,0 +1,433 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'CloudFormation template for private MSK cluster with VPC components'
+
+Parameters:
+  VpcCidr:
+    Type: String
+    Default: 198.0.0.0/16
+    Description: CIDR block for the VPC
+  PublicSubnet1Cidr:
+    Type: String
+    Default: 198.0.1.0/24
+    Description: CIDR block for public subnet 1
+  PublicSubnet2Cidr:
+    Type: String
+    Default: 198.0.2.0/24
+    Description: CIDR block for public subnet 2
+  PrivateSubnet1Cidr:
+    Type: String
+    Default: 198.0.3.0/24
+    Description: CIDR block for private subnet 1
+  PrivateSubnet2Cidr:
+    Type: String
+    Default: 198.0.4.0/24
+    Description: CIDR block for private subnet 2
+  EC2InstanceType:
+    Type: String
+    Default: t2.small
+    Description: EC2 instance type
+  LatestAmiId:
+    Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
+    Default: '/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2'
+    Description: 'The latest Amazon Linux 2 AMI from the SSM Parameter Store'
+  KafkaVersion:
+    Type: String
+    Default: 3.5.1
+    Description: The version of Apache Kafka for the MSK cluster
+  EnrollmentTicket:
+    Type: String
+    Description: The enrollment ticket for Ockam
+  KafkaTopicName:
+    Type: String
+    Default: test-topic
+    Description: Kafka topic to send data to
+
+Resources:
+  # VPC
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCidr
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      InstanceTenancy: default
+      Tags:
+        - Key: Name
+          Value: MSK-VPC
+
+  # Internet Gateway
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: MSK-IGW
+
+  InternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref InternetGateway
+      VpcId: !Ref VPC
+
+  # Public Subnets
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      CidrBlock: !Ref PublicSubnet1Cidr
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: MSK-Public-Subnet-1
+
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 1, !GetAZs '' ]
+      CidrBlock: !Ref PublicSubnet2Cidr
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: MSK-Public-Subnet-2
+
+  # Private Subnets
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      CidrBlock: !Ref PrivateSubnet1Cidr
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: MSK-Private-Subnet-1
+
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 1, !GetAZs '' ]
+      CidrBlock: !Ref PrivateSubnet2Cidr
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: MSK-Private-Subnet-2
+
+  # NAT Gateways
+  NatGateway1EIP:
+    Type: AWS::EC2::EIP
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      Domain: vpc
+
+  NatGateway2EIP:
+    Type: AWS::EC2::EIP
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      Domain: vpc
+
+  NatGateway1:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatGateway1EIP.AllocationId
+      SubnetId: !Ref PublicSubnet1
+
+  NatGateway2:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatGateway2EIP.AllocationId
+      SubnetId: !Ref PublicSubnet2
+
+  # Route Tables
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: MSK-Public-Route-Table
+
+  DefaultPublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet1
+
+  PublicSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet2
+
+  PrivateRouteTable1:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: MSK-Private-Route-Table-1
+
+  DefaultPrivateRoute1:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable1
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway1
+
+  PrivateSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable1
+      SubnetId: !Ref PrivateSubnet1
+
+  PrivateRouteTable2:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: MSK-Private-Route-Table-2
+
+  DefaultPrivateRoute2:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable2
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway2
+
+  PrivateSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable2
+      SubnetId: !Ref PrivateSubnet2
+
+  # MSK Security Group
+  MSKSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for MSK cluster
+      VpcId: !Ref VPC
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 0.0.0.0/0
+
+# MSK Cluster
+  MSKCluster:
+    Type: AWS::MSK::Cluster
+    Properties:
+      ClusterName: PrivateMSKCluster
+      KafkaVersion: !Ref KafkaVersion
+      NumberOfBrokerNodes: 2
+      EnhancedMonitoring: PER_BROKER
+      EncryptionInfo:
+        EncryptionInTransit:
+          ClientBroker: PLAINTEXT
+          InCluster: true
+      BrokerNodeGroupInfo:
+        InstanceType: kafka.m7g.large
+        ClientSubnets:
+          - !Ref PrivateSubnet1
+          - !Ref PrivateSubnet2
+        SecurityGroups:
+          - !Ref MSKSecurityGroup
+      ClientAuthentication:
+        Unauthenticated:
+          Enabled: true
+      ConfigurationInfo:
+        Arn: !Ref MSKConfiguration
+        Revision: 1
+
+  MSKConfiguration:
+    Type: AWS::MSK::Configuration
+    Properties:
+      Name: MSKClusterConfiguration
+      ServerProperties: |
+        auto.create.topics.enable=true
+        delete.topic.enable=true
+
+  EC2InstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+        - arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy
+      Policies:
+        - PolicyName: ComprehensiveMSKAccessPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - kafka:GetBootstrapBrokers
+                  - kafka:DescribeCluster
+                  - kafka:DescribeClusterV2
+                  - kafka:ListClusters
+                Resource: !Sub 'arn:aws:kafka:${AWS::Region}:${AWS::AccountId}:cluster/*'
+              - Effect: Allow
+                Action:
+                  - kafka-cluster:Connect
+                  - kafka-cluster:AlterCluster
+                  - kafka-cluster:DescribeCluster
+                Resource: !Sub 'arn:aws:kafka:${AWS::Region}:${AWS::AccountId}:cluster/*'
+              - Effect: Allow
+                Action:
+                  - kafka-cluster:*Topic*
+                  - kafka-cluster:WriteData
+                  - kafka-cluster:ReadData
+                Resource: !Sub 'arn:aws:kafka:${AWS::Region}:${AWS::AccountId}:topic/*'
+              - Effect: Allow
+                Action:
+                  - kafka-cluster:AlterGroup
+                  - kafka-cluster:DescribeGroup
+                Resource: !Sub 'arn:aws:kafka:${AWS::Region}:${AWS::AccountId}:group/*'
+              - Effect: Allow
+                Action:
+                  - ec2:DescribeVpcs
+                  - ec2:DescribeSubnets
+                  - ec2:DescribeSecurityGroups
+                Resource: '*'
+
+  EC2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: "/"
+      Roles:
+        - !Ref EC2InstanceRole
+
+  # EC2 Instance Security Group
+  EC2SecurityGroup:
+      Type: AWS::EC2::SecurityGroup
+      Properties:
+        GroupDescription: Security group for EC2 instance
+        VpcId: !Ref VPC
+        SecurityGroupEgress:
+          - IpProtocol: -1
+            FromPort: -1
+            ToPort: -1
+            CidrIp: 0.0.0.0/0
+
+  # EC2 Instance
+  EC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref LatestAmiId
+      InstanceType: !Ref EC2InstanceType
+      IamInstanceProfile: !Ref EC2InstanceProfile
+      NetworkInterfaces:
+        - AssociatePublicIpAddress: false
+          DeviceIndex: "0"
+          GroupSet:
+            - !Ref EC2SecurityGroup
+          SubnetId: !Ref PrivateSubnet1
+      Tags:
+        - Key: Name
+          Value: MSK-Client-Instance
+      UserData:
+        Fn::Base64: !Sub |
+            #!/bin/bash
+            set -e -x
+            echo "Starting init script"
+            cd /opt
+            sudo yum -y install java-11
+            wget https://archive.apache.org/dist/kafka/${KafkaVersion}/kafka_2.13-${KafkaVersion}.tgz
+            tar -xzf kafka_2.13-${KafkaVersion}.tgz
+
+            # Configure AWS CLI with the current region
+            echo "export AWS_DEFAULT_REGION=${AWS::Region}" >> /etc/profile
+            export AWS_DEFAULT_REGION=${AWS::Region}
+
+            # Install Ockam Command
+            curl --proto '=https' --tlsv1.2 -sSfL https://install.command.ockam.io | bash && source "$HOME/.ockam/env"
+
+            echo "verify installation"
+            ockam --version
+
+            ENROLLMENT_TICKET="${EnrollmentTicket}"
+            TOPIC_NAME="${KafkaTopicName}"
+
+            # Get bootstrap servers and extract the first one
+            BOOTSTRAP_SERVERS=$(aws kafka get-bootstrap-brokers --cluster-arn ${MSKCluster.Arn} --query BootstrapBrokerString --output text)
+            BOOTSTRAP_SERVER_WITH_PORT=$(echo $BOOTSTRAP_SERVERS | awk -F',' '{print $1}')
+
+            echo "Bootstrap Server: $BOOTSTRAP_SERVER_WITH_PORT"
+
+            cat <<-EOF > ./ockam.yaml
+            name: kafka_outlet_node
+            ticket: "${ENROLLMENT_TICKET}"
+            # This node will be reachable in the project
+            # using the address 'forward_to_kafka'.
+            relay: kafka
+            # Declare a Kafka Outlet, with a local destination.
+            kafka-outlet:
+              bootstrap-server: "$BOOTSTRAP_SERVER_WITH_PORT"
+              allow: kafka-consumer
+            EOF
+
+            ockam node create ./ockam.yaml
+
+            echo "Creating test topic"
+            /opt/kafka_2.13-${KafkaVersion}/bin/kafka-topics.sh --create --bootstrap-server $BOOTSTRAP_SERVERS --topic $TOPIC_NAME
+
+  # Allow EC2 to connect to MSK
+  MSKIngressFromVPC:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref MSKSecurityGroup
+      IpProtocol: -1
+      CidrIp: !Ref VpcCidr
+
+Outputs:
+  VPC:
+    Description: A reference to the created VPC
+    Value: !Ref VPC
+    Export:
+      Name: !Sub ${AWS::StackName}-VPC
+  PublicSubnets:
+    Description: A list of the public subnets
+    Value: !Join [ ",", [ !Ref PublicSubnet1, !Ref PublicSubnet2 ]]
+    Export:
+      Name: !Sub ${AWS::StackName}-PublicSubnets
+  PrivateSubnets:
+    Description: A list of the private subnets
+    Value: !Join [ ",", [ !Ref PrivateSubnet1, !Ref PrivateSubnet2 ]]
+    Export:
+      Name: !Sub ${AWS::StackName}-PrivateSubnets
+  MSKClusterArn:
+    Description: ARN of the MSK cluster
+    Value: !Ref MSKCluster
+    Export:
+      Name: !Sub ${AWS::StackName}-MSKClusterArn
+  EC2InstanceId:
+    Description: ID of the EC2 instance
+    Value: !Ref EC2Instance
+    Export:
+      Name: !Sub ${AWS::StackName}-EC2InstanceId
+  EC2InstancePrivateIP:
+    Description: Private IP address of the EC2 instance
+    Value: !GetAtt EC2Instance.PrivateIp
+    Export:
+      Name: !Sub ${AWS::StackName}-EC2InstancePrivateIP
+  KafkaVersion:
+    Description: The version of Apache Kafka used in the MSK cluster
+    Value: !Ref KafkaVersion
+    Export:
+      Name: !Sub ${AWS::StackName}-KafkaVersion
