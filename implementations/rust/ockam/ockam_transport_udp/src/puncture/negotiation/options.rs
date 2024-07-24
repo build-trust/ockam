@@ -5,6 +5,7 @@ use std::sync::Arc;
 /// Trust Options for a `UdpPunctureNegotiationListener`
 #[derive(Debug)]
 pub struct UdpPunctureNegotiationListenerOptions {
+    pub(super) flow_control_id: FlowControlId,
     pub(super) consumer: Vec<FlowControlId>,
     pub(super) incoming_access_control: Arc<dyn IncomingAccessControl>,
     pub(super) outgoing_access_control: Arc<dyn OutgoingAccessControl>,
@@ -14,6 +15,7 @@ impl UdpPunctureNegotiationListenerOptions {
     /// Default constructor without Incoming Access Control
     pub fn new() -> Self {
         Self {
+            flow_control_id: FlowControls::generate_flow_control_id(),
             consumer: vec![],
             incoming_access_control: Arc::new(AllowAll),
             outgoing_access_control: Arc::new(AllowAll),
@@ -74,25 +76,14 @@ impl UdpPunctureNegotiationListenerOptions {
         for id in &self.consumer {
             flow_controls.add_consumer(address.clone(), id);
         }
+
+        flow_controls.add_spawner(address.clone(), &self.flow_control_id);
     }
 
-    // FIXME: PUNCTURE
-    // pub(super) fn setup_flow_control_for_puncture(
-    //     &self,
-    //     flow_controls: &FlowControls,
-    //     addresses: &Addresses,
-    //     src_addr: &Address,
-    // ) {
-    //     // Check if the Worker that send us this message is a Producer
-    //     // If yes - outlet worker will be added to that flow control to be able to receive further
-    //     // messages from that Producer
-    //     if let Some(producer_flow_control_id) = flow_controls
-    //         .get_flow_control_with_producer(src_addr)
-    //         .map(|x| x.flow_control_id().clone())
-    //     {
-    //         flow_controls.add_consumer(addresses.sender_remote.clone(), &producer_flow_control_id);
-    //     }
-    // }
+    /// Spawner [`FlowControlId`]
+    pub fn flow_control_id(&self) -> FlowControlId {
+        self.flow_control_id.clone()
+    }
 }
 
 impl Default for UdpPunctureNegotiationListenerOptions {

@@ -1,10 +1,12 @@
-use crate::puncture::negotiation::worker::UdpPunctureNegotiationWorker;
+use crate::puncture::negotiation::message::{
+    UdpPunctureNegotiationMessageAcknowledge, UdpPunctureNegotiationMessageInitiate,
+};
 use crate::puncture::rendezvous_service::RendezvousClient;
-use crate::{UdpBindArguments, UdpBindOptions, UdpTransport};
-use ockam_core::{Address, Result, Route};
-use ockam_node::Context;
-use tokio::sync::broadcast;
-use tokio::sync::broadcast::{Receiver, Sender};
+use crate::{UdpBindArguments, UdpBindOptions, UdpPuncture, UdpPunctureOptions, UdpTransport};
+use ockam_core::{Address, AllowAll, Result, Route};
+use ockam_node::{Context, MessageReceiveOptions};
+use std::time::Duration;
+use tracing::{debug, error, info};
 
 /// Allows to negotiate a UDP puncture to the other node by communicating
 /// with its [`UdpPunctureListener`] via some side channel (e.g. Relayed connection through the
@@ -13,32 +15,17 @@ pub struct UdpPunctureNegotiation {}
 
 impl UdpPunctureNegotiation {
     /// Start a UDP puncture negotiation and notify whenever puncture is open.
-    /// WARNING: Only use Sender to subscribe (get new Receiver instances)
     pub async fn start_negotiation(
         ctx: &Context,
         onward_route: Route, // Route to the UdpPunctureNegotiationListener
         udp: &UdpTransport,
         rendezvous_route: Route,
-    ) -> Result<(Receiver<Route>, Sender<Route>)> {
+        acknowledgment_timeout: Duration,
+    ) -> Result<UdpPuncture> {
         let next = onward_route.next()?.clone();
 
-        let udp_bind = udp
-            .bind(
-                UdpBindArguments::new().with_bind_address("0.0.0.0:0")?,
-                UdpBindOptions::new(), // FIXME: PUNCTURE
-            )
-            .await?;
-
-        let client = RendezvousClient::new(ctx, &udp_bind, rendezvous_route).await?;
-        let (notify_reachable_sender, notify_reachable_receiver) = broadcast::channel(1);
-        let worker = UdpPunctureNegotiationWorker::new_initiator(
-            onward_route,
-            &udp_bind,
-            client,
-            notify_reachable_sender.clone(),
-        );
-
         let address = Address::random_tagged("UdpPunctureNegotiator.initiator");
+        let mut child_ctx = ctx.new_detached(address, AllowAll, AllowAll).await?;
 
         if let Some(flow_control_id) = ctx
             .flow_controls()
@@ -47,11 +34,103 @@ impl UdpPunctureNegotiation {
         {
             // To be able to receive the response
             ctx.flow_controls()
-                .add_consumer(address.clone(), &flow_control_id);
+                .add_consumer(child_ctx.address(), &flow_control_id);
         }
 
-        ctx.start_worker(address, worker).await?; // FIXME: PUNCTURE Access Control
+        // We create a new bind for each puncture. Ownership will be transferred to the
+        // UdpPunctureReceiverWorker which is responsible for stopping it eventually
+        // TODO: Consider limiting incoming access control for that bind
+        let udp_bind = udp
+            .bind(
+                UdpBindArguments::new().with_bind_address("0.0.0.0:0")?,
+                UdpBindOptions::new(),
+            )
+            .await?;
 
-        Ok((notify_reachable_receiver, notify_reachable_sender))
+        debug!(
+            "Initializing UdpPunctureNegotiation Initiator at {}",
+            child_ctx.address_ref()
+        );
+        let client = RendezvousClient::new(&udp_bind, rendezvous_route);
+        let my_udp_public_address = match client.get_my_address(ctx).await {
+            Ok(my_udp_public_address) => my_udp_public_address,
+            Err(err) => {
+                error!(
+                    "Error getting UDP public address for the initiator: {}",
+                    err
+                );
+                udp.unbind(udp_bind.sender_address().clone()).await?;
+                return Err(err);
+            }
+        };
+
+        info!(
+            "UdpPunctureNegotiation Initiator {} got its public address: {}",
+            child_ctx.address_ref(),
+            my_udp_public_address
+        );
+
+        // Send Initiate message to the responder, but don't start actual UDP puncture yet,
+        // until we receive Acknowledge from them
+        let my_remote_address =
+            Address::random_tagged("UdpPunctureNegotiationWorker.remote.initiator");
+        child_ctx
+            .send(
+                onward_route,
+                UdpPunctureNegotiationMessageInitiate {
+                    initiator_udp_public_address: my_udp_public_address,
+                    initiator_remote_address: my_remote_address.to_vec(),
+                },
+            )
+            .await?;
+
+        let response = match child_ctx
+            .receive_extended::<UdpPunctureNegotiationMessageAcknowledge>(
+                MessageReceiveOptions::new().with_timeout(acknowledgment_timeout),
+            )
+            .await
+        {
+            Ok(response) => response,
+            Err(err) => {
+                error!(
+                    "Error receiving response for Udp Puncture at: {}. {}",
+                    child_ctx.address_ref(),
+                    err
+                );
+
+                udp.unbind(udp_bind.sender_address().clone()).await?;
+                return Err(err);
+            }
+        };
+
+        let response = match response.into_body() {
+            Ok(response) => response,
+            Err(err) => {
+                error!(
+                    "Invalid response for Udp Puncture at: {}. {}",
+                    child_ctx.address_ref(),
+                    err
+                );
+
+                udp.unbind(udp_bind.sender_address().clone()).await?;
+                return Err(err);
+            }
+        };
+
+        let options = UdpPunctureOptions::new();
+
+        // Start puncture
+        let puncture = UdpPuncture::create(
+            ctx,
+            udp_bind,
+            response.responder_udp_public_address,
+            my_remote_address.clone(),
+            Address::from(response.responder_remote_address),
+            options,
+            false,
+        )
+        .await?;
+
+        Ok(puncture)
     }
 }
