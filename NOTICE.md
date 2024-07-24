@@ -335,7 +335,6 @@ This file contains attributions for any 3rd-party open source code used in this 
 | num-conv | MIT, Apache-2.0 | https://crates.io/crates/num-conv |
 | num-integer | MIT, Apache-2.0 | https://crates.io/crates/num-integer |
 | num-traits | MIT, Apache-2.0 | https://crates.io/crates/num-traits |
-| num_cpus | MIT, Apache-2.0 | https://crates.io/crates/num_cpus |
 | num_threads | MIT, Apache-2.0 | https://crates.io/crates/num_threads |
 | number_prefix | MIT | https://crates.io/crates/number_prefix |
 | objc | MIT | https://crates.io/crates/objc |

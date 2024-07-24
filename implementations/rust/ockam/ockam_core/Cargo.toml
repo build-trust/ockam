@@ -104,4 +104,4 @@ cddl-cat = { version = "0.6.1" }
 proptest = "1.5.0"
 quickcheck = "1.0.1"
 serde_cbor = { version = "0.11.2" }
-tokio = { version = "1.38.0", features = ["full"] }
+tokio = { version = "1.39.1", features = ["full"] }
