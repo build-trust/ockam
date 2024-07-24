@@ -21,6 +21,7 @@ def connection() -> snowflake.connector.SnowflakeConnection:
             'authenticator': "oauth",
             'token': open('/snowflake/session/token', 'r').read(),
             'client_session_keep_alive': True,
+            'ocsp_fail_open': False,
         }
         logging.info(f"the creds are {creds}")
     else:

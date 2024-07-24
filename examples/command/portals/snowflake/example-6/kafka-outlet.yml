@@ -1,0 +1,11 @@
+name: kafka_outlet_node
+ticket: ${PRODUCER_TICKET}
+
+# This node will be reachable in the project
+# using the address 'forward_to_kafka'.
+relay: kafka
+
+# Declare a Kafka Outlet, with a local destination.
+kafka-outlet:
+  bootstrap-server: localhost:9092
+  allow: kafka-consumer

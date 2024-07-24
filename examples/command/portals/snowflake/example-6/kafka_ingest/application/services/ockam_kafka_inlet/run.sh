@@ -8,6 +8,7 @@ export OCKAM_DISABLE_UPGRADE_CHECK=true
 export OCKAM_OPENTELEMETRY_EXPORT=false
 
 # print the environment to double-check it
+echo "environment variables"
 env
 
 # start the node
@@ -16,7 +17,7 @@ name: kafka_inlet_node
 ticket: ${CONSUMER_TICKET}
 
 kafka-inlet:
-  from: 127.0.0.1:9092
+  from: ${KAFKA_BOOTSTRAP_SERVERS}
   disable-content-encryption: true
   allow: kafka-producer
   to: /project/default/service/forward_to_kafka/secure/api

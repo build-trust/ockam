@@ -55,10 +55,10 @@ def create_kafka_consumer(bootstrap_servers):
         'bootstrap.servers': bootstrap_servers,
         'client.id': 'kafka_ingest',
         'group.id': 'kafka_ingest',
-        'message.max.bytes': 1000000,
-        'socket.timeout.ms': 10000,
-        'max.in.flight.requests.per.connection': 1,
-        'auto.offset.reset': 'earliest',
+        'auto.offset.reset': 'latest',
+        'api.version.request': False,
+        'retries': 15,
+        'retry.backoff.ms': 1000,
     }
 
     if LOG_LEVEL == 'DEBUG':
@@ -149,10 +149,11 @@ def print_environment_variables():
         'KAFKA_BOOTSTRAP_SERVERS',
         'JOB_SUCCESS_SLEEP_TIME',
         'JOB_ERROR_SLEEP_TIME',
-        'LOG_LEVEL'
+        'LOG_LEVEL',
+        'HOSTNAME',
     ]
 
-    logging.info("Environment Variables:")
+    logging.info("Application environment variables:")
     for var in relevant_vars:
         value = os.getenv(var, 'Not set')
         if var in globals():

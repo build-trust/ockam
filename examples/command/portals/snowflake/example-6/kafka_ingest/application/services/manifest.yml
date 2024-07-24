@@ -9,8 +9,9 @@ artifacts:
       - /ki_database/ki_schema/ki_repository/ockam_kafka_inlet:ki
 
 configuration:
-   trace_level: ALWAYS
-   log_level: DEBUG
+  trace_level: ALWAYS
+  log_level: DEBUG
+  grant_callback: functions.restart_application
 
 privileges:
 - BIND SERVICE ENDPOINT:

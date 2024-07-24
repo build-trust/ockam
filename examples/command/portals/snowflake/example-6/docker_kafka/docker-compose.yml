@@ -39,21 +39,20 @@ services:
     image: ghcr.io/build-trust/ockam:0.129.0
     environment:
       PRODUCER_TICKET: ${PRODUCER_TICKET:-}
-      OCKAM_DEVELOPER: ${OCKAM_DEVELOPER:-false}
+      OCKAM_DEVELOPER: true
       OCKAM_DISABLE_UPGRADE_CHECK: true
     command:
     - node
     - create
-    - --foreground
-    - --node-config
+    - --configuration
     - |
       name: kafka_outlet_node
       ticket: ${PRODUCER_TICKET}
-      
+
       # This node will be reachable in the project
       # using the address 'forward_to_kafka'.
       relay: kafka
-      
+
       # Declare a Kafka Outlet, with a local destination.
       kafka-outlet:
         bootstrap-server: kafka:9092

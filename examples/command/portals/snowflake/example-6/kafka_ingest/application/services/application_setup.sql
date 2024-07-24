@@ -23,13 +23,45 @@ BEGIN
 
    CREATE SERVICE IF NOT EXISTS core.kafka_ingest
      IN COMPUTE POOL identifier(:pool_name)
-     FROM spec='services/spec.yml';
+     FROM spec='services/spec.yml'
+   EXTERNAL_ACCESS_INTEGRATIONS = (reference('ockam_external_access'));
 
    RETURN 'Service successfully created with compute pool ' || pool_name;
 END;
+
 $$;
 
 GRANT USAGE ON PROCEDURE functions.start_application() TO APPLICATION ROLE ki_user;
+
+CREATE OR REPLACE PROCEDURE functions.restart_application(privileges ARRAY)
+   RETURNS string
+   LANGUAGE sql
+   AS
+$$
+
+BEGIN
+   -- This account-level compute pool object is prefixed with the database name to prevent clashes
+   LET pool_name := (SELECT CURRENT_DATABASE()) || '_compute_pool';
+
+   CREATE COMPUTE POOL IF NOT EXISTS IDENTIFIER(:pool_name)
+      MIN_NODES = 1
+      MAX_NODES = 1
+      INSTANCE_FAMILY = CPU_X64_XS
+      AUTO_RESUME = true;
+
+   DROP SERVICE IF EXISTS core.kafka_ingest;
+   CREATE SERVICE IF NOT EXISTS core.kafka_ingest
+     IN COMPUTE POOL identifier(:pool_name)
+     FROM spec='services/spec.yml'
+   EXTERNAL_ACCESS_INTEGRATIONS = (reference('ockam_external_access'));
+
+   SYSTEM$LOG('DEBUG', 'Called the restart_application procedure after new privileges have been granted: ' || ARRAY_TO_STRING(privileges, ', '));
+
+   RETURN 'Service successfully created with compute pool ' || pool_name || ' after new privileges have been granted: ' || ARRAY_TO_STRING(privileges, ', ');
+END;
+$$;
+
+GRANT USAGE ON PROCEDURE functions.restart_application(ARRAY) TO APPLICATION ROLE ki_user;
 
 CREATE OR REPLACE PROCEDURE functions.stop_application()
     RETURNS string
@@ -55,6 +87,8 @@ AS $$
          RETURN PARSE_JSON(:service_status)[0]['status']::VARCHAR;
    END;
 $$;
+
+GRANT USAGE ON PROCEDURE functions.service_status() TO APPLICATION ROLE ki_user;
 
 CREATE OR REPLACE PROCEDURE functions.service_status_all()
 RETURNS VARCHAR
@@ -104,18 +138,26 @@ $$;
 
 GRANT USAGE ON PROCEDURE functions.service_logs_ockam_kafka_inlet() TO APPLICATION ROLE ki_user;
 
-CREATE OR REPLACE PROCEDURE functions.register_reference(ref_name STRING, ref_or_alias STRING)
+CREATE OR REPLACE PROCEDURE functions.register_reference(ref_name STRING, operation STRING, ref_or_alias STRING)
   RETURNS STRING
   LANGUAGE SQL
   AS $$
-     BEGIN
-        CALL SYSTEM$SET_REFERENCE(:ref_name, :ref_or_alias);
-        SYSTEM$LOG('INFO', 'Stored the reference: ' || :ref_or_alias || ' with name ' || :ref_name);
-        RETURN :ref_name;
+    BEGIN
+      CASE (operation)
+        WHEN 'ADD' THEN
+          SELECT SYSTEM$SET_REFERENCE(:ref_name, :ref_or_alias);
+        WHEN 'REMOVE' THEN
+          SELECT SYSTEM$REMOVE_REFERENCE(:ref_name, :ref_or_alias);
+        WHEN 'CLEAR' THEN
+          SELECT SYSTEM$REMOVE_ALL_REFERENCES(:ref_name);
+      ELSE
+        RETURN 'unknown operation: ' || operation;
+      END CASE;
+      RETURN ref_or_alias;
     END;
   $$;
 
-GRANT USAGE ON PROCEDURE functions.register_reference(STRING, STRING)
+GRANT USAGE ON PROCEDURE functions.register_reference(STRING, STRING, STRING)
   TO APPLICATION ROLE ki_user;
 
 CREATE OR REPLACE PROCEDURE functions.get_external_access(ref_name STRING)
