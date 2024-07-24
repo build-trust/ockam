@@ -1,10 +1,10 @@
+use crate::puncture::puncture::notification::{wait_for_puncture, UdpPunctureNotification};
 use crate::puncture::puncture::Addresses;
 use crate::puncture::UdpPunctureReceiverWorker;
 use crate::{UdpBind, UdpPunctureOptions};
-use ockam_core::errcode::{Kind, Origin};
+use ockam_core::compat::time::Duration;
 use ockam_core::flow_control::FlowControlId;
-use ockam_core::Error;
-use ockam_core::{Address, Result, Route};
+use ockam_core::{Address, Result};
 use ockam_node::Context;
 use tokio::sync::broadcast;
 
@@ -16,19 +16,17 @@ use tokio::sync::broadcast;
 /// UDP and NAT Hole Punching are unreliable protocols. Expect send and receive
 /// failures.
 pub struct UdpPuncture {
-    notify_puncture_open_receiver: broadcast::Receiver<Route>,
-    notify_puncture_open_sender: broadcast::Sender<Route>,
+    notify_puncture_open_receiver: broadcast::Receiver<UdpPunctureNotification>,
     addresses: Addresses,
     flow_control_id: FlowControlId,
 }
 
-// TODO: PUNCTURE Allow to stop a puncture
 // TODO: PUNCTURE make keepalives adjustable
 
 impl UdpPuncture {
     pub(crate) async fn create(
         ctx: &Context,
-        bind: &UdpBind,
+        bind: UdpBind,
         peer_udp_address: String,
         my_remote_address: Address,
         their_remote_address: Address,
@@ -49,7 +47,7 @@ impl UdpPuncture {
             peer_udp_address,
             their_remote_address,
             addresses.clone(),
-            notify_puncture_open_sender.clone(),
+            notify_puncture_open_sender,
             options,
             redirect_first_message_to_transport,
         )
@@ -57,7 +55,6 @@ impl UdpPuncture {
 
         Ok(UdpPuncture {
             notify_puncture_open_receiver,
-            notify_puncture_open_sender,
             addresses,
             flow_control_id,
         })
@@ -67,17 +64,8 @@ impl UdpPuncture {
     /// timeout. In case it's already open, will return on next pong message
     ///
     /// TODO: PUNCTURE optimize to return immediately if the puncture is open
-    pub async fn wait_for_puncture(&mut self) -> Result<()> {
-        self.notify_puncture_open_receiver
-            .recv()
-            .await
-            .map_err(|_| {
-                Error::new(
-                    Origin::Transport,
-                    Kind::Cancelled,
-                    "UDP puncture won't be opened",
-                )
-            })?;
+    pub async fn wait_for_puncture(&mut self, timeout: Duration) -> Result<()> {
+        _ = wait_for_puncture(&mut self.notify_puncture_open_receiver, timeout).await?;
 
         Ok(())
     }
@@ -87,17 +75,14 @@ impl UdpPuncture {
         self.addresses.sender_address().clone()
     }
 
+    /// Stop the receiver (which will shut down everything else as well)
+    pub async fn stop(&self, ctx: &Context) -> Result<()> {
+        ctx.stop_worker(self.addresses.receiver_address().clone())
+            .await
+    }
+
     /// Flow Control Id
     pub fn flow_control_id(&self) -> &FlowControlId {
         &self.flow_control_id
-    }
-
-    /// Receiver that will receive a message with a Route when puncture is open, of empty route
-    /// when closed
-    // TODO: PUNCTURE send something more type safe and self-explanatory than a route
-    //  The route value doesn't make much sense, we not the sender address from the very beginning
-    //  Also, the empty route is a bad API
-    pub fn notify_puncture_open_receiver(&self) -> broadcast::Receiver<Route> {
-        self.notify_puncture_open_sender.subscribe()
     }
 }

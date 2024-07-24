@@ -1,6 +1,6 @@
 use ockam_core::compat::sync::Arc;
-use ockam_core::flow_control::{FlowControlId, FlowControls};
-use ockam_core::{Address, AllowAll, OutgoingAccessControl, Result};
+use ockam_core::flow_control::{FlowControlId, FlowControlOutgoingAccessControl, FlowControls};
+use ockam_core::{Address, OutgoingAccessControl, Result};
 
 use crate::puncture::puncture::Addresses;
 use core::fmt;
@@ -9,7 +9,7 @@ use core::fmt::Formatter;
 /// Options for a UDP puncture
 pub struct UdpPunctureOptions {
     pub(crate) flow_control_id: FlowControlId,
-    pub(crate) _spawner_flow_control_id: Option<FlowControlId>, // FIXME: PUNCTURE
+    pub(crate) spawner_flow_control_id: Option<FlowControlId>,
 }
 
 impl fmt::Debug for UdpPunctureOptions {
@@ -24,7 +24,17 @@ impl UdpPunctureOptions {
     pub fn new() -> Self {
         Self {
             flow_control_id: FlowControls::generate_flow_control_id(),
-            _spawner_flow_control_id: None,
+            spawner_flow_control_id: None,
+        }
+    }
+
+    /// Mark this UDP puncture as a Producer with a random [`FlowControlId`] and given spawner's
+    /// [`FlowControlId`]
+    #[allow(clippy::new_without_default)]
+    pub fn new_with_spawner(spawner_flow_control_id: FlowControlId) -> Self {
+        Self {
+            flow_control_id: FlowControls::generate_flow_control_id(),
+            spawner_flow_control_id: Some(spawner_flow_control_id),
         }
     }
 
@@ -61,15 +71,14 @@ impl UdpPunctureOptions {
 
     pub(crate) fn create_receiver_outgoing_access_control(
         &self,
-        _flow_controls: &FlowControls,
+        flow_controls: &FlowControls,
     ) -> Arc<dyn OutgoingAccessControl> {
-        // FIXME: PUNCTURE
-        // let ac = FlowControlOutgoingAccessControl::new(
-        //     flow_controls,
-        //     self.flow_control_id.clone(),
-        //     None,
-        // );
+        let ac = FlowControlOutgoingAccessControl::new(
+            flow_controls,
+            self.flow_control_id.clone(),
+            self.spawner_flow_control_id.clone(),
+        );
 
-        Arc::new(AllowAll)
+        Arc::new(ac)
     }
 }

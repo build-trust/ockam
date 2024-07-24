@@ -5,6 +5,7 @@ pub(crate) use receiver::*;
 
 mod addresses;
 mod message;
+mod notification;
 mod options;
 #[allow(clippy::module_inception)]
 mod puncture;

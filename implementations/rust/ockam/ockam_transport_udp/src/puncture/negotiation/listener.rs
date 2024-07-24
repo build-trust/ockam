@@ -1,16 +1,21 @@
-use crate::puncture::negotiation::message::UdpPunctureNegotiationMessage;
+use crate::puncture::negotiation::message::{
+    UdpPunctureNegotiationMessageAcknowledge, UdpPunctureNegotiationMessageInitiate,
+};
 use crate::puncture::negotiation::options::UdpPunctureNegotiationListenerOptions;
-use crate::puncture::negotiation::worker::UdpPunctureNegotiationWorker;
 use crate::puncture::rendezvous_service::RendezvousClient;
-use crate::{UdpBindArguments, UdpBindOptions, UdpTransport};
-use ockam_core::{async_trait, Address, AllowAll, Any, Decodable, Result, Route, Routed, Worker};
+use crate::{UdpBindArguments, UdpBindOptions, UdpPuncture, UdpPunctureOptions, UdpTransport};
+use ockam_core::flow_control::FlowControlId;
+use ockam_core::{
+    async_trait, Address, AllowAll, AsyncTryClone, DenyAll, Result, Route, Routed, Worker,
+};
 use ockam_node::{Context, WorkerBuilder};
-use tracing::info;
+use tracing::{error, info};
 
 /// UDP puncture listener
 pub struct UdpPunctureNegotiationListener {
     udp: UdpTransport,
     rendezvous_route: Route,
+    flow_control_id: FlowControlId,
 }
 
 impl UdpPunctureNegotiationListener {
@@ -31,16 +36,85 @@ impl UdpPunctureNegotiationListener {
         let worker = Self {
             udp: udp.clone(),
             rendezvous_route,
+            flow_control_id: options.flow_control_id,
         };
 
         WorkerBuilder::new(worker)
             .with_address(address)
             .with_incoming_access_control_arc(access_control)
-            // TODO: PUNCTURE replace with DenyAll when we pass message to the spawned worker as
-            //  an argument instead of sending
-            .with_outgoing_access_control(AllowAll)
+            .with_outgoing_access_control(DenyAll)
             .start(ctx)
             .await?;
+
+        Ok(())
+    }
+
+    async fn start_puncture(
+        ctx: Context,
+        udp: UdpTransport,
+        rendezvous_route: Route,
+        flow_control_id: FlowControlId,
+        msg: UdpPunctureNegotiationMessageInitiate,
+        return_route: Route,
+    ) -> Result<()> {
+        // We create a new bind for each puncture. Ownership will be transferred to the
+        // UdpPunctureReceiverWorker which is responsible for stopping it eventually
+        // TODO: Consider limiting incoming access control for that bind
+        let udp_bind = udp
+            .bind(
+                UdpBindArguments::new().with_bind_address("0.0.0.0:0")?,
+                UdpBindOptions::new(),
+            )
+            .await?;
+
+        let client = RendezvousClient::new(&udp_bind, rendezvous_route);
+        let my_udp_public_address = match client.get_my_address(&ctx).await {
+            Ok(my_udp_public_address) => my_udp_public_address,
+            Err(err) => {
+                error!(
+                    "Error getting UDP public address for the responder: {}",
+                    err
+                );
+                udp.unbind(udp_bind.sender_address().clone()).await?;
+                return Err(err);
+            }
+        };
+
+        let initiator_remote_address = Address::from(msg.initiator_remote_address);
+
+        let options = UdpPunctureOptions::new_with_spawner(flow_control_id);
+
+        // Let's start puncture as we received the initiates
+        let my_remote_address =
+            Address::random_tagged("UdpPunctureNegotiationWorker.remote.responder");
+        UdpPuncture::create(
+            &ctx,
+            udp_bind,
+            msg.initiator_udp_public_address,
+            my_remote_address.clone(),
+            initiator_remote_address,
+            options,
+            // We can't send messages to the remote address of `UdpPunctureReceiverWorker`
+            // on the other side, since it's not started yet, so we'll just send ping
+            // messages to the corresponding UDP transport worker of that node, the messages
+            // will be just dropped on that side, but the fact that we send them will keep
+            // the "connection" open
+            // After we receive the first ping, which guarantees
+            // that `UdpPunctureReceiverWorker` was started on the other side, we'll start
+            // sending messages to that worker
+            true,
+        )
+        .await?;
+
+        // Send Acknowledge back, so that initiator will start the puncture as well
+        ctx.send(
+            return_route,
+            UdpPunctureNegotiationMessageAcknowledge {
+                responder_udp_public_address: my_udp_public_address,
+                responder_remote_address: my_remote_address.to_vec(),
+            },
+        )
+        .await?;
 
         Ok(())
     }
@@ -48,7 +122,7 @@ impl UdpPunctureNegotiationListener {
 
 #[async_trait]
 impl Worker for UdpPunctureNegotiationListener {
-    type Message = Any;
+    type Message = UdpPunctureNegotiationMessageInitiate;
     type Context = Context;
 
     async fn handle_message(
@@ -58,44 +132,31 @@ impl Worker for UdpPunctureNegotiationListener {
     ) -> Result<()> {
         info!("Received a UDP puncture request");
 
-        let src_addr = msg.src_addr();
-        let msg_payload = UdpPunctureNegotiationMessage::decode(msg.payload())?;
+        let return_route = msg.return_route();
+        let msg = msg.into_body()?;
 
-        if let UdpPunctureNegotiationMessage::Initiate { .. } = msg_payload {
-            let address = Address::random_tagged("UdpPunctureNegotiator.responder");
+        let child_ctx = ctx
+            .new_detached(
+                Address::random_tagged("UdpPunctureNegotiator.responder"),
+                DenyAll,
+                AllowAll,
+            )
+            .await?;
 
-            if let Some(producer_flow_control_id) = ctx
-                .flow_controls()
-                .get_flow_control_with_producer(&src_addr)
-                .map(|x| x.flow_control_id().clone())
-            {
-                // Allow a sender with corresponding flow_control_id send messages to this address
-                ctx.flow_controls()
-                    .add_consumer(address.clone(), &producer_flow_control_id);
-            }
-
-            let udp_bind = self
-                .udp
-                .bind(
-                    UdpBindArguments::new().with_bind_address("0.0.0.0:0")?,
-                    UdpBindOptions::new(), // FIXME: PUNCTURE
-                )
-                .await?;
-            let client =
-                RendezvousClient::new(ctx, &udp_bind, self.rendezvous_route.clone()).await?;
-
-            let worker = UdpPunctureNegotiationWorker::new_responder(&udp_bind, client);
-
-            let msg = msg
-                .into_local_message()
-                .pop_front_onward_route()?
-                .push_front_onward_route(&address);
-
-            ctx.start_worker(address, worker).await?; // FIXME: PUNCTURE Access Control
-
-            // FIXME: PUNCTURE Pass as an argument instead?
-            ctx.forward(msg).await?;
-        }
+        let rendezvous_route = self.rendezvous_route.clone();
+        let udp = self.udp.async_try_clone().await?;
+        let flow_control_id = self.flow_control_id.clone();
+        tokio::spawn(async move {
+            Self::start_puncture(
+                child_ctx,
+                udp,
+                rendezvous_route,
+                flow_control_id,
+                msg,
+                return_route,
+            )
+            .await
+        });
 
         Ok(())
     }
