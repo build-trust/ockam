@@ -1,4 +1,3 @@
-use std::sync::Arc;
 use std::time::Duration;
 
 use crate::nodes::connection::{Changes, Instantiator};
@@ -41,7 +40,7 @@ impl Instantiator for SecureChannelInstantiator {
 
     async fn instantiate(
         &self,
-        ctx: Arc<Context>,
+        ctx: &Context,
         node_manager: &NodeManager,
         transport_route: Route,
         extracted: (MultiAddr, MultiAddr, MultiAddr),

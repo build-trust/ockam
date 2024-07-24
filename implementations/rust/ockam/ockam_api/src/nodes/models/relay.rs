@@ -10,6 +10,8 @@ use ockam_multiaddr::MultiAddr;
 use crate::colors::OckamColor;
 use crate::error::ApiError;
 use crate::output::{colorize_connection_status, Output};
+use crate::session::replacer::ReplacerOutputKind;
+use crate::session::session::Session;
 use crate::{route_to_multiaddr, ConnectionStatus};
 
 /// Request body when instructing a node to create a relay
@@ -91,6 +93,20 @@ impl RelayInfo {
             flow_control_id: None,
             connection_status,
             last_failure: None,
+        }
+    }
+
+    pub fn from_session(session: &Session, destination_address: MultiAddr, alias: String) -> Self {
+        let relay_info = Self::new(destination_address, alias, session.connection_status());
+        if let Some(outcome) = session.last_outcome() {
+            match outcome {
+                ReplacerOutputKind::Relay(info) => relay_info.with(info),
+                ReplacerOutputKind::Inlet(_) => {
+                    panic!("InletInfo should not be in the registry")
+                }
+            }
+        } else {
+            relay_info
         }
     }
 

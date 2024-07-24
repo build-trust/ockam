@@ -58,7 +58,7 @@ pub async fn create(
         .unwrap();
 
     let connection = node
-        .make_connection(context.clone(), &to, node.identifier(), None, None)
+        .make_connection(&context, &to, node.identifier(), None, None)
         .await?;
 
     let processor = PortalSimulatorSender {

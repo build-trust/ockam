@@ -5,7 +5,7 @@ use crate::nodes::{InMemoryNode, NODEMANAGER_ADDR};
 use crate::DefaultAddress;
 use minicbor::Decoder;
 use ockam_core::api::{RequestHeader, Response};
-use ockam_core::{Address, Routed, Worker};
+use ockam_core::{Address, Result, Routed, Worker};
 use ockam_node::Context;
 use std::error::Error;
 use std::sync::Arc;
@@ -20,7 +20,8 @@ impl NodeManagerWorker {
         NodeManagerWorker { node_manager }
     }
 
-    pub async fn stop(&self, ctx: &Context) -> ockam_core::Result<()> {
+    // TODO: This is never called.
+    pub async fn stop(&self, ctx: &Context) -> Result<()> {
         self.node_manager.stop(ctx).await?;
         ctx.stop_worker(NODEMANAGER_ADDR).await?;
         Ok(())
@@ -36,7 +37,7 @@ impl NodeManagerWorker {
         ctx: &mut Context,
         req: &RequestHeader,
         dec: &mut Decoder<'_>,
-    ) -> ockam_core::Result<Vec<u8>> {
+    ) -> Result<Vec<u8>> {
         debug! {
             target: TARGET,
             id     = %req.id(),
@@ -227,17 +228,12 @@ impl Worker for NodeManagerWorker {
     type Message = Vec<u8>;
     type Context = Context;
 
-    async fn shutdown(&mut self, ctx: &mut Self::Context) -> ockam_core::Result<()> {
+    async fn shutdown(&mut self, _ctx: &mut Self::Context) -> Result<()> {
         debug!(target: TARGET, "Shutting down NodeManagerWorker");
-        self.node_manager.medic_handle.stop_medic(ctx).await?;
         Ok(())
     }
 
-    async fn handle_message(
-        &mut self,
-        ctx: &mut Context,
-        msg: Routed<Vec<u8>>,
-    ) -> ockam_core::Result<()> {
+    async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Vec<u8>>) -> Result<()> {
         let return_route = msg.return_route();
         let body = msg.into_body()?;
         let mut dec = Decoder::new(&body);

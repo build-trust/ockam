@@ -12,7 +12,6 @@ use ockam::{Address, Result, Route};
 use ockam_core::api::{Error, Response};
 use ockam_core::compat::sync::Arc;
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::AsyncTryClone;
 use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
 
@@ -182,9 +181,8 @@ impl NodeManager {
     ) -> Result<SecureChannel> {
         let identifier = self.get_identifier_by_name(identity_name.clone()).await?;
 
-        let connection_ctx = Arc::new(ctx.async_try_clone().await?);
         let connection = self
-            .make_connection(connection_ctx, &addr, identifier.clone(), None, timeout)
+            .make_connection(ctx, &addr, identifier.clone(), None, timeout)
             .await?;
         let sc = self
             .create_secure_channel_internal(

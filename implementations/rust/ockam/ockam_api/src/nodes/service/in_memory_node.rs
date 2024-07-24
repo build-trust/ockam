@@ -179,7 +179,14 @@ impl InMemoryNode {
     }
 
     pub async fn stop(&self, ctx: &Context) -> Result<()> {
-        self.medic_handle.stop_medic(ctx).await?;
+        for session in self.registry.inlets.values().await {
+            session.session.lock().await.stop().await;
+        }
+
+        for session in self.registry.relays.values().await {
+            session.session.lock().await.stop().await;
+        }
+
         for addr in DefaultAddress::iter() {
             let result = ctx.stop_worker(addr).await;
             // when stopping we can safely ignore missing services
@@ -191,6 +198,7 @@ impl InMemoryNode {
                 }
             }
         }
+
         Ok(())
     }
 

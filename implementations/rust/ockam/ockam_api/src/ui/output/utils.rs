@@ -47,7 +47,6 @@ pub fn colorize_connection_status(status: ConnectionStatus) -> CString {
     match status {
         ConnectionStatus::Up => text.color(OckamColor::PrimaryResource.color()),
         ConnectionStatus::Down => text.color(OckamColor::Failure.color()),
-        ConnectionStatus::Degraded => text.color(OckamColor::Failure.color()),
     }
 }
 

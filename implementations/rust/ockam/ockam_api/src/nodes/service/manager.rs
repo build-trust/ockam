@@ -15,7 +15,6 @@ use crate::nodes::service::{
 
 use crate::cli_state::journeys::{NODE_NAME, USER_EMAIL, USER_NAME};
 use crate::logs::CurrentSpan;
-use crate::session::MedicHandle;
 use crate::{ApiError, CliState, DefaultAddress};
 use miette::IntoDiagnostic;
 use ockam::identity::{
@@ -60,7 +59,6 @@ pub struct NodeManager {
     pub(crate) credential_retriever_creators: CredentialRetrieverCreators,
     pub(super) project_authority: Option<Identifier>,
     pub(crate) registry: Arc<Registry>,
-    pub(crate) medic_handle: MedicHandle,
 }
 
 impl NodeManager {
@@ -76,9 +74,6 @@ impl NodeManager {
         let node_name = general_options.node_name.clone();
 
         let registry = Arc::new(Registry::default());
-
-        debug!("start the medic");
-        let medic_handle = MedicHandle::start_medic(ctx, registry.clone()).await?;
 
         debug!("retrieve the node identifier");
         let node_identifier = cli_state.get_node(&node_name).await?.identifier();
@@ -159,7 +154,6 @@ impl NodeManager {
             credential_retriever_creators,
             project_authority: trust_options.project_authority,
             registry,
-            medic_handle,
         };
 
         debug!("initializing services");
@@ -180,12 +174,16 @@ impl NodeManager {
                 DefaultAddress::get_rendezvous_server_address(),
                 DefaultAddress::RENDEZVOUS_SERVICE
             ];
+
+            let options = UdpPunctureNegotiationListenerOptions::new();
+            let flow_control_id = options.flow_control_id();
+
             UdpPunctureNegotiationListener::create(
                 ctx,
                 DefaultAddress::UDP_PUNCTURE_NEGOTIATION_LISTENER,
                 udp_transport,
                 rendezvous_route,
-                UdpPunctureNegotiationListenerOptions::new(), // FIXME
+                options,
             )
             .await?;
 
@@ -194,6 +192,9 @@ impl NodeManager {
                     DefaultAddress::RENDEZVOUS_SERVICE,
                     api_sc_listener.flow_control_id(),
                 );
+
+                ctx.flow_controls()
+                    .add_consumer(api_sc_listener.address().clone(), &flow_control_id);
             }
         }
 
@@ -273,7 +274,7 @@ impl NodeManager {
             );
         }
 
-        // Always start the echoer service as ockam_api::Medic assumes it will be
+        // Always start the echoer service as ockam_api::Session assumes it will be
         // started unconditionally on every node. It's used for liveliness checks.
         ctx.flow_controls()
             .add_consumer(DefaultAddress::ECHO_SERVICE, &api_flow_control_id);
@@ -285,7 +286,7 @@ impl NodeManager {
 
     pub async fn make_connection(
         &self,
-        ctx: Arc<Context>,
+        ctx: &Context,
         addr: &MultiAddr,
         identifier: Identifier,
         authorized: Option<Identifier>,
@@ -300,7 +301,7 @@ impl NodeManager {
     /// Returns [`Connection`]
     async fn connect(
         &self,
-        ctx: Arc<Context>,
+        ctx: &Context,
         addr: &MultiAddr,
         identifier: Identifier,
         authorized: Option<Vec<Identifier>>,
@@ -309,15 +310,15 @@ impl NodeManager {
         debug!(?timeout, "connecting to {}", &addr);
         let connection = ConnectionBuilder::new(addr.clone())
             .instantiate(
-                ctx.clone(),
+                ctx,
                 self,
                 ProjectInstantiator::new(identifier.clone(), timeout),
             )
             .await?
-            .instantiate(ctx.clone(), self, PlainTcpInstantiator::new())
+            .instantiate(ctx, self, PlainTcpInstantiator::new())
             .await?
             .instantiate(
-                ctx.clone(),
+                ctx,
                 self,
                 SecureChannelInstantiator::new(&identifier, timeout, authorized),
             )

@@ -1,16 +1,18 @@
 use crate::cli_state::random_name;
-use crate::nodes::models::relay::RelayInfo;
-use crate::session::sessions::{ReplacerOutputKind, Session};
 use crate::DefaultAddress;
+
 use ockam::identity::Identifier;
 use ockam::identity::{SecureChannel, SecureChannelListener};
 use ockam_core::compat::collections::BTreeMap;
 use ockam_core::{Address, Route};
 use ockam_multiaddr::MultiAddr;
-use ockam_node::compat::asynchronous::RwLock;
+use ockam_node::compat::asynchronous::{Mutex, RwLock};
 use ockam_transport_core::HostnamePort;
+
+use crate::session::session::Session;
 use std::borrow::Borrow;
 use std::fmt::Display;
+use std::sync::Arc;
 
 #[derive(Default)]
 pub(crate) struct SecureChannelRegistry {
@@ -127,7 +129,7 @@ impl KafkaServiceInfo {
 pub(crate) struct InletInfo {
     pub(crate) bind_addr: String,
     pub(crate) outlet_addr: MultiAddr,
-    pub(crate) session: Session,
+    pub(crate) session: Arc<Mutex<Session>>,
 }
 
 impl InletInfo {
@@ -135,7 +137,7 @@ impl InletInfo {
         Self {
             bind_addr: bind_addr.to_owned(),
             outlet_addr,
-            session,
+            session: Arc::new(Mutex::new(session)),
         }
     }
 }
@@ -160,34 +162,7 @@ impl OutletInfo {
 pub struct RegistryRelayInfo {
     pub(crate) destination_address: MultiAddr,
     pub(crate) alias: String,
-    pub(crate) session: Session,
-}
-
-impl From<RegistryRelayInfo> for RelayInfo {
-    fn from(registry_relay_info: RegistryRelayInfo) -> Self {
-        let relay_info = RelayInfo::new(
-            registry_relay_info.destination_address.clone(),
-            registry_relay_info.alias.clone(),
-            registry_relay_info.session.connection_status(),
-        );
-
-        let current_relay_status =
-            registry_relay_info
-                .session
-                .status()
-                .map(|info| match info.kind {
-                    ReplacerOutputKind::Inlet(_) => {
-                        panic!("InletInfo should not be in the registry")
-                    }
-                    ReplacerOutputKind::Relay(info) => info,
-                });
-
-        if let Some(current_relay_status) = current_relay_status {
-            relay_info.with(current_relay_status)
-        } else {
-            relay_info
-        }
-    }
+    pub(crate) session: Arc<Mutex<Session>>,
 }
 
 #[derive(Default)]

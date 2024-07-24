@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::sync::{Arc, Weak};
 use std::time::Duration;
 
 use miette::IntoDiagnostic;
@@ -11,6 +11,7 @@ use ockam_core::api::{Error, Request, RequestHeader, Response};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{async_trait, route, Address, AsyncTryClone};
 use ockam_multiaddr::MultiAddr;
+use ockam_node::compat::asynchronous::Mutex;
 use ockam_node::Context;
 
 use crate::nodes::connection::Connection;
@@ -22,8 +23,8 @@ use crate::nodes::registry::RegistryRelayInfo;
 use crate::nodes::service::in_memory_node::InMemoryNode;
 use crate::nodes::service::secure_channel::SecureChannelType;
 use crate::nodes::BackgroundNodeClient;
-use crate::session::sessions::{ReplacerOutcome, ReplacerOutputKind, Session, SessionReplacer};
-use crate::session::MedicHandle;
+use crate::session::replacer::{ReplacerOutcome, ReplacerOutputKind, SessionReplacer};
+use crate::session::session::Session;
 
 use super::{NodeManager, NodeManagerWorker};
 
@@ -98,14 +99,17 @@ impl NodeManager {
     /// This function returns a representation of the relays currently
     /// registered on this node
     pub async fn get_relays(&self) -> Vec<RelayInfo> {
-        let relays = self
-            .registry
-            .relays
-            .entries()
-            .await
-            .into_iter()
-            .map(|(_, registry_info)| registry_info.into())
-            .collect();
+        let mut relays = vec![];
+        for (_, registry_info) in self.registry.relays.entries().await {
+            let session = registry_info.session.lock().await;
+            let info = RelayInfo::from_session(
+                &session,
+                registry_info.destination_address.clone(),
+                registry_info.alias.clone(),
+            );
+            relays.push(info);
+        }
+
         trace!(?relays, "Relays retrieved");
         relays
     }
@@ -132,8 +136,8 @@ impl NodeManager {
         }
 
         let replacer = RelaySessionReplacer {
-            node_manager: self.clone(),
-            context: Arc::new(ctx.async_try_clone().await?),
+            node_manager: Arc::downgrade(self),
+            context: ctx.async_try_clone().await?,
             addr: addr.clone(),
             relay_address,
             connection: None,
@@ -141,21 +145,33 @@ impl NodeManager {
             authorized,
         };
 
-        let mut session = Session::new(replacer);
-        let relay_info =
-            MedicHandle::connect(&mut session)
-                .await
-                .map(|outcome| match outcome.kind {
-                    ReplacerOutputKind::Relay(status) => status,
-                    _ => {
-                        panic!("Unexpected outcome: {:?}", outcome);
-                    }
-                })?;
+        let mut session = Session::create(ctx, Arc::new(Mutex::new(replacer)), None).await?;
+
+        let remote_relay_info = session
+            .initial_connect()
+            .await
+            .map(|outcome| match outcome {
+                ReplacerOutputKind::Relay(status) => status,
+                _ => {
+                    panic!("Unexpected outcome: {:?}", outcome);
+                }
+            })?;
+
+        session.start_monitoring().await?;
+
+        debug!(
+            forwarding_route = %remote_relay_info.forwarding_route(),
+            remote_address = %remote_relay_info.remote_address(),
+            "CreateRelay request processed, sending back response"
+        );
+
+        let relay_info = RelayInfo::new(addr.clone(), alias.clone(), session.connection_status())
+            .with(remote_relay_info);
 
         let registry_relay_info = RegistryRelayInfo {
             destination_address: addr.clone(),
             alias: alias.clone(),
-            session,
+            session: Arc::new(Mutex::new(session)),
         };
 
         self.registry
@@ -163,13 +179,7 @@ impl NodeManager {
             .insert(alias, registry_relay_info.clone())
             .await;
 
-        debug!(
-            forwarding_route = %relay_info.forwarding_route(),
-            remote_address = %relay_info.remote_address(),
-            "CreateRelay request processed, sending back response"
-        );
-
-        Ok(registry_relay_info.into())
+        Ok(relay_info)
     }
 
     /// Delete a relay.
@@ -178,17 +188,10 @@ impl NodeManager {
     pub async fn delete_relay_impl(&self, alias: &str) -> Result<(), ockam::Error> {
         if let Some(relay_to_delete) = self.registry.relays.remove(alias).await {
             debug!(%alias, "Successfully removed relay from node registry");
-            let result = relay_to_delete.session.close().await;
-            match result {
-                Ok(_) => {
-                    debug!(%alias, "Successfully stopped relay");
-                    Ok(())
-                }
-                Err(err) => {
-                    error!(%alias, ?err, "Failed to delete relay from node registry");
-                    Err(err)
-                }
-            }
+            relay_to_delete.session.lock().await.stop().await;
+            debug!(%alias, "Successfully stopped relay");
+
+            Ok(())
         } else {
             error!(%alias, "Relay not found in the node registry");
             Err(ockam::Error::new(
@@ -207,7 +210,14 @@ impl NodeManager {
     ) -> Result<Response<RelayInfo>, Response<Error>> {
         debug!("Handling ShowRelay request");
         if let Some(registry_info) = self.registry.relays.get(alias).await {
-            Ok(Response::ok().with_headers(req).body(registry_info.into()))
+            let session = registry_info.session.lock().await;
+
+            let relay_info = RelayInfo::from_session(
+                &session,
+                registry_info.destination_address.clone(),
+                registry_info.alias.clone(),
+            );
+            Ok(Response::ok().with_headers(req).body(relay_info))
         } else {
             error!(%alias, "Relay not found in the node registry");
             Err(Response::not_found(
@@ -238,8 +248,8 @@ impl InMemoryNode {
 }
 
 struct RelaySessionReplacer {
-    node_manager: Arc<NodeManager>,
-    context: Arc<Context>,
+    node_manager: Weak<NodeManager>,
+    context: Context,
     relay_address: Option<String>,
 
     // current status
@@ -251,24 +261,34 @@ struct RelaySessionReplacer {
 
 #[async_trait]
 impl SessionReplacer for RelaySessionReplacer {
-    async fn create(&mut self) -> std::result::Result<ReplacerOutcome, ockam_core::Error> {
+    async fn create(&mut self) -> Result<ReplacerOutcome> {
         debug!(addr = self.addr.to_string(), relay_address = ?self.relay_address, "Handling CreateRelay request");
-        let connection = self
-            .node_manager
+
+        let node_manager = if let Some(node_manager) = self.node_manager.upgrade() {
+            node_manager
+        } else {
+            return Err(ockam_core::Error::new(
+                Origin::Node,
+                Kind::Cancelled,
+                "Node manager is dropped. Can't start a Relay.",
+            ));
+        };
+
+        let connection = node_manager
             .make_connection(
-                self.context.clone(),
+                &self.context,
                 &self.addr.clone(),
-                self.node_manager.identifier(),
+                node_manager.identifier(),
                 self.authorized.clone(),
                 None,
             )
             .await?;
-        connection.add_default_consumers(self.context.clone());
+        let connection = self.connection.insert(connection);
 
         // Add all Hop workers as consumers for Demo purposes
         // Production nodes should not run any Hop workers
-        for hop in self.node_manager.registry.hop_services.keys().await {
-            connection.add_consumer(self.context.clone(), &hop);
+        for hop in node_manager.registry.hop_services.keys().await {
+            connection.add_consumer(&self.context, &hop);
         }
 
         let route = connection.route()?;
@@ -292,8 +312,15 @@ impl SessionReplacer for RelaySessionReplacer {
     }
 
     async fn close(&mut self) {
+        let node_manager = if let Some(node_manager) = self.node_manager.upgrade() {
+            node_manager
+        } else {
+            warn!("A relay close was issued after the NodeManager shut down, skipping.");
+            return;
+        };
+
         if let Some(connection) = self.connection.take() {
-            let result = connection.close(&self.context, &self.node_manager).await;
+            let result = connection.close(&self.context, &node_manager).await;
             if let Err(err) = result {
                 error!(?err, "Failed to close connection");
             }

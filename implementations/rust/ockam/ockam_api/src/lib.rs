@@ -33,6 +33,7 @@ pub mod minicbor_url;
 pub mod nodes;
 pub mod okta;
 pub mod port_range;
+pub mod session;
 pub mod uppercase;
 mod version;
 
@@ -41,7 +42,6 @@ mod influxdb_token_lease;
 
 pub mod logs;
 mod schema;
-mod session;
 
 mod date;
 mod rendezvous_healthcheck;
@@ -54,7 +54,7 @@ pub use error::*;
 pub use influxdb_token_lease::*;
 pub use nodes::service::default_address::*;
 pub use rendezvous_healthcheck::*;
-pub use session::sessions::ConnectionStatus;
+pub use session::connection_status::ConnectionStatus;
 pub use ui::*;
 pub use util::*;
 pub use version::*;
