@@ -1,7 +1,6 @@
 use crate::error::ApiError;
 use crate::nodes::connection::{Changes, ConnectionBuilder, Instantiator};
 use crate::{multiaddr_to_route, route_to_multiaddr};
-use std::sync::Arc;
 
 use crate::nodes::NodeManager;
 use ockam_core::{async_trait, Error, Route};
@@ -30,7 +29,7 @@ impl Instantiator for PlainTcpInstantiator {
 
     async fn instantiate(
         &self,
-        _ctx: Arc<Context>,
+        _ctx: &Context,
         node_manager: &NodeManager,
         _transport_route: Route,
         extracted: (MultiAddr, MultiAddr, MultiAddr),

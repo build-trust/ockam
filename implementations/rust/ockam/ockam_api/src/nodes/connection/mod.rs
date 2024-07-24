@@ -19,7 +19,6 @@ pub(crate) use plain_tcp::PlainTcpInstantiator;
 pub(crate) use project::ProjectInstantiator;
 pub(crate) use secure::SecureChannelInstantiator;
 use std::fmt::{Debug, Formatter};
-use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct Connection {
@@ -43,7 +42,7 @@ pub struct Connection {
 
 impl Connection {
     /// Shorthand to add the address as consumer to the flow control
-    pub fn add_consumer(&self, context: Arc<Context>, address: &Address) {
+    pub fn add_consumer(&self, context: &Context, address: &Address) {
         if let Some(flow_control_id) = &self.flow_control_id {
             context
                 .flow_controls()
@@ -51,10 +50,10 @@ impl Connection {
         }
     }
 
-    pub fn add_default_consumers(&self, ctx: Arc<Context>) {
-        self.add_consumer(ctx.clone(), &DefaultAddress::KEY_EXCHANGER_LISTENER.into());
-        self.add_consumer(ctx.clone(), &DefaultAddress::SECURE_CHANNEL_LISTENER.into());
-        self.add_consumer(ctx.clone(), &DefaultAddress::UPPERCASE_SERVICE.into());
+    pub fn add_default_consumers(&self, ctx: &Context) {
+        self.add_consumer(ctx, &DefaultAddress::KEY_EXCHANGER_LISTENER.into());
+        self.add_consumer(ctx, &DefaultAddress::SECURE_CHANNEL_LISTENER.into());
+        self.add_consumer(ctx, &DefaultAddress::UPPERCASE_SERVICE.into());
         self.add_consumer(ctx, &DefaultAddress::ECHO_SERVICE.into());
     }
 
@@ -182,7 +181,7 @@ pub trait Instantiator: Send + Sync + 'static {
     /// The returned [`Changes`] will be used to update the builder state.
     async fn instantiate(
         &self,
-        ctx: Arc<Context>,
+        ctx: &Context,
         node_manager: &NodeManager,
         transport_route: Route,
         extracted: (MultiAddr, MultiAddr, MultiAddr),
@@ -217,7 +216,7 @@ impl ConnectionBuilder {
     /// user make sure higher protocol abstraction are called before lower level ones
     pub async fn instantiate(
         mut self,
-        ctx: Arc<Context>,
+        ctx: &Context,
         node_manager: &NodeManager,
         instantiator: impl Instantiator,
     ) -> Result<Self, ockam_core::Error> {
@@ -233,14 +232,14 @@ impl ConnectionBuilder {
                     // the transport route should include only the pieces before the match
                     self.transport_route = self
                         .recalculate_transport_route(
-                            &ctx,
+                            ctx,
                             self.current_multiaddr.split(start).0,
                             false,
                         )
                         .await?;
                     let mut changes = instantiator
                         .instantiate(
-                            ctx.clone(),
+                            ctx,
                             node_manager,
                             self.transport_route.clone(),
                             self.extract(start, instantiator.matches().len()),
@@ -271,7 +270,7 @@ impl ConnectionBuilder {
         }
 
         self.transport_route = self
-            .recalculate_transport_route(&ctx, self.current_multiaddr.clone(), true)
+            .recalculate_transport_route(ctx, self.current_multiaddr.clone(), true)
             .await?;
 
         Ok(Self {

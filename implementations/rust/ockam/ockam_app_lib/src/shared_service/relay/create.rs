@@ -61,7 +61,7 @@ impl AppState {
 
     /// Create a relay at the default project if doesn't exist yet
     ///
-    /// Once it's created, a `Medic` worker will monitor it and recreate it whenever it's unresponsive
+    /// Once it's created, a `Session` worker will monitor it and recreate it whenever it's unresponsive
     async fn create_relay_impl(
         &self,
         context: &Context,

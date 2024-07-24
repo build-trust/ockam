@@ -16,7 +16,7 @@ use crate::colors::color_primary;
 use crate::error::ApiError;
 
 use crate::output::Output;
-use crate::session::sessions::ConnectionStatus;
+use crate::session::connection_status::ConnectionStatus;
 use crate::{route_to_multiaddr, try_address_to_multiaddr};
 
 /// Request body to create an inlet

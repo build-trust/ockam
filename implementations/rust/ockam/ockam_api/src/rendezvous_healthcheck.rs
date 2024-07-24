@@ -135,11 +135,9 @@ impl RendezvousHealthcheckTask {
             )
             .await?;
 
-        let client =
-            RendezvousClient::new(&self.ctx, &bind, route![DefaultAddress::RENDEZVOUS_SERVICE])
-                .await?;
+        let client = RendezvousClient::new(&bind, route![DefaultAddress::RENDEZVOUS_SERVICE]);
 
-        let res = client.ping().await.map_err(|_| {
+        let res = client.ping(&self.ctx).await.map_err(|_| {
             Error::new(
                 Origin::Application,
                 Kind::Unknown,

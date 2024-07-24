@@ -2,7 +2,6 @@ use crate::error::ApiError;
 use crate::nodes::connection::{Changes, Instantiator};
 use crate::nodes::NodeManager;
 use crate::{multiaddr_to_route, try_address_to_multiaddr};
-use std::sync::Arc;
 
 use ockam_core::{async_trait, Error, Route};
 use ockam_multiaddr::proto::Project;
@@ -36,7 +35,7 @@ impl Instantiator for ProjectInstantiator {
 
     async fn instantiate(
         &self,
-        ctx: Arc<Context>,
+        ctx: &Context,
         node_manager: &NodeManager,
         _transport_route: Route,
         extracted: (MultiAddr, MultiAddr, MultiAddr),
@@ -66,7 +65,7 @@ impl Instantiator for ProjectInstantiator {
         debug!("create a secure channel to the project {project_identifier}");
         let sc = node_manager
             .create_secure_channel_internal(
-                &ctx,
+                ctx,
                 tcp.route,
                 &self.identifier.clone(),
                 Some(vec![project_identifier]),
