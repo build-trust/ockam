@@ -1,0 +1,23 @@
+definition_version: 1
+
+native_app:
+   name: ockam_node
+   artifacts:
+      - src: sql/*
+        dest: ./
+      - src: ockam_node
+        dest: ./
+      - spec.yml
+      - manifest.yml
+      - README.md
+   package:
+      name: ockam_node_pkg
+      role: ockam
+      warehouse: ockam_warehouse
+   application:
+      name: ockam_node
+      debug: true
+      role: ockam
+      warehouse: ockam_warehouse
+#      post_deploy:
+#        - sql_script: ockam_node/application/sql/post_deploy.sql

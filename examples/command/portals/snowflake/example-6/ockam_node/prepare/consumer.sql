@@ -1,0 +1,44 @@
+-- Create a role for installing and testing the application
+USE ROLE ACCOUNTADMIN;
+CREATE ROLE IF NOT EXISTS on_role;
+GRANT ROLE on_role TO USER $USER_NAME;
+
+GRANT CREATE WAREHOUSE ON ACCOUNT TO ROLE on_role;
+GRANT CREATE DATABASE ON ACCOUNT TO ROLE on_role;
+GRANT CREATE APPLICATION ON ACCOUNT TO ROLE on_role;
+GRANT CREATE INTEGRATION ON ACCOUNT TO ROLE on_role;
+GRANT CREATE COMPUTE POOL ON ACCOUNT TO ROLE on_role WITH GRANT OPTION;
+GRANT BIND SERVICE ENDPOINT ON ACCOUNT TO ROLE on_role WITH GRANT OPTION;
+GRANT MANAGE GRANTS ON ACCOUNT TO ROLE on_role;
+
+GRANT USAGE ON DATABASE ockam_database TO ROLE on_role;
+GRANT USAGE ON SCHEMA ockam_database.ockam_schema TO ROLE on_role;
+GRANT READ ON IMAGE REPOSITORY ockam_repository TO ROLE on_role;
+
+USE ROLE on_role;
+
+CREATE OR REPLACE WAREHOUSE on_warehouse WITH
+  WAREHOUSE_SIZE = 'X-SMALL'
+  AUTO_SUSPEND = 180
+  AUTO_RESUME = true
+  INITIALLY_SUSPENDED = false;
+
+CREATE DATABASE IF NOT EXISTS on_database;
+CREATE SCHEMA IF NOT EXISTS on_schema;
+
+USE WAREHOUSE on_warehouse;
+USE DATABASE on_database;
+USE SCHEMA on_schema;
+
+-- Create network rules and an integration endpoint to be able to communicate outside of Snowflake
+
+CREATE OR REPLACE NETWORK RULE on_ocsp_out
+TYPE = 'HOST_PORT' MODE= 'EGRESS'
+VALUE_LIST = ('ocsp.snowflakecomputing.com:80');
+
+CREATE OR REPLACE NETWORK RULE on_ockam_out TYPE = 'HOST_PORT' MODE = 'EGRESS'
+VALUE_LIST = ('k8s-hub-nginxing-7c763c63c5-12b7f3bf9ab0746a.elb.us-west-1.amazonaws.com:4015');
+
+CREATE OR REPLACE EXTERNAL ACCESS INTEGRATION on_external_access
+ALLOWED_NETWORK_RULES = (on_ocsp_out, on_ockam_out)
+ENABLED = true;
