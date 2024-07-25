@@ -1,27 +1,27 @@
-use std::io::{Error, ErrorKind};
-
+use crate::kafka::protocol_aware::inlet::InletInterceptorImpl;
+use crate::kafka::protocol_aware::utils::{decode_body, encode_response};
+use crate::kafka::protocol_aware::{
+    InterceptError, KafkaMessageInterceptorResponse, MessageWrapper, RequestInfo,
+};
+use crate::kafka::KafkaInletController;
 use bytes::{Bytes, BytesMut};
-use kafka_protocol::messages::fetch_response::FetchResponse;
-use kafka_protocol::messages::find_coordinator_response::FindCoordinatorResponse;
-use kafka_protocol::messages::metadata_response::MetadataResponse;
-use kafka_protocol::messages::response_header::ResponseHeader;
-use kafka_protocol::messages::{ApiKey, ApiVersionsResponse};
+use kafka_protocol::messages::{
+    ApiKey, ApiVersionsResponse, FetchResponse, FindCoordinatorResponse, MetadataResponse,
+    ResponseHeader,
+};
 use kafka_protocol::protocol::buf::ByteBuf;
 use kafka_protocol::protocol::{Decodable, StrBytes};
 use kafka_protocol::records::{
     Compression, RecordBatchDecoder, RecordBatchEncoder, RecordEncodeOptions,
 };
-use minicbor::decode::Decoder;
+use minicbor::Decoder;
+use ockam_core::async_trait;
 use ockam_node::Context;
-use tracing::{trace, warn};
+use std::io::{Error, ErrorKind};
 
-use crate::kafka::inlet_controller::KafkaInletController;
-use crate::kafka::portal_worker::InterceptError;
-use crate::kafka::protocol_aware::utils::{decode_body, encode_response};
-use crate::kafka::protocol_aware::{InletInterceptorImpl, MessageWrapper, RequestInfo};
-
-impl InletInterceptorImpl {
-    pub(crate) async fn intercept_response_impl(
+#[async_trait]
+impl KafkaMessageInterceptorResponse for InletInterceptorImpl {
+    async fn intercept_response(
         &self,
         context: &mut Context,
         mut original: BytesMut,
@@ -117,7 +117,9 @@ impl InletInterceptorImpl {
 
         Ok(original)
     }
+}
 
+impl InletInterceptorImpl {
     // for metadata we want to replace broker address and port
     // to dedicated tcp inlet ports
     async fn handle_metadata_response(
@@ -242,7 +244,7 @@ impl InletInterceptorImpl {
 
                             let decrypted_content = self
                                 .secure_channel_controller
-                                .decrypt_content_for(
+                                .decrypt_content(
                                     context,
                                     &message_wrapper.consumer_decryptor_address,
                                     message_wrapper.content,

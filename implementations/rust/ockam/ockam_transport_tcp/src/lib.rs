@@ -29,7 +29,11 @@ mod workers;
 pub(crate) use workers::*;
 
 pub use options::{TcpConnectionOptions, TcpListenerOptions};
-pub use portal::{PortalInternalMessage, PortalMessage, MAX_PAYLOAD_SIZE};
+pub use portal::{
+    Direction, PortalInletInterceptor, PortalInterceptor, PortalInterceptorFactory,
+    PortalInterceptorWorker, PortalInternalMessage, PortalMessage, PortalOutletInterceptor,
+    MAX_PAYLOAD_SIZE,
+};
 pub use protocol_version::*;
 pub use registry::*;
 pub use transport::*;

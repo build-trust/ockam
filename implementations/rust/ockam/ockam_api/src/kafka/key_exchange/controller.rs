@@ -1,4 +1,4 @@
-use crate::kafka::secure_channel_map::{KafkaEncryptedContent, TopicPartition};
+use crate::kafka::key_exchange::{KafkaEncryptedContent, TopicPartition};
 use crate::kafka::{ConsumerPublishing, ConsumerResolution};
 use crate::nodes::NodeManager;
 use ockam::identity::{
@@ -13,7 +13,7 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 
 #[derive(Clone)]
-pub(crate) struct KafkaSecureChannelControllerImpl {
+pub(crate) struct KafkaKeyExchangeController {
     pub(crate) inner: Arc<Mutex<InnerSecureChannelControllerImpl>>,
 }
 
@@ -22,13 +22,13 @@ pub(crate) struct KafkaSecureChannelControllerImpl {
 /// and uses them to encrypt the content.
 /// Multiple secure channels may be created for the same topic/partition
 /// but each will be explicitly labeled.
-impl KafkaSecureChannelControllerImpl {
+impl KafkaKeyExchangeController {
     /// Encrypts the content specifically for the consumer waiting for that topic name and
     /// partition.
     /// To do so it'll create a secure channel which will be used for key exchange only.
     /// The secure channel will be created only once and then re-used, hence the first time will
     /// be slower, and may take up to few seconds.
-    pub async fn encrypt_content_for(
+    pub async fn encrypt_content(
         &self,
         context: &mut Context,
         topic_name: &str,
@@ -36,7 +36,7 @@ impl KafkaSecureChannelControllerImpl {
         content: Vec<u8>,
     ) -> ockam_core::Result<KafkaEncryptedContent> {
         let secure_channel_entry = self
-            .get_or_create_secure_channel_for(context, topic_name, partition_id)
+            .get_or_create_secure_channel(context, topic_name, partition_id)
             .await?;
 
         let consumer_decryptor_address = secure_channel_entry.their_decryptor_address();
@@ -66,7 +66,7 @@ impl KafkaSecureChannelControllerImpl {
 
     /// Decrypts the content based on the consumer decryptor address
     /// the secure channel is expected to be already initialized.
-    pub async fn decrypt_content_for(
+    pub async fn decrypt_content(
         &self,
         context: &mut Context,
         consumer_decryptor_address: &Address,
@@ -100,14 +100,13 @@ impl KafkaSecureChannelControllerImpl {
     /// Starts relays in the orchestrator for each {topic_name}_{partition} combination
     /// should be used only by the consumer.
     /// does nothing if they were already created, but fails it they already exist.
-    pub async fn start_relays_for(
+    pub async fn publish_consumer(
         &self,
         context: &mut Context,
         topic_name: &str,
         partitions: Vec<i32>,
     ) -> ockam_core::Result<()> {
         let mut inner = self.inner.lock().await;
-        // when using direct mode there is no need to create a relay
 
         match inner.consumer_publishing.clone() {
             ConsumerPublishing::None => {}
@@ -118,7 +117,18 @@ impl KafkaSecureChannelControllerImpl {
                         continue;
                     }
                     let alias = format!("consumer_{topic_name}_{partition}");
-                    Self::create_relay(&inner, context, where_to_publish.clone(), alias).await?;
+                    let relay_info = inner
+                        .node_manager
+                        .create_relay(
+                            context,
+                            &where_to_publish.clone(),
+                            alias.clone(),
+                            None,
+                            Some(alias),
+                        )
+                        .await?;
+
+                    trace!("remote relay created: {relay_info:?}");
                     inner.topic_relay_set.insert(topic_key);
                 }
             }
@@ -147,7 +157,7 @@ pub struct InnerSecureChannelControllerImpl {
     pub(crate) producer_policy_access_control: PolicyAccessControl,
 }
 
-impl KafkaSecureChannelControllerImpl {
+impl KafkaKeyExchangeController {
     pub(crate) fn new(
         node_manager: Arc<NodeManager>,
         secure_channels: Arc<SecureChannels>,
@@ -155,7 +165,7 @@ impl KafkaSecureChannelControllerImpl {
         consumer_publishing: ConsumerPublishing,
         consumer_policy_access_control: PolicyAccessControl,
         producer_policy_access_control: PolicyAccessControl,
-    ) -> KafkaSecureChannelControllerImpl {
+    ) -> KafkaKeyExchangeController {
         Self {
             inner: Arc::new(Mutex::new(InnerSecureChannelControllerImpl {
                 topic_encryptor_map: Default::default(),

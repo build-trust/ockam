@@ -1,4 +1,4 @@
-use crate::kafka::portal_worker::InterceptError;
+use crate::kafka::protocol_aware::InterceptError;
 use bytes::BytesMut;
 use kafka_protocol::messages::ApiKey;
 use kafka_protocol::protocol::buf::ByteBuf;
