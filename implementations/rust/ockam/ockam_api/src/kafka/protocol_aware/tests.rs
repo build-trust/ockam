@@ -1,10 +1,12 @@
 #[cfg(test)]
 mod test {
     use crate::kafka::inlet_controller::KafkaInletController;
+    use crate::kafka::key_exchange::controller::KafkaKeyExchangeController;
+    use crate::kafka::protocol_aware::inlet::InletInterceptorImpl;
     use crate::kafka::protocol_aware::utils::{encode_request, encode_response};
-    use crate::kafka::protocol_aware::InletInterceptorImpl;
-    use crate::kafka::protocol_aware::KafkaMessageInterceptor;
-    use crate::kafka::secure_channel_map::controller::KafkaSecureChannelControllerImpl;
+    use crate::kafka::protocol_aware::{
+        KafkaMessageInterceptorRequest, KafkaMessageInterceptorResponse,
+    };
     use crate::kafka::{ConsumerPublishing, ConsumerResolution};
     use crate::port_range::PortRange;
     use crate::test_utils::TestNode;
@@ -27,6 +29,7 @@ mod test {
         let handle = crate::test_utils::start_manager_for_tests(context, None, None).await?;
 
         let inlet_map = KafkaInletController::new(
+            (*handle.node_manager).clone(),
             MultiAddr::default(),
             route![],
             route![],
@@ -54,7 +57,7 @@ mod test {
             Some(handle.node_manager.identifier()),
         );
 
-        let secure_channel_controller = KafkaSecureChannelControllerImpl::new(
+        let secure_channel_controller = KafkaKeyExchangeController::new(
             (*handle.node_manager).clone(),
             secure_channels,
             ConsumerResolution::None,

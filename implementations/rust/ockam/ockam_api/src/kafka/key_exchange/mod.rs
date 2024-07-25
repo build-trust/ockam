@@ -4,7 +4,6 @@ use ockam_core::Address;
 use ockam_multiaddr::MultiAddr;
 
 pub(crate) mod controller;
-pub(crate) mod relays;
 mod secure_channels;
 
 pub(crate) struct KafkaEncryptedContent {

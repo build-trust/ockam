@@ -1,5 +1,5 @@
-use crate::kafka::secure_channel_map::controller::{
-    InnerSecureChannelControllerImpl, KafkaSecureChannelControllerImpl,
+use crate::kafka::key_exchange::controller::{
+    InnerSecureChannelControllerImpl, KafkaKeyExchangeController,
 };
 use crate::kafka::ConsumerResolution;
 use crate::nodes::service::SecureChannelType;
@@ -12,7 +12,7 @@ use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
 use tokio::sync::MutexGuard;
 
-impl KafkaSecureChannelControllerImpl {
+impl KafkaKeyExchangeController {
     /// Creates a secure channel for the given destination.
     async fn create_secure_channel(
         inner: &MutexGuard<'_, InnerSecureChannelControllerImpl>,
@@ -20,7 +20,6 @@ impl KafkaSecureChannelControllerImpl {
         mut destination: MultiAddr,
     ) -> Result<Address> {
         destination.push_back(Service::new(DefaultAddress::SECURE_CHANNEL_LISTENER))?;
-
         let secure_channel = inner
             .node_manager
             .create_secure_channel(
@@ -33,7 +32,6 @@ impl KafkaSecureChannelControllerImpl {
                 SecureChannelType::KeyExchangeAndMessages,
             )
             .await?;
-
         Ok(secure_channel.encryptor_address().clone())
     }
 
@@ -44,7 +42,6 @@ impl KafkaSecureChannelControllerImpl {
         mut destination: MultiAddr,
     ) -> Result<Address> {
         destination.push_back(Service::new(DefaultAddress::KEY_EXCHANGER_LISTENER))?;
-
         let secure_channel = inner
             .node_manager
             .create_secure_channel(
@@ -57,25 +54,12 @@ impl KafkaSecureChannelControllerImpl {
                 SecureChannelType::KeyExchangeOnly,
             )
             .await?;
-
         Ok(secure_channel.encryptor_address().clone())
-    }
-
-    /// Deletes the secure channel for the given encryptor address.
-    async fn delete_secure_channel(
-        inner: &MutexGuard<'_, InnerSecureChannelControllerImpl>,
-        context: &Context,
-        encryptor_address: &Address,
-    ) -> Result<()> {
-        inner
-            .node_manager
-            .delete_secure_channel(context, encryptor_address)
-            .await
     }
 
     /// Creates a secure channel from the producer to the consumer needed to encrypt messages.
     /// Returns the relative secure channel entry.
-    pub(crate) async fn get_or_create_secure_channel_for(
+    pub(crate) async fn get_or_create_secure_channel(
         &self,
         context: &mut Context,
         topic_name: &str,
@@ -83,6 +67,7 @@ impl KafkaSecureChannelControllerImpl {
     ) -> Result<SecureChannelRegistryEntry> {
         let mut inner = self.inner.lock().await;
 
+        // TODO: it may be better to exchange a new key for each partition
         // when we have only one consumer, we use the same secure channel for all topics
         let topic_partition_key = match &inner.consumer_resolution {
             ConsumerResolution::SingleNode(_) | ConsumerResolution::None => ("".to_string(), 0i32),
@@ -142,7 +127,9 @@ impl KafkaSecureChannelControllerImpl {
                     .get_channel_by_encryptor_address(&producer_encryptor_address)
                 {
                     if let Err(error) = Self::validate_consumer_credentials(&inner, &entry).await {
-                        Self::delete_secure_channel(&inner, context, &producer_encryptor_address)
+                        inner
+                            .node_manager
+                            .delete_secure_channel(context, &producer_encryptor_address)
                             .await?;
                         return Err(error);
                     };
@@ -153,12 +140,10 @@ impl KafkaSecureChannelControllerImpl {
                         if let Err(err) =
                             Self::create_secure_channel(&inner, context, destination).await
                         {
-                            Self::delete_secure_channel(
-                                &inner,
-                                context,
-                                &producer_encryptor_address,
-                            )
-                            .await?;
+                            inner
+                                .node_manager
+                                .delete_secure_channel(context, &producer_encryptor_address)
+                                .await?;
                             return Err(err);
                         }
                     }

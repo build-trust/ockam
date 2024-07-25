@@ -1,3 +1,7 @@
+use crate::kafka::protocol_aware::inlet::InletInterceptorImpl;
+use crate::kafka::protocol_aware::utils::{decode_body, encode_request};
+use crate::kafka::protocol_aware::{InterceptError, KafkaMessageInterceptorRequest};
+use crate::kafka::protocol_aware::{MessageWrapper, RequestInfo};
 use bytes::{Bytes, BytesMut};
 use kafka_protocol::messages::fetch_request::FetchRequest;
 use kafka_protocol::messages::produce_request::ProduceRequest;
@@ -9,19 +13,17 @@ use kafka_protocol::records::{
     Compression, RecordBatchDecoder, RecordBatchEncoder, RecordEncodeOptions,
 };
 use minicbor::encode::Encoder;
+use ockam_core::async_trait;
 use ockam_node::Context;
 use std::convert::TryFrom;
 use std::io::{Error, ErrorKind};
 use tracing::warn;
 
-use crate::kafka::portal_worker::InterceptError;
-use crate::kafka::protocol_aware::utils::{decode_body, encode_request};
-use crate::kafka::protocol_aware::{InletInterceptorImpl, MessageWrapper, RequestInfo};
-
-impl InletInterceptorImpl {
+#[async_trait]
+impl KafkaMessageInterceptorRequest for InletInterceptorImpl {
     /// Parse request and map request <=> response.
     /// Returns an error if the parsing fails to avoid leaking clear text payloads
-    pub(crate) async fn intercept_request_impl(
+    async fn intercept_request(
         &self,
         context: &mut Context,
         mut original: BytesMut,
@@ -111,7 +113,9 @@ impl InletInterceptorImpl {
 
         Ok(original)
     }
+}
 
+impl InletInterceptorImpl {
     async fn handle_fetch_request(
         &self,
         context: &mut Context,
@@ -148,7 +152,7 @@ impl InletInterceptorImpl {
                 .collect();
 
             self.secure_channel_controller
-                .start_relays_for(context, &topic_id, partitions)
+                .publish_consumer(context, &topic_id, partitions)
                 .await
                 .map_err(InterceptError::Ockam)?
         }
@@ -185,7 +189,7 @@ impl InletInterceptorImpl {
                         if let Some(record_value) = record.value.take() {
                             let encrypted_content = self
                                 .secure_channel_controller
-                                .encrypt_content_for(
+                                .encrypt_content(
                                     context,
                                     topic_name,
                                     data.index,
