@@ -1,17 +1,12 @@
 spec:
   container:
-  - name: kafka-consumer
-    image: /ki_database/ki_schema/ki_repository/kafka_consumer:ki
+  - name: ockam-kafka-inlet
+    image: /ki_database/ki_schema/ki_repository/ockam_kafka_inlet:ki
     env:
-      KAFKA_BOOTSTRAP_SERVERS: localhost:9092
+      KAFKA_BOOTSTRAP_SERVERS: 127.0.0.1:9092
       KAFKA_TOPIC: test-topic
       SNOWFLAKE_WAREHOUSE: ki_warehouse
       JOB_SUCCESS_SLEEP_TIME: 10
       JOB_ERROR_SLEEP_TIME: 2
       LOG_LEVEL: INFO
-
-  - name: ockam-kafka-inlet
-    image: /ki_database/ki_schema/ki_repository/ockam_kafka_inlet:ki
-    env:
-      KAFKA_BOOTSTRAP_SERVERS: localhost:9092
       CONSUMER_TICKET: $CONSUMER_TICKET

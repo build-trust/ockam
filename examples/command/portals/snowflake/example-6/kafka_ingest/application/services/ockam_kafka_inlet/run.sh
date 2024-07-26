@@ -19,8 +19,10 @@ ticket: ${CONSUMER_TICKET}
 kafka-inlet:
   from: ${KAFKA_BOOTSTRAP_SERVERS}
   disable-content-encryption: true
-  allow: kafka-producer
+  allow: snowflake-kafka-outlet
   to: /project/default/service/forward_to_kafka/secure/api
 EOF
 
-ockam node create -vv --foreground ./ockam.yaml
+ockam node create -vv --foreground ./ockam.yaml &
+
+python3 service.py

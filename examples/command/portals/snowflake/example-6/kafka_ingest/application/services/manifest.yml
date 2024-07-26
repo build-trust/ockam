@@ -5,7 +5,6 @@ artifacts:
    readme: README.md
    container_services:
       images:
-      - /ki_database/ki_schema/ki_repository/kafka_consumer:ki
       - /ki_database/ki_schema/ki_repository/ockam_kafka_inlet:ki
 
 configuration:
