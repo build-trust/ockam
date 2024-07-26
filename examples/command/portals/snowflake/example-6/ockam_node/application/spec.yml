@@ -2,3 +2,5 @@ spec:
   container:
   - name: ockam-node
     image: /ockam_database/ockam_schema/ockam_repository/ockam_node:on
+  - name: postgres-client
+    image: /ockam_database/ockam_schema/ockam_repository/postgres_client:on

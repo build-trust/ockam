@@ -7,6 +7,8 @@ native_app:
         dest: ./
       - src: ockam_node
         dest: ./
+      - src: postgres_client
+        dest: ./
       - spec.yml
       - manifest.yml
       - README.md
@@ -19,5 +21,3 @@ native_app:
       debug: true
       role: ockam
       warehouse: ockam_warehouse
-#      post_deploy:
-#        - sql_script: ockam_node/application/sql/post_deploy.sql

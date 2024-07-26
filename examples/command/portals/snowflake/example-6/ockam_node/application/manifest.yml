@@ -6,6 +6,7 @@ artifacts:
    container_services:
       images:
       - /ockam_database/ockam_schema/ockam_repository/ockam_node:on
+      - /ockam_database/ockam_schema/ockam_repository/postgres_client:on
 
 configuration:
   trace_level: ALWAYS
