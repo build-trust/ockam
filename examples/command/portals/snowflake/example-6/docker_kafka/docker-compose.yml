@@ -38,16 +38,18 @@ services:
     depends_on: [kafka]
     image: ghcr.io/build-trust/ockam:0.129.0
     environment:
-      PRODUCER_TICKET: ${PRODUCER_TICKET:-}
+      OUTLET_TICKET: ${OUTLET_TICKET:-}
       OCKAM_DEVELOPER: true
       OCKAM_DISABLE_UPGRADE_CHECK: true
     command:
     - node
     - create
+    - -vv
+    - --foreground
     - --configuration
     - |
       name: kafka_outlet_node
-      ticket: ${PRODUCER_TICKET}
+      ticket: ${OUTLET_TICKET}
 
       # This node will be reachable in the project
       # using the address 'forward_to_kafka'.
@@ -56,6 +58,6 @@ services:
       # Declare a Kafka Outlet, with a local destination.
       kafka-outlet:
         bootstrap-server: kafka:9092
-        allow: kafka-consumer
+        allow: snowflake-kafka-inlet
     networks:
     - kafka_operator

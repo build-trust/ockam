@@ -14,7 +14,7 @@ env
 # start the node
 cat <<EOF > ./ockam.yaml
 name: kafka_inlet_node
-ticket: ${CONSUMER_TICKET}
+ticket: ${INLET_TICKET}
 
 kafka-inlet:
   from: ${KAFKA_BOOTSTRAP_SERVERS}
