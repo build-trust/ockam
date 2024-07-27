@@ -30,17 +30,7 @@ impl Worker for RemoteRelay {
         ctx: &mut Context,
         msg: Routed<Self::Message>,
     ) -> Result<()> {
-        if msg.msg_addr() == self.addresses.heartbeat {
-            // Heartbeat message, send registration message
-            ctx.send_from_address(
-                self.registration_route.clone(),
-                self.registration_payload.clone(),
-                self.addresses.main_remote.clone(),
-            )
-            .await?;
-
-            Ok(())
-        } else if msg.msg_addr() == self.addresses.main_remote {
+        if msg.msg_addr() == self.addresses.main_remote {
             let return_route = msg.return_route();
             let mut local_message = msg.into_local_message();
 
@@ -52,12 +42,12 @@ impl Worker for RemoteRelay {
                     debug!("RemoteRelay received service message");
 
                     let payload = String::decode(local_message.payload_ref())
-                        .map_err(|_| OckamError::InvalidHubResponse)?;
+                        .map_err(|_| OckamError::InvalidResponseFromRelayService)?;
                     // using ends_with() instead of == to allow for prefixes
                     if self.registration_payload != "register"
                         && !payload.ends_with(&self.registration_payload)
                     {
-                        return Err(OckamError::InvalidHubResponse)?;
+                        return Err(OckamError::InvalidResponseFromRelayService)?;
                     }
 
                     if !self.completion_msg_sent {
@@ -65,7 +55,7 @@ impl Worker for RemoteRelay {
                         let address = match return_route.recipient()?.to_string().strip_prefix("0#")
                         {
                             Some(addr) => addr.to_string(),
-                            None => return Err(OckamError::InvalidHubResponse)?,
+                            None => return Err(OckamError::InvalidResponseFromRelayService)?,
                         };
 
                         ctx.send_from_address(
