@@ -118,14 +118,18 @@ GRANT ALL ON STREAM CDC_TEST_TABLE_STREAM TO ROLE CDC_TEST_ROLE;
 
 
 ```sh
-cd snowflake_cdc_publisher
-
+# Build and push cdc publisher docker image
+cd snowflake_cdc_publisher/cdc_publisher
 # Use the value of the repository_url from SHOW IMAGE REPOSITORIES command
 docker login <repository_url>
 docker build --rm --platform linux/amd64 -t <repository_url>/snowflake_cdc_kafka_bridge .
 docker push <repository_url>/snowflake_cdc_kafka_bridge
 
-cd -
+# Build and push ockam image
+cd ../ockam
+docker build --rm --platform linux/amd64 -t <repository_url>/ockam .
+docker push <repository_url>/ockam
+
 ```
 
 ## Deploy Snowflake CDC Publisher with Ockam in Snowpark Container services
@@ -135,7 +139,7 @@ cd -
 
 ```sh
 #Example
-VALUE_LIST = ("k8s-XXX.amazonaws.com:4XXX","k8s-XXX.amazonaws.com:4XXX");
+VALUE_LIST = ("k8s-XXX.amazonaws.com:4XXX");
 ```
 
 > [!IMPORTANT]
@@ -155,7 +159,7 @@ VALUE_LIST = ('ocsp.snowflakecomputing.com:80');
 
 -- Update VALUE_LIST with ockam egress details
 CREATE NETWORK RULE CDC_TEST_OCKAM_OUT TYPE = 'HOST_PORT' MODE = 'EGRESS'
-VALUE_LIST = ('TODO:TODO', 'TODO:TODO');
+VALUE_LIST = ('TODO:TODO');
 
 
 -- Create access integration
@@ -178,6 +182,12 @@ CREATE SERVICE SNOWFLAKE_CDC_KAFKA_BRIDGE
 $$
     spec:
       containers:
+      - name: ockam
+        image: /cdc_test_db/cdc_test_schema/cdc_test_repo/ockam
+        env:
+          OCKAM_DISABLE_UPGRADE_CHECK: true
+          OCKAM_OPENTELEMETRY_EXPORT: false
+          ENROLLMENT_TICKET: "<OCKAM_ENROLLMENT_TICKET>"
       - name: publisher
         image: /cdc_test_db/cdc_test_schema/cdc_test_repo/snowflake_cdc_kafka_bridge
         env:
@@ -187,17 +197,16 @@ $$
           SNOWFLAKE_WAREHOUSE: CDC_TEST_WH
           JOB_SUCCESS_SLEEP_TIME: 30
           JOB_ERROR_SLEEP_TIME: 60
-          OCKAM_DISABLE_UPGRADE_CHECK: true
-          OCKAM_OPENTELEMETRY_EXPORT: false
-          ENROLLMENT_TICKET: "<OCKAM_ENROLLMENT_TICKET>"
 $$
 EXTERNAL_ACCESS_INTEGRATIONS = (CDC_TEST_EXTERNAL_ACCESS_INT)
 MIN_INSTANCES=1
 MAX_INSTANCES=1;
 
+
 SHOW SERVICES;
 SELECT SYSTEM$GET_SERVICE_STATUS('SNOWFLAKE_CDC_KAFKA_BRIDGE');
 DESCRIBE SERVICE SNOWFLAKE_CDC_KAFKA_BRIDGE;
+CALL SYSTEM$GET_SERVICE_LOGS('SNOWFLAKE_SN_CDC_KAFKA_BRIDGE', '0', 'ockam', 1000);
 CALL SYSTEM$GET_SERVICE_LOGS('SNOWFLAKE_CDC_KAFKA_BRIDGE', '0', 'publisher', 1000);
 -- Client runs every 30 seconds and pick up changes from CDC_TEST_TABLE_STREAM
 ```
