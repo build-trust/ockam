@@ -12,7 +12,7 @@ use ockam_core::{
 // FIXME: Duplication from ockam_identity::IdentityError
 #[derive(Clone, Copy, Debug)]
 pub enum OckamError {
-    InvalidHubResponse,
+    InvalidResponseFromRelayService,
     InvalidParameter,
     NoSuchProtocol,
     SystemAddressNotBound,

@@ -93,7 +93,7 @@ impl RemoteRelay {
             flow_control_id,
         );
 
-        debug!("Starting static RemoteRelay at {}", &addresses.heartbeat);
+        debug!("Starting static RemoteRelay at {}", &addresses.main_remote);
         let mailboxes = Self::mailboxes(addresses, outgoing_access_control);
         WorkerBuilder::new(relay)
             .with_mailboxes(mailboxes)
