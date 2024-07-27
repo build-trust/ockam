@@ -12,8 +12,4 @@ kafka-inlet:
   to: /project/default/service/forward_to_kafka/secure/api
 EOF
 
-ockam node create --foreground ./ockam.yaml &
-
-sleep 10
-
-python ./snowflake_cdc_publisher.py
+ockam node create --foreground ./ockam.yaml
