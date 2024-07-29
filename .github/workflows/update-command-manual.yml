@@ -1,0 +1,48 @@
+name: Update Ockam Command Manual
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  update-manual:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Ockam repository
+        uses: actions/checkout@v3
+
+      - name: Set up Git
+        run: |
+          git config --global user.name 'github-actions'
+          git config --global user.email 'github-actions@github.com'
+
+      - name: Clone Ockam Documentation repository
+        run: |
+          git clone https://github.com/build-trust/ockam-documentation.git
+          cd ockam-documentation
+          git checkout command
+
+      - name: Generate Command Manual
+        run: |
+          cd ockam-documentation/manual/template/mdbook
+          chmod +x build.sh
+          ./build.sh
+
+      - name: Commit and Push Changes
+        run: |
+          cd ockam-documentation
+          git checkout -b update-command-manual
+          git add .
+          git commit -m "Update command manual from release ${{ github.event.release.tag_name }}"
+          git push origin update-command-manual
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "Update command manual from release ${{ github.event.release.tag_name }}"
+          branch: update-command-manual
+          title: "Update Command Manual from Release ${{ github.event.release.tag_name }}"
+          body: "This PR updates the Ockam Command Manual from the latest release."
+          base: command

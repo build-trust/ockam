@@ -23,7 +23,7 @@ after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct CreateCommand {
     /// Name of the space - must be unique across all Ockam Orchestrator users.
-    #[arg(display_order = 1001, value_name = "SPACE_NAME", default_value_t = random_name(), hide_default_value = true, value_parser = validate_space_name)]
+    #[arg(display_order = 1001, value_name = "SPACE_NAME_PPS_IS_HERE", default_value_t = random_name(), hide_default_value = true, value_parser = validate_space_name)]
     pub name: String,
 
     /// Administrators for this space
