@@ -25,7 +25,6 @@ impl FlowControls {
     /// Mark that given [`Address`] is a Consumer for a Producer with the given [`FlowControlId`]
     pub fn add_consumer(&self, address: impl Into<Address>, flow_control_id: &FlowControlId) {
         let address = address.into();
-        debug!("Add Consumer {address} to Producer {flow_control_id}");
         let mut consumers = self.consumers.write().unwrap();
         if !consumers.contains_key(flow_control_id) {
             consumers.insert(flow_control_id.clone(), Default::default());
@@ -33,7 +32,9 @@ impl FlowControls {
 
         let flow_control_consumers = consumers.get_mut(flow_control_id).unwrap();
 
-        flow_control_consumers.0.insert(address);
+        if flow_control_consumers.0.insert(address.clone()) {
+            debug!("Add Consumer {address} to Producer {flow_control_id}");
+        }
     }
 
     /// Mark that given [`Address`] is a Producer for to the given [`FlowControlId`]
@@ -47,18 +48,25 @@ impl FlowControls {
         additional_addresses: Vec<Address>,
     ) {
         let address = address.into();
-        debug!(
-            "Add Producer {address} with additional_addresses {:?} to {flow_control_id} with spawner {:?}", additional_addresses, spawner_flow_control_id
-        );
         let mut producers = self.producers.write().unwrap();
-        producers.insert(
-            address.clone(),
-            ProducerInfo {
-                flow_control_id: flow_control_id.clone(),
-                spawner_flow_control_id: spawner_flow_control_id.cloned(),
-            },
-        );
+        let is_new = producers
+            .insert(
+                address.clone(),
+                ProducerInfo {
+                    flow_control_id: flow_control_id.clone(),
+                    spawner_flow_control_id: spawner_flow_control_id.cloned(),
+                },
+            )
+            .is_none();
         drop(producers);
+
+        if is_new {
+            debug!(
+                "Add Producer {address} with additional_addresses {:?} to {flow_control_id} with spawner {:?}",
+                additional_addresses,
+                spawner_flow_control_id
+            );
+        }
 
         let mut producers_additional_addresses =
             self.producers_additional_addresses.write().unwrap();
@@ -71,10 +79,15 @@ impl FlowControls {
     /// Mark that given [`Address`] is a Spawner for to the given [`FlowControlId`]
     pub fn add_spawner(&self, address: impl Into<Address>, flow_control_id: &FlowControlId) {
         let address = address.into();
-        debug!("Add Spawner {address} with {flow_control_id}");
+
         let mut spawners = self.spawners.write().unwrap();
 
-        spawners.insert(address, flow_control_id.clone());
+        if spawners
+            .insert(address.clone(), flow_control_id.clone())
+            .is_none()
+        {
+            debug!("Add Spawner {address} with {flow_control_id}");
+        }
     }
 
     /// Get known Consumers for the given [`FlowControlId`]
