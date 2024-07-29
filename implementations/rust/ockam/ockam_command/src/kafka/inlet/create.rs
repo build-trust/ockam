@@ -88,7 +88,7 @@ pub struct CreateCommand {
         long,
         name = "disable-content-encryption",
         value_name = "BOOL",
-        default_value_t = true
+        default_value_t = false
     )]
     pub disable_content_encryption: bool,
 
