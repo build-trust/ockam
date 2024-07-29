@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.122.0 - 2024-07-29
+
+### Added
+
+- Converted socket addresses to hostnames in command
+- Adjust timeouts
+- Report more detailed errors
+- Stop a previous medic before starting a new one
+- Updated dependencies
+
+### Fixed
+
+- Allow the creation of a sqlite database with a relative path
+
 ## 0.121.0 - 2024-07-03
 
 ### Added

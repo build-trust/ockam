@@ -4,6 +4,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.73.0 - 2024-07-29
+
+### Added
+
+- Add the possibility to configure the default client timeout
+- Display the error when enrolling with a ticket fails
+- Wait for the project to be ready before creating an authority client
+- Set the default timeout on the background node client
+- Don't interpret a bad request status as already enrolled
+- Move rendezvous_server to `ockam rendezvous-server start`
+- Implicitly resolve outlet addresses during connection
+- Converted socket addresses to hostnames in command
+- Remove sync operations
+- Log commands by default to a file
+- Hide actual values for `Token` and `OneTimeCode` in `Debug`
+- Increase opentelemetry queue sizes
+- Adjust timeouts
+- Report more detailed errors
+- Stop a previous medic before starting a new one
+- Integrate space's subscription data in command
+- Handle duplicates in project's egress_allow_list field
+- Updated dependencies
+
+### Changed
+
+- Always log messages from the terminal if logging is true
+
+### Fixed
+
+- Make sure that only one project is the default one
+
 ## 0.72.0 - 2024-07-03
 
 ### Added
