@@ -62,23 +62,7 @@ impl Projects {
 
     #[instrument(skip_all, fields(project_id = project_id))]
     pub async fn delete_project(&self, project_id: &str) -> Result<()> {
-        // delete the project
-        let project_exists = self
-            .projects_repository
-            .get_project(project_id)
-            .await
-            .is_ok();
         self.projects_repository.delete_project(project_id).await?;
-
-        // set another project as the default project
-        if project_exists {
-            let other_projects = self.projects_repository.get_projects().await?;
-            if let Some(other_project) = other_projects.first() {
-                self.projects_repository
-                    .set_default_project(&other_project.id)
-                    .await?;
-            }
-        }
         Ok(())
     }
 

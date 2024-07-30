@@ -1,9 +1,8 @@
-use std::str::FromStr;
-
 use sqlx::any::AnyRow;
 use sqlx::database::HasArguments;
 use sqlx::encode::IsNull;
 use sqlx::*;
+use std::str::FromStr;
 
 use ockam::identity::Identifier;
 use ockam_core::async_trait;
@@ -44,6 +43,81 @@ impl ProjectsSqlxDatabase {
     pub async fn create() -> Result<Self> {
         Ok(Self::new(SqlxDatabase::in_memory("projects").await?))
     }
+
+    async fn is_shared_project(
+        &self,
+        users_roles: &[ProjectUserRole],
+        transaction: &mut AnyConnection,
+    ) -> Result<bool> {
+        // There are three possible scenarios:
+        // 1. The user enrolls and gets a project as an admin. There is an email from the "user"
+        //      table that matches an email in the project's "user_role" field that has role "admin".
+        // 2. Someone shares a project to the user via an invitation. There is an email from the "user"
+        //      table that matches an email in the project's "user_role" field that has role "service_user".
+        // 3. The user uses a ticket to enroll into a project. There is no email from the "user" table
+        //      that matches an email in the project's "user_role" field.
+        // This function returns true if we are in the second scenario; false otherwise.
+
+        // Get emails from user_roles that are not admins
+        if users_roles.is_empty() {
+            return Ok(false);
+        }
+
+        let non_admin_emails: Vec<String> = users_roles
+            .iter()
+            .filter(|user_role| user_role.role != RoleInShare::Admin)
+            .map(|user_role| user_role.email.to_string())
+            .collect();
+
+        // Check if any of the emails are in the user table
+        let q = query_scalar(r#"SELECT EXISTS(SELECT 1 FROM "user" WHERE email IN ($1))"#)
+            .bind(non_admin_emails.join(","));
+        let shared: Boolean = q.fetch_one(transaction).await.into_core()?;
+        Ok(shared.to_bool())
+    }
+
+    async fn get_users_roles(
+        &self,
+        project_id: &str,
+        transaction: &mut AnyConnection,
+    ) -> Result<Vec<ProjectUserRole>> {
+        let query = query_as("SELECT user_id, project_id, user_email, role, scope FROM user_role WHERE project_id = $1")
+            .bind(project_id);
+        let rows: Vec<UserRoleRow> = query.fetch_all(transaction).await.into_core()?;
+        rows.into_iter().map(|r| r.project_user_role()).collect()
+    }
+
+    async fn set_as_default(
+        &self,
+        project_id: &str,
+        transaction: &mut AnyConnection,
+    ) -> Result<()> {
+        let users_roles = self.get_users_roles(project_id, transaction).await?;
+        if self
+            .is_shared_project(&users_roles, &mut *transaction)
+            .await?
+        {
+            return Err(Error::new(
+                Origin::Api,
+                Kind::Invalid,
+                format!("the project {project_id} can't be set as default because is not owned by any local user"),
+            ));
+        }
+
+        // set the project as the default one
+        let query1 = query("UPDATE project SET is_default = $1 WHERE project_id = $2")
+            .bind(true)
+            .bind(project_id);
+        query1.execute(&mut *transaction).await.void()?;
+
+        // set all the others as non-default
+        let query2 = query("UPDATE project SET is_default = $1 WHERE project_id <> $2")
+            .bind(false)
+            .bind(project_id);
+        query2.execute(&mut *transaction).await.void()?;
+
+        Ok(())
+    }
 }
 
 #[async_trait]
@@ -51,15 +125,28 @@ impl ProjectsRepository for ProjectsSqlxDatabase {
     async fn store_project(&self, project: &ProjectModel) -> Result<()> {
         let mut transaction = self.database.begin().await.into_core()?;
 
-        // Is there a default project already?
-        let query1 = query("SELECT project_id FROM project WHERE is_default = $1").bind(true);
-        let project_id: Option<String> = query1
-            .fetch_optional(&mut *transaction)
-            .await
-            .into_core()?
-            .map(|row| row.get(0));
-        // The project is set as the default one if no other default project exists already
-        let is_default = project_id.is_none() || project_id == Some(project.id.clone());
+        let is_default: bool;
+        let mut project_name = &project.name;
+        // If it's a shared project, it can't be set as default.
+        if self
+            .is_shared_project(&project.user_roles, &mut transaction)
+            .await?
+        {
+            is_default = false;
+            // Also, the name is set to the project id to avoid collisions with other
+            // projects with the same name that belong to other spaces.
+            project_name = &project.id;
+        } else {
+            // Is there a default project already?
+            let query1 = query("SELECT project_id FROM project WHERE is_default = $1").bind(true);
+            let project_id: Option<String> = query1
+                .fetch_optional(&mut *transaction)
+                .await
+                .into_core()?
+                .map(|row| row.get(0));
+            // The project is set as the default one if no other default project exists already
+            is_default = project_id.is_none() || project_id == Some(project.id.clone());
+        }
 
         let query2 = query(
             r#"
@@ -69,7 +156,7 @@ impl ProjectsRepository for ProjectsSqlxDatabase {
             DO UPDATE SET project_name = $2, is_default = $3, space_id = $4, space_name = $5, project_identifier = $6, project_change_history = $7, access_route = $8, authority_change_history = $9, authority_access_route = $10, version = $11, running = $12, operation_id = $13"#,
         )
             .bind(&project.id)
-            .bind(&project.name)
+            .bind(project_name)
             .bind(is_default)
             .bind(&project.space_id)
             .bind(&project.space_name)
@@ -198,14 +285,7 @@ impl ProjectsRepository for ProjectsSqlxDatabase {
                 project.users = users?;
 
                 // get the project users roles
-                let query3 = query_as("SELECT user_id, project_id, user_email, role, scope FROM user_role WHERE project_id = $1")
-                    .bind(&project.id);
-                let rows: Vec<UserRoleRow> =
-                    query3.fetch_all(&mut *transaction).await.into_core()?;
-                let user_roles: Vec<ProjectUserRole> = rows
-                    .into_iter()
-                    .map(|r| r.project_user_role())
-                    .collect::<Result<Vec<_>>>()?;
+                let user_roles = self.get_users_roles(&project.id, &mut transaction).await?;
                 project.user_roles = user_roles;
 
                 // get the project okta configuration
@@ -264,23 +344,23 @@ impl ProjectsRepository for ProjectsSqlxDatabase {
 
     async fn set_default_project(&self, project_id: &str) -> Result<()> {
         let mut transaction = self.database.begin().await.into_core()?;
-        // set the project as the default one
-        let query1 = query("UPDATE project SET is_default = $1 WHERE project_id = $2")
-            .bind(true)
-            .bind(project_id);
-        query1.execute(&mut *transaction).await.void()?;
-
-        // set all the others as non-default
-        let query2 = query("UPDATE project SET is_default = $1 WHERE project_id <> $2")
-            .bind(false)
-            .bind(project_id);
-        query2.execute(&mut *transaction).await.void()?;
+        self.set_as_default(project_id, &mut transaction).await?;
         transaction.commit().await.void()
     }
 
     async fn delete_project(&self, project_id: &str) -> Result<()> {
         let mut transaction = self.database.begin().await.into_core()?;
 
+        // Check if the project is the default one
+        let q = query_scalar(
+            r#"SELECT EXISTS(SELECT 1 FROM project WHERE project_id = $1 AND is_default = $2)"#,
+        )
+        .bind(project_id.to_string())
+        .bind(true);
+        let is_default: Boolean = q.fetch_one(&mut *transaction).await.into_core()?;
+        let is_default = is_default.to_bool();
+
+        // Delete it
         let query1 = query("DELETE FROM project WHERE project_id = $1").bind(project_id);
         query1.execute(&mut *transaction).await.void()?;
 
@@ -295,6 +375,23 @@ impl ProjectsRepository for ProjectsSqlxDatabase {
 
         let query5 = query("DELETE FROM kafka_config WHERE project_id = $1").bind(project_id);
         query5.execute(&mut *transaction).await.void()?;
+
+        // Set another project as default if the deleted one was the default
+        if is_default {
+            let project_ids: Vec<String> = query_scalar("SELECT project_id FROM project")
+                .fetch_all(&mut *transaction)
+                .await
+                .into_core()?;
+            for project_id in project_ids {
+                if self
+                    .set_as_default(&project_id, &mut transaction)
+                    .await
+                    .is_ok()
+                {
+                    break;
+                }
+            }
+        }
 
         transaction.commit().await.void()?;
         Ok(())
@@ -492,66 +589,102 @@ impl KafkaConfigRow {
 mod test {
     use super::*;
 
-    use crate::cli_state::{SpacesRepository, SpacesSqlxDatabase};
+    use crate::cli_state::{
+        SpacesRepository, SpacesSqlxDatabase, UsersRepository, UsersSqlxDatabase,
+    };
+    use crate::cloud::enroll::auth0::UserInfo;
     use ockam_node::database::with_dbs;
     use std::sync::Arc;
 
     #[tokio::test]
     async fn test_repository() -> Result<()> {
         with_dbs(|db| async move {
+            let repository: Arc<dyn UsersRepository> = Arc::new(UsersSqlxDatabase::new(db.clone()));
+            repository
+                .store_user(&UserInfo {
+                    sub: "sub".to_string(),
+                    nickname: "nickname".to_string(),
+                    name: "name".to_string(),
+                    picture: "picture".to_string(),
+                    updated_at: "2024-07-29T17:56:24.585Z".to_string(),
+                    email: "me@ockam.io".try_into().unwrap(),
+                    email_verified: false,
+                })
+                .await
+                .unwrap();
+
             let repository: Arc<dyn ProjectsRepository> = Arc::new(ProjectsSqlxDatabase::new(db));
 
-            // create and store 2 projects
+            // create and store 3 projects
             let project1 = create_project(
                 "1",
-                "name1",
-                vec!["me@ockam.io", "you@ockam.io"],
-                vec![
-                    create_project_user_role(1, RoleInShare::Admin),
-                    create_project_user_role(2, RoleInShare::Guest),
-                ],
+                "1",
+                vec!["me@ockam.io", "him@ockam.io"],
+                vec![create_project_user_role(2, RoleInShare::Service, false)],
             );
-            let mut project2 = create_project(
+            let project2 = create_project(
                 "2",
                 "name2",
-                vec!["me@ockam.io", "him@ockam.io", "her@ockam.io"],
+                vec!["me@ockam.io", "you@ockam.io"],
                 vec![
-                    create_project_user_role(1, RoleInShare::Admin),
-                    create_project_user_role(2, RoleInShare::Guest),
+                    create_project_user_role(1, RoleInShare::Admin, true),
+                    create_project_user_role(2, RoleInShare::Guest, true),
                 ],
             );
+            let mut project3 = create_project(
+                "3",
+                "name3",
+                vec!["me@ockam.io", "him@ockam.io", "her@ockam.io"],
+                vec![
+                    create_project_user_role(1, RoleInShare::Admin, true),
+                    create_project_user_role(2, RoleInShare::Guest, true),
+                ],
+            );
+            // The first project is a shared project; shouldn't be set as default
             repository.store_project(&project1).await?;
-            // The first stored project is the default one
             let result = repository.get_default_project().await?;
-            assert_eq!(result, Some(project1.clone()));
+            assert!(result.is_none());
 
+            // The first owned stored project is the default one
             repository.store_project(&project2).await?;
+            let result = repository.get_default_project().await?;
+            assert_eq!(result, Some(project2.clone()));
+
+            repository.store_project(&project3).await?;
 
             // retrieve them as a list or by name
             let result = repository.get_projects().await?;
-            assert_eq!(result, vec![project1.clone(), project2.clone()]);
+            assert_eq!(
+                result,
+                vec![project1.clone(), project2.clone(), project3.clone()]
+            );
 
-            let result = repository.get_project_by_name("name1").await?;
-            assert_eq!(result, Some(project1.clone()));
+            let result = repository.get_project_by_name("name2").await?;
+            assert_eq!(result, Some(project2.clone()));
 
             // a project can be marked as the default project
-            repository.set_default_project("2").await?;
+            repository.set_default_project("3").await?;
             let result = repository.get_default_project().await?;
-            assert_eq!(result, Some(project2.clone()));
+            assert_eq!(result, Some(project3.clone()));
 
             // updating a project which was already the default should keep it the default
-            project2.users = vec!["someone@ockam.io".try_into().unwrap()];
-            repository.store_project(&project2).await?;
+            project3.users = vec!["someone@ockam.io".try_into().unwrap()];
+            repository.store_project(&project3).await?;
+            let result = repository.get_default_project().await?;
+            assert_eq!(result, Some(project3.clone()));
+
+            // a project can be deleted
+            repository.delete_project("3").await?;
+
+            // if the default project is deleted, another one should be set as default
             let result = repository.get_default_project().await?;
             assert_eq!(result, Some(project2.clone()));
 
-            // a project can be deleted
-            repository.delete_project("2").await?;
-            let result = repository.get_default_project().await?;
-            assert_eq!(result, None);
-
             let result = repository.get_projects().await?;
-            assert_eq!(result, vec![project1.clone()]);
+            for project in vec![project1.clone(), project2.clone()] {
+                assert!(result.contains(&project));
+            }
+
             Ok(())
         })
         .await
@@ -613,9 +746,27 @@ mod test {
         }
     }
 
-    fn create_project_user_role(user_id: u64, role: RoleInShare) -> ProjectUserRole {
+    fn create_project_user_role(user_id: u64, role: RoleInShare, owned: bool) -> ProjectUserRole {
+        let email = match role {
+            RoleInShare::Admin => {
+                if owned {
+                    "me@ockam.io"
+                } else {
+                    "guest@email.com"
+                }
+            }
+            _ => {
+                if owned {
+                    "guest@email.com"
+                } else {
+                    "me@ockam.io"
+                }
+            }
+        }
+        .try_into()
+        .unwrap();
         ProjectUserRole {
-            email: "user@email".try_into().unwrap(),
+            email,
             id: user_id,
             role,
             scope: ShareScope::Project,
