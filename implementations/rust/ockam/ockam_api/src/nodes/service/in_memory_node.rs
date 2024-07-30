@@ -4,6 +4,7 @@ use std::time::Duration;
 use futures::executor;
 use miette::IntoDiagnostic;
 
+use ockam::identity::models::ChangeHistory;
 use ockam::identity::{Identifier, SecureChannels};
 use ockam::tcp::{TcpListenerOptions, TcpTransport};
 use ockam::{Context, Result};
@@ -126,7 +127,7 @@ impl InMemoryNode {
         identity_name: &str,
         http_server_port: Option<u16>,
         project_name: Option<String>,
-        authority_identity: Option<String>,
+        authority_identity: Option<ChangeHistory>,
         authority_route: Option<MultiAddr>,
     ) -> miette::Result<InMemoryNode> {
         let defaults = NodeManagerDefaults::default();
