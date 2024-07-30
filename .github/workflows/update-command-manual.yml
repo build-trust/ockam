@@ -32,10 +32,10 @@ jobs:
       - name: Commit and Push Changes
         run: |
           cd ockam-documentation
-          git checkout -b update-command-manual
+          git checkout -b update-command-manual-${{ github.event.release.tag_name }}
           git add .
           git commit -m "Update command manual from release ${{ github.event.release.tag_name }}"
-          git push origin update-command-manual
+          git push origin update-command-manual-${{ github.event.release.tag_name }}
 
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v5
