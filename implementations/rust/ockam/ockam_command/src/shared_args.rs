@@ -3,6 +3,7 @@ use clap::Args;
 use ockam_core::env::get_env;
 use ockam_multiaddr::MultiAddr;
 use std::time::Duration;
+use ockam_common::valueparser::{ValueParser, ChangeHistoryParser};
 
 #[derive(Clone, Debug, Args)]
 pub struct IdentityOpts {
@@ -18,8 +19,8 @@ pub struct TrustOpts {
     pub project_name: Option<String>,
 
     /// Hex encoded Identity
-    #[arg(long, value_name = "IDENTITY")]
-    pub authority_identity: Option<String>,
+    #[arg(long, value_name = "IDENTITY", value_parser = ChangeHistoryParser)]
+    pub authority_identity: Option<ValueParser>,
 
     /// Address to the Authority node
     #[arg(long)]

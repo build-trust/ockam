@@ -4584,6 +4584,7 @@ dependencies = [
  "nix 0.29.0",
  "ockam",
  "ockam_abac",
+ "ockam_common",
  "ockam_core",
  "ockam_macros",
  "ockam_multiaddr",
@@ -4679,6 +4680,7 @@ dependencies = [
  "ockam",
  "ockam_abac",
  "ockam_api",
+ "ockam_common",
  "ockam_core",
  "ockam_macros",
  "ockam_multiaddr",
@@ -4714,6 +4716,17 @@ dependencies = [
  "tracing-core",
  "url",
  "which 6.0.1",
+]
+
+[[package]]
+name = "ockam_common"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "hex",
+ "serde",
+ "serde_json",
+ "tracing",
 ]
 
 [[package]]

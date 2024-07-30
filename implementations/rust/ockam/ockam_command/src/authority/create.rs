@@ -10,6 +10,7 @@ use tokio_retry::strategy::FixedInterval;
 use tokio_retry::Retry;
 use tracing::{debug, error, info};
 
+use ockam_common::valueparser::{ValueParser, ChangeHistoryParser};
 use ockam::identity::utils::now;
 use ockam::identity::{Identifier, Identity, TimestampInSeconds, Vault};
 use ockam::Context;
@@ -116,8 +117,8 @@ pub struct CreateCommand {
 
     /// Full, hex-encoded Identity (change history) of the account authority to trust
     /// for account and project administrator credentials.
-    #[arg(long, value_name = "ACCOUNT_AUTHORITY_CHANGE_HISTORY", default_value = None)]
-    account_authority: Option<String>,
+    #[arg(long, value_name = "ACCOUNT_AUTHORITY_CHANGE_HISTORY", default_value = None, value_parser = ChangeHistoryParser)]
+    account_authority: Option<ValueParser>,
 
     /// Enforce distinction between admins and enrollers
     #[arg(long, value_name = "ENFORCE_ADMIN_CHECKS", default_value_t = false)]
@@ -222,7 +223,7 @@ impl CreateCommand {
         }
         if let Some(acc_auth_identity) = &self.account_authority {
             args.push("--account-authority".to_string());
-            args.push(acc_auth_identity.clone());
+            args.push(acc_auth_identity.to_log_string());
         }
         if self.enforce_admin_checks {
             args.push("--enforce-admin-checks".to_string());
@@ -332,7 +333,7 @@ impl CreateCommand {
             Some(account_authority_change_history) => Some(
                 Identity::import_from_string(
                     None,
-                    account_authority_change_history.as_str(),
+                    &account_authority_change_history.to_log_string(),
                     Vault::create_verifying_vault(),
                 )
                 .await

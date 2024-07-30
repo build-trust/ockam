@@ -132,7 +132,7 @@ pub async fn spawn_node(opts: &CommandGlobalOpts, cmd: CreateCommand) -> miette:
 
     if let Some(authority_identity) = authority_identity {
         args.push("--authority-identity".to_string());
-        args.push(authority_identity);
+        args.push(authority_identity.to_log_string());
     }
 
     if let Some(authority_route) = authority_route {

@@ -71,6 +71,7 @@ ockam = { path = "../ockam", version = "^0.130.0", features = ["software_vault"]
 ockam_abac = { path = "../ockam_abac", version = "0.63.0", features = ["std"] }
 ockam_api = { path = "../ockam_api", version = "0.73.0", default-features = false, features = ["std"] }
 ockam_core = { path = "../ockam_core", version = "^0.113.0" }
+ockam_common = { path = "../ockam_common" }
 ockam_multiaddr = { path = "../ockam_multiaddr", version = "0.57.0", features = ["std"] }
 ockam_node = { path = "../ockam_node", version = "^0.122.0" }
 ockam_vault = { path = "../ockam_vault", version = "^0.115.0", default-features = false, features = ["storage", "std"] }

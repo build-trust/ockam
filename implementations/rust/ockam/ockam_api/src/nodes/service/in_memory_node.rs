@@ -7,6 +7,7 @@ use miette::IntoDiagnostic;
 use ockam::identity::{Identifier, SecureChannels};
 use ockam::tcp::{TcpListenerOptions, TcpTransport};
 use ockam::{Context, Result};
+use ockam_common::valueparser::ValueParser;
 use ockam_core::compat::{string::String, sync::Arc};
 use ockam_core::errcode::Kind;
 use ockam_multiaddr::MultiAddr;
@@ -125,7 +126,7 @@ impl InMemoryNode {
         identity_name: &str,
         http_server_port: Option<u16>,
         project_name: Option<String>,
-        authority_identity: Option<String>,
+        authority_identity: Option<ValueParser>,
         authority_route: Option<MultiAddr>,
     ) -> miette::Result<InMemoryNode> {
         let defaults = NodeManagerDefaults::default();
