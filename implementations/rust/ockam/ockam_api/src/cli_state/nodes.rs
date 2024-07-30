@@ -648,12 +648,11 @@ impl NodeInfo {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::cloud::project::models::ProjectModel;
     use crate::config::lookup::InternetAddress;
     use std::net::SocketAddr;
     use std::str::FromStr;
-
-    use super::*;
 
     #[tokio::test]
     async fn test_create_node() -> Result<()> {
