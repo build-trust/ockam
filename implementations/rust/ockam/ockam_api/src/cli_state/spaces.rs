@@ -25,13 +25,6 @@ impl CliState {
         };
 
         repository.store_space(&space).await?;
-
-        // If there is no previous default space set this space as the default
-        let default_space = repository.get_default_space().await?;
-        if default_space.is_none() {
-            repository.set_default_space(&space.id).await?
-        };
-
         Ok(space)
     }
 
