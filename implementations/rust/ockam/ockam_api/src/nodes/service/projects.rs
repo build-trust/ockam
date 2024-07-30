@@ -132,7 +132,8 @@ impl ProjectsOrchestratorApi for InMemoryNode {
         // Try to refresh the list of projects with the controller
         match self.create_controller().await?.list_projects(ctx).await {
             Ok(project_models) => {
-                for project_model in &project_models {
+                let mut projects = vec![];
+                for project_model in project_models {
                     info!(
                         "retrieved project {}/{}",
                         project_model.name, project_model.id
@@ -147,6 +148,11 @@ impl ProjectsOrchestratorApi for InMemoryNode {
                     if !project.is_admin(&user) {
                         project.override_name(project.project_id().to_string());
                     }
+                    projects.push(project);
+                }
+                // Sort projects so that the admin projects are stored first
+                projects.sort_by_key(|p| !p.is_admin(&user));
+                for project in projects {
                     self.cli_state.projects().store_project(project).await?;
                 }
             }
