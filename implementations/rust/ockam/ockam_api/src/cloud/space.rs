@@ -242,7 +242,6 @@ impl Spaces for InMemoryNode {
     async fn get_spaces(&self, ctx: &Context) -> miette::Result<Vec<Space>> {
         let controller = self.create_controller().await?;
         let spaces = controller.list_spaces(ctx).await?;
-        let default_space = self.cli_state.get_default_space().await.ok();
         for space in &spaces {
             self.cli_state
                 .store_space(
@@ -252,13 +251,6 @@ impl Spaces for InMemoryNode {
                     space.subscription.as_ref(),
                 )
                 .await?;
-
-            // make sure that an existing space marked as default is still marked as default
-            if let Some(default_space) = &default_space {
-                if space.id == default_space.id {
-                    self.cli_state.set_space_as_default(&space.id).await?;
-                };
-            }
         }
         Ok(spaces)
     }
