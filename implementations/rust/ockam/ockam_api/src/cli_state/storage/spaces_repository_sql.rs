@@ -33,6 +33,22 @@ impl SpacesSqlxDatabase {
             .into_core()?;
         Ok(row.map(|r| r.subscription()))
     }
+
+    async fn set_as_default(&self, space_id: &str, transaction: &mut AnyConnection) -> Result<()> {
+        // set the space as the default one
+        let query1 = query("UPDATE space SET is_default = $1 WHERE space_id = $2")
+            .bind(true)
+            .bind(space_id);
+        query1.execute(&mut *transaction).await.void()?;
+
+        // set all the others as non-default
+        let query2 = query("UPDATE space SET is_default = $1 WHERE space_id <> $2")
+            .bind(false)
+            .bind(space_id);
+        query2.execute(&mut *transaction).await.void()?;
+
+        Ok(())
+    }
 }
 
 #[async_trait]
@@ -40,13 +56,15 @@ impl SpacesRepository for SpacesSqlxDatabase {
     async fn store_space(&self, space: &Space) -> Result<()> {
         let mut transaction = self.database.begin().await.into_core()?;
 
-        let query1 = query_scalar(
-            "SELECT EXISTS (SELECT 1 FROM space WHERE is_default = $1 AND space_id = $2)",
-        )
-        .bind(true)
-        .bind(&space.id);
-        let is_already_default: Boolean = query1.fetch_one(&mut *transaction).await.into_core()?;
-        let is_already_default = is_already_default.to_bool();
+        // Is there a default space already?
+        let query1 = query("SELECT space_id FROM project WHERE is_default = $1").bind(true);
+        let space_id: Option<String> = query1
+            .fetch_optional(&mut *transaction)
+            .await
+            .into_core()?
+            .map(|row| row.get(0));
+        // The space is set as the default one if no other default space exists already
+        let is_default = space_id.is_none() || space_id == Some(space.id.clone());
 
         let query2 = query(
             r#"
@@ -57,7 +75,7 @@ impl SpacesRepository for SpacesSqlxDatabase {
         )
         .bind(&space.id)
         .bind(&space.name)
-        .bind(is_already_default);
+        .bind(is_default);
         query2.execute(&mut *transaction).await.void()?;
 
         // remove any existing users related to that space if any
@@ -188,23 +206,23 @@ impl SpacesRepository for SpacesSqlxDatabase {
 
     async fn set_default_space(&self, space_id: &str) -> Result<()> {
         let mut transaction = self.database.begin().await.into_core()?;
-        // set the space as the default one
-        let query1 = query("UPDATE space SET is_default = $1 WHERE space_id = $2")
-            .bind(true)
-            .bind(space_id);
-        query1.execute(&mut *transaction).await.void()?;
-
-        // set all the others as non-default
-        let query2 = query("UPDATE space SET is_default = $1 WHERE space_id <> $2")
-            .bind(false)
-            .bind(space_id);
-        query2.execute(&mut *transaction).await.void()?;
+        self.set_as_default(space_id, &mut transaction).await?;
         transaction.commit().await.void()
     }
 
     async fn delete_space(&self, space_id: &str) -> Result<()> {
         let mut transaction = self.database.begin().await.into_core()?;
 
+        // Check if the space is the default one
+        let q = query_scalar(
+            r#"SELECT EXISTS(SELECT 1 FROM space WHERE space_id = $1 AND is_default = $2)"#,
+        )
+        .bind(space_id.to_string())
+        .bind(true);
+        let is_default: Boolean = q.fetch_one(&mut *transaction).await.into_core()?;
+        let is_default = is_default.to_bool();
+
+        // Delete it
         let query1 = query("DELETE FROM space WHERE space_id = $1").bind(space_id);
         query1.execute(&mut *transaction).await.void()?;
 
@@ -213,6 +231,23 @@ impl SpacesRepository for SpacesSqlxDatabase {
 
         let query3 = query("DELETE FROM subscription WHERE space_id = $1").bind(space_id);
         query3.execute(&mut *transaction).await.void()?;
+
+        // Set another space as default if the deleted one was the default
+        if is_default {
+            let space_ids: Vec<String> = query_scalar("SELECT space_id FROM space")
+                .fetch_all(&mut *transaction)
+                .await
+                .into_core()?;
+            for space_id in space_ids {
+                if self
+                    .set_as_default(&space_id, &mut transaction)
+                    .await
+                    .is_ok()
+                {
+                    break;
+                }
+            }
+        }
 
         transaction.commit().await.void()
     }
@@ -287,13 +322,13 @@ mod test {
             let repository = SpacesSqlxDatabase::new(db);
 
             // create and store 2 spaces
-            let space1 = Space {
+            let mut space1 = Space {
                 id: "1".to_string(),
                 name: "name1".to_string(),
                 users: vec!["me@ockam.io".to_string(), "you@ockam.io".to_string()],
                 subscription: None,
             };
-            let mut space2 = Space {
+            let space2 = Space {
                 id: "2".to_string(),
                 name: "name2".to_string(),
                 users: vec![
@@ -311,12 +346,19 @@ mod test {
             };
 
             repository.store_space(&space1).await?;
+            // The first stored space is the default one
+            let result = repository.get_default_space().await?;
+            assert_eq!(result, Some(space1.clone()));
+
             repository.store_space(&space2).await?;
+            // The second stored space is not the default one
+            let result = repository.get_default_space().await?;
+            assert_eq!(result, Some(space1.clone()));
 
             // subscription is stored
-            let result = repository.query_subscription("1").await?;
+            let result = repository.query_subscription(&space1.id).await?;
             assert_eq!(result, None);
-            let result = repository.query_subscription("2").await?;
+            let result = repository.query_subscription(&space2.id).await?;
             assert_eq!(result, Some(space2.subscription.clone().unwrap()));
 
             // retrieve them as a vector or by name
@@ -326,33 +368,34 @@ mod test {
             let result = repository.get_space_by_name("name1").await?;
             assert_eq!(result, Some(space1.clone()));
 
-            // a space can be marked as the default space
-            repository.set_default_space("1").await?;
+            // The second space can be marked as the default space
+            repository.set_default_space(&space2.id).await?;
+            let result = repository.get_default_space().await?;
+            assert_eq!(result, Some(space2.clone()));
+
+            // We can also revert to the first space as the default space
+            repository.set_default_space(&space1.id).await?;
             let result = repository.get_default_space().await?;
             assert_eq!(result, Some(space1.clone()));
 
-            repository.set_default_space("2").await?;
-            let result = repository.get_default_space().await?;
-            assert_eq!(result, Some(space2.clone()));
-
             // updating a space which was already the default should keep it the default
-            space2.users = vec!["someone@ockam.io".to_string()];
-            repository.store_space(&space2).await?;
+            space1.users = vec!["someone@ockam.io".to_string()];
+            repository.store_space(&space1).await?;
             let result = repository.get_default_space().await?;
-            assert_eq!(result, Some(space2.clone()));
+            assert_eq!(result, Some(space1.clone()));
 
             // a space can be deleted
-            repository.delete_space("2").await?;
+            repository.delete_space(&space1.id).await?;
             let result = repository.get_default_space().await?;
-            assert_eq!(result, None);
+
+            // if the default space is deleted, the next one becomes the default
+            assert_eq!(result, Some(space2.clone()));
 
             let result = repository.get_spaces().await?;
-            assert_eq!(result, vec![space1.clone()]);
+            assert_eq!(result, vec![space2.clone()]);
 
             // subscription is deleted
-            let result = repository.query_subscription("1").await?;
-            assert_eq!(result, None);
-            let result = repository.query_subscription("2").await?;
+            let result = repository.query_subscription(&space1.id).await?;
             assert_eq!(result, None);
 
             Ok(())

@@ -25,13 +25,6 @@ impl CliState {
         };
 
         repository.store_space(&space).await?;
-
-        // If there is no previous default space set this space as the default
-        let default_space = repository.get_default_space().await?;
-        if default_space.is_none() {
-            repository.set_default_space(&space.id).await?
-        };
-
         Ok(space)
     }
 
@@ -67,19 +60,7 @@ impl CliState {
     #[instrument(skip_all, fields(space_id = space_id))]
     pub async fn delete_space(&self, space_id: &str) -> Result<()> {
         let repository = self.spaces_repository();
-        // delete the space
-        let space_exists = repository.get_space(space_id).await.is_ok();
         repository.delete_space(space_id).await?;
-
-        // set another space as the default space
-        if space_exists {
-            let other_space = repository.get_spaces().await?;
-            if let Some(other_space) = other_space.first() {
-                repository
-                    .set_default_space(&other_space.space_id())
-                    .await?;
-            }
-        }
         Ok(())
     }
 
