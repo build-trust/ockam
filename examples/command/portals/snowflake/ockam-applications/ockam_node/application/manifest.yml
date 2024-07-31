@@ -1,0 +1,26 @@
+manifest_version: 1
+
+artifacts:
+   setup_script: setup.sql
+   readme: README.md
+   container_services:
+      images:
+      - /ockam_database/ockam_schema/ockam_repository/ockam_node:on
+
+privileges:
+- BIND SERVICE ENDPOINT:
+    description: "A service that can respond to requests from public endpoints."
+    required_at_setup_xxx: true
+- CREATE COMPUTE POOL:
+     description: "Permission to create compute pools for running services"
+     required_at_setup: true
+
+references:
+   - ockam_external_access:
+       label: "Ockam external access"
+       description: "This is required to access the Ockam project"
+       privileges:
+       - USAGE
+       object_type: EXTERNAL ACCESS INTEGRATION
+       register_callback: external.register_reference
+       configuration_callback: external.get_external_access

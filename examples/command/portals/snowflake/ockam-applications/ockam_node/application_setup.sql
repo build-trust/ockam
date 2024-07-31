@@ -10,15 +10,20 @@ GRANT CREATE APPLICATION PACKAGE ON ACCOUNT TO ROLE ockam;
 GRANT CREATE APPLICATION ON ACCOUNT TO ROLE ockam;
 
 GRANT BIND SERVICE ENDPOINT ON ACCOUNT TO ROLE ockam;
+
 CREATE WAREHOUSE IF NOT EXISTS ockam_warehouse WITH WAREHOUSE_SIZE='XSMALL';
 GRANT ALL ON WAREHOUSE ockam_warehouse TO ROLE ockam;
 
-USE ROLE ockam;
 CREATE DATABASE IF NOT EXISTS ockam_database;
+GRANT ALL ON DATABASE ockam_database TO ROLE ockam;
+
 CREATE SCHEMA IF NOT EXISTS ockam_database.ockam_schema;
+GRANT ALL ON SCHEMA ockam_database.ockam_schema TO ROLE ockam;
 
 -- Create an image repository
 CREATE IMAGE REPOSITORY IF NOT EXISTS ockam_repository;
+
+USE ROLE ockam;
 
 -- Create a table for logs
 CREATE EVENT TABLE ockam_database.ockam_schema.ockam_events;

@@ -1,0 +1,8 @@
+# This file is used to install packages used by the Streamlit App.
+# For more details, refer to https://docs.snowflake.com/en/developer-guide/streamlit/create-streamlit-sql#label-streamlit-install-packages-manual
+
+channels:
+- snowflake
+dependencies:
+- streamlit=1.33.1
+- snowflake-native-apps-permission

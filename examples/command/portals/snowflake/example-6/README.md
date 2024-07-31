@@ -2,7 +2,7 @@
 
 ![Architecture](diagram.png)
 
-This example shows how to query a private Postgres database from a Snowflake native app.
+This example shows how to use the Ockam Snowflake native application to query a private Postgres database.
 
 There are three main steps involved in that setup:
 

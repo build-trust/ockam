@@ -1,0 +1,1 @@
+/Users/etorreborre/projects/ockam/ockam-5/examples/command/portals/snowflake/ockam-applications/ockam_node/application/sql/support.sql
