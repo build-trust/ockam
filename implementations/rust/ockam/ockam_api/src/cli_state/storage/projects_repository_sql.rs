@@ -66,11 +66,11 @@ impl ProjectsSqlxDatabase {
         let non_admin_emails: Vec<String> = users_roles
             .iter()
             .filter(|user_role| user_role.role != RoleInShare::Admin)
-            .map(|user_role| user_role.email.to_string())
+            .map(|user_role| user_role.email.to_string().to_lowercase())
             .collect();
 
         // Check if any of the emails are in the user table
-        let q = query_scalar(r#"SELECT EXISTS(SELECT 1 FROM "user" WHERE email IN ($1))"#)
+        let q = query_scalar(r#"SELECT EXISTS(SELECT 1 FROM "user" WHERE LOWER(email) IN ($1))"#)
             .bind(non_admin_emails.join(","));
         let shared: Boolean = q.fetch_one(transaction).await.into_core()?;
         Ok(shared.to_bool())
@@ -607,7 +607,7 @@ mod test {
                     name: "name".to_string(),
                     picture: "picture".to_string(),
                     updated_at: "2024-07-29T17:56:24.585Z".to_string(),
-                    email: "me@ockam.io".try_into().unwrap(),
+                    email: "Me@ockam.io".try_into().unwrap(),
                     email_verified: false,
                 })
                 .await

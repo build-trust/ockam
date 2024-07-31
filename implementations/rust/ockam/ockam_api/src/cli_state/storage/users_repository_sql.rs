@@ -33,7 +33,7 @@ impl UsersRepository for UsersSqlxDatabase {
         let mut transaction = self.database.begin().await.into_core()?;
 
         let query1 = query_scalar(
-            r#"SELECT EXISTS(SELECT email FROM "user" WHERE is_default = $1 AND email = $2)"#,
+            r#"SELECT EXISTS(SELECT email FROM "user" WHERE is_default = $1 AND email = LOWER($2))"#,
         )
         .bind(true)
         .bind(&user.email);
@@ -68,14 +68,14 @@ impl UsersRepository for UsersSqlxDatabase {
     }
 
     async fn set_default_user(&self, email: &EmailAddress) -> Result<()> {
-        let query = query(r#"UPDATE "user" SET is_default = $1 WHERE email = $2"#)
+        let query = query(r#"UPDATE "user" SET is_default = $1 WHERE email = LOWER($2)"#)
             .bind(true)
             .bind(email);
         query.execute(&*self.database.pool).await.void()
     }
 
     async fn get_user(&self, email: &EmailAddress) -> Result<Option<UserInfo>> {
-        let query = query_as(r#"SELECT email, sub, nickname, name, picture, updated_at, email_verified, is_default FROM "user" WHERE email = $1"#).bind(email);
+        let query = query_as(r#"SELECT email, sub, nickname, name, picture, updated_at, email_verified, is_default FROM "user" WHERE email = LOWER($1)"#).bind(email);
         let row: Option<UserRow> = query
             .fetch_optional(&*self.database.pool)
             .await
@@ -92,7 +92,7 @@ impl UsersRepository for UsersSqlxDatabase {
     }
 
     async fn delete_user(&self, email: &EmailAddress) -> Result<()> {
-        let query1 = query(r#"DELETE FROM "user" WHERE email = $1"#).bind(email);
+        let query1 = query(r#"DELETE FROM "user" WHERE email = LOWER($1)"#).bind(email);
         query1.execute(&*self.database.pool).await.void()
     }
 }
