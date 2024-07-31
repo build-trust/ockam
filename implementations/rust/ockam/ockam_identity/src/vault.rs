@@ -59,7 +59,7 @@ impl Vault {
         ))))
     }
 
-    /// Create [`SoftwareSecureChannelVault`] with an in-memory storage
+    /// Create [`SoftwareVaultForSecureChannels`] with an in-memory storage
     #[cfg(feature = "storage")]
     pub async fn create_secure_channel_vault() -> Result<Arc<dyn VaultForSecureChannels>> {
         Ok(Arc::new(SoftwareVaultForSecureChannels::new(Arc::new(

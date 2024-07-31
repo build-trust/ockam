@@ -1,4 +1,4 @@
-/// Purpose for a [`super::purpose_key::PurposeKey`]
+/// Purpose for a [`PurposeKeys`](crate::PurposeKeys)
 #[derive(PartialEq, Eq, Debug, Clone, Copy)]
 pub enum Purpose {
     /// Purpose Key dedicated for Secure Channel creation

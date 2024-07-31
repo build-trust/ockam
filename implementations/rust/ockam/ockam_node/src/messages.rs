@@ -198,7 +198,7 @@ impl NodeMessage {
         (Self::FindTerminalAddress(addrs, tx), rx)
     }
 
-    /// Creates a [NodeMessage::ReadMetadata] message and reply receiver
+    /// Creates a [NodeMessage::GetMetadata] message and reply receiver
     pub fn read_metadata(address: Address) -> (Self, SmallReceiver<NodeReplyResult>) {
         let (tx, rx) = small_channel();
         (Self::GetMetadata(address, tx), rx)
@@ -321,7 +321,7 @@ impl RouterReply {
         Ok(Self::Workers(v))
     }
 
-    /// Return [RouterReply::WorkerIsRegistered] for a given address
+    /// Return [RouterReply::WorkerIsRegisteredAtAddress] for a given address
     pub fn worker_is_registered_at_address(registered: bool) -> NodeReplyResult {
         Ok(Self::WorkerIsRegisteredAtAddress(registered))
     }

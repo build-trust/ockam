@@ -23,7 +23,7 @@ enum Ttl {
     },
 }
 
-/// Builder for [`Identity`]
+/// Builder for [`Identity`](crate::Identity)
 pub struct IdentityBuilder {
     identities_creation: Arc<IdentitiesCreation>,
 
@@ -43,7 +43,7 @@ impl IdentityBuilder {
         }
     }
 
-    /// Use an existing key for the Identity (should be present in the corresponding [`SigningVault`])
+    /// Use an existing key for the Identity (should be present in the corresponding [`SigningVault`](ockam_vault::VaultForSigning))
     pub fn with_existing_key(mut self, signing_secret_key_handle: SigningSecretKeyHandle) -> Self {
         self.key = Key::Existing(signing_secret_key_handle);
         self
@@ -74,7 +74,7 @@ impl IdentityBuilder {
         self
     }
 
-    /// Revoke all previously issued [`PurposeKey`]s
+    /// Revoke all previously issued [`PurposeKeys`](crate::PurposeKeys)
     pub fn with_purpose_keys_revocation(mut self) -> Self {
         self.revoke_all_purpose_keys = true;
         self
@@ -115,7 +115,7 @@ impl IdentityBuilder {
         Ok(options)
     }
 
-    /// Create the corresponding [`Identity`]
+    /// Create the corresponding [`Identity`](crate::Identity)
     pub async fn build(self) -> Result<Identifier> {
         let identities_creation = self.identities_creation.clone();
 

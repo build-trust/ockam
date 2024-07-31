@@ -60,7 +60,7 @@ impl SecureChannelOptions {
         }
     }
 
-    /// Sets a timeout different from the default one [`DEFAULT_TIMEOUT`]
+    /// Sets a timeout different from the default one (120 seconds)
     pub fn with_timeout(mut self, timeout: Duration) -> Self {
         self.timeout = timeout;
         self

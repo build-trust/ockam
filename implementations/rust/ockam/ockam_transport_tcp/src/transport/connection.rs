@@ -61,12 +61,12 @@ impl TcpConnection {
     pub async fn stop(&self, context: &Context) -> Result<()> {
         context.stop_worker(self.sender_address.clone()).await
     }
-    /// Corresponding [`TcpSendWorker`](super::workers::TcpSendWorker) [`Address`] that can be used
+    /// Corresponding [`TcpSendWorker`](crate::workers::TcpSendWorker) [`Address`] that can be used
     /// in a route to send messages to the other side of the TCP connection
     pub fn sender_address(&self) -> &Address {
         &self.sender_address
     }
-    /// Corresponding [`TcpReceiveProcessor`](super::workers::TcpRecvProcessor) [`Address`]
+    /// Corresponding [`TcpReceiveProcessor`](crate::workers::TcpRecvProcessor) [`Address`]
     pub fn receiver_address(&self) -> &Address {
         &self.receiver_address
     }

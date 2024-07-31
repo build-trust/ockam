@@ -20,7 +20,7 @@ use crate::{
 /// possible time dyssynchronization
 const MAX_ALLOWED_TIME_DRIFT: TimestampInSeconds = TimestampInSeconds(60);
 
-/// Service for managing [`Credential`]s
+/// Service for managing [`Credentials`](crate::Credentials)
 pub struct CredentialsVerification {
     purpose_keys_verification: Arc<PurposeKeyVerification>,
     verifying_vault: Arc<dyn VaultForVerifyingSignatures>,
@@ -43,7 +43,7 @@ impl CredentialsVerification {
 }
 
 impl CredentialsVerification {
-    /// Verify a [`Credential`]
+    /// Verify a [`Credentials`](crate::Credentials)
     pub async fn verify_credential(
         &self,
         expected_subject: Option<&Identifier>,
@@ -60,7 +60,7 @@ impl CredentialsVerification {
         .await
     }
 
-    /// Verify a [`Credential`]
+    /// Verify a [`Credentials`](crate::Credentials)
     pub async fn verify_credential_static(
         purpose_keys_verification: Arc<PurposeKeyVerification>,
         verifying_vault: Arc<dyn VaultForVerifyingSignatures>,
@@ -185,7 +185,7 @@ impl CredentialsVerification {
         })
     }
 
-    /// Receive someone's [`Credential`]: verify and put attributes from it to the storage
+    /// Receive someone's [`Credentials`](crate::Credentials): verify and put attributes from it to the storage
     pub async fn receive_presented_credential(
         &self,
         subject: &Identifier,

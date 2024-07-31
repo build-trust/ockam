@@ -8,7 +8,7 @@ use crate::{
 };
 
 /// Structure with both [`CredentialData`] and [`PurposeKeyAttestationData`] that we get
-/// after parsing and verifying corresponding [`Credential`] and [`super::super::models::PurposeKeyAttestation`]
+/// after parsing and verifying corresponding [`Credentials`](crate::Credentials) and [`super::super::models::PurposeKeyAttestation`]
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CredentialAndPurposeKeyData {
     /// [`CredentialData`]
@@ -17,7 +17,7 @@ pub struct CredentialAndPurposeKeyData {
     pub purpose_key_data: PurposeKeyAttestationData,
 }
 
-/// Service for managing [`Credential`]s
+/// Service for managing [`Credentials`]
 pub struct Credentials {
     credential_vault: Arc<dyn VaultForSigning>,
     verifying_vault: Arc<dyn VaultForVerifyingSignatures>,

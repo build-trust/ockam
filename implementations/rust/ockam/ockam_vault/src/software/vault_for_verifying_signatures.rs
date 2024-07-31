@@ -9,7 +9,7 @@ use ockam_core::{async_trait, compat::boxed::Box, Error, Result};
 
 use sha2::{Digest, Sha256};
 
-/// [`VaultForSigning`] implementation using software
+/// [`VaultForSigning`](crate::VaultForSigning) implementation using software
 #[derive(Debug, Default, Clone)]
 pub struct SoftwareVaultForVerifyingSignatures {}
 

@@ -18,7 +18,7 @@ pub enum HKDFNumberOfOutputs {
 #[async_trait]
 pub trait VaultForSecureChannels: Send + Sync + 'static {
     /// Perform X25519 ECDH.
-    /// [1]: http://www.noiseprotocol.org/noise.html#dh-functions
+    /// \[1\]: <http://www.noiseprotocol.org/noise.html#dh-functions>
     async fn x25519_ecdh(
         &self,
         secret_key_handle: &X25519SecretKeyHandle,
@@ -26,11 +26,11 @@ pub trait VaultForSecureChannels: Send + Sync + 'static {
     ) -> Result<SecretBufferHandle>;
 
     /// Compute Hash.
-    /// [1]: http://www.noiseprotocol.org/noise.html#hash-functions
+    /// \[1\]: <http://www.noiseprotocol.org/noise.html#hash-functions>
     async fn hash(&self, data: &[u8]) -> Result<HashOutput>;
 
     /// Compute HKDF.
-    /// [1]: http://www.noiseprotocol.org/noise.html#hash-functions
+    /// \[1\]: <http://www.noiseprotocol.org/noise.html#hash-functions>
     async fn hkdf(
         &self,
         salt: &SecretBufferHandle,
@@ -39,7 +39,7 @@ pub trait VaultForSecureChannels: Send + Sync + 'static {
     ) -> Result<HkdfOutput>;
 
     /// Perform AEAD encryption.
-    /// [1]: http://www.noiseprotocol.org/noise.html#cipher-functions
+    /// \[1\]: <http://www.noiseprotocol.org/noise.html#cipher-functions>
     async fn aead_encrypt(
         &self,
         destination: &mut Vec<u8>,
@@ -50,7 +50,7 @@ pub trait VaultForSecureChannels: Send + Sync + 'static {
     ) -> Result<()>;
 
     /// Perform AEAD decryption.
-    /// [1]: http://www.noiseprotocol.org/noise.html#cipher-functions
+    /// \[1\]: <http://www.noiseprotocol.org/noise.html#cipher-functions>
     async fn aead_decrypt(
         &self,
         secret_key_handle: &AeadSecretKeyHandle,

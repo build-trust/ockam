@@ -52,7 +52,7 @@ impl IdentitiesVerification {
         Ok(identity.identifier().clone())
     }
 
-    /// [`VerifyingVault`]
+    /// [`VerifyingVault`](ockam_vault::VaultForVerifyingSignatures)
     pub fn verifying_vault(&self) -> Arc<dyn VaultForVerifyingSignatures> {
         self.verifying_vault.clone()
     }

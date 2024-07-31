@@ -1,7 +1,7 @@
 use crate::compat::collections::BTreeSet;
 use crate::Address;
 
-/// Known Consumers for the given [`FlowControlId`]
+/// Known Consumers for the given [`FlowControlId`](crate::flow_control::FlowControlId)
 #[derive(Default, Clone, Debug)]
 pub struct ConsumersInfo(pub(super) BTreeSet<Address>);
 

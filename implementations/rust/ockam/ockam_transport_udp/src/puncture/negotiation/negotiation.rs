@@ -9,7 +9,7 @@ use std::time::Duration;
 use tracing::{debug, error, info};
 
 /// Allows to negotiate a UDP puncture to the other node by communicating
-/// with its [`UdpPunctureListener`] via some side channel (e.g. Relayed connection through the
+/// with its [`UdpPunctureListener`](crate::UdpPunctureNegotiationListener) via some side channel (e.g. Relayed connection through the
 /// Ockam Orchestrator)
 pub struct UdpPunctureNegotiation {}
 

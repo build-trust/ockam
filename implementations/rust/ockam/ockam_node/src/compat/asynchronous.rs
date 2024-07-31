@@ -5,7 +5,7 @@ use ockam_transport_core::TransportError;
 use std::net::SocketAddr;
 use tokio::net::lookup_host;
 
-/// Asynchronously resolve the given peer to a [`SocketAddr`](std::net::SocketAddr)
+/// Asynchronously resolve the given peer to a [`SocketAddr`]
 pub async fn resolve_peer(peer: impl ToString) -> ockam_core::Result<SocketAddr> {
     let peer = peer.to_string();
     // Try to resolve hostname

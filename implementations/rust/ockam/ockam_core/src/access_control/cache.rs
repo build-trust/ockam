@@ -7,8 +7,11 @@ use async_trait::async_trait;
 use core::fmt::Debug;
 use std::time::Instant;
 
-const CACHE_MAX_SIZE: usize = 10;
-const CACHE_DURATION_SECS: u64 = 1;
+/// Maximum size of the cache for authorized messages.
+pub const CACHE_MAX_SIZE: usize = 10;
+
+/// Duration in seconds for which authorized messages are considered valid.
+pub const CACHE_DURATION_SECS: u64 = 1;
 
 #[derive(Debug)]
 struct CacheEntry {
