@@ -1,6 +1,6 @@
 name: postgres
 
-identity: postgres
+ticket: $SERVER_TICKET
 
 relay: postgres
 

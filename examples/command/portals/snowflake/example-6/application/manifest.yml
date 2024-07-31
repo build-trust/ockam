@@ -5,13 +5,7 @@ artifacts:
    readme: README.md
    container_services:
       images:
-      - /ockam_database/ockam_schema/ockam_repository/ockam_node:on
-      - /ockam_database/ockam_schema/ockam_repository/postgres_client:on
-
-configuration:
-  trace_level: ALWAYS
-  log_level: DEBUG
-  grant_callback: external.create_service
+      - /consumer_database/consumer_schema/consumer_repository/postgres_client
 
 privileges:
 - BIND SERVICE ENDPOINT:
@@ -20,14 +14,3 @@ privileges:
 - CREATE COMPUTE POOL:
      description: "Permission to create compute pools for running services"
      required_at_setup: true
-
-references:
-   - ockam_external_access:
-       label: "Ockam external access"
-       description: "This is required to access the Ockam project"
-       privileges:
-       - USAGE
-       object_type: EXTERNAL ACCESS INTEGRATION
-       register_callback: external.register_reference
-       configuration_callback: external.get_configuration
-       required_at_setup: true

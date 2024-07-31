@@ -3,6 +3,7 @@ import logging
 import snowflake.connector
 from snowflake.snowpark import Session
 
+
 # Create a connection, either from inside the native application when deployed
 # or with user/password credentials when testing locally
 def connection() -> snowflake.connector.SnowflakeConnection:
@@ -36,6 +37,7 @@ def connection() -> snowflake.connector.SnowflakeConnection:
         }
 
     return snowflake.connector.connect(**creds)
+
 
 # Create a session for the connection
 def session() -> Session:

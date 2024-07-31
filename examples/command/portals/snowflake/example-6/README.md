@@ -1,18 +1,16 @@
-# Ockam node as a Snowflake app
+# Use the Ockam node Snowflake application to connect to a private Postgres database
 
 ![Architecture](diagram.png)
 
-This example shows how to use the Ockam Snowflake native application to query a private Postgres database.
+This example shows how to use the Ockam node Snowflake application to query a private Postgres database.
 
-There are three main steps involved in that setup:
+We will:
 
-1. Enroll with an Ockam and create the credentials necessary to establish a secure channel between the Snowflake native
-   application and Postgres.
-2. Setup a Postgres database.
-3. Deploy a Snowflake native app which will query the Postgres database.
-
-The communication between Snowflake and Postgres will be mediated by two Ockam nodes, the first one running inside the
-Snowflake native application and the second one running alongside the private Postgres database.
+1. Create a Snowflake test environment and role.
+1. Start a Postgres database locally with an Ockam TCP outlet node.
+1. Instantiate the Ockam node Snowflake application to access the TCP outlet via a relay.
+1. Deploy a Snowflake application with a Postgres client accessing the database as if it was colocated inside Snowflake.
+1. Show that we can select data from the private database and insert it into a Snowflake table.
 
 ## Prerequisites
 
@@ -20,6 +18,7 @@ In order to run this example you need to install the following:
 
 - Ockam,
   with `curl --proto '=https' --tlsv1.2 -sSfL https://install.command.ockam.io | bash && source "$HOME/.ockam/env"`.
+- [Postgres](https://www.postgresql.org/download/).
 - [Docker](https://docs.docker.com/get-docker).
 - [Snowflake-cli](https://docs.snowflake.com/en/developer-guide/snowflake-cli-v2/installation/installation).
 - `envsubst` (via the `gettext` package on [Mac](https://formulae.brew.sh/formula/gettext),
@@ -34,26 +33,53 @@ In order to run this example you need to install the following:
 ockam enroll
 
 # Create an enrollment ticket for the node that will run inside the native application.
-export CLIENT_TICKET="$(ockam project ticket --usage-count 1 --expires-in 10h --attribute postgres-client)"
+export CLIENT_TICKET="$(ockam project ticket --usage-count 1 --expires-in 1h --attribute postgres_client)"
 
 # Create an enrollment ticket for the node that will run alongside the private Postgres database.
-export SERVER_TICKET="$(ockam project ticket --usage-count 1 --expires-in 10h --attribute postgres-server --relay postgres)"
+export SERVER_TICKET="$(ockam project ticket --usage-count 1 --expires-in 1h --attribute postgres_server --relay postgres)"
 
 # Print the egress allow list for the Ockam project. You will use them later in this example.
 export EGRESS_ALLOW_LIST="$(ockam project show --jq .egress_allow_list | sed "s/\"/'/g" | sed "s/\[/(/g" | sed "s/\]/)/g")"
 ```
 
-### Create the database
+### Create a test database
 
-First you need to create a version of the SQL creation script containing your Snowflake user name with:
+You can create the database and grants required to run the example by running the `consumer.sql` script.
+You have first to export your Snowflake user name so that the `consumer_role` used for the example gets granted to your
+user.
 
 ```
 export USER_NAME=<your user name here>
 
-cat ./ockam_node/prepare/consumer.sql | envsubst | snow sql --stdin
+cat ./consumer.sql | envsubst | snow sql --stdin
 ```
 
-### Build the native application
+### Start a private Postgres database with an Ockam TCP outlet
+
+Start a Postgres server locally and make sure that you can access the default `postgres` database with:
+
+```shell
+psql -d postgres
+```
+
+Then start an Ockam TCP outlet with:
+
+```shell
+export OCKAM_HOME=~/.ockam/postgres-ockam
+ockam node create --configuration "$(cat ./tcp-outlet.yml | envsubst)"
+```
+
+This now makes the database running locally accessible via a relay named `postgres` on your Ockam project
+
+### Instantiate the Ockam node Snowflake application
+
+TODO
+
+-----
+
+# OLD INSTRUCTIONS
+
+### Build the Postgres client application
 
 The native application uses a Docker image starting an Ockam node:
 
