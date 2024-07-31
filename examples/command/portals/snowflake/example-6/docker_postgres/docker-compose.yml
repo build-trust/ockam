@@ -1,0 +1,40 @@
+# Create a dedicated and isolated virtual network for bank_corp.
+networks:
+  local:
+    driver: bridge
+
+services:
+  # Start postgres.
+  postgres:
+    image: cgr.dev/chainguard/postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    networks:
+    - local
+
+  ockam:
+    depends_on: [postgres]
+    image: ghcr.io/build-trust/ockam
+    environment:
+      SERVER_TICKET: ${SERVER_TICKET:-}
+      OCKAM_DEVELOPER: false
+    command:
+    - node
+    - create
+    - --foreground
+    - --node-config
+    - |
+      name: postgres
+      
+      ticket: $SERVER_TICKET
+      
+      relay: postgres
+      
+      tcp-outlet:
+        to: 5432
+        allow: postgres_client
+
+    networks:
+    - local

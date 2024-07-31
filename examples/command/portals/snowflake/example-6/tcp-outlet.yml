@@ -1,9 +1,0 @@
-name: postgres
-
-ticket: $SERVER_TICKET
-
-relay: postgres
-
-tcp-outlet:
-  to: 5432
-  allow: postgres_client

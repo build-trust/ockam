@@ -42,7 +42,7 @@ export SERVER_TICKET="$(ockam project ticket --usage-count 1 --expires-in 1h --a
 export EGRESS_ALLOW_LIST="$(ockam project show --jq .egress_allow_list | sed "s/\"/'/g" | sed "s/\[/(/g" | sed "s/\]/)/g")"
 ```
 
-### Create a test database
+## Create a test database
 
 You can create the database and grants required to run the example by running the `consumer.sql` script.
 You have first to export your Snowflake user name so that the `consumer_role` used for the example gets granted to your
@@ -54,37 +54,26 @@ export USER_NAME=<your user name here>
 cat ./consumer.sql | envsubst | snow sql --stdin
 ```
 
-### Start a private Postgres database with an Ockam TCP outlet
+## Start a private Postgres database with an Ockam TCP outlet
 
-Start a Postgres server locally and make sure that you can access the default `postgres` database with:
-
-```shell
-psql -d postgres
-```
-
-Then start an Ockam TCP outlet with:
+Start a Postgres server and an Ockam TCP outlet with:
 
 ```shell
-export OCKAM_HOME=~/.ockam/postgres-ockam
-ockam node create --configuration "$(cat ./tcp-outlet.yml | envsubst)"
+docker compose -f ./docker_postgres/docker-compose.yml up
 ```
 
-This now makes the database running locally accessible via a relay named `postgres` on your Ockam project
+This now makes the database running locally accessible via a relay named `postgres` on your Ockam project.
 
-### Instantiate the Ockam node Snowflake application
+## Instantiate the Ockam node Snowflake application
 
 TODO
 
------
-
-# OLD INSTRUCTIONS
-
-### Build the Postgres client application
+## Build and deploy the Postgres client application
 
 The native application uses a Docker image starting an Ockam node:
 
 ```
-docker build --rm --platform linux/amd64 -t ockam_node:on ./ockam_node/application/ockam_node 
+docker build --rm --platform linux/amd64 -t postgres_client ./application/postgres_client 
 ```
 
 Then we publish this image to the Snowflake image repository created in the previous section.
@@ -95,25 +84,25 @@ First, we get the repository URL:
 snow spcs image-registry login
 
 # Get the repository URL
-export REPOSITORY_URL="$(snow spcs image-repository url ockam_database.ockam_schema.ockam_repository --role ockam)"
+export REPOSITORY_URL="$(snow spcs image-repository url consumer_database.consumer_schema.consumer_repository --role consumer)"
 ```
 
 We tag the image with the repository URL:
 
 ```shell
-docker tag ockam_node:on $REPOSITORY_URL/ockam_node:on
+docker tag postgres_client $REPOSITORY_URL/postgres_client
 ```
 
 We push the image to the repository:
 
 ```shell
-docker push $REPOSITORY_URL/ockam_node:on
+docker push $REPOSITORY_URL/postgres_client
 ```
 
 We can run the following command to confirm that the image has been correctly uploaded:
 
 ```shell
-snow spcs image-repository list-images ockam_database.ockam_schema.ockam_repository --role ockam
+snow spcs image-repository list-images customer_database.customer_schema.customer_repository --role customer
 ```
 
 ## Deploy the application
@@ -121,12 +110,17 @@ snow spcs image-repository list-images ockam_database.ockam_schema.ockam_reposit
 Now we can deploy and instantiate the application:
 
 ```shell
-snow app run --project ./ockam_node/application
+snow app run --project ./application
 ```
 
 If that step is successful you should see a message like:
 
 ```shell
-Your application object (ockam_node) is now available:
-https://app.snowflake.com/HYCWVDM/ekb57526/#/apps/application/OCKAM_NODE
+Your application object (postgres_client) is now available:
+https://app.snowflake.com/HYCWVDM/ekb57526/#/apps/application/POSTGRES_CLIENT
 ```
+
+Note that you can use the `restart.sh` script to re-run the build + push + start steps if you are modifying
+the `postgres_client` application.
+
+## Test the application
