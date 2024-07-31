@@ -1,0 +1,464 @@
+function start_kafka() {
+  docker compose --file "${BATS_TEST_DIRNAME}/${KAFKA_COMPOSE_FILE}" up --detach
+  sleep 10
+}
+
+function stop_kafka() {
+  docker compose --file "${BATS_TEST_DIRNAME}/${KAFKA_COMPOSE_FILE}" down
+}
+
+setup() {
+  load ../load/base.bash
+  load ../load/orchestrator.bash
+  load_bats_ext
+  setup_home_dir
+  skip_if_orchestrator_tests_not_enabled
+  copy_enrolled_home_dir
+}
+
+teardown() {
+  stop_kafka
+  teardown_home_dir
+}
+
+kafka_docker_end_to_end_encrypted_explicit_consumer() {
+  # Admin
+  export ADMIN_HOME="$OCKAM_HOME"
+
+  export OCKAM_LOGGING=0
+  outlet_ticket=$($OCKAM project ticket --usage-count 10 --attribute role=member --relay kafka_outlet)
+  consumer_ticket=$($OCKAM project ticket --usage-count 10 --attribute role=member --relay kafka_consumer)
+  producer_ticket=$($OCKAM project ticket --usage-count 10 --attribute role=member)
+
+  export OCKAM_LOGGING=1
+  export OCKAM_LOG_LEVEL=info
+
+  export CONSUMER_OUTPUT="$ADMIN_HOME/consumer.log"
+  export DIRECT_CONSUMER_OUTPUT="$ADMIN_HOME/direct_consumer.log"
+  export KAFKA_CONFIG="$ADMIN_HOME/kafka.config"
+
+  # Outlet
+  setup_home_dir
+  run_success "$OCKAM" project enroll "${outlet_ticket}"
+  run_success "$OCKAM" kafka-outlet create --bootstrap-server 127.0.0.1:19092
+  run_success "$OCKAM" relay create kafka_outlet
+
+  # Consumer
+  setup_home_dir
+  run_success "$OCKAM" project enroll "${consumer_ticket}"
+  run_success "$OCKAM" kafka-inlet create --from 29092 \
+    --avoid-publishing \
+    --to /project/default/service/forward_to_kafka_outlet/secure/api
+  run_success "$OCKAM" relay create kafka_consumer
+
+  run kafka-topics --bootstrap-server localhost:29092 --delete --topic demo || true
+  sleep 5
+  run_success kafka-topics --bootstrap-server localhost:29092 --create --topic demo --partitions 1 --replication-factor 1
+  kafka-console-consumer --topic demo --bootstrap-server localhost:29092 --max-messages 1 --timeout-ms 30000 >"$CONSUMER_OUTPUT" &
+  # direct consumer
+  kafka-console-consumer --topic demo --bootstrap-server localhost:19092 --max-messages 1 --timeout-ms 30000 >"$DIRECT_CONSUMER_OUTPUT" &
+
+  # Producer
+  setup_home_dir
+  run_success "$OCKAM" project enroll "${producer_ticket}"
+  run_success "$OCKAM" kafka-inlet create --from 39092 \
+    --to /project/default/service/forward_to_kafka_outlet/secure/api \
+    --consumer /project/default/service/forward_to_kafka_consumer/secure/api
+
+  sleep 5
+  run bash -c "echo 'Hello from producer' | kafka-console-producer --topic demo --bootstrap-server localhost:39092 --max-block-ms 30000"
+  sleep 5
+
+  run cat "$CONSUMER_OUTPUT"
+  assert_output "Hello from producer"
+
+  # direct connection to the kafka broker
+  run cat "$DIRECT_CONSUMER_OUTPUT"
+  refute_output --partial "Hello"
+}
+
+@test "kafka - docker - end-to-end-encrypted - explicit consumer - redpanda" {
+  export KAFKA_COMPOSE_FILE="redpanda-docker-compose.yaml"
+  start_kafka
+  kafka_docker_end_to_end_encrypted_explicit_consumer
+}
+
+@test "kafka - docker - end-to-end-encrypted - explicit consumer - apache" {
+  export KAFKA_COMPOSE_FILE="apache-docker-compose.yaml"
+  start_kafka
+  kafka_docker_end_to_end_encrypted_explicit_consumer
+}
+
+kafka_docker_end_to_end_encrypted_project_relay_consumer() {
+  # Admin
+  export ADMIN_HOME="$OCKAM_HOME"
+
+  export OCKAM_LOGGING=0
+  outlet_ticket=$($OCKAM project ticket --usage-count 10 --attribute role=member --relay kafka_outlet)
+  consumer_ticket=$($OCKAM project ticket --usage-count 10 --attribute role=member --relay '*')
+  producer_ticket=$($OCKAM project ticket --usage-count 10 --attribute role=member)
+
+  export OCKAM_LOGGING=1
+  export OCKAM_LOG_LEVEL=info
+
+  export CONSUMER_OUTPUT="$ADMIN_HOME/consumer.log"
+  export DIRECT_CONSUMER_OUTPUT="$ADMIN_HOME/direct_consumer.log"
+  export KAFKA_CONFIG="$ADMIN_HOME/kafka.config"
+
+  # Outlet
+  setup_home_dir
+  run_success "$OCKAM" project enroll "${outlet_ticket}"
+  run_success "$OCKAM" kafka-outlet create --bootstrap-server 127.0.0.1:19092
+  run_success "$OCKAM" relay create kafka_outlet
+
+  # Consumer
+  setup_home_dir
+  run_success "$OCKAM" project enroll "${consumer_ticket}"
+  run_success "$OCKAM" kafka-inlet create --from 29092 \
+    --publishing-relay /project/default \
+    --to /project/default/service/forward_to_kafka_outlet/secure/api
+
+  run kafka-topics --bootstrap-server localhost:29092 --delete --topic demo || true
+  sleep 5
+  run_success kafka-topics --bootstrap-server localhost:29092 --create --topic demo --partitions 1 --replication-factor 1
+  kafka-console-consumer --topic demo --bootstrap-server localhost:29092 --max-messages 1 --timeout-ms 30000 >"$CONSUMER_OUTPUT" &
+  # direct consumer
+  kafka-console-consumer --topic demo --bootstrap-server localhost:19092 --max-messages 1 --timeout-ms 30000 >"$DIRECT_CONSUMER_OUTPUT" &
+
+  # Producer
+  setup_home_dir
+  run_success "$OCKAM" project enroll "${producer_ticket}"
+  run_success "$OCKAM" kafka-inlet create --from 39092 \
+    --to /project/default/service/forward_to_kafka_outlet/secure/api \
+    --consumer-relay /project/default
+
+  sleep 5
+  run bash -c "echo 'Hello from producer' | kafka-console-producer --topic demo --bootstrap-server localhost:39092 --max-block-ms 30000"
+  sleep 5
+
+  run cat "$CONSUMER_OUTPUT"
+  assert_output "Hello from producer"
+
+  # direct connection to the kafka broker
+  run cat "$DIRECT_CONSUMER_OUTPUT"
+  refute_output --partial "Hello"
+}
+
+@test "kafka - docker - end-to-end-encrypted - project relay consumer - redpanda" {
+  export KAFKA_COMPOSE_FILE="redpanda-docker-compose.yaml"
+  start_kafka
+  kafka_docker_end_to_end_encrypted_project_relay_consumer
+}
+
+@test "kafka - docker - end-to-end-encrypted - project relay consumer - apache" {
+  export KAFKA_COMPOSE_FILE="apache-docker-compose.yaml"
+  start_kafka
+  kafka_docker_end_to_end_encrypted_project_relay_consumer
+}
+
+kafka_docker_end_to_end_encrypted_rust_relay_consumer() {
+  # Admin
+  export ADMIN_HOME="$OCKAM_HOME"
+
+  export OCKAM_LOGGING=0
+  outlet_ticket=$($OCKAM project ticket --usage-count 10 --attribute role=member --relay kafka_outlet)
+  consumer_ticket=$($OCKAM project ticket --usage-count 10 --attribute role=member --relay '*')
+  producer_ticket=$($OCKAM project ticket --usage-count 10 --attribute role=member)
+
+  export OCKAM_LOGGING=1
+  export OCKAM_LOG_LEVEL=info
+
+  export CONSUMER_OUTPUT="$ADMIN_HOME/consumer.log"
+  export DIRECT_CONSUMER_OUTPUT="$ADMIN_HOME/direct_consumer.log"
+  export KAFKA_CONFIG="$ADMIN_HOME/kafka.config"
+
+  # Outlet
+  setup_home_dir
+  run_success "$OCKAM" project enroll "${outlet_ticket}"
+  run_success "$OCKAM" kafka-outlet create --bootstrap-server 127.0.0.1:19092
+  run_success "$OCKAM" relay create kafka_outlet
+
+  # Consumer
+  setup_home_dir
+  run_success "$OCKAM" project enroll "${consumer_ticket}"
+  run_success "$OCKAM" kafka-inlet create --from 29092 \
+    --publishing-relay /project/default/service/forward_to_kafka_outlet/secure/api \
+    --to /project/default/service/forward_to_kafka_outlet/secure/api
+
+  run kafka-topics --bootstrap-server localhost:29092 --delete --topic demo || true
+  sleep 5
+  run_success kafka-topics --bootstrap-server localhost:29092 --create --topic demo --partitions 1 --replication-factor 1
+  kafka-console-consumer --topic demo --bootstrap-server localhost:29092 --max-messages 1 --timeout-ms 30000 >"$CONSUMER_OUTPUT" &
+  # direct consumer
+  kafka-console-consumer --topic demo --bootstrap-server localhost:19092 --max-messages 1 --timeout-ms 30000 >"$DIRECT_CONSUMER_OUTPUT" &
+
+  # Producer
+  setup_home_dir
+  run_success "$OCKAM" project enroll "${producer_ticket}"
+  run_success "$OCKAM" kafka-inlet create --from 39092 \
+    --to /project/default/service/forward_to_kafka_outlet/secure/api \
+    --consumer-relay /project/default/service/forward_to_kafka_outlet/secure/api
+
+  sleep 5
+  run bash -c "echo 'Hello from producer' | kafka-console-producer --topic demo --bootstrap-server localhost:39092 --max-block-ms 30000"
+  sleep 5
+
+  run cat "$CONSUMER_OUTPUT"
+  assert_output "Hello from producer"
+
+  # direct connection to the kafka broker
+  run cat "$DIRECT_CONSUMER_OUTPUT"
+  refute_output --partial "Hello"
+}
+
+@test "kafka - docker - end-to-end-encrypted - rust relay consumer - redpanda" {
+  export KAFKA_COMPOSE_FILE="redpanda-docker-compose.yaml"
+  start_kafka
+  kafka_docker_end_to_end_encrypted_rust_relay_consumer
+}
+
+@test "kafka - docker - end-to-end-encrypted - rust relay consumer - apache" {
+  export KAFKA_COMPOSE_FILE="apache-docker-compose.yaml"
+  start_kafka
+  kafka_docker_end_to_end_encrypted_rust_relay_consumer
+}
+
+kafka_docker_end_to_end_encrypted_direct_connection() {
+  # Admin
+  export ADMIN_HOME="$OCKAM_HOME"
+
+  export OCKAM_LOGGING=0
+  consumer_ticket=$($OCKAM project ticket --usage-count 10 --attribute role=member --relay kafka_consumer)
+  producer_ticket=$($OCKAM project ticket --usage-count 10 --attribute role=member)
+
+  export OCKAM_LOGGING=1
+  export OCKAM_LOG_LEVEL=info
+
+  export CONSUMER_OUTPUT="$ADMIN_HOME/consumer.log"
+  export DIRECT_CONSUMER_OUTPUT="$ADMIN_HOME/direct_consumer.log"
+
+  # Consumer
+  setup_home_dir
+  run_success "$OCKAM" project enroll "${consumer_ticket}"
+  run_success "$OCKAM" kafka-outlet create --bootstrap-server 127.0.0.1:19092
+  run_success "$OCKAM" kafka-inlet create --from 29092 \
+    --avoid-publishing \
+    --to self
+  run_success "$OCKAM" relay create kafka_consumer
+
+  run kafka-topics --bootstrap-server localhost:29092 --delete --topic demo || true
+  sleep 5
+  run_success kafka-topics --bootstrap-server localhost:29092 --create --topic demo --partitions 1 --replication-factor 1
+  kafka-console-consumer --topic demo --bootstrap-server localhost:29092 --max-messages 1 --timeout-ms 30000 >"$CONSUMER_OUTPUT" &
+  # direct consumer
+  kafka-console-consumer --topic demo --bootstrap-server localhost:19092 --max-messages 1 --timeout-ms 30000 >"$DIRECT_CONSUMER_OUTPUT" &
+
+  # Producer
+  setup_home_dir
+  run_success "$OCKAM" project enroll "${producer_ticket}"
+  run_success "$OCKAM" kafka-outlet create --bootstrap-server 127.0.0.1:19092
+  run_success "$OCKAM" kafka-inlet create --from 39092 \
+    --to self \
+    --consumer /project/default/service/forward_to_kafka_consumer/secure/api
+
+  sleep 5
+  run bash -c "echo 'Hello from producer' | kafka-console-producer --topic demo --bootstrap-server localhost:39092 --max-block-ms 30000"
+  sleep 5
+
+  run cat "$CONSUMER_OUTPUT"
+  assert_output "Hello from producer"
+
+  # direct connection to the kafka broker
+  run cat "$DIRECT_CONSUMER_OUTPUT"
+  refute_output --partial "Hello"
+}
+
+@test "kafka - docker - end-to-end-encrypted - direct connection - redpanda" {
+  export KAFKA_COMPOSE_FILE="redpanda-docker-compose.yaml"
+  start_kafka
+  kafka_docker_end_to_end_encrypted_direct_connection
+}
+
+@test "kafka - docker - end-to-end-encrypted - direct connection - apache" {
+  export KAFKA_COMPOSE_FILE="apache-docker-compose.yaml"
+  start_kafka
+  kafka_docker_end_to_end_encrypted_direct_connection
+}
+
+kafka_docker_end_to_end_encrypted_single_gateway() {
+  # Admin
+  export ADMIN_HOME="$OCKAM_HOME"
+  export OCKAM_LOGGING=1
+  export OCKAM_LOG_LEVEL=info
+
+  export CONSUMER_OUTPUT="$ADMIN_HOME/consumer.log"
+  export DIRECT_CONSUMER_OUTPUT="$ADMIN_HOME/direct_consumer.log"
+
+  run_success "$OCKAM" kafka-outlet create --bootstrap-server 127.0.0.1:19092
+  run_success "$OCKAM" kafka-inlet create --from 29092 \
+    --avoid-publishing \
+    --to self \
+    --consumer self
+
+  run kafka-topics --bootstrap-server localhost:29092 --delete --topic demo || true
+  sleep 5
+  run_success kafka-topics --bootstrap-server localhost:29092 --create --topic demo --partitions 1 --replication-factor 1
+  kafka-console-consumer --topic demo --bootstrap-server localhost:29092 --max-messages 1 --timeout-ms 30000 >"$CONSUMER_OUTPUT" &
+  # direct consumer
+  kafka-console-consumer --topic demo --bootstrap-server localhost:19092 --max-messages 1 --timeout-ms 30000 >"$DIRECT_CONSUMER_OUTPUT" &
+
+  sleep 5
+  run bash -c "echo 'Hello from producer' | kafka-console-producer --topic demo --bootstrap-server localhost:29092 --max-block-ms 30000"
+  sleep 5
+
+  run cat "$CONSUMER_OUTPUT"
+  assert_output "Hello from producer"
+
+  # direct connection to the kafka broker
+  run cat "$DIRECT_CONSUMER_OUTPUT"
+  refute_output --partial "Hello"
+}
+
+@test "kafka - docker - end-to-end-encrypted - single gateway - redpanda" {
+  export KAFKA_COMPOSE_FILE="redpanda-docker-compose.yaml"
+  start_kafka
+  kafka_docker_end_to_end_encrypted_direct_connection
+}
+
+@test "kafka - docker - end-to-end-encrypted - single gateway - apache" {
+  export KAFKA_COMPOSE_FILE="apache-docker-compose.yaml"
+  start_kafka
+  kafka_docker_end_to_end_encrypted_direct_connection
+}
+
+kafka_docker_cleartext() {
+  # Admin
+  export ADMIN_HOME="$OCKAM_HOME"
+
+  export OCKAM_LOGGING=0
+  outlet_ticket=$($OCKAM project ticket --usage-count 10 --attribute role=member --relay kafka_outlet)
+  consumer_ticket=$($OCKAM project ticket --usage-count 10 --attribute role=member)
+  producer_ticket=$($OCKAM project ticket --usage-count 10 --attribute role=member)
+
+  export OCKAM_LOGGING=1
+  export OCKAM_LOG_LEVEL=info
+
+  export CONSUMER_OUTPUT="$ADMIN_HOME/consumer.log"
+  export DIRECT_CONSUMER_OUTPUT="$ADMIN_HOME/direct_consumer.log"
+  export CONSUMER_OUTPUT_DIRECT="$ADMIN_HOME/consumer_direct.log"
+  export KAFKA_CONFIG="$ADMIN_HOME/kafka.config"
+
+  # Outlet
+  setup_home_dir
+  run_success "$OCKAM" project enroll "${outlet_ticket}"
+  run_success "$OCKAM" kafka-outlet create --bootstrap-server 127.0.0.1:19092
+  run_success "$OCKAM" relay create kafka_outlet
+
+  # Consumer
+  setup_home_dir
+  run_success "$OCKAM" project enroll "${consumer_ticket}"
+  run_success "$OCKAM" kafka-inlet create --from 29092 \
+    --avoid-publishing \
+    --disable-content-encryption \
+    --to /project/default/service/forward_to_kafka_outlet/secure/api
+
+  run kafka-topics --bootstrap-server localhost:29092 --delete --topic demo || true
+  sleep 5
+  run_success kafka-topics --bootstrap-server localhost:29092 --create --topic demo --partitions 1 --replication-factor 1
+  kafka-console-consumer --topic demo --bootstrap-server localhost:29092 --max-messages 1 --timeout-ms 30000 >"$CONSUMER_OUTPUT" &
+  # direct consumer
+  kafka-console-consumer --topic demo --bootstrap-server localhost:19092 --max-messages 1 --timeout-ms 30000 >"$DIRECT_CONSUMER_OUTPUT" &
+
+  # Producer
+  setup_home_dir
+  run_success "$OCKAM" project enroll "${producer_ticket}"
+  run_success "$OCKAM" kafka-inlet create --from 39092 \
+    --disable-content-encryption \
+    --to /project/default/service/forward_to_kafka_outlet/secure/api
+
+  sleep 5
+  run bash -c "echo 'Hello from producer' | kafka-console-producer --topic demo --bootstrap-server localhost:39092 --max-block-ms 30000"
+  sleep 5
+
+  run cat "$CONSUMER_OUTPUT"
+  assert_output "Hello from producer"
+
+  # direct connection to the kafka broker
+  run cat "$DIRECT_CONSUMER_OUTPUT"
+  assert_output "Hello from producer"
+}
+
+@test "kafka - docker - cleartext - redpanda" {
+  export KAFKA_COMPOSE_FILE="redpanda-docker-compose.yaml"
+  start_kafka
+  kafka_docker_cleartext
+}
+
+@test "kafka - docker - cleartext - apache" {
+  export KAFKA_COMPOSE_FILE="apache-docker-compose.yaml"
+  start_kafka
+  kafka_docker_cleartext
+}
+
+kafka_docker_end_to_end_encrypted_offset_decryption() {
+  # Admin
+  export ADMIN_HOME="$OCKAM_HOME"
+  export OCKAM_LOGGING=1
+  export OCKAM_LOG_LEVEL=info
+
+  export CONSUMER_OUTPUT="$ADMIN_HOME/consumer.log"
+
+  run_success "$OCKAM" kafka-outlet create --bootstrap-server 127.0.0.1:19092
+  run_success "$OCKAM" kafka-inlet create --from 29092 \
+    --disable-content-encryption \
+    --avoid-publishing \
+    --to self \
+    --consumer self
+
+  run kafka-topics --bootstrap-server localhost:29092 --delete --topic demo || true
+  sleep 5
+  run_success kafka-topics --bootstrap-server localhost:29092 --create --topic demo --partitions 1 --replication-factor 1
+
+  sleep 5
+  run bash -c 'for n in {0..100}; do echo "message n. $n"; done | kafka-console-producer --topic demo --bootstrap-server localhost:29092 --max-block-ms 30000'
+  sleep 5
+
+  kafka-console-consumer --topic demo \
+    --bootstrap-server localhost:29092 \
+    --partition 0 \
+    --offset 0 \
+    --max-messages 1 --timeout-ms 30000 >"$CONSUMER_OUTPUT"
+
+  run cat "$CONSUMER_OUTPUT"
+  assert_output "message n. 0"
+
+  kafka-console-consumer --topic demo \
+    --bootstrap-server localhost:29092 \
+    --partition 0 \
+    --offset 100 \
+    --max-messages 1 --timeout-ms 30000 >"$CONSUMER_OUTPUT"
+
+  run cat "$CONSUMER_OUTPUT"
+  assert_output "message n. 100"
+
+  kafka-console-consumer --topic demo \
+    --bootstrap-server localhost:29092 \
+    --partition 0 \
+    --offset 37 \
+    --max-messages 1 --timeout-ms 30000 >"$CONSUMER_OUTPUT"
+
+  run cat "$CONSUMER_OUTPUT"
+  assert_output "message n. 37"
+}
+
+@test "kafka - docker - end-to-end-encrypted - offset decryption - redpanda" {
+  export KAFKA_COMPOSE_FILE="redpanda-docker-compose.yaml"
+  start_kafka
+  kafka_docker_end_to_end_encrypted_offset_decryption
+}
+
+@test "kafka - docker - end-to-end-encrypted - offset decryption - apache" {
+  export KAFKA_COMPOSE_FILE="apache-docker-compose.yaml"
+  start_kafka
+  kafka_docker_end_to_end_encrypted_offset_decryption
+}
