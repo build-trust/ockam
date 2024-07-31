@@ -17,12 +17,14 @@ if [ $# -eq 0 ]; then
   orchestrator_suite=true
   serial_suite=true
   examples_suite=true
+  kafka_suite=false
 else
   local_suite=false
   orchestrator_enroll_suite=false
   orchestrator_suite=false
   serial_suite=false
   examples_suite=false
+  kafka_suite=false
 fi
 
 for suite in "$@"; do
@@ -32,6 +34,7 @@ for suite in "$@"; do
   orchestrator) orchestrator_suite=true ;;
   serial) serial_suite=true ;;
   examples) examples_suite=true ;;
+  kafka) kafka_suite=true ;;
   *)
     echo "Unknown suite: $suite"
     exit 1
@@ -65,4 +68,9 @@ fi
 if [ "$examples_suite" = true ]; then
   echo "Running examples suite..."
   bats "$current_directory/examples" --timing
+fi
+
+if [ "$kafka_suite" = true ]; then
+  echo "Running kafka suite..."
+  bats "$current_directory/kafka" --timing --jobs 1
 fi
