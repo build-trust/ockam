@@ -7,7 +7,7 @@ This application allows a Snowflake user to:
 - Start an Ockam node as a TCP outlet.
 - Start an Ockam node with a general configuration file.
 
-### Files description
+## Files description
 
 | File Name                         | Purpose                                                                                                                                                                                  |
 |-----------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -23,3 +23,61 @@ This application allows a Snowflake user to:
 | application/manifest.yml          | Defines properties required by the application package. Find more details at the [Manifest Documentation.](https://docs.snowflake.com/en/developer-guide/native-apps/creating-manifest). |
 | application/spec.yml              | This file specifies the container which is be deployed as part of the application.                                                                                                       |
 | application/ockam_node/run.sh     | This script starts an Ockam node with a list of arguments specified in .                                                                                                                 |
+
+## Installation
+
+First, we set-up the necessary database and roles to develop and publish an application:
+
+```shell
+snow sql -f application_setup.sql
+```
+
+Then we need to push the Ockam Docker image to the Snowflake repository.
+
+First, we get the repository URL:
+
+```sh
+# Login
+snow spcs image-registry login
+
+# Get the repository URL
+export REPOSITORY_URL="$(snow spcs image-repository url ockam_database.ockam_schema.ockam_repository --role ockam)"
+```
+
+We tag the image with the repository URL:
+
+```shell
+docker tag ghcr.io/build-trust/ockam $REPOSITORY_URL/ockam
+```
+
+We push the image to the repository:
+
+```shell
+docker push $REPOSITORY_URL/ockam
+```
+
+We can run the following command to confirm that the image has been correctly uploaded:
+
+```shell
+snow spcs image-repository list-images ockam_database.ockam_schema.ockam_repository --role ockam
+```
+
+## Deploy the application
+
+Now we can deploy and instantiate the application:
+
+```shell
+snow app run --project ./application
+```
+
+If that step is successful you should see a message like:
+
+```shell
+Your application object (ockam_node) is now available:
+https://app.snowflake.com/HYCWVDM/ekb57526/#/apps/application/OCKAM_NODE
+```
+
+## Publish the application
+
+Follow the instructions on [this page](https://other-docs.snowflake.com/en/native-apps/provider-publishing-app-package)
+to publish the application.

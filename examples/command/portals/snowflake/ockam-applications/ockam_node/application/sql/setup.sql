@@ -36,7 +36,7 @@ CREATE OR REPLACE PROCEDURE external.start_ockam_node_service(NODE_CONFIGURATION
             spec:
               container:
                 - name: ockam-node
-                  image: /ockam_database/ockam_schema/ockam_repository/ockam_node:on
+                  image: /ockam_database/ockam_schema/ockam_repository/ockam
                   args:
                     - node
                     - create

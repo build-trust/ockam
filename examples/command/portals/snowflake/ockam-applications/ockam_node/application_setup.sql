@@ -16,9 +16,11 @@ GRANT ALL ON WAREHOUSE ockam_warehouse TO ROLE ockam;
 
 CREATE DATABASE IF NOT EXISTS ockam_database;
 GRANT ALL ON DATABASE ockam_database TO ROLE ockam;
+USE DATABASE ockam_database;
 
 CREATE SCHEMA IF NOT EXISTS ockam_database.ockam_schema;
 GRANT ALL ON SCHEMA ockam_database.ockam_schema TO ROLE ockam;
+USE SCHEMA ockam_schema;
 
 -- Create an image repository
 CREATE IMAGE REPOSITORY IF NOT EXISTS ockam_repository;
@@ -26,7 +28,7 @@ CREATE IMAGE REPOSITORY IF NOT EXISTS ockam_repository;
 USE ROLE ockam;
 
 -- Create a table for logs
-CREATE EVENT TABLE ockam_database.ockam_schema.ockam_events;
+CREATE EVENT TABLE IF NOT EXISTS ockam_database.ockam_schema.ockam_events;
 GRANT ALL ON EVENT TABLE ockam_database.ockam_schema.ockam_events TO ROLE ACCOUNTADMIN;
 
 USE ROLE ACCOUNTADMIN;
