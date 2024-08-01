@@ -44,6 +44,12 @@ snow spcs image-registry login
 export REPOSITORY_URL="$(snow spcs image-repository url ockam_database.ockam_schema.ockam_repository --role ockam)"
 ```
 
+Pull an Ockam image for the Snowflake platform:
+
+```shell
+docker pull --platform linux/amd64 ghcr.io/build-trust/ockam
+```
+
 We tag the image with the repository URL:
 
 ```shell

@@ -37,10 +37,13 @@ CREATE OR REPLACE PROCEDURE external.start_ockam_node_service(NODE_CONFIGURATION
               container:
                 - name: ockam-node
                   image: /ockam_database/ockam_schema/ockam_repository/ockam
+                  env:
+                    OCKAM_DISABLE_UPGRADE_CHECK: true
+                    OCKAM_OPENTELEMETRY_EXPORT: false
                   args:
                     - node
                     - create
-                    - -vvv
+                    - -vv
                     - --foreground
                     - --configuration
                     - "${configuration}"

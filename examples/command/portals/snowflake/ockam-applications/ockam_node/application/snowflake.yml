@@ -5,8 +5,6 @@ native_app:
    artifacts:
       - src: sql/*
         dest: ./
-      - src: ockam_node
-        dest: ./
       - src: streamlit/*
         dest: streamlit/
       - manifest.yml
