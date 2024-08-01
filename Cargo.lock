@@ -3640,20 +3640,18 @@ dependencies = [
 
 [[package]]
 name = "jaq-std"
-version = "1.5.1"
+version = "1.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d6e83f491752a1bbc4fa05a8e80d4ce1139119f9c3fd8e3400b604776c2e0129"
+checksum = "bfbaa55578fd3b70433b594a370741e0c364e4afff92cc0099623fce87311bc1"
 dependencies = [
- "bincode",
- "jaq-parse",
  "jaq-syn",
 ]
 
 [[package]]
 name = "jaq-syn"
-version = "1.1.0"
+version = "1.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a4d60101fb791b20c982731d848ed6e7d25363656497647c2093b68bd88398d6"
+checksum = "1ba44fe4428c71304604261ecbae047ee9cfb60c4f1a6bd222ebbb31726d3948"
 dependencies = [
  "serde",
 ]
