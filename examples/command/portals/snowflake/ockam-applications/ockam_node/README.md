@@ -87,3 +87,39 @@ https://app.snowflake.com/HYCWVDM/ekb57526/#/apps/application/OCKAM_NODE
 
 Follow the instructions on [this page](https://other-docs.snowflake.com/en/native-apps/provider-publishing-app-package)
 to publish the application.
+
+## Useful SQL commands
+
+Those following commands can be used when publishing or upgrading the application:
+
+```shell
+# Add a new patch for version 1_0 (dots cannot be used in an application version)
+snow app version create v1_0 --project application
+```
+
+```shell
+# Allow the creation of an application listing shared with an account outside the Ockam organisation
+ALTER APPLICATION PACKAGE ockam_node_pkg SET 
+  DISTRIBUTION=EXTERNAL;
+
+# Set the exact version to use for the package. This will be the published version
+# This command can also be scoped for a given consumer account
+ALTER APPLICATION PACKAGE ockam_node_pkg
+  SET DEFAULT RELEASE DIRECTIVE
+  VERSION = v1_0
+  PATCH = 2;  
+```
+
+Check the current state:
+
+```shell
+# Show the existing application packages. This doesn't show the release directives or the versions.
+SHOW APPLICATION PACKAGES;
+
+# Show the release directives for the application.
+# One directive is the default one
+SHOW RELEASE DIRECTIVES IN APPLICATION PACKAGE ockam_node_pkg;
+
+# Show all the versions created for the application. 
+SHOW VERSIONS IN APPLICATION PACKAGE ockam_node_pkg; 
+```
