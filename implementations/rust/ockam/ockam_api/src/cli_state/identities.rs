@@ -41,8 +41,25 @@ impl CliState {
         let vault = self.get_named_vault(vault_name).await?;
         let identities = self.make_identities(self.make_vault(vault).await?).await?;
         let identity = identities.identities_creation().create_identity().await?;
-
-        self.store_named_identity(&identity, name, vault_name).await
+        let named_identity = self
+            .store_named_identity(&identity, name, vault_name)
+            .await?;
+        self.notify_message(fmt_ok!(
+            "Generated a new Identity named {}.",
+            color_primary(named_identity.name())
+        ));
+        self.notify_message(fmt_log!(
+            "{} has Identifier {}",
+            color_primary(named_identity.name()),
+            color_primary(named_identity.identifier().to_string())
+        ));
+        if named_identity.is_default() {
+            self.notify_message(fmt_ok!(
+                "Marked {} as your default Identity, on this machine.\n",
+                color_primary(named_identity.name())
+            ));
+        }
+        Ok(named_identity)
     }
 
     /// Create an identity associated with a name, using the default vault
@@ -246,23 +263,7 @@ impl CliState {
                 self.notify_message(fmt_log!(
                     "There is no default Identity on this machine, generating one...\n"
                 ));
-
-                let named_identity = self.create_identity_with_name(&random_name()).await?;
-
-                self.notify_message(fmt_ok!(
-                    "Generated a new Identity named {}.",
-                    color_primary(named_identity.name())
-                ));
-                self.notify_message(fmt_log!(
-                    "{} has Identifier {}",
-                    color_primary(named_identity.name()),
-                    color_primary(named_identity.identifier().to_string())
-                ));
-                self.notify_message(fmt_ok!(
-                    "Marked {} as your default Identity, on this machine.\n",
-                    color_primary(named_identity.name())
-                ));
-                Ok(named_identity)
+                self.create_identity_with_name(&random_name()).await
             }
         }
     }

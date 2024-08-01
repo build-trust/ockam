@@ -111,7 +111,7 @@ async fn stop_node(opts: CommandGlobalOpts, node_name: &str, force: bool) -> mie
     let res = opts.state.stop_node(node_name, force).await;
     let output = if res.is_ok() {
         fmt_ok!(
-            "Node with name {} was stopped",
+            "The node with name {} was stopped",
             color!(node_name, OckamColor::PrimaryResource)
         )
     } else {
