@@ -59,39 +59,6 @@ CREATE OR REPLACE PROCEDURE external.start_ockam_node_service(NODE_CONFIGURATION
 ';
 GRANT USAGE ON procedure external.start_ockam_node_service(STRING, STRING) TO APPLICATION ROLE on_user;
 
-CREATE OR REPLACE PROCEDURE external.start_tcp_inlet(ENROLLMENT_TICKET STRING, RELAY STRING, ALLOW STRING, PORT STRING)
-    RETURNS STRING
-    LANGUAGE JAVASCRIPT
-    AS
-'
-    enrollmentTicket = ENROLLMENT_TICKET;
-    relay = RELAY;
-    allowed = ALLOW;
-    port = PORT;
-    configuration = `\'{ node: ockam-inlet, tcp-listener-address: 0.0.0.0:0, ticket: ${enrollmentTicket}, tcp-inlet: { from: 0.0.0.0:${port}, via: ${relay}, allow: ${allowed} } }\'`;
-
-    snowflake.createStatement({ sqlText: `CALL external.start_ockam_node_service(${configuration}, ${port})`}).execute();
-    return `SUCCESS`;
-';
-GRANT USAGE ON procedure external.start_tcp_inlet(STRING, STRING, STRING, STRING) TO APPLICATION ROLE on_user;
-
-CREATE OR REPLACE PROCEDURE external.start_tcp_outlet(ENROLLMENT_TICKET STRING, RELAY STRING, ALLOW STRING, TO_ADDRESS STRING, PORT STRING)
-    RETURNS STRING
-    LANGUAGE JAVASCRIPT
-    AS
-'
-    enrollmentTicket = ENROLLMENT_TICKET;
-    relay = RELAY;
-    allowed = ALLOW;
-    toAddress = TO_ADDRESS;
-    port = PORT;
-    configuration = `\'{ node: ockam-outlet, tcp-listener-address: 0.0.0.0:0, ticket: ${enrollmentTicket}, tcp-outlet: { to: ${toAddress}, relay: ${relay}, allow: ${allowed} } }\'`;
-
-    snowflake.createStatement({ sqlText: `CALL external.start_ockam_node_service(${configuration}, ${port})`}).execute();
-    return `SUCCESS`;
-';
-GRANT USAGE ON procedure external.start_tcp_outlet(STRING, STRING, STRING, STRING, STRING) TO APPLICATION ROLE on_user;
-
 CREATE OR REPLACE PROCEDURE external.register_reference(ref_name STRING, operation STRING, ref_or_alias STRING)
   RETURNS STRING
   LANGUAGE SQL
