@@ -97,3 +97,186 @@ jobs:
             git diff;
             exit 1; \
           }
+
+  check_crates:
+    runs-on: ubuntu-latest
+    name: All - check_crates
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
+
+      - name: Install Rust
+        uses: actions-rs/toolchain@88dc2356392166efad76775c878094f4e83ff746
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+
+      - name: Install tomlq
+        run: cargo install --locked tomlq --version 0.1.0
+
+      - name: Check for CHANGELOG.md
+        run: |
+          for crate in $(find implementations/rust/ockam -name Cargo.toml); do
+
+            dir=$(dirname $crate)
+            if [ ! -f "$dir/CHANGELOG.md" ]; then
+              echo "Error: $dir/CHANGELOG.md is missing"
+              exit 1
+            fi
+          done
+
+      - name: Check for README.md
+        run: |
+          for crate in $(find implementations/rust/ockam -name Cargo.toml); do
+
+            dir=$(dirname $crate)
+            if [ ! -f "$dir/README.md" ]; then
+              echo "Error: $dir/README.md is missing"
+              exit 1
+            fi
+          done
+
+      - name: Validate Cargo.toml categories
+        run: |
+          allowed_categories="
+          accessibility
+          aerospace
+          drones
+          protocols
+          simulation
+          space-protocols
+          unmanned-aerial-vehicles
+          algorithms
+          api-bindings
+          asynchronous
+          authentication
+          caching
+          command-line-interface
+          command-line-utilities
+          compilers
+          compression
+          computer-vision
+          concurrency
+          config
+          cryptography
+          cryptocurrencies
+          data-structures
+          database
+          database-implementations
+          date-and-time
+          development-tools
+          build-utils
+          cargo-plugins
+          debugging
+          ffi
+          procedural-macro-helpers
+          profiling
+          testing
+          email
+          embedded
+          emulators
+          encoding
+          external-ffi-bindings
+          filesystem
+          finance
+          game-development
+          game-engines
+          games
+          graphics
+          gui
+          hardware-support
+          internationalization
+          localization
+          mathematics
+          memory-management
+          multimedia
+          audio
+          encoding
+          images
+          video
+          network-programming
+          no-std
+          no-std::no-alloc
+          os
+          android-apis
+          freebsd-apis
+          linux-apis
+          macos-apis
+          unix-apis
+          windows-apis
+          parser-implementations
+          parsing
+          rendering
+          rendering::data-formats
+          rendering::engine
+          rendering::graphics-api
+          rust-patterns
+          science
+          bioinformatics
+          genomics
+          proteomics
+          sequence-analysis
+          geo
+          neuroscience
+          robotics
+          simulation
+          template-engine
+          text-editors
+          text-processing
+          value-formatting
+          virtualization
+          visualization
+          wasm
+          web-programming
+          http-client
+          http-server
+          websocket
+          "
+
+          for crate in $(find implementations/rust/ockam -name Cargo.toml); do
+
+            categories=$(tomlq package.categories -f "$crate" | jq -r '.[]')
+            for category in $categories; do
+              if ! echo "$allowed_categories" | grep -q "$category"; then
+                echo "Error: $crate contains invalid category $category"
+                exit 1
+              fi
+            done
+          done
+
+      - name: Check Cargo.toml To Ensure That All 3rd Party Crates Have Specified Versions
+        run: |
+          set -ex
+          cargo install toml2json@1.3.1
+
+          regex="^[\^|=]*[0-9]+(\.[0-9]+)*(\.[0-9]+)*"
+
+          for crate in $(find implementations/rust/ockam -name Cargo.toml); do
+
+            deps=$(toml2json <<< cat "$crate" | jq -r '.dependencies')
+            dev_deps=$(toml2json <<< cat "$crate" | jq -r ".\"dev-dependencies\"")
+            dependencies=$(echo "$deps $dev_deps" | jq -s add)
+
+            dependencies=$(toml2json <<< cat "$crate" | jq -r '.dependencies')
+            dependencies_keys=$(echo $dependencies | jq -r 'keys')
+            dependencies_keys_len=$(echo $dependencies | jq -r 'keys | length')
+
+            for ((i=0; i<$dependencies_keys_len; i++)); do
+              crate_name=$(jq -r ".[$i]" <<< $dependencies_keys)
+              version=$(jq -r ".\"$crate_name\".version" <<< $dependencies || jq -r ".\"$crate_name\"" <<< $dependencies)
+
+              if [[ $version =~ $regex ]]; then
+                echo "crate_name: $crate_name"
+                echo "version: $version"
+              else
+                echo "No version found for $crate_name $version in crate $crate"
+                exit 1
+              fi
+            done
+          done
