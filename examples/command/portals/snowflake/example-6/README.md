@@ -66,7 +66,24 @@ This now makes the database running locally accessible via a relay named `postgr
 
 ## Instantiate the Ockam node Snowflake application
 
-TODO
+Get the application from the Snowflake marketplace and install it in the `CONSUMER_WAREHOUSE`.
+
+After you grant the permission to create an endpoint and a compute pool, the installation will complete.
+You will be then presented with a launch screen for the application. Click on the `CONFIGURATION` tab and follow the
+instructions.
+
+The configuration file for the node is (replace `$CLIENT_TICKET` with the value of the environment
+variable `CLIENT_TICKET` created earlier):
+
+```shell
+node: ockam-inlet
+tcp-listener-address: 0.0.0.0:0
+ticket: $CLIENT_TICKET 
+tcp-inlet: 
+  from: 0.0.0.0:5433 
+  via: postgres
+  allow: postgres_server
+```
 
 ## Build and deploy the Postgres client application
 
