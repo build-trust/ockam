@@ -20,8 +20,13 @@ pub trait Resource<C: ParsedCommand>: Sized + Send + Sync + 'static {
         vec![]
     }
 
-    fn run_in_subprocess(self, global_args: &GlobalArgs) -> Result<Child> {
+    fn run_in_subprocess(
+        self,
+        global_args: &GlobalArgs,
+        mut extra_args: Vec<String>,
+    ) -> Result<Child> {
         let mut args = self.args();
+        args.append(&mut extra_args);
         if global_args.quiet {
             args.push("--quiet".to_string());
         }

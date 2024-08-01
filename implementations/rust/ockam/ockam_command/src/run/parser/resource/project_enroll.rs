@@ -26,12 +26,19 @@ impl Resource<EnrollCommand> for ProjectEnroll {
 }
 
 impl ProjectEnroll {
-    pub fn into_parsed_commands(self) -> Result<Vec<EnrollCommand>> {
+    pub fn into_parsed_commands(
+        self,
+        default_identity_name: Option<&String>,
+    ) -> Result<Vec<EnrollCommand>> {
         let args = self.args();
         if args.is_empty() {
             Ok(vec![])
         } else {
-            Ok(vec![Self::get_subcommand(&args)?])
+            let mut cmd = Self::get_subcommand(&args)?;
+            if cmd.identity_opts.identity_name.is_none() {
+                cmd.identity_opts.identity_name = default_identity_name.cloned();
+            }
+            Ok(vec![cmd])
         }
     }
 
@@ -68,7 +75,7 @@ mod tests {
         // As contents
         let config = format!("ticket: {enrollment_ticket_hex}");
         let parsed: ProjectEnroll = serde_yaml::from_str(&config).unwrap();
-        let cmds = parsed.into_parsed_commands().unwrap();
+        let cmds = parsed.into_parsed_commands(None).unwrap();
         assert_eq!(cmds.len(), 1);
         assert_eq!(
             cmds[0].enrollment_ticket.as_ref().unwrap(),
@@ -82,11 +89,17 @@ mod tests {
         file.write_all(enrollment_ticket_hex.as_bytes()).unwrap();
         let config = format!("ticket: {}", file_path.to_str().unwrap());
         let parsed: ProjectEnroll = serde_yaml::from_str(&config).unwrap();
-        let cmds = parsed.into_parsed_commands().unwrap();
+        let cmds = parsed
+            .into_parsed_commands(Some(&"identity-name".to_string()))
+            .unwrap();
         assert_eq!(cmds.len(), 1);
         assert_eq!(
             cmds[0].enrollment_ticket.as_ref().unwrap(),
             file_path.to_str().unwrap()
+        );
+        assert_eq!(
+            cmds[0].identity_opts.identity_name.as_deref(),
+            Some("identity-name")
         );
     }
 }

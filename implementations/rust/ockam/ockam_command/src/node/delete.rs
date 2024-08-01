@@ -2,6 +2,7 @@ use crate::{docs, CommandGlobalOpts};
 use clap::Args;
 use colorful::Colorful;
 use console::Term;
+use ockam_api::colors::color_primary;
 use ockam_api::fmt_ok;
 use ockam_api::terminal::notification::NotificationHandler;
 use ockam_api::terminal::{Terminal, TerminalStream};
@@ -105,8 +106,8 @@ impl DeleteCommandTui for DeleteTui {
         self.terminal()
             .stdout()
             .plain(fmt_ok!(
-                "Node with name {} has been deleted",
-                item_name.light_magenta()
+                "The node with name {} has been deleted",
+                color_primary(item_name)
             ))
             .machine(item_name)
             .json(serde_json::json!({ "name": &item_name }))

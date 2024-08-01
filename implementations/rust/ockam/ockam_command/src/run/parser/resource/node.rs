@@ -100,6 +100,17 @@ impl Node {
             .unwrap_or(None)
     }
 
+    /// Return the identity name if defined
+    pub fn identity(&self) -> Option<String> {
+        self.identity
+            .clone()
+            .map(|v| match v {
+                ArgValue::String(s) => Some(s),
+                _ => None,
+            })
+            .unwrap_or(None)
+    }
+
     pub fn into_parsed_commands(self) -> Result<Vec<CreateCommand>> {
         Ok(vec![Self::get_subcommand(&self.args())?])
     }

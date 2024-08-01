@@ -65,7 +65,7 @@ impl Config {
         Ok(vec![
             self.vaults.into_parsed_commands()?.into(),
             self.identities.into_parsed_commands()?.into(),
-            self.project_enroll.into_parsed_commands()?.into(),
+            self.project_enroll.into_parsed_commands(None)?.into(),
             self.nodes.into_parsed_commands()?.into(),
             self.relays.into_parsed_commands(None)?.into(),
             self.policies.into_parsed_commands()?.into(),

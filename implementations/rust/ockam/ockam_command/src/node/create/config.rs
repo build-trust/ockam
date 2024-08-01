@@ -11,6 +11,7 @@ use miette::{miette, IntoDiagnostic};
 use ockam_api::cli_state::journeys::APPLICATION_EVENT_COMMAND_CONFIGURATION_FILE;
 use ockam_api::cli_state::random_name;
 use ockam_api::nodes::BackgroundNodeClient;
+use ockam_api::terminal::notification::NotificationHandler;
 use ockam_core::{AsyncTryClone, OpenTelemetryContext};
 use ockam_node::Context;
 use serde::{Deserialize, Serialize};
@@ -46,11 +47,33 @@ impl CreateCommand {
         let node_name = node_config.node.name().ok_or(miette!(
             "Node name should be set to the command's default value"
         ))?;
+        let identity_name = {
+            let _notification_handler =
+                NotificationHandler::start(&opts.state, opts.terminal.clone());
+            match node_config.node.identity() {
+                Some(name) => {
+                    if let Ok(identity) = opts.state.get_named_identity(&name).await {
+                        identity.name()
+                    } else {
+                        opts.state.create_identity_with_name(&name).await?.name()
+                    }
+                }
+                None => opts
+                    .state
+                    .get_or_create_default_named_identity()
+                    .await?
+                    .name(),
+            }
+        };
 
         let res = if self.foreground_args.foreground {
-            node_config.run_foreground(ctx, &opts, &node_name).await
+            node_config
+                .run_foreground(ctx, &opts, &node_name, &identity_name)
+                .await
         } else {
-            node_config.run(ctx, &opts).await
+            node_config
+                .run(ctx, &opts, &node_name, &identity_name)
+                .await
         };
         if res.is_err() {
             let _ = opts.state.delete_node(&node_name, false).await;
@@ -175,10 +198,15 @@ impl NodeConfig {
         Ok(())
     }
 
-    pub async fn run(self, ctx: &Context, opts: &CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(
+        self,
+        ctx: &Context,
+        opts: &CommandGlobalOpts,
+        node_name: &String,
+        identity_name: &String,
+    ) -> miette::Result<()> {
         debug!("Running node config");
-        // Parse then run commands
-        for section in self.parse_commands()? {
+        for section in self.parse_commands(node_name, identity_name)? {
             section.run(ctx, opts).await?
         }
         Ok(())
@@ -189,13 +217,17 @@ impl NodeConfig {
         ctx: &Context,
         opts: &CommandGlobalOpts,
         node_name: &String,
+        identity_name: &String,
     ) -> miette::Result<()> {
         debug!("Running node config in foreground mode");
         // First, run the `project enroll` commands to prepare the identity and project data
         if self.project_enroll.ticket.is_some()
             && !self
                 .project_enroll
-                .run_in_subprocess(&opts.global_args)?
+                .run_in_subprocess(
+                    &opts.global_args,
+                    vec![format!("--identity {identity_name}")],
+                )?
                 .wait()
                 .await
                 .into_diagnostic()?
@@ -205,7 +237,7 @@ impl NodeConfig {
         }
 
         // Next, run the 'node create' command
-        let child = self.node.run_in_subprocess(&opts.global_args)?;
+        let child = self.node.run_in_subprocess(&opts.global_args, vec![])?;
 
         // Wait for the node to be up
         let is_up = {
@@ -244,11 +276,17 @@ impl NodeConfig {
     }
 
     /// Build commands and return validation errors if any
-    fn parse_commands(self) -> miette::Result<Vec<ParsedCommands>> {
-        let node_name = self.node.name();
-        let node_name = node_name.as_ref();
+    fn parse_commands(
+        self,
+        node_name: &String,
+        identity_name: &String,
+    ) -> miette::Result<Vec<ParsedCommands>> {
+        let node_name = Some(node_name);
+        let identity_name = Some(identity_name);
         Ok(vec![
-            self.project_enroll.into_parsed_commands()?.into(),
+            self.project_enroll
+                .into_parsed_commands(identity_name)?
+                .into(),
             self.node.into_parsed_commands()?.into(),
             self.policies.into_parsed_commands()?.into(),
             self.relays.into_parsed_commands(node_name)?.into(),
