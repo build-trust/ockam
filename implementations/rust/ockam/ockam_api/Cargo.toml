@@ -107,7 +107,7 @@ tracing-subscriber = { version = "0.3.18", features = ["json"] }
 url = "2.5.2"
 
 ockam_multiaddr = { path = "../ockam_multiaddr", version = "0.57.0", features = ["cbor", "serde"] }
-ockam_transport_core = { path = "../ockam_transport_core" }
+ockam_transport_core = { path = "../ockam_transport_core", version = "^0.87.0" }
 ockam_transport_tcp = { path = "../ockam_transport_tcp", version = "^0.120.0", default-features = false, features = ["std"] }
 tonic = "0.11"
 
@@ -155,9 +155,9 @@ hex = "0.4.3"
 indexmap = "2.2.6"
 mockall = "0.12"
 multimap = "0.10.0"
-ockam_macros = { path = "../ockam_macros", features = ["std"] }
-ockam_transport_core = { path = "../ockam_transport_core" }
-ockam_transport_tcp = { path = "../ockam_transport_tcp", default-features = false }
+ockam_macros = { path = "../ockam_macros", features = ["std"], version = "^0.34.0" }
+ockam_transport_core = { path = "../ockam_transport_core", version = "^0.87.0" }
+ockam_transport_tcp = { path = "../ockam_transport_tcp", default-features = false, version = "^0.120.0" }
 once_cell = { version = "1", default-features = false }
 opentelemetry_sdk = { version = "0.23.0", features = ["logs", "metrics", "trace", "rt-tokio", "testing"], default-features = false }
 pretty_assertions = "1.4.0"
