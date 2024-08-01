@@ -5,7 +5,7 @@ artifacts:
    readme: README.md
    container_services:
       images:
-      - /ockam_database/ockam_schema/ockam_repository/ockam_node:on
+      - /ockam_database/ockam_schema/ockam_repository/ockam
 
 privileges:
 - BIND SERVICE ENDPOINT:
