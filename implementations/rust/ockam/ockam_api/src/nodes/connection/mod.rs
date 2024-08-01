@@ -306,7 +306,7 @@ impl ConnectionBuilder {
                     // last piece only if it's a terminal (a service connecting to another node)
                     if last_pass && is_last {
                         let is_terminal = ctx
-                            .read_metadata(address.clone())
+                            .get_metadata(address.clone())
                             .await
                             .ok()
                             .flatten()

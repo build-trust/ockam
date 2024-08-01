@@ -199,7 +199,7 @@ impl NodeMessage {
     }
 
     /// Creates a [NodeMessage::ReadMetadata] message and reply receiver
-    pub fn read_metadata(address: Address) -> (Self, SmallReceiver<NodeReplyResult>) {
+    pub fn get_metadata(address: Address) -> (Self, SmallReceiver<NodeReplyResult>) {
         let (tx, rx) = small_channel();
         (Self::GetMetadata(address, tx), rx)
     }

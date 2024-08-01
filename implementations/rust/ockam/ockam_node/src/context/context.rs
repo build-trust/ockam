@@ -233,11 +233,11 @@ impl Context {
     }
 
     /// Read metadata for the provided address
-    pub async fn read_metadata(
+    pub async fn get_metadata(
         &self,
         address: impl Into<Address>,
     ) -> Result<Option<AddressMetadata>> {
-        let (msg, mut reply) = NodeMessage::read_metadata(address.into());
+        let (msg, mut reply) = NodeMessage::get_metadata(address.into());
         self.sender
             .send(msg)
             .await
