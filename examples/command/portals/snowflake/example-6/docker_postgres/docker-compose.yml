@@ -17,24 +17,17 @@ services:
   ockam:
     depends_on: [postgres]
     image: ghcr.io/build-trust/ockam
+    platform: linux/arm64
     environment:
       SERVER_TICKET: ${SERVER_TICKET:-}
       OCKAM_DEVELOPER: false
+      OCKAM_OPENTELEMETRY_EXPORT: false
     command:
     - node
     - create
+    - -vv
     - --foreground
-    - --node-config
-    - |
-      name: postgres
-      
-      ticket: $SERVER_TICKET
-      
-      relay: postgres
-      
-      tcp-outlet:
-        to: 5432
-        allow: postgres_client
-
+    - --configuration
+    - "{ node: postgres, ticket: $SERVER_TICKET, relay: postgres, tcp-outlet: { to: 5432, allow: postgres_client } }"
     networks:
     - local
