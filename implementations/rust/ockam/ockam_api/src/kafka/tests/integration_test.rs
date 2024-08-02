@@ -26,7 +26,7 @@ use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 use uuid::Uuid;
 
-use crate::kafka::key_exchange::controller::KafkaKeyExchangeController;
+use crate::kafka::key_exchange::controller::KafkaKeyExchangeControllerImpl;
 use crate::kafka::protocol_aware::inlet::KafkaInletInterceptorFactory;
 use crate::kafka::protocol_aware::utils::{encode_request, encode_response};
 use crate::kafka::{ConsumerPublishing, ConsumerResolution, KafkaInletController};
@@ -79,7 +79,7 @@ async fn create_kafka_service(
         )
         .await?;
 
-    let secure_channel_controller = KafkaKeyExchangeController::new(
+    let secure_channel_controller = KafkaKeyExchangeControllerImpl::new(
         (*handle.node_manager).clone(),
         handle.secure_channels.clone(),
         ConsumerResolution::ViaRelay(MultiAddr::try_from("/service/api")?),
@@ -117,6 +117,7 @@ async fn create_kafka_service(
             secure_channel_controller,
             inlet_controller,
             true,
+            vec![],
         )),
         Arc::new(AllowAll),
         Arc::new(AllowAll),

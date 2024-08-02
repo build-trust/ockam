@@ -259,6 +259,12 @@ impl Route {
     }
 }
 
+impl Default for Route {
+    fn default() -> Self {
+        Route::new().into()
+    }
+}
+
 impl Display for Route {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(

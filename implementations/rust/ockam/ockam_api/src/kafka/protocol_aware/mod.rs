@@ -117,6 +117,18 @@ impl PortalInterceptor for KafkaMessageInterceptorWrapper {
                     ockam_core::Error::new(Origin::Transport, Kind::Io, "Invalid data")
                 }
                 InterceptError::Ockam(error) => error,
+                InterceptError::Io(error) => {
+                    ockam_core::Error::new(Origin::Transport, Kind::Io, error)
+                }
+                InterceptError::Serde(error) => {
+                    ockam_core::Error::new(Origin::Transport, Kind::Io, error)
+                }
+                InterceptError::Minicbor(error) => {
+                    ockam_core::Error::new(Origin::Transport, Kind::Io, error)
+                }
+                InterceptError::Generic(error) => {
+                    ockam_core::Error::new(Origin::Transport, Kind::Io, error)
+                }
             })?;
 
             // avoid copying the first message
@@ -134,9 +146,11 @@ impl PortalInterceptor for KafkaMessageInterceptorWrapper {
 #[derive(Debug, Clone, Encode, Decode, CborLen)]
 #[rustfmt::skip]
 /// Wraps the content within every record batch
-struct MessageWrapper {
-    #[n(0)] consumer_decryptor_address: Address,
-    #[n(1)] content: Vec<u8>
+pub(crate) struct KafkaEncryptedContent {
+    /// The secure channel identifier used to encrypt the content
+    #[n(0)] pub consumer_decryptor_address: Address,
+    /// The encrypted content
+    #[n(1)] pub content: Vec<u8>
 }
 
 /// By default, kafka supports up to 1MB messages. 16MB is the maximum suggested
@@ -145,6 +159,14 @@ pub(crate) const MAX_KAFKA_MESSAGE_SIZE: u32 = 16 * 1024 * 1024;
 // internal error to return both io and ockam errors
 #[derive(Debug, thiserror::Error)]
 pub(crate) enum InterceptError {
+    #[error("IO error: {0}")]
+    Io(#[from] std::io::Error),
+    #[error("Serde error: {0}")]
+    Serde(#[from] serde_json::Error),
+    #[error("CBOR error: {0}")]
+    Minicbor(#[from] minicbor::decode::Error),
+    #[error("{0}")]
+    Generic(&'static str),
     #[error("Unexpected kafka protocol data")]
     InvalidData,
     #[error("{0}")]
@@ -154,5 +176,11 @@ pub(crate) enum InterceptError {
 impl From<NotEnoughBytesError> for InterceptError {
     fn from(_: NotEnoughBytesError) -> Self {
         InterceptError::InvalidData
+    }
+}
+
+impl From<&'static str> for InterceptError {
+    fn from(error: &'static str) -> Self {
+        InterceptError::Generic(error)
     }
 }

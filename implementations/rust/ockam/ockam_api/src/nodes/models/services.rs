@@ -101,6 +101,7 @@ pub struct StartKafkaInletRequest {
     #[n(7)] inlet_policy_expression: Option<PolicyExpression>,
     #[n(8)] consumer_policy_expression: Option<PolicyExpression>,
     #[n(9)] producer_policy_expression: Option<PolicyExpression>,
+    #[n(10)] encrypted_fields: Vec<String>,
 }
 
 impl StartKafkaInletRequest {
@@ -110,6 +111,7 @@ impl StartKafkaInletRequest {
         brokers_port_range: impl Into<(u16, u16)>,
         kafka_outlet_route: MultiAddr,
         encrypt_content: bool,
+        encrypted_fields: Vec<String>,
         consumer_resolution: ConsumerResolution,
         consumer_publishing: ConsumerPublishing,
         inlet_policy_expression: Option<PolicyExpression>,
@@ -126,6 +128,7 @@ impl StartKafkaInletRequest {
             inlet_policy_expression,
             consumer_policy_expression,
             producer_policy_expression,
+            encrypted_fields,
         }
     }
 
@@ -141,6 +144,10 @@ impl StartKafkaInletRequest {
 
     pub fn encrypt_content(&self) -> bool {
         self.encrypt_content
+    }
+
+    pub fn encrypted_fields(&self) -> Vec<String> {
+        self.encrypted_fields.clone()
     }
 
     pub fn consumer_resolution(&self) -> ConsumerResolution {

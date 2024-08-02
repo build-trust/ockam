@@ -1,5 +1,3 @@
-use std::fmt::Debug;
-
 use crate::kafka::kafka_outlet_address;
 use crate::nodes::NodeManager;
 use crate::port_range::PortRange;
@@ -14,6 +12,8 @@ use ockam_core::{Result, Route};
 use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
 use ockam_transport_core::HostnamePort;
+use std::fmt::Debug;
+use std::sync::Weak;
 
 type BrokerId = i32;
 
@@ -24,7 +24,7 @@ type BrokerId = i32;
 pub(crate) struct KafkaInletController {
     inner: Arc<Mutex<KafkaInletMapInner>>,
     policy_expression: Option<PolicyExpression>,
-    node_manager: Arc<NodeManager>,
+    node_manager: Weak<NodeManager>,
 }
 
 impl Debug for KafkaInletController {
@@ -68,8 +68,25 @@ impl KafkaInletController {
                 local_interceptor_route,
                 remote_interceptor_route,
             })),
-            node_manager,
+            node_manager: Arc::downgrade(&node_manager),
             policy_expression,
+        }
+    }
+
+    #[cfg(test)]
+    pub(crate) fn stub() -> KafkaInletController {
+        Self {
+            inner: Arc::new(Mutex::new(KafkaInletMapInner {
+                outlet_node_multiaddr: Default::default(),
+                broker_map: Default::default(),
+                current_port: Default::default(),
+                port_range: PortRange::new(0, 0).unwrap(),
+                bind_hostname: Default::default(),
+                local_interceptor_route: Default::default(),
+                remote_interceptor_route: Default::default(),
+            })),
+            node_manager: Weak::new(),
+            policy_expression: Default::default(),
         }
     }
 
@@ -103,7 +120,11 @@ impl KafkaInletController {
             let inlet_bind_address =
                 HostnamePort::new(inner.bind_hostname.clone(), inner.current_port);
 
-            self.node_manager
+            let node_manager = self.node_manager.upgrade().ok_or_else(|| {
+                Error::new(Origin::Node, Kind::Internal, "node manager was shut down")
+            })?;
+
+            node_manager
                 .create_inlet(
                     context,
                     inlet_bind_address.clone(),

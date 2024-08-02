@@ -1,6 +1,6 @@
 use super::NodeManagerWorker;
 use crate::error::ApiError;
-use crate::kafka::key_exchange::controller::KafkaKeyExchangeController;
+use crate::kafka::key_exchange::controller::KafkaKeyExchangeControllerImpl;
 use crate::kafka::protocol_aware::inlet::KafkaInletInterceptorFactory;
 use crate::kafka::protocol_aware::outlet::KafkaOutletInterceptorFactory;
 use crate::kafka::KafkaOutletController;
@@ -45,6 +45,7 @@ impl NodeManagerWorker {
                 request.brokers_port_range(),
                 request.project_route(),
                 request.encrypt_content(),
+                request.encrypted_fields(),
                 request.consumer_resolution(),
                 request.consumer_publishing(),
                 request.inlet_policy_expression(),
@@ -117,6 +118,7 @@ impl InMemoryNode {
         brokers_port_range: (u16, u16),
         outlet_node_multiaddr: MultiAddr,
         encrypt_content: bool,
+        encrypted_fields: Vec<String>,
         consumer_resolution: ConsumerResolution,
         consumer_publishing: ConsumerPublishing,
         inlet_policy_expression: Option<PolicyExpression>,
@@ -147,7 +149,7 @@ impl InMemoryNode {
             )
             .await?;
 
-        let secure_channel_controller = KafkaKeyExchangeController::new(
+        let secure_channel_controller = KafkaKeyExchangeControllerImpl::new(
             self.node_manager.clone(),
             self.secure_channels.clone(),
             consumer_resolution,
@@ -233,6 +235,7 @@ impl InMemoryNode {
                 secure_channel_controller,
                 inlet_controller,
                 encrypt_content,
+                encrypted_fields,
             )),
             Arc::new(policy_access_control.create_incoming()),
             Arc::new(policy_access_control.create_outgoing(context).await?),

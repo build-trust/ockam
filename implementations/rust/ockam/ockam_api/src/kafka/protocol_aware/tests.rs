@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod test {
     use crate::kafka::inlet_controller::KafkaInletController;
-    use crate::kafka::key_exchange::controller::KafkaKeyExchangeController;
+    use crate::kafka::key_exchange::controller::KafkaKeyExchangeControllerImpl;
     use crate::kafka::protocol_aware::inlet::InletInterceptorImpl;
     use crate::kafka::protocol_aware::utils::{encode_request, encode_response};
     use crate::kafka::protocol_aware::{
@@ -19,6 +19,7 @@ mod test {
     use ockam_core::route;
     use ockam_multiaddr::MultiAddr;
     use ockam_node::Context;
+    use std::sync::Arc;
 
     #[allow(non_snake_case)]
     #[ockam_macros::test(timeout = 5_000)]
@@ -57,7 +58,7 @@ mod test {
             Some(handle.node_manager.identifier()),
         );
 
-        let secure_channel_controller = KafkaKeyExchangeController::new(
+        let secure_channel_controller = KafkaKeyExchangeControllerImpl::new(
             (*handle.node_manager).clone(),
             secure_channels,
             ConsumerResolution::None,
@@ -67,10 +68,11 @@ mod test {
         );
 
         let interceptor = InletInterceptorImpl::new(
-            secure_channel_controller,
+            Arc::new(secure_channel_controller),
             Default::default(),
             inlet_map,
             true,
+            vec![],
         );
 
         let mut correlation_id = 0;

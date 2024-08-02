@@ -1,7 +1,7 @@
 use crate::kafka::protocol_aware::inlet::InletInterceptorImpl;
 use crate::kafka::protocol_aware::utils::{decode_body, encode_response};
 use crate::kafka::protocol_aware::{
-    InterceptError, KafkaMessageResponseInterceptor, MessageWrapper, RequestInfo,
+    InterceptError, KafkaEncryptedContent, KafkaMessageResponseInterceptor, RequestInfo,
 };
 use crate::kafka::KafkaInletController;
 use bytes::{Bytes, BytesMut};
@@ -230,21 +230,11 @@ impl InletInterceptorImpl {
 
                     for record in records.iter_mut() {
                         if let Some(record_value) = record.value.take() {
-                            let message_wrapper: MessageWrapper =
-                                Decoder::new(record_value.as_ref())
-                                    .decode()
-                                    .map_err(|_| InterceptError::InvalidData)?;
-
-                            let decrypted_content = self
-                                .key_exchange_controller
-                                .decrypt_content(
-                                    context,
-                                    &message_wrapper.consumer_decryptor_address,
-                                    message_wrapper.content,
-                                )
-                                .await
-                                .map_err(InterceptError::Ockam)?;
-
+                            let decrypted_content = if self.encrypted_fields.is_empty() {
+                                self.decrypt_whole_record(context, record_value).await?
+                            } else {
+                                self.decrypt_specific_fields(context, record_value).await?
+                            };
                             record.value = Some(decrypted_content.into());
                         }
                     }
@@ -270,5 +260,70 @@ impl InletInterceptorImpl {
             request_info.request_api_version,
             ApiKey::FetchKey,
         )
+    }
+
+    async fn decrypt_whole_record(
+        &self,
+        context: &mut Context,
+        record_value: Bytes,
+    ) -> Result<Vec<u8>, InterceptError> {
+        let message_wrapper: KafkaEncryptedContent =
+            Decoder::new(record_value.as_ref()).decode()?;
+
+        self.key_exchange_controller
+            .decrypt_content(
+                context,
+                &message_wrapper.consumer_decryptor_address,
+                message_wrapper.content,
+            )
+            .await
+            .map_err(InterceptError::Ockam)
+    }
+
+    async fn decrypt_specific_fields(
+        &self,
+        context: &mut Context,
+        record_value: Bytes,
+    ) -> Result<Vec<u8>, InterceptError> {
+        let mut record_value = serde_json::from_slice::<serde_json::Value>(&record_value)?;
+
+        if let serde_json::Value::Object(map) = &mut record_value {
+            for field in &self.encrypted_fields {
+                // when the encrypted field is present is expected to be a hex encoded string
+                // wrapped by the KafkaEncryptedContent struct
+                if let Some(value) = map.get_mut(field) {
+                    let encrypted_content = if let serde_json::Value::String(string) = value {
+                        hex::decode(string).map_err(|_| "Encrypted is not a valid hex string")?
+                    } else {
+                        error!("encrypted field is not a hex string");
+                        return Err("The encrypted field is not a hex-encoded string".into());
+                    };
+
+                    let message_wrapper: KafkaEncryptedContent =
+                        Decoder::new(&encrypted_content).decode()?;
+
+                    let decrypted_content = self
+                        .key_exchange_controller
+                        .decrypt_content(
+                            context,
+                            &message_wrapper.consumer_decryptor_address,
+                            message_wrapper.content,
+                        )
+                        .await
+                        .map_err(InterceptError::Ockam)?;
+
+                    *value = serde_json::from_slice(decrypted_content.as_slice())?;
+                }
+            }
+            serde_json::to_vec(&record_value).map_err(|error| {
+                error!("cannot serialize decrypted fields");
+                error.into()
+            })
+        } else {
+            error!(
+                "cannot decrypt specific fields, expected a JSON object but got a different type"
+            );
+            Err("Only JSON objects are supported in the message".into())
+        }
     }
 }

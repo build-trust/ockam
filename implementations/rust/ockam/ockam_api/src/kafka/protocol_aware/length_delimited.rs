@@ -10,7 +10,7 @@ pub(super) struct KafkaMessageDecoder {
 }
 
 impl KafkaMessageDecoder {
-    pub(super) fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             buffer: Default::default(),
             current_message_length: 0,
@@ -18,7 +18,7 @@ impl KafkaMessageDecoder {
     }
 
     /// Accepts length encoded messages, returns complete messages
-    pub(super) fn extract_complete_messages(
+    pub(crate) fn extract_complete_messages(
         &mut self,
         mut incoming: BytesMut,
         max_message_size: u32,
@@ -68,7 +68,7 @@ impl KafkaMessageDecoder {
 }
 
 /// Return a length encoded message
-pub(super) fn length_encode(content: BytesMut) -> ockam::Result<BytesMut> {
+pub(crate) fn length_encode(content: BytesMut) -> ockam::Result<BytesMut> {
     let mut buffer = BytesMut::new();
     if content.len() >= u32::MAX as usize {
         Err(Error::new(

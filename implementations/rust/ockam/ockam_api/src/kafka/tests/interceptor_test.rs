@@ -27,7 +27,7 @@ use ockam_node::Context;
 use ockam_transport_tcp::{PortalInterceptorWorker, PortalMessage, MAX_PAYLOAD_SIZE};
 
 use crate::kafka::inlet_controller::KafkaInletController;
-use crate::kafka::key_exchange::controller::KafkaKeyExchangeController;
+use crate::kafka::key_exchange::controller::KafkaKeyExchangeControllerImpl;
 use crate::kafka::protocol_aware::inlet::InletInterceptorImpl;
 use crate::kafka::protocol_aware::KafkaMessageInterceptorWrapper;
 use crate::kafka::protocol_aware::MAX_KAFKA_MESSAGE_SIZE;
@@ -318,7 +318,7 @@ async fn setup_only_worker(context: &mut Context, handle: &NodeManagerHandle) ->
         Some(authority_identifier.clone()),
     );
 
-    let secure_channel_controller = KafkaKeyExchangeController::new(
+    let secure_channel_controller = KafkaKeyExchangeControllerImpl::new(
         (*handle.node_manager).clone(),
         secure_channels,
         ConsumerResolution::ViaRelay(MultiAddr::default()),
@@ -335,10 +335,11 @@ async fn setup_only_worker(context: &mut Context, handle: &NodeManagerHandle) ->
         Arc::new(AllowAll),
         Arc::new(KafkaMessageInterceptorWrapper::new(
             Arc::new(InletInterceptorImpl::new(
-                secure_channel_controller,
+                Arc::new(secure_channel_controller),
                 Default::default(),
                 inlet_map,
                 true,
+                vec![],
             )),
             TEST_MAX_KAFKA_MESSAGE_SIZE,
         )),
@@ -408,7 +409,7 @@ async fn kafka_portal_worker__metadata_exchange__response_changed(
         )
         .await?;
 
-    let secure_channel_controller = KafkaKeyExchangeController::new(
+    let secure_channel_controller = KafkaKeyExchangeControllerImpl::new(
         (*handle.node_manager).clone(),
         handle.secure_channels.clone(),
         ConsumerResolution::ViaRelay(MultiAddr::default()),
@@ -435,10 +436,11 @@ async fn kafka_portal_worker__metadata_exchange__response_changed(
         Arc::new(AllowAll),
         Arc::new(KafkaMessageInterceptorWrapper::new(
             Arc::new(InletInterceptorImpl::new(
-                secure_channel_controller,
+                Arc::new(secure_channel_controller),
                 Default::default(),
                 inlet_map.clone(),
                 true,
+                vec![],
             )),
             MAX_KAFKA_MESSAGE_SIZE,
         )),
