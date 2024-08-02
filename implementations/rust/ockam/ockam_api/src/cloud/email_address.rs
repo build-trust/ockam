@@ -4,6 +4,7 @@ use ockam_core::{Error, Result};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
+use std::hash::Hash;
 
 /// Newtype for an email address
 /// It is backed by a String and implements a PartialEq instance
@@ -56,6 +57,12 @@ impl EmailAddress {
 impl PartialEq for EmailAddress {
     fn eq(&self, other: &Self) -> bool {
         self.0.to_lowercase() == other.0.to_lowercase()
+    }
+}
+
+impl Hash for EmailAddress {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.0.to_lowercase().hash(state)
     }
 }
 

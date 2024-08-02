@@ -10,13 +10,7 @@ impl CliState {
     #[instrument(skip_all, fields(user = %user))]
     pub async fn store_user(&self, user: &UserInfo) -> Result<()> {
         let repository = self.users_repository();
-        let is_first_user = repository.get_users().await?.is_empty();
         repository.store_user(user).await?;
-
-        // if this is the first user we store we mark it as the default user
-        if is_first_user {
-            self.set_default_user(&user.email).await?
-        }
         Ok(())
     }
 
