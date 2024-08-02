@@ -6,7 +6,7 @@ use ockam_core::compat::string::String;
 use ockam_core::compat::{collections::BTreeMap, vec::Vec};
 use ockam_vault::{ECDSASHA256CurveP256Signature, EdDSACurve25519Signature};
 
-/// `data_type` value in [`VersionedData`] struct when used with [`Credential`]
+/// `data_type` value in [`VersionedData`](crate::models::VersionedData) struct when used with [`Credential`]
 pub const CREDENTIAL_DATA_TYPE: u8 = 3;
 
 /// Credential

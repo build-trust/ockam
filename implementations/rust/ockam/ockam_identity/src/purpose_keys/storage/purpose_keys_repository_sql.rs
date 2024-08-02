@@ -17,7 +17,7 @@ use crate::models::{Identifier, PurposeKeyAttestation};
 use crate::purpose_keys::storage::PurposeKeysRepository;
 use crate::Purpose;
 
-/// Storage for own [`super::super::super::purpose_key::PurposeKey`]s
+/// Storage for own [`PurposeKeys`](crate::PurposeKeys)
 #[derive(Clone)]
 pub struct PurposeKeysSqlxDatabase {
     database: SqlxDatabase,

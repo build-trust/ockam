@@ -8,11 +8,11 @@ use ockam_vault::{
     EdDSACurve25519Signature, X25519PublicKey,
 };
 
-/// `data_type` value in [`VersionedData`] struct when used with [`PurposeKeyAttestation`]
+/// `data_type` value in [`VersionedData`](crate::models::VersionedData) struct when used with [`PurposeKeyAttestation`]
 pub const PURPOSE_KEY_ATTESTATION_DATA_TYPE: u8 = 2;
 
 /// Self-signed Attestation of an [`super::super::identity::Identity`] associating
-/// a [`super::super::purpose_key::PurposeKey`] with itself
+/// a [`PurposeKeys`](crate::PurposeKeys) with itself
 #[derive(Clone, Debug, PartialEq, Eq, Encode, Decode, CborLen)]
 #[rustfmt::skip]
 pub struct PurposeKeyAttestation {

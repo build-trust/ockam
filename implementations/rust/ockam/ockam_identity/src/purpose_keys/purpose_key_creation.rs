@@ -58,7 +58,7 @@ impl PurposeKeyCreation {
         ))
     }
 
-    /// Get an instance of [`PurposeKeyBuilder`]
+    /// Get an instance of [`PurposeKeyBuilder`](crate::CredentialPurposeKeyBuilder)
     pub fn secure_channel_purpose_key_builder(
         &self,
         identifier: &Identifier,
@@ -74,7 +74,7 @@ impl PurposeKeyCreation {
         )
     }
 
-    /// Get an instance of [`PurposeKeyBuilder`]
+    /// Get an instance of [`PurposeKeyBuilder`](crate::CredentialPurposeKeyBuilder)
     pub fn credential_purpose_key_builder(
         &self,
         identifier: &Identifier,
@@ -97,7 +97,7 @@ impl PurposeKeyCreation {
 }
 
 impl PurposeKeyCreation {
-    /// Create a [`PurposeKey`]
+    /// Create a [`PurposeKeys`](crate::PurposeKeys)
     pub async fn create_secure_channel_purpose_key(
         &self,
         identifier: &Identifier,
@@ -106,7 +106,7 @@ impl PurposeKeyCreation {
         builder.build().await
     }
 
-    /// Create a [`PurposeKey`]
+    /// Create a [`PurposeKeys`](crate::PurposeKeys)
     pub async fn create_credential_purpose_key(
         &self,
         identifier: &Identifier,
@@ -237,7 +237,7 @@ impl PurposeKeyCreation {
             .await
     }
 
-    /// Import own [`PurposeKey`] from its [`PurposeKeyAttestation`]
+    /// Import own [`PurposeKeys`](crate::PurposeKeys) from its [`PurposeKeyAttestation`]
     /// It's assumed that the corresponding secret exists in the Vault
     pub async fn import_secure_channel_purpose_key(
         &self,
@@ -273,7 +273,7 @@ impl PurposeKeyCreation {
         Ok(purpose_key)
     }
 
-    /// Import own [`PurposeKey`] from its [`PurposeKeyAttestation`]
+    /// Import own [`PurposeKeys`](crate::PurposeKeys) from its [`PurposeKeyAttestation`]
     /// It's assumed that the corresponding secret exists in the Vault
     pub async fn import_credential_purpose_key(
         &self,
@@ -312,7 +312,7 @@ impl PurposeKeyCreation {
 }
 
 impl PurposeKeyCreation {
-    /// Get the [`super::super::super::purpose_key::PurposeKey`]
+    /// Get the [`PurposeKeys`](crate::PurposeKeys)
     /// for given [`Identifier`] and [`Purpose`]
     async fn get_purpose_key(
         &self,

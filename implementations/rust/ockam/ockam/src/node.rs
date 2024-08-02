@@ -96,7 +96,7 @@ impl Node {
         self.identities_creation().create_identity().await
     }
 
-    /// Create the [`SecureChannel`] [`PurposeKey`]
+    /// Create the [`SecureChannel`] [`PurposeKeys`]
     pub async fn create_secure_channel_key(&self, identifier: &Identifier) -> Result<()> {
         let _ = self
             .identities()

@@ -3,7 +3,7 @@ use sqlx::error::BoxDynError;
 use sqlx::postgres::any::AnyTypeInfoKind;
 use sqlx::{Any, Database, Decode, Type, Value, ValueRef};
 
-/// This type is used to map Option<T> fields for the types deriving `FromRow`
+/// This type is used to map `Option<T>` fields for the types deriving `FromRow`
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Nullable<T>(Option<T>);
 

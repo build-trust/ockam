@@ -22,7 +22,7 @@ use crate::{
 
 use super::make_aes;
 
-/// [`SecureChannelVault`] implementation using software
+/// [`SoftwareVaultForSecureChannels`] implementation using software
 pub struct SoftwareVaultForSecureChannels {
     ephemeral_buffer_secrets: Arc<RwLock<BTreeMap<SecretBufferHandle, BufferSecret>>>,
     ephemeral_aead_secrets: Arc<RwLock<BTreeMap<AeadSecretKeyHandle, AeadSecret>>>,

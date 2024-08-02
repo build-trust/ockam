@@ -12,7 +12,7 @@ use ockam_vault::{
 #[cbor(transparent)]
 pub struct ChangeHistory(#[n(0)] pub Vec<Change>);
 
-/// `data_type` value in [`VersionedData`] struct when used with [`Change`]
+/// `data_type` value in [`VersionedData`](crate::models::VersionedData) struct when used with [`Change`]
 pub const CHANGE_DATA_TYPE: u8 = 1;
 
 /// Individual Identity change which implies replacing the old key

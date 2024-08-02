@@ -107,7 +107,7 @@ where
 pub struct NeutralMessage(Vec<u8>);
 
 impl NeutralMessage {
-    /// Returns the inner Vec<u8> of the NeutralMessage
+    /// Returns the inner `Vec<u8>` of the NeutralMessage
     pub fn into_vec(self) -> Vec<u8> {
         self.0
     }

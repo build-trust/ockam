@@ -19,7 +19,7 @@ use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{async_trait, compat::boxed::Box, Error, Result};
 use sha2::{Digest, Sha256};
 
-/// [`SigningVault`] implementation using software
+/// [`SigningVault`](crate::SoftwareVaultForSigning) implementation using software
 #[derive(Clone)]
 pub struct SoftwareVaultForSigning {
     secrets: Arc<dyn SecretsRepository>,

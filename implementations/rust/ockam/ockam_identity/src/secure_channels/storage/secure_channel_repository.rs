@@ -51,12 +51,12 @@ impl PersistedSecureChannel {
         &self.their_identifier
     }
 
-    /// Decryptor remote address. See [`Addresses`]
+    /// Decryptor remote address. See [`Address`]
     pub fn decryptor_remote(&self) -> &Address {
         &self.decryptor_remote
     }
 
-    /// Decryptor api address. See [`Addresses`]
+    /// Decryptor api address. See [`Address`]
     pub fn decryptor_api(&self) -> &Address {
         &self.decryptor_api
     }

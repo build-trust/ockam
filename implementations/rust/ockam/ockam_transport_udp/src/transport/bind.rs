@@ -147,7 +147,7 @@ impl UdpTransport {
     }
 }
 
-/// Result of [`TcpTransport::listen`] call.
+/// Result of [`ockam_transport_tcp::TcpTransport::listen`] call.
 #[derive(Clone, Debug)]
 pub struct UdpBind {
     addresses: Addresses,

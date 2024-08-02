@@ -133,12 +133,12 @@ impl IdentitiesCreation {
         Ok(identity.identifier().clone())
     }
 
-    /// [`SigningVault`]
+    /// [`SigningVault`](ockam_vault::VaultForSigning)
     pub fn identity_vault(&self) -> Arc<dyn VaultForSigning> {
         self.identity_vault.clone()
     }
 
-    /// [`VerifyingVault`]
+    /// [`VerifyingVault`](ockam_vault::VaultForVerifyingSignatures)
     pub fn verifying_vault(&self) -> Arc<dyn VaultForVerifyingSignatures> {
         self.verifying_vault.clone()
     }

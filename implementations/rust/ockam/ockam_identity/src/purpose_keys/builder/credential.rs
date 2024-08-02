@@ -69,7 +69,7 @@ impl CredentialPurposeKeyBuilder {
         self
     }
 
-    /// Create the corresponding [`PurposeKey`]
+    /// Create the corresponding [`PurposeKeys`](crate::PurposeKeys)
     pub async fn build(self) -> Result<CredentialPurposeKey> {
         // TODO: Check if such key already exists and rewrite it correctly (also delete from the Vault)
 

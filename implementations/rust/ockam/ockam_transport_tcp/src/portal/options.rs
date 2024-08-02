@@ -21,7 +21,7 @@ impl TcpInletOptions {
         }
     }
 
-    /// Set TCP inlet to paused mode after start. No unpause call [`TcpInlet::unpause`]
+    /// Set TCP inlet to paused mode after start. No unpause call [`crate::TcpInlet::unpause`]
     pub fn paused(mut self) -> Self {
         self.is_paused = true;
         self

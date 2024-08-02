@@ -40,7 +40,7 @@ pub enum TransportError {
     /// InvalidRouterResponseType
     InvalidRouterResponseType,
     /// Excessive length of header, possible DoS attack
-    /// https://github.com/advisories/GHSA-9mcr-873m-xcxp
+    /// <https://github.com/advisories/GHSA-9mcr-873m-xcxp>
     AttackAttempt,
     /// Invalid protocol version
     InvalidProtocolVersion,

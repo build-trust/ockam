@@ -9,17 +9,17 @@ pub struct TcpRegistry {
 }
 
 impl TcpRegistry {
-    /// Return [`Address`]es of all active sender workers
+    /// Return [`Addresses`](crate::TcpListenerInfo) of all active sender workers
     pub fn get_all_sender_workers(&self) -> Vec<TcpSenderInfo> {
         self.registry.read().unwrap().sender_workers.clone()
     }
 
-    /// Return [`Address`]es of all active receiver processors
+    /// Return [`Addresses`](crate::TcpListenerInfo) of all active receiver processors
     pub fn get_all_receiver_processors(&self) -> Vec<TcpReceiverInfo> {
         self.registry.read().unwrap().receiver_processors.clone()
     }
 
-    /// Return [`Address`]es of all active sender workers
+    /// Return [`Addresses`](crate::TcpListenerInfo) of all active sender workers
     pub fn get_all_listeners(&self) -> Vec<TcpListenerInfo> {
         self.registry.read().unwrap().listener_processors.clone()
     }
