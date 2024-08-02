@@ -1,5 +1,5 @@
 use crate::kafka::key_exchange::controller::{
-    InnerSecureChannelControllerImpl, KafkaKeyExchangeController,
+    InnerSecureChannelController, KafkaKeyExchangeControllerImpl,
 };
 use crate::kafka::ConsumerResolution;
 use crate::nodes::service::SecureChannelType;
@@ -12,10 +12,10 @@ use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
 use tokio::sync::MutexGuard;
 
-impl KafkaKeyExchangeController {
+impl KafkaKeyExchangeControllerImpl {
     /// Creates a secure channel for the given destination.
     async fn create_secure_channel(
-        inner: &MutexGuard<'_, InnerSecureChannelControllerImpl>,
+        inner: &MutexGuard<'_, InnerSecureChannelController>,
         context: &Context,
         mut destination: MultiAddr,
     ) -> Result<Address> {
@@ -37,7 +37,7 @@ impl KafkaKeyExchangeController {
 
     /// Creates a secure channel for the given destination, for key exchange only.
     async fn create_key_exchange_only_secure_channel(
-        inner: &MutexGuard<'_, InnerSecureChannelControllerImpl>,
+        inner: &MutexGuard<'_, InnerSecureChannelController>,
         context: &Context,
         mut destination: MultiAddr,
     ) -> Result<Address> {
@@ -180,7 +180,7 @@ impl KafkaKeyExchangeController {
     }
 
     async fn validate_consumer_credentials(
-        inner: &MutexGuard<'_, InnerSecureChannelControllerImpl>,
+        inner: &MutexGuard<'_, InnerSecureChannelController>,
         entry: &SecureChannelRegistryEntry,
     ) -> Result<()> {
         let authorized = inner

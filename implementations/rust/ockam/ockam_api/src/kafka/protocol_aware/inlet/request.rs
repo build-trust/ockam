@@ -1,12 +1,12 @@
 use crate::kafka::protocol_aware::inlet::InletInterceptorImpl;
 use crate::kafka::protocol_aware::utils::{decode_body, encode_request};
+use crate::kafka::protocol_aware::RequestInfo;
 use crate::kafka::protocol_aware::{InterceptError, KafkaMessageRequestInterceptor};
-use crate::kafka::protocol_aware::{MessageWrapper, RequestInfo};
 use bytes::{Bytes, BytesMut};
 use kafka_protocol::messages::fetch_request::FetchRequest;
-use kafka_protocol::messages::produce_request::ProduceRequest;
+use kafka_protocol::messages::produce_request::{PartitionProduceData, ProduceRequest};
 use kafka_protocol::messages::request_header::RequestHeader;
-use kafka_protocol::messages::ApiKey;
+use kafka_protocol::messages::{ApiKey, TopicName};
 use kafka_protocol::protocol::buf::ByteBuf;
 use kafka_protocol::protocol::Decodable;
 use kafka_protocol::records::{
@@ -187,32 +187,21 @@ impl InletInterceptorImpl {
 
                     for record in records.iter_mut() {
                         if let Some(record_value) = record.value.take() {
-                            let encrypted_content = self
-                                .key_exchange_controller
-                                .encrypt_content(
+                            let buffer = if !self.encrypted_fields.is_empty() {
+                                // if we encrypt only specific fields, we assume the record must be
+                                // valid JSON map
+                                self.encrypt_specific_fields(
                                     context,
                                     topic_name,
-                                    data.index,
-                                    record_value.to_vec(),
+                                    data,
+                                    &record_value,
                                 )
-                                .await
-                                .map_err(InterceptError::Ockam)?;
-
-                            // TODO: to target multiple consumers we could duplicate
-                            //  the content with a dedicated encryption for each consumer
-                            let wrapper = MessageWrapper {
-                                consumer_decryptor_address: encrypted_content
-                                    .consumer_decryptor_address,
-                                content: encrypted_content.content,
+                                .await?
+                            } else {
+                                self.encrypt_whole_record(context, topic_name, data, record_value)
+                                    .await?
                             };
-
-                            let mut write_buffer = Vec::with_capacity(1024);
-                            let mut encoder = Encoder::new(&mut write_buffer);
-                            encoder
-                                .encode(wrapper)
-                                .map_err(|_err| InterceptError::InvalidData)?;
-
-                            record.value = Some(write_buffer.into());
+                            record.value = Some(buffer.into());
                         }
                     }
 
@@ -238,5 +227,66 @@ impl InletInterceptorImpl {
             header.request_api_version,
             ApiKey::ProduceKey,
         )
+    }
+
+    async fn encrypt_whole_record(
+        &self,
+        context: &mut Context,
+        topic_name: &TopicName,
+        data: &mut PartitionProduceData,
+        record_value: Bytes,
+    ) -> Result<Vec<u8>, InterceptError> {
+        let encrypted_content = self
+            .key_exchange_controller
+            .encrypt_content(context, topic_name, data.index, record_value.to_vec())
+            .await
+            .map_err(InterceptError::Ockam)?;
+
+        let mut write_buffer = Vec::with_capacity(1024);
+        let mut encoder = Encoder::new(&mut write_buffer);
+        encoder
+            .encode(encrypted_content)
+            .map_err(|_err| InterceptError::InvalidData)?;
+
+        Ok(write_buffer)
+    }
+
+    async fn encrypt_specific_fields(
+        &self,
+        context: &mut Context,
+        topic_name: &TopicName,
+        data: &mut PartitionProduceData,
+        record_value: &Bytes,
+    ) -> Result<Vec<u8>, InterceptError> {
+        let mut record_value = serde_json::from_slice::<serde_json::Value>(record_value)?;
+
+        if let serde_json::Value::Object(map) = &mut record_value {
+            for field in &self.encrypted_fields {
+                if let Some(value) = map.get_mut(field) {
+                    let encrypted_content = self
+                        .key_exchange_controller
+                        .encrypt_content(
+                            context,
+                            topic_name,
+                            data.index,
+                            serde_json::to_vec(value).map_err(|_| InterceptError::InvalidData)?,
+                        )
+                        .await
+                        .map_err(InterceptError::Ockam)?;
+
+                    let mut write_buffer = Vec::with_capacity(1024);
+                    let mut encoder = Encoder::new(&mut write_buffer);
+                    encoder
+                        .encode(encrypted_content)
+                        .map_err(|_| InterceptError::InvalidData)?;
+                    *value = serde_json::Value::String(hex::encode(&write_buffer));
+                }
+            }
+        } else {
+            warn!("only JSON objects are supported for field encryption");
+            return Err("Only JSON objects are supported".into());
+        }
+
+        Ok(record_value.to_string().as_bytes().to_vec())
     }
 }

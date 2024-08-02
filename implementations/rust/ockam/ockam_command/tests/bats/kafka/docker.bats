@@ -462,3 +462,94 @@ kafka_docker_end_to_end_encrypted_offset_decryption() {
   start_kafka
   kafka_docker_end_to_end_encrypted_offset_decryption
 }
+
+kafka_docker_encrypt_only_two_fields() {
+  # Admin
+  export ADMIN_HOME="$OCKAM_HOME"
+  export OCKAM_LOGGING=1
+  export OCKAM_LOG_LEVEL=info
+
+  export CONSUMER_OUTPUT="$ADMIN_HOME/consumer.log"
+
+  # create a kafka outlet and inlet with direct connection to the kafka instance
+  run_success "$OCKAM" kafka-outlet create --bootstrap-server 127.0.0.1:19092
+  run_success "$OCKAM" kafka-inlet create --from 29092 \
+    --encrypted-field encrypted_field_one \
+    --encrypted-field encrypted_field_two \
+    --avoid-publishing \
+    --to self \
+    --consumer self
+
+  run kafka-topics --bootstrap-server localhost:29092 --delete --topic demo || true
+  sleep 5
+  run_success kafka-topics --bootstrap-server localhost:29092 --create --topic demo --partitions 1 --replication-factor 1
+
+  # we push different records in the same topic
+  # ockam is expected to encrypt only the fields encrypted_field_one and encrypted_field_two
+  sleep 5
+  RECORDS=(
+    '{"encrypted_field_one":"value1","encrypted_field_two":"value2","field_three":"value3"}'
+    '{"encrypted_field_one":{"key": "value"},"encrypted_field_two":["hello","world"]}'
+  )
+  for record in "${RECORDS[@]}"; do echo $record; done | kafka-console-producer --topic demo --bootstrap-server localhost:29092 --max-block-ms 30000
+  sleep 5
+
+  # connect directly to the broker to get the "raw" records
+  # the fields encrypted_field_one and encrypted_field_two should be encrypted
+  kafka-console-consumer --topic demo \
+    --bootstrap-server localhost:19092 \
+    --partition 0 \
+    --offset 0 \
+    --max-messages 1 --timeout-ms 30000 >"$CONSUMER_OUTPUT"
+
+  run bash -c "cat \"\$CONSUMER_OUTPUT\" | jq -r '.encrypted_field_one'"
+  refute_output "value1"
+
+  run bash -c "cat \"\$CONSUMER_OUTPUT\" | jq -r '.encrypted_field_two'"
+  refute_output "value2"
+
+  run bash -c "cat \"\$CONSUMER_OUTPUT\" | jq -r '.field_three'"
+  assert_output "value3"
+
+  # connect to the ockam kafka inlet to get the first record
+  # the fields encrypted_field_one and encrypted_field_two should be decrypted
+  kafka-console-consumer --topic demo \
+    --bootstrap-server localhost:29092 \
+    --partition 0 \
+    --offset 0 \
+    --max-messages 1 --timeout-ms 30000 >"$CONSUMER_OUTPUT"
+
+  run bash -c "cat \"\$CONSUMER_OUTPUT\" | jq -r '.encrypted_field_one'"
+  assert_output "value1"
+
+  run bash -c "cat \"\$CONSUMER_OUTPUT\" | jq -r '.encrypted_field_two'"
+  assert_output "value2"
+
+  run bash -c "cat \"\$CONSUMER_OUTPUT\" | jq -r '.field_three'"
+  assert_output "value3"
+
+  # same, for the second record
+  kafka-console-consumer --topic demo \
+    --bootstrap-server localhost:29092 \
+    --partition 0 \
+    --offset 1 \
+    --max-messages 1 --timeout-ms 30000 >"$CONSUMER_OUTPUT"
+
+  run bash -c "cat \"\$CONSUMER_OUTPUT\" | jq -r '.encrypted_field_one.key'"
+  assert_output "value"
+
+  run bash -c "cat \"\$CONSUMER_OUTPUT\" | jq -r '.encrypted_field_two[0]'"
+  assert_output "hello"
+}
+
+@test "kafka - docker - encrypt only two fields - redpanda" {
+  export KAFKA_COMPOSE_FILE="redpanda-docker-compose.yaml"
+  start_kafka
+  kafka_docker_encrypt_only_two_fields
+}
+
+@test "kafka - docker - encrypt only two fields - apache" {
+  export KAFKA_COMPOSE_FILE="apache-docker-compose.yaml"
+  start_kafka
+  kafka_docker_encrypt_only_two_fields
+}

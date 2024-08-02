@@ -92,6 +92,11 @@ pub struct CreateCommand {
     )]
     pub disable_content_encryption: bool,
 
+    /// The fields to encrypt in the kafka messages, assuming the record is a valid JSON map.
+    /// By default, the whole record is encrypted.
+    #[arg(long, long = "encrypted-field", value_name = "FIELD")]
+    pub encrypted_fields: Vec<String>,
+
     /// Policy expression that will be used for access control to the Kafka Inlet.
     /// If you don't provide it, the policy set for the "tcp-inlet" resource type will be used.
     ///
@@ -177,6 +182,7 @@ impl Command for CreateCommand {
                 brokers_port_range,
                 to.clone(),
                 !self.disable_content_encryption,
+                self.encrypted_fields,
                 consumer_resolution,
                 consumer_publishing,
                 self.inlet_policy_expression,

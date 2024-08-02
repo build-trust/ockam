@@ -48,6 +48,7 @@ impl CreateCommand {
             publishing_relay: None,
             avoid_publishing: false,
             disable_content_encryption: false,
+            encrypted_fields: vec![],
             inlet_policy_expression: None,
             consumer_policy_expression: None,
             producer_policy_expression: None,
