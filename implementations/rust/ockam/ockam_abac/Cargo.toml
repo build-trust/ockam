@@ -13,14 +13,22 @@ repository = "https://github.com/build-trust/ockam/tree/develop/implementations/
 description = "Attribute based authorization control"
 
 [features]
-default = ["std"]
+default = ["std", "rust-crypto"]
 no_std = ["ockam_core/no_std", "ockam_identity/no_std", "ockam_executor"]
 alloc = ["ockam_core/alloc", "ockam_identity/alloc", "winnow/alloc"]
 repl = ["rustyline", "rustyline-derive", "std"]
+rust-crypto = [
+  "ockam_vault?/rust-crypto",
+  "ockam_transport_tcp?/ring",
+  "ockam_identity/rust-crypto",
+]
+aws-lc = ["ockam_vault/aws-lc", "ockam_transport_tcp/aws-lc"]
 std = [
   "ockam_core/std",
   "ockam_identity/std",
   "ockam_node/std",
+  "ockam_vault/std",
+  "ockam_transport_tcp?/std",
   "minicbor/std",
   "tracing/std",
   "either/use_std",
@@ -38,27 +46,41 @@ std = [
 cfg-if = "1.0.0"
 either = { version = "1.13.0", default-features = false }
 minicbor = { version = "0.24.1", features = ["derive", "alloc"] }
-ockam_core = { version = "0.114.0", path = "../ockam_core", default-features = false }
-ockam_identity = { version = "0.118.0", path = "../ockam_identity", default-features = false }
-ockam_node = { version = "0.123.0", path = "../ockam_node", default-features = false }
-once_cell = { version = "1.19.0", default-features = false, features = ["alloc"] }
+ockam_core = { version = "0.112.0", path = "../ockam_core", default-features = false }
+ockam_identity = { version = "0.116.0", path = "../ockam_identity", default-features = false }
+ockam_node = { version = "0.121.0", path = "../ockam_node", default-features = false }
+once_cell = { version = "1.19.0", default-features = false, features = [
+  "alloc",
+] }
 serde = { version = "1", default-features = false, features = ["derive"] }
 strum = { version = "0.26.3", default-features = false, features = ["derive"] }
 
 # optional:
-ockam_executor = { version = "0.83.0", path = "../ockam_executor", default-features = false, optional = true }
-regex = { version = "1.10.6", default-features = false, optional = true }
+ockam_executor = { version = "0.81.0", path = "../ockam_executor", default-features = false, optional = true }
+ockam_transport_tcp = { path = "../ockam_transport_tcp", version = "^0.119.0", default-features = false, optional = true }
+ockam_vault = { path = "../ockam_vault", version = "^0.114.0", default-features = false, optional = true }
+regex = { version = "1.10.5", default-features = false, optional = true }
 rustyline = { version = "14.0.0", optional = true }
 rustyline-derive = { version = "0.10.0", optional = true }
 sqlx-build-trust = { version = "0.7.8", optional = true }
 str-buf = "3.0.3"
-tokio = { version = "1.39", default-features = false, optional = true, features = ["sync", "time", "rt", "rt-multi-thread", "macros"] }
-tracing = { version = "0.1", default-features = false, features = ["attributes"] }
+tokio = { version = "1.39", default-features = false, optional = true, features = [
+  "sync",
+  "time",
+  "rt",
+  "rt-multi-thread",
+  "macros",
+] }
+tracing = { version = "0.1", default-features = false, features = [
+  "attributes",
+] }
 wast = { version = "214.0.0", default-features = false, optional = true }
-winnow = { version = "0.6.18", default-features = false, optional = true, features = ["alloc"] }
+winnow = { version = "0.6.18", default-features = false, optional = true, features = [
+  "alloc",
+] }
 
 [dev-dependencies]
-ockam_vault = { path = "../ockam_vault", default-features = false, features = ["rust-crypto"] }
+ockam_vault = { path = "../ockam_vault", default-features = false }
 quickcheck = "1.0.3"
 rand = "0.8.5"
 tempfile = "3.10.1"
