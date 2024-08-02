@@ -73,7 +73,7 @@ impl ProjectsSqlxDatabase {
 
         // Check if any of the emails are in the user table
         let q = format!(
-            "SELECT EXISTS(SELECT 1 FROM \"user\" WHERE LOWER(email) IN ({}))",
+            r#"SELECT EXISTS(SELECT 1 FROM "user" WHERE LOWER(email) IN ({}))"#,
             non_admin_emails
                 .iter()
                 .map(|e| format!("'{}'", e))
@@ -112,16 +112,36 @@ impl ProjectsSqlxDatabase {
         }
 
         // set the project as the default one
-        let query1 = query("UPDATE project SET is_default = $1 WHERE project_id = $2")
+        query("UPDATE project SET is_default = $1 WHERE project_id = $2")
             .bind(true)
-            .bind(project_id);
-        query1.execute(&mut *transaction).await.void()?;
+            .bind(project_id)
+            .execute(&mut *transaction)
+            .await
+            .void()?;
 
         // set all the others as non-default
-        let query2 = query("UPDATE project SET is_default = $1 WHERE project_id <> $2")
+        query("UPDATE project SET is_default = $1 WHERE project_id <> $2")
             .bind(false)
-            .bind(project_id);
-        query2.execute(&mut *transaction).await.void()?;
+            .bind(project_id)
+            .execute(&mut *transaction)
+            .await
+            .void()?;
+
+        // set the associated space as default
+        query("UPDATE space SET is_default = $1 WHERE space_id = (SELECT space_id FROM project WHERE project_id = $2)")
+            .bind(true)
+            .bind(project_id)
+            .execute(&mut *transaction)
+            .await
+            .void()?;
+
+        // set all the others as non-default
+        query("UPDATE space SET is_default = $1 WHERE space_id <> (SELECT space_id FROM project WHERE project_id = $2)")
+            .bind(false)
+            .bind(project_id)
+            .execute(&mut *transaction)
+            .await
+            .void()?;
 
         Ok(())
     }
@@ -144,15 +164,16 @@ impl ProjectsRepository for ProjectsSqlxDatabase {
             // projects with the same name that belong to other spaces.
             project_name = &project.id;
         } else {
-            // Is there a default project already?
-            let query1 = query("SELECT project_id FROM project WHERE is_default = $1").bind(true);
-            let project_id: Option<String> = query1
-                .fetch_optional(&mut *transaction)
-                .await
-                .into_core()?
-                .map(|row| row.get(0));
-            // The project is set as the default one if no other default project exists already
-            is_default = project_id.is_none() || project_id == Some(project.id.clone());
+            // Set to default if there is no default project
+            let default_project_id: Option<String> =
+                query("SELECT project_id FROM project WHERE is_default = $1")
+                    .bind(true)
+                    .fetch_optional(&mut *transaction)
+                    .await
+                    .into_core()?
+                    .map(|row| row.get(0));
+            is_default =
+                default_project_id.is_none() || default_project_id.as_ref() == Some(&project.id);
         }
 
         let query2 = query(
@@ -176,6 +197,10 @@ impl ProjectsRepository for ProjectsSqlxDatabase {
             .bind(project.running.as_ref())
             .bind(project.operation_id.as_ref());
         query2.execute(&mut *transaction).await.void()?;
+
+        if is_default {
+            self.set_as_default(&project.id, &mut transaction).await?;
+        }
 
         // remove any existing users related to that project if any
         let query3 = query("DELETE FROM user_project WHERE project_id = $1").bind(&project.id);
@@ -664,10 +689,9 @@ mod test {
 
             // retrieve them as a list or by name
             let result = repository.get_projects().await?;
-            assert_eq!(
-                result,
-                vec![project1.clone(), project2.clone(), project3.clone()]
-            );
+            for project in vec![project1.clone(), project2.clone(), project3.clone()] {
+                assert!(result.contains(&project));
+            }
 
             let result = repository.get_project_by_name("name2").await?;
             assert_eq!(result, Some(project2.clone()));

@@ -56,15 +56,17 @@ impl SpacesRepository for SpacesSqlxDatabase {
     async fn store_space(&self, space: &Space) -> Result<()> {
         let mut transaction = self.database.begin().await.into_core()?;
 
-        // Is there a default space already?
-        let query1 = query("SELECT space_id FROM project WHERE is_default = $1").bind(true);
-        let space_id: Option<String> = query1
-            .fetch_optional(&mut *transaction)
-            .await
-            .into_core()?
-            .map(|row| row.get(0));
-        // The space is set as the default one if no other default space exists already
-        let is_default = space_id.is_none() || space_id == Some(space.id.clone());
+        // Set to default if there is no default space
+        let is_default = {
+            let default_space_id: Option<String> =
+                query("SELECT space_id FROM space WHERE is_default = $1")
+                    .bind(true)
+                    .fetch_optional(&mut *transaction)
+                    .await
+                    .into_core()?
+                    .map(|row| row.get(0));
+            default_space_id.is_none() || default_space_id.as_ref() == Some(&space.id)
+        };
 
         let query2 = query(
             r#"
@@ -77,6 +79,10 @@ impl SpacesRepository for SpacesSqlxDatabase {
         .bind(&space.name)
         .bind(is_default);
         query2.execute(&mut *transaction).await.void()?;
+
+        if is_default {
+            self.set_as_default(&space.id, &mut transaction).await?;
+        }
 
         // remove any existing users related to that space if any
         let query3 = query("DELETE FROM user_space WHERE space_id = $1").bind(&space.id);
@@ -363,7 +369,9 @@ mod test {
 
             // retrieve them as a vector or by name
             let result = repository.get_spaces().await?;
-            assert_eq!(result, vec![space1.clone(), space2.clone()]);
+            for space in vec![space1.clone(), space2.clone()] {
+                assert!(result.contains(&space));
+            }
 
             let result = repository.get_space_by_name("name1").await?;
             assert_eq!(result, Some(space1.clone()));
