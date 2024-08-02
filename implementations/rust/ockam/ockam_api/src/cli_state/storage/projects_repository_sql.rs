@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use sqlx::any::AnyRow;
 use sqlx::database::HasArguments;
 use sqlx::encode::IsNull;
@@ -67,12 +68,18 @@ impl ProjectsSqlxDatabase {
             .iter()
             .filter(|user_role| user_role.role != RoleInShare::Admin)
             .map(|user_role| user_role.email.to_string().to_lowercase())
+            .unique()
             .collect();
 
         // Check if any of the emails are in the user table
-        let q = query_scalar(r#"SELECT EXISTS(SELECT 1 FROM "user" WHERE LOWER(email) IN ($1))"#)
-            .bind(non_admin_emails.join(","));
-        let shared: Boolean = q.fetch_one(transaction).await.into_core()?;
+        let q = format!(
+            "SELECT EXISTS(SELECT 1 FROM \"user\" WHERE LOWER(email) IN ({}))",
+            non_admin_emails
+                .iter()
+                .map(|e| format!("'{}'", e))
+                .join(", ")
+        );
+        let shared: Boolean = query_scalar(&q).fetch_one(transaction).await.into_core()?;
         Ok(shared.to_bool())
     }
 
@@ -620,15 +627,18 @@ mod test {
                 "1",
                 "1",
                 vec!["me@ockam.io", "him@ockam.io"],
-                vec![create_project_user_role(2, RoleInShare::Service, false)],
+                vec![
+                    create_project_user_role(2, RoleInShare::Guest, "guest@ockam.io"),
+                    create_project_user_role(3, RoleInShare::Service, "me@ockam.io"),
+                ],
             );
             let project2 = create_project(
                 "2",
                 "name2",
                 vec!["me@ockam.io", "you@ockam.io"],
                 vec![
-                    create_project_user_role(1, RoleInShare::Admin, true),
-                    create_project_user_role(2, RoleInShare::Guest, true),
+                    create_project_user_role(1, RoleInShare::Admin, None),
+                    create_project_user_role(2, RoleInShare::Guest, None),
                 ],
             );
             let mut project3 = create_project(
@@ -636,8 +646,8 @@ mod test {
                 "name3",
                 vec!["me@ockam.io", "him@ockam.io", "her@ockam.io"],
                 vec![
-                    create_project_user_role(1, RoleInShare::Admin, true),
-                    create_project_user_role(2, RoleInShare::Guest, true),
+                    create_project_user_role(1, RoleInShare::Admin, None),
+                    create_project_user_role(2, RoleInShare::Guest, None),
                 ],
             );
             // The first project is a shared project; shouldn't be set as default
@@ -746,22 +756,18 @@ mod test {
         }
     }
 
-    fn create_project_user_role(user_id: u64, role: RoleInShare, owned: bool) -> ProjectUserRole {
-        let email = match role {
-            RoleInShare::Admin => {
-                if owned {
-                    "me@ockam.io"
-                } else {
-                    "guest@email.com"
-                }
-            }
-            _ => {
-                if owned {
-                    "guest@email.com"
-                } else {
-                    "me@ockam.io"
-                }
-            }
+    fn create_project_user_role<'a, E: Into<Option<&'a str>>>(
+        user_id: u64,
+        role: RoleInShare,
+        email: E,
+    ) -> ProjectUserRole {
+        let email = match email.into() {
+            Some(email) => email,
+            None => match role {
+                RoleInShare::Admin => "me@ockam.io",
+                RoleInShare::Service => "service@ockam.com",
+                RoleInShare::Guest => "guest@ockam.com",
+            },
         }
         .try_into()
         .unwrap();
