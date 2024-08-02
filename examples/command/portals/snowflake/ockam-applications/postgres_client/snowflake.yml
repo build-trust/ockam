@@ -1,0 +1,21 @@
+definition_version: 1
+
+native_app:
+   name: postgres_client
+   artifacts:
+      - src: sql/*
+        dest: ./
+      - src: postgres_client
+        dest: ./
+      - spec.yml
+      - manifest.yml
+      - README.md
+   package:
+      name: postgres_client_pkg
+      role: ockam
+      warehouse: ockam_warehouse
+   application:
+      name: postgres_client
+      debug: true
+      role: ockam
+      warehouse: ockam_warehouse

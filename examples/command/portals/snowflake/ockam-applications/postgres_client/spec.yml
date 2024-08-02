@@ -1,0 +1,5 @@
+spec:
+  container:
+  - name: postgres-client
+    image: /ockam_database/ockam_schema/ockam_repository/postgres_client
+    role: ockam
