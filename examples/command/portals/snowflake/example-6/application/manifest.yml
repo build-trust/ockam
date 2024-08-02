@@ -14,3 +14,13 @@ privileges:
 - CREATE COMPUTE POOL:
      description: "Permission to create compute pools for running services"
      required_at_setup: true
+
+references:
+- ocsp_external_access:
+    label: "OCSP external access"
+    description: "This is required to open a Snowflake connection"
+    privileges:
+    - USAGE
+    object_type: EXTERNAL ACCESS INTEGRATION
+    register_callback: external.register_reference
+    configuration_callback: external.get_external_access

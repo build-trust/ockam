@@ -40,6 +40,7 @@ CREATE OR REPLACE PROCEDURE external.start_postgres_client(HOST STRING, PORT STR
                     POSTGRES_PORT: ${port}
                     POSTGRES_USER: ${postgresUser}
           $$
+       EXTERNAL_ACCESS_INTEGRATIONS = (reference(\'ocsp_external_access\'));
        `
     }).execute();
 
@@ -69,5 +70,26 @@ CREATE OR REPLACE PROCEDURE external.register_reference(ref_name STRING, operati
 
 GRANT USAGE ON PROCEDURE external.register_reference(STRING, STRING, STRING)
   TO APPLICATION ROLE postgres_user;
+
+CREATE OR REPLACE PROCEDURE external.get_external_access(ref_name STRING)
+  RETURNS STRING
+  LANGUAGE SQL
+  AS $$
+     BEGIN
+       CASE (ref_name)
+         WHEN 'OCSP_EXTERNAL_ACCESS' THEN
+           RETURN '{
+             "type": "CONFIGURATION",
+             "payload": {
+               "host_ports": [ "ocsp.snowflakecomputing.com:80" ],
+               "allowed_secrets" : "NONE"
+             }
+           }';
+       END CASE;
+       RETURN '{"error": "unknown reference type: ' || ref_name || '"}';
+     END;
+  $$;
+
+GRANT USAGE ON PROCEDURE external.get_external_access(STRING) TO APPLICATION ROLE postgres_user;
 
 EXECUTE IMMEDIATE FROM 'support.sql';

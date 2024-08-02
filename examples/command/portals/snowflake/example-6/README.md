@@ -85,6 +85,34 @@ tcp-inlet:
   allow: postgres_server
 ```
 
+Grant the application the permission to access the Ockam project, come back to the Apps tab, select the application
+again
+and "Launch application".
+
+In the worksheet, as an `ACCOUNTMANAGER` grant access to the application to the testing role:
+
+```sqlite-sql
+GRANT APPLICATION ROLE on_user TO ROLE consumer_role;
+```
+
+Then check that the application status is `READY`:
+
+```sqlite-sql
+CALL external.ockam_node_service_status();
+```
+
+If the status is `FAILED` instead, you can consult the full status:
+
+```sqlite-sql
+CALL external.ockam_node_service_status_all();
+```
+
+And consult the node logs if they are available:
+
+```sqlite-sql
+CALL external.ockam_node_service_logs();
+```
+
 ## Build and deploy the Postgres client application
 
 The native application uses a Docker image starting an Ockam node:
@@ -101,7 +129,7 @@ First, we get the repository URL:
 snow spcs image-registry login
 
 # Get the repository URL
-export REPOSITORY_URL="$(snow spcs image-repository url consumer_database.consumer_schema.consumer_repository --role consumer)"
+export REPOSITORY_URL="$(snow spcs image-repository url consumer_database.consumer_schema.consumer_repository --role consumer_role)"
 ```
 
 We tag the image with the repository URL:
@@ -119,7 +147,7 @@ docker push $REPOSITORY_URL/postgres_client
 We can run the following command to confirm that the image has been correctly uploaded:
 
 ```shell
-snow spcs image-repository list-images customer_database.customer_schema.customer_repository --role customer
+snow spcs image-repository list-images consumer_database.consumer_schema.consumer_repository --role consumer_role
 ```
 
 ## Deploy the application
@@ -140,4 +168,12 @@ https://app.snowflake.com/HYCWVDM/ekb57526/#/apps/application/POSTGRES_CLIENT
 Note that you can use the `restart.sh` script to re-run the build + push + start steps if you are modifying
 the `postgres_client` application.
 
+Click on the link and on the "connections" tab
+
 ## Test the application
+
+Inside the `POSTGRES_CLIENT` database start the postgres client service:
+
+```sqlite-sql
+CALL external.start_postgres_client('ockam-endpoint', '5433', 'postgres');
+```

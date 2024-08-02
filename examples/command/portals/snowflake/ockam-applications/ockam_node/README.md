@@ -95,19 +95,13 @@ Those following commands can be used when publishing or upgrading the applicatio
 ```shell
 # Add a new patch for version 1_0 (dots cannot be used in an application version)
 snow app version create v1_0 --project application
-```
 
-```shell
 # Allow the creation of an application listing shared with an account outside the Ockam organisation
-ALTER APPLICATION PACKAGE ockam_node_pkg SET 
-  DISTRIBUTION=EXTERNAL;
+snow sql -q "ALTER APPLICATION PACKAGE ockam_node_pkg SET DISTRIBUTION=EXTERNAL;"
 
 # Set the exact version to use for the package. This will be the published version
 # This command can also be scoped for a given consumer account
-ALTER APPLICATION PACKAGE ockam_node_pkg
-  SET DEFAULT RELEASE DIRECTIVE
-  VERSION = v1_0
-  PATCH = 2;  
+snow sql -q "ALTER APPLICATION PACKAGE ockam_node_pkg SET DEFAULT RELEASE DIRECTIVE VERSION = v1_0 PATCH = 5;"
 ```
 
 Check the current state:
