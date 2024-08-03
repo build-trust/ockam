@@ -26,7 +26,6 @@ impl ValueParser {
     }
 }
 
-
 #[derive(Clone)]
 pub struct ChangeHistoryParser;
 
