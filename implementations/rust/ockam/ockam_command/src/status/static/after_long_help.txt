@@ -1,0 +1,7 @@
+# To show information about all of the system's Identities and Nodes
+# Includes all identities, whether enrolled or unenrolled
+$ ockam status
+
+# Change the default timeout duration of the status command
+# Defaults to 2s if unspecified 
+$ ockam status --timeout 0.5s 

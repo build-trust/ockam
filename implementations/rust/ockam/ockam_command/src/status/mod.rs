@@ -22,8 +22,15 @@ use ockam_api::nodes::{BackgroundNodeClient, InMemoryNode};
 use ockam_api::output::Output;
 use ockam_api::{fmt_heading, fmt_log, fmt_separator, fmt_warn};
 
+const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
+const AFTER_LONG_HELP: &str = include_str!("./static/after_long_help.txt");
+
 /// Display information about the system's status
 #[derive(Clone, Debug, Args)]
+#[command(
+    long_about = docs::about(LONG_ABOUT),
+    after_long_help = docs::after_help(AFTER_LONG_HELP)
+)]
 pub struct StatusCommand {
     #[command(flatten)]
     timeout: TimeoutArg,
