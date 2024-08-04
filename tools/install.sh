@@ -280,6 +280,37 @@ add_to_path() {
   done
 }
 
+install_autocomplete_bash() {
+  # TBD
+}
+
+install_autocomplete_zsh() {
+  # TBD
+
+  # mkdir $HOME/.ockam/autocomplete
+
+  # if [[ ! -f "~/.zshrc" ]]; then
+  #    echo "system doesn't support zsh shell"
+  #    return
+  # fi
+  
+  # mkdir $HOME/.ockam/autocomplete/zsh
+  # ockam autocomplete zsh > $HOME/.ockam/autocomplete/zsh/_ockam 
+  # info "Adding autocomplete to zsh"
+  # echo >>"~/.zshrc"
+  # echo "FPATH="$HOME/.ockam/autocomplete/zsh:${FPATH}" >> "~/.zshrc"
+  # echo "autoload -Uz compinit" >> "~/.zshrc"
+  # echo "compinit" >> "~/.zshrc"
+}
+
+install_autocomplete_fish() {
+  # TBD
+}
+
+install_autocomplete() {
+  # TBD
+}
+
 main() {
   local _version="$OCKAM_VERSION"
   install_path="$HOME/.ockam"
@@ -343,6 +374,9 @@ main() {
   if [[ "$_modify_path" == "true" ]]; then
     add_to_path
   fi
+
+  # TBD: Does this makes sense, and in this spot? 
+  install_autocomplete
 
   echo
   heading "GET STARTED:"
