@@ -1,7 +1,6 @@
-# To show information about all of the system's Identities and Nodes
-# Includes all identities, whether enrolled or unenrolled
+# Display information about all of the system's Spaces, Identities, and Nodes
 $ ockam status
 
 # Change the default timeout duration of the status command
-# Defaults to 2s if unspecified 
-$ ockam status --timeout 0.5s 
+# Defaults to 10s if unspecified 
+$ ockam status --timeout 15s

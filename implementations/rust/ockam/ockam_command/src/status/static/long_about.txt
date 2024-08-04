@@ -1,9 +1,8 @@
-[TBD: Is the following useful information?]
-[TBD: What needs to be elaborated on, and in what way?]
-
 The status command displays the current status of your machine, including information such as:
-- controller and project version [TBD: what are these?]
-- all cryptographic identities stored in your vault, their enrollment status with the Ockam Orchestrator,
-  date of enrollment (if enrolled), and the email address associated with each identity
-- the status of any Nodes, process ids, associated routes and transport protocols, secure channels,
-  portals, and running services
+- the current version of Ockam in use
+- the controller (Orchestrator) and project version
+- your spaces and the users associated with them
+- all cryptographic identities stored in your vault and their enrollment status with the Ockam Orchestrator
+- the status of any Nodes, associated routes and protocols, listeners and services, and more
+
+  NB: To see the list of workers running in a node, run `ockam worker list --at <NAME_OF_NODE>`

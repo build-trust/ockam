@@ -1,8 +1,6 @@
+# Removes the local Ockam configuration including all Spaces, Identities, and Nodes
 # This will prompt you for confirmation before proceeding
 $ ockam reset
 
 # To confirm without prompting
 $ ockam reset -y
-
-# Remove your spaces from the Orchestrator
-ockam reset --all
