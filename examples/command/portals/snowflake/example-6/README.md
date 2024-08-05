@@ -14,7 +14,7 @@ curl --proto '=https' --tlsv1.2 -sSfL https://install.command.ockam.io | bash &&
 ockam enroll
 
 # Create an enrollment ticket for the node that will run inside container services.
-ockam project ticket --usage-count 100 --expires-in 24h --attribute snowflake-kafka-inlet > inlet.ticket
+ockam project ticket --usage-count 1 --expires-in 24h --attribute snowflake-kafka-inlet > inlet.ticket
 ockam project ticket --usage-count 1 --expires-in 24h --attribute snowflake-kafka-outlet --relay kafka > outlet.ticket
 
 
@@ -110,10 +110,6 @@ CREATE OR REPLACE TABLE CDC_TEST_TABLE (
 );
 GRANT ALL ON TABLE CDC_TEST_TABLE TO ROLE CDC_TEST_ROLE;
 
--- CREATE STREAM
-CREATE OR REPLACE STREAM CDC_TEST_TABLE_STREAM ON TABLE CDC_TEST_TABLE;
-GRANT ALL ON STREAM CDC_TEST_TABLE_STREAM TO ROLE CDC_TEST_ROLE;
-
 ```
 
 ## Build and push Python application Image
@@ -132,10 +128,6 @@ cd ../ockam
 docker build --rm --platform linux/amd64 -t <repository_url>/ockam .
 docker push <repository_url>/ockam
 
-# BUild and push consumer for testing
-cd ../kafka_consumer
-docker build --rm --platform linux/amd64 -t <repository_url>/kafka_consumer .
-docker push <repository_url>/kafka_consumer
 
 ```
 
@@ -198,17 +190,12 @@ $$
       - name: publisher
         image: /cdc_test_db/cdc_test_schema/cdc_test_repo/snowflake_cdc_kafka_bridge
         env:
-          STREAM_NAME: CDC_TEST_DB.CDC_TEST_SCHEMA.CDC_TEST_TABLE_STREAM
+          TARGET_TABLE: SN_CDC_TEST_DB.SN_CDC_TEST_SCHEMA.SN_CDC_TEST_TABLE
           KAFKA_BOOTSTRAP_SERVERS: 127.0.0.1:9092
-          KAFKA_TOPIC_NAME: test-topic
+          KAFKA_TOPIC: test-topic
           SNOWFLAKE_WAREHOUSE: CDC_TEST_WH
           JOB_SUCCESS_SLEEP_TIME: 30
           JOB_ERROR_SLEEP_TIME: 60
-      - name: consumer
-        image: /cdc_test_db/cdc_test_schema/cdc_test_repo/kafka_consumer
-        env:
-          KAFKA_BOOTSTRAP_SERVERS: 127.0.0.1:9092
-          KAFKA_TOPIC: test-topic
 $$
 EXTERNAL_ACCESS_INTEGRATIONS = (CDC_TEST_EXTERNAL_ACCESS_INT)
 MIN_INSTANCES=1

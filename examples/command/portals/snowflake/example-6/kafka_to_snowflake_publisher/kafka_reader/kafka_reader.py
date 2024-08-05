@@ -4,6 +4,8 @@ import time
 import json
 import sys
 import snowflake.connector
+from snowflake.connector.errors import ProgrammingError, DatabaseError
+import connection
 from confluent_kafka import Consumer, KafkaException, KafkaError
 
 
@@ -19,18 +21,34 @@ TARGET_TABLE = os.getenv('TARGET_TABLE')
 
 logging.basicConfig(level=LOG_LEVEL, format='%(asctime)s - %(levelname)s - %(message)s')
 
-import connection
 session = connection.session()
+
+session.use_database(SNOWFLAKE_DATABASE)
+session.use_schema(SNOWFLAKE_SCHEMA)
 
 def main():
     try:
-        logging.info(f"Starting to consume Kafka events for topic {KAFKA_TOPIC}")
+        logging.info(f"Starting Kafka to Snowflake ingestion process")
         print_environment_variables()
+        wait_for_kafka(BOOTSTRAP_SERVERS)
         consumer = create_kafka_consumer(BOOTSTRAP_SERVERS)
-        
-        check_topic_details(consumer, KAFKA_TOPIC)
-        
-        consume_events(session, consumer, KAFKA_TOPIC)
+
+        while True:
+            try:
+                consume_events(session, consumer, KAFKA_TOPIC)
+            except KafkaException as e:
+                logging.error(f"Kafka error: {e}")
+                # If Kafka becomes unavailable, we'll recreate the consumer
+                consumer = create_kafka_consumer(BOOTSTRAP_SERVERS)
+            except snowflake.connector.errors.ProgrammingError as e:
+                logging.error(f"Snowflake Programming Error: {e}")
+                time.sleep(JOB_ERROR_SLEEP_TIME)
+            except snowflake.connector.errors.DatabaseError as e:
+                logging.error(f"Snowflake Database Error: {e}")
+                time.sleep(JOB_ERROR_SLEEP_TIME)
+            except Exception as e:
+                logging.error(f"Unexpected error in main loop: {e}")
+                time.sleep(JOB_ERROR_SLEEP_TIME)
 
     except Exception as e:
         logging.error(f"Fatal error in main: {e}")
@@ -40,62 +58,65 @@ def create_kafka_consumer(bootstrap_servers):
     kafka_configuration = {
         'bootstrap.servers': bootstrap_servers,
         'client.id': 'kafka_ingest',
-        'group.id': 'kafka_ingest_group',
-        'auto.offset.reset': 'earliest',
-        'enable.auto.commit': False,
-        'api.version.request': True,
-        'api.version.fallback.ms': 0,
-        'session.timeout.ms': 10000,
-        'max.poll.interval.ms': 300000,
-        'socket.timeout.ms': 10000,
+        'group.id': 'kafka_ingest',
+        'auto.offset.reset': 'latest',
+        'api.version.request': False,
+        'retries': 15,
+        'retry.backoff.ms': 1000,
     }
 
-    kafka_configuration['debug'] = 'consumer,cgrp,topic,fetch'
+    if LOG_LEVEL == 'DEBUG':
+        kafka_configuration['debug'] = 'broker,topic,msg'
 
     logging.info(f"Kafka configuration: {kafka_configuration}")
 
     try:
         consumer = Consumer(kafka_configuration)
         logging.info(f"Kafka consumer created successfully")
-        logging.info(f"Subscribing to Kafka topic: {KAFKA_TOPIC}")
-        consumer.subscribe([KAFKA_TOPIC], on_assign=print_assignment)
+        consumer.subscribe([KAFKA_TOPIC])
         return consumer
     except Exception as e:
         logging.error(f"Error creating Kafka consumer: {str(e)}")
         raise
-def check_topic_details(consumer, topic):
+
+def insert_into_snowflake(session, table, key, value):
     try:
-        cluster_metadata = consumer.list_topics(topic, timeout=5)
-        if topic not in cluster_metadata.topics:
-            logging.error(f"Topic '{topic}' does not exist.")
-            return
-
-        topic_metadata = cluster_metadata.topics[topic]
-        partitions = topic_metadata.partitions
-        logging.info(f"Topic '{topic}' has {len(partitions)} partitions")
-
-        for partition_id, partition_metadata in partitions.items():
-            try:
-                low, high = consumer.get_watermark_offsets(TopicPartition(topic, partition_id), timeout=5)
-                logging.info(f"Partition {partition_id}: Low offset = {low}, High offset = {high}")
-            except Exception as e:
-                logging.error(f"Error getting offsets for partition {partition_id}: {e}")
-
+        # Prepare the query with placeholders for parameters
+        query = f"INSERT INTO {table} (KEY, VALUE) VALUES (%s, %s)"
+        
+        # Properly format the SQL query using Python's string formatting
+        query = query % (f"'{key}'", f"'{value}'")
+        
+        # Execute the query using session.sql() and collect()
+        session.sql(query).collect()
+        
+        logging.info(f"Successfully inserted message into {table} - Key: {key}, Value: {value[:20]}...")
+    except (ProgrammingError, DatabaseError) as e:
+        logging.error(f"Snowflake Error: {type(e).__name__} - {str(e)}")
+        logging.error(f"Failed SQL: {query}")
+        logging.error(f"Parameters - Key: {key}, Value: {value}")
     except Exception as e:
-        logging.error(f"Error checking topic details: {e}")
+        logging.error(f"Unexpected error inserting into Snowflake: {type(e).__name__} - {str(e)}")
+        logging.error(f"Failed SQL: {query}")
+        logging.error(f"Parameters - Key: {key}, Value: {value}")
 
-def print_assignment(consumer, partitions):
-    logging.info(f"Consumer assignment: {partitions}")
 
 def consume_events(session, consumer, kafka_topic):
-    logging.info(f"Ingesting events into the table {TARGET_TABLE}")
+    logging.info(f"Starting to consume events from topic {kafka_topic} for table {TARGET_TABLE}")
+    check_if_target_table_exists(session, TARGET_TABLE)
+
+    messages_processed = 0
+    last_message_time = time.time()
 
     try:
         while True:
-            msg = consumer.poll(5.0)  # Increased timeout to 5 seconds
+            msg = consumer.poll(1.0)
 
             if msg is None:
-                logging.info("No message received.")
+                current_time = time.time()
+                if current_time - last_message_time > JOB_SUCCESS_SLEEP_TIME:
+                    logging.info(f"No new messages for {JOB_SUCCESS_SLEEP_TIME} seconds. Total messages processed: {messages_processed}")
+                    last_message_time = current_time
                 continue
 
             if msg.error():
@@ -104,22 +125,54 @@ def consume_events(session, consumer, kafka_topic):
                 else:
                     logging.error(f'Error while consuming message: {msg.error()}')
             else:
-                logging.info(f"Received message: topic={msg.topic()}, partition={msg.partition()}, offset={msg.offset()}, key={msg.key()}, value={msg.value().decode('utf-8')}")
+                try:
+                    key = msg.key().decode('utf-8') if msg.key() else "None"
+                    value = msg.value().decode('utf-8') if msg.value() else "None"
+                    logging.info(f"Received message:")
+                    logging.info(f"  Topic: {msg.topic()}")
+                    logging.info(f"  Partition: {msg.partition()}")
+                    logging.info(f"  Offset: {msg.offset()}")
+                    logging.info(f"  Key: {key}")
+                    logging.info(f"  Value: {value[:100]}...")  # Log first 100 chars of the value
+                    
+                    # Insert into Snowflake table
+                    insert_into_snowflake(session, TARGET_TABLE, key, value)
+                    
+                    messages_processed += 1
+                    logging.info(f"Successfully processed message. Total processed: {messages_processed}")
+                    
+                    last_message_time = time.time()
+                    
+                    # Commit the offset
+                    consumer.commit(msg)
+                    logging.info(f"Committed offset {msg.offset()} for partition {msg.partition()}")
+                except Exception as e:
+                    logging.error(f"Error processing message: {str(e)}")
 
-            # Print current assignment and position after each poll
-            assignment = consumer.assignment()
-            for tp in assignment:
-                position = consumer.position(tp)
-                logging.info(f"Current assignment - Topic: {tp.topic}, Partition: {tp.partition}, Current Position: {position}")
-
-    except KeyboardInterrupt:
-        logging.info("Interrupted by user. Closing consumer.")
+    except Exception as e:
+        logging.error(f"Error in consume_events: {str(e)}")
     finally:
+        logging.info(f"Closing consumer. Total messages processed: {messages_processed}")
         consumer.close()
-        logging.info("Consumer closed.")
 
 
-def wait_for_kafka(bootstrap_servers, retry_interval=10, max_retries=5):
+def check_if_target_table_exists(session, target_table_name):
+    try:
+        table_parts = target_table_name.split('.')
+        if len(table_parts) != 3:
+            raise ValueError(f"Invalid table name format: {target_table_name}. Expected format: DATABASE.SCHEMA.TABLE")
+        
+        database, schema, table = table_parts
+        stream = session.sql(f"SHOW TABLES LIKE '{table}' IN {database}.{schema}").collect()
+
+        if not stream:
+            raise Exception(f"The table {target_table_name} does not exist or is not accessible. Please check the 'target_table' reference.")
+    except Exception as e:
+        logging.error(f"Error checking target table: {e}")
+        raise
+
+
+def wait_for_kafka(bootstrap_servers, retry_interval=JOB_ERROR_SLEEP_TIME, max_retries=10):
     retries = 0
     while retries < max_retries:
         try:
@@ -127,7 +180,7 @@ def wait_for_kafka(bootstrap_servers, retry_interval=10, max_retries=5):
             consumer = create_kafka_consumer(bootstrap_servers)
 
             # Test the connection by listing topics
-            cluster_metadata = consumer.list_topics(timeout=10)
+            cluster_metadata = consumer.list_topics(timeout=100)
             logging.info(f"Successfully connected to Kafka. Cluster metadata: {cluster_metadata}")
             return consumer
 
@@ -144,6 +197,7 @@ def wait_for_kafka(bootstrap_servers, retry_interval=10, max_retries=5):
             logging.error(f"Unexpected error: {str(e)}")
             raise
 
+
 def print_environment_variables():
     relevant_vars = [
         'SNOWFLAKE_ACCOUNT',
@@ -153,7 +207,7 @@ def print_environment_variables():
         'SNOWFLAKE_SCHEMA',
         'SNOWFLAKE_ROLE',
         'SNOWFLAKE_USER',
-        'STREAM_NAME',
+        'TARGET_TABLE',
         'KAFKA_TOPIC',
         'KAFKA_BOOTSTRAP_SERVERS',
         'JOB_SUCCESS_SLEEP_TIME',
