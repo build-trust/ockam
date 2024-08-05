@@ -4,8 +4,6 @@ multiple-versions = "deny"
 wildcards = "deny"
 
 [licenses]
-unlicensed = "deny"
-copyleft = "deny"
 confidence-threshold = 0.95
 allow = [
   "Apache-2.0",
@@ -50,8 +48,6 @@ license-files = [
 ]
 
 [advisories]
-unmaintained = "deny"
-vulnerability = "deny"
 yanked = "warn"
 ignore = [
   # `serde_cbor` is unmaintained
