@@ -2,14 +2,13 @@ use std::process::Stdio;
 
 use async_trait::async_trait;
 use miette::{IntoDiagnostic, Result};
-use tokio::process::Child;
-use tracing::debug;
-
 use ockam_core::AsyncTryClone;
 use ockam_node::Context;
+use tokio::process::{Child, Command as ProcessCommand};
+use tracing::debug;
 
 use crate::run::parser::resource::utils::{binary_path, subprocess_stdio};
-use crate::{Command, CommandGlobalOpts};
+use crate::{Command, CommandGlobalOpts, GlobalArgs};
 
 /// This trait defines the methods that a resource must implement before it's parsed into a Command.
 ///
@@ -21,15 +20,31 @@ pub trait Resource<C: ParsedCommand>: Sized + Send + Sync + 'static {
         vec![]
     }
 
-    fn run_in_subprocess(self, quiet: bool) -> Result<Child> {
-        let args = self.args();
+    fn run_in_subprocess(self, global_args: &GlobalArgs) -> Result<Child> {
+        let mut args = self.args();
+        if global_args.quiet {
+            args.push("--quiet".to_string());
+        }
+        if global_args.no_color {
+            args.push("--no-color".to_string());
+        }
+        if global_args.no_input {
+            args.push("--no-input".to_string());
+        }
+        if global_args.verbose > 0 {
+            args.push(format!("-{}", "v".repeat(global_args.verbose as usize)));
+        }
+        if let Some(o) = &global_args.output_format {
+            args.push("--output".to_string());
+            args.push(o.to_string());
+        }
         let args = Self::COMMAND_NAME
             .split(' ')
             .chain(args.iter().map(|s| s.as_str()));
-        let handle = tokio::process::Command::new(binary_path())
+        let handle = ProcessCommand::new(binary_path())
             .args(args)
-            .stdout(subprocess_stdio(quiet))
-            .stderr(subprocess_stdio(quiet))
+            .stdout(subprocess_stdio(global_args.quiet))
+            .stderr(subprocess_stdio(global_args.quiet))
             .stdin(Stdio::null())
             .spawn()
             .into_diagnostic()?;

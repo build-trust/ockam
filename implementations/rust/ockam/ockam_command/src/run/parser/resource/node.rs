@@ -29,6 +29,8 @@ pub struct Node {
     pub http_server_port: Option<ArgValue>,
     pub identity: Option<ArgValue>,
     pub project: Option<ArgValue>,
+    #[serde(alias = "opentelemetry-context")]
+    pub opentelemetry_context: Option<ArgValue>,
 }
 
 impl Resource<CreateCommand> for Node {
@@ -65,6 +67,9 @@ impl Resource<CreateCommand> for Node {
         }
         if let Some(project) = self.project {
             args.insert("project".to_string(), project);
+        }
+        if let Some(opentelemetry_context) = self.opentelemetry_context {
+            args.insert("opentelemetry-context".to_string(), opentelemetry_context);
         }
         if args.is_empty() {
             return vec![];
