@@ -1,6 +1,7 @@
 use clap::Args;
 use clap::{ArgAction, ValueEnum};
 use ockam_api::output::OutputFormat;
+use std::fmt::Display;
 
 use ockam_core::env::get_env_with_default;
 
@@ -122,4 +123,13 @@ impl GlobalArgs {
 pub enum OutputFormatArg {
     Plain,
     Json,
+}
+
+impl Display for OutputFormatArg {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            OutputFormatArg::Plain => write!(f, "plain"),
+            OutputFormatArg::Json => write!(f, "json"),
+        }
+    }
 }

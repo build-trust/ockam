@@ -11,7 +11,7 @@ use miette::{miette, IntoDiagnostic};
 use ockam_api::cli_state::journeys::APPLICATION_EVENT_COMMAND_CONFIGURATION_FILE;
 use ockam_api::cli_state::random_name;
 use ockam_api::nodes::BackgroundNodeClient;
-use ockam_core::AsyncTryClone;
+use ockam_core::{AsyncTryClone, OpenTelemetryContext};
 use ockam_node::Context;
 use serde::{Deserialize, Serialize};
 use tracing::{debug, instrument, Span};
@@ -166,6 +166,12 @@ impl NodeConfig {
                 .clone()
                 .map(ArgValue::String);
         }
+        if self.node.opentelemetry_context.is_none() {
+            self.node.opentelemetry_context = Some(ArgValue::String(
+                serde_json::to_string(&OpenTelemetryContext::current()).into_diagnostic()?,
+            ));
+        }
+
         Ok(())
     }
 
@@ -189,7 +195,7 @@ impl NodeConfig {
         if self.project_enroll.ticket.is_some()
             && !self
                 .project_enroll
-                .run_in_subprocess(opts.global_args.quiet)?
+                .run_in_subprocess(&opts.global_args)?
                 .wait()
                 .await
                 .into_diagnostic()?
@@ -199,7 +205,7 @@ impl NodeConfig {
         }
 
         // Next, run the 'node create' command
-        let child = self.node.run_in_subprocess(opts.global_args.quiet)?;
+        let child = self.node.run_in_subprocess(&opts.global_args)?;
 
         // Wait for the node to be up
         let is_up = {
