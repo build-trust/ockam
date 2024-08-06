@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::process::Stdio;
 
 use async_trait::async_trait;
@@ -7,6 +8,7 @@ use ockam_node::Context;
 use tokio::process::{Child, Command as ProcessCommand};
 use tracing::debug;
 
+use crate::run::parser::building_blocks::{as_command_args, ArgKey, ArgValue};
 use crate::run::parser::resource::utils::{binary_path, subprocess_stdio};
 use crate::{Command, CommandGlobalOpts, GlobalArgs};
 
@@ -23,10 +25,10 @@ pub trait Resource<C: ParsedCommand>: Sized + Send + Sync + 'static {
     fn run_in_subprocess(
         self,
         global_args: &GlobalArgs,
-        mut extra_args: Vec<String>,
+        extra_args: BTreeMap<ArgKey, ArgValue>,
     ) -> Result<Child> {
         let mut args = self.args();
-        args.append(&mut extra_args);
+        args.append(as_command_args(extra_args).as_mut());
         if global_args.quiet {
             args.push("--quiet".to_string());
         }

@@ -15,6 +15,7 @@ use ockam_api::terminal::notification::NotificationHandler;
 use ockam_core::{AsyncTryClone, OpenTelemetryContext};
 use ockam_node::Context;
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use tracing::{debug, instrument, Span};
 
 #[derive(Clone, Debug, Args, Default)]
@@ -217,7 +218,7 @@ impl NodeConfig {
         ctx: &Context,
         opts: &CommandGlobalOpts,
         node_name: &String,
-        identity_name: &String,
+        identity_name: &str,
     ) -> miette::Result<()> {
         debug!("Running node config in foreground mode");
         // First, run the `project enroll` commands to prepare the identity and project data
@@ -226,7 +227,9 @@ impl NodeConfig {
                 .project_enroll
                 .run_in_subprocess(
                     &opts.global_args,
-                    vec![format!("--identity {identity_name}")],
+                    vec![("identity".to_string(), ArgValue::from(identity_name))]
+                        .into_iter()
+                        .collect(),
                 )?
                 .wait()
                 .await
@@ -237,7 +240,9 @@ impl NodeConfig {
         }
 
         // Next, run the 'node create' command
-        let child = self.node.run_in_subprocess(&opts.global_args, vec![])?;
+        let child = self
+            .node
+            .run_in_subprocess(&opts.global_args, BTreeMap::default())?;
 
         // Wait for the node to be up
         let is_up = {
