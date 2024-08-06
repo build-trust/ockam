@@ -4,6 +4,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.131.0 - 2024-08-06
+
+### Added
+
+- Rework `Session`s
+- Crud for space and project admins
+- The config of `node create` accepts an `identity`
+- Updated dependencies
+
+### Changed
+
+- Use terminal struct in-place of println! in `tcp-connection show`
+
+### Fixed
+
+- Propagate global options to commands run in the node configuration
+- Use node identity in project enroll
+
 ## 0.130.0 - 2024-07-29
 
 ### Added
