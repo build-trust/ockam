@@ -182,3 +182,22 @@ EOF
     --enrollment-ticket "127.0.0.1:$PYTHON_SERVER_PORT/$ticket_relative_path"
   run_success "$OCKAM" message send --timeout 5 hello --to "/node/n1/secure/api/service/echo"
 }
+
+@test "nodes - create with config, using the specified identity" {
+  # Create enrollment ticket that can be reused a few times
+  export RELAY_NAME=$(random_str)
+  $OCKAM project ticket --relay "$RELAY_NAME" >"$OCKAM_HOME/enrollment.ticket"
+
+  cat <<EOF >"$OCKAM_HOME/config.yaml"
+name: n1
+identity: i1
+relay: $RELAY_NAME
+EOF
+
+  # The identity will be created and enrolled
+  run_success "$OCKAM" node create "$OCKAM_HOME/config.yaml" \
+    --enrollment-ticket "$OCKAM_HOME/enrollment.ticket"
+
+  # Use the identity to send a message
+  $OCKAM message send hi --identity i1 --to "/project/default/service/forward_to_$RELAY_NAME/secure/api/service/echo"
+}
