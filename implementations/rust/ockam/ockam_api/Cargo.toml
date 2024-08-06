@@ -84,7 +84,7 @@ r3bl_rs_utils_core = "0.9"
 r3bl_tui = "0.5"
 r3bl_tuify = "0.1"
 rand = "0.8"
-regex = "1.10.5"
+regex = "1.10.6"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls-native-roots"] }
 serde = { version = "1.0.204", features = ["derive"] }
 serde_json = "1.0.118"
