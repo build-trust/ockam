@@ -1,6 +1,6 @@
 [package]
 name = "ockam_api"
-version = "0.73.0"
+version = "0.74.0"
 authors = ["Ockam Developers"]
 categories = [
   "cryptography",
@@ -106,25 +106,25 @@ tracing-opentelemetry = "0.24.0"
 tracing-subscriber = { version = "0.3.18", features = ["json"] }
 url = "2.5.2"
 
-ockam_multiaddr = { path = "../ockam_multiaddr", version = "0.57.0", features = ["cbor", "serde"] }
-ockam_transport_core = { path = "../ockam_transport_core", version = "^0.87.0" }
-ockam_transport_tcp = { path = "../ockam_transport_tcp", version = "^0.120.0", default-features = false, features = ["std"] }
+ockam_multiaddr = { path = "../ockam_multiaddr", version = "0.58.0", features = ["cbor", "serde"] }
+ockam_transport_core = { path = "../ockam_transport_core", version = "^0.88.0" }
+ockam_transport_tcp = { path = "../ockam_transport_tcp", version = "^0.121.0", default-features = false, features = ["std"] }
 tonic = "0.11"
 
 [dependencies.ockam_core]
-version = "0.113.0"
+version = "0.114.0"
 path = "../ockam_core"
 default-features = false
 features = ["no_std", "alloc"]
 
 [dependencies.ockam_node]
-version = "0.122.0"
+version = "0.123.0"
 path = "../ockam_node"
 default-features = false
 features = ["no_std", "alloc"]
 
 [dependencies.ockam_vault]
-version = "0.115.0"
+version = "0.116.0"
 path = "../ockam_vault"
 default-features = false
 # FIXME: ockam_vault's dependency curve25519-dalek has non-additive features which
@@ -132,19 +132,19 @@ default-features = false
 features = ["std", "storage"]
 
 [dependencies.ockam_vault_aws]
-version = "0.41.0"
+version = "0.42.0"
 path = "../ockam_vault_aws"
 default-features = false
 features = ["std"]
 
 [dependencies.ockam]
-version = "^0.130.0"
+version = "^0.131.0"
 path = "../ockam"
 default-features = false
 features = ["std", "ockam_transport_tcp", "ockam_transport_udp", "storage"]
 
 [dependencies.ockam_abac]
-version = "0.63.0"
+version = "0.64.0"
 path = "../ockam_abac"
 default-features = false
 
@@ -156,8 +156,8 @@ indexmap = "2.2.6"
 mockall = "0.12"
 multimap = "0.10.0"
 ockam_macros = { path = "../ockam_macros", features = ["std"], version = "^0.34.0" }
-ockam_transport_core = { path = "../ockam_transport_core", version = "^0.87.0" }
-ockam_transport_tcp = { path = "../ockam_transport_tcp", default-features = false, version = "^0.120.0" }
+ockam_transport_core = { path = "../ockam_transport_core", version = "^0.88.0" }
+ockam_transport_tcp = { path = "../ockam_transport_tcp", default-features = false, version = "^0.121.0" }
 once_cell = { version = "1", default-features = false }
 opentelemetry_sdk = { version = "0.23.0", features = ["logs", "metrics", "trace", "rt-tokio", "testing"], default-features = false }
 pretty_assertions = "1.4.0"

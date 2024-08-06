@@ -4,6 +4,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.74.0 - 2024-08-06
+
+### Added
+
+- Rework `Session`s
+- Crud for space and project admins
+- The config of `node create` accepts an `identity`
+- Updated dependencies
+
+### Changed
+
+- Move shared projects modifications logic into repository
+
+### Fixed
+
+- Make sure that there is only one space max marked as default
+- When refreshing projects, store first the admin projects
+- Use lowercase email in query filters
+- Email list binding in project query
+- Set default project/space/user
+
 ## 0.73.0 - 2024-07-29
 
 ### Added

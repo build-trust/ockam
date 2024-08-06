@@ -1,6 +1,6 @@
 [package]
 name = "ockam_multiaddr"
-version = "0.57.0"
+version = "0.58.0"
 authors = ["Ockam Developers"]
 categories = [
   "cryptography",
@@ -36,7 +36,7 @@ tinyvec = { version = "1.8.0", features = ["alloc"] }
 unsigned-varint = "0.8.0"
 
 [dependencies.ockam_core]
-version = "0.113.0"
+version = "0.114.0"
 path = "../ockam_core"
 default-features = false
 features = ["no_std", "alloc"]
