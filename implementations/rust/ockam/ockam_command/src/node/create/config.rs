@@ -227,7 +227,7 @@ impl NodeConfig {
                 .project_enroll
                 .run_in_subprocess(
                     &opts.global_args,
-                    vec![("identity".to_string(), ArgValue::from(identity_name))]
+                    vec![("identity".into(), identity_name.into())]
                         .into_iter()
                         .collect(),
                 )?

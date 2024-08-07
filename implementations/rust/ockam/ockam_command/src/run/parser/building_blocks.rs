@@ -1,9 +1,8 @@
-use std::collections::BTreeMap;
-use std::fmt::Display;
-
 use clap::Args as ClapArgs;
 use miette::{miette, Result};
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
+use std::fmt::Display;
 
 /// This trait defines the methods used to convert a set of arguments that describe a section of
 /// the configuration file into a list of commands of the same kind.
@@ -123,19 +122,20 @@ impl ArgsToCommands for NamedResources {
                     None => vec![n],
                     Some(arg) => {
                         // Use the given argument key as the name of the resource
+                        let arg = arg.into();
                         let name = a
                             .args
-                            .get(arg)
+                            .get(&arg)
                             .cloned()
                             .unwrap_or(ArgValue::String(n.to_string()));
-                        vec![as_keyword_arg(&arg.to_string()), name.to_string()]
+                        vec![as_keyword_arg(&arg), name.to_string()]
                     }
                 };
                 // Remove the name of the resource from the arguments
                 let args = if let Some(arg) = name_arg_key {
                     a.args
                         .into_iter()
-                        .filter(|(k, _)| k != arg)
+                        .filter(|(k, _)| k.as_str() != arg)
                         .collect::<BTreeMap<_, _>>()
                 } else {
                     a.args
@@ -244,7 +244,37 @@ pub struct Args {
     pub args: BTreeMap<ArgKey, ArgValue>,
 }
 
-pub type ArgKey = String;
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Ord, PartialOrd, Eq, Hash)]
+#[serde(transparent)]
+pub struct ArgKey(String);
+
+impl ArgKey {
+    pub fn new<S: Into<String>>(s: S) -> Self {
+        ArgKey(s.into())
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl Display for ArgKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl AsRef<str> for ArgKey {
+    fn as_ref(&self) -> &str {
+        &self.0
+    }
+}
+
+impl From<&str> for ArgKey {
+    fn from(s: &str) -> Self {
+        ArgKey(s.to_string())
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
@@ -304,7 +334,7 @@ fn as_command_arg(k: ArgKey, v: ArgValue) -> Vec<String> {
 /// Return the command representation of the argument name
 fn as_keyword_arg(k: &ArgKey) -> String {
     // If the argument name is a single character, it's the short version of the argument.
-    if k.len() == 1 {
+    if k.as_str().len() == 1 {
         format!("-{k}")
     }
     // Otherwise, it's the long version of the argument.

@@ -169,9 +169,7 @@ mod tests {
                         items: vec![(
                             "i2".to_string(),
                             Args {
-                                args: vec![("vault".to_string(), "v2".into())]
-                                    .into_iter()
-                                    .collect(),
+                                args: vec![("vault".into(), "v2".into())].into_iter().collect(),
                             },
                         )]
                         .into_iter()
@@ -192,24 +190,18 @@ mod tests {
                 policies: Some(UnnamedResources::List(vec![
                     Args {
                         args: vec![
-                            ("at".to_string(), "n1".into()),
-                            ("resource".to_string(), "r1".into()),
-                            (
-                                "expression".to_string(),
-                                "(= subject.component \"c1\")".into(),
-                            ),
+                            ("at".into(), "n1".into()),
+                            ("resource".into(), "r1".into()),
+                            ("expression".into(), "(= subject.component \"c1\")".into()),
                         ]
                         .into_iter()
                         .collect(),
                     },
                     Args {
                         args: vec![
-                            ("at".to_string(), "n2".into()),
-                            ("resource".to_string(), "r2".into()),
-                            (
-                                "expression".to_string(),
-                                "(= subject.component \"c2\")".into(),
-                            ),
+                            ("at".into(), "n2".into()),
+                            ("resource".into(), "r2".into()),
+                            ("expression".into(), "(= subject.component \"c2\")".into()),
                         ]
                         .into_iter()
                         .collect(),
@@ -222,20 +214,15 @@ mod tests {
                         (
                             "to1".to_string(),
                             Args {
-                                args: vec![
-                                    ("to".to_string(), "6060".into()),
-                                    ("at".to_string(), "n".into()),
-                                ]
-                                .into_iter()
-                                .collect(),
+                                args: vec![("to".into(), "6060".into()), ("at".into(), "n".into())]
+                                    .into_iter()
+                                    .collect(),
                             },
                         ),
                         (
                             "to2".to_string(),
                             Args {
-                                args: vec![("to".to_string(), "6061".into())]
-                                    .into_iter()
-                                    .collect(),
+                                args: vec![("to".into(), "6061".into())].into_iter().collect(),
                             },
                         ),
                     ]
@@ -250,8 +237,8 @@ mod tests {
                             "ti1".to_string(),
                             Args {
                                 args: vec![
-                                    ("from".to_string(), "6060".into()),
-                                    ("at".to_string(), "n".into()),
+                                    ("from".into(), "6060".into()),
+                                    ("at".into(), "n".into()),
                                 ]
                                 .into_iter()
                                 .collect(),
@@ -260,9 +247,7 @@ mod tests {
                         (
                             "ti2".to_string(),
                             Args {
-                                args: vec![("from".to_string(), "6061".into())]
-                                    .into_iter()
-                                    .collect(),
+                                args: vec![("from".into(), "6061".into())].into_iter().collect(),
                             },
                         ),
                     ]
@@ -274,10 +259,10 @@ mod tests {
                 kafka_inlet: Some(ResourceNameOrMap::RandomlyNamedMap(
                     UnnamedResources::Single(Args {
                         args: vec![
-                            ("from".to_string(), "9092".into()),
-                            ("at".to_string(), "n".into()),
-                            ("to".to_string(), "/project/project_name".into()),
-                            ("port-range".to_string(), "1000-2000".into()),
+                            ("from".into(), "9092".into()),
+                            ("at".into(), "n".into()),
+                            ("to".into(), "/project/project_name".into()),
+                            ("port-range".into(), "1000-2000".into()),
                         ]
                         .into_iter()
                         .collect(),
@@ -288,8 +273,8 @@ mod tests {
                 kafka_outlet: Some(ResourceNameOrMap::RandomlyNamedMap(
                     UnnamedResources::Single(Args {
                         args: vec![
-                            ("bootstrap-server".to_string(), "192.168.1.1:9092".into()),
-                            ("at".to_string(), "n".into()),
+                            ("bootstrap-server".into(), "192.168.1.1:9092".into()),
+                            ("at".into(), "n".into()),
                         ]
                         .into_iter()
                         .collect(),
@@ -376,9 +361,7 @@ mod tests {
                 items: vec![(
                     "db-outlet".to_string(),
                     Args {
-                        args: vec![("to".to_string(), "5432".into())]
-                            .into_iter()
-                            .collect(),
+                        args: vec![("to".into(), "5432".into())].into_iter().collect(),
                     },
                 ),]
                 .into_iter()
@@ -391,9 +374,7 @@ mod tests {
                 items: vec![(
                     "web-inlet".to_string(),
                     Args {
-                        args: vec![("from".to_string(), "4000".into())]
-                            .into_iter()
-                            .collect(),
+                        args: vec![("from".into(), "4000".into())].into_iter().collect(),
                     },
                 ),]
                 .into_iter()
@@ -435,9 +416,9 @@ mod tests {
                     "web-inlet".to_string(),
                     Args {
                         args: vec![
-                            ("from".to_string(), "4000".into()),
-                            ("via".to_string(), "db".into()),
-                            ("allow".to_string(), "component.db".into()),
+                            ("from".into(), "4000".into()),
+                            ("via".into(), "db".into()),
+                            ("allow".into(), "component.db".into()),
                         ]
                         .into_iter()
                         .collect(),
@@ -473,8 +454,8 @@ mod tests {
                     "db-outlet".to_string(),
                     Args {
                         args: vec![
-                            ("to".to_string(), "5432".into()),
-                            ("allow".to_string(), "component.web".into()),
+                            ("to".into(), "5432".into()),
+                            ("allow".into(), "component.web".into()),
                         ]
                         .into_iter()
                         .collect(),
