@@ -8,10 +8,11 @@ use miette::Context as _;
 use miette::{miette, IntoDiagnostic};
 use opentelemetry::trace::TraceContextExt;
 use opentelemetry::KeyValue;
+use regex::Regex;
 use tracing::instrument;
 
 use ockam_api::cli_state::random_name;
-use ockam_api::colors::color_primary;
+use ockam_api::colors::{color_error, color_primary};
 use ockam_api::{fmt_log, fmt_ok};
 use ockam_core::{opentelemetry_context_parser, OpenTelemetryContext};
 use ockam_node::Context;
@@ -201,12 +202,24 @@ impl CreateCommand {
         for (key, value) in self.config_args.variables.iter() {
             if variables.contains_key(key) {
                 return Err(miette!(
-                    "The variable with key '{key}' is duplicated\n\
-                Remove the duplicated variable or provide unique keys for each variable"
+                    "The variable with key {} is duplicated\n\
+                Remove the duplicated variable or provide unique keys for each variable",
+                    color_primary(key)
                 ));
             }
             variables.insert(key.clone(), value.clone());
         }
+
+        // return error if the name arg can't be parsed
+        let re = Regex::new(r"[^\w_-]").into_diagnostic()?;
+        if self.has_name_arg() && re.is_match(&self.name) {
+            return Err(miette!(
+                "Invalid value for {}: {}",
+                color_primary("NAME_OR_CONFIGURATION"),
+                color_error(&self.name),
+            ));
+        }
+
         Ok(())
     }
 
