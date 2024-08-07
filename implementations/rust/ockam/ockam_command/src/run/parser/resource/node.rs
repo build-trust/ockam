@@ -42,34 +42,34 @@ impl Resource<CreateCommand> for Node {
             args.insert("name".into(), name);
         }
         if let Some(skip_is_running_check) = self.skip_is_running_check {
-            args.insert("skip-is-running-check".to_string(), skip_is_running_check);
+            args.insert("skip-is-running-check".into(), skip_is_running_check);
         }
         if let Some(foreground) = self.foreground {
-            args.insert("foreground".to_string(), foreground);
+            args.insert("foreground".into(), foreground);
         }
         if let Some(child_process) = self.child_process {
-            args.insert("child-process".to_string(), child_process);
+            args.insert("child-process".into(), child_process);
         }
         if let Some(exit_on_eof) = self.exit_on_eof {
-            args.insert("exit-on-eof".to_string(), exit_on_eof);
+            args.insert("exit-on-eof".into(), exit_on_eof);
         }
         if let Some(tcp_listener_address) = self.tcp_listener_address {
-            args.insert("tcp-listener-address".to_string(), tcp_listener_address);
+            args.insert("tcp-listener-address".into(), tcp_listener_address);
         }
         if let Some(enable_http_server) = self.http_server {
-            args.insert("http-server".to_string(), enable_http_server);
+            args.insert("http-server".into(), enable_http_server);
         }
         if let Some(http_server_port) = self.http_server_port {
-            args.insert("http-server-port".to_string(), http_server_port);
+            args.insert("http-server-port".into(), http_server_port);
         }
         if let Some(identity) = self.identity {
-            args.insert("identity".to_string(), identity);
+            args.insert("identity".into(), identity);
         }
         if let Some(project) = self.project {
-            args.insert("project".to_string(), project);
+            args.insert("project".into(), project);
         }
         if let Some(opentelemetry_context) = self.opentelemetry_context {
-            args.insert("opentelemetry-context".to_string(), opentelemetry_context);
+            args.insert("opentelemetry-context".into(), opentelemetry_context);
         }
         if args.is_empty() {
             return vec![];
@@ -78,7 +78,7 @@ impl Resource<CreateCommand> for Node {
         // Convert the map into a list of cli args
         let mut cmd_args = vec![];
         // Remove "name" from the arguments and use it as a positional argument
-        if let Some(name) = args.remove(Self::NAME_ARG) {
+        if let Some(name) = args.remove(&Self::NAME_ARG.into()) {
             cmd_args.push(name.to_string());
         }
         cmd_args.extend(as_command_args(args));

@@ -201,3 +201,16 @@ force_kill_node() {
   run_success $OCKAM node create --http-server-port $port
   run_success curl -fsI -m 2 127.0.0.1:$port
 }
+
+@test "node - fail to create node with invalid name" {
+  run_failure "$OCKAM" node create n!
+  run_failure "$OCKAM" node create n.1
+  run_failure "$OCKAM" node create ./config.yaml
+  run_failure "$OCKAM" node create node.yaml
+
+  # The previous will work if the file exists
+    cat <<EOF >"$OCKAM_HOME/node.yaml"
+name: n1
+EOF
+  run_success "$OCKAM" node create "$OCKAM_HOME/node.yaml"
+}
