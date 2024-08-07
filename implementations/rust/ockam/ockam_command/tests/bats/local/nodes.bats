@@ -86,13 +86,6 @@ force_kill_node() {
   run_success "$OCKAM" node create n
 }
 
-@test "node - fail to create node when not existing identity is passed" {
-  # Background node
-  run_failure "$OCKAM" node create --identity i
-  # Foreground node
-  run_failure "$OCKAM" node create -f --identity i
-}
-
 @test "node - fail to create two foreground nodes with the same name" {
   run_success "$OCKAM" node create n -f &
   sleep 1
@@ -209,7 +202,7 @@ force_kill_node() {
   run_failure "$OCKAM" node create node.yaml
 
   # The previous will work if the file exists
-    cat <<EOF >"$OCKAM_HOME/node.yaml"
+  cat <<EOF >"$OCKAM_HOME/node.yaml"
 name: n1
 EOF
   run_success "$OCKAM" node create "$OCKAM_HOME/node.yaml"

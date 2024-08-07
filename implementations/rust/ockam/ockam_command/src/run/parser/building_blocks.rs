@@ -296,6 +296,30 @@ impl From<&str> for ArgValue {
     }
 }
 
+impl From<String> for ArgValue {
+    fn from(s: String) -> Self {
+        if let Ok(v) = s.parse::<isize>() {
+            return ArgValue::Int(v);
+        }
+        if let Ok(v) = s.parse::<bool>() {
+            return ArgValue::Bool(v);
+        }
+        ArgValue::String(s)
+    }
+}
+
+impl From<bool> for ArgValue {
+    fn from(b: bool) -> Self {
+        ArgValue::Bool(b)
+    }
+}
+
+impl From<isize> for ArgValue {
+    fn from(i: isize) -> Self {
+        ArgValue::Int(i)
+    }
+}
+
 impl Display for ArgValue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let str = match self {

@@ -67,12 +67,11 @@ impl CreateCommand {
             .into_diagnostic()?;
         info!("TCP listener at {}", tcp_listener.socket_address());
 
-        let _notification_handler = NotificationHandler::start(&opts.state, opts.terminal.clone());
-
         // Set node_name so that node can isolate its data in the storage from other nodes
-        let state = opts.state.clone();
-
-        let node_info = state
+        self.get_or_create_identity(&opts, &self.identity).await?;
+        let _notification_handler = NotificationHandler::start(&opts.state, opts.terminal.clone());
+        let node_info = opts
+            .state
             .start_node_with_optional_values(
                 &node_name,
                 &self.identity,
@@ -103,7 +102,7 @@ impl CreateCommand {
         let node_man = InMemoryNode::new(
             ctx,
             NodeManagerGeneralOptions::new(
-                state,
+                opts.state.clone(),
                 node_name.clone(),
                 self.launch_config.is_none(),
                 http_server_port,
@@ -160,7 +159,7 @@ impl CreateCommand {
 
         // Clean up and exit
         opts.shutdown();
-        let _ = opts.state.stop_node(&self.name, true).await;
+        let _ = opts.state.stop_node(&node_name, true).await;
         let _ = ctx.stop().await;
         if !self.foreground_args.child_process {
             opts.terminal

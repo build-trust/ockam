@@ -8,7 +8,6 @@ use ockam_api::colors::color_primary;
 use ockam_api::fmt_warn;
 use ockam_api::logs::CurrentSpan;
 use ockam_api::nodes::BackgroundNodeClient;
-use ockam_api::terminal::notification::NotificationHandler;
 use ockam_core::OpenTelemetryContext;
 
 use crate::node::show::get_node_resources;
@@ -47,14 +46,7 @@ impl CreateCommand {
                 color_primary(&node_name)
             ));
         }
-        {
-            let _notification_handler =
-                NotificationHandler::start(&opts.state, opts.terminal.clone());
-            match &self.identity {
-                Some(name) => opts.state.get_named_identity(name).await?,
-                None => opts.state.get_or_create_default_named_identity().await?,
-            };
-        }
+        self.get_or_create_identity(&opts, &self.identity).await?;
 
         // Create node and wait for it to be up
         let cmd_with_trace_context = CreateCommand {
