@@ -72,7 +72,7 @@ EOF
     --foreground \
     --enrollment-ticket "$ticket_path" \
     --variable SERVICE_PORT="$PYTHON_SERVER_PORT" &
-  sleep 1
+  sleep 10
   run_success "$OCKAM" message send hello --timeout 2 --to "/node/n1/secure/api/service/echo"
   run_success curl -sfI --retry-connrefused --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$CLIENT_PORT"
 }
@@ -200,4 +200,34 @@ EOF
 
   # Use the identity to send a message
   $OCKAM message send hi --identity i1 --to "/project/default/service/forward_to_$RELAY_NAME/secure/api/service/echo"
+}
+
+@test "nodes - create with config, using the specified enrollment ticket" {
+  # Create enrollment ticket that can be reused a few times
+  $OCKAM project ticket >"$OCKAM_HOME/enrollment.ticket"
+
+  # The identity will be enrolled
+  run_success "$OCKAM" node create n1 --identity i1 --enrollment-ticket "$OCKAM_HOME/enrollment.ticket"
+
+  # Check that the identity can reach the project
+  run_success $OCKAM message send hi --identity i1 --to "/project/default/service/echo"
+}
+
+@test "nodes - create with config, using the specified enrollment ticket, overriding config" {
+  # Create enrollment ticket that can be reused a few times
+  $OCKAM project ticket >"$OCKAM_HOME/enrollment.ticket"
+
+    cat <<EOF >"$OCKAM_HOME/config.yaml"
+ticket: other.ticket
+name: n2
+identity: i2
+EOF
+
+  # The values from the config file will be overridden by the command line arguments
+  run_success "$OCKAM" node create n1 --identity i1 --enrollment-ticket "$OCKAM_HOME/enrollment.ticket"
+  run_failure "$OCKAM" node show n2
+  run_failure "$OCKAM" identity show i2
+
+  # Check that the identity can reach the project
+  run_success $OCKAM message send hi --identity i1 --to "/project/default/service/echo"
 }

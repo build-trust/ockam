@@ -13,6 +13,7 @@ use tracing::instrument;
 
 use ockam_api::cli_state::random_name;
 use ockam_api::colors::{color_error, color_primary};
+use ockam_api::terminal::notification::NotificationHandler;
 use ockam_api::{fmt_log, fmt_ok};
 use ockam_core::{opentelemetry_context_parser, OpenTelemetryContext};
 use ockam_node::Context;
@@ -31,6 +32,7 @@ pub mod background;
 mod config;
 pub mod foreground;
 
+const DEFAULT_NODE_NAME: &str = "_default_node_name";
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
 
@@ -43,7 +45,7 @@ after_long_help = docs::after_help(AFTER_LONG_HELP)
 pub struct CreateCommand {
     /// Name of the node or a configuration to set up the node.
     /// The configuration can be either a path to a local file or a URL.
-    #[arg(value_name = "NAME_OR_CONFIGURATION", hide_default_value = true, default_value_t = random_name())]
+    #[arg(value_name = "NAME_OR_CONFIGURATION", hide_default_value = true, default_value = DEFAULT_NODE_NAME)]
     pub name: String,
 
     #[command(flatten)]
@@ -119,7 +121,7 @@ impl Default for CreateCommand {
         let node_manager_defaults = NodeManagerDefaults::default();
         Self {
             skip_is_running_check: false,
-            name: random_name(),
+            name: DEFAULT_NODE_NAME.to_string(),
             config_args: ConfigArgs {
                 configuration: None,
                 enrollment_ticket: None,
@@ -147,9 +149,14 @@ impl Command for CreateCommand {
     const NAME: &'static str = "node create";
 
     #[instrument(skip_all)]
-    fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+    fn run(mut self, opts: CommandGlobalOpts) -> miette::Result<()> {
         self.parse_args()?;
-        if self.has_name_arg() {
+        if self.should_run_config() {
+            async_cmd(&self.name(), opts.clone(), |ctx| async move {
+                self.run_config(&ctx, opts).await
+            })
+        } else {
+            self.set_random_name_if_default();
             if self.foreground_args.foreground {
                 if self.foreground_args.child_process {
                     opentelemetry::Context::current()
@@ -165,35 +172,47 @@ impl Command for CreateCommand {
                     self.background_mode(&ctx, opts).await
                 })
             }
-        } else {
-            return async_cmd(&self.name(), opts.clone(), |ctx| async move {
-                self.run_config(&ctx, opts).await
-            });
         }
     }
 
-    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> Result<()> {
+    async fn async_run(mut self, ctx: &Context, opts: CommandGlobalOpts) -> Result<()> {
         self.parse_args()?;
-        if self.has_name_arg() {
+        if self.should_run_config() {
+            self.run_config(ctx, opts).await?
+        } else {
+            self.set_random_name_if_default();
             if self.foreground_args.foreground {
                 self.foreground_mode(ctx, opts).await?
             } else {
                 self.background_mode(ctx, opts).await?
             }
-        } else {
-            self.run_config(ctx, opts).await?
         }
         Ok(())
     }
 }
 
 impl CreateCommand {
-    /// Return true if the `name` argument is a node name, false if it's a config file path or URL,
-    /// or if the node configuration was provided inline
-    fn has_name_arg(&self) -> bool {
-        is_url(&self.name).is_none()
-            && std::fs::metadata(&self.name).is_err()
+    /// Return true if the command should be run in config mode
+    fn should_run_config(&self) -> bool {
+        let name_arg_is_a_config = !self.has_name_arg();
+
+        let no_config_args = !name_arg_is_a_config
             && self.config_args.configuration.is_none()
+            && self.config_args.enrollment_ticket.is_none();
+        if no_config_args {
+            return false;
+        }
+
+        let name_arg_is_default_node_name_or_config =
+            self.name.eq(DEFAULT_NODE_NAME) || name_arg_is_a_config;
+        name_arg_is_default_node_name_or_config
+            || self.config_args.configuration.is_some()
+            || self.config_args.enrollment_ticket.is_some()
+    }
+
+    /// Return true if the `name` argument is not a config file path or URL
+    fn has_name_arg(&self) -> bool {
+        is_url(&self.name).is_none() && std::fs::metadata(&self.name).is_err()
     }
 
     fn parse_args(&self) -> miette::Result<()> {
@@ -250,6 +269,34 @@ impl CreateCommand {
         )?;
         Ok(buf)
     }
+
+    fn set_random_name_if_default(&mut self) {
+        if self.name == DEFAULT_NODE_NAME {
+            self.name = random_name();
+        }
+    }
+
+    async fn get_or_create_identity(
+        &self,
+        opts: &CommandGlobalOpts,
+        identity_name: &Option<String>,
+    ) -> Result<String> {
+        let _notification_handler = NotificationHandler::start(&opts.state, opts.terminal.clone());
+        Ok(match identity_name {
+            Some(name) => {
+                if let Ok(identity) = opts.state.get_named_identity(name).await {
+                    identity.name()
+                } else {
+                    opts.state.create_identity_with_name(name).await?.name()
+                }
+            }
+            None => opts
+                .state
+                .get_or_create_default_named_identity()
+                .await?
+                .name(),
+        })
+    }
 }
 
 pub fn parse_launch_config(config_or_path: &str) -> Result<Config> {
@@ -274,5 +321,107 @@ mod tests {
     fn command_can_be_parsed_from_name() {
         let cmd = parse_cmd_from_args(CreateCommand::NAME, &[]);
         assert!(cmd.is_ok());
+    }
+
+    #[test]
+    fn has_name_arg() {
+        // True if it's a node name
+        let cmd = CreateCommand::default();
+        assert!(cmd.has_name_arg());
+        let cmd = CreateCommand {
+            name: "node".to_string(),
+            ..CreateCommand::default()
+        };
+        assert!(cmd.has_name_arg());
+
+        // False if it's a file path
+        let tmp_file = std::env::temp_dir().join("config.json");
+        std::fs::write(&tmp_file, "{}").unwrap();
+        let cmd = CreateCommand {
+            name: tmp_file.to_str().unwrap().to_string(),
+            ..CreateCommand::default()
+        };
+        assert!(!cmd.has_name_arg());
+
+        // False if it's a URL
+        let cmd = CreateCommand {
+            name: "http://localhost:8080".to_string(),
+            ..CreateCommand::default()
+        };
+        assert!(!cmd.has_name_arg());
+    }
+
+    #[test]
+    fn should_run_config() {
+        let tmp_file = std::env::temp_dir().join("config.json");
+        std::fs::write(&tmp_file, "{}").unwrap();
+        let config_path = tmp_file.to_str().unwrap().to_string();
+
+        // False with default values
+        let cmd = CreateCommand::default();
+        assert!(!cmd.should_run_config());
+
+        // True if the name is the default node name and the configuration is set
+        let cmd = CreateCommand {
+            config_args: ConfigArgs {
+                configuration: Some(config_path.clone()),
+                ..ConfigArgs::default()
+            },
+            ..CreateCommand::default()
+        };
+        assert!(cmd.should_run_config());
+
+        // True if the name is the default node name and the enrollment ticket is set
+        let cmd = CreateCommand {
+            config_args: ConfigArgs {
+                enrollment_ticket: Some("ticket".to_string()),
+                ..ConfigArgs::default()
+            },
+            ..CreateCommand::default()
+        };
+        assert!(cmd.should_run_config());
+
+        // True if the name is not the default node name and the enrollment ticket is set
+        let cmd = CreateCommand {
+            name: "node".to_string(),
+            config_args: ConfigArgs {
+                enrollment_ticket: Some("ticket".to_string()),
+                ..ConfigArgs::default()
+            },
+            ..CreateCommand::default()
+        };
+        assert!(cmd.should_run_config());
+
+        // True if the name is not the default node name and the inline config is set
+        let cmd = CreateCommand {
+            name: "node".to_string(),
+            config_args: ConfigArgs {
+                configuration: Some(config_path.clone()),
+                ..ConfigArgs::default()
+            },
+            ..CreateCommand::default()
+        };
+        assert!(cmd.should_run_config());
+
+        // True if the name is a file path
+        let cmd = CreateCommand {
+            name: config_path.clone(),
+            ..CreateCommand::default()
+        };
+        assert!(cmd.should_run_config());
+
+        // True if the name is a URL
+        let cmd = CreateCommand {
+            name: "http://localhost:8080".to_string(),
+            ..CreateCommand::default()
+        };
+        assert!(cmd.should_run_config());
+
+        // False if the name is a node name and no config is set
+        let cmd = CreateCommand {
+            name: "node".to_string(),
+            ..CreateCommand::default()
+        };
+        assert!(!cmd.should_run_config());
     }
 }

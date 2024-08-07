@@ -2,7 +2,7 @@
 
 function orchestrator_setup_suite() {
   export OCKAM_COMMAND_RETRY_COUNT=3
-  export OCKAM_COMMAND_RETRY_DELAY=5s
+  export OCKAM_COMMAND_RETRY_DELAY=1s
 
   setup_python_server
   get_project_data

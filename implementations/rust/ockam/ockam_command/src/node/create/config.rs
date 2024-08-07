@@ -1,6 +1,5 @@
 use crate::node::show::is_node_up;
 use crate::node::CreateCommand;
-use crate::run::parser::building_blocks::ArgValue;
 use crate::run::parser::config::ConfigParser;
 use crate::run::parser::resource::*;
 use crate::run::parser::Version;
@@ -11,7 +10,6 @@ use miette::{miette, IntoDiagnostic};
 use ockam_api::cli_state::journeys::APPLICATION_EVENT_COMMAND_CONFIGURATION_FILE;
 use ockam_api::cli_state::random_name;
 use ockam_api::nodes::BackgroundNodeClient;
-use ockam_api::terminal::notification::NotificationHandler;
 use ockam_core::{AsyncTryClone, OpenTelemetryContext};
 use ockam_node::Context;
 use serde::{Deserialize, Serialize};
@@ -48,25 +46,9 @@ impl CreateCommand {
         let node_name = node_config.node.name().ok_or(miette!(
             "Node name should be set to the command's default value"
         ))?;
-        let identity_name = {
-            let _notification_handler =
-                NotificationHandler::start(&opts.state, opts.terminal.clone());
-            match node_config.node.identity() {
-                Some(name) => {
-                    if let Ok(identity) = opts.state.get_named_identity(&name).await {
-                        identity.name()
-                    } else {
-                        opts.state.create_identity_with_name(&name).await?.name()
-                    }
-                }
-                None => opts
-                    .state
-                    .get_or_create_default_named_identity()
-                    .await?
-                    .name(),
-            }
-        };
-
+        let identity_name = self
+            .get_or_create_identity(&opts, &node_config.node.identity())
+            .await?;
         let res = if self.foreground_args.foreground {
             node_config
                 .run_foreground(ctx, &opts, &node_name, &identity_name)
@@ -85,12 +67,22 @@ impl CreateCommand {
     /// Try to read the self.name field as either:
     ///  - a URL to a configuration file
     ///  - a local path to a configuration file
-    ///  - an inline configuration
+    /// or read the inline configuration
     #[instrument(skip_all, fields(app.event.command.configuration_file))]
     pub async fn get_node_config(&self) -> miette::Result<NodeConfig> {
         let contents = match self.config_args.configuration.clone() {
             Some(contents) => contents,
-            None => parse_path_or_url(&self.name).await?,
+            None => match parse_path_or_url(&self.name).await {
+                Ok(contents) => contents,
+                Err(err) => {
+                    // If just the enrollment ticket is passed, create a minimal configuration
+                    if let Some(ticket) = &self.config_args.enrollment_ticket {
+                        format!("ticket: {}", ticket)
+                    } else {
+                        return Err(err);
+                    }
+                }
+            },
         };
         // Set environment variables from the cli command args
         // This needs to be done before parsing the configuration
@@ -141,59 +133,67 @@ impl NodeConfig {
     }
 
     /// Merge the arguments of the node defined in the config with the arguments from the
-    /// "create" command, giving precedence to the config values.
-    fn merge(&mut self, cli_args: &CreateCommand) -> miette::Result<()> {
+    /// "create" command, giving precedence to the command args.
+    fn merge(&mut self, cmd: &CreateCommand) -> miette::Result<()> {
         // Set environment variables from the cli command again
         // to override the duplicate entries from the config file.
-        for (key, value) in &cli_args.config_args.variables {
+        for (key, value) in &cmd.config_args.variables {
             if value.is_empty() {
                 return Err(miette!("Empty value for variable '{key}'"));
             }
             std::env::set_var(key, value);
         }
 
-        // Use a random name for the node if none has been specified
+        // Set default values to the config, if not present
         if self.node.name.is_none() {
-            self.node.name = Some(ArgValue::String(random_name()));
-        }
-
-        // Set the enrollment ticket from the cli command
-        // overriding the one from the config file.
-        if let Some(ticket) = &cli_args.config_args.enrollment_ticket {
-            self.project_enroll.ticket = Some(ticket.clone());
-        }
-
-        // Merge the node arguments from the config with the cli command args.
-        if self.node.skip_is_running_check.is_none() {
-            self.node.skip_is_running_check = Some(ArgValue::Bool(cli_args.skip_is_running_check));
-        }
-        if self.node.foreground.is_none() {
-            self.node.foreground = Some(ArgValue::Bool(cli_args.foreground_args.foreground));
-        }
-        if self.node.child_process.is_none() {
-            self.node.exit_on_eof = Some(ArgValue::Bool(cli_args.foreground_args.child_process));
-        }
-        if self.node.exit_on_eof.is_none() {
-            self.node.exit_on_eof = Some(ArgValue::Bool(cli_args.foreground_args.exit_on_eof));
-        }
-        if self.node.tcp_listener_address.is_none() {
-            self.node.tcp_listener_address =
-                Some(ArgValue::String(cli_args.tcp_listener_address.clone()));
-        }
-        if self.node.identity.is_none() {
-            self.node.identity = cli_args.identity.clone().map(ArgValue::String);
-        }
-        if self.node.project.is_none() {
-            self.node.project = cli_args
-                .trust_opts
-                .project_name
-                .clone()
-                .map(ArgValue::String);
+            self.node.name = Some(random_name().into());
         }
         if self.node.opentelemetry_context.is_none() {
-            self.node.opentelemetry_context = Some(ArgValue::String(
-                serde_json::to_string(&OpenTelemetryContext::current()).into_diagnostic()?,
-            ));
+            self.node.opentelemetry_context = Some(
+                serde_json::to_string(&OpenTelemetryContext::current())
+                    .into_diagnostic()?
+                    .into(),
+            );
+        }
+
+        // Override config values with passed command args
+        let default_cmd_args = CreateCommand::default();
+        if cmd.name.ne(&default_cmd_args.name) && cmd.has_name_arg() {
+            self.node.name = Some(cmd.name.clone().into());
+        }
+        if let Some(ticket) = &cmd.config_args.enrollment_ticket {
+            self.project_enroll.ticket = Some(ticket.clone());
+        }
+        if cmd.skip_is_running_check != default_cmd_args.skip_is_running_check {
+            self.node.skip_is_running_check = Some(cmd.skip_is_running_check.into());
+        }
+        if cmd.foreground_args.foreground != default_cmd_args.foreground_args.foreground {
+            self.node.foreground = Some(cmd.foreground_args.foreground.into());
+        }
+        if cmd.foreground_args.child_process != default_cmd_args.foreground_args.child_process {
+            self.node.child_process = Some(cmd.foreground_args.child_process.into());
+        }
+        if cmd.foreground_args.exit_on_eof != default_cmd_args.foreground_args.exit_on_eof {
+            self.node.exit_on_eof = Some(cmd.foreground_args.exit_on_eof.into());
+        }
+        if cmd.tcp_listener_address != default_cmd_args.tcp_listener_address {
+            self.node.tcp_listener_address = Some(cmd.tcp_listener_address.clone().into());
+        }
+        if cmd.http_server != default_cmd_args.http_server {
+            self.node.http_server = Some(cmd.http_server.into());
+        }
+        if let Some(port) = cmd.http_server_port {
+            self.node.http_server_port = Some((port as isize).into());
+        }
+        if let Some(identity) = &cmd.identity {
+            self.node.identity = Some(identity.clone().into());
+        }
+        if let Some(project) = &cmd.trust_opts.project_name {
+            self.node.project = Some(project.clone().into());
+        }
+        if let Some(context) = &cmd.opentelemetry_context {
+            self.node.opentelemetry_context =
+                Some(serde_json::to_string(&context).into_diagnostic()?.into());
         }
 
         Ok(())
@@ -310,6 +310,67 @@ mod tests {
 
     use super::*;
 
+    #[tokio::test]
+    async fn get_node_config_from_path() {
+        let config = "name: n1";
+        let dummy_file = tempfile::NamedTempFile::new().unwrap();
+        std::fs::write(dummy_file.path(), config).unwrap();
+        let cmd = CreateCommand {
+            name: dummy_file.path().to_str().unwrap().to_string(),
+            ..Default::default()
+        };
+        let res = cmd.get_node_config().await.unwrap();
+        assert_eq!(res.node.name, Some("n1".into()));
+    }
+
+    #[tokio::test]
+    async fn get_node_config_from_url() {
+        let mut server = mockito::Server::new_async().await;
+        let config_url = format!("{}/config.yaml", server.url());
+        server
+            .mock("GET", "/config.yaml")
+            .with_status(201)
+            .with_header("content-type", "text/plain")
+            .with_body("name: n1")
+            .create_async()
+            .await;
+        let cmd = CreateCommand {
+            name: config_url,
+            ..Default::default()
+        };
+        let res = cmd.get_node_config().await.unwrap();
+        assert_eq!(res.node.name, Some("n1".into()));
+    }
+
+    #[tokio::test]
+    async fn get_node_config_from_inline() {
+        let config = "name: n1";
+        let cmd = CreateCommand {
+            config_args: ConfigArgs {
+                configuration: Some(config.into()),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let res = cmd.get_node_config().await.unwrap();
+        assert_eq!(res.node.name, Some("n1".into()));
+    }
+
+    #[tokio::test]
+    async fn get_node_config_from_enrollment_ticket() {
+        let ticket = EnrollmentTicket::new(OneTimeCode::new(), None);
+        let ticket_hex = ticket.hex_encoded().unwrap();
+        let cmd = CreateCommand {
+            config_args: ConfigArgs {
+                enrollment_ticket: Some(ticket_hex.clone()),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let res = cmd.get_node_config().await.unwrap();
+        assert_eq!(res.project_enroll.ticket, Some(ticket_hex));
+    }
+
     #[test]
     fn parse_demo_config_files() {
         let demo_files_dir = std::env::current_dir()
@@ -330,14 +391,16 @@ mod tests {
 
     #[test]
     fn merge_config_with_cli() {
-        let enrollment_ticket = EnrollmentTicket::new(OneTimeCode::new(), None);
-        let enrollment_ticket_hex = enrollment_ticket.hex_encoded().unwrap();
-        std::env::set_var("ENROLLMENT_TICKET", &enrollment_ticket_hex);
+        let cli_enrollment_ticket = EnrollmentTicket::new(OneTimeCode::new(), None);
+        let cli_enrollment_ticket_hex = cli_enrollment_ticket.hex_encoded().unwrap();
+        let config_enrollment_ticket = EnrollmentTicket::new(OneTimeCode::new(), None);
+        let config_enrollment_ticket_hex = config_enrollment_ticket.hex_encoded().unwrap();
+        std::env::set_var("ENROLLMENT_TICKET", config_enrollment_ticket_hex);
 
         let cli_args = CreateCommand {
             tcp_listener_address: "127.0.0.1:1234".to_string(),
             config_args: ConfigArgs {
-                enrollment_ticket: Some(enrollment_ticket.hex_encoded().unwrap()),
+                enrollment_ticket: Some(cli_enrollment_ticket.hex_encoded().unwrap()),
                 ..Default::default()
             },
             ..Default::default()
@@ -350,10 +413,10 @@ mod tests {
         assert_eq!(node.tcp_listener_address, "127.0.0.1:1234");
         assert_eq!(
             config.project_enroll.ticket,
-            Some(enrollment_ticket_hex.clone())
+            Some(cli_enrollment_ticket_hex.clone())
         );
 
-        // Config used, cli args should be ignored
+        // Config used, cli args should override the overlapping args
         let mut config = NodeConfig::parse(
             r#"
             ticket: $ENROLLMENT_TICKET
@@ -365,10 +428,10 @@ mod tests {
         config.merge(&cli_args).unwrap();
         let node = config.node.into_parsed_commands().unwrap().pop().unwrap();
         assert_eq!(node.name, "n1");
-        assert_eq!(node.tcp_listener_address, "127.0.0.1:5555".to_string());
+        assert_eq!(node.tcp_listener_address, cli_args.tcp_listener_address);
         assert_eq!(
             config.project_enroll.ticket,
-            Some(enrollment_ticket_hex.clone())
+            Some(cli_enrollment_ticket_hex.clone())
         );
     }
 }
