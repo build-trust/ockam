@@ -38,13 +38,13 @@ impl Projects {
 
     #[instrument(skip_all, fields(project_id = project.project_id()))]
     pub async fn store_project(&self, project: Project) -> Result<Project> {
-        if let Ok(project_identity) = project.project_identity() {
+        if let Some(project_identity) = project.project_identity() {
             self.identities_verification
                 .update_identity_ignore_older(project_identity)
                 .await?;
         }
 
-        if let Ok(authority_identity) = project.authority_identity() {
+        if let Some(authority_identity) = project.authority_identity() {
             self.identities_verification
                 .update_identity_ignore_older(authority_identity)
                 .await?;

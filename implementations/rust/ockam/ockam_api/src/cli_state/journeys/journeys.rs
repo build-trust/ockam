@@ -195,7 +195,7 @@ impl CliState {
                     &project_multiaddr.to_string(),
                 );
             }
-            if let Ok(project_identifier) = project.project_identifier() {
+            if let Some(project_identifier) = project.project_identifier() {
                 CurrentSpan::set_attribute(
                     APPLICATION_EVENT_PROJECT_IDENTIFIER,
                     &project_identifier.to_string(),
@@ -207,7 +207,7 @@ impl CliState {
                     &authority_multiaddr.to_string(),
                 );
             }
-            if let Ok(authority_identifier) = project.authority_identifier() {
+            if let Some(authority_identifier) = project.authority_identifier() {
                 CurrentSpan::set_attribute(
                     APPLICATION_EVENT_PROJECT_AUTHORITY_IDENTIFIER,
                     &authority_identifier.to_string(),

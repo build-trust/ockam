@@ -72,7 +72,10 @@ impl InletSessionReplacer {
                         .get_project_by_name(&p)
                         .await
                     {
-                        Some(p.authority_identifier()?)
+                        Some(
+                            p.authority_identifier()
+                                .ok_or(ApiError::core("no authority identifier"))?,
+                        )
                     } else {
                         None
                     }

@@ -3,7 +3,7 @@ use crate::nodes::service::{
     CredentialScope, NodeManagerCredentialRetrieverOptions, NodeManagerTrustOptions,
 };
 use crate::nodes::NodeManager;
-use crate::{multiaddr_to_transport_route, CliState};
+use crate::{multiaddr_to_transport_route, ApiError, CliState};
 use ockam::identity::{IdentitiesVerification, RemoteCredentialRetrieverInfo};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{Error, Result};
@@ -109,7 +109,9 @@ impl CliState {
         &self,
         project: Project,
     ) -> Result<NodeManagerTrustOptions> {
-        let authority_identifier = project.authority_identifier()?;
+        let authority_identifier = project
+            .authority_identifier()
+            .ok_or(ApiError::core("no authority identifier"))?;
         let authority_multiaddr = project.authority_multiaddr()?;
         let authority_route =
             multiaddr_to_transport_route(authority_multiaddr).ok_or(Error::new(
@@ -228,6 +230,16 @@ impl CliState {
                 ));
             }
         };
+
+        if project.authority_identifier().is_none() {
+            debug!("TrustOptions configured: No Authority. No Credentials");
+            return Ok(NodeManagerTrustOptions::new(
+                NodeManagerCredentialRetrieverOptions::None,
+                NodeManagerCredentialRetrieverOptions::None,
+                None,
+                NodeManagerCredentialRetrieverOptions::None,
+            ));
+        }
 
         self.retrieve_trust_options_with_project(project).await
     }

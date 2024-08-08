@@ -66,9 +66,13 @@ impl CreateServiceInvitation {
             expires_at,
             project_id: project.project_id().to_string(),
             recipient_email: recipient_email.clone(),
-            project_identity: project.project_identifier()?,
+            project_identity: project
+                .project_identifier()
+                .ok_or(ApiError::core("no project identifier"))?,
             project_route: project.project_multiaddr()?.to_string(),
-            project_authority_identity: project.authority_identifier()?,
+            project_authority_identity: project
+                .authority_identifier()
+                .ok_or(ApiError::core("no authority identifier"))?,
             project_authority_route: project_authority_route.to_string(),
             shared_node_identity: node_identifier,
             shared_node_route: service_route.as_ref().to_string(),

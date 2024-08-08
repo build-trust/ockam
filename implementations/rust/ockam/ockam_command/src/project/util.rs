@@ -70,7 +70,9 @@ pub async fn get_projects_secure_channels_from_config_lookup(
                 .context(format!("Failed to get project {name}"))?;
             (
                 project.project_multiaddr()?.clone(),
-                project.project_identifier()?,
+                project
+                    .project_identifier()
+                    .ok_or(miette!("The project has no identifier"))?,
             )
         };
 
@@ -162,7 +164,9 @@ async fn check_project_node_accessible(
     spinner_option: Option<ProgressBar>,
 ) -> Result<Project> {
     let project_route = project.project_multiaddr()?;
-    let project_identifier = project.project_identifier()?;
+    let project_identifier = project
+        .project_identifier()
+        .ok_or(miette!("The project has no identifier"))?;
     let project_node = node
         .create_project_client(
             &project_identifier,

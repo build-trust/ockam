@@ -337,7 +337,9 @@ impl NodeManager {
         let project = self.cli_state.projects().get_project_by_name(name).await?;
         Ok((
             project.project_multiaddr()?.clone(),
-            project.project_identifier()?,
+            project
+                .project_identifier()
+                .ok_or(ApiError::core("no project identifier"))?,
         ))
     }
 
@@ -440,7 +442,10 @@ impl NodeManager {
         let project = self.wait_until_project_is_ready(ctx, project).await?;
 
         self.make_authority_node_client(
-            &project.authority_identifier().into_diagnostic()?,
+            &project
+                .authority_identifier()
+                .ok_or(ApiError::core("no authority identifier"))
+                .into_diagnostic()?,
             project.authority_multiaddr().into_diagnostic()?,
             &caller_identifier,
             credential_retriever_creator,

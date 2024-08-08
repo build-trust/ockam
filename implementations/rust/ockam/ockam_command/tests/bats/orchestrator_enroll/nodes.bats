@@ -217,7 +217,7 @@ EOF
   # Create enrollment ticket that can be reused a few times
   $OCKAM project ticket >"$OCKAM_HOME/enrollment.ticket"
 
-    cat <<EOF >"$OCKAM_HOME/config.yaml"
+  cat <<EOF >"$OCKAM_HOME/config.yaml"
 ticket: other.ticket
 name: n2
 identity: i2

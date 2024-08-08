@@ -30,7 +30,7 @@ impl InfoCommand {
     }
 
     pub fn name(&self) -> String {
-        "project info".into()
+        "project information".into()
     }
 
     async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {

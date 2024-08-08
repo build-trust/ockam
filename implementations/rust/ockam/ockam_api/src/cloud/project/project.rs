@@ -132,31 +132,12 @@ impl Project {
     }
 
     /// Return the identity of the project's node
-    pub fn project_identity(&self) -> Result<&Identity> {
-        match &self.project_identity {
-            Some(project_identity) => Ok(project_identity),
-            None => Err(Error::new(
-                Origin::Api,
-                Kind::NotFound,
-                format!(
-                    "no identity has been set for the project {}",
-                    self.model.name
-                ),
-            )),
-        }
+    pub fn project_identity(&self) -> Option<&Identity> {
+        self.project_identity.as_ref()
     }
 
-    pub fn project_identifier(&self) -> Result<Identifier> {
-        self.model.identity.clone().ok_or_else(|| {
-            Error::new(
-                Origin::Api,
-                Kind::NotFound,
-                format!(
-                    "no identifier has been set for the project {}",
-                    self.model.name
-                ),
-            )
-        })
+    pub fn project_identifier(&self) -> Option<Identifier> {
+        self.model.identity.clone()
     }
 
     pub fn project_multiaddr(&self) -> Result<&MultiAddr> {
@@ -178,22 +159,12 @@ impl Project {
     }
 
     /// Return the identity of the project's authority
-    pub fn authority_identity(&self) -> Result<&Identity> {
-        match &self.authority_identity {
-            Some(authority_identity) => Ok(authority_identity),
-            None => Err(Error::new(
-                Origin::Api,
-                Kind::NotFound,
-                format!(
-                    "no identity has been set for the project authority: {:?}",
-                    self
-                ),
-            )),
-        }
+    pub fn authority_identity(&self) -> Option<&Identity> {
+        self.authority_identity.as_ref()
     }
 
-    pub fn authority_identifier(&self) -> Result<Identifier> {
-        Ok(self.authority_identity()?.identifier().clone())
+    pub fn authority_identifier(&self) -> Option<Identifier> {
+        self.authority_identity().map(|i| i.identifier().clone())
     }
 
     pub fn authority_multiaddr(&self) -> Result<&MultiAddr> {
