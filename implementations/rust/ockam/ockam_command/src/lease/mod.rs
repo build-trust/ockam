@@ -1,5 +1,5 @@
 use clap::{Args, Subcommand};
-use miette::IntoDiagnostic;
+use miette::{miette, IntoDiagnostic};
 
 pub use create::CreateCommand;
 pub use list::ListCommand;
@@ -83,7 +83,9 @@ async fn create_project_client(
         .await?;
 
     node.create_project_client(
-        &project.project_identifier().into_diagnostic()?,
+        &project
+            .project_identifier()
+            .ok_or(miette!("The project has no identifier"))?,
         project.project_multiaddr().into_diagnostic()?,
         Some(identity.clone()),
         CredentialsEnabled::On,
