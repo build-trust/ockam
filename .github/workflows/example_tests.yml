@@ -1,0 +1,31 @@
+name: Examples Test
+
+on:
+  push:
+    branches: develop
+  pull_request:
+    branches: develop
+
+jobs:
+  test:
+    name: tcp inlet and outlet test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Set up Rust
+        uses: actions/setup-rust@v1
+        with:
+          rust-version: stable
+
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y curl
+
+      - name: Run Cargo test
+        working-directory: ./examples/rust/tcp_inlet_and_outlet
+        run: |
+          cargo test -- --test-threads=1 --nocapture
