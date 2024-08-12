@@ -9,7 +9,7 @@ use crate::run::parser::building_blocks::{ArgsToCommands, ResourceNameOrMap};
 use crate::run::parser::resource::utils::parse_cmd_from_args;
 use crate::{Command, OckamSubcommand};
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct KafkaOutlet {
     #[serde(alias = "kafka-outlets", alias = "kafka-outlet")]
     pub kafka_outlet: Option<ResourceNameOrMap>,

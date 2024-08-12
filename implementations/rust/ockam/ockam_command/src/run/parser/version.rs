@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize, Default)]
 pub struct Version {
     #[serde(default = "VersionValue::latest")]
     pub version: VersionValue,
@@ -33,6 +33,12 @@ impl VersionValue {
         } else {
             v
         }
+    }
+}
+
+impl Default for VersionValue {
+    fn default() -> Self {
+        Self::latest()
     }
 }
 

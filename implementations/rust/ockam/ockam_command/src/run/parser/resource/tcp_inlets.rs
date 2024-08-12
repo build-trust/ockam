@@ -8,7 +8,7 @@ use crate::run::parser::resource::utils::parse_cmd_from_args;
 use crate::tcp::inlet::create::CreateCommand;
 use crate::{tcp::inlet, Command, OckamSubcommand};
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct TcpInlets {
     #[serde(alias = "tcp-inlets", alias = "tcp-inlet")]
     pub tcp_inlets: Option<ResourceNameOrMap>,

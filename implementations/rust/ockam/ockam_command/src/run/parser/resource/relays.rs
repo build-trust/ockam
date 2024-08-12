@@ -8,7 +8,7 @@ use crate::run::parser::building_blocks::{ArgsToCommands, ResourcesContainer};
 use crate::run::parser::resource::utils::parse_cmd_from_args;
 use crate::{relay, Command, OckamSubcommand};
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct Relays {
     #[serde(alias = "relay")]
     pub relays: Option<ResourcesContainer>,
