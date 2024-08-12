@@ -2,6 +2,12 @@
 version: 2
 updates:
 
+  # Maintain dependencies of docker images
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "daily"
+
   # Maintain dependencies of GitHub Actions
   - package-ecosystem: "github-actions"
     directory: "/"
