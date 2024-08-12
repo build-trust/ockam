@@ -1,16 +1,15 @@
 use crate::kafka::protocol_aware::outlet::OutletInterceptorImpl;
 use crate::kafka::protocol_aware::utils::decode_body;
-use crate::kafka::protocol_aware::{InterceptError, KafkaMessageInterceptorResponse};
+use crate::kafka::protocol_aware::{InterceptError, KafkaMessageResponseInterceptor};
 use bytes::BytesMut;
 use kafka_protocol::messages::{ApiKey, MetadataResponse, ResponseHeader};
 use kafka_protocol::protocol::buf::ByteBuf;
 use kafka_protocol::protocol::Decodable;
 use ockam_core::async_trait;
 use ockam_node::Context;
-use std::io::{Error, ErrorKind};
 
 #[async_trait]
-impl KafkaMessageInterceptorResponse for OutletInterceptorImpl {
+impl KafkaMessageResponseInterceptor for OutletInterceptorImpl {
     async fn intercept_response(
         &self,
         context: &mut Context,
@@ -19,10 +18,7 @@ impl KafkaMessageInterceptorResponse for OutletInterceptorImpl {
         let mut buffer = original.peek_bytes(0..original.len());
 
         // we can/need to decode only mapped requests
-        let correlation_id = buffer
-            .peek_bytes(0..4)
-            .try_get_i32()
-            .map_err(|_| InterceptError::Io(Error::from(ErrorKind::InvalidData)))?;
+        let correlation_id = buffer.peek_bytes(0..4).try_get_i32()?;
 
         let result = self
             .request_map
@@ -44,7 +40,7 @@ impl KafkaMessageInterceptorResponse for OutletInterceptorImpl {
                 Err(_) => {
                     // the error doesn't contain any useful information
                     warn!("cannot decode response kafka header");
-                    return Err(InterceptError::Io(Error::from(ErrorKind::InvalidData)));
+                    return Err(InterceptError::InvalidData);
                 }
             };
 
@@ -56,6 +52,8 @@ impl KafkaMessageInterceptorResponse for OutletInterceptorImpl {
                 request_info.request_api_key
             );
 
+            // the responses of metadata request contain the list of brokers addresses,
+            // we override them with the outlets addresses
             if request_info.request_api_key == ApiKey::MetadataKey {
                 let response: MetadataResponse =
                     decode_body(&mut buffer, request_info.request_api_version)?;
@@ -65,8 +63,7 @@ impl KafkaMessageInterceptorResponse for OutletInterceptorImpl {
                     let outlet_address = self
                         .outlet_controller
                         .assert_outlet_for_broker(context, broker_id.0, address)
-                        .await
-                        .map_err(InterceptError::Ockam)?;
+                        .await?;
 
                     // allow the interceptor to reach the outlet
                     context

@@ -1,12 +1,13 @@
 use bytes::BytesMut;
 use kafka_protocol::messages::ApiKey;
+use kafka_protocol::protocol::buf::NotEnoughBytesError;
 use minicbor::{CborLen, Decode, Encode};
 use ockam_core::compat::{
     collections::HashMap,
     fmt::Debug,
     sync::{Arc, Mutex},
 };
-use ockam_core::{async_trait, Address, Error};
+use ockam_core::{async_trait, Address};
 use ockam_node::Context;
 
 pub(crate) mod outlet;
@@ -33,7 +34,7 @@ type CorrelationId = i32;
 pub(super) type TopicUuidMap = Arc<Mutex<HashMap<String, String>>>;
 
 #[async_trait]
-pub(crate) trait KafkaMessageInterceptorRequest: Send + Sync + 'static {
+pub(crate) trait KafkaMessageRequestInterceptor: Send + Sync + 'static {
     async fn intercept_request(
         &self,
         context: &mut Context,
@@ -42,7 +43,7 @@ pub(crate) trait KafkaMessageInterceptorRequest: Send + Sync + 'static {
 }
 
 #[async_trait]
-pub(crate) trait KafkaMessageInterceptorResponse: Send + Sync + 'static {
+pub(crate) trait KafkaMessageResponseInterceptor: Send + Sync + 'static {
     async fn intercept_response(
         &self,
         context: &mut Context,
@@ -52,7 +53,7 @@ pub(crate) trait KafkaMessageInterceptorResponse: Send + Sync + 'static {
 
 #[async_trait]
 pub(crate) trait KafkaMessageInterceptor:
-    KafkaMessageInterceptorRequest + KafkaMessageInterceptorResponse + Send + Sync + 'static
+    KafkaMessageRequestInterceptor + KafkaMessageResponseInterceptor + Send + Sync + 'static
 {
 }
 
@@ -112,7 +113,9 @@ impl PortalInterceptor for KafkaMessageInterceptorWrapper {
                 }
             }
             .map_err(|error| match error {
-                InterceptError::Io(cause) => Error::new(Origin::Transport, Kind::Io, cause),
+                InterceptError::InvalidData => {
+                    ockam_core::Error::new(Origin::Transport, Kind::Io, "Invalid data")
+                }
                 InterceptError::Ockam(error) => error,
             })?;
 
@@ -140,8 +143,16 @@ struct MessageWrapper {
 pub(crate) const MAX_KAFKA_MESSAGE_SIZE: u32 = 16 * 1024 * 1024;
 
 // internal error to return both io and ockam errors
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub(crate) enum InterceptError {
-    Io(ockam_core::compat::io::Error),
-    Ockam(ockam_core::Error),
+    #[error("Unexpected kafka protocol data")]
+    InvalidData,
+    #[error("{0}")]
+    Ockam(#[from] ockam_core::Error),
+}
+
+impl From<NotEnoughBytesError> for InterceptError {
+    fn from(_: NotEnoughBytesError) -> Self {
+        InterceptError::InvalidData
+    }
 }

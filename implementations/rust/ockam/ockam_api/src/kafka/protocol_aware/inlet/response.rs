@@ -1,7 +1,7 @@
 use crate::kafka::protocol_aware::inlet::InletInterceptorImpl;
 use crate::kafka::protocol_aware::utils::{decode_body, encode_response};
 use crate::kafka::protocol_aware::{
-    InterceptError, KafkaMessageInterceptorResponse, MessageWrapper, RequestInfo,
+    InterceptError, KafkaMessageResponseInterceptor, MessageWrapper, RequestInfo,
 };
 use crate::kafka::KafkaInletController;
 use bytes::{Bytes, BytesMut};
@@ -17,10 +17,9 @@ use kafka_protocol::records::{
 use minicbor::Decoder;
 use ockam_core::async_trait;
 use ockam_node::Context;
-use std::io::{Error, ErrorKind};
 
 #[async_trait]
-impl KafkaMessageInterceptorResponse for InletInterceptorImpl {
+impl KafkaMessageResponseInterceptor for InletInterceptorImpl {
     async fn intercept_response(
         &self,
         context: &mut Context,
@@ -30,10 +29,7 @@ impl KafkaMessageInterceptorResponse for InletInterceptorImpl {
         let mut buffer = original.peek_bytes(0..original.len());
 
         // we can/need to decode only mapped requests
-        let correlation_id = buffer
-            .peek_bytes(0..4)
-            .try_get_i32()
-            .map_err(|_| InterceptError::Io(Error::from(ErrorKind::InvalidData)))?;
+        let correlation_id = buffer.peek_bytes(0..4).try_get_i32()?;
 
         let result = self
             .request_map
@@ -54,7 +50,7 @@ impl KafkaMessageInterceptorResponse for InletInterceptorImpl {
                 Err(_) => {
                     // the error doesn't contain any useful information
                     warn!("cannot decode response kafka header");
-                    return Err(InterceptError::Io(Error::from(ErrorKind::InvalidData)));
+                    return Err(InterceptError::InvalidData);
                 }
             };
 
@@ -152,8 +148,7 @@ impl InletInterceptorImpl {
         for (broker_id, info) in response.brokers.iter_mut() {
             let inlet_address = inlet_map
                 .assert_inlet_for_broker(context, broker_id.0)
-                .await
-                .map_err(InterceptError::Ockam)?;
+                .await?;
 
             trace!(
                 "inlet_address: {} for broker {}",
@@ -192,8 +187,7 @@ impl InletInterceptorImpl {
             for coordinator in response.coordinators.iter_mut() {
                 let inlet_address = inlet_map
                     .assert_inlet_for_broker(context, coordinator.node_id.0)
-                    .await
-                    .map_err(InterceptError::Ockam)?;
+                    .await?;
 
                 coordinator.host = StrBytes::from_string(inlet_address.hostname());
                 coordinator.port = inlet_address.port() as i32;
@@ -201,8 +195,7 @@ impl InletInterceptorImpl {
         } else {
             let inlet_address = inlet_map
                 .assert_inlet_for_broker(context, response.node_id.0)
-                .await
-                .map_err(InterceptError::Ockam)?;
+                .await?;
 
             response.host = StrBytes::from_string(inlet_address.hostname());
             response.port = inlet_address.port() as i32;
@@ -233,17 +226,17 @@ impl InletInterceptorImpl {
                 if let Some(content) = partition.records.take() {
                     let mut content = BytesMut::from(content.as_ref());
                     let mut records = RecordBatchDecoder::decode(&mut content)
-                        .map_err(|_| InterceptError::Io(Error::from(ErrorKind::InvalidData)))?;
+                        .map_err(|_| InterceptError::InvalidData)?;
 
                     for record in records.iter_mut() {
                         if let Some(record_value) = record.value.take() {
                             let message_wrapper: MessageWrapper =
-                                Decoder::new(record_value.as_ref()).decode().map_err(|_| {
-                                    InterceptError::Io(Error::from(ErrorKind::InvalidData))
-                                })?;
+                                Decoder::new(record_value.as_ref())
+                                    .decode()
+                                    .map_err(|_| InterceptError::InvalidData)?;
 
                             let decrypted_content = self
-                                .secure_channel_controller
+                                .key_exchange_controller
                                 .decrypt_content(
                                     context,
                                     &message_wrapper.consumer_decryptor_address,
@@ -265,7 +258,7 @@ impl InletInterceptorImpl {
                             compression: Compression::None,
                         },
                     )
-                    .map_err(|_| InterceptError::Io(Error::from(ErrorKind::InvalidData)))?;
+                    .map_err(|_| InterceptError::InvalidData)?;
                     partition.records = Some(encoded.freeze());
                 }
             }

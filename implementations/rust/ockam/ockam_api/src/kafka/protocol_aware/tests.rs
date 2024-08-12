@@ -5,7 +5,7 @@ mod test {
     use crate::kafka::protocol_aware::inlet::InletInterceptorImpl;
     use crate::kafka::protocol_aware::utils::{encode_request, encode_response};
     use crate::kafka::protocol_aware::{
-        KafkaMessageInterceptorRequest, KafkaMessageInterceptorResponse,
+        KafkaMessageRequestInterceptor, KafkaMessageResponseInterceptor,
     };
     use crate::kafka::{ConsumerPublishing, ConsumerResolution};
     use crate::port_range::PortRange;

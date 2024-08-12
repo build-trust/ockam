@@ -1,5 +1,4 @@
 use crate::{PortalMessage, MAX_PAYLOAD_SIZE};
-use log::{debug, trace};
 use ockam_core::flow_control::{FlowControlId, FlowControlOutgoingAccessControl, FlowControls};
 use ockam_core::{
     async_trait, route, Address, AllowOnwardAddress, AllowSourceAddress, Any,
@@ -9,6 +8,7 @@ use ockam_core::{
 use ockam_node::{Context, WorkerBuilder};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use tracing::{debug, trace};
 
 /// Direction of the data being intercepted
 #[derive(Clone, Copy, Debug)]
@@ -50,7 +50,7 @@ pub struct PortalOutletInterceptor {
 
 impl PortalOutletInterceptor {
     /// Starts a listener that will intercept data in a portal on the outlet side.
-    /// Every time a message is receiver it'll spawn two workers to intercept the data.
+    /// Every time a message is received, it'll spawn two workers to intercept the data.
     /// These two workers will replace the listener from the route, one for each direction.
     /// see [`PortalInterceptorWorker::create_outlet_interceptor`] for more details
     /// ```text
@@ -149,7 +149,7 @@ pub struct PortalInletInterceptor {
 
 impl PortalInletInterceptor {
     /// Starts a listener that will intercept data in a portal on the inlet side.
-    /// Every time a message is receiver it'll spawn two workers to intercept the data.
+    /// Every time a message is received, it'll spawn two workers to intercept the data.
     /// These two workers will replace the listener from the route, one for each direction.
     /// see [`PortalInterceptorWorker::create_inlet_interceptor`] for more details
     /// ```text

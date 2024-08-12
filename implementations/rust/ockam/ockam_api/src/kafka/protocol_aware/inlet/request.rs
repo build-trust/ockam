@@ -1,6 +1,6 @@
 use crate::kafka::protocol_aware::inlet::InletInterceptorImpl;
 use crate::kafka::protocol_aware::utils::{decode_body, encode_request};
-use crate::kafka::protocol_aware::{InterceptError, KafkaMessageInterceptorRequest};
+use crate::kafka::protocol_aware::{InterceptError, KafkaMessageRequestInterceptor};
 use crate::kafka::protocol_aware::{MessageWrapper, RequestInfo};
 use bytes::{Bytes, BytesMut};
 use kafka_protocol::messages::fetch_request::FetchRequest;
@@ -16,12 +16,11 @@ use minicbor::encode::Encoder;
 use ockam_core::async_trait;
 use ockam_node::Context;
 use std::convert::TryFrom;
-use std::io::{Error, ErrorKind};
 use tracing::warn;
 
 #[async_trait]
-impl KafkaMessageInterceptorRequest for InletInterceptorImpl {
-    /// Parse request and map request <=> response.
+impl KafkaMessageRequestInterceptor for InletInterceptorImpl {
+    /// Parse request, map request <=> response, and modify some requests.
     /// Returns an error if the parsing fails to avoid leaking clear text payloads
     async fn intercept_request(
         &self,
@@ -31,20 +30,21 @@ impl KafkaMessageInterceptorRequest for InletInterceptorImpl {
         // let's clone the view of the buffer without cloning the content
         let mut buffer = original.peek_bytes(0..original.len());
 
-        let api_key_num = buffer
-            .peek_bytes(0..2)
-            .try_get_i16()
-            .map_err(|_| InterceptError::Io(Error::from(ErrorKind::InvalidData)))?;
+        // Inside the request we can find the api key (kind of request), the protocol version of the request,
+        // and the identifier of the request.
+        // The request identifier, called correlation id, that we can use to map the request
+        // to the response.
+        // for more information see:
+        // https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-Requests
+
+        let api_key_num = buffer.peek_bytes(0..2).try_get_i16()?;
 
         let api_key = ApiKey::try_from(api_key_num).map_err(|_| {
             warn!("unknown request api: {api_key_num}");
-            InterceptError::Io(Error::from(ErrorKind::InvalidData))
+            InterceptError::InvalidData
         })?;
 
-        let version = buffer
-            .peek_bytes(2..4)
-            .try_get_i16()
-            .map_err(|_| InterceptError::Io(Error::from(ErrorKind::InvalidData)))?;
+        let version = buffer.peek_bytes(2..4).try_get_i16()?;
 
         let result = RequestHeader::decode(&mut buffer, api_key.request_header_version(version));
         let header = match result {
@@ -52,7 +52,7 @@ impl KafkaMessageInterceptorRequest for InletInterceptorImpl {
             Err(_) => {
                 // the error doesn't contain any useful information
                 warn!("cannot decode request kafka header");
-                return Err(InterceptError::Io(Error::from(ErrorKind::InvalidData)));
+                return Err(InterceptError::InvalidData);
             }
         };
 
@@ -102,11 +102,11 @@ impl KafkaMessageInterceptorRequest for InletInterceptorImpl {
             // this is valid for both LeaderAndIsrKey and UpdateMetadataKey
             ApiKey::LeaderAndIsrKey => {
                 warn!("leader and isr key not supported! closing connection");
-                return Err(InterceptError::Io(Error::from(ErrorKind::InvalidData)));
+                return Err(InterceptError::InvalidData);
             }
             ApiKey::UpdateMetadataKey => {
                 warn!("update metadata not supported! closing connection");
-                return Err(InterceptError::Io(Error::from(ErrorKind::InvalidData)));
+                return Err(InterceptError::InvalidData);
             }
             _ => {}
         }
@@ -141,7 +141,7 @@ impl InletInterceptorImpl {
                     .cloned()
                     .ok_or_else(|| {
                         warn!("missing map from uuid {topic_id} to name");
-                        InterceptError::Io(Error::from(ErrorKind::InvalidData))
+                        InterceptError::InvalidData
                     })?
             };
 
@@ -151,7 +151,7 @@ impl InletInterceptorImpl {
                 .map(|partition| partition.partition)
                 .collect();
 
-            self.secure_channel_controller
+            self.key_exchange_controller
                 .publish_consumer(context, &topic_id, partitions)
                 .await
                 .map_err(InterceptError::Ockam)?
@@ -183,12 +183,12 @@ impl InletInterceptorImpl {
                 if let Some(content) = data.records.take() {
                     let mut content = BytesMut::from(content.as_ref());
                     let mut records = RecordBatchDecoder::decode(&mut content)
-                        .map_err(|_| InterceptError::Io(Error::from(ErrorKind::InvalidData)))?;
+                        .map_err(|_| InterceptError::InvalidData)?;
 
                     for record in records.iter_mut() {
                         if let Some(record_value) = record.value.take() {
                             let encrypted_content = self
-                                .secure_channel_controller
+                                .key_exchange_controller
                                 .encrypt_content(
                                     context,
                                     topic_name,
@@ -208,9 +208,9 @@ impl InletInterceptorImpl {
 
                             let mut write_buffer = Vec::with_capacity(1024);
                             let mut encoder = Encoder::new(&mut write_buffer);
-                            encoder.encode(wrapper).map_err(|_err| {
-                                InterceptError::Io(Error::from(ErrorKind::InvalidData))
-                            })?;
+                            encoder
+                                .encode(wrapper)
+                                .map_err(|_err| InterceptError::InvalidData)?;
 
                             record.value = Some(write_buffer.into());
                         }
@@ -225,7 +225,7 @@ impl InletInterceptorImpl {
                             compression: Compression::None,
                         },
                     )
-                    .map_err(|_| InterceptError::Io(Error::from(ErrorKind::InvalidData)))?;
+                    .map_err(|_| InterceptError::InvalidData)?;
 
                     data.records = Some(encoded.freeze());
                 }
