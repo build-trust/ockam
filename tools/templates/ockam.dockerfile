@@ -26,6 +26,6 @@ RUN \
     esac; \
     chmod u+x /ockam;
 
-FROM cgr.dev/chainguard/glibc-dynamic@sha256:7cbd1cd7a6a1ca37de8d242ade7e65253323d1991611ebcb20b15347a95b8ebf
+FROM cgr.dev/chainguard/glibc-dynamic@sha256:6c87228d9380acb10e7300af697ed0664e4ffe38f0b73e04ae412f1150a8f9fb
 COPY --from=builder /ockam /
 ENTRYPOINT ["/ockam"]
