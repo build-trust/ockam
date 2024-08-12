@@ -4978,7 +4978,6 @@ name = "ockam_transport_tcp"
 version = "0.122.0"
 dependencies = [
  "cfg-if",
- "log",
  "minicbor",
  "ockam_core",
  "ockam_macros",

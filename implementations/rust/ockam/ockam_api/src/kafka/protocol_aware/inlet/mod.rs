@@ -16,7 +16,7 @@ mod response;
 pub(crate) struct InletInterceptorImpl {
     request_map: Arc<Mutex<HashMap<CorrelationId, RequestInfo>>>,
     uuid_to_name: TopicUuidMap,
-    secure_channel_controller: KafkaKeyExchangeController,
+    key_exchange_controller: KafkaKeyExchangeController,
     inlet_map: KafkaInletController,
     encrypt_content: bool,
 }
@@ -26,7 +26,7 @@ impl KafkaMessageInterceptor for InletInterceptorImpl {}
 
 impl InletInterceptorImpl {
     pub(crate) fn new(
-        secure_channel_controller: KafkaKeyExchangeController,
+        key_exchange_controller: KafkaKeyExchangeController,
         uuid_to_name: TopicUuidMap,
         inlet_map: KafkaInletController,
         encrypt_content: bool,
@@ -34,7 +34,7 @@ impl InletInterceptorImpl {
         Self {
             request_map: Arc::new(Mutex::new(Default::default())),
             uuid_to_name,
-            secure_channel_controller,
+            key_exchange_controller,
             inlet_map,
             encrypt_content,
         }
