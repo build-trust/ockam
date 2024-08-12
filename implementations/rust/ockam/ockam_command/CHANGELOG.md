@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.132.0 - 2024-08-12
+
+### Added
+
+- Add validation for `node create` positional argument (name or conf)
+- In `node create`, the command args have precedence over config values
+- Updated dependencies
+
+### Changed
+
+- Rewrite `ArgKey` as a struct instead of a type
+- Do not enforce the existence of project and authority identities
+
 ## 0.131.0 - 2024-08-06
 
 ### Added
