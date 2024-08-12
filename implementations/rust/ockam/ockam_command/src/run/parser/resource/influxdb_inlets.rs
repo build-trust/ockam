@@ -8,7 +8,7 @@ use crate::influxdb::inlet::create::InfluxDBCreateCommand;
 use crate::run::parser::resource::utils::parse_cmd_from_args;
 use crate::{influxdb::inlet, Command, OckamSubcommand};
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct InfluxDBInlets {
     #[serde(alias = "influxdb-inlets", alias = "influxdb-inlet")]
     pub influxdb_inlets: Option<ResourceNameOrMap>,

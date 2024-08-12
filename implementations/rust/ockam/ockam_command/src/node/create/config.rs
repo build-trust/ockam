@@ -103,7 +103,7 @@ impl CreateCommand {
     }
 }
 
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize, Default)]
 pub struct NodeConfig {
     #[serde(flatten)]
     pub version: Version,
@@ -404,6 +404,45 @@ mod tests {
             let res = NodeConfig::parse(&contents);
             res.unwrap();
         }
+    }
+
+    #[tokio::test]
+    async fn node_name_is_handled_correctly() {
+        // The command doesn't define a node name, the config file does
+        let tmp_file = std::env::temp_dir().join("config.json");
+        std::fs::write(&tmp_file, "{name: n1}").unwrap();
+        let cmd = CreateCommand {
+            name: tmp_file.to_str().unwrap().to_string(),
+            ..Default::default()
+        };
+        let mut config = cmd.get_node_config().await.unwrap();
+        config.merge(&cmd).unwrap();
+        assert_eq!(config.node.name, Some("n1".into()));
+
+        // Same with inline config
+        let cmd = CreateCommand {
+            config_args: ConfigArgs {
+                configuration: Some("{name: n1}".into()),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let mut config = cmd.get_node_config().await.unwrap();
+        config.merge(&cmd).unwrap();
+        assert_eq!(config.node.name, Some("n1".into()));
+
+        // If the command defines a node name, it should override the inline config
+        let cmd = CreateCommand {
+            name: "n2".into(),
+            config_args: ConfigArgs {
+                configuration: Some("{name: n1}".into()),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let mut config = cmd.get_node_config().await.unwrap();
+        config.merge(&cmd).unwrap();
+        assert_eq!(config.node.name, Some("n2".into()));
     }
 
     #[tokio::test]

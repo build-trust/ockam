@@ -7,7 +7,7 @@ use miette::{miette, Result};
 use ockam_api::colors::color_primary;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct KafkaInlet {
     #[serde(alias = "kafka-inlets", alias = "kafka-inlet")]
     pub kafka_inlet: Option<ResourceNameOrMap>,

@@ -8,7 +8,7 @@ use crate::run::parser::resource::utils::parse_cmd_from_args;
 use crate::run::parser::resource::Resource;
 use crate::{Command, OckamSubcommand};
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct ProjectEnroll {
     pub ticket: Option<String>,
 }
