@@ -26,6 +26,6 @@ RUN \
     esac; \
     chmod u+x /ockam;
 
-FROM gcr.io/distroless/cc@sha256:1dc7ae628f0308f77dac8538b4b246453ac3636aa5ba22084e3d22d59a7f3cca
+FROM cgr.dev/chainguard/glibc-dynamic@sha256:7cbd1cd7a6a1ca37de8d242ade7e65253323d1991611ebcb20b15347a95b8ebf
 COPY --from=builder /ockam /
 ENTRYPOINT ["/ockam"]
