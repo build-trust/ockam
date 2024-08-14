@@ -1,6 +1,7 @@
 use ockam_core::async_trait;
 use opentelemetry::logs::{LogResult, Severity};
 use opentelemetry_sdk::export::logs::{LogData, LogExporter};
+use std::borrow::Cow;
 use std::time::Duration;
 
 /// This exporter can be used to intercept the log records sent to an OpenTelemetry collector
@@ -11,7 +12,7 @@ pub struct DecoratedLogExporter<L: LogExporter> {
 
 #[async_trait]
 impl<L: LogExporter> LogExporter for DecoratedLogExporter<L> {
-    async fn export(&mut self, batch: Vec<LogData>) -> LogResult<()> {
+    async fn export<'a>(&mut self, batch: Vec<Cow<'a, LogData>>) -> LogResult<()> {
         self.exporter.export(batch).await
     }
 
@@ -40,7 +41,7 @@ pub struct OckamLogExporter<L: LogExporter> {
 
 #[async_trait]
 impl<L: LogExporter> LogExporter for OckamLogExporter<L> {
-    async fn export(&mut self, batch: Vec<LogData>) -> LogResult<()> {
+    async fn export<'a>(&mut self, batch: Vec<Cow<'a, LogData>>) -> LogResult<()> {
         match self.log_export_cutoff {
             Some(cutoff) => {
                 let f = self.exporter.export(batch);
