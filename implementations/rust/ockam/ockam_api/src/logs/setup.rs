@@ -275,7 +275,7 @@ fn create_opentelemetry_logging_layer<L: LogExporter + Send + 'static>(
     let log_export_queue_size = exporting_configuration.log_export_queue_size();
     let log_export_cutoff = exporting_configuration.log_export_cutoff();
     Executor::execute_future(async move {
-        let config = logs::Config::default().with_resource(make_resource(app));
+        let resource = make_resource(app);
         let batch_config = logs::BatchConfigBuilder::default()
             .with_max_export_timeout(log_export_timeout)
             .with_scheduled_delay(log_export_scheduled_delay)
@@ -289,7 +289,7 @@ fn create_opentelemetry_logging_layer<L: LogExporter + Send + 'static>(
                 .with_batch_config(batch_config)
                 .build();
         let provider = LoggerProvider::builder()
-            .with_config(config)
+            .with_resource(resource)
             .with_log_processor(log_processor)
             .build();
         let layer = OpenTelemetryTracingBridge::new(&provider);

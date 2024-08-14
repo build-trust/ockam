@@ -361,7 +361,6 @@ This file contains attributions for any 3rd-party open source code used in this 
 | opentelemetry-proto | Apache-2.0 | https://crates.io/crates/opentelemetry-proto |
 | opentelemetry-semantic-conventions | Apache-2.0 | https://crates.io/crates/opentelemetry-semantic-conventions |
 | opentelemetry_sdk | Apache-2.0 | https://crates.io/crates/opentelemetry_sdk |
-| ordered-float | MIT | https://crates.io/crates/ordered-float |
 | os_pipe | MIT | https://crates.io/crates/os_pipe |
 | outref | MIT | https://crates.io/crates/outref |
 | overload | MIT | https://crates.io/crates/overload |
@@ -538,7 +537,6 @@ This file contains attributions for any 3rd-party open source code used in this 
 | tinyvec_macros | MIT, Apache-2.0, Zlib | https://crates.io/crates/tinyvec_macros |
 | tokio | MIT | https://crates.io/crates/tokio |
 | tokio-io | MIT | https://crates.io/crates/tokio-io |
-| tokio-io-timeout | MIT, Apache-2.0 | https://crates.io/crates/tokio-io-timeout |
 | tokio-macros | MIT | https://crates.io/crates/tokio-macros |
 | tokio-retry | MIT | https://crates.io/crates/tokio-retry |
 | tokio-rustls | MIT, Apache-2.0 | https://crates.io/crates/tokio-rustls |
