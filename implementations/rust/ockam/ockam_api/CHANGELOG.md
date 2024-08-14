@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.76.0 - 2024-08-14
+
+### Added
+
+- Heavy kafka refactoring, moved portal interceptor from `api` to `tcp` crate
+- Kafka cleanups
+- Added the possibility to encrypt specific fields in a kafka `JSON` record
+- Updated dependencies
+
 ## 0.75.0 - 2024-08-12
 
 ### Added
