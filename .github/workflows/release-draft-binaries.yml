@@ -431,16 +431,32 @@ jobs:
         with:
           ref: ${{ github.event.inputs.release_branch }}
 
-      - name: Install Nix
+      - name: Install Rust toolchain
         run: |
-          sh <(curl -L https://nixos.org/nix/install) --daemon
+          # This will allow us update to rust version indicated in our rust-toolchain.toml file
+          rustup show
+          rustup target add ${{ matrix.job.target }}
 
-      - name: Build NIFs (using Nix)
+      - name: Install Cross
+        if: matrix.job.use-cross == true
+        run: cargo install --version 0.2.4 cross
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@v2
+        with:
+          nix_version: latest
+
+      - name: Build NIFs
         run: |
           set -ex
 
-          nix-env -iA nixpkgs.rustup nixpkgs.cargo nixpkgs.nix
-          nix-shell --run "cargo build --target ${{ matrix.job.target }} -p ockam_rust_elixir_nifs --release"
+          if [[ '${{ matrix.job.use-cross }}' == 'true' ]]; then
+            # When building using cross use rust crypto (slower) since the cross image doesn't have an up-to-date libclang
+            cross build --target ${{ matrix.job.target }} -p ockam_rust_elixir_nifs --release --no-default-features -F rust-crypto
+            exit
+          fi
+
+          nix develop ./tools/nix#rust --command "cargo build --target ${{ matrix.job.target }} -p ockam_rust_elixir_nifs --release  --no-default-features -F aws-lc"
 
       - name: List
         run: |
