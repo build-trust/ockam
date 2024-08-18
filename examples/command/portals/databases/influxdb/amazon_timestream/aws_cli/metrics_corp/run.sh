@@ -81,7 +81,7 @@ run() {
     aws ec2 wait instance-running --instance-ids "$instance_id"
     ip=$(aws ec2 describe-instances --instance-ids "$instance_id" --query 'Reservations[0].Instances[0].PublicIpAddress')
 
-    scp -o StrictHostKeyChecking=no -i ./key.pem "ec2-user@$ip:token.txt" ../datastream_corp/token.txt
+    while ! scp -o StrictHostKeyChecking=no -i ./key.pem "ec2-user@$ip:token.txt" ../datastream_corp/token.txt; do sleep 10; done
 }
 
 cleanup() {
