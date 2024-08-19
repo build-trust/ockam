@@ -100,13 +100,13 @@ impl EnrollCommand {
 
     // Creates one span in the trace
     #[instrument(
-    skip_all, // Drop all args that passed in, as Context doesn't play nice
-    fields(
+        skip_all, // Drop all args that passed in, as Context doesn't play nice
+        fields(
         enroller = ? self.identity, // https://docs.rs/tracing/latest/tracing/
         authorization_code_flow = % self.authorization_code_flow,
         force = % self.force,
         skip_orchestrator_resources_creation = % self.skip_orchestrator_resources_creation,
-    ))]
+        ))]
     async fn run_impl(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         ctrlc_handler(opts.clone());
 
@@ -404,8 +404,9 @@ async fn get_user_space(
 ) -> miette::Result<Option<Space>> {
     // Get the available spaces for node's identity
     // Those spaces might have been created previously and all the local state reset
-    opts.terminal
-        .write_line(&fmt_log!("Getting available Spaces in your account."))?;
+    opts.terminal.write_line(&fmt_log!(
+        "Getting available Spaces accessible to your account."
+    ))?;
     let is_finished = Mutex::new(false);
     let get_spaces = async {
         let spaces = node.get_spaces(ctx).await?;
@@ -423,12 +424,12 @@ async fn get_user_space(
         None => {
             if skip_orchestrator_resources_creation {
                 opts.terminal
-                    .write_line(&fmt_log!("No Spaces are defined in your account.\n"))?;
+                    .write_line(&fmt_log!("No Spaces are accessible to your account.\n"))?;
                 return Ok(None);
             }
 
             opts.terminal.write_line(&fmt_log!(
-                "No Spaces are defined in your account, creating a new one..."
+                "No Spaces are accessible to your account, creating a new one..."
             ))?;
 
             let is_finished = Mutex::new(false);
