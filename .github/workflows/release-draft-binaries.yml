@@ -442,9 +442,7 @@ jobs:
         run: cargo install --version 0.2.4 cross
 
       - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@v2
-        with:
-          nix_version: latest
+        uses: DeterminateSystems/nix-installer-action@033f039e5c752cb1cbc6ac1dd2e59c4ca58adf00
 
       - name: Build NIFs
         run: |
@@ -456,7 +454,7 @@ jobs:
             exit
           fi
 
-          nix develop ./tools/nix#rust --command "cargo build --target ${{ matrix.job.target }} -p ockam_rust_elixir_nifs --release  --no-default-features -F aws-lc"
+          nix develop ./tools/nix#rust --command cargo build --target ${{ matrix.job.target }} -p ockam_rust_elixir_nifs --release --no-default-features -F aws-lc
 
       - name: List
         run: |
