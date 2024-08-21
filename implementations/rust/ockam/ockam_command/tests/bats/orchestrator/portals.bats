@@ -247,6 +247,7 @@ teardown() {
 
   project_address=$($OCKAM project show default --output json | jq .access_route -r | sed 's#/dnsaddr/\([^/]*\)/.*#\1#')
   project_port=$($OCKAM project show default --output json | jq .access_route -r | sed 's#.*/tcp/\([^/]*\)/.*#\1#')
+  project_id=$($OCKAM project show default --output json | jq .id -r)
 
   # pass traffic through socat, so we can simulate the connection being interrupted
   socat TCP-LISTEN:${socat_port},reuseaddr TCP:${project_address}:${project_port} &
@@ -257,7 +258,7 @@ teardown() {
 
   relay_name="$(random_str)"
   run_success "$OCKAM" relay create "${relay_name}" --project-relay --to /node/blue \
-    --at "/ip4/127.0.0.1/tcp/${socat_port}/secure/api"
+    --at "/ip4/127.0.0.1/tcp/${socat_port}/service/$project_id/secure/api"
 
   run_success "$OCKAM" node create green
   run_success "$OCKAM" tcp-inlet create --at /node/green --from "${inlet_port}" \
