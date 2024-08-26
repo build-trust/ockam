@@ -4,8 +4,6 @@ use colorful::Colorful;
 use ockam_api::{fmt_log, fmt_warn};
 use std::io;
 use std::io::Read;
-use std::sync::atomic::AtomicBool;
-use std::sync::Arc;
 use tracing::{debug, info};
 
 #[derive(Clone, Debug, Args, Default)]
@@ -38,19 +36,19 @@ pub async fn wait_for_exit_signal(
         let tx = tx.clone();
         let terminal = opts.terminal.clone();
         // To avoid handling multiple CTRL+C signals at the same time
-        let flag = Arc::new(AtomicBool::new(true));
+        let mut processed = false;
         let is_child_process = args.child_process;
         ctrlc::set_handler(move || {
-            if flag.load(std::sync::atomic::Ordering::Relaxed) {
+            if !processed {
                 let _ = tx.blocking_send(());
-                info!("Ctrl+C signal received");
+                info!("Exit signal received");
                 if !is_child_process {
-                    let _ = terminal.write_line(fmt_warn!("Ctrl+C signal received"));
+                    let _ = terminal.write_line(fmt_warn!("Exit signal received"));
                 }
-                flag.store(false, std::sync::atomic::Ordering::Relaxed);
+                processed = true
             }
         })
-        .expect("Error setting Ctrl+C handler");
+        .expect("Error setting exit signal handler");
     }
 
     if args.exit_on_eof {

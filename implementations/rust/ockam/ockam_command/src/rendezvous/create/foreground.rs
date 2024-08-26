@@ -1,4 +1,5 @@
 use miette::IntoDiagnostic;
+use std::process::exit;
 use tracing::{error, info, instrument};
 
 use crate::rendezvous::create::CreateCommand;
@@ -54,16 +55,17 @@ impl CreateCommand {
         .await?;
 
         // Clean up and exit
-        opts.shutdown();
         if let Err(err) = healthcheck.stop().await {
             error!("Error while stopping healthcheck: {}", err);
         }
         let _ = ctx.stop().await;
-        if !self.foreground_args.child_process {
+        if self.foreground_args.child_process {
+            opts.shutdown();
+            exit(0);
+        } else {
             opts.terminal
                 .write_line(fmt_ok!("Rendezvous Server stopped successfully"))?;
+            Ok(())
         }
-
-        Ok(())
     }
 }

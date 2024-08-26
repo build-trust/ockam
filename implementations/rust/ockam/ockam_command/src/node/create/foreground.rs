@@ -1,3 +1,4 @@
+use std::process::exit;
 use std::sync::Arc;
 
 use colorful::Colorful;
@@ -158,15 +159,16 @@ impl CreateCommand {
         .await?;
 
         // Clean up and exit
-        opts.shutdown();
-        let _ = opts.state.stop_node(&node_name, true).await;
         let _ = ctx.stop().await;
-        if !self.foreground_args.child_process {
+        let _ = opts.state.stop_node(&node_name, true).await;
+        if self.foreground_args.child_process {
+            opts.shutdown();
+            exit(0);
+        } else {
             opts.terminal
                 .write_line(fmt_ok!("Node stopped successfully"))?;
+            Ok(())
         }
-
-        Ok(())
     }
 
     async fn start_services(&self, ctx: &Context, opts: &CommandGlobalOpts) -> miette::Result<()> {

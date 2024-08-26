@@ -205,7 +205,7 @@ impl NodesRepository for NodesSqlxDatabase {
     }
 
     async fn set_no_node_pid(&self, node_name: &str) -> Result<()> {
-        let query = query("UPDATE node SET pid=NULL WHERE name = $1 ").bind(node_name);
+        let query = query("UPDATE node SET pid=NULL WHERE name = $1").bind(node_name);
         query.execute(&*self.database.pool).await.void()
     }
 

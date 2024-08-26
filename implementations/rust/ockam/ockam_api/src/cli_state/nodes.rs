@@ -28,7 +28,8 @@ use crate::ConnectionStatus;
 /// The methods below support the creation and update of local nodes
 impl CliState {
     /// Create a node, with some optional associated values, and start it
-    #[instrument(skip_all, fields(node_name = node_name, identity_name = identity_name.clone(), project_name = project_name.clone()))]
+    #[instrument(skip_all, fields(node_name = node_name, identity_name = identity_name.clone(), project_name = project_name.clone()
+    ))]
     pub async fn start_node_with_optional_values(
         &self,
         node_name: &str,
@@ -57,7 +58,8 @@ impl CliState {
     ///
     ///  - an identity name. That identity is used by the `NodeManager` to create secure channels
     ///  - a project name. It is used to create policies on resources provisioned on a node (like a TCP outlet for example)
-    #[instrument(skip_all, fields(node_name = node_name, identity_name = identity_name.clone(), project_name = project_name.clone()))]
+    #[instrument(skip_all, fields(node_name = node_name, identity_name = identity_name.clone(), project_name = project_name.clone()
+    ))]
     pub async fn create_node_with_optional_values(
         &self,
         node_name: &str,
@@ -179,8 +181,8 @@ impl CliState {
     ///  - if force is true, send a SIGKILL signal to the node process
     #[instrument(skip_all, fields(node_name = node_name, force = %force))]
     pub async fn stop_node(&self, node_name: &str, force: bool) -> Result<()> {
+        debug!(name=%node_name, "stopping node...");
         let node = self.get_node(node_name).await?;
-        self.nodes_repository().set_no_node_pid(node_name).await?;
         if let Some(pid) = node.pid() {
             // avoid killing the current process, return successfully instead.
             // this is useful when we need to stop all the nodes, for example
@@ -214,9 +216,9 @@ impl CliState {
             debug!(name = %node.name(), %pid, "sent stop signal to node process");
 
             // wait until the node has fully stopped
-            let mut attempts = 0;
-            let max_attempts = 50; // 5 seconds max
             let timeout = std::time::Duration::from_millis(100);
+            let max_attempts = std::time::Duration::from_secs(5).as_millis() / timeout.as_millis();
+            let mut attempts = 0;
             let mut sys = System::new();
             let pid = Pid::from_u32(pid.as_raw() as u32);
             loop {
@@ -227,7 +229,10 @@ impl CliState {
                 }
                 if attempts > max_attempts {
                     warn!(name = %node.name(), %pid, "node process did not exit");
-                    break;
+                    return Err(CliStateError::Io(std::io::Error::new(
+                        std::io::ErrorKind::Other,
+                        format!("failed to stop PID `{pid}`. Consider passing the `--force` flag"),
+                    )));
                 }
                 // notify the user that the node is stopping if it takes too long
                 if attempts == 5 {
@@ -240,7 +245,8 @@ impl CliState {
                 tokio::time::sleep(timeout).await;
             }
         }
-
+        self.nodes_repository().set_no_node_pid(node_name).await?;
+        debug!(name=%node_name, "node stopped");
         Ok(())
     }
 
