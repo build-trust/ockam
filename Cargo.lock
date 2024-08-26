@@ -4618,6 +4618,7 @@ dependencies = [
  "hex",
  "home",
  "http-body-util",
+ "httparse",
  "hyper 1.4.1",
  "hyper-util",
  "indexmap 2.5.0",

@@ -194,6 +194,16 @@ impl NodeManagerWorker {
             }
             (Delete, ["node", "portal"]) => todo!(),
 
+            // ==*== InfluxDB Inlets & Outlets  ==*==
+            (Post, ["node", "influxdb_inlet"]) => encode_response(
+                req,
+                self.start_influxdb_inlet_service(ctx, dec.decode()?).await,
+            )?,
+            (Post, ["node", "influxdb_outlet"]) => encode_response(
+                req,
+                self.start_influxdb_outlet_service(ctx, dec.decode()?).await,
+            )?,
+
             // ==*== Flow Controls ==*==
             (Post, ["node", "flow_controls", "add_consumer"]) => {
                 encode_response(req, self.add_consumer(ctx, dec.decode()?).await)?

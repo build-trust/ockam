@@ -118,6 +118,10 @@ pub struct NodeConfig {
     #[serde(flatten)]
     pub tcp_inlets: TcpInlets,
     #[serde(flatten)]
+    pub influxdb_inlets: InfluxDBInlets,
+    #[serde(flatten)]
+    pub influxdb_outlets: InfluxDBOutlets,
+    #[serde(flatten)]
     pub kafka_inlet: KafkaInlet,
     #[serde(flatten)]
     pub kafka_outlet: KafkaOutlet,
@@ -275,6 +279,10 @@ impl NodeConfig {
             self.relays.into_parsed_commands(node_name)?.into(),
             self.tcp_inlets.into_parsed_commands(node_name)?.into(),
             self.tcp_outlets.into_parsed_commands(node_name)?.into(),
+            self.influxdb_inlets.into_parsed_commands(node_name)?.into(),
+            self.influxdb_outlets
+                .into_parsed_commands(node_name)?
+                .into(),
             self.kafka_inlet.into_parsed_commands(node_name)?.into(),
             self.kafka_outlet.into_parsed_commands(node_name)?.into(),
         ];
@@ -304,6 +312,10 @@ impl NodeConfig {
             self.relays.into_parsed_commands(node_name)?.into(),
             self.tcp_inlets.into_parsed_commands(node_name)?.into(),
             self.tcp_outlets.into_parsed_commands(node_name)?.into(),
+            self.influxdb_inlets.into_parsed_commands(node_name)?.into(),
+            self.influxdb_outlets
+                .into_parsed_commands(node_name)?
+                .into(),
             self.kafka_inlet.into_parsed_commands(node_name)?.into(),
             self.kafka_outlet.into_parsed_commands(node_name)?.into(),
         ])

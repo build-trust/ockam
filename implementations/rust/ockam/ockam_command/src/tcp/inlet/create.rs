@@ -14,7 +14,7 @@ use crate::tcp::util::alias_parser;
 use crate::{docs, Command, CommandGlobalOpts, Error};
 use ockam::identity::Identifier;
 use ockam::transport::HostnamePort;
-use ockam::Context;
+use ockam::{route, Context};
 use ockam_abac::PolicyExpression;
 use ockam_api::address::extract_address_value;
 use ockam_api::cli_state::journeys::{
@@ -108,7 +108,7 @@ pub struct CreateCommand {
 
     /// Create the TCP Inlet without waiting for the TCP Outlet to connect
     #[arg(long, default_value = "false")]
-    no_connection_wait: bool,
+    pub no_connection_wait: bool,
 
     /// Enable UDP NAT puncture.
     #[arg(
@@ -140,6 +140,12 @@ pub struct CreateCommand {
     /// Enable TLS for the TCP Inlet using the provided certificate provider.
     /// Requires `ockam-tls-certificate` credential attribute.
     pub tls_certificate_provider: Option<MultiAddr>,
+
+    #[arg(long, value_name = "ROUTE", hide = true)]
+    /// Needed if the outlet has some interceptor.
+    /// We need to figure out a better way of doing this, inlet shouldn't care what's
+    /// running on the other node, the 'outlet' address should be enough.
+    pub outlet_suffix_address: Option<String>,
 }
 
 pub(crate) fn default_from_addr() -> HostnamePort {
@@ -172,18 +178,6 @@ impl Command for CreateCommand {
                 ));
             }
 
-            let tls_certificate_provider =
-                if let Some(tls_certificate_provider) = &cmd.tls_certificate_provider {
-                    Some(tls_certificate_provider.clone())
-                } else if cmd.tls {
-                    Some(
-                        MultiAddr::from_str("/project/default/service/tls_certificate_provider")
-                            .unwrap(),
-                    )
-                } else {
-                    None
-                };
-
             loop {
                 let result: Reply<InletStatus> = node
                     .create_inlet(
@@ -198,7 +192,10 @@ impl Command for CreateCommand {
                         &cmd.secure_channel_identifier(&opts.state).await?,
                         cmd.udp,
                         cmd.no_tcp_fallback,
-                        &tls_certificate_provider,
+                        &cmd.tls_certificate_provider,
+                        cmd.outlet_suffix_address
+                            .as_ref()
+                            .map_or(route![], |s| route![s]),
                     )
                     .await?;
 
@@ -271,11 +268,11 @@ impl Command for CreateCommand {
 }
 
 impl CreateCommand {
-    fn to(&self) -> MultiAddr {
+    pub fn to(&self) -> MultiAddr {
         MultiAddr::from_str(&self.to).unwrap()
     }
 
-    async fn secure_channel_identifier(
+    pub async fn secure_channel_identifier(
         &self,
         state: &CliState,
     ) -> miette::Result<Option<Identifier>> {
@@ -286,7 +283,7 @@ impl CreateCommand {
         }
     }
 
-    async fn add_inlet_created_event(
+    pub async fn add_inlet_created_event(
         &self,
         opts: &CommandGlobalOpts,
         node_name: &str,
@@ -305,7 +302,7 @@ impl CreateCommand {
             .await?)
     }
 
-    async fn parse_args(mut self, opts: &CommandGlobalOpts) -> miette::Result<Self> {
+    pub async fn parse_args(mut self, opts: &CommandGlobalOpts) -> miette::Result<Self> {
         let from = resolve_peer(self.from.to_string())
             .await
             .into_diagnostic()?;
@@ -316,6 +313,15 @@ impl CreateCommand {
                 "--authorized can not be used with project addresses"
             ))?;
         }
+        self.tls_certificate_provider = if let Some(tls_certificate_provider) =
+            &self.tls_certificate_provider
+        {
+            Some(tls_certificate_provider.clone())
+        } else if self.tls {
+            Some(MultiAddr::from_str("/project/default/service/tls_certificate_provider").unwrap())
+        } else {
+            None
+        };
         Ok(self)
     }
 

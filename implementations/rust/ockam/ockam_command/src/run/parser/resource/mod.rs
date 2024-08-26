@@ -1,4 +1,6 @@
 pub use identities::Identities;
+pub use influxdb_inlets::InfluxDBInlets;
+pub use influxdb_outlets::InfluxDBOutlets;
 pub use kafka_inlet::KafkaInlet;
 pub use kafka_outlet::KafkaOutlet;
 pub use node::Node;
@@ -12,6 +14,8 @@ pub use traits::*;
 pub use vaults::Vaults;
 
 mod identities;
+mod influxdb_inlets;
+mod influxdb_outlets;
 mod kafka_inlet;
 mod kafka_outlet;
 mod node;

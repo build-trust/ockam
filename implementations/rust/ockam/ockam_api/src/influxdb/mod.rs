@@ -1,3 +1,4 @@
+pub mod gateway;
 mod influxdb_api_client;
 mod lease_token;
 pub mod token_lessor_node_service;
