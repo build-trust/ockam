@@ -1,4 +1,5 @@
 use std::fmt::{Display, Formatter};
+use std::process::exit;
 use std::str::FromStr;
 
 use clap::Args;
@@ -20,11 +21,12 @@ use ockam_api::cloud::project::models::ProjectModel;
 use ockam_api::colors::color_primary;
 use ockam_api::config::lookup::InternetAddress;
 use ockam_api::nodes::service::default_address::DefaultAddress;
-use ockam_api::{authority_node, fmt_err};
+use ockam_api::{authority_node, fmt_err, fmt_ok};
 use ockam_core::compat::collections::BTreeMap;
 use ockam_core::compat::fmt;
 
 use crate::node::util::run_ockam;
+use crate::util::foreground_args::{wait_for_exit_signal, ForegroundArgs};
 use crate::util::parsers::internet_address_parser;
 use crate::util::{async_cmd, local_cmd};
 use crate::util::{embedded_node_that_is_not_stopped, exitcode};
@@ -117,7 +119,8 @@ pub struct CreateCommand {
 
     /// Full, hex-encoded Identity (change history) of the account authority to trust
     /// for account and project administrator credentials.
-    #[arg(long, value_name = "ACCOUNT_AUTHORITY_CHANGE_HISTORY", default_value = None, value_parser = ChangeHistory::import_from_string)]
+    #[arg(long, value_name = "ACCOUNT_AUTHORITY_CHANGE_HISTORY", default_value = None, value_parser = ChangeHistory::import_from_string
+    )]
     account_authority: Option<ChangeHistory>,
 
     /// Enforce distinction between admins and enrollers
@@ -424,7 +427,28 @@ impl CreateCommand {
             .await
             .into_diagnostic()?;
 
-        Ok(())
+        let foreground_args = ForegroundArgs {
+            child_process: self.child_process,
+            exit_on_eof: false,
+            foreground: self.foreground,
+        };
+        wait_for_exit_signal(
+            &foreground_args,
+            &opts,
+            "To exit and stop the Authority node, please press Ctrl+C\n",
+        )
+        .await?;
+
+        let _ = ctx.stop().await;
+        let _ = opts.state.stop_node(&self.node_name, true).await;
+        if foreground_args.child_process {
+            opts.shutdown();
+            exit(0);
+        } else {
+            opts.terminal
+                .write_line(fmt_ok!("Node stopped successfully"))?;
+            Ok(())
+        }
     }
 
     pub async fn guard_node_is_not_already_running(

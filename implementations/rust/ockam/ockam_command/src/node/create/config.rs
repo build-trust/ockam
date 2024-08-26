@@ -259,7 +259,7 @@ impl NodeConfig {
             // This prevents the current process from handling the signal and, for example,
             // add a newline to the terminal before the child process has finished writing its output.
         })
-        .expect("Error setting Ctrl+C handler");
+        .expect("Error setting exit signal handler");
 
         // Run the other sections
         let node_name = Some(node_name);

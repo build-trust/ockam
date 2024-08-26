@@ -101,12 +101,7 @@ where
             .await
             .expect("Embedded node child ctx can't be created");
         let result = f(child_ctx).await;
-        let result = if result.is_err() {
-            ctx.stop().await?;
-            result
-        } else {
-            result
-        };
+        let _ = ctx.stop().await;
         result.map_err(|e| {
             ockam_core::Error::new(
                 ockam_core::errcode::Origin::Executor,
@@ -234,7 +229,6 @@ pub fn print_deprecated_warning(opts: &CommandGlobalOpts, old: &str, new: &str) 
 
 #[cfg(test)]
 mod tests {
-
     use std::str::FromStr;
 
     use super::*;
