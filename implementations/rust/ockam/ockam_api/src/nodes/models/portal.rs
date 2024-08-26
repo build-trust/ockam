@@ -36,28 +36,27 @@ pub struct CreateInlet {
     /// Only set for non-project addresses as for projects the project's
     /// authorised identity will be used.
     #[n(4)] pub(crate) authorized: Option<Identifier>,
-    /// A prefix route that will be applied before outlet_addr, and won't be used
-    /// to monitor the state of the connection
-    #[n(5)] pub(crate) prefix_route: Route,
-    /// A suffix route that will be applied after outlet_addr, and won't be used
-    /// to monitor the state of the connection
-    #[n(6)] pub(crate) suffix_route: Route,
     /// The maximum duration to wait for an outlet to be available
-    #[n(7)] pub(crate) wait_for_outlet_duration: Option<Duration>,
+    #[n(5)] pub(crate) wait_for_outlet_duration: Option<Duration>,
     /// The expression for the access control policy for this inlet.
     /// If not set, the policy set for the [TCP inlet resource type](ockam_abac::ResourceType::TcpInlet)
     /// will be used.
-    #[n(8)] pub(crate) policy_expression: Option<PolicyExpression>,
+    #[n(6)] pub(crate) policy_expression: Option<PolicyExpression>,
     /// Create the inlet and wait for the outlet to connect
-    #[n(9)] pub(crate) wait_connection: bool,
+    #[n(7)] pub(crate) wait_connection: bool,
     /// The identifier to be used to create the secure channel.
     /// If not set, the node's identifier will be used.
-    #[n(10)] pub(crate) secure_channel_identifier: Option<Identifier>,
+    #[n(8)] pub(crate) secure_channel_identifier: Option<Identifier>,
     /// Enable UDP NAT puncture.
-    #[n(11)] pub enable_udp_puncture: bool,
+    #[n(9)] pub enable_udp_puncture: bool,
     /// Disable fallback to TCP.
     /// TCP won't be used to transfer data between the Inlet and the Outlet.
-    #[n(12)] pub disable_tcp_fallback: bool,
+    #[n(10)] pub disable_tcp_fallback: bool,
+
+    /// If enabled it instruct the creation of HTTP inlet, that is, TCP inlet +
+    /// a http interceptor that modify incoming requests, adding to them an Authorization
+    /// token.
+    #[n(11)] pub is_http_auth_inlet: bool,
 }
 
 impl CreateInlet {
@@ -66,25 +65,23 @@ impl CreateInlet {
         listen: HostnamePort,
         to: MultiAddr,
         alias: String,
-        prefix_route: Route,
-        suffix_route: Route,
         wait_connection: bool,
         enable_udp_puncture: bool,
         disable_tcp_fallback: bool,
+        is_http_auth_inlet: bool,
     ) -> Self {
         Self {
             listen_addr: listen,
             outlet_addr: to,
             alias,
             authorized: None,
-            prefix_route,
-            suffix_route,
             wait_for_outlet_duration: None,
             policy_expression: None,
             wait_connection,
             secure_channel_identifier: None,
             enable_udp_puncture,
             disable_tcp_fallback,
+            is_http_auth_inlet,
         }
     }
 
@@ -93,26 +90,24 @@ impl CreateInlet {
         listen: HostnamePort,
         to: MultiAddr,
         alias: String,
-        prefix_route: Route,
-        suffix_route: Route,
         auth: Option<Identifier>,
         wait_connection: bool,
         enable_udp_puncture: bool,
         disable_tcp_fallback: bool,
+        is_http_auth_inlet: bool,
     ) -> Self {
         Self {
             listen_addr: listen,
             outlet_addr: to,
             alias,
             authorized: auth,
-            prefix_route,
-            suffix_route,
             wait_for_outlet_duration: None,
             policy_expression: None,
             wait_connection,
             secure_channel_identifier: None,
             enable_udp_puncture,
             disable_tcp_fallback,
+            is_http_auth_inlet,
         }
     }
 
@@ -142,14 +137,6 @@ impl CreateInlet {
 
     pub fn alias(&self) -> String {
         self.alias.clone()
-    }
-
-    pub fn prefix_route(&self) -> &Route {
-        &self.prefix_route
-    }
-
-    pub fn suffix_route(&self) -> &Route {
-        &self.suffix_route
     }
 
     pub fn wait_for_outlet_duration(&self) -> Option<Duration> {

@@ -1,7 +1,7 @@
 use ockam::identity::Identifier;
 use ockam_abac::PolicyExpression;
 use ockam_core::api::{Reply, Request};
-use ockam_core::{async_trait, route};
+use ockam_core::async_trait;
 use ockam_multiaddr::proto::Project as ProjectProto;
 use ockam_multiaddr::{MultiAddr, Protocol};
 use ockam_node::Context;
@@ -27,6 +27,7 @@ impl Inlets for BackgroundNodeClient {
         secure_channel_identifier: &Option<Identifier>,
         enable_udp_puncture: bool,
         disable_tcp_fallback: bool,
+        is_http_auth_inlet: bool,
     ) -> miette::Result<Reply<InletStatus>> {
         let request = {
             let via_project = outlet_addr.matches(0, &[ProjectProto::CODE.into()]);
@@ -35,23 +36,21 @@ impl Inlets for BackgroundNodeClient {
                     listen_addr.clone(),
                     outlet_addr.clone(),
                     alias.into(),
-                    route![],
-                    route![],
                     wait_connection,
                     enable_udp_puncture,
                     disable_tcp_fallback,
+                    is_http_auth_inlet,
                 )
             } else {
                 CreateInlet::to_node(
                     listen_addr.clone(),
                     outlet_addr.clone(),
                     alias.into(),
-                    route![],
-                    route![],
                     authorized_identifier.clone(),
                     wait_connection,
                     enable_udp_puncture,
                     disable_tcp_fallback,
+                    is_http_auth_inlet,
                 )
             };
             if let Some(e) = policy_expression.as_ref() {

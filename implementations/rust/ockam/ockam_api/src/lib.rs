@@ -28,6 +28,7 @@ pub mod echoer;
 pub mod enroll;
 pub mod error;
 pub mod hop;
+pub mod http_auth;
 pub mod kafka;
 pub mod minicbor_url;
 pub mod nodes;

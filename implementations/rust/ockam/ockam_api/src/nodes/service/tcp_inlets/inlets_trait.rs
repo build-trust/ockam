@@ -25,6 +25,7 @@ pub trait Inlets {
         secure_channel_identifier: &Option<Identifier>,
         enable_udp_puncture: bool,
         disable_tcp_fallback: bool,
+        is_http_auth_inlet: bool,
     ) -> miette::Result<Reply<InletStatus>>;
 
     async fn show_inlet(&self, ctx: &Context, alias: &str) -> miette::Result<Reply<InletStatus>>;

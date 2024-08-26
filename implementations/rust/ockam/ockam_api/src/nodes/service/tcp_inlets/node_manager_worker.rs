@@ -1,9 +1,15 @@
-use ockam::Result;
+use std::sync::Arc;
+
+use ockam::{route, Address, Result};
+use ockam_abac::{Action, PolicyExpression, Resource, ResourceType};
 use ockam_core::api::{Error, Response};
 use ockam_node::Context;
+use ockam_transport_tcp::PortalInletInterceptor;
 
+use crate::http_auth::HttpAuthInterceptorFactory;
 use crate::nodes::models::portal::{CreateInlet, InletStatus};
 use crate::nodes::NodeManagerWorker;
+use crate::TokenLeaseRefresher;
 
 impl NodeManagerWorker {
     pub(crate) async fn get_inlets(&self) -> Result<Response<Vec<InletStatus>>, Response<Error>> {
@@ -22,22 +28,36 @@ impl NodeManagerWorker {
             outlet_addr,
             alias,
             authorized,
-            prefix_route,
-            suffix_route,
             wait_for_outlet_duration,
             policy_expression,
             wait_connection,
             secure_channel_identifier,
             enable_udp_puncture,
             disable_tcp_fallback,
+            is_http_auth_inlet,
         } = create_inlet;
+
+        let prefix_route = if is_http_auth_inlet {
+            let interceptor_address = self
+                .create_http_auth_interceptor(ctx, &alias, policy_expression.clone())
+                .await
+                .map_err(|e| {
+                    Response::bad_request_no_request(&format!(
+                        "Error creating http interceptor {:}",
+                        e
+                    ))
+                })?;
+            route![interceptor_address]
+        } else {
+            route![]
+        };
         match self
             .node_manager
             .create_inlet(
                 ctx,
                 listen_addr,
                 prefix_route,
-                suffix_route,
+                route![],
                 outlet_addr,
                 alias,
                 policy_expression,
@@ -53,6 +73,37 @@ impl NodeManagerWorker {
             Ok(status) => Ok(Response::ok().body(status)),
             Err(e) => Err(Response::bad_request_no_request(&format!("{e:?}"))),
         }
+    }
+
+    async fn create_http_auth_interceptor(
+        &self,
+        ctx: &Context,
+        inlet_alias: &String,
+        inlet_policy_expression: Option<PolicyExpression>,
+    ) -> Result<Address, Error> {
+        let interceptor_address: Address = (inlet_alias.to_owned() + "_http_interceptor").into();
+        let policy_access_control = self
+            .node_manager
+            .policy_access_control(
+                self.node_manager.project_authority().clone(),
+                Resource::new(interceptor_address.to_string(), ResourceType::TcpInlet),
+                Action::HandleMessage,
+                inlet_policy_expression,
+            )
+            .await?;
+
+        let token_refresher = TokenLeaseRefresher::new(ctx, self.node_manager.clone()).await?;
+        let http_interceptor_factory = Arc::new(HttpAuthInterceptorFactory::new(token_refresher));
+
+        PortalInletInterceptor::create(
+            ctx,
+            interceptor_address.clone(),
+            http_interceptor_factory,
+            Arc::new(policy_access_control.create_incoming()),
+            Arc::new(policy_access_control.create_outgoing(ctx).await?),
+        )
+        .await?;
+        Ok(interceptor_address)
     }
 
     pub(crate) async fn delete_inlet(

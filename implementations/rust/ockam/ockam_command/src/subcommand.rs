@@ -22,6 +22,7 @@ use crate::enroll::EnrollCommand;
 use crate::environment::EnvironmentCommand;
 use crate::flow_control::FlowControlCommand;
 use crate::identity::IdentityCommand;
+use crate::influxdb::inlet::InfluxDBInletCommand;
 use crate::kafka::consumer::KafkaConsumerCommand;
 use crate::kafka::inlet::KafkaInletCommand;
 use crate::kafka::outlet::KafkaOutletCommand;
@@ -87,6 +88,9 @@ pub enum OckamSubcommand {
     TcpOutlet(TcpOutletCommand),
     TcpInlet(TcpInletCommand),
 
+    #[command(name = "influxdb-inlet")]
+    InfluxDBInlet(InfluxDBInletCommand),
+
     Rendezvous(RendezvousCommand),
 
     KafkaInlet(KafkaInletCommand),
@@ -145,6 +149,8 @@ impl OckamSubcommand {
             OckamSubcommand::TcpConnection(c) => c.run(opts),
             OckamSubcommand::TcpOutlet(c) => c.run(opts),
             OckamSubcommand::TcpInlet(c) => c.run(opts),
+
+            OckamSubcommand::InfluxDBInlet(c) => c.run(opts),
 
             OckamSubcommand::Rendezvous(c) => c.run(opts),
 
@@ -293,6 +299,7 @@ impl OckamSubcommand {
             OckamSubcommand::TcpConnection(c) => c.name(),
             OckamSubcommand::TcpOutlet(c) => c.name(),
             OckamSubcommand::TcpInlet(c) => c.name(),
+            OckamSubcommand::InfluxDBInlet(c) => c.name(),
             OckamSubcommand::Rendezvous(c) => c.name(),
             OckamSubcommand::KafkaInlet(c) => c.name(),
             OckamSubcommand::KafkaOutlet(c) => c.name(),

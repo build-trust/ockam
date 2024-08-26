@@ -11,7 +11,7 @@ use tracing::trace;
 use crate::node::util::initialize_default_node;
 use crate::shared_args::OptionalTimeoutArg;
 use crate::tcp::util::alias_parser;
-use crate::{docs, Command, CommandGlobalOpts, Error};
+use crate::{Command, CommandGlobalOpts, Error};
 use ockam::identity::Identifier;
 use ockam::transport::HostnamePort;
 use ockam::Context;
@@ -36,17 +36,18 @@ use crate::util::parsers::duration_parser;
 use crate::util::parsers::hostname_parser;
 use crate::util::{find_available_port, port_is_free_guard, process_nodes_multiaddr};
 
-const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
+// TODO: this is almost an exact copy of tcp::inlet::create,  other than by help descriptions,
+//       names, and a flag.  At some point we should refactor -likely once we start to have more
+//       protocol-specific inlets.
 
-/// Create TCP Inlets
+/// Create InflucDB Inlets
 #[derive(Clone, Debug, Args)]
-#[command(after_long_help = docs::after_help(AFTER_LONG_HELP))]
 pub struct CreateCommand {
-    /// Node on which to start the TCP Inlet.
+    /// Node on which to start the InfluxDB Inlet.
     #[arg(long, display_order = 900, id = "NODE_NAME", value_parser = extract_address_value)]
     pub at: Option<String>,
 
-    /// Address on which to accept TCP connections.
+    /// Address on which to accept InfluxDB requests.
     #[arg(long, display_order = 900, id = "SOCKET_ADDRESS", hide_default_value = true, default_value_t = default_from_addr(), value_parser = hostname_parser)]
     pub from: HostnamePort,
 
@@ -141,7 +142,7 @@ fn default_to_addr() -> String {
 
 #[async_trait]
 impl Command for CreateCommand {
-    const NAME: &'static str = "tcp-inlet create";
+    const NAME: &'static str = "influxdb-inlet create";
 
     async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
         initialize_default_node(ctx, &opts).await?;
@@ -149,13 +150,14 @@ impl Command for CreateCommand {
         let cmd = self.parse_args(&opts).await?;
 
         let mut node = BackgroundNodeClient::create(ctx, &opts.state, &cmd.at).await?;
+
         cmd.timeout.timeout.map(|t| node.set_timeout_mut(t));
 
         let inlet_status = {
             let pb = opts.terminal.progress_bar();
             if let Some(pb) = pb.as_ref() {
                 pb.set_message(format!(
-                    "Creating TCP Inlet at {}...\n",
+                    "Creating a InfluxDB Inlet at {}...\n",
                     color_primary(cmd.from.to_string())
                 ));
             }
@@ -174,7 +176,7 @@ impl Command for CreateCommand {
                         &cmd.secure_channel_identifier(&opts.state).await?,
                         cmd.udp,
                         cmd.no_tcp_fallback,
-                        false,
+                        true,
                     )
                     .await?;
 
@@ -211,7 +213,7 @@ impl Command for CreateCommand {
             .await?;
 
         let created_message = fmt_ok!(
-            "Created a new TCP Inlet in the Node {} bound to {}\n",
+            "Created a new InfluxDB Inlet in the Node {} bound to {}\n",
             color_primary(&node_name),
             color_primary(cmd.from.to_string())
         );
@@ -228,7 +230,7 @@ impl Command for CreateCommand {
                 )
         } else {
             fmt_warn!(
-                "A TCP Inlet was created in the Node {} bound to {} but failed to connect to the TCP Outlet at {}\n",
+                "A InfluxDB Inlet was created in the Node {} bound to {} but failed to connect to the TCP Outlet at {}\n",
                 color_primary(&node_name),
                  color_primary(cmd.from.to_string()),
                 color_primary(&cmd.to)
@@ -268,6 +270,7 @@ impl CreateCommand {
         node_name: &str,
         inlet: &InletStatus,
     ) -> miette::Result<()> {
+        //TODO: httpinlet
         let mut attributes = HashMap::new();
         attributes.insert(TCP_INLET_AT, node_name.to_string());
         attributes.insert(TCP_INLET_FROM, self.from.to_string());
@@ -294,7 +297,6 @@ impl CreateCommand {
         }
         Ok(self)
     }
-
     async fn parse_arg_to(
         state: &CliState,
         to: impl Into<String>,
