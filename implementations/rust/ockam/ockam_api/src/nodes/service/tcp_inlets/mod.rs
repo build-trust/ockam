@@ -7,3 +7,5 @@ mod session_replacer;
 
 pub use inlets_trait::*;
 use session_replacer::*;
+
+pub use background_node_client::create_inlet_payload;

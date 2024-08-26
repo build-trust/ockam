@@ -9,6 +9,7 @@ pub(crate) mod background_node_client;
 pub mod default_address;
 mod flow_controls;
 pub(crate) mod in_memory_node;
+pub mod influxdb_portal_service;
 pub mod kafka_services;
 pub mod messages;
 mod node_services;

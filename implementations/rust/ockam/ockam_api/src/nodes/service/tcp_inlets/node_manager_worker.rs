@@ -1,4 +1,4 @@
-use ockam::Result;
+use ockam::{route, Result};
 use ockam_core::api::{Error, Response};
 use ockam_node::Context;
 
@@ -22,8 +22,6 @@ impl NodeManagerWorker {
             outlet_addr,
             alias,
             authorized,
-            prefix_route,
-            suffix_route,
             wait_for_outlet_duration,
             policy_expression,
             wait_connection,
@@ -31,13 +29,14 @@ impl NodeManagerWorker {
             enable_udp_puncture,
             disable_tcp_fallback,
             tls_certificate_provider,
+            suffix_route,
         } = create_inlet;
         match self
             .node_manager
             .create_inlet(
                 ctx,
                 listen_addr,
-                prefix_route,
+                route![],
                 suffix_route,
                 outlet_addr,
                 alias,

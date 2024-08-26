@@ -6,6 +6,7 @@ use miette::IntoDiagnostic;
 use ockam::abac::expr::{eq, ident, str};
 use ockam::abac::PolicyExpression::FullExpression;
 use ockam::abac::SUBJECT_KEY;
+use ockam::route;
 use ockam::transport::HostnamePort;
 use ockam_api::address::get_free_address;
 use ockam_api::authenticator::direct::{
@@ -227,6 +228,7 @@ impl AppState {
                 false,
                 false,
                 &None,
+                route![],
             )
             .await
             .map_err(|err| {

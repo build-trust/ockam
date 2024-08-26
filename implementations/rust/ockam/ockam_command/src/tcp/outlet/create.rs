@@ -122,7 +122,7 @@ impl Command for CreateCommand {
 }
 
 impl CreateCommand {
-    async fn add_outlet_created_journey_event(
+    pub async fn add_outlet_created_journey_event(
         &self,
         opts: &CommandGlobalOpts,
         node_name: &str,
