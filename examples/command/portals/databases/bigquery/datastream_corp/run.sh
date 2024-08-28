@@ -62,6 +62,8 @@ run() {
           export GOOGLE_APPLICATION_CREDENTIALS_BASE64="$GOOGLE_APPLICATION_CREDENTIALS_BASE64"
           sudo yum update -y && sudo yum install nodejs -y
           npm install @google-cloud/bigquery
+          npm install google-auth-library
+          npm install axios
           node app.js
 EOS
 }
