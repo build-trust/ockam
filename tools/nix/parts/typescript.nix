@@ -10,7 +10,7 @@ in {
     ockam.typescript = {
       nodeVersion = mkOption {
         type = types.str;
-        default = "18_x";
+        default = "18";
       };
     };
   };
@@ -31,12 +31,10 @@ in {
 
       packages = {
         nodejs =
-          if pkgs ? "nodejs-${cfg.nodeVersion}"
-          then pkgs."nodejs-${cfg.nodeVersion}"
+          if pkgs ? "nodejs_${cfg.nodeVersion}"
+          then pkgs."nodejs_${cfg.nodeVersion}"
           else throw "unsupported nodejs version for nixpkgs: ${cfg.nodeVersion}";
-        pnpm = pkgs.nodePackages.pnpm.override {
-          node = config.packages.nodejs;
-        };
+        pnpm = pkgs.pnpm;
       };
     };
   };
