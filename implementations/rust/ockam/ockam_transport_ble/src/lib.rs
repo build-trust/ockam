@@ -9,6 +9,7 @@
     unused_import_braces,
     unused_qualifications
 )]
+#![allow(unexpected_cfgs)]
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(target = "mips", feature(asm))]
 #![cfg_attr(target = "mips", feature(asm_experimental_arch))]

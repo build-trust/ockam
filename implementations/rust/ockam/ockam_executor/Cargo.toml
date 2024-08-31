@@ -15,7 +15,7 @@ keywords = ["ockam", "crypto", "encryption", "authentication"]
 license = "Apache-2.0"
 publish = true
 repository = "https://github.com/build-trust/ockam/tree/develop/implementations/rust/ockam/ockam_executor"
-rust-version = "1.56.0"
+rust-version = "1.70.0"
 description = "Ockam async executor crate"
 
 [features]

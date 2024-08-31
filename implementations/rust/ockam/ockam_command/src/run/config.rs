@@ -49,7 +49,7 @@ impl Config {
     /// More specifically, this struct is responsible for:
     /// - Running the commands in a valid order. For example, nodes will be created before TCP inlets.
     /// - Do the necessary checks to run only the necessary commands. For example, an enrollment ticket won't
-    ///  be used if the identity is already enrolled.
+    ///   be used if the identity is already enrolled.
     ///
     /// For more details about the parsing, see the [parser](crate::run::parser) module.
     /// You can also check examples of valid configuration files in the demo folder of this module.

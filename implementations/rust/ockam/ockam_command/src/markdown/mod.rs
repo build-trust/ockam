@@ -238,7 +238,7 @@ fn generate_markdown_page(
     // make a .md file and add the buffer to it
     let mut name = name.to_owned();
     name.push_str(".md");
-    std::fs::write(dir.join(name), &buffer)?;
+    std::fs::write(dir.join(name), buffer)?;
     Ok(())
 }
 

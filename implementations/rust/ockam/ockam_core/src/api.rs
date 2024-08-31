@@ -1,5 +1,5 @@
 #![allow(missing_docs)]
-
+#![allow(unexpected_cfgs)]
 use core::fmt::{self, Display, Formatter};
 use hashbrown::HashMap;
 

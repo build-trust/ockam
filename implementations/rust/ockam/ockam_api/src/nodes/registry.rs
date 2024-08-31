@@ -199,10 +199,9 @@ impl<K: Clone, V: Clone> RegistryOf<K, V> {
         map.insert(k, v)
     }
 
-    pub async fn get<Q: ?Sized>(&self, key: &Q) -> Option<V>
+    pub async fn get<Q: Ord + ?Sized>(&self, key: &Q) -> Option<V>
     where
         K: Borrow<Q> + Ord,
-        Q: Ord,
     {
         let map = self.map.read().await;
         map.get(key).cloned()
@@ -223,19 +222,18 @@ impl<K: Clone, V: Clone> RegistryOf<K, V> {
         map.iter().map(|(k, v)| (k.clone(), v.clone())).collect()
     }
 
-    pub async fn remove<Q: ?Sized>(&self, key: &Q) -> Option<V>
+    pub async fn remove<Q: Ord + ?Sized>(&self, key: &Q) -> Option<V>
     where
         K: Borrow<Q> + Ord,
-        Q: Ord,
     {
         let mut map = self.map.write().await;
         map.remove(key)
     }
 
-    pub async fn contains_key<Q: ?Sized>(&self, key: &Q) -> bool
+    pub async fn contains_key<Q>(&self, key: &Q) -> bool
     where
+        Q: Ord + ?Sized,
         K: Borrow<Q> + Ord,
-        Q: Ord,
     {
         let map = self.map.read().await;
         map.contains_key(key)

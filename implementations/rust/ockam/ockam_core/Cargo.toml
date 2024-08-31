@@ -16,7 +16,7 @@ license = "Apache-2.0"
 publish = true
 readme = "README.md"
 repository = "https://github.com/build-trust/ockam/implementations/rust/ockam/ockam_core"
-rust-version = "1.56.0"
+rust-version = "1.70.0"
 description = """
 Core types of the Ockam library.
 """

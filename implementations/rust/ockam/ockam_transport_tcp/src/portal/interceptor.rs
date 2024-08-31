@@ -354,7 +354,7 @@ impl PortalInterceptorWorker {
     ///```
     ///
     /// - `outlet_route` is the route from the interceptor to the outlet.
-    ///  This route is extracted from the first `Ping` message received.
+    ///     This route is extracted from the first `Ping` message received.
     /// - `flow_control_id` flow control from the secure channel to the interceptor.
     /// - `inlet_instance` the route from the interceptor to the inlet.
     /// - `incoming_access_control` is the access control for the incoming messages.
@@ -423,7 +423,7 @@ impl PortalInterceptorWorker {
     ///```
     ///
     /// - `outlet_route` is the route from the interceptor to the outlet.
-    ///  This route is extracted from the first `Ping` message received.
+    ///     This route is extracted from the first `Ping` message received.
     /// - `flow_control_id` new flow control id to control the communication with the outlet.
     /// - `spawner_flow_control_id` to account for future created outlets,
     /// - `incoming_access_control` is the access control for the incoming messages.

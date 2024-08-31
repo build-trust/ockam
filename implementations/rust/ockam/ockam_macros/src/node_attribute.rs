@@ -1,3 +1,4 @@
+#![allow(unexpected_cfgs)]
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
 use syn::meta::parser;

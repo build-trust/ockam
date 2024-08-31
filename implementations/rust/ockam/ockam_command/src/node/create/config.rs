@@ -97,7 +97,7 @@ impl CreateCommand {
         // Record the configuration contents if the node configuration was successfully parsed
         Span::current().record(
             APPLICATION_EVENT_COMMAND_CONFIGURATION_FILE.as_str(),
-            &contents.to_string(),
+            contents.to_string(),
         );
         Ok(node_config)
     }

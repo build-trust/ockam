@@ -91,9 +91,8 @@ use tokio::task;
 
 #[doc(hidden)]
 #[cfg(feature = "std")]
-pub fn spawn<F: 'static>(f: F)
+pub fn spawn<F: Future + Send + 'static>(f: F)
 where
-    F: Future + Send,
     F::Output: Send,
 {
     task::spawn(f);

@@ -2,6 +2,7 @@
 #![allow(missing_docs, dead_code)]
 #![warn(trivial_casts, trivial_numeric_casts, unused_import_braces, unused_qualifications)]
 #![cfg_attr(not(feature = "std"), no_std)]
+#![allow(unexpected_cfgs)]
 
 #[cfg(feature = "std")]
 extern crate core;

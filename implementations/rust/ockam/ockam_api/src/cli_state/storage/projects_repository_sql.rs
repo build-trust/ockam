@@ -253,7 +253,7 @@ impl ProjectsRepository for ProjectsSqlxDatabase {
         query5.execute(&mut *transaction).await.void()?;
 
         // store the okta configuration if any
-        for okta_config in &project.okta_config {
+        while let Some(okta_config) = &project.okta_config {
             let query = query(r#"
                 INSERT INTO okta_config (project_id, tenant_base_url, client_id, certificate, attributes)
                 VALUES ($1, $2, $3, $4, $5)
@@ -267,7 +267,7 @@ impl ProjectsRepository for ProjectsSqlxDatabase {
         }
 
         // store the kafka configuration if any
-        for kafka_config in &project.kafka_config {
+        while let Some(kafka_config) = &project.kafka_config {
             let query = query(
                 r#"
                 INSERT INTO kafka_config (project_id, bootstrap_server)
