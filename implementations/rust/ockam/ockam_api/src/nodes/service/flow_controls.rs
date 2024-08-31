@@ -1,8 +1,10 @@
+#![allow(clippy::unconditional_recursion)]
 use ockam_core::api::{Error, Response};
 use ockam_core::flow_control::FlowControlId;
 use ockam_core::Result;
 use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
+use std::fmt::Display;
 
 use crate::local_multiaddr_to_route;
 use crate::nodes::models::flow_controls::AddConsumer;
@@ -59,13 +61,16 @@ pub enum AddConsumerError {
     EmptyAddress(MultiAddr),
 }
 
-impl ToString for AddConsumerError {
-    fn to_string(&self) -> String {
+impl Display for AddConsumerError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             AddConsumerError::EmptyAddress(address) => {
-                format!("Unable to extract an address from the route: {address:?}.")
+                write!(
+                    f,
+                    "Unable to extract an address from the route: {address:?}."
+                )
             }
-            AddConsumerError::InvalidAddress(address) => format!("Invalid address: {address:?}."),
+            AddConsumerError::InvalidAddress(address) => write!(f, "Invalid address: {address:?}."),
         }
     }
 }

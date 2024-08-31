@@ -1,3 +1,4 @@
+#![allow(clippy::unconditional_recursion)]
 use miette::Diagnostic;
 use ockam_core::Error;
 use thiserror::Error;

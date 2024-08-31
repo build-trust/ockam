@@ -1,3 +1,4 @@
+#![allow(unexpected_cfgs)]
 use syn::{ItemFn, ReturnType, Type};
 
 use crate::internals::{ast::FnVariable, ctx::Context};

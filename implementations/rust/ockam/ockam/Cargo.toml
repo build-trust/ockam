@@ -23,7 +23,7 @@ license = "Apache-2.0"
 publish = true
 readme = "README.md"
 repository = "https://github.com/build-trust/ockam/tree/develop/implementations/rust/ockam/ockam"
-rust-version = "1.56.0"
+rust-version = "1.70.0"
 description = "End-to-end encryption and mutual authentication for distributed applications."
 
 [package.metadata.docs.rs]

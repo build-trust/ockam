@@ -32,9 +32,8 @@ where
 }
 
 /// spawn
-pub fn spawn<F: 'static>(_future: F)
+pub fn spawn<F: Future + Send + 'static>(_future: F)
 where
-    F: Future + Send,
     F::Output: Send,
 {
     // task::spawn(f)

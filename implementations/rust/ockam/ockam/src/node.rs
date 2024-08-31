@@ -252,10 +252,7 @@ impl Node {
     pub async fn receive_extended<M: Message>(
         &mut self,
         options: MessageReceiveOptions,
-    ) -> Result<Routed<M>>
-    where
-        M: Message,
-    {
+    ) -> Result<Routed<M>> {
         self.context.receive_extended(options).await
     }
 

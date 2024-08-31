@@ -1,3 +1,4 @@
+#![allow(unexpected_cfgs)]
 use cfg_if::cfg_if;
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;

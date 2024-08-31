@@ -83,7 +83,7 @@ project = "/project/default"
 
     /// Returns the current progress of the ramp up in the range [0, 1]
     fn progress(&self, elapsed_seconds: f32) -> f32 {
-        (elapsed_seconds / self.ramp_up as f32).max(0.0).min(1.0)
+        (elapsed_seconds / self.ramp_up as f32).clamp(0.0, 1.0)
     }
 
     pub fn calculate_relays(&self, elapsed_seconds: f32) -> usize {

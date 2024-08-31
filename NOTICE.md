@@ -4,6 +4,7 @@ This file contains attributions for any 3rd-party open source code used in this 
 |------|---------|-----|
 | addr2line | Apache-2.0, MIT | https://crates.io/crates/addr2line |
 | adler | 0BSD, MIT, Apache-2.0 | https://crates.io/crates/adler |
+| adler2 | 0BSD, MIT, Apache-2.0 | https://crates.io/crates/adler2 |
 | aead | MIT, Apache-2.0 | https://crates.io/crates/aead |
 | aes | MIT, Apache-2.0 | https://crates.io/crates/aes |
 | aes-gcm | Apache-2.0, MIT | https://crates.io/crates/aes-gcm |
@@ -13,6 +14,7 @@ This file contains attributions for any 3rd-party open source code used in this 
 | allocator-api2 | MIT, Apache-2.0 | https://crates.io/crates/allocator-api2 |
 | android-tzdata | MIT, Apache-2.0 | https://crates.io/crates/android-tzdata |
 | android_system_properties | MIT, Apache-2.0 | https://crates.io/crates/android_system_properties |
+| ansi-regex | MIT | https://crates.io/crates/ansi-regex |
 | anstream | MIT, Apache-2.0 | https://crates.io/crates/anstream |
 | anstyle | MIT, Apache-2.0 | https://crates.io/crates/anstyle |
 | anstyle-parse | MIT, Apache-2.0 | https://crates.io/crates/anstyle-parse |
@@ -89,6 +91,7 @@ This file contains attributions for any 3rd-party open source code used in this 
 | bumpalo | MIT, Apache-2.0 | https://crates.io/crates/bumpalo |
 | bytemuck | Zlib, Apache-2.0, MIT | https://crates.io/crates/bytemuck |
 | byteorder | Unlicense, MIT | https://crates.io/crates/byteorder |
+| byteorder-lite | Unlicense, MIT | https://crates.io/crates/byteorder-lite |
 | bytes | MIT | https://crates.io/crates/bytes |
 | bytes-utils | Apache-2.0, MIT | https://crates.io/crates/bytes-utils |
 | cast | MIT, Apache-2.0 | https://crates.io/crates/cast |
@@ -505,6 +508,7 @@ This file contains attributions for any 3rd-party open source code used in this 
 | stm32h7xx-hal | 0BSD | https://crates.io/crates/stm32h7xx-hal |
 | str-buf | BSL-1.0 | https://crates.io/crates/str-buf |
 | stringprep | MIT, Apache-2.0 | https://crates.io/crates/stringprep |
+| strip-ansi | MIT | https://crates.io/crates/strip-ansi |
 | strip-ansi-escapes | Apache-2.0, MIT | https://crates.io/crates/strip-ansi-escapes |
 | strsim | MIT | https://crates.io/crates/strsim |
 | strum | MIT | https://crates.io/crates/strum |
@@ -619,6 +623,9 @@ This file contains attributions for any 3rd-party open source code used in this 
 | winapi-x86_64-pc-windows-gnu | MIT, Apache-2.0 | https://crates.io/crates/winapi-x86_64-pc-windows-gnu |
 | windows | MIT, Apache-2.0 | https://crates.io/crates/windows |
 | windows-core | MIT, Apache-2.0 | https://crates.io/crates/windows-core |
+| windows-registry | MIT, Apache-2.0 | https://crates.io/crates/windows-registry |
+| windows-result | MIT, Apache-2.0 | https://crates.io/crates/windows-result |
+| windows-strings | MIT, Apache-2.0 | https://crates.io/crates/windows-strings |
 | windows-sys | MIT, Apache-2.0 | https://crates.io/crates/windows-sys |
 | windows-targets | MIT, Apache-2.0 | https://crates.io/crates/windows-targets |
 | windows_aarch64_gnullvm | MIT, Apache-2.0 | https://crates.io/crates/windows_aarch64_gnullvm |
@@ -630,7 +637,6 @@ This file contains attributions for any 3rd-party open source code used in this 
 | windows_x86_64_gnullvm | MIT, Apache-2.0 | https://crates.io/crates/windows_x86_64_gnullvm |
 | windows_x86_64_msvc | MIT, Apache-2.0 | https://crates.io/crates/windows_x86_64_msvc |
 | winnow | MIT | https://crates.io/crates/winnow |
-| winreg | MIT | https://crates.io/crates/winreg |
 | winsafe | MIT | https://crates.io/crates/winsafe |
 | x11-clipboard | MIT | https://crates.io/crates/x11-clipboard |
 | x11rb | MIT, Apache-2.0 | https://crates.io/crates/x11rb |
@@ -641,6 +647,7 @@ This file contains attributions for any 3rd-party open source code used in this 
 | xmlparser | MIT, Apache-2.0 | https://crates.io/crates/xmlparser |
 | yaml-rust | MIT, Apache-2.0 | https://crates.io/crates/yaml-rust |
 | zerocopy | BSD-2-Clause, Apache-2.0, MIT | https://crates.io/crates/zerocopy |
+| zerocopy-derive | BSD-2-Clause, Apache-2.0, MIT | https://crates.io/crates/zerocopy-derive |
 | zeroize | Apache-2.0, MIT | https://crates.io/crates/zeroize |
 | zeroize_derive | Apache-2.0, MIT | https://crates.io/crates/zeroize_derive |
 | zstd | MIT | https://crates.io/crates/zstd |
