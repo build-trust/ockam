@@ -116,7 +116,7 @@ impl AppState {
                 .await
             {
                 enabled = state.enabled;
-                name = state.name.clone();
+                name.clone_from(&state.name);
             }
 
             let original_name = match service_access_details.service_name() {
@@ -137,7 +137,7 @@ impl AppState {
 
             let project = if let Some(project) = ticket.project.as_mut() {
                 // to avoid conflicts with 'default' name
-                project.name = project.id.clone();
+                project.name.clone_from(&project.id);
                 project
             } else {
                 warn!("No project found in enrollment ticket");

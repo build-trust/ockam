@@ -27,7 +27,7 @@ impl Worker for FileReception {
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Self::Message>) -> Result<()> {
         match msg.into_body()? {
             FileData::Description(desc) => {
-                self.name = desc.name.clone();
+                self.name.clone_from(&desc.name);
                 self.size = desc.size;
                 self.file = Some(
                     OpenOptions::new()

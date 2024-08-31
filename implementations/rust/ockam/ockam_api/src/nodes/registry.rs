@@ -84,9 +84,6 @@ impl SecureChannelInfo {
 }
 
 #[derive(Default, Clone)]
-pub(crate) struct OktaIdentityProviderServiceInfo {}
-
-#[derive(Default, Clone)]
 pub(crate) struct UppercaseServiceInfo {}
 
 #[derive(Default, Clone)]

@@ -111,7 +111,7 @@ impl CommonStateMachine {
             None => None,
         };
 
-        self.presented_credential = credential.clone();
+        self.presented_credential.clone_from(&credential);
         let credentials = credential.map(|c| vec![c]).unwrap_or(vec![]);
 
         let payload = IdentityAndCredentials {

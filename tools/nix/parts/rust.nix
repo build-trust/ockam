@@ -84,9 +84,7 @@ in {
 
         devTools = cargoPlugins ++ lib.optional cfg.rustAnalyzer pkgs.rust-analyzer;
 
-        nightlyTooling = with pkgs; [
-          grcov
-        ];
+        nightlyTooling = with pkgs; [];
 
         sharedInputs = compilerTools ++ nativeLibs ++ devTools;
 

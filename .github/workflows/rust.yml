@@ -167,7 +167,7 @@ jobs:
           job_name: "${{ github.job }}-${{ matrix.test_projects }}"
 
       - name: Run test on ${{ matrix.test_projects }}
-        run: cargo --version && make -f implementations/rust/Makefile test
+        run: make -f implementations/rust/Makefile test
 
       - name: Nix Upload Store
         uses: ./.github/actions/nix_upload_store
