@@ -11,9 +11,11 @@ services:
     container_name: application_team-consumer
     build:
       context: .
-      dockerfile: kafka_client.dockerfile
+      dockerfile: ../kafka_client.dockerfile
       args:
         OCKAM_VERSION: ${OCKAM_VERSION:-latest}
+    volumes:
+      - ./ockam-node.yaml:/ockam-node.yaml
     environment:
       ENROLLMENT_TICKET: ${CONSUMER_ENROLLMENT_TICKET:-}
       OCKAM_DEVELOPER: ${OCKAM_DEVELOPER:-false}
@@ -22,7 +24,14 @@ services:
     command:
       - -c
       - (
-          sleep 14;
+          set -e
+          
+          sleep 10
+
+          ockam node create ./ockam-node.yaml --enrollment-ticket $${ENROLLMENT_TICKET} &
+
+          sleep 14
+
           echo "";
           echo "Messages sent from producers will appear shortly.";
           echo "It may take a couple of minutes for the first message to appear.";

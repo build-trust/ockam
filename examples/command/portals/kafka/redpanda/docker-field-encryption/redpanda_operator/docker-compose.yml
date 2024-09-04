@@ -9,16 +9,18 @@ services:
   # how the node is set up.
   ockam:
     depends_on: [redpanda]
-    build:
-      context: .
-      dockerfile: ../ockam.dockerfile
-      args:
-        OCKAM_VERSION: ${OCKAM_VERSION:-latest}
+    image: ghcr.io/build-trust/ockam:latest
     environment:
       ENROLLMENT_TICKET: ${ENROLLMENT_TICKET:-}
       OCKAM_DEVELOPER: ${OCKAM_DEVELOPER:-false}
+      REDPANDA_ADDRESS: "redpanda"
     networks:
       - redpanda_operator
+    command: >
+      node create -vv --foreground /ockam-node.yaml 
+      --enrollment-ticket ${ENROLLMENT_TICKET:-} 
+    volumes:
+      - ./ockam-node.yaml:/ockam-node.yaml
   redpanda:
     image: docker.redpanda.com/redpandadata/redpanda:v24.1.5
     environment:

@@ -24,7 +24,8 @@ ENV PATH "/sbin:/opt/kafka/bin/:$PATH"
 # Install Ockam
 COPY --from=builder /ockam /usr/local/bin/ockam
 
-# Copy the script that will be used as entrypoint
-COPY run_ockam.sh /run_ockam.sh
-RUN chmod +x /run_ockam.sh
-ENTRYPOINT ["/run_ockam.sh"]
+# Set environment variable for enrollment ticket
+ENV ENROLLMENT_TICKET=""
+
+# Set the entrypoint to run bash
+ENTRYPOINT ["/bin/bash"]
