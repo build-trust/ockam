@@ -212,7 +212,10 @@ impl CreateCommand {
 
     /// Return true if the `name` argument is not a config file path or URL
     fn has_name_arg(&self) -> bool {
-        is_url(&self.name).is_none() && std::fs::metadata(&self.name).is_err()
+        let is_file = std::fs::metadata(&self.name)
+            .map(|m| m.is_file())
+            .unwrap_or(false);
+        is_url(&self.name).is_none() && !is_file
     }
 
     fn parse_args(&self) -> miette::Result<()> {
@@ -330,6 +333,13 @@ mod tests {
         assert!(cmd.has_name_arg());
         let cmd = CreateCommand {
             name: "node".to_string(),
+            ..CreateCommand::default()
+        };
+        assert!(cmd.has_name_arg());
+
+        // True if it's a directory-like name
+        let cmd = CreateCommand {
+            name: "path/to/node".to_string(),
             ..CreateCommand::default()
         };
         assert!(cmd.has_name_arg());
