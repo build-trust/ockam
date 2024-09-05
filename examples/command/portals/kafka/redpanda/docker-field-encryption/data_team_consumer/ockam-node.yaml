@@ -1,0 +1,8 @@
+relay: data-consumer
+
+kafka-inlet:
+  from: 127.0.0.1:9092
+  to: /project/default/service/forward_to_redpanda/secure/api
+  avoid-publishing: true
+  allow-producer: data-producer
+  allow: redpanda

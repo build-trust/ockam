@@ -1,6 +1,6 @@
 ---
 networks:
-  application_team:
+  data_team:
       driver: bridge
 services:
   # Start a producer node with ockam.
@@ -8,17 +8,17 @@ services:
   # Read kafka_client.dockerfile and run_ockam.sh to understand
   # how the node is set up
   producer:
-    container_name: application_team-producer
+    container_name: data-producer
     build:
       context: .
       dockerfile: ../kafka_client.dockerfile
     volumes:
       - ./ockam-node.yaml:/ockam-node.yaml
     environment:
-      ENROLLMENT_TICKET: ${PRODUCER_ENROLLMENT_TICKET:-}
+      ENROLLMENT_TICKET: ${DATA_PRODUCER_ENROLLMENT_TICKET:-}
       OCKAM_DEVELOPER: ${OCKAM_DEVELOPER:-false}
     networks:
-      - application_team
+      - data_team
     command:
       - -c
       - |
@@ -45,7 +45,7 @@ services:
           sleep 2
           echo "Sending message: $${MESSAGES[n]}"
           echo -n "$${MESSAGES[n]}" | kafka-console-producer.sh \
-            --topic application_team_topic \
+            --topic data_team_topic \
             --bootstrap-server 127.0.0.1:9092 \
             --producer-property request.timeout.ms=30000
         done

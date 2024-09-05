@@ -45,6 +45,10 @@ run() {
     application_team_producer_ticket=$(ockam project ticket --usage-count 1 --expires-in 10m --attribute producer --attribute inlet)
     application_team_consumer_ticket=$(ockam project ticket --usage-count 1 --expires-in 10m --attribute consumer --attribute inlet --relay consumer)
 
+    data_producer_ticket=$(ockam project ticket --usage-count 1 --expires-in 10m --attribute data-producer --attribute inlet)
+    data_consumer_ticket=$(ockam project ticket --usage-count 1 --expires-in 10m --attribute data-consumer --attribute inlet --relay data-consumer)
+
+
     # Invoke `docker-compose up` in the directory that has redpanda_operator's configuration.
     # Pass the above enrollment ticket as an environment variable.
     #
@@ -59,7 +63,11 @@ run() {
     # in application_team's virtual private network.
     echo; pushd application_team_producer; PRODUCER_ENROLLMENT_TICKET="$application_team_producer_ticket" docker compose up -d; popd
 
-    echo; pushd application_team_consumer; CONSUMER_ENROLLMENT_TICKET="$application_team_consumer_ticket" docker compose up; popd
+    echo; pushd application_team_consumer; CONSUMER_ENROLLMENT_TICKET="$application_team_consumer_ticket" docker compose up -d; popd
+
+    echo; pushd data_team_producer; DATA_PRODUCER_ENROLLMENT_TICKET="$data_producer_ticket" docker compose up -d; popd
+
+    echo; pushd data_team_consumer; DATA_CONSUMER_ENROLLMENT_TICKET="$data_consumer_ticket" docker compose up -d; popd
 
 }
 
@@ -69,6 +77,8 @@ cleanup() {
     pushd redpanda_operator; docker compose down --rmi all --remove-orphans; popd
     pushd application_team_producer; docker compose down --rmi all --remove-orphans; popd
     pushd application_team_consumer; docker compose down --rmi all --remove-orphans; popd
+    pushd data_team_producer; docker compose down --rmi all --remove-orphans; popd
+    pushd data_team_consumer; docker compose down --rmi all --remove-orphans; popd
 }
 
 # Check if Ockam Command is already installed and available in path.

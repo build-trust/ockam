@@ -17,8 +17,8 @@ services:
     networks:
       - redpanda_operator
     command: >
-      node create -vv --foreground /ockam-node.yaml 
-      --enrollment-ticket ${ENROLLMENT_TICKET:-} 
+      node create -vv --foreground /ockam-node.yaml
+      --enrollment-ticket ${ENROLLMENT_TICKET:-}
     volumes:
       - ./ockam-node.yaml:/ockam-node.yaml
   redpanda:
@@ -80,3 +80,4 @@ services:
       - 8080:8080
     depends_on:
       - redpanda
+

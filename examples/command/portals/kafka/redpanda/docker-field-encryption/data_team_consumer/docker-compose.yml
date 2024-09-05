@@ -1,6 +1,6 @@
 ---
 networks:
-  application_team:
+  data_team:
       driver: bridge
 services:
   # Start a consumer node with ockam.
@@ -8,7 +8,7 @@ services:
   # Read kafka_client.dockerfile and run_ockam.sh to understand
   # how the node is set up.
   consumer:
-    container_name: application_team-consumer
+    container_name: data-consumer
     build:
       context: .
       dockerfile: ../kafka_client.dockerfile
@@ -17,10 +17,10 @@ services:
     volumes:
       - ./ockam-node.yaml:/ockam-node.yaml
     environment:
-      ENROLLMENT_TICKET: ${CONSUMER_ENROLLMENT_TICKET:-}
+      ENROLLMENT_TICKET: ${DATA_CONSUMER_ENROLLMENT_TICKET:-}
       OCKAM_DEVELOPER: ${OCKAM_DEVELOPER:-false}
     networks:
-      - application_team
+      - data_team
     command:
       - -c
       - (
@@ -39,7 +39,7 @@ services:
           echo "Press Ctrl+C to stop the container at any time, then execute "\
           "'./run.sh cleanup' to remove all containers.";
           echo "";
-          kafka-console-consumer.sh --topic application_team_topic --timeout-ms 50000 --bootstrap-server 127.0.0.1:9092 --max-messages 8 | tee output.txt;
+          kafka-console-consumer.sh --topic data_team_topic --timeout-ms 50000 --bootstrap-server 127.0.0.1:9092 --max-messages 8 | tee output.txt;
           if [[ ! -s output.txt ]]; then
             echo "Failed to receive messages";
             exit 1;
@@ -47,11 +47,12 @@ services:
 
           echo "";
           echo "The example run was successful 🥳.";
-          echo "The consumer was able to decrypt encrypted fields";
+          echo "The consumer was able to decrypt encrypted message";
           echo "";
 
           echo "=======================================================================";
-          echo "Open the console at http://127.0.0.1:8080 to see the encryted fields in message.";
+          echo "Open the console at http://127.0.0.1:8080 to see the encryted message.";
           echo "=======================================================================";
           tail -f /dev/null;
         )
+
