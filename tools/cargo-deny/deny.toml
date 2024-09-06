@@ -57,20 +57,13 @@ ignore = [
   # CDDL schema conformance in tests.
   "RUSTSEC-2021-0127",
 
-  # `safemem` is unmaintained and archived
-  # (https://rustsec.org/advisories/RUSTSEC-2023-0081)
-  #
-  # Pulled-in by `syntect` which is used for syntax and code highlighting.
-  "RUSTSEC-2023-0081",
-
-  # cbindgen (used to generate C header at build time)
-  # may dereference unaligned pointer access on windows
-  # under special conditions
-  "RUSTSEC-2021-0145",
-
   # yaml-rust is unmaintained. Switching to maintained fork yaml-rust2 is tricky
   # Tracked here https://github.com/build-trust/ockam/issues/7807
   "RUSTSEC-2024-0320",
+
+  # Unmaintained dependency `proc-macro-error` pulled by `r3bl` crates. Should be fixed
+  # Tracked here https://github.com/r3bl-org/r3bl-open-core/issues/359
+  "RUSTSEC-2024-0370",
 ]
 # Users who require or prefer Git to use SSH cloning instead of HTTPS,
 # such as implemented via "insteadOf" rules in Git config, can still
