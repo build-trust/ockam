@@ -4071,9 +4071,9 @@ checksum = "6877bb514081ee2a7ff5ef9de3281f14a4dd4bceac4c09388074a6b5df8a139a"
 
 [[package]]
 name = "minicbor"
-version = "0.24.2"
+version = "0.24.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5f8e213c36148d828083ae01948eed271d03f95f7e72571fa242d78184029af2"
+checksum = "29be4f60e41fde478b36998b88821946aafac540e53591e76db53921a0cc225b"
 dependencies = [
  "half 2.4.1",
  "minicbor-derive",
