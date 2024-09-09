@@ -37,7 +37,7 @@ cat << EOF > inlet.yaml
 tcp-inlet:
   from: 0.0.0.0:8080
   via: bigquery
-  allow: '(= subject.bigquery-outlet "true")'
+  allow: bigquery-outlet
 EOF
 
 ockam node create inlet.yaml

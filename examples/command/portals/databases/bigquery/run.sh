@@ -3,8 +3,8 @@ set -e
 
 # This script, `./run.sh ...` is invoked on a developer’s work machine.
 #
-# This hands-on example uses Ockam to create an end-to-end encrypted portal to BigQuery. We host a reverse proxy in GCP cloud
-# and access through an Amazon VPC.
+# This hands-on example uses Ockam to create an end-to-end encrypted portal to BigQuery. We connect a BigQuery private endpoint
+# in a GCP VPC and access through an Amazon VPC.
 #
 # The example uses AWS CLI and gcloud CLI to create these VPCs.
 #
@@ -49,7 +49,6 @@ run() {
         export OCKAM_VERSION="v${OCKAM_VERSION}";
     fi
 
-    # Ensure that a project ID is set
     if [[ -z "$GOOGLE_CLOUD_PROJECT_ID" ]]; then
         echo "ERROR: Please set the GOOGLE_CLOUD_PROJECT_ID environment variable"
         exit 1
@@ -59,8 +58,6 @@ run() {
         echo "ERROR: Please set the GOOGLE_APPLICATION_CREDENTIALS environment variable"
         exit 1
     fi
-
-    echo "$GOOGLE_APPLICATION_CREDENTIALS"
 
     # Invoke `metrics_corp/run.sh` in the directory that has metrics_corp's configuration. Pass the above enrollment ticket
     # as the first argument to run.sh script. Read metrics_corp/run.sh to understand the parts that are provisioned in
@@ -88,9 +85,12 @@ if ! type ockam &>/dev/null; then
 fi
 
 # Check that tools we need are installed.
-for c in aws curl; do
+for c in aws curl gcloud; do
     if ! type "$c" &>/dev/null; then echo "ERROR: Please install: $c" && exit 1; fi
 done
+
+# It is required to use alphanumeric characters for the private endpoint name.
+export PRIVATE_ENDPOINT_NAME="ockamendpoint"
 
 # Check if the first argument is "cleanup"
 # If it is, call the cleanup function. If not, call the run function.

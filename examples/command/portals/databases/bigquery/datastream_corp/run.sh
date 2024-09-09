@@ -58,13 +58,13 @@ run() {
     until scp -o StrictHostKeyChecking=no -i ./key.pem ./app.js "ec2-user@$ip:app.js"; do sleep 10; done
     ssh -o StrictHostKeyChecking=no -i ./key.pem "ec2-user@$ip" \
         'bash -s' << EOS
+          # Wait for private endpoint to be up.
+          while ! curl -H "Host: bigquery-${PRIVATE_ENDPOINT_NAME}.p.googleapis.com" http://127.0.0.1:8080/discovery/v1/apis/bigquery/v2/rest --connect-timeout 2 --max-time 5 --silent > /dev/null; do sleep 5 && echo "private endpoint not up yet... retrying"; done
           export GOOGLE_CLOUD_PROJECT="$GOOGLE_CLOUD_PROJECT_ID"
           export GOOGLE_APPLICATION_CREDENTIALS_BASE64="$GOOGLE_APPLICATION_CREDENTIALS_BASE64"
           sudo yum update -y && sudo yum install nodejs -y
-          npm install @google-cloud/bigquery
-          npm install google-auth-library
-          npm install axios
-          node app.js
+          npm install @google-cloud/bigquery google-auth-library axios
+          PRIVATE_ENDPOINT_NAME="$PRIVATE_ENDPOINT_NAME" node app.js
 EOS
 }
 

@@ -2,7 +2,6 @@ const axios = require('axios');
 const { JWT } = require('google-auth-library');
 const { BigQuery } = require('@google-cloud/bigquery');
 
-
 const projectId = process.env.GOOGLE_CLOUD_PROJECT;
 if (!projectId) {
     console.error('GOOGLE_CLOUD_PROJECT environment variable must be set.');
@@ -12,6 +11,12 @@ if (!projectId) {
 const credentials_base64 = process.env.GOOGLE_APPLICATION_CREDENTIALS_BASE64;
 if (!credentials_base64) {
     console.error('GOOGLE_APPLICATION_CREDENTIALS_BASE64 environment variable must be set.');
+    process.exit(1);
+}
+
+const private_endpoint_name = process.env.PRIVATE_ENDPOINT_NAME;
+if (!private_endpoint_name) {
+    console.error('PRIVATE_ENDPOINT_NAME environment variable must be set.');
     process.exit(1);
 }
 
@@ -55,7 +60,7 @@ class CustomBigQueryClient extends BigQuery {
                     ...reqOpts.headers,
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json',
-                    'Host': 'bigquery.googleapis.com',
+                    'Host': `bigquery-${private_endpoint_name}.p.googleapis.com`,
                 },
                 data: body,
             };
@@ -68,7 +73,7 @@ class CustomBigQueryClient extends BigQuery {
     }
 }
 
-const bigQueryClient = new CustomBigQueryClient('effortless-cat-433609-h1');
+const bigQueryClient = new CustomBigQueryClient(projectId);
 
 async function createDataset(datasetId) {
     console.log(`Creating Dataset ${datasetId}`);
