@@ -3,26 +3,29 @@ use std::sync::Arc;
 
 use colorful::Colorful;
 use miette::{miette, IntoDiagnostic};
+use minicbor::Decoder;
 use tokio::time::{sleep, Duration};
 use tracing::{debug, info, instrument};
 
-use ockam::tcp::{TcpListenerOptions, TcpTransport};
-use ockam::udp::UdpTransport;
-use ockam::{Address, Context};
-use ockam_api::colors::color_primary;
-use ockam_api::nodes::InMemoryNode;
-use ockam_api::nodes::{
-    service::{NodeManagerGeneralOptions, NodeManagerTransportOptions},
-    NodeManagerWorker, NODEMANAGER_ADDR,
-};
-use ockam_api::terminal::notification::NotificationHandler;
-use ockam_api::{fmt_log, fmt_ok};
-use ockam_core::{route, LOCAL};
-
+use crate::node::show::is_node_up;
 use crate::node::CreateCommand;
 use crate::secure_channel::listener::create as secure_channel_listener;
 use crate::util::foreground_args::wait_for_exit_signal;
 use crate::CommandGlobalOpts;
+use ockam::tcp::{TcpListenerOptions, TcpTransport};
+use ockam::udp::UdpTransport;
+use ockam::{Address, Context};
+use ockam_api::colors::color_primary;
+use ockam_api::nodes::models::services::StartServiceRequest;
+use ockam_api::nodes::{
+    service::{NodeManagerGeneralOptions, NodeManagerTransportOptions},
+    NodeManagerWorker, NODEMANAGER_ADDR,
+};
+use ockam_api::nodes::{BackgroundNodeClient, InMemoryNode};
+use ockam_api::terminal::notification::NotificationHandler;
+use ockam_api::{fmt_log, fmt_ok, DefaultAddress};
+use ockam_core::api::{Request, ResponseHeader};
+use ockam_core::{route, LOCAL};
 
 impl CreateCommand {
     #[instrument(skip_all, fields(node_name = self.name))]
@@ -172,6 +175,15 @@ impl CreateCommand {
     }
 
     async fn start_services(&self, ctx: &Context, opts: &CommandGlobalOpts) -> miette::Result<()> {
+        // Wait until the node is fully started
+        let mut node =
+            BackgroundNodeClient::create(ctx, &opts.state, &Some(self.name.clone())).await?;
+        if !is_node_up(ctx, &mut node, true).await? {
+            return Err(miette!(
+                "Couldn't start services because the node is not up"
+            ));
+        }
+
         if let Some(config) = &self.launch_config {
             if let Some(startup_services) = &config.startup_services {
                 if let Some(cfg) = startup_services.secure_channel_listener.clone() {
@@ -186,6 +198,29 @@ impl CreateCommand {
                             route![],
                         )
                         .await?;
+                    }
+                }
+                if let Some(cfg) = startup_services.influxdb_token_lessor.clone() {
+                    opts.terminal
+                        .write_line(fmt_log!("Starting InfluxDB token lease manager ..."))?;
+                    let service_name = DefaultAddress::INFLUXDB_TOKEN_LESSOR.to_string(); // TODO: should be configurable
+                    let mut req = vec![];
+                    Request::post(format!("/node/services/{service_name}"))
+                        .body(StartServiceRequest::new(cfg, service_name))
+                        .encode(&mut req)
+                        .into_diagnostic()?;
+
+                    let resp: Vec<u8> = ctx
+                        .send_and_receive(NODEMANAGER_ADDR, req)
+                        .await
+                        .into_diagnostic()?;
+                    let mut dec = Decoder::new(&resp);
+                    let response = dec.decode::<ResponseHeader>().into_diagnostic()?;
+                    if response.is_ok() {
+                        opts.terminal
+                            .write_line(fmt_ok!("InfluxDB token lease manager started"))?;
+                    } else {
+                        return Err(miette!("Failed to start InfluxDB token lease manager"));
                     }
                 }
             }

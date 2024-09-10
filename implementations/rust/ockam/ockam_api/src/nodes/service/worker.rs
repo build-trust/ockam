@@ -142,6 +142,18 @@ impl NodeManagerWorker {
                 self.delete_kafka_service(ctx, dec.decode()?, KafkaServiceKind::Inlet)
                     .await,
             )?,
+            (Post, ["node", "services", DefaultAddress::INFLUXDB_TOKEN_LESSOR]) => encode_response(
+                req,
+                self.start_influxdb_token_lessor_service(ctx, dec.decode()?)
+                    .await,
+            )?,
+            (Delete, ["node", "services", DefaultAddress::INFLUXDB_TOKEN_LESSOR]) => {
+                encode_response(
+                    req,
+                    self.delete_influxdb_token_lessor_service(ctx, dec.decode()?)
+                        .await,
+                )?
+            }
             (Get, ["node", "services"]) => encode_response(req, self.list_services().await)?,
             (Get, ["node", "services", service_type]) => {
                 encode_response(req, self.list_services_of_type(service_type).await)?

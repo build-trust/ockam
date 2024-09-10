@@ -1,70 +1,71 @@
+use crate::shared_args::{IdentityOpts, TimeoutArg, TrustOpts};
+use crate::util::clean_nodes_multiaddr;
+use crate::{docs, Command, CommandGlobalOpts};
+use async_trait::async_trait;
 use clap::Args;
-use miette::IntoDiagnostic;
 use ockam::Context;
-use ockam_api::cloud::lease_manager::models::influxdb::Token;
-use ockam_api::InfluxDbTokenLease;
-use tokio::sync::Mutex;
-use tokio::try_join;
-
-use crate::lease::create_project_client;
-use crate::shared_args::{IdentityOpts, TrustOpts};
-use crate::util::async_cmd;
-use crate::{docs, CommandGlobalOpts};
+use ockam_api::fmt_log;
+use ockam_api::nodes::InMemoryNode;
+use ockam_api::token_lessor_node_service::InfluxDBTokenLessorNodeServiceTrait;
+use ockam_multiaddr::MultiAddr;
 
 const HELP_DETAIL: &str = "";
 
 /// List tokens within the lease token manager
 #[derive(Clone, Debug, Args)]
 #[command(help_template = docs::after_help(HELP_DETAIL))]
-pub struct ListCommand;
+pub struct ListCommand {
+    /// The route to the node that will be used to create the token
+    #[arg(long, value_name = "ROUTE", default_value_t = super::lease_at_default_value())]
+    pub at: MultiAddr,
 
-impl ListCommand {
-    pub fn run(
-        self,
-        opts: CommandGlobalOpts,
-        identity_opts: IdentityOpts,
-        trust_opts: TrustOpts,
-    ) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |ctx| async move {
-            self.async_run(&ctx, opts, identity_opts, trust_opts).await
-        })
-    }
+    #[command(flatten)]
+    pub timeout: TimeoutArg,
 
-    pub fn name(&self) -> String {
-        "lease list".into()
-    }
+    #[command(flatten)]
+    identity_opts: IdentityOpts,
 
-    async fn async_run(
-        &self,
-        ctx: &Context,
-        opts: CommandGlobalOpts,
-        identity_opts: IdentityOpts,
-        trust_opts: TrustOpts,
-    ) -> miette::Result<()> {
-        let is_finished: Mutex<bool> = Mutex::new(false);
-        let project_node = create_project_client(ctx, &opts, &identity_opts, &trust_opts).await?;
+    #[command(flatten)]
+    trust_opts: TrustOpts,
+}
 
-        let send_req = async {
-            let tokens: Vec<Token> = project_node.list_tokens(ctx).await?;
-            *is_finished.lock().await = true;
-            Ok(tokens)
-        };
+#[async_trait]
+impl Command for ListCommand {
+    const NAME: &'static str = "lease list";
 
-        let output_messages = vec![format!("Listing Tokens...\n")];
+    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+        let cmd = self.parse_args(&opts).await?;
 
-        let progress_output = opts.terminal.loop_messages(&output_messages, &is_finished);
+        let node = InMemoryNode::start_with_identity_and_project_name(
+            ctx,
+            &opts.state,
+            cmd.identity_opts.identity_name.clone(),
+            cmd.trust_opts.project_name.clone(),
+        )
+        .await?
+        .with_timeout(cmd.timeout.timeout);
 
-        let (tokens, _) = try_join!(send_req, progress_output)?;
+        opts.terminal
+            .write_line(&fmt_log!("Listing influxdb tokens...\n"))?;
 
-        let plain = opts
-            .terminal
-            .build_list(&tokens, "No active tokens found within service.")?;
-        let json = serde_json::to_string(&tokens).into_diagnostic()?;
+        let (at, _meta) = clean_nodes_multiaddr(&cmd.at, &opts.state).await?;
+        let res = node.list_tokens(ctx, &at).await?;
+
+        let plain = &opts.terminal.build_list(&res, "No tokens found")?;
+
         opts.terminal
             .stdout()
             .plain(plain)
-            .json(json)
+            .json_obj(res)?
             .write_line()?;
+
         Ok(())
+    }
+}
+
+impl ListCommand {
+    async fn parse_args(mut self, opts: &CommandGlobalOpts) -> crate::Result<Self> {
+        self.at = super::resolve_at_arg(&self.at, &opts.state).await?;
+        Ok(self)
     }
 }

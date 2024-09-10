@@ -1,98 +1,69 @@
+use crate::shared_args::{IdentityOpts, TimeoutArg, TrustOpts};
+use crate::{docs, Command, CommandGlobalOpts};
+use async_trait::async_trait;
 use clap::Args;
-use colorful::Colorful;
-use miette::IntoDiagnostic;
-use time::format_description::well_known::Iso8601;
-use time::PrimitiveDateTime;
-use tokio::sync::Mutex;
-use tokio::try_join;
-
-use ockam::Context;
-use ockam_api::colors::OckamColor;
-use ockam_api::{fmt_log, fmt_ok, InfluxDbTokenLease};
-
-use crate::lease::create_project_client;
-use crate::shared_args::{IdentityOpts, TrustOpts};
-use crate::util::async_cmd;
-use crate::{docs, CommandGlobalOpts};
+use ockam_api::fmt_log;
+use ockam_api::influxdb::token_lessor_node_service::InfluxDBTokenLessorNodeServiceTrait;
+use ockam_api::nodes::InMemoryNode;
+use ockam_api::output::Output;
+use ockam_multiaddr::MultiAddr;
+use ockam_node::Context;
 
 const HELP_DETAIL: &str = "";
 
 /// Create a token within the lease token manager
 #[derive(Clone, Debug, Args)]
 #[command(help_template = docs::after_help(HELP_DETAIL))]
-pub struct CreateCommand {}
+pub struct CreateCommand {
+    /// The route to the node that will be used to create the token
+    #[arg(long, value_name = "ROUTE", default_value_t = super::lease_at_default_value())]
+    pub at: MultiAddr,
 
-impl CreateCommand {
-    pub fn run(
-        self,
-        opts: CommandGlobalOpts,
-        identity_opts: IdentityOpts,
-        trust_opts: TrustOpts,
-    ) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |ctx| async move {
-            self.async_run(&ctx, opts, identity_opts, trust_opts).await
-        })
-    }
+    #[command(flatten)]
+    pub timeout: TimeoutArg,
 
-    pub fn name(&self) -> String {
-        "lease create".into()
-    }
+    #[command(flatten)]
+    identity_opts: IdentityOpts,
 
-    async fn async_run(
-        &self,
-        ctx: &Context,
-        opts: CommandGlobalOpts,
-        identity_opts: IdentityOpts,
-        trust_opts: TrustOpts,
-    ) -> miette::Result<()> {
+    #[command(flatten)]
+    trust_opts: TrustOpts,
+}
+
+#[async_trait]
+impl Command for CreateCommand {
+    const NAME: &'static str = "lease create";
+
+    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+        let cmd = self.parse_args(&opts).await?;
+
+        let node = InMemoryNode::start_with_identity_and_project_name(
+            ctx,
+            &opts.state,
+            cmd.identity_opts.identity_name.clone(),
+            cmd.trust_opts.project_name.clone(),
+        )
+        .await?
+        .with_timeout(cmd.timeout.timeout);
+
         opts.terminal
             .write_line(&fmt_log!("Creating influxdb token...\n"))?;
 
-        let project_node = create_project_client(ctx, &opts, &identity_opts, &trust_opts).await?;
-        let is_finished: Mutex<bool> = Mutex::new(false);
-
-        let send_req = async {
-            let token = project_node.create_token(ctx).await?;
-            *is_finished.lock().await = true;
-            Ok(token)
-        };
-
-        let output_messages = vec!["Creating influxdb token...".to_string()];
-
-        let progress_output = opts.terminal.loop_messages(&output_messages, &is_finished);
-
-        let (resp_token, _) = try_join!(send_req, progress_output)?;
+        let res = node.create_token(ctx, &cmd.at).await?;
 
         opts.terminal
             .stdout()
-            .machine(resp_token.token.to_string())
-            .json(serde_json::to_string(&resp_token).into_diagnostic()?)
-            .plain(
-                fmt_ok!("Created influxdb token\n")
-                    + &fmt_log!(
-                        "{}\n",
-                        &resp_token
-                            .token
-                            .to_string()
-                            .color(OckamColor::PrimaryResource.color())
-                    )
-                    + &fmt_log!(
-                        "Id {}\n",
-                        &resp_token
-                            .id
-                            .to_string()
-                            .color(OckamColor::PrimaryResource.color())
-                    )
-                    + &fmt_log!(
-                        "Expires at {}",
-                        PrimitiveDateTime::parse(&resp_token.expires, &Iso8601::DEFAULT)
-                            .into_diagnostic()?
-                            .to_string()
-                            .color(OckamColor::PrimaryResource.color())
-                    ),
-            )
+            .machine(res.token.to_string())
+            .plain(res.item()?)
+            .json_obj(res)?
             .write_line()?;
 
         Ok(())
+    }
+}
+
+impl CreateCommand {
+    async fn parse_args(mut self, opts: &CommandGlobalOpts) -> crate::Result<Self> {
+        self.at = super::resolve_at_arg(&self.at, &opts.state).await?;
+        Ok(self)
     }
 }

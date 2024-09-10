@@ -29,6 +29,8 @@ pub struct Node {
     pub http_server_port: Option<ArgValue>,
     pub identity: Option<ArgValue>,
     pub project: Option<ArgValue>,
+    #[serde(alias = "launch-config")]
+    pub launch_config: Option<ArgValue>,
     #[serde(alias = "opentelemetry-context")]
     pub opentelemetry_context: Option<ArgValue>,
 }
@@ -67,6 +69,9 @@ impl Resource<CreateCommand> for Node {
         }
         if let Some(project) = self.project {
             args.insert("project".into(), project);
+        }
+        if let Some(launch_config) = self.launch_config {
+            args.insert("launch-config".into(), launch_config);
         }
         if let Some(opentelemetry_context) = self.opentelemetry_context {
             args.insert("opentelemetry-context".into(), opentelemetry_context);
