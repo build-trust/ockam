@@ -60,10 +60,6 @@ ignore = [
   # yaml-rust is unmaintained. Switching to maintained fork yaml-rust2 is tricky
   # Tracked here https://github.com/build-trust/ockam/issues/7807
   "RUSTSEC-2024-0320",
-
-  # Unmaintained dependency `proc-macro-error` pulled by `r3bl` crates. Should be fixed
-  # Tracked here https://github.com/r3bl-org/r3bl-open-core/issues/359
-  "RUSTSEC-2024-0370",
 ]
 # Users who require or prefer Git to use SSH cloning instead of HTTPS,
 # such as implemented via "insteadOf" rules in Git config, can still
