@@ -591,8 +591,8 @@ This file contains attributions for any 3rd-party open source code used in this 
 | wasm-bindgen-macro | MIT, Apache-2.0 | https://crates.io/crates/wasm-bindgen-macro |
 | wasm-bindgen-macro-support | MIT, Apache-2.0 | https://crates.io/crates/wasm-bindgen-macro-support |
 | wasm-bindgen-shared | MIT, Apache-2.0 | https://crates.io/crates/wasm-bindgen-shared |
-| wasm-encoder | Apache-2.0 WITH LLVM-exception | https://crates.io/crates/wasm-encoder |
-| wast | Apache-2.0 WITH LLVM-exception | https://crates.io/crates/wast |
+| wasm-encoder | Apache-2.0 WITH LLVM-exception, Apache-2.0, MIT | https://crates.io/crates/wasm-encoder |
+| wast | Apache-2.0 WITH LLVM-exception, Apache-2.0, MIT | https://crates.io/crates/wast |
 | wayland-client | MIT | https://crates.io/crates/wayland-client |
 | wayland-commons | MIT | https://crates.io/crates/wayland-commons |
 | wayland-cursor | MIT | https://crates.io/crates/wayland-cursor |
