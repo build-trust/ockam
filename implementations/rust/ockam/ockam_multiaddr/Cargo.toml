@@ -29,7 +29,7 @@ std = ["ockam_core/std", "unsigned-varint/std", "serde?/std", "minicbor/std"]
 cbor = ["minicbor"]
 
 [dependencies]
-minicbor = { version = "0.24.1", default-features = false, features = ["alloc"], optional = true }
+minicbor = { version = "0.25.0", default-features = false, features = ["alloc"], optional = true }
 once_cell = { version = "1.19.0", default-features = false, features = ["alloc"] }
 serde = { version = "1.0.204", default-features = false, optional = true }
 tinyvec = { version = "1.8.0", features = ["alloc"] }

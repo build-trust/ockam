@@ -31,6 +31,6 @@ no_std = ["ockam_core/no_std"]
 alloc = ["ockam_core/alloc"]
 
 [dependencies]
-minicbor = "0.24"
+minicbor = "0.25"
 ockam_core = { path = "../ockam_core", version = "^0.116.0", default-features = false }
 serde = { version = "1.0.204", default-features = false, features = ["derive"] }

@@ -32,7 +32,7 @@ ring = ["tokio-rustls/ring"]
 
 [dependencies]
 cfg-if = "1.0.0"
-minicbor = "0.24"
+minicbor = "0.25"
 ockam_core = { path = "../ockam_core", version = "^0.116.0" }
 ockam_macros = { path = "../ockam_macros", version = "^0.34.0" }
 ockam_node = { path = "../ockam_node", version = "^0.125.0" }
