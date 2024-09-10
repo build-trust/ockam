@@ -62,6 +62,7 @@ ockam_vault = { path = "../ockam_vault", default-features = false, features = ["
 quickcheck = "1.0.3"
 rand = "0.8.5"
 tempfile = "3.10.1"
+serde_json = "1.0.128"
 
 [[bin]]
 name = "repl"

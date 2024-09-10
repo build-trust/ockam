@@ -1,6 +1,6 @@
 use crate::cloud::lease_manager::models::influxdb::Token;
 use crate::nodes::service::encode_response;
-use minicbor::{Decoder, Encode};
+use minicbor::Decoder;
 use ockam_core::api::Method::{Delete, Get, Post};
 use ockam_core::api::{RequestHeader, Response};
 use ockam_core::{async_trait, Address, Routed, Worker};
@@ -8,6 +8,7 @@ use ockam_node::Context;
 use std::error::Error;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
+use tracing_core::field::debug;
 
 #[derive(Clone)]
 pub(crate) struct InfluxDbTokenLeaseManagerWorker {
@@ -20,8 +21,9 @@ impl InfluxDbTokenLeaseManagerWorker {
         influxdb_org_id: String,
         influxdb_token: String,
         token_permissions: String,
-        token_ttl: Duration,
+        token_ttl: i32,
     ) -> Self {
+        debug!("Creating InfluxDbTokenLeaseManagerWorker");
         Self {
             inner: Arc::new(Mutex::new(InfluxDbTokenLeaseManagerInner {
                 address,
@@ -128,7 +130,7 @@ pub(crate) struct InfluxDbTokenLeaseManagerInner {
     influxdb_org_id: String,
     influxdb_token: String,
     token_permissions: String,
-    token_ttl: Duration,
+    token_ttl: i32,
 }
 
 #[async_trait]
@@ -162,7 +164,15 @@ impl InfluxDbTokenLeaseManagerTrait for InfluxDbTokenLeaseManagerWorker {
         &self,
         ctx: &Context,
     ) -> Result<Response<Token>, Response<ockam_core::api::Error>> {
-        todo!()
+        debug!("Creating token");
+        Ok(Response::ok().body(Token {
+            id: "token_id".to_string(),
+            issued_for: "".to_string(),
+            created_at: "".to_string(),
+            expires: "".to_string(),
+            token: "".to_string(),
+            status: "".to_string(),
+        }))
     }
 
     async fn get_token(
@@ -170,7 +180,15 @@ impl InfluxDbTokenLeaseManagerTrait for InfluxDbTokenLeaseManagerWorker {
         ctx: &Context,
         token_id: &str,
     ) -> Result<Response<Token>, Response<ockam_core::api::Error>> {
-        todo!()
+        debug!("Getting token");
+        Ok(Response::ok().body(Token {
+            id: "token_id".to_string(),
+            issued_for: "".to_string(),
+            created_at: "".to_string(),
+            expires: "".to_string(),
+            token: "".to_string(),
+            status: "".to_string(),
+        }))
     }
 
     async fn revoke_token(
@@ -178,13 +196,22 @@ impl InfluxDbTokenLeaseManagerTrait for InfluxDbTokenLeaseManagerWorker {
         ctx: &Context,
         token_id: &str,
     ) -> Result<Response, Response<ockam_core::api::Error>> {
-        todo!()
+        debug!("Revoking token");
+        Ok(Response::ok())
     }
 
     async fn list_tokens(
         &self,
         ctx: &Context,
     ) -> Result<Response<Vec<Token>>, Response<ockam_core::api::Error>> {
-        todo!()
+        debug!("Listing tokens");
+        Ok(Response::ok().body(vec![Token {
+            id: "token_id".to_string(),
+            issued_for: "".to_string(),
+            created_at: "".to_string(),
+            expires: "".to_string(),
+            token: "".to_string(),
+            status: "".to_string(),
+        }]))
     }
 }

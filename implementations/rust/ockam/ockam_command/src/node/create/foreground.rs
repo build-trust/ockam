@@ -1,28 +1,32 @@
+use std::convert::identity;
 use std::process::exit;
 use std::sync::Arc;
 
 use colorful::Colorful;
 use miette::{miette, IntoDiagnostic};
+use minicbor::{Decoder, Encode};
 use tokio::time::{sleep, Duration};
 use tracing::{debug, info, instrument};
 
+use crate::node::CreateCommand;
+use crate::secure_channel::listener::create as secure_channel_listener;
+use crate::util::exitcode;
+use crate::util::foreground_args::wait_for_exit_signal;
+use crate::CommandGlobalOpts;
 use ockam::tcp::{TcpListenerOptions, TcpTransport};
 use ockam::udp::UdpTransport;
-use ockam::{Address, Context};
+use ockam::{node, Address, Context};
 use ockam_api::colors::color_primary;
+use ockam_api::nodes::models::services::StartServiceRequest;
 use ockam_api::nodes::InMemoryNode;
 use ockam_api::nodes::{
     service::{NodeManagerGeneralOptions, NodeManagerTransportOptions},
     NodeManagerWorker, NODEMANAGER_ADDR,
 };
 use ockam_api::terminal::notification::NotificationHandler;
-use ockam_api::{fmt_log, fmt_ok};
+use ockam_api::{fmt_log, fmt_ok, DefaultAddress};
+use ockam_core::api::{Request, ResponseHeader};
 use ockam_core::{route, LOCAL};
-
-use crate::node::CreateCommand;
-use crate::secure_channel::listener::create as secure_channel_listener;
-use crate::util::foreground_args::wait_for_exit_signal;
-use crate::CommandGlobalOpts;
 
 impl CreateCommand {
     #[instrument(skip_all, fields(node_name = self.name))]
@@ -186,6 +190,29 @@ impl CreateCommand {
                             route![],
                         )
                         .await?;
+                    }
+                }
+                if let Some(cfg) = startup_services.influxdb_token_lessor.clone() {
+                    opts.terminal
+                        .write_line(fmt_log!("Starting InfluxDB token lease manager ..."))?;
+                    let service_name = DefaultAddress::INFLUXDB_TOKEN_LEASE_MANAGER.to_string(); // TODO: should be configurable
+                    let mut req = vec![];
+                    Request::post(format!("/node/services/{service_name}"))
+                        .body(StartServiceRequest::new(cfg, service_name))
+                        .encode(&mut req)
+                        .into_diagnostic()?;
+
+                    let resp: Vec<u8> = ctx
+                        .send_and_receive(NODEMANAGER_ADDR, req)
+                        .await
+                        .into_diagnostic()?;
+                    let mut dec = Decoder::new(&resp);
+                    let response = dec.decode::<ResponseHeader>().into_diagnostic()?;
+                    if response.is_ok() {
+                        opts.terminal
+                            .write_line(fmt_ok!("InfluxDB token lease manager started"))?;
+                    } else {
+                        return Err(miette!("Failed to start InfluxDB token lease manager"));
                     }
                 }
             }

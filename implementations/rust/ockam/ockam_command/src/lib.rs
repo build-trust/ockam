@@ -43,7 +43,7 @@ mod flow_control;
 mod global_args;
 pub mod identity;
 mod kafka;
-mod lease;
+// mod lease;
 mod manpages;
 mod markdown;
 mod message;

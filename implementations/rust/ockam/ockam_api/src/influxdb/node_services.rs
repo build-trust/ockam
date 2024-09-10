@@ -6,6 +6,7 @@ use ockam_abac::{Action, PolicyExpression, Resource, ResourceType};
 use ockam_core::api::{Error, Response};
 use ockam_core::Address;
 use ockam_node::{Context, WorkerBuilder};
+use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
 impl NodeManagerWorker {
@@ -56,6 +57,7 @@ impl InMemoryNode {
         address: Address,
         req: StartInfluxDbLeaseManagerRequest,
     ) -> Result<(), Error> {
+        debug!(address = %address.address(), "Starting influxdb token lease manager service");
         let (incoming_ac, outgoing_ac) = self
             .node_manager
             .access_control(
@@ -79,7 +81,7 @@ impl InMemoryNode {
         .start(context)
         .await?;
         self.registry.influxdb_services.insert(address, ()).await;
-        todo!()
+        Ok(())
     }
 
     async fn delete_influxdb_token_lease_manager_service(
@@ -99,13 +101,13 @@ impl InMemoryNode {
     }
 }
 
-#[derive(Debug, Clone, Encode, Decode, CborLen)]
+#[derive(Debug, Clone, Encode, Decode, CborLen, Serialize, Deserialize, PartialEq)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub(crate) struct StartInfluxDbLeaseManagerRequest {
+pub struct StartInfluxDbLeaseManagerRequest {
     #[n(1)] influxdb_org_id: String,
     #[n(2)] influxdb_token: String,
     #[n(3)] token_permissions: String,
-    #[n(4)] token_ttl: Duration,
+    #[n(4)] token_ttl: i32,
     #[n(5)] policy_expression: Option<PolicyExpression>,
 }

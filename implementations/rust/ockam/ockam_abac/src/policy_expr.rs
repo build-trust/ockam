@@ -7,6 +7,7 @@ use minicbor::{CborLen, Decode, Encode};
 use ockam_core::compat::fmt::{Display, Formatter};
 #[cfg(feature = "std")]
 use ockam_core::Result;
+use serde::{Deserialize, Serialize};
 
 /// A Policy expression can either be represented with
 ///   - A full expression with string valued attributes, contain operator, etc...
@@ -93,6 +94,25 @@ impl TryFrom<String> for PolicyExpression {
     }
 }
 
+impl Serialize for PolicyExpression {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        self.to_string().serialize(serializer)
+    }
+}
+
+impl<'d> Deserialize<'d> for PolicyExpression {
+    fn deserialize<D>(deserializer: D) -> Result<PolicyExpression, D::Error>
+    where
+        D: serde::Deserializer<'d>,
+    {
+        let s = String::deserialize(deserializer)?;
+        PolicyExpression::from_str(s.as_str()).map_err(serde::de::Error::custom)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::PolicyExpression::{BooleanExpression, FullExpression};
@@ -112,5 +132,34 @@ mod tests {
             PolicyExpression::from_str(boolean_expression).unwrap(),
             BooleanExpression(BooleanExpr::from_str(boolean_expression).unwrap())
         );
+    }
+
+    #[test]
+    fn serde_json() {
+        let full_expression = "(= subject.test = \"true\")";
+        let full_expression = FullExpression(Expr::from_str(full_expression).unwrap());
+        let full_expression_str = serde_json::to_string(&full_expression).unwrap();
+        assert_eq!(full_expression_str, "\"(= subject.test = \\\"true\\\")\"");
+        let full_expression: PolicyExpression = serde_json::from_str(&full_expression_str).unwrap();
+        assert_eq!(
+            full_expression,
+            FullExpression(Expr::from_str("(= subject.test = \"true\")").unwrap())
+        );
+
+        let boolean_expression = "test";
+        let boolean_expression =
+            BooleanExpression(BooleanExpr::from_str(boolean_expression).unwrap());
+        let boolean_expression_str = serde_json::to_string(&boolean_expression).unwrap();
+        assert_eq!(boolean_expression_str, "\"test\"");
+        let boolean_expression: PolicyExpression =
+            serde_json::from_str(&boolean_expression_str).unwrap();
+        assert_eq!(
+            boolean_expression,
+            BooleanExpression(BooleanExpr::from_str("test").unwrap())
+        );
+
+        let invalid_expression = "\"( test = \"true\")\"";
+        let result: Result<PolicyExpression, _> = serde_json::from_str(invalid_expression);
+        assert!(result.is_err());
     }
 }
