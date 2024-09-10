@@ -106,7 +106,6 @@ pub enum OckamSubcommand {
 
     Policy(PolicyCommand),
     Lease(LeaseCommand),
-
     Run(RunCommand),
     Status(StatusCommand),
     Reset(ResetCommand),
@@ -163,7 +162,6 @@ impl OckamSubcommand {
 
             OckamSubcommand::Policy(c) => c.run(opts),
             OckamSubcommand::Lease(c) => c.run(opts),
-
             OckamSubcommand::Run(c) => c.run(opts),
             OckamSubcommand::Status(c) => c.run(opts),
             OckamSubcommand::Reset(c) => c.run(opts),

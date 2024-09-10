@@ -191,6 +191,13 @@ impl NodeConfig {
         if let Some(project) = &cmd.trust_opts.project_name {
             self.node.project = Some(project.clone().into());
         }
+        if let Some(launch_config) = &cmd.launch_config {
+            self.node.launch_config = Some(
+                serde_json::to_string(launch_config)
+                    .into_diagnostic()?
+                    .into(),
+            );
+        }
         if let Some(context) = &cmd.opentelemetry_context {
             self.node.opentelemetry_context =
                 Some(serde_json::to_string(&context).into_diagnostic()?.into());

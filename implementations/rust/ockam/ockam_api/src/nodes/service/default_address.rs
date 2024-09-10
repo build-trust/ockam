@@ -21,6 +21,7 @@ impl DefaultAddress {
     pub const OKTA_IDENTITY_PROVIDER: &'static str = "okta";
     pub const KAFKA_OUTLET: &'static str = "kafka_outlet";
     pub const KAFKA_INLET: &'static str = "kafka_inlet";
+    pub const INFLUXDB_TOKEN_LESSOR: &'static str = "lessor";
 
     pub fn get_rendezvous_server_address() -> Address {
         let server_address =
@@ -42,7 +43,8 @@ impl DefaultAddress {
             | Self::ENROLLMENT_TOKEN_ACCEPTOR
             | Self::OKTA_IDENTITY_PROVIDER
             | Self::KAFKA_INLET
-            | Self::KAFKA_OUTLET)
+            | Self::KAFKA_OUTLET
+            | Self::INFLUXDB_TOKEN_LESSOR)
     }
 
     pub fn iter() -> impl Iterator<Item = &'static str> {
@@ -62,6 +64,7 @@ impl DefaultAddress {
             Self::OKTA_IDENTITY_PROVIDER,
             Self::KAFKA_INLET,
             Self::KAFKA_OUTLET,
+            Self::INFLUXDB_TOKEN_LESSOR,
         ]
         .iter()
         .copied()
@@ -75,31 +78,8 @@ mod test {
     #[test]
     fn test_default_address_is_valid() {
         assert!(!DefaultAddress::is_valid("foo"));
-        assert!(DefaultAddress::is_valid(DefaultAddress::OUTLET_SERVICE));
-        assert!(DefaultAddress::is_valid(DefaultAddress::RELAY_SERVICE));
-        assert!(DefaultAddress::is_valid(
-            DefaultAddress::STATIC_RELAY_SERVICE
-        ));
-        assert!(DefaultAddress::is_valid(DefaultAddress::UPPERCASE_SERVICE));
-        assert!(DefaultAddress::is_valid(DefaultAddress::ECHO_SERVICE));
-        assert!(DefaultAddress::is_valid(DefaultAddress::HOP_SERVICE));
-        assert!(DefaultAddress::is_valid(
-            DefaultAddress::SECURE_CHANNEL_LISTENER
-        ));
-        assert!(DefaultAddress::is_valid(
-            DefaultAddress::DIRECT_AUTHENTICATOR
-        ));
-        assert!(DefaultAddress::is_valid(DefaultAddress::CREDENTIAL_ISSUER));
-        assert!(DefaultAddress::is_valid(
-            DefaultAddress::ENROLLMENT_TOKEN_ISSUER
-        ));
-        assert!(DefaultAddress::is_valid(
-            DefaultAddress::ENROLLMENT_TOKEN_ACCEPTOR
-        ));
-        assert!(DefaultAddress::is_valid(
-            DefaultAddress::OKTA_IDENTITY_PROVIDER
-        ));
-        assert!(DefaultAddress::is_valid(DefaultAddress::KAFKA_INLET));
-        assert!(DefaultAddress::is_valid(DefaultAddress::KAFKA_OUTLET));
+        for name in DefaultAddress::iter() {
+            assert!(DefaultAddress::is_valid(name));
+        }
     }
 }

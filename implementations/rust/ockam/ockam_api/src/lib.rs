@@ -16,6 +16,9 @@
 //! │  └─ ...
 //! ```
 
+/// This is a temporary workaround until the fixes done
+/// in https://github.com/launchbadge/sqlx/pull/3298 are released
+extern crate sqlx_build_trust as sqlx;
 #[macro_use]
 extern crate tracing;
 
@@ -38,7 +41,7 @@ pub mod uppercase;
 mod version;
 
 pub mod authority_node;
-mod influxdb_token_lease;
+pub mod influxdb;
 
 pub mod logs;
 mod schema;
@@ -51,14 +54,10 @@ mod util;
 
 pub use cli_state::CliState;
 pub use error::*;
-pub use influxdb_token_lease::*;
+pub use influxdb::*;
 pub use nodes::service::default_address::*;
 pub use rendezvous_healthcheck::*;
 pub use session::connection_status::ConnectionStatus;
 pub use ui::*;
 pub use util::*;
 pub use version::*;
-
-/// This is a temporary workaround until the fixes done
-/// in https://github.com/launchbadge/sqlx/pull/3298 are released
-extern crate sqlx_build_trust as sqlx;

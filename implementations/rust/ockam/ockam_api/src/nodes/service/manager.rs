@@ -51,7 +51,7 @@ pub struct NodeManager {
     pub(crate) cli_state: CliState,
     pub(super) node_name: String,
     pub(super) node_identifier: Identifier,
-    pub(super) api_transport_flow_control_id: FlowControlId,
+    pub(crate) api_transport_flow_control_id: FlowControlId,
     pub(crate) tcp_transport: TcpTransport,
     pub(crate) udp_transport: Option<UdpTransport>,
     pub(crate) secure_channels: Arc<SecureChannels>,
@@ -491,7 +491,7 @@ impl NodeManager {
         .into_diagnostic()
     }
 
-    pub(super) async fn access_control(
+    pub(crate) async fn access_control(
         &self,
         ctx: &Context,
         authority: Option<Identifier>,

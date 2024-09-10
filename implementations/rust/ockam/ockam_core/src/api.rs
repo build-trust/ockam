@@ -701,6 +701,11 @@ impl Response {
         Response::builder(re, Status::Unauthorized)
     }
 
+    pub fn unauthorized_no_request(msg: &str) -> Response<Error> {
+        let e = Error::new_without_path().with_message(msg);
+        Response::builder(Id::default(), Status::Unauthorized).body(e)
+    }
+
     pub fn forbidden_no_request(re: Id) -> Response {
         Response::builder(re, Status::Forbidden)
     }
