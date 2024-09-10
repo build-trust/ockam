@@ -8,7 +8,7 @@ use tokio::try_join;
 
 use ockam::Context;
 use ockam_api::colors::OckamColor;
-use ockam_api::{fmt_log, fmt_ok, InfluxDbTokenLease};
+use ockam_api::{fmt_log, fmt_ok, InfluxDbTokenLeaseManagerTrait};
 
 use crate::lease::create_project_client;
 use crate::shared_args::{IdentityOpts, TrustOpts};

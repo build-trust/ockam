@@ -1,7 +1,7 @@
 use clap::Args;
 
 use ockam::Context;
-use ockam_api::InfluxDbTokenLease;
+use ockam_api::InfluxDbTokenLeaseManagerTrait;
 
 use crate::lease::create_project_client;
 use crate::shared_args::{IdentityOpts, TrustOpts};

@@ -38,7 +38,7 @@ pub mod uppercase;
 mod version;
 
 pub mod authority_node;
-mod influxdb_token_lease;
+mod influxdb;
 
 pub mod logs;
 mod schema;
@@ -51,7 +51,7 @@ mod util;
 
 pub use cli_state::CliState;
 pub use error::*;
-pub use influxdb_token_lease::*;
+pub use influxdb::*;
 pub use nodes::service::default_address::*;
 pub use rendezvous_healthcheck::*;
 pub use session::connection_status::ConnectionStatus;

@@ -491,7 +491,7 @@ impl NodeManager {
         .into_diagnostic()
     }
 
-    pub(super) async fn access_control(
+    pub(crate) async fn access_control(
         &self,
         ctx: &Context,
         authority: Option<Identifier>,

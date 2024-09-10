@@ -2,7 +2,7 @@ use clap::Args;
 use miette::IntoDiagnostic;
 use ockam::Context;
 use ockam_api::cloud::lease_manager::models::influxdb::Token;
-use ockam_api::InfluxDbTokenLease;
+use ockam_api::InfluxDbTokenLeaseManagerTrait;
 use tokio::sync::Mutex;
 use tokio::try_join;
 

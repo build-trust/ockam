@@ -173,6 +173,7 @@ pub(crate) struct Registry {
     pub(crate) relays: RegistryOf<String, RegistryRelayInfo>,
     pub(crate) inlets: RegistryOf<String, InletInfo>,
     pub(crate) outlets: RegistryOf<Address, OutletInfo>,
+    pub(crate) influxdb_services: RegistryOf<Address, ()>, // TODO: what should we persist here?
 }
 
 pub(crate) struct RegistryOf<K, V> {
