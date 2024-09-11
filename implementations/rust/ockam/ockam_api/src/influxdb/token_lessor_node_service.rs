@@ -3,7 +3,7 @@ use crate::influxdb::token_lessor_worker::InfluxDbTokenLessorWorker;
 use crate::nodes::models::services::{DeleteServiceRequest, StartServiceRequest};
 use crate::nodes::service::messages::{Messages, SendMessage};
 use crate::nodes::{InMemoryNode, NodeManagerWorker};
-use crate::DefaultAddress;
+use crate::{ApiError, DefaultAddress};
 use miette::IntoDiagnostic;
 use minicbor::{CborLen, Decode, Encode};
 use ockam_abac::{Action, PolicyExpression, Resource, ResourceType};
@@ -75,10 +75,19 @@ impl InMemoryNode {
             )
             .await?;
 
+        //Taken from kafka_services.rs
+        // every secure channel can reach this service
+        let default_secure_channel_listener_flow_control_id = context
+            .flow_controls()
+            .get_flow_control_with_spawner(&DefaultAddress::SECURE_CHANNEL_LISTENER.into())
+            .ok_or_else(|| {
+                ApiError::core("Unable to get flow control for secure channel listener")
+            })?;
         context.flow_controls().add_consumer(
             address.clone(),
-            &self.node_manager.api_transport_flow_control_id,
+            &&default_secure_channel_listener_flow_control_id
         );
+
         WorkerBuilder::new(InfluxDbTokenLessorWorker::new(
             address.clone(),
             req.influxdb_org_id,
