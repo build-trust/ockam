@@ -56,6 +56,9 @@ pub enum ResourceType {
     #[n(6)]
     #[strum(serialize = "relay")]
     Relay,
+    #[n(7)]
+    #[strum(serialize = "lessor")]
+    InfluxDbLessor,
 }
 
 impl ResourceType {

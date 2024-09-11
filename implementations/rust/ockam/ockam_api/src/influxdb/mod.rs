@@ -1,4 +1,4 @@
-mod node_services;
-mod token_lease_manager;
+pub mod token_lessor_node_service;
+mod token_lessor_worker;
 
-pub use node_services::StartInfluxDbLeaseManagerRequest;
+pub use token_lessor_node_service::StartInfluxDbLeaseManagerRequest;

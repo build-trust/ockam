@@ -195,7 +195,7 @@ impl CreateCommand {
                 if let Some(cfg) = startup_services.influxdb_token_lessor.clone() {
                     opts.terminal
                         .write_line(fmt_log!("Starting InfluxDB token lease manager ..."))?;
-                    let service_name = DefaultAddress::INFLUXDB_TOKEN_LEASE_MANAGER.to_string(); // TODO: should be configurable
+                    let service_name = DefaultAddress::INFLUXDB_TOKEN_LESSOR.to_string(); // TODO: should be configurable
                     let mut req = vec![];
                     Request::post(format!("/node/services/{service_name}"))
                         .body(StartServiceRequest::new(cfg, service_name))

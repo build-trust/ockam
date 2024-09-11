@@ -11,11 +11,11 @@ use std::time::Duration;
 use tracing_core::field::debug;
 
 #[derive(Clone)]
-pub(crate) struct InfluxDbTokenLeaseManagerWorker {
-    inner: Arc<Mutex<InfluxDbTokenLeaseManagerInner>>,
+pub(crate) struct InfluxDbTokenLessorWorker {
+    inner: Arc<Mutex<InfluxDbTokenLessorInner>>,
 }
 
-impl InfluxDbTokenLeaseManagerWorker {
+impl InfluxDbTokenLessorWorker {
     pub(crate) fn new(
         address: Address,
         influxdb_org_id: String,
@@ -25,7 +25,7 @@ impl InfluxDbTokenLeaseManagerWorker {
     ) -> Self {
         debug!("Creating InfluxDbTokenLeaseManagerWorker");
         Self {
-            inner: Arc::new(Mutex::new(InfluxDbTokenLeaseManagerInner {
+            inner: Arc::new(Mutex::new(InfluxDbTokenLessorInner {
                 address,
                 influxdb_org_id,
                 influxdb_token,
@@ -56,12 +56,13 @@ impl InfluxDbTokenLeaseManagerWorker {
             Some(m) => m,
             None => todo!(),
         };
+        debug!(path_segments = ?path_segments.as_slice().iter().map(|s| s.to_string()).collect::<Vec<_>>(), "Handling request");
 
         let r = match (method, path_segments.as_slice()) {
-            (Post, []) => encode_response(req, self.create_token(ctx).await)?,
+            (Post, [""]) => encode_response(req, self.create_token(ctx).await)?,
+            (Get, [""]) => encode_response(req, self.list_tokens(ctx).await)?,
             (Get, [token_id]) => encode_response(req, self.get_token(ctx, token_id).await)?,
             (Delete, [token_id]) => encode_response(req, self.revoke_token(ctx, token_id).await)?,
-            (Get, []) => encode_response(req, self.list_tokens(ctx).await)?,
             // ==*== Catch-all for Unimplemented APIs ==*==
             _ => {
                 warn!(%method, %path, "Called invalid endpoint");
@@ -74,7 +75,7 @@ impl InfluxDbTokenLeaseManagerWorker {
 }
 
 #[ockam::worker]
-impl Worker for InfluxDbTokenLeaseManagerWorker {
+impl Worker for InfluxDbTokenLessorWorker {
     type Message = Vec<u8>;
     type Context = Context;
 
@@ -125,7 +126,7 @@ impl Worker for InfluxDbTokenLeaseManagerWorker {
     }
 }
 
-pub(crate) struct InfluxDbTokenLeaseManagerInner {
+pub(crate) struct InfluxDbTokenLessorInner {
     address: Address,
     influxdb_org_id: String,
     influxdb_token: String,
@@ -134,7 +135,7 @@ pub(crate) struct InfluxDbTokenLeaseManagerInner {
 }
 
 #[async_trait]
-pub trait InfluxDbTokenLeaseManagerTrait {
+pub trait InfluxDbTokenLessorWorkerTrait {
     async fn create_token(
         &self,
         ctx: &Context,
@@ -159,7 +160,7 @@ pub trait InfluxDbTokenLeaseManagerTrait {
 }
 
 #[async_trait]
-impl InfluxDbTokenLeaseManagerTrait for InfluxDbTokenLeaseManagerWorker {
+impl InfluxDbTokenLessorWorkerTrait for InfluxDbTokenLessorWorker {
     async fn create_token(
         &self,
         ctx: &Context,
@@ -168,9 +169,9 @@ impl InfluxDbTokenLeaseManagerTrait for InfluxDbTokenLeaseManagerWorker {
         Ok(Response::ok().body(Token {
             id: "token_id".to_string(),
             issued_for: "".to_string(),
-            created_at: "".to_string(),
-            expires: "".to_string(),
-            token: "".to_string(),
+            created_at: "2024-01-01T00:00:00Z".to_string(),
+            expires: "2024-01-01T00:00:00Z".to_string(),
+            token: "asdfg".to_string(),
             status: "".to_string(),
         }))
     }
@@ -184,9 +185,9 @@ impl InfluxDbTokenLeaseManagerTrait for InfluxDbTokenLeaseManagerWorker {
         Ok(Response::ok().body(Token {
             id: "token_id".to_string(),
             issued_for: "".to_string(),
-            created_at: "".to_string(),
-            expires: "".to_string(),
-            token: "".to_string(),
+            created_at: "2024-01-01T00:00:00Z".to_string(),
+            expires: "2024-01-01T00:00:00Z".to_string(),
+            token: "asdfg".to_string(),
             status: "".to_string(),
         }))
     }
@@ -208,9 +209,9 @@ impl InfluxDbTokenLeaseManagerTrait for InfluxDbTokenLeaseManagerWorker {
         Ok(Response::ok().body(vec![Token {
             id: "token_id".to_string(),
             issued_for: "".to_string(),
-            created_at: "".to_string(),
-            expires: "".to_string(),
-            token: "".to_string(),
+            created_at: "2024-01-01T00:00:00Z".to_string(),
+            expires: "2024-01-01T00:00:00Z".to_string(),
+            token: "asdfg".to_string(),
             status: "".to_string(),
         }]))
     }

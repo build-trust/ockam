@@ -26,7 +26,7 @@ use crate::kafka::consumer::KafkaConsumerCommand;
 use crate::kafka::inlet::KafkaInletCommand;
 use crate::kafka::outlet::KafkaOutletCommand;
 use crate::kafka::producer::KafkaProducerCommand;
-// use crate::lease::LeaseCommand;
+use crate::lease::LeaseCommand;
 use crate::manpages::ManpagesCommand;
 use crate::markdown::MarkdownCommand;
 use crate::message::MessageCommand;
@@ -105,7 +105,7 @@ pub enum OckamSubcommand {
     Authority(AuthorityCommand),
 
     Policy(PolicyCommand),
-    // Lease(LeaseCommand),
+    Lease(LeaseCommand),
     Run(RunCommand),
     Status(StatusCommand),
     Reset(ResetCommand),
@@ -161,7 +161,7 @@ impl OckamSubcommand {
             OckamSubcommand::Authority(c) => c.run(opts),
 
             OckamSubcommand::Policy(c) => c.run(opts),
-            // OckamSubcommand::Lease(c) => c.run(opts),
+            OckamSubcommand::Lease(c) => c.run(opts),
             OckamSubcommand::Run(c) => c.run(opts),
             OckamSubcommand::Status(c) => c.run(opts),
             OckamSubcommand::Reset(c) => c.run(opts),
@@ -303,7 +303,7 @@ impl OckamSubcommand {
             OckamSubcommand::Credential(c) => c.name(),
             OckamSubcommand::Authority(c) => c.name(),
             OckamSubcommand::Policy(c) => c.name(),
-            // OckamSubcommand::Lease(c) => c.name(),
+            OckamSubcommand::Lease(c) => c.name(),
             OckamSubcommand::Run(c) => c.name(),
             OckamSubcommand::Status(c) => c.name(),
             OckamSubcommand::Reset(c) => c.name(),

@@ -8,7 +8,7 @@ use ockam_api::nodes::InMemoryNode;
 pub use show::ShowCommand;
 
 use crate::shared_args::{IdentityOpts, TrustOpts};
-use crate::CommandGlobalOpts;
+use crate::{Command, CommandGlobalOpts};
 
 use self::revoke::RevokeCommand;
 
@@ -22,12 +22,6 @@ mod show;
 pub struct LeaseCommand {
     #[command(subcommand)]
     subcommand: LeaseSubcommand,
-
-    #[command(flatten)]
-    identity_opts: IdentityOpts,
-
-    #[command(flatten)]
-    trust_opts: TrustOpts,
 }
 
 #[derive(Clone, Debug, Subcommand)]
@@ -41,10 +35,10 @@ pub enum LeaseSubcommand {
 impl LeaseCommand {
     pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
-            LeaseSubcommand::Create(c) => c.run(opts, self.identity_opts, self.trust_opts),
-            LeaseSubcommand::List(c) => c.run(opts, self.identity_opts, self.trust_opts),
-            LeaseSubcommand::Show(c) => c.run(opts, self.identity_opts, self.trust_opts),
-            LeaseSubcommand::Revoke(c) => c.run(opts, self.identity_opts, self.trust_opts),
+            LeaseSubcommand::Create(c) => c.run(opts),
+            LeaseSubcommand::List(c) => c.run(opts),
+            LeaseSubcommand::Show(c) => c.run(opts),
+            LeaseSubcommand::Revoke(c) => c.run(opts),
         }
     }
 
