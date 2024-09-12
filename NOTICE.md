@@ -25,6 +25,7 @@ This file contains attributions for any 3rd-party open source code used in this 
 | arrayref | BSD-2-Clause | https://crates.io/crates/arrayref |
 | as-slice | MIT, Apache-2.0 | https://crates.io/crates/as-slice |
 | ascii | Apache-2.0, MIT | https://crates.io/crates/ascii |
+| assert_matches | MIT, Apache-2.0 | https://crates.io/crates/assert_matches |
 | async-channel | Apache-2.0, MIT | https://crates.io/crates/async-channel |
 | async-executor | Apache-2.0, MIT | https://crates.io/crates/async-executor |
 | async-global-executor | Apache-2.0, MIT | https://crates.io/crates/async-global-executor |
@@ -66,6 +67,10 @@ This file contains attributions for any 3rd-party open source code used in this 
 | aws-types | Apache-2.0 | https://crates.io/crates/aws-types |
 | axum | MIT | https://crates.io/crates/axum |
 | axum-core | MIT | https://crates.io/crates/axum-core |
+| aya | MIT, Apache-2.0 | https://crates.io/crates/aya |
+| aya-log | MIT, Apache-2.0 | https://crates.io/crates/aya-log |
+| aya-log-common | MIT, Apache-2.0 | https://crates.io/crates/aya-log-common |
+| aya-obj | MIT, Apache-2.0 | https://crates.io/crates/aya-obj |
 | backtrace | MIT, Apache-2.0 | https://crates.io/crates/backtrace |
 | bare-metal | MIT, Apache-2.0 | https://crates.io/crates/bare-metal |
 | base16ct | Apache-2.0, MIT | https://crates.io/crates/base16ct |
@@ -125,6 +130,7 @@ This file contains attributions for any 3rd-party open source code used in this 
 | const_fn | Apache-2.0, MIT | https://crates.io/crates/const_fn |
 | copypasta | MIT, Apache-2.0 | https://crates.io/crates/copypasta |
 | copypasta-ext | MIT, Apache-2.0 | https://crates.io/crates/copypasta-ext |
+| core-error | MIT, Apache-2.0 | https://crates.io/crates/core-error |
 | core-foundation | MIT, Apache-2.0 | https://crates.io/crates/core-foundation |
 | core-foundation-sys | MIT, Apache-2.0 | https://crates.io/crates/core-foundation-sys |
 | core-graphics | MIT, Apache-2.0 | https://crates.io/crates/core-graphics |
@@ -188,6 +194,8 @@ This file contains attributions for any 3rd-party open source code used in this 
 | endian-type | MIT | https://crates.io/crates/endian-type |
 | enumflags2 | MIT, Apache-2.0 | https://crates.io/crates/enumflags2 |
 | enumflags2_derive | MIT, Apache-2.0 | https://crates.io/crates/enumflags2_derive |
+| env_filter | MIT, Apache-2.0 | https://crates.io/crates/env_filter |
+| env_logger | MIT, Apache-2.0 | https://crates.io/crates/env_logger |
 | equivalent | Apache-2.0, MIT | https://crates.io/crates/equivalent |
 | errno | MIT, Apache-2.0 | https://crates.io/crates/errno |
 | error-code | BSL-1.0 | https://crates.io/crates/error-code |
@@ -249,6 +257,7 @@ This file contains attributions for any 3rd-party open source code used in this 
 | http-body-util | MIT | https://crates.io/crates/http-body-util |
 | httparse | MIT, Apache-2.0 | https://crates.io/crates/httparse |
 | httpdate | MIT, Apache-2.0 | https://crates.io/crates/httpdate |
+| humantime | MIT, Apache-2.0 | https://crates.io/crates/humantime |
 | hyper | MIT | https://crates.io/crates/hyper |
 | hyper-rustls | Apache-2.0, ISC, MIT | https://crates.io/crates/hyper-rustls |
 | hyper-timeout | MIT, Apache-2.0 | https://crates.io/crates/hyper-timeout |
@@ -266,6 +275,7 @@ This file contains attributions for any 3rd-party open source code used in this 
 | io-lifetimes | Apache-2.0 WITH LLVM-exception, Apache-2.0, MIT | https://crates.io/crates/io-lifetimes |
 | iovec | MIT, Apache-2.0 | https://crates.io/crates/iovec |
 | ipnet | MIT, Apache-2.0 | https://crates.io/crates/ipnet |
+| ipnetwork | MIT, Apache-2.0 | https://crates.io/crates/ipnetwork |
 | is-docker | MIT | https://crates.io/crates/is-docker |
 | is-terminal | MIT | https://crates.io/crates/is-terminal |
 | is-wsl | MIT | https://crates.io/crates/is-wsl |
@@ -325,12 +335,15 @@ This file contains attributions for any 3rd-party open source code used in this 
 | nb | MIT, Apache-2.0 | https://crates.io/crates/nb |
 | nibble_vec | MIT | https://crates.io/crates/nibble_vec |
 | nix | MIT | https://crates.io/crates/nix |
+| no-std-net | MIT | https://crates.io/crates/no-std-net |
 | nom | MIT | https://crates.io/crates/nom |
 | ntapi | Apache-2.0, MIT | https://crates.io/crates/ntapi |
 | nu-ansi-term | MIT | https://crates.io/crates/nu-ansi-term |
 | num-conv | MIT, Apache-2.0 | https://crates.io/crates/num-conv |
 | num-integer | MIT, Apache-2.0 | https://crates.io/crates/num-integer |
 | num-traits | MIT, Apache-2.0 | https://crates.io/crates/num-traits |
+| num_enum | BSD-3-Clause, MIT, Apache-2.0 | https://crates.io/crates/num_enum |
+| num_enum_derive | BSD-3-Clause, MIT, Apache-2.0 | https://crates.io/crates/num_enum_derive |
 | num_threads | MIT, Apache-2.0 | https://crates.io/crates/num_threads |
 | number_prefix | MIT | https://crates.io/crates/number_prefix |
 | objc | MIT | https://crates.io/crates/objc |
@@ -381,6 +394,14 @@ This file contains attributions for any 3rd-party open source code used in this 
 | pkcs8 | Apache-2.0, MIT | https://crates.io/crates/pkcs8 |
 | pkg-config | MIT, Apache-2.0 | https://crates.io/crates/pkg-config |
 | plist | MIT | https://crates.io/crates/plist |
+| pnet | MIT, Apache-2.0 | https://crates.io/crates/pnet |
+| pnet_base | MIT, Apache-2.0 | https://crates.io/crates/pnet_base |
+| pnet_datalink | MIT, Apache-2.0 | https://crates.io/crates/pnet_datalink |
+| pnet_macros | MIT, Apache-2.0 | https://crates.io/crates/pnet_macros |
+| pnet_macros_support | MIT, Apache-2.0 | https://crates.io/crates/pnet_macros_support |
+| pnet_packet | MIT, Apache-2.0 | https://crates.io/crates/pnet_packet |
+| pnet_sys | MIT, Apache-2.0 | https://crates.io/crates/pnet_sys |
+| pnet_transport | MIT, Apache-2.0 | https://crates.io/crates/pnet_transport |
 | png | MIT, Apache-2.0 | https://crates.io/crates/png |
 | polling | Apache-2.0, MIT | https://crates.io/crates/polling |
 | polyval | Apache-2.0, MIT | https://crates.io/crates/polyval |
