@@ -90,6 +90,7 @@ impl InMemoryNode {
 
         WorkerBuilder::new(InfluxDbTokenLessorWorker::new(
             address.clone(),
+            req.influxdb_address,
             req.influxdb_org_id,
             req.influxdb_token,
             req.token_permissions,
@@ -128,11 +129,12 @@ impl InMemoryNode {
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct StartInfluxDbLeaseManagerRequest {
-    #[n(1)] influxdb_org_id: String,
-    #[n(2)] influxdb_token: String,
-    #[n(3)] token_permissions: String,
-    #[n(4)] token_ttl: i32,
-    #[n(5)] policy_expression: Option<PolicyExpression>,
+    #[n(1)] influxdb_address: String,
+    #[n(2)] influxdb_org_id: String,
+    #[n(3)] influxdb_token: String,
+    #[n(4)] token_permissions: String,
+    #[n(5)] token_ttl: i32,
+    #[n(6)] policy_expression: Option<PolicyExpression>,
 }
 
 #[async_trait]
