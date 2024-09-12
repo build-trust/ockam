@@ -5,7 +5,7 @@ use ockam_core::flow_control::{FlowControlId, FlowControls};
 use ockam_core::{Address, AllowAll, IncomingAccessControl, OutgoingAccessControl};
 
 /// Trust Options for an Inlet
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct TcpInletOptions {
     pub(super) incoming_access_control: Arc<dyn IncomingAccessControl>,
     pub(super) outgoing_access_control: Arc<dyn OutgoingAccessControl>,
@@ -76,7 +76,7 @@ impl TcpInletOptions {
         self
     }
 
-    pub(super) fn setup_flow_control(
+    pub(crate) fn setup_flow_control(
         &self,
         flow_controls: &FlowControls,
         addresses: &Addresses,
@@ -99,11 +99,11 @@ impl Default for TcpInletOptions {
 }
 
 /// Trust Options for an Outlet
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct TcpOutletOptions {
     pub(super) consumer: Vec<FlowControlId>,
-    pub(super) incoming_access_control: Arc<dyn IncomingAccessControl>,
-    pub(super) outgoing_access_control: Arc<dyn OutgoingAccessControl>,
+    pub(crate) incoming_access_control: Arc<dyn IncomingAccessControl>,
+    pub(crate) outgoing_access_control: Arc<dyn OutgoingAccessControl>,
     pub(super) tls: bool,
 }
 
@@ -169,7 +169,7 @@ impl TcpOutletOptions {
         self
     }
 
-    pub(super) fn setup_flow_control_for_outlet_listener(
+    pub(crate) fn setup_flow_control_for_outlet_listener(
         &self,
         flow_controls: &FlowControls,
         address: &Address,
@@ -179,7 +179,7 @@ impl TcpOutletOptions {
         }
     }
 
-    pub(super) fn setup_flow_control_for_outlet(
+    pub(crate) fn setup_flow_control_for_outlet(
         &self,
         flow_controls: &FlowControls,
         addresses: &Addresses,

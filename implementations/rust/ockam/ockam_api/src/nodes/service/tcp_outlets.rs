@@ -161,7 +161,7 @@ impl NodeManager {
 
         let res = self
             .tcp_transport
-            .create_tcp_outlet(worker_addr.clone(), to.clone(), options)
+            .create_outlet(worker_addr.clone(), to.clone(), options)
             .await;
 
         Ok(match res {

@@ -89,6 +89,8 @@ impl Worker for TcpOutletListenWorker {
         self.options
             .setup_flow_control_for_outlet(ctx.flow_controls(), &addresses, &src_addr);
 
+        // TODO: Make sure the connection can't be spoofed by someone having access to that Outlet
+
         TcpPortalWorker::start_new_outlet(
             ctx,
             self.registry.clone(),

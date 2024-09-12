@@ -51,8 +51,12 @@ async fn setup(
     let listener = {
         let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
         let bind_address = listener.local_addr().unwrap().to_string();
-        tcp.create_outlet("outlet", bind_address, TcpOutletOptions::new())
-            .await?;
+        tcp.create_outlet(
+            "outlet",
+            bind_address.try_into().unwrap(),
+            TcpOutletOptions::new(),
+        )
+        .await?;
         listener
     };
 
