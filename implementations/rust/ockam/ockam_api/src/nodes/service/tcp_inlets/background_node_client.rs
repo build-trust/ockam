@@ -25,6 +25,7 @@ pub fn create_inlet_payload(
     secure_channel_identifier: &Option<Identifier>,
     enable_udp_puncture: bool,
     disable_tcp_fallback: bool,
+    ebpf: bool,
     tls_certificate_provider: &Option<MultiAddr>,
     outlet_suffix_address: Route,
 ) -> CreateInlet {
@@ -37,6 +38,7 @@ pub fn create_inlet_payload(
             wait_connection,
             enable_udp_puncture,
             disable_tcp_fallback,
+            ebpf,
             outlet_suffix_address,
         )
     } else {
@@ -48,6 +50,7 @@ pub fn create_inlet_payload(
             wait_connection,
             enable_udp_puncture,
             disable_tcp_fallback,
+            ebpf,
             outlet_suffix_address,
         )
     };
@@ -79,6 +82,7 @@ impl Inlets for BackgroundNodeClient {
         secure_channel_identifier: &Option<Identifier>,
         enable_udp_puncture: bool,
         disable_tcp_fallback: bool,
+        ebpf: bool,
         tls_certificate_provider: &Option<MultiAddr>,
         outlet_suffix_addr: Route,
     ) -> miette::Result<Reply<InletStatus>> {
@@ -94,6 +98,7 @@ impl Inlets for BackgroundNodeClient {
                 secure_channel_identifier,
                 enable_udp_puncture,
                 disable_tcp_fallback,
+                ebpf,
                 tls_certificate_provider,
                 outlet_suffix_addr,
             );

@@ -129,6 +129,10 @@ pub struct CreateCommand {
     )]
     pub no_tcp_fallback: bool,
 
+    /// Use eBPF and RawSocket to access TCP packets instead of TCP data stream.
+    #[arg(long, hide = true)]
+    pub ebpf: bool,
+
     #[arg(long, value_name = "BOOL", default_value_t = false, hide = true)]
     /// Enable TLS for the TCP Inlet.
     /// Uses the default project TLS certificate provider, `/project/default/service/tls_certificate_provider`.
@@ -192,6 +196,7 @@ impl Command for CreateCommand {
                         &cmd.secure_channel_identifier(&opts.state).await?,
                         cmd.udp,
                         cmd.no_tcp_fallback,
+                        cmd.ebpf,
                         &cmd.tls_certificate_provider,
                         cmd.outlet_suffix_address
                             .as_ref()

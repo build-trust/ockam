@@ -139,6 +139,7 @@ pub fn measure_buffer_latency_two_nodes_portal() {
                     Some(Address::from_string("outlet")),
                     true,
                     OutletAccessControl::AccessControl((Arc::new(AllowAll), Arc::new(AllowAll))),
+                    false,
                 )
                 .await?;
 
@@ -161,6 +162,7 @@ pub fn measure_buffer_latency_two_nodes_portal() {
                     None,
                     true,
                     None,
+                    false,
                     false,
                     false,
                     None,

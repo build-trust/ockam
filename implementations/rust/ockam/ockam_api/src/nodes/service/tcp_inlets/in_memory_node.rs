@@ -28,6 +28,7 @@ impl InMemoryNode {
         secure_channel_identifier: Option<Identifier>,
         enable_udp_puncture: bool,
         disable_tcp_fallback: bool,
+        ebpf: bool,
         tls_certificate_provider: Option<MultiAddr>,
     ) -> Result<InletStatus> {
         self.node_manager
@@ -45,6 +46,7 @@ impl InMemoryNode {
                 secure_channel_identifier,
                 enable_udp_puncture,
                 disable_tcp_fallback,
+                ebpf,
                 tls_certificate_provider,
             )
             .await

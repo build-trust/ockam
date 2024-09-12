@@ -25,7 +25,7 @@ pub trait AdditionalSessionReplacer: Send + Sync + 'static {
 #[derive(Debug, Clone)]
 pub struct CurrentInletStatus {
     pub route: Route,
-    pub worker: Address,
+    pub worker: Option<Address>,
 }
 
 #[derive(Debug, Clone)]

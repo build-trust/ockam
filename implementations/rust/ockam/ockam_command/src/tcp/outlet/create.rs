@@ -66,6 +66,10 @@ pub struct CreateCommand {
         id = "POLICY_EXPRESSION"
     )]
     pub allow: Option<PolicyExpression>,
+
+    /// Use eBPF and RawSocket to access TCP packets instead of TCP data stream.
+    #[arg(long, hide = true)]
+    pub ebpf: bool,
 }
 
 #[async_trait]
@@ -91,6 +95,7 @@ impl Command for CreateCommand {
                 self.tls,
                 self.from.clone().map(Address::from).as_ref(),
                 self.allow.clone(),
+                self.ebpf,
             )
             .await?;
         self.add_outlet_created_journey_event(&opts, &node_name, &outlet_status)

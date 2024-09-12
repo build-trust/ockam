@@ -42,6 +42,7 @@ impl AppState {
                 Some(worker_addr.clone()),
                 true,
                 OutletAccessControl::AccessControl((Arc::new(incoming_ac), Arc::new(outgoing_ac))),
+                false,
             )
             .await
         {

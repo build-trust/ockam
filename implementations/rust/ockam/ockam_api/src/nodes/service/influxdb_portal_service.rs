@@ -33,6 +33,7 @@ impl NodeManagerWorker {
             worker_addr,
             reachable_from_default_secure_channel,
             policy_expression,
+            ebpf,
             tls,
         } = body.tcp_outlet;
         let interceptor_addr = self
@@ -61,6 +62,7 @@ impl NodeManagerWorker {
                 Some(outlet_addr),
                 reachable_from_default_secure_channel,
                 OutletAccessControl::WithPolicyExpression(policy_expression),
+                ebpf,
             )
             .await
         {
@@ -85,6 +87,7 @@ impl NodeManagerWorker {
             secure_channel_identifier,
             enable_udp_puncture,
             disable_tcp_fallback,
+            ebpf,
             tls_certificate_provider,
             suffix_route,
         } = body.tcp_inlet.clone();
@@ -113,6 +116,7 @@ impl NodeManagerWorker {
                 secure_channel_identifier,
                 enable_udp_puncture,
                 disable_tcp_fallback,
+                ebpf,
                 tls_certificate_provider,
             )
             .await
@@ -259,7 +263,7 @@ impl InfluxDBPortals for BackgroundNodeClient {
         policy_expression: Option<PolicyExpression>,
         token_leaser: MultiAddr,
     ) -> miette::Result<OutletStatus> {
-        let mut outlet_payload = CreateOutlet::new(to, tls, from.cloned(), true);
+        let mut outlet_payload = CreateOutlet::new(to, tls, from.cloned(), true, false);
         if let Some(policy_expression) = policy_expression {
             outlet_payload.set_policy_expression(policy_expression);
         }
@@ -299,6 +303,7 @@ impl InfluxDBPortals for BackgroundNodeClient {
                 secure_channel_identifier,
                 enable_udp_puncture,
                 disable_tcp_fallback,
+                false,
                 tls_certificate_provider,
                 suffix_route,
             );

@@ -160,7 +160,7 @@ impl SessionReplacer for MockReplacer {
             ping_route: self.ping_route.clone(),
             kind: ReplacerOutputKind::Inlet(CurrentInletStatus {
                 route: route![],
-                worker: Address::from_string("echo"),
+                worker: Some(Address::from_string("echo")),
             }),
         })
     }

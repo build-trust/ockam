@@ -26,6 +26,7 @@ pub trait Inlets {
         secure_channel_identifier: &Option<Identifier>,
         enable_udp_puncture: bool,
         disable_tcp_fallback: bool,
+        ebpf: bool,
         tls_certificate_provider: &Option<MultiAddr>,
         outlet_suffix_address: Route,
     ) -> miette::Result<Reply<InletStatus>>;

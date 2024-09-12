@@ -25,6 +25,7 @@ pub struct ResetCommand {
     all: bool,
 }
 
+// TODO: Detach all eBPFs
 impl ResetCommand {
     pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
         async_cmd(&self.name(), opts.clone(), |ctx| async move {
