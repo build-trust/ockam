@@ -39,6 +39,7 @@ impl NodeManager {
         enable_udp_puncture: bool,
         // TODO: Introduce mode enum
         disable_tcp_fallback: bool,
+        ebpf: bool,
         tls_certificate_provider: Option<MultiAddr>,
     ) -> Result<InletStatus> {
         info!("Handling request to create inlet portal");
@@ -126,6 +127,7 @@ impl NodeManager {
             additional_secure_channel: None,
             udp_puncture: None,
             additional_route: None,
+            ebpf,
         };
 
         let replacer = Arc::new(Mutex::new(replacer));
@@ -184,7 +186,9 @@ impl NodeManager {
 
         let tcp_inlet_status = InletStatus::new(
             listen_addr.to_string(),
-            outcome.clone().map(|s| s.worker.address().to_string()),
+            outcome
+                .clone()
+                .and_then(|s| s.worker.map(|address| address.address().to_string())),
             &alias,
             None,
             outcome.clone().map(|s| s.route.to_string()),
@@ -233,9 +237,14 @@ impl NodeManager {
             drop(session);
             if let Some(outcome) = outcome {
                 if let ReplacerOutputKind::Inlet(status) = outcome {
+                    let address = match &status.worker {
+                        Some(address) => address.address().to_string(),
+                        None => "<>".to_string(),
+                    };
+
                     Some(InletStatus::new(
                         inlet_info.bind_addr.to_string(),
-                        status.worker.address().to_string(),
+                        address,
                         alias,
                         None,
                         status.route.to_string(),
@@ -272,15 +281,22 @@ impl NodeManager {
 
             let status = if let Some(outcome) = outcome {
                 match &outcome {
-                    ReplacerOutputKind::Inlet(status) => InletStatus::new(
-                        &info.bind_addr,
-                        status.worker.address().to_string(),
-                        alias,
-                        None,
-                        status.route.to_string(),
-                        connection_status,
-                        info.outlet_addr.to_string(),
-                    ),
+                    ReplacerOutputKind::Inlet(status) => {
+                        let address = match &status.worker {
+                            Some(address) => address.address().to_string(),
+                            None => "<>".to_string(),
+                        };
+
+                        InletStatus::new(
+                            &info.bind_addr,
+                            address,
+                            alias,
+                            None,
+                            status.route.to_string(),
+                            connection_status,
+                            info.outlet_addr.to_string(),
+                        )
+                    }
                     _ => {
                         panic!("Unexpected outcome: {:?}", outcome)
                     }

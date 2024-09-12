@@ -76,6 +76,7 @@ impl KafkaOutletController {
                     Some(kafka_outlet_address(broker_id)),
                     false,
                     OutletAccessControl::WithPolicyExpression(self.policy_expression.clone()),
+                    false,
                 )
                 .await
                 .map(|info| info.to)?;

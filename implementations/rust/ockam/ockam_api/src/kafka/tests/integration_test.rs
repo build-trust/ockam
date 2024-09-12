@@ -42,6 +42,7 @@ use ockam_core::AllowAll;
 use ockam_multiaddr::proto::Service;
 use ockam_multiaddr::MultiAddr;
 use ockam_node::compat::tokio;
+use ockam_transport_core::HostnamePort;
 use ockam_transport_tcp::PortalInletInterceptor;
 
 // TODO: upgrade to 13 by adding a metadata request to map uuid<=>topic_name
@@ -160,7 +161,7 @@ async fn producer__flow_with_mock_kafka__content_encryption_and_decryption(
             .tcp
             .create_outlet(
                 "kafka_consumer_outlet",
-                format!("127.0.0.1:{}", consumer_mock_kafka.port),
+                HostnamePort::new("127.0.0.1", consumer_mock_kafka.port),
                 TcpOutletOptions::new(),
             )
             .await?;
@@ -180,7 +181,7 @@ async fn producer__flow_with_mock_kafka__content_encryption_and_decryption(
         .tcp
         .create_outlet(
             "kafka_producer_outlet",
-            format!("127.0.0.1:{}", producer_mock_kafka.port),
+            HostnamePort::new("127.0.0.1", producer_mock_kafka.port),
             TcpOutletOptions::new(),
         )
         .await?;
@@ -216,7 +217,7 @@ async fn producer__flow_with_mock_kafka__content_encryption_and_decryption(
         .tcp
         .create_outlet(
             "kafka_consumer_outlet",
-            format!("127.0.0.1:{}", consumer_mock_kafka.port),
+            HostnamePort::new("127.0.0.1", consumer_mock_kafka.port),
             TcpOutletOptions::new(),
         )
         .await?;

@@ -52,6 +52,7 @@ pub(super) struct InletSessionReplacer {
     pub(super) additional_secure_channel: Option<SecureChannel>,
     pub(super) udp_puncture: Option<UdpPuncture>,
     pub(super) additional_route: Option<Route>,
+    pub(super) ebpf: bool,
 }
 
 impl InletSessionReplacer {
@@ -159,16 +160,38 @@ impl InletSessionReplacer {
             Some(inlet) => {
                 inlet.unpause(normalized_stripped_route.clone())?;
 
-                inlet.processor_address().clone()
+                inlet.processor_address().cloned()
             }
             None => {
                 let options = self.inlet_options(node_manager).await?;
-                let inlet = node_manager
-                    .tcp_transport
-                    .create_inlet(self.listen_addr.clone(), normalized_route.clone(), options)
-                    .await?;
+                let inlet = if self.ebpf {
+                    #[cfg(ebpf_alias)]
+                    {
+                        node_manager
+                            .tcp_transport
+                            .create_raw_inlet(
+                                self.listen_addr.clone(),
+                                normalized_route.clone(),
+                                options,
+                            )
+                            .await?
+                    }
+                    #[cfg(not(ebpf_alias))]
+                    {
+                        return Err(ockam_core::Error::new(
+                            Origin::Node,
+                            Kind::Internal,
+                            "eBPF support is not enabled",
+                        ));
+                    }
+                } else {
+                    node_manager
+                        .tcp_transport
+                        .create_inlet(self.listen_addr.clone(), normalized_route.clone(), options)
+                        .await?
+                };
 
-                let inlet_address = inlet.processor_address().clone();
+                let inlet_address = inlet.processor_address().cloned();
 
                 let inlet = Arc::new(inlet);
                 self.inlet = Some(inlet);
@@ -194,18 +217,15 @@ impl InletSessionReplacer {
         }
     }
 
-    async fn close_inlet(&mut self, node_manager: &NodeManager) {
+    async fn close_inlet(&mut self) {
         if let Some(inlet) = self.inlet.take() {
             // The previous inlet worker needs to be stopped:
-            let result = node_manager
-                .tcp_transport
-                .stop_inlet(inlet.processor_address().clone())
-                .await;
+            let result = inlet.stop(&self.context).await;
 
             if let Err(err) = result {
                 error!(
                     ?err,
-                    "Failed to remove inlet with address {}",
+                    "Failed to remove inlet with address {:?}",
                     inlet.processor_address()
                 );
             }
@@ -268,7 +288,7 @@ impl SessionReplacer for InletSessionReplacer {
             return;
         };
 
-        self.close_inlet(&node_manager).await;
+        self.close_inlet().await;
         self.close_connection(&node_manager).await;
     }
 }

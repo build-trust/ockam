@@ -28,6 +28,7 @@ impl NodeManagerWorker {
             secure_channel_identifier,
             enable_udp_puncture,
             disable_tcp_fallback,
+            ebpf,
             tls_certificate_provider,
             suffix_route,
         } = create_inlet;
@@ -47,6 +48,7 @@ impl NodeManagerWorker {
                 secure_channel_identifier,
                 enable_udp_puncture,
                 disable_tcp_fallback,
+                ebpf,
                 tls_certificate_provider,
             )
             .await
