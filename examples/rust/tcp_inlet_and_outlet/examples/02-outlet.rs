@@ -28,7 +28,7 @@ async fn main(ctx: Context) -> Result<()> {
     let outlet_target = std::env::args().nth(1).expect("no outlet target given");
     tcp.create_outlet(
         "outlet",
-        outlet_target,
+        outlet_target.try_into()?,
         TcpOutletOptions::new().as_consumer(&tcp_listener_options.spawner_flow_control_id()),
     )
     .await?;

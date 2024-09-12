@@ -1,4 +1,4 @@
-mod addresses;
+pub mod addresses;
 mod inlet_listener;
 mod interceptor;
 pub mod options;

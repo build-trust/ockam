@@ -8,6 +8,7 @@ use ockam::identity::{
 };
 use ockam::remote::RemoteRelayOptions;
 use ockam::tcp::{TcpOutletOptions, TcpTransportExtension};
+use ockam::transport::HostnamePort;
 use ockam::{node, Context, Result};
 use ockam_api::authenticator::enrollment_tokens::TokenAcceptor;
 use ockam_api::authenticator::one_time_code::OneTimeCode;
@@ -107,7 +108,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     // 4. create a tcp outlet with the above policy
     tcp.create_outlet(
         "outlet",
-        "127.0.0.1:5000",
+        HostnamePort::new("127.0.0.1", 5000),
         TcpOutletOptions::new()
             .with_incoming_access_control_impl(incoming_access_control)
             .with_outgoing_access_control_impl(outgoing_access_control),

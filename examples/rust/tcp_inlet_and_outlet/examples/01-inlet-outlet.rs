@@ -24,7 +24,7 @@ async fn main(ctx: Context) -> Result<()> {
     //    a previous message from the Inlet.
 
     let outlet_target = std::env::args().nth(2).expect("no outlet target given");
-    tcp.create_outlet("outlet", outlet_target, TcpOutletOptions::new())
+    tcp.create_outlet("outlet", outlet_target.try_into()?, TcpOutletOptions::new())
         .await?;
 
     // Expect first command line argument to be the TCP address on which to start an Inlet

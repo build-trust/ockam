@@ -23,7 +23,7 @@ use tracing::{debug, error, instrument};
 #[derive(Debug, Clone)]
 pub struct InletSharedState {
     pub route: Route,
-    pub is_paused: bool,
+    pub is_paused: bool, // FIXME: eBPF Not implemented
 }
 
 /// A TCP Portal Inlet listen processor
@@ -34,7 +34,7 @@ pub struct InletSharedState {
 pub(crate) struct TcpInletListenProcessor {
     registry: TcpRegistry,
     inner: TcpListener,
-    outlet_shared_state: Arc<RwLock<InletSharedState>>,
+    inlet_shared_state: Arc<RwLock<InletSharedState>>,
     options: TcpInletOptions,
 }
 
@@ -42,13 +42,13 @@ impl TcpInletListenProcessor {
     pub fn new(
         registry: TcpRegistry,
         inner: TcpListener,
-        outlet_shared_state: Arc<RwLock<InletSharedState>>,
+        inlet_shared_state: Arc<RwLock<InletSharedState>>,
         options: TcpInletOptions,
     ) -> Self {
         Self {
             registry,
             inner,
-            outlet_shared_state,
+            inlet_shared_state,
             options,
         }
     }
@@ -73,20 +73,20 @@ impl TcpInletListenProcessor {
             }
         };
         let socket_addr = inner.local_addr().map_err(TransportError::from)?;
-        let outlet_shared_state = InletSharedState {
+        let inlet_shared_state = InletSharedState {
             route: outlet_listener_route,
             is_paused: options.is_paused,
         };
-        let outlet_shared_state = Arc::new(RwLock::new(outlet_shared_state));
-        let processor = Self::new(registry, inner, outlet_shared_state.clone(), options);
+        let inlet_shared_state = Arc::new(RwLock::new(inlet_shared_state));
+        let processor = Self::new(registry, inner, inlet_shared_state.clone(), options);
 
         ctx.start_processor(processor_address.clone(), processor)
             .await?;
 
-        Ok(TcpInlet::new(
+        Ok(TcpInlet::new_regular(
             socket_addr,
             processor_address,
-            outlet_shared_state,
+            inlet_shared_state,
         ))
     }
 
@@ -190,9 +190,9 @@ impl Processor for TcpInletListenProcessor {
 
         let addresses = Addresses::generate(PortalType::Inlet);
 
-        let outlet_shared_state = self.outlet_shared_state.read().unwrap().clone();
+        let inlet_shared_state = self.inlet_shared_state.read().unwrap().clone();
 
-        if outlet_shared_state.is_paused {
+        if inlet_shared_state.is_paused {
             // Just drop the stream
             return Ok(true);
         }
@@ -200,7 +200,7 @@ impl Processor for TcpInletListenProcessor {
         self.options.setup_flow_control(
             ctx.flow_controls(),
             &addresses,
-            outlet_shared_state.route.next()?,
+            inlet_shared_state.route.next()?,
         );
 
         let streams = if let Some(certificate_provider) = &self.options.tls_certificate_provider {
@@ -225,12 +225,13 @@ impl Processor for TcpInletListenProcessor {
             )
         };
 
+        // TODO: Make sure the connection can't be spoofed by someone having access to that Outlet
         TcpPortalWorker::start_new_inlet(
             ctx,
             self.registry.clone(),
             streams,
             HostnamePort::from(socket_addr),
-            outlet_shared_state.route,
+            inlet_shared_state.route,
             addresses,
             self.options.incoming_access_control.clone(),
             self.options.outgoing_access_control.clone(),

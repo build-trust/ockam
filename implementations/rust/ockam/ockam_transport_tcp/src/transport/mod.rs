@@ -58,6 +58,21 @@ use ockam_node::{Context, HasContext};
 pub struct TcpTransport {
     ctx: Arc<Context>,
     registry: TcpRegistry,
+
+    #[cfg(ebpf_alias)]
+    pub(crate) ebpf_support: crate::ebpf_portal::TcpTransportEbpfSupport,
+}
+
+impl TcpTransport {
+    /// Constructor.
+    pub fn new(ctx: Context) -> Self {
+        Self {
+            ctx: Arc::new(ctx),
+            registry: TcpRegistry::default(),
+            #[cfg(ebpf_alias)]
+            ebpf_support: Default::default(),
+        }
+    }
 }
 
 /// This trait adds a `create_tcp_transport` method to any struct returning a Context.

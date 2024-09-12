@@ -4,7 +4,7 @@ use core::fmt;
 use core::fmt::{Debug, Formatter};
 use ockam_core::compat::net::SocketAddr;
 use ockam_core::compat::sync::{Arc, RwLock};
-use ockam_core::{route, Address, Error, Result, Route};
+use ockam_core::{route, Address, Result, Route};
 use ockam_node::Context;
 use ockam_transport_core::{parse_socket_addr, HostnamePort};
 use tracing::instrument;
@@ -76,24 +76,22 @@ impl TcpTransport {
     /// use ockam_transport_tcp::{TcpOutletOptions, TcpTransport};
     /// # use ockam_node::Context;
     /// # use ockam_core::{AllowAll, Result};
-    /// # async fn test(ctx: Context) -> Result<()> {
+    /// # use ockam_transport_core::HostnamePort;
+    ///
+    /// async fn test(ctx: Context) -> Result<()> {
     ///
     /// let tcp = TcpTransport::create(&ctx).await?;
-    /// tcp.create_outlet("outlet", "localhost:9000", TcpOutletOptions::new()).await?;
+    /// tcp.create_outlet("outlet", HostnamePort::new("localhost", 9000), TcpOutletOptions::new()).await?;
     /// # tcp.stop_outlet("outlet").await?;
     /// # Ok(()) }
     /// ```
-    #[instrument(skip(self), fields(address = ? address.clone().into(), peer))]
+    #[instrument(skip(self), fields(address = ? address.clone().into(), peer=peer.clone().to_string()))]
     pub async fn create_outlet(
         &self,
         address: impl Into<Address> + Clone + Debug,
-        hostname_port: impl TryInto<HostnamePort, Error = Error> + Clone + Debug,
+        peer: HostnamePort,
         options: TcpOutletOptions,
     ) -> Result<()> {
-        // Resolve peer address as a host name and port
-        let peer = hostname_port.try_into()?;
-        tracing::Span::current().record("peer", peer.to_string());
-
         TcpOutletListenWorker::start(
             &self.ctx,
             self.registry.clone(),
@@ -106,35 +104,17 @@ impl TcpTransport {
         Ok(())
     }
 
-    /// Create Tcp Outlet Listener at address, that connects to peer using Tcp
-    #[instrument(skip(self))]
-    pub async fn create_tcp_outlet(
-        &self,
-        address: Address,
-        hostname_port: HostnamePort,
-        options: TcpOutletOptions,
-    ) -> Result<()> {
-        TcpOutletListenWorker::start(
-            &self.ctx,
-            self.registry.clone(),
-            address,
-            hostname_port,
-            options,
-        )
-        .await?;
-
-        Ok(())
-    }
-
     /// Stop outlet at addr
     /// ```rust
     /// use ockam_transport_tcp::{TcpOutletOptions, TcpTransport};
     /// # use ockam_node::Context;
     /// # use ockam_core::{AllowAll, Result};
-    /// # async fn test(ctx: Context) -> Result<()> {
+    /// # use ockam_transport_core::HostnamePort;
+    ///
+    /// async fn test(ctx: Context) -> Result<()> {
     ///
     /// let tcp = TcpTransport::create(&ctx).await?;
-    /// tcp.create_outlet("outlet", "127.0.0.1:5000", TcpOutletOptions::new()).await?;
+    /// tcp.create_outlet("outlet", HostnamePort::new("127.0.0.1", 5000), TcpOutletOptions::new()).await?;
     /// tcp.stop_outlet("outlet").await?;
     /// # Ok(()) }
     /// ```
@@ -149,31 +129,56 @@ impl TcpTransport {
 #[derive(Clone, Debug)]
 pub struct TcpInlet {
     socket_address: SocketAddr,
-    processor_address: Address,
-    outlet_state: Arc<RwLock<InletSharedState>>,
+    state: TcpInletState,
+    inlet_shared_state: Arc<RwLock<InletSharedState>>,
+}
+
+#[derive(Clone, Debug)]
+enum TcpInletState {
+    Ebpf,
+    Regular { processor_address: Address },
 }
 
 impl fmt::Display for TcpInlet {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "Socket: {}, Processor: {}",
-            self.socket_address, self.processor_address
-        )
+        match &self.state {
+            TcpInletState::Ebpf => {
+                write!(f, "Socket: {}. eBPF", self.socket_address)
+            }
+            TcpInletState::Regular { processor_address } => {
+                write!(
+                    f,
+                    "Socket: {}. Processor address: {}",
+                    self.socket_address, processor_address
+                )
+            }
+        }
     }
 }
 
 impl TcpInlet {
     /// Constructor
-    pub fn new(
+    pub fn new_regular(
         socket_address: SocketAddr,
         processor_address: Address,
-        outlet_state: Arc<RwLock<InletSharedState>>,
+        inlet_shared_state: Arc<RwLock<InletSharedState>>,
     ) -> Self {
         Self {
             socket_address,
-            processor_address,
-            outlet_state,
+            state: TcpInletState::Regular { processor_address },
+            inlet_shared_state,
+        }
+    }
+
+    /// Constructor
+    pub fn new_ebpf(
+        socket_address: SocketAddr,
+        inlet_shared_state: Arc<RwLock<InletSharedState>>,
+    ) -> Self {
+        Self {
+            socket_address,
+            state: TcpInletState::Ebpf,
+            inlet_shared_state,
         }
     }
 
@@ -183,8 +188,11 @@ impl TcpInlet {
     }
 
     /// Processor address
-    pub fn processor_address(&self) -> &Address {
-        &self.processor_address
+    pub fn processor_address(&self) -> Option<&Address> {
+        match &self.state {
+            TcpInletState::Ebpf => None,
+            TcpInletState::Regular { processor_address } => Some(processor_address),
+        }
     }
 
     fn build_new_full_route(new_route: Route, old_route: &Route) -> Result<Route> {
@@ -198,32 +206,43 @@ impl TcpInlet {
     ///  NOTE: Existing TCP connections will still use the old route,
     ///        only newly accepted connections will use the new route.
     pub fn update_outlet_node_route(&self, new_route: Route) -> Result<()> {
-        let mut outlet_state = self.outlet_state.write().unwrap();
+        let mut inlet_shared_state = self.inlet_shared_state.write().unwrap();
 
-        outlet_state.route = Self::build_new_full_route(new_route, &outlet_state.route)?;
+        inlet_shared_state.route =
+            Self::build_new_full_route(new_route, &inlet_shared_state.route)?;
 
         Ok(())
     }
 
     /// Pause TCP Inlet, all incoming TCP streams will be dropped.
     pub fn pause(&self) {
-        let mut outlet_state = self.outlet_state.write().unwrap();
+        let mut inlet_shared_state = self.inlet_shared_state.write().unwrap();
 
-        outlet_state.is_paused = true;
+        inlet_shared_state.is_paused = true;
     }
 
     /// Unpause TCP Inlet and update the outlet route.
     pub fn unpause(&self, new_route: Route) -> Result<()> {
-        let mut outlet_state = self.outlet_state.write().unwrap();
+        let mut inlet_shared_state = self.inlet_shared_state.write().unwrap();
 
-        outlet_state.route = Self::build_new_full_route(new_route, &outlet_state.route)?;
-        outlet_state.is_paused = false;
+        inlet_shared_state.route =
+            Self::build_new_full_route(new_route, &inlet_shared_state.route)?;
+        inlet_shared_state.is_paused = false;
 
         Ok(())
     }
 
     /// Stop the Inlet
     pub async fn stop(&self, ctx: &Context) -> Result<()> {
-        ctx.stop_processor(self.processor_address.clone()).await
+        match &self.state {
+            TcpInletState::Ebpf => {
+                // TODO: eBPF
+            }
+            TcpInletState::Regular { processor_address } => {
+                ctx.stop_processor(processor_address.clone()).await?;
+            }
+        }
+
+        Ok(())
     }
 }
