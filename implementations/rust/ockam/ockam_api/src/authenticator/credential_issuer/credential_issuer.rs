@@ -82,9 +82,12 @@ impl CredentialIssuer {
                     == Some(&info.project_identifier().as_bytes().to_vec())
                 {
                     let mut subject_attributes = self.subject_attributes.clone();
+                    subject_attributes
+                        .map
+                        .insert(b"ockam-relay".to_vec().into(), b"*".to_vec().into());
                     subject_attributes.map.insert(
-                        "ockam-relay".as_bytes().to_vec().into(),
-                        "*".as_bytes().to_vec().into(),
+                        b"ockam-tls-certificate".to_vec().into(),
+                        b"true".to_vec().into(),
                     );
                     let credential = self
                         .credentials
