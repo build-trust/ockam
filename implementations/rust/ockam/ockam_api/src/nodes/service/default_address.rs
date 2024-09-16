@@ -24,8 +24,8 @@ impl DefaultAddress {
     pub const INFLUXDB_TOKEN_LESSOR: &'static str = "lessor";
 
     pub fn get_rendezvous_server_address() -> Address {
-        let server_address =
-            std::env::var("OCKAM_RENDEZVOUS_SERVER").unwrap_or("127.0.0.1:4000".to_string());
+        let server_address = std::env::var("OCKAM_RENDEZVOUS_SERVER")
+            .unwrap_or("rendezvous.orchestrator.ockam.io:443".to_string());
         (UDP, server_address).into()
     }
 
