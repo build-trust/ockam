@@ -2,10 +2,11 @@ use crate::shared_args::{IdentityOpts, TimeoutArg, TrustOpts};
 use crate::{docs, Command, CommandGlobalOpts};
 use async_trait::async_trait;
 use clap::Args;
-use ockam_api::fmt_log;
+use colorful::Colorful;
+use ockam_api::colors::color_primary;
 use ockam_api::influxdb::token_lessor_node_service::InfluxDBTokenLessorNodeServiceTrait;
 use ockam_api::nodes::InMemoryNode;
-use ockam_api::output::Output;
+use ockam_api::{fmt_log, fmt_ok};
 use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
 
@@ -50,10 +51,17 @@ impl Command for CreateCommand {
 
         let res = node.create_token(ctx, &cmd.at).await?;
 
+        let plain = fmt_ok!("A token with id {}\n", color_primary(&res.id))
+            + &fmt_log!(
+                "was issued for the identifier {}\n",
+                color_primary(&res.issued_for)
+            )
+            + &fmt_log!("and will expire at {}", color_primary(res.expires_at()?));
+
         opts.terminal
             .stdout()
-            .machine(res.token.to_string())
-            .plain(res.item()?)
+            .machine(&res.token)
+            .plain(plain)
             .json_obj(res)?
             .write_line()?;
 
