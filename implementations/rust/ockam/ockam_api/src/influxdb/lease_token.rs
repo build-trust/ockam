@@ -1,4 +1,4 @@
-use crate::colors::{color_error, color_primary};
+use crate::colors::{color_error, color_ok, color_primary};
 use crate::output::Output;
 use crate::terminal::fmt;
 use crate::ApiError;
@@ -56,6 +56,11 @@ impl LeaseToken {
         self.status == TokenStatus::Active
     }
 
+    pub fn created_at(&self) -> ockam_core::Result<OffsetDateTime> {
+        OffsetDateTime::from_unix_timestamp(self.created_at)
+            .map_err(|e| ApiError::core(e.to_string()))
+    }
+
     pub fn expires_at(&self) -> ockam_core::Result<OffsetDateTime> {
         OffsetDateTime::from_unix_timestamp(self.expires_at)
             .map_err(|e| ApiError::core(e.to_string()))
@@ -69,20 +74,42 @@ impl LeaseToken {
 impl Display for LeaseToken {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "{}", color_primary(&self.id))?;
-        writeln!(f, "{}Token: {}", fmt::INDENTATION, color_primary(&self.id))?;
 
+        writeln!(
+            f,
+            "{}With value {}",
+            fmt::INDENTATION,
+            color_primary(&self.token)
+        )?;
+
+        writeln!(
+            f,
+            "{}Issued for {}",
+            fmt::INDENTATION,
+            color_primary(&self.issued_for)
+        )?;
+
+        let created_at = self.created_at().map_err(|_| FmtError)?.to_string();
+        writeln!(
+            f,
+            "{}Created at {}",
+            fmt::INDENTATION,
+            color_primary(created_at)
+        )?;
+
+        let status = if self.is_active() {
+            color_ok(&self.status)
+        } else {
+            color_error(&self.status)
+        };
         let expires_at = self.expires_at().map_err(|_| FmtError)?.to_string();
         let expiration_time = if self.is_expired().map_err(|_| FmtError)? {
             format!("Expired at {}", color_error(&expires_at))
         } else {
             format!("Expires at {}", color_primary(&expires_at))
         };
-        let status = if self.is_active() {
-            color_primary(self.status.to_string())
-        } else {
-            color_error(self.status.to_string())
-        };
         writeln!(f, "{}{expiration_time} ({status})", fmt::INDENTATION)?;
+
         Ok(())
     }
 }

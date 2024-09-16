@@ -33,7 +33,7 @@ macro_rules! fmt_log {
         $crate::terminal::PADDING,
         format!($input))
     };
-    ($input:expr, $($args:expr),+) => {
+    ($input:expr $(, $args:expr)* $(,)?) => {
         format!("{}{}",
         $crate::terminal::PADDING,
         format!($input, $($args),+))
@@ -50,7 +50,7 @@ macro_rules! fmt_ok {
             .bold(),
         format!($input))
     };
-    ($input:expr, $($args:expr),+) => {
+    ($input:expr $(, $args:expr)* $(,)?) => {
         format!("{}{} {}",
         $crate::terminal::ICON_PADDING,
         "✔"
@@ -70,7 +70,7 @@ macro_rules! fmt_para {
             .bold(),
         format!($input))
     };
-    ($input:expr, $($args:expr),+) => {
+    ($input:expr $(, $args:expr)* $(,)?) => {
         format!("{}{} {}",
         $crate::terminal::ICON_PADDING,
         "│"
@@ -90,7 +90,7 @@ macro_rules! fmt_list {
             .bold(),
         format!($input))
     };
-    ($input:expr, $($args:expr),+) => {
+    ($input:expr $(, $args:expr)* $(,)?) => {
         format!("{}{} {}",
         $crate::terminal::ICON_PADDING,
         "│"
@@ -109,7 +109,7 @@ macro_rules! fmt_heading {
         $crate::terminal::PADDING,
         "─".repeat($crate::terminal::get_separator_width()).dim().light_gray())
     };
-    ($input:expr, $($args:expr),+) => {
+    ($input:expr $(, $args:expr)* $(,)?) => {
         format!("\n{}{}\n{}{}",
         $crate::terminal::PADDING,
         format!($input, $($args),+),
@@ -142,7 +142,7 @@ macro_rules! fmt_info {
             .bold(),
         format!($input))
     };
-    ($input:expr, $($args:expr),+) => {
+    ($input:expr $(, $args:expr)* $(,)?) => {
         format!("{}{} {}",
         $crate::terminal::ICON_PADDING,
         ">"
@@ -162,7 +162,7 @@ macro_rules! fmt_warn {
             .bold(),
         format!($input))
     };
-    ($input:expr, $($args:expr),+) => {
+    ($input:expr $(, $args:expr)* $(,)?) => {
         format!("{}{} {}",
         $crate::terminal::ICON_PADDING,
         "!"
@@ -182,7 +182,7 @@ macro_rules! fmt_err {
             .bold(),
         format!($input))
     };
-    ($input:expr, $($args:expr),+) => {
+    ($input:expr $(, $args:expr)* $(,)?) => {
         format!("{}{} {}",
         $crate::terminal::ICON_PADDING,
         "✗"

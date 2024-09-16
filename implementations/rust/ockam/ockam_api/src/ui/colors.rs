@@ -4,6 +4,7 @@ use r3bl_rs_utils_core::UnicodeString;
 use r3bl_tui::{
     ColorWheel, ColorWheelConfig, ColorWheelSpeed, GradientGenerationPolicy, TextColorizationPolicy,
 };
+use std::fmt::Display;
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum OckamColor {
@@ -53,11 +54,11 @@ macro_rules! color {
     };
 }
 
-pub fn color_primary(input: impl AsRef<str>) -> CString {
-    input.as_ref().color(OckamColor::PrimaryResource.color())
+pub fn color_primary(input: impl Display) -> CString {
+    input.to_string().color(OckamColor::PrimaryResource.color())
 }
 
-pub fn color_primary_alt(input: impl AsRef<str>) -> String {
+pub fn color_primary_alt(input: impl Display) -> String {
     let gradient_steps = Vec::from(
         [
             OckamColor::OckamBlue.value(),
@@ -65,35 +66,38 @@ pub fn color_primary_alt(input: impl AsRef<str>) -> String {
         ]
         .map(String::from),
     );
-    let colored_output = ColorWheel::new(vec![ColorWheelConfig::Rgb(
+    ColorWheel::new(vec![ColorWheelConfig::Rgb(
         gradient_steps,
         ColorWheelSpeed::Fast,
         15,
     )])
     .colorize_into_string(
-        &UnicodeString::from(input.as_ref()),
+        &UnicodeString::from(input.to_string()),
         GradientGenerationPolicy::ReuseExistingGradientAndResetIndex,
         TextColorizationPolicy::ColorEachCharacter(None),
-    );
-    colored_output
+    )
 }
 
-pub fn color_ok(input: impl AsRef<str>) -> CString {
-    input.as_ref().color(OckamColor::FmtOKBackground.color())
+pub fn color_ok(input: impl Display) -> CString {
+    input.to_string().color(OckamColor::FmtOKBackground.color())
 }
 
-pub fn color_warn(input: impl AsRef<str>) -> CString {
-    input.as_ref().color(OckamColor::FmtWARNBackground.color())
+pub fn color_warn(input: impl Display) -> CString {
+    input
+        .to_string()
+        .color(OckamColor::FmtWARNBackground.color())
 }
 
-pub fn color_error(input: impl AsRef<str>) -> CString {
-    input.as_ref().color(OckamColor::FmtERRORBackground.color())
+pub fn color_error(input: impl Display) -> CString {
+    input
+        .to_string()
+        .color(OckamColor::FmtERRORBackground.color())
 }
 
-pub fn color_email(input: impl AsRef<str>) -> CString {
-    input.as_ref().color(OckamColor::PrimaryResource.color())
+pub fn color_email(input: impl Display) -> CString {
+    input.to_string().color(OckamColor::PrimaryResource.color())
 }
 
-pub fn color_uri(input: impl AsRef<str>) -> String {
+pub fn color_uri(input: impl Display) -> String {
     color_primary_alt(input)
 }
