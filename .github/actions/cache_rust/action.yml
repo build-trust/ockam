@@ -12,7 +12,7 @@ inputs:
 runs:
   using: composite
   steps:
-    - uses: Swatinem/rust-cache@a95ba195448af2da9b00fb742d14ffaaf3c21f43
+    - uses: Swatinem/rust-cache@9bdad043e88c75890e36ad3bbc8d27f0090dd609
       with:
         prefix-key: ${{ inputs.job_name }}
         # Only save if the workflow is running on the develop branch (cron job)
