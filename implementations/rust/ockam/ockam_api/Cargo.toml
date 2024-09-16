@@ -164,7 +164,7 @@ ockam_transport_core = { path = "../ockam_transport_core", version = "^0.90.0" }
 ockam_transport_tcp = { path = "../ockam_transport_tcp", default-features = false, version = "^0.123.0" }
 once_cell = { version = "1", default-features = false }
 opentelemetry_sdk = { version = "0.24.1", features = ["logs", "metrics", "trace", "rt-tokio", "testing"], default-features = false }
-pretty_assertions = "1.4.0"
+pretty_assertions = "1.4.1"
 proptest = "1.5.0"
 quickcheck = "1.0.1"
 quickcheck_macros = "1.0.0"
