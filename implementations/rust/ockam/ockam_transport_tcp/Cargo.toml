@@ -38,7 +38,7 @@ ockam_core = { path = "../ockam_core", version = "^0.116.0" }
 ockam_macros = { path = "../ockam_macros", version = "^0.34.0" }
 ockam_node = { path = "../ockam_node", version = "^0.125.0" }
 ockam_transport_core = { path = "../ockam_transport_core", version = "^0.90.0" }
-opentelemetry = { version = "0.24.0", features = ["logs", "metrics", "trace"], optional = true }
+opentelemetry = { version = "0.25.0", features = ["logs", "metrics", "trace"], optional = true }
 rand = "0.8"
 rustls = { version = "0.23", default-features = false }
 rustls-native-certs = "0.7"
