@@ -1,6 +1,7 @@
 use crate::influxdb::lease_token::{LeaseToken, TokenStatus};
 use crate::ApiError;
 use ockam::identity::Identifier;
+use ockam_core::api::{Response, Status};
 use ockam_core::async_trait;
 use reqwest::Client;
 use std::str::FromStr;
@@ -12,13 +13,17 @@ pub trait InfluxDBApi {
     async fn create_token(
         &self,
         req: InfluxDBCreateTokenRequest,
-    ) -> ockam_core::Result<InfluxDBTokenResponse>;
+    ) -> ockam_core::Result<InfluxDBResponse<InfluxDBTokenResponse>>;
 
-    async fn get_token(&self, token_id: &str) -> ockam_core::Result<InfluxDBTokenResponse>;
+    async fn get_token(
+        &self,
+        token_id: &str,
+    ) -> ockam_core::Result<InfluxDBResponse<InfluxDBTokenResponse>>;
 
-    async fn revoke_token(&self, token_id: &str) -> ockam_core::Result<()>;
+    async fn revoke_token(&self, token_id: &str) -> ockam_core::Result<InfluxDBEmptyResponse>;
 
-    async fn list_tokens(&self) -> ockam_core::Result<Vec<InfluxDBTokenResponse>>;
+    async fn list_tokens(&self)
+        -> ockam_core::Result<InfluxDBResponse<InfluxDBListTokensResponse>>;
 }
 
 #[derive(Debug, Clone)]
@@ -39,6 +44,42 @@ impl InfluxDBApiClient {
             token: token.into(),
         })
     }
+
+    async fn parse_response<T>(res: reqwest::Response) -> ockam_core::Result<InfluxDBResponse<T>>
+    where
+        T: serde::de::DeserializeOwned,
+    {
+        match res.json::<InfluxDBResponse<T>>().await {
+            Ok(res) => Ok(res),
+            Err(e) => {
+                error!("Failed to parse InfluxDB response: {e:?}");
+                Err(ApiError::core(format!(
+                    "Failed to parse InfluxDB response: {e:?}"
+                )))
+            }
+        }
+    }
+
+    async fn parse_empty_response(
+        res: reqwest::Response,
+    ) -> ockam_core::Result<InfluxDBEmptyResponse> {
+        if res.status().is_success() {
+            Ok(InfluxDBEmptyResponse {
+                code: None,
+                message: None,
+            })
+        } else {
+            match res.json::<InfluxDBEmptyResponse>().await {
+                Ok(res) => Ok(res),
+                Err(e) => {
+                    error!("Failed to parse InfluxDB response: {e:?}");
+                    Err(ApiError::core(format!(
+                        "Failed to parse InfluxDB response: {e:?}"
+                    )))
+                }
+            }
+        }
+    }
 }
 
 #[async_trait]
@@ -46,7 +87,7 @@ impl InfluxDBApi for InfluxDBApiClient {
     async fn create_token(
         &self,
         req: InfluxDBCreateTokenRequest,
-    ) -> ockam_core::Result<InfluxDBTokenResponse> {
+    ) -> ockam_core::Result<InfluxDBResponse<InfluxDBTokenResponse>> {
         let req = self
             .http_client
             .post(format!("{}/api/v2/authorizations", self.base_url))
@@ -57,9 +98,7 @@ impl InfluxDBApi for InfluxDBApiClient {
                 req.description, req.org_id, req.permissions
             ));
         match req.send().await {
-            Ok(res) => Ok(res.json::<InfluxDBTokenResponse>().await.map_err(|e| {
-                ApiError::core(format!("Failed to parse InfluxDB token from json: {e}"))
-            })?),
+            Ok(res) => Self::parse_response::<InfluxDBTokenResponse>(res).await,
             Err(e) => {
                 error!("Failed to create token: {e:?}");
                 Err(ApiError::core(format!("Failed to create token: {e:?}")))
@@ -67,7 +106,10 @@ impl InfluxDBApi for InfluxDBApiClient {
         }
     }
 
-    async fn get_token(&self, token_id: &str) -> ockam_core::Result<InfluxDBTokenResponse> {
+    async fn get_token(
+        &self,
+        token_id: &str,
+    ) -> ockam_core::Result<InfluxDBResponse<InfluxDBTokenResponse>> {
         let req = self
             .http_client
             .get(format!(
@@ -77,9 +119,7 @@ impl InfluxDBApi for InfluxDBApiClient {
             .header("Authorization", format!("Token {}", self.token))
             .header("Content-Type", "application/json");
         match req.send().await {
-            Ok(res) => Ok(res.json::<InfluxDBTokenResponse>().await.map_err(|e| {
-                ApiError::core(format!("Failed to parse InfluxDB token from json: {e}"))
-            })?),
+            Ok(res) => Self::parse_response::<InfluxDBTokenResponse>(res).await,
             Err(e) => {
                 error!("Failed to create token: {e:?}");
                 Err(ApiError::core(format!("Failed to create token: {e:?}")))
@@ -87,7 +127,7 @@ impl InfluxDBApi for InfluxDBApiClient {
         }
     }
 
-    async fn revoke_token(&self, token_id: &str) -> ockam_core::Result<()> {
+    async fn revoke_token(&self, token_id: &str) -> ockam_core::Result<InfluxDBEmptyResponse> {
         let req = self
             .http_client
             .delete(format!(
@@ -97,18 +137,7 @@ impl InfluxDBApi for InfluxDBApiClient {
             .header("Authorization", format!("Token {}", self.token))
             .header("Content-Type", "application/json");
         match req.send().await {
-            Ok(res) => {
-                if res.status().is_success() {
-                    info!(%token_id, "Revoked token");
-                    Ok(())
-                } else {
-                    error!(%token_id, "Failed to revoke token: {}", res.status());
-                    Err(ApiError::core(format!(
-                        "Failed to revoke token: {}",
-                        res.status()
-                    )))
-                }
-            }
+            Ok(res) => Self::parse_empty_response(res).await,
             Err(e) => {
                 error!("Failed to revoke token: {e:?}");
                 Err(ApiError::core(format!("Failed to revoke token: {e:?}")))
@@ -116,24 +145,16 @@ impl InfluxDBApi for InfluxDBApiClient {
         }
     }
 
-    async fn list_tokens(&self) -> ockam_core::Result<Vec<InfluxDBTokenResponse>> {
+    async fn list_tokens(
+        &self,
+    ) -> ockam_core::Result<InfluxDBResponse<InfluxDBListTokensResponse>> {
         let req = self
             .http_client
             .get(format!("{}/api/v2/authorizations", self.base_url))
             .header("Authorization", format!("Token {}", self.token))
             .header("Content-Type", "application/json");
         match req.send().await {
-            Ok(res) => {
-                let influxdb_tokens =
-                    res.json::<InfluxDBListTokensResponse>()
-                        .await
-                        .map_err(|e| {
-                            ApiError::core(format!(
-                                "Failed to parse InfluxDB tokens from json: {e}"
-                            ))
-                        })?;
-                Ok(influxdb_tokens.tokens)
-            }
+            Ok(res) => Self::parse_response::<InfluxDBListTokensResponse>(res).await,
             Err(e) => {
                 error!("Failed to list tokens: {e:?}");
                 Err(ApiError::core(format!("Failed to list tokens: {e:?}")))
@@ -147,6 +168,117 @@ pub struct InfluxDBCreateTokenRequest {
     pub description: String,
     pub org_id: String,
     pub permissions: String,
+}
+
+impl InfluxDBCreateTokenRequest {
+    pub fn new(
+        org_id: String,
+        permissions: String,
+        requester: &Identifier,
+        expires: OffsetDateTime,
+    ) -> Self {
+        Self {
+            description: InfluxDBCreateTokenRequest::pack_metadata(requester, expires),
+            org_id,
+            permissions,
+        }
+    }
+
+    /// The InfluxDB tokens only have a description field that can be used to store metadata.
+    /// The Ockam `LeaseToken` will pack in the description field the identifier that created the token,
+    /// and its expiration time.
+    pub fn pack_metadata(requester: &Identifier, expires: OffsetDateTime) -> String {
+        format!("OCKAM:{}:{}", requester, expires.unix_timestamp()).to_string()
+    }
+}
+
+#[derive(serde::Deserialize, Debug, PartialEq, Eq)]
+pub struct InfluxDBResponse<T> {
+    pub code: Option<InfluxDBResponseCode>,
+    pub message: Option<String>,
+    #[serde(flatten)]
+    pub data: Option<T>,
+}
+
+impl<T> InfluxDBResponse<T> {
+    pub fn status(&self) -> Status {
+        match &self.code {
+            Some(code) => code.to_status(),
+            None => Status::Ok,
+        }
+    }
+
+    pub fn into_response(self) -> Result<T, Response<ockam_core::api::Error>> {
+        if let Some(data) = self.data {
+            Ok(data)
+        } else {
+            let status = self.status();
+            let message = self
+                .message
+                .unwrap_or_else(|| "Failed to parse influxdb api response".to_string());
+            error!(%status, %message, "InfluxDB request returned error");
+            let err = ockam_core::api::Error::new_without_path().with_message(message);
+            Err(Response::with_status_no_request(status).body(err))
+        }
+    }
+}
+
+#[derive(serde::Deserialize, Debug, PartialEq, Eq)]
+pub struct InfluxDBEmptyResponse {
+    pub code: Option<InfluxDBResponseCode>,
+    pub message: Option<String>,
+}
+
+impl InfluxDBEmptyResponse {
+    pub fn status(&self) -> Status {
+        match &self.code {
+            Some(code) => code.to_status(),
+            None => Status::Ok,
+        }
+    }
+
+    pub fn into_response(self) -> Result<(), Response<ockam_core::api::Error>> {
+        let status = self.status();
+        if status.eq(&Status::Ok) {
+            Ok(())
+        } else {
+            let message = self
+                .message
+                .unwrap_or_else(|| "Failed to parse influxdb api response".to_string());
+            error!(%status, %message, "InfluxDB request returned error");
+            let err = ockam_core::api::Error::new_without_path().with_message(message);
+            Err(Response::with_status_no_request(status).body(err))
+        }
+    }
+}
+
+#[derive(serde::Deserialize, Debug, PartialEq, Eq)]
+pub enum InfluxDBResponseCode {
+    #[serde(rename = "invalid")]
+    Invalid,
+    #[serde(rename = "unauthorized")]
+    Unauthorized,
+    #[serde(rename = "forbidden")]
+    Forbidden,
+    #[serde(rename = "not found")]
+    NotFound,
+    #[serde(rename = "conflict")]
+    Conflict,
+    #[serde(rename = "internal error")]
+    InternalError,
+}
+
+impl InfluxDBResponseCode {
+    pub fn to_status(&self) -> Status {
+        match self {
+            Self::Invalid => Status::BadRequest,
+            Self::Unauthorized => Status::Unauthorized,
+            Self::Forbidden => Status::Forbidden,
+            Self::NotFound => Status::NotFound,
+            Self::Conflict => Status::Conflict,
+            Self::InternalError => Status::InternalServerError,
+        }
+    }
 }
 
 /// Token returned by InfluxDB API
@@ -188,13 +320,6 @@ impl TryFrom<InfluxDBTokenResponse> for Option<LeaseToken> {
 }
 
 impl InfluxDBTokenResponse {
-    /// The InfluxDB tokens only have a description field that can be used to store metadata.
-    /// The Ockam `LeaseToken` will pack in the description field the identifier that created the token,
-    /// and its expiration time.
-    pub fn pack_metadata(requester: &Identifier, expires: OffsetDateTime) -> String {
-        format!("OCKAM:{}:{}", requester, expires.unix_timestamp()).to_string()
-    }
-
     /// Unpack the metadata from the description field.
     pub fn unpack_metadata(&self) -> ockam_core::Result<Option<(Identifier, OffsetDateTime)>> {
         let segments = self.description.split(':').collect::<Vec<_>>();

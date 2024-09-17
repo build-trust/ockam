@@ -1,6 +1,7 @@
 use crate::influxdb::influxdb_api_client::InfluxDBApi;
 use crate::influxdb::lease_token::LeaseToken;
 use crate::token_lessor_node_service::InfluxDBTokenLessorState;
+use crate::ApiError;
 use ockam_core::{async_trait, Processor};
 use ockam_node::Context;
 use std::cmp::Reverse;
@@ -21,7 +22,13 @@ impl InfluxDBTokenLessorProcessor {
         debug!("Listing all tokens");
         let influxdb_tokens = {
             let state = self.state.read().await;
-            state.influxdb_api_client.list_tokens().await?
+            state
+                .influxdb_api_client
+                .list_tokens()
+                .await?
+                .into_response()
+                .map_err(|_| ApiError::core("Failed to list tokens"))?
+                .tokens
         };
         let lease_tokens: Vec<LeaseToken> = influxdb_tokens
             .into_iter()

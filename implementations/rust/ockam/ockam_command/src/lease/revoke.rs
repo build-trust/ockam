@@ -17,13 +17,13 @@ const HELP_DETAIL: &str = "";
 #[derive(Clone, Debug, Args)]
 #[command(help_template = docs::after_help(HELP_DETAIL))]
 pub struct RevokeCommand {
+    /// ID of the token to revoke
+    #[arg(id = "token_id", value_name = "TOKEN_ID")]
+    pub token_id: String,
+
     /// The route to the node that will be used to create the token
     #[arg(long, value_name = "ROUTE", default_value_t = super::lease_at_default_value())]
     pub at: MultiAddr,
-
-    /// ID of the token to revoke
-    #[arg(long, short, id = "token_id", value_name = "TOKEN_ID")]
-    pub token_id: String,
 
     #[command(flatten)]
     pub timeout: TimeoutArg,

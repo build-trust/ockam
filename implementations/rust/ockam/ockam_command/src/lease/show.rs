@@ -16,13 +16,13 @@ const HELP_DETAIL: &str = "";
 #[derive(Clone, Debug, Args)]
 #[command(help_template = docs::after_help(HELP_DETAIL))]
 pub struct ShowCommand {
+    /// ID of the token to retrieve
+    #[arg(value_name = "TOKEN_ID")]
+    pub token_id: String,
+
     /// The route to the node that will be used to create the token
     #[arg(long, value_name = "ROUTE", default_value_t = super::lease_at_default_value())]
     pub at: MultiAddr,
-
-    /// ID of the token to retrieve
-    #[arg(short, long, value_name = "TOKEN_ID")]
-    pub token_id: String,
 
     #[command(flatten)]
     pub timeout: TimeoutArg,
@@ -54,7 +54,7 @@ impl Command for ShowCommand {
             .write_line(&fmt_log!("Retrieving influxdb token...\n"))?;
 
         let (at, _meta) = clean_nodes_multiaddr(&cmd.at, &opts.state).await?;
-        let res = node.create_token(ctx, &at).await?;
+        let res = node.get_token(ctx, &at, &cmd.token_id).await?;
 
         opts.terminal
             .stdout()

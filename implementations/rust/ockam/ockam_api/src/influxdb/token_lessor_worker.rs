@@ -1,5 +1,5 @@
 use crate::influxdb::influxdb_api_client::{
-    InfluxDBApi, InfluxDBApiClient, InfluxDBCreateTokenRequest, InfluxDBTokenResponse,
+    InfluxDBApi, InfluxDBApiClient, InfluxDBCreateTokenRequest,
 };
 use crate::influxdb::lease_token::LeaseToken;
 use crate::nodes::service::encode_response;
@@ -181,15 +181,16 @@ impl InfluxDBTokenLessorWorkerApi for InfluxDBTokenLessorWorker {
         let influxdb_token = {
             let state = self.state.read().await;
             let expires = OffsetDateTime::now_utc() + state.token_ttl;
-            let description = InfluxDBTokenResponse::pack_metadata(requester, expires);
             state
                 .influxdb_api_client
-                .create_token(InfluxDBCreateTokenRequest {
-                    description,
-                    org_id: state.influxdb_org_id.clone(),
-                    permissions: state.token_permissions.clone(),
-                })
+                .create_token(InfluxDBCreateTokenRequest::new(
+                    state.influxdb_org_id.clone(),
+                    state.token_permissions.clone(),
+                    requester,
+                    expires,
+                ))
                 .await?
+                .into_response()?
         };
         let lease_token: Option<LeaseToken> = influxdb_token.try_into()?;
         match lease_token {
@@ -217,7 +218,11 @@ impl InfluxDBTokenLessorWorkerApi for InfluxDBTokenLessorWorker {
         debug!(%requester, %token_id, "Getting token");
         let influxdb_token = {
             let state = self.state.read().await;
-            state.influxdb_api_client.get_token(token_id).await?
+            state
+                .influxdb_api_client
+                .get_token(token_id)
+                .await?
+                .into_response()?
         };
         debug!(%requester, %token_id, "Received token: {:?}", influxdb_token);
         let lease_token: Option<LeaseToken> = influxdb_token.try_into().map_err(|e| {
@@ -257,27 +262,31 @@ impl InfluxDBTokenLessorWorkerApi for InfluxDBTokenLessorWorker {
             .into_parts()
             .1
             .is_some();
-        let revoked = if is_authorized_to_revoke {
+        if !is_authorized_to_revoke {
+            return Err(Response::unauthorized_no_request(
+                "Not authorized to revoke token",
+            ));
+        }
+        let revoked = {
             let state = self.state.read().await;
-            state.influxdb_api_client.revoke_token(token_id).await
-        } else {
-            Err(ApiError::core("Not authorized to revoke token"))
+            state
+                .influxdb_api_client
+                .revoke_token(token_id)
+                .await?
+                .into_response()?;
+            true
         };
-        match revoked {
-            Ok(_) => {
-                info!(%requester, %token_id, "Token revoked");
-                {
-                    let mut state = self.state.write().await;
-                    state.active_tokens.retain(|t| t.0.id != token_id);
-                }
-                Ok(Response::ok())
+        if revoked {
+            info!(%requester, %token_id, "Token revoked");
+            {
+                let mut state = self.state.write().await;
+                state.active_tokens.retain(|t| t.0.id != token_id);
             }
-            Err(e) => {
-                error!("Failed to revoke token: {e:?}");
-                Err(Response::internal_error_no_request(
-                    "Failed to revoke token",
-                ))
-            }
+            Ok(Response::ok())
+        } else {
+            Err(Response::internal_error_no_request(
+                "Failed to revoke token",
+            ))
         }
     }
 
@@ -288,7 +297,12 @@ impl InfluxDBTokenLessorWorkerApi for InfluxDBTokenLessorWorker {
         debug!(%requester, "Listing tokens");
         let influxdb_tokens = {
             let state = self.state.read().await;
-            state.influxdb_api_client.list_tokens().await?
+            state
+                .influxdb_api_client
+                .list_tokens()
+                .await?
+                .into_response()?
+                .tokens
         };
         debug!("Received tokens list: {:?}", influxdb_tokens);
         let lease_tokens: Vec<LeaseToken> = influxdb_tokens

@@ -177,9 +177,7 @@ impl InfluxDBTokenLessorNodeServiceTrait for InMemoryNode {
     async fn create_token(&self, ctx: &Context, at: &MultiAddr) -> miette::Result<LeaseToken> {
         let req = Request::post("").to_vec().into_diagnostic()?;
         let bytes = self.send_message(ctx, at, req, None).await?;
-        let res =
-            Response::parse_response_reply::<LeaseToken>(bytes.as_slice()).into_diagnostic()?;
-        Ok(res.success().into_diagnostic()?)
+        Response::parse_response_body::<LeaseToken>(bytes.as_slice()).into_diagnostic()
     }
 
     async fn get_token(
@@ -192,9 +190,7 @@ impl InfluxDBTokenLessorNodeServiceTrait for InMemoryNode {
             .to_vec()
             .into_diagnostic()?;
         let bytes = self.send_message(ctx, at, req, None).await?;
-        let res =
-            Response::parse_response_reply::<LeaseToken>(bytes.as_slice()).into_diagnostic()?;
-        Ok(res.success().into_diagnostic()?)
+        Response::parse_response_body::<LeaseToken>(bytes.as_slice()).into_diagnostic()
     }
 
     async fn revoke_token(
@@ -207,16 +203,15 @@ impl InfluxDBTokenLessorNodeServiceTrait for InMemoryNode {
             .to_vec()
             .into_diagnostic()?;
         let bytes = self.send_message(ctx, at, req, None).await?;
-        let res = Response::parse_response_reply::<()>(bytes.as_slice()).into_diagnostic()?;
-        Ok(res.success().into_diagnostic()?)
+        Response::parse_response_reply_with_empty_body(bytes.as_slice())
+            .and_then(|r| r.success())
+            .into_diagnostic()
     }
 
     async fn list_tokens(&self, ctx: &Context, at: &MultiAddr) -> miette::Result<Vec<LeaseToken>> {
         let req = Request::get("").to_vec().into_diagnostic()?;
         let bytes = self.send_message(ctx, at, req, None).await?;
-        let res = Response::parse_response_reply::<Vec<LeaseToken>>(bytes.as_slice())
-            .into_diagnostic()?;
-        Ok(res.success().into_diagnostic()?)
+        Response::parse_response_body::<Vec<LeaseToken>>(bytes.as_slice()).into_diagnostic()
     }
 }
 
