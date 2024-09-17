@@ -90,7 +90,8 @@ pub struct CreateCommand {
         long,
         visible_alias = "enable-udp",
         value_name = "BOOL",
-        default_value_t = false
+        default_value_t = false,
+        hide = true
     )]
     pub udp: bool,
 

@@ -115,7 +115,8 @@ pub struct CreateCommand {
         long,
         visible_alias = "enable-udp-puncture",
         value_name = "BOOL",
-        default_value_t = false
+        default_value_t = false,
+        hide = true
     )]
     pub udp: bool,
 
@@ -125,7 +126,8 @@ pub struct CreateCommand {
         long,
         visible_alias = "disable-tcp-fallback",
         value_name = "BOOL",
-        default_value_t = false
+        default_value_t = false,
+        hide = true
     )]
     pub no_tcp_fallback: bool,
 
