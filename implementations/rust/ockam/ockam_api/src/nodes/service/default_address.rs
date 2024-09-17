@@ -21,7 +21,7 @@ impl DefaultAddress {
     pub const OKTA_IDENTITY_PROVIDER: &'static str = "okta";
     pub const KAFKA_OUTLET: &'static str = "kafka_outlet";
     pub const KAFKA_INLET: &'static str = "kafka_inlet";
-    pub const INFLUXDB_TOKEN_LESSOR: &'static str = "lessor";
+    pub const LEASE_ISSUER: &'static str = "lease_issuer";
 
     pub fn get_rendezvous_server_address() -> Address {
         let server_address = std::env::var("OCKAM_RENDEZVOUS_SERVER")
@@ -44,7 +44,7 @@ impl DefaultAddress {
             | Self::OKTA_IDENTITY_PROVIDER
             | Self::KAFKA_INLET
             | Self::KAFKA_OUTLET
-            | Self::INFLUXDB_TOKEN_LESSOR)
+            | Self::LEASE_ISSUER)
     }
 
     pub fn iter() -> impl Iterator<Item = &'static str> {
@@ -64,7 +64,7 @@ impl DefaultAddress {
             Self::OKTA_IDENTITY_PROVIDER,
             Self::KAFKA_INLET,
             Self::KAFKA_OUTLET,
-            Self::INFLUXDB_TOKEN_LESSOR,
+            Self::LEASE_ISSUER,
         ]
         .iter()
         .copied()

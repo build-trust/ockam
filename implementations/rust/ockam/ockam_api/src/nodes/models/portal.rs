@@ -36,22 +36,19 @@ pub struct CreateInlet {
     /// Only set for non-project addresses as for projects the project's
     /// authorised identity will be used.
     #[n(4)] pub(crate) authorized: Option<Identifier>,
-    /// A suffix route that will be applied after outlet_addr, and won't be used
-    /// to monitor the state of the connection
-    #[n(5)] pub(crate) suffix_route: Route,
     /// The maximum duration to wait for an outlet to be available
-    #[n(6)] pub(crate) wait_for_outlet_duration: Option<Duration>,
+    #[n(5)] pub(crate) wait_for_outlet_duration: Option<Duration>,
     /// The expression for the access control policy for this inlet.
     /// If not set, the policy set for the [TCP inlet resource type](ockam_abac::ResourceType::TcpInlet)
     /// will be used.
-    #[n(7)] pub(crate) policy_expression: Option<PolicyExpression>,
+    #[n(6)] pub(crate) policy_expression: Option<PolicyExpression>,
     /// Create the inlet and wait for the outlet to connect
-    #[n(8)] pub(crate) wait_connection: bool,
+    #[n(7)] pub(crate) wait_connection: bool,
     /// The identifier to be used to create the secure channel.
     /// If not set, the node's identifier will be used.
-    #[n(9)] pub(crate) secure_channel_identifier: Option<Identifier>,
+    #[n(8)] pub(crate) secure_channel_identifier: Option<Identifier>,
     /// Enable UDP NAT puncture.
-    #[n(10)] pub(crate) enable_udp_puncture: bool,
+    #[n(9)] pub(crate) enable_udp_puncture: bool,
     /// Disable fallback to TCP.
     /// TCP won't be used to transfer data between the Inlet and the Outlet.
     #[n(11)] pub(crate) disable_tcp_fallback: bool,
@@ -71,7 +68,6 @@ impl CreateInlet {
         enable_udp_puncture: bool,
         disable_tcp_fallback: bool,
         ebpf: bool,
-        suffix_route: Route,
     ) -> Self {
         Self {
             listen_addr: listen,
@@ -86,7 +82,6 @@ impl CreateInlet {
             disable_tcp_fallback,
             ebpf,
             tls_certificate_provider: None,
-            suffix_route,
         }
     }
 
@@ -100,7 +95,6 @@ impl CreateInlet {
         enable_udp_puncture: bool,
         disable_tcp_fallback: bool,
         ebpf: bool,
-        suffix_route: Route,
     ) -> Self {
         Self {
             listen_addr: listen,
@@ -115,7 +109,6 @@ impl CreateInlet {
             disable_tcp_fallback,
             ebpf,
             tls_certificate_provider: None,
-            suffix_route,
         }
     }
 

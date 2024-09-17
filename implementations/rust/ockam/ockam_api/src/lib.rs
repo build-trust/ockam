@@ -54,7 +54,6 @@ mod util;
 
 pub use cli_state::CliState;
 pub use error::*;
-pub use influxdb::*;
 pub use nodes::service::default_address::*;
 pub use rendezvous_healthcheck::*;
 pub use session::connection_status::ConnectionStatus;

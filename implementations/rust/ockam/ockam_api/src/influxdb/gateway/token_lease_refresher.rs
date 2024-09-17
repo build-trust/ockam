@@ -1,12 +1,13 @@
+use crate::influxdb::lease_issuer::node_service::InfluxDBTokenLessorNodeServiceTrait;
+use crate::nodes::InMemoryNode;
 use ockam::{compat::time::now, Address, Mailboxes};
+use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{api::Error, AllowAll, DenyAll};
 use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
-use std::{cmp::max, sync::Arc};
+use std::cmp::max;
+use std::sync::{Arc, Weak};
 use tokio::sync::RwLock;
-
-use crate::nodes::InMemoryNode;
-use crate::token_lessor_node_service::InfluxDBTokenLessorNodeServiceTrait;
 
 #[derive(Clone)]
 pub struct TokenLeaseRefresher {
@@ -16,8 +17,8 @@ pub struct TokenLeaseRefresher {
 impl TokenLeaseRefresher {
     pub async fn new(
         ctx: &Context,
-        node_manager: Arc<InMemoryNode>,
-        route_to_lessor: MultiAddr,
+        node_manager: Weak<InMemoryNode>,
+        lease_issuer_route: MultiAddr,
     ) -> Result<TokenLeaseRefresher, Error> {
         let token = Arc::new(RwLock::new(None));
         let mailboxes = Mailboxes::main(
@@ -30,8 +31,13 @@ impl TokenLeaseRefresher {
         let token_clone = token.clone();
         ockam_node::spawn(async move {
             // TODO should it just loop again?
-            if let Err(err) =
-                refresh_loop(token_clone, new_ctx, node_manager.clone(), route_to_lessor).await
+            if let Err(err) = refresh_loop(
+                token_clone,
+                new_ctx,
+                node_manager.clone(),
+                lease_issuer_route,
+            )
+            .await
             {
                 error!("Token refresher terminated with error: {:}", err);
             }
@@ -47,12 +53,15 @@ impl TokenLeaseRefresher {
 async fn refresh_loop(
     token: Arc<RwLock<Option<String>>>,
     ctx: Context,
-    node_manager: Arc<InMemoryNode>,
-    route_to_lessor: MultiAddr,
-) -> Result<(), Error> {
+    node_manager: Weak<InMemoryNode>,
+    lease_issuer_route: MultiAddr,
+) -> ockam_core::Result<()> {
     loop {
         debug!("refreshing token");
-        let token_result = node_manager.create_token(&ctx, &route_to_lessor).await;
+        let node_manager = node_manager.upgrade().ok_or_else(|| {
+            ockam_core::Error::new(Origin::Node, Kind::Internal, "node manager was shut down")
+        })?;
+        let token_result = node_manager.create_token(&ctx, &lease_issuer_route).await;
         let now_t = now()?;
         let wait_secs = match token_result {
             Ok(new_token) => {

@@ -14,7 +14,7 @@ use crate::tcp::util::alias_parser;
 use crate::{docs, Command, CommandGlobalOpts, Error};
 use ockam::identity::Identifier;
 use ockam::transport::HostnamePort;
-use ockam::{route, Context};
+use ockam::Context;
 use ockam_abac::PolicyExpression;
 use ockam_api::address::extract_address_value;
 use ockam_api::cli_state::journeys::{
@@ -146,12 +146,6 @@ pub struct CreateCommand {
     /// Enable TLS for the TCP Inlet using the provided certificate provider.
     /// Requires `ockam-tls-certificate` credential attribute.
     pub tls_certificate_provider: Option<MultiAddr>,
-
-    #[arg(long, value_name = "ROUTE", hide = true)]
-    /// Needed if the outlet has some interceptor.
-    /// We need to figure out a better way of doing this, inlet shouldn't care what's
-    /// running on the other node, the 'outlet' address should be enough.
-    pub outlet_suffix_address: Option<String>,
 }
 
 pub(crate) fn default_from_addr() -> HostnamePort {
@@ -200,9 +194,6 @@ impl Command for CreateCommand {
                         cmd.no_tcp_fallback,
                         cmd.ebpf,
                         &cmd.tls_certificate_provider,
-                        cmd.outlet_suffix_address
-                            .as_ref()
-                            .map_or(route![], |s| route![s]),
                     )
                     .await?;
 
