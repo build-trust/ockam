@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use async_trait::async_trait;
 use clap::Args;
 use colorful::Colorful;
@@ -5,7 +7,9 @@ use miette::IntoDiagnostic;
 use ockam::{Address, Context};
 use ockam_api::nodes::service::influxdb_portal_service::InfluxDBPortals;
 
+use crate::influxdb::LeaseUsage;
 use crate::node::util::initialize_default_node;
+use crate::util::parsers::duration_parser;
 use crate::{Command, CommandGlobalOpts};
 use ockam_api::colors::color_primary;
 use ockam_api::nodes::BackgroundNodeClient;
@@ -20,9 +24,39 @@ pub struct InfluxDBCreateCommand {
     #[command(flatten)]
     pub outlet_create_command: OutletCreateCommand,
 
-    /// The route to the token leaser service
-    #[arg(long, value_name = "ROUTE")]
-    pub token_leaser: MultiAddr,
+    /// The organization ID of the InfluxDB server
+    #[arg(long, value_name = "ORG_ID", default_value_t = default_influxdb_org_id())]
+    pub influxdb_org_id: String,
+
+    /// The token to use to connect to the InfluxDB server
+    #[arg(long, value_name = "TOKEN", default_value_t = default_influxdb_token())]
+    pub influxdb_token: String,
+
+    /// The permissions to grant to new leases
+    #[arg(long, value_name = "JSON")]
+    pub lease_permissions: String,
+
+    /// Share the leases among the clients or use a separate lease for each client
+    #[arg(long, default_value = "shared")]
+    pub lease_usage: LeaseUsage,
+
+    /// The duration for which a lease is valid
+    #[arg(long = "expires-in", value_name = "DURATION", value_parser = duration_parser)]
+    pub expires_in: Duration,
+}
+
+fn default_influxdb_org_id() -> String {
+    "TODO".to_string()
+    /*std::env::var("INFLUXDB_ORG_ID").expect(
+        "Pass a value for `--influxdb-org-id` or export the INFLUXDB_ORG_ID environment variable",
+    ) */
+}
+
+fn default_influxdb_token() -> String {
+    "TODO".to_string()
+    /*std::env::var("INFLUXDB_TOKEN").expect(
+        "Pass a value for `--influxdb-token` or export the INFLUXDB_TOKEN environment variable",
+    ) */
 }
 
 #[async_trait]
@@ -41,6 +75,11 @@ impl Command for InfluxDBCreateCommand {
         }
         let node = BackgroundNodeClient::create(ctx, &opts.state, &outlet_cmd.at).await?;
         let node_name = node.node_name();
+        let usage = if self.lease_usage == LeaseUsage::Shared {
+            "shared".to_string()
+        } else {
+            "per-client".to_string()
+        };
         let outlet_status = node
             .create_influxdb_outlet(
                 ctx,
@@ -48,7 +87,11 @@ impl Command for InfluxDBCreateCommand {
                 outlet_cmd.tls,
                 outlet_cmd.from.clone().map(Address::from).as_ref(),
                 outlet_cmd.allow.clone(),
-                self.token_leaser.clone(),
+                self.influxdb_org_id,
+                self.influxdb_token,
+                self.lease_permissions,
+                usage, //self.lease_usage,
+                self.expires_in,
             )
             .await?;
         outlet_cmd

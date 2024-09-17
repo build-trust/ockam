@@ -7,7 +7,7 @@ use crate::nodes::models::portal::{
 };
 use crate::nodes::service::tcp_inlets::create_inlet_payload;
 use crate::nodes::BackgroundNodeClient;
-use crate::{ApiError, DefaultAddress};
+use crate::{ApiError, DefaultAddress, StartInfluxDBLeaseManagerRequest};
 use ockam::flow_control::FlowControls;
 use ockam::identity::Identifier;
 use ockam::{Address, Context, Result, Route};
@@ -19,9 +19,14 @@ use ockam_core::route;
 use ockam_multiaddr::MultiAddr;
 use ockam_transport_core::HostnamePort;
 use ockam_transport_tcp::{PortalInletInterceptor, PortalOutletInterceptor};
+use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
 
+fn address_from_host_port(hp: &HostnamePort, is_tls: bool) -> String {
+    let schema = if is_tls { "https" } else { "http" };
+    format!("{}://{}:{}", schema, hp.hostname(), hp.port()).to_string()
+}
 impl NodeManagerWorker {
     pub(super) async fn start_influxdb_outlet_service(
         &self,
@@ -35,30 +40,63 @@ impl NodeManagerWorker {
             policy_expression,
             tls,
         } = body.tcp_outlet;
-        let interceptor_addr = self
+        let address = self
             .node_manager
             .registry
             .outlets
             .generate_worker_addr(worker_addr)
             .await;
-        let outlet_addr: Address = format!("{:}_tcp", interceptor_addr.address()).into();
-        self.create_http_outlet_interceptor(
-            ctx,
-            interceptor_addr,
-            outlet_addr.clone(),
-            policy_expression.clone(),
-            body.service_address,
-        )
-        .await
-        .map_err(|e| Response::bad_request_no_request(&format!("{e:?}")))?;
+        let lease_issuer_address: Address = format!("{:}_lease_issuer", address.address()).into();
 
+        let (lease_issuer_policy, outlet_address) = if body.lease_usage == "per-client" {
+            warn!("per-client!");
+            (policy_expression.clone(), address)
+        } else {
+            warn!("shared!");
+            //Shared
+            let outlet_addr: Address = format!("{:}_outlet", address.address()).into();
+            //TODO: the first request fail because there is no lease issuer yet started..
+            // refactor a bit.
+            self.create_http_outlet_interceptor(
+                ctx,
+                address,
+                outlet_addr.clone(),
+                policy_expression.clone(),
+                MultiAddr::try_from(
+                    format!("/secure/api/service/{}", lease_issuer_address.address()).as_str(),
+                )
+                .unwrap(),
+            )
+            .await
+            .map_err(|e| Response::bad_request_no_request(&format!("{e:?}")))?;
+            let node_identifier = self.node_manager.identifier().to_string();
+            let policy_str = format!("(= subject.identifier \"{node_identifier}\")");
+            warn!("policy str: {:?}", policy_str);
+            let lease_issuer_policy =
+                PolicyExpression::from_str(&policy_str)
+                    .unwrap();
+            (Some(lease_issuer_policy), outlet_addr)
+        };
+        let influxdb_address = address_from_host_port(&hostname_port, tls);
+        let req = StartInfluxDBLeaseManagerRequest {
+            influxdb_address: influxdb_address,
+            influxdb_org_id: body.influxdb_org_id,
+            influxdb_token: body.influxdb_token,
+            token_permissions: body.lease_permissions,
+            token_ttl: body.expires_in.as_secs() as i32,
+            policy_expression: lease_issuer_policy,
+        };
+        self.node_manager
+            .start_influxdb_token_lessor_service(ctx, lease_issuer_address, req)
+            .await
+            .unwrap();
         match self
             .node_manager
             .create_outlet(
                 ctx,
                 hostname_port,
                 tls,
-                Some(outlet_addr),
+                Some(outlet_address),
                 reachable_from_default_secure_channel,
                 OutletAccessControl::WithPolicyExpression(policy_expression),
             )
@@ -241,7 +279,11 @@ pub trait InfluxDBPortals {
         tls: bool,
         from: Option<&Address>,
         policy_expression: Option<PolicyExpression>,
-        token_leaser: MultiAddr,
+        influxdb_org_id: String,
+        influxdb_token: String,
+        lease_permissions: String,
+        lease_usage: String,
+        expires_in: Duration,
     ) -> miette::Result<OutletStatus>;
 }
 
@@ -257,13 +299,24 @@ impl InfluxDBPortals for BackgroundNodeClient {
         tls: bool,
         from: Option<&Address>,
         policy_expression: Option<PolicyExpression>,
-        token_leaser: MultiAddr,
+        influxdb_org_id: String,
+        influxdb_token: String,
+        lease_permissions: String,
+        lease_usage: String,
+        expires_in: Duration,
     ) -> miette::Result<OutletStatus> {
         let mut outlet_payload = CreateOutlet::new(to, tls, from.cloned(), true);
         if let Some(policy_expression) = policy_expression {
             outlet_payload.set_policy_expression(policy_expression);
         }
-        let payload = CreateInfluxDBOutlet::new(outlet_payload, token_leaser);
+        let payload = CreateInfluxDBOutlet::new(
+            outlet_payload,
+            influxdb_org_id,
+            influxdb_token,
+            lease_permissions,
+            lease_usage,
+            expires_in,
+        );
         let req = Request::post("/node/influxdb_outlet").body(payload);
         //TODO: difference between ask and ask_and_get_reply?
         let result: OutletStatus = self.ask(ctx, req).await?;

@@ -60,13 +60,13 @@ impl NodeManagerWorker {
 }
 
 impl InMemoryNode {
-    async fn start_influxdb_token_lessor_service(
+    pub async fn start_influxdb_token_lessor_service(
         &self,
         context: &Context,
         address: Address,
         req: StartInfluxDBLeaseManagerRequest,
     ) -> Result<(), Error> {
-        debug!(address = %address.address(), "Starting influxdb token lease manager service");
+        warn!(address = %address.address(), "Starting influxdb token lease manager service");
 
         let default_secure_channel_listener_flow_control_id = context
             .flow_controls()
@@ -143,12 +143,12 @@ impl InMemoryNode {
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct StartInfluxDBLeaseManagerRequest {
-    #[n(1)] influxdb_address: String,
-    #[n(2)] influxdb_org_id: String,
-    #[n(3)] influxdb_token: String,
-    #[n(4)] token_permissions: String,
-    #[n(5)] token_ttl: i32,
-    #[n(6)] policy_expression: Option<PolicyExpression>,
+    #[n(1)] pub influxdb_address: String,
+    #[n(2)] pub influxdb_org_id: String,
+    #[n(3)] pub influxdb_token: String,
+    #[n(4)] pub token_permissions: String,
+    #[n(5)] pub token_ttl: i32,
+    #[n(6)] pub policy_expression: Option<PolicyExpression>,
 }
 
 #[async_trait]
