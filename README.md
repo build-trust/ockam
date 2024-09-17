@@ -1,186 +1,38 @@
-🚀 _[Portals for Mac](https://github.com/build-trust/ockam/blob/develop/examples/app/portals/README.md) – A macOS app built in Swift that uses the Ockam Rust library to privately share a service on your Mac with anyone, anywhere. The service is shared securely over an end-to-end encrypted and mutually authenticated Ockam Portal. Your friends will have access to it on their *localhost*! This app is a great example of the kinds of things you can build with Ockam_ [👉](https://github.com/build-trust/ockam/blob/develop/examples/app/portals/README.md)
-
----
-
 <a href="https://discord.gg/RAbjRr3kds"><img alt="Discord" src="https://img.shields.io/discord/1074960884490833952?label=Discord&logo=discord&style=flat&logoColor=white"></a>
-[![RepoRater](https://repo-rater.eddiehub.io/api/badge?owner=build-trust&name=ockam)](https://repo-rater.eddiehub.io/rate?owner=build-trust&name=ockam)
 
+# What is Ockam?
 
-# Trust for Data-in-Motion
+Ockam empowers you to build secure-by-design apps that can trust data-in-motion.
 
-Ockam is a suite of open source programming libraries and command line tools to
-orchestrate end-to-end encryption, mutual authentication, key management, credential
-management, and authorization policy enforcement – at massive scale.
+You can use Ockam to create end-to-end encrypted and mutually authenticated channels. Ockam secure channels authenticate using cryptographic identities and credentials. They give your apps granular control over all trust and access decisions. This control makes it easy to enforce fine-grained, attribute-based authorization policies – at scale.
 
-Modern applications are distributed and have an unwieldy number of
-interconnections that must trustfully exchange data. To trust data-in-motion,
-applications need end-to-end guarantees of data authenticity, integrity, and
-confidentiality. To be private and secure by-design, applications must have
-granular control over every trust and access decision. Ockam allows you to add
-these controls and guarantees to any application.
-
-## Quick Start
-
-Let's build a solution for a very common secure communication topology that
-applies to many real world use cases. We'll build our first example using
-[Ockam Command](https://docs.ockam.io/reference/command), but it is just as easy
-to build end-to-end trustful communication using
-[Ockam Programming Libraries](https://docs.ockam.io/reference/libraries/rust).
-
-An application service and an application client running on two private networks
-wish to securely communicate with each other without exposing ports on the
-Internet. In a few simple commands, we’ll make them safely talk to each other
-through an End-to-End Encrypted Cloud Relay.
-
-## Install Ockam Command
-
-If you use Homebrew, you can install Ockam using brew.
+These core capabilities are composed to enable private and secure communication in a wide variety of application architectures. For example, with one simple command an app in your cloud can create an encrypted portal to a micro-service in another cloud. The service doesn’t need to be exposed to the Internet. You don’t have to change anything about networks or firewalls.
 
 ```bash
-# Tap and install Ockam Command
-brew install build-trust/ockam/ockam
+# Create a TCP Portal Inlet to a Postgres server that is running in
+# a remote private VPC in another cloud.
+ockam tcp-inlet create --from 15432 --to postgres
+
+# Access the Postgres server on localhost.
+psql --host localhost --port 15432
 ```
 
-This will download a precompiled binary and add it to your path.
-If you don’t use Homebrew, you can also install on Linux and MacOS systems using curl.
+<img width="1500" alt="An end-to-end encrypted portal to postgres" src="https://github.com/build-trust/ockam/assets/159583/d41da555-ce0d-4bdb-8462-35a00384ae63">
 
-```bash
-curl --proto '=https' --tlsv1.2 -sSfL https://install.command.ockam.io | bash
-```
+Similarly, using another simple command a kafka producer can publish end-to-end encrypted messages for a specific kafka consumer. Kafka brokers in the middle can’t see, manipulate, or accidentally leak sensitive enterprise data. This minimizes risk to sensitive business data and makes it easy to comply with data governance policies.
 
-### End-to-end encrypted and mutually authenticated communication
+# Encrypted Portals
 
-Next, step through the following commands to setup secure and private
-communication between our application service and an application client.
+Portals carry various application protocols over end-to-end encrypted Ockam secure channels.
 
-```bash
-# Check that everything was installed correctly by enrolling with Ockam Orchestrator.
-#
-# This will create a Space and Project for you in Ockam Orchestrator and provision an
-# End-to-End Encrypted Cloud Relay service in your `default` project at `/project/default`.
-ockam enroll
+For example: a TCP Portal carries TCP over Ockam, a Kafka Portal carries Kafka Protocol over Ockam, etc. Since portals work with existing application protocols you can use them through companion Ockam Nodes, that run adjacent to your application, without changing any of your application’s code.
 
-# -- APPLICATION SERVICE --
+A tcp portal makes a remote tcp server virtually adjacent to the server’s clients. It has two parts: an inlet and an outlet. The outlet runs adjacent to the tcp server and inlets run adjacent to tcp clients. An inlet and the outlet work together to create a portal that makes the remote tcp server appear on localhost adjacent to a client. This client can then interact with this localhost server exactly like it would with the remote server. All communication between inlets and outlets is end-to-end encrypted.
 
-# Start an application service, listening on a local IP and port, that clients would access
-# through the cloud encrypted relay. We'll use a simple HTTP server for this first example
-# but this could be any other application service.
-python3 -m http.server --bind 127.0.0.1 6000
+<img width="1500" alt="Encrypted Portals" src="https://github.com/build-trust/ockam/assets/159583/7ef5c0de-3885-4ac6-b5ba-90956294c0ff">
 
-# In a new terminal window, setup a tcp-outlet that makes a TCP service available at the given
-# address `6000`. We can use this to send raw TCP traffic to the HTTP server on port `6000`.
-# Finally create a relay in your default Orchestrator project. Relays make it possible to
-# establish end-to-end protocols with services operating in remote private networks, without
-# requiring a remote service to expose listening ports to an outside hostile network like the
-# Internet.
-ockam tcp-outlet create --to 6000
-ockam relay create
+You can use Ockam Command to start nodes with one or more inlets or outlets. The underlying [protocols](https://docs.ockam.io/reference/protocols) handle the hard parts — NATs are traversed; Keys are stored in vaults; Credentials are short-lived; Messages are authenticated; Data-integrity is guaranteed; Senders are protected from key compromise impersonation; Encryption keys are ratcheted; Nonces are never reused; Strong forward secrecy is ensured; Sessions recover from network failures; and a lot more.
 
-# -- APPLICATION CLIENT --
+# How does Ockam work?
 
-# Setup a local tcp-inlet to allow raw TCP traffic to be received on port `7000` before
-# it is forwarded. A TCP inlet is a way of defining where a node should be listening for
-# connections, and where it should forward that traffic to.
-ockam tcp-inlet create --from 7000
-
-# Access the application service, that may be in a remote private network though
-# the end-to-end encrypted secure channel, via your private and encrypted cloud relay.
-curl --head 127.0.0.1:7000
-```
-
-### Private and secure by design
-
-In the example above, we’ve created two nodes and established an end-to-end
-secure channel between them through an encrypted cloud relay. For the sake of
-simplicity, we ran both ends on a single machine, but they could also be run on
-completely separate machines with the same result: an end-to-end encrypted and
-mutually authenticated secure channel.
-
-Distributed applications that are connected in this way can communicate without
-the risk of spoofing, tampering, or eavesdropping attacks, irrespective of transport
-protocols, communication topologies, and network configuration. As application
-data flows across data centers, through queues and caches, via gateways and
-brokers - these intermediaries, like the cloud relay in the above example, can
-facilitate communication but cannot eavesdrop on, or tamper with data.
-
-You can establish secure channels across networks and clouds over multi-hop,
-multi-protocol routes to build private and secure by design distributed applications
-that have a small vulnerability surface and full control over data authenticity,
-integrity, and confidentiality.
-
-### Trust for data-in-motion
-
-Behind the scenes, the above commands generated unique cryptographically
-provable identities and saved corresponding keys in a vault. Your orchestrator
-project was provisioned with a managed credential authority, and every node was
-setup to anchor trust in credentials issued by this authority. Identities were
-issued project membership credentials, and these cryptographically verifiable
-credentials were then combined with attribute based access control policies to
-setup a mutually authenticated and authorized end-to-end secure channel.
-
-Your applications can make granular access control decisions at every request
-because they can be certain about the source and integrity of all data and instructions.
-You place zero implicit trust in network boundaries and intermediaries to build
-applications that have end-to-end application layer trust for all data in motion.
-
-### Powerful protocols, made simple
-
-Underlying all of this is a variety of cryptographic and messaging protocols.
-We’ve made these protocols safe and easy to use in any application.
-
-No more having to think about creating unique cryptographic keys and issuing
-credentials to all application entities. No more designing ways to safely store
-secrets in hardware and securely distribute roots of trust. Ockam’s integrated
-approach takes away this complexity and gives you simple tools for:
-
-<ins>End-to-end data authenticity, integrity, and privacy in any communication topology</ins>
-
-* Create end-to-end encrypted, authenticated secure channels over any transport topology.
-* Create secure channels over multi-hop, multi-protocol routes - TCP, UDP, WebSockets, BLE, etc.
-* Provision encrypted relays for applications distributed across many edge and cloud private networks.
-* Make legacy protocols secure by tunneling them through mutually authenticated and encrypted portals.
-* Bring end-to-end encryption to enterprise messaging, pub/sub and event streams - Kafka, RabbitMQ etc.
-
-<ins>Identity-based, policy driven, application layer trust – granular authentication and authorization</ins>
-
-* Generate cryptographically provable unique identities.
-* Store private keys in safe vaults - hardware secure enclaves and cloud key management systems.
-* Operate scalable credential authorities to issue lightweight, short-lived, attribute-based credentials.
-* Onboard fleets of self-sovereign application identities using secure enrollment protocols.
-* Rotate and revoke keys and credentials – at scale, across fleets.
-* Define and enforce project-wide attribute based access control policies - ABAC, RBAC or ACLs.
-* Integrate with enterprise identity providers and policy providers for seamless employee access.
-
-## Deep Dives
-
-Next let's dive into a step-by-step guide on our command line and programming libraries.
-
-* [__Ockam Command__](https://docs.ockam.io/reference/command)
-Command line tools to build and orchestrate highly secure distributed applications.
-Orchestrate nodes, vaults, identities, credentials, secure channels, relays, portals and more.
-[👉](https://docs.ockam.io/reference/command)
-
-* [__Ockam Programming Libraries__](https://docs.ockam.io/reference/libraries)
-Rust and Elixir libraries to build secure by design applications for any environment
-– from highly scalable cloud infrastructure to tiny battery operated microcontroller devices.
-[👉](https://docs.ockam.io/reference/libraries)
-
-* [__Ockam Protocols__](https://docs.ockam.io/reference/protocols)
-Cryptographic and Messaging Protocols that make up the core of Ockam and provide the foundation for end-to-end application layer trust in data.
-[👉](https://docs.ockam.io/reference/libraries)
-
-## License
-
-The code in this repository is licensed under the terms of the [Apache License 2.0](LICENSE).
-
-## Sponsorship Matching Program
-
-Ockam sponsors open source builders who are making it possible for software to be more private and secure-by-design. This includes builders of tools and libraries that Ockam depends on. Under our matching program, if you sponsor the Ockam Open Source project, we will match your contribution and pass it along to other open source developers. For example: If you sponsor Ockam for $10 a month, we will match your $10, and will send $20 back out into the community. Learn more about our [sponsorship matching program](https://github.com/sponsors/build-trust) [👉](https://github.com/sponsors/build-trust)
-
-## Learn more about Ockam
-
-- [ockam.io](https://www.ockam.io/)
-- [Documentation](https://docs.ockam.io/)
-- [Contribute to Ockam](https://github.com/build-trust/.github/blob/main/CONTRIBUTING.md#contributing-to-ockam-on-github)
-- [Build Trust community Discord server](https://discord.gg/RAbjRr3kds)
-- [Ockam Orchestrator on AWS Marketplace](https://aws.amazon.com/marketplace/pp/prodview-wsd42efzcpsxk)
+Ockam is a stack of protocols to build secure-by-design apps that can trust data-in-motion. We provide a collection of programming libraries, command line tools, deployable components, and cloud services that make it simple for you to use these protocols within your apps. To understand how these protocols work together, please read our guide on [How does Ockam work?](https://docs.ockam.io/how-does-ockam-work)
