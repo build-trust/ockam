@@ -1,5 +1,4 @@
 use ockam::identity::Identifier;
-use ockam::Route;
 use ockam_abac::PolicyExpression;
 use ockam_core::api::{Reply, Request};
 use ockam_core::async_trait;
@@ -27,7 +26,6 @@ pub fn create_inlet_payload(
     disable_tcp_fallback: bool,
     ebpf: bool,
     tls_certificate_provider: &Option<MultiAddr>,
-    outlet_suffix_address: Route,
 ) -> CreateInlet {
     let via_project = outlet_addr.matches(0, &[ProjectProto::CODE.into()]);
     let mut payload = if via_project {
@@ -39,7 +37,6 @@ pub fn create_inlet_payload(
             enable_udp_puncture,
             disable_tcp_fallback,
             ebpf,
-            outlet_suffix_address,
         )
     } else {
         CreateInlet::to_node(
@@ -51,7 +48,6 @@ pub fn create_inlet_payload(
             enable_udp_puncture,
             disable_tcp_fallback,
             ebpf,
-            outlet_suffix_address,
         )
     };
     if let Some(e) = policy_expression.as_ref() {
@@ -84,7 +80,6 @@ impl Inlets for BackgroundNodeClient {
         disable_tcp_fallback: bool,
         ebpf: bool,
         tls_certificate_provider: &Option<MultiAddr>,
-        outlet_suffix_addr: Route,
     ) -> miette::Result<Reply<InletStatus>> {
         let request = {
             let payload = create_inlet_payload(
@@ -100,7 +95,6 @@ impl Inlets for BackgroundNodeClient {
                 disable_tcp_fallback,
                 ebpf,
                 tls_certificate_provider,
-                outlet_suffix_addr,
             );
             Request::post("/node/inlet").body(payload)
         };

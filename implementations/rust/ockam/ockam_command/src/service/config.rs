@@ -6,7 +6,6 @@ use serde::{Deserialize, Serialize};
 use crate::Result;
 use ockam::identity::Identifier;
 use ockam_api::nodes::service::default_address::DefaultAddress;
-use ockam_api::StartInfluxDBLeaseManagerRequest;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Config {
@@ -28,7 +27,6 @@ impl Config {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ServiceConfigs {
     pub(crate) secure_channel_listener: Option<SecureChannelListenerConfig>,
-    pub(crate) influxdb_token_lessor: Option<StartInfluxDBLeaseManagerRequest>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

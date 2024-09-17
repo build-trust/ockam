@@ -4,7 +4,6 @@
 //! its own
 pub mod credentials;
 pub mod flow_controls;
-pub mod influxdb_portal;
 pub mod node;
 pub mod policies;
 pub mod portal;

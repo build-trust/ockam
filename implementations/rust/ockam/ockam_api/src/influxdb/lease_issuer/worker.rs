@@ -1,9 +1,9 @@
 use crate::influxdb::influxdb_api_client::{
     InfluxDBApi, InfluxDBApiClient, InfluxDBCreateTokenRequest,
 };
+use crate::influxdb::lease_issuer::node_service::InfluxDBTokenLessorState;
 use crate::influxdb::lease_token::LeaseToken;
 use crate::nodes::service::encode_response;
-use crate::token_lessor_node_service::InfluxDBTokenLessorState;
 use crate::ApiError;
 use minicbor::Decoder;
 use ockam::identity::{Identifier, IdentitySecureChannelLocalInfo};
@@ -15,7 +15,8 @@ use std::cmp::Reverse;
 use std::collections::BinaryHeap;
 use std::error::Error;
 use std::sync::Arc;
-use time::{Duration, OffsetDateTime};
+use std::time::Duration;
+use time::OffsetDateTime;
 use tokio::sync::RwLock;
 
 #[derive(Clone)]
@@ -30,7 +31,7 @@ impl InfluxDBTokenLessorWorker {
         influxdb_org_id: String,
         influxdb_token: String,
         token_permissions: String,
-        token_ttl: i32,
+        token_ttl: Duration,
     ) -> ockam_core::Result<Self> {
         debug!("Creating InfluxDBTokenLessorWorker");
         let _self = Self {
@@ -39,7 +40,7 @@ impl InfluxDBTokenLessorWorker {
                 influxdb_api_client: InfluxDBApiClient::new(influxdb_address, influxdb_token)?,
                 influxdb_org_id,
                 token_permissions,
-                token_ttl: Duration::seconds(token_ttl as i64),
+                token_ttl,
                 active_tokens: BinaryHeap::new(),
             })),
         };

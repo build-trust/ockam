@@ -1,8 +1,12 @@
 pub mod gateway;
 mod influxdb_api_client;
-mod lease_token;
-pub mod token_lessor_node_service;
-mod token_lessor_processor;
-mod token_lessor_worker;
 
-pub use token_lessor_node_service::StartInfluxDBLeaseManagerRequest;
+pub mod lease_issuer;
+mod lease_token;
+mod lease_usage;
+pub mod portal;
+
+pub use lease_issuer::StartInfluxDBLeaseIssuerRequest;
+pub use lease_token::LeaseToken;
+pub use lease_usage::LeaseUsage;
+pub use portal::InfluxDBPortals;

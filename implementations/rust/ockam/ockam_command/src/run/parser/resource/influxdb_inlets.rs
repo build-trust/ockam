@@ -38,8 +38,8 @@ impl InfluxDBInlets {
                     c.into_commands_with_name_arg(Self::get_subcommand, Some("alias"))?;
                 if let Some(node_name) = default_node_name.as_ref() {
                     for cmd in cmds.iter_mut() {
-                        if cmd.inlet_create_command.at.is_none() {
-                            cmd.inlet_create_command.at = Some(node_name.to_string())
+                        if cmd.tcp_inlet.at.is_none() {
+                            cmd.tcp_inlet.at = Some(node_name.to_string())
                         }
                     }
                 }
@@ -74,21 +74,12 @@ mod tests {
             .into_parsed_commands(Some(&default_node_name))
             .unwrap();
         assert_eq!(cmds.len(), 2);
-        assert_eq!(cmds[0].inlet_create_command.alias, "ti1");
-        assert_eq!(
-            cmds[0].inlet_create_command.from,
-            HostnamePort::new("127.0.0.1", 6060)
-        );
-        assert_eq!(cmds[0].inlet_create_command.at.as_ref().unwrap(), "n");
-        assert_eq!(cmds[1].inlet_create_command.alias, "my_inlet");
-        assert_eq!(
-            cmds[1].inlet_create_command.from,
-            HostnamePort::new("127.0.0.1", 6061)
-        );
-        assert_eq!(
-            cmds[1].inlet_create_command.at.as_ref(),
-            Some(&default_node_name)
-        );
+        assert_eq!(cmds[0].tcp_inlet.alias, "ti1");
+        assert_eq!(cmds[0].tcp_inlet.from, HostnamePort::new("127.0.0.1", 6060));
+        assert_eq!(cmds[0].tcp_inlet.at.as_ref().unwrap(), "n");
+        assert_eq!(cmds[1].tcp_inlet.alias, "my_inlet");
+        assert_eq!(cmds[1].tcp_inlet.from, HostnamePort::new("127.0.0.1", 6061));
+        assert_eq!(cmds[1].tcp_inlet.at.as_ref(), Some(&default_node_name));
 
         let unnamed = r#"
             influxdb_inlets:
@@ -103,18 +94,9 @@ mod tests {
             .into_parsed_commands(Some(&default_node_name))
             .unwrap();
         assert_eq!(cmds.len(), 2);
-        assert_eq!(
-            cmds[0].inlet_create_command.from,
-            HostnamePort::new("127.0.0.1", 6060)
-        );
-        assert_eq!(cmds[0].inlet_create_command.at.as_ref().unwrap(), "n");
-        assert_eq!(
-            cmds[1].inlet_create_command.from,
-            HostnamePort::new("127.0.0.1", 6061)
-        );
-        assert_eq!(
-            cmds[1].inlet_create_command.at.as_ref(),
-            Some(&default_node_name)
-        );
+        assert_eq!(cmds[0].tcp_inlet.from, HostnamePort::new("127.0.0.1", 6060));
+        assert_eq!(cmds[0].tcp_inlet.at.as_ref().unwrap(), "n");
+        assert_eq!(cmds[1].tcp_inlet.from, HostnamePort::new("127.0.0.1", 6061));
+        assert_eq!(cmds[1].tcp_inlet.at.as_ref(), Some(&default_node_name));
     }
 }

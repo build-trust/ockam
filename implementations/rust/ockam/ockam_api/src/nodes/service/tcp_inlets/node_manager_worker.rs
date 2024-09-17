@@ -30,7 +30,6 @@ impl NodeManagerWorker {
             disable_tcp_fallback,
             ebpf,
             tls_certificate_provider,
-            suffix_route,
         } = create_inlet;
         match self
             .node_manager
@@ -38,7 +37,7 @@ impl NodeManagerWorker {
                 ctx,
                 listen_addr,
                 route![],
-                suffix_route,
+                route![],
                 outlet_addr,
                 alias,
                 policy_expression,

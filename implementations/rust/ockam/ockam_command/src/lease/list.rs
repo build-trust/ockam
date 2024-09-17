@@ -5,8 +5,8 @@ use async_trait::async_trait;
 use clap::Args;
 use ockam::Context;
 use ockam_api::fmt_log;
+use ockam_api::influxdb::lease_issuer::InfluxDBTokenLessorNodeServiceTrait;
 use ockam_api::nodes::InMemoryNode;
-use ockam_api::token_lessor_node_service::InfluxDBTokenLessorNodeServiceTrait;
 use ockam_multiaddr::MultiAddr;
 
 const HELP_DETAIL: &str = "";

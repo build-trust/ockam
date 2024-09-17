@@ -35,12 +35,14 @@ pub struct InfluxDBApiClient {
 
 impl InfluxDBApiClient {
     pub fn new(base_url: impl Into<String>, token: impl Into<String>) -> ockam_core::Result<Self> {
+        let base_url = base_url.into().trim_end_matches('/').to_string();
+        debug!(%base_url, "Creating InfluxDBApiClient");
         let http_client = reqwest::ClientBuilder::new()
             .build()
             .map_err(|e| ApiError::core(format!("Failed to create http client: {e}")))?;
         Ok(Self {
             http_client,
-            base_url: base_url.into(),
+            base_url,
             token: token.into(),
         })
     }
@@ -49,12 +51,17 @@ impl InfluxDBApiClient {
     where
         T: serde::de::DeserializeOwned,
     {
-        match res.json::<InfluxDBResponse<T>>().await {
+        let bytes = res.bytes().await.map_err(|e| {
+            error!("Failed to read InfluxDB response: {e:?}");
+            ApiError::core(format!("Failed to read InfluxDB response: {e:?}"))
+        })?;
+        match serde_json::from_slice::<InfluxDBResponse<T>>(&bytes) {
             Ok(res) => Ok(res),
             Err(e) => {
-                error!("Failed to parse InfluxDB response: {e:?}");
+                let text = String::from_utf8_lossy(&bytes);
+                error!("Failed to parse InfluxDB response {text}/n with err {e:?}");
                 Err(ApiError::core(format!(
-                    "Failed to parse InfluxDB response: {e:?}"
+                    "Failed to parse InfluxDB response {text}/n with err {e:?}"
                 )))
             }
         }

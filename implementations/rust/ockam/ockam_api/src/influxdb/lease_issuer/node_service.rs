@@ -1,7 +1,7 @@
 use crate::influxdb::influxdb_api_client::InfluxDBApiClient;
+use crate::influxdb::lease_issuer::processor::InfluxDBTokenLessorProcessor;
+use crate::influxdb::lease_issuer::worker::InfluxDBTokenLessorWorker;
 use crate::influxdb::lease_token::LeaseToken;
-use crate::influxdb::token_lessor_processor::InfluxDBTokenLessorProcessor;
-use crate::influxdb::token_lessor_worker::InfluxDBTokenLessorWorker;
 use crate::nodes::models::services::{DeleteServiceRequest, StartServiceRequest};
 use crate::nodes::service::messages::Messages;
 use crate::nodes::{InMemoryNode, NodeManagerWorker};
@@ -13,21 +13,20 @@ use ockam_core::api::{Error, Request, Response};
 use ockam_core::{async_trait, Address};
 use ockam_multiaddr::MultiAddr;
 use ockam_node::{Context, ProcessorBuilder, WorkerBuilder};
-use serde::{Deserialize, Serialize};
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
-use time::Duration;
+use std::time::Duration;
 
 impl NodeManagerWorker {
-    pub(crate) async fn start_influxdb_token_lessor_service(
+    pub(crate) async fn start_influxdb_lease_issuer_service(
         &self,
         context: &Context,
-        body: StartServiceRequest<StartInfluxDBLeaseManagerRequest>,
+        body: StartServiceRequest<StartInfluxDBLeaseIssuerRequest>,
     ) -> Result<Response, Response<Error>> {
         let request = body.request().clone();
         match self
             .node_manager
-            .start_influxdb_token_lessor_service(
+            .start_influxdb_lease_issuer_service(
                 context,
                 Address::from_string(body.address()),
                 request,
@@ -39,7 +38,7 @@ impl NodeManagerWorker {
         }
     }
 
-    pub(crate) async fn delete_influxdb_token_lessor_service(
+    pub(crate) async fn delete_influxdb_lease_issuer_service(
         &self,
         context: &Context,
         req: DeleteServiceRequest,
@@ -47,7 +46,7 @@ impl NodeManagerWorker {
         let address = req.address();
         match self
             .node_manager
-            .delete_influxdb_token_lessor_service(context, address.clone())
+            .delete_influxdb_lease_issuer_service(context, address.clone())
             .await
         {
             Ok(Some(_)) => Ok(Response::ok()),
@@ -60,13 +59,13 @@ impl NodeManagerWorker {
 }
 
 impl InMemoryNode {
-    async fn start_influxdb_token_lessor_service(
+    pub(crate) async fn start_influxdb_lease_issuer_service(
         &self,
         context: &Context,
         address: Address,
-        req: StartInfluxDBLeaseManagerRequest,
+        req: StartInfluxDBLeaseIssuerRequest,
     ) -> Result<(), Error> {
-        debug!(address = %address.address(), "Starting influxdb token lease manager service");
+        debug!(%address, influxdb_address = %req.influxdb_address, "Starting influxdb lease issuer service");
 
         let default_secure_channel_listener_flow_control_id = context
             .flow_controls()
@@ -94,8 +93,8 @@ impl InMemoryNode {
             req.influxdb_address,
             req.influxdb_org_id,
             req.influxdb_token,
-            req.token_permissions,
-            req.token_ttl,
+            req.lease_permissions,
+            req.expires_in,
         )
         .await?;
         let processor = InfluxDBTokenLessorProcessor::new(worker.state.clone());
@@ -119,12 +118,12 @@ impl InMemoryNode {
         Ok(())
     }
 
-    async fn delete_influxdb_token_lessor_service(
+    async fn delete_influxdb_lease_issuer_service(
         &self,
         context: &Context,
         address: Address,
     ) -> Result<Option<()>, Error> {
-        debug!(address = %address,"Deleting influxdb token lease manager service");
+        debug!(address = %address,"Deleting influxdb lease issuer service");
         match self.registry.influxdb_services.get(&address).await {
             None => Ok(None),
             Some(_) => {
@@ -139,16 +138,16 @@ impl InMemoryNode {
     }
 }
 
-#[derive(Debug, Clone, Encode, Decode, CborLen, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Encode, Decode, CborLen, PartialEq)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct StartInfluxDBLeaseManagerRequest {
-    #[n(1)] influxdb_address: String,
-    #[n(2)] influxdb_org_id: String,
-    #[n(3)] influxdb_token: String,
-    #[n(4)] token_permissions: String,
-    #[n(5)] token_ttl: i32,
-    #[n(6)] policy_expression: Option<PolicyExpression>,
+pub struct StartInfluxDBLeaseIssuerRequest {
+    #[n(1)] pub influxdb_address: String,
+    #[n(2)] pub influxdb_org_id: String,
+    #[n(3)] pub influxdb_token: String,
+    #[n(4)] pub lease_permissions: String,
+    #[n(5)] pub expires_in: Duration,
+    #[n(6)] pub policy_expression: Option<PolicyExpression>,
 }
 
 #[async_trait]
@@ -242,32 +241,38 @@ mod tests {
             influxdb_api_client: InfluxDBApiClient::new("http://localhost:8086", "token").unwrap(),
             influxdb_org_id: "org_id".to_string(),
             token_permissions: "permissions".to_string(),
-            token_ttl: Duration::seconds(60),
+            token_ttl: Duration::from_secs(60),
             active_tokens: BinaryHeap::new(),
         };
 
         let token1 = LeaseToken {
-            expires_at: (time::OffsetDateTime::now_utc() + Duration::seconds(10)).unix_timestamp(),
+            expires_at: (time::OffsetDateTime::now_utc() + Duration::from_secs(10))
+                .unix_timestamp(),
             ..Default::default()
         };
         let token2 = LeaseToken {
-            expires_at: (time::OffsetDateTime::now_utc() + Duration::seconds(20)).unix_timestamp(),
+            expires_at: (time::OffsetDateTime::now_utc() + Duration::from_secs(20))
+                .unix_timestamp(),
             ..Default::default()
         };
         let token3 = LeaseToken {
-            expires_at: (time::OffsetDateTime::now_utc() + Duration::seconds(30)).unix_timestamp(),
+            expires_at: (time::OffsetDateTime::now_utc() + Duration::from_secs(30))
+                .unix_timestamp(),
             ..Default::default()
         };
         let token4 = LeaseToken {
-            expires_at: (time::OffsetDateTime::now_utc() + Duration::seconds(40)).unix_timestamp(),
+            expires_at: (time::OffsetDateTime::now_utc() + Duration::from_secs(40))
+                .unix_timestamp(),
             ..Default::default()
         };
         let token5 = LeaseToken {
-            expires_at: (time::OffsetDateTime::now_utc() + Duration::seconds(50)).unix_timestamp(),
+            expires_at: (time::OffsetDateTime::now_utc() + Duration::from_secs(50))
+                .unix_timestamp(),
             ..Default::default()
         };
         let token6 = LeaseToken {
-            expires_at: (time::OffsetDateTime::now_utc() + Duration::seconds(60)).unix_timestamp(),
+            expires_at: (time::OffsetDateTime::now_utc() + Duration::from_secs(60))
+                .unix_timestamp(),
             ..Default::default()
         };
 

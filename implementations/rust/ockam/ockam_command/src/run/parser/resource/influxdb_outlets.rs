@@ -37,8 +37,8 @@ impl InfluxDBOutlets {
                 let mut cmds = c.into_commands_with_name_arg(Self::get_subcommand, Some("from"))?;
                 if let Some(node_name) = default_node_name {
                     for cmd in cmds.iter_mut() {
-                        if cmd.outlet_create_command.at.is_none() {
-                            cmd.outlet_create_command.at = Some(node_name.to_string())
+                        if cmd.tcp_outlet.at.is_none() {
+                            cmd.tcp_outlet.at = Some(node_name.to_string())
                         }
                     }
                 }
@@ -69,9 +69,6 @@ mod tests {
             .into_parsed_commands(Some(&default_node_name))
             .unwrap();
         assert_eq!(cmds.len(), 1);
-        assert_eq!(
-            cmds[0].outlet_create_command.to,
-            HostnamePort::new("127.0.0.1", 6060)
-        );
+        assert_eq!(cmds[0].tcp_outlet.to, HostnamePort::new("127.0.0.1", 6060));
     }
 }

@@ -1,6 +1,6 @@
 use crate::influxdb::influxdb_api_client::InfluxDBApi;
+use crate::influxdb::lease_issuer::node_service::InfluxDBTokenLessorState;
 use crate::influxdb::lease_token::LeaseToken;
-use crate::token_lessor_node_service::InfluxDBTokenLessorState;
 use crate::ApiError;
 use ockam_core::{async_trait, Processor};
 use ockam_node::Context;

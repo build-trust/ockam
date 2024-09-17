@@ -34,3 +34,4 @@ alloc = ["ockam_core/alloc"]
 minicbor = "0.24"
 ockam_core = { path = "../ockam_core", version = "^0.116.0", default-features = false }
 serde = { version = "1.0.204", default-features = false, features = ["derive"] }
+url = "2.5.2"

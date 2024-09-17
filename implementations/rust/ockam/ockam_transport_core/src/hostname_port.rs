@@ -8,6 +8,7 @@ use ockam_core::compat::format;
 use ockam_core::compat::string::{String, ToString};
 use ockam_core::errcode::{Kind, Origin};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use url::Url;
 
 /// [`HostnamePort`]'s static counterpart usable for const values.
 pub struct StaticHostnamePort {
@@ -52,6 +53,11 @@ impl HostnamePort {
     /// Return the port
     pub fn port(&self) -> u16 {
         self.port
+    }
+
+    pub fn into_url(self, scheme: &str) -> ockam_core::Result<Url> {
+        Url::parse(&format!("{}://{}:{}", scheme, self.hostname, self.port))
+            .map_err(|_| ockam_core::Error::new(Origin::Api, Kind::Serialization, "invalid url"))
     }
 }
 

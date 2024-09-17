@@ -6,8 +6,8 @@ use clap::Args;
 use colorful::Colorful;
 use ockam::Context;
 use ockam_api::colors::color_primary;
+use ockam_api::influxdb::lease_issuer::InfluxDBTokenLessorNodeServiceTrait;
 use ockam_api::nodes::InMemoryNode;
-use ockam_api::token_lessor_node_service::InfluxDBTokenLessorNodeServiceTrait;
 use ockam_api::{fmt_log, fmt_ok};
 use ockam_multiaddr::MultiAddr;
 
