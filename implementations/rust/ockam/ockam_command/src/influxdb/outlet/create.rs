@@ -18,29 +18,25 @@ pub struct InfluxDBCreateCommand {
     #[command(flatten)]
     pub tcp_outlet: OutletCreateCommand,
 
-    /// The address of the InfluxDB server
-    #[arg(long, value_name = "ADDRESS", default_value = "INFLUXDB_ADDRESS")]
-    pub influxdb_address: String,
-
     /// The organization ID of the InfluxDB server
     #[arg(long, value_name = "ORG_ID", default_value = "INFLUXDB_ORG_ID")]
-    pub influxdb_org_id: String,
+    pub org_id: String,
 
     /// The token to use to connect to the InfluxDB server
     #[arg(long, value_name = "TOKEN", default_value = "INFLUXDB_TOKEN")]
-    pub influxdb_token: String,
+    pub all_access_token: String,
 
     /// The permissions to grant to new leases
     #[arg(long, value_name = "JSON")]
-    pub lease_permissions: String,
+    pub leased_token_permissions: String,
 
     /// Share the leases among the clients or use a separate lease for each client
     #[arg(long, default_value = "shared")]
-    pub lease_usage: LeaseUsage,
+    pub leased_token_strategy: LeaseUsage,
 
     /// The duration for which a lease is valid
-    #[arg(long = "expires-in", value_name = "DURATION", value_parser = duration_parser)]
-    pub expires_in: Duration,
+    #[arg(long, value_name = "DURATION", value_parser = duration_parser)]
+    pub leased_token_expires_in: Duration,
 }
 
 #[async_trait]
@@ -66,11 +62,11 @@ impl Command for InfluxDBCreateCommand {
                 self.tcp_outlet.tls,
                 self.tcp_outlet.from.clone().map(Address::from).as_ref(),
                 self.tcp_outlet.allow.clone(),
-                self.influxdb_org_id,
-                self.influxdb_token,
-                self.lease_permissions,
-                self.lease_usage,
-                self.expires_in,
+                self.org_id,
+                self.all_access_token,
+                self.leased_token_permissions,
+                self.leased_token_strategy,
+                self.leased_token_expires_in,
             )
             .await?;
         self.tcp_outlet
@@ -102,18 +98,14 @@ impl Command for InfluxDBCreateCommand {
 
 impl InfluxDBCreateCommand {
     async fn parse_args(mut self) -> miette::Result<Self> {
-        if self.influxdb_address == "INFLUXDB_ADDRESS" {
-            self.influxdb_address =
-                std::env::var("INFLUXDB_ADDRESS").unwrap_or("http://localhost:8086".to_string());
-        }
-        if self.influxdb_org_id == "INFLUXDB_ORG_ID" {
-            self.influxdb_org_id = std::env::var("INFLUXDB_ORG_ID").expect(
-                "Pass a value for `--influxdb-org-id` or export the INFLUXDB_ORG_ID environment variable",
+        if self.org_id == "INFLUXDB_ORG_ID" {
+            self.org_id = std::env::var("INFLUXDB_ORG_ID").expect(
+                "Pass a value for `--org-id` or export the INFLUXDB_ORG_ID environment variable",
             );
         }
-        if self.influxdb_token == "INFLUXDB_TOKEN" {
-            self.influxdb_token = std::env::var("INFLUXDB_TOKEN").expect(
-                "Pass a value for `--influxdb-token` or export the INFLUXDB_TOKEN environment variable",
+        if self.all_access_token == "INFLUXDB_TOKEN" {
+            self.all_access_token = std::env::var("INFLUXDB_TOKEN").expect(
+                "Pass a value for `--all-access-token` or export the INFLUXDB_TOKEN environment variable",
             );
         }
         Ok(self)

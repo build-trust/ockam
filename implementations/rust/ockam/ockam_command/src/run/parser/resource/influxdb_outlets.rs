@@ -61,9 +61,9 @@ mod tests {
               ti1:
                 to: 127.0.0.1:6060
                 from: my_outlet
-                lease-permissions: ""
-                lease-usage: shared
-                expires-in: 1h
+                leased-token-permissions: ""
+                leased-token-strategy: shared
+                leased-token-expires-in: 1h
         "#;
         let parsed: InfluxDBOutlets = serde_yaml::from_str(named).unwrap();
         let default_node_name = "n1".to_string();
