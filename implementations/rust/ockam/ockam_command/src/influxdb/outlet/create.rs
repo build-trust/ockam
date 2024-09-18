@@ -45,6 +45,8 @@ pub struct InfluxDBCreateCommand {
 }
 
 fn default_influxdb_org_id() -> String {
+    //TODO: FIXME:  as is, it doesn't work when using trom a node config yaml. 
+    //              the cmd fails to parse even when the parameter is given.
     "TODO".to_string()
     /*std::env::var("INFLUXDB_ORG_ID").expect(
         "Pass a value for `--influxdb-org-id` or export the INFLUXDB_ORG_ID environment variable",
