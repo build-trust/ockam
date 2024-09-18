@@ -24,7 +24,6 @@ use ockam_transport_tcp::{PortalInletInterceptor, PortalOutletInterceptor};
 use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
-use tracing_subscriber::fmt::writer::EitherWriter::{A, B};
 
 impl NodeManagerWorker {
     pub(crate) async fn start_influxdb_outlet_service(
