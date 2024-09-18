@@ -20,7 +20,7 @@ default = ["std"]
 
 # Feature (enabled by default): "std" enables functionality expected to
 # be available on a standard platform.
-std = ["ockam_core/std", "serde/std"]
+std = ["ockam_core/std", "serde/std", "url"]
 
 # Feature: "no_std" enables functionality required for platforms
 # without the standard library.
@@ -34,4 +34,4 @@ alloc = ["ockam_core/alloc"]
 minicbor = "0.24"
 ockam_core = { path = "../ockam_core", version = "^0.116.0", default-features = false }
 serde = { version = "1.0.204", default-features = false, features = ["derive"] }
-url = "2.5.2"
+url = { version = "2.2", optional = true }

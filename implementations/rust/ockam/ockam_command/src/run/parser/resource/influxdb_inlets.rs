@@ -62,11 +62,11 @@ mod tests {
               ti1:
                 from: 6060
                 at: n
-                token-leaser: /service/test
+                lease-issuer-route: /service/test
               ti2:
                 from: '6061'
                 alias: my_inlet
-                token-leaser: /service/test
+                lease-issuer-route: /service/test
         "#;
         let parsed: InfluxDBInlets = serde_yaml::from_str(named).unwrap();
         let default_node_name = "n1".to_string();
@@ -85,9 +85,9 @@ mod tests {
             influxdb_inlets:
               - from: 6060
                 at: n
-                token-leaser: /service/test
+                lease-issuer-route: /service/test
               - from: '6061'
-                token-leaser: /service/test
+                lease-issuer-route: /service/test
         "#;
         let parsed: InfluxDBInlets = serde_yaml::from_str(unnamed).unwrap();
         let cmds = parsed
