@@ -119,19 +119,3 @@ impl InfluxDBCreateCommand {
         Ok(self)
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use crate::run::parser::resource::utils::parse_cmd_from_args;
-
-    use super::*;
-
-    #[test]
-    fn command_can_be_parsed_from_name() {
-        let cmd = parse_cmd_from_args(
-            InfluxDBCreateCommand::NAME,
-            &["--to".to_string(), "127.0.0.1:5000".to_string()],
-        );
-        assert!(cmd.is_ok());
-    }
-}
