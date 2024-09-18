@@ -1,7 +1,6 @@
 use std::time::Duration;
 
 use minicbor::{CborLen, Decode, Encode};
-use ockam_abac::PolicyExpression;
 use ockam_multiaddr::MultiAddr;
 
 use super::portal::{CreateInlet, CreateOutlet};
@@ -13,15 +12,18 @@ use super::portal::{CreateInlet, CreateOutlet};
 pub struct CreateInfluxDBInlet {
     /// The address the portal should listen at.
     #[n(1)] pub(crate) tcp_inlet: CreateInlet,
-    /// The token leaser service address.
-    #[n(2)] pub(crate) service_address: MultiAddr,
+    /// shared|per-client
+    #[n(2)] pub(crate) lease_usage: String,
+    // Route to the lease issuer. If not given it's derived from the outlet' route
+    #[n(3)] pub(crate) lease_issuer: Option<MultiAddr>,
 }
 
 impl CreateInfluxDBInlet {
-    pub fn new(tcp_inlet: CreateInlet, service_address: MultiAddr) -> Self {
+    pub fn new(tcp_inlet: CreateInlet, lease_usage: String, lease_issuer: Option<MultiAddr>) -> Self {
         Self {
             tcp_inlet,
-            service_address,
+            lease_usage,
+            lease_issuer
         }
     }
 }

@@ -2,10 +2,11 @@ use async_trait::async_trait;
 use clap::Args;
 use colorful::Colorful;
 use miette::miette;
-use ockam::{route, Context};
+use ockam::Context;
 use ockam_api::nodes::service::influxdb_portal_service::InfluxDBPortals;
 use tracing::trace;
 
+use crate::influxdb::LeaseUsage;
 use crate::node::util::initialize_default_node;
 use crate::{Command, CommandGlobalOpts};
 use ockam_api::colors::color_primary;
@@ -17,19 +18,21 @@ use ockam_multiaddr::MultiAddr;
 
 use crate::tcp::inlet::create::CreateCommand as InletCreateCommand;
 
-// TODO: this is almost an exact copy of tcp::inlet::create,  other than by help descriptions,
-//       names, and a flag.  At some point we should refactor -likely once we start to have more
-//       protocol-specific inlets.
-
 /// Create InflucDB Inlets
 #[derive(Clone, Debug, Args)]
 pub struct InfluxDBCreateCommand {
     #[command(flatten)]
     pub inlet_create_command: InletCreateCommand,
 
-    /// The route to the token leaser service
+    /// Share the leases among the clients or use a separate lease for each client
+    #[arg(long, default_value = "shared")]
+    pub lease_usage: LeaseUsage,
+
+    //TODO: this can be given only if LeaseUsage == PerClient
+    /// The route to the token leaser service. If not provided,
+    /// it's derived from the outlet' route.
     #[arg(long, value_name = "ROUTE")]
-    pub token_leaser: MultiAddr,
+    pub lease_issuer_route: Option<MultiAddr>,
 }
 
 #[async_trait]
@@ -54,6 +57,13 @@ impl Command for InfluxDBCreateCommand {
                 ));
             }
 
+            //TODO:  do not convert this to string, rather move the LeaseUsage
+            // enum definition to ockam_api,  and pass the enum value in the command sent.
+            let usage = if self.lease_usage == LeaseUsage::Shared {
+                "shared".to_string()
+            } else {
+                "per-client".to_string()
+            };
             loop {
                 let result: Reply<InletStatus> = node
                     .create_influxdb_inlet(
@@ -69,11 +79,8 @@ impl Command for InfluxDBCreateCommand {
                         inlet_cmd.udp,
                         inlet_cmd.no_tcp_fallback,
                         &inlet_cmd.tls_certificate_provider,
-                        inlet_cmd
-                            .outlet_suffix_address
-                            .as_ref()
-                            .map_or(route![], |s| route![s]),
-                        self.token_leaser.clone(),
+                        usage.clone(),
+                        self.lease_issuer_route.clone(),
                     )
                     .await?;
 

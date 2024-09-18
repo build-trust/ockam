@@ -14,7 +14,7 @@ use crate::tcp::util::alias_parser;
 use crate::{docs, Command, CommandGlobalOpts, Error};
 use ockam::identity::Identifier;
 use ockam::transport::HostnamePort;
-use ockam::{route, Context};
+use ockam::Context;
 use ockam_abac::PolicyExpression;
 use ockam_api::address::extract_address_value;
 use ockam_api::cli_state::journeys::{
@@ -193,9 +193,6 @@ impl Command for CreateCommand {
                         cmd.udp,
                         cmd.no_tcp_fallback,
                         &cmd.tls_certificate_provider,
-                        cmd.outlet_suffix_address
-                            .as_ref()
-                            .map_or(route![], |s| route![s]),
                     )
                     .await?;
 

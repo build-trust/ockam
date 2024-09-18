@@ -10,12 +10,13 @@ use crate::nodes::BackgroundNodeClient;
 use crate::{ApiError, DefaultAddress, StartInfluxDBLeaseManagerRequest};
 use ockam::flow_control::FlowControls;
 use ockam::identity::Identifier;
-use ockam::{Address, Context, Result, Route};
+use ockam::{Address, Context, Result};
 use ockam_abac::PolicyExpression;
 use ockam_abac::{Action, Resource, ResourceType};
 use ockam_core::api::{Error, Reply, Request, Response};
 use ockam_core::async_trait;
 use ockam_core::route;
+use ockam_multiaddr::proto::Service;
 use ockam_multiaddr::MultiAddr;
 use ockam_transport_core::HostnamePort;
 use ockam_transport_tcp::{PortalInletInterceptor, PortalOutletInterceptor};
@@ -124,23 +125,44 @@ impl NodeManagerWorker {
             enable_udp_puncture,
             disable_tcp_fallback,
             tls_certificate_provider,
-            suffix_route,
         } = body.tcp_inlet.clone();
-        let interceptor_addr = self
-            .create_http_auth_interceptor(
-                ctx,
-                &alias,
-                policy_expression.clone(),
-                body.service_address.clone(),
-            )
-            .await
-            .map_err(|e| Response::bad_request_no_request(&format!("{e:?}")))?;
+
+
+        //TODO: should be an easier way to do tweak multiaddr
+        // IF outlet_addr = /A/B/C , then issuer is derived as /A/B/C_lease_issuer
+        let mut issuer_route = outlet_addr.clone();
+        let outlet_addr_last_step = issuer_route.pop_back().unwrap();
+        let outlet_addr_last_step  = outlet_addr_last_step.cast::<Service>().unwrap();
+        let issuer_route = if let Some(s) = body.lease_issuer {
+            s
+        } else{
+            let lessor_addr = format!("{}_lease_issuer", &*outlet_addr_last_step);
+            issuer_route.push_back(Service::new(lessor_addr)).unwrap();
+            issuer_route
+        };
+        let (prefix_route, suffix_route) = if body.lease_usage == "per-client" {
+            //Per client.  Need to start an interceptor, pointing to the lease_issuer
+            let interceptor_addr = self
+                .create_http_auth_interceptor(
+                    ctx,
+                    &alias,
+                    policy_expression.clone(),
+                    issuer_route,
+                )
+                .await
+                .map_err(|e| Response::bad_request_no_request(&format!("{e:?}")))?;
+            (route![interceptor_addr], route![])
+        } else {
+            //shared.  Http interception is done on the outlet side.  The suffix route
+            // is derived from the given outlet addr  /A/B/C => /A/B/C_outlet
+            (route![], route![format!("{}_outlet", &*outlet_addr_last_step)])
+        };
         match self
             .node_manager
             .create_inlet(
                 ctx,
                 listen_addr,
-                route![interceptor_addr],
+                prefix_route,
                 suffix_route,
                 outlet_addr,
                 alias,
@@ -268,8 +290,8 @@ pub trait InfluxDBPortals {
         enable_udp_puncture: bool,
         disable_tcp_fallback: bool,
         tls_certificate_provider: &Option<MultiAddr>,
-        suffix_route: Route,
-        token_leaser: MultiAddr,
+        lease_usage: String,
+        lease_issuer: Option<MultiAddr>,
     ) -> miette::Result<Reply<InletStatus>>;
 
     async fn create_influxdb_outlet(
@@ -337,8 +359,8 @@ impl InfluxDBPortals for BackgroundNodeClient {
         enable_udp_puncture: bool,
         disable_tcp_fallback: bool,
         tls_certificate_provider: &Option<MultiAddr>,
-        suffix_route: Route,
-        token_leaser: MultiAddr,
+        lease_usage: String,
+        lease_issuer: Option<MultiAddr>,
     ) -> miette::Result<Reply<InletStatus>> {
         let request = {
             let inlet_payload = create_inlet_payload(
@@ -353,9 +375,8 @@ impl InfluxDBPortals for BackgroundNodeClient {
                 enable_udp_puncture,
                 disable_tcp_fallback,
                 tls_certificate_provider,
-                suffix_route,
             );
-            let payload = CreateInfluxDBInlet::new(inlet_payload, token_leaser);
+            let payload = CreateInfluxDBInlet::new(inlet_payload, lease_usage, lease_issuer);
             Request::post("/node/influxdb_inlet").body(payload)
         };
         self.ask_and_get_reply(ctx, request).await

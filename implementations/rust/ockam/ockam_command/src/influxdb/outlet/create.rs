@@ -14,7 +14,6 @@ use crate::{Command, CommandGlobalOpts};
 use ockam_api::colors::color_primary;
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_api::{fmt_log, fmt_ok};
-use ockam_multiaddr::MultiAddr;
 
 use crate::tcp::outlet::create::CreateCommand as OutletCreateCommand;
 
