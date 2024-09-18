@@ -123,12 +123,13 @@ impl ArgsToCommands for NamedResources {
                     Some(arg) => {
                         // Use the given argument key as the name of the resource
                         let arg = arg.into();
-                        let name = a
+                        let value = a
                             .args
                             .get(&arg)
                             .cloned()
                             .unwrap_or(ArgValue::String(n.to_string()));
-                        vec![as_keyword_arg(&arg), name.to_string()]
+
+                        as_command_arg(arg, value)
                     }
                 };
                 // Remove the name of the resource from the arguments
@@ -282,6 +283,7 @@ pub enum ArgValue {
     String(String),
     Int(isize),
     Bool(bool),
+    List(Vec<ArgValue>),
 }
 
 impl From<&str> for ArgValue {
@@ -320,17 +322,6 @@ impl From<isize> for ArgValue {
     }
 }
 
-impl Display for ArgValue {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let str = match self {
-            ArgValue::String(v) => v.to_string(),
-            ArgValue::Int(v) => v.to_string(),
-            ArgValue::Bool(v) => v.to_string(),
-        };
-        write!(f, "{}", str)
-    }
-}
-
 /// Returns the command representation of a set of arguments
 pub fn as_command_args(args: BTreeMap<ArgKey, ArgValue>) -> Vec<String> {
     args.into_iter()
@@ -339,19 +330,24 @@ pub fn as_command_args(args: BTreeMap<ArgKey, ArgValue>) -> Vec<String> {
 }
 
 /// Return the command representation of the argument name and its value.
-fn as_command_arg(k: ArgKey, v: ArgValue) -> Vec<String> {
-    match v {
-        ArgValue::Bool(v) => {
+fn as_command_arg(key: ArgKey, values: ArgValue) -> Vec<String> {
+    match values {
+        ArgValue::List(values) => values
+            .into_iter()
+            .flat_map(|value| as_command_arg(key.clone(), value))
+            .collect(),
+        ArgValue::Bool(value) => {
             // Booleans are passed as a flag, and only when true.
-            if v {
-                vec![as_keyword_arg(&k)]
+            if value {
+                vec![as_keyword_arg(&key)]
             }
             // Otherwise, they are omitted.
             else {
                 vec![]
             }
         }
-        v => vec![as_keyword_arg(&k), v.to_string()],
+        ArgValue::Int(value) => vec![as_keyword_arg(&key), value.to_string()],
+        ArgValue::String(value) => vec![as_keyword_arg(&key), value],
     }
 }
 

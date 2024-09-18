@@ -83,7 +83,7 @@ impl Resource<CreateCommand> for Node {
         // Convert the map into a list of cli args
         let mut cmd_args = vec![];
         // Remove "name" from the arguments and use it as a positional argument
-        if let Some(name) = args.remove(&Self::NAME_ARG.into()) {
+        if let Some(ArgValue::String(name)) = args.remove(&Self::NAME_ARG.into()) {
             cmd_args.push(name.to_string());
         }
         cmd_args.extend(as_command_args(args));

@@ -33,17 +33,28 @@ impl Variables {
     /// That is, if one of the variables already exists, it will use the existing value.
     fn load(&self) -> Result<()> {
         if let Some(vars) = &self.variables {
-            for (k, v) in vars {
-                if std::env::var(k.as_str()).is_ok() {
-                    warn!("Loading variable '{k}' from environment");
-                    eprintln!("{}", fmt_warn!("Loading variable '{k}' from environment"));
+            for (key, value) in vars {
+                if std::env::var(key.as_str()).is_ok() {
+                    warn!("Loading variable '{key}' from environment");
+                    eprintln!("{}", fmt_warn!("Loading variable '{key}' from environment"));
                     continue;
                 }
-                let v = v.to_string();
-                if v.is_empty() {
-                    return Err(miette!("Empty value for variable '{k}'"));
+
+                let string_value = match value {
+                    ArgValue::List(_) => {
+                        return Err(miette!(
+                            "List values are not supported for variable '{key}'"
+                        ));
+                    }
+                    ArgValue::String(value) => value.to_string(),
+                    ArgValue::Bool(value) => value.to_string(),
+                    ArgValue::Int(value) => value.to_string(),
+                };
+
+                if string_value.is_empty() {
+                    return Err(miette!("Empty value for variable '{key}'"));
                 }
-                std::env::set_var(k.as_str(), v);
+                std::env::set_var(key.as_str(), string_value);
             }
         }
         Ok(())
