@@ -23,13 +23,13 @@ pub struct InfluxDBCreateCommand {
 
     /// Share the leases among the clients or use a separate lease for each client
     #[arg(long, default_value = "shared")]
-    pub lease_usage: LeaseUsage,
+    pub leased_token_strategy: LeaseUsage,
 
     /// The route to the lease issuer service.
-    /// Only applicable if `lease-usage` is set to `per-client`.
+    /// Only applicable if `lease-token-strategy` is set to `per-client`.
     /// If not provided, it's derived from the outlet route.
     #[arg(long, value_name = "ROUTE")]
-    pub lease_issuer_route: Option<MultiAddr>,
+    pub lease_manager_route: Option<MultiAddr>,
 }
 
 #[async_trait]
@@ -73,8 +73,8 @@ impl Command for InfluxDBCreateCommand {
                         self.tcp_inlet.udp,
                         self.tcp_inlet.no_tcp_fallback,
                         &self.tcp_inlet.tls_certificate_provider,
-                        self.lease_usage.clone(),
-                        self.lease_issuer_route.clone(),
+                        self.leased_token_strategy.clone(),
+                        self.lease_manager_route.clone(),
                     )
                     .await?;
 
@@ -150,6 +150,15 @@ impl Command for InfluxDBCreateCommand {
 impl InfluxDBCreateCommand {
     async fn parse_args(mut self, opts: &CommandGlobalOpts) -> miette::Result<Self> {
         self.tcp_inlet = self.tcp_inlet.parse_args(opts).await?;
+        if self
+            .lease_manager_route
+            .as_ref()
+            .is_some_and(|_| self.leased_token_strategy == LeaseUsage::Shared)
+        {
+            Err(miette!(
+                "lease-manager-route argument requires leased-token-strategy=per-client"
+            ))?
+        };
         Ok(self)
     }
 }
