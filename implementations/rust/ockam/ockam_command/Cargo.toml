@@ -53,7 +53,7 @@ test = false
 path = "src/bin/ockam.rs"
 
 [dependencies]
-arboard = "3.4.0"
+arboard = "3.4.1"
 async-trait = "0.1"
 clap = { version = "4.5", features = ["derive", "cargo", "wrap_help"] }
 clap_complete = "4.5.8"
