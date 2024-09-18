@@ -64,6 +64,9 @@ mod tests {
               consumer-relay: /ip4/192.168.1.1/tcp/4000
               publishing-relay: /ip4/192.168.1.2/tcp/4000
               at: node_name
+              encrypted-fields:
+                - one
+                - two
         "#;
         let parsed: KafkaInlet = serde_yaml::from_str(unnamed).unwrap();
         let default_node_name = "n1".to_string();
@@ -86,6 +89,11 @@ mod tests {
         );
         assert_eq!(cmds[0].node_opts.at_node, Some("node_name".to_string()));
         assert!(!cmds[0].avoid_publishing);
+
+        assert_eq!(
+            cmds[0].encrypted_fields,
+            vec!["one".to_string(), "two".to_string()]
+        );
 
         let named = r#"
             kafka-inlet:

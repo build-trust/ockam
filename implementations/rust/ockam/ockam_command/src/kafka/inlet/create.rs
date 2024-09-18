@@ -94,7 +94,12 @@ pub struct CreateCommand {
 
     /// The fields to encrypt in the kafka messages, assuming the record is a valid JSON map.
     /// By default, the whole record is encrypted.
-    #[arg(long, long = "encrypted-field", value_name = "FIELD")]
+    #[arg(
+        long,
+        alias = "encrypted-fields",
+        long = "encrypted-field",
+        value_name = "FIELD"
+    )]
     pub encrypted_fields: Vec<String>,
 
     /// Policy expression that will be used for access control to the Kafka Inlet.
