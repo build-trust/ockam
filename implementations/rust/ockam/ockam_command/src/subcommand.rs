@@ -60,7 +60,7 @@ use crate::tcp::outlet::TcpOutletCommand;
 use crate::util::async_cmd;
 use crate::vault::VaultCommand;
 use crate::worker::WorkerCommand;
-use crate::{Error, Result};
+use crate::{docs, Error, Result};
 
 /// List of commands which can be executed with `ockam`
 #[derive(Clone, Debug, Subcommand)]
@@ -94,6 +94,7 @@ pub enum OckamSubcommand {
     #[command(name = "influxdb-outlet")]
     InfluxDBOutlet(InfluxDBOutletCommand),
 
+    #[command(hide = docs::hide())]
     Rendezvous(RendezvousCommand),
 
     KafkaInlet(KafkaInletCommand),

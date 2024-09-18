@@ -1,9 +1,11 @@
 mod create;
+mod get_my_address;
 
 use clap::{Args, Subcommand};
 
 use create::CreateCommand;
 
+use crate::rendezvous::get_my_address::GetMyAddressCommand;
 use crate::{Command, CommandGlobalOpts};
 
 /// Manage Rendezvous server
@@ -25,12 +27,15 @@ impl RendezvousCommand {
 pub enum RendezvousSubcommand {
     #[command(display_order = 800)]
     Create(CreateCommand),
+    #[command(display_order = 800)]
+    GetMyAddress(GetMyAddressCommand),
 }
 
 impl RendezvousSubcommand {
     pub fn name(&self) -> String {
         match self {
             RendezvousSubcommand::Create(c) => c.name(),
+            RendezvousSubcommand::GetMyAddress(c) => c.name(),
         }
     }
 }
@@ -39,6 +44,7 @@ impl RendezvousCommand {
     pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
             RendezvousSubcommand::Create(c) => c.run(opts),
+            RendezvousSubcommand::GetMyAddress(c) => c.run(opts),
         }
     }
 }
