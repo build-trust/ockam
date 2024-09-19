@@ -33,7 +33,7 @@ impl TcpTransport {
         };
         let port = local_address.port();
 
-        let ifaddrs = nix::ifaddrs::getifaddrs().unwrap();
+        let ifaddrs = nix::ifaddrs::getifaddrs().unwrap(); // FIXME
         for ifaddr in ifaddrs {
             let addr = match ifaddr.address {
                 Some(addr) => addr,
@@ -110,18 +110,8 @@ impl TcpTransport {
         // TODO: eBPF Figure out which ifaces might be used and only attach to them
         // TODO: eBPF Should we indeed attach to all interfaces & run a periodic task
         //  to identify network interfaces change?
-        let ifaddrs = nix::ifaddrs::getifaddrs().unwrap();
-        for ifaddr in ifaddrs {
-            let addr = match ifaddr.address {
-                Some(addr) => addr,
-                None => continue,
-            };
-
-            if addr.as_sockaddr_in().is_none() {
-                continue;
-            };
-
-            self.attach_ebpf_if_needed(ifaddr.interface_name)?;
+        for ifname in TcpTransport::all_interfaces_with_address() {
+            self.attach_ebpf_if_needed(ifname)?;
         }
 
         let write_handle = self.start_raw_socket_processor_if_needed().await?;

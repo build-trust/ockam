@@ -4851,6 +4851,7 @@ dependencies = [
  "arboard",
  "assert_cmd",
  "async-trait",
+ "cfg_aliases 0.2.1",
  "clap",
  "clap_complete",
  "clap_mangen",

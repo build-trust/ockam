@@ -1,3 +1,4 @@
+use cfg_aliases::cfg_aliases;
 use std::process::Command;
 
 fn hash() {
@@ -11,4 +12,7 @@ fn hash() {
 
 fn main() {
     hash();
+    cfg_aliases! {
+        ebpf_alias: { all(target_os = "linux", feature = "ebpf") }
+    }
 }
