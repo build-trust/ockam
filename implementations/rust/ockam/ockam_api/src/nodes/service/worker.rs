@@ -142,12 +142,12 @@ impl NodeManagerWorker {
                 self.delete_kafka_service(ctx, dec.decode()?, KafkaServiceKind::Inlet)
                     .await,
             )?,
-            (Post, ["node", "services", DefaultAddress::LEASE_ISSUER]) => encode_response(
+            (Post, ["node", "services", DefaultAddress::LEASE_MANAGER]) => encode_response(
                 req,
                 self.start_influxdb_lease_issuer_service(ctx, dec.decode()?)
                     .await,
             )?,
-            (Delete, ["node", "services", DefaultAddress::LEASE_ISSUER]) => encode_response(
+            (Delete, ["node", "services", DefaultAddress::LEASE_MANAGER]) => encode_response(
                 req,
                 self.delete_influxdb_lease_issuer_service(ctx, dec.decode()?)
                     .await,

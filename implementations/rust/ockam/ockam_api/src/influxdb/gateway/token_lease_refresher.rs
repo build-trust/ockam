@@ -15,6 +15,10 @@ pub struct TokenLeaseRefresher {
 }
 
 impl TokenLeaseRefresher {
+    pub fn new_with_fixed_token(token: String) -> TokenLeaseRefresher {
+        let token = Arc::new(RwLock::new(Some(token)));
+        Self { token }
+    }
     pub async fn new(
         ctx: &Context,
         node_manager: Weak<InMemoryNode>,
