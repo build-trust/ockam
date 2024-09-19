@@ -7,7 +7,7 @@ use nix::errno::Errno;
 
 use nix::sys::signal;
 use serde::Serialize;
-use sysinfo::{Pid, ProcessStatus, System};
+use sysinfo::{Pid, ProcessStatus, ProcessesToUpdate, System};
 
 use ockam::identity::utils::now;
 use ockam::identity::Identifier;
@@ -222,7 +222,7 @@ impl CliState {
             let mut sys = System::new();
             let pid = Pid::from_u32(pid.as_raw() as u32);
             loop {
-                sys.refresh_processes();
+                sys.refresh_processes(ProcessesToUpdate::All);
                 if sys.process(pid).is_none() {
                     info!(name = %node.name(), %pid, "node process exited");
                     break;
@@ -616,8 +616,8 @@ impl NodeInfo {
     pub fn status(&self) -> NodeProcessStatus {
         if let Some(pid) = self.pid() {
             let mut sys = System::new();
-            sys.refresh_processes();
-            if let Some(p) = sys.process(Pid::from(pid as usize)) {
+            sys.refresh_processes(ProcessesToUpdate::All);
+            if let Some(p) = sys.process(Pid::from_u32(pid)) {
                 // Under certain circumstances the process can be in a state where it's not running
                 // and we are unable to kill it. For example, `kill -9` a process created by
                 // `node create` in a Docker environment will result in a zombie process.

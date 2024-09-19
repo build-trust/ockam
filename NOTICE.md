@@ -632,6 +632,8 @@ This file contains attributions for any 3rd-party open source code used in this 
 | winapi-x86_64-pc-windows-gnu | MIT, Apache-2.0 | https://crates.io/crates/winapi-x86_64-pc-windows-gnu |
 | windows | MIT, Apache-2.0 | https://crates.io/crates/windows |
 | windows-core | MIT, Apache-2.0 | https://crates.io/crates/windows-core |
+| windows-implement | MIT, Apache-2.0 | https://crates.io/crates/windows-implement |
+| windows-interface | MIT, Apache-2.0 | https://crates.io/crates/windows-interface |
 | windows-registry | MIT, Apache-2.0 | https://crates.io/crates/windows-registry |
 | windows-result | MIT, Apache-2.0 | https://crates.io/crates/windows-result |
 | windows-strings | MIT, Apache-2.0 | https://crates.io/crates/windows-strings |

@@ -96,7 +96,7 @@ sha2 = "0.10.8"
 sqlx-build-trust = { version = "0.7.8" }
 strip-ansi-escapes = "0.2"
 strum = { version = "0.26.3", default-features = false, features = ["derive"] }
-sysinfo = "0.30"
+sysinfo = "0.31"
 thiserror = "1.0"
 time = { version = "0.3.36", default-features = false, features = ["std", "formatting", "local-offset", "macros"] }
 tiny_http = "0.12.0"
