@@ -75,6 +75,10 @@ impl ResetCommand {
             }
         }
         opts.state.reset().await?;
+
+        #[cfg(ebpf_alias)]
+        ockam::tcp::TcpTransport::detach_all_ockam_ebpfs_globally();
+
         opts.terminal
             .stdout()
             .plain(fmt_ok!("Local Ockam configuration deleted"))

@@ -52,6 +52,9 @@ doc = false
 test = false
 path = "src/bin/ockam.rs"
 
+[build-dependencies]
+cfg_aliases = "0.2.1"
+
 [dependencies]
 arboard = "3.4.1"
 async-trait = "0.1"
@@ -112,7 +115,8 @@ tempfile = "3.10.1"
 time = { version = "0.3", default-features = false, features = ["std", "local-offset"] }
 
 [features]
-default = ["orchestrator", "rust-crypto"]
+default = ["orchestrator", "rust-crypto", "ebpf"]
+ebpf = ["ockam_api/ebpf"]
 orchestrator = []
 aws-lc = ["ockam_vault/aws-lc", "ockam_api/aws-lc", "rustls/aws-lc-rs"]
 rust-crypto = ["ockam_vault/rust-crypto", "ockam_api/rust-crypto", "rustls/ring"]
