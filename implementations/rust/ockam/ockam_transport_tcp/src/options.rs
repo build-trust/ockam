@@ -14,6 +14,8 @@ impl TcpConnectionOptions {
     #[allow(clippy::new_without_default)]
     /// Mark this Tcp Receiver as a Producer with a random [`FlowControlId`]
     pub fn new() -> Self {
+        let ebpf_binary = ockam_ebpf_prebuilt::EBPF_BINARY;
+
         Self {
             consumer: vec![],
             flow_control_id: FlowControls::generate_flow_control_id(),

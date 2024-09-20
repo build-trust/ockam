@@ -4949,6 +4949,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ockam_ebpf_prebuilt"
+version = "0.1.0"
+source = "git+https://github.com/build-trust/ockam-ebpf.git#7fa344bb6ec11ec3084715543f4b30acaab9ffcc"
+dependencies = [
+ "reqwest",
+ "url",
+]
+
+[[package]]
 name = "ockam_executor"
 version = "0.86.0"
 dependencies = [
@@ -5122,12 +5131,14 @@ dependencies = [
  "minicbor",
  "nix 0.29.0",
  "ockam_core",
+ "ockam_ebpf_prebuilt",
  "ockam_macros",
  "ockam_node",
  "ockam_transport_core",
  "opentelemetry",
  "pnet",
  "rand",
+ "reqwest",
  "rustls 0.23.13",
  "rustls-native-certs 0.8.0",
  "rustls-pemfile 2.1.3",
@@ -5136,6 +5147,7 @@ dependencies = [
  "tokio",
  "tokio-rustls 0.26.0",
  "tracing",
+ "url",
 ]
 
 [[package]]

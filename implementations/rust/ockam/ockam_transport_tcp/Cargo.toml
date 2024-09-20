@@ -29,10 +29,12 @@ no_std = ["ockam_macros/no_std", "ockam_transport_core/no_std"]
 alloc = []
 aws-lc = ["tokio-rustls/aws-lc-rs"]
 ring = ["tokio-rustls/ring"]
-ebpf = ["pnet", "aya", "aya-log", "env_logger", "libc", "nix"]
+ebpf = ["pnet", "aya", "aya-log", "env_logger", "libc", "nix", "ockam_ebpf_prebuilt"]
 
 [build-dependencies]
 cfg_aliases = "0.2.1"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls-native-roots", "blocking"] }
+url = "2.5.2"
 
 [dependencies]
 cfg-if = "1.0.0"
@@ -40,6 +42,7 @@ hex = "0.4.3"
 log = "0.4.21"
 minicbor = "0.24"
 ockam_core = { path = "../ockam_core", version = "^0.117.0" }
+ockam_ebpf_prebuilt = { git = "https://github.com/build-trust/ockam-ebpf.git", version = "0.1.0", optional = true }
 ockam_macros = { path = "../ockam_macros", version = "^0.35.0" }
 ockam_node = { path = "../ockam_node", version = "^0.126.0" }
 ockam_transport_core = { path = "../ockam_transport_core", version = "^0.91.0" }
