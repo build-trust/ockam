@@ -45,7 +45,7 @@ ockam_transport_core = { path = "../ockam_transport_core", version = "^0.90.0" }
 opentelemetry = { version = "0.24.0", features = ["logs", "metrics", "trace"], optional = true }
 rand = "0.8"
 rustls = { version = "0.23", default-features = false }
-rustls-native-certs = "0.7"
+rustls-native-certs = "0.8"
 rustls-pemfile = "2.1"
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 socket2 = { version = "0.5.6", features = ["all"] }
