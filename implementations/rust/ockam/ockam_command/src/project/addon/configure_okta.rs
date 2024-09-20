@@ -17,6 +17,8 @@ use ockam_api::enroll::okta_oidc_provider::OktaOidcProvider;
 use ockam_api::fmt_ok;
 use ockam_api::minicbor_url::Url;
 use ockam_api::nodes::InMemoryNode;
+use ockam_core::errcode::{Kind, Origin};
+use ockam_core::Error;
 
 use crate::project::addon::check_configuration_completion;
 use crate::util::async_cmd;
@@ -147,7 +149,19 @@ fn query_certificate_chain(domain: &str) -> Result<String> {
 
     // Setup Root Certificate Store
     let mut root_certificate_store = RootCertStore::empty();
-    for c in rustls_native_certs::load_native_certs()? {
+
+    let certificates = rustls_native_certs::load_native_certs();
+    if let Some(e) = certificates.errors.first() {
+        Err(Error::new(
+            Origin::Transport,
+            Kind::Io,
+            format!("Cannot load the native certificates: {e:?}"),
+        ))?
+    };
+
+    let certificates = certificates.certs;
+
+    for c in certificates {
         root_certificate_store
             .add(c)
             .into_diagnostic()

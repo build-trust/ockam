@@ -95,13 +95,18 @@ pub(crate) async fn connect_tls(
 
 /// Create a TLS connector using the system certificates
 pub(crate) async fn create_tls_connector() -> Result<TlsConnector> {
-    let certificates = rustls_native_certs::load_native_certs().map_err(|e| {
-        Error::new(
+    let certificates = rustls_native_certs::load_native_certs();
+
+    if let Some(e) = certificates.errors.first() {
+        return Err(Error::new(
             Origin::Transport,
             Kind::Io,
             format!("Cannot load the native certificates: {e:?}"),
-        )
-    })?;
+        ));
+    };
+
+    let certificates = certificates.certs;
+
     debug!("there are {} certificates", certificates.len());
 
     let mut root_cert_store = RootCertStore::empty();
