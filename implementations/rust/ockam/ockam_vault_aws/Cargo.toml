@@ -57,7 +57,7 @@ rust-crypto = ["ockam_vault/rust-crypto"]
 
 [dependencies]
 aws-config = { version = "1.5.6", default-features = false, features = ["rustls", "rt-tokio"] }
-aws-sdk-kms = { version = "1.37.0", default-features = false, features = ["rustls"] }
+aws-sdk-kms = { version = "1.44.0", default-features = false, features = ["rustls"] }
 ockam_core = { path = "../ockam_core", version = "^0.116.0", default-features = false }
 ockam_macros = { path = "../ockam_macros", version = "^0.34.0", default-features = false }
 ockam_node = { path = "../ockam_node", version = "^0.125.0", default-features = false }
