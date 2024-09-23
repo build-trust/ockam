@@ -23,7 +23,7 @@ Add this to your `Cargo.toml`:
 
 ```
 [dependencies]
-ockam_multiaddr = "0.60.0"
+ockam_multiaddr = "0.61.0"
 ```
 
 ## License
