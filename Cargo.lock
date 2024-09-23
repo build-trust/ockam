@@ -7813,13 +7813,12 @@ dependencies = [
 
 [[package]]
 name = "termbg"
-version = "0.5.0"
+version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2c12e6e0bf9bc6ac887681aeddabfcc5dbdea20d3f43d6d18f237c34fe942dde"
+checksum = "8bc77395d133abffe2ff55fc005178ae410973936f706833b8f75272154887f2"
 dependencies = [
  "async-std",
- "crossterm 0.27.0",
- "is-terminal",
+ "crossterm 0.28.1",
  "thiserror",
  "winapi",
 ]
