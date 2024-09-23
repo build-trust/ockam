@@ -11,11 +11,13 @@ on:
       - ".github/workflows/shell.yml"
       - "**.sh"
       - "**.bash"
+      - "**.bats"
   push:
     paths:
       - ".github/workflows/shell.yml"
       - "**.sh"
       - "**.bash"
+      - "**.bats"
     branches:
       - develop
   schedule:
