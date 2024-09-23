@@ -4,6 +4,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.77.0 - 2024-09-23
+
+### Added
+
+- Add a value parser for change histories
+- Added `TLS` inlet support
+- Implement influxdb token lessor service
+- Update default rendezvous server address
+- Influxdb inlet/outlet that attach authorization token
+- Improve output for lease commands
+- Refactor influxdb api client to better handle error responses
+- Implementation of reliable `TCP` portals
+- Add reliable `TCP` portals to `ockam_api`&`ockam_command`
+- Improve ux of influxdb portal commands
+- Updated dependencies
+
+### Changed
+
+- Bump opentelemetry-appender-tracing from 0.4.0 to 0.5.0
+- Bump sysinfo from 0.30.13 to 0.31.4
+
+### Fixed
+
+- Graceful stop of a node in the command
+
 ## 0.76.0 - 2024-08-14
 
 ### Added
