@@ -71,6 +71,7 @@ impl InfluxDBTokenLessorWorker {
         };
         debug!(path_segments = ?path_segments.as_slice().iter().map(|s| s.to_string()).collect::<Vec<_>>(), "Handling request");
 
+        // [""] correspond to the root "/" path
         let r = match (method, path_segments.as_slice()) {
             (Post, [""]) => encode_response(req, self.create_token(requester).await)?,
             (Get, [""]) => encode_response(req, self.list_tokens(requester).await)?,

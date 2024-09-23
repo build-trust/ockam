@@ -33,7 +33,7 @@ defmodule Ockam.Services.TokenLeaseManager do
   def authorize(:identity, %Request{} = req, _bindings) do
     case Request.caller_identity_id(req) do
       {:ok, identity_id} ->
-        {true, %{identity_id: Identifier.to_str(identity_id)}}
+        {true, %{identity_id: identity_id}}
 
       :error ->
         false
@@ -45,7 +45,11 @@ defmodule Ockam.Services.TokenLeaseManager do
         state: %{storage_service: storage, storage_service_config: storage_config}
       }) do
     {:ok, leases} = storage.get_all(storage_config, identity_id)
-    Logger.info("found #{Enum.count(leases)} leases for identity #{identity_id}")
+
+    Logger.info(
+      "found #{Enum.count(leases)} leases for identity #{Identifier.to_str(identity_id)}"
+    )
+
     Lease.encode_list(leases)
   end
 
@@ -129,7 +133,7 @@ defmodule Ockam.Services.TokenLeaseManager do
   def schedule_expire(lease) do
     # TODO: internally it should be datetimes always, serialize when
     #       we need to send it over the wire.
-    {:ok, expires, _offset} = DateTime.from_iso8601(lease.expires)
+    {:ok, expires} = DateTime.from_unix(lease.expires)
     now = DateTime.utc_now()
     expires_in = max(DateTime.diff(expires, now, :millisecond), 0)
     :timer.send_after(expires_in, {:expire, lease.id, lease.issued_for})

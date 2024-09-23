@@ -8,18 +8,18 @@ defmodule Ockam.Services.API.Tests.FakeCloudService do
   def init(_config), do: {:ok, []}
 
   @impl true
-  def create(_config, identity_id, ttl) do
+  def create(_config, identifier, ttl) do
     now = DateTime.utc_now()
     expires = DateTime.add(now, ttl, :second)
 
     {:ok,
      %Lease{
        id: "ID_#{:rand.uniform(65536)}",
-       issued: DateTime.to_iso8601(now),
-       issued_for: identity_id,
-       expires: DateTime.to_iso8601(expires),
+       issued: DateTime.to_unix(now),
+       issued_for: identifier,
+       expires: DateTime.to_unix(expires),
        value: "TOKEN_#{:rand.uniform(65536)}",
-       status: "active"
+       status: :active
      }}
   end
 
@@ -34,7 +34,6 @@ defmodule Ockam.Services.TokenLeaseManager.Test do
 
   alias Ockam.API.Client
   alias Ockam.Identity
-  alias Ockam.Identity.Identifier
   alias Ockam.SecureChannel
   alias Ockam.Services.TokenLeaseManager
   alias Ockam.Services.TokenLeaseManager.Lease
@@ -108,8 +107,8 @@ defmodule Ockam.Services.TokenLeaseManager.Test do
       short_live_lm: short_live_lm,
       bob_channel: bob_channel,
       alice_channel: alice_channel,
-      bob_id: Identifier.to_str(bob_id),
-      alice_id: Identifier.to_str(alice_id),
+      bob_id: bob_id,
+      alice_id: alice_id,
       listener: listener
     ]
   end

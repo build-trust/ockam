@@ -174,7 +174,7 @@ pub trait InfluxDBTokenLessorNodeServiceTrait {
 #[async_trait]
 impl InfluxDBTokenLessorNodeServiceTrait for InMemoryNode {
     async fn create_token(&self, ctx: &Context, at: &MultiAddr) -> miette::Result<LeaseToken> {
-        let req = Request::post("").to_vec().into_diagnostic()?;
+        let req = Request::post("/").to_vec().into_diagnostic()?;
         let bytes = self.send_message(ctx, at, req, None).await?;
         Response::parse_response_body::<LeaseToken>(bytes.as_slice()).into_diagnostic()
     }
@@ -208,7 +208,7 @@ impl InfluxDBTokenLessorNodeServiceTrait for InMemoryNode {
     }
 
     async fn list_tokens(&self, ctx: &Context, at: &MultiAddr) -> miette::Result<Vec<LeaseToken>> {
-        let req = Request::get("").to_vec().into_diagnostic()?;
+        let req = Request::get("/").to_vec().into_diagnostic()?;
         let bytes = self.send_message(ctx, at, req, None).await?;
         Response::parse_response_body::<Vec<LeaseToken>>(bytes.as_slice()).into_diagnostic()
     }
