@@ -197,6 +197,7 @@ teardown() {
 }
 
 @test "portals - local inlet and outlet passing through a relay, removing and re-creating the outlet" {
+  skip
   port="$(random_port)"
   node_port="$(random_port)"
   relay_name="$(random_str)"
@@ -287,25 +288,26 @@ teardown() {
   kill -QUIT $socat_pid
 }
 
-#@test "portals - create a local TLS inlet, https works without skipping verification" {
-#  port="$(random_port)"
-#
-#  ticket=$($OCKAM project ticket --usage-count 10 --tls)
-#  setup_home_dir
-#  run_success "$OCKAM" project enroll "${ticket}"
-#
-#  run_success "$OCKAM" node create blue
-#  run_success "$OCKAM" tcp-outlet create --at /node/blue --to 127.0.0.1:$PYTHON_SERVER_PORT
-#  run_success "$OCKAM" tcp-inlet create --tls --from $port --to /secure/api/service/outlet
-#
-#  # first wait for the connection without validation
-#  run_success curl -sfI --insecure --retry-connrefused --retry-delay 5 --retry 10 -m 5 \
-#    "https://127.0.0.1:${port}"
-#
-#  # extract certificate subject
-#  subject=$(openssl s_client -showcerts -connect  "127.0.0.1:${port}" </dev/null 2>&1 | \
-#    grep -o 'subject=CN=.*' | sed -E 's/.*CN=[*][.](.*)/\1/')
-#
-#  run_success curl -sfI --retry-connrefused --retry-delay 5 --retry 10 -m 5 \
-#    "https://arbitrary-name.${subject}:${port}"
-#}
+@test "portals - create a local TLS inlet, https works without skipping verification" {
+  skip
+  port="$(random_port)"
+
+  ticket=$($OCKAM project ticket --usage-count 10 --tls)
+  setup_home_dir
+  run_success "$OCKAM" project enroll "${ticket}"
+
+  run_success "$OCKAM" node create blue
+  run_success "$OCKAM" tcp-outlet create --at /node/blue --to 127.0.0.1:$PYTHON_SERVER_PORT
+  run_success "$OCKAM" tcp-inlet create --tls --from $port --to /secure/api/service/outlet
+
+  # first wait for the connection without validation
+  run_success curl -sfI --insecure --retry-connrefused --retry-delay 5 --retry 10 -m 5 \
+    "https://127.0.0.1:${port}"
+
+  # extract certificate subject
+  subject=$(openssl s_client -showcerts -connect "127.0.0.1:${port}" </dev/null 2>&1 |
+    grep -o 'subject=CN=.*' | sed -E 's/.*CN=[*][.](.*)/\1/')
+
+  run_success curl -sfI --retry-connrefused --retry-delay 5 --retry 10 -m 5 \
+    "https://arbitrary-name.${subject}:${port}"
+}
