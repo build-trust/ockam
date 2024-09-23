@@ -9,6 +9,7 @@ defmodule Ockam.Services.TokenLeaseManager.CloudService.Influxdb do
   - permissions (json string) - default set of permissions new tokens are granted
   """
   @behaviour Ockam.Services.TokenLeaseManager.CloudService
+  alias Ockam.Identity.Identifier
   alias Ockam.Services.TokenLeaseManager.Lease
   require Logger
 
@@ -45,7 +46,7 @@ defmodule Ockam.Services.TokenLeaseManager.CloudService.Influxdb do
     options = %{
       "permissions" => cloud_configuration[:permissions],
       "orgID" => cloud_configuration[:org_id],
-      "description" => "ockam/#{identity_id}/#{DateTime.to_iso8601(expires)}"
+      "description" => "ockam/#{Identifier.to_str(identity_id)}/#{DateTime.to_iso8601(expires)}"
     }
 
     {:ok, body} = Poison.encode(options)
@@ -124,15 +125,21 @@ defmodule Ockam.Services.TokenLeaseManager.CloudService.Influxdb do
     ockam_metadata = auth["description"]
 
     with ["ockam", issued_for, expires] <- String.split(ockam_metadata, "/"),
-         {:ok, _expire_date, _offset} <- DateTime.from_iso8601(expires) do
+         {:ok, expire_date, _offset} <- DateTime.from_iso8601(expires),
+         {:ok, issued_date, _offset} <- DateTime.from_iso8601(auth["createdAt"]) do
       {:ok,
        %Lease{
          id: auth["id"],
-         issued_for: issued_for,
-         expires: expires,
-         issued: auth["createdAt"],
+         issued_for: Identifier.from_str(issued_for),
+         expires: DateTime.to_unix(expire_date),
+         issued: DateTime.to_unix(issued_date),
          value: auth["token"],
-         status: auth["status"]
+         status:
+           if auth["status"] == "active" do
+             :active
+           else
+             :revoked
+           end
        }}
     else
       other ->

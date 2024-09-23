@@ -9,7 +9,9 @@ defmodule Ockam.Services.TokenLeaseManager.CloudService do
   @type creation_options :: map()
 
   @callback init(options) :: {:ok, cloud_configuration} | {:error, reason}
-  @callback create(cloud_configuration, identity_id :: String.t(), ttl: integer()) ::
+  @callback create(cloud_configuration, identifier :: Ockam.Identity.Identifier.t(),
+              ttl: integer()
+            ) ::
               {:ok, lease} | {:error, reason}
   @callback revoke(cloud_configuration, token_id) :: :ok | {:error, reason}
   @callback get_all(cloud_configuration) :: {:ok, [lease]} | {:error, reason}

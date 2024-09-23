@@ -143,6 +143,7 @@ impl Eq for LeaseToken {}
 #[derive(
     Encode, Decode, CborLen, Serialize, Deserialize, PartialEq, Debug, Clone, EnumString, Display,
 )]
+#[cbor(index_only)]
 pub enum TokenStatus {
     #[n(0)]
     #[strum(serialize = "active")]
