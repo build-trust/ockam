@@ -250,7 +250,7 @@ function update_docs_repo() {
   # Check if the branch was created, new branch is only created when there are new doc updates
   if gh api "repos/build-trust/ockam-documentation/branches/docs_${release_name}" --jq .name; then
     gh pr create --title "Ockam Release $(date +'%d-%m-%Y')" --body "Ockam release" \
-      --base main -H "docs_${release_name}" -r nazmulidris -R $OWNER/ockam-documentation
+      --base main -H "docs_${release_name}" -r mrinalwadhwa -R $OWNER/ockam-documentation
   fi
 }
 
@@ -271,6 +271,24 @@ function update_command_manual() {
 
   gh pr create --title "Ockam command manual update to $release" --body "Ockam commnad manual update $release" \
     --base command -H "manual_${release_name}" -R $OWNER/ockam-documentation >>$log
+}
+
+function update_rendezvous_service() {
+  set -e
+  workflow_file_name="bump-rendezvous-prod.yml"
+  branch="main"
+  release_tag="$1"
+
+  prefix="ockam_v"
+  release=${release_tag#"$prefix"}
+
+  gh workflow run "$workflow_file_name" --ref "$branch" -R $OWNER/infrastructure -F ockam_version="$release" -F release_branch="$release_name" >>$log
+  # Wait for workflow run
+  sleep 10
+
+  approve_and_watch_workflow_progress "infrastructure" "$workflow_file_name" "$branch"
+  gh pr create --title "Rendezvous Prod Service Update to $release" --body "Rendezvous Prod Service Update" \
+    --base main -H "$release_name" -R $OWNER/infrastructure >>$log
 }
 
 function delete_ockam_draft_package() {
@@ -436,6 +454,13 @@ if [[ $IS_DRAFT_RELEASE == false ]]; then
     echo "Starting Crates IO publish"
     ockam_crate_release "$latest_tag_name"
     success_info "Crates.io publish successful."
+  fi
+
+  # Update rendezvous version
+  if [[ -z $SKIP_RENDEZVOUS_SERVICE_UPDATE || $SKIP_RENDEZVOUS_SERVICE_UPDATE == false ]]; then
+    echo "Updating rendezvous service version"
+    update_rendezvous_service "$latest_tag_name"
+    success_info "Ockam Rendezvous version updated successfully"
   fi
 
   success_info "Release Done 🚀🚀🚀."
