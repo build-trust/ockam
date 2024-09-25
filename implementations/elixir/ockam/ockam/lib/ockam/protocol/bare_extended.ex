@@ -81,17 +81,20 @@ defmodule Ockam.Bare.Variant do
   The tag is encoded as bare enum, optionally followed by the field value in case
   the variant has one.
   """
+
+  alias Ockam.Bare.Extended
+
   @type schema :: :bare.spec()
   @type extended_schema() :: schema() | {:variant, [atom() | {atom(), schema()}]}
 
   @spec encode(any(), extended_schema()) :: binary()
   def encode(value, {:variant, ss} = schema) do
-    type = :bare.encode(enum_member(value), to_bare_schema(schema))
+    type = encode(enum_member(value), to_bare_schema(schema))
     value = encode_value(enum_value(value), List.keyfind(ss, enum_member(value), 0))
     <<type::binary, value::binary>>
   end
 
-  def encode(value, schema), do: :bare.encode(value, schema)
+  def encode(value, schema), do: Extended.encode(value, schema)
 
   @spec decode(binary(), extended_schema()) :: {:ok, any()} | {:error, any()}
   def decode(data, {:variant, ss} = schema) do
@@ -102,7 +105,7 @@ defmodule Ockam.Bare.Variant do
       {:ok, decoded_tag, rest} ->
         {_, subschema} = List.keyfind(ss, decoded_tag, 0)
 
-        with {:ok, decoded_value, ""} <- :bare.decode(rest, subschema) do
+        with {:ok, decoded_value, ""} <- Extended.decode(rest, subschema) do
           {:ok, {decoded_tag, decoded_value}}
         end
 
@@ -111,7 +114,7 @@ defmodule Ockam.Bare.Variant do
     end
   end
 
-  def decode(data, schema), do: :bare.decode(data, schema)
+  def decode(data, schema), do: Extended.decode(data, schema)
 
   def to_bare_schema({:variant, ext_schema}) do
     {:enum, Enum.map(ext_schema, &enum_member/1)}
@@ -126,17 +129,97 @@ defmodule Ockam.Bare.Variant do
   def enum_value(_tag), do: nil
 
   def encode_value(nil, nil), do: <<>>
-  def encode_value(value, {_tag, subschema}), do: :bare.encode(value, subschema)
+  def encode_value(value, {_tag, subschema}), do: Extended.encode(value, subschema)
+end
+
+defmodule Ockam.Bare.Tuple do
+  @moduledoc """
+  Support tuple types
+  Tuple types are defined as {:tuple, [schema(), ...]}
+  The values are encoded sequentially and are order sensitive.
+  """
+
+  @type schema :: :bare.spec()
+  @type extended_schema() :: schema() | {:tuple, [{atom(), schema()}]}
+
+  @spec encode(any(), extended_schema()) :: binary()
+  def encode([value | values], {:tuple, [type | types]} = _schema) do
+    encode(value, type) <> encode(values, {:tuple, types})
+  end
+
+  @spec encode(any(), extended_schema()) :: binary()
+  def encode([], {:tuple, []} = _schema) do
+    <<>>
+  end
+
+  @spec encode(any(), extended_schema()) :: binary()
+  def encode(something, {:tuple, []} = _schema) do
+    raise "Extra data in tuple: #{inspect(something)}"
+  end
+
+  @spec encode(any(), extended_schema()) :: binary()
+  def encode({}, {:tuple, [_type | _types]} = schema) do
+    raise "Missing data in tuple: #{inspect(schema)}"
+  end
+
+  @spec encode(any(), extended_schema()) :: binary()
+  def encode([value], [schema]) do
+    :bare.encode(value, schema)
+  end
+
+  @spec encode(any(), extended_schema()) :: binary()
+  def encode(value, schema) do
+    :bare.encode(value, schema)
+  end
+
+  @spec decode(binary(), extended_schema()) :: {:ok, [:undefined], <<>>}
+  def decode(<<>>, {:tuple, [{:optional, _}]} = _schema) do
+    {:ok, [:undefined], <<>>}
+  end
+
+  @spec decode(binary(), extended_schema()) :: {:ok, [], <<>>}
+  def decode(<<>>, {:tuple, []} = _schema) do
+    {:ok, [], <<>>}
+  end
+
+  @spec decode(binary(), extended_schema()) :: {:ok, any(), binary()} | {:error, any()}
+  def decode(data, {:tuple, [type | types]} = _schema) do
+    case decode(data, type) do
+      {:ok, value, rest} ->
+        with {:ok, values, ""} <- decode(rest, {:tuple, types}) do
+          {:ok, [value] ++ values, <<>>}
+        end
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  # ignoring extra bytes at the end of the tuple
+  @spec decode(binary(), extended_schema()) :: {:ok, any(), binary()} | {:error, any()}
+  def decode(_data, {:tuple, []} = _schema) do
+    {:ok, [], <<>>}
+  end
+
+  @spec decode(binary(), extended_schema()) :: {:ok, any(), binary()} | {:error, any()}
+  def decode(data, schema) do
+    :bare.decode(data, schema)
+  end
 end
 
 defmodule Ockam.Bare.Extended do
   @moduledoc """
   Extension for BARE schema:
 
-  Support simple tags for union types defined as [type1: schema(), type2: schema()] and
-  variant defined as {:variant, [atom() | {atom(), schema()]}
+  Support simple tags for union types defined as [type1: schema(), type2: schema()],
+  variant defined as {:variant, [atom() | {atom(), schema()]} and,
+  tuple defined as {:tuple, [{atom(), schema()}, ...]}
+
+  This extension also allows for last :optional field to be missing from the payload,
+  and it'll be treated as :undefined.
   """
 
+  alias Ockam.Bare.Tuple
   alias Ockam.Bare.Union
   alias Ockam.Bare.Variant
 
@@ -146,8 +229,10 @@ defmodule Ockam.Bare.Extended do
 
   ## TODO: this might be moved to BARE lib
   def encode(data, {:variant, _} = schema), do: Variant.encode(data, schema)
+  def encode(data, {:tuple, _} = schema), do: Tuple.encode(data, schema)
   def encode(data, schema), do: Union.encode(data, schema)
 
   def decode(data, {:variant, _} = schema), do: Variant.decode(data, schema)
+  def decode(data, {:tuple, _} = schema), do: Tuple.decode(data, schema)
   def decode(data, schema), do: Union.decode(data, schema)
 end

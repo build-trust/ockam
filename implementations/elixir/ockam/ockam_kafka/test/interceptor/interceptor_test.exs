@@ -36,7 +36,7 @@ defmodule Ockam.Kafka.Interceptor.Test.FakeOutlet do
         Worker.route(
           %Message{
             onward_route: Map.get(state, :peer_route),
-            payload: TunnelProtocol.encode({:payload, response})
+            payload: TunnelProtocol.encode({:payload, {response, :undefined}})
           },
           state
         )
