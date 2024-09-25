@@ -49,6 +49,7 @@ std = [
   "minicbor/std",
   "storage",
   "fs2",
+  "sysinfo",
 ]
 
 # Feature: "no_std" enables functionality required for platforms
@@ -100,6 +101,7 @@ sqlx-build-trust = { version = "0.7.9", optional = true, features = ["postgres",
 sqlx-build-trust-core = { version = "0.7.9", optional = true }
 sqlx-build-trust-postgres = { version = "0.7.9", optional = true }
 sqlx-build-trust-sqlite = { version = "0.7.9", optional = true }
+sysinfo = {  version = "0.31", optional = true }
 tempfile = { version = "3.10.1", optional = true }
 time = { version = "0.3.36", default-features = false, optional = true }
 tokio = { version = "1.39", default-features = false, optional = true, features = ["sync", "time", "rt", "rt-multi-thread", "macros"] }

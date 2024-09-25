@@ -1,15 +1,18 @@
+use crate::database::migrations::migration_support::rust_migration::RustMigration;
+use crate::database::{FromSqlxError, ToVoid};
 use ockam_core::compat::collections::HashSet;
 use ockam_core::compat::time::now;
+use ockam_core::env::get_env_with_default;
 use ockam_core::errcode::{Kind, Origin};
+use ockam_core::Result;
 use sqlx::any::AnyRow;
 use sqlx::migrate::{AppliedMigration, Migrate, Migration as SqlxMigration};
 use sqlx::{query, Any, AnyConnection, Pool, Row};
 use std::cmp::Ordering;
+use std::fs::OpenOptions;
+use std::io::{Read, Write};
+use sysinfo::{Pid, ProcessesToUpdate};
 use time::OffsetDateTime;
-
-use crate::database::migrations::migration_support::rust_migration::RustMigration;
-use crate::database::{FromSqlxError, ToVoid};
-use ockam_core::Result;
 
 /// Migrator is responsible for running Sql and Rust migrations side by side in the correct order,
 /// checking for conflicts, duplicates; making sure each migration runs only once
@@ -168,18 +171,121 @@ impl Migrator {
 }
 
 impl Migrator {
+    fn lock_file_path() -> Result<String> {
+        let home: String = get_env_with_default("OCKAM_HOME", "/tmp/".to_string())?;
+        Ok(format!("{}/.ockam-migration-lock", home))
+    }
+
+    async fn lock_file() -> Result<()> {
+        let lock_file = Self::lock_file_path()?;
+        let lock_file_path = std::path::Path::new(&lock_file);
+
+        let mut sys = sysinfo::System::new();
+
+        const MAX_ATTEMPTS: u32 = 100;
+        let mut loop_num = 0;
+
+        while loop_num < MAX_ATTEMPTS {
+            // if the file already exists, create_new will fail
+            let res = OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(lock_file_path);
+
+            // write the current process id to the file
+            if let Ok(mut lock_file) = res {
+                lock_file
+                    .write_all(format!("{}", std::process::id()).as_bytes())
+                    .map_err(|_| {
+                        ockam_core::Error::new(
+                            Origin::Node,
+                            Kind::Internal,
+                            "Failed to write to lock file",
+                        )
+                    })?;
+                break;
+            }
+
+            // open the file and check if the process is still running
+            // if it's not, remove the file and try to acquire the lock again
+            let res = OpenOptions::new().read(true).open(lock_file_path);
+            if let Ok(mut lock_file) = res {
+                let mut pid = String::new();
+                if lock_file.read_to_string(&mut pid).is_ok() {
+                    if let Ok(pid) = pid.trim().parse::<u32>() {
+                        let pid = Pid::from_u32(pid);
+                        sys.refresh_processes(ProcessesToUpdate::Some(&[pid]));
+                        let process_running = if let Some(process) = sys.process(pid) {
+                            !matches!(
+                                process.status(),
+                                sysinfo::ProcessStatus::Zombie | sysinfo::ProcessStatus::Stop
+                            )
+                        } else {
+                            false
+                        };
+
+                        if !process_running {
+                            // To avoid race condition, the best solution would be to call the
+                            // `unlink` syscall directly on the file descriptor, so that
+                            // even in the case of another process re-creating the lock file,
+                            // we wouldn't delete it.
+                            // Since `unlock` is not available in the rust std lib, we can remove
+                            // the path and sleep for a while, reducing the possibility to remove
+                            // a newly created lock file.
+                            info!(
+                                "Removing lock file owned by non-existing proccess: {}",
+                                lock_file_path.display()
+                            );
+                            std::fs::remove_file(lock_file_path).unwrap();
+                            tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+                            continue;
+                        }
+                    }
+                }
+            }
+
+            loop_num += 1;
+            tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+        }
+
+        if loop_num == MAX_ATTEMPTS {
+            return Err(ockam_core::Error::new(
+                Origin::Node,
+                Kind::Conflict,
+                format!("Failed to acquire lock file {lock_file}, manually delete it.",),
+            ));
+        }
+
+        Ok(())
+    }
+
+    async fn unlock_file() -> Result<()> {
+        let lock_file = Self::lock_file_path()?;
+        std::fs::remove_file(lock_file).unwrap();
+        Ok(())
+    }
+
     /// Run migrations up to the specified version (inclusive)
     pub(crate) async fn migrate_up_to(&self, pool: &Pool<Any>, up_to: Version) -> Result<()> {
         let mut connection = pool.acquire().await.into_core()?;
+        let is_sqlite = connection.backend_name() == "SQLite";
 
-        // This lock is only effective for Postgres
-        connection.lock().await.into_core()?;
+        if is_sqlite {
+            Self::lock_file().await?;
+        } else {
+            // This lock is only effective for Postgres
+            connection.lock().await.into_core()?;
+        }
 
         let res = self.run_migrations(&mut connection, up_to).await;
 
-        connection.unlock().await.into_core()?;
-        res?;
+        if is_sqlite {
+            Self::unlock_file().await?;
+        } else {
+            connection.unlock().await.into_core()?;
+        }
 
+        res?;
         Ok(())
     }
 
