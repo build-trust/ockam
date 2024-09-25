@@ -43,7 +43,7 @@ jobs:
     name: Make - full_build_in_release_mode
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
+      - uses: actions/checkout@d632683dd7b4114ad314bca15554477dd762a938
         with:
           ref: ${{ github.event.inputs.commit_sha }}
       - uses: ./.github/actions/cache_nix
