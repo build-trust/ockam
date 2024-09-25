@@ -1,0 +1,55 @@
+---
+networks:
+  data_team:
+      driver: bridge
+services:
+  # Start a producer node with ockam.
+  #
+  # Read kafka_client.dockerfile and run_ockam.sh to understand
+  # how the node is set up
+  producer:
+    container_name: data-producer
+    build:
+      context: .
+      dockerfile: ../kafka_client.dockerfile
+    volumes:
+      - ./ockam-node.yaml:/ockam-node.yaml
+    environment:
+      ENROLLMENT_TICKET: ${DATA_PRODUCER_ENROLLMENT_TICKET:-}
+      OCKAM_DEVELOPER: ${OCKAM_DEVELOPER:-false}
+    networks:
+      - data_team
+    command:
+      - -c
+      - |
+        set -e
+
+        sleep 17
+
+        ockam node create -vv ./ockam-node.yaml --enrollment-ticket $${ENROLLMENT_TICKET} &
+
+        sleep 20
+
+        MESSAGES=(
+          '{"id":"1234","first_name":"Red","age":22,"job":"writer","pii":{"last_name":"Jones","ssn":"777-223-4344","zip":98208}}'
+          '{"id":"5678","first_name":"Blue","age":35,"job":"developer","pii":{"last_name":"Smith","ssn":"555-867-5309","zip":10001}}'
+          '{"id":"9012","first_name":"Green","age":28,"job":"designer","pii":{"last_name":"Johnson","ssn":"123-456-7890","zip":60601}}'
+          '{"id":"3456","first_name":"Yellow","age":41,"job":"manager","pii":{"last_name":"Brown","ssn":"999-888-7777","zip":90210}}'
+          '{"id":"7890","first_name":"Purple","age":19,"job":"student","pii":{"last_name":"Davis","ssn":"111-222-3333","zip":20001}}'
+          '{"id":"2345","first_name":"Orange","age":55,"job":"consultant","pii":{"last_name":"Wilson","ssn":"444-555-6666","zip":75001}}'
+          '{"id":"6789","first_name":"Pink","age":33,"job":"artist","pii":{"last_name":"Taylor","ssn":"888-999-0000","zip":80202}}'
+          '{"id":"0123","first_name":"Gray","age":47,"job":"scientist","pii":{"last_name":"Anderson","ssn":"222-333-4444","zip":94103}}'
+        )
+
+        for n in {0..7}; do
+          sleep 2
+          echo "Sending message: $${MESSAGES[n]}"
+          echo -n "$${MESSAGES[n]}" | kafka-console-producer.sh \
+            --topic data_team_topic \
+            --bootstrap-server 127.0.0.1:9092 \
+            --producer-property request.timeout.ms=30000
+        done
+
+        # Keep the container running
+        tail -f /dev/null
+
