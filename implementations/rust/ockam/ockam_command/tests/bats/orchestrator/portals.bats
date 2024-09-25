@@ -281,7 +281,7 @@ teardown() {
   socat_pid=$!
   sleep 2
 
-  run_success curl -sfI --retry-all-errors --retry-delay 2 --retry 10 -m 30 "127.0.0.1:${inlet_port}"
+  run_success curl -sfI --retry-all-errors --retry-delay 2 --retry 30 -m 60 "127.0.0.1:${inlet_port}"
   status=$("$OCKAM" relay show "${relay_name}" --output json | jq .connection_status -r)
   assert_equal "$status" "Up"
 

@@ -5,7 +5,7 @@ setup_suite() {
   setup_python_server
 
   # Remove all nodes from the root OCKAM_HOME directory
-  OCKAM_HOME=$OCKAM_HOME_BASE $OCKAM node delete --all --force --yes
+  OCKAM_HOME=$OCKAM_HOME_BASE $OCKAM node delete --all --yes
 }
 
 teardown_suite() {
