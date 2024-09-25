@@ -11,7 +11,7 @@ function orchestrator_setup_suite() {
   OCKAM_HOME=$OCKAM_HOME_BASE $OCKAM project-member delete --all || true
 
   # Remove all nodes from the root OCKAM_HOME directory
-  OCKAM_HOME=$OCKAM_HOME_BASE $OCKAM node delete --all --force --yes || true
+  OCKAM_HOME=$OCKAM_HOME_BASE $OCKAM node delete --all --yes || true
 }
 
 function orchestrator_teardown_suite() {
