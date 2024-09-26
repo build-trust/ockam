@@ -5,7 +5,7 @@ COPY --from=cgr.dev/chainguard/wolfi-base /bin /bin
 COPY --from=cgr.dev/chainguard/wolfi-base /usr/bin /usr/bin
 
 # We will be recompiling NIF till 118 release
-# ENV OCKAM_DOWNLOAD_NIF="1"
+ENV OCKAM_DOWNLOAD_NIF="1"
 ENV PATH=/root/.cargo/bin:$PATH
 COPY . /work
 RUN set -ex; \
