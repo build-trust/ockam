@@ -129,8 +129,8 @@ impl TcpTransport {
 #[derive(Clone, Debug)]
 pub struct TcpInlet {
     socket_address: SocketAddr,
-    state: TcpInletState,
     inlet_shared_state: Arc<RwLock<InletSharedState>>,
+    state: TcpInletState,
 }
 
 #[derive(Clone, Debug)]
@@ -165,8 +165,8 @@ impl TcpInlet {
     ) -> Self {
         Self {
             socket_address,
-            state: TcpInletState::Regular { processor_address },
             inlet_shared_state,
+            state: TcpInletState::Regular { processor_address },
         }
     }
 
@@ -177,8 +177,8 @@ impl TcpInlet {
     ) -> Self {
         Self {
             socket_address,
-            state: TcpInletState::Ebpf,
             inlet_shared_state,
+            state: TcpInletState::Ebpf,
         }
     }
 

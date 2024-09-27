@@ -82,12 +82,21 @@ impl TcpInletOptions {
         addresses: &Addresses,
         next: &Address,
     ) {
+        self.setup_flow_control_for_address(flow_controls, addresses.sender_remote.clone(), next)
+    }
+
+    pub(crate) fn setup_flow_control_for_address(
+        &self,
+        flow_controls: &FlowControls,
+        address: Address,
+        next: &Address,
+    ) {
         if let Some(flow_control_id) = flow_controls
             .find_flow_control_with_producer_address(next)
             .map(|x| x.flow_control_id().clone())
         {
             // Allow a sender with corresponding flow_control_id send messages to this address
-            flow_controls.add_consumer(addresses.sender_remote.clone(), &flow_control_id);
+            flow_controls.add_consumer(address, &flow_control_id);
         }
     }
 }
