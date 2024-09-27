@@ -13,6 +13,7 @@ current_directory=$(dirname "$0")
 # If no arguments are passed, all suites are run.
 if [ $# -eq 0 ]; then
   local_suite=true
+  local_as_root_suite=true
   orchestrator_enroll_suite=true
   orchestrator_suite=true
   serial_suite=true
@@ -20,6 +21,7 @@ if [ $# -eq 0 ]; then
   kafka_suite=false
 else
   local_suite=false
+  local_as_root_suite=false
   orchestrator_enroll_suite=false
   orchestrator_suite=false
   serial_suite=false
@@ -30,6 +32,7 @@ fi
 for suite in "$@"; do
   case $suite in
   local) local_suite=true ;;
+  local_as_root) local_as_root_suite=true ;;
   orchestrator_enroll) orchestrator_enroll_suite=true ;;
   orchestrator) orchestrator_suite=true ;;
   serial) serial_suite=true ;;
@@ -45,6 +48,11 @@ done
 if [ "$local_suite" = true ]; then
   echo "Running local suite..."
   bats "$current_directory/local" --timing -j 3
+fi
+
+if [ "$local_as_root_suite" = true ]; then
+  echo "Running local root suite..."
+  bats "$current_directory/local_as_root" --timing -j 3
 fi
 
 if [ -z "${ORCHESTRATOR_TESTS}" ]; then
