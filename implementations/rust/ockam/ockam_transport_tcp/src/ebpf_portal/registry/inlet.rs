@@ -1,74 +1,54 @@
-use crate::ebpf_portal::RawSocketMessage;
-use crate::portal::addresses::Addresses;
+use crate::ebpf_portal::{ConnectionIdentifier, Port};
 use crate::portal::InletSharedState;
 use crate::TcpInletOptions;
+use ockam_core::Address;
 use std::collections::HashMap;
 use std::net::Ipv4Addr;
 use std::sync::{Arc, RwLock};
 use tokio::net::TcpListener;
-use tokio::sync::mpsc::Sender;
 
 /// Inlet registry
 #[derive(Default, Clone)]
 pub(crate) struct InletRegistry {
-    inlets: Arc<RwLock<HashMap<u16, InletInfo>>>,
-    mapping: Arc<RwLock<Vec<InletMappingValue>>>,
+    inlets: Arc<RwLock<HashMap<Port, Inlet>>>,
 }
 
 impl InletRegistry {
-    /// Add new mapping
-    pub fn add_mapping(&self, mapping: InletMappingValue) {
-        // FIXME: eBPF duplicates
-        self.mapping.write().unwrap().push(mapping)
-    }
-
-    /// Get mapping
-    pub fn get_mapping(&self, client_ip: Ipv4Addr, client_port: u16) -> Option<InletMappingValue> {
-        let mapping = self.mapping.read().unwrap();
-
-        mapping.iter().find_map(|x| {
-            if x.client_ip == client_ip && x.client_port == client_port {
-                Some(x.clone())
-            } else {
-                None
-            }
-        })
-    }
-
     /// Get inlets
-    pub fn get_inlets_info(
-        &self,
-        dst_port: u16,
-    ) -> Option<(Arc<RwLock<InletSharedState>>, TcpInletOptions)> {
+    pub fn get_inlet(&self, dst_port: Port) -> Option<Inlet> {
         let inlets = self.inlets.read().unwrap();
 
-        let inlet = inlets.get(&dst_port)?;
-
-        Some((inlet.inlet_shared_state.clone(), inlet.options.clone()))
+        inlets.get(&dst_port).cloned()
     }
 
     /// Create inlet
     pub fn create_inlet(
         &self,
+        portal_worker_address: Address,
         options: TcpInletOptions,
-        port: u16,
+        port: Port,
         tcp_listener: TcpListener,
         inlet_shared_state: Arc<RwLock<InletSharedState>>,
-    ) {
+    ) -> Inlet {
         let mut inlets = self.inlets.write().unwrap();
 
-        inlets.insert(
+        let inlet_info = Inlet {
+            portal_worker_address,
             port,
-            InletInfo {
-                options,
-                inlet_shared_state,
-                tcp_listener,
-            },
-        );
+            options,
+            inlet_shared_state,
+            _tcp_listener: Arc::new(tcp_listener),
+            connections1: Default::default(),
+            connections2: Default::default(),
+        };
+
+        inlets.insert(port, inlet_info.clone());
+
+        inlet_info
     }
 
     /// Delete the inlet
-    pub fn delete_inlet(&self, port: u16) {
+    pub fn delete_inlet(&self, port: Port) {
         let mut inlets = self.inlets.write().unwrap();
 
         inlets.remove(&port);
@@ -76,24 +56,97 @@ impl InletRegistry {
 }
 
 /// Inlet info
-pub struct InletInfo {
+#[derive(Clone)]
+pub struct Inlet {
+    /// PortalWorker Address
+    pub portal_worker_address: Address,
+    /// Port
+    pub port: Port,
     /// Route to the corresponding Outlet
     pub inlet_shared_state: Arc<RwLock<InletSharedState>>,
     /// Options
     pub options: TcpInletOptions,
     /// Hold to mark the port as taken
-    pub tcp_listener: TcpListener,
+    pub _tcp_listener: Arc<TcpListener>,
+    /// Same map with different key
+    connections1: Arc<RwLock<HashMap<InletConnectionKey1, Arc<InletConnection>>>>,
+    connections2: Arc<RwLock<HashMap<InletConnectionKey2, Arc<InletConnection>>>>,
+}
+
+impl Inlet {
+    /// Add new mapping
+    pub fn add_connection(&self, connection: Arc<InletConnection>) {
+        self.connections1.write().unwrap().insert(
+            InletConnectionKey1 {
+                client_ip: connection.client_ip,
+                client_port: connection.client_port,
+            },
+            connection.clone(),
+        );
+        self.connections2.write().unwrap().insert(
+            InletConnectionKey2 {
+                identifier: connection.identifier.clone(),
+                connection_identifier: connection.connection_identifier.clone(),
+            },
+            connection,
+        );
+    }
+
+    /// Get mapping
+    pub fn get_connection_internal(
+        &self,
+        client_ip: Ipv4Addr,
+        client_port: Port,
+    ) -> Option<Arc<InletConnection>> {
+        self.connections1
+            .read()
+            .unwrap()
+            .get(&InletConnectionKey1 {
+                client_ip,
+                client_port,
+            })
+            .cloned()
+    }
+
+    /// Get mapping
+    pub(crate) fn get_connection_external(
+        &self,
+        identifier: Option<String>, // Identity
+        connection_identifier: ConnectionIdentifier,
+    ) -> Option<Arc<InletConnection>> {
+        self.connections2
+            .read()
+            .unwrap()
+            .get(&InletConnectionKey2 {
+                identifier,
+                connection_identifier,
+            })
+            .cloned()
+    }
+}
+
+#[derive(Hash, PartialEq, Eq)]
+struct InletConnectionKey1 {
+    client_ip: Ipv4Addr,
+    client_port: Port,
+}
+
+#[derive(Hash, PartialEq, Eq)]
+struct InletConnectionKey2 {
+    identifier: Option<String>,
+    connection_identifier: ConnectionIdentifier,
 }
 
 /// Inlet Mapping
-#[derive(Clone)]
-pub(crate) struct InletMappingValue {
+pub struct InletConnection {
+    /// Identity Identifier of the other side
+    pub identifier: Option<String>,
+    /// Unique connection Identifier
+    pub connection_identifier: ConnectionIdentifier,
+    /// We can listen of multiple IPs
+    pub inlet_ip: Ipv4Addr,
     /// Client IP
     pub client_ip: Ipv4Addr,
     /// Client port
-    pub client_port: u16,
-    /// Addresses
-    pub _addresses: Addresses,
-    /// Sender to a processor
-    pub sender: Sender<RawSocketMessage>,
+    pub client_port: Port,
 }

@@ -1,22 +1,37 @@
 use minicbor::{Decode, Encode};
-use ockam_core::CowBytes;
 use pnet::packet::tcp::TcpPacket;
 use pnet::packet::Packet;
+use rand::distributions::{Distribution, Standard};
+use rand::Rng;
 use std::net::Ipv4Addr;
+
+/// Unique random connection identifier
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Encode, Decode)]
+#[cbor(transparent)]
+#[rustfmt::skip]
+pub struct ConnectionIdentifier(#[n(0)] String);
+
+impl Distribution<ConnectionIdentifier> for Standard {
+    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> ConnectionIdentifier {
+        let bytes: [u8; 8] = rng.gen();
+        ConnectionIdentifier(hex::encode(bytes))
+    }
+}
 
 #[allow(missing_docs)]
 #[derive(Encode, Decode)]
 #[rustfmt::skip]
-pub struct OckamPortalPacket<'a> {
-    #[n(0)] pub sequence: u32,
-    #[n(1)] pub acknowledgement: u32,
-    #[n(2)] pub data_offset: u8,
-    #[n(3)] pub reserved: u8,
-    #[n(4)] pub flags: u8,
-    #[n(5)] pub window: u16,
-    #[n(6)] pub urgent_ptr: u16,
-    #[n(7)] pub options: Vec<TcpOption>,
-    #[b(8)] pub payload: CowBytes<'a>,
+pub struct OckamPortalPacket {
+    #[n(0)] pub connection_identifier: ConnectionIdentifier,
+    #[n(1)] pub sequence: u32,
+    #[n(2)] pub acknowledgement: u32,
+    #[n(3)] pub data_offset: u8,
+    #[n(4)] pub reserved: u8,
+    #[n(5)] pub flags: u8,
+    #[n(6)] pub window: u16,
+    #[n(7)] pub urgent_ptr: u16,
+    #[n(8)] pub options: Vec<TcpOption>,
+    #[n(9)] pub payload: Vec<u8>,
 }
 
 #[allow(missing_docs)]
@@ -38,26 +53,14 @@ impl From<TcpOption> for pnet::packet::tcp::TcpOption {
     }
 }
 
-impl OckamPortalPacket<'_> {
-    /// Clone data to make an owned version of an instance.
-    pub fn into_owned(self) -> OckamPortalPacket<'static> {
-        OckamPortalPacket {
-            sequence: self.sequence,
-            acknowledgement: self.acknowledgement,
-            data_offset: self.data_offset,
-            reserved: self.reserved,
-            flags: self.flags,
-            window: self.window,
-            urgent_ptr: self.urgent_ptr,
-            options: self.options,
-            payload: self.payload.to_owned(),
-        }
-    }
-}
-
-impl From<RawSocketMessage> for OckamPortalPacket<'_> {
-    fn from(value: RawSocketMessage) -> Self {
+impl OckamPortalPacket {
+    /// Transform
+    pub fn from_raw_socket_message(
+        value: RawSocketMessage,
+        connection_identifier: ConnectionIdentifier,
+    ) -> Self {
         Self {
+            connection_identifier,
             sequence: value.sequence,
             acknowledgement: value.acknowledgement,
             data_offset: value.data_offset,
@@ -66,7 +69,7 @@ impl From<RawSocketMessage> for OckamPortalPacket<'_> {
             window: value.window,
             urgent_ptr: value.urgent_ptr,
             options: value.options.into_iter().map(Into::into).collect(),
-            payload: value.payload.into(),
+            payload: value.payload,
         }
     }
 }

@@ -1,8 +1,8 @@
-use crate::ebpf_portal::OutletListenerWorker;
+use crate::ebpf_portal::{Port, PortalWorker};
 use crate::portal::InletSharedState;
 use crate::{TcpInlet, TcpInletOptions, TcpOutletOptions, TcpTransport};
 use core::fmt::Debug;
-use ockam_core::{Address, DenyAll, Result, Route};
+use ockam_core::{Address, AllowAll, DenyAll, Result, Route};
 use ockam_node::compat::asynchronous::resolve_peer;
 use ockam_node::WorkerBuilder;
 use ockam_transport_core::HostnamePort;
@@ -20,6 +20,10 @@ impl TcpTransport {
         outlet_route: impl Into<Route> + Clone + Debug,
         options: TcpInletOptions,
     ) -> Result<TcpInlet> {
+        let outlet_route = outlet_route.into();
+
+        let next = outlet_route.next().cloned()?;
+
         // TODO: eBPF Find correlation between bind_addr and iface?
         let bind_addr = bind_addr.into();
         let tcp_listener = TcpListener::bind(bind_addr.clone()).await.unwrap(); // FIXME eBPF
@@ -54,14 +58,23 @@ impl TcpTransport {
             }
         }
 
-        let _write_handle = self.start_raw_socket_processor_if_needed().await?;
+        let write_handle = self.start_raw_socket_processor_if_needed().await?;
 
         let inlet_shared_state = Arc::new(RwLock::new(InletSharedState {
-            route: outlet_route.into(),
+            route: outlet_route.clone(),
             is_paused: false,
         }));
 
-        self.ebpf_support.inlet_registry.create_inlet(
+        let portal_worker_address = Address::random_tagged("Ebpf.PortalWorker"); // FIXME
+
+        options.setup_flow_control_for_address(
+            self.ctx().flow_controls(),
+            portal_worker_address.clone(),
+            &next,
+        );
+
+        let inlet_info = self.ebpf_support.inlet_registry.create_inlet(
+            portal_worker_address.clone(),
             options,
             local_address.port(),
             tcp_listener,
@@ -70,12 +83,20 @@ impl TcpTransport {
 
         self.ebpf_support.add_inlet_port(port)?;
 
+        let worker = PortalWorker::new_inlet(write_handle, inlet_info, self.ebpf_support.clone());
+        WorkerBuilder::new(worker)
+            .with_address(portal_worker_address)
+            .with_outgoing_access_control(DenyAll)
+            .with_incoming_access_control(AllowAll) // FIXME
+            .start(self.ctx())
+            .await?;
+
         Ok(TcpInlet::new_ebpf(local_address, inlet_shared_state))
     }
 
     /// Stop the Raw Inlet
     #[instrument(skip(self), fields(port=port))]
-    pub async fn stop_raw_inlet(&self, port: u16) -> Result<()> {
+    pub async fn stop_raw_inlet(&self, port: Port) -> Result<()> {
         self.ebpf_support.inlet_registry.delete_inlet(port);
 
         Ok(())
@@ -87,12 +108,12 @@ impl TcpTransport {
         &self,
         address: impl Into<Address> + Clone + Debug,
         peer: HostnamePort,
-        options: TcpOutletOptions,
+        options: TcpOutletOptions, // FIXME
     ) -> Result<()> {
         // Resolve peer address as a host name and port
         tracing::Span::current().record("peer", peer.to_string());
 
-        let address = address.into();
+        let portal_worker_address = address.into();
 
         // TODO: eBPF May be good to run resolution every time there is incoming connection, but that
         //  would require also updating the self.ebpf_support.outlet_registry
@@ -118,27 +139,26 @@ impl TcpTransport {
 
         let access_control = options.incoming_access_control.clone();
 
-        options.setup_flow_control_for_outlet_listener(self.ctx().flow_controls(), &address);
-
-        let outlet_listener_worker = OutletListenerWorker::new(
-            options,
-            write_handle,
-            self.ebpf_support.outlet_registry.clone(),
-            dst_ip,
-            dst_port,
-            self.ebpf_support.clone(),
+        options.setup_flow_control_for_outlet_listener(
+            self.ctx().flow_controls(),
+            &portal_worker_address,
         );
 
-        WorkerBuilder::new(outlet_listener_worker)
-            .with_address(address)
+        let outlet_info = self.ebpf_support.outlet_registry.add_outlet(
+            portal_worker_address.clone(),
+            dst_ip,
+            dst_port,
+        );
+
+        let portal_worker =
+            PortalWorker::new_outlet(write_handle, outlet_info, self.ebpf_support.clone());
+
+        WorkerBuilder::new(portal_worker)
+            .with_address(portal_worker_address)
             .with_incoming_access_control_arc(access_control)
             .with_outgoing_access_control(DenyAll)
             .start(self.ctx())
             .await?;
-
-        self.ebpf_support
-            .outlet_registry
-            .add_outlet(dst_ip, dst_port);
 
         Ok(())
     }

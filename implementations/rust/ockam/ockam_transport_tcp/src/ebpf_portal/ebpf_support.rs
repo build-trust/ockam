@@ -10,7 +10,7 @@ use core::fmt::{Debug, Formatter};
 use ockam_core::compat::collections::HashMap;
 use ockam_core::compat::sync::RwLock;
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::{Address, Error, Result};
+use ockam_core::{Address, AllowAll, DenyAll, Error, Result};
 use ockam_node::compat::asynchronous::Mutex as AsyncMutex;
 use ockam_node::Context;
 use pnet::transport::TransportSender;
@@ -104,7 +104,8 @@ impl TcpTransportEbpfSupport {
 
         *socket_write_handle_lock = Some(socket_write_handle.clone());
 
-        ctx.start_processor(address, processor).await?;
+        ctx.start_processor_with_access_control(address, processor, DenyAll, AllowAll)
+            .await?;
 
         info!("Started RawSocket");
 
@@ -281,7 +282,7 @@ impl TcpTransportEbpfSupport {
     }
 
     /// Add inlet port
-    pub fn add_inlet_port(&self, port: u16) -> Result<()> {
+    pub fn add_inlet_port(&self, port: Port) -> Result<()> {
         let mut bpf = self.bpf.lock().unwrap();
 
         bpf.as_mut()
@@ -294,7 +295,7 @@ impl TcpTransportEbpfSupport {
     }
 
     /// Remove inlet port
-    pub fn remove_inlet_port(&self, port: u16) -> Result<()> {
+    pub fn remove_inlet_port(&self, port: Port) -> Result<()> {
         let mut bpf = self.bpf.lock().unwrap();
 
         bpf.as_mut().unwrap().inlet_port_map.remove(&port).unwrap();
@@ -303,7 +304,7 @@ impl TcpTransportEbpfSupport {
     }
 
     /// Add outlet port
-    pub fn add_outlet_port(&self, port: u16) -> Result<()> {
+    pub fn add_outlet_port(&self, port: Port) -> Result<()> {
         let mut bpf = self.bpf.lock().unwrap();
 
         bpf.as_mut()
@@ -316,7 +317,7 @@ impl TcpTransportEbpfSupport {
     }
 
     /// Remove outlet port
-    pub fn remove_outlet_port(&self, port: u16) -> Result<()> {
+    pub fn remove_outlet_port(&self, port: Port) -> Result<()> {
         let mut bpf = self.bpf.lock().unwrap();
 
         bpf.as_mut().unwrap().outlet_port_map.remove(&port).unwrap();

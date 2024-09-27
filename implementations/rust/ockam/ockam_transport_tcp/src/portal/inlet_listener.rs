@@ -23,7 +23,7 @@ use tracing::{debug, error, instrument};
 #[derive(Debug, Clone)]
 pub struct InletSharedState {
     pub route: Route,
-    pub is_paused: bool, // FIXME: eBPF Not implemented
+    pub is_paused: bool,
 }
 
 /// A TCP Portal Inlet listen processor
