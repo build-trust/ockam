@@ -321,6 +321,7 @@ jobs:
           echo $(which ockam)
           echo $BATS_TEST_RETRIES
           bash implementations/rust/ockam/ockam_command/tests/bats/run.sh local
+          sudo PATH=$PATH BATS_LIB=$BATS_LIB bash implementations/rust/ockam/ockam_command/tests/bats/run.sh local_as_root
         env:
           OCKAM_DISABLE_UPGRADE_CHECK: 1
           BATS_TEST_RETRIES: 2
