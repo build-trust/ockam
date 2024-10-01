@@ -1,6 +1,7 @@
 use crate::kafka::key_exchange::{KafkaKeyExchangeController, TopicPartition};
 use crate::kafka::protocol_aware::KafkaEncryptedContent;
 use crate::kafka::{ConsumerPublishing, ConsumerResolution};
+use crate::nodes::models::relay::ReturnTiming;
 use crate::nodes::NodeManager;
 use ockam::identity::{
     DecryptionRequest, DecryptionResponse, EncryptionRequest, EncryptionResponse, Identifier,
@@ -112,6 +113,7 @@ impl KafkaKeyExchangeController for KafkaKeyExchangeControllerImpl {
                             alias.clone(),
                             None,
                             Some(alias),
+                            ReturnTiming::AfterConnection,
                         )
                         .await?;
 
