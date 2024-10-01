@@ -15,7 +15,7 @@ use ockam_node::compat::asynchronous::Mutex;
 use ockam_node::Context;
 
 use crate::nodes::connection::Connection;
-use crate::nodes::models::relay::{CreateRelay, RelayInfo};
+use crate::nodes::models::relay::{CreateRelay, RelayInfo, ReturnTiming};
 use crate::nodes::models::secure_channel::{
     CreateSecureChannelRequest, CreateSecureChannelResponse,
 };
@@ -40,11 +40,19 @@ impl NodeManagerWorker {
             name,
             authorized,
             relay_address,
+            return_timing,
         } = create_relay;
 
         match self
             .node_manager
-            .create_relay(ctx, &address, name.clone(), authorized, relay_address)
+            .create_relay(
+                ctx,
+                &address,
+                name.clone(),
+                authorized,
+                relay_address,
+                return_timing,
+            )
             .await
         {
             Ok(body) => Ok(Response::ok().with_headers(req).body(body)),
@@ -126,6 +134,7 @@ impl NodeManager {
         alias: String,
         authorized: Option<Identifier>,
         relay_address: Option<String>,
+        return_timing: ReturnTiming,
     ) -> Result<RelayInfo> {
         if self.registry.relays.contains_key(&alias).await {
             let message = format!("A relay with the name '{alias}' already exists");
@@ -148,26 +157,42 @@ impl NodeManager {
 
         let mut session = Session::create(ctx, Arc::new(Mutex::new(replacer)), None).await?;
 
-        let remote_relay_info = session
-            .initial_connect()
-            .await
-            .map(|outcome| match outcome {
-                ReplacerOutputKind::Relay(status) => status,
-                _ => {
-                    panic!("Unexpected outcome: {:?}", outcome);
+        let remote_relay_info = match return_timing {
+            ReturnTiming::Immediately => None,
+            ReturnTiming::AfterConnection => {
+                let result = session
+                    .initial_connect()
+                    .await
+                    .map(|outcome| match outcome {
+                        ReplacerOutputKind::Relay(status) => status,
+                        _ => {
+                            panic!("Unexpected outcome: {:?}", outcome);
+                        }
+                    });
+
+                match result {
+                    Ok(remote_relay_info) => Some(remote_relay_info),
+                    Err(err) => {
+                        warn!(%err, "Failed to create relay");
+                        None
+                    }
                 }
-            })?;
+            }
+        };
 
         session.start_monitoring().await?;
 
-        debug!(
-            forwarding_route = %remote_relay_info.forwarding_route(),
-            remote_address = %remote_relay_info.remote_address(),
-            "CreateRelay request processed, sending back response"
-        );
-
-        let relay_info = RelayInfo::new(addr.clone(), alias.clone(), session.connection_status())
-            .with(remote_relay_info);
+        let relay_info = RelayInfo::new(addr.clone(), alias.clone(), session.connection_status());
+        let relay_info = if let Some(remote_relay_info) = remote_relay_info {
+            debug!(
+                forwarding_route = %remote_relay_info.forwarding_route(),
+                remote_address = %remote_relay_info.remote_address(),
+                "CreateRelay request processed, sending back response"
+            );
+            relay_info.with(remote_relay_info)
+        } else {
+            relay_info
+        };
 
         let registry_relay_info = RegistryRelayInfo {
             destination_address: addr.clone(),
@@ -237,9 +262,17 @@ impl InMemoryNode {
         alias: String,
         authorized: Option<Identifier>,
         relay_address: Option<String>,
+        return_timing: ReturnTiming,
     ) -> Result<RelayInfo> {
         self.node_manager
-            .create_relay(ctx, address, alias, authorized, relay_address)
+            .create_relay(
+                ctx,
+                address,
+                alias,
+                authorized,
+                relay_address,
+                return_timing,
+            )
             .await
     }
 
@@ -349,6 +382,7 @@ pub trait Relays {
         alias: String,
         authorized: Option<Identifier>,
         relay_address: Option<String>,
+        return_timing: ReturnTiming,
     ) -> miette::Result<RelayInfo>;
 }
 
@@ -361,8 +395,15 @@ impl Relays for BackgroundNodeClient {
         alias: String,
         authorized: Option<Identifier>,
         relay_address: Option<String>,
+        return_timing: ReturnTiming,
     ) -> miette::Result<RelayInfo> {
-        let body = CreateRelay::new(address.clone(), alias, authorized, relay_address);
+        let body = CreateRelay::new(
+            address.clone(),
+            alias,
+            authorized,
+            relay_address,
+            return_timing,
+        );
         self.ask(ctx, Request::post("/node/relay").body(body)).await
     }
 }

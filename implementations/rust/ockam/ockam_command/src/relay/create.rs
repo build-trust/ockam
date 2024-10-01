@@ -11,15 +11,16 @@ use ockam::Context;
 use ockam_api::address::extract_address_value;
 use ockam_api::colors::color_primary;
 
+use ockam_api::nodes::models::relay::ReturnTiming;
 use ockam_api::nodes::service::relay::Relays;
 use ockam_api::nodes::BackgroundNodeClient;
-use ockam_api::{fmt_ok, CliState};
+use ockam_api::{fmt_info, fmt_ok, fmt_warn, CliState, ConnectionStatus};
 use ockam_multiaddr::proto::Project;
 use ockam_multiaddr::{MultiAddr, Protocol};
 
 use crate::node::util::initialize_default_node;
 use crate::shared_args::RetryOpts;
-use crate::util::process_nodes_multiaddr;
+use crate::util::{print_deprecated_flag_warning, process_nodes_multiaddr};
 use crate::{docs, Command, CommandGlobalOpts, Error, Result};
 
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
@@ -53,10 +54,14 @@ pub struct CreateCommand {
     #[arg(long)]
     relay_address: Option<String>,
 
-    /// Whether the relay will be used to relay messages at a project.
+    /// [DEPRECATED] Whether the relay will be used to relay messages at a project.
     /// By default, this information will be inferred from the `--at` argument.
     #[arg(long)]
     project_relay: bool,
+
+    /// Create the Relay without waiting for the connection to be established
+    #[arg(long, default_value = "false")]
+    pub no_connection_wait: bool,
 
     #[command(flatten)]
     retry_opts: RetryOpts,
@@ -79,6 +84,11 @@ impl Command for CreateCommand {
         let cmd = self.parse_args(&opts).await?;
         let at = cmd.at();
         let alias = cmd.relay_name();
+        let return_timing = cmd.return_timing();
+
+        if cmd.project_relay {
+            print_deprecated_flag_warning(&opts, "--project-relay")?;
+        }
 
         let node = BackgroundNodeClient::create(ctx, &opts.state, &cmd.to).await?;
         let relay_info = {
@@ -101,34 +111,73 @@ impl Command for CreateCommand {
                 alias.clone(),
                 cmd.authorized,
                 Some(cmd.relay_address.unwrap_or(alias)),
+                return_timing.clone(),
             )
             .await
             .map_err(Error::Retry)?
         };
 
-        let invalid_relay_error_msg =
-            "The Orchestrator returned an invalid relay address. Try creating a new one.";
-        let remote_address = relay_info
-            .remote_address_ma()
-            .into_diagnostic()?
-            .ok_or(miette!(invalid_relay_error_msg))?;
-        let worker_address = relay_info
-            .worker_address_ma()
-            .into_diagnostic()?
-            .ok_or(miette!(invalid_relay_error_msg))?;
+        match return_timing {
+            ReturnTiming::Immediately => {
+                let plain = {
+                    let from = color_primary(&at);
+                    let to = color_primary(format!("/node/{}", &node.node_name()));
 
-        let plain = {
-            // `remote_address` in the project is relaying to worker at address `worker_address` on that node.
-            let from = color_primary(format!("{}{}", &at, remote_address));
-            let to = color_primary(format!("/node/{}{}", &node.node_name(), worker_address));
-            fmt_ok!("Now relaying messages from {from} → {to}")
-        };
-        opts.terminal
-            .stdout()
-            .plain(plain)
-            .machine(remote_address.to_string())
-            .json_obj(relay_info)?
-            .write_line()?;
+                    fmt_ok!("Relay will be created automatically from {from} → {to} as soon as a connection can be established.")
+                };
+
+                opts.terminal
+                    .stdout()
+                    .plain(plain)
+                    .json_obj(relay_info)?
+                    .write_line()?;
+            }
+            ReturnTiming::AfterConnection => {
+                if relay_info.connection_status() == ConnectionStatus::Up {
+                    let invalid_relay_error_msg =
+                        "The Orchestrator returned an invalid relay address. Try creating a new one.";
+
+                    let remote_address = relay_info
+                        .remote_address_ma()
+                        .into_diagnostic()?
+                        .ok_or(miette!(invalid_relay_error_msg))?;
+                    let worker_address = relay_info
+                        .worker_address_ma()
+                        .into_diagnostic()?
+                        .ok_or(miette!(invalid_relay_error_msg))?;
+
+                    let plain = {
+                        // `remote_address` in the project is relaying to worker at address `worker_address` on that node.
+                        let from = color_primary(format!("{}{}", &at, remote_address));
+                        let to =
+                            color_primary(format!("/node/{}{}", &node.node_name(), worker_address));
+
+                        fmt_ok!("Now relaying messages from {from} → {to}")
+                    };
+
+                    opts.terminal
+                        .stdout()
+                        .plain(plain)
+                        .machine(remote_address.to_string())
+                        .json_obj(relay_info)?
+                        .write_line()?;
+                } else {
+                    let plain = {
+                        let from = color_primary(&at);
+                        let to = color_primary(format!("/node/{}", &node.node_name()));
+
+                        fmt_warn!("A relay was created at {to} but failed to connect to {from}\n")
+                            + &fmt_info!("It will retry to connect automatically")
+                    };
+
+                    opts.terminal
+                        .stdout()
+                        .plain(plain)
+                        .json_obj(relay_info)?
+                        .write_line()?;
+                }
+            }
+        }
 
         Ok(())
     }
@@ -174,6 +223,14 @@ impl CreateCommand {
         }
         let ma = MultiAddr::from_str(&at).map_err(|_| Error::arg_validation("at", at, None))?;
         process_nodes_multiaddr(&ma, state).await
+    }
+
+    fn return_timing(&self) -> ReturnTiming {
+        if self.no_connection_wait {
+            ReturnTiming::Immediately
+        } else {
+            ReturnTiming::AfterConnection
+        }
     }
 }
 

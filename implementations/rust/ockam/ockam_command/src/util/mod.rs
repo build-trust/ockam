@@ -218,6 +218,14 @@ pub fn print_deprecated_warning(opts: &CommandGlobalOpts, old: &str, new: &str) 
     Ok(())
 }
 
+pub fn print_deprecated_flag_warning(opts: &CommandGlobalOpts, deprecated: &str) -> Result<()> {
+    opts.terminal.write_line(fmt_warn!(
+        "{} is deprecated. This flag has no effect",
+        color_primary(deprecated),
+    ))?;
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use std::str::FromStr;

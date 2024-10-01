@@ -1,10 +1,10 @@
 use clap::Args;
 use colorful::Colorful;
 use miette::miette;
-use ockam_api::colors::{color_primary, OckamColor};
+use ockam_api::colors::OckamColor;
 use ockam_api::{color, fmt_info, fmt_ok, fmt_warn};
 
-use crate::util::async_cmd;
+use crate::util::{async_cmd, print_deprecated_flag_warning};
 use crate::{docs, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/stop/long_about.txt");
@@ -40,10 +40,7 @@ impl StopCommand {
 
     async fn async_run(&self, opts: CommandGlobalOpts) -> miette::Result<()> {
         if self.force {
-            opts.terminal.write_line(fmt_warn!(
-                "{} is deprecated. This flag has no effect",
-                color_primary("--force"),
-            ))?;
+            print_deprecated_flag_warning(&opts, "--force")?;
         }
 
         let running_nodes = opts
