@@ -14,6 +14,13 @@ use crate::session::replacer::ReplacerOutputKind;
 use crate::session::session::Session;
 use crate::{route_to_multiaddr, ConnectionStatus};
 
+#[derive(Debug, Clone, Encode, Decode, CborLen)]
+#[rustfmt::skip]
+pub enum ReturnTiming {
+    #[n(1)] Immediately,
+    #[n(2)] AfterConnection,
+}
+
 /// Request body when instructing a node to create a relay
 #[derive(Debug, Clone, Encode, Decode, CborLen)]
 #[rustfmt::skip]
@@ -29,6 +36,8 @@ pub struct CreateRelay {
     #[n(3)] pub(crate) authorized: Option<Identifier>,
     /// Relay address.
     #[n(4)] pub(crate) relay_address: Option<String>,
+    /// When to return.
+    #[n(5)] pub(crate) return_timing: ReturnTiming,
 }
 
 impl CreateRelay {
@@ -37,12 +46,14 @@ impl CreateRelay {
         name: String,
         auth: Option<Identifier>,
         relay_address: Option<String>,
+        return_timing: ReturnTiming,
     ) -> Self {
         Self {
             address,
             name,
             authorized: auth,
             relay_address,
+            return_timing,
         }
     }
 
@@ -60,6 +71,10 @@ impl CreateRelay {
 
     pub fn relay_address(&self) -> Option<&str> {
         self.relay_address.as_deref()
+    }
+
+    pub fn return_timing(&self) -> ReturnTiming {
+        self.return_timing.clone()
     }
 }
 

@@ -3,13 +3,13 @@ use clap::Args;
 use colorful::Colorful;
 use console::Term;
 use ockam_api::colors::color_primary;
+use ockam_api::fmt_ok;
 use ockam_api::terminal::notification::NotificationHandler;
 use ockam_api::terminal::{Terminal, TerminalStream};
-use ockam_api::{fmt_ok, fmt_warn};
 
 use crate::terminal::tui::DeleteCommandTui;
 use crate::tui::PluralTerm;
-use crate::util::async_cmd;
+use crate::util::{async_cmd, print_deprecated_flag_warning};
 
 const LONG_ABOUT: &str = include_str!("./static/delete/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
@@ -51,10 +51,7 @@ impl DeleteCommand {
 
     async fn async_run(&self, opts: CommandGlobalOpts) -> miette::Result<()> {
         if self.force {
-            opts.terminal.write_line(fmt_warn!(
-                "{} is deprecated. This flag has no effect",
-                color_primary("--force"),
-            ))?;
+            print_deprecated_flag_warning(&opts, "--force")?;
         }
         DeleteTui::run(opts, self.clone()).await
     }
