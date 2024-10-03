@@ -1,5 +1,6 @@
 #![allow(unsafe_code)]
 
+use super::{Iface, Port, Proto};
 use crate::ebpf_portal::{InletRegistry, OutletRegistry, RawSocketProcessor};
 use aya::maps::{MapData, MapError};
 use aya::programs::tc::SchedClassifierLink;
@@ -10,22 +11,13 @@ use core::fmt::{Debug, Formatter};
 use ockam_core::compat::collections::HashMap;
 use ockam_core::compat::sync::RwLock;
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::{Address, AllowAll, DenyAll, Error, Result};
+use ockam_core::{Address, Error, Result};
 use ockam_node::compat::asynchronous::Mutex as AsyncMutex;
 use ockam_node::Context;
 use pnet::transport::TransportSender;
 use rand::random;
 use std::sync::{Arc, Mutex};
 use tracing::{debug, error, info, warn};
-
-/// Network interface name
-pub type Iface = String;
-
-/// IP Protocol
-pub type Proto = u8;
-
-/// Port
-pub type Port = u16;
 
 /// eBPF support for [`TcpTransport`]
 #[derive(Clone)]
@@ -38,6 +30,7 @@ pub struct TcpTransportEbpfSupport {
     links: Arc<Mutex<HashMap<Iface, IfaceLink>>>,
 
     socket_write_handle: Arc<AsyncMutex<Option<Arc<RwLock<TransportSender>>>>>,
+    raw_socket_processor_address: Address,
 
     bpf: Arc<Mutex<Option<OckamBpf>>>,
 }
@@ -67,6 +60,7 @@ impl Default for TcpTransportEbpfSupport {
             outlet_registry: Default::default(),
             links: Default::default(),
             socket_write_handle: Default::default(),
+            raw_socket_processor_address: Address::random_tagged("RawSocketProcessor"),
             bpf: Default::default(),
         }
     }
@@ -98,13 +92,11 @@ impl TcpTransportEbpfSupport {
         )
         .await?;
 
-        let address = Address::random_tagged("RawSocketProcessor");
-
         let socket_write_handle = processor.socket_write_handle();
 
         *socket_write_handle_lock = Some(socket_write_handle.clone());
 
-        ctx.start_processor_with_access_control(address, processor, DenyAll, AllowAll)
+        ctx.start_processor(self.raw_socket_processor_address.clone(), processor)
             .await?;
 
         info!("Started RawSocket");
@@ -323,6 +315,11 @@ impl TcpTransportEbpfSupport {
         bpf.as_mut().unwrap().outlet_port_map.remove(&port).unwrap();
 
         Ok(())
+    }
+
+    /// Return the address of this Processor
+    pub fn raw_socket_processor_address(&self) -> &Address {
+        &self.raw_socket_processor_address
     }
 }
 

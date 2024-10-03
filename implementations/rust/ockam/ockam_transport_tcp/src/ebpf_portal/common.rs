@@ -5,6 +5,15 @@ use rand::distributions::{Distribution, Standard};
 use rand::Rng;
 use std::net::Ipv4Addr;
 
+/// Port
+pub type Port = u16;
+
+/// Network interface name
+pub type Iface = String;
+
+/// IP Protocol
+pub type Proto = u8;
+
 /// Unique random connection identifier
 #[derive(Clone, Debug, Eq, PartialEq, Hash, Encode, Decode)]
 #[cbor(transparent)]
@@ -54,8 +63,8 @@ impl From<TcpOption> for pnet::packet::tcp::TcpOption {
 
 impl OckamPortalPacket {
     /// Transform
-    pub fn from_raw_socket_message(
-        value: RawSocketMessage,
+    pub fn from_raw_socket_packet(
+        value: RawSocketPacket,
         connection_identifier: ConnectionIdentifier,
     ) -> Self {
         Self {
@@ -74,7 +83,7 @@ impl OckamPortalPacket {
 }
 
 #[allow(missing_docs)]
-pub struct RawSocketMessage {
+pub struct RawSocketPacket {
     pub source_ip: Ipv4Addr,
 
     pub source: u16,
@@ -89,6 +98,14 @@ pub struct RawSocketMessage {
     pub urgent_ptr: u16,
     pub options: Vec<RawTcpOption>,
     pub payload: Vec<u8>,
+}
+
+#[allow(missing_docs)]
+pub struct ParsedRawSocketPacket {
+    pub packet: RawSocketPacket,
+
+    pub destination_ip: Ipv4Addr,
+    pub destination_port: Port,
 }
 
 impl From<pnet::packet::tcp::TcpOption> for RawTcpOption {
@@ -119,7 +136,7 @@ pub struct RawTcpOption {
 }
 
 #[allow(missing_docs)]
-impl RawSocketMessage {
+impl RawSocketPacket {
     pub fn from_packet(packet: TcpPacket<'_>, source_ip: Ipv4Addr) -> Self {
         Self {
             source_ip,

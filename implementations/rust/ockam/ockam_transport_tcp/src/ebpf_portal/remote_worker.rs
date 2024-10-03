@@ -26,14 +26,14 @@ pub enum PortalWorkerMode {
 }
 
 /// Worker listens for new incoming connections.
-pub struct PortalWorker {
+pub struct RemoteWorker {
     mode: PortalWorkerMode,
 
     socket_write_handle: Arc<RwLock<TransportSender>>,
     ebpf_support: TcpTransportEbpfSupport,
 }
 
-impl PortalWorker {
+impl RemoteWorker {
     /// Constructor.
     pub fn new_inlet(
         socket_write_handle: Arc<RwLock<TransportSender>>,
@@ -175,7 +175,7 @@ impl PortalWorker {
 }
 
 #[async_trait]
-impl Worker for PortalWorker {
+impl Worker for RemoteWorker {
     type Message = Any;
     type Context = Context;
 

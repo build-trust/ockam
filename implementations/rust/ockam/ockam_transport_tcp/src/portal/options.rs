@@ -7,10 +7,10 @@ use ockam_core::{Address, AllowAll, IncomingAccessControl, OutgoingAccessControl
 /// Trust Options for an Inlet
 #[derive(Clone, Debug)]
 pub struct TcpInletOptions {
-    pub(super) incoming_access_control: Arc<dyn IncomingAccessControl>,
-    pub(super) outgoing_access_control: Arc<dyn OutgoingAccessControl>,
-    pub(super) is_paused: bool,
-    pub(super) tls_certificate_provider: Option<Arc<dyn TlsCertificateProvider>>,
+    pub(crate) incoming_access_control: Arc<dyn IncomingAccessControl>,
+    pub(crate) outgoing_access_control: Arc<dyn OutgoingAccessControl>,
+    pub(crate) is_paused: bool,
+    pub(crate) tls_certificate_provider: Option<Arc<dyn TlsCertificateProvider>>,
 }
 
 impl TcpInletOptions {
@@ -108,10 +108,10 @@ impl Default for TcpInletOptions {
 /// Trust Options for an Outlet
 #[derive(Clone, Debug)]
 pub struct TcpOutletOptions {
-    pub(super) consumer: Vec<FlowControlId>,
+    pub(crate) consumer: Vec<FlowControlId>,
     pub(crate) incoming_access_control: Arc<dyn IncomingAccessControl>,
     pub(crate) outgoing_access_control: Arc<dyn OutgoingAccessControl>,
-    pub(super) tls: bool,
+    pub(crate) tls: bool,
 }
 
 impl TcpOutletOptions {
