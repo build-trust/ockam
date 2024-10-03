@@ -2,46 +2,48 @@ use crate::ebpf_portal::{
     Inlet, InletConnection, OckamPortalPacket, Outlet, OutletConnection, Port,
     TcpTransportEbpfSupport,
 };
+use log::{debug, trace};
 use ockam_core::{async_trait, Any, Result, Route, Routed, Worker};
 use ockam_node::Context;
+use ockam_transport_core::TransportError;
 use pnet::packet::tcp::MutableTcpPacket;
 use pnet::transport::TransportSender;
 use std::net::{IpAddr, Ipv4Addr};
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, Mutex};
 use tokio::net::TcpListener;
-use tracing::{info, warn};
+use tracing::warn;
 
-/// PortalWorker mode of operation
-pub enum PortalWorkerMode {
-    /// PortalWorker spawned for an Inlet
+/// Portal mode of operation
+pub enum PortalMode {
+    /// Spawned for an Inlet
     Inlet {
         /// Inlet info
         inlet: Inlet,
     },
-    /// PortalWorker spawned for an Outlet
+    /// Spawned for an Outlet
     Outlet {
         /// Outlet info
         outlet: Outlet,
     },
 }
 
-/// Worker listens for new incoming connections.
-pub struct PortalWorker {
-    mode: PortalWorkerMode,
+/// Worker receives packets for the corresponding Outlet from the other side.
+pub struct RemoteWorker {
+    mode: PortalMode,
 
-    socket_write_handle: Arc<RwLock<TransportSender>>,
+    socket_write_handle: Arc<Mutex<TransportSender>>,
     ebpf_support: TcpTransportEbpfSupport,
 }
 
-impl PortalWorker {
+impl RemoteWorker {
     /// Constructor.
     pub fn new_inlet(
-        socket_write_handle: Arc<RwLock<TransportSender>>,
+        socket_write_handle: Arc<Mutex<TransportSender>>,
         inlet: Inlet,
         ebpf_support: TcpTransportEbpfSupport,
     ) -> Self {
         Self {
-            mode: PortalWorkerMode::Inlet { inlet },
+            mode: PortalMode::Inlet { inlet },
             socket_write_handle,
             ebpf_support,
         }
@@ -49,12 +51,12 @@ impl PortalWorker {
 
     /// Constructor.
     pub fn new_outlet(
-        socket_write_handle: Arc<RwLock<TransportSender>>,
+        socket_write_handle: Arc<Mutex<TransportSender>>,
         outlet: Outlet,
         ebpf_support: TcpTransportEbpfSupport,
     ) -> Self {
         Self {
-            mode: PortalWorkerMode::Outlet { outlet },
+            mode: PortalMode::Outlet { outlet },
             socket_write_handle,
             ebpf_support,
         }
@@ -67,13 +69,17 @@ impl PortalWorker {
         msg: &OckamPortalPacket,
         return_route: Route,
     ) -> Result<Arc<OutletConnection>> {
-        // debug!("New TCP connection");
-        info!("New TCP connection");
-
         // FIXME: eBPF It should an IP address of the network device that we'll use to send packets,
         //         However, we don't know it here.
-        let tcp_listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
-        let assigned_port = tcp_listener.local_addr().unwrap().port();
+        let tcp_listener = TcpListener::bind("127.0.0.1:0")
+            .await
+            .map_err(|_| TransportError::BindFailed)?;
+        let local_addr = tcp_listener
+            .local_addr()
+            .map_err(|_| TransportError::BindFailed)?;
+        let assigned_port = local_addr.port();
+
+        debug!("New TCP connection. Assigned socket {}", local_addr);
 
         let connection = Arc::new(OutletConnection {
             identifier,
@@ -100,7 +106,7 @@ impl PortalWorker {
         let buff_len = (msg.data_offset as usize) * 4 + msg.payload.len();
 
         let buff = vec![0u8; buff_len];
-        let mut packet = MutableTcpPacket::owned(buff).unwrap();
+        let mut packet = MutableTcpPacket::owned(buff).ok_or(TransportError::BindFailed)?;
 
         packet.set_sequence(msg.sequence);
         packet.set_acknowledgement(msg.acknowledgement);
@@ -132,13 +138,20 @@ impl PortalWorker {
 
         let packet = packet.to_immutable();
 
+        trace!(
+            "Writing packet to the RawSocket. {} -> {}:{}",
+            src_port,
+            dst_ip,
+            dst_port
+        );
+
         // TODO: We don't pick the source IP here, but it's important that it stays the same,
         //  Otherwise the receiving TCP connection would be disrupted.
         self.socket_write_handle
-            .write()
+            .lock()
             .unwrap()
             .send_to(packet, IpAddr::V4(dst_ip))
-            .unwrap();
+            .map_err(|e| TransportError::RawSocketWrite(e.to_string()))?;
 
         Ok(())
     }
@@ -175,7 +188,7 @@ impl PortalWorker {
 }
 
 #[async_trait]
-impl Worker for PortalWorker {
+impl Worker for RemoteWorker {
     type Message = Any;
     type Context = Context;
 
@@ -192,18 +205,19 @@ impl Worker for PortalWorker {
         let identifier = None; // FIXME: Should be the Identifier of the other side
 
         match &self.mode {
-            PortalWorkerMode::Inlet { inlet } => {
-                if let Some(connection) =
-                    inlet.get_connection_external(identifier, msg.connection_identifier.clone())
-                {
-                    self.handle_inlet(inlet, &connection, msg).await?;
-
-                    return Ok(());
+            PortalMode::Inlet { inlet } => {
+                match inlet.get_connection_external(identifier, msg.connection_identifier.clone()) {
+                    Some(connection) => {
+                        self.handle_inlet(inlet, &connection, msg).await?;
+                    }
+                    None => {
+                        warn!("Portal Worker Inlet: received a packet for an unknown connection");
+                    }
                 }
 
-                warn!("Portal Worker in Inlet mode received a packet for an unknown connection");
+                return Ok(());
             }
-            PortalWorkerMode::Outlet { outlet } => {
+            PortalMode::Outlet { outlet } => {
                 if let Some(connection) = outlet
                     .get_connection_external(identifier.clone(), msg.connection_identifier.clone())
                 {
@@ -222,7 +236,7 @@ impl Worker for PortalWorker {
                     return Ok(());
                 }
 
-                warn!("Portal Worker in Outlet mode received a non SYN packet for an unknown connection");
+                warn!("Portal Worker Outlet: received a non SYN packet for an unknown connection");
             }
         }
 

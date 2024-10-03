@@ -48,6 +48,34 @@ pub enum TransportError {
     MessageLengthExceeded,
     /// Should not happen
     EncodingInternalError,
+    /// Can't read from RawSocket
+    RawSocketRead(String),
+    /// Can't write to RawSocket
+    RawSocketWrite(String),
+    /// Can't create RawSocket
+    RawSocketCreation(String),
+    /// Couldn't redirect packet to corresponding Inlet
+    RawSocketRedirectToInlet,
+    /// Couldn't redirect packet to corresponding Outlet
+    RawSocketRedirectToOutlet,
+    /// Couldn't read network interfaces
+    ReadingNetworkInterfaces(i32),
+    /// Error while allocating packet
+    AllocatingPacket,
+    /// Error while parsing IPv4 packet
+    ParsingIPv4Packet,
+    /// Error while parsing TCP packet
+    ParsingTcpPacket,
+    /// Expected IPv4 address instead of IPv6
+    ExpectedIPv4Address,
+    /// Error adding Inlet port to the eBPF map
+    AddingInletPort(String),
+    /// Error adding Outlet port to the eBPF map
+    AddingOutletPort(String),
+    /// Error removing Inlet port to the eBPF map
+    RemovingInletPort(String),
+    /// Error removing Outlet port to the eBPF map
+    RemovingOutletPort(String),
 }
 
 impl ockam_core::compat::error::Error for TransportError {}
@@ -75,6 +103,22 @@ impl core::fmt::Display for TransportError {
             Self::InvalidProtocolVersion => write!(f, "invalid protocol version"),
             Self::MessageLengthExceeded => write!(f, "message length exceeded"),
             Self::EncodingInternalError => write!(f, "encoding internal error"),
+            Self::RawSocketRead(e) => write!(f, "raw socket read failure: {}", e),
+            Self::RawSocketWrite(e) => write!(f, "raw socket write failure: {}", e),
+            Self::RawSocketCreation(e) => write!(f, "raw socket creation failed: {}", e),
+            Self::RawSocketRedirectToInlet => write!(f, "inlet socket redirection"),
+            Self::RawSocketRedirectToOutlet => write!(f, "outlet socket redirection"),
+            Self::ReadingNetworkInterfaces(e) => {
+                write!(f, "error reading network interfaces: {}", e)
+            }
+            Self::AllocatingPacket => write!(f, "error allocating packet"),
+            Self::ParsingIPv4Packet => write!(f, "error parsing IPv4 packet"),
+            Self::ParsingTcpPacket => write!(f, "error parsing TCP packet"),
+            Self::ExpectedIPv4Address => write!(f, "expected IPv4 address instead of IPv6"),
+            Self::AddingInletPort(e) => write!(f, "error adding inlet port {}", e),
+            Self::AddingOutletPort(e) => write!(f, "error adding outlet port {}", e),
+            Self::RemovingInletPort(e) => write!(f, "error removing inlet port {}", e),
+            Self::RemovingOutletPort(e) => write!(f, "error removing outlet port {}", e),
         }
     }
 }
@@ -103,6 +147,16 @@ impl From<TransportError> for Error {
             InvalidProtocolVersion => Kind::Invalid,
             MessageLengthExceeded => Kind::Unsupported,
             EncodingInternalError => Kind::Internal,
+            RawSocketRead(_) | RawSocketWrite(_) | RawSocketCreation(_) => Kind::Io,
+            RawSocketRedirectToInlet | RawSocketRedirectToOutlet => Kind::Internal,
+            ReadingNetworkInterfaces(_) => Kind::Io,
+            AllocatingPacket => Kind::Internal,
+            ParsingIPv4Packet | ParsingTcpPacket => Kind::Io,
+            ExpectedIPv4Address => Kind::Invalid,
+            AddingInletPort(_)
+            | AddingOutletPort(_)
+            | RemovingInletPort(_)
+            | RemovingOutletPort(_) => Kind::Io,
         };
 
         Error::new(Origin::Transport, kind, err)
