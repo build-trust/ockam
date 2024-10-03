@@ -1,14 +1,15 @@
-use crate::ebpf_portal::{Port, PortalWorker};
+use crate::ebpf_portal::{InternalProcessor, Port, RemoteWorker};
 use crate::portal::InletSharedState;
 use crate::{TcpInlet, TcpInletOptions, TcpOutletOptions, TcpTransport};
 use core::fmt::Debug;
-use ockam_core::{Address, AllowAll, DenyAll, Result, Route};
+use ockam_core::{Address, DenyAll, Result, Route};
 use ockam_node::compat::asynchronous::resolve_peer;
-use ockam_node::WorkerBuilder;
-use ockam_transport_core::HostnamePort;
+use ockam_node::{ProcessorBuilder, WorkerBuilder};
+use ockam_transport_core::{HostnamePort, TransportError};
 use std::net::{IpAddr, SocketAddrV4};
 use std::sync::{Arc, RwLock};
 use tokio::net::TcpListener;
+use tokio::sync::mpsc::channel;
 use tracing::instrument;
 
 impl TcpTransport {
@@ -26,18 +27,20 @@ impl TcpTransport {
 
         // TODO: eBPF Find correlation between bind_addr and iface?
         let bind_addr = bind_addr.into();
-        let tcp_listener = TcpListener::bind(bind_addr.clone()).await.unwrap(); // FIXME eBPF
-
-        let local_address = tcp_listener.local_addr().unwrap(); // FIXME eBPF
+        let tcp_listener = TcpListener::bind(bind_addr.clone())
+            .await
+            .map_err(|_| TransportError::BindFailed)?;
+        let local_address = tcp_listener
+            .local_addr()
+            .map_err(|_| TransportError::BindFailed)?;
         let ip = match local_address.ip() {
             IpAddr::V4(ip) => ip,
-            IpAddr::V6(_) => {
-                panic!() // FIXME eBPF
-            }
+            IpAddr::V6(_) => return Err(TransportError::ExpectedIPv4Address)?,
         };
         let port = local_address.port();
 
-        let ifaddrs = nix::ifaddrs::getifaddrs().unwrap(); // FIXME
+        let ifaddrs = nix::ifaddrs::getifaddrs()
+            .map_err(|e| TransportError::ReadingNetworkInterfaces(e as i32))?;
         for ifaddr in ifaddrs {
             let addr = match ifaddr.address {
                 Some(addr) => addr,
@@ -65,17 +68,21 @@ impl TcpTransport {
             is_paused: false,
         }));
 
-        let portal_worker_address = Address::random_tagged("Ebpf.PortalWorker"); // FIXME
+        let remote_worker_address = Address::random_tagged("Ebpf.RemoteWorker.Inlet");
+        let internal_worker_address = Address::random_tagged("Ebpf.InternalWorker.Inlet");
 
-        options.setup_flow_control_for_address(
+        TcpInletOptions::setup_flow_control_for_address(
             self.ctx().flow_controls(),
-            portal_worker_address.clone(),
+            remote_worker_address.clone(),
             &next,
         );
 
+        let (sender, receiver) = channel(20); // FIXME
+
         let inlet_info = self.ebpf_support.inlet_registry.create_inlet(
-            portal_worker_address.clone(),
-            options,
+            remote_worker_address.clone(),
+            internal_worker_address.clone(),
+            sender,
             local_address.port(),
             tcp_listener,
             inlet_shared_state.clone(),
@@ -83,15 +90,28 @@ impl TcpTransport {
 
         self.ebpf_support.add_inlet_port(port)?;
 
-        let worker = PortalWorker::new_inlet(write_handle, inlet_info, self.ebpf_support.clone());
-        WorkerBuilder::new(worker)
-            .with_address(portal_worker_address)
+        let remote_worker =
+            RemoteWorker::new_inlet(write_handle, inlet_info.clone(), self.ebpf_support.clone());
+        WorkerBuilder::new(remote_worker)
+            .with_address(remote_worker_address.clone())
+            .with_incoming_access_control_arc(options.incoming_access_control)
             .with_outgoing_access_control(DenyAll)
-            .with_incoming_access_control(AllowAll) // FIXME
             .start(self.ctx())
             .await?;
 
-        Ok(TcpInlet::new_ebpf(local_address, inlet_shared_state))
+        let internal_worker = InternalProcessor::new_inlet(receiver, inlet_info);
+        ProcessorBuilder::new(internal_worker)
+            .with_address(internal_worker_address.clone())
+            .with_incoming_access_control(DenyAll)
+            .with_outgoing_access_control_arc(options.outgoing_access_control)
+            .start(self.ctx())
+            .await?;
+
+        Ok(TcpInlet::new_ebpf(
+            local_address,
+            remote_worker_address, // FIXME
+            inlet_shared_state,
+        ))
     }
 
     /// Stop the Raw Inlet
@@ -113,7 +133,8 @@ impl TcpTransport {
         // Resolve peer address as a host name and port
         tracing::Span::current().record("peer", peer.to_string());
 
-        let portal_worker_address = address.into();
+        let remote_worker_address = address.into();
+        let internal_worker_address = Address::random_tagged("Ebpf.InternalWorker.Outlet");
 
         // TODO: eBPF May be good to run resolution every time there is incoming connection, but that
         //  would require also updating the self.ebpf_support.outlet_registry
@@ -122,8 +143,7 @@ impl TcpTransport {
         let dst_ip = match destination.ip() {
             IpAddr::V4(ip) => ip,
             IpAddr::V6(_) => {
-                // FIXME eBPF
-                panic!()
+                return Err(TransportError::ExpectedIPv4Address)?;
             }
         };
         let dst_port = destination.port();
@@ -131,32 +151,41 @@ impl TcpTransport {
         // TODO: eBPF Figure out which ifaces might be used and only attach to them
         // TODO: eBPF Should we indeed attach to all interfaces & run a periodic task
         //  to identify network interfaces change?
-        for ifname in TcpTransport::all_interfaces_with_address() {
+        for ifname in TcpTransport::all_interfaces_with_address()? {
             self.attach_ebpf_if_needed(ifname)?;
         }
 
         let write_handle = self.start_raw_socket_processor_if_needed().await?;
 
-        let access_control = options.incoming_access_control.clone();
-
         options.setup_flow_control_for_outlet_listener(
             self.ctx().flow_controls(),
-            &portal_worker_address,
+            &remote_worker_address,
         );
 
+        let (sender, receiver) = channel(20); // FIXME
+
         let outlet_info = self.ebpf_support.outlet_registry.add_outlet(
-            portal_worker_address.clone(),
+            remote_worker_address.clone(),
+            internal_worker_address.clone(),
+            sender,
             dst_ip,
             dst_port,
         );
 
-        let portal_worker =
-            PortalWorker::new_outlet(write_handle, outlet_info, self.ebpf_support.clone());
-
-        WorkerBuilder::new(portal_worker)
-            .with_address(portal_worker_address)
-            .with_incoming_access_control_arc(access_control)
+        let remote_worker =
+            RemoteWorker::new_outlet(write_handle, outlet_info.clone(), self.ebpf_support.clone());
+        WorkerBuilder::new(remote_worker)
+            .with_address(remote_worker_address)
+            .with_incoming_access_control_arc(options.incoming_access_control)
             .with_outgoing_access_control(DenyAll)
+            .start(self.ctx())
+            .await?;
+
+        let internal_worker = InternalProcessor::new_outlet(receiver, outlet_info);
+        ProcessorBuilder::new(internal_worker)
+            .with_address(internal_worker_address)
+            .with_incoming_access_control(DenyAll)
+            .with_outgoing_access_control_arc(options.outgoing_access_control)
             .start(self.ctx())
             .await?;
 

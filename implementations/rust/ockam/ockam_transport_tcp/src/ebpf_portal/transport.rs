@@ -1,16 +1,17 @@
 use crate::ebpf_portal::Iface;
 use crate::TcpTransport;
 use aya::programs::tc::{qdisc_detach_program, TcAttachType};
-use log::{info, warn};
+use log::{error, info, warn};
 use ockam_core::Result;
+use ockam_transport_core::TransportError;
 use pnet::transport::TransportSender;
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, Mutex};
 
 impl TcpTransport {
     /// Start [`RawSocketProcessor`]. Should be done once.
     pub(crate) async fn start_raw_socket_processor_if_needed(
         &self,
-    ) -> Result<Arc<RwLock<TransportSender>>> {
+    ) -> Result<Arc<Mutex<TransportSender>>> {
         self.ebpf_support
             .start_raw_socket_processor_if_needed(self.ctx())
             .await
@@ -27,9 +28,10 @@ impl TcpTransport {
     }
 
     /// List all interfaces with defined IPv4 address
-    pub fn all_interfaces_with_address() -> Vec<String> {
-        let ifaddrs = nix::ifaddrs::getifaddrs().unwrap(); // FIXME
-        ifaddrs
+    pub fn all_interfaces_with_address() -> Result<Vec<String>> {
+        let ifaddrs = nix::ifaddrs::getifaddrs()
+            .map_err(|e| TransportError::ReadingNetworkInterfaces(e as i32))?;
+        let ifaddrs = ifaddrs
             .filter_map(|ifaddr| {
                 let addr = match ifaddr.address {
                     Some(addr) => addr,
@@ -40,14 +42,24 @@ impl TcpTransport {
 
                 Some(ifaddr.interface_name)
             })
-            .collect::<Vec<_>>()
+            .collect::<Vec<_>>();
+
+        Ok(ifaddrs)
     }
 
     /// Detach all ockam eBPFs from all interfaces for all processes
     pub fn detach_all_ockam_ebpfs_globally() {
         // TODO: Not sure that the best way to do it, but it works.
         info!("Detaching all ebpfs globally");
-        for iface in Self::all_interfaces_with_address() {
+        let ifaces = match Self::all_interfaces_with_address() {
+            Ok(ifaces) => ifaces,
+            Err(err) => {
+                error!("Error reading network interfaces: {}", err);
+                return;
+            }
+        };
+
+        for iface in ifaces {
             match qdisc_detach_program(&iface, TcAttachType::Ingress, "ockam_ingress") {
                 Ok(_) => {
                     info!("Detached ockam_ingress from {}", iface);

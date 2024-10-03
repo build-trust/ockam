@@ -1,27 +1,20 @@
+use crate::ebpf_portal::pnet_helper::{create_raw_socket, next_tcp_packet};
 use crate::ebpf_portal::{
-    Inlet, InletConnection, InletRegistry, OckamPortalPacket, Outlet, OutletConnection,
-    OutletRegistry, Port, RawSocketMessage,
+    Inlet, InletRegistry, Outlet, OutletRegistry, ParsedRawSocketPacket, RawSocketPacket,
 };
-use log::warn;
-use ockam_core::{async_trait, route, LocalMessage, Processor, Result};
+use log::{trace, warn};
+use ockam_core::errcode::{Kind, Origin};
+use ockam_core::{async_trait, Error, Processor, Result};
 use ockam_node::Context;
-use pnet::packet::ip::IpNextHeaderProtocol;
+use ockam_transport_core::TransportError;
 use pnet::packet::Packet;
-use pnet::transport;
-use pnet::transport::{
-    tcp_packet_iter, TransportChannelType, TransportProtocol, TransportReceiver, TransportSender,
-};
-use rand::random;
-use std::net::{IpAddr, Ipv4Addr};
-use std::sync::{Arc, RwLock};
-use tracing::info;
+use pnet::transport::{TransportReceiver, TransportSender};
+use std::sync::{Arc, Mutex};
 
 /// Processor responsible for receiving all data with OCKAM_TCP_PORTAL_PROTOCOL on the machine
 /// and redirect it to individual portal workers.
 pub struct RawSocketProcessor {
-    socket_write_handle: Arc<RwLock<TransportSender>>,
-    // TODO: Remove lock by moving to blocking and returning back from blocking thread
-    socket_read_handle: Arc<RwLock<TransportReceiver>>,
+    socket_read_handle: Option<TransportReceiver>,
 
     inlet_registry: InletRegistry,
     outlet_registry: OutletRegistry,
@@ -32,250 +25,132 @@ impl RawSocketProcessor {
         ip_proto: u8,
         inlet_registry: InletRegistry,
         outlet_registry: OutletRegistry,
-    ) -> Result<Self> {
-        // FIXME: Use Layer3
-        let (socket_write_handle, socket_read_handle) = transport::transport_channel(
-            1024 * 1024,
-            TransportChannelType::Layer4(TransportProtocol::Ipv4(IpNextHeaderProtocol::new(
-                ip_proto,
-            ))),
-        )
-        .unwrap();
+    ) -> Result<(Self, Arc<Mutex<TransportSender>>)> {
+        let (socket_write_handle, socket_read_handle) = create_raw_socket(ip_proto)?;
 
         let s = Self {
-            socket_write_handle: Arc::new(RwLock::new(socket_write_handle)),
-            socket_read_handle: Arc::new(RwLock::new(socket_read_handle)),
+            socket_read_handle: Some(socket_read_handle),
             inlet_registry,
             outlet_registry,
         };
 
-        Ok(s)
+        Ok((s, Arc::new(Mutex::new(socket_write_handle))))
     }
 
-    async fn new_inlet_connection(
-        inlet: &Inlet,
-        src_ip: Ipv4Addr,
-        parsed_packet: &ParsedPacket,
-    ) -> Result<Option<Arc<InletConnection>>> {
-        // TODO: eBPF Remove connection eventually
-
-        let is_paused = inlet.inlet_shared_state.read().unwrap().is_paused;
-
-        if is_paused {
-            // Just drop the stream
-            return Ok(None);
-        }
-
-        // TODO: Make sure the connection can't be spoofed by someone having access to that Outlet
-
-        let connection = Arc::new(InletConnection {
-            identifier: None,
-            connection_identifier: random(),
-            inlet_ip: parsed_packet.destination_ip,
-            client_ip: src_ip,
-            client_port: parsed_packet.source_port,
-        });
-
-        inlet.add_connection(connection.clone());
-
-        Ok(Some(connection))
+    async fn handle_inlet(&self, inlet: Inlet, packet: ParsedRawSocketPacket) -> Result<()> {
+        Ok(inlet
+            .sender
+            .send(packet)
+            .await
+            .map_err(|_| TransportError::RawSocketRedirectToInlet)?)
     }
 
-    /// Write handle to the socket
-    pub fn socket_write_handle(&self) -> Arc<RwLock<TransportSender>> {
-        self.socket_write_handle.clone()
-    }
-
-    async fn handle_inlet(
-        &self,
-        ctx: &Context,
-        inlet: Inlet,
-        connection: &InletConnection,
-        message: RawSocketMessage,
-    ) -> Result<()> {
-        let packet = OckamPortalPacket::from_raw_socket_message(
-            message,
-            connection.connection_identifier.clone(),
-        );
-
-        // debug!("Got packet, forwarding to the other side");
-        info!("Got packet, forwarding to the other side");
-
-        let inlet_shared_state = inlet.inlet_shared_state.read().unwrap().clone();
-
-        if inlet_shared_state.is_paused {
-            return Ok(());
-        }
-
-        ctx.forward_from_address(
-            LocalMessage::new()
-                .with_onward_route(inlet_shared_state.route)
-                .with_return_route(route![inlet.portal_worker_address])
-                .with_payload(minicbor::to_vec(packet)?),
-            ctx.address(),
-        )
-        .await?;
-
-        Ok(())
-    }
-
-    async fn handle_outlet(
-        &self,
-        ctx: &Context,
-        outlet: Outlet,
-        connection: &OutletConnection,
-        message: RawSocketMessage,
-    ) -> Result<()> {
-        let packet = OckamPortalPacket::from_raw_socket_message(
-            message,
-            connection.connection_identifier.clone(),
-        );
-
-        // debug!("Got packet, forwarding to the other side");
-        info!("Got packet, forwarding to the other side");
-
-        ctx.forward_from_address(
-            LocalMessage::new()
-                .with_onward_route(connection.return_route.clone())
-                .with_return_route(route![outlet.portal_worker_address])
-                .with_payload(minicbor::to_vec(packet)?),
-            ctx.address(),
-        )
-        .await?;
-
-        Ok(())
+    async fn handle_outlet(&self, outlet: Outlet, packet: ParsedRawSocketPacket) -> Result<()> {
+        Ok(outlet
+            .sender
+            .send(packet)
+            .await
+            .map_err(|_| TransportError::RawSocketRedirectToOutlet)?)
     }
 
     async fn get_new_packet(
-        socket_read_handle: Arc<RwLock<TransportReceiver>>,
-    ) -> Result<Option<ParsedPacket>> {
-        let parsed_packet = tokio::task::spawn_blocking(move || {
-            let mut socket_read_handle = socket_read_handle.write().unwrap(); // FIXME
-            let mut iterator = tcp_packet_iter(&mut socket_read_handle);
-            // TODO: Should we check the checksum?
-            let (packet, source_ip) = iterator.next().unwrap(); // FIXME
+        mut socket_read_handle: TransportReceiver,
+    ) -> Result<(TransportReceiver, ParsedRawSocketPacket)> {
+        // TODO: I wonder how bad it is to use blocking here
+        //  Will it be shutdown properly eventually?
+        let (socket_read_handle, parsed_packet) = tokio::task::spawn_blocking(move || {
+            // TODO: Should we check the TCP checksum?
+            let (packet, source_ip, destination_ip) = next_tcp_packet(&mut socket_read_handle)?;
 
-            let source_ip = match source_ip {
-                IpAddr::V4(ip) => ip,
-                IpAddr::V6(_) => return None,
-            };
-
-            let destination_ip = Ipv4Addr::LOCALHOST; // FIXME
             let source_port = packet.get_source();
             let destination_port = packet.get_destination();
+
             let flags = packet.get_flags();
 
-            info!(
-                "PACKET LEN: {}. Source: {}, Destination: {}",
+            let ack_number = packet.get_acknowledgement();
+            let syn = flags & 0b0000010 != 0;
+            let ack = flags & 0b0010000 != 0;
+            let fin = flags & 0b0000001 != 0;
+            let rst = flags & 0b0000100 != 0;
+
+            trace!(
+                "RAW SOCKET RECEIVED PACKET. LEN: {}. Source: {}, Destination: {}. ACK={}. SYN {} ACK {} FIN {} RST {}",
                 packet.payload().len(),
                 source_port,
                 destination_port,
+                ack_number,
+                syn as u8, ack as u8, fin as u8, rst as u8
             );
 
-            let message = RawSocketMessage::from_packet(packet, source_ip);
+            let packet = RawSocketPacket::from_packet(packet, source_ip);
 
-            let parsed_packet = ParsedPacket {
-                message,
-                source_ip,
-                source_port,
-                flags,
+            let parsed_packet = ParsedRawSocketPacket {
+                packet,
                 destination_ip,
                 destination_port,
             };
 
-            Some(parsed_packet)
+            Ok::<_, Error>((socket_read_handle, parsed_packet))
         })
-        .await
-        .unwrap();
+        .await.map_err(|e| Error::new(Origin::Core, Kind::Internal, e))??;
 
-        Ok(parsed_packet)
+        Ok((socket_read_handle, parsed_packet))
     }
-}
-
-struct ParsedPacket {
-    message: RawSocketMessage,
-
-    source_ip: Ipv4Addr,
-    source_port: Port,
-    flags: u8,
-
-    destination_ip: Ipv4Addr,
-    destination_port: Port,
 }
 
 #[async_trait]
 impl Processor for RawSocketProcessor {
     type Context = Context;
 
-    async fn process(&mut self, ctx: &mut Self::Context) -> Result<bool> {
-        let parsed_packet = Self::get_new_packet(self.socket_read_handle.clone()).await?;
-
-        let parsed_packet = match parsed_packet {
-            Some(parsed_packet) => parsed_packet,
+    async fn process(&mut self, _ctx: &mut Self::Context) -> Result<bool> {
+        // This trick allows avoiding locking around socket_read_handle
+        let socket_read_handle = match self.socket_read_handle.take() {
+            Some(socket_read_handle) => socket_read_handle,
             None => return Ok(false),
         };
+
+        let (socket_read_handle, parsed_packet) = Self::get_new_packet(socket_read_handle).await?;
+        self.socket_read_handle = Some(socket_read_handle);
 
         if let Some(inlet) = self
             .inlet_registry
             .get_inlet(parsed_packet.destination_port)
         {
-            let connection = match inlet
-                .get_connection_internal(parsed_packet.source_ip, parsed_packet.source_port)
-            {
-                Some(connection) => {
-                    // trace!("Existing connection from {}", packet.get_source());
-                    info!("Existing connection from {}", parsed_packet.source_port);
-                    connection
-                }
-                None => {
-                    if parsed_packet.flags != 2 {
-                        warn!(
-                            "Unknown connection packet from {}. Skipping",
-                            parsed_packet.source_port
-                        );
-                        return Ok(true);
-                    }
-
-                    // debug!("New connection from {}", packet.get_source());
-                    info!("New connection from {}", parsed_packet.source_port);
-                    match Self::new_inlet_connection(
-                        &inlet,
-                        parsed_packet.source_ip,
-                        &parsed_packet,
-                    )
-                    .await?
-                    {
-                        Some(connection) => connection,
-                        None => return Ok(true),
-                    }
-                }
-            };
-
-            self.handle_inlet(ctx, inlet, &connection, parsed_packet.message)
-                .await?;
+            trace!(
+                "Redirecting RawSocket packet to the Inlet. {}:{} -> {}:{}",
+                parsed_packet.packet.source_ip,
+                parsed_packet.packet.source,
+                parsed_packet.destination_ip,
+                parsed_packet.destination_port
+            );
+            self.handle_inlet(inlet, parsed_packet).await?;
 
             return Ok(true);
         }
 
-        let outlet = match self
+        if let Some(outlet) = self
             .outlet_registry
-            .get_outlet(parsed_packet.source_ip, parsed_packet.source_port)
+            .get_outlet(parsed_packet.packet.source_ip, parsed_packet.packet.source)
         {
-            Some(outlet) => outlet,
-            None => return Ok(true),
+            trace!(
+                "Redirecting RawSocket packet to the Outlet. {}:{} -> {}:{}",
+                parsed_packet.packet.source_ip,
+                parsed_packet.packet.source,
+                parsed_packet.destination_ip,
+                parsed_packet.destination_port
+            );
+            self.handle_outlet(outlet, parsed_packet).await?;
+
+            return Ok(true);
         };
 
-        let connection = match outlet.get_connection_internal(parsed_packet.destination_port) {
-            Some(connection) => {
-                // trace!("Existing connection to {}", packet.get_destination());
-                info!("Existing connection to {}", parsed_packet.destination_port);
-                connection
-            }
-            None => return Ok(true),
-        };
-
-        self.handle_outlet(ctx, outlet, &connection, parsed_packet.message)
-            .await?;
+        warn!(
+            "RawSocket skipping packet. {}:{} -> {}:{}",
+            parsed_packet.packet.source_ip,
+            parsed_packet.packet.source,
+            parsed_packet.destination_ip,
+            parsed_packet.destination_port
+        );
 
         Ok(true)
     }

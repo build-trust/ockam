@@ -1,5 +1,6 @@
 #![allow(unsafe_code)]
 
+use super::{Iface, Port, Proto};
 use crate::ebpf_portal::{InletRegistry, OutletRegistry, RawSocketProcessor};
 use aya::maps::{MapData, MapError};
 use aya::programs::tc::SchedClassifierLink;
@@ -8,24 +9,15 @@ use aya::{Bpf, BpfError};
 use aya_log::BpfLogger;
 use core::fmt::{Debug, Formatter};
 use ockam_core::compat::collections::HashMap;
-use ockam_core::compat::sync::RwLock;
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::{Address, AllowAll, DenyAll, Error, Result};
+use ockam_core::{Address, Error, Result};
 use ockam_node::compat::asynchronous::Mutex as AsyncMutex;
 use ockam_node::Context;
+use ockam_transport_core::TransportError;
 use pnet::transport::TransportSender;
 use rand::random;
 use std::sync::{Arc, Mutex};
-use tracing::{debug, error, info, warn};
-
-/// Network interface name
-pub type Iface = String;
-
-/// IP Protocol
-pub type Proto = u8;
-
-/// Port
-pub type Port = u16;
+use tracing::{debug, info, warn};
 
 /// eBPF support for [`TcpTransport`]
 #[derive(Clone)]
@@ -37,7 +29,8 @@ pub struct TcpTransportEbpfSupport {
 
     links: Arc<Mutex<HashMap<Iface, IfaceLink>>>,
 
-    socket_write_handle: Arc<AsyncMutex<Option<Arc<RwLock<TransportSender>>>>>,
+    socket_write_handle: Arc<AsyncMutex<Option<Arc<Mutex<TransportSender>>>>>,
+    raw_socket_processor_address: Address,
 
     bpf: Arc<Mutex<Option<OckamBpf>>>,
 }
@@ -67,6 +60,7 @@ impl Default for TcpTransportEbpfSupport {
             outlet_registry: Default::default(),
             links: Default::default(),
             socket_write_handle: Default::default(),
+            raw_socket_processor_address: Address::random_tagged("RawSocketProcessor"),
             bpf: Default::default(),
         }
     }
@@ -83,31 +77,27 @@ impl TcpTransportEbpfSupport {
     pub(crate) async fn start_raw_socket_processor_if_needed(
         &self,
         ctx: &Context,
-    ) -> Result<Arc<RwLock<TransportSender>>> {
-        info!("Starting RawSocket");
+    ) -> Result<Arc<Mutex<TransportSender>>> {
+        debug!("Starting RawSocket");
 
         let mut socket_write_handle_lock = self.socket_write_handle.lock().await;
         if let Some(socket_write_handle_lock) = socket_write_handle_lock.as_ref() {
             return Ok(socket_write_handle_lock.clone());
         }
 
-        let processor = RawSocketProcessor::create(
+        let (processor, socket_write_handle) = RawSocketProcessor::create(
             self.ip_proto,
             self.inlet_registry.clone(),
             self.outlet_registry.clone(),
         )
         .await?;
 
-        let address = Address::random_tagged("RawSocketProcessor");
-
-        let socket_write_handle = processor.socket_write_handle();
-
         *socket_write_handle_lock = Some(socket_write_handle.clone());
 
-        ctx.start_processor_with_access_control(address, processor, DenyAll, AllowAll)
+        ctx.start_processor(self.raw_socket_processor_address.clone(), processor)
             .await?;
 
-        info!("Started RawSocket");
+        info!("Started RawSocket for protocol: {}", self.ip_proto);
 
         Ok(socket_write_handle)
     }
@@ -130,10 +120,12 @@ impl TcpTransportEbpfSupport {
             return Ok(());
         }
 
-        info!("Initializing eBPF");
+        debug!("Initializing eBPF");
 
         if let Some(err) = env_logger::try_init().err() {
-            error!("Error initializing env_logger: {}", err);
+            // For some reason it always errors, but the log works anyways. Suspect it intersects
+            // with our logger.
+            warn!("Error initializing env_logger: {}", err);
         };
 
         // Bump the memlock rlimit. This is needed for older kernels that don't use the
@@ -221,7 +213,7 @@ impl TcpTransportEbpfSupport {
         bpf: &mut OckamBpf,
         skip_load: bool,
     ) -> Result<SchedClassifierLink> {
-        info!("Attaching eBPF ingress to {}", iface);
+        debug!("Attaching eBPF ingress to {}", iface);
 
         let program_ingress: &mut SchedClassifier = bpf
             .bpf
@@ -250,7 +242,7 @@ impl TcpTransportEbpfSupport {
         bpf: &mut OckamBpf,
         skip_load: bool,
     ) -> Result<SchedClassifierLink> {
-        info!("Attaching eBPF egress to {}", iface);
+        debug!("Attaching eBPF egress to {}", iface);
 
         let program_egress: &mut SchedClassifier = bpf
             .bpf
@@ -289,7 +281,7 @@ impl TcpTransportEbpfSupport {
             .unwrap()
             .inlet_port_map
             .insert(port, self.ip_proto, 0)
-            .unwrap();
+            .map_err(|e| TransportError::AddingInletPort(e.to_string()))?;
 
         Ok(())
     }
@@ -298,7 +290,11 @@ impl TcpTransportEbpfSupport {
     pub fn remove_inlet_port(&self, port: Port) -> Result<()> {
         let mut bpf = self.bpf.lock().unwrap();
 
-        bpf.as_mut().unwrap().inlet_port_map.remove(&port).unwrap();
+        bpf.as_mut()
+            .unwrap()
+            .inlet_port_map
+            .remove(&port)
+            .map_err(|e| TransportError::RemovingInletPort(e.to_string()))?;
 
         Ok(())
     }
@@ -311,7 +307,7 @@ impl TcpTransportEbpfSupport {
             .unwrap()
             .outlet_port_map
             .insert(port, self.ip_proto, 0)
-            .unwrap();
+            .map_err(|e| TransportError::AddingOutletPort(e.to_string()))?;
 
         Ok(())
     }
@@ -320,20 +316,32 @@ impl TcpTransportEbpfSupport {
     pub fn remove_outlet_port(&self, port: Port) -> Result<()> {
         let mut bpf = self.bpf.lock().unwrap();
 
-        bpf.as_mut().unwrap().outlet_port_map.remove(&port).unwrap();
+        bpf.as_mut()
+            .unwrap()
+            .outlet_port_map
+            .remove(&port)
+            .map_err(|e| TransportError::RemovingOutletPort(e.to_string()))?;
 
         Ok(())
     }
+
+    /// Return the address of this Processor
+    pub fn raw_socket_processor_address(&self) -> &Address {
+        &self.raw_socket_processor_address
+    }
 }
 
+#[track_caller]
 fn map_bpf_error(bpf_error: BpfError) -> Error {
     Error::new(Origin::Core, Kind::Io, bpf_error)
 }
 
+#[track_caller]
 fn map_program_error(program_error: ProgramError) -> Error {
     Error::new(Origin::Core, Kind::Io, program_error)
 }
 
+#[track_caller]
 fn map_map_error(map_error: MapError) -> Error {
     Error::new(Origin::Core, Kind::Io, map_error)
 }
