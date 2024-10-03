@@ -28,7 +28,7 @@ jobs:
         username: $ORGANIZATION
         password: ${{ secrets.GITHUB_TOKEN }}
     - id: buildx
-      uses: docker/setup-buildx-action@988b5a0280414f521da01fcc63a27aeeb4b104db
+      uses: docker/setup-buildx-action@8026d2bc3645ea78b0d2544766a1225eb5691f89
       with:
         driver-opts: |
           image=moby/buildkit:v0.10.6
