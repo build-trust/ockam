@@ -9,12 +9,11 @@ use std::net::Ipv4Addr;
 #[derive(Clone, Debug, Eq, PartialEq, Hash, Encode, Decode)]
 #[cbor(transparent)]
 #[rustfmt::skip]
-pub struct ConnectionIdentifier(#[n(0)] String); // TODO: Replace with u64
+pub struct ConnectionIdentifier(#[n(0)] u64);
 
 impl Distribution<ConnectionIdentifier> for Standard {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> ConnectionIdentifier {
-        let bytes: [u8; 8] = rng.gen();
-        ConnectionIdentifier(hex::encode(bytes))
+        ConnectionIdentifier(rng.gen())
     }
 }
 

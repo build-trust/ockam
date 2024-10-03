@@ -36,7 +36,6 @@ cfg_aliases = "0.2.1"
 
 [dependencies]
 cfg-if = "1.0.0"
-hex = "0.4.3"
 log = "0.4.21"
 minicbor = "0.24"
 ockam_core = { path = "../ockam_core", version = "^0.117.0" }

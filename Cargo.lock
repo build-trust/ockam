@@ -5116,7 +5116,6 @@ dependencies = [
  "cfg-if",
  "cfg_aliases 0.2.1",
  "env_logger 0.11.5",
- "hex",
  "libc",
  "log",
  "minicbor",
