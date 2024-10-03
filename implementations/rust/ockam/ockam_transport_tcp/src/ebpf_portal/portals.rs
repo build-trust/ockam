@@ -67,7 +67,7 @@ impl TcpTransport {
 
         let portal_worker_address = Address::random_tagged("Ebpf.PortalWorker"); // FIXME
 
-        options.setup_flow_control_for_address(
+        TcpInletOptions::setup_flow_control_for_address(
             self.ctx().flow_controls(),
             portal_worker_address.clone(),
             &next,
@@ -85,13 +85,17 @@ impl TcpTransport {
 
         let worker = PortalWorker::new_inlet(write_handle, inlet_info, self.ebpf_support.clone());
         WorkerBuilder::new(worker)
-            .with_address(portal_worker_address)
+            .with_address(portal_worker_address.clone())
             .with_outgoing_access_control(DenyAll)
             .with_incoming_access_control(AllowAll) // FIXME
             .start(self.ctx())
             .await?;
 
-        Ok(TcpInlet::new_ebpf(local_address, inlet_shared_state))
+        Ok(TcpInlet::new_ebpf(
+            local_address,
+            portal_worker_address,
+            inlet_shared_state,
+        ))
     }
 
     /// Stop the Raw Inlet

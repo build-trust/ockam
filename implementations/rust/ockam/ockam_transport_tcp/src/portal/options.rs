@@ -77,16 +77,14 @@ impl TcpInletOptions {
     }
 
     pub(crate) fn setup_flow_control(
-        &self,
         flow_controls: &FlowControls,
         addresses: &Addresses,
         next: &Address,
     ) {
-        self.setup_flow_control_for_address(flow_controls, addresses.sender_remote.clone(), next)
+        Self::setup_flow_control_for_address(flow_controls, addresses.sender_remote.clone(), next)
     }
 
     pub(crate) fn setup_flow_control_for_address(
-        &self,
         flow_controls: &FlowControls,
         address: Address,
         next: &Address,
@@ -189,7 +187,6 @@ impl TcpOutletOptions {
     }
 
     pub(crate) fn setup_flow_control_for_outlet(
-        &self,
         flow_controls: &FlowControls,
         addresses: &Addresses,
         src_addr: &Address,

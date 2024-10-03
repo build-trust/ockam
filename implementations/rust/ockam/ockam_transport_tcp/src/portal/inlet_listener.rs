@@ -197,7 +197,7 @@ impl Processor for TcpInletListenProcessor {
             return Ok(true);
         }
 
-        self.options.setup_flow_control(
+        TcpInletOptions::setup_flow_control(
             ctx.flow_controls(),
             &addresses,
             inlet_shared_state.route.next()?,

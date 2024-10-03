@@ -129,7 +129,7 @@ pub struct OutletConnection {
     /// Assigned port on our machine for a specific connection
     pub assigned_port: Port,
     /// Route to the other side PortalWorker
-    pub return_route: Route,
+    pub return_route: Route, // TODO: Update it if the inlet updates the route
     /// To hold the port
     pub _tcp_listener: Arc<TcpListener>,
 }
