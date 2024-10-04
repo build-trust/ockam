@@ -42,7 +42,10 @@ impl AppState {
                 None,
             )
             .await?;
-        Ok(EnrollmentTicket::new(otc, Some(project.model().clone())))
+        let ticket = EnrollmentTicket::new_from_project(otc, project.model())
+            .await
+            .into_diagnostic()?;
+        Ok(ticket)
     }
 
     pub(crate) async fn refresh_projects(&self) -> Result<()> {

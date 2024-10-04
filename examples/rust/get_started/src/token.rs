@@ -1,11 +1,11 @@
+use anyhow::anyhow;
 use std::process::Command;
 use std::str;
-
-use anyhow::anyhow;
+use std::str::FromStr;
 
 use ockam::Result;
 use ockam_api::authenticator::one_time_code::OneTimeCode;
-use ockam_api::cli_state::enrollments::EnrollmentTicket;
+use ockam_api::cli_state::ExportedEnrollmentTicket;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::Error;
 
@@ -27,8 +27,9 @@ pub async fn create_token(attribute_name: &str, attribute_value: &str) -> Result
     // we unwrap the result of decoding the token as UTF-8 since it should be some valid UTF-8 string
     let token_string = str::from_utf8(token_output.stdout.as_slice()).unwrap().trim();
 
-    let decoded = hex::decode(token_string).map_err(|e| error(format!("{e}")))?;
-    let ticket: EnrollmentTicket = serde_json::from_slice(&decoded).map_err(|e| error(format!("{e}")))?;
+    let decoded =
+        ExportedEnrollmentTicket::from_str(token_string).map_err(|e| error(format!("could not decode token: {e}")))?;
+    let ticket = decoded.import().await?;
 
     Ok(ticket.one_time_code.clone())
 }

@@ -238,7 +238,7 @@ impl InMemoryNode {
         }
     }
 
-    pub async fn create_authority_client(
+    pub async fn create_authority_client_with_project(
         &self,
         ctx: &Context,
         project: &Project,
@@ -246,7 +246,32 @@ impl InMemoryNode {
     ) -> miette::Result<AuthorityNodeClient> {
         let client = self
             .node_manager
-            .create_authority_client(ctx, project, caller_identity_name)
+            .create_authority_client_with_project(ctx, project, caller_identity_name)
+            .await?;
+        if let Some(timeout) = self.timeout {
+            Ok(client
+                .with_request_timeout(&timeout)
+                .with_secure_channel_timeout(&timeout))
+        } else {
+            Ok(client)
+        }
+    }
+
+    pub async fn create_authority_client_with_authority(
+        &self,
+        ctx: &Context,
+        authority_identifier: &Identifier,
+        authority_route: &MultiAddr,
+        caller_identity_name: Option<String>,
+    ) -> miette::Result<AuthorityNodeClient> {
+        let client = self
+            .node_manager
+            .create_authority_client_with_authority(
+                ctx,
+                authority_identifier,
+                authority_route,
+                caller_identity_name,
+            )
             .await?;
         if let Some(timeout) = self.timeout {
             Ok(client

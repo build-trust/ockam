@@ -127,7 +127,7 @@ impl AppState {
                 }
             };
 
-            let mut ticket = match service_access_details.enrollment_ticket() {
+            let mut ticket = match service_access_details.enrollment_ticket().await {
                 Ok(ticket) => ticket,
                 Err(err) => {
                     warn!(%err, "Failed to parse enrollment ticket from access details");
@@ -135,14 +135,14 @@ impl AppState {
                 }
             };
 
-            let project = if let Some(project) = ticket.project.as_mut() {
-                // to avoid conflicts with 'default' name
-                project.name.clone_from(&project.id);
+            let project = if let Ok(project) = ticket.project() {
                 project
             } else {
                 warn!("No project found in enrollment ticket");
                 continue;
             };
+            // to avoid conflicts with 'default' name
+            ticket.set_project_name(&project.id);
 
             guard.services.push(IncomingService::new(
                 invite.invitation.id,
@@ -326,10 +326,7 @@ impl IncomingService {
 #[cfg(test)]
 mod tests {
     use ockam::Context;
-    use ockam_api::authenticator::one_time_code::OneTimeCode;
-    use ockam_api::cli_state::enrollments::EnrollmentTicket;
-    use ockam_api::cli_state::CliState;
-    use ockam_api::cloud::project::models::ProjectModel;
+    use ockam_api::cli_state::{CliState, ExportedEnrollmentTicket};
     use ockam_api::cloud::share::{
         InvitationWithAccess, ReceivedInvitation, RoleInShare, ServiceAccessDetails, ShareScope,
     };
@@ -361,38 +358,16 @@ mod tests {
                 .unwrap(),
             project_route: "mock_project_route".to_string(),
             project_authority_identity:
-            "Iabcdefabcdefabcdefabcdefabcdefabcdefabcda1b2c3d4e5f6a6b5c4d3e2f1"
-                .try_into()
-                .unwrap(),
+                "Iabcdefabcdefabcdefabcdefabcdefabcdefabcda1b2c3d4e5f6a6b5c4d3e2f1"
+                    .try_into()
+                    .unwrap(),
             project_authority_route: "project_authority_route".to_string(),
             shared_node_identity:
-            "I12ab34cd56ef12ab34cd56ef12ab34cd56ef12aba1b2c3d4e5f6a6b5c4d3e2f1"
-                .try_into()
-                .unwrap(),
+                "I12ab34cd56ef12ab34cd56ef12ab34cd56ef12aba1b2c3d4e5f6a6b5c4d3e2f1"
+                    .try_into()
+                    .unwrap(),
             shared_node_route: "remote_service_name".to_string(),
-            enrollment_ticket: EnrollmentTicket::new(
-                OneTimeCode::new(),
-                Some(ProjectModel {
-                    id: "project_id".to_string(),
-                    name: "project_name".to_string(),
-                    space_name: "space_name".to_string(),
-                    access_route: "route".to_string(),
-                    users: vec![],
-                    space_id: "space_id".to_string(),
-                    identity: None,
-                    project_change_history: None,
-                    authority_access_route: Some("/project/authority_route".to_string()),
-                    authority_identity: Some("81a201583ba20101025835a4028201815820afbca9cf5d440147450f9f0d0a038a337b3fe5c17086163f2c54509558b62ef403f4041a64dd404a051a77a9434a0282018158407754214545cda6e7ff49136f67c9c7973ec309ca4087360a9f844aac961f8afe3f579a72c0c9530f3ff210f02b7c5f56e96ce12ee256b01d7628519800723805".to_string()),
-                    okta_config: None,
-                    kafka_config: None,
-                    version: None,
-                    running: None,
-                    operation_id: None,
-                    user_roles: vec![],
-                }),
-            )
-                .hex_encoded()
-                .unwrap(),
+            enrollment_ticket: ExportedEnrollmentTicket::new_test().to_string(),
         }
     }
 
@@ -428,7 +403,7 @@ mod tests {
         assert!(service.port().is_none());
         assert_eq!(
             "project_id",
-            service.enrollment_ticket().project.as_ref().unwrap().name,
+            service.enrollment_ticket().project()?.name,
             "project name should be overwritten with project id"
         );
         assert_eq!(

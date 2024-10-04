@@ -25,6 +25,7 @@ description = "Ockam's request-response API"
 
 [features]
 default = ["std", "rust-crypto", "ebpf"]
+test-utils = []
 std = [
   "either/use_std",
   "hex/std",

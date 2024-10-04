@@ -12,7 +12,7 @@ use std::fmt::{Debug, Formatter};
 
 /// A one-time code can be used to enroll
 /// a node with some authenticated attributes
-/// It can be retrieve with a command like `ockam project ticket --attribute component=control`
+/// It can be retrieved with a command like `ockam project ticket --attribute component=control`
 #[derive(Clone, Encode, Decode, CborLen, PartialEq, Eq)]
 #[rustfmt::skip]
 #[cbor(map)]

@@ -45,8 +45,8 @@ teardown() {
   run "$OCKAM" identity create account_authority
 
   run "$OCKAM" identity create admin
-  # m1 will be pre-enrolled on authority.  m2 will be added directly, m3 will be added through enrollment token
-  # m4 and m5 will be added by a shared enrollment token, m6 won't be added
+  # m1 will be pre-enrolled on authority.  m2 will be added directly, m3 will be added through enrollment ticket
+  # m4 and m5 will be added by a shared enrollment ticket, m6 won't be added
   run "$OCKAM" identity create m1
   run "$OCKAM" identity create m2
   run "$OCKAM" identity create m3
@@ -138,7 +138,7 @@ EOF
 @test "authority - enrollment ticket ttl" {
   run "$OCKAM" identity create authority
   run "$OCKAM" identity create enroller
-  #m3 will be added through enrollment token
+  #m3 will be added through enrollment ticket
   run "$OCKAM" identity create m3
 
   enroller_identifier=$($OCKAM identity show enroller)
@@ -172,14 +172,14 @@ EOF
   run_success bash -c "$OCKAM project import --project-file $OCKAM_HOME/project.json"
 
   # Enrollment ticket expired by the time it's used
-  token=$($OCKAM project ticket --identity enroller --attribute sample_attr=m3_member --expires-in 1s)
+  ticket=$($OCKAM project ticket --identity enroller --attribute sample_attr=m3_member --expires-in 1s)
   sleep 2
-  run "$OCKAM" project enroll $token --identity m3
+  run "$OCKAM" project enroll $ticket --identity m3
   assert_failure
 
   # Enrollment ticket with enough ttl
-  token=$($OCKAM project ticket --identity enroller --attribute sample_attr=m3_member --expires-in 30s)
-  run_success "$OCKAM" project enroll $token --identity m3
+  ticket=$($OCKAM project ticket --identity enroller --attribute sample_attr=m3_member --expires-in 30s)
+  run_success "$OCKAM" project enroll $ticket --identity m3
   assert_output --partial "m3_member"
 }
 
@@ -253,7 +253,7 @@ EOF
   m_identifier=$($OCKAM identity show m)
 
   # Start the authority node.  We pass a set of pre trusted-identities containing m1' identity identifier
-  # For the first test we start the node with no direct authentication service nor token enrollment
+  # For the first test we start the node with no direct authentication service nor ticket enrollment
   trusted="{\"$enroller_identifier\": {\"ockam-role\": \"enroller\"}}"
   port="$(random_port)"
   run_success "$OCKAM" authority create --tcp-listener-address="127.0.0.1:$port" --project-identifier 1 --trusted-identities "$trusted"

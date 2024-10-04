@@ -50,6 +50,7 @@ tracing = { version = "0.1", default-features = false }
 tracing-core = { version = "0.1.32", default-features = false }
 
 [dev-dependencies]
+ockam_api = { path = "../ockam_api", version = "0.77.0", default-features = false, features = ["test-utils"] }
 tempfile = { version = "3.10.1" }
 
 [build-dependencies]

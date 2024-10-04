@@ -9,10 +9,17 @@ use miette::Context as _;
 use miette::{miette, IntoDiagnostic};
 use serde::Serialize;
 
+use crate::credential::CredentialOutput;
+use crate::enroll::OidcServiceExt;
+use crate::shared_args::{IdentityOpts, RetryOpts, TrustOpts};
+use crate::util::parsers::duration_parser;
+use crate::value_parsers::parse_enrollment_ticket;
+use crate::{docs, Command, CommandGlobalOpts, Error, Result};
 use ockam::Context;
 use ockam_api::cli_state::{EnrollmentTicket, NamedIdentity};
 use ockam_api::cloud::project::models::OktaAuth0;
-use ockam_api::cloud::project::Project;
+use ockam_api::cloud::project::ProjectsOrchestratorApi;
+use ockam_api::cloud::AuthorityNodeClient;
 use ockam_api::colors::color_primary;
 use ockam_api::enroll::enrollment::{EnrollStatus, Enrollment};
 use ockam_api::enroll::oidc_service::OidcService;
@@ -21,13 +28,6 @@ use ockam_api::nodes::InMemoryNode;
 use ockam_api::output::{human_readable_time, Output};
 use ockam_api::terminal::fmt;
 use ockam_api::{fmt_log, fmt_ok};
-
-use crate::credential::CredentialOutput;
-use crate::enroll::OidcServiceExt;
-use crate::shared_args::{IdentityOpts, RetryOpts, TrustOpts};
-use crate::util::parsers::duration_parser;
-use crate::value_parsers::parse_enrollment_ticket;
-use crate::{docs, Command, CommandGlobalOpts, Error, Result};
 
 const LONG_ABOUT: &str = include_str!("./static/enroll/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/enroll/after_long_help.txt");
@@ -88,21 +88,30 @@ impl Command for EnrollCommand {
     }
 
     async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
-        let enrollment_ticket = if let Some(enrollment_ticket) = self.enrollment_ticket.as_ref() {
-            Some(parse_enrollment_ticket(enrollment_ticket).await?)
+        // Store project if an enrollment ticket is passed
+        let (project, enrollment_ticket) = if let Some(enrollment_ticket) = &self.enrollment_ticket
+        {
+            let enrollment_ticket = parse_enrollment_ticket(&opts, enrollment_ticket).await?;
+            let project = opts
+                .state
+                .projects()
+                .import_and_store_project(enrollment_ticket.project()?)
+                .await?;
+            (project, Some(enrollment_ticket))
         } else {
-            None
+            let enrollment_ticket = None;
+            let project = opts.state
+                .projects().get_project_by_name_or_default(&self.trust_opts.project_name)
+                .await
+                .context("A default project or project parameter is required. Run 'ockam project list' to get a list of available projects. You might also need to pass an enrollment ticket or path to the command.")?;
+            (project, enrollment_ticket)
         };
 
+        // Create authority client
         let identity = opts
             .state
             .get_named_identity_or_default(&self.identity_opts.identity_name)
             .await?;
-        let project = self
-            .store_project(&opts, enrollment_ticket.as_ref())
-            .await?;
-
-        // Create secure channel to the project's authority node
         let node = InMemoryNode::start_with_project_name(
             ctx,
             &opts.state,
@@ -110,50 +119,20 @@ impl Command for EnrollCommand {
         )
         .await?
         .with_timeout(self.timeout);
-
         let authority_node_client = node
-            .create_authority_client(ctx, &project, Some(identity.name()))
+            .create_authority_client_with_project(ctx, &project, Some(identity.name()))
             .await?;
 
-        // Enroll
-        if let Some(tkn) = enrollment_ticket.as_ref() {
-            match authority_node_client
-                .present_token(ctx, &tkn.one_time_code)
-                .await?
-            {
-                EnrollStatus::EnrolledSuccessfully => {}
-                EnrollStatus::AlreadyEnrolled => {
-                    opts.terminal
-                        .write_line(&fmt_ok!("Identity is already enrolled with the project"))?;
-                    return Ok(());
-                }
-                EnrollStatus::FailedNoStatus(msg) => {
-                    return Err(Error::Retry(miette!(
-                        "Failed to enroll identity with project. {msg}"
-                    )))
-                }
-                EnrollStatus::UnexpectedStatus(msg, status) => {
-                    return Err(Error::Retry(miette!(
-                        "Failed to enroll identity with project. {msg} {status}"
-                    )))
-                }
-            }
-        } else if self.okta {
-            // Get auth0 token
-            let okta_config: OktaAuth0 = project
-                .model()
-                .okta_config
-                .clone()
-                .ok_or(miette!("Okta addon not configured"))?
-                .into();
+        // Enroll if applicable
+        if self.okta {
+            self.use_okta(ctx, &opts, &authority_node_client).await?
+        } else if let Some(enrollment_ticket) = enrollment_ticket {
+            self.use_enrollment_ticket(ctx, &opts, &authority_node_client, enrollment_ticket)
+                .await?;
+        }
 
-            let auth0 = OidcService::new(Arc::new(OktaOidcProvider::new(okta_config)));
-            let token = auth0.get_token_interactively(&opts).await?;
-            authority_node_client
-                .enroll_with_oidc_token_okta(ctx, token)
-                .await
-                .map_err(Error::Retry)?;
-        };
+        // Refresh project data
+        node.get_project(ctx, project.project_id()).await?;
 
         // Issue credential
         let credential = authority_node_client
@@ -191,35 +170,64 @@ impl Command for EnrollCommand {
 }
 
 impl EnrollCommand {
-    async fn store_project(
+    async fn use_enrollment_ticket(
         &self,
+        ctx: &Context,
         opts: &CommandGlobalOpts,
-        enrollment_ticket: Option<&EnrollmentTicket>,
-    ) -> Result<Project> {
-        // Retrieve project info from the enrollment ticket or project.json in the case of okta auth
-        let project = if let Some(ticket) = enrollment_ticket {
-            let project = ticket
-                .project
-                .as_ref()
-                .expect("Enrollment ticket is invalid. Ticket does not contain a project.")
-                .clone();
-            opts.state
-                .projects()
-                .import_and_store_project(project)
-                .await?
-        } else {
-            // OKTA AUTHENTICATION FLOW | PREVIOUSLY ENROLLED FLOW
-            // currently okta auth does not use an enrollment token
-            // however, it could be worked to use one in the future
-            //
-            // REQUIRES Project passed or default project
-            opts.state
-                .projects().get_project_by_name_or_default(&self.trust_opts.project_name)
-                .await
-                .context("A default project or project parameter is required. Run 'ockam project list' to get a list of available projects. You might also need to pass an enrollment ticket or path to the command.")?
-        };
+        authority_node_client: &AuthorityNodeClient,
+        enrollment_ticket: EnrollmentTicket,
+    ) -> Result<()> {
+        // Present token
+        match authority_node_client
+            .present_token(ctx, &enrollment_ticket.one_time_code)
+            .await?
+        {
+            EnrollStatus::EnrolledSuccessfully => {}
+            EnrollStatus::AlreadyEnrolled => {
+                opts.terminal
+                    .write_line(&fmt_ok!("Identity is already enrolled with the project"))?;
+            }
+            EnrollStatus::FailedNoStatus(msg) => {
+                return Err(Error::Retry(miette!(
+                    "Failed to enroll identity with project. {msg}"
+                )))
+            }
+            EnrollStatus::UnexpectedStatus(msg, status) => {
+                return Err(Error::Retry(miette!(
+                    "Failed to enroll identity with project. {msg} {status}"
+                )))
+            }
+        }
 
-        Ok(project)
+        Ok(())
+    }
+
+    async fn use_okta(
+        &self,
+        ctx: &Context,
+        opts: &CommandGlobalOpts,
+        authority_node_client: &AuthorityNodeClient,
+    ) -> Result<()> {
+        let project =  opts.state
+            .projects().get_project_by_name_or_default(&self.trust_opts.project_name)
+            .await
+            .context("A default project or project parameter is required. Run 'ockam project list' to get a list of available projects. You might also need to pass an enrollment ticket or path to the command.")?;
+
+        // Get auth0 token
+        let okta_config: OktaAuth0 = project
+            .model()
+            .okta_config
+            .clone()
+            .ok_or(miette!("Okta addon not configured"))?
+            .into();
+
+        let auth0 = OidcService::new(Arc::new(OktaOidcProvider::new(okta_config)));
+        let token = auth0.get_token_interactively(opts).await?;
+        authority_node_client
+            .enroll_with_oidc_token_okta(ctx, token)
+            .await
+            .map_err(Error::Retry)?;
+        Ok(())
     }
 }
 

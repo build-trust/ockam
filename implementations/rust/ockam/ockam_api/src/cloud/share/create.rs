@@ -3,12 +3,11 @@ use serde::{Deserialize, Serialize};
 
 use crate::Result;
 
+use super::{RoleInShare, ShareScope};
 use crate::cli_state::{CliState, EnrollmentTicket};
 use crate::cloud::email_address::EmailAddress;
 use crate::error::ApiError;
 use ockam::identity::Identifier;
-
-use super::{RoleInShare, ShareScope};
 
 #[derive(Clone, Debug, Encode, Decode, CborLen, Serialize)]
 #[cbor(map)]
@@ -56,13 +55,8 @@ impl CreateServiceInvitation {
             .get_project_by_name(project_name.as_ref())
             .await?;
         let project_authority_route = project.authority_multiaddr()?;
-        // see also: ockam_command::project::ticket
-        let enrollment_ticket = hex::encode(
-            serde_json::to_vec(&enrollment_ticket)
-                .map_err(|_| ApiError::core("Could not encode enrollment ticket"))?,
-        );
         Ok(CreateServiceInvitation {
-            enrollment_ticket,
+            enrollment_ticket: enrollment_ticket.export()?.to_string(),
             expires_at,
             project_id: project.project_id().to_string(),
             recipient_email: recipient_email.clone(),

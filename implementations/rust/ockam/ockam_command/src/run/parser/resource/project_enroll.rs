@@ -62,31 +62,31 @@ mod tests {
 
     use tempfile::tempdir;
 
-    use ockam_api::authenticator::one_time_code::OneTimeCode;
-    use ockam_api::cli_state::EnrollmentTicket;
+    use ockam_api::cli_state::ExportedEnrollmentTicket;
 
     use super::*;
 
     #[test]
     fn project_enroll_config() {
-        let enrollment_ticket = EnrollmentTicket::new(OneTimeCode::new(), None);
-        let enrollment_ticket_hex = enrollment_ticket.hex_encoded().unwrap();
+        let enrollment_ticket = ExportedEnrollmentTicket::new_test();
+        let enrollment_ticket_encoded = enrollment_ticket.to_string();
 
         // As contents
-        let config = format!("ticket: {enrollment_ticket_hex}");
+        let config = format!("ticket: {enrollment_ticket_encoded}");
         let parsed: ProjectEnroll = serde_yaml::from_str(&config).unwrap();
         let cmds = parsed.into_parsed_commands(None).unwrap();
         assert_eq!(cmds.len(), 1);
         assert_eq!(
             cmds[0].enrollment_ticket.as_ref().unwrap(),
-            &enrollment_ticket_hex
+            &enrollment_ticket_encoded
         );
 
         // As path
         let dir = tempdir().unwrap();
         let file_path = dir.path().join("my.ticket");
         let mut file = File::create(&file_path).unwrap();
-        file.write_all(enrollment_ticket_hex.as_bytes()).unwrap();
+        file.write_all(enrollment_ticket_encoded.as_bytes())
+            .unwrap();
         let config = format!("ticket: {}", file_path.to_str().unwrap());
         let parsed: ProjectEnroll = serde_yaml::from_str(&config).unwrap();
         let cmds = parsed
