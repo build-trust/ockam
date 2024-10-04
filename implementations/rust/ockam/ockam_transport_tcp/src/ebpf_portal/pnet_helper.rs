@@ -1,73 +1,45 @@
-use core::net::IpAddr;
 use core::{mem, net};
+use ockam_core::Result;
+use ockam_transport_core::TransportError;
+use pnet::packet::ip::IpNextHeaderProtocol;
 use pnet::packet::ipv4::Ipv4Packet;
 use pnet::packet::tcp::TcpPacket;
-use pnet::transport::TransportChannelType::{Layer3, Layer4};
-use pnet::transport::{TransportProtocol, TransportReceiver};
+use pnet::transport;
+use pnet::transport::{
+    TransportChannelType, TransportProtocol, TransportReceiver, TransportSender,
+};
 use std::mem::size_of;
+use std::net::Ipv4Addr;
 
-pub fn next_tcp_packet(receiver: &mut TransportReceiver) -> std::io::Result<(TcpPacket, IpAddr)> {
-    let mut caddr: pnet_sys::SockAddrStorage = unsafe { mem::zeroed() };
-    let res = pnet_sys::recv_from(receiver.socket.fd, &mut receiver.buffer[..], &mut caddr);
-
-    let offset = match receiver.channel_type {
-        Layer4(TransportProtocol::Ipv4(_)) => {
-            let ip_header = Ipv4Packet::new(&receiver.buffer[..]).unwrap();
-
-            ip_header.get_header_length() as usize * 4usize
-        }
-        Layer3(_) => {
-            fixup_packet(&mut receiver.buffer[..]);
-
-            0
-        }
-        _ => 0,
-    };
-
-    match res {
-        Ok(len) => {
-            // FIXME: Is that guaranteed that we receive the packet fully in one read?
-            let packet = TcpPacket::new(&receiver.buffer[offset..len]).unwrap();
-            let addr = pnet_sys::sockaddr_to_addr(&caddr, size_of::<pnet_sys::SockAddrStorage>());
-            let ip = match addr.unwrap() {
-                net::SocketAddr::V4(sa) => IpAddr::V4(*sa.ip()),
-                net::SocketAddr::V6(sa) => IpAddr::V6(*sa.ip()),
-            };
-            Ok((packet, ip))
-        }
-        Err(e) => Err(e),
-    }
+pub fn create_raw_socket(ip_proto: u8) -> Result<(TransportSender, TransportReceiver)> {
+    Ok(transport::transport_channel(
+        1024 * 1024, // FIXME
+        TransportChannelType::Layer4(TransportProtocol::Ipv4(IpNextHeaderProtocol::new(ip_proto))),
+    )
+    .map_err(|_| TransportError::RawSocketCreationError)?)
 }
 
-#[cfg(any(
-    target_os = "freebsd",
-    target_os = "macos",
-    target_os = "ios",
-    target_os = "tvos"
-))]
-fn fixup_packet(buffer: &mut [u8]) {
-    use pnet::pnet_packet::ipv4::MutableIpv4Packet;
+pub fn next_tcp_packet(
+    receiver: &mut TransportReceiver,
+) -> std::io::Result<(TcpPacket, Ipv4Addr, Ipv4Addr)> {
+    loop {
+        let mut caddr: pnet_sys::SockAddrStorage = unsafe { mem::zeroed() };
+        let len = pnet_sys::recv_from(receiver.socket.fd, &mut receiver.buffer[..], &mut caddr)?;
 
-    let buflen = buffer.len();
-    let mut new_packet = MutableIpv4Packet::new(buffer).unwrap();
+        let src = pnet_sys::sockaddr_to_addr(&caddr, size_of::<pnet_sys::SockAddrStorage>())?;
+        let src = match src {
+            net::SocketAddr::V4(sa) => *sa.ip(),
+            net::SocketAddr::V6(_) => continue,
+        };
 
-    let length = u16::from_be(new_packet.get_total_length());
-    new_packet.set_total_length(length);
+        // FIXME: Is that guaranteed that we receive the packet fully in one read?
+        let ip_header = Ipv4Packet::new(&receiver.buffer[..]).unwrap();
+        let offset = ip_header.get_header_length() as usize * 4usize;
 
-    // OS X does this awesome thing where it removes the header length
-    // from the total length sometimes.
-    let length =
-        new_packet.get_total_length() as usize + (new_packet.get_header_length() as usize * 4usize);
-    if length == buflen {
-        new_packet.set_total_length(length as u16)
+        let dst = ip_header.get_destination();
+
+        let packet = TcpPacket::new(&receiver.buffer[offset..len]).unwrap();
+
+        return Ok((packet, src, dst));
     }
-
-    let offset = u16::from_be(new_packet.get_fragment_offset());
-    new_packet.set_fragment_offset(offset);
 }
-
-#[cfg(all(
-    not(target_os = "freebsd"),
-    not(any(target_os = "macos", target_os = "ios", target_os = "tvos"))
-))]
-fn fixup_packet(_buffer: &mut [u8]) {}

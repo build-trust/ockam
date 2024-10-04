@@ -1,17 +1,12 @@
-use crate::ebpf_portal::pnet_helper::next_tcp_packet;
+use crate::ebpf_portal::pnet_helper::{create_raw_socket, next_tcp_packet};
 use crate::ebpf_portal::{
     Inlet, InletRegistry, Outlet, OutletRegistry, ParsedRawSocketPacket, RawSocketPacket,
 };
 use ockam_core::{async_trait, Processor, Result};
 use ockam_node::Context;
 use ockam_transport_core::TransportError;
-use pnet::packet::ip::IpNextHeaderProtocol;
 use pnet::packet::Packet;
-use pnet::transport;
-use pnet::transport::{
-    TransportChannelType, TransportProtocol, TransportReceiver, TransportSender,
-};
-use std::net::{IpAddr, Ipv4Addr};
+use pnet::transport::{TransportReceiver, TransportSender};
 use std::sync::{Arc, Mutex};
 use tracing::info;
 
@@ -31,14 +26,7 @@ impl RawSocketProcessor {
         inlet_registry: InletRegistry,
         outlet_registry: OutletRegistry,
     ) -> Result<Self> {
-        // TODO: use Layer3
-        let (socket_write_handle, socket_read_handle) = transport::transport_channel(
-            1024 * 1024,
-            TransportChannelType::Layer4(TransportProtocol::Ipv4(IpNextHeaderProtocol::new(
-                ip_proto,
-            ))),
-        )
-        .unwrap();
+        let (socket_write_handle, socket_read_handle) = create_raw_socket(ip_proto)?;
 
         let s = Self {
             socket_write_handle: Arc::new(Mutex::new(socket_write_handle)),
@@ -74,21 +62,10 @@ impl RawSocketProcessor {
         //  Will it be shutdown properly eventually?
         //  Should we use socket read with timeout?
         let (socket_read_handle, parsed_packet) = tokio::task::spawn_blocking(move || {
-            let (packet, source_ip) = loop {
-                let (packet, source_ip) = match next_tcp_packet(&mut socket_read_handle) {
-                    Ok((packet, source_ip)) => (packet, source_ip),
-                    Err(_) => return Err(TransportError::RawSocketReadError),
-                };
+            // TODO: Should we check the checksum?
+            let (packet, source_ip, destination_ip) = next_tcp_packet(&mut socket_read_handle)
+                .map_err(|_| TransportError::RawSocketReadError)?;
 
-                // TODO: Should we check the checksum?
-                if let IpAddr::V4(ip) = source_ip {
-                    break (packet, ip);
-                } else {
-                    continue;
-                }
-            };
-
-            let destination_ip = Ipv4Addr::LOCALHOST; // FIXME
             let source_port = packet.get_source();
             let destination_port = packet.get_destination();
 
@@ -107,7 +84,7 @@ impl RawSocketProcessor {
                 destination_port,
             };
 
-            Ok((socket_read_handle, parsed_packet))
+            Ok::<_, TransportError>((socket_read_handle, parsed_packet))
         })
         .await
         .unwrap()?;

@@ -50,6 +50,8 @@ pub enum TransportError {
     EncodingInternalError,
     /// Can't read from RawSocket
     RawSocketReadError,
+    /// Can't create RawSocket
+    RawSocketCreationError,
 }
 
 impl ockam_core::compat::error::Error for TransportError {}
@@ -78,6 +80,7 @@ impl core::fmt::Display for TransportError {
             Self::MessageLengthExceeded => write!(f, "message length exceeded"),
             Self::EncodingInternalError => write!(f, "encoding internal error"),
             Self::RawSocketReadError => write!(f, "raw socket read failure"),
+            Self::RawSocketCreationError => write!(f, "raw socket creation failed"),
         }
     }
 }
@@ -106,7 +109,7 @@ impl From<TransportError> for Error {
             InvalidProtocolVersion => Kind::Invalid,
             MessageLengthExceeded => Kind::Unsupported,
             EncodingInternalError => Kind::Internal,
-            RawSocketReadError => Kind::Io,
+            RawSocketReadError | RawSocketCreationError => Kind::Io,
         };
 
         Error::new(Origin::Transport, kind, err)
