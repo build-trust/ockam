@@ -62,7 +62,6 @@ mod tests {
                 to: 127.0.0.1:6060
                 from: my_outlet
                 leased-token-permissions: ""
-                leased-token-strategy: shared
                 leased-token-expires-in: 1h
         "#;
         let parsed: InfluxDBOutlets = serde_yaml::from_str(named).unwrap();

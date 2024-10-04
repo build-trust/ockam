@@ -22,7 +22,7 @@ pub struct InfluxDBCreateCommand {
     pub tcp_inlet: InletCreateCommand,
 
     /// Share the leases among the clients or use a separate lease for each client
-    #[arg(long, default_value = "shared")]
+    #[arg(long, default_value = "per-client")]
     pub leased_token_strategy: LeaseUsage,
 
     /// The route to the lease issuer service.

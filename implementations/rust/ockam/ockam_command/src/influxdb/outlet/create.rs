@@ -5,13 +5,13 @@ use crate::{Command, CommandGlobalOpts};
 use async_trait::async_trait;
 use clap::Args;
 use colorful::Colorful;
+use miette::miette;
 use ockam::{Address, Context};
 use ockam_api::colors::color_primary;
-use ockam_api::influxdb::portal::{LeaseManagerConfig, TokenConfig};
-use ockam_api::influxdb::{InfluxDBPortals, LeaseUsage};
+use ockam_api::influxdb::portal::{InfluxDBOutletConfig, LeaseManagerConfig};
+use ockam_api::influxdb::InfluxDBPortals;
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_api::{fmt_log, fmt_ok};
-use ockam_multiaddr::MultiAddr;
 use std::time::Duration;
 
 /// Create InfluxDB Outlets
@@ -20,15 +20,8 @@ pub struct InfluxDBCreateCommand {
     #[command(flatten)]
     pub tcp_outlet: OutletCreateCommand,
 
-    /// Share the leases among the clients or use a separate lease for each client
-    #[arg(long, default_value = "shared")]
-    pub leased_token_strategy: LeaseUsage,
-
-    #[arg(long, conflicts_with_all(["LeaseManagerConfigArgs", "lease_manager_route"]))]
+    #[arg(long, conflicts_with("LeaseManagerConfigArgs"))]
     fixed_token: Option<String>,
-
-    #[arg(long, conflicts_with_all(["LeaseManagerConfigArgs", "fixed_token"]))]
-    lease_manager_route: Option<MultiAddr>,
 
     #[clap(flatten)]
     lease_manager_config: Option<LeaseManagerConfigArgs>,
@@ -59,7 +52,6 @@ impl Command for InfluxDBCreateCommand {
     const NAME: &'static str = "influxdb-outlet create";
 
     async fn async_run(mut self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
-        println!("{:?}", self);
         initialize_default_node(ctx, &opts).await?;
 
         if let Some(pb) = opts.terminal.progress_bar() {
@@ -69,19 +61,19 @@ impl Command for InfluxDBCreateCommand {
             ));
         }
         let token_config = if let Some(t) = self.fixed_token {
-            TokenConfig::FixedToken(t)
-        } else if let Some(r) = self.lease_manager_route {
-            TokenConfig::FromLeaseManager(r)
+            InfluxDBOutletConfig::OutletWithFixedToken(t)
         } else if let Some(config) = self.lease_manager_config {
             let config = config.parse_args().await?;
-            TokenConfig::StartLeaseManager(LeaseManagerConfig::new(
+            InfluxDBOutletConfig::StartLeaseManager(LeaseManagerConfig::new(
                 config.org_id,
                 config.all_access_token,
                 config.leased_token_permissions,
                 config.leased_token_expires_in,
             ))
         } else {
-            todo!()
+            return Err(miette!(
+                "Either configure a fixed-token, or the arguments to handle token leases"
+            ))?;
         };
 
         let node = BackgroundNodeClient::create(ctx, &opts.state, &self.tcp_outlet.at).await?;
@@ -92,7 +84,6 @@ impl Command for InfluxDBCreateCommand {
                 self.tcp_outlet.tls,
                 self.tcp_outlet.from.clone().map(Address::from).as_ref(),
                 self.tcp_outlet.allow.clone(),
-                self.leased_token_strategy,
                 token_config,
             )
             .await?;
