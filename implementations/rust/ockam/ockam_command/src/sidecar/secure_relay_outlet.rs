@@ -124,8 +124,7 @@ impl SecureRelayOutlet {
 
 #[cfg(test)]
 mod tests {
-    use ockam_api::authenticator::one_time_code::OneTimeCode;
-    use ockam_api::cli_state::EnrollmentTicket;
+    use ockam_api::cli_state::ExportedEnrollmentTicket;
 
     use crate::run::parser::config::ConfigParser;
 
@@ -133,15 +132,15 @@ mod tests {
 
     #[test]
     fn test_that_recipe_is_valid() {
-        let enrollment_ticket = EnrollmentTicket::new(OneTimeCode::new(), None);
-        let enrollment_ticket_hex = enrollment_ticket.hex_encoded().unwrap();
+        let enrollment_ticket = ExportedEnrollmentTicket::new_test();
+        let enrollment_ticket_encoded = enrollment_ticket.to_string();
 
         let cmd = SecureRelayOutlet {
             service_name: "service_name".to_string(),
             to: HostnamePort::new("127.0.0.1", 8080),
             dry_run: false,
             enroll: Enroll {
-                enroll_ticket: Some(enrollment_ticket_hex),
+                enroll_ticket: Some(enrollment_ticket_encoded),
                 okta: false,
             },
         };

@@ -1,7 +1,11 @@
 use crate::util::parsers::hostname_parser;
+use crate::CommandGlobalOpts;
+use colorful::Colorful;
 use miette::{miette, Context, IntoDiagnostic};
-use ockam_api::cli_state::EnrollmentTicket;
+use ockam_api::cli_state::{EnrollmentTicket, ExportedEnrollmentTicket, LegacyEnrollmentTicket};
+use ockam_api::fmt_warn;
 use std::str::FromStr;
+use tracing::trace;
 use url::Url;
 
 /// Parse a single key-value pair
@@ -21,21 +25,27 @@ where
     ))
 }
 
-/// Parse an enrollment ticket given a path, a URL or hex-encoded string
-pub async fn parse_enrollment_ticket(value: &str) -> miette::Result<EnrollmentTicket> {
+/// Parse an enrollment ticket given a path, a URL or encoded string
+pub async fn parse_enrollment_ticket(
+    opts: &CommandGlobalOpts,
+    value: &str,
+) -> miette::Result<EnrollmentTicket> {
+    trace!(%value, "parsing enrollment ticket");
     let contents = parse_string_or_path_or_url(value).await?;
-    // Try to deserialize the contents as JSON
-    if let Ok(enrollment_ticket) = serde_json::from_str(&contents) {
-        Ok(enrollment_ticket)
+
+    // Try to parse it using the old format
+    if let Ok(ticket) = LegacyEnrollmentTicket::from_hex(&contents) {
+        opts.terminal.write_line(fmt_warn!(
+            "The enrollment ticket was generated from an old Ockam version"
+        ))?;
+        opts.terminal
+            .write_line(fmt_warn!("Please make sure the machine that generated the ticket is using the latest Ockam version"))?;
+        return Ok(EnrollmentTicket::new_from_legacy(ticket).await?);
     }
-    // Try to decode the contents as hex
-    else if let Ok(hex_decoded) = hex::decode(contents.trim()) {
-        Ok(serde_json::from_slice(&hex_decoded)
-            .into_diagnostic()
-            .context("Failed to parse enrollment ticket from hex-encoded contents")?)
-    } else {
-        Err(miette!("Failed to parse enrollment ticket argument"))
-    }
+
+    Ok(ExportedEnrollmentTicket::from_str(&contents)?
+        .import()
+        .await?)
 }
 
 async fn parse_string_or_path_or_url(value: &str) -> miette::Result<String> {

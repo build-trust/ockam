@@ -146,7 +146,7 @@ pub(super) async fn create_authority_client(
         .await?;
 
     Ok(node
-        .create_authority_client(ctx, project, Some(identity))
+        .create_authority_client_with_project(ctx, project, Some(identity))
         .await?)
 }
 

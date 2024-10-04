@@ -1,6 +1,7 @@
 use crate::cli::cli_bin;
 use crate::Result;
 use ockam::compat::tokio::task::spawn_blocking;
+use ockam_api::cli_state::EnrollmentTicket;
 use ockam_core::async_trait;
 use std::process::Command;
 use tracing::{debug, error, info};
@@ -17,7 +18,7 @@ pub trait Nodes: Send + Sync + 'static {
 
 #[async_trait]
 pub trait Projects: Send + Sync + 'static {
-    async fn enroll(&self, node_name: &str, hex_encoded_ticket: &str) -> Result<()>;
+    async fn enroll(&self, node_name: &str, enrollment_ticket: EnrollmentTicket) -> Result<()>;
 }
 
 #[derive(Clone)]
@@ -92,12 +93,12 @@ impl Nodes for Cli {
 
 #[async_trait]
 impl Projects for Cli {
-    async fn enroll(&self, node_name: &str, hex_encoded_ticket: &str) -> Result<()> {
+    async fn enroll(&self, node_name: &str, enrollment_ticket: EnrollmentTicket) -> Result<()> {
         let node_name = node_name.to_string();
-        let hex_encoded_ticket = hex_encoded_ticket.to_string();
+        let encoded_ticket = enrollment_ticket.export()?.to_string();
         let bin = self.bin.clone();
         Ok(spawn_blocking(move || {
-            match duct::cmd!(&bin, "--no-input", "project", "enroll", &hex_encoded_ticket)
+            match duct::cmd!(&bin, "--no-input", "project", "enroll", &encoded_ticket)
                 .before_spawn(log_command)
                 .stderr_null()
                 .stdout_capture()

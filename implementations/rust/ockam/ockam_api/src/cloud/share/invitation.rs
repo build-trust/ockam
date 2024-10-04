@@ -1,5 +1,5 @@
 use crate::address::extract_address_value;
-use crate::cli_state::EnrollmentTicket;
+use crate::cli_state::{EnrollmentTicket, ExportedEnrollmentTicket};
 use crate::cloud::email_address::EmailAddress;
 use crate::date::is_expired;
 use crate::error::ApiError;
@@ -158,16 +158,15 @@ pub struct ServiceAccessDetails {
     #[n(4)] pub project_authority_route: String,
     #[n(5)] pub shared_node_identity: Identifier,
     #[n(6)] pub shared_node_route: String,
-    #[n(7)] pub enrollment_ticket: String, // hex-encoded as with CLI output/input
+    #[n(7)] pub enrollment_ticket: String, // encoded as with CLI output/input
 }
 
 impl ServiceAccessDetails {
-    pub fn enrollment_ticket(&self) -> ockam_core::Result<EnrollmentTicket> {
-        let hex_decoded = hex::decode(&self.enrollment_ticket)
-            .map_err(|_| ApiError::core("Invalid hex-encoded enrollment ticket"))?;
-        let as_json = serde_json::from_slice(&hex_decoded)
-            .map_err(|_| ApiError::core("Invalid enrollment ticket"))?;
-        Ok(as_json)
+    pub async fn enrollment_ticket(&self) -> ockam_core::Result<EnrollmentTicket> {
+        Ok(ExportedEnrollmentTicket::from_str(&self.enrollment_ticket)
+            .map_err(|e| ApiError::core(e.to_string()))?
+            .import()
+            .await?)
     }
 
     pub fn service_name(&self) -> Result<String, ApiError> {

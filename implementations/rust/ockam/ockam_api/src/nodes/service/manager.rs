@@ -415,7 +415,7 @@ impl NodeManager {
         Ok(project)
     }
 
-    pub async fn create_authority_client(
+    pub async fn create_authority_client_with_project(
         &self,
         ctx: &Context,
         project: &Project,
@@ -449,6 +449,28 @@ impl NodeManager {
             project.authority_multiaddr().into_diagnostic()?,
             &caller_identifier,
             credential_retriever_creator,
+        )
+        .await
+        .into_diagnostic()
+    }
+
+    pub async fn create_authority_client_with_authority(
+        &self,
+        _ctx: &Context,
+        authority_identifier: &Identifier,
+        authority_route: &MultiAddr,
+        caller_identity_name: Option<String>,
+    ) -> miette::Result<AuthorityNodeClient> {
+        let caller_identifier = self
+            .get_identifier_by_name(caller_identity_name)
+            .await
+            .into_diagnostic()?;
+
+        self.make_authority_node_client(
+            authority_identifier,
+            authority_route,
+            &caller_identifier,
+            None,
         )
         .await
         .into_diagnostic()

@@ -4,7 +4,7 @@ use std::time::Duration;
 use async_trait::async_trait;
 use clap::Args;
 use colorful::Colorful;
-use miette::{miette, IntoDiagnostic};
+use miette::miette;
 use tracing::debug;
 
 use ockam::Context;
@@ -12,7 +12,7 @@ use ockam_api::authenticator::direct::{
     OCKAM_ROLE_ATTRIBUTE_ENROLLER_VALUE, OCKAM_ROLE_ATTRIBUTE_KEY, OCKAM_TLS_ATTRIBUTE_KEY,
 };
 use ockam_api::authenticator::enrollment_tokens::TokenIssuer;
-use ockam_api::cli_state::enrollments::EnrollmentTicket;
+use ockam_api::cli_state::{ExportedEnrollmentTicket, ProjectRoute};
 use ockam_api::colors::color_primary;
 use ockam_api::nodes::InMemoryNode;
 use ockam_api::{fmt_log, fmt_ok};
@@ -108,7 +108,7 @@ impl Command for TicketCommand {
             .await?;
 
         let authority_node_client = node
-            .create_authority_client(ctx, &project, Some(identity))
+            .create_authority_client_with_project(ctx, &project, Some(identity))
             .await?;
 
         let attributes = self.attributes()?;
@@ -120,9 +120,24 @@ impl Command for TicketCommand {
             .create_token(ctx, attributes, self.expires_in, self.usage_count)
             .await
             .map_err(Error::Retry)?;
-
-        let ticket = EnrollmentTicket::new(token, Some(project.model().clone()));
-        let ticket_serialized = ticket.hex_encoded().into_diagnostic()?;
+        let project = project.model();
+        let ticket = ExportedEnrollmentTicket::new(
+            token,
+            ProjectRoute::new_with_id(&project.id)?,
+            project.identity.as_ref().ok_or(miette!(
+                "missing project's identity, this should not happen"
+            ))?,
+            &project.name,
+            project
+                .project_change_history
+                .as_ref()
+                .ok_or(miette!("missing project's change history"))?,
+            project
+                .authority_identity
+                .as_ref()
+                .ok_or(miette!("missing authority's change history"))?,
+            project.authority_access_route.as_ref(),
+        );
 
         opts.terminal
             .write_line(fmt_ok!("Created enrollment ticket\n"))?;
@@ -133,7 +148,7 @@ impl Command for TicketCommand {
 
         opts.terminal
             .stdout()
-            .machine(ticket_serialized)
+            .machine(ticket.to_string())
             .write_line()?;
 
         Ok(())

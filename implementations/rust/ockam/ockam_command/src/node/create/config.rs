@@ -324,10 +324,8 @@ impl NodeConfig {
 
 #[cfg(test)]
 mod tests {
-    use ockam_api::authenticator::one_time_code::OneTimeCode;
-    use ockam_api::cli_state::EnrollmentTicket;
-
     use super::*;
+    use ockam_api::cli_state::ExportedEnrollmentTicket;
 
     #[tokio::test]
     async fn get_node_config_from_path() {
@@ -377,17 +375,17 @@ mod tests {
 
     #[tokio::test]
     async fn get_node_config_from_enrollment_ticket() {
-        let ticket = EnrollmentTicket::new(OneTimeCode::new(), None);
-        let ticket_hex = ticket.hex_encoded().unwrap();
+        let ticket = ExportedEnrollmentTicket::new_test();
+        let ticket_encoded = ticket.to_string();
         let cmd = CreateCommand {
             config_args: ConfigArgs {
-                enrollment_ticket: Some(ticket_hex.clone()),
+                enrollment_ticket: Some(ticket_encoded.clone()),
                 ..Default::default()
             },
             ..Default::default()
         };
         let res = cmd.get_node_config().await.unwrap();
-        assert_eq!(res.project_enroll.ticket, Some(ticket_hex));
+        assert_eq!(res.project_enroll.ticket, Some(ticket_encoded));
     }
 
     #[test]
@@ -408,18 +406,18 @@ mod tests {
         }
     }
 
-    #[test]
-    fn merge_config_with_cli() {
-        let cli_enrollment_ticket = EnrollmentTicket::new(OneTimeCode::new(), None);
-        let cli_enrollment_ticket_hex = cli_enrollment_ticket.hex_encoded().unwrap();
-        let config_enrollment_ticket = EnrollmentTicket::new(OneTimeCode::new(), None);
-        let config_enrollment_ticket_hex = config_enrollment_ticket.hex_encoded().unwrap();
-        std::env::set_var("ENROLLMENT_TICKET", config_enrollment_ticket_hex);
+    #[tokio::test]
+    async fn merge_config_with_cli() {
+        let cli_enrollment_ticket = ExportedEnrollmentTicket::new_test();
+        let cli_enrollment_ticket_encoded = cli_enrollment_ticket.to_string();
+        let config_enrollment_ticket = ExportedEnrollmentTicket::new_test();
+        let config_enrollment_ticket_encoded = config_enrollment_ticket.to_string();
+        std::env::set_var("ENROLLMENT_TICKET", config_enrollment_ticket_encoded);
 
         let cli_args = CreateCommand {
             tcp_listener_address: "127.0.0.1:1234".to_string(),
             config_args: ConfigArgs {
-                enrollment_ticket: Some(cli_enrollment_ticket.hex_encoded().unwrap()),
+                enrollment_ticket: Some(cli_enrollment_ticket_encoded.clone()),
                 ..Default::default()
             },
             ..Default::default()
@@ -432,7 +430,7 @@ mod tests {
         assert_eq!(node.tcp_listener_address, "127.0.0.1:1234");
         assert_eq!(
             config.project_enroll.ticket,
-            Some(cli_enrollment_ticket_hex.clone())
+            Some(cli_enrollment_ticket_encoded.clone())
         );
 
         // Config used, cli args should override the overlapping args
@@ -450,7 +448,7 @@ mod tests {
         assert_eq!(node.tcp_listener_address, cli_args.tcp_listener_address);
         assert_eq!(
             config.project_enroll.ticket,
-            Some(cli_enrollment_ticket_hex.clone())
+            Some(cli_enrollment_ticket_encoded.clone())
         );
     }
 }
