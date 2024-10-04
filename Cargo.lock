@@ -5126,6 +5126,7 @@ dependencies = [
  "ockam_transport_core",
  "opentelemetry",
  "pnet",
+ "pnet_sys",
  "rand",
  "rustls 0.23.13",
  "rustls-native-certs 0.8.0",

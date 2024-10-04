@@ -9,7 +9,6 @@ use aya::{Bpf, BpfError};
 use aya_log::BpfLogger;
 use core::fmt::{Debug, Formatter};
 use ockam_core::compat::collections::HashMap;
-use ockam_core::compat::sync::RwLock;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{Address, Error, Result};
 use ockam_node::compat::asynchronous::Mutex as AsyncMutex;
@@ -29,7 +28,7 @@ pub struct TcpTransportEbpfSupport {
 
     links: Arc<Mutex<HashMap<Iface, IfaceLink>>>,
 
-    socket_write_handle: Arc<AsyncMutex<Option<Arc<RwLock<TransportSender>>>>>,
+    socket_write_handle: Arc<AsyncMutex<Option<Arc<Mutex<TransportSender>>>>>,
     raw_socket_processor_address: Address,
 
     bpf: Arc<Mutex<Option<OckamBpf>>>,
@@ -77,7 +76,7 @@ impl TcpTransportEbpfSupport {
     pub(crate) async fn start_raw_socket_processor_if_needed(
         &self,
         ctx: &Context,
-    ) -> Result<Arc<RwLock<TransportSender>>> {
+    ) -> Result<Arc<Mutex<TransportSender>>> {
         info!("Starting RawSocket");
 
         let mut socket_write_handle_lock = self.socket_write_handle.lock().await;

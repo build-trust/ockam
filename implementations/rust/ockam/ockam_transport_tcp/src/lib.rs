@@ -1,7 +1,6 @@
 //! This crate provides a TCP Transport for Ockam's Routing Protocol.
 //!
 //! This crate requires the rust standard library `"std"`
-#![deny(unsafe_code)]
 #![warn(
     missing_docs,
     dead_code,

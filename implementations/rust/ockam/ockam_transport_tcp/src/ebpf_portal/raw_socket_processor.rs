@@ -1,24 +1,25 @@
+use crate::ebpf_portal::pnet_helper::next_tcp_packet;
 use crate::ebpf_portal::{
     Inlet, InletRegistry, Outlet, OutletRegistry, ParsedRawSocketPacket, RawSocketPacket,
 };
 use ockam_core::{async_trait, Processor, Result};
 use ockam_node::Context;
+use ockam_transport_core::TransportError;
 use pnet::packet::ip::IpNextHeaderProtocol;
 use pnet::packet::Packet;
 use pnet::transport;
 use pnet::transport::{
-    tcp_packet_iter, TransportChannelType, TransportProtocol, TransportReceiver, TransportSender,
+    TransportChannelType, TransportProtocol, TransportReceiver, TransportSender,
 };
 use std::net::{IpAddr, Ipv4Addr};
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, Mutex};
 use tracing::info;
 
 /// Processor responsible for receiving all data with OCKAM_TCP_PORTAL_PROTOCOL on the machine
 /// and redirect it to individual portal workers.
 pub struct RawSocketProcessor {
-    socket_write_handle: Arc<RwLock<TransportSender>>,
-    // TODO: Remove lock by moving to blocking and returning back from blocking thread
-    socket_read_handle: Arc<RwLock<TransportReceiver>>,
+    socket_write_handle: Arc<Mutex<TransportSender>>,
+    socket_read_handle: Option<TransportReceiver>,
 
     inlet_registry: InletRegistry,
     outlet_registry: OutletRegistry,
@@ -30,7 +31,7 @@ impl RawSocketProcessor {
         inlet_registry: InletRegistry,
         outlet_registry: OutletRegistry,
     ) -> Result<Self> {
-        // FIXME: Use Layer3
+        // TODO: use Layer3
         let (socket_write_handle, socket_read_handle) = transport::transport_channel(
             1024 * 1024,
             TransportChannelType::Layer4(TransportProtocol::Ipv4(IpNextHeaderProtocol::new(
@@ -40,8 +41,8 @@ impl RawSocketProcessor {
         .unwrap();
 
         let s = Self {
-            socket_write_handle: Arc::new(RwLock::new(socket_write_handle)),
-            socket_read_handle: Arc::new(RwLock::new(socket_read_handle)),
+            socket_write_handle: Arc::new(Mutex::new(socket_write_handle)),
+            socket_read_handle: Some(socket_read_handle),
             inlet_registry,
             outlet_registry,
         };
@@ -50,7 +51,7 @@ impl RawSocketProcessor {
     }
 
     /// Write handle to the socket
-    pub fn socket_write_handle(&self) -> Arc<RwLock<TransportSender>> {
+    pub fn socket_write_handle(&self) -> Arc<Mutex<TransportSender>> {
         self.socket_write_handle.clone()
     }
 
@@ -67,17 +68,24 @@ impl RawSocketProcessor {
     }
 
     async fn get_new_packet(
-        socket_read_handle: Arc<RwLock<TransportReceiver>>,
-    ) -> Result<Option<ParsedRawSocketPacket>> {
-        let parsed_packet = tokio::task::spawn_blocking(move || {
-            let mut socket_read_handle = socket_read_handle.write().unwrap(); // FIXME
-            let mut iterator = tcp_packet_iter(&mut socket_read_handle);
-            // TODO: Should we check the checksum?
-            let (packet, source_ip) = iterator.next().unwrap(); // FIXME
+        mut socket_read_handle: TransportReceiver,
+    ) -> Result<(TransportReceiver, ParsedRawSocketPacket)> {
+        // TODO: I wonder how bad it is to use blocking here
+        //  Will it be shutdown properly eventually?
+        //  Should we use socket read with timeout?
+        let (socket_read_handle, parsed_packet) = tokio::task::spawn_blocking(move || {
+            let (packet, source_ip) = loop {
+                let (packet, source_ip) = match next_tcp_packet(&mut socket_read_handle) {
+                    Ok((packet, source_ip)) => (packet, source_ip),
+                    Err(_) => return Err(TransportError::RawSocketReadError),
+                };
 
-            let source_ip = match source_ip {
-                IpAddr::V4(ip) => ip,
-                IpAddr::V6(_) => return None,
+                // TODO: Should we check the checksum?
+                if let IpAddr::V4(ip) = source_ip {
+                    break (packet, ip);
+                } else {
+                    continue;
+                }
             };
 
             let destination_ip = Ipv4Addr::LOCALHOST; // FIXME
@@ -99,12 +107,12 @@ impl RawSocketProcessor {
                 destination_port,
             };
 
-            Some(parsed_packet)
+            Ok((socket_read_handle, parsed_packet))
         })
         .await
-        .unwrap();
+        .unwrap()?;
 
-        Ok(parsed_packet)
+        Ok((socket_read_handle, parsed_packet))
     }
 }
 
@@ -113,12 +121,14 @@ impl Processor for RawSocketProcessor {
     type Context = Context;
 
     async fn process(&mut self, _ctx: &mut Self::Context) -> Result<bool> {
-        let parsed_packet = Self::get_new_packet(self.socket_read_handle.clone()).await?;
-
-        let parsed_packet = match parsed_packet {
-            Some(parsed_packet) => parsed_packet,
+        // This trick allows avoiding locking around socket_read_handle
+        let socket_read_handle = match self.socket_read_handle.take() {
+            Some(socket_read_handle) => socket_read_handle,
             None => return Ok(false),
         };
+
+        let (socket_read_handle, parsed_packet) = Self::get_new_packet(socket_read_handle).await?;
+        self.socket_read_handle = Some(socket_read_handle);
 
         if let Some(inlet) = self
             .inlet_registry

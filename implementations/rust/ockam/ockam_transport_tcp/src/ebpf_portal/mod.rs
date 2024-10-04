@@ -1,6 +1,7 @@
 mod common;
 mod ebpf_support;
 mod internal_processor;
+mod pnet_helper;
 mod portals;
 mod raw_socket_processor;
 mod registry;
