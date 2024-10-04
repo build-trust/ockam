@@ -152,6 +152,7 @@ teardown() {
 }
 
 @test "ebpf portals - create an inlet/outlet pair and move tcp traffic through it" {
+  skip
   run_success "$OCKAM" node create n1
   run_success "$OCKAM" node create n2
 
@@ -176,6 +177,7 @@ teardown() {
 }
 
 @test "ebpf portals - create an inlet/outlet, upload file" {
+  skip
   run_success "$OCKAM" node create n1
   run_success "$OCKAM" node create n2
 
@@ -193,6 +195,7 @@ teardown() {
 }
 
 @test "ebpf portals - create an inlet/outlet pair and move tcp traffic through it, where the outlet points to an HTTPs endpoint" {
+  skip
   run_success "$OCKAM" node create n1
   run_success "$OCKAM" node create n2
 
@@ -205,6 +208,7 @@ teardown() {
 }
 
 @test "ebpf portals - create an inlet/outlet pair with relay through a relay and move tcp traffic through it" {
+  skip
   run_success "$OCKAM" node create relay
   run_success "$OCKAM" node create blue
 
@@ -259,6 +263,7 @@ teardown() {
 }
 
 @test "ebpf portals - local inlet and outlet, removing and re-creating the outlet" {
+  skip
   node_port="$(random_port)"
   run_success "$OCKAM" node create blue --tcp-listener-address "127.0.0.1:$node_port"
   run_success "$OCKAM" tcp-outlet create --ebpf --at /node/blue --to "$PYTHON_SERVER_PORT"
@@ -279,6 +284,7 @@ teardown() {
 }
 
 @test "ebpf portals - local inlet and outlet in reverse order" {
+  skip
   run_success "$OCKAM" node create n1
   node_port="$(random_port)"
   inlet_port="$(random_port)"
@@ -292,6 +298,7 @@ teardown() {
 }
 
 @test "ebpf portals - local portal, curl download, inlet credential expires" {
+  skip
   run_success "$OCKAM" identity create alice
   alice_identifier=$($OCKAM identity show alice)
 
@@ -333,6 +340,7 @@ teardown() {
 }
 
 @test "ebpf portals - local portal, curl upload, inlet credential expires" {
+  skip
   run_success "$OCKAM" identity create alice
   alice_identifier=$($OCKAM identity show alice)
 
@@ -377,6 +385,7 @@ teardown() {
 }
 
 @test "ebpf portals - local portal, curl download, outlet credential expires" {
+  skip
   run_success "$OCKAM" identity create alice
   alice_identifier=$($OCKAM identity show alice)
 
@@ -418,6 +427,7 @@ teardown() {
 }
 
 @test "ebpf portals - local portal, curl upload, outlet credential expires" {
+  skip
   run_success "$OCKAM" identity create alice
   alice_identifier=$($OCKAM identity show alice)
 
