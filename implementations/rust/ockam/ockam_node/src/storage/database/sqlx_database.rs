@@ -9,6 +9,8 @@ use ockam_core::errcode::{Kind, Origin};
 use sqlx::any::{install_default_drivers, AnyConnectOptions};
 use sqlx::pool::PoolOptions;
 use sqlx::{Any, ConnectOptions, Pool};
+use sqlx_core::any::AnyConnection;
+use sqlx_core::executor::Executor;
 use tempfile::NamedTempFile;
 use tokio_retry::strategy::{jitter, FixedInterval};
 use tokio_retry::Retry;
@@ -34,7 +36,8 @@ use ockam_core::{Error, Result};
 pub struct SqlxDatabase {
     /// Pool of connections to the database
     pub pool: Arc<Pool<Any>>,
-    configuration: DatabaseConfiguration,
+    /// Configuration of the database
+    pub configuration: DatabaseConfiguration,
 }
 
 impl Debug for SqlxDatabase {
@@ -134,28 +137,74 @@ impl SqlxDatabase {
 
         // creating a new database might be failing a few times
         // if the files are currently being held by another pod which is shutting down.
-        // In that case we retry a few times, between 1 and 10 seconds.
+        // In that case, we retry a few times, between 1 and 10 seconds.
         let retry_strategy = FixedInterval::from_millis(1000)
             .map(jitter) // add jitter to delays
             .take(10); // limit to 10 retries
 
-        let db = Retry::spawn(retry_strategy, || async {
-            match Self::create_at(configuration).await {
-                Ok(db) => Ok(db),
-                Err(e) => {
-                    println!("{e:?}");
-                    Err(e)
-                }
+        // migrate the database using exclusive locking only when operating with files
+        let database = if configuration.database_type() == DatabaseType::Sqlite
+            && configuration.path().is_some()
+        {
+            if let Some(migration_set) = migration_set {
+                // To avoid any issues with the database being locked for more than necessary,
+                // we open the database, run the migrations and close it.
+                // (Changing the locking_mode back to NORMAL is not enough to release the lock)
+
+                // We also request a single connection pool to avoid any issues with multiple
+                // connections to a locked database.
+                let migration_config = configuration.single_connection();
+
+                let database = Retry::spawn(retry_strategy.clone(), || async {
+                    match Self::create_at(&migration_config).await {
+                        Ok(db) => Ok(db),
+                        Err(e) => {
+                            println!("{e:?}");
+                            Err(e)
+                        }
+                    }
+                })
+                .await?;
+
+                let migrator = migration_set.create_migrator()?;
+                let result = migrator.migrate(&database.pool).await;
+                database.close().await;
+
+                result?
             }
-        })
-        .await?;
 
-        if let Some(migration_set) = migration_set {
-            let migrator = migration_set.create_migrator()?;
-            migrator.migrate(&db.pool).await?;
-        }
+            // re-create the connection pool with the correct configuration
+            Retry::spawn(retry_strategy, || async {
+                match Self::create_at(configuration).await {
+                    Ok(db) => Ok(db),
+                    Err(e) => {
+                        println!("{e:?}");
+                        Err(e)
+                    }
+                }
+            })
+            .await?
+        } else {
+            let database = Retry::spawn(retry_strategy, || async {
+                match Self::create_at(configuration).await {
+                    Ok(db) => Ok(db),
+                    Err(e) => {
+                        println!("{e:?}");
+                        Err(e)
+                    }
+                }
+            })
+            .await?;
 
-        Ok(db)
+            if let Some(migration_set) = migration_set {
+                let migrator = migration_set.create_migrator()?;
+                migrator.migrate(&database.pool).await?;
+            }
+
+            database
+        };
+
+        Ok(database)
     }
 
     /// Create a nodes database in memory
@@ -209,15 +258,69 @@ impl SqlxDatabase {
             .map_err(Self::map_sql_err)?
             .log_statements(LevelFilter::Trace)
             .log_slow_statements(LevelFilter::Trace, Duration::from_secs(1));
-        let pool = Pool::connect_with(options)
+
+        // sqlx default is 10, 16 is closer to the typical number of threads spawn
+        // by tokio within a node, but has no particular reason
+        const MAX_POOL_SIZE: u32 = 16;
+
+        let max_pool_size = match configuration {
+            DatabaseConfiguration::SqlitePersistent {
+                single_connection, ..
+            }
+            | DatabaseConfiguration::SqliteInMemory { single_connection } => {
+                if *single_connection {
+                    1
+                } else {
+                    MAX_POOL_SIZE
+                }
+            }
+            _ => MAX_POOL_SIZE,
+        };
+
+        let pool_options = PoolOptions::new()
+            .max_connections(max_pool_size)
+            .min_connections(1);
+
+        let pool_options = if configuration.database_type() == DatabaseType::Sqlite {
+            // SQLite's configuration is specific for each connection, and needs to be set every time
+            pool_options.after_connect(|connection: &mut AnyConnection, _metadata| {
+                Box::pin(async move {
+                    // Set configuration for SQLite, see https://www.sqlite.org/pragma.html
+                    // synchronous = EXTRA - trade performance for durability and reliability
+                    // locking_mode = NORMAL - it's important because WAL mode changes behavior
+                    //                         if locking_mode is set to EXCLUSIVE *before* WAL is set
+                    // journal_mode = WAL - write-ahead logging, mainly for better concurrency
+                    // busy_timeout = 10000 - wait for 10 seconds before failing a query due to exclusive lock
+                    let _ = connection
+                        .execute(
+                            r#"
+PRAGMA synchronous = EXTRA;
+PRAGMA locking_mode = NORMAL;
+PRAGMA journal_mode = WAL;
+PRAGMA busy_timeout = 10000;
+                "#,
+                        )
+                        .await
+                        .expect("Failed to set SQLite configuration");
+
+                    Ok(())
+                })
+            })
+        } else {
+            pool_options
+        };
+
+        let pool = pool_options
+            .connect_with(options)
             .await
             .map_err(Self::map_sql_err)?;
+
         Ok(pool)
     }
 
     /// Create a connection for a SQLite database
-    pub async fn create_sqlite_connection_pool(path: &Path) -> Result<Pool<Any>> {
-        Self::create_connection_pool(&DatabaseConfiguration::sqlite(path)).await
+    pub async fn create_sqlite_single_connection_pool(path: &Path) -> Result<Pool<Any>> {
+        Self::create_connection_pool(&DatabaseConfiguration::sqlite(path).single_connection()).await
     }
 
     pub(crate) async fn create_in_memory_connection_pool() -> Result<Pool<Any>> {

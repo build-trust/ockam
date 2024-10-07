@@ -59,12 +59,20 @@ impl Authority {
     /// Create an identity for an authority from the configured public identity and configured vault
     /// The list of trusted identities in the configuration is used to pre-populate an attributes storage
     /// In practice it contains the list of identities with the ockam-role attribute set as 'enroller'
-    pub async fn create(configuration: &Configuration) -> Result<Self> {
+    pub async fn create(
+        configuration: &Configuration,
+        database: Option<SqlxDatabase>,
+    ) -> Result<Self> {
         debug!(?configuration, "creating the authority");
 
         // create the database
         let node_name = "authority";
-        let database = SqlxDatabase::create(&configuration.database_configuration).await?;
+        let database = if let Some(database) = database {
+            database
+        } else {
+            SqlxDatabase::create(&configuration.database_configuration).await?
+        };
+
         let members = Arc::new(AuthorityMembersSqlxDatabase::new(database.clone()));
         let tokens = Arc::new(AuthorityEnrollmentTokenSqlxDatabase::new(database.clone()));
         let secure_channel_repository = Arc::new(SecureChannelSqlxDatabase::new(database.clone()));

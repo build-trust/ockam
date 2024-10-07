@@ -34,6 +34,9 @@ teardown() {
   # reset the OCKAM_HOME directory
   run_success "$OCKAM" reset --yes
 
+  # it may, or may not exist, so we remove it to have a consistent state
+  run_success rm -f "$OCKAM_HOME"/application_database.sqlite3-wal
+
   # list all remaining files and directories
   run_success ls "$OCKAM_HOME"
   assert_output 'application_database.sqlite3
@@ -42,6 +45,9 @@ env'
 
   # reset the OCKAM_HOME directory twice, this should not fail
   run_success "$OCKAM" reset --yes
+
+  run_success rm -f "$OCKAM_HOME"/application_database.sqlite3-wal
+
   run_success ls "$OCKAM_HOME"
   assert_output 'application_database.sqlite3
 bin
