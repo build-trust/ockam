@@ -320,11 +320,41 @@ jobs:
           ockam --version
           echo $(which ockam)
           echo $BATS_TEST_RETRIES
-          sudo PATH=$PATH BATS_LIB=$BATS_LIB OCKAM_HOME_BASE=$OCKAM_HOME_BASE OCKAM_HOME=$OCKAM_HOME bash implementations/rust/ockam/ockam_command/tests/bats/run.sh local_as_root
+          sudo PATH=$PATH BATS_LIB=$BATS_LIB bash implementations/rust/ockam/ockam_command/tests/bats/run.sh local_as_root
         env:
           OCKAM_DISABLE_UPGRADE_CHECK: 1
           BATS_TEST_RETRIES: 2
 
+      - if: ${{ always() }}
+        shell: bash
+        run: |
+          set -x
+          home_dir=$(echo ~)
+          echo "$home_dir"
+          echo "HOME_DIR=$home_dir" >> $GITHUB_ENV
+          mkdir -p ~/.bats-tests/
+
+          if sudo ls -a /root/.bats-tests; then
+            sudo tar -czvf "${home_dir}/.bats-tests/root_tests.tar.gz" -C /root/.bats-tests .
+            tar -ztvf "${home_dir}/.bats-tests/root_tests.tar.gz"
+          fi
+
+          ls -a /home/runner/.bats-tests
+
+      - if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ github.run_id }}-ockam-bats-logs
+          path: ${{ env.HOME_DIR }}/.bats-tests/*
+          include-hidden-files: true
+      
+      - if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ github.run_id }}-ockam-home
+          path: ${{ env.HOME_DIR }}/.ockam/*
+          include-hidden-files: true
+    
       - name: Nix Upload Store
         uses: ./ockam_bats/.github/actions/nix_upload_store
         if: ${{ steps.nix-installer.outputs.cache-hit != 'true' }}
