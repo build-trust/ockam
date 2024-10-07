@@ -46,7 +46,9 @@ pub async fn default_configuration() -> Result<Configuration> {
     };
 
     // Hack to create Authority Identity using the same vault and storage
-    let authority_sc_temp = Authority::create(&configuration).await?.secure_channels();
+    let authority_sc_temp = Authority::create(&configuration, None)
+        .await?
+        .secure_channels();
 
     let authority_identifier = authority_sc_temp
         .identities()
@@ -163,6 +165,6 @@ pub fn change_client_identifier(
 }
 
 pub async fn start_authority_node(ctx: &Context, configuration: &Configuration) -> Result<()> {
-    let authority = Authority::create(configuration).await?;
+    let authority = Authority::create(configuration, None).await?;
     authority_node::start_node(ctx, configuration, authority).await
 }

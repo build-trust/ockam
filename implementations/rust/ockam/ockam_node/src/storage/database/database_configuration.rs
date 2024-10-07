@@ -21,9 +21,16 @@ pub const OCKAM_POSTGRES_PASSWORD: &str = "OCKAM_POSTGRES_PASSWORD";
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum DatabaseConfiguration {
     /// Configuration for a SQLite database
-    Sqlite {
+    SqlitePersistent {
         /// Database file path if the database is stored on disk
-        path: Option<PathBuf>,
+        path: PathBuf,
+        /// Set the connection pool size to 1, needed for the initial migration
+        single_connection: bool,
+    },
+    /// Configuration for a SQLite database
+    SqliteInMemory {
+        /// Set the connection pool size to 1, needed for the initial migration
+        single_connection: bool,
     },
     /// Configuration for a Postgres database
     Postgres {
@@ -106,20 +113,40 @@ impl DatabaseConfiguration {
 
     /// Create a local sqlite configuration
     pub fn sqlite(path: &Path) -> DatabaseConfiguration {
-        DatabaseConfiguration::Sqlite {
-            path: Some(path.to_path_buf()),
+        DatabaseConfiguration::SqlitePersistent {
+            path: path.to_path_buf(),
+            single_connection: false,
         }
     }
 
     /// Create an in-memory sqlite configuration
     pub fn sqlite_in_memory() -> DatabaseConfiguration {
-        DatabaseConfiguration::Sqlite { path: None }
+        DatabaseConfiguration::SqliteInMemory {
+            single_connection: false,
+        }
+    }
+
+    /// Create a single connection sqlite configuration
+    pub fn single_connection(&self) -> Self {
+        match self {
+            DatabaseConfiguration::SqlitePersistent { path, .. } => {
+                DatabaseConfiguration::SqlitePersistent {
+                    path: path.clone(),
+                    single_connection: true,
+                }
+            }
+            DatabaseConfiguration::SqliteInMemory { .. } => DatabaseConfiguration::SqliteInMemory {
+                single_connection: true,
+            },
+            _ => self.clone(),
+        }
     }
 
     /// Return the type of database that has been configured
     pub fn database_type(&self) -> DatabaseType {
         match self {
-            DatabaseConfiguration::Sqlite { .. } => DatabaseType::Sqlite,
+            DatabaseConfiguration::SqliteInMemory { .. } => DatabaseType::Sqlite,
+            DatabaseConfiguration::SqlitePersistent { .. } => DatabaseType::Sqlite,
             DatabaseConfiguration::Postgres { .. } => DatabaseType::Postgres,
         }
     }
@@ -127,10 +154,10 @@ impl DatabaseConfiguration {
     /// Return the type of database that has been configured
     pub fn connection_string(&self) -> String {
         match self {
-            DatabaseConfiguration::Sqlite { path: None } => {
+            DatabaseConfiguration::SqliteInMemory { .. } => {
                 Self::create_sqlite_in_memory_connection_string()
             }
-            DatabaseConfiguration::Sqlite { path: Some(path) } => {
+            DatabaseConfiguration::SqlitePersistent { path, .. } => {
                 Self::create_sqlite_on_disk_connection_string(path)
             }
             DatabaseConfiguration::Postgres {
@@ -149,7 +176,7 @@ impl DatabaseConfiguration {
 
     /// Create a directory for the SQLite database file if necessary
     pub fn create_directory_if_necessary(&self) -> Result<()> {
-        if let DatabaseConfiguration::Sqlite { path: Some(path) } = self {
+        if let DatabaseConfiguration::SqlitePersistent { path, .. } = self {
             if let Some(parent) = path.parent() {
                 if !parent.exists() {
                     create_dir_all(parent)
@@ -168,7 +195,7 @@ impl DatabaseConfiguration {
     /// Return the database path if the database is a SQLite file.
     pub fn path(&self) -> Option<PathBuf> {
         match self {
-            DatabaseConfiguration::Sqlite { path } => path.clone(),
+            DatabaseConfiguration::SqlitePersistent { path, .. } => Some(path.clone()),
             _ => None,
         }
     }

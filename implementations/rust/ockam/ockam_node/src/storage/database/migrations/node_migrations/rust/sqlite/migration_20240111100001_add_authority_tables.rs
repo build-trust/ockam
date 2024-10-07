@@ -116,10 +116,8 @@ mod test {
     #[tokio::test]
     async fn test_migration() -> Result<()> {
         let db_file = NamedTempFile::new().unwrap();
-        let pool = SqlxDatabase::create_sqlite_connection_pool(db_file.path()).await?;
-
-        let mut connection = pool.acquire().await.into_core()?;
-
+        let db_file = db_file.path();
+        let pool = SqlxDatabase::create_sqlite_single_connection_pool(db_file).await?;
         NodeMigrationSet::new(DatabaseType::Sqlite)
             .create_migrator()?
             .migrate_up_to_skip_last_rust_migration(&pool, AuthorityAttributes::version())
@@ -128,6 +126,7 @@ mod test {
         let authority_node_name = "authority".to_string();
         let regular_node_name = "node".to_string();
 
+        let mut connection = pool.acquire().await.into_core()?;
         let insert_node1 = insert_node(authority_node_name.clone(), true);
         insert_node1.execute(&mut *connection).await.void()?;
         let insert_node2 = insert_node(regular_node_name.clone(), false);
@@ -153,11 +152,16 @@ mod test {
         );
         insert.execute(&mut *connection).await.void()?;
 
+        // SQLite EXCLUSIVE lock needs exactly one connection during the migration
+        drop(connection);
+
         // apply migrations
         NodeMigrationSet::new(DatabaseType::Sqlite)
             .create_migrator()?
             .migrate_up_to(&pool, AuthorityAttributes::version())
             .await?;
+
+        let mut connection = pool.acquire().await.into_core()?;
 
         // check data
         let rows1: Vec<IdentityAttributesRow> =

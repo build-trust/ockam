@@ -412,11 +412,21 @@ impl CreateCommand {
             disable_trust_context_id: self.disable_trust_context_id,
         };
 
+        // SQLite doesn't like when the same database is opened by multiple times
+        let database = if state.database_ref().configuration == configuration.database_configuration
+        {
+            Some(state.database())
+        } else {
+            None
+        };
+
         // create the authority identity
         // or retrieve it from disk if the node has already been started before
         // The trusted identities in the configuration are used to pre-populate an attribute storage
         // containing those identities and their attributes
-        let authority = Authority::create(&configuration).await.into_diagnostic()?;
+        let authority = Authority::create(&configuration, database)
+            .await
+            .into_diagnostic()?;
         authority
             .add_member(&exporter_identity.identifier(), &attributes)
             .await
