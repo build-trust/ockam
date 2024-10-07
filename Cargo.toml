@@ -36,5 +36,5 @@ inherits = "release"
 # mostly caused by syntect theme loading
 [profile.dev.package.syntect]
 opt-level = 2
-[profile.dev.package.adler]
+[profile.dev.package.adler2]
 opt-level = 1
