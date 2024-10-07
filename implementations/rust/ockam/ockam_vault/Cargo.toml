@@ -40,8 +40,6 @@ std = [
   "ockam_node/std",
   "aes-gcm?/std",
   "ed25519-dalek/std",
-  "rand/std",
-  "rand/std_rng",
   "tracing/std",
   "alloc",
   "p256/std",
@@ -74,7 +72,7 @@ storage = ["ockam_node/storage", "sqlx-build-trust"]
 [dependencies]
 aes-gcm = { version = "0.10", default-features = false, features = ["aes", "zeroize"], optional = true }
 arrayref = "0.3"
-aws-lc-rs = { version = "1.8", default-features = false, features = ["non-fips", "bindgen"], optional = true }
+aws-lc-rs = { version = "=1.9", default-features = false, features = ["non-fips", "bindgen"], optional = true }
 cfg-if = "1.0.0"
 ed25519-dalek = { version = "2.1", default-features = false, features = ["fast", "rand_core", "zeroize"] }
 hex = { version = "0.4", default-features = false }
@@ -85,7 +83,6 @@ ockam_macros = { path = "../ockam_macros", version = "^0.35.0", default-features
 ockam_node = { path = "../ockam_node", version = "^0.126.0", default-features = false, optional = true }
 # ECDSA providers:
 p256 = { version = "0.13.2", default-features = false }
-rand = { version = "0.8", default-features = false }
 rand_pcg = { version = "0.3.1", default-features = false, optional = true }
 serde = { version = "1", default-features = false, features = ["derive"] }
 sha2 = { version = "0.10", default-features = false }

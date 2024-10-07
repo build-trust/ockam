@@ -100,8 +100,7 @@ tracing-subscriber = { version = "0.3", features = ["fmt", "env-filter"], option
 utcnow = { version = "0.2.5", default-features = false, features = ["fallback"], optional = true }
 
 [dev-dependencies]
-cddl-cat = { version = "0.6.1" }
+cddl-cat = { version = "0.6.2" }
 proptest = "1.5.0"
 quickcheck = "1.0.1"
-serde_cbor = { version = "0.11.2" }
 tokio = { version = "1.39.2", features = ["full"] }

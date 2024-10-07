@@ -3,7 +3,6 @@ This file contains attributions for any 3rd-party open source code used in this 
 | Name | License | URL |
 |------|---------|-----|
 | addr2line | Apache-2.0, MIT | https://crates.io/crates/addr2line |
-| adler | 0BSD, MIT, Apache-2.0 | https://crates.io/crates/adler |
 | adler2 | 0BSD, MIT, Apache-2.0 | https://crates.io/crates/adler2 |
 | aead | MIT, Apache-2.0 | https://crates.io/crates/aead |
 | aes | MIT, Apache-2.0 | https://crates.io/crates/aes |
@@ -85,6 +84,7 @@ This file contains attributions for any 3rd-party open source code used in this 
 | bitflags | MIT, Apache-2.0 | https://crates.io/crates/bitflags |
 | block | MIT | https://crates.io/crates/block |
 | block-buffer | MIT, Apache-2.0 | https://crates.io/crates/block-buffer |
+| block2 | MIT | https://crates.io/crates/block2 |
 | blocking | Apache-2.0, MIT | https://crates.io/crates/blocking |
 | bluenrg | MIT, Apache-2.0 | https://crates.io/crates/bluenrg |
 | bluetooth-hci | MIT, Apache-2.0 | https://crates.io/crates/bluetooth-hci |
@@ -117,8 +117,6 @@ This file contains attributions for any 3rd-party open source code used in this 
 | clap_mangen | MIT, Apache-2.0 | https://crates.io/crates/clap_mangen |
 | clipboard-win | MIT | https://crates.io/crates/clipboard-win |
 | cmake | MIT, Apache-2.0 | https://crates.io/crates/cmake |
-| cocoa | MIT, Apache-2.0 | https://crates.io/crates/cocoa |
-| cocoa-foundation | MIT, Apache-2.0 | https://crates.io/crates/cocoa-foundation |
 | colorchoice | MIT, Apache-2.0 | https://crates.io/crates/colorchoice |
 | colorful | MIT | https://crates.io/crates/colorful |
 | colorgrad | MIT, Apache-2.0 | https://crates.io/crates/colorgrad |
@@ -272,7 +270,6 @@ This file contains attributions for any 3rd-party open source code used in this 
 | indoc | MIT, Apache-2.0 | https://crates.io/crates/indoc |
 | inout | MIT, Apache-2.0 | https://crates.io/crates/inout |
 | instant | BSD-3-Clause | https://crates.io/crates/instant |
-| io-lifetimes | Apache-2.0 WITH LLVM-exception, Apache-2.0, MIT | https://crates.io/crates/io-lifetimes |
 | iovec | MIT, Apache-2.0 | https://crates.io/crates/iovec |
 | ipnet | MIT, Apache-2.0 | https://crates.io/crates/ipnet |
 | ipnetwork | MIT, Apache-2.0 | https://crates.io/crates/ipnetwork |
@@ -310,7 +307,6 @@ This file contains attributions for any 3rd-party open source code used in this 
 | lock_api | MIT, Apache-2.0 | https://crates.io/crates/lock_api |
 | log | MIT, Apache-2.0 | https://crates.io/crates/log |
 | lz4 | MIT | https://crates.io/crates/lz4 |
-| lz4-sys | MIT | https://crates.io/crates/lz4-sys |
 | malloc_buf | MIT | https://crates.io/crates/malloc_buf |
 | matchers | MIT | https://crates.io/crates/matchers |
 | matchit | MIT, BSD-3-Clause | https://crates.io/crates/matchit |
@@ -351,6 +347,7 @@ This file contains attributions for any 3rd-party open source code used in this 
 | objc-sys | MIT | https://crates.io/crates/objc-sys |
 | objc2 | MIT | https://crates.io/crates/objc2 |
 | objc2-app-kit | MIT | https://crates.io/crates/objc2-app-kit |
+| objc2-core-bluetooth | MIT | https://crates.io/crates/objc2-core-bluetooth |
 | objc2-encode | MIT | https://crates.io/crates/objc2-encode |
 | objc2-foundation | MIT | https://crates.io/crates/objc2-foundation |
 | objc_id | MIT | https://crates.io/crates/objc_id |
@@ -602,7 +599,6 @@ This file contains attributions for any 3rd-party open source code used in this 
 | vsimd | MIT | https://crates.io/crates/vsimd |
 | vte | Apache-2.0, MIT | https://crates.io/crates/vte |
 | vte_generate_state_changes | Apache-2.0, MIT | https://crates.io/crates/vte_generate_state_changes |
-| waker-fn | Apache-2.0, MIT | https://crates.io/crates/waker-fn |
 | walkdir | Unlicense, MIT | https://crates.io/crates/walkdir |
 | want | MIT | https://crates.io/crates/want |
 | wasite | Apache-2.0, BSL-1.0, MIT | https://crates.io/crates/wasite |
