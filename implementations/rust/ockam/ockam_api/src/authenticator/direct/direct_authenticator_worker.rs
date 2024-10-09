@@ -106,6 +106,13 @@ impl Worker for DirectAuthenticatorWorker {
                     Either::Right(error) => Response::forbidden(&req, &error.0).to_vec()?,
                 }
             }
+            (Some(Method::Delete), ["members"]) => {
+                let res = self.authenticator.delete_all_members(&from).await?;
+                match res {
+                    Either::Left(_) => Response::ok().with_headers(&req).to_vec()?,
+                    Either::Right(error) => Response::forbidden(&req, &error.0).to_vec()?,
+                }
+            }
             (Some(Method::Delete), [id]) | (Some(Method::Delete), ["members", id]) => {
                 let identifier = Identifier::try_from(id.to_string())?;
                 let res = self.authenticator.delete_member(&from, &identifier).await?;
@@ -115,7 +122,6 @@ impl Worker for DirectAuthenticatorWorker {
                     Either::Right(error) => Response::forbidden(&req, &error.0).to_vec()?,
                 }
             }
-
             _ => Response::unknown_path(&req).to_vec()?,
         };
 

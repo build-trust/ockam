@@ -26,6 +26,7 @@ pub trait Members {
         identifier: Identifier,
     ) -> miette::Result<AttributesEntry>;
 
+    async fn delete_all_members(&self, ctx: &Context) -> miette::Result<()>;
     async fn delete_member(&self, ctx: &Context, identifier: Identifier) -> miette::Result<()>;
 
     async fn list_member_ids(&self, ctx: &Context) -> miette::Result<Vec<Identifier>>;
@@ -61,6 +62,16 @@ impl Members for AuthorityNodeClient {
         let req = Request::get(format!("/{identifier}"));
         self.get_secure_client()
             .ask(ctx, DefaultAddress::DIRECT_AUTHENTICATOR, req)
+            .await
+            .into_diagnostic()?
+            .success()
+            .into_diagnostic()
+    }
+
+    async fn delete_all_members(&self, ctx: &Context) -> miette::Result<()> {
+        let req = Request::delete("/members");
+        self.get_secure_client()
+            .tell(ctx, DefaultAddress::DIRECT_AUTHENTICATOR, req)
             .await
             .into_diagnostic()?
             .success()
