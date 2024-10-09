@@ -134,10 +134,12 @@ pub async fn delete_all_members(
     };
 
     let pb = terminal.progress_bar();
+    let mut i = 1;
     for identifier in members_to_delete.into_iter() {
         if let Some(pb) = &pb {
-            pb.set_message(format!("Trying to delete member {identifier}..."));
+            pb.set_message(format!("{i}. Trying to delete member {identifier}..."));
         }
+        i += 1;
         if let Err(e) = authority_node_client
             .delete_member(ctx, identifier.clone())
             .await
