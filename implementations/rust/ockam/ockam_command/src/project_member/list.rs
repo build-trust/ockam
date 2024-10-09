@@ -5,7 +5,6 @@ use ockam::Context;
 use ockam_api::authenticator::direct::{
     Members, OCKAM_ROLE_ATTRIBUTE_ENROLLER_VALUE, OCKAM_ROLE_ATTRIBUTE_KEY,
 };
-use ockam_multiaddr::MultiAddr;
 
 use crate::shared_args::IdentityOpts;
 use crate::{docs, Command, CommandGlobalOpts, Result};
@@ -23,9 +22,9 @@ pub struct ListCommand {
     #[command(flatten)]
     identity_opts: IdentityOpts,
 
-    /// The route to the Project to list members from
-    #[arg(long, short, value_name = "ROUTE_TO_PROJECT")]
-    to: Option<MultiAddr>,
+    /// The Project to list members from
+    #[arg(long, short, value_name = "PROJECT_NAME")]
+    project_name: Option<String>,
 
     /// Return only the enroller members
     #[arg(long, visible_alias = "enroller")]
@@ -38,7 +37,7 @@ impl Command for ListCommand {
 
     async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> Result<()> {
         let (authority_node_client, _) =
-            authority_client(ctx, &opts, &self.identity_opts, &self.to).await?;
+            authority_client(ctx, &opts, &self.identity_opts, &self.project_name).await?;
 
         let members = authority_node_client
             .list_members(ctx)

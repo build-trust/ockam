@@ -16,7 +16,6 @@ use ockam_api::cli_state::{ExportedEnrollmentTicket, ProjectRoute};
 use ockam_api::colors::color_primary;
 use ockam_api::nodes::InMemoryNode;
 use ockam_api::{fmt_log, fmt_ok};
-use ockam_multiaddr::MultiAddr;
 
 use crate::shared_args::{IdentityOpts, RetryOpts, TrustOpts};
 use crate::util::parsers::duration_parser;
@@ -42,10 +41,6 @@ pub struct TicketCommand {
 
     #[command(flatten)]
     trust_opts: TrustOpts,
-
-    /// The Project name from this option is used to create the enrollment ticket. This takes precedence over `--project`
-    #[arg(long, short, value_name = "ROUTE_TO_PROJECT")]
-    to: Option<MultiAddr>,
 
     /// Attributes in `key=value` format to be attached to the member. You can specify this option multiple times for multiple attributes
     #[arg(short, long = "attribute", value_name = "ATTRIBUTE")]
@@ -93,18 +88,22 @@ impl Command for TicketCommand {
             .into());
         }
 
-        let project = crate::project_member::get_project(&opts.state, &self.to).await?;
+        let identity = opts
+            .state
+            .get_identity_name_or_default(&self.identity_opts.identity_name)
+            .await?;
 
         let node = InMemoryNode::start_with_project_name(
             ctx,
             &opts.state,
-            Some(project.name().to_string()),
+            self.trust_opts.project_name.clone(),
         )
         .await?;
 
-        let identity = opts
+        let project = opts
             .state
-            .get_identity_name_or_default(&self.identity_opts.identity_name)
+            .projects()
+            .get_project_by_name_or_default(&self.trust_opts.project_name)
             .await?;
 
         let authority_node_client = node
