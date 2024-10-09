@@ -214,6 +214,24 @@ impl DirectAuthenticator {
         Ok(Either::Left(res))
     }
 
+    #[instrument(skip_all, fields(enroller = %enroller))]
+    pub async fn delete_all_members(
+        &self,
+        enroller: &Identifier,
+    ) -> Result<DirectAuthenticatorResult<()>> {
+        match self.list_members(enroller).await? {
+            Either::Left(members) => {
+                for member in members.keys() {
+                    if member != enroller {
+                        _ = self.delete_member(enroller, member).await?
+                    }
+                }
+                Ok(Either::Left(()))
+            }
+            Either::Right(e) => Ok(Either::Right(e)),
+        }
+    }
+
     #[instrument(skip_all, fields(enroller = %enroller, identifier = %identifier))]
     pub async fn delete_member(
         &self,
