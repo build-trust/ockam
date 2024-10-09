@@ -8,7 +8,7 @@ use ockam_api::nodes::InMemoryNode;
 
 use crate::shared_args::IdentityOpts;
 use crate::util::async_cmd;
-use crate::{docs, CommandGlobalOpts};
+use crate::{docs, project_member, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/delete/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
@@ -53,6 +53,28 @@ impl DeleteCommand {
             "Are you sure you want to delete this project?",
         )? {
             let node = InMemoryNode::start(ctx, &opts.state).await?;
+
+            // Remove project members first
+            let project = opts
+                .state
+                .projects()
+                .get_project_by_name_or_default(&Some(self.project_name.clone()))
+                .await?;
+
+            let authority_client = node
+                .create_authority_client_with_project(ctx, &project, None)
+                .await?;
+
+            project_member::delete::delete_all_members(
+                opts.terminal.clone(),
+                ctx,
+                authority_client,
+                self.project_name.clone(),
+                node.identifier(),
+            )
+            .await?;
+
+            // Now, delete the project
             node.delete_project_by_name(ctx, &self.space_name, &self.project_name)
                 .await?;
             opts.terminal

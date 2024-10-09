@@ -10,7 +10,6 @@ use ockam::Context;
 use ockam_api::authenticator::direct::Members;
 use ockam_api::colors::color_primary;
 use ockam_api::{fmt_log, fmt_ok};
-use ockam_multiaddr::MultiAddr;
 
 use crate::project_member::{authority_client, create_member_attributes};
 use crate::shared_args::{IdentityOpts, RetryOpts};
@@ -34,9 +33,9 @@ pub struct AddCommand {
     #[command(flatten)]
     identity_opts: IdentityOpts,
 
-    /// The route to the Project to which a member should be added
-    #[arg(long, short, value_name = "ROUTE_TO_PROJECT")]
-    to: Option<MultiAddr>,
+    /// The Project to which a member should be added
+    #[arg(long, short, value_name = "PROJECT_NAME")]
+    project_name: Option<String>,
 
     /// The Identifier of the member to add
     #[arg(value_name = "IDENTIFIER")]
@@ -74,7 +73,7 @@ impl Command for AddCommand {
 
     async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
         let (authority_node_client, project_name) =
-            authority_client(ctx, &opts, &self.identity_opts, &self.to).await?;
+            authority_client(ctx, &opts, &self.identity_opts, &self.project_name).await?;
 
         let attributes =
             create_member_attributes(&self.attributes, &self.allowed_relay_name, self.enroller)?;

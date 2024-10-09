@@ -1,21 +1,22 @@
 use async_trait::async_trait;
 use clap::Args;
 use colorful::Colorful;
+use console::Term;
 use miette::miette;
 use serde::Serialize;
 use std::fmt::Display;
 use tracing::warn;
 
-use ockam::identity::Identifier;
-use ockam::Context;
-use ockam_api::authenticator::direct::Members;
-use ockam_api::colors::color_primary;
-use ockam_api::{fmt_info, fmt_ok};
-use ockam_multiaddr::MultiAddr;
-
 use super::authority_client;
 use crate::shared_args::IdentityOpts;
 use crate::{docs, Command, CommandGlobalOpts};
+use ockam::identity::Identifier;
+use ockam::Context;
+use ockam_api::authenticator::direct::Members;
+use ockam_api::cloud::AuthorityNodeClient;
+use ockam_api::colors::color_primary;
+use ockam_api::terminal::{Terminal, TerminalStream};
+use ockam_api::{fmt_info, fmt_ok};
 
 const LONG_ABOUT: &str = include_str!("./static/delete/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
@@ -30,9 +31,9 @@ pub struct DeleteCommand {
     #[command(flatten)]
     identity_opts: IdentityOpts,
 
-    /// The route of the Project that the member belongs to
-    #[arg(long, short, value_name = "ROUTE_TO_PROJECT")]
-    to: Option<MultiAddr>,
+    /// The Project that the member belongs to
+    #[arg(long, short, value_name = "PROJECT_NAME")]
+    project_name: Option<String>,
 
     /// The Identifier of the member to delete
     #[arg(value_name = "IDENTIFIER")]
@@ -55,24 +56,29 @@ impl Command for DeleteCommand {
         }
 
         let (authority_node_client, project_name) =
-            authority_client(ctx, &opts, &self.identity_opts, &self.to).await?;
+            authority_client(ctx, &opts, &self.identity_opts, &self.project_name).await?;
 
         let identity = opts
             .state
             .get_named_identity_or_default(&self.identity_opts.identity_name)
             .await?;
 
-        let mut output = DeleteMemberOutput {
-            project: project_name.clone(),
-            identifiers: vec![],
-        };
-
         // Delete the passed member
         if let Some(member) = &self.member {
             authority_node_client
                 .delete_member(ctx, member.clone())
                 .await?;
-            output.identifiers.push(member.clone());
+
+            let output = DeleteMemberOutput {
+                project: project_name.clone(),
+                identifiers: vec![member.clone()],
+            };
+
+            opts.terminal
+                .stdout()
+                .plain(output.to_string())
+                .json_obj(&output)?
+                .write_line()?;
         }
         // Try to delete all members except the current default identity
         else if self.all {
@@ -85,47 +91,69 @@ impl Command for DeleteCommand {
                         "You need to use an enrolled identity to delete all the members from a Project."
                     ).into());
             }
-            let self_identifier = identity.identifier();
-            let member_identifiers = authority_node_client.list_member_ids(ctx).await?;
-            if !member_identifiers.is_empty() {
-                opts.terminal.write_line(fmt_info!(
-                    "Found {} members in the Project {}",
-                    member_identifiers.len(),
-                    project_name
-                ))?;
-            }
-
-            let members_to_delete = member_identifiers
-                .into_iter()
-                .filter(|id| id != &self_identifier)
-                .collect::<Vec<_>>();
-
-            let pb = opts.terminal.progress_bar();
-            for identifier in members_to_delete.into_iter() {
-                if let Some(pb) = &pb {
-                    pb.set_message(format!("Trying to delete member {identifier}..."));
-                }
-                if let Err(e) = authority_node_client
-                    .delete_member(ctx, identifier.clone())
-                    .await
-                {
-                    warn!("Failed to delete member {}: {}", identifier, e);
-                } else {
-                    output.identifiers.push(identifier.clone());
-                }
-            }
+            delete_all_members(
+                opts.terminal,
+                ctx,
+                authority_node_client,
+                project_name,
+                identity.identifier(),
+            )
+            .await?;
         } else {
             unreachable!("Either a member or the --all flag should be set");
         }
 
-        opts.terminal
-            .stdout()
-            .plain(output.to_string())
-            .json_obj(&output)?
-            .write_line()?;
-
         Ok(())
     }
+}
+
+pub async fn delete_all_members(
+    terminal: Terminal<TerminalStream<Term>>,
+    ctx: &Context,
+    authority_node_client: AuthorityNodeClient,
+    project_name: String,
+    identifier: Identifier,
+) -> crate::Result<()> {
+    let member_identifiers = authority_node_client.list_member_ids(ctx).await?;
+    if !member_identifiers.is_empty() {
+        terminal.write_line(fmt_info!(
+            "Found {} members in the Project {}",
+            member_identifiers.len(),
+            project_name
+        ))?;
+    }
+
+    let members_to_delete = member_identifiers
+        .into_iter()
+        .filter(|id| id != &identifier)
+        .collect::<Vec<_>>();
+
+    let mut output = DeleteMemberOutput {
+        project: project_name.clone(),
+        identifiers: vec![],
+    };
+
+    let pb = terminal.progress_bar();
+    for identifier in members_to_delete.into_iter() {
+        if let Some(pb) = &pb {
+            pb.set_message(format!("Trying to delete member {identifier}..."));
+        }
+        if let Err(e) = authority_node_client
+            .delete_member(ctx, identifier.clone())
+            .await
+        {
+            warn!("Failed to delete member {}: {}", identifier, e);
+        } else {
+            output.identifiers.push(identifier.clone());
+        }
+    }
+
+    terminal
+        .stdout()
+        .plain(output.to_string())
+        .json_obj(&output)?
+        .write_line()?;
+    Ok(())
 }
 
 #[derive(Serialize)]

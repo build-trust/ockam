@@ -21,7 +21,6 @@ use ockam_api::nodes::{InMemoryNode, NodeManager};
 use ockam_api::output::Output;
 use ockam_api::terminal::fmt;
 use ockam_api::CliState;
-use ockam_multiaddr::{proto, MultiAddr, Protocol};
 use ockam_node::Context;
 
 use crate::project_member::show::ShowCommand;
@@ -29,7 +28,7 @@ use crate::shared_args::IdentityOpts;
 use crate::{docs, Command, CommandGlobalOpts};
 
 mod add;
-mod delete;
+pub(crate) mod delete;
 mod list;
 mod list_ids;
 mod show;
@@ -89,49 +88,19 @@ pub(super) async fn authority_client(
     ctx: &Context,
     opts: &CommandGlobalOpts,
     identity_opts: &IdentityOpts,
-    project_route: &Option<MultiAddr>,
+    project_name: &Option<String>,
 ) -> crate::Result<(AuthorityNodeClient, String)> {
-    let project = get_project(&opts.state, project_route).await?;
     let node =
-        InMemoryNode::start_with_project_name(ctx, &opts.state, Some(project.name().to_string()))
-            .await?;
+        InMemoryNode::start_with_project_name(ctx, &opts.state, project_name.clone()).await?;
+    let project = opts
+        .state
+        .projects()
+        .get_project_by_name_or_default(project_name)
+        .await?;
     Ok((
         create_authority_client(ctx, &node, &opts.state, identity_opts, &project).await?,
         project.name().to_string(),
     ))
-}
-
-/// Get the project authority from the first address protocol.
-///
-/// If the first protocol is a `/project`, look up the project's config.
-pub(super) async fn get_project(
-    cli_state: &CliState,
-    input: &Option<MultiAddr>,
-) -> crate::Result<Project> {
-    let project_name = match input {
-        Some(input) => match input.first() {
-            Some(proto) if proto.code() == proto::Project::CODE => Some(
-                proto
-                    .cast::<proto::Project>()
-                    .expect("project protocol")
-                    .to_string(),
-            ),
-            _ => return Err(miette!("Invalid project address '{}'.", input.to_string()))?,
-        },
-        None => None,
-    };
-
-    match cli_state
-        .projects()
-        .get_project_by_name_or_default(&project_name)
-        .await
-        .ok()
-    {
-        None => Err(miette!(
-            "Project not found. Run 'ockam project list' to get a list of available projects.",
-        ))?,
-        Some(project) => Ok(project),
-    }
 }
 
 pub(super) async fn create_authority_client(
