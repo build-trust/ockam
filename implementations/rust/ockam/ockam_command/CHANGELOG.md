@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.135.0 - 2024-10-11
+
+### Added
+
+- Allow multiple values in node configuration entries
+- More options on token management for influxdb_outlet
+- Simplify influxdb outlet deployment options
+- Compact enrollment ticket encoded format
+- Use the project name directly for member commands
+- Number messages when trying to delete project members
+- Remove the part where we delete members before deleting the project
+- Updated dependencies
+
+### Changed
+
+- Bump rustls-native-certs from 0.7.3 to 0.8.0
+
 ## 0.134.0 - 2024-09-23
 
 ### Added
