@@ -350,62 +350,33 @@ impl<W: TerminalWriter + Debug> Terminal<W, ToStdOut> {
     }
 
     pub fn write_line(mut self) -> Result<()> {
-        // Check that there is at least one output format defined
-        if self.mode.output.plain.is_none()
-            && self.mode.output.machine.is_none()
-            && self.mode.output.json.is_none()
+        let msg = match self
+            .mode
+            .output
+            .get_message(&self.output_format, self.is_tty())?
         {
-            return Err(miette!("At least one output format must be defined"))?;
-        }
-
-        let plain = self.mode.output.plain.clone();
-        let machine = self.mode.output.machine.clone();
-        let json = self.mode.output.json.clone();
-        let (pretty, jq_query) = match self.output_format.clone() {
-            OutputFormat::Json { pretty, jq_query } => (pretty, jq_query),
-            _ => (false, None),
+            Some(msg) => msg,
+            None => return Ok(()),
         };
 
-        let msg = match self.output_format {
-            OutputFormat::Plain => {
-                // If interactive, use the following priority: Plain -> Machine -> JSON
-                if self.stdout.is_tty() {
-                    match (plain, machine, json) {
-                        (Some(plain), _, _) => plain,
-                        (None, Some(machine), _) => machine,
-                        (None, None, Some(json)) => {
-                            self.process_json_output(json, pretty, jq_query.as_ref())?
-                        }
-                        _ => unreachable!(),
-                    }
-                }
-                // If not interactive, use the following priority: Machine -> JSON -> Plain
-                else {
-                    match (machine, json, plain) {
-                        (Some(machine), _, _) => machine,
-                        (None, Some(json), _) => {
-                            self.process_json_output(json, pretty, jq_query.as_ref())?
-                        }
-                        (None, None, Some(plain)) => plain,
-                        _ => unreachable!(),
-                    }
-                }
+        // Log the message in the given format and the plain message if present
+        match (&msg, self.mode.output.plain.as_ref()) {
+            // msg == plain, so we log it once
+            (OutputMessage::Plain(msg), Some(_)) => {
+                self.log_msg(msg);
             }
-            OutputFormat::Json { .. } => match json {
-                Some(json) => self.process_json_output(json, pretty, jq_query.as_ref())?,
-                // If not set, no fallback is provided
-                None => {
-                    warn!("JSON output is not defined for this command");
-                    return Ok(());
+            // in any other case, the formats differ, so we log both
+            (_, plain) => {
+                if let Some(plain) = plain {
+                    self.log_msg(plain);
                 }
-            },
-        };
-
-        self.log_msg(&msg);
+                self.log_msg(msg.as_str());
+            }
+        }
 
         // Remove any trailing newline characters.
         // A newline will be added if stdout is a TTY.
-        let msg = msg.trim_end().trim_end_matches('\n');
+        let msg = msg.as_str().trim_end().trim_end_matches('\n');
         if self.can_write_to_stdout() {
             if self.stdout.is_tty() {
                 self.stdout.write_line(msg)?;
@@ -414,55 +385,6 @@ impl<W: TerminalWriter + Debug> Terminal<W, ToStdOut> {
             }
         }
         Ok(())
-    }
-
-    fn process_json_output(
-        &self,
-        json: serde_json::Value,
-        pretty: bool,
-        jq_query: Option<&String>,
-    ) -> Result<String> {
-        match jq_query {
-            Some(jq_query) => {
-                let filter = {
-                    let mut ctx = ParseCtx::new(Vec::new());
-                    ctx.insert_natives(jaq_core::core());
-                    ctx.insert_defs(jaq_std::std());
-                    let (filter, errs) = jaq_parse::parse(jq_query, jaq_parse::main());
-                    if !errs.is_empty() {
-                        let error_message = errs
-                            .iter()
-                            .map(|e| e.to_string())
-                            .collect::<Vec<_>>()
-                            .join(", ");
-                        return Err(miette!(error_message))?;
-                    }
-                    match filter {
-                        Some(filter) => ctx.compile(filter),
-                        None => return Err(miette!("Failed to parse jq query"))?,
-                    }
-                };
-                let inputs = RcIter::new(core::iter::empty());
-                let mut output = filter.run((Ctx::new([], &inputs), Val::from(json)));
-                let mut ret = Vec::<serde_json::Value>::new();
-                while let Some(Ok(val)) = output.next() {
-                    ret.push(val.into());
-                }
-                match ret.len() {
-                    1 if pretty => Ok(serde_json::to_string_pretty(&ret[0]).into_diagnostic()?),
-                    1 if !pretty => Ok(serde_json::to_string(&ret[0]).into_diagnostic()?),
-                    _ if pretty => Ok(serde_json::to_string_pretty(&ret).into_diagnostic()?),
-                    _ => Ok(serde_json::to_string(&ret).into_diagnostic()?),
-                }
-            }
-            None => {
-                if pretty {
-                    Ok(serde_json::to_string_pretty(&json).into_diagnostic()?)
-                } else {
-                    Ok(serde_json::to_string(&json).into_diagnostic()?)
-                }
-            }
-        }
     }
 }
 
@@ -509,7 +431,6 @@ impl<W: TerminalWriter + Debug> Terminal<W> {
 
         loop {
             if *is_finished.lock().await {
-                pb.finish_and_clear();
                 break;
             }
 
@@ -517,11 +438,11 @@ impl<W: TerminalWriter + Debug> Terminal<W> {
                 pb.set_message(message.clone());
                 sleep(Duration::from_millis(500)).await;
                 if *is_finished.lock().await {
-                    pb.finish_and_clear();
                     break;
                 }
             }
         }
+        pb.finish_and_clear();
         Ok(())
     }
 }
@@ -536,7 +457,7 @@ pub struct ToStdOut {
     pub(self) output: Output,
 }
 
-/// The command's output message to be displayed to the user in various formats
+/// The definition of a command's output messages in different formats.
 #[derive(Clone, Debug)]
 struct Output {
     plain: Option<String>,
@@ -550,6 +471,130 @@ impl Output {
             plain: None,
             machine: None,
             json: None,
+        }
+    }
+
+    fn get_message(&self, format: &OutputFormat, is_tty: bool) -> Result<Option<OutputMessage>> {
+        // Check that there is at least one output format defined
+        if self.plain.is_none() && self.machine.is_none() && self.json.is_none() {
+            return Err(miette!("At least one output format must be defined"))?;
+        }
+
+        let plain = self.plain.as_ref();
+        let machine = self.machine.as_ref();
+        let json = self.json.as_ref();
+        let (pretty, jq_query) = match format.clone() {
+            OutputFormat::Json { pretty, jq_query } => (pretty, jq_query),
+            _ => (false, None),
+        };
+
+        // Get the message to be written to stdout
+        let msg =
+            match format {
+                OutputFormat::Plain => {
+                    // If interactive, use the following priority: Plain -> Machine -> JSON
+                    if is_tty {
+                        match (plain, machine, json) {
+                            (Some(plain), _, _) => OutputMessage::Plain(plain.clone()),
+                            (None, Some(machine), _) => OutputMessage::Machine(machine.clone()),
+                            (None, None, Some(json)) => OutputMessage::Json(
+                                self.process_json_output(json, pretty, jq_query.as_ref())?,
+                            ),
+                            _ => unreachable!(),
+                        }
+                    }
+                    // If not interactive, use the following priority: Machine -> JSON -> Plain
+                    else {
+                        match (machine, json, plain) {
+                            (Some(machine), _, _) => OutputMessage::Machine(machine.clone()),
+                            (None, Some(json), _) => OutputMessage::Json(
+                                self.process_json_output(json, pretty, jq_query.as_ref())?,
+                            ),
+                            (None, None, Some(plain)) => OutputMessage::Plain(plain.clone()),
+                            _ => unreachable!(),
+                        }
+                    }
+                }
+                OutputFormat::Json { .. } => match json {
+                    Some(json) => OutputMessage::Json(self.process_json_output(
+                        json,
+                        pretty,
+                        jq_query.as_ref(),
+                    )?),
+                    // If not set, no fallback is provided
+                    None => {
+                        warn!("JSON output is not defined for this command");
+                        return Ok(None);
+                    }
+                },
+            };
+        Ok(Some(msg))
+    }
+
+    fn process_json_output(
+        &self,
+        json: &serde_json::Value,
+        pretty: bool,
+        jq_query: Option<&String>,
+    ) -> Result<String> {
+        match jq_query {
+            Some(jq_query) => {
+                let filter = {
+                    let mut ctx = ParseCtx::new(Vec::new());
+                    ctx.insert_natives(jaq_core::core());
+                    ctx.insert_defs(jaq_std::std());
+                    let (filter, errs) = jaq_parse::parse(jq_query, jaq_parse::main());
+                    if !errs.is_empty() {
+                        let error_message = errs
+                            .iter()
+                            .map(|e| e.to_string())
+                            .collect::<Vec<_>>()
+                            .join(", ");
+                        return Err(miette!(error_message))?;
+                    }
+                    match filter {
+                        Some(filter) => ctx.compile(filter),
+                        None => return Err(miette!("Failed to parse jq query"))?,
+                    }
+                };
+                let inputs = RcIter::new(core::iter::empty());
+                let mut output = filter.run((Ctx::new([], &inputs), Val::from(json.clone())));
+                let mut ret = Vec::<serde_json::Value>::new();
+                while let Some(Ok(val)) = output.next() {
+                    ret.push(val.into());
+                }
+                match ret.len() {
+                    1 if pretty => Ok(serde_json::to_string_pretty(&ret[0]).into_diagnostic()?),
+                    1 if !pretty => Ok(serde_json::to_string(&ret[0]).into_diagnostic()?),
+                    _ if pretty => Ok(serde_json::to_string_pretty(&ret).into_diagnostic()?),
+                    _ => Ok(serde_json::to_string(&ret).into_diagnostic()?),
+                }
+            }
+            None => {
+                if pretty {
+                    Ok(serde_json::to_string_pretty(&json).into_diagnostic()?)
+                } else {
+                    Ok(serde_json::to_string(&json).into_diagnostic()?)
+                }
+            }
+        }
+    }
+}
+
+/// The displayed message written to stdout
+#[derive(Clone, Debug, PartialEq)]
+enum OutputMessage {
+    Plain(String),
+    Machine(String),
+    Json(String),
+}
+
+impl OutputMessage {
+    fn as_str(&self) -> &str {
+        match self {
+            OutputMessage::Plain(msg) => msg,
+            OutputMessage::Machine(msg) => msg,
+            OutputMessage::Json(msg) => msg,
         }
     }
 }
@@ -567,5 +612,140 @@ impl From<bool> for ConfirmResult {
         } else {
             ConfirmResult::No
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ockam_core::compat::rand::random_string;
+
+    #[test]
+    fn output_invalid_cases() {
+        // No output defined
+        let msg = Output::new().get_message(&OutputFormat::Plain, true);
+        assert!(msg.is_err());
+
+        // If json is requested but it's not defined, no output will be returned
+        let output = Output {
+            plain: Some("plain".to_string()),
+            machine: None,
+            json: None,
+        };
+        let msg = output
+            .get_message(
+                &OutputFormat::Json {
+                    pretty: false,
+                    jq_query: None,
+                },
+                true,
+            )
+            .unwrap();
+        assert!(msg.is_none());
+    }
+
+    #[test]
+    fn output_to_output_message() {
+        let plain = "plain".to_string();
+        let machine = "machine".to_string();
+        let json = serde_json::json!({ "key": "value" });
+
+        let output = Output {
+            plain: Some(plain.clone()),
+            machine: Some(machine.clone()),
+            json: Some(json.clone()),
+        };
+
+        // plain + tty = plain
+        let msg = output
+            .get_message(&OutputFormat::Plain, true)
+            .unwrap()
+            .unwrap();
+        assert_eq!(msg, OutputMessage::Plain(plain));
+
+        // plain + !tty = machine
+        let msg = output
+            .get_message(&OutputFormat::Plain, false)
+            .unwrap()
+            .unwrap();
+        assert_eq!(msg, OutputMessage::Machine(machine));
+
+        // json + _ = json
+        let format = OutputFormat::Json {
+            pretty: false,
+            jq_query: None,
+        };
+        let msg = output.get_message(&format, true).unwrap().unwrap();
+        assert_eq!(
+            msg,
+            OutputMessage::Json(serde_json::to_string(&json).unwrap())
+        );
+        let msg = output.get_message(&format, false).unwrap().unwrap();
+        assert_eq!(
+            msg,
+            OutputMessage::Json(serde_json::to_string(&json).unwrap())
+        );
+    }
+
+    #[test]
+    fn output_to_output_message_plain_fallbacks() {
+        let msg = random_string();
+        let json = serde_json::json!({ "key": "value" });
+
+        // plain + tty; plain not defined -> fallback to machine
+        let output = Output {
+            plain: None,
+            machine: Some(msg.clone()),
+            json: Some(json.clone()),
+        };
+        assert_eq!(
+            output
+                .get_message(&OutputFormat::Plain, true)
+                .unwrap()
+                .unwrap(),
+            OutputMessage::Machine(msg.clone())
+        );
+
+        // plain + tty; plain and machine not defined -> fallback to json
+        let output = Output {
+            plain: None,
+            machine: None,
+            json: Some(json.clone()),
+        };
+        assert_eq!(
+            output
+                .get_message(&OutputFormat::Plain, true)
+                .unwrap()
+                .unwrap(),
+            OutputMessage::Json(json.to_string())
+        );
+
+        // plain + !tty; machine not defined -> fallback to json
+        let output = Output {
+            plain: Some(msg.clone()),
+            machine: None,
+            json: Some(json.clone()),
+        };
+        assert_eq!(
+            output
+                .get_message(&OutputFormat::Plain, false)
+                .unwrap()
+                .unwrap(),
+            OutputMessage::Json(json.to_string())
+        );
+
+        // plain + !tty; machine and json not defined -> fallback to plain
+        let output = Output {
+            plain: Some(msg.clone()),
+            machine: None,
+            json: None,
+        };
+        assert_eq!(
+            output
+                .get_message(&OutputFormat::Plain, false)
+                .unwrap()
+                .unwrap(),
+            OutputMessage::Plain(msg.clone())
+        );
     }
 }

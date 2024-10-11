@@ -209,7 +209,7 @@ impl Display for ShowIdentity {
 
 impl Output for ShowIdentity {
     fn item(&self) -> ockam_api::Result<String> {
-        Ok(self.to_string())
+        Ok(self.padded_display())
     }
 }
 

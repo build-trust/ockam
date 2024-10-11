@@ -22,7 +22,7 @@ impl AppState {
         project_id: &str,
         invitation_email: &EmailAddress,
     ) -> Result<EnrollmentTicket> {
-        debug!(?project_id, "Creating enrollment ticket");
+        debug!(?project_id, "Creating an enrollment ticket");
         let projects = self.projects();
         let projects_guard = projects.read().await;
         let project = projects_guard

@@ -136,6 +136,6 @@ impl Display for TransportStatus {
 
 impl Output for TransportStatus {
     fn item(&self) -> crate::Result<String> {
-        Ok(format!("{}", self))
+        Ok(self.padded_display())
     }
 }

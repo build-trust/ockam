@@ -1,5 +1,5 @@
-use colorful::Colorful;
 use minicbor::{CborLen, Decode, Encode};
+use std::fmt::Display;
 
 use ockam::identity::Identifier;
 use ockam::remote::RemoteRelayInfo;
@@ -7,9 +7,9 @@ use ockam::route;
 use ockam_core::flow_control::FlowControlId;
 use ockam_multiaddr::MultiAddr;
 
-use crate::colors::OckamColor;
+use crate::colors::color_primary;
 use crate::error::ApiError;
-use crate::output::{colorize_connection_status, Output};
+use crate::output::Output;
 use crate::session::replacer::ReplacerOutputKind;
 use crate::session::session::Session;
 use crate::{route_to_multiaddr, ConnectionStatus};
@@ -21,8 +21,8 @@ use crate::{route_to_multiaddr, ConnectionStatus};
 pub struct CreateRelay {
     /// Address to create relay at.
     #[n(1)] pub(crate) address: MultiAddr,
-    /// Relay alias.
-    #[n(2)] pub(crate) alias: String,
+    /// Relay name.
+    #[n(2)] pub(crate) name: String,
     /// An authorised identity for secure channels.
     /// Only set for non-project addresses as for projects the project's
     /// authorised identity will be used.
@@ -34,13 +34,13 @@ pub struct CreateRelay {
 impl CreateRelay {
     pub fn new(
         address: MultiAddr,
-        alias: String,
+        name: String,
         auth: Option<Identifier>,
         relay_address: Option<String>,
     ) -> Self {
         Self {
             address,
-            alias,
+            name,
             authorized: auth,
             relay_address,
         }
@@ -50,8 +50,8 @@ impl CreateRelay {
         &self.address
     }
 
-    pub fn alias(&self) -> &str {
-        &self.alias
+    pub fn name(&self) -> &str {
+        &self.name
     }
 
     pub fn authorized(&self) -> Option<Identifier> {
@@ -74,19 +74,19 @@ pub struct RelayInfo {
     #[n(4)] flow_control_id: Option<FlowControlId>,
     #[n(5)] connection_status: ConnectionStatus,
     #[n(6)] destination_address: MultiAddr,
-    #[n(7)] alias: String,
+    #[n(7)] name: String,
     #[n(8)] last_failure: Option<String>,
 }
 
 impl RelayInfo {
     pub fn new(
         destination_address: MultiAddr,
-        alias: String,
+        name: String,
         connection_status: ConnectionStatus,
     ) -> Self {
         Self {
             destination_address,
-            alias,
+            name,
             forwarding_route: None,
             remote_address: None,
             worker_address: None,
@@ -96,8 +96,8 @@ impl RelayInfo {
         }
     }
 
-    pub fn from_session(session: &Session, destination_address: MultiAddr, alias: String) -> Self {
-        let relay_info = Self::new(destination_address, alias, session.connection_status());
+    pub fn from_session(session: &Session, destination_address: MultiAddr, name: String) -> Self {
+        let relay_info = Self::new(destination_address, name, session.connection_status());
         if let Some(outcome) = session.last_outcome() {
             match outcome {
                 ReplacerOutputKind::Relay(info) => relay_info.with(info),
@@ -118,7 +118,7 @@ impl RelayInfo {
             flow_control_id: remote_relay_info.flow_control_id().clone(),
             connection_status: self.connection_status,
             destination_address: self.destination_address,
-            alias: self.alias,
+            name: self.name,
             last_failure: self.last_failure,
         }
     }
@@ -131,7 +131,7 @@ impl RelayInfo {
             flow_control_id: self.flow_control_id,
             connection_status: self.connection_status,
             destination_address: self.destination_address,
-            alias: self.alias,
+            name: self.name,
             last_failure: Some(last_failure),
         }
     }
@@ -144,8 +144,8 @@ impl RelayInfo {
         &self.destination_address
     }
 
-    pub fn alias(&self) -> &str {
-        &self.alias
+    pub fn name(&self) -> &str {
+        &self.name
     }
 
     pub fn forwarding_route(&self) -> &Option<String> {
@@ -181,29 +181,31 @@ impl RelayInfo {
     }
 }
 
+impl Display for RelayInfo {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(
+            f,
+            "Relay {} is {} at {}",
+            color_primary(&self.name),
+            self.connection_status(),
+            color_primary(self.destination_address.to_string())
+        )?;
+        writeln!(
+            f,
+            "With address {}",
+            color_primary(
+                self.remote_address_ma()
+                    .unwrap_or(None)
+                    .map(|x| x.to_string())
+                    .unwrap_or("N/A".into())
+            ),
+        )?;
+        Ok(())
+    }
+}
+
 impl Output for RelayInfo {
     fn item(&self) -> crate::Result<String> {
-        Ok(r#"
-Relay:
-    "#
-        .to_owned()
-            + self.as_list_item()?.as_str())
-    }
-
-    fn as_list_item(&self) -> crate::Result<String> {
-        let output = format!(
-            r#"Alias: {alias}
-Status: {connection_status}
-Remote Address: {remote_address}"#,
-            alias = self.alias().color(OckamColor::PrimaryResource.color()),
-            connection_status = colorize_connection_status(self.connection_status()),
-            remote_address = self
-                .remote_address_ma()?
-                .map(|x| x.to_string())
-                .unwrap_or("N/A".into())
-                .color(OckamColor::PrimaryResource.color()),
-        );
-
-        Ok(output)
+        Ok(self.padded_display())
     }
 }

@@ -13,7 +13,7 @@ impl Worker for RemoteRelay {
     type Message = Any;
 
     async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
-        debug!("RemoteRelay registration...");
+        debug!(registration_route = %self.registration_route, "RemoteRelay initializing...");
 
         ctx.send_from_address(
             self.registration_route.clone(),
@@ -21,6 +21,8 @@ impl Worker for RemoteRelay {
             self.addresses.main_remote.clone(),
         )
         .await?;
+
+        debug!(registration_route = %self.registration_route, "RemoteRelay initialized");
 
         Ok(())
     }
@@ -39,7 +41,7 @@ impl Worker for RemoteRelay {
 
             match local_message.onward_route().next() {
                 Err(_) => {
-                    debug!("RemoteRelay received service message");
+                    debug!(registration_route = %self.registration_route, "RemoteRelay received service message");
 
                     let payload = String::decode(local_message.payload_ref())
                         .map_err(|_| OckamError::InvalidResponseFromRelayService)?;
@@ -51,7 +53,7 @@ impl Worker for RemoteRelay {
                     }
 
                     if !self.completion_msg_sent {
-                        info!("RemoteRelay registered with route: {}", return_route);
+                        info!(registration_route = %self.registration_route, "RemoteRelay registered with route: {}", return_route);
                         let address = match return_route.recipient()?.to_string().strip_prefix("0#")
                         {
                             Some(addr) => addr.to_string(),
@@ -83,7 +85,7 @@ impl Worker for RemoteRelay {
                 }
                 Ok(_) => {
                     // Forwarding the message
-                    debug!("RemoteRelay received payload message");
+                    debug!(registration_route = %self.registration_route, "RemoteRelay received payload message");
 
                     // Send the message on its onward_route
                     ctx.forward_from_address(local_message, self.addresses.main_internal.clone())

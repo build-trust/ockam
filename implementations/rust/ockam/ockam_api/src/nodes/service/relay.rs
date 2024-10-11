@@ -37,19 +37,20 @@ impl NodeManagerWorker {
     ) -> Result<Response<RelayInfo>, Response<Error>> {
         let CreateRelay {
             address,
-            alias,
+            name,
             authorized,
             relay_address,
         } = create_relay;
+
         match self
             .node_manager
-            .create_relay(ctx, &address, alias, authorized, relay_address)
+            .create_relay(ctx, &address, name.clone(), authorized, relay_address)
             .await
         {
             Ok(body) => Ok(Response::ok().with_headers(req).body(body)),
             Err(err) => Err(Response::internal_error(
                 req,
-                &format!("Failed to create relay: {}", err),
+                &format!("Failed to create relay at {address} with name {name}. {err}"),
             )),
         }
     }

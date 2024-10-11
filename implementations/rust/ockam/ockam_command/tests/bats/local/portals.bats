@@ -80,7 +80,7 @@ teardown() {
   run_success $OCKAM tcp-outlet create --at /node/n2 --to $port_2
 
   run_success $OCKAM tcp-outlet show outlet --at /node/n1
-  assert_output --partial "\"worker_addr\":\"/service/outlet\""
+  assert_output --partial "\"worker_address\":\"/service/outlet\""
   assert_output --partial "\"to\":\"127.0.0.1:$port_1\""
 
   run_success $OCKAM tcp-outlet delete "outlet" --yes
@@ -126,7 +126,7 @@ teardown() {
   run_success $OCKAM tcp-inlet show "test-inlet" --at /node/n2
 
   # Test if non-existing TCP inlet returns NotFound
-  run_failure $OCKAM tcp-inlet show "non-existing-inlet"
+  run_failure $OCKAM tcp-inlet show "non-existing-inlet" --at /node/n2
   assert_output --partial "not found"
 }
 

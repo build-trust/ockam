@@ -173,7 +173,7 @@ impl Display for AdminInfo {
 
 impl Output for AdminInfo {
     fn item(&self) -> crate::Result<String> {
-        Ok(format!("{}", self))
+        Ok(self.padded_display())
     }
 }
 

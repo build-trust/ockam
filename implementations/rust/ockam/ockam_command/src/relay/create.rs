@@ -4,18 +4,16 @@ use std::str::FromStr;
 use clap::Args;
 use colorful::Colorful;
 use miette::{miette, IntoDiagnostic};
-use tokio::sync::Mutex;
-use tokio::try_join;
 use tracing::info;
 
 use ockam::identity::Identifier;
 use ockam::Context;
 use ockam_api::address::extract_address_value;
-use ockam_api::colors::{color_primary, OckamColor};
+use ockam_api::colors::color_primary;
 
 use ockam_api::nodes::service::relay::Relays;
 use ockam_api::nodes::BackgroundNodeClient;
-use ockam_api::{fmt_log, fmt_ok, CliState};
+use ockam_api::{fmt_ok, CliState};
 use ockam_multiaddr::proto::Project;
 use ockam_multiaddr::{MultiAddr, Protocol};
 
@@ -82,53 +80,39 @@ impl Command for CreateCommand {
         let at = cmd.at();
         let alias = cmd.relay_name();
 
-        opts.terminal.write_line(&fmt_log!("Creating Relay...\n"))?;
-        let is_finished: Mutex<bool> = Mutex::new(false);
-
         let node = BackgroundNodeClient::create(ctx, &opts.state, &cmd.to).await?;
-        let get_relay_info = async {
-            let relay_info = {
-                if at.starts_with(Project::CODE) && cmd.authorized.is_some() {
-                    return Err(miette!(
-                        "--authorized can not be used with project addresses"
-                    ))?;
-                };
-                info!("creating a relay at {} to {}", at, node.node_name());
-                node.create_relay(
-                    ctx,
-                    &at,
-                    alias.clone(),
-                    cmd.authorized,
-                    Some(cmd.relay_address.unwrap_or(alias)),
-                )
-                .await
-                .map_err(Error::Retry)?
+        let relay_info = {
+            if at.starts_with(Project::CODE) && cmd.authorized.is_some() {
+                return Err(miette!(
+                    "--authorized can not be used with project addresses"
+                ))?;
             };
-            *is_finished.lock().await = true;
-            Ok(relay_info)
+            info!("creating a relay at {} to {}", at, node.node_name());
+            let pb = opts.terminal.progress_bar();
+            if let Some(pb) = pb.as_ref() {
+                pb.set_message(format!(
+                    "Creating relay at {}...",
+                    color_primary(at.to_string())
+                ));
+            }
+            node.create_relay(
+                ctx,
+                &at,
+                alias.clone(),
+                cmd.authorized,
+                Some(cmd.relay_address.unwrap_or(alias)),
+            )
+            .await
+            .map_err(Error::Retry)?
         };
-
-        let output_messages = vec![
-            format!(
-                "Creating relay relay service at {}...",
-                &at.to_string().color(OckamColor::PrimaryResource.color())
-            ),
-            format!(
-                "Setting up receiving relay mailbox on node {}...",
-                &node.node_name().color(OckamColor::PrimaryResource.color())
-            ),
-        ];
-        let progress_output = opts.terminal.loop_messages(&output_messages, &is_finished);
-
-        let (relay, _) = try_join!(get_relay_info, progress_output)?;
 
         let invalid_relay_error_msg =
             "The Orchestrator returned an invalid relay address. Try creating a new one.";
-        let remote_address = relay
+        let remote_address = relay_info
             .remote_address_ma()
             .into_diagnostic()?
             .ok_or(miette!(invalid_relay_error_msg))?;
-        let worker_address = relay
+        let worker_address = relay_info
             .worker_address_ma()
             .into_diagnostic()?
             .ok_or(miette!(invalid_relay_error_msg))?;
@@ -143,7 +127,7 @@ impl Command for CreateCommand {
             .stdout()
             .plain(plain)
             .machine(remote_address.to_string())
-            .json(serde_json::to_string(&relay).into_diagnostic()?)
+            .json_obj(relay_info)?
             .write_line()?;
 
         Ok(())

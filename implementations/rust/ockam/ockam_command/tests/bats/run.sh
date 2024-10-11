@@ -65,6 +65,7 @@ if [ "$orchestrator_enroll_suite" = true ]; then
 fi
 
 if [ "$orchestrator_suite" = true ]; then
+  echo "Running orchestrator suite..."
   bats "$current_directory/orchestrator" --timing
 fi
 

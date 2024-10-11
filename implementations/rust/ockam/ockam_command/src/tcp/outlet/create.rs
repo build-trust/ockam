@@ -18,10 +18,10 @@ use ockam_api::cli_state::journeys::{
     JourneyEvent, NODE_NAME, TCP_OUTLET_AT, TCP_OUTLET_FROM, TCP_OUTLET_TO,
 };
 use ockam_api::colors::color_primary;
+use ockam_api::fmt_ok;
 use ockam_api::nodes::models::portal::OutletStatus;
 use ockam_api::nodes::service::tcp_outlets::Outlets;
 use ockam_api::nodes::BackgroundNodeClient;
-use ockam_api::{fmt_log, fmt_ok};
 
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
@@ -81,17 +81,17 @@ impl Command for CreateCommand {
     async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
         initialize_default_node(ctx, &opts).await?;
 
-        if let Some(pb) = opts.terminal.progress_bar() {
-            pb.set_message(format!(
-                "Creating a new TCP Outlet to {}...\n",
-                color_primary(self.to.to_string())
-            ));
-        }
-
         let node = BackgroundNodeClient::create(ctx, &opts.state, &self.at).await?;
         let node_name = node.node_name();
-        let outlet_status = node
-            .create_outlet(
+        let outlet_status = {
+            let pb = opts.terminal.progress_bar();
+            if let Some(pb) = pb.as_ref() {
+                pb.set_message(format!(
+                    "Creating a new TCP Outlet to {}...\n",
+                    color_primary(self.to.to_string())
+                ));
+            }
+            node.create_outlet(
                 ctx,
                 self.to.clone(),
                 self.tls,
@@ -99,28 +99,22 @@ impl Command for CreateCommand {
                 self.allow.clone(),
                 self.ebpf,
             )
-            .await?;
+            .await?
+        };
         self.add_outlet_created_journey_event(&opts, &node_name, &outlet_status)
             .await?;
 
-        let worker_addr = outlet_status.worker_address().into_diagnostic()?;
+        let worker_route = outlet_status.worker_route().into_diagnostic()?;
 
         opts.terminal
             .stdout()
-            .plain(
-                fmt_ok!(
-                    "Created a new TCP Outlet in the Node {} at {} bound to {}\n\n",
-                    color_primary(&node_name),
-                    color_primary(worker_addr.to_string()),
-                    color_primary(self.to.to_string())
-                ) + &fmt_log!(
-                    "You may want to take a look at the {}, {}, {} commands next",
-                    color_primary("ockam relay"),
-                    color_primary("ockam tcp-inlet"),
-                    color_primary("ockam policy")
-                ),
-            )
-            .machine(worker_addr)
+            .plain(fmt_ok!(
+                "Created a new TCP Outlet in the Node {} at {} bound to {}\n\n",
+                color_primary(&node_name),
+                color_primary(worker_route.to_string()),
+                color_primary(self.to.to_string())
+            ))
+            .machine(worker_route)
             .json(serde_json::to_string(&outlet_status).into_diagnostic()?)
             .write_line()?;
 
@@ -139,10 +133,7 @@ impl CreateCommand {
         attributes.insert(TCP_OUTLET_AT, node_name.to_string());
         attributes.insert(
             TCP_OUTLET_FROM,
-            outlet_status
-                .worker_address()
-                .into_diagnostic()?
-                .to_string(),
+            outlet_status.worker_route().into_diagnostic()?.to_string(),
         );
         attributes.insert(TCP_OUTLET_TO, self.to.to_string());
         attributes.insert(NODE_NAME, node_name.to_string());

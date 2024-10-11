@@ -121,7 +121,7 @@ async fn get_relay(
         .get_relays()
         .await
         .into_iter()
-        .find(|r| r.alias() == relay_alias))
+        .find(|r| r.name() == relay_alias))
 }
 
 async fn relay_remote_address(cli_state: &CliState) -> ockam::Result<String> {

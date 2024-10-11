@@ -18,6 +18,7 @@ use crate::{docs, Command, CommandGlobalOpts, Error, Result};
 use ockam::Context;
 use ockam_api::cli_state::{EnrollmentTicket, NamedIdentity};
 use ockam_api::cloud::project::models::OktaAuth0;
+use ockam_api::cloud::project::ProjectsOrchestratorApi;
 use ockam_api::cloud::AuthorityNodeClient;
 use ockam_api::colors::color_primary;
 use ockam_api::enroll::enrollment::{EnrollStatus, Enrollment};
@@ -124,19 +125,26 @@ impl Command for EnrollCommand {
 
         // Enroll if applicable
         if self.okta {
-            self.use_okta(ctx, &opts, &authority_node_client).await?
+            self.use_okta(ctx, &opts, &authority_node_client).await?;
+            node.get_project(ctx, project.project_id()).await?;
         } else if let Some(enrollment_ticket) = enrollment_ticket {
             self.use_enrollment_ticket(ctx, &opts, &authority_node_client, enrollment_ticket)
                 .await?;
         }
 
         // Issue credential
-        let credential = authority_node_client
-            .issue_credential(ctx)
-            .await
-            .map_err(Error::Retry)
-            .into_diagnostic()
-            .wrap_err("Failed to decode the credential received from the project authority")?;
+        let credential = {
+            let pb = opts.terminal.progress_bar();
+            if let Some(pb) = pb.as_ref() {
+                pb.set_message("Issuing credential...");
+            }
+            authority_node_client
+                .issue_credential(ctx)
+                .await
+                .map_err(Error::Retry)
+                .into_diagnostic()
+                .wrap_err("Failed to decode the credential received from the project authority")?
+        };
 
         // Get the project name to display to the user.
         let project_name = {
@@ -173,11 +181,16 @@ impl EnrollCommand {
         authority_node_client: &AuthorityNodeClient,
         enrollment_ticket: EnrollmentTicket,
     ) -> Result<()> {
-        // Present token
-        match authority_node_client
-            .present_token(ctx, &enrollment_ticket.one_time_code)
-            .await?
-        {
+        let enroll_status = {
+            let pb = opts.terminal.progress_bar();
+            if let Some(pb) = pb.as_ref() {
+                pb.set_message("Using enrollment ticket to enroll identity...");
+            }
+            authority_node_client
+                .present_token(ctx, &enrollment_ticket.one_time_code)
+                .await?
+        };
+        match enroll_status {
             EnrollStatus::EnrolledSuccessfully => {}
             EnrollStatus::AlreadyEnrolled => {
                 opts.terminal
@@ -194,7 +207,6 @@ impl EnrollCommand {
                 )))
             }
         }
-
         Ok(())
     }
 
@@ -216,6 +228,11 @@ impl EnrollCommand {
             .clone()
             .ok_or(miette!("Okta addon not configured"))?
             .into();
+
+        let pb = opts.terminal.progress_bar();
+        if let Some(pb) = pb.as_ref() {
+            pb.set_message("Authenticating with Okta...");
+        }
 
         let auth0 = OidcService::new(Arc::new(OktaOidcProvider::new(okta_config)));
         let token = auth0.get_token_interactively(opts).await?;

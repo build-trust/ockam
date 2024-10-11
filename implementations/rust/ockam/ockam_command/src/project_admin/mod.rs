@@ -7,11 +7,11 @@ use clap::{Args, Subcommand};
 use crate::project_admin::add::AddCommand;
 use crate::project_admin::delete::DeleteCommand;
 use crate::project_admin::list::ListCommand;
-use crate::{Command, CommandGlobalOpts};
+use crate::{docs, Command, CommandGlobalOpts};
 
 /// Manage Project Admins in Ockam Orchestrator
 #[derive(Clone, Debug, Args)]
-#[command(arg_required_else_help = true, subcommand_required = true)]
+#[command(hide = docs::hide(), arg_required_else_help = true, subcommand_required = true)]
 pub struct ProjectAdminCommand {
     #[command(subcommand)]
     subcommand: ProjectAdminSubcommand,

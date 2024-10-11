@@ -4,7 +4,6 @@ use std::{
     path::Path,
 };
 
-use colorful::core::color_string::CString;
 use colorful::Colorful;
 use miette::Context as _;
 use miette::{miette, IntoDiagnostic};
@@ -15,9 +14,9 @@ use tracing::{debug, error};
 use ockam::{Address, Context, NodeBuilder};
 use ockam_api::cli_state::CliState;
 use ockam_api::cli_state::CliStateError;
-use ockam_api::colors::{color_primary, OckamColor};
+use ockam_api::colors::color_primary;
 use ockam_api::config::lookup::{InternetAddress, LookupMeta};
-use ockam_api::{fmt_warn, ConnectionStatus};
+use ockam_api::fmt_warn;
 use ockam_core::{DenyAll, OpenTelemetryContext};
 use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Project, Space, Tcp};
 use ockam_multiaddr::{proto::Node, MultiAddr, Protocol};
@@ -208,14 +207,6 @@ pub fn port_is_free_guard(address: &SocketAddr) -> Result<()> {
         ))?;
     }
     Ok(())
-}
-
-pub fn colorize_connection_status(status: ConnectionStatus) -> CString {
-    let text = status.to_string();
-    match status {
-        ConnectionStatus::Up => text.color(OckamColor::PrimaryResource.color()),
-        ConnectionStatus::Down => text.color(OckamColor::Failure.color()),
-    }
 }
 
 pub fn print_deprecated_warning(opts: &CommandGlobalOpts, old: &str, new: &str) -> Result<()> {
