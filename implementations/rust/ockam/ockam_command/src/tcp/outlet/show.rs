@@ -58,7 +58,7 @@ impl Command for ShowCommand {
 #[derive(Debug, Serialize)]
 struct OutletInformation {
     node_name: String,
-    worker_addr: MultiAddr,
+    worker_address: MultiAddr,
     to: String,
 }
 
@@ -67,7 +67,7 @@ impl Output for OutletInformation {
         let mut w = String::new();
         write!(w, "Outlet")?;
         write!(w, "\n  On Node: {}", self.node_name)?;
-        write!(w, "\n  From address: {}", self.worker_addr)?;
+        write!(w, "\n  From address: {}", self.worker_address)?;
         write!(w, "\n  To TCP server: {}", self.to)?;
         Ok(w)
     }
@@ -142,13 +142,13 @@ impl ShowCommandTui for ShowTui {
             .await?;
         let info = OutletInformation {
             node_name: self.node.node_name(),
-            worker_addr: outlet_status.worker_address().into_diagnostic()?,
+            worker_address: outlet_status.worker_route().into_diagnostic()?,
             to: outlet_status.to.to_string(),
         };
         self.terminal()
             .stdout()
             .plain(info.item()?)
-            .json(serde_json::json!(info))
+            .json_obj(info)?
             .write_line()?;
         Ok(())
     }

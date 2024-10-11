@@ -107,7 +107,7 @@ impl DeleteCommandTui for DeleteTui {
             .node
             .ask(&self.ctx, Request::get("/node/relay"))
             .await?;
-        Ok(relays.into_iter().map(|i| i.alias().to_string()).collect())
+        Ok(relays.into_iter().map(|i| i.name().to_string()).collect())
     }
 
     async fn delete_single(&self, relay_name: &str) -> miette::Result<()> {

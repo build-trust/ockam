@@ -6,11 +6,11 @@ use clap::{Args, Subcommand};
 use create::CreateCommand;
 
 use crate::rendezvous::get_my_address::GetMyAddressCommand;
-use crate::{Command, CommandGlobalOpts};
+use crate::{docs, Command, CommandGlobalOpts};
 
 /// Manage Rendezvous server
 #[derive(Clone, Debug, Args)]
-#[command(arg_required_else_help = true, subcommand_required = true)]
+#[command(hide = docs::hide(), arg_required_else_help = true, subcommand_required = true)]
 pub struct RendezvousCommand {
     #[command(subcommand)]
     pub subcommand: RendezvousSubcommand,

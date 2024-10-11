@@ -105,7 +105,7 @@ impl CreateCommand {
             NodeManagerGeneralOptions::new(
                 opts.state.clone(),
                 node_name.clone(),
-                self.launch_config.is_none(),
+                self.launch_configuration.is_none(),
                 http_server_port,
                 true,
             ),
@@ -181,7 +181,7 @@ impl CreateCommand {
             ));
         }
 
-        if let Some(config) = &self.launch_config {
+        if let Some(config) = &self.launch_configuration {
             if let Some(startup_services) = &config.startup_services {
                 if let Some(cfg) = startup_services.secure_channel_listener.clone() {
                     if !cfg.disabled {

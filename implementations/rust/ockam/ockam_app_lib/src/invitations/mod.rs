@@ -27,7 +27,7 @@ impl AppState {
                 m.tcp_outlets
                     .iter()
                     .find(|o| &o.to == to)
-                    .map(|o| o.worker_address())
+                    .map(|o| o.worker_route())
             })
             .await
             .ok_or::<Error>(format!("The outlet {to} wasn't found in the App state").into())??;

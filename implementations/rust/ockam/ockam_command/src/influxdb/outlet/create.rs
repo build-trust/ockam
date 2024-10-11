@@ -8,10 +8,10 @@ use colorful::Colorful;
 use miette::miette;
 use ockam::{Address, Context};
 use ockam_api::colors::color_primary;
+use ockam_api::fmt_ok;
 use ockam_api::influxdb::portal::{InfluxDBOutletConfig, LeaseManagerConfig};
 use ockam_api::influxdb::InfluxDBPortals;
 use ockam_api::nodes::BackgroundNodeClient;
-use ockam_api::{fmt_log, fmt_ok};
 use std::time::Duration;
 
 /// Create InfluxDB Outlets
@@ -54,12 +54,6 @@ impl Command for InfluxDBCreateCommand {
     async fn async_run(mut self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
         initialize_default_node(ctx, &opts).await?;
 
-        if let Some(pb) = opts.terminal.progress_bar() {
-            pb.set_message(format!(
-                "Creating a new InfluxDB Outlet to {}...\n",
-                color_primary(self.tcp_outlet.to.to_string())
-            ));
-        }
         let token_config = if let Some(t) = self.fixed_token {
             InfluxDBOutletConfig::OutletWithFixedToken(t)
         } else if let Some(config) = self.lease_manager_config {
@@ -77,8 +71,15 @@ impl Command for InfluxDBCreateCommand {
         };
 
         let node = BackgroundNodeClient::create(ctx, &opts.state, &self.tcp_outlet.at).await?;
-        let outlet_status = node
-            .create_influxdb_outlet(
+        let outlet_status = {
+            let pb = opts.terminal.progress_bar();
+            if let Some(pb) = pb.as_ref() {
+                pb.set_message(format!(
+                    "Creating a new InfluxDB Outlet to {}...\n",
+                    color_primary(self.tcp_outlet.to.to_string())
+                ));
+            }
+            node.create_influxdb_outlet(
                 ctx,
                 self.tcp_outlet.to.clone(),
                 self.tcp_outlet.tls,
@@ -86,26 +87,20 @@ impl Command for InfluxDBCreateCommand {
                 self.tcp_outlet.allow.clone(),
                 token_config,
             )
-            .await?;
+            .await?
+        };
         self.tcp_outlet
             .add_outlet_created_journey_event(&opts, &node.node_name(), &outlet_status)
             .await?;
 
         opts.terminal
             .stdout()
-            .plain(
-                fmt_ok!(
-                    "Created a new InfluxDB Outlet in the Node {} at {} bound to {}\n\n",
-                    color_primary(node.node_name()),
-                    color_primary(&outlet_status.worker_addr),
-                    color_primary(&self.tcp_outlet.to)
-                ) + &fmt_log!(
-                    "You may want to take a look at the {}, {}, {} commands next",
-                    color_primary("ockam relay"),
-                    color_primary("ockam tcp-inlet"),
-                    color_primary("ockam policy")
-                ),
-            )
+            .plain(fmt_ok!(
+                "Created a new InfluxDB Outlet in the Node {} at {} bound to {}\n\n",
+                color_primary(node.node_name()),
+                color_primary(&outlet_status.worker_addr),
+                color_primary(&self.tcp_outlet.to)
+            ))
             .machine(&outlet_status.worker_addr)
             .json_obj(&outlet_status)?
             .write_line()?;

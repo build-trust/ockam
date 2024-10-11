@@ -39,7 +39,7 @@ impl State {
                 match result {
                     Ok(info) => {
                         self.relays.lock().unwrap().insert(
-                            info.alias().to_string(),
+                            info.name().to_string(),
                             Relay {
                                 failures_detected: 0,
                                 usages: 0,
@@ -100,7 +100,7 @@ impl State {
 
                 let relay_flow_control_id = relays
                     .iter()
-                    .find(|relay| relay.alias() == relay_address_id)
+                    .find(|relay| relay.name() == relay_address_id)
                     .unwrap()
                     .flow_control_id()
                     .clone()

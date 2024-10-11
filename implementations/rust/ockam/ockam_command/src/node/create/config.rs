@@ -25,7 +25,7 @@ pub struct ConfigArgs {
     /// A path, URL or inlined hex-encoded enrollment ticket to use for the Ockam Identity associated to this node.
     /// When passed, the identity will be given a project membership credential.
     /// Check the `project ticket` command for more information about enrollment tickets.
-    #[arg(long, value_name = "ENROLLMENT TICKET")]
+    #[arg(long, env = "ENROLLMENT_TICKET", value_name = "ENROLLMENT TICKET")]
     pub enrollment_ticket: Option<String>,
 
     /// Key-value pairs defining environment variables used in the Node configuration.
@@ -195,7 +195,7 @@ impl NodeConfig {
         if let Some(project) = &cmd.trust_opts.project_name {
             self.node.project = Some(project.clone().into());
         }
-        if let Some(launch_config) = &cmd.launch_config {
+        if let Some(launch_config) = &cmd.launch_configuration {
             self.node.launch_config = Some(
                 serde_json::to_string(launch_config)
                     .into_diagnostic()?
@@ -233,8 +233,8 @@ impl NodeConfig {
     ) -> miette::Result<()> {
         debug!("Running node config in foreground mode");
         // First, run the `project enroll` commands to prepare the identity and project data
-        if self.project_enroll.ticket.is_some()
-            && !self
+        if self.project_enroll.ticket.is_some() {
+            if !self
                 .project_enroll
                 .run_in_subprocess(
                     &opts.global_args,
@@ -246,8 +246,11 @@ impl NodeConfig {
                 .await
                 .into_diagnostic()?
                 .success()
-        {
-            return Err(miette!("Project enroll failed"));
+            {
+                return Err(miette!("Project enroll failed"));
+            }
+            // Newline before the `node create` command
+            opts.terminal.write_line("")?;
         }
 
         // Next, run the 'node create' command

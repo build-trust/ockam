@@ -140,7 +140,7 @@ impl Command for InfluxDBCreateCommand {
             .stdout()
             .plain(plain)
             .machine(inlet_status.bind_addr.to_string())
-            .json(serde_json::json!(&inlet_status))
+            .json_obj(&inlet_status)?
             .write_line()?;
 
         Ok(())

@@ -77,7 +77,7 @@ pub async fn spawn_node(opts: &CommandGlobalOpts, cmd: CreateCommand) -> miette:
         http_server,
         http_server_port,
         udp,
-        launch_config,
+        launch_configuration,
         trust_opts,
         opentelemetry_context,
         ..
@@ -120,7 +120,7 @@ pub async fn spawn_node(opts: &CommandGlobalOpts, cmd: CreateCommand) -> miette:
         args.push(identity_name);
     }
 
-    if let Some(config) = launch_config {
+    if let Some(config) = launch_configuration {
         args.push("--launch-config".to_string());
         args.push(serde_json::to_string(&config).unwrap());
     }

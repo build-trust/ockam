@@ -1,18 +1,18 @@
+use crate::tcp::util::alias_parser;
+use crate::tui::{PluralTerm, ShowCommandTui};
+use crate::{docs, Command, CommandGlobalOpts};
 use async_trait::async_trait;
 use clap::Args;
-use colorful::Colorful;
-use indoc::formatdoc;
-use miette::IntoDiagnostic;
-
+use console::Term;
+use miette::{miette, IntoDiagnostic};
 use ockam::Context;
-use ockam_api::fmt_ok;
+use ockam_api::address::extract_address_value;
 use ockam_api::nodes::models::portal::InletStatus;
-use ockam_api::nodes::service::tcp_inlets::Inlets;
 use ockam_api::nodes::BackgroundNodeClient;
-
-use crate::node::NodeOpts;
-use crate::tcp::util::alias_parser;
-use crate::{docs, Command, CommandGlobalOpts};
+use ockam_api::output::Output;
+use ockam_api::terminal::{Terminal, TerminalStream};
+use ockam_core::api::Request;
+use ockam_core::AsyncTryClone;
 
 const PREVIEW_TAG: &str = include_str!("../../static/preview_tag.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/show/after_long_help.txt");
@@ -24,12 +24,12 @@ before_help = docs::before_help(PREVIEW_TAG),
 after_long_help = docs::after_help(AFTER_LONG_HELP))]
 pub struct ShowCommand {
     /// Name of the inlet
-    #[arg(display_order = 900, required = true, id = "ALIAS", value_parser = alias_parser)]
-    alias: String,
+    #[arg(display_order = 900, id = "ALIAS", value_parser = alias_parser)]
+    alias: Option<String>,
 
-    /// Node on which the inlet was started
-    #[command(flatten)]
-    node_opts: NodeOpts,
+    /// Show Inlet at the specified node. If you don't provide it, the default node will be used
+    #[arg(long, display_order = 903, id = "NODE_NAME", value_parser = extract_address_value)]
+    pub at: Option<String>,
 }
 
 #[async_trait]
@@ -37,38 +37,86 @@ impl Command for ShowCommand {
     const NAME: &'static str = "tcp-inlet show";
 
     async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
-        let node = BackgroundNodeClient::create(ctx, &opts.state, &self.node_opts.at_node).await?;
-        let inlet_status = node
-            .show_inlet(ctx, &self.alias)
-            .await?
-            .success()
-            .into_diagnostic()?;
+        Ok(ShowTui::run(
+            ctx.async_try_clone().await.into_diagnostic()?,
+            opts,
+            self.clone(),
+        )
+        .await?)
+    }
+}
 
-        let json = serde_json::to_string(&inlet_status).into_diagnostic()?;
-        let InletStatus {
-            alias,
-            bind_addr,
-            outlet_route,
-            status,
-            outlet_addr,
-            ..
-        } = inlet_status;
+pub struct ShowTui {
+    pub ctx: Context,
+    pub opts: CommandGlobalOpts,
+    pub cmd: ShowCommand,
+    pub node: BackgroundNodeClient,
+}
 
-        let outlet_route = outlet_route.unwrap_or("N/A".to_string());
-        let plain = formatdoc! {r#"
-        Inlet:
-          Alias: {alias}
-          Status: {status}
-          TCP Address: {bind_addr}
-          Outlet Route: {outlet_route}
-          Outlet Destination: {outlet_addr}
-    "#};
-        let machine = bind_addr;
-        opts.terminal
+impl ShowTui {
+    pub async fn run(
+        ctx: Context,
+        opts: CommandGlobalOpts,
+        mut cmd: ShowCommand,
+    ) -> miette::Result<()> {
+        let node = BackgroundNodeClient::create(&ctx, &opts.state, &cmd.at).await?;
+        cmd.at = Some(node.node_name());
+
+        let tui = Self {
+            ctx,
+            opts,
+            cmd,
+            node,
+        };
+
+        tui.show().await
+    }
+}
+
+#[ockam_core::async_trait]
+impl ShowCommandTui for ShowTui {
+    const ITEM_NAME: PluralTerm = PluralTerm::TcpInlet;
+
+    fn cmd_arg_item_name(&self) -> Option<String> {
+        self.cmd.alias.clone()
+    }
+
+    fn node_name(&self) -> Option<&str> {
+        self.cmd.at.as_deref()
+    }
+
+    fn terminal(&self) -> Terminal<TerminalStream<Term>> {
+        self.opts.terminal.clone()
+    }
+
+    async fn get_arg_item_name_or_default(&self) -> miette::Result<String> {
+        self.cmd
+            .alias
+            .clone()
+            .ok_or(miette!("No TCP Inlet alias provided"))
+    }
+
+    async fn list_items_names(&self) -> miette::Result<Vec<String>> {
+        let inlets: Vec<InletStatus> = self
+            .node
+            .ask(&self.ctx, Request::get("/node/inlet"))
+            .await?;
+        let items_names: Vec<String> = inlets
+            .into_iter()
+            .map(|inlet| inlet.alias.to_string())
+            .collect();
+        Ok(items_names)
+    }
+
+    async fn show_single(&self, item_name: &str) -> miette::Result<()> {
+        let inlet_status: InletStatus = self
+            .node
+            .ask(&self.ctx, Request::get(format!("/node/inlet/{item_name}")))
+            .await?;
+        self.terminal()
             .stdout()
-            .plain(fmt_ok!("{}", plain))
-            .machine(machine)
-            .json(json)
+            .plain(inlet_status.item()?)
+            .json_obj(inlet_status)?
             .write_line()?;
         Ok(())
     }

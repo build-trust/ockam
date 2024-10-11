@@ -17,6 +17,7 @@ use crate::error::ApiError;
 
 use crate::output::Output;
 use crate::session::connection_status::ConnectionStatus;
+use crate::terminal::fmt;
 use crate::{route_to_multiaddr, try_address_to_multiaddr};
 
 /// Request body to create an inlet
@@ -234,9 +235,10 @@ impl InletStatus {
 
 impl Display for InletStatus {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
+        writeln!(
             f,
-            "Inlet at {} is {}",
+            "Inlet {} at {} is {}",
+            color_primary(&self.alias),
             color_primary(&self.bind_addr),
             self.status,
         )?;
@@ -246,15 +248,26 @@ impl Display for InletStatus {
             .and_then(Route::parse)
             .and_then(|r| route_to_multiaddr(&r))
         {
-            write!(f, " with route to outlet {}", color_primary(r.to_string()))?;
+            writeln!(
+                f,
+                "{}With route to outlet {}",
+                fmt::INDENTATION,
+                color_primary(r.to_string())
+            )?;
         }
+        writeln!(
+            f,
+            "{}Outlet Address: {}",
+            fmt::INDENTATION,
+            color_primary(&self.outlet_addr)
+        )?;
         Ok(())
     }
 }
 
 impl Output for InletStatus {
     fn item(&self) -> crate::Result<String> {
-        Ok(format!("{}", self))
+        Ok(self.padded_display())
     }
 }
 
@@ -278,13 +291,13 @@ impl OutletStatus {
         }
     }
 
-    pub fn worker_address(&self) -> Result<MultiAddr, ockam_core::Error> {
+    pub fn worker_route(&self) -> Result<MultiAddr, ockam_core::Error> {
         try_address_to_multiaddr(&self.worker_addr)
             .map_err(|_| ApiError::core("Invalid Worker Address"))
     }
 
     pub fn worker_name(&self) -> Result<String, ockam_core::Error> {
-        match self.worker_address()?.last() {
+        match self.worker_route()?.last() {
             Some(worker_name) => String::from_utf8(worker_name.data().to_vec())
                 .map_err(|_| ApiError::core("Invalid Worker Address")),
             None => Ok(self.worker_addr.to_string()),
@@ -298,7 +311,7 @@ impl Display for OutletStatus {
             f,
             "Outlet at {} is connected to {}",
             color_primary(
-                self.worker_address()
+                self.worker_route()
                     .map_err(|_| std::fmt::Error)?
                     .to_string()
             ),
@@ -309,7 +322,7 @@ impl Display for OutletStatus {
 
 impl Output for OutletStatus {
     fn item(&self) -> Result<String, ApiError> {
-        Ok(format!("{}", &self))
+        Ok(self.padded_display())
     }
 }
 

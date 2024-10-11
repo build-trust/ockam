@@ -98,8 +98,8 @@ pub struct CreateCommand {
     /// A configuration in JSON format to set up the node services.
     /// Node configuration is run asynchronously and may take several
     /// seconds to complete.
-    #[arg(hide = true, long, value_parser = parse_launch_config)]
-    pub launch_config: Option<Config>,
+    #[arg(hide = true, long, visible_alias = "launch-config", value_parser = parse_launch_config)]
+    pub launch_configuration: Option<Config>,
 
     /// The name of an existing Ockam Identity that this node will use.
     /// You can use `ockam identity list` to get a list of existing Identities.
@@ -132,7 +132,7 @@ impl Default for CreateCommand {
             http_server: false,
             http_server_port: None,
             udp: false,
-            launch_config: None,
+            launch_configuration: None,
             identity: None,
             trust_opts: node_manager_defaults.trust_opts,
             opentelemetry_context: None,

@@ -116,10 +116,16 @@ impl Command for TicketCommand {
 
         // Request an enrollment token that a future member can use to get a
         // credential.
-        let token = authority_node_client
-            .create_token(ctx, attributes, self.expires_in, self.usage_count)
-            .await
-            .map_err(Error::Retry)?;
+        let token = {
+            let pb = opts.terminal.progress_bar();
+            if let Some(pb) = pb.as_ref() {
+                pb.set_message("Creating an enrollment ticket...");
+            }
+            authority_node_client
+                .create_token(ctx, attributes, self.expires_in, self.usage_count)
+                .await
+                .map_err(Error::Retry)?
+        };
         let project = project.model();
         let ticket = ExportedEnrollmentTicket::new(
             token,

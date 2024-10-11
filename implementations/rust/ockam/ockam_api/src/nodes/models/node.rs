@@ -170,7 +170,7 @@ impl Display for NodeResources {
         } else {
             writeln!(f, "{}{}Portals:", fmt::PADDING, fmt::INDENTATION)?;
             for i in &self.inlets {
-                writeln!(f, "{}{}{}", fmt::PADDING, fmt::INDENTATION.repeat(2), i)?;
+                writeln!(f, "{}", i.iter_output().pad().indent().indent())?;
             }
 
             for o in &self.outlets {
