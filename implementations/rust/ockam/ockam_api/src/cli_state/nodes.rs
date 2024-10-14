@@ -223,17 +223,40 @@ impl CliState {
             let pid = Pid::from_u32(pid.as_raw() as u32);
             loop {
                 sys.refresh_processes(ProcessesToUpdate::All);
-                if sys.process(pid).is_none() {
+                let process = if let Some(process) = sys.process(pid) {
+                    process
+                } else {
                     info!(name = %node.name(), %pid, "node process exited");
                     break;
-                }
+                };
+
                 if attempts > max_attempts {
                     warn!(name = %node.name(), %pid, "node process did not exit");
-                    return Err(CliStateError::Io(std::io::Error::new(
-                        std::io::ErrorKind::Other,
-                        format!("failed to stop PID `{pid}`. Consider passing the `--force` flag"),
-                    )));
+
+                    let status = process.status();
+
+                    return if !force {
+                        Err(CliStateError::Io(std::io::Error::new(
+                            std::io::ErrorKind::Other,
+                            format!(
+                                "failed to stop PID `{pid}` with SIGTERM. Process status: {status}. Consider passing the `--force` flag"
+                            ),
+                        )))
+                    } else {
+                        if let ProcessStatus::Zombie = status {
+                            warn!("Zombie Ockam process PID `{pid}`");
+                            break;
+                        }
+
+                        Err(CliStateError::Io(std::io::Error::new(
+                            std::io::ErrorKind::Other,
+                            format!(
+                                "failed to stop PID `{pid}` with SIGKILL. Process status: {status}"
+                            ),
+                        )))
+                    };
                 }
+
                 // notify the user that the node is stopping if it takes too long
                 if attempts == 5 {
                     self.notify_progress(format!(
