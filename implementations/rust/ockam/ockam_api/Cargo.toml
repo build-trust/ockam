@@ -73,7 +73,7 @@ jaq-core = "1"
 jaq-interpret = "1"
 jaq-parse = "1"
 jaq-std = "1"
-kafka-protocol = "0.10"
+kafka-protocol = "0.12"
 log = "0.4"
 miette = "7"
 minicbor = { version = "0.24.1", features = ["alloc", "derive"] }
