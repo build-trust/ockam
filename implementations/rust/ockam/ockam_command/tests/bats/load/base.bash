@@ -150,8 +150,14 @@ fi
 mkdir -p "$OCKAM_HOME_BASE/.tmp"
 
 if [[ -z $BATS_LIB ]]; then
-  export BATS_LIB=$(brew --prefix)/lib # macos
-  # export BATS_LIB=$NVM_DIR/versions/node/v18.8.0/lib/node_modules # linux
+  # macos
+  if command -v brew 2>&1 >/dev/null; then
+    export BATS_LIB=$(brew --prefix)/lib
+  elif [[ -n $NVM_DIR ]]; then
+    export BATS_LIB=$NVM_DIR/versions/node/v18.8.0/lib/node_modules # linux
+  else
+    export BATS_LIB=/usr/local/lib/node_modules # linux
+  fi
 fi
 
 if [[ -z $PYTHON_SERVER_PORT ]]; then
