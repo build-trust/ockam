@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use std::str::FromStr;
 use std::time::Duration;
 
 use async_trait::async_trait;
@@ -7,6 +8,9 @@ use colorful::Colorful;
 use miette::miette;
 use tracing::debug;
 
+use crate::shared_args::{IdentityOpts, RetryOpts, TrustOpts};
+use crate::util::parsers::duration_parser;
+use crate::{docs, Command, CommandGlobalOpts, Error, Result};
 use ockam::Context;
 use ockam_api::authenticator::direct::{
     OCKAM_ROLE_ATTRIBUTE_ENROLLER_VALUE, OCKAM_ROLE_ATTRIBUTE_KEY, OCKAM_TLS_ATTRIBUTE_KEY,
@@ -16,10 +20,7 @@ use ockam_api::cli_state::{ExportedEnrollmentTicket, ProjectRoute};
 use ockam_api::colors::color_primary;
 use ockam_api::nodes::InMemoryNode;
 use ockam_api::{fmt_log, fmt_ok};
-
-use crate::shared_args::{IdentityOpts, RetryOpts, TrustOpts};
-use crate::util::parsers::duration_parser;
-use crate::{docs, Command, CommandGlobalOpts, Error, Result};
+use ockam_multiaddr::MultiAddr;
 
 const LONG_ABOUT: &str = include_str!("./static/ticket/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/ticket/after_long_help.txt");
@@ -122,7 +123,7 @@ impl Command for TicketCommand {
         let project = project.model();
         let ticket = ExportedEnrollmentTicket::new(
             token,
-            ProjectRoute::new_with_id(&project.id)?,
+            ProjectRoute::new(MultiAddr::from_str(&project.access_route)?)?,
             project.identity.as_ref().ok_or(miette!(
                 "missing project's identity, this should not happen"
             ))?,

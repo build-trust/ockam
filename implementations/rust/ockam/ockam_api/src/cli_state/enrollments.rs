@@ -349,7 +349,7 @@ impl FromStr for ExportedEnrollmentTicket {
             return Err(ApiError::core("Missing fields in enrollment ticket").into());
         }
         let (
-            project_route,
+            project_route_or_id,
             project_identifier,
             project_name,
             one_time_code,
@@ -360,10 +360,9 @@ impl FromStr for ExportedEnrollmentTicket {
         );
         let authority_route = values.get(6).map(|r| r.to_string());
 
-        let project_route = if project_route.starts_with('/') {
-            ProjectRoute::new_with_route(MultiAddr::from_str(project_route)?)?
-        } else {
-            ProjectRoute::new_with_id(project_route)?
+        let project_route = match MultiAddr::from_str(project_route_or_id) {
+            Ok(route) => ProjectRoute::new(route)?,
+            Err(_) => ProjectRoute::new_with_id(project_route_or_id)?,
         };
         Ok(Self::new(
             OneTimeCode::from_str(one_time_code)?,
@@ -403,18 +402,7 @@ pub struct ProjectRoute {
 }
 
 impl ProjectRoute {
-    pub fn new_with_id(id: impl Into<String>) -> Result<Self> {
-        let id = id.into();
-        Ok(Self {
-            id: id.clone(),
-            route: MultiAddr::from_str(&format!(
-                "/dnsaddr/{id}.projects.orchestrator.ockam.io/tcp/443/service/{id}/service/api"
-            ))?,
-        })
-    }
-
-    pub fn new_with_route(route: impl Into<MultiAddr>) -> Result<Self> {
-        let route = route.into();
+    pub fn new(route: MultiAddr) -> Result<Self> {
         match route.iter().next() {
             Some(pv) => {
                 // from a project route like: "/dnsaddr/<id>.projects.orchestrator.ockam.io/tcp/.."
@@ -442,6 +430,17 @@ impl ProjectRoute {
                 "Invalid project route".to_string(),
             )),
         }
+    }
+
+    /// Use the default project route format
+    pub fn new_with_id(id: impl Into<String>) -> Result<Self> {
+        let id = id.into();
+        Ok(Self {
+            id: id.clone(),
+            route: MultiAddr::from_str(&format!(
+                "/dnsaddr/{id}.projects.orchestrator.ockam.io/tcp/443/service/{id}/service/api"
+            ))?,
+        })
     }
 }
 
@@ -594,7 +593,7 @@ impl EnrollmentTicket {
     pub fn export(self) -> Result<ExportedEnrollmentTicket> {
         Ok(ExportedEnrollmentTicket::new(
             self.one_time_code,
-            ProjectRoute::new_with_id(self.project_id)?,
+            ProjectRoute::new(self.project_route)?,
             self.project_identity.identifier().to_string(),
             self.project_name,
             self.project_identity.export_as_string()?,
@@ -628,14 +627,13 @@ mod tests {
         let project_id = "c4a6a4b4-537b-4f2e-ace4-ef1992b922a6";
 
         let route = MultiAddr::from_str(&format!("/dnsaddr/{project_id}.projects.orchestrator.ockam.io/tcp/443/service/{project_id}/service/api")).unwrap();
-        let from_route = ProjectRoute::new_with_route(route).unwrap();
+        let from_route = ProjectRoute::new(route).unwrap();
         assert_eq!(from_route.id, project_id);
 
         let from_id = ProjectRoute::new_with_id(project_id).unwrap();
         assert_eq!(from_id.id, project_id);
 
-        let from_invalid_route =
-            ProjectRoute::new_with_route(MultiAddr::from_str("/node/n1").unwrap());
+        let from_invalid_route = ProjectRoute::new(MultiAddr::from_str("/node/n1").unwrap());
         assert!(from_invalid_route.is_err());
     }
 
