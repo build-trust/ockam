@@ -10,6 +10,7 @@ use opentelemetry_sdk::propagation::TraceContextPropagator;
 use opentelemetry_sdk::trace::{BatchConfig, BatchConfigBuilder, BatchSpanProcessor};
 use opentelemetry_sdk::{self as sdk};
 use opentelemetry_sdk::{logs, Resource};
+use opentelemetry_semantic_conventions::attribute;
 use std::io::{empty, stdout};
 use tonic::metadata::*;
 use tracing_appender::non_blocking::NonBlocking;
@@ -428,14 +429,8 @@ fn create_tracer<S: SpanExporter + 'static>(
 fn make_resource(app_name: String) -> Resource {
     let host_name = gethostname().to_string_lossy().to_string();
     Resource::new(vec![
-        KeyValue::new(
-            opentelemetry_semantic_conventions::resource::SERVICE_NAME,
-            "ockam",
-        ),
-        KeyValue::new(
-            opentelemetry_semantic_conventions::resource::HOST_NAME,
-            host_name,
-        ),
+        KeyValue::new(attribute::SERVICE_NAME, "ockam"),
+        KeyValue::new(attribute::HOST_NAME, host_name),
         KeyValue::new(APP_NAME.clone(), app_name),
     ])
 }
