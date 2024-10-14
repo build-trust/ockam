@@ -39,12 +39,12 @@ use crate::common::Direction;
 
 #[classifier]
 pub fn ockam_ingress(ctx: TcContext) -> i32 {
-    common::try_handle(ctx, Direction::Ingress).unwrap_or_else(|ret| ret)
+    common::try_handle(&ctx, Direction::Ingress).unwrap_or_else(|ret| ret)
 }
 
 #[classifier]
 pub fn ockam_egress(ctx: TcContext) -> i32 {
-    common::try_handle(ctx, Direction::Egress).unwrap_or_else(|ret| ret)
+    common::try_handle(&ctx, Direction::Egress).unwrap_or_else(|ret| ret)
 }
 
 // TODO: Check if eBPF code can panic at all
