@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::str::FromStr;
 
 use async_trait::async_trait;
+use clap::builder::FalseyValueParser;
 use clap::Args;
 use colorful::Colorful;
 use miette::IntoDiagnostic;
@@ -68,7 +69,8 @@ pub struct CreateCommand {
     pub allow: Option<PolicyExpression>,
 
     /// Use eBPF and RawSocket to access TCP packets instead of TCP data stream.
-    #[arg(long, hide = true)]
+    /// If `OCKAM_EBPF` env variable is set to 1, this argument will be `true`.
+    #[arg(long, env = "OCKAM_EBPF", value_parser = FalseyValueParser::default(), hide = true)]
     pub ebpf: bool,
 }
 

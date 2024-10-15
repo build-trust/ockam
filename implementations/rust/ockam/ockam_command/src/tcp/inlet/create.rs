@@ -3,6 +3,7 @@ use std::str::FromStr;
 use std::time::Duration;
 
 use async_trait::async_trait;
+use clap::builder::FalseyValueParser;
 use clap::Args;
 use colorful::Colorful;
 use miette::{miette, IntoDiagnostic};
@@ -132,7 +133,8 @@ pub struct CreateCommand {
     pub no_tcp_fallback: bool,
 
     /// Use eBPF and RawSocket to access TCP packets instead of TCP data stream.
-    #[arg(long, hide = true)]
+    /// If `OCKAM_EBPF` env variable is set to 1, this argument will be `true`.
+    #[arg(long, env = "OCKAM_EBPF", value_parser = FalseyValueParser::default(), hide = true)]
     pub ebpf: bool,
 
     #[arg(long, value_name = "BOOL", default_value_t = false, hide = true)]
