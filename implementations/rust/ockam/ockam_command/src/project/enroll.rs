@@ -18,7 +18,6 @@ use crate::{docs, Command, CommandGlobalOpts, Error, Result};
 use ockam::Context;
 use ockam_api::cli_state::{EnrollmentTicket, NamedIdentity};
 use ockam_api::cloud::project::models::OktaAuth0;
-use ockam_api::cloud::project::ProjectsOrchestratorApi;
 use ockam_api::cloud::AuthorityNodeClient;
 use ockam_api::colors::color_primary;
 use ockam_api::enroll::enrollment::{EnrollStatus, Enrollment};
@@ -130,9 +129,6 @@ impl Command for EnrollCommand {
             self.use_enrollment_ticket(ctx, &opts, &authority_node_client, enrollment_ticket)
                 .await?;
         }
-
-        // Refresh project data
-        node.get_project(ctx, project.project_id()).await?;
 
         // Issue credential
         let credential = authority_node_client
