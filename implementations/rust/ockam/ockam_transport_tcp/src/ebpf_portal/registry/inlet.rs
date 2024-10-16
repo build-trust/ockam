@@ -1,11 +1,11 @@
-use crate::ebpf_portal::{ConnectionIdentifier, Port};
+use crate::ebpf_portal::{ConnectionIdentifier, ParsedRawSocketPacket, Port};
 use crate::portal::InletSharedState;
-use crate::TcpInletOptions;
 use ockam_core::Address;
 use std::collections::HashMap;
 use std::net::Ipv4Addr;
 use std::sync::{Arc, RwLock};
 use tokio::net::TcpListener;
+use tokio::sync::mpsc::Sender;
 
 /// Inlet registry
 #[derive(Default, Clone)]
@@ -24,8 +24,9 @@ impl InletRegistry {
     /// Create inlet
     pub fn create_inlet(
         &self,
-        portal_worker_address: Address,
-        options: TcpInletOptions,
+        remote_worker_address: Address,
+        internal_processor_address: Address,
+        sender: Sender<ParsedRawSocketPacket>,
         port: Port,
         tcp_listener: TcpListener,
         inlet_shared_state: Arc<RwLock<InletSharedState>>,
@@ -33,9 +34,10 @@ impl InletRegistry {
         let mut inlets = self.inlets.write().unwrap();
 
         let inlet_info = Inlet {
-            portal_worker_address,
+            remote_worker_address,
+            internal_processor_address,
+            sender,
             port,
-            options,
             inlet_shared_state,
             _tcp_listener: Arc::new(tcp_listener),
             connections1: Default::default(),
@@ -58,14 +60,16 @@ impl InletRegistry {
 /// Inlet info
 #[derive(Clone)]
 pub struct Inlet {
-    /// PortalWorker Address
-    pub portal_worker_address: Address,
+    /// RemoteWorker Address
+    pub remote_worker_address: Address,
+    /// InternalProcessor Address
+    pub internal_processor_address: Address,
+    /// Sender to the InternalProcessor
+    pub sender: Sender<ParsedRawSocketPacket>,
     /// Port
     pub port: Port,
     /// Route to the corresponding Outlet
     pub inlet_shared_state: Arc<RwLock<InletSharedState>>,
-    /// Options
-    pub options: TcpInletOptions,
     /// Hold to mark the port as taken
     pub _tcp_listener: Arc<TcpListener>,
     /// Same map with different key

@@ -1,9 +1,10 @@
-use crate::ebpf_portal::{ConnectionIdentifier, Port};
+use crate::ebpf_portal::{ConnectionIdentifier, ParsedRawSocketPacket, Port};
 use ockam_core::{Address, Route};
 use std::collections::HashMap;
 use std::net::Ipv4Addr;
 use std::sync::{Arc, RwLock};
 use tokio::net::TcpListener;
+use tokio::sync::mpsc::Sender;
 
 /// Outlet registry
 #[derive(Default, Clone)]
@@ -27,14 +28,18 @@ impl OutletRegistry {
     /// Add outlet
     pub fn add_outlet(
         &self,
-        portal_worker_address: Address,
+        remote_worker_address: Address,
+        internal_processor_address: Address,
+        sender: Sender<ParsedRawSocketPacket>,
         dst_ip: Ipv4Addr,
         dst_port: Port,
     ) -> Outlet {
         let outlet_info = Outlet {
+            remote_worker_address,
+            internal_processor_address,
+            sender,
             dst_ip,
             dst_port,
-            portal_worker_address,
             connections1: Default::default(),
             connections2: Default::default(),
         };
@@ -58,12 +63,16 @@ struct OutletKey {
 /// Outlet info
 #[derive(Clone)]
 pub struct Outlet {
+    /// RemoteWorker Address
+    pub remote_worker_address: Address,
+    /// InternalProcessor Address
+    pub internal_processor_address: Address,
+    /// Sender to the InternalProcessor
+    pub sender: Sender<ParsedRawSocketPacket>,
     /// Destination IP
     pub dst_ip: Ipv4Addr,
     /// Destination Port
     pub dst_port: Port,
-    /// PortalWorker Address
-    pub portal_worker_address: Address,
     /// Same map with different key
     connections1: Arc<RwLock<HashMap<Port, Arc<OutletConnection>>>>,
     connections2: Arc<RwLock<HashMap<OutletConnectionKey, Arc<OutletConnection>>>>,
@@ -129,7 +138,7 @@ pub struct OutletConnection {
     /// Assigned port on our machine for a specific connection
     pub assigned_port: Port,
     /// Route to the other side PortalWorker
-    pub return_route: Route,
+    pub return_route: Route, // TODO: Update it if the inlet updates the route
     /// To hold the port
     pub _tcp_listener: Arc<TcpListener>,
 }

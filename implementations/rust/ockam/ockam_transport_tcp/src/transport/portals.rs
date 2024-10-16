@@ -4,6 +4,7 @@ use core::fmt;
 use core::fmt::{Debug, Formatter};
 use ockam_core::compat::net::SocketAddr;
 use ockam_core::compat::sync::{Arc, RwLock};
+use ockam_core::flow_control::FlowControls;
 use ockam_core::{route, Address, Result, Route};
 use ockam_node::Context;
 use ockam_transport_core::{parse_socket_addr, HostnamePort};
@@ -135,15 +136,21 @@ pub struct TcpInlet {
 
 #[derive(Clone, Debug)]
 enum TcpInletState {
-    Ebpf,
+    Ebpf { portal_worker_address: Address },
     Regular { processor_address: Address },
 }
 
 impl fmt::Display for TcpInlet {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match &self.state {
-            TcpInletState::Ebpf => {
-                write!(f, "Socket: {}. eBPF", self.socket_address)
+            TcpInletState::Ebpf {
+                portal_worker_address,
+            } => {
+                write!(
+                    f,
+                    "Socket: {}. Worker address: {}. eBPF",
+                    self.socket_address, portal_worker_address
+                )
             }
             TcpInletState::Regular { processor_address } => {
                 write!(
@@ -173,12 +180,15 @@ impl TcpInlet {
     /// Constructor
     pub fn new_ebpf(
         socket_address: SocketAddr,
+        portal_worker_address: Address,
         inlet_shared_state: Arc<RwLock<InletSharedState>>,
     ) -> Self {
         Self {
             socket_address,
             inlet_shared_state,
-            state: TcpInletState::Ebpf,
+            state: TcpInletState::Ebpf {
+                portal_worker_address,
+            },
         }
     }
 
@@ -190,7 +200,7 @@ impl TcpInlet {
     /// Processor address
     pub fn processor_address(&self) -> Option<&Address> {
         match &self.state {
-            TcpInletState::Ebpf => None,
+            TcpInletState::Ebpf { .. } => None,
             TcpInletState::Regular { processor_address } => Some(processor_address),
         }
     }
@@ -205,11 +215,18 @@ impl TcpInlet {
     /// reachable, or if we want to switch transport, e.g., from relayed to UDP NAT puncture.
     ///  NOTE: Existing TCP connections will still use the old route,
     ///        only newly accepted connections will use the new route.
-    pub fn update_outlet_node_route(&self, new_route: Route) -> Result<()> {
+    pub fn update_outlet_node_route(
+        &self,
+        flow_controls: &FlowControls,
+        new_route: Route,
+    ) -> Result<()> {
         let mut inlet_shared_state = self.inlet_shared_state.write().unwrap();
 
-        inlet_shared_state.route =
-            Self::build_new_full_route(new_route, &inlet_shared_state.route)?;
+        let new_route = Self::build_new_full_route(new_route, &inlet_shared_state.route)?;
+        let next = new_route.next()?.clone();
+        inlet_shared_state.route = new_route;
+
+        self.update_flow_controls(flow_controls, next);
 
         Ok(())
     }
@@ -221,13 +238,32 @@ impl TcpInlet {
         inlet_shared_state.is_paused = true;
     }
 
+    fn update_flow_controls(&self, flow_controls: &FlowControls, next: Address) {
+        match &self.state {
+            TcpInletState::Ebpf {
+                portal_worker_address,
+            } => {
+                TcpInletOptions::setup_flow_control_for_address(
+                    flow_controls,
+                    portal_worker_address.clone(),
+                    &next,
+                );
+            }
+            TcpInletState::Regular { .. } => {}
+        }
+    }
+
     /// Unpause TCP Inlet and update the outlet route.
-    pub fn unpause(&self, new_route: Route) -> Result<()> {
+    pub fn unpause(&self, flow_controls: &FlowControls, new_route: Route) -> Result<()> {
         let mut inlet_shared_state = self.inlet_shared_state.write().unwrap();
+
+        let new_route = Self::build_new_full_route(new_route, &inlet_shared_state.route)?;
+        let next = new_route.next()?.clone();
 
         inlet_shared_state.route =
             Self::build_new_full_route(new_route, &inlet_shared_state.route)?;
         inlet_shared_state.is_paused = false;
+        self.update_flow_controls(flow_controls, next);
 
         Ok(())
     }
@@ -235,7 +271,7 @@ impl TcpInlet {
     /// Stop the Inlet
     pub async fn stop(&self, ctx: &Context) -> Result<()> {
         match &self.state {
-            TcpInletState::Ebpf => {
+            TcpInletState::Ebpf { .. } => {
                 // TODO: eBPF
             }
             TcpInletState::Regular { processor_address } => {

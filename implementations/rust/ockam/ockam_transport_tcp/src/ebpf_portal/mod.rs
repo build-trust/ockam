@@ -1,13 +1,16 @@
 mod common;
 mod ebpf_support;
-mod portal_processor;
-mod portal_worker;
+mod internal_processor;
+mod pnet_helper;
 mod portals;
+mod raw_socket_processor;
 mod registry;
+mod remote_worker;
 mod transport;
 
 pub use common::*;
 pub use ebpf_support::*;
-pub use portal_processor::*;
-pub use portal_worker::*;
+pub use internal_processor::*;
+pub use raw_socket_processor::*;
 pub use registry::*;
+pub use remote_worker::*;

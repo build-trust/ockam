@@ -86,8 +86,7 @@ impl Worker for TcpOutletListenWorker {
 
         let addresses = Addresses::generate(PortalType::Outlet);
 
-        self.options
-            .setup_flow_control_for_outlet(ctx.flow_controls(), &addresses, &src_addr);
+        TcpOutletOptions::setup_flow_control_for_outlet(ctx.flow_controls(), &addresses, &src_addr);
 
         // TODO: Make sure the connection can't be spoofed by someone having access to that Outlet
 

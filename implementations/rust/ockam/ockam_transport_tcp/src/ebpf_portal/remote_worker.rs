@@ -7,7 +7,7 @@ use ockam_node::Context;
 use pnet::packet::tcp::MutableTcpPacket;
 use pnet::transport::TransportSender;
 use std::net::{IpAddr, Ipv4Addr};
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, Mutex};
 use tokio::net::TcpListener;
 use tracing::{info, warn};
 
@@ -26,17 +26,17 @@ pub enum PortalWorkerMode {
 }
 
 /// Worker listens for new incoming connections.
-pub struct PortalWorker {
+pub struct RemoteWorker {
     mode: PortalWorkerMode,
 
-    socket_write_handle: Arc<RwLock<TransportSender>>,
+    socket_write_handle: Arc<Mutex<TransportSender>>,
     ebpf_support: TcpTransportEbpfSupport,
 }
 
-impl PortalWorker {
+impl RemoteWorker {
     /// Constructor.
     pub fn new_inlet(
-        socket_write_handle: Arc<RwLock<TransportSender>>,
+        socket_write_handle: Arc<Mutex<TransportSender>>,
         inlet: Inlet,
         ebpf_support: TcpTransportEbpfSupport,
     ) -> Self {
@@ -49,7 +49,7 @@ impl PortalWorker {
 
     /// Constructor.
     pub fn new_outlet(
-        socket_write_handle: Arc<RwLock<TransportSender>>,
+        socket_write_handle: Arc<Mutex<TransportSender>>,
         outlet: Outlet,
         ebpf_support: TcpTransportEbpfSupport,
     ) -> Self {
@@ -135,7 +135,7 @@ impl PortalWorker {
         // TODO: We don't pick the source IP here, but it's important that it stays the same,
         //  Otherwise the receiving TCP connection would be disrupted.
         self.socket_write_handle
-            .write()
+            .lock()
             .unwrap()
             .send_to(packet, IpAddr::V4(dst_ip))
             .unwrap();
@@ -175,7 +175,7 @@ impl PortalWorker {
 }
 
 #[async_trait]
-impl Worker for PortalWorker {
+impl Worker for RemoteWorker {
     type Message = Any;
     type Context = Context;
 
