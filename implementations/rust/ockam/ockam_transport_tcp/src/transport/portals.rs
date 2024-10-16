@@ -222,9 +222,9 @@ impl TcpInlet {
     ) -> Result<()> {
         let mut inlet_shared_state = self.inlet_shared_state.write().unwrap();
 
-        let new_route = Self::build_new_full_route(new_route, &inlet_shared_state.route)?;
+        let new_route = Self::build_new_full_route(new_route, inlet_shared_state.route())?;
         let next = new_route.next()?.clone();
-        inlet_shared_state.route = new_route;
+        inlet_shared_state.update_route(new_route);
 
         self.update_flow_controls(flow_controls, next);
 
@@ -235,7 +235,7 @@ impl TcpInlet {
     pub fn pause(&self) {
         let mut inlet_shared_state = self.inlet_shared_state.write().unwrap();
 
-        inlet_shared_state.is_paused = true;
+        inlet_shared_state.set_is_paused(true);
     }
 
     fn update_flow_controls(&self, flow_controls: &FlowControls, next: Address) {
@@ -257,12 +257,12 @@ impl TcpInlet {
     pub fn unpause(&self, flow_controls: &FlowControls, new_route: Route) -> Result<()> {
         let mut inlet_shared_state = self.inlet_shared_state.write().unwrap();
 
-        let new_route = Self::build_new_full_route(new_route, &inlet_shared_state.route)?;
+        let new_route = Self::build_new_full_route(new_route, inlet_shared_state.route())?;
         let next = new_route.next()?.clone();
 
-        inlet_shared_state.route =
-            Self::build_new_full_route(new_route, &inlet_shared_state.route)?;
-        inlet_shared_state.is_paused = false;
+        inlet_shared_state.update_route(new_route);
+        inlet_shared_state.set_is_paused(false);
+
         self.update_flow_controls(flow_controls, next);
 
         Ok(())
