@@ -41,7 +41,7 @@ impl ProjectsOrchestratorApi for InMemoryNode {
                 .import_and_store_project(project.clone())
                 .await?),
             Err(e) => {
-                warn!("could no get the project {project_id} from the controller: {e:?}");
+                warn!("could no get the project {project_id} from the controller: {e}");
                 Ok(self.cli_state.projects().get_project(project_id).await?)
             }
         }
