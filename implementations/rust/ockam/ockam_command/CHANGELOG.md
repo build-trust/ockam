@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.136.0 - 2024-10-16
+
+### Added
+
+- Introduce `OCKAM_EBPF` environment variable
+- Updated dependencies
+
+### Fixed
+
+- `node create` name arg is handled correctly when used with configurations args
+- `project enroll` should not try to fetch project data from orchestrator
+
 ## 0.135.0 - 2024-10-15
 
 ### Added
