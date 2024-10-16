@@ -22,8 +22,44 @@ use tracing::{debug, error, instrument};
 /// from outside the worker: update the route to the outlet or pause it.
 #[derive(Debug, Clone)]
 pub struct InletSharedState {
-    pub route: Route,
-    pub is_paused: bool,
+    route: Route,
+    is_paused: bool,
+    // Starts with 0 and increments each time when inlet updates the route to the outlet
+    // (e.g. when reconnecting), this will allow outlet to figure out what is the most recent
+    // return_route even if messages arrive out-of-order
+    route_index: u32,
+}
+
+impl InletSharedState {
+    pub fn route(&self) -> &Route {
+        &self.route
+    }
+
+    pub fn update_route(&mut self, new_route: Route) {
+        self.route = new_route;
+        // Overflow here is very unlikely...
+        self.route_index += 1;
+    }
+
+    pub fn is_paused(&self) -> bool {
+        self.is_paused
+    }
+
+    pub fn set_is_paused(&mut self, is_paused: bool) {
+        self.is_paused = is_paused;
+    }
+
+    pub fn route_index(&self) -> u32 {
+        self.route_index
+    }
+
+    pub fn new(is_paused: bool, route: Route) -> Self {
+        Self {
+            route,
+            is_paused,
+            route_index: 0,
+        }
+    }
 }
 
 /// A TCP Portal Inlet listen processor
@@ -76,6 +112,7 @@ impl TcpInletListenProcessor {
         let inlet_shared_state = InletSharedState {
             route: outlet_listener_route,
             is_paused: options.is_paused,
+            route_index: 0,
         };
         let inlet_shared_state = Arc::new(RwLock::new(inlet_shared_state));
         let processor = Self::new(registry, inner, inlet_shared_state.clone(), options);

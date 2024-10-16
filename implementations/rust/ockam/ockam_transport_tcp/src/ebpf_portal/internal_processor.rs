@@ -71,7 +71,7 @@ impl Processor for InternalProcessor {
             PortalMode::Inlet { inlet } => {
                 let inlet_shared_state = inlet.inlet_shared_state.read().unwrap().clone();
 
-                if inlet_shared_state.is_paused {
+                if inlet_shared_state.is_paused() {
                     return Ok(true);
                 }
 
@@ -114,13 +114,14 @@ impl Processor for InternalProcessor {
                 let portal_packet = OckamPortalPacket::from_raw_socket_packet(
                     parsed_packet.packet,
                     connection.connection_identifier.clone(),
+                    inlet_shared_state.route_index(),
                 );
 
                 trace!("Inlet Processor: Got packet, forwarding to the other side");
 
                 ctx.forward_from_address(
                     LocalMessage::new()
-                        .with_onward_route(inlet_shared_state.route)
+                        .with_onward_route(inlet_shared_state.route().clone())
                         .with_return_route(route![inlet.remote_worker_address.clone()])
                         .with_payload(minicbor::to_vec(portal_packet)?),
                     ctx.address(),
@@ -149,13 +150,16 @@ impl Processor for InternalProcessor {
                 let portal_packet = OckamPortalPacket::from_raw_socket_packet(
                     parsed_packet.packet,
                     connection.connection_identifier.clone(),
+                    0, // Doesn't matter for the outlet, as outlet can't update the route
                 );
 
                 trace!("Outlet Processor: Got packet, forwarding to the other side");
 
+                let return_route = connection.return_route.read().unwrap().route.clone();
+
                 ctx.forward_from_address(
                     LocalMessage::new()
-                        .with_onward_route(connection.return_route.clone())
+                        .with_onward_route(return_route)
                         .with_return_route(route![outlet.remote_worker_address.clone()])
                         .with_payload(minicbor::to_vec(portal_packet)?),
                     ctx.address(),
