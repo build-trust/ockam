@@ -289,14 +289,12 @@ impl SqlxDatabase {
                     // synchronous = EXTRA - trade performance for durability and reliability
                     // locking_mode = NORMAL - it's important because WAL mode changes behavior
                     //                         if locking_mode is set to EXCLUSIVE *before* WAL is set
-                    // journal_mode = WAL - write-ahead logging, mainly for better concurrency
                     // busy_timeout = 10000 - wait for 10 seconds before failing a query due to exclusive lock
                     let _ = connection
                         .execute(
                             r#"
 PRAGMA synchronous = EXTRA;
 PRAGMA locking_mode = NORMAL;
-PRAGMA journal_mode = WAL;
 PRAGMA busy_timeout = 10000;
                 "#,
                         )

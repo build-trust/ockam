@@ -290,15 +290,6 @@ impl CliState {
         // Delete the nodes database, keep the application database
         if let Some(path) = Self::make_database_configuration(root_path)?.path() {
             std::fs::remove_file(path.clone())?;
-            // wal and shm files may not exist, depending on the database state
-            let wal_path = path.with_extension("sqlite3-wal");
-            if wal_path.exists() {
-                std::fs::remove_file(wal_path)?;
-            }
-            let shm_path = path.with_extension("sqlite3-shm");
-            if shm_path.exists() {
-                std::fs::remove_file(shm_path)?;
-            }
         };
         Ok(())
     }

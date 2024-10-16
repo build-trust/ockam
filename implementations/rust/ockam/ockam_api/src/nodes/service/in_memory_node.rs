@@ -58,10 +58,14 @@ impl Drop for InMemoryNode {
         // because in that case they can be restarted
         if !self.persistent {
             executor::block_on(async {
-                self.cli_state
-                    .remove_node(&self.node_name)
-                    .await
-                    .unwrap_or_else(|e| panic!("cannot delete the node {}: {e:?}", self.node_name));
+                let result = self.cli_state.remove_node(&self.node_name).await;
+                if let Err(err) = result {
+                    // code: 1032 maps to SQLITE_READONLY_DBMOVED - meaning the database has been
+                    // moved to another directory, most likely already deleted
+                    if !err.to_string().contains("code: 1032") {
+                        panic!("cannot delete the node {}: {err:?}", self.node_name);
+                    }
+                }
             });
         }
     }

@@ -44,13 +44,6 @@ function get_project_data() {
 function copy_enrolled_home_dir() {
   if [ ! -z "${ORCHESTRATOR_TESTS}" ]; then
     cp -a $OCKAM_HOME_BASE/application_database.sqlite3 $OCKAM_HOME/
-    if [ -f $OCKAM_HOME_BASE/application_database.sqlite3-wal ]; then
-      cp -a $OCKAM_HOME_BASE/application_database.sqlite3-wal $OCKAM_HOME
-    fi
-
     cp -a $OCKAM_HOME_BASE/database.sqlite3 $OCKAM_HOME/
-    if [ -f $OCKAM_HOME_BASE/database.sqlite3-wal ]; then
-      cp -a $OCKAM_HOME_BASE/database.sqlite3-wal $OCKAM_HOME
-    fi
   fi
 }
