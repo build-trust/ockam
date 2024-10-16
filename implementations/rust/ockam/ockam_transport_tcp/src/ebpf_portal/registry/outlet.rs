@@ -129,6 +129,24 @@ struct OutletConnectionKey {
     connection_identifier: ConnectionIdentifier,
 }
 
+/// Updatable return_route to the Inlet (updatable by the Inlet)
+pub struct OutletConnectionReturnRoute {
+    /// Route
+    pub route: Route,
+    /// Number of the route. Starts from 0 and Inlet updates it each time.
+    pub route_index: u32,
+}
+
+impl OutletConnectionReturnRoute {
+    /// Constructor. Route index starts with 0
+    pub fn new(route: Route) -> Self {
+        Self {
+            route,
+            route_index: 0,
+        }
+    }
+}
+
 /// Outlet mapping
 pub struct OutletConnection {
     /// Identity Identifier of the other side
@@ -138,7 +156,7 @@ pub struct OutletConnection {
     /// Assigned port on our machine for a specific connection
     pub assigned_port: Port,
     /// Route to the other side PortalWorker
-    pub return_route: Route, // TODO: Update it if the inlet updates the route
+    pub return_route: Arc<RwLock<OutletConnectionReturnRoute>>,
     /// To hold the port
     pub _tcp_listener: Arc<TcpListener>,
 }

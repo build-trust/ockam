@@ -104,10 +104,10 @@ impl TcpTransport {
 
         let write_handle = self.start_raw_socket_processor_if_needed().await?;
 
-        let inlet_shared_state = Arc::new(RwLock::new(InletSharedState {
-            route: outlet_route.clone(),
-            is_paused: false,
-        }));
+        let inlet_shared_state = Arc::new(RwLock::new(InletSharedState::new(
+            false,
+            outlet_route.clone(),
+        )));
 
         let remote_worker_address = Address::random_tagged("Ebpf.RemoteWorker.Inlet");
         let internal_worker_address = Address::random_tagged("Ebpf.InternalWorker.Inlet");

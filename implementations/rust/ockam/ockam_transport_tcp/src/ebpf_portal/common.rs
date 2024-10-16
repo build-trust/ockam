@@ -31,15 +31,16 @@ impl Distribution<ConnectionIdentifier> for Standard {
 #[rustfmt::skip]
 pub struct OckamPortalPacket {
     #[n(0)] pub connection_identifier: ConnectionIdentifier,
-    #[n(1)] pub sequence: u32,
-    #[n(2)] pub acknowledgement: u32,
-    #[n(3)] pub data_offset: u8,
-    #[n(4)] pub reserved: u8,
-    #[n(5)] pub flags: u8,
-    #[n(6)] pub window: u16,
-    #[n(7)] pub urgent_ptr: u16,
-    #[n(8)] pub options: Vec<TcpOption>,
-    #[n(9)] pub payload: Vec<u8>,
+    #[n(1)] pub route_index: u32,
+    #[n(2)] pub sequence: u32,
+    #[n(3)] pub acknowledgement: u32,
+    #[n(4)] pub data_offset: u8,
+    #[n(5)] pub reserved: u8,
+    #[n(6)] pub flags: u8,
+    #[n(7)] pub window: u16,
+    #[n(8)] pub urgent_ptr: u16,
+    #[n(9)] pub options: Vec<TcpOption>,
+    #[n(10)] pub payload: Vec<u8>,
 }
 
 #[allow(missing_docs)]
@@ -66,9 +67,11 @@ impl OckamPortalPacket {
     pub fn from_raw_socket_packet(
         value: RawSocketPacket,
         connection_identifier: ConnectionIdentifier,
+        route_index: u32,
     ) -> Self {
         Self {
             connection_identifier,
+            route_index,
             sequence: value.sequence,
             acknowledgement: value.acknowledgement,
             data_offset: value.data_offset,

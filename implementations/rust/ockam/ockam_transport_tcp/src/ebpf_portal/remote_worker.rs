@@ -1,6 +1,6 @@
 use crate::ebpf_portal::{
-    Inlet, InletConnection, OckamPortalPacket, Outlet, OutletConnection, Port,
-    TcpTransportEbpfSupport,
+    Inlet, InletConnection, OckamPortalPacket, Outlet, OutletConnection,
+    OutletConnectionReturnRoute, Port, TcpTransportEbpfSupport,
 };
 use log::{debug, trace};
 use ockam_core::{async_trait, Any, Result, Route, Routed, Worker};
@@ -9,7 +9,7 @@ use ockam_transport_core::TransportError;
 use pnet::packet::tcp::MutableTcpPacket;
 use pnet::transport::TransportSender;
 use std::net::{IpAddr, Ipv4Addr};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, RwLock};
 use tokio::net::TcpListener;
 use tracing::warn;
 
@@ -86,7 +86,7 @@ impl RemoteWorker {
             connection_identifier: msg.connection_identifier.clone(),
             assigned_port,
             _tcp_listener: Arc::new(tcp_listener),
-            return_route,
+            return_route: Arc::new(RwLock::new(OutletConnectionReturnRoute::new(return_route))),
         });
 
         outlet.add_connection(connection.clone());
@@ -176,7 +176,17 @@ impl RemoteWorker {
         outlet: &Outlet,
         connection: &OutletConnection,
         msg: OckamPortalPacket,
+        return_route: Route,
     ) -> Result<()> {
+        {
+            let mut connection_return_route = connection.return_route.write().unwrap();
+
+            if connection_return_route.route_index < msg.route_index {
+                connection_return_route.route_index = msg.route_index;
+                connection_return_route.route = return_route;
+            }
+        }
+
         self.handle(
             msg,
             connection.assigned_port,
@@ -205,6 +215,7 @@ impl Worker for RemoteWorker {
         let identifier = None; // FIXME: Should be the Identifier of the other side
 
         match &self.mode {
+            // Outlet -> Inlet packet
             PortalMode::Inlet { inlet } => {
                 match inlet.get_connection_external(identifier, msg.connection_identifier.clone()) {
                     Some(connection) => {
@@ -217,21 +228,26 @@ impl Worker for RemoteWorker {
 
                 return Ok(());
             }
+            // Inlet -> Outlet packet
             PortalMode::Outlet { outlet } => {
                 if let Some(connection) = outlet
                     .get_connection_external(identifier.clone(), msg.connection_identifier.clone())
                 {
-                    self.handle_outlet(outlet, &connection, msg).await?;
+                    self.handle_outlet(outlet, &connection, msg, return_route)
+                        .await?;
 
                     return Ok(());
                 }
 
-                if msg.flags == 2 {
+                // Checks that SYN flag is set, and every other flag is not set.
+                const SYN: u8 = 2;
+                if msg.flags == SYN {
                     let connection = self
-                        .new_outlet_connection(outlet, identifier, &msg, return_route)
+                        .new_outlet_connection(outlet, identifier, &msg, return_route.clone())
                         .await?;
 
-                    self.handle_outlet(outlet, &connection, msg).await?;
+                    self.handle_outlet(outlet, &connection, msg, return_route)
+                        .await?;
 
                     return Ok(());
                 }
