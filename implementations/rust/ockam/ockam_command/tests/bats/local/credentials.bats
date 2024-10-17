@@ -30,7 +30,8 @@ teardown() {
   run_success "$OCKAM" credential store --issuer "$idt1_short" --credential-path "$OCKAM_HOME/credential" --scope "test"
 
   run_success "$OCKAM" credential list
-  assert_output --partial "{\"application\":\"Smart Factory\",\"city\":\"New York\""
+  assert_output --partial "\"application\": \"Smart Factory\""
+  assert_output --partial "\"city\": \"New York\""
 }
 
 @test "credential - verify rejects invalid credentials" {
