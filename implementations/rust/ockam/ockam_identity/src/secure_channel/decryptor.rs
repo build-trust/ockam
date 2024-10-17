@@ -1,7 +1,7 @@
 use core::sync::atomic::Ordering;
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
-use ockam_core::{route, Any, Result, Route, Routed};
+use ockam_core::{route, Any, Result, Route, Routed, SecureChannelLocalInfo};
 use ockam_core::{Decodable, LocalMessage};
 use ockam_node::Context;
 
@@ -12,9 +12,9 @@ use crate::secure_channel::key_tracker::KeyTracker;
 use crate::secure_channel::nonce_tracker::NonceTracker;
 use crate::secure_channel::{Addresses, Role};
 use crate::{
-    DecryptionRequest, DecryptionResponse, Identities, IdentityError,
-    IdentitySecureChannelLocalInfo, Nonce, PlaintextPayloadMessage, RefreshCredentialsMessage,
-    SecureChannelMessage, SecureChannelPaddedMessage,
+    DecryptionRequest, DecryptionResponse, Identities, IdentityError, Nonce,
+    PlaintextPayloadMessage, RefreshCredentialsMessage, SecureChannelMessage,
+    SecureChannelPaddedMessage,
 };
 
 use crate::secure_channel::encryptor_worker::SecureChannelSharedState;
@@ -121,7 +121,7 @@ impl DecryptorHandler {
         // Mark message LocalInfo with IdentitySecureChannelLocalInfo,
         // replacing any pre-existing entries
         let local_info =
-            IdentitySecureChannelLocalInfo::mark(vec![], self.their_identity_id.clone())?;
+            SecureChannelLocalInfo::mark(vec![], self.their_identity_id.clone().into())?;
 
         let msg = LocalMessage::new()
             .with_onward_route(msg.onward_route)

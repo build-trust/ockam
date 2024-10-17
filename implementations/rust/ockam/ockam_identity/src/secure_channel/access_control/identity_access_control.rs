@@ -1,11 +1,10 @@
 use ockam_core::access_control::IncomingAccessControl;
-use ockam_core::async_trait;
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::vec::Vec;
+use ockam_core::{async_trait, SecureChannelLocalInfo};
 use ockam_core::{RelayMessage, Result};
 
 use crate::models::Identifier;
-use crate::secure_channel::local_info::IdentitySecureChannelLocalInfo;
 
 /// Builder for `Identity`-related AccessControls
 pub struct IdentityAccessControlBuilder;
@@ -37,7 +36,7 @@ pub struct IdentityAnyIdAccessControl;
 #[async_trait]
 impl IncomingAccessControl for IdentityAnyIdAccessControl {
     async fn is_authorized(&self, relay_msg: &RelayMessage) -> Result<bool> {
-        Ok(IdentitySecureChannelLocalInfo::find_info(relay_msg.local_message()).is_ok())
+        Ok(SecureChannelLocalInfo::find_info(relay_msg.local_message()).is_ok())
     }
 }
 
@@ -58,12 +57,10 @@ impl IdentityIdAccessControl {
 #[async_trait]
 impl IncomingAccessControl for IdentityIdAccessControl {
     async fn is_authorized(&self, relay_msg: &RelayMessage) -> Result<bool> {
-        if let Ok(msg_identity_id) =
-            IdentitySecureChannelLocalInfo::find_info(relay_msg.local_message())
-        {
+        if let Ok(msg_identity_id) = SecureChannelLocalInfo::find_info(relay_msg.local_message()) {
             Ok(self
                 .identity_ids
-                .contains(&msg_identity_id.their_identity_id()))
+                .contains(&msg_identity_id.their_identifier().into()))
         } else {
             Ok(false)
         }

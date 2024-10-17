@@ -2,15 +2,17 @@ use core::time::Duration;
 use std::sync::atomic::{AtomicU8, Ordering};
 
 use ockam_core::compat::sync::Arc;
-use ockam_core::{route, Address, AllowAll, Any, DenyAll, Mailboxes, Result, Routed, Worker};
+use ockam_core::{
+    route, Address, AllowAll, Any, DenyAll, Mailboxes, Result, Routed, SecureChannelLocalInfo,
+    Worker, SECURE_CHANNEL_IDENTIFIER,
+};
 use ockam_identity::models::{CredentialSchemaIdentifier, Identifier};
 use ockam_identity::secure_channels::secure_channels;
 use ockam_identity::utils::AttributesBuilder;
 use ockam_identity::{
     DecryptionResponse, EncryptionRequest, EncryptionResponse, IdentityAccessControlBuilder,
-    IdentitySecureChannelLocalInfo, SecureChannelListenerOptions, SecureChannelOptions,
-    SecureChannels, TrustEveryonePolicy, TrustIdentifierPolicy, Vault,
-    IDENTITY_SECURE_CHANNEL_IDENTIFIER,
+    SecureChannelListenerOptions, SecureChannelOptions, SecureChannels, TrustEveryonePolicy,
+    TrustIdentifierPolicy, Vault,
 };
 use ockam_node::{Context, MessageReceiveOptions, WorkerBuilder};
 use ockam_vault::{
@@ -58,8 +60,8 @@ async fn test_channel(ctx: &mut Context) -> Result<()> {
 
     let msg = child_ctx.receive::<String>().await?;
 
-    let local_info = IdentitySecureChannelLocalInfo::find_info(msg.local_message())?;
-    assert_eq!(local_info.their_identity_id(), alice);
+    let local_info = SecureChannelLocalInfo::find_info(msg.local_message())?;
+    assert_eq!(Identifier::from(local_info.their_identifier()), alice);
 
     let return_route = msg.return_route();
     assert_eq!("Hello, Bob!", msg.into_body()?);
@@ -73,8 +75,8 @@ async fn test_channel(ctx: &mut Context) -> Result<()> {
 
     let msg = child_ctx.receive::<String>().await?;
 
-    let local_info = IdentitySecureChannelLocalInfo::find_info(msg.local_message())?;
-    assert_eq!(local_info.their_identity_id(), bob);
+    let local_info = SecureChannelLocalInfo::find_info(msg.local_message())?;
+    assert_eq!(Identifier::from(local_info.their_identifier()), bob);
 
     assert_eq!("Hello, Alice!", msg.into_body()?);
 
@@ -1125,10 +1127,7 @@ async fn address_metadata__encryptor__should_be_terminal(ctx: &mut Context) -> R
     assert_eq!(meta.address, sc.into());
     assert_eq!(
         meta.metadata.attributes,
-        vec![(
-            IDENTITY_SECURE_CHANNEL_IDENTIFIER.to_string(),
-            bob.to_string()
-        )]
+        vec![(SECURE_CHANNEL_IDENTIFIER.to_string(), hex::encode(bob.0))]
     );
     assert!(meta.metadata.is_terminal);
 

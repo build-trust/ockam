@@ -3,15 +3,15 @@ use std::time::Duration;
 
 use ockam_core::api::Response;
 use ockam_core::compat::sync::Arc;
-use ockam_core::{async_trait, Any, AsyncTryClone, Routed, Worker};
+use ockam_core::{async_trait, Any, AsyncTryClone, Routed, SecureChannelLocalInfo, Worker};
 use ockam_core::{route, Result};
 use ockam_identity::models::CredentialSchemaIdentifier;
 use ockam_identity::secure_channels::secure_channels;
 use ockam_identity::utils::AttributesBuilder;
 use ockam_identity::{
-    Credentials, Identifier, IdentitySecureChannelLocalInfo, RemoteCredentialRetrieverCreator,
-    RemoteCredentialRetrieverInfo, RemoteCredentialRetrieverTimingOptions,
-    SecureChannelListenerOptions, SecureChannelOptions, SecureChannels,
+    Credentials, Identifier, RemoteCredentialRetrieverCreator, RemoteCredentialRetrieverInfo,
+    RemoteCredentialRetrieverTimingOptions, SecureChannelListenerOptions, SecureChannelOptions,
+    SecureChannels,
 };
 use ockam_node::Context;
 use ockam_transport_tcp::TcpTransport;
@@ -39,8 +39,9 @@ impl Worker for CredentialIssuer {
             return Ok(());
         }
 
-        let subject =
-            IdentitySecureChannelLocalInfo::find_info(msg.local_message())?.their_identity_id();
+        let subject = SecureChannelLocalInfo::find_info(msg.local_message())?
+            .their_identifier()
+            .into();
         let credential = self
             .credentials
             .credentials_creation()

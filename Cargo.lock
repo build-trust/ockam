@@ -4887,6 +4887,7 @@ dependencies = [
  "serde_json",
  "sha2",
  "sqlx",
+ "static_assertions",
  "tempfile",
  "tokio",
  "tokio-retry",

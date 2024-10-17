@@ -5,19 +5,14 @@ use ockam_core::compat::fmt::Formatter;
 use ockam_core::compat::str;
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::vec;
-use ockam_core::Result;
-use ockam_core::{Error, RelayMessage};
+use ockam_core::{RelayMessage, SecureChannelMetadata};
+use ockam_core::{Result, SecureChannelLocalInfo};
 
 use crate::expr::str;
 use crate::{eval, Env, Expr};
 use ockam_core::compat::format;
-use ockam_core::compat::str::FromStr;
 use ockam_core::compat::string::ToString;
-use ockam_core::errcode::{Kind, Origin};
-use ockam_identity::{
-    Identifier, IdentitiesAttributes, IdentitySecureChannelLocalInfo,
-    IDENTITY_SECURE_CHANNEL_IDENTIFIER,
-};
+use ockam_identity::{Identifier, IdentitiesAttributes};
 use ockam_node::Context;
 use tracing::{debug, warn};
 
@@ -77,46 +72,22 @@ impl Abac {
             return Ok(None);
         };
 
-        let identifier = if let Some(identifier) =
-            terminal
-                .metadata
-                .attributes
-                .iter()
-                .find_map(|(key, value)| {
-                    if key == IDENTITY_SECURE_CHANNEL_IDENTIFIER {
-                        Some(value.clone())
-                    } else {
-                        None
-                    }
-                }) {
-            identifier
+        if let Ok(metadata) = SecureChannelMetadata::from_terminal_address(&terminal) {
+            Ok(Some(metadata.their_identifier().into()))
         } else {
-            return Ok(None);
-        };
-
-        let identifier = if let Ok(identifier) = Identifier::from_str(&identifier) {
-            identifier
-        } else {
-            return Err(Error::new(
-                Origin::Identity,
-                Kind::Internal,
-                "Invalid Identifier in worker metadata",
-            ));
-        };
-
-        Ok(Some(identifier))
+            Ok(None)
+        }
     }
 
     pub fn get_incoming_identifier(relay_msg: &RelayMessage) -> Option<Identifier> {
-        let identifier = if let Ok(info) =
-            IdentitySecureChannelLocalInfo::find_info(relay_msg.local_message())
-        {
-            info.their_identity_id()
-        } else {
-            return None;
-        };
+        let identifier =
+            if let Ok(info) = SecureChannelLocalInfo::find_info(relay_msg.local_message()) {
+                info.their_identifier()
+            } else {
+                return None;
+            };
 
-        Some(identifier)
+        Some(identifier.into())
     }
 
     /// Returns true if the identity is authorized

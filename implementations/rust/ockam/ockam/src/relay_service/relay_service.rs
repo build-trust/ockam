@@ -4,8 +4,9 @@ use crate::{Context, RelayServiceOptions};
 use alloc::string::String;
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::sync::Arc;
-use ockam_core::{Address, DenyAll, Encodable, Mailbox, Mailboxes, Result, Routed, Worker};
-use ockam_identity::IdentitySecureChannelLocalInfo;
+use ockam_core::{
+    Address, DenyAll, Encodable, Mailbox, Mailboxes, Result, Routed, SecureChannelLocalInfo, Worker,
+};
 use ockam_node::WorkerBuilder;
 
 /// Alias worker to register remote workers under local names.
@@ -69,7 +70,7 @@ impl Worker for RelayService {
         message: Routed<Self::Message>,
     ) -> Result<()> {
         let secure_channel_local_info =
-            IdentitySecureChannelLocalInfo::find_info(message.local_message()).ok();
+            SecureChannelLocalInfo::find_info(message.local_message()).ok();
 
         let forward_route = message.return_route();
         let requested_relay_address = message.into_body()?;
@@ -90,7 +91,7 @@ impl Worker for RelayService {
                 let attributes = authority_validation
                     .identities_attributes
                     .get_attributes(
-                        &secure_channel_local_info.their_identity_id(),
+                        &secure_channel_local_info.their_identifier().into(),
                         &authority_validation.authority,
                     )
                     .await?;

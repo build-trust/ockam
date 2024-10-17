@@ -46,8 +46,6 @@ pub enum IdentityError {
     NonceOverflow,
     /// Unknown message destination
     UnknownChannelMsgDestination,
-    /// Invalid LocalInfo type
-    InvalidLocalInfoType,
     /// Duplicate Secure Channel
     DuplicateSecureChannel,
     /// Consistency Error
