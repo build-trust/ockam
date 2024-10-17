@@ -2,10 +2,9 @@ use core::fmt::{Debug, Formatter};
 use ockam_core::access_control::IncomingAccessControl;
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::{boxed::Box, vec::Vec};
-use ockam_core::Result;
 use ockam_core::{async_trait, RelayMessage};
+use ockam_core::{Result, SecureChannelLocalInfo};
 
-use crate::secure_channel::local_info::IdentitySecureChannelLocalInfo;
 use crate::{Identifier, IdentitiesAttributes};
 
 /// Access control checking that message senders have a specific set of attributes
@@ -46,11 +45,11 @@ impl Debug for CredentialAccessControl {
 impl IncomingAccessControl for CredentialAccessControl {
     async fn is_authorized(&self, relay_message: &RelayMessage) -> Result<bool> {
         if let Ok(msg_identity_id) =
-            IdentitySecureChannelLocalInfo::find_info(relay_message.local_message())
+            SecureChannelLocalInfo::find_info(relay_message.local_message())
         {
             let attributes = match self
                 .identities_attributes
-                .get_attributes(&msg_identity_id.their_identity_id(), &self.authority)
+                .get_attributes(&msg_identity_id.their_identifier().into(), &self.authority)
                 .await?
             {
                 Some(a) => a,
