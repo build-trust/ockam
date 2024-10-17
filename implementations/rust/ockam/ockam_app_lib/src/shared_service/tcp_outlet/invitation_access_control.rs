@@ -1,11 +1,12 @@
 use crate::invitations::state::InvitationState;
 use crate::state::AppState;
 use ockam::abac::Abac;
-use ockam::identity::{Identifier, IdentitiesAttributes, IdentitySecureChannelLocalInfo};
+use ockam::identity::{Identifier, IdentitiesAttributes};
 use ockam::Context;
 use ockam_core::errcode::Origin;
 use ockam_core::{
     async_trait, Address, DenyAll, IncomingAccessControl, OutgoingAccessControl, RelayMessage,
+    SecureChannelLocalInfo,
 };
 use std::fmt::Debug;
 use std::sync::Arc;
@@ -169,10 +170,10 @@ pub struct InvitationIncomingAccessControl {
 impl IncomingAccessControl for InvitationIncomingAccessControl {
     async fn is_authorized(&self, relay_message: &RelayMessage) -> ockam_core::Result<bool> {
         if let Ok(msg_identity_id) =
-            IdentitySecureChannelLocalInfo::find_info(relay_message.local_message())
+            SecureChannelLocalInfo::find_info(relay_message.local_message())
         {
             self.invitation_access_control
-                .is_authorized(&msg_identity_id.their_identity_id())
+                .is_authorized(&msg_identity_id.their_identifier().into())
                 .await
         } else {
             Ok(false)
