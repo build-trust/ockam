@@ -78,6 +78,7 @@ log = "0.4"
 miette = "7"
 minicbor = { version = "0.24.1", features = ["alloc", "derive"] }
 nix = { version = "0.29", features = ["signal"] }
+once_cell = { version = "1", default-features = false }
 open = "5.3.0"
 opentelemetry = { version = "0.26.0", features = ["logs", "metrics", "trace"] }
 opentelemetry-appender-tracing = { version = "0.26.0" }
@@ -97,7 +98,9 @@ sha2 = "0.10.8"
 sqlx = { version = "0.8.2", default-features = false }
 strip-ansi-escapes = "0.2"
 strum = { version = "0.26.3", default-features = false, features = ["derive"] }
+syntect = { version = "5.2.0", default-features = false, features = ["default-syntaxes", "regex-onig"] }
 sysinfo = "0.31"
+termbg = "0.5.2"
 thiserror = "1.0"
 time = { version = "0.3.36", default-features = false, features = ["std", "formatting", "local-offset", "macros"] }
 tiny_http = "0.12.0"
@@ -163,7 +166,6 @@ multimap = "0.10.0"
 ockam_macros = { path = "../ockam_macros", features = ["std"], version = "^0.35.0" }
 ockam_transport_core = { path = "../ockam_transport_core", version = "^0.94.0" }
 ockam_transport_tcp = { path = "../ockam_transport_tcp", default-features = false, version = "^0.127.0" }
-once_cell = { version = "1", default-features = false }
 opentelemetry_sdk = { version = "0.26.0", features = ["logs", "metrics", "trace", "rt-tokio", "testing"], default-features = false }
 pretty_assertions = "1.4.1"
 proptest = "1.5.0"

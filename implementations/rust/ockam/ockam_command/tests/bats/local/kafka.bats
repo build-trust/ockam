@@ -49,8 +49,8 @@ teardown() {
   # Create a second inlet
   port="$(random_port)"
   run_success $OCKAM kafka-inlet create --to /secure/api --from $port --addr inlet2 --jq '.'
-  assert_output --partial "\"from\":\"127.0.0.1:$port\""
-  assert_output --partial "\"to\":\"/secure/api\""
+  assert_output --partial "\"from\": \"127.0.0.1:$port\""
+  assert_output --partial "\"to\": \"/secure/api\""
 
   # Show the inlet
   run_success $OCKAM kafka-inlet show --jq '.'

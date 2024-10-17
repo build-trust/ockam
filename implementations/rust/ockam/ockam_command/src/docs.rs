@@ -1,17 +1,9 @@
-use std::time::Duration;
-
+use crate::Result;
 use colorful::Colorful;
-use once_cell::sync::Lazy;
-use syntect::util::as_24_bit_terminal_escaped;
-use syntect::{
-    easy::HighlightLines,
-    highlighting::{Style, Theme as SyntectTheme, ThemeSet},
-    parsing::Regex,
-    parsing::SyntaxSet,
-    util::LinesWithEndings,
-};
-
+use ockam_api::terminal::TextHighlighter;
 use ockam_core::env::get_env_with_default;
+use once_cell::sync::Lazy;
+use syntect::{parsing::Regex, util::LinesWithEndings};
 
 const FOOTER: &str = "
 Learn More:
@@ -29,27 +21,6 @@ discord channel https://discord.ockam.io
 
 static HEADER_RE: Lazy<Regex> =
     Lazy::new(|| Regex::new("^(Examples|Learn More|Feedback):$".into()));
-
-static SYNTAX_SET: Lazy<SyntaxSet> = Lazy::new(SyntaxSet::load_defaults_newlines);
-
-static THEME: Lazy<SyntectTheme> = Lazy::new(|| {
-    let mut theme_set = ThemeSet::load_defaults();
-    let default_theme = theme_set.themes.remove("base16-ocean.dark").unwrap_or(
-        theme_set.themes.remove("base16-ocean.light").unwrap_or(
-            theme_set
-                .themes
-                .pop_first()
-                .map(|(_, theme)| theme)
-                .unwrap_or_default(),
-        ),
-    );
-    match termbg::theme(Duration::from_millis(100)) {
-        Ok(termbg::Theme::Light) => theme_set.themes.remove("base16-ocean.light"),
-        Ok(termbg::Theme::Dark) => theme_set.themes.remove("base16-ocean.dark"),
-        Err(_) => None,
-    }
-    .unwrap_or(default_theme)
-});
 
 fn is_markdown() -> bool {
     get_env_with_default("OCKAM_HELP_RENDER_MARKDOWN", false).unwrap_or(false)
@@ -127,19 +98,17 @@ fn process_terminal_docs(input: String) -> String {
 // color to the terminal, which adds `11;rgb:0000/0000/0000` before and after the command.
 // For now, the syntax highlighting will not be used.
 struct FencedCodeBlockHighlighter<'a> {
-    inner: HighlightLines<'a>,
+    inner: TextHighlighter<'a>,
     in_fenced_block: bool,
 }
 
 #[allow(dead_code)]
 impl FencedCodeBlockHighlighter<'_> {
-    fn new() -> Self {
-        let syntax = SYNTAX_SET.find_syntax_by_extension("sh").unwrap();
-        let theme = &THEME;
-        Self {
-            inner: HighlightLines::new(syntax, theme),
+    fn new() -> Result<Self> {
+        Ok(Self {
+            inner: TextHighlighter::new("sh")?,
             in_fenced_block: false,
-        }
+        })
     }
 
     fn in_fenced_block(&mut self, line: &str) -> bool {
@@ -149,12 +118,8 @@ impl FencedCodeBlockHighlighter<'_> {
         self.in_fenced_block
     }
 
-    fn highlight(&mut self, line: &str) -> String {
-        let highlighted: Vec<(Style, &str)> = self
-            .inner
-            .highlight_line(line, &SYNTAX_SET)
-            .unwrap_or_default();
-        as_24_bit_terminal_escaped(&highlighted[..], false)
+    fn highlight(&mut self, line: &str) -> Result<String> {
+        Ok(self.inner.process(line)?)
     }
 }
 
@@ -179,13 +144,13 @@ mod tests {
 
     #[test]
     fn test_syntax_highlighting() {
-        let mut highlighter = FencedCodeBlockHighlighter::new();
+        let mut highlighter = FencedCodeBlockHighlighter::new().unwrap();
 
         // Start of a fenced block
         assert!(highlighter.in_fenced_block("```sh\n"));
 
         // Highlight line
-        let line = highlighter.highlight("echo \"Hello, world!\"\n");
+        let line = highlighter.highlight("echo \"Hello, world!\"\n").unwrap();
         assert!(line.contains("\x1b[38;2;150;181;180m")); // color before "echo"
         assert!(line.contains("\x1b[38;2;192;197;206m")); // color after "echo"
 

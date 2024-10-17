@@ -130,7 +130,7 @@ export OCKAM_DEFAULT_TIMEOUT=5m
 export OCKAM_LOGGING=true
 
 # Set QUIET to 1 to suppress user-facing logging written at stderr
-export QUIET=1
+export QUIET=true
 
 # Ockam binary to use
 if [[ -z $OCKAM ]]; then

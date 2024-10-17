@@ -57,7 +57,7 @@ impl CommandGlobalOpts {
             global_args.quiet,
             global_args.no_color,
             global_args.no_input,
-            global_args.output_format()?,
+            global_args.output_format(),
         );
         let tracing_guard =
             Self::setup_logging_tracing(cmd, &logging_configuration, &tracing_configuration);

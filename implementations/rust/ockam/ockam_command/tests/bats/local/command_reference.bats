@@ -21,8 +21,8 @@ teardown() {
   run_success "$OCKAM" node create n2 --verbose
 
   run_success "$OCKAM" node list
-  assert_output --partial "\"node_name\":\"n1\""
-  assert_output --partial "\"status\":\"running\""
+  assert_output --partial "\"node_name\": \"n1\""
+  assert_output --partial "\"status\": \"running\""
 
   run_success "$OCKAM" node stop n1
   assert_output --partial "n1 was stopped"

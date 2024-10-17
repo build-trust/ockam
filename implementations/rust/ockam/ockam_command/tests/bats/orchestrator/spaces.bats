@@ -33,7 +33,7 @@ teardown() {
   run_failure "$OCKAM" space-admin add "not_an_email"
 
   run_success "$OCKAM" space-admin list --output json
-  assert_output --partial "\"email\":\"ockam.admin.test@ockam.io\""
+  assert_output --partial "\"email\": \"ockam.admin.test@ockam.io\""
 
   # can't delete the admin with the same email as the enroller
   run_failure "$OCKAM" space-admin delete $enrolled_email --yes

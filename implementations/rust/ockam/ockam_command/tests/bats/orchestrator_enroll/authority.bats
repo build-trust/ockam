@@ -33,8 +33,8 @@ teardown() {
   run_success "$OCKAM" project-member list
 
   assert_output --partial "$m_identifier"
-  assert_output --partial "\"key\":\"value\""
-  assert_output --partial "\"ockam-relay\":\"*\""
+  assert_output --partial "\"key\": \"value\""
+  assert_output --partial "\"ockam-relay\": \"*\""
 
   run_success "$OCKAM" project-member delete "$m_identifier"
 }
