@@ -40,9 +40,9 @@ force_kill_node() {
   run_success "$OCKAM" node create n
 
   run_success "$OCKAM" node show n
-  assert_output --partial "\"name\":\"n\""
+  assert_output --partial "\"name\": \"n\""
   assert_output --partial "/dnsaddr/localhost/tcp/"
-  assert_output --partial "\"addr\":\"uppercase\""
+  assert_output --partial "\"addr\": \"uppercase\""
 }
 
 @test "node - start services" {
@@ -60,7 +60,7 @@ force_kill_node() {
   # Stop node, restart it, and check that the service is up again
   $OCKAM node stop n
   run_success "$OCKAM" node start n
-  assert_output --partial "\"addr\":\"echo\""
+  assert_output --partial "\"addr\": \"echo\""
 }
 
 @test "node - fail to create two background nodes with the same name" {
@@ -135,7 +135,7 @@ force_kill_node() {
 @test "node - create a node with an inline configuration" {
   run_success "$OCKAM" node create --configuration "{name: n, tcp-outlets: {db-outlet: {to: 5432, at: n}}}"
   run_success $OCKAM node show n --output json
-  assert_output --partial "\"name\":\"n\""
+  assert_output --partial "\"name\": \"n\""
   assert_output --partial "127.0.0.1:5432"
 }
 

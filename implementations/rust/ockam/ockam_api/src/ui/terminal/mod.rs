@@ -1,27 +1,26 @@
 #[macro_use]
 pub mod fmt;
+mod highlighting;
 pub mod notification;
 pub mod term;
 
 pub use fmt::{get_separator_width, ICON_PADDING, PADDING};
+pub use highlighting::TextHighlighter;
 
+use crate::ui::output::OutputFormat;
+use crate::{Result, UiError};
+use colorful::Colorful;
+use indicatif::{ProgressBar, ProgressDrawTarget, ProgressStyle};
+use jaq_interpret::{Ctx, FilterT, ParseCtx, RcIter, Val};
+use miette::{miette, IntoDiagnostic};
+use ockam_core::env::get_env_with_default;
+use r3bl_rs_utils_core::{ch, ChUnit};
+use r3bl_tuify::{get_size, select_from_list, SelectionMode, StyleSheet};
+use serde::Serialize;
 use std::fmt::Write as _;
 use std::fmt::{Debug, Display};
 use std::io::Write;
 use std::time::Duration;
-
-use crate::ui::output::OutputFormat;
-use crate::{Result, UiError};
-
-use colorful::Colorful;
-use indicatif::{ProgressBar, ProgressDrawTarget, ProgressStyle};
-use miette::{miette, IntoDiagnostic};
-use ockam_core::env::get_env_with_default;
-
-use jaq_interpret::{Ctx, FilterT, ParseCtx, RcIter, Val};
-use r3bl_rs_utils_core::{ch, ChUnit};
-use r3bl_tuify::{get_size, select_from_list, SelectionMode, StyleSheet};
-use serde::Serialize;
 use tokio::sync::Mutex;
 use tokio::time::sleep;
 use tracing::warn;
@@ -87,6 +86,7 @@ pub trait TerminalWriter: Clone {
     fn stdout(no_color: bool) -> Self;
     fn stderr(no_color: bool) -> Self;
     fn is_tty(&self) -> bool;
+    fn color(&self) -> bool;
 
     fn write(&mut self, s: impl AsRef<str>) -> Result<()>;
     fn rewrite(&mut self, s: impl AsRef<str>) -> Result<()>;
@@ -350,11 +350,11 @@ impl<W: TerminalWriter + Debug> Terminal<W, ToStdOut> {
     }
 
     pub fn write_line(mut self) -> Result<()> {
-        let msg = match self
-            .mode
-            .output
-            .get_message(&self.output_format, self.is_tty())?
-        {
+        let msg = match self.mode.output.get_message(
+            &self.output_format,
+            self.is_tty(),
+            self.stdout.color(),
+        )? {
             Some(msg) => msg,
             None => return Ok(()),
         };
@@ -474,7 +474,12 @@ impl Output {
         }
     }
 
-    fn get_message(&self, format: &OutputFormat, is_tty: bool) -> Result<Option<OutputMessage>> {
+    fn get_message(
+        &self,
+        format: &OutputFormat,
+        is_tty: bool,
+        color: bool,
+    ) -> Result<Option<OutputMessage>> {
         // Check that there is at least one output format defined
         if self.plain.is_none() && self.machine.is_none() && self.json.is_none() {
             return Err(miette!("At least one output format must be defined"))?;
@@ -483,9 +488,9 @@ impl Output {
         let plain = self.plain.as_ref();
         let machine = self.machine.as_ref();
         let json = self.json.as_ref();
-        let (pretty, jq_query) = match format.clone() {
-            OutputFormat::Json { pretty, jq_query } => (pretty, jq_query),
-            _ => (false, None),
+        let (jq_query, compact) = match format.clone() {
+            OutputFormat::Json { jq_query, compact } => (jq_query, compact),
+            _ => (None, false),
         };
 
         // Get the message to be written to stdout
@@ -498,7 +503,7 @@ impl Output {
                             (Some(plain), _, _) => OutputMessage::Plain(plain.clone()),
                             (None, Some(machine), _) => OutputMessage::Machine(machine.clone()),
                             (None, None, Some(json)) => OutputMessage::Json(
-                                self.process_json_output(json, pretty, jq_query.as_ref())?,
+                                self.process_json_output(json, jq_query.as_ref(), compact, color)?,
                             ),
                             _ => unreachable!(),
                         }
@@ -508,7 +513,7 @@ impl Output {
                         match (machine, json, plain) {
                             (Some(machine), _, _) => OutputMessage::Machine(machine.clone()),
                             (None, Some(json), _) => OutputMessage::Json(
-                                self.process_json_output(json, pretty, jq_query.as_ref())?,
+                                self.process_json_output(json, jq_query.as_ref(), compact, color)?,
                             ),
                             (None, None, Some(plain)) => OutputMessage::Plain(plain.clone()),
                             _ => unreachable!(),
@@ -518,8 +523,9 @@ impl Output {
                 OutputFormat::Json { .. } => match json {
                     Some(json) => OutputMessage::Json(self.process_json_output(
                         json,
-                        pretty,
                         jq_query.as_ref(),
+                        compact,
+                        color,
                     )?),
                     // If not set, no fallback is provided
                     None => {
@@ -534,10 +540,12 @@ impl Output {
     fn process_json_output(
         &self,
         json: &serde_json::Value,
-        pretty: bool,
         jq_query: Option<&String>,
+        compact: bool,
+        color: bool,
     ) -> Result<String> {
-        match jq_query {
+        let json_string = match jq_query {
+            None => self.json_to_string(json, compact)?,
             Some(jq_query) => {
                 let filter = {
                     let mut ctx = ParseCtx::new(Vec::new());
@@ -557,27 +565,39 @@ impl Output {
                         None => return Err(miette!("Failed to parse jq query"))?,
                     }
                 };
-                let inputs = RcIter::new(core::iter::empty());
-                let mut output = filter.run((Ctx::new([], &inputs), Val::from(json.clone())));
+                let jq_inputs = RcIter::new(core::iter::empty());
+                let mut jq_output = filter.run((Ctx::new([], &jq_inputs), Val::from(json.clone())));
                 let mut ret = Vec::<serde_json::Value>::new();
-                while let Some(Ok(val)) = output.next() {
+                while let Some(Ok(val)) = jq_output.next() {
                     ret.push(val.into());
                 }
-                match ret.len() {
-                    1 if pretty => Ok(serde_json::to_string_pretty(&ret[0]).into_diagnostic()?),
-                    1 if !pretty => Ok(serde_json::to_string(&ret[0]).into_diagnostic()?),
-                    _ if pretty => Ok(serde_json::to_string_pretty(&ret).into_diagnostic()?),
-                    _ => Ok(serde_json::to_string(&ret).into_diagnostic()?),
-                }
+                let as_string: Vec<String> = ret
+                    .iter()
+                    .map(|item| self.json_to_string(item, compact))
+                    .collect::<Result<Vec<String>>>()?;
+                as_string.join("\n")
             }
-            None => {
-                if pretty {
-                    Ok(serde_json::to_string_pretty(&json).into_diagnostic()?)
-                } else {
-                    Ok(serde_json::to_string(&json).into_diagnostic()?)
-                }
-            }
-        }
+        };
+
+        let highlighted_json = if color {
+            let highlighter = TextHighlighter::new("json")?;
+            highlighter.process(&json_string)?
+        } else {
+            json_string
+        };
+
+        Ok(highlighted_json)
+    }
+
+    fn json_to_string<T>(&self, json: &T, compact: bool) -> Result<String>
+    where
+        T: ?Sized + Serialize,
+    {
+        Ok(if compact {
+            serde_json::to_string(&json).into_diagnostic()?
+        } else {
+            serde_json::to_string_pretty(&json).into_diagnostic()?
+        })
     }
 }
 
@@ -623,7 +643,7 @@ mod tests {
     #[test]
     fn output_invalid_cases() {
         // No output defined
-        let msg = Output::new().get_message(&OutputFormat::Plain, true);
+        let msg = Output::new().get_message(&OutputFormat::Plain, true, false);
         assert!(msg.is_err());
 
         // If json is requested but it's not defined, no output will be returned
@@ -635,10 +655,11 @@ mod tests {
         let msg = output
             .get_message(
                 &OutputFormat::Json {
-                    pretty: false,
                     jq_query: None,
+                    compact: false,
                 },
                 true,
+                false,
             )
             .unwrap();
         assert!(msg.is_none());
@@ -658,32 +679,32 @@ mod tests {
 
         // plain + tty = plain
         let msg = output
-            .get_message(&OutputFormat::Plain, true)
+            .get_message(&OutputFormat::Plain, true, false)
             .unwrap()
             .unwrap();
         assert_eq!(msg, OutputMessage::Plain(plain));
 
         // plain + !tty = machine
         let msg = output
-            .get_message(&OutputFormat::Plain, false)
+            .get_message(&OutputFormat::Plain, false, false)
             .unwrap()
             .unwrap();
         assert_eq!(msg, OutputMessage::Machine(machine));
 
         // json + _ = json
         let format = OutputFormat::Json {
-            pretty: false,
             jq_query: None,
+            compact: false,
         };
-        let msg = output.get_message(&format, true).unwrap().unwrap();
+        let msg = output.get_message(&format, true, false).unwrap().unwrap();
         assert_eq!(
             msg,
-            OutputMessage::Json(serde_json::to_string(&json).unwrap())
+            OutputMessage::Json(serde_json::to_string_pretty(&json).unwrap())
         );
-        let msg = output.get_message(&format, false).unwrap().unwrap();
+        let msg = output.get_message(&format, false, false).unwrap().unwrap();
         assert_eq!(
             msg,
-            OutputMessage::Json(serde_json::to_string(&json).unwrap())
+            OutputMessage::Json(serde_json::to_string_pretty(&json).unwrap())
         );
     }
 
@@ -700,7 +721,7 @@ mod tests {
         };
         assert_eq!(
             output
-                .get_message(&OutputFormat::Plain, true)
+                .get_message(&OutputFormat::Plain, true, false)
                 .unwrap()
                 .unwrap(),
             OutputMessage::Machine(msg.clone())
@@ -714,10 +735,10 @@ mod tests {
         };
         assert_eq!(
             output
-                .get_message(&OutputFormat::Plain, true)
+                .get_message(&OutputFormat::Plain, true, false)
                 .unwrap()
                 .unwrap(),
-            OutputMessage::Json(json.to_string())
+            OutputMessage::Json(serde_json::to_string_pretty(&json).unwrap())
         );
 
         // plain + !tty; machine not defined -> fallback to json
@@ -728,10 +749,10 @@ mod tests {
         };
         assert_eq!(
             output
-                .get_message(&OutputFormat::Plain, false)
+                .get_message(&OutputFormat::Plain, false, false)
                 .unwrap()
                 .unwrap(),
-            OutputMessage::Json(json.to_string())
+            OutputMessage::Json(serde_json::to_string_pretty(&json).unwrap())
         );
 
         // plain + !tty; machine and json not defined -> fallback to plain
@@ -742,10 +763,82 @@ mod tests {
         };
         assert_eq!(
             output
-                .get_message(&OutputFormat::Plain, false)
+                .get_message(&OutputFormat::Plain, false, false)
                 .unwrap()
                 .unwrap(),
             OutputMessage::Plain(msg.clone())
         );
+    }
+
+    #[test]
+    fn output_message_json_formatting() {
+        let json = serde_json::json!({ "key": "value" });
+        let output = Output {
+            plain: None,
+            machine: None,
+            json: Some(json.clone()),
+        };
+
+        // pretty, no-color
+        assert_eq!(
+            output
+                .get_message(
+                    &OutputFormat::Json {
+                        jq_query: None,
+                        compact: false
+                    },
+                    true,
+                    false
+                )
+                .unwrap()
+                .unwrap(),
+            OutputMessage::Json(serde_json::to_string_pretty(&json).unwrap())
+        );
+
+        // pretty, color
+        let output_message = output
+            .get_message(
+                &OutputFormat::Json {
+                    jq_query: None,
+                    compact: false,
+                },
+                true,
+                true,
+            )
+            .unwrap()
+            .unwrap();
+        assert!(output_message.as_str().contains('\u{1b}'));
+        assert!(output_message.as_str().contains('\n'));
+
+        // compact, no-color
+        assert_eq!(
+            output
+                .get_message(
+                    &OutputFormat::Json {
+                        jq_query: None,
+                        compact: true
+                    },
+                    true,
+                    false
+                )
+                .unwrap()
+                .unwrap(),
+            OutputMessage::Json(serde_json::to_string(&json).unwrap())
+        );
+
+        // compact, color
+        let output_message = output
+            .get_message(
+                &OutputFormat::Json {
+                    jq_query: None,
+                    compact: true,
+                },
+                true,
+                true,
+            )
+            .unwrap()
+            .unwrap();
+        assert!(output_message.as_str().contains('\u{1b}'));
+        assert!(!output_message.as_str().contains('\n'));
     }
 }
