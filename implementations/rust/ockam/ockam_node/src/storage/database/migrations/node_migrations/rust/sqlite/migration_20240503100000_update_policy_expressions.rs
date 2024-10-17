@@ -61,15 +61,16 @@ mod test {
     async fn test_migration() -> Result<()> {
         // create the database pool and migrate the tables
         let db_file = NamedTempFile::new().unwrap();
+        let db_file = db_file.path();
 
-        let pool = SqlxDatabase::create_sqlite_connection_pool(db_file.path()).await?;
-
-        let mut connection = pool.acquire().await.into_core()?;
+        let pool = SqlxDatabase::create_sqlite_single_connection_pool(db_file).await?;
 
         NodeMigrationSet::new(DatabaseType::Sqlite)
             .create_migrator()?
             .migrate_up_to_skip_last_rust_migration(&pool, UpdatePolicyExpressions::version())
             .await?;
+
+        let mut connection = pool.acquire().await.into_core()?;
 
         // insert some policies
         let policy1 = insert_resource_policy("tcp-outlet");
@@ -82,11 +83,16 @@ mod test {
         policy3.execute(&mut *connection).await.void()?;
         policy4.execute(&mut *connection).await.void()?;
 
+        // SQLite EXCLUSIVE lock needs exactly one connection during the migration
+        drop(connection);
+
         // apply migrations
         NodeMigrationSet::new(DatabaseType::Sqlite)
             .create_migrator()?
             .migrate_up_to(&pool, UpdatePolicyExpressions::version())
             .await?;
+
+        let mut connection = pool.acquire().await.into_core()?;
 
         // check that the update was successful for resource policies
         let rows: Vec<AnyRow> = query("SELECT expression FROM resource_policy")

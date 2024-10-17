@@ -20,6 +20,7 @@ teardown() {
   trusted="{}"
   port="$(random_port)"
   run_success "$OCKAM" authority create --tcp-listener-address="127.0.0.1:$port" --project-identifier 1 --trusted-identities "$trusted"
+  sleep 1
   run_success "$OCKAM" node show authority
   assert_output --partial "\"status\":\"running\""
 }

@@ -17,8 +17,8 @@ teardown() {
 force_kill_node() {
   max_retries=5
   i=0
+  pid="$($OCKAM node show $1 --output json | jq .pid)"
   while [[ $i -lt $max_retries ]]; do
-    pid="$($OCKAM node show $1 --output json | jq .pid)"
     run kill -9 $pid
     # Killing a node created without `-f` leaves the
     # process in a defunct state when running within Docker.
@@ -88,34 +88,34 @@ force_kill_node() {
 
 @test "node - fail to create two foreground nodes with the same name" {
   run_success "$OCKAM" node create n -f &
-  sleep 1
+  sleep 2
   run_success "$OCKAM" node show n
   run_failure "$OCKAM" node create n -f
 }
 
 @test "node - can recreate a foreground node after it was killed" {
   run_success "$OCKAM" node create n -f &
-  sleep 1
+  sleep 2
   run_success "$OCKAM" node show n
 
   force_kill_node n
 
   # Recreate node
   run_success "$OCKAM" node create n -f &
-  sleep 1
+  sleep 2
   run_success "$OCKAM" node show n
 }
 
 @test "node - can recreate a foreground node after it was gracefully stopped" {
   run_success "$OCKAM" node create n -f &
-  sleep 1
+  sleep 2
   run_success "$OCKAM" node show n
 
   run_success "$OCKAM" node stop n
 
   # Recreate node
   run_success "$OCKAM" node create n -f &
-  sleep 1
+  sleep 2
   run_success "$OCKAM" node show n
 }
 
@@ -127,7 +127,7 @@ force_kill_node() {
 
 @test "node - foreground node logs to stdout only" {
   run_success "$OCKAM" node create n -vv -f &
-  sleep 1
+  sleep 2
   # It should even create the node directory
   run_failure ls -l "$OCKAM_HOME/nodes/n"
 }

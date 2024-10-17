@@ -197,7 +197,6 @@ teardown() {
 }
 
 @test "portals - local inlet and outlet passing through a relay, removing and re-creating the outlet" {
-  skip
   port="$(random_port)"
   node_port="$(random_port)"
   relay_name="$(random_str)"

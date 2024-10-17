@@ -125,12 +125,13 @@ mod test {
         // create the database pool and migrate the tables
         let db_file = NamedTempFile::new().unwrap();
         let db_file = db_file.path();
-        let pool = SqlxDatabase::create_sqlite_connection_pool(db_file).await?;
-        let mut connection = pool.acquire().await.into_core()?;
+        let pool = SqlxDatabase::create_sqlite_single_connection_pool(db_file).await?;
         NodeMigrationSet::new(DatabaseType::Sqlite)
             .create_migrator()?
             .migrate_up_to_skip_last_rust_migration(&pool, NodeNameIdentityAttributes::version())
             .await?;
+
+        let mut connection = pool.acquire().await.into_core()?;
 
         // insert attribute rows in the previous table
         let attributes = create_attributes("identifier1")?;
@@ -143,11 +144,16 @@ mod test {
         let insert_node2 = insert_node("node2".to_string());
         insert_node2.execute(&mut *connection).await.void()?;
 
+        // SQLite EXCLUSIVE lock needs exactly one connection during the migration
+        drop(connection);
+
         // apply migrations
         NodeMigrationSet::new(DatabaseType::Sqlite)
             .create_migrator()?
             .migrate_up_to(&pool, NodeNameIdentityAttributes::version())
             .await?;
+
+        let mut connection = pool.acquire().await.into_core()?;
 
         // check data
         let rows1: Vec<IdentityAttributesRow> =

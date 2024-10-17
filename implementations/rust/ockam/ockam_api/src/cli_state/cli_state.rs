@@ -289,7 +289,7 @@ impl CliState {
         let _ = std::fs::remove_dir_all(Self::make_commands_log_dir_path(root_path));
         // Delete the nodes database, keep the application database
         if let Some(path) = Self::make_database_configuration(root_path)?.path() {
-            std::fs::remove_file(path)?
+            std::fs::remove_file(path.clone())?;
         };
         Ok(())
     }
@@ -400,9 +400,16 @@ mod tests {
 
     /// HELPERS
     fn list_file_names(dir: &Path) -> Vec<String> {
-        fs::read_dir(dir)
+        let file_names: Vec<_> = fs::read_dir(dir)
             .unwrap()
             .map(|f| f.unwrap().file_name().to_string_lossy().to_string())
-            .collect()
+            .collect();
+
+        // remove -wal and -shm files from the list
+        // they may or may not exist depending on the database state
+        file_names
+            .into_iter()
+            .filter(|file| !file.ends_with("-wal") && !file.ends_with("-shm"))
+            .collect::<Vec<String>>()
     }
 }

@@ -227,15 +227,16 @@ mod test {
     async fn test_migration() -> Result<()> {
         // create the database pool and migrate the tables
         let db_file = NamedTempFile::new().unwrap();
+        let db_file = db_file.path();
 
-        let pool = SqlxDatabase::create_sqlite_connection_pool(db_file.path()).await?;
-
-        let mut connection = pool.acquire().await.into_core()?;
+        let pool = SqlxDatabase::create_sqlite_single_connection_pool(db_file).await?;
 
         NodeMigrationSet::new(DatabaseType::Sqlite)
             .create_migrator()?
             .migrate_up_to_skip_last_rust_migration(&pool, PolicyTrustContextId::version())
             .await?;
+
+        let connection = pool.acquire().await.into_core()?;
 
         let insert_node1 = insert_node("n1".to_string());
         let insert_node2 = insert_node("n2".to_string());
@@ -252,6 +253,9 @@ mod test {
         let expr3 = hex::decode("8207818382058163616e6482078183820581613d82058178197265736f757263652e74727573745f636f6e746578745f696482058178187375626a6563742e74727573745f636f6e746578745f696482078183820581613d820581727375626a6563742e6f636b616d2d726f6c6582018168656e726f6c6c6572").unwrap();
         let insert3 = insert_policy("R3".to_string(), "A3".to_string(), expr3);
 
+        // we only have one connection in the pool, requesting another would create deadlock
+        drop(connection);
+
         insert_node1.execute(&pool).await.void()?;
         insert_node2.execute(&pool).await.void()?;
         insert1.execute(&pool).await.void()?;
@@ -263,6 +267,8 @@ mod test {
             .create_migrator()?
             .migrate_up_to(&pool, PolicyTrustContextId::version())
             .await?;
+
+        let mut connection = pool.acquire().await.into_core()?;
 
         for node_name in &["n1", "n2"] {
             let rows: Vec<PolicyRowNew> = query_as(

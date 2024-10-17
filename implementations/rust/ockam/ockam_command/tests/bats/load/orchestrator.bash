@@ -11,7 +11,7 @@ function orchestrator_setup_suite() {
   OCKAM_HOME=$OCKAM_HOME_BASE $OCKAM project-member delete --all || true
 
   # Remove all nodes from the root OCKAM_HOME directory
-  OCKAM_HOME=$OCKAM_HOME_BASE $OCKAM node delete --all --force --yes || true
+  OCKAM_HOME=$OCKAM_HOME_BASE $OCKAM node delete --all --yes || true
 }
 
 function orchestrator_teardown_suite() {
@@ -43,7 +43,7 @@ function get_project_data() {
 
 function copy_enrolled_home_dir() {
   if [ ! -z "${ORCHESTRATOR_TESTS}" ]; then
-    cp -r $OCKAM_HOME_BASE/application_database.sqlite3 $OCKAM_HOME/
-    cp -r $OCKAM_HOME_BASE/database.sqlite3 $OCKAM_HOME/
+    cp -a $OCKAM_HOME_BASE/application_database.sqlite3 $OCKAM_HOME/
+    cp -a $OCKAM_HOME_BASE/database.sqlite3 $OCKAM_HOME/
   fi
 }
