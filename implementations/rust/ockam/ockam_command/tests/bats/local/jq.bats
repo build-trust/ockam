@@ -18,8 +18,8 @@ teardown() {
   run_success "$OCKAM" vault create v1
 
   run_success "$OCKAM" vault show v1 --output json --jq .
-  assert_output --partial "\"name\":\"v1\""
-  assert_output --partial "\"use_aws_kms\":\"No\""
+  assert_output --partial "\"name\": \"v1\""
+  assert_output --partial "\"use_aws_kms\": \"No\""
 
   run_success "$OCKAM" vault show v1 --output json --jq .vault.name
   assert_output --partial "v1"
@@ -36,9 +36,9 @@ teardown() {
   run_success "$OCKAM" node create n
 
   run_success "$OCKAM" node show n --jq .
-  assert_output --partial "\"name\":\"n\""
+  assert_output --partial "\"name\": \"n\""
   assert_output --partial "/dnsaddr/localhost/tcp/"
-  assert_output --partial "\"addr\":\"uppercase\""
+  assert_output --partial "\"addr\": \"uppercase\""
 
   run_success "$OCKAM" node show n --jq .name
   assert_output --partial "n"

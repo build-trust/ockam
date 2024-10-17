@@ -88,7 +88,7 @@ impl EnrollCommand {
     }
 
     async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
-        if opts.global_args.output_format()?.is_json() {
+        if opts.global_args.output_format().is_json() {
             return Err(miette::miette!(
             "This command is interactive and requires you to open a web browser to complete enrollment. \
             Please try running it again without '--output json'."

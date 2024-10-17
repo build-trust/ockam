@@ -144,7 +144,7 @@ teardown() {
   run_failure "$OCKAM" project-admin add "not_an_email"
 
   run_success "$OCKAM" project-admin list --output json
-  assert_output --partial "\"email\":\"ockam.admin.test@ockam.io\""
+  assert_output --partial "\"email\": \"ockam.admin.test@ockam.io\""
 
   run_success "$OCKAM" project-admin delete ockam.admin.test@ockam.io --yes
 

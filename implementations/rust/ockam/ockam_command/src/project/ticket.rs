@@ -81,7 +81,7 @@ impl Command for TicketCommand {
     }
 
     async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> Result<()> {
-        if opts.global_args.output_format()?.is_json() {
+        if opts.global_args.output_format().is_json() {
             return Err(miette::miette!(
                 "This command only outputs a hex encoded string for 'ockam project enroll' to use. \
                 Please try running it again without '--output json'."
