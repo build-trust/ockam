@@ -4,8 +4,8 @@
 pub enum OutputFormat {
     Plain,
     Json {
-        pretty: bool,
         jq_query: Option<String>,
+        compact: bool,
     },
 }
 
@@ -30,8 +30,8 @@ mod tests {
         assert!(!plain.is_json());
 
         let json = OutputFormat::Json {
-            pretty: false,
             jq_query: None,
+            compact: false,
         };
         assert!(json.is_json());
         assert!(!json.is_plain());

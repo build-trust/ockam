@@ -23,6 +23,10 @@ impl TerminalWriter for TerminalStream<Term> {
         self.writer.is_term()
     }
 
+    fn color(&self) -> bool {
+        !self.no_color
+    }
+
     fn write(&mut self, s: impl AsRef<str>) -> Result<()> {
         let s = self.prepare_msg(s)?;
         self.writer.write_all(s.as_bytes())?;
