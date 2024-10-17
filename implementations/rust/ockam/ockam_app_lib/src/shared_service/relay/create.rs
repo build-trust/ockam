@@ -6,7 +6,7 @@ use tracing::{debug, info, trace, warn};
 
 use ockam::Context;
 use ockam_api::cli_state::CliState;
-use ockam_api::nodes::models::relay::RelayInfo;
+use ockam_api::nodes::models::relay::{RelayInfo, ReturnTiming};
 use ockam_api::nodes::InMemoryNode;
 use ockam_multiaddr::MultiAddr;
 
@@ -90,6 +90,7 @@ impl AppState {
                             relay_alias.clone(),
                             None,
                             Some(relay_alias),
+                            ReturnTiming::AfterConnection,
                         )
                         .await
                         .into_diagnostic()?;

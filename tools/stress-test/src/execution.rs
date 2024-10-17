@@ -1,5 +1,6 @@
 use crate::{portal_simulator, Relay, State};
 use ockam::abac::tokio::task::JoinSet;
+use ockam_api::nodes::models::relay::ReturnTiming;
 use ockam_core::Address;
 use std::cmp;
 
@@ -29,8 +30,15 @@ impl State {
                 let context = self.context.clone();
                 join_set.spawn(async move {
                     let id = Self::random_id();
-                    node.create_relay(&context, &project_addr, id.clone(), None, Some(id))
-                        .await
+                    node.create_relay(
+                        &context,
+                        &project_addr,
+                        id.clone(),
+                        None,
+                        Some(id),
+                        ReturnTiming::AfterConnection,
+                    )
+                    .await
                 });
             }
 
