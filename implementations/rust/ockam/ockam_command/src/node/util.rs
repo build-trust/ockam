@@ -1,5 +1,5 @@
+use miette::Context as _;
 use miette::IntoDiagnostic;
-use miette::{miette, Context as _};
 use ockam_core::env::get_env_with_default;
 use ockam_node::Context;
 use rand::random;
@@ -27,23 +27,6 @@ impl Default for NodeManagerDefaults {
             trust_opts: TrustOpts::default(),
         }
     }
-}
-
-pub async fn delete_all_nodes(opts: &CommandGlobalOpts, force: bool) -> miette::Result<()> {
-    let nodes = opts.state.get_nodes().await?;
-    let mut deletion_errors = Vec::new();
-    for n in nodes {
-        if let Err(e) = opts.state.delete_node(&n.name(), force).await {
-            deletion_errors.push((n.name(), e));
-        }
-    }
-    if !deletion_errors.is_empty() {
-        return Err(miette!(
-            "errors while deleting nodes: {:?}",
-            deletion_errors
-        ));
-    }
-    Ok(())
 }
 
 pub async fn initialize_default_node(

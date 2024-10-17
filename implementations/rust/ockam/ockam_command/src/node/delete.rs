@@ -3,9 +3,9 @@ use clap::Args;
 use colorful::Colorful;
 use console::Term;
 use ockam_api::colors::color_primary;
-use ockam_api::fmt_ok;
 use ockam_api::terminal::notification::NotificationHandler;
 use ockam_api::terminal::{Terminal, TerminalStream};
+use ockam_api::{fmt_ok, fmt_warn};
 
 use crate::terminal::tui::DeleteCommandTui;
 use crate::tui::PluralTerm;
@@ -29,7 +29,7 @@ pub struct DeleteCommand {
     #[arg(long, group = "nodes")]
     all: bool,
 
-    /// Terminate node process(es) immediately (uses SIGKILL instead of SIGTERM)
+    /// [DEPRECATED] Terminate node process(es) immediately (uses SIGKILL instead of SIGTERM)
     #[arg(display_order = 901, long, short)]
     force: bool,
 
@@ -50,6 +50,12 @@ impl DeleteCommand {
     }
 
     async fn async_run(&self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        if self.force {
+            opts.terminal.write_line(fmt_warn!(
+                "{} is deprecated. This flag has no effect",
+                color_primary("--force"),
+            ))?;
+        }
         DeleteTui::run(opts, self.clone()).await
     }
 }
@@ -99,10 +105,7 @@ impl DeleteCommandTui for DeleteTui {
     }
 
     async fn delete_single(&self, item_name: &str) -> miette::Result<()> {
-        self.opts
-            .state
-            .delete_node(item_name, self.cmd.force)
-            .await?;
+        self.opts.state.delete_node(item_name).await?;
         self.terminal()
             .stdout()
             .plain(fmt_ok!(

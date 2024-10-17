@@ -59,7 +59,7 @@ impl CreateCommand {
                 .await
         };
         if res.is_err() {
-            let _ = opts.state.delete_node(&node_name, false).await;
+            let _ = opts.state.delete_node(&node_name).await;
         }
         res
     }

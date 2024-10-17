@@ -160,7 +160,7 @@ impl CreateCommand {
 
         // Clean up and exit
         let _ = ctx.stop().await;
-        let _ = opts.state.stop_node(&node_name, true).await;
+        let _ = opts.state.stop_node(&node_name).await;
         if self.foreground_args.child_process {
             opts.shutdown();
             exit(0);
