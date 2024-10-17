@@ -440,7 +440,7 @@ impl CreateCommand {
         .await?;
 
         let _ = ctx.stop().await;
-        let _ = opts.state.stop_node(&self.node_name, true).await;
+        let _ = opts.state.stop_node(&self.node_name).await;
         if foreground_args.child_process {
             opts.shutdown();
             exit(0);

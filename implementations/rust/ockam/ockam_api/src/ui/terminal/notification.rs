@@ -91,6 +91,10 @@ impl<T: TerminalWriter + Debug + Send + 'static> NotificationHandler<T> {
                 select! {
                     _ = sleep(REPORTING_CHANNEL_POLL_DELAY) => {
                         if *self.stop.lock().unwrap() {
+                            // Drain the channel
+                            while let Ok(notification) = self.rx.try_recv() {
+                                self.handle_notification(notification).await;
+                            }
                             break;
                         }
                     }

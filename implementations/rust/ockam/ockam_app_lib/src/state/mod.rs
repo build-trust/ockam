@@ -414,7 +414,7 @@ impl AppState {
     }
 
     pub async fn delete_background_node(&self, node_name: &str) -> Result<()> {
-        Ok(self.state().await.delete_node(node_name, true).await?)
+        Ok(self.state().await.delete_node(node_name).await?)
     }
 
     pub async fn is_enrolled(&self) -> Result<bool> {

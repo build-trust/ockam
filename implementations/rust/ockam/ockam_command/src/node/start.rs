@@ -167,7 +167,7 @@ async fn run_node(
     opts: &CommandGlobalOpts,
 ) -> miette::Result<BackgroundNodeClient> {
     let node_info = opts.state.get_node(node_name).await?;
-    opts.state.stop_node(node_name, false).await?;
+    opts.state.stop_node(node_name).await?;
     let node_address = node_info
         .tcp_listener_address()
         .map(|a| a.to_string())

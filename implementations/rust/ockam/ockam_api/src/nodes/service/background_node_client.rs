@@ -80,7 +80,7 @@ impl BackgroundNodeClient {
     }
 
     pub async fn delete(&self) -> miette::Result<()> {
-        Ok(self.cli_state.delete_node(&self.node_name(), false).await?)
+        Ok(self.cli_state.delete_node(&self.node_name()).await?)
     }
 
     // Set a different node name
@@ -140,7 +140,7 @@ impl BackgroundNodeClient {
             .success()
             .into_diagnostic();
 
-        _ = tcp_connection.stop(ctx).await;
+        let _ = tcp_connection.stop(ctx).await;
         res
     }
 
@@ -158,7 +158,7 @@ impl BackgroundNodeClient {
         let (tcp_connection, client) = self.make_client().await?;
         let res = client.ask(ctx, req).await.into_diagnostic();
 
-        _ = tcp_connection.stop(ctx).await;
+        let _ = tcp_connection.stop(ctx).await;
         res
     }
 
@@ -175,7 +175,7 @@ impl BackgroundNodeClient {
             .success()
             .into_diagnostic();
 
-        _ = tcp_connection.stop(ctx).await;
+        let _ = tcp_connection.stop(ctx).await;
         res
     }
 
@@ -191,7 +191,7 @@ impl BackgroundNodeClient {
         let (tcp_connection, client) = self.make_client().await?;
         let res = client.tell(ctx, req).await.into_diagnostic();
 
-        _ = tcp_connection.stop(ctx).await;
+        let _ = tcp_connection.stop(ctx).await;
         res
     }
 

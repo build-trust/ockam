@@ -124,9 +124,10 @@ impl Command for TicketCommand {
         let ticket = ExportedEnrollmentTicket::new(
             token,
             ProjectRoute::new(MultiAddr::from_str(&project.access_route)?)?,
-            project.identity.as_ref().ok_or(miette!(
-                "missing project's identity, this should not happen"
-            ))?,
+            project
+                .identity
+                .as_ref()
+                .ok_or(miette!("missing project's identity"))?,
             &project.name,
             project
                 .project_change_history

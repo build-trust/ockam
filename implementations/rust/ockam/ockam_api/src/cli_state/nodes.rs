@@ -3,8 +3,8 @@ use std::fmt::{Display, Formatter};
 use std::path::PathBuf;
 use std::process;
 
+use colorful::Colorful;
 use nix::errno::Errno;
-
 use nix::sys::signal;
 use serde::Serialize;
 use sysinfo::{Pid, ProcessStatus, ProcessesToUpdate, System};
@@ -23,7 +23,7 @@ use crate::cloud::project::Project;
 use crate::colors::color_primary;
 use crate::config::lookup::InternetAddress;
 
-use crate::ConnectionStatus;
+use crate::{fmt_warn, ConnectionStatus};
 
 /// The methods below support the creation and update of local nodes
 impl CliState {
@@ -113,19 +113,19 @@ impl CliState {
     /// Delete a node
     ///  - first stop it if it is running
     ///  - then remove it from persistent storage
-    #[instrument(skip_all, fields(node_name = node_name, force = %force))]
-    pub async fn delete_node(&self, node_name: &str, force: bool) -> Result<()> {
-        self.stop_node(node_name, force).await?;
+    #[instrument(skip_all, fields(node_name = node_name))]
+    pub async fn delete_node(&self, node_name: &str) -> Result<()> {
+        self.stop_node(node_name).await?;
         self.remove_node(node_name).await?;
         Ok(())
     }
 
     /// Delete all created nodes
-    #[instrument(skip_all, fields(force = %force))]
-    pub async fn delete_all_nodes(&self, force: bool) -> Result<()> {
+    #[instrument(skip_all)]
+    pub async fn delete_all_nodes(&self) -> Result<()> {
         let nodes = self.nodes_repository().get_nodes().await?;
         for node in nodes {
-            self.delete_node(&node.name(), force).await?;
+            self.delete_node(&node.name()).await?;
         }
         Ok(())
     }
@@ -177,77 +177,102 @@ impl CliState {
     }
 
     /// Stop a background node
-    ///
-    ///  - if force is true, send a SIGKILL signal to the node process
-    #[instrument(skip_all, fields(node_name = node_name, force = %force))]
-    pub async fn stop_node(&self, node_name: &str, force: bool) -> Result<()> {
+    #[instrument(skip_all, fields(node_name = node_name))]
+    pub async fn stop_node(&self, node_name: &str) -> Result<()> {
         debug!(name=%node_name, "stopping node...");
         let node = self.get_node(node_name).await?;
         if let Some(pid) = node.pid() {
-            // avoid killing the current process, return successfully instead.
-            // this is useful when we need to stop all the nodes, for example
-            // during a reset
+            // Avoid killing the current process, return successfully instead.
+            // This is needed when deleting nodes from another node, for example, during a reset
             if pid == process::id() {
                 return Ok(());
             }
 
-            // kill process
-            let pid = nix::unistd::Pid::from_raw(pid as i32);
-            let kill_signal = if force {
-                signal::Signal::SIGKILL
-            } else {
-                signal::Signal::SIGTERM
-            };
-            signal::kill(pid, kill_signal)
-                .or_else(|e| {
-                    if e == Errno::ESRCH {
-                        tracing::warn!(node = %node.name(), %pid, "No such process");
-                        Ok(())
-                    } else {
-                        Err(e)
-                    }
-                })
-                .map_err(|e| {
-                    CliStateError::Io(std::io::Error::new(
-                        std::io::ErrorKind::Other,
-                        format!("failed to stop PID `{pid}` with error `{e}`"),
-                    ))
-                })?;
-            debug!(name = %node.name(), %pid, "sent stop signal to node process");
-
-            // wait until the node has fully stopped
-            let timeout = std::time::Duration::from_millis(100);
-            let max_attempts = std::time::Duration::from_secs(5).as_millis() / timeout.as_millis();
-            let mut attempts = 0;
-            let mut sys = System::new();
-            let pid = Pid::from_u32(pid.as_raw() as u32);
-            loop {
-                sys.refresh_processes(ProcessesToUpdate::All);
-                if sys.process(pid).is_none() {
-                    info!(name = %node.name(), %pid, "node process exited");
-                    break;
-                }
-                if attempts > max_attempts {
-                    warn!(name = %node.name(), %pid, "node process did not exit");
-                    return Err(CliStateError::Io(std::io::Error::new(
-                        std::io::ErrorKind::Other,
-                        format!("failed to stop PID `{pid}`. Consider passing the `--force` flag"),
-                    )));
-                }
-                // notify the user that the node is stopping if it takes too long
-                if attempts == 5 {
-                    self.notify_progress(format!(
-                        "Waiting for node {} to stop",
-                        color_primary(node_name)
+            // Try first with SIGTERM, if it fails, try again with SIGKILL
+            let mut err = None;
+            for signal in [signal::Signal::SIGTERM, signal::Signal::SIGKILL] {
+                if signal == signal::Signal::SIGKILL {
+                    self.notify_message(fmt_warn!(
+                        "Failed to stop node {} with {}, trying with {}",
+                        color_primary(node_name),
+                        color_primary("SIGTERM"),
+                        color_primary("SIGKILL")
                     ));
                 }
-                attempts += 1;
-                tokio::time::sleep(timeout).await;
+                match self.kill_node_process(node_name, pid, signal).await {
+                    Ok(_) => {
+                        break;
+                    }
+                    Err(e) => {
+                        err = Some(e);
+                    }
+                }
+            }
+            if let Some(err) = err {
+                return Err(err);
             }
         }
         self.nodes_repository().set_no_node_pid(node_name).await?;
         debug!(name=%node_name, "node stopped");
         Ok(())
+    }
+
+    async fn kill_node_process(
+        &self,
+        node_name: &str,
+        pid: u32,
+        signal: signal::Signal,
+    ) -> Result<()> {
+        let pid = nix::unistd::Pid::from_raw(pid as i32);
+        signal::kill(pid, signal)
+            .or_else(|e| {
+                if e == Errno::ESRCH {
+                    tracing::warn!(node = %node_name, %pid, "No such process");
+                    Ok(())
+                } else {
+                    Err(e)
+                }
+            })
+            .map_err(|e| {
+                CliStateError::Io(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    format!("failed to stop PID `{pid}` with error `{e}`"),
+                ))
+            })?;
+        debug!(name = %node_name, %pid, %signal, "sent stop signal to node's process");
+
+        // Wait until the node has fully stopped
+        let timeout = std::time::Duration::from_millis(100);
+        let max_attempts = std::time::Duration::from_secs(5).as_millis() / timeout.as_millis();
+        let mut attempts = 0;
+        let mut sys = System::new();
+        let pid = Pid::from_u32(pid.as_raw() as u32);
+        loop {
+            sys.refresh_processes(ProcessesToUpdate::All);
+            if sys.process(pid).is_none() {
+                info!(name = %node_name, %pid, "node process exited");
+                self.notify_progress_finish_and_clear();
+                return Ok(());
+            }
+            if attempts > max_attempts {
+                warn!(name = %node_name, %pid, %signal, "node process did not exit");
+                self.notify_progress_finish_and_clear();
+                return Err(CliStateError::Io(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    format!("failed to stop PID `{pid}`"),
+                )));
+            }
+            // notify the user that the node is stopping if it takes too long
+            if attempts == 5 {
+                self.notify_progress(format!(
+                    "Waiting for node's {} process {} to stop",
+                    color_primary(node_name),
+                    color_primary(pid)
+                ));
+            }
+            attempts += 1;
+            tokio::time::sleep(timeout).await;
+        }
     }
 
     /// Set a node as the default node
