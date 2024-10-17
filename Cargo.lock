@@ -4941,6 +4941,7 @@ dependencies = [
  "sqlx-build-trust-core",
  "sqlx-build-trust-postgres",
  "sqlx-build-trust-sqlite",
+ "sysinfo",
  "tempfile",
  "time",
  "tokio",

@@ -197,7 +197,6 @@ teardown() {
 }
 
 @test "portals - local inlet and outlet passing through a relay, removing and re-creating the outlet" {
-  skip
   port="$(random_port)"
   node_port="$(random_port)"
   relay_name="$(random_str)"
@@ -210,7 +209,7 @@ teardown() {
   run_success "$OCKAM" tcp-inlet create --at /node/green --from "$port" --via "$relay_name"
   run_success curl -sfI --retry-connrefused --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$port"
 
-  $OCKAM node delete blue --yes --force
+  $OCKAM node delete blue --yes
   run_failure curl -sfI -m 3 "127.0.0.1:$port"
 
   run_success "$OCKAM" node create blue --tcp-listener-address "127.0.0.1:$node_port"
@@ -281,7 +280,7 @@ teardown() {
   socat_pid=$!
   sleep 2
 
-  run_success curl -sfI --retry-all-errors --retry-delay 2 --retry 10 -m 30 "127.0.0.1:${inlet_port}"
+  run_success curl -sfI --retry-all-errors --retry-delay 2 --retry 30 -m 60 "127.0.0.1:${inlet_port}"
   status=$("$OCKAM" relay show "${relay_name}" --output json | jq .connection_status -r)
   assert_equal "$status" "Up"
 
