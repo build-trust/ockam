@@ -4,7 +4,7 @@ defmodule OckamRustElixirNifs.MixProject do
   def project do
     [
       app: :ockam_rust_elixir_nifs,
-      version: "0.117.0",
+      version: "0.134.0",
       elixir: "~> 1.13",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
