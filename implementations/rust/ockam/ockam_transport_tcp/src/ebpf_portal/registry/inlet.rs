@@ -1,16 +1,18 @@
 use crate::ebpf_portal::{ConnectionIdentifier, ParsedRawSocketPacket, Port};
 use crate::portal::InletSharedState;
-use ockam_core::Address;
+use ockam_core::compat::sync::Arc;
+use ockam_core::compat::sync::RwLock as SyncRwLock;
+use ockam_core::{Address, LocalInfoIdentifier};
+use ockam_node::compat::asynchronous::RwLock as AsyncRwLock;
 use std::collections::HashMap;
 use std::net::Ipv4Addr;
-use std::sync::{Arc, RwLock};
 use tokio::net::TcpListener;
 use tokio::sync::mpsc::Sender;
 
 /// Inlet registry
 #[derive(Default, Clone)]
 pub(crate) struct InletRegistry {
-    inlets: Arc<RwLock<HashMap<Port, Inlet>>>,
+    inlets: Arc<SyncRwLock<HashMap<Port, Inlet>>>,
 }
 
 impl InletRegistry {
@@ -29,7 +31,7 @@ impl InletRegistry {
         sender: Sender<ParsedRawSocketPacket>,
         port: Port,
         tcp_listener: TcpListener,
-        inlet_shared_state: Arc<RwLock<InletSharedState>>,
+        inlet_shared_state: Arc<AsyncRwLock<InletSharedState>>,
     ) -> Inlet {
         let mut inlets = self.inlets.write().unwrap();
 
@@ -69,12 +71,12 @@ pub struct Inlet {
     /// Port
     pub port: Port,
     /// Route to the corresponding Outlet
-    pub inlet_shared_state: Arc<RwLock<InletSharedState>>,
+    pub inlet_shared_state: Arc<AsyncRwLock<InletSharedState>>,
     /// Hold to mark the port as taken
     pub _tcp_listener: Arc<TcpListener>,
     /// Same map with different key
-    connections1: Arc<RwLock<HashMap<InletConnectionKey1, Arc<InletConnection>>>>,
-    connections2: Arc<RwLock<HashMap<InletConnectionKey2, Arc<InletConnection>>>>,
+    connections1: Arc<SyncRwLock<HashMap<InletConnectionKey1, Arc<InletConnection>>>>,
+    connections2: Arc<SyncRwLock<HashMap<InletConnectionKey2, Arc<InletConnection>>>>,
 }
 
 impl Inlet {
@@ -89,7 +91,7 @@ impl Inlet {
         );
         self.connections2.write().unwrap().insert(
             InletConnectionKey2 {
-                identifier: connection.identifier.clone(),
+                their_identifier: connection.their_identifier.clone(),
                 connection_identifier: connection.connection_identifier.clone(),
             },
             connection,
@@ -115,14 +117,14 @@ impl Inlet {
     /// Get mapping
     pub(crate) fn get_connection_external(
         &self,
-        identifier: Option<String>, // Identity
+        their_identifier: Option<LocalInfoIdentifier>, // Identity
         connection_identifier: ConnectionIdentifier,
     ) -> Option<Arc<InletConnection>> {
         self.connections2
             .read()
             .unwrap()
             .get(&InletConnectionKey2 {
-                identifier,
+                their_identifier,
                 connection_identifier,
             })
             .cloned()
@@ -137,14 +139,14 @@ struct InletConnectionKey1 {
 
 #[derive(Hash, PartialEq, Eq)]
 struct InletConnectionKey2 {
-    identifier: Option<String>,
+    their_identifier: Option<LocalInfoIdentifier>,
     connection_identifier: ConnectionIdentifier,
 }
 
 /// Inlet Mapping
 pub struct InletConnection {
     /// Identity Identifier of the other side
-    pub identifier: Option<String>,
+    pub their_identifier: Option<LocalInfoIdentifier>,
     /// Unique connection Identifier
     pub connection_identifier: ConnectionIdentifier,
     /// We can listen of multiple IPs

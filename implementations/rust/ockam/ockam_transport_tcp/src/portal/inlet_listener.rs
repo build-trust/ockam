@@ -1,13 +1,14 @@
 use crate::portal::addresses::{Addresses, PortalType};
 use crate::portal::tls_certificate::TlsCertificateProvider;
-use crate::portal::{ReadHalfMaybeTls, WriteHalfMaybeTls};
+use crate::portal::{InletSharedState, ReadHalfMaybeTls, WriteHalfMaybeTls};
 use crate::{portal::TcpPortalWorker, TcpInlet, TcpInletOptions, TcpRegistry};
 use log::warn;
 use ockam_core::compat::net::SocketAddr;
-use ockam_core::compat::sync::{Arc, RwLock};
+use ockam_core::compat::sync::Arc;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{async_trait, compat::boxed::Box, Result};
 use ockam_core::{Address, Processor, Route};
+use ockam_node::compat::asynchronous::RwLock;
 use ockam_node::Context;
 use ockam_transport_core::{HostnamePort, TransportError};
 use rustls::pki_types::CertificateDer;
@@ -17,50 +18,6 @@ use tokio::net::TcpListener;
 use tokio::time::Instant;
 use tokio_rustls::{TlsAcceptor, TlsStream};
 use tracing::{debug, error, instrument};
-
-/// State shared between `TcpInletListenProcessor` and `TcpInlet` to allow manipulating its state
-/// from outside the worker: update the route to the outlet or pause it.
-#[derive(Debug, Clone)]
-pub struct InletSharedState {
-    route: Route,
-    is_paused: bool,
-    // Starts with 0 and increments each time when inlet updates the route to the outlet
-    // (e.g. when reconnecting), this will allow outlet to figure out what is the most recent
-    // return_route even if messages arrive out-of-order
-    route_index: u32,
-}
-
-impl InletSharedState {
-    pub fn route(&self) -> &Route {
-        &self.route
-    }
-
-    pub fn update_route(&mut self, new_route: Route) {
-        self.route = new_route;
-        // Overflow here is very unlikely...
-        self.route_index += 1;
-    }
-
-    pub fn is_paused(&self) -> bool {
-        self.is_paused
-    }
-
-    pub fn set_is_paused(&mut self, is_paused: bool) {
-        self.is_paused = is_paused;
-    }
-
-    pub fn route_index(&self) -> u32 {
-        self.route_index
-    }
-
-    pub fn new(is_paused: bool, route: Route) -> Self {
-        Self {
-            route,
-            is_paused,
-            route_index: 0,
-        }
-    }
-}
 
 /// A TCP Portal Inlet listen processor
 ///
@@ -109,11 +66,8 @@ impl TcpInletListenProcessor {
             }
         };
         let socket_addr = inner.local_addr().map_err(TransportError::from)?;
-        let inlet_shared_state = InletSharedState {
-            route: outlet_listener_route,
-            is_paused: options.is_paused,
-            route_index: 0,
-        };
+        let inlet_shared_state =
+            InletSharedState::create(ctx, outlet_listener_route, options.is_paused).await?;
         let inlet_shared_state = Arc::new(RwLock::new(inlet_shared_state));
         let processor = Self::new(registry, inner, inlet_shared_state.clone(), options);
 
@@ -227,9 +181,9 @@ impl Processor for TcpInletListenProcessor {
 
         let addresses = Addresses::generate(PortalType::Inlet);
 
-        let inlet_shared_state = self.inlet_shared_state.read().unwrap().clone();
+        let inlet_shared_state = self.inlet_shared_state.read().await.clone();
 
-        if inlet_shared_state.is_paused {
+        if inlet_shared_state.is_paused() {
             // Just drop the stream
             return Ok(true);
         }
@@ -237,7 +191,7 @@ impl Processor for TcpInletListenProcessor {
         TcpInletOptions::setup_flow_control(
             ctx.flow_controls(),
             &addresses,
-            inlet_shared_state.route.next()?,
+            inlet_shared_state.route().next()?,
         );
 
         let streams = if let Some(certificate_provider) = &self.options.tls_certificate_provider {
@@ -262,13 +216,13 @@ impl Processor for TcpInletListenProcessor {
             )
         };
 
-        // TODO: Make sure the connection can't be spoofed by someone having access to that Outlet
         TcpPortalWorker::start_new_inlet(
             ctx,
             self.registry.clone(),
             streams,
             HostnamePort::from(socket_addr),
-            inlet_shared_state.route,
+            inlet_shared_state.route().clone(),
+            inlet_shared_state.their_identifier(),
             addresses,
             self.options.incoming_access_control.clone(),
             self.options.outgoing_access_control.clone(),
