@@ -45,6 +45,8 @@ for suite in "$@"; do
   esac
 done
 
+echo "Running with OCKAM_EBPF=$OCKAM_EBPF"
+
 if [ "$local_suite" = true ]; then
   echo "Running local suite..."
   bats "$current_directory/local" --timing -j 3
