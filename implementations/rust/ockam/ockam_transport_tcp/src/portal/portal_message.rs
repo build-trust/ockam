@@ -14,6 +14,9 @@ pub enum PortalMessage<'de> {
     /// or from the target to the Inlet was dropped
     Disconnect,
     /// Message with binary payload and packet counter
+    // TODO: Add route_index. May not be as important as for eBPF portals, as regular portals
+    //  require reliable channel anyways. And if PortalMessage is sent over a channel that
+    //  guarantees ordering, we don't need route_index
     Payload(&'de [u8], Option<u16>),
 }
 

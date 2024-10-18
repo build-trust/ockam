@@ -1,12 +1,11 @@
 use core::sync::atomic::AtomicBool;
 use core::time::Duration;
 use ockam_core::compat::boxed::Box;
-use ockam_core::compat::string::ToString;
 use ockam_core::compat::sync::{Arc, RwLock};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{
     AllowAll, Any, DenyAll, Error, Mailbox, Mailboxes, NeutralMessage, OutgoingAccessControl,
-    Route, Routed,
+    Route, Routed, SecureChannelMetadata,
 };
 use ockam_core::{Result, Worker};
 use ockam_node::callback::CallbackSender;
@@ -34,7 +33,7 @@ use crate::secure_channel::{Addresses, Role};
 use crate::{
     ChangeHistoryRepository, CredentialRetriever, IdentityError, PersistedSecureChannel,
     SecureChannelPurposeKey, SecureChannelRegistryEntry, SecureChannelRepository, SecureChannels,
-    TrustPolicy, IDENTITY_SECURE_CHANNEL_IDENTIFIER,
+    TrustPolicy,
 };
 
 /// This struct implements a Worker receiving and sending messages
@@ -445,9 +444,8 @@ impl HandshakeWorker {
                 ))
                 .terminal_with_attributes(
                     self.addresses.encryptor.clone(),
-                    vec![(
-                        IDENTITY_SECURE_CHANNEL_IDENTIFIER.to_string(),
-                        their_identifier.to_string(),
+                    vec![SecureChannelMetadata::attribute(
+                        their_identifier.clone().into(),
                     )],
                 )
                 .start(context)
