@@ -72,6 +72,9 @@ mod worker_builder;
 #[cfg(feature = "std")]
 pub mod runtime;
 
+#[cfg(feature = "watchdog")]
+mod watchdog;
+
 pub use context::*;
 pub use delayed::*;
 pub use error::*;
