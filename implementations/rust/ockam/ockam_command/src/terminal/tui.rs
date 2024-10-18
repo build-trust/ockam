@@ -23,7 +23,7 @@ pub trait ShowCommandTui {
     async fn show(&self) -> miette::Result<()> {
         let terminal = self.terminal();
         let items_names = self.list_items_names().await?;
-        if items_names.is_empty() {
+        if items_names.is_empty() && self.cmd_arg_item_name().is_none() {
             terminal
                 .stdout()
                 .plain(fmt_info!(
