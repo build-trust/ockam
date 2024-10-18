@@ -4928,6 +4928,7 @@ dependencies = [
  "heapless 0.8.0",
  "hex",
  "minicbor",
+ "nix 0.29.0",
  "ockam_core",
  "ockam_executor",
  "ockam_macros",
