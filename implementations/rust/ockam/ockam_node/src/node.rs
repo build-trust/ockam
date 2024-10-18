@@ -119,6 +119,12 @@ impl NodeBuilder {
         let mut exe = Executor::new(rt.clone(), &flow_controls);
         let addr: Address = "app".into();
 
+        #[cfg(feature = "watchdog")]
+        {
+            let watchdog = crate::watchdog::TokioRuntimeWatchdog::new();
+            watchdog.start_watchdog_loop(&rt);
+        }
+
         // The root application worker needs a mailbox and relay to accept
         // messages from workers, and to buffer incoming transcoded data.
         let (ctx, sender, _) = Context::new(
