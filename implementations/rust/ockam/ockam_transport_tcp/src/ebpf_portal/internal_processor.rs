@@ -2,7 +2,7 @@ use crate::ebpf_portal::{
     Inlet, InletConnection, OckamPortalPacket, Outlet, ParsedRawSocketPacket, PortalMode,
 };
 use log::{debug, trace, warn};
-use ockam_core::{async_trait, route, LocalMessage, Processor, Result};
+use ockam_core::{async_trait, route, LocalInfoIdentifier, LocalMessage, Processor, Result};
 use ockam_node::Context;
 use rand::random;
 use std::net::Ipv4Addr;
@@ -36,15 +36,14 @@ impl InternalProcessor {
 
     async fn new_inlet_connection(
         inlet: &Inlet,
+        their_identifier: Option<LocalInfoIdentifier>,
         src_ip: Ipv4Addr,
         parsed_packet: &ParsedRawSocketPacket,
     ) -> Result<Arc<InletConnection>> {
         // TODO: eBPF Remove connection eventually
 
-        // TODO: Make sure the connection can't be spoofed by someone having access to that Outlet
-
         let connection = Arc::new(InletConnection {
-            identifier: None,
+            their_identifier,
             connection_identifier: random(),
             inlet_ip: parsed_packet.destination_ip,
             client_ip: src_ip,
@@ -69,7 +68,7 @@ impl Processor for InternalProcessor {
 
         match &self.mode {
             PortalMode::Inlet { inlet } => {
-                let inlet_shared_state = inlet.inlet_shared_state.read().unwrap().clone();
+                let inlet_shared_state = inlet.inlet_shared_state.read().await.clone();
 
                 if inlet_shared_state.is_paused() {
                     return Ok(true);
@@ -104,6 +103,7 @@ impl Processor for InternalProcessor {
                         );
                         Self::new_inlet_connection(
                             inlet,
+                            inlet_shared_state.their_identifier(),
                             parsed_packet.packet.source_ip,
                             &parsed_packet,
                         )

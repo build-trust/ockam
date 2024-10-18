@@ -80,6 +80,8 @@ pub enum TransportError {
     ReadCaps(String),
     /// eBPF prerequisites check failed
     EbpfPrerequisitesCheckFailed(String),
+    /// The Identifier of the other side of the portal has changed when updating the route
+    IdentifierChanged,
 }
 
 impl ockam_core::compat::error::Error for TransportError {}
@@ -127,6 +129,10 @@ impl core::fmt::Display for TransportError {
             Self::EbpfPrerequisitesCheckFailed(e) => {
                 write!(f, "eBPF prerequisites check failed: {}", e)
             }
+            Self::IdentifierChanged => write!(
+                f,
+                "identifier of the other side of the portal has changed when updating the route"
+            ),
         }
     }
 }
@@ -167,6 +173,7 @@ impl From<TransportError> for Error {
             | RemovingOutletPort(_) => Kind::Io,
             ReadCaps(_) => Kind::Io,
             EbpfPrerequisitesCheckFailed(_) => Kind::Misuse,
+            IdentifierChanged => Kind::Conflict,
         };
 
         Error::new(Origin::Transport, kind, err)

@@ -1,5 +1,6 @@
 pub mod addresses;
 mod inlet_listener;
+mod inlet_shared_state;
 mod interceptor;
 pub mod options;
 mod outlet_listener;
@@ -9,6 +10,7 @@ mod portal_worker;
 mod tls_certificate;
 
 pub(crate) use inlet_listener::*;
+pub(crate) use inlet_shared_state::*;
 pub use interceptor::{
     Direction, PortalInletInterceptor, PortalInterceptor, PortalInterceptorFactory,
     PortalInterceptorWorker, PortalOutletInterceptor,

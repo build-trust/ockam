@@ -158,10 +158,9 @@ impl InletSessionReplacer {
         // Finally, attempt to create/update inlet using the new route
         let inlet_address = match self.inlet.clone() {
             Some(inlet) => {
-                inlet.unpause(
-                    self.context.flow_controls(),
-                    normalized_stripped_route.clone(),
-                )?;
+                inlet
+                    .unpause(&self.context, normalized_stripped_route.clone())
+                    .await?;
 
                 inlet.processor_address().cloned()
             }
@@ -216,7 +215,7 @@ impl InletSessionReplacer {
 
     async fn pause_inlet(&mut self) {
         if let Some(inlet) = self.inlet.as_mut() {
-            inlet.pause();
+            inlet.pause().await;
         }
     }
 
@@ -387,7 +386,7 @@ impl AdditionalSessionReplacer for InletSessionReplacer {
         additional_sc.update_remote_node_route(route![puncture.sender_address()])?;
 
         let new_route = route![additional_sc.clone()];
-        inlet.unpause(self.context.flow_controls(), new_route.clone())?;
+        inlet.unpause(&self.context, new_route.clone()).await?;
 
         self.additional_route = Some(new_route.clone());
 
@@ -401,14 +400,14 @@ impl AdditionalSessionReplacer for InletSessionReplacer {
             match self.main_route.as_ref() {
                 Some(main_route) if enable_fallback => {
                     // Switch Inlet to the main route
-                    let res = inlet.unpause(self.context.flow_controls(), main_route.clone());
+                    let res = inlet.unpause(&self.context, main_route.clone()).await;
 
                     if let Some(err) = res.err() {
                         error!("Error switching Inlet to the main route {}", err);
                     }
                 }
                 _ => {
-                    inlet.pause();
+                    inlet.pause().await;
                 }
             }
         }
