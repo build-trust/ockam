@@ -15,10 +15,10 @@ pub struct Variables {
 }
 
 impl Variables {
-    pub fn resolve(contents: &str) -> Result<String> {
+    pub fn resolve(contents: &mut String) -> Result<()> {
         let self_ = serde_yaml::from_str::<Variables>(contents).into_diagnostic()?;
         self_.load()?;
-        shellexpand::env(&contents)
+        *contents = shellexpand::env(&contents)
             .map(|c| c.to_string())
             .map_err(|e| {
                 miette!(
@@ -26,7 +26,8 @@ impl Variables {
                     color_primary(&e.var_name),
                     e.cause
                 )
-            })
+            })?;
+        Ok(())
     }
 
     /// Loads the variables into the environment, giving preference to variables set externally.
@@ -68,7 +69,7 @@ mod tests {
     #[test]
     fn resolve_variables() {
         std::env::set_var("MY_ENV_VAR", "my_env_value");
-        let input = r#"
+        let mut input = r#"
             variables:
               var_s: $MY_ENV_VAR
               var_b: true
@@ -78,7 +79,8 @@ mod tests {
               - $MY_ENV_VAR
               - is_${var_b}
               - num_${var_i}
-        "#;
+        "#
+        .to_string();
         let expected = r#"
             variables:
               var_s: my_env_value
@@ -90,20 +92,24 @@ mod tests {
               - is_true
               - num_1
         "#;
-        let resolved = Variables::resolve(input).unwrap();
-        assert_eq!(resolved, expected);
+        Variables::resolve(&mut input).unwrap();
+        assert_eq!(&input, expected);
+        assert_eq!(std::env::var("var_s").unwrap(), "$MY_ENV_VAR");
+        assert_eq!(std::env::var("var_b").unwrap(), "true");
+        assert_eq!(std::env::var("var_i").unwrap(), "1");
     }
 
     #[test]
     fn give_preference_to_external_variables() {
         std::env::set_var("my_var", "external");
-        let input = r#"
+        let mut input = r#"
             variables:
               my_var: local
 
             nodes:
               - ${my_var}
-        "#;
+        "#
+        .to_string();
         let expected = r#"
             variables:
               my_var: local
@@ -111,20 +117,22 @@ mod tests {
             nodes:
               - external
         "#;
-        let resolved = Variables::resolve(input).unwrap();
-        assert_eq!(resolved, expected);
+        Variables::resolve(&mut input).unwrap();
+        assert_eq!(&input, expected);
+        assert_eq!(std::env::var("my_var").unwrap(), "external");
     }
 
     #[test]
     fn fail_if_unknown_variable() {
-        let input = r#"
+        let mut input = r#"
             variables:
               my_var: local
 
             nodes:
               - is_${other_var}
-        "#;
-        let resolved = Variables::resolve(input);
-        assert!(resolved.is_err());
+        "#
+        .to_string();
+        let res = Variables::resolve(&mut input);
+        assert!(res.is_err());
     }
 }
