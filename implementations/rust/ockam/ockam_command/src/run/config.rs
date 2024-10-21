@@ -41,8 +41,6 @@ pub struct Config {
     pub relays: Relays,
 }
 
-impl ConfigParser<'_> for Config {}
-
 impl Config {
     /// Executes the commands described in the configuration to create the desired state.
     ///
@@ -79,10 +77,13 @@ impl Config {
     pub async fn parse_and_run(
         ctx: &Context,
         opts: CommandGlobalOpts,
-        contents: &str,
+        contents: &mut String,
     ) -> miette::Result<()> {
-        let config = Config::parse(&Config::resolve(contents)?)?;
-        config.run(ctx, &opts).await
+        Self::parse(contents)?.run(ctx, &opts).await
+    }
+
+    pub(crate) fn parse(contents: &mut String) -> miette::Result<Self> {
+        ConfigParser::parse(contents)
     }
 }
 
@@ -98,7 +99,7 @@ mod tests {
 
     #[test]
     fn parse_complete_config() {
-        let config = r#"
+        let mut config = r#"
             vaults:
               - v1
               - v2
@@ -149,8 +150,9 @@ mod tests {
             relays:
               - r1
               - r2
-        "#;
-        let parsed = Config::parse(config).unwrap();
+        "#
+        .to_string();
+        let parsed = Config::parse(&mut config).unwrap();
 
         let expected = Config {
             version: Version {
@@ -294,7 +296,7 @@ mod tests {
     #[test]
     fn resolve_variables() {
         std::env::set_var("SUFFIX", "node");
-        let config = r#"
+        let mut config = r#"
             variables:
               prefix: ockam
               ticket_path: ./path/to/ticket
@@ -304,9 +306,9 @@ mod tests {
             nodes:
               - ${prefix}_n1_${SUFFIX}
               - ${prefix}_n2_${SUFFIX}
-        "#;
-        let resolved = Config::resolve(config).unwrap();
-        let parsed = Config::parse(&resolved).unwrap();
+        "#
+        .to_string();
+        let parsed = Config::parse(&mut config).unwrap();
         let expected = Config {
             version: Version {
                 version: VersionValue::latest(),
@@ -334,21 +336,27 @@ mod tests {
 
     #[test]
     fn parse_demo_config_files() {
+        std::env::set_var("ENROLLMENT_TICKET", "ticket");
         let files = std::fs::read_dir(demo_config_files_dir()).unwrap();
         for file in files {
             let file = file.unwrap();
             let path = file.path();
-            let contents = std::fs::read_to_string(&path).unwrap();
-            let res = Config::parse(&contents);
-            res.unwrap();
+            let mut contents = std::fs::read_to_string(&path).unwrap();
+            match Config::parse(&mut contents) {
+                Ok(_) => {}
+                Err(e) => {
+                    eprintln!("Error parsing file {path:?}: {e}");
+                    panic!();
+                }
+            }
         }
     }
 
     #[test]
     fn parse_demo_config_file_1() {
         let path = demo_config_files_dir().join("1.portal.single-machine.yaml");
-        let config = Config::resolve(&std::fs::read_to_string(path).unwrap()).unwrap();
-        let parsed = Config::parse(&config).unwrap();
+        let mut config = std::fs::read_to_string(path).unwrap();
+        let parsed = Config::parse(&mut config).unwrap();
         assert_eq!(parsed.version.version, VersionValue::latest());
         assert_eq!(parsed.vaults.vaults, None);
         assert_eq!(parsed.identities.identities, None);
@@ -392,8 +400,8 @@ mod tests {
     #[test]
     fn parse_demo_config_file_2_inlet() {
         let path = demo_config_files_dir().join("2.portal.inlet.yaml");
-        let config = Config::resolve(&std::fs::read_to_string(path).unwrap()).unwrap();
-        let parsed = Config::parse(&config).unwrap();
+        let mut config = std::fs::read_to_string(path).unwrap();
+        let parsed = Config::parse(&mut config).unwrap();
         assert_eq!(parsed.version.version, VersionValue::latest());
         assert_eq!(parsed.vaults.vaults, None);
         assert_eq!(parsed.identities.identities, None);
@@ -434,8 +442,8 @@ mod tests {
     #[test]
     fn parse_demo_config_file_2_outlet() {
         let path = demo_config_files_dir().join("2.portal.outlet.yaml");
-        let config = Config::resolve(&std::fs::read_to_string(path).unwrap()).unwrap();
-        let parsed = Config::parse(&config).unwrap();
+        let mut config = std::fs::read_to_string(path).unwrap();
+        let parsed = Config::parse(&mut config).unwrap();
         assert_eq!(parsed.version.version, VersionValue::latest());
         assert_eq!(parsed.vaults.vaults, None);
         assert_eq!(parsed.identities.identities, None);

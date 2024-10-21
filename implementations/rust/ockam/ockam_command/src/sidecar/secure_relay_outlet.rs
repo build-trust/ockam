@@ -73,7 +73,7 @@ impl SecureRelayOutlet {
         ctx: &Context,
         opts: CommandGlobalOpts,
     ) -> miette::Result<()> {
-        let recipe: String = self.create_config_recipe();
+        let mut recipe: String = self.create_config_recipe();
 
         if self.dry_run {
             opts.terminal.write_line(recipe.as_str())?;
@@ -89,7 +89,7 @@ impl SecureRelayOutlet {
             recipe.as_str().dark_gray()
         ))?;
 
-        Config::parse_and_run(ctx, opts, &recipe).await
+        Config::parse_and_run(ctx, opts, &mut recipe).await
     }
 
     fn create_config_recipe(&self) -> String {
@@ -124,11 +124,8 @@ impl SecureRelayOutlet {
 
 #[cfg(test)]
 mod tests {
-    use ockam_api::cli_state::ExportedEnrollmentTicket;
-
-    use crate::run::parser::config::ConfigParser;
-
     use super::*;
+    use ockam_api::cli_state::ExportedEnrollmentTicket;
 
     #[test]
     fn test_that_recipe_is_valid() {
@@ -144,8 +141,8 @@ mod tests {
                 okta: false,
             },
         };
-        let config_recipe = cmd.create_config_recipe();
-        let config = Config::parse(config_recipe.as_str()).unwrap();
+        let mut config_recipe = cmd.create_config_recipe();
+        let config = Config::parse(&mut config_recipe).unwrap();
         config.project_enroll.into_parsed_commands(None).unwrap();
         config.policies.into_parsed_commands().unwrap();
         config.tcp_outlets.into_parsed_commands(None).unwrap();
