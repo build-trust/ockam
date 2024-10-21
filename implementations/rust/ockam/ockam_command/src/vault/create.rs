@@ -36,7 +36,7 @@ impl Command for CreateCommand {
 
     async fn async_run(self, _ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
         if opts.state.get_named_vaults().await?.is_empty() {
-            opts.terminal.write_line(&fmt_info!(
+            opts.terminal.write_line(fmt_info!(
             "This is the first vault to be created in this environment. It will be set as the default vault"
         ))?;
         }

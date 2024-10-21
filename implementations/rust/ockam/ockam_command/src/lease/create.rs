@@ -47,7 +47,7 @@ impl Command for CreateCommand {
         .with_timeout(cmd.timeout.timeout);
 
         opts.terminal
-            .write_line(&fmt_log!("Creating influxdb token...\n"))?;
+            .write_line(fmt_log!("Creating influxdb token...\n"))?;
 
         let res = node.create_token(ctx, &cmd.at).await?;
 

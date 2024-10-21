@@ -94,7 +94,7 @@ impl AddonConfigureKafkaSubcommand {
             .await?;
 
         opts.terminal
-            .write_line(&fmt_ok!("{} addon configured successfully", addon_name))?;
+            .write_line(fmt_ok!("{} addon configured successfully", addon_name))?;
 
         Ok(())
     }

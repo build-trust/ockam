@@ -63,7 +63,7 @@ impl AddonDisableSubcommand {
             .await?;
 
         opts.terminal
-            .write_line(&fmt_ok!("Addon disabled successfully"))?;
+            .write_line(fmt_ok!("Addon disabled successfully"))?;
         Ok(())
     }
 }

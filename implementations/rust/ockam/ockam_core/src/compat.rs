@@ -149,7 +149,7 @@ pub mod rand {
         ///
         /// WARNING: This implementation is neither random nor
         /// thread-local.
-        #[allow(unsafe_code)]
+        #[allow(unsafe_code, static_mut_refs)]
         pub fn thread_rng() -> FakeRng {
             use rand::SeedableRng;
             static mut RNG: Option<rand_pcg::Lcg64Xsh32> = None;

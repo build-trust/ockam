@@ -76,7 +76,7 @@ pub async fn verify_credential(
     credential_path: &Option<PathBuf>,
 ) -> miette::Result<CredentialAndPurposeKey> {
     opts.terminal
-        .write_line(&fmt_log!("Verifying credential...\n"))?;
+        .write_line(fmt_log!("Verifying credential...\n"))?;
 
     let is_finished: Mutex<bool> = Mutex::new(false);
 

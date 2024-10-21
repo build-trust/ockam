@@ -51,7 +51,7 @@ impl Command for ShowCommand {
         .with_timeout(cmd.timeout.timeout);
 
         opts.terminal
-            .write_line(&fmt_log!("Retrieving influxdb token...\n"))?;
+            .write_line(fmt_log!("Retrieving influxdb token...\n"))?;
 
         let (at, _meta) = clean_nodes_multiaddr(&cmd.at, &opts.state).await?;
         let res = node.get_token(ctx, &at, &cmd.token_id).await?;

@@ -497,7 +497,7 @@ impl CreateCommand {
                 error!("command failed: {e:?}");
                 let _ = opts
                     .terminal
-                    .write_line(&fmt_err!("Command failed with error: {e:?}"));
+                    .write_line(fmt_err!("Command failed with error: {e:?}"));
                 return Err(e).into_diagnostic();
             }
             Ok(identifier_string) => identifier_string,
@@ -505,7 +505,7 @@ impl CreateCommand {
 
         match Identifier::from_str(&identifier_string) {
             Err(e) => {
-                let _ = opts.terminal.write_line(&fmt_err!(
+                let _ = opts.terminal.write_line(fmt_err!(
                     "cannot read the project identity identifier: {e:?}"
                 ));
                 Err(e).into_diagnostic()

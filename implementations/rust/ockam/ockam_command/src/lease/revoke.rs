@@ -52,7 +52,7 @@ impl Command for RevokeCommand {
         .with_timeout(cmd.timeout.timeout);
 
         opts.terminal
-            .write_line(&fmt_log!("Revoking influxdb token {}...\n", cmd.token_id))?;
+            .write_line(fmt_log!("Revoking influxdb token {}...\n", cmd.token_id))?;
 
         let (at, _meta) = clean_nodes_multiaddr(&cmd.at, &opts.state).await?;
         node.revoke_token(ctx, &at, &cmd.token_id).await?;

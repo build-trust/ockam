@@ -194,7 +194,7 @@ impl EnrollCommand {
             EnrollStatus::EnrolledSuccessfully => {}
             EnrollStatus::AlreadyEnrolled => {
                 opts.terminal
-                    .write_line(&fmt_ok!("Identity is already enrolled with the project"))?;
+                    .write_line(fmt_ok!("Identity is already enrolled with the project"))?;
             }
             EnrollStatus::FailedNoStatus(msg) => {
                 return Err(Error::Retry(miette!(

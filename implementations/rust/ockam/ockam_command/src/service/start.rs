@@ -51,14 +51,14 @@ impl StartCommand {
         let addr = match &self.create_subcommand {
             StartSubCommand::Hop { addr, .. } => {
                 start_hop_service(ctx, &node, addr).await?;
-                opts.terminal.write_line(&fmt_warn!(
+                opts.terminal.write_line(fmt_warn!(
                     "SECURITY WARNING: Don't use Hop service in production nodes"
                 ))?;
                 addr
             }
         };
 
-        opts.terminal.write_line(&fmt_ok!(
+        opts.terminal.write_line(fmt_ok!(
             "Service started at address {}",
             addr.to_string().color(OckamColor::PrimaryResource.color())
         ))?;
