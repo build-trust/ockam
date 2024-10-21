@@ -343,6 +343,13 @@ impl FromStr for ExportedEnrollmentTicket {
     type Err = ApiError;
 
     fn from_str(contents: &str) -> std::result::Result<Self, Self::Err> {
+        // Try to hex-decode the contents
+        let contents = match hex::decode(contents) {
+            Ok(decoded) => String::from_utf8(decoded)
+                .map_err(|_| ApiError::core("Failed to hex decode enrollment ticket"))?,
+            Err(_) => contents.to_string(),
+        };
+
         // Decode as comma-separated text
         let values: Vec<&str> = contents.split(',').collect();
         if values.len() < Self::MANDATORY_FIELDS_NUM {
@@ -378,8 +385,8 @@ impl FromStr for ExportedEnrollmentTicket {
 
 impl Display for ExportedEnrollmentTicket {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
+        let mut output = String::new();
+        output.push_str(&format!(
             "{},{},{},{},{},{}",
             self.project_route.route,
             self.project_identifier,
@@ -387,10 +394,11 @@ impl Display for ExportedEnrollmentTicket {
             String::from(&self.one_time_code),
             self.project_change_history,
             self.authority_change_history,
-        )?;
+        ));
         if let Some(authority_route) = &self.authority_route {
-            write!(f, ",{}", authority_route)?;
+            output.push_str(&format!(",{}", authority_route));
         }
+        write!(f, "{}", hex::encode(output))?;
         Ok(())
     }
 }
@@ -601,24 +609,45 @@ impl EnrollmentTicket {
             Some(self.authority_route.to_string()),
         ))
     }
+
+    pub fn export_legacy(self) -> Result<LegacyEnrollmentTicket> {
+        let project = self.project()?;
+        Ok(LegacyEnrollmentTicket::new(
+            self.one_time_code,
+            Some(project),
+        ))
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
+    #[tokio::test]
+    async fn text_export_as_legacy() {
+        let ticket = ExportedEnrollmentTicket::new_test();
+        let exported = ticket.import().await.unwrap();
+        let legacy = exported.clone().export_legacy().unwrap();
+        assert_eq!(legacy.one_time_code, exported.one_time_code);
+        assert_eq!(legacy.project.unwrap(), exported.project().unwrap());
+    }
+
     #[test]
     fn test_exported_enrollment_ticket() {
         let exported = ExportedEnrollmentTicket::new_test();
         let encoded = exported.to_string();
-        assert!(encoded.contains(&String::from(&exported.one_time_code)));
-        assert!(encoded.contains(&exported.project_route.id));
-        assert!(encoded.contains(&exported.project_route.route.to_string()));
-        assert!(encoded.contains(&exported.project_name));
-        assert!(encoded.contains(&exported.project_change_history));
-        assert!(encoded.contains(&exported.authority_change_history));
+        let hex_decoded = String::from_utf8(hex::decode(&encoded).unwrap()).unwrap();
+        assert!(hex_decoded.contains(&String::from(&exported.one_time_code)));
+        assert!(hex_decoded.contains(&exported.project_route.id));
+        assert!(hex_decoded.contains(&exported.project_route.route.to_string()));
+        assert!(hex_decoded.contains(&exported.project_name));
+        assert!(hex_decoded.contains(&exported.project_change_history));
+        assert!(hex_decoded.contains(&exported.authority_change_history));
 
         let decoded = ExportedEnrollmentTicket::from_str(&encoded).unwrap();
+        assert_eq!(decoded, exported);
+
+        let decoded = ExportedEnrollmentTicket::from_str(&hex_decoded).unwrap();
         assert_eq!(decoded, exported);
     }
 
