@@ -45,9 +45,9 @@ impl MoveCommand {
         {
             Ok(()) => opts
                 .terminal
-                .write_line(&fmt_info!("Moved the vault {vault_name} to {vault_path:?}"))?,
+                .write_line(fmt_info!("Moved the vault {vault_name} to {vault_path:?}"))?,
             Err(e) => {
-                opts.terminal.write_line(&fmt_err!(
+                opts.terminal.write_line(fmt_err!(
                     "Could not move the vault {vault_name} to {vault_path:?}: {e:?}"
                 ))?;
                 return Err(e)?;

@@ -69,7 +69,7 @@ impl OidcServiceExt for OidcService {
         }
         // Otherwise, write the instructions at stderr as normal
         else {
-            opts.terminal.write_line(&fmt_log!(
+            opts.terminal.write_line(fmt_log!(
                 "Please sign into your Ockam Account to activate this machine:\n"
             ))?;
 
@@ -103,7 +103,7 @@ impl OidcServiceExt for OidcService {
                 let mut input = String::new();
                 match stdin().read_line(&mut input) {
                     Ok(_) => {
-                        opts.terminal.write_line(&fmt_log!(
+                        opts.terminal.write_line(fmt_log!(
                             "Opening {}, in your browser, to begin activating this machine...\n",
                             color_uri(&device_code.verification_uri)
                         ))?;
@@ -115,7 +115,7 @@ impl OidcServiceExt for OidcService {
                     }
                 }
             } else {
-                opts.terminal.write_line(&fmt_log!(
+                opts.terminal.write_line(fmt_log!(
                     "Open {} in your browser to begin activating this machine.\n",
                     color_uri(&device_code.verification_uri)
                 ))?;
@@ -183,7 +183,7 @@ impl OidcServiceExt for OidcService {
         uri: String,
     ) -> Result<OidcToken> {
         if open::that(uri.clone()).is_err() {
-            opts.terminal.write_line(&fmt_err!(
+            opts.terminal.write_line(fmt_err!(
                 "Couldn't open activation URL automatically [URL={}]",
                 color_uri(&uri)
             ))?;

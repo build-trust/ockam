@@ -106,7 +106,7 @@ impl CreateCommand {
         let node = BackgroundNodeClient::create_to_node(ctx, &opts.state, &self.from).await?;
 
         opts.terminal
-            .write_line(&fmt_log!("Creating Secure Channel...\n"))?;
+            .write_line(fmt_log!("Creating Secure Channel...\n"))?;
 
         // Delegate the request to create a secure channel to the from node.
         let is_finished: Mutex<bool> = Mutex::new(false);

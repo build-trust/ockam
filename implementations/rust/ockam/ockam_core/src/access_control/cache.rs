@@ -166,6 +166,7 @@ impl OutgoingAccessControl for CachedOutgoingAccessControl {
 }
 
 #[cfg(test)]
+#[allow(missing_docs)]
 pub mod test {
     use crate::access_control::cache::{CacheEntry, CACHE_DURATION_SECS};
     use crate::{

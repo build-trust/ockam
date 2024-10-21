@@ -163,7 +163,7 @@ impl AddonConfigureInfluxdbSubcommand {
             .await?;
 
         opts.terminal
-            .write_line(&fmt_ok!("InfluxDB addon configured successfully"))?;
+            .write_line(fmt_ok!("InfluxDB addon configured successfully"))?;
         Ok(())
     }
 }

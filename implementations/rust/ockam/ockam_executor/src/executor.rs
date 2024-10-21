@@ -13,6 +13,7 @@ use ockam_core::compat::task::Wake;
 
 /// Returns current executor.
 /// WARNING: TODO this is not thread-safe
+#[allow(static_mut_refs)]
 pub fn current() -> &'static Executor<'static> {
     static INIT: AtomicBool = AtomicBool::new(false);
     static mut EXECUTOR: UnsafeCell<MaybeUninit<Executor>> = UnsafeCell::new(MaybeUninit::uninit());

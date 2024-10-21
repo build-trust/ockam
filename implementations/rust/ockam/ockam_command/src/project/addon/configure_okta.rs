@@ -137,7 +137,7 @@ impl AddonConfigureOktaSubcommand {
             .await?;
 
         opts.terminal
-            .write_line(&fmt_ok!("Okta addon configured successfully"))?;
+            .write_line(fmt_ok!("Okta addon configured successfully"))?;
 
         Ok(())
     }

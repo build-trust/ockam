@@ -10,12 +10,14 @@
 //!  - Linux
 //!  - Rust nightly
 //!  - Some dependencies to be installed
+//!
 //! Because of that crate with the eBPF code is kept out of the workspace.
 //! Example of a virtual machine to build it can be found in `ubuntu_x86.yaml`.
 //!
 //! Using ockam with eBPFs requires:
 //!  - Linux
-//!  - root (CAP_BPF)
+//!  - root (CAP_BPF, CAP_NET_RAW)
+//!
 //! Example of a virtual machine to run ockam with eBPF can be found in `ubuntu_arm.yaml`.
 //!
 //! eBPF is a small architecture-independent object file that is small enough,

@@ -384,12 +384,12 @@ pub trait Command: Clone + Sized + Send + Sync + 'static {
                             delay.as_secs()
                         );
                         opts.terminal
-                            .write_line(&fmt_warn!("Command failed with error:"))?;
-                        opts.terminal.write_line(&fmt_log!("{inner:#}\n"))?;
+                            .write_line(fmt_warn!("Command failed with error:"))?;
+                        opts.terminal.write_line(fmt_log!("{inner:#}\n"))?;
                         opts.terminal
-                            .write_line(&fmt_log!("Will retry in {} seconds", delay.as_secs()))?;
+                            .write_line(fmt_log!("Will retry in {} seconds", delay.as_secs()))?;
                         tokio::time::sleep(delay).await;
-                        opts.terminal.write_line(&fmt_log!("Retrying...\n"))?;
+                        opts.terminal.write_line(fmt_log!("Retrying...\n"))?;
                     }
                     Err(e) => return Err(e.into()),
                 }

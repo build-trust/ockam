@@ -38,7 +38,7 @@ impl Command for GetMyAddressCommand {
 
         let my_address = client.get_my_address(ctx).await?;
 
-        opts.terminal.write_line(&fmt_log!(
+        opts.terminal.write_line(fmt_log!(
             "Your public UDP address is {}",
             color_primary(my_address),
         ))?;

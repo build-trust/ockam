@@ -46,7 +46,7 @@ impl Command for ListCommand {
         .with_timeout(cmd.timeout.timeout);
 
         opts.terminal
-            .write_line(&fmt_log!("Listing influxdb tokens...\n"))?;
+            .write_line(fmt_log!("Listing influxdb tokens...\n"))?;
 
         let (at, _meta) = clean_nodes_multiaddr(&cmd.at, &opts.state).await?;
         let res = node.list_tokens(ctx, &at).await?;

@@ -63,7 +63,7 @@ impl StoreCommand {
         let storage = CredentialSqlxDatabase::new(database, &node_name);
 
         opts.terminal
-            .write_line(&fmt_log!("Storing credential...\n"))?;
+            .write_line(fmt_log!("Storing credential...\n"))?;
 
         let is_finished: Mutex<bool> = Mutex::new(false);
 
