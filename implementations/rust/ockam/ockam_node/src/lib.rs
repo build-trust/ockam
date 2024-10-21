@@ -100,17 +100,3 @@ where
 
 #[cfg(not(feature = "std"))]
 pub use crate::tokio::runtime::{block_future, spawn};
-
-/// This is a temporary workaround until the fixes done
-/// in https://github.com/launchbadge/sqlx/pull/3298 are released
-#[cfg(feature = "std")]
-extern crate sqlx_build_trust as sqlx;
-
-#[cfg(feature = "std")]
-extern crate sqlx_build_trust_postgres as sqlx_postgres;
-
-#[cfg(feature = "std")]
-extern crate sqlx_build_trust_core as sqlx_core;
-
-#[cfg(feature = "std")]
-extern crate sqlx_build_trust_sqlite as sqlx_sqlite;

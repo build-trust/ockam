@@ -16,9 +16,6 @@
 //! │  └─ ...
 //! ```
 
-/// This is a temporary workaround until the fixes done
-/// in https://github.com/launchbadge/sqlx/pull/3298 are released
-extern crate sqlx_build_trust as sqlx;
 #[macro_use]
 extern crate tracing;
 

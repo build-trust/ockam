@@ -1,13 +1,13 @@
 use std::str::FromStr;
 
-use sqlx::any::AnyRow;
-use sqlx::database::HasArguments;
-use sqlx::encode::IsNull;
-use sqlx::*;
-
 use ockam::identity::Identifier;
 use ockam::{FromSqlxError, SqlxDatabase, ToVoid};
 use ockam_core::async_trait;
+use sqlx::any::AnyRow;
+use sqlx::encode::IsNull;
+use sqlx::error::BoxDynError;
+use sqlx::postgres::any::AnyArgumentBuffer;
+use sqlx::*;
 
 use ockam_core::Result;
 use ockam_node::database::{Boolean, Nullable};
@@ -243,7 +243,7 @@ impl Type<Any> for InternetAddress {
 }
 
 impl sqlx::Encode<'_, Any> for InternetAddress {
-    fn encode_by_ref(&self, buf: &mut <Any as HasArguments>::ArgumentBuffer) -> IsNull {
+    fn encode_by_ref(&self, buf: &mut AnyArgumentBuffer) -> Result<IsNull, BoxDynError> {
         <String as sqlx::Encode<'_, Any>>::encode_by_ref(&self.to_string(), buf)
     }
 }

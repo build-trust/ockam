@@ -1,16 +1,16 @@
 use itertools::Itertools;
-use sqlx::any::AnyRow;
-use sqlx::database::HasArguments;
-use sqlx::encode::IsNull;
-use sqlx::*;
-use std::str::FromStr;
-
 use ockam::identity::Identifier;
 use ockam_core::async_trait;
 use ockam_core::env::FromString;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{Error, Result};
 use ockam_node::database::{Boolean, FromSqlxError, Nullable, SqlxDatabase, ToVoid};
+use sqlx::any::AnyRow;
+use sqlx::encode::IsNull;
+use sqlx::error::BoxDynError;
+use sqlx::postgres::any::AnyArgumentBuffer;
+use sqlx::*;
+use std::str::FromStr;
 
 use crate::cloud::addon::KafkaConfig;
 use crate::cloud::email_address::EmailAddress;
@@ -521,7 +521,7 @@ impl Type<Any> for EmailAddress {
 }
 
 impl Encode<'_, Any> for EmailAddress {
-    fn encode_by_ref(&self, buf: &mut <Any as HasArguments>::ArgumentBuffer) -> IsNull {
+    fn encode_by_ref(&self, buf: &mut AnyArgumentBuffer) -> Result<IsNull, BoxDynError> {
         <String as Encode<'_, Any>>::encode_by_ref(&self.to_string(), buf)
     }
 }
@@ -533,7 +533,7 @@ impl Type<Any> for RoleInShare {
 }
 
 impl Encode<'_, Any> for RoleInShare {
-    fn encode_by_ref(&self, buf: &mut <Any as HasArguments>::ArgumentBuffer) -> IsNull {
+    fn encode_by_ref(&self, buf: &mut AnyArgumentBuffer) -> Result<IsNull, BoxDynError> {
         <String as Encode<'_, Any>>::encode_by_ref(&self.to_string(), buf)
     }
 }
@@ -545,7 +545,7 @@ impl Type<Any> for ShareScope {
 }
 
 impl Encode<'_, Any> for ShareScope {
-    fn encode_by_ref(&self, buf: &mut <Any as HasArguments>::ArgumentBuffer) -> IsNull {
+    fn encode_by_ref(&self, buf: &mut AnyArgumentBuffer) -> Result<IsNull, BoxDynError> {
         <String as Encode<'_, Any>>::encode_by_ref(&self.to_string(), buf)
     }
 }
@@ -557,7 +557,7 @@ impl Type<Any> for Url {
 }
 
 impl Encode<'_, Any> for Url {
-    fn encode_by_ref(&self, buf: &mut <Any as HasArguments>::ArgumentBuffer) -> IsNull {
+    fn encode_by_ref(&self, buf: &mut AnyArgumentBuffer) -> Result<IsNull, BoxDynError> {
         <String as Encode<'_, Any>>::encode_by_ref(&self.to_string(), buf)
     }
 }

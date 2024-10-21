@@ -1,7 +1,8 @@
 use core::str::FromStr;
 
-use sqlx::database::HasArguments;
 use sqlx::encode::IsNull;
+use sqlx::error::BoxDynError;
+use sqlx::postgres::any::AnyArgumentBuffer;
 use sqlx::*;
 use tracing::debug;
 
@@ -96,7 +97,7 @@ impl Type<Any> for Purpose {
 }
 
 impl Encode<'_, Any> for Purpose {
-    fn encode_by_ref(&self, buf: &mut <Any as HasArguments>::ArgumentBuffer) -> IsNull {
+    fn encode_by_ref(&self, buf: &mut AnyArgumentBuffer) -> Result<IsNull, BoxDynError> {
         let purpose = match self {
             Purpose::SecureChannel => IdentityConstants::SECURE_CHANNEL_PURPOSE_KEY,
             Purpose::Credentials => IdentityConstants::CREDENTIALS_PURPOSE_KEY,
@@ -112,7 +113,7 @@ impl Type<Any> for PurposeKeyAttestation {
 }
 
 impl Encode<'_, Any> for PurposeKeyAttestation {
-    fn encode_by_ref(&self, buf: &mut <Any as HasArguments>::ArgumentBuffer) -> IsNull {
+    fn encode_by_ref(&self, buf: &mut AnyArgumentBuffer) -> Result<IsNull, BoxDynError> {
         <Vec<u8> as Encode<'_, Any>>::encode_by_ref(
             &ockam_core::cbor_encode_preallocate(self).unwrap(),
             buf,

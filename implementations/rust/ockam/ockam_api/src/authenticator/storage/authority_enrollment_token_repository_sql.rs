@@ -1,12 +1,13 @@
 use ockam::identity::TimestampInSeconds;
-use sqlx::database::HasArguments;
 use sqlx::encode::IsNull;
+use sqlx::error::BoxDynError;
+use sqlx::postgres::any::AnyArgumentBuffer;
 use sqlx::*;
-use tracing::debug;
 
 use ockam_core::async_trait;
 use ockam_core::Result;
 use ockam_node::database::{FromSqlxError, SqlxDatabase, ToVoid};
+use tracing::debug;
 
 use crate::authenticator::one_time_code::OneTimeCode;
 use crate::authenticator::{
@@ -118,7 +119,7 @@ impl Type<Any> for OneTimeCode {
 }
 
 impl sqlx::Encode<'_, Any> for OneTimeCode {
-    fn encode_by_ref(&self, buf: &mut <Any as HasArguments>::ArgumentBuffer) -> IsNull {
+    fn encode_by_ref(&self, buf: &mut AnyArgumentBuffer) -> Result<IsNull, BoxDynError> {
         <String as sqlx::Encode<'_, Any>>::encode_by_ref(&String::from(self), buf)
     }
 }

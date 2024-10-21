@@ -72,10 +72,10 @@ storage = [
   "std",
   "time",
   "serde_json",
-  "sqlx-build-trust",
-  "sqlx-build-trust-core",
-  "sqlx-build-trust-sqlite",
-  "sqlx-build-trust-postgres",
+  "sqlx",
+  "sqlx-core",
+  "sqlx-sqlite",
+  "sqlx-postgres",
   "tokio-retry",
   "regex",
   "tempfile",
@@ -96,10 +96,10 @@ opentelemetry = { version = "0.26.0", features = ["logs", "metrics", "trace"], o
 regex = { version = "1.10.6", default-features = false, optional = true }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 serde_json = { version = "1", optional = true }
-sqlx-build-trust = { version = "0.7.9", optional = true, features = ["postgres", "sqlite", "any", "migrate", "runtime-tokio"] }
-sqlx-build-trust-core = { version = "0.7.9", optional = true }
-sqlx-build-trust-postgres = { version = "0.7.9", optional = true }
-sqlx-build-trust-sqlite = { version = "0.7.9", optional = true }
+sqlx = { version = "0.8.2", optional = true, default-features = false, features = ["postgres", "sqlite", "any", "migrate", "runtime-tokio", "derive"] }
+sqlx-core = { version = "0.8.2", optional = true, default-features = false }
+sqlx-postgres = { version = "0.8.2", optional = true, default-features = false }
+sqlx-sqlite = { version = "0.8.2", optional = true, default-features = false }
 tempfile = { version = "3.10.1", optional = true }
 time = { version = "0.3.36", default-features = false, optional = true }
 tokio = { version = "1.39", default-features = false, optional = true, features = ["sync", "time", "rt", "rt-multi-thread", "macros"] }
@@ -113,4 +113,4 @@ tracing-subscriber = { version = "0.3", features = ["fmt", "env-filter"], option
 hex = { version = "0.4", default-features = false }
 
 [package.metadata.cargo-machete]
-ignored = ["fs2", "serde_json", "tracing-opentelemetry"]
+ignored = ["fs2", "serde_json", "tracing-opentelemetry", "sqlx-postgres", "sqlx-sqlite"]

@@ -1,7 +1,7 @@
-use sqlx::database::HasValueRef;
 use sqlx::error::BoxDynError;
 use sqlx::postgres::any::AnyTypeInfoKind;
 use sqlx::{Any, Database, Decode, Type, Value, ValueRef};
+use sqlx_core::any::AnyValueRef;
 
 /// This type is used to map Option<T> fields for the types deriving `FromRow`
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -32,7 +32,7 @@ impl<T: Clone> Nullable<T> {
 }
 
 impl<'d, T: Decode<'d, Any>> Decode<'d, Any> for Nullable<T> {
-    fn decode(value: <Any as HasValueRef<'d>>::ValueRef) -> Result<Self, BoxDynError> {
+    fn decode(value: AnyValueRef<'d>) -> Result<Self, BoxDynError> {
         match value.type_info().kind() {
             AnyTypeInfoKind::Null => Ok(Nullable(None)),
             _ => Ok(Nullable(Some(T::decode(value)?))),
@@ -80,14 +80,18 @@ impl Boolean {
 }
 
 impl<'d> Decode<'d, Any> for Boolean {
-    fn decode(value: <Any as HasValueRef<'d>>::ValueRef) -> Result<Self, BoxDynError> {
+    fn decode(value: AnyValueRef<'d>) -> Result<Self, BoxDynError> {
         match value.type_info().kind() {
             AnyTypeInfoKind::Bool => Ok(Boolean(ValueRef::to_owned(&value).decode())),
             AnyTypeInfoKind::Integer => {
                 let v: i64 = ValueRef::to_owned(&value).decode();
                 Ok(Boolean(v == 1))
             }
-            other => Err(format!("expected BOOLEAN or INTEGER, got {:?}", other).into()),
+            AnyTypeInfoKind::BigInt => {
+                let v: i64 = ValueRef::to_owned(&value).decode();
+                Ok(Boolean(v == 1))
+            }
+            other => Err(format!("expected BOOLEAN, INTEGER, or BIGINT, got {:?}", other).into()),
         }
     }
 }
@@ -100,5 +104,6 @@ impl Type<Any> for Boolean {
     fn compatible(ty: &<Any as Database>::TypeInfo) -> bool {
         <Boolean as Type<Any>>::type_info().kind() == ty.kind()
             || ty.kind() == AnyTypeInfoKind::Integer
+            || ty.kind() == AnyTypeInfoKind::BigInt
     }
 }
