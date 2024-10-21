@@ -84,8 +84,7 @@ impl OckamCommand {
             warn!("Failed to check for upgrade, error={err}");
             options
                 .terminal
-                .write_line(&fmt_warn!("Failed to check for upgrade"))
-                .unwrap();
+                .write_line(&fmt_warn!("Failed to check for upgrade"))?;
         }
 
         let tracer = global::tracer(OCKAM_TRACER_NAME);
