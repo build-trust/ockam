@@ -97,6 +97,7 @@ This file contains attributions for any 3rd-party open source code used in this 
 | byteorder-lite | Unlicense, MIT | https://crates.io/crates/byteorder-lite |
 | bytes | MIT | https://crates.io/crates/bytes |
 | bytes-utils | Apache-2.0, MIT | https://crates.io/crates/bytes-utils |
+| caps | MIT, Apache-2.0 | https://crates.io/crates/caps |
 | cast | MIT, Apache-2.0 | https://crates.io/crates/cast |
 | cbindgen | MPL-2.0 | https://crates.io/crates/cbindgen |
 | cc | MIT, Apache-2.0 | https://crates.io/crates/cc |

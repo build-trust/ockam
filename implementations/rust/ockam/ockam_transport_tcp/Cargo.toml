@@ -29,7 +29,7 @@ no_std = ["ockam_macros/no_std", "ockam_transport_core/no_std"]
 alloc = []
 aws-lc = ["tokio-rustls/aws-lc-rs"]
 ring = ["tokio-rustls/ring"]
-ebpf = ["pnet", "pnet_sys", "aya", "aya-log", "env_logger", "libc", "nix"]
+ebpf = ["pnet", "pnet_sys", "aya", "aya-log", "env_logger", "libc", "nix", "caps"]
 
 [build-dependencies]
 cfg_aliases = "0.2.1"
@@ -57,6 +57,7 @@ tracing = { version = "0.1", default-features = false }
 aya = { version = "=0.13.0", optional = true }
 aya-log = { version = "=0.2.1", optional = true }
 aya-log-common = { version = "=0.1.15", optional = true }
+caps = { version = "0.5.5", default-features = false, optional = true }
 
 [target.'cfg( any(target_os = "linux", target_os = "macos") )'.dependencies]
 env_logger = { version = "0.11", optional = true }
