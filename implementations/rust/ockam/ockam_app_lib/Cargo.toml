@@ -43,7 +43,7 @@ ockam_core = { path = "../ockam_core", version = "^0.118.0" }
 ockam_multiaddr = { path = "../ockam_multiaddr", version = "0.62.0", features = ["cbor", "serde"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-sqlx-build-trust = { version = "0.7.8" }
+sqlx = { version = "0.8.2", default-features = false }
 thiserror = "1.0"
 tokio = { version = "1.39.2", features = ["full"] }
 tracing = { version = "0.1", default-features = false }

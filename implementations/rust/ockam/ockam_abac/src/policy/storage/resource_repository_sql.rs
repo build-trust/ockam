@@ -1,6 +1,7 @@
 use core::str::FromStr;
-use sqlx::database::HasArguments;
 use sqlx::encode::IsNull;
+use sqlx::error::BoxDynError;
+use sqlx::postgres::any::AnyArgumentBuffer;
 use sqlx::*;
 use tracing::debug;
 
@@ -97,7 +98,7 @@ impl Type<Any> for ResourceName {
 }
 
 impl sqlx::Encode<'_, Any> for ResourceName {
-    fn encode_by_ref(&self, buf: &mut <Any as HasArguments>::ArgumentBuffer) -> IsNull {
+    fn encode_by_ref(&self, buf: &mut AnyArgumentBuffer) -> Result<IsNull, BoxDynError> {
         <String as sqlx::Encode<'_, Any>>::encode_by_ref(&self.to_string(), buf)
     }
 }

@@ -320,8 +320,8 @@ mod tests {
 
     #[test]
     fn ordering_of_migrations() {
-        let sql_1 = SqlxMigration::new(1, "sql_1".into(), MigrationType::Simple, "1".into());
-        let sql_2 = SqlxMigration::new(2, "sql_2".into(), MigrationType::Simple, "2".into());
+        let sql_1 = SqlxMigration::new(1, "sql_1".into(), MigrationType::Simple, "1".into(), true);
+        let sql_2 = SqlxMigration::new(2, "sql_2".into(), MigrationType::Simple, "2".into(), true);
         let rust_1: Box<dyn RustMigration> = Box::new(DummyRustMigration::new(1));
         let rust_2: Box<dyn RustMigration> = Box::new(DummyRustMigration::new(2));
         let rust_3: Box<dyn RustMigration> = Box::new(DummyRustMigration::new(3));

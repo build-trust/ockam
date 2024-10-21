@@ -1,6 +1,7 @@
 use core::str::FromStr;
-use sqlx::database::HasArguments;
 use sqlx::encode::IsNull;
+use sqlx::error::BoxDynError;
+use sqlx::postgres::any::AnyArgumentBuffer;
 use sqlx::*;
 use tracing::debug;
 
@@ -128,7 +129,7 @@ impl Type<Any> for ResourceType {
 }
 
 impl Encode<'_, Any> for ResourceType {
-    fn encode_by_ref(&self, buf: &mut <Any as HasArguments>::ArgumentBuffer) -> IsNull {
+    fn encode_by_ref(&self, buf: &mut AnyArgumentBuffer) -> Result<IsNull, BoxDynError> {
         <String as Encode<'_, Any>>::encode_by_ref(&self.to_string(), buf)
     }
 }
@@ -140,7 +141,7 @@ impl Type<Any> for Action {
 }
 
 impl sqlx::Encode<'_, Any> for Action {
-    fn encode_by_ref(&self, buf: &mut <Any as HasArguments>::ArgumentBuffer) -> IsNull {
+    fn encode_by_ref(&self, buf: &mut AnyArgumentBuffer) -> Result<IsNull, BoxDynError> {
         <String as Encode<'_, Any>>::encode_by_ref(&self.to_string(), buf)
     }
 }
@@ -152,7 +153,7 @@ impl Type<Any> for Expr {
 }
 
 impl Encode<'_, Any> for Expr {
-    fn encode_by_ref(&self, buf: &mut <Any as HasArguments>::ArgumentBuffer) -> IsNull {
+    fn encode_by_ref(&self, buf: &mut AnyArgumentBuffer) -> Result<IsNull, BoxDynError> {
         <String as Encode<'_, Any>>::encode_by_ref(&self.to_string(), buf)
     }
 }

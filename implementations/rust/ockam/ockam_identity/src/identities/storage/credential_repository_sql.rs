@@ -1,5 +1,6 @@
-use sqlx::database::HasArguments;
 use sqlx::encode::IsNull;
+use sqlx::error::BoxDynError;
+use sqlx::postgres::any::AnyArgumentBuffer;
 use sqlx::*;
 use tracing::debug;
 
@@ -121,7 +122,7 @@ impl Type<Any> for CredentialAndPurposeKey {
 }
 
 impl Encode<'_, Any> for CredentialAndPurposeKey {
-    fn encode_by_ref(&self, buf: &mut <Any as HasArguments>::ArgumentBuffer) -> IsNull {
+    fn encode_by_ref(&self, buf: &mut AnyArgumentBuffer) -> Result<IsNull, BoxDynError> {
         <Vec<u8> as Encode<'_, Any>>::encode_by_ref(&self.encode_as_cbor_bytes().unwrap(), buf)
     }
 }
@@ -133,7 +134,7 @@ impl Type<Any> for TimestampInSeconds {
 }
 
 impl Encode<'_, Any> for TimestampInSeconds {
-    fn encode_by_ref(&self, buf: &mut <Any as HasArguments>::ArgumentBuffer) -> IsNull {
+    fn encode_by_ref(&self, buf: &mut AnyArgumentBuffer) -> Result<IsNull, BoxDynError> {
         <i64 as Encode<'_, Any>>::encode_by_ref(&(self.0 as i64), buf)
     }
 }

@@ -1,7 +1,8 @@
 use core::str::FromStr;
 
-use sqlx::database::HasArguments;
 use sqlx::encode::IsNull;
+use sqlx::error::BoxDynError;
+use sqlx::postgres::any::AnyArgumentBuffer;
 use sqlx::*;
 use tracing::debug;
 
@@ -93,7 +94,7 @@ impl Type<Any> for AttributesEntry {
 }
 
 impl Encode<'_, Any> for AttributesEntry {
-    fn encode_by_ref(&self, buf: &mut <Any as HasArguments>::ArgumentBuffer) -> IsNull {
+    fn encode_by_ref(&self, buf: &mut AnyArgumentBuffer) -> Result<IsNull, BoxDynError> {
         <Vec<u8> as Encode<'_, Any>>::encode_by_ref(
             &ockam_core::cbor_encode_preallocate(self.attrs()).unwrap(),
             buf,
