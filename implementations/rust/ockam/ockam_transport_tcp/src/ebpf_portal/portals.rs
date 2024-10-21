@@ -2,6 +2,7 @@ use crate::ebpf_portal::{InternalProcessor, Port, RemoteWorker};
 use crate::portal::InletSharedState;
 use crate::{TcpInlet, TcpInletOptions, TcpOutletOptions, TcpTransport};
 use core::fmt::Debug;
+use nix::unistd::Uid;
 use ockam_core::{Address, DenyAll, Result, Route};
 use ockam_node::compat::asynchronous::resolve_peer;
 use ockam_node::{ProcessorBuilder, WorkerBuilder};
@@ -21,6 +22,10 @@ impl TcpTransport {
         outlet_route: impl Into<Route> + Clone + Debug,
         options: TcpInletOptions,
     ) -> Result<TcpInlet> {
+        if !Uid::effective().is_root() {
+            panic!("You must run this executable with root permissions");
+        }
+
         let outlet_route = outlet_route.into();
 
         let next = outlet_route.next().cloned()?;
@@ -130,6 +135,10 @@ impl TcpTransport {
         peer: HostnamePort,
         options: TcpOutletOptions, // FIXME
     ) -> Result<()> {
+        if !Uid::effective().is_root() {
+            panic!("You must run this executable with root permissions");
+        }
+
         // Resolve peer address as a host name and port
         tracing::Span::current().record("peer", peer.to_string());
 
