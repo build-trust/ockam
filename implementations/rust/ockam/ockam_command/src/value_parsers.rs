@@ -1,9 +1,7 @@
 use crate::util::parsers::hostname_parser;
 use crate::CommandGlobalOpts;
-use colorful::Colorful;
 use miette::{miette, Context, IntoDiagnostic};
 use ockam_api::cli_state::{EnrollmentTicket, ExportedEnrollmentTicket, LegacyEnrollmentTicket};
-use ockam_api::fmt_warn;
 use std::str::FromStr;
 use tracing::trace;
 use url::Url;
@@ -27,7 +25,7 @@ where
 
 /// Parse an enrollment ticket given a path, a URL or encoded string
 pub async fn parse_enrollment_ticket(
-    opts: &CommandGlobalOpts,
+    _opts: &CommandGlobalOpts,
     value: &str,
 ) -> miette::Result<EnrollmentTicket> {
     trace!(%value, "parsing enrollment ticket");
@@ -35,11 +33,12 @@ pub async fn parse_enrollment_ticket(
 
     // Try to parse it using the old format
     if let Ok(ticket) = LegacyEnrollmentTicket::from_hex(&contents) {
-        opts.terminal.write_line(fmt_warn!(
-            "The enrollment ticket was generated from an old Ockam version"
-        ))?;
-        opts.terminal
-            .write_line(fmt_warn!("Please make sure the machine that generated the ticket is using the latest Ockam version"))?;
+        // TODO: disabled until release 0.138.0
+        // opts.terminal.write_line(fmt_warn!(
+        //     "The enrollment ticket was generated from an old Ockam version"
+        // ))?;
+        // opts.terminal
+        //     .write_line(fmt_warn!("Please make sure the machine that generated the ticket is using the latest Ockam version"))?;
         return Ok(EnrollmentTicket::new_from_legacy(ticket).await?);
     }
 

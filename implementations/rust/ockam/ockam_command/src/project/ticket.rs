@@ -144,7 +144,11 @@ impl Command for TicketCommand {
                 .as_ref()
                 .ok_or(miette!("missing authority's change history"))?,
             project.authority_access_route.as_ref(),
-        );
+        )
+        .import()
+        .await?
+        .export_legacy()?
+        .hex_encoded()?;
 
         opts.terminal
             .write_line(fmt_ok!("Created enrollment ticket\n"))?;
