@@ -20,7 +20,3 @@ mod shared_service;
 mod state;
 
 pub use error::{Error, Result};
-
-/// This is a temporary workaround until the fixes done
-/// in https://github.com/launchbadge/sqlx/pull/3298 are released
-extern crate sqlx_build_trust as sqlx;

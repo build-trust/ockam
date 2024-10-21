@@ -1,5 +1,6 @@
-use sqlx::database::HasArguments;
 use sqlx::encode::IsNull;
+use sqlx::error::BoxDynError;
+use sqlx::postgres::any::AnyArgumentBuffer;
 use sqlx::*;
 use tracing::debug;
 use zeroize::{Zeroize, ZeroizeOnDrop};
@@ -200,7 +201,7 @@ impl Type<Any> for SigningSecret {
 }
 
 impl Encode<'_, Any> for SigningSecret {
-    fn encode_by_ref(&self, buf: &mut <Any as HasArguments>::ArgumentBuffer) -> IsNull {
+    fn encode_by_ref(&self, buf: &mut AnyArgumentBuffer) -> Result<IsNull, BoxDynError> {
         <Vec<u8> as Encode<'_, Any>>::encode_by_ref(&self.key().to_vec(), buf)
     }
 }
@@ -212,7 +213,7 @@ impl Type<Any> for SigningSecretKeyHandle {
 }
 
 impl Encode<'_, Any> for SigningSecretKeyHandle {
-    fn encode_by_ref(&self, buf: &mut <Any as HasArguments>::ArgumentBuffer) -> IsNull {
+    fn encode_by_ref(&self, buf: &mut AnyArgumentBuffer) -> Result<IsNull, BoxDynError> {
         <HandleToSecret as Encode<'_, Any>>::encode_by_ref(self.handle(), buf)
     }
 }
@@ -224,7 +225,7 @@ impl Type<Any> for HandleToSecret {
 }
 
 impl Encode<'_, Any> for HandleToSecret {
-    fn encode_by_ref(&self, buf: &mut <Any as HasArguments>::ArgumentBuffer) -> IsNull {
+    fn encode_by_ref(&self, buf: &mut AnyArgumentBuffer) -> Result<IsNull, BoxDynError> {
         <Vec<u8> as Encode<'_, Any>>::encode_by_ref(self.value(), buf)
     }
 }
@@ -236,7 +237,7 @@ impl Type<Any> for X25519SecretKeyHandle {
 }
 
 impl Encode<'_, Any> for X25519SecretKeyHandle {
-    fn encode_by_ref(&self, buf: &mut <Any as HasArguments>::ArgumentBuffer) -> IsNull {
+    fn encode_by_ref(&self, buf: &mut AnyArgumentBuffer) -> Result<IsNull, BoxDynError> {
         <HandleToSecret as Encode<'_, Any>>::encode_by_ref(&self.0, buf)
     }
 }
@@ -248,7 +249,7 @@ impl Type<Any> for AeadSecretKeyHandle {
 }
 
 impl Encode<'_, Any> for AeadSecretKeyHandle {
-    fn encode_by_ref(&self, buf: &mut <Any as HasArguments>::ArgumentBuffer) -> IsNull {
+    fn encode_by_ref(&self, buf: &mut AnyArgumentBuffer) -> Result<IsNull, BoxDynError> {
         <HandleToSecret as Encode<'_, Any>>::encode_by_ref(&self.0 .0, buf)
     }
 }
@@ -260,7 +261,7 @@ impl Type<Any> for X25519SecretKey {
 }
 
 impl Encode<'_, Any> for X25519SecretKey {
-    fn encode_by_ref(&self, buf: &mut <Any as HasArguments>::ArgumentBuffer) -> IsNull {
+    fn encode_by_ref(&self, buf: &mut AnyArgumentBuffer) -> Result<IsNull, BoxDynError> {
         <Vec<u8> as Encode<'_, Any>>::encode_by_ref(&self.key().to_vec(), buf)
     }
 }
@@ -272,7 +273,7 @@ impl Type<Any> for AeadSecret {
 }
 
 impl Encode<'_, Any> for AeadSecret {
-    fn encode_by_ref(&self, buf: &mut <Any as HasArguments>::ArgumentBuffer) -> IsNull {
+    fn encode_by_ref(&self, buf: &mut AnyArgumentBuffer) -> Result<IsNull, BoxDynError> {
         <Vec<u8> as Encode<'_, Any>>::encode_by_ref(&self.0.to_vec(), buf)
     }
 }

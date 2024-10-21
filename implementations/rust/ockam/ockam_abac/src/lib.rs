@@ -45,8 +45,3 @@ pub use ockam_executor::tokio;
 
 #[cfg(feature = "std")]
 pub use tokio;
-
-/// This is a temporary workaround until the fixes done
-/// in https://github.com/launchbadge/sqlx/pull/3298 are released
-#[cfg(feature = "std")]
-extern crate sqlx_build_trust as sqlx;

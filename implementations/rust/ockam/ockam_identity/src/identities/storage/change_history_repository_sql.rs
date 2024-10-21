@@ -1,8 +1,9 @@
 use core::str::FromStr;
 
 use sqlx::any::AnyArguments;
-use sqlx::database::HasArguments;
 use sqlx::encode::IsNull;
+use sqlx::error::BoxDynError;
+use sqlx::postgres::any::AnyArgumentBuffer;
 use sqlx::query::Query;
 use sqlx::*;
 use tracing::debug;
@@ -147,7 +148,7 @@ impl Type<Any> for Identifier {
 }
 
 impl Encode<'_, Any> for Identifier {
-    fn encode_by_ref(&self, buf: &mut <Any as HasArguments>::ArgumentBuffer) -> IsNull {
+    fn encode_by_ref(&self, buf: &mut AnyArgumentBuffer) -> Result<IsNull, BoxDynError> {
         <String as Encode<'_, Any>>::encode_by_ref(&self.to_string(), buf)
     }
 }
@@ -159,7 +160,7 @@ impl Type<Any> for ChangeHistory {
 }
 
 impl Encode<'_, Any> for ChangeHistory {
-    fn encode_by_ref(&self, buf: &mut <Any as HasArguments>::ArgumentBuffer) -> IsNull {
+    fn encode_by_ref(&self, buf: &mut AnyArgumentBuffer) -> Result<IsNull, BoxDynError> {
         <String as Encode<'_, Any>>::encode_by_ref(&self.export_as_string().unwrap(), buf)
     }
 }
