@@ -76,6 +76,12 @@ pub enum TransportError {
     RemovingInletPort(String),
     /// Error removing Outlet port to the eBPF map
     RemovingOutletPort(String),
+    /// Couldn't read capabilities
+    ReadCaps(String),
+    /// CAP_NET_RAW is missing
+    CapNetRawMissing,
+    /// CAP_BPF is missing
+    CapBpfMissing,
 }
 
 impl ockam_core::compat::error::Error for TransportError {}
@@ -119,6 +125,9 @@ impl core::fmt::Display for TransportError {
             Self::AddingOutletPort(e) => write!(f, "error adding outlet port {}", e),
             Self::RemovingInletPort(e) => write!(f, "error removing inlet port {}", e),
             Self::RemovingOutletPort(e) => write!(f, "error removing outlet port {}", e),
+            Self::ReadCaps(e) => write!(f, "error reading capabilities {}", e),
+            Self::CapNetRawMissing => write!(f, "CAP_NET_RAW capability is not permitted"),
+            Self::CapBpfMissing => write!(f, "CAP_BPF capability is not permitted"),
         }
     }
 }
@@ -157,6 +166,8 @@ impl From<TransportError> for Error {
             | AddingOutletPort(_)
             | RemovingInletPort(_)
             | RemovingOutletPort(_) => Kind::Io,
+            ReadCaps(_) => Kind::Io,
+            CapNetRawMissing | CapBpfMissing => Kind::Misuse,
         };
 
         Error::new(Origin::Transport, kind, err)

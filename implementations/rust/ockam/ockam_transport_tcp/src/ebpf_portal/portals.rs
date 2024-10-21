@@ -13,6 +13,23 @@ use tokio::sync::mpsc::channel;
 use tracing::instrument;
 
 impl TcpTransport {
+    fn check_capabilities() -> Result<()> {
+        use caps::CapSet;
+        use caps::Capability::{CAP_BPF, CAP_NET_RAW};
+        let caps = caps::read(None, CapSet::Effective)
+            .map_err(|e| TransportError::ReadCaps(e.to_string()))?;
+
+        if !caps.contains(&CAP_NET_RAW) {
+            return Err(TransportError::CapNetRawMissing)?;
+        }
+
+        if !caps.contains(&CAP_BPF) {
+            return Err(TransportError::CapBpfMissing)?;
+        }
+
+        Ok(())
+    }
+
     /// Create a Raw Inlet
     #[instrument(skip(self), fields(outlet_route=?outlet_route.clone()))]
     pub async fn create_raw_inlet(
@@ -21,6 +38,8 @@ impl TcpTransport {
         outlet_route: impl Into<Route> + Clone + Debug,
         options: TcpInletOptions,
     ) -> Result<TcpInlet> {
+        Self::check_capabilities()?;
+
         let outlet_route = outlet_route.into();
 
         let next = outlet_route.next().cloned()?;
@@ -130,6 +149,8 @@ impl TcpTransport {
         peer: HostnamePort,
         options: TcpOutletOptions, // FIXME
     ) -> Result<()> {
+        Self::check_capabilities()?;
+
         // Resolve peer address as a host name and port
         tracing::Span::current().record("peer", peer.to_string());
 
