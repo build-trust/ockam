@@ -4585,7 +4585,7 @@ dependencies = [
 
 [[package]]
 name = "ockam"
-version = "0.136.0"
+version = "0.137.0"
 dependencies = [
  "hex",
  "ockam_abac",
@@ -4637,7 +4637,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_api"
-version = "0.79.0"
+version = "0.80.0"
 dependencies = [
  "base64-url",
  "bytes 1.7.2",
@@ -4729,7 +4729,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_app_lib"
-version = "0.136.0"
+version = "0.137.0"
 dependencies = [
  "cbindgen",
  "duct",
@@ -4751,7 +4751,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_command"
-version = "0.136.0"
+version = "0.137.0"
 dependencies = [
  "arboard",
  "assert_cmd",
