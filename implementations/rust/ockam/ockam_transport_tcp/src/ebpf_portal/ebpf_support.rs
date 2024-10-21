@@ -5,9 +5,10 @@ use crate::ebpf_portal::{InletRegistry, OutletRegistry, RawSocketProcessor};
 use aya::maps::{MapData, MapError};
 use aya::programs::tc::SchedClassifierLink;
 use aya::programs::{tc, Link, ProgramError, SchedClassifier, TcAttachType};
-use aya::{Bpf, BpfError};
-use aya_log::BpfLogger;
+use aya::{Ebpf, EbpfError};
+use aya_log::EbpfLogger;
 use core::fmt::{Debug, Formatter};
+use log::error;
 use ockam_core::compat::collections::HashMap;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{Address, Error, Result};
@@ -41,7 +42,7 @@ struct IfaceLink {
 }
 
 struct OckamBpf {
-    bpf: Bpf,
+    bpf: Ebpf,
 
     inlet_port_map: aya::maps::HashMap<MapData, Port, Proto>,
     outlet_port_map: aya::maps::HashMap<MapData, Port, Proto>,
@@ -145,12 +146,12 @@ impl TcpTransportEbpfSupport {
         // reach for `Bpf::load_file` instead.
 
         let ebpf_binary = aya::include_bytes_aligned!("../../../ockam_ebpf/ockam_ebpf");
-        let mut bpf = Bpf::load(ebpf_binary).map_err(map_bpf_error)?;
+        let mut bpf = Ebpf::load(ebpf_binary).map_err(map_bpf_error)?;
         // eBPF can be read from the filesystem in the runtime for development purposes
         // let ebpf_binary = std::fs::read(PATH).unwrap();
         // let mut bpf = Bpf::load(&ebpf_binary).map_err(map_bpf_error)?;
 
-        if let Err(e) = BpfLogger::init(&mut bpf) {
+        if let Err(e) = EbpfLogger::init(&mut bpf) {
             // This can happen if you remove all log statements from your eBPF program.
             warn!("failed to initialize eBPF logger for ingress: {}", e);
         }
@@ -332,7 +333,8 @@ impl TcpTransportEbpfSupport {
 }
 
 #[track_caller]
-fn map_bpf_error(bpf_error: BpfError) -> Error {
+fn map_bpf_error(bpf_error: EbpfError) -> Error {
+    error!("Ebpf error: {}", bpf_error);
     Error::new(Origin::Core, Kind::Io, bpf_error)
 }
 
