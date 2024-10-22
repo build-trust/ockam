@@ -2,6 +2,13 @@
 
 use crate::config::lookup::InternetAddress;
 use crate::nodes::service::{NodeManagerCredentialRetrieverOptions, NodeManagerTrustOptions};
+use ockam::identity::utils::AttributesBuilder;
+use ockam::identity::SecureChannels;
+use ockam::tcp::{TcpListenerOptions, TcpTransport};
+use ockam::transport::HostnamePort;
+use ockam::Result;
+use ockam_core::AsyncTryClone;
+use ockam_node::database::{DatabaseConfiguration, SqlxDatabase};
 use ockam_node::{Context, NodeBuilder};
 use sqlx::__rt::timeout;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
@@ -14,14 +21,6 @@ use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::net::{TcpListener, TcpSocket, TcpStream};
 use tokio::runtime::Runtime;
 use tracing::{error, info};
-
-use ockam::identity::utils::AttributesBuilder;
-use ockam::identity::SecureChannels;
-use ockam::tcp::{TcpListenerOptions, TcpTransport};
-use ockam::transport::HostnamePort;
-use ockam::Result;
-use ockam_core::AsyncTryClone;
-use ockam_node::database::{DatabaseConfiguration, SqlxDatabase};
 
 use crate::authenticator::credential_issuer::{DEFAULT_CREDENTIAL_VALIDITY, PROJECT_MEMBER_SCHEMA};
 use crate::cli_state::{random_name, CliState};
@@ -49,14 +48,21 @@ impl Drop for NodeManagerHandle {
     }
 }
 
+/// Authority configuration for the node manager.
+pub enum AuthorityConfiguration<'a> {
+    None,
+    Node(&'a TestNode),
+    SelfReferencing,
+}
+
 /// Starts a local node manager and returns a handle to it.
 ///
-/// Be careful: if you drop the returned handle before the end of the test
+/// Be careful: if you drop the returned handle before the end of the test,
 /// things *will* break.
 pub async fn start_manager_for_tests(
     context: &mut Context,
     bind_addr: Option<&str>,
-    trust_options: Option<NodeManagerTrustOptions>,
+    authority_configuration: AuthorityConfiguration<'_>,
 ) -> Result<NodeManagerHandle> {
     let tcp = TcpTransport::create(context).await?;
     let tcp_listener = tcp
@@ -80,18 +86,83 @@ pub async fn start_manager_for_tests(
     let vault = cli_state.make_vault(named_vault).await?;
     let identities = cli_state.make_identities(vault).await?;
 
-    let attributes = AttributesBuilder::with_schema(PROJECT_MEMBER_SCHEMA).build();
-    let credential = identities
-        .credentials()
-        .credentials_creation()
-        .issue_credential(
-            &identifier,
-            &identifier,
-            attributes,
-            DEFAULT_CREDENTIAL_VALIDITY,
-        )
-        .await
-        .unwrap();
+    let trust_options = match authority_configuration {
+        AuthorityConfiguration::None => NodeManagerTrustOptions::new(
+            NodeManagerCredentialRetrieverOptions::None,
+            NodeManagerCredentialRetrieverOptions::None,
+            None,
+            NodeManagerCredentialRetrieverOptions::None,
+        ),
+        AuthorityConfiguration::Node(authority) => {
+            // if we have a third-party authority, we need to manually exchange identities
+            // since no actual secure channel is established to exchange credentials
+            authority
+                .secure_channels
+                .identities()
+                .identities_verification()
+                .import_from_change_history(
+                    Some(&identifier),
+                    identities
+                        .identities_verification()
+                        .get_change_history(&identifier)
+                        .await?,
+                )
+                .await?;
+
+            let authority_identifier = authority.node_manager_handle.node_manager.identifier();
+            identities
+                .identities_verification()
+                .import_from_change_history(
+                    Some(&authority_identifier),
+                    authority
+                        .secure_channels
+                        .identities()
+                        .identities_verification()
+                        .get_change_history(&authority_identifier)
+                        .await?,
+                )
+                .await?;
+
+            let credential = authority
+                .secure_channels
+                .identities()
+                .credentials()
+                .credentials_creation()
+                .issue_credential(
+                    &authority_identifier,
+                    &identifier,
+                    AttributesBuilder::with_schema(PROJECT_MEMBER_SCHEMA).build(),
+                    DEFAULT_CREDENTIAL_VALIDITY,
+                )
+                .await?;
+
+            NodeManagerTrustOptions::new(
+                NodeManagerCredentialRetrieverOptions::InMemory(credential),
+                NodeManagerCredentialRetrieverOptions::None,
+                Some(authority_identifier),
+                NodeManagerCredentialRetrieverOptions::None,
+            )
+        }
+        AuthorityConfiguration::SelfReferencing => {
+            let credential = identities
+                .credentials()
+                .credentials_creation()
+                .issue_credential(
+                    &identifier,
+                    &identifier,
+                    AttributesBuilder::with_schema(PROJECT_MEMBER_SCHEMA).build(),
+                    DEFAULT_CREDENTIAL_VALIDITY,
+                )
+                .await?;
+
+            NodeManagerTrustOptions::new(
+                NodeManagerCredentialRetrieverOptions::InMemory(credential),
+                NodeManagerCredentialRetrieverOptions::None,
+                Some(identifier),
+                NodeManagerCredentialRetrieverOptions::None,
+            )
+        }
+    };
 
     let node_manager = InMemoryNode::new(
         context,
@@ -101,14 +172,7 @@ pub async fn start_manager_for_tests(
             tcp.async_try_clone().await?,
             None,
         ),
-        trust_options.unwrap_or_else(|| {
-            NodeManagerTrustOptions::new(
-                NodeManagerCredentialRetrieverOptions::InMemory(credential),
-                NodeManagerCredentialRetrieverOptions::None,
-                Some(identifier),
-                NodeManagerCredentialRetrieverOptions::None,
-            )
-        }),
+        trust_options,
     )
     .await?;
 
@@ -218,22 +282,22 @@ impl TestNode {
     }
 
     pub async fn create(runtime: Arc<Runtime>, listen_addr: Option<&str>) -> Self {
+        Self::create_extended(runtime, listen_addr, AuthorityConfiguration::None).await
+    }
+
+    pub async fn create_extended(
+        runtime: Arc<Runtime>,
+        listen_addr: Option<&str>,
+        authority_configuration: AuthorityConfiguration<'_>,
+    ) -> Self {
         let (mut context, mut executor) = NodeBuilder::new().with_runtime(runtime.clone()).build();
         runtime.spawn(async move {
             executor.start_router().await.expect("cannot start router");
         });
-        let node_manager_handle = start_manager_for_tests(
-            &mut context,
-            listen_addr,
-            Some(NodeManagerTrustOptions::new(
-                NodeManagerCredentialRetrieverOptions::None,
-                NodeManagerCredentialRetrieverOptions::None,
-                None,
-                NodeManagerCredentialRetrieverOptions::None,
-            )),
-        )
-        .await
-        .expect("cannot start node manager");
+        let node_manager_handle =
+            start_manager_for_tests(&mut context, listen_addr, authority_configuration)
+                .await
+                .expect("cannot start node manager");
 
         Self {
             context,

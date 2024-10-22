@@ -23,6 +23,10 @@ impl KeyTracker {
             renewal_interval,
         }
     }
+
+    pub(crate) fn number_of_rekeys(&self) -> u64 {
+        self.number_of_rekeys
+    }
 }
 
 impl KeyTracker {

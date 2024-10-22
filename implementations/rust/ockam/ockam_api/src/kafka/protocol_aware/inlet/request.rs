@@ -4,7 +4,7 @@ use crate::kafka::protocol_aware::RequestInfo;
 use crate::kafka::protocol_aware::{InterceptError, KafkaMessageRequestInterceptor};
 use bytes::{Bytes, BytesMut};
 use kafka_protocol::messages::fetch_request::FetchRequest;
-use kafka_protocol::messages::produce_request::{PartitionProduceData, ProduceRequest};
+use kafka_protocol::messages::produce_request::ProduceRequest;
 use kafka_protocol::messages::request_header::RequestHeader;
 use kafka_protocol::messages::{ApiKey, TopicName};
 use kafka_protocol::protocol::buf::ByteBuf;
@@ -145,14 +145,8 @@ impl InletInterceptorImpl {
                     })?
             };
 
-            let partitions: Vec<i32> = topic
-                .partitions
-                .iter()
-                .map(|partition| partition.partition)
-                .collect();
-
             self.key_exchange_controller
-                .publish_consumer(context, &topic_id, partitions)
+                .publish_consumer(context, &topic_id)
                 .await
                 .map_err(InterceptError::Ockam)?
         }
@@ -190,15 +184,10 @@ impl InletInterceptorImpl {
                             let buffer = if !self.encrypted_fields.is_empty() {
                                 // if we encrypt only specific fields, we assume the record must be
                                 // valid JSON map
-                                self.encrypt_specific_fields(
-                                    context,
-                                    topic_name,
-                                    data,
-                                    &record_value,
-                                )
-                                .await?
+                                self.encrypt_specific_fields(context, topic_name, &record_value)
+                                    .await?
                             } else {
-                                self.encrypt_whole_record(context, topic_name, data, record_value)
+                                self.encrypt_whole_record(context, topic_name, record_value)
                                     .await?
                             };
                             record.value = Some(buffer.into());
@@ -233,12 +222,11 @@ impl InletInterceptorImpl {
         &self,
         context: &mut Context,
         topic_name: &TopicName,
-        data: &mut PartitionProduceData,
         record_value: Bytes,
     ) -> Result<Vec<u8>, InterceptError> {
         let encrypted_content = self
             .key_exchange_controller
-            .encrypt_content(context, topic_name, data.index, record_value.to_vec())
+            .encrypt_content(context, topic_name, record_value.to_vec())
             .await
             .map_err(InterceptError::Ockam)?;
 
@@ -255,7 +243,6 @@ impl InletInterceptorImpl {
         &self,
         context: &mut Context,
         topic_name: &TopicName,
-        data: &mut PartitionProduceData,
         record_value: &Bytes,
     ) -> Result<Vec<u8>, InterceptError> {
         let mut record_value = serde_json::from_slice::<serde_json::Value>(record_value)?;
@@ -268,7 +255,6 @@ impl InletInterceptorImpl {
                         .encrypt_content(
                             context,
                             topic_name,
-                            data.index,
                             serde_json::to_vec(value).map_err(|_| InterceptError::InvalidData)?,
                         )
                         .await

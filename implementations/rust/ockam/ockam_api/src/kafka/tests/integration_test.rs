@@ -30,7 +30,7 @@ use crate::kafka::key_exchange::controller::KafkaKeyExchangeControllerImpl;
 use crate::kafka::protocol_aware::inlet::KafkaInletInterceptorFactory;
 use crate::kafka::protocol_aware::utils::{encode_request, encode_response};
 use crate::kafka::{ConsumerPublishing, ConsumerResolution, KafkaInletController};
-use crate::test_utils::{NodeManagerHandle, TestNode};
+use crate::test_utils::{AuthorityConfiguration, NodeManagerHandle, TestNode};
 use ockam::compat::tokio::io::DuplexStream;
 use ockam::tcp::{TcpInletOptions, TcpOutletOptions};
 use ockam::Context;
@@ -134,7 +134,12 @@ async fn producer__flow_with_mock_kafka__content_encryption_and_decryption(
     context: &mut Context,
 ) -> ockam::Result<()> {
     TestNode::clean().await?;
-    let handle = crate::test_utils::start_manager_for_tests(context, None, None).await?;
+    let handle = crate::test_utils::start_manager_for_tests(
+        context,
+        None,
+        AuthorityConfiguration::SelfReferencing,
+    )
+    .await?;
 
     let consumer_bootstrap_port = create_kafka_service(
         context,
@@ -153,8 +158,7 @@ async fn producer__flow_with_mock_kafka__content_encryption_and_decryption(
     .await?;
 
     // for the consumer to become available to the producer, the consumer has to issue a Fetch
-    // request first, so the sidecar can react by creating the relay for partition
-    // 1 of 'my-topic'
+    // request first, so the sidecar can react by creating the relay for topic 'my-topic'
     {
         let mut consumer_mock_kafka = TcpServerSimulator::start("127.0.0.1:0").await;
         handle

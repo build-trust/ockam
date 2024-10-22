@@ -301,7 +301,7 @@ impl NodeManager {
 
 /// SECURE CHANNEL LISTENERS
 impl NodeManager {
-    pub(super) async fn start_key_exchanger_service(
+    pub(crate) async fn start_key_exchanger_service(
         &self,
         context: &Context,
         address: Address,

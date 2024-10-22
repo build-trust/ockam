@@ -7,9 +7,9 @@ use ockam_identity::models::{CredentialSchemaIdentifier, Identifier};
 use ockam_identity::secure_channels::secure_channels;
 use ockam_identity::utils::AttributesBuilder;
 use ockam_identity::{
-    DecryptionResponse, EncryptionRequest, EncryptionResponse, IdentityAccessControlBuilder,
-    IdentitySecureChannelLocalInfo, SecureChannelListenerOptions, SecureChannelOptions,
-    SecureChannels, TrustEveryonePolicy, TrustIdentifierPolicy, Vault,
+    DecryptionRequest, DecryptionResponse, EncryptionRequest, EncryptionResponse,
+    IdentityAccessControlBuilder, IdentitySecureChannelLocalInfo, SecureChannelListenerOptions,
+    SecureChannelOptions, SecureChannels, TrustEveryonePolicy, TrustIdentifierPolicy, Vault,
     IDENTITY_SECURE_CHANNEL_IDENTIFIER,
 };
 use ockam_node::{Context, MessageReceiveOptions, WorkerBuilder};
@@ -462,7 +462,7 @@ async fn test_channel_api(ctx: &mut Context) -> Result<()> {
     let encrypted_alice: EncryptionResponse = ctx
         .send_and_receive(
             route![alice_channel_data.encryptor_api_address().clone()],
-            EncryptionRequest(b"Ping".to_vec()),
+            EncryptionRequest::Encrypt(b"Ping".to_vec()),
         )
         .await?;
     let encrypted_alice = match encrypted_alice {
@@ -473,7 +473,7 @@ async fn test_channel_api(ctx: &mut Context) -> Result<()> {
     let encrypted_bob: EncryptionResponse = ctx
         .send_and_receive(
             route![bob_channel_data.encryptor_api_address().clone()],
-            EncryptionRequest(b"Pong".to_vec()),
+            EncryptionRequest::Encrypt(b"Pong".to_vec()),
         )
         .await?;
     let encrypted_bob = match encrypted_bob {
@@ -484,7 +484,7 @@ async fn test_channel_api(ctx: &mut Context) -> Result<()> {
     let decrypted_alice: DecryptionResponse = ctx
         .send_and_receive(
             route![alice_channel_data.decryptor_api_address().clone()],
-            encrypted_bob,
+            DecryptionRequest(encrypted_bob, None),
         )
         .await?;
     let decrypted_alice = match decrypted_alice {
@@ -495,7 +495,7 @@ async fn test_channel_api(ctx: &mut Context) -> Result<()> {
     let decrypted_bob: DecryptionResponse = ctx
         .send_and_receive(
             route![bob_channel_data.decryptor_api_address().clone()],
-            encrypted_alice,
+            DecryptionRequest(encrypted_alice, None),
         )
         .await?;
     let decrypted_bob = match decrypted_bob {

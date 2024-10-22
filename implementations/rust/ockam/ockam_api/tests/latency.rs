@@ -1,3 +1,5 @@
+#![recursion_limit = "256"]
+
 use ockam_api::nodes::service::SecureChannelType;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -10,8 +12,7 @@ use tokio::time::timeout;
 use ockam_api::nodes::models::portal::OutletAccessControl;
 use ockam_api::test_utils::{start_tcp_echo_server, TestNode};
 use ockam_core::env::FromString;
-use ockam_core::errcode::{Kind, Origin};
-use ockam_core::{route, Address, AllowAll, Error, NeutralMessage};
+use ockam_core::{route, Address, AllowAll, NeutralMessage};
 use ockam_multiaddr::MultiAddr;
 use ockam_transport_core::HostnamePort;
 
@@ -21,12 +22,12 @@ use ockam_transport_core::HostnamePort;
 /// `cargo test --test latency --release -- --ignored --show-output`
 #[ignore]
 #[test]
-pub fn measure_message_latency_two_nodes() {
+pub fn measure_message_latency_two_nodes() -> ockam_core::Result<()> {
     let runtime = Arc::new(Runtime::new().unwrap());
     let runtime_cloned = runtime.clone();
     std::env::set_var("OCKAM_LOG", "none");
 
-    let result: ockam::Result<()> = runtime_cloned.block_on(async move {
+    runtime_cloned.block_on(async move {
         let test_body = async move {
             TestNode::clean().await?;
             let mut first_node = TestNode::create(runtime.clone(), None).await;
@@ -109,20 +110,17 @@ pub fn measure_message_latency_two_nodes() {
         };
 
         timeout(Duration::from_secs(30), test_body).await.unwrap()
-    });
-
-    result.unwrap();
-    drop(runtime_cloned);
+    })
 }
 
 #[ignore]
 #[test]
-pub fn measure_buffer_latency_two_nodes_portal() {
+pub fn measure_buffer_latency_two_nodes_portal() -> ockam_core::Result<()> {
     let runtime = Arc::new(Runtime::new().unwrap());
     let runtime_cloned = runtime.clone();
     std::env::set_var("OCKAM_LOG", "none");
 
-    let result: ockam::Result<()> = runtime_cloned.block_on(async move {
+    runtime_cloned.block_on(async move {
         let test_body = async move {
             let echo_server_handle = start_tcp_echo_server().await;
 
@@ -200,11 +198,6 @@ pub fn measure_buffer_latency_two_nodes_portal() {
             Ok(())
         };
 
-        timeout(Duration::from_secs(30), test_body)
-            .await
-            .unwrap_or_else(|_| Err(Error::new(Origin::Node, Kind::Timeout, "Test timed out")))
-    });
-
-    result.unwrap();
-    drop(runtime_cloned);
+        timeout(Duration::from_secs(30), test_body).await.unwrap()
+    })
 }

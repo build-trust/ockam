@@ -1,7 +1,8 @@
 use ockam_api::config::lookup::InternetAddress;
 use ockam_api::nodes::models::portal::OutletAccessControl;
 use ockam_api::test_utils::{
-    start_manager_for_tests, start_passthrough_server, start_tcp_echo_server, Disruption, TestNode,
+    start_manager_for_tests, start_passthrough_server, start_tcp_echo_server,
+    AuthorityConfiguration, Disruption, TestNode,
 };
 use ockam_api::ConnectionStatus;
 use ockam_core::compat::rand::RngCore;
@@ -24,7 +25,8 @@ use tracing::info;
 async fn inlet_outlet_local_successful(context: &mut Context) -> ockam::Result<()> {
     TestNode::clean().await?;
     let echo_server_handle = start_tcp_echo_server().await;
-    let node_manager_handle = start_manager_for_tests(context, None, None).await?;
+    let node_manager_handle =
+        start_manager_for_tests(context, None, AuthorityConfiguration::SelfReferencing).await?;
 
     let outlet_status = node_manager_handle
         .node_manager
@@ -221,7 +223,7 @@ fn portal_node_goes_down_reconnect() {
 }
 
 #[test]
-fn portal_low_bandwidth_connection_keep_working_for_60s() {
+fn portal_low_bandwidth_connection_keep_working_for_60s() -> ockam_core::Result<()> {
     // in this test we use two nodes, connected through a passthrough server
     // which limits the bandwidth to 64kb per second
     //
@@ -240,7 +242,7 @@ fn portal_low_bandwidth_connection_keep_working_for_60s() {
     let runtime_cloned = runtime.clone();
     std::env::set_var("OCKAM_LOG", "none");
 
-    let result: ockam::Result<()> = handle.block_on(async move {
+    handle.block_on(async move {
         let test_body = async move {
             let echo_server_handle = start_tcp_echo_server().await;
 
@@ -346,22 +348,18 @@ fn portal_low_bandwidth_connection_keep_working_for_60s() {
             Ok(())
         };
 
-        timeout(Duration::from_secs(90), test_body)
-            .await
-            .unwrap_or_else(|_| Err(Error::new(Origin::Node, Kind::Timeout, "Test timed out")))
-    });
-
-    result.unwrap();
+        timeout(Duration::from_secs(90), test_body).await.unwrap()
+    })
 }
 
 #[test]
-fn portal_heavy_load_exchanged() {
+fn portal_heavy_load_exchanged() -> ockam_core::Result<()> {
     let runtime = Arc::new(Runtime::new().unwrap());
     let handle = runtime.handle();
     let runtime_cloned = runtime.clone();
     std::env::set_var("OCKAM_LOG", "none");
 
-    let result: ockam::Result<()> = handle.block_on(async move {
+    handle.block_on(async move {
         let test_body = async move {
             let echo_server_handle = start_tcp_echo_server().await;
 
@@ -457,17 +455,13 @@ fn portal_heavy_load_exchanged() {
             Ok(())
         };
 
-        timeout(Duration::from_secs(90), test_body)
-            .await
-            .unwrap_or_else(|_| Err(Error::new(Origin::Node, Kind::Timeout, "Test timed out")))
-    });
-
-    result.unwrap();
+        timeout(Duration::from_secs(90), test_body).await.unwrap()
+    })
 }
 
 #[ignore]
 #[test]
-fn portal_connection_drop_packets() {
+fn portal_connection_drop_packets() -> ockam_core::Result<()> {
     // Drop even packets after 32 packets (to allow for the initial
     // handshake to complete).
     // This test checks that:
@@ -475,22 +469,25 @@ fn portal_connection_drop_packets() {
     //   - the portion of the received data matches with the sent data.
     //
 
-    test_portal_payload_transfer(Disruption::DropPacketsAfter(32), Disruption::None);
+    test_portal_payload_transfer(Disruption::DropPacketsAfter(32), Disruption::None)
 }
 
 #[ignore]
 #[test]
-fn portal_connection_change_packet_order() {
+fn portal_connection_change_packet_order() -> ockam_core::Result<()> {
     // Change packet order after 32 packets (to allow for the initial
     // handshake to complete).
     // This test checks that:
     //   - connection is interrupted when a failure is detected
     //   - the portion of the received data matches with the sent data.
 
-    test_portal_payload_transfer(Disruption::PacketsOutOfOrderAfter(32), Disruption::None);
+    test_portal_payload_transfer(Disruption::PacketsOutOfOrderAfter(32), Disruption::None)
 }
 
-fn test_portal_payload_transfer(outgoing_disruption: Disruption, incoming_disruption: Disruption) {
+fn test_portal_payload_transfer(
+    outgoing_disruption: Disruption,
+    incoming_disruption: Disruption,
+) -> ockam_core::Result<()> {
     // we use two nodes, connected through a passthrough server
     // ┌────────┐     ┌───────────┐        ┌────────┐
     // │  Node  └─────►    TCP    └────────►  Node  │
@@ -507,7 +504,7 @@ fn test_portal_payload_transfer(outgoing_disruption: Disruption, incoming_disrup
     let runtime_cloned = runtime.clone();
     std::env::set_var("OCKAM_LOG", "none");
 
-    let result: ockam::Result<_> = handle.block_on(async move {
+    handle.block_on(async move {
         let test_body = async move {
             let echo_server_handle = start_tcp_echo_server().await;
 
@@ -609,10 +606,6 @@ fn test_portal_payload_transfer(outgoing_disruption: Disruption, incoming_disrup
             Ok(())
         };
 
-        timeout(Duration::from_secs(60), test_body)
-            .await
-            .unwrap_or_else(|_| Err(Error::new(Origin::Node, Kind::Timeout, "Test timed out")))
-    });
-
-    result.unwrap();
+        timeout(Duration::from_secs(60), test_body).await.unwrap()
+    })
 }

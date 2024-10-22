@@ -25,13 +25,8 @@ pub enum ConsumerPublishing {
     #[n(2)] Relay(#[n(1)] MultiAddr),
 }
 
-type TopicPartition = (String, i32);
-
 /// Offer simple APIs to encrypt and decrypt kafka messages.
-/// Underneath it creates secure channels for each topic/partition
-/// and uses them to encrypt the content.
-/// Multiple secure channels may be created for the same topic/partition
-/// but each will be explicitly labeled.
+/// Underneath it creates secure channels for each topic uses them to encrypt the content.
 #[async_trait]
 pub(crate) trait KafkaKeyExchangeController: Send + Sync + 'static {
     /// Encrypts the content specifically for the consumer waiting for that topic name and
@@ -43,7 +38,6 @@ pub(crate) trait KafkaKeyExchangeController: Send + Sync + 'static {
         &self,
         context: &mut Context,
         topic_name: &str,
-        partition_index: i32,
         content: Vec<u8>,
     ) -> ockam_core::Result<KafkaEncryptedContent>;
 
@@ -53,16 +47,15 @@ pub(crate) trait KafkaKeyExchangeController: Send + Sync + 'static {
         &self,
         context: &mut Context,
         consumer_decryptor_address: &Address,
+        rekey_counter: u16,
         encrypted_content: Vec<u8>,
     ) -> ockam_core::Result<Vec<u8>>;
 
-    /// Starts relays in the orchestrator for each {topic_name}_{partition} combination
-    /// should be used only by the consumer.
+    /// Starts relays in the orchestrator for each topic name, should be used only by the consumer.
     /// does nothing if they were already created, but fails it they already exist.
     async fn publish_consumer(
         &self,
         context: &mut Context,
         topic_name: &str,
-        partitions: Vec<i32>,
     ) -> ockam_core::Result<()>;
 }
