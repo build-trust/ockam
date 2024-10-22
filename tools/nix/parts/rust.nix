@@ -47,7 +47,6 @@ in {
         nativeLibs = with pkgs;
           [(lib.getDev openssl)]
           ++ lib.optionals stdenv.isLinux [
-            glibc
             dbus
             webkitgtk_4_1
             (lib.getDev systemd)
