@@ -5,12 +5,11 @@ use std::process::exit;
 use std::sync::Arc;
 use tokio::runtime::Runtime;
 use tracing::{debug, info};
-use tracing_core::Level;
 
 use ockam_api::colors::color_primary;
 use ockam_api::logs::{
-    crates_filter, logging_configuration, Colored, ExportingConfiguration, LoggingConfiguration,
-    LoggingTracing, TracingGuard,
+    logging_configuration, Colored, ExportingConfiguration, LogLevelWithCratesFilter,
+    LoggingConfiguration, LoggingTracing, TracingGuard,
 };
 use ockam_api::terminal::{Terminal, TerminalStream};
 use ockam_api::{fmt_err, fmt_log, fmt_ok, CliState};
@@ -80,30 +79,21 @@ impl CommandGlobalOpts {
                     terminal
                         .stdout()
                         .plain(fmt_ok!("Local Ockam configuration deleted"))
-                        .write_line()
-                        .unwrap();
+                        .write_line()?;
                     exit(exitcode::OK);
                 }
-                terminal
-                    .write_line(fmt_err!("Failed to initialize local state"))
-                    .unwrap();
-                terminal
-                    .write_line(fmt_log!(
-                        "Consider upgrading to the latest version of Ockam Command"
-                    ))
-                    .unwrap();
+                terminal.write_line(fmt_err!("Failed to initialize local state"))?;
+                terminal.write_line(fmt_log!(
+                    "Consider upgrading to the latest version of Ockam Command"
+                ))?;
                 let ockam_home = std::env::var("OCKAM_HOME").unwrap_or("~/.ockam".to_string());
-                terminal
-                    .write_line(fmt_log!(
-                        "You can also try removing the local state using {} \
+                terminal.write_line(fmt_log!(
+                    "You can also try removing the local state using {} \
                         or deleting the directory at {}",
-                        color_primary("ockam reset"),
-                        color_primary(ockam_home)
-                    ))
-                    .unwrap();
-                terminal
-                    .write_line(format!("\n{:?}", miette!(err.to_string())))
-                    .unwrap();
+                    color_primary("ockam reset"),
+                    color_primary(ockam_home)
+                ))?;
+                terminal.write_line(format!("\n{:?}", miette!(err.to_string())))?;
                 exit(exitcode::SOFTWARE);
             }
         };
@@ -148,27 +138,22 @@ impl CommandGlobalOpts {
         is_tty: bool,
     ) -> miette::Result<LoggingConfiguration> {
         let log_path = cmd.log_path();
-        let crates = crates_filter().into_diagnostic()?;
         if cmd.is_background_node() {
-            Ok(LoggingConfiguration::background(log_path, crates).into_diagnostic()?)
+            Ok(LoggingConfiguration::background(log_path).into_diagnostic()?)
         } else {
-            let preferred_log_level = verbose_log_level(global_args.verbose);
-            let log_path = if preferred_log_level.is_some() || cmd.is_foreground_node() {
+            let level_and_crates =
+                LogLevelWithCratesFilter::from_verbose(global_args.verbose).into_diagnostic()?;
+            let log_path = if level_and_crates.explicit_verbose_flag || cmd.is_foreground_node() {
                 None
             } else {
                 Some(CliState::command_log_path(cmd.name().as_str())?)
             };
-
             let colored = if !global_args.no_color && is_tty && log_path.is_none() {
                 Colored::On
             } else {
                 Colored::Off
             };
-
-            Ok(
-                logging_configuration(preferred_log_level, colored, log_path, crates)
-                    .into_diagnostic()?,
-            )
+            Ok(logging_configuration(level_and_crates, log_path, colored).into_diagnostic()?)
         }
     }
 
@@ -218,17 +203,5 @@ impl CommandGlobalOpts {
         if let Some(tracing_guard) = self.tracing_guard.clone() {
             tracing_guard.shutdown();
         };
-    }
-}
-
-/// Return the LevelFilter corresponding to a given verbose flag
-/// -vvv set verbose to 3 (3 times 'v')
-/// and this function translate the number of `v` to a log level
-fn verbose_log_level(verbose: u8) -> Option<Level> {
-    match verbose {
-        0 => None,
-        1 => Some(Level::INFO),
-        2 => Some(Level::DEBUG),
-        _ => Some(Level::TRACE),
     }
 }

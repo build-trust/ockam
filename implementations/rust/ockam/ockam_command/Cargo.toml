@@ -101,7 +101,6 @@ time = { version = "0.3", default-features = false, features = ["std", "local-of
 tokio = { version = "1.39.2", features = ["full"] }
 tokio-retry = "0.3"
 tracing = { version = "0.1", default-features = false }
-tracing-core = { version = "0.1.32", default-features = false }
 url = "2.5.2"
 which = "6.0.2"
 
