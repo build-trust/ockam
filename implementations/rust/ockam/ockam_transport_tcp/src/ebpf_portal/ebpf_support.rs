@@ -5,8 +5,8 @@ use crate::ebpf_portal::{InletRegistry, OutletRegistry, RawSocketProcessor};
 use aya::maps::{MapData, MapError};
 use aya::programs::tc::SchedClassifierLink;
 use aya::programs::{tc, Link, ProgramError, SchedClassifier, TcAttachType};
-use aya::{Bpf, BpfError};
-use aya_log::BpfLogger;
+use aya::{Ebpf, EbpfError};
+use aya_log::EbpfLogger;
 use core::fmt::{Debug, Formatter};
 use ockam_core::compat::collections::HashMap;
 use ockam_core::errcode::{Kind, Origin};
@@ -41,7 +41,7 @@ struct IfaceLink {
 }
 
 struct OckamBpf {
-    bpf: Bpf,
+    ebpf: Ebpf,
 
     inlet_port_map: aya::maps::HashMap<MapData, Port, Proto>,
     outlet_port_map: aya::maps::HashMap<MapData, Port, Proto>,
@@ -145,26 +145,27 @@ impl TcpTransportEbpfSupport {
         // reach for `Bpf::load_file` instead.
 
         let ebpf_binary = aya::include_bytes_aligned!("../../../ockam_ebpf/ockam_ebpf");
-        let mut bpf = Bpf::load(ebpf_binary).map_err(map_bpf_error)?;
+        let mut ebpf = Ebpf::load(ebpf_binary).map_err(map_ebpf_error)?;
         // eBPF can be read from the filesystem in the runtime for development purposes
         // let ebpf_binary = std::fs::read(PATH).unwrap();
-        // let mut bpf = Bpf::load(&ebpf_binary).map_err(map_bpf_error)?;
+        // let mut ebpf = Ebpf::load(&ebpf_binary).map_err(map_bpf_error)?;
 
-        if let Err(e) = BpfLogger::init(&mut bpf) {
+        if let Err(e) = EbpfLogger::init(&mut ebpf) {
             // This can happen if you remove all log statements from your eBPF program.
             warn!("failed to initialize eBPF logger for ingress: {}", e);
         }
 
-        let inlet_port_map =
-            aya::maps::HashMap::<_, Port, Proto>::try_from(bpf.take_map("INLET_PORT_MAP").unwrap())
-                .map_err(map_map_error)?;
+        let inlet_port_map = aya::maps::HashMap::<_, Port, Proto>::try_from(
+            ebpf.take_map("INLET_PORT_MAP").unwrap(),
+        )
+        .map_err(map_map_error)?;
         let outlet_port_map = aya::maps::HashMap::<_, Port, Proto>::try_from(
-            bpf.take_map("OUTLET_PORT_MAP").unwrap(),
+            ebpf.take_map("OUTLET_PORT_MAP").unwrap(),
         )
         .map_err(map_map_error)?;
 
         let bpf = OckamBpf {
-            bpf,
+            ebpf,
             inlet_port_map,
             outlet_port_map,
         };
@@ -216,7 +217,7 @@ impl TcpTransportEbpfSupport {
         debug!("Attaching eBPF ingress to {}", iface);
 
         let program_ingress: &mut SchedClassifier = bpf
-            .bpf
+            .ebpf
             .program_mut("ockam_ingress")
             .unwrap()
             .try_into()
@@ -245,7 +246,7 @@ impl TcpTransportEbpfSupport {
         debug!("Attaching eBPF egress to {}", iface);
 
         let program_egress: &mut SchedClassifier = bpf
-            .bpf
+            .ebpf
             .program_mut("ockam_egress")
             .unwrap()
             .try_into()
@@ -332,8 +333,8 @@ impl TcpTransportEbpfSupport {
 }
 
 #[track_caller]
-fn map_bpf_error(bpf_error: BpfError) -> Error {
-    Error::new(Origin::Core, Kind::Io, bpf_error)
+fn map_ebpf_error(ebpf_error: EbpfError) -> Error {
+    Error::new(Origin::Core, Kind::Io, ebpf_error)
 }
 
 #[track_caller]
