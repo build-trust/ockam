@@ -21,8 +21,7 @@ teardown() {
   assert_output --partial '(= subject.component \"global_value\")'
 
   run_success $OCKAM policy delete tcp-outlet -y
-  run_success $OCKAM policy show tcp-outlet
-  refute_output --partial "tcp-outlet"
+  run_failure $OCKAM policy show tcp-outlet
 }
 
 @test "policies - create resource type policy" {
@@ -35,8 +34,7 @@ teardown() {
   run_failure $OCKAM policy showype not-a-resource-type
 
   run_success $OCKAM policy delete tcp-outlet -y
-  run_success $OCKAM policy show tcp-outlet
-  refute_output --partial "tcp-outlet"
+  run_failure $OCKAM policy show tcp-outlet
 }
 
 @test "policies - create scoped policy" {
@@ -46,8 +44,7 @@ teardown() {
   assert_output --partial '(= subject.component \"scoped_value\")'
 
   run_success $OCKAM policy delete my_policy -y
-  run_success $OCKAM policy show my_policy
-  refute_output --partial "my_policy"
+  run_failure $OCKAM policy show my_policy
 }
 
 @test "policies - create policy with a boolean expression" {
