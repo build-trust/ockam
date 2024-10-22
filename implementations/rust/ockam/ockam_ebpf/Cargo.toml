@@ -16,9 +16,9 @@ eBPF program used by Ockam TCP Portals
 """
 
 [dependencies]
-aya-ebpf = "0.1.0"
-aya-log-ebpf = "0.1.0"
-network-types = "0.0.6"
+aya-ebpf = "0.1.1"
+aya-log-ebpf = "0.1.1"
+network-types = "0.0.7"
 
 [[bin]]
 name = "ockam_ebpf"

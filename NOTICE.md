@@ -209,6 +209,7 @@ This file contains attributions for any 3rd-party open source code used in this 
 | flexi_logger | MIT, Apache-2.0 | https://crates.io/crates/flexi_logger |
 | flume | Apache-2.0, MIT | https://crates.io/crates/flume |
 | fnv | Apache-2.0, MIT | https://crates.io/crates/fnv |
+| foldhash | Zlib | https://crates.io/crates/foldhash |
 | foreign-types | MIT, Apache-2.0 | https://crates.io/crates/foreign-types |
 | foreign-types-macros | MIT, Apache-2.0 | https://crates.io/crates/foreign-types-macros |
 | foreign-types-shared | MIT, Apache-2.0 | https://crates.io/crates/foreign-types-shared |
