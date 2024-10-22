@@ -4707,6 +4707,7 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
+ "serial_test",
  "sha2",
  "sqlx",
  "strip-ansi-escapes",
@@ -4751,7 +4752,6 @@ dependencies = [
  "thiserror",
  "tokio",
  "tracing",
- "tracing-core",
 ]
 
 [[package]]
@@ -4809,7 +4809,6 @@ dependencies = [
  "tokio",
  "tokio-retry",
  "tracing",
- "tracing-core",
  "url",
  "which 6.0.3",
 ]

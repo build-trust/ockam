@@ -6,7 +6,8 @@ use miette::IntoDiagnostic;
 use ockam_api::cli_state::CliState;
 use ockam_api::fmt_log;
 use ockam_api::logs::{
-    crates_filter, logging_configuration, Colored, ExportingConfiguration, LoggingTracing,
+    logging_configuration, Colored, ExportingConfiguration, LogLevelWithCratesFilter,
+    LoggingTracing,
 };
 
 use crate::{
@@ -43,12 +44,9 @@ pub fn run() -> miette::Result<()> {
                     .collect::<Vec<String>>()
                     .join(" ");
 
-                let logging_configuration = logging_configuration(
-                    None,
-                    Colored::On,
-                    None,
-                    crates_filter().into_diagnostic()?,
-                );
+                let level_and_crates = LogLevelWithCratesFilter::new().into_diagnostic()?;
+                let logging_configuration =
+                    logging_configuration(level_and_crates, None, Colored::On);
                 let _guard = LoggingTracing::setup(
                     &logging_configuration.into_diagnostic()?,
                     &ExportingConfiguration::foreground().into_diagnostic()?,

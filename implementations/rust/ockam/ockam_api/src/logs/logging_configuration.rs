@@ -1,7 +1,7 @@
 use crate::config::LevelVar;
 use crate::logs::default_values::*;
 use crate::logs::env_variables::*;
-use ockam_core::env::{get_env, get_env_with_default, is_set, FromString};
+use ockam_core::env::{get_env, get_env_with_default, FromString};
 use std::fmt::{Display, Formatter};
 use std::path::PathBuf;
 use tracing_core::Level;
@@ -48,12 +48,6 @@ impl LoggingConfiguration {
         log_dir: Option<PathBuf>,
         crates_filter: CratesFilter,
     ) -> LoggingConfiguration {
-        let crates = match crates_filter {
-            CratesFilter::All => None,
-            CratesFilter::Default => Some(LoggingConfiguration::default_crates()),
-            CratesFilter::Selected(crates) => Some(crates),
-        };
-
         LoggingConfiguration {
             enabled,
             level,
@@ -63,7 +57,7 @@ impl LoggingConfiguration {
             format,
             colored,
             log_dir,
-            crates,
+            crates: crates_filter.crates(),
         }
     }
 
@@ -128,14 +122,6 @@ impl LoggingConfiguration {
         }
     }
 
-    /// Set the default crates
-    pub fn set_default_crates(self) -> LoggingConfiguration {
-        LoggingConfiguration {
-            crates: Some(LoggingConfiguration::default_crates()),
-            ..self
-        }
-    }
-
     /// Set the all crates
     pub fn set_all_crates(self) -> LoggingConfiguration {
         LoggingConfiguration {
@@ -179,49 +165,34 @@ impl LoggingConfiguration {
     ///
     /// Since those pieces of configuration are used by both logging and tracing
     pub fn off() -> ockam_core::Result<LoggingConfiguration> {
+        let level_and_crates = LogLevelWithCratesFilter::new()?;
         Ok(LoggingConfiguration::new(
             LoggingEnabled::Off,
-            log_level(None)?,
+            level_and_crates.level,
             global_error_handler()?,
             0,
             0,
             LogFormat::Default,
             Colored::Off,
             None,
-            crates_filter()?,
+            level_and_crates.crates_filter,
         ))
     }
 
     /// Return a LoggingConfiguration which creates logs for a background node
-    pub fn background(
-        log_dir: Option<PathBuf>,
-        crates_filter: CratesFilter,
-    ) -> ockam_core::Result<LoggingConfiguration> {
+    pub fn background(log_dir: Option<PathBuf>) -> ockam_core::Result<LoggingConfiguration> {
+        let level_and_crates = LogLevelWithCratesFilter::new()?;
         Ok(LoggingConfiguration::new(
             LoggingEnabled::On,
-            log_level(None)?,
+            level_and_crates.level,
             global_error_handler()?,
             log_max_size_bytes()?,
             log_max_files()?,
             log_format()?,
             Colored::Off,
             log_dir,
-            crates_filter,
+            level_and_crates.crates_filter.clone(),
         ))
-    }
-
-    /// List of default crates to keep for log messages
-    pub fn default_crates() -> Vec<String> {
-        vec![
-            "ockam".to_string(),
-            "ockam_node".to_string(),
-            "ockam_core".to_string(),
-            "ockam_vault".to_string(),
-            "ockam_identity".to_string(),
-            "ockam_transport_tcp".to_string(),
-            "ockam_api".to_string(),
-            "ockam_command".to_string(),
-        ]
     }
 }
 
@@ -244,32 +215,29 @@ impl Display for LoggingConfiguration {
     }
 }
 
-/// Create the logging configuration
-/// If the OCKAM_LOG variable is specified we take the preferred log level from that variable.
-/// Otherwise we take it from the OCKAM_LOG_LEVEL variable
+/// Create the logging configuration.
+/// If the verbose flag is set, we enable logging.
+/// Otherwise, we use the OCKAM_LOGGING variable to decide.
 pub fn logging_configuration(
-    preferred_log_level: Option<Level>,
-    colored: Colored,
+    level_and_crates: LogLevelWithCratesFilter,
     log_dir: Option<PathBuf>,
-    crates: CratesFilter,
+    colored: Colored,
 ) -> ockam_core::Result<LoggingConfiguration> {
-    let is_legacy_variable_set = is_set::<LevelVar>(OCKAM_LOG)?;
-    let enabled = if is_legacy_variable_set || preferred_log_level.is_some() {
+    let enabled = if level_and_crates.explicit_verbose_flag {
         LoggingEnabled::On
     } else {
         logging_enabled()?
     };
-    let level = log_level(preferred_log_level)?;
     Ok(LoggingConfiguration::new(
         enabled,
-        level,
+        level_and_crates.level,
         global_error_handler()?,
         log_max_size_bytes()?,
         log_max_files()?,
         log_format()?,
         colored,
         log_dir,
-        crates,
+        level_and_crates.crates_filter.clone(),
     ))
 }
 
@@ -300,37 +268,6 @@ pub fn logging_enabled() -> ockam_core::Result<LoggingEnabled> {
     }
 }
 
-/// Return the log level, using the legacy environment variable if defined,
-/// or the current one.
-fn log_level(preferred_log_level: Option<Level>) -> ockam_core::Result<Level> {
-    let is_legacy_variable_set = is_set::<LevelVar>(OCKAM_LOG)?;
-    let env_variable = if is_legacy_variable_set {
-        println!("The OCKAM_LOG variable is deprecated. Please use: OCKAM_LOGGING=true OCKAM_LOG_LEVEL=trace (with the desired level) instead.");
-        OCKAM_LOG
-    } else {
-        OCKAM_LOG_LEVEL
-    };
-    get_log_level(env_variable, preferred_log_level)
-}
-
-/// A user can pass a preferred logging level via a -vvv argument (with the number of 'v' indicating
-/// the log level). If that argument is not present, we get the log level from an environment variable.
-fn get_log_level(
-    variable_name: &str,
-    preferred_log_level: Option<Level>,
-) -> ockam_core::Result<Level> {
-    match preferred_log_level {
-        Some(level) => Ok(level),
-        None => get_env_with_default(
-            variable_name,
-            LevelVar {
-                level: Level::DEBUG,
-            },
-        )
-        .map(|l| l.level),
-    }
-}
-
 /// Return the strategy to use for reporting logging/tracing errors
 pub fn global_error_handler() -> ockam_core::Result<GlobalErrorHandler> {
     match get_env::<GlobalErrorHandler>(OCKAM_TRACING_GLOBAL_ERROR_HANDLER)? {
@@ -339,18 +276,129 @@ pub fn global_error_handler() -> ockam_core::Result<GlobalErrorHandler> {
     }
 }
 
+/// Represents the relationship between a log level and the crates that will
+/// get monitored at that level
+pub struct LogLevelWithCratesFilter {
+    pub level: Level,
+    pub crates_filter: CratesFilter,
+    /// Indicates if the log level was explicitly set by the commands' `verbose` flag
+    pub explicit_verbose_flag: bool,
+}
+
+impl LogLevelWithCratesFilter {
+    /// Create a new LogLevel based on the environment variables for the log level and crates filter
+    pub fn new() -> ockam_core::Result<Self> {
+        let level = Self::get_log_level_from_env()?;
+        let crates_filter = match CratesFilter::try_from_env()? {
+            None => match level {
+                Level::INFO => CratesFilter::Basic,
+                _ => CratesFilter::Core,
+            },
+            Some(f) => f,
+        };
+        Ok(Self {
+            level,
+            crates_filter,
+            explicit_verbose_flag: false,
+        })
+    }
+
+    /// Create a new LogLevel, using the verbose argument if > 0, or one of the environment variables.
+    pub fn from_verbose(verbose: u8) -> ockam_core::Result<Self> {
+        let level = match verbose {
+            0 => Self::get_log_level_from_env()?,
+            1 | 2 => Level::INFO,
+            3 => Level::DEBUG,
+            _ => Level::TRACE,
+        };
+        let crates_filter = CratesFilter::from_verbose(verbose)?;
+        let explicit_verbose_flag = verbose > 0;
+        Ok(Self {
+            level,
+            crates_filter,
+            explicit_verbose_flag,
+        })
+    }
+
+    /// Return the log level based on the log level environment variable.
+    /// Default to DEBUG.
+    fn get_log_level_from_env() -> ockam_core::Result<Level> {
+        get_env_with_default(
+            OCKAM_LOG_LEVEL,
+            LevelVar {
+                level: Level::DEBUG,
+            },
+        )
+        .map(|l| l.level)
+    }
+
+    pub fn add_crates(self, new: Vec<impl Into<String>>) -> Self {
+        let crates = self
+            .crates_filter
+            .crates()
+            .unwrap_or_default()
+            .into_iter()
+            .chain(new.into_iter().map(Into::into))
+            .collect();
+        Self {
+            crates_filter: CratesFilter::Selected(crates),
+            ..self
+        }
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum CratesFilter {
     All,
-    Default,
+    Basic,
+    Core,
     Selected(Vec<String>),
+}
+
+impl CratesFilter {
+    pub fn try_from_env() -> ockam_core::Result<Option<Self>> {
+        get_env_with_default(OCKAM_LOG_CRATES_FILTER, None)
+    }
+
+    /// Use the verbose flag if set, otherwise use the environment variable or default to `Basic`
+    pub fn from_verbose(verbose: u8) -> ockam_core::Result<Self> {
+        Ok(match verbose {
+            0 => get_env_with_default(OCKAM_LOG_CRATES_FILTER, CratesFilter::Basic)?,
+            1 => CratesFilter::Basic,
+            2..=4 => CratesFilter::Core,
+            _ => CratesFilter::All,
+        })
+    }
+
+    /// List of crates to keep for log messages
+    pub fn crates(&self) -> Option<Vec<String>> {
+        match self {
+            CratesFilter::All => None,
+            CratesFilter::Basic => Some(vec![
+                "ockam_api::ui::terminal".to_string(),
+                "ockam_command".to_string(),
+            ]),
+            CratesFilter::Core => Some(vec![
+                "ockam".to_string(),
+                "ockam_node".to_string(),
+                "ockam_core".to_string(),
+                "ockam_vault".to_string(),
+                "ockam_identity".to_string(),
+                "ockam_transport_tcp".to_string(),
+                "ockam_api".to_string(),
+                "ockam_command".to_string(),
+            ]),
+            CratesFilter::Selected(list) => Some(list.clone()),
+        }
+    }
 }
 
 impl FromString for CratesFilter {
     fn from_string(s: &str) -> ockam_core::Result<Self> {
         match s {
             "all" => Ok(CratesFilter::All),
-            "default" => Ok(CratesFilter::Default),
+            "basic" => Ok(CratesFilter::Basic),
+            "core" => Ok(CratesFilter::Core),
             other => Ok(CratesFilter::Selected(<Vec<String>>::from_string(other)?)),
         }
     }
@@ -360,14 +408,71 @@ impl Display for CratesFilter {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             CratesFilter::All => f.write_str("all"),
-            CratesFilter::Default => f.write_str("default"),
+            CratesFilter::Basic => f.write_str("basic"),
+            CratesFilter::Core => f.write_str("core"),
             CratesFilter::Selected(s) => f.write_str(s.join(",").as_str()),
         }
     }
 }
 
-/// Return the crates which should generate logs. If the variable is not defined,
-/// then the ockam crates are returned.
-pub fn crates_filter() -> ockam_core::Result<CratesFilter> {
-    get_env_with_default(OCKAM_LOG_CRATES_FILTER, CratesFilter::Default)
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serial_test::serial;
+
+    #[test]
+    #[serial]
+    fn log_level_with_crates_filter_new() {
+        std::env::remove_var(OCKAM_LOG_LEVEL);
+        std::env::remove_var(OCKAM_LOG_CRATES_FILTER);
+
+        // No env vars defined. Use default values.
+        let sut = LogLevelWithCratesFilter::new().unwrap();
+        assert_eq!(sut.level, Level::DEBUG);
+        assert_eq!(sut.crates_filter, CratesFilter::Core);
+        assert!(!sut.explicit_verbose_flag);
+
+        // Override with env vars
+        std::env::set_var(OCKAM_LOG_LEVEL, "info");
+        std::env::set_var(OCKAM_LOG_CRATES_FILTER, "my_crate,other_crate");
+        let sut = LogLevelWithCratesFilter::new().unwrap();
+        assert_eq!(sut.level, Level::INFO);
+        assert_eq!(
+            sut.crates_filter,
+            CratesFilter::Selected(vec!["my_crate".to_string(), "other_crate".to_string()])
+        );
+        assert!(!sut.explicit_verbose_flag);
+    }
+
+    #[test]
+    #[serial]
+    fn log_level_with_crates_filter_with_verbose() {
+        std::env::remove_var(OCKAM_LOG_LEVEL);
+        std::env::remove_var(OCKAM_LOG_CRATES_FILTER);
+
+        // No env vars defined. Use verbose value.
+        let sut = LogLevelWithCratesFilter::from_verbose(1).unwrap();
+        assert_eq!(sut.level, Level::INFO);
+        assert_eq!(sut.crates_filter, CratesFilter::Basic);
+        assert!(sut.explicit_verbose_flag);
+
+        // Set env vars
+        std::env::set_var(OCKAM_LOG_LEVEL, "trace");
+        std::env::set_var(OCKAM_LOG_CRATES_FILTER, "my_crate");
+
+        // If verbose is 0, fallback to env vars
+        let sut = LogLevelWithCratesFilter::from_verbose(0).unwrap();
+        assert_eq!(sut.level, Level::TRACE);
+        assert_eq!(
+            sut.crates_filter,
+            CratesFilter::Selected(vec!["my_crate".to_string()])
+        );
+        assert!(!sut.explicit_verbose_flag);
+
+        // If verbose is > 0, ignore env vars
+        let sut = LogLevelWithCratesFilter::from_verbose(1).unwrap();
+        assert_eq!(sut.level, Level::INFO);
+        assert_eq!(sut.crates_filter, CratesFilter::Basic);
+        assert!(sut.explicit_verbose_flag);
+    }
 }
