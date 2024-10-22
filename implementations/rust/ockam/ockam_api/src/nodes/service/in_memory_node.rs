@@ -63,7 +63,7 @@ impl Drop for InMemoryNode {
                     // code: 1032 maps to SQLITE_READONLY_DBMOVED - meaning the database has been
                     // moved to another directory, most likely already deleted
                     if !err.to_string().contains("code: 1032") {
-                        panic!("cannot delete the node {}: {err:?}", self.node_name);
+                        error!("Cannot delete the node {}: {err:?}", self.node_name);
                     }
                 }
             });
