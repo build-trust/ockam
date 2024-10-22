@@ -317,6 +317,67 @@ pub mod vec {
     pub type Vec<T> = heapless::Vec<T, 64>;
 }
 
+/// Provides [`Clock`] and [`test::TestClock`].
+/// These are useful for testing time-dependent code.
+pub mod clock {
+    /// A trait for providing the current time.
+    pub trait Clock: Send + Sync + 'static {
+        /// Returns the current time in seconds since the Unix epoch.
+        fn now(&self) -> crate::Result<u64>;
+    }
+
+    /// A production implementation of the [`Clock`] trait.
+    /// Unless you are writing testing code, this is the implementation you should use.
+    #[derive(Clone, Default, Debug)]
+    pub struct ProductionClock;
+
+    impl Clock for ProductionClock {
+        fn now(&self) -> crate::Result<u64> {
+            super::time::now()
+        }
+    }
+
+    #[cfg(feature = "std")]
+    #[allow(dead_code, missing_docs)]
+    pub mod test {
+        use crate::compat::clock::Clock;
+        use core::fmt::Debug;
+        use std::sync::atomic::AtomicU64;
+        use std::sync::Arc;
+
+        #[derive(Clone)]
+        pub struct TestClock {
+            pub time: Arc<AtomicU64>,
+        }
+
+        impl Clock for TestClock {
+            fn now(&self) -> crate::Result<u64> {
+                Ok(self.time.load(std::sync::atomic::Ordering::Relaxed))
+            }
+        }
+
+        impl Debug for TestClock {
+            fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+                write!(f, "{:?}", self.time)
+            }
+        }
+
+        impl TestClock {
+            pub fn new(time: u64) -> Self {
+                Self {
+                    time: Arc::new(AtomicU64::new(time)),
+                }
+            }
+
+            pub fn add_seconds(&self, seconds: u64) {
+                let time = self.time.load(std::sync::atomic::Ordering::Relaxed);
+                self.time
+                    .store(time + seconds, std::sync::atomic::Ordering::Relaxed);
+            }
+        }
+    }
+}
+
 /// Provides `std::time` for `std` targets.
 #[cfg(feature = "std")]
 pub mod time {

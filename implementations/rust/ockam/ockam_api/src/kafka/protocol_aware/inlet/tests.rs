@@ -31,7 +31,6 @@ impl KafkaKeyExchangeController for MockKafkaKeyExchangeController {
         &self,
         _context: &mut Context,
         _topic_name: &str,
-        _partition_index: i32,
         content: Vec<u8>,
     ) -> ockam_core::Result<KafkaEncryptedContent> {
         let mut new_content = ENCRYPTED_PREFIX.to_vec();
@@ -39,6 +38,7 @@ impl KafkaKeyExchangeController for MockKafkaKeyExchangeController {
         Ok(KafkaEncryptedContent {
             consumer_decryptor_address: Address::from_string("mock"),
             content: new_content,
+            rekey_counter: u16::MAX,
         })
     }
 
@@ -46,6 +46,7 @@ impl KafkaKeyExchangeController for MockKafkaKeyExchangeController {
         &self,
         _context: &mut Context,
         _consumer_decryptor_address: &Address,
+        _rekey_counter: u16,
         encrypted_content: Vec<u8>,
     ) -> ockam_core::Result<Vec<u8>> {
         Ok(encrypted_content[PREFIX_LEN..].to_vec())
@@ -55,7 +56,6 @@ impl KafkaKeyExchangeController for MockKafkaKeyExchangeController {
         &self,
         _context: &mut Context,
         _topic_name: &str,
-        _partitions: Vec<i32>,
     ) -> ockam_core::Result<()> {
         Ok(())
     }
@@ -198,6 +198,7 @@ pub fn encode_field_value(value: serde_json::Value) -> String {
         .encode(KafkaEncryptedContent {
             consumer_decryptor_address: Address::from_string("mock"),
             content: encrypted_content,
+            rekey_counter: u16::MAX,
         })
         .unwrap();
 

@@ -9,7 +9,7 @@ mod test {
     };
     use crate::kafka::{ConsumerPublishing, ConsumerResolution};
     use crate::port_range::PortRange;
-    use crate::test_utils::TestNode;
+    use crate::test_utils::{AuthorityConfiguration, TestNode};
     use kafka_protocol::messages::ApiKey;
     use kafka_protocol::messages::BrokerId;
     use kafka_protocol::messages::{ApiVersionsRequest, MetadataRequest, MetadataResponse};
@@ -27,7 +27,12 @@ mod test {
         context: &mut Context,
     ) -> ockam::Result<()> {
         TestNode::clean().await?;
-        let handle = crate::test_utils::start_manager_for_tests(context, None, None).await?;
+        let handle = crate::test_utils::start_manager_for_tests(
+            context,
+            None,
+            AuthorityConfiguration::SelfReferencing,
+        )
+        .await?;
 
         let inlet_map = KafkaInletController::new(
             (*handle.node_manager).clone(),

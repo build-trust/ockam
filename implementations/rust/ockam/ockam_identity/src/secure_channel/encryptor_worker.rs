@@ -144,28 +144,46 @@ impl EncryptorWorker {
         // Decode raw payload binary
         let request = EncryptionRequest::decode(&msg.payload)?;
 
+        // If encryption fails, that means we have some internal error,
+        // and we may be in an invalid state, it's better to stop the Worker
         let mut should_stop = false;
-        let len = NOISE_NONCE_LEN + request.0.len() + AES_GCM_TAGSIZE;
-        let mut encrypted_payload = vec![0u8; len];
-        encrypted_payload[NOISE_NONCE_LEN..len - AES_GCM_TAGSIZE].copy_from_slice(&request.0);
+        let response = match request {
+            EncryptionRequest::Encrypt(plaintext) => {
+                let len = NOISE_NONCE_LEN + plaintext.len() + AES_GCM_TAGSIZE;
+                let mut encrypted_payload = vec![0u8; len];
+                encrypted_payload[NOISE_NONCE_LEN..len - AES_GCM_TAGSIZE]
+                    .copy_from_slice(&plaintext);
 
-        // Encrypt the message
-        let response = match self
-            .encryptor
-            .encrypt(encrypted_payload.as_mut_slice())
-            .await
-        {
-            Ok(()) => EncryptionResponse::Ok(encrypted_payload),
-            // If encryption failed, that means we have some internal error,
-            // and we may be in an invalid state, it's better to stop the Worker
-            Err(err) => {
-                should_stop = true;
-                error!(
-                    "Error while encrypting: {err} at: {}",
-                    self.addresses.encryptor
-                );
-                EncryptionResponse::Err(err)
+                // Encrypt the message
+                match self
+                    .encryptor
+                    .encrypt(encrypted_payload.as_mut_slice())
+                    .await
+                {
+                    Ok(()) => EncryptionResponse::Ok(encrypted_payload),
+                    // If encryption failed, that means we have some internal error,
+                    // and we may be in an invalid state, it's better to stop the Worker
+                    Err(err) => {
+                        should_stop = true;
+                        error!(
+                            "Error while encrypting: {err} at: {}",
+                            self.addresses.encryptor
+                        );
+                        EncryptionResponse::Err(err)
+                    }
+                }
             }
+            EncryptionRequest::Rekey => match self.encryptor.manual_rekey().await {
+                Ok(()) => EncryptionResponse::Ok(Vec::new()),
+                Err(err) => {
+                    should_stop = true;
+                    error!(
+                        "Error while rekeying: {err} at: {}",
+                        self.addresses.encryptor
+                    );
+                    EncryptionResponse::Err(err)
+                }
+            },
         };
 
         // Send the reply to the caller

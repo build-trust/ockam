@@ -345,6 +345,7 @@ impl InletInterceptorImpl {
             .decrypt_content(
                 context,
                 &message_wrapper.consumer_decryptor_address,
+                message_wrapper.rekey_counter,
                 message_wrapper.content,
             )
             .await
@@ -378,6 +379,7 @@ impl InletInterceptorImpl {
                         .decrypt_content(
                             context,
                             &message_wrapper.consumer_decryptor_address,
+                            message_wrapper.rekey_counter,
                             message_wrapper.content,
                         )
                         .await

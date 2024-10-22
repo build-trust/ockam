@@ -31,7 +31,7 @@ use crate::kafka::protocol_aware::KafkaMessageInterceptorWrapper;
 use crate::kafka::protocol_aware::MAX_KAFKA_MESSAGE_SIZE;
 use crate::kafka::{ConsumerPublishing, ConsumerResolution};
 use crate::port_range::PortRange;
-use crate::test_utils::{NodeManagerHandle, TestNode};
+use crate::test_utils::{AuthorityConfiguration, NodeManagerHandle, TestNode};
 
 const TEST_MAX_KAFKA_MESSAGE_SIZE: u32 = 128 * 1024;
 const TEST_KAFKA_API_VERSION: i16 = 13;
@@ -66,7 +66,12 @@ async fn kafka_portal_worker__pieces_of_kafka_message__message_assembled(
     context: &mut Context,
 ) -> ockam::Result<()> {
     TestNode::clean().await?;
-    let handle = crate::test_utils::start_manager_for_tests(context, None, None).await?;
+    let handle = crate::test_utils::start_manager_for_tests(
+        context,
+        None,
+        AuthorityConfiguration::SelfReferencing,
+    )
+    .await?;
     let portal_inlet_address = setup_only_worker(context, &handle).await;
 
     let mut request_buffer = BytesMut::new();
@@ -109,7 +114,12 @@ async fn kafka_portal_worker__double_kafka_message__message_assembled(
     context: &mut Context,
 ) -> ockam::Result<()> {
     TestNode::clean().await?;
-    let handle = crate::test_utils::start_manager_for_tests(context, None, None).await?;
+    let handle = crate::test_utils::start_manager_for_tests(
+        context,
+        None,
+        AuthorityConfiguration::SelfReferencing,
+    )
+    .await?;
     let portal_inlet_address = setup_only_worker(context, &handle).await;
 
     let mut request_buffer = BytesMut::new();
@@ -147,7 +157,12 @@ async fn kafka_portal_worker__bigger_than_limit_kafka_message__error(
     context: &mut Context,
 ) -> ockam::Result<()> {
     TestNode::clean().await?;
-    let handle = crate::test_utils::start_manager_for_tests(context, None, None).await?;
+    let handle = crate::test_utils::start_manager_for_tests(
+        context,
+        None,
+        AuthorityConfiguration::SelfReferencing,
+    )
+    .await?;
     let portal_inlet_address = setup_only_worker(context, &handle).await;
 
     // with the message container it goes well over the max allowed message kafka size
@@ -194,7 +209,12 @@ async fn kafka_portal_worker__almost_over_limit_than_limit_kafka_message__two_ka
     context: &mut Context,
 ) -> ockam::Result<()> {
     TestNode::clean().await?;
-    let handle = crate::test_utils::start_manager_for_tests(context, None, None).await?;
+    let handle = crate::test_utils::start_manager_for_tests(
+        context,
+        None,
+        AuthorityConfiguration::SelfReferencing,
+    )
+    .await?;
     let portal_inlet_address = setup_only_worker(context, &handle).await;
 
     // let's build the message to 90% of max. size
@@ -367,7 +387,12 @@ async fn kafka_portal_worker__metadata_exchange__response_changed(
     context: &mut Context,
 ) -> ockam::Result<()> {
     TestNode::clean().await?;
-    let handle = crate::test_utils::start_manager_for_tests(context, None, None).await?;
+    let handle = crate::test_utils::start_manager_for_tests(
+        context,
+        None,
+        AuthorityConfiguration::SelfReferencing,
+    )
+    .await?;
     let project_authority = handle
         .node_manager
         .node_manager
