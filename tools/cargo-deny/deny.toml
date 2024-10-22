@@ -14,6 +14,7 @@ allow = [
   "ISC",
   "BlueOak-1.0.0",
   "BSL-1.0",
+  "Zlib",
 ]
 exceptions = [
   { allow = ["LicenseRef-Ring-ISC-OpenSSL"], name = "ring", version = "*" },
