@@ -53,7 +53,7 @@ async fn test_key_exchange_only(ctx: &mut Context) -> ockam_core::Result<()> {
     let EncryptionResponse::Ok(encrypted_msg1_alice) = ctx
         .send_and_receive(
             route![alice_channel.encryptor_api_address().clone()],
-            EncryptionRequest(msg1_alice.clone()),
+            EncryptionRequest::Encrypt(msg1_alice.clone()),
         )
         .await?
     else {
@@ -62,7 +62,7 @@ async fn test_key_exchange_only(ctx: &mut Context) -> ockam_core::Result<()> {
     let EncryptionResponse::Ok(encrypted_msg2_alice) = ctx
         .send_and_receive(
             route![alice_channel.encryptor_api_address().clone()],
-            EncryptionRequest(msg2_alice.clone()),
+            EncryptionRequest::Encrypt(msg2_alice.clone()),
         )
         .await?
     else {
@@ -71,7 +71,7 @@ async fn test_key_exchange_only(ctx: &mut Context) -> ockam_core::Result<()> {
     let EncryptionResponse::Ok(encrypted_msg1_bob) = ctx
         .send_and_receive(
             route![bob_channel.encryptor_api_address().clone()],
-            EncryptionRequest(msg1_bob.clone()),
+            EncryptionRequest::Encrypt(msg1_bob.clone()),
         )
         .await?
     else {
@@ -80,7 +80,7 @@ async fn test_key_exchange_only(ctx: &mut Context) -> ockam_core::Result<()> {
     let EncryptionResponse::Ok(encrypted_msg2_bob) = ctx
         .send_and_receive(
             route![bob_channel.encryptor_api_address().clone()],
-            EncryptionRequest(msg2_bob.clone()),
+            EncryptionRequest::Encrypt(msg2_bob.clone()),
         )
         .await?
     else {
@@ -90,7 +90,7 @@ async fn test_key_exchange_only(ctx: &mut Context) -> ockam_core::Result<()> {
     let DecryptionResponse::Ok(decrypted_msg1_alice) = ctx
         .send_and_receive(
             route![bob_channel.decryptor_api_address().clone()],
-            DecryptionRequest(encrypted_msg1_alice),
+            DecryptionRequest(encrypted_msg1_alice, None),
         )
         .await?
     else {
@@ -100,7 +100,7 @@ async fn test_key_exchange_only(ctx: &mut Context) -> ockam_core::Result<()> {
     let DecryptionResponse::Ok(decrypted_msg2_alice) = ctx
         .send_and_receive(
             route![bob_channel.decryptor_api_address().clone()],
-            DecryptionRequest(encrypted_msg2_alice),
+            DecryptionRequest(encrypted_msg2_alice, None),
         )
         .await?
     else {
@@ -110,7 +110,7 @@ async fn test_key_exchange_only(ctx: &mut Context) -> ockam_core::Result<()> {
     let DecryptionResponse::Ok(decrypted_msg1_bob) = ctx
         .send_and_receive(
             route![alice_channel.decryptor_api_address().clone()],
-            DecryptionRequest(encrypted_msg1_bob),
+            DecryptionRequest(encrypted_msg1_bob, None),
         )
         .await?
     else {
@@ -120,7 +120,7 @@ async fn test_key_exchange_only(ctx: &mut Context) -> ockam_core::Result<()> {
     let DecryptionResponse::Ok(decrypted_msg2_bob) = ctx
         .send_and_receive(
             route![alice_channel.decryptor_api_address().clone()],
-            DecryptionRequest(encrypted_msg2_bob),
+            DecryptionRequest(encrypted_msg2_bob, None),
         )
         .await?
     else {
@@ -222,7 +222,7 @@ fn test_persistence() -> ockam_core::Result<()> {
                 let EncryptionResponse::Ok(encrypted_msg1_alice) = ctx1
                     .send_and_receive(
                         route![alice_channel.encryptor_api_address().clone()],
-                        EncryptionRequest(msg1_alice.clone()),
+                        EncryptionRequest::Encrypt(msg1_alice.clone()),
                     )
                     .await?
                 else {
@@ -231,7 +231,7 @@ fn test_persistence() -> ockam_core::Result<()> {
                 let EncryptionResponse::Ok(encrypted_msg2_alice) = ctx1
                     .send_and_receive(
                         route![alice_channel.encryptor_api_address().clone()],
-                        EncryptionRequest(msg2_alice.clone()),
+                        EncryptionRequest::Encrypt(msg2_alice.clone()),
                     )
                     .await?
                 else {
@@ -240,7 +240,7 @@ fn test_persistence() -> ockam_core::Result<()> {
                 let EncryptionResponse::Ok(encrypted_msg1_bob) = ctx1
                     .send_and_receive(
                         route![bob_channel.encryptor_api_address().clone()],
-                        EncryptionRequest(msg1_bob.clone()),
+                        EncryptionRequest::Encrypt(msg1_bob.clone()),
                     )
                     .await?
                 else {
@@ -249,7 +249,7 @@ fn test_persistence() -> ockam_core::Result<()> {
                 let EncryptionResponse::Ok(encrypted_msg2_bob) = ctx1
                     .send_and_receive(
                         route![bob_channel.encryptor_api_address().clone()],
-                        EncryptionRequest(msg2_bob.clone()),
+                        EncryptionRequest::Encrypt(msg2_bob.clone()),
                     )
                     .await?
                 else {
@@ -326,7 +326,7 @@ fn test_persistence() -> ockam_core::Result<()> {
                 let DecryptionResponse::Ok(decrypted_msg1_alice) = ctx2
                     .send_and_receive(
                         route![data.decryptor_api_address_bob.clone()],
-                        DecryptionRequest(data.encrypted_msg1_alice),
+                        DecryptionRequest(data.encrypted_msg1_alice, None),
                     )
                     .await?
                 else {
@@ -336,7 +336,7 @@ fn test_persistence() -> ockam_core::Result<()> {
                 let DecryptionResponse::Ok(decrypted_msg2_alice) = ctx2
                     .send_and_receive(
                         route![data.decryptor_api_address_bob.clone()],
-                        DecryptionRequest(data.encrypted_msg2_alice),
+                        DecryptionRequest(data.encrypted_msg2_alice, None),
                     )
                     .await?
                 else {
@@ -346,7 +346,7 @@ fn test_persistence() -> ockam_core::Result<()> {
                 let DecryptionResponse::Ok(decrypted_msg1_bob) = ctx2
                     .send_and_receive(
                         route![data.decryptor_api_address_alice.clone()],
-                        DecryptionRequest(data.encrypted_msg1_bob),
+                        DecryptionRequest(data.encrypted_msg1_bob, None),
                     )
                     .await?
                 else {
@@ -356,7 +356,7 @@ fn test_persistence() -> ockam_core::Result<()> {
                 let DecryptionResponse::Ok(decrypted_msg2_bob) = ctx2
                     .send_and_receive(
                         route![data.decryptor_api_address_alice.clone()],
-                        DecryptionRequest(data.encrypted_msg2_bob),
+                        DecryptionRequest(data.encrypted_msg2_bob, None),
                     )
                     .await?
                 else {

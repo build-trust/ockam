@@ -305,6 +305,37 @@ impl VaultForSecureChannels for SoftwareVaultForSecureChannels {
     }
 
     #[instrument(skip_all)]
+    async fn rekey(
+        &self,
+        secret_key_handle: &AeadSecretKeyHandle,
+        n: u16,
+    ) -> Result<AeadSecretKeyHandle> {
+        if n == 0 {
+            return Err(VaultError::InvalidRekeyCount)?;
+        }
+
+        const ZEROES: [u8; 32] = [0u8; 32];
+        const MAX_NONCE: [u8; 12] = [
+            0x00, 0x00, 0x00, 0x00, // we only use 8 bytes of nonce
+            0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, // u64::MAX
+        ];
+
+        let mut new_key_buffer = Vec::with_capacity(ZEROES.len());
+        let mut counter = n;
+
+        while counter > 0 {
+            let secret = self.get_aead_secret(secret_key_handle).await?;
+            let aes = make_aes(&secret);
+            aes.encrypt_message(&mut new_key_buffer, &ZEROES, &MAX_NONCE, &[])?;
+
+            counter -= 1;
+        }
+
+        let buffer = self.import_secret_buffer(new_key_buffer).await?;
+        self.convert_secret_buffer_to_aead_key(buffer).await
+    }
+
+    #[instrument(skip_all)]
     async fn persist_aead_key(&self, secret_key_handle: &AeadSecretKeyHandle) -> Result<()> {
         let secret = self.get_aead_secret(secret_key_handle).await?;
         self.secrets_repository

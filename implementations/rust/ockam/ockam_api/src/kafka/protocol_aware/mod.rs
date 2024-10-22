@@ -150,7 +150,9 @@ pub(crate) struct KafkaEncryptedContent {
     /// The secure channel identifier used to encrypt the content
     #[n(0)] pub consumer_decryptor_address: Address,
     /// The encrypted content
-    #[n(1)] pub content: Vec<u8>
+    #[n(1)] pub content: Vec<u8>,
+    /// Number of times rekey was performed before encrypting the content
+    #[n(2)] pub rekey_counter: u16,
 }
 
 /// By default, kafka supports up to 1MB messages. 16MB is the maximum suggested

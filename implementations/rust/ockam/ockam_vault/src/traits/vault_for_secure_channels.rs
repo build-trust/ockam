@@ -59,6 +59,14 @@ pub trait VaultForSecureChannels: Send + Sync + 'static {
         aad: &[u8],
     ) -> Result<Vec<u8>>;
 
+    /// Perform rekey `n`. times. `n` must be greater than 0.
+    /// [1]: http://www.noiseprotocol.org/noise.html#cipher-functions
+    async fn rekey(
+        &self,
+        secret_key_handle: &AeadSecretKeyHandle,
+        n: u16,
+    ) -> Result<AeadSecretKeyHandle>;
+
     /// Persist an existing AEAD key.
     async fn persist_aead_key(&self, secret_key_handle: &AeadSecretKeyHandle) -> Result<()>;
 

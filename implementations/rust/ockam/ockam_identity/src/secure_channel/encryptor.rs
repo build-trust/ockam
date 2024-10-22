@@ -5,7 +5,7 @@ use ockam_core::{Error, Result};
 use ockam_vault::{AeadSecretKeyHandle, VaultForSecureChannels};
 use tracing_attributes::instrument;
 
-use crate::{Nonce, MAX_NONCE};
+use crate::Nonce;
 
 pub(crate) struct Encryptor {
     key: AeadSecretKeyHandle,
@@ -24,31 +24,6 @@ pub(crate) const SIZE_OF_ENCRYPT_OVERHEAD: usize = SIZE_OF_NONCE + SIZE_OF_TAG;
 
 impl Encryptor {
     #[instrument(skip_all)]
-    pub async fn rekey(
-        vault: &Arc<dyn VaultForSecureChannels>,
-        key: &AeadSecretKeyHandle,
-    ) -> Result<AeadSecretKeyHandle> {
-        let zeroes = [0u8; 32];
-
-        let mut new_key_buffer = Vec::with_capacity(zeroes.len());
-        vault
-            .aead_encrypt(
-                &mut new_key_buffer,
-                key,
-                &zeroes,
-                &MAX_NONCE.to_aes_gcm_nonce(),
-                &[],
-            )
-            .await?;
-
-        let buffer = vault
-            .import_secret_buffer(new_key_buffer[0..32].to_vec())
-            .await?;
-
-        vault.convert_secret_buffer_to_aead_key(buffer).await
-    }
-
-    #[instrument(skip_all)]
     pub async fn encrypt(&mut self, destination: &mut Vec<u8>, payload: &[u8]) -> Result<()> {
         let current_nonce = self.nonce;
 
@@ -58,7 +33,7 @@ impl Encryptor {
             && current_nonce.value() > 0
             && current_nonce.value() % KEY_RENEWAL_INTERVAL == 0
         {
-            let new_key = Self::rekey(&self.vault, &self.key).await?;
+            let new_key = self.vault.rekey(&self.key, 1).await?;
             let old_key = core::mem::replace(&mut self.key, new_key);
             self.vault.delete_aead_secret_key(old_key).await?;
         }
@@ -75,6 +50,14 @@ impl Encryptor {
             )
             .await?;
 
+        Ok(())
+    }
+
+    #[instrument(skip_all)]
+    pub async fn manual_rekey(&mut self) -> Result<()> {
+        let new_key = self.vault.rekey(&self.key, 1).await?;
+        let old_key = core::mem::replace(&mut self.key, new_key);
+        self.vault.delete_aead_secret_key(old_key).await?;
         Ok(())
     }
 
