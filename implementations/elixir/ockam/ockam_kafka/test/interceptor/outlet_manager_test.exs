@@ -17,7 +17,7 @@ defmodule Ockam.Kafka.Interceptor.OutletManager.Test.TcpEchoer do
         transport.send(socket, data)
         loop(socket, transport)
 
-      _ ->
+      _err ->
         :ok = transport.close(socket)
     end
   end
@@ -144,9 +144,6 @@ defmodule Ockam.Kafka.Interceptor.OutletManager.Test do
 
     ## Send message to inlet
     :ok = :gen_tcp.send(socket, "HI")
-
-    ## log socket
-    IO.inspect(socket)
 
     ## Receive message from outlet
     {:ok, data} = :gen_tcp.recv(socket, 0)
