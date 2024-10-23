@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use crate::node::CreateCommand;
 use crate::run::parser::building_blocks::{as_command_args, ArgKey, ArgValue};
 
+use crate::node::config::ENROLLMENT_TICKET;
 use crate::run::parser::resource::utils::parse_cmd_from_args;
 use crate::run::parser::resource::Resource;
 use crate::{node, Command, OckamSubcommand};
@@ -117,6 +118,9 @@ impl Node {
     }
 
     pub fn into_parsed_commands(self) -> Result<Vec<CreateCommand>> {
+        // Unset the `ENROLLMENT_TICKET` env var, so that the `node create` command
+        // doesn't try to run in config mode again.
+        std::env::remove_var(ENROLLMENT_TICKET);
         Ok(vec![Self::get_subcommand(&self.args())?])
     }
 

@@ -1,6 +1,6 @@
-use ockam_node::Context;
 use serde::{Deserialize, Serialize};
-use tracing::debug;
+
+use ockam_node::Context;
 
 use crate::run::parser::config::ConfigParser;
 use crate::run::parser::resource::*;
@@ -54,35 +54,18 @@ impl Config {
     /// For more details about the parsing, see the [parser](crate::run::parser) module.
     /// You can also check examples of valid configuration files in the demo folder of this module.
     pub async fn run(self, ctx: &Context, opts: &CommandGlobalOpts) -> miette::Result<()> {
-        // Pre-enroll commands
-        let cmds: Vec<ParsedCommands> = vec![
-            self.vaults.into_parsed_commands()?.into(),
-            self.identities.into_parsed_commands()?.into(),
-        ];
-        for cmd in cmds {
+        for cmd in self.parse_commands()? {
             cmd.run(ctx, opts).await?
         }
+        Ok(())
+    }
 
-        // Project enroll
-        if let Some(cmd) = self
-            .project_enroll
-            .into_parsed_commands(None)?
-            .into_iter()
-            .next()
-        {
-            cmd.run(ctx, opts).await?;
-
-            // Newline before the next command
-            opts.terminal.write_line("")?;
-            debug!("project enroll command finished");
-
-            // Unset the `ENROLLMENT_TICKET` env var, so that the `node create` command
-            // doesn't try to use it again
-            std::env::remove_var("ENROLLMENT_TICKET");
-        }
-
-        // Post-enroll commands
-        let cmds: Vec<ParsedCommands> = vec![
+    // Build commands and return validation errors
+    fn parse_commands(self) -> miette::Result<Vec<ParsedCommands>> {
+        Ok(vec![
+            self.vaults.into_parsed_commands()?.into(),
+            self.identities.into_parsed_commands()?.into(),
+            self.project_enroll.into_parsed_commands(None)?.into(),
             self.nodes.into_parsed_commands()?.into(),
             self.relays.into_parsed_commands(None)?.into(),
             self.policies.into_parsed_commands()?.into(),
@@ -90,12 +73,7 @@ impl Config {
             self.tcp_inlets.into_parsed_commands(None)?.into(),
             self.kafka_inlet.into_parsed_commands(None)?.into(),
             self.kafka_outlet.into_parsed_commands(None)?.into(),
-        ];
-        for cmd in cmds {
-            cmd.run(ctx, opts).await?
-        }
-
-        Ok(())
+        ])
     }
 
     pub async fn parse_and_run(

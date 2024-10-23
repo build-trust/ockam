@@ -18,7 +18,6 @@ teardown() {
 # ===== TESTS
 
 @test "nodes - create with config, admin enrolling twice with the project doesn't return error" {
-  # Create enrollment ticket that can be reused a few times
   $OCKAM project ticket --usage-count 10 >"$OCKAM_HOME/enrollment.ticket"
 
   cat <<EOF >"$OCKAM_HOME/config.yaml"
@@ -32,7 +31,6 @@ EOF
 }
 
 @test "nodes - create with config, non-admin enrolling twice with the project doesn't return error" {
-  # Admin: create enrollment ticket that can be reused a few times
   ADMIN_HOME_DIR="$OCKAM_HOME"
   ticket_path="$ADMIN_HOME_DIR/enrollment.ticket"
   export RELAY_NAME=$(random_str)
@@ -57,7 +55,7 @@ EOF
 }
 
 @test "nodes - create with config in foreground" {
-  # Admin: create enrollment ticket that can be reused a few times
+  # Admin: create enrollment ticket
   ADMIN_HOME_DIR="$OCKAM_HOME"
   ticket_path="$ADMIN_HOME_DIR/enrollment.ticket"
   export RELAY_NAME=$(random_str)
@@ -184,7 +182,6 @@ EOF
 }
 
 @test "nodes - create with config, using the specified identity" {
-  # Create enrollment ticket that can be reused a few times
   export RELAY_NAME=$(random_str)
   $OCKAM project ticket --relay "$RELAY_NAME" >"$OCKAM_HOME/enrollment.ticket"
 
@@ -203,7 +200,6 @@ EOF
 }
 
 @test "nodes - create with config, using the specified enrollment ticket" {
-  # Create enrollment ticket that can be reused a few times
   $OCKAM project ticket >"$OCKAM_HOME/enrollment.ticket"
 
   # The identity will be enrolled
@@ -214,7 +210,6 @@ EOF
 }
 
 @test "nodes - create with config, using the specified enrollment ticket, overriding config" {
-  # Create enrollment ticket that can be reused a few times
   $OCKAM project ticket >"$OCKAM_HOME/enrollment.ticket"
 
   cat <<EOF >"$OCKAM_HOME/config.yaml"
@@ -230,4 +225,21 @@ EOF
 
   # Check that the identity can reach the project
   run_success $OCKAM message send hi --identity i1 --to "/project/default/service/echo"
+}
+
+@test "nodes - create with config, using the specified enrollment ticket as an env var" {
+  $OCKAM project ticket >"$OCKAM_HOME/enrollment.ticket"
+  export ENROLLMENT_TICKET=$(cat "$OCKAM_HOME/enrollment.ticket")
+
+  cat <<EOF >"$OCKAM_HOME/config.yaml"
+ticket: ${ENROLLMENT_TICKET}
+name: n1
+EOF
+
+  # The values from the config file will be overridden by the command line arguments
+  run_success "$OCKAM" node create "$OCKAM_HOME/config.yaml"
+  run_success "$OCKAM" node show n1
+
+  # Check that the identity can reach the project
+  run_success $OCKAM message send hi --to "/project/default/service/echo"
 }

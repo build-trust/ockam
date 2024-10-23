@@ -16,6 +16,8 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use tracing::{debug, instrument, Span};
 
+pub const ENROLLMENT_TICKET: &str = "ENROLLMENT_TICKET";
+
 #[derive(Clone, Debug, Args, Default)]
 pub struct ConfigArgs {
     /// Inline node configuration
@@ -218,31 +220,9 @@ impl NodeConfig {
         identity_name: &String,
     ) -> miette::Result<()> {
         debug!("Running node config");
-
-        // Run `project enroll` first
-        if let Some(cmd) = self
-            .project_enroll
-            .clone()
-            .into_parsed_commands(Some(identity_name))?
-            .into_iter()
-            .next()
-        {
-            cmd.run(ctx, opts).await?;
-
-            // Newline before the `node create` command
-            opts.terminal.write_line("")?;
-            debug!("project enroll command finished");
-
-            // Unset the `ENROLLMENT_TICKET` env var, so that the `node create` command
-            // doesn't try to use it again
-            std::env::remove_var("ENROLLMENT_TICKET");
-        }
-
-        // Run the rest of the commands
-        for section in self.parse_commands(node_name)? {
+        for section in self.parse_commands(node_name, identity_name)? {
             section.run(ctx, opts).await?
         }
-
         Ok(())
     }
 
@@ -273,11 +253,6 @@ impl NodeConfig {
             }
             // Newline before the `node create` command
             opts.terminal.write_line("")?;
-            debug!("project enroll command finished");
-
-            // Unset the `ENROLLMENT_TICKET` env var, so that the `node create` command
-            // doesn't try to use it again
-            std::env::remove_var("ENROLLMENT_TICKET");
         }
 
         // Next, run the 'node create' command
@@ -326,9 +301,17 @@ impl NodeConfig {
     }
 
     /// Build commands and return validation errors if any
-    fn parse_commands(self, node_name: &String) -> miette::Result<Vec<ParsedCommands>> {
+    fn parse_commands(
+        self,
+        node_name: &String,
+        identity_name: &String,
+    ) -> miette::Result<Vec<ParsedCommands>> {
         let node_name = Some(node_name);
+        let identity_name = Some(identity_name);
         Ok(vec![
+            self.project_enroll
+                .into_parsed_commands(identity_name)?
+                .into(),
             self.node.into_parsed_commands()?.into(),
             self.policies.into_parsed_commands()?.into(),
             self.relays.into_parsed_commands(node_name)?.into(),
