@@ -29,7 +29,7 @@ use crate::value_parsers::is_url;
 use crate::{docs, Command, CommandGlobalOpts, Result};
 
 pub mod background;
-mod config;
+pub mod config;
 pub mod foreground;
 
 const DEFAULT_NODE_NAME: &str = "_default_node_name";
