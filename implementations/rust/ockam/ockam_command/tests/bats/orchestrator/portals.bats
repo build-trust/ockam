@@ -197,7 +197,7 @@ teardown() {
 }
 
 @test "portals - local inlet and outlet passing through a relay, removing and re-creating the outlet" {
-  port="$(random_port)"
+  inlet_port="$(random_port)"
   node_port="$(random_port)"
   relay_name="$(random_str)"
 
@@ -206,16 +206,16 @@ teardown() {
   run_success "$OCKAM" relay create "$relay_name" --to /node/blue
 
   run_success "$OCKAM" node create green
-  run_success "$OCKAM" tcp-inlet create --at /node/green --from "$port" --via "$relay_name"
-  run_success curl -sfI --retry-connrefused --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$port"
+  run_success "$OCKAM" tcp-inlet create --at /node/green --from "$inlet_port" --via "$relay_name"
+  run_success curl -sfI --retry-connrefused --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$inlet_port"
 
-  $OCKAM node delete blue --yes --force
-  run_failure curl -sfI -m 3 "127.0.0.1:$port"
+  force_kill_node blue
+  run_failure curl -sfI -m 3 "127.0.0.1:$inlet_port"
 
   run_success "$OCKAM" node create blue --tcp-listener-address "127.0.0.1:$node_port"
   run_success "$OCKAM" tcp-outlet create --at /node/blue --to 127.0.0.1:$PYTHON_SERVER_PORT
   run_success "$OCKAM" relay create "$relay_name" --to /node/blue
-  run_success curl -sfI --retry-connrefused --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$port"
+  run_success curl -sfI --retry-connrefused --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$inlet_port"
 }
 
 @test "portals - create an inlet/outlet pair, copy heavy payload" {

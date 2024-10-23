@@ -12,24 +12,6 @@ teardown() {
   teardown_home_dir
 }
 
-# ===== UTILS
-
-force_kill_node() {
-  max_retries=5
-  i=0
-  pid="$($OCKAM node show $1 --output json | jq .pid)"
-  while [[ $i -lt $max_retries ]]; do
-    run kill -9 $pid
-    # Killing a node created without `-f` leaves the
-    # process in a defunct state when running within Docker.
-    if ! ps -p $pid || ps -p $pid | grep defunct; then
-      return
-    fi
-    sleep 0.2
-    ((i = i + 1))
-  done
-}
-
 # ===== TESTS
 
 @test "node - create with random name" {
