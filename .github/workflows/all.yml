@@ -47,7 +47,7 @@ jobs:
     container: # gitlab.com/greut/eclint
       image: greut/eclint:v0.3.3@sha256:95e9a3dcbd236bae6569625cd403175cbde3705303774e7baca418b6442b8d77
     steps:
-      - uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           ref: ${{ github.event.inputs.commit_sha }}
       - shell: sh
@@ -61,7 +61,7 @@ jobs:
     container:
       image: returntocorp/semgrep@sha256:2fd35fa409f209e0fea0c2d72cf1e5b801a607959a93b13d04822bb3b6a9dfe4
     steps:
-      - uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           ref: ${{ github.event.inputs.commit_sha }}
       - name: Run Semgrep
@@ -81,7 +81,7 @@ jobs:
         uses: DeterminateSystems/nix-installer-action@da36cb69b1c3247ad7a1f931ebfd954a1105ef14
 
       - name: Checkout
-        uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
 
       - name: Update Notice File
         shell: nix shell nixpkgs#jq nixpkgs#cargo-deny --command bash {0}
@@ -103,7 +103,7 @@ jobs:
     name: All - check_crates
     steps:
       - name: Checkout code
-        uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
 
       - name: Install dependencies
         run: |
