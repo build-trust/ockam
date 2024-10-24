@@ -4,24 +4,99 @@ use serde::Deserialize;
 
 use crate::run::parser::Variables;
 
-pub trait ConfigParser<'de>: Deserialize<'de> {
-    /// Parse variables section and resolve them
-    fn resolve(contents: &str) -> miette::Result<String> {
-        Variables::resolve(contents)
-    }
-    /// Parses a given yaml configuration
-    fn parse(contents: &'de str) -> miette::Result<Self> {
+pub struct ConfigParser;
+
+impl ConfigParser {
+    pub fn parse<'de, T: Deserialize<'de>>(contents: &'de mut String) -> miette::Result<T> {
+        // Expand the environment variables section
+        Variables::expand(contents)?;
+
+        // Parse the configuration file as the given T type
         serde_yaml::from_str(contents)
             .map_err(|e| {
                 ockam_core::Error::new(
                     Origin::Api,
                     Kind::Serialization,
                     format!(
-                        "could not parse the node configuration file: {e:?}\n\n{}",
+                        "could not parse the configuration file: {e:?}\n\n{}",
                         contents
                     ),
                 )
             })
             .into_diagnostic()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::run::parser::resource::{Nodes, Relays};
+    use serde::Serialize;
+    use serial_test::serial;
+
+    #[derive(Debug, PartialEq, Serialize, Deserialize)]
+    pub struct TestConfig {
+        #[serde(flatten)]
+        pub nodes: Nodes,
+        #[serde(flatten)]
+        pub relays: Relays,
+    }
+
+    #[test]
+    #[serial]
+    fn parse_yaml_config() {
+        std::env::set_var("NODE_NAME", "node1");
+        let mut contents = r#"
+            variables:
+              var_s: node2
+              var_i: 1 # comment
+            nodes:
+              # comment
+              - $NODE_NAME
+              - $var_s
+            relays:
+              r1:
+                at: /project/default
+                to: outlet-node
+        "#
+        .to_string();
+
+        let parsed = ConfigParser::parse::<TestConfig>(&mut contents).unwrap();
+        let nodes = parsed.nodes.into_parsed_commands().unwrap();
+        assert_eq!(nodes.len(), 2);
+        assert_eq!(nodes[0].name, "node1");
+        assert_eq!(nodes[1].name, "node2");
+    }
+
+    #[test]
+    #[serial]
+    fn parse_json_config() {
+        std::env::set_var("NODE_NAME", "node1");
+        let mut contents = r#"
+            {
+                # comment
+                "variables": {
+                    "var_s": "node2",
+                    "var_i": 1, # trailing commas are supported
+                },
+                "nodes": [
+                    "$NODE_NAME",
+                    "$var_s",
+                ],
+                "relays": {
+                    "r1": {
+                        # comment
+                        "at": "/project/default",
+                        "to": "outlet-node",
+                    }
+                }
+            }
+        "#
+        .to_string();
+        let parsed = ConfigParser::parse::<TestConfig>(&mut contents).unwrap();
+        let nodes = parsed.nodes.into_parsed_commands().unwrap();
+        assert_eq!(nodes.len(), 2);
+        assert_eq!(nodes[0].name, "node1");
+        assert_eq!(nodes[1].name, "node2");
     }
 }
