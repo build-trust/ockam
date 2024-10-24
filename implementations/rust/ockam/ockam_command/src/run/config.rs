@@ -89,13 +89,13 @@ impl Config {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::BTreeMap;
-    use std::path::PathBuf;
-
+    use super::*;
+    use crate::node::config::ENROLLMENT_TICKET;
     use crate::run::parser::building_blocks::*;
     use crate::run::parser::VersionValue;
-
-    use super::*;
+    use serial_test::serial;
+    use std::collections::BTreeMap;
+    use std::path::PathBuf;
 
     #[test]
     fn parse_complete_config() {
@@ -294,14 +294,15 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn resolve_variables() {
         std::env::set_var("SUFFIX", "node");
         let mut config = r#"
             variables:
               prefix: ockam
-              ticket_path: ./path/to/ticket
+              ENROLLMENT_TICKET: ./path/to/ticket
 
-            ticket: ${ticket_path}
+            ticket: ${ENROLLMENT_TICKET}
 
             nodes:
               - ${prefix}_n1_${SUFFIX}
@@ -335,10 +336,14 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn parse_demo_config_files() {
-        std::env::set_var("ENROLLMENT_TICKET", "ticket");
-        let files = std::fs::read_dir(demo_config_files_dir()).unwrap();
+        let files = std::fs::read_dir(demo_config_files_dir())
+            .unwrap()
+            .collect::<Vec<_>>();
+        assert_eq!(files.len(), 7);
         for file in files {
+            std::env::set_var(ENROLLMENT_TICKET, "ticket");
             let file = file.unwrap();
             let path = file.path();
             let mut contents = std::fs::read_to_string(&path).unwrap();
@@ -353,6 +358,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn parse_demo_config_file_1() {
         let path = demo_config_files_dir().join("1.portal.single-machine.yaml");
         let mut config = std::fs::read_to_string(path).unwrap();
@@ -398,6 +404,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn parse_demo_config_file_2_inlet() {
         let path = demo_config_files_dir().join("2.portal.inlet.yaml");
         let mut config = std::fs::read_to_string(path).unwrap();
@@ -440,6 +447,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn parse_demo_config_file_2_outlet() {
         let path = demo_config_files_dir().join("2.portal.outlet.yaml");
         let mut config = std::fs::read_to_string(path).unwrap();

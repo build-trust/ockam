@@ -1,13 +1,12 @@
-use std::collections::BTreeMap;
-
+use crate::node::config::ENROLLMENT_TICKET;
+use crate::run::parser::building_blocks::{ArgKey, ArgValue};
 use colorful::Colorful;
 use miette::{miette, IntoDiagnostic, Result};
 use ockam_api::colors::color_primary;
 use ockam_api::fmt_warn;
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use tracing::warn;
-
-use crate::run::parser::building_blocks::{ArgKey, ArgValue};
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct Variables {
@@ -15,7 +14,7 @@ pub struct Variables {
 }
 
 impl Variables {
-    pub fn resolve(contents: &mut String) -> Result<()> {
+    pub fn expand(contents: &mut String) -> Result<()> {
         let self_ = serde_yaml::from_str::<Variables>(contents).into_diagnostic()?;
         self_.load()?;
         *contents = shellexpand::env(&contents)
@@ -27,6 +26,7 @@ impl Variables {
                     e.cause
                 )
             })?;
+        self_.unload()?;
         Ok(())
     }
 
@@ -60,14 +60,35 @@ impl Variables {
         }
         Ok(())
     }
+
+    /// Unloads the env vars from the variables section and other special env variables
+    /// once the configuration file has been expanded with their values.
+    fn unload(&self) -> Result<()> {
+        // Unset passed variables
+        if let Some(vars) = &self.variables {
+            for key in vars.keys() {
+                std::env::remove_var(key.as_str());
+            }
+        }
+
+        // Unset the `ENROLLMENT_TICKET` env var, so that the `node create` command
+        // doesn't try to run in config mode in a loop.
+        let special_vars = vec![ENROLLMENT_TICKET];
+        for var in special_vars {
+            std::env::remove_var(var);
+        }
+        Ok(())
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serial_test::serial;
 
     #[test]
-    fn resolve_variables() {
+    #[serial]
+    fn expand_variables() {
         std::env::set_var("MY_ENV_VAR", "my_env_value");
         let mut input = r#"
             variables:
@@ -92,14 +113,12 @@ mod tests {
               - is_true
               - num_1
         "#;
-        Variables::resolve(&mut input).unwrap();
+        Variables::expand(&mut input).unwrap();
         assert_eq!(&input, expected);
-        assert_eq!(std::env::var("var_s").unwrap(), "$MY_ENV_VAR");
-        assert_eq!(std::env::var("var_b").unwrap(), "true");
-        assert_eq!(std::env::var("var_i").unwrap(), "1");
     }
 
     #[test]
+    #[serial]
     fn give_preference_to_external_variables() {
         std::env::set_var("my_var", "external");
         let mut input = r#"
@@ -117,9 +136,8 @@ mod tests {
             nodes:
               - external
         "#;
-        Variables::resolve(&mut input).unwrap();
+        Variables::expand(&mut input).unwrap();
         assert_eq!(&input, expected);
-        assert_eq!(std::env::var("my_var").unwrap(), "external");
     }
 
     #[test]
@@ -132,7 +150,7 @@ mod tests {
               - is_${other_var}
         "#
         .to_string();
-        let res = Variables::resolve(&mut input);
+        let res = Variables::expand(&mut input);
         assert!(res.is_err());
     }
 }

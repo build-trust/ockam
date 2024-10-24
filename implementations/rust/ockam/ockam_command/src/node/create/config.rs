@@ -476,7 +476,7 @@ mod tests {
         // Config used, cli args should override the overlapping args
         let config_enrollment_ticket = ExportedEnrollmentTicket::new_test();
         let config_enrollment_ticket_encoded = config_enrollment_ticket.to_string();
-        std::env::set_var("ENROLLMENT_TICKET", config_enrollment_ticket_encoded);
+        std::env::set_var(ENROLLMENT_TICKET, config_enrollment_ticket_encoded);
 
         let mut contents = r#"
             ticket: $ENROLLMENT_TICKET
