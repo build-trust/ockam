@@ -236,8 +236,24 @@ ticket: ${ENROLLMENT_TICKET}
 name: n1
 EOF
 
-  # The values from the config file will be overridden by the command line arguments
   run_success "$OCKAM" node create "$OCKAM_HOME/config.yaml"
+  run_success "$OCKAM" node show n1
+
+  # Check that the identity can reach the project
+  run_success $OCKAM message send hi --to "/project/default/service/echo"
+}
+
+@test "nodes - create with config, using the specified enrollment ticket as an env var, in foreground" {
+  $OCKAM project ticket >"$OCKAM_HOME/enrollment.ticket"
+  export ENROLLMENT_TICKET=$(cat "$OCKAM_HOME/enrollment.ticket")
+
+  cat <<EOF >"$OCKAM_HOME/config.yaml"
+ticket: ${ENROLLMENT_TICKET}
+name: n1
+EOF
+
+  run_success "$OCKAM" node create "$OCKAM_HOME/config.yaml" -f &
+  sleep 10
   run_success "$OCKAM" node show n1
 
   # Check that the identity can reach the project

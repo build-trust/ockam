@@ -77,29 +77,29 @@ impl Config {
     pub async fn parse_and_run(
         ctx: &Context,
         opts: CommandGlobalOpts,
-        contents: &mut String,
+        contents: String,
     ) -> miette::Result<()> {
         Self::parse(contents)?.run(ctx, &opts).await
     }
 
-    pub(crate) fn parse(contents: &mut String) -> miette::Result<Self> {
-        ConfigParser::parse(contents)
+    pub(crate) fn parse(mut contents: String) -> miette::Result<Self> {
+        ConfigParser::parse(&mut contents)
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use crate::node::config::ENROLLMENT_TICKET;
+    use crate::run::parser::building_blocks::*;
+    use crate::run::parser::VersionValue;
+    use serial_test::serial;
     use std::collections::BTreeMap;
     use std::path::PathBuf;
 
-    use crate::run::parser::building_blocks::*;
-    use crate::run::parser::VersionValue;
-
-    use super::*;
-
     #[test]
     fn parse_complete_config() {
-        let mut config = r#"
+        let config = r#"
             vaults:
               - v1
               - v2
@@ -152,7 +152,7 @@ mod tests {
               - r2
         "#
         .to_string();
-        let parsed = Config::parse(&mut config).unwrap();
+        let parsed = Config::parse(config).unwrap();
 
         let expected = Config {
             version: Version {
@@ -294,21 +294,22 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn resolve_variables() {
         std::env::set_var("SUFFIX", "node");
-        let mut config = r#"
+        let config = r#"
             variables:
               prefix: ockam
-              ticket_path: ./path/to/ticket
+              ENROLLMENT_TICKET: ./path/to/ticket
 
-            ticket: ${ticket_path}
+            ticket: ${ENROLLMENT_TICKET}
 
             nodes:
               - ${prefix}_n1_${SUFFIX}
               - ${prefix}_n2_${SUFFIX}
         "#
         .to_string();
-        let parsed = Config::parse(&mut config).unwrap();
+        let parsed = Config::parse(config).unwrap();
         let expected = Config {
             version: Version {
                 version: VersionValue::latest(),
@@ -335,14 +336,18 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn parse_demo_config_files() {
-        std::env::set_var("ENROLLMENT_TICKET", "ticket");
-        let files = std::fs::read_dir(demo_config_files_dir()).unwrap();
+        let files = std::fs::read_dir(demo_config_files_dir())
+            .unwrap()
+            .collect::<Vec<_>>();
+        assert_eq!(files.len(), 7);
         for file in files {
+            std::env::set_var(ENROLLMENT_TICKET, "ticket");
             let file = file.unwrap();
             let path = file.path();
-            let mut contents = std::fs::read_to_string(&path).unwrap();
-            match Config::parse(&mut contents) {
+            let contents = std::fs::read_to_string(&path).unwrap();
+            match Config::parse(contents) {
                 Ok(_) => {}
                 Err(e) => {
                     eprintln!("Error parsing file {path:?}: {e}");
@@ -353,10 +358,11 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn parse_demo_config_file_1() {
         let path = demo_config_files_dir().join("1.portal.single-machine.yaml");
-        let mut config = std::fs::read_to_string(path).unwrap();
-        let parsed = Config::parse(&mut config).unwrap();
+        let config = std::fs::read_to_string(path).unwrap();
+        let parsed = Config::parse(config).unwrap();
         assert_eq!(parsed.version.version, VersionValue::latest());
         assert_eq!(parsed.vaults.vaults, None);
         assert_eq!(parsed.identities.identities, None);
@@ -398,10 +404,11 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn parse_demo_config_file_2_inlet() {
         let path = demo_config_files_dir().join("2.portal.inlet.yaml");
-        let mut config = std::fs::read_to_string(path).unwrap();
-        let parsed = Config::parse(&mut config).unwrap();
+        let config = std::fs::read_to_string(path).unwrap();
+        let parsed = Config::parse(config).unwrap();
         assert_eq!(parsed.version.version, VersionValue::latest());
         assert_eq!(parsed.vaults.vaults, None);
         assert_eq!(parsed.identities.identities, None);
@@ -440,10 +447,11 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn parse_demo_config_file_2_outlet() {
         let path = demo_config_files_dir().join("2.portal.outlet.yaml");
-        let mut config = std::fs::read_to_string(path).unwrap();
-        let parsed = Config::parse(&mut config).unwrap();
+        let config = std::fs::read_to_string(path).unwrap();
+        let parsed = Config::parse(config).unwrap();
         assert_eq!(parsed.version.version, VersionValue::latest());
         assert_eq!(parsed.vaults.vaults, None);
         assert_eq!(parsed.identities.identities, None);

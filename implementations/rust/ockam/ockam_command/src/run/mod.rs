@@ -46,7 +46,7 @@ impl RunCommand {
 
     #[instrument(skip_all, fields(app.event.command.configuration_file))]
     async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
-        let mut contents = match &self.inline {
+        let contents = match &self.inline {
             Some(contents) => contents.to_string(),
             None => {
                 let path = match &self.recipe {
@@ -82,6 +82,6 @@ impl RunCommand {
             APPLICATION_EVENT_COMMAND_CONFIGURATION_FILE.as_str(),
             &contents,
         );
-        Config::parse_and_run(ctx, opts, &mut contents).await
+        Config::parse_and_run(ctx, opts, contents).await
     }
 }

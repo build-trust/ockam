@@ -73,7 +73,7 @@ impl SecureRelayOutlet {
         ctx: &Context,
         opts: CommandGlobalOpts,
     ) -> miette::Result<()> {
-        let mut recipe: String = self.create_config_recipe();
+        let recipe: String = self.create_config_recipe();
 
         if self.dry_run {
             opts.terminal.write_line(recipe.as_str())?;
@@ -89,7 +89,7 @@ impl SecureRelayOutlet {
             recipe.as_str().dark_gray()
         ))?;
 
-        Config::parse_and_run(ctx, opts, &mut recipe).await
+        Config::parse_and_run(ctx, opts, recipe).await
     }
 
     fn create_config_recipe(&self) -> String {
@@ -141,8 +141,8 @@ mod tests {
                 okta: false,
             },
         };
-        let mut config_recipe = cmd.create_config_recipe();
-        let config = Config::parse(&mut config_recipe).unwrap();
+        let config_recipe = cmd.create_config_recipe();
+        let config = Config::parse(config_recipe).unwrap();
         config.project_enroll.into_parsed_commands(None).unwrap();
         config.policies.into_parsed_commands().unwrap();
         config.tcp_outlets.into_parsed_commands(None).unwrap();

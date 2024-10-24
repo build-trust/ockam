@@ -72,7 +72,7 @@ impl CreateCommand {
     /// or read the inline configuration
     #[instrument(skip_all, fields(app.event.command.configuration_file))]
     pub async fn get_node_config(&self) -> miette::Result<NodeConfig> {
-        let mut contents = match self.config_args.configuration.clone() {
+        let contents = match self.config_args.configuration.clone() {
             Some(contents) => contents,
             None => match parse_path_or_url(&self.name).await {
                 Ok(contents) => contents,
@@ -95,7 +95,7 @@ impl CreateCommand {
             std::env::set_var(key, value);
         }
         // Parse the configuration
-        let node_config = NodeConfig::parse(&mut contents)?;
+        let node_config = NodeConfig::parse(contents.clone())?;
         // Record the configuration contents if the node configuration was successfully parsed
         Span::current().record(
             APPLICATION_EVENT_COMMAND_CONFIGURATION_FILE.as_str(),
@@ -132,8 +132,8 @@ pub struct NodeConfig {
 }
 
 impl NodeConfig {
-    fn parse(contents: &mut String) -> miette::Result<Self> {
-        ConfigParser::parse(contents)
+    fn parse(mut contents: String) -> miette::Result<Self> {
+        ConfigParser::parse(&mut contents)
     }
 
     /// Merge the arguments of the node defined in the config with the arguments from the
@@ -403,8 +403,8 @@ mod tests {
         for file in files {
             let file = file.unwrap();
             let path = file.path();
-            let mut contents = std::fs::read_to_string(&path).unwrap();
-            let res = NodeConfig::parse(&mut contents);
+            let contents = std::fs::read_to_string(&path).unwrap();
+            let res = NodeConfig::parse(contents);
             res.unwrap();
         }
     }
@@ -463,8 +463,8 @@ mod tests {
         };
 
         // No node config, cli args should be used
-        let mut contents = String::new();
-        let mut config = NodeConfig::parse(&mut contents).unwrap();
+        let contents = String::new();
+        let mut config = NodeConfig::parse(contents).unwrap();
         config.merge(&cli_args).unwrap();
         let node = config.node.into_parsed_commands().unwrap().pop().unwrap();
         assert_eq!(node.tcp_listener_address, "127.0.0.1:1234");
@@ -476,15 +476,15 @@ mod tests {
         // Config used, cli args should override the overlapping args
         let config_enrollment_ticket = ExportedEnrollmentTicket::new_test();
         let config_enrollment_ticket_encoded = config_enrollment_ticket.to_string();
-        std::env::set_var("ENROLLMENT_TICKET", config_enrollment_ticket_encoded);
+        std::env::set_var(ENROLLMENT_TICKET, config_enrollment_ticket_encoded);
 
-        let mut contents = r#"
+        let contents = r#"
             ticket: $ENROLLMENT_TICKET
             name: n1
             tcp-listener-address: 127.0.0.1:5555
         "#
         .to_string();
-        let mut config = NodeConfig::parse(&mut contents).unwrap();
+        let mut config = NodeConfig::parse(contents).unwrap();
         config.merge(&cli_args).unwrap();
         let node = config.node.into_parsed_commands().unwrap().pop().unwrap();
         assert_eq!(node.name, "n1");

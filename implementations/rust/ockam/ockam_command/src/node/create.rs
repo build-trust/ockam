@@ -195,6 +195,11 @@ impl Command for CreateCommand {
 impl CreateCommand {
     /// Return true if the command should be run in config mode
     fn should_run_config(&self) -> bool {
+        // Ignore the config args if it's a child process (i.e. only the top level process can run the config)
+        if self.foreground_args.child_process {
+            return false;
+        }
+
         let name_arg_is_a_config = !self.has_name_arg();
 
         let no_config_args = !name_arg_is_a_config

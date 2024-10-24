@@ -8,8 +8,8 @@ pub struct ConfigParser;
 
 impl ConfigParser {
     pub fn parse<'de, T: Deserialize<'de>>(contents: &'de mut String) -> miette::Result<T> {
-        // Resolve the environment variables section
-        Variables::resolve(contents)?;
+        // Expand the environment variables section
+        Variables::expand(contents)?;
 
         // Parse the configuration file as the given T type
         serde_yaml::from_str(contents)
@@ -30,9 +30,9 @@ impl ConfigParser {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::run::parser::building_blocks::ArgsToCommands;
     use crate::run::parser::resource::{Nodes, Relays};
     use serde::Serialize;
+    use serial_test::serial;
 
     #[derive(Debug, PartialEq, Serialize, Deserialize)]
     pub struct TestConfig {
@@ -43,15 +43,17 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn parse_yaml_config() {
+        std::env::set_var("NODE_NAME", "node1");
         let mut contents = r#"
             variables:
-              var_b: true
+              var_s: node2
               var_i: 1 # comment
             nodes:
               # comment
-              - node1
-              - node2
+              - $NODE_NAME
+              - $var_s
             relays:
               r1:
                 at: /project/default
@@ -59,24 +61,27 @@ mod tests {
         "#
         .to_string();
 
-        let result = ConfigParser::parse::<TestConfig>(&mut contents).unwrap();
-        assert_eq!(std::env::var("var_b").unwrap(), "true");
-        assert_eq!(std::env::var("var_i").unwrap(), "1");
-        assert_eq!(result.nodes.nodes.unwrap().len(), 2);
+        let parsed = ConfigParser::parse::<TestConfig>(&mut contents).unwrap();
+        let nodes = parsed.nodes.into_parsed_commands().unwrap();
+        assert_eq!(nodes.len(), 2);
+        assert_eq!(nodes[0].name, "node1");
+        assert_eq!(nodes[1].name, "node2");
     }
 
     #[test]
+    #[serial]
     fn parse_json_config() {
+        std::env::set_var("NODE_NAME", "node1");
         let mut contents = r#"
             {
                 # comment
                 "variables": {
-                    "var_b": true,
+                    "var_s": "node2",
                     "var_i": 1, # trailing commas are supported
                 },
                 "nodes": [
-                    "node1",
-                    "node2",
+                    "$NODE_NAME",
+                    "$var_s",
                 ],
                 "relays": {
                     "r1": {
@@ -88,9 +93,10 @@ mod tests {
             }
         "#
         .to_string();
-        let result = ConfigParser::parse::<TestConfig>(&mut contents).unwrap();
-        assert_eq!(std::env::var("var_b").unwrap(), "true");
-        assert_eq!(std::env::var("var_i").unwrap(), "1");
-        assert_eq!(result.nodes.nodes.unwrap().len(), 2);
+        let parsed = ConfigParser::parse::<TestConfig>(&mut contents).unwrap();
+        let nodes = parsed.nodes.into_parsed_commands().unwrap();
+        assert_eq!(nodes.len(), 2);
+        assert_eq!(nodes[0].name, "node1");
+        assert_eq!(nodes[1].name, "node2");
     }
 }

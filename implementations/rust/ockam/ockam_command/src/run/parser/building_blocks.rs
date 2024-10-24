@@ -330,8 +330,8 @@ pub fn as_command_args(args: BTreeMap<ArgKey, ArgValue>) -> Vec<String> {
 }
 
 /// Return the command representation of the argument name and its value.
-fn as_command_arg(key: ArgKey, values: ArgValue) -> Vec<String> {
-    match values {
+fn as_command_arg(key: ArgKey, value: ArgValue) -> Vec<String> {
+    match value {
         ArgValue::List(values) => values
             .into_iter()
             .flat_map(|value| as_command_arg(key.clone(), value))
