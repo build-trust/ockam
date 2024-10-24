@@ -1,31 +1,53 @@
 use crate::ebpf_portal::{InternalProcessor, Port, RemoteWorker};
 use crate::portal::InletSharedState;
 use crate::{TcpInlet, TcpInletOptions, TcpOutletOptions, TcpTransport};
+use caps::Capability::{CAP_BPF, CAP_NET_RAW, CAP_SYS_ADMIN};
+use caps::{CapSet, Capability};
 use core::fmt::Debug;
+use log::{debug, error};
+use nix::unistd::Uid;
 use ockam_core::{Address, DenyAll, Result, Route};
-use ockam_node::compat::asynchronous::resolve_peer;
+use ockam_node::compat::asynchronous::{resolve_peer, RwLock};
 use ockam_node::{ProcessorBuilder, WorkerBuilder};
 use ockam_transport_core::{HostnamePort, TransportError};
 use std::net::{IpAddr, SocketAddrV4};
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 use tokio::net::TcpListener;
 use tokio::sync::mpsc::channel;
 use tracing::instrument;
 
 impl TcpTransport {
     fn check_capabilities() -> Result<()> {
-        use caps::CapSet;
-        use caps::Capability::{CAP_BPF, CAP_NET_RAW};
         let caps = caps::read(None, CapSet::Effective)
             .map_err(|e| TransportError::ReadCaps(e.to_string()))?;
 
-        if !caps.contains(&CAP_NET_RAW) {
-            return Err(TransportError::CapNetRawMissing)?;
+        const REQUIRED_SET: &[Capability] = &[CAP_NET_RAW, CAP_BPF, CAP_SYS_ADMIN];
+
+        let mut error_description = String::new();
+        let mut check_result = true;
+        for cap in REQUIRED_SET {
+            if !caps.contains(cap) {
+                check_result = false;
+                let err = format!("{} capability is not effective", cap);
+                error_description.push_str(&err);
+                error_description.push_str(". ");
+                error!("{}", err);
+            }
         }
 
-        if !caps.contains(&CAP_BPF) {
-            return Err(TransportError::CapBpfMissing)?;
+        if !Uid::effective().is_root() {
+            error_description.push_str("User is not root");
+            error!("Current user is not root. eBPF requires root.");
         }
+
+        if !check_result {
+            error!("Capabilities: {:?}", caps);
+            return Err(TransportError::EbpfPrerequisitesCheckFailed(
+                error_description,
+            ))?;
+        }
+
+        debug!("Ebpf prerequisites check passed");
 
         Ok(())
     }
@@ -82,10 +104,9 @@ impl TcpTransport {
 
         let write_handle = self.start_raw_socket_processor_if_needed().await?;
 
-        let inlet_shared_state = Arc::new(RwLock::new(InletSharedState {
-            route: outlet_route.clone(),
-            is_paused: false,
-        }));
+        let inlet_shared_state =
+            InletSharedState::create(self.ctx(), outlet_route.clone(), false).await?;
+        let inlet_shared_state = Arc::new(RwLock::new(inlet_shared_state));
 
         let remote_worker_address = Address::random_tagged("Ebpf.RemoteWorker.Inlet");
         let internal_worker_address = Address::random_tagged("Ebpf.InternalWorker.Inlet");

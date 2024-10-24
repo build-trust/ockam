@@ -1,6 +1,8 @@
 use crate::portal::addresses::{Addresses, PortalType};
 use crate::{portal::TcpPortalWorker, PortalMessage, TcpOutletOptions, TcpRegistry};
-use ockam_core::{async_trait, Address, DenyAll, NeutralMessage, Result, Routed, Worker};
+use ockam_core::{
+    async_trait, Address, DenyAll, NeutralMessage, Result, Routed, SecureChannelLocalInfo, Worker,
+};
 use ockam_node::{Context, WorkerBuilder};
 use ockam_transport_core::{HostnamePort, TransportError};
 use tracing::{debug, instrument};
@@ -75,6 +77,9 @@ impl Worker for TcpOutletListenWorker {
         ctx: &mut Self::Context,
         msg: Routed<Self::Message>,
     ) -> Result<()> {
+        let their_identifier = SecureChannelLocalInfo::find_info(msg.local_message())
+            .map(|l| l.their_identifier())
+            .ok();
         let return_route = msg.return_route();
         let src_addr = msg.src_addr();
         let body = msg.into_body()?.into_vec();
@@ -88,14 +93,13 @@ impl Worker for TcpOutletListenWorker {
 
         TcpOutletOptions::setup_flow_control_for_outlet(ctx.flow_controls(), &addresses, &src_addr);
 
-        // TODO: Make sure the connection can't be spoofed by someone having access to that Outlet
-
         TcpPortalWorker::start_new_outlet(
             ctx,
             self.registry.clone(),
             self.hostname_port.clone(),
             self.options.tls,
             return_route.clone(),
+            their_identifier,
             addresses.clone(),
             self.options.incoming_access_control.clone(),
             self.options.outgoing_access_control.clone(),

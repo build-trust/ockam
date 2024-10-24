@@ -3,9 +3,9 @@ use crate::error::ApiError;
 use core::str;
 use minicbor::Decoder;
 use ockam::identity::utils::now;
-use ockam::identity::{Identifier, IdentitySecureChannelLocalInfo};
+use ockam::identity::Identifier;
 use ockam_core::api::{Method, RequestHeader, Response};
-use ockam_core::{self, Result, Routed, Worker};
+use ockam_core::{self, Result, Routed, SecureChannelLocalInfo, Worker};
 use ockam_node::Context;
 use reqwest::StatusCode;
 use std::collections::HashMap;
@@ -25,10 +25,10 @@ impl Worker for Server {
     type Message = Vec<u8>;
 
     async fn handle_message(&mut self, c: &mut Context, m: Routed<Self::Message>) -> Result<()> {
-        if let Ok(i) = IdentitySecureChannelLocalInfo::find_info(m.local_message()) {
+        if let Ok(i) = SecureChannelLocalInfo::find_info(m.local_message()) {
             let return_route = m.return_route();
             let reply = self
-                .on_request(&i.their_identity_id(), &m.into_body()?)
+                .on_request(&i.their_identifier().into(), &m.into_body()?)
                 .await?;
             c.send(return_route, reply).await
         } else {

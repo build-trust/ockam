@@ -6,10 +6,10 @@ use crate::influxdb::lease_token::LeaseToken;
 use crate::nodes::service::encode_response;
 use crate::ApiError;
 use minicbor::Decoder;
-use ockam::identity::{Identifier, IdentitySecureChannelLocalInfo};
+use ockam::identity::Identifier;
 use ockam_core::api::Method::{Delete, Get, Post};
 use ockam_core::api::{RequestHeader, Response};
-use ockam_core::{async_trait, Address, Routed, Worker};
+use ockam_core::{async_trait, Address, Routed, SecureChannelLocalInfo, Worker};
 use ockam_node::Context;
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
@@ -106,8 +106,9 @@ impl Worker for InfluxDBTokenLessorWorker {
         ctx: &mut Context,
         msg: Routed<Vec<u8>>,
     ) -> ockam_core::Result<()> {
-        let requester_identifier =
-            IdentitySecureChannelLocalInfo::find_info(msg.local_message())?.their_identity_id();
+        let requester_identifier = Identifier::from(
+            SecureChannelLocalInfo::find_info(msg.local_message())?.their_identifier(),
+        );
 
         let return_route = msg.return_route();
         let body = msg.into_body()?;

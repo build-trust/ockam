@@ -78,10 +78,10 @@ pub enum TransportError {
     RemovingOutletPort(String),
     /// Couldn't read capabilities
     ReadCaps(String),
-    /// CAP_NET_RAW is missing
-    CapNetRawMissing,
-    /// CAP_BPF is missing
-    CapBpfMissing,
+    /// eBPF prerequisites check failed
+    EbpfPrerequisitesCheckFailed(String),
+    /// The Identifier of the other side of the portal has changed when updating the route
+    IdentifierChanged,
 }
 
 impl ockam_core::compat::error::Error for TransportError {}
@@ -125,9 +125,14 @@ impl core::fmt::Display for TransportError {
             Self::AddingOutletPort(e) => write!(f, "error adding outlet port {}", e),
             Self::RemovingInletPort(e) => write!(f, "error removing inlet port {}", e),
             Self::RemovingOutletPort(e) => write!(f, "error removing outlet port {}", e),
-            Self::ReadCaps(e) => write!(f, "error reading capabilities {}", e),
-            Self::CapNetRawMissing => write!(f, "CAP_NET_RAW capability is not permitted"),
-            Self::CapBpfMissing => write!(f, "CAP_BPF capability is not permitted"),
+            Self::ReadCaps(e) => write!(f, "error reading effective capabilities {}", e),
+            Self::EbpfPrerequisitesCheckFailed(e) => {
+                write!(f, "eBPF prerequisites check failed: {}", e)
+            }
+            Self::IdentifierChanged => write!(
+                f,
+                "identifier of the other side of the portal has changed when updating the route"
+            ),
         }
     }
 }
@@ -167,7 +172,8 @@ impl From<TransportError> for Error {
             | RemovingInletPort(_)
             | RemovingOutletPort(_) => Kind::Io,
             ReadCaps(_) => Kind::Io,
-            CapNetRawMissing | CapBpfMissing => Kind::Misuse,
+            EbpfPrerequisitesCheckFailed(_) => Kind::Misuse,
+            IdentifierChanged => Kind::Conflict,
         };
 
         Error::new(Origin::Transport, kind, err)

@@ -1,15 +1,17 @@
 use crate::ebpf_portal::{
-    Inlet, InletConnection, OckamPortalPacket, Outlet, OutletConnection, Port,
-    TcpTransportEbpfSupport,
+    Inlet, InletConnection, OckamPortalPacket, Outlet, OutletConnection,
+    OutletConnectionReturnRoute, Port, TcpTransportEbpfSupport,
 };
 use log::{debug, trace};
-use ockam_core::{async_trait, Any, Result, Route, Routed, Worker};
+use ockam_core::{
+    async_trait, Any, LocalInfoIdentifier, Result, Route, Routed, SecureChannelLocalInfo, Worker,
+};
 use ockam_node::Context;
 use ockam_transport_core::TransportError;
 use pnet::packet::tcp::MutableTcpPacket;
 use pnet::transport::TransportSender;
 use std::net::{IpAddr, Ipv4Addr};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, RwLock};
 use tokio::net::TcpListener;
 use tracing::warn;
 
@@ -65,7 +67,7 @@ impl RemoteWorker {
     async fn new_outlet_connection(
         &self,
         outlet: &Outlet,
-        identifier: Option<String>,
+        identifier: Option<LocalInfoIdentifier>,
         msg: &OckamPortalPacket,
         return_route: Route,
     ) -> Result<Arc<OutletConnection>> {
@@ -82,11 +84,11 @@ impl RemoteWorker {
         debug!("New TCP connection. Assigned socket {}", local_addr);
 
         let connection = Arc::new(OutletConnection {
-            identifier,
+            their_identifier: identifier,
             connection_identifier: msg.connection_identifier.clone(),
             assigned_port,
             _tcp_listener: Arc::new(tcp_listener),
-            return_route,
+            return_route: Arc::new(RwLock::new(OutletConnectionReturnRoute::new(return_route))),
         });
 
         outlet.add_connection(connection.clone());
@@ -176,7 +178,17 @@ impl RemoteWorker {
         outlet: &Outlet,
         connection: &OutletConnection,
         msg: OckamPortalPacket,
+        return_route: Route,
     ) -> Result<()> {
+        {
+            let mut connection_return_route = connection.return_route.write().unwrap();
+
+            if connection_return_route.route_index < msg.route_index {
+                connection_return_route.route_index = msg.route_index;
+                connection_return_route.route = return_route;
+            }
+        }
+
         self.handle(
             msg,
             connection.assigned_port,
@@ -197,16 +209,19 @@ impl Worker for RemoteWorker {
         _ctx: &mut Self::Context,
         msg: Routed<Self::Message>,
     ) -> Result<()> {
+        let their_identifier = SecureChannelLocalInfo::find_info(msg.local_message())
+            .map(|l| l.their_identifier())
+            .ok();
         let return_route = msg.return_route();
         let payload = msg.into_payload();
 
         let msg: OckamPortalPacket = minicbor::decode(&payload)?;
 
-        let identifier = None; // FIXME: Should be the Identifier of the other side
-
         match &self.mode {
             PortalMode::Inlet { inlet } => {
-                match inlet.get_connection_external(identifier, msg.connection_identifier.clone()) {
+                match inlet
+                    .get_connection_external(their_identifier, msg.connection_identifier.clone())
+                {
                     Some(connection) => {
                         self.handle_inlet(inlet, &connection, msg).await?;
                     }
@@ -218,20 +233,23 @@ impl Worker for RemoteWorker {
                 return Ok(());
             }
             PortalMode::Outlet { outlet } => {
-                if let Some(connection) = outlet
-                    .get_connection_external(identifier.clone(), msg.connection_identifier.clone())
-                {
-                    self.handle_outlet(outlet, &connection, msg).await?;
+                if let Some(connection) = outlet.get_connection_external(
+                    their_identifier.clone(),
+                    msg.connection_identifier.clone(),
+                ) {
+                    self.handle_outlet(outlet, &connection, msg, return_route)
+                        .await?;
 
                     return Ok(());
                 }
 
                 if msg.flags == 2 {
                     let connection = self
-                        .new_outlet_connection(outlet, identifier, &msg, return_route)
+                        .new_outlet_connection(outlet, their_identifier, &msg, return_route.clone())
                         .await?;
 
-                    self.handle_outlet(outlet, &connection, msg).await?;
+                    self.handle_outlet(outlet, &connection, msg, return_route)
+                        .await?;
 
                     return Ok(());
                 }
