@@ -52,7 +52,8 @@ teardown() {
   # Blue can take its relay
   run_success "$OCKAM" relay create $relay_name_blue --to /node/blue
   # Green can't take blue's relay
-  run_failure "$OCKAM" relay create $relay_name_blue --to /node/green
+  run_success "$OCKAM" relay create $relay_name_blue --to /node/green --jq ".connection_status"
+  assert_output "\"Down\""
   # But can take its the one it was assigned to in the ticket
   run_success "$OCKAM" relay create $relay_name_green --to /node/green
 

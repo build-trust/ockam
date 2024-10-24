@@ -90,7 +90,10 @@ teardown() {
 
   # The green identity can't create relay as it isn't a member
   relay_name=$(random_str)
-  run_failure "$OCKAM" relay create "$relay_name"
+  run_success "$OCKAM" relay create "$relay_name" --jq ".connection_status"
+  assert_output "\"Down\""
+
+  run_success "$OCKAM" relay delete "$relay_name" --yes
 
   # Add the green identity as a member
   export OCKAM_HOME=$ENROLLED_OCKAM_HOME
