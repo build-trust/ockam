@@ -30,6 +30,9 @@ teardown() {
   run_success "$OCKAM" node create red
 
   # fail with a different relay name
-  run_failure "$OCKAM" relay create --at /node/blue/secure/api --to red unauthorized_relay_name
-  run_success "$OCKAM" relay create --at /node/blue/secure/api --to red $relay_name
+  run_success "$OCKAM" relay create --at /node/blue/secure/api --to red unauthorized_relay_name --jq ".connection_status"
+  assert_output "\"Down\""
+
+  run_success "$OCKAM" relay create --at /node/blue/secure/api --to red $relay_name --jq ".connection_status"
+  assert_output "\"Up\""
 }
