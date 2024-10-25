@@ -414,7 +414,8 @@ mod tests {
     #[tokio::test]
     async fn node_name_is_handled_correctly() {
         // The command doesn't define a node name, the config file does
-        let tmp_file = std::env::temp_dir().join("config.json");
+        let tmp_directory = tempfile::tempdir().unwrap();
+        let tmp_file = tmp_directory.path().join("config.json");
         std::fs::write(&tmp_file, "{name: n1}").unwrap();
         let cmd = CreateCommand {
             name: tmp_file.to_str().unwrap().to_string(),

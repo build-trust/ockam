@@ -346,7 +346,8 @@ mod tests {
         assert!(cmd.has_name_arg());
 
         // False if it's a file path
-        let tmp_file = std::env::temp_dir().join("config.json");
+        let tmp_directory = tempfile::tempdir().unwrap();
+        let tmp_file = tmp_directory.path().join("config.json");
         std::fs::write(&tmp_file, "{}").unwrap();
         let cmd = CreateCommand {
             name: tmp_file.to_str().unwrap().to_string(),
@@ -364,7 +365,8 @@ mod tests {
 
     #[test]
     fn should_run_config() {
-        let tmp_file = std::env::temp_dir().join("config.json");
+        let tmp_directory = tempfile::tempdir().unwrap();
+        let tmp_file = tmp_directory.path().join("config.json");
         std::fs::write(&tmp_file, "{}").unwrap();
         let config_path = tmp_file.to_str().unwrap().to_string();
 
