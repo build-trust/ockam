@@ -55,6 +55,18 @@ impl OckamCommand {
             return Ok(());
         }
 
+        // Setup the default rustls crypto provider, this is a required step when
+        // multiple backends ring/aws-lc are pulled in directly, or indirectly.
+        #[cfg(feature = "aws-lc")]
+        rustls::crypto::aws_lc_rs::default_provider()
+            .install_default()
+            .expect("Failed to install aws-lc crypto provider");
+
+        #[cfg(all(feature = "rust-crypto", not(feature = "aws-lc")))]
+        rustls::crypto::ring::default_provider()
+            .install_default()
+            .expect("Failed to install ring crypto provider");
+
         // Sets a hook using our own Error Report Handler
         // This allows us to customize how we
         // format the error messages and their content.
@@ -67,18 +79,6 @@ impl OckamCommand {
             )
         }));
         let options = CommandGlobalOpts::new(&arguments, &self.global_args, &self.subcommand)?;
-
-        // Setup the default rustls crypto provider, this is a required step when
-        // multiple backends ring/aws-lc are pulled in directly, or indirectly.
-        #[cfg(feature = "aws-lc")]
-        rustls::crypto::aws_lc_rs::default_provider()
-            .install_default()
-            .expect("Failed to install aws-lc crypto provider");
-
-        #[cfg(all(feature = "rust-crypto", not(feature = "aws-lc")))]
-        rustls::crypto::ring::default_provider()
-            .install_default()
-            .expect("Failed to install ring crypto provider");
 
         if let Err(err) = check_if_an_upgrade_is_available(&options) {
             warn!("Failed to check for upgrade, error={err}");
