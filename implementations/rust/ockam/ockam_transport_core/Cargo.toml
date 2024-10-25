@@ -1,6 +1,6 @@
 [package]
 name = "ockam_transport_core"
-version = "0.95.0"
+version = "0.96.0"
 authors = ["Ockam Developers"]
 categories = ["network-programming", "asynchronous"]
 edition = "2021"

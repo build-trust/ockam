@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.140.0 - 2024-10-25
+
+### Added
+
+- Support json comments in node config
+- Improve parsing of node config files
+- Updated dependencies
+
+### Fixed
+
+- In test use a dedicated temporary directory
+- Use the proper tls configuration to export logs and traces
+
 ## 0.139.0 - 2024-10-24
 
 ### Added

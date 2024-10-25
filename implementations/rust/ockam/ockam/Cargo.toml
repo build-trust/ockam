@@ -1,6 +1,6 @@
 [package]
 name = "ockam"
-version = "0.139.0"
+version = "0.140.0"
 authors = ["Ockam Developers"]
 categories = [
   "cryptography",
@@ -89,21 +89,21 @@ path = "tests/main.rs"
 
 [dependencies]
 hex = { version = "0.4", default-features = false }
-ockam_abac = { path = "../ockam_abac", version = "^0.71.0", default-features = false, optional = true }
+ockam_abac = { path = "../ockam_abac", version = "^0.72.0", default-features = false, optional = true }
 ockam_core = { path = "../ockam_core", version = "^0.119.0", default-features = false }
-ockam_identity = { path = "../ockam_identity", version = "^0.125.0", default-features = false }
+ockam_identity = { path = "../ockam_identity", version = "^0.126.0", default-features = false }
 ockam_macros = { path = "../ockam_macros", version = "^0.35.0", default-features = false }
-ockam_node = { path = "../ockam_node", version = "^0.130.0", default-features = false }
-ockam_transport_core = { path = "../ockam_transport_core", version = "^0.95.0", default-features = false }
-ockam_transport_tcp = { path = "../ockam_transport_tcp", version = "^0.128.0", default-features = false, optional = true }
-ockam_transport_udp = { path = "../ockam_transport_udp", version = "^0.72.0", default-features = false, optional = true }
-ockam_vault = { path = "../ockam_vault", version = "^0.123.0", default-features = false, optional = true }
+ockam_node = { path = "../ockam_node", version = "^0.131.0", default-features = false }
+ockam_transport_core = { path = "../ockam_transport_core", version = "^0.96.0", default-features = false }
+ockam_transport_tcp = { path = "../ockam_transport_tcp", version = "^0.129.0", default-features = false, optional = true }
+ockam_transport_udp = { path = "../ockam_transport_udp", version = "^0.73.0", default-features = false, optional = true }
+ockam_vault = { path = "../ockam_vault", version = "^0.124.0", default-features = false, optional = true }
 rand = { version = "0.8", default-features = false }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 tracing = { version = "0.1", default-features = false }
 
 [dev-dependencies]
-ockam_vault = { path = "../ockam_vault", version = "^0.123.0" }
+ockam_vault = { path = "../ockam_vault", version = "^0.124.0" }
 rand_xorshift = "0.3"
 serde_json = "1.0"
 trybuild = { version = "1.0", features = ["diff"] }

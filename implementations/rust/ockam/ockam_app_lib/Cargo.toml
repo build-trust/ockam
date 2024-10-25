@@ -1,6 +1,6 @@
 [package]
 name = "ockam_app_lib"
-version = "0.139.0"
+version = "0.140.0"
 authors = ["Ockam Developers"]
 categories = [
   "cryptography",
@@ -37,8 +37,8 @@ rust-crypto = ["ockam_api/rust-crypto"]
 duct = "0.13.7"
 miette = { version = "7.2.0", features = ["fancy-no-backtrace"] }
 minicbor = { version = "0.24.1", features = ["alloc", "derive"] }
-ockam = { path = "../ockam", version = "^0.139.0", features = ["software_vault"] }
-ockam_api = { path = "../ockam_api", version = "0.82.0", default-features = false, features = ["std"] }
+ockam = { path = "../ockam", version = "^0.140.0", features = ["software_vault"] }
+ockam_api = { path = "../ockam_api", version = "0.83.0", default-features = false, features = ["std"] }
 ockam_core = { path = "../ockam_core", version = "^0.119.0" }
 ockam_multiaddr = { path = "../ockam_multiaddr", version = "0.63.0", features = ["cbor", "serde"] }
 serde = { version = "1.0", features = ["derive"] }
@@ -49,7 +49,7 @@ tokio = { version = "1.39.2", features = ["full"] }
 tracing = { version = "0.1", default-features = false }
 
 [dev-dependencies]
-ockam_api = { path = "../ockam_api", version = "0.82.0", default-features = false, features = ["test-utils"] }
+ockam_api = { path = "../ockam_api", version = "0.83.0", default-features = false, features = ["test-utils"] }
 tempfile = { version = "3.10.1" }
 
 [build-dependencies]

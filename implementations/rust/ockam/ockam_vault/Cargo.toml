@@ -1,6 +1,6 @@
 [package]
 name = "ockam_vault"
-version = "0.123.0"
+version = "0.124.0"
 authors = ["Ockam Developers"]
 categories = [
   "cryptography",
@@ -80,7 +80,7 @@ hkdf = { version = "0.12", default-features = false }
 minicbor = { version = "0.24.1", features = ["derive"] }
 ockam_core = { path = "../ockam_core", version = "^0.119.0", default-features = false }
 ockam_macros = { path = "../ockam_macros", version = "^0.35.0", default-features = false }
-ockam_node = { path = "../ockam_node", version = "^0.130.0", default-features = false, optional = true }
+ockam_node = { path = "../ockam_node", version = "^0.131.0", default-features = false, optional = true }
 # ECDSA providers:
 p256 = { version = "0.13.2", default-features = false }
 rand_pcg = { version = "0.3.1", default-features = false, optional = true }

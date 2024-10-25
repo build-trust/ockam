@@ -1,6 +1,6 @@
 [package]
 name = "ockam_transport_ble"
-version = "0.92.0"
+version = "0.93.0"
 authors = ["Ockam Developers"]
 autoexamples = false
 categories = ["cryptography", "asynchronous", "authentication", "embedded", "network-programming"]
@@ -85,8 +85,8 @@ pic32mx2xxfxxxb = ["pic32", "pic32-hal/pic32mx2xxfxxxb"]
 
 [dependencies]
 ockam_core = { path = "../ockam_core", version = "^0.119.0", default-features = false }
-ockam_node = { path = "../ockam_node", version = "^0.130.0", default-features = false }
-ockam_transport_core = { path = "../ockam_transport_core", version = "^0.95.0", default-features = false }
+ockam_node = { path = "../ockam_node", version = "^0.131.0", default-features = false }
+ockam_transport_core = { path = "../ockam_transport_core", version = "^0.96.0", default-features = false }
 
 futures = { version = "0.3.30", default-features = false }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
@@ -123,8 +123,8 @@ cortex-m = "0.7.7"
 riscv = "0.10.0"
 
 [dev-dependencies]
-ockam_identity = { path = "../ockam_identity", version = "^0.125.0" }
-ockam_vault = { path = "../ockam_vault", version = "^0.123.0" }
+ockam_identity = { path = "../ockam_identity", version = "^0.126.0" }
+ockam_vault = { path = "../ockam_vault", version = "^0.124.0" }
 
 [[example]]
 name = "04-routing-over-ble-transport-initiator"

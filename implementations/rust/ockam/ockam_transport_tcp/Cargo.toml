@@ -1,6 +1,6 @@
 [package]
 name = "ockam_transport_tcp"
-version = "0.128.0"
+version = "0.129.0"
 authors = ["Ockam Developers"]
 autoexamples = false
 categories = [
@@ -40,8 +40,8 @@ log = "0.4.21"
 minicbor = "0.24"
 ockam_core = { path = "../ockam_core", version = "^0.119.0" }
 ockam_macros = { path = "../ockam_macros", version = "^0.35.0" }
-ockam_node = { path = "../ockam_node", version = "^0.130.0" }
-ockam_transport_core = { path = "../ockam_transport_core", version = "^0.95.0" }
+ockam_node = { path = "../ockam_node", version = "^0.131.0" }
+ockam_transport_core = { path = "../ockam_transport_core", version = "^0.96.0" }
 opentelemetry = { version = "0.26.0", features = ["logs", "metrics", "trace"], optional = true }
 rand = "0.8"
 rustls = { version = "0.23", default-features = false }
