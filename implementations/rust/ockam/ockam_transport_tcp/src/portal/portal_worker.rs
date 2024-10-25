@@ -6,7 +6,7 @@ use crate::{portal::TcpPortalRecvProcessor, PortalInternalMessage, PortalMessage
 use ockam_core::compat::{boxed::Box, sync::Arc};
 use ockam_core::{
     async_trait, AllowOnwardAddress, AllowSourceAddress, Decodable, DenyAll, IncomingAccessControl,
-    Mailbox, Mailboxes, OutgoingAccessControl,
+    LocalInfoIdentifier, Mailbox, Mailboxes, OutgoingAccessControl, SecureChannelLocalInfo,
 };
 use ockam_core::{Any, Result, Route, Routed, Worker};
 use ockam_node::{Context, ProcessorBuilder, WorkerBuilder};
@@ -41,6 +41,7 @@ enum State {
 pub(crate) struct TcpPortalWorker {
     registry: TcpRegistry,
     state: State,
+    their_identifier: Option<LocalInfoIdentifier>,
     write_half: Option<WriteHalfMaybeTls>,
     read_half: Option<ReadHalfMaybeTls>,
     hostname_port: HostnamePort,
@@ -73,6 +74,7 @@ impl TcpPortalWorker {
         streams: (ReadHalfMaybeTls, WriteHalfMaybeTls),
         hostname_port: HostnamePort,
         ping_route: Route,
+        their_identifier: Option<LocalInfoIdentifier>,
         addresses: Addresses,
         incoming_access_control: Arc<dyn IncomingAccessControl>,
         outgoing_access_control: Arc<dyn OutgoingAccessControl>, // To propagate to the receiver
@@ -83,6 +85,7 @@ impl TcpPortalWorker {
             hostname_port,
             false,
             State::SendPing { ping_route },
+            their_identifier,
             Some(streams),
             addresses,
             incoming_access_control,
@@ -100,6 +103,7 @@ impl TcpPortalWorker {
         hostname_port: HostnamePort,
         tls: bool,
         pong_route: Route,
+        their_identifier: Option<LocalInfoIdentifier>,
         addresses: Addresses,
         incoming_access_control: Arc<dyn IncomingAccessControl>,
         outgoing_access_control: Arc<dyn OutgoingAccessControl>,
@@ -110,6 +114,7 @@ impl TcpPortalWorker {
             hostname_port,
             tls,
             State::SendPong { pong_route },
+            their_identifier,
             None,
             addresses,
             incoming_access_control,
@@ -127,6 +132,7 @@ impl TcpPortalWorker {
         hostname_port: HostnamePort,
         is_tls: bool,
         state: State,
+        their_identifier: Option<LocalInfoIdentifier>,
         streams: Option<(ReadHalfMaybeTls, WriteHalfMaybeTls)>,
         addresses: Addresses,
         incoming_access_control: Arc<dyn IncomingAccessControl>,
@@ -156,6 +162,7 @@ impl TcpPortalWorker {
         let worker = Self {
             registry,
             state,
+            their_identifier,
             write_half: tx,
             read_half: rx,
             hostname_port,
@@ -447,6 +454,14 @@ impl Worker for TcpPortalWorker {
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Any>) -> Result<()> {
         if self.is_disconnecting {
             return Ok(());
+        }
+
+        let their_identifier = SecureChannelLocalInfo::find_info(msg.local_message())
+            .map(|l| l.their_identifier())
+            .ok();
+
+        if their_identifier != self.their_identifier {
+            return Err(TransportError::IdentifierChanged)?;
         }
 
         // Remove our own address from the route so the other end

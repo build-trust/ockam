@@ -300,7 +300,9 @@ async fn portal__update_route__should_succeed(ctx: &mut Context) -> Result<()> {
 
     node_connection1.stop(ctx).await?;
 
-    inlet.update_outlet_node_route(ctx.flow_controls(), route![node_connection2])?;
+    inlet
+        .update_outlet_node_route(ctx, route![node_connection2])
+        .await?;
 
     let mut stream = TcpStream::connect(inlet.socket_address()).await.unwrap();
     write_binary(&mut stream, payload1).await;

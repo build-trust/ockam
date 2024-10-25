@@ -1,5 +1,5 @@
 use crate::ebpf_portal::{ConnectionIdentifier, ParsedRawSocketPacket, Port};
-use ockam_core::{Address, Route};
+use ockam_core::{Address, LocalInfoIdentifier, Route};
 use std::collections::HashMap;
 use std::net::Ipv4Addr;
 use std::sync::{Arc, RwLock};
@@ -87,7 +87,7 @@ impl Outlet {
             .insert(connection.assigned_port, connection.clone());
         self.connections2.write().unwrap().insert(
             OutletConnectionKey {
-                identifier: connection.identifier.clone(),
+                their_identifier: connection.their_identifier.clone(),
                 connection_identifier: connection.connection_identifier.clone(),
             },
             connection,
@@ -109,14 +109,14 @@ impl Outlet {
     /// Get mapping
     pub(crate) fn get_connection_external(
         &self,
-        identifier: Option<String>, // Identity
+        their_identifier: Option<LocalInfoIdentifier>, // Identity
         connection_identifier: ConnectionIdentifier,
     ) -> Option<Arc<OutletConnection>> {
         self.connections2
             .read()
             .unwrap()
             .get(&OutletConnectionKey {
-                identifier,
+                their_identifier,
                 connection_identifier,
             })
             .cloned()
@@ -125,7 +125,7 @@ impl Outlet {
 
 #[derive(Hash, PartialEq, Eq)]
 struct OutletConnectionKey {
-    identifier: Option<String>,
+    their_identifier: Option<LocalInfoIdentifier>,
     connection_identifier: ConnectionIdentifier,
 }
 
@@ -150,7 +150,7 @@ impl OutletConnectionReturnRoute {
 /// Outlet mapping
 pub struct OutletConnection {
     /// Identity Identifier of the other side
-    pub identifier: Option<String>,
+    pub their_identifier: Option<LocalInfoIdentifier>,
     /// Unique connection Identifier
     pub connection_identifier: ConnectionIdentifier,
     /// Assigned port on our machine for a specific connection

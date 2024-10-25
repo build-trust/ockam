@@ -1,6 +1,7 @@
-use crate::alloc::string::ToString;
 use core::fmt::{Debug, Formatter};
 use minicbor::{CborLen, Decode, Encode};
+
+use crate::alloc::string::ToString;
 
 /// Identifier length
 pub const IDENTIFIER_LEN: usize = 32;

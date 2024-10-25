@@ -7,11 +7,11 @@ use core::fmt::Debug;
 use log::{debug, error};
 use nix::unistd::Uid;
 use ockam_core::{Address, DenyAll, Result, Route};
-use ockam_node::compat::asynchronous::resolve_peer;
+use ockam_node::compat::asynchronous::{resolve_peer, RwLock};
 use ockam_node::{ProcessorBuilder, WorkerBuilder};
 use ockam_transport_core::{HostnamePort, TransportError};
 use std::net::{IpAddr, SocketAddrV4};
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 use tokio::net::TcpListener;
 use tokio::sync::mpsc::channel;
 use tracing::instrument;
@@ -104,10 +104,9 @@ impl TcpTransport {
 
         let write_handle = self.start_raw_socket_processor_if_needed().await?;
 
-        let inlet_shared_state = Arc::new(RwLock::new(InletSharedState::new(
-            false,
-            outlet_route.clone(),
-        )));
+        let inlet_shared_state =
+            InletSharedState::create(self.ctx(), outlet_route.clone(), false).await?;
+        let inlet_shared_state = Arc::new(RwLock::new(inlet_shared_state));
 
         let remote_worker_address = Address::random_tagged("Ebpf.RemoteWorker.Inlet");
         let internal_worker_address = Address::random_tagged("Ebpf.InternalWorker.Inlet");

@@ -3,9 +3,10 @@ use crate::{portal::TcpOutletListenWorker, TcpInletOptions, TcpOutletOptions, Tc
 use core::fmt;
 use core::fmt::{Debug, Formatter};
 use ockam_core::compat::net::SocketAddr;
-use ockam_core::compat::sync::{Arc, RwLock};
+use ockam_core::compat::sync::Arc;
 use ockam_core::flow_control::FlowControls;
 use ockam_core::{route, Address, Result, Route};
+use ockam_node::compat::asynchronous::RwLock;
 use ockam_node::Context;
 use ockam_transport_core::{parse_socket_addr, HostnamePort};
 use tracing::instrument;
@@ -192,6 +193,11 @@ impl TcpInlet {
         }
     }
 
+    /// Returns true if the Inlet is eBPF
+    pub fn is_ebpf(&self) -> bool {
+        matches!(self.state, TcpInletState::Ebpf { .. })
+    }
+
     /// Socket Address
     pub fn socket_address(&self) -> SocketAddr {
         self.socket_address
@@ -213,27 +219,25 @@ impl TcpInlet {
     /// Update the route to the outlet node.
     /// This is useful if we re-create a secure channel if because, e.g., the other node wasn't
     /// reachable, or if we want to switch transport, e.g., from relayed to UDP NAT puncture.
-    ///  NOTE: Existing TCP connections will still use the old route,
+    ///  NOTE: For regular Portals existing TCP connections will still use the old route,
     ///        only newly accepted connections will use the new route.
-    pub fn update_outlet_node_route(
-        &self,
-        flow_controls: &FlowControls,
-        new_route: Route,
-    ) -> Result<()> {
-        let mut inlet_shared_state = self.inlet_shared_state.write().unwrap();
+    ///        For eBPF Portals old connections can continue work in case the Identifier of the
+    ///        Outlet node didn't change
+    pub async fn update_outlet_node_route(&self, ctx: &Context, new_route: Route) -> Result<()> {
+        let mut inlet_shared_state = self.inlet_shared_state.write().await;
 
         let new_route = Self::build_new_full_route(new_route, inlet_shared_state.route())?;
         let next = new_route.next()?.clone();
-        inlet_shared_state.update_route(new_route);
+        inlet_shared_state.update_route(ctx, new_route).await?;
 
-        self.update_flow_controls(flow_controls, next);
+        self.update_flow_controls(ctx.flow_controls(), next);
 
         Ok(())
     }
 
     /// Pause TCP Inlet, all incoming TCP streams will be dropped.
-    pub fn pause(&self) {
-        let mut inlet_shared_state = self.inlet_shared_state.write().unwrap();
+    pub async fn pause(&self) {
+        let mut inlet_shared_state = self.inlet_shared_state.write().await;
 
         inlet_shared_state.set_is_paused(true);
     }
@@ -254,16 +258,16 @@ impl TcpInlet {
     }
 
     /// Unpause TCP Inlet and update the outlet route.
-    pub fn unpause(&self, flow_controls: &FlowControls, new_route: Route) -> Result<()> {
-        let mut inlet_shared_state = self.inlet_shared_state.write().unwrap();
+    pub async fn unpause(&self, ctx: &Context, new_route: Route) -> Result<()> {
+        let mut inlet_shared_state = self.inlet_shared_state.write().await;
 
         let new_route = Self::build_new_full_route(new_route, inlet_shared_state.route())?;
         let next = new_route.next()?.clone();
 
-        inlet_shared_state.update_route(new_route);
+        inlet_shared_state.update_route(ctx, new_route).await?;
         inlet_shared_state.set_is_paused(false);
 
-        self.update_flow_controls(flow_controls, next);
+        self.update_flow_controls(ctx.flow_controls(), next);
 
         Ok(())
     }
