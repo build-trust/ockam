@@ -19,7 +19,7 @@ pub struct GlobalArgs {
     )]
     help: Option<bool>,
 
-    /// Do not print any log messages to stderr and disable confirmation prompts.
+    /// Do not write messages to stderr and disable confirmation prompts.
     /// This is useful for scripting and automation, where you don't want the process to block on stdin.
     #[arg(global = true, long, short, env = "QUIET")]
     pub quiet: bool,
@@ -29,8 +29,9 @@ pub struct GlobalArgs {
     global = true,
     long,
     short,
-    long_help("Increase verbosity of trace messages by repeating the flag. Use `-v` to show \
-    info messages, `-vv` to show debug messages, and `-vvv` to show trace messages"),
+    long_help("Increase verbosity of trace messages by repeating the flag. Use `-v` to show command's \
+    info messages, `-vv` will broaden the scope to all ockam crates. Use `-vvv` and `-vvvv` to \
+    increase the verbosity to debug and trace respectively"),
     action = ArgAction::Count
     )]
     pub verbose: u8,
