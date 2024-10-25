@@ -1,7 +1,8 @@
 #![allow(unsafe_code)]
 
-use super::{Iface, Port, Proto};
-use crate::ebpf_portal::{InletRegistry, OutletRegistry, RawSocketProcessor};
+use crate::ebpf_portal::{
+    Iface, InletRegistry, OutletRegistry, Port, Proto, RawSocketProcessor, TcpPacketWriter,
+};
 use aya::maps::{MapData, MapError};
 use aya::programs::tc::SchedClassifierLink;
 use aya::programs::{tc, Link, ProgramError, SchedClassifier, TcAttachType};
@@ -14,7 +15,6 @@ use ockam_core::{Address, Error, Result};
 use ockam_node::compat::asynchronous::Mutex as AsyncMutex;
 use ockam_node::Context;
 use ockam_transport_core::TransportError;
-use pnet::transport::TransportSender;
 use rand::random;
 use std::sync::{Arc, Mutex};
 use tracing::{debug, info, warn};
@@ -29,7 +29,7 @@ pub struct TcpTransportEbpfSupport {
 
     links: Arc<Mutex<HashMap<Iface, IfaceLink>>>,
 
-    socket_write_handle: Arc<AsyncMutex<Option<Arc<Mutex<TransportSender>>>>>,
+    tcp_packet_writer: Arc<AsyncMutex<Option<Arc<dyn TcpPacketWriter>>>>,
     raw_socket_processor_address: Address,
 
     bpf: Arc<Mutex<Option<OckamBpf>>>,
@@ -59,7 +59,7 @@ impl Default for TcpTransportEbpfSupport {
             inlet_registry: Default::default(),
             outlet_registry: Default::default(),
             links: Default::default(),
-            socket_write_handle: Default::default(),
+            tcp_packet_writer: Default::default(),
             raw_socket_processor_address: Address::random_tagged("RawSocketProcessor"),
             bpf: Default::default(),
         }
@@ -77,29 +77,29 @@ impl TcpTransportEbpfSupport {
     pub(crate) async fn start_raw_socket_processor_if_needed(
         &self,
         ctx: &Context,
-    ) -> Result<Arc<Mutex<TransportSender>>> {
+    ) -> Result<Arc<dyn TcpPacketWriter>> {
         debug!("Starting RawSocket");
 
-        let mut socket_write_handle_lock = self.socket_write_handle.lock().await;
-        if let Some(socket_write_handle_lock) = socket_write_handle_lock.as_ref() {
-            return Ok(socket_write_handle_lock.clone());
+        let mut tcp_packet_writer_lock = self.tcp_packet_writer.lock().await;
+        if let Some(tcp_packet_writer_lock) = tcp_packet_writer_lock.as_ref() {
+            return Ok(tcp_packet_writer_lock.clone());
         }
 
-        let (processor, socket_write_handle) = RawSocketProcessor::create(
+        let (processor, tcp_packet_writer) = RawSocketProcessor::create(
             self.ip_proto,
             self.inlet_registry.clone(),
             self.outlet_registry.clone(),
         )
         .await?;
 
-        *socket_write_handle_lock = Some(socket_write_handle.clone());
+        *tcp_packet_writer_lock = Some(tcp_packet_writer.clone());
 
         ctx.start_processor(self.raw_socket_processor_address.clone(), processor)
             .await?;
 
         info!("Started RawSocket for protocol: {}", self.ip_proto);
 
-        Ok(socket_write_handle)
+        Ok(tcp_packet_writer)
     }
 
     /// Start [`RawSocketProcessor`]. Should be done once.
@@ -122,21 +122,15 @@ impl TcpTransportEbpfSupport {
 
         debug!("Initializing eBPF");
 
-        if let Some(err) = env_logger::try_init().err() {
-            // For some reason it always errors, but the log works anyways. Suspect it intersects
-            // with our logger.
-            warn!("Error initializing env_logger: {}", err);
-        };
-
         // Bump the memlock rlimit. This is needed for older kernels that don't use the
         // new memcg based accounting, see https://lwn.net/Articles/837122/
-        let rlim = libc::rlimit {
-            rlim_cur: libc::RLIM_INFINITY,
-            rlim_max: libc::RLIM_INFINITY,
-        };
-        let ret = unsafe { libc::setrlimit(libc::RLIMIT_MEMLOCK, &rlim) };
-        if ret != 0 {
-            warn!("remove limit on locked memory failed, ret is: {}", ret);
+        let res = nix::sys::resource::setrlimit(
+            nix::sys::resource::Resource::RLIMIT_MEMLOCK,
+            nix::sys::resource::RLIM_INFINITY,
+            nix::sys::resource::RLIM_INFINITY,
+        );
+        if let Some(err) = res.err() {
+            warn!("remove limit on locked memory failed. Error: {}", err);
         }
 
         // This will include your eBPF object file as raw bytes at compile-time and load it at

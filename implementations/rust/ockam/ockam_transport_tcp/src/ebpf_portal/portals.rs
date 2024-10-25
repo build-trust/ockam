@@ -17,7 +17,8 @@ use tokio::sync::mpsc::channel;
 use tracing::instrument;
 
 impl TcpTransport {
-    fn check_capabilities() -> Result<()> {
+    /// Check if eBPF portals can be run with current permissions
+    pub fn check_capabilities() -> Result<()> {
         let caps = caps::read(None, CapSet::Effective)
             .map_err(|e| TransportError::ReadCaps(e.to_string()))?;
 
@@ -102,7 +103,7 @@ impl TcpTransport {
             }
         }
 
-        let write_handle = self.start_raw_socket_processor_if_needed().await?;
+        let tcp_packet_writer = self.start_raw_socket_processor_if_needed().await?;
 
         let inlet_shared_state =
             InletSharedState::create(self.ctx(), outlet_route.clone(), false).await?;
@@ -123,15 +124,18 @@ impl TcpTransport {
             remote_worker_address.clone(),
             internal_worker_address.clone(),
             sender,
-            local_address.port(),
+            port,
             tcp_listener,
             inlet_shared_state.clone(),
         );
 
         self.ebpf_support.add_inlet_port(port)?;
 
-        let remote_worker =
-            RemoteWorker::new_inlet(write_handle, inlet_info.clone(), self.ebpf_support.clone());
+        let remote_worker = RemoteWorker::new_inlet(
+            tcp_packet_writer,
+            inlet_info.clone(),
+            self.ebpf_support.clone(),
+        );
         WorkerBuilder::new(remote_worker)
             .with_address(remote_worker_address.clone())
             .with_incoming_access_control_arc(options.incoming_access_control)

@@ -1,6 +1,5 @@
-use crate::ebpf_portal::{
-    Inlet, InletConnection, OckamPortalPacket, Outlet, ParsedRawSocketPacket, PortalMode,
-};
+use crate::ebpf_portal::packet::RawSocketReadResult;
+use crate::ebpf_portal::{Inlet, InletConnection, OckamPortalPacket, Outlet, PortalMode};
 use log::{debug, trace, warn};
 use ockam_core::{async_trait, route, LocalInfoIdentifier, LocalMessage, Processor, Result};
 use ockam_node::Context;
@@ -15,12 +14,12 @@ use tokio::sync::mpsc::Receiver;
 pub struct InternalProcessor {
     mode: PortalMode,
 
-    receiver: Receiver<ParsedRawSocketPacket>,
+    receiver: Receiver<RawSocketReadResult>,
 }
 
 impl InternalProcessor {
     /// Constructor.
-    pub fn new_inlet(receiver: Receiver<ParsedRawSocketPacket>, inlet: Inlet) -> Self {
+    pub fn new_inlet(receiver: Receiver<RawSocketReadResult>, inlet: Inlet) -> Self {
         Self {
             mode: PortalMode::Inlet { inlet },
             receiver,
@@ -28,7 +27,7 @@ impl InternalProcessor {
     }
 
     /// Constructor.
-    pub fn new_outlet(receiver: Receiver<ParsedRawSocketPacket>, outlet: Outlet) -> Self {
+    pub fn new_outlet(receiver: Receiver<RawSocketReadResult>, outlet: Outlet) -> Self {
         Self {
             mode: PortalMode::Outlet { outlet },
             receiver,
@@ -39,16 +38,16 @@ impl InternalProcessor {
         inlet: &Inlet,
         their_identifier: Option<LocalInfoIdentifier>,
         src_ip: Ipv4Addr,
-        parsed_packet: &ParsedRawSocketPacket,
+        raw_socket_read_result: &RawSocketReadResult,
     ) -> Result<Arc<InletConnection>> {
         // TODO: eBPF Remove connection eventually
 
         let connection = Arc::new(InletConnection {
             their_identifier,
             connection_identifier: random(),
-            inlet_ip: parsed_packet.destination_ip,
+            inlet_ip: raw_socket_read_result.ipv4_info.destination_ip(),
             client_ip: src_ip,
-            client_port: parsed_packet.packet.source,
+            client_port: raw_socket_read_result.tcp_info.source_port(),
         });
 
         inlet.add_connection(connection.clone());
@@ -62,8 +61,8 @@ impl Processor for InternalProcessor {
     type Context = Context;
 
     async fn process(&mut self, ctx: &mut Self::Context) -> Result<bool> {
-        let parsed_packet = match self.receiver.recv().await {
-            Some(packet) => packet,
+        let raw_socket_read_result = match self.receiver.recv().await {
+            Some(raw_socket_read_result) => raw_socket_read_result,
             None => return Ok(false),
         };
 
@@ -77,14 +76,14 @@ impl Processor for InternalProcessor {
                 }
 
                 let connection = match inlet.get_connection_internal(
-                    parsed_packet.packet.source_ip,
-                    parsed_packet.packet.source,
+                    raw_socket_read_result.ipv4_info.source_ip(),
+                    raw_socket_read_result.tcp_info.source_port(),
                 ) {
                     Some(connection) => {
                         trace!(
                             "Inlet Processor: Existing connection from {}:{}",
-                            parsed_packet.packet.source_ip,
-                            parsed_packet.packet.source
+                            raw_socket_read_result.ipv4_info.source_ip(),
+                            raw_socket_read_result.tcp_info.source_port(),
                         );
 
                         if connection.their_identifier != inlet_shared_state.their_identifier() {
@@ -94,34 +93,34 @@ impl Processor for InternalProcessor {
                         connection
                     }
                     None => {
-                        // Checks that SYN flag is set, and every other flag is not set.
-                        const SYN: u8 = 2;
-                        if parsed_packet.packet.flags != SYN {
+                        if !raw_socket_read_result.tcp_info.is_syn_only() {
                             warn!(
                                 "Inlet Processor: Unknown connection packet from {}:{}. Skipping",
-                                parsed_packet.packet.source_ip, parsed_packet.packet.source
+                                raw_socket_read_result.ipv4_info.source_ip(),
+                                raw_socket_read_result.tcp_info.source_port(),
                             );
                             return Ok(true);
                         }
 
                         debug!(
                             "Inlet Processor: New connection from {}:{}",
-                            parsed_packet.packet.source_ip, parsed_packet.packet.source
+                            raw_socket_read_result.ipv4_info.source_ip(),
+                            raw_socket_read_result.tcp_info.source_port(),
                         );
                         Self::new_inlet_connection(
                             inlet,
                             inlet_shared_state.their_identifier(),
-                            parsed_packet.packet.source_ip,
-                            &parsed_packet,
+                            raw_socket_read_result.ipv4_info.source_ip(),
+                            &raw_socket_read_result,
                         )
                         .await?
                     }
                 };
 
-                let portal_packet = OckamPortalPacket::from_raw_socket_packet(
-                    parsed_packet.packet,
+                let portal_packet = OckamPortalPacket::from_tcp_packet(
                     connection.connection_identifier.clone(),
                     inlet_shared_state.route_index(),
+                    raw_socket_read_result.header_and_payload,
                 );
 
                 trace!("Inlet Processor: Got packet, forwarding to the other side");
@@ -137,28 +136,30 @@ impl Processor for InternalProcessor {
             }
             // Server -> Outlet packet
             PortalMode::Outlet { outlet } => {
-                let connection =
-                    match outlet.get_connection_internal(parsed_packet.packet.destination) {
-                        Some(connection) => {
-                            trace!(
-                                "Outlet Processor: Existing connection to {}",
-                                parsed_packet.packet.destination
-                            );
-                            connection
-                        }
-                        None => {
-                            warn!(
-                                "Outlet Processor: Unknown connection packet from {}:{}. Skipping",
-                                parsed_packet.packet.source_ip, parsed_packet.packet.source
-                            );
-                            return Ok(true);
-                        }
-                    };
+                let connection = match outlet
+                    .get_connection_internal(raw_socket_read_result.tcp_info.destination_port())
+                {
+                    Some(connection) => {
+                        trace!(
+                            "Outlet Processor: Existing connection to {}",
+                            raw_socket_read_result.tcp_info.destination_port(),
+                        );
+                        connection
+                    }
+                    None => {
+                        warn!(
+                            "Outlet Processor: Unknown connection packet from {}:{}. Skipping",
+                            raw_socket_read_result.ipv4_info.source_ip(),
+                            raw_socket_read_result.tcp_info.source_port(),
+                        );
+                        return Ok(true);
+                    }
+                };
 
-                let portal_packet = OckamPortalPacket::from_raw_socket_packet(
-                    parsed_packet.packet,
+                let portal_packet = OckamPortalPacket::from_tcp_packet(
                     connection.connection_identifier.clone(),
                     0, // Doesn't matter for the outlet, as outlets can't update the route
+                    raw_socket_read_result.header_and_payload,
                 );
 
                 trace!("Outlet Processor: Got packet, forwarding to the other side");

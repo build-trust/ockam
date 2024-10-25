@@ -1,4 +1,5 @@
-use crate::ebpf_portal::{ConnectionIdentifier, ParsedRawSocketPacket, Port};
+use crate::ebpf_portal::packet::RawSocketReadResult;
+use crate::ebpf_portal::{ConnectionIdentifier, Port};
 use crate::portal::InletSharedState;
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::sync::RwLock as SyncRwLock;
@@ -28,7 +29,7 @@ impl InletRegistry {
         &self,
         remote_worker_address: Address,
         internal_processor_address: Address,
-        sender: Sender<ParsedRawSocketPacket>,
+        sender: Sender<RawSocketReadResult>,
         port: Port,
         tcp_listener: TcpListener,
         inlet_shared_state: Arc<AsyncRwLock<InletSharedState>>,
@@ -67,7 +68,7 @@ pub struct Inlet {
     /// InternalProcessor Address
     pub internal_processor_address: Address,
     /// Sender to the InternalProcessor
-    pub sender: Sender<ParsedRawSocketPacket>,
+    pub sender: Sender<RawSocketReadResult>,
     /// Port
     pub port: Port,
     /// Route to the corresponding Outlet

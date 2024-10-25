@@ -1,6 +1,7 @@
+use crate::ebpf_portal::packet::TcpStrippedHeaderAndPayload;
 use crate::ebpf_portal::{
-    Inlet, InletConnection, OckamPortalPacket, Outlet, OutletConnection,
-    OutletConnectionReturnRoute, Port, TcpTransportEbpfSupport,
+    ConnectionIdentifier, Inlet, InletConnection, OckamPortalPacket, Outlet, OutletConnection,
+    OutletConnectionReturnRoute, Port, TcpPacketWriter, TcpTransportEbpfSupport,
 };
 use log::{debug, trace};
 use ockam_core::{
@@ -8,10 +9,8 @@ use ockam_core::{
 };
 use ockam_node::Context;
 use ockam_transport_core::TransportError;
-use pnet::packet::tcp::MutableTcpPacket;
-use pnet::transport::TransportSender;
-use std::net::{IpAddr, Ipv4Addr};
-use std::sync::{Arc, Mutex, RwLock};
+use std::net::Ipv4Addr;
+use std::sync::{Arc, RwLock};
 use tokio::net::TcpListener;
 use tracing::warn;
 
@@ -33,33 +32,33 @@ pub enum PortalMode {
 pub struct RemoteWorker {
     mode: PortalMode,
 
-    socket_write_handle: Arc<Mutex<TransportSender>>,
+    tcp_packet_writer: Arc<dyn TcpPacketWriter>,
     ebpf_support: TcpTransportEbpfSupport,
 }
 
 impl RemoteWorker {
     /// Constructor.
     pub fn new_inlet(
-        socket_write_handle: Arc<Mutex<TransportSender>>,
+        tcp_packet_writer: Arc<dyn TcpPacketWriter>,
         inlet: Inlet,
         ebpf_support: TcpTransportEbpfSupport,
     ) -> Self {
         Self {
             mode: PortalMode::Inlet { inlet },
-            socket_write_handle,
+            tcp_packet_writer,
             ebpf_support,
         }
     }
 
     /// Constructor.
     pub fn new_outlet(
-        socket_write_handle: Arc<Mutex<TransportSender>>,
+        tcp_packet_writer: Arc<dyn TcpPacketWriter>,
         outlet: Outlet,
         ebpf_support: TcpTransportEbpfSupport,
     ) -> Self {
         Self {
             mode: PortalMode::Outlet { outlet },
-            socket_write_handle,
+            tcp_packet_writer,
             ebpf_support,
         }
     }
@@ -68,7 +67,7 @@ impl RemoteWorker {
         &self,
         outlet: &Outlet,
         identifier: Option<LocalInfoIdentifier>,
-        msg: &OckamPortalPacket,
+        connection_identifier: ConnectionIdentifier,
         return_route: Route,
     ) -> Result<Arc<OutletConnection>> {
         // FIXME: eBPF It should an IP address of the network device that we'll use to send packets,
@@ -85,7 +84,7 @@ impl RemoteWorker {
 
         let connection = Arc::new(OutletConnection {
             their_identifier: identifier,
-            connection_identifier: msg.connection_identifier.clone(),
+            connection_identifier,
             assigned_port,
             _tcp_listener: Arc::new(tcp_listener),
             return_route: Arc::new(RwLock::new(OutletConnectionReturnRoute::new(return_route))),
@@ -100,46 +99,11 @@ impl RemoteWorker {
 
     async fn handle(
         &self,
-        msg: OckamPortalPacket,
+        header_and_payload: TcpStrippedHeaderAndPayload,
         src_port: Port,
         dst_ip: Ipv4Addr,
         dst_port: Port,
     ) -> Result<()> {
-        let buff_len = (msg.data_offset as usize) * 4 + msg.payload.len();
-
-        let buff = vec![0u8; buff_len];
-        let mut packet = MutableTcpPacket::owned(buff).ok_or(TransportError::BindFailed)?;
-
-        packet.set_sequence(msg.sequence);
-        packet.set_acknowledgement(msg.acknowledgement);
-        packet.set_data_offset(msg.data_offset);
-        packet.set_reserved(msg.reserved);
-        packet.set_flags(msg.flags);
-        packet.set_window(msg.window);
-        packet.set_urgent_ptr(msg.urgent_ptr);
-        packet.set_options(
-            msg.options
-                .into_iter()
-                .map(Into::into)
-                .collect::<Vec<pnet::packet::tcp::TcpOption>>()
-                .as_slice(),
-        );
-        packet.set_payload(&msg.payload);
-
-        packet.set_source(src_port);
-        packet.set_destination(dst_port);
-
-        let check = pnet::packet::tcp::ipv4_checksum(
-            &packet.to_immutable(),
-            // checksum is adjusted inside the eBPF in respect to the correct src IP addr
-            &Ipv4Addr::new(0, 0, 0, 0),
-            &dst_ip,
-        );
-
-        packet.set_checksum(check);
-
-        let packet = packet.to_immutable();
-
         trace!(
             "Writing packet to the RawSocket. {} -> {}:{}",
             src_port,
@@ -149,11 +113,9 @@ impl RemoteWorker {
 
         // TODO: We don't pick the source IP here, but it's important that it stays the same,
         //  Otherwise the receiving TCP connection would be disrupted.
-        self.socket_write_handle
-            .lock()
-            .unwrap()
-            .send_to(packet, IpAddr::V4(dst_ip))
-            .map_err(|e| TransportError::RawSocketWrite(e.to_string()))?;
+        self.tcp_packet_writer
+            .write_packet(src_port, dst_ip, dst_port, header_and_payload)
+            .await?;
 
         Ok(())
     }
@@ -162,10 +124,10 @@ impl RemoteWorker {
         &self,
         inlet: &Inlet,
         connection: &InletConnection,
-        msg: OckamPortalPacket,
+        header_and_payload: TcpStrippedHeaderAndPayload,
     ) -> Result<()> {
         self.handle(
-            msg,
+            header_and_payload,
             inlet.port,
             connection.client_ip,
             connection.client_port,
@@ -177,20 +139,21 @@ impl RemoteWorker {
         &self,
         outlet: &Outlet,
         connection: &OutletConnection,
-        msg: OckamPortalPacket,
+        route_index: u32,
+        header_and_payload: TcpStrippedHeaderAndPayload,
         return_route: Route,
     ) -> Result<()> {
         {
             let mut connection_return_route = connection.return_route.write().unwrap();
 
-            if connection_return_route.route_index < msg.route_index {
-                connection_return_route.route_index = msg.route_index;
+            if connection_return_route.route_index < route_index {
+                connection_return_route.route_index = route_index;
                 connection_return_route.route = return_route;
             }
         }
 
         self.handle(
-            msg,
+            header_and_payload,
             connection.assigned_port,
             outlet.dst_ip,
             outlet.dst_port,
@@ -215,16 +178,27 @@ impl Worker for RemoteWorker {
         let return_route = msg.return_route();
         let payload = msg.into_payload();
 
-        let msg: OckamPortalPacket = minicbor::decode(&payload)?;
+        // TODO: Add borrowing
+        let msg: OckamPortalPacket = minicbor::decode(&payload)
+            .map_err(|e| TransportError::InvalidOckamPortalPacket(e.to_string()))?;
+
+        let (connection_identifier, route_index, header_and_payload) = match msg.dissolve() {
+            Some(res) => res,
+            None => {
+                return Err(TransportError::InvalidOckamPortalPacket(
+                    "Invalid length".to_string(),
+                ))?
+            }
+        };
 
         match &self.mode {
             // Outlet -> Inlet packet
             PortalMode::Inlet { inlet } => {
-                match inlet
-                    .get_connection_external(their_identifier, msg.connection_identifier.clone())
+                match inlet.get_connection_external(their_identifier, connection_identifier.clone())
                 {
                     Some(connection) => {
-                        self.handle_inlet(inlet, &connection, msg).await?;
+                        self.handle_inlet(inlet, &connection, header_and_payload)
+                            .await?;
                     }
                     None => {
                         warn!("Portal Worker Inlet: received a packet for an unknown connection");
@@ -237,23 +211,38 @@ impl Worker for RemoteWorker {
             PortalMode::Outlet { outlet } => {
                 if let Some(connection) = outlet.get_connection_external(
                     their_identifier.clone(),
-                    msg.connection_identifier.clone(),
+                    connection_identifier.clone(),
                 ) {
-                    self.handle_outlet(outlet, &connection, msg, return_route)
-                        .await?;
+                    self.handle_outlet(
+                        outlet,
+                        &connection,
+                        route_index,
+                        header_and_payload,
+                        return_route,
+                    )
+                    .await?;
 
                     return Ok(());
                 }
 
-                // Checks that SYN flag is set, and every other flag is not set.
-                const SYN: u8 = 2;
-                if msg.flags == SYN {
+                if header_and_payload.is_syn_only() {
                     let connection = self
-                        .new_outlet_connection(outlet, their_identifier, &msg, return_route.clone())
+                        .new_outlet_connection(
+                            outlet,
+                            their_identifier,
+                            connection_identifier,
+                            return_route.clone(),
+                        )
                         .await?;
 
-                    self.handle_outlet(outlet, &connection, msg, return_route)
-                        .await?;
+                    self.handle_outlet(
+                        outlet,
+                        &connection,
+                        route_index,
+                        header_and_payload,
+                        return_route,
+                    )
+                    .await?;
 
                     return Ok(());
                 }

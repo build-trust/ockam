@@ -1,4 +1,5 @@
-use crate::ebpf_portal::{ConnectionIdentifier, ParsedRawSocketPacket, Port};
+use crate::ebpf_portal::packet::RawSocketReadResult;
+use crate::ebpf_portal::{ConnectionIdentifier, Port};
 use ockam_core::{Address, LocalInfoIdentifier, Route};
 use std::collections::HashMap;
 use std::net::Ipv4Addr;
@@ -30,7 +31,7 @@ impl OutletRegistry {
         &self,
         remote_worker_address: Address,
         internal_processor_address: Address,
-        sender: Sender<ParsedRawSocketPacket>,
+        sender: Sender<RawSocketReadResult>,
         dst_ip: Ipv4Addr,
         dst_port: Port,
     ) -> Outlet {
@@ -68,7 +69,7 @@ pub struct Outlet {
     /// InternalProcessor Address
     pub internal_processor_address: Address,
     /// Sender to the InternalProcessor
-    pub sender: Sender<ParsedRawSocketPacket>,
+    pub sender: Sender<RawSocketReadResult>,
     /// Destination IP
     pub dst_ip: Ipv4Addr,
     /// Destination Port

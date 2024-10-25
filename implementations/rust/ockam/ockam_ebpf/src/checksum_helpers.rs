@@ -32,6 +32,7 @@ fn sum(ptr: usize, size: usize, end: usize) -> u64 {
     for _ in 0..size / 2 {
         // we could check the sizing once even before calling this function and omit this check,
         // but it seems like verifier is not clever enough to deduct that it's valid
+        // TODO: Check if #[repr(packed)] would help
         if p + 2 > end {
             break;
         }
