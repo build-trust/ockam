@@ -270,11 +270,14 @@ impl LegacyEnrollmentTicket {
         Ok(hex::encode(serialized))
     }
 
-    pub fn from_hex(hex: &str) -> Result<Self> {
-        let data = hex::decode(hex)
-            .map_err(|_err| ApiError::core("Failed to decode EnrollmentTicket hex"))?;
-        Ok(serde_json::from_slice(&data)
-            .map_err(|_err| ApiError::core("Failed to decode EnrollmentTicket json"))?)
+    pub fn from_str(data: &str) -> Result<Self> {
+        if let Ok(data) = hex::decode(data) {
+            Ok(serde_json::from_slice(&data)
+                .map_err(|_err| ApiError::core("Failed to decode EnrollmentTicket json"))?)
+        } else {
+            Ok(serde_json::from_str(data)
+                .map_err(|_err| ApiError::core("Failed to decode EnrollmentTicket json"))?)
+        }
     }
 }
 
@@ -343,11 +346,17 @@ impl FromStr for ExportedEnrollmentTicket {
     type Err = ApiError;
 
     fn from_str(contents: &str) -> std::result::Result<Self, Self::Err> {
-        // Try to hex-decode the contents
+        // Try to decode from hex-encoded string
         let contents = match hex::decode(contents) {
             Ok(decoded) => String::from_utf8(decoded)
                 .map_err(|_| ApiError::core("Failed to hex decode enrollment ticket"))?,
             Err(_) => contents.to_string(),
+        };
+
+        // Try to decode from json
+        let contents = match serde_json::from_str(&contents) {
+            Ok(decoded) => return Ok(decoded),
+            Err(_) => contents,
         };
 
         // Decode as comma-separated text
@@ -636,18 +645,30 @@ mod tests {
     fn test_exported_enrollment_ticket() {
         let exported = ExportedEnrollmentTicket::new_test();
         let encoded = exported.to_string();
-        let hex_decoded = String::from_utf8(hex::decode(&encoded).unwrap()).unwrap();
-        assert!(hex_decoded.contains(&String::from(&exported.one_time_code)));
-        assert!(hex_decoded.contains(&exported.project_route.id));
-        assert!(hex_decoded.contains(&exported.project_route.route.to_string()));
-        assert!(hex_decoded.contains(&exported.project_name));
-        assert!(hex_decoded.contains(&exported.project_change_history));
-        assert!(hex_decoded.contains(&exported.authority_change_history));
+        let plain = String::from_utf8(hex::decode(&encoded).unwrap()).unwrap();
+        assert!(plain.contains(&String::from(&exported.one_time_code)));
+        assert!(plain.contains(&exported.project_route.id));
+        assert!(plain.contains(&exported.project_route.route.to_string()));
+        assert!(plain.contains(&exported.project_name));
+        assert!(plain.contains(&exported.project_change_history));
+        assert!(plain.contains(&exported.authority_change_history));
 
         let decoded = ExportedEnrollmentTicket::from_str(&encoded).unwrap();
         assert_eq!(decoded, exported);
 
-        let decoded = ExportedEnrollmentTicket::from_str(&hex_decoded).unwrap();
+        let decoded = ExportedEnrollmentTicket::from_str(&plain).unwrap();
+        assert_eq!(decoded, exported);
+
+        let json_encoded = serde_json::to_string(&exported).unwrap();
+        let decoded = ExportedEnrollmentTicket::from_str(&json_encoded).unwrap();
+        assert_eq!(decoded, exported);
+    }
+
+    #[test]
+    fn exported_enrollment_ticket_from_hex() {
+        let exported = ExportedEnrollmentTicket::new_test();
+        let encoded = exported.to_string();
+        let decoded = ExportedEnrollmentTicket::from_str(&encoded).unwrap();
         assert_eq!(decoded, exported);
     }
 

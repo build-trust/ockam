@@ -1,3 +1,4 @@
+use std::cmp::min;
 use std::collections::BTreeMap;
 use std::str::FromStr;
 use std::time::Duration;
@@ -47,7 +48,6 @@ pub struct TicketCommand {
     #[arg(short, long = "attribute", value_name = "ATTRIBUTE")]
     attributes: Vec<String>,
 
-    // Note: MAX_TOKEN_DURATION holds the default value.
     /// Duration for which the enrollment ticket is valid, if you don't specify this, the default is 10 minutes. Examples: 10000ms, 600s, 600, 10m, 1h, 1d. If you don't specify a length sigil, it is assumed to be seconds
     #[arg(long = "expires-in", value_name = "DURATION", value_parser = duration_parser)]
     expires_in: Option<Duration>,
@@ -81,14 +81,6 @@ impl Command for TicketCommand {
     }
 
     async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> Result<()> {
-        if opts.global_args.output_format().is_json() {
-            return Err(miette::miette!(
-                "This command only outputs a hex encoded string for 'ockam project enroll' to use. \
-                Please try running it again without '--output json'."
-            )
-            .into());
-        }
-
         let identity = opts
             .state
             .get_identity_name_or_default(&self.identity_opts.identity_name)
@@ -147,8 +139,7 @@ impl Command for TicketCommand {
         )
         .import()
         .await?
-        .export_legacy()?
-        .hex_encoded()?;
+        .export_legacy()?;
 
         opts.terminal
             .write_line(fmt_ok!("Created enrollment ticket\n"))?;
@@ -159,7 +150,8 @@ impl Command for TicketCommand {
 
         opts.terminal
             .stdout()
-            .machine(ticket.to_string())
+            .machine(ticket.hex_encoded()?.to_string())
+            .json_obj(ticket)?
             .write_line()?;
 
         Ok(())

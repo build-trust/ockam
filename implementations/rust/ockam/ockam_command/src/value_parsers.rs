@@ -32,7 +32,7 @@ pub async fn parse_enrollment_ticket(
     let contents = parse_string_or_path_or_url(value).await?;
 
     // Try to parse it using the old format
-    if let Ok(ticket) = LegacyEnrollmentTicket::from_hex(&contents) {
+    if let Ok(ticket) = LegacyEnrollmentTicket::from_str(&contents) {
         // TODO: disabled until release 0.138.0
         // opts.terminal.write_line(fmt_warn!(
         //     "The enrollment ticket was generated from an old Ockam version"
