@@ -80,15 +80,16 @@ impl Command for CreateCommand {
     }
 
     async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+        if self.project_relay {
+            print_deprecated_flag_warning(&opts, "--project-relay")?;
+        }
+
         initialize_default_node(ctx, &opts).await?;
+
         let cmd = self.parse_args(&opts).await?;
         let at = cmd.at();
         let alias = cmd.relay_name();
         let return_timing = cmd.return_timing();
-
-        if cmd.project_relay {
-            print_deprecated_flag_warning(&opts, "--project-relay")?;
-        }
 
         let node = BackgroundNodeClient::create(ctx, &opts.state, &cmd.to).await?;
         let relay_info = {
