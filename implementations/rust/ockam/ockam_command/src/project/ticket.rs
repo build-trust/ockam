@@ -16,11 +16,13 @@ use ockam::Context;
 use ockam_api::authenticator::direct::{
     OCKAM_ROLE_ATTRIBUTE_ENROLLER_VALUE, OCKAM_ROLE_ATTRIBUTE_KEY, OCKAM_TLS_ATTRIBUTE_KEY,
 };
-use ockam_api::authenticator::enrollment_tokens::TokenIssuer;
+use ockam_api::authenticator::enrollment_tokens::{
+    TokenIssuer, MAX_RECOMMENDED_TOKEN_DURATION, MAX_RECOMMENDED_TOKEN_USAGE_COUNT,
+};
 use ockam_api::cli_state::{ExportedEnrollmentTicket, ProjectRoute};
 use ockam_api::colors::color_primary;
 use ockam_api::nodes::InMemoryNode;
-use ockam_api::{fmt_log, fmt_ok};
+use ockam_api::{fmt_log, fmt_ok, fmt_warn};
 use ockam_multiaddr::MultiAddr;
 
 const LONG_ABOUT: &str = include_str!("./static/ticket/long_about.txt");
@@ -81,29 +83,30 @@ impl Command for TicketCommand {
     }
 
     async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> Result<()> {
+        let cmd = self.parse_args(&opts).await?;
         let identity = opts
             .state
-            .get_identity_name_or_default(&self.identity_opts.identity_name)
+            .get_identity_name_or_default(&cmd.identity_opts.identity_name)
             .await?;
 
         let node = InMemoryNode::start_with_project_name(
             ctx,
             &opts.state,
-            self.trust_opts.project_name.clone(),
+            cmd.trust_opts.project_name.clone(),
         )
         .await?;
 
         let project = opts
             .state
             .projects()
-            .get_project_by_name_or_default(&self.trust_opts.project_name)
+            .get_project_by_name_or_default(&cmd.trust_opts.project_name)
             .await?;
 
         let authority_node_client = node
             .create_authority_client_with_project(ctx, &project, Some(identity))
             .await?;
 
-        let attributes = self.attributes()?;
+        let attributes = cmd.attributes()?;
         debug!(attributes = ?attributes, "Attributes passed");
 
         // Request an enrollment token that a future member can use to get a
@@ -114,7 +117,7 @@ impl Command for TicketCommand {
                 pb.set_message("Creating an enrollment ticket...");
             }
             authority_node_client
-                .create_token(ctx, attributes, self.expires_in, self.usage_count)
+                .create_token(ctx, attributes, cmd.expires_in, cmd.usage_count)
                 .await
                 .map_err(Error::Retry)?
         };
@@ -159,6 +162,24 @@ impl Command for TicketCommand {
 }
 
 impl TicketCommand {
+    async fn parse_args(mut self, opts: &CommandGlobalOpts) -> Result<Self> {
+        // Handle expires_in and usage_count limits
+        if let (Some(expires_in), Some(usage_count)) = (self.expires_in, self.usage_count) {
+            if expires_in >= MAX_RECOMMENDED_TOKEN_DURATION
+                && usage_count >= MAX_RECOMMENDED_TOKEN_USAGE_COUNT
+            {
+                opts.terminal.write_line(
+                    fmt_warn!(
+                        "You are creating a ticket with a long expiration time and a high usage count\n"
+                    ) + &fmt_log!(
+                        "This is a security risk. Please consider reducing the values according to the ticket's intended use\n"
+                    ),
+                )?;
+            }
+        }
+        Ok(self)
+    }
+
     fn attributes(&self) -> Result<BTreeMap<String, String>> {
         let mut attributes = BTreeMap::new();
         for attr in &self.attributes {

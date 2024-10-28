@@ -16,7 +16,10 @@ use crate::authenticator::{
     AuthorityEnrollmentTokenRepository, AuthorityMembersRepository, EnrollmentToken,
 };
 
-pub(super) const MAX_TOKEN_DURATION: Duration = Duration::from_secs(600);
+pub const DEFAULT_TOKEN_DURATION: Duration = Duration::from_secs(60 * 10);
+pub const MAX_RECOMMENDED_TOKEN_DURATION: Duration = Duration::from_secs(60 * 60 * 24 * 5);
+pub const DEFAULT_TOKEN_USAGE_COUNT: u64 = 1;
+pub const MAX_RECOMMENDED_TOKEN_USAGE_COUNT: u64 = 10;
 
 pub struct EnrollmentTokenIssuerError(pub String);
 
@@ -90,8 +93,8 @@ impl EnrollmentTokenIssuer {
             .take(10)
             .map(char::from)
             .collect();
-        let max_token_duration = token_duration.unwrap_or(MAX_TOKEN_DURATION);
-        let ttl_count = ttl_count.unwrap_or(1);
+        let max_token_duration = token_duration.unwrap_or(DEFAULT_TOKEN_DURATION);
+        let ttl_count = ttl_count.unwrap_or(DEFAULT_TOKEN_USAGE_COUNT);
         let now = now()?;
         let expires_at = now + max_token_duration.as_secs();
         let tkn = EnrollmentToken {

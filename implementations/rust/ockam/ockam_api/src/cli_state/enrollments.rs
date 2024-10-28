@@ -269,13 +269,17 @@ impl LegacyEnrollmentTicket {
             .map_err(|_err| ApiError::core("Failed to authenticate with Okta"))?;
         Ok(hex::encode(serialized))
     }
+}
 
-    pub fn from_str(data: &str) -> Result<Self> {
-        if let Ok(data) = hex::decode(data) {
+impl FromStr for LegacyEnrollmentTicket {
+    type Err = ApiError;
+
+    fn from_str(contents: &str) -> std::result::Result<Self, Self::Err> {
+        if let Ok(data) = hex::decode(contents) {
             Ok(serde_json::from_slice(&data)
                 .map_err(|_err| ApiError::core("Failed to decode EnrollmentTicket json"))?)
         } else {
-            Ok(serde_json::from_str(data)
+            Ok(serde_json::from_str(contents)
                 .map_err(|_err| ApiError::core("Failed to decode EnrollmentTicket json"))?)
         }
     }

@@ -4,6 +4,7 @@
 //!
 //! It exposes C APIs that can be used by the frontend to interact with the application.
 //!
+#![recursion_limit = "256"]
 
 use thiserror::Error;
 mod api;
