@@ -46,3 +46,25 @@ pub(crate) fn project_name_parser(s: &str) -> Result<String> {
 pub(crate) fn duration_parser(arg: &str) -> std::result::Result<Duration, clap::Error> {
     parse_duration(arg).map_err(|_| Error::raw(ErrorKind::InvalidValue, "Invalid duration."))
 }
+
+pub(crate) fn duration_to_human_format(duration: &Duration) -> String {
+    let mut parts = vec![];
+    let secs = duration.as_secs();
+    let days = secs / 86400;
+    if days > 0 {
+        parts.push(format!("{}d", days));
+    }
+    let hours = (secs % 86400) / 3600;
+    if hours > 0 {
+        parts.push(format!("{}h", hours));
+    }
+    let minutes = (secs % 3600) / 60;
+    if minutes > 0 {
+        parts.push(format!("{}m", minutes));
+    }
+    let seconds = secs % 60;
+    if seconds > 0 {
+        parts.push(format!("{}s", seconds));
+    }
+    parts.join(" ")
+}

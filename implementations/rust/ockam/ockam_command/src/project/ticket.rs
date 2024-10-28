@@ -1,4 +1,3 @@
-use std::cmp::min;
 use std::collections::BTreeMap;
 use std::str::FromStr;
 use std::time::Duration;
@@ -10,19 +9,21 @@ use miette::miette;
 use tracing::debug;
 
 use crate::shared_args::{IdentityOpts, RetryOpts, TrustOpts};
-use crate::util::parsers::duration_parser;
+use crate::util::parsers::{duration_parser, duration_to_human_format};
 use crate::{docs, Command, CommandGlobalOpts, Error, Result};
 use ockam::Context;
 use ockam_api::authenticator::direct::{
     OCKAM_ROLE_ATTRIBUTE_ENROLLER_VALUE, OCKAM_ROLE_ATTRIBUTE_KEY, OCKAM_TLS_ATTRIBUTE_KEY,
 };
 use ockam_api::authenticator::enrollment_tokens::{
-    TokenIssuer, MAX_RECOMMENDED_TOKEN_DURATION, MAX_RECOMMENDED_TOKEN_USAGE_COUNT,
+    TokenIssuer, DEFAULT_TOKEN_DURATION, DEFAULT_TOKEN_USAGE_COUNT, MAX_RECOMMENDED_TOKEN_DURATION,
+    MAX_RECOMMENDED_TOKEN_USAGE_COUNT,
 };
 use ockam_api::cli_state::{ExportedEnrollmentTicket, ProjectRoute};
 use ockam_api::colors::color_primary;
 use ockam_api::nodes::InMemoryNode;
-use ockam_api::{fmt_log, fmt_ok, fmt_warn};
+use ockam_api::terminal::fmt;
+use ockam_api::{fmt_info, fmt_log, fmt_ok, fmt_warn};
 use ockam_multiaddr::MultiAddr;
 
 const LONG_ABOUT: &str = include_str!("./static/ticket/long_about.txt");
@@ -117,7 +118,7 @@ impl Command for TicketCommand {
                 pb.set_message("Creating an enrollment ticket...");
             }
             authority_node_client
-                .create_token(ctx, attributes, cmd.expires_in, cmd.usage_count)
+                .create_token(ctx, attributes.clone(), cmd.expires_in, cmd.usage_count)
                 .await
                 .map_err(Error::Retry)?
         };
@@ -144,15 +145,45 @@ impl Command for TicketCommand {
         .await?
         .export_legacy()?;
 
-        opts.terminal
-            .write_line(fmt_ok!("Created enrollment ticket\n"))?;
-        opts.terminal.write_line(fmt_log!(
-            "You can use it to enroll another machine using: {}",
-            color_primary("ockam project enroll")
-        ))?;
+        let usage_count = cmd.usage_count.unwrap_or(DEFAULT_TOKEN_USAGE_COUNT);
+        let attributes_msg = if attributes.is_empty() {
+            "".to_string()
+        } else {
+            let mut attributes_msg =
+                fmt_log!("The redeemer will be assigned the following attributes:\n");
+
+            for (key, value) in &attributes {
+                attributes_msg += &fmt_log!(
+                    "{}{}",
+                    fmt::INDENTATION,
+                    color_primary(format!("\"{key}={value}\"\n"))
+                );
+            }
+            attributes_msg += "\n";
+            attributes_msg
+        };
+
+        let plain = fmt_ok!("Created enrollment ticket\n\n")
+            + &attributes_msg
+            + &fmt_info!(
+                "It will expire in {} and it can be used {}\n",
+                color_primary(duration_to_human_format(
+                    &cmd.expires_in.unwrap_or(DEFAULT_TOKEN_DURATION)
+                )),
+                if usage_count == 1 {
+                    color_primary("once").to_string()
+                } else {
+                    format!("up to {} times", color_primary(usage_count))
+                }
+            )
+            + &fmt_log!(
+                "You can use it to enroll another machine using: {}",
+                color_primary("ockam project enroll")
+            );
 
         opts.terminal
             .stdout()
+            .plain(plain)
             .machine(ticket.hex_encoded()?.to_string())
             .json_obj(ticket)?
             .write_line()?;
@@ -162,8 +193,13 @@ impl Command for TicketCommand {
 }
 
 impl TicketCommand {
-    async fn parse_args(mut self, opts: &CommandGlobalOpts) -> Result<Self> {
+    async fn parse_args(self, opts: &CommandGlobalOpts) -> miette::Result<Self> {
         // Handle expires_in and usage_count limits
+        if let Some(usage_count) = self.usage_count {
+            if usage_count < 1 {
+                return Err(miette!("The usage count must be at least 1"));
+            }
+        }
         if let (Some(expires_in), Some(usage_count)) = (self.expires_in, self.usage_count) {
             if expires_in >= MAX_RECOMMENDED_TOKEN_DURATION
                 && usage_count >= MAX_RECOMMENDED_TOKEN_USAGE_COUNT
