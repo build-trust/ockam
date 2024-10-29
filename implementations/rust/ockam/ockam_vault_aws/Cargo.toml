@@ -69,7 +69,7 @@ tracing = { version = "0.1", default-features = false }
 
 [dev-dependencies]
 hex = { version = "0.4", default-features = false }
-tokio = { version = "1.39", features = ["full"] }
+tokio = { version = "1.41", features = ["full"] }
 
 [package.metadata.cargo-machete]
 ignored = ["ockam_macros", "ockam_node"]

@@ -21,5 +21,5 @@ ockam = { path = "../../../implementations/rust/ockam/ockam" }
 ockam_core = { path = "../../../implementations/rust/ockam/ockam_core" }
 ockam_node = { path = "../../../implementations/rust/ockam/ockam_node" }
 ockam_transport_core = { path = "../../../implementations/rust/ockam/ockam_transport_core" }
-tokio = { version = "1.39", features = ["rt-multi-thread", "sync", "net", "macros", "time", "io-util"] }
+tokio = { version = "1.41", features = ["rt-multi-thread", "sync", "net", "macros", "time", "io-util"] }
 tracing = { version = "0.1", default-features = false }

@@ -52,7 +52,7 @@ rustyline = { version = "14.0.0", optional = true }
 rustyline-derive = { version = "0.10.0", optional = true }
 sqlx = { version = "0.8.2", optional = true, default-features = false }
 str-buf = "3.0.3"
-tokio = { version = "1.39", default-features = false, optional = true, features = ["sync", "time", "rt", "rt-multi-thread", "macros"] }
+tokio = { version = "1.41", default-features = false, optional = true, features = ["sync", "time", "rt", "rt-multi-thread", "macros"] }
 tracing = { version = "0.1", default-features = false, features = ["attributes"] }
 wast = { version = "219.0.1", default-features = false, optional = true }
 winnow = { version = "0.6.18", default-features = false, optional = true, features = ["alloc"] }

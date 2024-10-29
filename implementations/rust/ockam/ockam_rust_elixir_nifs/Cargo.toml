@@ -44,4 +44,4 @@ ockam_vault_aws = { path = "../ockam_vault_aws", version = "^0.50.0" }
 # Enable credentials-sso feature in ockam_vault_aws for use on sso environments (like dev machines)
 rustler = "=0.33.0"
 time = "0.3.36"
-tokio = "1.39.2"
+tokio = "1.41.0"

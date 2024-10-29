@@ -96,7 +96,7 @@ zeroize = { version = "1.8.1", features = ["zeroize_derive"] }
 serde_bare = { version = "0.5.0" }
 serde_json = { version = "1" }
 tempfile = { version = "3.10.1" }
-tokio = { version = "1.39", features = ["full"] }
+tokio = { version = "1.41", features = ["full"] }
 trybuild = { version = "1.0", features = ["diff"] }
 
 [package.metadata.cargo-machete]

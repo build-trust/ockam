@@ -11,7 +11,7 @@ rust-version = "1.70.0"
 clap = { version = "4.5", features = ["derive", "cargo", "wrap_help"] }
 ockam = { path = "../../../implementations/rust/ockam/ockam" }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
-tokio = { version = "1.39", features = ["fs", "io-util"] }
+tokio = { version = "1.41", features = ["fs", "io-util"] }
 
 [dev-dependencies]
 example_test_helper = { path = "../../../tools/docs/example_test_helper" }

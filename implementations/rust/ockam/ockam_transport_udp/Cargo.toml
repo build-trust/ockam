@@ -35,7 +35,7 @@ ockam_core = { path = "../ockam_core", version = "^0.119.0", default-features = 
 ockam_node = { path = "../ockam_node", version = "^0.131.0" }
 ockam_transport_core = { path = "../ockam_transport_core", version = "^0.96.0" }
 rand = "0.8"
-tokio = { version = "1.39.2", features = ["rt-multi-thread", "sync", "net", "macros", "time", "io-util"] }
+tokio = { version = "1.41.0", features = ["rt-multi-thread", "sync", "net", "macros", "time", "io-util"] }
 tracing = { version = "0.1", default-features = false }
 
 [dev-dependencies]

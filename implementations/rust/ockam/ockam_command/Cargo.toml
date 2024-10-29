@@ -98,7 +98,7 @@ shellexpand = { version = "3.1.0", default-features = false, features = ["base-0
 syntect = { version = "5.2.0", default-features = false, features = ["default-syntaxes", "regex-onig"] }
 thiserror = "1"
 time = { version = "0.3", default-features = false, features = ["std", "local-offset"] }
-tokio = { version = "1.39.2", features = ["full"] }
+tokio = { version = "1.41.0", features = ["full"] }
 tokio-retry = "0.3"
 tracing = { version = "0.1", default-features = false }
 url = "2.5.2"
