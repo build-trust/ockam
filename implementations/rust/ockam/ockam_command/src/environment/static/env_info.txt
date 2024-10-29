@@ -48,8 +48,8 @@ Tracing
 - OCKAM_SPAN_EXPORT_QUEUE_SIZE: Size of the queue used to store batched spans before export. When the queue is full, spans are dropped. Default value: `32768`
 - OCKAM_LOG_EXPORT_QUEUE_SIZE: Size of the queue used to store batched log records before export. When the queue is full, log records are dropped. Default value: `32768`
 - OCKAM_TRACING_GLOBAL_ERROR_HANDLER: Configuration for printing tracing/logging errors: `console`, `logfile`, `off`. Default value: `logfile`.
-- OCKAM_FOREGROUND_LOG_EXPORT_PORTAL_CUTOFF: Cutoff time for sending log records batches to an OpenTelemetry portal inlet, without waiting for a response. Default value: `300ms`.
-- OCKAM_FOREGROUND_SPAN_EXPORT_PORTAL_CUTOFF: Cutoff time for sending span batches to an OpenTelemetry portal inlet, without waiting for a response. Default value: `300ms`.
+- OCKAM_FOREGROUND_LOG_EXPORT_PORTAL_CUTOFF: Cutoff time for sending log records batches to an OpenTelemetry portal inlet, without waiting for a response. Default value: `3s`.
+- OCKAM_FOREGROUND_SPAN_EXPORT_PORTAL_CUTOFF: Cutoff time for sending span batches to an OpenTelemetry portal inlet, without waiting for a response. Default value: `3s`.
 - OCKAM_TRACING_GLOBAL_ERROR_HANDLER: Configuration for printing tracing/logging errors: `console`, `logfile`, `off`. Default value: `console`.
 
 UDP Puncture

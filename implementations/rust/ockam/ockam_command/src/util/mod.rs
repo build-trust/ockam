@@ -58,7 +58,7 @@ where
 {
     let (ctx, mut executor) = NodeBuilder::new()
         .no_logging()
-        .with_runtime(opts.rt)
+        .with_runtime(opts.rt.clone())
         .build();
     let res = executor.execute(
         async move {
@@ -76,6 +76,7 @@ where
         }
         .with_context(OpenTelemetryContext::current_context()),
     );
+    opts.force_flush();
     match res {
         Ok(Err(e)) => Err(e),
         Ok(Ok(t)) => Ok(t),
