@@ -108,6 +108,7 @@ teardown() {
 # https://docs.ockam.io/guides/examples/end-to-end-encrypted-kafka
 # Please update the docs repository if this bats test is updated
 @test "use-case - end-to-end-encrypted-kafka" {
+  skip "kafka is not setup in CI"
   # Admin
   export ADMIN_HOME="$OCKAM_HOME"
   run_success "$OCKAM" project addon configure confluent --bootstrap-server "$CONFLUENT_CLOUD_BOOTSTRAP_SERVER_ADDRESS"

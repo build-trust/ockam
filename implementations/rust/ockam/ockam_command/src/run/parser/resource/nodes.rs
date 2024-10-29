@@ -17,7 +17,8 @@ pub struct Nodes {
 impl Nodes {
     fn get_subcommand(args: &[String]) -> Result<CreateCommand> {
         if let OckamSubcommand::Node(cmd) = parse_cmd_from_args(CreateCommand::NAME, args)? {
-            if let node::NodeSubcommand::Create(c) = cmd.subcommand {
+            if let node::NodeSubcommand::Create(mut c) = cmd.subcommand {
+                c.config_args.started_from_configuration = true;
                 return Ok(c);
             }
         }

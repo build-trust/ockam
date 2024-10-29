@@ -99,4 +99,31 @@ mod tests {
         assert_eq!(nodes[0].name, "node1");
         assert_eq!(nodes[1].name, "node2");
     }
+
+    #[test]
+    fn parse_without_variables_section() {
+        let mut contents = r#"
+            {
+                "nodes": [
+                    "node1",
+                    "node2",
+                ],
+            }
+        "#
+        .to_string();
+        let parsed = ConfigParser::parse::<TestConfig>(&mut contents).unwrap();
+        let nodes = parsed.nodes.into_parsed_commands().unwrap();
+        assert_eq!(nodes.len(), 2);
+        assert_eq!(nodes[0].name, "node1");
+        assert_eq!(nodes[1].name, "node2");
+    }
+
+    #[test]
+    fn parse_from_inline_yaml() {
+        let mut contents = "relay: r1".to_string();
+        let parsed = ConfigParser::parse::<TestConfig>(&mut contents).unwrap();
+        let nodes = parsed.relays.into_parsed_commands(None).unwrap();
+        assert_eq!(nodes.len(), 1);
+        assert_eq!(nodes[0].relay_name, "r1");
+    }
 }

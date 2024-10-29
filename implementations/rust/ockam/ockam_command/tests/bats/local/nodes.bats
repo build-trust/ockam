@@ -119,12 +119,30 @@ teardown() {
   run_success $OCKAM node show n --output json
   assert_output --partial "\"name\": \"n\""
   assert_output --partial "127.0.0.1:5432"
+
+  run_success "$OCKAM" node create "{name: o, tcp-outlets: {db-outlet: {to: 5433, at: o}}}"
+  run_success $OCKAM node show o --output json
+  assert_output --partial "\"name\": \"o\""
+  assert_output --partial "127.0.0.1:5433"
+
+  run_success "$OCKAM" node create "name: p"
+  run_success $OCKAM node show p --output json
+  assert_output --partial "\"name\": \"p\""
+
+  run_success "$OCKAM" node create "name: q" --foreground &
+  sleep 3
+  run_success $OCKAM node show q --output json
+  assert_output --partial "\"name\": \"q\""
 }
 
 @test "node - node in foreground with configuration is deleted if something fails" {
   # The config file has invalid port to trigger an error after the node is created.
   # The command should return an error and the node should be deleted.
   run_failure "$OCKAM" node create --configuration "{name: n, tcp-outlets: {db-outlet: {to: \"localhost:65536\"}}}"
+  run_success $OCKAM node show n --output json
+  assert_output --partial "[]"
+
+  run_failure "$OCKAM" node create "{name: n, tcp-outlets: {db-outlet: {to: \"localhost:65536\"}}}"
   run_success $OCKAM node show n --output json
   assert_output --partial "[]"
 }

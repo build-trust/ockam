@@ -3,7 +3,7 @@ use crate::node::CreateCommand;
 use crate::run::parser::config::ConfigParser;
 use crate::run::parser::resource::*;
 use crate::run::parser::Version;
-use crate::value_parsers::{parse_key_val, parse_path_or_url};
+use crate::value_parsers::{parse_config_or_path_or_url, parse_key_val};
 use crate::CommandGlobalOpts;
 use clap::Args;
 use miette::{miette, IntoDiagnostic};
@@ -36,6 +36,10 @@ pub struct ConfigArgs {
     /// Example: `--variable KEY1=VALUE1 --variable KEY2=VALUE2`
     #[arg(long = "variable", value_name = "VARIABLE", value_parser = parse_key_val::<String, String>)]
     pub variables: Vec<(String, String)>,
+
+    /// A flag used internally to indicate that the node was started from a configuration file.
+    #[arg(hide = true, long)]
+    pub started_from_configuration: bool,
 }
 
 impl CreateCommand {
@@ -66,15 +70,16 @@ impl CreateCommand {
         res
     }
 
-    /// Try to read the self.name field as either:
+    /// Try to read the `name` argument as either:
     ///  - a URL to a configuration file
     ///  - a local path to a configuration file
-    /// or read the inline configuration
+    ///  - an inline configuration
+    /// or read the `configuration` argument
     #[instrument(skip_all, fields(app.event.command.configuration_file))]
     pub async fn get_node_config(&self) -> miette::Result<NodeConfig> {
         let contents = match self.config_args.configuration.clone() {
             Some(contents) => contents,
-            None => match parse_path_or_url(&self.name).await {
+            None => match parse_config_or_path_or_url::<NodeConfig>(&self.name).await {
                 Ok(contents) => contents,
                 Err(err) => {
                     // If just the enrollment ticket is passed, create a minimal configuration
@@ -162,7 +167,7 @@ impl NodeConfig {
 
         // Override config values with passed command args
         let default_cmd_args = CreateCommand::default();
-        if cmd.name.ne(&default_cmd_args.name) && cmd.has_name_arg() {
+        if cmd.name.ne(&default_cmd_args.name) && cmd.name_arg_is_a_node_name() {
             self.node.name = Some(cmd.name.clone().into());
         }
         if let Some(ticket) = &cmd.config_args.enrollment_ticket {

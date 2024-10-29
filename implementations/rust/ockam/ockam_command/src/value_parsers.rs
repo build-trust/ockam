@@ -2,6 +2,7 @@ use crate::util::parsers::hostname_parser;
 use crate::CommandGlobalOpts;
 use miette::{miette, Context, IntoDiagnostic};
 use ockam_api::cli_state::{EnrollmentTicket, ExportedEnrollmentTicket, LegacyEnrollmentTicket};
+use serde::Deserialize;
 use std::str::FromStr;
 use tracing::trace;
 use url::Url;
@@ -47,13 +48,31 @@ pub async fn parse_enrollment_ticket(
         .await?)
 }
 
-async fn parse_string_or_path_or_url(value: &str) -> miette::Result<String> {
+pub(crate) async fn parse_config_or_path_or_url<'de, T: Deserialize<'de>>(
+    value: &'de str,
+) -> miette::Result<String> {
+    match parse_path_or_url(value).await {
+        Ok(contents) => Ok(contents),
+        Err(_) => {
+            if serde_yaml::from_str::<T>(value).is_ok() {
+                Ok(value.to_string())
+            } else {
+                Err(miette!(
+                    "Failed to parse value {} as a path, URL or configuration",
+                    value
+                ))
+            }
+        }
+    }
+}
+
+pub(crate) async fn parse_string_or_path_or_url(value: &str) -> miette::Result<String> {
     parse_path_or_url(value)
         .await
         .or_else(|_| Ok(value.to_string()))
 }
 
-pub async fn parse_path_or_url(value: &str) -> miette::Result<String> {
+pub(crate) async fn parse_path_or_url(value: &str) -> miette::Result<String> {
     // If the URL is valid, download the contents
     if let Some(url) = is_url(value) {
         reqwest::get(url)
@@ -65,7 +84,7 @@ pub async fn parse_path_or_url(value: &str) -> miette::Result<String> {
             .into_diagnostic()
             .context("Failed to read contents from downloaded file")
     }
-    // If not, try to read the contents from a file
+    // Try to read the contents from a file
     else if tokio::fs::metadata(value).await.is_ok() {
         tokio::fs::read_to_string(value)
             .await

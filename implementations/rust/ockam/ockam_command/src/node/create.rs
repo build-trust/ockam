@@ -18,6 +18,7 @@ use ockam_api::{fmt_log, fmt_ok};
 use ockam_core::{opentelemetry_context_parser, OpenTelemetryContext};
 use ockam_node::Context;
 
+use crate::node::config::NodeConfig;
 use crate::node::create::config::ConfigArgs;
 use crate::node::util::NodeManagerDefaults;
 use crate::service::config::Config;
@@ -127,6 +128,7 @@ impl Default for CreateCommand {
                 configuration: None,
                 enrollment_ticket: None,
                 variables: vec![],
+                started_from_configuration: false,
             },
             tcp_listener_address: node_manager_defaults.tcp_listener_address,
             http_server: false,
@@ -200,7 +202,12 @@ impl CreateCommand {
             return false;
         }
 
-        let name_arg_is_a_config = !self.has_name_arg();
+        // Ignore the config args if the node was started from a configuration
+        if self.config_args.started_from_configuration {
+            return false;
+        }
+
+        let name_arg_is_a_config = self.name_arg_is_a_config();
 
         let no_config_args = !name_arg_is_a_config
             && self.config_args.configuration.is_none()
@@ -216,12 +223,18 @@ impl CreateCommand {
             || self.config_args.enrollment_ticket.is_some()
     }
 
-    /// Return true if the `name` argument is not a config file path or URL
-    fn has_name_arg(&self) -> bool {
+    /// Return true if the `name` argument is a URL, a file path, or an inline config
+    fn name_arg_is_a_config(&self) -> bool {
+        let is_url = is_url(&self.name).is_some();
         let is_file = std::fs::metadata(&self.name)
             .map(|m| m.is_file())
             .unwrap_or(false);
-        is_url(&self.name).is_none() && !is_file
+        let is_inline_config = serde_yaml::from_str::<NodeConfig>(&self.name).is_ok();
+        is_url || is_file || is_inline_config
+    }
+
+    fn name_arg_is_a_node_name(&self) -> bool {
+        !self.name_arg_is_a_config()
     }
 
     fn parse_args(&self) -> miette::Result<()> {
@@ -238,9 +251,9 @@ impl CreateCommand {
             variables.insert(key.clone(), value.clone());
         }
 
-        // return error if the name arg can't be parsed
+        // return error if the name arg is not a valid node name, and is not a config
         let re = Regex::new(r"[^\w_-]").into_diagnostic()?;
-        if self.has_name_arg() && re.is_match(&self.name) {
+        if self.name_arg_is_a_node_name() && re.is_match(&self.name) {
             return Err(miette!(
                 "Invalid value for {}: {}",
                 color_primary("NAME_OR_CONFIGURATION"),
@@ -336,19 +349,22 @@ mod tests {
     fn has_name_arg() {
         // True if it's a node name
         let cmd = CreateCommand::default();
-        assert!(cmd.has_name_arg());
+        assert!(cmd.name_arg_is_a_node_name());
+        assert!(!cmd.name_arg_is_a_config());
         let cmd = CreateCommand {
             name: "node".to_string(),
             ..CreateCommand::default()
         };
-        assert!(cmd.has_name_arg());
+        assert!(cmd.name_arg_is_a_node_name());
+        assert!(!cmd.name_arg_is_a_config());
 
         // True if it's a directory-like name
         let cmd = CreateCommand {
             name: "path/to/node".to_string(),
             ..CreateCommand::default()
         };
-        assert!(cmd.has_name_arg());
+        assert!(cmd.name_arg_is_a_node_name());
+        assert!(!cmd.name_arg_is_a_config());
 
         // False if it's a file path
         let tmp_directory = tempfile::tempdir().unwrap();
@@ -358,14 +374,16 @@ mod tests {
             name: tmp_file.to_str().unwrap().to_string(),
             ..CreateCommand::default()
         };
-        assert!(!cmd.has_name_arg());
+        assert!(!cmd.name_arg_is_a_node_name());
+        assert!(cmd.name_arg_is_a_config());
 
         // False if it's a URL
         let cmd = CreateCommand {
             name: "http://localhost:8080".to_string(),
             ..CreateCommand::default()
         };
-        assert!(!cmd.has_name_arg());
+        assert!(!cmd.name_arg_is_a_node_name());
+        assert!(cmd.name_arg_is_a_config());
     }
 
     #[test]

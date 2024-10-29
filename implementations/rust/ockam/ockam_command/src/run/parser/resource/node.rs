@@ -40,6 +40,7 @@ impl Resource<CreateCommand> for Node {
 
     fn args(self) -> Vec<String> {
         let mut args: BTreeMap<ArgKey, ArgValue> = BTreeMap::new();
+        args.insert("started-from-configuration".into(), true.into());
         if let Some(name) = self.name {
             args.insert("name".into(), name);
         }
@@ -126,6 +127,7 @@ impl Node {
                 c.config_args.configuration = None;
                 c.config_args.variables = vec![];
                 c.config_args.enrollment_ticket = None;
+                c.config_args.started_from_configuration = true;
                 return Ok(c);
             }
         }
