@@ -1,7 +1,7 @@
 use crate::ebpf_portal::{InternalProcessor, Port, RemoteWorker};
 use crate::portal::InletSharedState;
 use crate::{TcpInlet, TcpInletOptions, TcpOutletOptions, TcpTransport};
-use caps::Capability::{CAP_BPF, CAP_NET_RAW, CAP_SYS_ADMIN};
+use caps::Capability::{CAP_BPF, CAP_NET_ADMIN, CAP_NET_RAW, CAP_SYS_ADMIN};
 use caps::{CapSet, Capability};
 use core::fmt::Debug;
 use log::{debug, error};
@@ -21,7 +21,7 @@ impl TcpTransport {
         let caps = caps::read(None, CapSet::Effective)
             .map_err(|e| TransportError::ReadCaps(e.to_string()))?;
 
-        const REQUIRED_SET: &[Capability] = &[CAP_NET_RAW, CAP_BPF, CAP_SYS_ADMIN];
+        const REQUIRED_SET: &[Capability] = &[CAP_NET_RAW, CAP_BPF, CAP_SYS_ADMIN, CAP_NET_ADMIN];
 
         let mut error_description = String::new();
         let mut check_result = true;

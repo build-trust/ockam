@@ -26,7 +26,7 @@ Example of a virtual machine to build it can be found in `ubuntu_x86.yaml`.
 
 Using ockam with eBPFs requires:
  - Linux
- - root (CAP_BPF, CAP_NET_RAW)
+ - root (CAP_BPF, CAP_NET_RAW, CAP_NET_ADMIN, CAP_SYS_ADMIN)
 
 Example of a virtual machine to run ockam with eBPF can be found in `ubuntu_arm.yaml`.
 
