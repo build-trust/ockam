@@ -1,16 +1,16 @@
 use std::collections::BTreeMap;
 use std::process::Stdio;
 
+use crate::run::parser::building_blocks::{as_command_args, ArgKey, ArgValue};
+use crate::run::parser::resource::utils::{binary_path, subprocess_stdio};
+use crate::{Command, CommandGlobalOpts, GlobalArgs};
 use async_trait::async_trait;
 use miette::{IntoDiagnostic, Result};
+use ockam_api::colors::color_primary;
 use ockam_core::AsyncTryClone;
 use ockam_node::Context;
 use tokio::process::{Child, Command as ProcessCommand};
 use tracing::debug;
-
-use crate::run::parser::building_blocks::{as_command_args, ArgKey, ArgValue};
-use crate::run::parser::resource::utils::{binary_path, subprocess_stdio};
-use crate::{Command, CommandGlobalOpts, GlobalArgs};
 
 /// This trait defines the methods that a resource must implement before it's parsed into a Command.
 ///
@@ -84,7 +84,7 @@ where
     }
 
     async fn run(&self, ctx: &Context, opts: &CommandGlobalOpts) -> Result<()> {
-        debug!("Running command: {}", self.name());
+        debug!("Running command {}\n{:?}", color_primary(self.name()), self);
         Ok(self.clone().async_run_with_retry(ctx, opts.clone()).await?)
     }
 }

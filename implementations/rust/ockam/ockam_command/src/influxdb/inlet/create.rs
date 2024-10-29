@@ -61,7 +61,7 @@ impl Command for InfluxDBCreateCommand {
                         ctx,
                         &self.tcp_inlet.from,
                         &self.tcp_inlet.to(),
-                        &self.tcp_inlet.alias,
+                        self.tcp_inlet.alias.as_ref().expect("The `alias` argument should be set to its default value if not provided"),
                         &self.tcp_inlet.authorized,
                         &self.tcp_inlet.allow,
                         self.tcp_inlet.connection_wait,

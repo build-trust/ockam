@@ -71,10 +71,10 @@ mod tests {
             .into_parsed_commands(Some(&default_node_name))
             .unwrap();
         assert_eq!(cmds.len(), 2);
-        assert_eq!(cmds[0].alias, "ti1");
+        assert_eq!(cmds[0].alias.as_ref().unwrap(), "ti1");
         assert_eq!(cmds[0].from, HostnamePort::new("127.0.0.1", 6060));
         assert_eq!(cmds[0].at.as_ref().unwrap(), "n");
-        assert_eq!(cmds[1].alias, "my_inlet");
+        assert_eq!(cmds[1].alias.as_ref().unwrap(), "my_inlet");
         assert_eq!(cmds[1].from, HostnamePort::new("127.0.0.1", 6061));
         assert_eq!(cmds[1].at.as_ref(), Some(&default_node_name));
 

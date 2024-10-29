@@ -405,4 +405,21 @@ mod tests {
             .map(|f| f.unwrap().file_name().to_string_lossy().to_string())
             .collect()
     }
+
+    #[tokio::test]
+    async fn random_name_generator() {
+        // Same process
+        let mut names = Vec::new();
+        for _ in 0..100 {
+            names.push(random_name());
+        }
+        assert_eq!(names.len(), names.iter().unique().count());
+
+        // In an async context
+        let mut names = Vec::new();
+        for _ in 0..100 {
+            names.push(tokio::task::spawn_blocking(random_name).await.unwrap());
+        }
+        assert_eq!(names.len(), names.iter().unique().count());
+    }
 }

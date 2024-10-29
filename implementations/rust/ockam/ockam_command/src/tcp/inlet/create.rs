@@ -80,8 +80,8 @@ pub struct CreateCommand {
     pub authorized: Option<Identifier>,
 
     /// Assign a name to this TCP Inlet.
-    #[arg(long, display_order = 900, id = "ALIAS", value_parser = alias_parser, default_value_t = random_name(), hide_default_value = true)]
-    pub alias: String,
+    #[arg(long, display_order = 900, id = "ALIAS", value_parser = alias_parser)]
+    pub alias: Option<String>,
 
     /// Policy expression that will be used for access control to the TCP Inlet.
     /// If you don't provide it, the policy set for the "tcp-inlet" resource type will be used.
@@ -186,7 +186,7 @@ impl Command for CreateCommand {
                         ctx,
                         &cmd.from,
                         &cmd.to(),
-                        &cmd.alias,
+                        cmd.alias.as_ref().expect("The `alias` argument should be set to its default value if not provided"),
                         &cmd.authorized,
                         &cmd.allow,
                         cmd.connection_wait,
@@ -303,6 +303,7 @@ impl CreateCommand {
     }
 
     pub async fn parse_args(mut self, opts: &CommandGlobalOpts) -> miette::Result<Self> {
+        self.alias = self.alias.or_else(|| Some(random_name()));
         let from = resolve_peer(self.from.to_string())
             .await
             .into_diagnostic()?;

@@ -1,4 +1,5 @@
 use std::cmp::min;
+use std::fmt::Debug;
 use std::ops::Add;
 use std::path::PathBuf;
 use std::time::Duration;
@@ -330,7 +331,7 @@ impl OckamSubcommand {
 }
 
 #[async_trait]
-pub trait Command: Clone + Sized + Send + Sync + 'static {
+pub trait Command: Debug + Clone + Sized + Send + Sync + 'static {
     const NAME: &'static str;
 
     fn name(&self) -> String {

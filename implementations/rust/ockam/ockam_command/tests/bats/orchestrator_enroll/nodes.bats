@@ -275,3 +275,23 @@ EOF
   # Check that the identity can reach the project
   run_success $OCKAM message send hi --to "/project/default/service/echo"
 }
+
+@test "nodes - create node with both tcp and influx inlets" {
+  tcp_inlet_port="$(random_port)"
+  influxdb_inlet_port="$(random_port)"
+  cat <<EOF >"$OCKAM_HOME/node.yaml"
+name: n1
+
+tcp-inlet:
+  from: 0.0.0.0:${tcp_inlet_port}
+  no-connection-wait: true
+
+influxdb-inlet:
+  from: 0.0.0.0:${influxdb_inlet_port}
+  leased-token-strategy: shared
+  no-connection-wait: true
+EOF
+
+  # We just want to check that the command doesn't fail
+  run_success "$OCKAM" node create "$OCKAM_HOME/node.yaml"
+}
