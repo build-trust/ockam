@@ -1,6 +1,6 @@
 use crate::cloud::project::Project;
 use crate::nodes::service::{
-    CredentialScope, NodeManagerCredentialRetrieverOptions, NodeManagerTrustOptions,
+    AuthorityOptions, CredentialRetrieverOptions, CredentialScope, NodeManagerTrustOptions,
 };
 use crate::nodes::NodeManager;
 use crate::{ApiError, CliState, TransportRouteResolver};
@@ -62,10 +62,10 @@ impl CliState {
             );
 
             let trust_options = NodeManagerTrustOptions::new(
-                NodeManagerCredentialRetrieverOptions::Remote { info, scope },
-                NodeManagerCredentialRetrieverOptions::None,
+                CredentialRetrieverOptions::Remote { info, scope },
+                CredentialRetrieverOptions::None,
                 Some(authority_identifier.clone()),
-                NodeManagerCredentialRetrieverOptions::None,
+                CredentialRetrieverOptions::None,
             );
 
             debug!(
@@ -78,13 +78,13 @@ impl CliState {
 
         if let Some(credential_scope) = credential_scope {
             let trust_options = NodeManagerTrustOptions::new(
-                NodeManagerCredentialRetrieverOptions::CacheOnly {
+                CredentialRetrieverOptions::CacheOnly {
                     issuer: authority_identifier.clone(),
                     scope: credential_scope.clone(),
                 },
-                NodeManagerCredentialRetrieverOptions::None,
+                CredentialRetrieverOptions::None,
                 Some(authority_identifier.clone()),
-                NodeManagerCredentialRetrieverOptions::None,
+                CredentialRetrieverOptions::None,
             );
 
             debug!(
@@ -96,10 +96,10 @@ impl CliState {
         }
 
         let trust_options = NodeManagerTrustOptions::new(
-            NodeManagerCredentialRetrieverOptions::None,
-            NodeManagerCredentialRetrieverOptions::None,
+            CredentialRetrieverOptions::None,
+            CredentialRetrieverOptions::None,
             Some(authority_identifier.clone()),
-            NodeManagerCredentialRetrieverOptions::None,
+            CredentialRetrieverOptions::None,
         );
 
         debug!(
@@ -130,7 +130,7 @@ impl CliState {
             })?;
 
         let project_id = project.project_id().to_string();
-        let project_member_retriever = NodeManagerCredentialRetrieverOptions::Remote {
+        let project_member_retriever = CredentialRetrieverOptions::Remote {
             info: RemoteCredentialRetrieverInfo::create_for_project_member(
                 authority_identifier.clone(),
                 authority_route,
@@ -144,7 +144,7 @@ impl CliState {
         let controller_identifier = NodeManager::load_controller_identifier()?;
         let controller_transport_route = NodeManager::controller_route().await?;
 
-        let project_admin_retriever = NodeManagerCredentialRetrieverOptions::Remote {
+        let project_admin_retriever = CredentialRetrieverOptions::Remote {
             info: RemoteCredentialRetrieverInfo::create_for_project_admin(
                 controller_identifier.clone(),
                 controller_transport_route.clone(),
@@ -156,7 +156,7 @@ impl CliState {
             .to_string(),
         };
 
-        let account_admin_retriever = NodeManagerCredentialRetrieverOptions::Remote {
+        let account_admin_retriever = CredentialRetrieverOptions::Remote {
             info: RemoteCredentialRetrieverInfo::create_for_account_admin(
                 controller_identifier.clone(),
                 controller_transport_route,
@@ -232,10 +232,10 @@ impl CliState {
             None => {
                 debug!("TrustOptions configured: No Authority. No Credentials");
                 return Ok(NodeManagerTrustOptions::new(
-                    NodeManagerCredentialRetrieverOptions::None,
-                    NodeManagerCredentialRetrieverOptions::None,
+                    CredentialRetrieverOptions::None,
+                    CredentialRetrieverOptions::None,
                     None,
-                    NodeManagerCredentialRetrieverOptions::None,
+                    CredentialRetrieverOptions::None,
                 ));
             }
         };
@@ -243,13 +243,99 @@ impl CliState {
         if project.authority_identifier().is_none() {
             debug!("TrustOptions configured: No Authority. No Credentials");
             return Ok(NodeManagerTrustOptions::new(
-                NodeManagerCredentialRetrieverOptions::None,
-                NodeManagerCredentialRetrieverOptions::None,
+                CredentialRetrieverOptions::None,
+                CredentialRetrieverOptions::None,
                 None,
-                NodeManagerCredentialRetrieverOptions::None,
+                CredentialRetrieverOptions::None,
             ));
         }
 
         self.retrieve_trust_options_with_project(project).await
+    }
+
+    /// Extract `[AuthorityOptions]` from the provided parameters.
+    /// It returns an error when the full authority information cannot be extracted
+    #[instrument(skip_all, fields(project_name = project_name.clone(), authority_identity = authority_identity.as_ref().map(|a| a.to_string()).unwrap_or("n/a".to_string()), authority_route = authority_route.clone().map_or("n/a".to_string(), |r| r.to_string())))]
+    pub async fn retrieve_authority_options(
+        &self,
+        project_name: &Option<String>,
+        authority_identity: &Option<ChangeHistory>,
+        authority_route: &Option<MultiAddr>,
+        credential_scope: &Option<String>,
+    ) -> Result<AuthorityOptions> {
+        if project_name.is_some() && (authority_identity.is_some() || authority_route.is_some()) {
+            return Err(Error::new(
+                Origin::Api,
+                Kind::NotFound,
+                "Both project_name and authority info are provided",
+            ));
+        }
+
+        if authority_route.is_some() && authority_identity.is_none() {
+            return Err(Error::new(
+                Origin::Api,
+                Kind::NotFound,
+                "Authority address was provided but authority identity is unknown",
+            ));
+        }
+
+        if let Some(authority_identity) = authority_identity {
+            // We're using explicitly specified authority instead of a project
+            let authority_multiaddr = authority_route.clone().ok_or_else(|| {
+                Error::new(
+                    Origin::Api,
+                    Kind::NotFound,
+                    "Authority identity was provided but authority address is unknown",
+                )
+            })?;
+
+            let identities_verification = IdentitiesVerification::new(
+                self.change_history_repository(),
+                SoftwareVaultForVerifyingSignatures::create(),
+            );
+
+            let authority_identity = authority_identity.export()?;
+            let authority_identifier = identities_verification
+                .import(None, &authority_identity)
+                .await?;
+
+            let scope = credential_scope.as_ref().ok_or_else(|| {
+                Error::new(
+                    Origin::Api,
+                    Kind::NotFound,
+                    "Authority address was provided but credential scope was not provided",
+                )
+            })?;
+
+            Ok(AuthorityOptions {
+                identifier: authority_identifier,
+                multiaddr: authority_multiaddr,
+                credential_scope: scope.clone(),
+            })
+        } else {
+            // Either The project name was specified or we're using the default project
+            let project = match project_name {
+                Some(project_name) => self.projects().get_project_by_name(project_name).await?,
+                None => self.projects().get_default_project().await?,
+            };
+
+            let authority_identifier = project
+                .authority_identifier()
+                .ok_or_else(|| Error::new(Origin::Api, Kind::NotFound, "No authority found"))?;
+
+            let credential_scope = match credential_scope {
+                Some(scope) => scope.clone(),
+                None => CredentialScope::ProjectMember {
+                    project_id: project.project_id().to_string(),
+                }
+                .to_string(),
+            };
+
+            Ok(AuthorityOptions {
+                identifier: authority_identifier,
+                multiaddr: project.authority_multiaddr()?.clone(),
+                credential_scope,
+            })
+        }
     }
 }

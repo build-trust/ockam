@@ -180,7 +180,7 @@ impl State {
         let listener = tcp.listen(&"127.0.0.1:0", options).await?;
 
         let _ = cli_state
-            .start_node_with_optional_values(NODE_NAME, &None, &None, Some(&listener))
+            .start_node_with_optional_values(Some(&ctx), NODE_NAME, &None, &None, Some(&listener))
             .await?;
 
         let trust_options = cli_state

@@ -121,7 +121,7 @@ impl EnrollCommand {
             let _notification_handler =
                 NotificationHandler::start(&opts.state, opts.terminal.clone());
             opts.state
-                .get_named_identity_or_default(&self.identity)
+                .get_named_identity_or_default(Some(ctx), &self.identity)
                 .await?
         };
 
@@ -214,7 +214,7 @@ impl EnrollCommand {
                 // Use default identity.
                 None => {
                     if let Ok(named_identity) =
-                        cli_state.get_or_create_default_named_identity().await
+                        cli_state.get_or_create_default_named_identity(None).await
                     {
                         let name = named_identity.name();
                         let identifier = named_identity.identifier();

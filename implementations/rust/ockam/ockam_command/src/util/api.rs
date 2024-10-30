@@ -1,7 +1,9 @@
 use miette::IntoDiagnostic;
 use ockam::identity::Identifier;
 use ockam_api::nodes::models::flow_controls::AddConsumer;
-use ockam_api::nodes::models::services::StartHopServiceRequest;
+use ockam_api::nodes::models::services::{
+    StartHopServiceRequest, StartRemoteProxyVaultServiceRequest,
+};
 use ockam_api::nodes::service::default_address::DefaultAddress;
 use ockam_api::nodes::*;
 use ockam_core::api::Request;
@@ -98,6 +100,14 @@ pub(crate) fn show_secure_channel_listener(
 pub(crate) fn start_hop_service(addr: &str) -> Request<StartHopServiceRequest> {
     let payload = StartHopServiceRequest::new(addr);
     Request::post(node_service(DefaultAddress::HOP_SERVICE)).body(payload)
+}
+
+pub(crate) fn start_remote_proxy_vault_service(
+    addr: &str,
+    vault_name: &str,
+) -> Request<StartRemoteProxyVaultServiceRequest> {
+    let payload = StartRemoteProxyVaultServiceRequest::new(addr, vault_name);
+    Request::post(node_service(DefaultAddress::REMOTE_PROXY_VAULT)).body(payload)
 }
 
 pub(crate) fn add_consumer(id: FlowControlId, address: MultiAddr) -> Request<AddConsumer> {

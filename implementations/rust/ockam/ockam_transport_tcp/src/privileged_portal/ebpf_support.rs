@@ -9,7 +9,6 @@ use aya::programs::{tc, Link, ProgramError, SchedClassifier, TcAttachType};
 use aya::{Ebpf, EbpfError};
 use aya_log::EbpfLogger;
 use core::fmt::{Debug, Formatter};
-use log::error;
 use ockam_core::compat::collections::HashMap;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{Address, Error, Result};
@@ -20,7 +19,7 @@ use rand::random;
 use std::collections::HashSet;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
-use tracing::{debug, info, warn};
+use tracing::{debug, error, info, warn};
 
 /// Interval at which we will get all addresses and attach eBPF to newly added interfaces
 pub const INTERFACE_LIST_UPDATE_INTERVAL: Duration = Duration::from_secs(30);

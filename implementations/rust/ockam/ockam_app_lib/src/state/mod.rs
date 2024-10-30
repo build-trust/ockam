@@ -707,7 +707,7 @@ pub(crate) async fn make_node_manager(
         .into_diagnostic()?;
 
     let _ = cli_state
-        .start_node_with_optional_values(NODE_NAME, &None, &None, Some(&listener))
+        .start_node_with_optional_values(Some(&ctx), NODE_NAME, &None, &None, Some(&listener))
         .await?;
 
     let trust_options = cli_state

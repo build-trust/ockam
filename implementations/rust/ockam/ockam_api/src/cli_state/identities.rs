@@ -3,6 +3,7 @@ use ockam::identity::models::ChangeHistory;
 use ockam::identity::{Identifier, Identity};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::Error;
+use ockam_node::Context;
 use ockam_vault::{HandleToSecret, SigningSecretKeyHandle};
 
 use crate::cli_state::{random_name, CliState, Result};
@@ -31,6 +32,7 @@ impl CliState {
     #[instrument(skip_all, fields(name = %name, vault_name = %vault_name))]
     pub async fn create_identity_with_name_and_vault(
         &self,
+        context: Option<&Context>,
         name: &str,
         vault_name: &str,
     ) -> Result<NamedIdentity> {
@@ -39,7 +41,9 @@ impl CliState {
         };
 
         let vault = self.get_named_vault(vault_name).await?;
-        let identities = self.make_identities(self.make_vault(vault).await?).await?;
+        let vault = self.make_vault(context, vault).await?;
+
+        let identities = self.make_identities(vault).await?;
         let identity = identities.identities_creation().create_identity().await?;
         let named_identity = self
             .store_named_identity(&identity, name, vault_name)
@@ -65,9 +69,13 @@ impl CliState {
     /// Create an identity associated with a name, using the default vault
     /// If there is already an identity with that name, return its identifier
     #[instrument(skip_all, fields(name = %name))]
-    pub async fn create_identity_with_name(&self, name: &str) -> Result<NamedIdentity> {
+    pub async fn create_identity_with_name(
+        &self,
+        context: Option<&Context>,
+        name: &str,
+    ) -> Result<NamedIdentity> {
         let vault = self.get_or_create_default_named_vault().await?;
-        self.create_identity_with_name_and_vault(name, &vault.name())
+        self.create_identity_with_name_and_vault(context, name, &vault.name())
             .await
     }
 
@@ -77,6 +85,7 @@ impl CliState {
     #[instrument(skip_all, fields(name = %name, vault_name = %vault_name, key_id = %key_id))]
     pub async fn create_identity_with_key_id(
         &self,
+        context: Option<&Context>,
         name: &str,
         vault_name: &str,
         key_id: &str,
@@ -96,8 +105,10 @@ impl CliState {
             key_id.as_bytes().to_vec(),
         ));
 
+        let vault = self.make_vault(context, vault).await?;
+
         // create the identity
-        let identities = self.make_identities(self.make_vault(vault).await?).await?;
+        let identities = self.make_identities(vault).await?;
         let identifier = identities
             .identities_creation()
             .identity_builder()
@@ -154,13 +165,14 @@ impl CliState {
     #[instrument(skip_all, fields(name = name.clone()))]
     pub async fn get_named_identity_or_default(
         &self,
+        context: Option<&Context>,
         name: &Option<String>,
     ) -> Result<NamedIdentity> {
         match name {
             // Identity specified.
             Some(name) => self.get_named_identity(name).await,
             // No identity specified.
-            None => self.get_or_create_default_named_identity().await,
+            None => self.get_or_create_default_named_identity(context).await,
         }
     }
 
@@ -191,7 +203,11 @@ impl CliState {
     /// Return a full identity from its name
     /// Use the default identity if no name is given
     #[instrument(skip_all, fields(name = name.clone()))]
-    pub async fn get_identity_by_optional_name(&self, name: &Option<String>) -> Result<Identity> {
+    pub async fn get_identity_by_optional_name(
+        &self,
+        context: Option<&Context>,
+        name: &Option<String>,
+    ) -> Result<Identity> {
         let named_identity = match name {
             Some(name) => {
                 self.identities_repository()
@@ -209,7 +225,7 @@ impl CliState {
             Some(identity) => {
                 let change_history = self.get_change_history(&identity.identifier()).await?;
                 let named_vault = self.get_named_vault(&identity.vault_name).await?;
-                let identity_vault = self.make_vault(named_vault).await?;
+                let identity_vault = self.make_vault(context, named_vault).await?;
                 Ok(Identity::import_from_change_history(
                     Some(&identity.identifier()),
                     change_history,
@@ -243,14 +259,23 @@ impl CliState {
     /// Return the name of the default identity.
     /// This function creates the default identity if it does not exist!
     #[instrument(skip_all)]
-    pub async fn get_default_identity_name(&self) -> Result<String> {
-        Ok(self.get_or_create_default_named_identity().await?.name())
+    pub async fn get_or_create_default_identity_name(
+        &self,
+        context: Option<&Context>,
+    ) -> Result<String> {
+        Ok(self
+            .get_or_create_default_named_identity(context)
+            .await?
+            .name())
     }
 
     /// Return the default named identity
     /// This function creates the default identity if it does not exist!
     #[instrument(skip_all)]
-    pub async fn get_or_create_default_named_identity(&self) -> Result<NamedIdentity> {
+    pub async fn get_or_create_default_named_identity(
+        &self,
+        context: Option<&Context>,
+    ) -> Result<NamedIdentity> {
         match self
             .identities_repository()
             .get_default_named_identity()
@@ -263,7 +288,8 @@ impl CliState {
                 self.notify_message(fmt_log!(
                     "There is no default Identity on this machine, generating one...\n"
                 ));
-                self.create_identity_with_name(&random_name()).await
+                self.create_identity_with_name(context, &random_name())
+                    .await
             }
         }
     }
@@ -272,10 +298,14 @@ impl CliState {
     /// - the given name if defined
     /// - or the name of the default identity (which is created if it does not already exist!)
     #[instrument(skip_all, fields(name = name.clone()))]
-    pub async fn get_identity_name_or_default(&self, name: &Option<String>) -> Result<String> {
+    pub async fn get_or_create_identity_name_or_default(
+        &self,
+        context: Option<&Context>,
+        name: &Option<String>,
+    ) -> Result<String> {
         match name {
             Some(name) => Ok(name.clone()),
-            None => self.get_default_identity_name().await,
+            None => self.get_or_create_default_identity_name(context).await,
         }
     }
 
@@ -472,14 +502,14 @@ mod tests {
         // then create an identity
         let identity_name = "identity-name";
         let identity = cli
-            .create_identity_with_name_and_vault(identity_name, vault_name)
+            .create_identity_with_name_and_vault(None, identity_name, vault_name)
             .await?;
         let expected = cli.get_named_identity(identity_name).await?;
         assert_eq!(identity, expected);
 
         // don't recreate the identity if it already exists with that name
         let _ = cli
-            .create_identity_with_name_and_vault(identity_name, vault_name)
+            .create_identity_with_name_and_vault(None, identity_name, vault_name)
             .await?;
         let identities = cli.get_named_identities().await?;
         assert_eq!(identities.len(), 1);
@@ -493,7 +523,7 @@ mod tests {
 
         // create an identity using the default vault
         let identity_name = "identity-name";
-        let identity = cli.create_identity_with_name(identity_name).await?;
+        let identity = cli.create_identity_with_name(None, identity_name).await?;
         let expected = cli.get_named_identity(identity_name).await?;
         assert_eq!(identity, expected);
 
@@ -509,7 +539,7 @@ mod tests {
         let cli = CliState::test().await?;
 
         // when we retrieve the default identity, we create it if it doesn't exist
-        let identity = cli.get_or_create_default_named_identity().await?;
+        let identity = cli.get_or_create_default_named_identity(None).await?;
 
         // when the identity is created there is a change history + a named identity
         let result = cli.get_change_history(&identity.identifier()).await;
@@ -528,7 +558,7 @@ mod tests {
     #[tokio::test]
     async fn test_delete_identity() -> Result<()> {
         let cli = CliState::test().await?;
-        let identity = cli.create_identity_with_name("name").await?;
+        let identity = cli.create_identity_with_name(None, "name").await?;
 
         // when the identity is created there is a change history + a named identity
         let result = cli.get_change_history(&identity.identifier()).await;

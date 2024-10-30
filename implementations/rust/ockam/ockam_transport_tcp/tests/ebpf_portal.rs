@@ -1,9 +1,9 @@
 #[cfg(privileged_portals_support)]
 mod tests {
-    use log::info;
     use std::time::Duration;
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
     use tokio::net::{TcpListener, TcpStream};
+    use tracing::log::info;
 
     use ockam_core::compat::rand::random;
     use ockam_core::{route, Result};

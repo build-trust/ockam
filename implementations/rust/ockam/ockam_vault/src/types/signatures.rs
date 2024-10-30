@@ -6,7 +6,7 @@ pub const EDDSA_CURVE25519_SIGNATURE_LENGTH: usize = 64;
 pub const ECDSA_SHA256_CURVEP256_SIGNATURE_LENGTH: usize = 64;
 
 /// A cryptographic signature.
-#[derive(Encode, Decode, CborLen)]
+#[derive(Clone, Encode, Decode, CborLen, PartialEq, Eq, Debug)]
 #[rustfmt::skip]
 pub enum Signature {
     /// An EdDSA signature using Curve 25519.

@@ -1,3 +1,4 @@
+use crate::{docs, Command, CommandGlobalOpts};
 use async_trait::async_trait;
 use clap::Args;
 use colorful::Colorful;
@@ -12,8 +13,6 @@ use ockam_api::{fmt_log, fmt_ok};
 use ockam_node::Context;
 use ockam_vault::SoftwareVaultForVerifyingSignatures;
 use std::collections::HashMap;
-
-use crate::{docs, Command, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
@@ -45,7 +44,7 @@ pub struct CreateCommand {
 impl Command for CreateCommand {
     const NAME: &'static str = "identity create";
 
-    async fn async_run(self, _ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+    async fn async_run(self, context: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
         let _notification_handler = NotificationHandler::start(&opts.state, opts.terminal.clone());
         let vault = match &self.vault {
             Some(vault_name) => opts.state.get_or_create_named_vault(vault_name).await?,
@@ -54,23 +53,33 @@ impl Command for CreateCommand {
         if let Some(identity) = self.identity.clone() {
             self.import(opts, vault, identity).await?;
         } else {
-            self.create(opts, vault).await?;
+            self.create(context, opts, vault).await?;
         };
         Ok(())
     }
 }
 
 impl CreateCommand {
-    async fn create(self, opts: CommandGlobalOpts, vault: NamedVault) -> miette::Result<()> {
+    async fn create(
+        self,
+        context: &Context,
+        opts: CommandGlobalOpts,
+        vault: NamedVault,
+    ) -> miette::Result<()> {
         let identity = match &self.key_id {
             Some(key_id) => {
                 opts.state
-                    .create_identity_with_key_id(&self.name, &vault.name(), key_id.as_ref())
+                    .create_identity_with_key_id(
+                        Some(context),
+                        &self.name,
+                        &vault.name(),
+                        key_id.as_ref(),
+                    )
                     .await?
             }
             None => {
                 opts.state
-                    .create_identity_with_name_and_vault(&self.name, &vault.name())
+                    .create_identity_with_name_and_vault(Some(context), &self.name, &vault.name())
                     .await?
             }
         };

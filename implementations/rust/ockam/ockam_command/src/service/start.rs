@@ -29,10 +29,21 @@ pub enum StartSubCommand {
         #[arg(long, default_value_t = hop_default_addr())]
         addr: String,
     },
+    RemoteProxyVault {
+        #[arg(long, default_value_t = remote_proxy_vault_default_addr())]
+        addr: String,
+        /// Name of the vault to expose
+        #[arg(long)]
+        vault_name: String,
+    },
 }
 
 fn hop_default_addr() -> String {
     DefaultAddress::HOP_SERVICE.to_string()
+}
+
+fn remote_proxy_vault_default_addr() -> String {
+    DefaultAddress::REMOTE_PROXY_VAULT.to_string()
 }
 
 impl StartCommand {
@@ -54,6 +65,10 @@ impl StartCommand {
                 opts.terminal.write_line(fmt_warn!(
                     "SECURITY WARNING: Don't use Hop service in production nodes"
                 ))?;
+                addr
+            }
+            StartSubCommand::RemoteProxyVault { addr, vault_name } => {
+                start_remote_proxy_vault_service(ctx, &node, addr, vault_name).await?;
                 addr
             }
         };
@@ -90,4 +105,15 @@ pub async fn start_hop_service(
 ) -> Result<()> {
     let req = api::start_hop_service(service_addr);
     start_service_impl(ctx, node, "Hop", req).await
+}
+
+/// Public so `ockam_command::node::create` can use it.
+pub async fn start_remote_proxy_vault_service(
+    ctx: &Context,
+    node: &BackgroundNodeClient,
+    service_addr: &str,
+    vault_name: &str,
+) -> Result<()> {
+    let req = api::start_remote_proxy_vault_service(service_addr, vault_name);
+    start_service_impl(ctx, node, "Remote Proxy Vault", req).await
 }

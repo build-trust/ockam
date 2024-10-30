@@ -211,6 +211,24 @@ impl StartHopServiceRequest {
     }
 }
 
+/// Request body of remote proxy vault service
+#[derive(Debug, Clone, Encode, Decode, CborLen)]
+#[rustfmt::skip]
+#[cbor(map)]
+pub struct StartRemoteProxyVaultServiceRequest {
+    #[n(1)] pub addr: String,
+    #[n(2)] pub vault_name: String,
+}
+
+impl StartRemoteProxyVaultServiceRequest {
+    pub fn new(addr: impl Into<String>, vault_name: impl Into<String>) -> Self {
+        Self {
+            addr: addr.into(),
+            vault_name: vault_name.into(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Encode, Decode, CborLen)]
 #[rustfmt::skip]
 #[cbor(map)]

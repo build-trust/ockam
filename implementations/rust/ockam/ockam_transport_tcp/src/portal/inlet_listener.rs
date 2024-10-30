@@ -2,7 +2,6 @@ use crate::portal::addresses::{Addresses, PortalType};
 use crate::portal::tls_certificate::TlsCertificateProvider;
 use crate::portal::{InletSharedState, ReadHalfMaybeTls, WriteHalfMaybeTls};
 use crate::{portal::TcpPortalWorker, TcpInlet, TcpInletOptions, TcpRegistry};
-use log::warn;
 use ockam_core::compat::net::SocketAddr;
 use ockam_core::compat::sync::Arc;
 use ockam_core::errcode::{Kind, Origin};
@@ -17,6 +16,7 @@ use std::time::Duration;
 use tokio::net::TcpListener;
 use tokio::time::Instant;
 use tokio_rustls::{TlsAcceptor, TlsStream};
+use tracing::log::warn;
 use tracing::{debug, error, instrument};
 
 /// A TCP Portal Inlet listen processor

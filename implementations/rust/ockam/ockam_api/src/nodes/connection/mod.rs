@@ -226,6 +226,12 @@ pub struct ConnectionInstantiator {
     instantiator: Vec<Arc<dyn Instantiator>>,
 }
 
+impl Default for ConnectionInstantiator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ConnectionInstantiator {
     pub fn new() -> Self {
         ConnectionInstantiator {

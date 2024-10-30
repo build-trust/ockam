@@ -124,6 +124,9 @@ impl NodeManagerWorker {
             (Post, ["node", "services", DefaultAddress::HOP_SERVICE]) => {
                 encode_response(req, self.start_hop_service(ctx, dec.decode()?).await)?
             }
+            (Post, ["node", "services", DefaultAddress::REMOTE_PROXY_VAULT]) => {
+                encode_response(req, self.start_remote_proxy_vault(ctx, dec.decode()?).await)?
+            }
             (Post, ["node", "services", DefaultAddress::KAFKA_OUTLET]) => encode_response(
                 req,
                 self.start_kafka_outlet_service(ctx, dec.decode()?).await,

@@ -1,17 +1,18 @@
-use cfg_if::cfg_if;
-
 use crate::{HandleToSecret, SecretBufferHandle};
+use cfg_if::cfg_if;
+use minicbor::{CborLen, Decode, Encode};
 use ockam_core::compat::vec::Vec;
 
 /// SHA256 digest length
 pub const SHA256_LENGTH: usize = 32;
 
 /// SHA-256 Output.
-pub struct Sha256Output(pub [u8; SHA256_LENGTH]);
+#[derive(Encode, Decode, CborLen)]
+pub struct Sha256Output(#[cbor(n(0), with = "minicbor::bytes")] pub [u8; SHA256_LENGTH]);
 
 /// Handle to an AES-256 Secret Key.
-#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
-pub struct AeadSecretKeyHandle(pub AeadSecretKeyHandleType);
+#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Encode, Decode, CborLen)]
+pub struct AeadSecretKeyHandle(#[n(0)] pub AeadSecretKeyHandleType);
 
 impl AeadSecretKeyHandle {
     /// Constructor
@@ -23,17 +24,20 @@ impl AeadSecretKeyHandle {
 cfg_if! {
     if #[cfg(any(not(feature = "disable_default_noise_protocol"), feature = "OCKAM_XX_25519_AES256_GCM_SHA256"))] {
         /// Hash used for Noise handshake.
-        pub struct HashOutput(pub Sha256Output);
+        #[derive(Encode, Decode, CborLen)]
+        pub struct HashOutput(#[n(0)] pub Sha256Output);
 
         /// SHA-256 HKDF Output.
-        pub struct Sha256HkdfOutput(pub Vec<SecretBufferHandle>);
+        #[derive(Encode, Decode, CborLen)]
+        pub struct Sha256HkdfOutput(#[n(0)] pub Vec<SecretBufferHandle>);
 
         /// HKDF Output.
-        pub struct HkdfOutput(pub Sha256HkdfOutput);
+        #[derive(Encode, Decode, CborLen)]
+        pub struct HkdfOutput(#[n(0)] pub Sha256HkdfOutput);
 
         /// Handle to an AES-256 Secret Key.
-        #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
-        pub struct Aes256GcmSecretKeyHandle(pub HandleToSecret);
+        #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Encode, Decode, CborLen)]
+        pub struct Aes256GcmSecretKeyHandle(#[n(0)] pub HandleToSecret);
 
         impl Aes256GcmSecretKeyHandle {
             /// Constructor

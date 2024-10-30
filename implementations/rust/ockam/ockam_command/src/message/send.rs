@@ -90,7 +90,10 @@ impl Command for SendCommand {
         } else {
             let identity_name = opts
                 .state
-                .get_identity_name_or_default(&self.identity_opts.identity_name)
+                .get_or_create_identity_name_or_default(
+                    Some(ctx),
+                    &self.identity_opts.identity_name,
+                )
                 .await?;
 
             info!("starting an in memory node to send a message");

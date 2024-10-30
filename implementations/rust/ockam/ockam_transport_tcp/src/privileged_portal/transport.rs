@@ -1,9 +1,9 @@
 use crate::privileged_portal::{Iface, TcpPacketWriter};
 use crate::TcpTransport;
 use aya::programs::tc::{qdisc_detach_program, TcAttachType};
-use log::{error, info, warn};
 use ockam_core::Result;
 use std::collections::HashSet;
+use tracing::log::{error, info, warn};
 
 impl TcpTransport {
     /// Start [`RawSocketProcessor`]. Should be done once.

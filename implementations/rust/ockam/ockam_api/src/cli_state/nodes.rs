@@ -1,3 +1,10 @@
+use crate::cli_state::{random_name, NamedVault, Result};
+use crate::cli_state::{CliState, CliStateError};
+use crate::cloud::project::Project;
+use crate::colors::color_primary;
+use crate::config::lookup::InternetAddress;
+use crate::{fmt_warn, ConnectionStatus};
+
 use colorful::Colorful;
 use minicbor::{CborLen, Decode, Encode};
 use nix::errno::Errno;
@@ -9,20 +16,13 @@ use ockam_core::errcode::{Kind, Origin};
 use ockam_core::Error;
 use ockam_multiaddr::proto::{DnsAddr, Node, Tcp};
 use ockam_multiaddr::MultiAddr;
+use ockam_node::Context;
 use serde::Serialize;
 use std::fmt::{Display, Formatter};
 use std::path::PathBuf;
 use std::process;
 use std::time::Duration;
 use sysinfo::{Pid, ProcessStatus, ProcessesToUpdate, System};
-
-use crate::cli_state::{random_name, NamedVault, Result};
-use crate::cli_state::{CliState, CliStateError};
-use crate::cloud::project::Project;
-use crate::colors::color_primary;
-use crate::config::lookup::InternetAddress;
-
-use crate::{fmt_warn, ConnectionStatus};
 
 /// The methods below support the creation and update of local nodes
 impl CliState {
@@ -31,13 +31,14 @@ impl CliState {
     ))]
     pub async fn start_node_with_optional_values(
         &self,
+        context: Option<&Context>,
         node_name: &str,
         identity_name: &Option<String>,
         project_name: &Option<String>,
         tcp_listener: Option<&TcpListener>,
     ) -> Result<NodeInfo> {
         let mut node = self
-            .create_node_with_optional_values(node_name, identity_name, project_name)
+            .create_node_with_optional_values(context, node_name, identity_name, project_name)
             .await?;
         if node.pid.is_none() {
             let pid = process::id();
@@ -61,13 +62,14 @@ impl CliState {
     ))]
     pub async fn create_node_with_optional_values(
         &self,
+        context: Option<&Context>,
         node_name: &str,
         identity_name: &Option<String>,
         project_name: &Option<String>,
     ) -> Result<NodeInfo> {
         let identity = match identity_name {
             Some(name) => self.get_named_identity(name).await?,
-            None => self.get_or_create_default_named_identity().await?,
+            None => self.get_or_create_default_named_identity(context).await?,
         };
         let node = self
             .create_node_with_identifier(node_name, &identity.identifier())
@@ -78,9 +80,8 @@ impl CliState {
 
     /// This method creates a node with an associated identity
     /// The vault used to create the identity is the default vault
-    #[instrument(skip_all, fields(node_name = node_name))]
-    pub async fn create_node(&self, node_name: &str) -> Result<NodeInfo> {
-        let identity = self.create_identity_with_name(&random_name()).await?;
+    pub async fn create_test_node(&self, node_name: &str) -> Result<NodeInfo> {
+        let identity = self.create_identity_with_name(None, &random_name()).await?;
         self.create_node_with_identifier(node_name, &identity.identifier())
             .await
     }
@@ -712,7 +713,7 @@ mod tests {
 
         // a node can be created with just a name
         let node_name = "node-1";
-        let result = cli.create_node(node_name).await?;
+        let result = cli.create_test_node(node_name).await?;
         assert_eq!(result.name(), node_name.to_string());
 
         // the first node is the default one
@@ -723,7 +724,7 @@ mod tests {
         let result = cli.get_or_create_default_named_vault().await.ok();
         assert!(result.is_some());
 
-        let result = cli.get_or_create_default_named_identity().await.ok();
+        let result = cli.get_or_create_default_named_identity(None).await.ok();
         assert!(result.is_some());
 
         // that identity is associated to the node
@@ -739,7 +740,7 @@ mod tests {
 
         // create a node
         let node_name = "node-1";
-        let _ = cli.create_node(node_name).await?;
+        let _ = cli.create_test_node(node_name).await?;
         cli.set_tcp_listener_address(
             node_name,
             &SocketAddr::from_str("127.0.0.1:0").unwrap().into(),
@@ -747,7 +748,7 @@ mod tests {
         .await?;
 
         // recreate the node with the same name
-        let _ = cli.create_node(node_name).await?;
+        let _ = cli.create_test_node(node_name).await?;
 
         // the node must still be the default node
         let result = cli.get_default_node().await?;
@@ -768,7 +769,7 @@ mod tests {
 
         // a node can be created with just a name
         let node1 = "node-1";
-        let node_info1 = cli.create_node(node1).await?;
+        let node_info1 = cli.create_test_node(node1).await?;
 
         // the created node is set as the default node
         let result = cli.get_default_node().await?;
@@ -777,7 +778,7 @@ mod tests {
         // a node can also be removed
         // first let's create a second node
         let node2 = "node-2";
-        let node_info2 = cli.create_node(node2).await?;
+        let node_info2 = cli.create_test_node(node2).await?;
 
         // and remove node 1
         cli.remove_node(node1).await?;
@@ -804,15 +805,15 @@ mod tests {
 
         // a node can be created with just a name
         let node = cli
-            .create_node_with_optional_values("node-1", &None, &None)
+            .create_node_with_optional_values(None, "node-1", &None, &None)
             .await?;
         let result = cli.get_node(&node.name()).await?;
         assert_eq!(result.name(), node.name());
 
         // a node can be created with a name and an existing identity
-        let identity = cli.create_identity_with_name("name").await?;
+        let identity = cli.create_identity_with_name(None, "name").await?;
         let node = cli
-            .create_node_with_optional_values("node-2", &Some(identity.name()), &None)
+            .create_node_with_optional_values(None, "node-2", &Some(identity.name()), &None)
             .await?;
         let result = cli.get_node(&node.name()).await?;
         assert_eq!(result.identifier(), identity.identifier());
@@ -842,6 +843,7 @@ mod tests {
 
         let node = cli
             .create_node_with_optional_values(
+                None,
                 "node-4",
                 &Some(identity.name()),
                 &Some(project.name.clone()),

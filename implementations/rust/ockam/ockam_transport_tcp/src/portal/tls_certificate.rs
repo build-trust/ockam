@@ -1,5 +1,4 @@
 use core::fmt::{Debug, Display, Formatter};
-use log::warn;
 use minicbor::{Decode, Encode};
 use ockam_core::async_trait;
 use ockam_node::Context;
@@ -9,6 +8,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::Mutex;
 use tokio::time::Instant;
+use tracing::log::warn;
 
 /// Refresh the certificate every day.
 pub const DEFAULT_CACHE_RETENTION: Duration = Duration::from_secs(60 * 60 * 24);

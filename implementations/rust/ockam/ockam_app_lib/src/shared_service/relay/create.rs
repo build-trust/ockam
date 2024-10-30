@@ -132,7 +132,7 @@ async fn relay_remote_address(cli_state: &CliState) -> ockam::Result<String> {
 
 async fn relay_alias(cli_state: &CliState) -> ockam::Result<String> {
     Ok(cli_state
-        .get_or_create_default_named_identity()
+        .get_or_create_default_named_identity(None)
         .await?
         .identifier()
         .to_string())

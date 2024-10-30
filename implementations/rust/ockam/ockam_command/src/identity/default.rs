@@ -49,7 +49,10 @@ impl DefaultCommand {
                 }
             }
             None => {
-                let identity = opts.state.get_or_create_default_named_identity().await?;
+                let identity = opts
+                    .state
+                    .get_or_create_default_named_identity(None)
+                    .await?;
                 opts.terminal
                     .stdout()
                     .plain(fmt_ok!(

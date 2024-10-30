@@ -4,7 +4,6 @@ use crate::privileged_portal::packet::{
 use crate::privileged_portal::packet_binary::{ipv4_header, tcp_header};
 use crate::privileged_portal::TcpPacketReader;
 use async_trait::async_trait;
-use log::{error, trace};
 use nix::sys::socket::MsgFlags;
 use ockam_core::Result;
 use ockam_transport_core::TransportError;
@@ -12,6 +11,7 @@ use std::os::fd::{AsRawFd, OwnedFd};
 use std::sync::Arc;
 use tokio::io::unix::AsyncFd;
 use tokio::io::Interest;
+use tracing::log::{error, trace};
 
 /// RawSocket packet reader implemented via tokio's AsyncFd
 pub struct AsyncFdPacketReader {

@@ -2,19 +2,17 @@ use std::fmt::{Debug, Formatter, Write};
 use std::sync::Arc;
 use std::time::Duration;
 
-use async_trait::async_trait;
-use clap::Args;
-use colorful::Colorful;
-use miette::Context as _;
-use miette::{miette, IntoDiagnostic};
-use serde::Serialize;
-
 use crate::credential::CredentialOutput;
 use crate::enroll::OidcServiceExt;
 use crate::shared_args::{IdentityOpts, RetryOpts, TrustOpts};
 use crate::util::parsers::duration_parser;
 use crate::value_parsers::parse_enrollment_ticket;
 use crate::{docs, Command, CommandGlobalOpts, Error, Result};
+use async_trait::async_trait;
+use clap::Args;
+use colorful::Colorful;
+use miette::Context as _;
+use miette::{miette, IntoDiagnostic};
 use ockam::Context;
 use ockam_api::cli_state::{EnrollmentTicket, NamedIdentity};
 use ockam_api::cloud::project::models::OktaAuth0;
@@ -28,6 +26,7 @@ use ockam_api::nodes::InMemoryNode;
 use ockam_api::output::{human_readable_time, Output};
 use ockam_api::terminal::fmt;
 use ockam_api::{fmt_log, fmt_ok};
+use serde::Serialize;
 
 const LONG_ABOUT: &str = include_str!("./static/enroll/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/enroll/after_long_help.txt");
@@ -113,11 +112,12 @@ impl Command for EnrollCommand {
         // Create authority client
         let identity = opts
             .state
-            .get_named_identity_or_default(&self.identity_opts.identity_name)
+            .get_named_identity_or_default(Some(ctx), &self.identity_opts.identity_name)
             .await?;
-        let node = InMemoryNode::start_with_project_name(
+        let node = InMemoryNode::start_with_identity_and_project_name(
             ctx,
             &opts.state,
+            Some(identity.name().to_string()),
             Some(project.name().to_string()),
         )
         .await?

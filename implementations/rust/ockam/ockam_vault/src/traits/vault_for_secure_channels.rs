@@ -2,16 +2,19 @@ use crate::{
     AeadSecretKeyHandle, HashOutput, HkdfOutput, SecretBufferHandle, X25519PublicKey,
     X25519SecretKeyHandle,
 };
+use minicbor::{CborLen, Decode, Encode};
 
 use ockam_core::compat::vec::Vec;
 use ockam_core::{async_trait, compat::boxed::Box, Result};
 
 /// Possible number of outputs of HKDF.
+#[derive(Debug, Encode, Decode, CborLen)]
+#[rustfmt::skip]
 pub enum HKDFNumberOfOutputs {
     /// Derive 2 secrets.
-    Two,
+    #[n(0)] Two,
     /// Derive 3 secrets.
-    Three,
+    #[n(1)] Three,
 }
 
 /// Vault for running a Secure Channel

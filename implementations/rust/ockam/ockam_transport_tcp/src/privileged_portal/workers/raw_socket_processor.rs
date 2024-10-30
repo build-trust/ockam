@@ -3,10 +3,10 @@ use crate::privileged_portal::{
     create_async_fd_raw_socket, Inlet, InletRegistry, Outlet, OutletRegistry, TcpPacketReader,
     TcpPacketWriter,
 };
-use log::trace;
 use ockam_core::{async_trait, Processor, Result};
 use ockam_node::Context;
 use ockam_transport_core::TransportError;
+use tracing::log::trace;
 
 /// Processor responsible for receiving all data with OCKAM_TCP_PORTAL_PROTOCOL on the machine
 /// and redirect it to individual portal workers.

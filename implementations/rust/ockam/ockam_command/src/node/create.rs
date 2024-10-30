@@ -402,12 +402,15 @@ impl CreateCommand {
                 if let Ok(identity) = opts.state.get_named_identity(name).await {
                     identity.name()
                 } else {
-                    opts.state.create_identity_with_name(name).await?.name()
+                    opts.state
+                        .create_identity_with_name(None, name)
+                        .await?
+                        .name()
                 }
             }
             None => opts
                 .state
-                .get_or_create_default_named_identity()
+                .get_or_create_default_named_identity(None)
                 .await?
                 .name(),
         })
@@ -625,7 +628,10 @@ mod tests {
             };
 
             let default_node_name = "n1";
-            opts.state.create_node(default_node_name).await.unwrap();
+            opts.state
+                .create_test_node(default_node_name)
+                .await
+                .unwrap();
 
             let mut cmd = CreateCommand::default();
             cmd.parse_args(&opts).await.unwrap();

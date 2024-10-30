@@ -2,7 +2,6 @@ use crate::privileged_portal::packet::TcpStrippedHeaderAndPayload;
 use crate::privileged_portal::packet_binary::tcp_header_ports;
 use crate::privileged_portal::{tcp_set_checksum, Port, TcpPacketWriter};
 use async_trait::async_trait;
-use log::{debug, error};
 use nix::sys::socket::{MsgFlags, SockaddrIn};
 use ockam_core::Result;
 use ockam_transport_core::TransportError;
@@ -11,6 +10,7 @@ use std::os::fd::{AsRawFd, OwnedFd};
 use std::sync::Arc;
 use tokio::io::unix::AsyncFd;
 use tokio::io::Interest;
+use tracing::log::{debug, error};
 
 /// RawSocket packet writer implemented via tokio's AsyncFd
 pub struct AsyncFdPacketWriter {

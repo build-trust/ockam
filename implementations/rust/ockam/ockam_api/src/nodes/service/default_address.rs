@@ -10,6 +10,7 @@ impl DefaultAddress {
     pub const UPPERCASE_SERVICE: &'static str = "uppercase";
     pub const ECHO_SERVICE: &'static str = "echo";
     pub const HOP_SERVICE: &'static str = "hop";
+    pub const REMOTE_PROXY_VAULT: &'static str = "remote_proxy_vault";
     pub const SECURE_CHANNEL_LISTENER: &'static str = "api";
     pub const KEY_EXCHANGER_LISTENER: &'static str = "key_exchanger";
     pub const UDP_PUNCTURE_NEGOTIATION_LISTENER: &'static str = "udp";
@@ -35,6 +36,7 @@ impl DefaultAddress {
             | Self::UPPERCASE_SERVICE
             | Self::ECHO_SERVICE
             | Self::HOP_SERVICE
+            | Self::REMOTE_PROXY_VAULT
             | Self::SECURE_CHANNEL_LISTENER
             | Self::KEY_EXCHANGER_LISTENER
             | Self::DIRECT_AUTHENTICATOR

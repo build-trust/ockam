@@ -9,7 +9,7 @@ use crate::nodes::models::transport::{Port, TransportMode, TransportType};
 use crate::nodes::registry::Registry;
 use crate::nodes::service::http::HttpServer;
 use crate::nodes::service::{
-    CredentialRetrieverCreators, NodeManagerCredentialRetrieverOptions, NodeManagerTrustOptions,
+    CredentialRetrieverCreators, CredentialRetrieverOptions, NodeManagerTrustOptions,
     SecureChannelType,
 };
 
@@ -84,45 +84,31 @@ impl NodeManager {
             .store_default_resource_type_policies()
             .await?;
 
-        let secure_channels = cli_state.secure_channels(&node_name).await?;
+        let secure_channels = cli_state.secure_channels(ctx, &node_name).await?;
 
         let project_member_credential_retriever_creator: Option<
             Arc<dyn CredentialRetrieverCreator>,
-        > = match trust_options.project_member_credential_retriever_options {
-            NodeManagerCredentialRetrieverOptions::None => None,
-            NodeManagerCredentialRetrieverOptions::CacheOnly { issuer, scope } => {
-                Some(Arc::new(CachedCredentialRetrieverCreator::new(
-                    issuer.clone(),
-                    scope,
-                    secure_channels.identities().cached_credentials_repository(),
-                )))
-            }
-            NodeManagerCredentialRetrieverOptions::Remote { info, scope } => {
-                Some(Arc::new(RemoteCredentialRetrieverCreator::new(
-                    ctx.async_try_clone().await?,
-                    Arc::new(transport_options.tcp.transport.clone()),
-                    secure_channels.clone(),
-                    info.clone(),
-                    scope,
-                )))
-            }
-            NodeManagerCredentialRetrieverOptions::InMemory(credential) => {
-                Some(Arc::new(MemoryCredentialRetrieverCreator::new(credential)))
-            }
-        };
+        > = trust_options
+            .project_member_credential_retriever_options
+            .create(
+                ctx,
+                transport_options.tcp.transport.clone(),
+                &secure_channels,
+            )
+            .await?;
 
         let project_admin_credential_retriever_creator: Option<
             Arc<dyn CredentialRetrieverCreator>,
         > = match trust_options.project_admin_credential_retriever_options {
-            NodeManagerCredentialRetrieverOptions::None => None,
-            NodeManagerCredentialRetrieverOptions::CacheOnly { issuer, scope } => {
+            CredentialRetrieverOptions::None => None,
+            CredentialRetrieverOptions::CacheOnly { issuer, scope } => {
                 Some(Arc::new(CachedCredentialRetrieverCreator::new(
                     issuer.clone(),
                     scope,
                     secure_channels.identities().cached_credentials_repository(),
                 )))
             }
-            NodeManagerCredentialRetrieverOptions::Remote { info, scope } => {
+            CredentialRetrieverOptions::Remote { info, scope } => {
                 Some(Arc::new(RemoteCredentialRetrieverCreator::new(
                     ctx.async_try_clone().await?,
                     Arc::new(transport_options.tcp.transport.clone()),
@@ -131,7 +117,7 @@ impl NodeManager {
                     scope,
                 )))
             }
-            NodeManagerCredentialRetrieverOptions::InMemory(credential) => {
+            CredentialRetrieverOptions::InMemory(credential) => {
                 Some(Arc::new(MemoryCredentialRetrieverCreator::new(credential)))
             }
         };
@@ -310,17 +296,19 @@ impl NodeManager {
                 identifier.clone(),
                 timeout,
                 self.cli_state.clone(),
-                self.secure_channels.clone(),
                 self.tcp_transport.clone(),
+                self.secure_channels.clone(),
+                self.credential_retriever_creators.project_member.clone(),
             ))
             .add(PlainTcpInstantiator::new(self.tcp_transport.clone()))
             .add(PlainUdpInstantiator::new(self.udp_transport.clone()))
             .add(SecureChannelInstantiator::new(
-                &identifier,
+                identifier,
                 timeout,
                 authorized,
                 self.project_authority(),
                 self.secure_channels.clone(),
+                self.credential_retriever_creators.project_member.clone(),
             ));
 
         connection_instantiator.connect(ctx, address).await

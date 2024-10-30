@@ -92,6 +92,9 @@ pub(crate) struct EchoerServiceInfo {}
 #[derive(Default, Clone)]
 pub(crate) struct HopServiceInfo {}
 
+#[derive(Clone)]
+pub(crate) struct RemoteProxyVaultInfo {}
+
 #[derive(Eq, PartialEq, Clone)]
 pub enum KafkaServiceKind {
     Inlet,
@@ -182,6 +185,7 @@ pub(crate) struct Registry {
     pub(crate) echoer_services: RegistryOf<Address, EchoerServiceInfo>,
     pub(crate) kafka_services: RegistryOf<Address, KafkaServiceInfo>,
     pub(crate) hop_services: RegistryOf<Address, HopServiceInfo>,
+    pub(crate) remote_proxy_vaults: RegistryOf<Address, RemoteProxyVaultInfo>,
     pub(crate) relays: RegistryOf<String, RegistryRelayInfo>,
     pub(crate) inlets: RegistryOf<String, InletInfo>,
     pub(crate) outlets: RegistryOf<Address, OutletInfo>,

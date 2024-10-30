@@ -1,6 +1,14 @@
 use ockam::identity::models::CredentialAndPurposeKey;
-use ockam::identity::{CredentialRetrieverCreator, Identifier, RemoteCredentialRetrieverInfo};
+use ockam::identity::{
+    CachedCredentialRetrieverCreator, CredentialRetrieverCreator, Identifier,
+    MemoryCredentialRetrieverCreator, RemoteCredentialRetrieverCreator,
+    RemoteCredentialRetrieverInfo, SecureChannels,
+};
 use ockam_core::errcode::{Kind, Origin};
+use ockam_core::AsyncTryClone;
+use ockam_multiaddr::MultiAddr;
+use ockam_node::Context;
+use ockam_transport_tcp::TcpTransport;
 use std::fmt::Display;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -70,8 +78,15 @@ impl Display for CredentialScope {
     }
 }
 
-#[derive(Debug)]
-pub enum NodeManagerCredentialRetrieverOptions {
+pub struct AuthorityOptions {
+    pub identifier: Identifier,
+    pub multiaddr: MultiAddr,
+    pub credential_scope: String,
+}
+
+#[derive(Debug, Default)]
+pub enum CredentialRetrieverOptions {
+    #[default]
     None,
     CacheOnly {
         issuer: Identifier,
@@ -84,19 +99,52 @@ pub enum NodeManagerCredentialRetrieverOptions {
     InMemory(CredentialAndPurposeKey),
 }
 
+impl CredentialRetrieverOptions {
+    pub async fn create(
+        &self,
+        ctx: &Context,
+        tcp_transport: TcpTransport,
+        secure_channels: &Arc<SecureChannels>,
+    ) -> ockam_core::Result<Option<Arc<dyn CredentialRetrieverCreator>>> {
+        Ok(match self {
+            CredentialRetrieverOptions::None => None,
+            CredentialRetrieverOptions::CacheOnly { issuer, scope } => {
+                Some(Arc::new(CachedCredentialRetrieverCreator::new(
+                    issuer.clone(),
+                    scope.clone(),
+                    secure_channels.identities().cached_credentials_repository(),
+                )))
+            }
+            CredentialRetrieverOptions::Remote { info, scope } => {
+                Some(Arc::new(RemoteCredentialRetrieverCreator::new(
+                    ctx.async_try_clone().await?,
+                    Arc::new(tcp_transport),
+                    secure_channels.clone(),
+                    info.clone(),
+                    scope.clone(),
+                )))
+            }
+            CredentialRetrieverOptions::InMemory(credential) => Some(Arc::new(
+                MemoryCredentialRetrieverCreator::new(credential.clone()),
+            )),
+        })
+    }
+}
+
+#[derive(Default)]
 pub struct NodeManagerTrustOptions {
-    pub(super) project_member_credential_retriever_options: NodeManagerCredentialRetrieverOptions,
+    pub(super) project_member_credential_retriever_options: CredentialRetrieverOptions,
     pub(super) project_authority: Option<Identifier>,
-    pub(super) project_admin_credential_retriever_options: NodeManagerCredentialRetrieverOptions,
-    pub(super) _account_admin_credential_retriever_options: NodeManagerCredentialRetrieverOptions,
+    pub(super) project_admin_credential_retriever_options: CredentialRetrieverOptions,
+    pub(super) _account_admin_credential_retriever_options: CredentialRetrieverOptions,
 }
 
 impl NodeManagerTrustOptions {
     pub fn new(
-        project_member_credential_retriever_options: NodeManagerCredentialRetrieverOptions,
-        project_admin_credential_retriever_options: NodeManagerCredentialRetrieverOptions,
+        project_member_credential_retriever_options: CredentialRetrieverOptions,
+        project_admin_credential_retriever_options: CredentialRetrieverOptions,
         project_authority: Option<Identifier>,
-        account_admin_credential_retriever_options: NodeManagerCredentialRetrieverOptions,
+        account_admin_credential_retriever_options: CredentialRetrieverOptions,
     ) -> Self {
         Self {
             project_member_credential_retriever_options,

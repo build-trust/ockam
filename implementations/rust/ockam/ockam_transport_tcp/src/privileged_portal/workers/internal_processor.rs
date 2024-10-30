@@ -1,6 +1,5 @@
 use crate::privileged_portal::packet::RawSocketReadResult;
 use crate::privileged_portal::{Inlet, InletConnection, OckamPortalPacket, Outlet, PortalMode};
-use log::{debug, trace, warn};
 use ockam_core::{
     async_trait, cbor_encode_preallocate, route, LocalInfoIdentifier, LocalMessage, Processor,
     Result,
@@ -11,6 +10,7 @@ use rand::random;
 use std::net::Ipv4Addr;
 use std::sync::Arc;
 use tokio::sync::mpsc::Receiver;
+use tracing::log::{debug, trace, warn};
 
 /// Processor handles all packets for the corresponding Inlet or Outlet.
 /// Packets are read by [`RawSocketProcessor`] and redirected here.

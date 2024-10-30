@@ -1,17 +1,29 @@
-use crate::cli_state::{random_name, CliState, CliStateError, Result};
-use crate::colors::color_primary;
-use crate::output::Output;
-use crate::{fmt_log, fmt_ok, fmt_warn};
 use colorful::Colorful;
-use ockam::identity::{Identities, Vault};
+use ockam::identity::{
+    Identifier, Identities, RemoteCredentialRetrieverInfo, SecureChannelRegistry,
+    SecureChannelSqlxDatabase, SecureChannels, Vault,
+};
 use ockam_core::errcode::{Kind, Origin};
+use ockam_core::{AsyncTryClone, Error};
+use ockam_multiaddr::MultiAddr;
 use ockam_node::database::SqlxDatabase;
+use ockam_node::Context;
+use ockam_transport_tcp::TcpTransport;
 use ockam_vault_aws::AwsSigningVault;
 use std::fmt::Write;
 use std::fmt::{Debug, Display, Formatter};
 use std::fs::OpenOptions;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+
+use crate::cli_state::{random_name, CliState, CliStateError, Result};
+use crate::colors::color_primary;
+use crate::nodes::connection::{
+    ConnectionInstantiator, PlainTcpInstantiator, ProjectInstantiator, SecureChannelInstantiator,
+};
+use crate::nodes::service::CredentialRetrieverOptions;
+use crate::output::Output;
+use crate::{fmt_log, fmt_ok, fmt_warn, proxy_vault, TransportRouteResolver};
 
 static DEFAULT_VAULT_NAME: &str = "default";
 
@@ -22,6 +34,56 @@ static DEFAULT_VAULT_NAME: &str = "default";
 ///  - any additional vault stores its keys in a separate file
 ///
 impl CliState {
+    /// Create a remote vault with a given name, route and identifier
+    pub async fn create_remote_vault(
+        &self,
+        vault_name: Option<String>,
+        vault_multiaddr: MultiAddr,
+        local_identifier: Identifier,
+        authority_identifier: Identifier,
+        authority_multiaddr: MultiAddr,
+        credential_scope: String,
+    ) -> Result<NamedVault> {
+        let vault_name = self.name_vault(vault_name).await?;
+        let vaults_repository = self.vaults_repository();
+
+        Ok(vaults_repository
+            .store_vault(
+                &vault_name,
+                VaultType::RemoteVault {
+                    vault_multiaddr,
+                    local_identifier,
+                    authority_identifier,
+                    authority_multiaddr,
+                    credential_scope,
+                },
+            )
+            .await?)
+    }
+
+    async fn name_vault(&self, vault_name: Option<String>) -> Result<String> {
+        // determine the vault name to use if not given by the user
+        let vault_name = match vault_name {
+            Some(vault_name) => vault_name.clone(),
+            None => self.make_vault_name().await?,
+        };
+
+        // verify that a vault with that name does not exist
+        if self
+            .vaults_repository()
+            .get_named_vault(&vault_name)
+            .await?
+            .is_some()
+        {
+            return Err(CliStateError::AlreadyExists {
+                resource: "vault".to_string(),
+                name: vault_name.to_string(),
+            });
+        }
+
+        Ok(vault_name)
+    }
+
     /// Create a vault with a given name
     /// If the path is not specified then:
     ///   - if this is the first vault then secrets are persisted in the main database
@@ -33,30 +95,14 @@ impl CliState {
         path: Option<PathBuf>,
         use_aws_kms: UseAwsKms,
     ) -> Result<NamedVault> {
+        let vault_name = self.name_vault(vault_name).await?;
+
         let vaults_repository = self.vaults_repository();
-
-        // determine the vault name to use if not given by the user
-        let vault_name = match vault_name {
-            Some(vault_name) => vault_name.clone(),
-            None => self.make_vault_name().await?,
-        };
-
-        // verify that a vault with that name does not exist
-        if vaults_repository
-            .get_named_vault(&vault_name)
-            .await?
-            .is_some()
-        {
-            return Err(CliStateError::AlreadyExists {
-                resource: "vault".to_string(),
-                name: vault_name.to_string(),
-            });
-        }
 
         // Determine if the vault needs to be created at a specific path
         // or if data can be stored in the main database directly
         match path {
-            None => match self.vaults_repository().get_database_vault().await? {
+            None => match vaults_repository.get_database_vault().await? {
                 None => Ok(vaults_repository
                     .store_vault(&vault_name, VaultType::database(use_aws_kms))
                     .await?),
@@ -108,6 +154,9 @@ impl CliState {
                 }
                 VaultType::LocalFileVault { path, .. } => {
                     let _ = std::fs::remove_file(path);
+                }
+                VaultType::RemoteVault { .. } => {
+                    // nothing to do
                 }
             }
         }
@@ -287,13 +336,117 @@ impl CliState {
                 // remove the old file
                 std::fs::remove_file(old_path)?;
             }
+            VaultType::RemoteVault { .. } => Err(ockam_core::Error::new(
+                Origin::Api,
+                Kind::Invalid,
+                format!(
+                    "The vault {} cannot be moved to {path:?} because this is a remote vault",
+                    vault.name()
+                ),
+            ))?,
         }
         Ok(())
     }
 
     /// Make a concrete vault based on the NamedVault metadata
     #[instrument(skip_all, fields(vault_name = named_vault.name))]
-    pub async fn make_vault(&self, named_vault: NamedVault) -> Result<Vault> {
+    pub async fn make_vault(
+        &self,
+        context: Option<&Context>,
+        named_vault: NamedVault,
+    ) -> Result<Vault> {
+        match named_vault.vault_type {
+            VaultType::RemoteVault {
+                vault_multiaddr,
+                local_identifier,
+                authority_identifier,
+                authority_multiaddr,
+                credential_scope,
+            } => {
+                if let Some(context) = context {
+                    let context = context.async_try_clone().await?;
+                    let tcp_transport = TcpTransport::create(&context).await?;
+
+                    let authority_route = TransportRouteResolver::default()
+                        .allow_tcp()
+                        .resolve(&authority_multiaddr)?;
+
+                    let credential_retriever_options = CredentialRetrieverOptions::Remote {
+                        info: RemoteCredentialRetrieverInfo::create_for_project_member(
+                            authority_identifier.clone(),
+                            authority_route,
+                        ),
+                        scope: credential_scope.to_string(),
+                    };
+
+                    // create the vault for the specified identity
+                    let local_named_vault = self
+                        .get_named_identity_by_identifier(&local_identifier)
+                        .await?
+                        .vault_name();
+                    let local_vault_name = self.get_named_vault(&local_named_vault).await?;
+                    let local_vault = self.make_local_vault(local_vault_name).await?;
+
+                    let node_name = "NODE NAME TODO!!! change me!";
+                    let identities = Identities::create_with_node(self.database(), node_name)
+                        .with_vault(local_vault)
+                        .build();
+
+                    let secure_channels = Arc::new(SecureChannels::new(
+                        identities,
+                        SecureChannelRegistry::default(), //TODO: inherit registry from the node
+                        Arc::new(SecureChannelSqlxDatabase::new(self.database())),
+                    ));
+
+                    let credential_retriever_creator = credential_retriever_options
+                        .create(&context, tcp_transport.clone(), &secure_channels)
+                        .await?;
+
+                    let connection_instantiator = ConnectionInstantiator::new()
+                        .add(PlainTcpInstantiator::new(tcp_transport.clone()))
+                        .add(ProjectInstantiator::new(
+                            local_identifier.clone(),
+                            None,
+                            self.clone(),
+                            tcp_transport,
+                            secure_channels.clone(),
+                            credential_retriever_creator.clone(),
+                        ))
+                        .add(SecureChannelInstantiator::new(
+                            local_identifier.clone(),
+                            None,
+                            None,
+                            Some(authority_identifier.clone()),
+                            secure_channels,
+                            credential_retriever_creator,
+                        ));
+
+                    Ok(
+                        proxy_vault::create_vault(
+                            context,
+                            vault_multiaddr,
+                            connection_instantiator,
+                        )
+                        .await,
+                    )
+                } else {
+                    Err(Error::new(
+                        Origin::Api,
+                        Kind::Invalid,
+                        format!(
+                            "The vault {} is a remote vault and cannot be created in this context",
+                            named_vault.name
+                        ),
+                    ))?
+                }
+            }
+
+            _ => self.make_local_vault(named_vault).await,
+        }
+    }
+
+    pub async fn make_local_vault(&self, named_vault: NamedVault) -> Result<Vault> {
+        let use_aws_kms = named_vault.vault_type.use_aws_kms();
         let db = match named_vault.vault_type {
             VaultType::DatabaseVault { .. } => self.database(),
             VaultType::LocalFileVault { ref path, .. } =>
@@ -301,9 +454,17 @@ impl CliState {
             {
                 SqlxDatabase::create_sqlite(path.as_path()).await?
             }
+            VaultType::RemoteVault { .. } => Err(Error::new(
+                Origin::Api,
+                Kind::Invalid,
+                format!(
+                    "The vault {} is a remote vault and cannot be created in this context",
+                    named_vault.name
+                ),
+            ))?,
         };
 
-        if named_vault.vault_type.use_aws_kms() {
+        if use_aws_kms {
             let mut vault = Vault::create_with_database(db);
             let aws_vault = Arc::new(AwsSigningVault::create().await?);
             vault.identity_vault = aws_vault.clone();
@@ -416,6 +577,13 @@ pub enum VaultType {
         path: PathBuf,
         use_aws_kms: UseAwsKms,
     },
+    RemoteVault {
+        vault_multiaddr: MultiAddr,
+        local_identifier: Identifier,
+        authority_identifier: Identifier,
+        authority_multiaddr: MultiAddr,
+        credential_scope: String,
+    },
 }
 
 impl Display for VaultType {
@@ -426,6 +594,7 @@ impl Display for VaultType {
             match &self {
                 VaultType::DatabaseVault { .. } => "INTERNAL",
                 VaultType::LocalFileVault { .. } => "EXTERNAL",
+                VaultType::RemoteVault { .. } => "REMOTE",
             }
         )?;
         if self.use_aws_kms() {
@@ -456,6 +625,22 @@ impl VaultType {
         VaultType::DatabaseVault { use_aws_kms }
     }
 
+    pub fn remote(
+        vault_multiaddr: MultiAddr,
+        local_identifier: Identifier,
+        authority_multiaddr: MultiAddr,
+        authority_identifier: Identifier,
+        credential_scope: String,
+    ) -> Self {
+        VaultType::RemoteVault {
+            vault_multiaddr,
+            local_identifier,
+            authority_identifier,
+            authority_multiaddr,
+            credential_scope,
+        }
+    }
+
     pub fn local_file(path: impl Into<PathBuf>, use_aws_kms: UseAwsKms) -> Self {
         VaultType::LocalFileVault {
             path: path.into(),
@@ -467,6 +652,7 @@ impl VaultType {
         match self {
             VaultType::DatabaseVault { .. } => None,
             VaultType::LocalFileVault { path, .. } => Some(path.as_path()),
+            VaultType::RemoteVault { .. } => None,
         }
     }
 
@@ -477,6 +663,54 @@ impl VaultType {
                 path: _,
                 use_aws_kms,
             } => use_aws_kms == &UseAwsKms::Yes,
+            VaultType::RemoteVault { .. } => false,
+        }
+    }
+
+    pub fn vault_multiaddr(&self) -> Option<&MultiAddr> {
+        match self {
+            VaultType::RemoteVault {
+                vault_multiaddr, ..
+            } => Some(vault_multiaddr),
+            _ => None,
+        }
+    }
+
+    pub fn local_identifier(&self) -> Option<&Identifier> {
+        match self {
+            VaultType::RemoteVault {
+                local_identifier, ..
+            } => Some(local_identifier),
+            _ => None,
+        }
+    }
+
+    pub fn authority_identifier(&self) -> Option<&Identifier> {
+        match self {
+            VaultType::RemoteVault {
+                authority_identifier,
+                ..
+            } => Some(authority_identifier),
+            _ => None,
+        }
+    }
+
+    pub fn authority_multiaddr(&self) -> Option<&MultiAddr> {
+        match self {
+            VaultType::RemoteVault {
+                authority_multiaddr,
+                ..
+            } => Some(authority_multiaddr),
+            _ => None,
+        }
+    }
+
+    pub fn credential_scope(&self) -> Option<&str> {
+        match self {
+            VaultType::RemoteVault {
+                credential_scope, ..
+            } => Some(credential_scope),
+            _ => None,
         }
     }
 }
@@ -542,6 +776,7 @@ impl Output for NamedVault {
             match &self.vault_type {
                 VaultType::DatabaseVault { .. } => "INTERNAL",
                 VaultType::LocalFileVault { .. } => "EXTERNAL",
+                VaultType::RemoteVault { .. } => "REMOTE",
             }
         )?;
         if self.vault_type.use_aws_kms() {
@@ -769,7 +1004,7 @@ mod tests {
         let vault = cli.create_named_vault(None, None, UseAwsKms::No).await?;
 
         let purpose_keys_repository = cli.purpose_keys_repository();
-        let identity = cli.create_identity_with_name("name").await?;
+        let identity = cli.create_identity_with_name(None, "name").await?;
         let purpose_key_attestation = PurposeKeyAttestation {
             data: vec![1, 2, 3],
             signature: PurposeKeyAttestationSignature::ECDSASHA256CurveP256(

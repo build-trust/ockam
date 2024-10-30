@@ -64,7 +64,7 @@ impl AppState {
         let local_identity = self
             .state()
             .await
-            .get_or_create_default_named_identity()
+            .get_or_create_default_named_identity(None)
             .await?
             .identifier();
 

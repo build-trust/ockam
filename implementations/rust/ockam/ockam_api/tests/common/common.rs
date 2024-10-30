@@ -1,6 +1,5 @@
 use core::time::Duration;
 
-use log::debug;
 use ockam::identity::models::CredentialSchemaIdentifier;
 use ockam::identity::utils::AttributesBuilder;
 use ockam::identity::{
@@ -20,6 +19,7 @@ use ockam_transport_tcp::TcpTransport;
 use rand::{thread_rng, Rng};
 use std::sync::Arc;
 use tempfile::NamedTempFile;
+use tracing::debug;
 
 // Default Configuration with fake TrustedIdentifier (which can be changed after the call),
 // with freshly created Authority Identifier and temporary files for storage and vault

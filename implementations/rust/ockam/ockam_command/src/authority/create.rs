@@ -149,11 +149,13 @@ impl CreateCommand {
         // If no name is specified on the command line, use "authority"
         let identity_name = self.identity.clone().unwrap_or("authority".to_string());
         if opts.state.get_named_identity(&identity_name).await.is_err() {
-            opts.state.create_identity_with_name(&identity_name).await?;
+            opts.state
+                .create_identity_with_name(None, &identity_name)
+                .await?;
         };
 
         opts.state
-            .create_node_with_optional_values(&self.node_name, &self.identity, &None)
+            .create_node_with_optional_values(None, &self.node_name, &self.identity, &None)
             .await?;
 
         // Construct the arguments list and re-execute the ockam
@@ -306,11 +308,19 @@ impl CreateCommand {
         // If no name is specified on the command line, use "authority"
         let identity_name = self.identity.clone().unwrap_or("authority".to_string());
         if opts.state.get_named_identity(&identity_name).await.is_err() {
-            opts.state.create_identity_with_name(&identity_name).await?;
+            opts.state
+                .create_identity_with_name(Some(ctx), &identity_name)
+                .await?;
         };
 
         let node = state
-            .start_node_with_optional_values(&self.node_name, &Some(identity_name), &None, None)
+            .start_node_with_optional_values(
+                Some(ctx),
+                &self.node_name,
+                &Some(identity_name),
+                &None,
+                None,
+            )
             .await?;
         state
             .set_tcp_listener_address(&node.name(), &self.tcp_listener_address)
@@ -353,7 +363,11 @@ impl CreateCommand {
         let exporter = "ockam-opentelemetry-exporter";
         let exporter_identity = match opts.state.get_named_identity(exporter).await {
             Ok(exporter) => exporter,
-            Err(_) => opts.state.create_identity_with_name(exporter).await?,
+            Err(_) => {
+                opts.state
+                    .create_identity_with_name(Some(ctx), exporter)
+                    .await?
+            }
         };
 
         // Create a default project in the database. That project information is used by the

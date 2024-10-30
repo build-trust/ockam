@@ -4,7 +4,6 @@ use crate::{TcpInlet, TcpInletOptions, TcpOutletOptions, TcpTransport};
 use caps::Capability::{CAP_BPF, CAP_NET_ADMIN, CAP_NET_RAW, CAP_SYS_ADMIN};
 use caps::{CapSet, Capability};
 use core::fmt::Debug;
-use log::{debug, error};
 use nix::unistd::Uid;
 use ockam_core::{Address, DenyAll, Result, Route};
 use ockam_node::compat::asynchronous::{resolve_peer, RwLock};
@@ -15,6 +14,7 @@ use std::sync::Arc;
 use tokio::net::TcpListener;
 use tokio::sync::mpsc::channel;
 use tracing::instrument;
+use tracing::log::{debug, error};
 
 impl TcpTransport {
     /// Check if privileged portals can be run with current permissions

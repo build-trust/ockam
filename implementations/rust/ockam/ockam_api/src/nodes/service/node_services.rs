@@ -1,21 +1,22 @@
 use either::Either;
 
-use ockam::{Address, Context, Result};
-use ockam_abac::{Action, Resource, ResourceType};
-use ockam_core::api::{Error, Response};
-use ockam_node::WorkerBuilder;
-
+use crate::cli_state::VaultType;
 use crate::echoer::Echoer;
 use crate::error::ApiError;
 use crate::hop::Hop;
 use crate::nodes::models::node::{NodeResources, NodeStatus};
 use crate::nodes::models::services::{
-    ServiceStatus, StartEchoerServiceRequest, StartHopServiceRequest, StartUppercaseServiceRequest,
+    ServiceStatus, StartEchoerServiceRequest, StartHopServiceRequest,
+    StartRemoteProxyVaultServiceRequest, StartUppercaseServiceRequest,
 };
-use crate::nodes::registry::KafkaServiceKind;
+use crate::nodes::registry::{KafkaServiceKind, RemoteProxyVaultInfo};
 use crate::nodes::service::default_address::DefaultAddress;
 use crate::nodes::NodeManager;
 use crate::uppercase::Uppercase;
+use ockam::{Address, Context, Result};
+use ockam_abac::{Action, Resource, ResourceType};
+use ockam_core::api::{Error, Response};
+use ockam_node::WorkerBuilder;
 
 use super::NodeManagerWorker;
 
@@ -58,6 +59,21 @@ impl NodeManagerWorker {
         match self
             .node_manager
             .start_hop_service(ctx, request.addr.into())
+            .await
+        {
+            Ok(_) => Ok(Response::ok()),
+            Err(e) => Err(Response::internal_error_no_request(&e.to_string())),
+        }
+    }
+
+    pub(super) async fn start_remote_proxy_vault(
+        &self,
+        context: &Context,
+        request: StartRemoteProxyVaultServiceRequest,
+    ) -> Result<Response, Response<Error>> {
+        match self
+            .node_manager
+            .start_remote_proxy_vault(context, request.addr.into(), request.vault_name)
             .await
         {
             Ok(_) => Ok(Response::ok()),
@@ -153,6 +169,17 @@ impl NodeManager {
                 list.push(ServiceStatus::new(
                     addr.address(),
                     DefaultAddress::HOP_SERVICE,
+                ))
+            });
+        self.registry
+            .remote_proxy_vaults
+            .keys()
+            .await
+            .iter()
+            .for_each(|addr| {
+                list.push(ServiceStatus::new(
+                    addr.address(),
+                    DefaultAddress::REMOTE_PROXY_VAULT,
                 ))
             });
         self.registry
@@ -252,6 +279,50 @@ impl NodeManager {
         self.registry
             .hop_services
             .insert(addr, Default::default())
+            .await;
+
+        Ok(())
+    }
+
+    pub(super) async fn start_remote_proxy_vault(
+        &self,
+        context: &Context,
+        addr: Address,
+        vault_name: String,
+    ) -> Result<()> {
+        let default_secure_channel_listener_flow_control_id = context
+            .flow_controls()
+            .get_flow_control_with_spawner(&DefaultAddress::SECURE_CHANNEL_LISTENER.into())
+            .ok_or_else(|| {
+                ApiError::core("Unable to get flow control for secure channel listener")
+            })?;
+
+        if self.registry.remote_proxy_vaults.contains_key(&addr).await {
+            return Err(ApiError::core(format!(
+                "remote proxy vault already exists at {addr}"
+            )));
+        }
+
+        let named_vault = self.cli_state.get_named_vault(&vault_name).await?;
+        if matches!(named_vault.vault_type(), VaultType::RemoteVault { .. }) {
+            return Err(ApiError::core(format!(
+                "vault {named_vault} is a remote vault"
+            )));
+        }
+
+        let vault = self.cli_state.make_local_vault(named_vault).await?;
+        crate::proxy_vault::start_server(context, addr.clone(), vault).await?;
+
+        context.flow_controls().add_consumer(
+            addr.clone(),
+            &default_secure_channel_listener_flow_control_id,
+        );
+
+        info!("remote proxy vault was initialized at {addr}");
+
+        self.registry
+            .remote_proxy_vaults
+            .insert(addr, RemoteProxyVaultInfo {})
             .await;
 
         Ok(())

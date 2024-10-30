@@ -41,10 +41,10 @@ impl Output for VaultOutput {
             .to_string()
             .color(OckamColor::PrimaryResource.color());
 
-        let vault_type = if self.vault.path().is_some() {
-            "External"
-        } else {
-            "Internal"
+        let vault_type = match self.vault.vault_type() {
+            VaultType::DatabaseVault { .. } => "Internal",
+            VaultType::LocalFileVault { .. } => "External",
+            VaultType::RemoteVault { .. } => "Remote",
         }
         .to_string()
         .color(OckamColor::PrimaryResource.color());
@@ -83,7 +83,6 @@ impl Output for VaultOutput {
             Type: {vault_type}
             Path: {vault_path}"#,
                 name = name,
-                vault_type = vault_type,
                 vault_path = path
                     .to_string_lossy()
                     .to_string()
@@ -94,7 +93,7 @@ impl Output for VaultOutput {
                 use_aws_kms: UseAwsKms::Yes,
             } => formatdoc!(
                 r#"Name: {name}
-            Type: External
+            Type: {vault_type}
             Path: {vault_path}
             Uses AWS KMS: {uses_aws_kms}"#,
                 name = name,
@@ -103,6 +102,36 @@ impl Output for VaultOutput {
                     .to_string()
                     .color(OckamColor::PrimaryResource.color()),
                 uses_aws_kms = uses_aws_kms,
+            ),
+            VaultType::RemoteVault {
+                vault_multiaddr,
+                local_identifier,
+                authority_identifier,
+                authority_multiaddr,
+                credential_scope,
+            } => formatdoc!(
+                r#"Name: {name}
+            Type: {vault_type}
+            Route: {route}
+            Local Identity: {local_identifier}
+            Authority Identifier: {authority_identifier}
+            Authority Route: {authority_multiaddr}
+            Credential Scope: {credential_scope}"#,
+                route = vault_multiaddr
+                    .to_string()
+                    .color(OckamColor::PrimaryResource.color()),
+                local_identifier = local_identifier
+                    .to_string()
+                    .color(OckamColor::PrimaryResource.color()),
+                authority_identifier = authority_identifier
+                    .to_string()
+                    .color(OckamColor::PrimaryResource.color()),
+                authority_multiaddr = authority_multiaddr
+                    .to_string()
+                    .color(OckamColor::PrimaryResource.color()),
+                credential_scope = credential_scope
+                    .to_string()
+                    .color(OckamColor::PrimaryResource.color()),
             ),
         })
     }

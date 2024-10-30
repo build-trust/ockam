@@ -111,7 +111,7 @@ pub(super) async fn create_authority_client(
     project: &Project,
 ) -> crate::Result<AuthorityNodeClient> {
     let identity = cli_state
-        .get_identity_name_or_default(&identity_opts.identity_name)
+        .get_or_create_identity_name_or_default(Some(ctx), &identity_opts.identity_name)
         .await?;
 
     node.create_authority_client_with_project(ctx, project, Some(identity))

@@ -348,7 +348,14 @@ impl NodeManager {
             .cli_state
             .get_named_vault(&named_identity.vault_name())
             .await?;
-        let vault = self.cli_state.make_vault(named_vault).await?;
+
+        // no need to recreate the vault if the identity is the same
+        let vault = if self.node_identifier == identifier {
+            self.secure_channels.vault()
+        } else {
+            self.cli_state.make_vault(Some(ctx), named_vault).await?
+        };
+
         let secure_channels = self.build_secure_channels(vault).await?;
 
         let mut options = SecureChannelListenerOptions::new();

@@ -1,11 +1,10 @@
-use rand::random;
-use std::path::{Path, PathBuf};
-use tokio::sync::broadcast::{channel, Receiver, Sender};
-
 use ockam::SqlxDatabase;
 use ockam_core::env::get_env_with_default;
 use ockam_node::database::{DatabaseConfiguration, OCKAM_SQLITE_IN_MEMORY};
 use ockam_node::Executor;
+use rand::random;
+use std::path::{Path, PathBuf};
+use tokio::sync::broadcast::{channel, Receiver, Sender};
 
 use crate::cli_state::error::Result;
 use crate::cli_state::CliStateError;
@@ -385,10 +384,10 @@ mod tests {
 
         // create 2 identities
         let identity1 = cli
-            .create_identity_with_name_and_vault("identity1", "vault1")
+            .create_identity_with_name_and_vault(None, "identity1", "vault1")
             .await?;
         let identity2 = cli
-            .create_identity_with_name_and_vault("identity2", "vault2")
+            .create_identity_with_name_and_vault(None, "identity2", "vault2")
             .await?;
 
         // create 2 nodes

@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use crate::config::lookup::InternetAddress;
-use crate::nodes::service::{NodeManagerCredentialRetrieverOptions, NodeManagerTrustOptions};
+use crate::nodes::service::{CredentialRetrieverOptions, NodeManagerTrustOptions};
 use ockam::identity::utils::AttributesBuilder;
 use ockam::identity::SecureChannels;
 use ockam::tcp::{TcpListenerOptions, TcpTransport};
@@ -76,22 +76,28 @@ pub async fn start_manager_for_tests(
 
     let node_name = random_name();
     cli_state
-        .start_node_with_optional_values(&node_name, &None, &None, Some(&tcp_listener))
+        .start_node_with_optional_values(
+            Some(context),
+            &node_name,
+            &None,
+            &None,
+            Some(&tcp_listener),
+        )
         .await
         .unwrap();
 
     // Premise: we need an identity and a credential before the node manager starts.
     let identifier = cli_state.get_node(&node_name).await?.identifier();
     let named_vault = cli_state.get_or_create_default_named_vault().await?;
-    let vault = cli_state.make_vault(named_vault).await?;
+    let vault = cli_state.make_vault(Some(context), named_vault).await?;
     let identities = cli_state.make_identities(vault).await?;
 
     let trust_options = match authority_configuration {
         AuthorityConfiguration::None => NodeManagerTrustOptions::new(
-            NodeManagerCredentialRetrieverOptions::None,
-            NodeManagerCredentialRetrieverOptions::None,
+            CredentialRetrieverOptions::None,
+            CredentialRetrieverOptions::None,
             None,
-            NodeManagerCredentialRetrieverOptions::None,
+            CredentialRetrieverOptions::None,
         ),
         AuthorityConfiguration::Node(authority) => {
             // if we have a third-party authority, we need to manually exchange identities
@@ -137,10 +143,10 @@ pub async fn start_manager_for_tests(
                 .await?;
 
             NodeManagerTrustOptions::new(
-                NodeManagerCredentialRetrieverOptions::InMemory(credential),
-                NodeManagerCredentialRetrieverOptions::None,
+                CredentialRetrieverOptions::InMemory(credential),
+                CredentialRetrieverOptions::None,
                 Some(authority_identifier),
-                NodeManagerCredentialRetrieverOptions::None,
+                CredentialRetrieverOptions::None,
             )
         }
         AuthorityConfiguration::SelfReferencing => {
@@ -156,10 +162,10 @@ pub async fn start_manager_for_tests(
                 .await?;
 
             NodeManagerTrustOptions::new(
-                NodeManagerCredentialRetrieverOptions::InMemory(credential),
-                NodeManagerCredentialRetrieverOptions::None,
+                CredentialRetrieverOptions::InMemory(credential),
+                CredentialRetrieverOptions::None,
                 Some(identifier),
-                NodeManagerCredentialRetrieverOptions::None,
+                CredentialRetrieverOptions::None,
             )
         }
     };

@@ -111,7 +111,8 @@ impl ShowCommand {
         full: bool,
         encoding: Option<EncodeFormat>,
     ) -> miette::Result<()> {
-        let identity = opts.state.get_identity_by_optional_name(name).await?;
+        // TODO: start an embedded node
+        let identity = opts.state.get_identity_by_optional_name(None, name).await?;
 
         let (plain, json) = if full {
             if Some(EncodeFormat::Hex) == encoding {

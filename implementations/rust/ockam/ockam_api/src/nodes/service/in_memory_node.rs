@@ -85,7 +85,7 @@ impl InMemoryNode {
         project_name: Option<String>,
     ) -> miette::Result<Self> {
         let default_identity_name = cli_state
-            .get_or_create_default_named_identity()
+            .get_or_create_default_named_identity(Some(ctx))
             .await?
             .name();
         Self::start_node(
@@ -107,7 +107,9 @@ impl InMemoryNode {
         identity: Option<String>,
         project_name: Option<String>,
     ) -> miette::Result<Self> {
-        let identity = cli_state.get_identity_name_or_default(&identity).await?;
+        let identity = cli_state
+            .get_or_create_identity_name_or_default(Some(ctx), &identity)
+            .await?;
         Self::start_node(ctx, cli_state, &identity, None, project_name, None, None).await
     }
 
@@ -117,7 +119,9 @@ impl InMemoryNode {
         cli_state: &CliState,
         identity: Option<String>,
     ) -> miette::Result<InMemoryNode> {
-        let identity = cli_state.get_identity_name_or_default(&identity).await?;
+        let identity = cli_state
+            .get_or_create_identity_name_or_default(Some(ctx), &identity)
+            .await?;
         Self::start_node(ctx, cli_state, &identity, None, None, None, None).await
     }
 
@@ -145,6 +149,7 @@ impl InMemoryNode {
 
         let node = cli_state
             .start_node_with_optional_values(
+                Some(ctx),
                 &defaults.node_name,
                 &Some(identity_name.to_string()),
                 &project_name,

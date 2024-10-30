@@ -1,3 +1,4 @@
+use core::fmt::Debug;
 use minicbor::{CborLen, Decode, Encode};
 
 /// X25519 public key length.
@@ -27,11 +28,21 @@ pub enum VerifyingPublicKey {
 /// [1]: https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.186-5.pdf
 /// [2]: https://ed25519.cr.yp.to/papers.html
 /// [2]: https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-186.pdf
-#[derive(Encode, Decode, CborLen, Clone, Debug, PartialEq, Eq)]
+#[derive(Encode, Decode, CborLen, Clone, PartialEq, Eq)]
 #[cbor(transparent)]
 pub struct EdDSACurve25519PublicKey(
     #[cbor(n(0), with = "minicbor::bytes")] pub [u8; EDDSA_CURVE25519_PUBLIC_KEY_LENGTH],
 );
+
+impl Debug for EdDSACurve25519PublicKey {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+        write!(
+            f,
+            "EdDSACurve25519PublicKey({})",
+            crate::types::debug_hash(&self.0)
+        )
+    }
+}
 
 /// A Curve P-256 Public Key that is only used for ECDSA SHA256 signatures.
 ///
@@ -60,8 +71,14 @@ pub struct ECDSASHA256CurveP256PublicKey(
 ///
 /// [1]: https://datatracker.ietf.org/doc/html/rfc7748
 /// [2]: https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-186.pdf
-#[derive(Encode, Decode, CborLen, Clone, Debug, PartialEq, Eq)]
+#[derive(Encode, Decode, CborLen, Clone, PartialEq, Eq)]
 #[cbor(transparent)]
 pub struct X25519PublicKey(
     #[cbor(n(0), with = "minicbor::bytes")] pub [u8; X25519_PUBLIC_KEY_LENGTH],
 );
+
+impl Debug for X25519PublicKey {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+        write!(f, "X25519PublicKey({})", crate::types::debug_hash(&self.0))
+    }
+}

@@ -233,7 +233,7 @@ mod tests {
     async fn test_process_multi_addr(_ctx: &mut Context) -> ockam::Result<()> {
         let cli_state = CliState::test().await?;
 
-        cli_state.create_node("n1").await?;
+        cli_state.create_test_node("n1").await?;
 
         cli_state
             .set_tcp_listener_address(
