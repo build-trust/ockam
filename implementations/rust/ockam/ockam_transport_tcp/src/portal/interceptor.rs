@@ -289,7 +289,7 @@ impl Worker for PortalInterceptorWorker {
             PortalMessage::Disconnect => {
                 self.forward(context, routed_message).await?;
 
-                // the first one to receive disconnect and to swap the atomic wil l stop both workers
+                // the first one to receive disconnect and to swap the atomic will stop both workers
                 let disconnect_received = self.disconnect_received.swap(true, Ordering::SeqCst);
                 if !disconnect_received {
                     debug!(

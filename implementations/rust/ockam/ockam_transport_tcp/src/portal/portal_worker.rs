@@ -456,14 +456,6 @@ impl Worker for TcpPortalWorker {
             return Ok(());
         }
 
-        let their_identifier = SecureChannelLocalInfo::find_info(msg.local_message())
-            .map(|l| l.their_identifier())
-            .ok();
-
-        if their_identifier != self.their_identifier {
-            return Err(TransportError::IdentifierChanged)?;
-        }
-
         // Remove our own address from the route so the other end
         // knows what to do with the incoming message
         let state = self.clone_state();
@@ -472,8 +464,24 @@ impl Worker for TcpPortalWorker {
         if onward_route.next().is_ok() {
             return Err(TransportError::UnknownRoute)?;
         }
-        let return_route = msg.return_route();
+
         let remote_packet = recipient != self.addresses.sender_internal;
+        if remote_packet {
+            let their_identifier = SecureChannelLocalInfo::find_info(msg.local_message())
+                .map(|l| l.their_identifier())
+                .ok();
+
+            if their_identifier != self.their_identifier {
+                debug!(
+                    "Identifier changed from {:?} to {:?}",
+                    self.their_identifier.as_ref().map(|i| i.to_string()),
+                    their_identifier.as_ref().map(|i| i.to_string()),
+                );
+                return Err(TransportError::IdentifierChanged)?;
+            }
+        }
+
+        let return_route = msg.return_route();
         let payload = msg.into_payload();
 
         match state {
