@@ -76,7 +76,6 @@ where
         }
         .with_context(OpenTelemetryContext::current_context()),
     );
-    opts.force_flush();
     match res {
         Ok(Err(e)) => Err(e),
         Ok(Ok(t)) => Ok(t),

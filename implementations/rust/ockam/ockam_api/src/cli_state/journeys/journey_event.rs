@@ -59,7 +59,7 @@ impl Display for JourneyEvent {
             JourneyEvent::TcpOutletCreated => f.write_str("✅ tcp outlet created"),
             JourneyEvent::RelayCreated => f.write_str("✅ relay created"),
             JourneyEvent::PortalCreated => f.write_str("✅ portal created"),
-            JourneyEvent::Ok { command_name } => f.write_str(command_name),
+            JourneyEvent::Ok { command_name } => f.write_fmt(format_args!("🔨 {command_name}")),
             JourneyEvent::Error { command_name, .. } => {
                 f.write_fmt(format_args!("❌ {} error", command_name))
             }

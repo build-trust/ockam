@@ -201,6 +201,7 @@ impl CommandGlobalOpts {
     /// Shutdown resources
     pub fn shutdown(&self) {
         if let Some(tracing_guard) = self.tracing_guard.clone() {
+            tracing_guard.force_flush();
             tracing_guard.shutdown();
         };
     }
