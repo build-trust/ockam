@@ -13,6 +13,7 @@
 //!  - Some dependencies to be installed
 //!
 //! Because of that crate with the eBPF code is kept out of the workspace.
+//!
 //! Example of a virtual machine to build it can be found in `ubuntu_x86.yaml`.
 //!
 //! Using ockam with eBPFs requires:
