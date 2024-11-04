@@ -17,7 +17,7 @@ use std::hash::Hash;
 use std::sync::Arc;
 
 #[derive(Default)]
-pub(crate) struct SecureChannelRegistry {
+pub struct SecureChannelRegistry {
     channels: SyncRwLock<Vec<SecureChannelInfo>>,
 }
 
@@ -186,7 +186,7 @@ pub struct RegistryRelayInfo {
 
 #[derive(Default)]
 pub(crate) struct Registry {
-    pub(crate) secure_channels: SecureChannelRegistry,
+    pub(crate) secure_channels: Arc<SecureChannelRegistry>,
     pub(crate) secure_channel_listeners: RegistryOf<Address, SecureChannelListener>,
     pub(crate) uppercase_services: RegistryOf<Address, UppercaseServiceInfo>,
     pub(crate) echoer_services: RegistryOf<Address, EchoerServiceInfo>,

@@ -6,8 +6,8 @@ mod secure;
 use ockam::tcp::TcpConnection;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::flow_control::FlowControlId;
-use ockam_core::Result;
 use ockam_core::{async_trait, route, Address, Route, LOCAL};
+use ockam_core::{Error, Result};
 use ockam_multiaddr::proto::Service;
 use ockam_multiaddr::{Match, MultiAddr, Protocol};
 use ockam_node::Context;
@@ -22,27 +22,28 @@ pub(crate) use plain_udp::PlainUdpInstantiator;
 pub(crate) use project::ProjectInstantiator;
 pub(crate) use secure::SecureChannelInstantiator;
 use std::fmt::{Debug, Formatter};
+use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct Connection {
     /// Transport route consists of only transport addresses,
     /// transport addresses are services which only carries over the payload without
     /// interpreting the content, and must be used to reach the other side of the connection.
-    transport_route: Route,
+    pub transport_route: Route,
     /// Resulting [`MultiAddr`] from the normalization, devoid of normalized protocols.
     /// A fully normalized [`MultiAddr`] contains only Service entries.
-    pub(crate) normalized_addr: MultiAddr,
+    pub normalized_addr: MultiAddr,
     /// The original provided [`MultiAddr`]
-    original_addr: MultiAddr,
+    pub original_addr: MultiAddr,
     /// A list of secure channel encryptors created for the connection.
     /// Needed to cleanup the connection resources when it must be closed.
-    pub(crate) secure_channel_encryptors: Vec<Address>,
+    pub secure_channel_encryptors: Vec<Address>,
     /// A TCP worker address if used when instantiating the connection
-    pub(crate) tcp_connection: Option<TcpConnection>,
+    pub tcp_connection: Option<TcpConnection>,
     /// A UDP worker address if used when instantiating the connection
-    pub(crate) udp_bind: Option<UdpBind>,
+    pub udp_bind: Option<UdpBind>,
     /// If a flow control was created
-    flow_control_id: Option<FlowControlId>,
+    pub flow_control_id: Option<FlowControlId>,
 }
 
 impl Connection {
@@ -213,11 +214,63 @@ pub trait Instantiator: Send + Sync + 'static {
     /// The returned [`Changes`] will be used to update the builder state.
     async fn instantiate(
         &self,
-        ctx: &Context,
-        node_manager: &NodeManager,
+        context: &Context,
         transport_route: Route,
         extracted: (MultiAddr, MultiAddr, MultiAddr),
-    ) -> Result<Changes, ockam_core::Error>;
+    ) -> Result<Changes, Error>;
+
+    /// Free the resources created by [`Instantiator::instantiate`]
+    async fn close(&self, context: &Context, connection: &Connection);
+}
+
+/// Aggregates multiple [`Instantiator`]s, having a single object containing
+/// all runtime dependencies.
+#[derive(Clone, Default)]
+pub struct ConnectionInstantiator {
+    instantiator: Vec<Arc<dyn Instantiator>>,
+}
+
+impl ConnectionInstantiator {
+    pub fn new() -> Self {
+        ConnectionInstantiator {
+            instantiator: vec![],
+        }
+    }
+
+    /// Registers an instantiator.
+    /// Note that the MultiAddr will be resolved using the registration order, and transport-level
+    /// instantiator must be registered before more abstract ones.
+    pub fn register(mut self, instantiator: impl Instantiator) -> Self {
+        self.instantiator.push(Arc::new(instantiator));
+        self
+    }
+
+    /// Resolve [`MultiAddr`] pieces into a [`Route`] using the provided [`Instantiator`]s.
+    /// Returns [`Connection`]
+    pub async fn connect(&self, ctx: &Context, addr: &MultiAddr) -> Result<Connection> {
+        debug!("connecting to {}", &addr);
+
+        let mut connection_builder = ConnectionBuilder::new(addr.clone());
+        for instantiator in self.instantiator.clone() {
+            connection_builder = connection_builder
+                .instantiate(ctx, instantiator.as_ref())
+                .await?;
+        }
+        let connection = connection_builder.build();
+        connection.add_default_consumers(ctx);
+
+        debug!("connected to {connection:?}");
+        Ok(connection)
+    }
+
+    /// Closes the connection and cleans up resources.
+    /// In alternative, it's possible to call [`Connection::close()`] directly providing a
+    /// [`NodeManager`] reference.
+    pub async fn close(&self, context: &Context, connection: &Connection) {
+        for instantiator in self.instantiator.iter().rev() {
+            instantiator.close(context, connection).await;
+        }
+    }
 }
 
 impl ConnectionBuilder {
@@ -248,12 +301,11 @@ impl ConnectionBuilder {
     /// Used to instantiate a connection from a [`MultiAddr`]
     /// when called multiple times the instantiator order matters and it's up to the
     /// user make sure higher protocol abstraction are called before lower level ones
-    pub async fn instantiate(
+    pub async fn instantiate<T: Instantiator + ?Sized>(
         mut self,
         ctx: &Context,
-        node_manager: &NodeManager,
-        instantiator: impl Instantiator,
-    ) -> Result<Self, ockam_core::Error> {
+        instantiator: &T,
+    ) -> Result<Self, Error> {
         //executing a regex-like search, shifting the starting point one by one
         //not efficient by any mean, but it shouldn't be an issue
         let codes = instantiator.matches();
@@ -274,7 +326,6 @@ impl ConnectionBuilder {
                     let mut changes = instantiator
                         .instantiate(
                             ctx,
-                            node_manager,
                             self.transport_route.clone(),
                             self.extract(start, instantiator.matches().len()),
                         )

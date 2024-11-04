@@ -1,19 +1,22 @@
-use crate::error::ApiError;
-use crate::nodes::connection::{Changes, ConnectionBuilder, Instantiator};
+use crate::nodes::connection::{Changes, Connection, ConnectionBuilder, Instantiator};
 use crate::{RemoteMultiaddrResolver, RemoteMultiaddrResolverConnection, ReverseLocalConverter};
 
-use crate::nodes::NodeManager;
+use ockam::udp::UdpTransport;
+use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{async_trait, Error, Route};
 use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Udp};
 use ockam_multiaddr::{Match, MultiAddr, Protocol};
 use ockam_node::Context;
+use std::sync::Arc;
 
-/// Creates the tcp connection.
-pub(crate) struct PlainUdpInstantiator {}
+/// Creates the udp connection.
+pub struct PlainUdpInstantiator {
+    udp_transport: Arc<UdpTransport>,
+}
 
 impl PlainUdpInstantiator {
-    pub(crate) fn new() -> Self {
-        Self {}
+    pub fn new(udp_transport: Arc<UdpTransport>) -> Self {
+        Self { udp_transport }
     }
 }
 
@@ -30,13 +33,12 @@ impl Instantiator for PlainUdpInstantiator {
     async fn instantiate(
         &self,
         _ctx: &Context,
-        node_manager: &NodeManager,
         _transport_route: Route,
         extracted: (MultiAddr, MultiAddr, MultiAddr),
     ) -> Result<Changes, Error> {
         let (before, udp_piece, after) = extracted;
 
-        let mut udp = RemoteMultiaddrResolver::new(None, node_manager.udp_transport.clone())
+        let mut udp = RemoteMultiaddrResolver::new(None, Some(self.udp_transport.clone()))
             .resolve(&udp_piece)
             .await?;
 
@@ -44,16 +46,23 @@ impl Instantiator for PlainUdpInstantiator {
 
         let current_multiaddr = ConnectionBuilder::combine(before, multiaddr, after)?;
 
-        // since we only pass the piece regarding udp
+        // since we only pass the piece, regarding udp
         // udp_bind should exist
-        let udp_bind = udp
-            .connection
-            .take()
-            .ok_or_else(|| ApiError::core("UDP connection should be set"))?;
+        let udp_bind = udp.connection.take().ok_or_else(|| {
+            Error::new(
+                Origin::Transport,
+                Kind::Invalid,
+                "UDP connection should be set",
+            )
+        })?;
 
         let udp_bind = match udp_bind {
             RemoteMultiaddrResolverConnection::Tcp(_) => {
-                return Err(ApiError::core("UDP connection should be set"));
+                return Err(Error::new(
+                    Origin::Transport,
+                    Kind::Invalid,
+                    "UDP connection should be set",
+                ));
             }
             RemoteMultiaddrResolverConnection::Udp(udp_bind) => udp_bind,
         };
@@ -65,5 +74,16 @@ impl Instantiator for PlainUdpInstantiator {
             tcp_connection: None,
             udp_bind: Some(udp_bind),
         })
+    }
+
+    async fn close(&self, _context: &Context, connection: &Connection) {
+        if let Some(udp_bind) = &connection.udp_bind {
+            if let Err(error) = self.udp_transport.unbind(udp_bind.sender_address()) {
+                warn!(
+                    %error,
+                    "Failed to unbind udp transport"
+                );
+            }
+        }
     }
 }

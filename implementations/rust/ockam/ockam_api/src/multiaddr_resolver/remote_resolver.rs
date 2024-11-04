@@ -4,7 +4,7 @@ use ockam::udp::{UdpBind, UdpBindArguments, UdpBindOptions, UdpTransport};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::flow_control::FlowControlId;
 use ockam_core::{Address, Error, Result, Route, LOCAL};
-use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Mptcp, Secure, Service, Tcp, Udp, Worker};
+use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Mptcp, Service, Tcp, Udp, Worker};
 use ockam_multiaddr::{MultiAddr, ProtoIter, Protocol};
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 use std::sync::Arc;
@@ -128,13 +128,6 @@ impl RemoteMultiaddrResolver {
                 Service::CODE => {
                     let local = p
                         .cast::<Service>()
-                        .ok_or_else(|| invalid_multiaddr_error(ma))?;
-                    rb = rb.append(Address::new_with_string(LOCAL, &*local));
-                    continue;
-                }
-                Secure::CODE => {
-                    let local = p
-                        .cast::<Secure>()
                         .ok_or_else(|| invalid_multiaddr_error(ma))?;
                     rb = rb.append(Address::new_with_string(LOCAL, &*local));
                     continue;
