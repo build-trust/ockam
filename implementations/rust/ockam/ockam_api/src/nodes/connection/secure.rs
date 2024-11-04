@@ -1,12 +1,14 @@
+use std::sync::Arc;
 use std::time::Duration;
 
 use crate::nodes::connection::{Changes, Instantiator};
-use crate::nodes::NodeManager;
 use crate::{LocalMultiaddrResolver, ReverseLocalConverter};
 
-use crate::nodes::service::SecureChannelType;
-use ockam::identity::Identifier;
-use ockam_core::{async_trait, route, AsyncTryClone, Error, Route};
+use ockam::identity::{
+    Identifier, SecureChannelOptions, SecureChannels, TrustEveryonePolicy,
+    TrustMultiIdentifiersPolicy,
+};
+use ockam_core::{async_trait, route, Route};
 use ockam_multiaddr::proto::Secure;
 use ockam_multiaddr::{Match, MultiAddr, Protocol};
 use ockam_node::Context;
@@ -16,6 +18,8 @@ pub(crate) struct SecureChannelInstantiator {
     identifier: Identifier,
     authorized_identities: Option<Vec<Identifier>>,
     timeout: Option<Duration>,
+    secure_channels: Arc<SecureChannels>,
+    authority: Option<Identifier>,
 }
 
 impl SecureChannelInstantiator {
@@ -23,11 +27,15 @@ impl SecureChannelInstantiator {
         identifier: &Identifier,
         timeout: Option<Duration>,
         authorized_identities: Option<Vec<Identifier>>,
+        authority: Option<Identifier>,
+        secure_channels: Arc<SecureChannels>,
     ) -> Self {
         Self {
             identifier: identifier.clone(),
             authorized_identities,
+            authority,
             timeout,
+            secure_channels,
         }
     }
 }
@@ -40,39 +48,53 @@ impl Instantiator for SecureChannelInstantiator {
 
     async fn instantiate(
         &self,
-        ctx: &Context,
-        node_manager: &NodeManager,
+        context: &Context,
         transport_route: Route,
         extracted: (MultiAddr, MultiAddr, MultiAddr),
-    ) -> Result<Changes, Error> {
+    ) -> Result<Changes, ockam_core::Error> {
         let (_before, secure_piece, after) = extracted;
         debug!(%secure_piece, %transport_route, "creating secure channel");
         let route = LocalMultiaddrResolver::resolve(&secure_piece)?;
 
-        let sc_ctx = ctx.async_try_clone().await?;
-        let sc = node_manager
-            .create_secure_channel_internal(
-                &sc_ctx,
-                //the transport route is needed to reach the secure channel listener
-                //since it can be in another node
-                route![transport_route, route],
+        let options = SecureChannelOptions::new();
+
+        let options = match self.authorized_identities.clone() {
+            Some(ids) => options.with_trust_policy(TrustMultiIdentifiersPolicy::new(ids)),
+            None => options.with_trust_policy(TrustEveryonePolicy),
+        };
+
+        let options = if let Some(authority) = self.authority.clone() {
+            options.with_authority(authority)
+        } else {
+            options
+        };
+
+        let options = if let Some(timeout) = self.timeout {
+            options.with_timeout(timeout)
+        } else {
+            options
+        };
+
+        let secure_channel = self
+            .secure_channels
+            .create_secure_channel(
+                context,
                 &self.identifier,
-                self.authorized_identities.clone(),
-                None,
-                self.timeout,
-                SecureChannelType::KeyExchangeAndMessages,
+                route![transport_route, route],
+                options,
             )
             .await?;
 
         // when creating a secure channel we want the route to pass through that
         // ignoring previous steps, since they will be implicit
-        let mut current_multiaddr = ReverseLocalConverter::convert_address(sc.encryptor_address())?;
+        let mut current_multiaddr =
+            ReverseLocalConverter::convert_address(secure_channel.encryptor_address())?;
         current_multiaddr.try_extend(after.iter())?;
 
         Ok(Changes {
             current_multiaddr,
-            flow_control_id: Some(sc.flow_control_id().clone()),
-            secure_channel_encryptors: vec![sc.encryptor_address().clone()],
+            flow_control_id: Some(secure_channel.flow_control_id().clone()),
+            secure_channel_encryptors: vec![secure_channel.encryptor_address().clone()],
             tcp_connection: None,
             udp_bind: None,
         })

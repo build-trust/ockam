@@ -1,8 +1,8 @@
 use crate::cloud::project::Project;
 use crate::cloud::{AuthorityNodeClient, ControllerClient, CredentialsEnabled, ProjectNodeClient};
 use crate::nodes::connection::{
-    Connection, ConnectionBuilder, PlainTcpInstantiator, PlainUdpInstantiator, ProjectInstantiator,
-    SecureChannelInstantiator,
+    Connection, ConnectionInstantiator, PlainTcpInstantiator, PlainUdpInstantiator,
+    ProjectInstantiator, SecureChannelInstantiator,
 };
 use crate::nodes::models::portal::OutletStatus;
 use crate::nodes::models::transport::{Port, TransportMode, TransportType};
@@ -304,42 +304,26 @@ impl NodeManager {
         timeout: Option<Duration>,
     ) -> ockam_core::Result<Connection> {
         let authorized = authorized.map(|authorized| vec![authorized]);
-        self.connect(ctx, address, identifier, authorized, timeout)
-            .await
-    }
 
-    /// Resolve project ID (if any), create secure channel (if needed) and create a tcp connection
-    /// Returns [`Connection`]
-    async fn connect(
-        &self,
-        ctx: &Context,
-        address: &MultiAddr,
-        identifier: Identifier,
-        authorized: Option<Vec<Identifier>>,
-        timeout: Option<Duration>,
-    ) -> ockam_core::Result<Connection> {
-        debug!(%address, ?timeout, "connecting");
-        let connection = ConnectionBuilder::new(address.clone())
-            .instantiate(
-                ctx,
-                self,
-                ProjectInstantiator::new(identifier.clone(), timeout),
-            )
-            .await?
-            .instantiate(ctx, self, PlainTcpInstantiator::new())
-            .await?
-            .instantiate(ctx, self, PlainUdpInstantiator::new())
-            .await?
-            .instantiate(
-                ctx,
-                self,
-                SecureChannelInstantiator::new(&identifier, timeout, authorized.clone()),
-            )
-            .await?
-            .build();
-        connection.add_default_consumers(ctx);
-        info!(%address, %identifier, ?authorized, "connection established");
-        Ok(connection)
+        let connection_instantiator = ConnectionInstantiator::new()
+            .add(ProjectInstantiator::new(
+                identifier.clone(),
+                timeout,
+                self.cli_state.clone(),
+                self.secure_channels.clone(),
+                self.tcp_transport.clone(),
+            ))
+            .add(PlainTcpInstantiator::new(self.tcp_transport.clone()))
+            .add(PlainUdpInstantiator::new(self.udp_transport.clone()))
+            .add(SecureChannelInstantiator::new(
+                &identifier,
+                timeout,
+                authorized,
+                self.project_authority(),
+                self.secure_channels.clone(),
+            ));
+
+        connection_instantiator.connect(ctx, address).await
     }
 
     pub(crate) async fn resolve_project(

@@ -2,18 +2,20 @@ use crate::error::ApiError;
 use crate::nodes::connection::{Changes, ConnectionBuilder, Instantiator};
 use crate::{RemoteMultiaddrResolver, RemoteMultiaddrResolverConnection, ReverseLocalConverter};
 
-use crate::nodes::NodeManager;
-use ockam_core::{async_trait, Error, Route};
+use ockam_core::{async_trait, Route};
 use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Tcp};
 use ockam_multiaddr::{Match, MultiAddr, Protocol};
 use ockam_node::Context;
+use ockam_transport_tcp::TcpTransport;
 
 /// Creates the tcp connection.
-pub(crate) struct PlainTcpInstantiator {}
+pub(crate) struct PlainTcpInstantiator {
+    tcp_transport: TcpTransport,
+}
 
 impl PlainTcpInstantiator {
-    pub(crate) fn new() -> Self {
-        Self {}
+    pub(crate) fn new(tcp_transport: TcpTransport) -> Self {
+        Self { tcp_transport }
     }
 }
 
@@ -29,15 +31,14 @@ impl Instantiator for PlainTcpInstantiator {
 
     async fn instantiate(
         &self,
-        _ctx: &Context,
-        node_manager: &NodeManager,
+        _context: &Context,
         _transport_route: Route,
         extracted: (MultiAddr, MultiAddr, MultiAddr),
-    ) -> Result<Changes, Error> {
+    ) -> Result<Changes, ockam_core::Error> {
         let (before, tcp_piece, after) = extracted;
 
         let mut tcp = RemoteMultiaddrResolver::default()
-            .with_tcp(node_manager.tcp_transport.clone())
+            .with_tcp(self.tcp_transport.clone())
             .resolve(&tcp_piece)
             .await?;
 

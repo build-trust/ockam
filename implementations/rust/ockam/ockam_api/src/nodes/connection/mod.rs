@@ -22,6 +22,7 @@ pub(crate) use plain_udp::PlainUdpInstantiator;
 pub(crate) use project::ProjectInstantiator;
 pub(crate) use secure::SecureChannelInstantiator;
 use std::fmt::{Debug, Formatter};
+use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct Connection {
@@ -213,11 +214,47 @@ pub trait Instantiator: Send + Sync + 'static {
     /// The returned [`Changes`] will be used to update the builder state.
     async fn instantiate(
         &self,
-        ctx: &Context,
-        node_manager: &NodeManager,
+        context: &Context,
         transport_route: Route,
         extracted: (MultiAddr, MultiAddr, MultiAddr),
     ) -> Result<Changes, ockam_core::Error>;
+}
+
+/// Aggregates multiple [`Instantiator`]s, having a single object containing
+/// all runtime dependencies.
+pub struct ConnectionInstantiator {
+    instantiator: Vec<Arc<dyn Instantiator>>,
+}
+
+impl ConnectionInstantiator {
+    pub fn new() -> Self {
+        ConnectionInstantiator {
+            instantiator: vec![],
+        }
+    }
+
+    pub fn add(mut self, instantiator: impl Instantiator) -> Self {
+        self.instantiator.push(Arc::new(instantiator));
+        self
+    }
+
+    /// Resolve project ID (if any), create secure channel (if needed) and create a tcp connection
+    /// Returns [`Connection`]
+    pub async fn connect(&self, ctx: &Context, addr: &MultiAddr) -> Result<Connection> {
+        debug!("connecting to {}", &addr);
+
+        let mut connection_builder = ConnectionBuilder::new(addr.clone());
+        for instantiator in self.instantiator.clone() {
+            connection_builder = connection_builder
+                .instantiate(ctx, instantiator.as_ref())
+                .await?;
+        }
+        let connection = connection_builder.build();
+        connection.add_default_consumers(ctx);
+
+        debug!("connected to {connection:?}");
+        Ok(connection)
+    }
 }
 
 impl ConnectionBuilder {
@@ -248,11 +285,10 @@ impl ConnectionBuilder {
     /// Used to instantiate a connection from a [`MultiAddr`]
     /// when called multiple times the instantiator order matters and it's up to the
     /// user make sure higher protocol abstraction are called before lower level ones
-    pub async fn instantiate(
+    pub async fn instantiate<T: Instantiator + ?Sized>(
         mut self,
         ctx: &Context,
-        node_manager: &NodeManager,
-        instantiator: impl Instantiator,
+        instantiator: &T,
     ) -> Result<Self, ockam_core::Error> {
         //executing a regex-like search, shifting the starting point one by one
         //not efficient by any mean, but it shouldn't be an issue
@@ -274,7 +310,6 @@ impl ConnectionBuilder {
                     let mut changes = instantiator
                         .instantiate(
                             ctx,
-                            node_manager,
                             self.transport_route.clone(),
                             self.extract(start, instantiator.matches().len()),
                         )

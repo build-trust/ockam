@@ -1,19 +1,21 @@
 use crate::error::ApiError;
 use crate::nodes::connection::{Changes, ConnectionBuilder, Instantiator};
 use crate::{RemoteMultiaddrResolver, RemoteMultiaddrResolverConnection, ReverseLocalConverter};
+use ockam::udp::UdpTransport;
 
-use crate::nodes::NodeManager;
 use ockam_core::{async_trait, Error, Route};
 use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Udp};
 use ockam_multiaddr::{Match, MultiAddr, Protocol};
 use ockam_node::Context;
 
 /// Creates the tcp connection.
-pub(crate) struct PlainUdpInstantiator {}
+pub(crate) struct PlainUdpInstantiator {
+    udp_transport: Option<UdpTransport>,
+}
 
 impl PlainUdpInstantiator {
-    pub(crate) fn new() -> Self {
-        Self {}
+    pub(crate) fn new(udp_transport: Option<UdpTransport>) -> Self {
+        Self { udp_transport }
     }
 }
 
@@ -30,13 +32,12 @@ impl Instantiator for PlainUdpInstantiator {
     async fn instantiate(
         &self,
         _ctx: &Context,
-        node_manager: &NodeManager,
         _transport_route: Route,
         extracted: (MultiAddr, MultiAddr, MultiAddr),
     ) -> Result<Changes, Error> {
         let (before, udp_piece, after) = extracted;
 
-        let mut udp = RemoteMultiaddrResolver::new(None, node_manager.udp_transport.clone())
+        let mut udp = RemoteMultiaddrResolver::new(None, self.udp_transport.clone())
             .resolve(&udp_piece)
             .await?;
 
