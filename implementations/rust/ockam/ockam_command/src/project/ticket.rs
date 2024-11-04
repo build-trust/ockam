@@ -144,6 +144,7 @@ impl Command for TicketCommand {
         .import()
         .await?
         .export_legacy()?;
+        let encoded_ticket = ticket.hex_encoded()?.to_string();
 
         let usage_count = cmd.usage_count.unwrap_or(DEFAULT_TOKEN_USAGE_COUNT);
         let attributes_msg = if attributes.is_empty() {
@@ -162,29 +163,30 @@ impl Command for TicketCommand {
             attributes_msg += "\n";
             attributes_msg
         };
-
-        let plain = fmt_ok!("Created enrollment ticket\n\n")
-            + &attributes_msg
-            + &fmt_info!(
-                "It will expire in {} and it can be used {}\n",
-                color_primary(duration_to_human_format(
-                    &cmd.expires_in.unwrap_or(DEFAULT_TOKEN_DURATION)
-                )),
-                if usage_count == 1 {
-                    color_primary("once").to_string()
-                } else {
-                    format!("up to {} times", color_primary(usage_count))
-                }
-            )
-            + &fmt_log!(
-                "You can use it to enroll another machine using: {}",
-                color_primary("ockam project enroll")
-            );
+        opts.terminal.write_line(
+            fmt_ok!("Created enrollment ticket\n\n")
+                + &attributes_msg
+                + &fmt_info!(
+                    "It will expire in {} and it can be used {}\n",
+                    color_primary(duration_to_human_format(
+                        &cmd.expires_in.unwrap_or(DEFAULT_TOKEN_DURATION)
+                    )),
+                    if usage_count == 1 {
+                        color_primary("once").to_string()
+                    } else {
+                        format!("up to {} times", color_primary(usage_count))
+                    }
+                )
+                + &fmt_log!(
+                    "You can use it to enroll another machine using: {}",
+                    color_primary("ockam project enroll")
+                ),
+        )?;
 
         opts.terminal
             .stdout()
-            .plain(plain)
-            .machine(ticket.hex_encoded()?.to_string())
+            .plain(format!("\n{encoded_ticket}"))
+            .machine(encoded_ticket)
             .json_obj(ticket)?
             .write_line()?;
 
