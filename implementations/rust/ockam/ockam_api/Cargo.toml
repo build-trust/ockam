@@ -75,7 +75,7 @@ jaq-parse = "1"
 jaq-std = "1"
 kafka-protocol = "0.10"
 log = "0.4"
-miette = "7"
+miette = { version = "7.2.0", features = ["fancy-no-backtrace"] }
 minicbor = { version = "0.24.1", features = ["alloc", "derive"] }
 nix = { version = "0.29", features = ["signal"] }
 once_cell = { version = "1", default-features = false }

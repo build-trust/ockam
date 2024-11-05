@@ -59,7 +59,7 @@ alloc = [
   "serde_bare/alloc",
 ]
 
-# Feature: "error-traces" cover whether not our errors capture
+# Feature: "error-traces" cover whether our errors capture
 # backtraces and/or spantraces by default.
 error-traces = [
   "tracing-error",
@@ -78,7 +78,7 @@ core2 = { version = "0.4.0", default-features = false, optional = true }
 futures-util = { version = "0.3.30", default-features = false, features = ["alloc", "async-await-macro", "sink"] }
 hashbrown = { version = "0.14", default-features = false, features = ["ahash", "serde"] }
 hex = { version = "0.4", default-features = false, optional = true }
-miette = { version = "7", optional = true }
+miette = { version = "7.2.0", features = ["fancy-no-backtrace"], optional = true }
 minicbor = { version = "0.24.1", features = ["derive"] }
 ockam_macros = { path = "../ockam_macros", version = "^0.35.0", default-features = false }
 once_cell = { version = "1", optional = true, default-features = false }

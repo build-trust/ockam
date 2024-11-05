@@ -1,14 +1,13 @@
-use std::fmt::{Debug, Formatter};
-
-use colorful::Colorful;
-use miette::Diagnostic;
-use miette::{miette, Report};
-use ockam_api::{fmt_heading, fmt_log, fmt_separator};
-
 use crate::util::exitcode::{self, ExitCode};
 use crate::version::Version;
+use colorful::Colorful;
+use miette::{miette, GraphicalReportHandler};
+use miette::{Diagnostic, Report};
+use ockam_api::fmt_log;
+use ockam_api::terminal::fmt;
+use std::fmt::{Debug, Formatter};
 
-pub type Result<T> = miette::Result<T, Error>;
+pub type Result<T> = miette::Result<T>;
 
 #[derive(Debug, thiserror::Error, Diagnostic)]
 pub enum Error {
@@ -125,35 +124,6 @@ impl ErrorReportHandler {
     pub fn new() -> Self {
         Self
     }
-
-    #[allow(dead_code)]
-    // The cause of a [`Diagnostic`] could be both a [`Diagnostic`] or a [`std::error::Error`].
-    // The cause of a [`std::error::Error`] can only be another [`std::error::Error`].
-    fn print_causes(f: &mut Formatter, root: &dyn Diagnostic) -> core::fmt::Result {
-        let mut error_source = None;
-        let mut diagnostic_source = Some(root);
-        loop {
-            if let Some(source) = diagnostic_source {
-                diagnostic_source = source.diagnostic_source();
-                if diagnostic_source.is_none() {
-                    error_source = source.source();
-                } else {
-                    error_source = None;
-                }
-            } else if let Some(source) = error_source {
-                error_source = source.source();
-            }
-
-            if let Some(source) = error_source {
-                writeln!(f, "       > {}", source)?;
-            } else if let Some(source) = diagnostic_source {
-                writeln!(f, "       > {}", source)?;
-            } else {
-                break;
-            }
-        }
-        Ok(())
-    }
 }
 
 impl Default for ErrorReportHandler {
@@ -164,43 +134,41 @@ impl Default for ErrorReportHandler {
 
 impl miette::ReportHandler for ErrorReportHandler {
     fn debug(&self, error: &dyn Diagnostic, f: &mut Formatter<'_>) -> core::fmt::Result {
+        let graphical_report_handler = GraphicalReportHandler::new()
+            .with_cause_chain()
+            .with_urls(false);
+
         if f.alternate() {
-            return Debug::fmt(error, f);
+            return graphical_report_handler.render_report(f, error);
         }
 
-        writeln!(f, "\n{}\n", fmt_heading!("Error:".red()))?;
-
-        // Try to extract the source message from the error, and disregard the rest.
-        // If possible, replace the new lines w/ fmt_log! outputs.
-        let error_message = match error.source() {
-            Some(err) => format!("{}", err),
-            None => format!("{}", error),
-        };
-        error_message.lines().for_each(|line| {
-            let _ = writeln!(f, "{}", fmt_log!("{}", line));
-        });
-
-        if let Some(help) = error.help() {
-            writeln!(f, "{}", fmt_log!("{}", help))?;
+        // Render the graphical report handler output to a string that we can mutate
+        let mut graphical_handler_output = String::new();
+        let mut error_code = None;
+        graphical_report_handler.render_report(&mut graphical_handler_output, error)?;
+        // Remove the error code as rendered by the graphical handler and format it as we want
+        if let Some(code) = error.code() {
+            graphical_handler_output = graphical_handler_output
+                .lines()
+                .skip(2)
+                .collect::<Vec<_>>()
+                .join("\n");
+            error_code = Some(format!("Error code: {code}"));
         }
+        // Add the padding we use in console output and print it
+        for line in graphical_handler_output.lines() {
+            writeln!(f, "{}{}", fmt::MIETTE_PADDING, line)?;
+        }
+        writeln!(f)?;
 
-        // Output the error code and version code.
-        let code_as_str = match error.code() {
-            Some(code) => code.to_string(),
-            None => "OCK500".to_string(),
-        };
-
-        // TODO: Display the cause of the error in a nicely formatted way; skip for now.
-        Self::print_causes(f, error)?;
-
-        let code_message = format!("Error code: {}", code_as_str).dark_gray();
-        let version_message = format!("version: {}", Version::short()).dark_gray();
-        let footer_message = format!("\n{}\n{}", code_message, version_message);
-        footer_message.split('\n').for_each(|line| {
-            let _ = writeln!(f, "{}", fmt_log!("{}", line));
-        });
-
-        writeln!(
+        if let Some(code) = error_code {
+            writeln!(f, "{}", fmt_log!("{}", code.dark_gray()))?;
+        }
+        let version = Version::new().no_color().multiline().to_string();
+        for line in version.lines() {
+            writeln!(f, "{}", fmt_log!("{}", line.dark_gray()))?;
+        }
+        write!(
             f,
             "\n{}\n{}",
             fmt_log!(
@@ -209,41 +177,11 @@ impl miette::ReportHandler for ErrorReportHandler {
             ),
             fmt_log!(
                 "{}",
-                "We will promptly help you get unstuck and quickly resolve any problems."
+                "We will promptly help you get unstuck and quickly resolve any problems"
                     .dark_gray()
             )
         )?;
 
-        writeln!(f, "{}", fmt_separator!())?;
-
         Ok(())
     }
 }
-
-macro_rules! gen_from_impl {
-    ($t:ty, $c:ident) => {
-        impl From<$t> for Error {
-            #[track_caller]
-            fn from(e: $t) -> Self {
-                use miette::miette;
-                Error::new(exitcode::$c, miette!(e.to_string()))
-            }
-        }
-    };
-}
-
-gen_from_impl!(std::io::Error, IOERR);
-gen_from_impl!(std::fmt::Error, SOFTWARE);
-gen_from_impl!(std::net::AddrParseError, DATAERR);
-gen_from_impl!(hex::FromHexError, DATAERR);
-gen_from_impl!(serde_bare::error::Error, DATAERR);
-gen_from_impl!(serde_json::Error, DATAERR);
-gen_from_impl!(serde_yaml::Error, DATAERR);
-gen_from_impl!(minicbor::encode::Error<std::convert::Infallible>, DATAERR);
-gen_from_impl!(minicbor::decode::Error, DATAERR);
-gen_from_impl!(ockam::Error, SOFTWARE);
-gen_from_impl!(ockam_api::cli_state::CliStateError, SOFTWARE);
-gen_from_impl!(ockam_api::error::ApiError, SOFTWARE);
-gen_from_impl!(ockam_multiaddr::Error, SOFTWARE);
-gen_from_impl!(miette::ErrReport, SOFTWARE);
-gen_from_impl!(time::error::Parse, DATAERR);

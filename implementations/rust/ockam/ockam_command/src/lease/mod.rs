@@ -71,5 +71,5 @@ async fn resolve_at_arg(at: &MultiAddr, state: &CliState) -> miette::Result<Mult
 
     // Parse "to" as a multiaddr again with all the values in place
     let to = MultiAddr::from_str(&at).into_diagnostic()?;
-    Ok(process_nodes_multiaddr(&to, state).await?)
+    process_nodes_multiaddr(&to, state).await
 }

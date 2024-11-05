@@ -143,8 +143,7 @@ impl Command for CreateCommand {
                 "The bootstrap port {} can't overlap with the brokers port range {}",
                 self.from.port(),
                 brokers_port_range.to_string()
-            )
-            .into());
+            ));
         }
 
         let at_node = self.node_opts.at_node.clone();

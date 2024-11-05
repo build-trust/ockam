@@ -333,11 +333,10 @@ impl CliState {
         if let Some(node) = self.nodes_repository().get_node(node_name).await? {
             Ok(node)
         } else {
-            Err(Error::new(
-                Origin::Api,
-                Kind::NotFound,
-                format!("There is no node with name {node_name}"),
-            ))?
+            Err(CliStateError::ResourceNotFound {
+                resource: "node".to_string(),
+                name: node_name.to_string(),
+            })?
         }
     }
 

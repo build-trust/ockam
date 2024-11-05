@@ -44,9 +44,9 @@ impl Command for CreateCommand {
             .is_identity_enrolled(&self.identity_opts.identity_name)
             .await?
         {
-            return Err(
-                miette!("Please enroll using 'ockam enroll' before using this command").into(),
-            );
+            return Err(miette!(
+                "Please enroll using 'ockam enroll' before using this command"
+            ));
         };
 
         let node = InMemoryNode::start(ctx, &opts.state).await?;

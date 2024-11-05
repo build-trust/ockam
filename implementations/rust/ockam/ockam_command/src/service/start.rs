@@ -1,6 +1,6 @@
 use clap::{Args, Subcommand};
 use colorful::Colorful;
-use miette::miette;
+use miette::WrapErr;
 use minicbor::Encode;
 
 use crate::{CommandGlobalOpts, Result};
@@ -77,10 +77,9 @@ pub(crate) async fn start_service_impl<T>(
 where
     T: Encode<()>,
 {
-    Ok(node
-        .tell(ctx, req)
+    node.tell(ctx, req)
         .await
-        .map_err(|e| miette!("Failed to start {service_name} service: {e}"))?)
+        .wrap_err(format!("Failed to start {service_name} service"))
 }
 
 /// Public so `ockam_command::node::create` can use it.

@@ -114,9 +114,8 @@ pub(super) async fn create_authority_client(
         .get_identity_name_or_default(&identity_opts.identity_name)
         .await?;
 
-    Ok(node
-        .create_authority_client_with_project(ctx, project, Some(identity))
-        .await?)
+    node.create_authority_client_with_project(ctx, project, Some(identity))
+        .await
 }
 
 pub(crate) fn create_member_attributes(

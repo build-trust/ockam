@@ -2,6 +2,8 @@
 pub const PADDING: &str = "    ";
 /// Left padding for all terminal output that starts with an icon
 pub const ICON_PADDING: &str = "  ";
+/// Left padding for miette errors
+pub const MIETTE_PADDING: &str = "  ";
 /// A two-space indentation for nested terminal output
 pub const INDENTATION: &str = "  ";
 

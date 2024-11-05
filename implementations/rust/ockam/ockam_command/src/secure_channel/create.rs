@@ -1,6 +1,6 @@
 use clap::Args;
 use colorful::Colorful;
-use miette::{miette, IntoDiagnostic, WrapErr};
+use miette::{miette, WrapErr};
 use serde_json::json;
 use tokio::{sync::Mutex, try_join};
 
@@ -96,9 +96,7 @@ impl CreateCommand {
             Some(get_default_timeout()),
         )
         .await?;
-        clean_projects_multiaddr(to, projects_sc)
-            .into_diagnostic()
-            .wrap_err("Could not parse projects from route")
+        clean_projects_multiaddr(to, projects_sc).wrap_err("Could not parse projects from route")
     }
 
     async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {

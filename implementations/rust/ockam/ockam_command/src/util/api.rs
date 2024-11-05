@@ -1,3 +1,4 @@
+use miette::IntoDiagnostic;
 use ockam::identity::Identifier;
 use ockam_api::nodes::models::flow_controls::AddConsumer;
 use ockam_api::nodes::models::services::StartHopServiceRequest;
@@ -68,7 +69,8 @@ pub(crate) fn create_secure_channel_listener(
     let mut buf = vec![];
     Request::post("/node/secure_channel_listener")
         .body(payload)
-        .encode(&mut buf)?;
+        .encode(&mut buf)
+        .into_diagnostic()?;
     Ok(buf)
 }
 

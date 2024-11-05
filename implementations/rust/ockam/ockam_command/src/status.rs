@@ -108,7 +108,7 @@ impl StatusData {
         nodes: Vec<NodeResources>,
     ) -> Result<Self> {
         Ok(Self {
-            ockam_version: Version,
+            ockam_version: Version::new(),
             orchestrator_version,
             spaces,
             identities,

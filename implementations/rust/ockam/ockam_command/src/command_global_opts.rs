@@ -177,7 +177,7 @@ impl CommandGlobalOpts {
         debug!("Arguments: {}", arguments.join(" "));
         debug!("Global arguments: {:#?}", &global_args);
         debug!("Command: {:#?}", &cmd);
-        debug!("Version: {}", Version::short());
+        debug!("Version: {}", Version::new());
 
         info!("Tracing initialized");
         debug!("{:#?}", logging_configuration);

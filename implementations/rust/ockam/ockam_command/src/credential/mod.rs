@@ -1,6 +1,6 @@
 use clap::{Args, Subcommand};
-use colorful::core::StrMarker;
 use colorful::Colorful;
+use miette::miette;
 use serde::Serialize;
 use serde_json::json;
 
@@ -14,7 +14,6 @@ pub(crate) use store::StoreCommand;
 pub(crate) use verify::VerifyCommand;
 
 use crate::credential::list::ListCommand;
-use crate::error::Error;
 use crate::{CommandGlobalOpts, Result};
 
 pub(crate) mod issue;
@@ -81,10 +80,9 @@ impl CredentialOutput {
         let credential_data = credential.credential.get_credential_data()?;
         let purpose_key_data = credential.purpose_key_attestation.get_attestation_data()?;
 
-        let subject = credential_data.subject.ok_or(Error::InternalError {
-            error_message: "credential subject is missing".to_str(),
-            exit_code: 1,
-        })?;
+        let subject = credential_data
+            .subject
+            .ok_or(miette!("credential subject is missing"))?;
 
         let mut attributes = HashMap::<String, String>::default();
         for (k, v) in credential_data.subject_attributes.map {

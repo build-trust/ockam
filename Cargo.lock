@@ -4798,7 +4798,6 @@ dependencies = [
  "rustls-pki-types",
  "semver 1.0.23",
  "serde",
- "serde_bare",
  "serde_json",
  "serde_yaml",
  "serial_test",
@@ -4910,6 +4909,7 @@ name = "ockam_multiaddr"
 version = "0.63.0"
 dependencies = [
  "bincode",
+ "miette",
  "minicbor",
  "multiaddr",
  "ockam_core",

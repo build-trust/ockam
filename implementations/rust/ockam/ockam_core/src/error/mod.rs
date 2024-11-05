@@ -38,6 +38,7 @@ pub type Result<T, E = Error> = core::result::Result<T, E>;
 ///   lost over serialization).
 #[derive(Serialize, Deserialize)]
 pub struct Error(ErrorData);
+
 impl Error {
     /// Construct a new error given ErrorCodes and a cause.
     #[cold]
@@ -144,6 +145,9 @@ impl ErrorTrait for Error {
         }
     }
 }
+
+#[cfg(feature = "std")]
+impl miette::Diagnostic for Error {}
 
 impl From<core::fmt::Error> for Error {
     #[cfg(feature = "std")]

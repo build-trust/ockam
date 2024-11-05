@@ -200,11 +200,13 @@ impl EnrollCommand {
                 return Err(Error::Retry(miette!(
                     "Failed to enroll identity with project. {msg}"
                 )))
+                .into_diagnostic()
             }
             EnrollStatus::UnexpectedStatus(msg, status) => {
                 return Err(Error::Retry(miette!(
                     "Failed to enroll identity with project. {msg} {status}"
                 )))
+                .into_diagnostic()
             }
         }
         Ok(())

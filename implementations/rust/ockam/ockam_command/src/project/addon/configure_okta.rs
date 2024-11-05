@@ -183,7 +183,7 @@ fn query_certificate_chain(domain: &str) -> Result<String> {
     let mut client_connection = ClientConnection::new(client_configuration, server_name.to_owned())
         .into_diagnostic()
         .wrap_err("failed to create a client connection")?;
-    let mut tcp_stream = TcpStream::connect(domain_with_port)?;
+    let mut tcp_stream = TcpStream::connect(domain_with_port).into_diagnostic()?;
     let mut stream = Stream::new(&mut client_connection, &mut tcp_stream);
     stream
         .write_all(

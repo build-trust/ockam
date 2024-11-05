@@ -1,6 +1,5 @@
 use clap::Parser;
 use colorful::Colorful;
-use miette::GraphicalReportHandler;
 use ockam_api::fmt_warn;
 use opentelemetry::trace::{Link, SpanBuilder, TraceContextExt, Tracer};
 use opentelemetry::{global, Context};
@@ -10,11 +9,11 @@ use ockam_core::OCKAM_TRACER_NAME;
 
 use crate::command_events::{add_command_error_event, add_command_event};
 use crate::command_global_opts::CommandGlobalOpts;
-use crate::docs;
 use crate::global_args::GlobalArgs;
 use crate::subcommand::OckamSubcommand;
 use crate::upgrade::check_if_an_upgrade_is_available;
 use crate::version::Version;
+use crate::{docs, ErrorReportHandler};
 
 const ABOUT: &str = include_str!("./static/about.txt");
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
@@ -33,7 +32,7 @@ about = docs::about(ABOUT),
 long_about = docs::about(LONG_ABOUT),
 after_long_help = docs::after_help(AFTER_LONG_HELP),
 version,
-long_version = Version::long(),
+long_version = Version::clappy(),
 next_help_heading = "Global Options",
 disable_help_flag = true,
 )]
@@ -67,17 +66,10 @@ impl OckamCommand {
             .install_default()
             .expect("Failed to install ring crypto provider");
 
-        // Sets a hook using our own Error Report Handler
-        // This allows us to customize how we
-        // format the error messages and their content.
-        let _hook_result = miette::set_hook(Box::new(|_| {
-            Box::new(
-                GraphicalReportHandler::new()
-                    .with_cause_chain()
-                    .with_footer(Version::short().light_gray().to_string())
-                    .with_urls(false),
-            )
-        }));
+        // Sets a hook using our own Error Report Handler.
+        // This allows us to customize how we format the error messages and their content.
+        let _hook_result = miette::set_hook(Box::new(|_| Box::new(ErrorReportHandler::new())));
+
         let options = CommandGlobalOpts::new(&arguments, &self.global_args, &self.subcommand)?;
 
         if let Err(err) = check_if_an_upgrade_is_available(&options) {

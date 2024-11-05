@@ -7,6 +7,7 @@ use std::time::Duration;
 use async_trait::async_trait;
 use clap::Subcommand;
 use colorful::Colorful;
+use miette::IntoDiagnostic;
 use tokio_retry::strategy::jitter;
 use tracing::warn;
 
@@ -372,27 +373,40 @@ pub trait Command: Debug + Clone + Sized + Send + Sync + 'static {
                 let cmd = self.clone();
                 match cmd.async_run(ctx, opts.clone()).await {
                     Ok(_) => break,
-                    Err(Error::Retry(inner)) => {
-                        retry_count -= 1;
-                        // return the last error if there are no more retries
-                        if retry_count == 0 {
-                            return Err(inner);
-                        };
+                    Err(report) => {
+                        match report.downcast::<Error>() {
+                            Ok(error) => {
+                                match error {
+                                    Error::Retry(report) => {
+                                        retry_count -= 1;
+                                        // return the last error if there are no more retries
+                                        if retry_count == 0 {
+                                            return Err(report);
+                                        };
 
-                        let delay = retry_delay.add(jitter(retry_delay_jitter));
-                        warn!(
-                            "Command failed, retrying in {} seconds: {inner:?}",
-                            delay.as_secs()
-                        );
-                        opts.terminal
-                            .write_line(fmt_warn!("Command failed with error:"))?;
-                        opts.terminal.write_line(fmt_log!("{inner:#}\n"))?;
-                        opts.terminal
-                            .write_line(fmt_log!("Will retry in {} seconds", delay.as_secs()))?;
-                        tokio::time::sleep(delay).await;
-                        opts.terminal.write_line(fmt_log!("Retrying...\n"))?;
+                                        let delay = retry_delay.add(jitter(retry_delay_jitter));
+                                        warn!(
+                                            "Command failed, retrying in {} seconds: {report:?}",
+                                            delay.as_secs()
+                                        );
+                                        opts.terminal
+                                            .write_line(fmt_warn!("Command failed with error:"))?;
+                                        opts.terminal.write_line(fmt_log!("{report:#}\n"))?;
+                                        opts.terminal.write_line(fmt_log!(
+                                            "Will retry in {} seconds",
+                                            delay.as_secs()
+                                        ))?;
+                                        tokio::time::sleep(delay).await;
+                                        opts.terminal.write_line(fmt_log!("Retrying...\n"))?;
+                                    }
+                                    error => return Err(error).into_diagnostic(),
+                                }
+                            }
+                            Err(report) => {
+                                return Err(report);
+                            }
+                        }
                     }
-                    Err(e) => return Err(e.into()),
                 }
             }
             Ok(())

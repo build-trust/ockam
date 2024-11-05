@@ -2,7 +2,7 @@ use clap::error::{Error, ErrorKind};
 use std::str::FromStr;
 use std::time::Duration;
 
-use miette::miette;
+use miette::{miette, WrapErr};
 
 use ockam::identity::Identifier;
 use ockam::transport::HostnamePort;
@@ -16,20 +16,21 @@ use crate::Result;
 /// It is possible to just input a `port`. In that case the address will be assumed to be
 /// 127.0.0.1:<port>
 pub(crate) fn hostname_parser(input: &str) -> Result<HostnamePort> {
-    Ok(HostnamePort::from_str(input)
-        .map_err(|e| miette!("cannot parse the address {input} as a socket address: {e}"))?)
+    HostnamePort::from_str(input).wrap_err(format!(
+        "cannot parse the address {input} as a socket address"
+    ))
 }
 
 /// Helper fn for parsing an identifier from user input by using
 /// [`ockam_identity::Identifier::from_str()`]
 pub(crate) fn identity_identifier_parser(input: &str) -> Result<Identifier> {
-    Ok(Identifier::from_str(input).map_err(|_| miette!("Invalid identity identifier: {input}"))?)
+    Identifier::from_str(input).wrap_err(format!("Invalid identity identifier: {input}"))
 }
 
 /// Helper fn for parsing an InternetAddress from user input by using
 /// [`InternetAddress::new()`]
 pub(crate) fn internet_address_parser(input: &str) -> Result<InternetAddress> {
-    Ok(InternetAddress::new(input).ok_or_else(|| miette!("Invalid address: {input}"))?)
+    InternetAddress::new(input).ok_or_else(|| miette!("Invalid address: {input}"))
 }
 
 pub(crate) fn project_name_parser(s: &str) -> Result<String> {
@@ -44,7 +45,7 @@ pub(crate) fn project_name_parser(s: &str) -> Result<String> {
 }
 
 pub(crate) fn duration_parser(arg: &str) -> std::result::Result<Duration, clap::Error> {
-    parse_duration(arg).map_err(|_| Error::raw(ErrorKind::InvalidValue, "Invalid duration."))
+    parse_duration(arg).map_err(|_| Error::raw(ErrorKind::InvalidValue, "Invalid duration"))
 }
 
 pub(crate) fn duration_to_human_format(duration: &Duration) -> String {

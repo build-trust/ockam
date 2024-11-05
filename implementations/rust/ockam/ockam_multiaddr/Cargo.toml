@@ -25,10 +25,11 @@ description = "An implementation of multiformats.io/multiaddr"
 
 [features]
 default = ["std"]
-std = ["ockam_core/std", "unsigned-varint/std", "serde?/std", "minicbor/std"]
+std = ["ockam_core/std", "unsigned-varint/std", "serde?/std", "minicbor/std", "miette"]
 cbor = ["minicbor"]
 
 [dependencies]
+miette = { version = "7.2.0", features = ["fancy-no-backtrace"], optional = true }
 minicbor = { version = "0.24.1", default-features = false, features = ["alloc"], optional = true }
 once_cell = { version = "1.19.0", default-features = false, features = ["alloc"] }
 serde = { version = "1.0.204", default-features = false, optional = true }

@@ -3,17 +3,16 @@ use std::process::exit;
 use clap::Parser;
 use miette::IntoDiagnostic;
 
+use crate::{
+    add_command_error_event, has_help_flag, has_version_flag, pager, replace_hyphen_with_stdin,
+    util::exitcode, version::Version, OckamCommand,
+};
 use ockam_api::cli_state::CliState;
-use ockam_api::fmt_log;
 use ockam_api::logs::{
     logging_configuration, Colored, ExportingConfiguration, LogLevelWithCratesFilter,
     LoggingTracing,
 };
-
-use crate::{
-    add_command_error_event, has_help_flag, has_version_flag, pager, replace_hyphen_with_stdin,
-    util::exitcode, version::Version, ErrorReportHandler, OckamCommand,
-};
+use ockam_api::output::Output;
 
 /// Main method for running the `ockam` executable:
 ///
@@ -24,8 +23,6 @@ pub fn run() -> miette::Result<()> {
     let input = std::env::args()
         .map(replace_hyphen_with_stdin)
         .collect::<Vec<_>>();
-
-    let _ = miette::set_hook(Box::new(|_e| Box::new(ErrorReportHandler::new())));
 
     if has_version_flag(&input) {
         print_version_and_exit();
@@ -66,11 +63,12 @@ pub fn run() -> miette::Result<()> {
 }
 
 fn print_version_and_exit() {
-    let version_msg = Version::long();
-    let version_msg_vec = version_msg.split('\n').collect::<Vec<_>>();
-    println!("{}", fmt_log!("ockam {}", version_msg_vec[0]));
-    for item in version_msg_vec.iter().skip(1) {
-        println!("{}", fmt_log!("{}", item));
-    }
+    println!(
+        "{}",
+        Version::new()
+            .multiline()
+            .item()
+            .expect("Failed to process version")
+    );
     exit(exitcode::OK);
 }

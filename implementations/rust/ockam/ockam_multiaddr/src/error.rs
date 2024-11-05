@@ -37,6 +37,9 @@ impl Error {
     }
 }
 
+#[cfg(feature = "std")]
+impl miette::Diagnostic for Error {}
+
 #[derive(Debug)]
 pub(crate) enum ErrorImpl {
     Unregistered(Code),

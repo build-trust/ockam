@@ -66,14 +66,14 @@ fn get_man_page_directory(cmd_man_dir: &Option<String>) -> crate::Result<PathBuf
                 home_dir
             }
             None => {
-                let mut man_dir = env::current_dir()?;
+                let mut man_dir = env::current_dir().into_diagnostic()?;
                 man_dir.push("ockam_man_pages");
                 println!("Man pages stored at: {}", man_dir.display());
                 man_dir
             }
         },
     };
-    create_dir_all(&man_dir)?;
+    create_dir_all(&man_dir).into_diagnostic()?;
     Ok(man_dir)
 }
 

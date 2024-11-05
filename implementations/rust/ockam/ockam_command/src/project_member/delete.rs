@@ -50,7 +50,7 @@ impl Command for DeleteCommand {
         if self.member.is_none() && !self.all {
             return Err(miette!(
                 "You need to specify either an identifier to delete or use the --all flag to delete all the members from a project."
-            ).into());
+            ));
         }
 
         let (authority_node_client, project_name) =
@@ -82,7 +82,7 @@ impl Command for DeleteCommand {
             {
                 return Err(miette!(
                         "You need to use an enrolled identity to delete all the members from a Project."
-                    ).into());
+                    ));
             }
             let self_identifier = identity.identifier();
             let member_identifiers = authority_node_client.list_member_ids(ctx).await?;

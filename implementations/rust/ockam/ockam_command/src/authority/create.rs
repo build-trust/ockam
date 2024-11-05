@@ -4,7 +4,7 @@ use std::str::FromStr;
 
 use clap::Args;
 use colorful::Colorful;
-use miette::{miette, IntoDiagnostic};
+use miette::{miette, IntoDiagnostic, WrapErr};
 use serde::{Deserialize, Serialize};
 use tokio::fs::read_to_string;
 use tokio_retry::strategy::FixedInterval;
@@ -26,10 +26,10 @@ use ockam_core::compat::collections::BTreeMap;
 use ockam_core::compat::fmt;
 
 use crate::node::util::run_ockam;
+use crate::util::embedded_node_that_is_not_stopped;
 use crate::util::foreground_args::{wait_for_exit_signal, ForegroundArgs};
 use crate::util::parsers::internet_address_parser;
 use crate::util::{async_cmd, local_cmd};
-use crate::util::{embedded_node_that_is_not_stopped, exitcode};
 use crate::{docs, CommandGlobalOpts, Result};
 
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
@@ -530,12 +530,9 @@ impl CreateCommand {
 
 /// Return a list of trusted identities passed as a JSON string on the command line
 fn parse_trusted_identities(values: &str) -> Result<TrustedIdentities> {
-    serde_json::from_str::<TrustedIdentities>(values).map_err(|e| {
-        crate::Error::new(
-            exitcode::CONFIG,
-            miette!("Cannot parse the trusted identities: {}", e),
-        )
-    })
+    serde_json::from_str::<TrustedIdentities>(values)
+        .into_diagnostic()
+        .wrap_err("Cannot parse the trusted identities")
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]

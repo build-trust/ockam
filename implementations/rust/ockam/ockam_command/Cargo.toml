@@ -91,13 +91,11 @@ rustls-native-certs = "0.8.0"
 rustls-pki-types = "1.7.0"
 semver = "1.0.23"
 serde = { version = "1", features = ["derive"] }
-serde_bare = { version = "0.5.0", default-features = false, features = ["alloc"] }
 serde_json = "1"
 serde_yaml = "0.9"
 shellexpand = { version = "3.1.0", default-features = false, features = ["base-0"] }
 syntect = { version = "5.2.0", default-features = false, features = ["default-syntaxes", "regex-onig"] }
 thiserror = "1"
-time = { version = "0.3", default-features = false, features = ["std", "local-offset"] }
 tokio = { version = "1.41.0", features = ["full"] }
 tokio-retry = "0.3"
 tracing = { version = "0.1", default-features = false }

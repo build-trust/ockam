@@ -56,7 +56,7 @@ impl Command for CreateCommand {
             .stdout()
             .plain(output.item()?)
             .machine(output.address.to_string())
-            .json(serde_json::to_string(&output)?)
+            .json(serde_json::to_string(&output).into_diagnostic()?)
             .write_line()?;
         Ok(())
     }

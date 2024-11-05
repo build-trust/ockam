@@ -4,8 +4,7 @@ use std::{path::PathBuf, str::FromStr};
 use async_trait::async_trait;
 use clap::Args;
 use colorful::Colorful;
-use miette::Context as _;
-use miette::{miette, IntoDiagnostic};
+use miette::{miette, IntoDiagnostic, WrapErr};
 use opentelemetry::trace::TraceContextExt;
 use opentelemetry::KeyValue;
 use regex::Regex;
@@ -270,7 +269,8 @@ impl CreateCommand {
             buf,
             "{}",
             fmt_ok!("Created a new Node named {}", color_primary(node_name))
-        )?;
+        )
+        .into_diagnostic()?;
         if opts.state.get_node(node_name).await?.is_default() {
             writeln!(
                 buf,
@@ -279,7 +279,8 @@ impl CreateCommand {
                     "Marked {} as your default Node, on this machine",
                     color_primary(node_name)
                 )
-            )?;
+            )
+            .into_diagnostic()?;
         }
         writeln!(
             buf,
@@ -288,7 +289,8 @@ impl CreateCommand {
                 "To see more details on this Node, run: {}",
                 color_primary(format!("ockam node show {}", node_name))
             )
-        )?;
+        )
+        .into_diagnostic()?;
         Ok(buf)
     }
 
@@ -327,7 +329,7 @@ pub fn parse_launch_config(config_or_path: &str) -> Result<Config> {
         Err(_) => {
             let path = PathBuf::from_str(config_or_path)
                 .into_diagnostic()
-                .wrap_err(miette!("Not a valid path"))?;
+                .wrap_err(format!("Invalid path {config_or_path}"))?;
             Config::read(path)
         }
     }
