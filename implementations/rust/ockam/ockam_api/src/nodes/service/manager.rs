@@ -5,7 +5,7 @@ use crate::nodes::connection::{
     SecureChannelInstantiator,
 };
 use crate::nodes::models::portal::OutletStatus;
-use crate::nodes::models::transport::{TransportMode, TransportType};
+use crate::nodes::models::transport::{Port, TransportMode, TransportType};
 use crate::nodes::registry::Registry;
 use crate::nodes::service::http::HttpServer;
 use crate::nodes::service::{
@@ -162,9 +162,8 @@ impl NodeManager {
 
         let s = Arc::new(s);
 
-        if let Some(http_server_port) = general_options.http_server_port {
-            debug!("start the http server");
-            HttpServer::start(s.clone(), http_server_port)
+        if let Some(status_endpoint_port) = general_options.status_endpoint_port {
+            HttpServer::start(ctx, s.clone(), status_endpoint_port)
                 .await
                 .map_err(|e| ApiError::core(e.to_string()))?;
         }
@@ -612,7 +611,7 @@ pub struct NodeManagerGeneralOptions {
     pub(super) cli_state: CliState,
     pub(super) node_name: String,
     pub(super) start_default_services: bool,
-    pub(super) http_server_port: Option<u16>,
+    pub(super) status_endpoint_port: Option<Port>,
     pub(super) persistent: bool,
 }
 
@@ -621,14 +620,14 @@ impl NodeManagerGeneralOptions {
         cli_state: CliState,
         node_name: String,
         start_default_services: bool,
-        http_server_port: Option<u16>,
+        status_endpoint_port: Option<Port>,
         persistent: bool,
     ) -> Self {
         Self {
             cli_state,
             node_name,
             start_default_services,
-            http_server_port,
+            status_endpoint_port,
             persistent,
         }
     }

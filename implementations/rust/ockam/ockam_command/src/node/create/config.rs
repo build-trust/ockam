@@ -188,11 +188,11 @@ impl NodeConfig {
         if cmd.tcp_listener_address != default_cmd_args.tcp_listener_address {
             self.node.tcp_listener_address = Some(cmd.tcp_listener_address.clone().into());
         }
-        if cmd.http_server != default_cmd_args.http_server {
-            self.node.http_server = Some(cmd.http_server.into());
+        if cmd.no_status_endpoint != default_cmd_args.no_status_endpoint {
+            self.node.no_status_endpoint = Some(cmd.no_status_endpoint.into());
         }
-        if let Some(port) = cmd.http_server_port {
-            self.node.http_server_port = Some((port as isize).into());
+        if let Some(port) = cmd.status_endpoint_port {
+            self.node.status_endpoint_port = Some((port as isize).into());
         }
         if let Some(identity) = &cmd.identity {
             self.node.identity = Some(identity.clone().into());

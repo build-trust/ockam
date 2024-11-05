@@ -5,7 +5,6 @@ use std::{
 };
 
 use colorful::Colorful;
-use miette::Context as _;
 use miette::{miette, IntoDiagnostic};
 use opentelemetry::trace::FutureExt;
 use tokio::runtime::Runtime;
@@ -114,17 +113,6 @@ where
     res?.into_diagnostic()
 }
 
-pub fn find_available_port() -> Result<u16> {
-    let listener = TcpListener::bind("127.0.0.1:0")
-        .into_diagnostic()
-        .context("Unable to bind to an open port")?;
-    let address = listener
-        .local_addr()
-        .into_diagnostic()
-        .context("Unable to get local address")?;
-    Ok(address.port())
-}
-
 #[allow(unused)]
 pub fn print_path(p: &Path) -> String {
     p.to_str().unwrap_or("<unprintable>").to_string()
@@ -209,7 +197,11 @@ pub fn port_is_free_guard(address: &SocketAddr) -> Result<()> {
     Ok(())
 }
 
-pub fn print_deprecated_warning(opts: &CommandGlobalOpts, old: &str, new: &str) -> Result<()> {
+pub fn print_warning_for_deprecated_flag_replaced(
+    opts: &CommandGlobalOpts,
+    old: &str,
+    new: &str,
+) -> Result<()> {
     opts.terminal.write_line(fmt_warn!(
         "{} is deprecated. Please use {} instead",
         color_primary(old),
@@ -218,7 +210,10 @@ pub fn print_deprecated_warning(opts: &CommandGlobalOpts, old: &str, new: &str) 
     Ok(())
 }
 
-pub fn print_deprecated_flag_warning(opts: &CommandGlobalOpts, deprecated: &str) -> Result<()> {
+pub fn print_warning_for_deprecated_flag_no_effect(
+    opts: &CommandGlobalOpts,
+    deprecated: &str,
+) -> Result<()> {
     opts.terminal.write_line(fmt_warn!(
         "{} is deprecated. This flag has no effect",
         color_primary(deprecated),

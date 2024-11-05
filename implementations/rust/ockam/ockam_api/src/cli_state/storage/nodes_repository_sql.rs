@@ -54,7 +54,7 @@ impl NodesRepository for NodesSqlxDatabase {
             .bind(node_info.pid().map(|p| p as i32))
             .bind(
                 node_info
-                    .http_server_address()
+                    .status_endpoint_address()
                     .as_ref()
                     .map(|a| a.to_string()),
             );
@@ -165,7 +165,7 @@ impl NodesRepository for NodesSqlxDatabase {
         query.execute(&*self.database.pool).await.void()
     }
 
-    async fn set_http_server_address(
+    async fn set_status_endpoint_address(
         &self,
         node_name: &str,
         address: &InternetAddress,
@@ -190,11 +190,14 @@ impl NodesRepository for NodesSqlxDatabase {
             .and_then(|n| n.tcp_listener_address()))
     }
 
-    async fn get_http_server_address(&self, node_name: &str) -> Result<Option<InternetAddress>> {
+    async fn get_status_endpoint_address(
+        &self,
+        node_name: &str,
+    ) -> Result<Option<InternetAddress>> {
         Ok(self
             .get_node(node_name)
             .await?
-            .and_then(|n| n.http_server_address()))
+            .and_then(|n| n.status_endpoint_address()))
     }
 
     async fn set_node_pid(&self, node_name: &str, pid: u32) -> Result<()> {
@@ -266,7 +269,7 @@ impl NodeRow {
             .tcp_listener_address
             .to_option()
             .and_then(|a| InternetAddress::new(&a));
-        let http_server_address = self
+        let status_endpoint_address = self
             .http_server_address
             .to_option()
             .and_then(|a| InternetAddress::new(&a));
@@ -279,7 +282,7 @@ impl NodeRow {
             self.is_authority.to_bool(),
             tcp_listener_address,
             self.pid.to_option().map(|p| p as u32),
-            http_server_address,
+            status_endpoint_address,
         ))
     }
 }

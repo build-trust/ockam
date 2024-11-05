@@ -1,22 +1,3 @@
-use std::fmt::Write;
-use std::{path::PathBuf, str::FromStr};
-
-use async_trait::async_trait;
-use clap::Args;
-use colorful::Colorful;
-use miette::{miette, IntoDiagnostic, WrapErr};
-use opentelemetry::trace::TraceContextExt;
-use opentelemetry::KeyValue;
-use regex::Regex;
-use tracing::instrument;
-
-use ockam_api::cli_state::random_name;
-use ockam_api::colors::{color_error, color_primary};
-use ockam_api::terminal::notification::NotificationHandler;
-use ockam_api::{fmt_log, fmt_ok};
-use ockam_core::{opentelemetry_context_parser, OpenTelemetryContext};
-use ockam_node::Context;
-
 use crate::node::config::NodeConfig;
 use crate::node::create::config::ConfigArgs;
 use crate::node::util::NodeManagerDefaults;
@@ -24,9 +5,26 @@ use crate::service::config::Config;
 use crate::shared_args::TrustOpts;
 use crate::util::embedded_node_that_is_not_stopped;
 use crate::util::foreground_args::ForegroundArgs;
-use crate::util::{async_cmd, local_cmd};
+use crate::util::{async_cmd, local_cmd, print_warning_for_deprecated_flag_no_effect};
 use crate::value_parsers::is_url;
 use crate::{docs, Command, CommandGlobalOpts, Result};
+use async_trait::async_trait;
+use clap::Args;
+use colorful::Colorful;
+use miette::{miette, IntoDiagnostic, WrapErr};
+use ockam_api::cli_state::random_name;
+use ockam_api::colors::{color_error, color_primary};
+use ockam_api::nodes::models::transport::Port;
+use ockam_api::terminal::notification::NotificationHandler;
+use ockam_api::{fmt_log, fmt_ok};
+use ockam_core::{opentelemetry_context_parser, OpenTelemetryContext};
+use ockam_node::Context;
+use opentelemetry::trace::TraceContextExt;
+use opentelemetry::KeyValue;
+use regex::Regex;
+use std::fmt::Write;
+use std::{path::PathBuf, str::FromStr};
+use tracing::instrument;
 
 pub mod background;
 pub mod config;
@@ -35,6 +33,8 @@ pub mod foreground;
 const DEFAULT_NODE_NAME: &str = "_default_node_name";
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
+
+const DEFAULT_NODE_STATUS_ENDPOINT_PORT: u16 = 23345;
 
 /// Create a new node
 #[derive(Clone, Debug, Args)]
@@ -71,8 +71,8 @@ pub struct CreateCommand {
     )]
     pub tcp_listener_address: String,
 
-    /// Enable the HTTP server for the node that will listen to in a random free port.
-    /// To specify a port, use `--http-server-port` instead.
+    /// [DEPRECATED] Enable the HTTP server for the node that will listen to in a random free port.
+    /// To specify a port, use `--status-endpoint-port` instead.
     #[arg(
         long,
         visible_alias = "enable-http-server",
@@ -81,9 +81,18 @@ pub struct CreateCommand {
     )]
     pub http_server: bool,
 
-    /// Enable the HTTP server at the given port.
-    #[arg(long, value_name = "PORT", conflicts_with = "http_server")]
-    pub http_server_port: Option<u16>,
+    /// Disable the node's status endpoint that serves the healthcheck endpoint.
+    #[arg(
+        long,
+        value_name = "BOOL",
+        default_value_t = false,
+        conflicts_with = "status_endpoint_port"
+    )]
+    pub no_status_endpoint: bool,
+
+    /// Specify the port that the status endpoint will listen to.
+    #[arg(long, value_name = "PORT")]
+    pub status_endpoint_port: Option<u16>,
 
     /// Enable UDP transport puncture.
     #[arg(
@@ -131,7 +140,8 @@ impl Default for CreateCommand {
             },
             tcp_listener_address: node_manager_defaults.tcp_listener_address,
             http_server: false,
-            http_server_port: None,
+            no_status_endpoint: false,
+            status_endpoint_port: None,
             udp: false,
             launch_configuration: None,
             identity: None,
@@ -152,7 +162,7 @@ impl Command for CreateCommand {
 
     #[instrument(skip_all)]
     fn run(mut self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        self.parse_args()?;
+        self.parse_args(&opts)?;
         if self.should_run_config() {
             async_cmd(&self.name(), opts.clone(), |ctx| async move {
                 self.run_config(&ctx, opts).await
@@ -178,7 +188,7 @@ impl Command for CreateCommand {
     }
 
     async fn async_run(mut self, ctx: &Context, opts: CommandGlobalOpts) -> Result<()> {
-        self.parse_args()?;
+        self.parse_args(&opts)?;
         if self.should_run_config() {
             self.run_config(ctx, opts).await?
         } else {
@@ -236,7 +246,7 @@ impl CreateCommand {
         !self.name_arg_is_a_config()
     }
 
-    fn parse_args(&self) -> miette::Result<()> {
+    fn parse_args(&mut self, opts: &CommandGlobalOpts) -> miette::Result<()> {
         // return error if there are duplicated variables
         let mut variables = std::collections::HashMap::new();
         for (key, value) in self.config_args.variables.iter() {
@@ -260,7 +270,19 @@ impl CreateCommand {
             ));
         }
 
+        if self.http_server {
+            print_warning_for_deprecated_flag_no_effect(opts, "http-server")?;
+        }
+
         Ok(())
+    }
+
+    fn status_endpoint_port(&self) -> Option<Port> {
+        match (self.no_status_endpoint, self.status_endpoint_port) {
+            (true, _) => None,
+            (false, Some(port)) => Some(Port::Explicit(port)),
+            (false, None) => Some(Port::TryExplicitOrRandom(DEFAULT_NODE_STATUS_ENDPOINT_PORT)),
+        }
     }
 
     async fn plain_output(&self, opts: &CommandGlobalOpts, node_name: &str) -> Result<String> {
@@ -323,7 +345,7 @@ impl CreateCommand {
     }
 }
 
-pub fn parse_launch_config(config_or_path: &str) -> Result<Config> {
+fn parse_launch_config(config_or_path: &str) -> Result<Config> {
     match serde_json::from_str::<Config>(config_or_path) {
         Ok(c) => Ok(c),
         Err(_) => {

@@ -35,7 +35,7 @@ use ockam_node::compat::asynchronous::resolve_peer;
 
 use crate::util::parsers::duration_parser;
 use crate::util::parsers::hostname_parser;
-use crate::util::{find_available_port, port_is_free_guard, process_nodes_multiaddr};
+use crate::util::{port_is_free_guard, process_nodes_multiaddr};
 
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
 
@@ -151,8 +151,7 @@ pub struct CreateCommand {
 }
 
 pub(crate) fn default_from_addr() -> HostnamePort {
-    let port = find_available_port().expect("Failed to find available port");
-    HostnamePort::new("127.0.0.1", port)
+    HostnamePort::new("127.0.0.1", 0)
 }
 
 fn default_to_addr() -> String {

@@ -3,7 +3,7 @@ use ockam::transport::HostnamePort;
 use ockam_api::port_range::PortRange;
 use ockam_multiaddr::MultiAddr;
 
-use crate::util::print_deprecated_warning;
+use crate::util::print_warning_for_deprecated_flag_replaced;
 use crate::{
     kafka::{kafka_default_consumer_server, kafka_default_project_route, kafka_inlet_default_addr},
     node::NodeOpts,
@@ -37,7 +37,7 @@ pub struct CreateCommand {
 
 impl CreateCommand {
     pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        print_deprecated_warning(&opts, &self.name(), "kafka-inlet")?;
+        print_warning_for_deprecated_flag_replaced(&opts, &self.name(), "kafka-inlet")?;
         crate::kafka::inlet::create::CreateCommand {
             node_opts: self.node_opts,
             addr: self.addr,

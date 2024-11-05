@@ -231,12 +231,12 @@ impl<T: NodesRepository> NodesRepository for AutoRetry<T> {
         retry!(self.wrapped.set_tcp_listener_address(node_name, address))
     }
 
-    async fn set_http_server_address(
+    async fn set_status_endpoint_address(
         &self,
         node_name: &str,
         address: &InternetAddress,
     ) -> ockam_core::Result<()> {
-        retry!(self.wrapped.set_http_server_address(node_name, address))
+        retry!(self.wrapped.set_status_endpoint_address(node_name, address))
     }
 
     async fn set_as_authority_node(&self, node_name: &str) -> ockam_core::Result<()> {
@@ -250,11 +250,11 @@ impl<T: NodesRepository> NodesRepository for AutoRetry<T> {
         retry!(self.wrapped.get_tcp_listener_address(node_name))
     }
 
-    async fn get_http_server_address(
+    async fn get_status_endpoint_address(
         &self,
         node_name: &str,
     ) -> ockam_core::Result<Option<InternetAddress>> {
-        retry!(self.wrapped.get_http_server_address(node_name))
+        retry!(self.wrapped.get_status_endpoint_address(node_name))
     }
 
     async fn set_node_pid(&self, node_name: &str, pid: u32) -> ockam_core::Result<()> {

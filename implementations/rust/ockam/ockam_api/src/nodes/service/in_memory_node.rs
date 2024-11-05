@@ -16,6 +16,7 @@ use crate::cli_state::random_name;
 use crate::cli_state::CliState;
 use crate::cloud::project::Project;
 use crate::cloud::{AuthorityNodeClient, ControllerClient, CredentialsEnabled, ProjectNodeClient};
+use crate::nodes::models::transport::Port;
 use crate::nodes::service::default_address::DefaultAddress;
 use crate::nodes::service::{
     NodeManagerGeneralOptions, NodeManagerTransportOptions, NodeManagerTrustOptions,
@@ -126,7 +127,7 @@ impl InMemoryNode {
         ctx: &Context,
         cli_state: &CliState,
         identity_name: &str,
-        http_server_port: Option<u16>,
+        status_endpoint_port: Option<Port>,
         project_name: Option<String>,
         authority_identity: Option<ChangeHistory>,
         authority_route: Option<MultiAddr>,
@@ -163,7 +164,7 @@ impl InMemoryNode {
                 cli_state.clone(),
                 node.name(),
                 false,
-                http_server_port,
+                status_endpoint_port,
                 false,
             ),
             NodeManagerTransportOptions::new(tcp_listener.flow_control_id().clone(), tcp, None),

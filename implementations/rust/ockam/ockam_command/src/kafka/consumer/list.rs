@@ -1,7 +1,7 @@
 use clap::Args;
 
 use crate::node::NodeOpts;
-use crate::util::print_deprecated_warning;
+use crate::util::print_warning_for_deprecated_flag_replaced;
 use crate::{docs, Command, CommandGlobalOpts};
 
 const PREVIEW_TAG: &str = include_str!("../../static/preview_tag.txt");
@@ -21,7 +21,7 @@ pub struct ListCommand {
 
 impl ListCommand {
     pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        print_deprecated_warning(&opts, &self.name(), "kafka-inlet")?;
+        print_warning_for_deprecated_flag_replaced(&opts, &self.name(), "kafka-inlet")?;
         crate::kafka::inlet::list::ListCommand {
             node_opts: self.node_opts,
         }

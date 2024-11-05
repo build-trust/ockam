@@ -57,8 +57,8 @@ pub async fn spawn_node(opts: &CommandGlobalOpts, cmd: CreateCommand) -> miette:
         name,
         identity: identity_name,
         tcp_listener_address: address,
-        http_server,
-        http_server_port,
+        no_status_endpoint,
+        status_endpoint_port,
         udp,
         launch_configuration,
         trust_opts,
@@ -128,13 +128,13 @@ pub async fn spawn_node(opts: &CommandGlobalOpts, cmd: CreateCommand) -> miette:
         args.push(opentelemetry_context.to_string());
     }
 
-    if http_server {
-        args.push("--http-server".to_string());
+    if no_status_endpoint {
+        args.push("--no-status-endpoint".to_string());
     }
 
-    if let Some(http_server_port) = http_server_port {
-        args.push("--http-server-port".to_string());
-        args.push(http_server_port.to_string());
+    if let Some(status_endpoint_port) = status_endpoint_port {
+        args.push("--status-endpoint-port".to_string());
+        args.push(status_endpoint_port.to_string());
     }
 
     if udp {

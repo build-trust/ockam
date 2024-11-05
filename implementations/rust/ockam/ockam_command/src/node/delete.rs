@@ -1,6 +1,6 @@
 use crate::terminal::tui::DeleteCommandTui;
 use crate::tui::PluralTerm;
-use crate::util::{async_cmd, print_deprecated_flag_warning};
+use crate::util::{async_cmd, print_warning_for_deprecated_flag_no_effect};
 use crate::{docs, CommandGlobalOpts};
 use clap::Args;
 use colorful::Colorful;
@@ -51,7 +51,7 @@ impl DeleteCommand {
 
     async fn async_run(&self, opts: CommandGlobalOpts) -> miette::Result<()> {
         if self.force {
-            print_deprecated_flag_warning(&opts, "--force")?;
+            print_warning_for_deprecated_flag_no_effect(&opts, "--force")?;
         }
         DeleteTui::run(opts, self.clone()).await
     }

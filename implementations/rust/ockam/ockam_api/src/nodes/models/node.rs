@@ -56,7 +56,7 @@ pub struct NodeResources {
     #[serde(flatten)]
     #[n(4)] pub status: NodeProcessStatus,
     #[n(5)] pub route: RouteToNode,
-    #[n(6)] pub http_server_address: Option<InternetAddress>,
+    #[n(6)] pub status_endpoint_address: Option<InternetAddress>,
     #[n(7)] pub transports: Vec<TransportStatus>,
     #[n(8)] pub secure_channel_listeners: Vec<SecureChannelListener>,
     #[n(9)] pub inlets: Vec<InletStatus>,
@@ -84,7 +84,7 @@ impl NodeResources {
                 short: node.route()?,
                 verbose: node.verbose_route()?,
             },
-            http_server_address: node.http_server_address(),
+            status_endpoint_address: node.status_endpoint_address(),
             transports,
             secure_channel_listeners: listeners,
             inlets,
@@ -103,7 +103,7 @@ impl NodeResources {
                 short: node.route()?,
                 verbose: node.verbose_route()?,
             },
-            http_server_address: None,
+            status_endpoint_address: None,
             transports: vec![],
             secure_channel_listeners: vec![],
             inlets: vec![],
@@ -123,10 +123,10 @@ impl Display for NodeResources {
 
         writeln!(f, "{}{}{}", fmt::PADDING, fmt::INDENTATION, self.status)?;
         writeln!(f, "{}{}{}", fmt::PADDING, fmt::INDENTATION, self.route)?;
-        if let Some(http_server) = self.http_server_address.as_ref() {
+        if let Some(http_server) = self.status_endpoint_address.as_ref() {
             writeln!(
                 f,
-                "{}{}HTTP server listening at {}",
+                "{}{}Status endpoint listening at {}",
                 fmt::PADDING,
                 fmt::INDENTATION,
                 color_primary(http_server.to_string())

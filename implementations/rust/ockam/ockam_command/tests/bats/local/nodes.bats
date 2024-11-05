@@ -164,35 +164,52 @@ teardown() {
   assert_output --partial "Empty value for variable 'MY_VAR'"
 }
 
-@test "node - the HTTP server is disabled by default" {
-  run_success $OCKAM node create
+@test "node - the HTTP server is disabled with flag" {
+  run_success $OCKAM node create --no-status-endpoint
   run_success $OCKAM node show --output json
   cmd_output="$output"
-  http_addr="$(echo $cmd_output | jq -r .http_server_address)"
+  http_addr="$(echo $cmd_output | jq -r .status_endpoint_address)"
   assert_equal "$http_addr" "null"
 }
 
 @test "node - check the contents returned from the HTTP server endpoints" {
-  run_success $OCKAM node create --http-server
+  run_success $OCKAM node create
   run_success $OCKAM node show --output json
   cmd_output="$output"
-  http_addr="$(echo $cmd_output | jq -r .http_server_address)"
+  http_addr="$(echo $cmd_output | jq -r .status_endpoint_address)"
   run_success curl -fsI -m 2 $http_addr
   run_failure curl -fsI -m 2 $http_addr/show
   run_success curl -fs -m 2 $http_addr/show
 }
 
-@test "node - the HTTP server is enabled with a boolean flag and a random port is assigned to it" {
-  run_success $OCKAM node create --http-server
-  run_success $OCKAM node show --output json
-  http_addr="$(echo $output | jq -r .http_server_address)"
-  run_success curl -fsI -m 2 $http_addr
-}
-
 @test "node - the HTTP server is enabled with a specific port" {
   port=$(random_port)
-  run_success $OCKAM node create --http-server-port $port
+  run_success $OCKAM node create --status-endpoint-port $port
   run_success curl -fsI -m 2 127.0.0.1:$port
+}
+
+@test "node - multiple nodes get assigned a different HTTP server port" {
+  run_success $OCKAM node create n1
+  run_success $OCKAM node show n1 --output json
+  cmd_output="$output"
+  http_addr_a="$(echo $cmd_output | jq -r .status_endpoint_address)"
+  run_success curl -fsI -m 2 $http_addr_a
+
+  run_success $OCKAM node create n2
+  run_success $OCKAM node show n2 --output json
+  cmd_output="$output"
+  http_addr_b="$(echo $cmd_output | jq -r .status_endpoint_address)"
+  run_success curl -fsI -m 2 $http_addr_b
+
+  [ "$http_addr_a" != "$http_addr_b" ]
+}
+
+@test "node - node created with config has the HTTP server enabled" {
+  run_success $OCKAM node create --configuration "{name: n}"
+  run_success $OCKAM node show n --output json
+  cmd_output="$output"
+  http_addr="$(echo $cmd_output | jq -r .status_endpoint_address)"
+  run_success curl -fsI -m 2 $http_addr
 }
 
 @test "node - fail to create node with invalid name" {

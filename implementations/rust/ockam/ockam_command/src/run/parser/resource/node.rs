@@ -25,8 +25,10 @@ pub struct Node {
     pub tcp_listener_address: Option<ArgValue>,
     #[serde(alias = "http-server", alias = "enable-http-server")]
     pub http_server: Option<ArgValue>,
-    #[serde(alias = "http-server-port")]
-    pub http_server_port: Option<ArgValue>,
+    #[serde(alias = "no-status-endpoint")]
+    pub no_status_endpoint: Option<ArgValue>,
+    #[serde(alias = "status-endpoint-port")]
+    pub status_endpoint_port: Option<ArgValue>,
     pub identity: Option<ArgValue>,
     pub project: Option<ArgValue>,
     #[serde(alias = "launch-config")]
@@ -60,11 +62,11 @@ impl Resource<CreateCommand> for Node {
         if let Some(tcp_listener_address) = self.tcp_listener_address {
             args.insert("tcp-listener-address".into(), tcp_listener_address);
         }
-        if let Some(enable_http_server) = self.http_server {
-            args.insert("http-server".into(), enable_http_server);
+        if let Some(no_status_endpoint) = self.no_status_endpoint {
+            args.insert("no-status-endpoint".into(), no_status_endpoint);
         }
-        if let Some(http_server_port) = self.http_server_port {
-            args.insert("http-server-port".into(), http_server_port);
+        if let Some(status_endpoint_port) = self.status_endpoint_port {
+            args.insert("status-endpoint-port".into(), status_endpoint_port);
         }
         if let Some(identity) = self.identity {
             args.insert("identity".into(), identity);

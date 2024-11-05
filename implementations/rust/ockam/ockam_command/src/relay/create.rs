@@ -20,7 +20,7 @@ use ockam_multiaddr::{MultiAddr, Protocol};
 
 use crate::node::util::initialize_default_node;
 use crate::shared_args::RetryOpts;
-use crate::util::{print_deprecated_flag_warning, process_nodes_multiaddr};
+use crate::util::{print_warning_for_deprecated_flag_no_effect, process_nodes_multiaddr};
 use crate::{docs, Command, CommandGlobalOpts, Error, Result};
 
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
@@ -81,7 +81,7 @@ impl Command for CreateCommand {
 
     async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
         if self.project_relay {
-            print_deprecated_flag_warning(&opts, "--project-relay")?;
+            print_warning_for_deprecated_flag_no_effect(&opts, "--project-relay")?;
         }
 
         initialize_default_node(ctx, &opts).await?;
