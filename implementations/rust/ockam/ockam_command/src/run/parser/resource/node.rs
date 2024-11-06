@@ -33,6 +33,7 @@ pub struct Node {
     pub launch_config: Option<ArgValue>,
     #[serde(alias = "opentelemetry-context")]
     pub opentelemetry_context: Option<ArgValue>,
+    pub udp: Option<ArgValue>,
 }
 
 impl Resource<CreateCommand> for Node {
@@ -77,6 +78,11 @@ impl Resource<CreateCommand> for Node {
         if let Some(opentelemetry_context) = self.opentelemetry_context {
             args.insert("opentelemetry-context".into(), opentelemetry_context);
         }
+
+        if let Some(udp) = self.udp {
+            args.insert("udp".into(), udp);
+        }
+
         if args.is_empty() {
             return vec![];
         }

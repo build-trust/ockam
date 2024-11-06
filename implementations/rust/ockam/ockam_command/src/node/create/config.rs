@@ -211,6 +211,9 @@ impl NodeConfig {
             self.node.opentelemetry_context =
                 Some(serde_json::to_string(&context).into_diagnostic()?.into());
         }
+        if cmd.udp != default_cmd_args.udp {
+            self.node.udp = Some(cmd.udp.into());
+        }
 
         Ok(())
     }
