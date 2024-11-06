@@ -3,6 +3,8 @@ use clap::Args;
 use colorful::Colorful;
 use console::Term;
 
+use crate::node::NodeOpts;
+use crate::tcp::util::alias_parser;
 use crate::{docs, Command, CommandGlobalOpts};
 use ockam::Context;
 use ockam_api::colors::color_primary;
@@ -12,9 +14,7 @@ use ockam_api::nodes::service::tcp_inlets::Inlets;
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_api::terminal::{Terminal, TerminalStream};
 use ockam_core::api::Request;
-
-use crate::node::NodeOpts;
-use crate::tcp::util::alias_parser;
+use ockam_core::AsyncTryClone;
 
 use crate::terminal::tui::DeleteCommandTui;
 use crate::tui::PluralTerm;
@@ -47,26 +47,27 @@ impl Command for DeleteCommand {
     const NAME: &'static str = "tcp-inlet delete";
 
     async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
-        Ok(DeleteTui::run(ctx, opts, &self).await?)
+        Ok(DeleteTui::run(ctx, opts, self).await?)
     }
 }
 
-struct DeleteTui<'a> {
-    ctx: &'a Context,
+#[derive(AsyncTryClone)]
+struct DeleteTui {
+    ctx: Context,
     opts: CommandGlobalOpts,
     node: BackgroundNodeClient,
-    cmd: &'a DeleteCommand,
+    cmd: DeleteCommand,
 }
 
-impl<'a> DeleteTui<'a> {
+impl DeleteTui {
     pub async fn run(
-        ctx: &'a Context,
+        ctx: &Context,
         opts: CommandGlobalOpts,
-        cmd: &'a DeleteCommand,
+        cmd: DeleteCommand,
     ) -> miette::Result<()> {
         let node = BackgroundNodeClient::create(ctx, &opts.state, &cmd.node_opts.at_node).await?;
         let tui = Self {
-            ctx,
+            ctx: ctx.async_try_clone().await?,
             opts,
             node,
             cmd,
@@ -76,7 +77,7 @@ impl<'a> DeleteTui<'a> {
 }
 
 #[ockam_core::async_trait]
-impl<'a> DeleteCommandTui for DeleteTui<'a> {
+impl DeleteCommandTui for DeleteTui {
     const ITEM_NAME: PluralTerm = PluralTerm::TcpInlet;
 
     fn cmd_arg_item_name(&self) -> Option<String> {
@@ -96,14 +97,17 @@ impl<'a> DeleteCommandTui for DeleteTui<'a> {
     }
 
     async fn list_items_names(&self) -> miette::Result<Vec<String>> {
-        let inlets: Vec<InletStatus> = self.node.ask(self.ctx, Request::get("/node/inlet")).await?;
+        let inlets: Vec<InletStatus> = self
+            .node
+            .ask(&self.ctx, Request::get("/node/inlet"))
+            .await?;
         let names = inlets.into_iter().map(|i| i.alias).collect();
         Ok(names)
     }
 
     async fn delete_single(&self, item_name: &str) -> miette::Result<()> {
         let node_name = self.node.node_name();
-        self.node.delete_inlet(self.ctx, item_name).await?;
+        self.node.delete_inlet(&self.ctx, item_name).await?;
         self.terminal()
             .stdout()
             .plain(fmt_ok!(

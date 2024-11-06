@@ -1,20 +1,22 @@
+use super::authority_client;
+use crate::shared_args::IdentityOpts;
+use crate::{docs, Command, CommandGlobalOpts};
 use async_trait::async_trait;
 use clap::Args;
 use colorful::Colorful;
-use miette::miette;
-use serde::Serialize;
-use std::fmt::Display;
-use tracing::warn;
-
+use miette::{miette, IntoDiagnostic};
 use ockam::identity::Identifier;
 use ockam::Context;
 use ockam_api::authenticator::direct::Members;
 use ockam_api::colors::color_primary;
 use ockam_api::{fmt_info, fmt_ok};
-
-use super::authority_client;
-use crate::shared_args::IdentityOpts;
-use crate::{docs, Command, CommandGlobalOpts};
+use ockam_core::AsyncTryClone;
+use serde::Serialize;
+use std::fmt::Display;
+use std::time::Duration;
+use tokio::task::JoinSet;
+use tokio::time::sleep;
+use tracing::warn;
 
 const LONG_ABOUT: &str = include_str!("./static/delete/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
@@ -100,17 +102,34 @@ impl Command for DeleteCommand {
                 .collect::<Vec<_>>();
 
             let pb = opts.terminal.progress_bar();
-            for identifier in members_to_delete.into_iter() {
-                if let Some(pb) = &pb {
-                    pb.set_message(format!("Trying to delete member {identifier}..."));
+            if let Some(pb) = &pb {
+                pb.set_message("Deleting members...");
+            }
+            for chunk in members_to_delete.chunks(10).map(|c| c.to_vec()) {
+                let mut set: JoinSet<Option<Identifier>> = JoinSet::new();
+                for identifier in chunk {
+                    let authority_node_client = authority_node_client.clone();
+                    let ctx = ctx.async_try_clone().await?;
+                    set.spawn(async move {
+                        sleep(tokio_retry::strategy::jitter(Duration::from_millis(500))).await;
+                        if let Err(e) = authority_node_client
+                            .delete_member(&ctx, identifier.clone())
+                            .await
+                        {
+                            warn!("Failed to delete member {identifier}: {e}",);
+                            None
+                        } else {
+                            Some(identifier)
+                        }
+                    });
                 }
-                if let Err(e) = authority_node_client
-                    .delete_member(ctx, identifier.clone())
-                    .await
-                {
-                    warn!("Failed to delete member {}: {}", identifier, e);
-                } else {
-                    output.identifiers.push(identifier.clone());
+                while let Some(res) = set.join_next().await {
+                    if let Some(identifier) = res.into_diagnostic()? {
+                        output.identifiers.push(identifier);
+                        if let Some(pb) = &pb {
+                            pb.inc(1);
+                        }
+                    }
                 }
             }
         } else {

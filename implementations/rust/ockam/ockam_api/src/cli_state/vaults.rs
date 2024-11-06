@@ -1,19 +1,18 @@
 use colorful::Colorful;
+use ockam::identity::{Identities, Vault};
+use ockam_core::errcode::{Kind, Origin};
+use ockam_node::database::SqlxDatabase;
+use ockam_vault_aws::AwsSigningVault;
 use std::fmt::Write;
 use std::fmt::{Debug, Display, Formatter};
 use std::fs::OpenOptions;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use ockam::identity::{Identities, Vault};
-use ockam_core::errcode::{Kind, Origin};
-use ockam_node::database::SqlxDatabase;
-use ockam_vault_aws::AwsSigningVault;
-
 use crate::cli_state::{random_name, CliState, CliStateError, Result};
 use crate::colors::color_primary;
 use crate::output::Output;
-use crate::{fmt_log, fmt_ok};
+use crate::{fmt_log, fmt_ok, fmt_warn};
 
 static DEFAULT_VAULT_NAME: &str = "default";
 
@@ -122,9 +121,15 @@ impl CliState {
         let identities_repository = self.identities_repository();
         let identities = identities_repository.get_named_identities().await?;
         for identity in identities {
-            identities_repository
+            if let Err(err) = identities_repository
                 .delete_identity(&identity.name())
-                .await?;
+                .await
+            {
+                self.notify_message(fmt_warn!(
+                    "Failed to delete the identity {}: {err}",
+                    color_primary(identity.name())
+                ));
+            }
         }
         Ok(())
     }
@@ -134,7 +139,12 @@ impl CliState {
     pub async fn delete_all_named_vaults(&self) -> Result<()> {
         let vaults = self.vaults_repository().get_named_vaults().await?;
         for vault in vaults {
-            self.delete_named_vault(&vault.name()).await?;
+            if let Err(err) = self.delete_named_vault(&vault.name()).await {
+                self.notify_message(fmt_warn!(
+                    "Failed to delete the vault {}: {err}",
+                    color_primary(vault.name())
+                ));
+            }
         }
         Ok(())
     }

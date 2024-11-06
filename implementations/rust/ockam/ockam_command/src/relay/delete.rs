@@ -58,6 +58,7 @@ impl DeleteCommand {
     }
 }
 
+#[derive(AsyncTryClone)]
 struct DeleteTui {
     ctx: Context,
     opts: CommandGlobalOpts,

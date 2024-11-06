@@ -7,6 +7,7 @@ use crate::CommandGlobalOpts;
 use ockam_api::cloud::space::Spaces;
 use ockam_api::colors::OckamColor;
 use ockam_api::nodes::InMemoryNode;
+use ockam_api::terminal::notification::NotificationHandler;
 use ockam_api::terminal::ConfirmResult;
 use ockam_api::{color, fmt_ok, CliState};
 use ockam_node::Context;
@@ -74,7 +75,11 @@ impl ResetCommand {
                 }
             }
         }
-        opts.state.reset().await?;
+        {
+            let _notification_handler =
+                NotificationHandler::start(&opts.state, opts.terminal.clone());
+            opts.state.reset().await?;
+        }
 
         #[cfg(ebpf_alias)]
         ockam::tcp::TcpTransport::detach_all_ockam_ebpfs_globally();

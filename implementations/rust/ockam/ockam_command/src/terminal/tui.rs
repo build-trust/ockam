@@ -1,10 +1,13 @@
 use colorful::Colorful;
 use console::Term;
 use miette::{miette, IntoDiagnostic};
-
 use ockam_api::colors::color_primary;
 use ockam_api::terminal::{Terminal, TerminalStream};
 use ockam_api::{fmt_info, fmt_warn};
+use ockam_core::AsyncTryClone;
+use std::time::Duration;
+use tokio::task::JoinSet;
+use tokio::time::sleep;
 
 #[ockam_core::async_trait]
 pub trait ShowCommandTui {
@@ -109,7 +112,10 @@ fn get_opt_node_name_message(node_name: Option<&str>) -> String {
 }
 
 #[ockam_core::async_trait]
-pub trait DeleteCommandTui {
+pub trait DeleteCommandTui: AsyncTryClone + Send
+where
+    Self: 'static,
+{
     const ITEM_NAME: PluralTerm;
 
     fn cmd_arg_item_name(&self) -> Option<String>;
@@ -120,6 +126,10 @@ pub trait DeleteCommandTui {
     async fn list_items_names(&self) -> miette::Result<Vec<String>>;
     async fn delete_single(&self, item_name: &str) -> miette::Result<()>;
     async fn delete_multiple(&self, items_names: Vec<String>) -> miette::Result<()> {
+        self.delete_multiple_blocking(items_names).await
+    }
+
+    async fn delete_multiple_blocking(&self, items_names: Vec<String>) -> miette::Result<()> {
         for item_name in items_names {
             if self.delete_single(&item_name).await.is_err() {
                 self.terminal()
@@ -131,6 +141,32 @@ pub trait DeleteCommandTui {
                     ))
                     .write_line()?;
             }
+        }
+        Ok(())
+    }
+
+    async fn delete_multiple_async(&self, items_names: Vec<String>) -> miette::Result<()> {
+        for chunk in items_names.chunks(10).map(|c| c.to_vec()) {
+            let mut set: JoinSet<miette::Result<()>> = JoinSet::new();
+            for item_name in chunk {
+                let _self = self.async_try_clone().await.into_diagnostic()?;
+                set.spawn(async move {
+                    sleep(tokio_retry::strategy::jitter(Duration::from_millis(500))).await;
+                    if _self.delete_single(&item_name).await.is_err() {
+                        _self
+                            .terminal()
+                            .stdout()
+                            .plain(fmt_warn!(
+                                "Failed to delete {} {}",
+                                Self::ITEM_NAME.singular(),
+                                color_primary(&item_name)
+                            ))
+                            .write_line()?;
+                    }
+                    Ok(())
+                });
+            }
+            set.join_all().await;
         }
         Ok(())
     }

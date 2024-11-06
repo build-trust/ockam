@@ -13,6 +13,8 @@ use ockam_api::colors::color_primary;
 use ockam_api::nodes::InMemoryNode;
 use ockam_api::terminal::{ConfirmResult, Terminal, TerminalStream};
 use ockam_api::{fmt_ok, fmt_warn};
+use ockam_core::AsyncTryClone;
+use std::sync::Arc;
 
 /// Delete an Admin from a Space
 #[derive(Clone, Debug, Args)]
@@ -45,18 +47,19 @@ impl Command for DeleteCommand {
     }
 }
 
-pub struct DeleteTui<'a> {
-    ctx: &'a Context,
+#[derive(AsyncTryClone)]
+pub struct DeleteTui {
+    ctx: Context,
     opts: CommandGlobalOpts,
-    node: InMemoryNode,
+    node: Arc<InMemoryNode>,
     cmd: DeleteCommand,
     space: Space,
     identity_enrolled_email: Option<EmailAddress>,
 }
 
-impl<'a> DeleteTui<'a> {
+impl DeleteTui {
     pub async fn run(
-        ctx: &'a Context,
+        ctx: &Context,
         opts: CommandGlobalOpts,
         cmd: DeleteCommand,
     ) -> miette::Result<()> {
@@ -81,9 +84,9 @@ impl<'a> DeleteTui<'a> {
         }
 
         let tui = Self {
-            ctx,
+            ctx: ctx.async_try_clone().await?,
             opts,
-            node,
+            node: Arc::new(node),
             cmd,
             space,
             identity_enrolled_email: identity_enrollment.status().email().cloned(),
@@ -93,7 +96,7 @@ impl<'a> DeleteTui<'a> {
 }
 
 #[ockam_core::async_trait]
-impl<'a> DeleteCommandTui for DeleteTui<'a> {
+impl DeleteCommandTui for DeleteTui {
     const ITEM_NAME: PluralTerm = PluralTerm::SpaceAdmin;
 
     fn cmd_arg_item_name(&self) -> Option<String> {
@@ -115,7 +118,7 @@ impl<'a> DeleteCommandTui for DeleteTui<'a> {
     async fn list_items_names(&self) -> miette::Result<Vec<String>> {
         Ok(self
             .node
-            .list_space_admins(self.ctx, &self.space.space_id())
+            .list_space_admins(&self.ctx, &self.space.space_id())
             .await?
             .into_iter()
             .map(|a| a.email)
@@ -144,7 +147,7 @@ impl<'a> DeleteCommandTui for DeleteTui<'a> {
         }
         self.node
             .delete_space_admin(
-                self.ctx,
+                &self.ctx,
                 &self.space.space_id(),
                 &EmailAddress::parse(item_name).into_diagnostic()?,
             )

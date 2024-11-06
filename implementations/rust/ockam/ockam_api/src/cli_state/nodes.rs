@@ -6,9 +6,6 @@ use std::process;
 use colorful::Colorful;
 use nix::errno::Errno;
 use nix::sys::signal;
-use serde::Serialize;
-use sysinfo::{Pid, ProcessStatus, ProcessesToUpdate, System};
-
 use ockam::identity::utils::now;
 use ockam::identity::Identifier;
 use ockam::tcp::TcpListener;
@@ -16,6 +13,8 @@ use ockam_core::errcode::{Kind, Origin};
 use ockam_core::Error;
 use ockam_multiaddr::proto::{DnsAddr, Node, Tcp};
 use ockam_multiaddr::MultiAddr;
+use serde::Serialize;
+use sysinfo::{Pid, ProcessStatus, ProcessesToUpdate, System};
 
 use crate::cli_state::{random_name, NamedVault, Result};
 use crate::cli_state::{CliState, CliStateError};
@@ -125,7 +124,12 @@ impl CliState {
     pub async fn delete_all_nodes(&self) -> Result<()> {
         let nodes = self.nodes_repository().get_nodes().await?;
         for node in nodes {
-            self.delete_node(&node.name()).await?;
+            if let Err(err) = self.delete_node(&node.name()).await {
+                self.notify_message(fmt_warn!(
+                    "Failed to delete the node {}: {err}",
+                    color_primary(node.name())
+                ));
+            }
         }
         Ok(())
     }
@@ -185,31 +189,34 @@ impl CliState {
             // Avoid killing the current process, return successfully instead.
             // This is needed when deleting nodes from another node, for example, during a reset
             if pid == process::id() {
+                debug!(name=%node_name, "node is the current process, skipping sending kill signal");
                 return Ok(());
             }
 
             // Try first with SIGTERM, if it fails, try again with SIGKILL
-            let mut err = None;
-            for signal in [signal::Signal::SIGTERM, signal::Signal::SIGKILL] {
-                if signal == signal::Signal::SIGKILL {
-                    self.notify_message(fmt_warn!(
-                        "Failed to stop node {} with {}, trying with {}",
+            if let Err(e) = self
+                .kill_node_process(node_name, pid, signal::Signal::SIGTERM)
+                .await
+            {
+                warn!(name=%node_name, %pid, %e, "failed to stop node process with SIGTERM");
+                self.notify_progress(format!(
+                    "Failed to stop node {} with {}, trying with {}",
+                    color_primary(node_name),
+                    color_primary("SIGTERM"),
+                    color_primary("SIGKILL")
+                ));
+                if let Err(e) = self
+                    .kill_node_process(node_name, pid, signal::Signal::SIGKILL)
+                    .await
+                {
+                    error!(name=%node_name, %pid, %e, "failed to stop node process with SIGKILL");
+                    return Err(e);
+                } else {
+                    self.notify_progress_finish(format!(
+                        "The node {} has been stopped",
                         color_primary(node_name),
-                        color_primary("SIGTERM"),
-                        color_primary("SIGKILL")
                     ));
                 }
-                match self.kill_node_process(node_name, pid, signal).await {
-                    Ok(_) => {
-                        break;
-                    }
-                    Err(e) => {
-                        err = Some(e);
-                    }
-                }
-            }
-            if let Some(err) = err {
-                return Err(err);
             }
         }
         self.nodes_repository().set_no_node_pid(node_name).await?;
@@ -223,55 +230,64 @@ impl CliState {
         pid: u32,
         signal: signal::Signal,
     ) -> Result<()> {
+        debug!(%pid, %signal, "sending kill signals to node's process");
         let pid = nix::unistd::Pid::from_raw(pid as i32);
-        signal::kill(pid, signal)
-            .or_else(|e| {
-                if e == Errno::ESRCH {
-                    tracing::warn!(node = %node_name, %pid, "No such process");
-                    Ok(())
-                } else {
-                    Err(e)
-                }
-            })
-            .map_err(|e| {
-                CliStateError::Io(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    format!("failed to stop PID `{pid}` with error `{e}`"),
-                ))
-            })?;
-        debug!(name = %node_name, %pid, %signal, "sent stop signal to node's process");
+        let _ = self.send_kill_signal(pid, signal);
 
         // Wait until the node has fully stopped
         let timeout = std::time::Duration::from_millis(100);
         let max_attempts = std::time::Duration::from_secs(5).as_millis() / timeout.as_millis();
         let mut attempts = 0;
-        let mut sys = System::new();
-        let pid = Pid::from_u32(pid.as_raw() as u32);
         loop {
-            sys.refresh_processes(ProcessesToUpdate::All);
-            if sys.process(pid).is_none() {
-                info!(name = %node_name, %pid, "node process exited");
-                self.notify_progress_finish_and_clear();
-                return Ok(());
+            match self.send_kill_signal(pid, signal) {
+                Ok(()) => return Ok(()),
+                Err(err) => {
+                    // Return if max attempts have been reached
+                    if attempts > max_attempts {
+                        warn!(name = %node_name, %pid, %signal, "node process did not exit");
+                        self.notify_progress_finish_and_clear();
+                        return Err(err);
+                    }
+                    // Notify the user that the node is stopping if it takes too long
+                    if attempts == 5 {
+                        self.notify_progress(format!(
+                            "Waiting for node's {} process {} to stop",
+                            color_primary(node_name),
+                            color_primary(pid)
+                        ));
+                    }
+                    attempts += 1;
+                    tokio::time::sleep(timeout).await;
+                }
             }
-            if attempts > max_attempts {
-                warn!(name = %node_name, %pid, %signal, "node process did not exit");
-                self.notify_progress_finish_and_clear();
-                return Err(CliStateError::Io(std::io::Error::new(
+        }
+    }
+
+    /// Sends the kill signal to a process
+    ///
+    /// Returns Ok only if the process has been killed (PID doesn't exist), otherwise an error
+    fn send_kill_signal(&self, pid: nix::unistd::Pid, signal: signal::Signal) -> Result<()> {
+        let res = signal::kill(pid, signal);
+        match res {
+            Ok(_) => Err(CliStateError::Other(
+                "kill signal sent, process might still be alive".into(),
+            )),
+            Err(err) => {
+                let base_error = CliStateError::Io(std::io::Error::new(
                     std::io::ErrorKind::Other,
-                    format!("failed to stop PID `{pid}`"),
-                )));
-            }
-            // notify the user that the node is stopping if it takes too long
-            if attempts == 5 {
-                self.notify_progress(format!(
-                    "Waiting for node's {} process {} to stop",
-                    color_primary(node_name),
-                    color_primary(pid)
+                    format!("failed to stop PID {pid} with error {err}"),
                 ));
+                match err {
+                    // No such process
+                    Errno::ESRCH => Ok(()),
+                    // Invalid signal
+                    Errno::EINVAL => Err(base_error),
+                    // Operation not permitted
+                    Errno::EPERM => Err(base_error),
+                    // The rest of the errors are unexpected for this function
+                    _ => Err(base_error),
+                }
             }
-            attempts += 1;
-            tokio::time::sleep(timeout).await;
         }
     }
 

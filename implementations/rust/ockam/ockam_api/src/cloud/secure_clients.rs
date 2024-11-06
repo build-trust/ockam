@@ -241,6 +241,7 @@ impl NodeManager {
     }
 }
 
+#[derive(Clone)]
 pub struct AuthorityNodeClient {
     secure_client: SecureClient,
 }

@@ -1,3 +1,6 @@
+use crate::terminal::tui::DeleteCommandTui;
+use crate::tui::PluralTerm;
+use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts};
 use clap::Args;
 use colorful::Colorful;
@@ -5,10 +8,7 @@ use console::Term;
 use ockam_api::colors::OckamColor;
 use ockam_api::terminal::{Terminal, TerminalStream};
 use ockam_api::{color, fmt_ok};
-
-use crate::terminal::tui::DeleteCommandTui;
-use crate::tui::PluralTerm;
-use crate::util::async_cmd;
+use ockam_core::AsyncTryClone;
 
 const LONG_ABOUT: &str = include_str!("./static/delete/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
@@ -47,6 +47,7 @@ impl DeleteCommand {
     }
 }
 
+#[derive(AsyncTryClone)]
 pub struct DeleteTui {
     opts: CommandGlobalOpts,
     cmd: DeleteCommand,

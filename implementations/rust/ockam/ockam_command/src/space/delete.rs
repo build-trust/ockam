@@ -2,7 +2,11 @@ use async_trait::async_trait;
 use clap::Args;
 use colorful::Colorful;
 use console::Term;
+use std::sync::Arc;
 
+use crate::shared_args::IdentityOpts;
+use crate::terminal::tui::DeleteCommandTui;
+use crate::tui::PluralTerm;
 use crate::{docs, Command, CommandGlobalOpts};
 use ockam::Context;
 use ockam_api::cloud::space::Spaces;
@@ -10,10 +14,7 @@ use ockam_api::colors::OckamColor;
 use ockam_api::nodes::InMemoryNode;
 use ockam_api::terminal::{Terminal, TerminalStream};
 use ockam_api::{color, fmt_ok};
-
-use crate::shared_args::IdentityOpts;
-use crate::terminal::tui::DeleteCommandTui;
-use crate::tui::PluralTerm;
+use ockam_core::AsyncTryClone;
 
 const LONG_ABOUT: &str = include_str!("./static/delete/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
@@ -46,24 +47,25 @@ impl Command for DeleteCommand {
     }
 }
 
-pub struct DeleteTui<'a> {
-    ctx: &'a Context,
+#[derive(AsyncTryClone)]
+pub struct DeleteTui {
+    ctx: Context,
     opts: CommandGlobalOpts,
-    node: InMemoryNode,
+    node: Arc<InMemoryNode>,
     cmd: DeleteCommand,
 }
 
-impl<'a> DeleteTui<'a> {
+impl DeleteTui {
     pub async fn run(
-        ctx: &'a Context,
+        ctx: &Context,
         opts: CommandGlobalOpts,
         cmd: DeleteCommand,
     ) -> miette::Result<()> {
         let node = InMemoryNode::start(ctx, &opts.state).await?;
         let tui = Self {
-            ctx,
+            ctx: ctx.async_try_clone().await?,
             opts,
-            node,
+            node: Arc::new(node),
             cmd,
         };
         tui.delete().await
@@ -71,7 +73,7 @@ impl<'a> DeleteTui<'a> {
 }
 
 #[ockam_core::async_trait]
-impl<'a> DeleteCommandTui for DeleteTui<'a> {
+impl DeleteCommandTui for DeleteTui {
     const ITEM_NAME: PluralTerm = PluralTerm::Space;
 
     fn cmd_arg_item_name(&self) -> Option<String> {
@@ -102,7 +104,7 @@ impl<'a> DeleteCommandTui for DeleteTui<'a> {
     }
 
     async fn delete_single(&self, item_name: &str) -> miette::Result<()> {
-        self.node.delete_space_by_name(self.ctx, item_name).await?;
+        self.node.delete_space_by_name(&self.ctx, item_name).await?;
 
         self.terminal()
             .stdout()
