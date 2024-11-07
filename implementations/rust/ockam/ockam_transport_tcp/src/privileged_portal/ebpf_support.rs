@@ -138,7 +138,7 @@ impl TcpTransportEbpfSupport {
         // like to specify the eBPF program at runtime rather than at compile-time, you can
         // reach for `Bpf::load_file` instead.
 
-        let ebpf_binary = aya::include_bytes_aligned!("../../../ockam_ebpf/ockam_ebpf");
+        let ebpf_binary = ockam_ebpf::EBPF_BINARY;
         let mut ebpf = Ebpf::load(ebpf_binary).map_err(map_ebpf_error)?;
         // eBPF can be read from the filesystem in the runtime for development purposes
         // let ebpf_binary = std::fs::read(PATH).unwrap();

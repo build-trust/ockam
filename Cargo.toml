@@ -11,8 +11,6 @@ members = [
   "tools/docs/example_test_helper",
   "tools/stress-test",
 ]
-# See `implementations/rust/ockam/ockam_ebpf/README.md`
-exclude = ["implementations/rust/ockam/ockam_ebpf"]
 
 # Coverage profile for generating code coverage with grcov.
 #
