@@ -37,6 +37,12 @@ mod checksum_helpers;
 mod common;
 mod conversion;
 
+#[cfg(feature = "logging")]
+mod logger_aya;
+
+#[cfg(not(feature = "logging"))]
+mod logger_noop;
+
 use crate::common::Direction;
 
 #[classifier]

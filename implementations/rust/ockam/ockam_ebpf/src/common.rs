@@ -9,9 +9,9 @@ use aya_ebpf::bindings::TC_ACT_PIPE;
 use aya_ebpf::macros::map;
 use aya_ebpf::maps::HashMap;
 use aya_ebpf::programs::TcContext;
-use aya_log_ebpf::{error, trace, warn};
 
 use crate::conversion::{convert_ockam_to_tcp, convert_tcp_to_ockam};
+use crate::{error, trace, warn};
 
 pub type Proto = u8;
 
@@ -140,7 +140,7 @@ fn handle_ingress_tcp_protocol(ctx: &TcContext, ipv4hdr: *mut Ipv4Hdr) -> Result
             syn,
             ack,
             fin,
-            rst,
+            rst
         );
 
         convert_tcp_to_ockam(ctx, ipv4hdr, proto);
@@ -169,7 +169,7 @@ fn handle_ingress_tcp_protocol(ctx: &TcContext, ipv4hdr: *mut Ipv4Hdr) -> Result
             syn,
             ack,
             fin,
-            rst,
+            rst
         );
 
         convert_tcp_to_ockam(ctx, ipv4hdr, proto);
@@ -193,7 +193,7 @@ fn handle_ingress_tcp_protocol(ctx: &TcContext, ipv4hdr: *mut Ipv4Hdr) -> Result
         syn,
         ack,
         fin,
-        rst,
+        rst
     );
 
     Ok(TC_ACT_PIPE)
@@ -271,7 +271,7 @@ fn handle_egress_ockam_protocol(ctx: &TcContext, ipv4hdr: *mut Ipv4Hdr) -> Resul
                 syn,
                 ack,
                 fin,
-                rst,
+                rst
             );
 
             convert_ockam_to_tcp(ctx, ipv4hdr, tcphdr);
@@ -300,7 +300,7 @@ fn handle_egress_ockam_protocol(ctx: &TcContext, ipv4hdr: *mut Ipv4Hdr) -> Resul
                 syn,
                 ack,
                 fin,
-                rst,
+                rst
             );
 
             convert_ockam_to_tcp(ctx, ipv4hdr, tcphdr);
@@ -326,7 +326,7 @@ fn handle_egress_ockam_protocol(ctx: &TcContext, ipv4hdr: *mut Ipv4Hdr) -> Resul
         syn,
         ack,
         fin,
-        rst,
+        rst
     );
 
     Ok(TC_ACT_PIPE)

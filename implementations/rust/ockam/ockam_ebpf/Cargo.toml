@@ -15,9 +15,13 @@ description = """
 eBPF program used by Ockam TCP Portals
 """
 
+[features]
+default = []
+logging = ["aya-log-ebpf"]
+
 [dependencies]
 aya-ebpf = "0.1.1"
-aya-log-ebpf = "0.1.1"
+aya-log-ebpf = { version = "0.1.1", optional = true }
 network-types = "0.0.7"
 
 [[bin]]
