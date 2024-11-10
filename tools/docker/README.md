@@ -12,10 +12,28 @@ docker build \
   tools/docker/builder
 ```
 
-Run the builder:
+## Ockam
+
+This docker image creates an Ockam image, binary is required to be prebuilt locally as a `musl build` preferrably using [cargo-cross](https://github.com/cross-rs/cross) and then imported to your docker image.
+
+From the root directory:
+
+
+```bash
+cross build --bin ockam --target "$target" --no-default-features -F ockam_command/aws-lc -F ockam_command/orchestrator;
+docker build \
+  --tag ockam:latest \
+  --tag ghcr.io/build-trust/ockam:latest \
+  --file tools/docker/ockam/Dockerfile \
+  --build-arg BINARY_PATH="$PATH_TO_BINARY" .
+
+# Where BINARY_PATH is the path to where your pre-built `musl` Ockam binary is located.
+```
+
+Run Ockam image:
 
 ```
-docker run --rm -it -e HOST_USER_ID=$(id -u) --volume $(pwd):/work ockam-builder:latest bash
+docker run --rm -it ockam:latest --help
 ```
 
 ## Cloud node

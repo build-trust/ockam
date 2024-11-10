@@ -27,12 +27,6 @@ repository = "https://github.com/build-trust/ockam/implementations/rust/ockam/oc
 rust-version = "1.70.0"
 description = "End-to-end encryption and mutual authentication for distributed applications."
 
-[package.metadata.cross.target.aarch64-unknown-linux-musl]
-dockerfile = "../../../../tools/cross/Cross.Dockerfile.aarch64"
-
-[package.metadata.cross.target.armv7-unknown-linux-musleabihf]
-dockerfile = "../../../../tools/cross/Cross.Dockerfile.armv7"
-
 [[bin]]
 # You may be wondering "Why are the tests and docs disabled?". The long and
 # short of it is: To avoid certain bugs in `rustdoc`, `cargo`, and other tools
