@@ -166,11 +166,7 @@ impl Command for CreateCommand {
     async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
         initialize_default_node(ctx, &opts).await?;
 
-        let (inlet_str, outlet_str) = if self.privileged {
-            ("Privileged TCP Inlet", "Privileged TCP Outlet")
-        } else {
-            ("TCP Inlet", "TCP Outlet")
-        };
+        let privileged = self.privileged;
 
         let cmd = self.parse_args(&opts).await?;
 
@@ -181,8 +177,7 @@ impl Command for CreateCommand {
             let pb = opts.terminal.progress_bar();
             if let Some(pb) = pb.as_ref() {
                 pb.set_message(format!(
-                    "Creating {} at {}...\n",
-                    color_primary_alt(inlet_str),
+                    "Creating TCP Inlet at {}...\n",
                     color_primary(cmd.from.to_string())
                 ));
             }
@@ -224,8 +219,7 @@ impl Command for CreateCommand {
 
                         if let Some(pb) = pb.as_ref() {
                             pb.set_message(format!(
-                                "Waiting for {} {} to be available... Retrying momentarily\n",
-                                color_primary_alt(inlet_str),
+                                "Waiting for TCP Inlet {} to be available... Retrying momentarily\n",
                                 color_primary(&cmd.to)
                             ));
                         }
@@ -239,37 +233,43 @@ impl Command for CreateCommand {
         cmd.add_inlet_created_event(&opts, &node_name, &inlet_status)
             .await?;
 
-        let created_message = fmt_ok!(
-            "Created a new {} in the Node {} bound to {}\n",
-            color_primary_alt(inlet_str),
+        let created_message = format!(
+            "Created a new TCP Inlet in the Node {} bound to {}\n",
             color_primary(&node_name),
-            color_primary(cmd.from.to_string())
+            color_primary(cmd.from.to_string()),
         );
 
-        let plain = if cmd.no_connection_wait {
+        let created_message = fmt_ok!("{}", created_message);
+
+        let mut plain = if cmd.no_connection_wait {
             created_message
                 + &fmt_log!(
-                    "It will automatically connect to the {} at {} as soon as it is available",
-                    color_primary_alt(outlet_str),
+                    "It will automatically connect to the TCP Outlet at {} as soon as it is available\n",
                     color_primary(&cmd.to)
                 )
         } else if inlet_status.status == ConnectionStatus::Up {
             created_message
                 + &fmt_log!(
-                    "sending traffic to the {} at {}",
-                    color_primary_alt(outlet_str),
+                    "sending traffic to the TCP Outlet at {}\n",
                     color_primary(&cmd.to)
                 )
         } else {
-            fmt_warn!(
-                "A {} was created in the Node {} bound to {} but failed to connect to the {} at {}\n",
-                color_primary_alt(inlet_str),
+            let mut msg = fmt_warn!("A TCP Inlet was created in the Node {} bound to {} but failed to connect to the TCP Outlet at {}\n",
                 color_primary(&node_name),
                 color_primary(cmd.from.to_string()),
-                color_primary_alt(outlet_str),
-                color_primary(&cmd.to)
-            ) + &fmt_info!("It will retry to connect automatically")
+                color_primary(&cmd.to));
+
+            msg += &fmt_info!("It will retry to connect automatically\n");
+
+            msg
         };
+
+        if privileged {
+            plain += &fmt_info!(
+                "This Inlet is operating in {} mode\n",
+                color_primary_alt("privileged".to_string())
+            );
+        }
 
         opts.terminal
             .stdout()

@@ -53,9 +53,9 @@ impl TcpTransport {
         Ok(())
     }
 
-    /// Create a Raw Inlet
+    /// Create a Privileged Inlet
     #[instrument(skip(self), fields(outlet_route=?outlet_route.clone()))]
-    pub async fn create_raw_inlet(
+    pub async fn create_privileged_inlet(
         &self,
         bind_addr: impl Into<String> + Clone + Debug,
         outlet_route: impl Into<Route> + Clone + Debug,
@@ -158,17 +158,17 @@ impl TcpTransport {
         ))
     }
 
-    /// Stop the Raw Inlet
+    /// Stop the Privileged Inlet
     #[instrument(skip(self), fields(port=port))]
-    pub async fn stop_raw_inlet(&self, port: Port) -> Result<()> {
+    pub async fn stop_privilegged_inlet(&self, port: Port) -> Result<()> {
         self.ebpf_support.inlet_registry.delete_inlet(port);
 
         Ok(())
     }
 
-    /// Create a Raw Outlet
+    /// Create a Privileged Outlet
     #[instrument(skip(self), fields(address = ? address.clone().into(), peer=peer.clone().to_string()))]
-    pub async fn create_raw_outlet(
+    pub async fn create_privileged_outlet(
         &self,
         address: impl Into<Address> + Clone + Debug,
         peer: HostnamePort,
@@ -238,9 +238,12 @@ impl TcpTransport {
         Ok(())
     }
 
-    /// Stop the Raw Inlet
+    /// Stop the Privileged Inlet
     #[instrument(skip(self), fields(address = % addr.clone().into()))]
-    pub async fn stop_raw_outlet(&self, addr: impl Into<Address> + Clone + Debug) -> Result<()> {
+    pub async fn stop_privileged_outlet(
+        &self,
+        addr: impl Into<Address> + Clone + Debug,
+    ) -> Result<()> {
         self.ctx().stop_worker(addr).await?;
 
         // TODO: eBPF Remove from the registry

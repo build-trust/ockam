@@ -58,6 +58,7 @@ impl NodeManagerWorker {
                     outlet_info.to,
                     outlet_info.worker_addr.clone(),
                     None,
+                    outlet_info.privileged,
                 ))),
                 None => Err(Response::bad_request_no_request(&format!(
                     "Outlet with address {worker_addr} not found"
@@ -166,7 +167,7 @@ impl NodeManager {
             #[cfg(privileged_portals_support)]
             {
                 self.tcp_transport
-                    .create_raw_outlet(worker_addr.clone(), to.clone(), options)
+                    .create_privileged_outlet(worker_addr.clone(), to.clone(), options)
                     .await
             }
             #[cfg(not(privileged_portals_support))]
@@ -190,12 +191,12 @@ impl NodeManager {
                     .outlets
                     .insert(
                         worker_addr.clone(),
-                        OutletInfo::new(to.clone(), Some(&worker_addr)),
+                        OutletInfo::new(to.clone(), Some(&worker_addr), privileged),
                     )
                     .await;
 
                 self.cli_state
-                    .create_tcp_outlet(&self.node_name, &to, &worker_addr, &None)
+                    .create_tcp_outlet(&self.node_name, &to, &worker_addr, &None, privileged)
                     .await?
             }
             Err(e) => {
@@ -245,6 +246,7 @@ impl NodeManager {
                 outlet_to_show.to,
                 outlet_to_show.worker_addr.clone(),
                 None,
+                outlet_to_show.privileged,
             ))
         } else {
             error!(%worker_addr, "Outlet not found in the node registry");

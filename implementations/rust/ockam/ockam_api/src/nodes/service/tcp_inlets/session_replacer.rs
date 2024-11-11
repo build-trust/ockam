@@ -171,7 +171,7 @@ impl InletSessionReplacer {
                     {
                         node_manager
                             .tcp_transport
-                            .create_raw_inlet(
+                            .create_privileged_inlet(
                                 self.listen_addr.clone(),
                                 normalized_route.clone(),
                                 options,

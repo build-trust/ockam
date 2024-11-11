@@ -37,14 +37,21 @@ pub struct TcpInlet {
     bind_addr: SocketAddr,
     outlet_addr: MultiAddr,
     alias: String,
+    privileged: bool,
 }
 
 impl TcpInlet {
-    pub fn new(bind_addr: &SocketAddr, outlet_addr: &MultiAddr, alias: &str) -> TcpInlet {
+    pub fn new(
+        bind_addr: &SocketAddr,
+        outlet_addr: &MultiAddr,
+        alias: &str,
+        privileged: bool,
+    ) -> TcpInlet {
         Self {
             bind_addr: *bind_addr,
             outlet_addr: outlet_addr.clone(),
             alias: alias.to_string(),
+            privileged,
         }
     }
 
@@ -58,5 +65,9 @@ impl TcpInlet {
 
     pub fn alias(&self) -> String {
         self.alias.clone()
+    }
+
+    pub fn privileged(&self) -> bool {
+        self.privileged
     }
 }

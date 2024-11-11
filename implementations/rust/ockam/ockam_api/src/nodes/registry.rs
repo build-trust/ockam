@@ -127,14 +127,21 @@ pub(crate) struct InletInfo {
     pub(crate) bind_addr: String,
     pub(crate) outlet_addr: MultiAddr,
     pub(crate) session: Arc<Mutex<Session>>,
+    pub(crate) privileged: bool,
 }
 
 impl InletInfo {
-    pub(crate) fn new(bind_addr: &str, outlet_addr: MultiAddr, session: Session) -> Self {
+    pub(crate) fn new(
+        bind_addr: &str,
+        outlet_addr: MultiAddr,
+        session: Session,
+        privileged: bool,
+    ) -> Self {
         Self {
             bind_addr: bind_addr.to_owned(),
             outlet_addr,
             session: Arc::new(Mutex::new(session)),
+            privileged,
         }
     }
 }
@@ -143,15 +150,20 @@ impl InletInfo {
 pub struct OutletInfo {
     pub(crate) to: HostnamePort,
     pub(crate) worker_addr: Address,
+    pub(crate) privileged: bool,
 }
 
 impl OutletInfo {
-    pub(crate) fn new(to: HostnamePort, worker_addr: Option<&Address>) -> Self {
+    pub(crate) fn new(to: HostnamePort, worker_addr: Option<&Address>, privileged: bool) -> Self {
         let worker_addr = match worker_addr {
             Some(addr) => addr.clone(),
             None => Address::from_string(""),
         };
-        Self { to, worker_addr }
+        Self {
+            to,
+            worker_addr,
+            privileged,
+        }
     }
 }
 
@@ -334,6 +346,6 @@ mod tests {
     }
 
     fn outlet_info(worker_addr: Address) -> OutletInfo {
-        OutletInfo::new(HostnamePort::new("127.0.0.1", 0), Some(&worker_addr))
+        OutletInfo::new(HostnamePort::new("127.0.0.1", 0), Some(&worker_addr), true)
     }
 }

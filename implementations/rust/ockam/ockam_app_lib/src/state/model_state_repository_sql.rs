@@ -52,14 +52,15 @@ impl ModelStateRepository for ModelStateSqlxDatabase {
         for tcp_outlet_status in &model_state.tcp_outlets {
             let query = query(
                 r#"
-                 INSERT INTO tcp_outlet_status (node_name, socket_addr, worker_addr, payload)
-                 VALUES ($1, $2, $3, $4)
+                 INSERT INTO tcp_outlet_status (node_name, socket_addr, worker_addr, payload, privileged)
+                 VALUES ($1, $2, $3, $4, $5)
                  ON CONFLICT DO NOTHING"#,
             )
             .bind(node_name)
             .bind(tcp_outlet_status.to.to_string())
             .bind(tcp_outlet_status.worker_addr.to_string())
-            .bind(tcp_outlet_status.payload.as_ref());
+            .bind(tcp_outlet_status.payload.as_ref())
+            .bind(tcp_outlet_status.privileged);
             query.execute(&mut *transaction).await.void()?;
         }
 
@@ -90,7 +91,7 @@ impl ModelStateRepository for ModelStateSqlxDatabase {
 
     async fn load(&self, node_name: &str) -> Result<ModelState> {
         let query1 = query_as(
-            "SELECT socket_addr, worker_addr, payload FROM tcp_outlet_status WHERE node_name = $1",
+            "SELECT socket_addr, worker_addr, payload, privileged FROM tcp_outlet_status WHERE node_name = $1",
         )
         .bind(node_name);
         let result: Vec<TcpOutletStatusRow> =
@@ -119,6 +120,7 @@ struct TcpOutletStatusRow {
     socket_addr: String,
     worker_addr: String,
     payload: Nullable<String>,
+    privileged: Boolean,
 }
 
 impl TcpOutletStatusRow {
@@ -129,6 +131,7 @@ impl TcpOutletStatusRow {
             to,
             worker_addr,
             payload: self.payload.to_option(),
+            privileged: self.privileged.to_bool(),
         })
     }
 }
@@ -177,6 +180,7 @@ mod tests {
                 "127.0.0.1:1001".parse().unwrap(),
                 Address::from_string("s1"),
                 None,
+                true,
             ));
             // Add an incoming service
             state.add_incoming_service(PersistentIncomingService {
@@ -196,6 +200,7 @@ mod tests {
                     format!("127.0.0.1:100{i}").parse().unwrap(),
                     Address::from_string(format!("s{i}")),
                     None,
+                    true,
                 ));
                 repository.store(node_name, &state).await.unwrap();
             }

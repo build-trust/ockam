@@ -12,7 +12,7 @@ use ockam_core::{Address, IncomingAccessControl, OutgoingAccessControl, Route};
 use ockam_multiaddr::MultiAddr;
 use serde::{Deserialize, Serialize};
 
-use crate::colors::color_primary;
+use crate::colors::{color_primary, color_primary_alt};
 use crate::error::ApiError;
 
 use crate::output::Output;
@@ -208,6 +208,7 @@ pub struct InletStatus {
     #[n(5)] pub outlet_route: Option<String>,
     #[n(6)] pub status: ConnectionStatus,
     #[n(7)] pub outlet_addr: String,
+    #[n(8)] pub privileged: bool,
 }
 
 impl InletStatus {
@@ -220,6 +221,7 @@ impl InletStatus {
         outlet_route: impl Into<Option<String>>,
         status: ConnectionStatus,
         outlet_addr: impl Into<String>,
+        privileged: bool,
     ) -> Self {
         Self {
             bind_addr: bind_addr.into(),
@@ -229,6 +231,7 @@ impl InletStatus {
             outlet_route: outlet_route.into(),
             status,
             outlet_addr: outlet_addr.into(),
+            privileged,
         }
     }
 }
@@ -261,6 +264,14 @@ impl Display for InletStatus {
             fmt::INDENTATION,
             color_primary(&self.outlet_addr)
         )?;
+        if self.privileged {
+            writeln!(
+                f,
+                "{}This Inlet is operating in {} mode",
+                fmt::INDENTATION,
+                color_primary_alt("privileged".to_string())
+            )?;
+        }
         Ok(())
     }
 }
@@ -280,14 +291,21 @@ pub struct OutletStatus {
     #[n(2)] pub worker_addr: Address,
     /// An optional status payload
     #[n(3)] pub payload: Option<String>,
+    #[n(4)] pub privileged: bool,
 }
 
 impl OutletStatus {
-    pub fn new(to: HostnamePort, worker_addr: Address, payload: impl Into<Option<String>>) -> Self {
+    pub fn new(
+        to: HostnamePort,
+        worker_addr: Address,
+        payload: impl Into<Option<String>>,
+        privileged: bool,
+    ) -> Self {
         Self {
             to,
             worker_addr,
             payload: payload.into(),
+            privileged,
         }
     }
 
@@ -316,7 +334,18 @@ impl Display for OutletStatus {
                     .to_string()
             ),
             color_primary(self.to.to_string()),
-        )
+        )?;
+
+        if self.privileged {
+            writeln!(
+                f,
+                "{}This Outlet is operating in {} mode",
+                fmt::INDENTATION,
+                color_primary_alt("privileged".to_string())
+            )?;
+        }
+
+        Ok(())
     }
 }
 

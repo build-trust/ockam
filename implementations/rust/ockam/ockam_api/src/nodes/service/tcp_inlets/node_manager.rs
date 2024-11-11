@@ -136,7 +136,13 @@ impl NodeManager {
 
         let _ = self
             .cli_state
-            .create_tcp_inlet(&self.node_name, &listen_addr, &outlet_addr, &alias)
+            .create_tcp_inlet(
+                &self.node_name,
+                &listen_addr,
+                &outlet_addr,
+                &alias,
+                privileged,
+            )
             .await?;
 
         let additional_session_options = if enable_udp_puncture {
@@ -180,7 +186,12 @@ impl NodeManager {
             .inlets
             .insert(
                 alias.clone(),
-                InletInfo::new(&listen_addr.to_string(), outlet_addr.clone(), session),
+                InletInfo::new(
+                    &listen_addr.to_string(),
+                    outlet_addr.clone(),
+                    session,
+                    privileged,
+                ),
             )
             .await;
 
@@ -194,6 +205,7 @@ impl NodeManager {
             outcome.clone().map(|s| s.route.to_string()),
             connection_status,
             outlet_addr.to_string(),
+            privileged,
         );
 
         Ok(tcp_inlet_status)
@@ -216,6 +228,7 @@ impl NodeManager {
                 None,
                 ConnectionStatus::Down,
                 inlet_to_delete.outlet_addr.to_string(),
+                inlet_to_delete.privileged,
             ))
         } else {
             error!(%alias, "Inlet not found in the node registry");
@@ -250,6 +263,7 @@ impl NodeManager {
                         status.route.to_string(),
                         connection_status,
                         inlet_info.outlet_addr.to_string(),
+                        inlet_info.privileged,
                     ))
                 } else {
                     panic!("Unexpected outcome: {:?}", outcome)
@@ -263,6 +277,7 @@ impl NodeManager {
                     None,
                     connection_status,
                     inlet_info.outlet_addr.to_string(),
+                    inlet_info.privileged,
                 ))
             }
         } else {
@@ -295,6 +310,7 @@ impl NodeManager {
                             status.route.to_string(),
                             connection_status,
                             info.outlet_addr.to_string(),
+                            info.privileged,
                         )
                     }
                     _ => {
@@ -310,6 +326,7 @@ impl NodeManager {
                     None,
                     connection_status,
                     info.outlet_addr.to_string(),
+                    info.privileged,
                 )
             };
 

@@ -17,8 +17,9 @@ impl CliState {
         bind_addr: &SocketAddr,
         outlet_addr: &MultiAddr,
         alias: &str,
+        privileged: bool,
     ) -> Result<TcpInlet> {
-        let tcp_inlet = TcpInlet::new(bind_addr, outlet_addr, alias);
+        let tcp_inlet = TcpInlet::new(bind_addr, outlet_addr, alias, privileged);
         self.tcp_portals_repository()
             .store_tcp_inlet(node_name, &tcp_inlet)
             .await?;
@@ -56,8 +57,10 @@ impl CliState {
         to: &HostnamePort,
         worker_addr: &Address,
         payload: &Option<String>,
+        privileged: bool,
     ) -> Result<OutletStatus> {
-        let tcp_outlet_status = OutletStatus::new(to.clone(), worker_addr.clone(), payload.clone());
+        let tcp_outlet_status =
+            OutletStatus::new(to.clone(), worker_addr.clone(), payload.clone(), privileged);
 
         self.tcp_portals_repository()
             .store_tcp_outlet(node_name, &tcp_outlet_status)

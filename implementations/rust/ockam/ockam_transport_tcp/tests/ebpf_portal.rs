@@ -18,7 +18,7 @@ mod tests {
 
             let bind_address = listener.local_addr().unwrap().to_string();
             info!("Listener address: {}", bind_address);
-            tcp.create_raw_outlet(
+            tcp.create_privileged_outlet(
                 "outlet",
                 bind_address.try_into().unwrap(),
                 TcpOutletOptions::new(),
@@ -28,7 +28,7 @@ mod tests {
         };
 
         let inlet = tcp
-            .create_raw_inlet("localhost:0", route!["outlet"], TcpInletOptions::new())
+            .create_privileged_inlet("localhost:0", route!["outlet"], TcpInletOptions::new())
             .await?;
 
         let inlet_address = inlet.socket_address().to_string();
