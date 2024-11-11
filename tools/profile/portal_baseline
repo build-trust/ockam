@@ -1,0 +1,32 @@
+#!/bin/bash
+
+if ! [ -x "$(command -v iperf3)" ]; then
+  echo 'Error: iperf3 is not installed.' >&2
+  exit 1
+fi
+
+set -e
+
+if [ -z "${OCKAM}" ]; then
+  RUSTFLAGS="-C force-frame-pointers=yes" cargo build --profile profiling -p ockam_command -F ockam_vault/aws-lc
+  OCKAM=target/profiling/ockam
+fi
+
+"${OCKAM}" node delete portal -y >/dev/null 2>&1 || true
+export OCKAM_LOG_LEVEL=info
+export OCKAM_OPENTELEMETRY_EXPORT=0
+
+"${OCKAM}" node create portal -f &
+
+sleep 2
+"${OCKAM}" tcp-outlet create --to 5500 --at portal
+"${OCKAM}" tcp-inlet create --from 8200 --to /secure/api/service/outlet --at portal
+
+iperf3 --server --port 5500 --one-off &
+iperf3_server_pid=$!
+
+sleep 0.3 # wait for server to start
+iperf3 --zerocopy --client 127.0.0.1 --port 8200 --time 60
+
+kill ${iperf3_server_pid} || true
+"${OCKAM}" node delete portal -y
