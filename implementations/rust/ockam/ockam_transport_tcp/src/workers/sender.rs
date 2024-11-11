@@ -30,6 +30,7 @@ pub(crate) enum TcpSendWorkerMsg {
 /// worker pair, and listens for messages from the node message system
 /// to dispatch to a remote peer.
 pub(crate) struct TcpSendWorker {
+    buffer: Vec<u8>,
     registry: TcpRegistry,
     write_half: OwnedWriteHalf,
     socket_address: SocketAddr,
@@ -50,6 +51,7 @@ impl TcpSendWorker {
         receiver_flow_control_id: FlowControlId,
     ) -> Self {
         Self {
+            buffer: vec![],
             registry,
             write_half,
             socket_address,
@@ -116,27 +118,32 @@ impl TcpSendWorker {
         Ok(())
     }
 
-    fn serialize_message(&self, local_message: LocalMessage) -> Result<Vec<u8>> {
+    fn serialize_message(&mut self, local_message: LocalMessage) -> Result<()> {
         // Create a message buffer with prepended length
         let transport_message = TcpTransportMessage::from(local_message);
 
         let expected_payload_len = minicbor::len(&transport_message);
 
         const LENGTH_VALUE_SIZE: usize = 4; // u32
-        let mut vec = Vec::with_capacity(LENGTH_VALUE_SIZE + expected_payload_len);
+
+        // This buffer starts from 0 length, and grows when we receive a bigger message.
+        self.buffer.clear();
+        self.buffer
+            .reserve(LENGTH_VALUE_SIZE + expected_payload_len);
 
         // Let's write zeros instead of actual length, since we don't know the exact size yet.
-        vec.extend_from_slice(&[0u8; LENGTH_VALUE_SIZE]);
+        self.buffer.extend_from_slice(&[0u8; LENGTH_VALUE_SIZE]);
 
         // Append encoded payload
-        minicbor::encode(&transport_message, &mut vec).map_err(|_| TransportError::Encoding)?;
+        minicbor::encode(&transport_message, &mut self.buffer)
+            .map_err(|_| TransportError::Encoding)?;
 
         // Should not ever happen...
-        if vec.len() < LENGTH_VALUE_SIZE {
+        if self.buffer.len() < LENGTH_VALUE_SIZE {
             return Err(TransportError::Encoding)?;
         }
 
-        let payload_len = vec.len() - LENGTH_VALUE_SIZE;
+        let payload_len = self.buffer.len() - LENGTH_VALUE_SIZE;
 
         if payload_len > MAX_MESSAGE_SIZE {
             return Err(TransportError::MessageLengthExceeded)?;
@@ -146,9 +153,9 @@ impl TcpSendWorker {
             u32::try_from(payload_len).map_err(|_| TransportError::MessageLengthExceeded)?;
 
         // Replace zeros with actual length
-        vec[..LENGTH_VALUE_SIZE].copy_from_slice(&payload_len_u32.to_be_bytes());
+        self.buffer[..LENGTH_VALUE_SIZE].copy_from_slice(&payload_len_u32.to_be_bytes());
 
-        Ok(vec)
+        Ok(())
     }
 }
 
@@ -234,17 +241,14 @@ impl Worker for TcpSendWorker {
             // knows what to do with the incoming message
             local_message = local_message.pop_front_onward_route()?;
 
-            let msg = match self.serialize_message(local_message) {
-                Ok(msg) => msg,
-                Err(err) => {
-                    // Close the stream
-                    self.stop(ctx).await?;
+            if let Err(err) = self.serialize_message(local_message) {
+                // Close the stream
+                self.stop(ctx).await?;
 
-                    return Err(err);
-                }
+                return Err(err);
             };
 
-            if self.write_half.write_all(&msg).await.is_err() {
+            if self.write_half.write_all(&self.buffer).await.is_err() {
                 warn!("Failed to send message to peer {}", self.socket_address);
                 self.stop(ctx).await?;
 
