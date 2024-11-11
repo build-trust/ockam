@@ -346,6 +346,10 @@ mod tests {
     }
 
     fn outlet_info(worker_addr: Address) -> OutletInfo {
-        OutletInfo::new(HostnamePort::new("127.0.0.1", 0), Some(&worker_addr), true)
+        OutletInfo::new(
+            HostnamePort::new("127.0.0.1", 0).unwrap(),
+            Some(&worker_addr),
+            true,
+        )
     }
 }

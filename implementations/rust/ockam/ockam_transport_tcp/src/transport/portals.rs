@@ -83,7 +83,7 @@ impl TcpTransport {
     /// async fn test(ctx: Context) -> Result<()> {
     ///
     /// let tcp = TcpTransport::create(&ctx).await?;
-    /// tcp.create_outlet("outlet", HostnamePort::new("localhost", 9000), TcpOutletOptions::new()).await?;
+    /// tcp.create_outlet("outlet", HostnamePort::new("localhost", 9000)?, TcpOutletOptions::new()).await?;
     /// # tcp.stop_outlet("outlet").await?;
     /// # Ok(()) }
     /// ```
@@ -116,7 +116,7 @@ impl TcpTransport {
     /// async fn test(ctx: Context) -> Result<()> {
     ///
     /// let tcp = TcpTransport::create(&ctx).await?;
-    /// tcp.create_outlet("outlet", HostnamePort::new("127.0.0.1", 5000), TcpOutletOptions::new()).await?;
+    /// tcp.create_outlet("outlet", HostnamePort::new("127.0.0.1", 5000)?, TcpOutletOptions::new()).await?;
     /// tcp.stop_outlet("outlet").await?;
     /// # Ok(()) }
     /// ```

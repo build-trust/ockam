@@ -23,9 +23,11 @@ impl StaticHostnamePort {
     }
 }
 
-impl From<StaticHostnamePort> for HostnamePort {
-    fn from(value: StaticHostnamePort) -> Self {
-        Self::new(value.hostname, value.port)
+impl TryFrom<StaticHostnamePort> for HostnamePort {
+    type Error = ockam_core::Error;
+
+    fn try_from(value: StaticHostnamePort) -> ockam_core::Result<Self> {
+        HostnamePort::new(value.hostname, value.port)
     }
 }
 
@@ -39,11 +41,12 @@ pub struct HostnamePort {
 
 impl HostnamePort {
     /// Create a new HostnamePort
-    pub fn new(hostname: impl Into<String>, port: u16) -> HostnamePort {
-        Self {
+    pub fn new(hostname: impl Into<String>, port: u16) -> ockam_core::Result<HostnamePort> {
+        let _self = Self {
             hostname: hostname.into(),
             port,
-        }
+        };
+        Self::validate(&_self.to_string())
     }
 
     /// Return the hostname
@@ -63,6 +66,11 @@ impl HostnamePort {
     }
 
     fn validate(hostname_port: &str) -> ockam_core::Result<Self> {
+        // Check if the input is an IP address
+        if let Ok(socket) = parse_socket_addr(hostname_port) {
+            return Ok(HostnamePort::from(socket));
+        }
+
         // Split the input into hostname and port
         let (hostname, port_str) = match hostname_port.split_once(':') {
             None => {
@@ -156,7 +164,10 @@ impl HostnamePort {
             }
         }
 
-        Ok(HostnamePort::new(hostname, port))
+        Ok(Self {
+            hostname: hostname.to_string(),
+            port,
+        })
     }
 }
 
@@ -215,12 +226,12 @@ impl FromStr for HostnamePort {
     fn from_str(hostname_port: &str) -> ockam_core::Result<HostnamePort> {
         // edge case: only the port is given
         if let Ok(port) = hostname_port.parse::<u16>() {
-            return Ok(HostnamePort::new("127.0.0.1", port));
+            return HostnamePort::new("127.0.0.1", port);
         }
 
         if let Some(port_str) = hostname_port.strip_prefix(':') {
             if let Ok(port) = port_str.parse::<u16>() {
-                return Ok(HostnamePort::new("127.0.0.1", port));
+                return HostnamePort::new("127.0.0.1", port);
             }
         }
 
@@ -247,21 +258,24 @@ mod tests {
     #[test]
     fn hostname_port_valid_inputs() -> ockam_core::Result<()> {
         let valid_cases = vec![
-            ("localhost:80", HostnamePort::new("localhost", 80)),
-            ("33domain:80", HostnamePort::new("33domain", 80)),
-            ("127.0.0.1:80", HostnamePort::new("127.0.0.1", 80)),
-            ("xn--74h.com:80", HostnamePort::new("xn--74h.com", 80)),
-            ("sub.xn_74h.com:80", HostnamePort::new("sub.xn_74h.com", 80)),
-            (":80", HostnamePort::new("127.0.0.1", 80)),
-            ("80", HostnamePort::new("127.0.0.1", 80)),
+            ("localhost:80", HostnamePort::new("localhost", 80)?),
+            ("33domain:80", HostnamePort::new("33domain", 80)?),
+            ("127.0.0.1:80", HostnamePort::new("127.0.0.1", 80)?),
+            ("xn--74h.com:80", HostnamePort::new("xn--74h.com", 80)?),
             (
-                "[2001:db8:85a3::8a2e:370:7334]:8080",
-                HostnamePort::new("[2001:db8:85a3::8a2e:370:7334]", 8080),
+                "sub.xn_74h.com:80",
+                HostnamePort::new("sub.xn_74h.com", 80)?,
             ),
-            ("[::1]:8080", HostnamePort::new("[::1]", 8080)),
+            (":80", HostnamePort::new("127.0.0.1", 80)?),
+            ("80", HostnamePort::new("127.0.0.1", 80)?),
             (
                 "[2001:db8:85a3::8a2e:370:7334]:8080",
-                HostnamePort::new("[2001:db8:85a3::8a2e:370:7334]", 8080),
+                HostnamePort::new("[2001:db8:85a3::8a2e:370:7334]", 8080)?,
+            ),
+            ("[::1]:8080", HostnamePort::new("[::1]", 8080)?),
+            (
+                "[2001:db8:85a3::8a2e:370:7334]:8080",
+                HostnamePort::new("[2001:db8:85a3::8a2e:370:7334]", 8080)?,
             ),
         ];
         for (input, expected) in valid_cases {
@@ -272,15 +286,15 @@ mod tests {
         let socket_address_cases = vec![
             (
                 SocketAddr::from_str("127.0.0.1:8080").unwrap(),
-                HostnamePort::new("127.0.0.1", 8080),
+                HostnamePort::new("127.0.0.1", 8080)?,
             ),
             (
                 SocketAddr::from_str("[2001:db8:85a3::8a2e:370:7334]:8080").unwrap(),
-                HostnamePort::new("[2001:db8:85a3::8a2e:370:7334]", 8080),
+                HostnamePort::new("[2001:db8:85a3::8a2e:370:7334]", 8080)?,
             ),
             (
                 SocketAddr::from_str("[::1]:8080").unwrap(),
-                HostnamePort::new("[::1]", 8080),
+                HostnamePort::new("[::1]", 8080)?,
             ),
         ];
         for (input, expected) in socket_address_cases {

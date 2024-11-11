@@ -5,18 +5,18 @@ use std::time::Duration;
 use miette::{miette, WrapErr};
 
 use ockam::identity::Identifier;
-use ockam::transport::HostnamePort;
+use ockam::transport::SchemeHostnamePort;
 use ockam_api::config::lookup::InternetAddress;
 use ockam_core::env::parse_duration;
 
+//
 use crate::util::validators::cloud_resource_name_validator;
 use crate::Result;
 
-/// Helper function for parsing a socket from user input
-/// It is possible to just input a `port`. In that case the address will be assumed to be
-/// 127.0.0.1:<port>
-pub(crate) fn hostname_parser(input: &str) -> Result<HostnamePort> {
-    HostnamePort::from_str(input).wrap_err(format!(
+/// Helper function for parsing a socket from user input by using
+/// [`SchemeHostnamePort::from_str()`]
+pub(crate) fn hostname_parser(input: &str) -> Result<SchemeHostnamePort> {
+    SchemeHostnamePort::from_str(input).wrap_err(format!(
         "cannot parse the address {input} as a socket address"
     ))
 }

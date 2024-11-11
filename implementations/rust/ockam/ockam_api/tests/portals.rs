@@ -46,7 +46,7 @@ async fn inlet_outlet_local_successful(context: &mut Context) -> ockam::Result<(
         .node_manager
         .create_inlet(
             context,
-            HostnamePort::new("127.0.0.1", 0),
+            HostnamePort::new("127.0.0.1", 0)?,
             route![],
             route![],
             MultiAddr::from_str("/secure/api/service/outlet")?,
@@ -122,7 +122,7 @@ fn portal_node_goes_down_reconnect() {
                 .node_manager
                 .create_inlet(
                     &first_node.context,
-                    HostnamePort::new("127.0.0.1", 0),
+                    HostnamePort::new("127.0.0.1", 0)?,
                     route![],
                     route![],
                     second_node_listen_address
@@ -280,7 +280,7 @@ fn portal_low_bandwidth_connection_keep_working_for_60s() {
                 .node_manager
                 .create_inlet(
                     &first_node.context,
-                    HostnamePort::new("127.0.0.1", 0),
+                    HostnamePort::new("127.0.0.1", 0)?,
                     route![],
                     route![],
                     InternetAddress::from(passthrough_server_handle.chosen_addr)
@@ -394,7 +394,7 @@ fn portal_heavy_load_exchanged() {
                 .node_manager
                 .create_inlet(
                     &first_node.context,
-                    HostnamePort::new("127.0.0.1", 0),
+                    HostnamePort::new("127.0.0.1", 0)?,
                     route![],
                     route![],
                     second_node_listen_address
@@ -547,7 +547,7 @@ fn test_portal_payload_transfer(outgoing_disruption: Disruption, incoming_disrup
                 .node_manager
                 .create_inlet(
                     &first_node.context,
-                    HostnamePort::new("127.0.0.1", 0),
+                    HostnamePort::new("127.0.0.1", 0)?,
                     route![],
                     route![],
                     InternetAddress::from(passthrough_server_handle.chosen_addr)

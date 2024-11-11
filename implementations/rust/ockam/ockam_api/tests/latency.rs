@@ -150,7 +150,7 @@ pub fn measure_buffer_latency_two_nodes_portal() {
                 .node_manager
                 .create_inlet(
                     &first_node.context,
-                    HostnamePort::new("127.0.0.1", 0),
+                    HostnamePort::new("127.0.0.1", 0)?,
                     route![],
                     route![],
                     second_node_listen_address

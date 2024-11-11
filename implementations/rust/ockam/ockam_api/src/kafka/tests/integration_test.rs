@@ -159,7 +159,7 @@ async fn producer__flow_with_mock_kafka__content_encryption_and_decryption(
             .tcp
             .create_outlet(
                 "kafka_consumer_outlet",
-                HostnamePort::new("127.0.0.1", consumer_mock_kafka.port),
+                HostnamePort::new("127.0.0.1", consumer_mock_kafka.port)?,
                 TcpOutletOptions::new(),
             )
             .await?;
@@ -179,7 +179,7 @@ async fn producer__flow_with_mock_kafka__content_encryption_and_decryption(
         .tcp
         .create_outlet(
             "kafka_producer_outlet",
-            HostnamePort::new("127.0.0.1", producer_mock_kafka.port),
+            HostnamePort::new("127.0.0.1", producer_mock_kafka.port)?,
             TcpOutletOptions::new(),
         )
         .await?;
@@ -216,7 +216,7 @@ async fn producer__flow_with_mock_kafka__content_encryption_and_decryption(
         .tcp
         .create_outlet(
             "kafka_consumer_outlet",
-            HostnamePort::new("127.0.0.1", consumer_mock_kafka.port),
+            HostnamePort::new("127.0.0.1", consumer_mock_kafka.port)?,
             TcpOutletOptions::new(),
         )
         .await?;

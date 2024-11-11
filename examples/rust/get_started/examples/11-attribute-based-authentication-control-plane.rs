@@ -110,7 +110,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     // 4. create a tcp outlet with the above policy
     tcp.create_outlet(
         "outlet",
-        HostnamePort::new("127.0.0.1", 5000),
+        HostnamePort::new("127.0.0.1", 5000)?,
         TcpOutletOptions::new()
             .with_incoming_access_control_impl(incoming_access_control)
             .with_outgoing_access_control_impl(outgoing_access_control),

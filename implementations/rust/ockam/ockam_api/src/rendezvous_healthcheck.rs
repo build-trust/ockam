@@ -23,7 +23,7 @@ impl RendezvousHealthcheck {
         udp_socket_address: SocketAddr,
     ) -> Result<Self> {
         let peer = if udp_socket_address.ip().is_unspecified() {
-            HostnamePort::new("localhost", udp_socket_address.port()).to_string()
+            HostnamePort::new("localhost", udp_socket_address.port())?.to_string()
         } else {
             udp_socket_address.to_string()
         };

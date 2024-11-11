@@ -1,24 +1,69 @@
 use crate::node::util::initialize_default_node;
-use crate::tcp::outlet::create::CreateCommand as OutletCreateCommand;
 use crate::util::parsers::duration_parser;
+use crate::util::parsers::hostname_parser;
 use crate::{Command, CommandGlobalOpts};
 use async_trait::async_trait;
+use clap::builder::FalseyValueParser;
 use clap::Args;
 use colorful::Colorful;
 use miette::miette;
+use ockam::transport::SchemeHostnamePort;
 use ockam::{Address, Context};
+use ockam_abac::PolicyExpression;
+use ockam_api::address::extract_address_value;
 use ockam_api::colors::color_primary;
-use ockam_api::fmt_ok;
 use ockam_api::influxdb::portal::{InfluxDBOutletConfig, LeaseManagerConfig};
 use ockam_api::influxdb::InfluxDBPortals;
 use ockam_api::nodes::BackgroundNodeClient;
+use ockam_api::{fmt_log, fmt_ok, fmt_warn};
 use std::time::Duration;
 
 /// Create InfluxDB Outlets
 #[derive(Clone, Debug, Args)]
-pub struct InfluxDBCreateCommand {
-    #[command(flatten)]
-    pub tcp_outlet: OutletCreateCommand,
+pub struct CreateCommand {
+    /// Address of your InfluxDB Outlet, which is part of a route used in other commands.
+    /// This unique address identifies the InfluxDB Outlet worker on the Node on your local machine.
+    /// Examples are `/service/my-outlet` or `my-outlet`.
+    /// If not provided, `outlet` will be used, or a random address will be generated if `outlet` is taken.
+    /// You will need this address when creating a InfluxDB Inlet using `ockam influxdb-inlet create`.
+    #[arg(value_parser = extract_address_value)]
+    pub name: Option<String>,
+
+    /// Address where your InfluxDB server is running, in the format `<scheme>://<hostname>:<port>`.
+    /// At least the port must be provided. The default scheme is `tcp` and the default hostname is `127.0.0.1`.
+    #[arg(long, display_order = 900, id = "SOCKET_ADDRESS", value_parser = hostname_parser)]
+    pub to: SchemeHostnamePort,
+
+    /// [DEPRECATED] Use the `tls` scheme in the `--from` argument.
+    #[arg(long, display_order = 900, id = "BOOLEAN")]
+    pub tls: bool,
+
+    /// Alternative to the <NAME> positional argument.
+    /// Address of your InfluxDB Outlet, which is part of a route used in other commands.
+    #[arg(long, display_order = 902, id = "OUTLET_ADDRESS", value_parser = extract_address_value)]
+    pub from: Option<String>,
+
+    /// Your InfluxDB Outlet will be created on this node. If you don't provide it, the default
+    /// node will be used
+    #[arg(long, display_order = 903, id = "NODE_NAME", value_parser = extract_address_value)]
+    pub at: Option<String>,
+
+    /// Policy expression that will be used for access control to the InfluxDB Outlet.
+    /// If you don't provide it, the policy set for the "tcp-outlet" resource type will be used.
+    ///
+    /// You can check the fallback policy with `ockam policy show --resource-type tcp-outlet`.
+    #[arg(
+        long,
+        visible_alias = "expression",
+        display_order = 904,
+        id = "POLICY_EXPRESSION"
+    )]
+    pub allow: Option<PolicyExpression>,
+
+    /// Use eBPF and RawSocket to access TCP packets instead of TCP data stream.
+    /// If `OCKAM_PRIVILEGED` env variable is set to 1, this argument will be `true`.
+    #[arg(long, env = "OCKAM_PRIVILEGED", value_parser = FalseyValueParser::default(), hide = true)]
+    pub privileged: bool,
 
     #[arg(long, conflicts_with("LeaseManagerConfigArgs"))]
     fixed_token: Option<String>,
@@ -48,15 +93,16 @@ pub struct LeaseManagerConfigArgs {
 }
 
 #[async_trait]
-impl Command for InfluxDBCreateCommand {
+impl Command for CreateCommand {
     const NAME: &'static str = "influxdb-outlet create";
 
     async fn async_run(mut self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
         initialize_default_node(ctx, &opts).await?;
+        let cmd = self.parse_args(&opts).await?;
 
-        let token_config = if let Some(t) = self.fixed_token {
+        let token_config = if let Some(t) = cmd.fixed_token {
             InfluxDBOutletConfig::OutletWithFixedToken(t)
-        } else if let Some(config) = self.lease_manager_config {
+        } else if let Some(config) = cmd.lease_manager_config {
             let config = config.parse_args().await?;
             InfluxDBOutletConfig::StartLeaseManager(LeaseManagerConfig::new(
                 config.org_id,
@@ -70,28 +116,25 @@ impl Command for InfluxDBCreateCommand {
             ))?;
         };
 
-        let node = BackgroundNodeClient::create(ctx, &opts.state, &self.tcp_outlet.at).await?;
+        let node = BackgroundNodeClient::create(ctx, &opts.state, &cmd.at).await?;
         let outlet_status = {
             let pb = opts.terminal.spinner();
             if let Some(pb) = pb.as_ref() {
                 pb.set_message(format!(
                     "Creating a new InfluxDB Outlet to {}...\n",
-                    color_primary(self.tcp_outlet.to.to_string())
+                    color_primary(cmd.to.to_string())
                 ));
             }
             node.create_influxdb_outlet(
                 ctx,
-                self.tcp_outlet.to.clone(),
-                self.tcp_outlet.tls,
-                self.tcp_outlet.from.clone().map(Address::from).as_ref(),
-                self.tcp_outlet.allow.clone(),
+                cmd.to.clone().into(),
+                cmd.tls || cmd.to.is_tls(),
+                cmd.name.clone().map(Address::from).as_ref(),
+                cmd.allow.clone(),
                 token_config,
             )
             .await?
         };
-        self.tcp_outlet
-            .add_outlet_created_journey_event(&opts, &node.node_name(), &outlet_status)
-            .await?;
 
         opts.terminal
             .stdout()
@@ -99,12 +142,28 @@ impl Command for InfluxDBCreateCommand {
                 "Created a new InfluxDB Outlet in the Node {} at {} bound to {}\n\n",
                 color_primary(node.node_name()),
                 color_primary(&outlet_status.worker_addr),
-                color_primary(&self.tcp_outlet.to)
+                color_primary(&cmd.to)
             ))
             .machine(&outlet_status.worker_addr)
             .json_obj(&outlet_status)?
             .write_line()?;
         Ok(())
+    }
+}
+
+impl CreateCommand {
+    async fn parse_args(mut self, opts: &CommandGlobalOpts) -> miette::Result<Self> {
+        if let Some(from) = self.from.as_ref() {
+            if self.name.is_some() {
+                opts.terminal.write_line(
+                    fmt_warn!("The <NAME> argument is being overridden by the --from flag")
+                        + &fmt_log!("Consider using either the <NAME> argument or the --from flag"),
+                )?;
+            }
+            self.name = Some(from.clone());
+        }
+
+        Ok(self)
     }
 }
 

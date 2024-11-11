@@ -169,7 +169,7 @@ impl TcpTransport {
 
         // TODO: eBPF May be good to run resolution every time there is incoming connection, but that
         //  would require also updating the self.ebpf_support.outlet_registry
-        let destination = resolve_peer(peer.to_string()).await?;
+        let destination = resolve_peer(&peer).await?;
 
         let dst_ip = match destination.ip() {
             IpAddr::V4(ip) => ip,

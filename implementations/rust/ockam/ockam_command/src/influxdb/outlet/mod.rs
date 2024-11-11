@@ -1,6 +1,6 @@
 use clap::{Args, Subcommand};
 
-use create::InfluxDBCreateCommand;
+use create::CreateCommand;
 
 use crate::{docs, Command, CommandGlobalOpts};
 
@@ -22,7 +22,7 @@ pub struct InfluxDBOutletCommand {
 
 #[derive(Clone, Debug, Subcommand)]
 pub enum InfluxDBOutletSubCommand {
-    Create(InfluxDBCreateCommand),
+    Create(CreateCommand),
 }
 
 impl InfluxDBOutletCommand {

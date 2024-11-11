@@ -35,7 +35,7 @@ impl KafkaOutlet {
     ) -> Result<Vec<CreateCommand>> {
         match self.kafka_outlet {
             Some(c) => {
-                let mut cmds = c.into_commands_with_name_arg(Self::get_subcommand, Some("addr"))?;
+                let mut cmds = c.into_commands(Self::get_subcommand)?;
                 if let Some(node_name) = default_node_name {
                     for cmd in cmds.iter_mut() {
                         if cmd.node_opts.at_node.is_none() {
@@ -53,7 +53,7 @@ impl KafkaOutlet {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ockam::transport::HostnamePort;
+    use ockam::transport::SchemeHostnamePort;
 
     #[test]
     fn kafka_outlet_config() {
@@ -70,7 +70,7 @@ mod tests {
         assert_eq!(cmds.len(), 1);
         assert_eq!(
             cmds[0].bootstrap_server,
-            HostnamePort::new("192.168.0.100", 9092),
+            SchemeHostnamePort::new("tcp", "192.168.0.100", 9092).unwrap(),
         );
         assert_eq!(cmds[0].node_opts.at_node.as_ref().unwrap(), "node_name");
 
@@ -84,7 +84,7 @@ mod tests {
         let cmds = parsed
             .into_parsed_commands(Some(&default_node_name))
             .unwrap();
-        assert_eq!(cmds[0].addr, "ko".to_string());
+        assert_eq!(cmds[0].name, "ko".to_string());
         assert_eq!(cmds[0].node_opts.at_node.as_ref(), Some(&default_node_name));
 
         // check if the default node name is used when the configuration does not specify it

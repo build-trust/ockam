@@ -6,18 +6,20 @@ use miette::miette;
 use serde::Serialize;
 use std::fmt::Write;
 
-use ockam::transport::HostnamePort;
+use ockam::transport::SchemeHostnamePort;
 use ockam::Context;
 use ockam_abac::PolicyExpression;
+use ockam_api::address::extract_address_value;
 use ockam_api::colors::{color_primary, color_warn};
 use ockam_api::nodes::models::services::StartKafkaOutletRequest;
 use ockam_api::nodes::models::services::StartServiceRequest;
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_api::output::Output;
-use ockam_api::{fmt_log, fmt_ok};
+use ockam_api::{fmt_log, fmt_ok, fmt_warn};
 use ockam_core::api::Request;
 
 use crate::node::util::initialize_default_node;
+use crate::util::parsers::hostname_parser;
 use crate::{
     kafka::{kafka_default_outlet_addr, kafka_default_outlet_server},
     node::NodeOpts,
@@ -27,18 +29,27 @@ use crate::{
 /// Create a new Kafka Outlet
 #[derive(Clone, Debug, Args)]
 pub struct CreateCommand {
+    /// Address of your Kafka Outlet, which is part of a route used in other commands.
+    /// This unique address identifies the Kafka Outlet worker on the Node on your local machine.
+    /// Examples are `/service/my-outlet` or `my-outlet`.
+    /// If not provided, `/service/kafka_outlet` will be used.
+    /// You will need this address when creating a Kafka Inlet using `ockam kafka-inlet create`.
+    #[arg(default_value_t = kafka_default_outlet_addr(), value_parser = extract_address_value)]
+    pub name: String,
+
     #[command(flatten)]
     pub node_opts: NodeOpts,
 
-    /// The local address of the service
-    #[arg(long, default_value_t = kafka_default_outlet_addr())]
-    pub addr: String,
+    /// Alternative to the <NAME> positional argument.
+    /// Address of your Kafka Outlet, which is part of a route used in other commands.
+    #[arg(long, id = "OUTLET_ADDRESS", visible_alias = "addr", default_value_t = kafka_default_outlet_addr(), value_parser = extract_address_value)]
+    pub from: String,
 
     /// The address of the kafka bootstrap broker
-    #[arg(long, default_value_t = kafka_default_outlet_server())]
-    pub bootstrap_server: HostnamePort,
+    #[arg(long, visible_alias = "to", default_value_t = kafka_default_outlet_server(), value_parser = hostname_parser)]
+    pub bootstrap_server: SchemeHostnamePort,
 
-    /// If set, the outlet will establish a TLS connection over TCP
+    /// [DEPRECATED] Use the `tls` scheme in the `--from` argument.
     #[arg(long, id = "BOOLEAN")]
     pub tls: bool,
 
@@ -46,7 +57,7 @@ pub struct CreateCommand {
     /// If you don't provide it, the policy set for the "tcp-outlet" resource type will be used.
     ///
     /// You can check the fallback policy with `ockam policy show --resource-type tcp-outlet`.
-    #[arg(hide = true, long = "allow", id = "EXPRESSION")]
+    #[arg(long = "allow", id = "EXPRESSION")]
     pub policy_expression: Option<PolicyExpression>,
 }
 
@@ -56,32 +67,33 @@ impl Command for CreateCommand {
 
     async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
         initialize_default_node(ctx, &opts).await?;
+        let cmd = self.parse_args(&opts).await?;
 
         let outlet = {
             let pb = opts.terminal.spinner();
             if let Some(pb) = pb.as_ref() {
                 pb.set_message(format!(
                     "Creating Kafka Outlet to bootstrap server {}...\n",
-                    color_primary(self.bootstrap_server.to_string())
+                    color_primary(cmd.bootstrap_server.to_string())
                 ));
             }
 
             let payload = StartKafkaOutletRequest::new(
-                self.bootstrap_server.clone(),
-                self.tls,
-                self.policy_expression,
+                cmd.bootstrap_server.clone().into(),
+                cmd.tls || cmd.bootstrap_server.is_tls(),
+                cmd.policy_expression,
             );
-            let payload = StartServiceRequest::new(payload, &self.addr);
+            let payload = StartServiceRequest::new(payload, &cmd.name);
             let req = Request::post("/node/services/kafka_outlet").body(payload);
             let node =
-                BackgroundNodeClient::create(ctx, &opts.state, &self.node_opts.at_node).await?;
+                BackgroundNodeClient::create(ctx, &opts.state, &cmd.node_opts.at_node).await?;
             node.tell(ctx, req)
                 .await
                 .map_err(|e| miette!("Failed to start Kafka Outlet: {e}"))?;
 
             KafkaOutletOutput {
                 node_name: node.node_name(),
-                bootstrap_server: self.bootstrap_server.to_string(),
+                bootstrap_server: cmd.bootstrap_server.to_string(),
             }
         };
 
@@ -92,6 +104,24 @@ impl Command for CreateCommand {
             .write_line()?;
 
         Ok(())
+    }
+}
+
+impl CreateCommand {
+    async fn parse_args(mut self, opts: &CommandGlobalOpts) -> miette::Result<Self> {
+        if self.from != kafka_default_outlet_addr() {
+            if self.name != kafka_default_outlet_addr() {
+                opts.terminal.write_line(
+                    fmt_warn!("The <NAME> argument is being overridden by the --from/--addr flag")
+                        + &fmt_log!(
+                            "Consider using either the <NAME> argument or the --from/--addr flag"
+                        ),
+                )?;
+            }
+            self.name = self.from.clone();
+        }
+
+        Ok(self)
     }
 }
 

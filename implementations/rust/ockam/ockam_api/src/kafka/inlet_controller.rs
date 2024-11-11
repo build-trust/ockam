@@ -118,7 +118,7 @@ impl KafkaInletController {
             }
 
             let inlet_bind_address =
-                HostnamePort::new(inner.bind_hostname.clone(), inner.current_port);
+                HostnamePort::new(inner.bind_hostname.clone(), inner.current_port)?;
 
             let node_manager = self.node_manager.upgrade().ok_or_else(|| {
                 Error::new(Origin::Node, Kind::Internal, "node manager was shut down")

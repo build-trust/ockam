@@ -50,7 +50,7 @@ teardown() {
   assert_output --partial "/service/outlet"
 
   inlet_port="$(random_port)"
-  run_success $OCKAM tcp-inlet create --at /node/n2 --from 127.0.0.1:$inlet_port --to /node/n1/service/outlet --alias "test-inlet"
+  run_success $OCKAM tcp-inlet create "test-inlet" --at /node/n2 --from 127.0.0.1:$inlet_port --to /node/n1/service/outlet
   run_success $OCKAM tcp-inlet create --at /node/n2 --from 6102 --to /node/n1/service/outlet
 
   sleep 1
@@ -95,7 +95,33 @@ teardown() {
   run_success "$OCKAM" node create n2
 
   port="$(random_port)"
+  run_success $OCKAM tcp-inlet create tcp-inlet-2 --at /node/n2 --from $port --to /node/n1/service/outlet
+  sleep 1
+
+  run_success $OCKAM tcp-inlet list --at /node/n2
+  assert_output --partial "tcp-inlet-2"
+  assert_output --partial "127.0.0.1:$port"
+}
+
+@test "portals - list inlets on a node, using deprecated --alias flag" {
+  run_success "$OCKAM" node create n1
+  run_success "$OCKAM" node create n2
+
+  port="$(random_port)"
   run_success $OCKAM tcp-inlet create --at /node/n2 --from $port --to /node/n1/service/outlet --alias tcp-inlet-2
+  sleep 1
+
+  run_success $OCKAM tcp-inlet list --at /node/n2
+  assert_output --partial "tcp-inlet-2"
+  assert_output --partial "127.0.0.1:$port"
+}
+
+@test "portals - list inlets on a node, using deprecated --alias flag overriding name" {
+  run_success "$OCKAM" node create n1
+  run_success "$OCKAM" node create n2
+
+  port="$(random_port)"
+  run_success $OCKAM tcp-inlet create my-inlet --at /node/n2 --from $port --to /node/n1/service/outlet --alias tcp-inlet-2
   sleep 1
 
   run_success $OCKAM tcp-inlet list --at /node/n2
@@ -120,7 +146,7 @@ teardown() {
   run_success "$OCKAM" node create n2
 
   port="$(random_port)"
-  run_success $OCKAM tcp-inlet create --at /node/n2 --from $port --to /node/n1/service/outlet --alias "test-inlet"
+  run_success $OCKAM tcp-inlet create "test-inlet" --at /node/n2 --from $port --to /node/n1/service/outlet
   sleep 1
 
   run_success $OCKAM tcp-inlet show "test-inlet" --at /node/n2
@@ -231,9 +257,9 @@ teardown() {
   run_success "$OCKAM" tcp-outlet create --at n --to "$port"
 
   port="$(random_port)"
-  run_success "$OCKAM" tcp-inlet create --at n --from "$port" --to "/node/n/service/outlet" --alias i
+  run_success "$OCKAM" tcp-inlet create i --at n --from "$port" --to "/node/n/service/outlet"
   port="$(random_port)"
-  run_failure "$OCKAM" tcp-inlet create --at n --from "$port" --to "/node/n/service/outlet" --alias i
+  run_failure "$OCKAM" tcp-inlet create i --at n --from "$port" --to "/node/n/service/outlet"
 }
 
 @test "portals - fail to create two TCP inlets at the same socket address" {

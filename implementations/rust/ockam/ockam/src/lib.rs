@@ -105,7 +105,7 @@ pub use relay_service::{RelayService, RelayServiceOptions};
 /// Transport
 pub mod transport {
     pub use ockam_transport_core::{
-        parse_socket_addr, HostnamePort, StaticHostnamePort, Transport,
+        parse_socket_addr, HostnamePort, SchemeHostnamePort, StaticHostnamePort, Transport,
     };
 }
 

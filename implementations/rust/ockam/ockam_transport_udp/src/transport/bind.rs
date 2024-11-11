@@ -2,12 +2,13 @@ use crate::workers::{split_socket, Addresses, UdpReceiverProcessor, UdpSenderWor
 use crate::{UdpBindOptions, UdpTransport};
 use core::fmt;
 use core::fmt::Formatter;
+use core::str::FromStr;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::flow_control::FlowControlId;
 use ockam_core::{Address, AllowAll, DenyAll, Error, Result};
 use ockam_node::compat::asynchronous::resolve_peer;
 use ockam_node::{ProcessorBuilder, WorkerBuilder};
-use ockam_transport_core::{parse_socket_addr, TransportError};
+use ockam_transport_core::{parse_socket_addr, HostnamePort, TransportError};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use tokio::net::UdpSocket;
 use tracing::{debug, error};
@@ -52,7 +53,7 @@ impl UdpBindArguments {
 
     /// Set peer address if we communicate with one specific peer
     pub async fn with_peer_address(mut self, peer_address: impl AsRef<str>) -> Result<Self> {
-        let peer_address = resolve_peer(peer_address.as_ref().to_string()).await?;
+        let peer_address = resolve_peer(&HostnamePort::from_str(peer_address.as_ref())?).await?;
         self.peer_address = Some(peer_address);
 
         Ok(self)
