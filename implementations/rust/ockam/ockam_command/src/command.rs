@@ -54,18 +54,6 @@ impl OckamCommand {
             return Ok(());
         }
 
-        // Setup the default rustls crypto provider, this is a required step when
-        // multiple backends ring/aws-lc are pulled in directly, or indirectly.
-        #[cfg(feature = "aws-lc")]
-        rustls::crypto::aws_lc_rs::default_provider()
-            .install_default()
-            .expect("Failed to install aws-lc crypto provider");
-
-        #[cfg(all(feature = "rust-crypto", not(feature = "aws-lc")))]
-        rustls::crypto::ring::default_provider()
-            .install_default()
-            .expect("Failed to install ring crypto provider");
-
         // Sets a hook using our own Error Report Handler.
         // This allows us to customize how we format the error messages and their content.
         let _hook_result = miette::set_hook(Box::new(|_| Box::new(ErrorReportHandler::new())));

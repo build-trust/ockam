@@ -20,6 +20,18 @@ use ockam_api::output::Output;
 ///  - Display the help if the arguments cannot be parsed and store a user journey error
 ///
 pub fn run() -> miette::Result<()> {
+    // Setup the default rustls crypto provider, this is a required step when
+    // multiple backends ring/aws-lc are pulled in directly, or indirectly.
+    #[cfg(feature = "aws-lc")]
+    rustls::crypto::aws_lc_rs::default_provider()
+        .install_default()
+        .expect("Failed to install aws-lc crypto provider");
+
+    #[cfg(all(feature = "rust-crypto", not(feature = "aws-lc")))]
+    rustls::crypto::ring::default_provider()
+        .install_default()
+        .expect("Failed to install ring crypto provider");
+
     let input = std::env::args()
         .map(replace_hyphen_with_stdin)
         .collect::<Vec<_>>();
