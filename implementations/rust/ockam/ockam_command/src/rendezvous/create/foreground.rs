@@ -1,15 +1,13 @@
 use miette::IntoDiagnostic;
-use std::process::exit;
 use tracing::{error, info, instrument};
 
 use crate::rendezvous::create::CreateCommand;
 use crate::util::foreground_args::wait_for_exit_signal;
 use crate::CommandGlobalOpts;
-use colorful::Colorful;
 use ockam::transport::parse_socket_addr;
 use ockam::udp::{RendezvousService, UdpBindArguments, UdpBindOptions, UdpTransport};
 use ockam::Context;
-use ockam_api::{fmt_ok, DefaultAddress, RendezvousHealthcheck};
+use ockam_api::{DefaultAddress, RendezvousHealthcheck};
 
 impl CreateCommand {
     #[instrument(skip_all)]
@@ -58,14 +56,6 @@ impl CreateCommand {
         if let Err(err) = healthcheck.stop().await {
             error!("Error while stopping healthcheck: {}", err);
         }
-        let _ = ctx.stop().await;
-        if self.foreground_args.child_process {
-            opts.shutdown();
-            exit(0);
-        } else {
-            opts.terminal
-                .write_line(fmt_ok!("Rendezvous Server stopped successfully"))?;
-            Ok(())
-        }
+        Ok(())
     }
 }

@@ -1,7 +1,5 @@
-use std::process::exit;
 use std::sync::Arc;
 
-use colorful::Colorful;
 use miette::{miette, IntoDiagnostic};
 use tokio::time::{sleep, Duration};
 use tracing::{debug, info, instrument};
@@ -15,13 +13,13 @@ use ockam::tcp::{TcpListenerOptions, TcpTransport};
 use ockam::udp::UdpTransport;
 use ockam::{Address, Context};
 use ockam_api::colors::color_primary;
+use ockam_api::fmt_log;
 use ockam_api::nodes::{
     service::{NodeManagerGeneralOptions, NodeManagerTransportOptions},
     NodeManagerWorker, NODEMANAGER_ADDR,
 };
 use ockam_api::nodes::{BackgroundNodeClient, InMemoryNode};
 use ockam_api::terminal::notification::NotificationHandler;
-use ockam_api::{fmt_log, fmt_ok};
 use ockam_core::{route, LOCAL};
 
 impl CreateCommand {
@@ -138,7 +136,6 @@ impl CreateCommand {
                 .write_line()?;
         }
 
-        drop(_notification_handler);
         wait_for_exit_signal(
             &self.foreground_args,
             &opts,
@@ -147,16 +144,8 @@ impl CreateCommand {
         .await?;
 
         // Clean up and exit
-        let _ = ctx.stop().await;
         let _ = opts.state.stop_node(&node_name).await;
-        if self.foreground_args.child_process {
-            opts.shutdown();
-            exit(0);
-        } else {
-            opts.terminal
-                .write_line(fmt_ok!("Node stopped successfully"))?;
-            Ok(())
-        }
+        Ok(())
     }
 
     async fn start_services(&self, ctx: &Context, opts: &CommandGlobalOpts) -> miette::Result<()> {

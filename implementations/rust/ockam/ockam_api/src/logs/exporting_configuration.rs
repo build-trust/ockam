@@ -53,9 +53,9 @@ pub struct ExportingConfiguration {
     /// This boolean is set on spans to distinguish internal usage for external usage
     is_ockam_developer: bool,
     /// Maximum time for exporting a batch of spans (with no response)
-    span_export_portal_cutoff: Option<Duration>,
+    span_export_cutoff: Option<Duration>,
     /// Maximum time for exporting a batch of log records (with no response)
-    log_export_portal_cutoff: Option<Duration>,
+    log_export_cutoff: Option<Duration>,
 }
 
 impl ExportingConfiguration {
@@ -101,12 +101,12 @@ impl ExportingConfiguration {
 
     /// Return the maximum time to wait until sending the current batch of spans (without waiting for a response)
     pub fn span_export_cutoff(&self) -> Option<Duration> {
-        self.span_export_portal_cutoff
+        self.span_export_cutoff
     }
 
     /// Return the maximum time to wait until sending the current batch of log records (without waiting for a response)
     pub fn log_export_cutoff(&self) -> Option<Duration> {
-        self.log_export_portal_cutoff
+        self.log_export_cutoff
     }
 
     /// Return the URL where to export spans and log records
@@ -132,8 +132,8 @@ impl ExportingConfiguration {
                 log_export_queue_size: log_export_queue_size()?,
                 opentelemetry_endpoint: endpoint.url(),
                 is_ockam_developer: is_ockam_developer()?,
-                span_export_portal_cutoff: Some(foreground_span_export_portal_cutoff().unwrap()),
-                log_export_portal_cutoff: Some(foreground_log_export_portal_cutoff().unwrap()),
+                span_export_cutoff: Some(foreground_span_export_portal_cutoff()?),
+                log_export_cutoff: Some(foreground_log_export_cutoff()?),
             }),
         }
     }
@@ -155,8 +155,8 @@ impl ExportingConfiguration {
                 log_export_queue_size: log_export_queue_size()?,
                 opentelemetry_endpoint: endpoint.url(),
                 is_ockam_developer: is_ockam_developer()?,
-                span_export_portal_cutoff: None,
-                log_export_portal_cutoff: None,
+                span_export_cutoff: Some(background_span_export_portal_cutoff()?),
+                log_export_cutoff: Some(background_log_export_cutoff()?),
             }),
         }
     }
@@ -173,8 +173,8 @@ impl ExportingConfiguration {
             log_export_queue_size: DEFAULT_LOG_EXPORT_QUEUE_SIZE,
             opentelemetry_endpoint: Self::default_opentelemetry_endpoint()?,
             is_ockam_developer: is_ockam_developer()?,
-            span_export_portal_cutoff: None,
-            log_export_portal_cutoff: None,
+            span_export_cutoff: None,
+            log_export_cutoff: None,
         })
     }
 
@@ -489,19 +489,35 @@ pub fn background_log_export_scheduled_delay() -> ockam_core::Result<Duration> {
     )
 }
 
-/// Return the maximum time for sending log record batches when using a portal
-pub fn foreground_log_export_portal_cutoff() -> ockam_core::Result<Duration> {
+/// Return the maximum time for sending log record batches when using a foreground node
+pub fn foreground_log_export_cutoff() -> ockam_core::Result<Duration> {
     get_env_with_default(
-        OCKAM_FOREGROUND_LOG_EXPORT_PORTAL_CUTOFF,
-        DEFAULT_FOREGROUND_LOG_EXPORT_PORTAL_CUTOFF,
+        OCKAM_FOREGROUND_LOG_EXPORT_CUTOFF,
+        DEFAULT_FOREGROUND_LOG_EXPORT_CUTOFF,
     )
 }
 
-/// Return the maximum time for sending span batches when using a portal
+/// Return the maximum time for sending span batches when using a foreground node
 pub fn foreground_span_export_portal_cutoff() -> ockam_core::Result<Duration> {
     get_env_with_default(
-        OCKAM_FOREGROUND_SPAN_EXPORT_PORTAL_CUTOFF,
-        DEFAULT_FOREGROUND_SPAN_EXPORT_PORTAL_CUTOFF,
+        OCKAM_FOREGROUND_SPAN_EXPORT_CUTOFF,
+        DEFAULT_FOREGROUND_SPAN_EXPORT_CUTOFF,
+    )
+}
+
+/// Return the maximum time for sending log record batches when using a background node
+pub fn background_log_export_cutoff() -> ockam_core::Result<Duration> {
+    get_env_with_default(
+        OCKAM_BACKGROUND_LOG_EXPORT_CUTOFF,
+        DEFAULT_BACKGROUND_LOG_EXPORT_CUTOFF,
+    )
+}
+
+/// Return the maximum time for sending span batches when using a background node
+pub fn background_span_export_portal_cutoff() -> ockam_core::Result<Duration> {
+    get_env_with_default(
+        OCKAM_BACKGROUND_SPAN_EXPORT_CUTOFF,
+        DEFAULT_BACKGROUND_SPAN_EXPORT_CUTOFF,
     )
 }
 

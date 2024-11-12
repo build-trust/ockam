@@ -7,7 +7,7 @@ use console::Term;
 use miette::IntoDiagnostic;
 
 use ockam_api::CliState;
-use tokio_retry::strategy::FibonacciBackoff;
+use tokio_retry::strategy::FixedInterval;
 use tracing::{info, trace, warn};
 
 use ockam_api::nodes::models::node::{NodeResources, NodeStatus};
@@ -26,10 +26,10 @@ const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/show/after_long_help.txt");
 
 const IS_NODE_ACCESSIBLE_TIME_BETWEEN_CHECKS_MS: u64 = 100;
-const IS_NODE_ACCESSIBLE_TIMEOUT: Duration = Duration::from_secs(180);
+const IS_NODE_ACCESSIBLE_TIMEOUT: Duration = Duration::from_secs(10);
 
 const IS_NODE_READY_TIME_BETWEEN_CHECKS_MS: u64 = 100;
-const IS_NODE_READY_TIMEOUT: Duration = Duration::from_secs(180);
+const IS_NODE_READY_TIMEOUT: Duration = Duration::from_secs(20);
 
 /// Show the details of a node
 #[derive(Clone, Debug, Args)]
@@ -183,7 +183,7 @@ async fn is_node_accessible(
     wait_until_ready: bool,
 ) -> Result<bool> {
     let node_name = node.node_name();
-    let retries = FibonacciBackoff::from_millis(IS_NODE_ACCESSIBLE_TIME_BETWEEN_CHECKS_MS);
+    let retries = FixedInterval::from_millis(IS_NODE_ACCESSIBLE_TIME_BETWEEN_CHECKS_MS);
     let mut total_time = Duration::from_secs(0);
     for timeout_duration in retries {
         if total_time >= IS_NODE_ACCESSIBLE_TIMEOUT || !wait_until_ready && !total_time.is_zero() {
@@ -207,7 +207,7 @@ async fn is_node_ready(
     wait_until_ready: bool,
 ) -> Result<bool> {
     let node_name = node.node_name();
-    let retries = FibonacciBackoff::from_millis(IS_NODE_READY_TIME_BETWEEN_CHECKS_MS);
+    let retries = FixedInterval::from_millis(IS_NODE_READY_TIME_BETWEEN_CHECKS_MS);
     let now = std::time::Instant::now();
     let mut total_time = Duration::from_secs(0);
     for timeout_duration in retries {

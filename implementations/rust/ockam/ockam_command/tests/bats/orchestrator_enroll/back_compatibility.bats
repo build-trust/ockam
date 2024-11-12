@@ -17,7 +17,7 @@ teardown() {
 
 # ===== TESTS
 
-@test "backcompat - generate ticket, enroll with old version" {
+@test "back compatibility - generate ticket, enroll with old version" {
   skip "docker call not supported in CI yet"
   latest_version=$($OCKAM --version | grep -o 'ockam [0-9]*\.[0-9]*\.[0-9]*' | sed 's/ockam //')
   latest_minor_version=$(echo $latest_version | cut -d. -f2)

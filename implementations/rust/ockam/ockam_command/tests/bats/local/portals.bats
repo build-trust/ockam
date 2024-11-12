@@ -165,7 +165,7 @@ teardown() {
 
   file_name="$(random_str)".bin
   pushd "$OCKAM_HOME_BASE" && dd if=/dev/urandom of="./.tmp/$file_name" bs=1M count=50 && popd
-  run_success curl -sSf -m 20 -o "$OCKAM_HOME/$file_name" "http://127.0.0.1:$port/.tmp/$file_name"
+  run_success curl -sSf -m 20 -o /dev/null "http://127.0.0.1:$port/.tmp/$file_name"
 }
 
 @test "portals - create an inlet/outlet, upload file" {
@@ -258,7 +258,7 @@ teardown() {
   run_success "$OCKAM" tcp-inlet create --at /node/green --from "$inlet_port" --to /node/blue/secure/api/service/outlet
   run_success curl -sfI --retry-connrefused --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$inlet_port"
 
-  force_kill_node blue
+  run_success "$OCKAM" node delete blue --yes
   run_failure curl -sfI -m 3 "127.0.0.1:$inlet_port"
 
   run_success "$OCKAM" node create blue --tcp-listener-address "127.0.0.1:$node_port"
@@ -315,11 +315,10 @@ teardown() {
   # when the credential expires
   file_name="$(random_str)".bin
   pushd "$OCKAM_HOME_BASE" && dd if=/dev/urandom of="./.tmp/$file_name" bs=1M count=50 && popd
-  run_failure curl -sSf -m 20 --limit-rate 5M \
-    -o "$OCKAM_HOME/$file_name" "http://127.0.0.1:$inlet_port/.tmp/$file_name" >/dev/null
+  run_failure curl -sSf -m 20 --limit-rate 5M -o /dev/null "http://127.0.0.1:$inlet_port/.tmp/$file_name" >/dev/null
 
   # Consequent attempt fails
-  run_failure curl -sSf -m 20 -o "$OCKAM_HOME/$file_name" "http://127.0.0.1:$inlet_port/.tmp/$file_name"
+  run_failure curl -sSf -m 20 -o /dev/null "http://127.0.0.1:$inlet_port/.tmp/$file_name"
 }
 
 @test "portals - local portal, curl upload, inlet credential expires" {
@@ -400,11 +399,10 @@ teardown() {
   # when the credential expires
   file_name="$(random_str)".bin
   pushd "$OCKAM_HOME_BASE" && dd if=/dev/urandom of="./.tmp/$file_name" bs=1M count=50 && popd
-  run_failure curl -sSf -m 20 --limit-rate 5M \
-    -o "$OCKAM_HOME/$file_name" "http://127.0.0.1:$inlet_port/.tmp/$file_name" >/dev/null
+  run_failure curl -sSf -m 20 --limit-rate 5M -o /dev/null "http://127.0.0.1:$inlet_port/.tmp/$file_name" >/dev/null
 
   # Consequent attempt fails
-  run_failure curl -sSf -m 20 -o "$OCKAM_HOME/$file_name" "http://127.0.0.1:$inlet_port/.tmp/$file_name" >/dev/null
+  run_failure curl -sSf -m 20 -o /dev/null "http://127.0.0.1:$inlet_port/.tmp/$file_name" >/dev/null
 }
 
 @test "portals - local portal, curl upload, outlet credential expires" {

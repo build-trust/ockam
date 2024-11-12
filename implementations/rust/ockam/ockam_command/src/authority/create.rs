@@ -1,5 +1,4 @@
 use std::fmt::{Display, Formatter};
-use std::process::exit;
 use std::str::FromStr;
 
 use clap::Args;
@@ -21,7 +20,7 @@ use ockam_api::cloud::project::models::ProjectModel;
 use ockam_api::colors::color_primary;
 use ockam_api::config::lookup::InternetAddress;
 use ockam_api::nodes::service::default_address::DefaultAddress;
-use ockam_api::{authority_node, fmt_err, fmt_ok};
+use ockam_api::{authority_node, fmt_err};
 use ockam_core::compat::collections::BTreeMap;
 use ockam_core::compat::fmt;
 
@@ -449,16 +448,9 @@ impl CreateCommand {
         )
         .await?;
 
-        let _ = ctx.stop().await;
+        // Clean up and exit
         let _ = opts.state.stop_node(&self.node_name).await;
-        if foreground_args.child_process {
-            opts.shutdown();
-            exit(0);
-        } else {
-            opts.terminal
-                .write_line(fmt_ok!("Node stopped successfully"))?;
-            Ok(())
-        }
+        Ok(())
     }
 
     pub async fn guard_node_is_not_already_running(

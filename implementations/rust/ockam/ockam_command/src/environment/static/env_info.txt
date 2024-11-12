@@ -28,13 +28,6 @@ Database
 - OCKAM_POSTGRES_USER: Postgres database user. If it is not set, no authorization will be used to access the database.
 - OCKAM_POSTGRES_PASSWORD: Postgres database password. If it is not set, no authorization will be used to access the database.
 
-- OCKAM_LOGGING: set this variable to any value in order to enable logging.
-- OCKAM_LOG_LEVEL: a `string` that defines the verbosity of the logs when the `--verbose` argument is not passed: `info`, `warn`, `error`, `debug` or `trace`. Default value: `debug`.
-- OCKAM_LOG_FORMAT: a `string` that overrides the default format of the logs: `default`, `json`, or `pretty`. Default value: `default`.
-- OCKAM_LOG_MAX_SIZE_MB: an `integer` that defines the maximum size of a log file in MB. Default value `100`.
-- OCKAM_LOG_MAX_FILES: an `integer` that defines the maximum number of log files to keep per node. Default value `60`.
-- OCKAM_LOG_CRATES_FILTER: a filter for log messages based on crate names: `all`, `default`, comma-separated list of crate names. Default value: `default`, i.e. the list of `ockam` crates.
-
 Tracing
 - OCKAM_OPENTELEMETRY_EXPORT: set this variable to a false value to disable tracing: `0`, `false`, `no`. Default value: `true`
 - OCKAM_OPENTELEMETRY_ENDPOINT: the URL of an OpenTelemetry collector accepting gRPC.
@@ -48,9 +41,10 @@ Tracing
 - OCKAM_SPAN_EXPORT_QUEUE_SIZE: Size of the queue used to store batched spans before export. When the queue is full, spans are dropped. Default value: `32768`
 - OCKAM_LOG_EXPORT_QUEUE_SIZE: Size of the queue used to store batched log records before export. When the queue is full, log records are dropped. Default value: `32768`
 - OCKAM_TRACING_GLOBAL_ERROR_HANDLER: Configuration for printing tracing/logging errors: `console`, `logfile`, `off`. Default value: `logfile`.
-- OCKAM_FOREGROUND_LOG_EXPORT_PORTAL_CUTOFF: Cutoff time for sending log records batches to an OpenTelemetry portal inlet, without waiting for a response. Default value: `3s`.
-- OCKAM_FOREGROUND_SPAN_EXPORT_PORTAL_CUTOFF: Cutoff time for sending span batches to an OpenTelemetry portal inlet, without waiting for a response. Default value: `3s`.
-- OCKAM_TRACING_GLOBAL_ERROR_HANDLER: Configuration for printing tracing/logging errors: `console`, `logfile`, `off`. Default value: `console`.
+- OCKAM_FOREGROUND_LOG_EXPORT_CUTOFF: Cutoff time for sending log records batches to an OpenTelemetry foreground node, without waiting for a response. Default value: `3s`.
+- OCKAM_FOREGROUND_SPAN_EXPORT_CUTOFF: Cutoff time for sending span batches to an OpenTelemetry foreground inlet, without waiting for a response. Default value: `3s`.
+- OCKAM_BACKGROUND_LOG_EXPORT_CUTOFF: Cutoff time for sending log records batches to an OpenTelemetry baclground node, without waiting for a response. Default value: `3s`.
+- OCKAM_BACKGROUND_SPAN_EXPORT_CUTOFF: Cutoff time for sending span batches to an OpenTelemetry background inlet, without waiting for a response. Default value: `3s`.
 
 UDP Puncture
 - OCKAM_RENDEZVOUS_SERVER: set this variable to the hostname and port of the Rendezvous service

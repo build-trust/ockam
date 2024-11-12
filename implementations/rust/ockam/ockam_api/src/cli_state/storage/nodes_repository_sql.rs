@@ -58,7 +58,11 @@ impl NodesRepository for NodesSqlxDatabase {
                     .as_ref()
                     .map(|a| a.to_string()),
             );
-        Ok(query.execute(&*self.database.pool).await.void()?)
+        query.execute(&*self.database.pool).await.void()?;
+        if node_info.is_default() {
+            self.set_default_node(&node_info.name()).await?;
+        }
+        Ok(())
     }
 
     async fn get_nodes(&self) -> Result<Vec<NodeInfo>> {
@@ -339,19 +343,39 @@ mod test {
 
             repository.store_node(&node_info2).await?;
             let result = repository.get_nodes().await?;
-            assert_eq!(result, vec![node_info1.clone(), node_info2.clone()]);
+            assert_eq!(result.len(), 2);
+            assert!(result.contains(&node_info1));
+            assert!(result.contains(&node_info2));
 
             // a node can be set as the default
             repository.set_default_node("node2").await?;
             let result = repository.get_default_node().await?;
             assert_eq!(result, Some(node_info2.set_as_default()));
 
+            // if another node is stored as default, the previous default node is not anymore
+            let node_info3 = NodeInfo::new(
+                "node3".to_string(),
+                identifier.clone(),
+                0,
+                true,
+                false,
+                None,
+                Some(5678),
+                None,
+            );
+            repository.store_node(&node_info3).await?;
+            let result = repository.get_default_node().await?;
+            assert_eq!(result, Some(node_info3.set_as_default()));
+
             // a node can be deleted
             repository.delete_node("node2").await?;
             let result = repository.get_nodes().await?;
-            assert_eq!(result, vec![node_info1.clone()]);
+            assert_eq!(result.len(), 2);
+            assert!(result.contains(&node_info1));
+            assert!(result.contains(&node_info3));
 
-            // in that case there is no more default node
+            // if the default node is deleted, there is no default node anymore
+            repository.delete_node("node3").await?;
             let result = repository.get_default_node().await?;
             assert!(result.is_none());
             Ok(())
@@ -379,7 +403,9 @@ mod test {
 
             // get the nodes for identifier1
             let result = repository.get_nodes_by_identifier(&identifier1).await?;
-            assert_eq!(result, vec![node_info1.clone(), node_info2.clone()]);
+            assert_eq!(result.len(), 2);
+            assert!(result.contains(&node_info1));
+            assert!(result.contains(&node_info2));
             Ok(())
         })
         .await

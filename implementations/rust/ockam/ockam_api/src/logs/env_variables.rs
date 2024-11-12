@@ -108,14 +108,20 @@ pub(crate) const OCKAM_SPAN_EXPORT_QUEUE_SIZE: &str = "OCKAM_SPAN_EXPORT_QUEUE_S
 pub(crate) const OCKAM_LOG_EXPORT_QUEUE_SIZE: &str = "OCKAM_LOG_EXPORT_QUEUE_SIZE";
 
 /// Maximum time for sending a log batch and not waiting for a response when running
-/// a foreground command and using a portal to export log records. For example: 200ms
-pub(crate) const OCKAM_FOREGROUND_LOG_EXPORT_PORTAL_CUTOFF: &str =
-    "OCKAM_FOREGROUND_LOG_EXPORT_PORTAL_CUTOFF";
+/// a foreground command export log records. For example: 200ms
+pub(crate) const OCKAM_FOREGROUND_LOG_EXPORT_CUTOFF: &str = "OCKAM_FOREGROUND_LOG_EXPORT_CUTOFF";
 
 /// Maximum time for sending a span batch and not waiting for a response when running
-/// a foreground command and using a portal to export span batches. For example: 200ms
-pub(crate) const OCKAM_FOREGROUND_SPAN_EXPORT_PORTAL_CUTOFF: &str =
-    "OCKAM_FOREGROUND_SPAN_EXPORT_PORTAL_CUTOFF";
+/// a foreground command to export span batches. For example: 200ms
+pub(crate) const OCKAM_FOREGROUND_SPAN_EXPORT_CUTOFF: &str = "OCKAM_FOREGROUND_SPAN_EXPORT_CUTOFF";
+
+/// Maximum time for sending a log batch and not waiting for a response when running
+/// a background command to export log records. For example: 200ms
+pub(crate) const OCKAM_BACKGROUND_LOG_EXPORT_CUTOFF: &str = "OCKAM_BACKGROUND_LOG_EXPORT_CUTOFF";
+
+/// Maximum time for sending a span batch and not waiting for a response when running
+/// a background command to export span batches. For example: 200ms
+pub(crate) const OCKAM_BACKGROUND_SPAN_EXPORT_CUTOFF: &str = "OCKAM_BACKGROUND_SPAN_EXPORT_CUTOFF";
 
 ///
 /// OPENTELEMETRY COLLECTOR ERRORS CONFIGURATION

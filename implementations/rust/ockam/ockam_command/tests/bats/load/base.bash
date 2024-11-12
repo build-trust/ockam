@@ -79,7 +79,7 @@ force_kill_node() {
   pid="$($OCKAM node show $1 --output json | jq .pid)"
   while [[ $i -lt $max_retries ]]; do
     run kill -9 $pid
-    # Killing a node created without `-f` leaves the
+    # Killing a background node (created without `-f`) leaves the
     # process in a defunct state when running within Docker.
     if ! ps -p $pid || ps -p $pid | grep defunct; then
       return

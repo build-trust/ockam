@@ -16,7 +16,7 @@ use ockam_api::cli_state::random_name;
 use ockam_api::colors::{color_error, color_primary};
 use ockam_api::nodes::models::transport::Port;
 use ockam_api::terminal::notification::NotificationHandler;
-use ockam_api::{fmt_log, fmt_ok};
+use ockam_api::{fmt_log, fmt_ok, CliState};
 use ockam_core::{opentelemetry_context_parser, OpenTelemetryContext};
 use ockam_node::Context;
 use opentelemetry::trace::TraceContextExt;
@@ -167,23 +167,24 @@ impl Command for CreateCommand {
             async_cmd(&self.name(), opts.clone(), |ctx| async move {
                 self.run_config(&ctx, opts).await
             })
-        } else {
-            self.set_random_name_if_default();
-            if self.foreground_args.foreground {
-                if self.foreground_args.child_process {
-                    opentelemetry::Context::current()
-                        .span()
-                        .set_attribute(KeyValue::new("background", "true"));
-                }
-                local_cmd(embedded_node_that_is_not_stopped(
-                    opts.rt.clone(),
-                    |ctx| async move { self.foreground_mode(&ctx, opts).await },
-                ))
-            } else {
-                async_cmd(&self.name(), opts.clone(), |ctx| async move {
-                    self.background_mode(&ctx, opts).await
-                })
+        } else if self.foreground_args.foreground {
+            if self.foreground_args.child_process {
+                opentelemetry::Context::current()
+                    .span()
+                    .set_attribute(KeyValue::new("background", "true"));
             }
+            local_cmd(embedded_node_that_is_not_stopped(
+                opts.rt.clone(),
+                |ctx| async move {
+                    self.name = self.get_default_node_name(&opts.state).await;
+                    self.foreground_mode(&ctx, opts).await
+                },
+            ))
+        } else {
+            async_cmd(&self.name(), opts.clone(), |ctx| async move {
+                self.name = self.get_default_node_name(&opts.state).await;
+                self.background_mode(&ctx, opts).await
+            })
         }
     }
 
@@ -192,7 +193,7 @@ impl Command for CreateCommand {
         if self.should_run_config() {
             self.run_config(ctx, opts).await?
         } else {
-            self.set_random_name_if_default();
+            self.name = self.get_default_node_name(&opts.state).await;
             if self.foreground_args.foreground {
                 self.foreground_mode(ctx, opts).await?
             } else {
@@ -316,10 +317,22 @@ impl CreateCommand {
         Ok(buf)
     }
 
-    fn set_random_name_if_default(&mut self) {
-        if self.name == DEFAULT_NODE_NAME {
-            self.name = random_name();
+    async fn get_default_node_name(&self, state: &CliState) -> String {
+        let mut name = if self.name_arg_is_a_config() {
+            DEFAULT_NODE_NAME.to_string()
+        } else {
+            self.name.clone()
+        };
+        if name == DEFAULT_NODE_NAME {
+            name = random_name();
+            if let Ok(default_node) = state.get_default_node().await {
+                if !default_node.is_running() {
+                    // The default node was stopped, so we can reuse the name
+                    name = default_node.name();
+                }
+            }
         }
+        name
     }
 
     async fn get_or_create_identity(
@@ -483,5 +496,104 @@ mod tests {
             ..CreateCommand::default()
         };
         assert!(!cmd.should_run_config());
+    }
+
+    #[tokio::test]
+    async fn get_default_node_name_no_previous_state() {
+        let state = CliState::test().await.unwrap();
+        let cmd = CreateCommand::default();
+        let name = cmd.get_default_node_name(&state).await;
+        assert_ne!(name, DEFAULT_NODE_NAME);
+
+        let cmd = CreateCommand {
+            name: r#"{tcp-outlet: {to: "5500"}}"#.to_string(),
+            ..Default::default()
+        };
+        let name = cmd.get_default_node_name(&state).await;
+        assert_ne!(name, DEFAULT_NODE_NAME);
+        assert_ne!(name, cmd.name);
+
+        let cmd = CreateCommand {
+            config_args: ConfigArgs {
+                configuration: Some(r#"{tcp-outlet: {to: "5500"}}"#.to_string()),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let name = cmd.get_default_node_name(&state).await;
+        assert_ne!(name, DEFAULT_NODE_NAME);
+        assert_ne!(name, cmd.name);
+
+        let cmd = CreateCommand {
+            name: "n1".to_string(),
+            ..Default::default()
+        };
+        let name = cmd.get_default_node_name(&state).await;
+        assert_eq!(name, cmd.name);
+
+        let cmd = CreateCommand {
+            name: "n1".to_string(),
+            config_args: ConfigArgs {
+                configuration: Some(r#"{tcp-outlet: {to: "5500"}}"#.to_string()),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let name = cmd.get_default_node_name(&state).await;
+        assert_eq!(name, cmd.name);
+    }
+
+    #[tokio::test]
+    async fn get_default_node_name_with_previous_state() {
+        let state = CliState::test().await.unwrap();
+        let default_node_name = "n1";
+        state.create_node(default_node_name).await.unwrap();
+
+        let cmd = CreateCommand::default();
+        let name = cmd.get_default_node_name(&state).await;
+        assert_ne!(name, default_node_name);
+
+        // There is a default node stored in the state, but it's stopped.
+        // All the later calls should return the default node name.
+        state.stop_node(default_node_name).await.unwrap();
+        let cmd = CreateCommand::default();
+        let name = cmd.get_default_node_name(&state).await;
+        assert_eq!(name, default_node_name);
+
+        let cmd = CreateCommand {
+            name: r#"{tcp-outlet: {to: "5500"}}"#.to_string(),
+            ..Default::default()
+        };
+        let name = cmd.get_default_node_name(&state).await;
+        assert_eq!(name, default_node_name);
+
+        let cmd = CreateCommand {
+            config_args: ConfigArgs {
+                configuration: Some(r#"{tcp-outlet: {to: "5500"}}"#.to_string()),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let name = cmd.get_default_node_name(&state).await;
+        assert_eq!(name, default_node_name);
+
+        // Unless we explicitly set a name
+        let cmd = CreateCommand {
+            name: "n2".to_string(),
+            ..Default::default()
+        };
+        let name = cmd.get_default_node_name(&state).await;
+        assert_eq!(name, cmd.name);
+
+        let cmd = CreateCommand {
+            name: "n2".to_string(),
+            config_args: ConfigArgs {
+                configuration: Some(r#"{tcp-outlet: {to: "5500"}}"#.to_string()),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let name = cmd.get_default_node_name(&state).await;
+        assert_eq!(name, cmd.name);
     }
 }

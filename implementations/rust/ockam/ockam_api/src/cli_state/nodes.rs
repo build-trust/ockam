@@ -1,9 +1,5 @@
-use minicbor::{CborLen, Decode, Encode};
-use std::fmt::{Display, Formatter};
-use std::path::PathBuf;
-use std::process;
-
 use colorful::Colorful;
+use minicbor::{CborLen, Decode, Encode};
 use nix::errno::Errno;
 use nix::sys::signal;
 use ockam::identity::utils::now;
@@ -14,6 +10,10 @@ use ockam_core::Error;
 use ockam_multiaddr::proto::{DnsAddr, Node, Tcp};
 use ockam_multiaddr::MultiAddr;
 use serde::Serialize;
+use std::fmt::{Display, Formatter};
+use std::path::PathBuf;
+use std::process;
+use std::time::Duration;
 use sysinfo::{Pid, ProcessStatus, ProcessesToUpdate, System};
 
 use crate::cli_state::{random_name, NamedVault, Result};
@@ -187,26 +187,21 @@ impl CliState {
         let node = self.get_node(node_name).await?;
         if let Some(pid) = node.pid() {
             // Avoid killing the current process, return successfully instead.
-            // This is needed when deleting nodes from another node, for example, during a reset
+            // This is needed to avoid killing the process that is running the CLI, or when exiting a foreground node.
             if pid == process::id() {
                 debug!(name=%node_name, "node is the current process, skipping sending kill signal");
+                self.nodes_repository().set_no_node_pid(node_name).await?;
                 return Ok(());
             }
 
             // Try first with SIGTERM, if it fails, try again with SIGKILL
             if let Err(e) = self
-                .kill_node_process(node_name, pid, signal::Signal::SIGTERM)
+                .kill_node_process(&node, pid, signal::Signal::SIGTERM)
                 .await
             {
                 warn!(name=%node_name, %pid, %e, "failed to stop node process with SIGTERM");
-                self.notify_progress(format!(
-                    "Failed to stop node {} with {}, trying with {}",
-                    color_primary(node_name),
-                    color_primary("SIGTERM"),
-                    color_primary("SIGKILL")
-                ));
                 if let Err(e) = self
-                    .kill_node_process(node_name, pid, signal::Signal::SIGKILL)
+                    .kill_node_process(&node, pid, signal::Signal::SIGKILL)
                     .await
                 {
                     error!(name=%node_name, %pid, %e, "failed to stop node process with SIGKILL");
@@ -226,24 +221,25 @@ impl CliState {
 
     async fn kill_node_process(
         &self,
-        node_name: &str,
+        node: &NodeInfo,
         pid: u32,
         signal: signal::Signal,
     ) -> Result<()> {
         debug!(%pid, %signal, "sending kill signals to node's process");
+        let node_name = &node.name;
         let pid = nix::unistd::Pid::from_raw(pid as i32);
         let _ = self.send_kill_signal(pid, signal);
 
         // Wait until the node has fully stopped
-        let timeout = std::time::Duration::from_millis(100);
-        let max_attempts = std::time::Duration::from_secs(5).as_millis() / timeout.as_millis();
+        let timeout = Duration::from_millis(100);
+        tokio::time::sleep(timeout).await;
+        let max_attempts = Duration::from_secs(5).as_millis() / timeout.as_millis();
+        let show_message_at_attempt = Duration::from_secs(2).as_millis() / timeout.as_millis();
         let mut attempts = 0;
-        loop {
+
+        while let NodeProcessStatus::Running(_) = node.status() {
             match self.send_kill_signal(pid, signal) {
-                Ok(()) => {
-                    self.notify_progress_finish_and_clear();
-                    return Ok(());
-                }
+                Ok(()) => break,
                 Err(err) => {
                     // Return if max attempts have been reached
                     if attempts > max_attempts {
@@ -252,7 +248,7 @@ impl CliState {
                         return Err(err);
                     }
                     // Notify the user that the node is stopping if it takes too long
-                    if attempts == 5 {
+                    if attempts == show_message_at_attempt {
                         self.notify_progress(format!(
                             "Waiting for node's {} process {} to stop",
                             color_primary(node_name),
@@ -264,14 +260,15 @@ impl CliState {
                 }
             }
         }
+        self.notify_progress_finish_and_clear();
+        Ok(())
     }
 
     /// Sends the kill signal to a process
     ///
     /// Returns Ok only if the process has been killed (PID doesn't exist), otherwise an error
     fn send_kill_signal(&self, pid: nix::unistd::Pid, signal: signal::Signal) -> Result<()> {
-        let res = signal::kill(pid, signal);
-        match res {
+        match signal::kill(pid, signal) {
             Ok(_) => Err(CliStateError::Other(
                 "kill signal sent, process might still be alive".into(),
             )),
@@ -439,8 +436,14 @@ impl CliState {
     ) -> Result<NodeInfo> {
         let repository = self.nodes_repository();
 
-        let is_default = repository.is_default_node(node_name).await?
+        let mut is_default = repository.is_default_node(node_name).await?
             || repository.get_nodes().await?.is_empty();
+        if let Some(node) = repository.get_default_node().await? {
+            // If the default node is not running, we can set the new node as the default
+            if node.pid.is_none() {
+                is_default = true;
+            }
+        }
 
         let tcp_listener_address = repository.get_tcp_listener_address(node_name).await?;
         let status_endpoint_address = repository.get_status_endpoint_address(node_name).await?;
@@ -661,7 +664,7 @@ impl NodeInfo {
             let mut sys = System::new();
             sys.refresh_processes(ProcessesToUpdate::All, false);
             if let Some(p) = sys.process(Pid::from_u32(pid)) {
-                // Under certain circumstances the process can be in a state where it's not running
+                // Under certain circumstances, the process can be in a state where it's not running,
                 // and we are unable to kill it. For example, `kill -9` a process created by
                 // `node create` in a Docker environment will result in a zombie process.
                 if matches!(p.status(), ProcessStatus::Dead | ProcessStatus::Zombie) {

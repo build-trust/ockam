@@ -49,10 +49,14 @@ pub(crate) const DEFAULT_SPAN_EXPORT_QUEUE_SIZE: u16 = 32768;
 // Size of the queue used to batch logs.
 pub(crate) const DEFAULT_LOG_EXPORT_QUEUE_SIZE: u16 = 32768;
 
-// Maximum time for sending log record batches when using a portal
-pub(crate) const DEFAULT_FOREGROUND_LOG_EXPORT_PORTAL_CUTOFF: Duration =
-    Duration::from_millis(3000);
+// Maximum time for sending log record batches when using a foreground node
+pub(crate) const DEFAULT_FOREGROUND_LOG_EXPORT_CUTOFF: Duration = Duration::from_millis(3000);
 
-// Maximum time for sending span batches when using a portal
-pub(crate) const DEFAULT_FOREGROUND_SPAN_EXPORT_PORTAL_CUTOFF: Duration =
-    Duration::from_millis(3000);
+// Maximum time for sending span batches when using a foreground node
+pub(crate) const DEFAULT_FOREGROUND_SPAN_EXPORT_CUTOFF: Duration = Duration::from_millis(3000);
+
+// Maximum time for sending log record batches when using a background node
+pub(crate) const DEFAULT_BACKGROUND_LOG_EXPORT_CUTOFF: Duration = Duration::from_millis(3000);
+
+// Maximum time for sending span batches when using a background node
+pub(crate) const DEFAULT_BACKGROUND_SPAN_EXPORT_CUTOFF: Duration = Duration::from_millis(3000);

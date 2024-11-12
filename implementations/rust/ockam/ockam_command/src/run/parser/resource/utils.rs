@@ -34,8 +34,8 @@ pub fn subprocess_stdio(quiet: bool) -> Stdio {
         // the stdout/stderr to the child process
         Stdio::null()
     } else {
-        // Otherwise, we need to inherit the stdout/stderr of the parent process
-        // to see the output written in the child process
+        // Otherwise, we need to inherit the stdout/stderr of the current process
+        // to see the output written in the spawned process
         Stdio::inherit()
     }
 }

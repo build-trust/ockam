@@ -22,7 +22,7 @@ pub trait Resource<C: ParsedCommand>: Sized + Send + Sync + 'static {
         vec![]
     }
 
-    fn run_in_subprocess(
+    fn run_in_new_process(
         self,
         global_args: &GlobalArgs,
         extra_args: BTreeMap<ArgKey, ArgValue>,
@@ -48,13 +48,21 @@ pub trait Resource<C: ParsedCommand>: Sized + Send + Sync + 'static {
         let args = Self::COMMAND_NAME
             .split(' ')
             .chain(args.iter().map(|s| s.as_str()));
-        let handle = ProcessCommand::new(binary_path())
-            .args(args)
-            .stdout(subprocess_stdio(global_args.quiet))
-            .stderr(subprocess_stdio(global_args.quiet))
-            .stdin(Stdio::null())
-            .spawn()
-            .into_diagnostic()?;
+        let handle = unsafe {
+            ProcessCommand::new(binary_path())
+                .args(args)
+                .stdout(subprocess_stdio(global_args.quiet))
+                .stderr(subprocess_stdio(global_args.quiet))
+                .stdin(Stdio::null())
+                // This unsafe block will only panic if the closure panics, which shouldn't happen
+                .pre_exec(|| {
+                    // Detach the process from the parent
+                    nix::unistd::setsid().map_err(std::io::Error::from)?;
+                    Ok(())
+                })
+                .spawn()
+                .into_diagnostic()?
+        };
         Ok(handle)
     }
 }

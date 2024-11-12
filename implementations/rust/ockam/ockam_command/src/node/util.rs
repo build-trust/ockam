@@ -4,6 +4,7 @@ use ockam_core::env::get_env_with_default;
 use ockam_node::Context;
 use rand::random;
 use std::env::current_exe;
+use std::os::unix::prelude::CommandExt;
 use std::process::{Command, Stdio};
 use tracing::info;
 
@@ -159,14 +160,22 @@ pub async fn run_ockam(args: Vec<String>, quiet: bool) -> miette::Result<()> {
             .into()
     });
 
-    Command::new(ockam_exe)
-        .args(args)
-        .stdout(subprocess_stdio(quiet))
-        .stderr(subprocess_stdio(quiet))
-        .stdin(Stdio::null())
-        .spawn()
-        .into_diagnostic()
-        .context("failed to spawn node")?;
+    unsafe {
+        Command::new(ockam_exe)
+            .args(args)
+            .stdout(subprocess_stdio(quiet))
+            .stderr(subprocess_stdio(quiet))
+            .stdin(Stdio::null())
+            // This unsafe block will only panic if the closure panics, which shouldn't happen
+            .pre_exec(|| {
+                // Detach the process from the parent
+                nix::unistd::setsid().map_err(std::io::Error::from)?;
+                Ok(())
+            })
+            .spawn()
+            .into_diagnostic()
+            .context("failed to spawn node")?;
+    }
 
     Ok(())
 }

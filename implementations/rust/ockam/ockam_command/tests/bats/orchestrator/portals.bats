@@ -209,7 +209,7 @@ teardown() {
   run_success "$OCKAM" tcp-inlet create --at /node/green --from "$inlet_port" --via "$relay_name"
   run_success curl -sfI --retry-connrefused --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$inlet_port"
 
-  force_kill_node blue
+  $OCKAM node delete blue --yes
   run_failure curl -sfI -m 3 "127.0.0.1:$inlet_port"
 
   run_success "$OCKAM" node create blue --tcp-listener-address "127.0.0.1:$node_port"

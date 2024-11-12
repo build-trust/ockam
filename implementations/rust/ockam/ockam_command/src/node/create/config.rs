@@ -7,9 +7,10 @@ use crate::value_parsers::{parse_config_or_path_or_url, parse_key_val};
 use crate::CommandGlobalOpts;
 use clap::Args;
 use miette::{miette, IntoDiagnostic};
+use nix::sys::signal;
 use ockam_api::cli_state::journeys::APPLICATION_EVENT_COMMAND_CONFIGURATION_FILE;
-use ockam_api::cli_state::random_name;
 use ockam_api::nodes::BackgroundNodeClient;
+use ockam_api::CliState;
 use ockam_core::{AsyncTryClone, OpenTelemetryContext};
 use ockam_node::Context;
 use serde::{Deserialize, Serialize};
@@ -48,7 +49,7 @@ impl CreateCommand {
     pub async fn run_config(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         debug!("Running node create with a node config");
         let mut node_config = self.get_node_config().await?;
-        node_config.merge(&self)?;
+        node_config.merge(&self, &opts.state).await?;
         let node_name = node_config.node.name().ok_or(miette!(
             "Node name should be set to the command's default value"
         ))?;
@@ -143,7 +144,7 @@ impl NodeConfig {
 
     /// Merge the arguments of the node defined in the config with the arguments from the
     /// "create" command, giving precedence to the command args.
-    fn merge(&mut self, cmd: &CreateCommand) -> miette::Result<()> {
+    async fn merge(&mut self, cmd: &CreateCommand, state: &CliState) -> miette::Result<()> {
         // Set environment variables from the cli command again
         // to override the duplicate entries from the config file.
         for (key, value) in &cmd.config_args.variables {
@@ -155,7 +156,7 @@ impl NodeConfig {
 
         // Set default values to the config, if not present
         if self.node.name.is_none() {
-            self.node.name = Some(random_name().into());
+            self.node.name = Some(cmd.get_default_node_name(state).await.into());
         }
         if self.node.opentelemetry_context.is_none() {
             self.node.opentelemetry_context = Some(
@@ -244,7 +245,7 @@ impl NodeConfig {
         if self.project_enroll.ticket.is_some() {
             if !self
                 .project_enroll
-                .run_in_subprocess(
+                .run_in_new_process(
                     &opts.global_args,
                     vec![("identity".into(), identity_name.into())]
                         .into_iter()
@@ -262,9 +263,9 @@ impl NodeConfig {
         }
 
         // Next, run the 'node create' command
-        let child = self
+        let node_process = self
             .node
-            .run_in_subprocess(&opts.global_args, BTreeMap::default())?;
+            .run_in_new_process(&opts.global_args, BTreeMap::default())?;
 
         // Wait for the node to be up
         let is_up = {
@@ -276,10 +277,15 @@ impl NodeConfig {
         if !is_up {
             return Err(miette!("Node failed to start"));
         }
+        let node = opts.state.get_node(node_name).await?;
+        let node_pid = node.pid().ok_or(miette!("Node has no PID set"))?;
         ctrlc::set_handler(move || {
-            // Swallow ctrl+c signal, as it's handled by the child process.
-            // This prevents the current process from handling the signal and, for example,
-            // add a newline to the terminal before the child process has finished writing its output.
+            // Send a SIGTERM signal to the node process to trigger
+            // the foreground's ctrlc handler
+            let _ = signal::kill(
+                nix::unistd::Pid::from_raw(node_pid as i32),
+                signal::Signal::SIGTERM,
+            );
         })
         .expect("Error setting exit signal handler");
 
@@ -301,8 +307,8 @@ impl NodeConfig {
             cmds.run(ctx, opts).await?;
         }
 
-        // Block on the foreground node
-        child.wait_with_output().await.into_diagnostic()?;
+        // Block on the node process until it exits
+        node_process.wait_with_output().await.into_diagnostic()?;
         Ok(())
     }
 
@@ -337,6 +343,7 @@ impl NodeConfig {
 mod tests {
     use super::*;
     use ockam_api::cli_state::ExportedEnrollmentTicket;
+    use ockam_api::CliState;
 
     #[tokio::test]
     async fn get_node_config_from_path() {
@@ -419,6 +426,8 @@ mod tests {
 
     #[tokio::test]
     async fn node_name_is_handled_correctly() {
+        let state = CliState::test().await.unwrap();
+
         // The command doesn't define a node name, the config file does
         let tmp_directory = tempfile::tempdir().unwrap();
         let tmp_file = tmp_directory.path().join("config.json");
@@ -428,7 +437,7 @@ mod tests {
             ..Default::default()
         };
         let mut config = cmd.get_node_config().await.unwrap();
-        config.merge(&cmd).unwrap();
+        config.merge(&cmd, &state).await.unwrap();
         assert_eq!(config.node.name, Some("n1".into()));
 
         // Same with inline config
@@ -440,7 +449,7 @@ mod tests {
             ..Default::default()
         };
         let mut config = cmd.get_node_config().await.unwrap();
-        config.merge(&cmd).unwrap();
+        config.merge(&cmd, &state).await.unwrap();
         assert_eq!(config.node.name, Some("n1".into()));
 
         // If the command defines a node name, it should override the inline config
@@ -453,12 +462,13 @@ mod tests {
             ..Default::default()
         };
         let mut config = cmd.get_node_config().await.unwrap();
-        config.merge(&cmd).unwrap();
+        config.merge(&cmd, &state).await.unwrap();
         assert_eq!(config.node.name, Some("n2".into()));
     }
 
     #[tokio::test]
     async fn merge_config_with_cli() {
+        let state = CliState::test().await.unwrap();
         let cli_enrollment_ticket = ExportedEnrollmentTicket::new_test();
         let cli_enrollment_ticket_encoded = cli_enrollment_ticket.to_string();
 
@@ -474,7 +484,7 @@ mod tests {
         // No node config, cli args should be used
         let contents = String::new();
         let mut config = NodeConfig::parse(contents).unwrap();
-        config.merge(&cli_args).unwrap();
+        config.merge(&cli_args, &state).await.unwrap();
         let node = config.node.into_parsed_commands().unwrap().pop().unwrap();
         assert_eq!(node.tcp_listener_address, "127.0.0.1:1234");
         assert_eq!(
@@ -494,7 +504,7 @@ mod tests {
         "#
         .to_string();
         let mut config = NodeConfig::parse(contents).unwrap();
-        config.merge(&cli_args).unwrap();
+        config.merge(&cli_args, &state).await.unwrap();
         let node = config.node.into_parsed_commands().unwrap().pop().unwrap();
         assert_eq!(node.name, "n1");
         assert_eq!(node.tcp_listener_address, cli_args.tcp_listener_address);
