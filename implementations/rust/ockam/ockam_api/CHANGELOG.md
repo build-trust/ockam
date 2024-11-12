@@ -4,6 +4,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.84.0 - 2024-11-12
+
+### Added
+
+- Support json output in `project ticket`
+- `project ticket` show warning when using high values for ticket duration/usage
+- Tie each tcp connection inside portal to an `Identifier`
+- Improve delete behavior on different commands
+- Rename ebpf portals -> privileged portals
+- Updated dependencies
+
+### Changed
+
+- Bump sysinfo from 0.31.4 to 0.32.0
+
+### Fixed
+
+- Influxdb and tcp inlets delay the alias random value initialization to prevent collisions
+- Make sure that traces are exported when a command is executed
+- Force flush the traces later
+- Error chain is kept in ockam_command crate
+
 ## 0.83.0 - 2024-10-25
 
 ### Added

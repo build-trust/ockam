@@ -32,7 +32,7 @@ Add this to your `Cargo.toml`:
 
 ```
 [dependencies]
-ockam_api = "0.83.0"
+ockam_api = "0.84.0"
 ```
 
 ## License

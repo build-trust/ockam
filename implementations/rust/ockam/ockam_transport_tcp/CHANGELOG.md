@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.130.0 - 2024-11-12
+
+### Added
+
+- Add `route_index`
+- Tie each tcp connection inside portal to an `Identifier`
+- Add `CAP_NET_ADMIN` to ebpf requirements check
+- Async read from the rawsocket
+- Add ebpf portal integration test
+- Rename ebpf portals -> privileged portals
+- Reuse buffer inside `TcpSendWorker`
+- Updated dependencies
+
+### Fixed
+
+- In portals, check identity change only for remote packets
+
 ## 0.129.0 - 2024-10-25
 
 ### Added
