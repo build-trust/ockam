@@ -47,7 +47,7 @@ strum = { version = "0.26.3", default-features = false, features = ["derive"] }
 
 # optional:
 ockam_executor = { version = "0.89.0", path = "../ockam_executor", default-features = false, optional = true }
-regex = { version = "1.10.6", default-features = false, optional = true }
+regex = { version = "1.11.1", default-features = false, optional = true }
 rustyline = { version = "14.0.0", optional = true }
 rustyline-derive = { version = "0.10.0", optional = true }
 sqlx = { version = "0.8.2", optional = true, default-features = false }
