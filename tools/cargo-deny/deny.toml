@@ -59,10 +59,6 @@ ignore = [
   # yaml-rust is unmaintained. Switching to maintained fork yaml-rust2 is tricky
   # Tracked here https://github.com/build-trust/ockam/issues/7807
   "RUSTSEC-2024-0320",
-  #
-  # `instant` is unmaintained and used by `indicatif` as of Nov 2024
-  # `indicatif` is planning to replace the dependency: https://github.com/console-rs/indicatif/pull/667
-  "RUSTSEC-2024-0384",
 ]
 # Users who require or prefer Git to use SSH cloning instead of HTTPS,
 # such as implemented via "insteadOf" rules in Git config, can still

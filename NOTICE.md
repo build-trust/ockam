@@ -270,7 +270,6 @@ This file contains attributions for any 3rd-party open source code used in this 
 | indicatif | MIT | https://crates.io/crates/indicatif |
 | indoc | MIT, Apache-2.0 | https://crates.io/crates/indoc |
 | inout | MIT, Apache-2.0 | https://crates.io/crates/inout |
-| instant | BSD-3-Clause | https://crates.io/crates/instant |
 | iovec | MIT, Apache-2.0 | https://crates.io/crates/iovec |
 | ipnet | MIT, Apache-2.0 | https://crates.io/crates/ipnet |
 | is-docker | MIT | https://crates.io/crates/is-docker |
