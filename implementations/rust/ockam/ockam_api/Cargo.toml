@@ -99,7 +99,7 @@ sqlx = { version = "0.8.2", default-features = false }
 strip-ansi-escapes = "0.2"
 strum = { version = "0.26.3", default-features = false, features = ["derive"] }
 syntect = { version = "5.2.0", default-features = false, features = ["default-syntaxes", "regex-onig"] }
-sysinfo = "0.31"
+sysinfo = "0.32"
 termbg = "0.5.2"
 thiserror = "1.0"
 time = { version = "0.3.36", default-features = false, features = ["std", "formatting", "local-offset", "macros"] }

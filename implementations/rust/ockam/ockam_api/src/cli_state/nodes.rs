@@ -656,7 +656,7 @@ impl NodeInfo {
     pub fn status(&self) -> NodeProcessStatus {
         if let Some(pid) = self.pid() {
             let mut sys = System::new();
-            sys.refresh_processes(ProcessesToUpdate::All);
+            sys.refresh_processes(ProcessesToUpdate::All, false);
             if let Some(p) = sys.process(Pid::from_u32(pid)) {
                 // Under certain circumstances the process can be in a state where it's not running
                 // and we are unable to kill it. For example, `kill -9` a process created by
