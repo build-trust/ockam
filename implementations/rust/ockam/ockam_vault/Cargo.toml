@@ -38,6 +38,7 @@ rust-crypto = ["dep:aes-gcm"]
 std = [
   "ockam_macros/std",
   "ockam_node/std",
+  "minicbor/std",
   "aes-gcm?/std",
   "ed25519-dalek/std",
   "tracing/std",
@@ -59,6 +60,7 @@ no_std = [
 # Feature: "alloc" enables support for heap allocation (implied by `feature = "std"`)
 alloc = [
   "ockam_node/alloc",
+  "minicbor/alloc",
   "aes-gcm?/alloc",
   "ed25519-dalek/alloc",
   "x25519-dalek/alloc",
@@ -77,7 +79,7 @@ cfg-if = "1.0.0"
 ed25519-dalek = { version = "2.1", default-features = false, features = ["fast", "rand_core", "zeroize"] }
 hex = { version = "0.4", default-features = false }
 hkdf = { version = "0.12", default-features = false }
-minicbor = { version = "0.24.1", features = ["derive"] }
+minicbor = { version = "0.25.1", default-features = false, features = ["derive"] }
 ockam_core = { path = "../ockam_core", version = "^0.119.0", default-features = false }
 ockam_macros = { path = "../ockam_macros", version = "^0.35.0", default-features = false }
 ockam_node = { path = "../ockam_node", version = "^0.131.0", default-features = false, optional = true }

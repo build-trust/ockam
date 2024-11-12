@@ -25,12 +25,12 @@ UDP Transport for the Ockam Routing Protocol.
 
 [features]
 default = ["std"]
-std = ["ockam_macros/std"]
-alloc = []
+std = ["ockam_macros/std", "minicbor/std"]
+alloc = ["minicbor/alloc"]
 
 [dependencies]
 cfg-if = "1.0.0"
-minicbor = "0.24"
+minicbor = { version = "0.25.1", default-features = false, features = ["derive"] }
 ockam_core = { path = "../ockam_core", version = "^0.119.0", default-features = false }
 ockam_node = { path = "../ockam_node", version = "^0.131.0" }
 ockam_transport_core = { path = "../ockam_transport_core", version = "^0.96.0" }

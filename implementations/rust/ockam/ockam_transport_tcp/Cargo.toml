@@ -24,9 +24,9 @@ TCP Transport for the Ockam Routing Protocol.
 
 [features]
 default = ["std", "ring", "privileged_portals"]
-std = ["ockam_macros/std", "ockam_transport_core/std", "opentelemetry", "binary-layout?/std"]
+std = ["ockam_macros/std", "ockam_transport_core/std", "minicbor/std", "opentelemetry", "binary-layout?/std"]
 no_std = ["ockam_macros/no_std", "ockam_transport_core/no_std"]
-alloc = []
+alloc = ["minicbor/alloc"]
 aws-lc = ["tokio-rustls/aws-lc-rs"]
 ring = ["tokio-rustls/ring"]
 privileged_portals = ["aya", "aya-log", "binary-layout", "caps", "nix"]
@@ -38,7 +38,7 @@ cfg_aliases = "0.2.1"
 async-trait = "0.1.82"
 cfg-if = "1.0.0"
 log = "0.4.21"
-minicbor = "0.24"
+minicbor = { version = "0.25.1", default-features = false, features = ["derive"] }
 ockam_core = { path = "../ockam_core", version = "^0.119.0" }
 ockam_macros = { path = "../ockam_macros", version = "^0.35.0" }
 ockam_node = { path = "../ockam_node", version = "^0.131.0" }

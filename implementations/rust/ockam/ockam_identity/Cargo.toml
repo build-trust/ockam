@@ -64,6 +64,7 @@ alloc = [
   "ockam_node/alloc",
   "ockam_vault/alloc",
   "hex/alloc",
+  "minicbor/alloc",
   "serde_bare/alloc",
 ]
 
@@ -77,7 +78,7 @@ cfg-if = "1.0.0"
 chrono = { version = "0.4.38", default-features = false }
 delegate = "0.13.0"
 hex = { version = "0.4", default-features = false }
-minicbor = { version = "0.24.1", features = ["alloc", "derive"] }
+minicbor = { version = "0.25.1", default-features = false, features = ["derive"] }
 ockam_core = { path = "../ockam_core", version = "^0.119.0", default-features = false }
 ockam_macros = { path = "../ockam_macros", version = "^0.35.0", default-features = false }
 ockam_node = { path = "../ockam_node", version = "^0.131.0", default-features = false }

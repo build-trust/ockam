@@ -152,7 +152,6 @@ This file contains attributions for any 3rd-party open source code used in this 
 | crossbeam-utils | MIT, Apache-2.0 | https://crates.io/crates/crossbeam-utils |
 | crossterm | MIT | https://crates.io/crates/crossterm |
 | crossterm_winapi | MIT | https://crates.io/crates/crossterm_winapi |
-| crunchy | MIT | https://crates.io/crates/crunchy |
 | crypto-bigint | Apache-2.0, MIT | https://crates.io/crates/crypto-bigint |
 | crypto-common | MIT, Apache-2.0 | https://crates.io/crates/crypto-common |
 | csscolorparser | MIT, Apache-2.0 | https://crates.io/crates/csscolorparser |
@@ -240,7 +239,6 @@ This file contains attributions for any 3rd-party open source code used in this 
 | gloo-timers | MIT, Apache-2.0 | https://crates.io/crates/gloo-timers |
 | group | MIT, Apache-2.0 | https://crates.io/crates/group |
 | h2 | MIT | https://crates.io/crates/h2 |
-| half | MIT, Apache-2.0 | https://crates.io/crates/half |
 | hash32 | MIT, Apache-2.0 | https://crates.io/crates/hash32 |
 | hashbrown | MIT, Apache-2.0 | https://crates.io/crates/hashbrown |
 | hashlink | MIT, Apache-2.0 | https://crates.io/crates/hashlink |
