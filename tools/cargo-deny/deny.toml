@@ -22,7 +22,6 @@ exceptions = [
   { allow = ["Apache-2.0 WITH LLVM-exception"], name = "wast", version = "*" },
   { allow = ["Apache-2.0 WITH LLVM-exception"], name = "wasm-encoder", version = "*" },
   { allow = ["OpenSSL"], name = "aws-lc-sys", version = "*" },
-
   # used by ockam_app_lib only as a build dependency
   { allow = ["MPL-2.0"], name = "cbindgen", version = "*" },
 ]
@@ -57,10 +56,13 @@ ignore = [
   # Pulled-in by `cddl-cat` which is used for validating
   # CDDL schema conformance in tests.
   "RUSTSEC-2021-0127",
-
   # yaml-rust is unmaintained. Switching to maintained fork yaml-rust2 is tricky
   # Tracked here https://github.com/build-trust/ockam/issues/7807
   "RUSTSEC-2024-0320",
+  #
+  # `instant` is unmaintained and used by `indicatif` as of Nov 2024
+  # `indicatif` is planning to replace the dependency: https://github.com/console-rs/indicatif/pull/667
+  "RUSTSEC-2024-0384",
 ]
 # Users who require or prefer Git to use SSH cloning instead of HTTPS,
 # such as implemented via "insteadOf" rules in Git config, can still
