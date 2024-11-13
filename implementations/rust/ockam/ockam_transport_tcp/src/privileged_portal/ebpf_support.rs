@@ -29,7 +29,7 @@ pub struct TcpTransportEbpfSupport {
 
     links: Arc<Mutex<HashMap<Iface, IfaceLink>>>,
 
-    tcp_packet_writer: Arc<AsyncMutex<Option<Arc<dyn TcpPacketWriter>>>>,
+    tcp_packet_writer: Arc<AsyncMutex<Option<Box<dyn TcpPacketWriter>>>>,
     raw_socket_processor_address: Address,
 
     bpf: Arc<Mutex<Option<OckamBpf>>>,
@@ -77,12 +77,12 @@ impl TcpTransportEbpfSupport {
     pub(crate) async fn start_raw_socket_processor_if_needed(
         &self,
         ctx: &Context,
-    ) -> Result<Arc<dyn TcpPacketWriter>> {
+    ) -> Result<Box<dyn TcpPacketWriter>> {
         debug!("Starting RawSocket");
 
         let mut tcp_packet_writer_lock = self.tcp_packet_writer.lock().await;
         if let Some(tcp_packet_writer_lock) = tcp_packet_writer_lock.as_ref() {
-            return Ok(tcp_packet_writer_lock.clone());
+            return Ok(tcp_packet_writer_lock.create_new_box());
         }
 
         let (processor, tcp_packet_writer) = RawSocketProcessor::create(
@@ -92,7 +92,7 @@ impl TcpTransportEbpfSupport {
         )
         .await?;
 
-        *tcp_packet_writer_lock = Some(tcp_packet_writer.clone());
+        *tcp_packet_writer_lock = Some(tcp_packet_writer.create_new_box());
 
         ctx.start_processor(self.raw_socket_processor_address.clone(), processor)
             .await?;

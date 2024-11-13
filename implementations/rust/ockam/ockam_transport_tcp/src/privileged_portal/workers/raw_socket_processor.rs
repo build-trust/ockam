@@ -7,7 +7,6 @@ use log::trace;
 use ockam_core::{async_trait, Processor, Result};
 use ockam_node::Context;
 use ockam_transport_core::TransportError;
-use std::sync::Arc;
 
 /// Processor responsible for receiving all data with OCKAM_TCP_PORTAL_PROTOCOL on the machine
 /// and redirect it to individual portal workers.
@@ -23,7 +22,7 @@ impl RawSocketProcessor {
         ip_proto: u8,
         inlet_registry: InletRegistry,
         outlet_registry: OutletRegistry,
-    ) -> Result<(Self, Arc<dyn TcpPacketWriter>)> {
+    ) -> Result<(Self, Box<dyn TcpPacketWriter>)> {
         let (tcp_packet_writer, tcp_packet_reader) = create_async_fd_raw_socket(ip_proto)?;
 
         let s = Self {

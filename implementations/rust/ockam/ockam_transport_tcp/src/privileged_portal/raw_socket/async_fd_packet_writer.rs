@@ -14,44 +14,49 @@ use tokio::io::Interest;
 
 /// RawSocket packet writer implemented via tokio's AsyncFd
 pub struct AsyncFdPacketWriter {
+    // The idea is that each writer has its own buffer, so that we avoid either
+    //  1. Waiting for the lock on a shared buffer
+    //  2. Allocating new buffer on every write operations
+    buffer: Vec<u8>,
     fd: Arc<AsyncFd<OwnedFd>>,
 }
 
 impl AsyncFdPacketWriter {
     /// Constructor
     pub fn new(fd: Arc<AsyncFd<OwnedFd>>) -> Self {
-        Self { fd }
+        Self { buffer: vec![], fd }
     }
 }
 
 #[async_trait]
 impl TcpPacketWriter for AsyncFdPacketWriter {
     async fn write_packet(
-        &self,
+        &mut self,
         src_port: Port,
-        destination_ip: Ipv4Addr,
+        dst_ip: Ipv4Addr,
         dst_port: Port,
-        header_and_payload: TcpStrippedHeaderAndPayload,
+        header_and_payload: TcpStrippedHeaderAndPayload<'_>,
     ) -> Result<()> {
-        // We need to prepend ports to the beginning of the header, instead of cloning, let's
-        // add this data to the end and reverse the whole binary few types for the same result,
-        // but should be more efficient
-        let mut packet = header_and_payload.take();
-        packet.reserve(4);
-        packet.reverse();
+        self.buffer.clear();
+        self.buffer.reserve(header_and_payload.len() + 4);
 
         let mut ports = [0u8; 4];
         let mut ports_view = tcp_header_ports::View::new(&mut ports);
         ports_view.source_mut().write(src_port);
         ports_view.dest_mut().write(dst_port);
-        ports.reverse();
 
-        packet.extend_from_slice(&ports[..]);
-        packet.reverse();
+        self.buffer.extend_from_slice(ports.as_slice());
+        self.buffer.extend_from_slice(header_and_payload.as_slice());
 
-        tcp_set_checksum(Ipv4Addr::UNSPECIFIED, destination_ip, &mut packet);
+        tcp_set_checksum(Ipv4Addr::UNSPECIFIED, dst_ip, &mut self.buffer);
 
-        let destination_addr = SockaddrIn::from(SocketAddrV4::new(destination_ip, 0));
+        let destination_addr = SockaddrIn::from(SocketAddrV4::new(dst_ip, 0));
+
+        // We don't pick source IP, kernel does it for us by performing Routing Table lookup.
+        // The problem is that if for some reason tcp packets from one connection
+        // use different src_ip, the connection would be disrupted.
+        // As an alternative, we could build IPv4 header ourselves and control it by setting
+        // IP_HDRINCL socket option, but that brings a lot of challenges.
 
         enum WriteResult {
             Ok { len: usize },
@@ -63,7 +68,7 @@ impl TcpPacketWriter for AsyncFdPacketWriter {
             .async_io(Interest::WRITABLE, |fd| {
                 let res = nix::sys::socket::sendto(
                     fd.as_raw_fd(),
-                    packet.as_slice(),
+                    self.buffer.as_slice(),
                     &destination_addr,
                     MsgFlags::empty(),
                 );
@@ -90,14 +95,19 @@ impl TcpPacketWriter for AsyncFdPacketWriter {
             WriteResult::Err(err) => return Err(err)?,
         };
 
-        if len != packet.len() {
+        if len != self.buffer.len() {
             return Err(TransportError::RawSocketWrite(format!(
                 "Could not write the whole packet. Packet len: {}. Actually written: {}",
-                packet.len(),
+                self.buffer.len(),
                 len
             )))?;
         }
 
         Ok(())
+    }
+
+    fn create_new_box(&self) -> Box<dyn TcpPacketWriter> {
+        // fd is shared. buffer is allocated each time we clone the writer
+        Box::new(AsyncFdPacketWriter::new(self.fd.clone()))
     }
 }

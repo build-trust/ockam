@@ -14,12 +14,12 @@ use tokio::io::unix::AsyncFd;
 /// AsyncFd
 pub fn create_async_fd_raw_socket(
     proto: Proto,
-) -> Result<(Arc<dyn TcpPacketWriter>, Box<dyn TcpPacketReader>)> {
+) -> Result<(Box<dyn TcpPacketWriter>, Box<dyn TcpPacketReader>)> {
     let fd = create_raw_socket_fd(proto)?;
     let fd = Arc::new(fd);
 
     let writer = AsyncFdPacketWriter::new(fd.clone());
-    let writer = Arc::new(writer);
+    let writer = Box::new(writer);
 
     let reader = AsyncFdPacketReader::new(fd);
     let reader = Box::new(reader);
@@ -30,19 +30,21 @@ pub fn create_async_fd_raw_socket(
 fn create_raw_socket_fd(proto: Proto) -> Result<AsyncFd<OwnedFd>> {
     // Unfortunately, SockProtocol enum doesn't support arbitrary values
     let proto: SockProtocol = unsafe { mem::transmute(proto as i32) };
-    let socket = nix::sys::socket::socket(
+    let res = nix::sys::socket::socket(
         AddressFamily::Inet,
         SockType::Raw,
         SockFlag::SOCK_NONBLOCK,
         Some(proto),
     );
 
-    let socket = match socket {
+    let socket = match res {
         Ok(socket) => socket,
         Err(err) => {
             return Err(TransportError::RawSocketCreation(err.to_string()))?;
         }
     };
+
+    // TODO: It's possible to bind that socket to an IP if needed
 
     let res = unsafe {
         // We don't want to construct IPv4 header ourselves, for receiving it will be included

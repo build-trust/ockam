@@ -4,13 +4,12 @@ use aya::programs::tc::{qdisc_detach_program, TcAttachType};
 use log::{error, info, warn};
 use ockam_core::Result;
 use ockam_transport_core::TransportError;
-use std::sync::Arc;
 
 impl TcpTransport {
     /// Start [`RawSocketProcessor`]. Should be done once.
     pub(crate) async fn start_raw_socket_processor_if_needed(
         &self,
-    ) -> Result<Arc<dyn TcpPacketWriter>> {
+    ) -> Result<Box<dyn TcpPacketWriter>> {
         self.ebpf_support
             .start_raw_socket_processor_if_needed(self.ctx())
             .await

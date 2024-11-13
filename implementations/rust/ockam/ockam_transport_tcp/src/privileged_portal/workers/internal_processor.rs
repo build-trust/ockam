@@ -1,7 +1,10 @@
 use crate::privileged_portal::packet::RawSocketReadResult;
 use crate::privileged_portal::{Inlet, InletConnection, OckamPortalPacket, Outlet, PortalMode};
 use log::{debug, trace, warn};
-use ockam_core::{async_trait, route, LocalInfoIdentifier, LocalMessage, Processor, Result};
+use ockam_core::{
+    async_trait, cbor_encode_preallocate, route, LocalInfoIdentifier, LocalMessage, Processor,
+    Result,
+};
 use ockam_node::Context;
 use ockam_transport_core::TransportError;
 use rand::random;
@@ -129,7 +132,7 @@ impl Processor for InternalProcessor {
                     LocalMessage::new()
                         .with_onward_route(inlet_shared_state.route().clone())
                         .with_return_route(route![inlet.remote_worker_address.clone()])
-                        .with_payload(minicbor::to_vec(portal_packet)?),
+                        .with_payload(cbor_encode_preallocate(&portal_packet)?),
                     ctx.address(),
                 )
                 .await?;
@@ -170,7 +173,7 @@ impl Processor for InternalProcessor {
                     LocalMessage::new()
                         .with_onward_route(return_route)
                         .with_return_route(route![outlet.remote_worker_address.clone()])
-                        .with_payload(minicbor::to_vec(portal_packet)?),
+                        .with_payload(cbor_encode_preallocate(&portal_packet)?),
                     ctx.address(),
                 )
                 .await?;

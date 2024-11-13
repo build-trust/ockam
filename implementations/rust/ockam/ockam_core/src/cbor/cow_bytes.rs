@@ -47,6 +47,11 @@ impl CowBytes<'_> {
     pub fn into_owned(self) -> Vec<u8> {
         self.0.into_owned()
     }
+
+    /// Return underlying slice
+    pub fn as_slice(&self) -> &[u8] {
+        self.0.as_ref()
+    }
 }
 
 impl<'a> From<&'a [u8]> for CowBytes<'a> {

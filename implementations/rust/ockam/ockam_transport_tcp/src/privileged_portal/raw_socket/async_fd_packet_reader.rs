@@ -143,7 +143,7 @@ impl TcpPacketReader for AsyncFdPacketReader {
         } = Self::parse_headers(&mut self.buffer[..len])?;
 
         let header_and_payload =
-            match TcpStrippedHeaderAndPayload::new(self.buffer[offset..len].to_vec()) {
+            match TcpStrippedHeaderAndPayload::new(self.buffer[offset..len].to_vec().into()) {
                 Some(header_and_payload) => header_and_payload,
                 None => {
                     return Err(TransportError::ParsingHeaders(

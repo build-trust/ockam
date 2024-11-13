@@ -1,5 +1,6 @@
 use crate::privileged_portal::packet_binary::{ipv4_header, stripped_tcp_header, tcp_header};
 use crate::privileged_portal::Port;
+use ockam_core::CowBytes;
 use std::net::Ipv4Addr;
 
 /// Result of reading packet from RawSocket
@@ -9,15 +10,15 @@ pub struct RawSocketReadResult {
     /// Info from TCP header
     pub tcp_info: TcpInfo,
     /// Part of the TCP header (without ports) and TCP payload
-    pub header_and_payload: TcpStrippedHeaderAndPayload,
+    pub header_and_payload: TcpStrippedHeaderAndPayload<'static>,
 }
 
 /// TCP Header excluding first 4 bytes (src and dst ports) + payload
-pub struct TcpStrippedHeaderAndPayload(Vec<u8>);
+pub struct TcpStrippedHeaderAndPayload<'a>(CowBytes<'a>);
 
-impl TcpStrippedHeaderAndPayload {
+impl<'a> TcpStrippedHeaderAndPayload<'a> {
     /// Constructor
-    pub fn new(bytes: Vec<u8>) -> Option<Self> {
+    pub fn new(bytes: CowBytes<'a>) -> Option<Self> {
         if bytes.len() < 16 {
             return None;
         }
@@ -26,8 +27,13 @@ impl TcpStrippedHeaderAndPayload {
     }
 
     /// Consume and return the data
-    pub fn take(self) -> Vec<u8> {
+    pub fn take(self) -> CowBytes<'a> {
         self.0
+    }
+
+    /// Return underlying slice
+    pub fn as_slice(&self) -> &[u8] {
+        self.0.as_slice()
     }
 
     /// Length

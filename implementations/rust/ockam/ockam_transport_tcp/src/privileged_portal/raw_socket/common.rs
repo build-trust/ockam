@@ -1,5 +1,6 @@
 use crate::privileged_portal::packet::TcpStrippedHeaderAndPayload;
-use minicbor::{Decode, Encode};
+use minicbor::{CborLen, Decode, Encode};
+use ockam_core::CowBytes;
 use rand::distributions::{Distribution, Standard};
 use rand::Rng;
 
@@ -14,7 +15,7 @@ pub type Port = u16;
 pub type Proto = u8;
 
 /// Unique random connection identifier
-#[derive(Clone, Debug, Eq, PartialEq, Hash, Encode, Decode)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Encode, Decode, CborLen)]
 #[cbor(transparent)]
 #[rustfmt::skip]
 pub struct ConnectionIdentifier(#[n(0)] u64);
@@ -26,20 +27,20 @@ impl Distribution<ConnectionIdentifier> for Standard {
 }
 
 /// Packet exchanged between the Inlet and the Outlet
-#[derive(Encode, Decode)]
+#[derive(Encode, Decode, CborLen)]
 #[rustfmt::skip]
-pub struct OckamPortalPacket {
+pub struct OckamPortalPacket<'a> {
     /// Unique TCP connection identifier
     #[n(0)] pub connection_identifier: ConnectionIdentifier,
     /// Monotonic increasing route numeration
     #[n(1)] pub route_index: u32,
     /// Stripped (without ports) TCP header and payload
-    #[n(2)] pub header_and_payload: Vec<u8>,
+    #[b(2)] pub header_and_payload: CowBytes<'a>,
 }
 
-impl OckamPortalPacket {
+impl<'a> OckamPortalPacket<'a> {
     /// Dissolve into parts consuming the original value to avoid clones
-    pub fn dissolve(self) -> Option<(ConnectionIdentifier, u32, TcpStrippedHeaderAndPayload)> {
+    pub fn dissolve(self) -> Option<(ConnectionIdentifier, u32, TcpStrippedHeaderAndPayload<'a>)> {
         let header_and_payload = TcpStrippedHeaderAndPayload::new(self.header_and_payload)?;
 
         Some((
@@ -53,7 +54,7 @@ impl OckamPortalPacket {
     pub fn from_tcp_packet(
         connection_identifier: ConnectionIdentifier,
         route_index: u32,
-        header_and_payload: TcpStrippedHeaderAndPayload,
+        header_and_payload: TcpStrippedHeaderAndPayload<'a>,
     ) -> Self {
         Self {
             connection_identifier,

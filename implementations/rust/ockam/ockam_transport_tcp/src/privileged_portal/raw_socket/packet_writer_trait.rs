@@ -9,10 +9,13 @@ use std::net::Ipv4Addr;
 pub trait TcpPacketWriter: Send + Sync + 'static {
     /// Write packet to the RawSocket
     async fn write_packet(
-        &self,
+        &mut self,
         src_port: Port,
-        destination_ip: Ipv4Addr,
+        dst_ip: Ipv4Addr,
         dst_port: Port,
-        header_and_payload: TcpStrippedHeaderAndPayload,
+        header_and_payload: TcpStrippedHeaderAndPayload<'_>,
     ) -> Result<()>;
+
+    /// Clone current implementation and wrap in a Box
+    fn create_new_box(&self) -> Box<dyn TcpPacketWriter>;
 }

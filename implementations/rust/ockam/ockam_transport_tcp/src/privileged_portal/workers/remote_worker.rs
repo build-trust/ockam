@@ -32,14 +32,14 @@ pub enum PortalMode {
 pub struct RemoteWorker {
     mode: PortalMode,
 
-    tcp_packet_writer: Arc<dyn TcpPacketWriter>,
+    tcp_packet_writer: Box<dyn TcpPacketWriter>,
     ebpf_support: TcpTransportEbpfSupport,
 }
 
 impl RemoteWorker {
     /// Constructor.
     pub fn new_inlet(
-        tcp_packet_writer: Arc<dyn TcpPacketWriter>,
+        tcp_packet_writer: Box<dyn TcpPacketWriter>,
         inlet: Inlet,
         ebpf_support: TcpTransportEbpfSupport,
     ) -> Self {
@@ -52,7 +52,7 @@ impl RemoteWorker {
 
     /// Constructor.
     pub fn new_outlet(
-        tcp_packet_writer: Arc<dyn TcpPacketWriter>,
+        tcp_packet_writer: Box<dyn TcpPacketWriter>,
         outlet: Outlet,
         ebpf_support: TcpTransportEbpfSupport,
     ) -> Self {
@@ -98,8 +98,8 @@ impl RemoteWorker {
     }
 
     async fn handle(
-        &self,
-        header_and_payload: TcpStrippedHeaderAndPayload,
+        tcp_packet_writer: &mut Box<dyn TcpPacketWriter>,
+        header_and_payload: TcpStrippedHeaderAndPayload<'_>,
         src_port: Port,
         dst_ip: Ipv4Addr,
         dst_port: Port,
@@ -111,9 +111,7 @@ impl RemoteWorker {
             dst_port
         );
 
-        // TODO: We don't pick the source IP here, but it's important that it stays the same,
-        //  Otherwise the receiving TCP connection would be disrupted.
-        self.tcp_packet_writer
+        tcp_packet_writer
             .write_packet(src_port, dst_ip, dst_port, header_and_payload)
             .await?;
 
@@ -121,12 +119,13 @@ impl RemoteWorker {
     }
 
     async fn handle_inlet(
-        &self,
+        tcp_packet_writer: &mut Box<dyn TcpPacketWriter>,
         inlet: &Inlet,
         connection: &InletConnection,
-        header_and_payload: TcpStrippedHeaderAndPayload,
+        header_and_payload: TcpStrippedHeaderAndPayload<'_>,
     ) -> Result<()> {
-        self.handle(
+        Self::handle(
+            tcp_packet_writer,
             header_and_payload,
             inlet.port,
             connection.client_ip,
@@ -136,11 +135,11 @@ impl RemoteWorker {
     }
 
     async fn handle_outlet(
-        &self,
+        tcp_packet_writer: &mut Box<dyn TcpPacketWriter>,
         outlet: &Outlet,
         connection: &OutletConnection,
         route_index: u32,
-        header_and_payload: TcpStrippedHeaderAndPayload,
+        header_and_payload: TcpStrippedHeaderAndPayload<'_>,
         return_route: Route,
     ) -> Result<()> {
         {
@@ -152,7 +151,8 @@ impl RemoteWorker {
             }
         }
 
-        self.handle(
+        Self::handle(
+            tcp_packet_writer,
             header_and_payload,
             connection.assigned_port,
             outlet.dst_ip,
@@ -178,7 +178,6 @@ impl Worker for RemoteWorker {
         let return_route = msg.return_route();
         let payload = msg.into_payload();
 
-        // TODO: Add borrowing
         let msg: OckamPortalPacket = minicbor::decode(&payload)
             .map_err(|e| TransportError::InvalidOckamPortalPacket(e.to_string()))?;
 
@@ -197,8 +196,13 @@ impl Worker for RemoteWorker {
                 match inlet.get_connection_external(their_identifier, connection_identifier.clone())
                 {
                     Some(connection) => {
-                        self.handle_inlet(inlet, &connection, header_and_payload)
-                            .await?;
+                        Self::handle_inlet(
+                            &mut self.tcp_packet_writer,
+                            inlet,
+                            &connection,
+                            header_and_payload,
+                        )
+                        .await?;
                     }
                     None => {
                         warn!("Portal Worker Inlet: received a packet for an unknown connection");
@@ -213,7 +217,8 @@ impl Worker for RemoteWorker {
                     their_identifier.clone(),
                     connection_identifier.clone(),
                 ) {
-                    self.handle_outlet(
+                    Self::handle_outlet(
+                        &mut self.tcp_packet_writer,
                         outlet,
                         &connection,
                         route_index,
@@ -235,7 +240,8 @@ impl Worker for RemoteWorker {
                         )
                         .await?;
 
-                    self.handle_outlet(
+                    Self::handle_outlet(
+                        &mut self.tcp_packet_writer,
                         outlet,
                         &connection,
                         route_index,

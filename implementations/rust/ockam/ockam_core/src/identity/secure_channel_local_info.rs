@@ -53,7 +53,7 @@ impl SecureChannelLocalInfo {
     pub fn to_local_info(&self) -> Result<LocalInfo> {
         Ok(LocalInfo::new(
             SECURE_CHANNEL_IDENTIFIER.into(),
-            minicbor::to_vec(&self.their_identifier)?,
+            crate::cbor_encode_preallocate(&self.their_identifier)?,
         ))
     }
 
