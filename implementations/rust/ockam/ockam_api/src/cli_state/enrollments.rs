@@ -266,7 +266,7 @@ impl LegacyEnrollmentTicket {
 
     pub fn hex_encoded(&self) -> Result<String> {
         let serialized = serde_json::to_vec(&self)
-            .map_err(|_err| ApiError::core("Failed to authenticate with Okta"))?;
+            .map_err(|_err| ApiError::core("Failed to hex-encode enrollment ticket"))?;
         Ok(hex::encode(serialized))
     }
 }
@@ -344,6 +344,10 @@ impl ExportedEnrollmentTicket {
         )
         .await
     }
+
+    pub fn hex_encoded(&self) -> Result<String> {
+        Ok(hex::encode(self.to_string()))
+    }
 }
 
 impl FromStr for ExportedEnrollmentTicket {
@@ -398,8 +402,8 @@ impl FromStr for ExportedEnrollmentTicket {
 
 impl Display for ExportedEnrollmentTicket {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let mut output = String::new();
-        output.push_str(&format!(
+        write!(
+            f,
             "{},{},{},{},{},{}",
             self.project_route.route,
             self.project_identifier,
@@ -407,11 +411,10 @@ impl Display for ExportedEnrollmentTicket {
             String::from(&self.one_time_code),
             self.project_change_history,
             self.authority_change_history,
-        ));
+        )?;
         if let Some(authority_route) = &self.authority_route {
-            output.push_str(&format!(",{}", authority_route));
+            write!(f, ",{}", authority_route)?;
         }
-        write!(f, "{}", hex::encode(output))?;
         Ok(())
     }
 }
@@ -646,10 +649,9 @@ mod tests {
     }
 
     #[test]
-    fn test_exported_enrollment_ticket() {
+    fn test_enrollment_ticket_encoding_decoding() {
         let exported = ExportedEnrollmentTicket::new_test();
-        let encoded = exported.to_string();
-        let plain = String::from_utf8(hex::decode(&encoded).unwrap()).unwrap();
+        let plain = exported.to_string();
         assert!(plain.contains(&String::from(&exported.one_time_code)));
         assert!(plain.contains(&exported.project_route.id));
         assert!(plain.contains(&exported.project_route.route.to_string()));
@@ -657,21 +659,14 @@ mod tests {
         assert!(plain.contains(&exported.project_change_history));
         assert!(plain.contains(&exported.authority_change_history));
 
-        let decoded = ExportedEnrollmentTicket::from_str(&encoded).unwrap();
-        assert_eq!(decoded, exported);
-
         let decoded = ExportedEnrollmentTicket::from_str(&plain).unwrap();
         assert_eq!(decoded, exported);
 
         let json_encoded = serde_json::to_string(&exported).unwrap();
         let decoded = ExportedEnrollmentTicket::from_str(&json_encoded).unwrap();
         assert_eq!(decoded, exported);
-    }
 
-    #[test]
-    fn exported_enrollment_ticket_from_hex() {
-        let exported = ExportedEnrollmentTicket::new_test();
-        let encoded = exported.to_string();
+        let encoded = exported.hex_encoded().unwrap();
         let decoded = ExportedEnrollmentTicket::from_str(&encoded).unwrap();
         assert_eq!(decoded, exported);
     }

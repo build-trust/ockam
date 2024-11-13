@@ -34,12 +34,6 @@ pub async fn parse_enrollment_ticket(
 
     // Try to parse it using the old format
     if let Ok(ticket) = LegacyEnrollmentTicket::from_str(&contents) {
-        // TODO: disabled until release 0.138.0
-        // opts.terminal.write_line(fmt_warn!(
-        //     "The enrollment ticket was generated from an old Ockam version"
-        // ))?;
-        // opts.terminal
-        //     .write_line(fmt_warn!("Please make sure the machine that generated the ticket is using the latest Ockam version"))?;
         return Ok(EnrollmentTicket::new_from_legacy(ticket).await?);
     }
 

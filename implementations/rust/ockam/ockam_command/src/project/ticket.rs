@@ -5,7 +5,7 @@ use std::time::Duration;
 use async_trait::async_trait;
 use clap::Args;
 use colorful::Colorful;
-use miette::miette;
+use miette::{miette, IntoDiagnostic};
 use tracing::debug;
 
 use crate::shared_args::{IdentityOpts, RetryOpts, TrustOpts};
@@ -73,6 +73,14 @@ pub struct TicketCommand {
 
     #[command(flatten)]
     retry_opts: RetryOpts,
+
+    /// Return the ticket in hex encoded format
+    #[arg(long, hide = true)]
+    hex_encoded: bool,
+
+    /// Return the ticket using the legacy encoding format
+    #[arg(long, hide = true)]
+    legacy: bool,
 }
 
 #[async_trait]
@@ -142,9 +150,22 @@ impl Command for TicketCommand {
             project.authority_access_route.as_ref(),
         )
         .import()
-        .await?
-        .export_legacy()?;
-        let encoded_ticket = ticket.hex_encoded()?.to_string();
+        .await?;
+        let (as_json, encoded_ticket) = if cmd.legacy {
+            let exported = ticket.export_legacy()?;
+            (
+                serde_json::to_string(&exported).into_diagnostic()?,
+                exported.hex_encoded()?,
+            )
+        } else {
+            let exported = ticket.export()?;
+            let encoded = if cmd.hex_encoded {
+                exported.hex_encoded()?
+            } else {
+                exported.to_string()
+            };
+            (serde_json::to_string(&exported).into_diagnostic()?, encoded)
+        };
 
         let usage_count = cmd.usage_count.unwrap_or(DEFAULT_TOKEN_USAGE_COUNT);
         let attributes_msg = if attributes.is_empty() {
@@ -187,7 +208,7 @@ impl Command for TicketCommand {
             .stdout()
             .plain(format!("\n{encoded_ticket}"))
             .machine(encoded_ticket)
-            .json_obj(ticket)?
+            .json(as_json)
             .write_line()?;
 
         Ok(())
