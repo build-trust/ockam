@@ -14,10 +14,6 @@ RUN \
             echo "ockam.x86_64-unknown-linux-gnu_sha256_value  ockam.x86_64-unknown-linux-gnu" | sha256sum -c; \
             mv ockam.x86_64-unknown-linux-gnu /ockam; \
             ;; \
-        armv7l*) \
-            echo "ockam.armv7-unknown-linux-gnueabihf_sha256_value  ockam.armv7-unknown-linux-gnueabihf" | sha256sum -c; \
-            mv ockam.armv7-unknown-linux-gnueabihf /ockam; \
-            ;; \
         *) \
             echo "unknown arch: $(uname -m)" \
             uname -a; \
@@ -26,6 +22,6 @@ RUN \
     esac; \
     chmod u+x /ockam;
 
-FROM cgr.dev/chainguard/glibc-dynamic@sha256:6c87228d9380acb10e7300af697ed0664e4ffe38f0b73e04ae412f1150a8f9fb
+FROM cgr.dev/chainguard/glibc-dynamic:latest
 COPY --chown=nonroot --from=builder /ockam /
 ENTRYPOINT ["/ockam"]
