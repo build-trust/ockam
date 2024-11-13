@@ -99,7 +99,7 @@ impl UdsSendWorker {
     }
 
     /// Create a ([`UdsSendWorker`],[`WorkerPair`]) without spawning the worker.
-    pub(crate) async fn new_pair(
+    pub(crate) fn new_pair(
         router_handle: UdsRouterHandle,
         stream: Option<UnixStream>,
         peer: SocketAddr,
@@ -126,7 +126,7 @@ impl UdsSendWorker {
     }
 
     /// Create a ([`UdsSendWorker`],[`WorkerPair`]) while spawning and starting the worker.
-    pub(crate) async fn start_pair(
+    pub(crate) fn start_pair(
         ctx: &Context,
         router_handle: UdsRouterHandle,
         stream: Option<UnixStream>,
@@ -136,32 +136,35 @@ impl UdsSendWorker {
         let udsrouter_main_addr = router_handle.main_addr().clone();
 
         trace!("Creating new UDS worker pair");
-        let (worker, pair) = Self::new_pair(router_handle, stream, peer, hostnames).await?;
+        let (worker, pair) = Self::new_pair(router_handle, stream, peer, hostnames)?;
 
         let tx_mailbox = Mailbox::new(
             pair.tx_addr(),
+            None,
             Arc::new(ockam_core::AllowSourceAddress(udsrouter_main_addr)),
             Arc::new(ockam_core::DenyAll),
         );
 
         let internal_mailbox = Mailbox::new(
             worker.internal_addr().clone(),
+            None,
             Arc::new(ockam_core::AllowSourceAddress(worker.rx_addr().clone())),
             Arc::new(ockam_core::DenyAll),
         );
 
         WorkerBuilder::new(worker)
             .with_mailboxes(Mailboxes::new(tx_mailbox, vec![internal_mailbox]))
-            .start(ctx)
-            .await?;
+            .start(ctx)?;
 
         Ok(pair)
     }
 
     async fn stop_and_unregister(&self, ctx: &Context) -> Result<()> {
-        self.router_handle.unregister(ctx.address()).await?;
+        self.router_handle
+            .unregister(ctx.primary_address().clone())
+            .await?;
 
-        ctx.stop_worker(ctx.address()).await?;
+        ctx.stop_address(ctx.primary_address())?;
 
         Ok(())
     }
@@ -176,8 +179,6 @@ impl Worker for UdsSendWorker {
     ///
     /// Spawn a UDS Recceiver worker to processes incoming UDS messages
     async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
-        ctx.set_cluster(crate::CLUSTER_NAME).await?;
-
         let path = match self.peer.as_pathname() {
             Some(p) => p,
             None => {
@@ -228,15 +229,14 @@ impl Worker for UdsSendWorker {
             self.internal_addr.clone(),
         );
 
-        ctx.start_processor_with_access_control(self.rx_addr.clone(), receiver, DenyAll, AllowAll)
-            .await?;
+        ctx.start_processor_with_access_control(self.rx_addr.clone(), receiver, DenyAll, AllowAll)?;
 
         Ok(())
     }
 
     async fn shutdown(&mut self, ctx: &mut Self::Context) -> Result<()> {
         if self.rx_should_be_stopped {
-            let _ = ctx.stop_processor(self.rx_addr().clone()).await;
+            let _ = ctx.stop_address(self.rx_addr());
         }
 
         Ok(())

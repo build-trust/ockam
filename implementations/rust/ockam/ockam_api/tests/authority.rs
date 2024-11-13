@@ -10,7 +10,7 @@ async fn authority_starts_with_default_configuration(ctx: &mut Context) -> Resul
     let configuration = default_configuration().await?;
     start_authority_node(ctx, &configuration).await?;
 
-    let workers = ctx.list_workers().await?;
+    let workers = ctx.list_workers()?;
 
     assert!(!workers.contains(&Address::from(DefaultAddress::DIRECT_AUTHENTICATOR)));
     assert!(!workers.contains(&Address::from(DefaultAddress::ENROLLMENT_TOKEN_ACCEPTOR)));
@@ -28,7 +28,7 @@ async fn authority_starts_direct_authenticator(ctx: &mut Context) -> Result<()> 
     configuration.no_direct_authentication = false;
     start_authority_node(ctx, &configuration).await?;
 
-    let workers = ctx.list_workers().await?;
+    let workers = ctx.list_workers()?;
 
     assert!(workers.contains(&Address::from(DefaultAddress::DIRECT_AUTHENTICATOR)));
     assert!(!workers.contains(&Address::from(DefaultAddress::ENROLLMENT_TOKEN_ACCEPTOR)));
@@ -46,7 +46,7 @@ async fn authority_starts_enrollment_token(ctx: &mut Context) -> Result<()> {
     configuration.no_token_enrollment = false;
     start_authority_node(ctx, &configuration).await?;
 
-    let workers = ctx.list_workers().await?;
+    let workers = ctx.list_workers()?;
 
     assert!(!workers.contains(&Address::from(DefaultAddress::DIRECT_AUTHENTICATOR)));
     assert!(workers.contains(&Address::from(DefaultAddress::ENROLLMENT_TOKEN_ACCEPTOR)));

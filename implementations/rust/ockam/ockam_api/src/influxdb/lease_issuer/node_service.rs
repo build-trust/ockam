@@ -38,7 +38,7 @@ impl NodeManagerWorker {
         }
     }
 
-    pub(crate) async fn delete_influxdb_lease_issuer_service(
+    pub(crate) fn delete_influxdb_lease_issuer_service(
         &self,
         context: &Context,
         req: DeleteServiceRequest,
@@ -46,8 +46,7 @@ impl NodeManagerWorker {
         let address = req.address();
         match self
             .node_manager
-            .delete_influxdb_lease_issuer_service(context, address.clone())
-            .await
+            .delete_influxdb_lease_issuer_service(context, &address)
         {
             Ok(Some(_)) => Ok(Response::ok()),
             Ok(None) => Err(Response::not_found_no_request(&format!(
@@ -73,10 +72,9 @@ impl InMemoryNode {
             .ok_or_else(|| {
                 ApiError::core("Unable to get flow control for secure channel listener")
             })?;
-        context.flow_controls().add_consumer(
-            address.clone(),
-            &default_secure_channel_listener_flow_control_id,
-        );
+        context
+            .flow_controls()
+            .add_consumer(&address, &default_secure_channel_listener_flow_control_id);
 
         let (incoming_ac, outgoing_ac) = self
             .access_control(
@@ -95,43 +93,35 @@ impl InMemoryNode {
             req.influxdb_token,
             req.lease_permissions,
             req.expires_in,
-        )
-        .await?;
+        )?;
         let processor = InfluxDBTokenLessorProcessor::new(worker.state.clone());
 
         WorkerBuilder::new(worker)
             .with_address(address.clone())
             .with_incoming_access_control_arc(incoming_ac)
             .with_outgoing_access_control_arc(outgoing_ac)
-            .start(context)
-            .await?;
-        self.registry
-            .influxdb_services
-            .insert(address.clone(), ())
-            .await;
+            .start(context)?;
+        self.registry.influxdb_services.insert(address.clone(), ());
 
         ProcessorBuilder::new(processor)
             .with_address(format!("{address}-processor"))
-            .start(context)
-            .await?;
+            .start(context)?;
 
         Ok(())
     }
 
-    async fn delete_influxdb_lease_issuer_service(
+    fn delete_influxdb_lease_issuer_service(
         &self,
         context: &Context,
-        address: Address,
+        address: &Address,
     ) -> Result<Option<()>, Error> {
         debug!(address = %address,"Deleting influxdb lease issuer service");
-        match self.registry.influxdb_services.get(&address).await {
+        match self.registry.influxdb_services.get(address) {
             None => Ok(None),
             Some(_) => {
-                context.stop_worker(address.clone()).await?;
-                context
-                    .stop_processor(format!("{address}-processor"))
-                    .await?;
-                self.registry.influxdb_services.remove(&address).await;
+                context.stop_address(address)?;
+                context.stop_address(&format!("{address}-processor").into())?;
+                self.registry.influxdb_services.remove(address);
                 Ok(Some(()))
             }
         }

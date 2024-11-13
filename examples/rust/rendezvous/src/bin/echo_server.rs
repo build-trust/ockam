@@ -5,7 +5,7 @@ use ockam_transport_udp::{UdpBindArguments, UdpBindOptions, UdpTransport};
 
 #[ockam_macros::node]
 async fn main(ctx: Context) -> Result<()> {
-    let udp = UdpTransport::create(&ctx).await?;
+    let udp = UdpTransport::create(&ctx)?;
     let bind = udp
         .bind(
             UdpBindArguments::new().with_bind_address("127.0.0.1:8000")?,
@@ -13,10 +13,10 @@ async fn main(ctx: Context) -> Result<()> {
         )
         .await?;
 
-    ctx.start_worker("echoer", Echoer).await?;
+    ctx.start_worker("echoer", Echoer)?;
 
     ctx.flow_controls()
-        .add_consumer("echoer", bind.flow_control_id());
+        .add_consumer(&"echoer".into(), bind.flow_control_id());
 
     Ok(())
 }

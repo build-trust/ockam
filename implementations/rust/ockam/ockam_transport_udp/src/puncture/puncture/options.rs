@@ -56,11 +56,11 @@ impl UdpPunctureOptions {
             .map(|x| x.flow_control_id().clone())
         {
             // Allow a sender with corresponding flow_control_id send messages to this address
-            flow_controls.add_consumer(addresses.remote_address().clone(), &flow_control_id);
+            flow_controls.add_consumer(addresses.remote_address(), &flow_control_id);
         }
 
         flow_controls.add_producer(
-            addresses.receiver_address().clone(),
+            addresses.receiver_address(),
             &self.flow_control_id,
             None,
             vec![addresses.sender_address().clone()],

@@ -1,35 +1,49 @@
-use crate::channel_types::{MessageSender, SmallSender};
+use crate::channel_types::{oneshot_channel, MessageSender, OneshotReceiver, OneshotSender};
+use crate::error::{NodeError, NodeReason};
 use crate::relay::CtrlSignal;
-use crate::{
-    error::{NodeError, NodeReason},
-    NodeReplyResult, RouterReply,
-};
+use crate::WorkerShutdownPriority;
+use core::default::Default;
+use core::fmt::Debug;
 use core::sync::atomic::{AtomicUsize, Ordering};
+use ockam_core::compat::collections::hash_map::Entry;
+use ockam_core::compat::sync::Mutex as SyncMutex;
+use ockam_core::compat::sync::RwLock as SyncRwLock;
+use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{
     compat::{
-        collections::{BTreeMap, BTreeSet},
-        string::String,
+        collections::{HashMap, HashSet},
         sync::Arc,
         vec::Vec,
     },
     flow_control::FlowControls,
-    Address, AddressAndMetadata, AddressMetadata, RelayMessage, Result,
+    Address, AddressMetadata, Error, Mailbox, Mailboxes, RelayMessage, Result,
 };
+
+#[derive(Default)]
+struct AddressMaps {
+    // NOTE: It's crucial that if more that one of these structures is needed to perform an
+    // operation, we should always acquire locks in the order they're declared here. Otherwise, it
+    // can cause a deadlock.
+    /// Registry of primary address to worker address record state
+    records: SyncRwLock<HashMap<Address, AddressRecord>>,
+    /// Alias-registry to map arbitrary address to primary addresses
+    aliases: SyncRwLock<HashMap<Address, Address>>,
+    /// Registry of arbitrary metadata for each address, lazily populated
+    metadata: SyncRwLock<HashMap<Address, AddressMetadata>>,
+}
 
 /// Address states and associated logic
 pub struct InternalMap {
-    /// Registry of primary address to worker address record state
-    address_records_map: BTreeMap<Address, AddressRecord>,
-    /// Alias-registry to map arbitrary address to primary addresses
-    alias_map: BTreeMap<Address, Address>,
-    /// Registry of arbitrary metadata for each address, lazily populated
-    address_metadata_map: BTreeMap<Address, AddressMetadata>,
-    /// The order in which clusters are allocated and de-allocated
-    cluster_order: Vec<String>,
-    /// Cluster data records
-    clusters: BTreeMap<String, BTreeSet<Address>>,
-    /// Track stop information for Clusters
-    stopping: BTreeSet<Address>,
+    // NOTE: It's crucial that if more that one of these structures is needed to perform an
+    // operation, we should always acquire locks in the order they're declared here. Otherwise, it
+    // can cause a deadlock.
+    address_maps: AddressMaps,
+    /// Track non-detached addresses that are being stopped (except those that are stopped due to node shutdown)
+    stopping: SyncMutex<HashSet<Address>>,
+    /// Track non-detached addresses that are being stopped due to node shutdown
+    stopping_shutdown: SyncMutex<HashSet<Address>>,
+    /// Channel to notify when stopping_shutdown map gets empty
+    shutdown_yield_sender: SyncMutex<Option<OneshotSender<()>>>,
     /// Access to [`FlowControls`] to clean resources
     flow_controls: FlowControls,
     /// Metrics collection and sharing
@@ -38,14 +52,46 @@ pub struct InternalMap {
 }
 
 impl InternalMap {
+    pub(crate) fn resolve(&self, addr: &Address) -> Result<MessageSender<RelayMessage>> {
+        let records = self.address_maps.records.read().unwrap();
+        let aliases = self.address_maps.aliases.read().unwrap();
+
+        let address_record = if let Some(primary_address) = aliases.get(addr) {
+            records.get(primary_address)
+        } else {
+            trace!("Resolving worker address '{addr}'... FAILED; no such alias");
+            return Err(Error::new(
+                Origin::Node,
+                Kind::NotFound,
+                format!("No such alias: {}", addr),
+            ));
+        };
+
+        match address_record {
+            Some(address_record) => {
+                trace!("Resolving worker address '{addr}'... OK");
+                address_record.increment_msg_count();
+                Ok(address_record.sender.clone())
+            }
+            None => {
+                trace!("Resolving worker address '{addr}'... FAILED; no such worker");
+                Err(Error::new(
+                    Origin::Node,
+                    Kind::NotFound,
+                    format!("No such address: {}", addr),
+                ))
+            }
+        }
+    }
+}
+
+impl InternalMap {
     pub(super) fn new(flow_controls: &FlowControls) -> Self {
         Self {
-            address_records_map: Default::default(),
-            alias_map: Default::default(),
-            address_metadata_map: Default::default(),
-            cluster_order: Default::default(),
-            clusters: Default::default(),
+            address_maps: Default::default(),
             stopping: Default::default(),
+            stopping_shutdown: Default::default(),
+            shutdown_yield_sender: Default::default(),
             flow_controls: flow_controls.clone(),
             #[cfg(feature = "metrics")]
             metrics: Default::default(),
@@ -54,87 +100,231 @@ impl InternalMap {
 }
 
 impl InternalMap {
-    pub(super) fn clear_address_records_map(&mut self) {
-        self.address_records_map.clear()
+    pub(super) fn stop(&self, address: &Address, skip_sending_stop_signal: bool) -> Result<()> {
+        // To guarantee consistency we'll first acquire lock on all the maps we need to touch
+        // and only then start modifications
+        let mut records = self.address_maps.records.write().unwrap();
+        let mut aliases = self.address_maps.aliases.write().unwrap();
+        let mut metadata = self.address_maps.metadata.write().unwrap();
+        let mut stopping = self.stopping.lock().unwrap();
+
+        let primary_address = aliases
+            .get(address)
+            .ok_or_else(|| {
+                Error::new(
+                    Origin::Node,
+                    Kind::NotFound,
+                    format!("No such alias: {}", address),
+                )
+            })?
+            .clone();
+
+        self.flow_controls.cleanup_address(&primary_address);
+
+        let record = if let Some(record) = records.remove(&primary_address) {
+            record
+        } else {
+            return Err(Error::new(
+                Origin::Node,
+                Kind::NotFound,
+                format!("No such address: {}", primary_address),
+            ));
+        };
+
+        for address in &record.additional_addresses {
+            metadata.remove(address);
+            aliases.remove(address);
+        }
+
+        metadata.remove(&primary_address);
+        aliases.remove(&primary_address);
+
+        // Detached doesn't need any stop confirmation, since they don't have a Relay = don't have
+        // an async task running in a background that should be stopped.
+        if !record.meta.detached {
+            let res = stopping.insert(primary_address);
+            debug!(
+                "Inserted {} into stopping. Inserted = {}",
+                record.primary_address, res
+            );
+        }
+
+        record.stop(skip_sending_stop_signal)?;
+
+        Ok(())
     }
 
-    pub(super) fn get_address_record(&self, primary_address: &Address) -> Option<&AddressRecord> {
-        self.address_records_map.get(primary_address)
+    pub(super) fn stop_ack(&self, primary_address: &Address) {
+        {
+            let mut stopping = self.stopping.lock().unwrap();
+            let res = stopping.remove(primary_address);
+
+            debug!(
+                "Removing {} from stopping. Removed = {}",
+                primary_address, res
+            );
+        }
+
+        let mut stopping_shutdown = self.stopping_shutdown.lock().unwrap();
+
+        let res = stopping_shutdown.remove(primary_address);
+        debug!(
+            "Removing {} from stopping_shutdown. Removed = {}",
+            primary_address, res
+        );
+
+        if stopping_shutdown.is_empty() {
+            if let Some(shutdown_yield_sender) = self.shutdown_yield_sender.lock().unwrap().take() {
+                debug!("Sending stop_ack signal");
+                if shutdown_yield_sender.send(()).is_err() {
+                    warn!("shutdown_yield send errored");
+                }
+            }
+        }
     }
 
-    pub(super) fn get_address_record_mut(
-        &mut self,
-        primary_address: &Address,
-    ) -> Option<&mut AddressRecord> {
-        self.address_records_map.get_mut(primary_address)
+    pub(super) fn is_worker_registered_at(&self, primary_address: &Address) -> bool {
+        self.address_maps
+            .records
+            .read()
+            .unwrap()
+            .contains_key(primary_address)
+        // TODO: we should also check aliases
     }
 
-    pub(super) fn address_records_map(&self) -> &BTreeMap<Address, AddressRecord> {
-        &self.address_records_map
-    }
-
-    pub(super) fn remove_address_record(
-        &mut self,
-        primary_address: &Address,
-    ) -> Option<AddressRecord> {
-        self.flow_controls.cleanup_address(primary_address);
-        self.address_records_map.remove(primary_address)
+    pub(super) fn list_workers(&self) -> Vec<Address> {
+        self.address_maps
+            .records
+            .read()
+            .unwrap()
+            .keys()
+            .cloned()
+            .collect()
     }
 
     pub(super) fn insert_address_record(
-        &mut self,
-        primary_address: Address,
-        record: AddressRecord,
-    ) -> Option<AddressRecord> {
-        self.address_records_map.insert(primary_address, record)
-    }
-
-    pub(super) fn find_terminal_address(
         &self,
-        addresses: &[Address],
-    ) -> Option<AddressAndMetadata> {
-        addresses.iter().find_map(|address| {
-            self.address_metadata_map
-                .get(address)
-                .filter(|&meta| meta.is_terminal)
-                .map(|meta| AddressAndMetadata {
-                    address: address.clone(),
-                    metadata: meta.clone(),
-                })
-        })
+        record: AddressRecord,
+        mailboxes: &Mailboxes,
+    ) -> Result<()> {
+        let mut records = self.address_maps.records.write().unwrap();
+
+        let entry = records.entry(record.primary_address.clone());
+
+        let entry = match entry {
+            Entry::Occupied(_) => {
+                let node = NodeError::Address(record.primary_address);
+                return Err(node.already_exists());
+            }
+            Entry::Vacant(entry) => entry,
+        };
+
+        // It may fail, so we don't insert record before that
+        Self::insert_aliases(&mut self.address_maps.aliases.write().unwrap(), &record)?;
+        Self::insert_all_metadata(&mut self.address_maps.metadata.write().unwrap(), mailboxes);
+
+        entry.insert(record);
+
+        Ok(())
     }
 
-    pub(super) fn set_address_metadata(&mut self, meta: AddressAndMetadata) {
-        let metadata = self.address_metadata_map.entry(meta.address).or_default();
-        *metadata = meta.metadata;
+    fn insert_aliases(
+        aliases: &mut HashMap<Address, Address>,
+        record: &AddressRecord,
+    ) -> Result<()> {
+        Self::insert_alias(aliases, &record.primary_address, &record.primary_address)?;
+
+        for i in 0..record.additional_addresses.len() {
+            match Self::insert_alias(
+                aliases,
+                &record.primary_address,
+                &record.additional_addresses[i],
+            ) {
+                Ok(_) => {}
+                Err(err) => {
+                    // Rollback
+                    for j in 0..i {
+                        aliases.remove(&record.additional_addresses[j]);
+                    }
+
+                    return Err(err);
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    fn insert_alias(
+        aliases: &mut HashMap<Address, Address>,
+        primary_address: &Address,
+        alias: &Address,
+    ) -> Result<()> {
+        match aliases.insert(alias.clone(), primary_address.clone()) {
+            None => Ok(()),
+            Some(old_value) => {
+                // Rollback
+                aliases.insert(alias.clone(), old_value);
+
+                let node = NodeError::Address(primary_address.clone());
+                Err(node.already_exists())
+            }
+        }
+    }
+
+    fn insert_all_metadata(
+        metadata: &mut HashMap<Address, AddressMetadata>,
+        mailboxes: &Mailboxes,
+    ) {
+        Self::insert_mailbox_metadata(metadata, mailboxes.primary_mailbox());
+
+        for mailbox in mailboxes.additional_mailboxes() {
+            Self::insert_mailbox_metadata(metadata, mailbox);
+        }
+    }
+
+    fn insert_mailbox_metadata(
+        metadata: &mut HashMap<Address, AddressMetadata>,
+        mailbox: &Mailbox,
+    ) {
+        if let Some(meta) = mailbox.metadata().clone() {
+            metadata.insert(mailbox.address().clone(), meta.clone());
+        }
+    }
+
+    pub(super) fn find_terminal_address<'a>(
+        &self,
+        addresses: impl Iterator<Item = &'a Address>,
+    ) -> Option<(&'a Address, AddressMetadata)> {
+        let metadata = self.address_maps.metadata.read().unwrap();
+        for address in addresses {
+            if let Some(metadata) = metadata.get(address) {
+                if metadata.is_terminal {
+                    return Some((address, metadata.clone()));
+                }
+            }
+        }
+
+        None
     }
 
     pub(super) fn get_address_metadata(&self, address: &Address) -> Option<AddressMetadata> {
-        self.address_metadata_map.get(address).cloned()
-    }
-
-    pub(super) fn remove_alias(&mut self, alias_address: &Address) -> Option<Address> {
-        self.alias_map.remove(alias_address)
-    }
-
-    pub(super) fn insert_alias(&mut self, alias_address: &Address, primary_address: &Address) {
-        _ = self
-            .alias_map
-            .insert(alias_address.clone(), primary_address.clone())
-    }
-
-    pub(super) fn get_primary_address(&self, alias_address: &Address) -> Option<&Address> {
-        self.alias_map.get(alias_address)
+        self.address_maps
+            .metadata
+            .read()
+            .unwrap()
+            .get(address)
+            .cloned()
     }
 }
 
 impl InternalMap {
     #[cfg(feature = "metrics")]
     pub(super) fn update_metrics(&self) {
-        self.metrics
-            .0
-            .store(self.address_records_map.len(), Ordering::Release);
-        self.metrics.1.store(self.clusters.len(), Ordering::Release);
+        self.metrics.0.store(
+            self.address_maps.records.read().unwrap().len(),
+            Ordering::Release,
+        );
     }
 
     #[cfg(feature = "metrics")]
@@ -147,167 +337,115 @@ impl InternalMap {
         self.metrics.0.load(Ordering::Acquire)
     }
 
-    /// Add an address to a particular cluster
-    pub(super) fn set_cluster(&mut self, label: String, primary: Address) -> NodeReplyResult {
-        let rec = self
-            .address_records_map
-            .get(&primary)
-            .ok_or_else(|| NodeError::Address(primary).not_found())?;
+    /// Stop all workers with given priority
+    pub(super) fn stop_workers(
+        &self,
+        shutdown_priority: WorkerShutdownPriority,
+    ) -> Option<OneshotReceiver<()>> {
+        let records_to_stop: Vec<AddressRecord> = {
+            let mut records = self.address_maps.records.write().unwrap();
 
-        // If this is the first time we see this cluster ID
-        if !self.clusters.contains_key(&label) {
-            self.clusters.insert(label.clone(), BTreeSet::new());
-            self.cluster_order.push(label.clone());
+            // we remove address records, so workers to be stopped can no longer be found, therefore
+            // can't be used to send messages
+            records
+                .extract_if(|_addr, record| record.shutdown_order == shutdown_priority)
+                .map(|(_addr, record)| record)
+                .collect()
+        };
+
+        let mut stopping_shutdown = self.stopping_shutdown.lock().unwrap();
+
+        if !stopping_shutdown.is_empty() {
+            warn!(
+                "stopping_shutdown map is not empty, while next priority is about to be stopped. Clearing. Current priority: {:?}", shutdown_priority
+            );
+            stopping_shutdown.clear();
         }
 
-        // Add all addresses to the cluster set
-        for addr in rec.address_set() {
-            self.clusters
-                .get_mut(&label)
-                .expect("No such cluster??")
-                .insert(addr.clone());
-        }
+        for record in records_to_stop {
+            // Detached doesn't need any stop confirmation, since they don't have a Relay => they
+            // don't have an async task running in a background that should be stopped.
+            let primary_address = record.primary_address.clone();
+            if !record.meta.detached {
+                debug!("Inserted {} into stopping_shutdown", record.primary_address);
+                stopping_shutdown.insert(primary_address.clone());
+            }
 
-        RouterReply::ok()
-    }
-
-    /// Set an address as ready and return the list of waiting pollers
-    pub(super) fn set_ready(&mut self, addr: Address) -> Result<Vec<SmallSender<NodeReplyResult>>> {
-        let addr_record = self
-            .address_records_map
-            .get_mut(&addr)
-            .ok_or_else(|| NodeError::Address(addr).not_found())?;
-        Ok(addr_record.set_ready())
-    }
-
-    /// Get the ready state of an address
-    pub(super) fn get_ready(&mut self, addr: Address, reply: SmallSender<NodeReplyResult>) -> bool {
-        self.address_records_map
-            .get_mut(&addr)
-            .map_or(false, |rec| rec.ready(reply))
-    }
-
-    /// Retrieve the next cluster in reverse-initialisation order
-    /// Return None if there is no next cluster or if the cluster
-    /// contained no more active addresses
-    pub(super) fn next_cluster(&mut self) -> Option<Vec<Address>> {
-        // loop until either:
-        //  - there are no more clusters
-        //  - we found a non-empty list of active addresses in a cluster
-        loop {
-            let name = self.cluster_order.pop()?;
-            let addrs = self.clusters.remove(&name)?;
-            let active_addresses: Vec<Address> = self
-                .address_records_map
-                .iter()
-                .filter_map(|(primary, _)| {
-                    if addrs.contains(primary) {
-                        Some(primary.clone())
-                    } else {
-                        None
-                    }
-                })
-                .collect();
-            if active_addresses.is_empty() {
-                continue;
-            } else {
-                return Some(active_addresses);
+            if let Err(err) = record.stop(false) {
+                error!("Error stopping address. Err={}", err);
+                // Let's not expect stop_ack from that worker in this case
+                stopping_shutdown.remove(&primary_address);
             }
         }
-    }
 
-    /// Mark this address as "having started to stop"
-    pub(super) fn init_stop(&mut self, addr: Address) {
-        self.stopping.insert(addr);
-    }
+        if !stopping_shutdown.is_empty() {
+            // If we just stopped some non-detached workers, let's wait for stop_ack form all of them
+            let (shutdown_yield_sender, shutdown_yield_receiver) = oneshot_channel();
 
-    /// Check whether the current cluster of addresses was stopped
-    pub(super) fn cluster_done(&self) -> bool {
-        self.stopping.is_empty()
-    }
+            *self.shutdown_yield_sender.lock().unwrap() = Some(shutdown_yield_sender);
 
-    /// Get all addresses of workers not in a cluster
-    pub(super) fn non_cluster_workers(&mut self) -> Vec<&mut AddressRecord> {
-        let clustered = self
-            .clusters
-            .iter()
-            .fold(BTreeSet::new(), |mut acc, (_, set)| {
-                acc.append(&mut set.clone());
-                acc
-            });
-
-        self.address_records_map
-            .iter_mut()
-            .filter_map(|(addr, rec)| {
-                if clustered.contains(addr) {
-                    None
-                } else {
-                    Some(rec)
-                }
-            })
-            // Filter all detached workers because they don't matter :(
-            .filter(|rec| !rec.meta.detached)
-            .collect()
-    }
-
-    /// Permanently free all remaining resources associated to a particular address
-    pub(super) fn free_address(&mut self, primary: Address) {
-        self.stopping.remove(&primary);
-        if let Some(record) = self.remove_address_record(&primary) {
-            for addr in record.address_set {
-                self.remove_alias(&addr);
-                self.address_metadata_map.remove(&addr);
-            }
+            Some(shutdown_yield_receiver)
+        } else {
+            None
         }
+    }
+
+    pub(super) fn force_clear_records(&self) -> Vec<Address> {
+        let mut records = self.address_maps.records.write().unwrap();
+
+        records.drain().map(|(address, _record)| address).collect()
     }
 }
 
 /// Additional metadata for worker records
 #[derive(Debug)]
 pub struct WorkerMeta {
+    #[allow(dead_code)]
     pub processor: bool,
     pub detached: bool,
 }
 
-#[derive(Debug)]
 pub struct AddressRecord {
-    address_set: Vec<Address>,
-    sender: Option<MessageSender<RelayMessage>>,
-    ctrl_tx: SmallSender<CtrlSignal>, // Unused for not-detached workers
-    state: AddressState,
-    ready: ReadyState,
+    primary_address: Address,
+    additional_addresses: Vec<Address>,
+    sender: MessageSender<RelayMessage>,
+    ctrl_tx: OneshotSender<CtrlSignal>,
     meta: WorkerMeta,
+    shutdown_order: WorkerShutdownPriority,
     msg_count: Arc<AtomicUsize>,
 }
 
+impl Debug for AddressRecord {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("AddressRecord")
+            .field("primary_address", &self.primary_address)
+            .field("additional_addresses", &self.additional_addresses)
+            .field("sender", &self.sender)
+            .field("ctrl_tx", &self.ctrl_tx)
+            .field("meta", &self.meta)
+            .field("msg_count", &self.msg_count)
+            .finish()
+    }
+}
+
 impl AddressRecord {
-    pub fn address_set(&self) -> &[Address] {
-        &self.address_set
-    }
-
-    pub fn sender(&self) -> MessageSender<RelayMessage> {
-        self.sender.clone().expect("No such sender!")
-    }
-
-    pub fn drop_sender(&mut self) {
-        self.sender = None;
-    }
-
     pub fn new(
-        address_set: Vec<Address>,
+        primary_address: Address,
+        additional_addresses: Vec<Address>,
         sender: MessageSender<RelayMessage>,
-        ctrl_tx: SmallSender<CtrlSignal>,
-        msg_count: Arc<AtomicUsize>,
+        ctrl_tx: OneshotSender<CtrlSignal>,
         meta: WorkerMeta,
+        shutdown_order: WorkerShutdownPriority,
+        msg_count: Arc<AtomicUsize>,
     ) -> Self {
         AddressRecord {
-            address_set,
-            sender: Some(sender),
+            primary_address,
+            additional_addresses,
+            sender,
             ctrl_tx,
-            state: AddressState::Running,
-            ready: ReadyState::Initialising(vec![]),
-            msg_count,
             meta,
+            shutdown_order,
+            msg_count,
         }
     }
 
@@ -317,116 +455,15 @@ impl AddressRecord {
     }
 
     /// Signal this worker to stop -- it will no longer be able to receive messages
-    pub async fn stop(&mut self) -> Result<()> {
-        if self.meta.processor {
+    pub fn stop(self, skip_sending_stop_signal: bool) -> Result<()> {
+        trace!("AddressRecord::stop called for {:?}", self.primary_address);
+
+        if !self.meta.detached && !skip_sending_stop_signal {
             self.ctrl_tx
                 .send(CtrlSignal::InterruptStop)
-                .await
                 .map_err(|_| NodeError::NodeState(NodeReason::Unknown).internal())?;
-        } else {
-            self.drop_sender();
         }
-        self.state = AddressState::Stopping;
+
         Ok(())
-    }
-
-    /// Check the integrity of this record
-    #[inline]
-    pub fn check(&self) -> bool {
-        self.state == AddressState::Running && self.sender.is_some()
-    }
-
-    /// Check whether this address has been marked as ready yet and if
-    /// it hasn't we register our sender for future notification
-    pub fn ready(&mut self, reply: SmallSender<NodeReplyResult>) -> bool {
-        match self.ready {
-            ReadyState::Ready => true,
-            ReadyState::Initialising(ref mut vec) => {
-                vec.push(reply);
-                false
-            }
-        }
-    }
-
-    /// Mark this address as 'ready' and return the list of active pollers
-    pub fn set_ready(&mut self) -> Vec<SmallSender<NodeReplyResult>> {
-        let waiting = core::mem::replace(&mut self.ready, ReadyState::Ready);
-        match waiting {
-            ReadyState::Initialising(vec) => vec,
-            ReadyState::Ready => vec![],
-        }
-    }
-}
-
-/// Encode the run states a worker or processor can be in
-#[derive(Debug, PartialEq, Eq)]
-pub enum AddressState {
-    /// The runner is looping in its main body (either handling messages or a manual run-loop)
-    Running,
-    /// The runner was signaled to shut-down (running `shutdown()`)
-    Stopping,
-    /// The runner has experienced an error and is waiting for supervisor intervention
-    #[allow(unused)]
-    Faulty,
-}
-
-/// Encode the ready state of a worker or processor
-#[derive(Debug)]
-pub enum ReadyState {
-    /// THe runner is fully ready
-    Ready,
-    /// The runner is still processing user init code and contains a list of waiting polling addresses
-    Initialising(Vec<SmallSender<NodeReplyResult>>),
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-    use crate::channel_types::small_channel;
-    use crate::router::record::InternalMap;
-
-    #[test]
-    fn test_next_cluster() {
-        let mut map = InternalMap::new(&FlowControls::new());
-
-        // create 3 clusters
-        //   cluster 1 has one active address
-        //   cluster 2 has no active address
-        //   cluster 3 has one active address
-        map.address_records_map
-            .insert("address1".into(), create_address_record("address1"));
-        let _ = map.set_cluster("CLUSTER1".into(), "address1".into());
-
-        map.address_records_map
-            .insert("address2".into(), create_address_record("address2"));
-        let _ = map.set_cluster("CLUSTER2".into(), "address2".into());
-        map.free_address("address2".into());
-
-        map.address_records_map
-            .insert("address3".into(), create_address_record("address3"));
-        let _ = map.set_cluster("CLUSTER3".into(), "address3".into());
-
-        // get the active addresses for cluster 3, clusters are popped in reverse order
-        assert_eq!(map.next_cluster(), Some(vec!["address3".into()]));
-        // get the active addresses for cluster 1, cluster 2 is skipped
-        assert_eq!(map.next_cluster(), Some(vec!["address1".into()]));
-        // finally there are no more clusters with active addresses
-        assert_eq!(map.next_cluster(), None);
-    }
-
-    /// HELPERS
-    fn create_address_record(primary: &str) -> AddressRecord {
-        let (tx1, _) = small_channel();
-        let (tx2, _) = small_channel();
-        AddressRecord::new(
-            vec![primary.into()],
-            tx1,
-            tx2,
-            Arc::new(AtomicUsize::new(1)),
-            WorkerMeta {
-                processor: false,
-                detached: false,
-            },
-        )
     }
 }

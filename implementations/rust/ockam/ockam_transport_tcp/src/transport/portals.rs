@@ -3,10 +3,9 @@ use crate::{portal::TcpOutletListenWorker, TcpInletOptions, TcpOutletOptions, Tc
 use core::fmt;
 use core::fmt::{Debug, Formatter};
 use ockam_core::compat::net::SocketAddr;
-use ockam_core::compat::sync::Arc;
+use ockam_core::compat::sync::{Arc, RwLock as SyncRwLock};
 use ockam_core::flow_control::FlowControls;
-use ockam_core::{route, Address, Result, Route};
-use ockam_node::compat::asynchronous::RwLock;
+use ockam_core::{Address, Result, Route};
 use ockam_node::Context;
 use ockam_transport_core::{parse_socket_addr, HostnamePort};
 use tracing::{debug, instrument};
@@ -20,13 +19,14 @@ impl TcpTransport {
     /// ```rust
     /// use ockam_transport_tcp::{TcpInletOptions, TcpTransport};
     /// # use ockam_node::Context;
-    /// # use ockam_core::{AllowAll, Result, route};
+    /// # use ockam_core::{AllowAll, Result, route, Address};
     /// # async fn test(ctx: Context) -> Result<()> {
     /// let route_path = route!["outlet"];
     ///
-    /// let tcp = TcpTransport::create(&ctx).await?;
-    /// tcp.create_inlet("inlet", route_path, TcpInletOptions::new()).await?;
-    /// # tcp.stop_inlet("inlet").await?;
+    /// let tcp = TcpTransport::create(&ctx)?;
+    /// let address: Address = "inlet".into();
+    /// tcp.create_inlet(address.clone(), route_path, TcpInletOptions::new()).await?;
+    /// # tcp.stop_inlet(&address)?;
     /// # Ok(()) }
     /// ```
     #[instrument(skip(self), fields(address = ? bind_addr.clone().into(), outlet_route = ? outlet_route.clone()))]
@@ -52,18 +52,19 @@ impl TcpTransport {
     /// ```rust
     /// use ockam_transport_tcp::{TcpInletOptions, TcpTransport};
     /// # use ockam_node::Context;
-    /// # use ockam_core::{AllowAll, Result, route};
+    /// # use ockam_core::{AllowAll, Result, route, Address};
     /// # async fn test(ctx: Context) -> Result<()> {
     /// let route = route!["outlet"];
     ///
-    /// let tcp = TcpTransport::create(&ctx).await?;
-    /// tcp.create_inlet("inlet", route, TcpInletOptions::new()).await?;
-    /// tcp.stop_inlet("inlet").await?;
+    /// let tcp = TcpTransport::create(&ctx)?;
+    /// let address: Address = "inlet".into();
+    /// tcp.create_inlet(address.clone(), route, TcpInletOptions::new()).await?;
+    /// tcp.stop_inlet(&address)?;
     /// # Ok(()) }
     /// ```
-    #[instrument(skip(self), fields(address = ? addr.clone().into()))]
-    pub async fn stop_inlet(&self, addr: impl Into<Address> + Clone + Debug) -> Result<()> {
-        self.ctx.stop_processor(addr).await?;
+    #[instrument(skip(self), fields(address = ? address))]
+    pub fn stop_inlet(&self, address: &Address) -> Result<()> {
+        self.ctx.stop_address(address)?;
 
         Ok(())
     }
@@ -77,18 +78,19 @@ impl TcpTransport {
     /// ```rust
     /// use ockam_transport_tcp::{TcpOutletOptions, TcpTransport};
     /// # use ockam_node::Context;
-    /// # use ockam_core::{AllowAll, Result};
+    /// # use ockam_core::{Address, AllowAll, Result};
     /// # use ockam_transport_core::HostnamePort;
     ///
     /// async fn test(ctx: Context) -> Result<()> {
     ///
-    /// let tcp = TcpTransport::create(&ctx).await?;
-    /// tcp.create_outlet("outlet", HostnamePort::new("localhost", 9000)?, TcpOutletOptions::new()).await?;
-    /// # tcp.stop_outlet("outlet").await?;
+    /// let tcp = TcpTransport::create(&ctx)?;
+    /// let address: Address = "outlet".into();
+    /// tcp.create_outlet(address.clone(), HostnamePort::new("localhost", 9000)?, TcpOutletOptions::new())?;
+    /// # tcp.stop_outlet(&address)?;
     /// # Ok(()) }
     /// ```
     #[instrument(skip(self), fields(address = ? address.clone().into(), peer=peer.clone().to_string()))]
-    pub async fn create_outlet(
+    pub fn create_outlet(
         &self,
         address: impl Into<Address> + Clone + Debug,
         peer: HostnamePort,
@@ -100,8 +102,7 @@ impl TcpTransport {
             address.into(),
             peer,
             options,
-        )
-        .await?;
+        )?;
 
         Ok(())
     }
@@ -110,20 +111,20 @@ impl TcpTransport {
     /// ```rust
     /// use ockam_transport_tcp::{TcpOutletOptions, TcpTransport};
     /// # use ockam_node::Context;
-    /// # use ockam_core::{AllowAll, Result};
+    /// # use ockam_core::{Address, AllowAll, Result};
     /// # use ockam_transport_core::HostnamePort;
     ///
     /// async fn test(ctx: Context) -> Result<()> {
     ///
-    /// let tcp = TcpTransport::create(&ctx).await?;
-    /// tcp.create_outlet("outlet", HostnamePort::new("127.0.0.1", 5000)?, TcpOutletOptions::new()).await?;
-    /// tcp.stop_outlet("outlet").await?;
+    /// let tcp = TcpTransport::create(&ctx)?;
+    /// let address: Address = "outlet".into();
+    /// tcp.create_outlet(address.clone(), HostnamePort::new("127.0.0.1", 5000)?, TcpOutletOptions::new())?;
+    /// tcp.stop_outlet(&address)?;
     /// # Ok(()) }
     /// ```
-    #[instrument(skip(self), fields(address = % addr.clone().into()))]
-    pub async fn stop_outlet(&self, addr: impl Into<Address> + Clone + Debug) -> Result<()> {
-        self.ctx.stop_worker(addr).await?;
-        Ok(())
+    #[instrument(skip(self), fields(address = % address))]
+    pub fn stop_outlet(&self, address: &Address) -> Result<()> {
+        self.ctx.stop_address(address)
     }
 }
 
@@ -131,7 +132,7 @@ impl TcpTransport {
 #[derive(Clone, Debug)]
 pub struct TcpInlet {
     socket_address: SocketAddr,
-    inlet_shared_state: Arc<RwLock<InletSharedState>>,
+    inlet_shared_state: Arc<SyncRwLock<InletSharedState>>,
     state: TcpInletState,
 }
 
@@ -169,7 +170,7 @@ impl TcpInlet {
     pub fn new_regular(
         socket_address: SocketAddr,
         processor_address: Address,
-        inlet_shared_state: Arc<RwLock<InletSharedState>>,
+        inlet_shared_state: Arc<SyncRwLock<InletSharedState>>,
     ) -> Self {
         Self {
             socket_address,
@@ -182,7 +183,7 @@ impl TcpInlet {
     pub fn new_privileged(
         socket_address: SocketAddr,
         portal_worker_address: Address,
-        inlet_shared_state: Arc<RwLock<InletSharedState>>,
+        inlet_shared_state: Arc<SyncRwLock<InletSharedState>>,
     ) -> Self {
         Self {
             socket_address,
@@ -212,8 +213,7 @@ impl TcpInlet {
     }
 
     fn build_new_full_route(new_route: Route, old_route: &Route) -> Result<Route> {
-        let their_outlet_address = old_route.recipient()?;
-        Ok(route![new_route, their_outlet_address.clone()])
+        Ok(new_route + old_route.recipient()?.clone())
     }
 
     /// Update the route to the outlet node.
@@ -223,12 +223,12 @@ impl TcpInlet {
     ///        only newly accepted connections will use the new route.
     ///        For privileged Portals old connections can continue work in case the Identifier of the
     ///        Outlet node didn't change
-    pub async fn update_outlet_node_route(&self, ctx: &Context, new_route: Route) -> Result<()> {
-        let mut inlet_shared_state = self.inlet_shared_state.write().await;
+    pub fn update_outlet_node_route(&self, ctx: &Context, new_route: Route) -> Result<()> {
+        let mut inlet_shared_state = self.inlet_shared_state.write().unwrap();
 
         let new_route = Self::build_new_full_route(new_route, inlet_shared_state.route())?;
         let next = new_route.next()?.clone();
-        inlet_shared_state.update_route(ctx, new_route).await?;
+        inlet_shared_state.update_route(ctx, new_route)?;
 
         self.update_flow_controls(ctx.flow_controls(), next);
 
@@ -236,9 +236,9 @@ impl TcpInlet {
     }
 
     /// Pause TCP Inlet, all incoming TCP streams will be dropped.
-    pub async fn pause(&self) {
+    pub fn pause(&self) {
         debug!(address = %self.socket_address, "pausing inlet");
-        let mut inlet_shared_state = self.inlet_shared_state.write().await;
+        let mut inlet_shared_state = self.inlet_shared_state.write().unwrap();
         inlet_shared_state.set_is_paused(true);
     }
 
@@ -249,7 +249,7 @@ impl TcpInlet {
             } => {
                 TcpInletOptions::setup_flow_control_for_address(
                     flow_controls,
-                    portal_worker_address.clone(),
+                    portal_worker_address,
                     &next,
                 );
             }
@@ -258,13 +258,13 @@ impl TcpInlet {
     }
 
     /// Unpause TCP Inlet and update the outlet route.
-    pub async fn unpause(&self, ctx: &Context, new_route: Route) -> Result<()> {
-        let mut inlet_shared_state = self.inlet_shared_state.write().await;
+    pub fn unpause(&self, ctx: &Context, new_route: Route) -> Result<()> {
+        let mut inlet_shared_state = self.inlet_shared_state.write().unwrap();
 
         let new_route = Self::build_new_full_route(new_route, inlet_shared_state.route())?;
         let next = new_route.next()?.clone();
 
-        inlet_shared_state.update_route(ctx, new_route).await?;
+        inlet_shared_state.update_route(ctx, new_route)?;
         inlet_shared_state.set_is_paused(false);
 
         self.update_flow_controls(ctx.flow_controls(), next);
@@ -273,13 +273,13 @@ impl TcpInlet {
     }
 
     /// Stop the Inlet
-    pub async fn stop(&self, ctx: &Context) -> Result<()> {
+    pub fn stop(&self, ctx: &Context) -> Result<()> {
         match &self.state {
             TcpInletState::Privileged { .. } => {
                 // TODO: eBPF
             }
             TcpInletState::Regular { processor_address } => {
-                ctx.stop_processor(processor_address.clone()).await?;
+                ctx.stop_address(processor_address)?;
             }
         }
 

@@ -29,7 +29,7 @@ impl TcpOutletListenWorker {
     }
 
     #[instrument(skip_all, name = "TcpOutletListenWorker::start")]
-    pub(crate) async fn start(
+    pub(crate) fn start(
         ctx: &Context,
         registry: TcpRegistry,
         address: Address,
@@ -45,8 +45,7 @@ impl TcpOutletListenWorker {
             .with_address(address)
             .with_incoming_access_control_arc(access_control)
             .with_outgoing_access_control(DenyAll)
-            .start(ctx)
-            .await?;
+            .start(ctx)?;
 
         Ok(())
     }
@@ -59,14 +58,16 @@ impl Worker for TcpOutletListenWorker {
 
     #[instrument(skip_all, name = "TcpOutletListenWorker::initialize")]
     async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
-        self.registry.add_outlet_listener_worker(&ctx.address());
+        self.registry
+            .add_outlet_listener_worker(ctx.primary_address());
 
         Ok(())
     }
 
     #[instrument(skip_all, name = "TcpOutletListenWorker::shutdown")]
     async fn shutdown(&mut self, ctx: &mut Self::Context) -> Result<()> {
-        self.registry.remove_outlet_listener_worker(&ctx.address());
+        self.registry
+            .remove_outlet_listener_worker(ctx.primary_address());
 
         Ok(())
     }
@@ -105,8 +106,7 @@ impl Worker for TcpOutletListenWorker {
             self.options.incoming_access_control.clone(),
             self.options.outgoing_access_control.clone(),
             self.options.portal_payload_length,
-        )
-        .await?;
+        )?;
 
         debug!("Created Tcp Outlet at {}", addresses.sender_remote);
 

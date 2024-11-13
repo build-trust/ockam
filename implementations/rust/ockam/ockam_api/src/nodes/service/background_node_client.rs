@@ -44,15 +44,15 @@ impl BackgroundNodeClient {
             Some(name) => name,
             None => cli_state.get_default_node().await?.name(),
         };
-        Self::create_to_node(ctx, cli_state, &node_name).await
+        Self::create_to_node(ctx, cli_state, &node_name)
     }
 
-    pub async fn create_to_node(
+    pub fn create_to_node(
         ctx: &Context,
         cli_state: &CliState,
         node_name: &str,
     ) -> miette::Result<BackgroundNodeClient> {
-        let tcp_transport = TcpTransport::create(ctx).await.into_diagnostic()?;
+        let tcp_transport = TcpTransport::create(ctx).into_diagnostic()?;
         BackgroundNodeClient::new(&tcp_transport, cli_state, node_name)
     }
 
@@ -140,7 +140,7 @@ impl BackgroundNodeClient {
             .success()
             .into_diagnostic();
 
-        let _ = tcp_connection.stop(ctx).await;
+        let _ = tcp_connection.stop(ctx);
         res
     }
 
@@ -158,7 +158,7 @@ impl BackgroundNodeClient {
         let (tcp_connection, client) = self.make_client().await?;
         let res = client.ask(ctx, req).await.into_diagnostic();
 
-        let _ = tcp_connection.stop(ctx).await;
+        let _ = tcp_connection.stop(ctx);
         res
     }
 
@@ -175,7 +175,7 @@ impl BackgroundNodeClient {
             .success()
             .into_diagnostic();
 
-        let _ = tcp_connection.stop(ctx).await;
+        let _ = tcp_connection.stop(ctx);
         res
     }
 
@@ -191,7 +191,7 @@ impl BackgroundNodeClient {
         let (tcp_connection, client) = self.make_client().await?;
         let res = client.tell(ctx, req).await.into_diagnostic();
 
-        let _ = tcp_connection.stop(ctx).await;
+        let _ = tcp_connection.stop(ctx);
         res
     }
 
@@ -200,19 +200,13 @@ impl BackgroundNodeClient {
         self.create_tcp_connection()
             .await?
             .stop(ctx)
-            .await
             .into_diagnostic()
     }
 
     /// Make a route to the node and connect using TCP
     async fn create_route(&self) -> miette::Result<(TcpConnection, Route)> {
         let tcp_connection = self.create_tcp_connection().await?;
-        let route = self
-            .to
-            .clone()
-            .modify()
-            .prepend(tcp_connection.sender_address().clone())
-            .into();
+        let route = tcp_connection.sender_address().clone() + self.to.clone();
         debug!("Sending requests to {route}");
         Ok((tcp_connection, route))
     }

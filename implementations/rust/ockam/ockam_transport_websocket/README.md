@@ -39,11 +39,11 @@ use ockam_macros::node;
 
 #[ockam_macros::node(crate = "ockam_node")]
 async fn main(mut ctx: Context) -> Result<()> {//!
-    let ws = WebSocketTransport::create(&ctx).await?;
+    let ws = WebSocketTransport::create(&ctx)?;
     ws.listen("localhost:8000").await?; // Listen on port 8000
 
     // Start a worker, of type MyWorker, at address "my_worker"
-    ctx.start_worker("my_worker", MyWorker).await?;
+    ctx.start_worker("my_worker", MyWorker)?;
 
     // Run worker indefinitely in the background
     Ok(())
@@ -61,7 +61,7 @@ use ockam_macros::node;
 #[ockam_macros::node(crate = "ockam_node")]
 async fn main(mut ctx: Context) -> Result<()> {
     use ockam_node::MessageReceiveOptions;
-let ws = WebSocketTransport::create(&ctx).await?;
+    let ws = WebSocketTransport::create(&ctx)?;
 
     // Define the route to the server's worker.
     let r = route![(WS, "localhost:8000"), "my_worker"];
@@ -73,7 +73,7 @@ let ws = WebSocketTransport::create(&ctx).await?;
     let reply = ctx.receive::<String>().await?;
 
     // Stop all workers, stop the node, cleanup and return.
-    ctx.stop().await
+    ctx.shutdown_node().await
 }
 ```
 

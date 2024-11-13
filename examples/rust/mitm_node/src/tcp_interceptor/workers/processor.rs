@@ -1,4 +1,4 @@
-use crate::tcp_interceptor::{Role, TcpMitmRegistry, CLUSTER_NAME};
+use crate::tcp_interceptor::{Role, TcpMitmRegistry};
 use ockam_core::compat::sync::Arc;
 use ockam_core::{async_trait, Address, AllowAll};
 use ockam_core::{Processor, Result};
@@ -34,7 +34,7 @@ impl TcpMitmProcessor {
         }
     }
 
-    pub async fn start(
+    pub fn start(
         ctx: &Context,
         role: Role,
         address: Address,
@@ -47,8 +47,7 @@ impl TcpMitmProcessor {
 
         let receiver = Self::new(address_of_other_processor, role, read_half, write_half, registry);
 
-        ctx.start_processor_with_access_control(address, receiver, AllowAll, AllowAll)
-            .await?;
+        ctx.start_processor_with_access_control(address, receiver, AllowAll, AllowAll)?;
 
         Ok(())
     }
@@ -59,20 +58,18 @@ impl Processor for TcpMitmProcessor {
     type Context = Context;
 
     async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
-        ctx.set_cluster(CLUSTER_NAME).await?;
-
         self.registry
-            .add_processor(&ctx.address(), self.role, self.write_half.clone());
+            .add_processor(ctx.primary_address(), self.role, self.write_half.clone());
 
-        debug!("Initialize {}", ctx.address());
+        debug!("Initialize {}", ctx.primary_address());
 
         Ok(())
     }
 
     async fn shutdown(&mut self, ctx: &mut Self::Context) -> Result<()> {
-        self.registry.remove_processor(&ctx.address());
+        self.registry.remove_processor(ctx.primary_address());
 
-        debug!("Shutdown {}", ctx.address());
+        debug!("Shutdown {}", ctx.primary_address());
 
         Ok(())
     }
@@ -83,9 +80,9 @@ impl Processor for TcpMitmProcessor {
         let len = match self.read_half.read(&mut buf).await {
             Ok(l) if l != 0 => l,
             _ => {
-                debug!("Connection was closed; dropping stream {}", ctx.address());
+                debug!("Connection was closed; dropping stream {}", ctx.primary_address());
 
-                let _ = ctx.stop_processor(self.address_of_other_processor.clone()).await;
+                let _ = ctx.stop_address(&self.address_of_other_processor);
 
                 return Ok(false);
             }
@@ -93,12 +90,12 @@ impl Processor for TcpMitmProcessor {
 
         match self.write_half.lock().await.write_all(&buf[..len]).await {
             Ok(_) => {
-                debug!("Forwarded {} bytes from {}", len, ctx.address());
+                debug!("Forwarded {} bytes from {}", len, ctx.primary_address());
             }
             _ => {
-                debug!("Connection was closed; dropping stream {}", ctx.address());
+                debug!("Connection was closed; dropping stream {}", ctx.primary_address());
 
-                let _ = ctx.stop_processor(self.address_of_other_processor.clone()).await;
+                let _ = ctx.stop_address(&self.address_of_other_processor);
 
                 return Ok(false);
             }

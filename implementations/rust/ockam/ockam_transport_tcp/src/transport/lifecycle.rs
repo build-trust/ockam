@@ -1,5 +1,5 @@
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::{async_trait, Address, AsyncTryClone, Error, Result, TransportType};
+use ockam_core::{async_trait, Address, Error, Result, TransportType, TryClone};
 use ockam_node::Context;
 use ockam_transport_core::Transport;
 use std::net::SocketAddr;
@@ -16,12 +16,12 @@ impl TcpTransport {
     /// # use ockam_node::Context;
     /// # use ockam_core::Result;
     /// # async fn test(ctx: Context) -> Result<()> {
-    /// let tcp = TcpTransport::create(&ctx).await?;
+    /// let tcp = TcpTransport::create(&ctx)?;
     /// # Ok(()) }
     /// ```
     #[instrument(name = "create tcp transport", skip_all)]
-    pub async fn create(ctx: &Context) -> Result<Self> {
-        let tcp = Self::new(ctx.async_try_clone().await?);
+    pub fn create(ctx: &Context) -> Result<Self> {
+        let tcp = Self::new(ctx.try_clone()?);
         // make the TCP transport available in the list of supported transports for
         // later address resolution when socket addresses will need to be instantiated as TCP
         // worker addresses
@@ -111,7 +111,7 @@ impl Transport for TcpTransport {
         TCP
     }
 
-    async fn resolve_address(&self, address: Address) -> Result<Address> {
+    async fn resolve_address(&self, address: &Address) -> Result<Address> {
         if address.transport_type() == TCP {
             Ok(self
                 .connect(address.address().to_string(), TcpConnectionOptions::new())
@@ -129,8 +129,8 @@ impl Transport for TcpTransport {
         }
     }
 
-    async fn disconnect(&self, address: Address) -> Result<()> {
-        self.disconnect(address).await
+    fn disconnect(&self, address: &Address) -> Result<()> {
+        self.disconnect(address)
     }
 }
 
@@ -143,9 +143,9 @@ mod tests {
 
     #[ockam_macros::test]
     async fn test_resolve_address(ctx: &mut Context) -> Result<()> {
-        let tcp = TcpTransport::create(ctx).await?;
+        let tcp = TcpTransport::create(ctx)?;
         let tcp_address = "127.0.0.1:0";
-        let initial_workers = ctx.list_workers().await?;
+        let initial_workers = ctx.list_workers()?;
         let listener = TcpListener::bind(tcp_address)
             .await
             .map_err(TransportError::from)?;
@@ -159,11 +159,11 @@ mod tests {
         });
 
         let resolved = tcp
-            .resolve_address(Address::new_with_string(TCP, local_address.clone()))
+            .resolve_address(&Address::new_with_string(TCP, local_address.clone()))
             .await?;
 
         // there are 2 additional workers
-        let mut additional_workers = ctx.list_workers().await?;
+        let mut additional_workers = ctx.list_workers()?;
         additional_workers.retain(|w| !initial_workers.contains(w));
         assert_eq!(additional_workers.len(), 2);
 
@@ -172,7 +172,7 @@ mod tests {
 
         // trying to resolve the address a second time should still work
         let _route = tcp
-            .resolve_address(Address::new_with_string(TCP, local_address))
+            .resolve_address(&Address::new_with_string(TCP, local_address))
             .await?;
 
         tokio::time::sleep(Duration::from_millis(250)).await;
@@ -182,7 +182,7 @@ mod tests {
 
     #[ockam_macros::test]
     async fn test_resolve_route_with_dns_address(ctx: &mut Context) -> Result<()> {
-        let tcp = TcpTransport::create(ctx).await?;
+        let tcp = TcpTransport::create(ctx)?;
         let tcp_address = "127.0.0.1:0";
         let listener = TcpListener::bind(tcp_address)
             .await
@@ -196,7 +196,7 @@ mod tests {
         });
 
         let result = tcp
-            .resolve_address(Address::new_with_string(
+            .resolve_address(&Address::new_with_string(
                 TCP,
                 format!("localhost:{}", socket_address.port()),
             ))

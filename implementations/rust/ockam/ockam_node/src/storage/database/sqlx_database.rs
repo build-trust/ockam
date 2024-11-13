@@ -334,11 +334,17 @@ PRAGMA busy_timeout = 10000;
         install_default_drivers();
         // SQLite in-memory DB get wiped if there is no connection to it.
         // The below setting tries to ensure there is always an open connection
+        let file_name = random_string();
+        let options = AnyConnectOptions::from_str(
+            format!("sqlite:file:{file_name}?mode=memory&cache=shared").as_str(),
+        )
+        .map_err(Self::map_sql_err)?
+        .log_statements(LevelFilter::Trace)
+        .log_slow_statements(LevelFilter::Trace, Duration::from_secs(1));
         let pool_options = PoolOptions::new().idle_timeout(None).max_lifetime(None);
 
-        let file_name = random_string();
         let pool = pool_options
-            .connect(format!("sqlite:file:{file_name}?mode=memory&cache=shared").as_str())
+            .connect_with(options)
             .await
             .map_err(Self::map_sql_err)?;
         Ok(pool)

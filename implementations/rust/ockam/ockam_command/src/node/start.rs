@@ -183,7 +183,7 @@ async fn run_node(
     };
     spawn_node(opts, cmd).await?;
 
-    let node = BackgroundNodeClient::create_to_node(ctx, &opts.state, node_name).await?;
+    let node = BackgroundNodeClient::create_to_node(ctx, &opts.state, node_name)?;
     Ok(node)
 }
 

@@ -45,10 +45,6 @@ where
 {
     type Context = Context;
 
-    async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
-        ctx.set_cluster(crate::CLUSTER_NAME).await
-    }
-
     /// Get next message from the WebSocket stream if there is
     /// any available, and forward it to the next hop in the route.
     async fn process(&mut self, ctx: &mut Context) -> Result<bool> {
@@ -89,7 +85,7 @@ where
 
         // Insert the peer address into the return route so that
         // reply routing can be properly resolved
-        msg = msg.push_front_return_route(&self.peer_addr);
+        msg = msg.push_front_return_route(self.peer_addr.clone());
 
         // Some verbose logging we may want to remove
         trace!("Message onward route: {}", msg.onward_route());

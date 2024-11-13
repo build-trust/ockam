@@ -54,7 +54,8 @@ impl<R: AsyncRead + Unpin + Send + Sync + 'static> Processor for TcpPortalRecvPr
 
     #[instrument(skip_all, name = "TcpPortalRecvProcessor::initialize")]
     async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
-        self.registry.add_portal_receiver_processor(&ctx.address());
+        self.registry
+            .add_portal_receiver_processor(ctx.primary_address());
 
         Ok(())
     }
@@ -62,7 +63,7 @@ impl<R: AsyncRead + Unpin + Send + Sync + 'static> Processor for TcpPortalRecvPr
     #[instrument(skip_all, name = "TcpPortalRecvProcessor::shutdown")]
     async fn shutdown(&mut self, ctx: &mut Self::Context) -> Result<()> {
         self.registry
-            .remove_portal_receiver_processor(&ctx.address());
+            .remove_portal_receiver_processor(ctx.primary_address());
 
         Ok(())
     }

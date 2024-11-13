@@ -61,7 +61,7 @@ impl Context {
         for address in route.iter() {
             if !address.is_local() {
                 if let Some(transport) = transports.get(&address.transport_type()) {
-                    let transport_address = transport.resolve_address(address.clone()).await?;
+                    let transport_address = transport.resolve_address(address).await?;
                     resolved_address = Some(transport_address.clone());
                     resolved_route = resolved_route.append(transport_address);
                 } else {
@@ -141,11 +141,11 @@ mod tests {
         }
 
         /// This implementation simply marks each address as a local address
-        async fn resolve_address(&self, address: Address) -> Result<Address> {
-            Ok(Address::new(LOCAL, address.inner()))
+        async fn resolve_address(&self, address: &Address) -> Result<Address> {
+            Ok(Address::new(LOCAL, address.clone().inner()))
         }
 
-        async fn disconnect(&self, _address: Address) -> Result<()> {
+        fn disconnect(&self, _address: &Address) -> Result<()> {
             Ok(())
         }
     }

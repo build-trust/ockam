@@ -40,6 +40,12 @@ pub struct Address {
     #[n(1)] inner: Vec<u8>,
 }
 
+impl AsRef<Address> for Address {
+    fn as_ref(&self) -> &Address {
+        self
+    }
+}
+
 impl Address {
     /// Creates a new address from separate transport type and data parts.
     ///

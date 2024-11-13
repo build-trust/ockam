@@ -1,56 +1,57 @@
-use core::time::Duration;
-
 #[cfg(not(feature = "std"))]
 use crate::tokio;
+use core::time::Duration;
 use ockam_core::compat::collections::HashMap;
+use ockam_core::compat::sync::Weak;
 use ockam_core::compat::time::now;
-use ockam_core::compat::{boxed::Box, sync::Arc, sync::RwLock};
+use ockam_core::compat::{sync::Arc, sync::RwLock};
 use ockam_core::flow_control::FlowControls;
 #[cfg(feature = "std")]
 use ockam_core::OpenTelemetryContext;
 use ockam_core::{
-    errcode::{Kind, Origin},
-    Address, AsyncTryClone, DenyAll, Error, IncomingAccessControl, Mailboxes,
-    OutgoingAccessControl, Result, TransportType,
+    Address, AllowAll, DenyAll, IncomingAccessControl, Mailbox, Mailboxes, OutgoingAccessControl,
+    Result, TransportType, TryClone,
 };
 use ockam_transport_core::Transport;
 
+use crate::channel_types::{message_channel, oneshot_channel, OneshotReceiver};
+use crate::router::Router;
+use crate::{debugger, Context, ContextMode};
+use crate::{relay::CtrlSignal, router::SenderPair};
 use tokio::runtime::Handle;
-
-use crate::async_drop::AsyncDrop;
-use crate::channel_types::{message_channel, small_channel, SmallReceiver, SmallSender};
-use crate::{debugger, Context};
-use crate::{error::*, relay::CtrlSignal, router::SenderPair, NodeMessage};
-
-/// A special type of `Context` that has no worker relay and inherits
-/// the parent `Context`'s access control
-pub type DetachedContext = Context;
-
-/// A special sender type that connects a type to an AsyncDrop handler
-pub type AsyncDropSender = tokio::sync::oneshot::Sender<Address>;
 
 impl Drop for Context {
     fn drop(&mut self) {
-        if let Some(sender) = self.async_drop_sender.take() {
-            trace!(address=%self.address(), "de-allocated detached context");
-            if let Err(err) = sender.send(self.address()) {
-                warn!(address=%self.address(), %err,
-                    "couldn't drop detached context");
+        if let ContextMode::Detached = self.mode {
+            let router = match self.router() {
+                Ok(router) => router,
+                Err(_) => {
+                    debug!(address=%self.primary_address(), "Can't upgrade router inside Context::drop");
+                    return;
+                }
+            };
+
+            match router.stop_address(self.primary_address(), true) {
+                Ok(_) => {
+                    trace!(address=%self.primary_address(), "de-allocated detached context");
+                }
+                Err(err) => {
+                    // That is OK during node stop
+                    debug!(address=%self.primary_address(), %err, "Encountered error while dropping detached context");
+                }
             }
         }
     }
 }
 
-#[ockam_core::async_trait]
-impl AsyncTryClone for Context {
-    async fn async_try_clone(&self) -> Result<Self> {
+impl TryClone for Context {
+    fn try_clone(&self) -> Result<Self> {
         // TODO: @ac ignores parent Access Control. Should be documented somewhere
         self.new_detached(
-            Address::random_tagged("Context.async_try_clone.detached"),
+            Address::random_tagged("Context.try_clone.detached"),
             DenyAll,
             DenyAll,
         )
-        .await
     }
 }
 
@@ -63,24 +64,24 @@ impl Context {
     /// `async_drop_sender` must be provided when creating a detached
     /// Context type (i.e. not backed by a worker relay).
     #[allow(clippy::too_many_arguments)]
-    pub(crate) fn new(
-        rt: Handle,
-        sender: SmallSender<NodeMessage>,
+    fn new(
+        runtime_handle: Handle,
+        router: Weak<Router>,
         mailboxes: Mailboxes,
-        async_drop_sender: Option<AsyncDropSender>,
+        mode: ContextMode,
         transports: Arc<RwLock<HashMap<TransportType, Arc<dyn Transport>>>>,
         flow_controls: &FlowControls,
         #[cfg(feature = "std")] tracing_context: OpenTelemetryContext,
-    ) -> (Self, SenderPair, SmallReceiver<CtrlSignal>) {
+    ) -> (Self, SenderPair, OneshotReceiver<CtrlSignal>) {
         let (mailbox_tx, receiver) = message_channel();
-        let (ctrl_tx, ctrl_rx) = small_channel();
+        let (ctrl_tx, ctrl_rx) = oneshot_channel();
         (
             Self {
-                rt,
-                sender,
+                runtime_handle,
+                router,
                 mailboxes,
+                mode,
                 receiver,
-                async_drop_sender,
                 mailbox_count: Arc::new(0.into()),
                 transports,
                 flow_controls: flow_controls.clone(),
@@ -95,32 +96,40 @@ impl Context {
         )
     }
 
-    pub(crate) fn copy_with_mailboxes(
-        &self,
-        mailboxes: Mailboxes,
-    ) -> (Context, SenderPair, SmallReceiver<CtrlSignal>) {
-        Context::new(
-            self.runtime().clone(),
-            self.sender().clone(),
+    pub(crate) fn create_app_context(
+        runtime_handle: Handle,
+        router: Weak<Router>,
+        flow_controls: &FlowControls,
+        #[cfg(feature = "std")] tracing_context: OpenTelemetryContext,
+    ) -> (Self, SenderPair, OneshotReceiver<CtrlSignal>) {
+        let addr: Address = "app".into();
+        let mailboxes = Mailboxes::new(
+            Mailbox::new(addr, None, Arc::new(AllowAll), Arc::new(AllowAll)),
+            vec![],
+        );
+
+        Self::new(
+            runtime_handle,
+            router,
             mailboxes,
-            None,
-            self.transports.clone(),
-            &self.flow_controls,
+            ContextMode::Detached,
+            Default::default(),
+            flow_controls,
             #[cfg(feature = "std")]
-            self.tracing_context(),
+            tracing_context,
         )
     }
 
-    pub(crate) fn copy_with_mailboxes_detached(
+    pub(crate) fn new_with_mailboxes(
         &self,
         mailboxes: Mailboxes,
-        drop_sender: AsyncDropSender,
-    ) -> (Context, SenderPair, SmallReceiver<CtrlSignal>) {
-        Context::new(
+        mode: ContextMode,
+    ) -> (Context, SenderPair, OneshotReceiver<CtrlSignal>) {
+        Self::new(
             self.runtime().clone(),
-            self.sender().clone(),
+            self.router_weak(),
             mailboxes,
-            Some(drop_sender),
+            mode,
             self.transports.clone(),
             &self.flow_controls,
             #[cfg(feature = "std")]
@@ -165,11 +174,8 @@ impl Context {
     }
 
     /// TODO basically we can just rename `Self::new_detached_impl()`
-    pub async fn new_detached_with_mailboxes(
-        &self,
-        mailboxes: Mailboxes,
-    ) -> Result<DetachedContext> {
-        let ctx = self.new_detached_impl(mailboxes).await?;
+    pub fn new_detached_with_mailboxes(&self, mailboxes: Mailboxes) -> Result<Context> {
+        let ctx = self.new_detached_impl(mailboxes)?;
 
         debugger::log_inherit_context("DETACHED_WITH_MB", self, &ctx);
 
@@ -206,51 +212,31 @@ impl Context {
     ///     Remove AddressRecord from router.map.address_records_map (return error if not found)
     ///     Remove all alias in router.map.alias_map
     ///     Remote all meta from router.map.address_metadata
-    pub async fn new_detached(
+    pub fn new_detached(
         &self,
         address: impl Into<Address>,
         incoming: impl IncomingAccessControl,
         outgoing: impl OutgoingAccessControl,
-    ) -> Result<DetachedContext> {
-        let mailboxes = Mailboxes::main(address.into(), Arc::new(incoming), Arc::new(outgoing));
-        let ctx = self.new_detached_impl(mailboxes).await?;
+    ) -> Result<Context> {
+        let mailboxes = Mailboxes::primary(address.into(), Arc::new(incoming), Arc::new(outgoing));
+        let ctx = self.new_detached_impl(mailboxes)?;
 
         debugger::log_inherit_context("DETACHED", self, &ctx);
 
         Ok(ctx)
     }
 
-    async fn new_detached_impl(&self, mailboxes: Mailboxes) -> Result<DetachedContext> {
-        // A detached Context exists without a worker relay, which
-        // requires special shutdown handling.  To allow the Drop
-        // handler to interact with the Node runtime, we use an
-        // AsyncDrop handler.
-        //
-        // This handler is spawned and listens for an event from the
-        // Drop handler, and then forwards a message to the Node
-        // router.
-        let (async_drop, drop_sender) = AsyncDrop::new(self.sender.clone());
-        self.rt.spawn(async_drop.run());
-
+    fn new_detached_impl(&self, mailboxes: Mailboxes) -> Result<Context> {
         // Create a new context and get access to the mailbox senders
-        let addresses = mailboxes.addresses();
-        let (ctx, sender, _) = self.copy_with_mailboxes_detached(mailboxes, drop_sender);
+        let (ctx, sender, _) = self.new_with_mailboxes(mailboxes, ContextMode::Detached);
 
-        // Create a "detached relay" and register it with the router
-        let (msg, mut rx) = NodeMessage::start_worker(
-            addresses,
+        self.router()?.add_worker(
+            ctx.mailboxes(),
             sender,
             true,
-            Arc::clone(&self.mailbox_count),
-            vec![],
-        );
-        self.sender
-            .send(msg)
-            .await
-            .map_err(|e| Error::new(Origin::Node, Kind::Invalid, e))?;
-        rx.recv()
-            .await
-            .ok_or_else(|| NodeError::NodeState(NodeReason::Unknown).internal())??;
+            Default::default(),
+            self.mailbox_count.clone(),
+        )?;
 
         Ok(ctx)
     }
@@ -269,12 +255,11 @@ mod tests {
 
         // after a copy with new mailboxes the list of transports should be intact
         let mailboxes = Mailboxes::new(Mailbox::deny_all("address"), vec![]);
-        let (copy, _, _) = ctx.copy_with_mailboxes(mailboxes.clone());
+        let (copy, _, _) = ctx.new_with_mailboxes(mailboxes.clone(), ContextMode::Attached);
         assert!(copy.is_transport_registered(transport.transport_type()));
 
         // after a detached copy with new mailboxes the list of transports should be intact
-        let (_, drop_sender) = AsyncDrop::new(ctx.sender.clone());
-        let (copy, _, _) = ctx.copy_with_mailboxes_detached(mailboxes, drop_sender);
+        let (copy, _, _) = ctx.new_with_mailboxes(mailboxes, ContextMode::Attached);
         assert!(copy.is_transport_registered(transport.transport_type()));
         Ok(())
     }
@@ -287,11 +272,11 @@ mod tests {
             TransportType::new(0)
         }
 
-        async fn resolve_address(&self, address: Address) -> Result<Address> {
-            Ok(address)
+        async fn resolve_address(&self, address: &Address) -> Result<Address> {
+            Ok(address.clone())
         }
 
-        async fn disconnect(&self, _address: Address) -> Result<()> {
+        fn disconnect(&self, _address: &Address) -> Result<()> {
             Ok(())
         }
     }

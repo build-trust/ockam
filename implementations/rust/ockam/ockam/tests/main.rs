@@ -1,11 +1,11 @@
 #[test]
-fn async_try_clone() {
+fn try_clone() {
     let t = trybuild::TestCases::new();
     // see the other use of `NIGHTLY_CI` for explanation.
     if std::env::var_os("NIGHTLY_CI").is_none() {
-        t.compile_fail("tests/async_try_clone/fail*.rs");
+        t.compile_fail("tests/try_clone/fail*.rs");
     }
-    t.pass("tests/async_try_clone/pass.rs");
+    t.pass("tests/try_clone/pass.rs");
 }
 
 #[test]

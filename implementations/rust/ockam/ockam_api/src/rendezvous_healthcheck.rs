@@ -2,7 +2,7 @@ use crate::DefaultAddress;
 use ockam::transport::HostnamePort;
 use ockam::udp::{RendezvousClient, UdpBindArguments, UdpBindOptions, UdpTransport};
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::{route, AsyncTryClone, Error, Result};
+use ockam_core::{route, Error, Result, TryClone};
 use ockam_node::Context;
 use std::net::SocketAddr;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -17,7 +17,7 @@ pub struct RendezvousHealthcheck {
 }
 
 impl RendezvousHealthcheck {
-    pub async fn create(
+    pub fn create(
         healthcheck_listening_address: &str,
         udp: &UdpTransport,
         udp_socket_address: SocketAddr,
@@ -28,7 +28,7 @@ impl RendezvousHealthcheck {
             udp_socket_address.to_string()
         };
 
-        let ctx = udp.ctx().async_try_clone().await?;
+        let ctx = udp.ctx().try_clone()?;
 
         let task = RendezvousHealthcheckTask {
             ctx,
@@ -147,7 +147,7 @@ impl RendezvousHealthcheckTask {
             )
         });
 
-        self.udp.unbind(bind).await?;
+        self.udp.unbind(bind.as_ref())?;
 
         res
     }

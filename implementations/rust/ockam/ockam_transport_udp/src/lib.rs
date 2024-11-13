@@ -30,8 +30,6 @@ pub use puncture::*;
 pub use size_options::*;
 pub use transport::{UdpBind, UdpBindArguments, UdpTransport, UdpTransportExtension};
 
-pub(crate) const CLUSTER_NAME: &str = "_internals.transport.udp";
-
 /// Transport type for UDP addresses
 pub const UDP: ockam_core::TransportType = ockam_core::TransportType::new(2);
 

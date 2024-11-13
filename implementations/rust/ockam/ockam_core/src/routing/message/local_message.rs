@@ -63,8 +63,8 @@ impl LocalMessage {
     }
 
     /// Return the next address on the onward route
-    pub fn next_on_onward_route(&self) -> Result<Address> {
-        Ok(self.onward_route.next()?.clone())
+    pub fn next_on_onward_route(&self) -> Result<&Address> {
+        self.onward_route.next()
     }
 
     /// Return true if an address exists on the onward route
@@ -79,25 +79,21 @@ impl LocalMessage {
     }
 
     /// Prepend an address on the onward route
-    pub fn push_front_onward_route(mut self, address: &Address) -> Self {
-        self.onward_route = self.onward_route.modify().prepend(address.clone()).into();
+    pub fn push_front_onward_route(mut self, address: Address) -> Self {
+        self.onward_route = address + self.onward_route;
         self
     }
 
     /// Replace the first address on the onward route
-    pub fn replace_front_onward_route(self, address: &Address) -> Result<Self> {
+    pub fn replace_front_onward_route(self, address: Address) -> Result<Self> {
         Ok(self
             .pop_front_onward_route()?
             .push_front_onward_route(address))
     }
 
     /// Prepend a route to the onward route
-    pub fn prepend_front_onward_route(mut self, route: &Route) -> Self {
-        self.onward_route = self
-            .onward_route
-            .modify()
-            .prepend_route(route.clone())
-            .into();
+    pub fn prepend_front_onward_route(mut self, route: Route) -> Self {
+        self.onward_route = route + self.onward_route;
         self
     }
 
@@ -119,23 +115,19 @@ impl LocalMessage {
     }
 
     /// Prepend an address to the return route
-    pub fn push_front_return_route(mut self, address: &Address) -> Self {
-        self.return_route = self.return_route.modify().prepend(address.clone()).into();
+    pub fn push_front_return_route(mut self, address: Address) -> Self {
+        self.return_route = address + self.return_route;
         self
     }
 
     /// Prepend a route to the return route
-    pub fn prepend_front_return_route(mut self, route: &Route) -> Self {
-        self.return_route = self
-            .return_route
-            .modify()
-            .prepend_route(route.clone())
-            .into();
+    pub fn prepend_front_return_route(mut self, route: Route) -> Self {
+        self.return_route = route + self.return_route;
         self
     }
 
     /// Remove the first address on the onward route and push another address on the return route
-    pub fn step_forward(self, address: &Address) -> Result<Self> {
+    pub fn step_forward(self, address: Address) -> Result<Self> {
         Ok(self
             .pop_front_onward_route()?
             .push_front_return_route(address))
@@ -147,7 +139,7 @@ impl LocalMessage {
     }
 
     /// Return a reference to the message payload
-    pub fn payload_ref(&self) -> &[u8] {
+    pub fn payload(&self) -> &[u8] {
         &self.payload
     }
 
@@ -162,13 +154,8 @@ impl LocalMessage {
         self
     }
 
-    /// Return the message local info
-    pub fn local_info(&self) -> Vec<LocalInfo> {
-        self.local_info.clone()
-    }
-
     /// Return a reference to the message local info
-    pub fn local_info_ref(&self) -> &[LocalInfo] {
+    pub fn local_info(&self) -> &[LocalInfo] {
         &self.local_info
     }
 

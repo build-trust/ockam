@@ -19,31 +19,21 @@ pub async fn start_node(
     debug!("secure channel listener started");
 
     // start the authenticator services
-    authority
-        .start_direct_authenticator(ctx, &secure_channel_flow_control_id, configuration)
-        .await?;
+    authority.start_direct_authenticator(ctx, &secure_channel_flow_control_id, configuration)?;
     debug!("direct authenticator started");
 
-    authority
-        .start_enrollment_services(ctx, &secure_channel_flow_control_id, configuration)
-        .await?;
+    authority.start_enrollment_services(ctx, &secure_channel_flow_control_id, configuration)?;
     debug!("enrollment services started");
 
-    authority
-        .start_credential_issuer(ctx, &secure_channel_flow_control_id, configuration)
-        .await?;
+    authority.start_credential_issuer(ctx, &secure_channel_flow_control_id, configuration)?;
     debug!("credential issuer started");
 
     // start the Okta service (if the optional configuration has been provided)
-    authority
-        .start_okta(ctx, &secure_channel_flow_control_id, configuration)
-        .await?;
+    authority.start_okta(ctx, &secure_channel_flow_control_id, configuration)?;
     debug!("okta service started");
 
     // start an echo service so that the node can be queried as healthy
-    authority
-        .start_echo_service(ctx, &secure_channel_flow_control_id)
-        .await?;
+    authority.start_echo_service(ctx, &secure_channel_flow_control_id)?;
 
     debug!("echo service started");
 

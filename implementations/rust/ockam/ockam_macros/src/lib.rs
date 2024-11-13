@@ -1,6 +1,6 @@
 //! This crate provides shared macros to:
 //!
-//!  - clone structs asynchronously
+//!  - faillable clone structs
 //!  - create an ockam node and access its `Context`
 //!  - write some node-related tests
 //!
@@ -20,18 +20,18 @@ use proc_macro::TokenStream;
 use quote::quote;
 use syn::{parse_macro_input, DeriveInput, ItemFn};
 
-mod async_try_clone_derive;
 mod internals;
 mod message_derive;
 mod node_attribute;
 mod node_test_attribute;
+mod try_clone_derive;
 mod vault_test_attribute;
 
-/// Implements the [`AsyncTryClone`](https://docs.rs/ockam_core/latest/ockam_core/traits/trait.AsyncTryClone.html) trait for a type.
+/// Implements the [`TryClone`](https://docs.rs/ockam_core/latest/ockam_core/traits/trait.TryClone.html) trait for a type.
 ///
 /// The macro supports the following attributes:
 ///
-/// - `#[async_try_clone(crate = "...")]`: specify a path to the crate that
+/// - `#[try_clone(crate = "...")]`: specify a path to the crate that
 ///   will be used to import the items required by the macro. This can be
 ///   helpful when using the macro from an internal `ockam` crate. Defaults
 ///   to `ockam`.
@@ -39,16 +39,16 @@ mod vault_test_attribute;
 /// Example of use:
 ///
 /// ```ignore
-/// #[derive(ockam::AsyncTryClone)]
-/// #[async_try_clone(crate = "ockam")]
+/// #[derive(ockam::TryClone)]
+/// #[try_clone(crate = "ockam")]
 /// pub struct MyStruct {
 ///     a: u32,
 /// }
 /// ```
-#[proc_macro_derive(AsyncTryClone, attributes(async_try_clone))]
-pub fn async_try_clone_derive(input: TokenStream) -> TokenStream {
+#[proc_macro_derive(TryClone, attributes(try_clone))]
+pub fn try_clone_derive(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
-    async_try_clone_derive::expand(input)
+    try_clone_derive::expand(input)
         .unwrap_or_else(to_compile_errors)
         .into()
 }
@@ -92,7 +92,7 @@ pub fn message_derive(input: TokenStream) -> TokenStream {
 /// ```ignore
 /// #[ockam::node]
 /// async fn main(mut ctx: ockam::Context) -> ockam::Result<()> {
-///     ctx.stop().await
+///     ctx.shutdown_node().await
 /// }
 /// ```
 #[proc_macro_attribute]
@@ -126,7 +126,7 @@ pub fn node(args: TokenStream, item: TokenStream) -> TokenStream {
 /// ```ignore
 /// #[ockam::test]
 /// async fn main(ctx: &mut ockam::Context) -> ockam::Result<()> {
-///     ctx.stop().await
+///     ctx.shutdown_node().await
 /// }
 /// ```
 #[proc_macro_attribute]

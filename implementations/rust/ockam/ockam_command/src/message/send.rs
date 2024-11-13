@@ -82,8 +82,7 @@ impl Command for SendCommand {
         // Setup environment depending on whether we are sending the message from a background node
         // or an in-memory node
         let response: Vec<u8> = if let Some(node) = &self.from {
-            BackgroundNodeClient::create_to_node(ctx, &opts.state, node.as_str())
-                .await?
+            BackgroundNodeClient::create_to_node(ctx, &opts.state, node.as_str())?
                 .send_message(ctx, &to, msg_bytes, Some(self.timeout.timeout))
                 .await
                 .map_err(Error::Retry)?

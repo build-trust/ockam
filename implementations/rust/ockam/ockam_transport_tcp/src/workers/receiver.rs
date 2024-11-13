@@ -13,7 +13,7 @@ use ockam_core::{
     OutgoingAccessControl,
 };
 use ockam_core::{Processor, Result};
-use ockam_node::{Context, ProcessorBuilder};
+use ockam_node::{Context, ProcessorBuilder, WorkerShutdownPriority};
 use ockam_transport_core::TransportError;
 use tokio::{io::AsyncReadExt, net::tcp::OwnedReadHalf};
 use tracing::{debug, instrument, trace};
@@ -59,7 +59,7 @@ impl TcpRecvProcessor {
 
     #[allow(clippy::too_many_arguments)]
     #[instrument(skip_all, name = "TcpRecvProcessor::start")]
-    pub async fn start(
+    pub fn start(
         ctx: &Context,
         registry: TcpRegistry,
         read_half: OwnedReadHalf,
@@ -80,11 +80,13 @@ impl TcpRecvProcessor {
 
         let mailbox = Mailbox::new(
             addresses.receiver_address().clone(),
+            None,
             Arc::new(DenyAll),
             receiver_outgoing_access_control,
         );
         let internal = Mailbox::new(
             addresses.receiver_internal_address().clone(),
+            None,
             Arc::new(DenyAll),
             Arc::new(AllowOnwardAddress(
                 addresses.sender_internal_address().clone(),
@@ -92,8 +94,8 @@ impl TcpRecvProcessor {
         );
         ProcessorBuilder::new(receiver)
             .with_mailboxes(Mailboxes::new(mailbox, vec![internal]))
-            .start(ctx)
-            .await?;
+            .with_shutdown_priority(WorkerShutdownPriority::Priority1)
+            .start(ctx)?;
 
         Ok(())
     }
@@ -119,10 +121,8 @@ impl Processor for TcpRecvProcessor {
 
     #[instrument(skip_all, name = "TcpRecvProcessor::initialize")]
     async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
-        ctx.set_cluster(crate::CLUSTER_NAME).await?;
-
         self.registry.add_receiver_processor(TcpReceiverInfo::new(
-            ctx.address(),
+            ctx.primary_address().clone(),
             self.addresses.sender_address().clone(),
             self.socket_address,
             self.mode,
@@ -158,7 +158,8 @@ impl Processor for TcpRecvProcessor {
 
     #[instrument(skip_all, name = "TcpRecvProcessor::shutdown")]
     async fn shutdown(&mut self, ctx: &mut Self::Context) -> Result<()> {
-        self.registry.remove_receiver_processor(&ctx.address());
+        self.registry
+            .remove_receiver_processor(ctx.primary_address());
 
         Ok(())
     }
@@ -174,7 +175,7 @@ impl Processor for TcpRecvProcessor {
     ///    Context to avoid spawning a zombie task.
     /// 3. We must also stop the TcpReceive loop when the worker gets
     ///    killed by the user or node.
-    #[instrument(skip_all, name = "TcpRecvProcessor::process", fields(worker = %ctx.address()))]
+    #[instrument(skip_all, name = "TcpRecvProcessor::process", fields(worker = %ctx.primary_address()))]
     async fn process(&mut self, ctx: &mut Context) -> Result<bool> {
         // Read the message length
         let len = match self.read_half.read_u32().await {
@@ -242,7 +243,8 @@ impl Processor for TcpRecvProcessor {
 
         // Insert the peer address into the return route so that
         // reply routing can be properly resolved
-        let local_message = local_message.push_front_return_route(self.addresses.sender_address());
+        let local_message =
+            local_message.push_front_return_route(self.addresses.sender_address().clone());
 
         trace!("Message onward route: {}", local_message.onward_route());
         trace!("Message return route: {}", local_message.return_route());

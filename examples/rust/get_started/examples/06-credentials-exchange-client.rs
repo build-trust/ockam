@@ -1,11 +1,12 @@
 use ockam::identity::{SecureChannelOptions, Vault};
-use ockam::tcp::{TcpConnectionOptions, TcpTransportExtension};
+use ockam::tcp::TcpConnectionOptions;
 use ockam::vault::{EdDSACurve25519SecretKey, SigningSecret, SoftwareVaultForSigning};
 use ockam::{route, Context, Node, Result};
 use ockam_api::enroll::enrollment::Enrollment;
 use ockam_api::nodes::NodeManager;
 use ockam_api::DefaultAddress;
 use ockam_multiaddr::MultiAddr;
+use ockam_transport_tcp::TcpTransportExtension;
 
 #[ockam::node]
 async fn main(ctx: Context) -> Result<()> {
@@ -24,9 +25,9 @@ async fn main(ctx: Context) -> Result<()> {
     let mut vault = Vault::create().await?;
     vault.identity_vault = identity_vault;
 
-    let mut node = Node::builder().await?.with_vault(vault).build(&ctx).await?;
+    let mut node = Node::builder().await?.with_vault(vault).build(&ctx)?;
     // Initialize the TCP Transport
-    let tcp = node.create_tcp_transport().await?;
+    let tcp = node.create_tcp_transport()?;
 
     // Create an Identity representing the client
     // We preload the client vault with a change history and secret key corresponding to the identity identifier
@@ -88,5 +89,5 @@ async fn main(ctx: Context) -> Result<()> {
         .await?;
     println!("Received: {}", reply); // should print "Hello Ockam!"
 
-    node.stop().await
+    node.shutdown().await
 }

@@ -11,7 +11,7 @@ use ockam_api::authenticator::one_time_code::OneTimeCode;
 use ockam_api::nodes::NodeManager;
 use ockam_api::{RemoteMultiaddrResolver, TransportRouteResolver};
 use ockam_core::compat::sync::Arc;
-use ockam_core::AsyncTryClone;
+use ockam_core::TryClone;
 use ockam_multiaddr::MultiAddr;
 use ockam_transport_tcp::{TcpInletOptions, TcpTransportExtension};
 
@@ -51,7 +51,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     // Create a node with default implementations
     let node = node(ctx).await?;
     // Use the TCP transport
-    let tcp = node.create_tcp_transport().await?;
+    let tcp = node.create_tcp_transport()?;
 
     // Create an Identity for the edge plane
     let edge_plane = node.create_identity().await?;
@@ -79,7 +79,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
 
     // Create a credential retriever that will be used to obtain credentials
     let credential_retriever = Arc::new(RemoteCredentialRetrieverCreator::new(
-        node.context().async_try_clone().await?,
+        node.context().try_clone()?,
         Arc::new(tcp.clone()),
         node.secure_channels(),
         RemoteCredentialRetrieverInfo::create_for_project_member(
@@ -102,8 +102,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
         Some(project.authority_identifier()),
         "component",
         "control",
-    )
-    .await?;
+    )?;
 
     // 4. create a tcp inlet with the above policy
 

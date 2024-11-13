@@ -42,7 +42,7 @@ impl WorkerPair {
     /// returns a `WorkerPair` instance that will be registered by the `WebSocketRouter`.
     ///
     /// The WebSocket stream is created when the `WebSocketSendWorker` is initialized.
-    pub(crate) async fn from_client(
+    pub(crate) fn from_client(
         ctx: &Context,
         peer: SocketAddr,
         hostnames: Vec<String>,
@@ -53,7 +53,7 @@ impl WorkerPair {
         let sender = WebSocketSendWorker::<TcpClientStream>::new(
             peer,
             internal_addr.clone(),
-            DelayedEvent::create(ctx, internal_addr.clone(), vec![]).await?,
+            DelayedEvent::create(ctx, internal_addr.clone(), vec![])?,
         );
 
         let tx_addr = Address::random_tagged("WebSocketSender.tx_addr.from_client");
@@ -61,19 +61,20 @@ impl WorkerPair {
         let mailboxes = Mailboxes::new(
             Mailbox::new(
                 tx_addr.clone(),
+                None,
                 Arc::new(AllowAll), // FIXME: @ac
                 Arc::new(AllowAll), // FIXME: @ac
             ),
             vec![Mailbox::new(
                 internal_addr,
+                None,
                 Arc::new(AllowAll), // FIXME: @ac
                 Arc::new(AllowAll), // FIXME: @ac
             )],
         );
         WorkerBuilder::new(sender)
             .with_mailboxes(mailboxes)
-            .start(ctx)
-            .await?;
+            .start(ctx)?;
 
         // Return a handle to the worker pair
         Ok(WorkerPair {
@@ -85,7 +86,7 @@ impl WorkerPair {
 
     /// Spawn instances of `WebSocketSendWorker` and `WebSocketRecvProcessor` and
     /// returns a `WorkerPair` instance that will be registered by the `WebSocketRouter`.
-    pub(crate) async fn from_server(
+    pub(crate) fn from_server(
         ctx: &Context,
         stream: WebSocketStream<TcpServerStream>,
         peer: SocketAddr,
@@ -98,26 +99,27 @@ impl WorkerPair {
             stream,
             peer,
             internal_addr.clone(),
-            DelayedEvent::create(ctx, internal_addr.clone(), vec![]).await?,
+            DelayedEvent::create(ctx, internal_addr.clone(), vec![])?,
         );
 
         let tx_addr = Address::random_tagged("WebSocketSender.tx_addr.from_server");
         let mailboxes = Mailboxes::new(
             Mailbox::new(
                 tx_addr.clone(),
+                None,
                 Arc::new(AllowAll), // FIXME: @ac
                 Arc::new(AllowAll), // FIXME: @ac
             ),
             vec![Mailbox::new(
                 internal_addr,
+                None,
                 Arc::new(AllowAll), // FIXME: @ac
                 Arc::new(AllowAll), // FIXME: @ac
             )],
         );
         WorkerBuilder::new(sender)
             .with_mailboxes(mailboxes)
-            .start(ctx)
-            .await?;
+            .start(ctx)?;
 
         // Return a handle to the worker pair
         Ok(WorkerPair {
@@ -149,7 +151,7 @@ impl<S> WebSocketSendWorker<S>
 where
     S: AsyncStream,
 {
-    async fn handle_initialize(&mut self, ctx: &mut Context) -> Result<()> {
+    fn handle_initialize(&mut self, ctx: &mut Context) -> Result<()> {
         if let Some(ws_stream) = self.ws_stream.take() {
             let rx_addr = Address::random_tagged("WebSocketSendWorker.rx_addr");
             let receiver = WebSocketRecvProcessor::new(ws_stream, self.peer);
@@ -158,24 +160,22 @@ where
                 receiver,
                 AllowAll, // FIXME: @ac
                 AllowAll, // FIXME: @ac
-            )
-            .await?;
+            )?;
         } else {
             return Err(TransportError::GenericIo)?;
         }
 
-        ctx.set_cluster(crate::CLUSTER_NAME).await?;
-        self.schedule_heartbeat().await?;
+        self.schedule_heartbeat()?;
         Ok(())
     }
 
-    async fn schedule_heartbeat(&mut self) -> Result<()> {
+    fn schedule_heartbeat(&mut self) -> Result<()> {
         let heartbeat_interval = match &self.heartbeat_interval {
             Some(hi) => *hi,
             None => return Ok(()),
         };
 
-        self.heartbeat.schedule(heartbeat_interval).await
+        self.heartbeat.schedule(heartbeat_interval)
     }
 
     /// Receive messages from the `WebSocketRouter` to send
@@ -199,7 +199,7 @@ where
                 .is_err()
             {
                 warn!("Failed to send heartbeat to peer {}", self.peer);
-                ctx.stop_worker(ctx.address()).await?;
+                ctx.stop_address(ctx.primary_address())?;
 
                 return Ok(());
             }
@@ -214,13 +214,13 @@ where
             let msg = WebSocketMessage::from(msg.into_transport_message().encode()?);
             if ws_sink.send(msg).await.is_err() {
                 warn!("Failed to send message to peer {}", self.peer);
-                ctx.stop_worker(ctx.address()).await?;
+                ctx.stop_address(ctx.primary_address())?;
                 return Ok(());
             }
             debug!("Sent message to peer {}", self.peer);
         }
 
-        self.schedule_heartbeat().await?;
+        self.schedule_heartbeat()?;
 
         Ok(())
     }
@@ -277,7 +277,7 @@ impl Worker for WebSocketSendWorker<TcpServerStream> {
     type Context = Context;
 
     async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
-        self.handle_initialize(ctx).await?;
+        self.handle_initialize(ctx)?;
         Ok(())
     }
 
@@ -297,7 +297,7 @@ impl Worker for WebSocketSendWorker<TcpClientStream> {
 
     async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
         self.initialize_stream().await?;
-        self.handle_initialize(ctx).await?;
+        self.handle_initialize(ctx)?;
         Ok(())
     }
 

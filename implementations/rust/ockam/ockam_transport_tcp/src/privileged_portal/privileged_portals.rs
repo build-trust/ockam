@@ -6,12 +6,12 @@ use caps::{CapSet, Capability};
 use core::fmt::Debug;
 use log::{debug, error};
 use nix::unistd::Uid;
+use ockam_core::compat::sync::{Arc, RwLock as SyncRwLock};
 use ockam_core::{Address, DenyAll, Result, Route};
-use ockam_node::compat::asynchronous::{resolve_peer, RwLock};
+use ockam_node::compat::asynchronous::resolve_peer;
 use ockam_node::{ProcessorBuilder, WorkerBuilder};
 use ockam_transport_core::{HostnamePort, TransportError};
 use std::net::IpAddr;
-use std::sync::Arc;
 use tokio::net::TcpListener;
 use tokio::sync::mpsc::channel;
 use tracing::instrument;
@@ -90,16 +90,15 @@ impl TcpTransport {
 
         let tcp_packet_writer = self.start_raw_socket_processor_if_needed().await?;
 
-        let inlet_shared_state =
-            InletSharedState::create(self.ctx(), outlet_route.clone(), false).await?;
-        let inlet_shared_state = Arc::new(RwLock::new(inlet_shared_state));
+        let inlet_shared_state = InletSharedState::create(self.ctx(), outlet_route.clone(), false)?;
+        let inlet_shared_state = Arc::new(SyncRwLock::new(inlet_shared_state));
 
         let remote_worker_address = Address::random_tagged("Ebpf.RemoteWorker.Inlet");
         let internal_worker_address = Address::random_tagged("Ebpf.InternalWorker.Inlet");
 
         TcpInletOptions::setup_flow_control_for_address(
             self.ctx().flow_controls(),
-            remote_worker_address.clone(),
+            &remote_worker_address,
             &next,
         );
 
@@ -125,16 +124,14 @@ impl TcpTransport {
             .with_address(remote_worker_address.clone())
             .with_incoming_access_control_arc(options.incoming_access_control)
             .with_outgoing_access_control(DenyAll)
-            .start(self.ctx())
-            .await?;
+            .start(self.ctx())?;
 
         let internal_worker = InternalProcessor::new_inlet(receiver, inlet_info);
         ProcessorBuilder::new(internal_worker)
             .with_address(internal_worker_address.clone())
             .with_incoming_access_control(DenyAll)
             .with_outgoing_access_control_arc(options.outgoing_access_control)
-            .start(self.ctx())
-            .await?;
+            .start(self.ctx())?;
 
         Ok(TcpInlet::new_privileged(
             local_address,
@@ -145,7 +142,7 @@ impl TcpTransport {
 
     /// Stop the Privileged Inlet
     #[instrument(skip(self), fields(port=port))]
-    pub async fn stop_privileged_inlet(&self, port: Port) -> Result<()> {
+    pub fn stop_privileged_inlet(&self, port: Port) -> Result<()> {
         self.ebpf_support.inlet_registry.delete_inlet(port);
 
         Ok(())
@@ -209,27 +206,22 @@ impl TcpTransport {
             .with_address(remote_worker_address)
             .with_incoming_access_control_arc(options.incoming_access_control)
             .with_outgoing_access_control(DenyAll)
-            .start(self.ctx())
-            .await?;
+            .start(self.ctx())?;
 
         let internal_worker = InternalProcessor::new_outlet(receiver, outlet_info);
         ProcessorBuilder::new(internal_worker)
             .with_address(internal_worker_address)
             .with_incoming_access_control(DenyAll)
             .with_outgoing_access_control_arc(options.outgoing_access_control)
-            .start(self.ctx())
-            .await?;
+            .start(self.ctx())?;
 
         Ok(())
     }
 
     /// Stop the Privileged Inlet
-    #[instrument(skip(self), fields(address = % addr.clone().into()))]
-    pub async fn stop_privileged_outlet(
-        &self,
-        addr: impl Into<Address> + Clone + Debug,
-    ) -> Result<()> {
-        self.ctx().stop_worker(addr).await?;
+    #[instrument(skip(self), fields(address = % address))]
+    pub fn stop_privileged_outlet(&self, address: &Address) -> Result<()> {
+        self.ctx().stop_address(address)?;
 
         // TODO: eBPF Remove from the registry
         // self.ebpf_support.outlet_registry

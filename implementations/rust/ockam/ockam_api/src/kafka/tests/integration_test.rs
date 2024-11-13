@@ -120,8 +120,7 @@ async fn create_kafka_service(
         Arc::new(AllowAll),
         Arc::new(AllowAll),
         read_portal_payload_length(),
-    )
-    .await?;
+    )?;
 
     Ok(inlet.socket_address().port())
 }
@@ -155,14 +154,11 @@ async fn producer__flow_with_mock_kafka__content_encryption_and_decryption(
     // 1 of 'my-topic'
     {
         let mut consumer_mock_kafka = TcpServerSimulator::start("127.0.0.1:0").await;
-        handle
-            .tcp
-            .create_outlet(
-                "kafka_consumer_outlet",
-                HostnamePort::new("127.0.0.1", consumer_mock_kafka.port)?,
-                TcpOutletOptions::new(),
-            )
-            .await?;
+        handle.tcp.create_outlet(
+            "kafka_consumer_outlet",
+            HostnamePort::new("127.0.0.1", consumer_mock_kafka.port)?,
+            TcpOutletOptions::new(),
+        )?;
 
         simulate_first_kafka_consumer_empty_reply_and_ignore_result(
             consumer_bootstrap_port,
@@ -171,18 +167,15 @@ async fn producer__flow_with_mock_kafka__content_encryption_and_decryption(
         .await;
         drop(consumer_mock_kafka);
         // drop the outlet and re-create it when we need it later
-        context.stop_worker("kafka_consumer_outlet").await?;
+        context.stop_address(&"kafka_consumer_outlet".into())?;
     }
 
     let mut producer_mock_kafka = TcpServerSimulator::start("127.0.0.1:0").await;
-    handle
-        .tcp
-        .create_outlet(
-            "kafka_producer_outlet",
-            HostnamePort::new("127.0.0.1", producer_mock_kafka.port)?,
-            TcpOutletOptions::new(),
-        )
-        .await?;
+    handle.tcp.create_outlet(
+        "kafka_producer_outlet",
+        HostnamePort::new("127.0.0.1", producer_mock_kafka.port)?,
+        TcpOutletOptions::new(),
+    )?;
     let request =
         simulate_kafka_producer_and_read_request(producer_bootstrap_port, &mut producer_mock_kafka)
             .await;
@@ -212,14 +205,11 @@ async fn producer__flow_with_mock_kafka__content_encryption_and_decryption(
     );
 
     let mut consumer_mock_kafka = TcpServerSimulator::start("127.0.0.1:0").await;
-    handle
-        .tcp
-        .create_outlet(
-            "kafka_consumer_outlet",
-            HostnamePort::new("127.0.0.1", consumer_mock_kafka.port)?,
-            TcpOutletOptions::new(),
-        )
-        .await?;
+    handle.tcp.create_outlet(
+        "kafka_consumer_outlet",
+        HostnamePort::new("127.0.0.1", consumer_mock_kafka.port)?,
+        TcpOutletOptions::new(),
+    )?;
 
     // give the secure channel between producer and consumer to finish initialization
     tokio::time::sleep(Duration::from_secs(2)).await;

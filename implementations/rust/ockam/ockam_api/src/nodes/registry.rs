@@ -3,49 +3,56 @@ use crate::DefaultAddress;
 
 use ockam::identity::Identifier;
 use ockam::identity::{SecureChannel, SecureChannelListener};
-use ockam_core::compat::collections::BTreeMap;
+use ockam_core::compat::collections::hash_map::Equivalent;
+use ockam_core::compat::collections::HashMap;
+use ockam_core::compat::sync::RwLock as SyncRwLock;
 use ockam_core::{Address, Route};
 use ockam_multiaddr::MultiAddr;
-use ockam_node::compat::asynchronous::{Mutex, RwLock};
+use ockam_node::compat::asynchronous::Mutex as AsyncMutex;
 use ockam_transport_core::HostnamePort;
 
 use crate::session::session::Session;
-use std::borrow::Borrow;
 use std::fmt::Display;
+use std::hash::Hash;
 use std::sync::Arc;
 
 #[derive(Default)]
 pub(crate) struct SecureChannelRegistry {
-    channels: RwLock<Vec<SecureChannelInfo>>,
+    channels: SyncRwLock<Vec<SecureChannelInfo>>,
 }
 
 impl SecureChannelRegistry {
-    pub async fn get_by_addr(&self, addr: &Address) -> Option<SecureChannelInfo> {
-        let channels = self.channels.read().await;
-        channels
+    pub fn get_by_addr(&self, addr: &Address) -> Option<SecureChannelInfo> {
+        self.channels
+            .read()
+            .unwrap()
             .iter()
             .find(|&x| x.sc.encryptor_address() == addr)
             .cloned()
     }
 
-    pub async fn insert(
+    pub fn insert(
         &self,
         route: Route,
         sc: SecureChannel,
         authorized_identifiers: Option<Vec<Identifier>>,
     ) {
-        let mut channels = self.channels.write().await;
-        channels.push(SecureChannelInfo::new(route, sc, authorized_identifiers))
+        self.channels.write().unwrap().push(SecureChannelInfo::new(
+            route,
+            sc,
+            authorized_identifiers,
+        ))
     }
 
-    pub async fn remove_by_addr(&self, addr: &Address) {
-        let mut channels = self.channels.write().await;
-        channels.retain(|x| x.sc().encryptor_address() != addr)
+    pub fn remove_by_addr(&self, addr: &Address) {
+        self.channels
+            .write()
+            .unwrap()
+            .retain(|x| x.sc().encryptor_address() != addr)
     }
 
-    pub async fn list(&self) -> Vec<SecureChannelInfo> {
-        let channels = self.channels.read().await;
-        channels.clone()
+    pub fn list(&self) -> Vec<SecureChannelInfo> {
+        self.channels.read().unwrap().clone()
     }
 }
 
@@ -126,7 +133,7 @@ impl KafkaServiceInfo {
 pub(crate) struct InletInfo {
     pub(crate) bind_addr: String,
     pub(crate) outlet_addr: MultiAddr,
-    pub(crate) session: Arc<Mutex<Session>>,
+    pub(crate) session: Arc<AsyncMutex<Session>>,
     pub(crate) privileged: bool,
 }
 
@@ -140,7 +147,7 @@ impl InletInfo {
         Self {
             bind_addr: bind_addr.to_owned(),
             outlet_addr,
-            session: Arc::new(Mutex::new(session)),
+            session: Arc::new(AsyncMutex::new(session)),
             privileged,
         }
     }
@@ -171,7 +178,7 @@ impl OutletInfo {
 pub struct RegistryRelayInfo {
     pub(crate) destination_address: MultiAddr,
     pub(crate) alias: String,
-    pub(crate) session: Arc<Mutex<Session>>,
+    pub(crate) session: Arc<AsyncMutex<Session>>,
 }
 
 #[derive(Default)]
@@ -189,75 +196,69 @@ pub(crate) struct Registry {
 }
 
 pub(crate) struct RegistryOf<K, V> {
-    map: RwLock<BTreeMap<K, V>>,
+    map: SyncRwLock<HashMap<K, V>>,
 }
 
 impl<K, V> Default for RegistryOf<K, V> {
     fn default() -> Self {
         RegistryOf {
-            map: RwLock::new(BTreeMap::default()),
+            map: Default::default(),
         }
     }
 }
 
-impl<K: Clone, V: Clone> RegistryOf<K, V> {
-    pub async fn insert(&self, k: K, v: V) -> Option<V>
+impl<K: Hash + Eq + Clone, V: Clone> RegistryOf<K, V> {
+    pub fn insert(&self, k: K, v: V) -> Option<V> {
+        self.map.write().unwrap().insert(k, v)
+    }
+
+    pub fn get<Q>(&self, key: &Q) -> Option<V>
     where
-        K: Ord,
+        Q: Hash + Equivalent<K> + ?Sized,
     {
-        let mut map = self.map.write().await;
-        map.insert(k, v)
+        self.map.read().unwrap().get(key).cloned()
     }
 
-    pub async fn get<Q: Ord + ?Sized>(&self, key: &Q) -> Option<V>
+    pub fn keys(&self) -> Vec<K> {
+        self.map.read().unwrap().clone().keys().cloned().collect()
+    }
+
+    pub fn values(&self) -> Vec<V> {
+        self.map.read().unwrap().values().cloned().collect()
+    }
+
+    pub fn entries(&self) -> Vec<(K, V)> {
+        self.map
+            .read()
+            .unwrap()
+            .iter()
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect()
+    }
+
+    pub fn remove<Q>(&self, key: &Q) -> Option<V>
     where
-        K: Borrow<Q> + Ord,
+        Q: Hash + Equivalent<K> + ?Sized,
     {
-        let map = self.map.read().await;
-        map.get(key).cloned()
+        self.map.write().unwrap().remove(key)
     }
 
-    pub async fn keys(&self) -> Vec<K> {
-        let map = self.map.read().await;
-        map.clone().keys().cloned().collect()
-    }
-
-    pub async fn values(&self) -> Vec<V> {
-        let map = self.map.read().await;
-        map.clone().values().cloned().collect()
-    }
-
-    pub async fn entries(&self) -> Vec<(K, V)> {
-        let map = self.map.read().await;
-        map.iter().map(|(k, v)| (k.clone(), v.clone())).collect()
-    }
-
-    pub async fn remove<Q: Ord + ?Sized>(&self, key: &Q) -> Option<V>
+    pub fn contains_key<Q>(&self, key: &Q) -> bool
     where
-        K: Borrow<Q> + Ord,
+        Q: Hash + Equivalent<K> + ?Sized,
     {
-        let mut map = self.map.write().await;
-        map.remove(key)
-    }
-
-    pub async fn contains_key<Q>(&self, key: &Q) -> bool
-    where
-        Q: Ord + ?Sized,
-        K: Borrow<Q> + Ord,
-    {
-        let map = self.map.read().await;
-        map.contains_key(key)
+        self.map.read().unwrap().contains_key(key)
     }
 }
 
 impl RegistryOf<Address, OutletInfo> {
-    pub async fn generate_worker_addr(&self, worker_addr: Option<Address>) -> Address {
+    pub fn generate_worker_addr(&self, worker_addr: Option<Address>) -> Address {
         match worker_addr {
             Some(addr) => addr,
             None => {
                 // If no worker address is passed, return the default address if it's not in use
                 let default: Address = DefaultAddress::OUTLET_SERVICE.into();
-                if self.contains_key(&default).await {
+                if self.contains_key(&default) {
                     random_name().into()
                 } else {
                     default
@@ -271,77 +272,69 @@ impl RegistryOf<Address, OutletInfo> {
 mod tests {
     use super::*;
 
-    #[tokio::test]
-    async fn outlet_registry_generate_worker_address_start_with_none() {
+    #[test]
+    fn outlet_registry_generate_worker_address_start_with_none() {
         let registry = Registry::default();
 
         // No worker address passed, should return the default address because it's not in use
-        let worker_addr = registry.outlets.generate_worker_addr(None).await;
+        let worker_addr = registry.outlets.generate_worker_addr(None);
         assert_eq!(worker_addr, DefaultAddress::OUTLET_SERVICE.into());
         registry
             .outlets
-            .insert(worker_addr.clone(), outlet_info(worker_addr))
-            .await;
-        assert_eq!(registry.outlets.entries().await.len(), 1);
+            .insert(worker_addr.clone(), outlet_info(worker_addr));
+        assert_eq!(registry.outlets.entries().len(), 1);
 
         // No worker address passed, should return a random address because the default it's in use
-        let worker_addr = registry.outlets.generate_worker_addr(None).await;
+        let worker_addr = registry.outlets.generate_worker_addr(None);
         assert_ne!(worker_addr, DefaultAddress::OUTLET_SERVICE.into());
         registry
             .outlets
-            .insert(worker_addr.clone(), outlet_info(worker_addr))
-            .await;
-        assert_eq!(registry.outlets.entries().await.len(), 2);
+            .insert(worker_addr.clone(), outlet_info(worker_addr));
+        assert_eq!(registry.outlets.entries().len(), 2);
 
         // Worker address passed, should return the same address
         let passed_addr = Address::from_string("my_outlet");
         let worker_addr = registry
             .outlets
-            .generate_worker_addr(Some(passed_addr.clone()))
-            .await;
+            .generate_worker_addr(Some(passed_addr.clone()));
         assert_eq!(worker_addr, passed_addr.clone());
         registry
             .outlets
-            .insert(worker_addr.clone(), outlet_info(worker_addr))
-            .await;
-        assert_eq!(registry.outlets.entries().await.len(), 3);
+            .insert(worker_addr.clone(), outlet_info(worker_addr));
+        assert_eq!(registry.outlets.entries().len(), 3);
 
         // Same worker address passed, should return the same address and not a random one
         let worker_addr = registry
             .outlets
-            .generate_worker_addr(Some(passed_addr.clone()))
-            .await;
+            .generate_worker_addr(Some(passed_addr.clone()));
         assert_eq!(worker_addr, passed_addr.clone());
     }
 
-    #[tokio::test]
-    async fn outlet_registry_generate_worker_address_start_with_some() {
+    #[test]
+    fn outlet_registry_generate_worker_address_start_with_some() {
         let registry = Registry::default();
 
         // Worker address passed, should return the same address
         let passed_addr = Address::from_string("my_outlet");
         let worker_addr = registry
             .outlets
-            .generate_worker_addr(Some(passed_addr.clone()))
-            .await;
+            .generate_worker_addr(Some(passed_addr.clone()));
         assert_eq!(worker_addr, passed_addr);
         registry
             .outlets
-            .insert(worker_addr.clone(), outlet_info(worker_addr))
-            .await;
-        assert_eq!(registry.outlets.entries().await.len(), 1);
+            .insert(worker_addr.clone(), outlet_info(worker_addr));
+        assert_eq!(registry.outlets.entries().len(), 1);
 
         // No worker address passed, should return the default address because it's not in use
-        let worker_addr = registry.outlets.generate_worker_addr(None).await;
+        let worker_addr = registry.outlets.generate_worker_addr(None);
         assert_eq!(worker_addr, DefaultAddress::OUTLET_SERVICE.into());
         registry
             .outlets
-            .insert(worker_addr.clone(), outlet_info(worker_addr))
-            .await;
-        assert_eq!(registry.outlets.entries().await.len(), 2);
+            .insert(worker_addr.clone(), outlet_info(worker_addr));
+        assert_eq!(registry.outlets.entries().len(), 2);
 
         // No worker address passed, should return a random address because the default it's in use
-        let worker_addr = registry.outlets.generate_worker_addr(None).await;
+        let worker_addr = registry.outlets.generate_worker_addr(None);
         assert_ne!(worker_addr, DefaultAddress::OUTLET_SERVICE.into());
     }
 

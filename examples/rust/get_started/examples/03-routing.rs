@@ -9,10 +9,10 @@ async fn main(ctx: Context) -> Result<()> {
     let mut node = node(ctx).await?;
 
     // Start a worker, of type Echoer, at address "echoer"
-    node.start_worker("echoer", Echoer).await?;
+    node.start_worker("echoer", Echoer)?;
 
     // Start a worker, of type Hop, at address "h1"
-    node.start_worker("h1", Hop).await?;
+    node.start_worker("h1", Hop)?;
 
     // Send a message to the worker at address "echoer",
     // via the worker at address "h1"
@@ -23,5 +23,5 @@ async fn main(ctx: Context) -> Result<()> {
     println!("App Received: {}", reply.into_body()?); // should print "Hello Ockam!"
 
     // Stop all workers, stop the node, cleanup and return.
-    node.stop().await
+    node.shutdown().await
 }

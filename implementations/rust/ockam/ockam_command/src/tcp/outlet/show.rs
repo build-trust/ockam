@@ -11,7 +11,7 @@ use ockam_api::nodes::BackgroundNodeClient;
 use ockam_api::terminal::{Terminal, TerminalStream};
 use ockam_api::{address::extract_address_value, nodes::models::portal::OutletStatus};
 use ockam_core::api::Request;
-use ockam_core::AsyncTryClone;
+use ockam_core::TryClone;
 use ockam_multiaddr::MultiAddr;
 
 use crate::tcp::util::alias_parser;
@@ -46,12 +46,7 @@ impl Command for ShowCommand {
     const NAME: &'static str = "tcp-outlet show";
 
     async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
-        Ok(ShowTui::run(
-            ctx.async_try_clone().await.into_diagnostic()?,
-            opts,
-            self.clone(),
-        )
-        .await?)
+        Ok(ShowTui::run(ctx.try_clone().into_diagnostic()?, opts, self.clone()).await?)
     }
 }
 

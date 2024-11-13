@@ -192,7 +192,7 @@ impl AppState {
         outlet_worker_addr: &Address,
     ) -> Result<(), String> {
         let node_manager = self.node_manager().await;
-        let outlets = node_manager.list_outlets().await;
+        let outlets = node_manager.list_outlets();
 
         let to = outlets
             .into_iter()

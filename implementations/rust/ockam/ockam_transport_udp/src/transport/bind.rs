@@ -7,7 +7,7 @@ use ockam_core::errcode::{Kind, Origin};
 use ockam_core::flow_control::FlowControlId;
 use ockam_core::{Address, AllowAll, DenyAll, Error, Result};
 use ockam_node::compat::asynchronous::resolve_peer;
-use ockam_node::{ProcessorBuilder, WorkerBuilder};
+use ockam_node::{ProcessorBuilder, WorkerBuilder, WorkerShutdownPriority};
 use ockam_transport_core::{parse_socket_addr, HostnamePort, TransportError};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use tokio::net::UdpSocket;
@@ -125,8 +125,7 @@ impl UdpTransport {
             .with_address(addresses.sender_address().clone())
             .with_incoming_access_control(AllowAll)
             .with_outgoing_access_control(DenyAll)
-            .start(&self.ctx)
-            .await?;
+            .start(&self.ctx)?;
 
         let receiver = UdpReceiverProcessor::new(
             addresses.clone(),
@@ -139,8 +138,8 @@ impl UdpTransport {
             .with_address(addresses.receiver_address().clone())
             .with_incoming_access_control(DenyAll)
             .with_outgoing_access_control_arc(receiver_outgoing_access_control)
-            .start(&self.ctx)
-            .await?;
+            .with_shutdown_priority(WorkerShutdownPriority::Priority1)
+            .start(&self.ctx)?;
 
         let bind = UdpBind::new(
             addresses,
@@ -153,8 +152,8 @@ impl UdpTransport {
     }
 
     /// Interrupt an active TCP connection given its Sender `Address`
-    pub async fn unbind(&self, address: impl Into<Address>) -> Result<()> {
-        self.ctx.stop_worker(address.into()).await
+    pub fn unbind(&self, address: &Address) -> Result<()> {
+        self.ctx.stop_address(address)
     }
 }
 
@@ -226,5 +225,11 @@ impl UdpBind {
 impl From<UdpBind> for Address {
     fn from(value: UdpBind) -> Self {
         value.addresses.sender_address().clone()
+    }
+}
+
+impl AsRef<Address> for UdpBind {
+    fn as_ref(&self) -> &Address {
+        self.addresses.sender_address()
     }
 }

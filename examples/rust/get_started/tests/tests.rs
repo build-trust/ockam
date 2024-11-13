@@ -155,6 +155,6 @@ fn vault_and_identity() -> Result<(), Error> {
 
     // Assert successful run conditions
     assert_eq!(Some(0), exitcode);
-    assert!(stdout.contains("No more workers left.  Goodbye!"));
+    assert!(stdout.contains("No more workers left. Goodbye!"));
     Ok(())
 }

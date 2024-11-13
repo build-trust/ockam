@@ -1,12 +1,12 @@
 use mitm_node::tcp_interceptor::{ProcessorInfo, Role, TcpMitmTransport};
 use ockam::{Context, Result};
-use ockam_core::{route, Address, AsyncTryClone, TransportMessage};
+use ockam_core::{route, Address, TransportMessage, TryClone};
 use ockam_transport_core::encode_transport_message;
 use std::time::Duration;
 use tokio::io::AsyncWriteExt;
 use tracing::info;
 
-#[derive(AsyncTryClone)]
+#[derive(TryClone)]
 struct MitmMonitor {
     tcp_mitm: TcpMitmTransport,
 }
@@ -38,7 +38,7 @@ impl MitmMonitor {
 
     // Attach to the intercepted tcp connection
     async fn query_processor(&self, processor: ProcessorInfo) -> Result<()> {
-        let self_clone = self.async_try_clone().await?;
+        let self_clone = self.try_clone()?;
         tokio::spawn(async move { self_clone.send_malicious_message(&processor).await })
             .await
             .unwrap()
@@ -79,7 +79,7 @@ async fn main(ctx: Context) -> Result<()> {
     let port1 = "4015";
     let port2 = "4016";
 
-    let tcp_mitm = TcpMitmTransport::create(&ctx).await?;
+    let tcp_mitm = TcpMitmTransport::create(&ctx)?;
 
     tcp_mitm
         .listen(format!("{}:{}", listen_ip, port1), format!("{}:{}", target_ip, port1))

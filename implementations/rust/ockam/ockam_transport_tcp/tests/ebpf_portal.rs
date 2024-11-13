@@ -57,7 +57,7 @@ mod tests {
     #[ockam_macros::test(timeout = 5000)]
     #[ignore] // Requires root and capabilities
     async fn privileged_portal__standard_flow__should_succeed(ctx: &mut Context) -> Result<()> {
-        let tcp = TcpTransport::create(ctx).await?;
+        let tcp = TcpTransport::create(ctx)?;
 
         let payload1 = generate_binary();
         let payload2 = generate_binary();

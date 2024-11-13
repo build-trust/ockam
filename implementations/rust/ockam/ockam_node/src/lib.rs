@@ -50,12 +50,10 @@ pub mod callback;
 /// Helper workers
 pub mod workers;
 
-mod async_drop;
 mod context;
 mod delayed;
 mod error;
 mod executor;
-mod messages;
 mod node;
 mod processor_builder;
 mod relay;
@@ -66,10 +64,6 @@ pub mod storage;
 
 mod worker_builder;
 
-/// Singleton for the runtime executor
-#[cfg(feature = "std")]
-pub mod runtime;
-
 #[cfg(feature = "watchdog")]
 mod watchdog;
 
@@ -77,7 +71,6 @@ pub use context::*;
 pub use delayed::*;
 pub use error::*;
 pub use executor::*;
-pub use messages::*;
 pub use processor_builder::ProcessorBuilder;
 #[cfg(feature = "std")]
 pub use storage::database;
@@ -92,11 +85,11 @@ use tokio::task;
 
 #[doc(hidden)]
 #[cfg(feature = "std")]
-pub fn spawn<F: Future + Send + 'static>(f: F)
+pub fn spawn<F: Future + Send + 'static>(f: F) -> task::JoinHandle<F::Output>
 where
     F::Output: Send,
 {
-    task::spawn(f);
+    task::spawn(f)
 }
 
 #[cfg(not(feature = "std"))]

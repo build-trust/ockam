@@ -44,8 +44,7 @@ impl NodeManagerWorker {
             .node_manager
             .registry
             .outlets
-            .generate_worker_addr(worker_addr)
-            .await;
+            .generate_worker_addr(worker_addr);
         let outlet_address = match body.influxdb_config {
             InfluxDBOutletConfig::OutletWithFixedToken(token) => {
                 let outlet_addr: Address = format!("{}_outlet", address.address()).into();
@@ -234,25 +233,24 @@ impl NodeManagerWorker {
             interceptor_address.clone(),
             Some(spawner_flow_control_id.clone()),
             http_interceptor_factory,
-            Arc::new(policy_access_control.create_outgoing(ctx).await?),
+            Arc::new(policy_access_control.create_outgoing(ctx)?),
             Arc::new(policy_access_control.create_incoming()),
             read_portal_payload_length(),
-        )
-        .await?;
+        )?;
 
         // every secure channel can reach this service
         let flow_controls = ctx.flow_controls();
         flow_controls.add_consumer(
-            interceptor_address.clone(),
+            &interceptor_address,
             &default_secure_channel_listener_flow_control_id,
         );
 
         // this spawner flow control id is used to control communication with dynamically created
         // outlets
-        flow_controls.add_spawner(interceptor_address, &spawner_flow_control_id);
+        flow_controls.add_spawner(&interceptor_address, &spawner_flow_control_id);
 
         // allow communication with the tcp outlet
-        flow_controls.add_consumer(outlet_address, &spawner_flow_control_id);
+        flow_controls.add_consumer(&outlet_address, &spawner_flow_control_id);
         Ok(())
     }
 
@@ -275,8 +273,7 @@ impl NodeManagerWorker {
             .await?;
 
         let token_refresher =
-            TokenLeaseRefresher::new(ctx, Arc::downgrade(&self.node_manager), lease_issuer_route)
-                .await?;
+            TokenLeaseRefresher::new(ctx, Arc::downgrade(&self.node_manager), lease_issuer_route)?;
         let http_interceptor_factory = Arc::new(HttpAuthInterceptorFactory::new(token_refresher));
 
         PortalInletInterceptor::create(
@@ -284,10 +281,9 @@ impl NodeManagerWorker {
             interceptor_address.clone(),
             http_interceptor_factory,
             Arc::new(policy_access_control.create_incoming()),
-            Arc::new(policy_access_control.create_outgoing(ctx).await?),
+            Arc::new(policy_access_control.create_outgoing(ctx)?),
             read_portal_payload_length(),
-        )
-        .await?;
+        )?;
         Ok(interceptor_address)
     }
 }

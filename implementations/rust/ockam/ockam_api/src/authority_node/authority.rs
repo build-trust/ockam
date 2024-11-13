@@ -135,13 +135,16 @@ impl Authority {
         let secure_channel_listener_flow_control_id = options.spawner_flow_control_id().clone();
 
         let listener_name = configuration.secure_channel_listener_name();
-        self.secure_channels
-            .create_secure_channel_listener(ctx, &self.identifier(), listener_name.clone(), options)
-            .await?;
+        self.secure_channels.create_secure_channel_listener(
+            ctx,
+            &self.identifier(),
+            listener_name.clone(),
+            options,
+        )?;
         info!("started a secure channel listener with name '{listener_name}'");
 
         // Create a TCP listener and wait for incoming connections
-        let tcp = TcpTransport::create(ctx).await?;
+        let tcp = TcpTransport::create(ctx)?;
 
         let listener = tcp
             .listen(
@@ -155,7 +158,7 @@ impl Authority {
     }
 
     /// Start the authenticator service to enroll project members
-    pub async fn start_direct_authenticator(
+    pub fn start_direct_authenticator(
         &self,
         ctx: &Context,
         secure_channel_flow_control_id: &FlowControlId,
@@ -173,16 +176,16 @@ impl Authority {
 
         let name = configuration.authenticator_name();
         ctx.flow_controls()
-            .add_consumer(name.clone(), secure_channel_flow_control_id);
+            .add_consumer(&name.clone().into(), secure_channel_flow_control_id);
 
-        ctx.start_worker(name.clone(), direct).await?;
+        ctx.start_worker(name.clone(), direct)?;
 
         info!("started a direct authenticator at '{name}'");
         Ok(())
     }
 
     /// Start the enrollment services, to issue and accept tokens
-    pub async fn start_enrollment_services(
+    pub fn start_enrollment_services(
         &self,
         ctx: &Context,
         secure_channel_flow_control_id: &FlowControlId,
@@ -204,20 +207,24 @@ impl Authority {
         // start an enrollment token issuer with an abac policy checking that
         // the caller is an enroller for the authority project
         let issuer_address: String = DefaultAddress::ENROLLMENT_TOKEN_ISSUER.into();
-        ctx.flow_controls()
-            .add_consumer(issuer_address.clone(), secure_channel_flow_control_id);
+        ctx.flow_controls().add_consumer(
+            &issuer_address.clone().into(),
+            secure_channel_flow_control_id,
+        );
 
-        ctx.start_worker(issuer_address.clone(), issuer).await?;
+        ctx.start_worker(issuer_address.clone(), issuer)?;
 
         // start an enrollment token acceptor allowing any incoming message as long as
         // it comes through a secure channel. We accept any message since the purpose of
         // that service is to access a one-time token stating that the sender of the message
         // is a project member
         let acceptor_address: String = DefaultAddress::ENROLLMENT_TOKEN_ACCEPTOR.into();
-        ctx.flow_controls()
-            .add_consumer(acceptor_address.clone(), secure_channel_flow_control_id);
+        ctx.flow_controls().add_consumer(
+            &acceptor_address.clone().into(),
+            secure_channel_flow_control_id,
+        );
 
-        ctx.start_worker(acceptor_address.clone(), acceptor).await?;
+        ctx.start_worker(acceptor_address.clone(), acceptor)?;
 
         info!("started an enrollment token issuer at '{issuer_address}'");
         info!("started an enrollment token acceptor at '{acceptor_address}'");
@@ -226,7 +233,7 @@ impl Authority {
 
     /// Start the credential issuer service to issue credentials for a identities
     /// known to the authority
-    pub async fn start_credential_issuer(
+    pub fn start_credential_issuer(
         &self,
         ctx: &Context,
         secure_channel_flow_control_id: &FlowControlId,
@@ -248,16 +255,16 @@ impl Authority {
 
         let address = DefaultAddress::CREDENTIAL_ISSUER.to_string();
         ctx.flow_controls()
-            .add_consumer(address.clone(), secure_channel_flow_control_id);
+            .add_consumer(&address.clone().into(), secure_channel_flow_control_id);
 
-        ctx.start_worker(address.clone(), issuer).await?;
+        ctx.start_worker(address.clone(), issuer)?;
 
         info!("started a credential issuer at '{address}'");
         Ok(())
     }
 
     /// Start the Okta service to retrieve attributes authenticated by Okta
-    pub async fn start_okta(
+    pub fn start_okta(
         &self,
         ctx: &Context,
         secure_channel_flow_control_id: &FlowControlId,
@@ -272,15 +279,15 @@ impl Authority {
             )?;
 
             ctx.flow_controls()
-                .add_consumer(okta.address.clone(), secure_channel_flow_control_id);
+                .add_consumer(&okta.address.clone().into(), secure_channel_flow_control_id);
 
-            ctx.start_worker(okta.address.clone(), okta_worker).await?;
+            ctx.start_worker(okta.address.clone(), okta_worker)?;
         }
         Ok(())
     }
 
     /// Start an echo service
-    pub async fn start_echo_service(
+    pub fn start_echo_service(
         &self,
         ctx: &Context,
         secure_channel_flow_control_id: &FlowControlId,
@@ -288,9 +295,9 @@ impl Authority {
         let address = DefaultAddress::ECHO_SERVICE;
 
         ctx.flow_controls()
-            .add_consumer(address, secure_channel_flow_control_id);
+            .add_consumer(&address.into(), secure_channel_flow_control_id);
 
-        ctx.start_worker(address, Echoer).await
+        ctx.start_worker(address, Echoer)
     }
 
     /// Add a member directly to storage, without additional validation

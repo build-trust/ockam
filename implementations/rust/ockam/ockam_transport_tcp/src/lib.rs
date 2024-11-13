@@ -40,8 +40,6 @@ pub use transport::*;
 /// eBPF backed TCP portals that works on TCP level rather than on top of TCP
 pub mod privileged_portal;
 
-pub(crate) const CLUSTER_NAME: &str = "_internals.transport.tcp";
-
 /// Transport type for TCP addresses
 pub const TCP: ockam_core::TransportType = ockam_core::TransportType::new(1);
 

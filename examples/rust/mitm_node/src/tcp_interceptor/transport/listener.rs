@@ -1,7 +1,7 @@
 use crate::tcp_interceptor::transport::common::parse_socket_addr;
 use crate::tcp_interceptor::{TcpMitmListenProcessor, TcpMitmTransport};
 use ockam_core::compat::net::SocketAddr;
-use ockam_core::{Address, AsyncTryClone, Result};
+use ockam_core::{Address, Result, TryClone};
 
 impl TcpMitmTransport {
     pub async fn listen(
@@ -16,7 +16,7 @@ impl TcpMitmTransport {
             &self.ctx,
             self.registry.clone(),
             bind_addr,
-            self.async_try_clone().await?,
+            self.try_clone()?,
             target_addr,
         )
         .await?;
@@ -25,7 +25,7 @@ impl TcpMitmTransport {
     }
 
     /// Interrupt an active TCP listener given its `Address`
-    pub async fn stop_listener(&self, address: &Address) -> Result<()> {
-        self.ctx.stop_processor(address.clone()).await
+    pub fn stop_listener(&self, address: &Address) -> Result<()> {
+        self.ctx.stop_address(address)
     }
 }

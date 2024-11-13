@@ -4,11 +4,10 @@ use crate::portal::{InletSharedState, ReadHalfMaybeTls, WriteHalfMaybeTls};
 use crate::{portal::TcpPortalWorker, TcpInlet, TcpInletOptions, TcpRegistry};
 use log::warn;
 use ockam_core::compat::net::SocketAddr;
-use ockam_core::compat::sync::Arc;
+use ockam_core::compat::sync::{Arc, RwLock as SyncRwLock};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{async_trait, compat::boxed::Box, Result};
 use ockam_core::{Address, Processor, Route};
-use ockam_node::compat::asynchronous::RwLock;
 use ockam_node::Context;
 use ockam_transport_core::{HostnamePort, TransportError};
 use rustls::pki_types::CertificateDer;
@@ -27,7 +26,7 @@ use tracing::{debug, error, instrument};
 pub(crate) struct TcpInletListenProcessor {
     registry: TcpRegistry,
     inner: TcpListener,
-    inlet_shared_state: Arc<RwLock<InletSharedState>>,
+    inlet_shared_state: Arc<SyncRwLock<InletSharedState>>,
     options: TcpInletOptions,
 }
 
@@ -35,7 +34,7 @@ impl TcpInletListenProcessor {
     pub fn new(
         registry: TcpRegistry,
         inner: TcpListener,
-        inlet_shared_state: Arc<RwLock<InletSharedState>>,
+        inlet_shared_state: Arc<SyncRwLock<InletSharedState>>,
         options: TcpInletOptions,
     ) -> Self {
         Self {
@@ -67,12 +66,11 @@ impl TcpInletListenProcessor {
         };
         let socket_addr = inner.local_addr().map_err(TransportError::from)?;
         let inlet_shared_state =
-            InletSharedState::create(ctx, outlet_listener_route, options.is_paused).await?;
-        let inlet_shared_state = Arc::new(RwLock::new(inlet_shared_state));
+            InletSharedState::create(ctx, outlet_listener_route, options.is_paused)?;
+        let inlet_shared_state = Arc::new(SyncRwLock::new(inlet_shared_state));
         let processor = Self::new(registry, inner, inlet_shared_state.clone(), options);
 
-        ctx.start_processor(processor_address.clone(), processor)
-            .await?;
+        ctx.start_processor(processor_address.clone(), processor)?;
 
         Ok(TcpInlet::new_regular(
             socket_addr,
@@ -162,7 +160,8 @@ impl Processor for TcpInletListenProcessor {
 
     #[instrument(skip_all, name = "TcpInletListenProcessor::initialize")]
     async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
-        self.registry.add_inlet_listener_processor(&ctx.address());
+        self.registry
+            .add_inlet_listener_processor(ctx.primary_address());
 
         Ok(())
     }
@@ -170,7 +169,7 @@ impl Processor for TcpInletListenProcessor {
     #[instrument(skip_all, name = "TcpInletListenProcessor::shutdown")]
     async fn shutdown(&mut self, ctx: &mut Self::Context) -> Result<()> {
         self.registry
-            .remove_inlet_listener_processor(&ctx.address());
+            .remove_inlet_listener_processor(ctx.primary_address());
 
         Ok(())
     }
@@ -182,7 +181,7 @@ impl Processor for TcpInletListenProcessor {
 
         let addresses = Addresses::generate(PortalType::Inlet);
 
-        let inlet_shared_state = self.inlet_shared_state.read().await.clone();
+        let inlet_shared_state = self.inlet_shared_state.read().unwrap().clone();
 
         if inlet_shared_state.is_paused() {
             // Just drop the stream
@@ -228,8 +227,7 @@ impl Processor for TcpInletListenProcessor {
             self.options.incoming_access_control.clone(),
             self.options.outgoing_access_control.clone(),
             self.options.portal_payload_length,
-        )
-        .await?;
+        )?;
 
         Ok(true)
     }

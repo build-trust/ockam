@@ -54,7 +54,7 @@ pub(crate) struct UdpPunctureReceiverWorker {
 
 impl UdpPunctureReceiverWorker {
     #[allow(clippy::too_many_arguments)]
-    pub(crate) async fn create(
+    pub(crate) fn create(
         ctx: &Context,
         bind: UdpBind,
         peer_udp_address: String,
@@ -64,11 +64,11 @@ impl UdpPunctureReceiverWorker {
         options: UdpPunctureOptions,
         redirect_first_message_to_transport: bool,
     ) -> Result<()> {
-        let heartbeat =
-            DelayedEvent::create(ctx, addresses.heartbeat_address().clone(), ()).await?;
+        let heartbeat = DelayedEvent::create(ctx, addresses.heartbeat_address().clone(), ())?;
 
         let remote_mailbox = Mailbox::new(
             addresses.remote_address().clone(),
+            None,
             Arc::new(AllowAll),
             Arc::new(AllowAll),
         );
@@ -77,13 +77,15 @@ impl UdpPunctureReceiverWorker {
 
         let receiver_mailbox = Mailbox::new(
             addresses.receiver_address().clone(),
+            None,
             Arc::new(DenyAll),
             options.create_receiver_outgoing_access_control(ctx.flow_controls()),
         );
 
         let heartbeat_mailbox = Mailbox::new(
             addresses.heartbeat_address().clone(),
-            Arc::new(AllowSourceAddress(heartbeat.address())),
+            None,
+            Arc::new(AllowSourceAddress(heartbeat.address().clone())),
             Arc::new(DenyAll),
         );
 
@@ -93,8 +95,7 @@ impl UdpPunctureReceiverWorker {
             .with_address(addresses.sender_address().clone())
             .with_incoming_access_control(AllowAll)
             .with_outgoing_access_control(AllowAll)
-            .start(ctx)
-            .await?;
+            .start(ctx)?;
 
         // Create and start worker
         let receiver_worker = Self {
@@ -115,8 +116,7 @@ impl UdpPunctureReceiverWorker {
                 remote_mailbox,
                 vec![receiver_mailbox, heartbeat_mailbox],
             ))
-            .start(ctx)
-            .await?;
+            .start(ctx)?;
 
         Ok(())
     }
@@ -179,10 +179,7 @@ impl UdpPunctureReceiverWorker {
             } => {
                 trace!("Received Payload from peer. Will forward to local entity");
 
-                let return_route = return_route
-                    .modify()
-                    .prepend(self.addresses.sender_address().clone())
-                    .into();
+                let return_route = self.addresses.sender_address().clone() + return_route;
 
                 // Update routing & payload
                 let local_message = LocalMessage::new()
@@ -216,8 +213,7 @@ impl UdpPunctureReceiverWorker {
                 .send(UdpPunctureNotification::Closed);
 
             // Shut down itself
-            ctx.stop_worker(self.addresses.remote_address().clone())
-                .await?;
+            ctx.stop_address(self.addresses.remote_address())?;
 
             return Ok(());
         }
@@ -256,7 +252,7 @@ impl UdpPunctureReceiverWorker {
         let res = self.handle_heartbeat_impl(ctx).await;
 
         // Schedule next heartbeat here in case something errors
-        self.heartbeat.schedule(HEARTBEAT_INTERVAL).await?;
+        self.heartbeat.schedule(HEARTBEAT_INTERVAL)?;
 
         res
     }
@@ -268,19 +264,15 @@ impl Worker for UdpPunctureReceiverWorker {
     type Context = Context;
 
     async fn initialize(&mut self, _context: &mut Self::Context) -> Result<()> {
-        self.heartbeat.schedule(Duration::ZERO).await?;
-
-        Ok(())
+        self.heartbeat.schedule(Duration::ZERO)
     }
 
     async fn shutdown(&mut self, ctx: &mut Self::Context) -> Result<()> {
         self.heartbeat.cancel();
 
-        _ = ctx
-            .stop_worker(self.addresses.sender_address().clone())
-            .await;
+        _ = ctx.stop_address(self.addresses.sender_address());
 
-        _ = ctx.stop_worker(self.bind.sender_address().clone()).await;
+        _ = ctx.stop_address(self.bind.sender_address());
 
         Ok(())
     }

@@ -13,7 +13,7 @@ use ockam_api::colors::color_primary;
 use ockam_api::nodes::InMemoryNode;
 use ockam_api::terminal::{ConfirmResult, Terminal, TerminalStream};
 use ockam_api::{fmt_ok, fmt_warn};
-use ockam_core::AsyncTryClone;
+use ockam_core::TryClone;
 use std::sync::Arc;
 
 /// Delete an Admin from a Space
@@ -47,7 +47,7 @@ impl Command for DeleteCommand {
     }
 }
 
-#[derive(AsyncTryClone)]
+#[derive(TryClone)]
 pub struct DeleteTui {
     ctx: Context,
     opts: CommandGlobalOpts,
@@ -84,7 +84,7 @@ impl DeleteTui {
         }
 
         let tui = Self {
-            ctx: ctx.async_try_clone().await?,
+            ctx: ctx.try_clone()?,
             opts,
             node: Arc::new(node),
             cmd,

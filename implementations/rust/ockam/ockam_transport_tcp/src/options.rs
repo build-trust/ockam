@@ -36,14 +36,14 @@ impl TcpConnectionOptions {
 impl TcpConnectionOptions {
     pub(crate) fn setup_flow_control(&self, flow_controls: &FlowControls, addresses: &Addresses) {
         flow_controls.add_producer(
-            addresses.receiver_address().clone(),
+            addresses.receiver_address(),
             &self.flow_control_id,
             None,
             vec![addresses.sender_address().clone()],
         );
 
         for id in &self.consumer {
-            flow_controls.add_consumer(addresses.sender_address().clone(), id);
+            flow_controls.add_consumer(addresses.sender_address(), id);
         }
     }
 
@@ -88,7 +88,7 @@ impl TcpListenerOptions {
         flow_controls: &FlowControls,
         address: &Address,
     ) {
-        flow_controls.add_spawner(address.clone(), &self.flow_control_id);
+        flow_controls.add_spawner(address, &self.flow_control_id);
     }
 
     pub(crate) fn setup_flow_control_for_connection(
@@ -99,7 +99,7 @@ impl TcpListenerOptions {
         let flow_control_id = FlowControls::generate_flow_control_id();
 
         flow_controls.add_producer(
-            addresses.receiver_address().clone(),
+            addresses.receiver_address(),
             &flow_control_id,
             Some(&self.flow_control_id),
             vec![addresses.sender_address().clone()],

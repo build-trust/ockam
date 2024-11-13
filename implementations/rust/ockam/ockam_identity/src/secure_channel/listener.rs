@@ -39,7 +39,7 @@ impl SecureChannelListenerWorker {
         }
     }
 
-    pub async fn create(
+    pub fn create(
         ctx: &Context,
         secure_channels: Arc<SecureChannels>,
         identifier: &Identifier,
@@ -51,7 +51,7 @@ impl SecureChannelListenerWorker {
         let listener = Self::new(secure_channels.clone(), identifier.clone(), options);
 
         // FIXME: add ABAC policies for the key_exchange_only listener?
-        ctx.start_worker(address, listener).await?;
+        ctx.start_worker(address, listener)?;
 
         Ok(())
     }
@@ -70,7 +70,7 @@ impl Worker for SecureChannelListenerWorker {
         let addresses = Addresses::generate(Role::Responder);
         let flow_control_id = self.options.setup_flow_control_for_channel(
             ctx.flow_controls(),
-            ctx.address_ref(),
+            ctx.primary_address(),
             &addresses,
         );
         let decryptor_outgoing_access_control = self
@@ -117,7 +117,7 @@ impl Worker for SecureChannelListenerWorker {
         .await?;
 
         let mut local_message = message.into_local_message();
-        local_message = local_message.replace_front_onward_route(&addresses.decryptor_remote)?;
+        local_message = local_message.replace_front_onward_route(addresses.decryptor_remote)?;
 
         ctx.forward(local_message).await
     }

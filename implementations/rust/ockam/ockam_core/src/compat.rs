@@ -30,6 +30,18 @@ pub mod collections {
     pub use alloc::collections::{BTreeMap, BTreeSet, BinaryHeap, LinkedList, VecDeque};
 
     pub use hashbrown::{HashMap, HashSet};
+
+    /// hash map
+    pub mod hash_map {
+        pub use hashbrown::hash_map::{Entry, EntryRef};
+        pub use hashbrown::Equivalent;
+    }
+
+    /// btree map
+    #[cfg(feature = "alloc")]
+    pub mod btree_map {
+        pub use alloc::collections::btree_map::Entry;
+    }
 }
 
 /// Provides a `std::error::Error` trait.
@@ -224,11 +236,15 @@ pub mod str {
 pub mod sync {
     use core::convert::Infallible;
 
-    pub use alloc::sync::Arc;
+    pub use alloc::sync::{Arc, Weak};
 
     /// Wrap `spin::RwLock` as it does not return LockResult<Guard> like `std::sync::Mutex`.
     #[derive(Debug)]
     pub struct RwLock<T>(spin::RwLock<T>);
+
+    /// Wrap `spin::RwLockWriteGuard`
+    pub type RwLockWriteGuard<'a, T> = spin::RwLockWriteGuard<'a, T>;
+
     impl<T> RwLock<T> {
         /// Creates a new spinlock wrapping the supplied data.
         pub fn new(value: T) -> Self {
@@ -248,6 +264,11 @@ pub mod sync {
     impl<T: Default> Default for RwLock<T> {
         fn default() -> Self {
             Self::new(Default::default())
+        }
+    }
+    impl<T> From<T> for RwLock<T> {
+        fn from(t: T) -> Self {
+            Self::new(t)
         }
     }
     impl<T> core::ops::Deref for RwLock<T> {
@@ -285,11 +306,24 @@ pub mod sync {
             &mut self.0
         }
     }
+    impl<T> Default for Mutex<T>
+    where
+        T: Default,
+    {
+        fn default() -> Self {
+            Self::new(Default::default())
+        }
+    }
+    impl<T> From<T> for Mutex<T> {
+        fn from(t: T) -> Self {
+            Self::new(t)
+        }
+    }
 }
 /// Provides `std::sync` for `std` targets.
 #[cfg(feature = "std")]
 pub mod sync {
-    pub use std::sync::Arc;
+    pub use std::sync::{Arc, Weak};
     pub use std::sync::{Mutex, RwLock};
 }
 

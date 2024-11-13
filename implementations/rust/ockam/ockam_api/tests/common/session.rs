@@ -81,11 +81,11 @@ impl Worker for MockHop {
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Any>) -> Result<()> {
         if !self.responsive.load(Ordering::Relaxed) {
-            info!("Drop Hop message, {}", ctx.address());
+            info!("Drop Hop message, {}", ctx.primary_address());
             return Ok(());
         }
 
-        info!("Forward Hop message {}", ctx.address());
+        info!("Forward Hop message {}", ctx.primary_address());
 
         let msg = msg.into_local_message();
         let msg = msg.pop_front_onward_route()?;

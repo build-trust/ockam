@@ -20,7 +20,7 @@ use crate::uppercase::Uppercase;
 use super::NodeManagerWorker;
 
 impl NodeManagerWorker {
-    pub(super) async fn start_uppercase_service(
+    pub(super) fn start_uppercase_service(
         &self,
         ctx: &Context,
         request: StartUppercaseServiceRequest,
@@ -28,7 +28,6 @@ impl NodeManagerWorker {
         match self
             .node_manager
             .start_uppercase_service_impl(ctx, request.addr.into())
-            .await
         {
             Ok(_) => Ok(Response::ok()),
             Err(e) => Err(Response::internal_error_no_request(&e.to_string())),
@@ -50,7 +49,7 @@ impl NodeManagerWorker {
         }
     }
 
-    pub(super) async fn start_hop_service(
+    pub(super) fn start_hop_service(
         &self,
         ctx: &Context,
         request: StartHopServiceRequest,
@@ -58,28 +57,25 @@ impl NodeManagerWorker {
         match self
             .node_manager
             .start_hop_service(ctx, request.addr.into())
-            .await
         {
             Ok(_) => Ok(Response::ok()),
             Err(e) => Err(Response::internal_error_no_request(&e.to_string())),
         }
     }
 
-    pub(super) async fn list_services_of_type(
+    pub(super) fn list_services_of_type(
         &self,
         service_type: &str,
     ) -> Result<Response<Vec<ServiceStatus>>, Response<Error>> {
-        match self.node_manager.list_services_of_type(service_type).await {
+        match self.node_manager.list_services_of_type(service_type) {
             Ok(Either::Left(services)) => Ok(Response::ok().body(services)),
             Ok(Either::Right(message)) => Err(Response::bad_request_no_request(&message)),
             Err(e) => Err(Response::internal_error_no_request(&e.to_string())),
         }
     }
 
-    pub(super) async fn list_services(
-        &self,
-    ) -> Result<Response<Vec<ServiceStatus>>, Response<Error>> {
-        Ok(Response::ok().body(self.node_manager.list_services().await))
+    pub(super) fn list_services(&self) -> Result<Response<Vec<ServiceStatus>>, Response<Error>> {
+        Ok(Response::ok().body(self.node_manager.list_services()))
     }
 
     #[instrument(skip_all)]
@@ -102,7 +98,7 @@ impl NodeManagerWorker {
 }
 
 impl NodeManager {
-    pub async fn list_services_of_type(
+    pub fn list_services_of_type(
         &self,
         service_type: &str,
     ) -> Result<Either<Vec<ServiceStatus>, String>> {
@@ -111,7 +107,7 @@ impl NodeManager {
                 "the service {service_type} is not a valid service"
             )));
         };
-        let services = self.list_services().await;
+        let services = self.list_services();
         Ok(Either::Left(
             services
                 .into_iter()
@@ -120,12 +116,11 @@ impl NodeManager {
         ))
     }
 
-    pub async fn list_services(&self) -> Vec<ServiceStatus> {
+    pub fn list_services(&self) -> Vec<ServiceStatus> {
         let mut list = Vec::new();
         self.registry
             .uppercase_services
             .keys()
-            .await
             .iter()
             .for_each(|addr| {
                 list.push(ServiceStatus::new(
@@ -136,7 +131,6 @@ impl NodeManager {
         self.registry
             .echoer_services
             .keys()
-            .await
             .iter()
             .for_each(|addr| {
                 list.push(ServiceStatus::new(
@@ -144,21 +138,15 @@ impl NodeManager {
                     DefaultAddress::ECHO_SERVICE,
                 ))
             });
-        self.registry
-            .hop_services
-            .keys()
-            .await
-            .iter()
-            .for_each(|addr| {
-                list.push(ServiceStatus::new(
-                    addr.address(),
-                    DefaultAddress::HOP_SERVICE,
-                ))
-            });
+        self.registry.hop_services.keys().iter().for_each(|addr| {
+            list.push(ServiceStatus::new(
+                addr.address(),
+                DefaultAddress::HOP_SERVICE,
+            ))
+        });
         self.registry
             .kafka_services
             .entries()
-            .await
             .iter()
             .for_each(|(address, info)| {
                 list.push(ServiceStatus::new(
@@ -172,39 +160,32 @@ impl NodeManager {
         list
     }
 
-    pub(super) async fn start_uppercase_service_impl(
-        &self,
-        ctx: &Context,
-        addr: Address,
-    ) -> Result<()> {
-        if self.registry.uppercase_services.contains_key(&addr).await {
+    pub(super) fn start_uppercase_service_impl(&self, ctx: &Context, addr: Address) -> Result<()> {
+        if self.registry.uppercase_services.contains_key(&addr) {
             return Err(ApiError::core(format!(
                 "uppercase service already exists at {addr}"
             )));
         }
 
-        ctx.start_worker(addr.clone(), Uppercase).await?;
+        ctx.start_worker(addr.clone(), Uppercase)?;
 
         info!("uppercase service was initialized at {addr}");
 
         self.registry
             .uppercase_services
-            .insert(addr.clone(), Default::default())
-            .await;
+            .insert(addr.clone(), Default::default());
 
         Ok(())
     }
 
     pub(super) async fn start_echoer_service(&self, ctx: &Context, addr: Address) -> Result<()> {
-        if self.registry.echoer_services.contains_key(&addr).await {
+        if self.registry.echoer_services.contains_key(&addr) {
             return Err(ApiError::core(format!(
                 "echoer service already exists at {addr}"
             )));
         }
 
-        if ctx.is_worker_registered_at(addr.clone()).await? {
-            ctx.stop_worker(addr.clone()).await?
-        };
+        _ = ctx.stop_address(&addr);
 
         let (incoming_ac, outgoing_ac) = self
             .access_control(
@@ -220,21 +201,19 @@ impl NodeManager {
             .with_address(addr.clone())
             .with_incoming_access_control_arc(incoming_ac)
             .with_outgoing_access_control_arc(outgoing_ac)
-            .start(ctx)
-            .await?;
+            .start(ctx)?;
 
         info!("echoer service was initialized at {addr}");
 
         self.registry
             .echoer_services
-            .insert(addr, Default::default())
-            .await;
+            .insert(addr, Default::default());
 
         Ok(())
     }
 
-    pub(super) async fn start_hop_service(&self, ctx: &Context, addr: Address) -> Result<()> {
-        if self.registry.hop_services.contains_key(&addr).await {
+    pub(super) fn start_hop_service(&self, ctx: &Context, addr: Address) -> Result<()> {
+        if self.registry.hop_services.contains_key(&addr) {
             return Err(ApiError::core(format!(
                 "hop service already exists at {addr}"
             )));
@@ -242,17 +221,14 @@ impl NodeManager {
 
         for api_transport_flow_control_id in &self.api_transport_flow_control_ids {
             ctx.flow_controls()
-                .add_consumer(addr.clone(), api_transport_flow_control_id);
+                .add_consumer(&addr, api_transport_flow_control_id);
         }
 
-        ctx.start_worker(addr.clone(), Hop).await?;
+        ctx.start_worker(addr.clone(), Hop)?;
 
         info!("hop service was initialized at {addr}");
 
-        self.registry
-            .hop_services
-            .insert(addr, Default::default())
-            .await;
+        self.registry.hop_services.insert(addr, Default::default());
 
         Ok(())
     }
@@ -269,10 +245,10 @@ impl NodeManager {
             .get_named_identity_by_identifier(&self.node_identifier)
             .await?;
         let transports = self.get_tcp_listeners();
-        let listeners = self.list_secure_channel_listeners().await;
+        let listeners = self.list_secure_channel_listeners();
         let inlets = self.list_inlets().await;
-        let outlets = self.list_outlets().await;
-        let services = self.list_services().await;
+        let outlets = self.list_outlets();
+        let services = self.list_services();
         NodeResources::from_parts(
             node,
             identity.name(),

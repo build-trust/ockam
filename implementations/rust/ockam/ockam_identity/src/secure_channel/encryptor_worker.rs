@@ -119,9 +119,9 @@ impl EncryptorWorker {
             // If encryption failed, that means we have some internal error,
             // and we may be in an invalid state, it's better to stop the Worker
             Err(err) => {
-                let address = self.addresses.encryptor.clone();
+                let address = &self.addresses.encryptor;
                 error!("Error while encrypting: {err} at: {address}");
-                ctx.stop_worker(address).await?;
+                ctx.stop_address(address)?;
                 Err(err)
             }
         }
@@ -178,7 +178,7 @@ impl EncryptorWorker {
             "sent encrypt API response");
 
         if should_stop {
-            ctx.stop_worker(self.addresses.encryptor.clone()).await?;
+            ctx.stop_address(&self.addresses.encryptor)?;
         }
 
         Ok(())
@@ -360,7 +360,7 @@ impl Worker for EncryptorWorker {
         Ok(())
     }
 
-    #[instrument(skip_all, name = "EncryptorWorker::handle_message", fields(worker = % ctx.address()))]
+    #[instrument(skip_all, name = "EncryptorWorker::handle_message", fields(worker = % ctx.primary_address()))]
     async fn handle_message(
         &mut self,
         ctx: &mut Self::Context,
@@ -393,9 +393,7 @@ impl Worker for EncryptorWorker {
             credential_retriever.unsubscribe(&self.addresses.encryptor_internal)?;
         }
 
-        let _ = context
-            .stop_worker(self.addresses.decryptor_internal.clone())
-            .await;
+        let _ = context.stop_address(&self.addresses.decryptor_internal);
         if self.shared_state.should_send_close.load(Ordering::Relaxed) {
             let _ = self.send_close_channel(context).await;
         }

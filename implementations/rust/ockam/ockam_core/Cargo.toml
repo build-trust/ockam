@@ -76,7 +76,7 @@ backtrace = { version = "0.3", default-features = false, features = ["std", "ser
 cfg-if = "1.0"
 core2 = { version = "0.4.0", default-features = false, optional = true }
 futures-util = { version = "0.3.30", default-features = false, features = ["alloc", "async-await-macro", "sink"] }
-hashbrown = { version = "0.14", default-features = false, features = ["ahash", "serde"] }
+hashbrown = { version = "0.15.2", features = ["serde", "default-hasher", "equivalent"] }
 hex = { version = "0.4", default-features = false, optional = true }
 miette = { version = "7.2.0", features = ["fancy-no-backtrace"], optional = true }
 minicbor = { version = "0.25.1", default-features = false, features = ["derive"] }

@@ -12,30 +12,31 @@ async fn test_update_decryptor_route(ctx: &mut Context) -> Result<()> {
     let alice = identities_creation.create_identity().await?;
     let bob = identities_creation.create_identity().await?;
 
-    let bob_listener = secure_channels
-        .create_secure_channel_listener(ctx, &bob, "bob", SecureChannelListenerOptions::new())
-        .await?;
+    let bob_listener = secure_channels.create_secure_channel_listener(
+        ctx,
+        &bob,
+        "bob",
+        SecureChannelListenerOptions::new(),
+    )?;
 
     let alice_channel = secure_channels
         .create_secure_channel(ctx, &alice, route!["bob"], SecureChannelOptions::new())
         .await?;
 
-    let mut child_ctx = ctx
-        .new_detached_with_mailboxes(Mailboxes::main(
-            "child",
-            Arc::new(AllowAll),
-            Arc::new(AllowAll),
-        ))
-        .await?;
+    let mut child_ctx = ctx.new_detached_with_mailboxes(Mailboxes::primary(
+        "child",
+        Arc::new(AllowAll),
+        Arc::new(AllowAll),
+    ))?;
 
     ctx.flow_controls()
-        .add_consumer("child", alice_channel.flow_control_id());
+        .add_consumer(&"child".into(), alice_channel.flow_control_id());
     ctx.flow_controls()
-        .add_consumer("child", bob_listener.flow_control_id());
+        .add_consumer(&"child".into(), bob_listener.flow_control_id());
 
     child_ctx
         .send(
-            route![alice_channel.clone(), child_ctx.address()],
+            route![alice_channel.clone(), child_ctx.primary_address().clone()],
             "Hello, Bob!".to_string(),
         )
         .await?;
@@ -54,7 +55,7 @@ async fn test_update_decryptor_route(ctx: &mut Context) -> Result<()> {
 
     child_ctx
         .send(
-            route![alice_channel.clone(), child_ctx.address()],
+            route![alice_channel.clone(), child_ctx.primary_address().clone()],
             "Hello, Bob!".to_string(),
         )
         .await?;
@@ -74,7 +75,7 @@ async fn test_update_decryptor_route(ctx: &mut Context) -> Result<()> {
 
 #[ockam_macros::test]
 async fn test_update_decryptor_route_tcp(ctx: &mut Context) -> Result<()> {
-    let tcp = TcpTransport::create(ctx).await?;
+    let tcp = TcpTransport::create(ctx)?;
 
     let tcp_listener1 = tcp.listen("127.0.0.1:0", TcpListenerOptions::new()).await?;
     let tcp_listener2 = tcp.listen("127.0.0.1:0", TcpListenerOptions::new()).await?;
@@ -92,16 +93,14 @@ async fn test_update_decryptor_route_tcp(ctx: &mut Context) -> Result<()> {
     let alice = identities_creation.create_identity().await?;
     let bob = identities_creation.create_identity().await?;
 
-    let bob_listener = secure_channels
-        .create_secure_channel_listener(
-            ctx,
-            &bob,
-            "bob",
-            SecureChannelListenerOptions::new()
-                .as_consumer(tcp_listener1.flow_control_id())
-                .as_consumer(tcp_listener2.flow_control_id()),
-        )
-        .await?;
+    let bob_listener = secure_channels.create_secure_channel_listener(
+        ctx,
+        &bob,
+        "bob",
+        SecureChannelListenerOptions::new()
+            .as_consumer(tcp_listener1.flow_control_id())
+            .as_consumer(tcp_listener2.flow_control_id()),
+    )?;
 
     let alice_channel = secure_channels
         .create_secure_channel(
@@ -112,22 +111,20 @@ async fn test_update_decryptor_route_tcp(ctx: &mut Context) -> Result<()> {
         )
         .await?;
 
-    let mut child_ctx = ctx
-        .new_detached_with_mailboxes(Mailboxes::main(
-            "child",
-            Arc::new(AllowAll),
-            Arc::new(AllowAll),
-        ))
-        .await?;
+    let mut child_ctx = ctx.new_detached_with_mailboxes(Mailboxes::primary(
+        "child",
+        Arc::new(AllowAll),
+        Arc::new(AllowAll),
+    ))?;
 
     ctx.flow_controls()
-        .add_consumer("child", alice_channel.flow_control_id());
+        .add_consumer(&"child".into(), alice_channel.flow_control_id());
     ctx.flow_controls()
-        .add_consumer("child", bob_listener.flow_control_id());
+        .add_consumer(&"child".into(), bob_listener.flow_control_id());
 
     child_ctx
         .send(
-            route![alice_channel.clone(), child_ctx.address()],
+            route![alice_channel.clone(), child_ctx.primary_address().clone()],
             "Hello, Bob!".to_string(),
         )
         .await?;
@@ -142,13 +139,13 @@ async fn test_update_decryptor_route_tcp(ctx: &mut Context) -> Result<()> {
 
     assert_eq!("Hello, Alice!", msg.into_body()?);
 
-    tcp_connection1.stop(ctx).await?;
+    tcp_connection1.stop(ctx)?;
 
     alice_channel.update_remote_node_route(route![tcp_connection2])?;
 
     child_ctx
         .send(
-            route![alice_channel.clone(), child_ctx.address()],
+            route![alice_channel.clone(), child_ctx.primary_address().clone()],
             "Hello, Bob!".to_string(),
         )
         .await?;

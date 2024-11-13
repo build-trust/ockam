@@ -4,8 +4,8 @@ use ockam_core::compat::boxed::Box;
 use ockam_core::compat::sync::{Arc, RwLock};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{
-    AllowAll, Any, DenyAll, Error, Mailbox, Mailboxes, NeutralMessage, OutgoingAccessControl,
-    Route, Routed, SecureChannelMetadata,
+    AddressMetadata, AllowAll, Any, DenyAll, Error, Mailbox, Mailboxes, NeutralMessage,
+    OutgoingAccessControl, Route, Routed, SecureChannelMetadata,
 };
 use ockam_core::{Result, Worker};
 use ockam_node::callback::CallbackSender;
@@ -116,7 +116,7 @@ impl Worker for HandshakeWorker {
     }
 
     async fn shutdown(&mut self, context: &mut Self::Context) -> Result<()> {
-        let _ = context.stop_worker(self.addresses.encryptor.clone()).await;
+        let _ = context.stop_address(&self.addresses.encryptor);
         self.secure_channels
             .secure_channel_registry
             .unregister_channel(&self.addresses.encryptor);
@@ -213,8 +213,7 @@ impl HandshakeWorker {
                 &addresses,
                 decryptor_outgoing_access_control,
             ))
-            .start(context)
-            .await?;
+            .start(context)?;
 
         debug!(decryptor=%my_identifier, encryptor=%addresses.encryptor, "starting SecureChannel {role}");
 
@@ -365,6 +364,7 @@ impl HandshakeWorker {
     ) -> Mailboxes {
         let remote_mailbox = Mailbox::new(
             addresses.decryptor_remote.clone(),
+            None,
             // Doesn't matter since we check incoming messages cryptographically,
             // but this may be reduced to allowing only from the transport connection that was used
             // to create this channel initially
@@ -374,11 +374,13 @@ impl HandshakeWorker {
         );
         let internal_mailbox = Mailbox::new(
             addresses.decryptor_internal.clone(),
+            None,
             Arc::new(DenyAll),
             decryptor_outgoing_access_control,
         );
         let api_mailbox = Mailbox::new(
             addresses.decryptor_api.clone(),
+            None,
             Arc::new(AllowAll),
             Arc::new(AllowAll),
         );
@@ -438,16 +440,24 @@ impl HandshakeWorker {
 
             let main_mailbox = Mailbox::new(
                 self.addresses.encryptor.clone(),
+                Some(AddressMetadata {
+                    is_terminal: true,
+                    attributes: vec![SecureChannelMetadata::attribute(
+                        their_identifier.clone().into(),
+                    )],
+                }),
                 Arc::new(AllowAll),
                 Arc::new(AllowAll),
             );
             let api_mailbox = Mailbox::new(
                 self.addresses.encryptor_api.clone(),
+                None,
                 Arc::new(AllowAll),
                 Arc::new(AllowAll),
             );
             let internal_mailbox = Mailbox::new(
                 self.addresses.encryptor_internal.clone(),
+                None,
                 Arc::new(AllowAll),
                 Arc::new(DenyAll),
             );
@@ -457,14 +467,7 @@ impl HandshakeWorker {
                     main_mailbox,
                     vec![api_mailbox, internal_mailbox],
                 ))
-                .terminal_with_attributes(
-                    self.addresses.encryptor.clone(),
-                    vec![SecureChannelMetadata::attribute(
-                        their_identifier.clone().into(),
-                    )],
-                )
-                .start(context)
-                .await?;
+                .start(context)?;
         }
 
         self.persist(

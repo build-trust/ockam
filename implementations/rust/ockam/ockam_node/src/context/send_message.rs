@@ -1,7 +1,6 @@
-use crate::channel_types::small_channel;
 use crate::context::MessageWait;
+use crate::error::*;
 use crate::{debugger, Context, MessageReceiveOptions, DEFAULT_TIMEOUT};
-use crate::{error::*, NodeMessage};
 use cfg_if::cfg_if;
 use core::time::Duration;
 use ockam_core::compat::{sync::Arc, vec::Vec};
@@ -89,6 +88,7 @@ impl Context {
         let mailboxes = Mailboxes::new(
             Mailbox::new(
                 address.clone(),
+                None,
                 Arc::new(AllowAll),
                 Arc::new(AllowOnwardAddress(next.clone())),
             ),
@@ -101,10 +101,10 @@ impl Context {
             .map(|x| x.flow_control_id().clone())
         {
             // To be able to receive the response
-            self.flow_controls.add_consumer(address, &flow_control_id);
+            self.flow_controls.add_consumer(&address, &flow_control_id);
         }
 
-        let mut child_ctx = self.new_detached_with_mailboxes(mailboxes).await?;
+        let mut child_ctx = self.new_detached_with_mailboxes(mailboxes)?;
 
         #[cfg(feature = "std")]
         child_ctx.set_tracing_context(self.tracing_context());
@@ -169,7 +169,7 @@ impl Context {
         R: Into<Route>,
         M: Message + Send + 'static,
     {
-        self.send_from_address(route.into(), msg, self.address())
+        self.send_from_address(route.into(), msg, self.primary_address().clone())
             .await
     }
 
@@ -185,8 +185,13 @@ impl Context {
         R: Into<Route>,
         M: Message + Send + 'static,
     {
-        self.send_from_address_impl(route.into(), msg, self.address(), local_info)
-            .await
+        self.send_from_address_impl(
+            route.into(),
+            msg,
+            self.primary_address().clone(),
+            local_info,
+        )
+        .await
     }
 
     /// Send a message to an address or via a fully-qualified route
@@ -232,7 +237,6 @@ impl Context {
         }
 
         // First resolve the next hop in the route
-        let (reply_tx, mut reply_rx) = small_channel();
         let addr = match route.next() {
             Ok(next) => next.clone(),
             Err(err) => {
@@ -242,16 +246,7 @@ impl Context {
             }
         };
 
-        let req = NodeMessage::SenderReq(addr, reply_tx);
-        self.sender
-            .send(req)
-            .await
-            .map_err(NodeError::from_send_err)?;
-        let (addr, sender) = reply_rx
-            .recv()
-            .await
-            .ok_or_else(|| NodeError::NodeState(NodeReason::Unknown).internal())??
-            .take_sender()?;
+        let sender = self.router()?.resolve(&addr)?;
 
         // Pack the payload into a TransportMessage
         let payload = msg.encode().map_err(|_| NodeError::Data.internal())?;
@@ -276,7 +271,7 @@ impl Context {
         }
 
         // Pack local message into a RelayMessage wrapper
-        let relay_msg = RelayMessage::new(sending_address.clone(), addr, local_msg);
+        let relay_msg = RelayMessage::new(sending_address, addr, local_msg);
 
         debugger::log_outgoing_message(self, &relay_msg);
 
@@ -311,7 +306,8 @@ impl Context {
     /// [`Context::send`]: crate::Context::send
     /// [`LocalMessage`]: ockam_core::LocalMessage
     pub async fn forward(&self, local_msg: LocalMessage) -> Result<()> {
-        self.forward_from_address(local_msg, self.address()).await
+        self.forward_from_address(local_msg, self.primary_address().clone())
+            .await
     }
 
     /// Forward a transport message to its next routing destination
@@ -337,7 +333,6 @@ impl Context {
         }
 
         // First resolve the next hop in the route
-        let (reply_tx, mut reply_rx) = small_channel();
         let addr = match local_msg.onward_route().next() {
             Ok(next) => next.clone(),
             Err(err) => {
@@ -349,16 +344,7 @@ impl Context {
                 return Err(err);
             }
         };
-        let req = NodeMessage::SenderReq(addr, reply_tx);
-        self.sender
-            .send(req)
-            .await
-            .map_err(NodeError::from_send_err)?;
-        let (addr, sender) = reply_rx
-            .recv()
-            .await
-            .ok_or_else(|| NodeError::NodeState(NodeReason::Unknown).internal())??
-            .take_sender()?;
+        let sender = self.router()?.resolve(&addr)?;
 
         // Pack the transport message into a RelayMessage wrapper
         let relay_msg = RelayMessage::new(sending_address, addr, local_msg);

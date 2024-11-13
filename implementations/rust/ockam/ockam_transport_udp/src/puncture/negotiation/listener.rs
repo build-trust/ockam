@@ -5,9 +5,7 @@ use crate::puncture::negotiation::options::UdpPunctureNegotiationListenerOptions
 use crate::puncture::rendezvous_service::RendezvousClient;
 use crate::{UdpBindArguments, UdpBindOptions, UdpPuncture, UdpPunctureOptions, UdpTransport};
 use ockam_core::flow_control::FlowControlId;
-use ockam_core::{
-    async_trait, Address, AllowAll, AsyncTryClone, DenyAll, Result, Route, Routed, Worker,
-};
+use ockam_core::{async_trait, Address, AllowAll, DenyAll, Result, Route, Routed, Worker};
 use ockam_node::{Context, WorkerBuilder};
 use tracing::{error, info};
 
@@ -20,7 +18,7 @@ pub struct UdpPunctureNegotiationListener {
 
 impl UdpPunctureNegotiationListener {
     /// Create and start a new listener on given address
-    pub async fn create(
+    pub fn create(
         ctx: &Context,
         address: impl Into<Address>,
         udp: &UdpTransport,
@@ -43,8 +41,7 @@ impl UdpPunctureNegotiationListener {
             .with_address(address)
             .with_incoming_access_control_arc(access_control)
             .with_outgoing_access_control(DenyAll)
-            .start(ctx)
-            .await?;
+            .start(ctx)?;
 
         Ok(())
     }
@@ -75,7 +72,7 @@ impl UdpPunctureNegotiationListener {
                     "Error getting UDP public address for the responder: {}",
                     err
                 );
-                udp.unbind(udp_bind.sender_address().clone()).await?;
+                udp.unbind(udp_bind.sender_address())?;
                 return Err(err);
             }
         };
@@ -103,8 +100,7 @@ impl UdpPunctureNegotiationListener {
             // that `UdpPunctureReceiverWorker` was started on the other side, we'll start
             // sending messages to that worker
             true,
-        )
-        .await?;
+        )?;
 
         // Send Acknowledge back, so that initiator will start the puncture as well
         ctx.send(
@@ -135,16 +131,14 @@ impl Worker for UdpPunctureNegotiationListener {
         let return_route = msg.return_route().clone();
         let msg = msg.into_body()?;
 
-        let child_ctx = ctx
-            .new_detached(
-                Address::random_tagged("UdpPunctureNegotiator.responder"),
-                DenyAll,
-                AllowAll,
-            )
-            .await?;
+        let child_ctx = ctx.new_detached(
+            Address::random_tagged("UdpPunctureNegotiator.responder"),
+            DenyAll,
+            AllowAll,
+        )?;
 
         let rendezvous_route = self.rendezvous_route.clone();
-        let udp = self.udp.async_try_clone().await?;
+        let udp = self.udp.clone();
         let flow_control_id = self.flow_control_id.clone();
         tokio::spawn(async move {
             Self::start_puncture(

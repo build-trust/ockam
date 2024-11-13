@@ -10,10 +10,10 @@ use ockam_transport_tcp::{TcpConnectionOptions, TcpListenerOptions, TcpTransport
 async fn tcp_lifecycle__two_connections__should_both_work(ctx: &mut Context) -> Result<()> {
     let options = TcpListenerOptions::new();
     ctx.flow_controls()
-        .add_consumer("echoer", &options.spawner_flow_control_id());
-    ctx.start_worker("echoer", Echoer).await?;
+        .add_consumer(&"echoer".into(), &options.spawner_flow_control_id());
+    ctx.start_worker("echoer", Echoer)?;
 
-    let transport = TcpTransport::create(ctx).await?;
+    let transport = TcpTransport::create(ctx)?;
     let listener = transport.listen("127.0.0.1:0", options).await?;
 
     let msg1: String = rand::thread_rng()
@@ -52,10 +52,10 @@ async fn tcp_lifecycle__two_connections__should_both_work(ctx: &mut Context) -> 
 async fn tcp_lifecycle__disconnect__should_stop_worker(ctx: &mut Context) -> Result<()> {
     let options = TcpListenerOptions::new();
     ctx.flow_controls()
-        .add_consumer("echoer", &options.spawner_flow_control_id());
-    ctx.start_worker("echoer", Echoer).await?;
+        .add_consumer(&"echoer".into(), &options.spawner_flow_control_id());
+    ctx.start_worker("echoer", Echoer)?;
 
-    let transport = TcpTransport::create(ctx).await?;
+    let transport = TcpTransport::create(ctx)?;
     let listener = transport.listen("127.0.0.1:0", options).await?;
 
     let msg1: String = rand::thread_rng()
@@ -91,7 +91,7 @@ async fn tcp_lifecycle__disconnect__should_stop_worker(ctx: &mut Context) -> Res
         .await?;
     assert_eq!(reply2, msg2, "Should receive the same message");
 
-    transport.disconnect(connection1.clone()).await?;
+    transport.disconnect(&connection1)?;
     let res = ctx
         .send(route![connection1.clone(), "echoer"], msg1.clone())
         .await;
@@ -102,7 +102,7 @@ async fn tcp_lifecycle__disconnect__should_stop_worker(ctx: &mut Context) -> Res
         .await?;
     assert_eq!(reply3, msg3, "Should receive the same message");
 
-    transport.disconnect(connection2.clone()).await?;
+    transport.disconnect(&connection2)?;
     let res = ctx
         .send(route![connection2.clone(), "echoer"], msg3.clone())
         .await;
@@ -117,11 +117,11 @@ async fn tcp_lifecycle__stop_listener__should_stop_accepting_connections(
 ) -> Result<()> {
     let options = TcpListenerOptions::new();
     ctx.flow_controls()
-        .add_consumer("echoer", &options.spawner_flow_control_id());
+        .add_consumer(&"echoer".into(), &options.spawner_flow_control_id());
 
-    ctx.start_worker("echoer", Echoer).await?;
+    ctx.start_worker("echoer", Echoer)?;
 
-    let transport = TcpTransport::create(ctx).await?;
+    let transport = TcpTransport::create(ctx)?;
     let listener = transport.listen("127.0.0.1:0", options).await?;
 
     let msg1: String = rand::thread_rng()
@@ -144,9 +144,7 @@ async fn tcp_lifecycle__stop_listener__should_stop_accepting_connections(
         .await?;
     assert_eq!(reply1, msg1, "Should receive the same message");
 
-    transport
-        .stop_listener(listener.processor_address())
-        .await?;
+    transport.stop_listener(listener.processor_address())?;
     ctx.sleep(Duration::from_millis(10)).await;
 
     let res = transport

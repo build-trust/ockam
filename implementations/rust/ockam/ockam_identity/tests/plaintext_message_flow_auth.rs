@@ -28,9 +28,12 @@ async fn test1(ctx: &mut Context) -> Result<()> {
         .create_identity()
         .await?;
 
-    let bob_listener = bob_secure_channels
-        .create_secure_channel_listener(ctx, &bob, "listener", SecureChannelListenerOptions::new())
-        .await?;
+    let bob_listener = bob_secure_channels.create_secure_channel_listener(
+        ctx,
+        &bob,
+        "listener",
+        SecureChannelListenerOptions::new(),
+    )?;
 
     let channel_to_bob = alice_secure_channels
         .create_secure_channel(ctx, &alice, route!["listener"], SecureChannelOptions::new())
@@ -45,16 +48,16 @@ async fn test1(ctx: &mut Context) -> Result<()> {
         .encryptor_messaging_address()
         .clone();
 
-    let mut bob_ctx = ctx.new_detached("bob_ctx", AllowAll, AllowAll).await?;
+    let mut bob_ctx = ctx.new_detached("bob_ctx", AllowAll, AllowAll)?;
     message_should_not_pass_with_ctx(ctx, channel_to_bob.encryptor_address(), &mut bob_ctx).await?;
     ctx.flow_controls()
-        .add_consumer("bob_ctx", bob_listener.flow_control_id());
+        .add_consumer(&"bob_ctx".into(), bob_listener.flow_control_id());
     message_should_pass_with_ctx(ctx, channel_to_bob.encryptor_address(), &mut bob_ctx).await?;
 
-    let mut alice_ctx = ctx.new_detached("alice_ctx", AllowAll, AllowAll).await?;
+    let mut alice_ctx = ctx.new_detached("alice_ctx", AllowAll, AllowAll)?;
     message_should_not_pass_with_ctx(ctx, &channel_to_alice, &mut alice_ctx).await?;
     ctx.flow_controls()
-        .add_consumer("alice_ctx", channel_to_bob.flow_control_id());
+        .add_consumer(&"alice_ctx".into(), channel_to_bob.flow_control_id());
     message_should_pass_with_ctx(ctx, &channel_to_alice, &mut alice_ctx).await?;
 
     Ok(())
@@ -64,8 +67,8 @@ async fn test1(ctx: &mut Context) -> Result<()> {
 // Bob: TCP listener + Secure Channel listener
 #[ockam_macros::test]
 async fn test2(ctx: &mut Context) -> Result<()> {
-    let tcp_alice = TcpTransport::create(ctx).await?;
-    let tcp_bob = TcpTransport::create(ctx).await?;
+    let tcp_alice = TcpTransport::create(ctx)?;
+    let tcp_bob = TcpTransport::create(ctx)?;
 
     let listener = tcp_bob
         .listen("127.0.0.1:0", TcpListenerOptions::new())
@@ -100,9 +103,8 @@ async fn test2(ctx: &mut Context) -> Result<()> {
         .await?;
 
     let bob_options = SecureChannelListenerOptions::new().as_consumer(listener.flow_control_id());
-    let bob_listener = bob_secure_channels
-        .create_secure_channel_listener(ctx, &bob, "listener", bob_options)
-        .await?;
+    let bob_listener =
+        bob_secure_channels.create_secure_channel_listener(ctx, &bob, "listener", bob_options)?;
 
     let channel_to_bob = alice_secure_channels
         .create_secure_channel(
@@ -125,16 +127,16 @@ async fn test2(ctx: &mut Context) -> Result<()> {
         .encryptor_messaging_address()
         .clone();
 
-    let mut bob_ctx = ctx.new_detached("bob_ctx", AllowAll, AllowAll).await?;
+    let mut bob_ctx = ctx.new_detached("bob_ctx", AllowAll, AllowAll)?;
     message_should_not_pass_with_ctx(ctx, channel_to_bob.encryptor_address(), &mut bob_ctx).await?;
     ctx.flow_controls()
-        .add_consumer("bob_ctx", bob_listener.flow_control_id());
+        .add_consumer(&"bob_ctx".into(), bob_listener.flow_control_id());
     message_should_pass_with_ctx(ctx, channel_to_bob.encryptor_address(), &mut bob_ctx).await?;
 
-    let mut alice_ctx = ctx.new_detached("alice_ctx", AllowAll, AllowAll).await?;
+    let mut alice_ctx = ctx.new_detached("alice_ctx", AllowAll, AllowAll)?;
     message_should_not_pass_with_ctx(ctx, &channel_to_alice, &mut alice_ctx).await?;
     ctx.flow_controls()
-        .add_consumer("alice_ctx", channel_to_bob.flow_control_id());
+        .add_consumer(&"alice_ctx".into(), channel_to_bob.flow_control_id());
     message_should_pass_with_ctx(ctx, &channel_to_alice, &mut alice_ctx).await?;
 
     Ok(())

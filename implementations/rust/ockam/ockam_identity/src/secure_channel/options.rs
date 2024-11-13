@@ -128,7 +128,7 @@ impl SecureChannelOptions {
         addresses: &Addresses,
     ) {
         flow_controls.add_producer(
-            addresses.decryptor_internal.clone(),
+            &addresses.decryptor_internal,
             flow_control_id,
             None,
             vec![addresses.encryptor.clone()],
@@ -145,7 +145,7 @@ impl SecureChannelOptions {
             .map(|x| x.flow_control_id().clone())
         {
             // Allow a sender with corresponding flow_control_id send messages to this address
-            flow_controls.add_consumer(addresses.decryptor_remote.clone(), &flow_control_id);
+            flow_controls.add_consumer(&addresses.decryptor_remote, &flow_control_id);
         }
     }
 
@@ -281,10 +281,10 @@ impl SecureChannelListenerOptions {
         address: &Address,
     ) {
         for id in &self.consumer {
-            flow_controls.add_consumer(address.clone(), id);
+            flow_controls.add_consumer(address, id);
         }
 
-        flow_controls.add_spawner(address.clone(), &self.flow_control_id);
+        flow_controls.add_spawner(address, &self.flow_control_id);
     }
 
     pub(crate) fn setup_flow_control_for_channel(
@@ -296,7 +296,7 @@ impl SecureChannelListenerOptions {
         // Add decryptor as consumer for the same ids as the listener, so that even if the initiator
         // updates the route - decryptor is still reachable
         for id in flow_controls.get_flow_control_ids_for_consumer(listener_address) {
-            flow_controls.add_consumer(addresses.decryptor_remote.clone(), &id);
+            flow_controls.add_consumer(&addresses.decryptor_remote, &id);
         }
 
         // TODO: What if we added a listener as a consumer for new FlowControlIds, should existing
@@ -310,7 +310,7 @@ impl SecureChannelListenerOptions {
 
         let flow_control_id = FlowControls::generate_flow_control_id();
         flow_controls.add_producer(
-            addresses.decryptor_internal.clone(),
+            &addresses.decryptor_internal,
             &flow_control_id,
             Some(&self.flow_control_id),
             vec![addresses.encryptor.clone()],

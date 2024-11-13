@@ -9,5 +9,5 @@ async fn main(ctx: Context) -> Result<()> {
     let mut node = node(ctx).await?;
 
     // Stop the node as soon as it starts.
-    node.stop().await
+    node.shutdown().await
 }

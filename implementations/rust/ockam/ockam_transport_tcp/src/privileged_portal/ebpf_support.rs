@@ -164,8 +164,7 @@ impl TcpTransportEbpfSupport {
 
         *tcp_packet_writer_lock = Some(tcp_packet_writer.create_new_box());
 
-        ctx.start_processor(self.raw_socket_processor_address.clone(), processor)
-            .await?;
+        ctx.start_processor(self.raw_socket_processor_address.clone(), processor)?;
 
         info!("Started RawSocket for protocol: {}", self.ip_proto);
 

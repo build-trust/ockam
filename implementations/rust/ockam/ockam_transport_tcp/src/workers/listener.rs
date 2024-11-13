@@ -2,7 +2,7 @@ use crate::workers::{Addresses, TcpRecvProcessor};
 use crate::{TcpConnectionMode, TcpListenerInfo, TcpListenerOptions, TcpRegistry, TcpSendWorker};
 use ockam_core::{async_trait, compat::net::SocketAddr};
 use ockam_core::{Address, Processor, Result};
-use ockam_node::Context;
+use ockam_node::{Context, ProcessorBuilder, WorkerShutdownPriority};
 use ockam_transport_core::TransportError;
 use tokio::net::TcpListener;
 use tracing::{debug, instrument};
@@ -43,7 +43,10 @@ impl TcpListenProcessor {
             options,
         };
 
-        ctx.start_processor(address.clone(), processor).await?;
+        ProcessorBuilder::new(processor)
+            .with_address(address.clone())
+            .with_shutdown_priority(WorkerShutdownPriority::Priority5)
+            .start(ctx)?;
 
         Ok((saddr, address))
     }
@@ -55,10 +58,8 @@ impl Processor for TcpListenProcessor {
 
     #[instrument(skip_all, name = "TcpListenProcessor::initialize")]
     async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
-        ctx.set_cluster(crate::CLUSTER_NAME).await?;
-
         self.registry.add_listener_processor(TcpListenerInfo::new(
-            ctx.address(),
+            ctx.primary_address().clone(),
             self.socket_address,
             self.options.flow_control_id.clone(),
         ));
@@ -68,7 +69,8 @@ impl Processor for TcpListenProcessor {
 
     #[instrument(skip_all, name = "TcpListenProcessor::shutdown")]
     async fn shutdown(&mut self, ctx: &mut Self::Context) -> Result<()> {
-        self.registry.remove_listener_processor(&ctx.address());
+        self.registry
+            .remove_listener_processor(ctx.primary_address());
 
         Ok(())
     }
@@ -106,8 +108,7 @@ impl Processor for TcpListenProcessor {
             peer,
             mode,
             &receiver_flow_control_id,
-        )
-        .await?;
+        )?;
 
         // Processor to receive messages over the wire and forward them to the node
         TcpRecvProcessor::start(
@@ -119,8 +120,7 @@ impl Processor for TcpListenProcessor {
             mode,
             &receiver_flow_control_id,
             receiver_outgoing_access_control,
-        )
-        .await?;
+        )?;
 
         Ok(true)
     }

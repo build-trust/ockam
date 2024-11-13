@@ -23,7 +23,7 @@ impl NodeManagerWorker {
     // TODO: This is never called.
     pub async fn stop(&self, ctx: &Context) -> Result<()> {
         self.node_manager.stop(ctx).await?;
-        ctx.stop_worker(NODEMANAGER_ADDR).await?;
+        ctx.stop_address(&NODEMANAGER_ADDR.into())?;
         Ok(())
     }
 }
@@ -69,7 +69,7 @@ impl NodeManagerWorker {
                 encode_response(req, self.create_tcp_connection(ctx, dec.decode()?).await)?
             }
             (Delete, ["node", "tcp", "connection"]) => {
-                encode_response(req, self.delete_tcp_connection(dec.decode()?).await)?
+                encode_response(req, self.delete_tcp_connection(dec.decode()?))?
             }
 
             // ==*== Tcp Listeners ==*==
@@ -81,48 +81,44 @@ impl NodeManagerWorker {
                 encode_response(req, self.create_tcp_listener(dec.decode()?).await)?
             }
             (Delete, ["node", "tcp", "listener"]) => {
-                encode_response(req, self.delete_tcp_listener(dec.decode()?).await)?
+                encode_response(req, self.delete_tcp_listener(dec.decode()?))?
             }
 
             // ==*== Secure channels ==*==
-            (Get, ["node", "secure_channel"]) => {
-                encode_response(req, self.list_secure_channels().await)?
-            }
+            (Get, ["node", "secure_channel"]) => encode_response(req, self.list_secure_channels())?,
             (Get, ["node", "secure_channel_listener"]) => {
-                encode_response(req, self.list_secure_channel_listener().await)?
+                encode_response(req, self.list_secure_channel_listener())?
             }
             (Post, ["node", "secure_channel"]) => {
                 encode_response(req, self.create_secure_channel(dec.decode()?, ctx).await)?
             }
             (Delete, ["node", "secure_channel"]) => {
-                encode_response(req, self.delete_secure_channel(dec.decode()?, ctx).await)?
+                encode_response(req, self.delete_secure_channel(dec.decode()?, ctx))?
             }
             (Get, ["node", "show_secure_channel"]) => {
-                encode_response(req, self.show_secure_channel(dec.decode()?).await)?
+                encode_response(req, self.show_secure_channel(dec.decode()?))?
             }
             (Post, ["node", "secure_channel_listener"]) => encode_response(
                 req,
                 self.create_secure_channel_listener(dec.decode()?, ctx)
                     .await,
             )?,
-            (Delete, ["node", "secure_channel_listener"]) => encode_response(
-                req,
-                self.delete_secure_channel_listener(dec.decode()?, ctx)
-                    .await,
-            )?,
+            (Delete, ["node", "secure_channel_listener"]) => {
+                encode_response(req, self.delete_secure_channel_listener(dec.decode()?, ctx))?
+            }
             (Get, ["node", "show_secure_channel_listener"]) => {
-                encode_response(req, self.show_secure_channel_listener(dec.decode()?).await)?
+                encode_response(req, self.show_secure_channel_listener(dec.decode()?))?
             }
 
             // ==*== Services ==*==
             (Post, ["node", "services", DefaultAddress::UPPERCASE_SERVICE]) => {
-                encode_response(req, self.start_uppercase_service(ctx, dec.decode()?).await)?
+                encode_response(req, self.start_uppercase_service(ctx, dec.decode()?))?
             }
             (Post, ["node", "services", DefaultAddress::ECHO_SERVICE]) => {
                 encode_response(req, self.start_echoer_service(ctx, dec.decode()?).await)?
             }
             (Post, ["node", "services", DefaultAddress::HOP_SERVICE]) => {
-                encode_response(req, self.start_hop_service(ctx, dec.decode()?).await)?
+                encode_response(req, self.start_hop_service(ctx, dec.decode()?))?
             }
             (Post, ["node", "services", DefaultAddress::KAFKA_OUTLET]) => encode_response(
                 req,
@@ -149,12 +145,11 @@ impl NodeManagerWorker {
             )?,
             (Delete, ["node", "services", DefaultAddress::LEASE_MANAGER]) => encode_response(
                 req,
-                self.delete_influxdb_lease_issuer_service(ctx, dec.decode()?)
-                    .await,
+                self.delete_influxdb_lease_issuer_service(ctx, dec.decode()?),
             )?,
-            (Get, ["node", "services"]) => encode_response(req, self.list_services().await)?,
+            (Get, ["node", "services"]) => encode_response(req, self.list_services())?,
             (Get, ["node", "services", service_type]) => {
-                encode_response(req, self.list_services_of_type(service_type).await)?
+                encode_response(req, self.list_services_of_type(service_type))?
             }
 
             // ==*== Relay commands ==*==
@@ -172,10 +167,10 @@ impl NodeManagerWorker {
             // ==*== Inlets & Outlets ==*==
             (Get, ["node", "inlet"]) => encode_response(req, self.get_inlets().await)?,
             (Get, ["node", "inlet", alias]) => encode_response(req, self.show_inlet(alias).await)?,
-            (Get, ["node", "outlet"]) => self.get_outlets(req).await.to_vec()?,
+            (Get, ["node", "outlet"]) => self.get_outlets(req).to_vec()?,
             (Get, ["node", "outlet", addr]) => {
                 let addr: Address = addr.to_string().into();
-                encode_response(req, self.show_outlet(&addr).await)?
+                encode_response(req, self.show_outlet(&addr))?
             }
             (Post, ["node", "inlet"]) => {
                 encode_response(req, self.create_inlet(ctx, dec.decode()?).await)?

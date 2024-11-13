@@ -6,7 +6,7 @@ use ockam::identity::Identifier;
 use ockam::Result;
 use ockam_abac::{PolicyExpression, Resource, ResourceType};
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::{AsyncTryClone, Route};
+use ockam_core::{Route, TryClone};
 use ockam_multiaddr::MultiAddr;
 use ockam_node::compat::asynchronous::Mutex;
 use ockam_node::Context;
@@ -80,7 +80,7 @@ impl NodeManager {
             let registry = &self.registry.inlets;
 
             // Check that there is no entry in the registry with the same alias
-            if registry.contains_key(&alias).await {
+            if registry.contains_key(&alias) {
                 let message = format!("A TCP inlet with alias '{alias}' already exists");
                 return Err(ockam_core::Error::new(
                     Origin::Node,
@@ -92,7 +92,6 @@ impl NodeManager {
             // Check that there is no entry in the registry with the same TCP bind address
             if registry
                 .values()
-                .await
                 .iter()
                 .any(|inlet| inlet.bind_addr == listen_addr.to_string())
             {
@@ -109,7 +108,7 @@ impl NodeManager {
         let replacer = InletSessionReplacer {
             node_manager: Arc::downgrade(self),
             udp_transport,
-            context: ctx.async_try_clone().await?,
+            context: ctx.try_clone()?,
             listen_addr: listen_addr.to_string(),
             outlet_addr: outlet_address.clone(),
             prefix_route,
@@ -154,7 +153,7 @@ impl NodeManager {
             None
         };
 
-        let mut session = Session::create(ctx, main_replacer, additional_session_options).await?;
+        let mut session = Session::create(ctx, main_replacer, additional_session_options)?;
 
         let outcome = if wait_connection {
             let result = session
@@ -180,20 +179,17 @@ impl NodeManager {
 
         let connection_status = session.connection_status();
 
-        session.start_monitoring().await?;
+        session.start_monitoring()?;
 
-        self.registry
-            .inlets
-            .insert(
-                alias.clone(),
-                InletInfo::new(
-                    &listen_addr.to_string(),
-                    outlet_address.clone(),
-                    session,
-                    privileged,
-                ),
-            )
-            .await;
+        self.registry.inlets.insert(
+            alias.clone(),
+            InletInfo::new(
+                &listen_addr.to_string(),
+                outlet_address.clone(),
+                session,
+                privileged,
+            ),
+        );
 
         let tcp_inlet_status = InletStatus::new(
             listen_addr.to_string(),
@@ -220,7 +216,7 @@ impl NodeManager {
 
     pub async fn delete_inlet(&self, alias: &str) -> Result<InletStatus> {
         info!(%alias, "Handling request to delete inlet portal");
-        if let Some(inlet_to_delete) = self.registry.inlets.remove(alias).await {
+        if let Some(inlet_to_delete) = self.registry.inlets.remove(alias) {
             debug!(%alias, "Successfully removed inlet from node registry");
             inlet_to_delete.session.lock().await.stop().await;
             self.resources().delete_resource(&alias.into()).await?;
@@ -250,7 +246,7 @@ impl NodeManager {
 
     pub async fn show_inlet(&self, alias: &str) -> Option<InletStatus> {
         info!(%alias, "Handling request to show inlet portal");
-        if let Some(inlet_info) = self.registry.inlets.get(alias).await {
+        if let Some(inlet_info) = self.registry.inlets.get(alias) {
             let session = inlet_info.session.lock().await;
             let connection_status = session.connection_status();
             let outcome = session.last_outcome();
@@ -295,7 +291,7 @@ impl NodeManager {
 
     pub async fn list_inlets(&self) -> Vec<InletStatus> {
         let mut res = vec![];
-        for (alias, info) in self.registry.inlets.entries().await {
+        for (alias, info) in self.registry.inlets.entries() {
             let session = info.session.lock().await;
             let connection_status = session.connection_status();
             let outcome = session.last_outcome();

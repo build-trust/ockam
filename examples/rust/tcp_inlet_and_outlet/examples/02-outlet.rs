@@ -5,7 +5,7 @@ use ockam::{node, Context, Result};
 async fn main(ctx: Context) -> Result<()> {
     // Initialize the TCP Transport.
     let node = node(ctx).await?;
-    let tcp = node.create_tcp_transport().await?;
+    let tcp = node.create_tcp_transport()?;
 
     // Expect first command line argument to be the TCP address of a target TCP server.
     // For example: 127.0.0.1:4002
@@ -30,8 +30,7 @@ async fn main(ctx: Context) -> Result<()> {
         "outlet",
         outlet_target.try_into()?,
         TcpOutletOptions::new().as_consumer(&tcp_listener_options.spawner_flow_control_id()),
-    )
-    .await?;
+    )?;
 
     // Create a TCP listener to receive Ockam Routing Messages from other ockam nodes.
     //
@@ -40,7 +39,7 @@ async fn main(ctx: Context) -> Result<()> {
     let port = std::env::args().nth(2).unwrap_or_else(|| "4000".to_string());
     tcp.listen(format!("127.0.0.1:{port}"), tcp_listener_options).await?;
 
-    // We won't call ctx.stop() here,
+    // We won't call ctx.shutdown_node() here,
     // so this program will keep running until you interrupt it with Ctrl-C.
     Ok(())
 }

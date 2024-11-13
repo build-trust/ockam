@@ -9,7 +9,7 @@ async fn main(ctx: Context) -> Result<()> {
     let mut node = node(ctx).await?;
 
     // Initialize the TCP Transport.
-    let tcp = node.create_tcp_transport().await?;
+    let tcp = node.create_tcp_transport()?;
 
     // Create a TCP connection to a different node.
     let connection_to_responder = tcp.connect("localhost:4000", TcpConnectionOptions::new()).await?;
@@ -22,5 +22,5 @@ async fn main(ctx: Context) -> Result<()> {
     println!("App Received: {}", reply); // should print "Hello Ockam!"
 
     // Stop all workers, stop the node, cleanup and return.
-    node.stop().await
+    node.shutdown().await
 }

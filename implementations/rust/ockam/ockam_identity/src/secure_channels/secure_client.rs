@@ -229,10 +229,9 @@ impl SecureClient {
         let response = client.request(ctx, req).await;
         let _ = self
             .secure_channels
-            .stop_secure_channel(ctx, secure_channel.encryptor_address())
-            .await;
+            .stop_secure_channel(ctx, secure_channel.encryptor_address());
         if let Some(transport_address) = transport_address {
-            let _ = self.transport.disconnect(transport_address).await;
+            let _ = self.transport.disconnect(&transport_address);
         }
         // we delay the unwrapping of the response to make sure that the secure channel is
         // properly stopped first
@@ -274,10 +273,9 @@ impl SecureClient {
         let (secure_channel, transport_address) = self.create_secure_channel(ctx).await?;
         let _ = self
             .secure_channels
-            .stop_secure_channel(ctx, secure_channel.encryptor_address())
-            .await;
+            .stop_secure_channel(ctx, secure_channel.encryptor_address());
         if let Some(transport_address) = transport_address {
-            let _ = self.transport.disconnect(transport_address).await;
+            let _ = self.transport.disconnect(&transport_address);
         }
 
         Ok(())

@@ -13,7 +13,7 @@ use tracing::{debug, info, trace, warn};
 use ockam_api::nodes::models::node::{NodeResources, NodeStatus};
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_api::terminal::{Terminal, TerminalStream};
-use ockam_core::AsyncTryClone;
+use ockam_core::TryClone;
 use ockam_node::Context;
 
 use crate::terminal::tui::ShowCommandTui;
@@ -66,7 +66,7 @@ impl ShowTui {
         node_name: Option<String>,
     ) -> miette::Result<()> {
         let tui = Self {
-            ctx: ctx.async_try_clone().await.into_diagnostic()?,
+            ctx: ctx.try_clone().into_diagnostic()?,
             opts,
             node_name,
         };

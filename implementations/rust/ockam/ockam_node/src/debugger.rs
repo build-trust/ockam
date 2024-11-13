@@ -8,7 +8,6 @@ use ockam_core::{Address, Mailbox, Mailboxes};
 
 #[cfg(feature = "debugger")]
 use ockam_core::compat::{
-    collections::BTreeMap,
     sync::{Arc, RwLock},
     vec::Vec,
 };
@@ -23,13 +22,13 @@ use core::{
 #[derive(Default)]
 struct Debugger {
     /// Map context inheritance from parent main `Mailbox` to child [`Mailboxes`]
-    inherited_mb: Arc<RwLock<BTreeMap<Mailbox, Vec<Mailboxes>>>>,
+    inherited_mb: Arc<RwLock<HashMap<Mailbox, Vec<Mailboxes>>>>,
     /// Map message destination to source
-    incoming: Arc<RwLock<BTreeMap<Address, Vec<Address>>>>,
+    incoming: Arc<RwLock<HashMap<Address, Vec<Address>>>>,
     /// Map message destination `Mailbox` to source [`Mailbox`]
-    incoming_mb: Arc<RwLock<BTreeMap<Mailbox, Vec<Address>>>>,
+    incoming_mb: Arc<RwLock<HashMap<Mailbox, Vec<Address>>>>,
     /// Map message source to destinations
-    outgoing: Arc<RwLock<BTreeMap<Address, Vec<Address>>>>,
+    outgoing: Arc<RwLock<HashMap<Address, Vec<Address>>>>,
 }
 
 /// Return a mutable reference to the global debugger instance
@@ -88,9 +87,9 @@ pub fn log_incoming_message(_receiving_ctx: &Context, _relay_msg: &RelayMessage)
         tracing::trace!(
             "log_incoming_message #{:03}: {} -> {} ({})",
             COUNTER.fetch_add(1, Ordering::Relaxed),
-            _relay_msg.source(),      // sending address
-            _relay_msg.destination(), // receiving address
-            _receiving_ctx.address(), // actual receiving context address
+            _relay_msg.source(),              // sending address
+            _relay_msg.destination(),         // receiving address
+            _receiving_ctx.primary_address(), // actual receiving context address
         );
 
         match instance().incoming.write() {
@@ -137,9 +136,9 @@ pub fn log_outgoing_message(_sending_ctx: &Context, _relay_msg: &RelayMessage) {
         tracing::trace!(
             "log_outgoing_message #{:03}: {} ({}) -> {}",
             COUNTER.fetch_add(1, Ordering::Relaxed),
-            _relay_msg.source(),      // sending address
-            _sending_ctx.address(),   // actual sending context address
-            _relay_msg.destination(), // receiving address
+            _relay_msg.source(),            // sending address
+            _sending_ctx.primary_address(), // actual sending context address
+            _relay_msg.destination(),       // receiving address
         );
 
         match instance().outgoing.write() {
@@ -187,7 +186,7 @@ pub fn log_inherit_context(_tag: &str, _parent: &Context, _child: &Context) {
 
         match instance().inherited_mb.write() {
             Ok(mut inherited_mb) => {
-                let parent = _parent.mailboxes().main_mailbox().clone();
+                let parent = _parent.mailboxes().primary_mailbox().clone();
                 let children = _child.mailboxes().clone();
                 inherited_mb
                     .entry(parent)
@@ -250,8 +249,8 @@ pub fn generate_graphs<W: Write>(w: &mut BufWriter<W>) -> io::Result<()> {
     }
 
     // generate mailboxes set
-    use ockam_core::compat::collections::BTreeSet;
-    let mut mailboxes = BTreeSet::new();
+    use ockam_core::compat::collections::HashSet;
+    let mut mailboxes = HashSet::new();
     if let Ok(inherited_mb) = instance().inherited_mb.read() {
         for (parent, children) in inherited_mb.iter() {
             for child in children.iter() {

@@ -5,7 +5,7 @@ use ockam::{node, route, Context, Result};
 async fn main(ctx: Context) -> Result<()> {
     // Initialize the TCP Transport.
     let node = node(ctx).await?;
-    let tcp = node.create_tcp_transport().await?;
+    let tcp = node.create_tcp_transport()?;
 
     // Expect second command line argument to be the TCP address of a target TCP server.
     // For example: 127.0.0.1:4002
@@ -24,8 +24,7 @@ async fn main(ctx: Context) -> Result<()> {
     //    a previous message from the Inlet.
 
     let outlet_target = std::env::args().nth(2).expect("no outlet target given");
-    tcp.create_outlet("outlet", outlet_target.try_into()?, TcpOutletOptions::new())
-        .await?;
+    tcp.create_outlet("outlet", outlet_target.try_into()?, TcpOutletOptions::new())?;
 
     // Expect first command line argument to be the TCP address on which to start an Inlet
     // For example: 127.0.0.1:4001
@@ -45,7 +44,7 @@ async fn main(ctx: Context) -> Result<()> {
     tcp.create_inlet(inlet_address, route!["outlet"], TcpInletOptions::new())
         .await?;
 
-    // We won't call ctx.stop() here,
+    // We won't call ctx.shutdown_node() here,
     // so this program will keep running until you interrupt it with Ctrl-C.
     Ok(())
 }

@@ -88,7 +88,7 @@ impl SecureChannels {
 
 impl SecureChannels {
     /// Spawns a SecureChannel listener at given `Address` with given [`SecureChannelListenerOptions`]
-    pub async fn create_secure_channel_listener(
+    pub fn create_secure_channel_listener(
         &self,
         ctx: &Context,
         identifier: &Identifier,
@@ -106,8 +106,7 @@ impl SecureChannels {
             identifier,
             address.clone(),
             options,
-        )
-        .await?;
+        )?;
 
         Ok(SecureChannelListener::new(
             address,
@@ -263,8 +262,7 @@ impl SecureChannels {
 
         WorkerBuilder::new(decryptor_worker)
             .with_address(addresses.decryptor_api.clone()) // We only need API address here
-            .start(ctx)
-            .await?;
+            .start(ctx)?;
 
         let sc = SecureChannel::new(
             ctx.flow_controls().clone(),
@@ -292,7 +290,7 @@ impl SecureChannels {
     }
 
     /// Stop a SecureChannel given an encryptor address
-    pub async fn stop_secure_channel(&self, ctx: &Context, channel: &Address) -> Result<()> {
-        ctx.stop_worker(channel.clone()).await
+    pub fn stop_secure_channel(&self, ctx: &Context, channel: &Address) -> Result<()> {
+        ctx.stop_address(channel)
     }
 }

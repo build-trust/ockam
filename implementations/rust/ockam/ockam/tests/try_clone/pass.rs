@@ -1,25 +1,25 @@
-use ockam_core::AsyncTryClone;
+use ockam_core::TryClone;
 
-#[derive(AsyncTryClone)]
+#[derive(TryClone)]
 pub struct Tmp {
     a: u32,
 }
 
-#[derive(AsyncTryClone)]
-#[async_try_clone(crate = "ockam")]
+#[derive(TryClone)]
+#[try_clone(crate = "ockam")]
 pub struct Tmp1<T> {
     a: u32,
     b: Vec<T>,
 }
 
-#[derive(AsyncTryClone)]
-#[async_try_clone(crate = "ockam_core")]
+#[derive(TryClone)]
+#[try_clone(crate = "ockam_core")]
 pub struct Tmp2<T> {
     a: u32,
     b: T,
 }
 
-fn assert_impl<T: AsyncTryClone>() {}
+fn assert_impl<T: TryClone>() {}
 fn main() {
     assert_impl::<String>();
     assert_impl::<Tmp>();

@@ -242,18 +242,14 @@ impl InMemoryNode {
                 encrypted_fields,
             )),
             Arc::new(policy_access_control.create_incoming()),
-            Arc::new(policy_access_control.create_outgoing(context).await?),
+            Arc::new(policy_access_control.create_outgoing(context)?),
             read_portal_payload_length(),
-        )
-        .await?;
+        )?;
 
-        self.registry
-            .kafka_services
-            .insert(
-                interceptor_address,
-                KafkaServiceInfo::new(KafkaServiceKind::Inlet),
-            )
-            .await;
+        self.registry.kafka_services.insert(
+            interceptor_address,
+            KafkaServiceInfo::new(KafkaServiceKind::Inlet),
+        );
 
         Ok(())
     }
@@ -298,25 +294,27 @@ impl InMemoryNode {
                 outlet_controller.clone(),
                 spawner_flow_control_id.clone(),
             )),
-            Arc::new(policy_access_control.create_outgoing(context).await?),
+            Arc::new(policy_access_control.create_outgoing(context)?),
             Arc::new(policy_access_control.create_incoming()),
             read_portal_payload_length(),
-        )
-        .await?;
+        )?;
 
         // every secure channel can reach this service
         let flow_controls = context.flow_controls();
         flow_controls.add_consumer(
-            interceptor_address.clone(),
+            &interceptor_address,
             &default_secure_channel_listener_flow_control_id,
         );
 
         // this spawner flow control id is used to control communication with dynamically created
         // outlets
-        flow_controls.add_spawner(interceptor_address.clone(), &spawner_flow_control_id);
+        flow_controls.add_spawner(&interceptor_address, &spawner_flow_control_id);
 
         // allow communication with the kafka bootstrap outlet
-        flow_controls.add_consumer(KAFKA_OUTLET_BOOTSTRAP_ADDRESS, &spawner_flow_control_id);
+        flow_controls.add_consumer(
+            &KAFKA_OUTLET_BOOTSTRAP_ADDRESS.into(),
+            &spawner_flow_control_id,
+        );
 
         self.create_outlet(
             context,
@@ -329,13 +327,10 @@ impl InMemoryNode {
         )
         .await?;
 
-        self.registry
-            .kafka_services
-            .insert(
-                service_address,
-                KafkaServiceInfo::new(KafkaServiceKind::Outlet),
-            )
-            .await;
+        self.registry.kafka_services.insert(
+            service_address,
+            KafkaServiceInfo::new(KafkaServiceKind::Outlet),
+        );
 
         Ok(())
     }
@@ -349,20 +344,20 @@ impl InMemoryNode {
         kind: KafkaServiceKind,
     ) -> Result<DeleteKafkaServiceResult> {
         debug!(address = %address, kind = %kind, "Deleting kafka service");
-        match self.registry.kafka_services.get(&address).await {
+        match self.registry.kafka_services.get(&address) {
             None => Ok(DeleteKafkaServiceResult::ServiceNotFound { address, kind }),
             Some(e) => {
                 if kind.eq(e.kind()) {
                     match e.kind() {
                         KafkaServiceKind::Inlet => {
-                            ctx.stop_worker(address.clone()).await?;
+                            ctx.stop_address(&address)?;
                         }
                         KafkaServiceKind::Outlet => {
-                            ctx.stop_worker(KAFKA_OUTLET_INTERCEPTOR_ADDRESS).await?;
-                            ctx.stop_worker(KAFKA_OUTLET_BOOTSTRAP_ADDRESS).await?;
+                            ctx.stop_address(&KAFKA_OUTLET_INTERCEPTOR_ADDRESS.into())?;
+                            ctx.stop_address(&KAFKA_OUTLET_BOOTSTRAP_ADDRESS.into())?;
                         }
                     }
-                    self.registry.kafka_services.remove(&address).await;
+                    self.registry.kafka_services.remove(&address);
                     Ok(DeleteKafkaServiceResult::ServiceDeleted)
                 } else {
                     error!(address = %address, "Service is not a kafka {}", kind.to_string());

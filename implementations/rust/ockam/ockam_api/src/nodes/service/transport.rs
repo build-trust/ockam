@@ -48,9 +48,9 @@ impl NodeManager {
 
         // Add all Hop workers as consumers for Demo purposes
         // Production nodes should not run any Hop workers
-        for hop in self.registry.hop_services.keys().await {
+        for hop in self.registry.hop_services.keys() {
             ctx.flow_controls()
-                .add_consumer(hop.clone(), &options.flow_control_id());
+                .add_consumer(&hop, &options.flow_control_id());
         }
 
         let connection = self.tcp_transport.connect(address, options).await?;
@@ -63,7 +63,7 @@ impl NodeManager {
         Ok(listener.into())
     }
 
-    async fn delete_tcp_connection(&self, address: String) -> Result<(), String> {
+    fn delete_tcp_connection(&self, address: String) -> Result<(), String> {
         let sender_address = match address.parse::<SocketAddr>() {
             Ok(socket_address) => self
                 .tcp_transport()
@@ -76,12 +76,11 @@ impl NodeManager {
         };
 
         self.tcp_transport
-            .disconnect(sender_address.clone())
-            .await
+            .disconnect(&sender_address)
             .map_err(|err| format!("Unable to disconnect from {sender_address}: {err}"))
     }
 
-    async fn delete_tcp_listener(&self, address: String) -> Result<(), String> {
+    fn delete_tcp_listener(&self, address: String) -> Result<(), String> {
         let listener_address = match address.parse::<SocketAddr>() {
             Ok(socket_address) => self
                 .tcp_transport()
@@ -95,7 +94,6 @@ impl NodeManager {
 
         self.tcp_transport
             .stop_listener(&listener_address)
-            .await
             .map_err(|err| format!("Unable to stop listener {listener_address}: {err}"))
     }
 }
@@ -178,7 +176,7 @@ impl NodeManagerWorker {
             })
     }
 
-    pub(super) async fn delete_tcp_connection(
+    pub(super) fn delete_tcp_connection(
         &self,
         delete: DeleteTransport,
     ) -> Result<Response<()>, Response<Error>> {
@@ -186,12 +184,11 @@ impl NodeManagerWorker {
 
         self.node_manager
             .delete_tcp_connection(delete.address)
-            .await
             .map(|status| Response::ok().body(status))
             .map_err(|msg| Response::bad_request_no_request(&msg))
     }
 
-    pub(super) async fn delete_tcp_listener(
+    pub(super) fn delete_tcp_listener(
         &self,
         delete: DeleteTransport,
     ) -> Result<Response<()>, Response<Error>> {
@@ -199,7 +196,6 @@ impl NodeManagerWorker {
 
         self.node_manager
             .delete_tcp_listener(delete.address)
-            .await
             .map(|status| Response::ok().body(status))
             .map_err(|msg| Response::bad_request_no_request(&msg))
     }

@@ -16,10 +16,10 @@ pub trait Transport: Send + Sync + 'static {
 
     /// Instantiate transport workers for in order to communicate with a remote address
     /// and return the local address of the transport worker
-    async fn resolve_address(&self, address: Address) -> Result<Address>;
+    async fn resolve_address(&self, address: &Address) -> Result<Address>;
 
     /// Stop all workers and free all resources associated with the connection
-    async fn disconnect(&self, address: Address) -> Result<()>;
+    fn disconnect(&self, address: &Address) -> Result<()>;
 }
 
 /// Helper that creates a length-prefixed buffer containing the given

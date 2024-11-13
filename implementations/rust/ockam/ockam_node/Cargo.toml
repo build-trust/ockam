@@ -58,9 +58,6 @@ no_std = ["ockam_core/no_std", "ockam_transport_core/no_std", "heapless"]
 # Feature: "alloc" enables support for heap allocation (implied by `feature = "std"`)
 alloc = ["ockam_core/alloc", "ockam_executor/alloc", "futures/alloc", "minicbor/alloc"]
 
-# Feature: "dump_internals" when set, will dump the internal state of
-# workers at startup via the trace! macro.
-dump_internals = []
 # TODO should these features be combined?
 metrics = []
 

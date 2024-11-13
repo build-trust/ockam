@@ -1,8 +1,8 @@
 use std::os::unix::net::SocketAddr;
 
 use ockam_core::{
-    async_trait, compat::sync::Arc, Address, AllowSourceAddress, AsyncTryClone, DenyAll, Mailbox,
-    Mailboxes, Processor, Result,
+    async_trait, compat::sync::Arc, Address, AllowSourceAddress, DenyAll, Mailbox, Mailboxes,
+    Processor, Result, TryClone,
 };
 
 use ockam_node::{Context, WorkerBuilder};
@@ -25,7 +25,7 @@ impl UdsListenProcessor {
     /// Binds a UDS socket at the given [`SocketAddr`]
     ///
     /// Starts a [`Processor`] which listens for incoming connections to accept.
-    pub(crate) async fn start(
+    pub(crate) fn start(
         ctx: &Context,
         router_handle: UdsRouterHandle,
         addr: SocketAddr,
@@ -49,8 +49,7 @@ impl UdsListenProcessor {
             router_handle,
         };
 
-        ctx.start_processor(Address::random_tagged("UdsListenProcessor"), processor)
-            .await?;
+        ctx.start_processor(Address::random_tagged("UdsListenProcessor"), processor)?;
 
         Ok(std_sock_addr)
     }
@@ -59,10 +58,6 @@ impl UdsListenProcessor {
 #[async_trait]
 impl Processor for UdsListenProcessor {
     type Context = Context;
-
-    async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
-        ctx.set_cluster(crate::CLUSTER_NAME).await
-    }
 
     /// Listen for and accept incoming UDS connections.
     ///
@@ -75,11 +70,11 @@ impl Processor for UdsListenProcessor {
         debug!("UDS connection accepted");
 
         // Create a connection working
-        let handle_clone = self.router_handle.async_try_clone().await?;
+        let handle_clone = self.router_handle.try_clone()?;
         let local_addr = stream.local_addr().map_err(TransportError::from)?;
         let std_sock_addr = std_socket_addr_from_tokio(&local_addr)?;
         let (send_worker, pair) =
-            UdsSendWorker::new_pair(handle_clone, Some(stream), std_sock_addr, vec![]).await?;
+            UdsSendWorker::new_pair(handle_clone, Some(stream), std_sock_addr, vec![])?;
 
         self.router_handle.register(&pair).await?;
         debug!("UDS connection registered");
@@ -92,12 +87,14 @@ impl Processor for UdsListenProcessor {
 
         let tx_mailbox = Mailbox::new(
             pair.tx_addr(),
+            None,
             Arc::new(AllowSourceAddress(self.router_handle.main_addr().clone())),
             Arc::new(DenyAll),
         );
 
         let internal_mailbox = Mailbox::new(
             send_worker.internal_addr().clone(),
+            None,
             Arc::new(AllowSourceAddress(send_worker.rx_addr().clone())),
             Arc::new(DenyAll),
         );
@@ -105,8 +102,7 @@ impl Processor for UdsListenProcessor {
         let mailboxes = Mailboxes::new(tx_mailbox, vec![internal_mailbox]);
         WorkerBuilder::new(send_worker)
             .with_mailboxes(mailboxes)
-            .start(ctx)
-            .await?;
+            .start(ctx)?;
 
         Ok(true)
     }

@@ -72,7 +72,7 @@ impl Processor for InternalProcessor {
         match &self.mode {
             // Client -> Inlet packet
             PortalMode::Inlet { inlet } => {
-                let inlet_shared_state = inlet.inlet_shared_state.read().await.clone();
+                let inlet_shared_state = inlet.inlet_shared_state.read().unwrap().clone();
 
                 if inlet_shared_state.is_paused() {
                     return Ok(true);
@@ -133,7 +133,7 @@ impl Processor for InternalProcessor {
                         .with_onward_route(inlet_shared_state.route().clone())
                         .with_return_route(route![inlet.remote_worker_address.clone()])
                         .with_payload(cbor_encode_preallocate(&portal_packet)?),
-                    ctx.address(),
+                    ctx.primary_address().clone(),
                 )
                 .await?;
             }
@@ -174,7 +174,7 @@ impl Processor for InternalProcessor {
                         .with_onward_route(return_route)
                         .with_return_route(route![outlet.remote_worker_address.clone()])
                         .with_payload(cbor_encode_preallocate(&portal_packet)?),
-                    ctx.address(),
+                    ctx.primary_address().clone(),
                 )
                 .await?;
             }

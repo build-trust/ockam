@@ -64,7 +64,7 @@ pub fn measure_message_latency_two_nodes() {
                 first_node
                     .context
                     .flow_controls()
-                    .add_consumer(first_node.context.address(), &flow_control_id);
+                    .add_consumer(first_node.context.primary_address(), &flow_control_id);
             }
 
             let payload = NeutralMessage::from(vec![1, 2, 3, 4]);
@@ -102,8 +102,8 @@ pub fn measure_message_latency_two_nodes() {
                 elapsed.div_f32(10_000f32)
             );
 
-            first_node.context.stop().await?;
-            second_node.context.stop().await?;
+            first_node.context.shutdown_node().await?;
+            second_node.context.shutdown_node().await?;
 
             Ok(())
         };
@@ -194,8 +194,8 @@ pub fn measure_buffer_latency_two_nodes_portal() {
                 elapsed.div_f32(10_000f32)
             );
 
-            first_node.context.stop().await?;
-            second_node.context.stop().await?;
+            first_node.context.shutdown_node().await?;
+            second_node.context.shutdown_node().await?;
 
             Ok(())
         };

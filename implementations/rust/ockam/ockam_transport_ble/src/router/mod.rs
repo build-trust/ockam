@@ -40,14 +40,12 @@ pub struct BleRouter {
 }
 
 impl BleRouter {
-    async fn create_self_handle(&self, ctx: &Context) -> Result<BleRouterHandle> {
-        let handle_ctx = ctx
-            .new_detached(
-                Address::random_tagged("BleRouterHandle.async_try_clone.detached"),
-                AllowAll,
-                AllowAll,
-            )
-            .await?;
+    fn create_self_handle(&self, ctx: &Context) -> Result<BleRouterHandle> {
+        let handle_ctx = ctx.new_detached(
+            Address::random_tagged("BleRouterHandle.try_clone.detached"),
+            AllowAll,
+            AllowAll,
+        )?;
         let handle = BleRouterHandle::new(handle_ctx, self.api_addr.clone());
         Ok(handle)
     }
@@ -86,7 +84,7 @@ impl BleRouter {
         let onward = msg.next_on_onward_route()?;
 
         // Look up the connection worker responsible
-        let next = match self.map.get(&onward) {
+        let next = match self.map.get(onward) {
             Some(addr) => addr.clone(),
             None => {
                 error!("unknown route: {:?}", onward);
@@ -95,7 +93,7 @@ impl BleRouter {
         };
 
         // Modify the transport message route
-        let msg = msg.replace_front_onward_route(&next)?;
+        let msg = msg.replace_front_onward_route(next.clone())?;
 
         // Send the transport message to the connection worker
         ctx.send(next.clone(), msg).await?;
@@ -108,11 +106,6 @@ impl BleRouter {
 impl Worker for BleRouter {
     type Context = Context;
     type Message = Any;
-
-    async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
-        ctx.set_cluster(crate::CLUSTER_NAME).await?;
-        Ok(())
-    }
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Any>) -> Result<()> {
         let msg_addr = msg.msg_addr();
@@ -142,18 +135,16 @@ impl BleRouter {
     ///
     /// To also handle incoming connections, use
     /// [`BleRouter::bind`](BleRouter::bind)
-    pub(crate) async fn register(ctx: &Context) -> Result<BleRouterHandle> {
+    pub(crate) fn register(ctx: &Context) -> Result<BleRouterHandle> {
         let main_addr = Address::random_tagged("BleRouter.main_addr");
         let api_addr = Address::random_tagged("BleRouter.api_addr");
         debug!("Registering new BleRouter with address {}", &main_addr);
 
-        let child_ctx = ctx
-            .new_detached(
-                Address::random_tagged("BleRouter.detached_child"),
-                AllowAll,
-                AllowAll,
-            )
-            .await?;
+        let child_ctx = ctx.new_detached(
+            Address::random_tagged("BleRouter.detached_child"),
+            AllowAll,
+            AllowAll,
+        )?;
         let router = Self {
             _ctx: child_ctx,
             main_addr: main_addr.clone(),
@@ -161,26 +152,31 @@ impl BleRouter {
             map: BTreeMap::new(),
         };
 
-        let handle = router.create_self_handle(ctx).await?;
+        let handle = router.create_self_handle(ctx)?;
 
         trace!("Start Ble router for address = {:?}", main_addr.clone());
 
         // TODO: @ac
         let mailboxes = Mailboxes::new(
-            Mailbox::new(main_addr.clone(), Arc::new(AllowAll), Arc::new(AllowAll)),
+            Mailbox::new(
+                main_addr.clone(),
+                None,
+                Arc::new(AllowAll),
+                Arc::new(AllowAll),
+            ),
             vec![Mailbox::new(
                 api_addr,
+                None,
                 Arc::new(AllowAll),
                 Arc::new(AllowAll),
             )],
         );
         WorkerBuilder::new(router)
             .with_mailboxes(mailboxes)
-            .start(ctx)
-            .await?;
+            .start(ctx)?;
 
         trace!("Registering Ble router for type = {}", crate::BLE);
-        ctx.register(crate::BLE, main_addr).await?;
+        ctx.register(crate::BLE, main_addr)?;
 
         Ok(handle)
     }

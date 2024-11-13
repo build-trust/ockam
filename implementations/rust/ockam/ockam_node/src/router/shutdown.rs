@@ -1,139 +1,123 @@
-use super::Router;
-use crate::channel_types::SmallSender;
-use crate::{
-    error::{NodeError, NodeReason},
-    NodeReplyResult, RouterReply,
-};
-use ockam_core::compat::vec::Vec;
-use ockam_core::{Address, Result};
-
-/// Register a stop ACK
-///
-/// For every ACK we re-test whether the current cluster has stopped.
-/// If not, we do nothing. If so, we trigger the next cluster to stop.
-pub(super) async fn ack(router: &mut Router, addr: Address) -> Result<bool> {
-    debug!("Handling shutdown ACK for {}", addr);
-
-    // Permanently remove the address and corresponding worker
-    router.map.free_address(addr);
-
-    // If there are workers left in the cluster: keep waiting
-    if !router.map.cluster_done() {
-        return Ok(false);
-    }
-
-    // Check if there is a next cluster
-    router.stop_next_cluster().await
-}
+use super::{Router, RouterState};
+use crate::tokio::time;
+use crate::WorkerShutdownPriority;
+use core::time::Duration;
+use ockam_core::compat::sync::Arc;
+use ockam_core::Result;
 
 impl Router {
-    async fn stop_next_cluster(&mut self) -> Result<bool> {
-        let next_cluster_addresses = self.map.next_cluster();
+    /// Implement the graceful shutdown strategy
+    #[cfg_attr(not(feature = "std"), allow(unused_variables))]
+    pub async fn shutdown_graceful(self: Arc<Router>, seconds: u8) -> Result<()> {
+        // This changes the router state to `Stopping`
+        let state = {
+            let mut state = self.state.write().unwrap();
 
-        match next_cluster_addresses {
-            Some(vec) => {
-                self.stop_cluster_addresses(vec).await?;
-                Ok(false)
+            let state_val = *state;
+            if state_val == RouterState::Running {
+                *state = RouterState::ShuttingDown;
             }
-            // If not, we are done!
-            None => Ok(true),
+
+            state_val
+        };
+
+        match state {
+            RouterState::Running => {}
+            RouterState::ShuttingDown => {
+                info!("Router is already stopping");
+                self.wait_termination().await;
+                return Ok(());
+            }
+            RouterState::Shutdown => {
+                info!("Router is already stopped");
+                return Ok(());
+            }
         }
-    }
 
-    async fn stop_cluster_addresses(&mut self, addresses: Vec<Address>) -> Result<()> {
-        let mut addrs = vec![];
+        info!("Initiate graceful node shutdown");
 
-        for address in addresses.iter() {
-            if let Some(record) = self.map.get_address_record_mut(address) {
-                record.stop().await?;
-                if let Some(first_address) = record.address_set().first().cloned() {
-                    addrs.push(first_address);
+        // Start a timeout task to interrupt us...
+        let dur = Duration::from_secs(seconds as u64);
+
+        let r = self.clone();
+        let timeout = async move {
+            time::sleep(dur).await;
+
+            // TODO: This actually doesn't abort anything, but it should unblock the .stop call, so
+            //  that we can process and eventually drop the tokio Runtime
+            warn!("Shutdown timeout reached; aborting node!");
+            let uncleared_addresses = r.map.force_clear_records();
+
+            if !uncleared_addresses.is_empty() {
+                error!(
+                    "Router internal inconsistency detected.\
+                     Records map is not empty after stopping all workers. Addresses: {:?}",
+                    uncleared_addresses
+                );
+            }
+        };
+
+        let r = self.clone();
+        let shutdown = async move {
+            for shutdown_priority in WorkerShutdownPriority::all_descending_order() {
+                debug!("Stopping workers with priority: {:?}", shutdown_priority);
+                let shutdown_yield_receiver = r.map.stop_workers(shutdown_priority);
+
+                if let Some(shutdown_yield_receiver) = shutdown_yield_receiver {
+                    debug!(
+                        "Waiting for yield for workers with priority: {:?}",
+                        shutdown_priority
+                    );
+                    // Wait for stop ack
+                    match shutdown_yield_receiver.await {
+                        Ok(_) => {
+                            debug!(
+                                "Received yield for workers with priority: {:?}",
+                                shutdown_priority
+                            );
+                        }
+                        Err(err) => {
+                            error!("Error receiving shutdown yield: {}", err);
+                        }
+                    }
                 } else {
-                    error!("Empty Address Set during cluster stop");
+                    debug!(
+                        "There was no workers with priority: {:?}",
+                        shutdown_priority
+                    );
+                }
+            }
+
+            debug!("Router shutdown finished");
+        };
+
+        #[cfg(feature = "std")]
+        crate::tokio::select! {
+            _ = shutdown => {}
+            _ = timeout => {}
+        }
+
+        #[cfg(not(feature = "std"))]
+        shutdown.await;
+
+        debug!("Setting Router state to Shutdown");
+        *self.state.write().unwrap() = RouterState::Shutdown;
+        debug!("Sending Router shutdown broadcast");
+        #[cfg(feature = "std")]
+        match self.shutdown_broadcast_sender.write().unwrap().take() {
+            None => {
+                warn!("Couldn't send Router shutdown message. Channel is missing.");
+            }
+            Some(shutdown_broadcast_sender) => {
+                if shutdown_broadcast_sender.send(()).is_err() {
+                    // That's fine, it's possible nobody is listening for that broadcast
+                    debug!("Couldn't send Router shutdown message. Sending error.");
                 }
             }
         }
 
-        addrs.into_iter().for_each(|addr| self.map.init_stop(addr));
+        info!("No more workers left. Goodbye!");
+
         Ok(())
     }
-}
-
-/// Implement the graceful shutdown strategy
-#[cfg_attr(not(feature = "std"), allow(unused_variables))]
-pub(super) async fn graceful(
-    router: &mut Router,
-    timeout: u8,
-    reply: SmallSender<NodeReplyResult>,
-) -> Result<bool> {
-    // Mark the router as shutting down to prevent spawning
-    debug!("initiating graceful node shutdown");
-    // This changes the router state to `Stopping`
-    router.state.shutdown(reply);
-
-    // Start by shutting down clusterless workers
-    let mut cluster = vec![];
-    for rec in router.map.non_cluster_workers().iter_mut() {
-        if let Some(first_address) = rec.address_set().first().cloned() {
-            debug!("stopping address {}", first_address);
-            rec.stop().await?;
-            cluster.push(first_address);
-        } else {
-            error!("empty address set during graceful shutdown");
-        }
-    }
-
-    // If there _are_ no clusterless workers we go to the next cluster
-    if cluster.is_empty() {
-        return router.stop_next_cluster().await;
-    }
-
-    // Otherwise: keep track of addresses we are stopping
-    cluster
-        .into_iter()
-        .for_each(|addr| router.map.init_stop(addr));
-
-    // Start a timeout task to interrupt us...
-    #[cfg(feature = "std")]
-    {
-        use crate::NodeMessage;
-        use core::time::Duration;
-        use tokio::{task, time};
-
-        let sender = router.sender();
-        let dur = Duration::from_secs(timeout as u64);
-        task::spawn(async move {
-            time::sleep(dur).await;
-            warn!(%timeout, "shutdown timeout reached; aborting node!");
-            // This works only because the state of the router is `Stopping`
-            if sender.send(NodeMessage::AbortNode).await.is_err() {
-                warn!("couldn't send node abort signal to router");
-            }
-        });
-    }
-
-    info!("node was shutdown gracefully");
-
-    // Return but DO NOT stop the router
-    Ok(false)
-}
-
-/// Implement the immediate shutdown strategy
-///
-/// When triggering an `immediate` shutdown, all worker handles are
-/// signaled to terminate, allowing workers to run their `async fn
-/// shutdown(...)` hook.  However: the router will not wait for them!
-/// Messages sent during the shutdown phase may not be delivered and
-/// shutdown hooks may be suddenly interrupted by thread-deallocation.
-pub(super) async fn immediate(
-    router: &mut Router,
-    reply: SmallSender<NodeReplyResult>,
-) -> Result<()> {
-    router.map.clear_address_records_map();
-    router.state.kill();
-    reply
-        .send(RouterReply::ok())
-        .await
-        .map_err(|_| NodeError::NodeState(NodeReason::Unknown).internal())?;
-    Ok(())
 }

@@ -10,12 +10,8 @@ impl NodeManagerWorker {
         &self,
         ctx: &Context,
     ) -> Result<Response<WorkerList>, Response<Error>> {
-        let workers = match ctx.list_workers().await {
-            Err(e) => Err(Response::internal_error_no_request(&e.to_string())),
-            Ok(workers) => Ok(workers),
-        }?;
-
-        let list = workers
+        let list = ctx
+            .list_workers()?
             .into_iter()
             .map(|addr| WorkerStatus::new(addr.address()))
             .collect();

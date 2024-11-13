@@ -4,8 +4,7 @@ use ockam_core::compat::string::{String, ToString};
 use ockam_core::compat::sync::Arc;
 use ockam_core::flow_control::FlowControlId;
 use ockam_core::{
-    route, AllowAll, AllowSourceAddress, DenyAll, Mailbox, Mailboxes, OutgoingAccessControl,
-    Result, Route,
+    AllowAll, AllowSourceAddress, DenyAll, Mailbox, Mailboxes, OutgoingAccessControl, Result, Route,
 };
 use ockam_node::WorkerBuilder;
 use tracing::debug;
@@ -32,12 +31,14 @@ impl RemoteRelay {
     ) -> Mailboxes {
         let main_internal = Mailbox::new(
             addresses.main_internal,
+            None,
             Arc::new(DenyAll),
             outgoing_access_control,
         );
 
         let main_remote = Mailbox::new(
             addresses.main_remote,
+            None,
             Arc::new(AllowAll),
             Arc::new(AllowAll),
         );
@@ -71,15 +72,13 @@ impl RemoteRelay {
     ) -> Result<RemoteRelayInfo> {
         let addresses = Addresses::generate(RelayType::Static);
 
-        let mut callback_ctx = ctx
-            .new_detached_with_mailboxes(Mailboxes::main(
-                addresses.completion_callback.clone(),
-                Arc::new(AllowSourceAddress(addresses.main_remote.clone())),
-                Arc::new(DenyAll),
-            ))
-            .await?;
+        let mut callback_ctx = ctx.new_detached_with_mailboxes(Mailboxes::primary(
+            addresses.completion_callback.clone(),
+            Arc::new(AllowSourceAddress(addresses.main_remote.clone())),
+            Arc::new(DenyAll),
+        ))?;
 
-        let registration_route = route![orchestrator_route.into(), "static_forwarding_service"];
+        let registration_route = orchestrator_route.into() + "static_forwarding_service";
 
         let flow_control_id =
             options.setup_flow_control(ctx.flow_controls(), &addresses, registration_route.next()?);
@@ -97,8 +96,7 @@ impl RemoteRelay {
         let mailboxes = Self::mailboxes(addresses, outgoing_access_control);
         WorkerBuilder::new(relay)
             .with_mailboxes(mailboxes)
-            .start(ctx)
-            .await?;
+            .start(ctx)?;
 
         let resp = callback_ctx
             .receive::<RemoteRelayInfo>()
@@ -116,15 +114,13 @@ impl RemoteRelay {
     ) -> Result<RemoteRelayInfo> {
         let addresses = Addresses::generate(RelayType::Ephemeral);
 
-        let mut callback_ctx = ctx
-            .new_detached_with_mailboxes(Mailboxes::main(
-                addresses.completion_callback.clone(),
-                Arc::new(AllowSourceAddress(addresses.main_remote.clone())),
-                Arc::new(DenyAll),
-            ))
-            .await?;
+        let mut callback_ctx = ctx.new_detached_with_mailboxes(Mailboxes::primary(
+            addresses.completion_callback.clone(),
+            Arc::new(AllowSourceAddress(addresses.main_remote.clone())),
+            Arc::new(DenyAll),
+        ))?;
 
-        let registration_route = route![orchestrator_route, "forwarding_service"];
+        let registration_route = orchestrator_route.into() + "forwarding_service";
 
         let flow_control_id =
             options.setup_flow_control(ctx.flow_controls(), &addresses, registration_route.next()?);
@@ -145,8 +141,7 @@ impl RemoteRelay {
         let mailboxes = Self::mailboxes(addresses, outgoing_access_control);
         WorkerBuilder::new(relay)
             .with_mailboxes(mailboxes)
-            .start(ctx)
-            .await?;
+            .start(ctx)?;
 
         let resp = callback_ctx
             .receive::<RemoteRelayInfo>()

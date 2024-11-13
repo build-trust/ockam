@@ -148,7 +148,7 @@ impl Session {
     }
 
     /// Create a Session
-    pub async fn create(
+    pub fn create(
         ctx: &Context,
         replacer: Arc<AsyncMutex<dyn SessionReplacer>>,
         additional_session_options: Option<AdditionalSessionOptions>,
@@ -160,20 +160,17 @@ impl Session {
             RETRY_DELAY,
             PING_INTERVAL,
         )
-        .await
     }
 
     /// Create a Session
-    pub async fn create_extended(
+    pub fn create_extended(
         ctx: &Context,
         replacer: Arc<AsyncMutex<dyn SessionReplacer>>,
         additional_session_options: Option<AdditionalSessionOptions>,
         retry_delay: Duration,
         ping_interval: Duration,
     ) -> Result<Self> {
-        let ctx = ctx
-            .new_detached(Address::random_tagged("Session.ctx"), DenyAll, AllowAll)
-            .await?;
+        let ctx = ctx.new_detached(Address::random_tagged("Session.ctx"), DenyAll, AllowAll)?;
 
         Ok(Self::new(
             ctx,
@@ -278,7 +275,7 @@ impl Session {
     }
 
     /// Start monitoring the session
-    pub async fn start_monitoring(&mut self) -> Result<()> {
+    pub fn start_monitoring(&mut self) -> Result<()> {
         let (ping_channel_sender, ping_channel_receiver) = mpsc::channel(1);
 
         // Will shut down itself when we stop the Collector
@@ -291,17 +288,13 @@ impl Session {
         WorkerBuilder::new(Collector::new(ping_channel_sender))
             .with_address(self.collector_address.clone())
             .with_outgoing_access_control(DenyAll)
-            .start(&self.ctx)
-            .await?;
+            .start(&self.ctx)?;
 
-        let ctx = self
-            .ctx
-            .new_detached(
-                Address::random_tagged("Session.ctx.run_loop"),
-                DenyAll,
-                AllowAll,
-            )
-            .await?;
+        let ctx = self.ctx.new_detached(
+            Address::random_tagged("Session.ctx.run_loop"),
+            DenyAll,
+            AllowAll,
+        )?;
 
         let handle = tokio::spawn(Self::run_loop(
             ctx,
@@ -328,17 +321,13 @@ impl Session {
             WorkerBuilder::new(Collector::new(ping_channel_sender))
                 .with_address(additional_state.collector_address.clone())
                 .with_outgoing_access_control(DenyAll)
-                .start(&self.ctx)
-                .await?;
+                .start(&self.ctx)?;
 
-            let ctx = self
-                .ctx
-                .new_detached(
-                    Address::random_tagged("Session.ctx.run_loop.additional"),
-                    DenyAll,
-                    AllowAll,
-                )
-                .await?;
+            let ctx = self.ctx.new_detached(
+                Address::random_tagged("Session.ctx.run_loop.additional"),
+                DenyAll,
+                AllowAll,
+            )?;
 
             let handle = tokio::spawn(Self::run_loop_additional(
                 ctx,
@@ -375,10 +364,7 @@ impl Session {
                 .await;
             additional_state.shared_state.status.set_down();
 
-            _ = self
-                .ctx
-                .stop_worker(additional_state.collector_address)
-                .await;
+            _ = self.ctx.stop_address(&additional_state.collector_address);
         }
     }
 
@@ -393,7 +379,7 @@ impl Session {
 
         // ping_receiver_handle task will shut down itself when Collector Worker drops the sender
 
-        _ = self.ctx.stop_worker(self.collector_address.clone()).await;
+        _ = self.ctx.stop_address(&self.collector_address);
     }
 
     /// Stop everything
@@ -414,7 +400,7 @@ impl Session {
         pings.push(ping);
         let ping_encoded = Encodable::encode(ping)?;
 
-        let echo_route = route![ping_route.clone(), DefaultAddress::ECHO_SERVICE];
+        let echo_route = ping_route.clone() + DefaultAddress::ECHO_SERVICE;
         trace! {
             key  = %key,
             addr = %ping_route,
@@ -433,7 +419,7 @@ impl Session {
             .map(|x| x.flow_control_id().clone())
         {
             ctx.flow_controls()
-                .add_consumer(collector_address.clone(), &flow_control_id);
+                .add_consumer(&collector_address, &flow_control_id);
         }
 
         let local_message = LocalMessage::new()

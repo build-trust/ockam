@@ -134,7 +134,7 @@ impl InMemoryNode {
     ) -> miette::Result<InMemoryNode> {
         let defaults = NodeManagerDefaults::default();
 
-        let tcp = TcpTransport::create(ctx).await.into_diagnostic()?;
+        let tcp = TcpTransport::create(ctx).into_diagnostic()?;
         let tcp_listener = tcp
             .listen(
                 defaults.tcp_listener_address.as_str(),
@@ -173,7 +173,7 @@ impl InMemoryNode {
         .await
         .into_diagnostic()?;
         ctx.flow_controls()
-            .add_consumer(NODEMANAGER_ADDR, tcp_listener.flow_control_id());
+            .add_consumer(&NODEMANAGER_ADDR.into(), tcp_listener.flow_control_id());
         Ok(node_manager)
     }
 
@@ -183,16 +183,16 @@ impl InMemoryNode {
     }
 
     pub async fn stop(&self, ctx: &Context) -> Result<()> {
-        for session in self.registry.inlets.values().await {
+        for session in self.registry.inlets.values() {
             session.session.lock().await.stop().await;
         }
 
-        for session in self.registry.relays.values().await {
+        for session in self.registry.relays.values() {
             session.session.lock().await.stop().await;
         }
 
         for addr in DefaultAddress::iter() {
-            let result = ctx.stop_worker(addr).await;
+            let result = ctx.stop_address(&addr.into());
             // when stopping we can safely ignore missing services
             if let Err(err) = result {
                 if err.code().kind == Kind::NotFound {

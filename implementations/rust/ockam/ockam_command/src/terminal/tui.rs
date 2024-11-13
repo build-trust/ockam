@@ -4,7 +4,7 @@ use miette::{miette, IntoDiagnostic};
 use ockam_api::colors::color_primary;
 use ockam_api::terminal::{Terminal, TerminalStream};
 use ockam_api::{fmt_info, fmt_warn};
-use ockam_core::AsyncTryClone;
+use ockam_core::TryClone;
 use std::time::Duration;
 use tokio::task::JoinSet;
 use tokio::time::sleep;
@@ -112,7 +112,7 @@ fn get_opt_node_name_message(node_name: Option<&str>) -> String {
 }
 
 #[ockam_core::async_trait]
-pub trait DeleteCommandTui: AsyncTryClone + Send
+pub trait DeleteCommandTui: TryClone + Send
 where
     Self: 'static,
 {
@@ -149,7 +149,7 @@ where
         for chunk in items_names.chunks(10).map(|c| c.to_vec()) {
             let mut set: JoinSet<miette::Result<()>> = JoinSet::new();
             for item_name in chunk {
-                let _self = self.async_try_clone().await.into_diagnostic()?;
+                let _self = self.try_clone().into_diagnostic()?;
                 set.spawn(async move {
                     sleep(tokio_retry::strategy::jitter(Duration::from_millis(500))).await;
                     if _self.delete_single(&item_name).await.is_err() {

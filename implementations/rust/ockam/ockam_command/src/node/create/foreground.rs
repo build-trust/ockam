@@ -44,7 +44,7 @@ impl CreateCommand {
             .into_diagnostic()?;
 
         // Create TCP transport
-        let tcp = TcpTransport::create(ctx).await.into_diagnostic()?;
+        let tcp = TcpTransport::create(ctx).into_diagnostic()?;
         let tcp_listener = tcp
             .listen(&self.tcp_listener_address, TcpListenerOptions::new())
             .await
@@ -76,7 +76,7 @@ impl CreateCommand {
         debug!("node info persisted {node_info:?}");
 
         let udp_options = if self.udp {
-            let udp = UdpTransport::create(ctx).await.into_diagnostic()?;
+            let udp = UdpTransport::create(ctx).into_diagnostic()?;
             let options = UdpBindOptions::new();
             let flow_control_id = options.flow_control_id();
             udp.bind(
@@ -112,9 +112,8 @@ impl CreateCommand {
         let node_manager = Arc::new(node_man);
         let node_manager_worker = NodeManagerWorker::new(node_manager.clone());
         ctx.flow_controls()
-            .add_consumer(NODEMANAGER_ADDR, tcp_listener.flow_control_id());
+            .add_consumer(&NODEMANAGER_ADDR.into(), tcp_listener.flow_control_id());
         ctx.start_worker(NODEMANAGER_ADDR, node_manager_worker)
-            .await
             .into_diagnostic()?;
         debug!("node manager worker started");
 
@@ -128,7 +127,7 @@ impl CreateCommand {
             //      and the other being terminated, so when restarted it works.  This is
             //      FAR from ideal.
             sleep(Duration::from_secs(10)).await;
-            ctx.stop().await.into_diagnostic()?;
+            ctx.shutdown_node().await.into_diagnostic()?;
             return Err(miette!("Failed to start services"));
         }
 

@@ -50,9 +50,7 @@ impl Worker for UdpSenderWorker {
     type Context = Context;
 
     async fn shutdown(&mut self, ctx: &mut Self::Context) -> Result<()> {
-        let _ = ctx
-            .stop_processor(self.addresses.receiver_address().clone())
-            .await;
+        let _ = ctx.stop_address(self.addresses.receiver_address());
 
         Ok(())
     }
@@ -71,7 +69,7 @@ impl Worker for UdpSenderWorker {
             *peer
         } else {
             // Resolve peer address to IPv4 SocketAddr(s).
-            let peer_addr = msg.next_on_onward_route()?;
+            let peer_addr = msg.next_on_onward_route()?.clone();
             msg = msg.pop_front_onward_route()?;
 
             if peer_addr.transport_type() != UDP {

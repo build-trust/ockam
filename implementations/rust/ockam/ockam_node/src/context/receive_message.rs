@@ -61,7 +61,7 @@ impl Context {
     pub(crate) async fn receiver_next(&mut self) -> Result<Option<RelayMessage>> {
         loop {
             let relay_msg = if let Some(msg) = self.receiver.recv().await.map(|msg| {
-                trace!(address=%self.address(), "received new message!");
+                trace!(address=%self.primary_address(), "received new message!");
 
                 // First we update the mailbox fill metrics
                 self.mailbox_count.fetch_sub(1, Ordering::Acquire);

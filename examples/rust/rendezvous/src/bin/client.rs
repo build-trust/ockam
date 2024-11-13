@@ -5,7 +5,7 @@ use ockam_transport_udp::{UdpBindArguments, UdpBindOptions, UdpTransport, UDP};
 
 #[ockam_macros::node]
 async fn main(ctx: Context) -> Result<()> {
-    let udp = UdpTransport::create(&ctx).await?;
+    let udp = UdpTransport::create(&ctx)?;
 
     let bind = udp
         .bind(UdpBindArguments::new(), UdpBindOptions::new())
@@ -19,5 +19,5 @@ async fn main(ctx: Context) -> Result<()> {
     println!("App Received: {}", reply); // should print "Hello Ockam!"
 
     // Stop all workers, stop the node, cleanup and return.
-    ctx.stop().await
+    ctx.shutdown_node().await
 }

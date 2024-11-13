@@ -8,10 +8,10 @@ use ockam_transport_tcp::{TcpConnectionOptions, TcpListenerOptions, TcpTransport
 async fn send_receive(ctx: &mut Context) -> Result<()> {
     let options = TcpListenerOptions::new();
     ctx.flow_controls()
-        .add_consumer("echoer", &options.spawner_flow_control_id());
-    ctx.start_worker("echoer", Echoer).await?;
+        .add_consumer(&"echoer".into(), &options.spawner_flow_control_id());
+    ctx.start_worker("echoer", Echoer)?;
 
-    let transport = TcpTransport::create(ctx).await?;
+    let transport = TcpTransport::create(ctx)?;
     let listener = transport.listen("127.0.0.1:0", options).await?;
 
     let addr = transport

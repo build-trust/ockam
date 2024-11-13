@@ -10,9 +10,9 @@ use std::time::Duration;
 // Node creates a Relay service and a Remote Relay, Echoer is reached through the Relay. No flow control
 #[ockam_macros::test]
 async fn test1(ctx: &mut Context) -> Result<()> {
-    RelayService::create(ctx, "forwarding_service", RelayServiceOptions::new()).await?;
+    RelayService::create(ctx, "forwarding_service", RelayServiceOptions::new())?;
 
-    ctx.start_worker("echoer", Echoer).await?;
+    ctx.start_worker("echoer", Echoer)?;
 
     let remote_info = RemoteRelay::create(ctx, route![], RemoteRelayOptions::new()).await?;
 
@@ -36,8 +36,8 @@ async fn test2(ctx: &mut Context) -> Result<()> {
     let options = RelayServiceOptions::new()
         .service_as_consumer(&tcp_listener_options.spawner_flow_control_id())
         .relay_as_consumer(&tcp_listener_options.spawner_flow_control_id());
-    RelayService::create(ctx, "forwarding_service", options).await?;
-    let cloud_tcp = TcpTransport::create(ctx).await?;
+    RelayService::create(ctx, "forwarding_service", options)?;
+    let cloud_tcp = TcpTransport::create(ctx)?;
 
     let cloud_listener = cloud_tcp
         .listen("127.0.0.1:0", tcp_listener_options)
@@ -45,11 +45,11 @@ async fn test2(ctx: &mut Context) -> Result<()> {
 
     let tcp_options = TcpConnectionOptions::new();
 
-    ctx.start_worker("echoer", Echoer).await?;
+    ctx.start_worker("echoer", Echoer)?;
     ctx.flow_controls()
-        .add_consumer("echoer", &tcp_options.flow_control_id());
+        .add_consumer(&"echoer".into(), &tcp_options.flow_control_id());
 
-    let server_tcp = TcpTransport::create(ctx).await?;
+    let server_tcp = TcpTransport::create(ctx)?;
     let cloud_connection = server_tcp
         .connect(cloud_listener.socket_string(), tcp_options)
         .await?;
@@ -57,7 +57,7 @@ async fn test2(ctx: &mut Context) -> Result<()> {
     let remote_info =
         RemoteRelay::create(ctx, cloud_connection.clone(), RemoteRelayOptions::new()).await?;
 
-    let client_tcp = TcpTransport::create(ctx).await?;
+    let client_tcp = TcpTransport::create(ctx)?;
     let cloud_connection = client_tcp
         .connect(cloud_listener.socket_string(), TcpConnectionOptions::new())
         .await?;
@@ -81,8 +81,8 @@ async fn test3(ctx: &mut Context) -> Result<()> {
     let options = RelayServiceOptions::new()
         .service_as_consumer(&tcp_listener_options.spawner_flow_control_id())
         .relay_as_consumer(&tcp_listener_options.spawner_flow_control_id());
-    RelayService::create(ctx, "forwarding_service", options).await?;
-    let cloud_tcp = TcpTransport::create(ctx).await?;
+    RelayService::create(ctx, "forwarding_service", options)?;
+    let cloud_tcp = TcpTransport::create(ctx)?;
     let cloud_listener = cloud_tcp
         .listen("127.0.0.1:0", tcp_listener_options)
         .await?;
@@ -90,7 +90,7 @@ async fn test3(ctx: &mut Context) -> Result<()> {
     let tcp_options = TcpConnectionOptions::new();
     let server_tcp_flow_control_id = tcp_options.flow_control_id();
 
-    let server_tcp = TcpTransport::create(ctx).await?;
+    let server_tcp = TcpTransport::create(ctx)?;
     let cloud_connection = server_tcp
         .connect(cloud_listener.socket_string(), tcp_options)
         .await?;
@@ -98,7 +98,7 @@ async fn test3(ctx: &mut Context) -> Result<()> {
     let remote_info =
         RemoteRelay::create(ctx, cloud_connection.clone(), RemoteRelayOptions::new()).await?;
 
-    let mut child_ctx = ctx.new_detached("ctx", AllowAll, AllowAll).await?;
+    let mut child_ctx = ctx.new_detached("ctx", AllowAll, AllowAll)?;
     ctx.send(
         route![remote_info.remote_address(), "ctx"],
         "Hello".to_string(),
@@ -114,7 +114,7 @@ async fn test3(ctx: &mut Context) -> Result<()> {
     assert!(res.is_err(), "Should not pass outgoing access control");
 
     ctx.flow_controls()
-        .add_consumer("ctx", &server_tcp_flow_control_id);
+        .add_consumer(&"ctx".into(), &server_tcp_flow_control_id);
 
     ctx.send(
         route![remote_info.remote_address(), "ctx"],
@@ -159,21 +159,19 @@ async fn test4(ctx: &mut Context) -> Result<()> {
     let options = RelayServiceOptions::new()
         .service_as_consumer(&cloud_secure_channel_listener_options.spawner_flow_control_id())
         .relay_as_consumer(&cloud_secure_channel_listener_options.spawner_flow_control_id());
-    RelayService::create(ctx, "forwarding_service", options).await?;
+    RelayService::create(ctx, "forwarding_service", options)?;
 
     let secure_channels = secure_channels().await?;
     let identities_creation = secure_channels.identities().identities_creation();
     let cloud = identities_creation.create_identity().await?;
-    secure_channels
-        .create_secure_channel_listener(
-            ctx,
-            &cloud,
-            "cloud_listener",
-            cloud_secure_channel_listener_options,
-        )
-        .await?;
+    secure_channels.create_secure_channel_listener(
+        ctx,
+        &cloud,
+        "cloud_listener",
+        cloud_secure_channel_listener_options,
+    )?;
 
-    let cloud_tcp = TcpTransport::create(ctx).await?;
+    let cloud_tcp = TcpTransport::create(ctx)?;
     let cloud_listener = cloud_tcp
         .listen("127.0.0.1:0", cloud_tcp_listener_options)
         .await?;
@@ -183,13 +181,13 @@ async fn test4(ctx: &mut Context) -> Result<()> {
     let server_secure_channel_listener_options = SecureChannelListenerOptions::new()
         .as_consumer(&server_secure_channel_options.producer_flow_control_id());
 
-    ctx.start_worker("echoer", Echoer).await?;
+    ctx.start_worker("echoer", Echoer)?;
     ctx.flow_controls().add_consumer(
-        "echoer",
+        &"echoer".into(),
         &server_secure_channel_listener_options.spawner_flow_control_id(),
     );
 
-    let server_tcp = TcpTransport::create(ctx).await?;
+    let server_tcp = TcpTransport::create(ctx)?;
     let cloud_server_connection = server_tcp
         .connect(cloud_listener.socket_string(), TcpConnectionOptions::new())
         .await?;
@@ -202,20 +200,18 @@ async fn test4(ctx: &mut Context) -> Result<()> {
             server_secure_channel_options,
         )
         .await?;
-    secure_channels
-        .create_secure_channel_listener(
-            ctx,
-            &server,
-            "server_listener",
-            server_secure_channel_listener_options,
-        )
-        .await?;
+    secure_channels.create_secure_channel_listener(
+        ctx,
+        &server,
+        "server_listener",
+        server_secure_channel_listener_options,
+    )?;
 
     let remote_info =
         RemoteRelay::create(ctx, cloud_server_channel.clone(), RemoteRelayOptions::new()).await?;
 
     // Client
-    let client_tcp = TcpTransport::create(ctx).await?;
+    let client_tcp = TcpTransport::create(ctx)?;
     let cloud_client_connection = client_tcp
         .connect(cloud_listener.socket_string(), TcpConnectionOptions::new())
         .await?;

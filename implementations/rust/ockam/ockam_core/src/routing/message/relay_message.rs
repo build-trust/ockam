@@ -48,7 +48,7 @@ impl RelayMessage {
 
     /// Payload
     pub fn payload(&self) -> &[u8] {
-        self.local_msg.payload_ref()
+        self.local_msg.payload()
     }
 
     /// Local message

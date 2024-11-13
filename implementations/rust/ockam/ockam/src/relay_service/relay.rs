@@ -17,7 +17,7 @@ pub(super) struct Relay {
 }
 
 impl Relay {
-    pub(super) async fn create(
+    pub(super) fn create(
         ctx: &Context,
         address: Address,
         forward_route: Route,
@@ -44,8 +44,7 @@ impl Relay {
             .with_address(address)
             .with_incoming_access_control_arc(incoming_access_control)
             .with_outgoing_access_control_arc(outgoing_access_control)
-            .start(ctx)
-            .await?;
+            .start(ctx)?;
 
         Ok(())
     }
@@ -65,7 +64,7 @@ impl Worker for Relay {
         ctx.forward(
             LocalMessage::new()
                 .with_onward_route(self.forward_route.clone())
-                .with_return_route(route![ctx.address()])
+                .with_return_route(route![ctx.primary_address().clone()])
                 .with_payload(payload),
         )
         .await?;
@@ -85,17 +84,17 @@ impl Worker for Relay {
 
         local_message = local_message
             .pop_front_onward_route()?
-            .prepend_front_onward_route(&self.forward_route);
+            .prepend_front_onward_route(self.forward_route.clone());
 
         let next_hop = local_message.next_on_onward_route()?;
         let prev_hop = local_message.return_route().next()?;
 
         if let Some(info) = ctx
             .flow_controls()
-            .find_flow_control_with_producer_address(&next_hop)
+            .find_flow_control_with_producer_address(next_hop)
         {
             ctx.flow_controls()
-                .add_consumer(prev_hop.clone(), info.flow_control_id());
+                .add_consumer(prev_hop, info.flow_control_id());
         }
 
         if let Some(info) = ctx
@@ -103,7 +102,7 @@ impl Worker for Relay {
             .find_flow_control_with_producer_address(prev_hop)
         {
             ctx.flow_controls()
-                .add_consumer(next_hop.clone(), info.flow_control_id());
+                .add_consumer(next_hop, info.flow_control_id());
         }
 
         ctx.forward(local_message).await

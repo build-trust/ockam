@@ -259,8 +259,7 @@ impl NodeConfig {
 
         // Wait for the node to be up
         let is_up = {
-            let mut node =
-                BackgroundNodeClient::create_to_node(ctx, &opts.state, node_name).await?;
+            let mut node = BackgroundNodeClient::create_to_node(ctx, &opts.state, node_name)?;
             is_node_up(ctx, &mut node, true).await?
         };
         if !is_up {

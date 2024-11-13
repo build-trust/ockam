@@ -64,11 +64,14 @@ async fn credential(ctx: &mut Context) -> Result<()> {
     // Create the CredentialIssuer:
     let options = SecureChannelListenerOptions::new();
     let sc_flow_control_id = options.spawner_flow_control_id();
-    secure_channels
-        .create_secure_channel_listener(ctx, &auth_identifier, api_worker_addr.clone(), options)
-        .await?;
+    secure_channels.create_secure_channel_listener(
+        ctx,
+        &auth_identifier,
+        api_worker_addr.clone(),
+        options,
+    )?;
     ctx.flow_controls()
-        .add_consumer(auth_worker_addr.clone(), &sc_flow_control_id);
+        .add_consumer(&auth_worker_addr, &sc_flow_control_id);
     let auth = CredentialIssuerWorker::new(
         members,
         identities.identities_attributes(),
@@ -79,7 +82,7 @@ async fn credential(ctx: &mut Context) -> Result<()> {
         None,
         true,
     );
-    ctx.start_worker(auth_worker_addr.clone(), auth).await?;
+    ctx.start_worker(auth_worker_addr.clone(), auth)?;
 
     // Connect to the API channel from the member:
     let e2a = secure_channels

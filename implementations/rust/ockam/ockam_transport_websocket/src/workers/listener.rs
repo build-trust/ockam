@@ -38,8 +38,7 @@ impl WebSocketListenProcessor {
         ctx.start_processor_with_access_control(
             waddr, processor, AllowAll, // FIXME: @ac
             AllowAll, // FIXME: @ac
-        )
-        .await?;
+        )?;
         Ok(saddr)
     }
 }
@@ -47,10 +46,6 @@ impl WebSocketListenProcessor {
 #[async_trait]
 impl Processor for WebSocketListenProcessor {
     type Context = Context;
-
-    async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
-        ctx.set_cluster(crate::CLUSTER_NAME).await
-    }
 
     async fn process(&mut self, ctx: &mut Self::Context) -> Result<bool> {
         debug!("Waiting for incoming TCP connection...");
@@ -63,7 +58,7 @@ impl Processor for WebSocketListenProcessor {
         debug!("TCP connection accepted");
 
         // Spawn a connection worker for it
-        let pair = WorkerPair::from_server(ctx, ws_stream, peer, vec![]).await?;
+        let pair = WorkerPair::from_server(ctx, ws_stream, peer, vec![])?;
 
         // Register the connection with the local TcpRouter
         self.router_handle.register(&pair).await?;

@@ -9,7 +9,7 @@ use ockam_api::nodes::models::services::{DeleteServiceRequest, ServiceStatus};
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_api::terminal::{Terminal, TerminalStream};
 use ockam_core::api::Request;
-use ockam_core::AsyncTryClone;
+use ockam_core::TryClone;
 use ockam_node::Context;
 
 use crate::tui::{DeleteCommandTui, PluralTerm};
@@ -42,7 +42,7 @@ impl Command for DeleteCommand {
     }
 }
 
-#[derive(AsyncTryClone)]
+#[derive(TryClone)]
 struct DeleteTui {
     ctx: Context,
     opts: CommandGlobalOpts,
@@ -58,7 +58,7 @@ impl DeleteTui {
     ) -> miette::Result<()> {
         let node = BackgroundNodeClient::create(ctx, &opts.state, &cmd.node_opts.at_node).await?;
         let tui = Self {
-            ctx: ctx.async_try_clone().await?,
+            ctx: ctx.try_clone()?,
             opts,
             node,
             cmd,

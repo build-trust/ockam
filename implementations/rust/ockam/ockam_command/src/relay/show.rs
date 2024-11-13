@@ -15,7 +15,7 @@ use ockam_api::colors::OckamColor;
 use ockam_api::output::Output;
 use ockam_api::terminal::{Terminal, TerminalStream};
 use ockam_api::ConnectionStatus;
-use ockam_core::AsyncTryClone;
+use ockam_core::TryClone;
 use serde::Serialize;
 
 use crate::terminal::tui::ShowCommandTui;
@@ -52,12 +52,7 @@ impl ShowCommand {
     }
 
     async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
-        ShowTui::run(
-            ctx.async_try_clone().await.into_diagnostic()?,
-            opts,
-            self.clone(),
-        )
-        .await
+        ShowTui::run(ctx.try_clone().into_diagnostic()?, opts, self.clone()).await
     }
 }
 

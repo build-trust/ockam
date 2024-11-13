@@ -140,16 +140,8 @@ impl State {
         } else {
             NodeBuilder::new().no_logging()
         };
-        let (context, mut executor) = builder.with_runtime(rt.clone()).build();
+        let (context, _executor) = builder.with_runtime(rt.clone()).build();
         let context = Arc::new(context);
-
-        // start the router, it is needed for the node manager creation
-        rt.spawn(async move {
-            executor
-                .start_router()
-                .await
-                .expect("cannot start executor")
-        });
 
         let runtime = context.runtime().clone();
         let node_manager = runtime
@@ -175,7 +167,7 @@ impl State {
         ctx: Arc<Context>,
         cli_state: &CliState,
     ) -> ockam::Result<Arc<InMemoryNode>> {
-        let tcp = TcpTransport::create(&ctx).await?;
+        let tcp = TcpTransport::create(&ctx)?;
         let options = TcpListenerOptions::new();
         let listener = tcp.listen(&"127.0.0.1:0", options).await?;
 
@@ -204,11 +196,10 @@ impl State {
         );
 
         let node_manager_worker = NodeManagerWorker::new(node_manager.clone());
-        ctx.start_worker(NODEMANAGER_ADDR, node_manager_worker)
-            .await?;
+        ctx.start_worker(NODEMANAGER_ADDR, node_manager_worker)?;
 
         ctx.flow_controls()
-            .add_consumer(NODEMANAGER_ADDR, listener.flow_control_id());
+            .add_consumer(&NODEMANAGER_ADDR.into(), listener.flow_control_id());
         Ok(node_manager)
     }
 }

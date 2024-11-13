@@ -1,12 +1,12 @@
-use ockam_core::{AsyncTryClone, Result};
+use ockam_core::{Result, TryClone};
 use ockam_node::Context;
 
 use crate::tcp_interceptor::{TcpMitmRegistry, TcpMitmTransport};
 
 impl TcpMitmTransport {
-    pub async fn create(ctx: &Context) -> Result<Self> {
+    pub fn create(ctx: &Context) -> Result<Self> {
         let tcp = Self {
-            ctx: ctx.async_try_clone().await?,
+            ctx: ctx.try_clone()?,
             registry: Default::default(),
         };
         Ok(tcp)

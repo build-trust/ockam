@@ -3,7 +3,7 @@ use ockam_core::{Address, Result};
 
 impl UdpTransport {
     /// Start a new puncture
-    pub async fn puncture(
+    pub fn puncture(
         &self,
         bind: UdpBind,
         peer_udp_address: String,
@@ -21,11 +21,10 @@ impl UdpTransport {
             options,
             redirect_first_message_to_transport,
         )
-        .await
     }
 
     /// Stop a puncture
-    pub async fn stop_puncture(&self, puncture: UdpPuncture) -> Result<()> {
-        puncture.stop(&self.ctx).await
+    pub fn stop_puncture(&self, puncture: UdpPuncture) -> Result<()> {
+        puncture.stop(&self.ctx)
     }
 }

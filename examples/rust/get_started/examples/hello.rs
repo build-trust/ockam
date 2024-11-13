@@ -12,7 +12,7 @@ async fn main(ctx: Context) -> Result<()> {
     // initiate an Authenticated Key Exchange.
     let options = SecureChannelListenerOptions::new();
     let sc_flow_control_id = options.spawner_flow_control_id();
-    node.create_secure_channel_listener(&bob, "bob", options).await?;
+    node.create_secure_channel_listener(&bob, "bob", options)?;
 
     // Create an entity to represent Alice.
     let alice = node.create_identity().await?;
@@ -28,7 +28,7 @@ async fn main(ctx: Context) -> Result<()> {
     //
     // This message will automatically get encrypted when it enters the channel
     // and decrypted just before it exits the channel.
-    node.flow_controls().add_consumer("app", &sc_flow_control_id);
+    node.flow_controls().add_consumer(&"app".into(), &sc_flow_control_id);
     node.send(route![channel, "app"], "Hello Ockam!".to_string()).await?;
 
     // Wait to receive a message for the "app" worker and print it.
@@ -36,5 +36,5 @@ async fn main(ctx: Context) -> Result<()> {
     println!("App Received: {}", message.into_body()?); // should print "Hello Ockam!"
 
     // Stop all workers, stop the node, cleanup and return.
-    node.stop().await
+    node.shutdown().await
 }

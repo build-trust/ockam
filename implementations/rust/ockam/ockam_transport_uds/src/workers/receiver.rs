@@ -36,10 +36,6 @@ impl UdsRecvProcessor {
 impl Processor for UdsRecvProcessor {
     type Context = Context;
 
-    async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
-        ctx.set_cluster(crate::CLUSTER_NAME).await
-    }
-
     /// Get the next message from the connection if there are any
     /// available and forward it to the next hop in the route.
     async fn process(&mut self, ctx: &mut Context) -> Result<bool> {
@@ -90,7 +86,7 @@ impl Processor for UdsRecvProcessor {
 
         // Insert the peer address into the return route so that
         // reply routing can be properly resolved
-        msg = msg.push_front_return_route(&self.peer_addr);
+        msg = msg.push_front_return_route(self.peer_addr.clone());
 
         trace!("Message onward route: {}", msg.onward_route());
         trace!("Message return route: {}", msg.return_route());
