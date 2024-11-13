@@ -4,10 +4,10 @@ description: Build Ockam Binaries For Different Architechtures
 inputs:
   build_command:
     description: Indicate if building the ockam command
-    default: 'true'
+    default: "true"
   build_app:
     description: Indicate if we are also building ockam app
-    default: 'false'
+    default: "false"
   use_cross_build:
     description: Indicate If Cross Should Be Used To Build Binary Instead Of Cargo
     required: true
@@ -61,52 +61,3 @@ runs:
         fi
 
         cp target/${{ inputs.target }}/release/ockam target/${{ inputs.target }}/release/ockam_command
-
-    - shell: bash
-      if: inputs.build_app == 'true'
-      run: |
-        set -x
-
-        use_cross_build=${{ inputs.use_cross_build }}
-
-        # depending on the target, we may build the x86 or arm variant
-        # regardless of the host machine
-
-        # if any macos, also build the swiftui
-        if [[ ${{ inputs.target }} == *apple-darwin* ]]; then
-
-          # first we build the rust library, cross compiling if needed
-          if [[ $use_cross_build == "true" ]]; then
-            cross build -p ockam_app_lib --target ${{ inputs.target }} --release --no-default-features -F aws-lc
-          else
-            cargo build -p ockam_app_lib --target ${{ inputs.target }} --release --no-default-features -F aws-lc
-          fi
-
-          # copy the ockam_app_lib and ockam binary in target/release/ where xcode is expecting them
-          cp target/${{ inputs.target }}/release/ockam target/release/
-          cp target/${{ inputs.target }}/release/libockam_app_lib.a target/release/
-          cp target/${{ inputs.target }}/release/libockam_app_lib.d target/release/
-
-          # address dependencies for the swiftui app
-          brew install create-dmg
-
-          if [[ ${{ inputs.target }} == *x86_64* ]]; then
-            make swift_xcode_build_signed \
-              DEVELOPMENT_TEAM="${DEVELOPMENT_TEAM}" \
-              PROVISIONING_PROFILE_SPECIFIER="${PROVISIONING_PROFILE_SPECIFIER}" \
-              CODE_SIGN_IDENTITY="${CODE_SIGN_IDENTITY}" \
-              KEYCHAIN_PROFILE="${KEYCHAIN_PATH}" \
-              ARCH=x86_64
-          else
-            make swift_xcode_build_signed \
-              DEVELOPMENT_TEAM="${DEVELOPMENT_TEAM}" \
-              PROVISIONING_PROFILE_SPECIFIER="${PROVISIONING_PROFILE_SPECIFIER}" \
-              CODE_SIGN_IDENTITY="${CODE_SIGN_IDENTITY}" \
-              KEYCHAIN_PROFILE="${KEYCHAIN_PATH}" \
-              ARCH=arm64
-          fi
-
-          make swift_package_only
-
-          xcrun notarytool submit implementations/swift/build/Ockam.dmg --team-id ${{ env.DEVELOPMENT_TEAM }} --apple-id ${{ env.NOTARIZATION_EMAIL }} --password ${{ env.NOTARIZATION_PASSWORD }} --wait
-        fi
