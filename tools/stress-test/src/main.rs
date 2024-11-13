@@ -17,6 +17,10 @@ use ockam_api::CliState;
 use crate::config::Config;
 use crate::portal_simulator::PortalStats;
 
+use tikv_jemallocator::Jemalloc;
+#[global_allocator]
+static GLOBAL: Jemalloc = Jemalloc;
+
 mod config;
 mod display;
 mod execution;

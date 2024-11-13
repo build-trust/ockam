@@ -19,4 +19,5 @@ ockam_core = { path = "../../implementations/rust/ockam/ockam_core" }
 ockam_multiaddr = { path = "../../implementations/rust/ockam/ockam_multiaddr" }
 rand = "0.8"
 serde = { version = "1", features = ["derive"] }
+tikv-jemallocator = "0.6"
 toml = { version = "0.8", default-features = false, features = ["parse"] }
