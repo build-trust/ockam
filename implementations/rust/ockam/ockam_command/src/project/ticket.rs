@@ -75,7 +75,7 @@ pub struct TicketCommand {
     retry_opts: RetryOpts,
 
     /// Return the ticket in hex encoded format
-    #[arg(long, hide = true)]
+    #[arg(long = "hex", hide = true)]
     hex_encoded: bool,
 
     /// Return the ticket using the legacy encoding format
