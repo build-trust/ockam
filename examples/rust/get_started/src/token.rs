@@ -19,7 +19,6 @@ pub async fn create_token(attribute_name: &str, attribute_value: &str) -> Result
             "--attribute",
             format!("{attribute_name}={attribute_value}").as_str(),
         ])
-        .env_remove("OCKAM_LOG") // make sure that OCKAM_LOG is not set, otherwise the output will contain more than the token
         .env_remove("OCKAM_LOGGING") // make sure that OCKAM_LOGGING is not set, otherwise the output will contain more than the token
         .output()
         .map_err(|e| error(format!("could not run the `ockam project ticket` successfully: {e:?}")))?;

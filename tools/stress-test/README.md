@@ -24,10 +24,11 @@ Options:
 To debug failures, you can use:
 
 ```
-OCKAM_LOG=error stress-test run <config.toml> --log
+OCKAM_LOG_LEVEL=error stress-test run <config.toml> --log
 ```
 
 Sample configuration:
+
 ```
 peak_portals = 20
 peak_relays = 10
@@ -36,15 +37,16 @@ throughput = "1 mbits"
 project = "/project/default"
 ```
 
-| Parameter     | Default          | Description                                            | Possible values                                                                          |
-|---------------|------------------|--------------------------------------------------------|------------------------------------------------------------------------------------------|
-| peak_portals  | 0                | Number of portals to create                            | positive integers, 1_000 is allowed                                                      |
-| peak_relays   | 0                | Number of relays to create, at least 1 is created      | positive integers, 1_000 is allowed                                                      |
-| ramp_up       | 0                | Time, in seconds, to create all the portals and relays | positive integers                                                                        |
-| throughput    | unlimited        | Throughput to use for each portal                      | unlimited or positive integer followed by GBits,Mbits,Kbits,Bits, 1_000 Mbits is allowed |
-| project       | /project/default | Route to any project to test                           | Any route as long as it reaches a project                                                |
+| Parameter    | Default          | Description                                            | Possible values                                                                          |
+|--------------|------------------|--------------------------------------------------------|------------------------------------------------------------------------------------------|
+| peak_portals | 0                | Number of portals to create                            | positive integers, 1_000 is allowed                                                      |
+| peak_relays  | 0                | Number of relays to create, at least 1 is created      | positive integers, 1_000 is allowed                                                      |
+| ramp_up      | 0                | Time, in seconds, to create all the portals and relays | positive integers                                                                        |
+| throughput   | unlimited        | Throughput to use for each portal                      | unlimited or positive integer followed by GBits,Mbits,Kbits,Bits, 1_000 Mbits is allowed |
+| project      | /project/default | Route to any project to test                           | Any route as long as it reaches a project                                                |
 
 Sample output:
+
 ```
 |  Elapsed  | Portals | Relays | M. sent | M. recv | In-fli |  B. sent  |  B. recv  | Spe. sent  | Spe. recv  | M. OOO | Errors |
 |    00s    |    0    |   0    |    0    |    0    |   0    |    0 B    |    0 B    |  0.00 bps  |  0.00 bps  |   0    |   0    |

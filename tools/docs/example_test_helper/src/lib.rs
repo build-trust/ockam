@@ -4,15 +4,16 @@
 //! described by command lines.
 //!
 //! Processes have these environment variables set...
-//! - `OCKAM_LOG=trace`
+//! - `OCKAM_LOGGING=true`
+//! - `OCKAM_LOG_LEVEL=trace`
 //!
 //! Some functions will timeout if [`DEFAULT_TIMEOUT_MS`] milliseconds
 //! pass. In particular [`CmdBuilder::run()`], but not [`CmdBuilder::spawn()`].
 //!
-//! Processes which have not completed are killed (or signalled) when their
+//! Processes which have not completed are killed (or signaled) when their
 //! [`CmdRunner`] is dropped.
 //!
-//! The stdout of processes are written to temporary files. Those temporary files
+//! The stdout of processes is written to temporary files. Those temporary files
 //! are left for the operating system to clear up.
 //!
 //! # Examples
@@ -57,7 +58,8 @@ use tracing_subscriber::fmt::TestWriter;
 use tracing_subscriber::{filter::LevelFilter, fmt, EnvFilter};
 
 const POLL_MS: u32 = 250;
-const ENVIRONMENT_VARIABLES: &[(&str, &str)] = &[("OCKAM_LOG", "trace")];
+const ENVIRONMENT_VARIABLES: &[(&str, &str)] =
+    &[("OCKAM_LOGGING", "true"), ("OCKAM_LOG_LEVEL", "trace")];
 
 /// Default timeout value in milliseconds.
 pub const DEFAULT_TIMEOUT_MS: u32 = 180_000;
