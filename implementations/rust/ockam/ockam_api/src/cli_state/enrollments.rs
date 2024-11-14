@@ -252,12 +252,12 @@ impl Display for IdentityEnrollment {
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct LegacyEnrollmentTicket {
-    pub one_time_code: OneTimeCode,
-    pub project: Option<ProjectModel>,
+    one_time_code: OneTimeCode,
+    project: ProjectModel,
 }
 
 impl LegacyEnrollmentTicket {
-    pub fn new(one_time_code: OneTimeCode, project: Option<ProjectModel>) -> Self {
+    fn new(one_time_code: OneTimeCode, project: ProjectModel) -> Self {
         Self {
             one_time_code,
             project,
@@ -551,10 +551,8 @@ impl EnrollmentTicket {
     }
 
     pub async fn new_from_legacy(ticket: LegacyEnrollmentTicket) -> Result<Self> {
-        let project = ticket
-            .project
-            .as_ref()
-            .ok_or(ApiError::core("no project in legacy ticket"))?;
+        debug!(?ticket, "Creating enrollment ticket from legacy ticket");
+        let project = ticket.project;
         let project_id = project.id.clone();
         let project_name = project.name.clone();
         let project_change_history = project
@@ -628,10 +626,7 @@ impl EnrollmentTicket {
 
     pub fn export_legacy(self) -> Result<LegacyEnrollmentTicket> {
         let project = self.project()?;
-        Ok(LegacyEnrollmentTicket::new(
-            self.one_time_code,
-            Some(project),
-        ))
+        Ok(LegacyEnrollmentTicket::new(self.one_time_code, project))
     }
 }
 
@@ -645,7 +640,7 @@ mod tests {
         let exported = ticket.import().await.unwrap();
         let legacy = exported.clone().export_legacy().unwrap();
         assert_eq!(legacy.one_time_code, exported.one_time_code);
-        assert_eq!(legacy.project.unwrap(), exported.project().unwrap());
+        assert_eq!(legacy.project, exported.project().unwrap());
     }
 
     #[test]
@@ -711,7 +706,7 @@ mod tests {
             user_roles: vec![],
             project_change_history: Some(project_change_history.to_string()),
         };
-        let legacy = LegacyEnrollmentTicket::new(otc.clone(), Some(project.clone()));
+        let legacy = LegacyEnrollmentTicket::new(otc.clone(), project.clone());
         let enrollment_ticket = EnrollmentTicket::new_from_legacy(legacy).await.unwrap();
         assert_eq!(enrollment_ticket.one_time_code, otc);
         assert_eq!(enrollment_ticket.project_id, project_id);
