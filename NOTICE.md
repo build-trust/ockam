@@ -174,6 +174,7 @@ This file contains attributions for any 3rd-party open source code used in this 
 | derive_builder_macro | MIT, Apache-2.0 | https://crates.io/crates/derive_builder_macro |
 | dialoguer | MIT | https://crates.io/crates/dialoguer |
 | digest | MIT, Apache-2.0 | https://crates.io/crates/digest |
+| displaydoc | MIT, Apache-2.0 | https://crates.io/crates/displaydoc |
 | dlib | MIT | https://crates.io/crates/dlib |
 | doc-comment | MIT | https://crates.io/crates/doc-comment |
 | dotenvy | MIT | https://crates.io/crates/dotenvy |
@@ -261,8 +262,19 @@ This file contains attributions for any 3rd-party open source code used in this 
 | hyper-util | MIT | https://crates.io/crates/hyper-util |
 | iana-time-zone | MIT, Apache-2.0 | https://crates.io/crates/iana-time-zone |
 | iana-time-zone-haiku | MIT, Apache-2.0 | https://crates.io/crates/iana-time-zone-haiku |
+| icu_collections | Unicode-3.0 | https://crates.io/crates/icu_collections |
+| icu_locid | Unicode-3.0 | https://crates.io/crates/icu_locid |
+| icu_locid_transform | Unicode-3.0 | https://crates.io/crates/icu_locid_transform |
+| icu_locid_transform_data | Unicode-3.0 | https://crates.io/crates/icu_locid_transform_data |
+| icu_normalizer | Unicode-3.0 | https://crates.io/crates/icu_normalizer |
+| icu_normalizer_data | Unicode-3.0 | https://crates.io/crates/icu_normalizer_data |
+| icu_properties | Unicode-3.0 | https://crates.io/crates/icu_properties |
+| icu_properties_data | Unicode-3.0 | https://crates.io/crates/icu_properties_data |
+| icu_provider | Unicode-3.0 | https://crates.io/crates/icu_provider |
+| icu_provider_macros | Unicode-3.0 | https://crates.io/crates/icu_provider_macros |
 | ident_case | MIT, Apache-2.0 | https://crates.io/crates/ident_case |
 | idna | MIT, Apache-2.0 | https://crates.io/crates/idna |
+| idna_adapter | Apache-2.0, MIT | https://crates.io/crates/idna_adapter |
 | image | MIT, Apache-2.0 | https://crates.io/crates/image |
 | indexmap | Apache-2.0, MIT | https://crates.io/crates/indexmap |
 | indicatif | MIT | https://crates.io/crates/indicatif |
@@ -301,6 +313,7 @@ This file contains attributions for any 3rd-party open source code used in this 
 | libsqlite3-sys | MIT | https://crates.io/crates/libsqlite3-sys |
 | linked-hash-map | MIT, Apache-2.0 | https://crates.io/crates/linked-hash-map |
 | linux-raw-sys | Apache-2.0 WITH LLVM-exception, Apache-2.0, MIT | https://crates.io/crates/linux-raw-sys |
+| litemap | Unicode-3.0 | https://crates.io/crates/litemap |
 | lock_api | MIT, Apache-2.0 | https://crates.io/crates/lock_api |
 | log | MIT, Apache-2.0 | https://crates.io/crates/log |
 | lz4 | MIT | https://crates.io/crates/lz4 |
@@ -511,6 +524,7 @@ This file contains attributions for any 3rd-party open source code used in this 
 | supports-unicode | Apache-2.0 | https://crates.io/crates/supports-unicode |
 | syn | MIT, Apache-2.0 | https://crates.io/crates/syn |
 | sync_wrapper | Apache-2.0 | https://crates.io/crates/sync_wrapper |
+| synstructure | MIT | https://crates.io/crates/synstructure |
 | syntect | MIT | https://crates.io/crates/syntect |
 | sysinfo | MIT | https://crates.io/crates/sysinfo |
 | tempfile | MIT, Apache-2.0 | https://crates.io/crates/tempfile |
@@ -526,6 +540,7 @@ This file contains attributions for any 3rd-party open source code used in this 
 | time-core | MIT, Apache-2.0 | https://crates.io/crates/time-core |
 | time-macros | MIT, Apache-2.0 | https://crates.io/crates/time-macros |
 | tiny_http | MIT, Apache-2.0 | https://crates.io/crates/tiny_http |
+| tinystr | Unicode-3.0 | https://crates.io/crates/tinystr |
 | tinyvec | Zlib, Apache-2.0, MIT | https://crates.io/crates/tinyvec |
 | tinyvec_macros | MIT, Apache-2.0, Zlib | https://crates.io/crates/tinyvec_macros |
 | tokio | MIT | https://crates.io/crates/tokio |
@@ -572,6 +587,8 @@ This file contains attributions for any 3rd-party open source code used in this 
 | urlencoding | MIT | https://crates.io/crates/urlencoding |
 | utcnow | Apache-2.0 | https://crates.io/crates/utcnow |
 | utf-8 | MIT, Apache-2.0 | https://crates.io/crates/utf-8 |
+| utf16_iter | Apache-2.0, MIT | https://crates.io/crates/utf16_iter |
+| utf8_iter | Apache-2.0, MIT | https://crates.io/crates/utf8_iter |
 | utf8parse | Apache-2.0, MIT | https://crates.io/crates/utf8parse |
 | uuid | Apache-2.0, MIT | https://crates.io/crates/uuid |
 | valuable | MIT | https://crates.io/crates/valuable |
@@ -630,6 +647,8 @@ This file contains attributions for any 3rd-party open source code used in this 
 | windows_x86_64_msvc | MIT, Apache-2.0 | https://crates.io/crates/windows_x86_64_msvc |
 | winnow | MIT | https://crates.io/crates/winnow |
 | winsafe | MIT | https://crates.io/crates/winsafe |
+| write16 | Apache-2.0, MIT | https://crates.io/crates/write16 |
+| writeable | Unicode-3.0 | https://crates.io/crates/writeable |
 | x11-clipboard | MIT | https://crates.io/crates/x11-clipboard |
 | x11rb | MIT, Apache-2.0 | https://crates.io/crates/x11rb |
 | x11rb-protocol | MIT, Apache-2.0 | https://crates.io/crates/x11rb-protocol |
@@ -638,10 +657,16 @@ This file contains attributions for any 3rd-party open source code used in this 
 | xml-rs | MIT | https://crates.io/crates/xml-rs |
 | xmlparser | MIT, Apache-2.0 | https://crates.io/crates/xmlparser |
 | yaml-rust | MIT, Apache-2.0 | https://crates.io/crates/yaml-rust |
+| yoke | Unicode-3.0 | https://crates.io/crates/yoke |
+| yoke-derive | Unicode-3.0 | https://crates.io/crates/yoke-derive |
 | zerocopy | BSD-2-Clause, Apache-2.0, MIT | https://crates.io/crates/zerocopy |
 | zerocopy-derive | BSD-2-Clause, Apache-2.0, MIT | https://crates.io/crates/zerocopy-derive |
+| zerofrom | Unicode-3.0 | https://crates.io/crates/zerofrom |
+| zerofrom-derive | Unicode-3.0 | https://crates.io/crates/zerofrom-derive |
 | zeroize | Apache-2.0, MIT | https://crates.io/crates/zeroize |
 | zeroize_derive | Apache-2.0, MIT | https://crates.io/crates/zeroize_derive |
+| zerovec | Unicode-3.0 | https://crates.io/crates/zerovec |
+| zerovec-derive | Unicode-3.0 | https://crates.io/crates/zerovec-derive |
 | zstd | MIT | https://crates.io/crates/zstd |
 | zstd-safe | MIT, Apache-2.0 | https://crates.io/crates/zstd-safe |
 

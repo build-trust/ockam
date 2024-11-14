@@ -15,6 +15,7 @@ allow = [
   "BlueOak-1.0.0",
   "BSL-1.0",
   "Zlib",
+  "Unicode-3.0"
 ]
 exceptions = [
   { allow = ["LicenseRef-Ring-ISC-OpenSSL"], name = "ring", version = "*" },
@@ -60,9 +61,6 @@ ignore = [
   # yaml-rust is unmaintained. Switching to maintained fork yaml-rust2 is tricky
   # Tracked here https://github.com/build-trust/ockam/issues/7807
   "RUSTSEC-2024-0320",
-  #
-  # `instant` is unmaintained and used transitively by some of our dependencies
-  "RUSTSEC-2024-0384",
 ]
 # Users who require or prefer Git to use SSH cloning instead of HTTPS,
 # such as implemented via "insteadOf" rules in Git config, can still
