@@ -33,11 +33,13 @@ impl CliState {
             .tcp_portals_repository()
             .get_tcp_inlet(node_name, alias)
             .await?
-            .ok_or(ockam_core::Error::new(
-                Origin::Api,
-                Kind::NotFound,
-                format!("no tcp inlet found for node {node_name}, with alias {alias}"),
-            ))?)
+            .ok_or_else(|| {
+                ockam_core::Error::new(
+                    Origin::Api,
+                    Kind::NotFound,
+                    format!("no tcp inlet found for node {node_name}, with alias {alias}"),
+                )
+            })?)
     }
 
     /// Delete a TCP inlet

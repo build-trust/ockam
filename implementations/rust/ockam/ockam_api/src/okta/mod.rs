@@ -26,13 +26,13 @@ impl Worker for Server {
 
     async fn handle_message(&mut self, c: &mut Context, m: Routed<Self::Message>) -> Result<()> {
         if let Ok(i) = SecureChannelLocalInfo::find_info(m.local_message()) {
-            let return_route = m.return_route();
+            let return_route = m.return_route().clone();
             let reply = self
                 .on_request(&i.their_identifier().into(), &m.into_body()?)
                 .await?;
             c.send(return_route, reply).await
         } else {
-            let return_route = m.return_route();
+            let return_route = m.return_route().clone();
             let body = m.into_body()?;
             let mut dec = Decoder::new(&body);
             let req: RequestHeader = dec.decode()?;

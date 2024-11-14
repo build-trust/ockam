@@ -38,12 +38,12 @@ impl RelayMessage {
 
     /// Onward route
     pub fn onward_route(&self) -> &Route {
-        self.local_msg.onward_route_ref()
+        self.local_msg.onward_route()
     }
 
     /// Return route
     pub fn return_route(&self) -> &Route {
-        self.local_msg.return_route_ref()
+        self.local_msg.return_route()
     }
 
     /// Payload

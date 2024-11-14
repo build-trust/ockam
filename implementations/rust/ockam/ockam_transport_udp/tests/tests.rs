@@ -479,6 +479,6 @@ impl Worker for Echoer {
         }
 
         debug!("Replying back to {}", &msg.return_route());
-        ctx.send(msg.return_route(), msg.into_body()?).await
+        ctx.send(msg.return_route().clone(), msg.into_body()?).await
     }
 }

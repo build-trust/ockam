@@ -71,7 +71,7 @@ impl Worker for Relay {
         .await?;
 
         // Remove the last hop so that just route to the node itself is left
-        self.forward_route.modify().pop_back();
+        self.forward_route = self.forward_route.clone().modify().pop_back().into();
 
         Ok(())
     }
@@ -88,7 +88,7 @@ impl Worker for Relay {
             .prepend_front_onward_route(&self.forward_route);
 
         let next_hop = local_message.next_on_onward_route()?;
-        let prev_hop = local_message.return_route_ref().next()?;
+        let prev_hop = local_message.return_route().next()?;
 
         if let Some(info) = ctx
             .flow_controls()

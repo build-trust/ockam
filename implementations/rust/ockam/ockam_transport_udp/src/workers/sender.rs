@@ -62,7 +62,7 @@ impl Worker for UdpSenderWorker {
         // Parse message and remove our address from its routing
         let mut msg = msg.into_local_message();
         msg = msg.pop_front_onward_route()?;
-        trace!("Sending message to {:?}", msg.onward_route_ref());
+        trace!("Sending message to {:?}", msg.onward_route());
 
         let peer = if let Some(peer) = &self.peer {
             *peer

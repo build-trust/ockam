@@ -34,7 +34,7 @@ impl Worker for Relay {
         local_message = local_message.pop_front_onward_route()?;
         local_message = local_message.prepend_front_onward_route(&self.route); // Prepend predefined route to the onward_route
 
-        let prev_hop = local_message.return_route_ref().next()?.clone();
+        let prev_hop = local_message.return_route().next()?.clone();
 
         if let Some(info) = ctx
             .flow_controls()

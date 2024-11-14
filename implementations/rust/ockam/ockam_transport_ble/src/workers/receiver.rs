@@ -104,8 +104,8 @@ where
                 msg = msg.push_front_return_route(&self.peer_addr);
 
                 // Some verbose logging we may want to remove
-                debug!("Message onward route: {}", msg.onward_route_ref());
-                debug!("Message return route: {}", msg.return_route_ref());
+                debug!("Message onward route: {}", msg.onward_route());
+                debug!("Message return route: {}", msg.return_route());
 
                 // Forward the message to the final destination worker,
                 // which consumes the TransportMessage and yields the

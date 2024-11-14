@@ -127,10 +127,11 @@ impl EncryptorWorker {
             self.role, &self.addresses.encryptor
         );
 
-        let return_route = msg.return_route();
+        let msg = msg.into_local_message();
+        let return_route = msg.return_route;
 
         // Decode raw payload binary
-        let request = EncryptionRequest::decode(msg.payload())?;
+        let request = EncryptionRequest::decode(&msg.payload)?;
 
         let mut should_stop = false;
         let len = NOISE_NONCE_LEN + request.0.len() + AES_GCM_TAGSIZE;
@@ -178,13 +179,14 @@ impl EncryptorWorker {
             self.role, &self.addresses.encryptor
         );
 
-        let mut onward_route = msg.onward_route();
-        let return_route = msg.return_route();
+        let msg = msg.into_local_message();
+        let mut onward_route = msg.onward_route;
+        let return_route = msg.return_route;
 
         // Remove our address
         let _ = onward_route.step();
 
-        let payload = CowBytes::from(msg.into_payload());
+        let payload = CowBytes::from(msg.payload);
         let msg = PlaintextPayloadMessage {
             onward_route,
             return_route,

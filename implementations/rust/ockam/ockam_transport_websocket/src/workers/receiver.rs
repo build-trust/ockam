@@ -92,8 +92,8 @@ where
         msg = msg.push_front_return_route(&self.peer_addr);
 
         // Some verbose logging we may want to remove
-        trace!("Message onward route: {}", msg.onward_route_ref());
-        trace!("Message return route: {}", msg.return_route_ref());
+        trace!("Message onward route: {}", msg.onward_route());
+        trace!("Message return route: {}", msg.return_route());
 
         // Forward the message to the next hop in the route
         ctx.forward(msg).await?;

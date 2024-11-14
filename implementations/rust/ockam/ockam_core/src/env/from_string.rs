@@ -117,11 +117,7 @@ pub fn parse_duration(arg: &str) -> Result<Duration> {
             Regex::new(r"(?P<numeric_duration>[0-9]+)(?P<length_sigil>d|h|m|s|ms)?$").unwrap()
         })
         .captures(arg)
-        .ok_or(Error::new(
-            Origin::Api,
-            Kind::Serialization,
-            "Invalid duration.",
-        ))?;
+        .ok_or_else(|| Error::new(Origin::Api, Kind::Serialization, "Invalid duration."))?;
     let time = needles["numeric_duration"]
         .parse::<u64>()
         .map_err(|_| Error::new(Origin::Api, Kind::Serialization, "Invalid duration."))?;

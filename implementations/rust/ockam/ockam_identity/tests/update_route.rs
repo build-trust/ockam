@@ -40,10 +40,10 @@ async fn test_update_decryptor_route(ctx: &mut Context) -> Result<()> {
         )
         .await?;
 
-    let msg = child_ctx.receive::<String>().await?;
+    let msg = child_ctx.receive::<String>().await?.into_local_message();
 
     child_ctx
-        .send(msg.return_route(), "Hello, Alice!".to_string())
+        .send(msg.return_route, "Hello, Alice!".to_string())
         .await?;
 
     let msg = child_ctx.receive::<String>().await?;
@@ -59,10 +59,10 @@ async fn test_update_decryptor_route(ctx: &mut Context) -> Result<()> {
         )
         .await?;
 
-    let msg = child_ctx.receive::<String>().await?;
+    let msg = child_ctx.receive::<String>().await?.into_local_message();
 
     child_ctx
-        .send(msg.return_route(), "Hello, Alice!".to_string())
+        .send(msg.return_route, "Hello, Alice!".to_string())
         .await?;
 
     let msg = child_ctx.receive::<String>().await?;
@@ -132,10 +132,10 @@ async fn test_update_decryptor_route_tcp(ctx: &mut Context) -> Result<()> {
         )
         .await?;
 
-    let msg = child_ctx.receive::<String>().await?;
+    let msg = child_ctx.receive::<String>().await?.into_local_message();
 
     child_ctx
-        .send(msg.return_route(), "Hello, Alice!".to_string())
+        .send(msg.return_route, "Hello, Alice!".to_string())
         .await?;
 
     let msg = child_ctx.receive::<String>().await?;
@@ -153,10 +153,10 @@ async fn test_update_decryptor_route_tcp(ctx: &mut Context) -> Result<()> {
         )
         .await?;
 
-    let msg = child_ctx.receive::<String>().await?;
+    let msg = child_ctx.receive::<String>().await?.into_local_message();
 
     child_ctx
-        .send(msg.return_route(), "Hello, Alice!".to_string())
+        .send(msg.return_route, "Hello, Alice!".to_string())
         .await?;
 
     let msg = child_ctx.receive::<String>().await?;

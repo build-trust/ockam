@@ -369,11 +369,7 @@ impl CliState {
             .nodes_repository()
             .get_default_node()
             .await?
-            .ok_or(Error::new(
-                Origin::Api,
-                Kind::NotFound,
-                "There is no default node",
-            ))?)
+            .ok_or_else(|| Error::new(Origin::Api, Kind::NotFound, "There is no default node"))?)
     }
 
     /// Return the node information for the given node name, otherwise for the default node
@@ -416,11 +412,13 @@ impl CliState {
                 }
             })
             .max_by_key(|file| file.metadata().unwrap().modified().unwrap())
-            .ok_or(Error::new(
-                Origin::Api,
-                Kind::NotFound,
-                format!("there is no log file for the node {node_name}"),
-            ))?;
+            .ok_or_else(|| {
+                Error::new(
+                    Origin::Api,
+                    Kind::NotFound,
+                    format!("there is no log file for the node {node_name}"),
+                )
+            })?;
         Ok(current_log_file.path())
     }
 }
@@ -625,11 +623,13 @@ impl NodeInfo {
         Ok(self
             .tcp_listener_address
             .as_ref()
-            .ok_or(ockam::Error::new(
-                Origin::Api,
-                Kind::Internal,
-                "no transport has been set on the node".to_string(),
-            ))
+            .ok_or_else(|| {
+                ockam::Error::new(
+                    Origin::Api,
+                    Kind::Internal,
+                    "no transport has been set on the node".to_string(),
+                )
+            })
             .and_then(|t| t.multi_addr())?)
     }
 
@@ -662,7 +662,7 @@ impl NodeInfo {
     pub fn status(&self) -> NodeProcessStatus {
         if let Some(pid) = self.pid() {
             let mut sys = System::new();
-            sys.refresh_processes(ProcessesToUpdate::All, false);
+            sys.refresh_processes(ProcessesToUpdate::Some(&[Pid::from_u32(pid)]), false);
             if let Some(p) = sys.process(Pid::from_u32(pid)) {
                 // Under certain circumstances, the process can be in a state where it's not running,
                 // and we are unable to kill it. For example, `kill -9` a process created by

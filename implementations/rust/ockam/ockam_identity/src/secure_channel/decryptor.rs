@@ -75,10 +75,11 @@ impl DecryptorHandler {
             &self.addresses.decryptor_remote
         );
 
-        let return_route = msg.return_route();
+        let msg = msg.into_local_message();
+        let return_route = msg.return_route;
 
         // Decode raw payload binary
-        let mut request = DecryptionRequest::decode(msg.payload())?;
+        let mut request = DecryptionRequest::decode(&msg.payload)?;
 
         // Decrypt the binary
         let decrypted_payload = self.decryptor.decrypt(request.0.as_mut_slice()).await;
@@ -98,7 +99,7 @@ impl DecryptorHandler {
     async fn handle_payload(
         &mut self,
         ctx: &mut Context,
-        mut msg: PlaintextPayloadMessage<'_>,
+        msg: PlaintextPayloadMessage<'_>,
         nonce: Nonce,
         encrypted_msg_return_route: Route,
     ) -> Result<()> {
@@ -107,15 +108,18 @@ impl DecryptorHandler {
             // Only overwrite if we know that's the latest address
             if remote_route.last_nonce < nonce {
                 let their_decryptor_address = remote_route.route.recipient()?;
-                remote_route.route = route![encrypted_msg_return_route, their_decryptor_address];
+                remote_route.route =
+                    route![encrypted_msg_return_route, their_decryptor_address.clone()];
                 remote_route.last_nonce = nonce;
             }
         }
 
         // Add encryptor hop in the return_route (instead of our address)
-        msg.return_route
+        let return_route = msg
+            .return_route
             .modify()
-            .prepend(self.addresses.encryptor.clone());
+            .prepend(self.addresses.encryptor.clone())
+            .into();
 
         // Mark message LocalInfo with IdentitySecureChannelLocalInfo,
         // replacing any pre-existing entries
@@ -124,7 +128,7 @@ impl DecryptorHandler {
 
         let msg = LocalMessage::new()
             .with_onward_route(msg.onward_route)
-            .with_return_route(msg.return_route)
+            .with_return_route(return_route)
             .with_payload(msg.payload.to_vec())
             .with_local_info(local_info);
 
@@ -193,10 +197,11 @@ impl DecryptorHandler {
             &self.addresses.decryptor_remote
         );
 
-        let encrypted_msg_return_route = msg.return_route();
+        let msg = msg.into_local_message();
+        let encrypted_msg_return_route = msg.return_route;
 
         // Decode raw payload binary
-        let mut payload = msg.into_payload();
+        let mut payload = msg.payload;
 
         // Decrypt the binary
         let (decrypted_payload, nonce) = self.decryptor.decrypt(payload.as_mut_slice()).await?;
@@ -259,6 +264,8 @@ impl Decryptor {
             None
         };
 
+        let rekey_key;
+
         let rekeying = self.nonce_tracker.is_some();
         let key = if rekeying {
             // get the key corresponding to the current nonce and
@@ -266,10 +273,11 @@ impl Decryptor {
             if let Some(key) = self.key_tracker.get_key(nonce)? {
                 key
             } else {
-                Encryptor::rekey(&self.vault, &self.key_tracker.current_key).await?
+                rekey_key = Encryptor::rekey(&self.vault, &self.key_tracker.current_key).await?;
+                &rekey_key
             }
         } else {
-            self.key_tracker.current_key.clone()
+            &self.key_tracker.current_key
         };
 
         // to improve protection against connection disruption attacks, we want to validate the
@@ -277,7 +285,7 @@ impl Decryptor {
         let result = self
             .vault
             .aead_decrypt(
-                &key,
+                key,
                 &mut payload[NOISE_NONCE_LEN..],
                 &nonce.to_aes_gcm_nonce(),
                 &[],
@@ -287,7 +295,7 @@ impl Decryptor {
         match result {
             Ok(result) => {
                 self.nonce_tracker = nonce_tracker;
-                if let Some(key_to_delete) = self.key_tracker.update_key(key)? {
+                if let Some(key_to_delete) = self.key_tracker.update_key(&key.clone())? {
                     self.vault.delete_aead_secret_key(key_to_delete).await?;
                 }
 

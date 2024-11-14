@@ -132,7 +132,7 @@ impl Worker for UdpPunctureNegotiationListener {
     ) -> Result<()> {
         info!("Received a UDP puncture request");
 
-        let return_route = msg.return_route();
+        let return_route = msg.return_route().clone();
         let msg = msg.into_body()?;
 
         let child_ctx = ctx

@@ -203,8 +203,8 @@ impl Processor for UdpReceiverProcessor {
 
         local_message = local_message.set_return_route(return_route.into());
 
-        trace!(onward_route = %local_message.onward_route_ref(),
-            return_route = %local_message.return_route_ref(),
+        trace!(onward_route = %local_message.onward_route(),
+            return_route = %local_message.return_route(),
             "Forwarding UDP message");
 
         ctx.forward(local_message).await?;

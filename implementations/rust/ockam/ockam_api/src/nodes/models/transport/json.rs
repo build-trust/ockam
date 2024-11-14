@@ -22,9 +22,9 @@ impl CreateTransportJson {
         Ok(Self {
             tt,
             tm,
-            addr: InternetAddress::new(addr).ok_or(CliStateError::InvalidOperation(
-                "Invalid address '{addr}'".to_string(),
-            ))?,
+            addr: InternetAddress::new(addr).ok_or_else(|| {
+                CliStateError::InvalidOperation("Invalid address '{addr}'".to_string())
+            })?,
         })
     }
 

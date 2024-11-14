@@ -22,19 +22,19 @@ pub fn extract_address_value(input: &str) -> Result<String, ApiError> {
                 Node::CODE => {
                     addr = p
                         .cast::<Node>()
-                        .ok_or(ApiError::message("Failed to parse `node` protocol"))?
+                        .ok_or_else(|| ApiError::message("Failed to parse `node` protocol"))?
                         .to_string();
                 }
                 Service::CODE => {
                     addr = p
                         .cast::<Service>()
-                        .ok_or(ApiError::message("Failed to parse `service` protocol"))?
+                        .ok_or_else(|| ApiError::message("Failed to parse `service` protocol"))?
                         .to_string();
                 }
                 Project::CODE => {
                     addr = p
                         .cast::<Project>()
-                        .ok_or(ApiError::message("Failed to parse `project` protocol"))?
+                        .ok_or_else(|| ApiError::message("Failed to parse `project` protocol"))?
                         .to_string();
                 }
                 code => return Err(ApiError::message(format!("Protocol {code} not supported"))),

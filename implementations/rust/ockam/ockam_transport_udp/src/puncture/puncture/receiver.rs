@@ -145,10 +145,10 @@ impl UdpPunctureReceiverWorker {
     async fn handle_peer(
         &mut self,
         ctx: &mut Context,
-        msg: Routed<Any>,
+        payload: Vec<u8>,
         return_route: &Route,
     ) -> Result<()> {
-        let msg = PunctureMessage::decode(msg.payload())?;
+        let msg = PunctureMessage::decode(&payload)?;
         trace!("Puncture remote message: {:?}", msg);
 
         // Record contact with peer, but only for pong and payload message.
@@ -174,7 +174,7 @@ impl UdpPunctureReceiverWorker {
             }
             PunctureMessage::Payload {
                 onward_route,
-                mut return_route,
+                return_route,
                 payload,
             } => {
                 trace!("Received Payload from peer. Will forward to local entity");
@@ -292,9 +292,9 @@ impl Worker for UdpPunctureReceiverWorker {
     ) -> Result<()> {
         let addr = msg.msg_addr();
         if &addr == self.addresses.remote_address() {
-            let return_route = msg.return_route();
-
-            self.handle_peer(ctx, msg, &return_route).await?;
+            let msg = msg.into_local_message();
+            let return_route = msg.return_route;
+            self.handle_peer(ctx, msg.payload, &return_route).await?;
         } else if &addr == self.addresses.heartbeat_address() {
             self.handle_heartbeat(ctx).await?;
         } else {

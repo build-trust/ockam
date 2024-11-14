@@ -35,13 +35,13 @@ impl Worker for EnrollmentTokenAcceptorWorker {
             Ok(secure_channel_info) => secure_channel_info,
             Err(_e) => {
                 let resp = Response::bad_request_no_request("secure channel required").to_vec()?;
-                c.send(m.return_route(), resp).await?;
+                c.send(m.return_route().clone(), resp).await?;
                 return Ok(());
             }
         };
 
         let from = Identifier::from(secure_channel_info.their_identifier());
-        let return_route = m.return_route();
+        let return_route = m.return_route().clone();
         let body = m.into_body()?;
         let mut dec = Decoder::new(&body);
         let req: RequestHeader = dec.decode()?;

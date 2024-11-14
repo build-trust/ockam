@@ -213,7 +213,7 @@ impl TcpInlet {
 
     fn build_new_full_route(new_route: Route, old_route: &Route) -> Result<Route> {
         let their_outlet_address = old_route.recipient()?;
-        Ok(route![new_route, their_outlet_address])
+        Ok(route![new_route, their_outlet_address.clone()])
     }
 
     /// Update the route to the outlet node.

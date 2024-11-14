@@ -29,14 +29,16 @@ impl UdpPunctureSenderWorker {
             .clone()
             .ok_or(PunctureError::PunctureNotOpen)?;
 
-        let onward_route = msg.onward_route().modify().pop_front().into();
-        let return_route = msg.return_route();
+        let msg = msg.into_local_message();
+
+        let onward_route = msg.onward_route.modify().pop_front().into();
+        let return_route = msg.return_route;
 
         // Wrap payload
         let wrapped_payload = PunctureMessage::Payload {
             onward_route,
             return_route,
-            payload: msg.into_payload(),
+            payload: msg.payload,
         };
 
         let msg = LocalMessage::new()

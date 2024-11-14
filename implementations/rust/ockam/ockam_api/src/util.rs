@@ -20,27 +20,33 @@ pub fn local_multiaddr_to_route(ma: &MultiAddr) -> Result<Route> {
         match p.code() {
             // Only hops that are directly translated to existing workers are allowed here
             Worker::CODE => {
-                let local = p.cast::<Worker>().ok_or(Error::new(
-                    Origin::Api,
-                    Kind::Invalid,
-                    format!("incorrect worker address {ma})",),
-                ))?;
+                let local = p.cast::<Worker>().ok_or_else(|| {
+                    Error::new(
+                        Origin::Api,
+                        Kind::Invalid,
+                        format!("incorrect worker address {ma})",),
+                    )
+                })?;
                 rb = rb.append(Address::new_with_string(LOCAL, &*local))
             }
             Service::CODE => {
-                let local = p.cast::<Service>().ok_or(Error::new(
-                    Origin::Api,
-                    Kind::Invalid,
-                    format!("incorrect service address {ma})",),
-                ))?;
+                let local = p.cast::<Service>().ok_or_else(|| {
+                    Error::new(
+                        Origin::Api,
+                        Kind::Invalid,
+                        format!("incorrect service address {ma})",),
+                    )
+                })?;
                 rb = rb.append(Address::new_with_string(LOCAL, &*local))
             }
             Secure::CODE => {
-                let local = p.cast::<Secure>().ok_or(Error::new(
-                    Origin::Api,
-                    Kind::Invalid,
-                    format!("incorrect secure address {ma})",),
-                ))?;
+                let local = p.cast::<Secure>().ok_or_else(|| {
+                    Error::new(
+                        Origin::Api,
+                        Kind::Invalid,
+                        format!("incorrect secure address {ma})",),
+                    )
+                })?;
                 rb = rb.append(Address::new_with_string(LOCAL, &*local))
             }
 

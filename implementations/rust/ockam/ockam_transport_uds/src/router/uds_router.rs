@@ -264,7 +264,7 @@ impl Worker for UdsRouter {
     }
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Any>) -> Result<()> {
-        let return_route = msg.return_route();
+        let return_route = msg.return_route().clone();
         let msg_addr = msg.msg_addr();
 
         if msg_addr == self.main_addr {

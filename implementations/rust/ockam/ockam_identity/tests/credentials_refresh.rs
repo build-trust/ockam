@@ -39,7 +39,8 @@ impl Worker for CredentialIssuer {
             return Ok(());
         }
 
-        let subject = SecureChannelLocalInfo::find_info(msg.local_message())?
+        let msg = msg.into_local_message();
+        let subject = SecureChannelLocalInfo::find_info(&msg)?
             .their_identifier()
             .into();
         let credential = self
@@ -60,7 +61,7 @@ impl Worker for CredentialIssuer {
         self.call_counter.fetch_add(1, Ordering::Relaxed);
 
         ctx.sleep(self.delay).await;
-        ctx.send(msg.return_route(), response).await?;
+        ctx.send(msg.return_route, response).await?;
 
         Ok(())
     }

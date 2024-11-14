@@ -47,11 +47,13 @@ impl CliState {
             };
 
             let authority_route =
-                multiaddr_to_transport_route(authority_multiaddr).ok_or(Error::new(
-                    Origin::Api,
-                    Kind::NotFound,
-                    format!("Invalid authority route: {}", &authority_multiaddr),
-                ))?;
+                multiaddr_to_transport_route(authority_multiaddr).ok_or_else(|| {
+                    Error::new(
+                        Origin::Api,
+                        Kind::NotFound,
+                        format!("Invalid authority route: {}", &authority_multiaddr),
+                    )
+                })?;
             let info = RemoteCredentialRetrieverInfo::create_for_project_member(
                 authority_identifier.clone(),
                 authority_route,
@@ -112,14 +114,16 @@ impl CliState {
     ) -> Result<NodeManagerTrustOptions> {
         let authority_identifier = project
             .authority_identifier()
-            .ok_or(ApiError::core("no authority identifier"))?;
+            .ok_or_else(|| ApiError::core("no authority identifier"))?;
         let authority_multiaddr = project.authority_multiaddr()?;
         let authority_route =
-            multiaddr_to_transport_route(authority_multiaddr).ok_or(Error::new(
-                Origin::Api,
-                Kind::NotFound,
-                format!("Invalid authority route: {}", &authority_multiaddr),
-            ))?;
+            multiaddr_to_transport_route(authority_multiaddr).ok_or_else(|| {
+                Error::new(
+                    Origin::Api,
+                    Kind::NotFound,
+                    format!("Invalid authority route: {}", &authority_multiaddr),
+                )
+            })?;
 
         let project_id = project.project_id().to_string();
         let project_member_retriever = NodeManagerCredentialRetrieverOptions::Remote {

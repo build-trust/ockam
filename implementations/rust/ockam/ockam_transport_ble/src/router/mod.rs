@@ -80,7 +80,7 @@ impl BleRouter {
     }
 
     async fn handle_route(&mut self, ctx: &Context, msg: LocalMessage) -> Result<()> {
-        debug!("Ble route request: {:?}", msg.onward_route_ref());
+        debug!("Ble route request: {:?}", msg.onward_route());
 
         // Get the next hop
         let onward = msg.next_on_onward_route()?;
@@ -119,7 +119,7 @@ impl Worker for BleRouter {
 
         if msg_addr == self.main_addr {
             let msg = LocalMessage::decode(msg.payload())?;
-            trace!("handle_message route: {:?}", msg.onward_route_ref());
+            trace!("handle_message route: {:?}", msg.onward_route());
             self.handle_route(ctx, msg).await?;
         } else if msg_addr == self.api_addr {
             let msg = BleRouterMessage::decode(msg.payload())?;

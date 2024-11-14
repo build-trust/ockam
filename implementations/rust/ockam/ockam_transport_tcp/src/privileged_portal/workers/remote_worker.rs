@@ -175,8 +175,9 @@ impl Worker for RemoteWorker {
         let their_identifier = SecureChannelLocalInfo::find_info(msg.local_message())
             .map(|l| l.their_identifier())
             .ok();
-        let return_route = msg.return_route();
-        let payload = msg.into_payload();
+        let msg = msg.into_local_message();
+        let return_route = msg.return_route;
+        let payload = msg.payload;
 
         let msg: OckamPortalPacket = minicbor::decode(&payload)
             .map_err(|e| TransportError::InvalidOckamPortalPacket(e.to_string()))?;

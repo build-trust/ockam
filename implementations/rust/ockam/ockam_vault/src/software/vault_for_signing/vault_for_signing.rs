@@ -218,11 +218,13 @@ impl SoftwareVaultForSigning {
         &self,
         signing_secret_key_handle: &SigningSecretKeyHandle,
     ) -> Result<SigningSecret> {
+        // to avoid always creating an `Error` instance
+        #[allow(clippy::unnecessary_lazy_evaluations)]
         let stored_secret = self
             .secrets
             .get_signing_secret(signing_secret_key_handle)
             .await?
-            .ok_or(VaultError::KeyNotFound)?;
+            .ok_or_else(|| VaultError::KeyNotFound)?;
 
         Ok(stored_secret)
     }

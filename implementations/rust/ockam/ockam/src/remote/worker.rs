@@ -33,7 +33,6 @@ impl Worker for RemoteRelay {
         msg: Routed<Self::Message>,
     ) -> Result<()> {
         if msg.msg_addr() == self.addresses.main_remote {
-            let return_route = msg.return_route();
             let mut local_message = msg.into_local_message();
 
             // Remove my address from the onward_route
@@ -53,8 +52,12 @@ impl Worker for RemoteRelay {
                     }
 
                     if !self.completion_msg_sent {
-                        info!(registration_route = %self.registration_route, "RemoteRelay registered with route: {}", return_route);
-                        let address = match return_route.recipient()?.to_string().strip_prefix("0#")
+                        info!(registration_route = %self.registration_route, "RemoteRelay registered with route: {}", local_message.return_route);
+                        let address = match local_message
+                            .return_route
+                            .recipient()?
+                            .to_string()
+                            .strip_prefix("0#")
                         {
                             Some(addr) => addr.to_string(),
                             None => return Err(OckamError::InvalidResponseFromRelayService)?,
@@ -63,7 +66,7 @@ impl Worker for RemoteRelay {
                         ctx.send_from_address(
                             self.addresses.completion_callback.clone(),
                             RemoteRelayInfo::new(
-                                return_route,
+                                local_message.return_route,
                                 address,
                                 self.addresses.main_remote.clone(),
                                 self.flow_control_id.clone(),

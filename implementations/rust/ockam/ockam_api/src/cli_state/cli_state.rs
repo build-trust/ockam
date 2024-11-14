@@ -186,15 +186,16 @@ impl CliState {
     /// Returns the default backup directory for the CLI state.
     pub fn backup_default_dir() -> Result<PathBuf> {
         let dir = Self::default_dir()?;
-        let dir_name =
-            dir.file_name()
-                .and_then(|n| n.to_str())
-                .ok_or(CliStateError::InvalidOperation(
-                    "The $OCKAM_HOME directory does not have a valid name".to_string(),
-                ))?;
-        let parent = dir.parent().ok_or(CliStateError::InvalidOperation(
-            "The $OCKAM_HOME directory does not a valid parent directory".to_string(),
-        ))?;
+        let dir_name = dir.file_name().and_then(|n| n.to_str()).ok_or_else(|| {
+            CliStateError::InvalidOperation(
+                "The $OCKAM_HOME directory does not have a valid name".to_string(),
+            )
+        })?;
+        let parent = dir.parent().ok_or_else(|| {
+            CliStateError::InvalidOperation(
+                "The $OCKAM_HOME directory does not a valid parent directory".to_string(),
+            )
+        })?;
         Ok(parent.join(format!("{dir_name}.bak")))
     }
 }
@@ -303,7 +304,7 @@ impl CliState {
         Ok(get_env_with_default::<PathBuf>(
             "OCKAM_HOME",
             home::home_dir()
-                .ok_or(CliStateError::InvalidPath("$HOME".to_string()))?
+                .ok_or_else(|| CliStateError::InvalidPath("$HOME".to_string()))?
                 .join(".ockam"),
         )?)
     }

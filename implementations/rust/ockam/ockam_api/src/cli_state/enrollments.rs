@@ -441,9 +441,7 @@ impl ProjectRoute {
                 let project_id = dnsaddr
                     .split('.')
                     .next()
-                    .ok_or(CliStateError::InvalidData(
-                        "Invalid project route".to_string(),
-                    ))?
+                    .ok_or_else(|| CliStateError::InvalidData("Invalid project route".to_string()))?
                     .to_string();
                 Ok(Self {
                     id: project_id,
@@ -529,11 +527,11 @@ impl EnrollmentTicket {
         let project_change_history = project
             .project_change_history
             .as_ref()
-            .ok_or(ApiError::core("no project change history"))?;
+            .ok_or_else(|| ApiError::core("no project change history"))?;
         let authority_change_history = project
             .authority_identity
             .as_ref()
-            .ok_or(ApiError::core("no authority change history"))?;
+            .ok_or_else(|| ApiError::core("no authority change history"))?;
         let authority_route = project
             .authority_access_route
             .as_ref()
@@ -558,14 +556,12 @@ impl EnrollmentTicket {
         let project_change_history = project
             .project_change_history
             .as_ref()
-            .ok_or(ApiError::core("no project change history in legacy ticket"))?
+            .ok_or_else(|| ApiError::core("no project change history in legacy ticket"))?
             .clone();
         let authority_change_history = project
             .authority_identity
             .as_ref()
-            .ok_or(ApiError::core(
-                "no authority change history in legacy ticket",
-            ))?
+            .ok_or_else(|| ApiError::core("no authority change history in legacy ticket"))?
             .clone();
         let authority_route = project
             .authority_access_route

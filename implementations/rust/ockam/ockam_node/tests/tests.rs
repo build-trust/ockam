@@ -96,7 +96,7 @@ impl Worker for SimpleWorker {
         ctx: &mut Self::Context,
         msg: Routed<Self::Message>,
     ) -> Result<()> {
-        ctx.send(msg.return_route(), msg.into_body()?).await
+        ctx.send(msg.return_route().clone(), msg.into_body()?).await
     }
 }
 
@@ -380,7 +380,7 @@ impl Processor for MessagingProcessor {
 
     async fn process(&mut self, ctx: &mut Self::Context) -> Result<bool> {
         let msg = ctx.receive::<String>().await.unwrap();
-        let route = msg.return_route();
+        let route = msg.return_route().clone();
         let body = msg.into_body()?;
 
         match body.as_str() {
@@ -568,7 +568,7 @@ impl Worker for SendReceiveWorker {
     type Message = Any;
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Any>) -> Result<()> {
-        let return_route = msg.return_route();
+        let return_route = msg.return_route().clone();
         let msg = SendReceiveRequest::decode(msg.payload())?;
 
         match msg {
@@ -628,7 +628,7 @@ impl Worker for DummyWorker {
         ctx: &mut Self::Context,
         msg: Routed<Self::Message>,
     ) -> Result<()> {
-        ctx.send(msg.return_route(), msg.into_body()?).await
+        ctx.send(msg.return_route().clone(), msg.into_body()?).await
     }
 }
 

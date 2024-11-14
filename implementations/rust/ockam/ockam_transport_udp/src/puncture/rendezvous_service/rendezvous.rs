@@ -85,9 +85,9 @@ impl Worker for RendezvousServiceWorker {
         debug!(
             "Received message: {:?} from {}",
             msg,
-            Self::parse_route(&msg.return_route())
+            Self::parse_route(msg.return_route())
         );
-        let return_route = msg.return_route();
+        let return_route = msg.return_route().clone();
         match msg.into_body()? {
             RendezvousRequest::Ping => {
                 ctx.send(return_route, RendezvousResponse::Pong).await?;

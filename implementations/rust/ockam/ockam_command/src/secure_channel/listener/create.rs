@@ -101,7 +101,7 @@ pub async fn create_listener(
     addr: Address,
     authorized_identifiers: Option<Vec<Identifier>>,
     identity: Option<String>,
-    mut base_route: Route,
+    base_route: Route,
 ) -> miette::Result<()> {
     let resp: Vec<u8> = ctx
         .send_and_receive(

@@ -57,13 +57,8 @@ pub struct LocalMessage {
 }
 
 impl LocalMessage {
-    /// Return the message onward route
-    pub fn onward_route(&self) -> Route {
-        self.onward_route.clone()
-    }
-
     /// Return a reference to the message onward route
-    pub fn onward_route_ref(&self) -> &Route {
+    pub fn onward_route(&self) -> &Route {
         &self.onward_route
     }
 
@@ -85,7 +80,7 @@ impl LocalMessage {
 
     /// Prepend an address on the onward route
     pub fn push_front_onward_route(mut self, address: &Address) -> Self {
-        self.onward_route.modify().prepend(address.clone());
+        self.onward_route = self.onward_route.modify().prepend(address.clone()).into();
         self
     }
 
@@ -98,7 +93,11 @@ impl LocalMessage {
 
     /// Prepend a route to the onward route
     pub fn prepend_front_onward_route(mut self, route: &Route) -> Self {
-        self.onward_route.modify().prepend_route(route.clone());
+        self.onward_route = self
+            .onward_route
+            .modify()
+            .prepend_route(route.clone())
+            .into();
         self
     }
 
@@ -109,12 +108,7 @@ impl LocalMessage {
     }
 
     /// Return the message return route
-    pub fn return_route(&self) -> Route {
-        self.return_route.clone()
-    }
-
-    /// Return a reference to the message return route
-    pub fn return_route_ref(&self) -> &Route {
+    pub fn return_route(&self) -> &Route {
         &self.return_route
     }
 
@@ -126,13 +120,17 @@ impl LocalMessage {
 
     /// Prepend an address to the return route
     pub fn push_front_return_route(mut self, address: &Address) -> Self {
-        self.return_route.modify().prepend(address.clone());
+        self.return_route = self.return_route.modify().prepend(address.clone()).into();
         self
     }
 
     /// Prepend a route to the return route
     pub fn prepend_front_return_route(mut self, route: &Route) -> Self {
-        self.return_route.modify().prepend_route(route.clone());
+        self.return_route = self
+            .return_route
+            .modify()
+            .prepend_route(route.clone())
+            .into();
         self
     }
 

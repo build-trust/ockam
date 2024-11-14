@@ -110,7 +110,7 @@ impl Worker for InfluxDBTokenLessorWorker {
             SecureChannelLocalInfo::find_info(msg.local_message())?.their_identifier(),
         );
 
-        let return_route = msg.return_route();
+        let return_route = msg.return_route().clone();
         let body = msg.into_body()?;
         let mut dec = Decoder::new(&body);
         let req: RequestHeader = match dec.decode() {

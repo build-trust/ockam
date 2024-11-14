@@ -226,18 +226,18 @@ impl<M: Message> Routed<M> {
 
     /// Return a copy of the onward route for the wrapped message.
     #[inline]
-    pub fn onward_route(&self) -> Route {
+    pub fn onward_route(&self) -> &Route {
         self.local_msg.onward_route()
     }
 
     /// Return a copy of the full return route for the wrapped message.
     #[inline]
-    pub fn return_route(&self) -> Route {
+    pub fn return_route(&self) -> &Route {
         self.local_msg.return_route()
     }
     /// Return a copy of the sender address for the wrapped message.
     #[inline]
-    pub fn sender(&self) -> Result<Address> {
+    pub fn sender(&self) -> Result<&Address> {
         self.local_msg.return_route().recipient()
     }
 

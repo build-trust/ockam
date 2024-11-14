@@ -464,9 +464,10 @@ async fn kafka_portal_worker__metadata_exchange__response_changed(
 
     let message = context
         .receive_extended::<NeutralMessage>(MessageReceiveOptions::new().without_timeout())
-        .await?;
-    let return_route = message.return_route();
-    let message = PortalMessage::decode(message.payload())?;
+        .await?
+        .into_local_message();
+    let return_route = message.return_route;
+    let message = PortalMessage::decode(&message.payload)?;
 
     if let PortalMessage::Payload(payload, _) = message {
         assert_eq!(&request_buffer, payload);

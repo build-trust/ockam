@@ -18,6 +18,6 @@ impl Worker for Echoer {
         debug!("Address: {}, Received: {:?}", ctx.address(), msg);
 
         // Echo the message body back on its return_route.
-        ctx.send(msg.return_route(), msg.into_body()?).await
+        ctx.send(msg.return_route().clone(), msg.into_body()?).await
     }
 }

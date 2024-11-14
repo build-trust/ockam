@@ -338,7 +338,7 @@ impl Context {
 
         // First resolve the next hop in the route
         let (reply_tx, mut reply_rx) = small_channel();
-        let addr = match local_msg.onward_route_ref().next() {
+        let addr = match local_msg.onward_route().next() {
             Ok(next) => next.clone(),
             Err(err) => {
                 // TODO: communicate bad routes to calling function

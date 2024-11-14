@@ -264,8 +264,9 @@ impl HandshakeWorker {
         context: &mut Context,
         message: Routed<Any>,
     ) -> Result<()> {
-        let return_route = message.return_route();
-        let payload = message.into_payload();
+        let message = message.into_local_message();
+        let return_route = message.return_route;
+        let payload = message.payload;
 
         if let SendMessage(send_message) = self
             .state_machine

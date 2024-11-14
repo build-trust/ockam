@@ -282,11 +282,13 @@ impl NodeManager {
             .secure_channels
             .get_by_addr(addr)
             .await
-            .ok_or(ockam_core::Error::new(
-                Origin::Api,
-                Kind::NotFound,
-                format!("Secure channel with address, {}, not found", addr),
-            ))
+            .ok_or_else(|| {
+                ockam_core::Error::new(
+                    Origin::Api,
+                    Kind::NotFound,
+                    format!("Secure channel with address, {}, not found", addr),
+                )
+            })
     }
 
     pub async fn list_secure_channels(&self) -> Vec<String> {
@@ -424,11 +426,13 @@ impl NodeManager {
             .secure_channel_listeners
             .remove(addr)
             .await
-            .ok_or(ockam_core::Error::new(
-                Origin::Api,
-                Kind::Internal,
-                format!("Error while deleting secure channel with addrress {}", addr,),
-            ))
+            .ok_or_else(|| {
+                ockam_core::Error::new(
+                    Origin::Api,
+                    Kind::Internal,
+                    format!("Error while deleting secure channel with addrress {}", addr,),
+                )
+            })
     }
 
     pub async fn get_secure_channel_listener(
@@ -440,11 +444,13 @@ impl NodeManager {
             .secure_channel_listeners
             .get(addr)
             .await
-            .ok_or(ockam_core::Error::new(
-                Origin::Api,
-                Kind::NotFound,
-                format!("Secure channel with address, {}, not found", addr),
-            ))
+            .ok_or_else(|| {
+                ockam_core::Error::new(
+                    Origin::Api,
+                    Kind::NotFound,
+                    format!("Secure channel with address, {}, not found", addr),
+                )
+            })
     }
 
     pub async fn list_secure_channel_listeners(&self) -> Vec<SecureChannelListener> {

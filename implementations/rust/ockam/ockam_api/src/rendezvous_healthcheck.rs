@@ -52,11 +52,13 @@ impl RendezvousHealthcheck {
             ));
         }
 
-        let task = self.task.take().ok_or(Error::new(
-            Origin::Application,
-            Kind::Unknown,
-            "Can't start Healthcheck because it is already started (task is present)",
-        ))?;
+        let task = self.task.take().ok_or_else(|| {
+            Error::new(
+                Origin::Application,
+                Kind::Unknown,
+                "Can't start Healthcheck because it is already started (task is present)",
+            )
+        })?;
 
         let listener = TcpListener::bind(self.healthcheck_listening_address.clone())
             .await

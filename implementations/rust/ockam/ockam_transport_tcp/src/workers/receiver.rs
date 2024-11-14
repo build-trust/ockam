@@ -28,6 +28,7 @@ use tracing::{info, instrument, trace};
 /// the node message system.
 pub(crate) struct TcpRecvProcessor {
     registry: TcpRegistry,
+    incoming_buffer: Vec<u8>,
     read_half: OwnedReadHalf,
     socket_address: SocketAddr,
     addresses: Addresses,
@@ -47,6 +48,7 @@ impl TcpRecvProcessor {
     ) -> Self {
         Self {
             registry,
+            incoming_buffer: Vec::new(),
             read_half,
             socket_address,
             addresses,
@@ -210,10 +212,12 @@ impl Processor for TcpRecvProcessor {
         trace!("Received message header for {} bytes", len);
 
         // Allocate a buffer of that size
-        let mut buf = vec![0; len_usize];
+        self.incoming_buffer.clear();
+        self.incoming_buffer.reserve(len_usize);
+        self.incoming_buffer.resize(len_usize, 0);
 
         // Then read into the buffer
-        match self.read_half.read_exact(&mut buf).await {
+        match self.read_half.read_exact(&mut self.incoming_buffer).await {
             Ok(_) => {}
             Err(e) => {
                 self.notify_sender_stream_dropped(ctx, e).await?;
@@ -222,7 +226,7 @@ impl Processor for TcpRecvProcessor {
         }
 
         // Deserialize the message now
-        let transport_message: TcpTransportMessage = match minicbor::decode(&buf) {
+        let transport_message: TcpTransportMessage = match minicbor::decode(&self.incoming_buffer) {
             Ok(msg) => msg,
             Err(e) => {
                 self.notify_sender_stream_dropped(ctx, e).await?;
@@ -240,8 +244,8 @@ impl Processor for TcpRecvProcessor {
         // reply routing can be properly resolved
         let local_message = local_message.push_front_return_route(self.addresses.sender_address());
 
-        trace!("Message onward route: {}", local_message.onward_route_ref());
-        trace!("Message return route: {}", local_message.return_route_ref());
+        trace!("Message onward route: {}", local_message.onward_route());
+        trace!("Message return route: {}", local_message.return_route());
 
         // Forward the message to the next hop in the route
         ctx.forward_from_address(local_message, self.addresses.receiver_address().clone())

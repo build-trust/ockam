@@ -90,7 +90,7 @@ impl SecureChannel {
         let old_route = remote_route.clone();
 
         let their_decryptor_address = old_route.route.recipient()?;
-        let new_route = route![new_route, their_decryptor_address];
+        let new_route = route![new_route, their_decryptor_address.clone()];
 
         remote_route.route = new_route;
 

@@ -78,7 +78,7 @@ impl InletSessionReplacer {
                     {
                         Some(
                             p.authority_identifier()
-                                .ok_or(ApiError::core("no authority identifier"))?,
+                                .ok_or_else(|| ApiError::core("no authority identifier"))?,
                         )
                     } else {
                         None
@@ -311,14 +311,16 @@ impl AdditionalSessionReplacer for InletSessionReplacer {
         let udp_transport = self
             .udp_transport
             .as_ref()
-            .ok_or(Error::new(
-                Origin::Node,
-                Kind::Invalid,
-                "Couldn't create inlet with puncture",
-            ))?
+            .ok_or_else(|| {
+                Error::new(
+                    Origin::Node,
+                    Kind::Invalid,
+                    "Couldn't create inlet with puncture",
+                )
+            })?
             .clone();
 
-        let mut main_route = if let Some(connection) = self.connection.as_ref() {
+        let main_route = if let Some(connection) = self.connection.as_ref() {
             connection.route()?
         } else {
             return Err(Error::new(

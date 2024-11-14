@@ -122,7 +122,7 @@ impl Worker for WebSocketRouter {
     }
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Any>) -> Result<()> {
-        let return_route = msg.return_route();
+        let return_route = msg.return_route().clone();
         let msg_addr = msg.msg_addr();
 
         if msg_addr == self.main_addr {
@@ -152,10 +152,10 @@ impl Worker for WebSocketRouter {
 
 impl WebSocketRouter {
     async fn handle_route(&mut self, ctx: &Context, msg: LocalMessage) -> Result<()> {
-        trace!("WS route request: {:?}", msg.onward_route_ref().next());
+        trace!("WS route request: {:?}", msg.onward_route().next());
 
         // Get the next hop
-        let onward = msg.onward_route_ref().next()?;
+        let onward = msg.onward_route().next()?;
 
         let next;
         // Look up the connection worker responsible

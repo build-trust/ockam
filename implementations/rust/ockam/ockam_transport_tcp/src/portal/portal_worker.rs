@@ -458,8 +458,10 @@ impl Worker for TcpPortalWorker {
 
         // Remove our own address from the route so the other end
         // knows what to do with the incoming message
+
+        let msg = msg.into_local_message();
         let state = self.clone_state();
-        let mut onward_route = msg.onward_route();
+        let mut onward_route = msg.onward_route;
         let recipient = onward_route.step()?;
         if onward_route.next().is_ok() {
             return Err(TransportError::UnknownRoute)?;
@@ -467,7 +469,7 @@ impl Worker for TcpPortalWorker {
 
         let remote_packet = recipient != self.addresses.sender_internal;
         if remote_packet {
-            let their_identifier = SecureChannelLocalInfo::find_info(msg.local_message())
+            let their_identifier = SecureChannelLocalInfo::find_info_from_list(&msg.local_info)
                 .map(|l| l.their_identifier())
                 .ok();
 
@@ -481,8 +483,8 @@ impl Worker for TcpPortalWorker {
             }
         }
 
-        let return_route = msg.return_route();
-        let payload = msg.into_payload();
+        let return_route = msg.return_route;
+        let payload = msg.payload;
 
         match state {
             State::ReceivePong => {

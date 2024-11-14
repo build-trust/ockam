@@ -187,11 +187,13 @@ impl SoftwareVaultForSecureChannels {
             return Ok(secret.clone());
         }
 
+        // to avoid always creating an `Error` instance
+        #[allow(clippy::unnecessary_lazy_evaluations)]
         Ok(self
             .secrets_repository
             .get_x25519_secret(handle)
             .await?
-            .ok_or(VaultError::KeyNotFound)?)
+            .ok_or_else(|| VaultError::KeyNotFound)?)
     }
 
     async fn get_buffer_secret(&self, handle: &SecretBufferHandle) -> Result<BufferSecret> {

@@ -124,18 +124,12 @@ impl NodeManagerWorker {
 
         //TODO: should be an easier way to tweak the multiaddr
         let mut issuer_route = outlet_addr.clone();
-        let outlet_addr_last_service =
-            issuer_route
-                .pop_back()
-                .ok_or(Response::bad_request_no_request(
-                    "The outlet address is invalid",
-                ))?;
-        let outlet_addr_last_service =
-            outlet_addr_last_service
-                .cast::<Service>()
-                .ok_or(Response::bad_request_no_request(
-                    "The outlet address is invalid",
-                ))?;
+        let outlet_addr_last_service = issuer_route
+            .pop_back()
+            .ok_or_else(|| Response::bad_request_no_request("The outlet address is invalid"))?;
+        let outlet_addr_last_service = outlet_addr_last_service
+            .cast::<Service>()
+            .ok_or_else(|| Response::bad_request_no_request("The outlet address is invalid"))?;
 
         let lease_issuer_route = if let Some(s) = body.lease_issuer_address {
             s

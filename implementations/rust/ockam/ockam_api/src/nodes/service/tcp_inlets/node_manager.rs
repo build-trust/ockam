@@ -55,11 +55,13 @@ impl NodeManager {
         }
 
         let udp_transport = if enable_udp_puncture {
-            Some(self.udp_transport.clone().ok_or(ockam_core::Error::new(
-                Origin::Transport,
-                Kind::Invalid,
-                "Can't enable UDP puncture or non UDP node",
-            ))?)
+            Some(self.udp_transport.clone().ok_or_else(|| {
+                ockam_core::Error::new(
+                    Origin::Transport,
+                    Kind::Invalid,
+                    "Can't enable UDP puncture or non UDP node",
+                )
+            })?)
         } else {
             None
         };

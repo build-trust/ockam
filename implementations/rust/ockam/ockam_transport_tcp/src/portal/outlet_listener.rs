@@ -80,9 +80,10 @@ impl Worker for TcpOutletListenWorker {
         let their_identifier = SecureChannelLocalInfo::find_info(msg.local_message())
             .map(|l| l.their_identifier())
             .ok();
-        let return_route = msg.return_route();
         let src_addr = msg.src_addr();
-        let body = msg.into_body()?.into_vec();
+        let msg = msg.into_local_message();
+        let return_route = msg.return_route;
+        let body = msg.payload;
         let msg = PortalMessage::decode(&body)?;
 
         if !matches!(msg, PortalMessage::Ping) {

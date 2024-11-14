@@ -30,7 +30,7 @@ impl CliState {
     /// Return a random root directory
     pub fn test_dir() -> Result<PathBuf> {
         Ok(home::home_dir()
-            .ok_or(CliStateError::InvalidPath("$HOME".to_string()))?
+            .ok_or_else(|| CliStateError::InvalidPath("$HOME".to_string()))?
             .join(".ockam")
             .join(".tests")
             .join(random_name()))

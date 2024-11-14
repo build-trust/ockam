@@ -104,7 +104,7 @@ impl Worker for PortalOutletInterceptor {
 
         let worker_address = PortalInterceptorWorker::create_outlet_interceptor(
             context,
-            message.onward_route(),
+            message.onward_route().clone(),
             flow_control_id,
             self.spawner_flow_control_id.clone(),
             self.incoming_access_control.clone(),
@@ -131,8 +131,8 @@ impl Worker for PortalOutletInterceptor {
 
         trace!(
             "forwarding message: onward={:?}; return={:?}; worker={:?}",
-            &message.onward_route_ref(),
-            &message.return_route_ref(),
+            &message.onward_route(),
+            &message.return_route(),
             worker_address
         );
         context.forward(message).await?;
@@ -204,7 +204,7 @@ impl Worker for PortalInletInterceptor {
             .find_flow_control_with_producer_address(&next_hop)
             .map(|x| x.flow_control_id().clone());
 
-        let inlet_responder_address = message.return_route_ref().next()?.clone();
+        let inlet_responder_address = message.return_route().next()?.clone();
 
         let worker_address = PortalInterceptorWorker::create_inlet_interceptor(
             context,
@@ -220,8 +220,8 @@ impl Worker for PortalInletInterceptor {
 
         trace!(
             "forwarding message: onward={:?}; return={:?}; worker={:?}",
-            &message.onward_route_ref(),
-            &message.return_route_ref(),
+            &message.onward_route(),
+            &message.return_route(),
             worker_address
         );
 
@@ -287,6 +287,7 @@ impl Worker for PortalInterceptorWorker {
                 }
             }
             PortalMessage::Disconnect => {
+                let return_route = return_route.clone();
                 self.forward(context, routed_message).await?;
 
                 // the first one to receive disconnect and to swap the atomic will stop both workers
@@ -316,7 +317,8 @@ impl Worker for PortalInterceptorWorker {
                                     fixed_onward_route,
                                     routed_message.return_route()
                                 );
-                                self.fixed_onward_route = Some(routed_message.return_route());
+                                self.fixed_onward_route =
+                                    Some(routed_message.into_local_message().return_route);
                             }
                         }
                     }
@@ -507,14 +509,14 @@ impl PortalInterceptorWorker {
         let mut local_message = routed_message.into_local_message();
         tracing::trace!(
             "before: onwards={:?}; return={:?};",
-            local_message.onward_route_ref(),
-            local_message.return_route_ref()
+            local_message.onward_route(),
+            local_message.return_route()
         );
 
         local_message = if let Some(fixed_onward_route) = &self.fixed_onward_route {
             tracing::trace!(
                 "replacing onward_route {:?} with {:?}",
-                local_message.onward_route_ref(),
+                local_message.onward_route(),
                 fixed_onward_route
             );
             local_message
@@ -526,7 +528,7 @@ impl PortalInterceptorWorker {
             // we can omit the previous return route.
             tracing::trace!(
                 "replacing return_route {:?} with {:?}",
-                local_message.return_route_ref(),
+                local_message.return_route(),
                 self.other_worker_address
             );
             local_message.set_return_route(route![self.other_worker_address.clone()])
@@ -534,8 +536,8 @@ impl PortalInterceptorWorker {
 
         tracing::trace!(
             "after: onwards={:?}; return={:?};",
-            local_message.onward_route_ref(),
-            local_message.return_route_ref(),
+            local_message.onward_route(),
+            local_message.return_route(),
         );
         context.forward(local_message).await
     }
