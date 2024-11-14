@@ -1,0 +1,17 @@
+{
+    "name": "ockam",
+    "build": {
+        "dockerfile": "./Dockerfile",
+        "context": "."
+    },
+    "remoteEnv": {
+        "LANG": "en_US.UTF-8",
+        "LANGUAGE": "en_US:en",
+        "LC_ALL": "en_US.UTF-8"
+    },
+    "features": {
+        "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {},
+        "ghcr.io/devcontainers/features/rust:1": {}
+    },
+    "postStartCommand": "sudo chmod 1777 /tmp/ && sudo setfacl -k /tmp"
+}
