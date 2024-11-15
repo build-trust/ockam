@@ -1,8 +1,8 @@
 use colorful::{core::color_string::CString, Colorful, RGB};
 use colors_transform::{Color, Rgb};
-use r3bl_rs_utils_core::UnicodeString;
-use r3bl_tui::{
-    ColorWheel, ColorWheelConfig, ColorWheelSpeed, GradientGenerationPolicy, TextColorizationPolicy,
+use r3bl_core::{
+    ColorWheel, ColorWheelConfig, ColorWheelSpeed, GradientGenerationPolicy,
+    TextColorizationPolicy, UnicodeString,
 };
 use std::fmt::Display;
 

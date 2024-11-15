@@ -6,9 +6,9 @@ use std::sync::Arc;
 use clap::Args;
 use colorful::Colorful;
 use miette::{miette, IntoDiagnostic, WrapErr};
-use r3bl_rs_utils_core::UnicodeString;
-use r3bl_tui::{
-    ColorWheel, ColorWheelConfig, ColorWheelSpeed, GradientGenerationPolicy, TextColorizationPolicy,
+use r3bl_core::{
+    ColorWheel, ColorWheelConfig, ColorWheelSpeed, GradientGenerationPolicy,
+    TextColorizationPolicy, UnicodeString,
 };
 use tokio::sync::Mutex;
 use tokio::try_join;

@@ -86,9 +86,8 @@ opentelemetry-otlp = { version = "0.26.0", features = ["logs", "metrics", "trace
 opentelemetry-semantic-conventions = { version = "0.26.0", features = ["semconv_experimental"] }
 opentelemetry_sdk = { version = "0.26.0", features = ["logs", "metrics", "trace", "rt-tokio", "rt-tokio-current-thread", "testing", "logs_level_enabled"], default-features = false }
 petname = { version = "2.0.2", default-features = false, features = ["default-rng", "default-words"] }
-r3bl_rs_utils_core = "0.9"
-r3bl_tui = "0.5"
-r3bl_tuify = "0.1"
+r3bl_core = "0.10.0"
+r3bl_tuify = "0.2.0"
 rand = "0.8"
 regex = "1.10.6"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls-native-roots"] }
@@ -98,7 +97,7 @@ sha2 = "0.10.8"
 sqlx = { version = "0.8.2", default-features = false }
 strip-ansi-escapes = "0.2"
 strum = { version = "0.26.3", default-features = false, features = ["derive"] }
-syntect = { version = "5.2.0", default-features = false, features = ["default-syntaxes", "regex-onig"] }
+syntect = { version = "5.2.0", default-features = false, features = ["default-themes", "default-syntaxes", "regex-onig"] }
 sysinfo = "0.32"
 termbg = "0.5.2"
 thiserror = "1.0"
