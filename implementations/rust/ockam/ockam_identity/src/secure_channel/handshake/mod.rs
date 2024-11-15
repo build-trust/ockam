@@ -6,7 +6,7 @@ mod error;
 compile_error!("Key Exchange is only supported on little-endian machines");
 
 #[allow(clippy::module_inception)]
-mod handshake;
+pub(crate) mod handshake;
 pub(crate) mod handshake_state_machine;
 pub(crate) mod handshake_worker;
 mod initiator_state_machine;

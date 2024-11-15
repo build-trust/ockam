@@ -2,7 +2,6 @@ use aws_lc_rs::aead::{Aad, LessSafeKey, Nonce, Tag, UnboundKey};
 use aws_lc_rs::error::Unspecified;
 use cfg_if::cfg_if;
 
-use ockam_core::compat::vec::Vec;
 use ockam_core::Result;
 
 use crate::{AeadSecret, VaultError};
@@ -10,44 +9,30 @@ use crate::{AeadSecret, VaultError};
 const TAG_LENGTH: usize = 16;
 
 impl AesGen {
-    pub fn encrypt_message(
-        &self,
-        destination: &mut Vec<u8>,
-        msg: &[u8],
-        nonce: &[u8],
-        aad: &[u8],
-    ) -> Result<()> {
-        destination.reserve(msg.len() + TAG_LENGTH);
-        let encrypted_payload_start = destination.len();
-        destination.extend_from_slice(msg);
+    pub fn encrypt_message(&self, msg: &mut [u8], nonce: &[u8], aad: &[u8]) -> Result<()> {
+        let len = msg.len();
 
         let tag = self
-            .encrypt_in_place_detached(
-                Nonce::try_assume_unique_for_key(nonce)
-                    .map_err(|_| VaultError::AeadAesGcmEncrypt)?,
-                aad,
-                &mut destination[encrypted_payload_start..],
-            )
+            .encrypt(nonce, aad, &mut msg[..len - TAG_LENGTH])
             .map_err(|_| VaultError::AeadAesGcmEncrypt)?;
 
-        destination.extend_from_slice(tag.as_ref());
+        msg[len - TAG_LENGTH..].copy_from_slice(tag.as_ref());
 
         Ok(())
     }
-    pub fn decrypt_message(&self, msg: &[u8], nonce: &[u8], aad: &[u8]) -> Result<Vec<u8>> {
-        // the tag is stored at the end of the message
-        let (msg, tag) = msg.split_at(msg.len() - TAG_LENGTH);
-        let mut out = vec![0u8; msg.len()];
-        self.decrypt(
-            Nonce::try_assume_unique_for_key(nonce).map_err(|_| VaultError::AeadAesGcmDecrypt)?,
-            aad,
-            msg,
-            tag,
-            &mut out,
-        )
-        .map_err(|_| VaultError::AeadAesGcmDecrypt)?;
 
-        Ok(out)
+    pub fn decrypt_message<'a>(
+        &self,
+        msg: &'a mut [u8],
+        nonce: &[u8],
+        aad: &[u8],
+    ) -> Result<&'a mut [u8]> {
+        // the tag is stored at the end of the message
+        let msg = self
+            .decrypt(nonce, aad, msg)
+            .map_err(|_| VaultError::AeadAesGcmDecrypt)?;
+
+        Ok(msg)
     }
 }
 
@@ -80,28 +65,25 @@ cfg_if! {
 }
 
 impl AesGen {
-    fn encrypt_in_place_detached(
-        &self,
-        nonce: Nonce,
-        aad: &[u8],
-        buffer: &mut [u8],
-    ) -> Result<Tag, Unspecified> {
-        let unbound_key = UnboundKey::new(&AES_TYPE, &self.0 .0).unwrap();
+    fn encrypt(&self, nonce: &[u8], aad: &[u8], buffer: &mut [u8]) -> Result<Tag, Unspecified> {
+        let nonce = Nonce::try_assume_unique_for_key(nonce)?;
+        let unbound_key = UnboundKey::new(&AES_TYPE, &self.0 .0)?;
         let key = LessSafeKey::new(unbound_key);
         let aad = Aad::from(aad);
         key.seal_in_place_separate_tag(nonce, aad, buffer)
     }
 
-    fn decrypt(
+    fn decrypt<'a>(
         &self,
-        nonce: Nonce,
+        nonce: &[u8],
         aad: &[u8],
-        input: &[u8],
-        tag: &[u8],
-        output: &mut [u8],
-    ) -> Result<(), Unspecified> {
-        let unbound_key = UnboundKey::new(&AES_TYPE, &self.0 .0).unwrap();
+        in_and_out: &'a mut [u8],
+    ) -> Result<&'a mut [u8], Unspecified> {
+        let nonce = Nonce::try_assume_unique_for_key(nonce)?;
+        let unbound_key = UnboundKey::new(&AES_TYPE, &self.0 .0)?;
         let key = LessSafeKey::new(unbound_key);
-        key.open_separate_gather(nonce, Aad::from(aad), input, tag, output)
+        let res = key.open_in_place(nonce, Aad::from(aad), in_and_out)?;
+
+        Ok(res)
     }
 }

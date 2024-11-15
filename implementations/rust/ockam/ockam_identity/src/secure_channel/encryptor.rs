@@ -1,11 +1,11 @@
 use ockam_core::compat::sync::Arc;
-use ockam_core::compat::vec::Vec;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{Error, Result};
 use ockam_vault::{AeadSecretKeyHandle, VaultForSecureChannels};
 use tracing_attributes::instrument;
 
-use crate::{Nonce, MAX_NONCE};
+use crate::secure_channel::handshake::handshake::AES_GCM_TAGSIZE;
+use crate::{Nonce, MAX_NONCE, NOISE_NONCE_LEN};
 
 pub(crate) struct Encryptor {
     key: AeadSecretKeyHandle,
@@ -18,9 +18,6 @@ pub(crate) struct Encryptor {
 // window we accept with the message period used to rekey.
 // This means we only need to keep the current key and the previous one.
 pub(crate) const KEY_RENEWAL_INTERVAL: u64 = 32;
-pub(crate) const SIZE_OF_NONCE: usize = 8;
-pub(crate) const SIZE_OF_TAG: usize = 16;
-pub(crate) const SIZE_OF_ENCRYPT_OVERHEAD: usize = SIZE_OF_NONCE + SIZE_OF_TAG;
 
 impl Encryptor {
     #[instrument(skip_all)]
@@ -28,14 +25,11 @@ impl Encryptor {
         vault: &Arc<dyn VaultForSecureChannels>,
         key: &AeadSecretKeyHandle,
     ) -> Result<AeadSecretKeyHandle> {
-        let zeroes = [0u8; 32];
-
-        let mut new_key_buffer = Vec::with_capacity(zeroes.len());
+        let mut new_key_buffer = vec![0u8; 32 + AES_GCM_TAGSIZE];
         vault
             .aead_encrypt(
-                &mut new_key_buffer,
                 key,
-                &zeroes,
+                new_key_buffer.as_mut_slice(),
                 &MAX_NONCE.to_aes_gcm_nonce(),
                 &[],
             )
@@ -49,7 +43,7 @@ impl Encryptor {
     }
 
     #[instrument(skip_all)]
-    pub async fn encrypt(&mut self, destination: &mut Vec<u8>, payload: &[u8]) -> Result<()> {
+    pub async fn encrypt(&mut self, payload: &mut [u8]) -> Result<()> {
         let current_nonce = self.nonce;
 
         self.nonce.increment()?;
@@ -63,13 +57,12 @@ impl Encryptor {
             self.vault.delete_aead_secret_key(old_key).await?;
         }
 
-        destination.extend_from_slice(&current_nonce.to_noise_nonce());
+        payload[..NOISE_NONCE_LEN].copy_from_slice(&current_nonce.to_noise_nonce());
 
         self.vault
             .aead_encrypt(
-                destination,
                 &self.key,
-                payload,
+                &mut payload[NOISE_NONCE_LEN..],
                 &current_nonce.to_aes_gcm_nonce(),
                 &[],
             )

@@ -1,6 +1,5 @@
 use core::sync::atomic::Ordering;
 use ockam_core::compat::sync::Arc;
-use ockam_core::compat::vec::Vec;
 use ockam_core::{route, Any, Result, Route, Routed, SecureChannelLocalInfo};
 use ockam_core::{Decodable, LocalMessage};
 use ockam_node::Context;
@@ -14,7 +13,7 @@ use crate::secure_channel::{Addresses, Role};
 use crate::{
     DecryptionRequest, DecryptionResponse, Identities, IdentityError, Nonce,
     PlaintextPayloadMessage, RefreshCredentialsMessage, SecureChannelMessage,
-    SecureChannelPaddedMessage,
+    SecureChannelPaddedMessage, NOISE_NONCE_LEN,
 };
 
 use crate::secure_channel::encryptor_worker::SecureChannelSharedState;
@@ -79,13 +78,13 @@ impl DecryptorHandler {
         let return_route = msg.return_route();
 
         // Decode raw payload binary
-        let request = DecryptionRequest::decode(msg.payload())?;
+        let mut request = DecryptionRequest::decode(msg.payload())?;
 
         // Decrypt the binary
-        let decrypted_payload = self.decryptor.decrypt(&request.0).await;
+        let decrypted_payload = self.decryptor.decrypt(request.0.as_mut_slice()).await;
 
         let response = match decrypted_payload {
-            Ok((payload, _nonce)) => DecryptionResponse::Ok(payload),
+            Ok((payload, _nonce)) => DecryptionResponse::Ok(payload.to_vec()),
             Err(err) => DecryptionResponse::Err(err),
         };
 
@@ -197,11 +196,11 @@ impl DecryptorHandler {
         let encrypted_msg_return_route = msg.return_route();
 
         // Decode raw payload binary
-        let payload = msg.into_payload();
+        let mut payload = msg.into_payload();
 
         // Decrypt the binary
-        let (decrypted_payload, nonce) = self.decryptor.decrypt(&payload).await?;
-        let decrypted_msg: SecureChannelPaddedMessage = minicbor::decode(&decrypted_payload)?;
+        let (decrypted_payload, nonce) = self.decryptor.decrypt(payload.as_mut_slice()).await?;
+        let decrypted_msg: SecureChannelPaddedMessage = minicbor::decode(decrypted_payload)?;
 
         match decrypted_msg.message {
             SecureChannelMessage::Payload(decrypted_msg) => {
@@ -248,12 +247,12 @@ impl Decryptor {
     }
 
     #[instrument(skip_all)]
-    pub async fn decrypt(&mut self, payload: &[u8]) -> Result<(Vec<u8>, Nonce)> {
-        if payload.len() < 8 {
+    pub async fn decrypt<'a>(&mut self, payload: &'a mut [u8]) -> Result<(&'a [u8], Nonce)> {
+        if payload.len() < NOISE_NONCE_LEN {
             return Err(IdentityError::InvalidNonce)?;
         }
 
-        let nonce = Nonce::try_from(&payload[..8])?;
+        let nonce = Nonce::try_from(&payload[..NOISE_NONCE_LEN])?;
         let nonce_tracker = if let Some(nonce_tracker) = &self.nonce_tracker {
             Some(nonce_tracker.mark(nonce)?)
         } else {
@@ -277,17 +276,25 @@ impl Decryptor {
         // message with a decryption _before_ committing to the new state
         let result = self
             .vault
-            .aead_decrypt(&key, &payload[8..], &nonce.to_aes_gcm_nonce(), &[])
+            .aead_decrypt(
+                &key,
+                &mut payload[NOISE_NONCE_LEN..],
+                &nonce.to_aes_gcm_nonce(),
+                &[],
+            )
             .await;
 
-        if result.is_ok() {
-            self.nonce_tracker = nonce_tracker;
-            if let Some(key_to_delete) = self.key_tracker.update_key(key)? {
-                self.vault.delete_aead_secret_key(key_to_delete).await?;
-            }
-        }
+        match result {
+            Ok(result) => {
+                self.nonce_tracker = nonce_tracker;
+                if let Some(key_to_delete) = self.key_tracker.update_key(key)? {
+                    self.vault.delete_aead_secret_key(key_to_delete).await?;
+                }
 
-        result.map(|payload| (payload, nonce))
+                Ok((result, nonce))
+            }
+            Err(err) => Err(err),
+        }
     }
 
     /// Remove the channel keys on shutdown

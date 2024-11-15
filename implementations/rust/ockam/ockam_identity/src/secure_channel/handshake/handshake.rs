@@ -1,4 +1,8 @@
 #![allow(unexpected_cfgs)]
+use crate::secure_channel::handshake::error::XXError;
+use crate::secure_channel::handshake::handshake_state_machine::{HandshakeKeys, Status};
+use crate::secure_channel::Role;
+use crate::Nonce;
 use cfg_if::cfg_if;
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
@@ -10,10 +14,6 @@ use ockam_vault::{
 };
 use sha2::{Digest, Sha256};
 use Status::*;
-
-use crate::secure_channel::handshake::error::XXError;
-use crate::secure_channel::handshake::handshake_state_machine::{HandshakeKeys, Status};
-use crate::secure_channel::Role;
 
 /// The number of bytes in a SHA256 digest
 pub const SHA256_SIZE: usize = 32;
@@ -341,27 +341,33 @@ impl Handshake {
 
     /// Decrypt a ciphertext 'c' using the key 'k' and the additional data 'h'
     async fn hash_and_decrypt(&self, state: &mut HandshakeState, c: &[u8]) -> Result<Vec<u8>> {
-        let mut nonce = [0u8; 12];
-        nonce[4..].copy_from_slice(&state.n.to_be_bytes());
+        let nonce = Nonce::new(state.n).to_aes_gcm_nonce();
+
+        let mut c_clone = c.to_vec();
 
         let result = self
             .vault
-            .aead_decrypt(state.k()?, c, nonce.as_ref(), &state.h)
+            .aead_decrypt(state.k()?, c_clone.as_mut_slice(), nonce.as_ref(), &state.h)
             .await
             .map(|b| b.to_vec())?;
         state.mix_hash(c);
         state.n += 1;
-        Ok(result)
+        Ok(result.to_vec())
     }
 
     /// Encrypt a plaintext 'c' using the key 'k' and the additional data 'h'
     async fn encrypt_and_hash(&self, state: &mut HandshakeState, p: &[u8]) -> Result<Vec<u8>> {
-        let mut nonce = [0u8; 12];
-        nonce[4..].copy_from_slice(&state.n.to_be_bytes());
+        let nonce = Nonce::new(state.n).to_aes_gcm_nonce();
 
-        let mut destination = Vec::with_capacity(p.len());
+        let mut destination = vec![0u8; p.len() + AES_GCM_TAGSIZE];
+        destination[..p.len()].copy_from_slice(p);
         self.vault
-            .aead_encrypt(&mut destination, state.k()?, p, nonce.as_ref(), &state.h)
+            .aead_encrypt(
+                state.k()?,
+                destination.as_mut_slice(),
+                nonce.as_ref(),
+                &state.h,
+            )
             .await?;
 
         state.mix_hash(destination.as_slice());

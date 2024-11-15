@@ -16,11 +16,12 @@ use ockam_node::Context;
 use crate::models::CredentialAndPurposeKey;
 use crate::secure_channel::addresses::Addresses;
 use crate::secure_channel::api::{EncryptionRequest, EncryptionResponse};
-use crate::secure_channel::encryptor::{Encryptor, SIZE_OF_ENCRYPT_OVERHEAD};
+use crate::secure_channel::encryptor::Encryptor;
+use crate::secure_channel::handshake::handshake::AES_GCM_TAGSIZE;
 use crate::{
     ChangeHistoryRepository, CredentialRetriever, Identifier, IdentityError, Nonce,
     PlaintextPayloadMessage, RefreshCredentialsMessage, SecureChannelMessage,
-    SecureChannelPaddedMessage,
+    SecureChannelPaddedMessage, NOISE_NONCE_LEN,
 };
 
 /// Wrap last received (during successful decryption) nonce and current route to the remote in a
@@ -96,12 +97,13 @@ impl EncryptorWorker {
     async fn encrypt(
         &mut self,
         ctx: &Context,
-        msg: SecureChannelPaddedMessage<'_>,
+        msg: SecureChannelPaddedMessage<'static>,
     ) -> Result<Vec<u8>> {
-        let payload = ockam_core::cbor_encode_preallocate(&msg)?;
-        let mut destination = Vec::with_capacity(SIZE_OF_ENCRYPT_OVERHEAD + payload.len());
+        let expected_len = minicbor::len(&msg);
+        let mut destination = vec![0u8; NOISE_NONCE_LEN + expected_len + AES_GCM_TAGSIZE];
+        minicbor::encode(&msg, &mut destination[NOISE_NONCE_LEN..])?;
 
-        match self.encryptor.encrypt(&mut destination, &payload).await {
+        match self.encryptor.encrypt(&mut destination).await {
             Ok(()) => Ok(destination),
             // If encryption failed, that means we have some internal error,
             // and we may be in an invalid state, it's better to stop the Worker
@@ -131,12 +133,14 @@ impl EncryptorWorker {
         let request = EncryptionRequest::decode(msg.payload())?;
 
         let mut should_stop = false;
-        let mut encrypted_payload = Vec::new();
+        let len = NOISE_NONCE_LEN + request.0.len() + AES_GCM_TAGSIZE;
+        let mut encrypted_payload = vec![0u8; len];
+        encrypted_payload[NOISE_NONCE_LEN..len - AES_GCM_TAGSIZE].copy_from_slice(&request.0);
 
         // Encrypt the message
         let response = match self
             .encryptor
-            .encrypt(&mut encrypted_payload, &request.0)
+            .encrypt(encrypted_payload.as_mut_slice())
             .await
         {
             Ok(()) => EncryptionResponse::Ok(encrypted_payload),

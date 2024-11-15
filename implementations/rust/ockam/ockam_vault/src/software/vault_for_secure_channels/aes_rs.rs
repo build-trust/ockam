@@ -1,50 +1,61 @@
 use crate::{AeadSecret, VaultError, AES_NONCE_LENGTH};
 
-use ockam_core::compat::vec::Vec;
 use ockam_core::Result;
 
 use aes_gcm::aead::consts::{U0, U12, U16};
-use aes_gcm::aead::{Aead, Nonce, Payload, Tag};
+use aes_gcm::aead::{Nonce, Tag};
 use aes_gcm::aes::cipher::Unsigned;
 use aes_gcm::{AeadCore, AeadInPlace, AesGcm, KeyInit};
 use cfg_if::cfg_if;
 
 impl AesGen {
-    pub fn encrypt_message(
-        &self,
-        destination: &mut Vec<u8>,
-        msg: &[u8],
-        nonce: &[u8],
-        aad: &[u8],
-    ) -> Result<()> {
+    pub fn encrypt_message(&self, msg: &mut [u8], nonce: &[u8], aad: &[u8]) -> Result<()> {
         if nonce.len() != AES_NONCE_LENGTH {
             return Err(VaultError::AeadAesGcmEncrypt)?;
         }
-
-        destination.reserve(msg.len() + <AesGen as AeadCore>::TagSize::to_usize());
-        let encrypted_payload_start = destination.len();
-        destination.extend_from_slice(msg);
-
-        let tag = self
-            .encrypt_in_place_detached(
-                nonce.into(),
-                aad,
-                &mut destination[encrypted_payload_start..],
-            )
+        let nonce = nonce
+            .try_into()
             .map_err(|_| VaultError::AeadAesGcmEncrypt)?;
 
-        destination.extend_from_slice(tag.as_slice());
+        let len = msg.len();
+        let tag_length = <AesGen as AeadCore>::TagSize::to_usize();
+
+        if len < tag_length {
+            return Err(VaultError::InsufficientEncryptBuffer)?;
+        }
+
+        let tag = self
+            .encrypt_in_place_detached(nonce, aad, &mut msg[..len - tag_length])
+            .map_err(|_| VaultError::AeadAesGcmEncrypt)?;
+
+        msg[len - tag_length..].copy_from_slice(tag.as_ref());
 
         Ok(())
     }
-    pub fn decrypt_message(&self, msg: &[u8], nonce: &[u8], aad: &[u8]) -> Result<Vec<u8>> {
+
+    pub fn decrypt_message<'a>(
+        &self,
+        msg: &'a mut [u8],
+        nonce: &[u8],
+        aad: &[u8],
+    ) -> Result<&'a mut [u8]> {
         if nonce.len() != AES_NONCE_LENGTH {
             return Err(VaultError::AeadAesGcmEncrypt)?;
         }
 
-        Ok(self
-            .decrypt(nonce.into(), Payload { aad, msg })
-            .map_err(|_| VaultError::AeadAesGcmDecrypt)?)
+        let len = msg.len();
+        let tag_length = <AesGen as AeadCore>::TagSize::to_usize();
+
+        if len < tag_length {
+            return Err(VaultError::InsufficientDecryptBuffer)?;
+        }
+
+        let tag: Tag<Self> = Tag::<Self>::clone_from_slice(&msg[len - tag_length..]);
+
+        self.decrypt_in_place_detached(nonce.into(), aad, &mut msg[..len - tag_length], &tag)
+            .map_err(|_| VaultError::AeadAesGcmDecrypt)?;
+
+        Ok(&mut msg[..len - tag_length])
     }
 }
 

@@ -42,22 +42,21 @@ pub trait VaultForSecureChannels: Send + Sync + 'static {
     /// [1]: http://www.noiseprotocol.org/noise.html#cipher-functions
     async fn aead_encrypt(
         &self,
-        destination: &mut Vec<u8>,
         secret_key_handle: &AeadSecretKeyHandle,
-        plain_text: &[u8],
+        plain_text: &mut [u8],
         nonce: &[u8],
         aad: &[u8],
     ) -> Result<()>;
 
     /// Perform AEAD decryption.
     /// [1]: http://www.noiseprotocol.org/noise.html#cipher-functions
-    async fn aead_decrypt(
+    async fn aead_decrypt<'a>(
         &self,
         secret_key_handle: &AeadSecretKeyHandle,
-        cipher_text: &[u8],
+        cipher_text: &'a mut [u8],
         nonce: &[u8],
         aad: &[u8],
-    ) -> Result<Vec<u8>>;
+    ) -> Result<&'a mut [u8]>;
 
     /// Persist an existing AEAD key.
     async fn persist_aead_key(&self, secret_key_handle: &AeadSecretKeyHandle) -> Result<()>;

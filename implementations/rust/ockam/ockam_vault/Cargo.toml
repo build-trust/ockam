@@ -25,7 +25,7 @@ crate-type = ["rlib"]
 path = "src/lib.rs"
 
 [features]
-default = ["std", "storage", "rust-crypto"]
+default = ["std", "storage", "aws-lc"]
 disable_default_noise_protocol = []
 OCKAM_XX_25519_AES256_GCM_SHA256 = []
 OCKAM_XX_25519_AES128_GCM_SHA256 = []
