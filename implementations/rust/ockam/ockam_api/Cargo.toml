@@ -158,7 +158,7 @@ default-features = false
 
 [dev-dependencies]
 cddl-cat = "0.6.1"
-fake = { version = "2", features = ['derive', 'uuid'] }
+fake = { version = "3", features = ['derive', 'uuid'] }
 hex = "0.4.3"
 indexmap = "2.6.0"
 mockall = "0.13"
