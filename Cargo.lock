@@ -4948,8 +4948,8 @@ dependencies = [
 
 [[package]]
 name = "ockam_ebpf"
-version = "0.2.0"
-source = "git+https://github.com/build-trust/ockam-ebpf.git#45aa1d7d3f37e3504ae55d2d0172d9a5b86db24c"
+version = "0.4.0"
+source = "git+https://github.com/build-trust/ockam-ebpf.git#d9a3ab82122ad643da394880159b12cc343896c0"
 dependencies = [
  "reqwest",
  "url",

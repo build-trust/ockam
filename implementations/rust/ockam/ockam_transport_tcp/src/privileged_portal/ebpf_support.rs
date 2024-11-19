@@ -52,8 +52,7 @@ struct IfaceLink {
 struct OckamBpf {
     ebpf: Ebpf,
 
-    inlet_port_map: aya::maps::HashMap<MapData, Port, Proto>,
-    outlet_port_map: aya::maps::HashMap<MapData, Port, Proto>,
+    port_map: aya::maps::HashMap<MapData, Port, Proto>,
 }
 
 impl Default for TcpTransportEbpfSupport {
@@ -219,20 +218,13 @@ impl TcpTransportEbpfSupport {
             warn!("failed to initialize eBPF logger: {}", e);
         }
 
-        let inlet_port_map = aya::maps::HashMap::<_, Port, Proto>::try_from(
-            ebpf.take_map("INLET_PORT_MAP").unwrap(),
-        )
-        .map_err(map_map_error)?;
-        let outlet_port_map = aya::maps::HashMap::<_, Port, Proto>::try_from(
-            ebpf.take_map("OUTLET_PORT_MAP").unwrap(),
-        )
-        .map_err(map_map_error)?;
-
-        let bpf = OckamBpf {
-            ebpf,
-            inlet_port_map,
-            outlet_port_map,
+        let port_map = if let Some(map) = ebpf.take_map("PORT_MAP") {
+            aya::maps::HashMap::<_, Port, Proto>::try_from(map).map_err(map_map_error)?
+        } else {
+            return Err(Error::new(Origin::Core, Kind::Io, "PORT_MAP doesn't exist"));
         };
+
+        let bpf = OckamBpf { ebpf, port_map };
 
         *bpf_lock = Some(bpf);
 
@@ -343,7 +335,7 @@ impl TcpTransportEbpfSupport {
 
         bpf.as_mut()
             .unwrap()
-            .inlet_port_map
+            .port_map
             .insert(port, self.ip_proto, 0)
             .map_err(|e| TransportError::AddingInletPort(e.to_string()))?;
 
@@ -356,7 +348,7 @@ impl TcpTransportEbpfSupport {
 
         bpf.as_mut()
             .unwrap()
-            .inlet_port_map
+            .port_map
             .remove(&port)
             .map_err(|e| TransportError::RemovingInletPort(e.to_string()))?;
 
@@ -369,7 +361,7 @@ impl TcpTransportEbpfSupport {
 
         bpf.as_mut()
             .unwrap()
-            .outlet_port_map
+            .port_map
             .insert(port, self.ip_proto, 0)
             .map_err(|e| TransportError::AddingOutletPort(e.to_string()))?;
 
@@ -382,7 +374,7 @@ impl TcpTransportEbpfSupport {
 
         bpf.as_mut()
             .unwrap()
-            .outlet_port_map
+            .port_map
             .remove(&port)
             .map_err(|e| TransportError::RemovingOutletPort(e.to_string()))?;
 
