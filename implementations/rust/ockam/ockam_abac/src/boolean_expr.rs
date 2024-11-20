@@ -39,12 +39,16 @@ pub enum BooleanExpr {
     #[n(0)]
     Name(#[n(0)] String),
     #[n(1)]
-    Or(#[n(0)] Box<BooleanExpr>, #[n(1)] Box<BooleanExpr>),
+    NameValue(#[n(0)] String, #[n(1)] String),
     #[n(2)]
-    And(#[n(0)] Box<BooleanExpr>, #[n(1)] Box<BooleanExpr>),
+    Identifier(#[n(0)] String),
     #[n(3)]
-    Not(#[n(0)] Box<BooleanExpr>),
+    Or(#[n(0)] Box<BooleanExpr>, #[n(1)] Box<BooleanExpr>),
     #[n(4)]
+    And(#[n(0)] Box<BooleanExpr>, #[n(1)] Box<BooleanExpr>),
+    #[n(5)]
+    Not(#[n(0)] Box<BooleanExpr>),
+    #[n(6)]
     Empty,
 }
 
@@ -52,6 +56,10 @@ impl PartialEq for BooleanExpr {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (BooleanExpr::Name(n1), BooleanExpr::Name(n2)) => n1 == n2,
+            (BooleanExpr::NameValue(n1, v1), BooleanExpr::NameValue(n2, v2)) => {
+                n1 == n2 && v1 == v2
+            }
+            (BooleanExpr::Identifier(n1), BooleanExpr::Identifier(n2)) => n1 == n2,
             (BooleanExpr::Or(e1, e2), BooleanExpr::Or(e3, e4)) => e1 == e3 && e2 == e4,
             (BooleanExpr::And(e1, e2), BooleanExpr::And(e3, e4)) => e1 == e3 && e2 == e4,
             (BooleanExpr::Not(e1), BooleanExpr::Not(e2)) => e1 == e2,
@@ -68,6 +76,14 @@ impl Display for BooleanExpr {
         fn to_nested_string(b: &BooleanExpr) -> String {
             match b {
                 BooleanExpr::Name(s) => s.clone(),
+                BooleanExpr::NameValue(s, v) => {
+                    if v.contains(' ') {
+                        format!("{}=\"{}\"", s, v)
+                    } else {
+                        format!("{}={}", s, v)
+                    }
+                }
+                BooleanExpr::Identifier(s) => s.clone(),
                 BooleanExpr::Or(e1, e2) => format!("({e1} or {e2})"),
                 BooleanExpr::And(e1, e2) => format!("({e1} and {e2})"),
                 BooleanExpr::Not(e) => format!("(not {e})"),
@@ -77,6 +93,14 @@ impl Display for BooleanExpr {
 
         match self {
             BooleanExpr::Name(s) => f.write_str(s),
+            BooleanExpr::NameValue(s, v) => {
+                if v.contains(' ') {
+                    f.write_str(&format!("{}=\"{}\"", s, v))
+                } else {
+                    f.write_str(&format!("{}={}", s, v))
+                }
+            }
+            BooleanExpr::Identifier(s) => f.write_str(s),
             BooleanExpr::Or(e1, e2) => f.write_str(&format!(
                 "{} or {}",
                 to_nested_string(e1),
@@ -134,6 +158,16 @@ impl BooleanExpr {
         BooleanExpr::Name(s.to_string())
     }
 
+    /// Create a name with a value to be used in a boolean expression.
+    pub fn name_value(s: &str, v: &str) -> BooleanExpr {
+        BooleanExpr::NameValue(s.to_string(), v.to_string())
+    }
+
+    /// Create an identity identifier to be used in a boolean expression.
+    pub fn identifier(s: &str) -> BooleanExpr {
+        BooleanExpr::Identifier(s.to_string())
+    }
+
     /// Create the disjunction of 2 boolean expressions.
     pub fn or(e1: BooleanExpr, e2: BooleanExpr) -> BooleanExpr {
         BooleanExpr::Or(Box::new(e1), Box::new(e2))
@@ -162,10 +196,20 @@ impl BooleanExpr {
     /// transform `not a` into `= subject.a "false"`
     pub fn to_expression(&self) -> Expr {
         match self {
-            BooleanExpr::Name(s) => List(vec![
+            BooleanExpr::Name(n) => List(vec![
                 Ident("=".to_string()),
-                Ident(format!("{}.{}", SUBJECT_KEY, s)),
+                Ident(format!("{}.{}", SUBJECT_KEY, n)),
                 Str("true".to_string()),
+            ]),
+            BooleanExpr::NameValue(n, v) => List(vec![
+                Ident("=".to_string()),
+                Ident(format!("{}.{}", SUBJECT_KEY, n)),
+                Str(v.to_string()),
+            ]),
+            BooleanExpr::Identifier(i) => List(vec![
+                Ident("=".to_string()),
+                Ident(format!("{}.identifier", SUBJECT_KEY)),
+                Str(i.to_string()),
             ]),
             BooleanExpr::Or(e1, e2) => List(vec![
                 Ident("or".to_string()),
@@ -236,12 +280,14 @@ impl Not for BooleanExpr {
 #[cfg(feature = "std")]
 mod parsers {
     use crate::boolean_expr::{BooleanExpr, NAME_FORMAT};
+    use ockam_core::env::FromString;
+    use ockam_identity::Identifier;
     use winnow::ascii::multispace0;
     use winnow::combinator::{alt, delimited, separated};
     use winnow::error::StrContext;
     use winnow::stream::AsChar;
-    use winnow::token::{literal, take_while};
-    use winnow::{PResult, Parser};
+    use winnow::token::{literal, take_until, take_while};
+    use winnow::{IResult, PResult, Parser};
 
     /// Top-level parser for boolean expressions as a series of 'or-ed' and-expressions
     pub fn expr(i: &mut &str) -> PResult<BooleanExpr> {
@@ -293,22 +339,68 @@ mod parsers {
 
     /// Parse a name
     pub fn name(input: &mut &str) -> PResult<BooleanExpr> {
-        fn parse_identifier(input: &mut &str) -> PResult<String> {
-            (
-                // we forbid the first character to be a number or a dot
-                take_while(1..2, |c| AsChar::is_alpha(c) || c == '_' || c == '-'),
-                take_while(0.., |c| {
-                    AsChar::is_alphanum(c) || c == '.' || c == '_' || c == '-'
-                }),
-            )
-                .map(|(c, cs): (&str, &str)| format!("{c}{cs}"))
-                .parse_next(input)
+        let name = (
+            // we forbid the first character to be a number or a dot
+            take_while(1, |c| AsChar::is_alpha(c) || c == '_' || c == '-'),
+            // the next characters can be alphanumerical, dots, underscores or dashes
+            take_while(0.., |c| {
+                AsChar::is_alphanum(c) || c == '.' || c == '_' || c == '-'
+            }),
+        )
+            .context(StrContext::Expected(NAME_FORMAT.into()))
+            .map(|(first_char, rest): (&str, &str)| format!("{first_char}{rest}"))
+            .parse_next(input)?;
+
+        // if the name is a valid ockam identifier, return it
+        if Identifier::from_string(&name).is_ok() {
+            return Ok(BooleanExpr::identifier(&name));
         }
 
-        parse_identifier
-            .context(StrContext::Expected(NAME_FORMAT.into()))
-            .parse_next(input)
-            .map(|vs| BooleanExpr::Name(vs.to_string()))
+        // otherwise, it's a name
+        let name = BooleanExpr::name(&name);
+        // if there is no more input to process, return the name
+        if input.is_empty() {
+            return Ok(name);
+        }
+
+        // otherwise, keep processing the input to figure out if it's a name-value pair
+        // peek the next char; continue only if it's an equal sign
+        let peeked: IResult<&str, &str> = take_while(1, |c| c == '=').parse_peek(input.as_ref());
+        let next_char_is_not_equal_sign = peeked.map(|(_, s)| s.is_empty()).unwrap_or(true);
+        if next_char_is_not_equal_sign {
+            return Ok(name);
+        }
+
+        // skip '=' character
+        take_while(1, |c| c == '=')
+            .context(StrContext::Expected(
+                "not a name-value pair, missing '='".into(),
+            ))
+            .parse_next(input)?;
+        // skip the opening '"' if any
+        let is_quoted = {
+            let res: PResult<&str> = take_while(1, |c| c == '"').parse_next(input);
+            res.is_ok()
+        };
+        // parse the value as the next group of chars
+        let empty_value_error = "the value can't be empty";
+        let value = if is_quoted {
+            let value = take_until(1.., '"')
+                .context(StrContext::Expected(empty_value_error.into()))
+                .parse_next(input)?
+                .to_string();
+            // skip the closing '"'
+            take_while(1, |c| c == '"').parse_next(input)?;
+            value
+        } else {
+            take_while(1.., |c| {
+                AsChar::is_alphanum(c) || c == '.' || c == '_' || c == '-'
+            })
+            .context(StrContext::Expected(empty_value_error.into()))
+            .parse_next(input)?
+            .to_string()
+        };
+        Ok(BooleanExpr::NameValue(name.to_string(), value))
     }
 
     /// Parse the 'and' operator
@@ -351,12 +443,26 @@ mod tests {
         let expr = parse("(= subject.a \"true\")").unwrap().unwrap();
         assert_eq!(boolean_expr.to_expression(), expr);
 
+        let boolean_expr = BooleanExpr::name_value("a", "b");
+        let expr = parse("(= subject.a \"b\")").unwrap().unwrap();
+        assert_eq!(boolean_expr.to_expression(), expr);
+
+        let boolean_expr = BooleanExpr::name_value("a", "a value");
+        let expr = parse("(= subject.a \"a value\")").unwrap().unwrap();
+        assert_eq!(boolean_expr.to_expression(), expr);
+
+        let boolean_expr = BooleanExpr::identifier("I228786ae");
+        let expr = parse("(= subject.identifier \"I228786ae\")")
+            .unwrap()
+            .unwrap();
+        assert_eq!(boolean_expr.to_expression(), expr);
+
         let boolean_expr = BooleanExpr::and(
-            BooleanExpr::or(BooleanExpr::name("a"), BooleanExpr::name("b")),
-            BooleanExpr::not(BooleanExpr::name("c")),
+            BooleanExpr::or(BooleanExpr::name("a"), BooleanExpr::identifier("I228786ae")),
+            BooleanExpr::not(BooleanExpr::name_value("c", "d")),
         );
         let expr = parse(
-            "and (or (= subject.a \"true\") (= subject.b \"true\") (not (= subject.c \"true\")))",
+            "and (or (= subject.a \"true\") (= subject.identifier \"I228786ae\") (not (= subject.c \"d\")))",
         )
         .unwrap()
         .unwrap();
@@ -365,23 +471,32 @@ mod tests {
 
     #[test]
     fn boolean_expr_to_string() {
-        let boolean_expr = BooleanExpr::name("a");
-        let expr = "a".to_string();
+        let boolean_expr = BooleanExpr::name_value("a", "value");
+        let expr = "a=value".to_string();
         assert_eq!(boolean_expr.to_string(), expr);
 
         let boolean_expr = BooleanExpr::and(BooleanExpr::name("a"), BooleanExpr::name("b"));
         let expr = "a and b".to_string();
         assert_eq!(boolean_expr.to_string(), expr);
 
-        let boolean_expr = BooleanExpr::or(BooleanExpr::name("a"), BooleanExpr::name("b"));
-        let expr = "a or b".to_string();
+        let boolean_expr = BooleanExpr::or(
+            BooleanExpr::name("a"),
+            BooleanExpr::identifier(
+                "I69c228786aec9341b3c1912423ae769f63200ceb553a2eba4c5b262b6766fc7c",
+            ),
+        );
+        let expr =
+            "a or I69c228786aec9341b3c1912423ae769f63200ceb553a2eba4c5b262b6766fc7c".to_string();
         assert_eq!(boolean_expr.to_string(), expr);
 
         let boolean_expr = BooleanExpr::and(
-            BooleanExpr::or(BooleanExpr::name("a"), BooleanExpr::name("b")),
+            BooleanExpr::or(
+                BooleanExpr::name_value("a", "the value"),
+                BooleanExpr::name("b"),
+            ),
             BooleanExpr::not(BooleanExpr::name("c")),
         );
-        let expr = "(a or b) and (not c)".to_string();
+        let expr = "(a=\"the value\" or b) and (not c)".to_string();
         assert_eq!(boolean_expr.to_string(), expr);
     }
 
@@ -398,6 +513,18 @@ mod tests {
 
         test_fail_parse_name("*");
         test_fail_parse_name("1");
+        test_fail_parse_name(".a");
+    }
+
+    #[test]
+    fn parse_name_value() {
+        test_parse_name_value("a=b");
+        test_parse_name_value("name.1=a-b");
+        test_parse_name_value("a.b.c=a_b-c");
+        test_parse_name_value("a.b.c=\"the value\"");
+
+        test_fail_parse_name_value("a=", "the value can't be empty");
+        test_fail_parse_name_value("=b", "The first character cannot be");
     }
 
     #[test]
@@ -407,9 +534,52 @@ mod tests {
             BooleanExpr::and(BooleanExpr::name("a"), BooleanExpr::name("b")),
         );
         test_parse_expr(
+            &mut "a and c=d",
+            BooleanExpr::and(BooleanExpr::name("a"), BooleanExpr::name_value("c", "d")),
+        );
+        test_parse_expr(
+            &mut "a=the-value and c",
+            BooleanExpr::and(
+                BooleanExpr::name_value("a", "the-value"),
+                BooleanExpr::name("c"),
+            ),
+        );
+        test_parse_expr(
+            &mut "a=\"the value\" and c",
+            BooleanExpr::and(
+                BooleanExpr::name_value("a", "the value"),
+                BooleanExpr::name("c"),
+            ),
+        );
+        test_parse_expr(
+            &mut "a and I69c228786aec9341b3c1912423ae769f63200ceb553a2eba4c5b262b6766fc7c",
+            BooleanExpr::and(
+                BooleanExpr::name("a"),
+                BooleanExpr::identifier(
+                    "I69c228786aec9341b3c1912423ae769f63200ceb553a2eba4c5b262b6766fc7c",
+                ),
+            ),
+        );
+        test_parse_expr(
+            &mut "I69c228786aec9341b3c1912423ae769f63200ceb553a2eba4c5b262b6766fc7c and a",
+            BooleanExpr::and(
+                BooleanExpr::identifier(
+                    "I69c228786aec9341b3c1912423ae769f63200ceb553a2eba4c5b262b6766fc7c",
+                ),
+                BooleanExpr::name("a"),
+            ),
+        );
+        test_parse_expr(
             &mut "a and b and c",
             BooleanExpr::and(
                 BooleanExpr::and(BooleanExpr::name("a"), BooleanExpr::name("b")),
+                BooleanExpr::name("c"),
+            ),
+        );
+        test_parse_expr(
+            &mut "a and b=81 and c",
+            BooleanExpr::and(
+                BooleanExpr::and(BooleanExpr::name("a"), BooleanExpr::name_value("b", "81")),
                 BooleanExpr::name("c"),
             ),
         );
@@ -443,6 +613,16 @@ mod tests {
             &mut "(a or b) and (not c)",
             BooleanExpr::and(
                 BooleanExpr::or(BooleanExpr::name("a"), BooleanExpr::name("b")),
+                BooleanExpr::not(BooleanExpr::name("c")),
+            ),
+        );
+        test_parse_expr(
+            &mut "(a or b=\"the value\") and (not c)",
+            BooleanExpr::and(
+                BooleanExpr::or(
+                    BooleanExpr::name("a"),
+                    BooleanExpr::name_value("b", "the value"),
+                ),
                 BooleanExpr::not(BooleanExpr::name("c")),
             ),
         );
@@ -486,6 +666,7 @@ mod tests {
             &mut "(a and b) or (c and d))",
             "successfully parsed: `(a and b) or (c and d)`, but `)` cannot be parsed",
         );
+        test_parse_error(&mut "a=\"\"", "the value can't be empty");
     }
 
     /// HELPERS
@@ -508,6 +689,27 @@ mod tests {
         match name.parse_next(&mut i.as_str()) {
             Ok(actual) => panic!("there should be an error '{expected}', when parsing {input_copy}. This expression was parsed instead {actual:?}"),
             Err(e) => assert!(e.to_string().contains(expected), "actual error message:\n{e}\nexpected message:\n{expected}"),
+        }
+    }
+
+    fn test_parse_name_value(input: &str) {
+        let i = input.to_string();
+        let mut it = input.split('=');
+        let n = it.next().unwrap();
+        let v = it.next().unwrap().trim_matches('"');
+        test_parse(
+            &mut name,
+            &mut i.as_str(),
+            BooleanExpr::NameValue(n.to_string(), v.to_string()),
+        )
+    }
+
+    fn test_fail_parse_name_value(input: &str, expected_err: &str) {
+        let i = input.to_string();
+        let input_copy = input.to_string();
+        match name.parse_next(&mut i.as_str()) {
+            Ok(actual) => panic!("there should be an error '{expected_err}', when parsing {input_copy}. This expression was parsed instead {actual:?}"),
+            Err(e) => assert!(e.to_string().contains(expected_err), "actual error message:\n{e}\nexpected message:\n{expected_err}"),
         }
     }
 
