@@ -9,6 +9,7 @@ use aya::programs::{tc, Link, ProgramError, SchedClassifier, TcAttachType};
 use aya::{Ebpf, EbpfError};
 use aya_log::EbpfLogger;
 use core::fmt::{Debug, Formatter};
+use log::error;
 use ockam_core::compat::collections::HashMap;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{Address, Error, Result};
@@ -16,8 +17,13 @@ use ockam_node::compat::asynchronous::Mutex as AsyncMutex;
 use ockam_node::Context;
 use ockam_transport_core::TransportError;
 use rand::random;
+use std::collections::HashSet;
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 use tracing::{debug, info, warn};
+
+/// Interval at which we will get all addresses and attach eBPF to newly added interfaces
+pub const INTERFACE_LIST_UPDATE_INTERVAL: Duration = Duration::from_secs(30);
 
 /// eBPF support for [`TcpTransport`]
 #[derive(Clone)]
@@ -33,6 +39,9 @@ pub struct TcpTransportEbpfSupport {
     raw_socket_processor_address: Address,
 
     bpf: Arc<Mutex<Option<OckamBpf>>>,
+
+    // May be replaced with AtomicBool but should be careful with choosing the right Ordering
+    attach_ebpf_task_running: Arc<Mutex<bool>>,
 }
 
 struct IfaceLink {
@@ -62,6 +71,7 @@ impl Default for TcpTransportEbpfSupport {
             tcp_packet_writer: Default::default(),
             raw_socket_processor_address: Address::random_tagged("RawSocketProcessor"),
             bpf: Default::default(),
+            attach_ebpf_task_running: Arc::new(Mutex::new(false)),
         }
     }
 }
@@ -73,6 +83,67 @@ impl Debug for TcpTransportEbpfSupport {
 }
 
 impl TcpTransportEbpfSupport {
+    pub(crate) async fn attach_ebpf_to_all_interfaces(&self) -> Result<()> {
+        let interfaces_with_ebpf_attached: HashSet<Iface> =
+            self.links.lock().unwrap().keys().cloned().collect();
+
+        let ifaddrs = nix::ifaddrs::getifaddrs()
+            .map_err(|e| TransportError::ReadingNetworkInterfaces(e as i32))?;
+
+        for ifaddr in ifaddrs {
+            let addr = match ifaddr.address {
+                Some(addr) => addr,
+                None => continue,
+            };
+
+            // Check if it's an IPv4 address
+            if addr.as_sockaddr_in().is_none() {
+                continue;
+            };
+
+            let iface = ifaddr.interface_name;
+
+            if interfaces_with_ebpf_attached.contains(&iface) {
+                continue;
+            }
+
+            self.attach_ebpf_if_needed(iface)?;
+        }
+
+        Ok(())
+    }
+
+    pub(crate) async fn attach_ebpf_to_all_interfaces_loop(self) {
+        loop {
+            let res = self.attach_ebpf_to_all_interfaces().await;
+
+            if let Err(err) = res {
+                error!("Error attaching eBPF: {}", err)
+            }
+
+            tokio::time::sleep(INTERFACE_LIST_UPDATE_INTERVAL).await;
+        }
+    }
+
+    /// Will periodically get list of all interfaces and attach ockam eBPF
+    /// to both ingress and egress to each device (if wasn't attached yet) that has an IPv4 address.
+    /// More optimized approach would be to only attach to the interfaces we use, but that would
+    /// require figuring out which we can potentially use, which is currently tricky, especially
+    /// for the outlet, since figuring out which IP will be used to send a packet requires extra
+    /// effort, so the whole optimization may not be worth it.
+    pub(crate) async fn attach_ebpf_to_all_interfaces_start_task(&self) {
+        let mut is_running = self.attach_ebpf_task_running.lock().unwrap();
+
+        if *is_running {
+            return;
+        }
+
+        *is_running = true;
+        drop(is_running);
+        let s = self.clone();
+        tokio::spawn(s.attach_ebpf_to_all_interfaces_loop());
+    }
+
     /// Start [`RawSocketProcessor`]. Should be done once.
     pub(crate) async fn start_raw_socket_processor_if_needed(
         &self,
@@ -113,7 +184,6 @@ impl TcpTransportEbpfSupport {
 
     /// Init eBPF system
     pub fn init_ebpf(&self) -> Result<()> {
-        // FIXME: eBPF I doubt we can reuse that instance for different interfaces.
         let mut bpf_lock = self.bpf.lock().unwrap();
         if bpf_lock.is_some() {
             debug!("Skipping eBPF initialization");
@@ -146,7 +216,7 @@ impl TcpTransportEbpfSupport {
 
         if let Err(e) = EbpfLogger::init(&mut ebpf) {
             // This can happen if you remove all log statements from your eBPF program.
-            warn!("failed to initialize eBPF logger for ingress: {}", e);
+            warn!("failed to initialize eBPF logger: {}", e);
         }
 
         let inlet_port_map = aya::maps::HashMap::<_, Port, Proto>::try_from(
@@ -187,7 +257,6 @@ impl TcpTransportEbpfSupport {
         let mut bpf_lock = self.bpf.lock().unwrap();
         let bpf = bpf_lock.as_mut().unwrap();
 
-        // TODO: eBPF Avoid loading multiple times
         let ingress_link = self.attach_ebpf_ingress(iface.clone(), bpf, skip_load)?;
         let egress_link = self.attach_ebpf_egress(iface.clone(), bpf, skip_load)?;
 

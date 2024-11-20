@@ -10,7 +10,7 @@ use ockam_core::{Address, DenyAll, Result, Route};
 use ockam_node::compat::asynchronous::{resolve_peer, RwLock};
 use ockam_node::{ProcessorBuilder, WorkerBuilder};
 use ockam_transport_core::{HostnamePort, TransportError};
-use std::net::{IpAddr, SocketAddrV4};
+use std::net::IpAddr;
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use tokio::sync::mpsc::channel;
@@ -67,7 +67,6 @@ impl TcpTransport {
 
         let next = outlet_route.next().cloned()?;
 
-        // TODO: eBPF Find correlation between bind_addr and iface?
         let bind_addr = bind_addr.into();
         let tcp_listener = TcpListener::bind(bind_addr.clone())
             .await
@@ -75,33 +74,19 @@ impl TcpTransport {
         let local_address = tcp_listener
             .local_addr()
             .map_err(|_| TransportError::BindFailed)?;
-        let ip = match local_address.ip() {
-            IpAddr::V4(ip) => ip,
-            IpAddr::V6(_) => return Err(TransportError::ExpectedIPv4Address)?,
+
+        if !local_address.ip().is_ipv4() {
+            return Err(TransportError::ExpectedIPv4Address)?;
         };
+
         let port = local_address.port();
 
-        let ifaddrs = nix::ifaddrs::getifaddrs()
-            .map_err(|e| TransportError::ReadingNetworkInterfaces(e as i32))?;
-        for ifaddr in ifaddrs {
-            let addr = match ifaddr.address {
-                Some(addr) => addr,
-                None => continue,
-            };
-
-            let addr = match addr.as_sockaddr_in() {
-                Some(addr) => *addr,
-                None => continue,
-            };
-
-            let addr = SocketAddrV4::from(addr);
-
-            if &ip == addr.ip() || ip.is_unspecified() {
-                // TODO: eBPF Should we instead attach to all interfaces & run a periodic task
-                //  to identify network interfaces change?
-                self.attach_ebpf_if_needed(ifaddr.interface_name)?;
-            }
-        }
+        // Trigger immediate attach
+        self.ebpf_support.attach_ebpf_to_all_interfaces().await?;
+        // Start periodic updates if needed
+        self.ebpf_support
+            .attach_ebpf_to_all_interfaces_start_task()
+            .await;
 
         let tcp_packet_writer = self.start_raw_socket_processor_if_needed().await?;
 
@@ -160,7 +145,7 @@ impl TcpTransport {
 
     /// Stop the Privileged Inlet
     #[instrument(skip(self), fields(port=port))]
-    pub async fn stop_privilegged_inlet(&self, port: Port) -> Result<()> {
+    pub async fn stop_privileged_inlet(&self, port: Port) -> Result<()> {
         self.ebpf_support.inlet_registry.delete_inlet(port);
 
         Ok(())
@@ -194,12 +179,12 @@ impl TcpTransport {
         };
         let dst_port = destination.port();
 
-        // TODO: eBPF Figure out which ifaces might be used and only attach to them
-        // TODO: eBPF Should we indeed attach to all interfaces & run a periodic task
-        //  to identify network interfaces change?
-        for ifname in TcpTransport::all_interfaces_with_address()? {
-            self.attach_ebpf_if_needed(ifname)?;
-        }
+        // Trigger immediate attach
+        self.ebpf_support.attach_ebpf_to_all_interfaces().await?;
+        // Start periodic updates if needed
+        self.ebpf_support
+            .attach_ebpf_to_all_interfaces_start_task()
+            .await;
 
         let write_handle = self.start_raw_socket_processor_if_needed().await?;
 

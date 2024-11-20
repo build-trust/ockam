@@ -3,7 +3,7 @@ use crate::TcpTransport;
 use aya::programs::tc::{qdisc_detach_program, TcAttachType};
 use log::{error, info, warn};
 use ockam_core::Result;
-use ockam_transport_core::TransportError;
+use std::collections::HashSet;
 
 impl TcpTransport {
     /// Start [`RawSocketProcessor`]. Should be done once.
@@ -15,47 +15,25 @@ impl TcpTransport {
             .await
     }
 
-    // TODO: eBPF Should we dispatch it to the sync thread?
-    pub(crate) fn attach_ebpf_if_needed(&self, iface: Iface) -> Result<()> {
-        self.ebpf_support.attach_ebpf_if_needed(iface)
-    }
-
     /// Detach the eBPFs.
     pub fn detach_ebpfs(&self) {
         self.ebpf_support.detach_ebpfs()
-    }
-
-    /// List all interfaces with defined IPv4 address
-    pub fn all_interfaces_with_address() -> Result<Vec<String>> {
-        let ifaddrs = nix::ifaddrs::getifaddrs()
-            .map_err(|e| TransportError::ReadingNetworkInterfaces(e as i32))?;
-        let ifaddrs = ifaddrs
-            .filter_map(|ifaddr| {
-                let addr = match ifaddr.address {
-                    Some(addr) => addr,
-                    None => return None,
-                };
-
-                addr.as_sockaddr_in()?;
-
-                Some(ifaddr.interface_name)
-            })
-            .collect::<Vec<_>>();
-
-        Ok(ifaddrs)
     }
 
     /// Detach all ockam eBPFs from all interfaces for all processes
     pub fn detach_all_ockam_ebpfs_globally() {
         // TODO: Not sure that the best way to do it, but it works.
         info!("Detaching all ebpfs globally");
-        let ifaces = match Self::all_interfaces_with_address() {
+        let ifaces = match nix::ifaddrs::getifaddrs() {
             Ok(ifaces) => ifaces,
             Err(err) => {
                 error!("Error reading network interfaces: {}", err);
                 return;
             }
         };
+
+        // Remove duplicates
+        let ifaces: HashSet<Iface> = ifaces.into_iter().map(|i| i.interface_name).collect();
 
         for iface in ifaces {
             match qdisc_detach_program(&iface, TcAttachType::Ingress, "ockam_ingress") {
