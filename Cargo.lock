@@ -1105,7 +1105,7 @@ dependencies = [
  "bitflags 2.6.0",
  "cexpr",
  "clang-sys",
- "itertools 0.12.1",
+ "itertools 0.10.5",
  "lazy_static",
  "lazycell",
  "log",
@@ -3926,7 +3926,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4979f22fdb869068da03c9f7528f8297c6fd2606bc3a4affe42e6a823fdb8da4"
 dependencies = [
  "cfg-if",
- "windows-targets 0.52.6",
+ "windows-targets 0.48.5",
 ]
 
 [[package]]
@@ -4948,8 +4948,8 @@ dependencies = [
 
 [[package]]
 name = "ockam_ebpf"
-version = "0.1.0"
-source = "git+https://github.com/build-trust/ockam-ebpf.git#3cef6c7b7fe6b27003fb4bb22f88380b9e647af5"
+version = "0.2.0"
+source = "git+https://github.com/build-trust/ockam-ebpf.git#45aa1d7d3f37e3504ae55d2d0172d9a5b86db24c"
 dependencies = [
  "reqwest",
  "url",
@@ -8624,7 +8624,7 @@ version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf221c93e13a30d793f7645a0e7762c55d169dbb0a49671918a2319d289b10bb"
 dependencies = [
- "windows-sys 0.59.0",
+ "windows-sys 0.48.0",
 ]
 
 [[package]]
