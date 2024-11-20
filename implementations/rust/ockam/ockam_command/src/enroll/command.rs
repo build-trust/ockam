@@ -268,7 +268,7 @@ impl EnrollCommand {
         ))?;
 
         // Run OIDC service
-        let oidc_service = OidcService::default();
+        let oidc_service = OidcService::new()?;
         let token = if self.authorization_code_flow {
             oidc_service.get_token_with_pkce().await.into_diagnostic()?
         } else {

@@ -1,44 +1,65 @@
+use crate::enroll::oidc_provider::OidcProvider;
 use ockam::identity::get_default_timeout;
-use ockam_core::env::get_env_with_default;
-use ockam_core::Result;
+use ockam_core::env::{get_env, get_env_with_default};
+use ockam_core::errcode::{Kind, Origin};
+use ockam_core::{Error, Result};
 use std::time::Duration;
 use url::Url;
 
-use crate::enroll::oidc_provider::OidcProvider;
+const PRODUCTION_AUTHENTICATOR_ENDPOINT: &str = "https://account.ockam.io";
+const DEV_AUTHENTICATOR_ENDPOINT: &str = "https://dev-w5hdnpc2.us.auth0.com";
 
 pub fn authenticator_endpoint() -> String {
     get_env_with_default(
         "OCKAM_AUTHENTICATOR_ENDPOINT",
-        "https://account.ockam.io".to_string(),
+        PRODUCTION_AUTHENTICATOR_ENDPOINT.to_string(),
     )
     .expect("OCKAM_AUTHENTICATOR_ENDPOINT is not valid")
     .trim_matches('/')
     .to_string()
 }
 
-pub struct OckamOidcProvider {
-    redirect_timeout: Duration,
-    base_url: String,
-}
-
-impl Default for OckamOidcProvider {
-    fn default() -> Self {
-        OckamOidcProvider::new(get_default_timeout())
+/// Return the client id to use in order to access Auth0
+///
+pub fn auth0_client_id() -> Result<String> {
+    match get_env::<String>("OCKAM_AUTH0_CLIENT_ID").ok().flatten() {
+        Some(client_id) => Ok(client_id),
+        None => {
+            let endpoint = authenticator_endpoint();
+            if endpoint == PRODUCTION_AUTHENTICATOR_ENDPOINT {
+                Ok("c1SAhEjrJAqEk6ArWjGjuWX11BD2gK8X".to_string())
+            } else if endpoint == DEV_AUTHENTICATOR_ENDPOINT {
+                Ok("sGyXBwQfU6fjfW1gopphdV9vCLec060b".to_string())
+            } else {
+                Err(Error::new(Origin::Api, Kind::NotFound, format!("The OCKAM_AUTH0_CLIENT_ID variable must be defined when using the endpoint {endpoint}")))
+            }
+        }
     }
 }
 
+pub struct OckamOidcProvider {
+    redirect_timeout: Duration,
+    base_url: String,
+    client_id: String,
+}
+
 impl OckamOidcProvider {
-    pub fn new(redirect_timeout: Duration) -> Self {
-        Self {
+    pub fn new() -> Result<Self> {
+        OckamOidcProvider::new_with_timeout(get_default_timeout())
+    }
+
+    pub fn new_with_timeout(redirect_timeout: Duration) -> Result<Self> {
+        Ok(Self {
             redirect_timeout,
             base_url: authenticator_endpoint(),
-        }
+            client_id: auth0_client_id()?,
+        })
     }
 }
 
 impl OidcProvider for OckamOidcProvider {
     fn client_id(&self) -> String {
-        "c1SAhEjrJAqEk6ArWjGjuWX11BD2gK8X".to_string()
+        self.client_id.clone()
     }
 
     fn redirect_timeout(&self) -> Duration {

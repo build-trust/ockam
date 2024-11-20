@@ -236,7 +236,7 @@ impl EnrollCommand {
             pb.set_message("Authenticating with Okta...");
         }
 
-        let auth0 = OidcService::new(Arc::new(OktaOidcProvider::new(okta_config)));
+        let auth0 = OidcService::new_with_provider(Arc::new(OktaOidcProvider::new(okta_config)));
         let token = auth0.get_token_interactively(opts).await?;
         authority_node_client
             .enroll_with_oidc_token_okta(ctx, token)

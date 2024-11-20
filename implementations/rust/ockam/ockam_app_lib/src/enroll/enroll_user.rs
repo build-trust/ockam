@@ -90,7 +90,7 @@ impl AppState {
         self.publish_state().await;
 
         // get an OIDC token
-        let oidc_service = OidcService::default();
+        let oidc_service = OidcService::new()?;
         let token = oidc_service.get_token_with_pkce().await?;
 
         // retrieve the user information

@@ -123,7 +123,9 @@ impl AddonConfigureOktaSubcommand {
         );
 
         // Validate okta configuration
-        let auth0 = OidcService::new(Arc::new(OktaOidcProvider::new(okta_config.clone().into())));
+        let auth0 = OidcService::new_with_provider(Arc::new(OktaOidcProvider::new(
+            okta_config.clone().into(),
+        )));
         auth0.validate_provider_config().await?;
 
         // Do request

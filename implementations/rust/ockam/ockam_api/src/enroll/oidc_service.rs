@@ -31,21 +31,23 @@ use ockam_vault::SoftwareVaultForVerifyingSignatures;
 ///
 pub struct OidcService(Arc<dyn OidcProvider + Send + Sync + 'static>);
 
-impl Default for OidcService {
-    fn default() -> Self {
-        OidcService::new(Arc::new(OckamOidcProvider::default()))
-    }
-}
-
 impl OidcService {
+    pub fn new() -> Result<Self> {
+        Ok(OidcService::new_with_provider(Arc::new(
+            OckamOidcProvider::new()?,
+        )))
+    }
+
     /// Create an OIDC service using a specific OIDC provider
-    pub fn new(provider: Arc<dyn OidcProvider + Send + Sync + 'static>) -> Self {
+    pub fn new_with_provider(provider: Arc<dyn OidcProvider + Send + Sync + 'static>) -> Self {
         Self(provider)
     }
 
     /// Create an OIDC service using the Ockam provider with a specific timeout for redirects
-    pub fn default_with_redirect_timeout(timeout: Duration) -> Self {
-        Self::new(Arc::new(OckamOidcProvider::new(timeout)))
+    pub fn default_with_redirect_timeout(timeout: Duration) -> Result<Self> {
+        Ok(Self::new_with_provider(Arc::new(
+            OckamOidcProvider::new_with_timeout(timeout)?,
+        )))
     }
 
     /// Request an authorization token with a PKCE flow
@@ -143,15 +145,17 @@ impl OidcService {
             "getting an OIDC token using the authorization code {}",
             authorization_code.code
         );
+
+        let parameters = vec![
+            ("code", authorization_code.code),
+            ("code_verifier", code_verifier.to_string()),
+            ("grant_type", "authorization_code".to_string()),
+            ("redirect_uri", self.provider().redirect_url().to_string()),
+        ];
+
         self.request_code(
             Url::parse(&format!("{}/oauth/token", Self::authenticator_endpoint())).unwrap(),
-            vec![
-                ("code", authorization_code.code),
-                ("code_verifier", code_verifier.to_string()),
-                ("grant_type", "authorization_code".to_string()),
-                ("redirect_uri", self.provider().redirect_url().to_string()),
-            ]
-            .as_slice(),
+            parameters.as_slice(),
         )
         .await
     }
@@ -329,7 +333,7 @@ mod tests {
     #[tokio::test]
     #[ignore = "this test can only run with an open browser in order to authenticate the user"]
     async fn test_user_info() -> Result<()> {
-        let oidc_service = OidcService::default_with_redirect_timeout(Duration::from_secs(15));
+        let oidc_service = OidcService::default_with_redirect_timeout(Duration::from_secs(15))?;
         let token = oidc_service.get_token_with_pkce().await?;
         let user_info = oidc_service.get_user_info(&token).await;
         assert!(user_info.is_ok());
@@ -339,7 +343,7 @@ mod tests {
     #[tokio::test]
     #[ignore = "this test can only run with an open browser in order to authenticate the user"]
     async fn test_get_token_with_pkce() -> Result<()> {
-        let oidc_service = OidcService::default_with_redirect_timeout(Duration::from_secs(15));
+        let oidc_service = OidcService::default_with_redirect_timeout(Duration::from_secs(15))?;
         let token = oidc_service.get_token_with_pkce().await;
         assert!(token.is_ok());
         Ok(())
@@ -348,7 +352,7 @@ mod tests {
     #[tokio::test]
     #[ignore = "this test can only run with an open browser in order to authenticate the user"]
     async fn test_authorization_code() -> Result<()> {
-        let oidc_service = OidcService::default_with_redirect_timeout(Duration::from_secs(15));
+        let oidc_service = OidcService::default_with_redirect_timeout(Duration::from_secs(15))?;
         let code_verifier = oidc_service.create_code_verifier();
         let authorization_code = oidc_service
             .authorization_code(code_verifier.as_str())
@@ -359,7 +363,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_wait_for_authorization_code() -> Result<()> {
-        let oidc_service = OidcService::default();
+        let oidc_service = OidcService::new()?;
 
         let (authorization_code_receiver, authorization_code_sender) = new_callback();
         oidc_service
