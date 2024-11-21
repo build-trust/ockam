@@ -33,7 +33,7 @@ pub struct RemoteWorker {
     mode: PortalMode,
 
     tcp_packet_writer: Box<dyn TcpPacketWriter>,
-    ebpf_support: TcpTransportEbpfSupport,
+    ebpf_support: Arc<TcpTransportEbpfSupport>,
 }
 
 impl RemoteWorker {
@@ -41,7 +41,7 @@ impl RemoteWorker {
     pub fn new_inlet(
         tcp_packet_writer: Box<dyn TcpPacketWriter>,
         inlet: Inlet,
-        ebpf_support: TcpTransportEbpfSupport,
+        ebpf_support: Arc<TcpTransportEbpfSupport>,
     ) -> Self {
         Self {
             mode: PortalMode::Inlet { inlet },
@@ -54,7 +54,7 @@ impl RemoteWorker {
     pub fn new_outlet(
         tcp_packet_writer: Box<dyn TcpPacketWriter>,
         outlet: Outlet,
-        ebpf_support: TcpTransportEbpfSupport,
+        ebpf_support: Arc<TcpTransportEbpfSupport>,
     ) -> Self {
         Self {
             mode: PortalMode::Outlet { outlet },

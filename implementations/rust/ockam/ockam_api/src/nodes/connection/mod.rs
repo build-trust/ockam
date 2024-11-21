@@ -1,4 +1,5 @@
 mod plain_tcp;
+mod plain_udp;
 mod project;
 mod secure;
 
@@ -12,10 +13,12 @@ use ockam_multiaddr::{Match, MultiAddr, Protocol};
 use ockam_node::Context;
 
 use crate::error::ApiError;
-use crate::local_multiaddr_to_route;
 use crate::nodes::service::default_address::DefaultAddress;
 use crate::nodes::NodeManager;
+use crate::LocalMultiaddrResolver;
+use ockam::udp::UdpBind;
 pub(crate) use plain_tcp::PlainTcpInstantiator;
+pub(crate) use plain_udp::PlainUdpInstantiator;
 pub(crate) use project::ProjectInstantiator;
 pub(crate) use secure::SecureChannelInstantiator;
 use std::fmt::{Debug, Formatter};
@@ -36,6 +39,8 @@ pub struct Connection {
     pub(crate) secure_channel_encryptors: Vec<Address>,
     /// A TCP worker address if used when instantiating the connection
     pub(crate) tcp_connection: Option<TcpConnection>,
+    /// A UDP worker address if used when instantiating the connection
+    pub(crate) udp_bind: Option<UdpBind>,
     /// If a flow control was created
     flow_control_id: Option<FlowControlId>,
 }
@@ -62,7 +67,7 @@ impl Connection {
     }
 
     pub fn route(&self) -> Result<Route> {
-        local_multiaddr_to_route(&self.normalized_addr).map_err(|_| {
+        LocalMultiaddrResolver::resolve(&self.normalized_addr).map_err(|_| {
             ApiError::core(format!(
                 "Couldn't convert MultiAddr to route: normalized_addr={}",
                 self.normalized_addr
@@ -105,6 +110,30 @@ impl Connection {
             }
         }
 
+        if let Some(udp_bind) = self.udp_bind.as_ref() {
+            let address = udp_bind.sender_address().clone();
+            if let Err(error) = node_manager
+                .udp_transport
+                .as_ref()
+                .ok_or_else(|| {
+                    ockam_core::Error::new(Origin::Node, Kind::Internal, "UDP transport is missing")
+                })?
+                .unbind(address.clone())
+                .await
+            {
+                match error.code().kind {
+                    Kind::NotFound => {
+                        debug!("cannot find and disconnect udp worker `{udp_bind}`");
+                    }
+                    _ => Err(ockam_core::Error::new(
+                        Origin::Node,
+                        Kind::Internal,
+                        format!("Failed to remove inlet with alias {address}. {}", error),
+                    ))?,
+                }
+            }
+        }
+
         Ok(())
     }
 }
@@ -134,6 +163,7 @@ pub(crate) struct ConnectionBuilder {
     pub(crate) flow_control_id: Option<FlowControlId>,
     pub(crate) secure_channel_encryptors: Vec<Address>,
     pub(crate) tcp_connection: Option<TcpConnection>,
+    pub(crate) udp_bind: Option<UdpBind>,
 }
 
 impl Debug for ConnectionBuilder {
@@ -163,6 +193,8 @@ pub struct Changes {
     pub secure_channel_encryptors: Vec<Address>,
     /// Optional, to keep track of tcp worker when created for the connection
     pub tcp_connection: Option<TcpConnection>,
+    /// Optional, to keep track of tcp worker when created for the connection
+    pub udp_bind: Option<UdpBind>,
 }
 
 /// Takes in a [`MultiAddr`] and instantiate it, can be implemented for any protocol.
@@ -197,6 +229,7 @@ impl ConnectionBuilder {
             secure_channel_encryptors: vec![],
             flow_control_id: None,
             tcp_connection: None,
+            udp_bind: None,
         }
     }
 
@@ -207,6 +240,7 @@ impl ConnectionBuilder {
             original_addr: self.original_multiaddr,
             secure_channel_encryptors: self.secure_channel_encryptors,
             tcp_connection: self.tcp_connection,
+            udp_bind: self.udp_bind,
             flow_control_id: self.flow_control_id,
         }
     }
@@ -255,10 +289,21 @@ impl ConnectionBuilder {
                             return Err(ockam_core::Error::new(
                                 Origin::Transport,
                                 Kind::Unsupported,
-                                "multiple tcp connections created in a `MultiAddr`",
+                                "multiple transport connections created in a `MultiAddr`",
                             ));
                         }
                         self.tcp_connection = changes.tcp_connection;
+                    }
+
+                    if changes.udp_bind.is_some() {
+                        if self.udp_bind.is_some() {
+                            return Err(ockam_core::Error::new(
+                                Origin::Transport,
+                                Kind::Unsupported,
+                                "multiple transport connections created in a `MultiAddr`",
+                            ));
+                        }
+                        self.udp_bind = changes.udp_bind;
                     }
 
                     if changes.flow_control_id.is_some() {
@@ -273,14 +318,7 @@ impl ConnectionBuilder {
             .recalculate_transport_route(ctx, self.current_multiaddr.clone(), true)
             .await?;
 
-        Ok(Self {
-            original_multiaddr: self.original_multiaddr,
-            transport_route: self.transport_route,
-            secure_channel_encryptors: self.secure_channel_encryptors,
-            current_multiaddr: self.current_multiaddr,
-            flow_control_id: self.flow_control_id,
-            tcp_connection: self.tcp_connection,
-        })
+        Ok(self)
     }
 
     /// Calculate a 'transport route' from the [`MultiAddr`]

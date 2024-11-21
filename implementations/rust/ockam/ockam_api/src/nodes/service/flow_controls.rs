@@ -6,11 +6,10 @@ use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
 use std::fmt::Display;
 
-use crate::local_multiaddr_to_route;
+use super::NodeManagerWorker;
 use crate::nodes::models::flow_controls::AddConsumer;
 use crate::nodes::NodeManager;
-
-use super::NodeManagerWorker;
+use crate::LocalMultiaddrResolver;
 
 impl NodeManagerWorker {
     pub(super) async fn add_consumer(
@@ -40,7 +39,7 @@ impl NodeManager {
         consumer: &MultiAddr,
         flow_control_id: &FlowControlId,
     ) -> Result<Option<AddConsumerError>> {
-        let mut route = local_multiaddr_to_route(consumer)?;
+        let mut route = LocalMultiaddrResolver::resolve(consumer)?;
 
         let address = match route.step().ok() {
             Some(a) => a,

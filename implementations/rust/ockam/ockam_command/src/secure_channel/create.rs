@@ -14,7 +14,7 @@ use ockam_api::nodes::models::secure_channel::{
     CreateSecureChannelRequest, CreateSecureChannelResponse,
 };
 use ockam_api::nodes::BackgroundNodeClient;
-use ockam_api::{fmt_log, fmt_ok, route_to_multiaddr};
+use ockam_api::{fmt_log, fmt_ok, ReverseLocalConverter};
 use ockam_core::api::Request;
 use ockam_multiaddr::MultiAddr;
 
@@ -145,7 +145,7 @@ impl CreateCommand {
         let (secure_channel, _) = try_join!(create_secure_channel, progress_output)?;
 
         let route = &route![secure_channel.to_string()];
-        let multi_addr = route_to_multiaddr(route).ok_or_else(|| {
+        let multi_addr = ReverseLocalConverter::convert_route(route).map_err(|_| {
             crate::Error::new(
                 exitcode::PROTOCOL,
                 miette!("Failed to convert route {route} to multi-address"),

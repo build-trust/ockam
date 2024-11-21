@@ -77,6 +77,7 @@ impl Worker for UdpSenderWorker {
                 return Err(TransportError::UnknownRoute)?;
             }
 
+            // Avoid doing that each time
             resolve_peer(peer_addr.address().to_string()).await?
         };
 

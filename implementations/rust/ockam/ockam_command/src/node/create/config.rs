@@ -189,6 +189,9 @@ impl NodeConfig {
         if cmd.tcp_listener_address != default_cmd_args.tcp_listener_address {
             self.node.tcp_listener_address = Some(cmd.tcp_listener_address.clone().into());
         }
+        if cmd.udp_listener_address != default_cmd_args.udp_listener_address {
+            self.node.udp_listener_address = Some(cmd.udp_listener_address.clone().into());
+        }
         if cmd.no_status_endpoint != default_cmd_args.no_status_endpoint {
             self.node.no_status_endpoint = Some(cmd.no_status_endpoint.into());
         }

@@ -139,14 +139,14 @@ impl NodeManager {
         };
 
         let options = {
-            let options = TcpOutletOptions::new()
+            let mut options = TcpOutletOptions::new()
                 .with_incoming_access_control(incoming_ac)
                 .with_outgoing_access_control(outgoing_ac)
                 .with_tls(tls);
-            let options = if self.project_authority().is_none() {
-                options.as_consumer(&self.api_transport_flow_control_id)
-            } else {
-                options
+            if self.project_authority().is_none() {
+                for api_transport_flow_control_id in &self.api_transport_flow_control_ids {
+                    options = options.as_consumer(api_transport_flow_control_id)
+                }
             };
             if reachable_from_default_secure_channel {
                 // Accept messages from the default secure channel listener
@@ -154,13 +154,11 @@ impl NodeManager {
                     .flow_controls()
                     .get_flow_control_with_spawner(&DefaultAddress::SECURE_CHANNEL_LISTENER.into())
                 {
-                    options.as_consumer(&flow_control_id)
-                } else {
-                    options
+                    options = options.as_consumer(&flow_control_id)
                 }
-            } else {
-                options
             }
+
+            options
         };
 
         let res = if privileged {

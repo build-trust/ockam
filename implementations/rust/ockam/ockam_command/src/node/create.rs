@@ -71,6 +71,18 @@ pub struct CreateCommand {
     )]
     pub tcp_listener_address: String,
 
+    /// The address to bind the UDP listener to. UDP listener is not started unless --udp is passed.
+    /// Once the node is created, its services can be accessed via this address.
+    /// By default, it binds to 127.0.0.1:0 to assign a random free port.
+    #[arg(
+        display_order = 900,
+        long,
+        short,
+        id = "SOCKET_ADDRESS_UDP",
+        default_value = "127.0.0.1:0"
+    )]
+    pub udp_listener_address: String,
+
     /// [DEPRECATED] Enable the HTTP server for the node that will listen to in a random free port.
     /// To specify a port, use `--status-endpoint-port` instead.
     #[arg(
@@ -139,6 +151,7 @@ impl Default for CreateCommand {
                 started_from_configuration: false,
             },
             tcp_listener_address: node_manager_defaults.tcp_listener_address,
+            udp_listener_address: node_manager_defaults.udp_listener_address,
             http_server: false,
             no_status_endpoint: false,
             status_endpoint_port: None,

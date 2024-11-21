@@ -1,7 +1,7 @@
 use crate::error::ApiError;
 use crate::nodes::connection::{Changes, Instantiator};
 use crate::nodes::NodeManager;
-use crate::{multiaddr_to_route, try_address_to_multiaddr};
+use crate::{RemoteMultiaddrResolver, RemoteMultiaddrResolverConnection, ReverseLocalConverter};
 
 use ockam_core::{async_trait, Error, Route};
 use ockam_multiaddr::proto::Project;
@@ -54,19 +54,24 @@ impl Instantiator for ProjectInstantiator {
             node_manager.resolve_project(&project).await?;
 
         debug!(addr = %project_multiaddr, "creating secure channel");
-        let tcp = multiaddr_to_route(&project_multiaddr, &node_manager.tcp_transport)
-            .await
-            .ok_or_else(|| {
-                ApiError::core(format!(
-                    "Couldn't convert MultiAddr to route: project_multiaddr={project_multiaddr}"
-                ))
-            })?;
+        let transport_res = RemoteMultiaddrResolver::new(
+            Some(node_manager.tcp_transport.clone()),
+            None, // We can't connect to the project node via UDP atm
+        )
+        .resolve(&project_multiaddr)
+        .await
+        .map_err(|err| {
+            ApiError::core(format!(
+                "Couldn't instantiate project multiaddr. Err: {}",
+                err
+            ))
+        })?;
 
         debug!("create a secure channel to the project {project_identifier}");
         let sc = node_manager
             .create_secure_channel_internal(
                 ctx,
-                tcp.route,
+                transport_res.route,
                 &self.identifier.clone(),
                 Some(vec![project_identifier]),
                 None,
@@ -77,14 +82,25 @@ impl Instantiator for ProjectInstantiator {
 
         // when creating a secure channel we want the route to pass through that
         // ignoring previous steps, since they will be implicit
-        let mut current_multiaddr = try_address_to_multiaddr(sc.encryptor_address()).unwrap();
+        let mut current_multiaddr = ReverseLocalConverter::convert_address(sc.encryptor_address())?;
         current_multiaddr.try_extend(after.iter())?;
+
+        let tcp_connection = transport_res
+            .connection
+            .map(|connection| match connection {
+                RemoteMultiaddrResolverConnection::Tcp(tcp_connection) => Ok(tcp_connection),
+                RemoteMultiaddrResolverConnection::Udp(_) => Err(ApiError::core(
+                    "UDP connection can't be used to Project node",
+                )),
+            })
+            .transpose()?;
 
         Ok(Changes {
             flow_control_id: Some(sc.flow_control_id().clone()),
             current_multiaddr,
             secure_channel_encryptors: vec![sc.encryptor_address().clone()],
-            tcp_connection: tcp.tcp_connection,
+            tcp_connection,
+            udp_bind: None,
         })
     }
 }

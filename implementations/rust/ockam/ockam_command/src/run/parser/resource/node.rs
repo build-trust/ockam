@@ -36,6 +36,8 @@ pub struct Node {
     #[serde(alias = "opentelemetry-context")]
     pub opentelemetry_context: Option<ArgValue>,
     pub udp: Option<ArgValue>,
+    #[serde(alias = "udp-listener-address")]
+    pub udp_listener_address: Option<ArgValue>,
 }
 
 impl Resource<CreateCommand> for Node {
@@ -61,6 +63,9 @@ impl Resource<CreateCommand> for Node {
         }
         if let Some(tcp_listener_address) = self.tcp_listener_address {
             args.insert("tcp-listener-address".into(), tcp_listener_address);
+        }
+        if let Some(udp_listener_address) = self.udp_listener_address {
+            args.insert("udp-listener-address".into(), udp_listener_address);
         }
         if let Some(no_status_endpoint) = self.no_status_endpoint {
             args.insert("no-status-endpoint".into(), no_status_endpoint);

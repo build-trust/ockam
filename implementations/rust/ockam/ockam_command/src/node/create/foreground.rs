@@ -10,10 +10,11 @@ use crate::secure_channel::listener::create as secure_channel_listener;
 use crate::util::foreground_args::wait_for_exit_signal;
 use crate::CommandGlobalOpts;
 use ockam::tcp::{TcpListenerOptions, TcpTransport};
-use ockam::udp::UdpTransport;
+use ockam::udp::{UdpBindArguments, UdpBindOptions, UdpTransport};
 use ockam::{Address, Context};
 use ockam_api::colors::color_primary;
 use ockam_api::fmt_log;
+use ockam_api::nodes::service::NodeManagerTransport;
 use ockam_api::nodes::{
     service::{NodeManagerGeneralOptions, NodeManagerTransportOptions},
     NodeManagerWorker, NODEMANAGER_ADDR,
@@ -80,8 +81,17 @@ impl CreateCommand {
             .await?;
         debug!("node info persisted {node_info:?}");
 
-        let udp_transport = if self.udp {
-            Some(UdpTransport::create(ctx).await.into_diagnostic()?)
+        let udp_options = if self.udp {
+            let udp = UdpTransport::create(ctx).await.into_diagnostic()?;
+            let options = UdpBindOptions::new();
+            let flow_control_id = options.flow_control_id();
+            udp.bind(
+                UdpBindArguments::new().with_bind_address(&self.udp_listener_address)?,
+                options,
+            )
+            .await?;
+
+            Some(NodeManagerTransport::new(flow_control_id, udp))
         } else {
             None
         };
@@ -96,9 +106,8 @@ impl CreateCommand {
                 true,
             ),
             NodeManagerTransportOptions::new(
-                tcp_listener.flow_control_id().clone(),
-                tcp,
-                udp_transport,
+                NodeManagerTransport::new(tcp_listener.flow_control_id().clone(), tcp),
+                udp_options,
             ),
             trust_options,
         )

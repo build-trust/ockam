@@ -17,6 +17,7 @@ use crate::{Command as CommandTrait, CommandGlobalOpts};
 pub struct NodeManagerDefaults {
     pub node_name: String,
     pub tcp_listener_address: String,
+    pub udp_listener_address: String,
     pub trust_opts: TrustOpts,
 }
 
@@ -25,6 +26,7 @@ impl Default for NodeManagerDefaults {
         Self {
             node_name: hex::encode(random::<[u8; 4]>()),
             tcp_listener_address: "127.0.0.1:0".to_string(),
+            udp_listener_address: "127.0.0.1:0".to_string(),
             trust_opts: TrustOpts::default(),
         }
     }
@@ -57,7 +59,8 @@ pub async fn spawn_node(opts: &CommandGlobalOpts, cmd: CreateCommand) -> miette:
         skip_is_running_check,
         name,
         identity: identity_name,
-        tcp_listener_address: address,
+        tcp_listener_address,
+        udp_listener_address,
         no_status_endpoint,
         status_endpoint_port,
         udp,
@@ -81,7 +84,9 @@ pub async fn spawn_node(opts: &CommandGlobalOpts, cmd: CreateCommand) -> miette:
         "node".to_string(),
         "create".to_string(),
         "--tcp-listener-address".to_string(),
-        address.to_string(),
+        tcp_listener_address.to_string(),
+        "--udp-listener-address".to_string(),
+        udp_listener_address.to_string(),
         "--foreground".to_string(),
         "--child-process".to_string(),
     ];

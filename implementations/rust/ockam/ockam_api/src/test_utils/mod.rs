@@ -96,10 +96,9 @@ pub async fn start_manager_for_tests(
     let node_manager = InMemoryNode::new(
         context,
         NodeManagerGeneralOptions::new(cli_state.clone(), node_name, true, None, false),
-        NodeManagerTransportOptions::new(
+        NodeManagerTransportOptions::new_tcp(
             tcp_listener.flow_control_id().clone(),
             tcp.async_try_clone().await?,
-            None,
         ),
         trust_options.unwrap_or_else(|| {
             NodeManagerTrustOptions::new(

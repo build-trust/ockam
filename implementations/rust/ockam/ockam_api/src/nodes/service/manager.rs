@@ -1,7 +1,7 @@
 use crate::cloud::project::Project;
 use crate::cloud::{AuthorityNodeClient, ControllerClient, CredentialsEnabled, ProjectNodeClient};
 use crate::nodes::connection::{
-    Connection, ConnectionBuilder, PlainTcpInstantiator, ProjectInstantiator,
+    Connection, ConnectionBuilder, PlainTcpInstantiator, PlainUdpInstantiator, ProjectInstantiator,
     SecureChannelInstantiator,
 };
 use crate::nodes::models::portal::OutletStatus;
@@ -51,7 +51,7 @@ pub struct NodeManager {
     pub(crate) cli_state: CliState,
     pub(super) node_name: String,
     pub(super) node_identifier: Identifier,
-    pub(crate) api_transport_flow_control_id: FlowControlId,
+    pub(crate) api_transport_flow_control_ids: Vec<FlowControlId>,
     pub(crate) tcp_transport: TcpTransport,
     pub(crate) udp_transport: Option<UdpTransport>,
     pub(crate) secure_channels: Arc<SecureChannels>,
@@ -100,7 +100,7 @@ impl NodeManager {
             NodeManagerCredentialRetrieverOptions::Remote { info, scope } => {
                 Some(Arc::new(RemoteCredentialRetrieverCreator::new(
                     ctx.async_try_clone().await?,
-                    Arc::new(transport_options.tcp_transport.clone()),
+                    Arc::new(transport_options.tcp.transport.clone()),
                     secure_channels.clone(),
                     info.clone(),
                     scope,
@@ -125,7 +125,7 @@ impl NodeManager {
             NodeManagerCredentialRetrieverOptions::Remote { info, scope } => {
                 Some(Arc::new(RemoteCredentialRetrieverCreator::new(
                     ctx.async_try_clone().await?,
-                    Arc::new(transport_options.tcp_transport.clone()),
+                    Arc::new(transport_options.tcp.transport.clone()),
                     secure_channels.clone(),
                     info.clone(),
                     scope,
@@ -142,13 +142,19 @@ impl NodeManager {
             _account_admin: None,
         };
 
+        let mut api_transport_flow_control_ids = vec![transport_options.tcp.flow_control_id];
+
+        if let Some(udp) = &transport_options.udp {
+            api_transport_flow_control_ids.push(udp.flow_control_id.clone());
+        }
+
         let mut s = Self {
             cli_state,
             node_name,
             node_identifier,
-            api_transport_flow_control_id: transport_options.api_transport_flow_control_id,
-            tcp_transport: transport_options.tcp_transport,
-            udp_transport: transport_options.udp_transport.clone(),
+            api_transport_flow_control_ids,
+            tcp_transport: transport_options.tcp.transport,
+            udp_transport: transport_options.udp.map(|u| u.transport),
             secure_channels,
             api_sc_listener: None,
             credential_retriever_creators,
@@ -168,7 +174,7 @@ impl NodeManager {
                 .map_err(|e| ApiError::core(e.to_string()))?;
         }
 
-        if let Some(udp_transport) = transport_options.udp_transport.as_ref() {
+        if let Some(udp) = &s.udp_transport {
             let rendezvous_route = route![
                 DefaultAddress::get_rendezvous_server_address(),
                 DefaultAddress::RENDEZVOUS_SERVICE
@@ -180,7 +186,7 @@ impl NodeManager {
             UdpPunctureNegotiationListener::create(
                 ctx,
                 DefaultAddress::UDP_PUNCTURE_NEGOTIATION_LISTENER,
-                udp_transport,
+                udp,
                 rendezvous_route,
                 options,
             )
@@ -205,11 +211,13 @@ impl NodeManager {
     async fn initialize_default_services(
         &self,
         ctx: &Context,
-        api_flow_control_id: &FlowControlId,
+        api_flow_control_ids: &[FlowControlId],
     ) -> ockam_core::Result<SecureChannelListener> {
         // Start services
-        ctx.flow_controls()
-            .add_consumer(DefaultAddress::UPPERCASE_SERVICE, api_flow_control_id);
+        for api_flow_control_id in api_flow_control_ids {
+            ctx.flow_controls()
+                .add_consumer(DefaultAddress::UPPERCASE_SERVICE, api_flow_control_id);
+        }
         self.start_uppercase_service_impl(ctx, DefaultAddress::UPPERCASE_SERVICE.into())
             .await?;
 
@@ -223,11 +231,15 @@ impl NodeManager {
             )
             .await?;
 
-        let options = RelayServiceOptions::new()
+        let mut options = RelayServiceOptions::new()
             .alias(DefaultAddress::STATIC_RELAY_SERVICE)
-            .service_as_consumer(api_flow_control_id)
-            .relay_as_consumer(api_flow_control_id)
             .prefix("forward_to_");
+
+        for api_flow_control_id in api_flow_control_ids {
+            options = options
+                .service_as_consumer(api_flow_control_id)
+                .relay_as_consumer(api_flow_control_id);
+        }
 
         let options = if let Some(authority) = &self.project_authority {
             let policy_access_control = self
@@ -264,19 +276,19 @@ impl NodeManager {
         ctx: &Context,
         start_default_services: bool,
     ) -> ockam_core::Result<()> {
-        let api_flow_control_id = self.api_transport_flow_control_id.clone();
-
         if start_default_services {
             self.api_sc_listener = Some(
-                self.initialize_default_services(ctx, &api_flow_control_id)
+                self.initialize_default_services(ctx, &self.api_transport_flow_control_ids)
                     .await?,
             );
         }
 
         // Always start the echoer service as ockam_api::Session assumes it will be
         // started unconditionally on every node. It's used for liveliness checks.
-        ctx.flow_controls()
-            .add_consumer(DefaultAddress::ECHO_SERVICE, &api_flow_control_id);
+        for api_flow_control_id in &self.api_transport_flow_control_ids {
+            ctx.flow_controls()
+                .add_consumer(DefaultAddress::ECHO_SERVICE, api_flow_control_id);
+        }
         self.start_echoer_service(ctx, DefaultAddress::ECHO_SERVICE.into())
             .await?;
 
@@ -315,6 +327,8 @@ impl NodeManager {
             )
             .await?
             .instantiate(ctx, self, PlainTcpInstantiator::new())
+            .await?
+            .instantiate(ctx, self, PlainUdpInstantiator::new())
             .await?
             .instantiate(
                 ctx,
@@ -658,22 +672,38 @@ pub struct ApiTransport {
 }
 
 #[derive(Debug)]
+pub struct NodeManagerTransport<T> {
+    flow_control_id: FlowControlId,
+    transport: T,
+}
+
+impl<T> NodeManagerTransport<T> {
+    pub fn new(flow_control_id: FlowControlId, transport: T) -> Self {
+        Self {
+            flow_control_id,
+            transport,
+        }
+    }
+}
+
+#[derive(Debug)]
 pub struct NodeManagerTransportOptions {
-    api_transport_flow_control_id: FlowControlId,
-    tcp_transport: TcpTransport,
-    udp_transport: Option<UdpTransport>,
+    tcp: NodeManagerTransport<TcpTransport>,
+    udp: Option<NodeManagerTransport<UdpTransport>>,
 }
 
 impl NodeManagerTransportOptions {
     pub fn new(
-        api_transport_flow_control_id: FlowControlId,
-        tcp_transport: TcpTransport,
-        udp_transport: Option<UdpTransport>,
+        tcp: NodeManagerTransport<TcpTransport>,
+        udp: Option<NodeManagerTransport<UdpTransport>>,
     ) -> Self {
+        Self { tcp, udp }
+    }
+
+    pub fn new_tcp(flow_control_id: FlowControlId, transport: TcpTransport) -> Self {
         Self {
-            api_transport_flow_control_id,
-            tcp_transport,
-            udp_transport,
+            tcp: NodeManagerTransport::new(flow_control_id, transport),
+            udp: None,
         }
     }
 }

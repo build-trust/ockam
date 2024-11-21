@@ -8,11 +8,10 @@ use ockam_core::flow_control::FlowControlId;
 use ockam_multiaddr::MultiAddr;
 
 use crate::colors::color_primary;
-use crate::error::ApiError;
 use crate::output::Output;
 use crate::session::replacer::ReplacerOutputKind;
 use crate::session::session::Session;
-use crate::{route_to_multiaddr, ConnectionStatus};
+use crate::{ConnectionStatus, ReverseLocalConverter};
 
 #[derive(Debug, Clone, Encode, Decode, CborLen)]
 #[rustfmt::skip]
@@ -177,9 +176,7 @@ impl RelayInfo {
 
     pub fn remote_address_ma(&self) -> Result<Option<MultiAddr>, ockam_core::Error> {
         if let Some(addr) = &self.remote_address {
-            route_to_multiaddr(&route![addr.to_string()])
-                .ok_or_else(|| ApiError::core("Invalid Remote Address"))
-                .map(Some)
+            ReverseLocalConverter::convert_route(&route![addr.to_string()]).map(Some)
         } else {
             Ok(None)
         }
@@ -187,9 +184,7 @@ impl RelayInfo {
 
     pub fn worker_address_ma(&self) -> Result<Option<MultiAddr>, ockam_core::Error> {
         if let Some(addr) = &self.worker_address {
-            route_to_multiaddr(&route![addr.to_string()])
-                .ok_or_else(|| ApiError::core("Invalid Worker Address"))
-                .map(Some)
+            ReverseLocalConverter::convert_route(&route![addr.to_string()]).map(Some)
         } else {
             Ok(None)
         }

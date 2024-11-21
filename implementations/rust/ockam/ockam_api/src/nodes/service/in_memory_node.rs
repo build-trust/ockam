@@ -167,7 +167,7 @@ impl InMemoryNode {
                 status_endpoint_port,
                 false,
             ),
-            NodeManagerTransportOptions::new(tcp_listener.flow_control_id().clone(), tcp, None),
+            NodeManagerTransportOptions::new_tcp(tcp_listener.flow_control_id().clone(), tcp),
             trust_options,
         )
         .await

@@ -18,7 +18,7 @@ use crate::error::ApiError;
 use crate::output::Output;
 use crate::session::connection_status::ConnectionStatus;
 use crate::terminal::fmt;
-use crate::{route_to_multiaddr, try_address_to_multiaddr};
+use crate::ReverseLocalConverter;
 
 /// Request body to create an inlet
 #[derive(Clone, Debug, Encode, Decode, CborLen)]
@@ -249,7 +249,7 @@ impl Display for InletStatus {
             .outlet_route
             .as_ref()
             .and_then(Route::parse)
-            .and_then(|r| route_to_multiaddr(&r))
+            .and_then(|r| ReverseLocalConverter::convert_route(&r).ok())
         {
             writeln!(
                 f,
@@ -310,8 +310,7 @@ impl OutletStatus {
     }
 
     pub fn worker_route(&self) -> Result<MultiAddr, ockam_core::Error> {
-        try_address_to_multiaddr(&self.worker_addr)
-            .map_err(|_| ApiError::core("Invalid Worker Address"))
+        ReverseLocalConverter::convert_address(&self.worker_addr)
     }
 
     pub fn worker_name(&self) -> Result<String, ockam_core::Error> {

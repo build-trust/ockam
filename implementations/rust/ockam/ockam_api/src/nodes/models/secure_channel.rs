@@ -12,11 +12,9 @@ use ockam_core::{route, Address, Result};
 use ockam_multiaddr::MultiAddr;
 
 use crate::colors::color_primary;
-use crate::error::ApiError;
 use crate::nodes::registry::SecureChannelInfo;
 use crate::output::Output;
-use crate::{route_to_multiaddr, try_route_to_multiaddr};
-
+use crate::ReverseLocalConverter;
 //Requests
 
 /// Request body when instructing a node to create a Secure Channel
@@ -136,14 +134,14 @@ impl CreateSecureChannelResponse {
     }
 
     pub fn multiaddr(&self) -> Result<MultiAddr> {
-        route_to_multiaddr(&route![self.addr.to_string()])
-            .ok_or_else(|| ApiError::core(format!("Invalid route: {}", self.addr)))
+        ReverseLocalConverter::convert_route(&route![self.addr.to_string()])
     }
 }
 
 impl Output for CreateSecureChannelResponse {
     fn item(&self) -> crate::Result<String> {
-        let addr = try_route_to_multiaddr(&route![self.addr.to_string()])?.to_string();
+        let addr =
+            ReverseLocalConverter::convert_route(&route![self.addr.to_string()])?.to_string();
         Ok(addr)
     }
 }
@@ -189,7 +187,7 @@ impl Output for SecureChannelListener {
     fn item(&self) -> crate::Result<String> {
         let addr = {
             let channel_route = route![self.address().clone()];
-            let channel_multiaddr = try_route_to_multiaddr(&channel_route)?;
+            let channel_multiaddr = ReverseLocalConverter::convert_route(&channel_route)?;
             channel_multiaddr.to_string()
         };
         Ok(format!("Listener at {}", color_primary(addr)))
@@ -248,7 +246,7 @@ impl Output for ShowSecureChannelResponse {
                 format!(
                     "\n  Secure Channel:\n{} {}\n{} {}\n{} {}",
                     "  •         At: ".light_magenta(),
-                    try_route_to_multiaddr(&route![addr.to_string()])?
+                    ReverseLocalConverter::convert_route(&route![addr.to_string()])?
                         .to_string()
                         .light_yellow(),
                     "  •         To: ".light_magenta(),

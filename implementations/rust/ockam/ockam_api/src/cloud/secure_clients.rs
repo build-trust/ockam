@@ -8,13 +8,13 @@ use ockam::identity::{
 use ockam::tcp::TcpTransport;
 use ockam_core::compat::sync::Arc;
 use ockam_core::env::{get_env, get_env_with_default, FromString};
-use ockam_core::{Result, Route};
+use ockam_core::errcode::{Kind, Origin};
+use ockam_core::{Error, Result, Route};
 use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
 
-use crate::error::ApiError;
-use crate::multiaddr_to_transport_route;
 use crate::nodes::NodeManager;
+use crate::TransportRouteResolver;
 
 pub const OCKAM_CONTROLLER_ADDR: &str = "OCKAM_CONTROLLER_ADDR";
 pub const DEFAULT_CONTROLLER_ADDRESS: &str = "/dnsaddr/orchestrator.ockam.io/tcp/6252/service/api";
@@ -138,11 +138,16 @@ impl NodeManager {
         caller_identifier: &Identifier,
         credential_retriever_creator: Option<Arc<dyn CredentialRetrieverCreator>>,
     ) -> Result<AuthorityNodeClient> {
-        let authority_route = multiaddr_to_transport_route(authority_route).ok_or_else(|| {
-            ApiError::core(format!(
-                "Couldn't convert MultiAddr to route: multiaddr={authority_route}"
-            ))
-        })?;
+        let authority_route = TransportRouteResolver::default()
+            .allow_tcp()
+            .resolve(authority_route)
+            .map_err(|err| {
+                Error::new(
+                    Origin::Api,
+                    Kind::NotFound,
+                    format!("Invalid authority route. Err: {}", &err),
+                )
+            })?;
 
         Ok(AuthorityNodeClient {
             secure_client: SecureClient::new(
@@ -167,11 +172,16 @@ impl NodeManager {
         project_multiaddr: &MultiAddr,
         caller_identifier: &Identifier,
     ) -> Result<ProjectNodeClient> {
-        let project_route = multiaddr_to_transport_route(project_multiaddr).ok_or_else(|| {
-            ApiError::core(format!(
-                "Couldn't convert MultiAddr to route: multiaddr={project_multiaddr}"
-            ))
-        })?;
+        let project_route = TransportRouteResolver::default()
+            .allow_tcp()
+            .resolve(project_multiaddr)
+            .map_err(|err| {
+                Error::new(
+                    Origin::Api,
+                    Kind::NotFound,
+                    format!("Invalid project node route. Err: {}", &err),
+                )
+            })?;
 
         Ok(ProjectNodeClient {
             secure_client: SecureClient::new(
@@ -194,11 +204,9 @@ impl NodeManager {
         multiaddr: &MultiAddr,
         caller_identifier: &Identifier,
     ) -> Result<GenericSecureClient> {
-        let route = multiaddr_to_transport_route(multiaddr).ok_or_else(|| {
-            ApiError::core(format!(
-                "Couldn't convert MultiAddr to route: multiaddr={multiaddr}"
-            ))
-        })?;
+        let route = TransportRouteResolver::default()
+            .allow_tcp()
+            .resolve(multiaddr)?;
 
         Ok(GenericSecureClient {
             secure_client: SecureClient::new(
@@ -233,11 +241,16 @@ impl NodeManager {
 
     pub async fn controller_route() -> Result<Route> {
         let multiaddr = Self::controller_multiaddr();
-        multiaddr_to_transport_route(&multiaddr).ok_or_else(|| {
-            ApiError::core(format!(
-                "Couldn't convert MultiAddr to route: multiaddr={multiaddr}"
-            ))
-        })
+        TransportRouteResolver::default()
+            .allow_tcp()
+            .resolve(&multiaddr)
+            .map_err(|err| {
+                Error::new(
+                    Origin::Api,
+                    Kind::NotFound,
+                    format!("Invalid controller route. Err: {}", &err),
+                )
+            })
     }
 }
 

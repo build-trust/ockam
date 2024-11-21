@@ -153,6 +153,51 @@ impl Protocol<'_> for Tcp {
     }
 }
 
+/// A Udp port number.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Udp(pub u16);
+
+impl Udp {
+    pub fn new(v: u16) -> Self {
+        Udp(v)
+    }
+}
+
+impl Deref for Udp {
+    type Target = u16;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl Protocol<'_> for Udp {
+    const CODE: Code = Code::new(273);
+    const PREFIX: &'static str = "udp";
+
+    fn read_str(input: Checked<&str>) -> Result<Self, Error> {
+        u16::from_str(&input).map(Udp).map_err(Error::message)
+    }
+
+    fn read_bytes(input: Checked<&[u8]>) -> Result<Self, Error> {
+        let mut b = [0; 2];
+        b.copy_from_slice(&input);
+        Ok(Udp(u16::from_be_bytes(b)))
+    }
+
+    fn write_str(&self, f: &mut fmt::Formatter) -> Result<(), Error> {
+        write!(f, "/{}/{}", Self::PREFIX, self.0)?;
+        Ok(())
+    }
+
+    fn write_bytes(&self, buf: &mut dyn Buffer) {
+        let mut b = encode::u32_buffer();
+        let uvi = encode::u32(Self::CODE.into(), &mut b);
+        buf.extend_with(uvi);
+        buf.extend_with(&self.0.to_be_bytes())
+    }
+}
+
 macro_rules! gen_str_proto {
     ($t:ident, $c:literal, $p:literal) => {
         #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]

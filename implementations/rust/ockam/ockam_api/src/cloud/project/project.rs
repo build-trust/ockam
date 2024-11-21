@@ -10,6 +10,7 @@ use crate::error::ApiError;
 use crate::output::Output;
 use crate::terminal::fmt;
 
+use crate::TransportRouteResolver;
 use ockam::identity::{Identifier, Identity, Vault};
 use ockam_core::compat::collections::HashSet;
 use ockam_core::errcode::{Kind, Origin};
@@ -66,9 +67,9 @@ impl Project {
             // return the host and port of the project node.
             // Ex: if access_route is "/dnsaddr/node.dnsaddr.com/tcp/4000/service/api",
             // then this will return the string "node.dnsaddr.com:4000".
-            let socket_addr = multiaddr
-                .to_socket_addr()
-                .map_err(|e| ApiError::core(e.to_string()))?;
+            let socket_addr = TransportRouteResolver::default()
+                .allow_tcp()
+                .socket_address(&multiaddr)?;
             project_socket_addr = Some(socket_addr.clone());
             egress_allow_list.insert(socket_addr);
             project_multiaddr = Some(multiaddr);
@@ -92,9 +93,9 @@ impl Project {
             Some(authority_access_route) => {
                 let multiaddr = MultiAddr::from_str(authority_access_route)
                     .map_err(|e| ApiError::core(e.to_string()))?;
-                let socket_addr = multiaddr
-                    .to_socket_addr()
-                    .map_err(|e| ApiError::core(e.to_string()))?;
+                let socket_addr = TransportRouteResolver::default()
+                    .allow_tcp()
+                    .socket_address(&multiaddr)?;
                 authority_socket_addr = Some(socket_addr.clone());
                 egress_allow_list.insert(socket_addr);
                 authority_multiaddr = Some(multiaddr)
@@ -260,7 +261,10 @@ impl Output for Project {
             fmt::PADDING,
             fmt::INDENTATION,
             self.project_multiaddr()
-                .map(|m| m.to_socket_addr().unwrap_or("N/A".to_string()))
+                .map(|m| TransportRouteResolver::default()
+                    .allow_tcp()
+                    .socket_address(m)
+                    .unwrap_or("N/A".to_string()))
                 .unwrap_or("N/A".to_string())
         )?;
         writeln!(
@@ -301,7 +305,10 @@ impl Output for Project {
             fmt::PADDING,
             fmt::INDENTATION,
             self.authority_multiaddr()
-                .map(|m| m.to_socket_addr().unwrap_or("N/A".to_string()))
+                .map(|m| TransportRouteResolver::default()
+                    .allow_tcp()
+                    .socket_address(m)
+                    .unwrap_or("N/A".to_string()))
                 .unwrap_or("N/A".to_string())
         )?;
         writeln!(

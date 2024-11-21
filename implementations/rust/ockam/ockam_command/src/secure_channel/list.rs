@@ -10,12 +10,12 @@ use ockam::Context;
 use ockam_api::colors::OckamColor;
 use ockam_api::nodes::models::secure_channel::ShowSecureChannelResponse;
 use ockam_api::nodes::BackgroundNodeClient;
-use ockam_api::route_to_multiaddr;
 use ockam_core::{route, Address, Result};
 
 use crate::util::async_cmd;
 use crate::{docs, util::api, CommandGlobalOpts};
 use ockam_api::output::Output;
+use ockam_api::ReverseLocalConverter;
 
 const LONG_ABOUT: &str = include_str!("./static/list/long_about.txt");
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
@@ -55,9 +55,8 @@ impl ListCommand {
         let from = node_name.to_string();
         let at = {
             let channel_route = &route![channel_address];
-            let channel_multiaddr = route_to_multiaddr(channel_route).ok_or(miette!(
-                "Failed to convert route {channel_route} to multi-address"
-            ))?;
+            let channel_multiaddr = ReverseLocalConverter::convert_route(channel_route)
+                .map_err(|_| miette!("Failed to convert route {channel_route} to multi-address"))?;
             channel_multiaddr.to_string()
         };
 
@@ -69,8 +68,8 @@ impl ListCommand {
                 .split(" => ")
                 .map(|p| {
                     let r = route![p];
-                    route_to_multiaddr(&r)
-                        .ok_or(miette!("Failed to convert route {r} to multi-address"))
+                    ReverseLocalConverter::convert_route(&r)
+                        .map_err(|_| miette!("Failed to convert route {r} to multi-address"))
                 })
                 .collect::<Result<Vec<_>, _>>()?
                 .iter()

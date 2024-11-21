@@ -6,8 +6,9 @@ use serde_json::json;
 
 use ockam::{route, Context};
 use ockam_api::address::extract_address_value;
+use ockam_api::nodes::models::secure_channel::DeleteSecureChannelResponse;
 use ockam_api::nodes::BackgroundNodeClient;
-use ockam_api::{nodes::models::secure_channel::DeleteSecureChannelResponse, route_to_multiaddr};
+use ockam_api::ReverseLocalConverter;
 use ockam_core::{Address, AddressParseError};
 
 use crate::util::async_cmd;
@@ -59,8 +60,8 @@ impl DeleteCommand {
         match response.channel {
             Some(address) => {
                 let route = &route![address];
-                match route_to_multiaddr(route) {
-                    Some(multiaddr) => {
+                match ReverseLocalConverter::convert_route(route) {
+                    Ok(multiaddr) => {
                         // if stdout is not interactive/tty write the secure channel address to it
                         // in case some other program is trying to read it as piped input
                         if !options.terminal.is_tty() {
@@ -96,7 +97,7 @@ impl DeleteCommand {
                             }
                         }
                     }
-                    None => {
+                    Err(_err) => {
                         // if stderr is interactive/tty and we haven't been asked to be quiet
                         // and output format is plain then write a plain info to stderr.
                         if options.terminal.is_tty()

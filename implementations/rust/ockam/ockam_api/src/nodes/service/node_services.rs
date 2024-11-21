@@ -240,8 +240,10 @@ impl NodeManager {
             )));
         }
 
-        ctx.flow_controls()
-            .add_consumer(addr.clone(), &self.api_transport_flow_control_id);
+        for api_transport_flow_control_id in &self.api_transport_flow_control_ids {
+            ctx.flow_controls()
+                .add_consumer(addr.clone(), api_transport_flow_control_id);
+        }
 
         ctx.start_worker(addr.clone(), Hop).await?;
 

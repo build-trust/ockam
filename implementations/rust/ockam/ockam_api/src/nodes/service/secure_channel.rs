@@ -352,8 +352,11 @@ impl NodeManager {
         let vault = self.cli_state.make_vault(named_vault).await?;
         let secure_channels = self.build_secure_channels(vault).await?;
 
-        let options =
-            SecureChannelListenerOptions::new().as_consumer(&self.api_transport_flow_control_id);
+        let mut options = SecureChannelListenerOptions::new();
+
+        for api_flow_control_id in &self.api_transport_flow_control_ids {
+            options = options.as_consumer(api_flow_control_id);
+        }
 
         let options = match authorized_identifiers {
             Some(ids) => options.with_trust_policy(TrustMultiIdentifiersPolicy::new(ids)),

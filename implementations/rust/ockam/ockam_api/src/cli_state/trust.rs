@@ -3,7 +3,7 @@ use crate::nodes::service::{
     CredentialScope, NodeManagerCredentialRetrieverOptions, NodeManagerTrustOptions,
 };
 use crate::nodes::NodeManager;
-use crate::{multiaddr_to_transport_route, ApiError, CliState};
+use crate::{ApiError, CliState, TransportRouteResolver};
 use ockam::identity::models::ChangeHistory;
 use ockam::identity::{IdentitiesVerification, RemoteCredentialRetrieverInfo};
 use ockam_core::errcode::{Kind, Origin};
@@ -46,12 +46,14 @@ impl CliState {
                 }
             };
 
-            let authority_route =
-                multiaddr_to_transport_route(authority_multiaddr).ok_or_else(|| {
+            let authority_route = TransportRouteResolver::default()
+                .allow_tcp()
+                .resolve(authority_multiaddr)
+                .map_err(|err| {
                     Error::new(
                         Origin::Api,
                         Kind::NotFound,
-                        format!("Invalid authority route: {}", &authority_multiaddr),
+                        format!("Invalid authority route. Err: {}", &err),
                     )
                 })?;
             let info = RemoteCredentialRetrieverInfo::create_for_project_member(
@@ -116,12 +118,14 @@ impl CliState {
             .authority_identifier()
             .ok_or_else(|| ApiError::core("no authority identifier"))?;
         let authority_multiaddr = project.authority_multiaddr()?;
-        let authority_route =
-            multiaddr_to_transport_route(authority_multiaddr).ok_or_else(|| {
+        let authority_route = TransportRouteResolver::default()
+            .allow_tcp()
+            .resolve(authority_multiaddr)
+            .map_err(|err| {
                 Error::new(
                     Origin::Api,
                     Kind::NotFound,
-                    format!("Invalid authority route: {}", &authority_multiaddr),
+                    format!("Invalid authority route. Err: {}", &err),
                 )
             })?;
 

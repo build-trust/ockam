@@ -13,7 +13,7 @@ use ockam::{node, Context, Result};
 use ockam_api::authenticator::enrollment_tokens::TokenAcceptor;
 use ockam_api::authenticator::one_time_code::OneTimeCode;
 use ockam_api::nodes::NodeManager;
-use ockam_api::{multiaddr_to_route, multiaddr_to_transport_route};
+use ockam_api::{RemoteMultiaddrResolver, TransportRouteResolver};
 use ockam_core::AsyncTryClone;
 use ockam_multiaddr::MultiAddr;
 
@@ -75,7 +75,9 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     authority_node.present_token(node.context(), token).await.unwrap();
 
     let project = import_project(project_information_path, node.identities()).await?;
-    let project_authority_route = multiaddr_to_transport_route(&project.authority_route()).unwrap(); // FIXME: Handle error
+    let project_authority_route = TransportRouteResolver::default()
+        .allow_tcp()
+        .resolve(&project.authority_route())?;
 
     // Create a credential retriever that will be used to obtain credentials
     let credential_retriever = Arc::new(RemoteCredentialRetrieverCreator::new(
@@ -117,7 +119,10 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
 
     // 5. create a relay on the Ockam orchestrator
 
-    let tcp_project_route = multiaddr_to_route(&project.route(), &tcp).await.unwrap(); // FIXME: Handle error
+    let tcp_project_route = RemoteMultiaddrResolver::default()
+        .with_tcp(tcp.clone())
+        .resolve(&project.route())
+        .await?;
     let project_options = SecureChannelOptions::new()
         .with_credential_retriever_creator(credential_retriever)?
         .with_authority(project.authority_identifier())

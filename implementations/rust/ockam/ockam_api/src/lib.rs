@@ -44,6 +44,7 @@ pub mod logs;
 mod schema;
 
 mod date;
+mod multiaddr_resolver;
 mod rendezvous_healthcheck;
 pub mod test_utils;
 mod ui;
@@ -52,6 +53,7 @@ mod util;
 pub use cli_state::CliState;
 pub use date::UtcDateTime;
 pub use error::*;
+pub use multiaddr_resolver::*;
 pub use nodes::service::default_address::*;
 pub use rendezvous_healthcheck::*;
 pub use session::connection_status::ConnectionStatus;

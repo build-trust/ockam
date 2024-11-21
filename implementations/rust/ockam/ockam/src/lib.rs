@@ -94,8 +94,8 @@ pub mod tcp {
 /// UDP transport
 pub mod udp {
     pub use ockam_transport_udp::{
-        RendezvousClient, RendezvousService, UdpBindArguments, UdpBindOptions, UdpPuncture,
-        UdpPunctureNegotiation, UdpPunctureNegotiationListener,
+        RendezvousClient, RendezvousService, UdpBind, UdpBindArguments, UdpBindOptions,
+        UdpPuncture, UdpPunctureNegotiation, UdpPunctureNegotiationListener,
         UdpPunctureNegotiationListenerOptions, UdpTransport, UdpTransportExtension,
         MAX_MESSAGE_SIZE, UDP,
     };

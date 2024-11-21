@@ -11,10 +11,9 @@ use tracing::debug;
 use ockam_api::cloud::project::{Project, ProjectsOrchestratorApi};
 use ockam_api::cloud::{CredentialsEnabled, ORCHESTRATOR_AWAIT_TIMEOUT};
 use ockam_api::config::lookup::LookupMeta;
-use ockam_api::error::ApiError;
 use ockam_api::nodes::service::relay::SecureChannelsCreation;
 use ockam_api::nodes::InMemoryNode;
-use ockam_api::route_to_multiaddr;
+use ockam_api::ReverseLocalConverter;
 use ockam_core::route;
 use ockam_multiaddr::{MultiAddr, Protocol};
 use ockam_node::Context;
@@ -87,8 +86,7 @@ pub async fn get_projects_secure_channels_from_config_lookup(
                 timeout,
             )
             .await?;
-        let address = route_to_multiaddr(&route![secure_channel.to_string()])
-            .ok_or_else(|| ApiError::core(format!("Invalid route: {}", secure_channel)))?;
+        let address = ReverseLocalConverter::convert_route(&route![secure_channel.to_string()])?;
         debug!("secure channel created at {address}");
         sc.push(address);
     }

@@ -60,7 +60,7 @@ pub struct TcpTransport {
     registry: TcpRegistry,
 
     #[cfg(privileged_portals_support)]
-    pub(crate) ebpf_support: crate::privileged_portal::TcpTransportEbpfSupport,
+    pub(crate) ebpf_support: Arc<crate::privileged_portal::TcpTransportEbpfSupport>,
 }
 
 impl TcpTransport {

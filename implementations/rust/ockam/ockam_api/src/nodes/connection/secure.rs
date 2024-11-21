@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use crate::nodes::connection::{Changes, Instantiator};
 use crate::nodes::NodeManager;
-use crate::{local_multiaddr_to_route, try_address_to_multiaddr};
+use crate::{LocalMultiaddrResolver, ReverseLocalConverter};
 
 use crate::nodes::service::SecureChannelType;
 use ockam::identity::Identifier;
@@ -47,7 +47,7 @@ impl Instantiator for SecureChannelInstantiator {
     ) -> Result<Changes, Error> {
         let (_before, secure_piece, after) = extracted;
         debug!(%secure_piece, %transport_route, "creating secure channel");
-        let route = local_multiaddr_to_route(&secure_piece)?;
+        let route = LocalMultiaddrResolver::resolve(&secure_piece)?;
 
         let sc_ctx = ctx.async_try_clone().await?;
         let sc = node_manager
@@ -66,7 +66,7 @@ impl Instantiator for SecureChannelInstantiator {
 
         // when creating a secure channel we want the route to pass through that
         // ignoring previous steps, since they will be implicit
-        let mut current_multiaddr = try_address_to_multiaddr(sc.encryptor_address()).unwrap();
+        let mut current_multiaddr = ReverseLocalConverter::convert_address(sc.encryptor_address())?;
         current_multiaddr.try_extend(after.iter())?;
 
         Ok(Changes {
@@ -74,6 +74,7 @@ impl Instantiator for SecureChannelInstantiator {
             flow_control_id: Some(sc.flow_control_id().clone()),
             secure_channel_encryptors: vec![sc.encryptor_address().clone()],
             tcp_connection: None,
+            udp_bind: None,
         })
     }
 }
