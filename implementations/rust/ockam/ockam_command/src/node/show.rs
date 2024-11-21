@@ -25,10 +25,10 @@ const LONG_ABOUT: &str = include_str!("./static/show/long_about.txt");
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/show/after_long_help.txt");
 
-const IS_NODE_ACCESSIBLE_TIME_BETWEEN_CHECKS_MS: u64 = 100;
+const IS_NODE_ACCESSIBLE_TIME_BETWEEN_CHECKS_MS: u64 = 25;
 const IS_NODE_ACCESSIBLE_TIMEOUT: Duration = Duration::from_secs(10);
 
-const IS_NODE_READY_TIME_BETWEEN_CHECKS_MS: u64 = 100;
+const IS_NODE_READY_TIME_BETWEEN_CHECKS_MS: u64 = 25;
 const IS_NODE_READY_TIMEOUT: Duration = Duration::from_secs(20);
 
 /// Show the details of a node
@@ -190,7 +190,7 @@ async fn is_node_accessible(
             return Ok(false);
         };
         if node.is_accessible(ctx).await.is_ok() {
-            trace!(%node_name, "node is accessible");
+            info!(%node_name, "node is accessible");
             return Ok(true);
         }
         trace!(%node_name, "node is not accessible");
@@ -217,7 +217,7 @@ async fn is_node_ready(
         // Test if node is ready
         // If the node is down, we expect it won't reply and the timeout will trigger the next loop
         let result = node
-            .ask_with_timeout::<(), NodeStatus>(ctx, api::query_status(), timeout_duration)
+            .ask_with_timeout::<(), NodeStatus>(ctx, api::query_status(), Duration::from_secs(1))
             .await;
         if let Ok(node_status) = result {
             if node_status.status.is_running() {
