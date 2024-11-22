@@ -7,7 +7,6 @@ use std::time::Duration;
 use url::Url;
 
 const PRODUCTION_AUTHENTICATOR_ENDPOINT: &str = "https://account.ockam.io";
-const DEV_AUTHENTICATOR_ENDPOINT: &str = "https://dev-w5hdnpc2.us.auth0.com";
 
 pub fn authenticator_endpoint() -> String {
     get_env_with_default(
@@ -28,8 +27,6 @@ pub fn auth0_client_id() -> Result<String> {
             let endpoint = authenticator_endpoint();
             if endpoint == PRODUCTION_AUTHENTICATOR_ENDPOINT {
                 Ok("c1SAhEjrJAqEk6ArWjGjuWX11BD2gK8X".to_string())
-            } else if endpoint == DEV_AUTHENTICATOR_ENDPOINT {
-                Ok("sGyXBwQfU6fjfW1gopphdV9vCLec060b".to_string())
             } else {
                 Err(Error::new(Origin::Api, Kind::NotFound, format!("The OCKAM_AUTH0_CLIENT_ID variable must be defined when using the endpoint {endpoint}")))
             }
