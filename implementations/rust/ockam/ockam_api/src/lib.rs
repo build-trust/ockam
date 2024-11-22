@@ -50,6 +50,7 @@ mod ui;
 mod util;
 
 pub use cli_state::CliState;
+pub use date::UtcDateTime;
 pub use error::*;
 pub use nodes::service::default_address::*;
 pub use rendezvous_healthcheck::*;

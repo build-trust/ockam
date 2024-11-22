@@ -104,7 +104,7 @@ async fn delete_orchestrator_resources_impl(
     if spaces.is_empty() {
         return Ok(());
     }
-    let pb = opts.terminal.progress_bar();
+    let pb = opts.terminal.spinner();
     if let Some(s) = pb.as_ref() {
         s.set_message("Deleting spaces from the Orchestrator..")
     };

@@ -42,7 +42,7 @@ impl ListCommand {
     async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         let node = BackgroundNodeClient::create(ctx, &opts.state, &self.to).await?;
         let relays: Vec<RelayInfo> = {
-            let pb = opts.terminal.progress_bar();
+            let pb = opts.terminal.spinner();
             if let Some(pb) = pb {
                 pb.set_message(format!(
                     "Listing Relays on {}...\n",

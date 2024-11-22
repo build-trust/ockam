@@ -1,20 +1,22 @@
 use crate::cloud::{ControllerClient, HasSecureClient};
+use crate::colors::{color_primary, OckamColor};
+use crate::date::UtcDateTime;
 use crate::output::Output;
-use minicbor::{CborLen, Decode, Encode};
-use serde::{Deserialize, Serialize};
-use std::fmt::{Display, Formatter, Write};
-use time::format_description::well_known::Iso8601;
-use time::OffsetDateTime;
-
-use crate::colors::color_primary;
-use crate::date::parse_date;
 use crate::terminal::fmt;
+use colorful::{Colorful, RGB};
+use minicbor::{decode, encode, CborLen, Decode, Decoder, Encode};
 use ockam_core::api::{Error, Reply, Request, Status};
 use ockam_core::{self, async_trait, Result};
 use ockam_node::Context;
+use serde::{Deserialize, Serialize};
+use std::fmt::{Display, Formatter, Write};
+use std::str::FromStr;
+use strum::{Display, EnumString};
 
 const TARGET: &str = "ockam_api::cloud::subscription";
 const API_SERVICE: &str = "subscriptions";
+
+pub const SUBSCRIPTION_PAGE: &str = "https://orchestrator.ockam.io";
 
 #[derive(Encode, Decode, CborLen, Debug)]
 #[cfg_attr(test, derive(Clone))]
@@ -54,86 +56,90 @@ impl ActivateSubscription {
     }
 }
 
-#[derive(Encode, Decode, CborLen, Serialize, Deserialize, Clone, Debug, Eq)]
+#[derive(Encode, Decode, CborLen, Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
 #[cbor(map)]
 pub struct Subscription {
     #[n(1)]
-    pub name: String,
+    pub name: SubscriptionName,
     #[n(2)]
     pub is_free_trial: bool,
     #[n(3)]
     pub marketplace: Option<String>,
     #[n(4)]
-    start_date: Option<String>,
+    pub start_date: Option<UtcDateTime>,
     #[n(5)]
-    end_date: Option<String>,
-}
-
-impl PartialEq for Subscription {
-    fn eq(&self, other: &Self) -> bool {
-        // Compare the dates using as unix timestamps, using a tolerance of 1 second
-        let start_date_eq = match (self.start_date(), other.start_date()) {
-            (Some(start_date), Some(other_start_date)) => {
-                let start_date = start_date.unix_timestamp();
-                let other_start_date = other_start_date.unix_timestamp();
-                (start_date - other_start_date).abs() <= 1
-            }
-            (None, None) => true,
-            _ => false,
-        };
-        self.name == other.name
-            && self.is_free_trial == other.is_free_trial
-            && self.marketplace == other.marketplace
-            && start_date_eq
-    }
+    pub end_date: Option<UtcDateTime>,
 }
 
 impl Subscription {
     pub fn new(
-        name: String,
+        name: SubscriptionName,
         is_free_trial: bool,
         marketplace: Option<String>,
-        start_date: Option<OffsetDateTime>,
-        end_date: Option<OffsetDateTime>,
+        start_date: Option<UtcDateTime>,
+        end_date: Option<UtcDateTime>,
     ) -> Self {
         Self {
             name,
             is_free_trial,
             marketplace,
-            start_date: start_date.and_then(|date| date.format(&Iso8601::DEFAULT).ok()),
-            end_date: end_date.and_then(|date| date.format(&Iso8601::DEFAULT).ok()),
+            start_date,
+            end_date,
         }
     }
 
-    pub fn end_date(&self) -> Option<OffsetDateTime> {
-        self.end_date
-            .as_ref()
-            .and_then(|date| parse_date(date).ok())
+    pub fn end_date(&self) -> Option<UtcDateTime> {
+        self.end_date.clone()
     }
 
-    pub fn start_date(&self) -> Option<OffsetDateTime> {
-        self.start_date
-            .as_ref()
-            .and_then(|date| parse_date(date).ok())
+    pub fn start_date(&self) -> Option<UtcDateTime> {
+        self.start_date.clone()
+    }
+
+    /// A subscription is valid if:
+    ///    - is in a trial period and end date is in the future
+    ///    - a plan is not in trial status
+    pub fn is_valid(&self) -> bool {
+        if self.is_free_trial {
+            self.end_date()
+                .map(|end_date| end_date.is_in_the_future())
+                .unwrap_or(false)
+        } else {
+            true
+        }
+    }
+
+    pub fn grace_period_end_date(&self) -> crate::Result<Option<UtcDateTime>> {
+        if !self.is_free_trial {
+            return Ok(None);
+        }
+        match self.end_date.as_ref() {
+            Some(end_date) => {
+                let grace_period = time::Duration::days(3);
+                let end_date = end_date.clone().into_inner() + grace_period;
+                Ok(Some(UtcDateTime::new(end_date)?))
+            }
+            None => Ok(None),
+        }
     }
 }
 
 impl Display for Subscription {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Subscription: {}", color_primary(&self.name))?;
-        if self.is_free_trial {
-            writeln!(f, " (free trial)")?;
+        let trial_text = if self.is_free_trial {
+            "Trial of the "
         } else {
-            writeln!(f)?;
-        }
+            ""
+        };
+        writeln!(f, "{}{} Subscription", trial_text, self.name.colored())?;
 
         if let (Some(start_date), Some(end_date)) = (self.start_date(), self.end_date()) {
             writeln!(
                 f,
-                "{}Started at {}, expires at {}",
+                "{}Started on {}, expires in {}",
                 fmt::INDENTATION,
-                color_primary(start_date.to_string()),
-                color_primary(end_date.to_string()),
+                color_primary(start_date.format_human()?),
+                color_primary(end_date.diff_human(&start_date)),
             )?;
         }
 
@@ -153,6 +159,61 @@ impl Display for Subscription {
 impl Output for Subscription {
     fn item(&self) -> crate::Result<String> {
         Ok(self.padded_display())
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, Display, EnumString)]
+pub enum SubscriptionName {
+    #[strum(to_string = "Gold", ascii_case_insensitive)]
+    Gold,
+    #[strum(to_string = "Silver", ascii_case_insensitive)]
+    Silver,
+    #[strum(to_string = "Bronze", ascii_case_insensitive)]
+    Bronze,
+    #[strum(
+        to_string = "Basic",
+        serialize = "basic",
+        serialize = "developer-premium",
+        serialize = "developer-free",
+        ascii_case_insensitive
+    )]
+    Basic,
+    #[strum(default, to_string = "{0}", ascii_case_insensitive)]
+    Other(String),
+}
+
+impl<C> Encode<C> for SubscriptionName {
+    fn encode<W: encode::Write>(
+        &self,
+        e: &mut minicbor::Encoder<W>,
+        ctx: &mut C,
+    ) -> std::result::Result<(), encode::Error<W::Error>> {
+        self.to_string().encode(e, ctx)
+    }
+}
+
+impl<C> CborLen<C> for SubscriptionName {
+    fn cbor_len(&self, ctx: &mut C) -> usize {
+        self.to_string().cbor_len(ctx)
+    }
+}
+
+impl<'b, C> Decode<'b, C> for SubscriptionName {
+    fn decode(d: &mut Decoder<'b>, ctx: &mut C) -> std::result::Result<Self, decode::Error> {
+        SubscriptionName::from_str(&String::decode(d, ctx)?)
+            .map_err(|_| decode::Error::message("Invalid subscription name"))
+    }
+}
+
+impl SubscriptionName {
+    pub fn colored(&self) -> String {
+        let color = match self {
+            SubscriptionName::Gold => RGB::new(255, 215, 0),
+            SubscriptionName::Silver => RGB::new(230, 232, 250),
+            SubscriptionName::Bronze => RGB::new(140, 120, 83),
+            _ => OckamColor::PrimaryResource.color(),
+        };
+        self.to_string().color(color).to_string()
     }
 }
 
@@ -335,6 +396,7 @@ pub mod tests {
     use super::*;
     use crate::schema::tests::validate_with_schema;
     use quickcheck::{quickcheck, Arbitrary, Gen, TestResult};
+    use std::str::FromStr;
 
     quickcheck! {
         fn subcription_legacy(s: SubscriptionLegacy) -> TestResult {
@@ -363,7 +425,7 @@ pub mod tests {
     impl Arbitrary for Subscription {
         fn arbitrary(g: &mut Gen) -> Self {
             Subscription {
-                name: String::arbitrary(g),
+                name: SubscriptionName::arbitrary(g),
                 is_free_trial: bool::arbitrary(g),
                 marketplace: Option::arbitrary(g),
                 start_date: Option::arbitrary(g),
@@ -379,6 +441,44 @@ pub mod tests {
                 &[String::arbitrary(g), String::arbitrary(g)],
                 String::arbitrary(g),
             )
+        }
+    }
+
+    impl Arbitrary for SubscriptionName {
+        fn arbitrary(g: &mut Gen) -> Self {
+            match u8::arbitrary(g) % 4 {
+                0 => SubscriptionName::Gold,
+                1 => SubscriptionName::Silver,
+                2 => SubscriptionName::Bronze,
+                _ => SubscriptionName::Basic,
+            }
+        }
+    }
+
+    #[test]
+    fn test_subscription_name_parsing() {
+        let cases = [
+            ("Gold", "Gold", SubscriptionName::Gold),
+            ("gold", "Gold", SubscriptionName::Gold),
+            ("Silver", "Silver", SubscriptionName::Silver),
+            ("silver", "Silver", SubscriptionName::Silver),
+            ("Bronze", "Bronze", SubscriptionName::Bronze),
+            ("bronze", "Bronze", SubscriptionName::Bronze),
+            ("Basic", "Basic", SubscriptionName::Basic),
+            ("basic", "Basic", SubscriptionName::Basic),
+            ("Developer-Premium", "Basic", SubscriptionName::Basic),
+            ("developer-premium", "Basic", SubscriptionName::Basic),
+            ("Developer-Free", "Basic", SubscriptionName::Basic),
+            ("developer-free", "Basic", SubscriptionName::Basic),
+            (
+                "FreeText",
+                "FreeText",
+                SubscriptionName::Other("FreeText".to_string()),
+            ),
+        ];
+        for (from_str, to_string, expected) in cases.into_iter() {
+            assert_eq!(SubscriptionName::from_str(from_str).unwrap(), expected);
+            assert_eq!(expected.to_string(), to_string);
         }
     }
 }

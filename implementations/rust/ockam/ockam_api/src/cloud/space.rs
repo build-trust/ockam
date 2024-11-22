@@ -10,13 +10,13 @@ use ockam_node::Context;
 use crate::cloud::email_address::EmailAddress;
 use crate::cloud::project::models::AdminInfo;
 use crate::cloud::project::{Project, ProjectsOrchestratorApi};
-use crate::cloud::subscription::Subscription;
+use crate::cloud::subscription::{Subscription, SUBSCRIPTION_PAGE};
 use crate::cloud::{ControllerClient, HasSecureClient};
 use crate::colors::{color_primary, color_uri, color_warn};
-use crate::fmt_log;
 use crate::nodes::InMemoryNode;
 use crate::output::{comma_separated, Output};
 use crate::terminal::fmt;
+use crate::{fmt_log, UtcDateTime};
 
 const TARGET: &str = "ockam_api::cloud::space";
 
@@ -39,8 +39,11 @@ impl Space {
         self.name.clone()
     }
 
-    pub fn has_subscription(&self) -> bool {
-        self.subscription.is_some()
+    pub fn has_valid_subscription(&self) -> bool {
+        self.subscription
+            .as_ref()
+            .map(|s| s.is_valid())
+            .unwrap_or(false)
     }
 
     pub fn is_in_free_trial_subscription(&self) -> bool {
@@ -52,46 +55,40 @@ impl Space {
                 .unwrap_or_default()
     }
 
-    pub fn subscription_status_message(&self, space_is_new: bool) -> crate::Result<String> {
+    pub fn subscription_status_message(&self) -> crate::Result<String> {
         let mut f = String::new();
         if let Some(subscription) = &self.subscription {
+            let trial_text = if subscription.is_free_trial {
+                "Trial of the "
+            } else {
+                ""
+            };
             writeln!(
                 f,
                 "{}",
                 fmt_log!(
-                    "This Space has a {} Subscription attached to it.",
-                    color_primary(&subscription.name)
+                    "This Space has a {}{} Subscription attached to it.",
+                    trial_text,
+                    subscription.name.colored(),
                 )
             )?;
+            if let (Some(start_date), Some(end_date)) =
+                (&subscription.start_date(), &subscription.end_date())
+            {
+                writeln!(
+                    f,
+                    "{}",
+                    fmt_log!(
+                        "Your trial started on {} and will end in {}.",
+                        color_primary(start_date.format_human()?),
+                        color_primary(end_date.diff_human(&UtcDateTime::now()))
+                    )
+                )?;
+            }
             if subscription.is_free_trial {
-                if space_is_new {
-                    writeln!(f)?;
-                    writeln!(f, "{}", fmt_log!("As a courtesy, we created a temporary Space for you, so you can continue to build.\n"))?;
-                    writeln!(
-                        f,
-                        "{}",
-                        fmt_log!(
-                            "Please subscribe to an Ockam plan within two weeks {}",
-                            color_uri("https://www.ockam.io/pricing")
-                        )
-                    )?;
-                    writeln!(f, "{}", fmt_log!("{}", color_warn("If you don't subscribe in that time, your Space and all associated Projects will be permanently deleted.")))?;
-                } else if let (Some(start_date), Some(end_date)) =
-                    (&subscription.start_date(), &subscription.end_date())
-                {
-                    writeln!(f)?;
-                    writeln!(
-                        f,
-                        "{}",
-                        fmt_log!(
-                            "Your free trial started on {} and will end on {}.\n",
-                            start_date,
-                            end_date
-                        )
-                    )?;
-                    writeln!(f, "{}", fmt_log!("Please subscribe to an Ockam plan before the trial ends to avoid any service interruptions {}", color_uri("https://www.ockam.io/pricing")))?;
-                    writeln!(f, "{}", fmt_log!("{}", color_warn("If you don't subscribe in that time, your Space and all associated Projects will be permanently deleted.")))?;
-                }
+                writeln!(f)?;
+                writeln!(f, "{}", fmt_log!("Please go to {} and subscribe before the trial ends to avoid any service interruptions.", color_uri(SUBSCRIPTION_PAGE)))?;
+                writeln!(f, "{}", fmt_log!("{}", color_warn("If you don't subscribe in that time, your Space and all associated Projects will be permanently deleted.")))?;
             }
         } else {
             writeln!(
@@ -362,10 +359,10 @@ impl ControllerClient {
 
 #[cfg(test)]
 pub mod tests {
-    use quickcheck::{quickcheck, Arbitrary, Gen, TestResult};
-
     use crate::cloud::space::CreateSpace;
     use crate::schema::tests::validate_with_schema;
+    use quickcheck::{quickcheck, Arbitrary, Gen, TestResult};
+    use time::OffsetDateTime;
 
     use super::*;
 
@@ -401,5 +398,55 @@ pub mod tests {
                 users: vec![String::arbitrary(g), String::arbitrary(g)],
             }
         }
+    }
+
+    #[test]
+    fn valid_subscription_check() {
+        let mut g = Gen::new(100);
+        let mut space = Space::arbitrary(&mut g);
+
+        // No subscription
+        space.subscription = None;
+        assert!(!space.has_valid_subscription());
+
+        // Paid subscription
+        let mut sub = Subscription::arbitrary(&mut g);
+        sub.is_free_trial = false;
+        space.subscription = Some(sub.clone());
+        assert!(space.has_valid_subscription());
+
+        // Trial subscription with no dates
+        let mut sub = Subscription::arbitrary(&mut g);
+        sub.is_free_trial = true;
+        sub.start_date = None;
+        sub.end_date = None;
+        space.subscription = Some(sub.clone());
+        assert!(!space.has_valid_subscription());
+
+        // Trial subscription with date values
+        sub.start_date = Some(
+            (OffsetDateTime::now_utc() - time::Duration::days(1))
+                .try_into()
+                .unwrap(),
+        );
+        sub.end_date = None;
+        space.subscription = Some(sub.clone());
+        assert!(!space.has_valid_subscription());
+
+        sub.end_date = Some(
+            (OffsetDateTime::now_utc() - time::Duration::hours(1))
+                .try_into()
+                .unwrap(),
+        );
+        space.subscription = Some(sub.clone());
+        assert!(!space.has_valid_subscription());
+
+        sub.end_date = Some(
+            (OffsetDateTime::now_utc() + time::Duration::hours(1))
+                .try_into()
+                .unwrap(),
+        );
+        space.subscription = Some(sub.clone());
+        assert!(space.has_valid_subscription());
     }
 }

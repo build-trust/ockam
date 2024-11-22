@@ -18,8 +18,9 @@ const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt"
 /// Create a new space
 #[derive(Clone, Debug, Args)]
 #[command(
+hide = true,
 long_about = docs::about(LONG_ABOUT),
-after_long_help = docs::after_help(AFTER_LONG_HELP)
+after_long_help = docs::after_help(AFTER_LONG_HELP),
 )]
 pub struct CreateCommand {
     /// Name of the space - must be unique across all Ockam Orchestrator users.
@@ -52,7 +53,7 @@ impl Command for CreateCommand {
         let node = InMemoryNode::start(ctx, &opts.state).await?;
 
         let space = {
-            let pb = opts.terminal.progress_bar();
+            let pb = opts.terminal.spinner();
             if let Some(pb) = pb.as_ref() {
                 pb.set_message("Creating a Space for you...");
             }
@@ -63,7 +64,7 @@ impl Command for CreateCommand {
             )
             .await?
         };
-        if let Ok(msg) = space.subscription_status_message(true) {
+        if let Ok(msg) = space.subscription_status_message() {
             opts.terminal.write_line(msg)?;
         }
         opts.terminal

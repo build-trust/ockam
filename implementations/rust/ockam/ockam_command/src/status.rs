@@ -74,7 +74,7 @@ impl StatusCommand {
         opts: &CommandGlobalOpts,
     ) -> Result<Vec<NodeResources>> {
         let mut nodes_resources = vec![];
-        let pb = opts.terminal.progress_bar();
+        let pb = opts.terminal.spinner();
         let nodes = opts.state.get_nodes().await?;
         for node in nodes {
             if let Some(ref pb) = pb {

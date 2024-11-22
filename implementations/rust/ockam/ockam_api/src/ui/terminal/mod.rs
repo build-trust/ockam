@@ -394,7 +394,7 @@ impl<W: TerminalWriter + Debug> Terminal<W> {
         self.stderr.is_tty() && self.can_write_to_stderr()
     }
 
-    pub fn progress_bar(&self) -> Option<ProgressBar> {
+    pub fn spinner(&self) -> Option<ProgressBar> {
         if !self.can_use_progress_bar() {
             return None;
         }
@@ -424,7 +424,7 @@ impl<W: TerminalWriter + Debug> Terminal<W> {
         if output_messages.is_empty() {
             return Ok(());
         }
-        let pb = match self.progress_bar() {
+        let pb = match self.spinner() {
             Some(pb) => pb,
             None => return Ok(()),
         };

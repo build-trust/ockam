@@ -120,7 +120,7 @@ impl<T: TerminalWriter + Debug + Send + 'static> NotificationHandler<T> {
             Notification::Progress(contents) => {
                 if self.terminal.can_use_progress_bar() {
                     if self.progress_bar.is_none() {
-                        self.progress_bar = self.terminal.progress_bar();
+                        self.progress_bar = self.terminal.spinner();
                     }
                     if let Some(pb) = self.progress_bar.as_ref() {
                         pb.set_message(contents);

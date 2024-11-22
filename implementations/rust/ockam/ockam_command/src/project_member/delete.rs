@@ -101,7 +101,7 @@ impl Command for DeleteCommand {
                 .filter(|id| id != &self_identifier)
                 .collect::<Vec<_>>();
 
-            let pb = opts.terminal.progress_bar();
+            let pb = opts.terminal.spinner();
             if let Some(pb) = &pb {
                 pb.set_message("Deleting members...");
             }

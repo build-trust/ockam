@@ -58,7 +58,7 @@ impl Command for CreateCommand {
         initialize_default_node(ctx, &opts).await?;
 
         let outlet = {
-            let pb = opts.terminal.progress_bar();
+            let pb = opts.terminal.spinner();
             if let Some(pb) = pb.as_ref() {
                 pb.set_message(format!(
                     "Creating Kafka Outlet to bootstrap server {}...\n",

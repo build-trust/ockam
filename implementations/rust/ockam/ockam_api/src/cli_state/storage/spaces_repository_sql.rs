@@ -1,11 +1,12 @@
 use super::SpacesRepository;
 use crate::cloud::space::Space;
-use crate::cloud::subscription::Subscription;
+use crate::cloud::subscription::{Subscription, SubscriptionName};
 use ockam_core::async_trait;
 use ockam_core::Result;
 use ockam_node::database::{Boolean, FromSqlxError, Nullable, SqlxDatabase, ToVoid};
 use sqlx::any::AnyRow;
 use sqlx::*;
+use std::str::FromStr;
 use time::OffsetDateTime;
 
 #[derive(Clone)]
@@ -31,7 +32,7 @@ impl SpacesSqlxDatabase {
             .fetch_optional(&*self.database.pool)
             .await
             .into_core()?;
-        Ok(row.map(|r| r.subscription()))
+        row.map(|r| r.subscription()).transpose()
     }
 
     async fn set_as_default(&self, space_id: &str, transaction: &mut AnyConnection) -> Result<()> {
@@ -113,11 +114,11 @@ impl SpacesRepository for SpacesSqlxDatabase {
              DO UPDATE SET space_id = $1, name = $2, is_free_trial = $3, marketplace = $4, start_date = $5, end_date = $6",
             )
                 .bind(&space.id)
-                .bind(&subscription.name)
+                .bind(subscription.name.to_string())
                 .bind(subscription.is_free_trial)
                 .bind(&subscription.marketplace)
-                .bind(start_date.map(|d| d.unix_timestamp()))
-                .bind(end_date.map(|d| d.unix_timestamp()));
+                .bind(start_date.map(|d| d.into_inner().unix_timestamp()))
+                .bind(end_date.map(|d| d.into_inner().unix_timestamp()));
             query.execute(&mut *transaction).await.void()?;
         }
         // remove the subscription
@@ -300,24 +301,27 @@ pub(super) struct SubscriptionRow {
 }
 
 impl SubscriptionRow {
-    pub(crate) fn subscription(&self) -> Subscription {
-        Subscription::new(
-            self.name.clone(),
+    pub(crate) fn subscription(&self) -> Result<Subscription> {
+        Ok(Subscription::new(
+            SubscriptionName::from_str(&self.name)?,
             self.is_free_trial.to_bool(),
             self.marketplace.to_option(),
             self.start_date
                 .to_option()
-                .and_then(|t| OffsetDateTime::from_unix_timestamp(t).ok()),
+                .and_then(|t| OffsetDateTime::from_unix_timestamp(t).ok())
+                .and_then(|t| t.try_into().ok()),
             self.end_date
                 .to_option()
-                .and_then(|t| OffsetDateTime::from_unix_timestamp(t).ok()),
-        )
+                .and_then(|t| OffsetDateTime::from_unix_timestamp(t).ok())
+                .and_then(|t| t.try_into().ok()),
+        ))
     }
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::cloud::subscription::SubscriptionName;
     use ockam_node::database::with_dbs;
     use std::ops::Add;
     use time::ext::NumericalDuration;
@@ -343,11 +347,11 @@ mod test {
                     "her@ockam.io".to_string(),
                 ],
                 subscription: Some(Subscription::new(
-                    "premium".to_string(),
+                    SubscriptionName::Basic,
                     false,
                     Some("aws".to_string()),
-                    Some(OffsetDateTime::now_utc()),
-                    Some(OffsetDateTime::now_utc().add(2.days())),
+                    Some(OffsetDateTime::now_utc().try_into().unwrap()),
+                    Some(OffsetDateTime::now_utc().add(2.days()).try_into().unwrap()),
                 )),
             };
 

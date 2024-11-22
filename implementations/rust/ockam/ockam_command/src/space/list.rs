@@ -32,7 +32,7 @@ impl Command for ListCommand {
         let node = InMemoryNode::start(ctx, &opts.state).await?;
 
         let spaces = {
-            let pb = opts.terminal.progress_bar();
+            let pb = opts.terminal.spinner();
             if let Some(pb) = pb.as_ref() {
                 pb.set_message("Listing spaces...");
             }

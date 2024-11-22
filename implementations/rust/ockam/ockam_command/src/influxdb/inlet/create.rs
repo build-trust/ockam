@@ -47,7 +47,7 @@ impl Command for InfluxDBCreateCommand {
             .map(|t| node.set_timeout_mut(t));
 
         let inlet_status = {
-            let pb = opts.terminal.progress_bar();
+            let pb = opts.terminal.spinner();
             if let Some(pb) = pb.as_ref() {
                 pb.set_message(format!(
                     "Creating a InfluxDB Inlet at {}...\n",

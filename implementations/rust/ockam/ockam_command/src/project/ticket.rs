@@ -121,7 +121,7 @@ impl Command for TicketCommand {
         // Request an enrollment token that a future member can use to get a
         // credential.
         let token = {
-            let pb = opts.terminal.progress_bar();
+            let pb = opts.terminal.spinner();
             if let Some(pb) = pb.as_ref() {
                 pb.set_message("Creating an enrollment ticket...");
             }

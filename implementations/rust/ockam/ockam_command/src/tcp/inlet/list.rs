@@ -36,7 +36,7 @@ impl ListCommand {
     async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         let node = BackgroundNodeClient::create(ctx, &opts.state, &self.node.at_node).await?;
         let inlets: Vec<InletStatus> = {
-            let pb = opts.terminal.progress_bar();
+            let pb = opts.terminal.spinner();
             if let Some(pb) = pb.as_ref() {
                 pb.set_message(format!("Listing TCP Inlets on {}...", node.node_name()));
             }

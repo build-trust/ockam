@@ -16,7 +16,7 @@ pub async fn check_for_project_completion(
     node: &InMemoryNode,
     project: Project,
 ) -> miette::Result<Project> {
-    let pb = opts.terminal.progress_bar();
+    let pb = opts.terminal.spinner();
     if let Some(spinner) = pb.as_ref() {
         let message = format!(
             "Configuring project...\n{}\n{}",
@@ -48,7 +48,7 @@ pub async fn check_for_operation_completion(
     operation_id: &str,
     operation_name: &str,
 ) -> miette::Result<()> {
-    let pb = opts.terminal.progress_bar();
+    let pb = opts.terminal.spinner();
     if let Some(spinner) = pb.as_ref() {
         let message = format!(
             "Waiting for {operation_name} to finish ...\n{}",

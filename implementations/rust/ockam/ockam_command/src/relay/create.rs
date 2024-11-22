@@ -99,7 +99,7 @@ impl Command for CreateCommand {
                 ))?;
             };
             info!("creating a relay at {} to {}", at, node.node_name());
-            let pb = opts.terminal.progress_bar();
+            let pb = opts.terminal.spinner();
             if let Some(pb) = pb.as_ref() {
                 pb.set_message(format!(
                     "Creating relay at {}...",

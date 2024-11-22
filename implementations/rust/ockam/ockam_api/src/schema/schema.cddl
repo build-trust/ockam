@@ -235,11 +235,11 @@ onetime_code = {
 ;;; Subscription ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 subscription = {
-  1: text,       ;; name
-  2: bool,       ;; is_free_trial
-  ?3: text,      ;; marketplace
-  ?4: text,      ;; start_date
-  ?5: text,      ;; end_date
+  1: text,              ;; subscription_name
+  2: bool,              ;; is_free_trial
+  ?3: text,             ;; marketplace
+  ?4: int,              ;; start_date
+  ?5: int,              ;; end_date
 }
 
 subscription_legacy = {

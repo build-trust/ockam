@@ -134,7 +134,7 @@ impl Command for EnrollCommand {
 
         // Issue credential
         let credential = {
-            let pb = opts.terminal.progress_bar();
+            let pb = opts.terminal.spinner();
             if let Some(pb) = pb.as_ref() {
                 pb.set_message("Issuing credential...");
             }
@@ -182,7 +182,7 @@ impl EnrollCommand {
         enrollment_ticket: EnrollmentTicket,
     ) -> Result<()> {
         let enroll_status = {
-            let pb = opts.terminal.progress_bar();
+            let pb = opts.terminal.spinner();
             if let Some(pb) = pb.as_ref() {
                 pb.set_message("Using enrollment ticket to enroll identity...");
             }
@@ -231,7 +231,7 @@ impl EnrollCommand {
             .ok_or(miette!("Okta addon not configured"))?
             .into();
 
-        let pb = opts.terminal.progress_bar();
+        let pb = opts.terminal.spinner();
         if let Some(pb) = pb.as_ref() {
             pb.set_message("Authenticating with Okta...");
         }

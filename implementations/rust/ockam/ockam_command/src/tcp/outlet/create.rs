@@ -84,7 +84,7 @@ impl Command for CreateCommand {
         let node = BackgroundNodeClient::create(ctx, &opts.state, &self.at).await?;
         let node_name = node.node_name();
         let outlet_status = {
-            let pb = opts.terminal.progress_bar();
+            let pb = opts.terminal.spinner();
             if let Some(pb) = pb.as_ref() {
                 pb.set_message(format!(
                     "Creating a new TCP Outlet to {}...\n",

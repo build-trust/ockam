@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::io::stdin;
 use std::process;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -22,18 +23,18 @@ use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts, Result};
 use ockam::Context;
 use ockam_api::cli_state::journeys::{JourneyEvent, USER_EMAIL, USER_NAME};
-use ockam_api::cli_state::random_name;
 use ockam_api::cloud::enroll::auth0::*;
 use ockam_api::cloud::project::Project;
 use ockam_api::cloud::project::ProjectsOrchestratorApi;
 use ockam_api::cloud::space::{Space, Spaces};
+use ockam_api::cloud::subscription::SUBSCRIPTION_PAGE;
 use ockam_api::cloud::ControllerClient;
-use ockam_api::colors::{color_primary, color_uri, OckamColor};
+use ockam_api::colors::{color_primary, color_uri, color_warn, OckamColor};
 use ockam_api::enroll::enrollment::{EnrollStatus, Enrollment};
 use ockam_api::enroll::oidc_service::OidcService;
 use ockam_api::nodes::InMemoryNode;
 use ockam_api::terminal::notification::NotificationHandler;
-use ockam_api::{fmt_log, fmt_ok, fmt_warn};
+use ockam_api::{fmt_err, fmt_log, fmt_ok, fmt_warn};
 use ockam_api::{fmt_separator, CliState};
 
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
@@ -205,7 +206,7 @@ impl EnrollCommand {
         cli_state: &CliState,
         opts: &CommandGlobalOpts,
     ) -> miette::Result<bool> {
-        let is_already_enrolled = !cli_state
+        let mut is_already_enrolled = !cli_state
             .identity_should_enroll(&self.identity, false)
             .await?;
         if is_already_enrolled {
@@ -244,6 +245,17 @@ impl EnrollCommand {
                 }
             };
         }
+
+        // Check if the default space is available and has a valid subscription
+        let default_space = match cli_state.get_default_space().await {
+            Ok(space) => space,
+            Err(_) => {
+                // If there is no default space, we want to continue with the enrollment process
+                return Ok(false);
+            }
+        };
+        is_already_enrolled &= default_space.has_valid_subscription();
+
         Ok(is_already_enrolled)
     }
 
@@ -403,72 +415,154 @@ async fn get_user_space(
     skip_orchestrator_resources_creation: bool,
 ) -> miette::Result<Option<Space>> {
     // Get the available spaces for node's identity
-    // Those spaces might have been created previously and all the local state reset
     opts.terminal.write_line(fmt_log!(
         "Getting available Spaces accessible to your account."
     ))?;
-    let is_finished = Mutex::new(false);
-    let get_spaces = async {
-        let spaces = node.get_spaces(ctx).await?;
-        *is_finished.lock().await = true;
-        Ok(spaces)
+
+    let spaces = {
+        let sp = opts.terminal.spinner();
+        if let Some(spinner) = sp.as_ref() {
+            spinner.set_message("Checking for any existing Spaces...");
+        }
+        node.get_spaces(ctx).await?
     };
 
-    let message = vec!["Checking for any existing Spaces...".to_string()];
-    let progress_output = opts.terminal.loop_messages(&message, &is_finished);
-
-    let (spaces, _) = try_join!(get_spaces, progress_output)?;
-    let mut is_new = false;
-    // If the identity has no spaces, create one
     let space = match spaces.first() {
+        // If the identity has no spaces, create one
         None => {
+            // send user to subscription page
+            opts.terminal
+                .write_line(fmt_log!("No Spaces are accessible to your account.\n"))?;
+            opts.terminal.write_line(fmt_log!(
+                "Please go to {} and subscribe to create a new Space.",
+                color_uri(SUBSCRIPTION_PAGE)
+            ))?;
+
             if skip_orchestrator_resources_creation {
-                opts.terminal
-                    .write_line(fmt_log!("No Spaces are accessible to your account.\n"))?;
                 return Ok(None);
             }
 
-            opts.terminal.write_line(fmt_log!(
-                "No Spaces are accessible to your account, creating a new one..."
-            ))?;
-
-            let is_finished = Mutex::new(false);
-            let space_name = random_name();
-            let create_space = async {
-                let space = node.create_space(ctx, &space_name, vec![]).await?;
-                *is_finished.lock().await = true;
-                Ok(space)
-            };
-
-            let message = vec![format!(
-                "Creating a new Space {}...",
-                color_primary(space_name.clone())
-            )];
-            let progress_output = opts.terminal.loop_messages(&message, &is_finished);
-            let (space, _) = try_join!(create_space, progress_output)?;
-            opts.terminal.write_line(fmt_ok!(
-                "Created a new Space named {}.",
-                color_primary(space.name.clone())
-            ))?;
-            is_new = true;
-            space
+            ask_user_to_subscribe_and_wait_for_space_to_be_ready(opts, ctx, node).await?
         }
         Some(space) => {
             opts.terminal.write_line(fmt_log!(
-                "Found existing Space {}.",
-                color_primary(space.name.clone())
+                "Found existing Space {}.\n",
+                color_primary(&space.name)
             ))?;
-            space.clone()
+            match &space.subscription {
+                // if no subscription is attached to the space, ask the user to subscribe
+                None => {
+                    opts.terminal.write_line(fmt_log!(
+                        "Your Space {} doesn't have a Subscription attached to it.",
+                        color_primary(&space.name)
+                    ))?;
+                    opts.terminal.write_line(fmt_log!(
+                        "Please go to {} and subscribe to use your Space.",
+                        color_uri(SUBSCRIPTION_PAGE)
+                    ))?;
+                    ask_user_to_subscribe_and_wait_for_space_to_be_ready(opts, ctx, node).await?
+                }
+                Some(subscription) => {
+                    // if there is a subscription, check that it's not expired
+                    if !subscription.is_valid() {
+                        opts.terminal.write_line(fmt_log!(
+                            "Your Trial of the {} Subscription on the Space {} has ended.",
+                            subscription.name.colored(),
+                            color_primary(&space.name)
+                        ))?;
+                        opts.terminal.write_line(fmt_log!(
+                            "Please go to {} and subscribe to one of our paid plans to use your Space.",
+                            color_uri(SUBSCRIPTION_PAGE)
+                        ))?;
+                        if let Some(grace_period_end_date) = subscription.grace_period_end_date()? {
+                            let date = grace_period_end_date.format_human().into_diagnostic()?;
+                            let msg = if grace_period_end_date.is_in_the_past() {
+                                format!("All Projects in this Space were deleted on {date}.")
+                            } else {
+                                format!("All Projects in this Space will be deleted on {date}.")
+                            };
+                            opts.terminal.write_line(fmt_log!("{}", color_warn(msg)))?;
+                        }
+                        ask_user_to_subscribe_and_wait_for_space_to_be_ready(opts, ctx, node)
+                            .await?
+                    }
+                    // otherwise return the space as is
+                    else {
+                        space.clone()
+                    }
+                }
+            }
         }
     };
+    space.subscription.as_ref().ok_or_else(|| {
+        // At this point, the space should have a subscription, but just in case
+        miette!(
+            "Please go to {} and try again",
+            color_uri(SUBSCRIPTION_PAGE)
+        )
+        .wrap_err("The Space does not have a subscription plan attached.")
+    })?;
     opts.terminal.write_line(fmt_ok!(
         "Marked {} as your default Space, on this machine.\n",
-        color_primary(space.name.clone())
+        color_primary(&space.name)
     ))?;
-    if let Ok(msg) = space.subscription_status_message(is_new) {
+    if let Ok(msg) = space.subscription_status_message() {
         opts.terminal.write_line(msg)?;
     }
     Ok(Some(space))
+}
+
+async fn ask_user_to_subscribe_and_wait_for_space_to_be_ready(
+    opts: &CommandGlobalOpts,
+    ctx: &Context,
+    node: &InMemoryNode,
+) -> Result<Space> {
+    opts.terminal.write_line("")?;
+    if opts.terminal.can_ask_for_user_input() {
+        opts.terminal.write(fmt_log!(
+            "Press {} to open {} in your browser.",
+            " ENTER ↵ ".bg_white().black().blink(),
+            color_uri(SUBSCRIPTION_PAGE)
+        ))?;
+
+        let mut input = String::new();
+        match stdin().read_line(&mut input) {
+            Ok(_) => {
+                opts.terminal
+                    .write_line(fmt_log!("Opening your browser..."))?;
+            }
+            Err(_e) => {
+                return Err(miette!(
+                    "Couldn't read user input or enter keypress from stdin"
+                ))?;
+            }
+        }
+    }
+    if open::that(SUBSCRIPTION_PAGE).is_err() {
+        opts.terminal.write_line(fmt_err!(
+            "Couldn't open your browser from the terminal. Please open {} manually.",
+            color_uri(SUBSCRIPTION_PAGE)
+        ))?;
+    }
+
+    opts.terminal.write_line("")?;
+
+    // wait until the user has subscribed and a space is created
+    let sp = opts.terminal.spinner();
+    if let Some(spinner) = sp.as_ref() {
+        let msg = "Waiting for you to subscribe using your browser...";
+        spinner.set_message(msg);
+    }
+    let space = loop {
+        let spaces = node.get_spaces(ctx).await?;
+        if let Some(space) = spaces.into_iter().next() {
+            if space.has_valid_subscription() {
+                break space;
+            }
+        }
+        tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+    };
+    Ok(space)
 }
 
 async fn get_user_project(
@@ -478,23 +572,19 @@ async fn get_user_project(
     skip_orchestrator_resources_creation: bool,
     space: &Space,
 ) -> Result<Option<Project>> {
-    // Get available project for the given space
+    // Get available projects for the given space
     opts.terminal.write_line(fmt_log!(
         "Getting available Projects in the Space {}...",
         color_primary(&space.name)
     ))?;
 
-    let is_finished = Mutex::new(false);
-    let get_projects = async {
-        let projects = node.get_admin_projects(ctx).await?;
-        *is_finished.lock().await = true;
-        Ok(projects)
+    let projects = {
+        let sp = opts.terminal.spinner();
+        if let Some(spinner) = sp.as_ref() {
+            spinner.set_message("Checking for any existing Projects...");
+        }
+        node.get_admin_projects(ctx).await?
     };
-
-    let message = vec!["Checking for existing Projects...".to_string()];
-    let progress_output = opts.terminal.loop_messages(&message, &is_finished);
-
-    let (projects, _) = try_join!(get_projects, progress_output)?;
 
     // If the space has no projects, create one
     let project = match projects.first() {

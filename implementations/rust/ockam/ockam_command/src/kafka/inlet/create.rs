@@ -151,7 +151,7 @@ impl Command for CreateCommand {
         let to = process_nodes_multiaddr(&self.to, &opts.state).await?;
 
         let inlet = {
-            let pb = opts.terminal.progress_bar();
+            let pb = opts.terminal.spinner();
             if let Some(pb) = pb.as_ref() {
                 pb.set_message(format!(
                     "Creating Kafka Inlet at {}...\n",

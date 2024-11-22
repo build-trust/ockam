@@ -22,6 +22,7 @@ const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt"
 /// Delete a space
 #[derive(Clone, Debug, Args)]
 #[command(
+hide = true,
 long_about = docs::about(LONG_ABOUT),
 after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]

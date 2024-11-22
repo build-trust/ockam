@@ -81,6 +81,7 @@ impl CliState {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::cloud::subscription::SubscriptionName;
 
     #[tokio::test]
     async fn test_cli_spaces() -> Result<()> {
@@ -93,7 +94,7 @@ mod test {
                 "name1",
                 vec!["me@ockam.io", "you@ockam.io"],
                 Some(&Subscription::new(
-                    "name1".to_string(),
+                    SubscriptionName::Gold,
                     false,
                     None,
                     None,

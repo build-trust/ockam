@@ -72,7 +72,7 @@ impl Command for InfluxDBCreateCommand {
 
         let node = BackgroundNodeClient::create(ctx, &opts.state, &self.tcp_outlet.at).await?;
         let outlet_status = {
-            let pb = opts.terminal.progress_bar();
+            let pb = opts.terminal.spinner();
             if let Some(pb) = pb.as_ref() {
                 pb.set_message(format!(
                     "Creating a new InfluxDB Outlet to {}...\n",

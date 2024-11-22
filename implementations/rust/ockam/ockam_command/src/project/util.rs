@@ -109,7 +109,7 @@ pub async fn check_project_readiness(
     let retry_strategy = FixedInterval::from_millis(5000)
         .take((ORCHESTRATOR_AWAIT_TIMEOUT.as_millis() / 5000) as usize);
 
-    let pb = opts.terminal.progress_bar();
+    let pb = opts.terminal.spinner();
     let project =
         check_project_ready(ctx, node, project, retry_strategy.clone(), pb.clone()).await?;
     let project =
