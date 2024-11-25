@@ -166,6 +166,15 @@ pub async fn is_node_up(
 ) -> Result<bool> {
     debug!("waiting for node to be up");
     let node_name = node.node_name();
+    // Check if node is already up and running to skip the accessible/ready checks
+    if let Ok(status) = node
+        .ask_with_timeout::<(), NodeStatus>(ctx, api::query_status(), Duration::from_secs(1))
+        .await
+    {
+        if status.status.is_running() {
+            return Ok(true);
+        }
+    }
     if !is_node_accessible(ctx, node, wait_until_ready).await? {
         warn!(%node_name, "the node was not accessible in time");
         return Ok(false);
@@ -233,7 +242,7 @@ async fn is_node_ready(
         if let Ok(node_status) = result {
             if node_status.process_status.is_running() {
                 let elapsed = now.elapsed();
-                info!(%node_name, ?elapsed, "node is ready {:?}", node_status);
+                info!(%node_name, ?elapsed, "node is ready");
                 return Ok(true);
             } else {
                 trace!(%node_name, "node is initializing");

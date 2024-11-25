@@ -16,7 +16,7 @@ use ockam_core::{Processor, Result};
 use ockam_node::{Context, ProcessorBuilder};
 use ockam_transport_core::TransportError;
 use tokio::{io::AsyncReadExt, net::tcp::OwnedReadHalf};
-use tracing::{info, instrument, trace};
+use tracing::{debug, instrument, trace};
 
 /// A TCP receiving message processor
 ///
@@ -99,7 +99,7 @@ impl TcpRecvProcessor {
     }
 
     async fn notify_sender_stream_dropped(&self, ctx: &Context, msg: impl Display) -> Result<()> {
-        info!(
+        debug!(
             "Connection to peer '{}' was closed; dropping stream. {}",
             self.socket_address, msg
         );

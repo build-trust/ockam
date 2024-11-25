@@ -1,6 +1,8 @@
 use crate::models::{CredentialData, CredentialSignature, VersionedData, CREDENTIAL_DATA_TYPE};
 use crate::{Credential, IdentityError};
 
+use ockam_core::compat::str;
+use ockam_core::compat::string::String;
 use ockam_core::compat::vec::Vec;
 use ockam_core::Result;
 use ockam_vault::Signature;
@@ -33,6 +35,22 @@ impl CredentialData {
         }
 
         Ok(minicbor::decode(&versioned_data.data)?)
+    }
+
+    /// Return the credential's attributes as a displayable string
+    pub fn get_attributes_display(&self) -> String {
+        self.subject_attributes
+            .map
+            .iter()
+            .map(|(k, v)| {
+                format!(
+                    "{}={}",
+                    str::from_utf8(k).unwrap_or("**binary**"),
+                    str::from_utf8(v).unwrap_or("**binary**")
+                )
+            })
+            .collect::<Vec<String>>()
+            .join(";")
     }
 }
 

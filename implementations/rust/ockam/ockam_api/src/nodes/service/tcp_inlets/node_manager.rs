@@ -26,10 +26,10 @@ impl NodeManager {
     pub async fn create_inlet(
         self: &Arc<Self>,
         ctx: &Context,
-        listen_addr: HostnamePort,
+        listen_address: HostnamePort,
         prefix_route: Route,
         suffix_route: Route,
-        outlet_addr: MultiAddr,
+        outlet_address: MultiAddr,
         alias: String,
         policy_expression: Option<PolicyExpression>,
         wait_for_outlet_duration: Option<Duration>,
@@ -42,16 +42,15 @@ impl NodeManager {
         privileged: bool,
         tls_certificate_provider: Option<MultiAddr>,
     ) -> Result<InletStatus> {
-        info!("Handling request to create inlet portal");
         debug! {
-            listen_addr = %listen_addr,
+            %listen_address,
             prefix = %prefix_route,
             suffix = %suffix_route,
-            outlet_addr = %outlet_addr,
+            %outlet_address,
             %alias,
             %enable_udp_puncture,
             %disable_tcp_fallback,
-            "Creating inlet portal"
+            "creating inlet"
         }
 
         let udp_transport = if enable_udp_puncture {
@@ -69,8 +68,8 @@ impl NodeManager {
         // the port could be zero, to simplify the following code we
         // resolve the address to a full socket address
         let socket_addr =
-            ockam_node::compat::asynchronous::resolve_peer(listen_addr.to_string()).await?;
-        let listen_addr = if listen_addr.port() == 0 {
+            ockam_node::compat::asynchronous::resolve_peer(listen_address.to_string()).await?;
+        let listen_addr = if listen_address.port() == 0 {
             get_free_address_for(&socket_addr.ip().to_string())
                 .map_err(|err| ockam_core::Error::new(Origin::Transport, Kind::Invalid, err))?
         } else {
@@ -113,7 +112,7 @@ impl NodeManager {
             udp_transport,
             context: ctx.async_try_clone().await?,
             listen_addr: listen_addr.to_string(),
-            outlet_addr: outlet_addr.clone(),
+            outlet_addr: outlet_address.clone(),
             prefix_route,
             suffix_route,
             authorized,
@@ -141,7 +140,7 @@ impl NodeManager {
             .create_tcp_inlet(
                 &self.node_name,
                 &listen_addr,
-                &outlet_addr,
+                &outlet_address,
                 &alias,
                 privileged,
             )
@@ -190,7 +189,7 @@ impl NodeManager {
                 alias.clone(),
                 InletInfo::new(
                     &listen_addr.to_string(),
-                    outlet_addr.clone(),
+                    outlet_address.clone(),
                     session,
                     privileged,
                 ),
@@ -206,9 +205,16 @@ impl NodeManager {
             None,
             outcome.clone().map(|s| s.route.to_string()),
             connection_status,
-            outlet_addr.to_string(),
+            outlet_address.to_string(),
             privileged,
         );
+
+        info! {
+            %listen_address,
+            %outlet_address,
+            %alias,
+            "inlet created"
+        }
 
         Ok(tcp_inlet_status)
     }

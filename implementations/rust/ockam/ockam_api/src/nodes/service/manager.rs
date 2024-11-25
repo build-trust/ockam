@@ -298,13 +298,13 @@ impl NodeManager {
     pub async fn make_connection(
         &self,
         ctx: &Context,
-        addr: &MultiAddr,
+        address: &MultiAddr,
         identifier: Identifier,
         authorized: Option<Identifier>,
         timeout: Option<Duration>,
     ) -> ockam_core::Result<Connection> {
         let authorized = authorized.map(|authorized| vec![authorized]);
-        self.connect(ctx, addr, identifier, authorized, timeout)
+        self.connect(ctx, address, identifier, authorized, timeout)
             .await
     }
 
@@ -313,13 +313,13 @@ impl NodeManager {
     async fn connect(
         &self,
         ctx: &Context,
-        addr: &MultiAddr,
+        address: &MultiAddr,
         identifier: Identifier,
         authorized: Option<Vec<Identifier>>,
         timeout: Option<Duration>,
     ) -> ockam_core::Result<Connection> {
-        debug!(?timeout, "connecting to {}", &addr);
-        let connection = ConnectionBuilder::new(addr.clone())
+        debug!(%address, ?timeout, "connecting");
+        let connection = ConnectionBuilder::new(address.clone())
             .instantiate(
                 ctx,
                 self,
@@ -333,13 +333,12 @@ impl NodeManager {
             .instantiate(
                 ctx,
                 self,
-                SecureChannelInstantiator::new(&identifier, timeout, authorized),
+                SecureChannelInstantiator::new(&identifier, timeout, authorized.clone()),
             )
             .await?
             .build();
         connection.add_default_consumers(ctx);
-
-        debug!("connected to {connection:?}");
+        info!(%address, %identifier, ?authorized, "connection established");
         Ok(connection)
     }
 

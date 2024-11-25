@@ -88,7 +88,6 @@ impl NodeManagerWorker {
 }
 
 impl NodeManager {
-    #[instrument(skip(self, ctx))]
     #[allow(clippy::too_many_arguments)]
     #[instrument(skip_all)]
     pub async fn create_outlet(
@@ -107,10 +106,7 @@ impl NodeManager {
             .generate_worker_addr(worker_addr)
             .await;
 
-        info!(
-            "Handling request to create outlet portal to {to} with worker {:?}",
-            worker_addr
-        );
+        debug!(%to, address = %worker_addr, "creating outlet");
 
         // Check registry for a duplicated key
         if self.registry.outlets.contains_key(&worker_addr).await {
@@ -192,10 +188,12 @@ impl NodeManager {
                         OutletInfo::new(to.clone(), Some(&worker_addr), privileged),
                     )
                     .await;
-
-                self.cli_state
+                let outlet = self
+                    .cli_state
                     .create_tcp_outlet(&self.node_name, &to, &worker_addr, &None, privileged)
-                    .await?
+                    .await?;
+                info!(%to, address = %worker_addr, "outlet created");
+                outlet
             }
             Err(e) => {
                 warn!(at = %to, err = %e, "Failed to create TCP outlet");

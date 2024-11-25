@@ -1,4 +1,4 @@
-use tracing::{debug, warn};
+use tracing::{debug, info, warn};
 
 use ockam_core::compat::collections::BTreeMap;
 use ockam_core::compat::sync::Arc;
@@ -192,28 +192,47 @@ impl CredentialsVerification {
         authorities: &[Identifier],
         credential_and_purpose_key_attestation: &CredentialAndPurposeKey,
     ) -> Result<()> {
-        let credential_data = self
+        let credential = self
             .verify_credential(
                 Some(subject),
                 authorities,
                 credential_and_purpose_key_attestation,
             )
             .await?;
+        let credential_data = credential.credential_data;
+        let purpose_key_data = credential.purpose_key_data;
 
-        let map = credential_data.credential_data.subject_attributes.map;
-        let map: BTreeMap<_, _> = map
+        let attributes_display = credential_data.get_attributes_display();
+        let attributes: BTreeMap<_, _> = credential_data
+            .subject_attributes
+            .map
             .into_iter()
             .map(|(k, v)| (Vec::<u8>::from(k), Vec::<u8>::from(v)))
             .collect();
+
+        info! {
+            %subject,
+            attributes = attributes_display,
+            schema = %credential_data.subject_attributes.schema.0,
+            created_at = %credential_data.created_at,
+            expires_at = %credential_data.expires_at,
+            "presented credential"
+        }
+        debug! {
+            subject = %purpose_key_data.subject,
+            created_at = %purpose_key_data.created_at,
+            expires_at = %purpose_key_data.expires_at,
+            "presented credential - purpose key attestation"
+        }
 
         self.identities_attributes_repository
             .put_attributes(
                 subject,
                 AttributesEntry::new(
-                    map,
+                    attributes,
                     now()?,
-                    Some(credential_data.credential_data.expires_at),
-                    Some(credential_data.purpose_key_data.subject),
+                    Some(credential_data.expires_at),
+                    Some(purpose_key_data.subject),
                 ),
             )
             .await?;

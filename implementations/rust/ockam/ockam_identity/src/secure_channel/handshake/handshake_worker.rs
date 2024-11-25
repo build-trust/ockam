@@ -74,11 +74,7 @@ impl Worker for HandshakeWorker {
         if let Some(state_machine) = self.state_machine.as_mut() {
             match state_machine.on_event(Initialize).await? {
                 SendMessage(message) => {
-                    debug!(
-                        "remote route {:?}, decryptor remote {:?}",
-                        self.remote_route.clone(),
-                        self.addresses.decryptor_remote.clone()
-                    );
+                    debug!(remote_route=?self.remote_route, decryptor_remote=%self.addresses.decryptor_remote, "sending message");
                     context
                         .send_from_address(
                             self.remote_route()?,
@@ -216,10 +212,7 @@ impl HandshakeWorker {
             .start(context)
             .await?;
 
-        debug!(
-            "Starting SecureChannel {} at remote: {}, local: {}",
-            role, addresses.decryptor_remote, addresses.encryptor
-        );
+        debug!(decryptor=%my_identifier, encryptor=%addresses.encryptor, "starting SecureChannel {role}");
 
         // before sending messages make sure that the handshake is finished and
         // the encryptor worker is ready
@@ -232,11 +225,18 @@ impl HandshakeWorker {
                     match res {
                         Ok(their_identifier) => Some(their_identifier),
                         Err(err) => {
-                            error!(
-                            "Timeout {:?} or error reached when creating secure channel for: {}. Encryptor: {}. Error: {err:?}",
-                            timeout, my_identifier, addresses.encryptor
-                        );
-
+                            match err.code().kind {
+                                Kind::Timeout => {
+                                    warn!(?timeout, identifier=%my_identifier, encryptor=%addresses.encryptor,
+                                        "timeout reached when creating secure channel",
+                                    );
+                                }
+                                _ => {
+                                    error!(identifier=%my_identifier, encryptor=%addresses.encryptor, ?err,
+                                        "failed to create secure channel",
+                                    );
+                                }
+                            }
                             return Err(err);
                         }
                     }
@@ -460,10 +460,9 @@ impl HandshakeWorker {
         .await;
 
         info!(
-            "Initialized SecureChannel {} at local: {}, remote: {}",
+            local = %self.addresses.encryptor, remote = %self.addresses.decryptor_remote,
+            "initialized SecureChannel {}",
             self.role.str(),
-            &self.addresses.encryptor,
-            &self.addresses.decryptor_remote
         );
 
         let their_decryptor_address = self
@@ -493,10 +492,8 @@ impl HandshakeWorker {
 
     async fn persist(&self, their_identifier: Identifier, decryption_key: &AeadSecretKeyHandle) {
         let Some(repository) = &self.secure_channel_repository else {
-            info!(
-                "Skipping persistence. Local: {}, Remote: {}",
-                self.addresses.encryptor, &self.addresses.decryptor_remote
-            );
+            debug!(local = %self.addresses.encryptor, remote = %self.addresses.decryptor_remote,
+                "Skipping persistence. No repository provided");
             return;
         };
 
@@ -510,17 +507,12 @@ impl HandshakeWorker {
         );
         match repository.put(sc).await {
             Ok(_) => {
-                info!(
-                    "Successfully persisted secure channel. Local: {}, Remote: {}",
-                    self.addresses.encryptor, &self.addresses.decryptor_remote,
-                );
+                info!(local = %self.addresses.encryptor, remote = %self.addresses.decryptor_remote,
+                    "Successfully persisted secure channel");
             }
             Err(err) => {
-                warn!(
-                    "Error while persisting secure channel: {err}. Local: {}, Remote: {}",
-                    self.addresses.encryptor, &self.addresses.decryptor_remote
-                );
-
+                warn!(local = %self.addresses.encryptor, remote = %self.addresses.decryptor_remote, %err,
+                    "Error while persisting secure channel");
                 return;
             }
         }
@@ -533,10 +525,8 @@ impl HandshakeWorker {
             .persist_aead_key(decryption_key)
             .await
         {
-            warn!(
-                "Error persisting secure channel key: {err}. Local: {}, Remote: {}",
-                self.addresses.encryptor, &self.addresses.decryptor_remote
-            );
+            warn!(local = %self.addresses.encryptor, remote = %self.addresses.decryptor_remote, %err,
+                "Error persisting secure channel key");
         };
     }
 

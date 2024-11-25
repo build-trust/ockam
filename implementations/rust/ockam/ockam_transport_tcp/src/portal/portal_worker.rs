@@ -149,11 +149,7 @@ impl TcpPortalWorker {
         } else {
             PortalType::Outlet
         };
-        info!(
-            "Creating new {:?} at sender remote: {}",
-            portal_type.str(),
-            addresses.sender_remote
-        );
+        debug!(%portal_type, sender_remote=%addresses.sender_remote, %is_tls, "creating portal worker");
 
         let (rx, tx) = match streams {
             // A TcpStream is provided in case of an inlet
@@ -163,7 +159,6 @@ impl TcpPortalWorker {
             }
             None => (None, None),
         };
-        debug!("The {} supports TLS: {}", portal_type.str(), is_tls);
 
         let worker = Self {
             registry,
@@ -276,9 +271,8 @@ impl TcpPortalWorker {
             .await?;
 
             debug!(
-                "Notified the other side from {:?} at: {} about connection drop",
-                self.portal_type.str(),
-                self.addresses.sender_internal
+                portal_type = %self.portal_type, sender_internal = %self.addresses.sender_internal,
+                "notified the other side of portal that the connection is dropped",
             );
         }
 
@@ -292,11 +286,8 @@ impl TcpPortalWorker {
             .await
             .is_ok()
         {
-            debug!(
-                "{:?} at: {} stopped receiver due to connection drop",
-                self.portal_type.str(),
-                self.addresses.sender_internal
-            );
+            debug!(portal_type = %self.portal_type, sender_internal = %self.addresses.sender_internal,
+                "stopped receiver due to connection drop");
         }
 
         Ok(())
@@ -355,11 +346,8 @@ impl TcpPortalWorker {
             }
         }
 
-        info!(
-            "{:?} at: {} stopped due to connection drop",
-            self.portal_type.str(),
-            self.addresses.sender_internal
-        );
+        debug!(portal_type = %self.portal_type, sender_internal = %self.addresses.sender_internal,
+            "stopped due to connection drop");
 
         Ok(())
     }
@@ -374,7 +362,7 @@ impl TcpPortalWorker {
         )
         .await?;
 
-        debug!("Inlet at: {} sent ping", self.addresses.sender_internal);
+        debug!(portal_type = %self.portal_type, sender_internal = %self.addresses.sender_internal, "sent ping");
 
         Ok(State::ReceivePong)
     }
@@ -386,12 +374,12 @@ impl TcpPortalWorker {
             return Err(TransportError::PortalInvalidState)?;
         }
         if self.is_tls {
-            debug!("Connect to {} via TLS", &self.hostname_port);
+            debug!(portal_type = %self.portal_type, sender_internal = %self.addresses.sender_internal, "connect to {} via TLS", &self.hostname_port);
             let (rx, tx) = connect_tls(&self.hostname_port).await?;
             self.write_half = Some(WriteHalfWithTls(tx));
             self.read_half = Some(ReadHalfWithTls(rx));
         } else {
-            debug!("Connect to {}", self.hostname_port);
+            debug!(portal_type = %self.portal_type, sender_internal = %self.addresses.sender_internal, "connect to {}", self.hostname_port);
             let (rx, tx) = connect(&self.hostname_port).await?;
             self.write_half = Some(WriteHalfNoTls(tx));
             self.read_half = Some(ReadHalfNoTls(rx));
@@ -409,12 +397,7 @@ impl TcpPortalWorker {
 
         self.start_receiver(ctx, pong_route.clone()).await?;
 
-        debug!(
-            "Outlet at: {} successfully connected",
-            self.addresses.sender_internal
-        );
-
-        debug!("Outlet at: {} sent pong", self.addresses.sender_internal);
+        debug!(portal_type = %self.portal_type, sender_internal = %self.addresses.sender_internal, "sent pong");
 
         self.remote_route = Some(pong_route);
         Ok(State::Initialized)
@@ -444,6 +427,10 @@ impl Worker for TcpPortalWorker {
 
         self.registry
             .add_portal_worker(&self.addresses.sender_remote);
+
+        info!(portal_type = %self.portal_type, sender_internal = %self.addresses.sender_internal,
+            "tcp portal worker initialized"
+        );
 
         Ok(())
     }
@@ -483,7 +470,7 @@ impl Worker for TcpPortalWorker {
 
             if their_identifier != self.their_identifier {
                 debug!(
-                    "Identifier changed from {:?} to {:?}",
+                    "identifier changed from {:?} to {:?}",
                     self.their_identifier.as_ref().map(|i| i.to_string()),
                     their_identifier.as_ref().map(|i| i.to_string()),
                 );
@@ -505,11 +492,9 @@ impl Worker for TcpPortalWorker {
                 self.handle_receive_pong(ctx, return_route).await
             }
             State::Initialized => {
-                trace!(
-                    "{:?} at: {} received {} tcp packet",
-                    self.portal_type.str(),
-                    self.addresses.sender_internal,
-                    if remote_packet { "remote" } else { "internal " }
+                trace!(portal_type = %self.portal_type, sender_internal = %self.addresses.sender_internal,
+                    "received {} tcp packet",
+                    if remote_packet { "remote" } else { "internal " },
                 );
 
                 if remote_packet {
@@ -523,9 +508,7 @@ impl Worker for TcpPortalWorker {
                             self.start_disconnection(ctx, DisconnectionReason::Remote)
                                 .await
                         }
-                        PortalMessage::Ping | PortalMessage::Pong => {
-                            return Err(TransportError::Protocol)?;
-                        }
+                        PortalMessage::Ping | PortalMessage::Pong => Err(TransportError::Protocol)?,
                     }
                 } else {
                     let msg = PortalInternalMessage::decode(&payload)?;
@@ -536,7 +519,7 @@ impl Worker for TcpPortalWorker {
                 }
             }
             State::SendPing { .. } | State::SendPong { .. } => {
-                return Err(TransportError::PortalInvalidState)?;
+                Err(TransportError::PortalInvalidState)?
             }
         }
     }
@@ -546,7 +529,7 @@ impl TcpPortalWorker {
     #[instrument(skip_all)]
     async fn handle_receive_pong(&mut self, ctx: &Context, return_route: Route) -> Result<()> {
         self.start_receiver(ctx, return_route.clone()).await?;
-        debug!("Inlet at: {} received pong", self.addresses.sender_internal);
+        debug!(portal_type = %self.portal_type, sender_internal = %self.addresses.sender_internal, "received pong");
         self.remote_route = Some(return_route);
         self.state = State::Initialized;
         Ok(())
@@ -554,11 +537,8 @@ impl TcpPortalWorker {
 
     #[instrument(skip_all)]
     async fn handle_disconnect(&mut self, ctx: &Context) -> Result<()> {
-        info!(
-            "Tcp stream was dropped for {:?} at: {}",
-            self.portal_type.str(),
-            self.addresses.sender_internal
-        );
+        info!(portal_type = %self.portal_type, sender_internal = %self.addresses.sender_internal,
+            "tcp stream was dropped");
         self.start_disconnection(ctx, DisconnectionReason::FailedRx)
             .await
     }
@@ -583,9 +563,9 @@ impl TcpPortalWorker {
             WriteHalfWithTls(tx) => tx.write_all(payload).await,
         };
         if let Err(err) = result {
-            warn!(
-                "Failed to send message to peer {} with error: {}",
-                self.hostname_port, err
+            warn!(portal_type = %self.portal_type, %err,
+                "failed to send message to peer {} with error",
+                self.hostname_port
             );
             self.start_disconnection(ctx, DisconnectionReason::FailedTx)
                 .await?;
@@ -608,7 +588,7 @@ impl TcpPortalWorker {
             };
 
             if packet_counter != expected_counter {
-                warn!(
+                warn!(portal_type = %self.portal_type,
                     "Received packet with counter {} while expecting {}, disconnecting",
                     packet_counter, expected_counter
                 );

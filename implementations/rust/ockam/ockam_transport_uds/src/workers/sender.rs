@@ -258,7 +258,7 @@ impl Worker for UdsSendWorker {
 
             match msg {
                 UdsSendWorkerMsg::ConnectionClosed => {
-                    warn!("Stopping sender due to closed connection");
+                    debug!("Stopping sender due to closed connection");
                     // No need to stop Receiver as it notified us about connection drop and will
                     // stop itself
                     self.rx_should_be_stopped = false;

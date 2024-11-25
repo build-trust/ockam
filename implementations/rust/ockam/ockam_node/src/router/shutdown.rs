@@ -63,11 +63,11 @@ impl Router {
 #[cfg_attr(not(feature = "std"), allow(unused_variables))]
 pub(super) async fn graceful(
     router: &mut Router,
-    seconds: u8,
+    timeout: u8,
     reply: SmallSender<NodeReplyResult>,
 ) -> Result<bool> {
     // Mark the router as shutting down to prevent spawning
-    info!("Initiate graceful node shutdown");
+    debug!("initiating graceful node shutdown");
     // This changes the router state to `Stopping`
     router.state.shutdown(reply);
 
@@ -75,11 +75,11 @@ pub(super) async fn graceful(
     let mut cluster = vec![];
     for rec in router.map.non_cluster_workers().iter_mut() {
         if let Some(first_address) = rec.address_set().first().cloned() {
-            debug!("Stopping address {}", first_address);
+            debug!("stopping address {}", first_address);
             rec.stop().await?;
             cluster.push(first_address);
         } else {
-            error!("Empty Address Set during graceful shutdown");
+            error!("empty address set during graceful shutdown");
         }
     }
 
@@ -101,16 +101,18 @@ pub(super) async fn graceful(
         use tokio::{task, time};
 
         let sender = router.sender();
-        let dur = Duration::from_secs(seconds as u64);
+        let dur = Duration::from_secs(timeout as u64);
         task::spawn(async move {
             time::sleep(dur).await;
-            warn!("Shutdown timeout reached; aborting node!");
+            warn!(%timeout, "shutdown timeout reached; aborting node!");
             // This works only because the state of the router is `Stopping`
             if sender.send(NodeMessage::AbortNode).await.is_err() {
-                error!("Failed to send node abort signal to router");
+                warn!("failed to send node abort signal to router");
             }
         });
     }
+
+    info!("node was shutdown gracefully");
 
     // Return but DO NOT stop the router
     Ok(false)

@@ -6,7 +6,7 @@ use ockam_core::{
 use ockam_node::Context;
 use ockam_transport_core::TransportError;
 use tokio::{io::AsyncReadExt, net::unix::OwnedReadHalf};
-use tracing::{error, info, trace};
+use tracing::{debug, error, trace};
 
 /// A UDS receiving message processor
 ///
@@ -48,7 +48,7 @@ impl Processor for UdsRecvProcessor {
         let len = match self.rx.read_u16().await {
             Ok(len) => len,
             Err(_e) => {
-                info!(
+                debug!(
                     "Connection to peer '{}' was closed; dropping stream",
                     self.peer_addr
                 );

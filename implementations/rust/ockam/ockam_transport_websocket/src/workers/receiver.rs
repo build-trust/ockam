@@ -58,7 +58,7 @@ where
             Some(res) => match res {
                 Ok(ws_msg) => ws_msg,
                 Err(_e) => {
-                    info!(
+                    debug!(
                         "Connection to peer '{}' was closed; dropping stream",
                         self.peer_addr
                     );

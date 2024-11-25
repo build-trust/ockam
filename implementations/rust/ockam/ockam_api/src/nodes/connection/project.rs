@@ -53,7 +53,7 @@ impl Instantiator for ProjectInstantiator {
         let (project_multiaddr, project_identifier) =
             node_manager.resolve_project(&project).await?;
 
-        debug!(addr = %project_multiaddr, "creating secure channel");
+        debug!(to = %project_multiaddr, identifier = %project_identifier, "creating secure channel");
         let transport_res = RemoteMultiaddrResolver::new(
             Some(node_manager.tcp_transport.clone()),
             None, // We can't connect to the project node via UDP atm
@@ -67,7 +67,6 @@ impl Instantiator for ProjectInstantiator {
             ))
         })?;
 
-        debug!("create a secure channel to the project {project_identifier}");
         let sc = node_manager
             .create_secure_channel_internal(
                 ctx,

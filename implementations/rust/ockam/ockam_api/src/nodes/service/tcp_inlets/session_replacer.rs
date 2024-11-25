@@ -203,6 +203,9 @@ impl InletSessionReplacer {
         };
 
         self.main_route = Some(normalized_stripped_route);
+        info!(address = ?inlet_address,
+            route = %self.main_route.as_ref().map(|r| r.to_string()).unwrap_or("None".to_string()),
+            "tcp inlet restored");
 
         Ok(ReplacerOutcome {
             ping_route: transport_route,
@@ -273,7 +276,7 @@ impl SessionReplacer for InletSessionReplacer {
                 Err(ApiError::core("timeout"))
             }
             Ok(Err(e)) => {
-                warn!(%self.outlet_addr, err = %e, "error creating new tcp inlet");
+                warn!(%self.outlet_addr, err = %e, "failed to create tcp inlet");
                 Err(e)
             }
             Ok(Ok(route)) => Ok(route),

@@ -7,7 +7,7 @@ use ockam_node::Context;
 use tokio::io::AsyncWriteExt;
 use tokio::net::tcp::OwnedWriteHalf;
 use tokio::{io::AsyncReadExt, net::tcp::OwnedReadHalf};
-use tracing::{debug, info};
+use tracing::debug;
 
 pub(crate) struct TcpMitmProcessor {
     address_of_other_processor: Address,
@@ -83,7 +83,7 @@ impl Processor for TcpMitmProcessor {
         let len = match self.read_half.read(&mut buf).await {
             Ok(l) if l != 0 => l,
             _ => {
-                info!("Connection was closed; dropping stream {}", ctx.address());
+                debug!("Connection was closed; dropping stream {}", ctx.address());
 
                 let _ = ctx.stop_processor(self.address_of_other_processor.clone()).await;
 

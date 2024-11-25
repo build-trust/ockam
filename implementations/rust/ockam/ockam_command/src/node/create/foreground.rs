@@ -144,17 +144,18 @@ impl CreateCommand {
     }
 
     async fn start_services(&self, ctx: &Context, opts: &CommandGlobalOpts) -> miette::Result<()> {
-        // Wait until the node is fully started
-        let mut node =
-            BackgroundNodeClient::create(ctx, &opts.state, &Some(self.name.clone())).await?;
-        if !is_node_up(ctx, &mut node, true).await? {
-            return Err(miette!(
-                "Couldn't start services because the node is not up"
-            ));
-        }
-
         if let Some(config) = &self.launch_configuration {
             if let Some(startup_services) = &config.startup_services {
+                // Wait until the node is fully started
+                let mut node =
+                    BackgroundNodeClient::create(ctx, &opts.state, &Some(self.name.clone()))
+                        .await?;
+                if !is_node_up(ctx, &mut node, true).await? {
+                    return Err(miette!(
+                        "Couldn't start services because the node is not up"
+                    ));
+                }
+
                 if let Some(cfg) = startup_services.secure_channel_listener.clone() {
                     if !cfg.disabled {
                         opts.terminal

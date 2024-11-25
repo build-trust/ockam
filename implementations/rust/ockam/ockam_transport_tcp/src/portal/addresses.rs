@@ -1,3 +1,4 @@
+use core::fmt::Display;
 use ockam_core::Address;
 
 /// Enumerate all portal types
@@ -24,6 +25,12 @@ impl PortalType {
             PortalType::Inlet | PortalType::Outlet => false,
             PortalType::PrivilegedInlet | PortalType::PrivilegedOutlet => true,
         }
+    }
+}
+
+impl Display for PortalType {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{}", self.str())
     }
 }
 

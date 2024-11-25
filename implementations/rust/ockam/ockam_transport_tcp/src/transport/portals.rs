@@ -9,7 +9,7 @@ use ockam_core::{route, Address, Result, Route};
 use ockam_node::compat::asynchronous::RwLock;
 use ockam_node::Context;
 use ockam_transport_core::{parse_socket_addr, HostnamePort};
-use tracing::instrument;
+use tracing::{debug, instrument};
 
 impl TcpTransport {
     /// Create Tcp Inlet that listens on bind_addr, transforms Tcp stream into Ockam Routable
@@ -237,8 +237,8 @@ impl TcpInlet {
 
     /// Pause TCP Inlet, all incoming TCP streams will be dropped.
     pub async fn pause(&self) {
+        debug!(address = %self.socket_address, "pausing inlet");
         let mut inlet_shared_state = self.inlet_shared_state.write().await;
-
         inlet_shared_state.set_is_paused(true);
     }
 

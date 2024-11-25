@@ -210,7 +210,7 @@ impl NodeManager {
         timeout: Option<Duration>,
         secure_channel_type: SecureChannelType,
     ) -> Result<SecureChannel> {
-        debug!(%sc_route, "Creating secure channel");
+        debug!(route = %sc_route, %identifier, "initiating secure channel");
         let options = SecureChannelOptions::new();
 
         let options = if let Some(timeout) = timeout {
@@ -224,8 +224,8 @@ impl NodeManager {
             None => options,
         };
 
-        let options = if let Some(credential) = credential {
-            options.with_credential(credential)?
+        let options = if let Some(credential) = credential.as_ref() {
+            options.with_credential(credential.clone())?
         } else {
             match self.credential_retriever_creators.project_member.as_ref() {
                 None => options,
@@ -251,7 +251,7 @@ impl NodeManager {
             .create_secure_channel(ctx, identifier, sc_route.clone(), options)
             .await?;
 
-        debug!(%sc_route, %sc, "Created secure channel");
+        info!(route = %sc_route, %identifier, "secure channel initiated");
 
         self.registry
             .secure_channels

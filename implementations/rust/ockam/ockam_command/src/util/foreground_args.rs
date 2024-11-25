@@ -1,7 +1,6 @@
 use crate::CommandGlobalOpts;
 use clap::Args;
 use colorful::Colorful;
-use ockam_abac::expr::and;
 use ockam_api::{fmt_log, fmt_warn};
 use std::io;
 use std::io::Read;

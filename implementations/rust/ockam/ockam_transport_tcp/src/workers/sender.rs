@@ -14,7 +14,7 @@ use ockam_transport_core::TransportError;
 use serde::{Deserialize, Serialize};
 use tokio::io::AsyncWriteExt;
 use tokio::net::tcp::OwnedWriteHalf;
-use tracing::{info, instrument, trace, warn};
+use tracing::{debug, instrument, trace, warn};
 
 #[derive(Serialize, Deserialize, Message, Clone)]
 pub(crate) enum TcpSendWorkerMsg {
@@ -223,7 +223,7 @@ impl Worker for TcpSendWorker {
 
             match msg {
                 TcpSendWorkerMsg::ConnectionClosed => {
-                    info!(
+                    debug!(
                         "Stopping sender due to closed connection {}",
                         self.socket_address
                     );

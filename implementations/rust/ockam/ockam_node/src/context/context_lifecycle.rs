@@ -32,9 +32,10 @@ pub type AsyncDropSender = tokio::sync::oneshot::Sender<Address>;
 impl Drop for Context {
     fn drop(&mut self) {
         if let Some(sender) = self.async_drop_sender.take() {
-            trace!("De-allocated detached context {}", self.address());
-            if let Err(e) = sender.send(self.address()) {
-                warn!("Encountered error while dropping detached context: {}", e);
+            trace!(address=%self.address(), "de-allocated detached context");
+            if let Err(err) = sender.send(self.address()) {
+                warn!(address=%self.address(), %err,
+                    "couldn't drop detached context");
             }
         }
     }
