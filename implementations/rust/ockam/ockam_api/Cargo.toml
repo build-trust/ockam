@@ -93,7 +93,7 @@ rand = "0.8"
 regex = "1.10.6"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls-native-roots"] }
 serde = { version = "1.0.204", features = ["derive"] }
-serde_json = "1.0.118"
+serde_json = "1.0.133"
 sha2 = "0.10.8"
 sqlx = { version = "0.8.2", default-features = false }
 strip-ansi-escapes = "0.2"
