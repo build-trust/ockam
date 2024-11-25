@@ -1,6 +1,7 @@
 use crate::CommandGlobalOpts;
 use clap::Args;
 use colorful::Colorful;
+use ockam_abac::expr::and;
 use ockam_api::{fmt_log, fmt_warn};
 use std::io;
 use std::io::Read;
@@ -43,7 +44,8 @@ pub async fn wait_for_exit_signal(
                 let _ = tx.blocking_send(());
                 info!("Exit signal received");
                 if !is_child_process {
-                    let _ = terminal.write_line(fmt_warn!("Exit signal received"));
+                    let _ =
+                        terminal.write_line("\n".to_string() + &fmt_warn!("Exit signal received"));
                 }
                 processed = true
             }
@@ -70,9 +72,9 @@ pub async fn wait_for_exit_signal(
 
     debug!("waiting for exit signal");
 
-    if !args.child_process {
+    if !args.child_process && opts.terminal.is_tty() {
         opts.terminal.write_line("")?;
-        opts.terminal.write_line(fmt_log!("{}", msg))?;
+        opts.terminal.write(fmt_log!("{}", msg))?;
     }
 
     // Wait for signal SIGINT, SIGTERM, SIGHUP or EOF; or for the tx to be closed.
