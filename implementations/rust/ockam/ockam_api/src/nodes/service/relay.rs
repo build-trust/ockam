@@ -130,12 +130,13 @@ impl NodeManager {
     pub async fn create_relay(
         self: &Arc<Self>,
         ctx: &Context,
-        addr: &MultiAddr,
+        address: &MultiAddr,
         alias: String,
         authorized: Option<Identifier>,
         relay_address: Option<String>,
         return_timing: ReturnTiming,
     ) -> Result<RelayInfo> {
+        debug!(%alias, %address, ?authorized, ?relay_address, "creating relay");
         if self.registry.relays.contains_key(&alias).await {
             let message = format!("A relay with the name '{alias}' already exists");
             return Err(ockam_core::Error::new(
@@ -148,11 +149,11 @@ impl NodeManager {
         let replacer = RelaySessionReplacer {
             node_manager: Arc::downgrade(self),
             context: ctx.async_try_clone().await?,
-            addr: addr.clone(),
-            relay_address,
+            addr: address.clone(),
+            relay_address: relay_address.clone(),
             connection: None,
             relay_worker_address: None,
-            authorized,
+            authorized: authorized.clone(),
         };
 
         let mut session = Session::create(ctx, Arc::new(Mutex::new(replacer)), None).await?;
@@ -182,28 +183,31 @@ impl NodeManager {
 
         session.start_monitoring().await?;
 
-        let relay_info = RelayInfo::new(addr.clone(), alias.clone(), session.connection_status());
+        let relay_info =
+            RelayInfo::new(address.clone(), alias.clone(), session.connection_status());
         let relay_info = if let Some(remote_relay_info) = remote_relay_info {
-            debug!(
-                forwarding_route = %remote_relay_info.forwarding_route(),
-                remote_address = %remote_relay_info.remote_address(),
-                "CreateRelay request processed, sending back response"
-            );
             relay_info.with(remote_relay_info)
         } else {
             relay_info
         };
 
         let registry_relay_info = RegistryRelayInfo {
-            destination_address: addr.clone(),
+            destination_address: address.clone(),
             alias: alias.clone(),
             session: Arc::new(Mutex::new(session)),
         };
 
         self.registry
             .relays
-            .insert(alias, registry_relay_info.clone())
+            .insert(alias.clone(), registry_relay_info.clone())
             .await;
+
+        info!(
+            %alias, %address, ?authorized, ?relay_address,
+            forwarding_route = ?relay_info.forwarding_route(),
+            remote_address = ?relay_info.remote_address(),
+            "relay created"
+        );
 
         Ok(relay_info)
     }

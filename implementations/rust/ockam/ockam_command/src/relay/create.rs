@@ -4,7 +4,7 @@ use std::str::FromStr;
 use clap::Args;
 use colorful::Colorful;
 use miette::{miette, IntoDiagnostic};
-use tracing::info;
+use tracing::debug;
 
 use ockam::identity::Identifier;
 use ockam::Context;
@@ -91,6 +91,8 @@ impl Command for CreateCommand {
         let alias = cmd.relay_name();
         let return_timing = cmd.return_timing();
 
+        // let _notification_handler = NotificationHandler::start(&opts.state, opts.terminal.clone());
+
         let node = BackgroundNodeClient::create(ctx, &opts.state, &cmd.to).await?;
         let relay_info = {
             if at.starts_with(Project::CODE) && cmd.authorized.is_some() {
@@ -98,7 +100,11 @@ impl Command for CreateCommand {
                     "--authorized can not be used with project addresses"
                 ))?;
             };
-            info!("creating a relay at {} to {}", at, node.node_name());
+            debug!(
+                "sending request to {} to create a relay at {}",
+                node.node_name(),
+                at
+            );
             let pb = opts.terminal.spinner();
             if let Some(pb) = pb.as_ref() {
                 pb.set_message(format!(
@@ -123,10 +129,8 @@ impl Command for CreateCommand {
                 let plain = {
                     let from = color_primary(&at);
                     let to = color_primary(format!("/node/{}", &node.node_name()));
-
                     fmt_ok!("Relay will be created automatically from {from} → {to} as soon as a connection can be established.")
                 };
-
                 opts.terminal
                     .stdout()
                     .plain(plain)
@@ -166,11 +170,9 @@ impl Command for CreateCommand {
                     let plain = {
                         let from = color_primary(&at);
                         let to = color_primary(format!("/node/{}", &node.node_name()));
-
                         fmt_warn!("A relay was created at {to} but failed to connect to {from}\n")
                             + &fmt_info!("It will retry to connect automatically")
                     };
-
                     opts.terminal
                         .stdout()
                         .plain(plain)
