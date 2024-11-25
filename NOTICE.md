@@ -336,7 +336,6 @@ This file contains attributions for any 3rd-party open source code used in this 
 | mips-mcu | MIT, Apache-2.0 | https://crates.io/crates/mips-mcu |
 | mips-rt | MIT, Apache-2.0 | https://crates.io/crates/mips-rt |
 | mips-rt-macros | MIT, Apache-2.0 | https://crates.io/crates/mips-rt-macros |
-| mirai-annotations | MIT | https://crates.io/crates/mirai-annotations |
 | modular-bitfield | MIT, Apache-2.0 | https://crates.io/crates/modular-bitfield |
 | modular-bitfield-impl | MIT, Apache-2.0 | https://crates.io/crates/modular-bitfield-impl |
 | nb | MIT, Apache-2.0 | https://crates.io/crates/nb |
