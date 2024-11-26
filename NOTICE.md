@@ -362,7 +362,7 @@ This file contains attributions for any 3rd-party open source code used in this 
 | objc2-foundation | MIT | https://crates.io/crates/objc2-foundation |
 | objc_id | MIT | https://crates.io/crates/objc_id |
 | object | Apache-2.0, MIT | https://crates.io/crates/object |
-| ockam_ebpf | Apache-2.0 | https://github.com/build-trust/ockam-ebpf.git |
+| ockam_ebpf | Apache-2.0 | https://crates.io/crates/ockam_ebpf |
 | once_cell | MIT, Apache-2.0 | https://crates.io/crates/once_cell |
 | onig | MIT | https://crates.io/crates/onig |
 | onig_sys | MIT | https://crates.io/crates/onig_sys |

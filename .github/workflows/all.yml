@@ -269,8 +269,9 @@ jobs:
 
             for ((i=0; i<$dependencies_keys_len; i++)); do
               crate_name=$(jq -r ".[$i]" <<< $dependencies_keys)
-              version=$(jq -r ".\"$crate_name\".version" <<< $dependencies || jq -r ".\"$crate_name\"" <<< $dependencies)
 
+              version=$(jq -r ".\"$crate_name\".version" <<< $dependencies || jq -r ".\"$crate_name\"" <<< $dependencies)
+              # It is mandatory that to publish to the crates.io repository, all our dependencies must have a version specified (must have been published to crates.io)
               if [[ $version =~ $regex ]]; then
                 echo "crate_name: $crate_name"
                 echo "version: $version"

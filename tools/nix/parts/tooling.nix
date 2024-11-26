@@ -29,6 +29,8 @@ _: {
         parallel
         which
         socat
+      ] ++ lib.optionals stdenv.isLinux [
+        nettools
       ];
 
       BATS_LIB = "${config.packages.bats}/share/bats";

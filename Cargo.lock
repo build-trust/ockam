@@ -4948,8 +4948,9 @@ dependencies = [
 
 [[package]]
 name = "ockam_ebpf"
-version = "0.4.0"
-source = "git+https://github.com/build-trust/ockam-ebpf.git#d9a3ab82122ad643da394880159b12cc343896c0"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "683813baba0672a720f53eacd1ca234b40b5785ece333b1f0d6b570cb3887e7a"
 dependencies = [
  "reqwest",
  "url",
