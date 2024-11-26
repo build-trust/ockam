@@ -223,12 +223,12 @@ fn portal_node_goes_down_reconnect() {
 #[test]
 fn portal_low_bandwidth_connection_keep_working_for_60s() {
     // in this test we use two nodes, connected through a passthrough server
-    // which limits the bandwidth to 64kb per second
+    // which limits the bandwidth to 170kb per second
     //
     // ┌────────┐     ┌───────────┐        ┌────────┐
     // │  Node  └─────►    TCP    └────────►  Node  │
     // │   1    ◄─────┐Passthrough◄────────┐   2    │
-    // └────┬───┘     │  64KB/s   │        └────▲───┘
+    // └────┬───┘     │  170KB/s  │        └────▲───┘
     //      │         └───────────┘             │
     //      │         ┌───────────┐             │
     //      │ Portal  │   TCP     │      Outlet │
@@ -270,8 +270,8 @@ fn portal_low_bandwidth_connection_keep_working_for_60s() {
 
             let passthrough_server_handle = start_passthrough_server(
                 &second_node_listen_address.to_string(),
-                Disruption::LimitBandwidth(64 * 1024),
-                Disruption::LimitBandwidth(64 * 1024),
+                Disruption::LimitBandwidth(170 * 1024),
+                Disruption::LimitBandwidth(170 * 1024),
             )
             .await;
 

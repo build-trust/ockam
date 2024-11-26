@@ -13,6 +13,8 @@ use ockam_multiaddr::MultiAddr;
 
 use crate::config::Throughput;
 
+pub const MAX_PAYLOAD_SIZE: usize = 128 * 1024;
+
 pub struct PortalStats {
     pub messages_out_of_order: Arc<AtomicU64>,
     pub bytes_received: Arc<AtomicU64>,
@@ -97,7 +99,7 @@ impl Processor for PortalSimulatorSender {
 
         while bytes_left > 0 {
             let next_message_number = self.messages_sent.fetch_add(1, Ordering::Relaxed);
-            let payload_size = std::cmp::min(bytes_left, 48 * 1024);
+            let payload_size = std::cmp::min(bytes_left, MAX_PAYLOAD_SIZE);
             let mut message = Vec::with_capacity(8 + 8 + payload_size);
 
             message.extend_from_slice(&next_message_number.to_le_bytes());

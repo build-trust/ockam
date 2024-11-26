@@ -108,7 +108,7 @@ pub enum PortalInternalMessage {
 }
 
 /// Maximum allowed size for a payload
-pub const MAX_PAYLOAD_SIZE: usize = 48 * 1024;
+pub const MAX_PAYLOAD_SIZE: usize = 128 * 1024;
 
 #[cfg(test)]
 mod test {
