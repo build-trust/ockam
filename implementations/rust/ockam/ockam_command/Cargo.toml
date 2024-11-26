@@ -58,7 +58,7 @@ clap_mangen = "0.2.23"
 colorful = "0.3"
 console = "0.15.8"
 ctrlc = { version = "3.4.4", features = ["termination"] }
-flate2 = "1.0.30"
+flate2 = "1.0.35"
 hex = "0.4"
 indicatif = "0.17.8"
 indoc = "2.0.5"
