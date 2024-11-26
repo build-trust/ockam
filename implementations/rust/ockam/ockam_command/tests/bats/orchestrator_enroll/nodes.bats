@@ -240,12 +240,9 @@ EOF
   export ENROLLMENT_TICKET=$(cat "$OCKAM_HOME/enrollment.ticket")
 
   setup_home_dir
-  cat <<EOF >"$OCKAM_HOME/config.yaml"
-ticket: ${ENROLLMENT_TICKET}
-name: n1
-EOF
-
-  run_success "$OCKAM" node create "$OCKAM_HOME/config.yaml"
+  # The ENROLLMENT_TICKET is parsed automatically, so the `node create` command will
+  # first use the ticket before creating the node
+  run_success "$OCKAM" node create n1
   run_success "$OCKAM" node show n1
 
   # Check that the identity can reach the project
@@ -257,12 +254,7 @@ EOF
   export ENROLLMENT_TICKET=$(cat "$OCKAM_HOME/enrollment.ticket")
 
   setup_home_dir
-  cat <<EOF >"$OCKAM_HOME/config.yaml"
-ticket: ${ENROLLMENT_TICKET}
-name: n1
-EOF
-
-  run_success "$OCKAM" node create "$OCKAM_HOME/config.yaml" -f &
+  run_success "$OCKAM" node create n1 -f &
   sleep 10
   run_success "$OCKAM" node show n1
 
