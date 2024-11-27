@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.142.0 - 2024-11-27
+
+### Added
+
+- Return new ticket format in `project ticket`
+- Node's http server is enabled by default
+- Rename `--hex-encoded` arg to `--hex` in `project ticket`
+- Simplify command node shutdown
+- Add env. variables for auth0
+- Adjust `enroll` logic and output for the new subscription plans
+- Updated dependencies
+
+### Fixed
+
+- Adjust timeout used when waiting for a node to be ready
+
 ## 0.141.0 - 2024-11-12
 
 ### Added
