@@ -373,6 +373,11 @@ jobs:
             toolchain: stable
             target: armv7-unknown-linux-musleabihf
             use-cross-build: true
+          - build: linux_aarch64_gnu
+            os: ubuntu-22.04
+            toolchain: stable
+            target: aarch64-unknown-linux-gnu
+            use-cross-build: true
           - build: macos_silicon
             os: macos-14
             toolchain: stable
