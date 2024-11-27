@@ -1,0 +1,48 @@
+#!/bin/bash
+
+if ! [ -x "$(command -v iperf3)" ]; then
+  echo 'Error: iperf3 is not installed.' >&2
+  exit 1
+fi
+
+if ! [ -x "$(command -v perf)" ]; then
+  echo 'Error: perf is not installed. perf is linux-specific, see dtrace for macos.' >&2
+  exit 1
+fi
+
+set -e
+
+if [ -z "${OCKAM}" ]; then
+  RUSTFLAGS="-C force-frame-pointers=yes" cargo build --profile profiling -p ockam_command
+  OCKAM=target/profiling/ockam
+fi
+
+"${OCKAM}" node delete portal -y >/dev/null 2>&1 || true
+export OCKAM_LOG_LEVEL=info
+export OCKAM_OPENTELEMETRY_EXPORT=0
+
+perf record --call-graph dwarf -F 99 --output /tmp/ockam.perf -- "${OCKAM}" node create portal -f &
+perf_pid=$!
+
+sleep 1
+"${OCKAM}" tcp-outlet create --to 5500 --at portal
+"${OCKAM}" relay create --to portal
+"${OCKAM}" tcp-inlet create --from 8200 --to /project/default/service/forward_to_default/secure/api/service/outlet --at portal
+
+iperf3 --server --port 5500 --one-off &
+iperf3_server_pid=$!
+
+sleep 0.3 # wait for server to start
+iperf3 --zerocopy --client 127.0.0.1 --port 8200 --time 60
+
+kill ${iperf3_server_pid}
+"${OCKAM}" node delete portal -y
+
+echo "Waiting for perf to finish writing /tmp/ockam.perf..."
+wait ${perf_pid}
+
+echo "Converting perf file to firefox profiler format, could take up to few minutes..."
+perf script -F +pid --input /tmp/ockam.perf > /tmp/ockam.perf.firefox
+
+echo "You can use firefox web profiler to open /tmp/ockam.perf.firefox file."
+echo "https://profiler.firefox.com/"

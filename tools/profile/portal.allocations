@@ -38,14 +38,14 @@ fi
 
 
 sleep 1
-"${OCKAM}" tcp-outlet create --to 5000 --at portal
-"${OCKAM}" tcp-inlet create --from 8000 --to /secure/api/service/outlet --at portal
+"${OCKAM}" tcp-outlet create --to 5500 --at portal
+"${OCKAM}" tcp-inlet create --from 8200 --to /secure/api/service/outlet --at portal
 
-iperf3 --server --port 5000 --one-off &
+iperf3 --server --port 5500 --one-off &
 iperf3_server_pid=$!
 
 sleep 0.3 # wait for server to start
-iperf3 --zerocopy --client 127.0.0.1 --port 8000 --time 60
+iperf3 --zerocopy --client 127.0.0.1 --port 8200 --time 60
 
 kill ${iperf3_server_pid}
 "${OCKAM}" node delete portal -y
