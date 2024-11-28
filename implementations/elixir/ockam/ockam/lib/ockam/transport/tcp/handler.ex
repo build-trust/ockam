@@ -31,43 +31,62 @@ defmodule Ockam.Transport.TCP.Handler do
     # Header, protocol version "1" must be the first thing exchanged.
     # It isn't send anymore after the initial exchange.
     transport.send(socket, <<1>>)
-    {:ok, <<1>>} = transport.recv(socket, 1, 5000)
 
-    :ok =
-      :inet.setopts(socket, [
-        {:active, @active},
-        {:send_timeout, @send_timeout},
-        {:packet, 4},
-        {:nodelay, true}
-      ])
+    case transport.recv(socket, 1, 5000) do
+      {:ok, <<1>>} ->
+        :ok =
+          :inet.setopts(socket, [
+            {:active, @active},
+            {:send_timeout, @send_timeout},
+            {:packet, 4},
+            {:nodelay, true}
+          ])
 
-    {:ok, address} = Ockam.Node.register_random_address(@address_prefix, __MODULE__)
+        {:ok, address} = Ockam.Node.register_random_address(@address_prefix, __MODULE__)
 
-    {function_name, _} = __ENV__.function
-    Telemetry.emit_event(function_name)
+        {function_name, _} = __ENV__.function
+        Telemetry.emit_event(function_name)
 
-    authorization = Keyword.get(handler_options, :authorization, [])
-    tcp_wrapper = Keyword.get(handler_options, :tcp_wrapper, Ockam.Transport.TCP.DefaultWrapper)
+        authorization = Keyword.get(handler_options, :authorization, [])
 
-    # There are cases where we want to detect and close tcp connections after a long
-    # period without activity.  Mainly to handle the case of a server receiving connections
-    # from a long running client that "leak" them without closing.
-    idle_timeout = Keyword.get(handler_options, :idle_timeout, :infinity)
+        tcp_wrapper =
+          Keyword.get(handler_options, :tcp_wrapper, Ockam.Transport.TCP.DefaultWrapper)
 
-    :gen_server.enter_loop(
-      __MODULE__,
-      [],
-      %{
-        socket: socket,
-        transport: transport,
-        address: address,
-        authorization: authorization,
-        tcp_wrapper: tcp_wrapper,
-        idle_timeout: idle_timeout
-      },
-      {:via, Ockam.Node.process_registry(), address},
-      idle_timeout
-    )
+        # There are cases where we want to detect and close tcp connections after a long
+        # period without activity.  Mainly to handle the case of a server receiving connections
+        # from a long running client that "leak" them without closing.
+        idle_timeout = Keyword.get(handler_options, :idle_timeout, :infinity)
+
+        :gen_server.enter_loop(
+          __MODULE__,
+          [],
+          %{
+            socket: socket,
+            transport: transport,
+            address: address,
+            authorization: authorization,
+            tcp_wrapper: tcp_wrapper,
+            idle_timeout: idle_timeout
+          },
+          {:via, Ockam.Node.process_registry(), address},
+          idle_timeout
+        )
+
+      {:ok, other} ->
+        Logger.warning("Unrecongnized connection header received: #{other}")
+        {:stop, :normal}
+
+      {:error, :closed} ->
+        Logger.debug(
+          "Connection closed by peer or otherwise lost, before receiving ockam connection header"
+        )
+
+        {:stop, :normal}
+
+      {:error, other} ->
+        # will be logged by the gen_server failing.
+        {:stop, other}
+    end
   end
 
   @impl true
