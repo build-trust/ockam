@@ -3,12 +3,10 @@ use std::str::FromStr;
 use std::time::Duration;
 
 use bytes::{Buf, BufMut, Bytes, BytesMut};
-use kafka_protocol::messages::metadata_request::MetadataRequestBuilder;
 use kafka_protocol::messages::metadata_response::MetadataResponseBroker;
 use kafka_protocol::messages::{
     ApiKey, BrokerId, MetadataRequest, MetadataResponse, RequestHeader, ResponseHeader,
 };
-use kafka_protocol::protocol::Builder;
 use kafka_protocol::protocol::Decodable;
 use kafka_protocol::protocol::Encodable as KafkaEncodable;
 use kafka_protocol::protocol::StrBytes;
@@ -167,14 +165,7 @@ async fn kafka_portal_worker__bigger_than_limit_kafka_message__error(
     encode(
         &mut request_buffer,
         create_request_header(ApiKey::MetadataKey),
-        MetadataRequestBuilder::default()
-            .topics(Default::default())
-            .include_cluster_authorized_operations(Default::default())
-            .include_topic_authorized_operations(Default::default())
-            .allow_auto_topic_creation(Default::default())
-            .unknown_tagged_fields(insanely_huge_tag)
-            .build()
-            .unwrap(),
+        MetadataRequest::default().with_unknown_tagged_fields(insanely_huge_tag),
     );
 
     let huge_payload = request_buffer.as_ref();
@@ -221,14 +212,7 @@ async fn kafka_portal_worker__almost_over_limit_than_limit_kafka_message__two_ka
     encode(
         &mut huge_outgoing_request,
         create_request_header(ApiKey::MetadataKey),
-        MetadataRequestBuilder::default()
-            .topics(Default::default())
-            .include_cluster_authorized_operations(Default::default())
-            .include_topic_authorized_operations(Default::default())
-            .allow_auto_topic_creation(Default::default())
-            .unknown_tagged_fields(insanely_huge_tag.clone())
-            .build()
-            .unwrap(),
+        MetadataRequest::default().with_unknown_tagged_fields(insanely_huge_tag.clone()),
     );
 
     let receiver = TcpPayloadReceiver {
@@ -366,14 +350,11 @@ where
 }
 
 fn create_request_header(api_key: ApiKey) -> RequestHeader {
-    RequestHeader::builder()
-        .request_api_key(api_key as i16)
-        .request_api_version(TEST_KAFKA_API_VERSION)
-        .correlation_id(1)
-        .client_id(Some(StrBytes::from_static_str("my-client-id")))
-        .unknown_tagged_fields(Default::default())
-        .build()
-        .unwrap()
+    RequestHeader::default()
+        .with_request_api_key(api_key as i16)
+        .with_request_api_version(TEST_KAFKA_API_VERSION)
+        .with_correlation_id(1)
+        .with_client_id(Some(StrBytes::from_static_str("my-client-id")))
 }
 
 #[allow(non_snake_case)]
@@ -477,31 +458,13 @@ async fn kafka_portal_worker__metadata_exchange__response_changed(
 
     let mut response_buffer = BytesMut::new();
     {
-        let response_header = ResponseHeader::builder()
-            .correlation_id(1)
-            .unknown_tagged_fields(Default::default())
-            .build()
-            .unwrap();
-
-        let metadata_response = MetadataResponse::builder()
-            .throttle_time_ms(Default::default())
-            .cluster_id(Default::default())
-            .cluster_authorized_operations(-2147483648)
-            .unknown_tagged_fields(Default::default())
-            .controller_id(BrokerId::from(1))
-            .topics(Default::default())
-            .brokers(indexmap::IndexMap::from_iter(vec![(
-                BrokerId(1),
-                MetadataResponseBroker::builder()
-                    .host(StrBytes::from_static_str("bad.remote.host.example.com"))
-                    .port(1234)
-                    .rack(Default::default())
-                    .unknown_tagged_fields(Default::default())
-                    .build()
-                    .unwrap(),
-            )]))
-            .build()
-            .unwrap();
+        let response_header = ResponseHeader::default().with_correlation_id(1);
+        let metadata_response = MetadataResponse::default()
+            .with_controller_id(BrokerId::from(1))
+            .with_brokers(vec![MetadataResponseBroker::default()
+                .with_node_id(BrokerId::from(1))
+                .with_host(StrBytes::from_static_str("bad.remote.host.example.com"))
+                .with_port(1234)]);
 
         let size = response_header
             .compute_size(TEST_KAFKA_API_VERSION)
@@ -541,7 +504,8 @@ async fn kafka_portal_worker__metadata_exchange__response_changed(
         let response =
             MetadataResponse::decode(&mut buffer_received, TEST_KAFKA_API_VERSION).unwrap();
         assert_eq!(1, response.brokers.len());
-        let broker = response.brokers.get(&BrokerId::from(1)).unwrap();
+        let broker = response.brokers.first().unwrap();
+        assert_eq!(1, broker.node_id.0);
         assert_eq!("127.0.0.1", &broker.host.to_string());
         assert_eq!(0, broker.port);
 

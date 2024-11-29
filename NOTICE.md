@@ -159,9 +159,6 @@ This file contains attributions for any 3rd-party open source code used in this 
 | ctrlc | MIT, Apache-2.0 | https://crates.io/crates/ctrlc |
 | curve25519-dalek | BSD-3-Clause | https://crates.io/crates/curve25519-dalek |
 | curve25519-dalek-derive | MIT, Apache-2.0 | https://crates.io/crates/curve25519-dalek-derive |
-| darling | MIT | https://crates.io/crates/darling |
-| darling_core | MIT | https://crates.io/crates/darling_core |
-| darling_macro | MIT | https://crates.io/crates/darling_macro |
 | dashmap | MIT | https://crates.io/crates/dashmap |
 | data-encoding | MIT | https://crates.io/crates/data-encoding |
 | dbus | Apache-2.0, MIT | https://crates.io/crates/dbus |
@@ -169,9 +166,6 @@ This file contains attributions for any 3rd-party open source code used in this 
 | delegate | MIT, Apache-2.0 | https://crates.io/crates/delegate |
 | der | Apache-2.0, MIT | https://crates.io/crates/der |
 | deranged | MIT, Apache-2.0 | https://crates.io/crates/deranged |
-| derive_builder | MIT, Apache-2.0 | https://crates.io/crates/derive_builder |
-| derive_builder_core | MIT, Apache-2.0 | https://crates.io/crates/derive_builder_core |
-| derive_builder_macro | MIT, Apache-2.0 | https://crates.io/crates/derive_builder_macro |
 | dialoguer | MIT | https://crates.io/crates/dialoguer |
 | digest | MIT, Apache-2.0 | https://crates.io/crates/digest |
 | displaydoc | MIT, Apache-2.0 | https://crates.io/crates/displaydoc |
@@ -272,7 +266,6 @@ This file contains attributions for any 3rd-party open source code used in this 
 | icu_properties_data | Unicode-3.0 | https://crates.io/crates/icu_properties_data |
 | icu_provider | Unicode-3.0 | https://crates.io/crates/icu_provider |
 | icu_provider_macros | Unicode-3.0 | https://crates.io/crates/icu_provider_macros |
-| ident_case | MIT, Apache-2.0 | https://crates.io/crates/ident_case |
 | idna | MIT, Apache-2.0 | https://crates.io/crates/idna |
 | idna_adapter | Apache-2.0, MIT | https://crates.io/crates/idna_adapter |
 | image | MIT, Apache-2.0 | https://crates.io/crates/image |

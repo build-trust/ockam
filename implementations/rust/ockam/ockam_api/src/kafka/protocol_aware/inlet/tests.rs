@@ -4,15 +4,13 @@ use crate::kafka::protocol_aware::{
     utils, KafkaEncryptedContent, KafkaMessageRequestInterceptor, KafkaMessageResponseInterceptor,
 };
 use crate::kafka::KafkaInletController;
-use bytes::BytesMut;
-use indexmap::IndexMap;
+use bytes::{Bytes, BytesMut};
 use kafka_protocol::messages::fetch_response::{FetchableTopicResponse, PartitionData};
 use kafka_protocol::messages::produce_request::{PartitionProduceData, TopicProduceData};
-use kafka_protocol::messages::ApiKey::ProduceKey;
 use kafka_protocol::messages::{
     ApiKey, FetchResponse, ProduceRequest, RequestHeader, ResponseHeader, TopicName,
 };
-use kafka_protocol::protocol::{Builder, Decodable, StrBytes};
+use kafka_protocol::protocol::{Decodable, StrBytes};
 use kafka_protocol::records::{
     Compression, Record, RecordBatchDecoder, RecordBatchEncoder, RecordEncodeOptions, TimestampType,
 };
@@ -66,14 +64,11 @@ impl KafkaKeyExchangeController for MockKafkaKeyExchangeController {
 const TEST_KAFKA_API_VERSION: i16 = 13;
 
 pub fn create_kafka_produce_request(content: &[u8]) -> BytesMut {
-    let header = RequestHeader::builder()
-        .request_api_key(ApiKey::ProduceKey as i16)
-        .request_api_version(TEST_KAFKA_API_VERSION)
-        .correlation_id(1)
-        .client_id(Some(StrBytes::from_static_str("my-client-id")))
-        .unknown_tagged_fields(Default::default())
-        .build()
-        .unwrap();
+    let header = RequestHeader::default()
+        .with_request_api_key(ApiKey::ProduceKey as i16)
+        .with_request_api_version(TEST_KAFKA_API_VERSION)
+        .with_correlation_id(1)
+        .with_client_id(Some(StrBytes::from_static_str("my-client-id")));
 
     let mut encoded = BytesMut::new();
     RecordBatchEncoder::encode(
@@ -97,31 +92,16 @@ pub fn create_kafka_produce_request(content: &[u8]) -> BytesMut {
             version: 2,
             compression: Compression::None,
         },
+        None::<fn(&mut BytesMut, &mut BytesMut, Compression) -> Result<(), _>>,
     )
     .unwrap();
 
-    let mut topic_data = IndexMap::new();
-    topic_data.insert(
-        TopicName::from(StrBytes::from_static_str("topic-name")),
-        TopicProduceData::builder()
-            .partition_data(vec![PartitionProduceData::builder()
-                .index(1)
-                .records(Some(encoded.freeze()))
-                .unknown_tagged_fields(Default::default())
-                .build()
-                .unwrap()])
-            .unknown_tagged_fields(Default::default())
-            .build()
-            .unwrap(),
-    );
-    let request = ProduceRequest::builder()
-        .transactional_id(None)
-        .acks(0)
-        .timeout_ms(0)
-        .topic_data(topic_data)
-        .unknown_tagged_fields(Default::default())
-        .build()
-        .unwrap();
+    let topic_data = vec![TopicProduceData::default()
+        .with_name(TopicName::from(StrBytes::from_static_str("topic-name")))
+        .with_partition_data(vec![PartitionProduceData::default()
+            .with_index(1)
+            .with_records(Some(encoded.freeze()))])];
+    let request = ProduceRequest::default().with_topic_data(topic_data);
 
     utils::encode_request(
         &header,
@@ -133,11 +113,7 @@ pub fn create_kafka_produce_request(content: &[u8]) -> BytesMut {
 }
 
 pub fn create_kafka_fetch_response(content: &[u8]) -> BytesMut {
-    let header = ResponseHeader::builder()
-        .correlation_id(1)
-        .unknown_tagged_fields(Default::default())
-        .build()
-        .unwrap();
+    let header = ResponseHeader::default().with_correlation_id(1);
 
     let mut encoded = BytesMut::new();
     RecordBatchEncoder::encode(
@@ -161,37 +137,16 @@ pub fn create_kafka_fetch_response(content: &[u8]) -> BytesMut {
             version: 2,
             compression: Compression::None,
         },
+        None::<fn(&mut BytesMut, &mut BytesMut, Compression) -> Result<(), _>>,
     )
     .unwrap();
 
-    let response = FetchResponse::builder()
-        .throttle_time_ms(Default::default())
-        .error_code(Default::default())
-        .session_id(Default::default())
-        .responses(vec![FetchableTopicResponse::builder()
-            .topic(TopicName::from(StrBytes::from_static_str("topic-name")))
-            .topic_id(Default::default())
-            .partitions(vec![PartitionData::builder()
-                .partition_index(1)
-                .error_code(Default::default())
-                .high_watermark(Default::default())
-                .last_stable_offset(Default::default())
-                .log_start_offset(Default::default())
-                .diverging_epoch(Default::default())
-                .current_leader(Default::default())
-                .snapshot_id(Default::default())
-                .aborted_transactions(Default::default())
-                .preferred_read_replica(Default::default())
-                .records(Some(encoded.freeze()))
-                .unknown_tagged_fields(Default::default())
-                .build()
-                .unwrap()])
-            .unknown_tagged_fields(Default::default())
-            .build()
-            .unwrap()])
-        .unknown_tagged_fields(Default::default())
-        .build()
-        .unwrap();
+    let response = FetchResponse::default().with_responses(vec![FetchableTopicResponse::default()
+        .with_topic(TopicName::from(StrBytes::from_static_str("topic-name")))
+        .with_topic_id(Default::default())
+        .with_partitions(vec![PartitionData::default()
+            .with_partition_index(1)
+            .with_records(Some(encoded.freeze()))])]);
 
     utils::encode_response(&header, &response, TEST_KAFKA_API_VERSION, ApiKey::FetchKey).unwrap()
 }
@@ -200,7 +155,7 @@ pub fn parse_produce_request(content: &[u8]) -> ProduceRequest {
     let mut buffer = BytesMut::from(content);
     let _header = RequestHeader::decode(
         &mut buffer,
-        ProduceKey.request_header_version(TEST_KAFKA_API_VERSION),
+        ApiKey::ProduceKey.request_header_version(TEST_KAFKA_API_VERSION),
     )
     .unwrap();
     utils::decode_body(&mut buffer, TEST_KAFKA_API_VERSION).unwrap()
@@ -290,10 +245,9 @@ pub async fn json_encrypt_specific_fields(context: &mut Context) -> ockam::Resul
 
     let request = parse_produce_request(&encrypted_response);
     let topic_data = request.topic_data.first().unwrap();
-    assert_eq!("topic-name", topic_data.0 .0.as_str());
+    assert_eq!("topic-name", topic_data.name.as_str());
 
     let mut batch_content = topic_data
-        .1
         .partition_data
         .first()
         .cloned()
@@ -301,7 +255,11 @@ pub async fn json_encrypt_specific_fields(context: &mut Context) -> ockam::Resul
         .records
         .unwrap();
 
-    let records = RecordBatchDecoder::decode(&mut batch_content).unwrap();
+    let records = RecordBatchDecoder::decode(
+        &mut batch_content,
+        None::<fn(&mut Bytes, Compression) -> Result<Bytes, _>>,
+    )
+    .unwrap();
     let record = records.first().unwrap();
     let record_content = record.value.clone().unwrap();
 
@@ -378,7 +336,11 @@ pub async fn json_decrypt_specific_fields(context: &mut Context) -> ockam::Resul
         .first()
         .unwrap();
     let mut records = partition_data.records.clone().unwrap();
-    let records = RecordBatchDecoder::decode(&mut records).unwrap();
+    let records = RecordBatchDecoder::decode(
+        &mut records,
+        None::<fn(&mut Bytes, Compression) -> Result<Bytes, _>>,
+    )
+    .unwrap();
 
     let record = records.first().unwrap();
     let value =

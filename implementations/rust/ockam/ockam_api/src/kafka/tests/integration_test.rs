@@ -1,17 +1,14 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
-use bytes::{Buf, BufMut, BytesMut};
-use indexmap::IndexMap;
+use bytes::{Buf, BufMut, Bytes, BytesMut};
 use kafka_protocol::messages::produce_request::{PartitionProduceData, TopicProduceData};
 use kafka_protocol::messages::{
     fetch_request::{FetchPartition, FetchTopic},
     fetch_response::FetchableTopicResponse,
     fetch_response::PartitionData,
-    ApiKey, BrokerId, FetchRequest, FetchResponse, ProduceRequest, RequestHeader, ResponseHeader,
-    TopicName,
+    ApiKey, FetchRequest, FetchResponse, ProduceRequest, RequestHeader, ResponseHeader, TopicName,
 };
-use kafka_protocol::protocol::Builder;
 use kafka_protocol::protocol::Decodable as KafkaDecodable;
 use kafka_protocol::protocol::Encodable as KafkaEncodable;
 use kafka_protocol::protocol::StrBytes;
@@ -191,11 +188,8 @@ async fn producer__flow_with_mock_kafka__content_encryption_and_decryption(
 
     let encrypted_body = request
         .topic_data
-        .iter()
-        .next()
-        .as_ref()
+        .first()
         .unwrap()
-        .1
         .partition_data
         .first()
         .unwrap()
@@ -204,7 +198,11 @@ async fn producer__flow_with_mock_kafka__content_encryption_and_decryption(
         .unwrap();
 
     let mut encrypted_body = BytesMut::from(encrypted_body.as_ref());
-    let records = RecordBatchDecoder::decode(&mut encrypted_body).unwrap();
+    let records = RecordBatchDecoder::decode(
+        &mut encrypted_body,
+        None::<fn(&mut Bytes, Compression) -> Result<BytesMut, _>>,
+    )
+    .unwrap();
 
     // verify the message has been encrypted
     assert_ne!(
@@ -246,7 +244,11 @@ async fn producer__flow_with_mock_kafka__content_encryption_and_decryption(
         .unwrap();
 
     let mut plain_content = BytesMut::from(plain_content.as_ref());
-    let records = RecordBatchDecoder::decode(&mut plain_content).unwrap();
+    let records = RecordBatchDecoder::decode(
+        &mut plain_content,
+        None::<fn(&mut Bytes, Compression) -> Result<BytesMut, _>>,
+    )
+    .unwrap();
 
     assert_eq!(
         records.first().as_ref().unwrap().value.as_ref().unwrap(),
@@ -275,14 +277,11 @@ async fn simulate_kafka_producer_and_read_request(
 }
 
 async fn send_kafka_produce_request(stream: &mut TcpStream) {
-    let header = RequestHeader::builder()
-        .request_api_key(ApiKey::ProduceKey as i16)
-        .request_api_version(TEST_KAFKA_API_VERSION)
-        .correlation_id(1)
-        .client_id(Some(StrBytes::from_static_str("my-client-id")))
-        .unknown_tagged_fields(Default::default())
-        .build()
-        .unwrap();
+    let header = RequestHeader::default()
+        .with_request_api_key(ApiKey::ProduceKey as i16)
+        .with_request_api_version(TEST_KAFKA_API_VERSION)
+        .with_correlation_id(1)
+        .with_client_id(Some(StrBytes::from_static_str("my-client-id")));
 
     let mut encoded = BytesMut::new();
     RecordBatchEncoder::encode(
@@ -306,31 +305,16 @@ async fn send_kafka_produce_request(stream: &mut TcpStream) {
             version: 2,
             compression: Compression::None,
         },
+        None::<fn(&mut BytesMut, &mut BytesMut, Compression) -> Result<(), _>>,
     )
     .unwrap();
 
-    let mut topic_data = IndexMap::new();
-    topic_data.insert(
-        TopicName::from(StrBytes::from_static_str("my-topic-name")),
-        TopicProduceData::builder()
-            .partition_data(vec![PartitionProduceData::builder()
-                .index(1)
-                .records(Some(encoded.freeze()))
-                .unknown_tagged_fields(Default::default())
-                .build()
-                .unwrap()])
-            .unknown_tagged_fields(Default::default())
-            .build()
-            .unwrap(),
-    );
-    let request = ProduceRequest::builder()
-        .transactional_id(None)
-        .acks(0)
-        .timeout_ms(0)
-        .topic_data(topic_data)
-        .unknown_tagged_fields(Default::default())
-        .build()
-        .unwrap();
+    let topic_data = vec![TopicProduceData::default()
+        .with_name(TopicName::from(StrBytes::from_static_str("my-topic-name")))
+        .with_partition_data(vec![PartitionProduceData::default()
+            .with_index(1)
+            .with_records(Some(encoded.freeze()))])];
+    let request = ProduceRequest::default().with_topic_data(topic_data);
 
     send_kafka_request(stream, header, request, ApiKey::ProduceKey).await;
 }
@@ -385,10 +369,9 @@ async fn send_kafka_fetch_response<S: AsyncWriteExt + Unpin>(
     stream: S,
     producer_request: &ProduceRequest,
 ) {
-    let topic_name = TopicName::from(StrBytes::from_static_str("my-topic-name"));
     let producer_content = producer_request
         .topic_data
-        .get(&topic_name)
+        .first()
         .unwrap()
         .partition_data
         .first()
@@ -396,41 +379,15 @@ async fn send_kafka_fetch_response<S: AsyncWriteExt + Unpin>(
         .records
         .clone();
 
+    let topic_name = TopicName::from(StrBytes::from_static_str("my-topic-name"));
     send_kafka_response(
         stream,
-        ResponseHeader::builder()
-            .correlation_id(1)
-            .unknown_tagged_fields(Default::default())
-            .build()
-            .unwrap(),
-        FetchResponse::builder()
-            .throttle_time_ms(Default::default())
-            .error_code(Default::default())
-            .session_id(Default::default())
-            .responses(vec![FetchableTopicResponse::builder()
-                .topic(topic_name)
-                .topic_id(Default::default())
-                .partitions(vec![PartitionData::builder()
-                    .partition_index(1)
-                    .error_code(Default::default())
-                    .high_watermark(Default::default())
-                    .last_stable_offset(Default::default())
-                    .log_start_offset(Default::default())
-                    .diverging_epoch(Default::default())
-                    .current_leader(Default::default())
-                    .snapshot_id(Default::default())
-                    .aborted_transactions(Default::default())
-                    .preferred_read_replica(Default::default())
-                    .records(producer_content)
-                    .unknown_tagged_fields(Default::default())
-                    .build()
-                    .unwrap()])
-                .unknown_tagged_fields(Default::default())
-                .build()
-                .unwrap()])
-            .unknown_tagged_fields(Default::default())
-            .build()
-            .unwrap(),
+        ResponseHeader::default().with_correlation_id(1),
+        FetchResponse::default().with_responses(vec![FetchableTopicResponse::default()
+            .with_topic(topic_name)
+            .with_partitions(vec![PartitionData::default()
+                .with_partition_index(1)
+                .with_records(producer_content)])]),
         ApiKey::FetchKey,
     )
     .await;
@@ -439,44 +396,15 @@ async fn send_kafka_fetch_response<S: AsyncWriteExt + Unpin>(
 async fn send_kafka_fetch_request(stream: &mut TcpStream) {
     send_kafka_request(
         stream,
-        RequestHeader::builder()
-            .request_api_key(ApiKey::FetchKey as i16)
-            .request_api_version(TEST_KAFKA_API_VERSION)
-            .correlation_id(1)
-            .client_id(Some(StrBytes::from_static_str("my-client-id")))
-            .unknown_tagged_fields(Default::default())
-            .build()
-            .unwrap(),
-        FetchRequest::builder()
-            .cluster_id(None)
-            .replica_id(BrokerId::default())
-            .max_wait_ms(0)
-            .min_bytes(0)
-            .max_bytes(0)
-            .isolation_level(0)
-            .session_id(0)
-            .session_epoch(0)
-            .topics(vec![FetchTopic::builder()
-                .topic(TopicName::from(StrBytes::from_static_str("my-topic-name")))
-                .topic_id(Uuid::from_slice(b"my-topic-name___").unwrap())
-                .partitions(vec![FetchPartition::builder()
-                    .partition(1)
-                    .current_leader_epoch(0)
-                    .fetch_offset(0)
-                    .last_fetched_epoch(0)
-                    .log_start_offset(0)
-                    .partition_max_bytes(0)
-                    .unknown_tagged_fields(Default::default())
-                    .build()
-                    .unwrap()])
-                .unknown_tagged_fields(Default::default())
-                .build()
-                .unwrap()])
-            .forgotten_topics_data(Default::default())
-            .rack_id(Default::default())
-            .unknown_tagged_fields(Default::default())
-            .build()
-            .unwrap(),
+        RequestHeader::default()
+            .with_request_api_key(ApiKey::FetchKey as i16)
+            .with_request_api_version(TEST_KAFKA_API_VERSION)
+            .with_correlation_id(1)
+            .with_client_id(Some(StrBytes::from_static_str("my-client-id"))),
+        FetchRequest::default().with_topics(vec![FetchTopic::default()
+            .with_topic(TopicName::from(StrBytes::from_static_str("my-topic-name")))
+            .with_topic_id(Uuid::from_slice(b"my-topic-name___").unwrap())
+            .with_partitions(vec![FetchPartition::default().with_partition(1)])]),
         ApiKey::FetchKey,
     )
     .await;

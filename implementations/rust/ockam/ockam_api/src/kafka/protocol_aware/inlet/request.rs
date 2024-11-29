@@ -6,9 +6,9 @@ use bytes::{Bytes, BytesMut};
 use kafka_protocol::messages::fetch_request::FetchRequest;
 use kafka_protocol::messages::produce_request::{PartitionProduceData, ProduceRequest};
 use kafka_protocol::messages::request_header::RequestHeader;
-use kafka_protocol::messages::{ApiKey, TopicName};
+use kafka_protocol::messages::{ApiKey, ApiVersionsRequest, TopicName};
 use kafka_protocol::protocol::buf::ByteBuf;
-use kafka_protocol::protocol::Decodable;
+use kafka_protocol::protocol::{Decodable, Message};
 use kafka_protocol::records::{
     Compression, RecordBatchDecoder, RecordBatchEncoder, RecordEncodeOptions,
 };
@@ -67,13 +67,7 @@ impl KafkaMessageRequestInterceptor for InletInterceptorImpl {
         match api_key {
             ApiKey::ApiVersionsKey => {
                 debug!("api versions request: {:?}", header);
-                self.request_map.lock().unwrap().insert(
-                    header.correlation_id,
-                    RequestInfo {
-                        request_api_key: api_key,
-                        request_api_version: header.request_api_version,
-                    },
-                );
+                return self.handle_api_version_request(&mut buffer, &header).await;
             }
 
             ApiKey::ProduceKey => {
@@ -116,6 +110,40 @@ impl KafkaMessageRequestInterceptor for InletInterceptorImpl {
 }
 
 impl InletInterceptorImpl {
+    async fn handle_api_version_request(
+        &self,
+        buffer: &mut Bytes,
+        header: &RequestHeader,
+    ) -> Result<BytesMut, InterceptError> {
+        let request: ApiVersionsRequest = decode_body(buffer, header.request_api_version)?;
+        const MAX_SUPPORTED_VERSION: i16 = ApiVersionsRequest::VERSIONS.max;
+
+        let request_api_version = if header.request_api_version > MAX_SUPPORTED_VERSION {
+            warn!("api versions request with version > {MAX_SUPPORTED_VERSION} not supported, downgrading request to {MAX_SUPPORTED_VERSION}");
+            MAX_SUPPORTED_VERSION
+        } else {
+            header.request_api_version
+        };
+
+        self.request_map.lock().unwrap().insert(
+            header.correlation_id,
+            RequestInfo {
+                request_api_key: ApiKey::ApiVersionsKey,
+                request_api_version,
+            },
+        );
+
+        let mut header = header.clone();
+        header.request_api_version = request_api_version;
+
+        encode_request(
+            &header,
+            &request,
+            request_api_version,
+            ApiKey::ApiVersionsKey,
+        )
+    }
+
     async fn handle_fetch_request(
         &self,
         context: &mut Context,
@@ -178,12 +206,15 @@ impl InletInterceptorImpl {
         // the content can be set in multiple topics and partitions in a single message
         // for each we wrap the content and add the secure channel identifier of
         // the encrypted content
-        for (topic_name, topic) in request.topic_data.iter_mut() {
+        for topic in request.topic_data.iter_mut() {
             for data in &mut topic.partition_data {
                 if let Some(content) = data.records.take() {
                     let mut content = BytesMut::from(content.as_ref());
-                    let mut records = RecordBatchDecoder::decode(&mut content)
-                        .map_err(|_| InterceptError::InvalidData)?;
+                    let mut records = RecordBatchDecoder::decode(
+                        &mut content,
+                        None::<fn(&mut Bytes, Compression) -> Result<BytesMut, _>>,
+                    )
+                    .map_err(|_| InterceptError::InvalidData)?;
 
                     for record in records.iter_mut() {
                         if let Some(record_value) = record.value.take() {
@@ -192,13 +223,13 @@ impl InletInterceptorImpl {
                                 // valid JSON map
                                 self.encrypt_specific_fields(
                                     context,
-                                    topic_name,
+                                    &topic.name,
                                     data,
                                     &record_value,
                                 )
                                 .await?
                             } else {
-                                self.encrypt_whole_record(context, topic_name, data, record_value)
+                                self.encrypt_whole_record(context, &topic.name, data, record_value)
                                     .await?
                             };
                             record.value = Some(buffer.into());
@@ -213,6 +244,7 @@ impl InletInterceptorImpl {
                             version: 2,
                             compression: Compression::None,
                         },
+                        None::<fn(&mut BytesMut, &mut BytesMut, Compression) -> Result<(), _>>,
                     )
                     .map_err(|_| InterceptError::InvalidData)?;
 

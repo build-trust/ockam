@@ -6,11 +6,11 @@ use crate::kafka::protocol_aware::{
 use crate::kafka::KafkaInletController;
 use bytes::{Bytes, BytesMut};
 use kafka_protocol::messages::{
-    ApiKey, ApiVersionsResponse, FetchResponse, FindCoordinatorResponse, MetadataResponse,
-    ResponseHeader,
+    ApiKey, ApiVersionsResponse, CreateTopicsResponse, FetchResponse, FindCoordinatorResponse,
+    ListOffsetsResponse, MetadataResponse, ProduceResponse, ResponseHeader,
 };
 use kafka_protocol::protocol::buf::ByteBuf;
-use kafka_protocol::protocol::{Decodable, StrBytes};
+use kafka_protocol::protocol::{Decodable, Message, StrBytes};
 use kafka_protocol::records::{
     Compression, RecordBatchDecoder, RecordBatchEncoder, RecordEncodeOptions,
 };
@@ -31,12 +31,7 @@ impl KafkaMessageResponseInterceptor for InletInterceptorImpl {
         // we can/need to decode only mapped requests
         let correlation_id = buffer.peek_bytes(0..4).try_get_i32()?;
 
-        let result = self
-            .request_map
-            .lock()
-            .unwrap()
-            .get(&correlation_id)
-            .cloned();
+        let result = self.request_map.lock().unwrap().remove(&correlation_id);
 
         if let Some(request_info) = result {
             let result = ResponseHeader::decode(
@@ -64,10 +59,9 @@ impl KafkaMessageResponseInterceptor for InletInterceptorImpl {
 
             match request_info.request_api_key {
                 ApiKey::ApiVersionsKey => {
-                    let response: ApiVersionsResponse =
-                        decode_body(&mut buffer, request_info.request_api_version)?;
-                    debug!("api versions response header: {:?}", header);
-                    debug!("api versions response: {:#?}", response);
+                    return self
+                        .handle_api_versions_response(&mut buffer, request_info, &header)
+                        .await;
                 }
 
                 ApiKey::FetchKey => {
@@ -116,6 +110,75 @@ impl KafkaMessageResponseInterceptor for InletInterceptorImpl {
 }
 
 impl InletInterceptorImpl {
+    async fn handle_api_versions_response(
+        &self,
+        buffer: &mut Bytes,
+        request_info: RequestInfo,
+        header: &ResponseHeader,
+    ) -> Result<BytesMut, InterceptError> {
+        let mut response: ApiVersionsResponse =
+            decode_body(buffer, request_info.request_api_version)?;
+        debug!("api versions response header: {:?}", header);
+        debug!("api versions response: {:#?}", response);
+
+        // We must ensure that every message is fully encrypted and never leaves the
+        // client unencrypted.
+        // To do that, we __can't allow unknown/unparsable request/response__ since
+        // it might be a new API to produce or consume messages.
+        // To avoid breakage every time a client or server is updated, we reduce the
+        // version of the protocol to the supported version for each api.
+
+        for api_version in response.api_keys.iter_mut() {
+            let result = ApiKey::try_from(api_version.api_key);
+            let api_key = match result {
+                Ok(api_key) => api_key,
+                Err(_) => {
+                    warn!("unknown api key: {}", api_version.api_key);
+                    return Err(InterceptError::InvalidData);
+                }
+            };
+
+            // Request and responses share the same api version range.
+            let ockam_supported_range = match api_key {
+                ApiKey::ProduceKey => ProduceResponse::VERSIONS,
+                ApiKey::FetchKey => FetchResponse::VERSIONS,
+                ApiKey::ListOffsetsKey => ListOffsetsResponse::VERSIONS,
+                ApiKey::MetadataKey => MetadataResponse::VERSIONS,
+                ApiKey::ApiVersionsKey => ApiVersionsResponse::VERSIONS,
+                ApiKey::CreateTopicsKey => CreateTopicsResponse::VERSIONS,
+                ApiKey::FindCoordinatorKey => FindCoordinatorResponse::VERSIONS,
+                _ => {
+                    // we only need to check the APIs that we actually use
+                    continue;
+                }
+            };
+
+            if ockam_supported_range.min <= api_version.min_version
+                && ockam_supported_range.max >= api_version.max_version
+            {
+                continue;
+            }
+
+            info!(
+                "reducing api version range for api {api_key:?} from ({min_server},{max_server}) to ({min_ockam},{max_ockam})",
+                min_server = api_version.min_version,
+                max_server = api_version.max_version,
+                min_ockam = ockam_supported_range.min,
+                max_ockam = ockam_supported_range.max,
+            );
+
+            api_version.min_version = ockam_supported_range.min;
+            api_version.max_version = ockam_supported_range.max;
+        }
+
+        encode_response(
+            header,
+            &response,
+            request_info.request_api_version,
+            ApiKey::ApiVersionsKey,
+        )
+    }
+
     // for metadata we want to replace broker address and port
     // to dedicated tcp inlet ports
     async fn handle_metadata_response(
@@ -131,9 +194,13 @@ impl InletInterceptorImpl {
         // we need to keep a map of topic uuid to topic name since fetch
         // operations only use uuid
         if request_info.request_api_version >= 10 {
-            for (topic_name, topic) in &response.topics {
+            for topic in &response.topics {
                 let topic_id = topic.topic_id.to_string();
-                let topic_name = topic_name.to_string();
+                let topic_name = if let Some(name) = &topic.name {
+                    name.to_string()
+                } else {
+                    continue;
+                };
 
                 trace!("metadata adding to map: {topic_id} => {topic_name}");
                 self.uuid_to_name
@@ -145,19 +212,19 @@ impl InletInterceptorImpl {
 
         trace!("metadata response before: {:?}", &response);
 
-        for (broker_id, info) in response.brokers.iter_mut() {
+        for broker in response.brokers.iter_mut() {
             let inlet_address = inlet_map
-                .assert_inlet_for_broker(context, broker_id.0)
+                .assert_inlet_for_broker(context, broker.node_id.0)
                 .await?;
 
             trace!(
                 "inlet_address: {} for broker {}",
                 &inlet_address,
-                broker_id.0
+                broker.node_id.0
             );
 
-            info.host = StrBytes::from_string(inlet_address.hostname());
-            info.port = inlet_address.port() as i32;
+            broker.host = StrBytes::from_string(inlet_address.hostname());
+            broker.port = inlet_address.port() as i32;
         }
         trace!("metadata response after: {:?}", &response);
 
@@ -225,8 +292,11 @@ impl InletInterceptorImpl {
             for partition in response.partitions.iter_mut() {
                 if let Some(content) = partition.records.take() {
                     let mut content = BytesMut::from(content.as_ref());
-                    let mut records = RecordBatchDecoder::decode(&mut content)
-                        .map_err(|_| InterceptError::InvalidData)?;
+                    let mut records = RecordBatchDecoder::decode(
+                        &mut content,
+                        None::<fn(&mut Bytes, Compression) -> Result<BytesMut, _>>,
+                    )
+                    .map_err(|_| InterceptError::InvalidData)?;
 
                     for record in records.iter_mut() {
                         if let Some(record_value) = record.value.take() {
@@ -247,6 +317,7 @@ impl InletInterceptorImpl {
                             version: 2,
                             compression: Compression::None,
                         },
+                        None::<fn(&mut BytesMut, &mut BytesMut, Compression) -> Result<(), _>>,
                     )
                     .map_err(|_| InterceptError::InvalidData)?;
                     partition.records = Some(encoded.freeze());

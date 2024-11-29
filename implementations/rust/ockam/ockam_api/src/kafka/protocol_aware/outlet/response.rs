@@ -58,11 +58,11 @@ impl KafkaMessageResponseInterceptor for OutletInterceptorImpl {
                 let response: MetadataResponse =
                     decode_body(&mut buffer, request_info.request_api_version)?;
 
-                for (broker_id, metadata) in response.brokers {
-                    let address = format!("{}:{}", metadata.host.as_str(), metadata.port);
+                for broker in response.brokers {
+                    let address = format!("{}:{}", broker.host.as_str(), broker.port);
                     let outlet_address = self
                         .outlet_controller
-                        .assert_outlet_for_broker(context, broker_id.0, address)
+                        .assert_outlet_for_broker(context, broker.node_id.0, address)
                         .await?;
 
                     // allow the interceptor to reach the outlet

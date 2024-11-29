@@ -11,8 +11,9 @@ where
 {
     let response = match T::decode(buffer, api_version) {
         Ok(response) => response,
-        Err(_) => {
-            warn!("cannot decode kafka message");
+        Err(error) => {
+            warn!("cannot decode kafka message, closing connection");
+            debug!("error: {:?}", error);
             return Err(InterceptError::InvalidData);
         }
     };
