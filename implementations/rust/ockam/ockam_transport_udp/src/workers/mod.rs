@@ -7,3 +7,5 @@ pub(crate) use addresses::*;
 pub(crate) use receiver::*;
 pub(crate) use sender::*;
 pub(crate) use socket_split::*;
+
+mod pending_messages;

@@ -1,10 +1,9 @@
 use super::{Addresses, UdpSocketWrite};
-use crate::messages::{
-    RoutingNumber, UdpRoutingMessage, UdpTransportMessage, CURRENT_VERSION, MAX_PAYLOAD_SIZE,
-};
-use crate::{MAX_MESSAGE_SIZE, UDP};
+use crate::messages::{RoutingNumber, UdpRoutingMessage};
+use crate::workers::pending_messages::TransportMessagesIterator;
+use crate::UDP;
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::{async_trait, Any, Error, LocalMessage, Result, Routed, Worker};
+use ockam_core::{async_trait, Any, Error, Result, Routed, Worker};
 use ockam_node::compat::asynchronous::resolve_peer;
 use ockam_node::Context;
 use ockam_transport_core::TransportError;
@@ -36,7 +35,7 @@ impl UdpSenderWorker {
             addresses,
             socket_write,
             peer,
-            current_routing_number: RoutingNumber::new(),
+            current_routing_number: RoutingNumber::default(),
         }
     }
 }
@@ -89,7 +88,10 @@ impl Worker for UdpSenderWorker {
         }
 
         // Serialize a [`LocalMessage`] into a vector of smaller messages suitable for 1 UDP datagram
-        let messages = TransportMessagesIterator::new(self.current_routing_number, msg)?;
+        let messages = TransportMessagesIterator::new(
+            self.current_routing_number,
+            &UdpRoutingMessage::from(msg),
+        )?;
 
         self.current_routing_number.increment();
 
@@ -107,69 +109,5 @@ impl Worker for UdpSenderWorker {
         }
 
         Ok(())
-    }
-}
-
-struct TransportMessagesIterator {
-    current_routing_number: RoutingNumber,
-    offset: u32,
-    data: Vec<u8>,
-}
-
-impl TransportMessagesIterator {
-    fn new(current_routing_number: RoutingNumber, local_message: LocalMessage) -> Result<Self> {
-        let routing_message = UdpRoutingMessage::from(local_message);
-
-        let routing_message = ockam_core::cbor_encode_preallocate(routing_message)?;
-
-        if routing_message.len() > MAX_MESSAGE_SIZE {
-            return Err(TransportError::MessageLengthExceeded)?;
-        }
-
-        Ok(Self {
-            current_routing_number,
-            offset: 0,
-            data: routing_message,
-        })
-    }
-}
-
-impl Iterator for TransportMessagesIterator {
-    type Item = Result<Vec<u8>>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let offset = self.offset as usize;
-        if offset == self.data.len() {
-            return None;
-        }
-
-        let mut is_last = true;
-        let mut length = self.data.len() - offset;
-        if length > MAX_PAYLOAD_SIZE {
-            is_last = false;
-            length = MAX_PAYLOAD_SIZE;
-        }
-
-        let part = UdpTransportMessage::new(
-            CURRENT_VERSION,
-            self.current_routing_number,
-            self.offset,
-            is_last,
-            &self.data[offset..offset + length],
-        );
-
-        trace!(
-            "Sending Routing Message {}. Offset {}",
-            self.current_routing_number,
-            part.offset
-        );
-
-        match ockam_core::cbor_encode_preallocate(part) {
-            Ok(res) => {
-                self.offset += length as u32;
-                Some(Ok(res))
-            }
-            Err(err) => Some(Err(err)),
-        }
     }
 }

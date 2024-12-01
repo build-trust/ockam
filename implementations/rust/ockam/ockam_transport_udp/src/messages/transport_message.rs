@@ -29,8 +29,8 @@ pub struct Version(#[n(0)] pub u8);
 pub struct UdpTransportMessage<'a> {
     #[n(0)] pub version: Version,
     #[n(1)] pub routing_number: RoutingNumber,
-    #[n(2)] pub offset: u32,
-    #[n(3)] pub is_last: bool,
+    #[n(2)] pub offset: u16,
+    #[n(3)] pub total: u16,
     #[b(4)] pub payload: CowBytes<'a>,
 }
 
@@ -39,15 +39,15 @@ impl<'a> UdpTransportMessage<'a> {
     pub fn new(
         version: Version,
         routing_number: RoutingNumber,
-        offset: u32,
-        is_last: bool,
+        offset: u16,
+        total: u16,
         payload: impl Into<CowBytes<'a>>,
     ) -> Self {
         Self {
             version,
             routing_number,
             offset,
-            is_last,
+            total,
             payload: payload.into(),
         }
     }
@@ -64,12 +64,12 @@ mod tests {
         let msg = UdpTransportMessage::new(
             Version(u8::MAX),
             RoutingNumber(u16::MAX),
-            u32::MAX,
-            true,
+            u16::MAX,
+            u16::MAX,
             vec![0u8; MAX_PAYLOAD_SIZE],
         );
 
-        let len = minicbor::to_vec(msg).unwrap().len();
+        let len = ockam_core::cbor_encode_preallocate(msg).unwrap().len();
 
         assert!(len <= MAX_ON_THE_WIRE_SIZE);
     }
@@ -79,12 +79,12 @@ mod tests {
         let msg = UdpTransportMessage::new(
             Version(u8::MAX),
             RoutingNumber(u16::MAX),
-            u32::MAX,
-            true,
+            u16::MAX,
+            u16::MAX,
             vec![0u8; MAX_PAYLOAD_SIZE],
         );
 
-        let len = minicbor::to_vec(msg).unwrap().len();
+        let len = ockam_core::cbor_encode_preallocate(msg).unwrap().len();
 
         assert_eq!(len, MAX_ON_THE_WIRE_SIZE);
     }

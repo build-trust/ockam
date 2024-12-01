@@ -17,12 +17,14 @@ extern crate core;
 #[cfg(feature = "alloc")]
 extern crate alloc;
 
+mod error;
 mod messages;
 mod options;
 mod puncture;
 mod transport;
 mod workers;
 
+pub use error::*;
 pub use options::UdpBindOptions;
 pub use puncture::*;
 pub use transport::{UdpBind, UdpBindArguments, UdpTransport, UdpTransportExtension};
