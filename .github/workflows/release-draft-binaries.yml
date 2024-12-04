@@ -28,6 +28,7 @@ jobs:
     outputs:
       upload_url: ${{ steps.release_upload_url.outputs.upload_url }}
       version: ${{ steps.release_version.outputs.version }}
+      tag_name: ${{ steps.release_version.outputs.tag_name }}
     env:
       BUCKET_NAME: ${{ vars.AWS_BUCKET_NAME }}
       AWS_REGION: ${{ vars.AWS_REGION }}
@@ -153,6 +154,12 @@ jobs:
           echo "$text" > release_note.md
           cat release_note.md
 
+          # Check if a recent tag has been created and delete upstream
+          if git tag | grep "ockam_v$ockam_version"; then
+            git tag -d "ockam_v$ockam_version"
+            git push --delete origin "ockam_v$ockam_version"
+          fi
+
           # Add tag
           git tag -s ockam_v$ockam_version -m "Ockam Release"
           git push --tags
@@ -276,25 +283,10 @@ jobs:
         cosign sign-blob --yes --key env://PRIVATE_KEY "${{ env.ASSET_OCKAM_CLI }}" > "${{ env.ASSET_OCKAM_CLI }}.sig"
 
     - name: Upload CLI release archive to GitHub
-      uses: actions/upload-release-asset@ef2adfe8cb8ebfa540930c452c576b3819990faa
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ needs.create_release.outputs.upload_url }}
-        asset_path: ${{ env.ASSET_OCKAM_CLI }}
-        asset_name: ${{ env.ASSET_OCKAM_CLI }}
-        asset_content_type: application/octet-stream
-
-    - name: Upload CLI Signature to GitHub
-      uses: actions/upload-release-asset@ef2adfe8cb8ebfa540930c452c576b3819990faa
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ needs.create_release.outputs.upload_url }}
-        asset_path: ${{ env.ASSET_OCKAM_CLI }}.sig
-        asset_name: ${{ env.ASSET_OCKAM_CLI }}.sig
-        asset_content_type: application/octet-stream
-
+      run: |
+        gh release upload ${{ needs.create_release.outputs.tag_name }} ${{ env.ASSET_OCKAM_CLI }} ${{ env.ASSET_OCKAM_CLI }}.sig --clobber
 
     - name: Upload CLI release archive to AWS
       uses: ./.github/actions/aws_upload
@@ -305,7 +297,6 @@ jobs:
         bucket_name: ${{ env.BUCKET_NAME }}
         file_name: ${{ env.ASSET_OCKAM_CLI }}
         release_version: "v${{ needs.create_release.outputs.version }}"
-
 
     - name: Upload CLI Signature to AWS
       uses: ./.github/actions/aws_upload
@@ -411,24 +402,10 @@ jobs:
           cosign sign-blob --yes --key env://PRIVATE_KEY ${{ env.FILE_NAME }} > "${{ env.FILE_NAME }}.sig"
 
       - name: Upload NIF to GitHub
-        uses: actions/upload-release-asset@ef2adfe8cb8ebfa540930c452c576b3819990faa
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.create_release.outputs.upload_url }}
-          asset_path: "${{ env.FILE_NAME }}"
-          asset_name: "${{ env.FILE_NAME }}"
-          asset_content_type: application/octet-stream
-
-      - name: Upload NIF Signature to GitHub
-        uses: actions/upload-release-asset@ef2adfe8cb8ebfa540930c452c576b3819990faa
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.create_release.outputs.upload_url }}
-          asset_path: ${{ env.FILE_NAME }}.sig
-          asset_name: ${{ env.FILE_NAME }}.sig
-          asset_content_type: application/octet-stream
+        run: |
+          gh release upload ${{ needs.create_release.outputs.tag_name }} ${{ env.FILE_NAME }} ${{ env.FILE_NAME }}.sig --clobber
 
       - name: Upload NIF to AWS
         uses: ./.github/actions/aws_upload
@@ -497,24 +474,10 @@ jobs:
         run: cosign sign-blob --yes --key env://PRIVATE_KEY sha256sums.txt > sha256sums.txt.sig
 
       - name: Upload SHASum File to GitHub
-        uses: actions/upload-release-asset@ef2adfe8cb8ebfa540930c452c576b3819990faa
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.create_release.outputs.upload_url }}
-          asset_path: sha256sums.txt
-          asset_name: sha256sums.txt
-          asset_content_type: application/octet-stream
-
-      - name: Upload SHASum Signature File to GitHub
-        uses: actions/upload-release-asset@ef2adfe8cb8ebfa540930c452c576b3819990faa
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.create_release.outputs.upload_url }}
-          asset_path: sha256sums.txt.sig
-          asset_name: sha256sums.txt.sig
-          asset_content_type: application/octet-stream
+        run: |
+          gh release upload ${{ needs.create_release.outputs.tag_name }} sha256sums.txt sha256sums.txt.sig --clobber
 
       - name: Upload SHASum File to AWS
         uses: ./aws/.github/actions/aws_upload
