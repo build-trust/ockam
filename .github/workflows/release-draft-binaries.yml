@@ -477,7 +477,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release upload ${{ needs.create_release.outputs.tag_name }} sha256sums.txt sha256sums.txt.sig --clobber
+          gh release upload ${{ needs.create_release.outputs.tag_name }} sha256sums.txt sha256sums.txt.sig --clobber -R build-trust/ockam
 
       - name: Upload SHASum File to AWS
         uses: ./aws/.github/actions/aws_upload
