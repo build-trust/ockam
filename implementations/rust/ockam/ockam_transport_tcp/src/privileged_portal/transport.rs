@@ -61,9 +61,3 @@ impl TcpTransport {
         }
     }
 }
-
-impl Drop for TcpTransport {
-    fn drop(&mut self) {
-        self.detach_ebpfs()
-    }
-}
