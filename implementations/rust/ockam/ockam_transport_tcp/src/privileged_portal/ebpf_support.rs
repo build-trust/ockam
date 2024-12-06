@@ -4,7 +4,7 @@ use crate::privileged_portal::{
     Iface, InletRegistry, OutletRegistry, Port, Proto, RawSocketProcessor, TcpPacketWriter,
 };
 use aya::maps::{MapData, MapError};
-use aya::programs::tc::SchedClassifierLink;
+use aya::programs::tc::{NlOptions, SchedClassifierLink, TcAttachOptions};
 use aya::programs::{tc, Link, ProgramError, SchedClassifier, TcAttachType};
 use aya::{Ebpf, EbpfError};
 use aya_log::EbpfLogger;
@@ -277,11 +277,17 @@ impl TcpTransportEbpfSupport {
             .unwrap()
             .try_into()
             .map_err(map_program_error)?;
+
         if !skip_load {
             program_ingress.load().map_err(map_program_error)?;
         }
+
         let link_id = program_ingress
-            .attach(&iface, TcAttachType::Ingress)
+            .attach_with_options(
+                &iface,
+                TcAttachType::Ingress,
+                TcAttachOptions::Netlink(NlOptions::default()),
+            )
             .map_err(map_program_error)?;
         let link_id = program_ingress
             .take_link(link_id)
@@ -306,11 +312,17 @@ impl TcpTransportEbpfSupport {
             .unwrap()
             .try_into()
             .map_err(map_program_error)?;
+
         if !skip_load {
             program_egress.load().map_err(map_program_error)?;
         }
+
         let link_id = program_egress
-            .attach(&iface, TcAttachType::Egress)
+            .attach_with_options(
+                &iface,
+                TcAttachType::Egress,
+                TcAttachOptions::Netlink(NlOptions::default()),
+            )
             .map_err(map_program_error)?;
         let link_id = program_egress
             .take_link(link_id)
