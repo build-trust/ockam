@@ -77,5 +77,6 @@ teardown() {
 
   # Update the policy for the outlet and try again. It will fail because the local policy is not satisfied
   run_success $OCKAM policy create --resource-type tcp-outlet --allow 'component.NOT_web'
+  sleep 2
   run_failure curl -sfI -m 3 "127.0.0.1:$inlet_port"
 }
