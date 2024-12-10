@@ -1,17 +1,17 @@
 use core::str::FromStr;
-
 use sqlx::encode::IsNull;
 use sqlx::error::BoxDynError;
 use sqlx::postgres::any::AnyArgumentBuffer;
 use sqlx::*;
+use std::sync::Arc;
 use tracing::debug;
-
-use ockam_core::async_trait;
-use ockam_core::Result;
-use ockam_node::database::{FromSqlxError, Nullable, SqlxDatabase, ToVoid};
 
 use crate::models::Identifier;
 use crate::{AttributesEntry, IdentityAttributesRepository, TimestampInSeconds};
+use ockam_core::async_trait;
+use ockam_core::Result;
+use ockam_node::database::AutoRetry;
+use ockam_node::database::{FromSqlxError, Nullable, SqlxDatabase, ToVoid};
 
 /// Implementation of [`IdentityAttributesRepository`] trait based on an underlying database
 /// using sqlx as its API, and Sqlite as its driver
@@ -28,6 +28,18 @@ impl IdentityAttributesSqlxDatabase {
         Self {
             database,
             node_name: node_name.to_string(),
+        }
+    }
+
+    /// Create a repository
+    pub fn make_repository(
+        database: SqlxDatabase,
+        node_name: &str,
+    ) -> Arc<dyn IdentityAttributesRepository> {
+        if database.needs_retry() {
+            Arc::new(AutoRetry::new(Self::new(database, node_name)))
+        } else {
+            Arc::new(Self::new(database, node_name))
         }
     }
 

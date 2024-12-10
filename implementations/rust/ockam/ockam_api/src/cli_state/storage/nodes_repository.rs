@@ -1,9 +1,10 @@
+use crate::cli_state::NodeInfo;
+use crate::config::lookup::InternetAddress;
 use ockam::identity::Identifier;
 use ockam_core::async_trait;
 use ockam_core::Result;
-
-use crate::cli_state::NodeInfo;
-use crate::config::lookup::InternetAddress;
+use ockam_node::database::AutoRetry;
+use ockam_node::retry;
 
 /// This trait supports the storage of node data:
 ///
@@ -76,4 +77,86 @@ pub trait NodesRepository: Send + Sync + 'static {
 
     /// Return the name of the project associated to a node
     async fn get_node_project_name(&self, node_name: &str) -> Result<Option<String>>;
+}
+
+#[async_trait]
+impl<T: NodesRepository> NodesRepository for AutoRetry<T> {
+    async fn store_node(&self, node_info: &NodeInfo) -> Result<()> {
+        retry!(self.wrapped.store_node(node_info))
+    }
+
+    async fn get_nodes(&self) -> Result<Vec<NodeInfo>> {
+        retry!(self.wrapped.get_nodes())
+    }
+
+    async fn get_node(&self, node_name: &str) -> Result<Option<NodeInfo>> {
+        retry!(self.wrapped.get_node(node_name))
+    }
+
+    async fn get_nodes_by_identifier(&self, identifier: &Identifier) -> Result<Vec<NodeInfo>> {
+        retry!(self.wrapped.get_nodes_by_identifier(identifier))
+    }
+
+    async fn get_default_node(&self) -> Result<Option<NodeInfo>> {
+        retry!(self.wrapped.get_default_node())
+    }
+
+    async fn set_default_node(&self, node_name: &str) -> Result<()> {
+        retry!(self.wrapped.set_default_node(node_name))
+    }
+
+    async fn is_default_node(&self, node_name: &str) -> Result<bool> {
+        retry!(self.wrapped.is_default_node(node_name))
+    }
+
+    async fn delete_node(&self, node_name: &str) -> Result<()> {
+        retry!(self.wrapped.delete_node(node_name))
+    }
+
+    async fn set_tcp_listener_address(
+        &self,
+        node_name: &str,
+        address: &InternetAddress,
+    ) -> Result<()> {
+        retry!(self.wrapped.set_tcp_listener_address(node_name, address))
+    }
+
+    async fn set_status_endpoint_address(
+        &self,
+        node_name: &str,
+        address: &InternetAddress,
+    ) -> Result<()> {
+        retry!(self.wrapped.set_status_endpoint_address(node_name, address))
+    }
+
+    async fn set_as_authority_node(&self, node_name: &str) -> Result<()> {
+        retry!(self.wrapped.set_as_authority_node(node_name))
+    }
+
+    async fn get_tcp_listener_address(&self, node_name: &str) -> Result<Option<InternetAddress>> {
+        retry!(self.wrapped.get_tcp_listener_address(node_name))
+    }
+
+    async fn get_status_endpoint_address(
+        &self,
+        node_name: &str,
+    ) -> Result<Option<InternetAddress>> {
+        retry!(self.wrapped.get_status_endpoint_address(node_name))
+    }
+
+    async fn set_node_pid(&self, node_name: &str, pid: u32) -> Result<()> {
+        retry!(self.wrapped.set_node_pid(node_name, pid))
+    }
+
+    async fn set_no_node_pid(&self, node_name: &str) -> Result<()> {
+        retry!(self.wrapped.set_no_node_pid(node_name))
+    }
+
+    async fn set_node_project_name(&self, node_name: &str, project_name: &str) -> Result<()> {
+        retry!(self.wrapped.set_node_project_name(node_name, project_name))
+    }
+
+    async fn get_node_project_name(&self, node_name: &str) -> Result<Option<String>> {
+        retry!(self.wrapped.get_node_project_name(node_name))
+    }
 }

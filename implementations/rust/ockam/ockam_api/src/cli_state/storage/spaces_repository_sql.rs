@@ -3,10 +3,12 @@ use crate::cloud::space::Space;
 use crate::cloud::subscription::{Subscription, SubscriptionName};
 use ockam_core::async_trait;
 use ockam_core::Result;
+use ockam_node::database::AutoRetry;
 use ockam_node::database::{Boolean, FromSqlxError, Nullable, SqlxDatabase, ToVoid};
 use sqlx::any::AnyRow;
 use sqlx::*;
 use std::str::FromStr;
+use std::sync::Arc;
 use time::OffsetDateTime;
 
 #[derive(Clone)]
@@ -19,6 +21,15 @@ impl SpacesSqlxDatabase {
     pub fn new(database: SqlxDatabase) -> Self {
         debug!("create a repository for spaces");
         Self { database }
+    }
+
+    /// Create a repository
+    pub fn make_repository(database: SqlxDatabase) -> Arc<dyn SpacesRepository> {
+        if database.needs_retry() {
+            Arc::new(AutoRetry::new(Self::new(database)))
+        } else {
+            Arc::new(Self::new(database))
+        }
     }
 
     /// Create a new in-memory database

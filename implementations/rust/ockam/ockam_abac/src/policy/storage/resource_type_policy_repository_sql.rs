@@ -3,15 +3,16 @@ use sqlx::encode::IsNull;
 use sqlx::error::BoxDynError;
 use sqlx::postgres::any::AnyArgumentBuffer;
 use sqlx::*;
+use std::sync::Arc;
 use tracing::debug;
-
-use ockam_core::async_trait;
-use ockam_core::compat::vec::Vec;
-use ockam_core::Result;
-use ockam_node::database::{FromSqlxError, SqlxDatabase, ToVoid};
 
 use crate::policy::ResourceTypePolicy;
 use crate::{Action, Expr, ResourceType, ResourceTypePoliciesRepository};
+use ockam_core::async_trait;
+use ockam_core::compat::vec::Vec;
+use ockam_core::Result;
+use ockam_node::database::AutoRetry;
+use ockam_node::database::{FromSqlxError, SqlxDatabase, ToVoid};
 
 #[derive(Clone)]
 pub struct ResourceTypePolicySqlxDatabase {
@@ -26,6 +27,18 @@ impl ResourceTypePolicySqlxDatabase {
         Self {
             database,
             node_name: node_name.to_string(),
+        }
+    }
+
+    /// Create a repository
+    pub fn make_repository(
+        database: SqlxDatabase,
+        node_name: &str,
+    ) -> Arc<dyn ResourceTypePoliciesRepository> {
+        if database.needs_retry() {
+            Arc::new(AutoRetry::new(Self::new(database, node_name)))
+        } else {
+            Arc::new(Self::new(database, node_name))
         }
     }
 

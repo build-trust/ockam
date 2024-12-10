@@ -1,13 +1,14 @@
 use core::str::FromStr;
 use sqlx::*;
+use std::sync::Arc;
 use tracing::debug;
 
+use crate::{Action, Expr, ResourceName, ResourcePoliciesRepository, ResourcePolicy};
 use ockam_core::async_trait;
 use ockam_core::compat::vec::Vec;
 use ockam_core::Result;
+use ockam_node::database::AutoRetry;
 use ockam_node::database::{FromSqlxError, SqlxDatabase, ToVoid};
-
-use crate::{Action, Expr, ResourceName, ResourcePoliciesRepository, ResourcePolicy};
 
 #[derive(Clone)]
 pub struct ResourcePolicySqlxDatabase {
@@ -22,6 +23,18 @@ impl ResourcePolicySqlxDatabase {
         Self {
             database,
             node_name: node_name.to_string(),
+        }
+    }
+
+    /// Create a repository
+    pub fn make_repository(
+        database: SqlxDatabase,
+        node_name: &str,
+    ) -> Arc<dyn ResourcePoliciesRepository> {
+        if database.needs_retry() {
+            Arc::new(AutoRetry::new(Self::new(database, node_name)))
+        } else {
+            Arc::new(Self::new(database, node_name))
         }
     }
 

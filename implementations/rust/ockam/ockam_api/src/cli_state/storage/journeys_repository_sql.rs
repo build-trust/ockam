@@ -1,11 +1,13 @@
 use chrono::{DateTime, Utc};
 use sqlx::*;
+use std::sync::Arc;
 
 use crate::cli_state::journeys::{Journey, ProjectJourney};
 use crate::cli_state::JourneysRepository;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::Result;
 use ockam_core::{async_trait, OpenTelemetryContext};
+use ockam_node::database::AutoRetry;
 use ockam_node::database::{FromSqlxError, Nullable, SqlxDatabase, ToVoid};
 
 #[derive(Clone)]
@@ -18,6 +20,15 @@ impl JourneysSqlxDatabase {
     pub fn new(database: SqlxDatabase) -> Self {
         debug!("create a repository for user journeys");
         Self { database }
+    }
+
+    /// Create a repository
+    pub fn make_repository(database: SqlxDatabase) -> Arc<dyn JourneysRepository> {
+        if database.needs_retry() {
+            Arc::new(AutoRetry::new(Self::new(database)))
+        } else {
+            Arc::new(Self::new(database))
+        }
     }
 
     /// Create a new in-memory database

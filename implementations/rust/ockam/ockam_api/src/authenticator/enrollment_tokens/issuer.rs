@@ -98,7 +98,7 @@ impl EnrollmentTokenIssuer {
         let now = now()?;
         let expires_at = now + max_token_duration.as_secs();
         let tkn = EnrollmentToken {
-            one_time_code: one_time_code.clone(),
+            one_time_code,
             reference: Some(reference.clone()),
             issued_by: enroller.clone(),
             created_at: now,

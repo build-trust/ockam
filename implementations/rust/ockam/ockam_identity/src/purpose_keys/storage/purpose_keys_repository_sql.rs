@@ -1,22 +1,22 @@
 use core::str::FromStr;
-
 use sqlx::encode::IsNull;
 use sqlx::error::BoxDynError;
 use sqlx::postgres::any::AnyArgumentBuffer;
 use sqlx::*;
+use std::sync::Arc;
 use tracing::debug;
-
-use ockam_core::async_trait;
-use ockam_core::compat::string::{String, ToString};
-use ockam_core::compat::vec::Vec;
-use ockam_core::errcode::{Kind, Origin};
-use ockam_core::Result;
-use ockam_node::database::{FromSqlxError, SqlxDatabase, ToVoid};
 
 use crate::identity::IdentityConstants;
 use crate::models::{Identifier, PurposeKeyAttestation};
 use crate::purpose_keys::storage::PurposeKeysRepository;
 use crate::Purpose;
+use ockam_core::async_trait;
+use ockam_core::compat::string::{String, ToString};
+use ockam_core::compat::vec::Vec;
+use ockam_core::errcode::{Kind, Origin};
+use ockam_core::Result;
+use ockam_node::database::AutoRetry;
+use ockam_node::database::{FromSqlxError, SqlxDatabase, ToVoid};
 
 /// Storage for own [`super::super::super::purpose_key::PurposeKey`]s
 #[derive(Clone)]
@@ -29,6 +29,15 @@ impl PurposeKeysSqlxDatabase {
     pub fn new(database: SqlxDatabase) -> Self {
         debug!("create a repository for purpose keys");
         Self { database }
+    }
+
+    /// Create a repository
+    pub fn make_repository(database: SqlxDatabase) -> Arc<dyn PurposeKeysRepository> {
+        if database.needs_retry() {
+            Arc::new(AutoRetry::new(Self::new(database)))
+        } else {
+            Arc::new(Self::new(database))
+        }
     }
 
     /// Create a new in-memory database for purpose keys

@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 use ockam::identity::Identifier;
 use ockam::{FromSqlxError, SqlxDatabase, ToVoid};
 use ockam_core::async_trait;
@@ -8,12 +6,14 @@ use sqlx::encode::IsNull;
 use sqlx::error::BoxDynError;
 use sqlx::postgres::any::AnyArgumentBuffer;
 use sqlx::*;
-
-use ockam_core::Result;
-use ockam_node::database::{Boolean, Nullable};
+use std::str::FromStr;
+use std::sync::Arc;
 
 use crate::cli_state::{NodeInfo, NodesRepository};
 use crate::config::lookup::InternetAddress;
+use ockam_core::Result;
+use ockam_node::database::AutoRetry;
+use ockam_node::database::{Boolean, Nullable};
 
 #[derive(Clone)]
 pub struct NodesSqlxDatabase {
@@ -24,6 +24,15 @@ impl NodesSqlxDatabase {
     pub fn new(database: SqlxDatabase) -> Self {
         debug!("create a repository for nodes");
         Self { database }
+    }
+
+    /// Create a repository
+    pub fn make_repository(database: SqlxDatabase) -> Arc<dyn NodesRepository> {
+        if database.needs_retry() {
+            Arc::new(AutoRetry::new(Self::new(database)))
+        } else {
+            Arc::new(Self::new(database))
+        }
     }
 
     /// Create a new in-memory database

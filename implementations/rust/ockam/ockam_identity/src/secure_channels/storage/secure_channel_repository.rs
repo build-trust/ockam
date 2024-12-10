@@ -4,6 +4,10 @@ use async_trait::async_trait;
 use core::fmt::Debug;
 use ockam_core::compat::boxed::Box;
 use ockam_core::{Address, Result};
+#[cfg(feature = "std")]
+use ockam_node::database::AutoRetry;
+#[cfg(feature = "std")]
+use ockam_node::retry;
 use ockam_vault::AeadSecretKeyHandle;
 
 /// Secure Channel that was saved to a storage
@@ -81,4 +85,23 @@ pub trait SecureChannelRepository: Send + Sync + 'static {
 
     /// Delete a secure channel
     async fn delete(&self, decryptor_remote_address: &Address) -> Result<()>;
+}
+
+#[cfg(feature = "std")]
+#[async_trait]
+impl<T: SecureChannelRepository> SecureChannelRepository for AutoRetry<T> {
+    async fn get(
+        &self,
+        decryptor_remote_address: &Address,
+    ) -> Result<Option<PersistedSecureChannel>> {
+        retry!(self.wrapped.get(decryptor_remote_address))
+    }
+
+    async fn put(&self, secure_channel: PersistedSecureChannel) -> Result<()> {
+        retry!(self.wrapped.put(secure_channel.clone()))
+    }
+
+    async fn delete(&self, decryptor_remote_address: &Address) -> Result<()> {
+        retry!(self.wrapped.delete(decryptor_remote_address))
+    }
 }

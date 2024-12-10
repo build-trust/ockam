@@ -1,19 +1,19 @@
 use core::str::FromStr;
-
 use sqlx::any::AnyArguments;
 use sqlx::encode::IsNull;
 use sqlx::error::BoxDynError;
 use sqlx::postgres::any::AnyArgumentBuffer;
 use sqlx::query::Query;
 use sqlx::*;
+use std::sync::Arc;
 use tracing::debug;
-
-use ockam_core::async_trait;
-use ockam_core::Result;
-use ockam_node::database::{FromSqlxError, SqlxDatabase, ToVoid};
 
 use crate::models::{ChangeHistory, Identifier};
 use crate::{ChangeHistoryRepository, Identity, IdentityError, IdentityHistoryComparison, Vault};
+use ockam_core::async_trait;
+use ockam_core::Result;
+use ockam_node::database::AutoRetry;
+use ockam_node::database::{FromSqlxError, SqlxDatabase, ToVoid};
 
 /// Implementation of [`ChangeHistoryRepository`] trait based on an underlying database
 /// using sqlx as its API, and Sqlite as its driver
@@ -27,6 +27,15 @@ impl ChangeHistorySqlxDatabase {
     pub fn new(database: SqlxDatabase) -> Self {
         debug!("create a repository for change history");
         Self { database }
+    }
+
+    /// Create a repository
+    pub fn make_repository(database: SqlxDatabase) -> Arc<dyn ChangeHistoryRepository> {
+        if database.needs_retry() {
+            Arc::new(AutoRetry::new(Self::new(database)))
+        } else {
+            Arc::new(Self::new(database))
+        }
     }
 
     /// Create a new in-memory database

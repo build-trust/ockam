@@ -1,15 +1,16 @@
 use core::ops::Deref;
 use sqlx::*;
+use std::sync::Arc;
 use tracing::debug;
-
-use ockam::identity::Identifier;
-use ockam_core::async_trait;
-use ockam_core::Result;
-use ockam_node::database::{FromSqlxError, SqlxDatabase, ToVoid};
 
 use crate::authenticator::{
     AuthorityMember, AuthorityMemberRow, AuthorityMembersRepository, PreTrustedIdentities,
 };
+use ockam::identity::Identifier;
+use ockam_core::async_trait;
+use ockam_core::Result;
+use ockam_node::database::AutoRetry;
+use ockam_node::database::{FromSqlxError, SqlxDatabase, ToVoid};
 
 #[derive(Clone)]
 pub struct AuthorityMembersSqlxDatabase {
@@ -21,6 +22,15 @@ impl AuthorityMembersSqlxDatabase {
     pub fn new(database: SqlxDatabase) -> Self {
         debug!("create a repository for authority members");
         Self { database }
+    }
+
+    /// Create a repository
+    pub fn make_repository(database: SqlxDatabase) -> Arc<dyn AuthorityMembersRepository> {
+        if database.needs_retry() {
+            Arc::new(AutoRetry::new(Self::new(database)))
+        } else {
+            Arc::new(Self::new(database))
+        }
     }
 
     /// Create a new in-memory database

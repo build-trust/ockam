@@ -1,4 +1,3 @@
-pub(crate) use auto_retry::*;
 pub use enrollments_repository::*;
 pub use enrollments_repository_sql::*;
 pub use identities_repository::*;
@@ -18,7 +17,6 @@ pub use users_repository_sql::*;
 pub use vaults_repository::*;
 pub use vaults_repository_sql::*;
 
-pub mod auto_retry;
 mod enrollments_repository;
 mod enrollments_repository_sql;
 mod identities_repository;

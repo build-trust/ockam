@@ -14,6 +14,7 @@ use ockam_core::Error;
 use ockam_core::Result;
 use ockam_core::{async_trait, Address};
 use ockam_multiaddr::MultiAddr;
+use ockam_node::database::AutoRetry;
 use ockam_node::database::Boolean;
 use ockam_transport_core::HostnamePort;
 
@@ -27,6 +28,15 @@ impl TcpPortalsSqlxDatabase {
     pub fn new(database: SqlxDatabase) -> Self {
         debug!("create a repository for tcp portals");
         Self { database }
+    }
+
+    /// Create a repository
+    pub fn make_repository(database: SqlxDatabase) -> Arc<dyn TcpPortalsRepository> {
+        if database.needs_retry() {
+            Arc::new(AutoRetry::new(Self::new(database)))
+        } else {
+            Arc::new(Self::new(database))
+        }
     }
 
     /// Create a new in-memory database

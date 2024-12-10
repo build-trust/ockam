@@ -1,19 +1,19 @@
-use std::str::FromStr;
-
 use sqlx::any::AnyRow;
 use sqlx::FromRow;
 use sqlx::*;
+use std::str::FromStr;
+use std::sync::Arc;
 use time::OffsetDateTime;
-
-use ockam::identity::Identifier;
-use ockam::{FromSqlxError, SqlxDatabase, ToVoid};
-use ockam_core::async_trait;
-use ockam_core::Result;
-use ockam_node::database::{Boolean, Nullable};
 
 use crate::cli_state::enrollments::IdentityEnrollment;
 use crate::cli_state::EnrollmentsRepository;
 use crate::cloud::email_address::EmailAddress;
+use ockam::identity::Identifier;
+use ockam::{FromSqlxError, SqlxDatabase, ToVoid};
+use ockam_core::async_trait;
+use ockam_core::Result;
+use ockam_node::database::AutoRetry;
+use ockam_node::database::{Boolean, Nullable};
 
 #[derive(Clone)]
 pub struct EnrollmentsSqlxDatabase {
@@ -24,6 +24,14 @@ impl EnrollmentsSqlxDatabase {
     pub fn new(database: SqlxDatabase) -> Self {
         debug!("create a repository for enrollments");
         Self { database }
+    }
+
+    pub fn make_repository(database: SqlxDatabase) -> Arc<dyn EnrollmentsRepository> {
+        if database.needs_retry() {
+            Arc::new(AutoRetry::new(Self::new(database)))
+        } else {
+            Arc::new(Self::new(database))
+        }
     }
 
     /// Create a new in-memory database

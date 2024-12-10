@@ -2,6 +2,8 @@ use crate::cloud::email_address::EmailAddress;
 use crate::cloud::enroll::auth0::UserInfo;
 use ockam_core::async_trait;
 use ockam_core::Result;
+use ockam_node::database::AutoRetry;
+use ockam_node::retry;
 
 /// This traits allows user information to be stored locally.
 /// User information is retrieved when a user has been authenticated.
@@ -37,4 +39,31 @@ pub trait UsersRepository: Send + Sync + 'static {
 
     /// Delete a user given their email
     async fn delete_user(&self, email: &EmailAddress) -> Result<()>;
+}
+
+#[async_trait]
+impl<T: UsersRepository> UsersRepository for AutoRetry<T> {
+    async fn store_user(&self, user: &UserInfo) -> ockam_core::Result<()> {
+        retry!(self.wrapped.store_user(user))
+    }
+
+    async fn get_default_user(&self) -> ockam_core::Result<Option<UserInfo>> {
+        retry!(self.wrapped.get_default_user())
+    }
+
+    async fn set_default_user(&self, email: &EmailAddress) -> ockam_core::Result<()> {
+        retry!(self.wrapped.set_default_user(email))
+    }
+
+    async fn get_user(&self, email: &EmailAddress) -> ockam_core::Result<Option<UserInfo>> {
+        retry!(self.wrapped.get_user(email))
+    }
+
+    async fn get_users(&self) -> ockam_core::Result<Vec<UserInfo>> {
+        retry!(self.wrapped.get_users())
+    }
+
+    async fn delete_user(&self, email: &EmailAddress) -> ockam_core::Result<()> {
+        retry!(self.wrapped.delete_user(email))
+    }
 }

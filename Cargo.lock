@@ -4801,6 +4801,7 @@ dependencies = [
  "ockam_api",
  "ockam_core",
  "ockam_multiaddr",
+ "ockam_node",
  "serde",
  "serde_json",
  "sqlx",

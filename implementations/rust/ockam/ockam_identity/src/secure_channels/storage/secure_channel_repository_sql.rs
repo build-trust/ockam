@@ -1,10 +1,12 @@
 use sqlx::*;
+use std::sync::Arc;
 use tracing::debug;
 
 use crate::secure_channel::Role;
 use crate::Identifier;
 use ockam_core::{async_trait, Address};
 use ockam_core::{Error, Result};
+use ockam_node::database::AutoRetry;
 use ockam_node::database::{FromSqlxError, SqlxDatabase, ToVoid};
 use ockam_vault::{AeadSecretKeyHandle, HandleToSecret};
 
@@ -24,6 +26,15 @@ impl SecureChannelSqlxDatabase {
     pub fn new(database: SqlxDatabase) -> Self {
         debug!("create a repository for secure channels");
         Self { database }
+    }
+
+    /// Create a repository
+    pub fn make_repository(database: SqlxDatabase) -> Arc<dyn SecureChannelRepository> {
+        if database.needs_retry() {
+            Arc::new(AutoRetry::new(Self::new(database)))
+        } else {
+            Arc::new(Self::new(database))
+        }
     }
 
     /// Create a new in-memory database

@@ -1,12 +1,13 @@
 use itertools::Itertools;
 use sqlx::*;
+use std::sync::Arc;
 
 use crate::cloud::email_address::EmailAddress;
+use crate::cloud::enroll::auth0::UserInfo;
 use ockam_core::async_trait;
 use ockam_core::Result;
+use ockam_node::database::AutoRetry;
 use ockam_node::database::{Boolean, FromSqlxError, SqlxDatabase, ToVoid};
-
-use crate::cloud::enroll::auth0::UserInfo;
 
 use super::UsersRepository;
 
@@ -20,6 +21,15 @@ impl UsersSqlxDatabase {
     pub fn new(database: SqlxDatabase) -> Self {
         debug!("create a repository for users");
         Self { database }
+    }
+
+    /// Create a repository
+    pub fn make_repository(database: SqlxDatabase) -> Arc<dyn UsersRepository> {
+        if database.needs_retry() {
+            Arc::new(AutoRetry::new(Self::new(database)))
+        } else {
+            Arc::new(Self::new(database))
+        }
     }
 
     /// Create a new in-memory database

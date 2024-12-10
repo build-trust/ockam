@@ -2,16 +2,17 @@ use sqlx::encode::IsNull;
 use sqlx::error::BoxDynError;
 use sqlx::postgres::any::AnyArgumentBuffer;
 use sqlx::*;
+use std::sync::Arc;
 use tracing::debug;
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
+use crate::storage::secrets_repository::SecretsRepository;
 use ockam_core::async_trait;
 use ockam_core::compat::vec::Vec;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::Result;
+use ockam_node::database::AutoRetry;
 use ockam_node::database::{FromSqlxError, SqlxDatabase, ToVoid};
-
-use crate::storage::secrets_repository::SecretsRepository;
 
 use crate::{
     AeadSecret, AeadSecretKeyHandle, ECDSASHA256CurveP256SecretKey, EdDSACurve25519SecretKey,
@@ -30,6 +31,15 @@ impl SecretsSqlxDatabase {
     pub fn new(database: SqlxDatabase) -> Self {
         debug!("create a repository for secrets");
         Self { database }
+    }
+
+    /// Create a repository
+    pub fn make_repository(database: SqlxDatabase) -> Arc<dyn SecretsRepository> {
+        if database.needs_retry() {
+            Arc::new(AutoRetry::new(Self::new(database)))
+        } else {
+            Arc::new(Self::new(database))
+        }
     }
 
     /// Create a new in-memory database for secrets

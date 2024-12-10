@@ -1,9 +1,15 @@
+use crate::cloud::addon::KafkaConfig;
+use crate::cloud::email_address::EmailAddress;
+use crate::cloud::project::models::{OktaConfig, ProjectModel, ProjectUserRole};
+use crate::cloud::share::{RoleInShare, ShareScope};
+use crate::minicbor_url::Url;
 use itertools::Itertools;
 use ockam::identity::Identifier;
 use ockam_core::async_trait;
 use ockam_core::env::FromString;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{Error, Result};
+use ockam_node::database::AutoRetry;
 use ockam_node::database::{Boolean, FromSqlxError, Nullable, SqlxDatabase, ToVoid};
 use sqlx::any::AnyRow;
 use sqlx::encode::IsNull;
@@ -11,12 +17,7 @@ use sqlx::error::BoxDynError;
 use sqlx::postgres::any::AnyArgumentBuffer;
 use sqlx::*;
 use std::str::FromStr;
-
-use crate::cloud::addon::KafkaConfig;
-use crate::cloud::email_address::EmailAddress;
-use crate::cloud::project::models::{OktaConfig, ProjectModel, ProjectUserRole};
-use crate::cloud::share::{RoleInShare, ShareScope};
-use crate::minicbor_url::Url;
+use std::sync::Arc;
 
 use super::ProjectsRepository;
 
@@ -38,6 +39,15 @@ impl ProjectsSqlxDatabase {
     pub fn new(database: SqlxDatabase) -> Self {
         debug!("create a repository for projects");
         Self { database }
+    }
+
+    /// Create a repository
+    pub fn make_repository(database: SqlxDatabase) -> Arc<dyn ProjectsRepository> {
+        if database.needs_retry() {
+            Arc::new(AutoRetry::new(Self::new(database)))
+        } else {
+            Arc::new(Self::new(database))
+        }
     }
 
     /// Create a new in-memory database

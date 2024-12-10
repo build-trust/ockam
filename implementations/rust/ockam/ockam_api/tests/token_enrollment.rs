@@ -336,10 +336,7 @@ async fn usage_count_default(ctx: &mut Context) -> Result<()> {
         .await?;
     let member_client2 = change_client_identifier(&admin.client, &member2, None);
 
-    member_client1
-        .present_token(ctx, otc.clone())
-        .await
-        .unwrap();
+    member_client1.present_token(ctx, otc).await.unwrap();
     let res = member_client2.present_token(ctx, otc).await;
     assert!(res.is_err());
 
@@ -385,14 +382,8 @@ async fn usage_count2(ctx: &mut Context) -> Result<()> {
         .await?;
     let member_client3 = change_client_identifier(&admin.client, &member3, None);
 
-    member_client1
-        .present_token(ctx, otc.clone())
-        .await
-        .unwrap();
-    member_client2
-        .present_token(ctx, otc.clone())
-        .await
-        .unwrap();
+    member_client1.present_token(ctx, otc).await.unwrap();
+    member_client2.present_token(ctx, otc).await.unwrap();
     let res = member_client3.present_token(ctx, otc).await;
     assert!(res.is_err());
 

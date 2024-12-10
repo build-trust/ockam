@@ -702,7 +702,7 @@ mod tests {
             user_roles: vec![],
             project_change_history: Some(project_change_history.to_string()),
         };
-        let legacy = LegacyEnrollmentTicket::new(otc.clone(), project.clone());
+        let legacy = LegacyEnrollmentTicket::new(otc, project.clone());
         let enrollment_ticket = EnrollmentTicket::new_from_legacy(legacy).await.unwrap();
         assert_eq!(enrollment_ticket.one_time_code, otc);
         assert_eq!(enrollment_ticket.project_id, project_id);
@@ -759,7 +759,7 @@ mod tests {
         .await
         .unwrap();
         let exported = ExportedEnrollmentTicket::new(
-            otc.clone(),
+            otc,
             ProjectRoute::new_with_id(project_id).unwrap(),
             project_identity.identifier().to_string(),
             project_name,

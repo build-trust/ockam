@@ -1,6 +1,5 @@
 use std::time::Duration;
 
-use crate::cli_state::AutoRetry;
 use crate::nodes::models::secure_channel::CreateSecureChannelListenerRequest;
 use crate::nodes::models::secure_channel::CreateSecureChannelRequest;
 use crate::nodes::models::secure_channel::DeleteSecureChannelListenerRequest;
@@ -468,9 +467,7 @@ impl NodeManager {
         Ok(Arc::new(SecureChannels::new(
             identities,
             self.secure_channels.secure_channel_registry(),
-            Arc::new(AutoRetry::new(SecureChannelSqlxDatabase::new(
-                self.cli_state.database(),
-            ))),
+            SecureChannelSqlxDatabase::make_repository(self.cli_state.database()),
         )))
     }
 }

@@ -30,7 +30,7 @@ pub async fn create_token(attribute_name: &str, attribute_value: &str) -> Result
         ExportedEnrollmentTicket::from_str(token_string).map_err(|e| error(format!("could not decode token: {e}")))?;
     let ticket = decoded.import().await?;
 
-    Ok(ticket.one_time_code.clone())
+    Ok(ticket.one_time_code)
 }
 
 fn error(message: String) -> Error {

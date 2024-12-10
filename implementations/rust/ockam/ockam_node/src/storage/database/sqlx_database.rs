@@ -239,6 +239,15 @@ impl SqlxDatabase {
         Ok(db)
     }
 
+    /// Return true if the database implementation might lock (which is the case for Sqlite on disk)
+    /// and the database user needs to retry several times.
+    pub fn needs_retry(&self) -> bool {
+        matches!(
+            self.configuration,
+            DatabaseConfiguration::SqlitePersistent { .. }
+        )
+    }
+
     async fn create_at(configuration: &DatabaseConfiguration) -> Result<Self> {
         // Creates database file if it doesn't exist
         let pool = Self::create_connection_pool(configuration).await?;

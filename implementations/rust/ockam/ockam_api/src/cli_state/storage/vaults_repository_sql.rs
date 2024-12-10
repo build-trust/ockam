@@ -1,13 +1,13 @@
-use std::path::PathBuf;
-
 use sqlx::*;
+use std::path::PathBuf;
+use std::sync::Arc;
 
+use crate::cli_state::{NamedVault, UseAwsKms, VaultType, VaultsRepository};
 use ockam::{FromSqlxError, SqlxDatabase, ToVoid};
 use ockam_core::async_trait;
 use ockam_core::Result;
+use ockam_node::database::AutoRetry;
 use ockam_node::database::{Boolean, Nullable};
-
-use crate::cli_state::{NamedVault, UseAwsKms, VaultType, VaultsRepository};
 
 #[derive(Clone)]
 pub struct VaultsSqlxDatabase {
@@ -18,6 +18,15 @@ impl VaultsSqlxDatabase {
     pub fn new(database: SqlxDatabase) -> Self {
         debug!("create a repository for vaults");
         Self { database }
+    }
+
+    /// Create a repository
+    pub fn make_repository(database: SqlxDatabase) -> Arc<dyn VaultsRepository> {
+        if database.needs_retry() {
+            Arc::new(AutoRetry::new(Self::new(database)))
+        } else {
+            Arc::new(Self::new(database))
+        }
     }
 
     /// Create a new in-memory database

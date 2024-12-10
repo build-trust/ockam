@@ -1,13 +1,13 @@
 use core::str::FromStr;
-
 use sqlx::*;
+use std::sync::Arc;
 
+use crate::cli_state::{IdentitiesRepository, NamedIdentity};
 use ockam::identity::Identifier;
 use ockam_core::async_trait;
 use ockam_core::Result;
+use ockam_node::database::AutoRetry;
 use ockam_node::database::{Boolean, FromSqlxError, SqlxDatabase, ToVoid};
-
-use crate::cli_state::{IdentitiesRepository, NamedIdentity};
 
 /// Implementation of [`IdentitiesRepository`] trait based on an underlying database
 /// using sqlx as its API, and Sqlite as its driver
@@ -21,6 +21,15 @@ impl IdentitiesSqlxDatabase {
     pub fn new(database: SqlxDatabase) -> Self {
         debug!("create a repository for identities");
         Self { database }
+    }
+
+    /// Create a repository
+    pub fn make_repository(database: SqlxDatabase) -> Arc<dyn IdentitiesRepository> {
+        if database.needs_retry() {
+            Arc::new(AutoRetry::new(Self::new(database)))
+        } else {
+            Arc::new(Self::new(database))
+        }
     }
 
     /// Create a new in-memory database
