@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# This scripts deploys a stress test client and an ockam client to a remote machine accessible via ssh.
+# This scripts deploys a tcp test client and an ockam client to a remote machine accessible via ssh.
 
 set -e
 
@@ -29,13 +29,12 @@ function scp {
 TARGET_ARCHITECTURE=$(ssh uname -m)
 
 # always use cross-compilation to avoid reliance on new and unsupported glibc versions
-DOCKER_DEFAULT_PLATFORM=linux/amd64 cross build --bin=stress-test --bin=ockam -F aws-lc --release --target "${TARGET_ARCHITECTURE}-unknown-linux-gnu"
+DOCKER_DEFAULT_PLATFORM=linux/amd64 cross build --bin=tcp-test --bin=ockam -F aws-lc --release --target "${TARGET_ARCHITECTURE}-unknown-linux-gnu"
 echo "uploading..."
 
 scp \
-  "target/${TARGET_ARCHITECTURE}-unknown-linux-gnu/release/stress-test" \
   "target/${TARGET_ARCHITECTURE}-unknown-linux-gnu/release/ockam" \
+  "target/${TARGET_ARCHITECTURE}-unknown-linux-gnu/release/tcp-test" \
   "${SSH_ENDPOINT}:"
 
-ssh sudo mv ockam stress-test /usr/local/bin/
-ssh ockam identity create admin
+ssh sudo mv ockam tcp-test /usr/local/bin/

@@ -377,6 +377,7 @@ This file contains attributions for any 3rd-party open source code used in this 
 | parking_lot_core | MIT, Apache-2.0 | https://crates.io/crates/parking_lot_core |
 | paste | MIT, Apache-2.0 | https://crates.io/crates/paste |
 | pathdiff | MIT, Apache-2.0 | https://crates.io/crates/pathdiff |
+| pem | MIT | https://crates.io/crates/pem |
 | pem-rfc7468 | Apache-2.0, MIT | https://crates.io/crates/pem-rfc7468 |
 | percent-encoding | MIT, Apache-2.0 | https://crates.io/crates/percent-encoding |
 | petname | Apache-2.0 | https://crates.io/crates/petname |
@@ -420,6 +421,7 @@ This file contains attributions for any 3rd-party open source code used in this 
 | rand_pcg | MIT, Apache-2.0 | https://crates.io/crates/rand_pcg |
 | rayon | MIT, Apache-2.0 | https://crates.io/crates/rayon |
 | rayon-core | MIT, Apache-2.0 | https://crates.io/crates/rayon-core |
+| rcgen | MIT, Apache-2.0 | https://crates.io/crates/rcgen |
 | redox_syscall | MIT | https://crates.io/crates/redox_syscall |
 | reedline | MIT | https://crates.io/crates/reedline |
 | regex | MIT, Apache-2.0 | https://crates.io/crates/regex |
@@ -649,6 +651,7 @@ This file contains attributions for any 3rd-party open source code used in this 
 | xml-rs | MIT | https://crates.io/crates/xml-rs |
 | xmlparser | MIT, Apache-2.0 | https://crates.io/crates/xmlparser |
 | yaml-rust | MIT, Apache-2.0 | https://crates.io/crates/yaml-rust |
+| yasna | MIT, Apache-2.0 | https://crates.io/crates/yasna |
 | yoke | Unicode-3.0 | https://crates.io/crates/yoke |
 | yoke-derive | Unicode-3.0 | https://crates.io/crates/yoke-derive |
 | zerocopy | BSD-2-Clause, Apache-2.0, MIT | https://crates.io/crates/zerocopy |
