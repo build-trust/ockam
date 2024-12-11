@@ -79,6 +79,8 @@ impl Processor for TcpListenProcessor {
 
         // Wait for an incoming connection
         let (stream, peer) = self.inner.accept().await.map_err(TransportError::from)?;
+
+        stream.set_nodelay(true).map_err(TransportError::from)?;
         debug!("TCP connection accepted");
 
         let mode = TcpConnectionMode::Incoming;

@@ -47,6 +47,7 @@ pub(crate) async fn create_tcp_stream(to: &HostnamePort) -> Result<TcpStream> {
     socket
         .set_tcp_keepalive(&keepalive)
         .map_err(TransportError::from)?;
+    socket.set_nodelay(true).map_err(TransportError::from)?;
 
     Ok(connection)
 }
