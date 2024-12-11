@@ -1,5 +1,5 @@
 use super::{Addresses, UdpSocketRead};
-use crate::messages::{UdpTransportMessage, MAX_ON_THE_WIRE_SIZE};
+use crate::messages::UdpTransportMessage;
 use crate::workers::pending_messages::PendingRoutingMessageStorage;
 use crate::UDP;
 use ockam_core::errcode::{Kind, Origin};
@@ -20,19 +20,31 @@ pub(crate) struct UdpReceiverProcessor {
     addresses: Addresses,
     /// The read half of the underlying UDP socket.
     socket_read: UdpSocketRead,
+    buffer: Vec<u8>,
     /// Will be Some if we communicate with one specific peer.
     peer: Option<SocketAddr>,
     /// Pending routing messages that we haven't yet assembled fully
     pending_routing_messages: PendingRoutingMessageStorage,
+    max_on_the_wire_packet_size: usize,
 }
 
 impl UdpReceiverProcessor {
-    pub fn new(addresses: Addresses, socket_read: UdpSocketRead, peer: Option<SocketAddr>) -> Self {
+    pub fn new(
+        addresses: Addresses,
+        socket_read: UdpSocketRead,
+        peer: Option<SocketAddr>,
+        max_pending_messages_per_peer: u16,
+        max_on_the_wire_packet_size: usize,
+    ) -> Self {
         Self {
             addresses,
             socket_read,
+            buffer: vec![0; max_on_the_wire_packet_size],
             peer,
-            pending_routing_messages: Default::default(),
+            pending_routing_messages: PendingRoutingMessageStorage::new(
+                max_pending_messages_per_peer,
+            ),
+            max_on_the_wire_packet_size,
         }
     }
 }
@@ -48,10 +60,12 @@ impl Processor for UdpReceiverProcessor {
     async fn process(&mut self, ctx: &mut Self::Context) -> Result<bool> {
         trace!("Waiting for incoming UDP datagram...");
 
-        let mut buf = [0u8; MAX_ON_THE_WIRE_SIZE];
+        self.buffer.clear();
+        self.buffer.resize(self.max_on_the_wire_packet_size, 0);
+
         let (len, addr) = self
             .socket_read
-            .recv_from(&mut buf)
+            .recv_from(&mut self.buffer)
             .await
             .map_err(|e| Error::new(Origin::Transport, Kind::Io, e))?;
 
@@ -66,7 +80,7 @@ impl Processor for UdpReceiverProcessor {
             }
         }
 
-        let transport_message: UdpTransportMessage = minicbor::decode(&buf[..len])?;
+        let transport_message: UdpTransportMessage = minicbor::decode(&self.buffer[..len])?;
 
         // Let's save newly received message and see if we can assemble a Routing Message
         let routing_message = match self

@@ -40,7 +40,7 @@ use ockam_multiaddr::proto::Service;
 use ockam_multiaddr::MultiAddr;
 use ockam_node::compat::tokio;
 use ockam_transport_core::HostnamePort;
-use ockam_transport_tcp::PortalInletInterceptor;
+use ockam_transport_tcp::{read_portal_payload_length, PortalInletInterceptor};
 
 // TODO: upgrade to 13 by adding a metadata request to map uuid<=>topic_name
 const TEST_KAFKA_API_VERSION: i16 = 12;
@@ -119,6 +119,7 @@ async fn create_kafka_service(
         )),
         Arc::new(AllowAll),
         Arc::new(AllowAll),
+        read_portal_payload_length(),
     )
     .await?;
 

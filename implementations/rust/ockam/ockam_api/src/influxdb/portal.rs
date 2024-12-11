@@ -19,7 +19,9 @@ use ockam_core::route;
 use ockam_multiaddr::proto::Service;
 use ockam_multiaddr::MultiAddr;
 use ockam_transport_core::HostnamePort;
-use ockam_transport_tcp::{PortalInletInterceptor, PortalOutletInterceptor};
+use ockam_transport_tcp::{
+    read_portal_payload_length, PortalInletInterceptor, PortalOutletInterceptor,
+};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -234,6 +236,7 @@ impl NodeManagerWorker {
             http_interceptor_factory,
             Arc::new(policy_access_control.create_outgoing(ctx).await?),
             Arc::new(policy_access_control.create_incoming()),
+            read_portal_payload_length(),
         )
         .await?;
 
@@ -282,6 +285,7 @@ impl NodeManagerWorker {
             http_interceptor_factory,
             Arc::new(policy_access_control.create_incoming()),
             Arc::new(policy_access_control.create_outgoing(ctx).await?),
+            read_portal_payload_length(),
         )
         .await?;
         Ok(interceptor_address)

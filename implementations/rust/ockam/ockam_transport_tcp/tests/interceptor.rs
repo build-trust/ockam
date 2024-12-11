@@ -1,8 +1,8 @@
 use ockam_core::{async_trait, route, AllowAll};
 use ockam_node::Context;
 use ockam_transport_tcp::{
-    Direction, PortalInletInterceptor, PortalInterceptor, PortalInterceptorFactory,
-    TcpInletOptions, TcpOutletOptions, TcpTransport,
+    read_portal_payload_length, Direction, PortalInletInterceptor, PortalInterceptor,
+    PortalInterceptorFactory, TcpInletOptions, TcpOutletOptions, TcpTransport,
 };
 use rand::random;
 use std::sync::{Arc, Mutex};
@@ -70,6 +70,7 @@ async fn setup(
         }),
         Arc::new(AllowAll),
         Arc::new(AllowAll),
+        read_portal_payload_length(),
     )
     .await
     .unwrap();

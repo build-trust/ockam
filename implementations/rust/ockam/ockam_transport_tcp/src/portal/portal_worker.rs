@@ -52,6 +52,7 @@ pub(crate) struct TcpPortalWorker {
     last_received_packet_counter: u16,
     outgoing_access_control: Arc<dyn OutgoingAccessControl>,
     is_tls: bool,
+    portal_payload_length: usize,
 }
 
 pub(crate) enum ReadHalfMaybeTls {
@@ -78,6 +79,7 @@ impl TcpPortalWorker {
         addresses: Addresses,
         incoming_access_control: Arc<dyn IncomingAccessControl>,
         outgoing_access_control: Arc<dyn OutgoingAccessControl>, // To propagate to the receiver
+        portal_payload_length: usize,
     ) -> Result<()> {
         Self::start(
             ctx,
@@ -90,6 +92,7 @@ impl TcpPortalWorker {
             addresses,
             incoming_access_control,
             outgoing_access_control,
+            portal_payload_length,
         )
         .await
     }
@@ -107,6 +110,7 @@ impl TcpPortalWorker {
         addresses: Addresses,
         incoming_access_control: Arc<dyn IncomingAccessControl>,
         outgoing_access_control: Arc<dyn OutgoingAccessControl>,
+        portal_payload_length: usize,
     ) -> Result<()> {
         Self::start(
             ctx,
@@ -119,6 +123,7 @@ impl TcpPortalWorker {
             addresses,
             incoming_access_control,
             outgoing_access_control,
+            portal_payload_length,
         )
         .await
     }
@@ -137,6 +142,7 @@ impl TcpPortalWorker {
         addresses: Addresses,
         incoming_access_control: Arc<dyn IncomingAccessControl>,
         outgoing_access_control: Arc<dyn OutgoingAccessControl>,
+        portal_payload_length: usize,
     ) -> Result<()> {
         let portal_type = if streams.is_some() {
             PortalType::Inlet
@@ -173,6 +179,7 @@ impl TcpPortalWorker {
             last_received_packet_counter: u16::MAX,
             is_tls,
             outgoing_access_control: outgoing_access_control.clone(),
+            portal_payload_length,
         };
 
         let internal_mailbox = Mailbox::new(
@@ -234,6 +241,7 @@ impl TcpPortalWorker {
             rx,
             self.addresses.clone(),
             onward_route,
+            self.portal_payload_length,
         );
 
         let remote = Mailbox::new(

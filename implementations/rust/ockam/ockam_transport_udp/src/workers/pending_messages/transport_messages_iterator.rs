@@ -1,6 +1,4 @@
-use crate::messages::{
-    RoutingNumber, UdpRoutingMessage, UdpTransportMessage, CURRENT_VERSION, MAX_PAYLOAD_SIZE,
-};
+use crate::messages::{RoutingNumber, UdpRoutingMessage, UdpTransportMessage, CURRENT_VERSION};
 use crate::MAX_MESSAGE_SIZE;
 use ockam_core::Result;
 use ockam_transport_core::TransportError;
@@ -11,12 +9,14 @@ pub(crate) struct TransportMessagesIterator {
     offset: u16,
     total: u16,
     data: Vec<u8>,
+    max_payload_size_per_packet: usize,
 }
 
 impl TransportMessagesIterator {
     pub(crate) fn new(
         current_routing_number: RoutingNumber,
         routing_message: &UdpRoutingMessage,
+        max_payload_size_per_packet: usize,
     ) -> Result<Self> {
         let routing_message = ockam_core::cbor_encode_preallocate(routing_message)?;
 
@@ -24,7 +24,7 @@ impl TransportMessagesIterator {
             return Err(TransportError::MessageLengthExceeded)?;
         }
 
-        let total = routing_message.len() / MAX_PAYLOAD_SIZE + 1;
+        let total = routing_message.len() / max_payload_size_per_packet + 1;
 
         let total: u16 = total
             .try_into()
@@ -35,6 +35,7 @@ impl TransportMessagesIterator {
             offset: 0,
             total,
             data: routing_message,
+            max_payload_size_per_packet,
         })
     }
 }
@@ -47,11 +48,11 @@ impl Iterator for TransportMessagesIterator {
             return None;
         }
 
-        let data_offset_begin = (self.offset as usize) * MAX_PAYLOAD_SIZE;
+        let data_offset_begin = (self.offset as usize) * self.max_payload_size_per_packet;
         let data_offset_end = if self.offset + 1 == self.total {
             self.data.len()
         } else {
-            data_offset_begin + MAX_PAYLOAD_SIZE
+            data_offset_begin + self.max_payload_size_per_packet
         };
 
         let part = UdpTransportMessage::new(
@@ -80,9 +81,9 @@ impl Iterator for TransportMessagesIterator {
 
 #[cfg(test)]
 mod tests {
-    use crate::messages::{RoutingNumber, UdpRoutingMessage, MAX_PAYLOAD_SIZE};
+    use crate::messages::{RoutingNumber, UdpRoutingMessage};
     use crate::workers::pending_messages::TransportMessagesIterator;
-    use crate::MAX_MESSAGE_SIZE;
+    use crate::{UdpSizeOptions, MAX_MESSAGE_SIZE};
     use ockam_core::{route, Result};
 
     #[allow(non_snake_case)]
@@ -97,7 +98,11 @@ mod tests {
 
         let routing_number = RoutingNumber::default();
 
-        let iterator = TransportMessagesIterator::new(routing_number, &message)?;
+        let iterator = TransportMessagesIterator::new(
+            routing_number,
+            &message,
+            UdpSizeOptions::default().max_payload_size_per_packet,
+        )?;
 
         assert_eq!(iterator.current_routing_number, routing_number);
         assert_eq!(iterator.total, 1);
@@ -118,7 +123,12 @@ mod tests {
 
         let routing_number = RoutingNumber::default();
 
-        assert!(TransportMessagesIterator::new(routing_number, &message).is_err());
+        assert!(TransportMessagesIterator::new(
+            routing_number,
+            &message,
+            UdpSizeOptions::default().max_payload_size_per_packet,
+        )
+        .is_err());
 
         Ok(())
     }
@@ -126,16 +136,19 @@ mod tests {
     #[allow(non_snake_case)]
     #[test]
     fn large_message__create_iterator__should_split_correctly() -> Result<()> {
+        let max_payload_size_per_packet = UdpSizeOptions::default().max_payload_size_per_packet;
+
         let message = UdpRoutingMessage::new(
             route!["onward"],
             route!["return"],
-            vec![0; MAX_PAYLOAD_SIZE * 2].into(),
+            vec![0; max_payload_size_per_packet * 2].into(),
             None,
         );
 
         let routing_number = RoutingNumber::default();
 
-        let mut iterator = TransportMessagesIterator::new(routing_number, &message)?;
+        let mut iterator =
+            TransportMessagesIterator::new(routing_number, &message, max_payload_size_per_packet)?;
 
         assert_eq!(iterator.current_routing_number, routing_number);
         assert_eq!(iterator.total, 3);

@@ -21,12 +21,14 @@ mod error;
 mod messages;
 mod options;
 mod puncture;
+mod size_options;
 mod transport;
 mod workers;
 
 pub use error::*;
 pub use options::UdpBindOptions;
 pub use puncture::*;
+pub use size_options::*;
 pub use transport::{UdpBind, UdpBindArguments, UdpTransport, UdpTransportExtension};
 
 pub(crate) const CLUSTER_NAME: &str = "_internals.transport.udp";

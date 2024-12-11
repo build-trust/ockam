@@ -22,6 +22,7 @@ pub(crate) struct UdpSenderWorker {
     peer: Option<SocketAddr>,
     /// Current number of the packet
     current_routing_number: RoutingNumber,
+    max_payload_size_per_packet: usize,
 }
 
 impl UdpSenderWorker {
@@ -30,12 +31,14 @@ impl UdpSenderWorker {
         addresses: Addresses,
         socket_write: UdpSocketWrite,
         peer: Option<SocketAddr>,
+        max_payload_size_per_packet: usize,
     ) -> Self {
         Self {
             addresses,
             socket_write,
             peer,
             current_routing_number: RoutingNumber::default(),
+            max_payload_size_per_packet,
         }
     }
 }
@@ -91,6 +94,7 @@ impl Worker for UdpSenderWorker {
         let messages = TransportMessagesIterator::new(
             self.current_routing_number,
             &UdpRoutingMessage::from(msg),
+            self.max_payload_size_per_packet,
         )?;
 
         self.current_routing_number.increment();

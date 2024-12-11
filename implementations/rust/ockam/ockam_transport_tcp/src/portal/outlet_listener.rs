@@ -104,6 +104,7 @@ impl Worker for TcpOutletListenWorker {
             addresses.clone(),
             self.options.incoming_access_control.clone(),
             self.options.outgoing_access_control.clone(),
+            self.options.portal_payload_length,
         )
         .await?;
 

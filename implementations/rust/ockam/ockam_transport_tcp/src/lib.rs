@@ -31,7 +31,7 @@ pub use options::{TcpConnectionOptions, TcpListenerOptions};
 pub use portal::{
     new_certificate_provider_cache, Direction, PortalInletInterceptor, PortalInterceptor,
     PortalInterceptorFactory, PortalInterceptorWorker, PortalInternalMessage, PortalMessage,
-    PortalOutletInterceptor, TlsCertificate, TlsCertificateProvider, MAX_PAYLOAD_SIZE,
+    PortalOutletInterceptor, TlsCertificate, TlsCertificateProvider,
 };
 pub use protocol_version::*;
 pub use registry::*;

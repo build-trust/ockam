@@ -1,4 +1,4 @@
-use crate::{PortalMessage, MAX_PAYLOAD_SIZE};
+use crate::PortalMessage;
 use ockam_core::flow_control::{FlowControlId, FlowControlOutgoingAccessControl, FlowControls};
 use ockam_core::{
     async_trait, route, Address, AllowOnwardAddress, AllowSourceAddress, Any,
@@ -46,6 +46,7 @@ pub struct PortalOutletInterceptor {
     outgoing_access_control: Arc<dyn OutgoingAccessControl>,
     incoming_access_control: Arc<dyn IncomingAccessControl>,
     spawner_flow_control_id: Option<FlowControlId>,
+    portal_payload_length: usize,
 }
 
 impl PortalOutletInterceptor {
@@ -66,12 +67,14 @@ impl PortalOutletInterceptor {
         interceptor_factory: Arc<dyn PortalInterceptorFactory>,
         outgoing_access_control: Arc<dyn OutgoingAccessControl>,
         incoming_access_control: Arc<dyn IncomingAccessControl>,
+        portal_payload_length: usize,
     ) -> ockam_core::Result<()> {
         let worker = Self {
             spawner_flow_control_id,
             interceptor_factory,
             outgoing_access_control,
             incoming_access_control: incoming_access_control.clone(),
+            portal_payload_length,
         };
 
         WorkerBuilder::new(worker)
@@ -110,6 +113,7 @@ impl Worker for PortalOutletInterceptor {
             self.incoming_access_control.clone(),
             self.outgoing_access_control.clone(),
             self.interceptor_factory.create(),
+            self.portal_payload_length,
         )
         .await?;
 
@@ -145,6 +149,7 @@ pub struct PortalInletInterceptor {
     interceptor_factory: Arc<dyn PortalInterceptorFactory>,
     request_outgoing_access_control: Arc<dyn OutgoingAccessControl>,
     response_incoming_access_control: Arc<dyn IncomingAccessControl>,
+    portal_payload_length: usize,
 }
 
 impl PortalInletInterceptor {
@@ -164,11 +169,13 @@ impl PortalInletInterceptor {
         interceptor_factory: Arc<dyn PortalInterceptorFactory>,
         response_incoming_access_control: Arc<dyn IncomingAccessControl>,
         request_outgoing_access_control: Arc<dyn OutgoingAccessControl>,
+        portal_payload_length: usize,
     ) -> ockam_core::Result<()> {
         let worker = Self {
             interceptor_factory,
             request_outgoing_access_control,
             response_incoming_access_control,
+            portal_payload_length,
         };
 
         context.start_worker(listener_address, worker).await
@@ -213,6 +220,7 @@ impl Worker for PortalInletInterceptor {
             self.request_outgoing_access_control.clone(),
             self.response_incoming_access_control.clone(),
             self.interceptor_factory.create(),
+            self.portal_payload_length,
         )
         .await?;
 
@@ -238,6 +246,7 @@ pub struct PortalInterceptorWorker {
     disconnect_received: Arc<AtomicBool>,
     interceptor: Arc<dyn PortalInterceptor>,
     direction: Direction,
+    portal_payload_length: usize,
 }
 
 #[async_trait]
@@ -368,6 +377,7 @@ impl PortalInterceptorWorker {
         outgoing_access_control: Arc<dyn OutgoingAccessControl>,
         incoming_access_control: Arc<dyn IncomingAccessControl>,
         interceptor: Arc<dyn PortalInterceptor>,
+        portal_payload_length: usize,
     ) -> ockam_core::Result<Address> {
         let from_inlet_worker_address =
             Address::random_tagged("InterceptorPortalWorker.from_inlet_to_outlet");
@@ -386,6 +396,7 @@ impl PortalInterceptorWorker {
             disconnect_received: disconnect_received.clone(),
             fixed_onward_route: Some(inlet_instance),
             interceptor: interceptor.clone(),
+            portal_payload_length,
         };
 
         WorkerBuilder::new(from_outlet_worker)
@@ -400,6 +411,7 @@ impl PortalInterceptorWorker {
             disconnect_received: disconnect_received.clone(),
             fixed_onward_route: None,
             interceptor: interceptor.clone(),
+            portal_payload_length,
         };
 
         WorkerBuilder::new(from_inlet_worker)
@@ -430,6 +442,7 @@ impl PortalInterceptorWorker {
     /// - `spawner_flow_control_id` to account for future created outlets,
     /// - `incoming_access_control` is the access control for the incoming messages.
     /// - `outgoing_access_control` is the access control for the outgoing messages.
+    #[allow(clippy::too_many_arguments)]
     async fn create_outlet_interceptor(
         context: &mut Context,
         outlet_route: Route,
@@ -438,6 +451,7 @@ impl PortalInterceptorWorker {
         incoming_access_control: Arc<dyn IncomingAccessControl>,
         outgoing_access_control: Arc<dyn OutgoingAccessControl>,
         interceptor: Arc<dyn PortalInterceptor>,
+        portal_payload_length: usize,
     ) -> ockam_core::Result<Address> {
         let from_inlet_worker_address =
             Address::random_tagged("InterceptorPortalWorker.from_inlet_to_outlet");
@@ -451,6 +465,7 @@ impl PortalInterceptorWorker {
             disconnect_received: disconnect_received.clone(),
             fixed_onward_route: Some(outlet_route),
             interceptor: interceptor.clone(),
+            portal_payload_length,
         };
         let from_outlet_worker = Self {
             other_worker_address: from_inlet_worker_address.clone(),
@@ -458,6 +473,7 @@ impl PortalInterceptorWorker {
             disconnect_received: disconnect_received.clone(),
             fixed_onward_route: None,
             interceptor: interceptor.clone(),
+            portal_payload_length,
         };
 
         let flow_controls = context.flow_controls();
@@ -569,7 +585,7 @@ impl PortalInterceptorWorker {
             onward_route = provided_onward_route.clone().modify().pop_front().into();
         };
 
-        for chunk in buffer.chunks(MAX_PAYLOAD_SIZE) {
+        for chunk in buffer.chunks(self.portal_payload_length) {
             let message = LocalMessage::new()
                 .with_onward_route(onward_route.clone())
                 .with_return_route(return_route.clone())

@@ -2,6 +2,7 @@ use ockam_core::bare::{read_slice, write_slice};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{Encodable, Encoded, Message, NeutralMessage};
 use serde::{Deserialize, Serialize};
+use std::convert::TryInto;
 
 /// A command message type for a Portal
 #[derive(Debug, PartialEq, Eq)]
@@ -106,9 +107,6 @@ pub enum PortalInternalMessage {
     /// Connection was dropped
     Disconnect,
 }
-
-/// Maximum allowed size for a payload
-pub const MAX_PAYLOAD_SIZE: usize = 128 * 1024;
 
 #[cfg(test)]
 mod test {

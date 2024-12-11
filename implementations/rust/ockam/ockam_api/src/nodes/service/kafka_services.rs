@@ -26,7 +26,9 @@ use ockam_core::flow_control::FlowControls;
 use ockam_core::route;
 use ockam_multiaddr::proto::Project;
 use ockam_multiaddr::MultiAddr;
-use ockam_transport_tcp::{PortalInletInterceptor, PortalOutletInterceptor};
+use ockam_transport_tcp::{
+    read_portal_payload_length, PortalInletInterceptor, PortalOutletInterceptor,
+};
 use std::sync::Arc;
 
 impl NodeManagerWorker {
@@ -241,6 +243,7 @@ impl InMemoryNode {
             )),
             Arc::new(policy_access_control.create_incoming()),
             Arc::new(policy_access_control.create_outgoing(context).await?),
+            read_portal_payload_length(),
         )
         .await?;
 
@@ -297,6 +300,7 @@ impl InMemoryNode {
             )),
             Arc::new(policy_access_control.create_outgoing(context).await?),
             Arc::new(policy_access_control.create_incoming()),
+            read_portal_payload_length(),
         )
         .await?;
 

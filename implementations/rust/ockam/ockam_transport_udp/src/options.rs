@@ -1,13 +1,15 @@
 use crate::workers::Addresses;
+use crate::UdpSizeOptions;
 use ockam_core::compat::sync::Arc;
 use ockam_core::flow_control::{FlowControlId, FlowControlOutgoingAccessControl, FlowControls};
 use ockam_core::OutgoingAccessControl;
 
-/// Trust Options for a UDP connection
+/// Options for a UDP connection
 #[derive(Debug)]
 pub struct UdpBindOptions {
     pub(super) consumer: Vec<FlowControlId>,
     pub(crate) flow_control_id: FlowControlId,
+    pub(crate) size_options: UdpSizeOptions,
 }
 
 impl UdpBindOptions {
@@ -17,6 +19,7 @@ impl UdpBindOptions {
         Self {
             consumer: vec![],
             flow_control_id: FlowControls::generate_flow_control_id(),
+            size_options: UdpSizeOptions::read_from_env(),
         }
     }
 
@@ -30,6 +33,12 @@ impl UdpBindOptions {
     /// Getter for freshly generated [`FlowControlId`]
     pub fn flow_control_id(&self) -> FlowControlId {
         self.flow_control_id.clone()
+    }
+}
+
+impl Default for UdpBindOptions {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -48,12 +57,12 @@ impl UdpBindOptions {
     }
 
     pub(crate) fn create_receiver_outgoing_access_control(
-        self,
+        &self,
         flow_controls: &FlowControls,
     ) -> Arc<dyn OutgoingAccessControl> {
         Arc::new(FlowControlOutgoingAccessControl::new(
             flow_controls,
-            self.flow_control_id,
+            self.flow_control_id.clone(),
             None,
         ))
     }

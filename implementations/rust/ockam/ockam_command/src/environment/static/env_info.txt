@@ -46,11 +46,14 @@ Tracing
 - OCKAM_BACKGROUND_LOG_EXPORT_CUTOFF: Cutoff time for sending log records batches to an OpenTelemetry baclground node, without waiting for a response. Default value: `3s`.
 - OCKAM_BACKGROUND_SPAN_EXPORT_CUTOFF: Cutoff time for sending span batches to an OpenTelemetry background inlet, without waiting for a response. Default value: `3s`.
 
-UDP Puncture
+UDP
 - OCKAM_RENDEZVOUS_SERVER: set this variable to the hostname and port of the Rendezvous service
+- OCKAM_UDP_PENDING_MESSAGES_PER_PEER: maximum number of messages per UDP peer that are cached to be assembled if their parts arrive out of order. Default value: 5
+- OCKAM_UDP_MAX_ON_THE_WIRE_PACKET_SIZE: maximum size of a UDP packet on the wire. Default value: 508
 
-TCP Portals
+TCP
 - OCKAM_PRIVILEGED: if variable is set, all TCP Inlets/Outlets will use eBPF (overrides `--privileged` argument for `ockam tcp-inlet create` and `ockam tcp-outlet create`).
+- OCKAM_TCP_PORTAL_PAYLOAD_LENGTH: size of the buffer into which TCP Portal reads the TCP stream. Default value: `128 * 1024`
 
 Devs Usage
 - OCKAM: a `string` that defines the path to the ockam binary to use.
@@ -65,3 +68,4 @@ Devs Usage
 
 Internal (to enable some special behavior in the logic)
 - OCKAM_HELP_RENDER_MARKDOWN: a `boolean` to control the markdown rendering of the commands documentation.
+

@@ -1,16 +1,23 @@
 use crate::portal::addresses::Addresses;
 use crate::TlsCertificateProvider;
 use ockam_core::compat::sync::Arc;
+use ockam_core::env::get_env_with_default_ignore_error;
 use ockam_core::flow_control::{FlowControlId, FlowControls};
 use ockam_core::{Address, AllowAll, IncomingAccessControl, OutgoingAccessControl};
 
-/// Trust Options for an Inlet
+/// Maximum allowed size for a payload for TCP Portal
+pub fn read_portal_payload_length() -> usize {
+    get_env_with_default_ignore_error("OCKAM_TCP_PORTAL_PAYLOAD_LENGTH", 128 * 1024)
+}
+
+/// Options for an Inlet
 #[derive(Clone, Debug)]
 pub struct TcpInletOptions {
     pub(crate) incoming_access_control: Arc<dyn IncomingAccessControl>,
     pub(crate) outgoing_access_control: Arc<dyn OutgoingAccessControl>,
     pub(crate) is_paused: bool,
     pub(crate) tls_certificate_provider: Option<Arc<dyn TlsCertificateProvider>>,
+    pub(crate) portal_payload_length: usize,
 }
 
 impl TcpInletOptions {
@@ -21,6 +28,7 @@ impl TcpInletOptions {
             outgoing_access_control: Arc::new(AllowAll),
             is_paused: false,
             tls_certificate_provider: None,
+            portal_payload_length: read_portal_payload_length(),
         }
     }
 
@@ -105,13 +113,14 @@ impl Default for TcpInletOptions {
     }
 }
 
-/// Trust Options for an Outlet
+/// Options for an Outlet
 #[derive(Clone, Debug)]
 pub struct TcpOutletOptions {
     pub(crate) consumer: Vec<FlowControlId>,
     pub(crate) incoming_access_control: Arc<dyn IncomingAccessControl>,
     pub(crate) outgoing_access_control: Arc<dyn OutgoingAccessControl>,
     pub(crate) tls: bool,
+    pub(crate) portal_payload_length: usize,
 }
 
 impl TcpOutletOptions {
@@ -122,6 +131,7 @@ impl TcpOutletOptions {
             incoming_access_control: Arc::new(AllowAll),
             outgoing_access_control: Arc::new(AllowAll),
             tls: false,
+            portal_payload_length: read_portal_payload_length(),
         }
     }
 
@@ -207,4 +217,14 @@ impl Default for TcpOutletOptions {
     fn default() -> Self {
         Self::new()
     }
+}
+
+#[allow(non_snake_case)]
+#[test]
+fn tcp_portal_options_portal_length__env_var_set__pulls_correct_value() {
+    let length: usize = rand::random();
+    std::env::set_var("OCKAM_TCP_PORTAL_PAYLOAD_LENGTH", length.to_string());
+
+    assert_eq!(TcpInletOptions::default().portal_payload_length, length);
+    assert_eq!(TcpOutletOptions::default().portal_payload_length, length);
 }

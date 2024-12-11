@@ -22,7 +22,7 @@ use ockam_core::{route, Address, AllowAll, NeutralMessage, Routed, Worker};
 use ockam_multiaddr::MultiAddr;
 use ockam_node::database::SqlxDatabase;
 use ockam_node::Context;
-use ockam_transport_tcp::{PortalInterceptorWorker, PortalMessage, MAX_PAYLOAD_SIZE};
+use ockam_transport_tcp::{read_portal_payload_length, PortalInterceptorWorker, PortalMessage};
 
 use crate::kafka::inlet_controller::KafkaInletController;
 use crate::kafka::key_exchange::controller::KafkaKeyExchangeControllerImpl;
@@ -169,7 +169,7 @@ async fn kafka_portal_worker__bigger_than_limit_kafka_message__error(
     );
 
     let huge_payload = request_buffer.as_ref();
-    for chunk in huge_payload.chunks(MAX_PAYLOAD_SIZE) {
+    for chunk in huge_payload.chunks(read_portal_payload_length()) {
         let _error = context
             .send(
                 route![portal_inlet_address.clone(), context.address()],
@@ -229,7 +229,10 @@ async fn kafka_portal_worker__almost_over_limit_than_limit_kafka_message__two_ka
     // let's duplicate the message
     huge_outgoing_request.extend(huge_outgoing_request.clone());
 
-    for chunk in huge_outgoing_request.as_ref().chunks(MAX_PAYLOAD_SIZE) {
+    for chunk in huge_outgoing_request
+        .as_ref()
+        .chunks(read_portal_payload_length())
+    {
         context
             .send(
                 route![portal_inlet_address.clone(), "tcp_payload_receiver"],
@@ -327,6 +330,7 @@ async fn setup_only_worker(context: &mut Context, handle: &NodeManagerHandle) ->
             )),
             TEST_MAX_KAFKA_MESSAGE_SIZE,
         )),
+        read_portal_payload_length(),
     )
     .await
     .unwrap()
@@ -425,6 +429,7 @@ async fn kafka_portal_worker__metadata_exchange__response_changed(
             )),
             MAX_KAFKA_MESSAGE_SIZE,
         )),
+        read_portal_payload_length(),
     )
     .await?;
 

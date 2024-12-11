@@ -5,16 +5,6 @@ use ockam_core::CowBytes;
 /// Current protocol version.
 pub const CURRENT_VERSION: Version = Version(1);
 
-/// According to IETF RFC 1122 [https://datatracker.ietf.org/doc/html/rfc1122] IP packets of size
-/// up to 576 bytes should be supported, which means we can have at least 508 bytes for our
-/// payload while using UDP. This should give us high probability of packets not being dropped
-/// somewhere on the way.
-pub const MAX_ON_THE_WIRE_SIZE: usize = 508;
-
-/// Maximum payload size which will allow message not to exceed [`MAX_ON_THE_WIRE_SIZE`]
-/// after encoding.
-pub const MAX_PAYLOAD_SIZE: usize = 493;
-
 /// Protocol version.
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Encode, Decode, CborLen)]
 #[cbor(transparent)]
@@ -55,37 +45,40 @@ impl<'a> UdpTransportMessage<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::messages::{
-        RoutingNumber, UdpTransportMessage, Version, MAX_ON_THE_WIRE_SIZE, MAX_PAYLOAD_SIZE,
-    };
+    use crate::messages::{RoutingNumber, UdpTransportMessage, Version};
+    use crate::UdpSizeOptions;
 
     #[test]
     fn test_max_size_current_protocol() {
+        let size_options = UdpSizeOptions::default();
+
         let msg = UdpTransportMessage::new(
             Version(u8::MAX),
             RoutingNumber(u16::MAX),
             u16::MAX,
             u16::MAX,
-            vec![0u8; MAX_PAYLOAD_SIZE],
+            vec![0u8; size_options.max_payload_size_per_packet],
         );
 
         let len = ockam_core::cbor_encode_preallocate(msg).unwrap().len();
 
-        assert!(len <= MAX_ON_THE_WIRE_SIZE);
+        assert!(len <= size_options.max_on_the_wire_packet_size);
     }
 
     #[test]
     fn test_max_size_max_protocol() {
+        let size_options = UdpSizeOptions::default();
+
         let msg = UdpTransportMessage::new(
             Version(u8::MAX),
             RoutingNumber(u16::MAX),
             u16::MAX,
             u16::MAX,
-            vec![0u8; MAX_PAYLOAD_SIZE],
+            vec![0u8; size_options.max_payload_size_per_packet],
         );
 
         let len = ockam_core::cbor_encode_preallocate(msg).unwrap().len();
 
-        assert_eq!(len, MAX_ON_THE_WIRE_SIZE);
+        assert_eq!(len, size_options.max_on_the_wire_packet_size);
     }
 }

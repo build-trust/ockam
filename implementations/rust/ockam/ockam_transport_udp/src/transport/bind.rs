@@ -114,7 +114,12 @@ impl UdpTransport {
         let receiver_outgoing_access_control =
             options.create_receiver_outgoing_access_control(self.ctx.flow_controls());
 
-        let sender = UdpSenderWorker::new(addresses.clone(), socket_write, arguments.peer_address);
+        let sender = UdpSenderWorker::new(
+            addresses.clone(),
+            socket_write,
+            arguments.peer_address,
+            options.size_options.max_payload_size_per_packet,
+        );
         WorkerBuilder::new(sender)
             .with_address(addresses.sender_address().clone())
             .with_incoming_access_control(AllowAll)
@@ -122,8 +127,13 @@ impl UdpTransport {
             .start(&self.ctx)
             .await?;
 
-        let receiver =
-            UdpReceiverProcessor::new(addresses.clone(), socket_read, arguments.peer_address);
+        let receiver = UdpReceiverProcessor::new(
+            addresses.clone(),
+            socket_read,
+            arguments.peer_address,
+            options.size_options.pending_messages_per_peer,
+            options.size_options.max_on_the_wire_packet_size,
+        );
         ProcessorBuilder::new(receiver)
             .with_address(addresses.receiver_address().clone())
             .with_incoming_access_control(DenyAll)

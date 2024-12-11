@@ -11,11 +11,9 @@ pub(crate) use transport_messages_iterator::*;
 #[allow(non_snake_case)]
 #[cfg(test)]
 mod tests {
-    use crate::messages::{
-        RoutingNumber, UdpRoutingMessage, UdpTransportMessage, MAX_PAYLOAD_SIZE,
-    };
+    use crate::messages::{RoutingNumber, UdpRoutingMessage, UdpTransportMessage};
     use crate::workers::pending_messages::{PendingMessage, TransportMessagesIterator};
-    use crate::MAX_MESSAGE_SIZE;
+    use crate::{UdpSizeOptions, MAX_MESSAGE_SIZE};
     use ockam_core::compat::rand::RngCore;
     use ockam_core::{route, Result};
     use rand::prelude::SliceRandom;
@@ -32,7 +30,11 @@ mod tests {
 
         let routing_number = RoutingNumber::default();
 
-        let mut iterator = TransportMessagesIterator::new(routing_number, &message)?;
+        let mut iterator = TransportMessagesIterator::new(
+            routing_number,
+            &message,
+            UdpSizeOptions::default().max_payload_size_per_packet,
+        )?;
 
         let next = iterator.next().transpose()?.unwrap();
         let packet: UdpTransportMessage = minicbor::decode(&next)?;
@@ -49,7 +51,8 @@ mod tests {
 
     #[test]
     fn medium_message__reassemble__should_succeed() -> Result<()> {
-        let mut payload = vec![0; MAX_PAYLOAD_SIZE];
+        let max_payload_size_per_packet = UdpSizeOptions::default().max_payload_size_per_packet;
+        let mut payload = vec![0; max_payload_size_per_packet];
         thread_rng().fill_bytes(&mut payload);
 
         let message =
@@ -59,7 +62,8 @@ mod tests {
 
         let mut pending_message = PendingMessage::new(vec![]);
 
-        let mut iterator = TransportMessagesIterator::new(routing_number, &message)?;
+        let mut iterator =
+            TransportMessagesIterator::new(routing_number, &message, max_payload_size_per_packet)?;
 
         let next = iterator.next().transpose()?.unwrap();
         let packet: UdpTransportMessage = minicbor::decode(&next)?;
@@ -90,7 +94,11 @@ mod tests {
 
         let mut pending_message = PendingMessage::new(vec![]);
 
-        let mut iterator = TransportMessagesIterator::new(routing_number, &message)?;
+        let mut iterator = TransportMessagesIterator::new(
+            routing_number,
+            &message,
+            UdpSizeOptions::default().max_payload_size_per_packet,
+        )?;
 
         while let Some(next) = iterator.next().transpose()? {
             let packet: UdpTransportMessage = minicbor::decode(&next)?;
@@ -130,7 +138,11 @@ mod tests {
 
         let mut pending_message = PendingMessage::new(vec![]);
 
-        let mut iterator = TransportMessagesIterator::new(routing_number, &message)?;
+        let mut iterator = TransportMessagesIterator::new(
+            routing_number,
+            &message,
+            UdpSizeOptions::default().max_payload_size_per_packet,
+        )?;
 
         let mut packets = vec![];
 
