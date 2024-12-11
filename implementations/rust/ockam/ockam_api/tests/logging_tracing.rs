@@ -10,8 +10,9 @@ use opentelemetry_sdk as sdk;
 use sdk::testing::logs::*;
 use sdk::testing::trace::*;
 
+use opentelemetry_sdk::testing::logs::InMemoryLogsExporter;
+use opentelemetry_sdk::testing::trace::InMemorySpanExporter;
 use std::fs;
-
 use tempfile::NamedTempFile;
 
 use ockam_api::cli_state::{random_name, CliStateMode};
@@ -81,12 +82,12 @@ fn test_log_and_traces() {
         if file_path.to_string_lossy().contains("stdout") {
             let contents = fs::read_to_string(file_path).unwrap();
             assert!(
-                contents.contains("INFO logging_tracing: inside span"),
+                contents.contains("INFO inside span logging_tracing"),
                 "{:?}",
                 contents
             );
             assert!(
-                contents.contains("ERROR logging_tracing: something went wrong!"),
+                contents.contains("ERROR something went wrong! logging_tracing"),
                 "{:?}",
                 contents
             );

@@ -118,7 +118,6 @@ impl CliState {
     }
 
     fn notify(&self, notification: Notification) {
-        debug!("{:?}", notification.contents());
         let _ = self.notifications.send(notification);
     }
 }

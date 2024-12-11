@@ -4753,6 +4753,7 @@ dependencies = [
  "mockall",
  "multimap",
  "nix 0.29.0",
+ "nu-ansi-term 0.50.1",
  "ockam",
  "ockam_abac",
  "ockam_core",

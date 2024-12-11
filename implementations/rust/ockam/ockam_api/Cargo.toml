@@ -78,6 +78,7 @@ log = "0.4"
 miette = { version = "7.2.0", features = ["fancy-no-backtrace"] }
 minicbor = { version = "0.25.1", default-features = false, features = ["alloc", "derive"] }
 nix = { version = "0.29", features = ["signal"] }
+nu-ansi-term = "0.50"
 once_cell = { version = "1", default-features = false }
 open = "5.3.0"
 opentelemetry = { version = "0.26.0", features = ["logs", "metrics", "trace"] }

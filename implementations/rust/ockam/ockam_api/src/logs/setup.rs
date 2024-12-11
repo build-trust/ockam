@@ -30,6 +30,7 @@ use ockam_node::Executor;
 use crate::logs::tracing_guard::TracingGuard;
 use crate::logs::{
     ExportingConfiguration, GlobalErrorHandler, LoggingConfiguration, OckamLogExporter,
+    OckamLogFormat,
 };
 use crate::logs::{LogFormat, OckamSpanExporter};
 
@@ -109,7 +110,9 @@ impl LoggingTracing {
         let result = match logging_configuration.format() {
             LogFormat::Pretty => layers.with(appender.pretty()).try_init(),
             LogFormat::Json => layers.with(appender.json()).try_init(),
-            LogFormat::Default => layers.with(appender).try_init(),
+            LogFormat::Default => layers
+                .with(appender.event_format(OckamLogFormat::new()))
+                .try_init(),
         };
         result.expect("Failed to initialize tracing subscriber");
 
@@ -130,7 +133,9 @@ impl LoggingTracing {
             let result = match logging_configuration.format() {
                 LogFormat::Pretty => layers.with(appender.pretty()).try_init(),
                 LogFormat::Json => layers.with(appender.json()).try_init(),
-                LogFormat::Default => layers.with(appender).try_init(),
+                LogFormat::Default => layers
+                    .with(appender.event_format(OckamLogFormat::new()))
+                    .try_init(),
             };
             result.expect("Failed to initialize tracing subscriber");
         };
@@ -230,7 +235,7 @@ fn create_opentelemetry_tracing_layer<
     exporting_configuration: &ExportingConfiguration,
     span_exporter: S,
 ) -> (
-    OpenTelemetryLayer<R, sdk::trace::Tracer>,
+    OpenTelemetryLayer<R, opentelemetry_sdk::trace::Tracer>,
     opentelemetry_sdk::trace::TracerProvider,
 ) {
     let app = app_name.to_string();
@@ -243,7 +248,8 @@ fn create_opentelemetry_tracing_layer<
     let is_ockam_developer = exporting_configuration.is_ockam_developer();
     let span_export_cutoff = exporting_configuration.span_export_cutoff();
     Executor::execute_future(async move {
-        let trace_config = sdk::trace::Config::default().with_resource(make_resource(app));
+        let trace_config =
+            opentelemetry_sdk::trace::Config::default().with_resource(make_resource(app));
         let (tracer, tracer_provider) = create_tracer(
             trace_config,
             batch_config,
@@ -410,11 +416,14 @@ fn set_global_error_handler(logging_configuration: &LoggingConfiguration) {
 
 /// Create a Tracer using the provided span exporter
 fn create_tracer<S: SpanExporter + 'static>(
-    trace_config: sdk::trace::Config,
+    trace_config: opentelemetry_sdk::trace::Config,
     batch_config: BatchConfig,
     exporter: S,
-) -> (sdk::trace::Tracer, opentelemetry_sdk::trace::TracerProvider) {
-    let span_processor = BatchSpanProcessor::builder(exporter, sdk::runtime::Tokio)
+) -> (
+    opentelemetry_sdk::trace::Tracer,
+    opentelemetry_sdk::trace::TracerProvider,
+) {
+    let span_processor = BatchSpanProcessor::builder(exporter, opentelemetry_sdk::runtime::Tokio)
         .with_batch_config(batch_config)
         .build();
     let provider = opentelemetry_sdk::trace::TracerProvider::builder()

@@ -53,7 +53,17 @@ impl CreateCommand {
 
         // Set node_name so that node can isolate its data in the storage from other nodes
         self.get_or_create_identity(&opts, &self.identity).await?;
-        let _notification_handler = NotificationHandler::start(&opts.state, opts.terminal.clone());
+        let _notification_handler = if self.foreground_args.child_process {
+            // If enabled, the user's terminal will receive notifications
+            // from the node after the command exited.
+            None
+        } else {
+            // Enable the notifications only on explicit foreground nodes.
+            Some(NotificationHandler::start(
+                &opts.state,
+                opts.terminal.clone(),
+            ))
+        };
         let node_info = opts
             .state
             .start_node_with_optional_values(
