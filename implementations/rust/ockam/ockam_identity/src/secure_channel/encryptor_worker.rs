@@ -1,6 +1,6 @@
 use core::sync::atomic::{AtomicBool, Ordering};
 
-use tracing::{debug, error, info, warn};
+use tracing::{debug, error, info, trace, warn};
 use tracing_attributes::instrument;
 
 use ockam_core::compat::boxed::Box;
@@ -99,12 +99,23 @@ impl EncryptorWorker {
         ctx: &Context,
         msg: SecureChannelPaddedMessage<'static>,
     ) -> Result<Vec<u8>> {
+        trace!(
+            role=%self.role,
+            encryptor=%self.addresses.encryptor,
+            "encrypting message");
+
         let expected_len = minicbor::len(&msg);
         let mut destination = vec![0u8; NOISE_NONCE_LEN + expected_len + AES_GCM_TAGSIZE];
         minicbor::encode(&msg, &mut destination[NOISE_NONCE_LEN..])?;
 
         match self.encryptor.encrypt(&mut destination).await {
-            Ok(()) => Ok(destination),
+            Ok(()) => {
+                trace!(
+                    role=%self.role,
+                    encryptor=%self.addresses.encryptor,
+                    "message encrypted");
+                Ok(destination)
+            }
             // If encryption failed, that means we have some internal error,
             // and we may be in an invalid state, it's better to stop the Worker
             Err(err) => {
@@ -122,10 +133,10 @@ impl EncryptorWorker {
         ctx: &mut <Self as Worker>::Context,
         msg: Routed<<Self as Worker>::Message>,
     ) -> Result<()> {
-        debug!(
-            "SecureChannel {} received Encrypt API {}",
-            self.role, &self.addresses.encryptor
-        );
+        trace!(
+            role=%self.role,
+            encryptor=%self.addresses.encryptor,
+            "handling encrypt API message");
 
         let msg = msg.into_local_message();
         let return_route = msg.return_route;
@@ -161,6 +172,11 @@ impl EncryptorWorker {
         ctx.send_from_address(return_route, response, self.addresses.encryptor_api.clone())
             .await?;
 
+        trace!(
+            role=%self.role,
+            encryptor=%self.addresses.encryptor,
+            "sent encrypt API response");
+
         if should_stop {
             ctx.stop_worker(self.addresses.encryptor.clone()).await?;
         }
@@ -174,10 +190,10 @@ impl EncryptorWorker {
         ctx: &mut <Self as Worker>::Context,
         msg: Routed<<Self as Worker>::Message>,
     ) -> Result<()> {
-        debug!(
-            "SecureChannel {} received Encrypt {}",
-            self.role, &self.addresses.encryptor
-        );
+        trace!(
+            role=%self.role,
+            encryptor=%self.addresses.encryptor,
+            "handling encrypt message");
 
         let msg = msg.into_local_message();
         let mut onward_route = msg.onward_route;
@@ -208,6 +224,11 @@ impl EncryptorWorker {
         ctx.forward_from_address(msg, self.addresses.encryptor.clone())
             .await?;
 
+        debug!(
+            role=%self.role,
+            encryptor=%self.addresses.encryptor,
+            "forwarded message to decryptor");
+
         Ok(())
     }
 
@@ -215,7 +236,7 @@ impl EncryptorWorker {
     /// the latest change_history
     #[instrument(skip_all)]
     async fn handle_refresh_credentials(&mut self, ctx: &<Self as Worker>::Context) -> Result<()> {
-        debug!(
+        trace!(
             "Started credentials refresh for {}",
             self.addresses.encryptor
         );
@@ -282,6 +303,11 @@ impl EncryptorWorker {
             self.addresses.encryptor.clone(),
         )
         .await?;
+
+        trace!(
+            role=%self.role,
+            encryptor=%self.addresses.encryptor,
+            "credentials refresh sent");
 
         self.last_presented_credential = Some(credential);
 

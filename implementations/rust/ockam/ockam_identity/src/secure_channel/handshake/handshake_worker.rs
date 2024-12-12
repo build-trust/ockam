@@ -11,7 +11,7 @@ use ockam_core::{Result, Worker};
 use ockam_node::callback::CallbackSender;
 use ockam_node::{Context, WorkerBuilder};
 use ockam_vault::AeadSecretKeyHandle;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, error, info, trace, warn};
 use tracing_attributes::instrument;
 
 use crate::models::Identifier;
@@ -74,7 +74,11 @@ impl Worker for HandshakeWorker {
         if let Some(state_machine) = self.state_machine.as_mut() {
             match state_machine.on_event(Initialize).await? {
                 SendMessage(message) => {
-                    debug!(remote_route=?self.remote_route, decryptor_remote=%self.addresses.decryptor_remote, "sending message");
+                    trace!(
+                        remote_route = ?self.remote_route,
+                        decryptor_remote = %self.addresses.decryptor_remote,
+                        "sending message",
+                    );
                     context
                         .send_from_address(
                             self.remote_route()?,
@@ -264,6 +268,11 @@ impl HandshakeWorker {
         context: &mut Context,
         message: Routed<Any>,
     ) -> Result<()> {
+        trace!(
+            remote_route = ?self.remote_route,
+            decryptor_remote = %self.addresses.decryptor_remote,
+            "handling handshake message",
+        );
         let message = message.into_local_message();
         let return_route = message.return_route;
         let payload = message.payload;
@@ -315,6 +324,11 @@ impl HandshakeWorker {
     /// and for decryption.
     #[instrument(skip_all, name = "DecryptorWorker::handle_message")]
     async fn handle_decrypt(&mut self, context: &mut Context, message: Routed<Any>) -> Result<()> {
+        trace!(
+            remote_route = ?self.remote_route,
+            decryptor_remote = %self.addresses.decryptor_remote,
+            "handling decrypt message",
+        );
         let decryptor_handler = self.decryptor_handler.as_mut().unwrap();
         let msg_addr = message.msg_addr();
 
