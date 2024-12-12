@@ -91,6 +91,26 @@ EOF
   run_success curl -sfI --retry-connrefused --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$CLIENT_PORT"
 }
 
+@test "nodes - in-memory, create with config, single machine, unnamed portal" {
+  ADMIN_HOME_DIR="$OCKAM_HOME"
+  ticket_path="$ADMIN_HOME_DIR/enrollment.ticket"
+  export RELAY_NAME=$(random_str)
+  $OCKAM project ticket --usage-count 5 --relay $RELAY_NAME >"$ticket_path"
+
+  setup_home_dir
+  export NODE_PORT=$(random_port)
+  export CLIENT_PORT=$(random_port)
+  OCKAM_SQLITE_IN_MEMORY=true "$OCKAM" node create "$BATS_TEST_DIRNAME/fixtures/node-create.1.unnamed-portal.config.yaml" \
+    --variable SERVICE_PORT="$PYTHON_SERVER_PORT" --enrollment-ticket $ticket_path -f &
+  pid=$!
+  sleep 5
+
+  # portal is working: inlet -> relay -> outlet -> python server
+  run_success curl -sfI --retry-connrefused --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$CLIENT_PORT"
+
+  kill -9 $pid
+}
+
 @test "nodes - create with config, single machine, named portal" {
   export RELAY_NAME=$(random_str)
   export CLIENT_PORT=$(random_port)

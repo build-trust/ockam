@@ -4,7 +4,7 @@ use tokio::sync::broadcast::{channel, Receiver, Sender};
 
 use ockam::SqlxDatabase;
 use ockam_core::env::get_env_with_default;
-use ockam_node::database::DatabaseConfiguration;
+use ockam_node::database::{DatabaseConfiguration, OCKAM_SQLITE_IN_MEMORY};
 use ockam_node::Executor;
 
 use crate::cli_state::error::Result;
@@ -69,6 +69,13 @@ impl CliState {
 
     pub fn database_configuration(&self) -> Result<DatabaseConfiguration> {
         Self::make_database_configuration(&self.dir)
+    }
+
+    pub fn is_using_in_memory_database(&self) -> Result<bool> {
+        match self.database_configuration()? {
+            DatabaseConfiguration::SqliteInMemory { .. } => Ok(true),
+            _ => Ok(false),
+        }
     }
 
     pub fn is_database_path(&self, path: &Path) -> bool {
@@ -248,9 +255,15 @@ impl CliState {
     pub(super) fn make_database_configuration(root_path: &Path) -> Result<DatabaseConfiguration> {
         match DatabaseConfiguration::postgres()? {
             Some(configuration) => Ok(configuration),
-            None => Ok(DatabaseConfiguration::sqlite(
-                root_path.join("database.sqlite3").as_path(),
-            )),
+            None => {
+                if get_env_with_default::<bool>(OCKAM_SQLITE_IN_MEMORY, false)? {
+                    Ok(DatabaseConfiguration::sqlite_in_memory())
+                } else {
+                    Ok(DatabaseConfiguration::sqlite(
+                        root_path.join("database.sqlite3").as_path(),
+                    ))
+                }
+            }
         }
     }
 
@@ -260,9 +273,15 @@ impl CliState {
     ) -> Result<DatabaseConfiguration> {
         match DatabaseConfiguration::postgres()? {
             Some(configuration) => Ok(configuration),
-            None => Ok(DatabaseConfiguration::sqlite(
-                root_path.join("application_database.sqlite3").as_path(),
-            )),
+            None => {
+                if get_env_with_default::<bool>(OCKAM_SQLITE_IN_MEMORY, false)? {
+                    Ok(DatabaseConfiguration::sqlite_in_memory())
+                } else {
+                    Ok(DatabaseConfiguration::sqlite(
+                        root_path.join("application_database.sqlite3").as_path(),
+                    ))
+                }
+            }
         }
     }
 

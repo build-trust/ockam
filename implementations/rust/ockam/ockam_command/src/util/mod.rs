@@ -188,6 +188,9 @@ pub async fn clean_nodes_multiaddr(
 
 pub fn port_is_free_guard(address: &SocketAddr) -> Result<()> {
     let port = address.port();
+    if port == 0 {
+        return Ok(());
+    }
     let ip = address.ip();
     if TcpListener::bind((ip, port)).is_err() {
         Err(miette!(

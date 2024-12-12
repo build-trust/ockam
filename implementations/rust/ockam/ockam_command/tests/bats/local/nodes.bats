@@ -224,3 +224,43 @@ name: n1
 EOF
   run_success "$OCKAM" node create "$OCKAM_HOME/node.yaml"
 }
+
+@test "node - create in-memory foreground node, with env var" {
+  # create a node in-memory
+  OCKAM_SQLITE_IN_MEMORY=true "$OCKAM" node create n1 -f -vv >$OCKAM_HOME/node.logs &
+  pid=$!
+  sleep 2
+
+  # check logs
+  run_success cat $OCKAM_HOME/node.logs
+  assert_output --partial "Created a new Node named n1"
+
+  # no database or files should be created
+  run_failure ls -l "$OCKAM_HOME/nodes"
+  run_failure ls -l "$OCKAM_HOME/database.sqlite3"
+  run_success $OCKAM node show n1
+  assert_output "[]"
+
+  # stop the node
+  run_success kill -9 $pid
+}
+
+@test "node - create in-memory foreground node, with flag" {
+  # create a node in-memory
+  "$OCKAM" node create n1 --in-memory -f -vv >$OCKAM_HOME/node.logs &
+  pid=$!
+  sleep 2
+
+  # check logs
+  run_success cat $OCKAM_HOME/node.logs
+  assert_output --partial "Created a new Node named n1"
+
+  # no database or files should be created
+  run_failure ls -l "$OCKAM_HOME/nodes"
+  run_failure ls -l "$OCKAM_HOME/database.sqlite3"
+  run_success $OCKAM node show n1
+  assert_output "[]"
+
+  # stop the node
+  run_success kill -9 $pid
+}

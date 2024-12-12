@@ -71,6 +71,7 @@ pub async fn wait_for_exit_signal(
     debug!("waiting for exit signal");
 
     if !args.child_process {
+        opts.terminal.write_line("")?;
         opts.terminal.write_line(fmt_log!("{}", msg))?;
     }
 

@@ -6,7 +6,7 @@ use ockam_api::logs::{
 use opentelemetry::global;
 use opentelemetry::trace::Tracer;
 
-use opentelemetry_sdk::{self as sdk};
+use opentelemetry_sdk as sdk;
 use sdk::testing::logs::*;
 use sdk::testing::trace::*;
 
@@ -15,6 +15,8 @@ use std::fs;
 use tempfile::NamedTempFile;
 
 use ockam_api::cli_state::random_name;
+use ockam_api::CliState;
+use ockam_node::Executor;
 use tracing::{error, info};
 use tracing_core::Level;
 
@@ -23,9 +25,18 @@ use tracing_core::Level;
 /// they set up some global spans / logs exporters that might interact with other tests
 #[test]
 fn test_log_and_traces() {
+    let cli = Executor::execute_future(async {
+        let db_file = NamedTempFile::new().unwrap();
+        let cli_state_directory = db_file.path().parent().unwrap().join(random_name());
+        CliState::create(cli_state_directory)
+            .await
+            .unwrap()
+            .set_tracing_enabled(true)
+    })
+    .unwrap();
+
     let temp_file = NamedTempFile::new().unwrap();
     let log_directory = &temp_file.path().parent().unwrap().join(random_name());
-
     let spans_exporter = InMemorySpanExporter::default();
     let logs_exporter = InMemoryLogsExporter::default();
     let guard = LoggingTracing::setup_with_exporters(
@@ -34,7 +45,7 @@ fn test_log_and_traces() {
         &make_configuration()
             .unwrap()
             .set_log_directory(log_directory.into()),
-        &ExportingConfiguration::foreground().unwrap(),
+        &ExportingConfiguration::foreground(&cli).unwrap(),
         "test",
         None,
     );

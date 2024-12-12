@@ -21,6 +21,16 @@ use tempfile::NamedTempFile;
 /// it sets up some global spans / logs exporters that might interact with other tests
 #[test]
 fn test_create_journey_event() {
+    let cli = Executor::execute_future(async {
+        let db_file = NamedTempFile::new().unwrap();
+        let cli_state_directory = db_file.path().parent().unwrap().join(random_name());
+        CliState::create(cli_state_directory)
+            .await
+            .unwrap()
+            .set_tracing_enabled(true)
+    })
+    .unwrap();
+
     let spans_exporter = InMemorySpanExporter::default();
     let logs_exporter = InMemoryLogsExporter::default();
 
@@ -30,7 +40,7 @@ fn test_create_journey_event() {
         &LoggingConfiguration::off()
             .unwrap()
             .set_crates(&["ockam_api"]),
-        &ExportingConfiguration::foreground().unwrap(),
+        &ExportingConfiguration::foreground(&cli).unwrap(),
         "test",
         None,
     );
@@ -40,13 +50,6 @@ fn test_create_journey_event() {
 
         Executor::execute_future(
             async move {
-                let db_file = NamedTempFile::new().unwrap();
-                let cli_state_directory = db_file.path().parent().unwrap().join(random_name());
-                let cli = CliState::create(cli_state_directory)
-                    .await
-                    .unwrap()
-                    .set_tracing_enabled(true);
-
                 let mut map = HashMap::new();
                 map.insert(USER_EMAIL, "etorreborre@yahoo.com".to_string());
                 map.insert(USER_NAME, "eric".to_string());

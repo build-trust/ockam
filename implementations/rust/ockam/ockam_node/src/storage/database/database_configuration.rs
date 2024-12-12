@@ -5,6 +5,8 @@ use ockam_core::{Error, Result};
 use std::fs::create_dir_all;
 use std::path::{Path, PathBuf};
 
+/// Use an in-memory SQLite database
+pub const OCKAM_SQLITE_IN_MEMORY: &str = "OCKAM_SQLITE_IN_MEMORY";
 /// Database host environment variable
 pub const OCKAM_POSTGRES_HOST: &str = "OCKAM_POSTGRES_HOST";
 /// Database port environment variable

@@ -31,7 +31,7 @@ pub struct CommandGlobalOpts {
     pub state: CliState,
     pub terminal: Terminal<TerminalStream<Term>>,
     pub rt: Arc<Runtime>,
-    tracing_guard: Option<Arc<TracingGuard>>,
+    pub tracing_guard: Option<Arc<TracingGuard>>,
 }
 
 impl CommandGlobalOpts {
@@ -46,10 +46,39 @@ impl CommandGlobalOpts {
         global_args: &GlobalArgs,
         cmd: &OckamSubcommand,
     ) -> miette::Result<Self> {
-        let rt = Arc::new(Runtime::new().expect("cannot initialize the tokio runtime"));
+        let mut state = match CliState::with_default_dir() {
+            Ok(state) => state,
+            Err(err) => {
+                // If the user is trying to run `ockam reset` and the local state is corrupted,
+                // we can try to hard reset the local state.
+                if let OckamSubcommand::Reset(c) = cmd {
+                    c.hard_reset();
+                    println!("{}", fmt_ok!("Local Ockam configuration deleted"));
+                    exit(exitcode::OK);
+                }
+                eprintln!("{}", fmt_err!("Failed to initialize local state"));
+                eprintln!(
+                    "{}",
+                    fmt_log!("Consider upgrading to the latest version of Ockam Command")
+                );
+                let ockam_home = std::env::var("OCKAM_HOME").unwrap_or("~/.ockam".to_string());
+                eprintln!(
+                    "{}",
+                    fmt_log!(
+                        "You can also try removing the local state using {} \
+                        or deleting the directory at {}",
+                        color_primary("ockam reset"),
+                        color_primary(ockam_home)
+                    )
+                );
+                eprintln!("\n{:?}", miette!(err.to_string()));
+                exit(exitcode::SOFTWARE);
+            }
+        };
+
         let logging_configuration =
             Self::make_logging_configuration(global_args, cmd, Term::stdout().is_term())?;
-        let tracing_configuration = Self::make_tracing_configuration(cmd)?;
+        let tracing_configuration = Self::make_tracing_configuration(&state, cmd)?;
         let terminal = Terminal::new(
             logging_configuration.is_enabled(),
             logging_configuration.log_dir().is_some(),
@@ -69,34 +98,10 @@ impl CommandGlobalOpts {
             &tracing_configuration,
         );
 
-        let state = match CliState::with_default_dir() {
-            Ok(state) => state.set_tracing_enabled(tracing_configuration.is_enabled()),
-            Err(err) => {
-                // If the user is trying to run `ockam reset` and the local state is corrupted,
-                // we can try to hard reset the local state.
-                if let OckamSubcommand::Reset(c) = cmd {
-                    c.hard_reset();
-                    terminal
-                        .stdout()
-                        .plain(fmt_ok!("Local Ockam configuration deleted"))
-                        .write_line()?;
-                    exit(exitcode::OK);
-                }
-                terminal.write_line(fmt_err!("Failed to initialize local state"))?;
-                terminal.write_line(fmt_log!(
-                    "Consider upgrading to the latest version of Ockam Command"
-                ))?;
-                let ockam_home = std::env::var("OCKAM_HOME").unwrap_or("~/.ockam".to_string());
-                terminal.write_line(fmt_log!(
-                    "You can also try removing the local state using {} \
-                        or deleting the directory at {}",
-                    color_primary("ockam reset"),
-                    color_primary(ockam_home)
-                ))?;
-                terminal.write_line(format!("\n{:?}", miette!(err.to_string())))?;
-                exit(exitcode::SOFTWARE);
-            }
-        };
+        state = state.set_tracing_enabled(tracing_configuration.is_enabled());
+
+        let rt = Arc::new(Runtime::new().expect("cannot initialize the tokio runtime"));
+
         Ok(Self {
             global_args: global_args.clone(),
             state,
@@ -158,11 +163,14 @@ impl CommandGlobalOpts {
     }
 
     /// Create the tracing configuration, depending on the command to execute
-    fn make_tracing_configuration(cmd: &OckamSubcommand) -> miette::Result<ExportingConfiguration> {
+    fn make_tracing_configuration(
+        state: &CliState,
+        cmd: &OckamSubcommand,
+    ) -> miette::Result<ExportingConfiguration> {
         Ok(if cmd.is_background_node() {
-            ExportingConfiguration::background().into_diagnostic()?
+            ExportingConfiguration::background(state).into_diagnostic()?
         } else {
-            ExportingConfiguration::foreground().into_diagnostic()?
+            ExportingConfiguration::foreground(state).into_diagnostic()?
         })
     }
 

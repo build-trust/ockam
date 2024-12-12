@@ -1,5 +1,6 @@
 use crate::common::test_spans::Trace;
 use ockam_api::logs::{ExportingConfiguration, LoggingConfiguration, LoggingTracing};
+use ockam_api::CliState;
 use ockam_core::{AsyncTryClone, OpenTelemetryContext};
 use ockam_node::{Context, NodeBuilder};
 use opentelemetry::global;
@@ -13,7 +14,10 @@ use std::future::Future;
 ///
 ///  - the return value of the function
 ///  - all the exported spans
-pub fn trace_code<F>(f: impl Fn(Context) -> F + Send + Sync + 'static) -> (F::Output, Vec<SpanData>)
+pub fn trace_code<F>(
+    state: &CliState,
+    f: impl Fn(Context) -> F + Send + Sync + 'static,
+) -> (F::Output, Vec<SpanData>)
 where
     F: Future + Send + 'static,
     F::Output: Send + 'static,
@@ -26,7 +30,7 @@ where
             .unwrap()
             .set_all_crates()
             .set_log_level(tracing_core::metadata::Level::TRACE),
-        &ExportingConfiguration::foreground().unwrap(),
+        &ExportingConfiguration::foreground(state).unwrap(),
         "test",
         None,
     );

@@ -6,6 +6,7 @@ use colorful::Colorful;
 use miette::{miette, IntoDiagnostic, WrapErr};
 use serde::{Deserialize, Serialize};
 use tokio::fs::read_to_string;
+use tokio::process::Child;
 use tokio_retry::strategy::FixedInterval;
 use tokio_retry::Retry;
 use tracing::{debug, error, info};
@@ -140,7 +141,7 @@ impl CreateCommand {
     pub(crate) async fn spawn_background_node(
         &self,
         opts: &CommandGlobalOpts,
-    ) -> miette::Result<()> {
+    ) -> miette::Result<Child> {
         if !self.skip_is_running_check {
             self.guard_node_is_not_already_running(opts).await?;
         }
@@ -282,7 +283,8 @@ impl CreateCommand {
     /// Given a Context start a node in a new OS process
     async fn create_background_node(&self, opts: CommandGlobalOpts) -> miette::Result<()> {
         // Spawn node in another, new process
-        self.spawn_background_node(&opts).await
+        self.spawn_background_node(&opts).await?;
+        Ok(())
     }
 
     /// Start an authority node:

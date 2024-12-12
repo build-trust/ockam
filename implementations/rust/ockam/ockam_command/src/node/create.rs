@@ -16,7 +16,7 @@ use ockam_api::cli_state::random_name;
 use ockam_api::colors::{color_error, color_primary};
 use ockam_api::nodes::models::transport::Port;
 use ockam_api::terminal::notification::NotificationHandler;
-use ockam_api::{fmt_log, fmt_ok, CliState};
+use ockam_api::{fmt_log, fmt_ok};
 use ockam_core::{opentelemetry_context_parser, OpenTelemetryContext};
 use ockam_node::Context;
 use opentelemetry::trace::TraceContextExt;
@@ -136,6 +136,17 @@ pub struct CreateCommand {
     /// Serialized opentelemetry context
     #[arg(hide = true, long, value_parser = opentelemetry_context_parser)]
     pub opentelemetry_context: Option<OpenTelemetryContext>,
+
+    /// Run the node in memory without persisting the state to disk.
+    /// It only works with foreground nodes.
+    #[arg(
+        hide = true,
+        long,
+        value_name = "BOOL",
+        default_value_t = false,
+        env = "OCKAM_SQLITE_IN_MEMORY"
+    )]
+    pub in_memory: bool,
 }
 
 impl Default for CreateCommand {
@@ -165,6 +176,7 @@ impl Default for CreateCommand {
                 exit_on_eof: false,
                 child_process: false,
             },
+            in_memory: false,
         }
     }
 }
@@ -175,9 +187,9 @@ impl Command for CreateCommand {
 
     #[instrument(skip_all)]
     fn run(mut self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        self.parse_args(&opts)?;
         if self.should_run_config() {
             async_cmd(&self.name(), opts.clone(), |ctx| async move {
+                self.parse_args(&opts).await?;
                 self.run_config(&ctx, opts).await
             })
         } else if self.foreground_args.foreground {
@@ -189,29 +201,26 @@ impl Command for CreateCommand {
             local_cmd(embedded_node_that_is_not_stopped(
                 opts.rt.clone(),
                 |ctx| async move {
-                    self.name = self.get_default_node_name(&opts.state).await;
+                    self.parse_args(&opts).await?;
                     self.foreground_mode(&ctx, opts).await
                 },
             ))
         } else {
             async_cmd(&self.name(), opts.clone(), |ctx| async move {
-                self.name = self.get_default_node_name(&opts.state).await;
+                self.parse_args(&opts).await?;
                 self.background_mode(&ctx, opts).await
             })
         }
     }
 
     async fn async_run(mut self, ctx: &Context, opts: CommandGlobalOpts) -> Result<()> {
-        self.parse_args(&opts)?;
+        self.parse_args(&opts).await?;
         if self.should_run_config() {
             self.run_config(ctx, opts).await?
+        } else if self.foreground_args.foreground {
+            self.foreground_mode(ctx, opts).await?
         } else {
-            self.name = self.get_default_node_name(&opts.state).await;
-            if self.foreground_args.foreground {
-                self.foreground_mode(ctx, opts).await?
-            } else {
-                self.background_mode(ctx, opts).await?
-            }
+            self.background_mode(ctx, opts).await?
         }
         Ok(())
     }
@@ -230,20 +239,14 @@ impl CreateCommand {
             return false;
         }
 
-        let name_arg_is_a_config = self.name_arg_is_a_config();
-
-        let no_config_args = !name_arg_is_a_config
+        if !self.name_arg_is_a_config()
             && self.config_args.configuration.is_none()
-            && self.config_args.enrollment_ticket.is_none();
-        if no_config_args {
+            && self.config_args.enrollment_ticket.is_none()
+        {
             return false;
         }
 
-        let name_arg_is_default_node_name_or_config =
-            self.name.eq(DEFAULT_NODE_NAME) || name_arg_is_a_config;
-        name_arg_is_default_node_name_or_config
-            || self.config_args.configuration.is_some()
-            || self.config_args.enrollment_ticket.is_some()
+        true
     }
 
     /// Return true if the `name` argument is a URL, a file path, or an inline config
@@ -260,7 +263,12 @@ impl CreateCommand {
         !self.name_arg_is_a_config()
     }
 
-    fn parse_args(&mut self, opts: &CommandGlobalOpts) -> miette::Result<()> {
+    async fn parse_args(&mut self, opts: &CommandGlobalOpts) -> miette::Result<()> {
+        // return error if trying to create an in-memory node in background mode
+        if !self.foreground_args.foreground && opts.state.is_using_in_memory_database()? {
+            return Err(miette!("Only foreground nodes can be created in-memory",));
+        }
+
         // return error if there are duplicated variables
         let mut variables = std::collections::HashMap::new();
         for (key, value) in self.config_args.variables.iter() {
@@ -274,13 +282,62 @@ impl CreateCommand {
             variables.insert(key.clone(), value.clone());
         }
 
-        // return error if the name arg is not a valid node name, and is not a config
+        // return error if the name arg is not a config and is not a valid node name
         let re = Regex::new(r"[^\w_-]").into_diagnostic()?;
         if self.name_arg_is_a_node_name() && re.is_match(&self.name) {
             return Err(miette!(
                 "Invalid value for {}: {}",
                 color_primary("NAME_OR_CONFIGURATION"),
                 color_error(&self.name),
+            ));
+        }
+
+        // return error if the name arg is a config and the config arg is also set
+        if self.name_arg_is_a_config() && self.config_args.configuration.is_some() {
+            return Err(miette!(
+                "Cannot set both {} and {}",
+                color_primary("NAME_OR_CONFIGURATION"),
+                color_primary("--configuration"),
+            ));
+        }
+
+        // if the name arg is a config, move it to the configuration field and replace
+        // the node name with its default value
+        if self.name_arg_is_a_config() {
+            self.config_args.configuration = Some(self.get_node_config_contents().await?);
+            self.name = DEFAULT_NODE_NAME.to_string();
+        }
+
+        self.name = {
+            let mut name = if let Ok(node_config) = self.parse_node_config().await {
+                node_config.node.name().unwrap_or(self.name.clone())
+            } else {
+                self.name.clone()
+            };
+            if name == DEFAULT_NODE_NAME {
+                name = random_name();
+                if let Ok(default_node) = opts.state.get_default_node().await {
+                    if !default_node.is_running() {
+                        // The default node was stopped, so we can reuse the name
+                        name = default_node.name();
+                    }
+                }
+            }
+            name
+        };
+
+        if !self.skip_is_running_check
+            && opts
+                .state
+                .get_node(&self.name)
+                .await
+                .ok()
+                .map(|n| n.is_running())
+                .unwrap_or(false)
+        {
+            return Err(miette!(
+                "Node {} is already running",
+                color_primary(&self.name)
             ));
         }
 
@@ -318,34 +375,20 @@ impl CreateCommand {
             )
             .into_diagnostic()?;
         }
-        writeln!(
-            buf,
-            "\n{}",
-            fmt_log!(
-                "To see more details on this Node, run: {}",
-                color_primary(format!("ockam node show {}", node_name))
-            )
-        )
-        .into_diagnostic()?;
-        Ok(buf)
-    }
 
-    async fn get_default_node_name(&self, state: &CliState) -> String {
-        let mut name = if self.name_arg_is_a_config() {
-            DEFAULT_NODE_NAME.to_string()
-        } else {
-            self.name.clone()
-        };
-        if name == DEFAULT_NODE_NAME {
-            name = random_name();
-            if let Ok(default_node) = state.get_default_node().await {
-                if !default_node.is_running() {
-                    // The default node was stopped, so we can reuse the name
-                    name = default_node.name();
-                }
-            }
+        if self.foreground_args.child_process {
+            writeln!(
+                buf,
+                "\n{}",
+                fmt_log!(
+                    "To see more details on this Node, run: {}",
+                    color_primary(format!("ockam node show {}", node_name))
+                )
+            )
+            .into_diagnostic()?;
         }
-        name
+
+        Ok(buf)
     }
 
     async fn get_or_create_identity(
@@ -385,9 +428,13 @@ fn parse_launch_config(config_or_path: &str) -> Result<Config> {
 
 #[cfg(test)]
 mod tests {
-    use crate::run::parser::resource::utils::parse_cmd_from_args;
-
     use super::*;
+    use crate::run::parser::resource::utils::parse_cmd_from_args;
+    use crate::GlobalArgs;
+    use ockam_api::output::OutputFormat;
+    use ockam_api::terminal::Terminal;
+    use ockam_api::CliState;
+    use std::sync::Arc;
 
     #[test]
     fn command_can_be_parsed_from_name() {
@@ -447,7 +494,7 @@ mod tests {
         let cmd = CreateCommand::default();
         assert!(!cmd.should_run_config());
 
-        // True if the name is the default node name and the configuration is set
+        // False the name is the default node name, and the configuration is set
         let cmd = CreateCommand {
             config_args: ConfigArgs {
                 configuration: Some(config_path.clone()),
@@ -457,7 +504,7 @@ mod tests {
         };
         assert!(cmd.should_run_config());
 
-        // True if the name is the default node name and the enrollment ticket is set
+        // True the name is the default node name, and the enrollment ticket is set
         let cmd = CreateCommand {
             config_args: ConfigArgs {
                 enrollment_ticket: Some("ticket".to_string()),
@@ -467,7 +514,7 @@ mod tests {
         };
         assert!(cmd.should_run_config());
 
-        // True if the name is not the default node name and the enrollment ticket is set
+        // True the name is not the default node name and the enrollment ticket is set
         let cmd = CreateCommand {
             name: "node".to_string(),
             config_args: ConfigArgs {
@@ -478,7 +525,7 @@ mod tests {
         };
         assert!(cmd.should_run_config());
 
-        // True if the name is not the default node name and the inline config is set
+        // True the name is not the default node name and the inline config is set
         let cmd = CreateCommand {
             name: "node".to_string(),
             config_args: ConfigArgs {
@@ -489,21 +536,21 @@ mod tests {
         };
         assert!(cmd.should_run_config());
 
-        // True if the name is a file path
+        // True if foreground and the name is a file path
         let cmd = CreateCommand {
             name: config_path.clone(),
             ..CreateCommand::default()
         };
         assert!(cmd.should_run_config());
 
-        // True if the name is a URL
+        // True and the name is a URL
         let cmd = CreateCommand {
             name: "http://localhost:8080".to_string(),
             ..CreateCommand::default()
         };
         assert!(cmd.should_run_config());
 
-        // False if the name is a node name and no config is set
+        // False the name is a node name, and no config is set
         let cmd = CreateCommand {
             name: "node".to_string(),
             ..CreateCommand::default()
@@ -511,102 +558,121 @@ mod tests {
         assert!(!cmd.should_run_config());
     }
 
-    #[tokio::test]
-    async fn get_default_node_name_no_previous_state() {
-        let state = CliState::test().await.unwrap();
-        let cmd = CreateCommand::default();
-        let name = cmd.get_default_node_name(&state).await;
-        assert_ne!(name, DEFAULT_NODE_NAME);
+    #[test]
+    fn get_default_node_name_no_previous_state() {
+        let rt = Arc::new(tokio::runtime::Runtime::new().unwrap());
+        let rt_moved = rt.clone();
+        rt.block_on(async {
+            let opts = CommandGlobalOpts {
+                state: CliState::test().await.unwrap(),
+                terminal: Terminal::new(false, false, false, true, false, OutputFormat::Plain),
+                rt: rt_moved,
+                global_args: GlobalArgs::default(),
+                tracing_guard: None,
+            };
+            let mut cmd = CreateCommand::default();
+            cmd.parse_args(&opts).await.unwrap();
+            assert_ne!(cmd.name, DEFAULT_NODE_NAME);
 
-        let cmd = CreateCommand {
-            name: r#"{tcp-outlet: {to: "5500"}}"#.to_string(),
-            ..Default::default()
-        };
-        let name = cmd.get_default_node_name(&state).await;
-        assert_ne!(name, DEFAULT_NODE_NAME);
-        assert_ne!(name, cmd.name);
-
-        let cmd = CreateCommand {
-            config_args: ConfigArgs {
-                configuration: Some(r#"{tcp-outlet: {to: "5500"}}"#.to_string()),
+            let mut cmd = CreateCommand {
+                name: r#"{tcp-outlet: {to: "5500"}}"#.to_string(),
                 ..Default::default()
-            },
-            ..Default::default()
-        };
-        let name = cmd.get_default_node_name(&state).await;
-        assert_ne!(name, DEFAULT_NODE_NAME);
-        assert_ne!(name, cmd.name);
+            };
+            cmd.parse_args(&opts).await.unwrap();
+            assert_ne!(cmd.name, DEFAULT_NODE_NAME);
 
-        let cmd = CreateCommand {
-            name: "n1".to_string(),
-            ..Default::default()
-        };
-        let name = cmd.get_default_node_name(&state).await;
-        assert_eq!(name, cmd.name);
-
-        let cmd = CreateCommand {
-            name: "n1".to_string(),
-            config_args: ConfigArgs {
-                configuration: Some(r#"{tcp-outlet: {to: "5500"}}"#.to_string()),
+            let mut cmd = CreateCommand {
+                config_args: ConfigArgs {
+                    configuration: Some(r#"{tcp-outlet: {to: "5500"}}"#.to_string()),
+                    ..Default::default()
+                },
                 ..Default::default()
-            },
-            ..Default::default()
-        };
-        let name = cmd.get_default_node_name(&state).await;
-        assert_eq!(name, cmd.name);
+            };
+            cmd.parse_args(&opts).await.unwrap();
+            assert_ne!(cmd.name, DEFAULT_NODE_NAME);
+
+            let mut cmd = CreateCommand {
+                name: "n1".to_string(),
+                ..Default::default()
+            };
+            cmd.parse_args(&opts).await.unwrap();
+            assert_eq!(cmd.name, "n1");
+
+            let mut cmd = CreateCommand {
+                name: "n1".to_string(),
+                config_args: ConfigArgs {
+                    configuration: Some(r#"{tcp-outlet: {to: "5500"}}"#.to_string()),
+                    ..Default::default()
+                },
+                ..Default::default()
+            };
+            cmd.parse_args(&opts).await.unwrap();
+            assert_eq!(cmd.name, "n1");
+        });
     }
 
-    #[tokio::test]
-    async fn get_default_node_name_with_previous_state() {
-        let state = CliState::test().await.unwrap();
-        let default_node_name = "n1";
-        state.create_node(default_node_name).await.unwrap();
+    #[test]
+    fn get_default_node_name_with_previous_state() {
+        let rt = Arc::new(tokio::runtime::Runtime::new().unwrap());
+        let rt_moved = rt.clone();
+        rt.block_on(async {
+            let opts = CommandGlobalOpts {
+                state: CliState::test().await.unwrap(),
+                terminal: Terminal::new(false, false, false, true, false, OutputFormat::Plain),
+                rt: rt_moved,
+                global_args: GlobalArgs::default(),
+                tracing_guard: None,
+            };
 
-        let cmd = CreateCommand::default();
-        let name = cmd.get_default_node_name(&state).await;
-        assert_ne!(name, default_node_name);
+            let default_node_name = "n1";
+            opts.state.create_node(default_node_name).await.unwrap();
 
-        // There is a default node stored in the state, but it's stopped.
-        // All the later calls should return the default node name.
-        state.stop_node(default_node_name).await.unwrap();
-        let cmd = CreateCommand::default();
-        let name = cmd.get_default_node_name(&state).await;
-        assert_eq!(name, default_node_name);
+            let mut cmd = CreateCommand::default();
+            cmd.parse_args(&opts).await.unwrap();
+            assert_ne!(cmd.name, default_node_name);
 
-        let cmd = CreateCommand {
-            name: r#"{tcp-outlet: {to: "5500"}}"#.to_string(),
-            ..Default::default()
-        };
-        let name = cmd.get_default_node_name(&state).await;
-        assert_eq!(name, default_node_name);
+            // There is a default node stored in the state, but it's stopped.
+            // All the later calls should return the default node name.
+            opts.state.stop_node(default_node_name).await.unwrap();
+            let mut cmd = CreateCommand::default();
+            cmd.parse_args(&opts).await.unwrap();
+            assert_eq!(cmd.name, default_node_name);
 
-        let cmd = CreateCommand {
-            config_args: ConfigArgs {
-                configuration: Some(r#"{tcp-outlet: {to: "5500"}}"#.to_string()),
+            let mut cmd = CreateCommand {
+                name: r#"{tcp-outlet: {to: "5500"}}"#.to_string(),
                 ..Default::default()
-            },
-            ..Default::default()
-        };
-        let name = cmd.get_default_node_name(&state).await;
-        assert_eq!(name, default_node_name);
+            };
+            cmd.parse_args(&opts).await.unwrap();
+            assert_eq!(cmd.name, default_node_name);
 
-        // Unless we explicitly set a name
-        let cmd = CreateCommand {
-            name: "n2".to_string(),
-            ..Default::default()
-        };
-        let name = cmd.get_default_node_name(&state).await;
-        assert_eq!(name, cmd.name);
-
-        let cmd = CreateCommand {
-            name: "n2".to_string(),
-            config_args: ConfigArgs {
-                configuration: Some(r#"{tcp-outlet: {to: "5500"}}"#.to_string()),
+            let mut cmd = CreateCommand {
+                config_args: ConfigArgs {
+                    configuration: Some(r#"{tcp-outlet: {to: "5500"}}"#.to_string()),
+                    ..Default::default()
+                },
                 ..Default::default()
-            },
-            ..Default::default()
-        };
-        let name = cmd.get_default_node_name(&state).await;
-        assert_eq!(name, cmd.name);
+            };
+            cmd.parse_args(&opts).await.unwrap();
+            assert_eq!(cmd.name, default_node_name);
+
+            // Unless we explicitly set a name
+            let mut cmd = CreateCommand {
+                name: "n2".to_string(),
+                ..Default::default()
+            };
+            cmd.parse_args(&opts).await.unwrap();
+            assert_eq!(cmd.name, "n2");
+
+            let mut cmd = CreateCommand {
+                name: "n2".to_string(),
+                config_args: ConfigArgs {
+                    configuration: Some(r#"{tcp-outlet: {to: "5500"}}"#.to_string()),
+                    ..Default::default()
+                },
+                ..Default::default()
+            };
+            cmd.parse_args(&opts).await.unwrap();
+            assert_eq!(cmd.name, "n2");
+        });
     }
 }

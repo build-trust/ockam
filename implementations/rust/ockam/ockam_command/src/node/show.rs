@@ -8,7 +8,7 @@ use miette::IntoDiagnostic;
 
 use ockam_api::CliState;
 use tokio_retry::strategy::FixedInterval;
-use tracing::{info, trace, warn};
+use tracing::{debug, info, trace, warn};
 
 use ockam_api::nodes::models::node::{NodeResources, NodeStatus};
 use ockam_api::nodes::BackgroundNodeClient;
@@ -26,10 +26,10 @@ const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/show/after_long_help.txt");
 
 const IS_NODE_ACCESSIBLE_TIME_BETWEEN_CHECKS_MS: u64 = 25;
-const IS_NODE_ACCESSIBLE_TIMEOUT: Duration = Duration::from_secs(10);
+const IS_NODE_ACCESSIBLE_TIMEOUT: Duration = Duration::from_secs(5);
 
 const IS_NODE_READY_TIME_BETWEEN_CHECKS_MS: u64 = 25;
-const IS_NODE_READY_TIMEOUT: Duration = Duration::from_secs(20);
+const IS_NODE_READY_TIMEOUT: Duration = Duration::from_secs(10);
 
 /// Show the details of a node
 #[derive(Clone, Debug, Args)]
@@ -141,8 +141,8 @@ pub async fn get_node_resources(
     }
 }
 
-// Wait for a node to be up. We wait until the IS_NODE_ACCESSIBLE_TIMEOUT is passed and return `false`
-// if the node is not up after that time.
+/// Wait for a node to be up. We wait until the IS_NODE_ACCESSIBLE_TIMEOUT is passed and return `false`
+/// if the node is not up after that time.
 pub async fn wait_until_node_is_up(
     ctx: &Context,
     cli_state: &CliState,
@@ -164,6 +164,7 @@ pub async fn is_node_up(
     node: &mut BackgroundNodeClient,
     wait_until_ready: bool,
 ) -> Result<bool> {
+    debug!("waiting for node to be up");
     let node_name = node.node_name();
     if !is_node_accessible(ctx, node, wait_until_ready).await? {
         warn!(%node_name, "the node was not accessible in time");
@@ -186,9 +187,15 @@ async fn is_node_accessible(
     let retries = FixedInterval::from_millis(IS_NODE_ACCESSIBLE_TIME_BETWEEN_CHECKS_MS);
     let mut total_time = Duration::from_secs(0);
     for timeout_duration in retries {
-        if total_time >= IS_NODE_ACCESSIBLE_TIMEOUT || !wait_until_ready && !total_time.is_zero() {
+        // Max time exceeded
+        if total_time >= IS_NODE_ACCESSIBLE_TIMEOUT {
             return Ok(false);
         };
+        // We don't wait and didn't succeed in the first try
+        if !wait_until_ready && !total_time.is_zero() {
+            return Ok(false);
+        }
+        // Check if node is accessible
         if node.is_accessible(ctx).await.is_ok() {
             info!(%node_name, "node is accessible");
             return Ok(true);
@@ -211,16 +218,20 @@ async fn is_node_ready(
     let now = std::time::Instant::now();
     let mut total_time = Duration::from_secs(0);
     for timeout_duration in retries {
-        if total_time >= IS_NODE_READY_TIMEOUT || !wait_until_ready && !total_time.is_zero() {
+        // Max time exceeded
+        if total_time >= IS_NODE_READY_TIMEOUT {
             return Ok(false);
         };
-        // Test if node is ready
-        // If the node is down, we expect it won't reply and the timeout will trigger the next loop
+        // We don't wait and didn't succeed in the first try
+        if !wait_until_ready && !total_time.is_zero() {
+            return Ok(false);
+        }
+        // Check if node is ready
         let result = node
             .ask_with_timeout::<(), NodeStatus>(ctx, api::query_status(), Duration::from_secs(1))
             .await;
         if let Ok(node_status) = result {
-            if node_status.status.is_running() {
+            if node_status.process_status.is_running() {
                 let elapsed = now.elapsed();
                 info!(%node_name, ?elapsed, "node is ready {:?}", node_status);
                 return Ok(true);
@@ -230,6 +241,7 @@ async fn is_node_ready(
         } else {
             trace!(%node_name, "node is initializing");
         }
+        tokio::time::sleep(timeout_duration).await;
         total_time = total_time.add(timeout_duration)
     }
     Ok(false)

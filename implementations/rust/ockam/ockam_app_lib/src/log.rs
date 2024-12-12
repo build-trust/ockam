@@ -11,20 +11,19 @@ impl AppState {
         if self.tracing_guard.get().is_some() {
             return;
         }
-        let node_dir = {
+        let state = {
             let this = self.clone();
-            let state = self
-                .context()
+            self.context()
                 .runtime()
-                .block_on(async move { this.state().await });
-            state.node_dir(NODE_NAME)
+                .block_on(async move { this.state().await })
         };
+        let node_dir = state.node_dir(NODE_NAME);
         let level_and_crates = LogLevelWithCratesFilter::from_verbose(2)
             .unwrap()
             .add_crates(vec!["ockam_app_lib"]);
         let tracing_guard = LoggingTracing::setup(
             &logging_configuration(level_and_crates, Some(node_dir), Colored::Off).unwrap(),
-            &ExportingConfiguration::foreground().unwrap(),
+            &ExportingConfiguration::foreground(&state).unwrap(),
             "portals",
             Some("portals".to_string()),
         );

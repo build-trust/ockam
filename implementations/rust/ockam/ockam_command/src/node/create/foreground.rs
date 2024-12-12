@@ -12,7 +12,6 @@ use crate::CommandGlobalOpts;
 use ockam::tcp::{TcpListenerOptions, TcpTransport};
 use ockam::udp::{UdpBindArguments, UdpBindOptions, UdpTransport};
 use ockam::{Address, Context};
-use ockam_api::colors::color_primary;
 use ockam_api::fmt_log;
 use ockam_api::nodes::service::NodeManagerTransport;
 use ockam_api::nodes::{
@@ -32,21 +31,6 @@ impl CreateCommand {
     ) -> miette::Result<()> {
         let node_name = self.name.clone();
         debug!("creating node in foreground mode");
-
-        if !self.skip_is_running_check
-            && opts
-                .state
-                .get_node(&node_name)
-                .await
-                .ok()
-                .map(|n| n.is_running())
-                .unwrap_or(false)
-        {
-            return Err(miette!(
-                "Node {} is already running",
-                color_primary(&node_name)
-            ));
-        }
 
         let trust_options = opts
             .state
@@ -115,7 +99,8 @@ impl CreateCommand {
         .into_diagnostic()?;
         debug!("in-memory node created");
 
-        let node_manager_worker = NodeManagerWorker::new(Arc::new(node_man));
+        let node_manager = Arc::new(node_man);
+        let node_manager_worker = NodeManagerWorker::new(node_manager.clone());
         ctx.flow_controls()
             .add_consumer(NODEMANAGER_ADDR, tcp_listener.flow_control_id());
         ctx.start_worker(NODEMANAGER_ADDR, node_manager_worker)
@@ -137,13 +122,14 @@ impl CreateCommand {
             return Err(miette!("Failed to start services"));
         }
 
-        if !self.foreground_args.child_process {
-            opts.terminal
-                .clone()
-                .stdout()
-                .plain(self.plain_output(&opts, &node_name).await?)
-                .write_line()?;
-        }
+        let node_resources = node_manager.get_node_resources().await?;
+        opts.terminal
+            .clone()
+            .stdout()
+            .plain(self.plain_output(&opts, &node_name).await?)
+            .machine(&node_name)
+            .json_obj(&node_resources)?
+            .write_line()?;
 
         wait_for_exit_signal(
             &self.foreground_args,

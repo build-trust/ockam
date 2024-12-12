@@ -116,8 +116,8 @@ impl ExportingConfiguration {
 
     /// Create a tracing configuration for a user command running in the foreground.
     /// (meaning that the process will shut down once the command has been executed)
-    pub fn foreground() -> ockam_core::Result<ExportingConfiguration> {
-        match opentelemetry_endpoint()? {
+    pub fn foreground(state: &CliState) -> ockam_core::Result<ExportingConfiguration> {
+        match opentelemetry_endpoint(state)? {
             None => ExportingConfiguration::off(),
             Some(endpoint) => Ok(ExportingConfiguration {
                 enabled: exporting_enabled(
@@ -139,8 +139,8 @@ impl ExportingConfiguration {
     }
 
     /// Create a tracing configuration for a background node
-    pub fn background() -> ockam_core::Result<ExportingConfiguration> {
-        match opentelemetry_endpoint()? {
+    pub fn background(state: &CliState) -> ockam_core::Result<ExportingConfiguration> {
+        match opentelemetry_endpoint(state)? {
             None => ExportingConfiguration::off(),
             Some(endpoint) => Ok(ExportingConfiguration {
                 enabled: exporting_enabled(
@@ -320,20 +320,20 @@ fn to_socket_addr(url: &Url) -> Option<SocketAddr> {
 /// Return the tracing endpoint, defined by an environment variable
 /// If the endpoint can be established with an Ockam portal to the opentelemetry-relay created in the project
 /// use that URL, otherwise use the HTTPS endpoint
-fn opentelemetry_endpoint() -> ockam_core::Result<Option<OpenTelemetryEndpoint>> {
+fn opentelemetry_endpoint(state: &CliState) -> ockam_core::Result<Option<OpenTelemetryEndpoint>> {
     if !is_exporting_set()? {
         print_debug("Exporting is turned off");
         Ok(None)
     } else {
-        let cli_state = CliState::with_default_dir()?;
+        let state = state.clone();
         match Executor::execute_future(async move {
             // if a project is defined try to use the OpenTelemetry portal
             // and if we allow traces to be exported via a portal
-            if cli_state.projects().get_default_project().await.is_ok()
+            if state.projects().get_default_project().await.is_ok()
                 && is_exporting_via_portal_set()?
             {
                 print_debug("A default project exists. Getting the project export endpoint");
-                get_project_endpoint_url(&cli_state).await
+                get_project_endpoint_url(&state).await
             } else {
                 print_debug("A default project does not exist. Getting the default HTTPs endpoint");
                 get_https_endpoint()

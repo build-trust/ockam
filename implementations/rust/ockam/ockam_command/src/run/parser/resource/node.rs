@@ -38,6 +38,8 @@ pub struct Node {
     pub udp: Option<ArgValue>,
     #[serde(alias = "udp-listener-address")]
     pub udp_listener_address: Option<ArgValue>,
+    #[serde(alias = "in-memory")]
+    pub in_memory: Option<ArgValue>,
 }
 
 impl Resource<CreateCommand> for Node {
@@ -85,9 +87,11 @@ impl Resource<CreateCommand> for Node {
         if let Some(opentelemetry_context) = self.opentelemetry_context {
             args.insert("opentelemetry-context".into(), opentelemetry_context);
         }
-
         if let Some(udp) = self.udp {
             args.insert("udp".into(), udp);
+        }
+        if let Some(in_memory) = self.in_memory {
+            args.insert("in-memory".into(), in_memory);
         }
 
         if args.is_empty() {

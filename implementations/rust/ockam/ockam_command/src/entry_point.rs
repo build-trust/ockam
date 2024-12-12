@@ -52,18 +52,17 @@ pub fn run() -> miette::Result<()> {
                     .map(|s| s.to_string())
                     .collect::<Vec<String>>()
                     .join(" ");
-
+                let cli_state = CliState::with_default_dir()?;
                 let level_and_crates = LogLevelWithCratesFilter::new().into_diagnostic()?;
                 let logging_configuration =
                     logging_configuration(level_and_crates, None, Colored::On);
                 let _guard = LoggingTracing::setup(
                     &logging_configuration.into_diagnostic()?,
-                    &ExportingConfiguration::foreground().into_diagnostic()?,
+                    &ExportingConfiguration::foreground(&cli_state).into_diagnostic()?,
                     "local node",
                     None,
                 );
 
-                let cli_state = CliState::with_default_dir()?;
                 let message = format!("could not parse the command: {}", command);
                 add_command_error_event(cli_state, &command, &message, input.join(" "))?;
             };

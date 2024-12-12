@@ -1,12 +1,3 @@
-use clap::Parser;
-use colorful::Colorful;
-use ockam_api::fmt_warn;
-use opentelemetry::trace::{Link, SpanBuilder, TraceContextExt, Tracer};
-use opentelemetry::{global, Context};
-use tracing::{instrument, warn};
-
-use ockam_core::OCKAM_TRACER_NAME;
-
 use crate::command_events::{add_command_error_event, add_command_event};
 use crate::command_global_opts::CommandGlobalOpts;
 use crate::global_args::GlobalArgs;
@@ -14,6 +5,14 @@ use crate::subcommand::OckamSubcommand;
 use crate::upgrade::check_if_an_upgrade_is_available;
 use crate::version::Version;
 use crate::{docs, ErrorReportHandler};
+use clap::Parser;
+use colorful::Colorful;
+use ockam_api::fmt_warn;
+use ockam_core::OCKAM_TRACER_NAME;
+use ockam_node::database::OCKAM_SQLITE_IN_MEMORY;
+use opentelemetry::trace::{Link, SpanBuilder, TraceContextExt, Tracer};
+use opentelemetry::{global, Context};
+use tracing::{instrument, warn};
 
 const ABOUT: &str = include_str!("./static/about.txt");
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
@@ -58,6 +57,17 @@ impl OckamCommand {
         // This allows us to customize how we format the error messages and their content.
         let _hook_result = miette::set_hook(Box::new(|_| Box::new(ErrorReportHandler::new())));
 
+        let command_name = self.subcommand.name();
+
+        // Set the in-memory env var if needed
+        if let OckamSubcommand::Node(cmd) = &self.subcommand {
+            if let crate::node::NodeSubcommand::Create(c) = &cmd.subcommand {
+                if c.in_memory {
+                    std::env::set_var(OCKAM_SQLITE_IN_MEMORY, "true");
+                }
+            }
+        }
+
         let options = CommandGlobalOpts::new(&arguments, &self.global_args, &self.subcommand)?;
 
         if let Err(err) = check_if_an_upgrade_is_available(&options) {
@@ -68,7 +78,6 @@ impl OckamCommand {
         }
 
         let tracer = global::tracer(OCKAM_TRACER_NAME);
-        let command_name = self.subcommand.name();
         let result =
             if let Some(opentelemetry_context) = self.subcommand.get_opentelemetry_context() {
                 let context = Context::current();

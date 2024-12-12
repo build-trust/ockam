@@ -3,8 +3,8 @@ use std::time::Duration;
 
 use miette::{miette, IntoDiagnostic};
 use minicbor::{Decode, Encode};
-use ockam::identity::get_default_timeout;
 
+use ockam::identity::get_default_timeout;
 use ockam::tcp::{TcpConnection, TcpConnectionOptions, TcpTransport};
 use ockam_core::api::{Reply, Request};
 use ockam_core::Route;
