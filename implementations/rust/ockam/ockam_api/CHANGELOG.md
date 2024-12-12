@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.88.0 - 2024-12-12
+
+### Added
+
+- Add `UDP` support to nodes and multiaddr. refactor multiaddr
+- Enable auto-retry on all repositories
+- Updated dependencies
+
+### Changed
+
+- Make the auto-retry an implementation detail of repositories
+
+### Fixed
+
+- Update tests using the `ENROLLMENT_TICKET` env var
+
 ## 0.87.0 - 2024-12-04
 
 ### Added

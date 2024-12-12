@@ -4644,7 +4644,7 @@ dependencies = [
 
 [[package]]
 name = "ockam"
-version = "0.144.0"
+version = "0.145.0"
 dependencies = [
  "hex",
  "ockam_abac",
@@ -4666,7 +4666,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_abac"
-version = "0.75.0"
+version = "0.76.0"
 dependencies = [
  "cfg-if",
  "either",
@@ -4696,7 +4696,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_api"
-version = "0.87.0"
+version = "0.88.0"
 dependencies = [
  "base64-url",
  "bytes 1.8.0",
@@ -4791,7 +4791,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_app_lib"
-version = "0.144.0"
+version = "0.145.0"
 dependencies = [
  "cbindgen",
  "duct",
@@ -4813,7 +4813,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_command"
-version = "0.144.0"
+version = "0.145.0"
 dependencies = [
  "arboard",
  "assert_cmd",
@@ -4931,7 +4931,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_identity"
-version = "0.129.0"
+version = "0.130.0"
 dependencies = [
  "async-trait",
  "cfg-if",
@@ -4974,7 +4974,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_multiaddr"
-version = "0.66.0"
+version = "0.67.0"
 dependencies = [
  "bincode",
  "miette",
@@ -4993,7 +4993,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_node"
-version = "0.134.0"
+version = "0.135.0"
 dependencies = [
  "cfg-if",
  "fs2",
@@ -5043,7 +5043,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_transport_ble"
-version = "0.96.0"
+version = "0.97.0"
 dependencies = [
  "atsame54_xpro",
  "bluenrg",
@@ -5081,7 +5081,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_transport_tcp"
-version = "0.132.0"
+version = "0.133.0"
 dependencies = [
  "async-trait",
  "aya",
@@ -5113,7 +5113,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_transport_udp"
-version = "0.76.0"
+version = "0.77.0"
 dependencies = [
  "cfg-if",
  "minicbor",
@@ -5128,7 +5128,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_transport_uds"
-version = "0.61.0"
+version = "0.62.0"
 dependencies = [
  "ockam_core",
  "ockam_macros",
@@ -5142,7 +5142,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_transport_websocket"
-version = "0.123.0"
+version = "0.124.0"
 dependencies = [
  "futures-util",
  "ockam_core",
@@ -5157,7 +5157,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault"
-version = "0.127.0"
+version = "0.128.0"
 dependencies = [
  "aes-gcm",
  "arrayref",
@@ -5188,7 +5188,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_vault_aws"
-version = "0.53.0"
+version = "0.54.0"
 dependencies = [
  "aws-config",
  "aws-sdk-kms",

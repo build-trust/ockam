@@ -38,9 +38,9 @@ hex = { version = "0.4", default-features = false }
 lazy_static = "1.5.0"
 minicbor = { version = "0.25.1", default-features = false, features = ["std", "alloc", "derive"] }
 ockam_core = { path = "../ockam_core", default-features = false, features = ["std"], version = "^0.122.0" }
-ockam_identity = { path = "../ockam_identity", default-features = false, features = ["std", "software_vault"], version = "^0.129.0" }
-ockam_vault = { path = "../ockam_vault", default-features = false, features = ["std", "storage"], version = "^0.127.0" }
-ockam_vault_aws = { path = "../ockam_vault_aws", version = "^0.53.0" }
+ockam_identity = { path = "../ockam_identity", default-features = false, features = ["std", "software_vault"], version = "^0.130.0" }
+ockam_vault = { path = "../ockam_vault", default-features = false, features = ["std", "storage"], version = "^0.128.0" }
+ockam_vault_aws = { path = "../ockam_vault_aws", version = "^0.54.0" }
 # Enable credentials-sso feature in ockam_vault_aws for use on sso environments (like dev machines)
 rustler = "0.35.0"
 time = "0.3.36"

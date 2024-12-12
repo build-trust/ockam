@@ -1,6 +1,6 @@
 [package]
 name = "ockam_vault_aws"
-version = "0.53.0"
+version = "0.54.0"
 authors = ["Ockam Developers"]
 categories = [
   "cryptography",
@@ -60,8 +60,8 @@ aws-config = { version = "1.5.8", default-features = false, features = ["rustls"
 aws-sdk-kms = { version = "1.47.0", default-features = false, features = ["rustls"] }
 ockam_core = { path = "../ockam_core", version = "^0.122.0", default-features = false }
 ockam_macros = { path = "../ockam_macros", version = "^0.36.0", default-features = false }
-ockam_node = { path = "../ockam_node", version = "^0.134.0", default-features = false }
-ockam_vault = { path = "../ockam_vault", version = "^0.127.0", default-features = false }
+ockam_node = { path = "../ockam_node", version = "^0.135.0", default-features = false }
+ockam_vault = { path = "../ockam_vault", version = "^0.128.0", default-features = false }
 p256 = { version = "0.13.2", default-features = false }
 sha2 = { version = "0.10", default-features = false }
 thiserror = { version = "1.0.64" }
