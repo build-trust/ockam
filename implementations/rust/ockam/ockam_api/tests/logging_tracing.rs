@@ -5,11 +5,6 @@ use ockam_api::logs::{
 
 use opentelemetry::global;
 use opentelemetry::trace::Tracer;
-
-use opentelemetry_sdk as sdk;
-use sdk::testing::logs::*;
-use sdk::testing::trace::*;
-
 use opentelemetry_sdk::testing::logs::InMemoryLogsExporter;
 use opentelemetry_sdk::testing::trace::InMemorySpanExporter;
 use std::fs;

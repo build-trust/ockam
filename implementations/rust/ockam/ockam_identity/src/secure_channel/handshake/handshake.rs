@@ -13,6 +13,8 @@ use ockam_vault::{
     X25519PublicKey, X25519SecretKeyHandle, X25519_PUBLIC_KEY_LENGTH,
 };
 use sha2::{Digest, Sha256};
+#[cfg(feature = "debugger")]
+use tracing::debug;
 use Status::*;
 
 /// The number of bytes in a SHA256 digest
@@ -50,6 +52,9 @@ impl Handshake {
 
     /// Encode the first message, sent from the initiator to the responder
     pub(super) async fn encode_message1(&mut self, payload: &[u8]) -> Result<Vec<u8>> {
+        #[cfg(feature = "debugger")]
+        debug!("Encoding message 1");
+
         let mut state = self.state.clone();
         // output e.pubKey
         let e_pub_key = self.get_public_key(state.e()?).await?;
@@ -70,6 +75,9 @@ impl Handshake {
 
     /// Decode the first message to get the ephemeral public key sent by the initiator
     pub(super) async fn decode_message1(&mut self, message1: &[u8]) -> Result<Vec<u8>> {
+        #[cfg(feature = "debugger")]
+        debug!("Decoding message 2");
+
         if message1.len() > NOISE_MAX_MESSAGE_SIZE {
             return Err(XXError::ExceededMaxMessageLen)?;
         }
@@ -93,6 +101,9 @@ impl Handshake {
     /// That message contains: the responder ephemeral public key + a Diffie-Hellman key +
     ///   an encrypted payload containing the responder identity / signature / credentials
     pub(super) async fn encode_message2(&mut self, payload: &[u8]) -> Result<Vec<u8>> {
+        #[cfg(feature = "debugger")]
+        debug!("Encoding message 2");
+
         let mut state = self.state.clone();
         // output e.pubKey
         let e_pub_key = self.get_public_key(state.e()?).await?;
@@ -126,6 +137,9 @@ impl Handshake {
 
     /// Decode the second message sent by the responder
     pub(super) async fn decode_message2(&mut self, message2: &[u8]) -> Result<Vec<u8>> {
+        #[cfg(feature = "debugger")]
+        debug!("Decoding message 2");
+
         if message2.len() > NOISE_MAX_MESSAGE_SIZE {
             return Err(XXError::ExceededMaxMessageLen)?;
         }
@@ -166,6 +180,9 @@ impl Handshake {
     /// That message contains: the initiator static public key (encrypted) + a Diffie-Hellman key +
     ///   an encrypted payload containing the initiator identity / signature / credentials
     pub(super) async fn encode_message3(&mut self, payload: &[u8]) -> Result<Vec<u8>> {
+        #[cfg(feature = "debugger")]
+        debug!("Encoding message 3");
+
         let mut state = self.state.clone();
         // encrypt s.pubKey
         let s_pub_key = self.get_public_key(state.s()?).await?;
@@ -190,6 +207,9 @@ impl Handshake {
 
     /// Decode the third message sent by the initiator
     pub(super) async fn decode_message3(&mut self, message3: &[u8]) -> Result<Vec<u8>> {
+        #[cfg(feature = "debugger")]
+        debug!("Decoding message 3");
+
         if message3.len() > NOISE_MAX_MESSAGE_SIZE {
             return Err(XXError::ExceededMaxMessageLen)?;
         }
@@ -219,6 +239,9 @@ impl Handshake {
     /// Set the final state of the state machine by creating the encryption / decryption keys
     /// and return the other party identity
     pub(super) async fn set_final_state(&mut self, role: Role) -> Result<()> {
+        #[cfg(feature = "debugger")]
+        debug!("Setting final state");
+
         // k1, k2 = HKDF(ck, zerolen, 2)
         let mut state = self.state.clone();
         let (k1, k2) = self.compute_final_keys(&mut state).await?;
@@ -239,6 +262,9 @@ impl Handshake {
 
     /// Return the final results of the handshake if we reached the final state
     pub(super) fn get_handshake_keys(&self) -> Option<HandshakeKeys> {
+        #[cfg(feature = "debugger")]
+        debug!("Getting handshake keys");
+
         match &self.state.status {
             Ready(keys) => Some(keys.clone()),
             _ => None,

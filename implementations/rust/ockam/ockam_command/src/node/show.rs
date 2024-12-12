@@ -171,7 +171,7 @@ pub async fn is_node_up(
         .ask_with_timeout::<(), NodeStatus>(ctx, api::query_status(), Duration::from_secs(1))
         .await
     {
-        if status.status.is_running() {
+        if status.process_status.is_running() {
             return Ok(true);
         }
     }

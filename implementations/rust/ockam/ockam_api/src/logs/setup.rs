@@ -3,7 +3,6 @@ use opentelemetry::trace::TracerProvider;
 use opentelemetry::{global, KeyValue};
 use opentelemetry_appender_tracing::layer::OpenTelemetryTracingBridge;
 use opentelemetry_otlp::WithExportConfig;
-use opentelemetry_sdk as sdk;
 use opentelemetry_sdk::export::logs::LogExporter;
 use opentelemetry_sdk::export::trace::SpanExporter;
 use opentelemetry_sdk::logs::{BatchLogProcessor, LoggerProvider};

@@ -204,7 +204,6 @@ impl NodeManager {
 
         info!(
             %alias, %address, ?authorized, ?relay_address,
-            forwarding_route = ?relay_info.forwarding_route(),
             remote_address = ?relay_info.remote_address(),
             "relay created"
         );

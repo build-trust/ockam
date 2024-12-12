@@ -132,7 +132,8 @@ impl Client {
             method = ?req.header().method(),
             path   = %req.header().path(),
             body   = %req.header().has_body(),
-        };
+            "sending request"
+        }
         let options = if let Some(t) = timeout {
             MessageSendReceiveOptions::new().with_timeout(t)
         } else {
@@ -146,6 +147,15 @@ impl Client {
             .await?;
         let local_info = resp.local_message().local_info().to_vec();
         let body = resp.into_body()?;
+
+        trace! {
+            target:  "ockam_api",
+            id     = %req.header().id(),
+            method = ?req.header().method(),
+            path   = %req.header().path(),
+            body   = %req.header().has_body(),
+            "received response"
+        }
 
         Ok((body, local_info))
     }

@@ -91,8 +91,6 @@ impl Command for CreateCommand {
         let alias = cmd.relay_name();
         let return_timing = cmd.return_timing();
 
-        // let _notification_handler = NotificationHandler::start(&opts.state, opts.terminal.clone());
-
         let node = BackgroundNodeClient::create(ctx, &opts.state, &cmd.to).await?;
         let relay_info = {
             if at.starts_with(Project::CODE) && cmd.authorized.is_some() {

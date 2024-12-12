@@ -109,7 +109,7 @@ impl OckamLogFormat {
     }
 
     fn format_timestamp(&self, writer: &mut Writer<'_>) -> std::fmt::Result {
-        let now = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S%.3f");
+        let now = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%S%.6fZ");
         if writer.has_ansi_escapes() {
             let style = Style::new().dimmed();
             write!(writer, "{}", style.prefix())?;
