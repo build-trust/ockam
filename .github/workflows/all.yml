@@ -25,7 +25,7 @@ defaults:
 jobs:
   lint_commits:
     name: All - lint_commits
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
 
     # We assume that commit 2fd0d36fe6ae0c2d527368683ec3a6352617b381 will be in the history
     # of all commits based on ockam develop branch
@@ -43,7 +43,7 @@ jobs:
 
   lint_editorconfig:
     name: All - lint_editorconfig
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     container: # gitlab.com/greut/eclint
       image: greut/eclint:v0.3.3@sha256:95e9a3dcbd236bae6569625cd403175cbde3705303774e7baca418b6442b8d77
     steps:
@@ -57,7 +57,7 @@ jobs:
   # https://github.com/returntocorp/semgrep
   lint_semgrep:
     name: All - lint_semgrep
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     container:
       image: returntocorp/semgrep@sha256:2fd35fa409f209e0fea0c2d72cf1e5b801a607959a93b13d04822bb3b6a9dfe4
     steps:
@@ -75,7 +75,7 @@ jobs:
   # Check notice file for update
   notice_update:
     name: All - notice_update
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@e50d5f73bfe71c2dd0aa4218de8f4afa59f8f81d
