@@ -28,7 +28,7 @@ defaults:
 jobs:
   build_ockam_healthcheck:
     name: "Build And Publish Ockam Healthcheck Container"
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     permissions:
       packages: write
     environment: release

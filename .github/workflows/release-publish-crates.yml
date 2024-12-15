@@ -27,7 +27,7 @@ defaults:
 
 jobs:
   publish_crates:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     container:
       # Note: Do not update this image has it has installed all binaries
       # to bump crates and generate changelogs which we don't want installed
