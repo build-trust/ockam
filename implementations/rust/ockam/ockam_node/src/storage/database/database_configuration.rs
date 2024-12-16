@@ -114,9 +114,9 @@ impl DatabaseConfiguration {
     }
 
     /// Create a local sqlite configuration
-    pub fn sqlite(path: &Path) -> DatabaseConfiguration {
+    pub fn sqlite(path: impl AsRef<Path>) -> DatabaseConfiguration {
         DatabaseConfiguration::SqlitePersistent {
-            path: path.to_path_buf(),
+            path: path.as_ref().to_path_buf(),
             single_connection: false,
         }
     }

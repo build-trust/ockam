@@ -87,7 +87,7 @@ impl CliState {
 
     pub fn backup_logs(&self, node_name: &str) -> Result<()> {
         // Atm node dir only has logs
-        let node_dir = self.node_dir(node_name);
+        let node_dir = self.node_dir(node_name)?;
 
         let now = now()?;
 
@@ -175,7 +175,7 @@ impl CliState {
         }
 
         // remove the node directory
-        let _ = std::fs::remove_dir_all(self.node_dir(node_name));
+        let _ = std::fs::remove_dir_all(self.node_dir(node_name)?);
         debug!(name=%node_name, "node deleted");
         Ok(())
     }
@@ -483,7 +483,7 @@ impl CliState {
 
     /// Create a directory used to store files specific to a node
     fn create_node_dir(&self, node_name: &str) -> Result<PathBuf> {
-        let path = self.node_dir(node_name);
+        let path = self.node_dir(node_name)?;
         std::fs::create_dir_all(&path)?;
         Ok(path)
     }
@@ -497,8 +497,8 @@ impl CliState {
     }
 
     /// Return the directory used by a node
-    pub fn node_dir(&self, node_name: &str) -> PathBuf {
-        Self::make_node_dir_path(&self.dir(), node_name)
+    pub fn node_dir(&self, node_name: &str) -> Result<PathBuf> {
+        Ok(Self::make_node_dir_path(self.dir()?, node_name))
     }
 
     /// Return a log path to be used for a given command
@@ -788,7 +788,7 @@ mod tests {
             "the node information is not available anymore"
         );
         assert!(
-            !cli.node_dir(node1).exists(),
+            !cli.node_dir(node1).unwrap().exists(),
             "the node directory must be deleted"
         );
 

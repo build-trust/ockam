@@ -13,7 +13,7 @@ use opentelemetry_sdk::testing::trace::InMemorySpanExporter;
 use std::collections::HashMap;
 use std::ops::Add;
 
-use ockam_api::cli_state::random_name;
+use ockam_api::cli_state::{random_name, CliStateMode};
 use tempfile::NamedTempFile;
 
 /// This test needs to be an integration test
@@ -24,7 +24,7 @@ fn test_create_journey_event() {
     let cli = Executor::execute_future(async {
         let db_file = NamedTempFile::new().unwrap();
         let cli_state_directory = db_file.path().parent().unwrap().join(random_name());
-        CliState::create(cli_state_directory)
+        CliState::create(CliStateMode::Persistent(cli_state_directory))
             .await
             .unwrap()
             .set_tracing_enabled(true)

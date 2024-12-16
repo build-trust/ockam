@@ -17,7 +17,9 @@ impl AppState {
                 .runtime()
                 .block_on(async move { this.state().await })
         };
-        let node_dir = state.node_dir(NODE_NAME);
+        let node_dir = state
+            .node_dir(NODE_NAME)
+            .expect("Failed to get node directory");
         let level_and_crates = LogLevelWithCratesFilter::from_verbose(2)
             .unwrap()
             .add_crates(vec!["ockam_app_lib"]);

@@ -14,7 +14,7 @@ use std::fs;
 
 use tempfile::NamedTempFile;
 
-use ockam_api::cli_state::random_name;
+use ockam_api::cli_state::{random_name, CliStateMode};
 use ockam_api::CliState;
 use ockam_node::Executor;
 use tracing::{error, info};
@@ -28,7 +28,8 @@ fn test_log_and_traces() {
     let cli = Executor::execute_future(async {
         let db_file = NamedTempFile::new().unwrap();
         let cli_state_directory = db_file.path().parent().unwrap().join(random_name());
-        CliState::create(cli_state_directory)
+        let mode = CliStateMode::Persistent(cli_state_directory);
+        CliState::create(mode)
             .await
             .unwrap()
             .set_tracing_enabled(true)

@@ -40,7 +40,7 @@ const NOTIFICATIONS_CHANNEL_CAPACITY: usize = 16;
 ///
 #[derive(Debug, Clone)]
 pub struct CliState {
-    dir: PathBuf,
+    pub mode: CliStateMode,
     database: SqlxDatabase,
     application_database: SqlxDatabase,
     exporting_enabled: ExportingEnabled,
@@ -51,12 +51,15 @@ pub struct CliState {
 
 impl CliState {
     /// Create a new CliState in a given directory
-    pub fn new(dir: &Path) -> Result<Self> {
-        Executor::execute_future(Self::create(dir.into()))?
+    pub fn new(mode: CliStateMode) -> Result<Self> {
+        Executor::execute_future(Self::create(mode))?
     }
 
-    pub fn dir(&self) -> PathBuf {
-        self.dir.clone()
+    pub fn dir(&self) -> Result<PathBuf> {
+        match &self.mode {
+            CliStateMode::Persistent(dir) => Ok(dir.to_path_buf()),
+            CliStateMode::InMemory => Self::default_dir(),
+        }
     }
 
     pub fn database(&self) -> SqlxDatabase {
@@ -68,7 +71,7 @@ impl CliState {
     }
 
     pub fn database_configuration(&self) -> Result<DatabaseConfiguration> {
-        Self::make_database_configuration(&self.dir)
+        Self::make_database_configuration(&self.mode)
     }
 
     pub fn is_using_in_memory_database(&self) -> Result<bool> {
@@ -91,7 +94,7 @@ impl CliState {
     }
 
     pub fn application_database_configuration(&self) -> Result<DatabaseConfiguration> {
-        Self::make_application_database_configuration(&self.dir)
+        Self::make_application_database_configuration(&self.mode)
     }
 
     pub fn subscribe_to_notifications(&self) -> Receiver<Notification> {
@@ -122,9 +125,16 @@ impl CliState {
 
 /// These functions allow to create and reset the local state
 impl CliState {
-    /// Return a new CliState using a default directory to store its data
-    pub fn with_default_dir() -> Result<Self> {
-        Self::new(Self::default_dir()?.as_path())
+    /// Return a new CliState using a default directory to store its data or
+    /// using an in-memory storage if the OCKAM_SQLITE_IN_MEMORY environment variable is set to true
+    pub fn from_env() -> Result<Self> {
+        let in_memory = get_env_with_default::<bool>(OCKAM_SQLITE_IN_MEMORY, false)?;
+        let mode = if in_memory {
+            CliStateMode::InMemory
+        } else {
+            CliStateMode::with_default_dir()?
+        };
+        Self::new(mode)
     }
 
     /// Stop nodes and remove all the directories storing state
@@ -150,13 +160,16 @@ impl CliState {
 
     /// Delete the local data on disk: sqlite database file and log files
     pub fn delete_local_data(&self) -> Result<()> {
-        Self::delete_at(&self.dir)
+        if let CliStateMode::Persistent(dir) = &self.mode {
+            Self::delete_at(dir)?;
+        }
+        Ok(())
     }
 
     /// Reset all directories and return a new CliState
     pub async fn recreate(&self) -> Result<CliState> {
         self.reset().await?;
-        Self::create(self.dir.clone()).await
+        Self::create(self.mode.clone()).await
     }
 
     /// Backup and reset is used to save aside
@@ -182,10 +195,9 @@ impl CliState {
 
         // Reset state
         Self::delete_at(&dir)?;
-        let state = Self::new(&dir)?;
+        Self::new(CliStateMode::Persistent(dir.clone()))?;
 
-        let dir = &state.dir;
-        let backup_dir = CliState::backup_default_dir().unwrap();
+        let backup_dir = CliState::backup_default_dir()?;
         eprintln!("The {dir:?} directory has been reset and has been backed up to {backup_dir:?}");
         Ok(())
     }
@@ -210,10 +222,12 @@ impl CliState {
 /// Low-level functions for creating / deleting CliState files
 impl CliState {
     /// Create a new CliState where the data is stored at a given path
-    pub async fn create(dir: PathBuf) -> Result<Self> {
-        std::fs::create_dir_all(&dir)?;
-        let database = SqlxDatabase::create(&Self::make_database_configuration(&dir)?).await?;
-        let configuration = Self::make_application_database_configuration(&dir)?;
+    pub async fn create(mode: CliStateMode) -> Result<Self> {
+        if let CliStateMode::Persistent(ref dir) = mode {
+            std::fs::create_dir_all(dir.as_path())?;
+        }
+        let database = SqlxDatabase::create(&Self::make_database_configuration(&mode)?).await?;
+        let configuration = Self::make_application_database_configuration(&mode)?;
         let application_database =
             SqlxDatabase::create_application_database(&configuration).await?;
         debug!("Opened the main database with options {:?}", database);
@@ -223,7 +237,7 @@ impl CliState {
         );
         let (notifications, _) = channel::<Notification>(NOTIFICATIONS_CHANNEL_CAPACITY);
         let state = Self {
-            dir,
+            mode,
             database,
             application_database,
             // We initialize the CliState with no tracing.
@@ -252,63 +266,64 @@ impl CliState {
     }
 
     /// If the postgres database is configured, return the postgres configuration
-    pub(super) fn make_database_configuration(root_path: &Path) -> Result<DatabaseConfiguration> {
+    pub(super) fn make_database_configuration(
+        mode: &CliStateMode,
+    ) -> Result<DatabaseConfiguration> {
         match DatabaseConfiguration::postgres()? {
             Some(configuration) => Ok(configuration),
-            None => {
-                if get_env_with_default::<bool>(OCKAM_SQLITE_IN_MEMORY, false)? {
-                    Ok(DatabaseConfiguration::sqlite_in_memory())
-                } else {
-                    Ok(DatabaseConfiguration::sqlite(
-                        root_path.join("database.sqlite3").as_path(),
-                    ))
-                }
-            }
+            None => match mode {
+                CliStateMode::Persistent(root_path) => Ok(DatabaseConfiguration::sqlite(
+                    root_path.join("database.sqlite3"),
+                )),
+                CliStateMode::InMemory => Ok(DatabaseConfiguration::sqlite_in_memory()),
+            },
         }
     }
 
     /// If the postgres database is configured, return the postgres configuration
     pub(super) fn make_application_database_configuration(
-        root_path: &Path,
+        mode: &CliStateMode,
     ) -> Result<DatabaseConfiguration> {
         match DatabaseConfiguration::postgres()? {
             Some(configuration) => Ok(configuration),
-            None => {
-                if get_env_with_default::<bool>(OCKAM_SQLITE_IN_MEMORY, false)? {
-                    Ok(DatabaseConfiguration::sqlite_in_memory())
-                } else {
-                    Ok(DatabaseConfiguration::sqlite(
-                        root_path.join("application_database.sqlite3").as_path(),
-                    ))
-                }
-            }
+            None => match mode {
+                CliStateMode::Persistent(root_path) => Ok(DatabaseConfiguration::sqlite(
+                    root_path.join("application_database.sqlite3"),
+                )),
+                CliStateMode::InMemory => Ok(DatabaseConfiguration::sqlite_in_memory()),
+            },
         }
     }
 
-    pub(super) fn make_node_dir_path(root_path: &Path, node_name: &str) -> PathBuf {
+    pub(super) fn make_node_dir_path(root_path: impl AsRef<Path>, node_name: &str) -> PathBuf {
         Self::make_nodes_dir_path(root_path).join(node_name)
     }
 
-    pub(super) fn make_command_log_path(root_path: &Path, command_name: &str) -> PathBuf {
+    pub(super) fn make_command_log_path(
+        root_path: impl AsRef<Path>,
+        command_name: &str,
+    ) -> PathBuf {
         Self::make_commands_log_dir_path(root_path).join(command_name)
     }
 
-    pub(super) fn make_nodes_dir_path(root_path: &Path) -> PathBuf {
-        root_path.join("nodes")
+    pub(super) fn make_nodes_dir_path(root_path: impl AsRef<Path>) -> PathBuf {
+        root_path.as_ref().join("nodes")
     }
 
-    pub(super) fn make_commands_log_dir_path(root_path: &Path) -> PathBuf {
-        root_path.join("commands")
+    pub(super) fn make_commands_log_dir_path(root_path: impl AsRef<Path>) -> PathBuf {
+        root_path.as_ref().join("commands")
     }
 
     /// Delete the state files
-    fn delete_at(root_path: &Path) -> Result<()> {
+    fn delete_at(root_path: &PathBuf) -> Result<()> {
         // Delete nodes logs
         let _ = std::fs::remove_dir_all(Self::make_nodes_dir_path(root_path));
         // Delete command logs
         let _ = std::fs::remove_dir_all(Self::make_commands_log_dir_path(root_path));
         // Delete the nodes database, keep the application database
-        if let Some(path) = Self::make_database_configuration(root_path)?.path() {
+        if let Some(path) =
+            Self::make_database_configuration(&CliStateMode::Persistent(root_path.clone()))?.path()
+        {
             std::fs::remove_file(path)?;
         };
         Ok(())
@@ -334,6 +349,18 @@ pub fn random_name() -> String {
     petname::petname(2, "-").unwrap_or(hex::encode(random::<[u8; 4]>()))
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum CliStateMode {
+    Persistent(PathBuf),
+    InMemory,
+}
+
+impl CliStateMode {
+    pub fn with_default_dir() -> Result<Self> {
+        Ok(Self::Persistent(CliState::default_dir()?))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -348,12 +375,10 @@ mod tests {
     async fn test_reset() -> Result<()> {
         let db_file = NamedTempFile::new().unwrap();
         let cli_state_directory = db_file.path().parent().unwrap().join(random_name());
-        let db = SqlxDatabase::create(&CliState::make_database_configuration(
-            &cli_state_directory,
-        )?)
-        .await?;
+        let mode = CliStateMode::Persistent(cli_state_directory.clone());
+        let db = SqlxDatabase::create(&CliState::make_database_configuration(&mode)?).await?;
         db.drop_all_postgres_tables().await?;
-        let cli = CliState::create(cli_state_directory.clone()).await?;
+        let cli = CliState::create(mode).await?;
 
         // create 2 vaults
         // the second vault is using a separate file

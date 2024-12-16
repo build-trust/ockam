@@ -10,6 +10,7 @@ use ockam::abac::tokio::runtime::Runtime;
 use ockam::compat::tokio;
 use ockam::tcp::{TcpListenerOptions, TcpTransport};
 use ockam::{Context, NodeBuilder};
+use ockam_api::cli_state::CliStateMode;
 use ockam_api::nodes::service::{NodeManagerGeneralOptions, NodeManagerTransportOptions};
 use ockam_api::nodes::{InMemoryNode, NodeManagerWorker, NODEMANAGER_ADDR};
 use ockam_api::CliState;
@@ -126,7 +127,8 @@ struct State {
 
 impl State {
     fn new(config: Config, log: bool) -> Self {
-        let cli_state = CliState::with_default_dir().expect("cannot create cli state");
+        let cli_state = CliState::new(CliStateMode::with_default_dir().unwrap())
+            .expect("cannot create cli state");
         let rt = Arc::new(Runtime::new().expect("cannot create a tokio runtime"));
         let builder = if log {
             NodeBuilder::new()

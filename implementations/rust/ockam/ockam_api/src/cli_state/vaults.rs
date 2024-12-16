@@ -1,3 +1,7 @@
+use crate::cli_state::{random_name, CliState, CliStateError, Result};
+use crate::colors::color_primary;
+use crate::output::Output;
+use crate::{fmt_log, fmt_ok, fmt_warn};
 use colorful::Colorful;
 use ockam::identity::{Identities, Vault};
 use ockam_core::errcode::{Kind, Origin};
@@ -8,11 +12,6 @@ use std::fmt::{Debug, Display, Formatter};
 use std::fs::OpenOptions;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-
-use crate::cli_state::{random_name, CliState, CliStateError, Result};
-use crate::colors::color_primary;
-use crate::output::Output;
-use crate::{fmt_log, fmt_ok, fmt_warn};
 
 static DEFAULT_VAULT_NAME: &str = "default";
 
@@ -62,7 +61,7 @@ impl CliState {
                     .store_vault(&vault_name, VaultType::database(use_aws_kms))
                     .await?),
                 Some(_) => {
-                    let path = self.make_vault_path(&vault_name);
+                    let path = self.make_vault_path(&vault_name)?;
                     Ok(self
                         .create_local_vault(vault_name, &path, use_aws_kms)
                         .await?)
@@ -207,7 +206,7 @@ impl CliState {
             let vault = self
                 .create_local_vault(
                     vault_name.to_string(),
-                    &self.make_vault_path(vault_name),
+                    &self.make_vault_path(vault_name)?,
                     UseAwsKms::No,
                 )
                 .await?;
@@ -396,8 +395,8 @@ impl CliState {
 
     /// Decide which path to use for a vault path:
     ///   - otherwise return a new path alongside the database $OCKAM_HOME/vault-{vault_name}
-    fn make_vault_path(&self, vault_name: &str) -> PathBuf {
-        self.dir().join(format!("vault-{vault_name}"))
+    fn make_vault_path(&self, vault_name: &str) -> Result<PathBuf> {
+        Ok(self.dir()?.join(format!("vault-{vault_name}")))
     }
 }
 
@@ -683,7 +682,7 @@ mod tests {
 
         // try to move it. That should fail because the first vault is
         // stored in the main database
-        let new_vault_path = cli.dir().join("new-vault-name");
+        let new_vault_path = cli.dir()?.join("new-vault-name");
         let result = cli.move_vault("vault1", &new_vault_path).await;
         assert!(result.is_err());
 
@@ -692,7 +691,7 @@ mod tests {
 
         // try to move it. This should succeed
         let result = cli
-            .move_vault("vault2", &cli.dir().join("new-vault-name"))
+            .move_vault("vault2", &cli.dir()?.join("new-vault-name"))
             .await;
         if let Err(e) = result {
             panic!("{}", e.to_string())
@@ -747,7 +746,7 @@ mod tests {
     #[tokio::test]
     async fn test_create_vault_with_a_user_path() -> Result<()> {
         let cli = CliState::test().await?;
-        let vault_path = cli.dir().join(random_name());
+        let vault_path = cli.dir()?.join(random_name());
 
         let result = cli
             .create_named_vault(

@@ -52,7 +52,7 @@ pub fn run() -> miette::Result<()> {
                     .map(|s| s.to_string())
                     .collect::<Vec<String>>()
                     .join(" ");
-                let cli_state = CliState::with_default_dir()?;
+                let cli_state = CliState::from_env()?;
                 let level_and_crates = LogLevelWithCratesFilter::new().into_diagnostic()?;
                 let logging_configuration =
                     logging_configuration(level_and_crates, None, Colored::On);

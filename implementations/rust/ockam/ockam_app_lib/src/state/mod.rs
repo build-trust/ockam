@@ -11,7 +11,7 @@ use ockam::tcp::{TcpListenerOptions, TcpTransport};
 use ockam::AsyncTryClone;
 use ockam::Context;
 use ockam::NodeBuilder;
-use ockam_api::cli_state::CliState;
+use ockam_api::cli_state::{CliState, CliStateMode};
 use ockam_api::cloud::enroll::auth0::UserInfo;
 use ockam_api::cloud::project::Project;
 use ockam_api::cloud::{AuthorityNodeClient, ControllerClient};
@@ -96,7 +96,7 @@ impl AppState {
         application_state_callback: ApplicationStateCallback,
         notification_callback: NotificationCallback,
     ) -> Result<AppState> {
-        let cli_state = CliState::with_default_dir()?;
+        let cli_state = CliState::new(CliStateMode::with_default_dir()?)?;
         let rt = Arc::new(Runtime::new().expect("cannot create a tokio runtime"));
         let (context, mut executor) = NodeBuilder::new()
             .no_logging()

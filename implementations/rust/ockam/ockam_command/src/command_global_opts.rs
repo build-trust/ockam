@@ -46,7 +46,7 @@ impl CommandGlobalOpts {
         global_args: &GlobalArgs,
         cmd: &OckamSubcommand,
     ) -> miette::Result<Self> {
-        let mut state = match CliState::with_default_dir() {
+        let mut state = match CliState::from_env() {
             Ok(state) => state,
             Err(err) => {
                 // If the user is trying to run `ockam reset` and the local state is corrupted,

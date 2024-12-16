@@ -76,12 +76,12 @@ impl SqlxDatabase {
     }
 
     /// Constructor for a sqlite database
-    pub async fn create_sqlite(path: &Path) -> Result<Self> {
+    pub async fn create_sqlite(path: impl AsRef<Path>) -> Result<Self> {
         Self::create(&DatabaseConfiguration::sqlite(path)).await
     }
 
     /// Constructor for a sqlite application database
-    pub async fn create_application_sqlite(path: &Path) -> Result<Self> {
+    pub async fn create_application_sqlite(path: impl AsRef<Path>) -> Result<Self> {
         Self::create_application_database(&DatabaseConfiguration::sqlite(path)).await
     }
 
@@ -326,7 +326,7 @@ PRAGMA busy_timeout = 10000;
     }
 
     /// Create a connection for a SQLite database
-    pub async fn create_sqlite_single_connection_pool(path: &Path) -> Result<Pool<Any>> {
+    pub async fn create_sqlite_single_connection_pool(path: impl AsRef<Path>) -> Result<Pool<Any>> {
         Self::create_connection_pool(&DatabaseConfiguration::sqlite(path).single_connection()).await
     }
 
