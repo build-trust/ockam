@@ -16,6 +16,7 @@ pub enum RoleInShare {
     #[n(0)] Admin,
     #[n(1)] Guest,
     #[n(2)] Service,
+    #[n(3)] Payment,
 }
 
 impl Display for RoleInShare {
@@ -24,6 +25,7 @@ impl Display for RoleInShare {
             Self::Admin => write!(f, "admin"),
             Self::Guest => write!(f, "guest"),
             Self::Service => write!(f, "service_user"),
+            Self::Payment => write!(f, "payment"),
         }
     }
 }
@@ -36,6 +38,7 @@ impl FromStr for RoleInShare {
             "admin" => Ok(Self::Admin),
             "guest" => Ok(Self::Guest),
             "service_user" => Ok(Self::Service),
+            "payment" => Ok(Self::Payment),
             other => Err(format!("unknown role: {other}")),
         }
     }

@@ -801,6 +801,7 @@ mod test {
                 RoleInShare::Admin => "me@ockam.io",
                 RoleInShare::Service => "service@ockam.com",
                 RoleInShare::Guest => "guest@ockam.com",
+                RoleInShare::Payment => "payment@ockam.com",
             },
         }
         .try_into()
