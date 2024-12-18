@@ -64,6 +64,9 @@ pub struct EnrollCommand {
     /// Override the default timeout duration in environments where enrollment can take a long time
     #[arg(long, value_name = "TIMEOUT", default_value = "240s", value_parser = duration_parser)]
     pub timeout: Duration,
+
+    #[arg(hide = true, long, default_value = "false")]
+    pub skip_credential_issue: bool,
 }
 
 /// This custom Debug instance hides the enrollment ticket
@@ -133,17 +136,22 @@ impl Command for EnrollCommand {
         }
 
         // Issue credential
-        let credential = {
+        let credential = if opts.state.is_using_in_memory_database()? || self.skip_credential_issue
+        {
+            // When using an in-memory database, the credential issued in this command will be discarded
+            None
+        } else {
             let pb = opts.terminal.spinner();
             if let Some(pb) = pb.as_ref() {
                 pb.set_message("Issuing credential...");
             }
-            authority_node_client
+            let credential = authority_node_client
                 .issue_credential(ctx)
                 .await
                 .map_err(Error::Retry)
                 .into_diagnostic()
-                .wrap_err("Failed to decode the credential received from the project authority")?
+                .wrap_err("Failed to decode the credential received from the project authority")?;
+            Some(CredentialOutput::from_credential(credential)?)
         };
 
         // Get the project name to display to the user.
@@ -157,11 +165,7 @@ impl Command for EnrollCommand {
         };
 
         // Output
-        let output = ProjectEnrollOutput::new(
-            identity,
-            project_name,
-            CredentialOutput::from_credential(credential)?,
-        );
+        let output = ProjectEnrollOutput::new(identity, project_name, credential);
         opts.terminal
             .clone()
             .stdout()
@@ -250,11 +254,15 @@ impl EnrollCommand {
 struct ProjectEnrollOutput {
     identity: NamedIdentity,
     project_name: String,
-    credential: CredentialOutput,
+    credential: Option<CredentialOutput>,
 }
 
 impl ProjectEnrollOutput {
-    fn new(identity: NamedIdentity, project_name: String, credential: CredentialOutput) -> Self {
+    fn new(
+        identity: NamedIdentity,
+        project_name: String,
+        credential: Option<CredentialOutput>,
+    ) -> Self {
         Self {
             identity,
             project_name,
@@ -276,41 +284,44 @@ impl Output for ProjectEnrollOutput {
             )
         )?;
 
-        writeln!(
-            f,
-            "{}",
-            fmt_log!("The identity has a credential in this project")
-        )?;
-        writeln!(
-            f,
-            "{}",
-            fmt_log!(
-                "created at {} that expires at {}\n",
-                color_primary(human_readable_time(self.credential.created_at)),
-                color_primary(human_readable_time(self.credential.expires_at))
-            )
-        )?;
-
-        if !&self.credential.attributes.is_empty() {
+        if let Some(credential) = self.credential.as_ref() {
+            writeln!(
+                f,
+                "{}",
+                fmt_log!("The identity has a credential in this project")
+            )?;
             writeln!(
                 f,
                 "{}",
                 fmt_log!(
-                    "The following attributes are attested by the project's membership authority:"
+                    "created at {} that expires at {}\n",
+                    color_primary(human_readable_time(credential.created_at)),
+                    color_primary(human_readable_time(credential.expires_at))
                 )
             )?;
-            for (k, v) in self.credential.attributes.iter() {
+
+            if !credential.attributes.is_empty() {
                 writeln!(
                     f,
                     "{}",
                     fmt_log!(
-                        "{}{}",
-                        fmt::INDENTATION,
-                        color_primary(format!("\"{k}={v}\""))
-                    )
+                    "The following attributes are attested by the project's membership authority:"
+                )
                 )?;
+                for (k, v) in credential.attributes.iter() {
+                    writeln!(
+                        f,
+                        "{}",
+                        fmt_log!(
+                            "{}{}",
+                            fmt::INDENTATION,
+                            color_primary(format!("\"{k}={v}\""))
+                        )
+                    )?;
+                }
             }
         }
+
         Ok(f)
     }
 }
