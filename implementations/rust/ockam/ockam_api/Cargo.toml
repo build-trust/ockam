@@ -112,7 +112,6 @@ tracing-error = "0.2.0"
 tracing-opentelemetry = "0.27.0"
 tracing-subscriber = { version = "0.3", features = ["json"] }
 url = "2.5.2"
-zeroize = { version = "1.8.1", features = ["zeroize_derive"] }
 
 ockam_multiaddr = { path = "../ockam_multiaddr", version = "0.66.0", features = ["cbor", "serde"] }
 ockam_transport_core = { path = "../ockam_transport_core", version = "^0.99.0" }

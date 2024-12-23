@@ -485,8 +485,8 @@ pub mod vault_for_secure_channels {
     use minicbor::{CborLen, Decode, Encode};
     use ockam_core::{async_trait, cbor_encode_preallocate, MaybeZeroizeOnDrop};
     use ockam_vault::{
-        AeadSecretKeyHandle, HKDFNumberOfOutputs, HashOutput, HkdfOutput, SecretBufferHandle,
-        VaultForSecureChannels, X25519PublicKey, X25519SecretKeyHandle,
+        AeadSecretKeyHandle, HKDFNumberOfOutputs, HashOutput, HkdfOutput, SecretBuffer,
+        SecretBufferHandle, VaultForSecureChannels, X25519PublicKey, X25519SecretKeyHandle,
     };
 
     pub(super) async fn handle_request(
@@ -617,7 +617,7 @@ pub mod vault_for_secure_channels {
             }
             Request::DeleteAeadSecretKey { secret_key_handle } => {
                 trace!("delete_aead_secret_key request for {secret_key_handle:?}");
-                let result = vault.delete_aead_secret_key(secret_key_handle).await;
+                let result = vault.delete_aead_secret_key(&secret_key_handle).await;
                 Response::DeleteAeadSecretKey(result.map_err(Into::into))
             }
             Request::Rekey {
@@ -627,6 +627,11 @@ pub mod vault_for_secure_channels {
                 trace!("rekey request for {secret_key_handle:?}");
                 let result = vault.rekey(&secret_key_handle, n).await;
                 Response::Rekey(result.map_err(Into::into))
+            }
+            Request::ExportRekey { secret_key_handle } => {
+                trace!("export_rekey request for {secret_key_handle:?}");
+                let result = vault.export_rekey(&secret_key_handle).await;
+                Response::ExportRekey(result.map_err(Into::into))
             }
         };
         cbor_encode_preallocate(response)
@@ -695,6 +700,9 @@ pub mod vault_for_secure_channels {
             #[n(0)] secret_key_handle: AeadSecretKeyHandle,
             #[n(1)] n: u16,
         },
+        #[n(18)] ExportRekey {
+            #[n(0)] secret_key_handle: AeadSecretKeyHandle
+        },
     }
 
     #[derive(Encode, Decode, CborLen)]
@@ -718,6 +726,7 @@ pub mod vault_for_secure_channels {
         #[n(15)] ConvertSecretBufferToAeadKey(#[n(0)] Result<AeadSecretKeyHandle, ProxyError>),
         #[n(16)] DeleteAeadSecretKey(#[n(0)] Result<bool, ProxyError>),
         #[n(17)] Rekey(#[n(0)] Result<AeadSecretKeyHandle, ProxyError>),
+        #[n(18)] ExportRekey(#[n(0)] Result<SecretBuffer,ProxyError>),
     }
 
     #[async_trait]
@@ -860,6 +869,25 @@ pub mod vault_for_secure_channels {
 
             let result = match response {
                 Response::Rekey(result) => result?,
+                _ => Err(ProxyError::Protocol)?,
+            };
+
+            Ok(result)
+        }
+
+        async fn export_rekey(
+            &self,
+            secret_key_handle: &AeadSecretKeyHandle,
+        ) -> ockam_core::Result<SecretBuffer> {
+            trace!("sending export_rekey request for {secret_key_handle:?}");
+            let response: Response = self
+                .send_and_receive(Request::ExportRekey {
+                    secret_key_handle: secret_key_handle.clone(),
+                })
+                .await?;
+
+            let result = match response {
+                Response::ExportRekey(result) => result?,
                 _ => Err(ProxyError::Protocol)?,
             };
 
@@ -1067,11 +1095,13 @@ pub mod vault_for_secure_channels {
 
         async fn delete_aead_secret_key(
             &self,
-            secret_key_handle: AeadSecretKeyHandle,
+            secret_key_handle: &AeadSecretKeyHandle,
         ) -> ockam_core::Result<bool> {
             trace!("sending delete_aead_secret_key request for {secret_key_handle:?}");
             let response: Response = self
-                .send_and_receive(Request::DeleteAeadSecretKey { secret_key_handle })
+                .send_and_receive(Request::DeleteAeadSecretKey {
+                    secret_key_handle: secret_key_handle.clone(),
+                })
                 .await?;
 
             let result = match response {
@@ -1183,7 +1213,7 @@ pub mod vault_for_encryption_at_rest {
     use crate::proxy_vault::protocol::{ProxyError, SpecificClient};
     use minicbor::{CborLen, Decode, Encode};
     use ockam_core::{async_trait, cbor_encode_preallocate, MaybeZeroizeOnDrop};
-    use ockam_vault::{AeadSecretKeyHandle, VaultForEncryptionAtRest};
+    use ockam_vault::{AeadSecretKeyHandle, SecretBuffer, VaultForEncryptionAtRest};
 
     pub(super) async fn handle_request(
         vault: &dyn VaultForEncryptionAtRest,
@@ -1246,7 +1276,7 @@ pub mod vault_for_encryption_at_rest {
             #[n(0)] secret_key_handle: AeadSecretKeyHandle,
         },
         #[n(3)] ImportAeadKey {
-            #[n(0)] secret: Vec<u8>,
+            #[n(0)] secret: SecretBuffer,
         },
     }
 
@@ -1343,7 +1373,7 @@ pub mod vault_for_encryption_at_rest {
 
         async fn import_aead_key(
             &self,
-            secret: Vec<u8>,
+            secret: SecretBuffer,
         ) -> ockam_core::Result<AeadSecretKeyHandle> {
             trace!("sending import_aead_key request");
             let response: Response = self

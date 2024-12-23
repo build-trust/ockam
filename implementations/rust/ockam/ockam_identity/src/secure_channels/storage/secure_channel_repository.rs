@@ -18,6 +18,8 @@ pub struct PersistedSecureChannel {
 }
 
 impl PersistedSecureChannel {
+    // TODO: remove when persistent secure channels are no longer required
+    #[allow(dead_code)]
     pub(crate) fn new(
         role: Role,
         my_identifier: Identifier,

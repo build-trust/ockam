@@ -251,7 +251,6 @@ mod test {
     use crate::kafka::key_exchange::listener::KafkaKeyExchangeListener;
     use crate::kafka::{ConsumerPublishing, ConsumerResolution};
     use crate::test_utils::{AuthorityConfiguration, TestNode};
-    use crate::DefaultAddress;
     use ockam::identity::Identifier;
     use ockam_abac::{Action, Env, Resource, ResourceType};
     use ockam_core::compat::clock::test::TestClock;
@@ -266,7 +265,6 @@ mod test {
     pub fn rekey_rotation() -> ockam_core::Result<()> {
         let runtime = Arc::new(Runtime::new().unwrap());
         let runtime_cloned = runtime.clone();
-        std::env::set_var("OCKAM_LOGGING", "false");
 
         runtime_cloned.block_on(async move {
             let test_body = async move {
@@ -291,29 +289,32 @@ mod test {
                 )
                 .await;
 
-                let consumer_secure_channel_listener_flow_control_id = consumer_node
-                    .context
-                    .flow_controls()
-                    .get_flow_control_with_spawner(&DefaultAddress::SECURE_CHANNEL_LISTENER.into())
-                    .unwrap();
+                let test_clock = TestClock::new(0);
 
                 KafkaKeyExchangeListener::create(
+                    test_clock.clone(),
                     &consumer_node.context,
                     consumer_node
                         .node_manager
                         .secure_channels
                         .vault()
                         .encryption_at_rest_vault,
+                    consumer_node
+                        .node_manager
+                        .secure_channels
+                        .vault()
+                        .secure_channel_vault,
+                    consumer_node
+                        .node_manager
+                        .secure_channels
+                        .secure_channel_registry(),
+                    Duration::from_secs(5 * 60),  //rotation
+                    Duration::from_secs(10 * 60), //validity
                     Duration::from_secs(60),
-                    Duration::from_secs(60),
-                    Duration::from_secs(60),
-                    &consumer_secure_channel_listener_flow_control_id,
                     AllowAll,
                     AllowAll,
                 )
                 .await?;
-
-                let test_clock = TestClock::new(0);
 
                 let destination = consumer_node.listen_address().await.multi_addr().unwrap();
                 let producer_secure_channel_controller = create_secure_channel_controller(
@@ -355,7 +356,10 @@ mod test {
                     .await?;
 
                 assert_eq!(third_key.rekey_counter, 1);
-                assert_eq!(first_key.secret_key_handle, third_key.secret_key_handle);
+                assert_eq!(
+                    first_key.key_identifier_for_consumer,
+                    third_key.key_identifier_for_consumer
+                );
 
                 // 04:00 - yet another rekey should happen, but no rotation
                 test_clock.add_seconds(60 * 3);
@@ -365,7 +369,10 @@ mod test {
                     .await?;
 
                 assert_eq!(fourth_key.rekey_counter, 2);
-                assert_eq!(first_key.secret_key_handle, fourth_key.secret_key_handle);
+                assert_eq!(
+                    first_key.key_identifier_for_consumer,
+                    fourth_key.key_identifier_for_consumer
+                );
 
                 // 05:00 - the default duration of the key is 10 minutes,
                 // but the rotation should happen after 5 minutes
@@ -375,7 +382,10 @@ mod test {
                     .get_or_exchange_key(&mut producer_node.context, "topic_name")
                     .await?;
 
-                assert_ne!(third_key.secret_key_handle, fifth_key.secret_key_handle);
+                assert_ne!(
+                    third_key.key_identifier_for_consumer,
+                    fifth_key.key_identifier_for_consumer
+                );
                 assert_eq!(fifth_key.rekey_counter, 0);
 
                 // Now let's simulate a failure to rekey by shutting down the consumer
@@ -389,7 +399,10 @@ mod test {
                     .await?;
 
                 assert_eq!(sixth_key.rekey_counter, 1);
-                assert_eq!(fifth_key.secret_key_handle, sixth_key.secret_key_handle);
+                assert_eq!(
+                    fifth_key.key_identifier_for_consumer,
+                    sixth_key.key_identifier_for_consumer
+                );
 
                 // 10:00 - Rotation fails, but the existing key is still valid
                 // and needs to be rekeyed
@@ -400,7 +413,10 @@ mod test {
                     .await?;
 
                 assert_eq!(seventh_key.rekey_counter, 2);
-                assert_eq!(fifth_key.secret_key_handle, seventh_key.secret_key_handle);
+                assert_eq!(
+                    fifth_key.key_identifier_for_consumer,
+                    seventh_key.key_identifier_for_consumer
+                );
 
                 // 15:00 - Rotation fails, and the existing key is no longer valid
                 test_clock.add_seconds(60 * 5);

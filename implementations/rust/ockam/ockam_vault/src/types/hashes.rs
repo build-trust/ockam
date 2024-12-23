@@ -2,6 +2,7 @@ use crate::{HandleToSecret, SecretBufferHandle};
 use cfg_if::cfg_if;
 use minicbor::{CborLen, Decode, Encode};
 use ockam_core::compat::vec::Vec;
+use serde::{Deserialize, Serialize};
 
 /// SHA256 digest length
 pub const SHA256_LENGTH: usize = 32;
@@ -11,7 +12,9 @@ pub const SHA256_LENGTH: usize = 32;
 pub struct Sha256Output(#[cbor(n(0), with = "minicbor::bytes")] pub [u8; SHA256_LENGTH]);
 
 /// Handle to an AES-256 Secret Key.
-#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Encode, Decode, CborLen)]
+#[derive(
+    Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Serialize, Deserialize, Encode, Decode, CborLen,
+)]
 pub struct AeadSecretKeyHandle(#[n(0)] pub AeadSecretKeyHandleType);
 
 impl AeadSecretKeyHandle {
@@ -41,7 +44,7 @@ cfg_if! {
         pub struct HkdfOutput(#[n(0)] pub Sha256HkdfOutput);
 
         /// Handle to an AES-256 Secret Key.
-        #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Encode, Decode, CborLen)]
+        #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Serialize, Deserialize, Encode, Decode, CborLen)]
         pub struct Aes256GcmSecretKeyHandle(#[n(0)] pub HandleToSecret);
 
         impl Aes256GcmSecretKeyHandle {

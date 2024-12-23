@@ -1,4 +1,5 @@
 use cfg_if::cfg_if;
+use minicbor::{CborLen, Decode, Encode};
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
 use ockam_core::compat::vec::Vec;
@@ -22,10 +23,10 @@ impl X25519SecretKey {
 }
 
 /// Buffer with sensitive data, like HKDF output.
-#[derive(Eq, PartialEq, Clone, Zeroize, ZeroizeOnDrop)]
-pub struct BufferSecret(Vec<u8>);
+#[derive(Eq, PartialEq, Clone, Encode, Decode, CborLen, Zeroize, ZeroizeOnDrop)]
+pub struct SecretBuffer(#[n(1)] Vec<u8>);
 
-impl BufferSecret {
+impl SecretBuffer {
     /// Constructor.
     pub fn new(data: Vec<u8>) -> Self {
         Self(data)

@@ -1,15 +1,18 @@
+use alloc::boxed::Box;
+use alloc::vec::Vec;
 use ockam_core::compat::collections::BTreeMap;
 use ockam_core::compat::rand::{thread_rng, RngCore};
 use ockam_core::compat::sync::{Arc, RwLock};
-use ockam_core::compat::vec::Vec;
 use ockam_core::{async_trait, Result};
 
 use super::make_aes;
-use crate::storage::{SecretsRepository, SecretsSqlxDatabase};
+use crate::storage::SecretsRepository;
+#[cfg(feature = "storage")]
+use crate::storage::SecretsSqlxDatabase;
 
 use crate::software::vault_for_secure_channels::common::generate_aead_handle;
 use crate::{
-    AeadSecret, AeadSecretKeyHandle, BufferSecret, VaultError, VaultForEncryptionAtRest,
+    AeadSecret, AeadSecretKeyHandle, SecretBuffer, VaultError, VaultForEncryptionAtRest,
     AEAD_SECRET_LENGTH, AES_GCM_TAGSIZE, AES_NONCE_LENGTH,
 };
 
@@ -18,6 +21,7 @@ pub struct SoftwareVaultForAtRestEncryption {
     ephemeral_aead_secrets: Arc<RwLock<BTreeMap<AeadSecretKeyHandle, AeadSecret>>>,
     secrets_repository: Arc<dyn SecretsRepository>,
 }
+
 #[async_trait]
 impl VaultForEncryptionAtRest for SoftwareVaultForAtRestEncryption {
     async fn aead_encrypt(
@@ -63,7 +67,9 @@ impl VaultForEncryptionAtRest for SoftwareVaultForAtRestEncryption {
     ) -> Result<AeadSecretKeyHandle> {
         let secret = self.get_aead_secret(secret_key_handle).await?;
         let new_key_secret = self.rekey(secret, 1).await?;
-        let new_key_handle = self.import_aead_key(new_key_secret.0.to_vec()).await?;
+        let new_key_handle = self
+            .import_aead_key(SecretBuffer::new(new_key_secret.0.to_vec()))
+            .await?;
         self.secrets_repository
             .delete_aead_secret(secret_key_handle)
             .await?;
@@ -74,9 +80,7 @@ impl VaultForEncryptionAtRest for SoftwareVaultForAtRestEncryption {
         Ok(new_key_handle)
     }
 
-    async fn import_aead_key(&self, secret: Vec<u8>) -> Result<AeadSecretKeyHandle> {
-        let secret = BufferSecret::new(secret);
-
+    async fn import_aead_key(&self, secret: SecretBuffer) -> Result<AeadSecretKeyHandle> {
         if secret.data().len() != AEAD_SECRET_LENGTH {
             return Err(VaultError::InvalidSecretLength)?;
         }

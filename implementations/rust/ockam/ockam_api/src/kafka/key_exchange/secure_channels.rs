@@ -5,9 +5,9 @@ use crate::kafka::key_exchange::controller::{
 use crate::kafka::key_exchange::listener::{KeyExchangeRequest, KeyExchangeResponse};
 use crate::kafka::ConsumerResolution;
 use crate::DefaultAddress;
-use ockam::identity::TimestampInSeconds;
+use ockam::identity::{SecureChannelApiRequest, SecureChannelApiResponse, TimestampInSeconds};
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::{Error, Result};
+use ockam_core::{route, Error, Result};
 use ockam_multiaddr::proto::{Secure, Service};
 use ockam_multiaddr::MultiAddr;
 use ockam_node::{Context, MessageSendReceiveOptions};
@@ -35,6 +35,72 @@ impl KafkaKeyExchangeControllerImpl {
         destination.push_back(Secure::new(DefaultAddress::SECURE_CHANNEL_LISTENER))?;
         destination.push_back(Service::new(DefaultAddress::KAFKA_CUSTODIAN))?;
         if let Some(node_manager) = inner.node_manager.upgrade() {
+            // create a second secure channel to be used for key exchange
+            let (aead_secret_key_handle, their_decryptor_address) = {
+                let key_exchange_connection = node_manager
+                    .make_connection(context, &destination, node_manager.identifier(), None, None)
+                    .await?;
+
+                let encryptor_address = key_exchange_connection
+                    .secure_channel_encryptors
+                    .first()
+                    .expect("encryptor should be present");
+
+                let entry = node_manager
+                    .secure_channels
+                    .secure_channel_registry()
+                    .get_channel_by_encryptor_address(encryptor_address)
+                    .expect("channel should be present");
+
+                if !inner
+                    .consumer_policy_access_control
+                    .is_identity_authorized(entry.their_id())
+                    .await?
+                {
+                    key_exchange_connection
+                        .close(context, &node_manager)
+                        .await?;
+                    return Err(Error::new(
+                        Origin::Channel,
+                        Kind::Invalid,
+                        "Consumer is not authorized to use the secure channel",
+                    ));
+                }
+
+                let response: SecureChannelApiResponse = context
+                    .send_and_receive(
+                        route![entry.encryptor_api_address().clone()],
+                        SecureChannelApiRequest::ExtractKey,
+                    )
+                    .await?;
+
+                match response {
+                    SecureChannelApiResponse::Ok(secret_handle) => {
+                        let secret = node_manager
+                            .secure_channels
+                            .vault()
+                            .secure_channel_vault
+                            .export_rekey(&secret_handle)
+                            .await?;
+
+                        key_exchange_connection
+                            .close(context, &node_manager)
+                            .await?;
+
+                        (
+                            self.encryption_at_rest.import_aead_key(secret).await?,
+                            entry.their_decryptor_address(),
+                        )
+                    }
+                    SecureChannelApiResponse::Err(error) => {
+                        key_exchange_connection
+                            .close(context, &node_manager)
+                            .await?;
+                        return Err(error);
+                    }
+                }
+            };
+
             let connection = node_manager
                 .make_connection(context, &destination, node_manager.identifier(), None, None)
                 .await?;
@@ -52,14 +118,17 @@ impl KafkaKeyExchangeControllerImpl {
 
             let route = connection.route()?;
             let response: KeyExchangeResponse = context
-                .send_and_receive_extended(route, KeyExchangeRequest {}, send_and_receive_options)
+                .send_and_receive_extended(
+                    route,
+                    KeyExchangeRequest {
+                        local_decryptor_address: their_decryptor_address,
+                    },
+                    send_and_receive_options,
+                )
                 .await?
                 .into_body()?;
 
-            let aead_secret_key_handle = self
-                .encryption_at_rest
-                .import_aead_key(response.secret_key.to_vec())
-                .await?;
+            connection.close(context, &node_manager).await?;
 
             Ok(ExchangedKey {
                 secret_key_handler: aead_secret_key_handle,

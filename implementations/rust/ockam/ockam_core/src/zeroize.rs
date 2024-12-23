@@ -1,9 +1,9 @@
 use core::fmt::{Debug, Display, Formatter};
 use core::hash::{Hash, Hasher};
 use core::ops::Deref;
+use core::ops::DerefMut;
 use minicbor::encode::{Error, Write};
 use minicbor::{CborLen, Decode, Encode, Encoder};
-use std::ops::DerefMut;
 use zeroize::Zeroize;
 
 /// OnDrop is an enum to specify whether to zeroize the inner value when dropped.
@@ -43,7 +43,7 @@ impl<T: Zeroize + Default> MaybeZeroizeOnDrop<T> {
     /// Return the inner value regardless of the zeroize_on_drop flag.
     /// The caller has the responsibility to ensure that the inner value is zeroized when necessary.
     pub fn discard_zeroize(mut self) -> T {
-        std::mem::take(&mut self.target)
+        core::mem::take(&mut self.target)
     }
 }
 
@@ -85,7 +85,7 @@ impl<T: Zeroize + Default> Default for MaybeZeroizeOnDrop<T> {
 }
 
 impl<T: Zeroize + Debug> Debug for MaybeZeroizeOnDrop<T> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("MaybeZeroizeOnDrop")
             .field("target", &self.target)
             .field("on_drop", &self.on_drop)
@@ -94,7 +94,7 @@ impl<T: Zeroize + Debug> Debug for MaybeZeroizeOnDrop<T> {
 }
 
 impl<T: Zeroize + Display> Display for MaybeZeroizeOnDrop<T> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         self.target.fmt(f)
     }
 }
@@ -117,13 +117,13 @@ impl<T: Zeroize + PartialEq> PartialEq for MaybeZeroizeOnDrop<T> {
 impl<T: Zeroize + Eq> Eq for MaybeZeroizeOnDrop<T> {}
 
 impl<T: Zeroize + PartialOrd> PartialOrd for MaybeZeroizeOnDrop<T> {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+    fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
         self.target.partial_cmp(&other.target)
     }
 }
 
 impl<T: Zeroize + Ord> Ord for MaybeZeroizeOnDrop<T> {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+    fn cmp(&self, other: &Self) -> core::cmp::Ordering {
         self.target.cmp(&other.target)
     }
 }

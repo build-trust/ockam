@@ -1,10 +1,11 @@
 use core::fmt::Debug;
 use minicbor::{CborLen, Decode, Encode};
 use ockam_core::compat::vec::Vec;
+use serde::{Deserialize, Serialize};
 
 /// Implementation-specific arbitrary vector of bytes that allows a concrete Vault implementation
 /// to address a specific secret that it stores.
-#[derive(Clone, Ord, PartialOrd, Eq, PartialEq, Encode, Decode, CborLen)]
+#[derive(Clone, Ord, PartialOrd, Eq, PartialEq, Serialize, Deserialize,  Encode, Decode, CborLen)]
 #[rustfmt::skip]
 pub struct HandleToSecret(#[cbor(n(0), with = "minicbor::bytes")]  Vec<u8>);
 

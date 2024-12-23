@@ -1,5 +1,5 @@
-use crate::AeadSecretKeyHandle;
-
+use crate::{AeadSecretKeyHandle, SecretBuffer};
+use alloc::boxed::Box;
 use ockam_core::{async_trait, Result};
 
 /// Vault for verifying signatures and computing SHA-256.
@@ -34,5 +34,5 @@ pub trait VaultForEncryptionAtRest: Send + Sync + 'static {
     ) -> Result<AeadSecretKeyHandle>;
 
     /// Import an AES-GCM key and return a handle to it
-    async fn import_aead_key(&self, secret: Vec<u8>) -> Result<AeadSecretKeyHandle>;
+    async fn import_aead_key(&self, secret: SecretBuffer) -> Result<AeadSecretKeyHandle>;
 }

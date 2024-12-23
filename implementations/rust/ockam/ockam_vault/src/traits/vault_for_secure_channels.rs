@@ -1,5 +1,5 @@
 use crate::{
-    AeadSecretKeyHandle, HashOutput, HkdfOutput, SecretBufferHandle, X25519PublicKey,
+    AeadSecretKeyHandle, HashOutput, HkdfOutput, SecretBuffer, SecretBufferHandle, X25519PublicKey,
     X25519SecretKeyHandle,
 };
 use minicbor::{CborLen, Decode, Encode};
@@ -69,6 +69,9 @@ pub trait VaultForSecureChannels: Send + Sync + 'static {
         n: u16,
     ) -> Result<AeadSecretKeyHandle>;
 
+    /// Perform rekey, export the new key, and delete the previous key.
+    async fn export_rekey(&self, secret_key_handle: &AeadSecretKeyHandle) -> Result<SecretBuffer>;
+
     /// Persist an existing AEAD key.
     async fn persist_aead_key(&self, secret_key_handle: &AeadSecretKeyHandle) -> Result<()>;
 
@@ -118,5 +121,6 @@ pub trait VaultForSecureChannels: Send + Sync + 'static {
     ) -> Result<AeadSecretKeyHandle>;
 
     /// Delete AEAD Key.
-    async fn delete_aead_secret_key(&self, secret_key_handle: AeadSecretKeyHandle) -> Result<bool>;
+    async fn delete_aead_secret_key(&self, secret_key_handle: &AeadSecretKeyHandle)
+        -> Result<bool>;
 }

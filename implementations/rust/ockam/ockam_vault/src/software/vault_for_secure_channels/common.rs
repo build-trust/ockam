@@ -1,4 +1,5 @@
 use crate::{AeadSecretKeyHandle, HandleToSecret, SecretBufferHandle};
+use alloc::vec;
 use ockam_core::compat::rand::{thread_rng, RngCore};
 
 pub(super) fn generate_random_handle() -> HandleToSecret {

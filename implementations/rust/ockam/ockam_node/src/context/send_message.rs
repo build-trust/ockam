@@ -159,7 +159,7 @@ impl Context {
         child_ctx.set_tracing_context(self.tracing_context());
 
         child_ctx
-            .send_from_address_impl(route, msg, self.address(), vec![], options.on_drop)
+            .send_from_address_impl(route, msg, child_ctx.address(), vec![], options.on_drop)
             .await?;
         child_ctx
             .receive_extended::<M>(

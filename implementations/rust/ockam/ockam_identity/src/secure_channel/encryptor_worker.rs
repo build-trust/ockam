@@ -4,7 +4,7 @@ use ockam_core::compat::sync::{Arc, RwLock};
 use ockam_core::compat::vec::Vec;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{
-    async_trait, cbor_encode_preallocate, route, CowBytes, Error, LocalMessage, MaybeZeroizeOnDrop,
+    async_trait, route, CowBytes, Decodable, Error, LocalMessage, MaybeZeroizeOnDrop,
     NeutralMessage, OnDrop, Route,
 };
 use ockam_core::{Any, Result, Routed, Worker};
@@ -135,7 +135,7 @@ impl EncryptorWorker {
         let return_route = msg.return_route;
 
         // Decode raw payload binary
-        let request = minicbor::decode(msg.payload.as_slice())?;
+        let request = SecureChannelApiRequest::decode(&msg.payload)?;
 
         // If encryption fails, that means we have some internal error,
         // and we may be in an invalid state, it's better to stop the Worker
@@ -145,11 +145,15 @@ impl EncryptorWorker {
                 SecureChannelApiResponse::Ok(handle)
             }
         };
-        let response = NeutralMessage::from(cbor_encode_preallocate(&response)?);
 
         // Send the reply to the caller
         ctx.send_from_address(return_route, response, self.addresses.encryptor_api.clone())
             .await?;
+
+        // Avoid sending a Close message, to the other party can extract the key as wel
+        self.shared_state
+            .should_send_close
+            .store(false, Ordering::Relaxed);
 
         // Once we have extracted the key, we can't use it anymore
         ctx.stop_worker(self.addresses.encryptor.clone()).await?;

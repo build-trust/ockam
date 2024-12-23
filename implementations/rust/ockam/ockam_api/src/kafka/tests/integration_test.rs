@@ -24,6 +24,7 @@ use tokio::task::JoinHandle;
 use uuid::Uuid;
 
 use crate::kafka::key_exchange::controller::KafkaKeyExchangeControllerImpl;
+use crate::kafka::key_exchange::listener::KafkaKeyExchangeListener;
 use crate::kafka::protocol_aware::inlet::KafkaInletInterceptorFactory;
 use crate::kafka::protocol_aware::utils::{encode_request, encode_response};
 use crate::kafka::{ConsumerPublishing, ConsumerResolution, KafkaInletController};
@@ -32,6 +33,7 @@ use ockam::compat::tokio::io::DuplexStream;
 use ockam::tcp::{TcpInletOptions, TcpOutletOptions};
 use ockam::Context;
 use ockam_abac::{Action, Resource, ResourceType};
+use ockam_core::compat::clock::ProductionClock;
 use ockam_core::compat::sync::Arc;
 use ockam_core::route;
 use ockam_core::Address;
@@ -142,6 +144,33 @@ async fn producer__flow_with_mock_kafka__content_encryption_and_decryption(
         "kafka_producer_outlet".into(),
     )
     .await?;
+
+    {
+        KafkaKeyExchangeListener::create(
+            ProductionClock,
+            context,
+            handle
+                .node_manager
+                .secure_channels
+                .vault()
+                .encryption_at_rest_vault,
+            handle
+                .node_manager
+                .secure_channels
+                .vault()
+                .secure_channel_vault,
+            handle
+                .node_manager
+                .secure_channels
+                .secure_channel_registry(),
+            Duration::from_secs(5 * 60),  //rotation
+            Duration::from_secs(10 * 60), //validity
+            Duration::from_secs(60),      //rekey
+            AllowAll,
+            AllowAll,
+        )
+        .await?;
+    }
 
     // for the consumer to become available to the producer, the consumer has to issue a Fetch
     // request first, so the sidecar can react by creating the relay for topic 'my-topic'

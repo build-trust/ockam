@@ -1,3 +1,4 @@
+use alloc::boxed::Box;
 use sha2::{Digest, Sha256};
 use tracing::instrument;
 
@@ -18,15 +19,15 @@ use crate::software::vault_for_secure_channels::common::{
 };
 use crate::software::vault_for_secure_channels::types::AES_GCM_TAGSIZE;
 use crate::{
-    AeadSecret, AeadSecretKeyHandle, BufferSecret, HKDFNumberOfOutputs, HandleToSecret, HashOutput,
-    HkdfOutput, SecretBufferHandle, SoftwareVaultForVerifyingSignatures, VaultError,
+    AeadSecret, AeadSecretKeyHandle, HKDFNumberOfOutputs, HandleToSecret, HashOutput, HkdfOutput,
+    SecretBuffer, SecretBufferHandle, SoftwareVaultForVerifyingSignatures, VaultError,
     VaultForSecureChannels, X25519PublicKey, X25519SecretKey, X25519SecretKeyHandle,
-    AEAD_SECRET_LENGTH,
+    AEAD_SECRET_LENGTH, AES_NONCE_LENGTH,
 };
 
 /// [`SecureChannelVault`] implementation using software
 pub struct SoftwareVaultForSecureChannels {
-    ephemeral_buffer_secrets: Arc<RwLock<BTreeMap<SecretBufferHandle, BufferSecret>>>,
+    ephemeral_buffer_secrets: Arc<RwLock<BTreeMap<SecretBufferHandle, SecretBuffer>>>,
     ephemeral_aead_secrets: Arc<RwLock<BTreeMap<AeadSecretKeyHandle, AeadSecret>>>,
     ephemeral_x25519_secrets: Arc<RwLock<BTreeMap<X25519SecretKeyHandle, X25519SecretKey>>>,
     secrets_repository: Arc<dyn SecretsRepository>,
@@ -139,11 +140,11 @@ impl SoftwareVaultForSecureChannels {
     fn ecdh_internal(
         secret: X25519SecretKey,
         peer_public_key: X25519PublicKey,
-    ) -> Result<BufferSecret> {
+    ) -> Result<SecretBuffer> {
         let peer_public_key = Self::import_x25519_public_key(peer_public_key);
         let secret_key = Self::import_x25519_secret_key(secret);
         let dh = secret_key.diffie_hellman(&peer_public_key);
-        Ok(BufferSecret::new(dh.as_bytes().to_vec()))
+        Ok(SecretBuffer::new(dh.as_bytes().to_vec()))
     }
 
     fn generate_x25519_secret() -> X25519SecretKey {
@@ -152,7 +153,7 @@ impl SoftwareVaultForSecureChannels {
         X25519SecretKey::new(secret.to_bytes())
     }
 
-    fn import_buffer_secret_impl(&self, secret: BufferSecret) -> SecretBufferHandle {
+    fn import_buffer_secret_impl(&self, secret: SecretBuffer) -> SecretBufferHandle {
         let handle = generate_buffer_handle();
 
         self.ephemeral_buffer_secrets
@@ -177,7 +178,7 @@ impl SoftwareVaultForSecureChannels {
             .ok_or_else(|| VaultError::KeyNotFound)?)
     }
 
-    async fn get_buffer_secret(&self, handle: &SecretBufferHandle) -> Result<BufferSecret> {
+    async fn get_buffer_secret(&self, handle: &SecretBufferHandle) -> Result<SecretBuffer> {
         match self.ephemeral_buffer_secrets.read().unwrap().get(handle) {
             Some(secret) => Ok(secret.clone()),
             None => Err(VaultError::KeyNotFound)?,
@@ -189,6 +190,31 @@ impl SoftwareVaultForSecureChannels {
             Some(secret) => Ok(secret.clone()),
             None => Err(VaultError::KeyNotFound)?,
         }
+    }
+
+    async fn raw_rekey(&self, secret_key_handle: &AeadSecretKeyHandle, n: u16) -> Result<Vec<u8>> {
+        if n == 0 {
+            return Err(VaultError::InvalidRekeyCount)?;
+        }
+
+        const MAX_NONCE: [u8; AES_NONCE_LENGTH] = [
+            0x00, 0x00, 0x00, 0x00, // we only use 8 bytes of nonce
+            0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, // u64::MAX
+        ];
+
+        let mut new_key_buffer = vec![0u8; AEAD_SECRET_LENGTH + AES_GCM_TAGSIZE];
+        let mut counter = n;
+
+        while counter > 0 {
+            let secret = self.get_aead_secret(secret_key_handle).await?;
+            let aes = make_aes(&secret);
+            aes.encrypt_message(&mut new_key_buffer, &MAX_NONCE, &[])?;
+
+            counter -= 1;
+        }
+
+        new_key_buffer.truncate(AEAD_SECRET_LENGTH);
+        Ok(new_key_buffer)
     }
 }
 
@@ -221,7 +247,7 @@ impl VaultForSecureChannels for SoftwareVaultForSecureChannels {
 
         let ikm = match input_key_material {
             Some(ikm) => self.get_buffer_secret(ikm).await?,
-            None => BufferSecret::new(vec![]),
+            None => SecretBuffer::new(vec![]),
         };
 
         let salt = self.get_buffer_secret(salt).await?;
@@ -252,7 +278,7 @@ impl VaultForSecureChannels for SoftwareVaultForSecureChannels {
 
         let output = chunks
             .into_iter()
-            .map(|chunk| self.import_buffer_secret_impl(BufferSecret::new(chunk.to_vec())))
+            .map(|chunk| self.import_buffer_secret_impl(SecretBuffer::new(chunk.to_vec())))
             .collect::<Vec<_>>();
 
         use crate::Sha256HkdfOutput;
@@ -294,28 +320,16 @@ impl VaultForSecureChannels for SoftwareVaultForSecureChannels {
         secret_key_handle: &AeadSecretKeyHandle,
         n: u16,
     ) -> Result<AeadSecretKeyHandle> {
-        if n == 0 {
-            return Err(VaultError::InvalidRekeyCount)?;
-        }
-
-        const MAX_NONCE: [u8; 12] = [
-            0x00, 0x00, 0x00, 0x00, // we only use 8 bytes of nonce
-            0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, // u64::MAX
-        ];
-
-        let mut new_key_buffer = vec![0u8; 32 + AES_GCM_TAGSIZE];
-        let mut counter = n;
-
-        while counter > 0 {
-            let secret = self.get_aead_secret(secret_key_handle).await?;
-            let aes = make_aes(&secret);
-            aes.encrypt_message(&mut new_key_buffer, &MAX_NONCE, &[])?;
-
-            counter -= 1;
-        }
-
+        let new_key_buffer = self.raw_rekey(secret_key_handle, n).await?;
         let buffer = self.import_secret_buffer(new_key_buffer).await?;
         self.convert_secret_buffer_to_aead_key(buffer).await
+    }
+
+    #[instrument(skip_all)]
+    async fn export_rekey(&self, secret_key_handle: &AeadSecretKeyHandle) -> Result<SecretBuffer> {
+        let buffer = SecretBuffer::new(self.raw_rekey(secret_key_handle, 1).await?);
+        self.delete_aead_secret_key(secret_key_handle).await?;
+        Ok(buffer)
     }
 
     #[instrument(skip_all)]
@@ -394,7 +408,7 @@ impl VaultForSecureChannels for SoftwareVaultForSecureChannels {
     }
 
     async fn import_secret_buffer(&self, buffer: Vec<u8>) -> Result<SecretBufferHandle> {
-        Ok(self.import_buffer_secret_impl(BufferSecret::new(buffer)))
+        Ok(self.import_buffer_secret_impl(SecretBuffer::new(buffer)))
     }
 
     async fn delete_secret_buffer(&self, secret_buffer_handle: SecretBufferHandle) -> Result<bool> {
@@ -440,12 +454,15 @@ impl VaultForSecureChannels for SoftwareVaultForSecureChannels {
     }
 
     #[instrument(skip_all)]
-    async fn delete_aead_secret_key(&self, secret_key_handle: AeadSecretKeyHandle) -> Result<bool> {
+    async fn delete_aead_secret_key(
+        &self,
+        secret_key_handle: &AeadSecretKeyHandle,
+    ) -> Result<bool> {
         Ok(self
             .ephemeral_aead_secrets
             .write()
             .unwrap()
-            .remove(&secret_key_handle)
+            .remove(secret_key_handle)
             .is_some())
     }
 }

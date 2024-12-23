@@ -4786,7 +4786,6 @@ dependencies = [
  "treeline",
  "url",
  "uuid",
- "zeroize",
 ]
 
 [[package]]

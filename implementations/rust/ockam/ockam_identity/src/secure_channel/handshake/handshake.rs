@@ -307,7 +307,7 @@ impl Handshake {
 
         let old_k = state.k.replace(new_k);
         if let Some(old_k) = old_k {
-            self.vault.delete_aead_secret_key(old_k).await?;
+            self.vault.delete_aead_secret_key(&old_k).await?;
         }
 
         state.n = 0;
@@ -334,7 +334,7 @@ impl Handshake {
         let k2 = self.vault.convert_secret_buffer_to_aead_key(k2).await?;
 
         self.vault.delete_secret_buffer(state.take_ck()?).await?;
-        self.vault.delete_aead_secret_key(state.take_k()?).await?;
+        self.vault.delete_aead_secret_key(&state.take_k()?).await?;
 
         Ok((k1, k2))
     }

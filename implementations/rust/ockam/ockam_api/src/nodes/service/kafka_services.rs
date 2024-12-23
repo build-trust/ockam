@@ -23,6 +23,7 @@ use ockam::{Address, Context, Result};
 use ockam_abac::PolicyExpression;
 use ockam_abac::{Action, Resource, ResourceType};
 use ockam_core::api::{Error, Response};
+use ockam_core::compat::clock::ProductionClock;
 use ockam_core::compat::rand::random_string;
 use ockam_core::flow_control::FlowControls;
 use ockam_core::route;
@@ -188,21 +189,16 @@ impl InMemoryNode {
             inlet_policy_expression.clone(),
         );
 
-        let default_secure_channel_listener_flow_control_id = context
-            .flow_controls()
-            .get_flow_control_with_spawner(&DefaultAddress::SECURE_CHANNEL_LISTENER.into())
-            .ok_or_else(|| {
-                ApiError::core("Unable to get flow control for secure channel listener")
-            })?;
-
         // TODO: remove key exchange from inlets
         KafkaKeyExchangeListener::create(
+            ProductionClock,
             context,
             vault.encryption_at_rest_vault,
+            self.secure_channels.vault().secure_channel_vault,
+            self.secure_channels.secure_channel_registry(),
             std::time::Duration::from_secs(60 * 60 * 24),
             std::time::Duration::from_secs(60 * 60 * 30),
             std::time::Duration::from_secs(60 * 60),
-            &default_secure_channel_listener_flow_control_id,
             producer_policy_access_control.create_incoming(),
             producer_policy_access_control
                 .create_outgoing(context)
@@ -365,14 +361,6 @@ impl InMemoryNode {
         request: StartKafkaCustodianRequest,
     ) -> Result<()> {
         //TODO: dedup code with start_kafka_inlet_service
-
-        let default_secure_channel_listener_flow_control_id = context
-            .flow_controls()
-            .get_flow_control_with_spawner(&DefaultAddress::SECURE_CHANNEL_LISTENER.into())
-            .ok_or_else(|| {
-                ApiError::core("Unable to get flow control for secure channel listener")
-            })?;
-
         let vault = if let Some(vault) = request.vault {
             let named_vault = self.cli_state.get_named_vault(&vault).await?;
             self.cli_state
@@ -395,12 +383,14 @@ impl InMemoryNode {
             .await?;
 
         KafkaKeyExchangeListener::create(
+            ProductionClock,
             context,
             vault.encryption_at_rest_vault,
+            self.secure_channels.vault().secure_channel_vault,
+            self.secure_channels.secure_channel_registry(),
             request.key_rotation,
             request.key_validity,
             request.rekey_period,
-            &default_secure_channel_listener_flow_control_id,
             producer_policy_access_control.create_incoming(),
             producer_policy_access_control
                 .create_outgoing(context)

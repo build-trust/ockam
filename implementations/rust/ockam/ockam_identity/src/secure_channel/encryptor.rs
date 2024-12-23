@@ -27,7 +27,7 @@ impl Encryptor {
         if current_nonce.value() > 0 && current_nonce.value() % KEY_RENEWAL_INTERVAL == 0 {
             let new_key = self.vault.rekey(&self.key, 1).await?;
             let old_key = core::mem::replace(&mut self.key, new_key);
-            self.vault.delete_aead_secret_key(old_key).await?;
+            self.vault.delete_aead_secret_key(&old_key).await?;
         }
 
         payload[..NOISE_NONCE_LEN].copy_from_slice(&current_nonce.to_noise_nonce());
@@ -59,7 +59,7 @@ impl Encryptor {
 
     #[instrument(skip_all)]
     pub(crate) async fn shutdown(&self) -> Result<()> {
-        if !self.vault.delete_aead_secret_key(self.key.clone()).await? {
+        if !self.vault.delete_aead_secret_key(&self.key).await? {
             Err(Error::new(
                 Origin::Ockam,
                 Kind::Internal,

@@ -1,7 +1,7 @@
 use core::sync::atomic::Ordering;
 use ockam_core::compat::sync::Arc;
-use ockam_core::{cbor_encode_preallocate, LocalMessage, NeutralMessage};
 use ockam_core::{route, Any, OnDrop, Result, Route, Routed, SecureChannelLocalInfo};
+use ockam_core::{Decodable, LocalMessage};
 use ockam_node::Context;
 
 use crate::models::Identifier;
@@ -68,18 +68,22 @@ impl DecryptorHandler {
         let return_route = msg.return_route;
 
         // Decode raw payload binary
-        let request = minicbor::decode(msg.payload.as_slice())?;
+        let request = SecureChannelApiRequest::decode(&msg.payload)?;
         let response = match request {
             SecureChannelApiRequest::ExtractKey => {
                 let handle = self.decryptor.derive_new_key().await?;
                 SecureChannelApiResponse::Ok(handle)
             }
         };
-        let response = NeutralMessage::from(cbor_encode_preallocate(&response)?);
 
         // Send reply to the caller
         ctx.send_from_address(return_route, response, self.addresses.decryptor_api.clone())
             .await?;
+
+        // Avoid sending a Close message, to the other party can extract the key as wel
+        self.shared_state
+            .should_send_close
+            .store(false, Ordering::Relaxed);
 
         // Once we have extracted the key, we can't use it anymore
         ctx.stop_worker(self.addresses.encryptor.clone()).await?;
@@ -273,7 +277,7 @@ impl Decryptor {
             Ok(result) => {
                 self.nonce_tracker = nonce_tracker;
                 if let Some(key_to_delete) = self.key_tracker.update_key(&key.clone())? {
-                    self.vault.delete_aead_secret_key(key_to_delete).await?;
+                    self.vault.delete_aead_secret_key(&key_to_delete).await?;
                 }
 
                 Ok((result, nonce))
@@ -291,13 +295,11 @@ impl Decryptor {
     #[instrument(skip_all)]
     pub(crate) async fn shutdown(&self) -> Result<()> {
         self.vault
-            .delete_aead_secret_key(self.key_tracker.current_key.clone())
+            .delete_aead_secret_key(&self.key_tracker.current_key)
             .await?;
 
         if let Some(previous_key) = &self.key_tracker.previous_key {
-            self.vault
-                .delete_aead_secret_key(previous_key.clone())
-                .await?;
+            self.vault.delete_aead_secret_key(previous_key).await?;
         };
 
         Ok(())

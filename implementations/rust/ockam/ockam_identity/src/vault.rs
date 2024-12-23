@@ -87,6 +87,7 @@ impl Vault {
     }
 
     /// Create [`SoftwareVaultForAtRestEncryption`] with an in-memory storage
+    #[cfg(feature = "storage")]
     pub async fn create_encryption_at_rest_vault() -> Result<Arc<dyn VaultForEncryptionAtRest>> {
         Ok(Arc::new(SoftwareVaultForAtRestEncryption::new(Arc::new(
             SecretsSqlxDatabase::create().await?,
