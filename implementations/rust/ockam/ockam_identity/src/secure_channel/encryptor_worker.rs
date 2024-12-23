@@ -1,11 +1,10 @@
 use core::sync::atomic::{AtomicBool, Ordering};
-
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::sync::{Arc, RwLock};
 use ockam_core::compat::vec::Vec;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{
-    async_trait, route, CowBytes, Decodable, Error, LocalMessage, MaybeZeroizeOnDrop,
+    async_trait, cbor_encode_preallocate, route, CowBytes, Error, LocalMessage, MaybeZeroizeOnDrop,
     NeutralMessage, OnDrop, Route,
 };
 use ockam_core::{Any, Result, Routed, Worker};
@@ -15,7 +14,7 @@ use tracing_attributes::instrument;
 
 use crate::models::CredentialAndPurposeKey;
 use crate::secure_channel::addresses::Addresses;
-use crate::secure_channel::api::{EncryptionRequest, EncryptionResponse};
+use crate::secure_channel::api::{SecureChannelApiRequest, SecureChannelApiResponse};
 use crate::secure_channel::encryptor::Encryptor;
 use crate::secure_channel::handshake::handshake::AES_GCM_TAGSIZE;
 use crate::{
@@ -57,7 +56,6 @@ pub(crate) struct SecureChannelSharedState {
 
 pub(crate) struct EncryptorWorker {
     role: &'static str, // For debug purposes only
-    key_exchange_only: bool,
     addresses: Addresses,
     encryptor: Encryptor,
     my_identifier: Identifier,
@@ -71,7 +69,6 @@ impl EncryptorWorker {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         role: &'static str,
-        key_exchange_only: bool,
         addresses: Addresses,
         encryptor: Encryptor,
         my_identifier: Identifier,
@@ -82,7 +79,6 @@ impl EncryptorWorker {
     ) -> Self {
         Self {
             role,
-            key_exchange_only,
             addresses,
             encryptor,
             my_identifier,
@@ -125,7 +121,7 @@ impl EncryptorWorker {
     }
 
     #[instrument(skip_all)]
-    async fn handle_encrypt_api(
+    async fn handle_api(
         &mut self,
         ctx: &mut <Self as Worker>::Context,
         msg: Routed<<Self as Worker>::Message>,
@@ -139,60 +135,24 @@ impl EncryptorWorker {
         let return_route = msg.return_route;
 
         // Decode raw payload binary
-        let request = EncryptionRequest::decode(&msg.payload)?;
+        let request = minicbor::decode(msg.payload.as_slice())?;
 
         // If encryption fails, that means we have some internal error,
         // and we may be in an invalid state, it's better to stop the Worker
-        let mut should_stop = false;
         let response = match request {
-            EncryptionRequest::Encrypt(plaintext) => {
-                let len = NOISE_NONCE_LEN + plaintext.len() + AES_GCM_TAGSIZE;
-                let mut encrypted_payload = vec![0u8; len];
-                encrypted_payload[NOISE_NONCE_LEN..len - AES_GCM_TAGSIZE]
-                    .copy_from_slice(&plaintext);
-
-                // Encrypt the message
-                match self
-                    .encryptor
-                    .encrypt(encrypted_payload.as_mut_slice())
-                    .await
-                {
-                    Ok(()) => EncryptionResponse::Ok(encrypted_payload),
-                    // If encryption failed, that means we have some internal error,
-                    // and we may be in an invalid state, it's better to stop the Worker
-                    Err(err) => {
-                        should_stop = true;
-                        error!(
-                            "Error while encrypting: {err} at: {}",
-                            self.addresses.encryptor
-                        );
-                        EncryptionResponse::Err(err)
-                    }
-                }
-            }
-            EncryptionRequest::Rekey => match self.encryptor.manual_rekey().await {
-                Ok(()) => EncryptionResponse::Ok(Vec::new()),
-                Err(err) => {
-                    should_stop = true;
-                    error!(
-                        "Error while rekeying: {err} at: {}",
-                        self.addresses.encryptor
-                    );
-                    EncryptionResponse::Err(err)
-                }
-            },
-            EncryptionRequest::DeriveNewKey => {
-                todo!()
+            SecureChannelApiRequest::ExtractKey => {
+                let handle = self.encryptor.derive_new_key().await?;
+                SecureChannelApiResponse::Ok(handle)
             }
         };
+        let response = NeutralMessage::from(cbor_encode_preallocate(&response)?);
 
         // Send the reply to the caller
         ctx.send_from_address(return_route, response, self.addresses.encryptor_api.clone())
             .await?;
 
-        if should_stop {
-            ctx.stop_worker(self.addresses.encryptor.clone()).await?;
-        }
+        // Once we have extracted the key, we can't use it anymore
+        ctx.stop_worker(self.addresses.encryptor.clone()).await?;
 
         Ok(())
     }
@@ -374,16 +334,10 @@ impl Worker for EncryptorWorker {
     ) -> Result<()> {
         let msg_addr = msg.msg_addr();
 
-        if self.key_exchange_only {
-            if msg_addr == self.addresses.encryptor_api {
-                self.handle_encrypt_api(ctx, msg).await?;
-            } else {
-                return Err(IdentityError::UnknownChannelMsgDestination)?;
-            }
-        } else if msg_addr == self.addresses.encryptor {
+        if msg_addr == self.addresses.encryptor {
             self.handle_encrypt(ctx, msg).await?;
         } else if msg_addr == self.addresses.encryptor_api {
-            self.handle_encrypt_api(ctx, msg).await?;
+            self.handle_api(ctx, msg).await?;
         } else if msg_addr == self.addresses.encryptor_internal {
             self.handle_refresh_credentials(ctx).await?;
         } else {

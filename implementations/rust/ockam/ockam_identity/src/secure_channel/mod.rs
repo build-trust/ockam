@@ -21,7 +21,6 @@ pub mod trust_policy;
 pub use access_control::*;
 pub(crate) use addresses::*;
 pub use api::*;
-pub(crate) use decryptor::*;
 pub(crate) use encryptor_worker::*;
 pub(crate) use handshake::*;
 pub(crate) use listener::*;
@@ -194,7 +193,7 @@ mod tests {
         let key_on_v2 = vault2.convert_secret_buffer_to_aead_key(key_on_v2).await?;
 
         Ok((
-            Encryptor::new(key_on_v1, 0.into(), vault1, true),
+            Encryptor::new(key_on_v1, 0.into(), vault1),
             Decryptor::new(key_on_v2, vault2),
         ))
     }

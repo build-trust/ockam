@@ -1,47 +1,20 @@
-use ockam_core::compat::vec::Vec;
-use ockam_core::Error;
-use ockam_core::Message;
-use serde::{Deserialize, Serialize};
+use minicbor::{CborLen, Decode, Encode};
+use ockam_vault::AeadSecretKeyHandle;
 
-/// Request type for `EncryptorWorker` API Address
-#[derive(Serialize, Deserialize, Message)]
-pub enum EncryptionRequest {
-    /// Encrypt data
-    Encrypt(Vec<u8>),
-    /// Trigger a manual rekey
-    Rekey,
-    /// Derive new key
-    DeriveNewKey,
+/// Request type for `SecureChannel` API Address
+#[derive(Encode, Decode, CborLen)]
+#[rustfmt::skip]
+pub enum SecureChannelApiRequest {
+    /// Derive a new key from current key and shutdown the worker
+    #[n(0)] ExtractKey,
 }
 
-/// Response type for `EncryptorWorker` API Address
-#[derive(Serialize, Deserialize, Message)]
-pub enum EncryptionResponse {
+/// Response type for `SecureChannel` API Address
+#[derive(Encode, Decode, CborLen)]
+#[rustfmt::skip]
+pub enum SecureChannelApiResponse {
     /// Success
-    Ok(Vec<u8>),
+    #[n(0)] Ok(#[n(0)] AeadSecretKeyHandle),
     /// Error
-    Err(Error),
-}
-
-/// Request type for `Decryptor` API Address (the `Decryptor` is accessible through the `HandshakeWorker`)
-#[derive(Serialize, Deserialize, Message)]
-pub enum DecryptionRequest {
-    /// Decrypt data
-    Decrypt {
-        /// Ciphertext to decrypt
-        ciphertext: Vec<u8>,
-        /// Rekey counter
-        rekey_counter: Option<u16>,
-    },
-    /// Derive new key
-    DeriveNewKey,
-}
-
-/// Response type for `Decryptor` API Address (the `Decryptor` is accessible through the `HandshakeWorker`)
-#[derive(Serialize, Deserialize, Message)]
-pub enum DecryptionResponse {
-    /// Success
-    Ok(Vec<u8>),
-    /// Error
-    Err(Error),
+    #[n(1)] Err(#[n(0)] String),
 }

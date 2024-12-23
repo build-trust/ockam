@@ -28,7 +28,6 @@ mod trust;
 mod worker;
 
 pub use manager::*;
-pub use secure_channel::SecureChannelType;
 pub use trust::*;
 pub use worker::*;
 

@@ -21,7 +21,6 @@ use crate::nodes::models::secure_channel::{
 };
 use crate::nodes::registry::RegistryRelayInfo;
 use crate::nodes::service::in_memory_node::InMemoryNode;
-use crate::nodes::service::secure_channel::SecureChannelType;
 use crate::nodes::BackgroundNodeClient;
 use crate::session::replacer::{ReplacerOutcome, ReplacerOutputKind, SessionReplacer};
 use crate::session::session::Session;
@@ -440,7 +439,6 @@ impl SecureChannelsCreation for InMemoryNode {
                 Some(vec![authorized]),
                 credential,
                 timeout,
-                SecureChannelType::KeyExchangeAndMessages,
             )
             .await
             .into_diagnostic()

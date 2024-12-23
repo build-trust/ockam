@@ -1,6 +1,5 @@
 #![recursion_limit = "256"]
 
-use ockam_api::nodes::service::SecureChannelType;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -48,7 +47,6 @@ pub fn measure_message_latency_two_nodes() -> ockam_core::Result<()> {
                     None,
                     None,
                     None,
-                    SecureChannelType::KeyExchangeAndMessages,
                 )
                 .await
                 .unwrap();

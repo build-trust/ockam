@@ -12,8 +12,7 @@ use crate::authenticator::{
 };
 use ockam::identity::utils::now;
 use ockam::identity::{
-    Identifier, Identities, SecureChannelListenerOptions, SecureChannelSqlxDatabase,
-    SecureChannels, TrustEveryonePolicy,
+    Identifier, Identities, SecureChannelListenerOptions, SecureChannels, TrustEveryonePolicy,
 };
 use ockam::tcp::{TcpListenerOptions, TcpTransport};
 use ockam_core::compat::sync::Arc;
@@ -75,14 +74,12 @@ impl Authority {
 
         let members = Arc::new(AuthorityMembersSqlxDatabase::new(database.clone()));
         let tokens = Arc::new(AuthorityEnrollmentTokenSqlxDatabase::new(database.clone()));
-        let secure_channel_repository = Arc::new(SecureChannelSqlxDatabase::new(database.clone()));
 
         Self::bootstrap_repository(members.clone(), configuration).await?;
 
         let identities = Identities::create_with_node(database, node_name).build();
 
-        let secure_channels =
-            SecureChannels::from_identities(identities.clone(), secure_channel_repository);
+        let secure_channels = SecureChannels::from_identities(identities.clone());
 
         let identifier = configuration.identifier();
         info!(identifier=%identifier, "retrieved the authority identifier");

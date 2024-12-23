@@ -1,7 +1,7 @@
 use core::sync::atomic::Ordering;
 use ockam_core::compat::sync::Arc;
+use ockam_core::{cbor_encode_preallocate, LocalMessage, NeutralMessage};
 use ockam_core::{route, Any, OnDrop, Result, Route, Routed, SecureChannelLocalInfo};
-use ockam_core::{Decodable, LocalMessage};
 use ockam_node::Context;
 
 use crate::models::Identifier;
@@ -11,17 +11,15 @@ use crate::secure_channel::key_tracker::KeyTracker;
 use crate::secure_channel::nonce_tracker::NonceTracker;
 use crate::secure_channel::{Addresses, Role};
 use crate::{
-    DecryptionRequest, DecryptionResponse, Identities, IdentityError, Nonce,
-    PlaintextPayloadMessage, RefreshCredentialsMessage, SecureChannelMessage,
+    Identities, IdentityError, Nonce, PlaintextPayloadMessage, RefreshCredentialsMessage,
+    SecureChannelApiRequest, SecureChannelApiResponse, SecureChannelMessage,
     SecureChannelPaddedMessage, NOISE_NONCE_LEN,
 };
 
 use crate::secure_channel::encryptor_worker::SecureChannelSharedState;
-use ockam_core::errcode::{Kind, Origin};
 use ockam_vault::{AeadSecretKeyHandle, VaultForSecureChannels};
 use tracing::{debug, info, trace, warn};
 use tracing_attributes::instrument;
-use zeroize::Zeroize;
 
 pub(crate) struct DecryptorHandler {
     //for debug purposes only
@@ -41,24 +39,17 @@ impl DecryptorHandler {
         identities: Arc<Identities>,
         authority: Option<Identifier>,
         role: Role,
-        key_exchange_only: bool,
         addresses: Addresses,
         key: AeadSecretKeyHandle,
         vault: Arc<dyn VaultForSecureChannels>,
         their_identity_id: Identifier,
         shared_state: SecureChannelSharedState,
     ) -> Self {
-        let decryptor = if key_exchange_only {
-            Decryptor::new_naive(key, vault)
-        } else {
-            Decryptor::new(key, vault)
-        };
-
         Self {
             role,
             addresses,
             their_identity_id,
-            decryptor,
+            decryptor: Decryptor::new(key, vault),
             identities,
             authority,
             shared_state,
@@ -66,11 +57,7 @@ impl DecryptorHandler {
     }
 
     #[instrument(skip_all)]
-    pub(crate) async fn handle_decrypt_api(
-        &mut self,
-        ctx: &mut Context,
-        msg: Routed<Any>,
-    ) -> Result<()> {
+    pub(crate) async fn handle_api(&mut self, ctx: &mut Context, msg: Routed<Any>) -> Result<()> {
         trace!(
             "SecureChannel {} received Decrypt API {}",
             self.role,
@@ -81,33 +68,21 @@ impl DecryptorHandler {
         let return_route = msg.return_route;
 
         // Decode raw payload binary
-        let request = DecryptionRequest::decode(&msg.payload)?;
+        let request = minicbor::decode(msg.payload.as_slice())?;
         let response = match request {
-            DecryptionRequest::Decrypt {
-                mut ciphertext,
-                rekey_counter,
-            } => {
-                let decrypted_payload = if let Some(rekey_counter) = rekey_counter {
-                    self.decryptor
-                        .decrypt_with_rekey_counter(&mut ciphertext, rekey_counter)
-                        .await
-                } else {
-                    self.decryptor.decrypt(&mut ciphertext).await
-                };
-
-                match decrypted_payload {
-                    Ok((payload, _nonce)) => DecryptionResponse::Ok(payload.to_vec()),
-                    Err(err) => DecryptionResponse::Err(err),
-                }
-            }
-            DecryptionRequest::DeriveNewKey => {
-                todo!()
+            SecureChannelApiRequest::ExtractKey => {
+                let handle = self.decryptor.derive_new_key().await?;
+                SecureChannelApiResponse::Ok(handle)
             }
         };
+        let response = NeutralMessage::from(cbor_encode_preallocate(&response)?);
 
         // Send reply to the caller
         ctx.send_from_address(return_route, response, self.addresses.decryptor_api.clone())
             .await?;
+
+        // Once we have extracted the key, we can't use it anymore
+        ctx.stop_worker(self.addresses.encryptor.clone()).await?;
 
         Ok(())
     }
@@ -227,7 +202,7 @@ impl DecryptorHandler {
 
         match decrypted_msg.message {
             SecureChannelMessage::Payload(decrypted_msg) => {
-                payload.set_zeroize(decrypted_msg.on_drop);
+                //TODO: payload.set_zeroize(decrypted_msg.on_drop);
                 self.handle_payload(ctx, decrypted_msg, nonce, encrypted_msg_return_route)
                     .await?
             }
@@ -249,8 +224,7 @@ impl DecryptorHandler {
 pub(crate) struct Decryptor {
     vault: Arc<dyn VaultForSecureChannels>,
     key_tracker: KeyTracker,
-    nonce_tracker: Option<NonceTracker>,
-    rekey_cache: Option<(u16, AeadSecretKeyHandle)>,
+    nonce_tracker: NonceTracker,
 }
 
 impl Decryptor {
@@ -258,18 +232,7 @@ impl Decryptor {
         Self {
             vault,
             key_tracker: KeyTracker::new(key, KEY_RENEWAL_INTERVAL),
-            nonce_tracker: Some(NonceTracker::new()),
-            rekey_cache: None,
-        }
-    }
-
-    /// Creates a new Decryptor without rekeying and nonce tracking
-    pub fn new_naive(key: AeadSecretKeyHandle, vault: Arc<dyn VaultForSecureChannels>) -> Self {
-        Self {
-            vault,
-            key_tracker: KeyTracker::new(key, KEY_RENEWAL_INTERVAL),
-            nonce_tracker: None,
-            rekey_cache: None,
+            nonce_tracker: NonceTracker::new(),
         }
     }
 
@@ -280,16 +243,11 @@ impl Decryptor {
         }
 
         let nonce = Nonce::try_from(&payload[..NOISE_NONCE_LEN])?;
-        let nonce_tracker = if let Some(nonce_tracker) = &self.nonce_tracker {
-            Some(nonce_tracker.mark(nonce)?)
-        } else {
-            None
-        };
+        let nonce_tracker = self.nonce_tracker.mark(nonce)?;
 
         let rekey_key;
 
-        let rekeying = self.nonce_tracker.is_some();
-        let key = if rekeying {
+        let key =
             // get the key corresponding to the current nonce and
             // rekey if necessary
             if let Some(key) = self.key_tracker.get_key(nonce)? {
@@ -297,10 +255,7 @@ impl Decryptor {
             } else {
                 rekey_key = self.vault.rekey(&self.key_tracker.current_key, 1).await?;
                 &rekey_key
-            }
-        } else {
-            &self.key_tracker.current_key
-        };
+            };
 
         // to improve protection against connection disruption attacks, we want to validate the
         // message with a decryption _before_ committing to the new state
@@ -328,89 +283,8 @@ impl Decryptor {
     }
 
     #[instrument(skip_all)]
-    pub async fn decrypt_with_rekey_counter<'a>(
-        &mut self,
-        payload: &'a mut [u8],
-        rekey_counter: u16,
-    ) -> Result<(&'a [u8], Nonce)> {
-        if payload.len() < 8 {
-            return Err(IdentityError::InvalidNonce)?;
-        }
-
-        let nonce = Nonce::try_from(&payload[..8])?;
-        let nonce_tracker = if let Some(nonce_tracker) = &self.nonce_tracker {
-            Some(nonce_tracker.mark(nonce)?)
-        } else {
-            None
-        };
-
-        let key_handle =
-            if let Some((cached_rekey_counter, cached_key_handle)) = self.rekey_cache.clone() {
-                if cached_rekey_counter == rekey_counter {
-                    Some(cached_key_handle)
-                } else {
-                    self.rekey_cache = None;
-                    self.vault
-                        .delete_aead_secret_key(cached_key_handle.clone())
-                        .await?;
-                    None
-                }
-            } else {
-                None
-            };
-
-        let key_handle = match key_handle {
-            Some(key) => key,
-            None => {
-                let current_number_of_rekeys = self.key_tracker.number_of_rekeys();
-                if current_number_of_rekeys > rekey_counter as u64 {
-                    return Err(ockam_core::Error::new(
-                        Origin::Channel,
-                        Kind::Invalid,
-                        "cannot rekey backwards",
-                    ));
-                } else if current_number_of_rekeys > u16::MAX as u64 {
-                    return Err(ockam_core::Error::new(
-                        Origin::Channel,
-                        Kind::Invalid,
-                        "rekey counter overflow",
-                    ));
-                } else {
-                    let n_rekying = rekey_counter - current_number_of_rekeys as u16;
-                    if n_rekying > 0 {
-                        let key_handle = self
-                            .vault
-                            .rekey(&self.key_tracker.current_key, n_rekying)
-                            .await?;
-                        self.rekey_cache = Some((rekey_counter, key_handle.clone()));
-                        key_handle
-                    } else {
-                        self.key_tracker.current_key.clone()
-                    }
-                }
-            }
-        };
-
-        // to improve protection against connection disruption attacks, we want to validate the
-        // message with a decryption _before_ committing to the new state
-        let result = self
-            .vault
-            .aead_decrypt(
-                &key_handle,
-                &mut payload[NOISE_NONCE_LEN..],
-                &nonce.to_aes_gcm_nonce(),
-                &[],
-            )
-            .await;
-
-        if result.is_ok() {
-            self.nonce_tracker = nonce_tracker;
-            if let Some(key_to_delete) = self.key_tracker.update_key(&key_handle)? {
-                self.vault.delete_aead_secret_key(key_to_delete).await?;
-            }
-        }
-
-        result.map(|payload| (&*payload, nonce))
+    pub async fn derive_new_key(&mut self) -> Result<AeadSecretKeyHandle> {
+        self.vault.rekey(&self.key_tracker.current_key, 1).await
     }
 
     /// Remove the channel keys on shutdown
@@ -425,12 +299,6 @@ impl Decryptor {
                 .delete_aead_secret_key(previous_key.clone())
                 .await?;
         };
-
-        if let Some((_, key_handle)) = &self.rekey_cache {
-            self.vault
-                .delete_aead_secret_key(key_handle.clone())
-                .await?;
-        }
 
         Ok(())
     }

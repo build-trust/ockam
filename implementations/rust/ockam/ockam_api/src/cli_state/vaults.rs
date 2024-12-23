@@ -1,7 +1,7 @@
 use colorful::Colorful;
 use ockam::identity::{
-    Identifier, Identities, RemoteCredentialRetrieverInfo, SecureChannelRegistry,
-    SecureChannelSqlxDatabase, SecureChannels, Vault,
+    Identifier, Identities, RemoteCredentialRetrieverInfo, SecureChannelRegistry, SecureChannels,
+    Vault,
 };
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{AsyncTryClone, Error};
@@ -398,7 +398,6 @@ impl CliState {
                     let secure_channels = Arc::new(SecureChannels::new(
                         identities,
                         SecureChannelRegistry::default(), //TODO: inherit registry from the node
-                        Arc::new(SecureChannelSqlxDatabase::new(self.database())),
                     ));
 
                     let credential_retriever_creator = credential_retriever_options

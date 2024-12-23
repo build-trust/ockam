@@ -1,13 +1,13 @@
 use std::time::Duration;
 
 use ockam::identity::models::CredentialAndPurposeKey;
+use ockam::identity::TrustEveryonePolicy;
 use ockam::identity::Vault;
 use ockam::identity::{
     Identifier, Identities, SecureChannelListenerOptions, SecureChannelOptions, SecureChannels,
     TrustMultiIdentifiersPolicy,
 };
 use ockam::identity::{SecureChannel, SecureChannelListener};
-use ockam::identity::{SecureChannelSqlxDatabase, TrustEveryonePolicy};
 use ockam::{Address, Result, Route};
 use ockam_core::api::{Error, Response};
 use ockam_core::compat::sync::Arc;
@@ -28,12 +28,6 @@ use crate::nodes::models::secure_channel::{
 use crate::nodes::registry::SecureChannelInfo;
 use crate::nodes::service::default_address::DefaultAddress;
 use crate::nodes::{NodeManager, NodeManagerWorker};
-
-#[derive(PartialOrd, PartialEq, Debug)]
-pub enum SecureChannelType {
-    KeyExchangeAndMessages,
-    KeyExchangeOnly,
-}
 
 /// SECURE CHANNELS
 impl NodeManagerWorker {
@@ -64,7 +58,6 @@ impl NodeManagerWorker {
                 authorized_identifiers,
                 credential,
                 timeout,
-                SecureChannelType::KeyExchangeAndMessages,
             )
             .await
             .map(|secure_channel| {
@@ -124,13 +117,7 @@ impl NodeManagerWorker {
 
         let response = self
             .node_manager
-            .create_secure_channel_listener(
-                addr,
-                authorized_identifiers,
-                identity_name,
-                ctx,
-                SecureChannelType::KeyExchangeAndMessages,
-            )
+            .create_secure_channel_listener(addr, authorized_identifiers, identity_name, ctx)
             .await
             .map(|_| Response::ok())?;
         Ok(response)
@@ -177,7 +164,6 @@ impl NodeManager {
         authorized_identifiers: Option<Vec<Identifier>>,
         credential: Option<CredentialAndPurposeKey>,
         timeout: Option<Duration>,
-        secure_channel_type: SecureChannelType,
     ) -> Result<SecureChannel> {
         let identifier = self.get_identifier_by_name(identity_name.clone()).await?;
 
@@ -192,7 +178,6 @@ impl NodeManager {
                 authorized_identifiers,
                 credential,
                 timeout,
-                secure_channel_type,
             )
             .await?;
 
@@ -209,7 +194,6 @@ impl NodeManager {
         authorized_identifiers: Option<Vec<Identifier>>,
         credential: Option<CredentialAndPurposeKey>,
         timeout: Option<Duration>,
-        secure_channel_type: SecureChannelType,
     ) -> Result<SecureChannel> {
         debug!(%sc_route, "Creating secure channel");
         let options = SecureChannelOptions::new();
@@ -238,13 +222,6 @@ impl NodeManager {
         let options = match authorized_identifiers.clone() {
             Some(ids) => options.with_trust_policy(TrustMultiIdentifiersPolicy::new(ids)),
             None => options.with_trust_policy(TrustEveryonePolicy),
-        };
-
-        let options = if secure_channel_type == SecureChannelType::KeyExchangeOnly {
-            // TODO: Should key exchange channels be persisted automatically?
-            options.key_exchange_only().persist()?
-        } else {
-            options
         };
 
         let sc = self
@@ -303,35 +280,12 @@ impl NodeManager {
 
 /// SECURE CHANNEL LISTENERS
 impl NodeManager {
-    //TODO: remove everything about key exchange service from secure channel
-    #[allow(dead_code)]
-    pub(crate) async fn start_key_exchanger_service(
-        &self,
-        context: &Context,
-        address: Address,
-    ) -> Result<SecureChannelListener> {
-        // skip creation if it already exists
-        if let Some(listener) = self.registry.secure_channel_listeners.get(&address).await {
-            return Ok(listener);
-        }
-
-        self.create_secure_channel_listener(
-            address.clone(),
-            None,
-            None,
-            context,
-            SecureChannelType::KeyExchangeOnly,
-        )
-        .await
-    }
-
     pub async fn create_secure_channel_listener(
         &self,
         address: Address,
         authorized_identifiers: Option<Vec<Identifier>>,
         identity_name: Option<String>,
         ctx: &Context,
-        secure_channel_type: SecureChannelType,
     ) -> Result<SecureChannelListener> {
         debug!(
             "Handling request to create a new secure channel listener: {}",
@@ -381,13 +335,6 @@ impl NodeManager {
             }
         };
 
-        let options = if secure_channel_type == SecureChannelType::KeyExchangeOnly {
-            // TODO: Should key exchange channels be persisted automatically?
-            options.key_exchange_only().persist()?
-        } else {
-            options
-        };
-
         let listener = secure_channels
             .create_secure_channel_listener(ctx, &identifier, address.clone(), options)
             .await?;
@@ -399,27 +346,25 @@ impl NodeManager {
             .insert(address.clone(), listener.clone())
             .await;
 
-        if secure_channel_type == SecureChannelType::KeyExchangeAndMessages {
-            // TODO: Clean
-            // Add Echoer as a consumer by default
-            ctx.flow_controls()
-                .add_consumer(DefaultAddress::ECHO_SERVICE, listener.flow_control_id());
+        // TODO: Clean
+        // Add Echoer as a consumer by default
+        ctx.flow_controls()
+            .add_consumer(DefaultAddress::ECHO_SERVICE, listener.flow_control_id());
 
-            // TODO: PUNCTURE Make optional?
-            ctx.flow_controls().add_consumer(
-                DefaultAddress::UDP_PUNCTURE_NEGOTIATION_LISTENER,
-                listener.flow_control_id(),
-            );
+        // TODO: PUNCTURE Make optional?
+        ctx.flow_controls().add_consumer(
+            DefaultAddress::UDP_PUNCTURE_NEGOTIATION_LISTENER,
+            listener.flow_control_id(),
+        );
 
-            // Add ourselves to allow tunneling
-            ctx.flow_controls()
-                .add_consumer(address, listener.flow_control_id());
+        // Add ourselves to allow tunneling
+        ctx.flow_controls()
+            .add_consumer(address, listener.flow_control_id());
 
-            ctx.flow_controls().add_consumer(
-                DefaultAddress::UPPERCASE_SERVICE,
-                listener.flow_control_id(),
-            );
-        }
+        ctx.flow_controls().add_consumer(
+            DefaultAddress::UPPERCASE_SERVICE,
+            listener.flow_control_id(),
+        );
 
         Ok(listener)
     }
@@ -477,7 +422,6 @@ impl NodeManager {
         Ok(Arc::new(SecureChannels::new(
             identities,
             self.secure_channels.secure_channel_registry(),
-            Arc::new(SecureChannelSqlxDatabase::new(self.cli_state.database())),
         )))
     }
 }

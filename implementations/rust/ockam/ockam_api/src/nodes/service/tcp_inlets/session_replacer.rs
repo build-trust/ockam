@@ -20,7 +20,6 @@ use ockam_transport_tcp::TcpInlet;
 
 use crate::error::ApiError;
 use crate::nodes::connection::Connection;
-use crate::nodes::service::SecureChannelType;
 use crate::nodes::NodeManager;
 use crate::session::replacer::{
     AdditionalSessionReplacer, CurrentInletStatus, ReplacerOutcome, ReplacerOutputKind,
@@ -356,7 +355,6 @@ impl AdditionalSessionReplacer for InletSessionReplacer {
                 None,
                 // TODO: Have a dedicated timeout
                 Some(Duration::from_secs(10)),
-                SecureChannelType::KeyExchangeAndMessages,
             )
             .await?;
         let additional_sc = self.additional_secure_channel.insert(additional_sc);

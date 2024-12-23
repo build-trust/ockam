@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use crate::cli_state::CliState;
 use crate::cli_state::Result;
-use ockam::identity::{Identities, SecureChannelSqlxDatabase, SecureChannels};
+use ockam::identity::{Identities, SecureChannels};
 use ockam_node::Context;
 
 impl CliState {
@@ -17,9 +17,6 @@ impl CliState {
         let identities = Identities::create_with_node(self.database(), node_name)
             .with_vault(vault)
             .build();
-        Ok(SecureChannels::from_identities(
-            identities,
-            Arc::new(SecureChannelSqlxDatabase::new(self.database())),
-        ))
+        Ok(SecureChannels::from_identities(identities))
     }
 }

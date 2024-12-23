@@ -34,9 +34,6 @@ pub struct SecureChannelOptions {
     // To obtain our credentials
     pub(crate) credential_retriever_creator: Option<Arc<dyn CredentialRetrieverCreator>>,
     pub(crate) timeout: Duration,
-    pub(crate) key_exchange_only: bool,
-    // Secure Channel will be persisted (currently only supported for key_exchange_only = true)
-    pub(crate) is_persistent: bool,
 }
 
 impl fmt::Debug for SecureChannelOptions {
@@ -55,8 +52,6 @@ impl SecureChannelOptions {
             authority: None,
             credential_retriever_creator: None,
             timeout: DEFAULT_TIMEOUT,
-            key_exchange_only: false,
-            is_persistent: false,
         }
     }
 
@@ -100,24 +95,6 @@ impl SecureChannelOptions {
     /// Freshly generated [`FlowControlId`]
     pub fn producer_flow_control_id(&self) -> FlowControlId {
         self.flow_control_id.clone()
-    }
-
-    /// The secure channel will be used to exchange key only.
-    /// In this mode, the secure channel cannot be used to exchange messages, and key rotation
-    /// is disabled along with automatic credential refresh.
-    pub fn key_exchange_only(mut self) -> Self {
-        self.key_exchange_only = true;
-        self
-    }
-
-    /// Secure Channel will be persisted after a successful handshake
-    /// NOTE: Currently only supported after setting key_exchange_only = true
-    pub fn persist(mut self) -> Result<Self> {
-        if !self.key_exchange_only {
-            return Err(IdentityError::PersistentSupportIsLimited.into());
-        }
-        self.is_persistent = true;
-        Ok(self)
     }
 }
 
@@ -182,9 +159,6 @@ pub struct SecureChannelListenerOptions {
     pub(crate) authority: Option<Identifier>,
     // To obtain our credentials
     pub(crate) credential_retriever_creator: Option<Arc<dyn CredentialRetrieverCreator>>,
-    pub(crate) key_exchange_only: bool,
-    // Secure Channel will be persisted (currently only supported for key_exchange_only = true)
-    pub(crate) is_persistent: bool,
 }
 
 impl fmt::Debug for SecureChannelListenerOptions {
@@ -205,8 +179,6 @@ impl SecureChannelListenerOptions {
             trust_policy: Arc::new(TrustEveryonePolicy),
             authority: None,
             credential_retriever_creator: None,
-            key_exchange_only: false,
-            is_persistent: false,
         }
     }
 
@@ -253,24 +225,6 @@ impl SecureChannelListenerOptions {
     /// Freshly generated [`FlowControlId`]
     pub fn spawner_flow_control_id(&self) -> FlowControlId {
         self.flow_control_id.clone()
-    }
-
-    /// The listener will be used to exchange key only.
-    /// In this mode, the secure channel cannot be used to exchange messages, and key rotation
-    /// is disabled along with automatic credential refresh.
-    pub fn key_exchange_only(mut self) -> Self {
-        self.key_exchange_only = true;
-        self
-    }
-
-    /// Secure Channel will be persisted after a successful handshake
-    /// NOTE: Currently only supported after setting key_exchange_only = true
-    pub fn persist(mut self) -> Result<Self> {
-        if !self.key_exchange_only {
-            return Err(IdentityError::PersistentSupportIsLimited.into());
-        }
-        self.is_persistent = true;
-        Ok(self)
     }
 }
 

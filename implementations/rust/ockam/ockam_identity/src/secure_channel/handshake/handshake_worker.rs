@@ -10,8 +10,7 @@ use ockam_core::{
 use ockam_core::{Result, Worker};
 use ockam_node::callback::CallbackSender;
 use ockam_node::{Context, WorkerBuilder};
-use ockam_vault::AeadSecretKeyHandle;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, error, info};
 use tracing_attributes::instrument;
 
 use crate::models::Identifier;
@@ -31,9 +30,8 @@ use crate::secure_channel::handshake::initiator_state_machine::InitiatorStateMac
 use crate::secure_channel::handshake::responder_state_machine::ResponderStateMachine;
 use crate::secure_channel::{Addresses, Role};
 use crate::{
-    ChangeHistoryRepository, CredentialRetriever, IdentityError, PersistedSecureChannel,
-    SecureChannelPurposeKey, SecureChannelRegistryEntry, SecureChannelRepository, SecureChannels,
-    TrustPolicy,
+    ChangeHistoryRepository, CredentialRetriever, IdentityError, SecureChannelPurposeKey,
+    SecureChannelRegistryEntry, SecureChannels, TrustPolicy,
 };
 
 /// This struct implements a Worker receiving and sending messages
@@ -45,7 +43,6 @@ pub(crate) struct HandshakeWorker {
     my_identifier: Identifier,
     addresses: Addresses,
     role: Role,
-    key_exchange_only: bool,
     remote_route: Option<Route>,
     decryptor_handler: Option<DecryptorHandler>,
 
@@ -53,8 +50,6 @@ pub(crate) struct HandshakeWorker {
     change_history_repository: Arc<dyn ChangeHistoryRepository>,
 
     credential_retriever: Option<Arc<dyn CredentialRetriever>>,
-
-    secure_channel_repository: Option<Arc<dyn SecureChannelRepository>>,
 
     shared_state: SecureChannelSharedState,
 }
@@ -145,8 +140,6 @@ impl HandshakeWorker {
         remote_route: Option<Route>,
         timeout: Option<Duration>,
         role: Role,
-        key_exchange_only: bool,
-        secure_channel_repository: Option<Arc<dyn SecureChannelRepository>>,
         encryptor_remote_route: Arc<RwLock<RemoteRoute>>,
     ) -> Result<Option<Identifier>> {
         let vault = secure_channels.identities.vault().secure_channel_vault;
@@ -197,14 +190,12 @@ impl HandshakeWorker {
             state_machine: Some(state_machine),
             my_identifier: my_identifier.clone(),
             role,
-            key_exchange_only,
             remote_route: remote_route.clone(),
             addresses: addresses.clone(),
             decryptor_handler: None,
             credential_retriever,
             authority,
             change_history_repository: identities.change_history_repository(),
-            secure_channel_repository,
             shared_state,
         };
 
@@ -318,16 +309,10 @@ impl HandshakeWorker {
         let decryptor_handler = self.decryptor_handler.as_mut().unwrap();
         let msg_addr = message.msg_addr();
 
-        if self.key_exchange_only {
-            if msg_addr == self.addresses.decryptor_api {
-                decryptor_handler.handle_decrypt_api(context, message).await
-            } else {
-                Err(IdentityError::UnknownChannelMsgDestination)?
-            }
-        } else if msg_addr == self.addresses.decryptor_remote {
+        if msg_addr == self.addresses.decryptor_remote {
             decryptor_handler.handle_decrypt(context, message).await
         } else if msg_addr == self.addresses.decryptor_api {
-            decryptor_handler.handle_decrypt_api(context, message).await
+            decryptor_handler.handle_api(context, message).await
         } else {
             Err(IdentityError::UnknownChannelMsgDestination)?
         }
@@ -387,7 +372,6 @@ impl HandshakeWorker {
             self.secure_channels.identities.clone(),
             self.authority.clone(),
             self.role,
-            self.key_exchange_only,
             self.addresses.clone(),
             handshake_results.handshake_keys.decryption_key.clone(),
             self.secure_channels.identities.vault().secure_channel_vault,
@@ -397,27 +381,18 @@ impl HandshakeWorker {
 
         // create a separate encryptor worker which will be started independently
         {
-            let (rekeying, credential_retriever) = if self.key_exchange_only {
-                // only the initial exchange is needed for key exchange only
-                (false, None)
-            } else {
-                (true, self.credential_retriever.clone())
-            };
-
             self.shared_state.remote_route.write().unwrap().route = self.remote_route()?;
             let encryptor = EncryptorWorker::new(
                 self.role.str(),
-                self.key_exchange_only,
                 self.addresses.clone(),
                 Encryptor::new(
                     handshake_results.handshake_keys.encryption_key,
                     0.into(),
                     self.secure_channels.identities.vault().secure_channel_vault,
-                    rekeying,
                 ),
                 self.my_identifier.clone(),
                 self.change_history_repository.clone(),
-                credential_retriever,
+                self.credential_retriever.clone(),
                 handshake_results.presented_credential,
                 self.shared_state.clone(),
             );
@@ -453,12 +428,6 @@ impl HandshakeWorker {
                 .await?;
         }
 
-        self.persist(
-            their_identifier,
-            &handshake_results.handshake_keys.decryption_key,
-        )
-        .await;
-
         info!(
             "Initialized SecureChannel {} at local: {}, remote: {}",
             self.role.str(),
@@ -489,89 +458,5 @@ impl HandshakeWorker {
             .register_channel(info)?;
 
         Ok(decryptor)
-    }
-
-    async fn persist(&self, their_identifier: Identifier, decryption_key: &AeadSecretKeyHandle) {
-        let Some(repository) = &self.secure_channel_repository else {
-            info!(
-                "Skipping persistence. Local: {}, Remote: {}",
-                self.addresses.encryptor, &self.addresses.decryptor_remote
-            );
-            return;
-        };
-
-        let sc = PersistedSecureChannel::new(
-            self.role,
-            self.my_identifier.clone(),
-            their_identifier,
-            self.addresses.decryptor_remote.clone(),
-            self.addresses.decryptor_api.clone(),
-            decryption_key.clone(),
-        );
-        match repository.put(sc).await {
-            Ok(_) => {
-                info!(
-                    "Successfully persisted secure channel. Local: {}, Remote: {}",
-                    self.addresses.encryptor, &self.addresses.decryptor_remote,
-                );
-            }
-            Err(err) => {
-                warn!(
-                    "Error while persisting secure channel: {err}. Local: {}, Remote: {}",
-                    self.addresses.encryptor, &self.addresses.decryptor_remote
-                );
-
-                return;
-            }
-        }
-
-        if let Err(err) = self
-            .secure_channels
-            .identities
-            .vault()
-            .secure_channel_vault
-            .persist_aead_key(decryption_key)
-            .await
-        {
-            warn!(
-                "Error persisting secure channel key: {err}. Local: {}, Remote: {}",
-                self.addresses.encryptor, &self.addresses.decryptor_remote
-            );
-        };
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    pub(crate) fn new(
-        secure_channels: Arc<SecureChannels>,
-        callback_sender: Option<CallbackSender<Identifier>>,
-        state_machine: Option<Box<dyn StateMachine>>,
-        my_identifier: Identifier,
-        addresses: Addresses,
-        role: Role,
-        key_exchange_only: bool,
-        remote_route: Option<Route>,
-        decryptor_handler: Option<DecryptorHandler>,
-        authority: Option<Identifier>,
-        change_history_repository: Arc<dyn ChangeHistoryRepository>,
-        credential_retriever: Option<Arc<dyn CredentialRetriever>>,
-        secure_channel_repository: Option<Arc<dyn SecureChannelRepository>>,
-        shared_state: SecureChannelSharedState,
-    ) -> Self {
-        Self {
-            secure_channels,
-            callback_sender,
-            state_machine,
-            my_identifier,
-            addresses,
-            role,
-            key_exchange_only,
-            remote_route,
-            decryptor_handler,
-            authority,
-            change_history_repository,
-            credential_retriever,
-            secure_channel_repository,
-            shared_state,
-        }
     }
 }
