@@ -4,10 +4,11 @@ use minicbor::{CborLen, Decode, Encode};
 use ockam::identity::{utils, TimestampInSeconds, Vault};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{
-    async_trait, cbor_encode_preallocate, route, Address, NeutralMessage, Route, Routed, Worker,
+    async_trait, cbor_encode_preallocate, route, Address, NeutralMessage, OnDrop, Route, Routed,
+    Worker,
 };
 use ockam_multiaddr::MultiAddr;
-use ockam_node::Context;
+use ockam_node::{Context, MessageSendReceiveOptions};
 use std::sync::Arc;
 use tokio::sync::Mutex as AsyncMutex;
 
@@ -245,11 +246,13 @@ impl SpecificClient {
         let response: NeutralMessage = self
             .client
             .context
-            .send_and_receive(
+            .send_and_receive_extended(
                 route![route, self.destination.clone()],
                 NeutralMessage::from(encoded),
+                MessageSendReceiveOptions::new().with_on_drop(OnDrop::Zeroize),
             )
-            .await?;
+            .await?
+            .into_body()?;
 
         Ok(minicbor::decode::<RS>(&response.into_vec())?)
     }
@@ -258,7 +261,7 @@ impl SpecificClient {
 mod vault_for_signing {
     use crate::proxy_vault::protocol::{ProxyError, SpecificClient};
     use minicbor::{CborLen, Decode, Encode};
-    use ockam_core::{async_trait, cbor_encode_preallocate};
+    use ockam_core::{async_trait, cbor_encode_preallocate, MaybeZeroizeOnDrop};
     use ockam_vault::{
         Signature, SigningKeyType, SigningSecretKeyHandle, VaultForSigning, VerifyingPublicKey,
     };
@@ -296,7 +299,7 @@ mod vault_for_signing {
 
     pub(super) async fn handle_request(
         vault: &dyn VaultForSigning,
-        request: Vec<u8>,
+        request: MaybeZeroizeOnDrop<Vec<u8>>,
     ) -> ockam_core::Result<Vec<u8>> {
         let request: Request = minicbor::decode(&request)?;
         let response = match request {
@@ -480,7 +483,7 @@ mod vault_for_signing {
 pub mod vault_for_secure_channels {
     use crate::proxy_vault::protocol::{ProxyError, SpecificClient};
     use minicbor::{CborLen, Decode, Encode};
-    use ockam_core::{async_trait, cbor_encode_preallocate};
+    use ockam_core::{async_trait, cbor_encode_preallocate, MaybeZeroizeOnDrop};
     use ockam_vault::{
         AeadSecretKeyHandle, HKDFNumberOfOutputs, HashOutput, HkdfOutput, SecretBufferHandle,
         VaultForSecureChannels, X25519PublicKey, X25519SecretKeyHandle,
@@ -488,7 +491,7 @@ pub mod vault_for_secure_channels {
 
     pub(super) async fn handle_request(
         vault: &dyn VaultForSecureChannels,
-        request: Vec<u8>,
+        request: MaybeZeroizeOnDrop<Vec<u8>>,
     ) -> ockam_core::Result<Vec<u8>> {
         let request: Request = minicbor::decode(&request)?;
         let response = match request {
@@ -1084,12 +1087,12 @@ pub mod vault_for_secure_channels {
 pub mod vault_for_verify_signatures {
     use crate::proxy_vault::protocol::{ProxyError, SpecificClient};
     use minicbor::{CborLen, Decode, Encode};
-    use ockam_core::{async_trait, cbor_encode_preallocate};
+    use ockam_core::{async_trait, cbor_encode_preallocate, MaybeZeroizeOnDrop};
     use ockam_vault::{Sha256Output, Signature, VaultForVerifyingSignatures, VerifyingPublicKey};
 
     pub(super) async fn handle_request(
         vault: &dyn VaultForVerifyingSignatures,
-        request: Vec<u8>,
+        request: MaybeZeroizeOnDrop<Vec<u8>>,
     ) -> ockam_core::Result<Vec<u8>> {
         let request: Request = minicbor::decode(&request)?;
         let response = match request {
@@ -1179,12 +1182,12 @@ pub mod vault_for_verify_signatures {
 pub mod vault_for_encryption_at_rest {
     use crate::proxy_vault::protocol::{ProxyError, SpecificClient};
     use minicbor::{CborLen, Decode, Encode};
-    use ockam_core::{async_trait, cbor_encode_preallocate};
+    use ockam_core::{async_trait, cbor_encode_preallocate, MaybeZeroizeOnDrop};
     use ockam_vault::{AeadSecretKeyHandle, VaultForEncryptionAtRest};
 
     pub(super) async fn handle_request(
         vault: &dyn VaultForEncryptionAtRest,
-        request: Vec<u8>,
+        request: MaybeZeroizeOnDrop<Vec<u8>>,
     ) -> ockam_core::Result<Vec<u8>> {
         let request: Request = minicbor::decode(&request)?;
         let response = match request {

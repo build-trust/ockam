@@ -8,14 +8,15 @@ use ockam_core::compat::{sync::Arc, vec::Vec};
 use ockam_core::{
     errcode::{Kind, Origin},
     route, Address, AllOutgoingAccessControl, AllowAll, AllowOnwardAddress, Error,
-    IncomingAccessControl, LocalMessage, Mailboxes, Message, OutgoingAccessControl, RelayMessage,
-    Result, Route, Routed,
+    IncomingAccessControl, LocalMessage, Mailboxes, Message, OnDrop, OutgoingAccessControl,
+    RelayMessage, Result, Route, Routed,
 };
 use ockam_core::{LocalInfo, Mailbox};
 
 /// Full set of options to `send_and_receive_extended` function
 pub struct MessageSendReceiveOptions {
     message_wait: MessageWait,
+    on_drop: OnDrop,
     incoming_access_control: Option<Arc<dyn IncomingAccessControl>>,
     outgoing_access_control: Option<Arc<dyn OutgoingAccessControl>>,
 }
@@ -31,6 +32,7 @@ impl MessageSendReceiveOptions {
     pub fn new() -> Self {
         Self {
             message_wait: MessageWait::Timeout(DEFAULT_TIMEOUT),
+            on_drop: OnDrop::NoZeroize,
             incoming_access_control: None,
             outgoing_access_control: None,
         }
@@ -63,6 +65,12 @@ impl MessageSendReceiveOptions {
         outgoing_access_control: Arc<dyn OutgoingAccessControl>,
     ) -> Self {
         self.outgoing_access_control = Some(outgoing_access_control);
+        self
+    }
+
+    /// Set on drop behavior
+    pub fn with_on_drop(mut self, on_drop: OnDrop) -> Self {
+        self.on_drop = on_drop;
         self
     }
 }
@@ -150,7 +158,9 @@ impl Context {
         #[cfg(feature = "std")]
         child_ctx.set_tracing_context(self.tracing_context());
 
-        child_ctx.send(route, msg).await?;
+        child_ctx
+            .send_from_address_impl(route, msg, self.address(), vec![], options.on_drop)
+            .await?;
         child_ctx
             .receive_extended::<M>(
                 MessageReceiveOptions::new().with_message_wait(options.message_wait),
@@ -226,8 +236,14 @@ impl Context {
         R: Into<Route>,
         M: Message + Send + 'static,
     {
-        self.send_from_address_impl(route.into(), msg, self.address(), local_info)
-            .await
+        self.send_from_address_impl(
+            route.into(),
+            msg,
+            self.address(),
+            local_info,
+            OnDrop::NoZeroize,
+        )
+        .await
     }
 
     /// Send a message to an address or via a fully-qualified route
@@ -253,8 +269,14 @@ impl Context {
         R: Into<Route>,
         M: Message + Send + 'static,
     {
-        self.send_from_address_impl(route.into(), msg, sending_address, Vec::new())
-            .await
+        self.send_from_address_impl(
+            route.into(),
+            msg,
+            sending_address,
+            Vec::new(),
+            OnDrop::NoZeroize,
+        )
+        .await
     }
 
     async fn send_from_address_impl<M>(
@@ -263,6 +285,7 @@ impl Context {
         msg: M,
         sending_address: Address,
         local_info: Vec<LocalInfo>,
+        on_drop: OnDrop,
     ) -> Result<()>
     where
         M: Message + Send + 'static,
@@ -305,13 +328,13 @@ impl Context {
                     .with_tracing_context(self.tracing_context().update())
                     .with_onward_route(route)
                     .with_return_route(route![sending_address.clone()])
-                    .with_payload(payload)
+                    .with_payload_on_drop(payload, on_drop)
                     .with_local_info(local_info);
             } else {
                 let local_msg = LocalMessage::new()
                     .with_onward_route(route)
                     .with_return_route(route![sending_address.clone()])
-                    .with_payload(payload)
+                    .with_payload_on_drop(payload, on_drop)
                     .with_local_info(local_info);
             }
         }

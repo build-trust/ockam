@@ -1,7 +1,8 @@
 #[cfg(feature = "std")]
 use crate::OpenTelemetryContext;
-use crate::{compat::vec::Vec, route, Address, Message, Route, TransportMessage};
+use crate::{compat::vec::Vec, route, Address, Message, OnDrop, Route, TransportMessage};
 
+use crate::zeroize::MaybeZeroizeOnDrop;
 use crate::{LocalInfo, Result};
 use cfg_if::cfg_if;
 use serde::{Deserialize, Serialize};
@@ -46,7 +47,7 @@ pub struct LocalMessage {
     /// Return message route. This field must be populated by routers handling this message along the way.
     pub return_route: Route,
     /// The message payload.
-    pub payload: Vec<u8>,
+    pub payload: MaybeZeroizeOnDrop<Vec<u8>>,
     /// Local information added by workers to give additional context to the message
     /// independently of its payload. For example this can be used to store the identifier that
     /// was used to encrypt the payload
@@ -142,7 +143,7 @@ impl LocalMessage {
     }
 
     /// Return the message payload
-    pub fn into_payload(self) -> Vec<u8> {
+    pub fn into_payload(self) -> MaybeZeroizeOnDrop<Vec<u8>> {
         self.payload
     }
 
@@ -153,12 +154,12 @@ impl LocalMessage {
 
     /// Return a mutable reference to the message payload
     pub fn payload_mut(&mut self) -> &mut Vec<u8> {
-        &mut self.payload
+        self.payload.as_mut()
     }
 
     /// Set the message payload
     pub fn set_payload(mut self, payload: Vec<u8>) -> Self {
-        self.payload = payload;
+        self.payload = MaybeZeroizeOnDrop::new(payload, OnDrop::NoZeroize);
         self
     }
 
@@ -213,7 +214,7 @@ impl LocalMessage {
             1,
             self.onward_route,
             self.return_route,
-            self.payload,
+            self.payload.discard_zeroize(),
             None,
         );
 
@@ -285,7 +286,7 @@ impl LocalMessage {
         LocalMessage {
             onward_route,
             return_route,
-            payload,
+            payload: MaybeZeroizeOnDrop::new(payload, OnDrop::NoZeroize),
             local_info,
             #[cfg(feature = "std")]
             tracing_context: OpenTelemetryContext::current(),
@@ -316,7 +317,18 @@ impl LocalMessage {
 
     /// Specify the payload for the message
     pub fn with_payload(self, payload: Vec<u8>) -> Self {
-        Self { payload, ..self }
+        Self {
+            payload: MaybeZeroizeOnDrop::new(payload, OnDrop::NoZeroize),
+            ..self
+        }
+    }
+
+    /// Specify the payload for the message with zeroization
+    pub fn with_payload_on_drop(self, payload: Vec<u8>, on_drop: OnDrop) -> Self {
+        Self {
+            payload: MaybeZeroizeOnDrop::new(payload, on_drop),
+            ..self
+        }
     }
 
     /// Specify the local information for the message

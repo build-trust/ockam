@@ -53,7 +53,7 @@ impl Worker for MockEchoer {
 
         ctx.send(
             msg.return_route().clone(),
-            NeutralMessage::from(msg.into_payload()),
+            NeutralMessage::from(msg.into_payload().discard_zeroize()),
         )
         .await?;
         info!("Echo message back");

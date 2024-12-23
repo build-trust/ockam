@@ -38,7 +38,7 @@ impl UdpPunctureSenderWorker {
         let wrapped_payload = PunctureMessage::Payload {
             onward_route,
             return_route,
-            payload: msg.payload,
+            payload: msg.payload.discard_zeroize(),
         };
 
         let msg = LocalMessage::new()

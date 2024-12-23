@@ -120,7 +120,7 @@ impl TcpSendWorker {
 
     fn serialize_message(&mut self, local_message: LocalMessage) -> Result<()> {
         // Create a message buffer with prepended length
-        let transport_message = TcpTransportMessage::from(local_message);
+        let transport_message = TcpTransportMessage::try_from(local_message)?;
 
         let expected_payload_len = minicbor::len(&transport_message);
 

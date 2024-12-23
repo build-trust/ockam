@@ -117,7 +117,7 @@ struct TransportMessagesIterator {
 
 impl TransportMessagesIterator {
     fn new(current_routing_number: RoutingNumber, local_message: LocalMessage) -> Result<Self> {
-        let routing_message = UdpRoutingMessage::from(local_message);
+        let routing_message = UdpRoutingMessage::try_from(local_message)?;
 
         let routing_message = ockam_core::cbor_encode_preallocate(routing_message)?;
 

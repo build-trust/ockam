@@ -1,3 +1,4 @@
+use crate::zeroize::MaybeZeroizeOnDrop;
 use crate::{
     compat::{
         string::{String, ToString},
@@ -244,7 +245,7 @@ impl<M: Message> Routed<M> {
     /// Consume the message wrapper and return the original message.
     #[inline]
     pub fn into_body(self) -> Result<M> {
-        M::decode(&self.into_payload())
+        M::decode(self.payload())
     }
 
     /// Consume the message wrapper and return the underlying local message.
@@ -267,7 +268,7 @@ impl<M: Message> Routed<M> {
 
     /// Consume the message wrapper and return the underlying transport message's binary payload.
     #[inline]
-    pub fn into_payload(self) -> Vec<u8> {
+    pub fn into_payload(self) -> MaybeZeroizeOnDrop<Vec<u8>> {
         self.local_msg.into_payload()
     }
 }

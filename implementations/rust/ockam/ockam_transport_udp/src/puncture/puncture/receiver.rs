@@ -294,7 +294,8 @@ impl Worker for UdpPunctureReceiverWorker {
         if &addr == self.addresses.remote_address() {
             let msg = msg.into_local_message();
             let return_route = msg.return_route;
-            self.handle_peer(ctx, msg.payload, &return_route).await?;
+            self.handle_peer(ctx, msg.payload.discard_zeroize(), &return_route)
+                .await?;
         } else if &addr == self.addresses.heartbeat_address() {
             self.handle_heartbeat(ctx).await?;
         } else {

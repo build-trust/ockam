@@ -4,6 +4,7 @@ use crate::compat::vec::Vec;
 use core::ops::Deref;
 use minicbor::{CborLen, Decode, Encode};
 use serde::{Deserialize, Serialize};
+use zeroize::Zeroize;
 
 /// A new type around `Cow<'_, [u8]>` that borrows from input.
 ///
@@ -77,5 +78,19 @@ impl<'a> Deref for CowBytes<'a> {
 
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+impl Default for CowBytes<'_> {
+    fn default() -> Self {
+        CowBytes(Cow::Borrowed(&[]))
+    }
+}
+
+impl Zeroize for CowBytes<'_> {
+    fn zeroize(&mut self) {
+        if !self.is_borrowed() {
+            self.0.to_mut().zeroize();
+        }
     }
 }

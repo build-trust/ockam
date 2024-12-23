@@ -1,6 +1,6 @@
 use core::sync::atomic::Ordering;
 use ockam_core::compat::sync::Arc;
-use ockam_core::{route, Any, Result, Route, Routed, SecureChannelLocalInfo};
+use ockam_core::{route, Any, OnDrop, Result, Route, Routed, SecureChannelLocalInfo};
 use ockam_core::{Decodable, LocalMessage};
 use ockam_node::Context;
 
@@ -21,6 +21,7 @@ use ockam_core::errcode::{Kind, Origin};
 use ockam_vault::{AeadSecretKeyHandle, VaultForSecureChannels};
 use tracing::{debug, info, trace, warn};
 use tracing_attributes::instrument;
+use zeroize::Zeroize;
 
 pub(crate) struct DecryptorHandler {
     //for debug purposes only
@@ -144,7 +145,7 @@ impl DecryptorHandler {
         let msg = LocalMessage::new()
             .with_onward_route(msg.onward_route)
             .with_return_route(return_route)
-            .with_payload(msg.payload.to_vec())
+            .with_payload_on_drop(msg.payload.to_vec(), msg.on_drop)
             .with_local_info(local_info);
 
         match ctx
@@ -217,6 +218,8 @@ impl DecryptorHandler {
 
         // Decode raw payload binary
         let mut payload = msg.payload;
+        // it might contain sensitive data, so we zeroize it in *case of an error*
+        payload.set_zeroize(OnDrop::Zeroize);
 
         // Decrypt the binary
         let (decrypted_payload, nonce) = self.decryptor.decrypt(payload.as_mut_slice()).await?;
@@ -224,6 +227,7 @@ impl DecryptorHandler {
 
         match decrypted_msg.message {
             SecureChannelMessage::Payload(decrypted_msg) => {
+                payload.set_zeroize(decrypted_msg.on_drop);
                 self.handle_payload(ctx, decrypted_msg, nonce, encrypted_msg_return_route)
                     .await?
             }

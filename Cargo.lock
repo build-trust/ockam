@@ -4904,6 +4904,7 @@ dependencies = [
  "tracing-opentelemetry",
  "tracing-subscriber",
  "utcnow",
+ "zeroize",
 ]
 
 [[package]]

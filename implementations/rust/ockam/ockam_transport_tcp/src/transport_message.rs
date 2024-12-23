@@ -64,12 +64,14 @@ impl From<TcpTransportMessage<'_>> for LocalMessage {
     }
 }
 
-impl From<LocalMessage> for TcpTransportMessage<'_> {
-    fn from(value: LocalMessage) -> Self {
+impl TryFrom<LocalMessage> for TcpTransportMessage<'_> {
+    type Error = ockam_core::Error;
+
+    fn try_from(value: LocalMessage) -> Result<Self, Self::Error> {
         let transport_message = Self::new(
             value.onward_route,
             value.return_route,
-            CowBytes::from(value.payload),
+            CowBytes::from(value.payload.discard_zeroize()),
             None,
         );
 
@@ -77,9 +79,9 @@ impl From<LocalMessage> for TcpTransportMessage<'_> {
             if #[cfg(feature = "std")] {
                 // make sure to pass the latest tracing context
                 let new_tracing_context = LocalMessage::start_new_tracing_context(value.tracing_context.update(), "TcpTransportMessage");
-                transport_message.with_tracing_context(new_tracing_context)
+                Ok(transport_message.with_tracing_context(new_tracing_context))
             } else {
-                transport_message
+                Ok(transport_message)
             }
         }
     }

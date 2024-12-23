@@ -1,7 +1,7 @@
 use crate::models::{ChangeHistory, CredentialAndPurposeKey};
 use minicbor::{CborLen, Decode, Encode};
 use ockam_core::compat::vec::Vec;
-use ockam_core::{CowBytes, Route};
+use ockam_core::{CowBytes, MaybeZeroizeOnDrop, OnDrop, Route};
 
 /// Secure Channel Message format.
 #[derive(Debug, Encode, Decode, CborLen, Clone)]
@@ -34,7 +34,9 @@ pub struct PlaintextPayloadMessage<'a> {
     /// Return route of the message.
     #[n(1)] pub return_route: Route,
     /// Untyped binary payload.
-    #[b(2)] pub payload: CowBytes<'a>,
+    #[b(2)] pub payload: MaybeZeroizeOnDrop<CowBytes<'a>>,
+    /// Whether to Zeroize the payload on drop.
+    #[n(3)] pub on_drop: OnDrop,
 }
 
 /// Secure Channel Message format.

@@ -272,7 +272,7 @@ impl HandshakeWorker {
             .state_machine
             .as_mut()
             .ok_or(IdentityError::HandshakeInternalError)?
-            .on_event(ReceivedMessage(payload))
+            .on_event(ReceivedMessage(payload.discard_zeroize()))
             .await?
         {
             // set the remote route by taking the most up to date message return route

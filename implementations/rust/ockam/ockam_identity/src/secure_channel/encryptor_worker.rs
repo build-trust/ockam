@@ -1,17 +1,17 @@
 use core::sync::atomic::{AtomicBool, Ordering};
 
-use tracing::{debug, error, info, warn};
-use tracing_attributes::instrument;
-
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::sync::{Arc, RwLock};
 use ockam_core::compat::vec::Vec;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{
-    async_trait, route, CowBytes, Decodable, Error, LocalMessage, NeutralMessage, Route,
+    async_trait, route, CowBytes, Decodable, Error, LocalMessage, MaybeZeroizeOnDrop,
+    NeutralMessage, OnDrop, Route,
 };
 use ockam_core::{Any, Result, Routed, Worker};
 use ockam_node::Context;
+use tracing::{debug, error, info, warn};
+use tracing_attributes::instrument;
 
 use crate::models::CredentialAndPurposeKey;
 use crate::secure_channel::addresses::Addresses;
@@ -98,13 +98,21 @@ impl EncryptorWorker {
         &mut self,
         ctx: &Context,
         msg: SecureChannelPaddedMessage<'static>,
+        on_drop: OnDrop,
     ) -> Result<Vec<u8>> {
         let expected_len = minicbor::len(&msg);
-        let mut destination = vec![0u8; NOISE_NONCE_LEN + expected_len + AES_GCM_TAGSIZE];
+        let mut destination = MaybeZeroizeOnDrop::new(
+            vec![0u8; NOISE_NONCE_LEN + expected_len + AES_GCM_TAGSIZE],
+            on_drop,
+        );
         minicbor::encode(&msg, &mut destination[NOISE_NONCE_LEN..])?;
 
         match self.encryptor.encrypt(&mut destination).await {
-            Ok(()) => Ok(destination),
+            Ok(()) => {
+                // the content of the destination is now encrypted,
+                // and we can safely return it as `Vec<u8>`
+                Ok(destination.discard_zeroize())
+            }
             // If encryption failed, that means we have some internal error,
             // and we may be in an invalid state, it's better to stop the Worker
             Err(err) => {
@@ -203,21 +211,24 @@ impl EncryptorWorker {
         let msg = msg.into_local_message();
         let mut onward_route = msg.onward_route;
         let return_route = msg.return_route;
+        let on_drop = msg.payload.on_drop();
+        let payload =
+            MaybeZeroizeOnDrop::new(CowBytes::from(msg.payload.discard_zeroize()), on_drop);
 
         // Remove our address
         let _ = onward_route.step();
 
-        let payload = CowBytes::from(msg.payload);
         let msg = PlaintextPayloadMessage {
             onward_route,
             return_route,
             payload,
+            on_drop,
         };
 
         let msg = SecureChannelMessage::Payload(msg);
         let msg = Self::add_padding(msg);
 
-        let payload = self.encrypt(ctx, msg).await?;
+        let payload = self.encrypt(ctx, msg, on_drop).await?;
 
         let remote_route = self.shared_state.remote_route.read().unwrap().route.clone();
         // Decryptor doesn't need the return_route since it has `self.remote_route` as well
@@ -288,7 +299,7 @@ impl EncryptorWorker {
         let msg = SecureChannelMessage::RefreshCredentials(msg);
         let msg = Self::add_padding(msg);
 
-        let msg = self.encrypt(ctx, msg).await?;
+        let msg = self.encrypt(ctx, msg, OnDrop::NoZeroize).await?;
 
         info!(
             "Sending credentials refresh for {}",
@@ -314,7 +325,7 @@ impl EncryptorWorker {
         let msg = Self::add_padding(msg);
 
         // Encrypt the message
-        let msg = self.encrypt(ctx, msg).await?;
+        let msg = self.encrypt(ctx, msg, OnDrop::NoZeroize).await?;
 
         let remote_route = self.shared_state.remote_route.read().unwrap().route.clone();
         // Send the message to the decryptor on the other side

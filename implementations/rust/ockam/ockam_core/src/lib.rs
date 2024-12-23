@@ -86,6 +86,7 @@ mod processor;
 mod routing;
 mod uint;
 mod worker;
+mod zeroize;
 
 pub use access_control::*;
 pub use cbor::*;
@@ -96,6 +97,7 @@ pub use processor::*;
 pub use routing::*;
 pub use uint::*;
 pub use worker::*;
+pub use zeroize::*;
 
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 #[doc(hidden)]
