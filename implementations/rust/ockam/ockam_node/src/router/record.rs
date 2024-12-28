@@ -1,11 +1,12 @@
-use crate::channel_types::{MessageSender, OneshotSender};
+use crate::channel_types::{oneshot_channel, MessageSender, OneshotReceiver, OneshotSender};
 use crate::error::{NodeError, NodeReason};
 use crate::relay::CtrlSignal;
-use alloc::string::String;
+use crate::WorkerShutdownPriority;
 use core::default::Default;
 use core::fmt::Debug;
-use core::sync::atomic::{AtomicU8, AtomicUsize, Ordering};
-use ockam_core::compat::collections::hash_map::{Entry, EntryRef};
+use core::sync::atomic::{AtomicUsize, Ordering};
+use ockam_core::compat::collections::hash_map::Entry;
+use ockam_core::compat::sync::Mutex as SyncMutex;
 use ockam_core::compat::sync::RwLock as SyncRwLock;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{
@@ -31,23 +32,18 @@ struct AddressMaps {
     metadata: SyncRwLock<HashMap<Address, AddressMetadata>>,
 }
 
-#[derive(Default)]
-struct ClusterMaps {
-    /// The order in which clusters are allocated and de-allocated
-    order: Vec<String>,
-    /// Key is Label
-    map: HashMap<String, HashSet<Address>>, // Only primary addresses here
-}
-
 /// Address states and associated logic
 pub struct InternalMap {
     // NOTE: It's crucial that if more that one of these structures is needed to perform an
     // operation, we should always acquire locks in the order they're declared here. Otherwise, it
     // can cause a deadlock.
     address_maps: AddressMaps,
-    cluster_maps: SyncRwLock<ClusterMaps>,
-    /// Track addresses that are being stopped atm
-    stopping: SyncRwLock<HashSet<Address>>,
+    /// Track non-detached addresses that are being stopped (except those that are stopped due to node shutdown)
+    stopping: SyncMutex<HashSet<Address>>,
+    /// Track non-detached addresses that are being stopped due to node shutdown
+    stopping_shutdown: SyncMutex<HashSet<Address>>,
+    /// Channel to notify when stopping_shutdown map gets empty
+    shutdown_yield_sender: SyncMutex<Option<OneshotSender<()>>>,
     /// Access to [`FlowControls`] to clean resources
     flow_controls: FlowControls,
     /// Metrics collection and sharing
@@ -93,8 +89,9 @@ impl InternalMap {
     pub(super) fn new(flow_controls: &FlowControls) -> Self {
         Self {
             address_maps: Default::default(),
-            cluster_maps: Default::default(),
             stopping: Default::default(),
+            stopping_shutdown: Default::default(),
+            shutdown_yield_sender: Default::default(),
             flow_controls: flow_controls.clone(),
             #[cfg(feature = "metrics")]
             metrics: Default::default(),
@@ -109,7 +106,7 @@ impl InternalMap {
         let mut records = self.address_maps.records.write().unwrap();
         let mut aliases = self.address_maps.aliases.write().unwrap();
         let mut metadata = self.address_maps.metadata.write().unwrap();
-        let mut stopping = self.stopping.write().unwrap();
+        let mut stopping = self.stopping.lock().unwrap();
 
         let primary_address = aliases
             .get(address)
@@ -145,7 +142,11 @@ impl InternalMap {
         // Detached doesn't need any stop confirmation, since they don't have a Relay = don't have
         // an async task running in a background that should be stopped.
         if !record.meta.detached {
-            stopping.insert(primary_address);
+            let res = stopping.insert(primary_address);
+            debug!(
+                "Inserted {} into stopping. Inserted = {}",
+                record.primary_address, res
+            );
         }
 
         record.stop(skip_sending_stop_signal)?;
@@ -153,12 +154,33 @@ impl InternalMap {
         Ok(())
     }
 
-    pub(super) fn stop_ack(&self, primary_address: &Address) -> bool {
-        // FIXME: Detached workers
-        let mut stopping = self.stopping.write().unwrap();
-        stopping.remove(primary_address);
+    pub(super) fn stop_ack(&self, primary_address: &Address) {
+        {
+            let mut stopping = self.stopping.lock().unwrap();
+            let res = stopping.remove(primary_address);
 
-        stopping.is_empty()
+            debug!(
+                "Removing {} from stopping. Removed = {}",
+                primary_address, res
+            );
+        }
+
+        let mut stopping_shutdown = self.stopping_shutdown.lock().unwrap();
+
+        let res = stopping_shutdown.remove(primary_address);
+        debug!(
+            "Removing {} from stopping_shutdown. Removed = {}",
+            primary_address, res
+        );
+
+        if stopping_shutdown.is_empty() {
+            if let Some(shutdown_yield_sender) = self.shutdown_yield_sender.lock().unwrap().take() {
+                debug!("Sending stop_ack signal");
+                if shutdown_yield_sender.send(()).is_err() {
+                    warn!("shutdown_yield send errored");
+                }
+            }
+        }
     }
 
     pub(super) fn is_worker_registered_at(&self, primary_address: &Address) -> bool {
@@ -244,7 +266,6 @@ impl InternalMap {
                 // Rollback
                 aliases.insert(alias.clone(), old_value);
 
-                // FIXME: better error
                 let node = NodeError::Address(primary_address.clone());
                 Err(node.already_exists())
             }
@@ -304,10 +325,6 @@ impl InternalMap {
             self.address_maps.records.read().unwrap().len(),
             Ordering::Release,
         );
-        self.metrics.1.store(
-            self.cluster_maps.read().unwrap().map.len(),
-            Ordering::Release,
-        );
     }
 
     #[cfg(feature = "metrics")]
@@ -320,110 +337,57 @@ impl InternalMap {
         self.metrics.0.load(Ordering::Acquire)
     }
 
-    /// Add an address to a particular cluster
-    pub(super) fn set_cluster(&self, primary: &Address, label: String) -> Result<()> {
-        if !self
-            .address_maps
-            .records
-            .read()
-            .unwrap()
-            .contains_key(primary)
-        {
-            return Err(NodeError::Address(primary.clone()).not_found())?;
-        }
-
-        // If this is the first time we see this cluster ID
-        let mut cluster_maps = self.cluster_maps.write().unwrap();
-        match cluster_maps.map.entry_ref(&label) {
-            EntryRef::Occupied(mut occupied_entry) => {
-                occupied_entry.get_mut().insert(primary.clone());
-            }
-            EntryRef::Vacant(vacant_entry) => {
-                vacant_entry.insert_entry(HashSet::from([primary.clone()]));
-                cluster_maps.order.push(label.clone());
-            }
-        }
-
-        Ok(())
-    }
-
     /// Stop all workers not in a cluster, returns their primary addresses
-    pub(super) fn stop_all_non_cluster_workers(&self) -> bool {
-        // All clustered addresses
-        let clustered = self.cluster_maps.read().unwrap().map.iter().fold(
-            HashSet::new(),
-            |mut acc, (_, set)| {
-                acc.extend(set.iter().cloned());
-                acc
-            },
-        );
+    pub(super) fn stop_workers(
+        &self,
+        shutdown_priority: WorkerShutdownPriority,
+    ) -> Option<OneshotReceiver<()>> {
+        let records_to_stop: Vec<AddressRecord> = {
+            let mut records = self.address_maps.records.write().unwrap();
 
-        let mut records = self.address_maps.records.write().unwrap();
-        let mut stopping = self.stopping.write().unwrap();
+            // we remove address records, so workers to be stopped can no longer be found, therefore
+            // can't be used to send messages
+            records
+                .extract_if(|_addr, record| record.shutdown_order == shutdown_priority)
+                .map(|(_addr, record)| record)
+                .collect()
+        };
 
-        let records_to_stop = records.extract_if(|addr, _record| {
-            // Filter all clustered workers
-            !clustered.contains(addr)
-        });
+        let mut stopping_shutdown = self.stopping_shutdown.lock().unwrap();
 
-        let mut was_empty = true;
+        if !stopping_shutdown.is_empty() {
+            warn!(
+                "stopping_shutdown map is not empty, while next priority is about to be stopped. Clearing. Current priority: {:?}", shutdown_priority
+            );
+            stopping_shutdown.clear();
+        }
 
-        for (_, record) in records_to_stop {
-            // Detached doesn't need any stop confirmation, since they don't have a Relay = don't have
-            // an async task running in a background that should be stopped.
+        for record in records_to_stop {
+            // Detached doesn't need any stop confirmation, since they don't have a Relay => they
+            // don't have an async task running in a background that should be stopped.
+            let primary_address = record.primary_address.clone();
             if !record.meta.detached {
-                was_empty = false;
-                stopping.insert(record.primary_address.clone());
+                debug!("Inserted {} into stopping_shutdown", record.primary_address);
+                stopping_shutdown.insert(primary_address.clone());
             }
 
             if let Err(err) = record.stop(false) {
-                // FIXME: Insert into stopping
                 error!("Error stopping address. Err={}", err);
+                // Let's not expect stop_ack from that worker in this case
+                stopping_shutdown.remove(&primary_address);
             }
         }
 
-        was_empty
-    }
+        if !stopping_shutdown.is_empty() {
+            // If we just stopped some non-detached workers, let's wait for stop_ack form all of them
+            let (shutdown_yield_sender, shutdown_yield_receiver) = oneshot_channel();
 
-    pub(super) fn stop_all_cluster_workers(&self) -> bool {
-        let mut records = self.address_maps.records.write().unwrap();
-        let mut cluster_maps = self.cluster_maps.write().unwrap();
-        let mut stopping = self.stopping.write().unwrap();
+            *self.shutdown_yield_sender.lock().unwrap() = Some(shutdown_yield_sender);
 
-        let mut was_empty = true;
-        while let Some(label) = cluster_maps.order.pop() {
-            if let Some(addrs) = cluster_maps.map.remove(&label) {
-                for addr in addrs {
-                    match records.remove(&addr) {
-                        Some(record) => {
-                            was_empty = false;
-                            // Detached doesn't need any stop confirmation, since they don't have a Relay = don't have
-                            // an async task running in a background that should be stopped.
-                            if !record.meta.detached {
-                                stopping.insert(record.primary_address.clone());
-                            }
-                            match record.stop(false) {
-                                Ok(_) => {}
-                                Err(err) => {
-                                    error!(
-                                        "Error stopping address {} from cluster {}. Err={}",
-                                        addr, label, err
-                                    );
-                                }
-                            }
-                        }
-                        None => {
-                            warn!(
-                                "Stopping address {} from cluster {} but it doesn't exist",
-                                addr, label
-                            );
-                        }
-                    }
-                }
-            }
+            Some(shutdown_yield_receiver)
+        } else {
+            None
         }
-
-        was_empty
     }
 
     pub(super) fn force_clear_records(&self) -> Vec<Address> {
@@ -447,8 +411,8 @@ pub struct AddressRecord {
     additional_addresses: Vec<Address>,
     sender: MessageSender<RelayMessage>,
     ctrl_tx: OneshotSender<CtrlSignal>,
-    state: AtomicU8,
     meta: WorkerMeta,
+    shutdown_order: WorkerShutdownPriority,
     msg_count: Arc<AtomicUsize>,
 }
 
@@ -459,7 +423,6 @@ impl Debug for AddressRecord {
             .field("additional_addresses", &self.additional_addresses)
             .field("sender", &self.sender)
             .field("ctrl_tx", &self.ctrl_tx)
-            .field("state", &self.state)
             .field("meta", &self.meta)
             .field("msg_count", &self.msg_count)
             .finish()
@@ -472,17 +435,18 @@ impl AddressRecord {
         additional_addresses: Vec<Address>,
         sender: MessageSender<RelayMessage>,
         ctrl_tx: OneshotSender<CtrlSignal>,
-        msg_count: Arc<AtomicUsize>,
         meta: WorkerMeta,
+        shutdown_order: WorkerShutdownPriority,
+        msg_count: Arc<AtomicUsize>,
     ) -> Self {
         AddressRecord {
             primary_address,
             additional_addresses,
             sender,
             ctrl_tx,
-            state: AtomicU8::new(AddressState::Running as u8),
-            msg_count,
             meta,
+            shutdown_order,
+            msg_count,
         }
     }
 
@@ -494,26 +458,7 @@ impl AddressRecord {
     /// Signal this worker to stop -- it will no longer be able to receive messages
     pub fn stop(self, skip_sending_stop_signal: bool) -> Result<()> {
         trace!("AddressRecord::stop called for {:?}", self.primary_address);
-        if self.state.load(Ordering::Relaxed) != AddressState::Running as u8 {
-            trace!(
-                "AddressRecord::stop called for {:?}. Already stopping",
-                self.primary_address
-            );
-            return Ok(());
-        }
 
-        // the stop can be triggered only once
-        let result = self.state.compare_exchange(
-            AddressState::Running as u8,
-            AddressState::Stopping as u8,
-            Ordering::Relaxed,
-            Ordering::Relaxed,
-        );
-        if result.is_err() {
-            return Ok(());
-        }
-
-        // TODO: Recheck
         if !self.meta.detached && !skip_sending_stop_signal {
             self.ctrl_tx
                 .send(CtrlSignal::InterruptStop)
@@ -522,17 +467,4 @@ impl AddressRecord {
 
         Ok(())
     }
-}
-
-/// Encode the run states a worker or processor can be in
-#[repr(u8)]
-#[derive(Debug, PartialEq, Eq)]
-pub enum AddressState {
-    /// The runner is looping in its main body (either handling messages or a manual run-loop)
-    Running,
-    /// The runner was signaled to shut-down (running `stop()`)
-    Stopping,
-    /// The runner has experienced an error and is waiting for supervisor intervention
-    #[allow(unused)]
-    Faulty,
 }

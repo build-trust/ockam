@@ -1,5 +1,6 @@
-use super::Router;
+use super::{Router, RouterState};
 use crate::tokio::time;
+use crate::WorkerShutdownPriority;
 use core::time::Duration;
 use ockam_core::compat::sync::Arc;
 use ockam_core::Result;
@@ -13,36 +14,42 @@ impl Router {
     /// Implement the graceful stop strategy
     #[cfg_attr(not(feature = "std"), allow(unused_variables))]
     pub async fn stop_graceful(self: Arc<Router>, seconds: u8) -> Result<()> {
-        // Mark the router as shutting down to prevent spawning
-        info!("Initiate graceful node shutdown");
         // This changes the router state to `Stopping`
-        let receiver = self.state.set_to_stopping();
-        let receiver = if let Some(receiver) = receiver {
-            receiver
-        } else {
-            debug!("Node is already terminated");
-            return Ok(());
+        let state = {
+            let mut state = self.state.write().unwrap();
+
+            let state_val = *state;
+            if state_val == RouterState::Running {
+                *state = RouterState::Stopping;
+            }
+
+            state_val
         };
 
-        // Start by shutting down clusterless workers
-        let no_non_cluster_workers = self.map.stop_all_non_cluster_workers();
-
-        // Not stop cluster addresses
-        let no_cluster_workers = self.map.stop_all_cluster_workers();
-
-        if no_non_cluster_workers && no_cluster_workers {
-            // No stop ack will arrive because we didn't stop anything
-            self.state.set_to_stopped();
-            return Ok(());
+        match state {
+            RouterState::Running => {}
+            RouterState::Stopping => {
+                info!("Router is already stopping");
+                self.wait_termination().await;
+                return Ok(());
+            }
+            RouterState::Stopped => {
+                info!("Router is already stopped");
+                return Ok(());
+            }
         }
+
+        info!("Initiate graceful node shutdown");
 
         // Start a timeout task to interrupt us...
         let dur = Duration::from_secs(seconds as u64);
 
         let r = self.clone();
-        let timeout_handle = self.runtime_handle.spawn(async move {
+        let timeout = async move {
             time::sleep(dur).await;
 
+            // TODO: This actually doesn't abort anything, but it should unblock the .stop call, so
+            //  that we can process and eventually drop the tokio Runtime
             warn!("Shutdown timeout reached; aborting node!");
             let uncleared_addresses = r.map.force_clear_records();
 
@@ -53,14 +60,68 @@ impl Router {
                     uncleared_addresses
                 );
             }
+        };
 
-            r.state.set_to_stopped();
-        });
+        let r = self.clone();
+        let shutdown = async move {
+            for shutdown_priority in WorkerShutdownPriority::all_descending_order() {
+                debug!("Stopping workers with priority: {:?}", shutdown_priority);
+                let shutdown_yield_receiver = r.map.stop_workers(shutdown_priority);
 
-        receiver.await.unwrap(); //FIXME
+                if let Some(shutdown_yield_receiver) = shutdown_yield_receiver {
+                    debug!(
+                        "Waiting for yield for workers with priority: {:?}",
+                        shutdown_priority
+                    );
+                    // Wait for stop ack
+                    match shutdown_yield_receiver.await {
+                        Ok(_) => {
+                            debug!(
+                                "Received yield for workers with priority: {:?}",
+                                shutdown_priority
+                            );
+                        }
+                        Err(err) => {
+                            error!("Error receiving shutdown yield: {}", err);
+                        }
+                    }
+                } else {
+                    debug!(
+                        "There was no workers with priority: {:?}",
+                        shutdown_priority
+                    );
+                }
+            }
+
+            debug!("Router shutdown finished");
+        };
 
         #[cfg(feature = "std")]
-        timeout_handle.abort();
+        crate::tokio::select! {
+            _ = shutdown => {}
+            _ = timeout => {}
+        }
+
+        #[cfg(not(feature = "std"))]
+        shutdown.await;
+
+        debug!("Setting Router state to Stopped");
+        *self.state.write().unwrap() = RouterState::Stopped;
+        debug!("Sending Router stopped broadcast");
+        #[cfg(feature = "std")]
+        match self.stopped_broadcast_sender.write().unwrap().take() {
+            None => {
+                warn!("Couldn't send Router stop message. Channel is missing.");
+            }
+            Some(stopped_broadcast_sender) => {
+                if stopped_broadcast_sender.send(()).is_err() {
+                    // That's fine, it's possible nobody is listening for that broadcast
+                    debug!("Couldn't send Router stop message. Sending error.");
+                }
+            }
+        }
+
+        info!("No more workers left. Goodbye!");
 
         Ok(())
     }

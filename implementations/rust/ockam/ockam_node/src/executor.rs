@@ -48,7 +48,7 @@ pub struct Executor {
 impl Executor {
     /// Create a new Ockam node [`Executor`] instance
     pub fn new(runtime: Arc<Runtime>, flow_controls: &FlowControls) -> Self {
-        let router = Arc::new(Router::new(runtime.handle().clone(), flow_controls));
+        let router = Arc::new(Router::new(flow_controls));
         #[cfg(feature = "metrics")]
         let metrics = Metrics::new(runtime.handle().clone(), router.get_metrics_readout());
         Self {
@@ -109,8 +109,9 @@ impl Executor {
     {
         match future.await {
             Ok(val) => {
-                // TODO: Add timeout here
+                debug!("Wait for router termination...");
                 router.wait_termination().await;
+                debug!("Router terminated successfully!...");
                 Ok(val)
             }
             Err(e) => {

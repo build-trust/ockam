@@ -142,7 +142,13 @@ impl NodeBuilder {
 
         // Register this mailbox handle with the executor
         router
-            .add_worker(ctx.mailboxes(), sender, true, ctx.mailbox_count())
+            .add_worker(
+                ctx.mailboxes(),
+                sender,
+                true,
+                Default::default(),
+                ctx.mailbox_count(),
+            )
             .expect("router initialization failed");
 
         // Then return the root context and executor

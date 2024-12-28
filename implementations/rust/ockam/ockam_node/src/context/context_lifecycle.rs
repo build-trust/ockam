@@ -237,8 +237,13 @@ impl Context {
         // Create a new context and get access to the mailbox senders
         let (ctx, sender, _) = self.new_with_mailboxes(mailboxes, ContextMode::Detached);
 
-        self.router()?
-            .add_worker(ctx.mailboxes(), sender, true, self.mailbox_count.clone())?;
+        self.router()?.add_worker(
+            ctx.mailboxes(),
+            sender,
+            true,
+            Default::default(),
+            self.mailbox_count.clone(),
+        )?;
 
         Ok(ctx)
     }

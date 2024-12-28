@@ -89,11 +89,11 @@ use tokio::task;
 
 #[doc(hidden)]
 #[cfg(feature = "std")]
-pub fn spawn<F: Future + Send + 'static>(f: F)
+pub fn spawn<F: Future + Send + 'static>(f: F) -> task::JoinHandle<F::Output>
 where
     F::Output: Send,
 {
-    task::spawn(f);
+    task::spawn(f)
 }
 
 #[cfg(not(feature = "std"))]

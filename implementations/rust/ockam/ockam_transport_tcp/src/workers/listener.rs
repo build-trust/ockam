@@ -2,7 +2,7 @@ use crate::workers::{Addresses, TcpRecvProcessor};
 use crate::{TcpConnectionMode, TcpListenerInfo, TcpListenerOptions, TcpRegistry, TcpSendWorker};
 use ockam_core::{async_trait, compat::net::SocketAddr};
 use ockam_core::{Address, Processor, Result};
-use ockam_node::Context;
+use ockam_node::{Context, ProcessorBuilder, WorkerShutdownPriority};
 use ockam_transport_core::TransportError;
 use tokio::net::TcpListener;
 use tracing::{debug, instrument};
@@ -43,7 +43,11 @@ impl TcpListenProcessor {
             options,
         };
 
-        ctx.start_processor(address.clone(), processor).await?;
+        ProcessorBuilder::new(processor)
+            .with_address(address.clone())
+            .with_shutdown_priority(WorkerShutdownPriority::Priority5)
+            .start(ctx)
+            .await?;
 
         Ok((saddr, address))
     }
@@ -55,8 +59,6 @@ impl Processor for TcpListenProcessor {
 
     #[instrument(skip_all, name = "TcpListenProcessor::initialize")]
     async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
-        ctx.set_cluster(crate::CLUSTER_NAME)?;
-
         self.registry.add_listener_processor(TcpListenerInfo::new(
             ctx.primary_address().clone(),
             self.socket_address,

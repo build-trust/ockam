@@ -39,5 +39,3 @@ pub use types::*;
 
 /// BLE address type constant
 pub const BLE: TransportType = TransportType::new(4);
-
-pub(crate) const CLUSTER_NAME: &str = "_internals.transport.ble";

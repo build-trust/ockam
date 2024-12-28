@@ -4,7 +4,7 @@ use core::sync::atomic::AtomicUsize;
 use ockam_core::compat::collections::HashMap;
 use ockam_core::compat::sync::{Arc, RwLock};
 use ockam_core::compat::time::Duration;
-use ockam_core::compat::{string::String, vec::Vec};
+use ockam_core::compat::vec::Vec;
 use ockam_core::flow_control::FlowControls;
 #[cfg(feature = "std")]
 use ockam_core::OpenTelemetryContext;
@@ -29,6 +29,36 @@ pub enum ContextMode {
     Detached,
     /// With a Worker or a Processor
     Attached,
+}
+
+/// Higher value means the worker is shutdown earlier
+#[derive(Debug, Default, Clone, Copy, Eq, PartialEq)]
+pub enum WorkerShutdownPriority {
+    /// 1
+    Priority1,
+    /// 2
+    Priority2,
+    /// 3
+    Priority3,
+    /// 4
+    #[default]
+    Priority4,
+    /// 5
+    Priority5,
+    /// 6
+    Priority6,
+    /// 7
+    Priority7,
+}
+
+impl WorkerShutdownPriority {
+    /// All possible values in descending order
+    pub fn all_descending_order() -> [WorkerShutdownPriority; 7] {
+        use WorkerShutdownPriority::*;
+        [
+            Priority7, Priority6, Priority5, Priority4, Priority3, Priority2, Priority1,
+        ]
+    }
 }
 
 /// Context contains Node state and references to the runtime.
@@ -121,26 +151,6 @@ impl Context {
 }
 
 impl Context {
-    /// Assign the current worker to a cluster
-    ///
-    /// A cluster is a set of workers that should be stopped together
-    /// when the node is stopped or parts of the system are reloaded.
-    /// **This is not to be confused with supervisors!**
-    ///
-    /// By adding your worker to a cluster you signal to the runtime
-    /// that your worker may be depended on by other workers that
-    /// should be stopped first.
-    ///
-    /// **Your cluster name MUST NOT start with `_internals.` or
-    /// `ockam.`!**
-    ///
-    /// Clusters are de-allocated in reverse order of their
-    /// initialisation when the node is stopped.
-    pub fn set_cluster<S: Into<String>>(&self, label: S) -> Result<()> {
-        self.router()?
-            .set_cluster(self.primary_address(), label.into())
-    }
-
     /// Return a list of all available worker addresses on a node
     pub fn list_workers(&self) -> Result<Vec<Address>> {
         Ok(self.router()?.list_workers())

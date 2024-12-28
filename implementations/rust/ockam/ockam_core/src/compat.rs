@@ -265,6 +265,11 @@ pub mod sync {
             Self::new(Default::default())
         }
     }
+    impl<T> From<T> for RwLock<T> {
+        fn from(t: T) -> Self {
+            Self::new(t)
+        }
+    }
     impl<T> core::ops::Deref for RwLock<T> {
         type Target = spin::RwLock<T>;
         fn deref(&self) -> &spin::RwLock<T> {
@@ -300,12 +305,25 @@ pub mod sync {
             &mut self.0
         }
     }
+    impl<T> Default for Mutex<T>
+    where
+        T: Default,
+    {
+        fn default() -> Self {
+            Self::new(Default::default())
+        }
+    }
+    impl<T> From<T> for Mutex<T> {
+        fn from(t: T) -> Self {
+            Self::new(t)
+        }
+    }
 }
 /// Provides `std::sync` for `std` targets.
 #[cfg(feature = "std")]
 pub mod sync {
     pub use std::sync::{Arc, Weak};
-    pub use std::sync::{Mutex, RwLock, RwLockWriteGuard};
+    pub use std::sync::{Mutex, RwLock};
 }
 
 /// Provides `std::task` for `no_std` targets.

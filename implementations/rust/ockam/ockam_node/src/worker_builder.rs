@@ -1,4 +1,4 @@
-use crate::{debugger, ContextMode};
+use crate::{debugger, ContextMode, WorkerShutdownPriority};
 use crate::{relay::WorkerRelay, Context};
 use ockam_core::compat::string::String;
 use ockam_core::compat::sync::Arc;
@@ -69,6 +69,7 @@ where
             worker: self.worker,
             address: address.into(),
             metadata,
+            shutdown_priority: Default::default(),
         }
     }
 
@@ -76,6 +77,7 @@ where
     pub fn with_mailboxes(self, mailboxes: Mailboxes) -> WorkerBuilderMultipleAddresses<W> {
         WorkerBuilderMultipleAddresses {
             mailboxes,
+            shutdown_priority: Default::default(),
             worker: self.worker,
         }
     }
@@ -86,6 +88,7 @@ where
     W: Worker<Context = Context>,
 {
     mailboxes: Mailboxes,
+    shutdown_priority: WorkerShutdownPriority,
     worker: W,
 }
 
@@ -95,7 +98,12 @@ where
 {
     /// Consume this builder and start a new Ockam [`Worker`] from the given context
     pub async fn start(self, context: &Context) -> Result<()> {
-        start(context, self.mailboxes, self.worker).await
+        start(context, self.mailboxes, self.shutdown_priority, self.worker).await
+    }
+
+    pub fn with_shutdown_priority(mut self, shutdown_priority: WorkerShutdownPriority) -> Self {
+        self.shutdown_priority = shutdown_priority;
+        self
     }
 }
 
@@ -108,6 +116,7 @@ where
     address: Address,
     worker: W,
     metadata: Option<AddressMetadata>,
+    shutdown_priority: WorkerShutdownPriority,
 }
 
 impl<W> WorkerBuilderOneAddress<W>
@@ -142,6 +151,11 @@ where
         self
     }
 
+    pub fn with_shutdown_priority(mut self, shutdown_priority: WorkerShutdownPriority) -> Self {
+        self.shutdown_priority = shutdown_priority;
+        self
+    }
+
     /// Consume this builder and start a new Ockam [`Worker`] from the given context
     pub async fn start(self, context: &Context) -> Result<()> {
         start(
@@ -155,6 +169,7 @@ where
                 ),
                 vec![],
             ),
+            self.shutdown_priority,
             self.worker,
         )
         .await
@@ -203,7 +218,12 @@ where
 }
 
 /// Consume this builder and start a new Ockam [`Worker`] from the given context
-async fn start<W>(context: &Context, mailboxes: Mailboxes, worker: W) -> Result<()>
+async fn start<W>(
+    context: &Context,
+    mailboxes: Mailboxes,
+    shutdown_priority: WorkerShutdownPriority,
+    worker: W,
+) -> Result<()>
 where
     W: Worker<Context = Context>,
 {
@@ -220,7 +240,13 @@ where
     debugger::log_inherit_context("WORKER", context, &ctx);
 
     let router = context.router()?;
-    router.add_worker(ctx.mailboxes(), sender, false, context.mailbox_count())?;
+    router.add_worker(
+        ctx.mailboxes(),
+        sender,
+        false,
+        shutdown_priority,
+        context.mailbox_count(),
+    )?;
 
     // Then initialise the worker message relay
     WorkerRelay::init(context.runtime(), worker, ctx, ctrl_rx);

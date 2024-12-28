@@ -6,12 +6,12 @@ use ockam_core::compat::{
     sync::Arc,
 };
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::{async_trait, Address, AllowAll, Any, Decodable, DenyAll, Message, LOCAL};
+use ockam_core::{async_trait, Address, AllowAll, Any, Decodable, DenyAll, Message};
 use ockam_core::{route, Processor, Result, Routed, Worker};
 use ockam_node::compat::futures::FutureExt;
 use ockam_node::{Context, MessageReceiveOptions, NodeBuilder};
 use serde::{Deserialize, Serialize};
-use std::sync::atomic::{AtomicI8, AtomicU32};
+use std::sync::atomic::AtomicI8;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::time::sleep;
 use tracing::debug;
@@ -39,7 +39,7 @@ async fn receive_timeout__1_sec__should_return_from_call(ctx: &mut Context) -> R
 #[allow(non_snake_case)]
 #[test]
 fn start_and_shutdown_node__many_iterations__should_not_fail() {
-    for _ in 0..1 {
+    for _ in 0..50 {
         let (ctx, mut executor) = NodeBuilder::new().build();
         executor
             .execute(async move {
@@ -485,70 +485,6 @@ async fn abort_blocked_shutdown(ctx: &mut Context) -> Result<()> {
         .unwrap()
 }
 
-struct StopFromHandleMessageWorker {
-    counter_a: Arc<AtomicU32>,
-    counter_b: Arc<AtomicU32>,
-}
-
-#[async_trait]
-impl Worker for StopFromHandleMessageWorker {
-    type Message = String;
-    type Context = Context;
-    async fn handle_message(&mut self, ctx: &mut Context, _msg: Routed<String>) -> Result<()> {
-        self.counter_a.fetch_add(1, Ordering::Relaxed);
-        ctx.stop_address(ctx.primary_address())?;
-        self.counter_b.fetch_add(1, Ordering::Relaxed);
-        Ok(())
-    }
-}
-
-/// Test that a Worker can complete execution of its handle_message()
-/// even if it calls Context::stop_worker() from within handle_message().
-/// See https://github.com/build-trust/ockam/issues/2283
-/// See https://github.com/build-trust/ockam/issues/2280
-#[ockam_macros::test]
-async fn worker_calls_stopworker_from_handlemessage(ctx: &mut Context) -> Result<()> {
-    let counter_a = Arc::new(AtomicU32::new(0));
-    let counter_b = Arc::new(AtomicU32::new(0));
-    let counter_a_clone = counter_a.clone();
-    let counter_b_clone = counter_b.clone();
-
-    let child_ctx = ctx.new_detached("child", AllowAll, AllowAll).await?;
-
-    const RUNS: u32 = 1000;
-    const WORKERS: u32 = 10;
-    for _ in 0..RUNS {
-        let mut addrs = Vec::new();
-        for _ in 0..WORKERS {
-            let worker = StopFromHandleMessageWorker {
-                counter_a: counter_a_clone.clone(),
-                counter_b: counter_b_clone.clone(),
-            };
-            let addr = Address::random(LOCAL);
-            ctx.start_worker(addr.clone(), worker).await.unwrap();
-            addrs.push(addr);
-        }
-
-        let mut join_handles = Vec::new();
-        for addr in addrs {
-            join_handles.push(child_ctx.send(route![addr], String::from("Testing. 1. 2. 3.")));
-        }
-
-        for h in join_handles {
-            h.await.unwrap();
-        }
-    }
-    // Wait till tokio Runtime is shut down
-    std::thread::sleep(Duration::new(1, 0));
-
-    // Assert all handle_message() entry and exit counts match
-    assert_eq!(
-        counter_a.load(Ordering::Relaxed),
-        counter_b.load(Ordering::Relaxed)
-    );
-    Ok(())
-}
-
 struct SendReceiveWorker;
 
 #[async_trait]
@@ -679,20 +615,4 @@ async fn message_handle__error_during_handling__keep_worker_running(
     assert_eq!(3, counter.load(Ordering::Relaxed));
 
     Ok(())
-}
-
-#[test]
-fn test1() {
-    let (ctx, mut executor) = NodeBuilder::new().build();
-
-    executor
-        .execute::<_, (), ockam_core::Error>(async move {
-            ctx.sleep(Duration::from_secs(1)).await;
-
-            ctx.stop().await?;
-
-            Ok(())
-        })
-        .unwrap()
-        .unwrap();
 }

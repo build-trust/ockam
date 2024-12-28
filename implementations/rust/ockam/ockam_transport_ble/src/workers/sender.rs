@@ -83,8 +83,6 @@ where
     type Message = TransportMessage;
 
     async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
-        ctx.set_cluster(crate::CLUSTER_NAME)?;
-
         debug!("initialize for peer: {:?}", self.peer);
 
         if let Some(rx_stream) = self.rx_stream.take() {

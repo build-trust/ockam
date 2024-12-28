@@ -109,11 +109,6 @@ impl Worker for BleRouter {
     type Context = Context;
     type Message = Any;
 
-    async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
-        ctx.set_cluster(crate::CLUSTER_NAME)?;
-        Ok(())
-    }
-
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Any>) -> Result<()> {
         let msg_addr = msg.msg_addr();
 

@@ -1,4 +1,4 @@
-use crate::{debugger, ContextMode};
+use crate::{debugger, ContextMode, WorkerShutdownPriority};
 use crate::{relay::ProcessorRelay, Context};
 use ockam_core::compat::string::String;
 use ockam_core::compat::sync::Arc;
@@ -72,6 +72,7 @@ where
             processor: self.processor,
             address: address.into(),
             metadata,
+            shutdown_priority: Default::default(),
         }
     }
 
@@ -79,6 +80,7 @@ where
     pub fn with_mailboxes(self, mailboxes: Mailboxes) -> ProcessorBuilderMultipleAddresses<P> {
         ProcessorBuilderMultipleAddresses {
             mailboxes,
+            shutdown_priority: Default::default(),
             processor: self.processor,
         }
     }
@@ -89,6 +91,7 @@ where
     P: Processor<Context = Context>,
 {
     mailboxes: Mailboxes,
+    shutdown_priority: WorkerShutdownPriority,
     processor: P,
 }
 
@@ -98,7 +101,18 @@ where
 {
     /// Consume this builder and start a new Ockam [`Processor`] from the given context
     pub async fn start(self, context: &Context) -> Result<()> {
-        start(context, self.mailboxes, self.processor).await
+        start(
+            context,
+            self.mailboxes,
+            self.shutdown_priority,
+            self.processor,
+        )
+        .await
+    }
+
+    pub fn with_shutdown_priority(mut self, shutdown_priority: WorkerShutdownPriority) -> Self {
+        self.shutdown_priority = shutdown_priority;
+        self
     }
 }
 
@@ -111,6 +125,7 @@ where
     address: Address,
     processor: P,
     metadata: Option<AddressMetadata>,
+    shutdown_priority: WorkerShutdownPriority,
 }
 
 impl<P> ProcessorBuilderOneAddress<P>
@@ -158,6 +173,7 @@ where
                 ),
                 vec![],
             ),
+            self.shutdown_priority,
             self.processor,
         )
         .await
@@ -203,10 +219,20 @@ where
         self.outgoing_ac = outgoing_access_control.clone();
         self
     }
+
+    pub fn with_shutdown_priority(mut self, shutdown_priority: WorkerShutdownPriority) -> Self {
+        self.shutdown_priority = shutdown_priority;
+        self
+    }
 }
 
 /// Consume this builder and start a new Ockam [`Processor`] from the given context
-pub async fn start<P>(context: &Context, mailboxes: Mailboxes, processor: P) -> Result<()>
+pub async fn start<P>(
+    context: &Context,
+    mailboxes: Mailboxes,
+    shutdown_priority: WorkerShutdownPriority,
+    processor: P,
+) -> Result<()>
 where
     P: Processor<Context = Context>,
 {
@@ -223,7 +249,7 @@ where
     debugger::log_inherit_context("PROCESSOR", context, &ctx);
 
     let router = context.router()?;
-    router.add_processor(ctx.mailboxes(), sender)?;
+    router.add_processor(ctx.mailboxes(), sender, shutdown_priority)?;
 
     // Then initialise the processor message relay
     ProcessorRelay::<P>::init(context.runtime(), processor, ctx, ctrl_rx);
