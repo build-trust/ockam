@@ -1,4 +1,6 @@
-use crate::router::{AddressRecord, NodeState, Router, SenderPair, WorkerMeta};
+use crate::router::record::{AddressRecord, WorkerMeta};
+use crate::router::{Router, RouterState, SenderPair};
+use crate::WorkerShutdownPriority;
 use core::sync::atomic::AtomicUsize;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{compat::sync::Arc, Error, Mailboxes, Result};
@@ -10,21 +12,18 @@ impl Router {
         mailboxes: &Mailboxes,
         senders: SenderPair,
         detached: bool,
+        shutdown_priority: WorkerShutdownPriority,
         metrics: Arc<AtomicUsize>,
     ) -> Result<()> {
-        if !self.state.is_running() {
-            match self.state.node_state() {
-                NodeState::Stopping => Err(Error::new(
-                    Origin::Node,
-                    Kind::Shutdown,
-                    "The node is shutting down",
-                ))?,
-                NodeState::Running => unreachable!(),
-                NodeState::Stopped => unreachable!(),
-            }
-        } else {
-            self.add_worker_impl(mailboxes, senders, detached, metrics)
+        if *self.state.read().unwrap() != RouterState::Running {
+            return Err(Error::new(
+                Origin::Node,
+                Kind::Shutdown,
+                "The node is shutting down",
+            ))?;
         }
+
+        self.add_worker_impl(mailboxes, senders, detached, shutdown_priority, metrics)
     }
 
     fn add_worker_impl(
@@ -32,6 +31,7 @@ impl Router {
         mailboxes: &Mailboxes,
         senders: SenderPair,
         detached: bool,
+        shutdown_priority: WorkerShutdownPriority,
         metrics: Arc<AtomicUsize>,
     ) -> Result<()> {
         debug!("Starting new worker '{}'", mailboxes.primary_address());
@@ -43,11 +43,12 @@ impl Router {
             mailboxes.additional_addresses().cloned().collect(),
             msgs,
             ctrl,
-            metrics,
             WorkerMeta {
                 processor: false,
                 detached,
             },
+            shutdown_priority,
+            metrics,
         );
 
         self.map.insert_address_record(address_record, mailboxes)?;

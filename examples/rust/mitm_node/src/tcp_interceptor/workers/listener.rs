@@ -1,4 +1,4 @@
-use crate::tcp_interceptor::{Role, TcpMitmProcessor, TcpMitmRegistry, TcpMitmTransport, CLUSTER_NAME};
+use crate::tcp_interceptor::{Role, TcpMitmProcessor, TcpMitmRegistry, TcpMitmTransport};
 use ockam_core::{async_trait, compat::net::SocketAddr};
 use ockam_core::{Address, Processor, Result};
 use ockam_node::Context;
@@ -45,8 +45,6 @@ impl Processor for TcpMitmListenProcessor {
     type Context = Context;
 
     async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
-        ctx.set_cluster(CLUSTER_NAME)?;
-
         self.registry.add_listener(ctx.primary_address());
 
         Ok(())

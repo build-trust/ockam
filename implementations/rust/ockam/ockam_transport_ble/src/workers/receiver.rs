@@ -38,10 +38,6 @@ where
 {
     type Context = Context;
 
-    async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
-        ctx.set_cluster(crate::CLUSTER_NAME)
-    }
-
     async fn process(&mut self, ctx: &mut Context) -> Result<bool> {
         let mut buffer = [0_u8; crate::driver::MAX_OCKAM_MESSAGE_LENGTH];
 

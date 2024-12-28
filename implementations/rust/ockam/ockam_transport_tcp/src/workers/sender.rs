@@ -7,7 +7,7 @@ use ockam_core::{
     AddressMetadata, AllowAll, AllowSourceAddress, DenyAll, LocalMessage,
 };
 use ockam_core::{Any, Decodable, Mailbox, Mailboxes, Message, Result, Routed, Worker};
-use ockam_node::{Context, WorkerBuilder};
+use ockam_node::{Context, WorkerBuilder, WorkerShutdownPriority};
 
 use crate::transport_message::TcpTransportMessage;
 use ockam_transport_core::TransportError;
@@ -108,6 +108,7 @@ impl TcpSendWorker {
 
         WorkerBuilder::new(sender_worker)
             .with_mailboxes(Mailboxes::new(main_mailbox.clone(), vec![internal_mailbox]))
+            .with_shutdown_priority(WorkerShutdownPriority::Priority1)
             .start(ctx)
             .await?;
 
@@ -169,8 +170,6 @@ impl Worker for TcpSendWorker {
 
     #[instrument(skip_all, name = "TcpSendWorker::initialize")]
     async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
-        ctx.set_cluster(crate::CLUSTER_NAME)?;
-
         self.registry.add_sender_worker(TcpSenderInfo::new(
             self.addresses.sender_address().clone(),
             self.addresses.receiver_address().clone(),

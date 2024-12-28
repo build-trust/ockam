@@ -168,7 +168,6 @@ where
             return Err(TransportError::GenericIo)?;
         }
 
-        ctx.set_cluster(crate::CLUSTER_NAME)?;
         self.schedule_heartbeat()?;
         Ok(())
     }

@@ -1,4 +1,4 @@
-use crate::tcp_interceptor::{Role, TcpMitmRegistry, CLUSTER_NAME};
+use crate::tcp_interceptor::{Role, TcpMitmRegistry};
 use ockam_core::compat::sync::Arc;
 use ockam_core::{async_trait, Address, AllowAll};
 use ockam_core::{Processor, Result};
@@ -59,8 +59,6 @@ impl Processor for TcpMitmProcessor {
     type Context = Context;
 
     async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
-        ctx.set_cluster(CLUSTER_NAME)?;
-
         self.registry
             .add_processor(ctx.primary_address(), self.role, self.write_half.clone());
 

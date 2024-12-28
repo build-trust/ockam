@@ -45,10 +45,6 @@ where
 {
     type Context = Context;
 
-    async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
-        ctx.set_cluster(crate::CLUSTER_NAME)
-    }
-
     /// Get next message from the WebSocket stream if there is
     /// any available, and forward it to the next hop in the route.
     async fn process(&mut self, ctx: &mut Context) -> Result<bool> {

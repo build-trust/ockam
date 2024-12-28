@@ -36,10 +36,6 @@ impl UdsRecvProcessor {
 impl Processor for UdsRecvProcessor {
     type Context = Context;
 
-    async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
-        ctx.set_cluster(crate::CLUSTER_NAME)
-    }
-
     /// Get the next message from the connection if there are any
     /// available and forward it to the next hop in the route.
     async fn process(&mut self, ctx: &mut Context) -> Result<bool> {

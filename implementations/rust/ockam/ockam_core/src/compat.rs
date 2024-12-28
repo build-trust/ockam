@@ -305,7 +305,7 @@ pub mod sync {
 #[cfg(feature = "std")]
 pub mod sync {
     pub use std::sync::{Arc, Weak};
-    pub use std::sync::{Mutex, RwLock, RwLockWriteGuard};
+    pub use std::sync::{Mutex, RwLock};
 }
 
 /// Provides `std::task` for `no_std` targets.

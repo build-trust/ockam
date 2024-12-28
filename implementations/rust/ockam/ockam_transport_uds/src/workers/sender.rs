@@ -180,8 +180,6 @@ impl Worker for UdsSendWorker {
     ///
     /// Spawn a UDS Recceiver worker to processes incoming UDS messages
     async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
-        ctx.set_cluster(crate::CLUSTER_NAME)?;
-
         let path = match self.peer.as_pathname() {
             Some(p) => p,
             None => {

@@ -13,7 +13,7 @@ use ockam_core::{
     OutgoingAccessControl,
 };
 use ockam_core::{Processor, Result};
-use ockam_node::{Context, ProcessorBuilder};
+use ockam_node::{Context, ProcessorBuilder, WorkerShutdownPriority};
 use ockam_transport_core::TransportError;
 use tokio::{io::AsyncReadExt, net::tcp::OwnedReadHalf};
 use tracing::{info, instrument, trace};
@@ -94,6 +94,7 @@ impl TcpRecvProcessor {
         );
         ProcessorBuilder::new(receiver)
             .with_mailboxes(Mailboxes::new(mailbox, vec![internal]))
+            .with_shutdown_priority(WorkerShutdownPriority::Priority1)
             .start(ctx)
             .await?;
 
@@ -121,8 +122,6 @@ impl Processor for TcpRecvProcessor {
 
     #[instrument(skip_all, name = "TcpRecvProcessor::initialize")]
     async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
-        ctx.set_cluster(crate::CLUSTER_NAME)?;
-
         self.registry.add_receiver_processor(TcpReceiverInfo::new(
             ctx.primary_address().clone(),
             self.addresses.sender_address().clone(),
