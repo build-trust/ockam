@@ -18,79 +18,79 @@ on:
 jobs:
   lint-cargo-toml:
     name: Rust - lint-cargo-toml
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - run: 'echo "Rust - lint-cargo-toml"'
 
   lint_cargo_fmt_check:
     name: Rust - lint_cargo_fmt_check
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - run: 'echo "Rust - lint_cargo_fmt_check - Ignored"'
 
   lint_cargo_clippy:
     name: Rust - lint_cargo_clippy
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - run: 'echo "Rust - lint_cargo_clippy - Ignored"'
 
   lint_cargo_deny:
     name: Rust - lint_cargo_deny
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - run: 'echo "Rust - lint_cargo_deny - Ignored"'
 
   build_docs:
     name: Rust - build_docs
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - run: 'echo "Rust - build_docs - Ignored"'
 
   build:
     name: Rust - build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - run: 'echo "Rust - build - Ignored"'
 
   build_examples:
     name: Rust - build_examples
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - run: 'echo "Rust - build_examples - Ignored"'
 
   test:
     name: Rust - test
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - run: 'echo "Rust - test - Ignored"'
 
   check_no_std:
     name: Rust - check_no_std
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - run: 'echo "Rust - check_no_std - Ignored"'
 
   check_cargo_update:
     name: Rust - check_cargo_update
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - run: 'echo "Rust - check_cargo_update - Ignored"'
 
   check_nightly:
     name: Rust - check_nightly
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - run: 'echo "Rust - check_nightly - Ignored"'
 
   build_nightly:
     name: Rust - build_nightly
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - run: 'echo "Rust - build_nightly - Ignored"'
 
   test_nightly:
     name: Rust - test_nightly
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - run: 'echo "Rust - test_nightly - Ignored"'
 
@@ -101,7 +101,7 @@ jobs:
         build: [linux_86]
         include:
         - build: linux_86
-          os: ubuntu-20.04
+          os: ubuntu-22.04
     runs-on: ${{ matrix.os }}
     steps:
       - run: 'echo "Rust - lint_cargo_lock - Ignored"'

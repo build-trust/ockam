@@ -48,7 +48,7 @@ jobs:
       pull-requests: write
 
     name: Bump Crates And Create PR
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     environment: release
     container:
       # Note: Do not update this image has it has installed all binaries

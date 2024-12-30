@@ -13,12 +13,12 @@ on:
 jobs:
   lint_shellcheck:
     name: Shell - lint_shellcheck
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - run: 'echo "Shell - lint_shellcheck - Ignored"'
 
   lint_shfmt:
     name: Shell - lint_shfmt
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - run: 'echo "Shell - lint_shfmt - Ignored"'

@@ -23,7 +23,7 @@ jobs:
       contents: write
 
     name: Initiate Draft Release
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     environment: release
     outputs:
       upload_url: ${{ steps.release_upload_url.outputs.upload_url }}
@@ -325,8 +325,8 @@ jobs:
       fail-fast: false
       matrix:
         job:
-          - { target: aarch64-unknown-linux-gnu   , os: ubuntu-20.04 , use-cross: true }
-          - { target: x86_64-unknown-linux-gnu    , os: ubuntu-20.04  }
+          - { target: aarch64-unknown-linux-gnu   , os: ubuntu-22.04 , use-cross: true }
+          - { target: x86_64-unknown-linux-gnu    , os: ubuntu-22.04  }
           - { target: aarch64-apple-darwin        , os: macos-14      }
           - { target: x86_64-apple-darwin         , os: macos-14      }
 
@@ -348,7 +348,7 @@ jobs:
         run: cargo install --version 0.2.4 cross
 
       - shell: bash
-        if: matrix.job.target == 'ubuntu-20.04'
+        if: matrix.job.target == 'ubuntu-22.04'
         run: |
           set -x
           use_cross_build=${{ matrix.job.use-cross }}
@@ -430,7 +430,7 @@ jobs:
   sign_release:
     name: Sign All Assets
     needs: [build_release, create_release, build_elixir_nifs]
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     environment: release
     permissions:
       contents: write
