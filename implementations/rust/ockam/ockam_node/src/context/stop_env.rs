@@ -17,6 +17,6 @@ impl Context {
     /// This call will hang until a safe shutdown has been completed
     /// or the desired timeout has been reached.
     pub async fn stop_timeout(&self, seconds: u8) -> Result<()> {
-        self.router.clone().stop_graceful(seconds).await
+        self.router()?.stop_graceful(seconds).await
     }
 }

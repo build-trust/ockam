@@ -23,7 +23,7 @@ impl NodeManagerWorker {
     // TODO: This is never called.
     pub async fn stop(&self, ctx: &Context) -> Result<()> {
         self.node_manager.stop(ctx).await?;
-        ctx.stop_worker(NODEMANAGER_ADDR).await?;
+        ctx.stop_address(NODEMANAGER_ADDR)?;
         Ok(())
     }
 }
@@ -69,7 +69,7 @@ impl NodeManagerWorker {
                 encode_response(req, self.create_tcp_connection(ctx, dec.decode()?).await)?
             }
             (Delete, ["node", "tcp", "connection"]) => {
-                encode_response(req, self.delete_tcp_connection(dec.decode()?).await)?
+                encode_response(req, self.delete_tcp_connection(dec.decode()?))?
             }
 
             // ==*== Tcp Listeners ==*==
@@ -81,7 +81,7 @@ impl NodeManagerWorker {
                 encode_response(req, self.create_tcp_listener(dec.decode()?).await)?
             }
             (Delete, ["node", "tcp", "listener"]) => {
-                encode_response(req, self.delete_tcp_listener(dec.decode()?).await)?
+                encode_response(req, self.delete_tcp_listener(dec.decode()?))?
             }
 
             // ==*== Secure channels ==*==

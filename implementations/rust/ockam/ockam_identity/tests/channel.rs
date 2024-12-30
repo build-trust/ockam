@@ -41,7 +41,7 @@ async fn test_channel(ctx: &mut Context) -> Result<()> {
         .await?;
 
     let mut child_ctx = ctx
-        .new_detached_with_mailboxes(Mailboxes::main(
+        .new_detached_with_mailboxes(Mailboxes::primary(
             "child",
             Arc::new(AllowAll),
             Arc::new(AllowAll),
@@ -53,7 +53,7 @@ async fn test_channel(ctx: &mut Context) -> Result<()> {
 
     child_ctx
         .send(
-            route![alice_channel.clone(), child_ctx.address()],
+            route![alice_channel.clone(), child_ctx.primary_address()],
             "Hello, Bob!".to_string(),
         )
         .await?;
@@ -246,7 +246,7 @@ async fn test_channel_rejected_trust_policy(ctx: &mut Context) -> Result<()> {
         .await?;
 
     let mut child_ctx = ctx
-        .new_detached_with_mailboxes(Mailboxes::main(
+        .new_detached_with_mailboxes(Mailboxes::primary(
             "child",
             Arc::new(AllowAll),
             Arc::new(AllowAll),
@@ -255,7 +255,7 @@ async fn test_channel_rejected_trust_policy(ctx: &mut Context) -> Result<()> {
 
     child_ctx
         .send(
-            route![alice_channel, child_ctx.address()],
+            route![alice_channel, child_ctx.primary_address()],
             "Hello, Bob!".to_string(),
         )
         .await?;
@@ -295,7 +295,7 @@ async fn test_channel_send_multiple_messages_both_directions(ctx: &mut Context) 
         .await?;
 
     let mut child_ctx = ctx
-        .new_detached_with_mailboxes(Mailboxes::main(
+        .new_detached_with_mailboxes(Mailboxes::primary(
             "child",
             Arc::new(AllowAll),
             Arc::new(AllowAll),
@@ -305,11 +305,11 @@ async fn test_channel_send_multiple_messages_both_directions(ctx: &mut Context) 
     for n in 0..50 {
         child_ctx
             .flow_controls()
-            .add_consumer(child_ctx.address(), &sc_listener_flow_control_id);
+            .add_consumer(child_ctx.primary_address(), &sc_listener_flow_control_id);
         let payload = format!("Hello, Bob! {}", n);
         child_ctx
             .send(
-                route![alice_channel.clone(), child_ctx.address()],
+                route![alice_channel.clone(), child_ctx.primary_address()],
                 payload.clone(),
             )
             .await?;
@@ -320,7 +320,7 @@ async fn test_channel_send_multiple_messages_both_directions(ctx: &mut Context) 
 
         child_ctx
             .flow_controls()
-            .add_consumer(child_ctx.address(), &sc_flow_control_id);
+            .add_consumer(child_ctx.primary_address(), &sc_flow_control_id);
         let payload = format!("Hello, Alice! {}", n);
         child_ctx.send(return_route, payload.clone()).await?;
 
@@ -366,7 +366,7 @@ async fn test_channel_registry(ctx: &mut Context) -> Result<()> {
     assert_eq!(alice_channel_data.their_id(), &bob);
 
     let mut bob_ctx = ctx
-        .new_detached_with_mailboxes(Mailboxes::main(
+        .new_detached_with_mailboxes(Mailboxes::primary(
             "bob",
             Arc::new(AllowAll),
             Arc::new(AllowAll),
@@ -428,7 +428,7 @@ async fn test_channel_api(ctx: &mut Context) -> Result<()> {
         .await?;
 
     let mut bob_ctx = ctx
-        .new_detached_with_mailboxes(Mailboxes::main(
+        .new_detached_with_mailboxes(Mailboxes::primary(
             "bob",
             Arc::new(AllowAll),
             Arc::new(AllowAll),
@@ -555,7 +555,7 @@ async fn test_tunneled_secure_channel_works(ctx: &mut Context) -> Result<()> {
         .await?;
 
     let mut child_ctx = ctx
-        .new_detached_with_mailboxes(Mailboxes::main(
+        .new_detached_with_mailboxes(Mailboxes::primary(
             "child",
             Arc::new(AllowAll),
             Arc::new(AllowAll),
@@ -567,7 +567,7 @@ async fn test_tunneled_secure_channel_works(ctx: &mut Context) -> Result<()> {
 
     child_ctx
         .send(
-            route![alice_another_channel.clone(), child_ctx.address()],
+            route![alice_another_channel.clone(), child_ctx.primary_address()],
             "Hello, Bob!".to_string(),
         )
         .await?;
@@ -649,7 +649,7 @@ async fn test_double_tunneled_secure_channel_works(ctx: &mut Context) -> Result<
         .await?;
 
     let mut child_ctx = ctx
-        .new_detached_with_mailboxes(Mailboxes::main(
+        .new_detached_with_mailboxes(Mailboxes::primary(
             "child",
             Arc::new(AllowAll),
             Arc::new(AllowAll),
@@ -661,7 +661,10 @@ async fn test_double_tunneled_secure_channel_works(ctx: &mut Context) -> Result<
 
     child_ctx
         .send(
-            route![alice_yet_another_channel.clone(), child_ctx.address()],
+            route![
+                alice_yet_another_channel.clone(),
+                child_ctx.primary_address()
+            ],
             "Hello, Bob!".to_string(),
         )
         .await?;
@@ -725,7 +728,7 @@ async fn test_many_times_tunneled_secure_channel_works(ctx: &mut Context) -> Res
     }
 
     let mut child_ctx = ctx
-        .new_detached_with_mailboxes(Mailboxes::main(
+        .new_detached_with_mailboxes(Mailboxes::primary(
             "child",
             Arc::new(AllowAll),
             Arc::new(AllowAll),
@@ -737,7 +740,10 @@ async fn test_many_times_tunneled_secure_channel_works(ctx: &mut Context) -> Res
 
     child_ctx
         .send(
-            route![channels.last().unwrap().clone(), child_ctx.address()],
+            route![
+                channels.last().unwrap().clone(),
+                child_ctx.primary_address()
+            ],
             "Hello, Bob!".to_string(),
         )
         .await?;
@@ -1013,7 +1019,23 @@ async fn test_channel_delete_ephemeral_keys(ctx: &mut Context) -> Result<()> {
     assert_eq!(bob_sc_vault.number_of_ephemeral_x25519_secrets(), 0);
     assert_eq!(bob_sc_vault.number_of_static_x25519_secrets().await?, 1);
 
-    ctx.stop().await?;
+    let alice_sc = secure_channels_alice
+        .secure_channel_registry()
+        .get_channel_list()
+        .first()
+        .unwrap()
+        .clone();
+    secure_channels_alice.stop_secure_channel(ctx, alice_sc.encryptor_messaging_address())?;
+
+    let bob_sc = secure_channels_bob
+        .secure_channel_registry()
+        .get_channel_list()
+        .first()
+        .unwrap()
+        .clone();
+    secure_channels_bob.stop_secure_channel(ctx, bob_sc.encryptor_messaging_address())?;
+
+    ctx.sleep(Duration::from_millis(250)).await;
 
     // when the channel is closed only purpose key should be left
     assert_eq!(alice_identity_vault.number_of_keys().await?, 1);
@@ -1069,9 +1091,7 @@ async fn should_stop_encryptor__and__decryptor__in__secure_channel(
     let channel2 = sc_list[1].clone();
 
     // This will stop both ends of the channel
-    secure_channels
-        .stop_secure_channel(ctx, channel1.encryptor_messaging_address())
-        .await?;
+    secure_channels.stop_secure_channel(ctx, channel1.encryptor_messaging_address())?;
 
     ctx.sleep(Duration::from_millis(250)).await;
 
@@ -1083,7 +1103,7 @@ async fn should_stop_encryptor__and__decryptor__in__secure_channel(
         0
     );
 
-    let workers = ctx.list_workers();
+    let workers = ctx.list_workers()?;
     assert!(!workers.contains(channel1.decryptor_messaging_address()));
     assert!(!workers.contains(channel1.encryptor_messaging_address()));
     assert!(!workers.contains(channel2.decryptor_messaging_address()));
@@ -1119,17 +1139,15 @@ async fn address_metadata__encryptor__should_be_terminal(ctx: &mut Context) -> R
         )
         .await?;
 
-    let meta = ctx
-        .find_terminal_address(route!["app", sc.clone(), "test"])
-        .await?
-        .unwrap();
+    let route = route!["app", sc.clone(), "test"];
+    let (address, meta) = ctx.find_terminal_address(route.iter())?.unwrap();
 
-    assert_eq!(meta.address, sc.into());
+    assert_eq!(address, &sc.into());
     assert_eq!(
-        meta.metadata.attributes,
+        meta.attributes,
         vec![(SECURE_CHANNEL_IDENTIFIER.to_string(), hex::encode(bob.0))]
     );
-    assert!(meta.metadata.is_terminal);
+    assert!(meta.is_terminal);
 
     Ok(())
 }

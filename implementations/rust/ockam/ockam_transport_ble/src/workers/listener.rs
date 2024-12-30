@@ -56,7 +56,7 @@ where
     type Context = Context;
 
     async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
-        ctx.set_cluster(crate::CLUSTER_NAME).await
+        ctx.set_cluster(crate::CLUSTER_NAME)
     }
 
     async fn process(&mut self, ctx: &mut Self::Context) -> Result<bool> {

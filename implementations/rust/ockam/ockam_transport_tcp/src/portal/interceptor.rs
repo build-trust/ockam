@@ -295,13 +295,11 @@ impl Worker for PortalInterceptorWorker {
                 if !disconnect_received {
                     debug!(
                         "{:?} received disconnect event from {:?}",
-                        context.address(),
+                        context.primary_address(),
                         return_route
                     );
-                    context
-                        .stop_worker(self.other_worker_address.clone())
-                        .await?;
-                    context.stop_worker(context.address()).await?;
+                    context.stop_address(self.other_worker_address.clone())?;
+                    context.stop_address(context.primary_address())?;
                 }
             }
             PortalMessage::Ping => self.forward(context, routed_message).await?,

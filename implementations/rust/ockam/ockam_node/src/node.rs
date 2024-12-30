@@ -4,7 +4,6 @@ use ockam_core::compat::sync::Arc;
 use ockam_core::flow_control::FlowControls;
 #[cfg(feature = "std")]
 use ockam_core::OpenTelemetryContext;
-use ockam_core::{Address, AllowAll, Mailbox, Mailboxes};
 
 /// A minimal worker implementation that does nothing
 pub struct NullWorker;
@@ -116,8 +115,6 @@ impl NodeBuilder {
             #[cfg(not(feature = "std"))]
             Arc::new(Runtime::new().expect("cannot initialize the tokio runtime"))
         });
-        let exe = Executor::new(rt.clone(), &flow_controls);
-        let addr: Address = "app".into();
 
         #[cfg(feature = "watchdog")]
         {
@@ -125,17 +122,17 @@ impl NodeBuilder {
             watchdog.start_watchdog_loop(&rt);
         }
 
+        let handle = rt.handle().clone();
+        let exe = Executor::new(rt, &flow_controls);
+
+        let router = exe.router().upgrade().unwrap();
+
         // The root application worker needs a mailbox and relay to accept
         // messages from workers, and to buffer incoming transcoded data.
-        let (ctx, sender, _) = Context::new(
-            rt.handle().clone(),
-            exe.router(),
-            Mailboxes::new(
-                Mailbox::new(addr, Arc::new(AllowAll), Arc::new(AllowAll)),
-                vec![],
-            ),
-            None,
-            Default::default(),
+
+        let (ctx, sender, _) = Context::create_app_context(
+            handle.clone(),
+            Arc::downgrade(&router),
             &flow_controls,
             #[cfg(feature = "std")]
             OpenTelemetryContext::current(),
@@ -144,7 +141,8 @@ impl NodeBuilder {
         debugger::log_inherit_context("NODE", &ctx, &ctx);
 
         // Register this mailbox handle with the executor
-        exe.initialize_system("app", sender)
+        router
+            .add_worker(ctx.mailboxes(), sender, true, ctx.mailbox_count())
             .expect("router initialization failed");
 
         // Then return the root context and executor

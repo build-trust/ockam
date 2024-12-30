@@ -271,7 +271,7 @@ impl NodeManager {
                 format!("Secure channel with address, {}, not found", addr),
             ));
         }
-        self.secure_channels.stop_secure_channel(ctx, addr).await?;
+        self.secure_channels.stop_secure_channel(ctx, addr)?;
         self.registry.secure_channels.remove_by_addr(addr).await;
         Ok(())
     }
@@ -421,7 +421,7 @@ impl NodeManager {
         addr: &Address,
     ) -> Result<SecureChannelListener> {
         debug!("deleting secure channel listener: {addr}");
-        ctx.stop_worker(addr.clone()).await?;
+        ctx.stop_address(addr.clone())?;
         self.registry
             .secure_channel_listeners
             .remove(addr)

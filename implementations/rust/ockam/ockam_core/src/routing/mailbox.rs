@@ -1,6 +1,8 @@
 use crate::access_control::IncomingAccessControl;
 use crate::compat::{sync::Arc, vec::Vec};
-use crate::{debugger, Address, DenyAll, OutgoingAccessControl, RelayMessage, Result};
+use crate::{
+    debugger, Address, AddressMetadata, DenyAll, OutgoingAccessControl, RelayMessage, Result,
+};
 use core::cmp::Ordering;
 use core::fmt::{self, Debug};
 
@@ -10,6 +12,7 @@ use core::fmt::{self, Debug};
 #[derive(Clone)]
 pub struct Mailbox {
     address: Address,
+    metadata: Option<AddressMetadata>,
     incoming: Arc<dyn IncomingAccessControl>,
     outgoing: Arc<dyn OutgoingAccessControl>,
 }
@@ -48,11 +51,13 @@ impl Mailbox {
     /// Create a new `Mailbox` with the given [`Address`], [`IncomingAccessControl`] and [`OutgoingAccessControl`]
     pub fn new(
         address: impl Into<Address>,
+        metadata: Option<AddressMetadata>,
         incoming: Arc<dyn IncomingAccessControl>,
         outgoing: Arc<dyn OutgoingAccessControl>,
     ) -> Self {
         Self {
             address: address.into(),
+            metadata,
             incoming,
             outgoing,
         }
@@ -62,6 +67,7 @@ impl Mailbox {
     pub fn deny_all(address: impl Into<Address>) -> Self {
         Self {
             address: address.into(),
+            metadata: Default::default(),
             incoming: Arc::new(DenyAll),
             outgoing: Arc::new(DenyAll),
         }
@@ -81,12 +87,17 @@ impl Mailbox {
     pub fn outgoing_access_control(&self) -> &Arc<dyn OutgoingAccessControl> {
         &self.outgoing
     }
+
+    /// Metadata
+    pub fn metadata(&self) -> &Option<AddressMetadata> {
+        &self.metadata
+    }
 }
 
 /// A collection of [`Mailbox`]es for a specific [`Worker`](crate::Worker), [`Processor`](crate::Processor) or `Context`
 #[derive(Clone)]
 pub struct Mailboxes {
-    main_mailbox: Mailbox,
+    primary_mailbox: Mailbox,
     additional_mailboxes: Vec<Mailbox>,
 }
 
@@ -95,30 +106,31 @@ impl Debug for Mailboxes {
         write!(
             f,
             "{:?} + {:?}",
-            self.main_mailbox, self.additional_mailboxes
+            self.primary_mailbox, self.additional_mailboxes
         )
     }
 }
 
 impl Mailboxes {
-    /// Create [`Mailboxes`] given main [`Mailbox`] and collection of additional [`Mailbox`]es
-    pub fn new(main_mailbox: Mailbox, additional_mailboxes: Vec<Mailbox>) -> Self {
+    /// Create [`Mailboxes`] given primary [`Mailbox`] and collection of additional [`Mailbox`]es
+    pub fn new(primary_mailbox: Mailbox, additional_mailboxes: Vec<Mailbox>) -> Self {
         Self {
-            main_mailbox,
+            primary_mailbox,
             additional_mailboxes,
         }
     }
 
-    /// Create [`Mailboxes`] with only main [`Mailbox`] for the given
+    /// Create [`Mailboxes`] with only primary [`Mailbox`] for the given
     /// [`Address`] with [`IncomingAccessControl`] and [`OutgoingAccessControl`]
-    pub fn main(
+    pub fn primary(
         address: impl Into<Address>,
         incoming_access_control: Arc<dyn IncomingAccessControl>,
         outgoing_access_control: Arc<dyn OutgoingAccessControl>,
     ) -> Self {
         Self {
-            main_mailbox: Mailbox::new(
+            primary_mailbox: Mailbox::new(
                 address.into(),
+                None,
                 incoming_access_control,
                 outgoing_access_control,
             ),
@@ -127,26 +139,18 @@ impl Mailboxes {
     }
 
     /// Return all additional [`Address`]es represented by these [`Mailboxes`]
-    pub fn additional_addresses(&self) -> Vec<Address> {
-        self.additional_mailboxes
-            .iter()
-            .map(|x| x.address.clone())
-            .collect()
+    pub fn additional_addresses(&self) -> impl Iterator<Item = &Address> {
+        self.additional_mailboxes.iter().map(|x| &x.address)
     }
 
-    /// Return the main [`Address`] of this [`Mailboxes`]
-    pub fn main_address(&self) -> Address {
-        self.main_mailbox.address.clone()
-    }
-
-    /// Return the main [`Address`] of this [`Mailboxes`]
-    pub fn main_address_ref(&self) -> &Address {
-        &self.main_mailbox.address
+    /// Return the primary [`Address`] of this [`Mailboxes`]
+    pub fn primary_address(&self) -> &Address {
+        &self.primary_mailbox.address
     }
 
     /// Return `true` if the given [`Address`] is included in this [`Mailboxes`]
     pub fn contains(&self, msg_addr: &Address) -> bool {
-        if &self.main_mailbox.address == msg_addr {
+        if &self.primary_mailbox.address == msg_addr {
             true
         } else {
             self.additional_mailboxes
@@ -157,8 +161,8 @@ impl Mailboxes {
 
     /// Return a reference to the [`Mailbox`] with the given [`Address`]
     pub fn find_mailbox(&self, msg_addr: &Address) -> Option<&Mailbox> {
-        if &self.main_mailbox.address == msg_addr {
-            Some(&self.main_mailbox)
+        if &self.primary_mailbox.address == msg_addr {
+            Some(&self.primary_mailbox)
         } else {
             self.additional_mailboxes
                 .iter()
@@ -200,17 +204,9 @@ impl Mailboxes {
         }
     }
 
-    /// Return all (mail + additional) [`Address`]es represented by this [`Mailboxes`]
-    pub fn addresses(&self) -> Vec<Address> {
-        let mut addresses = Vec::with_capacity(self.additional_mailboxes.len() + 1);
-        addresses.push(self.main_mailbox.address.clone());
-        addresses.append(&mut self.additional_addresses());
-        addresses
-    }
-
-    /// Return a reference to the main [`Mailbox`] for this [`Mailboxes`]
-    pub fn main_mailbox(&self) -> &Mailbox {
-        &self.main_mailbox
+    /// Return a reference to the primary [`Mailbox`] for this [`Mailboxes`]
+    pub fn primary_mailbox(&self) -> &Mailbox {
+        &self.primary_mailbox
     }
 
     /// Return a reference to the additional [`Mailbox`]es for this [`Mailboxes`]

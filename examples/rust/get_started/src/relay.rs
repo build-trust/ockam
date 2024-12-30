@@ -24,7 +24,7 @@ impl Worker for Relay {
     /// This handle function takes any incoming message and forwards
     /// it to the next hop in it's onward route
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Any>) -> Result<()> {
-        println!("Address: {}, Received: {:?}", ctx.address(), msg);
+        println!("Address: {}, Received: {:?}", ctx.primary_address(), msg);
 
         let next_on_route = self.route.next()?.clone();
 

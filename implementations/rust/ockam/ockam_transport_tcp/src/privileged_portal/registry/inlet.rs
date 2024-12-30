@@ -1,10 +1,8 @@
 use crate::portal::InletSharedState;
 use crate::privileged_portal::packet::RawSocketReadResult;
 use crate::privileged_portal::{ConnectionIdentifier, Port};
-use ockam_core::compat::sync::Arc;
-use ockam_core::compat::sync::RwLock as SyncRwLock;
+use ockam_core::compat::sync::{Arc, RwLock as SyncRwLock};
 use ockam_core::{Address, LocalInfoIdentifier};
-use ockam_node::compat::asynchronous::RwLock as AsyncRwLock;
 use std::collections::HashMap;
 use std::net::Ipv4Addr;
 use tokio::net::TcpListener;
@@ -32,7 +30,7 @@ impl InletRegistry {
         sender: Sender<RawSocketReadResult>,
         port: Port,
         tcp_listener: TcpListener,
-        inlet_shared_state: Arc<AsyncRwLock<InletSharedState>>,
+        inlet_shared_state: Arc<SyncRwLock<InletSharedState>>,
     ) -> Inlet {
         let mut inlets = self.inlets.write().unwrap();
 
@@ -72,7 +70,7 @@ pub struct Inlet {
     /// Port
     pub port: Port,
     /// Route to the corresponding Outlet
-    pub inlet_shared_state: Arc<AsyncRwLock<InletSharedState>>,
+    pub inlet_shared_state: Arc<SyncRwLock<InletSharedState>>,
     /// Hold to mark the port as taken
     pub _tcp_listener: Arc<TcpListener>,
     /// Same map with different key

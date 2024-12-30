@@ -114,12 +114,12 @@ async fn start_monitoring__available__should_be_up_fast(ctx: &mut Context) -> Re
     ctx.start_worker(Address::from_string("echo"), MockEchoer::new())
         .await?;
 
-    assert!(!ctx.is_worker_registered_at(session.collector_address()));
+    assert!(!ctx.is_worker_registered_at(session.collector_address())?);
 
     // Start the Session in a separate task
     session.start_monitoring().await?;
 
-    assert!(ctx.is_worker_registered_at(session.collector_address()));
+    assert!(ctx.is_worker_registered_at(session.collector_address())?);
 
     let mut time_to_restore = 0;
 

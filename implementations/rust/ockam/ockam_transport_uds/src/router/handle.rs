@@ -29,6 +29,7 @@ impl AsyncTryClone for UdsRouterHandle {
         let mailboxes = Mailboxes::new(
             Mailbox::new(
                 Address::random_tagged("UdsRouterHandle.async_try_clone.detached"),
+                None,
                 Arc::new(DenyAll),
                 Arc::new(DenyAll),
             ),

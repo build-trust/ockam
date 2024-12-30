@@ -66,7 +66,7 @@ async fn check_message_flow_with_ctx(
     let msg: [u8; 4] = random();
     let msg = hex::encode(msg);
     ctx.send(
-        route![address.clone(), receiving_ctx.address()],
+        route![address.clone(), receiving_ctx.primary_address()],
         msg.clone(),
     )
     .await?;

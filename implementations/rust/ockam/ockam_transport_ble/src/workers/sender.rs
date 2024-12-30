@@ -83,7 +83,7 @@ where
     type Message = TransportMessage;
 
     async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
-        ctx.set_cluster(crate::CLUSTER_NAME).await?;
+        ctx.set_cluster(crate::CLUSTER_NAME)?;
 
         debug!("initialize for peer: {:?}", self.peer);
 
@@ -135,7 +135,7 @@ where
             Ok(_) => (),
             Err(e) => {
                 error!("Failed to send fragment to peer {}: {:?}", self.peer, e);
-                ctx.stop_worker(ctx.address()).await?;
+                ctx.stop_address(ctx.primary_address())?;
             }
         }
 
@@ -147,7 +147,7 @@ where
                 Ok(_) => (),
                 Err(e) => {
                     error!("Failed to send fragment to peer {}: {:?}", self.peer, e);
-                    ctx.stop_worker(ctx.address()).await?;
+                    ctx.stop_address(ctx.primary_address())?;
                 }
             }
 

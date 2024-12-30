@@ -47,9 +47,7 @@ impl Worker for UdpSenderWorker {
     type Context = Context;
 
     async fn shutdown(&mut self, ctx: &mut Self::Context) -> Result<()> {
-        let _ = ctx
-            .stop_processor(self.addresses.receiver_address().clone())
-            .await;
+        let _ = ctx.stop_address(self.addresses.receiver_address().clone());
 
         Ok(())
     }

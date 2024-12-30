@@ -127,10 +127,8 @@ impl InMemoryNode {
         match self.registry.influxdb_services.get(&address).await {
             None => Ok(None),
             Some(_) => {
-                context.stop_worker(address.clone()).await?;
-                context
-                    .stop_processor(format!("{address}-processor"))
-                    .await?;
+                context.stop_address(address.clone())?;
+                context.stop_address(format!("{address}-processor"))?;
                 self.registry.influxdb_services.remove(&address).await;
                 Ok(Some(()))
             }

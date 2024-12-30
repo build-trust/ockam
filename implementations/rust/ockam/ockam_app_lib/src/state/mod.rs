@@ -319,8 +319,8 @@ impl AppState {
 
         info!("stopped the old node manager");
 
-        for w in self.context.list_workers() {
-            let _ = self.context.stop_worker(w.address()).await;
+        for w in self.context.list_workers()? {
+            let _ = self.context.stop_address(w.address());
         }
         info!("stopped all the ctx workers");
 

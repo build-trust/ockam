@@ -51,8 +51,18 @@ impl UdsRouter {
         };
 
         let handle = router.create_self_handle().await?;
-        let main_mailbox = Mailbox::new(main_addr.clone(), Arc::new(AllowAll), Arc::new(AllowAll));
-        let api_mailbox = Mailbox::new(api_addr.clone(), Arc::new(AllowAll), Arc::new(AllowAll));
+        let main_mailbox = Mailbox::new(
+            main_addr.clone(),
+            None,
+            Arc::new(AllowAll),
+            Arc::new(AllowAll),
+        );
+        let api_mailbox = Mailbox::new(
+            api_addr.clone(),
+            None,
+            Arc::new(AllowAll),
+            Arc::new(AllowAll),
+        );
 
         WorkerBuilder::new(router)
             .with_mailboxes(Mailboxes::new(main_mailbox, vec![api_mailbox]))
@@ -132,7 +142,7 @@ impl UdsRouter {
 
         self.handle_unregister(self_address.clone()).await?;
 
-        self.ctx.stop_worker(self_address).await?;
+        self.ctx.stop_address(self_address)?;
 
         Ok(())
     }
@@ -259,8 +269,7 @@ impl Worker for UdsRouter {
     type Message = Any;
 
     async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
-        ctx.set_cluster(crate::CLUSTER_NAME).await?;
-        Ok(())
+        ctx.set_cluster(crate::CLUSTER_NAME)
     }
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Any>) -> Result<()> {

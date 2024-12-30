@@ -4,7 +4,7 @@ use ockam_core::flow_control::FlowControlId;
 use ockam_core::{
     async_trait,
     compat::{net::SocketAddr, sync::Arc},
-    AllowAll, AllowSourceAddress, DenyAll, LocalMessage,
+    AddressMetadata, AllowAll, AllowSourceAddress, DenyAll, LocalMessage,
 };
 use ockam_core::{Any, Decodable, Mailbox, Mailboxes, Message, Result, Routed, Worker};
 use ockam_node::{Context, WorkerBuilder};
@@ -89,12 +89,17 @@ impl TcpSendWorker {
 
         let main_mailbox = Mailbox::new(
             addresses.sender_address().clone(),
+            Some(AddressMetadata {
+                is_terminal: true,
+                attributes: vec![],
+            }),
             Arc::new(AllowAll),
             Arc::new(DenyAll),
         );
 
         let internal_mailbox = Mailbox::new(
             addresses.sender_internal_address().clone(),
+            None,
             Arc::new(AllowSourceAddress(
                 addresses.receiver_internal_address().clone(),
             )),
@@ -103,7 +108,6 @@ impl TcpSendWorker {
 
         WorkerBuilder::new(sender_worker)
             .with_mailboxes(Mailboxes::new(main_mailbox.clone(), vec![internal_mailbox]))
-            .terminal(addresses.sender_address().clone())
             .start(ctx)
             .await?;
 
@@ -111,9 +115,8 @@ impl TcpSendWorker {
     }
 
     #[instrument(skip_all, name = "TcpSendWorker::stop")]
-    async fn stop(&self, ctx: &Context) -> Result<()> {
-        ctx.stop_worker(self.addresses.sender_address().clone())
-            .await?;
+    fn stop(&self, ctx: &Context) -> Result<()> {
+        ctx.stop_address(self.addresses.sender_address().clone())?;
 
         Ok(())
     }
@@ -166,7 +169,7 @@ impl Worker for TcpSendWorker {
 
     #[instrument(skip_all, name = "TcpSendWorker::initialize")]
     async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
-        ctx.set_cluster(crate::CLUSTER_NAME).await?;
+        ctx.set_cluster(crate::CLUSTER_NAME)?;
 
         self.registry.add_sender_worker(TcpSenderInfo::new(
             self.addresses.sender_address().clone(),
@@ -187,7 +190,7 @@ impl Worker for TcpSendWorker {
                 "Failed to send protocol version to peer {}",
                 self.socket_address
             );
-            self.stop(ctx).await?;
+            self.stop(ctx)?;
 
             return Ok(());
         }
@@ -201,9 +204,7 @@ impl Worker for TcpSendWorker {
             .remove_sender_worker(self.addresses.sender_address());
 
         if self.rx_should_be_stopped {
-            let _ = ctx
-                .stop_processor(self.addresses.receiver_address().clone())
-                .await;
+            let _ = ctx.stop_address(self.addresses.receiver_address().clone());
         }
 
         Ok(())
@@ -211,7 +212,7 @@ impl Worker for TcpSendWorker {
 
     // TcpSendWorker will receive messages from the TcpRouter to send
     // across the TcpStream to our friend
-    #[instrument(skip_all, name = "TcpSendWorker::handle_message", fields(worker = %ctx.address()))]
+    #[instrument(skip_all, name = "TcpSendWorker::handle_message", fields(worker = %ctx.primary_address()))]
     async fn handle_message(
         &mut self,
         ctx: &mut Context,
@@ -230,7 +231,7 @@ impl Worker for TcpSendWorker {
                     // No need to stop Receiver as it notified us about connection drop and will
                     // stop itself
                     self.rx_should_be_stopped = false;
-                    self.stop(ctx).await?;
+                    self.stop(ctx)?;
 
                     return Ok(());
                 }
@@ -243,14 +244,14 @@ impl Worker for TcpSendWorker {
 
             if let Err(err) = self.serialize_message(local_message) {
                 // Close the stream
-                self.stop(ctx).await?;
+                self.stop(ctx)?;
 
                 return Err(err);
             };
 
             if self.write_half.write_all(&self.buffer).await.is_err() {
                 warn!("Failed to send message to peer {}", self.socket_address);
-                self.stop(ctx).await?;
+                self.stop(ctx)?;
 
                 return Ok(());
             }

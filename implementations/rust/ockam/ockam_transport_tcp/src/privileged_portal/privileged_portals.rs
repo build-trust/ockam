@@ -6,12 +6,12 @@ use caps::{CapSet, Capability};
 use core::fmt::Debug;
 use log::{debug, error};
 use nix::unistd::Uid;
+use ockam_core::compat::sync::{Arc, RwLock as SyncRwLock};
 use ockam_core::{Address, DenyAll, Result, Route};
-use ockam_node::compat::asynchronous::{resolve_peer, RwLock};
+use ockam_node::compat::asynchronous::resolve_peer;
 use ockam_node::{ProcessorBuilder, WorkerBuilder};
 use ockam_transport_core::{HostnamePort, TransportError};
 use std::net::IpAddr;
-use std::sync::Arc;
 use tokio::net::TcpListener;
 use tokio::sync::mpsc::channel;
 use tracing::instrument;
@@ -90,9 +90,8 @@ impl TcpTransport {
 
         let tcp_packet_writer = self.start_raw_socket_processor_if_needed().await?;
 
-        let inlet_shared_state =
-            InletSharedState::create(self.ctx(), outlet_route.clone(), false).await?;
-        let inlet_shared_state = Arc::new(RwLock::new(inlet_shared_state));
+        let inlet_shared_state = InletSharedState::create(self.ctx(), outlet_route.clone(), false)?;
+        let inlet_shared_state = Arc::new(SyncRwLock::new(inlet_shared_state));
 
         let remote_worker_address = Address::random_tagged("Ebpf.RemoteWorker.Inlet");
         let internal_worker_address = Address::random_tagged("Ebpf.InternalWorker.Inlet");
@@ -229,7 +228,7 @@ impl TcpTransport {
         &self,
         addr: impl Into<Address> + Clone + Debug,
     ) -> Result<()> {
-        self.ctx().stop_worker(addr).await?;
+        self.ctx().stop_address(addr)?;
 
         // TODO: eBPF Remove from the registry
         // self.ebpf_support.outlet_registry

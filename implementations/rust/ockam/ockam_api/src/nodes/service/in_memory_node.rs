@@ -192,7 +192,7 @@ impl InMemoryNode {
         }
 
         for addr in DefaultAddress::iter() {
-            let result = ctx.stop_worker(addr).await;
+            let result = ctx.stop_address(addr);
             // when stopping we can safely ignore missing services
             if let Err(err) = result {
                 if err.code().kind == Kind::NotFound {

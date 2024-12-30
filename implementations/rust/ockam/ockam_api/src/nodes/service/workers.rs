@@ -11,7 +11,7 @@ impl NodeManagerWorker {
         ctx: &Context,
     ) -> Result<Response<WorkerList>, Response<Error>> {
         let list = ctx
-            .list_workers()
+            .list_workers()?
             .into_iter()
             .map(|addr| WorkerStatus::new(addr.address()))
             .collect();

@@ -91,7 +91,7 @@ async fn tcp_lifecycle__disconnect__should_stop_worker(ctx: &mut Context) -> Res
         .await?;
     assert_eq!(reply2, msg2, "Should receive the same message");
 
-    transport.disconnect(connection1.clone()).await?;
+    transport.disconnect(connection1.clone())?;
     let res = ctx
         .send(route![connection1.clone(), "echoer"], msg1.clone())
         .await;
@@ -102,7 +102,7 @@ async fn tcp_lifecycle__disconnect__should_stop_worker(ctx: &mut Context) -> Res
         .await?;
     assert_eq!(reply3, msg3, "Should receive the same message");
 
-    transport.disconnect(connection2.clone()).await?;
+    transport.disconnect(connection2.clone())?;
     let res = ctx
         .send(route![connection2.clone(), "echoer"], msg3.clone())
         .await;
@@ -144,9 +144,7 @@ async fn tcp_lifecycle__stop_listener__should_stop_accepting_connections(
         .await?;
     assert_eq!(reply1, msg1, "Should receive the same message");
 
-    transport
-        .stop_listener(listener.processor_address())
-        .await?;
+    transport.stop_listener(listener.processor_address())?;
     ctx.sleep(Duration::from_millis(10)).await;
 
     let res = transport

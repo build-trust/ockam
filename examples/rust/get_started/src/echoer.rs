@@ -8,7 +8,7 @@ impl Worker for Echoer {
     type Message = String;
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<String>) -> Result<()> {
-        println!("Address: {}, Received: {:?}", ctx.address(), msg);
+        println!("Address: {}, Received: {:?}", ctx.primary_address(), msg);
 
         // Echo the message body back on its return_route.
         ctx.send(msg.return_route().clone(), msg.into_body()?).await

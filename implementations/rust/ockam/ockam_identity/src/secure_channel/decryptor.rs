@@ -147,13 +147,13 @@ impl DecryptorHandler {
         }
     }
 
-    async fn handle_close(&mut self, ctx: &mut Context) -> Result<()> {
+    fn handle_close(&mut self, ctx: &mut Context) -> Result<()> {
         // Prevent sending another Close message
         self.shared_state
             .should_send_close
             .store(false, Ordering::Relaxed);
         // Should be enough to stop the encryptor, since it will stop the decryptor
-        ctx.stop_worker(self.addresses.encryptor.clone()).await
+        ctx.stop_address(self.addresses.encryptor.clone())
     }
 
     async fn handle_refresh_credentials(
@@ -215,7 +215,7 @@ impl DecryptorHandler {
             SecureChannelMessage::RefreshCredentials(decrypted_msg) => {
                 self.handle_refresh_credentials(ctx, decrypted_msg).await?
             }
-            SecureChannelMessage::Close => self.handle_close(ctx).await?,
+            SecureChannelMessage::Close => self.handle_close(ctx)?,
         };
 
         Ok(())

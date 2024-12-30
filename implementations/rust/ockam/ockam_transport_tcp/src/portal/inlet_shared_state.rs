@@ -19,10 +19,10 @@ pub struct InletSharedState {
 }
 
 impl InletSharedState {
-    pub async fn create(ctx: &Context, route: Route, is_paused: bool) -> Result<Self> {
+    pub fn create(ctx: &Context, route: Route, is_paused: bool) -> Result<Self> {
         let their_identifier =
-            if let Some(terminal) = ctx.find_terminal_address(route.clone()).await? {
-                SecureChannelMetadata::from_terminal_address(&terminal)
+            if let Some((_address, metadata)) = ctx.find_terminal_address(route.iter())? {
+                SecureChannelMetadata::from_terminal_address_metadata(&metadata)
                     .map(|m| m.their_identifier())
                     .ok()
             } else {
@@ -53,10 +53,10 @@ impl InletSharedState {
         self.route_index
     }
 
-    pub async fn update_route(&mut self, ctx: &Context, new_route: Route) -> Result<()> {
+    pub fn update_route(&mut self, ctx: &Context, new_route: Route) -> Result<()> {
         let their_identifier =
-            if let Some(terminal) = ctx.find_terminal_address(new_route.clone()).await? {
-                SecureChannelMetadata::from_terminal_address(&terminal)
+            if let Some((_address, metadata)) = ctx.find_terminal_address(new_route.iter())? {
+                SecureChannelMetadata::from_terminal_address_metadata(&metadata)
                     .map(|m| m.their_identifier())
                     .ok()
             } else {

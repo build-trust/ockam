@@ -46,7 +46,7 @@ where
     type Context = Context;
 
     async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
-        ctx.set_cluster(crate::CLUSTER_NAME).await
+        ctx.set_cluster(crate::CLUSTER_NAME)
     }
 
     /// Get next message from the WebSocket stream if there is

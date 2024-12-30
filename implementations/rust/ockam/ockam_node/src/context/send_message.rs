@@ -88,6 +88,7 @@ impl Context {
         let mailboxes = Mailboxes::new(
             Mailbox::new(
                 address.clone(),
+                None,
                 Arc::new(AllowAll),
                 Arc::new(AllowOnwardAddress(next.clone())),
             ),
@@ -168,7 +169,7 @@ impl Context {
         R: Into<Route>,
         M: Message + Send + 'static,
     {
-        self.send_from_address(route.into(), msg, self.address())
+        self.send_from_address(route.into(), msg, self.primary_address().clone())
             .await
     }
 
@@ -184,8 +185,13 @@ impl Context {
         R: Into<Route>,
         M: Message + Send + 'static,
     {
-        self.send_from_address_impl(route.into(), msg, self.address(), local_info)
-            .await
+        self.send_from_address_impl(
+            route.into(),
+            msg,
+            self.primary_address().clone(),
+            local_info,
+        )
+        .await
     }
 
     /// Send a message to an address or via a fully-qualified route
@@ -240,7 +246,7 @@ impl Context {
             }
         };
 
-        let sender = self.router.resolve(&addr)?;
+        let sender = self.router()?.resolve(&addr)?;
 
         // Pack the payload into a TransportMessage
         let payload = msg.encode().map_err(|_| NodeError::Data.internal())?;
@@ -265,7 +271,7 @@ impl Context {
         }
 
         // Pack local message into a RelayMessage wrapper
-        let relay_msg = RelayMessage::new(sending_address.clone(), addr, local_msg);
+        let relay_msg = RelayMessage::new(sending_address, addr, local_msg);
 
         debugger::log_outgoing_message(self, &relay_msg);
 
@@ -300,7 +306,8 @@ impl Context {
     /// [`Context::send`]: crate::Context::send
     /// [`LocalMessage`]: ockam_core::LocalMessage
     pub async fn forward(&self, local_msg: LocalMessage) -> Result<()> {
-        self.forward_from_address(local_msg, self.address()).await
+        self.forward_from_address(local_msg, self.primary_address().clone())
+            .await
     }
 
     /// Forward a transport message to its next routing destination
@@ -337,7 +344,7 @@ impl Context {
                 return Err(err);
             }
         };
-        let sender = self.router.resolve(&addr)?;
+        let sender = self.router()?.resolve(&addr)?;
 
         // Pack the transport message into a RelayMessage wrapper
         let relay_msg = RelayMessage::new(sending_address, addr, local_msg);

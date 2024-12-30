@@ -52,7 +52,6 @@ pub mod callback;
 /// Helper workers
 pub mod workers;
 
-mod async_drop;
 mod context;
 mod delayed;
 mod error;
@@ -67,10 +66,6 @@ mod shutdown;
 pub mod storage;
 
 mod worker_builder;
-
-/// Singleton for the runtime executor
-#[cfg(feature = "std")]
-pub mod runtime;
 
 #[cfg(feature = "watchdog")]
 mod watchdog;

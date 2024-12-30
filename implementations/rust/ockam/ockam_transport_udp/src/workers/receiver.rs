@@ -145,7 +145,7 @@ impl Processor for UdpReceiverProcessor {
     type Context = Context;
 
     async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
-        ctx.set_cluster(crate::CLUSTER_NAME).await
+        ctx.set_cluster(crate::CLUSTER_NAME)
     }
 
     async fn process(&mut self, ctx: &mut Self::Context) -> Result<bool> {

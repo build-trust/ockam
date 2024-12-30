@@ -140,7 +140,7 @@ impl BackgroundNodeClient {
             .success()
             .into_diagnostic();
 
-        let _ = tcp_connection.stop(ctx).await;
+        let _ = tcp_connection.stop(ctx);
         res
     }
 
@@ -158,7 +158,7 @@ impl BackgroundNodeClient {
         let (tcp_connection, client) = self.make_client().await?;
         let res = client.ask(ctx, req).await.into_diagnostic();
 
-        let _ = tcp_connection.stop(ctx).await;
+        let _ = tcp_connection.stop(ctx);
         res
     }
 
@@ -175,7 +175,7 @@ impl BackgroundNodeClient {
             .success()
             .into_diagnostic();
 
-        let _ = tcp_connection.stop(ctx).await;
+        let _ = tcp_connection.stop(ctx);
         res
     }
 
@@ -191,7 +191,7 @@ impl BackgroundNodeClient {
         let (tcp_connection, client) = self.make_client().await?;
         let res = client.tell(ctx, req).await.into_diagnostic();
 
-        let _ = tcp_connection.stop(ctx).await;
+        let _ = tcp_connection.stop(ctx);
         res
     }
 
@@ -200,7 +200,6 @@ impl BackgroundNodeClient {
         self.create_tcp_connection()
             .await?
             .stop(ctx)
-            .await
             .into_diagnostic()
     }
 

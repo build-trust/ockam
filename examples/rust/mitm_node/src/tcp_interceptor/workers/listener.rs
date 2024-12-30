@@ -45,15 +45,15 @@ impl Processor for TcpMitmListenProcessor {
     type Context = Context;
 
     async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
-        ctx.set_cluster(CLUSTER_NAME).await?;
+        ctx.set_cluster(CLUSTER_NAME)?;
 
-        self.registry.add_listener(&ctx.address());
+        self.registry.add_listener(ctx.primary_address());
 
         Ok(())
     }
 
     async fn shutdown(&mut self, ctx: &mut Self::Context) -> Result<()> {
-        self.registry.remove_listener(&ctx.address());
+        self.registry.remove_listener(ctx.primary_address());
 
         Ok(())
     }

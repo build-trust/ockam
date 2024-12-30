@@ -58,8 +58,8 @@ impl TcpConnection {
     /// Stops the [`TcpConnection`], this method must be called to avoid
     /// leakage of the connection.
     /// Simply dropping this object won't close the connection
-    pub async fn stop(&self, context: &Context) -> Result<()> {
-        context.stop_worker(self.sender_address.clone()).await
+    pub fn stop(&self, context: &Context) -> Result<()> {
+        context.stop_address(self.sender_address.clone())
     }
     /// Corresponding [`TcpSendWorker`](super::workers::TcpSendWorker) [`Address`] that can be used
     /// in a route to send messages to the other side of the TCP connection
@@ -151,7 +151,7 @@ impl TcpTransport {
     }
 
     /// Interrupt an active TCP connection given its Sender `Address`
-    pub async fn disconnect(&self, address: impl Into<Address>) -> Result<()> {
-        self.ctx.stop_worker(address.into()).await
+    pub fn disconnect(&self, address: impl Into<Address>) -> Result<()> {
+        self.ctx.stop_address(address.into())
     }
 }

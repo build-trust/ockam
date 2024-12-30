@@ -61,11 +61,13 @@ impl WorkerPair {
         let mailboxes = Mailboxes::new(
             Mailbox::new(
                 tx_addr.clone(),
+                None,
                 Arc::new(AllowAll), // FIXME: @ac
                 Arc::new(AllowAll), // FIXME: @ac
             ),
             vec![Mailbox::new(
                 internal_addr,
+                None,
                 Arc::new(AllowAll), // FIXME: @ac
                 Arc::new(AllowAll), // FIXME: @ac
             )],
@@ -105,11 +107,13 @@ impl WorkerPair {
         let mailboxes = Mailboxes::new(
             Mailbox::new(
                 tx_addr.clone(),
+                None,
                 Arc::new(AllowAll), // FIXME: @ac
                 Arc::new(AllowAll), // FIXME: @ac
             ),
             vec![Mailbox::new(
                 internal_addr,
+                None,
                 Arc::new(AllowAll), // FIXME: @ac
                 Arc::new(AllowAll), // FIXME: @ac
             )],
@@ -164,18 +168,18 @@ where
             return Err(TransportError::GenericIo)?;
         }
 
-        ctx.set_cluster(crate::CLUSTER_NAME).await?;
-        self.schedule_heartbeat().await?;
+        ctx.set_cluster(crate::CLUSTER_NAME)?;
+        self.schedule_heartbeat()?;
         Ok(())
     }
 
-    async fn schedule_heartbeat(&mut self) -> Result<()> {
+    fn schedule_heartbeat(&mut self) -> Result<()> {
         let heartbeat_interval = match &self.heartbeat_interval {
             Some(hi) => *hi,
             None => return Ok(()),
         };
 
-        self.heartbeat.schedule(heartbeat_interval).await
+        self.heartbeat.schedule(heartbeat_interval)
     }
 
     /// Receive messages from the `WebSocketRouter` to send
@@ -199,7 +203,7 @@ where
                 .is_err()
             {
                 warn!("Failed to send heartbeat to peer {}", self.peer);
-                ctx.stop_worker(ctx.address()).await?;
+                ctx.stop_address(ctx.primary_address())?;
 
                 return Ok(());
             }
@@ -214,13 +218,13 @@ where
             let msg = WebSocketMessage::from(msg.into_transport_message().encode()?);
             if ws_sink.send(msg).await.is_err() {
                 warn!("Failed to send message to peer {}", self.peer);
-                ctx.stop_worker(ctx.address()).await?;
+                ctx.stop_address(ctx.primary_address())?;
                 return Ok(());
             }
             debug!("Sent message to peer {}", self.peer);
         }
 
-        self.schedule_heartbeat().await?;
+        self.schedule_heartbeat()?;
 
         Ok(())
     }

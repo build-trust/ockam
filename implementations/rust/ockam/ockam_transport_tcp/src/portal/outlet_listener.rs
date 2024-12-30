@@ -59,14 +59,16 @@ impl Worker for TcpOutletListenWorker {
 
     #[instrument(skip_all, name = "TcpOutletListenWorker::initialize")]
     async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
-        self.registry.add_outlet_listener_worker(&ctx.address());
+        self.registry
+            .add_outlet_listener_worker(ctx.primary_address());
 
         Ok(())
     }
 
     #[instrument(skip_all, name = "TcpOutletListenWorker::shutdown")]
     async fn shutdown(&mut self, ctx: &mut Self::Context) -> Result<()> {
-        self.registry.remove_outlet_listener_worker(&ctx.address());
+        self.registry
+            .remove_outlet_listener_worker(ctx.primary_address());
 
         Ok(())
     }

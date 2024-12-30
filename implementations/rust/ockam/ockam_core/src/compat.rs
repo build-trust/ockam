@@ -30,6 +30,17 @@ pub mod collections {
     pub use alloc::collections::{BTreeMap, BTreeSet, BinaryHeap, LinkedList, VecDeque};
 
     pub use hashbrown::{HashMap, HashSet};
+
+    /// hash map
+    pub mod hash_map {
+        pub use hashbrown::hash_map::{Entry, EntryRef};
+    }
+
+    /// btree map
+    #[cfg(feature = "alloc")]
+    pub mod btree_map {
+        pub use alloc::collections::btree_map::Entry;
+    }
 }
 
 /// Provides a `std::error::Error` trait.
@@ -224,7 +235,7 @@ pub mod str {
 pub mod sync {
     use core::convert::Infallible;
 
-    pub use alloc::sync::Arc;
+    pub use alloc::sync::{Arc, Weak};
 
     /// Wrap `spin::RwLock` as it does not return LockResult<Guard> like `std::sync::Mutex`.
     #[derive(Debug)]
@@ -293,7 +304,7 @@ pub mod sync {
 /// Provides `std::sync` for `std` targets.
 #[cfg(feature = "std")]
 pub mod sync {
-    pub use std::sync::Arc;
+    pub use std::sync::{Arc, Weak};
     pub use std::sync::{Mutex, RwLock, RwLockWriteGuard};
 }
 

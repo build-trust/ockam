@@ -15,11 +15,15 @@ impl Worker for Logger {
         let payload = local_msg.payload_ref();
 
         if let Ok(str) = String::from_utf8(payload.to_vec()) {
-            println!("Address: {}, Received string: {}", ctx.address(), str);
+            println!("Address: {}, Received string: {}", ctx.primary_address(), str);
         } else {
-            println!("Address: {}, Received binary: {}", ctx.address(), hex::encode(payload));
+            println!(
+                "Address: {}, Received binary: {}",
+                ctx.primary_address(),
+                hex::encode(payload)
+            );
         }
 
-        ctx.forward(local_msg.step_forward(&ctx.address())?).await
+        ctx.forward(local_msg.step_forward(ctx.primary_address())?).await
     }
 }

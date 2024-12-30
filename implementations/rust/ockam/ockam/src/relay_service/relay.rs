@@ -65,7 +65,7 @@ impl Worker for Relay {
         ctx.forward(
             LocalMessage::new()
                 .with_onward_route(self.forward_route.clone())
-                .with_return_route(route![ctx.address()])
+                .with_return_route(route![ctx.primary_address()])
                 .with_payload(payload),
         )
         .await?;

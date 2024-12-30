@@ -1,9 +1,9 @@
-use crate::debugger;
+use crate::{debugger, ContextMode};
 use crate::{relay::WorkerRelay, Context};
-use alloc::string::String;
-use ockam_core::compat::{sync::Arc, vec::Vec};
+use ockam_core::compat::string::String;
+use ockam_core::compat::sync::Arc;
 use ockam_core::{
-    Address, AddressAndMetadata, AddressMetadata, AllowAll, IncomingAccessControl, Mailboxes,
+    Address, AddressMetadata, AllowAll, IncomingAccessControl, Mailbox, Mailboxes,
     OutgoingAccessControl, Result, Worker,
 };
 
@@ -34,12 +34,41 @@ where
 {
     /// Worker with only one [`Address`]
     pub fn with_address(self, address: impl Into<Address>) -> WorkerBuilderOneAddress<W> {
+        self.with_address_and_metadata_impl(address, None)
+    }
+
+    /// Worker with single terminal [`Address`]
+    pub fn with_terminal_address(self, address: impl Into<Address>) -> WorkerBuilderOneAddress<W> {
+        self.with_address_and_metadata(
+            address,
+            AddressMetadata {
+                is_terminal: true,
+                attributes: vec![],
+            },
+        )
+    }
+
+    /// Worker with single terminal [`Address`] and metadata
+    pub fn with_address_and_metadata(
+        self,
+        address: impl Into<Address>,
+        metadata: AddressMetadata,
+    ) -> WorkerBuilderOneAddress<W> {
+        self.with_address_and_metadata_impl(address, Some(metadata))
+    }
+
+    /// Worker with single terminal [`Address`] and metadata
+    pub fn with_address_and_metadata_impl(
+        self,
+        address: impl Into<Address>,
+        metadata: Option<AddressMetadata>,
+    ) -> WorkerBuilderOneAddress<W> {
         WorkerBuilderOneAddress {
             incoming_ac: Arc::new(AllowAll),
             outgoing_ac: Arc::new(AllowAll),
             worker: self.worker,
             address: address.into(),
-            metadata: None,
+            metadata,
         }
     }
 
@@ -48,7 +77,6 @@ where
         WorkerBuilderMultipleAddresses {
             mailboxes,
             worker: self.worker,
-            metadata_list: vec![],
         }
     }
 }
@@ -59,72 +87,15 @@ where
 {
     mailboxes: Mailboxes,
     worker: W,
-    metadata_list: Vec<AddressAndMetadata>,
 }
 
 impl<W> WorkerBuilderMultipleAddresses<W>
 where
     W: Worker<Context = Context>,
 {
-    /// Mark the provided address as terminal
-    pub fn terminal(self, address: impl Into<Address>) -> Self {
-        self.terminal_with_attributes(address.into(), vec![])
-    }
-
-    /// Mark the provided address as terminal
-    pub fn terminal_with_attributes(
-        mut self,
-        address: impl Into<Address>,
-        attributes: Vec<(String, String)>,
-    ) -> Self {
-        let address = address.into();
-        let metadata = self.metadata_list.iter_mut().find(|m| m.address == address);
-
-        if let Some(metadata) = metadata {
-            metadata.metadata.attributes = attributes;
-            metadata.metadata.is_terminal = true;
-        } else {
-            self.metadata_list.push(AddressAndMetadata {
-                address,
-                metadata: AddressMetadata {
-                    is_terminal: true,
-                    attributes,
-                },
-            });
-        }
-        self
-    }
-
-    /// Adds metadata attribute for the provided address
-    pub fn with_metadata_attribute(
-        mut self,
-        address: impl Into<Address>,
-        key: impl Into<String>,
-        value: impl Into<String>,
-    ) -> Self {
-        let address = address.into();
-        let metadata = self.metadata_list.iter_mut().find(|m| m.address == address);
-
-        if let Some(metadata) = metadata {
-            metadata
-                .metadata
-                .attributes
-                .push((key.into(), value.into()));
-        } else {
-            self.metadata_list.push(AddressAndMetadata {
-                address,
-                metadata: AddressMetadata {
-                    is_terminal: false,
-                    attributes: vec![(key.into(), value.into())],
-                },
-            });
-        }
-        self
-    }
-
     /// Consume this builder and start a new Ockam [`Worker`] from the given context
     pub async fn start(self, context: &Context) -> Result<()> {
-        start(context, self.mailboxes, self.worker, self.metadata_list).await
+        start(context, self.mailboxes, self.worker).await
     }
 }
 
@@ -136,55 +107,38 @@ where
     outgoing_ac: Arc<dyn OutgoingAccessControl>,
     address: Address,
     worker: W,
-    metadata: Option<AddressAndMetadata>,
+    metadata: Option<AddressMetadata>,
 }
 
 impl<W> WorkerBuilderOneAddress<W>
 where
     W: Worker<Context = Context>,
 {
-    /// Mark the address as terminal
-    pub fn terminal(self) -> Self {
-        self.terminal_with_attributes(vec![])
-    }
-
-    /// Mark the address as terminal
-    pub fn terminal_with_attributes(mut self, attributes: Vec<(String, String)>) -> Self {
-        if let Some(metadata) = self.metadata.as_mut() {
-            metadata.metadata.is_terminal = true;
-            metadata.metadata.attributes = attributes;
-        } else {
-            self.metadata = Some(AddressAndMetadata {
-                address: self.address.clone(),
-                metadata: AddressMetadata {
-                    is_terminal: true,
-                    attributes,
-                },
-            });
-        }
+    /// Mark the provided address as terminal
+    pub fn terminal(mut self) -> Self {
+        self.metadata
+            .get_or_insert(AddressMetadata {
+                is_terminal: false,
+                attributes: vec![],
+            })
+            .is_terminal = true;
         self
     }
 
-    /// Adds metadata attribute
+    /// Adds metadata attribute for the provided address
     pub fn with_metadata_attribute(
         mut self,
         key: impl Into<String>,
         value: impl Into<String>,
     ) -> Self {
-        if let Some(metadata) = self.metadata.as_mut() {
-            metadata
-                .metadata
-                .attributes
-                .push((key.into(), value.into()));
-        } else {
-            self.metadata = Some(AddressAndMetadata {
-                address: self.address.clone(),
-                metadata: AddressMetadata {
-                    is_terminal: false,
-                    attributes: vec![(key.into(), value.into())],
-                },
-            });
-        }
+        self.metadata
+            .get_or_insert(AddressMetadata {
+                is_terminal: false,
+                attributes: vec![],
+            })
+            .attributes
+            .push((key.into(), value.into()));
+
         self
     }
 
@@ -192,9 +146,16 @@ where
     pub async fn start(self, context: &Context) -> Result<()> {
         start(
             context,
-            Mailboxes::main(self.address, self.incoming_ac, self.outgoing_ac),
+            Mailboxes::new(
+                Mailbox::new(
+                    self.address,
+                    self.metadata,
+                    self.incoming_ac,
+                    self.outgoing_ac,
+                ),
+                vec![],
+            ),
             self.worker,
-            self.metadata.map(|m| vec![m]).unwrap_or_default(),
         )
         .await
     }
@@ -242,31 +203,24 @@ where
 }
 
 /// Consume this builder and start a new Ockam [`Worker`] from the given context
-async fn start<W>(
-    context: &Context,
-    mailboxes: Mailboxes,
-    worker: W,
-    metadata: Vec<AddressAndMetadata>,
-) -> Result<()>
+async fn start<W>(context: &Context, mailboxes: Mailboxes, worker: W) -> Result<()>
 where
     W: Worker<Context = Context>,
 {
     debug!(
         "Initializing ockam worker '{}' with access control in:{:?} out:{:?}",
-        mailboxes.main_address(),
-        mailboxes.main_mailbox().incoming_access_control(),
-        mailboxes.main_mailbox().outgoing_access_control(),
+        mailboxes.primary_address(),
+        mailboxes.primary_mailbox().incoming_access_control(),
+        mailboxes.primary_mailbox().outgoing_access_control(),
     );
 
-    let addresses = mailboxes.addresses();
-
     // Pass it to the context
-    let (ctx, sender, ctrl_rx) = context.copy_with_mailboxes(mailboxes);
+    let (ctx, sender, ctrl_rx) = context.new_with_mailboxes(mailboxes, ContextMode::Attached);
 
     debugger::log_inherit_context("WORKER", context, &ctx);
 
-    let router = context.router();
-    router.start_worker(addresses, sender, false, metadata, context.mailbox_count())?;
+    let router = context.router()?;
+    router.add_worker(ctx.mailboxes(), sender, false, context.mailbox_count())?;
 
     // Then initialise the worker message relay
     WorkerRelay::init(context.runtime(), worker, ctx, ctrl_rx);

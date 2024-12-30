@@ -351,11 +351,11 @@ impl InMemoryNode {
                 if kind.eq(e.kind()) {
                     match e.kind() {
                         KafkaServiceKind::Inlet => {
-                            ctx.stop_worker(address.clone()).await?;
+                            ctx.stop_address(address.clone())?;
                         }
                         KafkaServiceKind::Outlet => {
-                            ctx.stop_worker(KAFKA_OUTLET_INTERCEPTOR_ADDRESS).await?;
-                            ctx.stop_worker(KAFKA_OUTLET_BOOTSTRAP_ADDRESS).await?;
+                            ctx.stop_address(KAFKA_OUTLET_INTERCEPTOR_ADDRESS)?;
+                            ctx.stop_address(KAFKA_OUTLET_BOOTSTRAP_ADDRESS)?;
                         }
                     }
                     self.registry.kafka_services.remove(&address).await;

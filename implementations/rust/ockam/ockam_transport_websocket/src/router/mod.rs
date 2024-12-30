@@ -81,11 +81,13 @@ impl WebSocketRouter {
         let mailboxes = Mailboxes::new(
             Mailbox::new(
                 main_addr.clone(),
+                None,
                 Arc::new(AllowAll), // FIXME: @ac
                 Arc::new(AllowAll), // FIXME: @ac
             ),
             vec![Mailbox::new(
                 api_addr,
+                None,
                 Arc::new(AllowAll), // FIXME: @ac
                 Arc::new(AllowAll), // FIXME: @ac
             )],
@@ -117,8 +119,7 @@ impl Worker for WebSocketRouter {
     type Context = Context;
 
     async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
-        ctx.set_cluster(crate::CLUSTER_NAME).await?;
-        Ok(())
+        ctx.set_cluster(crate::CLUSTER_NAME)
     }
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Any>) -> Result<()> {

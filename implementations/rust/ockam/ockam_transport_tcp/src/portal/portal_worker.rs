@@ -177,12 +177,14 @@ impl TcpPortalWorker {
 
         let internal_mailbox = Mailbox::new(
             addresses.sender_internal,
+            None,
             Arc::new(AllowSourceAddress(addresses.receiver_internal)),
             Arc::new(DenyAll),
         );
 
         let remote_mailbox = Mailbox::new(
             addresses.sender_remote,
+            None,
             incoming_access_control,
             outgoing_access_control,
         );
@@ -238,12 +240,14 @@ impl TcpPortalWorker {
 
         let remote = Mailbox::new(
             self.addresses.receiver_remote.clone(),
+            None,
             Arc::new(DenyAll),
             self.outgoing_access_control.clone(),
         );
 
         let internal = Mailbox::new(
             self.addresses.receiver_internal.clone(),
+            None,
             Arc::new(DenyAll),
             Arc::new(AllowOnwardAddress(self.addresses.sender_internal.clone())),
         );
@@ -278,10 +282,9 @@ impl TcpPortalWorker {
     }
 
     #[instrument(skip_all)]
-    async fn stop_receiver(&self, ctx: &Context) -> Result<()> {
+    fn stop_receiver(&self, ctx: &Context) -> Result<()> {
         if ctx
-            .stop_processor(self.addresses.receiver_remote.clone())
-            .await
+            .stop_address(self.addresses.receiver_remote.clone())
             .is_ok()
         {
             debug!(
@@ -295,9 +298,8 @@ impl TcpPortalWorker {
     }
 
     #[instrument(skip_all)]
-    async fn stop_sender(&self, ctx: &Context) -> Result<()> {
-        ctx.stop_worker(self.addresses.sender_internal.clone())
-            .await
+    fn stop_sender(&self, ctx: &Context) -> Result<()> {
+        ctx.stop_address(self.addresses.sender_internal.clone())
     }
 
     /// Start the portal disconnection process
@@ -314,20 +316,20 @@ impl TcpPortalWorker {
             // connection and shut down both processor and worker
             DisconnectionReason::FailedTx => {
                 self.notify_remote_about_disconnection(ctx).await?;
-                self.stop_receiver(ctx).await?;
+                self.stop_receiver(ctx)?;
                 // Sleep, so that if connection is dropped on both sides at the same time, the other
                 // side had time to notify us about the closure. Otherwise, the message won't be
                 // delivered which can lead to a warning message from a secure channel (or whatever
                 // is used to deliver the message). Can be removed though
                 ctx.sleep(Duration::from_secs(2)).await;
-                self.stop_sender(ctx).await?;
+                self.stop_sender(ctx)?;
             }
             // Packets were dropped while traveling to us, let's notify the other end about dropped
             // connection and
             DisconnectionReason::InvalidCounter => {
                 self.notify_remote_about_disconnection(ctx).await?;
-                self.stop_receiver(ctx).await?;
-                self.stop_sender(ctx).await?;
+                self.stop_receiver(ctx)?;
+                self.stop_sender(ctx)?;
             }
             // We couldn't read data from the tcp connection
             // Receiver should have already notified the other end and should shut down itself
@@ -337,13 +339,13 @@ impl TcpPortalWorker {
                 // delivered which can lead to a warning message from a secure channel (or whatever
                 // is used to deliver the message). Can be removed though
                 ctx.sleep(Duration::from_secs(2)).await;
-                self.stop_sender(ctx).await?;
+                self.stop_sender(ctx)?;
             }
             // Other end notifies us that the tcp connection is dropped
             // Let's shut down both processor and worker
             DisconnectionReason::Remote => {
-                self.stop_receiver(ctx).await?;
-                self.stop_sender(ctx).await?;
+                self.stop_receiver(ctx)?;
+                self.stop_sender(ctx)?;
             }
         }
 

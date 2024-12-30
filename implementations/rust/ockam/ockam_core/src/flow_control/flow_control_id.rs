@@ -7,7 +7,7 @@ use minicbor::{CborLen, Decode, Encode};
 use serde::{Deserialize, Serialize};
 
 /// Unique random identifier of a Flow Control
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Encode, Decode, CborLen)]
+#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Encode, Decode, CborLen)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct FlowControlId {

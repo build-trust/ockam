@@ -32,12 +32,14 @@ impl RemoteRelay {
     ) -> Mailboxes {
         let main_internal = Mailbox::new(
             addresses.main_internal,
+            None,
             Arc::new(DenyAll),
             outgoing_access_control,
         );
 
         let main_remote = Mailbox::new(
             addresses.main_remote,
+            None,
             Arc::new(AllowAll),
             Arc::new(AllowAll),
         );
@@ -72,7 +74,7 @@ impl RemoteRelay {
         let addresses = Addresses::generate(RelayType::Static);
 
         let mut callback_ctx = ctx
-            .new_detached_with_mailboxes(Mailboxes::main(
+            .new_detached_with_mailboxes(Mailboxes::primary(
                 addresses.completion_callback.clone(),
                 Arc::new(AllowSourceAddress(addresses.main_remote.clone())),
                 Arc::new(DenyAll),
@@ -117,7 +119,7 @@ impl RemoteRelay {
         let addresses = Addresses::generate(RelayType::Ephemeral);
 
         let mut callback_ctx = ctx
-            .new_detached_with_mailboxes(Mailboxes::main(
+            .new_detached_with_mailboxes(Mailboxes::primary(
                 addresses.completion_callback.clone(),
                 Arc::new(AllowSourceAddress(addresses.main_remote.clone())),
                 Arc::new(DenyAll),

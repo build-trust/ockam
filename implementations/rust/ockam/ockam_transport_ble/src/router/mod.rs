@@ -110,7 +110,7 @@ impl Worker for BleRouter {
     type Message = Any;
 
     async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
-        ctx.set_cluster(crate::CLUSTER_NAME).await?;
+        ctx.set_cluster(crate::CLUSTER_NAME)?;
         Ok(())
     }
 
@@ -167,9 +167,15 @@ impl BleRouter {
 
         // TODO: @ac
         let mailboxes = Mailboxes::new(
-            Mailbox::new(main_addr.clone(), Arc::new(AllowAll), Arc::new(AllowAll)),
+            Mailbox::new(
+                main_addr.clone(),
+                None,
+                Arc::new(AllowAll),
+                Arc::new(AllowAll),
+            ),
             vec![Mailbox::new(
                 api_addr,
+                None,
                 Arc::new(AllowAll),
                 Arc::new(AllowAll),
             )],
