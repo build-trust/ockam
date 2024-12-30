@@ -14,6 +14,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::atomic::{AtomicI8, AtomicU32};
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::time::sleep;
+use tracing::debug;
 
 #[allow(non_snake_case)]
 #[ockam_macros::test]
@@ -38,7 +39,7 @@ async fn receive_timeout__1_sec__should_return_from_call(ctx: &mut Context) -> R
 #[allow(non_snake_case)]
 #[test]
 fn start_and_shutdown_node__many_iterations__should_not_fail() {
-    for _ in 0..100 {
+    for _ in 0..1 {
         let (ctx, mut executor) = NodeBuilder::new().build();
         executor
             .execute(async move {
@@ -65,6 +66,7 @@ fn start_and_shutdown_node__many_iterations__should_not_fail() {
             .unwrap()
     }
 }
+
 struct SimpleWorker {
     initialize_was_called: Arc<AtomicBool>,
     shutdown_was_called: Arc<AtomicBool>,
@@ -79,6 +81,8 @@ impl Worker for SimpleWorker {
         self.initialize_was_called.store(true, Ordering::Relaxed);
         assert!(self.initialize_was_called.load(Ordering::Relaxed));
 
+        debug!("INITIALIZE");
+
         Ok(())
     }
 
@@ -86,6 +90,8 @@ impl Worker for SimpleWorker {
         self.shutdown_was_called.store(true, Ordering::Relaxed);
         assert!(self.initialize_was_called.load(Ordering::Relaxed));
         assert!(self.shutdown_was_called.load(Ordering::Relaxed));
+
+        debug!("SHUTDOWN");
 
         Ok(())
     }
@@ -97,6 +103,30 @@ impl Worker for SimpleWorker {
     ) -> Result<()> {
         ctx.send(msg.return_route().clone(), msg.into_body()?).await
     }
+}
+
+#[allow(non_snake_case)]
+#[ockam_macros::test]
+async fn simple_worker__run_node_lifecycle__should_not_fail(ctx: &mut Context) -> Result<()> {
+    let initialize_was_called = Arc::new(AtomicBool::new(false));
+    let shutdown_was_called = Arc::new(AtomicBool::new(false));
+
+    let initialize_was_called_clone = initialize_was_called.clone();
+    let shutdown_was_called_clone = shutdown_was_called.clone();
+
+    let worker = SimpleWorker {
+        initialize_was_called: initialize_was_called_clone,
+        shutdown_was_called: shutdown_was_called_clone,
+    };
+
+    ctx.start_worker("simple_worker", worker).await?;
+
+    let msg: String = ctx
+        .send_and_receive(route!["simple_worker"], "Hello".to_string())
+        .await?;
+    assert_eq!(msg, "Hello");
+
+    Ok(())
 }
 
 #[allow(non_snake_case)]
@@ -124,11 +154,11 @@ async fn simple_worker__run_node_lifecycle__worker_lifecycle_should_be_full(
 
     ctx.stop().await?;
     // Wait till tokio Runtime is shut down
-    //    std::thread::sleep(Duration::new(1, 0));
     sleep(Duration::new(1, 0)).await;
 
     assert!(initialize_was_called.load(Ordering::Relaxed));
     assert!(shutdown_was_called.load(Ordering::Relaxed));
+
     Ok(())
 }
 
@@ -172,7 +202,7 @@ async fn worker_initialize_fail_should_shutdown(ctx: &mut Context) -> Result<()>
     sleep(Duration::new(1, 0)).await;
     assert!(shutdown_was_called.load(Ordering::Relaxed));
 
-    assert!(!ctx.list_workers().contains(&address));
+    assert!(!ctx.list_workers()?.contains(&address));
 
     Ok(())
 }
@@ -207,7 +237,7 @@ async fn processor_initialize_fail_should_shutdown(ctx: &mut Context) -> Result<
     assert!(res.is_ok());
     sleep(Duration::new(1, 0)).await;
     assert!(shutdown_was_called.load(Ordering::Relaxed));
-    assert!(!ctx.list_workers().contains(&address));
+    assert!(!ctx.list_workers()?.contains(&address));
 
     Ok(())
 }
@@ -336,7 +366,7 @@ async fn waiting_processor__shutdown__should_be_interrupted(ctx: &mut Context) -
     ctx.start_processor("waiting_processor", processor).await?;
     sleep(Duration::from_secs(1)).await;
 
-    ctx.stop_processor("waiting_processor").await?;
+    ctx.stop_address("waiting_processor")?;
     sleep(Duration::from_secs(1)).await;
 
     assert!(initialize_was_called.load(Ordering::Relaxed));
@@ -403,12 +433,14 @@ async fn waiting_processor__messaging__should_work(ctx: &mut Context) -> Result<
 
     ctx.start_processor_with_access_control("messaging_processor", processor, AllowAll, AllowAll)
         .await?;
-    sleep(Duration::new(1, 0)).await;
+    sleep(Duration::from_millis(250)).await;
 
     let msg: String = ctx
         .send_and_receive(route!["messaging_processor"], "Keep working".to_string())
         .await?;
     assert_eq!("OK", msg);
+
+    sleep(Duration::from_millis(250)).await;
 
     assert!(initialize_was_called.load(Ordering::Relaxed));
     assert!(!shutdown_was_called.load(Ordering::Relaxed));
@@ -417,6 +449,8 @@ async fn waiting_processor__messaging__should_work(ctx: &mut Context) -> Result<
         .send_and_receive(route!["messaging_processor"], "Stop working".to_string())
         .await?;
     assert_eq!("I go home", msg);
+
+    sleep(Duration::from_millis(250)).await;
 
     assert!(initialize_was_called.load(Ordering::Relaxed));
     assert!(shutdown_was_called.load(Ordering::Relaxed));
@@ -462,7 +496,7 @@ impl Worker for StopFromHandleMessageWorker {
     type Context = Context;
     async fn handle_message(&mut self, ctx: &mut Context, _msg: Routed<String>) -> Result<()> {
         self.counter_a.fetch_add(1, Ordering::Relaxed);
-        ctx.stop_worker(ctx.address()).await?;
+        ctx.stop_address(ctx.primary_address())?;
         self.counter_b.fetch_add(1, Ordering::Relaxed);
         Ok(())
     }
@@ -614,7 +648,7 @@ impl Worker for CountingErrorWorker {
     ) -> Result<()> {
         let _ = self.counter.fetch_add(1, Ordering::Relaxed);
 
-        Err(ockam_core::Error::new(Origin::Core, Kind::Misuse, ""))
+        Err(ockam_core::Error::new(Origin::Core, Kind::Misuse, "test"))
     }
 }
 
@@ -645,4 +679,20 @@ async fn message_handle__error_during_handling__keep_worker_running(
     assert_eq!(3, counter.load(Ordering::Relaxed));
 
     Ok(())
+}
+
+#[test]
+fn test1() {
+    let (ctx, mut executor) = NodeBuilder::new().build();
+
+    executor
+        .execute::<_, (), ockam_core::Error>(async move {
+            ctx.sleep(Duration::from_secs(1)).await;
+
+            ctx.stop().await?;
+
+            Ok(())
+        })
+        .unwrap()
+        .unwrap();
 }

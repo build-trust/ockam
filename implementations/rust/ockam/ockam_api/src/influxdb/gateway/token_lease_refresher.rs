@@ -25,7 +25,7 @@ impl TokenLeaseRefresher {
         lease_issuer_route: MultiAddr,
     ) -> Result<TokenLeaseRefresher, Error> {
         let token = Arc::new(RwLock::new(None));
-        let mailboxes = Mailboxes::main(
+        let mailboxes = Mailboxes::primary(
             Address::random_tagged("LeaseRetriever"),
             Arc::new(DenyAll),
             Arc::new(AllowAll),

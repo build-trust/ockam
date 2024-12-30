@@ -91,7 +91,7 @@ impl Connection {
 
         if let Some(tcp_connection) = self.tcp_connection.as_ref() {
             let address = tcp_connection.sender_address().clone();
-            if let Err(error) = node_manager.tcp_transport.disconnect(address.clone()).await {
+            if let Err(error) = node_manager.tcp_transport.disconnect(address.clone()) {
                 match error.code().kind {
                     Kind::NotFound => {
                         debug!("cannot find and disconnect tcp worker `{tcp_connection}`");
@@ -306,7 +306,7 @@ impl ConnectionBuilder {
                     // last piece only if it's a terminal (a service connecting to another node)
                     if last_pass && is_last {
                         let is_terminal = ctx
-                            .get_metadata(address.clone())
+                            .get_metadata(address.clone())?
                             .map(|m| m.is_terminal)
                             .unwrap_or(false);
 

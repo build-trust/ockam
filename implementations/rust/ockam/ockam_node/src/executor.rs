@@ -1,11 +1,9 @@
-#[cfg(feature = "std")]
-use crate::runtime;
-use crate::{
-    router::{Router, SenderPair},
-    tokio::runtime::Runtime,
-};
+use crate::{router::Router, tokio::runtime::Runtime};
 use core::future::Future;
-use ockam_core::{compat::sync::Arc, Address, Result};
+use ockam_core::{
+    compat::sync::{Arc, Weak},
+    Result,
+};
 
 #[cfg(feature = "metrics")]
 use crate::metrics::Metrics;
@@ -25,6 +23,13 @@ use ockam_core::{
     Error,
 };
 
+// TODO: Either make this the only one place we create runtime, or vice verse: remove it from here
+#[cfg(feature = "std")]
+pub(crate) static RUNTIME: once_cell::sync::Lazy<ockam_core::compat::sync::Mutex<Option<Runtime>>> =
+    once_cell::sync::Lazy::new(|| {
+        ockam_core::compat::sync::Mutex::new(Some(Runtime::new().unwrap()))
+    });
+
 /// Underlying Ockam node executor
 ///
 /// This type is a small wrapper around an inner async runtime (`tokio` by
@@ -32,7 +37,7 @@ use ockam_core::{
 /// `ockam::node` function annotation instead!
 pub struct Executor {
     /// Reference to the runtime needed to spawn tasks
-    rt: Arc<Runtime>,
+    runtime: Arc<Runtime>,
     /// Application router
     router: Arc<Router>,
     /// Metrics collection endpoint
@@ -42,37 +47,24 @@ pub struct Executor {
 
 impl Executor {
     /// Create a new Ockam node [`Executor`] instance
-    pub fn new(rt: Arc<Runtime>, flow_controls: &FlowControls) -> Self {
-        let router = Arc::new(Router::new(flow_controls));
+    pub fn new(runtime: Arc<Runtime>, flow_controls: &FlowControls) -> Self {
+        let router = Arc::new(Router::new(runtime.handle().clone(), flow_controls));
         #[cfg(feature = "metrics")]
-        let metrics = Metrics::new(&rt, router.get_metrics_readout());
+        let metrics = Metrics::new(runtime.handle().clone(), router.get_metrics_readout());
         Self {
-            rt,
+            runtime,
             router,
             #[cfg(feature = "metrics")]
             metrics,
         }
     }
 
-    /// Get access to the internal message sender
-    pub(crate) fn router(&self) -> Arc<Router> {
-        self.router.clone()
-    }
-
-    /// Initialize the root application worker
-    pub(crate) fn initialize_system<S: Into<Address>>(
-        &self,
-        address: S,
-        senders: SenderPair,
-    ) -> Result<()> {
-        trace!("Initializing node executor");
-        self.router.init(address.into(), senders)
+    /// Get access to the Router
+    pub(crate) fn router(&self) -> Weak<Router> {
+        Arc::downgrade(&self.router)
     }
 
     /// Initialise and run the Ockam node executor context
-    ///
-    /// In this background this launches async execution of the Ockam
-    /// router, while blocking execution on the provided future.
     ///
     /// Any errors encountered by the router or provided application
     /// code will be returned from this function.
@@ -87,16 +79,11 @@ impl Executor {
         #[cfg(feature = "metrics")]
         let alive = Arc::new(AtomicBool::from(true));
         #[cfg(feature = "metrics")]
-        self.rt.spawn(
-            self.metrics
-                .clone()
-                .run(alive.clone())
-                .with_current_context(),
-        );
+        self.metrics.clone().spawn(alive.clone());
 
         // Spawn user code second
         let future = Executor::wrapper(self.router.clone(), future);
-        let join_body = self.rt.spawn(future.with_current_context());
+        let join_body = self.runtime.spawn(future.with_current_context());
 
         // Shut down metrics collector
         #[cfg(feature = "metrics")]
@@ -104,51 +91,12 @@ impl Executor {
 
         // Last join user code
         let res = self
-            .rt
+            .runtime
             .block_on(join_body)
             .map_err(|e| Error::new(Origin::Executor, Kind::Unknown, e))?;
 
-        Ok(res)
-    }
-
-    /// Initialise and run the Ockam node executor context
-    ///
-    /// In this background this launches async execution of the Ockam
-    /// router, while blocking execution on the provided future.
-    ///
-    /// Any errors encountered by the router or provided application
-    /// code will be returned from this function.
-    ///
-    /// Don't abort the router in case of a failure
-    #[cfg(feature = "std")]
-    pub fn execute_no_abort<F, T>(&mut self, future: F) -> Result<F::Output>
-    where
-        F: Future<Output = T> + Send + 'static,
-        T: Send + 'static,
-    {
-        // Spawn the metrics collector first
-        #[cfg(feature = "metrics")]
-        let alive = Arc::new(AtomicBool::from(true));
-        #[cfg(feature = "metrics")]
-        self.rt.spawn(
-            self.metrics
-                .clone()
-                .run(alive.clone())
-                .with_current_context(),
-        );
-
-        // Spawn user code second
-        let join_body = self.rt.spawn(future.with_current_context());
-
-        // Shut down metrics collector
-        #[cfg(feature = "metrics")]
-        alive.fetch_or(true, Ordering::Acquire);
-
-        // Last join user code
-        let res = self
-            .rt
-            .block_on(join_body)
-            .map_err(|e| Error::new(Origin::Executor, Kind::Unknown, e))?;
+        // TODO: Shutdown Runtime if we exclusively own it. Which should be always except when we
+        //  run multiple nodes inside the same process
 
         Ok(res)
     }
@@ -161,17 +109,11 @@ impl Executor {
     {
         match future.await {
             Ok(val) => {
+                // TODO: Add timeout here
                 router.wait_termination().await;
                 Ok(val)
             }
             Err(e) => {
-                // We earlier sent the AbortNode message to the router here.
-                // It failed because the router state was not set to `Stopping`
-                // But sending Graceful shutdown message works because, it internally does that.
-                //
-                // I think way AbortNode is implemented right now, it is more of an
-                // internal/private message not meant to be directly used, without changing the
-                // router state.
                 if let Err(error) = router.stop_graceful(1).await {
                     error!("Failed to stop gracefully: {}", error);
                 }
@@ -189,7 +131,7 @@ impl Executor {
         F: Future + Send + 'static,
         F::Output: Send + 'static,
     {
-        let lock = runtime::RUNTIME.lock().unwrap();
+        let lock = RUNTIME.lock().unwrap();
         let rt = lock.as_ref().expect("Runtime was consumed");
         let join_body = rt.spawn(future.with_current_context());
         rt.block_on(join_body.with_current_context())
@@ -210,12 +152,12 @@ impl Executor {
         F: Future + Send + 'static,
         F::Output: Send + 'static,
     {
-        let _join = self.rt.spawn(future);
+        let _join = self.runtime.spawn(future);
         let router = self.router.clone();
 
         // Block this task executing the primary message router,
         // returning any critical failures that it encounters.
-        crate::tokio::runtime::execute(&self.rt, async move {
+        crate::tokio::runtime::execute(&self.runtime, async move {
             router.wait_termination().await;
         });
         Ok(())

@@ -25,7 +25,7 @@ impl UdpTransport {
     }
 
     /// Stop a puncture
-    pub async fn stop_puncture(&self, puncture: UdpPuncture) -> Result<()> {
-        puncture.stop(&self.ctx).await
+    pub fn stop_puncture(&self, puncture: UdpPuncture) -> Result<()> {
+        puncture.stop(&self.ctx)
     }
 }

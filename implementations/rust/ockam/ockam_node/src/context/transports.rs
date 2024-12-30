@@ -145,7 +145,7 @@ mod tests {
             Ok(Address::new(LOCAL, address.inner()))
         }
 
-        async fn disconnect(&self, _address: Address) -> Result<()> {
+        fn disconnect(&self, _address: Address) -> Result<()> {
             Ok(())
         }
     }

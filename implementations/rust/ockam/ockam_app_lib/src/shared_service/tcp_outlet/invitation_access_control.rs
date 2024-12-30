@@ -190,7 +190,7 @@ pub struct InvitationOutgoingAccessControl {
 #[async_trait]
 impl OutgoingAccessControl for InvitationOutgoingAccessControl {
     async fn is_authorized(&self, relay_message: &RelayMessage) -> ockam_core::Result<bool> {
-        let identifier = match Abac::get_outgoing_identifier(&self.ctx, relay_message).await? {
+        let identifier = match Abac::get_outgoing_identifier(&self.ctx, relay_message)? {
             Some(identifier) => identifier,
             None => {
                 debug!("identity identifier not found; access denied");

@@ -28,7 +28,7 @@ impl<M: Message + Clone> DelayedEvent<M> {
         msg: M,
     ) -> Result<Self> {
         let destination_addr = destination_addr.into();
-        let mailboxes = Mailboxes::main(
+        let mailboxes = Mailboxes::primary(
             Address::random_tagged("DelayedEvent.create"),
             Arc::new(DenyAll),
             Arc::new(AllowOnwardAddress(destination_addr.clone())),
@@ -46,8 +46,8 @@ impl<M: Message + Clone> DelayedEvent<M> {
     }
 
     /// Address used to send messages to destination address
-    pub fn address(&self) -> Address {
-        self.ctx.address()
+    pub fn address(&self) -> &Address {
+        self.ctx.primary_address()
     }
 }
 
@@ -60,7 +60,7 @@ impl<M: Message + Clone> DelayedEvent<M> {
     }
 
     /// Schedule heartbeat. Cancels already scheduled heartbeat if there is such heartbeat
-    pub async fn schedule(&mut self, duration: Duration) -> Result<()> {
+    pub fn schedule(&mut self, duration: Duration) -> Result<()> {
         self.cancel();
 
         let destination_addr = self.destination_addr.clone();
@@ -136,11 +136,11 @@ mod tests {
 
         ctx.start_worker("counting_worker", worker).await?;
 
-        heartbeat.schedule(Duration::from_millis(100)).await?;
+        heartbeat.schedule(Duration::from_millis(100))?;
         sleep(Duration::from_millis(150)).await;
-        heartbeat.schedule(Duration::from_millis(100)).await?;
+        heartbeat.schedule(Duration::from_millis(100))?;
         sleep(Duration::from_millis(150)).await;
-        heartbeat.schedule(Duration::from_millis(100)).await?;
+        heartbeat.schedule(Duration::from_millis(100))?;
         sleep(Duration::from_millis(150)).await;
 
         assert_eq!(3, msgs_count.load(Ordering::Relaxed));
@@ -160,9 +160,9 @@ mod tests {
 
         ctx.start_worker("counting_worker", worker).await?;
 
-        heartbeat.schedule(Duration::from_millis(100)).await?;
-        heartbeat.schedule(Duration::from_millis(100)).await?;
-        heartbeat.schedule(Duration::from_millis(100)).await?;
+        heartbeat.schedule(Duration::from_millis(100))?;
+        heartbeat.schedule(Duration::from_millis(100))?;
+        heartbeat.schedule(Duration::from_millis(100))?;
         sleep(Duration::from_millis(150)).await;
 
         assert_eq!(1, msgs_count.load(Ordering::Relaxed));
@@ -182,9 +182,9 @@ mod tests {
 
         ctx.start_worker("counting_worker", worker).await?;
 
-        heartbeat.schedule(Duration::from_millis(100)).await?;
+        heartbeat.schedule(Duration::from_millis(100))?;
         sleep(Duration::from_millis(150)).await;
-        heartbeat.schedule(Duration::from_millis(200)).await?;
+        heartbeat.schedule(Duration::from_millis(200))?;
         sleep(Duration::from_millis(100)).await;
         heartbeat.cancel();
         sleep(Duration::from_millis(300)).await;
@@ -206,9 +206,9 @@ mod tests {
 
         ctx.start_worker("counting_worker", worker).await?;
 
-        heartbeat.schedule(Duration::from_millis(100)).await?;
+        heartbeat.schedule(Duration::from_millis(100))?;
         sleep(Duration::from_millis(150)).await;
-        heartbeat.schedule(Duration::from_millis(200)).await?;
+        heartbeat.schedule(Duration::from_millis(200))?;
         sleep(Duration::from_millis(100)).await;
         drop(heartbeat);
         sleep(Duration::from_millis(300)).await;

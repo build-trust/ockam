@@ -33,6 +33,7 @@ impl RelayService {
             options.setup_flow_control_for_relay_service(ctx.flow_controls(), alias);
             additional_mailboxes.push(Mailbox::new(
                 alias.clone(),
+                None,
                 options.service_incoming_access_control.clone(),
                 Arc::new(DenyAll),
             ));
@@ -45,6 +46,7 @@ impl RelayService {
             .with_mailboxes(Mailboxes::new(
                 Mailbox::new(
                     address.clone(),
+                    None,
                     service_incoming_access_control,
                     Arc::new(DenyAll),
                 ),

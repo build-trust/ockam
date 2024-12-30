@@ -142,8 +142,8 @@ impl UdpTransport {
     }
 
     /// Interrupt an active TCP connection given its Sender `Address`
-    pub async fn unbind(&self, address: impl Into<Address>) -> Result<()> {
-        self.ctx.stop_worker(address.into()).await
+    pub fn unbind(&self, address: impl Into<Address>) -> Result<()> {
+        self.ctx.stop_address(address.into())
     }
 }
 

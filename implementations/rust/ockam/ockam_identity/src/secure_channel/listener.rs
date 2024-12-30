@@ -70,7 +70,7 @@ impl Worker for SecureChannelListenerWorker {
         let addresses = Addresses::generate(Role::Responder);
         let flow_control_id = self.options.setup_flow_control_for_channel(
             ctx.flow_controls(),
-            ctx.address_ref(),
+            ctx.primary_address(),
             &addresses,
         );
         let decryptor_outgoing_access_control = self

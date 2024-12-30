@@ -129,8 +129,8 @@ impl Transport for TcpTransport {
         }
     }
 
-    async fn disconnect(&self, address: Address) -> Result<()> {
-        self.disconnect(address).await
+    fn disconnect(&self, address: Address) -> Result<()> {
+        self.disconnect(address)
     }
 }
 
@@ -145,7 +145,7 @@ mod tests {
     async fn test_resolve_address(ctx: &mut Context) -> Result<()> {
         let tcp = TcpTransport::create(ctx).await?;
         let tcp_address = "127.0.0.1:0";
-        let initial_workers = ctx.list_workers();
+        let initial_workers = ctx.list_workers()?;
         let listener = TcpListener::bind(tcp_address)
             .await
             .map_err(TransportError::from)?;
@@ -163,7 +163,7 @@ mod tests {
             .await?;
 
         // there are 2 additional workers
-        let mut additional_workers = ctx.list_workers();
+        let mut additional_workers = ctx.list_workers()?;
         additional_workers.retain(|w| !initial_workers.contains(w));
         assert_eq!(additional_workers.len(), 2);
 

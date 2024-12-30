@@ -75,7 +75,7 @@ impl UdpPunctureNegotiationListener {
                     "Error getting UDP public address for the responder: {}",
                     err
                 );
-                udp.unbind(udp_bind.sender_address().clone()).await?;
+                udp.unbind(udp_bind.sender_address().clone())?;
                 return Err(err);
             }
         };

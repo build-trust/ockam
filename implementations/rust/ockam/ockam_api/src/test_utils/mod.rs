@@ -2,7 +2,7 @@
 
 use crate::config::lookup::InternetAddress;
 use crate::nodes::service::{NodeManagerCredentialRetrieverOptions, NodeManagerTrustOptions};
-use ockam_node::{Context, NodeBuilder};
+use ockam_node::{Context, Executor, NodeBuilder};
 use sqlx::__rt::timeout;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::ops::Deref;
@@ -200,6 +200,7 @@ pub async fn start_tcp_echo_server() -> EchoServerHandle {
 }
 
 pub struct TestNode {
+    pub executor: Executor,
     pub context: Context,
     pub node_manager_handle: NodeManagerHandle,
 }
@@ -209,16 +210,14 @@ impl TestNode {
     /// needs be cleaned-up before a test is executed
     pub async fn clean() -> Result<()> {
         if let Some(configuration) = DatabaseConfiguration::postgres()? {
-            let db = SqlxDatabase::create_no_migration(&configuration)
-                .await
-                .unwrap();
+            let db = SqlxDatabase::create_no_migration(&configuration).await?;
             db.drop_all_postgres_tables().await?;
         };
         Ok(())
     }
 
     pub async fn create(runtime: Arc<Runtime>, listen_addr: Option<&str>) -> Self {
-        let (mut context, _executor) = NodeBuilder::new().with_runtime(runtime.clone()).build();
+        let (mut context, executor) = NodeBuilder::new().with_runtime(runtime).build();
         let node_manager_handle = start_manager_for_tests(
             &mut context,
             listen_addr,
@@ -233,6 +232,7 @@ impl TestNode {
         .expect("cannot start node manager");
 
         Self {
+            executor,
             context,
             node_manager_handle,
         }

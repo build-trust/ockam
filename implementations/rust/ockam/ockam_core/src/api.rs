@@ -125,7 +125,7 @@ impl<T: Serialize> Serialize for Reply<T> {
         match self {
             Reply::Successful(t) => t.serialize(serializer),
             Reply::Failed(e, Some(s)) => {
-                let mut map = HashMap::new();
+                let mut map: HashMap<&str, String> = Default::default();
                 map.insert("error", e.to_string());
                 map.insert("status", s.to_string());
                 serializer.collect_map(map)

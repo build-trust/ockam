@@ -127,7 +127,7 @@ impl InletSessionReplacer {
     }
 
     async fn create_impl(&mut self, node_manager: &NodeManager) -> Result<ReplacerOutcome> {
-        self.pause_inlet().await;
+        self.pause_inlet();
         self.close_connection(node_manager).await;
 
         let connection = node_manager
@@ -158,9 +158,7 @@ impl InletSessionReplacer {
         // Finally, attempt to create/update inlet using the new route
         let inlet_address = match self.inlet.clone() {
             Some(inlet) => {
-                inlet
-                    .unpause(&self.context, normalized_stripped_route.clone())
-                    .await?;
+                inlet.unpause(&self.context, normalized_stripped_route.clone())?;
 
                 inlet.processor_address().cloned()
             }
@@ -213,16 +211,16 @@ impl InletSessionReplacer {
         })
     }
 
-    async fn pause_inlet(&mut self) {
+    fn pause_inlet(&mut self) {
         if let Some(inlet) = self.inlet.as_mut() {
-            inlet.pause().await;
+            inlet.pause();
         }
     }
 
-    async fn close_inlet(&mut self) {
+    fn close_inlet(&mut self) {
         if let Some(inlet) = self.inlet.take() {
             // The previous inlet worker needs to be stopped:
-            let result = inlet.stop(&self.context).await;
+            let result = inlet.stop(&self.context);
 
             if let Err(err) = result {
                 error!(
@@ -290,7 +288,7 @@ impl SessionReplacer for InletSessionReplacer {
             return;
         };
 
-        self.close_inlet().await;
+        self.close_inlet();
         self.close_connection(&node_manager).await;
     }
 }
@@ -388,7 +386,7 @@ impl AdditionalSessionReplacer for InletSessionReplacer {
         additional_sc.update_remote_node_route(route![puncture.sender_address()])?;
 
         let new_route = route![additional_sc.clone()];
-        inlet.unpause(&self.context, new_route.clone()).await?;
+        inlet.unpause(&self.context, new_route.clone())?;
 
         self.additional_route = Some(new_route.clone());
 
@@ -402,20 +400,20 @@ impl AdditionalSessionReplacer for InletSessionReplacer {
             match self.main_route.as_ref() {
                 Some(main_route) if enable_fallback => {
                     // Switch Inlet to the main route
-                    let res = inlet.unpause(&self.context, main_route.clone()).await;
+                    let res = inlet.unpause(&self.context, main_route.clone());
 
                     if let Some(err) = res.err() {
                         error!("Error switching Inlet to the main route {}", err);
                     }
                 }
                 _ => {
-                    inlet.pause().await;
+                    inlet.pause();
                 }
             }
         }
 
         if let Some(secure_channel) = self.additional_secure_channel.take() {
-            let res = self.context.stop_worker(secure_channel).await;
+            let res = self.context.stop_address(secure_channel);
 
             if let Some(err) = res.err() {
                 error!("Error closing secure channel {}", err);
@@ -423,7 +421,7 @@ impl AdditionalSessionReplacer for InletSessionReplacer {
         }
 
         if let Some(puncture) = self.udp_puncture.take() {
-            let res = puncture.stop(&self.context).await;
+            let res = puncture.stop(&self.context);
 
             if let Some(err) = res.err() {
                 error!("Error stopping puncture {}", err);

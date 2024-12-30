@@ -361,7 +361,7 @@ impl SessionReplacer for RelaySessionReplacer {
         }
 
         if let Some(relay_address) = self.relay_worker_address.take() {
-            match self.context.stop_worker(relay_address.clone()).await {
+            match self.context.stop_address(relay_address.clone()) {
                 Ok(_) => {
                     debug!(%relay_address, "Successfully stopped relay");
                 }

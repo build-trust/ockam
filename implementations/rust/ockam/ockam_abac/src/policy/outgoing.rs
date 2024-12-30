@@ -45,7 +45,7 @@ impl OutgoingAccessControl for OutgoingPolicyAccessControl {
             return Ok(false);
         };
 
-        let identifier = match Abac::get_outgoing_identifier(&self.ctx, relay_msg).await? {
+        let identifier = match Abac::get_outgoing_identifier(&self.ctx, relay_msg)? {
             Some(identifier) => identifier,
             None => {
                 debug! {

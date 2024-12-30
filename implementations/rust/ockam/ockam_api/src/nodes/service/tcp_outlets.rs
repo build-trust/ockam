@@ -226,7 +226,6 @@ impl NodeManager {
             if let Err(e) = self
                 .tcp_transport
                 .stop_outlet(deleted_outlet.worker_addr.clone())
-                .await
             {
                 warn!(%worker_addr, %e, "Failed to stop outlet worker");
             }

@@ -375,10 +375,7 @@ impl Session {
                 .await;
             additional_state.shared_state.status.set_down();
 
-            _ = self
-                .ctx
-                .stop_worker(additional_state.collector_address)
-                .await;
+            _ = self.ctx.stop_address(additional_state.collector_address);
         }
     }
 
@@ -393,7 +390,7 @@ impl Session {
 
         // ping_receiver_handle task will shut down itself when Collector Worker drops the sender
 
-        _ = self.ctx.stop_worker(self.collector_address.clone()).await;
+        _ = self.ctx.stop_address(self.collector_address.clone());
     }
 
     /// Stop everything

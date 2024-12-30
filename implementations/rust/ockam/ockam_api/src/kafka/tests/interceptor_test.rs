@@ -82,13 +82,13 @@ async fn kafka_portal_worker__pieces_of_kafka_message__message_assembled(
     // send 2 distinct pieces and see if the kafka message is re-assembled back
     context
         .send(
-            route![portal_inlet_address.clone(), context.address()],
+            route![portal_inlet_address.clone(), context.primary_address()],
             PortalMessage::Payload(first_piece_of_payload, None).to_neutral_message()?,
         )
         .await?;
     context
         .send(
-            route![portal_inlet_address, context.address()],
+            route![portal_inlet_address, context.primary_address()],
             PortalMessage::Payload(second_piece_of_payload, None).to_neutral_message()?,
         )
         .await?;
@@ -127,7 +127,7 @@ async fn kafka_portal_worker__double_kafka_message__message_assembled(
     let double_payload = request_buffer.as_ref();
     context
         .send(
-            route![portal_inlet_address.clone(), context.address()],
+            route![portal_inlet_address.clone(), context.primary_address()],
             PortalMessage::Payload(double_payload, None).to_neutral_message()?,
         )
         .await?;
@@ -172,7 +172,7 @@ async fn kafka_portal_worker__bigger_than_limit_kafka_message__error(
     for chunk in huge_payload.chunks(MAX_PAYLOAD_SIZE) {
         let _error = context
             .send(
-                route![portal_inlet_address.clone(), context.address()],
+                route![portal_inlet_address.clone(), context.primary_address()],
                 PortalMessage::Payload(chunk, None).to_neutral_message()?,
             )
             .await;
@@ -314,7 +314,7 @@ async fn setup_only_worker(context: &mut Context, handle: &NodeManagerHandle) ->
     PortalInterceptorWorker::create_inlet_interceptor(
         context,
         None,
-        route![context.address()],
+        route![context.primary_address()],
         Arc::new(AllowAll),
         Arc::new(AllowAll),
         Arc::new(KafkaMessageInterceptorWrapper::new(
@@ -412,7 +412,7 @@ async fn kafka_portal_worker__metadata_exchange__response_changed(
     let portal_inlet_address = PortalInterceptorWorker::create_inlet_interceptor(
         context,
         None,
-        route![context.address()],
+        route![context.primary_address()],
         Arc::new(AllowAll),
         Arc::new(AllowAll),
         Arc::new(KafkaMessageInterceptorWrapper::new(
@@ -438,7 +438,7 @@ async fn kafka_portal_worker__metadata_exchange__response_changed(
 
     context
         .send(
-            route![portal_inlet_address, context.address()],
+            route![portal_inlet_address, context.primary_address()],
             PortalMessage::Payload(&request_buffer, None).to_neutral_message()?,
         )
         .await?;

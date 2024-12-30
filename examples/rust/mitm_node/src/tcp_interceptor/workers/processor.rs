@@ -59,20 +59,20 @@ impl Processor for TcpMitmProcessor {
     type Context = Context;
 
     async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
-        ctx.set_cluster(CLUSTER_NAME).await?;
+        ctx.set_cluster(CLUSTER_NAME)?;
 
         self.registry
-            .add_processor(&ctx.address(), self.role, self.write_half.clone());
+            .add_processor(ctx.primary_address(), self.role, self.write_half.clone());
 
-        debug!("Initialize {}", ctx.address());
+        debug!("Initialize {}", ctx.primary_address());
 
         Ok(())
     }
 
     async fn shutdown(&mut self, ctx: &mut Self::Context) -> Result<()> {
-        self.registry.remove_processor(&ctx.address());
+        self.registry.remove_processor(ctx.primary_address());
 
-        debug!("Shutdown {}", ctx.address());
+        debug!("Shutdown {}", ctx.primary_address());
 
         Ok(())
     }
@@ -83,9 +83,9 @@ impl Processor for TcpMitmProcessor {
         let len = match self.read_half.read(&mut buf).await {
             Ok(l) if l != 0 => l,
             _ => {
-                info!("Connection was closed; dropping stream {}", ctx.address());
+                info!("Connection was closed; dropping stream {}", ctx.primary_address());
 
-                let _ = ctx.stop_processor(self.address_of_other_processor.clone()).await;
+                let _ = ctx.stop_address(self.address_of_other_processor.clone());
 
                 return Ok(false);
             }
@@ -93,12 +93,12 @@ impl Processor for TcpMitmProcessor {
 
         match self.write_half.lock().await.write_all(&buf[..len]).await {
             Ok(_) => {
-                debug!("Forwarded {} bytes from {}", len, ctx.address());
+                debug!("Forwarded {} bytes from {}", len, ctx.primary_address());
             }
             _ => {
-                debug!("Connection was closed; dropping stream {}", ctx.address());
+                debug!("Connection was closed; dropping stream {}", ctx.primary_address());
 
-                let _ = ctx.stop_processor(self.address_of_other_processor.clone()).await;
+                let _ = ctx.stop_address(self.address_of_other_processor.clone());
 
                 return Ok(false);
             }

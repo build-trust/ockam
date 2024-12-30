@@ -21,7 +21,7 @@ async fn test_update_decryptor_route(ctx: &mut Context) -> Result<()> {
         .await?;
 
     let mut child_ctx = ctx
-        .new_detached_with_mailboxes(Mailboxes::main(
+        .new_detached_with_mailboxes(Mailboxes::primary(
             "child",
             Arc::new(AllowAll),
             Arc::new(AllowAll),
@@ -35,7 +35,7 @@ async fn test_update_decryptor_route(ctx: &mut Context) -> Result<()> {
 
     child_ctx
         .send(
-            route![alice_channel.clone(), child_ctx.address()],
+            route![alice_channel.clone(), child_ctx.primary_address()],
             "Hello, Bob!".to_string(),
         )
         .await?;
@@ -54,7 +54,7 @@ async fn test_update_decryptor_route(ctx: &mut Context) -> Result<()> {
 
     child_ctx
         .send(
-            route![alice_channel.clone(), child_ctx.address()],
+            route![alice_channel.clone(), child_ctx.primary_address()],
             "Hello, Bob!".to_string(),
         )
         .await?;
@@ -113,7 +113,7 @@ async fn test_update_decryptor_route_tcp(ctx: &mut Context) -> Result<()> {
         .await?;
 
     let mut child_ctx = ctx
-        .new_detached_with_mailboxes(Mailboxes::main(
+        .new_detached_with_mailboxes(Mailboxes::primary(
             "child",
             Arc::new(AllowAll),
             Arc::new(AllowAll),
@@ -127,7 +127,7 @@ async fn test_update_decryptor_route_tcp(ctx: &mut Context) -> Result<()> {
 
     child_ctx
         .send(
-            route![alice_channel.clone(), child_ctx.address()],
+            route![alice_channel.clone(), child_ctx.primary_address()],
             "Hello, Bob!".to_string(),
         )
         .await?;
@@ -142,13 +142,13 @@ async fn test_update_decryptor_route_tcp(ctx: &mut Context) -> Result<()> {
 
     assert_eq!("Hello, Alice!", msg.into_body()?);
 
-    tcp_connection1.stop(ctx).await?;
+    tcp_connection1.stop(ctx)?;
 
     alice_channel.update_remote_node_route(route![tcp_connection2])?;
 
     child_ctx
         .send(
-            route![alice_channel.clone(), child_ctx.address()],
+            route![alice_channel.clone(), child_ctx.primary_address()],
             "Hello, Bob!".to_string(),
         )
         .await?;

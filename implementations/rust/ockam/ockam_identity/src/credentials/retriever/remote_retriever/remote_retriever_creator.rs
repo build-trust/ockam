@@ -99,7 +99,7 @@ impl CredentialRetrieverCreator for RemoteCredentialRetrieverCreator {
             "Creating new RemoteCredentialRetriever for: {}, authority: {}",
             subject, self.info.issuer
         );
-        let mailboxes = Mailboxes::main(
+        let mailboxes = Mailboxes::primary(
             Address::random_tagged("RemoteCredentialRetriever"),
             Arc::new(DenyAll),
             Arc::new(AllowAll),

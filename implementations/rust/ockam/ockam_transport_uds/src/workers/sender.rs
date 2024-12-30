@@ -140,12 +140,14 @@ impl UdsSendWorker {
 
         let tx_mailbox = Mailbox::new(
             pair.tx_addr(),
+            None,
             Arc::new(ockam_core::AllowSourceAddress(udsrouter_main_addr)),
             Arc::new(ockam_core::DenyAll),
         );
 
         let internal_mailbox = Mailbox::new(
             worker.internal_addr().clone(),
+            None,
             Arc::new(ockam_core::AllowSourceAddress(worker.rx_addr().clone())),
             Arc::new(ockam_core::DenyAll),
         );
@@ -159,9 +161,11 @@ impl UdsSendWorker {
     }
 
     async fn stop_and_unregister(&self, ctx: &Context) -> Result<()> {
-        self.router_handle.unregister(ctx.address()).await?;
+        self.router_handle
+            .unregister(ctx.primary_address().clone())
+            .await?;
 
-        ctx.stop_worker(ctx.address()).await?;
+        ctx.stop_address(ctx.primary_address())?;
 
         Ok(())
     }
@@ -176,7 +180,7 @@ impl Worker for UdsSendWorker {
     ///
     /// Spawn a UDS Recceiver worker to processes incoming UDS messages
     async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
-        ctx.set_cluster(crate::CLUSTER_NAME).await?;
+        ctx.set_cluster(crate::CLUSTER_NAME)?;
 
         let path = match self.peer.as_pathname() {
             Some(p) => p,
@@ -236,7 +240,7 @@ impl Worker for UdsSendWorker {
 
     async fn shutdown(&mut self, ctx: &mut Self::Context) -> Result<()> {
         if self.rx_should_be_stopped {
-            let _ = ctx.stop_processor(self.rx_addr().clone()).await;
+            let _ = ctx.stop_address(self.rx_addr().clone());
         }
 
         Ok(())

@@ -25,7 +25,7 @@ impl TcpMitmTransport {
     }
 
     /// Interrupt an active TCP listener given its `Address`
-    pub async fn stop_listener(&self, address: &Address) -> Result<()> {
-        self.ctx.stop_processor(address.clone()).await
+    pub fn stop_listener(&self, address: &Address) -> Result<()> {
+        self.ctx.stop_address(address.clone())
     }
 }

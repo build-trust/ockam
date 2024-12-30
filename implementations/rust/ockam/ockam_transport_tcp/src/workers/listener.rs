@@ -55,10 +55,10 @@ impl Processor for TcpListenProcessor {
 
     #[instrument(skip_all, name = "TcpListenProcessor::initialize")]
     async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
-        ctx.set_cluster(crate::CLUSTER_NAME).await?;
+        ctx.set_cluster(crate::CLUSTER_NAME)?;
 
         self.registry.add_listener_processor(TcpListenerInfo::new(
-            ctx.address(),
+            ctx.primary_address().clone(),
             self.socket_address,
             self.options.flow_control_id.clone(),
         ));
@@ -68,7 +68,8 @@ impl Processor for TcpListenProcessor {
 
     #[instrument(skip_all, name = "TcpListenProcessor::shutdown")]
     async fn shutdown(&mut self, ctx: &mut Self::Context) -> Result<()> {
-        self.registry.remove_listener_processor(&ctx.address());
+        self.registry
+            .remove_listener_processor(ctx.primary_address());
 
         Ok(())
     }

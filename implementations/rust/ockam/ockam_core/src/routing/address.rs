@@ -40,6 +40,13 @@ pub struct Address {
     #[n(1)] inner: Vec<u8>,
 }
 
+// FIXME
+impl From<&Address> for Address {
+    fn from(value: &Address) -> Self {
+        value.clone()
+    }
+}
+
 impl Address {
     /// Creates a new address from separate transport type and data parts.
     ///

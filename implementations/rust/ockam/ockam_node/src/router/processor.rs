@@ -1,19 +1,13 @@
 use super::{AddressRecord, NodeState, Router, SenderPair, WorkerMeta};
-use crate::{error::NodeError, RouterReason};
-use ockam_core::compat::{sync::Arc, vec::Vec};
+use ockam_core::compat::sync::Arc;
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::{Address, AddressAndMetadata, Error, Result};
+use ockam_core::{Error, Mailboxes, Result};
 
 impl Router {
     /// Start a processor
-    pub(crate) fn start_processor(
-        &self,
-        addrs: Vec<Address>,
-        senders: SenderPair,
-        addresses_metadata: Vec<AddressAndMetadata>,
-    ) -> Result<()> {
-        if self.state.running() {
-            self.start_processor_impl(addrs, senders, addresses_metadata)
+    pub(crate) fn add_processor(&self, mailboxes: &Mailboxes, senders: SenderPair) -> Result<()> {
+        if self.state.is_running() {
+            self.add_processor_impl(mailboxes, senders)
         } else {
             match self.state.node_state() {
                 NodeState::Stopping => Err(Error::new(
@@ -22,26 +16,18 @@ impl Router {
                     "The node is shutting down",
                 ))?,
                 NodeState::Running => unreachable!(),
-                NodeState::Terminated => unreachable!(),
+                NodeState::Stopped => unreachable!(),
             }
         }
     }
 
-    fn start_processor_impl(
-        &self,
-        addrs: Vec<Address>,
-        senders: SenderPair,
-        addresses_metadata: Vec<AddressAndMetadata>,
-    ) -> Result<()> {
-        let primary_addr = addrs
-            .first()
-            .ok_or_else(|| NodeError::RouterState(RouterReason::EmptyAddressSet).internal())?;
-
-        debug!("Starting new processor '{}'", &primary_addr);
+    fn add_processor_impl(&self, mailboxes: &Mailboxes, senders: SenderPair) -> Result<()> {
+        debug!("Starting new processor '{}'", mailboxes.primary_address());
         let SenderPair { msgs, ctrl } = senders;
 
         let record = AddressRecord::new(
-            addrs.clone(),
+            mailboxes.primary_address().clone(),
+            mailboxes.additional_addresses().cloned().collect(),
             msgs,
             ctrl,
             // We don't keep track of the mailbox count for processors
@@ -56,25 +42,8 @@ impl Router {
             },
         );
 
-        self.map
-            .insert_address_record(primary_addr.clone(), record, addresses_metadata)
-    }
+        self.map.insert_address_record(record, mailboxes)?;
 
-    /// Stop the processor
-    pub(crate) async fn stop_processor(&self, addr: &Address) -> Result<()> {
-        trace!("Stopping processor '{}'", addr);
-
-        // Resolve any secondary address to the primary address
-        let primary_address = match self.map.get_primary_address(addr) {
-            Some(p) => p.clone(),
-            None => {
-                return Err(Error::new(Origin::Node, Kind::NotFound, "No such address")
-                    .context("Address", addr.clone()))
-            }
-        };
-
-        // Then send processor shutdown signal
-        self.map.stop(&primary_address).await?;
         Ok(())
     }
 }

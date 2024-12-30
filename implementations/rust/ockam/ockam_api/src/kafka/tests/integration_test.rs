@@ -170,7 +170,7 @@ async fn producer__flow_with_mock_kafka__content_encryption_and_decryption(
         .await;
         drop(consumer_mock_kafka);
         // drop the outlet and re-create it when we need it later
-        context.stop_worker("kafka_consumer_outlet").await?;
+        context.stop_address("kafka_consumer_outlet")?;
     }
 
     let mut producer_mock_kafka = TcpServerSimulator::start("127.0.0.1:0").await;

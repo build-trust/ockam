@@ -64,7 +64,7 @@ pub fn measure_message_latency_two_nodes() {
                 first_node
                     .context
                     .flow_controls()
-                    .add_consumer(first_node.context.address(), &flow_control_id);
+                    .add_consumer(first_node.context.primary_address(), &flow_control_id);
             }
 
             let payload = NeutralMessage::from(vec![1, 2, 3, 4]);

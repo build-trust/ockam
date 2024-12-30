@@ -1,3 +1,5 @@
+// TODO: Use either stop or shutdown everywhere
+
 /// Specify the type of node shutdown
 ///
 /// For most users `ShutdownType::Graceful()` is recommended.  The

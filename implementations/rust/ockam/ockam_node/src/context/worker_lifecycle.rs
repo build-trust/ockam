@@ -4,20 +4,6 @@ use ockam_core::{
     Address, IncomingAccessControl, OutgoingAccessControl, Processor, Result, Worker,
 };
 
-enum AddressType {
-    Worker,
-    Processor,
-}
-
-impl AddressType {
-    fn str(&self) -> &'static str {
-        match self {
-            AddressType::Worker => "worker",
-            AddressType::Processor => "processor",
-        }
-    }
-}
-
 impl Context {
     /// Start a new worker instance at the given address. Default AccessControl is AllowAll
     ///
@@ -190,51 +176,13 @@ impl Context {
         Ok(())
     }
 
-    /// Shut down a local worker by its primary address
-    ///
-    /// Approximate flow of stopping a worker:
-    ///
-    /// 1. StopWorker message -> Router
-    /// 2. Get AddressRecord
-    /// 3. Drop sender
-    /// 4. WorkerRelay calls Worker::shutdown
-    /// 5. StopAck message -> Router (from main_address)
-    /// 6. router.map.free_address(main_address) is called (given Router state is running):
-    ///     remote main_address from router.map.stopping (it's not their anyway, unless in was a cluster and node was shutting down)
-    ///     Remove AddressRecord from router.map.address_records_map (return error if not found)
-    ///     Remove all alias in router.map.alias_map
-    ///     Remote all meta from router.map.address_metadata
-    pub async fn stop_worker<A: Into<Address>>(&self, addr: A) -> Result<()> {
-        self.stop_address(addr.into(), AddressType::Worker).await
+    /// Stop a Worker or a Processor running on given Address
+    pub fn stop_address(&self, addr: impl Into<Address>) -> Result<()> {
+        self.stop_address_impl(&addr.into())
     }
 
-    /// Shut down a local processor by its address
-    ///
-    /// Approximate flow of stopping a processor:
-    ///
-    /// 1. StopProcessor message -> Router
-    /// 2. Get AddressRecord
-    /// 3. Call AddressRecord::stop:
-    ///     Send CtrlSignal::InterruptStop to AddressRecord::ctrl_tx
-    ///     Set AddressRecord::state = AddressState::Stopping
-    /// 4. ProcessorRelay calls Processor::shutdown
-    /// 5. StopAck message -> Router (from main_address)
-    /// 6. router.map.free_address(main_address) is called (given Router state is running):
-    ///     remote main_address from router.map.stopping (it's not their anyways unless in was a cluster and node was shutting down)
-    ///     Remove AddressRecord from router.map.address_records_map (return error if not found)
-    ///     Remove all alias in router.map.alias_map
-    ///     Remote all meta from router.map.address_metadata
-    pub async fn stop_processor<A: Into<Address>>(&self, addr: A) -> Result<()> {
-        self.stop_address(addr.into(), AddressType::Processor).await
-    }
-
-    async fn stop_address(&self, addr: Address, t: AddressType) -> Result<()> {
-        debug!("Shutting down {} {}", t.str(), addr);
-
-        // Send the stop request
-        match t {
-            AddressType::Worker => self.router.stop_worker(&addr, false).await,
-            AddressType::Processor => self.router.stop_processor(&addr).await,
-        }
+    /// Stop a Worker or a Processor running on given Address
+    pub fn stop_address_impl(&self, address: &Address) -> Result<()> {
+        self.router()?.stop_address(address, false)
     }
 }

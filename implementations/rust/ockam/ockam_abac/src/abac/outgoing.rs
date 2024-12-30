@@ -82,7 +82,7 @@ impl OutgoingAbac {
 
     /// Returns true if the sender of the message is validated by the expression stored in AbacAccessControl
     pub async fn is_authorized_impl(&self, relay_msg: &RelayMessage) -> Result<bool> {
-        let identifier = match Abac::get_outgoing_identifier(&self.ctx, relay_msg).await? {
+        let identifier = match Abac::get_outgoing_identifier(&self.ctx, relay_msg)? {
             Some(identifier) => identifier,
             None => {
                 debug! {
