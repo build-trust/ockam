@@ -9,6 +9,10 @@ export BATS_TEST_RETRIES=2
 
 current_directory=$(dirname "$0")
 
+if [[ -n $OCKAM_PRIVILEGED ]]; then
+  echo "Running privileged tests..."
+fi
+
 # The arguments are the names of the suites to run.
 # If no arguments are passed, all suites are run.
 if [ $# -eq 0 ]; then

@@ -305,6 +305,13 @@ jobs:
         working-directory: ockam_cli
         shell: nix develop ./tools/nix#rust --keep CI --ignore-environment --command bash {0}
         run: |
+          set -ex
+          grep -i docker /proc/1/cgroup || true
+          grep -i kubepods /proc/1/cgroup || true
+          hostnamectl || true
+          ls -l /run/containerd || true
+          ls -l /run/docker || true
+          ls -l /.dockerenv || true
           rustc --version
           set -x
           cargo build --bin ockam
