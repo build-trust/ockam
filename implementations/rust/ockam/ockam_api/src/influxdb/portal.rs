@@ -128,6 +128,7 @@ impl NodeManagerWorker {
             tls_certificate_provider,
             skip_handshake,
             enable_nagle,
+            ..
         } = body.tcp_inlet.clone();
 
         //TODO: should be an easier way to tweak the multiaddr
@@ -285,7 +286,7 @@ impl NodeManagerWorker {
             TokenLeaseRefresher::new(ctx, Arc::downgrade(&self.node_manager), lease_issuer_route)?;
         let http_interceptor_factory = Arc::new(HttpAuthInterceptorFactory::new(token_refresher));
 
-        PortalInletInterceptor::create(
+        PortalInletInterceptor::start_listener(
             ctx,
             interceptor_address.clone(),
             http_interceptor_factory,
@@ -388,6 +389,7 @@ impl InfluxDBPortals for BackgroundNodeClient {
                 tls_certificate_provider,
                 false,
                 false,
+                route![],
             );
             let payload = CreateInfluxDBInlet::new(inlet_payload, lease_usage, lease_issuer_route);
             Request::post("/node/influxdb_inlet").body(payload)

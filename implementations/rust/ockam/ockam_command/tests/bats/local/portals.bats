@@ -410,3 +410,34 @@ teardown() {
   run_success "$OCKAM" tcp-inlet create --from "127.0.0.1:$port" --to /node/n/secure/api/service/outlet --identity alt
   run_success curl -sfI --retry-all-errors --retry-delay 5 --retry 2 -m 5 "127.0.0.1:$port"
 }
+
+@test "portals - http set header" {
+  if [[ "$OCKAM_PRIVILEGED" = "1" ]]; then
+    skip "OCKAM_PRIVILEGE not supported"
+  fi
+
+  inlet_port="$(random_port)"
+  server_port="$(random_port)"
+
+  # to validate the header has been set, we start an authenticated HTTP server
+  # and we inject the credential into the request
+  run_success "$OCKAM" tcp-outlet create --to "127.0.0.1:${server_port}"
+  run_success "$OCKAM" tcp-inlet create --from "127.0.0.1:${inlet_port}" --to /service/outlet
+
+  uploadserver --basic-auth username:password --bind 127.0.0.1 ${server_port} &>"$HOME/.bats-tests/authenticated_python_server.log" &
+  echo $! >"${OCKAM_HOME}/authenticated_python_server.pid"
+
+  wait_for_port ${server_port}
+  wait_for_port ${inlet_port}
+
+  run_failure curl -sf -m 3 "http://127.0.0.1:${inlet_port}"
+
+  authentication="$(echo -n "username:password" | base64)"
+  run_success "$OCKAM" tcp-inlet delete --all --yes
+
+  wait_for_closed_port ${inlet_port}
+  run_success "$OCKAM" tcp-inlet create --http-header "Authorization: Basic ${authentication}" --from "127.0.0.1:${inlet_port}" --to /service/outlet
+
+  wait_for_port ${inlet_port}
+  run_success curl -sf -m 5 "http://127.0.0.1:${inlet_port}"
+}

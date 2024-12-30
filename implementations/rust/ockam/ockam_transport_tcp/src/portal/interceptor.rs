@@ -161,7 +161,7 @@ impl PortalInletInterceptor {
     /// │Inlet   │            │           │             │Channel │
     /// └────────┘            └───────────┘             └────────┘
     /// ```
-    pub fn create(
+    pub fn start_listener(
         context: &Context,
         listener_address: Address,
         interceptor_factory: Arc<dyn PortalInterceptorFactory>,

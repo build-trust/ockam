@@ -21,6 +21,7 @@ pub mod workers;
 
 mod certificate_provider;
 mod http;
+mod interceptors;
 mod manager;
 mod trust;
 mod worker;

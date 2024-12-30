@@ -63,6 +63,8 @@ pub struct CreateInlet {
     #[n(14)] pub(crate) skip_handshake: bool,
     /// Enable Nagle's algorithm for potentially higher throughput, but higher latency
     #[n(15)] pub(crate) enable_nagle: bool,
+    /// The prefix route to be used for interceptors.
+    #[n(16)] pub(crate) prefix_route: Route,
 }
 
 impl Encodable for CreateInlet {
@@ -105,6 +107,7 @@ impl CreateInlet {
             tls_certificate_provider: None,
             skip_handshake,
             enable_nagle,
+            prefix_route: Default::default(),
         }
     }
 
@@ -136,11 +139,16 @@ impl CreateInlet {
             tls_certificate_provider: None,
             skip_handshake,
             enable_nagle,
+            prefix_route: Default::default(),
         }
     }
 
     pub fn set_tls_certificate_provider(&mut self, provider: MultiAddr) {
         self.tls_certificate_provider = Some(provider);
+    }
+
+    pub fn set_prefix_route(&mut self, route: Route) {
+        self.prefix_route = route;
     }
 
     pub fn set_wait_ms(&mut self, ms: u64) {

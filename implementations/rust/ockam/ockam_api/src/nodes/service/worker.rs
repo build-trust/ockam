@@ -162,6 +162,18 @@ impl NodeManagerWorker {
                 self.delete_kafka_service(ctx, Decodable::decode(&body)?, KafkaServiceKind::Inlet)
                     .await,
             ),
+            (Post, ["node", "services", DefaultAddress::HTTP_HEADERS_SERVICE]) => encode_response(
+                &header,
+                self.start_http_header_service(ctx, Decodable::decode(&body)?)
+                    .await,
+            ),
+            (Delete, ["node", "services", DefaultAddress::HTTP_HEADERS_SERVICE]) => {
+                encode_response(
+                    &header,
+                    self.delete_http_overwrite_header_service(ctx, Decodable::decode(&body)?)
+                        .await,
+                )
+            }
             (Post, ["node", "services", DefaultAddress::LEASE_MANAGER]) => encode_response(
                 &header,
                 self.start_influxdb_lease_issuer_service(ctx, Decodable::decode(&body)?)

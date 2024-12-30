@@ -3,6 +3,7 @@ use crate::shared_args::OptionalTimeoutArg;
 use crate::tcp::util::alias_parser;
 use crate::util::parsers::duration_parser;
 use crate::util::parsers::hostname_parser;
+use crate::util::parsers::http_header_parser;
 use crate::util::{
     port_is_free_guard, print_warning_for_deprecated_flag_replaced, process_nodes_multiaddr,
 };
@@ -28,9 +29,11 @@ use ockam_api::nodes::service::tcp_inlets::Inlets;
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_api::{fmt_info, fmt_log, fmt_ok, fmt_warn, ConnectionStatus};
 use ockam_core::api::{Reply, Status};
+use ockam_core::{route, Address};
 use ockam_multiaddr::proto;
 use ockam_multiaddr::{MultiAddr, Protocol as _};
 use ockam_node::compat::asynchronous::resolve_peer;
+
 use std::collections::HashMap;
 use std::str::FromStr;
 use std::time::Duration;
@@ -163,6 +166,12 @@ pub struct CreateCommand {
     /// Enable Nagle's algorithm for potentially higher throughput, but higher latency
     #[arg(long, env = "OCKAM_TCP_PORTAL_ENABLE_NAGLE", value_parser = FalseyValueParser::default())]
     pub enable_nagle: bool,
+
+    #[arg(long, value_name = "HTTP_HEADER", value_parser = http_header_parser)]
+    /// Set the provided HTTP headers in the client request. Existing headers with the same name
+    /// will be discarded. This option assumes the protocol is HTTP/1.0 or HTTP/1.1.
+    /// It expects a key-value pair in the format `key:value`. It can be specified multiple times.
+    pub http_header: Vec<(String, String)>,
 }
 
 pub(crate) fn tcp_inlet_default_from_addr() -> SchemeHostnamePort {
@@ -186,6 +195,43 @@ impl Command for CreateCommand {
 
         let inlet_status = {
             let pb = opts.terminal.spinner();
+
+            let prefix_route = if !cmd.http_header.is_empty() {
+                let overwrite_http_header_address = Address::random_tagged("http_interceptor");
+
+                if let Some(pb) = pb.as_ref() {
+                    pb.set_message(format!(
+                        "Creating HTTP Interceptor Service at {}...\n",
+                        color_primary(&overwrite_http_header_address)
+                    ));
+                }
+
+                let result = node
+                    .create_http_header_overwrite_service(
+                        ctx,
+                        &overwrite_http_header_address,
+                        cmd.http_header.clone(),
+                    )
+                    .await;
+
+                match result {
+                    Ok(_) => {
+                        if let Some(pb) = pb.as_ref() {
+                            let created_message = format!(
+                                "Created a new HTTP Interceptor Service bound to {}\n",
+                                color_primary(overwrite_http_header_address.to_string()),
+                            );
+                            pb.set_message(fmt_ok!("{}", created_message));
+                        }
+                    }
+                    Err(_) => Err(miette!("Failed to create interceptor"))?,
+                }
+
+                route![overwrite_http_header_address]
+            } else {
+                route![]
+            };
+
             if let Some(pb) = pb.as_ref() {
                 pb.set_message(format!(
                     "Creating TCP Inlet at {}...\n",
@@ -211,6 +257,7 @@ impl Command for CreateCommand {
                         &cmd.tls_certificate_provider,
                         cmd.skip_handshake,
                         cmd.enable_nagle,
+                        prefix_route.clone(),
                     )
                     .await?;
 

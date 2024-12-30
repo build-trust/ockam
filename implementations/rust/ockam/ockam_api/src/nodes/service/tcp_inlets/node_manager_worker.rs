@@ -32,13 +32,14 @@ impl NodeManagerWorker {
             tls_certificate_provider,
             skip_handshake,
             enable_nagle,
+            prefix_route,
         } = create_inlet;
         match self
             .node_manager
             .create_inlet(
                 ctx,
                 listen_addr,
-                route![],
+                prefix_route,
                 route![],
                 outlet_addr,
                 alias,
