@@ -10,6 +10,8 @@ impl DefaultAddress {
     pub const UPPERCASE_SERVICE: &'static str = "uppercase";
     pub const ECHO_SERVICE: &'static str = "echo";
     pub const HOP_SERVICE: &'static str = "hop";
+    pub const HTTP_HEADERS_SERVICE: &'static str = "http_headers";
+    pub const REMOTE_PROXY_VAULT: &'static str = "remote_proxy_vault";
     pub const SECURE_CHANNEL_LISTENER: &'static str = "api";
     pub const KEY_EXCHANGER_LISTENER: &'static str = "key_exchanger";
     pub const UDP_PUNCTURE_NEGOTIATION_LISTENER: &'static str = "udp";

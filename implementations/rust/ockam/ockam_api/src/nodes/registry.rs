@@ -105,6 +105,9 @@ pub enum KafkaServiceKind {
     Outlet,
 }
 
+#[derive(Clone)]
+pub(crate) struct HttpHeaderInterceptorInfo {}
+
 impl Display for KafkaServiceKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -189,6 +192,7 @@ pub(crate) struct Registry {
     pub(crate) echoer_services: RegistryOf<Address, EchoerServiceInfo>,
     pub(crate) kafka_services: RegistryOf<Address, KafkaServiceInfo>,
     pub(crate) hop_services: RegistryOf<Address, HopServiceInfo>,
+    pub(crate) http_headers_interceptors: RegistryOf<Address, HttpHeaderInterceptorInfo>,
     pub(crate) relays: RegistryOf<String, RegistryRelayInfo>,
     pub(crate) inlets: RegistryOf<String, InletInfo>,
     pub(crate) outlets: RegistryOf<Address, OutletInfo>,

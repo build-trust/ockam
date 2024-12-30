@@ -234,7 +234,7 @@ impl InMemoryNode {
             )
             .await?;
 
-        PortalInletInterceptor::create(
+        PortalInletInterceptor::start_listener(
             context,
             interceptor_address.clone(),
             Arc::new(KafkaInletInterceptorFactory::new(

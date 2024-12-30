@@ -1,7 +1,7 @@
 use ockam::identity::Identifier;
 use ockam_abac::PolicyExpression;
 use ockam_core::api::{Reply, Request};
-use ockam_core::async_trait;
+use ockam_core::{async_trait, Route};
 use ockam_multiaddr::proto::Project as ProjectProto;
 use ockam_multiaddr::{MultiAddr, Protocol};
 use ockam_node::Context;
@@ -28,6 +28,7 @@ pub fn create_inlet_payload(
     tls_certificate_provider: &Option<MultiAddr>,
     skip_handshake: bool,
     enable_nagle: bool,
+    prefix_route: Route,
 ) -> CreateInlet {
     let via_project = outlet_addr.matches(0, &[ProjectProto::CODE.into()]);
     let mut payload = if via_project {
@@ -65,6 +66,7 @@ pub fn create_inlet_payload(
     if let Some(tls_provider) = tls_certificate_provider {
         payload.set_tls_certificate_provider(tls_provider.clone())
     }
+    payload.set_prefix_route(prefix_route);
     payload.set_wait_ms(wait_for_outlet_timeout.as_millis() as u64);
     payload
 }
@@ -88,6 +90,7 @@ impl Inlets for BackgroundNodeClient {
         tls_certificate_provider: &Option<MultiAddr>,
         skip_handshake: bool,
         enable_nagle: bool,
+        prefix_route: Route,
     ) -> miette::Result<Reply<InletStatus>> {
         let request = {
             let payload = create_inlet_payload(
@@ -105,6 +108,7 @@ impl Inlets for BackgroundNodeClient {
                 tls_certificate_provider,
                 skip_handshake,
                 enable_nagle,
+                prefix_route,
             );
             Request::post("/node/inlet").body(payload)
         };

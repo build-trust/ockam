@@ -45,6 +45,7 @@ mod schema;
 
 pub mod control_api;
 mod date;
+mod http;
 mod multiaddr_resolver;
 mod rendezvous_healthcheck;
 pub mod test_utils;

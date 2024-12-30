@@ -61,7 +61,7 @@ async fn setup(
 
     let mock_portal_interceptor = Arc::new(MockPortalInterceptor::default());
 
-    PortalInletInterceptor::create(
+    PortalInletInterceptor::start_listener(
         context,
         "interceptor_listener".into(),
         Arc::new(MockPortalInterceptorFactory {

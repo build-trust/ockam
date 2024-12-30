@@ -108,7 +108,7 @@ async fn create_kafka_service(
         )
         .await?;
 
-    PortalInletInterceptor::create(
+    PortalInletInterceptor::start_listener(
         context,
         listener_address,
         Arc::new(KafkaInletInterceptorFactory::new(

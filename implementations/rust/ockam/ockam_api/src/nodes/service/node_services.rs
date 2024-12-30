@@ -146,6 +146,16 @@ impl NodeManager {
             ))
         });
         self.registry
+            .http_headers_interceptors
+            .keys()
+            .iter()
+            .for_each(|addr| {
+                list.push(ServiceStatus::new(
+                    addr.address(),
+                    DefaultAddress::HTTP_HEADERS_SERVICE,
+                ))
+            });
+        self.registry
             .kafka_services
             .entries()
             .iter()
