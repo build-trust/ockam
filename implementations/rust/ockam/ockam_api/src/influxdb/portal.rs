@@ -121,6 +121,7 @@ impl NodeManagerWorker {
             disable_tcp_fallback,
             privileged,
             tls_certificate_provider,
+            ..
         } = body.tcp_inlet.clone();
 
         //TODO: should be an easier way to tweak the multiaddr
@@ -376,6 +377,7 @@ impl InfluxDBPortals for BackgroundNodeClient {
                 disable_tcp_fallback,
                 false,
                 tls_certificate_provider,
+                route![],
             );
             let payload = CreateInfluxDBInlet::new(inlet_payload, lease_usage, lease_issuer_route);
             Request::post("/node/influxdb_inlet").body(payload)

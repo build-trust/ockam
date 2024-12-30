@@ -30,13 +30,14 @@ impl NodeManagerWorker {
             disable_tcp_fallback,
             privileged,
             tls_certificate_provider,
+            prefix_route,
         } = create_inlet;
         match self
             .node_manager
             .create_inlet(
                 ctx,
                 listen_addr,
-                route![],
+                prefix_route,
                 route![],
                 outlet_addr,
                 alias,

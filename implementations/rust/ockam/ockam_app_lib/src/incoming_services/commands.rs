@@ -2,6 +2,9 @@ use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
 
+use crate::background_node::BackgroundNodeClientTrait;
+use crate::incoming_services::state::{IncomingService, Port};
+use crate::state::AppState;
 use miette::IntoDiagnostic;
 use ockam::abac::expr::{eq, ident, str};
 use ockam::abac::PolicyExpression::FullExpression;
@@ -14,12 +17,9 @@ use ockam_api::authenticator::direct::{
 use ockam_api::nodes::service::tcp_inlets::Inlets;
 use ockam_api::ConnectionStatus;
 use ockam_core::api::Reply;
+use ockam_core::route;
 use ockam_multiaddr::MultiAddr;
 use tracing::{debug, error, info, warn};
-
-use crate::background_node::BackgroundNodeClientTrait;
-use crate::incoming_services::state::{IncomingService, Port};
-use crate::state::AppState;
 
 impl AppState {
     pub(crate) async fn refresh_inlets(&self) -> crate::Result<()> {
@@ -212,6 +212,7 @@ impl AppState {
                 false,
                 false,
                 &None,
+                route![],
             )
             .await
             .map_err(|err| {

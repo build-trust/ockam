@@ -1,7 +1,7 @@
 use ockam::identity::Identifier;
 use ockam_abac::PolicyExpression;
 use ockam_core::api::Reply;
-use ockam_core::async_trait;
+use ockam_core::{async_trait, Route};
 use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
 use ockam_transport_core::HostnamePort;
@@ -27,6 +27,7 @@ pub trait Inlets {
         disable_tcp_fallback: bool,
         privileged: bool,
         tls_certificate_provider: &Option<MultiAddr>,
+        prefix_route: Route,
     ) -> miette::Result<Reply<InletStatus>>;
 
     async fn show_inlet(&self, ctx: &Context, alias: &str) -> miette::Result<Reply<InletStatus>>;

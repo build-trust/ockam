@@ -21,6 +21,17 @@ pub(crate) fn hostname_parser(input: &str) -> Result<SchemeHostnamePort> {
     ))
 }
 
+/// Helper function for parsing a key-value pair from user input
+/// The input is expected to be in the format `key:value`
+pub(crate) fn http_header_parser(input: &str) -> Result<(String, String)> {
+    let parts: Vec<&str> = input.split(':').collect();
+    if parts.len() != 2 {
+        return Err(miette!("Invalid header format. Expected 'key:value'"));
+    }
+
+    Ok((parts[0].trim().to_string(), parts[1].trim().to_string()))
+}
+
 /// Helper fn for parsing an identifier from user input by using
 /// [`ockam_identity::Identifier::from_str()`]
 pub(crate) fn identity_identifier_parser(input: &str) -> Result<Identifier> {
@@ -68,4 +79,23 @@ pub(crate) fn duration_to_human_format(duration: &Duration) -> String {
         parts.push(format!("{}s", seconds));
     }
     parts.join(" ")
+}
+
+#[cfg(test)]
+mod test {
+    use crate::util::parsers::http_header_parser;
+
+    #[test]
+    pub fn test_http_header_parser() {
+        assert_eq!(
+            http_header_parser("key:value").unwrap(),
+            ("key".to_string(), "value".to_string())
+        );
+        assert_eq!(
+            http_header_parser("key: value").unwrap(),
+            ("key".to_string(), "value".to_string())
+        );
+        assert!(http_header_parser("key:value:extra").is_err());
+        assert!(http_header_parser("key").is_err());
+    }
 }

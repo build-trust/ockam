@@ -57,6 +57,8 @@ pub struct CreateInlet {
     #[n(12)] pub(crate) privileged: bool,
     /// TLS certificate provider route.
     #[n(13)] pub(crate) tls_certificate_provider: Option<MultiAddr>,
+    /// The prefix route to be used for interceptors.
+    #[n(14)] pub(crate) prefix_route: Route,
 }
 
 impl CreateInlet {
@@ -83,6 +85,7 @@ impl CreateInlet {
             disable_tcp_fallback,
             privileged,
             tls_certificate_provider: None,
+            prefix_route: Default::default(),
         }
     }
 
@@ -110,11 +113,16 @@ impl CreateInlet {
             disable_tcp_fallback,
             privileged,
             tls_certificate_provider: None,
+            prefix_route: Default::default(),
         }
     }
 
     pub fn set_tls_certificate_provider(&mut self, provider: MultiAddr) {
         self.tls_certificate_provider = Some(provider);
+    }
+
+    pub fn set_prefix_route(&mut self, route: Route) {
+        self.prefix_route = route;
     }
 
     pub fn set_wait_ms(&mut self, ms: u64) {
