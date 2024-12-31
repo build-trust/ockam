@@ -99,6 +99,7 @@ impl SecureChannelOptions {
 
     /// Freshly generated [`FlowControlId`]
     pub fn producer_flow_control_id(&self) -> FlowControlId {
+        // TODO: Return a reference instead
         self.flow_control_id.clone()
     }
 

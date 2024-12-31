@@ -10,7 +10,7 @@ pub const SHA256_LENGTH: usize = 32;
 pub struct Sha256Output(pub [u8; SHA256_LENGTH]);
 
 /// Handle to an AES-256 Secret Key.
-#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct AeadSecretKeyHandle(pub AeadSecretKeyHandleType);
 
 impl AeadSecretKeyHandle {
@@ -32,7 +32,7 @@ cfg_if! {
         pub struct HkdfOutput(pub Sha256HkdfOutput);
 
         /// Handle to an AES-256 Secret Key.
-        #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
+        #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
         pub struct Aes256GcmSecretKeyHandle(pub HandleToSecret);
 
         impl Aes256GcmSecretKeyHandle {
@@ -55,7 +55,7 @@ cfg_if! {
         pub struct HkdfOutput(pub Sha256HkdfOutput);
 
         /// Handle to an AES-128 Secret Key.
-        #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
+        #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
         pub struct Aes128GcmSecretKeyHandle(pub HandleToSecret);
 
         impl Aes128GcmSecretKeyHandle {
@@ -84,7 +84,7 @@ cfg_if! {
         pub struct HkdfOutput(pub Blake2sHkdfOutput);
 
         /// Handle to a ChaCha20-Poly1305 Secret Key.
-        #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
+        #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
         pub struct Chacha20Poly1305SecretKeyHandle(pub HandleToSecret);
 
         impl Chacha20Poly1305SecretKeyHandle {

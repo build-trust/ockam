@@ -2,7 +2,7 @@ use ockam_core::compat::vec::Vec;
 
 /// Implementation-specific arbitrary vector of bytes that allows a concrete Vault implementation
 /// to address a specific secret that it stores.
-#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct HandleToSecret(Vec<u8>);
 
 impl HandleToSecret {
@@ -23,7 +23,7 @@ impl HandleToSecret {
 }
 
 /// A handle to signing secret key inside a vault.
-#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub enum SigningSecretKeyHandle {
     /// Curve25519 key that is only used for EdDSA signatures.
     EdDSACurve25519(HandleToSecret),
@@ -51,9 +51,9 @@ pub enum SigningKeyType {
 }
 
 /// A handle to a X25519 Secret Key.
-#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct X25519SecretKeyHandle(pub HandleToSecret);
 
 /// A handle to a secret Buffer (like an HKDF output).
-#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct SecretBufferHandle(pub HandleToSecret);
