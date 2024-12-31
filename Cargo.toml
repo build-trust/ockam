@@ -5,6 +5,7 @@ members = [
   "examples/rust/file_transfer",
   "examples/rust/get_started",
   "examples/rust/tcp_inlet_and_outlet",
+  "examples/rust/low_latency_portal",
   "examples/rust/mitm_node",
   "implementations/rust/ockam/*",
   "tools/docs/example_blocks",

@@ -3965,6 +3965,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "low_latency_portal"
+version = "0.1.0"
+dependencies = [
+ "hex",
+ "log",
+ "ockam",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "lz4"
 version = "1.28.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
