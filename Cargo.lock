@@ -3968,6 +3968,7 @@ dependencies = [
 name = "low_latency_portal"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "hex",
  "log",
  "ockam",

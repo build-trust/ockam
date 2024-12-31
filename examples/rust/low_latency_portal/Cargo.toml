@@ -8,8 +8,9 @@ publish = false
 rust-version = "1.70.0"
 
 [dependencies]
+async-trait = "0.1"
+hex = "0.4.3"
+log = "0.4.22"
 ockam = { path = "../../../implementations/rust/ockam/ockam", features = ["aws-lc"] }
 serde = { version = "1.0.215", features = ["derive"] }
 serde_json = "1.0"
-hex = "0.4.3"
-log = "0.4.22"
