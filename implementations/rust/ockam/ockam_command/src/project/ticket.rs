@@ -173,7 +173,8 @@ impl Command for TicketCommand {
         } else {
             let mut attributes_msg =
                 fmt_log!("The redeemer will be assigned the following attributes:\n");
-
+            let mut attributes: Vec<_> = attributes.iter().collect();
+            attributes.sort();
             for (key, value) in &attributes {
                 attributes_msg += &fmt_log!(
                     "{}{}",

@@ -308,7 +308,9 @@ impl Output for ProjectEnrollOutput {
                     "The following attributes are attested by the project's membership authority:"
                 )
                 )?;
-                for (k, v) in credential.attributes.iter() {
+                let mut attributes = credential.attributes.iter().collect::<Vec<_>>();
+                attributes.sort();
+                for (k, v) in attributes.iter() {
                     writeln!(
                         f,
                         "{}",

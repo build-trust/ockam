@@ -104,6 +104,7 @@ impl AttributesEntry {
                 attributes.push(format!("{k}={v}"));
             }
         }
+        attributes.sort();
         attributes
     }
 
