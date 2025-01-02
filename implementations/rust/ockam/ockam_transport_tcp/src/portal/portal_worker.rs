@@ -1,12 +1,14 @@
 use crate::portal::addresses::{Addresses, PortalType};
-use crate::portal::portal_worker::ReadHalfMaybeTls::{ReadHalfNoTls, ReadHalfWithTls};
-use crate::portal::portal_worker::WriteHalfMaybeTls::{WriteHalfNoTls, WriteHalfWithTls};
+use crate::portal::ReadHalfMaybeTls::{ReadHalfNoTls, ReadHalfWithTls};
+use crate::portal::WriteHalfMaybeTls::{WriteHalfNoTls, WriteHalfWithTls};
 use crate::transport::{connect, connect_tls};
 use crate::{portal::TcpPortalRecvProcessor, PortalInternalMessage, PortalMessage, TcpRegistry};
-use ockam_core::compat::{boxed::Box, sync::Arc};
+use ockam_core::compat::boxed::Box;
+use ockam_core::compat::sync::Arc;
 use ockam_core::{
-    async_trait, AllowOnwardAddress, AllowSourceAddress, Decodable, DenyAll, IncomingAccessControl,
-    LocalInfoIdentifier, Mailbox, Mailboxes, OutgoingAccessControl, SecureChannelLocalInfo,
+    async_trait, AllowAll, AllowOnwardAddress, AllowSourceAddress, Decodable, DenyAll,
+    IncomingAccessControl, LocalInfoIdentifier, Mailbox, Mailboxes, OutgoingAccessControl,
+    SecureChannelLocalInfo,
 };
 use ockam_core::{Any, Result, Route, Routed, Worker};
 use ockam_node::{Context, ProcessorBuilder, WorkerBuilder};
@@ -18,20 +20,6 @@ use tokio::net::TcpStream;
 use tokio_rustls::TlsStream;
 use tracing::{debug, info, instrument, trace, warn};
 
-/// Enumerate all `TcpPortalWorker` states
-///
-/// Possible state transitions are:
-///
-/// `Outlet`: `SendPong` -> `Initialized`
-/// `Inlet`: `SendPing` -> `ReceivePong` -> `Initialized`
-#[derive(Clone)]
-enum State {
-    SendPing { ping_route: Route },
-    SendPong { pong_route: Route },
-    ReceivePong,
-    Initialized,
-}
-
 /// A TCP Portal worker
 ///
 /// A TCP Portal worker is responsible for managing the life-cycle of
@@ -40,13 +28,12 @@ enum State {
 /// after a new connection has been accepted.
 pub(crate) struct TcpPortalWorker {
     registry: TcpRegistry,
-    state: State,
     their_identifier: Option<LocalInfoIdentifier>,
     write_half: Option<WriteHalfMaybeTls>,
     read_half: Option<ReadHalfMaybeTls>,
     hostname_port: HostnamePort,
     addresses: Addresses,
-    remote_route: Option<Route>,
+    remote_route: Route,
     is_disconnecting: bool,
     portal_type: PortalType,
     last_received_packet_counter: u16,
@@ -68,12 +55,12 @@ impl TcpPortalWorker {
     /// Start a new `TcpPortalWorker` of type [`TypeName::Inlet`]
     #[instrument(skip_all)]
     #[allow(clippy::too_many_arguments)]
-    pub(super) async fn start_new_inlet(
+    pub(crate) async fn start_new_inlet(
         ctx: &Context,
         registry: TcpRegistry,
         streams: (ReadHalfMaybeTls, WriteHalfMaybeTls),
         hostname_port: HostnamePort,
-        ping_route: Route,
+        remote_route: Route,
         their_identifier: Option<LocalInfoIdentifier>,
         addresses: Addresses,
         incoming_access_control: Arc<dyn IncomingAccessControl>,
@@ -84,7 +71,7 @@ impl TcpPortalWorker {
             registry,
             hostname_port,
             false,
-            State::SendPing { ping_route },
+            remote_route,
             their_identifier,
             Some(streams),
             addresses,
@@ -102,10 +89,9 @@ impl TcpPortalWorker {
         registry: TcpRegistry,
         hostname_port: HostnamePort,
         tls: bool,
-        pong_route: Route,
+        remote_route: Route,
         their_identifier: Option<LocalInfoIdentifier>,
         addresses: Addresses,
-        incoming_access_control: Arc<dyn IncomingAccessControl>,
         outgoing_access_control: Arc<dyn OutgoingAccessControl>,
     ) -> Result<()> {
         Self::start(
@@ -113,11 +99,12 @@ impl TcpPortalWorker {
             registry,
             hostname_port,
             tls,
-            State::SendPong { pong_route },
+            remote_route,
             their_identifier,
             None,
             addresses,
-            incoming_access_control,
+            // We now only receive messages from the "outlet" address on our own node
+            Arc::new(AllowAll),
             outgoing_access_control,
         )
         .await
@@ -131,7 +118,7 @@ impl TcpPortalWorker {
         registry: TcpRegistry,
         hostname_port: HostnamePort,
         is_tls: bool,
-        state: State,
+        remote_route: Route,
         their_identifier: Option<LocalInfoIdentifier>,
         streams: Option<(ReadHalfMaybeTls, WriteHalfMaybeTls)>,
         addresses: Addresses,
@@ -161,13 +148,12 @@ impl TcpPortalWorker {
 
         let worker = Self {
             registry,
-            state,
             their_identifier,
             write_half: tx,
             read_half: rx,
             hostname_port,
             addresses: addresses.clone(),
-            remote_route: None,
+            remote_route,
             is_disconnecting: false,
             portal_type,
             last_received_packet_counter: u16::MAX,
@@ -207,17 +193,13 @@ enum DisconnectionReason {
 }
 
 impl TcpPortalWorker {
-    fn clone_state(&self) -> State {
-        self.state.clone()
-    }
-
     /// Start a `TcpPortalRecvProcessor`
     #[instrument(skip_all)]
-    async fn start_receiver(&mut self, ctx: &Context, onward_route: Route) -> Result<()> {
+    async fn start_receiver(&mut self, ctx: &Context) -> Result<()> {
         if let Some(rx) = self.read_half.take() {
             match rx {
-                ReadHalfNoTls(rx) => self.start_receive_processor(ctx, onward_route, rx).await,
-                ReadHalfWithTls(rx) => self.start_receive_processor(ctx, onward_route, rx).await,
+                ReadHalfNoTls(rx) => self.start_receive_processor(ctx, rx).await,
+                ReadHalfWithTls(rx) => self.start_receive_processor(ctx, rx).await,
             }
         } else {
             Err(TransportError::PortalInvalidState)?
@@ -228,14 +210,13 @@ impl TcpPortalWorker {
     async fn start_receive_processor<R: AsyncRead + Unpin + Send + Sync + 'static>(
         &mut self,
         ctx: &Context,
-        onward_route: Route,
         rx: R,
     ) -> Result<()> {
         let receiver = TcpPortalRecvProcessor::new(
             self.registry.clone(),
             rx,
             self.addresses.clone(),
-            onward_route,
+            self.remote_route.clone(),
         );
 
         let remote = Mailbox::new(
@@ -263,20 +244,18 @@ impl TcpPortalWorker {
     #[instrument(skip_all)]
     async fn notify_remote_about_disconnection(&mut self, ctx: &Context) -> Result<()> {
         // Notify the other end
-        if let Some(remote_route) = self.remote_route.take() {
-            ctx.send_from_address(
-                remote_route,
-                PortalMessage::Disconnect.to_neutral_message()?,
-                self.addresses.sender_remote.clone(),
-            )
-            .await?;
+        ctx.send_from_address(
+            self.remote_route.clone(),
+            PortalMessage::Disconnect.to_neutral_message()?,
+            self.addresses.sender_remote.clone(),
+        )
+        .await?;
 
-            debug!(
-                "Notified the other side from {:?} at: {} about connection drop",
-                self.portal_type.str(),
-                self.addresses.sender_internal
-            );
-        }
+        debug!(
+            "Notified the other side from {:?} at: {} about connection drop",
+            self.portal_type.str(),
+            self.addresses.sender_internal
+        );
 
         Ok(())
     }
@@ -359,26 +338,12 @@ impl TcpPortalWorker {
     }
 
     #[instrument(skip_all)]
-    async fn handle_send_ping(&self, ctx: &Context, ping_route: Route) -> Result<State> {
-        // Force creation of Outlet on the other side
-        ctx.send_from_address(
-            ping_route,
-            PortalMessage::Ping.to_neutral_message()?,
-            self.addresses.sender_remote.clone(),
-        )
-        .await?;
-
-        debug!("Inlet at: {} sent ping", self.addresses.sender_internal);
-
-        Ok(State::ReceivePong)
-    }
-
-    #[instrument(skip_all)]
-    async fn handle_send_pong(&mut self, ctx: &Context, pong_route: Route) -> Result<State> {
+    async fn connect_if_needed(&mut self, ctx: &Context) -> Result<()> {
         if self.write_half.is_some() {
-            // Should not happen
-            return Err(TransportError::PortalInvalidState)?;
+            self.start_receiver(ctx).await?;
+            return Ok(());
         }
+
         if self.is_tls {
             debug!("Connect to {} via TLS", &self.hostname_port);
             let (rx, tx) = connect_tls(&self.hostname_port).await?;
@@ -391,27 +356,14 @@ impl TcpPortalWorker {
             self.read_half = Some(ReadHalfNoTls(rx));
         }
 
-        // Respond to Inlet before starting the processor but
-        // after the connection has been established
-        // to avoid a payload being sent before the pong
-        ctx.send_from_address(
-            pong_route.clone(),
-            PortalMessage::Pong.to_neutral_message()?,
-            self.addresses.sender_remote.clone(),
-        )
-        .await?;
-
-        self.start_receiver(ctx, pong_route.clone()).await?;
+        self.start_receiver(ctx).await?;
 
         debug!(
             "Outlet at: {} successfully connected",
             self.addresses.sender_internal
         );
 
-        debug!("Outlet at: {} sent pong", self.addresses.sender_internal);
-
-        self.remote_route = Some(pong_route);
-        Ok(State::Initialized)
+        Ok(())
     }
 }
 
@@ -422,22 +374,19 @@ impl Worker for TcpPortalWorker {
 
     #[instrument(skip_all, name = "TcpPortalWorker::initialize")]
     async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
-        let state = self.clone_state();
-
-        match state {
-            State::SendPing { ping_route } => {
-                self.state = self.handle_send_ping(ctx, ping_route.clone()).await?;
-            }
-            State::SendPong { pong_route } => {
-                self.state = self.handle_send_pong(ctx, pong_route.clone()).await?;
-            }
-            State::ReceivePong | State::Initialized { .. } => {
-                return Err(TransportError::PortalInvalidState)?;
-            }
-        }
+        self.connect_if_needed(ctx).await?;
 
         self.registry
             .add_portal_worker(&self.addresses.sender_remote);
+
+        if let PortalType::Inlet = self.portal_type {
+            ctx.send_from_address(
+                self.remote_route.clone(),
+                PortalMessage::Ping.to_neutral_message()?,
+                self.addresses.sender_remote.clone(),
+            )
+            .await?;
+        };
 
         Ok(())
     }
@@ -450,8 +399,6 @@ impl Worker for TcpPortalWorker {
         Ok(())
     }
 
-    // TcpSendWorker will receive messages from the TcpRouter to send
-    // across the TcpStream to our friend
     #[instrument(skip_all, name = "TcpPortalWorker::handle_message")]
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Any>) -> Result<()> {
         if self.is_disconnecting {
@@ -462,7 +409,6 @@ impl Worker for TcpPortalWorker {
         // knows what to do with the incoming message
 
         let msg = msg.into_local_message();
-        let state = self.clone_state();
         let mut onward_route = msg.onward_route;
         let recipient = onward_route.step()?;
         if onward_route.next().is_ok() {
@@ -485,67 +431,39 @@ impl Worker for TcpPortalWorker {
             }
         }
 
-        let return_route = msg.return_route;
         let payload = msg.payload;
 
-        match state {
-            State::ReceivePong => {
-                if !remote_packet {
-                    return Err(TransportError::PortalInvalidState)?;
-                };
-                if PortalMessage::decode(&payload)? != PortalMessage::Pong {
-                    return Err(TransportError::Protocol)?;
-                };
-                self.handle_receive_pong(ctx, return_route).await
-            }
-            State::Initialized => {
-                trace!(
-                    "{:?} at: {} received {} tcp packet",
-                    self.portal_type.str(),
-                    self.addresses.sender_internal,
-                    if remote_packet { "remote" } else { "internal " }
-                );
+        trace!(
+            "{:?} at: {} received {} tcp packet",
+            self.portal_type.str(),
+            self.addresses.sender_internal,
+            if remote_packet { "remote" } else { "internal " }
+        );
 
-                if remote_packet {
-                    let msg = PortalMessage::decode(&payload)?;
-                    // Send to Tcp stream
-                    match msg {
-                        PortalMessage::Payload(payload, packet_counter) => {
-                            self.handle_payload(ctx, payload, packet_counter).await
-                        }
-                        PortalMessage::Disconnect => {
-                            self.start_disconnection(ctx, DisconnectionReason::Remote)
-                                .await
-                        }
-                        PortalMessage::Ping | PortalMessage::Pong => {
-                            return Err(TransportError::Protocol)?;
-                        }
-                    }
-                } else {
-                    let msg = PortalInternalMessage::decode(&payload)?;
-                    if msg != PortalInternalMessage::Disconnect {
-                        return Err(TransportError::Protocol)?;
-                    };
-                    self.handle_disconnect(ctx).await
+        if remote_packet {
+            let msg = PortalMessage::decode(&payload)?;
+            // Send to Tcp stream
+            match msg {
+                PortalMessage::Payload(payload, packet_counter) => {
+                    self.handle_payload(ctx, payload, packet_counter).await
                 }
+                PortalMessage::Disconnect => {
+                    self.start_disconnection(ctx, DisconnectionReason::Remote)
+                        .await
+                }
+                PortalMessage::Pong | PortalMessage::Ping => Ok(()),
             }
-            State::SendPing { .. } | State::SendPong { .. } => {
-                return Err(TransportError::PortalInvalidState)?;
-            }
+        } else {
+            let msg = PortalInternalMessage::decode(&payload)?;
+            if msg != PortalInternalMessage::Disconnect {
+                return Err(TransportError::Protocol)?;
+            };
+            self.handle_disconnect(ctx).await
         }
     }
 }
 
 impl TcpPortalWorker {
-    #[instrument(skip_all)]
-    async fn handle_receive_pong(&mut self, ctx: &Context, return_route: Route) -> Result<()> {
-        self.start_receiver(ctx, return_route.clone()).await?;
-        debug!("Inlet at: {} received pong", self.addresses.sender_internal);
-        self.remote_route = Some(return_route);
-        self.state = State::Initialized;
-        Ok(())
-    }
-
     #[instrument(skip_all)]
     async fn handle_disconnect(&mut self, ctx: &Context) -> Result<()> {
         info!(

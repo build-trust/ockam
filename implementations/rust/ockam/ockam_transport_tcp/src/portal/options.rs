@@ -185,22 +185,6 @@ impl TcpOutletOptions {
             flow_controls.add_consumer(address.clone(), id);
         }
     }
-
-    pub(crate) fn setup_flow_control_for_outlet(
-        flow_controls: &FlowControls,
-        addresses: &Addresses,
-        src_addr: &Address,
-    ) {
-        // Check if the Worker that send us this message is a Producer
-        // If yes - outlet worker will be added to that flow control to be able to receive further
-        // messages from that Producer
-        if let Some(producer_flow_control_id) = flow_controls
-            .get_flow_control_with_producer(src_addr)
-            .map(|x| x.flow_control_id().clone())
-        {
-            flow_controls.add_consumer(addresses.sender_remote.clone(), &producer_flow_control_id);
-        }
-    }
 }
 
 impl Default for TcpOutletOptions {

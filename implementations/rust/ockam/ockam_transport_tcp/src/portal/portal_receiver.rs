@@ -23,7 +23,7 @@ pub(crate) struct TcpPortalRecvProcessor<R> {
     buf: Vec<u8>,
     read_half: R,
     addresses: Addresses,
-    onward_route: Route,
+    remote_route: Route,
     payload_packet_counter: u16,
 }
 
@@ -33,14 +33,14 @@ impl<R: AsyncRead + Unpin + Send + Sync + 'static> TcpPortalRecvProcessor<R> {
         registry: TcpRegistry,
         read_half: R,
         addresses: Addresses,
-        onward_route: Route,
+        remote_route: Route,
     ) -> Self {
         Self {
             registry,
             buf: Vec::with_capacity(MAX_PAYLOAD_SIZE),
             read_half,
             addresses,
-            onward_route,
+            remote_route,
             payload_packet_counter: 0,
         }
     }
@@ -103,7 +103,7 @@ impl<R: AsyncRead + Unpin + Send + Sync + 'static> Processor for TcpPortalRecvPr
             ctx.forward_from_address(
                 LocalMessage::new()
                     .with_tracing_context(tracing_context.clone())
-                    .with_onward_route(self.onward_route.clone())
+                    .with_onward_route(self.remote_route.clone())
                     .with_return_route(route![self.addresses.sender_remote.clone()])
                     .with_payload(PortalMessage::Disconnect.encode()?),
                 self.addresses.receiver_remote.clone(),
@@ -115,13 +115,12 @@ impl<R: AsyncRead + Unpin + Send + Sync + 'static> Processor for TcpPortalRecvPr
 
         // Loop just in case buf was extended (should not happen though)
         for chunk in self.buf.chunks(MAX_PAYLOAD_SIZE) {
+            let payload = PortalMessage::Payload(chunk, Some(self.payload_packet_counter));
             let msg = LocalMessage::new()
                 .with_tracing_context(tracing_context.clone())
-                .with_onward_route(self.onward_route.clone())
+                .with_onward_route(self.remote_route.clone())
                 .with_return_route(route![self.addresses.sender_remote.clone()])
-                .with_payload(
-                    PortalMessage::Payload(chunk, Some(self.payload_packet_counter)).encode()?,
-                );
+                .with_payload(payload.encode()?);
 
             self.payload_packet_counter += 1;
             ctx.forward_from_address(msg, self.addresses.receiver_remote.clone())
