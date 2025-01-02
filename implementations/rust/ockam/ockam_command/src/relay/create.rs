@@ -169,7 +169,7 @@ impl Command for CreateCommand {
                         let at = color_primary(&at);
                         let node = color_primary(format!("/node/{}", &node.node_name()));
                         fmt_warn!("A relay was created at {node} but failed to connect to {at}\n")
-                            + &fmt_info!("It will retry to connect automatically")
+                            + &fmt_info!("It will automatically connect to the Relay as soon as it is available")
                     };
                     opts.terminal
                         .stdout()

@@ -111,29 +111,29 @@ impl Command for InfluxDBCreateCommand {
             .add_inlet_created_event(&opts, &node_name, &inlet_status)
             .await?;
 
-        let created_message = fmt_ok!(
-            "Created a new InfluxDB Inlet in the Node {} bound to {}\n",
+        let created_message = format!(
+            "Created a new InfluxDB Inlet in the Node {} bound to {}",
             color_primary(&node_name),
-            color_primary(&self.tcp_inlet.from)
+            color_primary(self.tcp_inlet.from.to_string()),
         );
 
         let plain = if self.tcp_inlet.no_connection_wait {
-            created_message + &fmt_log!("It will automatically connect to the TCP Outlet at {} as soon as it is available",
+            fmt_ok!("{created_message}\n")
+                + &fmt_log!("It will automatically connect to the InfluxDB Outlet at {} as soon as it is available\n",
                 color_primary(&self.tcp_inlet.to)
             )
         } else if inlet_status.status == ConnectionStatus::Up {
-            created_message
+            fmt_ok!("{created_message}\n")
                 + &fmt_log!(
-                    "sending traffic to the TCP Outlet at {}",
+                    "sending traffic to the TCP Outlet at {}\n",
                     color_primary(&self.tcp_inlet.to)
                 )
         } else {
-            fmt_warn!(
-                "A InfluxDB Inlet was created in the Node {} bound to {} but failed to connect to the TCP Outlet at {}\n",
-                color_primary(&node_name),
-                 color_primary(self.tcp_inlet.from.to_string()),
+            fmt_warn!("{created_message}\n")
+                + &fmt_log!(
+                "but failed to connect to the TCP Outlet at {}\n",
                 color_primary(&self.tcp_inlet.to)
-            ) + &fmt_info!("It will retry to connect automatically")
+            ) + &fmt_info!("It will automatically connect to the InfluxDB Outlet as soon as it is available\n")
         };
 
         opts.terminal
