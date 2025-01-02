@@ -38,7 +38,7 @@ macro_rules! fmt_log {
     ($input:expr $(, $args:expr)* $(,)?) => {
         format!("{}{}",
         $crate::terminal::PADDING,
-        format!($input, $($args),+))
+        format!($input, $($args),*))
     };
 }
 
@@ -58,7 +58,7 @@ macro_rules! fmt_ok {
         "✔"
             .color($crate::colors::OckamColor::FmtOKBackground.color())
             .bold(),
-        format!($input, $($args),+))
+        format!($input, $($args),*))
     };
 }
 
@@ -78,7 +78,7 @@ macro_rules! fmt_para {
         "│"
             .color($crate::colors::OckamColor::FmtINFOBackground.color())
             .bold(),
-        format!($input, $($args),+))
+        format!($input, $($args),*))
     };
 }
 
@@ -98,7 +98,7 @@ macro_rules! fmt_list {
         "│"
             .color($crate::colors::OckamColor::FmtLISTBackground.color())
             .bold(),
-        format!($input, $($args),+))
+        format!($input, $($args),*))
     };
 }
 
@@ -114,7 +114,7 @@ macro_rules! fmt_heading {
     ($input:expr $(, $args:expr)* $(,)?) => {
         format!("\n{}{}\n{}{}",
         $crate::terminal::PADDING,
-        format!($input, $($args),+),
+        format!($input, $($args),*),
         $crate::terminal::PADDING,
         "─".repeat($crate::terminal::get_separator_width()).dim().light_gray())
     };
@@ -150,7 +150,7 @@ macro_rules! fmt_info {
         ">"
             .color($crate::colors::OckamColor::FmtINFOBackground.color())
             .bold(),
-        format!($input, $($args),+))
+        format!($input, $($args),*))
     };
 }
 
@@ -170,7 +170,7 @@ macro_rules! fmt_warn {
         "!"
             .color($crate::colors::OckamColor::FmtWARNBackground.color())
             .bold(),
-        format!($input, $($args),+))
+        format!($input, $($args),*))
     };
 }
 
@@ -190,6 +190,6 @@ macro_rules! fmt_err {
         "✗"
             .color($crate::colors::OckamColor::FmtERRORBackground.color())
             .bold(),
-        format!($input, $($args),+))
+        format!($input, $($args),*))
     };
 }

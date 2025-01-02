@@ -1,11 +1,10 @@
-use crate::nodes::service::certificate_provider::ProjectCertificateProvider;
 use ockam_transport_tcp::new_certificate_provider_cache;
 use std::sync::{Arc, Weak};
 use std::time::Duration;
 
+use colorful::Colorful;
 use tokio::time::timeout;
 
-use crate::DefaultAddress;
 use ockam::identity::{Identifier, SecureChannel};
 use ockam::tcp::TcpInletOptions;
 use ockam::udp::{UdpPuncture, UdpPunctureNegotiation, UdpTransport};
@@ -18,14 +17,17 @@ use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
 use ockam_transport_tcp::TcpInlet;
 
+use crate::colors::color_primary;
 use crate::error::ApiError;
 use crate::nodes::connection::Connection;
+use crate::nodes::service::certificate_provider::ProjectCertificateProvider;
 use crate::nodes::service::SecureChannelType;
 use crate::nodes::NodeManager;
 use crate::session::replacer::{
     AdditionalSessionReplacer, CurrentInletStatus, ReplacerOutcome, ReplacerOutputKind,
     SessionReplacer, MAX_RECOVERY_TIME,
 };
+use crate::{fmt_info, fmt_ok, fmt_warn, DefaultAddress};
 
 pub(super) struct InletSessionReplacer {
     pub(super) node_manager: Weak<NodeManager>,
@@ -295,6 +297,28 @@ impl SessionReplacer for InletSessionReplacer {
 
         self.close_inlet().await;
         self.close_connection(&node_manager).await;
+    }
+
+    async fn on_session_down(&self) {
+        if let Some(node_manager) = self.node_manager.upgrade() {
+            node_manager.cli_state.notify_message(
+                fmt_warn!(
+                    "The TCP Inlet at {} lost the connection to the TCP Outlet at {}\n",
+                    color_primary(&self.listen_addr),
+                    color_primary(&self.outlet_addr)
+                ) + &fmt_info!("Attempting to reconnect...\n"),
+            );
+        }
+    }
+
+    async fn on_session_replaced(&self) {
+        if let Some(node_manager) = self.node_manager.upgrade() {
+            node_manager.cli_state.notify_message(fmt_ok!(
+                "The TCP Inlet at {} has restored the connection to the TCP Outlet at {}\n",
+                color_primary(&self.listen_addr),
+                color_primary(&self.outlet_addr)
+            ));
+        }
     }
 }
 

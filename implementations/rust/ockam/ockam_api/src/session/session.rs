@@ -490,13 +490,19 @@ impl Session {
 
                     sleep(ping_interval).await;
                 }
+                // The session is down, or we reached the maximum number of failures
                 _ => {
-                    // We reached the maximum number of failures
+                    let mut replacer = shared_state.replacer.lock().await;
+
                     if first_creation && !initial_connect_was_called {
                         debug!(key = %key, "session is down. starting");
                         first_creation = false;
                     } else {
                         warn!(key = %key, "session unresponsive. replacing");
+                    }
+
+                    if !first_creation && pings.len() > 0 {
+                        replacer.on_session_down().await;
                     }
 
                     shared_state.status.set_down();
@@ -507,11 +513,12 @@ impl Session {
                     pings.clear();
                     drop(pings);
 
-                    let res = shared_state.replacer.lock().await.create().await;
-
-                    match res {
+                    match replacer.create().await {
                         Ok(replacer_outcome) => {
                             info!(key = %key, ping_route = %replacer_outcome.ping_route, "replacement is up");
+                            if !first_creation {
+                                replacer.on_session_replaced().await;
+                            }
 
                             shared_state.status.set_up(replacer_outcome.ping_route);
                             shared_state

@@ -1,15 +1,17 @@
 use crate::terminal::{Terminal, TerminalWriter};
 use crate::{fmt_log, CliState};
+use core::sync::atomic::AtomicBool;
+use core::sync::atomic::Ordering::{Acquire, Release};
 use indicatif::ProgressBar;
 use std::fmt::Debug;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::time::Duration;
 use tokio::select;
 
 use tokio::sync::broadcast::Receiver;
 use tokio::time::sleep;
 
-const REPORTING_CHANNEL_POLL_DELAY: Duration = Duration::from_millis(100);
+const REPORTING_CHANNEL_POLL_DELAY: Duration = Duration::from_millis(20);
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Notification {
@@ -46,13 +48,12 @@ impl Notification {
 }
 
 pub struct NotificationHandle {
-    stop: Arc<Mutex<bool>>,
+    stop: Arc<AtomicBool>,
 }
 
 impl Drop for NotificationHandle {
     fn drop(&mut self) {
-        let mut stop = self.stop.lock().unwrap();
-        *stop = true;
+        self.stop.store(true, Release);
     }
 }
 
@@ -67,14 +68,14 @@ pub struct NotificationHandler<T: TerminalWriter + Debug + Send + 'static> {
     /// User terminal
     terminal: Terminal<T>,
     /// Flag to determine if the progress display should stop
-    stop: Arc<Mutex<bool>>,
+    stop: Arc<AtomicBool>,
 }
 
 impl<T: TerminalWriter + Debug + Send + 'static> NotificationHandler<T> {
     /// Create a new NotificationsProgress without progress bar.
     /// The notifications are printed as they arrive and stay on screen
     pub fn start(cli_state: &CliState, terminal: Terminal<T>) -> NotificationHandle {
-        let stop = Arc::new(Mutex::new(false));
+        let stop = Arc::new(AtomicBool::new(false));
         let _self = NotificationHandler {
             rx: cli_state.subscribe_to_notifications(),
             terminal: terminal.clone(),
@@ -90,7 +91,7 @@ impl<T: TerminalWriter + Debug + Send + 'static> NotificationHandler<T> {
             loop {
                 select! {
                     _ = sleep(REPORTING_CHANNEL_POLL_DELAY) => {
-                        if *self.stop.lock().unwrap() {
+                        if self.stop.load(Acquire) {
                             // Drain the channel
                             while let Ok(notification) = self.rx.try_recv() {
                                 self.handle_notification(notification).await;

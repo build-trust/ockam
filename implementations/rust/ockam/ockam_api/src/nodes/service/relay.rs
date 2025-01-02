@@ -1,6 +1,7 @@
 use std::sync::{Arc, Weak};
 use std::time::Duration;
 
+use colorful::Colorful;
 use miette::IntoDiagnostic;
 
 use ockam::identity::models::CredentialAndPurposeKey;
@@ -14,6 +15,8 @@ use ockam_multiaddr::MultiAddr;
 use ockam_node::compat::asynchronous::Mutex;
 use ockam_node::Context;
 
+use super::{NodeManager, NodeManagerWorker};
+use crate::colors::color_primary;
 use crate::nodes::connection::Connection;
 use crate::nodes::models::relay::{CreateRelay, RelayInfo, ReturnTiming};
 use crate::nodes::models::secure_channel::{
@@ -25,8 +28,7 @@ use crate::nodes::service::secure_channel::SecureChannelType;
 use crate::nodes::BackgroundNodeClient;
 use crate::session::replacer::{ReplacerOutcome, ReplacerOutputKind, SessionReplacer};
 use crate::session::session::Session;
-
-use super::{NodeManager, NodeManagerWorker};
+use crate::{fmt_info, fmt_ok, fmt_warn};
 
 impl NodeManagerWorker {
     pub async fn create_relay(
@@ -372,6 +374,26 @@ impl SessionReplacer for RelaySessionReplacer {
                     error!(%relay_address, ?err, "Failed to stop relay address {relay_address}");
                 }
             }
+        }
+    }
+
+    async fn on_session_down(&self) {
+        if let Some(node_manager) = self.node_manager.upgrade() {
+            node_manager.cli_state.notify_message(
+                fmt_warn!(
+                    "The Node lost the connection to the Relay at {}\n",
+                    color_primary(&self.addr)
+                ) + &fmt_info!("Attempting to reconnect...\n"),
+            );
+        }
+    }
+
+    async fn on_session_replaced(&self) {
+        if let Some(node_manager) = self.node_manager.upgrade() {
+            node_manager.cli_state.notify_message(fmt_ok!(
+                "The Node has restored the connection to the Relay at {}\n",
+                color_primary(&self.addr)
+            ));
         }
     }
 }

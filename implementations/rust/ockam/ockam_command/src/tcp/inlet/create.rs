@@ -233,39 +233,37 @@ impl Command for CreateCommand {
             .await?;
 
         let created_message = format!(
-            "Created a new TCP Inlet in the Node {} bound to {}\n",
+            "Created a new TCP Inlet in the Node {} bound to {}",
             color_primary(&node_name),
             color_primary(cmd.from.to_string()),
         );
 
-        let created_message = fmt_ok!("{}", created_message);
-
         let mut plain = if cmd.no_connection_wait {
-            created_message
-                + &fmt_log!(
+            fmt_ok!("{created_message}\n")
+                + &fmt_info!(
                     "It will automatically connect to the TCP Outlet at {} as soon as it is available\n",
                     color_primary(&cmd.to)
                 )
         } else if inlet_status.status == ConnectionStatus::Up {
-            created_message
+            fmt_ok!("{created_message}\n")
                 + &fmt_log!(
                     "sending traffic to the TCP Outlet at {}\n",
                     color_primary(&cmd.to)
                 )
         } else {
-            let mut msg = fmt_warn!("A TCP Inlet was created in the Node {} bound to {} but failed to connect to the TCP Outlet at {}\n",
-                color_primary(&node_name),
-                color_primary(cmd.from.to_string()),
-                color_primary(&cmd.to));
-
-            msg += &fmt_info!("It will retry to connect automatically\n");
-
-            msg
+            fmt_warn!("{created_message}\n")
+                + &fmt_log!(
+                    "but it failed to connect to the TCP Outlet at {}\n",
+                    color_primary(&cmd.to)
+                )
+                + &fmt_info!(
+                    "It will automatically connect to the TCP Outlet as soon as it is available\n",
+                )
         };
 
         if privileged {
             plain += &fmt_info!(
-                "This Inlet is operating in {} mode\n",
+                "This TCP Inlet is operating in {} mode\n",
                 color_primary_alt("privileged".to_string())
             );
         }

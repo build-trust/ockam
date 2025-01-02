@@ -71,13 +71,11 @@ impl ParsedCommands {
         if len > 0 {
             opts.terminal.write_line("")?;
         }
-        for (idx, cmd) in self.commands.into_iter().enumerate() {
+        for cmd in self.commands.into_iter() {
             if cmd.is_valid(ctx, opts).await? {
                 cmd.run(ctx, opts).await?;
-                if idx < len - 1 {
-                    // Newline between commands
-                    opts.terminal.write_line("")?;
-                }
+                // Newline after each command
+                opts.terminal.write_line("")?;
             }
         }
         Ok(())

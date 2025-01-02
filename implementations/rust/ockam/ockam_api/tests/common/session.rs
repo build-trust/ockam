@@ -171,6 +171,14 @@ impl SessionReplacer for MockReplacer {
     async fn close(&mut self) {
         self.close_impl()
     }
+
+    async fn on_session_down(&self) {
+        info!("MockReplacer {} on_session_down called", self.name);
+    }
+
+    async fn on_session_replaced(&self) {
+        info!("MockReplacer {} on_session_replaced called", self.name);
+    }
 }
 
 #[async_trait]

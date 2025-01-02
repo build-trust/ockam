@@ -44,8 +44,7 @@ pub struct CliState {
     database: SqlxDatabase,
     application_database: SqlxDatabase,
     exporting_enabled: ExportingEnabled,
-    /// Broadcast channel to be notified of major events during a process supported by the
-    /// CliState API
+    /// Broadcast channel to be notified of major events during a process supported by the CliState API
     notifications: Sender<Notification>,
 }
 

@@ -14,6 +14,10 @@ pub trait SessionReplacer: Send + Sync + 'static {
     async fn create(&mut self) -> Result<ReplacerOutcome>;
 
     async fn close(&mut self);
+
+    async fn on_session_down(&self);
+
+    async fn on_session_replaced(&self);
 }
 
 #[async_trait]

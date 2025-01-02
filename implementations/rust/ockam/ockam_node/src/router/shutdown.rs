@@ -107,7 +107,7 @@ pub(super) async fn graceful(
             warn!(%timeout, "shutdown timeout reached; aborting node!");
             // This works only because the state of the router is `Stopping`
             if sender.send(NodeMessage::AbortNode).await.is_err() {
-                warn!("failed to send node abort signal to router");
+                warn!("couldn't send node abort signal to router");
             }
         });
     }
