@@ -68,14 +68,12 @@ impl ParsedCommands {
     /// Validate and run each command
     pub async fn run(self, ctx: &Context, opts: &CommandGlobalOpts) -> Result<()> {
         let len = self.commands.len();
-        if len > 0 {
-            opts.terminal.write_line("")?;
-        }
-        for cmd in self.commands.into_iter() {
+        for (idx, cmd) in self.commands.into_iter().enumerate() {
             if cmd.is_valid(ctx, opts).await? {
                 cmd.run(ctx, opts).await?;
-                // Newline after each command
-                opts.terminal.write_line("")?;
+                if idx < len - 1 {
+                    opts.terminal.write_line("")?;
+                }
             }
         }
         Ok(())

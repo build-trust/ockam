@@ -281,9 +281,9 @@ impl NodeConfig {
             self.kafka_outlet.into_parsed_commands(node_name)?.into(),
             self.kafka_inlet.into_parsed_commands(node_name)?.into(),
         ];
-        for section in other_sections {
-            section.run(ctx, opts).await?;
-        }
+        opts.terminal.write_line("")?;
+        Self::run_commands_sections(ctx, opts, other_sections).await?;
+        opts.terminal.write_line("")?;
 
         // Block on the node until it exits
         let _ = node_handle.await.into_diagnostic()?;
@@ -297,9 +297,8 @@ impl NodeConfig {
         node_name: &String,
         identity_name: &String,
     ) -> miette::Result<()> {
-        for section in self.parse_commands(node_name, identity_name)? {
-            section.run(ctx, opts).await?
-        }
+        let sections = self.parse_commands(node_name, identity_name)?;
+        Self::run_commands_sections(ctx, opts, sections).await?;
         Ok(())
     }
 
@@ -327,6 +326,28 @@ impl NodeConfig {
             self.kafka_outlet.into_parsed_commands(node_name)?.into(),
             self.kafka_inlet.into_parsed_commands(node_name)?.into(),
         ])
+    }
+
+    async fn run_commands_sections(
+        ctx: &Context,
+        opts: &CommandGlobalOpts,
+        sections: Vec<ParsedCommands>,
+    ) -> miette::Result<()> {
+        let sections: Vec<ParsedCommands> = sections
+            .into_iter()
+            .filter(|s| !s.commands.is_empty())
+            .collect();
+        let len = sections.len();
+        for (idx, section) in sections.into_iter().enumerate() {
+            if section.commands.is_empty() {
+                continue;
+            }
+            section.run(ctx, opts).await?;
+            if idx < len - 1 {
+                opts.terminal.write_line("")?;
+            }
+        }
+        Ok(())
     }
 }
 
