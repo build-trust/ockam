@@ -1,9 +1,9 @@
 use log::info;
-use low_latency_portal::{parse, RelayConfig};
+use low_latency_portal::{init, parse, RelayConfig};
 use ockam::identity::models::ChangeHistory;
-use ockam::identity::{Identifier, SecureChannelListenerOptions, SecureChannels, TrustIdentifierPolicy, Vault};
+use ockam::identity::{Identifier, SecureChannelListenerOptions, TrustIdentifierPolicy};
 use ockam::tcp::{TcpListenerOptions, TcpTransport};
-use ockam::vault::{EdDSACurve25519SecretKey, SigningSecret, SoftwareVaultForSigning};
+use ockam::vault::{EdDSACurve25519SecretKey, SigningSecret};
 use ockam::{Context, RelayService, RelayServiceOptions, Result};
 use std::str::FromStr;
 
@@ -26,15 +26,12 @@ async fn main(ctx: Context) -> Result<()> {
 
     let tcp = TcpTransport::create(&ctx).await?;
 
-    let identity_vault = SoftwareVaultForSigning::create().await?;
     let relay_identity_key = EdDSACurve25519SecretKey::new(relay_identity_key.try_into().unwrap());
     let relay_identity_key = SigningSecret::EdDSACurve25519(relay_identity_key);
+
+    let (identity_vault, secure_channels) = init();
+
     identity_vault.import_key(relay_identity_key).await?;
-
-    let mut vault = Vault::create().await?;
-    vault.identity_vault = identity_vault;
-
-    let secure_channels = SecureChannels::builder().await?.with_vault(vault).build();
 
     let relay_identifier = secure_channels
         .identities()

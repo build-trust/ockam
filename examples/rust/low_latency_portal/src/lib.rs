@@ -36,35 +36,15 @@ pub fn run_inlet(config: Option<String>, callback_address: Option<SocketAddr>) {
             let inlet_identity_key = hex::decode(config.inlet_identity_key).unwrap();
             let inlet_change_history = ChangeHistory::import_from_string(&config.inlet_change_history)?;
 
-            let hash_map_storage = Arc::new(HashMapRepository::default());
-
             let tcp = TcpTransport::create(&ctx).await?;
-
-            let identity_vault = Arc::new(SoftwareVaultForSigning::new(hash_map_storage.clone()));
-            let secure_channel_vault = Arc::new(SoftwareVaultForSecureChannels::new(hash_map_storage.clone()));
-            let credential_vault = Arc::new(SoftwareVaultForSigning::new(hash_map_storage.clone()));
-            let verifying_vault = Arc::new(SoftwareVaultForVerifyingSignatures::new());
 
             let relay_identity_key = EdDSACurve25519SecretKey::new(inlet_identity_key.try_into().unwrap());
 
             let relay_identity_key = SigningSecret::EdDSACurve25519(relay_identity_key);
 
+            let (identity_vault, secure_channels) = init();
+
             identity_vault.import_key(relay_identity_key).await?;
-
-            let vault = Vault::new(identity_vault, secure_channel_vault, credential_vault, verifying_vault);
-
-            let identities = Identities::new(
-                vault,
-                hash_map_storage.clone(),
-                hash_map_storage.clone(),
-                hash_map_storage.clone(),
-                hash_map_storage.clone(),
-            );
-            let secure_channels = SecureChannels::new(
-                Arc::new(identities),
-                SecureChannelRegistry::new(),
-                hash_map_storage.clone(),
-            );
 
             let inlet_identifier = secure_channels
                 .identities()
@@ -110,4 +90,35 @@ pub fn run_inlet(config: Option<String>, callback_address: Option<SocketAddr>) {
         })
         .unwrap()
         .unwrap();
+}
+
+pub fn init() -> (Arc<SoftwareVaultForSigning>, SecureChannels) {
+    let hash_map_repository = Arc::new(HashMapRepository::default());
+
+    let identity_vault = Arc::new(SoftwareVaultForSigning::new(hash_map_repository.clone()));
+    let secure_channel_vault = Arc::new(SoftwareVaultForSecureChannels::new(hash_map_repository.clone()));
+    let credential_vault = Arc::new(SoftwareVaultForSigning::new(hash_map_repository.clone()));
+    let verifying_vault = Arc::new(SoftwareVaultForVerifyingSignatures::new());
+
+    let vault = Vault::new(
+        identity_vault.clone(),
+        secure_channel_vault,
+        credential_vault,
+        verifying_vault,
+    );
+
+    let identities = Identities::new(
+        vault.clone(),
+        hash_map_repository.clone(),
+        hash_map_repository.clone(),
+        hash_map_repository.clone(),
+        hash_map_repository.clone(),
+    );
+    let secure_channels = SecureChannels::new(
+        Arc::new(identities),
+        SecureChannelRegistry::new(),
+        hash_map_repository.clone(),
+    );
+
+    (identity_vault, secure_channels)
 }
