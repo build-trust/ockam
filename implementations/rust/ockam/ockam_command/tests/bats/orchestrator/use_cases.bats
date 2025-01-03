@@ -111,12 +111,12 @@ teardown() {
 
   # Telegraf instance
   setup_home_dir
-  export INFLUX_PORT="$(random_port)"
+  export OCKAM_INFLUX_PORT="$(random_port)"
 
   run_success "$OCKAM" identity create telegraf
   run_success "$OCKAM" project enroll "${ADMIN_HOME}/telegraf.ticket" --identity telegraf
   run_success "$OCKAM" node create telegraf --identity telegraf
-  run_success "$OCKAM" tcp-inlet create --at /node/telegraf --from "${INFLUX_PORT}" \
+  run_success "$OCKAM" tcp-inlet create --at /node/telegraf --from "${OCKAM_INFLUX_PORT}" \
     --via $relay_name --allow '(= subject.component "influxdb")'
 
   run_success kill_telegraf_instance
@@ -128,5 +128,5 @@ teardown() {
     --header "Accept: application/csv" \
     --header 'Content-type: application/vnd.flux' \
     --data "from(bucket:\"$INFLUX_BUCKET\") |> range(start:-1m)" \
-    "http://localhost:$INFLUX_PORT/api/v2/query?org=$INFLUX_ORG"
+    "http://localhost:$OCKAM_INFLUX_PORT/api/v2/query?org=$INFLUX_ORG"
 }
