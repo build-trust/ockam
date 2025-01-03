@@ -30,6 +30,15 @@ debug = 1
 strip = "none"
 inherits = "release"
 
+[profile.quick]
+inherits = "release"
+lto = "fat"
+opt-level = 3
+codegen-units = 1
+panic = "abort"
+debug = "none"
+strip = "debuginfo"
+
 # compromise: minimal optimization on selected dependencies
 # to reduce cli bootstrap time by ~5x
 # mostly caused by syntect theme loading
