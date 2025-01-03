@@ -1,112 +1,7 @@
-use log::info;
-use low_latency_portal::{parse, HashMapRepository, InletConfig};
-use ockam::abac::tokio;
-use ockam::compat::str::FromStr;
-use ockam::compat::sync::Arc;
-use ockam::identity::models::ChangeHistory;
-use ockam::identity::{
-    Identifier, Identities, SecureChannelOptions, SecureChannelRegistry, SecureChannels, TrustIdentifierPolicy, Vault,
-};
-use ockam::tcp::{TcpConnectionOptions, TcpInletOptions, TcpTransport};
-use ockam::vault::{
-    EdDSACurve25519SecretKey, SigningSecret, SoftwareVaultForSecureChannels, SoftwareVaultForSigning,
-    SoftwareVaultForVerifyingSignatures,
-};
-use ockam::{route, NodeBuilder};
+use low_latency_portal::run_inlet;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::os::unix::prelude::CommandExt;
 use std::process::Stdio;
-
-fn run_inlet(args: Vec<String>) {
-    let (ctx, mut executor) = NodeBuilder::new().build();
-    executor
-        .execute(async move {
-            let config = if let Some(config) = args.get(1) {
-                config.clone()
-            } else {
-                let config = std::fs::read("inlet.config.json").unwrap();
-                String::from_utf8(config).unwrap()
-            };
-
-            let config: InletConfig = parse(&config)?;
-
-            let outlet_identifier = Identifier::from_str(&config.outlet_identifier)?;
-            let inlet_identity_key = hex::decode(config.inlet_identity_key).unwrap();
-            let inlet_change_history = ChangeHistory::import_from_string(&config.inlet_change_history)?;
-
-            let hash_map_storage = Arc::new(HashMapRepository::default());
-
-            let tcp = TcpTransport::create(&ctx).await?;
-
-            let identity_vault = Arc::new(SoftwareVaultForSigning::new(hash_map_storage.clone()));
-            let secure_channel_vault = Arc::new(SoftwareVaultForSecureChannels::new(hash_map_storage.clone()));
-            let credential_vault = Arc::new(SoftwareVaultForSigning::new(hash_map_storage.clone()));
-            let verifying_vault = Arc::new(SoftwareVaultForVerifyingSignatures::new());
-
-            let relay_identity_key = EdDSACurve25519SecretKey::new(inlet_identity_key.try_into().unwrap());
-
-            let relay_identity_key = SigningSecret::EdDSACurve25519(relay_identity_key);
-
-            identity_vault.import_key(relay_identity_key).await?;
-
-            let vault = Vault::new(identity_vault, secure_channel_vault, credential_vault, verifying_vault);
-
-            let identities = Identities::new(
-                vault,
-                hash_map_storage.clone(),
-                hash_map_storage.clone(),
-                hash_map_storage.clone(),
-                hash_map_storage.clone(),
-            );
-            let secure_channels = SecureChannels::new(
-                Arc::new(identities),
-                SecureChannelRegistry::new(),
-                hash_map_storage.clone(),
-            );
-
-            let inlet_identifier = secure_channels
-                .identities()
-                .identities_verification()
-                .import_from_change_history(None, inlet_change_history)
-                .await?;
-
-            let tcp_connection_to_relay = tcp
-                .connect(config.relay_address.to_string(), TcpConnectionOptions::new())
-                .await?;
-
-            let secure_channel_to_outlet = secure_channels
-                .create_secure_channel(
-                    &ctx,
-                    &inlet_identifier,
-                    route![
-                        tcp_connection_to_relay,
-                        format!("forward_to_{}", config.outlet_relay_name),
-                        "api"
-                    ],
-                    SecureChannelOptions::new().with_trust_policy(TrustIdentifierPolicy::new(outlet_identifier)),
-                )
-                .await?;
-
-            tcp.create_inlet(
-                config.inlet_address.to_string(),
-                route![secure_channel_to_outlet, "outlet"],
-                TcpInletOptions::new(),
-            )
-            .await?;
-
-            info!("Initialized successfully");
-
-            let socket = tokio::net::UdpSocket::bind("127.0.0.1:0").await.unwrap();
-
-            socket.send_to(&[], CALLBACK_ADDRESS).await.unwrap();
-
-            info!("Sent callback signal");
-
-            Ok::<(), ockam::Error>(())
-        })
-        .unwrap()
-        .unwrap();
-}
 
 const CALLBACK_ADDRESS: SocketAddr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 4321);
 
@@ -114,10 +9,10 @@ fn main() {
     let mut args: Vec<String> = std::env::args().collect();
 
     if args.last() == Some("CHILD".to_string()).as_ref() {
-        args.pop().unwrap();
-        run_inlet(args);
+        args.pop();
+        run_inlet(args.get(1).cloned(), Some(CALLBACK_ADDRESS));
     } else {
-        let first = args.remove(0);
+        let executable_path = args.remove(0);
 
         args.push("CHILD".to_string());
 
@@ -127,7 +22,7 @@ fn main() {
 
         println!("Spawning inlet process");
         unsafe {
-            std::process::Command::new(first)
+            std::process::Command::new(executable_path)
                 .args(args)
                 .stdout(Stdio::null())
                 .stderr(Stdio::null())
