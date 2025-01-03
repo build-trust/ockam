@@ -19,6 +19,7 @@ pub struct OutletConfig {
     pub outlet_identity_key: String,
     pub outlet_relay_name: String,
     pub outlet_peer_address: HostnamePort,
+    pub tls: Option<bool>,
     pub relay_identifier: String,
     pub relay_address: HostnamePort,
     pub inlet_identifiers: Vec<String>,

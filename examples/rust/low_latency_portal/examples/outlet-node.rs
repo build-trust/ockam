@@ -24,6 +24,12 @@ async fn main(ctx: Context) -> Result<()> {
 
     let config: OutletConfig = parse(&config)?;
 
+    if config.tls == Some(true) {
+        tokio_rustls::rustls::crypto::aws_lc_rs::default_provider()
+            .install_default()
+            .expect("Failed to install aws-lc crypto provider");
+    }
+
     let relay_identifier = Identifier::from_str(&config.relay_identifier)?;
     let outlet_identity_key = hex::decode(config.outlet_identity_key).unwrap();
     let inlet_identifiers = config
@@ -57,8 +63,9 @@ async fn main(ctx: Context) -> Result<()> {
     let secure_channel_listener_options = SecureChannelListenerOptions::new()
         .as_consumer(&secure_channel_options.producer_flow_control_id())
         .with_trust_policy(TrustMultiIdentifiersPolicy::new(inlet_identifiers));
-    let tcp_outlet_options =
-        TcpOutletOptions::new().as_consumer(&secure_channel_listener_options.spawner_flow_control_id());
+    let tcp_outlet_options = TcpOutletOptions::new()
+        .as_consumer(&secure_channel_listener_options.spawner_flow_control_id())
+        .with_tls(config.tls.unwrap_or(false));
 
     tcp.create_outlet("outlet", config.outlet_peer_address, tcp_outlet_options)
         .await?;

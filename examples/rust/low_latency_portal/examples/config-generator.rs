@@ -70,6 +70,7 @@ async fn main(ctx: Context) -> Result<()> {
         outlet_identity_key: hex::encode(outlet_key_binary),
         outlet_relay_name: "outlet_relay".to_string(),
         outlet_peer_address: HostnamePort::new("127.0.0.1", 5000),
+        tls: Some(false),
         relay_identifier: relay_identifier.to_string(),
         relay_address: HostnamePort::new("127.0.0.1", 4001),
         inlet_identifiers: vec![inlet_identifier.to_string()],
