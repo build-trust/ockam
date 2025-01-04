@@ -25,6 +25,7 @@ pub(crate) async fn create_tcp_stream(to: &HostnamePort) -> Result<TcpStream> {
     let connection = match TcpStream::connect(to.to_string()).await {
         Ok(c) => {
             debug!(addr = %to, "Connected");
+            c.set_nodelay(true).unwrap();
             c
         }
         Err(e) => {
