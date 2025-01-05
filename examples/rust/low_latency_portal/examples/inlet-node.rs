@@ -1,27 +1,22 @@
 use low_latency_portal::run_inlet;
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::os::unix::prelude::CommandExt;
 use std::process::Stdio;
-
-const CALLBACK_ADDRESS: SocketAddr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 4321);
+use std::thread::sleep;
+use std::time::Duration;
 
 fn main() {
     let mut args: Vec<String> = std::env::args().collect();
 
     if args.last() == Some("CHILD".to_string()).as_ref() {
         args.pop();
-        run_inlet(args.get(1).cloned(), Some(CALLBACK_ADDRESS));
+        run_inlet(args.get(1).cloned(), true);
     } else {
         let executable_path = args.remove(0);
 
         args.push("CHILD".to_string());
 
-        let socket = std::net::UdpSocket::bind(CALLBACK_ADDRESS).unwrap();
-
-        let mut buf = [0; 32];
-
         println!("Spawning inlet process");
-        unsafe {
+        let child = unsafe {
             std::process::Command::new(executable_path)
                 .args(args)
                 .stdout(Stdio::null())
@@ -34,13 +29,15 @@ fn main() {
                     Ok(())
                 })
                 .spawn()
-                .unwrap();
-        }
+                .unwrap()
+        };
+
+        println!("Spawned inlet pid: {}", child.id());
 
         // Possible race condition
         println!("Waiting for the callback");
+        sleep(Duration::from_secs(5));
 
-        socket.recv(&mut buf).unwrap();
-        println!("Received callback");
+        println!("Didn't receive the callback");
     }
 }

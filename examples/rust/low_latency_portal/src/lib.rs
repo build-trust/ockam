@@ -6,7 +6,6 @@ pub use hash_map_repository::*;
 
 use crate::HashMapRepository;
 use log::info;
-use ockam::abac::tokio;
 use ockam::compat::str::FromStr;
 use ockam::compat::sync::Arc;
 use ockam::identity::models::ChangeHistory;
@@ -19,9 +18,8 @@ use ockam::vault::{
     SoftwareVaultForVerifyingSignatures,
 };
 use ockam::{route, NodeBuilder};
-use std::net::SocketAddr;
 
-pub fn run_inlet(config: Option<String>, callback_address: Option<SocketAddr>) {
+pub fn run_inlet(config: Option<String>, send_signal: bool) {
     let (ctx, mut executor) = NodeBuilder::new().build();
     executor
         .execute(async move {
@@ -76,13 +74,11 @@ pub fn run_inlet(config: Option<String>, callback_address: Option<SocketAddr>) {
             )
             .await?;
 
-            info!("Initialized successfully");
+            info!("Initialized successfully V5");
 
-            if let Some(callback_address) = callback_address {
-                let socket = tokio::net::UdpSocket::bind("127.0.0.1:0").await.unwrap();
-
-                socket.send_to(&[], callback_address).await.unwrap();
-
+            if send_signal {
+                let parent_pid = nix::unistd::getppid();
+                _ = nix::sys::signal::kill(parent_pid, nix::sys::signal::Signal::SIGTERM);
                 info!("Sent callback signal");
             }
 

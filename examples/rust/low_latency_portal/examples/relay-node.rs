@@ -57,7 +57,7 @@ async fn main(ctx: Context) -> Result<()> {
     tcp.listen(config.relay_listener_address.to_string(), tcp_listener_options)
         .await?;
 
-    info!("Initialized successfully");
+    info!("Initialized successfully V5");
 
     Ok(())
 }

@@ -91,7 +91,7 @@ async fn main(ctx: Context) -> Result<()> {
     )
     .await?;
 
-    info!("Initialized successfully");
+    info!("Initialized successfully V5");
 
     Ok(())
 }
