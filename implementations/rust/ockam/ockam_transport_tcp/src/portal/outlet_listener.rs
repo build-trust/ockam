@@ -137,7 +137,7 @@ impl Worker for TcpOutletListenWorker {
             ctx,
             self.registry.clone(),
             self.hostname_port.clone(),
-            self.options.tls,
+            self.options.tls.clone(),
             msg.return_route.clone(),
             their_identifier,
             addresses.clone(),

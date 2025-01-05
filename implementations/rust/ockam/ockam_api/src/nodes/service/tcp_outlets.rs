@@ -1,3 +1,7 @@
+use crate::nodes::models::portal::{CreateOutlet, OutletAccessControl, OutletStatus};
+use crate::nodes::registry::OutletInfo;
+use crate::nodes::service::default_address::DefaultAddress;
+use crate::nodes::BackgroundNodeClient;
 use ockam::tcp::TcpOutletOptions;
 use ockam::transport::HostnamePort;
 use ockam::{Address, Result};
@@ -6,11 +10,7 @@ use ockam_core::api::{Error, Request, RequestHeader, Response};
 use ockam_core::async_trait;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_node::Context;
-
-use crate::nodes::models::portal::{CreateOutlet, OutletAccessControl, OutletStatus};
-use crate::nodes::registry::OutletInfo;
-use crate::nodes::service::default_address::DefaultAddress;
-use crate::nodes::BackgroundNodeClient;
+use ockam_transport_tcp::TlsKind;
 
 use super::{NodeManager, NodeManagerWorker};
 
@@ -139,6 +139,8 @@ impl NodeManager {
         };
 
         let options = {
+            let tls = if tls { TlsKind::Direct } else { TlsKind::None };
+
             let options = TcpOutletOptions::new()
                 .with_incoming_access_control(incoming_ac)
                 .with_outgoing_access_control(outgoing_ac)

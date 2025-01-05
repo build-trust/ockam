@@ -1,5 +1,6 @@
 use crate::portal::addresses::Addresses;
 use crate::TlsCertificateProvider;
+use core::fmt::Debug;
 use ockam_core::compat::sync::Arc;
 use ockam_core::flow_control::{FlowControlId, FlowControls};
 use ockam_core::{Address, AllowAll, IncomingAccessControl, OutgoingAccessControl};
@@ -105,13 +106,29 @@ impl Default for TcpInletOptions {
     }
 }
 
+/// Whether to use TLS and how
+#[derive(Clone, Debug)]
+pub enum TlsKind {
+    /// No TLS
+    None,
+    /// Use typical TLS
+    Direct,
+    /// Use TLS with StartTLS, used by some protocols like SMTP, XMPP and Postgres
+    StartTls {
+        /// Payload to send before initiating TLS
+        start_payload: Vec<u8>,
+        /// Expected reply before initiating TLS
+        expected_reply: Vec<u8>,
+    },
+}
+
 /// Trust Options for an Outlet
 #[derive(Clone, Debug)]
 pub struct TcpOutletOptions {
     pub(crate) consumer: Vec<FlowControlId>,
     pub(crate) incoming_access_control: Arc<dyn IncomingAccessControl>,
     pub(crate) outgoing_access_control: Arc<dyn OutgoingAccessControl>,
-    pub(crate) tls: bool,
+    pub(crate) tls: TlsKind,
 }
 
 impl TcpOutletOptions {
@@ -121,7 +138,7 @@ impl TcpOutletOptions {
             consumer: vec![],
             incoming_access_control: Arc::new(AllowAll),
             outgoing_access_control: Arc::new(AllowAll),
-            tls: false,
+            tls: TlsKind::None,
         }
     }
 
@@ -144,7 +161,7 @@ impl TcpOutletOptions {
     }
 
     /// Set TLS
-    pub fn with_tls(mut self, tls: bool) -> Self {
+    pub fn with_tls(mut self, tls: TlsKind) -> Self {
         self.tls = tls;
         self
     }

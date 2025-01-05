@@ -5,7 +5,7 @@ use ockam::identity::{
     Identifier, SecureChannelListenerOptions, SecureChannelOptions, TrustIdentifierPolicy, TrustMultiIdentifiersPolicy,
 };
 use ockam::remote::{RemoteRelay, RemoteRelayOptions};
-use ockam::tcp::{TcpConnectionOptions, TcpOutletOptions, TcpTransport};
+use ockam::tcp::{TcpConnectionOptions, TcpOutletOptions, TcpTransport, TlsKind};
 use ockam::vault::{EdDSACurve25519SecretKey, SigningSecret};
 use ockam::{route, Context, Result};
 use std::str::FromStr;
@@ -59,9 +59,19 @@ async fn main(ctx: Context) -> Result<()> {
     let secure_channel_listener_options = SecureChannelListenerOptions::new()
         .as_consumer(&secure_channel_options.producer_flow_control_id())
         .with_trust_policy(TrustMultiIdentifiersPolicy::new(inlet_identifiers));
+
+    let tls = if config.tls.unwrap_or(false) {
+        TlsKind::StartTls {
+            start_payload: vec![0x00, 0x00, 0x00, 0x08, 0x04, 0xd2, 0x16, 0x2f],
+            expected_reply: vec![0x53],
+        }
+    } else {
+        TlsKind::None
+    };
+
     let tcp_outlet_options = TcpOutletOptions::new()
         .as_consumer(&secure_channel_listener_options.spawner_flow_control_id())
-        .with_tls(config.tls.unwrap_or(false));
+        .with_tls(tls);
 
     tcp.create_outlet("outlet", config.outlet_peer_address, tcp_outlet_options)
         .await?;

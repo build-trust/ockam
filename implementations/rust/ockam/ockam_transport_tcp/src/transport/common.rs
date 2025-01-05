@@ -5,7 +5,7 @@ use ockam_transport_core::{HostnamePort, TransportError};
 use socket2::{SockRef, TcpKeepalive};
 use std::sync::Arc;
 use std::time::Duration;
-use tokio::io::{ReadHalf, WriteHalf};
+use tokio::io::{AsyncReadExt, AsyncWriteExt, ReadHalf, WriteHalf};
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::net::TcpStream;
 use tokio_rustls::rustls::pki_types::ServerName;
@@ -57,6 +57,8 @@ pub(crate) async fn create_tcp_stream(to: &HostnamePort) -> Result<TcpStream> {
 #[instrument(skip_all)]
 pub(crate) async fn connect_tls(
     to: &HostnamePort,
+    start_tls_payload: Option<Vec<u8>>,
+    expected_reply: Option<Vec<u8>>,
 ) -> Result<(
     ReadHalf<TlsStream<TcpStream>>,
     WriteHalf<TlsStream<TcpStream>>,
@@ -64,7 +66,40 @@ pub(crate) async fn connect_tls(
     debug!(to = %to, "Trying to connect using TLS");
 
     // create a tcp stream
-    let connection = create_tcp_stream(to).await?;
+    let mut connection = create_tcp_stream(to).await?;
+
+    if let Some(start_tls_payload) = start_tls_payload {
+        debug!("Sending start_tls_payload");
+        connection
+            .write_all(&start_tls_payload)
+            .await
+            .map_err(|e| {
+                Error::new(
+                    Origin::Transport,
+                    Kind::Io,
+                    format!("Cannot send StartTLS: {e:?}"),
+                )
+            })?;
+    }
+
+    if let Some(expected_reply) = expected_reply {
+        debug!("Expecting StartTLS reply");
+        let mut reply = vec![0u8; expected_reply.len()];
+        connection.read_exact(&mut reply).await.map_err(|e| {
+            Error::new(
+                Origin::Transport,
+                Kind::Io,
+                format!("Cannot StartTLS reply: {e:?}"),
+            )
+        })?;
+        if reply != expected_reply {
+            return Err(Error::new(
+                Origin::Transport,
+                Kind::Io,
+                format!("Expected reply {:?} but got {:?}", expected_reply, reply),
+            ));
+        }
+    }
 
     // create a TLS connector
     let tls_connector = create_tls_connector().await?;

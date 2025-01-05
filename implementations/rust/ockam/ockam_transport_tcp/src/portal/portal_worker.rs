@@ -2,7 +2,9 @@ use crate::portal::addresses::{Addresses, PortalType};
 use crate::portal::ReadHalfMaybeTls::{ReadHalfNoTls, ReadHalfWithTls};
 use crate::portal::WriteHalfMaybeTls::{WriteHalfNoTls, WriteHalfWithTls};
 use crate::transport::{connect, connect_tls};
-use crate::{portal::TcpPortalRecvProcessor, PortalInternalMessage, PortalMessage, TcpRegistry};
+use crate::{
+    portal::TcpPortalRecvProcessor, PortalInternalMessage, PortalMessage, TcpRegistry, TlsKind,
+};
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::sync::Arc;
 use ockam_core::{
@@ -38,7 +40,7 @@ pub(crate) struct TcpPortalWorker {
     portal_type: PortalType,
     last_received_packet_counter: u16,
     outgoing_access_control: Arc<dyn OutgoingAccessControl>,
-    is_tls: bool,
+    tls: TlsKind,
 }
 
 pub(crate) enum ReadHalfMaybeTls {
@@ -70,7 +72,7 @@ impl TcpPortalWorker {
             ctx,
             registry,
             hostname_port,
-            false,
+            TlsKind::None,
             remote_route,
             their_identifier,
             Some(streams),
@@ -88,7 +90,7 @@ impl TcpPortalWorker {
         ctx: &Context,
         registry: TcpRegistry,
         hostname_port: HostnamePort,
-        tls: bool,
+        tls: TlsKind,
         remote_route: Route,
         their_identifier: Option<LocalInfoIdentifier>,
         addresses: Addresses,
@@ -117,7 +119,7 @@ impl TcpPortalWorker {
         ctx: &Context,
         registry: TcpRegistry,
         hostname_port: HostnamePort,
-        is_tls: bool,
+        tls: TlsKind,
         remote_route: Route,
         their_identifier: Option<LocalInfoIdentifier>,
         streams: Option<(ReadHalfMaybeTls, WriteHalfMaybeTls)>,
@@ -144,7 +146,7 @@ impl TcpPortalWorker {
             }
             None => (None, None),
         };
-        debug!("The {} supports TLS: {}", portal_type.str(), is_tls);
+        debug!("The {} supports TLS: {:?}", portal_type.str(), tls);
 
         let worker = Self {
             registry,
@@ -157,7 +159,7 @@ impl TcpPortalWorker {
             is_disconnecting: false,
             portal_type,
             last_received_packet_counter: u16::MAX,
-            is_tls,
+            tls,
             outgoing_access_control: outgoing_access_control.clone(),
         };
 
@@ -344,16 +346,33 @@ impl TcpPortalWorker {
             return Ok(());
         }
 
-        if self.is_tls {
-            debug!("Connect to {} via TLS", &self.hostname_port);
-            let (rx, tx) = connect_tls(&self.hostname_port).await?;
-            self.write_half = Some(WriteHalfWithTls(tx));
-            self.read_half = Some(ReadHalfWithTls(rx));
-        } else {
-            debug!("Connect to {}", self.hostname_port);
-            let (rx, tx) = connect(&self.hostname_port).await?;
-            self.write_half = Some(WriteHalfNoTls(tx));
-            self.read_half = Some(ReadHalfNoTls(rx));
+        match &self.tls {
+            TlsKind::None => {
+                debug!("Connect to {}", self.hostname_port);
+                let (rx, tx) = connect(&self.hostname_port).await?;
+                self.write_half = Some(WriteHalfNoTls(tx));
+                self.read_half = Some(ReadHalfNoTls(rx));
+            }
+            TlsKind::Direct => {
+                debug!("Connect to {} via TLS", &self.hostname_port);
+                let (rx, tx) = connect_tls(&self.hostname_port, None, None).await?;
+                self.write_half = Some(WriteHalfWithTls(tx));
+                self.read_half = Some(ReadHalfWithTls(rx));
+            }
+            TlsKind::StartTls {
+                start_payload,
+                expected_reply,
+            } => {
+                debug!("Connect to {} via TLS", &self.hostname_port);
+                let (rx, tx) = connect_tls(
+                    &self.hostname_port,
+                    Some(start_payload.clone()),
+                    Some(expected_reply.clone()),
+                )
+                .await?;
+                self.write_half = Some(WriteHalfWithTls(tx));
+                self.read_half = Some(ReadHalfWithTls(rx));
+            }
         }
 
         self.start_receiver(ctx).await?;

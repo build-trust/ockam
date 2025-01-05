@@ -87,7 +87,7 @@ pub mod tcp {
     pub use ockam_transport_tcp::{
         TcpConnection, TcpConnectionMode, TcpConnectionOptions, TcpInletOptions, TcpListener,
         TcpListenerInfo, TcpListenerOptions, TcpOutletOptions, TcpSenderInfo, TcpTransport,
-        TcpTransportExtension, MAX_MESSAGE_SIZE, TCP,
+        TcpTransportExtension, TlsKind, MAX_MESSAGE_SIZE, TCP,
     };
 }
 #[cfg(feature = "ockam_transport_udp")]
