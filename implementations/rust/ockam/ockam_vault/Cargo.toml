@@ -69,7 +69,7 @@ alloc = [
   "p256/pem",
 ]
 
-storage = ["ockam_node/storage", "sqlx"]
+storage = ["ockam_node/storage", "sqlx", "sqlx-core"]
 
 [dependencies]
 aes-gcm = { version = "0.10", default-features = false, features = ["aes", "zeroize"], optional = true }
@@ -88,7 +88,8 @@ p256 = { version = "0.13.2", default-features = false }
 rand_pcg = { version = "0.3.1", default-features = false, optional = true }
 serde = { version = "1", default-features = false, features = ["derive"] }
 sha2 = { version = "0.10", default-features = false }
-sqlx = { version = "0.8.2", optional = true, default-features = false }
+sqlx = { version = "0.8.3", optional = true, default-features = false }
+sqlx-core = { version = "0.8.3", optional = true, default-features = false }
 static_assertions = "1.1.0"
 tracing = { version = "0.1", default-features = false }
 x25519-dalek = { version = "2.0.1", default-features = false, features = ["precomputed-tables", "static_secrets", "zeroize"] }

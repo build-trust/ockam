@@ -2,9 +2,9 @@ use core::str::FromStr;
 use sqlx::any::AnyArguments;
 use sqlx::encode::IsNull;
 use sqlx::error::BoxDynError;
-use sqlx::postgres::any::AnyArgumentBuffer;
 use sqlx::query::Query;
 use sqlx::*;
+use sqlx_core::any::AnyArgumentBuffer;
 use std::sync::Arc;
 use tracing::debug;
 

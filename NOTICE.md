@@ -185,7 +185,7 @@ This file contains attributions for any 3rd-party open source code used in this 
 | embedded-dma | MIT, Apache-2.0 | https://crates.io/crates/embedded-dma |
 | embedded-hal | MIT, Apache-2.0 | https://crates.io/crates/embedded-hal |
 | embedded-storage | MIT, Apache-2.0 | https://crates.io/crates/embedded-storage |
-| encode_unicode | MIT, Apache-2.0 | https://crates.io/crates/encode_unicode |
+| encode_unicode | Apache-2.0, MIT | https://crates.io/crates/encode_unicode |
 | endian-type | MIT | https://crates.io/crates/endian-type |
 | enumflags2 | MIT, Apache-2.0 | https://crates.io/crates/enumflags2 |
 | enumflags2_derive | MIT, Apache-2.0 | https://crates.io/crates/enumflags2_derive |
@@ -487,14 +487,12 @@ This file contains attributions for any 3rd-party open source code used in this 
 | size-of-derive | MIT, Apache-2.0 | https://crates.io/crates/size-of-derive |
 | slab | MIT | https://crates.io/crates/slab |
 | smallvec | MIT, Apache-2.0 | https://crates.io/crates/smallvec |
-| smawk | MIT | https://crates.io/crates/smawk |
 | smithay-client-toolkit | MIT | https://crates.io/crates/smithay-client-toolkit |
 | smithay-clipboard | MIT | https://crates.io/crates/smithay-clipboard |
 | snap | BSD-3-Clause | https://crates.io/crates/snap |
 | socket2 | MIT, Apache-2.0 | https://crates.io/crates/socket2 |
 | spin | MIT | https://crates.io/crates/spin |
 | spki | Apache-2.0, MIT | https://crates.io/crates/spki |
-| sqlformat | MIT, Apache-2.0 | https://crates.io/crates/sqlformat |
 | sqlx | MIT, Apache-2.0 | https://crates.io/crates/sqlx |
 | sqlx-core | MIT, Apache-2.0 | https://crates.io/crates/sqlx-core |
 | sqlx-macros | MIT, Apache-2.0 | https://crates.io/crates/sqlx-macros |
@@ -568,13 +566,12 @@ This file contains attributions for any 3rd-party open source code used in this 
 | tungstenite | MIT, Apache-2.0 | https://crates.io/crates/tungstenite |
 | typenum | MIT, Apache-2.0 | https://crates.io/crates/typenum |
 | unicode-bidi | MIT, Apache-2.0 | https://crates.io/crates/unicode-bidi |
-| unicode-ident | MIT, Apache-2.0, Unicode-DFS-2016 | https://crates.io/crates/unicode-ident |
+| unicode-ident | MIT, Apache-2.0, Unicode-3.0 | https://crates.io/crates/unicode-ident |
 | unicode-linebreak | Apache-2.0 | https://crates.io/crates/unicode-linebreak |
 | unicode-normalization | MIT, Apache-2.0 | https://crates.io/crates/unicode-normalization |
 | unicode-properties | MIT, Apache-2.0 | https://crates.io/crates/unicode-properties |
 | unicode-segmentation | MIT, Apache-2.0 | https://crates.io/crates/unicode-segmentation |
 | unicode-width | MIT, Apache-2.0 | https://crates.io/crates/unicode-width |
-| unicode_categories | MIT, Apache-2.0 | https://crates.io/crates/unicode_categories |
 | universal-hash | MIT, Apache-2.0 | https://crates.io/crates/universal-hash |
 | unsafe-libyaml | MIT | https://crates.io/crates/unsafe-libyaml |
 | unsigned-varint | MIT | https://crates.io/crates/unsigned-varint |
@@ -587,7 +584,6 @@ This file contains attributions for any 3rd-party open source code used in this 
 | utf8_iter | Apache-2.0, MIT | https://crates.io/crates/utf8_iter |
 | utf8parse | Apache-2.0, MIT | https://crates.io/crates/utf8parse |
 | uuid | Apache-2.0, MIT | https://crates.io/crates/uuid |
-| valuable | MIT | https://crates.io/crates/valuable |
 | value-bag | Apache-2.0, MIT | https://crates.io/crates/value-bag |
 | vcell | MIT, Apache-2.0 | https://crates.io/crates/vcell |
 | vcpkg | MIT, Apache-2.0 | https://crates.io/crates/vcpkg |

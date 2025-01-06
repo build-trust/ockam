@@ -4,8 +4,8 @@ use ockam_core::async_trait;
 use sqlx::any::AnyRow;
 use sqlx::encode::IsNull;
 use sqlx::error::BoxDynError;
-use sqlx::postgres::any::AnyArgumentBuffer;
 use sqlx::*;
+use sqlx_core::any::AnyArgumentBuffer;
 use std::str::FromStr;
 use std::sync::Arc;
 
