@@ -22,7 +22,7 @@ use ockam::{route, NodeBuilder};
 use std::net::SocketAddr;
 
 pub fn run_inlet(config: Option<String>, callback_address: Option<SocketAddr>) {
-    let (ctx, mut executor) = NodeBuilder::new().build();
+    let (ctx, mut executor) = NodeBuilder::new().no_logging().build();
     executor
         .execute(async move {
             let config = config.unwrap_or_else(|| {
