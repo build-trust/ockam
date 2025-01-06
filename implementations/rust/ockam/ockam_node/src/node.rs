@@ -22,6 +22,8 @@ pub struct NodeBuilder {
     logging: bool,
     exit_on_panic: bool,
     rt: Option<Arc<Runtime>>,
+    #[cfg(feature = "std")]
+    multi_thread: bool,
 }
 
 impl Default for NodeBuilder {
@@ -37,6 +39,8 @@ impl NodeBuilder {
             logging: true,
             exit_on_panic: true,
             rt: None,
+            #[cfg(feature = "std")]
+            multi_thread: true,
         }
     }
 
@@ -44,26 +48,32 @@ impl NodeBuilder {
     pub fn no_logging(self) -> Self {
         Self {
             logging: false,
-            exit_on_panic: self.exit_on_panic,
-            rt: self.rt,
+            ..self
         }
     }
 
     /// Disable exit on panic on this node
     pub fn no_exit_on_panic(self) -> Self {
         Self {
-            logging: self.logging,
             exit_on_panic: false,
-            rt: self.rt,
+            ..self
         }
     }
 
     /// Use a specific runtime
     pub fn with_runtime(self, rt: Arc<Runtime>) -> Self {
         Self {
-            logging: self.logging,
-            exit_on_panic: self.exit_on_panic,
             rt: Some(rt),
+            ..self
+        }
+    }
+
+    /// Use a single-thread runtime
+    #[cfg(feature = "std")]
+    pub fn single_thread(self) -> Self {
+        Self {
+            multi_thread: false,
+            ..self
         }
     }
 
@@ -100,7 +110,7 @@ impl NodeBuilder {
         let rt = self.rt.unwrap_or_else(|| {
             #[cfg(feature = "std")]
             {
-                Arc::new(
+                Arc::new(if self.multi_thread {
                     tokio::runtime::Builder::new_multi_thread()
                         // Using a lower stack size than the default (1MB),
                         // this helps improve the cache hit ratio and reduces
@@ -109,8 +119,13 @@ impl NodeBuilder {
                         .thread_stack_size(1024 * 1024)
                         .enable_all()
                         .build()
-                        .expect("cannot initialize the tokio runtime"),
-                )
+                        .expect("cannot initialize the tokio runtime")
+                } else {
+                    tokio::runtime::Builder::new_current_thread()
+                        .enable_all()
+                        .build()
+                        .expect("cannot initialize the tokio runtime")
+                })
             }
             #[cfg(not(feature = "std"))]
             Arc::new(Runtime::new().expect("cannot initialize the tokio runtime"))
