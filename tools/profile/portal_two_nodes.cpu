@@ -19,7 +19,7 @@ fi
 
 "${OCKAM}" node delete portal -y >/dev/null 2>&1 || true
 export OCKAM_LOG_LEVEL=info
-export OCKAM_OPENTELEMETRY_EXPORT=0
+export OCKAM_TELEMETRY_EXPORT=0
 
 perf record --call-graph dwarf -F 99 --output /tmp/ockam.inlet.perf -- "${OCKAM}" node create inlet -f &
 perf record --call-graph dwarf -F 99 --output /tmp/ockam.outlet.perf -- "${OCKAM}" node create outlet -f &

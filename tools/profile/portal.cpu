@@ -26,7 +26,7 @@ fi
 
 "${OCKAM}" node delete portal -y >/dev/null 2>&1 || true
 export OCKAM_LOG_LEVEL=info
-export OCKAM_OPENTELEMETRY_EXPORT=0
+export OCKAM_TELEMETRY_EXPORT=0
 
 if [ "$(uname)" == "Darwin" ]; then
   rm -rf /tmp/ockam.trace/

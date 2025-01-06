@@ -222,15 +222,19 @@ impl OpenTelemetryEndpoint {
 }
 
 /// Return true if the export of traces and log records is enabled,
-/// as decided by the OCKAM_OPENTELEMETRY_EXPORT environment variable.
+/// as decided by the OCKAM_TELEMETRY_EXPORT environment variable.
 pub fn is_exporting_set() -> ockam_core::Result<bool> {
-    get_env_with_default(OCKAM_OPENTELEMETRY_EXPORT, true)
+    get_env_with_default(
+        OCKAM_TELEMETRY_EXPORT,
+        // fallback to legacy env var
+        get_env_with_default(OCKAM_OPENTELEMETRY_EXPORT, true)?,
+    )
 }
 
 /// Return true if traces and log records can be exported via a portal (when a project exists),
-/// as decided by the OCKAM_OPENTELEMETRY_EXPORT_VIA_PORTAL environment variable.
+/// as decided by the OCKAM_TELEMETRY_EXPORT_VIA_PORTAL environment variable.
 pub fn is_exporting_via_portal_set() -> ockam_core::Result<bool> {
-    get_env_with_default(OCKAM_OPENTELEMETRY_EXPORT_VIA_PORTAL, false)
+    get_env_with_default(OCKAM_TELEMETRY_EXPORT_VIA_PORTAL, false)
 }
 
 /// Return true to display messages during the setup of the export
@@ -263,7 +267,7 @@ fn exporting_enabled(
             OpenTelemetryEndpoint::PortalEndpoint(_) => "OpenTelemetry inlet",
         };
         print_debug(format!("Exporting OpenTelemetry events is disabled because the {} at {} cannot be reached after {}ms", endpoint_kind, endpoint.url(), connection_check_timeout.as_millis()));
-        print_debug("You can disable the export of OpenTelemetry events with: `export OCKAM_OPENTELEMETRY_EXPORT=false` to avoid this connection check.");
+        print_debug("You can disable the export of Telemetry events with: `export OCKAM_TELEMETRY_EXPORT=false` to avoid this connection check.");
 
         print_debug("Exporting is disabled");
         Ok(ExportingEnabled::Off)
@@ -360,7 +364,7 @@ fn opentelemetry_endpoint(state: &CliState) -> ockam_core::Result<Option<OpenTel
 async fn get_project_endpoint_url(
     cli_state: &CliState,
 ) -> ockam_core::Result<OpenTelemetryEndpoint> {
-    let node = cli_state.get_node(OCKAM_OPENTELEMETRY_NODE_NAME).await.ok();
+    let node = cli_state.get_node(OCKAM_TELEMETRY_NODE_NAME).await.ok();
     match node {
         // If no opentelemetry node is running locally, start one
         None => {
@@ -398,10 +402,7 @@ async fn get_project_endpoint_url(
 /// Return the inlet used to export OpenTelemetry traces
 async fn get_opentelemetry_inlet(cli_state: &CliState) -> ockam_core::Result<TcpInlet> {
     Ok(cli_state
-        .get_tcp_inlet(
-            OCKAM_OPENTELEMETRY_NODE_NAME,
-            OCKAM_OPENTELEMETRY_INLET_ALIAS,
-        )
+        .get_tcp_inlet(OCKAM_TELEMETRY_NODE_NAME, OCKAM_TELEMETRY_INLET_ALIAS)
         .await?)
 }
 
@@ -429,16 +430,16 @@ pub fn span_export_timeout() -> ockam_core::Result<Duration> {
 /// Return the endpoint connection timeout, for a background node, defined by an environment variable
 fn opentelemetry_endpoint_background_connection_timeout() -> ockam_core::Result<Duration> {
     get_env_with_default(
-        OCKAM_BACKGROUND_OPENTELEMETRY_ENDPOINT_CONNECTION_TIMEOUT,
-        DEFAULT_OPENTELEMETRY_ENDPOINT_BACKGROUND_CONNECTION_TIMEOUT,
+        OCKAM_BACKGROUND_TELEMETRY_ENDPOINT_CONNECTION_TIMEOUT,
+        DEFAULT_TELEMETRY_ENDPOINT_BACKGROUND_CONNECTION_TIMEOUT,
     )
 }
 
 /// Return the endpoint connection timeout, for a foreground command, defined by an environment variable
 fn opentelemetry_endpoint_foreground_connection_timeout() -> ockam_core::Result<Duration> {
     get_env_with_default(
-        OCKAM_FOREGROUND_OPENTELEMETRY_ENDPOINT_CONNECTION_TIMEOUT,
-        DEFAULT_OPENTELEMETRY_ENDPOINT_FOREGROUND_CONNECTION_TIMEOUT,
+        OCKAM_FOREGROUND_TELEMETRY_ENDPOINT_CONNECTION_TIMEOUT,
+        DEFAULT_TELEMETRY_ENDPOINT_FOREGROUND_CONNECTION_TIMEOUT,
     )
 }
 
@@ -527,7 +528,7 @@ async fn restart_opentelemetry_node() -> ockam_core::Result<Url> {
         "node".to_string(),
         "delete".to_string(),
         "-y".to_string(),
-        OCKAM_OPENTELEMETRY_NODE_NAME.to_string(),
+        OCKAM_TELEMETRY_NODE_NAME.to_string(),
     ];
     run_ockam(args).await?;
     start_opentelemetry_node().await
@@ -546,7 +547,7 @@ async fn start_opentelemetry_node() -> ockam_core::Result<Url> {
     })?;
     // configure a node with an
     let config = format!(
-        "{{nodes: {OCKAM_OPENTELEMETRY_NODE_NAME}, tcp-inlets: {{opentelemetry-inlet: {{at: {OCKAM_OPENTELEMETRY_NODE_NAME}, from: '{local_address}', via: {OCKAM_OPENTELEMETRY_RELAY_NAME}, alias: {OCKAM_OPENTELEMETRY_INLET_ALIAS}}}}}}}"
+        "{{nodes: {OCKAM_TELEMETRY_NODE_NAME}, tcp-inlets: {{telemetry-inlet: {{at: {OCKAM_TELEMETRY_NODE_NAME}, from: '{local_address}', via: {OCKAM_TELEMETRY_RELAY_NAME}, alias: {OCKAM_TELEMETRY_INLET_ALIAS}}}}}}}"
     );
     let args = vec![
         "run".to_string(),
@@ -580,7 +581,7 @@ async fn run_ockam(args: Vec<String>) -> ockam_core::Result<()> {
 
     Command::new(ockam_exe)
         .args(args.clone())
-        .env(OCKAM_OPENTELEMETRY_EXPORT, "false")
+        .env(OCKAM_TELEMETRY_EXPORT, "false")
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .stdin(Stdio::null())

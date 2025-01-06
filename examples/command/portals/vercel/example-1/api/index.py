@@ -8,6 +8,7 @@ import subprocess
 import threading
 import time
 from http.server import BaseHTTPRequestHandler
+
 import requests
 
 # Constants
@@ -21,9 +22,11 @@ REQUEST_TIMEOUT = 3  # seconds
 # Only one Ockam node should run per serverless function runtime - this flag prevents multiple node creation attempts.
 NODE_INITIALIZED = False
 
+
 def is_production() -> bool:
     """Check if the environment is production."""
     return os.environ.get('VERCEL_ENV') == 'production'
+
 
 def get_ockam_version() -> str:
     """
@@ -40,6 +43,7 @@ def get_ockam_version() -> str:
         return result.stdout.strip() if result.returncode == 0 else f"Error running ockam: {result.stderr}"
     except Exception as e:
         return f"Error: {str(e)} (CWD: {os.getcwd()})"
+
 
 class handler(BaseHTTPRequestHandler):
     """Handler for Snowflake API requests via Ockam secure channel."""
@@ -83,7 +87,7 @@ class handler(BaseHTTPRequestHandler):
                     ], env={
                         **os.environ,
                         'OCKAM_HOME': '/tmp',
-                        'OCKAM_OPENTELEMETRY_EXPORT': 'false',
+                        'OCKAM_TELEMETRY_EXPORT': 'false',
                         'OCKAM_DISABLE_UPGRADE_CHECK': 'true'
                     })
 

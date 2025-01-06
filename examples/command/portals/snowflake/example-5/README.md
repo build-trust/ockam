@@ -186,7 +186,7 @@ $$
         image: /cdc_test_db/cdc_test_schema/cdc_test_repo/ockam
         env:
           OCKAM_DISABLE_UPGRADE_CHECK: true
-          OCKAM_OPENTELEMETRY_EXPORT: false
+          OCKAM_TELEMETRY_EXPORT: false
           ENROLLMENT_TICKET: "<OCKAM_ENROLLMENT_TICKET>"
       - name: publisher
         image: /cdc_test_db/cdc_test_schema/cdc_test_repo/snowflake_cdc_kafka_bridge

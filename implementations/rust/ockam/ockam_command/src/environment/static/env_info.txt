@@ -14,7 +14,7 @@ CLI Behavior
 
 Logging
 - OCKAM_LOG (deprecated, use OCKAM_LOGGING and OCKAM_LOG_LEVEL instead): a `string` that defines the verbosity of the logs when the `--verbose` argument is not passed: `info`, `warn`, `error`, `debug` or `trace`.
-- OCKAM_LOGGING: set this variable to any value in order to enable logging.
+- OCKAM_LOGGING: set this variable to a true value to enable logging: `1`, `true`, `yes`. Default value: `false`
 - OCKAM_LOG_LEVEL: a `string` that defines the verbosity of the logs when the `--verbose` argument is not passed: `info`, `warn`, `error`, `debug` or `trace`. Default value: `debug`.
 - OCKAM_LOG_FORMAT: a `string` that overrides the default format of the logs: `default`, `json`, or `pretty`. Default value: `default`.
 - OCKAM_LOG_MAX_SIZE_MB: an `integer` that defines the maximum size of a log file in MB. Default value `100`.
@@ -30,11 +30,11 @@ Database
 - OCKAM_POSTGRES_PASSWORD: Postgres database password. If it is not set, no authorization will be used to access the database.
 
 Tracing
-- OCKAM_OPENTELEMETRY_EXPORT: set this variable to a false value to disable tracing: `0`, `false`, `no`. Default value: `true`
+- OCKAM_TELEMETRY_EXPORT: set this variable to a false value to disable tracing: `0`, `false`, `no`. Default value: `true`
 - OCKAM_OPENTELEMETRY_ENDPOINT: the URL of an OpenTelemetry collector accepting gRPC.
 - OCKAM_OPENTELEMETRY_HEADERS: additional headers for the OTLP collector. This is where the Honeycomb API key can be specified if sending traces to Honeycomb directly.
-- OCKAM_FOREGROUND_OPENTELEMETRY_ENDPOINT_CONNECTION_TIMEOUT: Timeout for checking the availability of the OpenTelemetry collector endpoint for commands. Default value: `500ms`.
-- OCKAM_BACKGROUND_OPENTELEMETRY_ENDPOINT_CONNECTION_TIMEOUT: Timeout for checking the availability of the OpenTelemetry collector endpoint for a background node. Default value: `5s`.
+- OCKAM_FOREGROUND_TELEMETRY_ENDPOINT_CONNECTION_TIMEOUT: Timeout for checking the availability of the OpenTelemetry collector endpoint for commands. Default value: `500ms`.
+- OCKAM_BACKGROUND_TELEMETRY_ENDPOINT_CONNECTION_TIMEOUT: Timeout for checking the availability of the OpenTelemetry collector endpoint for a background node. Default value: `5s`.
 - OCKAM_SPAN_EXPORT_TIMEOUT: Timeout for trying to export spans. Default value: `5s`.
 - OCKAM_LOG_EXPORT_TIMEOUT: Timeout for trying to export log records. Default value: `5s`.
 - OCKAM_FOREGROUND_SPAN_EXPORT_SCHEDULED_DELAY: Timeout for exporting the current batch of spans. Default value: `1000s` (this value is high to avoid a deadlock in the tracing library).
@@ -42,10 +42,10 @@ Tracing
 - OCKAM_SPAN_EXPORT_QUEUE_SIZE: Size of the queue used to store batched spans before export. When the queue is full, spans are dropped. Default value: `32768`
 - OCKAM_LOG_EXPORT_QUEUE_SIZE: Size of the queue used to store batched log records before export. When the queue is full, log records are dropped. Default value: `32768`
 - OCKAM_TRACING_GLOBAL_ERROR_HANDLER: Configuration for printing tracing/logging errors: `console`, `logfile`, `off`. Default value: `logfile`.
-- OCKAM_FOREGROUND_LOG_EXPORT_CUTOFF: Cutoff time for sending log records batches to an OpenTelemetry foreground node, without waiting for a response. Default value: `3s`.
-- OCKAM_FOREGROUND_SPAN_EXPORT_CUTOFF: Cutoff time for sending span batches to an OpenTelemetry foreground inlet, without waiting for a response. Default value: `3s`.
-- OCKAM_BACKGROUND_LOG_EXPORT_CUTOFF: Cutoff time for sending log records batches to an OpenTelemetry baclground node, without waiting for a response. Default value: `3s`.
-- OCKAM_BACKGROUND_SPAN_EXPORT_CUTOFF: Cutoff time for sending span batches to an OpenTelemetry background inlet, without waiting for a response. Default value: `3s`.
+- OCKAM_FOREGROUND_LOG_EXPORT_CUTOFF: Cutoff time for sending log records batches to an Telemetry foreground node, without waiting for a response. Default value: `3s`.
+- OCKAM_FOREGROUND_SPAN_EXPORT_CUTOFF: Cutoff time for sending span batches to an Telemetry foreground inlet, without waiting for a response. Default value: `3s`.
+- OCKAM_BACKGROUND_LOG_EXPORT_CUTOFF: Cutoff time for sending log records batches to an Telemetry background node, without waiting for a response. Default value: `3s`.
+- OCKAM_BACKGROUND_SPAN_EXPORT_CUTOFF: Cutoff time for sending span batches to an Telemetry background inlet, without waiting for a response. Default value: `3s`.
 
 UDP
 - OCKAM_RENDEZVOUS_SERVER: set this variable to the hostname and port of the Rendezvous service
@@ -64,7 +64,7 @@ Devs Usage
 - OCKAM_AUTHENTICATOR_ENDPOINT: a `string` that overrides the default endpoint of the authenticator. Defaults to `https://account.ockam.io`.
 - OCKAM_DEVELOPER: a `boolean` specifying if the current user is an Ockam developer (for more accurate metrics).
 - OCKAM_OPENTELEMETRY_EXPORT_DEBUG: a `boolean` specifying if debug messages must be printed to the console when the OpenTelemetry export is configured.
-- OCKAM_OPENTELEMETRY_EXPORT_VIA_PORTAL: a `boolean` specifying if traces must be exported via a portal when a project exists (this feature flag is set to `false` for now)
+- OCKAM_TELEMETRY_EXPORT_VIA_PORTAL: a `boolean` specifying if traces must be exported via a portal when a project exists (this feature flag is set to `false` for now)
 - OCKAM_DEFAULT_TIMEOUT: a `Duration` used to timeout secure channels creation and API requests. Default value: `120s`.
 
 Internal (to enable some special behavior in the logic)

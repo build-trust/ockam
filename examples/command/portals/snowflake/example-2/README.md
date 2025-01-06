@@ -137,7 +137,7 @@ spec:
     image: /acmecorp_db/acmecorp_schema/acmecorp_repository/ockam
     env:
         OCKAM_DISABLE_UPGRADE_CHECK: true
-        OCKAM_OPENTELEMETRY_EXPORT: false
+        OCKAM_TELEMETRY_EXPORT: false
     args:
       - node
       - create

@@ -136,8 +136,8 @@ run_failure() {
 
 bats_require_minimum_version 1.5.0
 
-# Disable the opentelemetry export to improve performances
-export OCKAM_OPENTELEMETRY_EXPORT=false
+# Disable the telemetry export to improve performances
+export OCKAM_TELEMETRY_EXPORT=false
 
 # Set a high timeout for CI tests
 export OCKAM_DEFAULT_TIMEOUT=5m
