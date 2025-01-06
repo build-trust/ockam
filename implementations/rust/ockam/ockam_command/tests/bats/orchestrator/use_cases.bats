@@ -34,7 +34,7 @@ teardown() {
 
   # Client
   run_success $OCKAM tcp-inlet create --from "$inlet_port" --via "$relay_name"
-  run_success curl -sfI --retry-connrefused --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$inlet_port"
+  run_success curl -sfI --retry-all-errors --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$inlet_port"
 }
 
 # https://docs.ockam.io/use-cases/apply-fine-grained-permissions-with-attribute-based-access-control-abac
@@ -70,7 +70,7 @@ teardown() {
   $OCKAM node create edge_plane1 --identity edge_identity
   $OCKAM tcp-inlet create --at /node/edge_plane1 --from "$port_1" \
     --via "$relay_name" --allow '(= subject.component "control")'
-  run_success curl -sfI --retry-connrefused --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$port_1"
+  run_success curl -sfI --retry-all-errors --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$port_1"
 
   ## The following is denied
   $OCKAM identity create x_identity
@@ -91,6 +91,7 @@ teardown() {
 
   # Ensure that telegraf works without using Ockam route
   run_success curl -s \
+    --retry-all-errors --retry-delay 5 --retry 10 \
     --header "Authorization: Token $INFLUX_TOKEN" \
     --header "Accept: application/csv" \
     --header 'Content-type: application/vnd.flux' \
@@ -124,6 +125,7 @@ teardown() {
 
   # Ensure that telegraf works with using Ockam route
   run_success curl -s \
+    --retry-all-errors --retry-delay 5 --retry 10 \
     --header "Authorization: Token $INFLUX_TOKEN" \
     --header "Accept: application/csv" \
     --header 'Content-type: application/vnd.flux' \

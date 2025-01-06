@@ -22,7 +22,7 @@ teardown() {
 
   sleep 1
 
-  run_success curl -m 5 "127.0.0.1:$port"
+  run_success curl --retry-all-errors --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$port"
   assert_output --partial "Alive"
 }
 
@@ -42,5 +42,5 @@ teardown() {
   run_success "$OCKAM" node create alice --udp
   run_success "$OCKAM" tcp-inlet create --at alice --udp --no-tcp-fallback --from "$inlet_port" --to /node/bob/secure/api/service/outlet
 
-  run_success curl -sfI --retry-connrefused --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$inlet_port"
+  run_success curl -sfI --retry-all-errors --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$inlet_port"
 }

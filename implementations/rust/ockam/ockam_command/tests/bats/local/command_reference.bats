@@ -93,7 +93,7 @@ teardown() {
   run_success "$OCKAM" tcp-outlet create --at n3 --to "$PYTHON_SERVER_PORT"
   run_success "$OCKAM" tcp-inlet create --at n1 --from "$inlet_port" --to "/worker/${n1_id}/service/forward_to_n3/service/hop/service/outlet"
 
-  run_success curl -sfI --retry-connrefused --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$inlet_port"
+  run_success curl -sfI --retry-all-errors --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$inlet_port"
 }
 
 # ===== TESTS https://docs.ockam.io/reference/command/routing

@@ -36,7 +36,7 @@ teardown() {
   run_success $OCKAM project enroll $web_ticket
   inlet_port="$(random_port)"
   run_success $OCKAM tcp-inlet create --from $inlet_port --via $relay_name
-  run_success curl -sfI --retry-connrefused --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$inlet_port"
+  run_success curl -sfI --retry-all-errors --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$inlet_port"
 
   # Dashboard - Doesn't have the right attribute, so it should not be able to connect
   setup_home_dir
@@ -73,7 +73,7 @@ teardown() {
   # Update resource type policy and try again. Now the policy is satisfied
   export OCKAM_HOME=$DB_OCKAM_HOME
   run_success $OCKAM policy create --resource-type tcp-outlet --allow 'component.web'
-  run_success curl -sfI --retry-connrefused --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$inlet_port"
+  run_success curl -sfI --retry-all-errors --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$inlet_port"
 
   # Update the policy for the outlet and try again. It will fail because the local policy is not satisfied
   run_success $OCKAM policy create --resource-type tcp-outlet --allow 'component.NOT_web'

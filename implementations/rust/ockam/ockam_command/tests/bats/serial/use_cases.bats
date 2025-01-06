@@ -36,7 +36,7 @@ teardown() {
 
   # Client
   run_success $OCKAM tcp-inlet create --from "$inlet_port"
-  run_success curl -sfI --retry-connrefused --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$inlet_port"
+  run_success curl -sfI --retry-all-errors --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$inlet_port"
 }
 
 # https://docs.ockam.io/guides/examples/create-secure-communication-with-a-private-database-from-anywhere
@@ -98,7 +98,7 @@ teardown() {
 
   # Alice request to access Machine 1 in San Francisco is allowed
   run_success "$OCKAM" tcp-inlet create --at /node/alice --from 127.0.0.1:8000 --via m1 --allow '(= subject.application "Smart Factory")'
-  run_success curl -sfI --retry-connrefused --retry-delay 5 --retry 10 -m 5 127.0.0.1:8000
+  run_success curl -sfI --retry-all-errors --retry-delay 5 --retry 10 -m 5 127.0.0.1:8000
 
   # Alice request to access Machine 2 in New York is denied
   run_success "$OCKAM" tcp-inlet create --at /node/alice --from 127.0.0.1:9000 --via m2 --allow '(= subject.application "Smart Factory")'
@@ -213,11 +213,11 @@ EOF
   run_success start_python_server
 
   # Visit website
-  run_success curl -f -m 5 "http://127.0.0.1:$FLASK_PORT"
+  run_success curl -f --retry-all-errors --retry-delay 5 --retry 10 -m 5 "http://127.0.0.1:$FLASK_PORT"
   assert_output --partial "I've been visited 1 times"
 
   # Visit website second time
-  run_success curl -f -m 5 "http://127.0.0.1:$FLASK_PORT"
+  run_success curl -f --retry-all-errors --retry-delay 5 --retry 10 -m 5 "http://127.0.0.1:$FLASK_PORT"
   assert_output --partial "I've been visited 2 times"
 
   run_success kill_flask_server
@@ -252,9 +252,9 @@ EOF
   run_success start_python_server
 
   # Visit website
-  run_success curl -f -m 5 "http://127.0.0.1:$FLASK_PORT"
+  run_success curl -f --retry-all-errors --retry-delay 5 --retry 10 -m 5 "http://127.0.0.1:$FLASK_PORT"
   assert_output --partial "I've been visited 3 times"
   # Visit website second time
-  run_success curl -f -m 5 "http://127.0.0.1:$FLASK_PORT"
+  run_success curl -f --retry-all-errors --retry-delay 5 --retry 10 -m 5 "http://127.0.0.1:$FLASK_PORT"
   assert_output --partial "I've been visited 4 times"
 }

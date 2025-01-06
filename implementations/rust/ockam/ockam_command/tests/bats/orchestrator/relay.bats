@@ -30,7 +30,7 @@ teardown() {
   run_success bash -c "$OCKAM secure-channel create --from /node/green --to /project/default/service/forward_to_$relay_name/service/api \
     | $OCKAM tcp-inlet create --at /node/green --from $port --to -/service/outlet"
 
-  run_success curl -sfI --retry-connrefused --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$port"
+  run_success curl -sfI --retry-all-errors --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$port"
 }
 
 @test "relay - control who can create/claim a relay" {

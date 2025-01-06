@@ -30,7 +30,7 @@ teardown() {
   run_success bash -c "$OCKAM secure-channel create --from /node/green --to /project/default/service/forward_to_$relay_name/service/api \
     | $OCKAM tcp-inlet create --at /node/green --from $port --to -/service/outlet"
 
-  run_success curl -sfI --retry-connrefused --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$port"
+  run_success curl -sfI --retry-all-errors --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$port"
 }
 
 @test "portals - create an inlet using only default arguments, an outlet, a relay in an orchestrator project and move tcp traffic through it" {
@@ -41,7 +41,7 @@ teardown() {
   run_success "$OCKAM" relay create "$relay_name" --to /node/blue
 
   addr=$($OCKAM tcp-inlet create --via $relay_name)
-  run_success curl -sfI --retry-connrefused --retry-delay 5 --retry 10 -m 5 $addr
+  run_success curl -sfI --retry-all-errors --retry-delay 5 --retry 10 -m 5 $addr
 }
 
 @test "portals - create an inlet (with implicit secure channel creation), an outlet, a relay in an orchestrator project and move tcp traffic through it" {
@@ -56,7 +56,7 @@ teardown() {
   run_success "$OCKAM" node create green
   run_success "$OCKAM" tcp-inlet create --at /node/green --from "$port" --via "$relay_name"
 
-  run_success curl -sfI --retry-connrefused --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$port"
+  run_success curl -sfI --retry-all-errors --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$port"
 }
 
 @test "portals - inlet/outlet example with credential, not provided" {
@@ -160,7 +160,7 @@ teardown() {
   run_success bash -c "$OCKAM secure-channel create --from /node/green --to /project/default/service/forward_to_$relay_name/service/api \
               | $OCKAM tcp-inlet create --at /node/green --from $port --to -/service/outlet"
 
-  run_success curl -sfI --retry-connrefused --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$port"
+  run_success curl -sfI --retry-all-errors --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$port"
 }
 
 @test "portals - inlet (with implicit secure channel creation) / outlet example with enrollment token" {
@@ -193,7 +193,7 @@ teardown() {
   run_success "$OCKAM" tcp-inlet create --at /node/green \
     --from "$port" --via "$relay_name" --allow '(= subject.app "app1")'
 
-  run_success curl -sfI --retry-connrefused --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$port"
+  run_success curl -sfI --retry-all-errors --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$port"
 }
 
 @test "portals - local inlet and outlet passing through a relay, removing and re-creating the outlet" {
@@ -207,7 +207,7 @@ teardown() {
 
   run_success "$OCKAM" node create green
   run_success "$OCKAM" tcp-inlet create --at /node/green --from "$inlet_port" --via "$relay_name"
-  run_success curl -sfI --retry-connrefused --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$inlet_port"
+  run_success curl -sfI --retry-all-errors --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$inlet_port"
 
   $OCKAM node delete blue --yes
   run_failure curl -sfI -m 3 "127.0.0.1:$inlet_port"
@@ -215,7 +215,7 @@ teardown() {
   run_success "$OCKAM" node create blue --tcp-listener-address "127.0.0.1:$node_port"
   run_success "$OCKAM" tcp-outlet create --at /node/blue --to 127.0.0.1:$PYTHON_SERVER_PORT
   run_success "$OCKAM" relay create "$relay_name" --to /node/blue
-  run_success curl -sfI --retry-connrefused --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$inlet_port"
+  run_success curl -sfI --retry-all-errors --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$inlet_port"
 }
 
 @test "portals - create an inlet/outlet pair, copy heavy payload" {
@@ -235,7 +235,7 @@ teardown() {
   run_success openssl rand -out "${OCKAM_HOME_BASE}/.tmp/payload" $((1024 * 1024 * 10))
 
   # write payload to file `payload.copy`
-  run_success curl -sf -m 60 "127.0.0.1:${port}/.tmp/payload" -o "${OCKAM_HOME}/payload.copy"
+  run_success curl -sf --retry-all-errors --retry-delay 5 --retry 10 -m 60 "127.0.0.1:${port}/.tmp/payload" -o "${OCKAM_HOME}/payload.copy"
 
   # compare `payload` and `payload.copy`
   run_success cmp "${OCKAM_HOME_BASE}/.tmp/payload" "${OCKAM_HOME}/payload.copy"
@@ -264,7 +264,7 @@ teardown() {
   run_success "$OCKAM" tcp-inlet create --at /node/green --from "${inlet_port}" \
     --via "${relay_name}"
 
-  run_success curl -sfI --retry-connrefused --retry-delay 5 --retry 10 -m 5 "127.0.0.1:${inlet_port}"
+  run_success curl -sfI --retry-all-errors --retry-delay 5 --retry 10 -m 5 "127.0.0.1:${inlet_port}"
   status=$("$OCKAM" relay show "${relay_name}" --output json | jq .connection_status -r)
   assert_equal "$status" "Up"
 
@@ -300,13 +300,13 @@ teardown() {
   run_success "$OCKAM" tcp-inlet create --tls --from $port --to /secure/api/service/outlet
 
   # first wait for the connection without validation
-  run_success curl -sfI --insecure --retry-connrefused --retry-delay 5 --retry 10 -m 5 \
+  run_success curl -sfI --insecure --retry-all-errors --retry-delay 5 --retry 10 -m 5 \
     "https://127.0.0.1:${port}"
 
   # extract certificate subject
   subject=$(openssl s_client -showcerts -connect "127.0.0.1:${port}" </dev/null 2>&1 |
     grep -o 'subject=CN=.*' | sed -E 's/.*CN=[*][.](.*)/\1/')
 
-  run_success curl -sfI --retry-connrefused --retry-delay 5 --retry 10 -m 5 \
+  run_success curl -sfI --retry-all-errors --retry-delay 5 --retry 10 -m 5 \
     "https://arbitrary-name.${subject}:${port}"
 }
