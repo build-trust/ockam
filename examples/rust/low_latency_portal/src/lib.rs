@@ -84,6 +84,9 @@ pub fn run_inlet(config: Option<String>, callback_address: Option<SocketAddr>) {
                 socket.send_to(&[], callback_address).await.unwrap();
 
                 info!("Sent callback signal");
+            } else {
+                // send a SIGCONT signal to the parent process
+                let _ = nix::sys::signal::kill(nix::unistd::getppid(), nix::sys::signal::Signal::SIGCONT);
             }
 
             Ok::<(), ockam::Error>(())
