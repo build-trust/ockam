@@ -23,11 +23,7 @@ Logging
 
 Database
 - OCKAM_SQLITE_IN_MEMORY: a `boolean` to set the SQLite mode to `memory`. This can only be used in the `node create` command with the `--foreground` flag. Default value: `false`.
-- OCKAM_POSTGRES_HOST: Postgres database host. Example: 'localhost'.
-- OCKAM_POSTGRES_PORT: Postgres database port. Example: 5432.
-- OCKAM_POSTGRES_DATABASE_NAME: Postgres database name. Default value: 'postgres'.
-- OCKAM_POSTGRES_USER: Postgres database user. If it is not set, no authorization will be used to access the database.
-- OCKAM_POSTGRES_PASSWORD: Postgres database password. If it is not set, no authorization will be used to access the database.
+- OCKAM_DATABASE_CONNECTION_URL: Database url in the form `postgres://[{user}:{password}@]{host}:{port}/{database_name}` (for now only `postgres` is supported). Example: 'postgres://admin:secr3t@localhost:5432/ockam'.
 
 Tracing
 - OCKAM_OPENTELEMETRY_EXPORT: set this variable to a false value to disable tracing: `0`, `false`, `no`. Default value: `true`
@@ -69,4 +65,3 @@ Devs Usage
 
 Internal (to enable some special behavior in the logic)
 - OCKAM_HELP_RENDER_MARKDOWN: a `boolean` to control the markdown rendering of the commands documentation.
-

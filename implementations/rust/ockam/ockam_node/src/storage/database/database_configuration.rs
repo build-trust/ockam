@@ -7,16 +7,8 @@ use std::path::{Path, PathBuf};
 
 /// Use an in-memory SQLite database
 pub const OCKAM_SQLITE_IN_MEMORY: &str = "OCKAM_SQLITE_IN_MEMORY";
-/// Database host environment variable
-pub const OCKAM_POSTGRES_HOST: &str = "OCKAM_POSTGRES_HOST";
-/// Database port environment variable
-pub const OCKAM_POSTGRES_PORT: &str = "OCKAM_POSTGRES_PORT";
-/// Database name environment variable
-pub const OCKAM_POSTGRES_DATABASE_NAME: &str = "OCKAM_POSTGRES_DATABASE_NAME";
-/// Database user environment variable
-pub const OCKAM_POSTGRES_USER: &str = "OCKAM_POSTGRES_USER";
-/// Database password environment variable
-pub const OCKAM_POSTGRES_PASSWORD: &str = "OCKAM_POSTGRES_PASSWORD";
+/// Database connection URL
+pub const OCKAM_DATABASE_CONNECTION_URL: &str = "OCKAM_DATABASE_CONNECTION_URL";
 
 /// Configuration for the database.
 /// We either use Sqlite or Postgres
@@ -36,14 +28,8 @@ pub enum DatabaseConfiguration {
     },
     /// Configuration for a Postgres database
     Postgres {
-        /// Database host name
-        host: String,
-        /// Database host port
-        port: u16,
-        /// Database name
-        database_name: String,
-        /// Database user
-        user: Option<DatabaseUser>,
+        /// Connection string of the form postgres://[{user}:{password}@]{host}:{port}/{database_name}
+        connection_string: String,
     },
 }
 
@@ -84,32 +70,15 @@ impl DatabaseUser {
 }
 
 impl DatabaseConfiguration {
-    /// Create a postgres database configuration from environment variables.
-    ///
-    /// At minima, the database host and port must be provided.
+    /// Create a postgres database configuration from an environment variable.
     pub fn postgres() -> Result<Option<DatabaseConfiguration>> {
-        let host: Option<String> = get_env(OCKAM_POSTGRES_HOST)?;
-        let port: Option<u16> = get_env(OCKAM_POSTGRES_PORT)?;
-        let database_name: String =
-            get_env(OCKAM_POSTGRES_DATABASE_NAME)?.unwrap_or("postgres".to_string());
-        let user: Option<String> = get_env(OCKAM_POSTGRES_USER)?;
-        let password: Option<String> = get_env(OCKAM_POSTGRES_PASSWORD)?;
-        match (host, port) {
-            (Some(host), Some(port)) => match (user, password) {
-                (Some(user), Some(password)) => Ok(Some(DatabaseConfiguration::Postgres {
-                    host,
-                    port,
-                    database_name,
-                    user: Some(DatabaseUser::new(user, password)),
-                })),
-                _ => Ok(Some(DatabaseConfiguration::Postgres {
-                    host,
-                    port,
-                    database_name,
-                    user: None,
-                })),
-            },
-            _ => Ok(None),
+        if let Some(connection_string) = get_env::<String>(OCKAM_DATABASE_CONNECTION_URL)? {
+            check_connection_string_format(&connection_string)?;
+            Ok(Some(DatabaseConfiguration::Postgres {
+                connection_string: connection_string.to_owned(),
+            }))
+        } else {
+            Ok(None)
         }
     }
 
@@ -162,17 +131,7 @@ impl DatabaseConfiguration {
             DatabaseConfiguration::SqlitePersistent { path, .. } => {
                 Self::create_sqlite_on_disk_connection_string(path)
             }
-            DatabaseConfiguration::Postgres {
-                host,
-                port,
-                database_name,
-                user,
-            } => Self::create_postgres_connection_string(
-                host.clone(),
-                *port,
-                database_name.clone(),
-                user.clone(),
-            ),
+            DatabaseConfiguration::Postgres { connection_string } => connection_string.clone(),
         }
     }
 
@@ -211,17 +170,96 @@ impl DatabaseConfiguration {
         let url_string = &path.to_string_lossy().to_string();
         format!("sqlite://{url_string}?mode=rwc")
     }
+}
 
-    fn create_postgres_connection_string(
-        host: String,
-        port: u16,
-        database_name: String,
-        user: Option<DatabaseUser>,
-    ) -> String {
-        let user_password = match user {
-            Some(user) => format!("{}:{}@", user.user_name(), user.password()),
-            None => "".to_string(),
+/// Check the format of a database connection string as `postgres://[{user}:{password}@]{host}:{port}/{database_name}`
+/// For now we only support postgres.
+fn check_connection_string_format(connection_string: &str) -> Result<()> {
+    if let Some(no_prefix) = connection_string.strip_prefix("postgres://") {
+        let host_port_db_name = match no_prefix.split('@').collect::<Vec<_>>()[..] {
+            [host_port_db_name] => host_port_db_name,
+            [user_and_password, host_port_db_name] => {
+                let user_and_password = user_and_password.split(':').collect::<Vec<_>>();
+                if user_and_password.len() != 2 {
+                    return Err(Error::new(
+                        Origin::Api,
+                        Kind::Invalid,
+                        "A database connection URL must specify the user and password as user:password".to_string(),
+                    ));
+                }
+                host_port_db_name
+            }
+            _ => {
+                return Err(Error::new(
+                    Origin::Api,
+                    Kind::Invalid,
+                    "A database connection URL can only have one @ separator to specify the user name and password".to_string(),
+                ));
+            }
         };
-        format!("postgres://{user_password}{host}:{port}/{database_name}")
+        match host_port_db_name.split('/').collect::<Vec<_>>()[..] {
+            [host_port, _] => {
+                let host_port = host_port.split(':').collect::<Vec<_>>();
+                if host_port.len() != 2 {
+                    return Err(Error::new(
+                        Origin::Api,
+                        Kind::Invalid,
+                        "A database connection URL must have a host and a port specified as host:port".to_string(),
+                    ));
+                }
+                Ok(())
+            }
+            _ => Err(Error::new(
+                Origin::Api,
+                Kind::Invalid,
+                "A database connection URL must have a host, a port and a database name as host:port/database_name".to_string(),
+            )),
+        }
+    } else {
+        Err(Error::new(
+            Origin::Api,
+            Kind::Invalid,
+            "A database connection must start with postgres://".to_string(),
+        ))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_valid_connection_strings() -> Result<()> {
+        assert!(
+            check_connection_string_format("postgres://user:pass@localhost:5432/dbname").is_ok()
+        );
+        assert!(check_connection_string_format("postgres://localhost:5432/dbname").is_ok());
+        Ok(())
+    }
+
+    #[test]
+    fn test_invalid_connection_strings() {
+        assert!(
+            check_connection_string_format("mysql://localhost:5432/dbname").is_err(),
+            "incorrect protocol"
+        );
+        assert!(
+            check_connection_string_format("postgres://user@localhost:5432/dbname").is_err(),
+            "missing password"
+        );
+        assert!(
+            check_connection_string_format("postgres://user:pass@host@localhost:5432/dbname")
+                .is_err(),
+            "multiple @ symbols"
+        );
+        assert!(
+            check_connection_string_format("postgres://user:pass@localhost/dbname").is_err(),
+            "missing port"
+        );
+        assert!(
+            check_connection_string_format("postgres://user:pass@localhost:5432").is_err(),
+            "missing database name"
+        );
+        assert!(check_connection_string_format("").is_err(), "empty string");
     }
 }
