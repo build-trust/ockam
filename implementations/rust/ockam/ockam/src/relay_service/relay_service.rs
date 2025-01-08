@@ -133,6 +133,10 @@ impl Worker for RelayService {
         let payload = final_relay_name.clone().encode()?;
         let final_relay_address = Address::from_string(final_relay_name);
 
+        if ctx.stop_address(&final_relay_address).is_ok() {
+            info!("Removed existing alias on {}", final_relay_address);
+        }
+
         self.options
             .setup_flow_control_for_relay(ctx.flow_controls(), &final_relay_address);
 
