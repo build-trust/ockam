@@ -1,6 +1,6 @@
 [package]
 name = "ockam_node"
-version = "0.135.0"
+version = "0.136.0"
 authors = ["Ockam Developers"]
 categories = [
   "cryptography",
@@ -92,10 +92,10 @@ futures = { version = "0.3.30", default-features = false }
 heapless = { version = "0.8", features = ["mpmc_large"], optional = true }
 minicbor = { version = "0.25.1", default-features = false, features = ["derive"] }
 nix = { version = "0.29", features = ["signal"], optional = true }
-ockam_core = { path = "../ockam_core", version = "^0.122.0", default-features = false }
-ockam_executor = { path = "../ockam_executor", version = "^0.91.0", default-features = false, optional = true }
+ockam_core = { path = "../ockam_core", version = "^0.123.0", default-features = false }
+ockam_executor = { path = "../ockam_executor", version = "^0.92.0", default-features = false, optional = true }
 ockam_macros = { path = "../ockam_macros", version = "^0.36.0" }
-ockam_transport_core = { path = "../ockam_transport_core", version = "^0.99.0", default-features = false, optional = true }
+ockam_transport_core = { path = "../ockam_transport_core", version = "^0.100.0", default-features = false, optional = true }
 once_cell = { version = "1.19.0", optional = true, default-features = false }
 opentelemetry = { version = "0.26.0", features = ["logs", "metrics", "trace"], optional = true }
 regex = { version = "1.10.6", default-features = false, optional = true }

@@ -31,7 +31,7 @@ Add this to your `Cargo.toml`:
 
 ```
 [dependencies]
-ockam_identity = "0.130.0"
+ockam_identity = "0.131.0"
 ```
 
 ## License

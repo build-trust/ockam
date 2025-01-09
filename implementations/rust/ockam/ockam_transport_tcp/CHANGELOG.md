@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.134.0 - 2025-01-09
+
+### Added
+
+- Setting `no_delay` in every tcp connection
+- Introduce env variables to adjust transport performance
+- Improve logs for tcp portals creation
+- Improvements to portals commands arguments
+- Updated dependencies
+
 ## 0.133.0 - 2024-12-12
 
 ### Added

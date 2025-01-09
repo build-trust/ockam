@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.136.0 - 2025-01-09
+
+### Added
+
+- Simplify `node create` execution
+- Improve logs for tcp portals creation
+- Session replacer sends notifications on session lost/replaced
+- Simplify the retrieval of the postgres connection url
+- Improvements to portals commands arguments
+- Updated dependencies
+
+### Changed
+
+- Extract `OCKAM_SQLITE_IN_MEMORY` env var usage up to the cli state initialization
+
 ## 0.135.0 - 2024-12-12
 
 ### Added

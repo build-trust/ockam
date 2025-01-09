@@ -1,6 +1,6 @@
 [package]
 name = "ockam_transport_core"
-version = "0.99.0"
+version = "0.100.0"
 authors = ["Ockam Developers"]
 categories = ["network-programming", "asynchronous"]
 edition = "2021"
@@ -32,6 +32,6 @@ alloc = ["ockam_core/alloc", "minicbor/alloc"]
 
 [dependencies]
 minicbor = { version = "0.25.1", default-features = false, features = ["derive"] }
-ockam_core = { path = "../ockam_core", version = "^0.122.0", default-features = false }
+ockam_core = { path = "../ockam_core", version = "^0.123.0", default-features = false }
 serde = { version = "1.0.204", default-features = false, features = ["derive"] }
 url = { version = "2.2", optional = true }

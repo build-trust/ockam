@@ -4,6 +4,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.146.0 - 2025-01-09
+
+### Added
+
+- Simplify `node create` execution
+- To reduce memory fragmentation use mimalloc in command and stress-test
+- Sort credentials output alphabetically
+- Improve logs for relay creation
+- Improve stdout output for `node create`
+- Improve logs for tcp portals creation
+- Add a custom log format to change the fields order
+- Session replacer sends notifications on session lost/replaced
+- Add "unsafe" tag to commands that are considered unsafe
+- Improvements to portals commands arguments
+- Updated dependencies
+
+### Changed
+
+- Extract `OCKAM_SQLITE_IN_MEMORY` env var usage up to the cli state initialization
+- Update cli documentation for the `status` and `reset` commands
+
+### Fixed
+
+- `project enroll` command won't issue a credential if run in-memory
+- Newlines between commands run in a configuration
+- Fix bats test on kafka-inlet args parsing
+
 ## 0.145.0 - 2024-12-12
 
 ### Added
