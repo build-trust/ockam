@@ -217,7 +217,7 @@ impl CreateCommand {
             )?;
             if self.name != kafka_inlet_default_addr() {
                 opts.terminal.write_line(
-                    fmt_warn!("The <NAME> argument is being overridden by the --alias flag")
+                    fmt_warn!("The <NAME> argument is being overridden by the --addr flag")
                         + &fmt_log!("Consider removing the --addr flag"),
                 )?;
             }

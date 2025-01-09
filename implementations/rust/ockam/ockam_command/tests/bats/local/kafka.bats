@@ -77,15 +77,21 @@ teardown() {
 }
 
 @test "kafka - create with deprecated alias --addr flag" {
+  # Ignore `name` if `addr` is also passed
   port="$(random_port)"
-
-  # Fail if both addr and name are used
-  run_failure $OCKAM kafka-inlet create kinlet-name --addr kinlet --to /secure/api --from $port --jq '.'
-
-  run_success $OCKAM kafka-inlet create --addr kinlet --to /secure/api --from $port --jq '.'
+  run_success $OCKAM kafka-inlet create kinlet-name --addr kinlet --to /secure/api --from $port --jq '.'
   assert_output --partial "\"from\": \"127.0.0.1:$port\""
   assert_output --partial "\"to\": \"/secure/api\""
 
   run_success $OCKAM kafka-inlet show kinlet --jq '.'
   assert_output --partial "kinlet"
+
+  # Use `addr`
+  port="$(random_port)"
+  run_success $OCKAM kafka-inlet create --addr kinlet2 --to /secure/api --from $port --jq '.'
+  assert_output --partial "\"from\": \"127.0.0.1:$port\""
+  assert_output --partial "\"to\": \"/secure/api\""
+
+  run_success $OCKAM kafka-inlet show kinlet2 --jq '.'
+  assert_output --partial "kinlet2"
 }
