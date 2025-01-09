@@ -4,7 +4,7 @@ mod context_lifecycle;
 mod receive_message;
 mod register_router;
 mod send_message;
-mod stop_env;
+mod shutdown;
 mod transports;
 mod worker_lifecycle;
 

@@ -7,21 +7,21 @@ impl Context {
     /// This call will hang until a safe shutdown has been completed.
     /// The default timeout for a safe shutdown is 1 second.  You can
     /// change this behaviour by calling
-    /// [`Context::stop_timeout`](Context::stop_timeout) directly.
-    pub async fn stop(&self) -> Result<()> {
-        self.stop_timeout(1).await
+    /// [`Context::shutdown_node_with_timeout`](Context::shutdown_node_with_timeout) directly.
+    pub async fn shutdown_node(&self) -> Result<()> {
+        self.shutdown_node_with_timeout(1).await
     }
 
     /// Signal to the local runtime to shut down
     ///
     /// This call will hang until a safe shutdown has been completed
     /// or the desired timeout has been reached.
-    pub async fn stop_timeout(&self, seconds: u8) -> Result<()> {
+    pub async fn shutdown_node_with_timeout(&self, seconds: u8) -> Result<()> {
         let router = self.router()?;
 
         // Spawn a separate task, otherwise if this function is called from a worker, in can be
         // cancelled, as worker run loop itself is stopped as a result of this call
-        let _handle = crate::spawn(async move { router.stop_graceful(seconds).await });
+        let _handle = crate::spawn(async move { router.shutdown_graceful(seconds).await });
 
         #[cfg(feature = "std")]
         _handle.await.unwrap()?;

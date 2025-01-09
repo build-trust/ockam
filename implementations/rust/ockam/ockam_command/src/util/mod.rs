@@ -70,7 +70,7 @@ where
                 .await
                 .expect("Embedded node child ctx can't be created");
             let r = f(child_ctx).await;
-            let _ = ctx.stop().await;
+            let _ = ctx.shutdown_node().await;
             r
         }
         .with_context(OpenTelemetryContext::current_context()),
@@ -99,7 +99,7 @@ where
             .await
             .expect("Embedded node child ctx can't be created");
         let result = f(child_ctx).await;
-        let _ = ctx.stop().await;
+        let _ = ctx.shutdown_node().await;
         result.map_err(|e| {
             ockam_core::Error::new(
                 ockam_core::errcode::Origin::Executor,
@@ -292,7 +292,7 @@ mod tests {
             ctx: Context,
             _parameter: u8,
         ) -> miette::Result<()> {
-            ctx.stop().await.into_diagnostic()?;
+            ctx.shutdown_node().await.into_diagnostic()?;
             Err(miette!("boom"))
         }
     }

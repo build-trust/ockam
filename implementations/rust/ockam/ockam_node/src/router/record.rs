@@ -337,7 +337,7 @@ impl InternalMap {
         self.metrics.0.load(Ordering::Acquire)
     }
 
-    /// Stop all workers not in a cluster, returns their primary addresses
+    /// Stop all workers with given priority
     pub(super) fn stop_workers(
         &self,
         shutdown_priority: WorkerShutdownPriority,

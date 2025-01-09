@@ -124,7 +124,7 @@ impl CreateCommand {
             //      and the other being terminated, so when restarted it works.  This is
             //      FAR from ideal.
             sleep(Duration::from_secs(10)).await;
-            ctx.stop().await.into_diagnostic()?;
+            ctx.shutdown_node().await.into_diagnostic()?;
             return Err(miette!("Failed to start services"));
         }
 

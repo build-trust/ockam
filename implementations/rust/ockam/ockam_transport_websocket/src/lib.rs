@@ -63,7 +63,7 @@
 //!     let reply = ctx.receive::<String>().await?;
 //!
 //!     // Stop all workers, stop the node, cleanup and return.
-//!     ctx.stop().await
+//!     ctx.shutdown_node().await
 //! }
 //! ```
 //!

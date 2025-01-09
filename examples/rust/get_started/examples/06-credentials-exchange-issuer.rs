@@ -107,7 +107,7 @@ async fn main(ctx: Context) -> Result<()> {
     let tcp = node.create_tcp_transport().await?;
     tcp.listen("127.0.0.1:5000", tcp_listener_options).await?;
 
-    // Don't call node.stop() here so this node runs forever.
+    // Don't call node.shutdown() here so this node runs forever.
     println!("issuer started");
     Ok(())
 }

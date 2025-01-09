@@ -88,5 +88,5 @@ async fn main(ctx: Context) -> Result<()> {
         .await?;
     println!("Received: {}", reply); // should print "Hello Ockam!"
 
-    node.stop().await
+    node.shutdown().await
 }

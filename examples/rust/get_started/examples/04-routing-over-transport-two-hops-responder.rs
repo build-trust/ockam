@@ -23,6 +23,6 @@ async fn main(ctx: Context) -> Result<()> {
     node.flow_controls()
         .add_consumer(&"echoer".into(), listener.flow_control_id());
 
-    // Don't call node.stop() here so this node runs forever.
+    // Don't call node.shutdown() here so this node runs forever.
     Ok(())
 }

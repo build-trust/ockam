@@ -32,6 +32,6 @@ async fn main(ctx: Context) -> Result<()> {
     node.flow_controls()
         .add_consumer(&"forward_to_bob".into(), udp_bind.flow_control_id());
 
-    // Don't call node.stop() here so this node runs forever.
+    // Don't call node.shutdown() here so this node runs forever.
     Ok(())
 }

@@ -226,7 +226,7 @@ async fn portal__tcp_connection_with_invalid_message_flow__should_not_succeed(
 
     handle.abort();
 
-    if let Err(e) = ctx.stop().await {
+    if let Err(e) = ctx.shutdown_node().await {
         println!("Unclean stop: {}", e)
     }
 

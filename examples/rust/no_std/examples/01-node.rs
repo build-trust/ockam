@@ -63,5 +63,5 @@ async fn main(ctx: Context) -> Result<()> {
 
     // Stop the node as soon as it starts.
     info!("Stop the node as soon as it starts.");
-    node.stop().await;
+    node.shutdown().await;
 }

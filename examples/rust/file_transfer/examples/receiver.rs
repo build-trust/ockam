@@ -58,7 +58,7 @@ impl Worker for FileReception {
                         Ok(n) => {
                             self.written_size += n;
                             if self.written_size == self.size {
-                                ctx.stop().await?;
+                                ctx.shutdown_node().await?;
                             }
                         }
                         Err(e) => {
@@ -71,7 +71,7 @@ impl Worker for FileReception {
                     );
                 }
             }
-            FileData::Quit => ctx.stop().await?,
+            FileData::Quit => ctx.shutdown_node().await?,
         }
 
         Ok(())
@@ -120,6 +120,6 @@ async fn main(ctx: Context) -> Result<()> {
     // Start a worker, of type FileReception, at address "receiver".
     node.start_worker("receiver", FileReception::default()).await?;
 
-    // We won't call ctx.stop() here, this program will quit when the file will be entirely received
+    // We won't call ctx.shutdown_node() here, this program will quit when the file will be entirely received
     Ok(())
 }

@@ -454,6 +454,6 @@ mod tests {
         assert_eq!("custom_user_name", service.name());
         assert_eq!("/project/project_id/service/forward_to_I12ab34cd56ef12ab34cd56ef12ab34cd56ef12aba1b2c3d4e5f6a6b5c4d3e2f1/secure/api/service/remote_service_name", service.service_route(None));
 
-        context.stop().await
+        context.shutdown_node().await
     }
 }

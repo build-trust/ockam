@@ -58,7 +58,7 @@ fn start_and_shutdown_node__many_iterations__should_not_fail() {
                 .catch_unwind()
                 .await;
 
-                ctx.stop().await?;
+                ctx.shutdown_node().await?;
 
                 res.unwrap()
             })
@@ -152,7 +152,7 @@ async fn simple_worker__run_node_lifecycle__worker_lifecycle_should_be_full(
         .await?;
     assert_eq!(msg, "Hello");
 
-    ctx.stop().await?;
+    ctx.shutdown_node().await?;
     // Wait till tokio Runtime is shut down
     sleep(Duration::new(1, 0)).await;
 
@@ -480,7 +480,7 @@ async fn abort_blocked_shutdown(ctx: &mut Context) -> Result<()> {
     ctx.start_worker_with_access_control("bad", BadWorker, DenyAll, DenyAll)
         .await?;
 
-    ockam_node::tokio::time::timeout(Duration::from_secs(2), ctx.stop())
+    ockam_node::tokio::time::timeout(Duration::from_secs(2), ctx.shutdown_node())
         .await
         .unwrap()
 }
@@ -503,7 +503,7 @@ impl Worker for SendReceiveWorker {
             }
         }
 
-        ctx.stop().await
+        ctx.shutdown_node().await
     }
 }
 

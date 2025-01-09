@@ -115,7 +115,7 @@ impl Executor {
                 Ok(val)
             }
             Err(e) => {
-                if let Err(error) = router.stop_graceful(1).await {
+                if let Err(error) = router.shutdown_graceful(1).await {
                     error!("Failed to stop gracefully: {}", error);
                 }
                 Err(e)

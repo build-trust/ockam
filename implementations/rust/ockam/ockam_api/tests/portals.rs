@@ -151,7 +151,7 @@ fn portal_node_goes_down_reconnect() {
             socket.read_exact(&mut buf).await.unwrap();
             assert_eq!(&buf, b"hello");
 
-            second_node.context.stop().await?;
+            second_node.context.shutdown_node().await?;
 
             // now let's verify the inlet has been detected as down
             loop {
@@ -206,8 +206,8 @@ fn portal_node_goes_down_reconnect() {
             socket.read_exact(&mut buf).await.unwrap();
             assert_eq!(&buf, b"hello");
 
-            third_node.context.stop().await?;
-            first_node.context.stop().await?;
+            third_node.context.shutdown_node().await?;
+            first_node.context.shutdown_node().await?;
 
             Ok(())
         };
@@ -340,8 +340,8 @@ fn portal_low_bandwidth_connection_keep_working_for_60s() {
                 tokio::time::sleep(Duration::from_millis(1000)).await;
             }
 
-            second_node.context.stop().await?;
-            first_node.context.stop().await?;
+            second_node.context.shutdown_node().await?;
+            first_node.context.shutdown_node().await?;
 
             Ok(())
         };
@@ -451,8 +451,8 @@ fn portal_heavy_load_exchanged() {
             assert!(payload == incoming_buffer);
 
             let _ = join_tx.await.unwrap();
-            second_node.context.stop().await?;
-            first_node.context.stop().await?;
+            second_node.context.shutdown_node().await?;
+            first_node.context.shutdown_node().await?;
 
             Ok(())
         };
@@ -603,8 +603,8 @@ fn test_portal_payload_transfer(outgoing_disruption: Disruption, incoming_disrup
             // using assert to avoid MB of data being shown in the logs
             assert!(random_buffer[0..size] == incoming_buffer[0..size]);
 
-            second_node.context.stop().await?;
-            first_node.context.stop().await?;
+            second_node.context.shutdown_node().await?;
+            first_node.context.shutdown_node().await?;
 
             Ok(())
         };

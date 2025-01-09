@@ -1,6 +1,6 @@
 #[ockam::test]
 async fn my_test(ctx: Context) -> ockam_core::Result<()> {
-    ctx.stop().await.unwrap();
+    ctx.shutdown_node().await.unwrap();
 }
 
 fn main() {}

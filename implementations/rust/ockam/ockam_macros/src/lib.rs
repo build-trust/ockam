@@ -92,7 +92,7 @@ pub fn message_derive(input: TokenStream) -> TokenStream {
 /// ```ignore
 /// #[ockam::node]
 /// async fn main(mut ctx: ockam::Context) -> ockam::Result<()> {
-///     ctx.stop().await
+///     ctx.shutdown_node().await
 /// }
 /// ```
 #[proc_macro_attribute]
@@ -126,7 +126,7 @@ pub fn node(args: TokenStream, item: TokenStream) -> TokenStream {
 /// ```ignore
 /// #[ockam::test]
 /// async fn main(ctx: &mut ockam::Context) -> ockam::Result<()> {
-///     ctx.stop().await
+///     ctx.shutdown_node().await
 /// }
 /// ```
 #[proc_macro_attribute]

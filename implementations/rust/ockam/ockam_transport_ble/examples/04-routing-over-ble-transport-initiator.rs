@@ -34,5 +34,5 @@ async fn async_main(mut ctx: Context) -> Result<()> {
     println!("[main] App Received: {}", reply.into_body()?); // should print "Hello Ockam!"
 
     // Stop all workers, stop the node, cleanup and return.
-    ctx.stop().await
+    ctx.shutdown_node().await
 }

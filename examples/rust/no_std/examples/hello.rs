@@ -102,5 +102,5 @@ async fn main(ctx: Context) -> Result<()> {
     }
 
     // Stop all workers, stop the node, cleanup and return.
-    node.stop().await
+    node.shutdown().await
 }

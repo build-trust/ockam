@@ -13,14 +13,14 @@ use ockam_core::Result;
 impl Router {
     /// Implement the graceful stop strategy
     #[cfg_attr(not(feature = "std"), allow(unused_variables))]
-    pub async fn stop_graceful(self: Arc<Router>, seconds: u8) -> Result<()> {
+    pub async fn shutdown_graceful(self: Arc<Router>, seconds: u8) -> Result<()> {
         // This changes the router state to `Stopping`
         let state = {
             let mut state = self.state.write().unwrap();
 
             let state_val = *state;
             if state_val == RouterState::Running {
-                *state = RouterState::Stopping;
+                *state = RouterState::ShuttingDown;
             }
 
             state_val
@@ -28,12 +28,12 @@ impl Router {
 
         match state {
             RouterState::Running => {}
-            RouterState::Stopping => {
+            RouterState::ShuttingDown => {
                 info!("Router is already stopping");
                 self.wait_termination().await;
                 return Ok(());
             }
-            RouterState::Stopped => {
+            RouterState::Shutdown => {
                 info!("Router is already stopped");
                 return Ok(());
             }
@@ -105,18 +105,18 @@ impl Router {
         #[cfg(not(feature = "std"))]
         shutdown.await;
 
-        debug!("Setting Router state to Stopped");
-        *self.state.write().unwrap() = RouterState::Stopped;
-        debug!("Sending Router stopped broadcast");
+        debug!("Setting Router state to Shutdown");
+        *self.state.write().unwrap() = RouterState::Shutdown;
+        debug!("Sending Router shutdown broadcast");
         #[cfg(feature = "std")]
-        match self.stopped_broadcast_sender.write().unwrap().take() {
+        match self.shutdown_broadcast_sender.write().unwrap().take() {
             None => {
-                warn!("Couldn't send Router stop message. Channel is missing.");
+                warn!("Couldn't send Router shutdown message. Channel is missing.");
             }
-            Some(stopped_broadcast_sender) => {
-                if stopped_broadcast_sender.send(()).is_err() {
+            Some(shutdown_broadcast_sender) => {
+                if shutdown_broadcast_sender.send(()).is_err() {
                     // That's fine, it's possible nobody is listening for that broadcast
-                    debug!("Couldn't send Router stop message. Sending error.");
+                    debug!("Couldn't send Router shutdown message. Sending error.");
                 }
             }
         }

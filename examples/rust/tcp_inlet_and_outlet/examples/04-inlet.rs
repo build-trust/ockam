@@ -47,7 +47,7 @@ async fn main(ctx: Context) -> Result<()> {
     tcp.create_inlet(inlet_address, route_to_outlet, TcpInletOptions::new())
         .await?;
 
-    // We won't call ctx.stop() here,
+    // We won't call ctx.shutdown_node() here,
     // so this program will keep running until you interrupt it with Ctrl-C.
     Ok(())
 }

@@ -57,7 +57,7 @@ async fn main(ctx: Context) -> Result<()> {
     println!("Forwarding address in Hub is:");
     println!("{}", relay.remote_address());
 
-    // We won't call ctx.stop() here,
+    // We won't call ctx.shutdown_node() here,
     // so this program will keep running until you interrupt it with Ctrl-C.
     Ok(())
 }

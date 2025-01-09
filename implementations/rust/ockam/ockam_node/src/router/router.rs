@@ -50,29 +50,28 @@ pub struct Router {
     /// Externally registered router components
     pub(super) external: SyncRwLock<HashMap<TransportType, Address>>,
     #[cfg(feature = "std")]
-    pub(super) stopped_broadcast_sender: SyncRwLock<Option<tokio::sync::broadcast::Sender<()>>>,
+    pub(super) shutdown_broadcast_sender: SyncRwLock<Option<tokio::sync::broadcast::Sender<()>>>,
 }
 
 /// Node state
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum RouterState {
     Running,
-    Stopping,
-    Stopped,
+    ShuttingDown,
+    Shutdown,
 }
 
 impl Router {
     pub fn new(flow_controls: &FlowControls) -> Self {
         #[cfg(feature = "std")]
-        let (stopped_broadcast_sender, _stopped_broadcast_receiver) =
-            tokio::sync::broadcast::channel(1);
+        let (shutdown_broadcast_sender, _) = tokio::sync::broadcast::channel(1);
 
         Self {
             state: RouterState::Running.into(),
             map: InternalMap::new(flow_controls),
             external: Default::default(),
             #[cfg(feature = "std")]
-            stopped_broadcast_sender: SyncRwLock::new(Some(stopped_broadcast_sender)),
+            shutdown_broadcast_sender: SyncRwLock::new(Some(shutdown_broadcast_sender)),
         }
     }
 
@@ -145,7 +144,7 @@ impl Router {
 
     #[cfg(feature = "std")]
     pub async fn wait_termination(&self) {
-        let mut receiver = match self.stopped_broadcast_sender.read().unwrap().as_ref() {
+        let mut receiver = match self.shutdown_broadcast_sender.read().unwrap().as_ref() {
             None => {
                 // That's fine, means we already stopped
                 debug!("Waiting for termination but channel is missing");

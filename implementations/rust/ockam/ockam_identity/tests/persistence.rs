@@ -278,7 +278,7 @@ fn test_persistence() -> ockam_core::Result<()> {
             .catch_unwind()
             .await;
 
-            ctx1.stop().await?;
+            ctx1.shutdown_node().await?;
 
             data.unwrap()
         })
@@ -373,7 +373,7 @@ fn test_persistence() -> ockam_core::Result<()> {
             .catch_unwind()
             .await;
 
-            ctx2.stop().await?;
+            ctx2.shutdown_node().await?;
 
             res.unwrap()
         })

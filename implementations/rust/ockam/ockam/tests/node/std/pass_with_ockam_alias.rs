@@ -4,5 +4,5 @@ use ockam::{self as o};
 
 #[ockam::node]
 async fn main(c: o::Context) -> ockam_core::Result<()> {
-    c.stop().await
+    c.shutdown_node().await
 }

@@ -42,7 +42,7 @@ async fn tcp_keepalive_test(ctx: &mut Context) -> Result<()> {
         sleep_duration, reply
     );
 
-    if let Err(e) = ctx.stop().await {
+    if let Err(e) = ctx.shutdown_node().await {
         println!("Unclean stop: {}", e)
     }
 

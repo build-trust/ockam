@@ -53,7 +53,7 @@ async fn main(ctx: Context) -> Result<()> {
     let port = std::env::args().nth(2).unwrap_or_else(|| "4000".to_string());
     tcp.listen(format!("127.0.0.1:{port}"), tcp_listener_options).await?;
 
-    // We won't call ctx.stop() here,
+    // We won't call ctx.shutdown_node() here,
     // so this program will keep running until you interrupt it with Ctrl-C.
     Ok(())
 }

@@ -207,8 +207,8 @@ impl Node {
     }
 
     /// Signal to the local runtime to shut down
-    pub async fn stop(&mut self) -> Result<()> {
-        self.context.stop().await
+    pub async fn shutdown(&mut self) -> Result<()> {
+        self.context.shutdown_node().await
     }
 
     /// Send a message to an address or via a fully-qualified route
