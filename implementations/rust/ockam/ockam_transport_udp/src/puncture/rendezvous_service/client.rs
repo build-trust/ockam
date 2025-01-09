@@ -1,7 +1,7 @@
 use crate::puncture::rendezvous_service::{RendezvousRequest, RendezvousResponse};
 use crate::{PunctureError, UdpBind};
 use ockam_core::AsyncTryClone;
-use ockam_core::{route, Result, Route};
+use ockam_core::{Result, Route};
 use ockam_node::{Context, MessageSendReceiveOptions};
 use std::time::Duration;
 
@@ -19,7 +19,7 @@ pub struct RendezvousClient {
 impl RendezvousClient {
     /// Constructor
     pub fn new(udp_bind: &UdpBind, rendezvous_route: Route) -> Self {
-        let full_route = route![udp_bind.sender_address().clone(), rendezvous_route];
+        let full_route = udp_bind.sender_address().clone() + rendezvous_route;
 
         Self {
             rendezvous_route: full_route,

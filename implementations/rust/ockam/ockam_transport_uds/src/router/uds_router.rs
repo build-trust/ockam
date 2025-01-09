@@ -142,7 +142,7 @@ impl UdsRouter {
 
         self.handle_unregister(self_address.clone()).await?;
 
-        self.ctx.stop_address(self_address)?;
+        self.ctx.stop_address(&self_address)?;
 
         Ok(())
     }
@@ -200,10 +200,10 @@ impl UdsRouter {
         let onward = msg.next_on_onward_route()?;
 
         // Resolve route to the connection worker responsible for the next hop
-        let next = self.resolve_route(&onward).await?;
+        let next = self.resolve_route(onward).await?;
 
         // Modify the transport message route
-        let msg = msg.replace_front_onward_route(&next)?;
+        let msg = msg.replace_front_onward_route(next.clone())?;
 
         // Send the local message to the connection worker
         ctx.send(next.clone(), msg).await?;

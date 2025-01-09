@@ -375,7 +375,7 @@ impl Session {
                 .await;
             additional_state.shared_state.status.set_down();
 
-            _ = self.ctx.stop_address(additional_state.collector_address);
+            _ = self.ctx.stop_address(&additional_state.collector_address);
         }
     }
 
@@ -390,7 +390,7 @@ impl Session {
 
         // ping_receiver_handle task will shut down itself when Collector Worker drops the sender
 
-        _ = self.ctx.stop_address(self.collector_address.clone());
+        _ = self.ctx.stop_address(&self.collector_address);
     }
 
     /// Stop everything
@@ -411,7 +411,7 @@ impl Session {
         pings.push(ping);
         let ping_encoded = Encodable::encode(ping)?;
 
-        let echo_route = route![ping_route.clone(), DefaultAddress::ECHO_SERVICE];
+        let echo_route = ping_route.clone() + DefaultAddress::ECHO_SERVICE;
         trace! {
             key  = %key,
             addr = %ping_route,
@@ -430,7 +430,7 @@ impl Session {
             .map(|x| x.flow_control_id().clone())
         {
             ctx.flow_controls()
-                .add_consumer(collector_address.clone(), &flow_control_id);
+                .add_consumer(&collector_address, &flow_control_id);
         }
 
         let local_message = LocalMessage::new()

@@ -172,7 +172,7 @@ impl Authority {
 
         let name = configuration.authenticator_name();
         ctx.flow_controls()
-            .add_consumer(name.clone(), secure_channel_flow_control_id);
+            .add_consumer(&name.clone().into(), secure_channel_flow_control_id);
 
         ctx.start_worker(name.clone(), direct).await?;
 
@@ -203,8 +203,10 @@ impl Authority {
         // start an enrollment token issuer with an abac policy checking that
         // the caller is an enroller for the authority project
         let issuer_address: String = DefaultAddress::ENROLLMENT_TOKEN_ISSUER.into();
-        ctx.flow_controls()
-            .add_consumer(issuer_address.clone(), secure_channel_flow_control_id);
+        ctx.flow_controls().add_consumer(
+            &issuer_address.clone().into(),
+            secure_channel_flow_control_id,
+        );
 
         ctx.start_worker(issuer_address.clone(), issuer).await?;
 
@@ -213,8 +215,10 @@ impl Authority {
         // that service is to access a one-time token stating that the sender of the message
         // is a project member
         let acceptor_address: String = DefaultAddress::ENROLLMENT_TOKEN_ACCEPTOR.into();
-        ctx.flow_controls()
-            .add_consumer(acceptor_address.clone(), secure_channel_flow_control_id);
+        ctx.flow_controls().add_consumer(
+            &acceptor_address.clone().into(),
+            secure_channel_flow_control_id,
+        );
 
         ctx.start_worker(acceptor_address.clone(), acceptor).await?;
 
@@ -247,7 +251,7 @@ impl Authority {
 
         let address = DefaultAddress::CREDENTIAL_ISSUER.to_string();
         ctx.flow_controls()
-            .add_consumer(address.clone(), secure_channel_flow_control_id);
+            .add_consumer(&address.clone().into(), secure_channel_flow_control_id);
 
         ctx.start_worker(address.clone(), issuer).await?;
 
@@ -271,7 +275,7 @@ impl Authority {
             )?;
 
             ctx.flow_controls()
-                .add_consumer(okta.address.clone(), secure_channel_flow_control_id);
+                .add_consumer(&okta.address.clone().into(), secure_channel_flow_control_id);
 
             ctx.start_worker(okta.address.clone(), okta_worker).await?;
         }
@@ -287,7 +291,7 @@ impl Authority {
         let address = DefaultAddress::ECHO_SERVICE;
 
         ctx.flow_controls()
-            .add_consumer(address, secure_channel_flow_control_id);
+            .add_consumer(&address.into(), secure_channel_flow_control_id);
 
         ctx.start_worker(address, Echoer).await
     }

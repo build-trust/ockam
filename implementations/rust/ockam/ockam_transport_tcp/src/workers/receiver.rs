@@ -244,7 +244,8 @@ impl Processor for TcpRecvProcessor {
 
         // Insert the peer address into the return route so that
         // reply routing can be properly resolved
-        let local_message = local_message.push_front_return_route(self.addresses.sender_address());
+        let local_message =
+            local_message.push_front_return_route(self.addresses.sender_address().clone());
 
         trace!("Message onward route: {}", local_message.onward_route());
         trace!("Message return route: {}", local_message.return_route());

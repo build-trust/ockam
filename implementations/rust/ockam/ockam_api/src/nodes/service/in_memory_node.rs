@@ -173,7 +173,7 @@ impl InMemoryNode {
         .await
         .into_diagnostic()?;
         ctx.flow_controls()
-            .add_consumer(NODEMANAGER_ADDR, tcp_listener.flow_control_id());
+            .add_consumer(&NODEMANAGER_ADDR.into(), tcp_listener.flow_control_id());
         Ok(node_manager)
     }
 
@@ -192,7 +192,7 @@ impl InMemoryNode {
         }
 
         for addr in DefaultAddress::iter() {
-            let result = ctx.stop_address(addr);
+            let result = ctx.stop_address(&addr.into());
             // when stopping we can safely ignore missing services
             if let Err(err) = result {
                 if err.code().kind == Kind::NotFound {

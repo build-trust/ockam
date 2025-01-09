@@ -238,7 +238,7 @@ impl Worker for UdsSendWorker {
 
     async fn shutdown(&mut self, ctx: &mut Self::Context) -> Result<()> {
         if self.rx_should_be_stopped {
-            let _ = ctx.stop_address(self.rx_addr().clone());
+            let _ = ctx.stop_address(self.rx_addr());
         }
 
         Ok(())

@@ -108,7 +108,7 @@ impl CreateCommand {
 
         let node_manager_worker = NodeManagerWorker::new(Arc::new(node_man));
         ctx.flow_controls()
-            .add_consumer(NODEMANAGER_ADDR, tcp_listener.flow_control_id());
+            .add_consumer(&NODEMANAGER_ADDR.into(), tcp_listener.flow_control_id());
         ctx.start_worker(NODEMANAGER_ADDR, node_manager_worker)
             .await
             .into_diagnostic()?;

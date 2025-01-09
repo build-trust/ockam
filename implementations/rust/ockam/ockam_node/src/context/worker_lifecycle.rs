@@ -177,12 +177,7 @@ impl Context {
     }
 
     /// Stop a Worker or a Processor running on given Address
-    pub fn stop_address(&self, addr: impl Into<Address>) -> Result<()> {
-        self.stop_address_impl(&addr.into())
-    }
-
-    /// Stop a Worker or a Processor running on given Address
-    pub fn stop_address_impl(&self, address: &Address) -> Result<()> {
+    pub fn stop_address(&self, address: &Address) -> Result<()> {
         self.router()?.stop_address(address, false)
     }
 }

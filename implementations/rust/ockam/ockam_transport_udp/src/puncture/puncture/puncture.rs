@@ -77,7 +77,7 @@ impl UdpPuncture {
 
     /// Stop the receiver (which will shut down everything else as well)
     pub fn stop(&self, ctx: &Context) -> Result<()> {
-        ctx.stop_address(self.addresses.receiver_address().clone())
+        ctx.stop_address(self.addresses.receiver_address())
     }
 
     /// Flow Control Id

@@ -116,7 +116,7 @@ impl Worker for HandshakeWorker {
     }
 
     async fn shutdown(&mut self, context: &mut Self::Context) -> Result<()> {
-        let _ = context.stop_address(self.addresses.encryptor.clone());
+        let _ = context.stop_address(&self.addresses.encryptor);
         self.secure_channels
             .secure_channel_registry
             .unregister_channel(&self.addresses.encryptor);

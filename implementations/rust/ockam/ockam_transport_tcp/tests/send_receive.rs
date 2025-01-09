@@ -8,7 +8,7 @@ use ockam_transport_tcp::{TcpConnectionOptions, TcpListenerOptions, TcpTransport
 async fn send_receive(ctx: &mut Context) -> Result<()> {
     let options = TcpListenerOptions::new();
     ctx.flow_controls()
-        .add_consumer("echoer", &options.spawner_flow_control_id());
+        .add_consumer(&"echoer".into(), &options.spawner_flow_control_id());
     ctx.start_worker("echoer", Echoer).await?;
 
     let transport = TcpTransport::create(ctx).await?;

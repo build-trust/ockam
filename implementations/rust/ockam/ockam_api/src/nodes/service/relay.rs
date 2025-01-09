@@ -9,7 +9,7 @@ use ockam::remote::{RemoteRelay, RemoteRelayOptions};
 use ockam::Result;
 use ockam_core::api::{Error, Request, RequestHeader, Response};
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::{async_trait, route, Address, AsyncTryClone};
+use ockam_core::{async_trait, Address, AsyncTryClone};
 use ockam_multiaddr::MultiAddr;
 use ockam_node::compat::asynchronous::Mutex;
 use ockam_node::Context;
@@ -337,10 +337,9 @@ impl SessionReplacer for RelaySessionReplacer {
         self.relay_worker_address = Some(relay_info.worker_address().clone());
 
         // ping directly the other node
-        let ping_route = route![connection.transport_route()];
 
         Ok(ReplacerOutcome {
-            ping_route,
+            ping_route: connection.transport_route(),
             kind: ReplacerOutputKind::Relay(relay_info),
         })
     }
@@ -361,7 +360,7 @@ impl SessionReplacer for RelaySessionReplacer {
         }
 
         if let Some(relay_address) = self.relay_worker_address.take() {
-            match self.context.stop_address(relay_address.clone()) {
+            match self.context.stop_address(&relay_address) {
                 Ok(_) => {
                     debug!(%relay_address, "Successfully stopped relay");
                 }

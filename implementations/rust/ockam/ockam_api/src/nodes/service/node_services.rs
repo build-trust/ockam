@@ -202,9 +202,7 @@ impl NodeManager {
             )));
         }
 
-        if ctx.is_worker_registered_at(&addr)? {
-            ctx.stop_address(addr.clone())?
-        };
+        _ = ctx.stop_address(&addr);
 
         let (incoming_ac, outgoing_ac) = self
             .access_control(
@@ -241,7 +239,7 @@ impl NodeManager {
         }
 
         ctx.flow_controls()
-            .add_consumer(addr.clone(), &self.api_transport_flow_control_id);
+            .add_consumer(&addr, &self.api_transport_flow_control_id);
 
         ctx.start_worker(addr.clone(), Hop).await?;
 

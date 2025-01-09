@@ -22,7 +22,7 @@ use tracing::{debug, info, warn};
 /// RendezvousService::start(&ctx, "rendezvous").await?;
 /// let udp = UdpTransport::create(&ctx).await?;
 /// let bind = udp.bind(UdpBindArguments::new().with_bind_address("0.0.0.0:4000")?, UdpBindOptions::new()).await?;
-/// ctx.flow_controls().add_consumer("rendezvous", bind.flow_control_id());
+/// ctx.flow_controls().add_consumer(&"rendezvous".into(), bind.flow_control_id());
 /// # Ok(()) }
 /// ```
 pub struct RendezvousService;
@@ -190,7 +190,7 @@ mod tests {
             .await?;
 
         ctx.flow_controls()
-            .add_consumer("rendezvous", udp_bind.flow_control_id());
+            .add_consumer(&"rendezvous".into(), udp_bind.flow_control_id());
 
         let bind_addr = udp_bind.bind_address().to_string();
 
@@ -201,7 +201,7 @@ mod tests {
         ];
 
         ctx.flow_controls()
-            .add_consumer("echo", udp_bind.flow_control_id());
+            .add_consumer(&"echo".into(), udp_bind.flow_control_id());
 
         Ok((rendezvous_route, udp_bind))
     }

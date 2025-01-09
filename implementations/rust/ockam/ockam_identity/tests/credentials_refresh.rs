@@ -264,7 +264,7 @@ async fn init(
         .await?;
 
     ctx.flow_controls()
-        .add_consumer("credential_issuer", listener.flow_control_id());
+        .add_consumer(&"credential_issuer".into(), listener.flow_control_id());
 
     server_secure_channels
         .create_secure_channel_listener(

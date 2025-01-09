@@ -23,7 +23,7 @@ impl NodeManagerWorker {
     // TODO: This is never called.
     pub async fn stop(&self, ctx: &Context) -> Result<()> {
         self.node_manager.stop(ctx).await?;
-        ctx.stop_address(NODEMANAGER_ADDR)?;
+        ctx.stop_address(&NODEMANAGER_ADDR.into())?;
         Ok(())
     }
 }

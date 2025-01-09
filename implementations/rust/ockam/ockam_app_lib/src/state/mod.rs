@@ -320,7 +320,7 @@ impl AppState {
         info!("stopped the old node manager");
 
         for w in self.context.list_workers()? {
-            let _ = self.context.stop_address(w.address());
+            let _ = self.context.stop_address(&w.address().into());
         }
         info!("stopped all the ctx workers");
 
@@ -730,7 +730,7 @@ pub(crate) async fn make_node_manager(
         .into_diagnostic()?;
 
     ctx.flow_controls()
-        .add_consumer(NODEMANAGER_ADDR, listener.flow_control_id());
+        .add_consumer(&NODEMANAGER_ADDR.into(), listener.flow_control_id());
     Ok(node_manager)
 }
 

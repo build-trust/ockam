@@ -47,7 +47,7 @@ async fn test2(ctx: &mut Context) -> Result<()> {
 
     ctx.start_worker("echoer", Echoer).await?;
     ctx.flow_controls()
-        .add_consumer("echoer", &tcp_options.flow_control_id());
+        .add_consumer(&"echoer".into(), &tcp_options.flow_control_id());
 
     let server_tcp = TcpTransport::create(ctx).await?;
     let cloud_connection = server_tcp
@@ -114,7 +114,7 @@ async fn test3(ctx: &mut Context) -> Result<()> {
     assert!(res.is_err(), "Should not pass outgoing access control");
 
     ctx.flow_controls()
-        .add_consumer("ctx", &server_tcp_flow_control_id);
+        .add_consumer(&"ctx".into(), &server_tcp_flow_control_id);
 
     ctx.send(
         route![remote_info.remote_address(), "ctx"],
@@ -185,7 +185,7 @@ async fn test4(ctx: &mut Context) -> Result<()> {
 
     ctx.start_worker("echoer", Echoer).await?;
     ctx.flow_controls().add_consumer(
-        "echoer",
+        &"echoer".into(),
         &server_secure_channel_listener_options.spawner_flow_control_id(),
     );
 

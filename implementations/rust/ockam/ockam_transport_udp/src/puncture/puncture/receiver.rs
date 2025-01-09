@@ -182,10 +182,7 @@ impl UdpPunctureReceiverWorker {
             } => {
                 trace!("Received Payload from peer. Will forward to local entity");
 
-                let return_route = return_route
-                    .modify()
-                    .prepend(self.addresses.sender_address().clone())
-                    .into();
+                let return_route = self.addresses.sender_address().clone() + return_route;
 
                 // Update routing & payload
                 let local_message = LocalMessage::new()
@@ -219,7 +216,7 @@ impl UdpPunctureReceiverWorker {
                 .send(UdpPunctureNotification::Closed);
 
             // Shut down itself
-            ctx.stop_address(self.addresses.remote_address().clone())?;
+            ctx.stop_address(self.addresses.remote_address())?;
 
             return Ok(());
         }
@@ -276,9 +273,9 @@ impl Worker for UdpPunctureReceiverWorker {
     async fn shutdown(&mut self, ctx: &mut Self::Context) -> Result<()> {
         self.heartbeat.cancel();
 
-        _ = ctx.stop_address(self.addresses.sender_address().clone());
+        _ = ctx.stop_address(self.addresses.sender_address());
 
-        _ = ctx.stop_address(self.bind.sender_address().clone());
+        _ = ctx.stop_address(self.bind.sender_address());
 
         Ok(())
     }

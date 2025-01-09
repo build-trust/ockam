@@ -366,7 +366,7 @@ async fn waiting_processor__shutdown__should_be_interrupted(ctx: &mut Context) -
     ctx.start_processor("waiting_processor", processor).await?;
     sleep(Duration::from_secs(1)).await;
 
-    ctx.stop_address("waiting_processor")?;
+    ctx.stop_address(&"waiting_processor".into())?;
     sleep(Duration::from_secs(1)).await;
 
     assert!(initialize_was_called.load(Ordering::Relaxed));

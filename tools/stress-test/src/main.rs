@@ -193,7 +193,7 @@ impl State {
             .await?;
 
         ctx.flow_controls()
-            .add_consumer(NODEMANAGER_ADDR, listener.flow_control_id());
+            .add_consumer(&NODEMANAGER_ADDR.into(), listener.flow_control_id());
         Ok(node_manager)
     }
 }

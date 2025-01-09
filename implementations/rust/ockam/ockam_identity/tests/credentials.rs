@@ -220,7 +220,7 @@ async fn access_control(ctx: &mut Context) -> Result<()> {
         CredentialAccessControl::new(&required_attributes, authority, identities_attributes);
 
     ctx.flow_controls()
-        .add_consumer("counter", listener.flow_control_id());
+        .add_consumer(&"counter".into(), listener.flow_control_id());
 
     WorkerBuilder::new(worker)
         .with_address("counter")
@@ -300,7 +300,7 @@ async fn missing_authority__handshake_should_succeed(ctx: &mut Context) -> Resul
 
     ctx.start_worker("echo", Echoer).await?;
     ctx.flow_controls()
-        .add_consumer("echo", listener.flow_control_id());
+        .add_consumer(&"echo".into(), listener.flow_control_id());
 
     let msg: String = ctx
         .send_and_receive(route![sc, "echo"], "Test".to_string())
@@ -373,7 +373,7 @@ async fn invalid_credential__handshake_should_succeed(ctx: &mut Context) -> Resu
 
     ctx.start_worker("echo", Echoer).await?;
     ctx.flow_controls()
-        .add_consumer("echo", listener.flow_control_id());
+        .add_consumer(&"echo".into(), listener.flow_control_id());
 
     let msg: String = ctx
         .send_and_receive(route![sc, "echo"], "Test".to_string())

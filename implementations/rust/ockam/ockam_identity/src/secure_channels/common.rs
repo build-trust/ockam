@@ -5,7 +5,7 @@ use core::fmt::Formatter;
 use minicbor::{CborLen, Decode, Encode};
 use ockam_core::compat::sync::{Arc, RwLock};
 use ockam_core::flow_control::{FlowControlId, FlowControls};
-use ockam_core::{route, Address, Result, Route};
+use ockam_core::{Address, Result, Route};
 use serde::Serialize;
 
 /// Result of [`super::SecureChannels::create_secure_channel()`] call.
@@ -22,6 +22,12 @@ pub struct SecureChannel {
 impl From<SecureChannel> for Address {
     fn from(value: SecureChannel) -> Self {
         value.addresses.encryptor
+    }
+}
+
+impl AsRef<Address> for SecureChannel {
+    fn as_ref(&self) -> &Address {
+        &self.addresses.encryptor
     }
 }
 
@@ -89,8 +95,8 @@ impl SecureChannel {
 
         let old_route = remote_route.clone();
 
-        let their_decryptor_address = old_route.route.recipient()?;
-        let new_route = route![new_route, their_decryptor_address.clone()];
+        let their_decryptor_address = old_route.route.recipient()?.clone();
+        let new_route = new_route + their_decryptor_address;
 
         remote_route.route = new_route;
 

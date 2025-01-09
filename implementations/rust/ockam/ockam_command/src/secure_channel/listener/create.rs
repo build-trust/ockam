@@ -105,7 +105,7 @@ pub async fn create_listener(
 ) -> miette::Result<()> {
     let resp: Vec<u8> = ctx
         .send_and_receive(
-            base_route.modify().append(NODEMANAGER_ADDR),
+            base_route + NODEMANAGER_ADDR,
             api::create_secure_channel_listener(&addr, authorized_identifiers, identity)?,
         )
         .await

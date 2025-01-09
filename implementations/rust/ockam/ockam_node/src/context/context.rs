@@ -170,7 +170,7 @@ impl Context {
     }
 
     /// Read metadata for the provided address
-    pub fn get_metadata(&self, address: impl Into<Address>) -> Result<Option<AddressMetadata>> {
-        Ok(self.router()?.get_address_metadata(&address.into()))
+    pub fn get_metadata(&self, address: &Address) -> Result<Option<AddressMetadata>> {
+        Ok(self.router()?.get_address_metadata(address))
     }
 }

@@ -36,8 +36,10 @@ impl CreateCommand {
             .await
             .into_diagnostic()?;
 
-        ctx.flow_controls()
-            .add_consumer(DefaultAddress::RENDEZVOUS_SERVICE, bind.flow_control_id());
+        ctx.flow_controls().add_consumer(
+            &DefaultAddress::RENDEZVOUS_SERVICE.into(),
+            bind.flow_control_id(),
+        );
 
         let mut healthcheck =
             RendezvousHealthcheck::create(&self.healthcheck_address, &udp, udp_address)

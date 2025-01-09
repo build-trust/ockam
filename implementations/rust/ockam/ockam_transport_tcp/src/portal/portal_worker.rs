@@ -283,10 +283,7 @@ impl TcpPortalWorker {
 
     #[instrument(skip_all)]
     fn stop_receiver(&self, ctx: &Context) -> Result<()> {
-        if ctx
-            .stop_address(self.addresses.receiver_remote.clone())
-            .is_ok()
-        {
+        if ctx.stop_address(&self.addresses.receiver_remote).is_ok() {
             debug!(
                 "{:?} at: {} stopped receiver due to connection drop",
                 self.portal_type.str(),
@@ -299,7 +296,7 @@ impl TcpPortalWorker {
 
     #[instrument(skip_all)]
     fn stop_sender(&self, ctx: &Context) -> Result<()> {
-        ctx.stop_address(self.addresses.sender_internal.clone())
+        ctx.stop_address(&self.addresses.sender_internal)
     }
 
     /// Start the portal disconnection process

@@ -28,7 +28,7 @@ async fn main(ctx: Context) -> Result<()> {
     //
     // This message will automatically get encrypted when it enters the channel
     // and decrypted just before it exits the channel.
-    node.flow_controls().add_consumer("app", &sc_flow_control_id);
+    node.flow_controls().add_consumer(&"app".into(), &sc_flow_control_id);
     node.send(route![channel, "app"], "Hello Ockam!".to_string()).await?;
 
     // Wait to receive a message for the "app" worker and print it.

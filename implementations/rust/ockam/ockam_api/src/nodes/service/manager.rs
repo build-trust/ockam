@@ -188,12 +188,12 @@ impl NodeManager {
 
             if let Some(api_sc_listener) = &s.api_sc_listener {
                 ctx.flow_controls().add_consumer(
-                    DefaultAddress::RENDEZVOUS_SERVICE,
+                    &DefaultAddress::RENDEZVOUS_SERVICE.into(),
                     api_sc_listener.flow_control_id(),
                 );
 
                 ctx.flow_controls()
-                    .add_consumer(api_sc_listener.address().clone(), &flow_control_id);
+                    .add_consumer(api_sc_listener.address(), &flow_control_id);
             }
         }
 
@@ -208,8 +208,10 @@ impl NodeManager {
         api_flow_control_id: &FlowControlId,
     ) -> ockam_core::Result<SecureChannelListener> {
         // Start services
-        ctx.flow_controls()
-            .add_consumer(DefaultAddress::UPPERCASE_SERVICE, api_flow_control_id);
+        ctx.flow_controls().add_consumer(
+            &DefaultAddress::UPPERCASE_SERVICE.into(),
+            api_flow_control_id,
+        );
         self.start_uppercase_service_impl(ctx, DefaultAddress::UPPERCASE_SERVICE.into())
             .await?;
 
@@ -276,7 +278,7 @@ impl NodeManager {
         // Always start the echoer service as ockam_api::Session assumes it will be
         // started unconditionally on every node. It's used for liveliness checks.
         ctx.flow_controls()
-            .add_consumer(DefaultAddress::ECHO_SERVICE, &api_flow_control_id);
+            .add_consumer(&DefaultAddress::ECHO_SERVICE.into(), &api_flow_control_id);
         self.start_echoer_service(ctx, DefaultAddress::ECHO_SERVICE.into())
             .await?;
 

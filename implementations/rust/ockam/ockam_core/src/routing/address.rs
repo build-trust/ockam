@@ -40,10 +40,9 @@ pub struct Address {
     #[n(1)] inner: Vec<u8>,
 }
 
-// FIXME
-impl From<&Address> for Address {
-    fn from(value: &Address) -> Self {
-        value.clone()
+impl AsRef<Address> for Address {
+    fn as_ref(&self) -> &Address {
+        self
     }
 }
 

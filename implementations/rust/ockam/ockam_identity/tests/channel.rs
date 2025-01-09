@@ -49,11 +49,11 @@ async fn test_channel(ctx: &mut Context) -> Result<()> {
         .await?;
 
     ctx.flow_controls()
-        .add_consumer("child", bob_listener.flow_control_id());
+        .add_consumer(&"child".into(), bob_listener.flow_control_id());
 
     child_ctx
         .send(
-            route![alice_channel.clone(), child_ctx.primary_address()],
+            route![alice_channel.clone(), child_ctx.primary_address().clone()],
             "Hello, Bob!".to_string(),
         )
         .await?;
@@ -67,7 +67,7 @@ async fn test_channel(ctx: &mut Context) -> Result<()> {
     assert_eq!("Hello, Bob!", msg.into_body()?);
 
     ctx.flow_controls()
-        .add_consumer("child", alice_channel.flow_control_id());
+        .add_consumer(&"child".into(), alice_channel.flow_control_id());
 
     child_ctx
         .send(return_route, "Hello, Alice!".to_string())
@@ -255,7 +255,7 @@ async fn test_channel_rejected_trust_policy(ctx: &mut Context) -> Result<()> {
 
     child_ctx
         .send(
-            route![alice_channel, child_ctx.primary_address()],
+            route![alice_channel, child_ctx.primary_address().clone()],
             "Hello, Bob!".to_string(),
         )
         .await?;
@@ -309,7 +309,7 @@ async fn test_channel_send_multiple_messages_both_directions(ctx: &mut Context) 
         let payload = format!("Hello, Bob! {}", n);
         child_ctx
             .send(
-                route![alice_channel.clone(), child_ctx.primary_address()],
+                route![alice_channel.clone(), child_ctx.primary_address().clone()],
                 payload.clone(),
             )
             .await?;
@@ -374,7 +374,7 @@ async fn test_channel_registry(ctx: &mut Context) -> Result<()> {
         .await?;
 
     ctx.flow_controls()
-        .add_consumer("bob", bob_listener.flow_control_id());
+        .add_consumer(&"bob".into(), bob_listener.flow_control_id());
 
     ctx.send(
         route![alice_channel.clone(), "bob"],
@@ -436,7 +436,7 @@ async fn test_channel_api(ctx: &mut Context) -> Result<()> {
         .await?;
 
     ctx.flow_controls()
-        .add_consumer("bob", bob_listener.flow_control_id());
+        .add_consumer(&"bob".into(), bob_listener.flow_control_id());
 
     ctx.send(
         route![alice_channel.clone(), "bob"],
@@ -563,11 +563,14 @@ async fn test_tunneled_secure_channel_works(ctx: &mut Context) -> Result<()> {
         .await?;
 
     ctx.flow_controls()
-        .add_consumer("child", bob_listener2.flow_control_id());
+        .add_consumer(&"child".into(), bob_listener2.flow_control_id());
 
     child_ctx
         .send(
-            route![alice_another_channel.clone(), child_ctx.primary_address()],
+            route![
+                alice_another_channel.clone(),
+                child_ctx.primary_address().clone()
+            ],
             "Hello, Bob!".to_string(),
         )
         .await?;
@@ -576,7 +579,7 @@ async fn test_tunneled_secure_channel_works(ctx: &mut Context) -> Result<()> {
     assert_eq!("Hello, Bob!", msg.into_body()?);
 
     ctx.flow_controls()
-        .add_consumer("child", alice_another_channel.flow_control_id());
+        .add_consumer(&"child".into(), alice_another_channel.flow_control_id());
 
     child_ctx
         .send(return_route, "Hello, Alice!".to_string())
@@ -657,13 +660,13 @@ async fn test_double_tunneled_secure_channel_works(ctx: &mut Context) -> Result<
         .await?;
 
     ctx.flow_controls()
-        .add_consumer("child", bob_listener3.flow_control_id());
+        .add_consumer(&"child".into(), bob_listener3.flow_control_id());
 
     child_ctx
         .send(
             route![
                 alice_yet_another_channel.clone(),
-                child_ctx.primary_address()
+                child_ctx.primary_address().clone()
             ],
             "Hello, Bob!".to_string(),
         )
@@ -673,7 +676,7 @@ async fn test_double_tunneled_secure_channel_works(ctx: &mut Context) -> Result<
     assert_eq!("Hello, Bob!", msg.into_body()?);
 
     ctx.flow_controls()
-        .add_consumer("child", alice_yet_another_channel.flow_control_id());
+        .add_consumer(&"child".into(), alice_yet_another_channel.flow_control_id());
 
     child_ctx
         .send(return_route, "Hello, Alice!".to_string())
@@ -715,7 +718,7 @@ async fn test_many_times_tunneled_secure_channel_works(ctx: &mut Context) -> Res
             .await?;
         let mut route = route![i.to_string()];
         if let Some(last_channel) = channels.last() {
-            route = route.modify().prepend(last_channel.clone()).into();
+            route = last_channel.clone() + route;
         }
 
         let options = SecureChannelOptions::new().with_trust_policy(alice_trust_policy.clone());
@@ -736,13 +739,13 @@ async fn test_many_times_tunneled_secure_channel_works(ctx: &mut Context) -> Res
         .await?;
 
     ctx.flow_controls()
-        .add_consumer("child", &sc_listener_flow_control_id.unwrap());
+        .add_consumer(&"child".into(), &sc_listener_flow_control_id.unwrap());
 
     child_ctx
         .send(
             route![
                 channels.last().unwrap().clone(),
-                child_ctx.primary_address()
+                child_ctx.primary_address().clone()
             ],
             "Hello, Bob!".to_string(),
         )
@@ -752,7 +755,7 @@ async fn test_many_times_tunneled_secure_channel_works(ctx: &mut Context) -> Res
     assert_eq!("Hello, Bob!", msg.into_body()?);
 
     ctx.flow_controls()
-        .add_consumer("child", &sc_flow_control_id.unwrap());
+        .add_consumer(&"child".into(), &sc_flow_control_id.unwrap());
 
     child_ctx
         .send(return_route, "Hello, Alice!".to_string())
@@ -820,7 +823,7 @@ async fn access_control__known_participant__should_pass_messages(ctx: &mut Conte
         .await?;
 
     ctx.flow_controls()
-        .add_consumer("receiver", bob_listener.flow_control_id());
+        .add_consumer(&"receiver".into(), bob_listener.flow_control_id());
 
     ctx.send(route![alice_channel, "receiver"], "Hello, Bob!".to_string())
         .await?;
@@ -870,7 +873,7 @@ async fn access_control__unknown_participant__should_not_pass_messages(
         .await?;
 
     ctx.flow_controls()
-        .add_consumer("receiver", bob_listener.flow_control_id());
+        .add_consumer(&"receiver".into(), bob_listener.flow_control_id());
 
     ctx.send(route![alice_channel, "receiver"], "Hello, Bob!".to_string())
         .await?;

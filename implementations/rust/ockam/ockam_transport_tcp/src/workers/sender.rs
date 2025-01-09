@@ -117,9 +117,7 @@ impl TcpSendWorker {
 
     #[instrument(skip_all, name = "TcpSendWorker::stop")]
     fn stop(&self, ctx: &Context) -> Result<()> {
-        ctx.stop_address(self.addresses.sender_address().clone())?;
-
-        Ok(())
+        ctx.stop_address(self.addresses.sender_address())
     }
 
     fn serialize_message(&mut self, local_message: LocalMessage) -> Result<()> {
@@ -203,7 +201,7 @@ impl Worker for TcpSendWorker {
             .remove_sender_worker(self.addresses.sender_address());
 
         if self.rx_should_be_stopped {
-            let _ = ctx.stop_address(self.addresses.receiver_address().clone());
+            let _ = ctx.stop_address(self.addresses.receiver_address());
         }
 
         Ok(())

@@ -26,7 +26,7 @@ async fn check_message_flow(ctx: &Context, route: Route, should_pass: bool) -> R
 
     let msg: [u8; 4] = random();
     let msg = hex::encode(msg);
-    ctx.send(route![route, address], msg.clone()).await?;
+    ctx.send(route + address, msg.clone()).await?;
 
     if should_pass {
         let msg_received = receiving_ctx.receive::<String>().await?.into_body()?;
@@ -66,7 +66,7 @@ async fn check_message_flow_with_ctx(
     let msg: [u8; 4] = random();
     let msg = hex::encode(msg);
     ctx.send(
-        route![address.clone(), receiving_ctx.primary_address()],
+        route![address.clone(), receiving_ctx.primary_address().clone()],
         msg.clone(),
     )
     .await?;

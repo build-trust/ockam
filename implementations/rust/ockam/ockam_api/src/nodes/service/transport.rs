@@ -50,7 +50,7 @@ impl NodeManager {
         // Production nodes should not run any Hop workers
         for hop in self.registry.hop_services.keys().await {
             ctx.flow_controls()
-                .add_consumer(hop.clone(), &options.flow_control_id());
+                .add_consumer(&hop, &options.flow_control_id());
         }
 
         let connection = self.tcp_transport.connect(address, options).await?;
@@ -76,7 +76,7 @@ impl NodeManager {
         };
 
         self.tcp_transport
-            .disconnect(sender_address.clone())
+            .disconnect(&sender_address)
             .map_err(|err| format!("Unable to disconnect from {sender_address}: {err}"))
     }
 

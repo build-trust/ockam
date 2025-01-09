@@ -59,7 +59,7 @@ impl UdpPunctureNegotiation {
                     "Error getting UDP public address for the initiator: {}",
                     err
                 );
-                udp.unbind(udp_bind.sender_address().clone())?;
+                udp.unbind(udp_bind.sender_address())?;
                 return Err(err);
             }
         };
@@ -98,7 +98,7 @@ impl UdpPunctureNegotiation {
                     err
                 );
 
-                udp.unbind(udp_bind.sender_address().clone())?;
+                udp.unbind(udp_bind.sender_address())?;
                 return Err(err);
             }
         };
@@ -112,7 +112,7 @@ impl UdpPunctureNegotiation {
                     err
                 );
 
-                udp.unbind(udp_bind.sender_address().clone())?;
+                udp.unbind(udp_bind.sender_address())?;
                 return Err(err);
             }
         };

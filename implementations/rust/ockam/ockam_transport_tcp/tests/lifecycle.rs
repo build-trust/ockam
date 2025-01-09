@@ -10,7 +10,7 @@ use ockam_transport_tcp::{TcpConnectionOptions, TcpListenerOptions, TcpTransport
 async fn tcp_lifecycle__two_connections__should_both_work(ctx: &mut Context) -> Result<()> {
     let options = TcpListenerOptions::new();
     ctx.flow_controls()
-        .add_consumer("echoer", &options.spawner_flow_control_id());
+        .add_consumer(&"echoer".into(), &options.spawner_flow_control_id());
     ctx.start_worker("echoer", Echoer).await?;
 
     let transport = TcpTransport::create(ctx).await?;
@@ -52,7 +52,7 @@ async fn tcp_lifecycle__two_connections__should_both_work(ctx: &mut Context) -> 
 async fn tcp_lifecycle__disconnect__should_stop_worker(ctx: &mut Context) -> Result<()> {
     let options = TcpListenerOptions::new();
     ctx.flow_controls()
-        .add_consumer("echoer", &options.spawner_flow_control_id());
+        .add_consumer(&"echoer".into(), &options.spawner_flow_control_id());
     ctx.start_worker("echoer", Echoer).await?;
 
     let transport = TcpTransport::create(ctx).await?;
@@ -91,7 +91,7 @@ async fn tcp_lifecycle__disconnect__should_stop_worker(ctx: &mut Context) -> Res
         .await?;
     assert_eq!(reply2, msg2, "Should receive the same message");
 
-    transport.disconnect(connection1.clone())?;
+    transport.disconnect(&connection1)?;
     let res = ctx
         .send(route![connection1.clone(), "echoer"], msg1.clone())
         .await;
@@ -102,7 +102,7 @@ async fn tcp_lifecycle__disconnect__should_stop_worker(ctx: &mut Context) -> Res
         .await?;
     assert_eq!(reply3, msg3, "Should receive the same message");
 
-    transport.disconnect(connection2.clone())?;
+    transport.disconnect(&connection2)?;
     let res = ctx
         .send(route![connection2.clone(), "echoer"], msg3.clone())
         .await;
@@ -117,7 +117,7 @@ async fn tcp_lifecycle__stop_listener__should_stop_accepting_connections(
 ) -> Result<()> {
     let options = TcpListenerOptions::new();
     ctx.flow_controls()
-        .add_consumer("echoer", &options.spawner_flow_control_id());
+        .add_consumer(&"echoer".into(), &options.spawner_flow_control_id());
 
     ctx.start_worker("echoer", Echoer).await?;
 

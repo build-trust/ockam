@@ -5,7 +5,7 @@ use core::fmt::{Debug, Formatter};
 use ockam_core::compat::net::SocketAddr;
 use ockam_core::compat::sync::{Arc, RwLock as SyncRwLock};
 use ockam_core::flow_control::FlowControls;
-use ockam_core::{route, Address, Result, Route};
+use ockam_core::{Address, Result, Route};
 use ockam_node::Context;
 use ockam_transport_core::{parse_socket_addr, HostnamePort};
 use tracing::instrument;
@@ -19,13 +19,14 @@ impl TcpTransport {
     /// ```rust
     /// use ockam_transport_tcp::{TcpInletOptions, TcpTransport};
     /// # use ockam_node::Context;
-    /// # use ockam_core::{AllowAll, Result, route};
+    /// # use ockam_core::{AllowAll, Result, route, Address};
     /// # async fn test(ctx: Context) -> Result<()> {
     /// let route_path = route!["outlet"];
     ///
     /// let tcp = TcpTransport::create(&ctx).await?;
-    /// tcp.create_inlet("inlet", route_path, TcpInletOptions::new()).await?;
-    /// # tcp.stop_inlet("inlet")?;
+    /// let address: Address = "inlet".into();
+    /// tcp.create_inlet(address.clone(), route_path, TcpInletOptions::new()).await?;
+    /// # tcp.stop_inlet(&address)?;
     /// # Ok(()) }
     /// ```
     #[instrument(skip(self), fields(address = ? bind_addr.clone().into(), outlet_route = ? outlet_route.clone()))]
@@ -51,18 +52,19 @@ impl TcpTransport {
     /// ```rust
     /// use ockam_transport_tcp::{TcpInletOptions, TcpTransport};
     /// # use ockam_node::Context;
-    /// # use ockam_core::{AllowAll, Result, route};
+    /// # use ockam_core::{AllowAll, Result, route, Address};
     /// # async fn test(ctx: Context) -> Result<()> {
     /// let route = route!["outlet"];
     ///
     /// let tcp = TcpTransport::create(&ctx).await?;
-    /// tcp.create_inlet("inlet", route, TcpInletOptions::new()).await?;
-    /// tcp.stop_inlet("inlet")?;
+    /// let address: Address = "inlet".into();
+    /// tcp.create_inlet(address.clone(), route, TcpInletOptions::new()).await?;
+    /// tcp.stop_inlet(&address)?;
     /// # Ok(()) }
     /// ```
-    #[instrument(skip(self), fields(address = ? addr.clone().into()))]
-    pub fn stop_inlet(&self, addr: impl Into<Address> + Clone + Debug) -> Result<()> {
-        self.ctx.stop_address(addr)?;
+    #[instrument(skip(self), fields(address = ? address))]
+    pub fn stop_inlet(&self, address: &Address) -> Result<()> {
+        self.ctx.stop_address(address)?;
 
         Ok(())
     }
@@ -76,14 +78,15 @@ impl TcpTransport {
     /// ```rust
     /// use ockam_transport_tcp::{TcpOutletOptions, TcpTransport};
     /// # use ockam_node::Context;
-    /// # use ockam_core::{AllowAll, Result};
+    /// # use ockam_core::{Address, AllowAll, Result};
     /// # use ockam_transport_core::HostnamePort;
     ///
     /// async fn test(ctx: Context) -> Result<()> {
     ///
     /// let tcp = TcpTransport::create(&ctx).await?;
-    /// tcp.create_outlet("outlet", HostnamePort::new("localhost", 9000), TcpOutletOptions::new()).await?;
-    /// # tcp.stop_outlet("outlet")?;
+    /// let address: Address = "outlet".into();
+    /// tcp.create_outlet(address.clone(), HostnamePort::new("localhost", 9000), TcpOutletOptions::new()).await?;
+    /// # tcp.stop_outlet(&address)?;
     /// # Ok(()) }
     /// ```
     #[instrument(skip(self), fields(address = ? address.clone().into(), peer=peer.clone().to_string()))]
@@ -109,20 +112,20 @@ impl TcpTransport {
     /// ```rust
     /// use ockam_transport_tcp::{TcpOutletOptions, TcpTransport};
     /// # use ockam_node::Context;
-    /// # use ockam_core::{AllowAll, Result};
+    /// # use ockam_core::{Address, AllowAll, Result};
     /// # use ockam_transport_core::HostnamePort;
     ///
     /// async fn test(ctx: Context) -> Result<()> {
     ///
     /// let tcp = TcpTransport::create(&ctx).await?;
-    /// tcp.create_outlet("outlet", HostnamePort::new("127.0.0.1", 5000), TcpOutletOptions::new()).await?;
-    /// tcp.stop_outlet("outlet")?;
+    /// let address: Address = "outlet".into();
+    /// tcp.create_outlet(address.clone(), HostnamePort::new("127.0.0.1", 5000), TcpOutletOptions::new()).await?;
+    /// tcp.stop_outlet(&address)?;
     /// # Ok(()) }
     /// ```
-    #[instrument(skip(self), fields(address = % addr.clone().into()))]
-    pub fn stop_outlet(&self, addr: impl Into<Address> + Clone + Debug) -> Result<()> {
-        self.ctx.stop_address(addr)?;
-        Ok(())
+    #[instrument(skip(self), fields(address = % address))]
+    pub fn stop_outlet(&self, address: &Address) -> Result<()> {
+        self.ctx.stop_address(address)
     }
 }
 
@@ -211,8 +214,7 @@ impl TcpInlet {
     }
 
     fn build_new_full_route(new_route: Route, old_route: &Route) -> Result<Route> {
-        let their_outlet_address = old_route.recipient()?;
-        Ok(route![new_route, their_outlet_address.clone()])
+        Ok(new_route + old_route.recipient()?.clone())
     }
 
     /// Update the route to the outlet node.
@@ -248,7 +250,7 @@ impl TcpInlet {
             } => {
                 TcpInletOptions::setup_flow_control_for_address(
                     flow_controls,
-                    portal_worker_address.clone(),
+                    portal_worker_address,
                     &next,
                 );
             }
@@ -278,7 +280,7 @@ impl TcpInlet {
                 // TODO: eBPF
             }
             TcpInletState::Regular { processor_address } => {
-                ctx.stop_address(processor_address.clone())?;
+                ctx.stop_address(processor_address)?;
             }
         }
 

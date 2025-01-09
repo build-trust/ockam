@@ -90,8 +90,10 @@ async fn main(ctx: Context) -> Result<()> {
     let secure_channel_listener_options =
         SecureChannelListenerOptions::new().as_consumer(&tcp_options.flow_control_id());
 
-    node.flow_controls()
-        .add_consumer("receiver", &secure_channel_listener_options.spawner_flow_control_id());
+    node.flow_controls().add_consumer(
+        &"receiver".into(),
+        &secure_channel_listener_options.spawner_flow_control_id(),
+    );
 
     // Create a secure channel listener for Receiver that will wait for requests to
     // initiate an Authenticated Key Exchange.

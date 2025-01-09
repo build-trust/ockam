@@ -98,7 +98,7 @@ impl TcpTransport {
 
         TcpInletOptions::setup_flow_control_for_address(
             self.ctx().flow_controls(),
-            remote_worker_address.clone(),
+            &remote_worker_address,
             &next,
         );
 
@@ -144,7 +144,7 @@ impl TcpTransport {
 
     /// Stop the Privileged Inlet
     #[instrument(skip(self), fields(port=port))]
-    pub async fn stop_privileged_inlet(&self, port: Port) -> Result<()> {
+    pub fn stop_privileged_inlet(&self, port: Port) -> Result<()> {
         self.ebpf_support.inlet_registry.delete_inlet(port);
 
         Ok(())
@@ -223,12 +223,9 @@ impl TcpTransport {
     }
 
     /// Stop the Privileged Inlet
-    #[instrument(skip(self), fields(address = % addr.clone().into()))]
-    pub async fn stop_privileged_outlet(
-        &self,
-        addr: impl Into<Address> + Clone + Debug,
-    ) -> Result<()> {
-        self.ctx().stop_address(addr)?;
+    #[instrument(skip(self), fields(address = % address))]
+    pub fn stop_privileged_outlet(&self, address: &Address) -> Result<()> {
+        self.ctx().stop_address(address)?;
 
         // TODO: eBPF Remove from the registry
         // self.ebpf_support.outlet_registry

@@ -240,16 +240,16 @@ impl NodeManagerWorker {
         // every secure channel can reach this service
         let flow_controls = ctx.flow_controls();
         flow_controls.add_consumer(
-            interceptor_address.clone(),
+            &interceptor_address,
             &default_secure_channel_listener_flow_control_id,
         );
 
         // this spawner flow control id is used to control communication with dynamically created
         // outlets
-        flow_controls.add_spawner(interceptor_address, &spawner_flow_control_id);
+        flow_controls.add_spawner(&interceptor_address, &spawner_flow_control_id);
 
         // allow communication with the tcp outlet
-        flow_controls.add_consumer(outlet_address, &spawner_flow_control_id);
+        flow_controls.add_consumer(&outlet_address, &spawner_flow_control_id);
         Ok(())
     }
 

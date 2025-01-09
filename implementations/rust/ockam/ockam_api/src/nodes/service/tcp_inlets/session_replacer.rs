@@ -146,11 +146,8 @@ impl InletSessionReplacer {
         let transport_route = connection.transport_route();
 
         //we expect a fully normalized MultiAddr
-        let normalized_route = route![
-            self.prefix_route.clone(),
-            connection_route.clone(),
-            self.suffix_route.clone()
-        ];
+        let normalized_route =
+            self.prefix_route.clone() + connection_route + self.suffix_route.clone();
 
         // Drop the last address as it will be appended automatically under the hood
         let normalized_stripped_route: Route = normalized_route.clone().modify().pop_back().into();
@@ -340,8 +337,7 @@ impl AdditionalSessionReplacer for InletSessionReplacer {
 
         let main_route: Route = main_route.modify().pop_back().into();
 
-        let additional_sc_route =
-            route![main_route.clone(), DefaultAddress::SECURE_CHANNEL_LISTENER];
+        let additional_sc_route = main_route.clone() + DefaultAddress::SECURE_CHANNEL_LISTENER;
 
         let additional_sc = node_manager
             .create_secure_channel_internal(
@@ -366,10 +362,7 @@ impl AdditionalSessionReplacer for InletSessionReplacer {
 
         let puncture = UdpPunctureNegotiation::start_negotiation(
             &self.context,
-            route![
-                main_route.clone(),
-                DefaultAddress::UDP_PUNCTURE_NEGOTIATION_LISTENER
-            ],
+            main_route + DefaultAddress::UDP_PUNCTURE_NEGOTIATION_LISTENER,
             &udp_transport,
             rendezvous_route,
             // TODO: Have a dedicated timeout
@@ -413,7 +406,7 @@ impl AdditionalSessionReplacer for InletSessionReplacer {
         }
 
         if let Some(secure_channel) = self.additional_secure_channel.take() {
-            let res = self.context.stop_address(secure_channel);
+            let res = self.context.stop_address(secure_channel.as_ref());
 
             if let Some(err) = res.err() {
                 error!("Error closing secure channel {}", err);

@@ -124,10 +124,10 @@ impl Worker for PortalOutletInterceptor {
             // which was just created
             context
                 .flow_controls()
-                .add_consumer(worker_address.clone(), source_flow_control_id);
+                .add_consumer(&worker_address, source_flow_control_id);
         }
 
-        message = message.push_front_onward_route(&worker_address);
+        message = message.push_front_onward_route(worker_address.clone());
 
         trace!(
             "forwarding message: onward={:?}; return={:?}; worker={:?}",
@@ -201,7 +201,7 @@ impl Worker for PortalInletInterceptor {
         // Retrieve the flow id from the next hop if it exists
         let flow_control_id = context
             .flow_controls()
-            .find_flow_control_with_producer_address(&next_hop)
+            .find_flow_control_with_producer_address(next_hop)
             .map(|x| x.flow_control_id().clone());
 
         let inlet_responder_address = message.return_route().next()?.clone();
@@ -216,7 +216,7 @@ impl Worker for PortalInletInterceptor {
         )
         .await?;
 
-        message = message.push_front_onward_route(&worker_address);
+        message = message.push_front_onward_route(worker_address.clone());
 
         trace!(
             "forwarding message: onward={:?}; return={:?}; worker={:?}",
@@ -277,7 +277,7 @@ impl Worker for PortalInterceptorWorker {
                             onward_route.clone(),
                             return_route.clone(),
                             &buffer,
-                            &local_info,
+                            local_info,
                         )
                         .await?;
                     }
@@ -298,7 +298,7 @@ impl Worker for PortalInterceptorWorker {
                         context.primary_address(),
                         return_route
                     );
-                    context.stop_address(self.other_worker_address.clone())?;
+                    context.stop_address(&self.other_worker_address)?;
                     context.stop_address(context.primary_address())?;
                 }
             }
@@ -375,7 +375,7 @@ impl PortalInterceptorWorker {
 
         if let Some(flow_control_id) = flow_control_id {
             let flow_controls = context.flow_controls();
-            flow_controls.add_consumer(from_outlet_worker_address.clone(), &flow_control_id);
+            flow_controls.add_consumer(&from_outlet_worker_address, &flow_control_id);
         }
 
         let from_outlet_worker = Self {
@@ -461,7 +461,7 @@ impl PortalInterceptorWorker {
         let flow_controls = context.flow_controls();
 
         flow_controls.add_producer(
-            from_inlet_worker_address.clone(),
+            &from_inlet_worker_address,
             &flow_control_id,
             spawner_flow_control_id.as_ref(),
             vec![],
@@ -519,7 +519,7 @@ impl PortalInterceptorWorker {
             );
             local_message
                 .set_onward_route(fixed_onward_route.clone())
-                .push_front_return_route(&self.other_worker_address)
+                .push_front_return_route(self.other_worker_address.clone())
         } else {
             local_message = local_message.pop_front_onward_route()?;
             // Since we force the return route next step (fixed_onward_route in the other worker),
@@ -554,11 +554,7 @@ impl PortalInterceptorWorker {
         if let Some(fixed_onward_route) = &self.fixed_onward_route {
             // To correctly proxy messages to the inlet or outlet side
             // we invert the return route when a message pass through
-            return_route = provided_return_route
-                .clone()
-                .modify()
-                .prepend(self.other_worker_address.clone())
-                .into();
+            return_route = self.other_worker_address.clone() + provided_return_route;
             onward_route = fixed_onward_route.clone();
         } else {
             // Since we force the return route next step (fixed_onward_route in the other worker),

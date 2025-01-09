@@ -29,13 +29,13 @@ async fn test_update_decryptor_route(ctx: &mut Context) -> Result<()> {
         .await?;
 
     ctx.flow_controls()
-        .add_consumer("child", alice_channel.flow_control_id());
+        .add_consumer(&"child".into(), alice_channel.flow_control_id());
     ctx.flow_controls()
-        .add_consumer("child", bob_listener.flow_control_id());
+        .add_consumer(&"child".into(), bob_listener.flow_control_id());
 
     child_ctx
         .send(
-            route![alice_channel.clone(), child_ctx.primary_address()],
+            route![alice_channel.clone(), child_ctx.primary_address().clone()],
             "Hello, Bob!".to_string(),
         )
         .await?;
@@ -54,7 +54,7 @@ async fn test_update_decryptor_route(ctx: &mut Context) -> Result<()> {
 
     child_ctx
         .send(
-            route![alice_channel.clone(), child_ctx.primary_address()],
+            route![alice_channel.clone(), child_ctx.primary_address().clone()],
             "Hello, Bob!".to_string(),
         )
         .await?;
@@ -121,13 +121,13 @@ async fn test_update_decryptor_route_tcp(ctx: &mut Context) -> Result<()> {
         .await?;
 
     ctx.flow_controls()
-        .add_consumer("child", alice_channel.flow_control_id());
+        .add_consumer(&"child".into(), alice_channel.flow_control_id());
     ctx.flow_controls()
-        .add_consumer("child", bob_listener.flow_control_id());
+        .add_consumer(&"child".into(), bob_listener.flow_control_id());
 
     child_ctx
         .send(
-            route![alice_channel.clone(), child_ctx.primary_address()],
+            route![alice_channel.clone(), child_ctx.primary_address().clone()],
             "Hello, Bob!".to_string(),
         )
         .await?;
@@ -148,7 +148,7 @@ async fn test_update_decryptor_route_tcp(ctx: &mut Context) -> Result<()> {
 
     child_ctx
         .send(
-            route![alice_channel.clone(), child_ctx.primary_address()],
+            route![alice_channel.clone(), child_ctx.primary_address().clone()],
             "Hello, Bob!".to_string(),
         )
         .await?;

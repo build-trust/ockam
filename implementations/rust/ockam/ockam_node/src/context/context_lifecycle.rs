@@ -279,11 +279,11 @@ mod tests {
             TransportType::new(0)
         }
 
-        async fn resolve_address(&self, address: Address) -> Result<Address> {
-            Ok(address)
+        async fn resolve_address(&self, address: &Address) -> Result<Address> {
+            Ok(address.clone())
         }
 
-        fn disconnect(&self, _address: Address) -> Result<()> {
+        fn disconnect(&self, _address: &Address) -> Result<()> {
             Ok(())
         }
     }

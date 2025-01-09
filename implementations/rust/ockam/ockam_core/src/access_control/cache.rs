@@ -27,7 +27,7 @@ impl CacheEntry {
             destination: relay_message.destination().clone(),
             onward_route: relay_message.onward_route().clone(),
             return_route: relay_message.return_route().clone(),
-            local_info: relay_message.local_message().local_info(),
+            local_info: relay_message.local_message().local_info().to_vec(),
             timestamp: Instant::now(),
         }
     }
@@ -44,7 +44,7 @@ impl CacheEntry {
             && self.destination == *relay_message.destination()
             && self.onward_route == *relay_message.onward_route()
             && self.return_route == *relay_message.return_route()
-            && self.local_info == relay_message.local_message().local_info_ref()
+            && self.local_info == relay_message.local_message().local_info()
     }
 }
 

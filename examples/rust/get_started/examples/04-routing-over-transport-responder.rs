@@ -20,7 +20,8 @@ async fn main(ctx: Context) -> Result<()> {
     let listener = tcp.listen("127.0.0.1:4000", TcpListenerOptions::new()).await?;
 
     // Allow access to the Echoer via TCP connections from the TCP listener
-    node.flow_controls().add_consumer("echoer", listener.flow_control_id());
+    node.flow_controls()
+        .add_consumer(&"echoer".into(), listener.flow_control_id());
 
     // Don't call node.stop() here so this node runs forever.
     Ok(())

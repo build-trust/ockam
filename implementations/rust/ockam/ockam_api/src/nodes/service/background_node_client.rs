@@ -206,12 +206,7 @@ impl BackgroundNodeClient {
     /// Make a route to the node and connect using TCP
     async fn create_route(&self) -> miette::Result<(TcpConnection, Route)> {
         let tcp_connection = self.create_tcp_connection().await?;
-        let route = self
-            .to
-            .clone()
-            .modify()
-            .prepend(tcp_connection.sender_address().clone())
-            .into();
+        let route = tcp_connection.sender_address().clone() + self.to.clone();
         debug!("Sending requests to {route}");
         Ok((tcp_connection, route))
     }

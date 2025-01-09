@@ -6,7 +6,7 @@ use crate::{local_multiaddr_to_route, try_address_to_multiaddr};
 
 use crate::nodes::service::SecureChannelType;
 use ockam::identity::Identifier;
-use ockam_core::{async_trait, route, AsyncTryClone, Error, Route};
+use ockam_core::{async_trait, AsyncTryClone, Error, Route};
 use ockam_multiaddr::proto::Secure;
 use ockam_multiaddr::{Match, MultiAddr, Protocol};
 use ockam_node::Context;
@@ -55,7 +55,7 @@ impl Instantiator for SecureChannelInstantiator {
                 &sc_ctx,
                 //the transport route is needed to reach the secure channel listener
                 //since it can be in another node
-                route![transport_route, route],
+                transport_route + route,
                 &self.identifier,
                 self.authorized_identities.clone(),
                 None,

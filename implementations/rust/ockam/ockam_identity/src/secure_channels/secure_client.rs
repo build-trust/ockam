@@ -231,7 +231,7 @@ impl SecureClient {
             .secure_channels
             .stop_secure_channel(ctx, secure_channel.encryptor_address());
         if let Some(transport_address) = transport_address {
-            let _ = self.transport.disconnect(transport_address);
+            let _ = self.transport.disconnect(&transport_address);
         }
         // we delay the unwrapping of the response to make sure that the secure channel is
         // properly stopped first
@@ -275,7 +275,7 @@ impl SecureClient {
             .secure_channels
             .stop_secure_channel(ctx, secure_channel.encryptor_address());
         if let Some(transport_address) = transport_address {
-            let _ = self.transport.disconnect(transport_address);
+            let _ = self.transport.disconnect(&transport_address);
         }
 
         Ok(())

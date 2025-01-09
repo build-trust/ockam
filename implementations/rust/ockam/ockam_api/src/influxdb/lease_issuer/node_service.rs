@@ -46,7 +46,7 @@ impl NodeManagerWorker {
         let address = req.address();
         match self
             .node_manager
-            .delete_influxdb_lease_issuer_service(context, address.clone())
+            .delete_influxdb_lease_issuer_service(context, &address)
             .await
         {
             Ok(Some(_)) => Ok(Response::ok()),
@@ -73,10 +73,9 @@ impl InMemoryNode {
             .ok_or_else(|| {
                 ApiError::core("Unable to get flow control for secure channel listener")
             })?;
-        context.flow_controls().add_consumer(
-            address.clone(),
-            &default_secure_channel_listener_flow_control_id,
-        );
+        context
+            .flow_controls()
+            .add_consumer(&address, &default_secure_channel_listener_flow_control_id);
 
         let (incoming_ac, outgoing_ac) = self
             .access_control(
@@ -121,15 +120,15 @@ impl InMemoryNode {
     async fn delete_influxdb_lease_issuer_service(
         &self,
         context: &Context,
-        address: Address,
+        address: &Address,
     ) -> Result<Option<()>, Error> {
         debug!(address = %address,"Deleting influxdb lease issuer service");
-        match self.registry.influxdb_services.get(&address).await {
+        match self.registry.influxdb_services.get(address).await {
             None => Ok(None),
             Some(_) => {
-                context.stop_address(address.clone())?;
-                context.stop_address(format!("{address}-processor"))?;
-                self.registry.influxdb_services.remove(&address).await;
+                context.stop_address(address)?;
+                context.stop_address(&format!("{address}-processor").into())?;
+                self.registry.influxdb_services.remove(address).await;
                 Ok(Some(()))
             }
         }

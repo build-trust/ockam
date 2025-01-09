@@ -14,7 +14,7 @@ impl Worker for Hop {
         // Send the message on its onward_route
         ctx.forward(
             msg.into_local_message()
-                .step_forward(ctx.primary_address())?,
+                .step_forward(ctx.primary_address().clone())?,
         )
         .await
     }

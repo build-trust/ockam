@@ -293,6 +293,6 @@ impl SecureChannels {
 
     /// Stop a SecureChannel given an encryptor address
     pub fn stop_secure_channel(&self, ctx: &Context, channel: &Address) -> Result<()> {
-        ctx.stop_address(channel.clone())
+        ctx.stop_address(channel)
     }
 }

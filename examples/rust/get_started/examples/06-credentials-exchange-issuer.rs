@@ -94,7 +94,7 @@ async fn main(ctx: Context) -> Result<()> {
     // authenticated secure channels with our known public identifiers.
     let allow_known = IdentityIdAccessControl::new(known_identifiers);
     node.flow_controls()
-        .add_consumer(DefaultAddress::CREDENTIAL_ISSUER, &sc_listener_flow_control_id);
+        .add_consumer(&DefaultAddress::CREDENTIAL_ISSUER.into(), &sc_listener_flow_control_id);
     node.start_worker_with_access_control(
         DefaultAddress::CREDENTIAL_ISSUER,
         credential_issuer,

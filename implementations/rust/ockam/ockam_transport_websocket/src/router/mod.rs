@@ -174,7 +174,7 @@ impl WebSocketRouter {
             }
         }
 
-        let msg = msg.replace_front_onward_route(&next)?;
+        let msg = msg.replace_front_onward_route(next.clone())?;
 
         // Send the transport message to the connection worker
         ctx.send(next.clone(), msg).await?;

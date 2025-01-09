@@ -12,7 +12,7 @@ impl Worker for Logger {
     /// the message to the next hop in it's onward route
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Any>) -> Result<()> {
         let local_msg = msg.into_local_message();
-        let payload = local_msg.payload_ref();
+        let payload = local_msg.payload();
 
         if let Ok(str) = String::from_utf8(payload.to_vec()) {
             println!("Address: {}, Received string: {}", ctx.primary_address(), str);
@@ -24,6 +24,7 @@ impl Worker for Logger {
             );
         }
 
-        ctx.forward(local_msg.step_forward(ctx.primary_address())?).await
+        ctx.forward(local_msg.step_forward(ctx.primary_address().clone())?)
+            .await
     }
 }

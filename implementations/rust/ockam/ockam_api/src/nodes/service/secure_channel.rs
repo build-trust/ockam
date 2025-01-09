@@ -393,21 +393,23 @@ impl NodeManager {
         if secure_channel_type == SecureChannelType::KeyExchangeAndMessages {
             // TODO: Clean
             // Add Echoer as a consumer by default
-            ctx.flow_controls()
-                .add_consumer(DefaultAddress::ECHO_SERVICE, listener.flow_control_id());
+            ctx.flow_controls().add_consumer(
+                &DefaultAddress::ECHO_SERVICE.into(),
+                listener.flow_control_id(),
+            );
 
             // TODO: PUNCTURE Make optional?
             ctx.flow_controls().add_consumer(
-                DefaultAddress::UDP_PUNCTURE_NEGOTIATION_LISTENER,
+                &DefaultAddress::UDP_PUNCTURE_NEGOTIATION_LISTENER.into(),
                 listener.flow_control_id(),
             );
 
             // Add ourselves to allow tunneling
             ctx.flow_controls()
-                .add_consumer(address, listener.flow_control_id());
+                .add_consumer(&address, listener.flow_control_id());
 
             ctx.flow_controls().add_consumer(
-                DefaultAddress::UPPERCASE_SERVICE,
+                &DefaultAddress::UPPERCASE_SERVICE.into(),
                 listener.flow_control_id(),
             );
         }
@@ -421,7 +423,7 @@ impl NodeManager {
         addr: &Address,
     ) -> Result<SecureChannelListener> {
         debug!("deleting secure channel listener: {addr}");
-        ctx.stop_address(addr.clone())?;
+        ctx.stop_address(addr)?;
         self.registry
             .secure_channel_listeners
             .remove(addr)

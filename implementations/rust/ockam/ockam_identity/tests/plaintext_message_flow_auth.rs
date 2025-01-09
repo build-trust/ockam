@@ -48,13 +48,13 @@ async fn test1(ctx: &mut Context) -> Result<()> {
     let mut bob_ctx = ctx.new_detached("bob_ctx", AllowAll, AllowAll).await?;
     message_should_not_pass_with_ctx(ctx, channel_to_bob.encryptor_address(), &mut bob_ctx).await?;
     ctx.flow_controls()
-        .add_consumer("bob_ctx", bob_listener.flow_control_id());
+        .add_consumer(&"bob_ctx".into(), bob_listener.flow_control_id());
     message_should_pass_with_ctx(ctx, channel_to_bob.encryptor_address(), &mut bob_ctx).await?;
 
     let mut alice_ctx = ctx.new_detached("alice_ctx", AllowAll, AllowAll).await?;
     message_should_not_pass_with_ctx(ctx, &channel_to_alice, &mut alice_ctx).await?;
     ctx.flow_controls()
-        .add_consumer("alice_ctx", channel_to_bob.flow_control_id());
+        .add_consumer(&"alice_ctx".into(), channel_to_bob.flow_control_id());
     message_should_pass_with_ctx(ctx, &channel_to_alice, &mut alice_ctx).await?;
 
     Ok(())
@@ -128,13 +128,13 @@ async fn test2(ctx: &mut Context) -> Result<()> {
     let mut bob_ctx = ctx.new_detached("bob_ctx", AllowAll, AllowAll).await?;
     message_should_not_pass_with_ctx(ctx, channel_to_bob.encryptor_address(), &mut bob_ctx).await?;
     ctx.flow_controls()
-        .add_consumer("bob_ctx", bob_listener.flow_control_id());
+        .add_consumer(&"bob_ctx".into(), bob_listener.flow_control_id());
     message_should_pass_with_ctx(ctx, channel_to_bob.encryptor_address(), &mut bob_ctx).await?;
 
     let mut alice_ctx = ctx.new_detached("alice_ctx", AllowAll, AllowAll).await?;
     message_should_not_pass_with_ctx(ctx, &channel_to_alice, &mut alice_ctx).await?;
     ctx.flow_controls()
-        .add_consumer("alice_ctx", channel_to_bob.flow_control_id());
+        .add_consumer(&"alice_ctx".into(), channel_to_bob.flow_control_id());
     message_should_pass_with_ctx(ctx, &channel_to_alice, &mut alice_ctx).await?;
 
     Ok(())

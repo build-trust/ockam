@@ -33,7 +33,7 @@ async fn main(ctx: Context) -> Result<()> {
 
     // Allow access to the Echoer via Secure Channels
     node.flow_controls()
-        .add_consumer("echoer", secure_channel_listener.flow_control_id());
+        .add_consumer(&"echoer".into(), secure_channel_listener.flow_control_id());
 
     // Don't call node.stop() here so this node runs forever.
     Ok(())

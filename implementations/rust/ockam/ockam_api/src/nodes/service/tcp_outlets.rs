@@ -223,10 +223,7 @@ impl NodeManager {
                 .delete_resource(&worker_addr.address().into())
                 .await?;
 
-            if let Err(e) = self
-                .tcp_transport
-                .stop_outlet(deleted_outlet.worker_addr.clone())
-            {
+            if let Err(e) = self.tcp_transport.stop_outlet(&deleted_outlet.worker_addr) {
                 warn!(%worker_addr, %e, "Failed to stop outlet worker");
             }
             trace!(%worker_addr, "Successfully stopped outlet");

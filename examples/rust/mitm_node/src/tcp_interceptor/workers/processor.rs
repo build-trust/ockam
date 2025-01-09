@@ -83,7 +83,7 @@ impl Processor for TcpMitmProcessor {
             _ => {
                 info!("Connection was closed; dropping stream {}", ctx.primary_address());
 
-                let _ = ctx.stop_address(self.address_of_other_processor.clone());
+                let _ = ctx.stop_address(&self.address_of_other_processor);
 
                 return Ok(false);
             }
@@ -96,7 +96,7 @@ impl Processor for TcpMitmProcessor {
             _ => {
                 debug!("Connection was closed; dropping stream {}", ctx.primary_address());
 
-                let _ = ctx.stop_address(self.address_of_other_processor.clone());
+                let _ = ctx.stop_address(&self.address_of_other_processor);
 
                 return Ok(false);
             }

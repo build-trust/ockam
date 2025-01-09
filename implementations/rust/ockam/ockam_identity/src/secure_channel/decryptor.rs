@@ -1,6 +1,6 @@
 use core::sync::atomic::Ordering;
 use ockam_core::compat::sync::Arc;
-use ockam_core::{route, Any, Result, Route, Routed, SecureChannelLocalInfo};
+use ockam_core::{Any, Result, Route, Routed, SecureChannelLocalInfo};
 use ockam_core::{Decodable, LocalMessage};
 use ockam_node::Context;
 
@@ -107,19 +107,14 @@ impl DecryptorHandler {
             let mut remote_route = self.shared_state.remote_route.write().unwrap();
             // Only overwrite if we know that's the latest address
             if remote_route.last_nonce < nonce {
-                let their_decryptor_address = remote_route.route.recipient()?;
-                remote_route.route =
-                    route![encrypted_msg_return_route, their_decryptor_address.clone()];
+                let their_decryptor_address = remote_route.route.recipient()?.clone();
+                remote_route.route = encrypted_msg_return_route + their_decryptor_address;
                 remote_route.last_nonce = nonce;
             }
         }
 
         // Add encryptor hop in the return_route (instead of our address)
-        let return_route = msg
-            .return_route
-            .modify()
-            .prepend(self.addresses.encryptor.clone())
-            .into();
+        let return_route = self.addresses.encryptor.clone() + msg.return_route;
 
         // Mark message LocalInfo with IdentitySecureChannelLocalInfo,
         // replacing any pre-existing entries
@@ -153,7 +148,9 @@ impl DecryptorHandler {
             .should_send_close
             .store(false, Ordering::Relaxed);
         // Should be enough to stop the encryptor, since it will stop the decryptor
-        ctx.stop_address(self.addresses.encryptor.clone())
+        ctx.stop_address(&self.addresses.encryptor)?;
+
+        Ok(())
     }
 
     async fn handle_refresh_credentials(

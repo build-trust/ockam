@@ -13,7 +13,7 @@ impl Worker for Hop {
         println!("Address: {}, Received: {:?}", ctx.primary_address(), msg);
 
         // Send the message to the next worker on its onward_route
-        ctx.forward(msg.into_local_message().step_forward(ctx.primary_address())?)
+        ctx.forward(msg.into_local_message().step_forward(ctx.primary_address().clone())?)
             .await
     }
 }

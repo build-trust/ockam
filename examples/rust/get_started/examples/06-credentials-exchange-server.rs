@@ -81,7 +81,7 @@ async fn main(ctx: Context) -> Result<()> {
         .as_consumer(&tcp_listener_options.spawner_flow_control_id());
 
     node.flow_controls().add_consumer(
-        DefaultAddress::ECHO_SERVICE,
+        &DefaultAddress::ECHO_SERVICE.into(),
         &sc_listener_options.spawner_flow_control_id(),
     );
     let allow_production_incoming = IncomingAbac::create_name_value(

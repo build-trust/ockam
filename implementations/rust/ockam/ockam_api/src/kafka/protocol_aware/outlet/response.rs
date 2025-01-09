@@ -68,7 +68,7 @@ impl KafkaMessageResponseInterceptor for OutletInterceptorImpl {
                     // allow the interceptor to reach the outlet
                     context
                         .flow_controls()
-                        .add_consumer(outlet_address, &self.flow_control_id);
+                        .add_consumer(&outlet_address, &self.flow_control_id);
                 }
             }
         } else {

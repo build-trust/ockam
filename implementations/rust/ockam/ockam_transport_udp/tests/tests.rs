@@ -25,7 +25,7 @@ async fn reply_from_correct_server_port(ctx: &mut Context) -> Result<()> {
         .await?;
 
     ctx.flow_controls()
-        .add_consumer("echoer", bind.flow_control_id());
+        .add_consumer(&"echoer".into(), bind.flow_control_id());
 
     // Sender
     {
@@ -91,7 +91,7 @@ async fn recover_from_sender_error(ctx: &mut Context) -> Result<()> {
         )
         .await?;
     ctx.flow_controls()
-        .add_consumer("echoer", bind.flow_control_id());
+        .add_consumer(&"echoer".into(), bind.flow_control_id());
 
     // Send message to try and cause a socket send error
     let r = route![bind.sender_address().clone(), (UDP, addr_nok), "echoer"];
@@ -144,7 +144,7 @@ async fn send_from_same_client_port(ctx: &mut Context) -> Result<()> {
             .await?;
 
         ctx.flow_controls()
-            .add_consumer("echoer", bind.flow_control_id());
+            .add_consumer(&"echoer".into(), bind.flow_control_id());
 
         binds.push(bind);
     }
@@ -188,9 +188,9 @@ async fn send_receive_arbitrary_udp_peer(ctx: &mut Context) -> Result<()> {
         .await?;
 
     ctx.flow_controls()
-        .add_consumer("echoer", bind2.flow_control_id());
+        .add_consumer(&"echoer".into(), bind2.flow_control_id());
     ctx.flow_controls()
-        .add_consumer("echoer", bind3.flow_control_id());
+        .add_consumer(&"echoer".into(), bind3.flow_control_id());
 
     // Sender
     {
@@ -256,9 +256,9 @@ async fn send_receive_one_known_udp_peer(ctx: &mut Context) -> Result<()> {
         .await?;
 
     ctx.flow_controls()
-        .add_consumer("echoer", bind1.flow_control_id());
+        .add_consumer(&"echoer".into(), bind1.flow_control_id());
     ctx.flow_controls()
-        .add_consumer("echoer", bind2.flow_control_id());
+        .add_consumer(&"echoer".into(), bind2.flow_control_id());
 
     // Sender
     {
@@ -331,9 +331,9 @@ async fn send_receive_two_known_udp_peers(ctx: &mut Context) -> Result<()> {
         .await?;
 
     ctx.flow_controls()
-        .add_consumer("echoer", bind1.flow_control_id());
+        .add_consumer(&"echoer".into(), bind1.flow_control_id());
     ctx.flow_controls()
-        .add_consumer("echoer", bind2.flow_control_id());
+        .add_consumer(&"echoer".into(), bind2.flow_control_id());
 
     // Sender
     {
@@ -402,7 +402,7 @@ async fn send_receive_large_message(ctx: &mut Context) -> Result<()> {
         .await?;
 
     ctx.flow_controls()
-        .add_consumer("echoer", bind1.flow_control_id());
+        .add_consumer(&"echoer".into(), bind1.flow_control_id());
 
     let msg: String = rand::thread_rng()
         .sample_iter(&rand::distributions::Alphanumeric)

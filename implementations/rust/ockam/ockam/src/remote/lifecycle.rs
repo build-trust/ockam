@@ -4,8 +4,7 @@ use ockam_core::compat::string::{String, ToString};
 use ockam_core::compat::sync::Arc;
 use ockam_core::flow_control::FlowControlId;
 use ockam_core::{
-    route, AllowAll, AllowSourceAddress, DenyAll, Mailbox, Mailboxes, OutgoingAccessControl,
-    Result, Route,
+    AllowAll, AllowSourceAddress, DenyAll, Mailbox, Mailboxes, OutgoingAccessControl, Result, Route,
 };
 use ockam_node::WorkerBuilder;
 use tracing::debug;
@@ -81,7 +80,7 @@ impl RemoteRelay {
             ))
             .await?;
 
-        let registration_route = route![orchestrator_route.into(), "static_forwarding_service"];
+        let registration_route = orchestrator_route.into() + "static_forwarding_service";
 
         let flow_control_id =
             options.setup_flow_control(ctx.flow_controls(), &addresses, registration_route.next()?);
@@ -126,7 +125,7 @@ impl RemoteRelay {
             ))
             .await?;
 
-        let registration_route = route![orchestrator_route, "forwarding_service"];
+        let registration_route = orchestrator_route.into() + "forwarding_service";
 
         let flow_control_id =
             options.setup_flow_control(ctx.flow_controls(), &addresses, registration_route.next()?);

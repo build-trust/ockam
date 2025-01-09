@@ -29,14 +29,9 @@ impl RemoteRelayOptions {
             .map(|x| x.flow_control_id().clone())
         {
             // Allow a sender with corresponding flow_control_id send messages to this address
-            flow_controls.add_consumer(addresses.main_remote.clone(), &flow_control_id);
+            flow_controls.add_consumer(&addresses.main_remote, &flow_control_id);
 
-            flow_controls.add_producer(
-                addresses.main_internal.clone(),
-                &flow_control_id,
-                None,
-                vec![],
-            );
+            flow_controls.add_producer(&addresses.main_internal, &flow_control_id, None, vec![]);
 
             Some(flow_control_id)
         } else {

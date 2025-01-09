@@ -147,7 +147,7 @@ impl RendezvousHealthcheckTask {
             )
         });
 
-        self.udp.unbind(bind)?;
+        self.udp.unbind(bind.as_ref())?;
 
         res
     }

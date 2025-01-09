@@ -16,7 +16,7 @@ async fn main(ctx: Context) -> Result<()> {
     ctx.start_worker("echoer", Echoer).await?;
 
     ctx.flow_controls()
-        .add_consumer("echoer", bind.flow_control_id());
+        .add_consumer(&"echoer".into(), bind.flow_control_id());
 
     Ok(())
 }

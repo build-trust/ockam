@@ -33,7 +33,7 @@ async fn main(ctx: Context) -> Result<()> {
     let sc_options = SecureChannelListenerOptions::new();
     node.start_worker("echoer", Echoer).await?;
     node.flow_controls()
-        .add_consumer("echoer", &sc_options.spawner_flow_control_id());
+        .add_consumer(&"echoer".into(), &sc_options.spawner_flow_control_id());
 
     // Create an Identity to represent Bob.
     let bob = node.create_identity().await?;

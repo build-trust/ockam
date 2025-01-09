@@ -143,8 +143,8 @@ impl UdpTransport {
     }
 
     /// Interrupt an active TCP connection given its Sender `Address`
-    pub fn unbind(&self, address: impl Into<Address>) -> Result<()> {
-        self.ctx.stop_address(address.into())
+    pub fn unbind(&self, address: &Address) -> Result<()> {
+        self.ctx.stop_address(address)
     }
 }
 
@@ -216,5 +216,11 @@ impl UdpBind {
 impl From<UdpBind> for Address {
     fn from(value: UdpBind) -> Self {
         value.addresses.sender_address().clone()
+    }
+}
+
+impl AsRef<Address> for UdpBind {
+    fn as_ref(&self) -> &Address {
+        self.addresses.sender_address()
     }
 }

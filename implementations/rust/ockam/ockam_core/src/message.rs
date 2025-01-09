@@ -262,7 +262,7 @@ impl<M: Message> Routed<M> {
     /// Return a reference to the underlying transport message's binary payload.
     #[inline]
     pub fn payload(&self) -> &[u8] {
-        self.local_msg.payload_ref()
+        self.local_msg.payload()
     }
 
     /// Consume the message wrapper and return the underlying transport message's binary payload.

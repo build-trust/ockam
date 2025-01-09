@@ -24,7 +24,8 @@ async fn main(ctx: Context) -> Result<()> {
     // Create an echoer worker
     node.start_worker("echoer", Echoer).await?;
 
-    node.flow_controls().add_consumer("echoer", bind.flow_control_id());
+    node.flow_controls()
+        .add_consumer(&"echoer".into(), bind.flow_control_id());
 
     // Don't call node.stop() here so this node runs forever.
     Ok(())
