@@ -34,7 +34,7 @@ impl TcpMitmListenProcessor {
             target_addr,
         };
 
-        ctx.start_processor(address.clone(), processor).await?;
+        ctx.start_processor(address.clone(), processor)?;
 
         Ok((saddr, address))
     }
@@ -80,8 +80,7 @@ impl Processor for TcpMitmListenProcessor {
             target_read_half,
             write_half,
             self.registry.clone(),
-        )
-        .await?;
+        )?;
 
         // Forward from the source connection to the target
         TcpMitmProcessor::start(
@@ -92,8 +91,7 @@ impl Processor for TcpMitmListenProcessor {
             read_half,
             target_write_half,
             self.registry.clone(),
-        )
-        .await?;
+        )?;
 
         Ok(true)
     }

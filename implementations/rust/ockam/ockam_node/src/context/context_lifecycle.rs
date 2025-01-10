@@ -4,13 +4,13 @@ use core::time::Duration;
 use ockam_core::compat::collections::HashMap;
 use ockam_core::compat::sync::Weak;
 use ockam_core::compat::time::now;
-use ockam_core::compat::{boxed::Box, sync::Arc, sync::RwLock};
+use ockam_core::compat::{sync::Arc, sync::RwLock};
 use ockam_core::flow_control::FlowControls;
 #[cfg(feature = "std")]
 use ockam_core::OpenTelemetryContext;
 use ockam_core::{
-    Address, AllowAll, AsyncTryClone, DenyAll, IncomingAccessControl, Mailbox, Mailboxes,
-    OutgoingAccessControl, Result, TransportType,
+    Address, AllowAll, DenyAll, IncomingAccessControl, Mailbox, Mailboxes, OutgoingAccessControl,
+    Result, TransportType, TryClone,
 };
 use ockam_transport_core::Transport;
 
@@ -49,16 +49,14 @@ impl Drop for Context {
     }
 }
 
-#[ockam_core::async_trait]
-impl AsyncTryClone for Context {
-    async fn async_try_clone(&self) -> Result<Self> {
+impl TryClone for Context {
+    fn try_clone(&self) -> Result<Self> {
         // TODO: @ac ignores parent Access Control. Should be documented somewhere
         self.new_detached(
-            Address::random_tagged("Context.async_try_clone.detached"),
+            Address::random_tagged("Context.try_clone.detached"),
             DenyAll,
             DenyAll,
         )
-        .await
     }
 }
 
@@ -181,8 +179,8 @@ impl Context {
     }
 
     /// TODO basically we can just rename `Self::new_detached_impl()`
-    pub async fn new_detached_with_mailboxes(&self, mailboxes: Mailboxes) -> Result<Context> {
-        let ctx = self.new_detached_impl(mailboxes).await?;
+    pub fn new_detached_with_mailboxes(&self, mailboxes: Mailboxes) -> Result<Context> {
+        let ctx = self.new_detached_impl(mailboxes)?;
 
         debugger::log_inherit_context("DETACHED_WITH_MB", self, &ctx);
 
@@ -219,21 +217,21 @@ impl Context {
     ///     Remove AddressRecord from router.map.address_records_map (return error if not found)
     ///     Remove all alias in router.map.alias_map
     ///     Remote all meta from router.map.address_metadata
-    pub async fn new_detached(
+    pub fn new_detached(
         &self,
         address: impl Into<Address>,
         incoming: impl IncomingAccessControl,
         outgoing: impl OutgoingAccessControl,
     ) -> Result<Context> {
         let mailboxes = Mailboxes::primary(address.into(), Arc::new(incoming), Arc::new(outgoing));
-        let ctx = self.new_detached_impl(mailboxes).await?;
+        let ctx = self.new_detached_impl(mailboxes)?;
 
         debugger::log_inherit_context("DETACHED", self, &ctx);
 
         Ok(ctx)
     }
 
-    async fn new_detached_impl(&self, mailboxes: Mailboxes) -> Result<Context> {
+    fn new_detached_impl(&self, mailboxes: Mailboxes) -> Result<Context> {
         // Create a new context and get access to the mailbox senders
         let (ctx, sender, _) = self.new_with_mailboxes(mailboxes, ContextMode::Detached);
 

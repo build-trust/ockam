@@ -7,7 +7,7 @@ use crate::{Command, CommandGlobalOpts, GlobalArgs};
 use async_trait::async_trait;
 use miette::{IntoDiagnostic, Result};
 use ockam_api::colors::color_primary;
-use ockam_core::AsyncTryClone;
+use ockam_core::TryClone;
 use ockam_node::Context;
 use tokio::process::{Child, Command as ProcessCommand};
 use tracing::debug;
@@ -121,7 +121,7 @@ impl ParsedCommands {
     pub async fn run(self, ctx: &Context, opts: &CommandGlobalOpts) -> Result<()> {
         for cmd in self.commands.into_iter() {
             if cmd.is_valid(ctx, opts).await? {
-                let ctx = ctx.async_try_clone().await.into_diagnostic()?;
+                let ctx = ctx.try_clone().into_diagnostic()?;
                 cmd.run(&ctx, opts).await?;
                 // Newline between commands
                 opts.terminal.write_line("")?;

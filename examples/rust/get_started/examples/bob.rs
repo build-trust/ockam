@@ -26,12 +26,12 @@ async fn main(ctx: Context) -> Result<()> {
     // Create a node with default implementations
     let node = node(ctx).await?;
     // Initialize the TCP Transport
-    let tcp = node.create_tcp_transport().await?;
+    let tcp = node.create_tcp_transport()?;
 
     // Start a worker, of type Echoer, at address "echoer".
     // This worker will echo back every message it receives, along its return route.
     let sc_options = SecureChannelListenerOptions::new();
-    node.start_worker("echoer", Echoer).await?;
+    node.start_worker("echoer", Echoer)?;
     node.flow_controls()
         .add_consumer(&"echoer".into(), &sc_options.spawner_flow_control_id());
 
@@ -40,8 +40,7 @@ async fn main(ctx: Context) -> Result<()> {
 
     // Create a secure channel listener for Bob that will wait for requests to
     // initiate an Authenticated Key Exchange.
-    node.create_secure_channel_listener(&bob, "listener", sc_options)
-        .await?;
+    node.create_secure_channel_listener(&bob, "listener", sc_options)?;
 
     // The computer that is running this program is likely within a private network and
     // not accessible over the internet.

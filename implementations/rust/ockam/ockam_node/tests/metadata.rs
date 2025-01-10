@@ -21,8 +21,7 @@ impl Processor for NullProcessor {
 async fn find_terminal_for_processor(context: &mut Context) -> Result<()> {
     ProcessorBuilder::new(NullProcessor {})
         .with_address("simple_processor")
-        .start(context)
-        .await?;
+        .start(context)?;
 
     assert!(context
         .find_terminal_address(route!["simple_processor", "non-existing"].iter())?
@@ -30,8 +29,7 @@ async fn find_terminal_for_processor(context: &mut Context) -> Result<()> {
 
     ProcessorBuilder::new(NullProcessor {})
         .with_terminal_address("terminal_processor")
-        .start(context)
-        .await?;
+        .start(context)?;
 
     assert_eq!(
         context
@@ -61,8 +59,7 @@ async fn find_terminal_for_processor_alias(context: &mut Context) -> Result<()> 
                 Arc::new(DenyAll),
             )],
         ))
-        .start(context)
-        .await?;
+        .start(context)?;
 
     assert!(context
         .find_terminal_address(route!["main", "non-existing"].iter())?
@@ -91,8 +88,7 @@ async fn provide_and_read_processor_address_metadata(context: &mut Context) -> R
         .with_address("processor_address")
         .with_metadata_attribute("TEST_KEY", "TEST_VALUE")
         .with_metadata_attribute("TEST_KEY_2", "TEST_VALUE_2")
-        .start(context)
-        .await?;
+        .start(context)?;
 
     let meta = context.get_metadata(&"processor_address".into())?.unwrap();
 
@@ -119,8 +115,7 @@ async fn provide_and_read_processor_address_metadata(context: &mut Context) -> R
 async fn find_terminal_for_worker(context: &mut Context) -> Result<()> {
     WorkerBuilder::new(NullWorker {})
         .with_address("simple_worker")
-        .start(context)
-        .await?;
+        .start(context)?;
 
     assert!(context
         .find_terminal_address(route!["simple_worker", "non-existing"].iter())?
@@ -128,8 +123,7 @@ async fn find_terminal_for_worker(context: &mut Context) -> Result<()> {
 
     WorkerBuilder::new(NullWorker {})
         .with_terminal_address("terminal_worker")
-        .start(context)
-        .await?;
+        .start(context)?;
 
     assert_eq!(
         context
@@ -165,8 +159,7 @@ async fn find_terminal_for_worker_alias(context: &mut Context) -> Result<()> {
                 Arc::new(DenyAll),
             )],
         ))
-        .start(context)
-        .await?;
+        .start(context)?;
 
     assert!(context
         .find_terminal_address(route!["main", "non-existing"].iter())?
@@ -195,8 +188,7 @@ async fn provide_and_read_address_metadata(context: &mut Context) -> Result<()> 
         .with_address("worker_address")
         .with_metadata_attribute("TEST_KEY", "TEST_VALUE")
         .with_metadata_attribute("TEST_KEY_2", "TEST_VALUE_2")
-        .start(context)
-        .await?;
+        .start(context)?;
 
     let meta = context.get_metadata(&"worker_address".into())?.unwrap();
 
@@ -242,8 +234,7 @@ async fn provide_and_read_address_metadata_worker_alias(context: &mut Context) -
                 Arc::new(DenyAll),
             )],
         ))
-        .start(context)
-        .await?;
+        .start(context)?;
 
     let meta = context.get_metadata(&"alias".into())?.unwrap();
 

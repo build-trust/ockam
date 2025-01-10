@@ -20,7 +20,7 @@ use ockam::identity::SecureChannels;
 use ockam::tcp::{TcpListenerOptions, TcpTransport};
 use ockam::transport::HostnamePort;
 use ockam::Result;
-use ockam_core::AsyncTryClone;
+use ockam_core::TryClone;
 use ockam_node::database::{DatabaseConfiguration, SqlxDatabase};
 
 use crate::authenticator::credential_issuer::{DEFAULT_CREDENTIAL_VALIDITY, PROJECT_MEMBER_SCHEMA};
@@ -58,7 +58,7 @@ pub async fn start_manager_for_tests(
     bind_addr: Option<&str>,
     trust_options: Option<NodeManagerTrustOptions>,
 ) -> Result<NodeManagerHandle> {
-    let tcp = TcpTransport::create(context).await?;
+    let tcp = TcpTransport::create(context)?;
     let tcp_listener = tcp
         .listen(
             bind_addr.unwrap_or("127.0.0.1:0"),
@@ -98,7 +98,7 @@ pub async fn start_manager_for_tests(
         NodeManagerGeneralOptions::new(cli_state.clone(), node_name, true, None, false),
         NodeManagerTransportOptions::new(
             tcp_listener.flow_control_id().clone(),
-            tcp.async_try_clone().await?,
+            tcp.try_clone()?,
             None,
         ),
         trust_options.unwrap_or_else(|| {
@@ -115,15 +115,13 @@ pub async fn start_manager_for_tests(
     let node_manager = Arc::new(node_manager);
     let node_manager_worker = NodeManagerWorker::new(node_manager.clone());
 
-    context
-        .start_worker(NODEMANAGER_ADDR, node_manager_worker)
-        .await?;
+    context.start_worker(NODEMANAGER_ADDR, node_manager_worker)?;
 
     let secure_channels = node_manager.secure_channels();
     let handle = NodeManagerHandle {
         cli_state,
         node_manager,
-        tcp: tcp.async_try_clone().await?,
+        tcp: tcp.try_clone()?,
         secure_channels,
     };
 

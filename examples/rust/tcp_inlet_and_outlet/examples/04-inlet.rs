@@ -6,7 +6,7 @@ use ockam::{node, route, Context, Result, Route};
 async fn main(ctx: Context) -> Result<()> {
     // Initialize the TCP Transport.
     let node = node(ctx).await?;
-    let tcp = node.create_tcp_transport().await?;
+    let tcp = node.create_tcp_transport()?;
 
     // Create a Vault to store our cryptographic keys and an Identity to represent this Node.
     // Then initiate a handshake with the secure channel listener on the node that has the

@@ -68,7 +68,7 @@ impl TcpSendWorker {
     /// manages the connection with the given peer
     #[allow(clippy::too_many_arguments)]
     #[instrument(skip_all, name = "TcpSendWorker::start")]
-    pub(crate) async fn start(
+    pub(crate) fn start(
         ctx: &Context,
         registry: TcpRegistry,
         write_half: OwnedWriteHalf,
@@ -109,8 +109,7 @@ impl TcpSendWorker {
         WorkerBuilder::new(sender_worker)
             .with_mailboxes(Mailboxes::new(main_mailbox.clone(), vec![internal_mailbox]))
             .with_shutdown_priority(WorkerShutdownPriority::Priority1)
-            .start(ctx)
-            .await?;
+            .start(ctx)?;
 
         Ok(())
     }

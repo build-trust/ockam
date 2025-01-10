@@ -189,6 +189,7 @@ pub(crate) struct Registry {
 }
 
 pub(crate) struct RegistryOf<K, V> {
+    // FIXME: Can it be sync
     map: RwLock<BTreeMap<K, V>>,
 }
 

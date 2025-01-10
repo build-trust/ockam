@@ -70,8 +70,7 @@ impl TcpInletListenProcessor {
         let inlet_shared_state = Arc::new(SyncRwLock::new(inlet_shared_state));
         let processor = Self::new(registry, inner, inlet_shared_state.clone(), options);
 
-        ctx.start_processor(processor_address.clone(), processor)
-            .await?;
+        ctx.start_processor(processor_address.clone(), processor)?;
 
         Ok(TcpInlet::new_regular(
             socket_addr,
@@ -226,8 +225,7 @@ impl Processor for TcpInletListenProcessor {
             addresses,
             self.options.incoming_access_control.clone(),
             self.options.outgoing_access_control.clone(),
-        )
-        .await?;
+        )?;
 
         Ok(true)
     }

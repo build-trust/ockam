@@ -19,7 +19,7 @@ impl TokenLeaseRefresher {
         let token = Arc::new(RwLock::new(Some(token)));
         Self { token }
     }
-    pub async fn new(
+    pub fn new(
         ctx: &Context,
         node_manager: Weak<InMemoryNode>,
         lease_issuer_route: MultiAddr,
@@ -30,7 +30,7 @@ impl TokenLeaseRefresher {
             Arc::new(DenyAll),
             Arc::new(AllowAll),
         );
-        let new_ctx = ctx.new_detached_with_mailboxes(mailboxes).await?;
+        let new_ctx = ctx.new_detached_with_mailboxes(mailboxes)?;
 
         let token_clone = token.clone();
         ockam_node::spawn(async move {

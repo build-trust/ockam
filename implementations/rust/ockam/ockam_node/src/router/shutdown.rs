@@ -5,13 +5,8 @@ use core::time::Duration;
 use ockam_core::compat::sync::Arc;
 use ockam_core::Result;
 
-/// Register a stop ACK
-///
-/// For every ACK we re-test whether the current cluster has stopped.
-/// If not, we do nothing. If so, we trigger the next cluster to stop.
-
 impl Router {
-    /// Implement the graceful stop strategy
+    /// Implement the graceful shutdown strategy
     #[cfg_attr(not(feature = "std"), allow(unused_variables))]
     pub async fn shutdown_graceful(self: Arc<Router>, seconds: u8) -> Result<()> {
         // This changes the router state to `Stopping`

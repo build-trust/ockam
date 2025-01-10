@@ -60,7 +60,6 @@ mod node;
 mod processor_builder;
 mod relay;
 mod router;
-mod shutdown;
 
 /// Support for storing persistent values
 pub mod storage;
@@ -75,7 +74,6 @@ pub use delayed::*;
 pub use error::*;
 pub use executor::*;
 pub use processor_builder::ProcessorBuilder;
-pub use shutdown::*;
 #[cfg(feature = "std")]
 pub use storage::database;
 pub use worker_builder::WorkerBuilder;

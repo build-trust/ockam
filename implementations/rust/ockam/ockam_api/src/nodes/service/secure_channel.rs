@@ -379,9 +379,12 @@ impl NodeManager {
             options
         };
 
-        let listener = secure_channels
-            .create_secure_channel_listener(ctx, &identifier, address.clone(), options)
-            .await?;
+        let listener = secure_channels.create_secure_channel_listener(
+            ctx,
+            &identifier,
+            address.clone(),
+            options,
+        )?;
 
         info!("Secure channel listener was initialized at {address}");
 

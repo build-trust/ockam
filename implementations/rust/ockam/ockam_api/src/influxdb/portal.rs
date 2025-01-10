@@ -232,10 +232,9 @@ impl NodeManagerWorker {
             interceptor_address.clone(),
             Some(spawner_flow_control_id.clone()),
             http_interceptor_factory,
-            Arc::new(policy_access_control.create_outgoing(ctx).await?),
+            Arc::new(policy_access_control.create_outgoing(ctx)?),
             Arc::new(policy_access_control.create_incoming()),
-        )
-        .await?;
+        )?;
 
         // every secure channel can reach this service
         let flow_controls = ctx.flow_controls();
@@ -272,8 +271,7 @@ impl NodeManagerWorker {
             .await?;
 
         let token_refresher =
-            TokenLeaseRefresher::new(ctx, Arc::downgrade(&self.node_manager), lease_issuer_route)
-                .await?;
+            TokenLeaseRefresher::new(ctx, Arc::downgrade(&self.node_manager), lease_issuer_route)?;
         let http_interceptor_factory = Arc::new(HttpAuthInterceptorFactory::new(token_refresher));
 
         PortalInletInterceptor::create(
@@ -281,9 +279,8 @@ impl NodeManagerWorker {
             interceptor_address.clone(),
             http_interceptor_factory,
             Arc::new(policy_access_control.create_incoming()),
-            Arc::new(policy_access_control.create_outgoing(ctx).await?),
-        )
-        .await?;
+            Arc::new(policy_access_control.create_outgoing(ctx)?),
+        )?;
         Ok(interceptor_address)
     }
 }

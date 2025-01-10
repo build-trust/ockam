@@ -44,7 +44,7 @@ fn determine_type(next: &Address) -> RouteType {
 /// registered per address type.
 pub struct Router {
     /// Keep track of some additional router state information
-    pub(super) state: SyncRwLock<RouterState>, // TODO: Could be AtomicU8
+    pub(super) state: SyncRwLock<RouterState>,
     /// Internal address state
     pub(super) map: InternalMap,
     /// Externally registered router components

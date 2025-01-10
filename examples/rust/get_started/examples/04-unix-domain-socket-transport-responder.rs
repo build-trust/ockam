@@ -17,7 +17,7 @@ async fn main(ctx: Context) -> Result<()> {
     uds.listen("/tmp/ockam-example-echoer").await?;
 
     // Create an echoer worker
-    node.start_worker("echoer", Echoer).await?;
+    node.start_worker("echoer", Echoer)?;
 
     // Don't call node.shutdown() here so this node runs forever.
     Ok(())

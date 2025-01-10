@@ -29,14 +29,14 @@ pub(crate) struct UdsRouter {
 /// Public Implementations to instantiate a UDS Router and UDS Router Handler
 impl UdsRouter {
     /// Create and register a new UDS router with the given node context
-    pub async fn register(ctx: &Context) -> Result<UdsRouterHandle> {
+    pub fn register(ctx: &Context) -> Result<UdsRouterHandle> {
         // This context is only used to start workers, doesn't need to send nor receive messages
         let mailboxes = Mailboxes::new(
             Mailbox::deny_all(Address::random_tagged("UdsRouter.detached")),
             vec![],
         );
 
-        let child_ctx = ctx.new_detached_with_mailboxes(mailboxes).await?;
+        let child_ctx = ctx.new_detached_with_mailboxes(mailboxes)?;
 
         let main_addr = Address::random_tagged("UdsRouter_main_addr");
         let api_addr = Address::random_tagged("UdsRouter_api_addr");
@@ -50,7 +50,7 @@ impl UdsRouter {
             allow_auto_connection: true,
         };
 
-        let handle = router.create_self_handle().await?;
+        let handle = router.create_self_handle()?;
         let main_mailbox = Mailbox::new(
             main_addr.clone(),
             None,
@@ -66,8 +66,7 @@ impl UdsRouter {
 
         WorkerBuilder::new(router)
             .with_mailboxes(Mailboxes::new(main_mailbox, vec![api_mailbox]))
-            .start(ctx)
-            .await?;
+            .start(ctx)?;
 
         trace!("Registering UDS router for type = {}", UDS);
         ctx.register(UDS, main_addr)?;
@@ -76,13 +75,13 @@ impl UdsRouter {
     }
 
     /// Create a new [`UdsRouterHandle`] representing this router
-    pub async fn create_self_handle(&self) -> Result<UdsRouterHandle> {
+    pub fn create_self_handle(&self) -> Result<UdsRouterHandle> {
         let mailboxes = Mailboxes::new(
             Mailbox::deny_all(Address::random_tagged("UdsRouterHandle.detached")),
             vec![],
         );
 
-        let handle_ctx = self.ctx.new_detached_with_mailboxes(mailboxes).await?;
+        let handle_ctx = self.ctx.new_detached_with_mailboxes(mailboxes)?;
 
         let handle =
             UdsRouterHandle::new(handle_ctx, self.main_addr.clone(), self.api_addr.clone());
@@ -95,13 +94,17 @@ impl UdsRouter {
 impl UdsRouter {
     /// Handles any [`UdsRouterRequest::Connect`] messages received by
     /// this node's worker
-    async fn handle_connect(&mut self, peer: String) -> Result<Address> {
+    fn handle_connect(&mut self, peer: String) -> Result<Address> {
         let (peer_addr, pathnames) = UdsRouterHandle::resolve_peer(peer)?;
 
-        let router_handle = self.create_self_handle().await?;
-        let pair =
-            UdsSendWorker::start_pair(&self.ctx, router_handle, None, peer_addr, pathnames.clone())
-                .await?;
+        let router_handle = self.create_self_handle()?;
+        let pair = UdsSendWorker::start_pair(
+            &self.ctx,
+            router_handle,
+            None,
+            peer_addr,
+            pathnames.clone(),
+        )?;
 
         let path = match pair.peer().as_pathname() {
             Some(p) => p,
@@ -122,7 +125,7 @@ impl UdsRouter {
         accepts.extend(pathnames.iter().map(|p| Address::new_with_string(UDS, p)));
 
         let self_addr = pair.tx_addr();
-        self.handle_register(accepts, self_addr.clone()).await?;
+        self.handle_register(accepts, self_addr.clone())?;
 
         Ok(self_addr)
     }
@@ -149,7 +152,7 @@ impl UdsRouter {
 
     /// Handles any [`UdsRouterRequest::Register`] messages received by
     /// this node's worker
-    async fn handle_register(&mut self, accepts: Vec<Address>, self_addr: Address) -> Result<()> {
+    fn handle_register(&mut self, accepts: Vec<Address>, self_addr: Address) -> Result<()> {
         if accepts.is_empty() {
             error!("UDS registration request failed due to an invalid address list. Please provide at least one valid Address.");
         }
@@ -200,7 +203,7 @@ impl UdsRouter {
         let onward = msg.next_on_onward_route()?;
 
         // Resolve route to the connection worker responsible for the next hop
-        let next = self.resolve_route(onward).await?;
+        let next = self.resolve_route(onward)?;
 
         // Modify the transport message route
         let msg = msg.replace_front_onward_route(next.clone())?;
@@ -214,7 +217,7 @@ impl UdsRouter {
 
 impl UdsRouter {
     /// Resolve the route to the provided noward address
-    async fn resolve_route(&mut self, onward: &Address) -> Result<Address> {
+    fn resolve_route(&mut self, onward: &Address) -> Result<Address> {
         // Check if the connection already exists
         if let Some(n) = self.map.get(onward) {
             return Ok(n.clone());
@@ -252,7 +255,7 @@ impl UdsRouter {
         }
 
         if self.allow_auto_connection {
-            self.handle_connect(peer).await
+            self.handle_connect(peer)
         } else {
             error!(
                 "Failed to resolve route, no existing connection to peer: {}",
@@ -278,13 +281,13 @@ impl Worker for UdsRouter {
             let msg = UdsRouterRequest::decode(msg.payload())?;
             match msg {
                 UdsRouterRequest::Register { accepts, self_addr } => {
-                    let res = self.handle_register(accepts, self_addr).await;
+                    let res = self.handle_register(accepts, self_addr);
 
                     ctx.send(return_route, UdsRouterResponse::Register(res))
                         .await?;
                 }
                 UdsRouterRequest::Connect { peer } => {
-                    let res = self.handle_connect(peer).await;
+                    let res = self.handle_connect(peer);
 
                     ctx.send(return_route, UdsRouterResponse::Connect(res))
                         .await?;

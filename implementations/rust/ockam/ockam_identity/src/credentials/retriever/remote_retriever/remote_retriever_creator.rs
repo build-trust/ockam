@@ -104,7 +104,7 @@ impl CredentialRetrieverCreator for RemoteCredentialRetrieverCreator {
             Arc::new(DenyAll),
             Arc::new(AllowAll),
         );
-        let ctx = self.ctx.new_detached_with_mailboxes(mailboxes).await?;
+        let ctx = self.ctx.new_detached_with_mailboxes(mailboxes)?;
         let retriever = RemoteCredentialRetriever::new(
             ctx,
             self.transport.clone(),

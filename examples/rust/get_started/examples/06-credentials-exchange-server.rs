@@ -28,10 +28,10 @@ async fn main(ctx: Context) -> Result<()> {
     let mut vault = Vault::create().await?;
     vault.identity_vault = identity_vault;
 
-    let node = Node::builder().await?.with_vault(vault).build(&ctx).await?;
+    let node = Node::builder().await?.with_vault(vault).build(&ctx)?;
 
     // Initialize the TCP Transport
-    let tcp = node.create_tcp_transport().await?;
+    let tcp = node.create_tcp_transport()?;
 
     // Create an Identity representing the server
     // Load an identity corresponding to the following public identifier
@@ -96,20 +96,17 @@ async fn main(ctx: Context) -> Result<()> {
         Some(issuer),
         "cluster",
         "production",
-    )
-    .await?;
+    )?;
     node.start_worker_with_access_control(
         DefaultAddress::ECHO_SERVICE,
         Echoer,
         allow_production_incoming,
         allow_production_outgoing,
-    )
-    .await?;
+    )?;
 
     // Start a secure channel listener that only allows channels with
     // authenticated identities.
-    node.create_secure_channel_listener(&server, DefaultAddress::SECURE_CHANNEL_LISTENER, sc_listener_options)
-        .await?;
+    node.create_secure_channel_listener(&server, DefaultAddress::SECURE_CHANNEL_LISTENER, sc_listener_options)?;
 
     // Create a TCP listener and wait for incoming connections
     tcp.listen("127.0.0.1:4000", tcp_listener_options).await?;

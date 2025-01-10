@@ -14,7 +14,7 @@ async fn main(ctx: Context) -> Result<()> {
     // Initialize the UDP Transport.
     let udp = node.create_udp_transport().await?;
 
-    node.start_worker("echoer", Echoer).await?;
+    node.start_worker("echoer", Echoer)?;
 
     let bob = node.create_identity().await?;
 
@@ -27,13 +27,11 @@ async fn main(ctx: Context) -> Result<()> {
 
     // Create a secure channel listener for Bob that will wait for requests to
     // initiate an Authenticated Key Exchange.
-    let secure_channel_listener = node
-        .create_secure_channel_listener(
-            &bob,
-            "bob_listener",
-            SecureChannelListenerOptions::new().as_consumer(udp_bind.flow_control_id()),
-        )
-        .await?;
+    let secure_channel_listener = node.create_secure_channel_listener(
+        &bob,
+        "bob_listener",
+        SecureChannelListenerOptions::new().as_consumer(udp_bind.flow_control_id()),
+    )?;
 
     // Allow access to the Echoer via Secure Channels
     node.flow_controls()

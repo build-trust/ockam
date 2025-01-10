@@ -101,7 +101,7 @@ impl CreateCommand {
 
     async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         initialize_default_node(ctx, &opts).await?;
-        let node = BackgroundNodeClient::create_to_node(ctx, &opts.state, &self.from).await?;
+        let node = BackgroundNodeClient::create_to_node(ctx, &opts.state, &self.from)?;
 
         opts.terminal
             .write_line(fmt_log!("Creating Secure Channel...\n"))?;

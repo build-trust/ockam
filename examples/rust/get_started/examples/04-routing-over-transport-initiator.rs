@@ -9,7 +9,7 @@ async fn main(ctx: Context) -> Result<()> {
     let mut node = node(ctx).await?;
 
     // Initialize the TCP Transport.
-    let tcp = node.create_tcp_transport().await?;
+    let tcp = node.create_tcp_transport()?;
 
     // Create a TCP connection to a different node.
     let connection_to_responder = tcp.connect("localhost:4000", TcpConnectionOptions::new()).await?;

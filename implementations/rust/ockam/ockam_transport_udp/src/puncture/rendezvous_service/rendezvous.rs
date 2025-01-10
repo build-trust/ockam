@@ -19,8 +19,8 @@ use tracing::{debug, info, warn};
 /// # async fn test(ctx: Context) -> Result<()> {
 ///
 /// // Start a Rendezvous service with address 'rendezvous' and listen on UDP port 4000
-/// RendezvousService::start(&ctx, "rendezvous").await?;
-/// let udp = UdpTransport::create(&ctx).await?;
+/// RendezvousService::start(&ctx, "rendezvous")?;
+/// let udp = UdpTransport::create(&ctx)?;
 /// let bind = udp.bind(UdpBindArguments::new().with_bind_address("0.0.0.0:4000")?, UdpBindOptions::new()).await?;
 /// ctx.flow_controls().add_consumer(&"rendezvous".into(), bind.flow_control_id());
 /// # Ok(()) }
@@ -29,9 +29,8 @@ pub struct RendezvousService;
 
 impl RendezvousService {
     /// Start a new Rendezvous service with the given local address
-    pub async fn start(ctx: &Context, address: impl Into<Address>) -> Result<()> {
+    pub fn start(ctx: &Context, address: impl Into<Address>) -> Result<()> {
         ctx.start_worker(address.into(), RendezvousServiceWorker::new())
-            .await
     }
 }
 
@@ -182,8 +181,8 @@ mod tests {
     /// Helper
     async fn test_setup(ctx: &mut Context) -> Result<(Route, UdpBind)> {
         // Create transport, start rendezvous service, start echo service and listen
-        let transport = UdpTransport::create(ctx).await?;
-        RendezvousService::start(ctx, "rendezvous").await?;
+        let transport = UdpTransport::create(ctx)?;
+        RendezvousService::start(ctx, "rendezvous")?;
 
         let udp_bind = transport
             .bind(UdpBindArguments::new(), UdpBindOptions::new())

@@ -8,7 +8,6 @@ use console::Term;
 use ockam_api::colors::color_primary;
 use ockam_api::fmt_ok;
 use ockam_api::terminal::{Terminal, TerminalStream};
-use ockam_core::AsyncTryClone;
 
 const LONG_ABOUT: &str = include_str!("./static/delete/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
@@ -47,7 +46,7 @@ impl DeleteCommand {
     }
 }
 
-#[derive(AsyncTryClone)]
+#[derive(Clone)]
 pub struct DeleteTui {
     opts: CommandGlobalOpts,
     cmd: DeleteCommand,

@@ -22,7 +22,7 @@ async fn main(ctx: Context) -> Result<()> {
         .await?;
 
     // Create an echoer worker
-    node.start_worker("echoer", Echoer).await?;
+    node.start_worker("echoer", Echoer)?;
 
     node.flow_controls()
         .add_consumer(&"echoer".into(), bind.flow_control_id());

@@ -54,7 +54,7 @@ pub(crate) struct UdpPunctureReceiverWorker {
 
 impl UdpPunctureReceiverWorker {
     #[allow(clippy::too_many_arguments)]
-    pub(crate) async fn create(
+    pub(crate) fn create(
         ctx: &Context,
         bind: UdpBind,
         peer_udp_address: String,
@@ -64,8 +64,7 @@ impl UdpPunctureReceiverWorker {
         options: UdpPunctureOptions,
         redirect_first_message_to_transport: bool,
     ) -> Result<()> {
-        let heartbeat =
-            DelayedEvent::create(ctx, addresses.heartbeat_address().clone(), ()).await?;
+        let heartbeat = DelayedEvent::create(ctx, addresses.heartbeat_address().clone(), ())?;
 
         let remote_mailbox = Mailbox::new(
             addresses.remote_address().clone(),
@@ -96,8 +95,7 @@ impl UdpPunctureReceiverWorker {
             .with_address(addresses.sender_address().clone())
             .with_incoming_access_control(AllowAll)
             .with_outgoing_access_control(AllowAll)
-            .start(ctx)
-            .await?;
+            .start(ctx)?;
 
         // Create and start worker
         let receiver_worker = Self {
@@ -118,8 +116,7 @@ impl UdpPunctureReceiverWorker {
                 remote_mailbox,
                 vec![receiver_mailbox, heartbeat_mailbox],
             ))
-            .start(ctx)
-            .await?;
+            .start(ctx)?;
 
         Ok(())
     }

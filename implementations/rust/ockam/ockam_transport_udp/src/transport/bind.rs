@@ -119,8 +119,7 @@ impl UdpTransport {
             .with_address(addresses.sender_address().clone())
             .with_incoming_access_control(AllowAll)
             .with_outgoing_access_control(DenyAll)
-            .start(&self.ctx)
-            .await?;
+            .start(&self.ctx)?;
 
         let receiver =
             UdpReceiverProcessor::new(addresses.clone(), socket_read, arguments.peer_address);
@@ -129,8 +128,7 @@ impl UdpTransport {
             .with_incoming_access_control(DenyAll)
             .with_outgoing_access_control_arc(receiver_outgoing_access_control)
             .with_shutdown_priority(WorkerShutdownPriority::Priority1)
-            .start(&self.ctx)
-            .await?;
+            .start(&self.ctx)?;
 
         let bind = UdpBind::new(
             addresses,

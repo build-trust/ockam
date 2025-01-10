@@ -52,7 +52,7 @@ impl AppState {
             };
 
             let incoming_ac = access_control.create_incoming();
-            let outgoing_ac = match access_control.create_outgoing(self.context_ref()).await {
+            let outgoing_ac = match access_control.create_outgoing(self.context_ref()) {
                 Ok(a) => a,
                 Err(e) => {
                     error!(

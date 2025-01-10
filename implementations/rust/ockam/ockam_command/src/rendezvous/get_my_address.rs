@@ -20,7 +20,7 @@ impl Command for GetMyAddressCommand {
     const NAME: &'static str = "rendezvous get-my-address";
 
     async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
-        let udp = UdpTransport::create(ctx).await?;
+        let udp = UdpTransport::create(ctx)?;
         let bind = udp
             .bind(
                 UdpBindArguments::new().with_bind_address("0.0.0.0:0")?,

@@ -9,7 +9,7 @@ async fn main(ctx: Context) -> Result<()> {
     let mut node = node(ctx).await?;
 
     // Start a worker, of type Echoer, at address "echoer"
-    node.start_worker("echoer", Echoer).await?;
+    node.start_worker("echoer", Echoer)?;
 
     // Send a message to the worker at address "echoer".
     node.send("echoer", "Hello Ockam!".to_string()).await?;

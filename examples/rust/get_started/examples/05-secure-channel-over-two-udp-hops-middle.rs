@@ -26,8 +26,7 @@ async fn main(ctx: Context) -> Result<()> {
     node.start_worker(
         "forward_to_bob",
         Relay::new(route![udp_bind.clone(), (UDP, "127.0.0.1:4000")]),
-    )
-    .await?;
+    )?;
 
     node.flow_controls()
         .add_consumer(&"forward_to_bob".into(), udp_bind.flow_control_id());

@@ -134,13 +134,16 @@ impl Authority {
         let secure_channel_listener_flow_control_id = options.spawner_flow_control_id().clone();
 
         let listener_name = configuration.secure_channel_listener_name();
-        self.secure_channels
-            .create_secure_channel_listener(ctx, &self.identifier(), listener_name.clone(), options)
-            .await?;
+        self.secure_channels.create_secure_channel_listener(
+            ctx,
+            &self.identifier(),
+            listener_name.clone(),
+            options,
+        )?;
         info!("started a secure channel listener with name '{listener_name}'");
 
         // Create a TCP listener and wait for incoming connections
-        let tcp = TcpTransport::create(ctx).await?;
+        let tcp = TcpTransport::create(ctx)?;
 
         let listener = tcp
             .listen(
@@ -154,7 +157,7 @@ impl Authority {
     }
 
     /// Start the authenticator service to enroll project members
-    pub async fn start_direct_authenticator(
+    pub fn start_direct_authenticator(
         &self,
         ctx: &Context,
         secure_channel_flow_control_id: &FlowControlId,
@@ -174,14 +177,14 @@ impl Authority {
         ctx.flow_controls()
             .add_consumer(&name.clone().into(), secure_channel_flow_control_id);
 
-        ctx.start_worker(name.clone(), direct).await?;
+        ctx.start_worker(name.clone(), direct)?;
 
         info!("started a direct authenticator at '{name}'");
         Ok(())
     }
 
     /// Start the enrollment services, to issue and accept tokens
-    pub async fn start_enrollment_services(
+    pub fn start_enrollment_services(
         &self,
         ctx: &Context,
         secure_channel_flow_control_id: &FlowControlId,
@@ -208,7 +211,7 @@ impl Authority {
             secure_channel_flow_control_id,
         );
 
-        ctx.start_worker(issuer_address.clone(), issuer).await?;
+        ctx.start_worker(issuer_address.clone(), issuer)?;
 
         // start an enrollment token acceptor allowing any incoming message as long as
         // it comes through a secure channel. We accept any message since the purpose of
@@ -220,7 +223,7 @@ impl Authority {
             secure_channel_flow_control_id,
         );
 
-        ctx.start_worker(acceptor_address.clone(), acceptor).await?;
+        ctx.start_worker(acceptor_address.clone(), acceptor)?;
 
         info!("started an enrollment token issuer at '{issuer_address}'");
         info!("started an enrollment token acceptor at '{acceptor_address}'");
@@ -229,7 +232,7 @@ impl Authority {
 
     /// Start the credential issuer service to issue credentials for a identities
     /// known to the authority
-    pub async fn start_credential_issuer(
+    pub fn start_credential_issuer(
         &self,
         ctx: &Context,
         secure_channel_flow_control_id: &FlowControlId,
@@ -253,14 +256,14 @@ impl Authority {
         ctx.flow_controls()
             .add_consumer(&address.clone().into(), secure_channel_flow_control_id);
 
-        ctx.start_worker(address.clone(), issuer).await?;
+        ctx.start_worker(address.clone(), issuer)?;
 
         info!("started a credential issuer at '{address}'");
         Ok(())
     }
 
     /// Start the Okta service to retrieve attributes authenticated by Okta
-    pub async fn start_okta(
+    pub fn start_okta(
         &self,
         ctx: &Context,
         secure_channel_flow_control_id: &FlowControlId,
@@ -277,13 +280,13 @@ impl Authority {
             ctx.flow_controls()
                 .add_consumer(&okta.address.clone().into(), secure_channel_flow_control_id);
 
-            ctx.start_worker(okta.address.clone(), okta_worker).await?;
+            ctx.start_worker(okta.address.clone(), okta_worker)?;
         }
         Ok(())
     }
 
     /// Start an echo service
-    pub async fn start_echo_service(
+    pub fn start_echo_service(
         &self,
         ctx: &Context,
         secure_channel_flow_control_id: &FlowControlId,
@@ -293,7 +296,7 @@ impl Authority {
         ctx.flow_controls()
             .add_consumer(&address.into(), secure_channel_flow_control_id);
 
-        ctx.start_worker(address, Echoer).await
+        ctx.start_worker(address, Echoer)
     }
 
     /// Add a member directly to storage, without additional validation

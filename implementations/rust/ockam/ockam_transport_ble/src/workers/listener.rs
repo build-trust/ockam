@@ -41,8 +41,7 @@ where
         ctx.start_processor_with_access_control(
             waddr, processor, AllowAll, // FIXME: @ac
             AllowAll, // FIXME: @ac
-        )
-        .await?;
+        )?;
 
         Ok(())
     }
@@ -78,8 +77,7 @@ where
                 // TODO resolve connecting BleClient's addresses
                 crate::parse_ble_addr("ble_client_addr").unwrap(),
                 vec![],
-            )
-            .await?;
+            )?;
 
             // Register the connection with the local BleRouter
             trace!("Registering WorkerPair tx stream with BleRouterHandle");

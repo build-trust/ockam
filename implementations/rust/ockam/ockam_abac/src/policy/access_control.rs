@@ -62,14 +62,12 @@ impl PolicyAccessControl {
         }
     }
 
-    pub async fn create_outgoing(&self, ctx: &Context) -> Result<OutgoingPolicyAccessControl> {
-        let ctx = ctx
-            .new_detached(
-                Address::random_tagged("OutgoingPolicyAbac"),
-                DenyAll,
-                DenyAll,
-            )
-            .await?;
+    pub fn create_outgoing(&self, ctx: &Context) -> Result<OutgoingPolicyAccessControl> {
+        let ctx = ctx.new_detached(
+            Address::random_tagged("OutgoingPolicyAbac"),
+            DenyAll,
+            DenyAll,
+        )?;
 
         Ok(OutgoingPolicyAccessControl {
             ctx,

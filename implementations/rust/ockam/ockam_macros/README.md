@@ -10,7 +10,7 @@ and trustfully with cloud services and other devices.
 
 This crate provides shared macros to:
 
- - clone structs asynchronously
+ - faillable clone structs
  - create an ockam node and access its `Context`
  - write some node-related tests
 

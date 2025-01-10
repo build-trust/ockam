@@ -102,8 +102,7 @@ impl InMemoryNode {
             .with_address(address.clone())
             .with_incoming_access_control_arc(incoming_ac)
             .with_outgoing_access_control_arc(outgoing_ac)
-            .start(context)
-            .await?;
+            .start(context)?;
         self.registry
             .influxdb_services
             .insert(address.clone(), ())
@@ -111,8 +110,7 @@ impl InMemoryNode {
 
         ProcessorBuilder::new(processor)
             .with_address(format!("{address}-processor"))
-            .start(context)
-            .await?;
+            .start(context)?;
 
         Ok(())
     }

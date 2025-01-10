@@ -12,9 +12,9 @@ async fn main(ctx: Context) -> Result<()> {
     let node = node(ctx).await?;
 
     // Initialize the TCP Transport.
-    let tcp = node.create_tcp_transport().await?;
+    let tcp = node.create_tcp_transport()?;
 
-    node.start_worker("echoer", Echoer).await?;
+    node.start_worker("echoer", Echoer)?;
 
     let bob = node.create_identity().await?;
 
@@ -23,13 +23,11 @@ async fn main(ctx: Context) -> Result<()> {
 
     // Create a secure channel listener for Bob that will wait for requests to
     // initiate an Authenticated Key Exchange.
-    let secure_channel_listener = node
-        .create_secure_channel_listener(
-            &bob,
-            "bob_listener",
-            SecureChannelListenerOptions::new().as_consumer(listener.flow_control_id()),
-        )
-        .await?;
+    let secure_channel_listener = node.create_secure_channel_listener(
+        &bob,
+        "bob_listener",
+        SecureChannelListenerOptions::new().as_consumer(listener.flow_control_id()),
+    )?;
 
     // Allow access to the Echoer via Secure Channels
     node.flow_controls()

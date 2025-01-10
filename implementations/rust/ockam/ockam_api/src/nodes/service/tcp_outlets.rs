@@ -181,7 +181,6 @@ impl NodeManager {
         } else {
             self.tcp_transport
                 .create_outlet(worker_addr.clone(), to.clone(), options)
-                .await
         };
 
         Ok(match res {

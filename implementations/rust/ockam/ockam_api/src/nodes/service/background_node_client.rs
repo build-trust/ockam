@@ -44,15 +44,15 @@ impl BackgroundNodeClient {
             Some(name) => name,
             None => cli_state.get_default_node().await?.name(),
         };
-        Self::create_to_node(ctx, cli_state, &node_name).await
+        Self::create_to_node(ctx, cli_state, &node_name)
     }
 
-    pub async fn create_to_node(
+    pub fn create_to_node(
         ctx: &Context,
         cli_state: &CliState,
         node_name: &str,
     ) -> miette::Result<BackgroundNodeClient> {
-        let tcp_transport = TcpTransport::create(ctx).await.into_diagnostic()?;
+        let tcp_transport = TcpTransport::create(ctx).into_diagnostic()?;
         BackgroundNodeClient::new(&tcp_transport, cli_state, node_name)
     }
 

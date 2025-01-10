@@ -7,7 +7,7 @@ use syn::{
 };
 
 use crate::internals::ctx::Context;
-use crate::internals::symbol::{ASYNC_TRY_CLONE, OCKAM_CRATE};
+use crate::internals::symbol::{OCKAM_CRATE, TRY_CLONE};
 
 pub(crate) fn expand(input_derive: DeriveInput) -> Result<TokenStream, Vec<syn::Error>> {
     let ctx = Context::new();
@@ -26,45 +26,25 @@ fn output(cont: Container) -> TokenStream {
             #field_name
         }
     });
-    let fields_outer = fields.clone();
-    let fields_async_impls = cont.data.struct_fields.iter().map(|f| {
+    let fields_impls = cont.data.struct_fields.iter().map(|f| {
         let field_name = &f.ident;
         quote! {
-            self.#field_name.async_try_clone()
+            let #field_name = self.#field_name.try_clone()?;
         }
     });
     let trait_fn = quote! {
-        async fn async_try_clone(&self) -> #ockam_crate::Result<Self>{
-            let results = #ockam_crate::compat::try_join!(
-                #(#fields_async_impls),*
-            );
-            match results {
-                Ok((#(#fields_outer),* ,))=> {
-                    Ok(
-                        Self{
-                            #(#fields),*
-                        }
-                    )
+        fn try_clone(&self) -> #ockam_crate::Result<Self> {
+            #(#fields_impls)*
+
+            Ok(
+                Self{
+                    #(#fields),*
                 }
-                Err(e) => {
-                    Err(e)
-                }
-            }
-        }
-    };
-    let async_trait: Attribute = match ockam_crate.to_string().as_str() {
-        "ockam" => parse_quote!(#[#ockam_crate::worker]),
-        "crate" | "ockam_core" => parse_quote!(#[#ockam_crate::async_trait]),
-        other => {
-            unreachable!(
-                "'crate' attribute is already checked in Attributes, got {}",
-                other
             )
         }
     };
     quote! {
-        #async_trait
-        impl #impl_generics #ockam_crate::AsyncTryClone for #struct_ident #ty_generics #where_clause {
+        impl #impl_generics #ockam_crate::TryClone for #struct_ident #ty_generics #where_clause {
             #trait_fn
         }
     }
@@ -182,12 +162,12 @@ impl<'a> Data<'a> {
                 t.bounds.push(parse_quote!(::core::marker::Send));
                 t.bounds.push(parse_quote!(::core::marker::Sync));
 
-                // Generic simple type must also be AsyncTryClone
+                // Generic simple type must also be TryClone
                 if simple_generic_fields
                     .iter()
                     .any(|s| s == &t.ident.to_string())
                 {
-                    t.bounds.push(parse_quote!(#ockam_crate::AsyncTryClone));
+                    t.bounds.push(parse_quote!(#ockam_crate::TryClone));
                 }
             }
         }
@@ -197,7 +177,7 @@ impl<'a> Data<'a> {
         for ty in complex_generic_fields {
             where_clause
                 .predicates
-                .push(parse_quote!(#ty: #ockam_crate::AsyncTryClone));
+                .push(parse_quote!(#ty: #ockam_crate::TryClone));
         }
 
         generics
@@ -270,7 +250,7 @@ impl Attributes {
     fn from_ast(ctx: &Context, attrs: &[Attribute]) -> Self {
         let mut ockam_crate = Attr::none(ctx, OCKAM_CRATE);
         for attr in attrs.iter() {
-            if attr.path().is_ident(&ASYNC_TRY_CLONE) {
+            if attr.path().is_ident(&TRY_CLONE) {
                 attr.parse_nested_meta(|meta| {
                     let value_expr: Expr = meta.value()?.parse()?;
                     if let Ok(path) = parse_lit_into_path(ctx, OCKAM_CRATE, &value_expr) {

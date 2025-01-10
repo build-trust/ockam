@@ -56,7 +56,6 @@ pub async fn create(
 
     context
         .start_worker(receiver_address.clone(), worker)
-        .await
         .unwrap();
 
     let connection = node
@@ -72,7 +71,6 @@ pub async fn create(
 
     context
         .start_processor_with_access_control(sender_address, processor, DenyAll, AllowAll)
-        .await
         .unwrap();
 
     Ok(portal_stats)

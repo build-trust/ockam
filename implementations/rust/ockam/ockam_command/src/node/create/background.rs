@@ -57,7 +57,7 @@ impl CreateCommand {
             ..self.clone()
         };
         cmd_with_trace_context.spawn_background_node(&opts).await?;
-        let mut node = BackgroundNodeClient::create_to_node(ctx, &opts.state, &node_name).await?;
+        let mut node = BackgroundNodeClient::create_to_node(ctx, &opts.state, &node_name)?;
         let node_resources = get_node_resources(ctx, &opts.state, &mut node, true).await?;
         opts.state
             .add_journey_event(

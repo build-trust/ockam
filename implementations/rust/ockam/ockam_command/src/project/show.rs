@@ -8,7 +8,7 @@ use ockam_api::cloud::project::ProjectsOrchestratorApi;
 use ockam_api::nodes::InMemoryNode;
 use ockam_api::output::Output;
 use ockam_api::terminal::{Terminal, TerminalStream};
-use ockam_core::AsyncTryClone;
+use ockam_core::TryClone;
 
 use crate::shared_args::{IdentityOpts, RetryOpts};
 use crate::terminal::tui::ShowCommandTui;
@@ -47,12 +47,7 @@ impl Command for ShowCommand {
     }
 
     async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
-        Ok(ShowTui::run(
-            ctx.async_try_clone().await.into_diagnostic()?,
-            opts,
-            self.name.clone(),
-        )
-        .await?)
+        Ok(ShowTui::run(ctx.try_clone().into_diagnostic()?, opts, self.name.clone()).await?)
     }
 }
 

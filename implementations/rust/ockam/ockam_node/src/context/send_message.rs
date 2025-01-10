@@ -104,7 +104,7 @@ impl Context {
             self.flow_controls.add_consumer(&address, &flow_control_id);
         }
 
-        let mut child_ctx = self.new_detached_with_mailboxes(mailboxes).await?;
+        let mut child_ctx = self.new_detached_with_mailboxes(mailboxes)?;
 
         #[cfg(feature = "std")]
         child_ctx.set_tracing_context(self.tracing_context());

@@ -12,7 +12,7 @@ async fn main(ctx: Context) -> Result<()> {
     // initiate an Authenticated Key Exchange.
     let options = SecureChannelListenerOptions::new();
     let sc_flow_control_id = options.spawner_flow_control_id();
-    node.create_secure_channel_listener(&bob, "bob", options).await?;
+    node.create_secure_channel_listener(&bob, "bob", options)?;
 
     // Create an entity to represent Alice.
     let alice = node.create_identity().await?;

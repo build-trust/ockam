@@ -400,7 +400,6 @@ impl InternalMap {
 /// Additional metadata for worker records
 #[derive(Debug)]
 pub struct WorkerMeta {
-    // FIXME
     #[allow(dead_code)]
     pub processor: bool,
     pub detached: bool,

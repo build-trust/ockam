@@ -59,7 +59,7 @@ impl TcpRecvProcessor {
 
     #[allow(clippy::too_many_arguments)]
     #[instrument(skip_all, name = "TcpRecvProcessor::start")]
-    pub async fn start(
+    pub fn start(
         ctx: &Context,
         registry: TcpRegistry,
         read_half: OwnedReadHalf,
@@ -95,8 +95,7 @@ impl TcpRecvProcessor {
         ProcessorBuilder::new(receiver)
             .with_mailboxes(Mailboxes::new(mailbox, vec![internal]))
             .with_shutdown_priority(WorkerShutdownPriority::Priority1)
-            .start(ctx)
-            .await?;
+            .start(ctx)?;
 
         Ok(())
     }

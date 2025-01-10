@@ -48,8 +48,7 @@ impl HttpServer {
         };
         ProcessorBuilder::new(processor)
             .with_address(Address::random_tagged("node_http_server"))
-            .start(context)
-            .await?;
+            .start(context)?;
         info!("HTTP server listening on: {addr:?}");
         Ok(addr)
     }

@@ -33,8 +33,8 @@ use ockam_abac::{
 };
 use ockam_core::flow_control::FlowControlId;
 use ockam_core::{
-    route, AllowAll, AsyncTryClone, CachedIncomingAccessControl, CachedOutgoingAccessControl,
-    IncomingAccessControl, OutgoingAccessControl,
+    route, AllowAll, CachedIncomingAccessControl, CachedOutgoingAccessControl,
+    IncomingAccessControl, OutgoingAccessControl, TryClone,
 };
 use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
@@ -99,7 +99,7 @@ impl NodeManager {
             }
             NodeManagerCredentialRetrieverOptions::Remote { info, scope } => {
                 Some(Arc::new(RemoteCredentialRetrieverCreator::new(
-                    ctx.async_try_clone().await?,
+                    ctx.try_clone()?,
                     Arc::new(transport_options.tcp_transport.clone()),
                     secure_channels.clone(),
                     info.clone(),
@@ -124,7 +124,7 @@ impl NodeManager {
             }
             NodeManagerCredentialRetrieverOptions::Remote { info, scope } => {
                 Some(Arc::new(RemoteCredentialRetrieverCreator::new(
-                    ctx.async_try_clone().await?,
+                    ctx.try_clone()?,
                     Arc::new(transport_options.tcp_transport.clone()),
                     secure_channels.clone(),
                     info.clone(),
@@ -183,8 +183,7 @@ impl NodeManager {
                 udp_transport,
                 rendezvous_route,
                 options,
-            )
-            .await?;
+            )?;
 
             if let Some(api_sc_listener) = &s.api_sc_listener {
                 ctx.flow_controls().add_consumer(
@@ -256,7 +255,7 @@ impl NodeManager {
             options
         };
 
-        RelayService::create(ctx, DefaultAddress::RELAY_SERVICE, options).await?;
+        RelayService::create(ctx, DefaultAddress::RELAY_SERVICE, options)?;
 
         Ok(secure_channel_listener)
     }
@@ -541,7 +540,7 @@ impl NodeManager {
                 .await?;
 
             let incoming_ac = policy_access_control.create_incoming();
-            let outgoing_ac = policy_access_control.create_outgoing(ctx).await?;
+            let outgoing_ac = policy_access_control.create_outgoing(ctx)?;
 
             cfg_if::cfg_if! {
                 if #[cfg(feature = "std")] {

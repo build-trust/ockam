@@ -11,7 +11,7 @@ use nix::sys::signal;
 use ockam_api::cli_state::journeys::APPLICATION_EVENT_COMMAND_CONFIGURATION_FILE;
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_api::CliState;
-use ockam_core::{AsyncTryClone, OpenTelemetryContext};
+use ockam_core::{OpenTelemetryContext, TryClone};
 use ockam_node::Context;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -269,9 +269,8 @@ impl NodeConfig {
 
         // Wait for the node to be up
         let is_up = {
-            let ctx = ctx.async_try_clone().await.into_diagnostic()?;
-            let mut node =
-                BackgroundNodeClient::create_to_node(&ctx, &opts.state, node_name).await?;
+            let ctx = ctx.try_clone().into_diagnostic()?;
+            let mut node = BackgroundNodeClient::create_to_node(&ctx, &opts.state, node_name)?;
             is_node_up(&ctx, &mut node, true).await?
         };
         if !is_up {

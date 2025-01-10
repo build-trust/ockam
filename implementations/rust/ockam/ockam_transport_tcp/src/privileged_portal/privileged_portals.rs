@@ -124,16 +124,14 @@ impl TcpTransport {
             .with_address(remote_worker_address.clone())
             .with_incoming_access_control_arc(options.incoming_access_control)
             .with_outgoing_access_control(DenyAll)
-            .start(self.ctx())
-            .await?;
+            .start(self.ctx())?;
 
         let internal_worker = InternalProcessor::new_inlet(receiver, inlet_info);
         ProcessorBuilder::new(internal_worker)
             .with_address(internal_worker_address.clone())
             .with_incoming_access_control(DenyAll)
             .with_outgoing_access_control_arc(options.outgoing_access_control)
-            .start(self.ctx())
-            .await?;
+            .start(self.ctx())?;
 
         Ok(TcpInlet::new_privileged(
             local_address,
@@ -208,16 +206,14 @@ impl TcpTransport {
             .with_address(remote_worker_address)
             .with_incoming_access_control_arc(options.incoming_access_control)
             .with_outgoing_access_control(DenyAll)
-            .start(self.ctx())
-            .await?;
+            .start(self.ctx())?;
 
         let internal_worker = InternalProcessor::new_outlet(receiver, outlet_info);
         ProcessorBuilder::new(internal_worker)
             .with_address(internal_worker_address)
             .with_incoming_access_control(DenyAll)
             .with_outgoing_access_control_arc(options.outgoing_access_control)
-            .start(self.ctx())
-            .await?;
+            .start(self.ctx())?;
 
         Ok(())
     }

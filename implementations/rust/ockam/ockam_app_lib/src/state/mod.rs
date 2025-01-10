@@ -8,9 +8,9 @@ use tracing::{error, info, trace, warn};
 
 pub use kind::StateKind;
 use ockam::tcp::{TcpListenerOptions, TcpTransport};
-use ockam::AsyncTryClone;
 use ockam::Context;
 use ockam::NodeBuilder;
+use ockam::TryClone;
 use ockam_api::cli_state::CliState;
 use ockam_api::cloud::enroll::auth0::UserInfo;
 use ockam_api::cloud::project::Project;
@@ -122,7 +122,7 @@ impl AppState {
     #[cfg(test)]
     pub async fn test(context: &Context, cli_state: CliState) -> AppState {
         Self::make(
-            Arc::new(context.async_try_clone().await.unwrap()),
+            Arc::new(context.try_clone().unwrap()),
             None,
             None,
             cli_state,
@@ -388,13 +388,7 @@ impl AppState {
     }
 
     pub async fn background_node(&self, node_name: &str) -> Result<BackgroundNodeClient> {
-        let tcp = self
-            .node_manager
-            .read()
-            .await
-            .tcp_transport()
-            .async_try_clone()
-            .await?;
+        let tcp = self.node_manager.read().await.tcp_transport().try_clone()?;
         Ok(
             BackgroundNodeClient::create_to_node_with_tcp(&tcp, &self.state().await, node_name)
                 .await?,
@@ -691,7 +685,7 @@ pub(crate) async fn make_node_manager(
     ctx: Arc<Context>,
     cli_state: &CliState,
 ) -> miette::Result<Arc<InMemoryNode>> {
-    let tcp = TcpTransport::create(&ctx).await.into_diagnostic()?;
+    let tcp = TcpTransport::create(&ctx).into_diagnostic()?;
     let options = TcpListenerOptions::new();
     let listener = tcp
         .listen(&"127.0.0.1:0", options)
@@ -726,7 +720,6 @@ pub(crate) async fn make_node_manager(
 
     let node_manager_worker = NodeManagerWorker::new(node_manager.clone());
     ctx.start_worker(NODEMANAGER_ADDR, node_manager_worker)
-        .await
         .into_diagnostic()?;
 
     ctx.flow_controls()

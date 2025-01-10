@@ -46,7 +46,7 @@ impl PortalInterceptorFactory for MockPortalInterceptorFactory {
 async fn setup(
     context: &mut Context,
 ) -> ockam_core::Result<(String, TcpListener, Arc<MockPortalInterceptor>)> {
-    let tcp = TcpTransport::create(context).await?;
+    let tcp = TcpTransport::create(context)?;
 
     let listener = {
         let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
@@ -55,8 +55,7 @@ async fn setup(
             "outlet",
             bind_address.try_into().unwrap(),
             TcpOutletOptions::new(),
-        )
-        .await?;
+        )?;
         listener
     };
 
@@ -71,7 +70,6 @@ async fn setup(
         Arc::new(AllowAll),
         Arc::new(AllowAll),
     )
-    .await
     .unwrap();
 
     let inlet = tcp

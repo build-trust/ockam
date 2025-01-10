@@ -5,7 +5,7 @@ use ockam::{node, route, Context, Result};
 async fn main(ctx: Context) -> Result<()> {
     // Initialize the TCP Transport.
     let node = node(ctx).await?;
-    let tcp = node.create_tcp_transport().await?;
+    let tcp = node.create_tcp_transport()?;
 
     // We know that the Outlet node is listening for Ockam Routing Messages
     // over TCP and is running at Ockam Worker address "outlet".

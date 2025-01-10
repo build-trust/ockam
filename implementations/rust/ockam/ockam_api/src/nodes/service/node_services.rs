@@ -183,7 +183,7 @@ impl NodeManager {
             )));
         }
 
-        ctx.start_worker(addr.clone(), Uppercase).await?;
+        ctx.start_worker(addr.clone(), Uppercase)?;
 
         info!("uppercase service was initialized at {addr}");
 
@@ -218,8 +218,7 @@ impl NodeManager {
             .with_address(addr.clone())
             .with_incoming_access_control_arc(incoming_ac)
             .with_outgoing_access_control_arc(outgoing_ac)
-            .start(ctx)
-            .await?;
+            .start(ctx)?;
 
         info!("echoer service was initialized at {addr}");
 
@@ -241,7 +240,7 @@ impl NodeManager {
         ctx.flow_controls()
             .add_consumer(&addr, &self.api_transport_flow_control_id);
 
-        ctx.start_worker(addr.clone(), Hop).await?;
+        ctx.start_worker(addr.clone(), Hop)?;
 
         info!("hop service was initialized at {addr}");
 

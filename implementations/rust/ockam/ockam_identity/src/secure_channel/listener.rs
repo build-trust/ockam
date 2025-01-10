@@ -39,7 +39,7 @@ impl SecureChannelListenerWorker {
         }
     }
 
-    pub async fn create(
+    pub fn create(
         ctx: &Context,
         secure_channels: Arc<SecureChannels>,
         identifier: &Identifier,
@@ -51,7 +51,7 @@ impl SecureChannelListenerWorker {
         let listener = Self::new(secure_channels.clone(), identifier.clone(), options);
 
         // FIXME: add ABAC policies for the key_exchange_only listener?
-        ctx.start_worker(address, listener).await?;
+        ctx.start_worker(address, listener)?;
 
         Ok(())
     }

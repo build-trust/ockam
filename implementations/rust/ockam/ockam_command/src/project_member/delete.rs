@@ -10,7 +10,7 @@ use ockam::Context;
 use ockam_api::authenticator::direct::Members;
 use ockam_api::colors::color_primary;
 use ockam_api::{fmt_info, fmt_ok};
-use ockam_core::AsyncTryClone;
+use ockam_core::TryClone;
 use serde::Serialize;
 use std::fmt::Display;
 use std::time::Duration;
@@ -109,7 +109,7 @@ impl Command for DeleteCommand {
                 let mut set: JoinSet<Option<Identifier>> = JoinSet::new();
                 for identifier in chunk {
                     let authority_node_client = authority_node_client.clone();
-                    let ctx = ctx.async_try_clone().await?;
+                    let ctx = ctx.try_clone()?;
                     set.spawn(async move {
                         sleep(tokio_retry::strategy::jitter(Duration::from_millis(500))).await;
                         if let Err(e) = authority_node_client

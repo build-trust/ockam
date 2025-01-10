@@ -34,7 +34,7 @@ impl TcpMitmProcessor {
         }
     }
 
-    pub async fn start(
+    pub fn start(
         ctx: &Context,
         role: Role,
         address: Address,
@@ -47,8 +47,7 @@ impl TcpMitmProcessor {
 
         let receiver = Self::new(address_of_other_processor, role, read_half, write_half, registry);
 
-        ctx.start_processor_with_access_control(address, receiver, AllowAll, AllowAll)
-            .await?;
+        ctx.start_processor_with_access_control(address, receiver, AllowAll, AllowAll)?;
 
         Ok(())
     }

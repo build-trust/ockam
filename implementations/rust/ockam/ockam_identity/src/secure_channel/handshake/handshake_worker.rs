@@ -213,8 +213,7 @@ impl HandshakeWorker {
                 &addresses,
                 decryptor_outgoing_access_control,
             ))
-            .start(context)
-            .await?;
+            .start(context)?;
 
         debug!(
             "Starting SecureChannel {} at remote: {}, local: {}",
@@ -454,8 +453,7 @@ impl HandshakeWorker {
                     main_mailbox,
                     vec![api_mailbox, internal_mailbox],
                 ))
-                .start(context)
-                .await?;
+                .start(context)?;
         }
 
         self.persist(

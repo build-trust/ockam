@@ -6,7 +6,7 @@ use ockam::identity::Identifier;
 use ockam::Result;
 use ockam_abac::{PolicyExpression, Resource, ResourceType};
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::{AsyncTryClone, Route};
+use ockam_core::{Route, TryClone};
 use ockam_multiaddr::MultiAddr;
 use ockam_node::compat::asynchronous::Mutex;
 use ockam_node::Context;
@@ -111,7 +111,7 @@ impl NodeManager {
         let replacer = InletSessionReplacer {
             node_manager: Arc::downgrade(self),
             udp_transport,
-            context: ctx.async_try_clone().await?,
+            context: ctx.try_clone()?,
             listen_addr: listen_addr.to_string(),
             outlet_addr: outlet_addr.clone(),
             prefix_route,
@@ -156,7 +156,7 @@ impl NodeManager {
             None
         };
 
-        let mut session = Session::create(ctx, main_replacer, additional_session_options).await?;
+        let mut session = Session::create(ctx, main_replacer, additional_session_options)?;
 
         let outcome = if wait_connection {
             let result = session
@@ -182,7 +182,7 @@ impl NodeManager {
 
         let connection_status = session.connection_status();
 
-        session.start_monitoring().await?;
+        session.start_monitoring()?;
 
         self.registry
             .inlets

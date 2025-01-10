@@ -52,7 +52,7 @@ where
         }
     }
 
-    pub(crate) async fn start_pair(
+    pub(crate) fn start_pair(
         ctx: &Context,
         stream: AsyncStream<A>,
         peer: BleAddr,
@@ -64,7 +64,7 @@ where
         let sender = BleSendWorker::new(stream, peer.clone());
 
         debug!("start send worker({:?})", tx_addr.clone());
-        ctx.start_worker(tx_addr.clone(), sender).await?;
+        ctx.start_worker(tx_addr.clone(), sender)?;
 
         Ok(WorkerPair {
             servicenames,
@@ -94,8 +94,7 @@ where
                 receiver,
                 AllowAll, // FIXME: @ac
                 AllowAll, // FIXME: @ac
-            )
-            .await?;
+            )?;
             debug!("started receiver");
         } else {
             error!("TransportError::GenericIo");

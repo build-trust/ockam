@@ -15,12 +15,12 @@ mod common;
 // Bob: TCP listener + Secure Channel listener
 #[ockam_macros::test]
 async fn test1(ctx: &mut Context) -> Result<()> {
-    let tcp_bob = TcpTransport::create(ctx).await?;
+    let tcp_bob = TcpTransport::create(ctx)?;
     let listener = tcp_bob
         .listen("127.0.0.1:0", TcpListenerOptions::new())
         .await?;
 
-    let tcp_alice = TcpTransport::create(ctx).await?;
+    let tcp_alice = TcpTransport::create(ctx)?;
     let connection_to_bob = tcp_alice
         .connect(listener.socket_string(), TcpConnectionOptions::new())
         .await?;
@@ -66,13 +66,13 @@ async fn test1(ctx: &mut Context) -> Result<()> {
 // Bob: TCP listener + Secure Channel
 #[ockam_macros::test]
 async fn test2(ctx: &mut Context) -> Result<()> {
-    let tcp_bob = TcpTransport::create(ctx).await?;
+    let tcp_bob = TcpTransport::create(ctx)?;
     let listener = {
         let options = TcpListenerOptions::new();
         tcp_bob.listen("127.0.0.1:0", options).await?
     };
 
-    let tcp_alice = TcpTransport::create(ctx).await?;
+    let tcp_alice = TcpTransport::create(ctx)?;
     let alice_tcp_options = TcpConnectionOptions::new();
     let alice_flow_control_id = alice_tcp_options.flow_control_id();
     let connection_to_bob = tcp_alice

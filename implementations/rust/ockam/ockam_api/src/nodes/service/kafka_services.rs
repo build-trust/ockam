@@ -240,9 +240,8 @@ impl InMemoryNode {
                 encrypted_fields,
             )),
             Arc::new(policy_access_control.create_incoming()),
-            Arc::new(policy_access_control.create_outgoing(context).await?),
-        )
-        .await?;
+            Arc::new(policy_access_control.create_outgoing(context)?),
+        )?;
 
         self.registry
             .kafka_services
@@ -295,10 +294,9 @@ impl InMemoryNode {
                 outlet_controller.clone(),
                 spawner_flow_control_id.clone(),
             )),
-            Arc::new(policy_access_control.create_outgoing(context).await?),
+            Arc::new(policy_access_control.create_outgoing(context)?),
             Arc::new(policy_access_control.create_incoming()),
-        )
-        .await?;
+        )?;
 
         // every secure channel can reach this service
         let flow_controls = context.flow_controls();

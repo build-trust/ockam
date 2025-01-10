@@ -14,12 +14,11 @@ use serde::{Deserialize, Serialize};
 use std::sync::atomic::AtomicI8;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::time::sleep;
-use tracing::debug;
 
 #[allow(non_snake_case)]
 #[ockam_macros::test]
 async fn receive_timeout__1_sec__should_return_from_call(ctx: &mut Context) -> Result<()> {
-    let mut child_ctx = ctx.new_detached("random", AllowAll, AllowAll).await?;
+    let mut child_ctx = ctx.new_detached("random", AllowAll, AllowAll)?;
 
     let time = SystemTime::now();
     let start = time.duration_since(UNIX_EPOCH).unwrap();
@@ -39,13 +38,13 @@ async fn receive_timeout__1_sec__should_return_from_call(ctx: &mut Context) -> R
 #[allow(non_snake_case)]
 #[test]
 fn start_and_shutdown_node__many_iterations__should_not_fail() {
-    for _ in 0..50 {
+    for _ in 0..100 {
         let (ctx, mut executor) = NodeBuilder::new().build();
         executor
             .execute(async move {
                 let res = std::panic::AssertUnwindSafe(async {
-                    let child_ctx1 = ctx.new_detached("child1", AllowAll, AllowAll).await?;
-                    let mut child_ctx2 = ctx.new_detached("child2", AllowAll, AllowAll).await?;
+                    let child_ctx1 = ctx.new_detached("child1", AllowAll, AllowAll)?;
+                    let mut child_ctx2 = ctx.new_detached("child2", AllowAll, AllowAll)?;
                     child_ctx1
                         .send(route!["child2"], "Hello".to_string())
                         .await?;
@@ -81,8 +80,6 @@ impl Worker for SimpleWorker {
         self.initialize_was_called.store(true, Ordering::Relaxed);
         assert!(self.initialize_was_called.load(Ordering::Relaxed));
 
-        debug!("INITIALIZE");
-
         Ok(())
     }
 
@@ -90,8 +87,6 @@ impl Worker for SimpleWorker {
         self.shutdown_was_called.store(true, Ordering::Relaxed);
         assert!(self.initialize_was_called.load(Ordering::Relaxed));
         assert!(self.shutdown_was_called.load(Ordering::Relaxed));
-
-        debug!("SHUTDOWN");
 
         Ok(())
     }
@@ -119,7 +114,7 @@ async fn simple_worker__run_node_lifecycle__should_not_fail(ctx: &mut Context) -
         shutdown_was_called: shutdown_was_called_clone,
     };
 
-    ctx.start_worker("simple_worker", worker).await?;
+    ctx.start_worker("simple_worker", worker)?;
 
     let msg: String = ctx
         .send_and_receive(route!["simple_worker"], "Hello".to_string())
@@ -145,7 +140,7 @@ async fn simple_worker__run_node_lifecycle__worker_lifecycle_should_be_full(
         shutdown_was_called: shutdown_was_called_clone,
     };
 
-    ctx.start_worker("simple_worker", worker).await?;
+    ctx.start_worker("simple_worker", worker)?;
 
     let msg: String = ctx
         .send_and_receive(route!["simple_worker"], "Hello".to_string())
@@ -197,7 +192,7 @@ async fn worker_initialize_fail_should_shutdown(ctx: &mut Context) -> Result<()>
     let worker = FailingWorkerProcessor {
         shutdown_was_called: shutdown_was_called.clone(),
     };
-    let res = ctx.start_worker(address.clone(), worker).await;
+    let res = ctx.start_worker(address.clone(), worker);
     assert!(res.is_ok());
     sleep(Duration::new(1, 0)).await;
     assert!(shutdown_was_called.load(Ordering::Relaxed));
@@ -233,7 +228,7 @@ async fn processor_initialize_fail_should_shutdown(ctx: &mut Context) -> Result<
     let processor = FailingWorkerProcessor {
         shutdown_was_called: shutdown_was_called.clone(),
     };
-    let res = ctx.start_processor(address.clone(), processor).await;
+    let res = ctx.start_processor(address.clone(), processor);
     assert!(res.is_ok());
     sleep(Duration::new(1, 0)).await;
     assert!(shutdown_was_called.load(Ordering::Relaxed));
@@ -256,11 +251,9 @@ impl Processor for DummyProcessor {
 
 #[ockam_macros::test]
 async fn starting_processor_with_dup_address_should_fail(ctx: &mut Context) -> Result<()> {
-    ctx.start_processor("dummy_processor", DummyProcessor)
-        .await?;
+    ctx.start_processor("dummy_processor", DummyProcessor)?;
     assert!(ctx
         .start_processor("dummy_processor", DummyProcessor)
-        .await
         .is_err());
     Ok(())
 }
@@ -316,7 +309,7 @@ async fn counting_processor__run_node_lifecycle__processor_lifecycle_should_be_f
         run_called_count: run_called_count_clone,
     };
 
-    ctx.start_processor("counting_processor", processor).await?;
+    ctx.start_processor("counting_processor", processor)?;
     sleep(Duration::from_secs(1)).await;
 
     assert!(initialize_was_called.load(Ordering::Relaxed));
@@ -363,7 +356,7 @@ async fn waiting_processor__shutdown__should_be_interrupted(ctx: &mut Context) -
         shutdown_was_called: shutdown_was_called.clone(),
     };
 
-    ctx.start_processor("waiting_processor", processor).await?;
+    ctx.start_processor("waiting_processor", processor)?;
     sleep(Duration::from_secs(1)).await;
 
     ctx.stop_address(&"waiting_processor".into())?;
@@ -431,8 +424,7 @@ async fn waiting_processor__messaging__should_work(ctx: &mut Context) -> Result<
         shutdown_was_called: shutdown_was_called_clone,
     };
 
-    ctx.start_processor_with_access_control("messaging_processor", processor, AllowAll, AllowAll)
-        .await?;
+    ctx.start_processor_with_access_control("messaging_processor", processor, AllowAll, AllowAll)?;
     sleep(Duration::from_millis(250)).await;
 
     let msg: String = ctx
@@ -477,8 +469,7 @@ impl Worker for BadWorker {
 #[ockam_macros::test]
 async fn abort_blocked_shutdown(ctx: &mut Context) -> Result<()> {
     // Create an executor
-    ctx.start_worker_with_access_control("bad", BadWorker, DenyAll, DenyAll)
-        .await?;
+    ctx.start_worker_with_access_control("bad", BadWorker, DenyAll, DenyAll)?;
 
     ockam_node::tokio::time::timeout(Duration::from_secs(2), ctx.shutdown_node())
         .await
@@ -521,8 +512,7 @@ enum SendReceiveResponse {
 /// See https://github.com/build-trust/ockam/issues/2628.
 #[ockam_macros::test]
 async fn use_context_send_and_receive(ctx: &mut Context) -> Result<()> {
-    ctx.start_worker("SendReceiveWorker", SendReceiveWorker)
-        .await?;
+    ctx.start_worker("SendReceiveWorker", SendReceiveWorker)?;
 
     let msg_tx = SendReceiveRequest::Connect();
     let msg_rx = ctx.send_and_receive("SendReceiveWorker", msg_tx).await?;
@@ -559,11 +549,9 @@ impl Worker for DummyWorker {
 
 #[ockam_macros::test]
 async fn starting_worker_with_dup_address_should_fail(ctx: &mut Context) -> Result<()> {
-    ctx.start_worker_with_access_control("dummy_worker", DummyWorker, DenyAll, DenyAll)
-        .await?;
+    ctx.start_worker_with_access_control("dummy_worker", DummyWorker, DenyAll, DenyAll)?;
     assert!(ctx
         .start_worker_with_access_control("dummy_worker", DummyWorker, DenyAll, DenyAll)
-        .await
         .is_err());
     Ok(())
 }
@@ -599,8 +587,7 @@ async fn message_handle__error_during_handling__keep_worker_running(
         CountingErrorWorker {
             counter: counter.clone(),
         },
-    )
-    .await?;
+    )?;
 
     ctx.send("counter", "test".to_string()).await?;
     ctx.sleep(Duration::from_millis(100)).await;

@@ -46,8 +46,7 @@ impl TcpListenProcessor {
         ProcessorBuilder::new(processor)
             .with_address(address.clone())
             .with_shutdown_priority(WorkerShutdownPriority::Priority5)
-            .start(ctx)
-            .await?;
+            .start(ctx)?;
 
         Ok((saddr, address))
     }
@@ -107,8 +106,7 @@ impl Processor for TcpListenProcessor {
             peer,
             mode,
             &receiver_flow_control_id,
-        )
-        .await?;
+        )?;
 
         // Processor to receive messages over the wire and forward them to the node
         TcpRecvProcessor::start(
@@ -120,8 +118,7 @@ impl Processor for TcpListenProcessor {
             mode,
             &receiver_flow_control_id,
             receiver_outgoing_access_control,
-        )
-        .await?;
+        )?;
 
         Ok(true)
     }

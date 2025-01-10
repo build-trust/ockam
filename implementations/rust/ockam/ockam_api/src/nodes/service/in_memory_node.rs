@@ -134,7 +134,7 @@ impl InMemoryNode {
     ) -> miette::Result<InMemoryNode> {
         let defaults = NodeManagerDefaults::default();
 
-        let tcp = TcpTransport::create(ctx).await.into_diagnostic()?;
+        let tcp = TcpTransport::create(ctx).into_diagnostic()?;
         let tcp_listener = tcp
             .listen(
                 defaults.tcp_listener_address.as_str(),

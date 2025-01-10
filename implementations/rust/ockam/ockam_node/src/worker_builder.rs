@@ -97,8 +97,8 @@ where
     W: Worker<Context = Context>,
 {
     /// Consume this builder and start a new Ockam [`Worker`] from the given context
-    pub async fn start(self, context: &Context) -> Result<()> {
-        start(context, self.mailboxes, self.shutdown_priority, self.worker).await
+    pub fn start(self, context: &Context) -> Result<()> {
+        start(context, self.mailboxes, self.shutdown_priority, self.worker)
     }
 
     pub fn with_shutdown_priority(mut self, shutdown_priority: WorkerShutdownPriority) -> Self {
@@ -157,7 +157,7 @@ where
     }
 
     /// Consume this builder and start a new Ockam [`Worker`] from the given context
-    pub async fn start(self, context: &Context) -> Result<()> {
+    pub fn start(self, context: &Context) -> Result<()> {
         start(
             context,
             Mailboxes::new(
@@ -172,7 +172,6 @@ where
             self.shutdown_priority,
             self.worker,
         )
-        .await
     }
 }
 
@@ -218,7 +217,7 @@ where
 }
 
 /// Consume this builder and start a new Ockam [`Worker`] from the given context
-async fn start<W>(
+fn start<W>(
     context: &Context,
     mailboxes: Mailboxes,
     shutdown_priority: WorkerShutdownPriority,

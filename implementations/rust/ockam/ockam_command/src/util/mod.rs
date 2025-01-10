@@ -67,7 +67,6 @@ where
                     DenyAll,
                     DenyAll,
                 )
-                .await
                 .expect("Embedded node child ctx can't be created");
             let r = f(child_ctx).await;
             let _ = ctx.shutdown_node().await;
@@ -96,7 +95,6 @@ where
                 DenyAll,
                 DenyAll,
             )
-            .await
             .expect("Embedded node child ctx can't be created");
         let result = f(child_ctx).await;
         let _ = ctx.shutdown_node().await;

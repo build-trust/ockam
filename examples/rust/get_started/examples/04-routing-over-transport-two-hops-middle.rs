@@ -13,14 +13,13 @@ async fn main(ctx: Context) -> Result<()> {
     let node = node(ctx).await?;
 
     // Initialize the TCP Transport
-    let tcp = node.create_tcp_transport().await?;
+    let tcp = node.create_tcp_transport()?;
 
     // Create a TCP connection to the responder node.
     let connection_to_responder = tcp.connect("127.0.0.1:4000", TcpConnectionOptions::new()).await?;
 
     // Create and start a Relay worker
-    node.start_worker("forward_to_responder", Relay::new(connection_to_responder))
-        .await?;
+    node.start_worker("forward_to_responder", Relay::new(connection_to_responder))?;
 
     // Create a TCP listener and wait for incoming connections.
     let listener = tcp.listen("127.0.0.1:3000", TcpListenerOptions::new()).await?;

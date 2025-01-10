@@ -59,7 +59,7 @@ impl CreateCommand {
             .into_diagnostic()?;
 
         // Create TCP transport
-        let tcp = TcpTransport::create(ctx).await.into_diagnostic()?;
+        let tcp = TcpTransport::create(ctx).into_diagnostic()?;
         let tcp_listener = tcp
             .listen(&self.tcp_listener_address, TcpListenerOptions::new())
             .await
@@ -81,7 +81,7 @@ impl CreateCommand {
         debug!("node info persisted {node_info:?}");
 
         let udp_transport = if self.udp {
-            Some(UdpTransport::create(ctx).await.into_diagnostic()?)
+            Some(UdpTransport::create(ctx).into_diagnostic()?)
         } else {
             None
         };
@@ -110,7 +110,6 @@ impl CreateCommand {
         ctx.flow_controls()
             .add_consumer(&NODEMANAGER_ADDR.into(), tcp_listener.flow_control_id());
         ctx.start_worker(NODEMANAGER_ADDR, node_manager_worker)
-            .await
             .into_diagnostic()?;
         debug!("node manager worker started");
 

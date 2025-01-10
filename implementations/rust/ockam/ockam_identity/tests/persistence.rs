@@ -28,9 +28,7 @@ async fn test_key_exchange_only(ctx: &mut Context) -> ockam_core::Result<()> {
         .await?;
 
     let bob_options = SecureChannelListenerOptions::new().key_exchange_only();
-    secure_channels_bob
-        .create_secure_channel_listener(ctx, &bob, "bob_listener", bob_options)
-        .await?;
+    secure_channels_bob.create_secure_channel_listener(ctx, &bob, "bob_listener", bob_options)?;
 
     let alice_options = SecureChannelOptions::new().key_exchange_only();
     let alice_channel = secure_channels_alice
@@ -197,9 +195,12 @@ fn test_persistence() -> ockam_core::Result<()> {
                 let bob_options = SecureChannelListenerOptions::new()
                     .key_exchange_only()
                     .persist()?;
-                secure_channels_bob
-                    .create_secure_channel_listener(&ctx1, &bob, "bob_listener", bob_options)
-                    .await?;
+                secure_channels_bob.create_secure_channel_listener(
+                    &ctx1,
+                    &bob,
+                    "bob_listener",
+                    bob_options,
+                )?;
 
                 let alice_options = SecureChannelOptions::new().key_exchange_only().persist()?;
                 let alice_channel = secure_channels_alice

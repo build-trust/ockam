@@ -23,7 +23,7 @@ impl TcpTransport {
     /// # async fn test(ctx: Context) -> Result<()> {
     /// let route_path = route!["outlet"];
     ///
-    /// let tcp = TcpTransport::create(&ctx).await?;
+    /// let tcp = TcpTransport::create(&ctx)?;
     /// let address: Address = "inlet".into();
     /// tcp.create_inlet(address.clone(), route_path, TcpInletOptions::new()).await?;
     /// # tcp.stop_inlet(&address)?;
@@ -56,7 +56,7 @@ impl TcpTransport {
     /// # async fn test(ctx: Context) -> Result<()> {
     /// let route = route!["outlet"];
     ///
-    /// let tcp = TcpTransport::create(&ctx).await?;
+    /// let tcp = TcpTransport::create(&ctx)?;
     /// let address: Address = "inlet".into();
     /// tcp.create_inlet(address.clone(), route, TcpInletOptions::new()).await?;
     /// tcp.stop_inlet(&address)?;
@@ -83,14 +83,14 @@ impl TcpTransport {
     ///
     /// async fn test(ctx: Context) -> Result<()> {
     ///
-    /// let tcp = TcpTransport::create(&ctx).await?;
+    /// let tcp = TcpTransport::create(&ctx)?;
     /// let address: Address = "outlet".into();
-    /// tcp.create_outlet(address.clone(), HostnamePort::new("localhost", 9000), TcpOutletOptions::new()).await?;
+    /// tcp.create_outlet(address.clone(), HostnamePort::new("localhost", 9000), TcpOutletOptions::new())?;
     /// # tcp.stop_outlet(&address)?;
     /// # Ok(()) }
     /// ```
     #[instrument(skip(self), fields(address = ? address.clone().into(), peer=peer.clone().to_string()))]
-    pub async fn create_outlet(
+    pub fn create_outlet(
         &self,
         address: impl Into<Address> + Clone + Debug,
         peer: HostnamePort,
@@ -102,8 +102,7 @@ impl TcpTransport {
             address.into(),
             peer,
             options,
-        )
-        .await?;
+        )?;
 
         Ok(())
     }
@@ -117,9 +116,9 @@ impl TcpTransport {
     ///
     /// async fn test(ctx: Context) -> Result<()> {
     ///
-    /// let tcp = TcpTransport::create(&ctx).await?;
+    /// let tcp = TcpTransport::create(&ctx)?;
     /// let address: Address = "outlet".into();
-    /// tcp.create_outlet(address.clone(), HostnamePort::new("127.0.0.1", 5000), TcpOutletOptions::new()).await?;
+    /// tcp.create_outlet(address.clone(), HostnamePort::new("127.0.0.1", 5000), TcpOutletOptions::new())?;
     /// tcp.stop_outlet(&address)?;
     /// # Ok(()) }
     /// ```

@@ -59,7 +59,7 @@ impl PortalOutletInterceptor {
     /// │Channel │            │           │             │Outlet  │
     /// └────────┘            └───────────┘             └────────┘
     /// ```
-    pub async fn create(
+    pub fn create(
         context: &Context,
         listener_address: Address,
         spawner_flow_control_id: Option<FlowControlId>,
@@ -78,7 +78,6 @@ impl PortalOutletInterceptor {
             .with_address(listener_address)
             .with_incoming_access_control_arc(incoming_access_control)
             .start(context)
-            .await
             .map(|_| ())
     }
 }
@@ -110,8 +109,7 @@ impl Worker for PortalOutletInterceptor {
             self.incoming_access_control.clone(),
             self.outgoing_access_control.clone(),
             self.interceptor_factory.create(),
-        )
-        .await?;
+        )?;
 
         // retrieve the flow id from the previous hop if it exists, usually a secure channel
         let source_flow_control_id = context
@@ -158,7 +156,7 @@ impl PortalInletInterceptor {
     /// │Inlet   │            │           │             │Channel │
     /// └────────┘            └───────────┘             └────────┘
     /// ```
-    pub async fn create(
+    pub fn create(
         context: &Context,
         listener_address: Address,
         interceptor_factory: Arc<dyn PortalInterceptorFactory>,
@@ -171,7 +169,7 @@ impl PortalInletInterceptor {
             response_incoming_access_control,
         };
 
-        context.start_worker(listener_address, worker).await
+        context.start_worker(listener_address, worker)
     }
 }
 
@@ -213,8 +211,7 @@ impl Worker for PortalInletInterceptor {
             self.request_outgoing_access_control.clone(),
             self.response_incoming_access_control.clone(),
             self.interceptor_factory.create(),
-        )
-        .await?;
+        )?;
 
         message = message.push_front_onward_route(worker_address.clone());
 
@@ -359,7 +356,7 @@ impl PortalInterceptorWorker {
     /// - `inlet_instance` the route from the interceptor to the inlet.
     /// - `incoming_access_control` is the access control for the incoming messages.
     /// - `outgoing_access_control` is the access control for the outgoing messages.
-    pub async fn create_inlet_interceptor(
+    pub fn create_inlet_interceptor(
         context: &mut Context,
         flow_control_id: Option<FlowControlId>,
         inlet_instance: Route,
@@ -389,8 +386,7 @@ impl PortalInterceptorWorker {
         WorkerBuilder::new(from_outlet_worker)
             .with_address(from_outlet_worker_address.clone())
             .with_incoming_access_control_arc(incoming_access_control)
-            .start(context)
-            .await?;
+            .start(context)?;
 
         let from_inlet_worker = Self {
             other_worker_address: from_outlet_worker_address,
@@ -403,8 +399,7 @@ impl PortalInterceptorWorker {
         WorkerBuilder::new(from_inlet_worker)
             .with_address(from_inlet_worker_address.clone())
             .with_outgoing_access_control_arc(outgoing_access_control)
-            .start(context)
-            .await?;
+            .start(context)?;
 
         Ok(from_inlet_worker_address)
     }
@@ -428,7 +423,7 @@ impl PortalInterceptorWorker {
     /// - `spawner_flow_control_id` to account for future created outlets,
     /// - `incoming_access_control` is the access control for the incoming messages.
     /// - `outgoing_access_control` is the access control for the outgoing messages.
-    async fn create_outlet_interceptor(
+    fn create_outlet_interceptor(
         context: &mut Context,
         outlet_route: Route,
         flow_control_id: FlowControlId,
@@ -479,8 +474,7 @@ impl PortalInterceptorWorker {
                 flow_control_id.clone(),
                 spawner_flow_control_id.clone(),
             )))
-            .start(context)
-            .await?;
+            .start(context)?;
 
         // allow forwarding the `pong` message to the other worker
         let response_outgoing_access_control = {
@@ -493,8 +487,7 @@ impl PortalInterceptorWorker {
         WorkerBuilder::new(from_outlet_worker)
             .with_address(from_outlet_worker_address)
             .with_outgoing_access_control(response_outgoing_access_control)
-            .start(context)
-            .await?;
+            .start(context)?;
 
         Ok(from_inlet_worker_address)
     }

@@ -14,7 +14,7 @@ async fn main(ctx: Context) -> Result<()> {
     let alice = node.create_identity().await?;
 
     // Create a TCP connection to the middle node.
-    let tcp = node.create_tcp_transport().await?;
+    let tcp = node.create_tcp_transport()?;
     let connection_to_middle_node = tcp.connect("localhost:3000", TcpConnectionOptions::new()).await?;
 
     // Connect to a secure channel listener and perform a handshake.

@@ -68,7 +68,7 @@ impl TcpPortalWorker {
     /// Start a new `TcpPortalWorker` of type [`TypeName::Inlet`]
     #[instrument(skip_all)]
     #[allow(clippy::too_many_arguments)]
-    pub(super) async fn start_new_inlet(
+    pub(super) fn start_new_inlet(
         ctx: &Context,
         registry: TcpRegistry,
         streams: (ReadHalfMaybeTls, WriteHalfMaybeTls),
@@ -91,13 +91,12 @@ impl TcpPortalWorker {
             incoming_access_control,
             outgoing_access_control,
         )
-        .await
     }
 
     /// Start a new `TcpPortalWorker` of type [`TypeName::Outlet`]
     #[allow(clippy::too_many_arguments)]
     #[instrument(skip_all)]
-    pub(super) async fn start_new_outlet(
+    pub(super) fn start_new_outlet(
         ctx: &Context,
         registry: TcpRegistry,
         hostname_port: HostnamePort,
@@ -120,13 +119,12 @@ impl TcpPortalWorker {
             incoming_access_control,
             outgoing_access_control,
         )
-        .await
     }
 
     /// Start a new `TcpPortalWorker`
     #[allow(clippy::too_many_arguments)]
     #[instrument(skip_all)]
-    async fn start(
+    fn start(
         ctx: &Context,
         registry: TcpRegistry,
         hostname_port: HostnamePort,
@@ -192,8 +190,7 @@ impl TcpPortalWorker {
         // start worker
         WorkerBuilder::new(worker)
             .with_mailboxes(Mailboxes::new(internal_mailbox, vec![remote_mailbox]))
-            .start(ctx)
-            .await?;
+            .start(ctx)?;
 
         Ok(())
     }
@@ -213,11 +210,11 @@ impl TcpPortalWorker {
 
     /// Start a `TcpPortalRecvProcessor`
     #[instrument(skip_all)]
-    async fn start_receiver(&mut self, ctx: &Context, onward_route: Route) -> Result<()> {
+    fn start_receiver(&mut self, ctx: &Context, onward_route: Route) -> Result<()> {
         if let Some(rx) = self.read_half.take() {
             match rx {
-                ReadHalfNoTls(rx) => self.start_receive_processor(ctx, onward_route, rx).await,
-                ReadHalfWithTls(rx) => self.start_receive_processor(ctx, onward_route, rx).await,
+                ReadHalfNoTls(rx) => self.start_receive_processor(ctx, onward_route, rx),
+                ReadHalfWithTls(rx) => self.start_receive_processor(ctx, onward_route, rx),
             }
         } else {
             Err(TransportError::PortalInvalidState)?
@@ -225,7 +222,7 @@ impl TcpPortalWorker {
     }
 
     /// Start a TcpPortalRecvProcessor using a specific AsyncRead implementation (either supporting TLS or not)
-    async fn start_receive_processor<R: AsyncRead + Unpin + Send + Sync + 'static>(
+    fn start_receive_processor<R: AsyncRead + Unpin + Send + Sync + 'static>(
         &mut self,
         ctx: &Context,
         onward_route: Route,
@@ -254,8 +251,7 @@ impl TcpPortalWorker {
 
         ProcessorBuilder::new(receiver)
             .with_mailboxes(Mailboxes::new(remote, vec![internal]))
-            .start(ctx)
-            .await?;
+            .start(ctx)?;
 
         Ok(())
     }
@@ -398,7 +394,7 @@ impl TcpPortalWorker {
         )
         .await?;
 
-        self.start_receiver(ctx, pong_route.clone()).await?;
+        self.start_receiver(ctx, pong_route.clone())?;
 
         debug!(
             "Outlet at: {} successfully connected",
@@ -493,7 +489,7 @@ impl Worker for TcpPortalWorker {
                 if PortalMessage::decode(&payload)? != PortalMessage::Pong {
                     return Err(TransportError::Protocol)?;
                 };
-                self.handle_receive_pong(ctx, return_route).await
+                self.handle_receive_pong(ctx, return_route)
             }
             State::Initialized => {
                 trace!(
@@ -535,8 +531,8 @@ impl Worker for TcpPortalWorker {
 
 impl TcpPortalWorker {
     #[instrument(skip_all)]
-    async fn handle_receive_pong(&mut self, ctx: &Context, return_route: Route) -> Result<()> {
-        self.start_receiver(ctx, return_route.clone()).await?;
+    fn handle_receive_pong(&mut self, ctx: &Context, return_route: Route) -> Result<()> {
+        self.start_receiver(ctx, return_route.clone())?;
         debug!("Inlet at: {} received pong", self.addresses.sender_internal);
         self.remote_route = Some(return_route);
         self.state = State::Initialized;

@@ -10,7 +10,7 @@ use ockam_api::authenticator::direct::Members;
 use ockam_api::cloud::AuthorityNodeClient;
 use ockam_api::output::Output;
 use ockam_api::terminal::{Terminal, TerminalStream};
-use ockam_core::AsyncTryClone;
+use ockam_core::TryClone;
 
 use crate::project_member::{authority_client, MemberOutput};
 use crate::shared_args::IdentityOpts;
@@ -45,7 +45,7 @@ impl Command for ShowCommand {
     const NAME: &'static str = "project-member show";
 
     async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
-        Ok(ShowTui::run(ctx.async_try_clone().await.into_diagnostic()?, opts, self).await?)
+        Ok(ShowTui::run(ctx.try_clone().into_diagnostic()?, opts, self).await?)
     }
 }
 

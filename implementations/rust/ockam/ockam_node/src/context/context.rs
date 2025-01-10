@@ -1,4 +1,4 @@
-use crate::channel_types::SmallReceiver;
+use crate::channel_types::MessageReceiver;
 use crate::tokio::runtime::Handle;
 use core::sync::atomic::AtomicUsize;
 use ockam_core::compat::collections::HashMap;
@@ -66,7 +66,7 @@ pub struct Context {
     pub(super) mailboxes: Mailboxes,
     pub(super) router: Weak<Router>,
     pub(super) runtime_handle: Handle,
-    pub(super) receiver: SmallReceiver<RelayMessage>,
+    pub(super) receiver: MessageReceiver<RelayMessage>,
     pub(super) mailbox_count: Arc<AtomicUsize>,
     /// List of transports used to resolve external addresses to local workers in routes
     pub(super) transports: Arc<RwLock<HashMap<TransportType, Arc<dyn Transport>>>>,

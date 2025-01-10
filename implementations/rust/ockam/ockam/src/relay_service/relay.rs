@@ -17,7 +17,7 @@ pub(super) struct Relay {
 }
 
 impl Relay {
-    pub(super) async fn create(
+    pub(super) fn create(
         ctx: &Context,
         address: Address,
         forward_route: Route,
@@ -44,8 +44,7 @@ impl Relay {
             .with_address(address)
             .with_incoming_access_control_arc(incoming_access_control)
             .with_outgoing_access_control_arc(outgoing_access_control)
-            .start(ctx)
-            .await?;
+            .start(ctx)?;
 
         Ok(())
     }

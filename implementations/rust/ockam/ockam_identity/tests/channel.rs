@@ -31,22 +31,19 @@ async fn test_channel(ctx: &mut Context) -> Result<()> {
     let bob_trust_policy = TrustIdentifierPolicy::new(alice.clone());
 
     let bob_options = SecureChannelListenerOptions::new().with_trust_policy(bob_trust_policy);
-    let bob_listener = secure_channels
-        .create_secure_channel_listener(ctx, &bob, "bob_listener", bob_options)
-        .await?;
+    let bob_listener =
+        secure_channels.create_secure_channel_listener(ctx, &bob, "bob_listener", bob_options)?;
 
     let alice_options = SecureChannelOptions::new().with_trust_policy(alice_trust_policy);
     let alice_channel = secure_channels
         .create_secure_channel(ctx, &alice, route!["bob_listener"], alice_options)
         .await?;
 
-    let mut child_ctx = ctx
-        .new_detached_with_mailboxes(Mailboxes::primary(
-            "child",
-            Arc::new(AllowAll),
-            Arc::new(AllowAll),
-        ))
-        .await?;
+    let mut child_ctx = ctx.new_detached_with_mailboxes(Mailboxes::primary(
+        "child",
+        Arc::new(AllowAll),
+        Arc::new(AllowAll),
+    ))?;
 
     ctx.flow_controls()
         .add_consumer(&"child".into(), bob_listener.flow_control_id());
@@ -121,16 +118,14 @@ async fn test_channel_send_credentials(context: &mut Context) -> Result<()> {
         )
         .await?;
 
-    secure_channels
-        .create_secure_channel_listener(
-            context,
-            &bob,
-            "bob_listener",
-            SecureChannelListenerOptions::new()
-                .with_authority(authority.clone())
-                .with_credential(bob_credential_2)?,
-        )
-        .await?;
+    secure_channels.create_secure_channel_listener(
+        context,
+        &bob,
+        "bob_listener",
+        SecureChannelListenerOptions::new()
+            .with_authority(authority.clone())
+            .with_credential(bob_credential_2)?,
+    )?;
 
     let _alice_credential_1st = secure_channels
         .identities()
@@ -227,14 +222,12 @@ async fn test_channel_rejected_trust_policy(ctx: &mut Context) -> Result<()> {
             .unwrap(),
     );
 
-    secure_channels
-        .create_secure_channel_listener(
-            ctx,
-            &bob,
-            "bob_listener",
-            SecureChannelListenerOptions::new().with_trust_policy(alice_broken_trust_policy),
-        )
-        .await?;
+    secure_channels.create_secure_channel_listener(
+        ctx,
+        &bob,
+        "bob_listener",
+        SecureChannelListenerOptions::new().with_trust_policy(alice_broken_trust_policy),
+    )?;
 
     let alice_channel = secure_channels
         .create_secure_channel(
@@ -245,13 +238,11 @@ async fn test_channel_rejected_trust_policy(ctx: &mut Context) -> Result<()> {
         )
         .await?;
 
-    let mut child_ctx = ctx
-        .new_detached_with_mailboxes(Mailboxes::primary(
-            "child",
-            Arc::new(AllowAll),
-            Arc::new(AllowAll),
-        ))
-        .await?;
+    let mut child_ctx = ctx.new_detached_with_mailboxes(Mailboxes::primary(
+        "child",
+        Arc::new(AllowAll),
+        Arc::new(AllowAll),
+    ))?;
 
     child_ctx
         .send(
@@ -284,9 +275,7 @@ async fn test_channel_send_multiple_messages_both_directions(ctx: &mut Context) 
 
     let bob_options = SecureChannelListenerOptions::new().with_trust_policy(bob_trust_policy);
     let sc_listener_flow_control_id = bob_options.spawner_flow_control_id();
-    secure_channels
-        .create_secure_channel_listener(ctx, &bob, "bob_listener", bob_options)
-        .await?;
+    secure_channels.create_secure_channel_listener(ctx, &bob, "bob_listener", bob_options)?;
 
     let alice_options = SecureChannelOptions::new().with_trust_policy(alice_trust_policy);
     let sc_flow_control_id = alice_options.producer_flow_control_id();
@@ -294,13 +283,11 @@ async fn test_channel_send_multiple_messages_both_directions(ctx: &mut Context) 
         .create_secure_channel(ctx, &alice, route!["bob_listener"], alice_options)
         .await?;
 
-    let mut child_ctx = ctx
-        .new_detached_with_mailboxes(Mailboxes::primary(
-            "child",
-            Arc::new(AllowAll),
-            Arc::new(AllowAll),
-        ))
-        .await?;
+    let mut child_ctx = ctx.new_detached_with_mailboxes(Mailboxes::primary(
+        "child",
+        Arc::new(AllowAll),
+        Arc::new(AllowAll),
+    ))?;
 
     for n in 0..50 {
         child_ctx
@@ -338,14 +325,12 @@ async fn test_channel_registry(ctx: &mut Context) -> Result<()> {
     let alice = identities_creation.create_identity().await?;
     let bob = identities_creation.create_identity().await?;
 
-    let bob_listener = secure_channels
-        .create_secure_channel_listener(
-            ctx,
-            &bob,
-            "bob_listener",
-            SecureChannelListenerOptions::new(),
-        )
-        .await?;
+    let bob_listener = secure_channels.create_secure_channel_listener(
+        ctx,
+        &bob,
+        "bob_listener",
+        SecureChannelListenerOptions::new(),
+    )?;
 
     let alice_channel = secure_channels
         .create_secure_channel(
@@ -365,13 +350,11 @@ async fn test_channel_registry(ctx: &mut Context) -> Result<()> {
     assert_eq!(alice_channel_data.my_id(), &alice);
     assert_eq!(alice_channel_data.their_id(), &bob);
 
-    let mut bob_ctx = ctx
-        .new_detached_with_mailboxes(Mailboxes::primary(
-            "bob",
-            Arc::new(AllowAll),
-            Arc::new(AllowAll),
-        ))
-        .await?;
+    let mut bob_ctx = ctx.new_detached_with_mailboxes(Mailboxes::primary(
+        "bob",
+        Arc::new(AllowAll),
+        Arc::new(AllowAll),
+    ))?;
 
     ctx.flow_controls()
         .add_consumer(&"bob".into(), bob_listener.flow_control_id());
@@ -409,14 +392,12 @@ async fn test_channel_api(ctx: &mut Context) -> Result<()> {
     let alice = identities_creation.create_identity().await?;
     let bob = identities_creation.create_identity().await?;
 
-    let bob_listener = secure_channels
-        .create_secure_channel_listener(
-            ctx,
-            &bob,
-            "bob_listener",
-            SecureChannelListenerOptions::new(),
-        )
-        .await?;
+    let bob_listener = secure_channels.create_secure_channel_listener(
+        ctx,
+        &bob,
+        "bob_listener",
+        SecureChannelListenerOptions::new(),
+    )?;
 
     let alice_channel = secure_channels
         .create_secure_channel(
@@ -427,13 +408,11 @@ async fn test_channel_api(ctx: &mut Context) -> Result<()> {
         )
         .await?;
 
-    let mut bob_ctx = ctx
-        .new_detached_with_mailboxes(Mailboxes::primary(
-            "bob",
-            Arc::new(AllowAll),
-            Arc::new(AllowAll),
-        ))
-        .await?;
+    let mut bob_ctx = ctx.new_detached_with_mailboxes(Mailboxes::primary(
+        "bob",
+        Arc::new(AllowAll),
+        Arc::new(AllowAll),
+    ))?;
 
     ctx.flow_controls()
         .add_consumer(&"bob".into(), bob_listener.flow_control_id());
@@ -524,9 +503,8 @@ async fn test_tunneled_secure_channel_works(ctx: &mut Context) -> Result<()> {
 
     let bob_options =
         SecureChannelListenerOptions::new().with_trust_policy(bob_trust_policy.clone());
-    let bob_listener = secure_channels
-        .create_secure_channel_listener(ctx, &bob, "bob_listener", bob_options)
-        .await?;
+    let bob_listener =
+        secure_channels.create_secure_channel_listener(ctx, &bob, "bob_listener", bob_options)?;
 
     let alice_channel = secure_channels
         .create_secure_channel(
@@ -540,9 +518,12 @@ async fn test_tunneled_secure_channel_works(ctx: &mut Context) -> Result<()> {
     let bob_options_2 = SecureChannelListenerOptions::new()
         .as_consumer(bob_listener.flow_control_id())
         .with_trust_policy(bob_trust_policy);
-    let bob_listener2 = secure_channels
-        .create_secure_channel_listener(ctx, &bob, "bob_another_listener", bob_options_2)
-        .await?;
+    let bob_listener2 = secure_channels.create_secure_channel_listener(
+        ctx,
+        &bob,
+        "bob_another_listener",
+        bob_options_2,
+    )?;
 
     let alice_options2 = SecureChannelOptions::new().with_trust_policy(alice_trust_policy);
     let alice_another_channel = secure_channels
@@ -554,13 +535,11 @@ async fn test_tunneled_secure_channel_works(ctx: &mut Context) -> Result<()> {
         )
         .await?;
 
-    let mut child_ctx = ctx
-        .new_detached_with_mailboxes(Mailboxes::primary(
-            "child",
-            Arc::new(AllowAll),
-            Arc::new(AllowAll),
-        ))
-        .await?;
+    let mut child_ctx = ctx.new_detached_with_mailboxes(Mailboxes::primary(
+        "child",
+        Arc::new(AllowAll),
+        Arc::new(AllowAll),
+    ))?;
 
     ctx.flow_controls()
         .add_consumer(&"child".into(), bob_listener2.flow_control_id());
@@ -605,9 +584,8 @@ async fn test_double_tunneled_secure_channel_works(ctx: &mut Context) -> Result<
 
     let bob_options =
         SecureChannelListenerOptions::new().with_trust_policy(bob_trust_policy.clone());
-    let bob_listener = secure_channels
-        .create_secure_channel_listener(ctx, &bob, "bob_listener", bob_options)
-        .await?;
+    let bob_listener =
+        secure_channels.create_secure_channel_listener(ctx, &bob, "bob_listener", bob_options)?;
 
     let alice_channel = secure_channels
         .create_secure_channel(
@@ -621,9 +599,12 @@ async fn test_double_tunneled_secure_channel_works(ctx: &mut Context) -> Result<
     let bob_options2 = SecureChannelListenerOptions::new()
         .as_consumer(bob_listener.flow_control_id())
         .with_trust_policy(bob_trust_policy.clone());
-    let bob_listener2 = secure_channels
-        .create_secure_channel_listener(ctx, &bob, "bob_another_listener", bob_options2)
-        .await?;
+    let bob_listener2 = secure_channels.create_secure_channel_listener(
+        ctx,
+        &bob,
+        "bob_another_listener",
+        bob_options2,
+    )?;
 
     let alice_another_channel = secure_channels
         .create_secure_channel(
@@ -637,9 +618,12 @@ async fn test_double_tunneled_secure_channel_works(ctx: &mut Context) -> Result<
     let bob_options3 = SecureChannelListenerOptions::new()
         .as_consumer(bob_listener2.flow_control_id())
         .with_trust_policy(bob_trust_policy);
-    let bob_listener3 = secure_channels
-        .create_secure_channel_listener(ctx, &bob, "bob_yet_another_listener", bob_options3)
-        .await?;
+    let bob_listener3 = secure_channels.create_secure_channel_listener(
+        ctx,
+        &bob,
+        "bob_yet_another_listener",
+        bob_options3,
+    )?;
 
     let alice_options3 = SecureChannelOptions::new().with_trust_policy(alice_trust_policy.clone());
     let alice_yet_another_channel = secure_channels
@@ -651,13 +635,11 @@ async fn test_double_tunneled_secure_channel_works(ctx: &mut Context) -> Result<
         )
         .await?;
 
-    let mut child_ctx = ctx
-        .new_detached_with_mailboxes(Mailboxes::primary(
-            "child",
-            Arc::new(AllowAll),
-            Arc::new(AllowAll),
-        ))
-        .await?;
+    let mut child_ctx = ctx.new_detached_with_mailboxes(Mailboxes::primary(
+        "child",
+        Arc::new(AllowAll),
+        Arc::new(AllowAll),
+    ))?;
 
     ctx.flow_controls()
         .add_consumer(&"child".into(), bob_listener3.flow_control_id());
@@ -713,9 +695,7 @@ async fn test_many_times_tunneled_secure_channel_works(ctx: &mut Context) -> Res
             None => options,
         };
         sc_listener_flow_control_id = Some(options.spawner_flow_control_id());
-        secure_channels
-            .create_secure_channel_listener(ctx, &bob, i.to_string(), options)
-            .await?;
+        secure_channels.create_secure_channel_listener(ctx, &bob, i.to_string(), options)?;
         let mut route = route![i.to_string()];
         if let Some(last_channel) = channels.last() {
             route = last_channel.clone() + route;
@@ -730,13 +710,11 @@ async fn test_many_times_tunneled_secure_channel_works(ctx: &mut Context) -> Res
         channels.push(alice_channel.encryptor_address().clone());
     }
 
-    let mut child_ctx = ctx
-        .new_detached_with_mailboxes(Mailboxes::primary(
-            "child",
-            Arc::new(AllowAll),
-            Arc::new(AllowAll),
-        ))
-        .await?;
+    let mut child_ctx = ctx.new_detached_with_mailboxes(Mailboxes::primary(
+        "child",
+        Arc::new(AllowAll),
+        Arc::new(AllowAll),
+    ))?;
 
     ctx.flow_controls()
         .add_consumer(&"child".into(), &sc_listener_flow_control_id.unwrap());
@@ -806,12 +784,14 @@ async fn access_control__known_participant__should_pass_messages(ctx: &mut Conte
         .with_address("receiver")
         .with_incoming_access_control(access_control)
         .with_outgoing_access_control(DenyAll)
-        .start(ctx)
-        .await?;
+        .start(ctx)?;
 
-    let bob_listener = secure_channels
-        .create_secure_channel_listener(ctx, &bob, "listener", SecureChannelListenerOptions::new())
-        .await?;
+    let bob_listener = secure_channels.create_secure_channel_listener(
+        ctx,
+        &bob,
+        "listener",
+        SecureChannelListenerOptions::new(),
+    )?;
 
     let alice_channel = secure_channels
         .create_secure_channel(
@@ -856,12 +836,14 @@ async fn access_control__unknown_participant__should_not_pass_messages(
         .with_address("receiver")
         .with_incoming_access_control(access_control)
         .with_outgoing_access_control(DenyAll)
-        .start(ctx)
-        .await?;
+        .start(ctx)?;
 
-    let bob_listener = secure_channels
-        .create_secure_channel_listener(ctx, &bob, "listener", SecureChannelListenerOptions::new())
-        .await?;
+    let bob_listener = secure_channels.create_secure_channel_listener(
+        ctx,
+        &bob,
+        "listener",
+        SecureChannelListenerOptions::new(),
+    )?;
 
     let alice_channel = secure_channels
         .create_secure_channel(
@@ -902,8 +884,7 @@ async fn access_control__no_secure_channel__should_not_pass_messages(
         .with_address("receiver")
         .with_incoming_access_control(access_control)
         .with_outgoing_access_control(DenyAll)
-        .start(ctx)
-        .await?;
+        .start(ctx)?;
 
     ctx.send(route!["receiver"], "Hello, Bob!".to_string())
         .await?;
@@ -985,14 +966,12 @@ async fn test_channel_delete_ephemeral_keys(ctx: &mut Context) -> Result<()> {
         .create_secure_channel_purpose_key(&bob)
         .await?;
 
-    secure_channels_bob
-        .create_secure_channel_listener(
-            ctx,
-            &bob,
-            "bob_listener",
-            SecureChannelListenerOptions::new(),
-        )
-        .await?;
+    secure_channels_bob.create_secure_channel_listener(
+        ctx,
+        &bob,
+        "bob_listener",
+        SecureChannelListenerOptions::new(),
+    )?;
     assert_eq!(bob_identity_vault.number_of_keys().await?, 1);
     assert_eq!(bob_sc_vault.number_of_ephemeral_aead_secrets(), 0);
     assert_eq!(bob_sc_vault.number_of_ephemeral_buffer_secrets(), 0);
@@ -1067,14 +1046,12 @@ async fn should_stop_encryptor__and__decryptor__in__secure_channel(
     let alice = identities_creation.create_identity().await?;
     let bob = identities_creation.create_identity().await?;
 
-    let _bob_listener = secure_channels
-        .create_secure_channel_listener(
-            ctx,
-            &bob,
-            "bob_listener",
-            SecureChannelListenerOptions::new(),
-        )
-        .await?;
+    let _bob_listener = secure_channels.create_secure_channel_listener(
+        ctx,
+        &bob,
+        "bob_listener",
+        SecureChannelListenerOptions::new(),
+    )?;
 
     secure_channels
         .create_secure_channel(
@@ -1124,14 +1101,12 @@ async fn address_metadata__encryptor__should_be_terminal(ctx: &mut Context) -> R
     let alice = identities_creation.create_identity().await?;
     let bob = identities_creation.create_identity().await?;
 
-    let _bob_listener = secure_channels
-        .create_secure_channel_listener(
-            ctx,
-            &bob,
-            "bob_listener",
-            SecureChannelListenerOptions::new(),
-        )
-        .await?;
+    let _bob_listener = secure_channels.create_secure_channel_listener(
+        ctx,
+        &bob,
+        "bob_listener",
+        SecureChannelListenerOptions::new(),
+    )?;
 
     let sc = secure_channels
         .create_secure_channel(

@@ -20,9 +20,7 @@ pub async fn message_should_not_pass(ctx: &Context, address: &Address) -> Result
 
 async fn check_message_flow(ctx: &Context, route: Route, should_pass: bool) -> Result<()> {
     let address = Address::random_local();
-    let mut receiving_ctx = ctx
-        .new_detached(address.clone(), AllowAll, AllowAll)
-        .await?;
+    let mut receiving_ctx = ctx.new_detached(address.clone(), AllowAll, AllowAll)?;
 
     let msg: [u8; 4] = random();
     let msg = hex::encode(msg);
@@ -111,9 +109,8 @@ pub async fn create_secure_channel_listener(
 
     let identifier = identities_creation.create_identity().await?;
     let options = SecureChannelListenerOptions::new().as_consumer(flow_control_id);
-    let listener = secure_channels
-        .create_secure_channel_listener(ctx, &identifier, "listener", options)
-        .await?;
+    let listener =
+        secure_channels.create_secure_channel_listener(ctx, &identifier, "listener", options)?;
 
     let info = SecureChannelListenerInfo {
         secure_channels,

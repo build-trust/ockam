@@ -29,7 +29,7 @@ impl TcpOutletListenWorker {
     }
 
     #[instrument(skip_all, name = "TcpOutletListenWorker::start")]
-    pub(crate) async fn start(
+    pub(crate) fn start(
         ctx: &Context,
         registry: TcpRegistry,
         address: Address,
@@ -45,8 +45,7 @@ impl TcpOutletListenWorker {
             .with_address(address)
             .with_incoming_access_control_arc(access_control)
             .with_outgoing_access_control(DenyAll)
-            .start(ctx)
-            .await?;
+            .start(ctx)?;
 
         Ok(())
     }
@@ -106,8 +105,7 @@ impl Worker for TcpOutletListenWorker {
             addresses.clone(),
             self.options.incoming_access_control.clone(),
             self.options.outgoing_access_control.clone(),
-        )
-        .await?;
+        )?;
 
         debug!("Created Tcp Outlet at {}", addresses.sender_remote);
 

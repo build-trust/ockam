@@ -66,9 +66,8 @@ pub use ockam_core::processor;
 /// may be changed in the future to a [`Worker`](crate::Worker)-specific macro.
 pub use ockam_core::worker;
 pub use ockam_core::{
-    allow, deny, errcode, route, Address, Any, AsyncTryClone, Encoded, Error, LocalMessage,
-    Mailbox, Mailboxes, Message, Processor, ProtocolId, Result, Route, Routed, TransportMessage,
-    Worker,
+    allow, deny, errcode, route, Address, Any, Encoded, Error, LocalMessage, Mailbox, Mailboxes,
+    Message, Processor, ProtocolId, Result, Route, Routed, TransportMessage, TryClone, Worker,
 };
 pub use ockam_identity as identity;
 // ---

@@ -21,7 +21,7 @@ async fn async_main(mut ctx: Context) -> Result<()> {
     let ble_client = BleClient::with_adapter(ble_adapter);
 
     // Initialize the BLE Transport.
-    let ble = BleTransport::create(&ctx).await?;
+    let ble = BleTransport::create(&ctx)?;
 
     // Create an Entity to represent Alice.
     let secure_channels = secure_channels().await?;

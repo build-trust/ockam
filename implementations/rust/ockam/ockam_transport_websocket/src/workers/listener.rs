@@ -38,8 +38,7 @@ impl WebSocketListenProcessor {
         ctx.start_processor_with_access_control(
             waddr, processor, AllowAll, // FIXME: @ac
             AllowAll, // FIXME: @ac
-        )
-        .await?;
+        )?;
         Ok(saddr)
     }
 }
@@ -59,7 +58,7 @@ impl Processor for WebSocketListenProcessor {
         debug!("TCP connection accepted");
 
         // Spawn a connection worker for it
-        let pair = WorkerPair::from_server(ctx, ws_stream, peer, vec![]).await?;
+        let pair = WorkerPair::from_server(ctx, ws_stream, peer, vec![])?;
 
         // Register the connection with the local TcpRouter
         self.router_handle.register(&pair).await?;

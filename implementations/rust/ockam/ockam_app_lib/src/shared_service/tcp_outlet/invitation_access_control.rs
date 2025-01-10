@@ -93,17 +93,15 @@ impl InvitationAccessControl {
         }
     }
 
-    pub async fn create_outgoing(
+    pub fn create_outgoing(
         &self,
         ctx: &Context,
     ) -> ockam_core::Result<InvitationOutgoingAccessControl> {
-        let ctx = ctx
-            .new_detached(
-                Address::random_tagged("InvitationOutgoingAccessControl"),
-                DenyAll,
-                DenyAll,
-            )
-            .await?;
+        let ctx = ctx.new_detached(
+            Address::random_tagged("InvitationOutgoingAccessControl"),
+            DenyAll,
+            DenyAll,
+        )?;
 
         Ok(InvitationOutgoingAccessControl {
             ctx,

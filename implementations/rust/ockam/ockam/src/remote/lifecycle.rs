@@ -72,13 +72,11 @@ impl RemoteRelay {
     ) -> Result<RemoteRelayInfo> {
         let addresses = Addresses::generate(RelayType::Static);
 
-        let mut callback_ctx = ctx
-            .new_detached_with_mailboxes(Mailboxes::primary(
-                addresses.completion_callback.clone(),
-                Arc::new(AllowSourceAddress(addresses.main_remote.clone())),
-                Arc::new(DenyAll),
-            ))
-            .await?;
+        let mut callback_ctx = ctx.new_detached_with_mailboxes(Mailboxes::primary(
+            addresses.completion_callback.clone(),
+            Arc::new(AllowSourceAddress(addresses.main_remote.clone())),
+            Arc::new(DenyAll),
+        ))?;
 
         let registration_route = orchestrator_route.into() + "static_forwarding_service";
 
@@ -98,8 +96,7 @@ impl RemoteRelay {
         let mailboxes = Self::mailboxes(addresses, outgoing_access_control);
         WorkerBuilder::new(relay)
             .with_mailboxes(mailboxes)
-            .start(ctx)
-            .await?;
+            .start(ctx)?;
 
         let resp = callback_ctx
             .receive::<RemoteRelayInfo>()
@@ -117,13 +114,11 @@ impl RemoteRelay {
     ) -> Result<RemoteRelayInfo> {
         let addresses = Addresses::generate(RelayType::Ephemeral);
 
-        let mut callback_ctx = ctx
-            .new_detached_with_mailboxes(Mailboxes::primary(
-                addresses.completion_callback.clone(),
-                Arc::new(AllowSourceAddress(addresses.main_remote.clone())),
-                Arc::new(DenyAll),
-            ))
-            .await?;
+        let mut callback_ctx = ctx.new_detached_with_mailboxes(Mailboxes::primary(
+            addresses.completion_callback.clone(),
+            Arc::new(AllowSourceAddress(addresses.main_remote.clone())),
+            Arc::new(DenyAll),
+        ))?;
 
         let registration_route = orchestrator_route.into() + "forwarding_service";
 
@@ -146,8 +141,7 @@ impl RemoteRelay {
         let mailboxes = Self::mailboxes(addresses, outgoing_access_control);
         WorkerBuilder::new(relay)
             .with_mailboxes(mailboxes)
-            .start(ctx)
-            .await?;
+            .start(ctx)?;
 
         let resp = callback_ctx
             .receive::<RemoteRelayInfo>()

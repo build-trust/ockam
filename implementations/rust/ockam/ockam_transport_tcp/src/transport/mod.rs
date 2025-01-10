@@ -13,7 +13,7 @@ pub use portals::*;
 
 use crate::TcpRegistry;
 use ockam_core::compat::sync::Arc;
-use ockam_core::{async_trait, Result};
+use ockam_core::Result;
 use ockam_node::{Context, HasContext};
 
 /// High level management interface for TCP transports
@@ -36,7 +36,7 @@ use ockam_node::{Context, HasContext};
 /// # use ockam_node::Context;
 /// # use ockam_core::Result;
 /// # async fn test(ctx: Context) -> Result<()> {
-/// let tcp = TcpTransport::create(&ctx).await?;
+/// let tcp = TcpTransport::create(&ctx)?;
 /// tcp.listen("127.0.0.1:8000", TcpListenerOptions::new()).await?; // Listen on port 8000
 /// tcp.connect("127.0.0.1:5000", TcpConnectionOptions::new()).await?; // And connect to port 5000
 /// # Ok(()) }
@@ -49,7 +49,7 @@ use ockam_node::{Context, HasContext};
 /// # use ockam_node::Context;
 /// # use ockam_core::Result;
 /// # async fn test(ctx: Context) -> Result<()> {
-/// let tcp = TcpTransport::create(&ctx).await?;
+/// let tcp = TcpTransport::create(&ctx)?;
 /// tcp.listen("127.0.0.1:8000", TcpListenerOptions::new()).await?; // Listen on port 8000
 /// tcp.listen("127.0.0.1:9000", TcpListenerOptions::new()).await?; // Listen on port 9000
 /// # Ok(()) }
@@ -77,11 +77,10 @@ impl TcpTransport {
 
 /// This trait adds a `create_tcp_transport` method to any struct returning a Context.
 /// This is the case for an ockam::Node, so you can write `node.create_tcp_transport()`
-#[async_trait]
 pub trait TcpTransportExtension: HasContext {
     /// Create a TCP transport
-    async fn create_tcp_transport(&self) -> Result<TcpTransport> {
-        TcpTransport::create(self.get_context()).await
+    fn create_tcp_transport(&self) -> Result<TcpTransport> {
+        TcpTransport::create(self.get_context())
     }
 }
 

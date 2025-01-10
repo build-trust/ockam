@@ -6,7 +6,7 @@ use ockam::{node, route, Context, Result};
 async fn main(ctx: Context) -> Result<()> {
     // Initialize the TCP Transport.
     let node = node(ctx).await?;
-    let tcp = node.create_tcp_transport().await?;
+    let tcp = node.create_tcp_transport()?;
 
     let e = node.create_identity().await?;
     let outlet_port = std::env::args().nth(2).unwrap_or_else(|| "4000".to_string());

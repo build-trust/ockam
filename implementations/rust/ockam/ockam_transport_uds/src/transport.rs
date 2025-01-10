@@ -1,6 +1,6 @@
 use std::os::unix::net::SocketAddr;
 
-use ockam_core::{async_trait, Address, AsyncTryClone, Result};
+use ockam_core::{async_trait, Address, Result, TryClone};
 use ockam_node::{Context, HasContext};
 
 use crate::{
@@ -28,7 +28,7 @@ use crate::{
 /// # use ockam_node::Context;
 /// # use ockam_core::Result;
 /// # async fn test(ctx: Context) -> Result<()> {
-/// let uds = UdsTransport::create(&ctx).await?;
+/// let uds = UdsTransport::create(&ctx)?;
 /// uds.listen("/tmp/example-socket").await?; // Listen on socket `/tmp/example-socket`
 /// uds.connect("/tmp/other-socket").await?; // And connect to `/tmp/other-socket`
 /// # Ok(()) }
@@ -41,21 +41,21 @@ use crate::{
 /// # use ockam_node::Context;
 /// # use ockam_core::Result;
 /// # async fn test(ctx: Context) -> Result<()> {
-/// let uds = UdsTransport::create(&ctx).await?;
+/// let uds = UdsTransport::create(&ctx)?;
 /// uds.listen("/tmp/socket-one").await?; // Listen on `/tmp/socket-one`
 /// uds.listen("/tmp/socket-two").await?; // Listen on `/tmp/socket-two`
 /// # Ok(()) }
 /// ```
-#[derive(AsyncTryClone)]
-#[async_try_clone(crate = "ockam_core")]
+#[derive(TryClone)]
+#[try_clone(crate = "ockam_core")]
 pub struct UdsTransport {
     router_handle: UdsRouterHandle,
 }
 
 impl UdsTransport {
     /// Creates a a UDS Router and registers it with the given node [`Context`]
-    pub async fn create(ctx: &Context) -> Result<Self> {
-        let router = UdsRouter::register(ctx).await?;
+    pub fn create(ctx: &Context) -> Result<Self> {
+        let router = UdsRouter::register(ctx)?;
 
         Ok(Self {
             router_handle: router,
@@ -69,7 +69,7 @@ impl UdsTransport {
     /// # use ockam_node::Context;
     /// # use ockam_core::Result;
     /// # async fn test(ctx: Context) -> Result<()> {
-    /// let uds = UdsTransport::create(&ctx).await?;
+    /// let uds = UdsTransport::create(&ctx)?;
     /// uds.connect("/tmp/socket-name").await?;
     /// # Ok(()) }
     /// ```
@@ -84,7 +84,7 @@ impl UdsTransport {
     /// # use ockam_node::Context;
     /// # use ockam_core::Result;
     /// # async fn test(ctx: Context) -> Result<()> {
-    /// let uds = UdsTransport::create(&ctx).await?;
+    /// let uds = UdsTransport::create(&ctx)?;
     /// uds.connect("/tmp/socket-name").await?;
     ///
     /// uds.disconnect("/tmp/socket-name").await?;
@@ -101,13 +101,13 @@ impl UdsTransport {
     /// # use ockam_node::Context;
     /// # use ockam_core::Result;
     /// # async fn test(ctx: Context) -> Result<()> {
-    /// let uds = UdsTransport::create(&ctx).await?;
+    /// let uds = UdsTransport::create(&ctx)?;
     /// uds.listen("/tmp/socket-name").await?;
     /// # Ok(()) }
     /// ```
     pub async fn listen<S: AsRef<str>>(&self, bind_addr: S) -> Result<SocketAddr> {
         let sock_addr = parse_socket_addr(bind_addr.as_ref())?;
-        self.router_handle.bind(sock_addr).await
+        self.router_handle.bind(sock_addr)
     }
 }
 
@@ -117,7 +117,7 @@ impl UdsTransport {
 pub trait UdsTransportExtension: HasContext {
     /// Create a UDS transport
     async fn create_uds_transport(&self) -> Result<UdsTransport> {
-        UdsTransport::create(self.get_context()).await
+        UdsTransport::create(self.get_context())
     }
 }
 

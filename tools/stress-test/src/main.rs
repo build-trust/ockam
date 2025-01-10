@@ -160,7 +160,7 @@ impl State {
         ctx: Arc<Context>,
         cli_state: &CliState,
     ) -> ockam::Result<Arc<InMemoryNode>> {
-        let tcp = TcpTransport::create(&ctx).await?;
+        let tcp = TcpTransport::create(&ctx)?;
         let options = TcpListenerOptions::new();
         let listener = tcp.listen(&"127.0.0.1:0", options).await?;
 
@@ -189,8 +189,7 @@ impl State {
         );
 
         let node_manager_worker = NodeManagerWorker::new(node_manager.clone());
-        ctx.start_worker(NODEMANAGER_ADDR, node_manager_worker)
-            .await?;
+        ctx.start_worker(NODEMANAGER_ADDR, node_manager_worker)?;
 
         ctx.flow_controls()
             .add_consumer(&NODEMANAGER_ADDR.into(), listener.flow_control_id());

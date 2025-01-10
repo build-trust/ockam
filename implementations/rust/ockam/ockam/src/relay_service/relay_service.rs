@@ -20,7 +20,7 @@ pub struct RelayService {
 
 impl RelayService {
     /// Start a forwarding service
-    pub async fn create(
+    pub fn create(
         ctx: &Context,
         address: impl Into<Address>,
         options: RelayServiceOptions,
@@ -52,8 +52,7 @@ impl RelayService {
                 ),
                 additional_mailboxes,
             ))
-            .start(ctx)
-            .await?;
+            .start(ctx)?;
 
         info!("Relay service started at {address}");
 
@@ -143,8 +142,7 @@ impl Worker for RelayService {
             forward_route,
             payload.to_vec(),
             self.options.relays_incoming_access_control.clone(),
-        )
-        .await?;
+        )?;
 
         Ok(())
     }

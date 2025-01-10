@@ -1,5 +1,5 @@
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::{async_trait, Address, AsyncTryClone, Error, Result, TransportType};
+use ockam_core::{async_trait, Address, Error, Result, TransportType, TryClone};
 use ockam_node::Context;
 use ockam_transport_core::Transport;
 use std::sync::Arc;
@@ -16,13 +16,13 @@ impl UdpTransport {
     /// # use ockam_node::Context;
     /// # use ockam_core::Result;
     /// # async fn test(ctx: Context) -> Result<()> {
-    /// let udp = UdpTransport::create(&ctx).await?;
+    /// let udp = UdpTransport::create(&ctx)?;
     /// # Ok(()) }
     /// ```
     #[instrument(name = "create udp transport", skip_all)]
-    pub async fn create(ctx: &Context) -> Result<Self> {
+    pub fn create(ctx: &Context) -> Result<Self> {
         let udp = Self {
-            ctx: Arc::new(ctx.async_try_clone().await?),
+            ctx: Arc::new(ctx.try_clone()?),
         };
         // make the UDP transport available in the list of supported transports for
         // later address resolution when socket addresses will need to be instantiated as UDP
@@ -82,7 +82,7 @@ mod tests {
 
     #[ockam_macros::test]
     async fn test_resolve_address(ctx: &mut Context) -> Result<()> {
-        let udp = UdpTransport::create(ctx).await?;
+        let udp = UdpTransport::create(ctx)?;
         let udp_address = "127.0.0.1:0";
         let initial_workers = ctx.list_workers()?;
         let socket = UdpSocket::bind(udp_address)
@@ -114,7 +114,7 @@ mod tests {
 
     #[ockam_macros::test]
     async fn test_resolve_route_with_dns_address(ctx: &mut Context) -> Result<()> {
-        let udp = UdpTransport::create(ctx).await?;
+        let udp = UdpTransport::create(ctx)?;
         let udp_address = "127.0.0.1:0";
         let socket = UdpSocket::bind(udp_address)
             .await

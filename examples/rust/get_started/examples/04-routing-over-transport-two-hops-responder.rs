@@ -11,10 +11,10 @@ async fn main(ctx: Context) -> Result<()> {
     let node = node(ctx).await?;
 
     // Initialize the TCP Transport
-    let tcp = node.create_tcp_transport().await?;
+    let tcp = node.create_tcp_transport()?;
 
     // Create an echoer worker
-    node.start_worker("echoer", Echoer).await?;
+    node.start_worker("echoer", Echoer)?;
 
     // Create a TCP listener and wait for incoming connections.
     let listener = tcp.listen("127.0.0.1:4000", TcpListenerOptions::new()).await?;

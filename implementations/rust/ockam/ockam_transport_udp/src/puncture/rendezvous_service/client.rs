@@ -1,6 +1,5 @@
 use crate::puncture::rendezvous_service::{RendezvousRequest, RendezvousResponse};
 use crate::{PunctureError, UdpBind};
-use ockam_core::AsyncTryClone;
 use ockam_core::{Result, Route};
 use ockam_node::{Context, MessageSendReceiveOptions};
 use std::time::Duration;
@@ -10,8 +9,6 @@ use std::time::Duration;
 const QUICK_TIMEOUT: Duration = Duration::from_secs(3);
 
 /// Client to the Rendezvous server
-#[derive(AsyncTryClone)]
-#[async_try_clone(crate = "ockam_core")]
 pub struct RendezvousClient {
     rendezvous_route: Route,
 }

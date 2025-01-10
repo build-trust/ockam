@@ -228,12 +228,10 @@ async fn kafka_portal_worker__almost_over_limit_than_limit_kafka_message__two_ka
         buffer: Default::default(),
     };
 
-    context
-        .start_worker(
-            Address::from_string("tcp_payload_receiver"),
-            receiver.clone(),
-        )
-        .await?;
+    context.start_worker(
+        Address::from_string("tcp_payload_receiver"),
+        receiver.clone(),
+    )?;
 
     // let's duplicate the message
     huge_outgoing_request.extend(huge_outgoing_request.clone());
@@ -337,7 +335,6 @@ async fn setup_only_worker(context: &mut Context, handle: &NodeManagerHandle) ->
             TEST_MAX_KAFKA_MESSAGE_SIZE,
         )),
     )
-    .await
     .unwrap()
 }
 
@@ -434,8 +431,7 @@ async fn kafka_portal_worker__metadata_exchange__response_changed(
             )),
             MAX_KAFKA_MESSAGE_SIZE,
         )),
-    )
-    .await?;
+    )?;
 
     let mut request_buffer = BytesMut::new();
     // let's create a real kafka request and pass it through the portal

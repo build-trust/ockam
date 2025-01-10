@@ -9,7 +9,7 @@ use ockam::remote::{RemoteRelay, RemoteRelayOptions};
 use ockam::Result;
 use ockam_core::api::{Error, Request, RequestHeader, Response};
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::{async_trait, Address, AsyncTryClone};
+use ockam_core::{async_trait, Address, TryClone};
 use ockam_multiaddr::MultiAddr;
 use ockam_node::compat::asynchronous::Mutex;
 use ockam_node::Context;
@@ -147,7 +147,7 @@ impl NodeManager {
 
         let replacer = RelaySessionReplacer {
             node_manager: Arc::downgrade(self),
-            context: ctx.async_try_clone().await?,
+            context: ctx.try_clone()?,
             addr: addr.clone(),
             relay_address,
             connection: None,
@@ -155,7 +155,7 @@ impl NodeManager {
             authorized,
         };
 
-        let mut session = Session::create(ctx, Arc::new(Mutex::new(replacer)), None).await?;
+        let mut session = Session::create(ctx, Arc::new(Mutex::new(replacer)), None)?;
 
         let remote_relay_info = match return_timing {
             ReturnTiming::Immediately => None,
@@ -180,7 +180,7 @@ impl NodeManager {
             }
         };
 
-        session.start_monitoring().await?;
+        session.start_monitoring()?;
 
         let relay_info = RelayInfo::new(addr.clone(), alias.clone(), session.connection_status());
         let relay_info = if let Some(remote_relay_info) = remote_relay_info {

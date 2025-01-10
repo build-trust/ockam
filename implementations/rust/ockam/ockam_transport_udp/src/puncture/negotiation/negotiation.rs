@@ -25,7 +25,7 @@ impl UdpPunctureNegotiation {
         let next = onward_route.next()?.clone();
 
         let address = Address::random_tagged("UdpPunctureNegotiator.initiator");
-        let mut child_ctx = ctx.new_detached(address, AllowAll, AllowAll).await?;
+        let mut child_ctx = ctx.new_detached(address, AllowAll, AllowAll)?;
 
         if let Some(flow_control_id) = ctx
             .flow_controls()
@@ -128,8 +128,7 @@ impl UdpPunctureNegotiation {
             Address::from(response.responder_remote_address),
             options,
             false,
-        )
-        .await?;
+        )?;
 
         Ok(puncture)
     }

@@ -32,7 +32,7 @@ async fn main(ctx: Context) -> Result<()> {
     let opt = Sender::parse();
 
     let node = node(ctx).await?;
-    let tcp = node.create_tcp_transport().await?;
+    let tcp = node.create_tcp_transport()?;
 
     // Create an Identity to represent Sender.
     let sender = node.create_identity().await?;

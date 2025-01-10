@@ -32,8 +32,8 @@ impl Context {
     ///     type Message = String;
     /// }
     ///
-    /// async fn start_my_worker(ctx: &mut Context) -> Result<()> {
-    ///     ctx.start_worker("my-worker-address", MyWorker).await
+    /// fn start_my_worker(ctx: &mut Context) -> Result<()> {
+    ///     ctx.start_worker("my-worker-address", MyWorker)
     /// }
     /// ```
     ///
@@ -53,14 +53,13 @@ impl Context {
     ///     WorkerRelay calls Worker::handle_message for each message until either
     ///         stop signal is received (CtrlSignal::InterruptStop to AddressRecord::ctrl_tx)
     ///         there are no messages coming to that receiver (the sender side is dropped)
-    pub async fn start_worker<W>(&self, address: impl Into<Address>, worker: W) -> Result<()>
+    pub fn start_worker<W>(&self, address: impl Into<Address>, worker: W) -> Result<()>
     where
         W: Worker<Context = Context>,
     {
         WorkerBuilder::new(worker)
             .with_address(address)
-            .start(self)
-            .await?;
+            .start(self)?;
 
         Ok(())
     }
@@ -90,11 +89,11 @@ impl Context {
     ///     type Message = String;
     /// }
     ///
-    /// async fn start_my_worker(ctx: &mut Context) -> Result<()> {
-    ///     ctx.start_worker_with_access_control("my-worker-address", MyWorker, AllowAll, AllowAll).await
+    ///  fn start_my_worker(ctx: &mut Context) -> Result<()> {
+    ///     ctx.start_worker_with_access_control("my-worker-address", MyWorker, AllowAll, AllowAll)
     /// }
     /// ```
-    pub async fn start_worker_with_access_control<W>(
+    pub fn start_worker_with_access_control<W>(
         &self,
         address: impl Into<Address>,
         worker: W,
@@ -108,8 +107,7 @@ impl Context {
             .with_address(address)
             .with_incoming_access_control(incoming)
             .with_outgoing_access_control(outgoing)
-            .start(self)
-            .await?;
+            .start(self)?;
 
         Ok(())
     }
@@ -136,14 +134,13 @@ impl Context {
     /// 7. ProcessorRelay is spawned as a tokio task:
     ///     ProcessorRelay calls Processor::initialize
     ///     ProcessorRelay calls Processor::process until either false is returned or stop signal is received (CtrlSignal::InterruptStop to AddressRecord::ctrl_tx)
-    pub async fn start_processor<P>(&self, address: impl Into<Address>, processor: P) -> Result<()>
+    pub fn start_processor<P>(&self, address: impl Into<Address>, processor: P) -> Result<()>
     where
         P: Processor<Context = Context>,
     {
         ProcessorBuilder::new(processor)
             .with_address(address.into())
-            .start(self)
-            .await?;
+            .start(self)?;
 
         Ok(())
     }
@@ -156,7 +153,7 @@ impl Context {
     /// message events, consider using
     /// [`start_worker()`](Self::start_worker) instead!
     ///
-    pub async fn start_processor_with_access_control<P>(
+    pub fn start_processor_with_access_control<P>(
         &self,
         address: impl Into<Address>,
         processor: P,
@@ -170,8 +167,7 @@ impl Context {
             .with_address(address)
             .with_incoming_access_control(incoming)
             .with_outgoing_access_control(outgoing)
-            .start(self)
-            .await?;
+            .start(self)?;
 
         Ok(())
     }

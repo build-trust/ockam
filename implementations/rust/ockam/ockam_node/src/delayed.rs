@@ -22,18 +22,14 @@ impl<M: Message + Clone> Drop for DelayedEvent<M> {
 
 impl<M: Message + Clone> DelayedEvent<M> {
     /// Create a heartbeat
-    pub async fn create(
-        ctx: &Context,
-        destination_addr: impl Into<Address>,
-        msg: M,
-    ) -> Result<Self> {
+    pub fn create(ctx: &Context, destination_addr: impl Into<Address>, msg: M) -> Result<Self> {
         let destination_addr = destination_addr.into();
         let mailboxes = Mailboxes::primary(
             Address::random_tagged("DelayedEvent.create"),
             Arc::new(DenyAll),
             Arc::new(AllowOnwardAddress(destination_addr.clone())),
         );
-        let child_ctx = ctx.new_detached_with_mailboxes(mailboxes).await?;
+        let child_ctx = ctx.new_detached_with_mailboxes(mailboxes)?;
 
         let heartbeat = Self {
             ctx: Arc::new(child_ctx),
@@ -127,14 +123,13 @@ mod tests {
         ctx: &mut Context,
     ) -> Result<()> {
         let msgs_count = Arc::new(AtomicI8::new(0));
-        let mut heartbeat =
-            DelayedEvent::create(ctx, "counting_worker", "Hello".to_string()).await?;
+        let mut heartbeat = DelayedEvent::create(ctx, "counting_worker", "Hello".to_string())?;
 
         let worker = CountingWorker {
             msgs_count: msgs_count.clone(),
         };
 
-        ctx.start_worker("counting_worker", worker).await?;
+        ctx.start_worker("counting_worker", worker)?;
 
         heartbeat.schedule(Duration::from_millis(100))?;
         sleep(Duration::from_millis(150)).await;
@@ -151,14 +146,13 @@ mod tests {
     #[ockam_macros::test(crate = "crate")]
     async fn rescheduling__counting_worker__aborts_existing(ctx: &mut Context) -> Result<()> {
         let msgs_count = Arc::new(AtomicI8::new(0));
-        let mut heartbeat =
-            DelayedEvent::create(ctx, "counting_worker", "Hello".to_string()).await?;
+        let mut heartbeat = DelayedEvent::create(ctx, "counting_worker", "Hello".to_string())?;
 
         let worker = CountingWorker {
             msgs_count: msgs_count.clone(),
         };
 
-        ctx.start_worker("counting_worker", worker).await?;
+        ctx.start_worker("counting_worker", worker)?;
 
         heartbeat.schedule(Duration::from_millis(100))?;
         heartbeat.schedule(Duration::from_millis(100))?;
@@ -173,14 +167,13 @@ mod tests {
     #[ockam_macros::test(crate = "crate")]
     async fn cancel__counting_worker__aborts_existing(ctx: &mut Context) -> Result<()> {
         let msgs_count = Arc::new(AtomicI8::new(0));
-        let mut heartbeat =
-            DelayedEvent::create(ctx, "counting_worker", "Hello".to_string()).await?;
+        let mut heartbeat = DelayedEvent::create(ctx, "counting_worker", "Hello".to_string())?;
 
         let worker = CountingWorker {
             msgs_count: msgs_count.clone(),
         };
 
-        ctx.start_worker("counting_worker", worker).await?;
+        ctx.start_worker("counting_worker", worker)?;
 
         heartbeat.schedule(Duration::from_millis(100))?;
         sleep(Duration::from_millis(150)).await;
@@ -197,14 +190,13 @@ mod tests {
     #[ockam_macros::test(crate = "crate")]
     async fn drop__counting_worker__aborts_existing(ctx: &mut Context) -> Result<()> {
         let msgs_count = Arc::new(AtomicI8::new(0));
-        let mut heartbeat =
-            DelayedEvent::create(ctx, "counting_worker", "Hello".to_string()).await?;
+        let mut heartbeat = DelayedEvent::create(ctx, "counting_worker", "Hello".to_string())?;
 
         let worker = CountingWorker {
             msgs_count: msgs_count.clone(),
         };
 
-        ctx.start_worker("counting_worker", worker).await?;
+        ctx.start_worker("counting_worker", worker)?;
 
         heartbeat.schedule(Duration::from_millis(100))?;
         sleep(Duration::from_millis(150)).await;

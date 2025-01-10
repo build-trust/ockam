@@ -69,7 +69,7 @@ impl TcpTransport {
     /// # use ockam_node::Context;
     /// # use ockam_core::Result;
     /// # async fn test(ctx: Context) -> Result<()> {
-    /// let tcp = TcpTransport::create(&ctx).await?;
+    /// let tcp = TcpTransport::create(&ctx)?;
     /// tcp.listen("127.0.0.1:8000", TcpListenerOptions::new()).await?;
     /// # Ok(()) }
     pub async fn listen(

@@ -99,7 +99,7 @@ impl UdsSendWorker {
     }
 
     /// Create a ([`UdsSendWorker`],[`WorkerPair`]) without spawning the worker.
-    pub(crate) async fn new_pair(
+    pub(crate) fn new_pair(
         router_handle: UdsRouterHandle,
         stream: Option<UnixStream>,
         peer: SocketAddr,
@@ -126,7 +126,7 @@ impl UdsSendWorker {
     }
 
     /// Create a ([`UdsSendWorker`],[`WorkerPair`]) while spawning and starting the worker.
-    pub(crate) async fn start_pair(
+    pub(crate) fn start_pair(
         ctx: &Context,
         router_handle: UdsRouterHandle,
         stream: Option<UnixStream>,
@@ -136,7 +136,7 @@ impl UdsSendWorker {
         let udsrouter_main_addr = router_handle.main_addr().clone();
 
         trace!("Creating new UDS worker pair");
-        let (worker, pair) = Self::new_pair(router_handle, stream, peer, hostnames).await?;
+        let (worker, pair) = Self::new_pair(router_handle, stream, peer, hostnames)?;
 
         let tx_mailbox = Mailbox::new(
             pair.tx_addr(),
@@ -154,8 +154,7 @@ impl UdsSendWorker {
 
         WorkerBuilder::new(worker)
             .with_mailboxes(Mailboxes::new(tx_mailbox, vec![internal_mailbox]))
-            .start(ctx)
-            .await?;
+            .start(ctx)?;
 
         Ok(pair)
     }
@@ -230,8 +229,7 @@ impl Worker for UdsSendWorker {
             self.internal_addr.clone(),
         );
 
-        ctx.start_processor_with_access_control(self.rx_addr.clone(), receiver, DenyAll, AllowAll)
-            .await?;
+        ctx.start_processor_with_access_control(self.rx_addr.clone(), receiver, DenyAll, AllowAll)?;
 
         Ok(())
     }

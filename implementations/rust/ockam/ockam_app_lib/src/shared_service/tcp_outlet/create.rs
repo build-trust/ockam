@@ -33,7 +33,7 @@ impl AppState {
             .await?;
 
         let incoming_ac = ac.create_incoming();
-        let outgoing_ac = ac.create_outgoing(self.context_ref()).await?;
+        let outgoing_ac = ac.create_outgoing(self.context_ref())?;
         match node_manager
             .create_outlet(
                 &self.context(),

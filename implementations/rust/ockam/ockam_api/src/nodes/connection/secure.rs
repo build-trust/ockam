@@ -6,7 +6,7 @@ use crate::{local_multiaddr_to_route, try_address_to_multiaddr};
 
 use crate::nodes::service::SecureChannelType;
 use ockam::identity::Identifier;
-use ockam_core::{async_trait, AsyncTryClone, Error, Route};
+use ockam_core::{async_trait, Error, Route, TryClone};
 use ockam_multiaddr::proto::Secure;
 use ockam_multiaddr::{Match, MultiAddr, Protocol};
 use ockam_node::Context;
@@ -49,7 +49,7 @@ impl Instantiator for SecureChannelInstantiator {
         debug!(%secure_piece, %transport_route, "creating secure channel");
         let route = local_multiaddr_to_route(&secure_piece)?;
 
-        let sc_ctx = ctx.async_try_clone().await?;
+        let sc_ctx = ctx.try_clone()?;
         let sc = node_manager
             .create_secure_channel_internal(
                 &sc_ctx,

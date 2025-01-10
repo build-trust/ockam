@@ -40,14 +40,12 @@ pub struct BleRouter {
 }
 
 impl BleRouter {
-    async fn create_self_handle(&self, ctx: &Context) -> Result<BleRouterHandle> {
-        let handle_ctx = ctx
-            .new_detached(
-                Address::random_tagged("BleRouterHandle.async_try_clone.detached"),
-                AllowAll,
-                AllowAll,
-            )
-            .await?;
+    fn create_self_handle(&self, ctx: &Context) -> Result<BleRouterHandle> {
+        let handle_ctx = ctx.new_detached(
+            Address::random_tagged("BleRouterHandle.try_clone.detached"),
+            AllowAll,
+            AllowAll,
+        )?;
         let handle = BleRouterHandle::new(handle_ctx, self.api_addr.clone());
         Ok(handle)
     }
@@ -137,18 +135,16 @@ impl BleRouter {
     ///
     /// To also handle incoming connections, use
     /// [`BleRouter::bind`](BleRouter::bind)
-    pub(crate) async fn register(ctx: &Context) -> Result<BleRouterHandle> {
+    pub(crate) fn register(ctx: &Context) -> Result<BleRouterHandle> {
         let main_addr = Address::random_tagged("BleRouter.main_addr");
         let api_addr = Address::random_tagged("BleRouter.api_addr");
         debug!("Registering new BleRouter with address {}", &main_addr);
 
-        let child_ctx = ctx
-            .new_detached(
-                Address::random_tagged("BleRouter.detached_child"),
-                AllowAll,
-                AllowAll,
-            )
-            .await?;
+        let child_ctx = ctx.new_detached(
+            Address::random_tagged("BleRouter.detached_child"),
+            AllowAll,
+            AllowAll,
+        )?;
         let router = Self {
             _ctx: child_ctx,
             main_addr: main_addr.clone(),
@@ -156,7 +152,7 @@ impl BleRouter {
             map: BTreeMap::new(),
         };
 
-        let handle = router.create_self_handle(ctx).await?;
+        let handle = router.create_self_handle(ctx)?;
 
         trace!("Start Ble router for address = {:?}", main_addr.clone());
 
@@ -177,8 +173,7 @@ impl BleRouter {
         );
         WorkerBuilder::new(router)
             .with_mailboxes(mailboxes)
-            .start(ctx)
-            .await?;
+            .start(ctx)?;
 
         trace!("Registering Ble router for type = {}", crate::BLE);
         ctx.register(crate::BLE, main_addr)?;

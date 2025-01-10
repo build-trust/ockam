@@ -13,7 +13,7 @@ use ockam_transport_tcp::{
 const LENGTH: usize = 32;
 
 async fn setup(ctx: &Context) -> Result<(String, TcpListener)> {
-    let tcp = TcpTransport::create(ctx).await?;
+    let tcp = TcpTransport::create(ctx)?;
 
     let listener = {
         let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
@@ -22,8 +22,7 @@ async fn setup(ctx: &Context) -> Result<(String, TcpListener)> {
             "outlet",
             bind_address.try_into().unwrap(),
             TcpOutletOptions::new(),
-        )
-        .await?;
+        )?;
         listener
     };
 
@@ -125,7 +124,7 @@ async fn portal__tcp_connection__should_succeed(ctx: &mut Context) -> Result<()>
     let options = TcpListenerOptions::new();
     let outlet_flow_control_id = options.spawner_flow_control_id();
 
-    let tcp = TcpTransport::create(ctx).await?;
+    let tcp = TcpTransport::create(ctx)?;
 
     let listener = tcp.listen("127.0.0.1:0", options).await?;
 
@@ -142,8 +141,7 @@ async fn portal__tcp_connection__should_succeed(ctx: &mut Context) -> Result<()>
         "outlet",
         bind_address.try_into().unwrap(),
         TcpOutletOptions::new().as_consumer(&outlet_flow_control_id),
-    )
-    .await?;
+    )?;
 
     let inlet = tcp
         .create_inlet(
@@ -182,7 +180,7 @@ async fn portal__tcp_connection_with_invalid_message_flow__should_not_succeed(
 
     let options = TcpListenerOptions::new();
 
-    let tcp = TcpTransport::create(ctx).await?;
+    let tcp = TcpTransport::create(ctx)?;
 
     let tcp_listener = tcp.listen("127.0.0.1:0", options).await?;
 
@@ -197,8 +195,7 @@ async fn portal__tcp_connection_with_invalid_message_flow__should_not_succeed(
         "outlet_invalid",
         bind_address.try_into().unwrap(),
         TcpOutletOptions::new(),
-    )
-    .await?;
+    )?;
 
     let inlet = tcp
         .create_inlet(
@@ -239,7 +236,7 @@ async fn portal__update_route__should_succeed(ctx: &mut Context) -> Result<()> {
     let payload1 = generate_binary();
     let payload2 = generate_binary();
 
-    let tcp = TcpTransport::create(ctx).await?;
+    let tcp = TcpTransport::create(ctx)?;
 
     let listener_outlet = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let listener_node = tcp.listen("127.0.0.1:0", TcpListenerOptions::new()).await?;
@@ -252,8 +249,7 @@ async fn portal__update_route__should_succeed(ctx: &mut Context) -> Result<()> {
             .to_string()
             .try_into()?,
         TcpOutletOptions::new().as_consumer(listener_node.flow_control_id()),
-    )
-    .await?;
+    )?;
 
     let node_connection1 = tcp
         .connect(
