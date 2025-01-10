@@ -183,11 +183,11 @@ impl InMemoryNode {
     }
 
     pub async fn stop(&self, ctx: &Context) -> Result<()> {
-        for session in self.registry.inlets.values().await {
+        for session in self.registry.inlets.values() {
             session.session.lock().await.stop().await;
         }
 
-        for session in self.registry.relays.values().await {
+        for session in self.registry.relays.values() {
             session.session.lock().await.stop().await;
         }
 

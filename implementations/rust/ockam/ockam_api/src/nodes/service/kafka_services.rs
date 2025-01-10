@@ -243,13 +243,10 @@ impl InMemoryNode {
             Arc::new(policy_access_control.create_outgoing(context)?),
         )?;
 
-        self.registry
-            .kafka_services
-            .insert(
-                interceptor_address,
-                KafkaServiceInfo::new(KafkaServiceKind::Inlet),
-            )
-            .await;
+        self.registry.kafka_services.insert(
+            interceptor_address,
+            KafkaServiceInfo::new(KafkaServiceKind::Inlet),
+        );
 
         Ok(())
     }
@@ -326,13 +323,10 @@ impl InMemoryNode {
         )
         .await?;
 
-        self.registry
-            .kafka_services
-            .insert(
-                service_address,
-                KafkaServiceInfo::new(KafkaServiceKind::Outlet),
-            )
-            .await;
+        self.registry.kafka_services.insert(
+            service_address,
+            KafkaServiceInfo::new(KafkaServiceKind::Outlet),
+        );
 
         Ok(())
     }
@@ -346,7 +340,7 @@ impl InMemoryNode {
         kind: KafkaServiceKind,
     ) -> Result<DeleteKafkaServiceResult> {
         debug!(address = %address, kind = %kind, "Deleting kafka service");
-        match self.registry.kafka_services.get(&address).await {
+        match self.registry.kafka_services.get(&address) {
             None => Ok(DeleteKafkaServiceResult::ServiceNotFound { address, kind }),
             Some(e) => {
                 if kind.eq(e.kind()) {
@@ -359,7 +353,7 @@ impl InMemoryNode {
                             ctx.stop_address(&KAFKA_OUTLET_BOOTSTRAP_ADDRESS.into())?;
                         }
                     }
-                    self.registry.kafka_services.remove(&address).await;
+                    self.registry.kafka_services.remove(&address);
                     Ok(DeleteKafkaServiceResult::ServiceDeleted)
                 } else {
                     error!(address = %address, "Service is not a kafka {}", kind.to_string());

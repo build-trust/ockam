@@ -413,7 +413,7 @@ impl AppState {
     /// Return the list of currently running outlets
     pub async fn tcp_outlet_list(&self) -> Vec<OutletStatus> {
         let node_manager = self.node_manager.read().await;
-        node_manager.list_outlets().await
+        node_manager.list_outlets()
     }
 
     pub async fn user_info(&self) -> Result<UserInfo> {

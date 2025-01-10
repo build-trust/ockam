@@ -129,8 +129,7 @@ impl KafkaKeyExchangeControllerImpl {
                     if let Err(error) = Self::validate_consumer_credentials(&inner, &entry).await {
                         inner
                             .node_manager
-                            .delete_secure_channel(context, &producer_encryptor_address)
-                            .await?;
+                            .delete_secure_channel(context, &producer_encryptor_address)?;
                         return Err(error);
                     };
 
@@ -142,8 +141,7 @@ impl KafkaKeyExchangeControllerImpl {
                         {
                             inner
                                 .node_manager
-                                .delete_secure_channel(context, &producer_encryptor_address)
-                                .await?;
+                                .delete_secure_channel(context, &producer_encryptor_address)?;
                             return Err(err);
                         }
                     }

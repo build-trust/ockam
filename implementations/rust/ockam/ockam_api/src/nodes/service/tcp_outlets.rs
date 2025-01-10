@@ -68,11 +68,11 @@ impl NodeManagerWorker {
         }
     }
 
-    pub(super) async fn show_outlet(
+    pub(super) fn show_outlet(
         &self,
         worker_addr: &Address,
     ) -> Result<Response<OutletStatus>, Response<Error>> {
-        match self.node_manager.show_outlet(worker_addr).await {
+        match self.node_manager.show_outlet(worker_addr) {
             Some(outlet) => Ok(Response::ok().body(outlet)),
             None => Err(Response::not_found_no_request(&format!(
                 "Outlet with address {worker_addr} not found"
@@ -80,10 +80,10 @@ impl NodeManagerWorker {
         }
     }
 
-    pub(super) async fn get_outlets(&self, req: &RequestHeader) -> Response<Vec<OutletStatus>> {
+    pub(super) fn get_outlets(&self, req: &RequestHeader) -> Response<Vec<OutletStatus>> {
         Response::ok()
             .with_headers(req)
-            .body(self.node_manager.list_outlets().await)
+            .body(self.node_manager.list_outlets())
     }
 }
 
@@ -101,11 +101,7 @@ impl NodeManager {
         access_control: OutletAccessControl,
         privileged: bool,
     ) -> Result<OutletStatus> {
-        let worker_addr = self
-            .registry
-            .outlets
-            .generate_worker_addr(worker_addr)
-            .await;
+        let worker_addr = self.registry.outlets.generate_worker_addr(worker_addr);
 
         info!(
             "Handling request to create outlet portal to {to} with worker {:?}",
@@ -113,7 +109,7 @@ impl NodeManager {
         );
 
         // Check registry for a duplicated key
-        if self.registry.outlets.contains_key(&worker_addr).await {
+        if self.registry.outlets.contains_key(&worker_addr) {
             let message = format!("A TCP outlet with address '{worker_addr}' already exists");
             return Err(ockam_core::Error::new(
                 Origin::Node,
@@ -186,13 +182,10 @@ impl NodeManager {
         Ok(match res {
             Ok(_) => {
                 // TODO: Use better way to store outlets?
-                self.registry
-                    .outlets
-                    .insert(
-                        worker_addr.clone(),
-                        OutletInfo::new(to.clone(), Some(&worker_addr), privileged),
-                    )
-                    .await;
+                self.registry.outlets.insert(
+                    worker_addr.clone(),
+                    OutletInfo::new(to.clone(), Some(&worker_addr), privileged),
+                );
 
                 self.cli_state
                     .create_tcp_outlet(&self.node_name, &to, &worker_addr, &None, privileged)
@@ -212,7 +205,7 @@ impl NodeManager {
 
     pub async fn delete_outlet(&self, worker_addr: &Address) -> Result<Option<OutletInfo>> {
         info!(%worker_addr, "Handling request to delete outlet portal");
-        if let Some(deleted_outlet) = self.registry.outlets.remove(worker_addr).await {
+        if let Some(deleted_outlet) = self.registry.outlets.remove(worker_addr) {
             debug!(%worker_addr, "Successfully removed outlet from node registry");
 
             self.cli_state
@@ -233,9 +226,9 @@ impl NodeManager {
         }
     }
 
-    pub(super) async fn show_outlet(&self, worker_addr: &Address) -> Option<OutletStatus> {
+    pub(super) fn show_outlet(&self, worker_addr: &Address) -> Option<OutletStatus> {
         info!(%worker_addr, "Handling request to show outlet portal");
-        if let Some(outlet_to_show) = self.registry.outlets.get(worker_addr).await {
+        if let Some(outlet_to_show) = self.registry.outlets.get(worker_addr) {
             debug!(%worker_addr, "Outlet not found in node registry");
             Some(OutletStatus::new(
                 outlet_to_show.to,

@@ -128,7 +128,7 @@ impl InletSessionReplacer {
 
     async fn create_impl(&mut self, node_manager: &NodeManager) -> Result<ReplacerOutcome> {
         self.pause_inlet();
-        self.close_connection(node_manager).await;
+        self.close_connection(node_manager);
 
         let connection = node_manager
             .make_connection(
@@ -229,9 +229,9 @@ impl InletSessionReplacer {
         }
     }
 
-    async fn close_connection(&mut self, node_manager: &NodeManager) {
+    fn close_connection(&mut self, node_manager: &NodeManager) {
         if let Some(connection) = self.connection.take() {
-            let result = connection.close(&self.context, node_manager).await;
+            let result = connection.close(&self.context, node_manager);
             if let Err(err) = result {
                 error!(?err, "Failed to close connection");
             }
@@ -286,7 +286,7 @@ impl SessionReplacer for InletSessionReplacer {
         };
 
         self.close_inlet();
-        self.close_connection(&node_manager).await;
+        self.close_connection(&node_manager);
     }
 }
 

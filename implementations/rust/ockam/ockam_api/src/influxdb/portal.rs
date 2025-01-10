@@ -42,8 +42,7 @@ impl NodeManagerWorker {
             .node_manager
             .registry
             .outlets
-            .generate_worker_addr(worker_addr)
-            .await;
+            .generate_worker_addr(worker_addr);
         let outlet_address = match body.influxdb_config {
             InfluxDBOutletConfig::OutletWithFixedToken(token) => {
                 let outlet_addr: Address = format!("{}_outlet", address.address()).into();

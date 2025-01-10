@@ -48,7 +48,7 @@ impl NodeManager {
 
         // Add all Hop workers as consumers for Demo purposes
         // Production nodes should not run any Hop workers
-        for hop in self.registry.hop_services.keys().await {
+        for hop in self.registry.hop_services.keys() {
             ctx.flow_controls()
                 .add_consumer(&hop, &options.flow_control_id());
         }

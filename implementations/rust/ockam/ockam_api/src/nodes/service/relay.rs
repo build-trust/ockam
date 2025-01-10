@@ -11,6 +11,7 @@ use ockam_core::api::{Error, Request, RequestHeader, Response};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{async_trait, Address, TryClone};
 use ockam_multiaddr::MultiAddr;
+use ockam_node::compat::asynchronous::Mutex as AsyncMutex;
 use ockam_node::compat::asynchronous::Mutex;
 use ockam_node::Context;
 
@@ -109,7 +110,7 @@ impl NodeManager {
     /// registered on this node
     pub async fn get_relays(&self) -> Vec<RelayInfo> {
         let mut relays = vec![];
-        for (_, registry_info) in self.registry.relays.entries().await {
+        for (_, registry_info) in self.registry.relays.entries() {
             let session = registry_info.session.lock().await;
             let info = RelayInfo::from_session(
                 &session,
@@ -136,7 +137,7 @@ impl NodeManager {
         relay_address: Option<String>,
         return_timing: ReturnTiming,
     ) -> Result<RelayInfo> {
-        if self.registry.relays.contains_key(&alias).await {
+        if self.registry.relays.contains_key(&alias) {
             let message = format!("A relay with the name '{alias}' already exists");
             return Err(ockam_core::Error::new(
                 Origin::Node,
@@ -197,13 +198,12 @@ impl NodeManager {
         let registry_relay_info = RegistryRelayInfo {
             destination_address: addr.clone(),
             alias: alias.clone(),
-            session: Arc::new(Mutex::new(session)),
+            session: Arc::new(AsyncMutex::new(session)),
         };
 
         self.registry
             .relays
-            .insert(alias, registry_relay_info.clone())
-            .await;
+            .insert(alias, registry_relay_info.clone());
 
         Ok(relay_info)
     }
@@ -212,7 +212,7 @@ impl NodeManager {
     ///
     /// This function removes a relay from the node registry and stops the relay worker.
     pub async fn delete_relay_impl(&self, alias: &str) -> Result<(), ockam::Error> {
-        if let Some(relay_to_delete) = self.registry.relays.remove(alias).await {
+        if let Some(relay_to_delete) = self.registry.relays.remove(alias) {
             debug!(%alias, "Successfully removed relay from node registry");
             relay_to_delete.session.lock().await.stop().await;
             debug!(%alias, "Successfully stopped relay");
@@ -235,7 +235,7 @@ impl NodeManager {
         alias: &str,
     ) -> Result<Response<RelayInfo>, Response<Error>> {
         debug!("Handling ShowRelay request");
-        if let Some(registry_info) = self.registry.relays.get(alias).await {
+        if let Some(registry_info) = self.registry.relays.get(alias) {
             let session = registry_info.session.lock().await;
 
             let relay_info = RelayInfo::from_session(
@@ -321,7 +321,7 @@ impl SessionReplacer for RelaySessionReplacer {
 
         // Add all Hop workers as consumers for Demo purposes
         // Production nodes should not run any Hop workers
-        for hop in node_manager.registry.hop_services.keys().await {
+        for hop in node_manager.registry.hop_services.keys() {
             connection.add_consumer(&self.context, &hop);
         }
 
@@ -353,7 +353,7 @@ impl SessionReplacer for RelaySessionReplacer {
         };
 
         if let Some(connection) = self.connection.take() {
-            let result = connection.close(&self.context, &node_manager).await;
+            let result = connection.close(&self.context, &node_manager);
             if let Err(err) = result {
                 error!(?err, "Failed to close connection");
             }

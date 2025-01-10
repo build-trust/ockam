@@ -70,9 +70,9 @@ impl Connection {
         })
     }
 
-    pub async fn close(&self, context: &Context, node_manager: &NodeManager) -> Result<()> {
+    pub fn close(&self, context: &Context, node_manager: &NodeManager) -> Result<()> {
         for encryptor in &self.secure_channel_encryptors {
-            if let Err(error) = node_manager.delete_secure_channel(context, encryptor).await {
+            if let Err(error) = node_manager.delete_secure_channel(context, encryptor) {
                 match error.code().kind {
                     Kind::NotFound => {
                         debug!("cannot find and delete secure channel `{encryptor}`: {error}");

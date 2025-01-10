@@ -211,8 +211,7 @@ impl NodeManager {
             &DefaultAddress::UPPERCASE_SERVICE.into(),
             api_flow_control_id,
         );
-        self.start_uppercase_service_impl(ctx, DefaultAddress::UPPERCASE_SERVICE.into())
-            .await?;
+        self.start_uppercase_service_impl(ctx, DefaultAddress::UPPERCASE_SERVICE.into())?;
 
         let secure_channel_listener = self
             .create_secure_channel_listener(
@@ -374,11 +373,10 @@ impl NodeManager {
         &self.tcp_transport
     }
 
-    pub async fn list_outlets(&self) -> Vec<OutletStatus> {
+    pub fn list_outlets(&self) -> Vec<OutletStatus> {
         self.registry
             .outlets
             .entries()
-            .await
             .iter()
             .map(|(_, info)| {
                 OutletStatus::new(

@@ -38,7 +38,7 @@ impl NodeManagerWorker {
         }
     }
 
-    pub(crate) async fn delete_influxdb_lease_issuer_service(
+    pub(crate) fn delete_influxdb_lease_issuer_service(
         &self,
         context: &Context,
         req: DeleteServiceRequest,
@@ -47,7 +47,6 @@ impl NodeManagerWorker {
         match self
             .node_manager
             .delete_influxdb_lease_issuer_service(context, &address)
-            .await
         {
             Ok(Some(_)) => Ok(Response::ok()),
             Ok(None) => Err(Response::not_found_no_request(&format!(
@@ -94,8 +93,7 @@ impl InMemoryNode {
             req.influxdb_token,
             req.lease_permissions,
             req.expires_in,
-        )
-        .await?;
+        )?;
         let processor = InfluxDBTokenLessorProcessor::new(worker.state.clone());
 
         WorkerBuilder::new(worker)
@@ -103,10 +101,7 @@ impl InMemoryNode {
             .with_incoming_access_control_arc(incoming_ac)
             .with_outgoing_access_control_arc(outgoing_ac)
             .start(context)?;
-        self.registry
-            .influxdb_services
-            .insert(address.clone(), ())
-            .await;
+        self.registry.influxdb_services.insert(address.clone(), ());
 
         ProcessorBuilder::new(processor)
             .with_address(format!("{address}-processor"))
@@ -115,18 +110,18 @@ impl InMemoryNode {
         Ok(())
     }
 
-    async fn delete_influxdb_lease_issuer_service(
+    fn delete_influxdb_lease_issuer_service(
         &self,
         context: &Context,
         address: &Address,
     ) -> Result<Option<()>, Error> {
         debug!(address = %address,"Deleting influxdb lease issuer service");
-        match self.registry.influxdb_services.get(address).await {
+        match self.registry.influxdb_services.get(address) {
             None => Ok(None),
             Some(_) => {
                 context.stop_address(address)?;
                 context.stop_address(&format!("{address}-processor").into())?;
-                self.registry.influxdb_services.remove(address).await;
+                self.registry.influxdb_services.remove(address);
                 Ok(Some(()))
             }
         }

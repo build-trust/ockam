@@ -34,6 +34,7 @@ pub mod collections {
     /// hash map
     pub mod hash_map {
         pub use hashbrown::hash_map::{Entry, EntryRef};
+        pub use hashbrown::Equivalent;
     }
 
     /// btree map

@@ -25,7 +25,7 @@ pub(crate) struct InfluxDBTokenLessorWorker {
 }
 
 impl InfluxDBTokenLessorWorker {
-    pub(crate) async fn new(
+    pub(crate) fn new(
         address: Address,
         influxdb_address: String,
         influxdb_org_id: String,
