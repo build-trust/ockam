@@ -66,12 +66,7 @@ impl CreateCommand {
         };
         let node_info = opts
             .state
-            .start_node_with_optional_values(
-                &node_name,
-                &self.identity,
-                &self.trust_opts.project_name,
-                Some(&tcp_listener),
-            )
+            .start_node_with_optional_values(&node_name, &self.identity, Some(&tcp_listener))
             .await?;
         debug!("node info persisted {node_info:?}");
 

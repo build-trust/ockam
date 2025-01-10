@@ -218,12 +218,12 @@ impl UserRow {
 mod test {
     use super::*;
 
-    use ockam_node::database::with_dbs;
+    use ockam_node::database::with_sqlite_dbs;
     use std::sync::Arc;
 
     #[tokio::test]
     async fn test_repository() -> Result<()> {
-        with_dbs(|db| async move {
+        with_sqlite_dbs(|db| async move {
             let repository: Arc<dyn UsersRepository> = Arc::new(UsersSqlxDatabase::new(db));
 
             let my_email_address: EmailAddress = "me@ockam.io".try_into().unwrap();

@@ -426,6 +426,21 @@ impl Clean {
     }
 }
 
+/// This function can be used to run some test code with the 2 SQLite databases implementations
+pub async fn with_sqlite_dbs<F, Fut>(f: F) -> Result<()>
+where
+    F: Fn(SqlxDatabase) -> Fut + Send + Sync + 'static,
+    Fut: Future<Output = Result<()>> + Send + 'static,
+{
+    let db = SqlxDatabase::in_memory("test").await?;
+    rethrow("SQLite in memory", f(db)).await?;
+
+    let db_file = NamedTempFile::new().unwrap();
+    let db = SqlxDatabase::create_sqlite(db_file.path()).await?;
+    rethrow("SQLite on disk", f(db)).await?;
+    Ok(())
+}
+
 /// This function can be used to run some test code with the 3 different databases implementations
 pub async fn with_dbs<F, Fut>(f: F) -> Result<()>
 where
@@ -439,10 +454,23 @@ where
     let db = SqlxDatabase::create_sqlite(db_file.path()).await?;
     rethrow("SQLite on disk", f(db)).await?;
 
-    // only run the postgres tests if the OCKAM_POSTGRES_* environment variables are set
+    // only run the postgres tests if the OCKAM_DATABASE_CONNECTION_URL environment variables is set
     if let Ok(db) = SqlxDatabase::create_new_postgres().await {
         rethrow("Postgres local", f(db.clone())).await?;
         db.drop_all_postgres_tables().await?;
+    };
+    Ok(())
+}
+
+/// This function can be used to avoid running a test if the postgres database is used.
+pub async fn skip_if_postgres<F, Fut, R>(f: F) -> std::result::Result<(), R>
+where
+    F: Fn() -> Fut + Send + Sync + 'static,
+    Fut: Future<Output = std::result::Result<(), R>> + Send + 'static,
+{
+    // only run the postgres tests if the OCKAM_DATABASE_CONNECTION_URL environment variables is not set
+    if SqlxDatabase::create_new_postgres().await.is_err() {
+        f().await?
     };
     Ok(())
 }

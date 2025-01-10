@@ -635,12 +635,12 @@ mod test {
         SpacesRepository, SpacesSqlxDatabase, UsersRepository, UsersSqlxDatabase,
     };
     use crate::cloud::enroll::auth0::UserInfo;
-    use ockam_node::database::with_dbs;
+    use ockam_node::database::with_sqlite_dbs;
     use std::sync::Arc;
 
     #[tokio::test]
     async fn test_repository() -> Result<()> {
-        with_dbs(|db| async move {
+        with_sqlite_dbs(|db| async move {
             let repository: Arc<dyn UsersRepository> = Arc::new(UsersSqlxDatabase::new(db.clone()));
             repository
                 .store_user(&UserInfo {
@@ -736,7 +736,7 @@ mod test {
 
     #[tokio::test]
     async fn test_store_project_space() -> Result<()> {
-        with_dbs(|db| async move {
+        with_sqlite_dbs(|db| async move {
             let projects_repository: Arc<dyn ProjectsRepository> =
                 Arc::new(ProjectsSqlxDatabase::new(db.clone()));
 

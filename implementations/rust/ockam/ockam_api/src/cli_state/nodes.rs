@@ -18,7 +18,6 @@ use sysinfo::{Pid, ProcessStatus, ProcessesToUpdate, System};
 
 use crate::cli_state::{random_name, NamedVault, Result};
 use crate::cli_state::{CliState, CliStateError};
-use crate::cloud::project::Project;
 use crate::colors::color_primary;
 use crate::config::lookup::InternetAddress;
 
@@ -27,17 +26,15 @@ use crate::{fmt_warn, ConnectionStatus};
 /// The methods below support the creation and update of local nodes
 impl CliState {
     /// Create a node, with some optional associated values, and start it
-    #[instrument(skip_all, fields(node_name = node_name, identity_name = identity_name.clone(), project_name = project_name.clone()
-    ))]
+    #[instrument(skip_all, fields(node_name = node_name, identity_name = identity_name.clone()))]
     pub async fn start_node_with_optional_values(
         &self,
         node_name: &str,
         identity_name: &Option<String>,
-        project_name: &Option<String>,
         tcp_listener: Option<&TcpListener>,
     ) -> Result<NodeInfo> {
         let mut node = self
-            .create_node_with_optional_values(node_name, identity_name, project_name)
+            .create_node_with_optional_identity(node_name, identity_name)
             .await?;
         if node.pid.is_none() {
             let pid = process::id();
@@ -53,17 +50,12 @@ impl CliState {
         Ok(node)
     }
 
-    /// Create a node, with some optional associated values:
-    ///
-    ///  - an identity name. That identity is used by the `NodeManager` to create secure channels
-    ///  - a project name. It is used to create policies on resources provisioned on a node (like a TCP outlet for example)
-    #[instrument(skip_all, fields(node_name = node_name, identity_name = identity_name.clone(), project_name = project_name.clone()
-    ))]
-    pub async fn create_node_with_optional_values(
+    /// Create a node, with an optional identity name. That identity is used by the `NodeManager` to create secure channels
+    #[instrument(skip_all, fields(node_name = node_name, identity_name = identity_name.clone()))]
+    pub async fn create_node_with_optional_identity(
         &self,
         node_name: &str,
         identity_name: &Option<String>,
-        project_name: &Option<String>,
     ) -> Result<NodeInfo> {
         let identity = match identity_name {
             Some(name) => self.get_named_identity(name).await?,
@@ -72,7 +64,6 @@ impl CliState {
         let node = self
             .create_node_with_identifier(node_name, &identity.identifier())
             .await?;
-        self.set_node_project(node_name, project_name).await?;
         Ok(node)
     }
 
@@ -131,27 +122,6 @@ impl CliState {
                 ));
             }
         }
-        Ok(())
-    }
-
-    /// This method can be used to start a local node first
-    /// then create a project, and associate it to the node
-    #[instrument(skip_all, fields(node_name = node_name, project_name = project_name.clone()))]
-    pub async fn set_node_project(
-        &self,
-        node_name: &str,
-        project_name: &Option<String>,
-    ) -> Result<()> {
-        let project = match project_name {
-            Some(name) => Some(self.projects().get_project_by_name(name).await?),
-            None => self.projects().get_default_project().await.ok(),
-        };
-
-        if let Some(project) = project {
-            self.nodes_repository()
-                .set_node_project_name(node_name, project.name())
-                .await?
-        };
         Ok(())
     }
 
@@ -378,23 +348,6 @@ impl CliState {
         match node_name {
             Some(name) => self.get_node(name).await,
             None => self.get_default_node().await,
-        }
-    }
-
-    /// Return the project associated to a node if there is one
-    #[instrument(skip_all, fields(node_name = node_name))]
-    pub async fn get_node_project(&self, node_name: &str) -> Result<Project> {
-        match self
-            .nodes_repository()
-            .get_node_project_name(node_name)
-            .await?
-        {
-            Some(project_name) => self.projects().get_project_by_name(&project_name).await,
-            None => Err(Error::new(
-                Origin::Api,
-                Kind::NotFound,
-                format!("there is no project associated to node {node_name}"),
-            ))?,
         }
     }
 
@@ -701,7 +654,6 @@ impl NodeInfo {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cloud::project::models::ProjectModel;
     use crate::config::lookup::InternetAddress;
     use std::net::SocketAddr;
     use std::str::FromStr;
@@ -799,12 +751,12 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_create_node_with_optional_values() -> Result<()> {
+    async fn test_create_node_with_optional_identity() -> Result<()> {
         let cli = CliState::test().await?;
 
         // a node can be created with just a name
         let node = cli
-            .create_node_with_optional_values("node-1", &None, &None)
+            .create_node_with_optional_identity("node-1", &None)
             .await?;
         let result = cli.get_node(&node.name()).await?;
         assert_eq!(result.name(), node.name());
@@ -812,43 +764,10 @@ mod tests {
         // a node can be created with a name and an existing identity
         let identity = cli.create_identity_with_name("name").await?;
         let node = cli
-            .create_node_with_optional_values("node-2", &Some(identity.name()), &None)
+            .create_node_with_optional_identity("node-2", &Some(identity.name()))
             .await?;
         let result = cli.get_node(&node.name()).await?;
         assert_eq!(result.identifier(), identity.identifier());
-
-        // a node can be created with a name, an existing identity and an existing project
-        let project = ProjectModel {
-            id: "project_id".to_string(),
-            name: "project_name".to_string(),
-            space_name: "1".to_string(),
-            access_route: "".to_string(),
-            users: vec![],
-            space_id: "1".to_string(),
-            identity: None,
-            project_change_history: None,
-            authority_access_route: None,
-            authority_identity: None,
-            okta_config: None,
-            kafka_config: None,
-            version: None,
-            running: None,
-            operation_id: None,
-            user_roles: vec![],
-        };
-        cli.projects()
-            .import_and_store_project(project.clone())
-            .await?;
-
-        let node = cli
-            .create_node_with_optional_values(
-                "node-4",
-                &Some(identity.name()),
-                &Some(project.name.clone()),
-            )
-            .await?;
-        let result = cli.get_node_project(&node.name()).await?;
-        assert_eq!(result.name(), &project.name);
 
         Ok(())
     }

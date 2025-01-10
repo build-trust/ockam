@@ -146,7 +146,7 @@ impl CreateCommand {
         };
 
         opts.state
-            .create_node_with_optional_values(&self.node_name, &self.identity, &None)
+            .create_node_with_optional_identity(&self.node_name, &self.identity)
             .await?;
 
         // Construct the arguments list and re-execute the ockam
@@ -303,7 +303,7 @@ impl CreateCommand {
         };
 
         let node = state
-            .start_node_with_optional_values(&self.node_name, &Some(identity_name), &None, None)
+            .start_node_with_optional_values(&self.node_name, &Some(identity_name), None)
             .await?;
         state
             .set_tcp_listener_address(&node.name(), &self.tcp_listener_address)

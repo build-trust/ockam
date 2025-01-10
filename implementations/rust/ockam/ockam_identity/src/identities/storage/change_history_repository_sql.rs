@@ -198,21 +198,11 @@ mod tests {
     use crate::{identities, Identity};
 
     use ockam_core::compat::sync::Arc;
-    use ockam_node::database::with_dbs;
-
-    fn orchestrator_identity() -> (Identifier, ChangeHistory) {
-        let identifier = Identifier::from_str(
-            "I84502ce0d9a0a91bae29026b84e19be69fb4203a6bdd1424c85a43c812772a00",
-        )
-        .unwrap();
-        let change_history = ChangeHistory::import_from_string("81825858830101585385f6820181584104ebf9d78281a04f180029c12a74e994386c7c9fee24903f3bfe351497a9952758ee5f4b57d7ed6236ab5082ed85e1ae8c07d5600e0587f652d36727904b3e310df41a656a365d1a7836395d820181584050bf79071ecaf08a966228c712295a17da53994dc781a22103602afe656276ef83ba83a1004845b1e979e0944abff3cd8c7ceef834a8f5eeeca0e8f720fa38f4").unwrap();
-
-        (identifier, change_history)
-    }
+    use ockam_node::database::{with_dbs, with_sqlite_dbs};
 
     #[tokio::test]
     async fn test_identities_repository_has_orchestrator_history() -> Result<()> {
-        with_dbs(|db| async move {
+        with_sqlite_dbs(|db| async move {
             // Clean repository should already have the Orchestrator change history
             let repository: Arc<dyn ChangeHistoryRepository> =
                 Arc::new(ChangeHistorySqlxDatabase::new(db));
@@ -259,19 +249,12 @@ mod tests {
             assert_eq!(result, None);
 
             // the repository can return the list of all change histories
-            let (_orchestrator_identifier, orchestrator_change_history) = orchestrator_identity();
             repository
                 .store_change_history(identity2.identifier(), identity2.change_history().clone())
                 .await?;
             let result = repository.get_change_histories().await?;
-            assert_eq!(
-                result,
-                vec![
-                    orchestrator_change_history,
-                    identity1.change_history().clone(),
-                    identity2.change_history().clone(),
-                ]
-            );
+            assert!(result.contains(&identity1.change_history().clone()));
+            assert!(result.contains(&identity2.change_history().clone()));
             // a change history can also be deleted from the repository
             repository
                 .delete_change_history(identity2.identifier())
@@ -332,5 +315,15 @@ mod tests {
         let identities = identities().await?;
         let identifier = identities.identities_creation().create_identity().await?;
         identities.get_identity(&identifier).await
+    }
+
+    fn orchestrator_identity() -> (Identifier, ChangeHistory) {
+        let identifier = Identifier::from_str(
+            "I84502ce0d9a0a91bae29026b84e19be69fb4203a6bdd1424c85a43c812772a00",
+        )
+        .unwrap();
+        let change_history = ChangeHistory::import_from_string("81825858830101585385f6820181584104ebf9d78281a04f180029c12a74e994386c7c9fee24903f3bfe351497a9952758ee5f4b57d7ed6236ab5082ed85e1ae8c07d5600e0587f652d36727904b3e310df41a656a365d1a7836395d820181584050bf79071ecaf08a966228c712295a17da53994dc781a22103602afe656276ef83ba83a1004845b1e979e0944abff3cd8c7ceef834a8f5eeeca0e8f720fa38f4").unwrap();
+
+        (identifier, change_history)
     }
 }

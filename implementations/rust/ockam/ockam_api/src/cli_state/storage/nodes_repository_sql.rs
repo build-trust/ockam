@@ -161,9 +161,6 @@ impl NodesRepository for NodesSqlxDatabase {
             sqlx::query("DELETE FROM tcp_outlet_status WHERE node_name = $1").bind(node_name);
         query.execute(&mut *transaction).await.void()?;
 
-        let query = sqlx::query("DELETE FROM node_project WHERE node_name = $1").bind(node_name);
-        query.execute(&mut *transaction).await.void()?;
-
         transaction.commit().await.void()
     }
 
@@ -223,30 +220,6 @@ impl NodesRepository for NodesSqlxDatabase {
     async fn set_no_node_pid(&self, node_name: &str) -> Result<()> {
         let query = query("UPDATE node SET pid=NULL WHERE name = $1").bind(node_name);
         query.execute(&*self.database.pool).await.void()
-    }
-
-    async fn set_node_project_name(&self, node_name: &str, project_name: &str) -> Result<()> {
-        let query = query(
-            r#"
-        INSERT INTO node_project (node_name, project_name)
-        VALUES ($1, $2)
-        ON CONFLICT (node_name)
-        DO UPDATE SET project_name = $2"#,
-        )
-        .bind(node_name)
-        .bind(project_name);
-        Ok(query.execute(&*self.database.pool).await.void()?)
-    }
-
-    async fn get_node_project_name(&self, node_name: &str) -> Result<Option<String>> {
-        let query =
-            query("SELECT project_name FROM node_project WHERE node_name = $1").bind(node_name);
-        let row: Option<AnyRow> = query
-            .fetch_optional(&*self.database.pool)
-            .await
-            .into_core()?;
-        let project_name: Option<String> = row.map(|r| r.get(0));
-        Ok(project_name)
     }
 }
 
@@ -415,23 +388,6 @@ mod test {
             assert_eq!(result.len(), 2);
             assert!(result.contains(&node_info1));
             assert!(result.contains(&node_info2));
-            Ok(())
-        })
-        .await
-    }
-
-    #[tokio::test]
-    async fn test_node_project() -> Result<()> {
-        with_dbs(|db| async move {
-            let repository: Arc<dyn NodesRepository> = Arc::new(NodesSqlxDatabase::new(db));
-
-            // a node can be associated to a project name
-            repository
-                .set_node_project_name("node_name", "project1")
-                .await?;
-            let result = repository.get_node_project_name("node_name").await?;
-            assert_eq!(result, Some("project1".into()));
-
             Ok(())
         })
         .await

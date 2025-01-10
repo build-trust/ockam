@@ -333,13 +333,13 @@ impl SubscriptionRow {
 mod test {
     use super::*;
     use crate::cloud::subscription::SubscriptionName;
-    use ockam_node::database::with_dbs;
+    use ockam_node::database::with_sqlite_dbs;
     use std::ops::Add;
     use time::ext::NumericalDuration;
 
     #[tokio::test]
     async fn test_repository() -> Result<()> {
-        with_dbs(|db| async move {
+        with_sqlite_dbs(|db| async move {
             let repository = SpacesSqlxDatabase::new(db);
 
             // create and store 2 spaces

@@ -147,7 +147,6 @@ impl InMemoryNode {
             .start_node_with_optional_values(
                 &defaults.node_name,
                 &Some(identity_name.to_string()),
-                &project_name,
                 Some(&tcp_listener),
             )
             .await

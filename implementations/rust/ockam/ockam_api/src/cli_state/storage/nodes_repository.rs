@@ -71,12 +71,6 @@ pub trait NodesRepository: Send + Sync + 'static {
 
     /// Unset the process id of a node
     async fn set_no_node_pid(&self, node_name: &str) -> Result<()>;
-
-    /// Associate a node to a project
-    async fn set_node_project_name(&self, node_name: &str, project_name: &str) -> Result<()>;
-
-    /// Return the name of the project associated to a node
-    async fn get_node_project_name(&self, node_name: &str) -> Result<Option<String>>;
 }
 
 #[async_trait]
@@ -150,13 +144,5 @@ impl<T: NodesRepository> NodesRepository for AutoRetry<T> {
 
     async fn set_no_node_pid(&self, node_name: &str) -> Result<()> {
         retry!(self.wrapped.set_no_node_pid(node_name))
-    }
-
-    async fn set_node_project_name(&self, node_name: &str, project_name: &str) -> Result<()> {
-        retry!(self.wrapped.set_node_project_name(node_name, project_name))
-    }
-
-    async fn get_node_project_name(&self, node_name: &str) -> Result<Option<String>> {
-        retry!(self.wrapped.get_node_project_name(node_name))
     }
 }

@@ -24,9 +24,6 @@ CREATE TABLE identity
     change_history TEXT NOT NULL
 );
 
--- Insert the controller identity
-INSERT INTO identity VALUES ('I84502ce0d9a0a91bae29026b84e19be69fb4203a6bdd1424c85a43c812772a00', '81825858830101585385f6820181584104ebf9d78281a04f180029c12a74e994386c7c9fee24903f3bfe351497a9952758ee5f4b57d7ed6236ab5082ed85e1ae8c07d5600e0587f652d36727904b3e310df41a656a365d1a7836395d820181584050bf79071ecaf08a966228c712295a17da53994dc781a22103602afe656276ef83ba83a1004845b1e979e0944abff3cd8c7ceef834a8f5eeeca0e8f720fa38f4');
-
 -- This table some local metadata about identities
 CREATE TABLE named_identity
 (
@@ -36,14 +33,6 @@ CREATE TABLE named_identity
     is_default BOOLEAN DEFAULT FALSE -- boolean indicating if this identity is the default one
 );
 
--- This table stores the time when a given identity was enrolled
--- In the current project
-CREATE TABLE identity_enrollment
-(
-    identifier  TEXT    NOT NULL UNIQUE, -- Identifier of the identity
-    enrolled_at INTEGER NOT NULL,        -- UNIX timestamp in seconds
-    email       TEXT                     -- Enrollment email
-);
 
 -- This table lists attributes associated to a given identity
 CREATE TABLE identity_attributes
@@ -66,50 +55,6 @@ CREATE INDEX identity_identifier_index ON identity_attributes (identifier);
 
 CREATE INDEX identity_node_name_index ON identity_attributes (node_name);
 
-
--- This table stores purpose keys that have been created by a given identity
-CREATE TABLE purpose_key
-(
-    identifier              TEXT NOT NULL, -- Identity identifier
-    purpose                 TEXT NOT NULL, -- Purpose of the key: SecureChannels, or Credentials
-    purpose_key_attestation BYTEA NOT NULL  -- Encoded attestation: attestation data and attestation signature
-);
-
-CREATE UNIQUE INDEX purpose_key_index ON purpose_key (identifier, purpose);
-
-----------
--- VAULTS
-----------
-
--- This table stores vault metadata when several vaults have been created locally
-CREATE TABLE vault
-(
-    name       TEXT PRIMARY KEY, -- User-specified name for a vault
-    path       TEXT NULL,        -- Path where the vault is saved, This path can the current database path. In that case the vault data is stored in the *-secrets table below
-    is_default BOOLEAN,          -- boolean indicating if this vault is the default one (0 means true)
-    is_kms     BOOLEAN           -- boolean indicating if this vault is a KMS one (0 means true). In that case only key handles are stored in the database
-);
-
--- This table stores secrets for signing data
-CREATE TABLE signing_secret
-(
-    handle      BYTEA PRIMARY KEY, -- Secret handle
-    secret_type TEXT NOT NULL,    -- Secret type (EdDSACurve25519 or ECDSASHA256CurveP256)
-    secret      BYTEA NOT NULL     -- Secret binary
-);
-
--- This table stores secrets for encrypting / decrypting data
-CREATE TABLE x25519_secret
-(
-    handle BYTEA PRIMARY KEY, -- Secret handle
-    secret BYTEA NOT NULL     -- Secret binary
-);
-
-
----------------
--- CREDENTIALS
----------------
-
 -- This table stores credentials as received by the application
 CREATE TABLE credential
 (
@@ -124,9 +69,47 @@ CREATE TABLE credential
 CREATE UNIQUE INDEX credential_issuer_subject_scope_index ON credential (issuer_identifier, subject_identifier, scope);
 CREATE UNIQUE INDEX credential_issuer_subject_index ON credential(issuer_identifier, subject_identifier);
 
-------------------
+-- This table stores purpose keys that have been created by a given identity
+CREATE TABLE purpose_key
+(
+    identifier              TEXT NOT NULL,  -- Identity identifier
+    purpose                 TEXT NOT NULL,  -- Purpose of the key: SecureChannels, or Credentials
+    purpose_key_attestation BYTEA NOT NULL  -- Encoded attestation: attestation data and attestation signature
+);
+
+CREATE UNIQUE INDEX purpose_key_index ON purpose_key (identifier, purpose);
+
+----------
+-- VAULTS
+----------
+
+-- This table stores vault metadata when several vaults have been created locally
+CREATE TABLE vault
+(
+    name       TEXT PRIMARY KEY, -- User-specified name for a vault
+    path       TEXT NULL,        -- If the path is specified, then the secrets are stored in a SQLite file. Otherwise secrets are stored in the *-secrets tables below.
+    is_default BOOLEAN,          -- boolean indicating if this vault is the default one (0 means true)
+    is_kms     BOOLEAN           -- boolean indicating if this vault is a KMS one (0 means true). In that case only key handles are stored in the database
+);
+
+-- This table stores secrets for signing data
+CREATE TABLE signing_secret
+(
+    handle      BYTEA PRIMARY KEY, -- Secret handle
+    secret_type TEXT NOT NULL,     -- Secret type (EdDSACurve25519 or ECDSASHA256CurveP256)
+    secret      BYTEA NOT NULL     -- Secret binary
+);
+
+-- This table stores secrets for encrypting / decrypting data
+CREATE TABLE x25519_secret
+(
+    handle BYTEA PRIMARY KEY, -- Secret handle
+    secret BYTEA NOT NULL     -- Secret binary
+);
+
+-------------
 -- AUTHORITY
-------------------
+-------------
 
 CREATE TABLE authority_member
 (
@@ -155,6 +138,10 @@ CREATE TABLE authority_enrollment_token
 
 CREATE UNIQUE INDEX authority_enrollment_token_one_time_code_index ON authority_enrollment_token(one_time_code);
 CREATE INDEX authority_enrollment_token_expires_at_index ON authority_enrollment_token(expires_at);
+
+------------
+-- SERVICES
+------------
 
 -- This table stores policies. A policy is an expression which
 -- can be evaluated against an environment (a list of name/value pairs)
@@ -188,6 +175,25 @@ CREATE TABLE resource
 );
 CREATE UNIQUE INDEX resource_index ON resource (node_name, resource_name, resource_type);
 
+-- This table stores the current state of a TCP outlet
+CREATE TABLE tcp_outlet_status
+(
+    node_name   TEXT NOT NULL,       -- Node where that tcp outlet has been created
+    socket_addr TEXT NOT NULL,       -- Socket address that the outlet connects to
+    worker_addr TEXT NOT NULL,       -- Worker address for the outlet itself
+    payload     TEXT,                -- Optional status payload
+    privileged BOOLEAN DEFAULT FALSE -- boolean indicating if the outlet is operating in privileged mode
+);
+
+-- This table stores the current state of a TCP inlet
+CREATE TABLE tcp_inlet
+(
+    node_name    TEXT NOT NULL,      -- Node where that tcp inlet has been created
+    bind_addr    TEXT NOT NULL,      -- Input address to connect to
+    outlet_addr  TEXT NOT NULL,      -- MultiAddress to the outlet
+    alias        TEXT NOT NULL,      -- Alias for that inlet
+    privileged BOOLEAN DEFAULT FALSE -- boolean indicating if the inlet is operating in privileged mode
+);
 
 ---------
 -- NODES
@@ -204,80 +210,6 @@ CREATE TABLE node
     tcp_listener_address TEXT,             -- Socket address for the node default TCP Listener (can be NULL if the node has not been started)
     pid                  INTEGER,          -- Current process id of the node if it has been started
     http_server_address  TEXT              -- Address of the server supporting the HTTP status endpoint for the node
-);
-
--- This table stores the project name to use for a given node
-CREATE TABLE node_project
-(
-    node_name    TEXT PRIMARY KEY, -- Node name
-    project_name TEXT NOT NULL     -- Project name
-);
-
----------------------------
--- PROJECTS, SPACES, USERS
----------------------------
-
--- This table store data about projects as returned by the Controller
-CREATE TABLE project
-(
-    project_id               TEXT PRIMARY KEY, -- Identifier of the project
-    project_name             TEXT    NOT NULL, -- Name of the project
-    is_default               BOOLEAN NOT NULL, -- boolean indicating if this project is the default one (0 means true)
-    space_id                 TEXT    NOT NULL, -- Identifier of the space associated to the project
-    space_name               TEXT    NOT NULL, -- Name of the space associated to the project
-    project_identifier       TEXT,             -- optional: identifier of the project identity
-    access_route             TEXT    NOT NULL, -- Route used to create a secure channel to the project
-    authority_change_history TEXT,             -- Change history for the authority identity
-    authority_access_route   TEXT,             -- Route te the authority associated to the project
-    version                  TEXT,             -- Orchestrator software version
-    running                  BOOLEAN,          -- boolean indicating if this project is currently accessible
-    operation_id             TEXT,             -- optional id of the operation currently creating the project on the Controller side
-    project_change_history   TEXT              -- Change history for the project identity
-);
-
--- This table provides the list of users associated to a given project
-CREATE TABLE user_project
-(
-    user_email TEXT NOT NULL, -- User email
-    project_id TEXT NOT NULL  -- Project id
-);
-
--- This table provides additional information for users associated to a project or a space
-CREATE TABLE user_role
-(
-    user_id    INTEGER NOT NULL, -- User id
-    project_id TEXT    NOT NULL, -- Project id
-    user_email TEXT    NOT NULL, -- User email
-    role       TEXT    NOT NULL, -- Role of the user: admin or member
-    scope      TEXT    NOT NULL  -- Scope of the role: space, project, or service
-);
-
--- This table stores data about spaces as returned by the controller
-CREATE TABLE space
-(
-    space_id   TEXT PRIMARY KEY, -- Identifier of the space
-    space_name TEXT    NOT NULL, -- Name of the space
-    is_default BOOLEAN NOT NULL  -- boolean indicating if this project is the default one (0 means true)
-);
-
--- This table provides the list of users associated to a given project
-CREATE TABLE user_space
-(
-    user_email TEXT NOT NULL, -- User email
-    space_id   TEXT NOT NULL  -- Space id
-);
-
--- This table provides additional information for users after they have been authenticated
-CREATE TABLE "user"
-(
-    email          TEXT PRIMARY KEY, -- User email
-    sub            TEXT    NOT NULL, -- (Sub)ject: unique identifier for the user
-    nickname       TEXT    NOT NULL, -- User nickname (or handle)
-    name           TEXT    NOT NULL, -- User name
-    picture        TEXT    NOT NULL, -- Link to a user picture
-    updated_at     TEXT    NOT NULL, -- ISO-8601 date: when this user information was last update
-    email_verified BOOLEAN NOT NULL, -- boolean indicating if the user email has been verified (0 means true)
-    is_default     BOOLEAN NOT NULL  -- boolean indicating if this user is the default user locally (0 means true)
 );
 
 -------------------
@@ -304,56 +236,4 @@ CREATE TABLE aead_secret
     handle      BYTEA PRIMARY KEY, -- Secret handle
     type        TEXT NOT NULL,    -- Secret type
     secret      BYTEA NOT NULL     -- Secret binary
-);
-
----------------
--- APPLICATION
----------------
-
--- This table stores the current state of an outlet created to expose a service with the desktop application
-CREATE TABLE tcp_outlet_status
-(
-    node_name   TEXT NOT NULL, -- Node where that tcp outlet has been created
-    socket_addr TEXT NOT NULL, -- Socket address that the outlet connects to
-    worker_addr TEXT NOT NULL, -- Worker address for the outlet itself
-    payload     TEXT           -- Optional status payload
-);
-
--- This table stores the current state of an inlet created to expose a service with the desktop application
-CREATE TABLE tcp_inlet
-(
-    node_name    TEXT NOT NULL, -- Node where that tcp inlet has been created
-    bind_addr    TEXT NOT NULL, -- Input address to connect to
-    outlet_addr  TEXT NOT NULL, -- MultiAddress to the outlet
-    alias        TEXT NOT NULL  -- Alias for that inlet
-);
-
--- This table stores the list of services that a user has been invited to connect to
--- via the desktop application
-CREATE TABLE incoming_service
-(
-    invitation_id TEXT PRIMARY KEY, -- Invitation id
-    enabled       BOOLEAN NOT NULL, -- boolean indicating if the user wants to service to be accessible (0 means true)
-    name          TEXT NULL         -- Optional user-defined name for the service
-);
-
-----------
--- ADDONS
-----------
-
--- This table stores the data necessary to configure the Okta addon
-CREATE TABLE okta_config
-(
-    project_id      TEXT NOT NULL, -- Project id of the project using the addon
-    tenant_base_url TEXT NOT NULL, -- Base URL of the tenant
-    client_id       TEXT NOT NULL, -- Client id
-    certificate     TEXT NOT NULL, -- Certificate
-    attributes      TEXT           -- Comma-separated list of attribute names
-);
-
--- This table stores the data necessary to configure the Kafka addons
-CREATE TABLE kafka_config
-(
-    project_id       TEXT NOT NULL, -- Project id of the project using the addon
-    bootstrap_server TEXT NOT NULL  -- URL of the bootstrap server
 );

@@ -208,10 +208,6 @@ impl AppState {
             .projects()
             .set_default_project(project.project_id())
             .await?;
-        self.state()
-            .await
-            .set_node_project(&node_manager.node_name(), &Some(project.name().to_string()))
-            .await?;
         Ok(project)
     }
 }

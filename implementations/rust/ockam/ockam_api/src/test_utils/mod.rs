@@ -70,7 +70,7 @@ pub async fn start_manager_for_tests(
 
     let node_name = random_name();
     cli_state
-        .start_node_with_optional_values(&node_name, &None, &None, Some(&tcp_listener))
+        .start_node_with_optional_values(&node_name, &None, Some(&tcp_listener))
         .await
         .unwrap();
 

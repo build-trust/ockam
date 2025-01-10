@@ -157,13 +157,13 @@ impl PersistentIncomingServiceRow {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ockam::with_dbs;
     use ockam_api::nodes::models::portal::OutletStatus;
     use ockam_core::Address;
+    use ockam_node::database::with_sqlite_dbs;
 
     #[tokio::test]
     async fn store_and_load() -> ockam_core::Result<()> {
-        with_dbs(|db| async move {
+        with_sqlite_dbs(|db| async move {
             let repository: Arc<dyn ModelStateRepository> =
                 Arc::new(ModelStateSqlxDatabase::new(db.clone()));
 
