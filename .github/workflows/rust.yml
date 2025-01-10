@@ -213,11 +213,7 @@ jobs:
       - name: Run postgres test on ${{ matrix.test_projects }}
         run: |
           pg_ctl -D /var/lib/postgresql/data -l logfile start
-          export OCKAM_POSTGRES_HOST=localhost
-          export OCKAM_POSTGRES_PORT=5432
-          export OCKAM_POSTGRES_DATABASE_NAME=test
-          export OCKAM_POSTGRES_USER=postgres
-          export OCKAM_POSTGRES_PASSWORD=password
+          export OCKAM_DATABASE_CONNECTION_URL=postgres://postgres:password@localhost:5432/test
           make -f implementations/rust/Makefile test_postgres
 
       - name: Nix Upload Store
