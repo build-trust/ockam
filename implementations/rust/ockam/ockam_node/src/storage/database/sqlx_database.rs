@@ -472,6 +472,20 @@ where
     Ok(())
 }
 
+/// This function can be used to run some test code with a postgres database
+pub async fn with_postgres_db<F, Fut>(f: F) -> Result<()>
+where
+    F: Fn(SqlxDatabase) -> Fut + Send + Sync + 'static,
+    Fut: Future<Output = Result<()>> + Send + 'static,
+{
+    // only run the postgres tests if the OCKAM_DATABASE_CONNECTION_URL environment variables is set
+    if let Ok(db) = SqlxDatabase::create_new_postgres().await {
+        rethrow("Postgres local", f(db.clone())).await?;
+        db.drop_all_postgres_tables().await?;
+    };
+    Ok(())
+}
+
 /// This function can be used to avoid running a test if the postgres database is used.
 pub async fn skip_if_postgres<F, Fut, R>(f: F) -> std::result::Result<(), R>
 where

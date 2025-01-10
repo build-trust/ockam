@@ -556,6 +556,7 @@ mod tests {
     use super::*;
     use ockam::identity::models::{PurposeKeyAttestation, PurposeKeyAttestationSignature};
     use ockam::identity::Purpose;
+    use ockam_node::database::skip_if_postgres;
     use ockam_vault::{
         ECDSASHA256CurveP256SecretKey, ECDSASHA256CurveP256Signature, HandleToSecret,
         SigningSecret, SigningSecretKeyHandle, X25519SecretKey, X25519SecretKeyHandle,
@@ -731,14 +732,24 @@ mod tests {
         assert!(result.path_as_string().unwrap().contains("vault-secrets"));
 
         // if we reset, we can check that the first vault gets the user defined name
-        // instead of default
-        cli.reset().await?;
-        let cli = CliState::test().await?;
-        let result = cli
-            .create_named_vault(Some("secrets".to_string()), None, UseAwsKms::No)
-            .await?;
-        assert_eq!(result.name(), "secrets".to_string());
-        assert_eq!(result.vault_type(), VaultType::database(UseAwsKms::No));
+        // instead of default.
+        // We only test this for sqlite since we can't reset with postgres.
+
+        skip_if_postgres(move || {
+            let cli_clone = cli.clone();
+            async move {
+                cli_clone.reset().await?;
+                let cli = CliState::test().await?;
+                let result = cli
+                    .create_named_vault(Some("secrets".to_string()), None, UseAwsKms::No)
+                    .await?;
+                assert_eq!(result.name(), "secrets".to_string());
+                assert_eq!(result.vault_type(), VaultType::database(UseAwsKms::No));
+                let result: Result<()> = Ok(());
+                result
+            }
+        })
+        .await?;
 
         Ok(())
     }

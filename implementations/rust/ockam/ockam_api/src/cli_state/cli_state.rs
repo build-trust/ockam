@@ -4,7 +4,7 @@ use tokio::sync::broadcast::{channel, Receiver, Sender};
 
 use ockam::SqlxDatabase;
 use ockam_core::env::get_env_with_default;
-use ockam_node::database::{DatabaseConfiguration, OCKAM_SQLITE_IN_MEMORY};
+use ockam_node::database::{DatabaseConfiguration, DatabaseType, OCKAM_SQLITE_IN_MEMORY};
 use ockam_node::Executor;
 
 use crate::cli_state::error::Result;
@@ -136,11 +136,19 @@ impl CliState {
     }
 
     /// Stop nodes and remove all the directories storing state
+    /// Don't touch the database data if Postgres is used and reset was called accidentally.
     pub async fn reset(&self) -> Result<()> {
-        self.delete_all_named_identities().await?;
-        self.delete_all_nodes().await?;
-        self.delete_all_named_vaults().await?;
-        self.delete().await
+        if Self::make_database_configuration(&self.mode)?.database_type() == DatabaseType::Postgres
+        {
+            Err(CliStateError::InvalidOperation(
+                "Cannot reset the database when using Postgres".to_string(),
+            ))
+        } else {
+            self.delete_all_named_identities().await?;
+            self.delete_all_nodes().await?;
+            self.delete_all_named_vaults().await?;
+            self.delete().await
+        }
     }
 
     /// Removes all the directories storing state without loading the current state
@@ -152,7 +160,6 @@ impl CliState {
 
     /// Delete the local database and log files
     pub async fn delete(&self) -> Result<()> {
-        self.database.drop_postgres_node_tables().await?;
         self.delete_local_data()
     }
 
@@ -363,82 +370,76 @@ impl CliStateMode {
 mod tests {
     use super::*;
     use itertools::Itertools;
-    use ockam_node::database::DatabaseType;
-    use sqlx::any::AnyRow;
-    use sqlx::Row;
+    use ockam_node::database::{skip_if_postgres, DatabaseType};
     use std::fs;
     use tempfile::NamedTempFile;
 
     #[tokio::test]
     async fn test_reset() -> Result<()> {
-        let db_file = NamedTempFile::new().unwrap();
-        let cli_state_directory = db_file.path().parent().unwrap().join(random_name());
-        let mode = CliStateMode::Persistent(cli_state_directory.clone());
-        let db = SqlxDatabase::create(&CliState::make_database_configuration(&mode)?).await?;
-        db.drop_all_postgres_tables().await?;
-        let cli = CliState::create(mode).await?;
+        // We don't need to test reset with Postgres since we don't want reset be used accidentally
+        // with a Postgres database (resetting in that case throws an error).
+        skip_if_postgres(|| async {
+            let db_file = NamedTempFile::new().unwrap();
+            let cli_state_directory = db_file.path().parent().unwrap().join(random_name());
+            let mode = CliStateMode::Persistent(cli_state_directory.clone());
+            let cli = CliState::create(mode).await?;
 
-        // create 2 vaults
-        // the second vault is using a separate file
-        let _vault1 = cli.get_or_create_named_vault("vault1").await?;
-        let _vault2 = cli.get_or_create_named_vault("vault2").await?;
+            // create 2 vaults
+            // the second vault is using a separate file
+            let _vault1 = cli.get_or_create_named_vault("vault1").await?;
+            let _vault2 = cli.get_or_create_named_vault("vault2").await?;
 
-        // create 2 identities
-        let identity1 = cli
-            .create_identity_with_name_and_vault("identity1", "vault1")
-            .await?;
-        let identity2 = cli
-            .create_identity_with_name_and_vault("identity2", "vault2")
-            .await?;
+            // create 2 identities
+            let identity1 = cli
+                .create_identity_with_name_and_vault("identity1", "vault1")
+                .await?;
+            let identity2 = cli
+                .create_identity_with_name_and_vault("identity2", "vault2")
+                .await?;
 
-        // create 2 nodes
-        let _node1 = cli
-            .create_node_with_identifier("node1", &identity1.identifier())
-            .await?;
-        let _node2 = cli
-            .create_node_with_identifier("node2", &identity2.identifier())
-            .await?;
+            // create 2 nodes
+            let _node1 = cli
+                .create_node_with_identifier("node1", &identity1.identifier())
+                .await?;
+            let _node2 = cli
+                .create_node_with_identifier("node2", &identity2.identifier())
+                .await?;
 
-        let file_names = list_file_names(&cli_state_directory);
-        let expected = match cli.database_configuration()?.database_type() {
-            DatabaseType::Sqlite => vec![
-                "vault-vault2".to_string(),
-                "application_database.sqlite3".to_string(),
-                "database.sqlite3".to_string(),
-            ],
-            DatabaseType::Postgres => vec!["vault-vault2".to_string()],
-        };
+            let file_names = list_file_names(&cli_state_directory);
 
-        assert_eq!(
-            file_names.iter().sorted().as_slice(),
-            expected.iter().sorted().as_slice()
-        );
+            // this test is not executed with Postgres
+            let expected = match cli.database_configuration()?.database_type() {
+                DatabaseType::Sqlite => vec![
+                    "vault-vault2".to_string(),
+                    "application_database.sqlite3".to_string(),
+                    "database.sqlite3".to_string(),
+                ],
+                DatabaseType::Postgres => vec![],
+            };
 
-        // reset the local state
-        cli.reset().await?;
-        let result = fs::read_dir(&cli_state_directory);
-        assert!(result.is_ok(), "the cli state directory is not deleted");
+            assert_eq!(
+                file_names.iter().sorted().as_slice(),
+                expected.iter().sorted().as_slice()
+            );
 
-        match cli.database_configuration()?.database_type() {
-            DatabaseType::Sqlite => {
-                // When the database is SQLite, only the application database must remain
-                let file_names = list_file_names(&cli_state_directory);
-                let expected = vec!["application_database.sqlite3".to_string()];
-                assert_eq!(file_names, expected);
-            }
-            DatabaseType::Postgres => {
-                // When the database is Postgres, only the journey tables must remain
-                let tables: Vec<AnyRow> = sqlx::query(
-                    "SELECT tablename::text FROM pg_tables WHERE schemaname = 'public'",
-                )
-                .fetch_all(&*db.pool)
-                .await
-                .unwrap();
-                let actual: Vec<String> = tables.iter().map(|r| r.get(0)).sorted().collect();
-                assert_eq!(actual, vec!["host_journey", "project_journey"]);
-            }
-        };
-        Ok(())
+            // reset the local state
+            cli.reset().await?;
+            let result = fs::read_dir(&cli_state_directory);
+            assert!(result.is_ok(), "the cli state directory is not deleted");
+
+            // this test is not executed with Postgres
+            match cli.database_configuration()?.database_type() {
+                DatabaseType::Sqlite => {
+                    // When the database is SQLite, only the application database must remain
+                    let file_names = list_file_names(&cli_state_directory);
+                    let expected = vec!["application_database.sqlite3".to_string()];
+                    assert_eq!(file_names, expected);
+                }
+                DatabaseType::Postgres => (),
+            };
+            Ok(())
+        })
+        .await
     }
 
     /// HELPERS
