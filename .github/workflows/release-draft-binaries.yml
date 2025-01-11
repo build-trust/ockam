@@ -85,7 +85,7 @@ jobs:
           docker pull ghcr.io/build-trust/ockam:$ockam_version
           \`\`\`"
 
-          url_head="https://${{ env.BUCKET_NAME }}.s3.amazonaws.com/${ockam_version}"
+          url_head="https://${{ env.BUCKET_NAME }}.s3.amazonaws.com/v${ockam_version}"
 
           text="$text
 
@@ -282,12 +282,6 @@ jobs:
       run: |
         cosign sign-blob --yes --key env://PRIVATE_KEY "${{ env.ASSET_OCKAM_CLI }}" > "${{ env.ASSET_OCKAM_CLI }}.sig"
 
-    - name: Upload CLI release archive to GitHub
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        gh release upload ${{ needs.create_release.outputs.tag_name }} ${{ env.ASSET_OCKAM_CLI }} ${{ env.ASSET_OCKAM_CLI }}.sig --clobber
-
     - name: Upload CLI release archive to AWS
       uses: ./.github/actions/aws_upload
       with:
@@ -401,12 +395,6 @@ jobs:
         run: |
           cosign sign-blob --yes --key env://PRIVATE_KEY ${{ env.FILE_NAME }} > "${{ env.FILE_NAME }}.sig"
 
-      - name: Upload NIF to GitHub
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh release upload ${{ needs.create_release.outputs.tag_name }} ${{ env.FILE_NAME }} ${{ env.FILE_NAME }}.sig --clobber
-
       - name: Upload NIF to AWS
         uses: ./.github/actions/aws_upload
         with:
@@ -472,12 +460,6 @@ jobs:
           PRIVATE_KEY: '${{ secrets.COSIGN_PRIVATE_KEY }}'
           COSIGN_PASSWORD: '${{ secrets.COSIGN_PRIVATE_KEY_PASSWORD }}'
         run: cosign sign-blob --yes --key env://PRIVATE_KEY sha256sums.txt > sha256sums.txt.sig
-
-      - name: Upload SHASum File to GitHub
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh release upload ${{ needs.create_release.outputs.tag_name }} sha256sums.txt sha256sums.txt.sig --clobber -R build-trust/ockam
 
       - name: Upload SHASum File to AWS
         uses: ./aws/.github/actions/aws_upload
