@@ -4,8 +4,8 @@ use crate::privileged_portal::{
     TcpPacketWriter,
 };
 use log::trace;
-use ockam_core::{async_trait, Processor, Result};
-use ockam_node::Context;
+use ockam_core::{async_trait, Result};
+use ockam_node::{Context, Worker};
 use ockam_transport_core::TransportError;
 
 /// Processor responsible for receiving all data with OCKAM_TCP_PORTAL_PROTOCOL on the machine
@@ -76,10 +76,10 @@ impl RawSocketProcessor {
 }
 
 #[async_trait]
-impl Processor for RawSocketProcessor {
-    type Context = Context;
+impl Worker for RawSocketProcessor {
+    type Message = ();
 
-    async fn process(&mut self, _ctx: &mut Self::Context) -> Result<bool> {
+    async fn process(&mut self, _ctx: &mut Context) -> Result<bool> {
         let raw_socket_read_result = self.read_packet().await?;
 
         if let Some(inlet) = self

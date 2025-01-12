@@ -5,10 +5,8 @@ use futures_util::StreamExt;
 use tokio_tungstenite::WebSocketStream;
 
 use crate::WebSocketAddress;
-use ockam_core::{
-    async_trait, Address, Decodable, LocalMessage, Processor, Result, TransportMessage,
-};
-use ockam_node::Context;
+use ockam_core::{async_trait, Address, Decodable, LocalMessage, Result, TransportMessage};
+use ockam_node::{Context, Worker};
 use ockam_transport_core::TransportError;
 
 use crate::workers::AsyncStream;
@@ -39,11 +37,11 @@ where
 }
 
 #[async_trait]
-impl<S> Processor for WebSocketRecvProcessor<S>
+impl<S> Worker for WebSocketRecvProcessor<S>
 where
     S: AsyncStream,
 {
-    type Context = Context;
+    type Message = ();
 
     /// Get next message from the WebSocket stream if there is
     /// any available, and forward it to the next hop in the route.

@@ -3,13 +3,13 @@ use core::time::Duration;
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::sync::{Arc, RwLock};
 use ockam_core::errcode::{Kind, Origin};
+use ockam_core::Result;
 use ockam_core::{
     AddressMetadata, AllowAll, Any, DenyAll, Error, Mailbox, Mailboxes, NeutralMessage,
     OutgoingAccessControl, Route, Routed, SecureChannelMetadata,
 };
-use ockam_core::{Result, Worker};
 use ockam_node::callback::CallbackSender;
-use ockam_node::{Context, WorkerBuilder};
+use ockam_node::{Context, Worker, WorkerBuilder};
 use ockam_vault::AeadSecretKeyHandle;
 use tracing::{debug, error, info, trace, warn};
 use tracing_attributes::instrument;
@@ -62,11 +62,10 @@ pub(crate) struct HandshakeWorker {
 #[ockam_core::worker]
 impl Worker for HandshakeWorker {
     type Message = Any;
-    type Context = Context;
 
     /// Initialize the state machine with an `Initialize` event
     /// Depending on the state machine role there might be a message to send to the other party
-    async fn initialize(&mut self, context: &mut Self::Context) -> Result<()> {
+    async fn initialize(&mut self, context: &mut Context) -> Result<()> {
         if let Some(credential_retriever) = &self.credential_retriever {
             credential_retriever.initialize().await?;
         }
@@ -101,7 +100,7 @@ impl Worker for HandshakeWorker {
     /// a transition
     async fn handle_message(
         &mut self,
-        context: &mut Self::Context,
+        context: &mut Context,
         message: Routed<Self::Message>,
     ) -> Result<()> {
         // Once the decryptor has been initialized, let it handle messages
@@ -115,7 +114,7 @@ impl Worker for HandshakeWorker {
         }
     }
 
-    async fn shutdown(&mut self, context: &mut Self::Context) -> Result<()> {
+    async fn shutdown(&mut self, context: &mut Context) -> Result<()> {
         let _ = context.stop_address(&self.addresses.encryptor);
         self.secure_channels
             .secure_channel_registry

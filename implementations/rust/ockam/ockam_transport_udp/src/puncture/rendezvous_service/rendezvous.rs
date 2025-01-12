@@ -2,8 +2,8 @@ use crate::{
     puncture::rendezvous_service::{RendezvousRequest, RendezvousResponse},
     UDP,
 };
-use ockam_core::{async_trait, Address, Result, Route, Routed, Worker};
-use ockam_node::Context;
+use ockam_core::{async_trait, Address, Result, Route, Routed};
+use ockam_node::{Context, Worker};
 use tracing::{debug, info, warn};
 
 /// Rendezvous Service allows other nodes to discover their public IP address and port via UDP.
@@ -74,7 +74,6 @@ impl RendezvousServiceWorker {
 #[async_trait]
 impl Worker for RendezvousServiceWorker {
     type Message = RendezvousRequest;
-    type Context = Context;
 
     async fn handle_message(
         &mut self,

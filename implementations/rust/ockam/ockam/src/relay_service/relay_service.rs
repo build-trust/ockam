@@ -5,9 +5,9 @@ use alloc::string::String;
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::sync::Arc;
 use ockam_core::{
-    Address, DenyAll, Encodable, Mailbox, Mailboxes, Result, Routed, SecureChannelLocalInfo, Worker,
+    Address, DenyAll, Encodable, Mailbox, Mailboxes, Result, Routed, SecureChannelLocalInfo,
 };
-use ockam_node::WorkerBuilder;
+use ockam_node::{Worker, WorkerBuilder};
 
 /// Alias worker to register remote workers under local names.
 ///
@@ -62,12 +62,11 @@ impl RelayService {
 
 #[crate::worker]
 impl Worker for RelayService {
-    type Context = Context;
     type Message = String;
 
     async fn handle_message(
         &mut self,
-        ctx: &mut Self::Context,
+        ctx: &mut Context,
         message: Routed<Self::Message>,
     ) -> Result<()> {
         let secure_channel_local_info =

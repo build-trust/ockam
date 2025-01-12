@@ -1,6 +1,6 @@
 use ockam_core::compat::boxed::Box;
-use ockam_core::{async_trait, Address, AllowAll, Processor, Result};
-use ockam_node::Context;
+use ockam_core::{async_trait, Address, AllowAll, Result};
+use ockam_node::{Context, Worker};
 
 use crate::driver::AsyncStream;
 use crate::driver::{BleEvent, BleServer};
@@ -38,7 +38,7 @@ where
             "BleListenProcessor::start Starting processor with address: {:?}",
             waddr
         );
-        ctx.start_processor_with_access_control(
+        ctx.start_worker_with_access_control(
             waddr, processor, AllowAll, // FIXME: @ac
             AllowAll, // FIXME: @ac
         )?;
@@ -48,13 +48,13 @@ where
 }
 
 #[async_trait]
-impl<A> Processor for BleListenProcessor<A>
+impl<A> Worker for BleListenProcessor<A>
 where
     A: BleServerDriver + BleStreamDriver + Send + 'static,
 {
-    type Context = Context;
+    type Message = ();
 
-    async fn process(&mut self, ctx: &mut Self::Context) -> Result<bool> {
+    async fn process(&mut self, ctx: &mut Context) -> Result<bool> {
         if self.inner.is_none() {
             return Ok(true);
         }

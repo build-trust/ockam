@@ -2,8 +2,8 @@ use std::net::SocketAddr;
 
 use tokio::net::TcpListener;
 
-use ockam_core::{async_trait, Address, AllowAll, Processor, Result};
-use ockam_node::Context;
+use ockam_core::{async_trait, Address, AllowAll, Result};
+use ockam_node::{Context, Worker};
 use ockam_transport_core::TransportError;
 
 use crate::{error::WebSocketError, workers::WorkerPair, WebSocketRouterHandle};
@@ -35,7 +35,7 @@ impl WebSocketListenProcessor {
             router_handle,
         };
         let waddr = Address::random_tagged("WebSocketListenProcessor");
-        ctx.start_processor_with_access_control(
+        ctx.start_worker_with_access_control(
             waddr, processor, AllowAll, // FIXME: @ac
             AllowAll, // FIXME: @ac
         )?;
@@ -44,10 +44,10 @@ impl WebSocketListenProcessor {
 }
 
 #[async_trait]
-impl Processor for WebSocketListenProcessor {
-    type Context = Context;
+impl Worker for WebSocketListenProcessor {
+    type Message = ();
 
-    async fn process(&mut self, ctx: &mut Self::Context) -> Result<bool> {
+    async fn process(&mut self, ctx: &mut Context) -> Result<bool> {
         debug!("Waiting for incoming TCP connection...");
 
         // Wait for an incoming connection

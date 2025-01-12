@@ -101,12 +101,12 @@ fn run_05_secure_channel_over_two_transport_hops() -> Result<(), Error> {
     // Launch responder, wait for it to start up
     let resp =
         CmdBuilder::new("cargo run --locked --example 05-secure-channel-over-two-transport-hops-responder").spawn()?;
-    resp.match_stdout("Initializing ockam processor")?;
+    resp.match_stdout("Initializing ockam worker")?;
 
     // Launch middle, wait for it to start up
     let mid =
         CmdBuilder::new("cargo run --locked --example 05-secure-channel-over-two-transport-hops-middle").spawn()?;
-    mid.match_stdout("Initializing ockam processor")?;
+    mid.match_stdout("Initializing ockam worker")?;
 
     // Run initiator to completion
     let (exitcode, stdout) =

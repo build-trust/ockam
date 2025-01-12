@@ -9,9 +9,9 @@ use tokio_tungstenite::tungstenite::protocol::Message as WebSocketMessage;
 use crate::error::WebSocketError;
 use ockam_core::{
     async_trait, route, Address, AllowAll, Any, Decodable, Encodable, LocalMessage, Mailbox,
-    Mailboxes, Result, Routed, TransportMessage, Worker,
+    Mailboxes, Result, Routed, TransportMessage,
 };
-use ockam_node::{Context, DelayedEvent, WorkerBuilder};
+use ockam_node::{Context, DelayedEvent, Worker, WorkerBuilder};
 use ockam_transport_core::TransportError;
 
 use crate::workers::{
@@ -155,7 +155,7 @@ where
         if let Some(ws_stream) = self.ws_stream.take() {
             let rx_addr = Address::random_tagged("WebSocketSendWorker.rx_addr");
             let receiver = WebSocketRecvProcessor::new(ws_stream, self.peer);
-            ctx.start_processor_with_access_control(
+            ctx.start_worker_with_access_control(
                 rx_addr.clone(),
                 receiver,
                 AllowAll, // FIXME: @ac
@@ -274,9 +274,8 @@ impl WebSocketSendWorker<TcpClientStream> {
 #[async_trait]
 impl Worker for WebSocketSendWorker<TcpServerStream> {
     type Message = Any;
-    type Context = Context;
 
-    async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
+    async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
         self.handle_initialize(ctx)?;
         Ok(())
     }
@@ -293,9 +292,8 @@ impl Worker for WebSocketSendWorker<TcpServerStream> {
 #[async_trait]
 impl Worker for WebSocketSendWorker<TcpClientStream> {
     type Message = Any;
-    type Context = Context;
 
-    async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
+    async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
         self.initialize_stream().await?;
         self.handle_initialize(ctx)?;
         Ok(())

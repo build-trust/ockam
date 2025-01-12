@@ -7,8 +7,8 @@ use ockam_core::compat::net::SocketAddr;
 use ockam_core::compat::sync::{Arc, RwLock as SyncRwLock};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{async_trait, compat::boxed::Box, Result};
-use ockam_core::{Address, Processor, Route};
-use ockam_node::Context;
+use ockam_core::{Address, Route};
+use ockam_node::{Context, Worker};
 use ockam_transport_core::{HostnamePort, TransportError};
 use rustls::pki_types::CertificateDer;
 use std::io::BufReader;
@@ -70,7 +70,7 @@ impl TcpInletListenProcessor {
         let inlet_shared_state = Arc::new(SyncRwLock::new(inlet_shared_state));
         let processor = Self::new(registry, inner, inlet_shared_state.clone(), options);
 
-        ctx.start_processor(processor_address.clone(), processor)?;
+        ctx.start_worker(processor_address.clone(), processor)?;
 
         Ok(TcpInlet::new_regular(
             socket_addr,
@@ -155,11 +155,11 @@ impl TcpInletListenProcessor {
 const DEFAULT_TIMEOUT: Duration = Duration::from_secs(2 * 60);
 
 #[async_trait]
-impl Processor for TcpInletListenProcessor {
-    type Context = Context;
+impl Worker for TcpInletListenProcessor {
+    type Message = ();
 
     #[instrument(skip_all, name = "TcpInletListenProcessor::initialize")]
-    async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
+    async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
         self.registry
             .add_inlet_listener_processor(ctx.primary_address());
 
@@ -167,7 +167,7 @@ impl Processor for TcpInletListenProcessor {
     }
 
     #[instrument(skip_all, name = "TcpInletListenProcessor::shutdown")]
-    async fn shutdown(&mut self, ctx: &mut Self::Context) -> Result<()> {
+    async fn shutdown(&mut self, ctx: &mut Context) -> Result<()> {
         self.registry
             .remove_inlet_listener_processor(ctx.primary_address());
 
@@ -175,7 +175,7 @@ impl Processor for TcpInletListenProcessor {
     }
 
     #[instrument(skip_all, name = "TcpInletListenProcessor::process")]
-    async fn process(&mut self, ctx: &mut Self::Context) -> Result<bool> {
+    async fn process(&mut self, ctx: &mut Context) -> Result<bool> {
         let (stream, socket_addr) = self.inner.accept().await.map_err(TransportError::from)?;
         stream.set_nodelay(true).map_err(TransportError::from)?;
 

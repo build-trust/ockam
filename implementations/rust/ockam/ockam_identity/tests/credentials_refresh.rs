@@ -3,7 +3,7 @@ use std::time::Duration;
 
 use ockam_core::api::Response;
 use ockam_core::compat::sync::Arc;
-use ockam_core::{async_trait, Any, Routed, SecureChannelLocalInfo, TryClone, Worker};
+use ockam_core::{async_trait, Any, Routed, SecureChannelLocalInfo, TryClone};
 use ockam_core::{route, Result};
 use ockam_identity::models::CredentialSchemaIdentifier;
 use ockam_identity::secure_channels::secure_channels;
@@ -13,7 +13,7 @@ use ockam_identity::{
     RemoteCredentialRetrieverTimingOptions, SecureChannelListenerOptions, SecureChannelOptions,
     SecureChannels,
 };
-use ockam_node::Context;
+use ockam_node::{Context, Worker};
 use ockam_transport_tcp::TcpTransport;
 
 struct CredentialIssuer {
@@ -28,11 +28,10 @@ struct CredentialIssuer {
 #[async_trait]
 impl Worker for CredentialIssuer {
     type Message = Any;
-    type Context = Context;
 
     async fn handle_message(
         &mut self,
-        ctx: &mut Self::Context,
+        ctx: &mut Context,
         msg: Routed<Self::Message>,
     ) -> Result<()> {
         if self.pause.load(Ordering::Relaxed) {

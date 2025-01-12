@@ -2,10 +2,9 @@ use crate::privileged_portal::packet::RawSocketReadResult;
 use crate::privileged_portal::{Inlet, InletConnection, OckamPortalPacket, Outlet, PortalMode};
 use log::{debug, trace, warn};
 use ockam_core::{
-    async_trait, cbor_encode_preallocate, route, LocalInfoIdentifier, LocalMessage, Processor,
-    Result,
+    async_trait, cbor_encode_preallocate, route, LocalInfoIdentifier, LocalMessage, Result,
 };
-use ockam_node::Context;
+use ockam_node::{Context, Worker};
 use ockam_transport_core::TransportError;
 use rand::random;
 use std::net::Ipv4Addr;
@@ -60,10 +59,10 @@ impl InternalProcessor {
 }
 
 #[async_trait]
-impl Processor for InternalProcessor {
-    type Context = Context;
+impl Worker for InternalProcessor {
+    type Message = ();
 
-    async fn process(&mut self, ctx: &mut Self::Context) -> Result<bool> {
+    async fn process(&mut self, ctx: &mut Context) -> Result<bool> {
         let raw_socket_read_result = match self.receiver.recv().await {
             Some(raw_socket_read_result) => raw_socket_read_result,
             None => return Ok(false),

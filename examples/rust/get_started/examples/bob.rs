@@ -10,7 +10,6 @@ struct Echoer;
 // echoes it back on its return route.
 #[ockam::worker]
 impl Worker for Echoer {
-    type Context = Context;
     type Message = String;
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<String>) -> Result<()> {

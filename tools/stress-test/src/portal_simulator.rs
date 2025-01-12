@@ -5,7 +5,7 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use ockam::compat::tokio;
-use ockam::{Context, Processor, Route, Routed, Worker};
+use ockam::{Context, Route, Routed, Worker};
 use ockam_api::nodes::InMemoryNode;
 use ockam_core::flow_control::FlowControlId;
 use ockam_core::{async_trait, Address, AllowAll, DenyAll, NeutralMessage};
@@ -70,7 +70,7 @@ pub async fn create(
     };
 
     context
-        .start_processor_with_access_control(sender_address, processor, DenyAll, AllowAll)
+        .start_worker_with_access_control(sender_address, processor, DenyAll, AllowAll)
         .unwrap();
 
     Ok(portal_stats)
@@ -83,11 +83,11 @@ struct PortalSimulatorSender {
     messages_sent: Arc<AtomicU64>,
 }
 #[async_trait]
-impl Processor for PortalSimulatorSender {
-    type Context = Context;
+impl Worker for PortalSimulatorSender {
+    type Message = ();
 
     // assume this method is called once per second
-    async fn process(&mut self, context: &mut Self::Context) -> ockam::Result<bool> {
+    async fn process(&mut self, context: &mut Context) -> ockam::Result<bool> {
         let timestamp = Instant::now();
         let mut bytes_left = match self.throughput {
             // assume an arbitrary MB, should not impact since there is no sleep
@@ -138,11 +138,10 @@ struct PortalSimulatorReceiver {
 #[async_trait]
 impl Worker for PortalSimulatorReceiver {
     type Message = NeutralMessage;
-    type Context = Context;
 
     async fn handle_message(
         &mut self,
-        _context: &mut Self::Context,
+        _context: &mut Context,
         message: Routed<Self::Message>,
     ) -> ockam::Result<()> {
         let message = message.into_payload();

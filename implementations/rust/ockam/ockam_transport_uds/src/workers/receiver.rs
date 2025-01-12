@@ -1,9 +1,7 @@
 use crate::workers::UdsSendWorkerMsg;
 
-use ockam_core::{
-    async_trait, Address, Decodable, LocalMessage, Processor, Result, TransportMessage,
-};
-use ockam_node::Context;
+use ockam_core::{async_trait, Address, Decodable, LocalMessage, Result, TransportMessage};
+use ockam_node::{Context, Worker};
 use ockam_transport_core::TransportError;
 use tokio::{io::AsyncReadExt, net::unix::OwnedReadHalf};
 use tracing::{debug, error, trace};
@@ -33,8 +31,8 @@ impl UdsRecvProcessor {
 }
 
 #[async_trait]
-impl Processor for UdsRecvProcessor {
-    type Context = Context;
+impl Worker for UdsRecvProcessor {
+    type Message = ();
 
     /// Get the next message from the connection if there are any
     /// available and forward it to the next hop in the route.

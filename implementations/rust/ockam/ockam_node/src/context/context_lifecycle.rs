@@ -16,8 +16,9 @@ use ockam_transport_core::Transport;
 
 use crate::channel_types::{message_channel, oneshot_channel, OneshotReceiver};
 use crate::router::Router;
+use crate::router::SenderPair;
+use crate::worker_relay::CtrlSignal;
 use crate::{debugger, Context, ContextMode};
-use crate::{relay::CtrlSignal, router::SenderPair};
 use tokio::runtime::Handle;
 
 impl Drop for Context {

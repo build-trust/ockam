@@ -88,12 +88,12 @@ impl<M: Message + Clone> DelayedEvent<M> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Context, DelayedEvent};
+    use crate::{Context, DelayedEvent, Worker};
     use core::sync::atomic::Ordering;
     use core::time::Duration;
     use ockam_core::compat::{boxed::Box, string::ToString, sync::Arc};
     use ockam_core::{async_trait, Any};
-    use ockam_core::{Result, Routed, Worker};
+    use ockam_core::{Result, Routed};
     use std::sync::atomic::AtomicI8;
     use tokio::time::sleep;
 
@@ -103,12 +103,11 @@ mod tests {
 
     #[async_trait]
     impl Worker for CountingWorker {
-        type Context = Context;
         type Message = Any;
 
         async fn handle_message(
             &mut self,
-            _context: &mut Self::Context,
+            _context: &mut Context,
             _msg: Routed<Self::Message>,
         ) -> Result<()> {
             let _ = self.msgs_count.fetch_add(1, Ordering::Relaxed);

@@ -6,9 +6,9 @@ use crate::{PunctureError, UdpBind, UDP};
 use ockam_core::compat::sync::Arc;
 use ockam_core::{
     route, Address, AllowAll, AllowSourceAddress, Any, Decodable, DenyAll, LocalMessage, Mailbox,
-    Mailboxes, Result, Route, Routed, Worker,
+    Mailboxes, Result, Route, Routed,
 };
-use ockam_node::{Context, DelayedEvent, WorkerBuilder};
+use ockam_node::{Context, DelayedEvent, Worker, WorkerBuilder};
 use std::time::{Duration, Instant};
 use tokio::sync::broadcast::Sender;
 use tracing::log::warn;
@@ -261,13 +261,12 @@ impl UdpPunctureReceiverWorker {
 #[ockam_core::worker]
 impl Worker for UdpPunctureReceiverWorker {
     type Message = Any;
-    type Context = Context;
 
-    async fn initialize(&mut self, _context: &mut Self::Context) -> Result<()> {
+    async fn initialize(&mut self, _context: &mut Context) -> Result<()> {
         self.heartbeat.schedule(Duration::ZERO)
     }
 
-    async fn shutdown(&mut self, ctx: &mut Self::Context) -> Result<()> {
+    async fn shutdown(&mut self, ctx: &mut Context) -> Result<()> {
         self.heartbeat.cancel();
 
         _ = ctx.stop_address(self.addresses.sender_address());

@@ -18,10 +18,10 @@ use ockam_abac::{
     ResourceTypePolicySqlxDatabase,
 };
 use ockam_core::compat::sync::{Arc, Mutex};
-use ockam_core::{route, Address, AllowAll, NeutralMessage, Routed, Worker};
+use ockam_core::{route, Address, AllowAll, NeutralMessage, Routed};
 use ockam_multiaddr::MultiAddr;
 use ockam_node::database::SqlxDatabase;
-use ockam_node::Context;
+use ockam_node::{Context, Worker};
 use ockam_transport_tcp::{read_portal_payload_length, PortalInterceptorWorker, PortalMessage};
 
 use crate::kafka::inlet_controller::KafkaInletController;
@@ -45,11 +45,10 @@ struct TcpPayloadReceiver {
 #[ockam_core::worker]
 impl Worker for TcpPayloadReceiver {
     type Message = NeutralMessage;
-    type Context = Context;
 
     async fn handle_message(
         &mut self,
-        _context: &mut Self::Context,
+        _context: &mut Context,
         message: Routed<Self::Message>,
     ) -> ockam_core::Result<()> {
         let message = PortalMessage::decode(message.payload())?;

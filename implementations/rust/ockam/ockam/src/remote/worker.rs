@@ -4,15 +4,15 @@ use ockam_core::compat::{
     boxed::Box,
     string::{String, ToString},
 };
-use ockam_core::{Any, Decodable, Result, Routed, Worker};
+use ockam_core::{Any, Decodable, Result, Routed};
+use ockam_node::Worker;
 use tracing::{debug, info};
 
 #[crate::worker]
 impl Worker for RemoteRelay {
-    type Context = Context;
     type Message = Any;
 
-    async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
+    async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
         debug!(registration_route = %self.registration_route, "RemoteRelay initializing...");
 
         ctx.send_from_address(

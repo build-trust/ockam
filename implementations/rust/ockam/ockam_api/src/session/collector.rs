@@ -17,7 +17,6 @@ impl Collector {
 #[ockam::worker]
 impl Worker for Collector {
     type Message = Ping;
-    type Context = Context;
 
     async fn handle_message(
         &mut self,

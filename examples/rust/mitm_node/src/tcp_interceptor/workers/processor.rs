@@ -1,9 +1,9 @@
 use crate::tcp_interceptor::{Role, TcpMitmRegistry};
 use ockam_core::compat::sync::Arc;
+use ockam_core::Result;
 use ockam_core::{async_trait, Address, AllowAll};
-use ockam_core::{Processor, Result};
 use ockam_node::compat::asynchronous::Mutex;
-use ockam_node::Context;
+use ockam_node::{Context, Worker};
 use tokio::io::AsyncWriteExt;
 use tokio::net::tcp::OwnedWriteHalf;
 use tokio::{io::AsyncReadExt, net::tcp::OwnedReadHalf};
@@ -47,15 +47,15 @@ impl TcpMitmProcessor {
 
         let receiver = Self::new(address_of_other_processor, role, read_half, write_half, registry);
 
-        ctx.start_processor_with_access_control(address, receiver, AllowAll, AllowAll)?;
+        ctx.start_worker_with_access_control(address, receiver, AllowAll, AllowAll)?;
 
         Ok(())
     }
 }
 
 #[async_trait]
-impl Processor for TcpMitmProcessor {
-    type Context = Context;
+impl Worker for TcpMitmProcessor {
+    type Message = ();
 
     async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
         self.registry
@@ -66,7 +66,7 @@ impl Processor for TcpMitmProcessor {
         Ok(())
     }
 
-    async fn shutdown(&mut self, ctx: &mut Self::Context) -> Result<()> {
+    async fn shutdown(&mut self, ctx: &mut Context) -> Result<()> {
         self.registry.remove_processor(ctx.primary_address());
 
         debug!("Shutdown {}", ctx.primary_address());

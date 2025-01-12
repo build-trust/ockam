@@ -9,7 +9,7 @@ use nix::unistd::Uid;
 use ockam_core::compat::sync::{Arc, RwLock as SyncRwLock};
 use ockam_core::{Address, DenyAll, Result, Route};
 use ockam_node::compat::asynchronous::resolve_peer;
-use ockam_node::{ProcessorBuilder, WorkerBuilder};
+use ockam_node::WorkerBuilder;
 use ockam_transport_core::{HostnamePort, TransportError};
 use std::net::IpAddr;
 use tokio::net::TcpListener;
@@ -127,7 +127,7 @@ impl TcpTransport {
             .start(self.ctx())?;
 
         let internal_worker = InternalProcessor::new_inlet(receiver, inlet_info);
-        ProcessorBuilder::new(internal_worker)
+        WorkerBuilder::new(internal_worker)
             .with_address(internal_worker_address.clone())
             .with_incoming_access_control(DenyAll)
             .with_outgoing_access_control_arc(options.outgoing_access_control)
@@ -209,7 +209,7 @@ impl TcpTransport {
             .start(self.ctx())?;
 
         let internal_worker = InternalProcessor::new_outlet(receiver, outlet_info);
-        ProcessorBuilder::new(internal_worker)
+        WorkerBuilder::new(internal_worker)
             .with_address(internal_worker_address)
             .with_incoming_access_control(DenyAll)
             .with_outgoing_access_control_arc(options.outgoing_access_control)

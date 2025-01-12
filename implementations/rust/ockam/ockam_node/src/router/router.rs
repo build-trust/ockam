@@ -3,7 +3,7 @@ use core::sync::atomic::AtomicUsize;
 
 use super::record::InternalMap;
 use crate::channel_types::{MessageSender, OneshotSender};
-use crate::relay::CtrlSignal;
+use crate::worker_relay::CtrlSignal;
 use crate::{NodeError, NodeReason};
 use alloc::vec::Vec;
 use ockam_core::compat::collections::hash_map::Entry;

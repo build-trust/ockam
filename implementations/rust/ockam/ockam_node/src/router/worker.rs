@@ -43,10 +43,7 @@ impl Router {
             mailboxes.additional_addresses().cloned().collect(),
             msgs,
             ctrl,
-            WorkerMeta {
-                processor: false,
-                detached,
-            },
+            WorkerMeta { detached },
             shutdown_priority,
             metrics,
         );

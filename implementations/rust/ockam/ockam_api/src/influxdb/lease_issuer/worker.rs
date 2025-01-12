@@ -9,8 +9,8 @@ use minicbor::Decoder;
 use ockam::identity::Identifier;
 use ockam_core::api::Method::{Delete, Get, Post};
 use ockam_core::api::{RequestHeader, Response};
-use ockam_core::{async_trait, Address, Routed, SecureChannelLocalInfo, Worker};
-use ockam_node::Context;
+use ockam_core::{async_trait, Address, Routed, SecureChannelLocalInfo};
+use ockam_node::{Context, Worker};
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
 use std::error::Error;
@@ -93,9 +93,8 @@ impl InfluxDBTokenLessorWorker {
 #[ockam::worker]
 impl Worker for InfluxDBTokenLessorWorker {
     type Message = Vec<u8>;
-    type Context = Context;
 
-    async fn shutdown(&mut self, _ctx: &mut Self::Context) -> ockam_core::Result<()> {
+    async fn shutdown(&mut self, _ctx: &mut Context) -> ockam_core::Result<()> {
         debug!("Shutting down InfluxDBTokenLessorWorker");
         Ok(())
     }

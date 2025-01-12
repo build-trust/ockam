@@ -5,9 +5,9 @@ use crate::privileged_portal::{
 };
 use log::{debug, trace};
 use ockam_core::{
-    async_trait, Any, LocalInfoIdentifier, Result, Route, Routed, SecureChannelLocalInfo, Worker,
+    async_trait, Any, LocalInfoIdentifier, Result, Route, Routed, SecureChannelLocalInfo,
 };
-use ockam_node::Context;
+use ockam_node::{Context, Worker};
 use ockam_transport_core::TransportError;
 use std::net::Ipv4Addr;
 use std::sync::{Arc, RwLock};
@@ -165,11 +165,10 @@ impl RemoteWorker {
 #[async_trait]
 impl Worker for RemoteWorker {
     type Message = Any;
-    type Context = Context;
 
     async fn handle_message(
         &mut self,
-        _ctx: &mut Self::Context,
+        _ctx: &mut Context,
         msg: Routed<Self::Message>,
     ) -> Result<()> {
         let their_identifier = SecureChannelLocalInfo::find_info(msg.local_message())

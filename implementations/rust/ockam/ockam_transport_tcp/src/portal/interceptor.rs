@@ -3,9 +3,9 @@ use ockam_core::flow_control::{FlowControlId, FlowControlOutgoingAccessControl, 
 use ockam_core::{
     async_trait, route, Address, AllowOnwardAddress, AllowSourceAddress, Any,
     AnyIncomingAccessControl, AnyOutgoingAccessControl, Encodable, IncomingAccessControl,
-    LocalInfo, LocalMessage, NeutralMessage, OutgoingAccessControl, Route, Routed, Worker,
+    LocalInfo, LocalMessage, NeutralMessage, OutgoingAccessControl, Route, Routed,
 };
-use ockam_node::{Context, WorkerBuilder};
+use ockam_node::{Context, Worker, WorkerBuilder};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use tracing::{debug, trace};
@@ -88,7 +88,6 @@ impl PortalOutletInterceptor {
 #[ockam_core::worker]
 impl Worker for PortalOutletInterceptor {
     type Message = Any;
-    type Context = Context;
 
     async fn handle_message(
         &mut self,
@@ -183,11 +182,10 @@ impl PortalInletInterceptor {
 #[ockam_core::worker]
 impl Worker for PortalInletInterceptor {
     type Message = Any;
-    type Context = Context;
 
     async fn handle_message(
         &mut self,
-        context: &mut Self::Context,
+        context: &mut Context,
         message: Routed<Self::Message>,
     ) -> ockam_core::Result<()> {
         tracing::trace!("received message");
@@ -249,7 +247,6 @@ pub struct PortalInterceptorWorker {
 #[async_trait]
 impl Worker for PortalInterceptorWorker {
     type Message = NeutralMessage;
-    type Context = Context;
 
     async fn shutdown(&mut self, _context: &mut Context) -> ockam_core::Result<()> {
         //TODO: send disconnect to everyone?

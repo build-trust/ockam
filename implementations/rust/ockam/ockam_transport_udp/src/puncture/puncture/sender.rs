@@ -1,8 +1,8 @@
 use crate::puncture::puncture::message::PunctureMessage;
 use crate::puncture::puncture::notification::{wait_for_puncture, UdpPunctureNotification};
 use crate::PunctureError;
-use ockam_core::{Any, Encodable, LocalMessage, Result, Route, Routed, Worker};
-use ockam_node::Context;
+use ockam_core::{Any, Encodable, LocalMessage, Result, Route, Routed};
+use ockam_node::{Context, Worker};
 use std::time::Duration;
 use tokio::sync::broadcast::Receiver;
 use tracing::trace;
@@ -53,9 +53,8 @@ impl UdpPunctureSenderWorker {
 #[ockam_core::worker]
 impl Worker for UdpPunctureSenderWorker {
     type Message = Any;
-    type Context = Context;
 
-    async fn initialize(&mut self, _ctx: &mut Self::Context) -> Result<()> {
+    async fn initialize(&mut self, _ctx: &mut Context) -> Result<()> {
         self.peer_route =
             Some(wait_for_puncture(&mut self.notify_puncture_open_receiver, Duration::MAX).await?);
 

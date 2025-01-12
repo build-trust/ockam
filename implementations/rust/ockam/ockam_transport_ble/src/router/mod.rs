@@ -5,8 +5,8 @@ use ockam_core::{
     compat::{boxed::Box, collections::BTreeMap, vec::Vec},
     AllowAll, Any, Mailbox, Mailboxes,
 };
-use ockam_core::{Address, Decodable, LocalMessage, Message, Result, Routed, Worker};
-use ockam_node::{Context, WorkerBuilder};
+use ockam_core::{Address, Decodable, LocalMessage, Message, Result, Routed};
+use ockam_node::{Context, Worker, WorkerBuilder};
 use ockam_transport_core::TransportError;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -104,7 +104,6 @@ impl BleRouter {
 
 #[async_trait]
 impl Worker for BleRouter {
-    type Context = Context;
     type Message = Any;
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Any>) -> Result<()> {

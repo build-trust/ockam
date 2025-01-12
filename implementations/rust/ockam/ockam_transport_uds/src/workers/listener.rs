@@ -2,10 +2,10 @@ use std::os::unix::net::SocketAddr;
 
 use ockam_core::{
     async_trait, compat::sync::Arc, Address, AllowSourceAddress, DenyAll, Mailbox, Mailboxes,
-    Processor, Result, TryClone,
+    Result, TryClone,
 };
 
-use ockam_node::{Context, WorkerBuilder};
+use ockam_node::{Context, Worker, WorkerBuilder};
 use ockam_transport_core::TransportError;
 use tokio::net::UnixListener;
 use tracing::{debug, error, trace};
@@ -49,20 +49,20 @@ impl UdsListenProcessor {
             router_handle,
         };
 
-        ctx.start_processor(Address::random_tagged("UdsListenProcessor"), processor)?;
+        ctx.start_worker(Address::random_tagged("UdsListenProcessor"), processor)?;
 
         Ok(std_sock_addr)
     }
 }
 
 #[async_trait]
-impl Processor for UdsListenProcessor {
-    type Context = Context;
+impl Worker for UdsListenProcessor {
+    type Message = ();
 
     /// Listen for and accept incoming UDS connections.
     ///
     /// Register the peers socket address, and create a worker to communicate with the peer.
-    async fn process(&mut self, ctx: &mut Self::Context) -> Result<bool> {
+    async fn process(&mut self, ctx: &mut Context) -> Result<bool> {
         debug!("Waiting for incoming UDS connection...");
 
         // Wait for an incoming connection

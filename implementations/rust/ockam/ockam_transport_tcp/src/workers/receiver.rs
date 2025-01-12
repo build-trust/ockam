@@ -8,12 +8,12 @@ use core::fmt::Display;
 use ockam_core::compat::net::SocketAddr;
 use ockam_core::compat::sync::Arc;
 use ockam_core::flow_control::FlowControlId;
+use ockam_core::Result;
 use ockam_core::{
     async_trait, AllowOnwardAddress, DenyAll, LocalMessage, Mailbox, Mailboxes,
     OutgoingAccessControl,
 };
-use ockam_core::{Processor, Result};
-use ockam_node::{Context, ProcessorBuilder, WorkerShutdownPriority};
+use ockam_node::{Context, Worker, WorkerBuilder, WorkerShutdownPriority};
 use ockam_transport_core::TransportError;
 use tokio::{io::AsyncReadExt, net::tcp::OwnedReadHalf};
 use tracing::{debug, instrument, trace};
@@ -92,7 +92,7 @@ impl TcpRecvProcessor {
                 addresses.sender_internal_address().clone(),
             )),
         );
-        ProcessorBuilder::new(receiver)
+        WorkerBuilder::new(receiver)
             .with_mailboxes(Mailboxes::new(mailbox, vec![internal]))
             .with_shutdown_priority(WorkerShutdownPriority::Priority1)
             .start(ctx)?;
@@ -116,8 +116,8 @@ impl TcpRecvProcessor {
 }
 
 #[async_trait]
-impl Processor for TcpRecvProcessor {
-    type Context = Context;
+impl Worker for TcpRecvProcessor {
+    type Message = ();
 
     #[instrument(skip_all, name = "TcpRecvProcessor::initialize")]
     async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
@@ -157,7 +157,7 @@ impl Processor for TcpRecvProcessor {
     }
 
     #[instrument(skip_all, name = "TcpRecvProcessor::shutdown")]
-    async fn shutdown(&mut self, ctx: &mut Self::Context) -> Result<()> {
+    async fn shutdown(&mut self, ctx: &mut Context) -> Result<()> {
         self.registry
             .remove_receiver_processor(ctx.primary_address());
 

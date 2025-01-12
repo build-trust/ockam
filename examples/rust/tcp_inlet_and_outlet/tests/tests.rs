@@ -8,7 +8,7 @@ fn run_01_inlet_outlet_one_process() -> Result<(), Error> {
         "cargo run --locked --example 01-inlet-outlet 127.0.0.1:{port} ockam.io:80"
     ))
     .spawn()?;
-    runner.match_stdout(r"(?i)Starting new processor")?;
+    runner.match_stdout(r"(?i)Starting new worker")?;
 
     // Run curl and check for a successful run
     let (exitcode, stdout) =

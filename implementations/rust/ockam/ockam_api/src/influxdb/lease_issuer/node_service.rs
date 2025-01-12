@@ -12,7 +12,7 @@ use ockam_abac::{Action, PolicyExpression, Resource, ResourceType};
 use ockam_core::api::{Error, Request, Response};
 use ockam_core::{async_trait, Address};
 use ockam_multiaddr::MultiAddr;
-use ockam_node::{Context, ProcessorBuilder, WorkerBuilder};
+use ockam_node::{Context, WorkerBuilder};
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
 use std::time::Duration;
@@ -103,7 +103,7 @@ impl InMemoryNode {
             .start(context)?;
         self.registry.influxdb_services.insert(address.clone(), ());
 
-        ProcessorBuilder::new(processor)
+        WorkerBuilder::new(processor)
             .with_address(format!("{address}-processor"))
             .start(context)?;
 

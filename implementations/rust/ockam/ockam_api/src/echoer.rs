@@ -6,7 +6,6 @@ pub struct Echoer;
 
 #[ockam::worker]
 impl Worker for Echoer {
-    type Context = Context;
     type Message = Any;
 
     #[instrument(skip_all, name = "Echoer::handle_message")]

@@ -1,25 +1,11 @@
-use ockam_core::{
-    async_trait, route, AddressMetadata, DenyAll, Mailbox, Mailboxes, Processor, Result,
-};
-use ockam_node::{Context, NullWorker, ProcessorBuilder, WorkerBuilder};
+use ockam_core::{route, AddressMetadata, DenyAll, Mailbox, Mailboxes, Result};
+use ockam_node::{Context, NullWorker, WorkerBuilder};
 use std::string::ToString;
 use std::sync::Arc;
 
-struct NullProcessor;
-
-#[async_trait]
-impl Processor for NullProcessor {
-    type Context = Context;
-
-    async fn process(&mut self, _ctx: &mut Context) -> Result<bool> {
-        tokio::task::yield_now().await;
-        Ok(true)
-    }
-}
-
 #[ockam_macros::test]
 async fn find_terminal_for_processor(context: &mut Context) -> Result<()> {
-    ProcessorBuilder::new(NullProcessor {})
+    WorkerBuilder::new(NullWorker {})
         .with_address("simple_processor")
         .start(context)?;
 
@@ -27,7 +13,7 @@ async fn find_terminal_for_processor(context: &mut Context) -> Result<()> {
         .find_terminal_address(route!["simple_processor", "non-existing"].iter())?
         .is_none());
 
-    ProcessorBuilder::new(NullProcessor {})
+    WorkerBuilder::new(NullWorker {})
         .with_terminal_address("terminal_processor")
         .start(context)?;
 
@@ -46,7 +32,7 @@ async fn find_terminal_for_processor(context: &mut Context) -> Result<()> {
 
 #[ockam_macros::test]
 async fn find_terminal_for_processor_alias(context: &mut Context) -> Result<()> {
-    ProcessorBuilder::new(NullProcessor {})
+    WorkerBuilder::new(NullWorker {})
         .with_mailboxes(Mailboxes::new(
             Mailbox::new("main", None, Arc::new(DenyAll), Arc::new(DenyAll)),
             vec![Mailbox::new(
@@ -84,7 +70,7 @@ async fn find_terminal_for_processor_alias(context: &mut Context) -> Result<()> 
 
 #[ockam_macros::test]
 async fn provide_and_read_processor_address_metadata(context: &mut Context) -> Result<()> {
-    ProcessorBuilder::new(NullProcessor {})
+    WorkerBuilder::new(NullWorker {})
         .with_address("processor_address")
         .with_metadata_attribute("TEST_KEY", "TEST_VALUE")
         .with_metadata_attribute("TEST_KEY_2", "TEST_VALUE_2")

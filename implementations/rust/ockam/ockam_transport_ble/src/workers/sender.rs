@@ -1,8 +1,6 @@
 use ockam_core::compat::{boxed::Box, string::String, vec::Vec};
-use ockam_core::{
-    async_trait, Address, AllowAll, Encodable, Result, Routed, TransportMessage, Worker,
-};
-use ockam_node::Context;
+use ockam_core::{async_trait, Address, AllowAll, Encodable, Result, Routed, TransportMessage};
+use ockam_node::{Context, Worker};
 use ockam_transport_core::TransportError;
 
 use crate::driver::{AsyncStream, BleStreamDriver, PacketBuffer, Sink, Source};
@@ -79,17 +77,16 @@ impl<A> Worker for BleSendWorker<A>
 where
     A: BleStreamDriver + Send + 'static,
 {
-    type Context = Context;
     type Message = TransportMessage;
 
-    async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
+    async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
         debug!("initialize for peer: {:?}", self.peer);
 
         if let Some(rx_stream) = self.rx_stream.take() {
             let rx_addr = Address::random_local();
             let receiver =
                 BleRecvProcessor::new(rx_stream, format!("{}#{}", crate::BLE, self.peer).into());
-            ctx.start_processor_with_access_control(
+            ctx.start_worker_with_access_control(
                 rx_addr.clone(),
                 receiver,
                 AllowAll, // FIXME: @ac

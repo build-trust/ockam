@@ -6,8 +6,8 @@ use ockam::identity::{Identifier, IdentitiesAttributes};
 use ockam_core::api::{Method, RequestHeader, Response};
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::time::Duration;
-use ockam_core::{Result, Routed, SecureChannelLocalInfo, Worker};
-use ockam_node::Context;
+use ockam_core::{Result, Routed, SecureChannelLocalInfo};
+use ockam_node::{Context, Worker};
 
 use crate::authenticator::direct::types::CreateToken;
 use crate::authenticator::direct::AccountAuthorityInfo;
@@ -38,7 +38,6 @@ impl EnrollmentTokenIssuerWorker {
 
 #[ockam_core::worker]
 impl Worker for EnrollmentTokenIssuerWorker {
-    type Context = Context;
     type Message = Vec<u8>;
 
     async fn handle_message(&mut self, c: &mut Context, m: Routed<Self::Message>) -> Result<()> {

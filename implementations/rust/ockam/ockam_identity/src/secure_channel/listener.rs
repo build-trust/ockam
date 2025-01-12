@@ -1,7 +1,7 @@
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::sync::Arc;
-use ockam_core::{Address, Any, Result, Routed, Worker};
-use ockam_node::Context;
+use ockam_core::{Address, Any, Result, Routed};
+use ockam_node::{Context, Worker};
 
 use crate::models::Identifier;
 use crate::secure_channel::addresses::Addresses;
@@ -60,11 +60,10 @@ impl SecureChannelListenerWorker {
 #[ockam_core::worker]
 impl Worker for SecureChannelListenerWorker {
     type Message = Any;
-    type Context = Context;
 
     async fn handle_message(
         &mut self,
-        ctx: &mut Self::Context,
+        ctx: &mut Context,
         message: Routed<Self::Message>,
     ) -> Result<()> {
         let addresses = Addresses::generate(Role::Responder);

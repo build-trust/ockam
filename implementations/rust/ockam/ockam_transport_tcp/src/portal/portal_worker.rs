@@ -8,8 +8,8 @@ use ockam_core::{
     async_trait, AllowOnwardAddress, AllowSourceAddress, Decodable, DenyAll, IncomingAccessControl,
     LocalInfoIdentifier, Mailbox, Mailboxes, OutgoingAccessControl, SecureChannelLocalInfo,
 };
-use ockam_core::{Any, Result, Route, Routed, Worker};
-use ockam_node::{Context, ProcessorBuilder, WorkerBuilder};
+use ockam_core::{Any, Result, Route, Routed};
+use ockam_node::{Context, Worker, WorkerBuilder};
 use ockam_transport_core::{HostnamePort, TransportError};
 use std::time::Duration;
 use tokio::io::{AsyncRead, AsyncWriteExt, ReadHalf, WriteHalf};
@@ -252,7 +252,7 @@ impl TcpPortalWorker {
             Arc::new(AllowOnwardAddress(self.addresses.sender_internal.clone())),
         );
 
-        ProcessorBuilder::new(receiver)
+        WorkerBuilder::new(receiver)
             .with_mailboxes(Mailboxes::new(remote, vec![internal]))
             .start(ctx)?;
 
@@ -401,11 +401,10 @@ impl TcpPortalWorker {
 
 #[async_trait]
 impl Worker for TcpPortalWorker {
-    type Context = Context;
     type Message = Any;
 
     #[instrument(skip_all, name = "TcpPortalWorker::initialize")]
-    async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
+    async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
         let state = self.clone_state();
 
         match state {
@@ -431,7 +430,7 @@ impl Worker for TcpPortalWorker {
     }
 
     #[instrument(skip_all, name = "TcpPortalWorker::shutdown")]
-    async fn shutdown(&mut self, _ctx: &mut Self::Context) -> Result<()> {
+    async fn shutdown(&mut self, _ctx: &mut Context) -> Result<()> {
         self.registry
             .remove_portal_worker(&self.addresses.sender_remote);
 

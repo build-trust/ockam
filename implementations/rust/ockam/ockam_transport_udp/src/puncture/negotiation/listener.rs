@@ -5,8 +5,8 @@ use crate::puncture::negotiation::options::UdpPunctureNegotiationListenerOptions
 use crate::puncture::rendezvous_service::RendezvousClient;
 use crate::{UdpBindArguments, UdpBindOptions, UdpPuncture, UdpPunctureOptions, UdpTransport};
 use ockam_core::flow_control::FlowControlId;
-use ockam_core::{async_trait, Address, AllowAll, DenyAll, Result, Route, Routed, Worker};
-use ockam_node::{Context, WorkerBuilder};
+use ockam_core::{async_trait, Address, AllowAll, DenyAll, Result, Route, Routed};
+use ockam_node::{Context, Worker, WorkerBuilder};
 use tracing::{error, info};
 
 /// UDP puncture listener
@@ -119,11 +119,10 @@ impl UdpPunctureNegotiationListener {
 #[async_trait]
 impl Worker for UdpPunctureNegotiationListener {
     type Message = UdpPunctureNegotiationMessageInitiate;
-    type Context = Context;
 
     async fn handle_message(
         &mut self,
-        ctx: &mut Self::Context,
+        ctx: &mut Context,
         msg: Routed<Self::Message>,
     ) -> Result<()> {
         info!("Received a UDP puncture request");

@@ -3,9 +3,9 @@ use ockam_core::compat::sync::Arc;
 use ockam_core::compat::{boxed::Box, vec::Vec};
 use ockam_core::{
     route, Address, AllowAll, AllowOnwardAddress, Any, IncomingAccessControl, LocalMessage,
-    OutgoingAccessControl, Result, Route, Routed, Worker,
+    OutgoingAccessControl, Result, Route, Routed,
 };
-use ockam_node::WorkerBuilder;
+use ockam_node::{Worker, WorkerBuilder};
 use tracing::info;
 
 pub(super) struct Relay {
@@ -52,10 +52,9 @@ impl Relay {
 
 #[crate::worker]
 impl Worker for Relay {
-    type Context = Context;
     type Message = Any;
 
-    async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
+    async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
         let payload = self
             .payload
             .take()
@@ -77,7 +76,7 @@ impl Worker for Relay {
 
     async fn handle_message(
         &mut self,
-        ctx: &mut Self::Context,
+        ctx: &mut Context,
         msg: Routed<Self::Message>,
     ) -> Result<()> {
         let mut local_message = msg.into_local_message();

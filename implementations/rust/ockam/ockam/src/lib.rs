@@ -67,7 +67,7 @@ pub use ockam_core::processor;
 pub use ockam_core::worker;
 pub use ockam_core::{
     allow, deny, errcode, route, Address, Any, Encoded, Error, LocalMessage, Mailbox, Mailboxes,
-    Message, Processor, ProtocolId, Result, Route, Routed, TransportMessage, TryClone, Worker,
+    Message, ProtocolId, Result, Route, Routed, TransportMessage, TryClone,
 };
 pub use ockam_identity as identity;
 // ---
@@ -78,7 +78,7 @@ pub use ockam_macros::{node, test};
 pub use ockam_node::database::*;
 pub use ockam_node::{
     debugger, Context, DelayedEvent, Executor, MessageReceiveOptions, MessageSendReceiveOptions,
-    NodeBuilder, WorkerBuilder,
+    NodeBuilder, Worker, WorkerBuilder,
 };
 #[cfg(feature = "ockam_transport_tcp")]
 /// TCP transport

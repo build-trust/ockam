@@ -5,8 +5,8 @@ use minicbor::Decoder;
 use ockam::identity::utils::now;
 use ockam::identity::Identifier;
 use ockam_core::api::{Method, RequestHeader, Response};
-use ockam_core::{self, Result, Routed, SecureChannelLocalInfo, Worker};
-use ockam_node::Context;
+use ockam_core::{self, Result, Routed, SecureChannelLocalInfo};
+use ockam_node::{Context, Worker};
 use reqwest::StatusCode;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -21,7 +21,6 @@ pub struct Server {
 
 #[ockam_core::worker]
 impl Worker for Server {
-    type Context = Context;
     type Message = Vec<u8>;
 
     async fn handle_message(&mut self, c: &mut Context, m: Routed<Self::Message>) -> Result<()> {

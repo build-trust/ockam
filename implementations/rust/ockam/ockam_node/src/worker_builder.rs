@@ -1,37 +1,29 @@
+use crate::worker_relay::WorkerRelay;
 use crate::{debugger, ContextMode, WorkerShutdownPriority};
-use crate::{relay::WorkerRelay, Context};
+use crate::{Context, Worker};
 use ockam_core::compat::string::String;
 use ockam_core::compat::sync::Arc;
 use ockam_core::{
     Address, AddressMetadata, AllowAll, IncomingAccessControl, Mailbox, Mailboxes,
-    OutgoingAccessControl, Result, Worker,
+    OutgoingAccessControl, Result,
 };
 
 /// Start a [`Worker`] with a custom configuration
 ///
 /// Varying use-cases should use the builder API to customise the
 /// underlying worker that is created.
-pub struct WorkerBuilder<W>
-where
-    W: Worker<Context = Context>,
-{
+pub struct WorkerBuilder<W: Worker> {
     worker: W,
 }
 
-impl<W> WorkerBuilder<W>
-where
-    W: Worker<Context = Context>,
-{
+impl<W: Worker> WorkerBuilder<W> {
     /// Create a new builder for a given Worker. Default AccessControl is AllowAll
     pub fn new(worker: W) -> Self {
         Self { worker }
     }
 }
 
-impl<W> WorkerBuilder<W>
-where
-    W: Worker<Context = Context>,
-{
+impl<W: Worker> WorkerBuilder<W> {
     /// Worker with only one [`Address`]
     pub fn with_address(self, address: impl Into<Address>) -> WorkerBuilderOneAddress<W> {
         self.with_address_and_metadata_impl(address, None)
@@ -83,19 +75,13 @@ where
     }
 }
 
-pub struct WorkerBuilderMultipleAddresses<W>
-where
-    W: Worker<Context = Context>,
-{
+pub struct WorkerBuilderMultipleAddresses<W: Worker> {
     mailboxes: Mailboxes,
     shutdown_priority: WorkerShutdownPriority,
     worker: W,
 }
 
-impl<W> WorkerBuilderMultipleAddresses<W>
-where
-    W: Worker<Context = Context>,
-{
+impl<W: Worker> WorkerBuilderMultipleAddresses<W> {
     /// Consume this builder and start a new Ockam [`Worker`] from the given context
     pub fn start(self, context: &Context) -> Result<()> {
         start(context, self.mailboxes, self.shutdown_priority, self.worker)
@@ -107,10 +93,7 @@ where
     }
 }
 
-pub struct WorkerBuilderOneAddress<W>
-where
-    W: Worker<Context = Context>,
-{
+pub struct WorkerBuilderOneAddress<W: Worker> {
     incoming_ac: Arc<dyn IncomingAccessControl>,
     outgoing_ac: Arc<dyn OutgoingAccessControl>,
     address: Address,
@@ -119,10 +102,7 @@ where
     shutdown_priority: WorkerShutdownPriority,
 }
 
-impl<W> WorkerBuilderOneAddress<W>
-where
-    W: Worker<Context = Context>,
-{
+impl<W: Worker> WorkerBuilderOneAddress<W> {
     /// Mark the provided address as terminal
     pub fn terminal(mut self) -> Self {
         self.metadata
@@ -175,10 +155,7 @@ where
     }
 }
 
-impl<W> WorkerBuilderOneAddress<W>
-where
-    W: Worker<Context = Context>,
-{
+impl<W: Worker> WorkerBuilderOneAddress<W> {
     /// Set [`IncomingAccessControl`]
     pub fn with_incoming_access_control(
         mut self,
@@ -217,15 +194,12 @@ where
 }
 
 /// Consume this builder and start a new Ockam [`Worker`] from the given context
-fn start<W>(
+fn start<W: Worker>(
     context: &Context,
     mailboxes: Mailboxes,
     shutdown_priority: WorkerShutdownPriority,
     worker: W,
-) -> Result<()>
-where
-    W: Worker<Context = Context>,
-{
+) -> Result<()> {
     debug!(
         "Initializing ockam worker '{}' with access control in:{:?} out:{:?}",
         mailboxes.primary_address(),

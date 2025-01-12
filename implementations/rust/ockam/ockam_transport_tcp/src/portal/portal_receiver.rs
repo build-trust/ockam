@@ -4,8 +4,8 @@ use ockam_core::compat::vec::Vec;
 use ockam_core::{
     async_trait, Encodable, LocalMessage, OpenTelemetryContext, Route, OCKAM_TRACER_NAME,
 };
-use ockam_core::{route, Processor, Result};
-use ockam_node::Context;
+use ockam_core::{route, Result};
+use ockam_node::{Context, Worker};
 use opentelemetry::global;
 use opentelemetry::trace::Tracer;
 use tokio::io::AsyncRead;
@@ -49,11 +49,11 @@ impl<R: AsyncRead + Unpin + Send + Sync + 'static> TcpPortalRecvProcessor<R> {
 }
 
 #[async_trait]
-impl<R: AsyncRead + Unpin + Send + Sync + 'static> Processor for TcpPortalRecvProcessor<R> {
-    type Context = Context;
+impl<R: AsyncRead + Unpin + Send + Sync + 'static> Worker for TcpPortalRecvProcessor<R> {
+    type Message = ();
 
     #[instrument(skip_all, name = "TcpPortalRecvProcessor::initialize")]
-    async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
+    async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
         self.registry
             .add_portal_receiver_processor(ctx.primary_address());
 
@@ -61,7 +61,7 @@ impl<R: AsyncRead + Unpin + Send + Sync + 'static> Processor for TcpPortalRecvPr
     }
 
     #[instrument(skip_all, name = "TcpPortalRecvProcessor::shutdown")]
-    async fn shutdown(&mut self, ctx: &mut Self::Context) -> Result<()> {
+    async fn shutdown(&mut self, ctx: &mut Context) -> Result<()> {
         self.registry
             .remove_portal_receiver_processor(ctx.primary_address());
 
