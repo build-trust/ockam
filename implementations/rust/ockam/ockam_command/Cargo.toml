@@ -52,6 +52,7 @@ cfg_aliases = "0.2.1"
 [dependencies]
 arboard = "3.4.1"
 async-trait = "0.1"
+cfg-if = "1.0.0"
 clap = { version = "4.5", features = ["derive", "cargo", "wrap_help"] }
 clap_complete = "4.5.28"
 clap_mangen = "0.2.23"
@@ -103,14 +104,13 @@ assert_cmd = "2"
 mockito = "1.5.0"
 ockam_api = { path = "../ockam_api", version = "0.89.0", default-features = false, features = ["test-utils"] }
 ockam_macros = { path = "../ockam_macros", version = "^0.36.0" }
-proptest = "1.5.0"
 serial_test = "3.0.0"
 tempfile = "3.10.1"
-time = { version = "0.3", default-features = false, features = ["std", "local-offset"] }
 
 [features]
-default = ["orchestrator", "rust-crypto", "privileged_portals"]
+default = ["rust-crypto", "privileged_portals", "admin_commands", "advanced_commands"]
 privileged_portals = ["ockam_api/privileged_portals"]
-orchestrator = []
 aws-lc = ["ockam_vault/aws-lc", "ockam_api/aws-lc", "rustls/aws-lc-rs"]
 rust-crypto = ["ockam_vault/rust-crypto", "ockam_api/rust-crypto", "rustls/ring"]
+admin_commands = []
+advanced_commands = []

@@ -19,12 +19,12 @@ const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/after_long_help.txt");
 const UNSAFE_TAG: &str = include_str!("../static/unsafe_tag.txt");
 
-/// Removes the local Ockam configuration including all Identities and Nodes
 #[derive(Clone, Debug, Args)]
 #[command(
-    before_help = docs::before_help(UNSAFE_TAG),
-    long_about = docs::about(LONG_ABOUT),
-    after_long_help = docs::after_help(AFTER_LONG_HELP)
+before_help = docs::before_help(UNSAFE_TAG),
+about = docs::about("Removes the local Ockam configuration including all Identities and Nodes"),
+long_about = docs::about(LONG_ABOUT),
+after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct ResetCommand {
     /// Confirm the reset without prompting

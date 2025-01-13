@@ -6,6 +6,8 @@ use ockam_api::output::Output;
 use serde::Serialize;
 use std::fmt::Display;
 
+use crate::BIN_NAME;
+
 #[derive(Debug, Clone, Serialize)]
 pub(crate) struct Version {
     #[serde(skip)]
@@ -54,7 +56,7 @@ impl Version {
                 color_primary(&self.hash).to_string(),
             )
         };
-        let msg = format!("ockam {version}\ncompiled from {hash}");
+        let msg = format!("{BIN_NAME} {version}\ncompiled from {hash}");
         if self.multiline {
             Ok(msg)
         } else {

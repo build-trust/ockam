@@ -14,7 +14,7 @@ use ockam_api::logs::{
 };
 use ockam_api::output::Output;
 
-/// Main method for running the `ockam` executable:
+/// Main method for running the command executable:
 ///
 ///  - Parse the input arguments
 ///  - Display the help if the arguments cannot be parsed and store a user journey error

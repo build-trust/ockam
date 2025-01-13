@@ -122,12 +122,14 @@ pub struct CreateCommand {
     #[arg(hide = true, long, visible_alias = "launch-config", value_parser = parse_launch_config)]
     pub launch_configuration: Option<Config>,
 
-    /// The name of an existing Ockam Identity that this node will use.
-    /// You can use `ockam identity list` to get a list of existing Identities.
-    /// To create a new Identity, use `ockam identity create`.
-    /// If you don't specify an Identity name, and you don't have a default Identity, this command
-    /// will create a default Identity for you and save it locally in the default Vault
     #[arg(long = "identity", value_name = "IDENTITY_NAME")]
+    #[arg(help = docs::about("\
+    The name of an existing Ockam Identity that this node will use. \
+    You can use `ockam identity list` to get a list of existing Identities. \
+    To create a new Identity, use `ockam identity create`. \
+    If you don't specify an Identity name, and you don't have a default Identity, this command \
+    will create a default Identity for you and save it locally in the default Vault
+    "))]
     pub identity: Option<String>,
 
     #[command(flatten)]
@@ -565,7 +567,16 @@ mod tests {
         rt.block_on(async {
             let opts = CommandGlobalOpts {
                 state: CliState::test().await.unwrap(),
-                terminal: Terminal::new(false, false, false, true, false, OutputFormat::Plain),
+                terminal: Terminal::new(
+                    false,
+                    false,
+                    false,
+                    true,
+                    false,
+                    OutputFormat::Plain,
+                    "",
+                    "",
+                ),
                 rt: rt_moved,
                 global_args: GlobalArgs::default(),
                 tracing_guard: None,
@@ -618,7 +629,16 @@ mod tests {
         rt.block_on(async {
             let opts = CommandGlobalOpts {
                 state: CliState::test().await.unwrap(),
-                terminal: Terminal::new(false, false, false, true, false, OutputFormat::Plain),
+                terminal: Terminal::new(
+                    false,
+                    false,
+                    false,
+                    true,
+                    false,
+                    OutputFormat::Plain,
+                    "",
+                    "",
+                ),
                 rt: rt_moved,
                 global_args: GlobalArgs::default(),
                 tracing_guard: None,

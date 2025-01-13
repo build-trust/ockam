@@ -1,3 +1,4 @@
+use cfg_if::cfg_if;
 use ockam::transport::{HostnamePort, SchemeHostnamePort, StaticHostnamePort};
 use ockam_api::nodes::service::default_address::DefaultAddress;
 use ockam_api::port_range::PortRange;
@@ -5,21 +6,34 @@ use ockam_multiaddr::MultiAddr;
 use std::cmp::min;
 use std::str::FromStr;
 
-pub(crate) mod consumer;
 pub(crate) mod inlet;
 pub(crate) mod outlet;
-pub(crate) mod producer;
 pub(crate) mod util;
+
+cfg_if! {
+    if #[cfg(feature = "advanced_commands")] {
+        pub(crate) mod consumer;
+        pub(crate) mod producer;
+
+        const KAFKA_DEFAULT_CONSUMER_SERVER: StaticHostnamePort =
+            StaticHostnamePort::new("127.0.0.1", 4000);
+        const KAFKA_DEFAULT_PRODUCER_SERVER: StaticHostnamePort =
+            StaticHostnamePort::new("127.0.0.1", 5000);
+
+        fn kafka_default_consumer_server() -> SchemeHostnamePort {
+            KAFKA_DEFAULT_CONSUMER_SERVER.try_into().unwrap()
+        }
+        fn kafka_default_producer_server() -> SchemeHostnamePort {
+            KAFKA_DEFAULT_PRODUCER_SERVER.try_into().unwrap()
+        }
+    }
+}
 
 const KAFKA_DEFAULT_BOOTSTRAP_ADDRESS: StaticHostnamePort =
     StaticHostnamePort::new("127.0.0.1", 9092);
 const KAFKA_DEFAULT_PROJECT_ROUTE: &str = "/project/default";
-const KAFKA_DEFAULT_CONSUMER_SERVER: StaticHostnamePort =
-    StaticHostnamePort::new("127.0.0.1", 4000);
 const KAFKA_DEFAULT_INLET_BIND_ADDRESS: StaticHostnamePort =
     StaticHostnamePort::new("127.0.0.1", 4000);
-const KAFKA_DEFAULT_PRODUCER_SERVER: StaticHostnamePort =
-    StaticHostnamePort::new("127.0.0.1", 5000);
 
 fn kafka_default_outlet_addr() -> String {
     DefaultAddress::KAFKA_OUTLET.to_string()
@@ -37,16 +51,8 @@ fn kafka_default_outlet_server() -> SchemeHostnamePort {
     KAFKA_DEFAULT_BOOTSTRAP_ADDRESS.try_into().unwrap()
 }
 
-fn kafka_default_consumer_server() -> SchemeHostnamePort {
-    KAFKA_DEFAULT_CONSUMER_SERVER.try_into().unwrap()
-}
-
 fn kafka_default_inlet_bind_address() -> SchemeHostnamePort {
     KAFKA_DEFAULT_INLET_BIND_ADDRESS.try_into().unwrap()
-}
-
-fn kafka_default_producer_server() -> SchemeHostnamePort {
-    KAFKA_DEFAULT_PRODUCER_SERVER.try_into().unwrap()
 }
 
 pub(crate) fn make_brokers_port_range<T: Into<HostnamePort>>(bootstrap_server: T) -> PortRange {

@@ -92,10 +92,10 @@ pub struct CreateCommand {
     #[arg(long, display_order = 900, id = "ALIAS", value_parser = alias_parser)]
     pub alias: Option<String>,
 
-    /// Policy expression that will be used for access control to the TCP Inlet.
-    /// If you don't provide it, the policy set for the "tcp-inlet" resource type will be used.
-    ///
-    /// You can check the fallback policy with `ockam policy show --resource-type tcp-inlet`.
+    #[arg(help = docs::about("\
+     Policy expression that will be used for access control to the TCP Inlet. \
+     If you don't provide it, the policy set for the \"tcp-inlet\" resource type will be used. \
+     \n\nYou can check the fallback policy with `ockam policy show --resource-type tcp-inlet`."))]
     #[arg(
         long,
         visible_alias = "expression",
@@ -149,7 +149,6 @@ pub struct CreateCommand {
     #[arg(long, value_name = "BOOL", default_value_t = false, hide = true)]
     pub tls: bool,
 
-    #[arg(long, value_name = "ROUTE", hide = true)]
     /// Enable TLS for the TCP Inlet using the provided certificate provider.
     /// Requires `ockam-tls-certificate` credential attribute.
     #[arg(long, value_name = "ROUTE", hide = true)]

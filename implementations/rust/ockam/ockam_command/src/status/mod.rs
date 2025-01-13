@@ -27,11 +27,11 @@ use crate::docs;
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/after_long_help.txt");
 
-/// Display information about your Ockam instance
 #[derive(Clone, Debug, Args)]
 #[command(
-    long_about = docs::about(LONG_ABOUT),
-    after_long_help = docs::after_help(AFTER_LONG_HELP)
+about = docs::about("Display information about your Ockam instance"),
+long_about = docs::about(LONG_ABOUT),
+after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct StatusCommand {
     #[command(flatten)]

@@ -6,6 +6,12 @@ use std::sync::Arc;
 use tokio::runtime::Runtime;
 use tracing::{debug, info};
 
+use crate::command::{BIN_NAME, BRAND_NAME};
+use crate::environment::compile_time_vars::load_compile_time_vars;
+use crate::subcommand::OckamSubcommand;
+use crate::util::exitcode;
+use crate::version::Version;
+use crate::GlobalArgs;
 use ockam_api::colors::color_primary;
 use ockam_api::logs::{
     logging_configuration, Colored, ExportingConfiguration, LogLevelWithCratesFilter,
@@ -13,11 +19,6 @@ use ockam_api::logs::{
 };
 use ockam_api::terminal::{Terminal, TerminalStream};
 use ockam_api::{fmt_err, fmt_log, fmt_ok, CliState};
-
-use crate::subcommand::OckamSubcommand;
-use crate::util::exitcode;
-use crate::version::Version;
-use crate::GlobalArgs;
 
 /// This struct contains the main structs used to implement commands:
 ///
@@ -46,6 +47,7 @@ impl CommandGlobalOpts {
         global_args: &GlobalArgs,
         cmd: &OckamSubcommand,
     ) -> miette::Result<Self> {
+        load_compile_time_vars();
         let mut state = match CliState::from_env() {
             Ok(state) => state,
             Err(err) => {
@@ -53,13 +55,16 @@ impl CommandGlobalOpts {
                 // we can try to hard reset the local state.
                 if let OckamSubcommand::Reset(c) = cmd {
                     c.hard_reset();
-                    println!("{}", fmt_ok!("Local Ockam configuration deleted"));
+                    println!("{}", fmt_ok!("Local {} configuration deleted", BIN_NAME));
                     exit(exitcode::OK);
                 }
                 eprintln!("{}", fmt_err!("Failed to initialize local state"));
                 eprintln!(
                     "{}",
-                    fmt_log!("Consider upgrading to the latest version of Ockam Command")
+                    fmt_log!(
+                        "Consider upgrading to the latest version of {} Command",
+                        BIN_NAME
+                    )
                 );
                 let ockam_home = std::env::var("OCKAM_HOME").unwrap_or("~/.ockam".to_string());
                 eprintln!(
@@ -86,6 +91,8 @@ impl CommandGlobalOpts {
             global_args.no_color,
             global_args.no_input,
             global_args.output_format(),
+            BIN_NAME,
+            BRAND_NAME,
         );
         let tracing_guard =
             Self::setup_logging_tracing(cmd, &logging_configuration, &tracing_configuration);

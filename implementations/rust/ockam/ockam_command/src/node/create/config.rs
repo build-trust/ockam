@@ -4,7 +4,7 @@ use crate::run::parser::config::ConfigParser;
 use crate::run::parser::resource::*;
 use crate::run::parser::Version;
 use crate::value_parsers::{parse_config_or_path_or_url, parse_key_val};
-use crate::CommandGlobalOpts;
+use crate::{docs, CommandGlobalOpts};
 use clap::Args;
 use miette::{miette, IntoDiagnostic};
 use ockam_api::cli_state::journeys::APPLICATION_EVENT_COMMAND_CONFIGURATION_FILE;
@@ -22,10 +22,12 @@ pub struct ConfigArgs {
     #[arg(long, visible_alias = "node-config", value_name = "YAML")]
     pub configuration: Option<String>,
 
-    /// A path, URL or inlined hex-encoded enrollment ticket to use for the Ockam Identity associated to this node.
-    /// When passed, the identity will be given a project membership credential.
-    /// Check the `project ticket` command for more information about enrollment tickets.
     #[arg(long, env = "ENROLLMENT_TICKET", value_name = "ENROLLMENT TICKET")]
+    #[arg(help = docs::about("\
+    A path, URL or inlined hex-encoded enrollment ticket to use for the Ockam Identity associated to this node. \
+    When passed, the identity will be given a project membership credential. \
+    Check the `project ticket` command for more information about enrollment tickets.
+    "))]
     pub enrollment_ticket: Option<String>,
 
     /// Key-value pairs defining environment variables used in the Node configuration.
@@ -124,6 +126,8 @@ pub struct NodeConfig {
     #[serde(flatten)]
     pub policies: Policies,
     #[serde(flatten)]
+    pub relays: Relays,
+    #[serde(flatten)]
     pub tcp_outlets: TcpOutlets,
     #[serde(flatten)]
     pub tcp_inlets: TcpInlets,
@@ -135,8 +139,6 @@ pub struct NodeConfig {
     pub kafka_inlet: KafkaInlet,
     #[serde(flatten)]
     pub kafka_outlet: KafkaOutlet,
-    #[serde(flatten)]
-    pub relays: Relays,
 }
 
 impl NodeConfig {

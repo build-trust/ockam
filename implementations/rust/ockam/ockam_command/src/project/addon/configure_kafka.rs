@@ -28,8 +28,8 @@ const AFTER_LONG_HELP: &str = include_str!("./static/configure_kafka/after_long_
 /// Configure the Apache Kafka addon for a project
 #[derive(Clone, Debug, Args)]
 pub struct KafkaCommandConfig {
-    /// Ockam project name
     #[arg(
+        help = docs::about("Ockam project name"),
         long = "project",
         id = "project",
         value_name = "PROJECT_NAME",

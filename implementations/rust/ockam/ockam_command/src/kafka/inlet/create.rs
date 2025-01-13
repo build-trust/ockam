@@ -5,6 +5,7 @@ use crate::tcp::util::alias_parser;
 use crate::util::parsers::hostname_parser;
 use crate::util::{print_warning_for_deprecated_flag_replaced, process_nodes_multiaddr};
 use crate::{
+    docs,
     kafka::{kafka_default_inlet_bind_address, kafka_inlet_default_addr},
     node::NodeOpts,
     Command, CommandGlobalOpts,
@@ -54,8 +55,9 @@ pub struct CreateCommand {
     #[arg(long)]
     pub brokers_port_range: Option<PortRange>,
 
-    /// The route to the Kafka outlet node, either the project in ockam orchestrator or a rust node, expected something like /project/<name>.
-    /// Use self when the Kafka outlet is local.
+    #[arg(help = docs::about("\
+    The route to the Kafka outlet node, either the project in Ockam Orchestrator or a rust node, \
+    expected something like /project/<name>. Use self when the Kafka outlet is local"))]
     #[arg(long, default_value_t = kafka_default_project_route(), value_name = "ROUTE")]
     pub to: MultiAddr,
 
@@ -108,24 +110,27 @@ pub struct CreateCommand {
     )]
     pub encrypted_fields: Vec<String>,
 
-    /// Policy expression that will be used for access control to the Kafka Inlet.
-    /// If you don't provide it, the policy set for the "tcp-inlet" resource type will be used.
-    ///
-    /// You can check the fallback policy with `ockam policy show --resource-type tcp-inlet`.
-    #[arg(hide = true, long = "allow", id = "INLET-EXPRESSION")]
+    #[arg(help = docs::about("\
+    Policy expression that will be used for access control to the Kafka Inlet. \
+    If you don't provide it, the policy set for the \"tcp-inlet\" resource type will be used. \
+    \n\nYou can check the fallback policy with `ockam policy show --resource-type tcp-inlet`.
+    "))]
+    #[arg(long = "allow", id = "INLET-EXPRESSION")]
     pub inlet_policy_expression: Option<PolicyExpression>,
 
-    /// Policy expression that will be used for access control to the Kafka Consumer.
-    /// If you don't provide it, the policy set for the "kafka-consumer" resource type will be used.
-    ///
-    /// You can check the fallback policy with `ockam policy show --resource-type kafka-consumer`.
+    #[arg(help = docs::about("\
+    Policy expression that will be used for access control to the Kafka Consumer. \
+    If you don't provide it, the policy set for the \"kafka-consumer\" resource type will be used. \
+    \n\nYou can check the fallback policy with `ockam policy show --resource-type kafka-consumer`.
+    "))]
     #[arg(hide = true, long = "allow-consumer", id = "CONSUMER-EXPRESSION")]
     pub consumer_policy_expression: Option<PolicyExpression>,
 
-    /// Policy expression that will be used for access control to the Kafka Producer.
-    /// If you don't provide it, the policy set for the "kafka-producer" resource type will be used.
-    ///
-    /// You can check the fallback policy with `ockam policy show --resource-type kafka-producer`.
+    #[arg(help = docs::about("\
+    Policy expression that will be used for access control to the Kafka Producer. \
+    If you don't provide it, the policy set for the \"kafka-producer\" resource type will be used. \
+    \n\nYou can check the fallback policy with `ockam policy show --resource-type kafka-producer`.
+    "))]
     #[arg(hide = true, long = "allow-producer", id = "PRODUCER-EXPRESSION")]
     pub producer_policy_expression: Option<PolicyExpression>,
 }

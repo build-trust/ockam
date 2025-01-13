@@ -21,10 +21,10 @@ use crate::{docs, Command, CommandGlobalOpts, Error};
 const LONG_ABOUT: &str = include_str!("./static/send/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/send/after_long_help.txt");
 
-/// Send a message to an Ockam node
 #[derive(Clone, Debug, Args)]
 #[command(
 arg_required_else_help = true,
+about = docs::about("Send a message to an Ockam node"),
 long_about = docs::about(LONG_ABOUT),
 after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]

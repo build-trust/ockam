@@ -40,19 +40,21 @@ use ockam_api::{fmt_separator, CliState};
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/after_long_help.txt");
 
-/// Enroll your Ockam Identity with Ockam Orchestrator
 #[derive(Clone, Debug, Args)]
 #[command(
+about = docs::about("Enroll your Ockam Identity with Ockam Orchestrator"),
 long_about = docs::about(LONG_ABOUT),
 after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct EnrollCommand {
-    /// The name of an existing Ockam Identity that you wish to enroll.
-    /// You can use `ockam identity list` to get a list of existing Identities.
-    /// To create a new Identity, use `ockam identity create`.
-    /// If you don't specify an Identity name, and you don't have a default Identity, this command
-    /// will create a default Identity for you and save it locally in the default Vault
     #[arg(global = true, value_name = "IDENTITY_NAME", long)]
+    #[arg(help = docs::about("\
+    The name of an existing Ockam Identity that you wish to enroll. \
+    You can use `ockam identity list` to get a list of existing Identities. \
+    To create a new Identity, use `ockam identity create`. \
+    If you don't specify an Identity name, and you don't have a default Identity, this command \
+    will create a default Identity for you and save it locally in the default Vault
+    "))]
     pub identity: Option<String>,
 
     /// This option allows you to bypass pasting the one-time code and confirming device

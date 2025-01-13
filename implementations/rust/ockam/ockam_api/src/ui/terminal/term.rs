@@ -7,16 +7,26 @@ use crate::terminal::{TerminalStream, TerminalWriter};
 use crate::Result;
 
 impl TerminalWriter for TerminalStream<Term> {
-    fn stdout(no_color: bool) -> Self {
+    fn stdout(no_color: bool, bin_name: impl Into<String>, brand_name: impl Into<String>) -> Self {
         let writer = Term::stdout();
         let no_color = no_color || !writer.features().colors_supported();
-        Self { writer, no_color }
+        Self {
+            writer,
+            no_color,
+            bin_name: bin_name.into(),
+            brand_name: brand_name.into(),
+        }
     }
 
-    fn stderr(no_color: bool) -> Self {
+    fn stderr(no_color: bool, bin_name: impl Into<String>, brand_name: impl Into<String>) -> Self {
         let writer = Term::stderr();
         let no_color = no_color || !writer.features().colors_supported();
-        Self { writer, no_color }
+        Self {
+            writer,
+            no_color,
+            bin_name: bin_name.into(),
+            brand_name: brand_name.into(),
+        }
     }
 
     fn is_tty(&self) -> bool {
@@ -57,8 +67,16 @@ mod tests {
 
     #[test]
     fn test_write() {
-        let sut: Terminal<TerminalStream<Term>> =
-            Terminal::new(false, false, false, false, false, OutputFormat::Plain);
+        let sut: Terminal<TerminalStream<Term>> = Terminal::new(
+            false,
+            false,
+            false,
+            false,
+            false,
+            OutputFormat::Plain,
+            "",
+            "",
+        );
         sut.write("1").unwrap();
         sut.rewrite("1-r\n").unwrap();
         sut.write_line("2".red().to_string()).unwrap();

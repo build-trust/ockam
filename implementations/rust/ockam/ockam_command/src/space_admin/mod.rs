@@ -7,11 +7,11 @@ use clap::{Args, Subcommand};
 use crate::space_admin::add::AddCommand;
 use crate::space_admin::delete::DeleteCommand;
 use crate::space_admin::list::ListCommand;
-use crate::{Command, CommandGlobalOpts};
+use crate::{docs, Command, CommandGlobalOpts};
 
-/// Manage Space Admins in Ockam Orchestrator
 #[derive(Clone, Debug, Args)]
-#[command(arg_required_else_help = true, subcommand_required = true)]
+#[command(arg_required_else_help = true, subcommand_required = true,
+about = docs::about("Manage Space Admins in Ockam Orchestrator"))]
 pub struct SpaceAdminCommand {
     #[command(subcommand)]
     subcommand: SpaceAdminSubcommand,

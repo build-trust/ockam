@@ -18,14 +18,17 @@ const ABOUT: &str = include_str!("./static/about.txt");
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/after_long_help.txt");
 
+pub use crate::environment::compile_time_vars::{
+    BIN_NAME, BRAND_NAME, OCKAM_COMMAND_BIN_NAME, OCKAM_COMMAND_BRAND_NAME,
+    OCKAM_COMMAND_SUPPORT_EMAIL,
+};
+
 /// Top-level command, with:
-///
-///  - Global arguments (which apply to any OckamSubcommand)
+///  - Global arguments
 ///  - A specific subcommand
-///
 #[derive(Debug, Parser)]
 #[command(
-name = "ockam",
+name = BIN_NAME,
 term_width = 100,
 about = docs::about(ABOUT),
 long_about = docs::about(LONG_ABOUT),

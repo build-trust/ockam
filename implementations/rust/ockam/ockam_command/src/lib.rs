@@ -16,7 +16,9 @@
 //!     ```bash
 //!     cd implementations/rust/ockam/ockam_command && cargo install --path .
 //!     ```
+
 pub use arguments::*;
+use cfg_if::cfg_if;
 pub use command::*;
 pub use command_events::*;
 pub use command_global_opts::*;
@@ -26,9 +28,7 @@ pub use pager::*;
 pub use subcommand::*;
 pub use terminal::*;
 
-mod admin;
 mod arguments;
-mod authority;
 mod command;
 mod command_events;
 mod command_global_opts;
@@ -39,37 +39,26 @@ pub mod enroll;
 pub mod entry_point;
 mod environment;
 pub mod error;
-mod flow_control;
 mod global_args;
 pub mod identity;
+mod influxdb;
 mod kafka;
-mod lease;
 mod manpages;
-mod markdown;
-mod message;
 pub mod node;
 mod operation;
 mod output;
 pub mod pager;
 mod policy;
 mod project;
-mod project_admin;
-mod project_member;
 mod relay;
 mod rendezvous;
 mod reset;
 mod run;
-mod secure_channel;
 mod service;
-#[cfg(feature = "orchestrator")]
-mod share;
 mod shared_args;
-mod sidecar;
 mod space;
-mod space_admin;
 mod status;
 mod subcommand;
-mod subscription;
 pub mod tcp;
 mod terminal;
 mod upgrade;
@@ -77,6 +66,27 @@ pub mod util;
 pub mod value_parsers;
 mod vault;
 mod version;
-mod worker;
 
-mod influxdb;
+cfg_if! {
+    if #[cfg(feature = "admin_commands")] {
+        mod admin;
+        mod authority;
+        mod lease;
+        mod project_admin;
+        mod project_member;
+        mod markdown;
+        mod sidecar;
+        mod space_admin;
+        mod subscription;
+    }
+}
+
+cfg_if! {
+    if #[cfg(feature = "advanced_commands")] {
+        mod flow_control;
+        mod message;
+        mod secure_channel;
+        mod share;
+        mod worker;
+    }
+}

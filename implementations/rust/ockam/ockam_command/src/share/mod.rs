@@ -6,7 +6,7 @@ pub use list::ListCommand;
 pub use service::ServiceCreateCommand;
 pub use show::ShowCommand;
 
-use crate::CommandGlobalOpts;
+use crate::{docs, CommandGlobalOpts};
 
 mod accept;
 mod create;
@@ -14,9 +14,9 @@ mod list;
 mod service;
 mod show;
 
-/// Manage sharing invitations in Ockam Orchestrator
 #[derive(Clone, Debug, Args)]
-#[command(arg_required_else_help = true, subcommand_required = true)]
+#[command(arg_required_else_help = true, subcommand_required = true,
+about=docs::about("Manage sharing invitations in Ockam Orchestrator"))]
 pub struct ShareCommand {
     #[command(subcommand)]
     subcommand: ShareSubcommand,

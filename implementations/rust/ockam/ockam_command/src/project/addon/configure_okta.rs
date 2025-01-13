@@ -36,8 +36,8 @@ before_help = docs::before_help(PREVIEW_TAG),
 after_long_help = docs::after_help(AFTER_LONG_HELP),
 )]
 pub struct AddonConfigureOktaSubcommand {
-    /// Ockam Project name
     #[arg(
+        help = docs::about("Ockam Project name"),
         long = "project",
         id = "project",
         value_name = "PROJECT_NAME",
@@ -68,7 +68,7 @@ pub struct AddonConfigureOktaSubcommand {
     #[arg(long = "cert-path", group = "cert", value_name = "CERTIFICATE_PATH")]
     certificate_path: Option<PathBuf>,
 
-    /// Okta Client ID.
+    /// Okta Client ID
     #[arg(
         long,
         id = "client_id",
@@ -77,7 +77,7 @@ pub struct AddonConfigureOktaSubcommand {
     )]
     client_id: String,
 
-    /// Attributes names to copy from Okta userprofile into Ockam credential.
+    #[arg(help = docs::about("Attributes names to copy from Okta userprofile into Ockam credential"))]
     #[arg(short, long = "attribute", value_name = "ATTRIBUTE")]
     attributes: Vec<String>,
 }

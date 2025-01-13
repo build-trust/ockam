@@ -12,6 +12,8 @@ use crate::cli_state::CliStateError;
 use crate::logs::ExportingEnabled;
 use crate::terminal::notification::Notification;
 
+pub const OCKAM_HOME: &str = "OCKAM_HOME";
+
 /// Maximum number of notifications present in the channel
 const NOTIFICATIONS_CHANNEL_CAPACITY: usize = 16;
 
@@ -331,7 +333,7 @@ impl CliState {
     /// That directory is determined by `OCKAM_HOME` environment variable and is
     /// $OCKAM_HOME/.ockam.
     ///
-    /// If $OCKAM_HOME is not defined then $HOME is used instead
+    /// If $OCKAM_HOME is not defined, then $HOME is used instead
     pub(super) fn default_dir() -> Result<PathBuf> {
         Ok(get_env_with_default::<PathBuf>(
             "OCKAM_HOME",

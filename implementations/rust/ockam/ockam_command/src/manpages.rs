@@ -12,16 +12,18 @@ use tracing::error;
 
 use ockam_core::env::get_env_with_default;
 
-use crate::docs;
-use crate::OckamCommand;
+use crate::{docs, OckamCommand, BIN_NAME};
 
-/// Generate man pages for all existing Ockam commands
 #[derive(Clone, Debug, Args)]
-#[command(hide = docs::hide())]
+#[command(
+about = docs::about("Generate man pages for all existing Ockam commands"),
+hide = docs::hide()
+)]
 pub struct ManpagesCommand {
-    /// Absolute path to the output directory where the generated man pages will be stored.
-    /// Defaults to "~/local/.share/man/man1/"; fallback to "./ockam_man_pages".
     #[arg(short, long, value_parser(NonEmptyStringValueParser::new()))]
+    #[arg(help = docs::about("\
+    Absolute path to the output directory where the generated man pages will be stored. \
+    Defaults to \"~/local/.share/man/man1/\"; fallback to \"./ockam_man_pages\"."))]
     dir: Option<String>,
 
     #[arg(
@@ -67,7 +69,7 @@ fn get_man_page_directory(cmd_man_dir: &Option<String>) -> crate::Result<PathBuf
             }
             None => {
                 let mut man_dir = env::current_dir().into_diagnostic()?;
-                man_dir.push("ockam_man_pages");
+                man_dir.push(format!("{BIN_NAME}_man_pages"));
                 println!("Man pages stored at: {}", man_dir.display());
                 man_dir
             }

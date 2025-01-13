@@ -9,16 +9,18 @@ use once_cell::sync::Lazy;
 use regex::Regex;
 use tracing::error;
 
-use crate::docs;
 use crate::OckamCommand;
+use crate::{docs, BIN_NAME};
 
-/// Generate markdown files for all existing Ockam commands
 #[derive(Clone, Debug, Args)]
-#[command(hide = docs::hide())]
+#[command(
+about = docs::about("Generate markdown files for all existing Ockam commands"),
+hide = docs::hide())]
 pub struct MarkdownCommand {
-    /// Absolute path to the output directory where the generated markdown files will be stored.
-    /// Defaults to "./ockam_markdown_pages" in the current working directory.
     #[arg(short, long, value_parser(NonEmptyStringValueParser::new()))]
+    #[arg(help = docs::about("\
+    Absolute path to the output directory where the generated markdown files will be stored. \
+    Defaults to \"./ockam_markdown_pages\" in the current working directory."))]
     dir: Option<String>,
 }
 
@@ -58,7 +60,7 @@ fn get_markdown_page_directory(cmd_mark_dir: &Option<String>) -> io::Result<Path
         }
         None => {
             let mut mark_dir = env::current_dir()?;
-            mark_dir.push("ockam_markdown_pages");
+            mark_dir.push(format!("{BIN_NAME}_markdown_pages"));
             println!("Markdown pages stored at: {}", mark_dir.display());
             mark_dir
         }
@@ -139,7 +141,7 @@ fn generate_markdown_page(
     write!(
         buffer,
         "## {} {} ",
-        p_cmd.replace("ockam ", ""),
+        p_cmd.replace(&format!("{BIN_NAME} "), ""),
         cmd.get_name()
     )?;
 

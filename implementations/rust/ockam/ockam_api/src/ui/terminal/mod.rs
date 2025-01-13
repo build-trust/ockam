@@ -69,22 +69,36 @@ impl<T: TerminalWriter + Debug, W> Terminal<T, W> {
 pub struct TerminalStream<T: Write + Debug + Clone> {
     pub writer: T,
     pub no_color: bool,
+    bin_name: String,
+    brand_name: String,
 }
 
 impl<T: Write + Debug + Clone> TerminalStream<T> {
     pub fn prepare_msg(&self, msg: impl AsRef<str>) -> Result<String> {
-        if self.no_color {
-            Ok(strip_ansi_escapes::strip_str(msg.as_ref()))
+        let msg = msg.as_ref().to_string();
+        let mut msg = if self.brand_name != "Ockam" {
+            msg.replace("Ockam", &self.brand_name)
         } else {
-            Ok(msg.as_ref().to_string())
+            msg
+        };
+        msg = if self.bin_name != "ockam" {
+            msg.replace("ockam", &self.bin_name)
+        } else {
+            msg
+        };
+
+        if self.no_color {
+            Ok(strip_ansi_escapes::strip_str(&msg))
+        } else {
+            Ok(msg)
         }
     }
 }
 
 /// Trait defining the main methods to write messages to a terminal stream.
 pub trait TerminalWriter: Clone {
-    fn stdout(no_color: bool) -> Self;
-    fn stderr(no_color: bool) -> Self;
+    fn stdout(no_color: bool, bin_name: impl Into<String>, brand_name: impl Into<String>) -> Self;
+    fn stderr(no_color: bool, bin_name: impl Into<String>, brand_name: impl Into<String>) -> Self;
     fn is_tty(&self) -> bool;
     fn color(&self) -> bool;
 
@@ -95,6 +109,7 @@ pub trait TerminalWriter: Clone {
 
 // Core functions
 impl<W: TerminalWriter + Debug> Terminal<W> {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         logging_enabled: bool,
         logging_goes_to_file: bool,
@@ -102,11 +117,15 @@ impl<W: TerminalWriter + Debug> Terminal<W> {
         no_color: bool,
         no_input: bool,
         output_format: OutputFormat,
+        bin_name: impl Into<String>,
+        brand_name: impl Into<String>,
     ) -> Self {
+        let bin_name = bin_name.into();
+        let brand_name = brand_name.into();
         let no_color = Self::should_disable_color(no_color);
         let no_input = Self::should_disable_user_input(no_input);
-        let stdout = W::stdout(no_color);
-        let stderr = W::stderr(no_color);
+        let stdout = W::stdout(no_color, &bin_name, &brand_name);
+        let stderr = W::stderr(no_color, bin_name, brand_name);
         let max_width_col_count = get_size().map(|it| it.col_count).unwrap_or(ch!(80)).into();
         Self {
             stdout,
@@ -130,6 +149,8 @@ impl<W: TerminalWriter + Debug> Terminal<W> {
             false,
             false,
             OutputFormat::Plain,
+            "ockam",
+            "Ockam",
         )
     }
 

@@ -31,7 +31,6 @@ pub struct CredentialCommand {
 
 #[derive(Clone, Debug, Subcommand)]
 pub enum CredentialSubcommand {
-    #[command(display_order = 900)]
     List(ListCommand),
     Issue(IssueCommand),
     Store(StoreCommand),

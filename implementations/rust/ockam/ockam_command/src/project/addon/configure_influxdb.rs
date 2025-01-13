@@ -25,8 +25,8 @@ long_about = docs::about(LONG_ABOUT),
 after_long_help = docs::after_help(AFTER_LONG_HELP),
 )]
 pub struct AddonConfigureInfluxdbSubcommand {
-    /// Ockam Project Name
     #[arg(
+        help = docs::about("Ockam Project Name"),
         long = "project",
         id = "project",
         value_name = "PROJECT_NAME",
@@ -92,8 +92,8 @@ pub struct AddonConfigureInfluxdbSubcommand {
     )]
     max_ttl_secs: i32,
 
-    /// Ockam Access Rule for who can use the token lease service
     #[arg(
+        help = docs::about("Ockam Access Rule for who can use the token lease service"),
         long = "user-access-role",
         id = "user-access-role",
         hide = true,
@@ -102,9 +102,9 @@ pub struct AddonConfigureInfluxdbSubcommand {
     )]
     user_access_role: Option<String>,
 
-    /// Ockam Access Rule for who can manage the token lease service
     #[arg(
-        long = "adamin-access-role",
+        help = docs::about("Ockam Access Rule for who can manage the token lease service"),
+        long = "admin-access-role",
         id = "admin-access-role",
         hide = true,
         value_name = "ADMIN_ACCESS_ROLE",

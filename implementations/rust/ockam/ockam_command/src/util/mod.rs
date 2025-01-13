@@ -21,10 +21,13 @@ use tracing::{debug, error};
 
 use crate::{CommandGlobalOpts, Result};
 
+#[allow(unused)]
 pub mod api;
 pub mod exitcode;
 pub mod foreground_args;
+#[allow(unused)]
 pub mod parsers;
+#[allow(unused)]
 pub mod validators;
 
 pub fn local_cmd(res: miette::Result<()>) -> miette::Result<()> {

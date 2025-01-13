@@ -21,6 +21,7 @@ use ockam_core::api::Request;
 use crate::node::util::initialize_default_node;
 use crate::util::parsers::hostname_parser;
 use crate::{
+    docs,
     kafka::{kafka_default_outlet_addr, kafka_default_outlet_server},
     node::NodeOpts,
     Command, CommandGlobalOpts,
@@ -53,10 +54,10 @@ pub struct CreateCommand {
     #[arg(long, id = "BOOLEAN")]
     pub tls: bool,
 
-    /// Policy expression that will be used for access control to the Kafka Outlet.
-    /// If you don't provide it, the policy set for the "tcp-outlet" resource type will be used.
-    ///
-    /// You can check the fallback policy with `ockam policy show --resource-type tcp-outlet`.
+    #[arg(help = docs::about("\
+    Policy expression that will be used for access control to the Kafka Outlet. \
+    If you don't provide it, the policy set for the \"tcp-outlet\" resource type will be used. \
+    \n\nYou can check the fallback policy with `ockam policy show --resource-type tcp-outlet`."))]
     #[arg(long = "allow", id = "EXPRESSION")]
     pub policy_expression: Option<PolicyExpression>,
 }

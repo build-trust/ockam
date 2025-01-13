@@ -1,9 +1,13 @@
+pub mod compile_time_vars;
+
 use clap::Args;
+
+use crate::docs;
 
 const ENV_INFO: &str = include_str!("./static/env_info.txt");
 
-/// Outputs information about environment variables used by the Ockam CLI
 #[derive(Clone, Debug, Args)]
+#[command(about = docs::about("Outputs information about environment variables used by the Ockam CLI"))]
 pub struct EnvironmentCommand {}
 
 impl EnvironmentCommand {

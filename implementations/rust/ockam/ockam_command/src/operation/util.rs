@@ -41,6 +41,7 @@ pub async fn check_for_project_completion(
     Ok(project)
 }
 
+#[allow(unused)]
 pub async fn check_for_operation_completion(
     opts: &CommandGlobalOpts,
     ctx: &Context,
