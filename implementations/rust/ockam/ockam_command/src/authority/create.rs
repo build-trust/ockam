@@ -1,27 +1,20 @@
 use std::fmt::{Display, Formatter};
-use std::str::FromStr;
 
 use clap::Args;
-use colorful::Colorful;
 use miette::{miette, IntoDiagnostic, WrapErr};
 use serde::{Deserialize, Serialize};
-use tokio::fs::read_to_string;
 use tokio::process::Child;
-use tokio_retry::strategy::FixedInterval;
-use tokio_retry::Retry;
-use tracing::{debug, error, info};
 
 use ockam::identity::models::ChangeHistory;
 use ockam::identity::utils::now;
 use ockam::identity::{Identifier, Identity, TimestampInSeconds, Vault};
 use ockam::Context;
 use ockam_api::authenticator::{PreTrustedIdentities, PreTrustedIdentity};
+use ockam_api::authority_node;
 use ockam_api::authority_node::{Authority, OktaConfiguration};
-use ockam_api::cloud::project::models::ProjectModel;
 use ockam_api::colors::color_primary;
 use ockam_api::config::lookup::InternetAddress;
 use ockam_api::nodes::service::default_address::DefaultAddress;
-use ockam_api::{authority_node, fmt_err};
 use ockam_core::compat::collections::BTreeMap;
 use ockam_core::compat::fmt;
 
@@ -349,54 +342,6 @@ impl CreateCommand {
             None => None,
         };
 
-        // Create an identity for exporting opentelemetry traces
-        let exporter = "ockam-opentelemetry-exporter";
-        let exporter_identity = match opts.state.get_named_identity(exporter).await {
-            Ok(exporter) => exporter,
-            Err(_) => opts.state.create_identity_with_name(exporter).await?,
-        };
-
-        // Create a default project in the database. That project information is used by the
-        // ockam-opentelemetry-exporter to create a relay
-        let mut attributes = BTreeMap::new();
-        if let (Some(project_access_route), Some(project_identity_identifier_file)) = (
-            self.project_access_route.clone(),
-            self.project_identity_identifier_file.clone(),
-        ) {
-            let authority_identity = opts.state.get_identity(&node.identifier()).await?;
-            let authority_port = self.tcp_listener_address.port();
-            let project_identity_identifier = self
-                .read_project_identity_identifier(&opts, project_identity_identifier_file)
-                .await?;
-            let project = ProjectModel {
-                id: self.project_identifier.clone(),
-                name: "default".to_string(),
-                access_route: project_access_route,
-                project_change_history: None,
-                identity: Some(project_identity_identifier.clone()),
-                authority_access_route: Some(format!(
-                    "/dnsaddr/127.0.0.1/tcp/{}/service/api",
-                    authority_port
-                )),
-                authority_identity: Some(authority_identity.export_as_string().into_diagnostic()?),
-                running: Some(true),
-                space_name: "default".to_string(),
-                space_id: "1".to_string(),
-                okta_config: None,
-                kafka_config: None,
-                version: None,
-                operation_id: None,
-                users: vec![],
-                user_roles: vec![],
-            };
-            opts.state.projects().store_project_model(&project).await?;
-            attributes.insert("ockam-relay".to_string(), "ockam-opentelemetry".to_string());
-            attributes.insert(
-                "trust_context_id".to_string(),
-                self.project_identifier.clone(),
-            );
-        }
-
         let configuration = authority_node::Configuration {
             identifier: node.identifier(),
             database_configuration: opts.state.database_configuration()?,
@@ -428,11 +373,6 @@ impl CreateCommand {
         let authority = Authority::create(&configuration, database)
             .await
             .into_diagnostic()?;
-        authority
-            .add_member(&exporter_identity.identifier(), &attributes)
-            .await
-            .into_diagnostic()?;
-        info!("added the ockam-opentelemetry-exporter ({}) identity as a member with the permission to create a relay named ockam-opentelemetry", exporter_identity.identifier());
 
         authority_node::start_node(ctx, &configuration, authority)
             .await
@@ -470,55 +410,6 @@ impl CreateCommand {
             }
         }
         Ok(())
-    }
-
-    /// Read the identifier of the project identity from
-    /// the file path provided as a command line parameter until the reading succeeds.
-    /// We need to retry several times. That file is written by the project node and
-    /// since the project and authority nodes are started concurrently we don't know exactly when
-    /// this file becomes available
-    async fn read_project_identity_identifier(
-        &self,
-        opts: &CommandGlobalOpts,
-        project_identity_identifier_file: String,
-    ) -> miette::Result<Identifier> {
-        debug!(
-            "retrieving the project identity identifier from {}",
-            &project_identity_identifier_file
-        );
-        let retry_strategy = FixedInterval::from_millis(5000).take(100);
-        let identifier_string = match Retry::spawn(retry_strategy, || async {
-            read_to_string(project_identity_identifier_file.clone())
-                .await
-                .map_err(|e| {
-                    error!("cannot read the project identifier file: {e:?}");
-                    e
-                })
-        })
-        .await
-        {
-            Err(e) => {
-                error!("command failed: {e:?}");
-                let _ = opts
-                    .terminal
-                    .write_line(fmt_err!("Command failed with error: {e:?}"));
-                return Err(e).into_diagnostic();
-            }
-            Ok(identifier_string) => identifier_string,
-        };
-
-        match Identifier::from_str(&identifier_string) {
-            Err(e) => {
-                let _ = opts.terminal.write_line(fmt_err!(
-                    "cannot read the project identity identifier: {e:?}"
-                ));
-                Err(e).into_diagnostic()
-            }
-            Ok(identifier) => {
-                info!(identifier=%identifier, "retrieved the project identity identifier");
-                Ok(identifier)
-            }
-        }
     }
 }
 
