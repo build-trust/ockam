@@ -34,32 +34,33 @@ DB_ENDPOINT="HOST:1433" ./setup_ockam_outlet.sh
 - Create the database, schema, role, compute pool, warehouse, and image repository.
 
 ```sh
-# Run the init script
-snowsql -f snowflake_scripts/init.sql
+# Run the init script and get the repository URL
+snowsql -f snowflake_scripts/init.sql && \
+repository_url=$(snowsql -o output_format=csv -o header=false -o timing=false \
+  -q "SHOW IMAGE REPOSITORIES;" | grep 'MSSQL_API_DB' | cut -d',' -f5 | tr -d '"') && \
+echo "Repository URL: $repository_url"
 ```
 
-- Note the `Repository URL` value from the output to be used to build and publish consumer image to snowflake
-  - It will be similar to `XXX.registry.snowflakecomputing.com/mssql_api_db/mssql_api_schema/mssql_api_repository`
+> **Note**
+> Respository URL will be similar to `XXX.registry.snowflakecomputing.com/mssql_api_db/mssql_api_schema/mssql_api_repository`
+
 
 ## Push Ockam docker image and MS SQL Server client docker image
 
 ```sh
-cd mssql_client
-# Use the Repository URL from the output of the init script
+# Login to the repository
+docker login $repository_url
 
-docker login <repository_url>
+# Push the Ockam docker image
+ockam_image="ghcr.io/build-trust/ockam:0.146.0@sha256:b13ed188dbde6f5cae9d2c9c9e9305f9c36a009b1e5c126ac0d066537510f895"
+docker pull $ockam_image && \
+docker tag $ockam_image $repository_url/ockam:latest && \
+docker push $repository_url/ockam:latest
 
-docker buildx build --platform linux/amd64 --load -t <repository_url>/mssql_client:latest .
-
-docker push <repository_url>/mssql_client:latest
-
-# Push Ockam
-docker pull ghcr.io/build-trust/ockam:0.146.0@sha256:b13ed188dbde6f5cae9d2c9c9e9305f9c36a009b1e5c126ac0d066537510f895
-
-docker tag ghcr.io/build-trust/ockam:0.146.0@sha256:b13ed188dbde6f5cae9d2c9c9e9305f9c36a009b1e5c126ac0d066537510f895 <repository_url>/ockam:latest
-
-docker push <repository_url>/ockam:latest
-
+# Build and Push the MS SQL Server client docker image
+cd mssql_client && \
+docker buildx build --platform linux/amd64 --load -t $repository_url/mssql_client:latest . && \
+docker push $repository_url/mssql_client:latest && \
 cd -
 ```
 
@@ -69,25 +70,18 @@ cd -
 
 ```bash
 # Run from the same machine where you had enrolled to ockam project and created tickets
-EGRESS_LIST=$(ockam project show --jq '.egress_allow_list[0]')
-snowsql -f snowflake_scripts/access.sql --variable egress_list="$EGRESS_LIST"
+snowsql -f snowflake_scripts/access.sql --variable egress_list=$(ockam project show --jq '.egress_allow_list[0]')
 ```
 
 - Create Service
 
 ```bash
-# Replace below values with the values from MS SQL Server
-OCKAM_TICKET=$(ockam project ticket --usage-count 1 --expires-in 1h --attribute snowflake)
-MSSQL_DATABASE='TODO'
-MSSQL_USER='TODO'
-MSSQL_PASSWORD='TODO'
-
+# Replace the `TODO` values with the values for MS SQL Server
 snowsql -f snowflake_scripts/service.sql \
-  --variable ockam_ticket="$OCKAM_TICKET" \
-  --variable mssql_database="$MSSQL_DATABASE" \
-  --variable mssql_user="$MSSQL_USER" \
-  --variable mssql_password="$MSSQL_PASSWORD"
-
+  --variable ockam_ticket="$(ockam project ticket --usage-count 1 --expires-in 10m --attribute snowflake)" \
+  --variable mssql_database="TODO" \
+  --variable mssql_user="TODO" \
+  --variable mssql_password="TODO"
 ```
 
 - Ensure container services are running

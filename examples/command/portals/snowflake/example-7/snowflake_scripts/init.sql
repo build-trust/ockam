@@ -32,14 +32,3 @@ USE SCHEMA MSSQL_API_SCHEMA;
 --Create Image Repository
 CREATE IMAGE REPOSITORY IF NOT EXISTS MSSQL_API_REPOSITORY;
 GRANT READ ON IMAGE REPOSITORY MSSQL_API_REPOSITORY TO ROLE MSSQL_API_ROLE;
-
---Note repository_url value to be used to build and publish consumer image to snowflake
--- First show the repositories
-SHOW IMAGE REPOSITORIES;
-
--- Then format the output
-SELECT
-    "repository_url" as "Repository URL",
-    "name" as "Repository Name"
-FROM TABLE(RESULT_SCAN(LAST_QUERY_ID()))
-WHERE "name" = 'MSSQL_API_REPOSITORY';
