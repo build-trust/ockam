@@ -49,6 +49,15 @@ impl NodeBuilder {
         }
     }
 
+    /// Enable logging on this node
+    pub fn with_logging(self, logging: bool) -> Self {
+        Self {
+            logging,
+            exit_on_panic: self.exit_on_panic,
+            rt: self.rt,
+        }
+    }
+
     /// Disable exit on panic on this node
     pub fn no_exit_on_panic(self) -> Self {
         Self {

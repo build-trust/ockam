@@ -20,12 +20,14 @@ pub struct DirectAuthenticatorWorker {
 
 impl DirectAuthenticatorWorker {
     pub fn new(
+        authority: &Identifier,
         members: Arc<dyn AuthorityMembersRepository>,
         identities_attributes: Arc<IdentitiesAttributes>,
         account_authority: Option<AccountAuthorityInfo>,
     ) -> Self {
         Self {
             authenticator: DirectAuthenticator::new(
+                authority,
                 members,
                 identities_attributes,
                 account_authority,

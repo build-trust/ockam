@@ -76,7 +76,7 @@ async fn main(ctx: Context) -> Result<()> {
         pre_trusted_identities.insert(identifier.clone(), attributes.clone());
     }
     members
-        .bootstrap_pre_trusted_members(&pre_trusted_identities.into())
+        .bootstrap_pre_trusted_members(&issuer, &pre_trusted_identities.into())
         .await?;
 
     let tcp_listener_options = TcpListenerOptions::new();

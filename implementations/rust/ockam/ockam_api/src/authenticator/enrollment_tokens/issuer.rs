@@ -26,6 +26,7 @@ pub struct EnrollmentTokenIssuerError(pub String);
 pub type EnrollmentTokenIssuerResult<T> = Either<T, EnrollmentTokenIssuerError>;
 
 pub struct EnrollmentTokenIssuer {
+    authority: Identifier,
     pub(super) tokens: Arc<dyn AuthorityEnrollmentTokenRepository>,
     pub(super) members: Arc<dyn AuthorityMembersRepository>,
     pub(super) identities_attributes: Arc<IdentitiesAttributes>,
@@ -34,12 +35,14 @@ pub struct EnrollmentTokenIssuer {
 
 impl EnrollmentTokenIssuer {
     pub fn new(
+        authority: &Identifier,
         tokens: Arc<dyn AuthorityEnrollmentTokenRepository>,
         members: Arc<dyn AuthorityMembersRepository>,
         identities_attributes: Arc<IdentitiesAttributes>,
         account_authority: Option<AccountAuthorityInfo>,
     ) -> Self {
         Self {
+            authority: authority.clone(),
             tokens,
             members,
             identities_attributes,
@@ -56,6 +59,7 @@ impl EnrollmentTokenIssuer {
         ttl_count: Option<u64>,
     ) -> Result<EnrollmentTokenIssuerResult<OneTimeCode>> {
         let check = EnrollerAccessControlChecks::check_identifier(
+            &self.authority,
             self.members.clone(),
             self.identities_attributes.clone(),
             enroller,

@@ -126,6 +126,14 @@ impl SecureClient {
             ..self
         }
     }
+
+    /// Change the client Identifier
+    pub fn with_client_identifier(self, client_identifier: &Identifier) -> Self {
+        Self {
+            client_identifier: client_identifier.clone(),
+            ..self
+        }
+    }
 }
 
 impl SecureClient {

@@ -108,7 +108,7 @@ impl CredentialIssuer {
 
         // Otherwise, check if it's a member managed by this authority
 
-        let member = match self.members.get_member(subject).await? {
+        let member = match self.members.get_member(&self.issuer, subject).await? {
             Some(member) => member,
             None => return Ok(None),
         };

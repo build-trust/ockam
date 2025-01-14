@@ -42,7 +42,7 @@ async fn credential(ctx: &mut Context) -> Result<()> {
 
     let members = Arc::new(AuthorityMembersSqlxDatabase::create().await?);
     members
-        .bootstrap_pre_trusted_members(&pre_trusted.into())
+        .bootstrap_pre_trusted_members(&auth_identifier, &pre_trusted.into())
         .await?;
 
     // Now recreate the identities services with the previous vault

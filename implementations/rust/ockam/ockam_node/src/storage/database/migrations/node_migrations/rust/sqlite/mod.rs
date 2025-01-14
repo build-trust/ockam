@@ -12,3 +12,5 @@ pub mod migration_20240212100000_split_policies;
 pub mod migration_20240313100000_remove_orphan_resources;
 /// This migration updates the policy expressions so that they start with an operator
 pub mod migration_20240503100000_update_policy_expressions;
+/// This migration adds an authority_id to the authority_members table to track the authority having members.
+pub mod migration_20250114100000_members_authority_id;

@@ -15,16 +15,22 @@ pub struct EnrollmentTokenAcceptorError(pub String);
 pub type EnrollmentTokenAcceptorResult<T> = Either<T, EnrollmentTokenAcceptorError>;
 
 pub struct EnrollmentTokenAcceptor {
+    authority: Identifier,
     pub(super) tokens: Arc<dyn AuthorityEnrollmentTokenRepository>,
     pub(super) members: Arc<dyn AuthorityMembersRepository>,
 }
 
 impl EnrollmentTokenAcceptor {
     pub fn new(
+        authority: &Identifier,
         tokens: Arc<dyn AuthorityEnrollmentTokenRepository>,
         members: Arc<dyn AuthorityMembersRepository>,
     ) -> Self {
-        Self { tokens, members }
+        Self {
+            authority: authority.clone(),
+            tokens,
+            members,
+        }
     }
 
     #[instrument(skip_all, fields(from = %from))]
@@ -33,8 +39,12 @@ impl EnrollmentTokenAcceptor {
         otc: OneTimeCode,
         from: &Identifier,
     ) -> Result<EnrollmentTokenAcceptorResult<()>> {
-        let check =
-            EnrollerAccessControlChecks::check_is_member(self.members.clone(), from).await?;
+        let check = EnrollerAccessControlChecks::check_is_member(
+            &self.authority,
+            self.members.clone(),
+            from,
+        )
+        .await?;
 
         // Not allow updating existing members
         if check.is_member {
@@ -72,7 +82,7 @@ impl EnrollmentTokenAcceptor {
 
         let member = AuthorityMember::new(from.clone(), attrs, token.issued_by, now()?, false);
 
-        if let Err(err) = self.members.add_member(member).await {
+        if let Err(err) = self.members.add_member(&self.authority, member).await {
             warn!(
                 "Error adding member {} using enrollment token: {}",
                 from, err

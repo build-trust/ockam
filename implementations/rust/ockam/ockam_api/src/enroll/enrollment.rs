@@ -11,6 +11,7 @@ use ockam_node::Context;
 
 const TARGET: &str = "ockam_api::cloud::enroll";
 
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum EnrollStatus {
     EnrolledSuccessfully,
     AlreadyEnrolled,

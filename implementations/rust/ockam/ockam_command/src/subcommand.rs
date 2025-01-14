@@ -245,7 +245,7 @@ impl OckamSubcommand {
             OckamSubcommand::Authority(cmd) => match &cmd.subcommand {
                 AuthoritySubcommand::Create(cmd) => {
                     if cmd.child_process {
-                        Some(cmd.node_name.clone())
+                        Some(cmd.node_name())
                     } else {
                         None
                     }
@@ -271,7 +271,7 @@ impl OckamSubcommand {
             OckamSubcommand::Authority(cmd) => match &cmd.subcommand {
                 AuthoritySubcommand::Create(cmd) => {
                     if cmd.child_process || !cmd.foreground {
-                        CliState::default_node_dir(&cmd.node_name).ok()
+                        CliState::default_node_dir(&cmd.node_name()).ok()
                     } else {
                         None
                     }

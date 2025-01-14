@@ -38,11 +38,11 @@ CREATE TABLE named_identity
 CREATE TABLE identity_attributes
 (
     identifier  TEXT PRIMARY KEY, -- identity possessing those attributes
-    attributes  BYTEA NOT NULL,   -- serialized list of attribute names and values for the identity
+    attributes  BYTEA   NOT NULL, -- serialized list of attribute names and values for the identity
     added       INTEGER NOT NULL, -- UNIX timestamp in seconds: when those attributes were inserted in the database
     expires     INTEGER,          -- optional UNIX timestamp in seconds: when those attributes expire
     attested_by TEXT,             -- optional identifier which attested of these attributes
-    node_name   TEXT NOT NULL     -- node name to isolate attributes that each node knows
+    node_name   TEXT    NOT NULL  -- node name to isolate attributes that each node knows
 );
 
 CREATE UNIQUE INDEX identity_attributes_index ON identity_attributes (identifier, node_name);
@@ -58,22 +58,22 @@ CREATE INDEX identity_node_name_index ON identity_attributes (node_name);
 -- This table stores credentials as received by the application
 CREATE TABLE credential
 (
-    subject_identifier TEXT NOT NULL,
-    issuer_identifier  TEXT NOT NULL,
-    scope              TEXT NOT NULL,
+    subject_identifier TEXT  NOT NULL,
+    issuer_identifier  TEXT  NOT NULL,
+    scope              TEXT  NOT NULL,
     credential         BYTEA NOT NULL,
     expires_at         INTEGER,
-    node_name          TEXT NOT NULL -- node name to isolate credential that each node has
+    node_name          TEXT  NOT NULL -- node name to isolate credential that each node has
 );
 
 CREATE UNIQUE INDEX credential_issuer_subject_scope_index ON credential (issuer_identifier, subject_identifier, scope);
-CREATE UNIQUE INDEX credential_issuer_subject_index ON credential(issuer_identifier, subject_identifier);
+CREATE UNIQUE INDEX credential_issuer_subject_index ON credential (issuer_identifier, subject_identifier);
 
 -- This table stores purpose keys that have been created by a given identity
 CREATE TABLE purpose_key
 (
-    identifier              TEXT NOT NULL,  -- Identity identifier
-    purpose                 TEXT NOT NULL,  -- Purpose of the key: SecureChannels, or Credentials
+    identifier              TEXT  NOT NULL, -- Identity identifier
+    purpose                 TEXT  NOT NULL, -- Purpose of the key: SecureChannels, or Credentials
     purpose_key_attestation BYTEA NOT NULL  -- Encoded attestation: attestation data and attestation signature
 );
 
@@ -96,7 +96,7 @@ CREATE TABLE vault
 CREATE TABLE signing_secret
 (
     handle      BYTEA PRIMARY KEY, -- Secret handle
-    secret_type TEXT NOT NULL,     -- Secret type (EdDSACurve25519 or ECDSASHA256CurveP256)
+    secret_type TEXT  NOT NULL,    -- Secret type (EdDSACurve25519 or ECDSASHA256CurveP256)
     secret      BYTEA NOT NULL     -- Secret binary
 );
 
@@ -113,22 +113,23 @@ CREATE TABLE x25519_secret
 
 CREATE TABLE authority_member
 (
-    identifier     TEXT NOT NULL UNIQUE,
-    added_by       TEXT NOT NULL,
+    identifier     TEXT    NOT NULL UNIQUE,
+    added_by       TEXT    NOT NULL,
     added_at       INTEGER NOT NULL,
     is_pre_trusted BOOLEAN NOT NULL,
-    attributes     BYTEA
+    attributes     BYTEA,
+    authority_id   TEXT    NOT NULL
 );
 
-CREATE UNIQUE INDEX authority_member_identifier_index ON authority_member(identifier);
-CREATE INDEX authority_member_is_pre_trusted_index ON authority_member(is_pre_trusted);
+CREATE UNIQUE INDEX authority_member_identifier_index ON authority_member (identifier);
+CREATE INDEX authority_member_is_pre_trusted_index ON authority_member (is_pre_trusted);
 
 -- Reference is a random string that uniquely identifies an enrollment token. However, unlike the one_time_code,
 -- it's not sensitive so can be logged and used to track a lifecycle of a specific enrollment token.
 CREATE TABLE authority_enrollment_token
 (
-    one_time_code TEXT NOT NULL UNIQUE,
-    issued_by     TEXT NOT NULL,
+    one_time_code TEXT    NOT NULL UNIQUE,
+    issued_by     TEXT    NOT NULL,
     created_at    INTEGER NOT NULL,
     expires_at    INTEGER NOT NULL,
     ttl_count     INTEGER NOT NULL,
@@ -136,8 +137,8 @@ CREATE TABLE authority_enrollment_token
     reference     TEXT
 );
 
-CREATE UNIQUE INDEX authority_enrollment_token_one_time_code_index ON authority_enrollment_token(one_time_code);
-CREATE INDEX authority_enrollment_token_expires_at_index ON authority_enrollment_token(expires_at);
+CREATE UNIQUE INDEX authority_enrollment_token_one_time_code_index ON authority_enrollment_token (one_time_code);
+CREATE INDEX authority_enrollment_token_expires_at_index ON authority_enrollment_token (expires_at);
 
 ------------
 -- SERVICES
@@ -159,40 +160,40 @@ CREATE UNIQUE INDEX resource_policy_index ON resource_policy (node_name, resourc
 -- Create a new table for resource type policies
 CREATE TABLE resource_type_policy
 (
-    resource_type   TEXT NOT NULL, -- resource type
-    action          TEXT NOT NULL, -- action name
-    expression      TEXT NOT NULL, -- encoded expression to evaluate
-    node_name       TEXT NOT NULL  -- node name
+    resource_type TEXT NOT NULL, -- resource type
+    action        TEXT NOT NULL, -- action name
+    expression    TEXT NOT NULL, -- encoded expression to evaluate
+    node_name     TEXT NOT NULL  -- node name
 );
 CREATE UNIQUE INDEX resource_type_policy_index ON resource_type_policy (node_name, resource_type, action);
 
 -- Create a new table for resource to resource type mapping
 CREATE TABLE resource
 (
-    resource_name   TEXT NOT NULL, -- resource name
-    resource_type   TEXT NOT NULL, -- resource type
-    node_name       TEXT NOT NULL  -- node name
+    resource_name TEXT NOT NULL, -- resource name
+    resource_type TEXT NOT NULL, -- resource type
+    node_name     TEXT NOT NULL  -- node name
 );
 CREATE UNIQUE INDEX resource_index ON resource (node_name, resource_name, resource_type);
 
 -- This table stores the current state of a TCP outlet
 CREATE TABLE tcp_outlet_status
 (
-    node_name   TEXT NOT NULL,       -- Node where that tcp outlet has been created
-    socket_addr TEXT NOT NULL,       -- Socket address that the outlet connects to
-    worker_addr TEXT NOT NULL,       -- Worker address for the outlet itself
-    payload     TEXT,                -- Optional status payload
-    privileged BOOLEAN DEFAULT FALSE -- boolean indicating if the outlet is operating in privileged mode
+    node_name   TEXT NOT NULL,        -- Node where that tcp outlet has been created
+    socket_addr TEXT NOT NULL,        -- Socket address that the outlet connects to
+    worker_addr TEXT NOT NULL,        -- Worker address for the outlet itself
+    payload     TEXT,                 -- Optional status payload
+    privileged  BOOLEAN DEFAULT FALSE -- boolean indicating if the outlet is operating in privileged mode
 );
 
 -- This table stores the current state of a TCP inlet
 CREATE TABLE tcp_inlet
 (
-    node_name    TEXT NOT NULL,      -- Node where that tcp inlet has been created
-    bind_addr    TEXT NOT NULL,      -- Input address to connect to
-    outlet_addr  TEXT NOT NULL,      -- MultiAddress to the outlet
-    alias        TEXT NOT NULL,      -- Alias for that inlet
-    privileged BOOLEAN DEFAULT FALSE -- boolean indicating if the inlet is operating in privileged mode
+    node_name   TEXT NOT NULL,        -- Node where that tcp inlet has been created
+    bind_addr   TEXT NOT NULL,        -- Input address to connect to
+    outlet_addr TEXT NOT NULL,        -- MultiAddress to the outlet
+    alias       TEXT NOT NULL,        -- Alias for that inlet
+    privileged  BOOLEAN DEFAULT FALSE -- boolean indicating if the inlet is operating in privileged mode
 );
 
 ---------
@@ -219,21 +220,21 @@ CREATE TABLE node
 -- This table stores secure channels in order to restore them on a restart
 CREATE TABLE secure_channel
 (
-    role                        TEXT NOT NULL,
-    my_identifier               TEXT NOT NULL,
-    their_identifier            TEXT NOT NULL,
-    decryptor_remote_address    TEXT PRIMARY KEY,
-    decryptor_api_address       TEXT NOT NULL,
-    decryption_key_handle       BYTEA NOT NULL
+    role                     TEXT  NOT NULL,
+    my_identifier            TEXT  NOT NULL,
+    their_identifier         TEXT  NOT NULL,
+    decryptor_remote_address TEXT PRIMARY KEY,
+    decryptor_api_address    TEXT  NOT NULL,
+    decryption_key_handle    BYTEA NOT NULL
     -- TODO: Add date?
 );
 
-CREATE UNIQUE INDEX secure_channel_decryptor_api_address_index ON secure_channel(decryptor_remote_address);
+CREATE UNIQUE INDEX secure_channel_decryptor_api_address_index ON secure_channel (decryptor_remote_address);
 
 -- This table stores aead secrets
 CREATE TABLE aead_secret
 (
-    handle      BYTEA PRIMARY KEY, -- Secret handle
-    type        TEXT NOT NULL,    -- Secret type
-    secret      BYTEA NOT NULL     -- Secret binary
+    handle BYTEA PRIMARY KEY, -- Secret handle
+    type   TEXT  NOT NULL,    -- Secret type
+    secret BYTEA NOT NULL     -- Secret binary
 );

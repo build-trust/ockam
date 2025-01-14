@@ -64,6 +64,11 @@ impl Executor {
         Arc::downgrade(&self.router)
     }
 
+    /// Return the runtime
+    pub fn get_runtime(&self) -> Arc<Runtime> {
+        self.runtime.clone()
+    }
+
     /// Initialise and run the Ockam node executor context
     ///
     /// Any errors encountered by the router or provided application

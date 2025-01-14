@@ -9,6 +9,7 @@ use ockam_core::Result;
 
 use crate::database::migrations::migration_set::MigrationSet;
 use crate::database::migrations::{Migrator, RustMigration};
+use crate::database::sqlite::migration_20250114100000_members_authority_id::SetAuthorityId;
 use crate::migrate;
 
 /// This struct defines the migration to apply to the nodes database
@@ -33,6 +34,7 @@ impl MigrationSet for NodeMigrationSet {
                 Box::new(SplitPolicies),
                 Box::new(RemoveOrphanResources),
                 Box::new(UpdatePolicyExpressions),
+                Box::new(SetAuthorityId),
             ],
             DatabaseType::Postgres => vec![],
         };

@@ -13,6 +13,7 @@ use std::sync::Arc;
 use tracing::trace;
 
 pub struct Server {
+    authority: Identifier,
     member_attributes_repository: Arc<dyn AuthorityMembersRepository>,
     tenant_base_url: String,
     certificate: reqwest::Certificate,
@@ -44,6 +45,7 @@ impl Worker for Server {
 
 impl Server {
     pub fn new(
+        authority: &Identifier,
         member_attributes_repository: Arc<dyn AuthorityMembersRepository>,
         tenant_base_url: &str,
         certificate: &str,
@@ -52,6 +54,7 @@ impl Server {
         let certificate = reqwest::Certificate::from_pem(certificate.as_bytes())
             .map_err(|err| ApiError::core(err.to_string()))?;
         Ok(Server {
+            authority: authority.clone(),
             member_attributes_repository,
             tenant_base_url: tenant_base_url.to_string(),
             certificate,
@@ -93,7 +96,9 @@ impl Server {
 
                         let member =
                             AuthorityMember::new(from.clone(), attrs, from.clone(), now()?, false);
-                        self.member_attributes_repository.add_member(member).await?;
+                        self.member_attributes_repository
+                            .add_member(&self.authority, member)
+                            .await?;
                         Response::ok().with_headers(&req).to_vec()?
                     } else {
                         Response::forbidden(&req, "Forbidden").to_vec()?

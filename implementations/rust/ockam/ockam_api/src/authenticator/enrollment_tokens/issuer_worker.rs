@@ -20,6 +20,7 @@ pub struct EnrollmentTokenIssuerWorker {
 
 impl EnrollmentTokenIssuerWorker {
     pub fn new(
+        authority: &Identifier,
         tokens: Arc<dyn AuthorityEnrollmentTokenRepository>,
         members: Arc<dyn AuthorityMembersRepository>,
         identities_attributes: Arc<IdentitiesAttributes>,
@@ -27,6 +28,7 @@ impl EnrollmentTokenIssuerWorker {
     ) -> Self {
         Self {
             issuer: EnrollmentTokenIssuer::new(
+                authority,
                 tokens,
                 members,
                 identities_attributes,

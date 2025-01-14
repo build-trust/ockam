@@ -37,10 +37,6 @@ before_help = docs::before_help(PREVIEW_TAG),
 after_long_help = docs::after_help(AFTER_LONG_HELP),
 )]
 pub struct CreateCommand {
-    /// Name of the node
-    #[arg(default_value = "authority")]
-    pub node_name: String,
-
     /// Run the node in foreground.
     #[arg(long, short, value_name = "BOOL", default_value_t = false)]
     pub foreground: bool,
@@ -139,14 +135,14 @@ impl CreateCommand {
             self.guard_node_is_not_already_running(opts).await?;
         }
         // Create the authority identity if it has not been created before
-        // If no name is specified on the command line, use "authority"
-        let identity_name = self.identity.clone().unwrap_or("authority".to_string());
+        // If no name is specified on the command line, create a unique name based on the project identifier
+        let identity_name = self.identity.clone().unwrap_or(self.authority_name());
         if opts.state.get_named_identity(&identity_name).await.is_err() {
             opts.state.create_identity_with_name(&identity_name).await?;
         };
 
         opts.state
-            .create_node_with_optional_identity(&self.node_name, &self.identity)
+            .create_node_with_optional_identity(&self.node_name(), &self.identity)
             .await?;
 
         // Construct the arguments list and re-execute the ockam
@@ -227,7 +223,7 @@ impl CreateCommand {
         if self.disable_trust_context_id {
             args.push("--disable_trust_context_id".to_string());
         }
-        args.push(self.node_name.to_string());
+        args.push(self.node_name());
 
         run_ockam(args, opts.global_args.quiet).await
     }
@@ -296,19 +292,18 @@ impl CreateCommand {
         let state = opts.state.clone();
 
         // Create the authority identity if it has not been created before
-        // If no name is specified on the command line, use "authority"
-        let identity_name = self.identity.clone().unwrap_or("authority".to_string());
+        let identity_name = self.identity.clone().unwrap_or(self.authority_name());
         if opts.state.get_named_identity(&identity_name).await.is_err() {
             opts.state.create_identity_with_name(&identity_name).await?;
         };
 
         let node = state
-            .start_node_with_optional_values(&self.node_name, &Some(identity_name), None)
+            .start_node_with_optional_values(&self.node_name(), &Some(identity_name), None)
             .await?;
         state
-            .set_tcp_listener_address(&node.name(), &self.tcp_listener_address)
+            .set_tcp_listener_address(&self.node_name(), &self.tcp_listener_address)
             .await?;
-        state.set_as_authority_node(&node.name()).await?;
+        state.set_as_authority_node(&self.node_name()).await?;
 
         let okta_configuration = match (&self.tenant_base_url, &self.certificate, &self.attributes)
         {
@@ -391,7 +386,7 @@ impl CreateCommand {
         .await?;
 
         // Clean up and exit
-        let _ = opts.state.stop_node(&self.node_name).await;
+        let _ = opts.state.stop_node(&self.node_name()).await;
         Ok(())
     }
 
@@ -400,16 +395,27 @@ impl CreateCommand {
         opts: &CommandGlobalOpts,
     ) -> miette::Result<()> {
         if !self.child_process {
-            if let Ok(node) = opts.state.get_node(&self.node_name).await {
+            if let Ok(node) = opts.state.get_node(&self.node_name()).await {
                 if node.is_running() {
                     return Err(miette!(
                         "Node {} is already running",
-                        color_primary(&self.node_name)
+                        color_primary(self.node_name())
                     ));
                 }
             }
         }
         Ok(())
+    }
+
+    // The authority identity name is built with the project identifier to make sure that it is unique.
+    fn authority_name(&self) -> String {
+        format!("authority-{}", self.project_identifier)
+    }
+
+    // The name of the authority node is the name of the authority to make sure that there are
+    // no 2 authority nodes with the same name.
+    pub fn node_name(&self) -> String {
+        self.authority_name()
     }
 }
 

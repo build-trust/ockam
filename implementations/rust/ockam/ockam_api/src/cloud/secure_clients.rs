@@ -321,6 +321,13 @@ impl AuthorityNodeClient {
             secure_client: self.secure_client.with_request_timeout(timeout),
         }
     }
+
+    /// Change the client Identifier
+    pub fn with_client_identifier(self, client_identifier: &Identifier) -> Self {
+        Self {
+            secure_client: self.secure_client.with_client_identifier(client_identifier),
+        }
+    }
 }
 
 impl ProjectNodeClient {

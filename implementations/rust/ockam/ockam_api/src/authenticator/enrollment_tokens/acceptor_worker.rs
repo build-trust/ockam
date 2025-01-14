@@ -16,11 +16,12 @@ pub struct EnrollmentTokenAcceptorWorker {
 
 impl EnrollmentTokenAcceptorWorker {
     pub fn new(
+        authority: &Identifier,
         tokens: Arc<dyn AuthorityEnrollmentTokenRepository>,
         members: Arc<dyn AuthorityMembersRepository>,
     ) -> Self {
         Self {
-            acceptor: EnrollmentTokenAcceptor::new(tokens, members),
+            acceptor: EnrollmentTokenAcceptor::new(authority, tokens, members),
         }
     }
 }
