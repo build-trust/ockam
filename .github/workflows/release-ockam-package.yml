@@ -40,13 +40,15 @@ jobs:
       packages: write
 
     steps:
-      - name: Checker
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -ex
-          mkdir assets && cd assets
-          gh release download ${{ github.event.inputs.tag }} -R ${ORGANIZATION}/ockam
+      - name: Download Assets From AWS
+        uses: ./.github/actions/aws_upload
+        with:
+          aws_role: ${{ vars.AWS_ROLE }}
+          aws_role_session_name: aws_upload
+          aws_region: ${{ vars.AWS_REGION }}
+          bucket_name: ${{ vars.AWS_BUCKET_NAME }}
+          release_version: "${{ github.event.inputs.tag }}"
+          download_release_dir: "."
 
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
