@@ -11,6 +11,7 @@ use sqlx::pool::PoolOptions;
 use sqlx::{Any, ConnectOptions, Pool};
 use sqlx_core::any::AnyConnection;
 use sqlx_core::executor::Executor;
+use sqlx_core::row::Row;
 use tempfile::NamedTempFile;
 use tokio_retry::strategy::{jitter, FixedInterval};
 use tokio_retry::Retry;
@@ -196,9 +197,18 @@ impl SqlxDatabase {
             })
             .await?;
 
-            if let Some(migration_set) = migration_set {
-                let migrator = migration_set.create_migrator()?;
-                migrator.migrate(&database.pool).await?;
+            let database_schema_already_created: bool = sqlx::query("SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'identity')")
+                .fetch_one(&*database.pool)
+                .await.into_core()?.get(0);
+
+            // Only run the postgres migrations if the database has never been created.
+            // This is mostly for tests. In production the database schema must be created separately
+            // during the first deployment.
+            if !database_schema_already_created {
+                if let Some(migration_set) = migration_set {
+                    let migrator = migration_set.create_migrator()?;
+                    migrator.migrate(&database.pool).await?;
+                }
             }
 
             database
