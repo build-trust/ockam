@@ -85,58 +85,14 @@ jobs:
           docker pull ghcr.io/build-trust/ockam:$ockam_version
           \`\`\`"
 
-          url_head="https://${{ env.BUCKET_NAME }}.s3.amazonaws.com/v${ockam_version}"
-
           text="$text
 
-          # Precompiled Binaries
+          # Curl Install
+
+          To install this release using curl:
 
           \`\`\`bash
-          # download sha256sums.txt
-          curl --proto '=https' --tlsv1.2 -sSfL -O \\
-            ${url_head}/sha256sums.txt
-
-          # download sha256sums.txt.sig
-          curl --proto '=https' --tlsv1.2 -sSfL -O \\
-            ${url_head}/sha256sums.txt.sig
-
-          # download our release public key
-          curl --proto '=https' --tlsv1.2 -sSfL -o ockam.pub \\
-            https://raw.githubusercontent.com/build-trust/ockam/develop/tools/docker/cosign.pub
-
-          # verify signatures
-          cosign verify-blob --key ockam.pub --signature sha256sums.txt.sig sha256sums.txt
-          "
-
-          declare -A binaries
-          binaries["x86_64-unknown-linux-gnu"]="Linux x86_64 GNU"
-          binaries["aarch64-unknown-linux-gnu"]="Linux AARCH_64 GNU"
-          binaries["x86_64-unknown-linux-musl"]="Linux x86_64 musl"
-          binaries["aarch64-unknown-linux-musl"]="Linux AARCH_64 musl"
-          binaries["armv7-unknown-linux-musleabihf"]="Linux ARMV7 musleabihf"
-          binaries["aarch64-apple-darwin"]="MacOS AARCH_64"
-          binaries["x86_64-apple-darwin"]="MacOS x86_64"
-
-          binaries_link=""
-
-          for target in "${!binaries[@]}"; do
-            binaries_link="$binaries_link
-          # download ockam binary for ${binaries[$target]}
-          curl --proto '=https' --tlsv1.2 -sSfL -O \\
-                ${url_head}/ockam.${target}
-          "
-          done
-
-          text="${text}
-          ${binaries_link}
-
-          # verify that the sha256 hash of the downloaded binary is the same as
-          # the corresponding hash mentioned in sha256sums.txt
-          cat sha256sums.txt | grep ockam.x86_64-unknown-linux-gnu | sha256sum -c
-
-          # rename the download binary and give it permission to execute
-          mv ockam.x86_64-unknown-linux-gnu ockam
-          chmod u+x ockam
+          curl --proto '=https' --tlsv1.2 -sSfL https://install.command.ockam.io | bash
           \`\`\`"
 
           text="$text

@@ -102,6 +102,16 @@ display_usage() {
   echo "    -h, --help                show brief help"
   echo "    -p, --install-path PATH   specify the location for installation"
   echo "                              (default path is ~/.ockam)"
+  echo "    -b, --binary-file FILE    specify the binary file to download"
+  echo "                              (default binary is detected based on OS and CPU)"
+  echo "                              available binaries are:"
+  echo "                                - x86_64-unknown-linux-gnu"
+  echo "                                - aarch64-unknown-linux-gnu"
+  echo "                                - x86_64-unknown-linux-musl"
+  echo "                                - aarch64-unknown-linux-musl"
+  echo "                                - armv7-unknown-linux-musleabihf"
+  echo "                                - aarch64-apple-darwin"
+  echo "                                - x86_64-apple-darwin"
   echo "    -v, --version VERSION     specify the version to install"
   echo "        --no-modify-path      do not add ockam to the PATH"
 }
@@ -171,8 +181,7 @@ download() {
   required sed
 
   local _version _url
-  local _download_base_url="https://github.com/build-trust/ockam/releases/download"
-  local _api='https://api.github.com/repos/build-trust/ockam/releases'
+  local _download_base_url="https://downloads.ockam.io"
   local _binary_file_name="$1"
 
   if [ "$2" ]; then
@@ -285,6 +294,9 @@ main() {
   install_path="$HOME/.ockam"
   local _modify_path="true"
 
+  detect_binary_file_name
+  local _binary_file_name="$return_value"
+
   while test "$#" -gt 0; do
     case "$1" in
     -h | --help)
@@ -315,6 +327,17 @@ main() {
       fi
       shift
       ;;
+    
+    -b | --binary-file)
+      shift
+      if test $# -gt 0; then
+        _binary_file_name="ockam.$1"
+      else
+        display_usage
+        exit 1
+      fi
+      shift
+      ;;
 
     --no-modify-path)
       shift
@@ -331,9 +354,6 @@ main() {
 
   echo
   info "Installing Ockam Command ..."
-
-  detect_binary_file_name
-  local _binary_file_name="$return_value"
 
   create_bin
   download "$_binary_file_name" "$_version"
