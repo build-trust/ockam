@@ -12,25 +12,21 @@ use tempfile::NamedTempFile;
 
 use ockam_api::cli_state::{random_name, CliStateMode};
 use ockam_api::CliState;
-use ockam_node::Executor;
 use tracing::{error, info};
 use tracing_core::Level;
 
 /// These tests need to be integration tests
 /// They need to run in isolation because
 /// they set up some global spans / logs exporters that might interact with other tests
-#[test]
-fn test_log_and_traces() {
-    let cli = Executor::execute_future(async {
-        let db_file = NamedTempFile::new().unwrap();
-        let cli_state_directory = db_file.path().parent().unwrap().join(random_name());
-        let mode = CliStateMode::Persistent(cli_state_directory);
-        CliState::create(mode)
-            .await
-            .unwrap()
-            .set_tracing_enabled(true)
-    })
-    .unwrap();
+#[tokio::test]
+async fn test_log_and_traces() {
+    let db_file = NamedTempFile::new().unwrap();
+    let cli_state_directory = db_file.path().parent().unwrap().join(random_name());
+    let mode = CliStateMode::Persistent(cli_state_directory);
+    let cli = CliState::create(mode)
+        .await
+        .unwrap()
+        .set_tracing_enabled(true);
 
     let temp_file = NamedTempFile::new().unwrap();
     let log_directory = &temp_file.path().parent().unwrap().join(random_name());
@@ -42,7 +38,7 @@ fn test_log_and_traces() {
         &make_configuration()
             .unwrap()
             .set_log_directory(log_directory.into()),
-        &ExportingConfiguration::foreground(&cli).unwrap(),
+        &ExportingConfiguration::foreground(&cli).await.unwrap(),
         "test",
         None,
     );
@@ -54,7 +50,8 @@ fn test_log_and_traces() {
     });
 
     // check that the spans are exported
-    guard.force_flush();
+    guard.force_flush().await;
+
     let spans = spans_exporter.get_finished_spans().unwrap();
     assert_eq!(spans.len(), 1);
     let parent_span = spans.first().unwrap();

@@ -3,7 +3,6 @@ use std::fmt::{Display, Formatter};
 use clap::Args;
 use miette::{miette, IntoDiagnostic, WrapErr};
 use serde::{Deserialize, Serialize};
-use tokio::process::Child;
 
 use ockam::identity::models::ChangeHistory;
 use ockam::identity::utils::now;
@@ -18,11 +17,10 @@ use ockam_api::nodes::service::default_address::DefaultAddress;
 use ockam_core::compat::collections::BTreeMap;
 use ockam_core::compat::fmt;
 
+use crate::node::node_callback::NodeCallback;
 use crate::node::util::run_ockam;
-use crate::util::embedded_node_that_is_not_stopped;
 use crate::util::foreground_args::{wait_for_exit_signal, ForegroundArgs};
 use crate::util::parsers::internet_address_parser;
-use crate::util::{async_cmd, local_cmd};
 use crate::{docs, CommandGlobalOpts, Result};
 
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
@@ -120,6 +118,11 @@ pub struct CreateCommand {
     /// TODO: Set to true after old clients are updated
     #[arg(long, value_name = "DISABLE_TRUST_CONTEXT_ID", default_value_t = false)]
     disable_trust_context_id: bool,
+
+    /// Port that a node should connect to when it's up and running, as a way to signal
+    /// the parent process
+    #[arg(hide = true, long)]
+    pub tcp_callback_port: Option<u16>,
 }
 
 impl CreateCommand {
@@ -130,7 +133,7 @@ impl CreateCommand {
     pub(crate) async fn spawn_background_node(
         &self,
         opts: &CommandGlobalOpts,
-    ) -> miette::Result<Child> {
+    ) -> miette::Result<()> {
         if !self.skip_is_running_check {
             self.guard_node_is_not_already_running(opts).await?;
         }
@@ -213,23 +216,29 @@ impl CreateCommand {
             args.push("--disable_trust_context_id".to_string());
         }
 
-        run_ockam(args, opts.global_args.quiet).await
+        let node_callback = NodeCallback::create().await?;
+
+        args.push("--tcp-callback-port".to_string());
+        args.push(node_callback.callback_port().to_string());
+
+        let handle = run_ockam(args, opts.global_args.quiet)?;
+
+        tokio::select! {
+            _ = handle.wait_with_output() => { std::process::exit(1) }
+            _ = node_callback.wait_for_signal() => {}
+        }
+
+        Ok(())
     }
 }
 
 impl CreateCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         if self.foreground {
             // Create a new node in the foreground (i.e. in this OS process)
-            local_cmd(embedded_node_that_is_not_stopped(
-                opts.rt.clone(),
-                |ctx| async move { self.start_authority_node(&ctx, opts).await },
-            ))
+            self.start_authority_node(ctx, opts).await
         } else {
-            // Create a new node running in the background (i.e. another, new OS process)
-            async_cmd(&self.name(), opts.clone(), |_ctx| async move {
-                self.create_background_node(opts).await
-            })
+            self.create_background_node(opts).await
         }
     }
 
@@ -261,6 +270,7 @@ impl CreateCommand {
     async fn create_background_node(&self, opts: CommandGlobalOpts) -> miette::Result<()> {
         // Spawn node in another, new process
         self.spawn_background_node(&opts).await?;
+
         Ok(())
     }
 
@@ -372,6 +382,10 @@ impl CreateCommand {
         authority_node::start_node(ctx, &configuration, authority)
             .await
             .into_diagnostic()?;
+
+        if let Some(tcp_callback_port) = self.tcp_callback_port {
+            NodeCallback::signal(tcp_callback_port);
+        }
 
         let foreground_args = ForegroundArgs {
             child_process: self.child_process,

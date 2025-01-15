@@ -1,7 +1,4 @@
 use clap::{command, Args};
-use ockam::transport::SchemeHostnamePort;
-use ockam_api::port_range::PortRange;
-use ockam_multiaddr::MultiAddr;
 
 use crate::util::print_warning_for_deprecated_flag_replaced;
 use crate::{
@@ -10,6 +7,11 @@ use crate::{
     util::parsers::hostname_parser,
     Command, CommandGlobalOpts,
 };
+
+use ockam::transport::SchemeHostnamePort;
+use ockam_api::port_range::PortRange;
+use ockam_multiaddr::MultiAddr;
+use ockam_node::Context;
 
 /// Create a new Kafka Consumer. Kafka clients v3.7.0 and earlier are supported.
 /// You can find the version you have with 'kafka-console-consumer.sh --version'.
@@ -38,7 +40,7 @@ pub struct CreateCommand {
 }
 
 impl CreateCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         print_warning_for_deprecated_flag_replaced(&opts, &self.name(), "kafka-inlet")?;
         crate::kafka::inlet::create::CreateCommand {
             name: self.addr.clone(),
@@ -57,7 +59,8 @@ impl CreateCommand {
             consumer_policy_expression: None,
             producer_policy_expression: None,
         }
-        .run(opts)
+        .run(ctx, opts)
+        .await
     }
 
     pub fn name(&self) -> String {

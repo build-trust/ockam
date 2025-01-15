@@ -15,14 +15,33 @@ use tracing::{debug, instrument};
 
 /// Connect to a socket address via a regular TcpStream
 #[instrument(skip_all)]
-pub(crate) async fn connect(to: &HostnamePort) -> Result<(OwnedReadHalf, OwnedWriteHalf)> {
-    Ok(create_tcp_stream(to).await?.into_split())
+pub(crate) async fn connect(
+    to: &HostnamePort,
+    timeout: Option<Duration>,
+) -> Result<(OwnedReadHalf, OwnedWriteHalf)> {
+    Ok(create_tcp_stream(to, timeout).await?.into_split())
 }
 
 /// Create a TCP stream to a given socket address
-pub(crate) async fn create_tcp_stream(to: &HostnamePort) -> Result<TcpStream> {
+pub(crate) async fn create_tcp_stream(
+    to: &HostnamePort,
+    timeout: Option<Duration>,
+) -> Result<TcpStream> {
     debug!(addr = %to, "Connecting");
-    let connection = match TcpStream::connect(to.to_string()).await {
+
+    let result = if let Some(timeout) = timeout {
+        match tokio::time::timeout(timeout, TcpStream::connect(to.to_string())).await {
+            Ok(result) => result,
+            Err(_) => {
+                debug!(addr = %to, timeout = %timeout.as_secs(),  "Timeout");
+                return Err(TransportError::ConnectionTimeout)?;
+            }
+        }
+    } else {
+        TcpStream::connect(to.to_string()).await
+    };
+
+    let connection = match result {
         Ok(c) => {
             debug!(addr = %to, "Connected");
             c
@@ -64,7 +83,7 @@ pub(crate) async fn connect_tls(
     debug!(to = %to, "Trying to connect using TLS");
 
     // create a tcp stream
-    let connection = create_tcp_stream(to).await?;
+    let connection = create_tcp_stream(to, None).await?;
 
     // create a TLS connector
     let tls_connector = create_tls_connector().await?;

@@ -159,7 +159,7 @@ pub struct CreateCommand {
 impl Command for CreateCommand {
     const NAME: &'static str = "influxdb-inlet create";
 
-    async fn async_run(mut self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+    async fn run(mut self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
         initialize_default_node(ctx, &opts).await?;
         let cmd = self.parse_args(&opts).await?;
 
@@ -229,7 +229,7 @@ impl Command for CreateCommand {
 
         let created_message = format!(
             "Created a new InfluxDB Inlet in the Node {} bound to {}",
-            color_primary(&node_name),
+            color_primary(node_name),
             color_primary(cmd.from.to_string()),
         );
 

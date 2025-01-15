@@ -39,7 +39,7 @@ pub struct RevokeCommand {
 impl Command for RevokeCommand {
     const NAME: &'static str = "lease revoke";
 
-    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
         let cmd = self.parse_args(&opts).await?;
 
         let node = InMemoryNode::start_with_identity_and_project_name(

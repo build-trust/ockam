@@ -7,7 +7,6 @@ use ockam_api::nodes::models::relay::RelayInfo;
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_core::api::Request;
 
-use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts};
 
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
@@ -29,17 +28,11 @@ pub struct ListCommand {
 }
 
 impl ListCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |ctx| async move {
-            self.async_run(&ctx, opts).await
-        })
-    }
-
     pub fn name(&self) -> String {
         "relay list".into()
     }
 
-    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         let node = BackgroundNodeClient::create(ctx, &opts.state, &self.to).await?;
         let relays: Vec<RelayInfo> = {
             let pb = opts.terminal.spinner();

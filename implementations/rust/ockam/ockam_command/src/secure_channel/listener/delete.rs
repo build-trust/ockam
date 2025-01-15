@@ -8,7 +8,7 @@ use ockam_api::nodes::BackgroundNodeClient;
 use ockam_core::Address;
 
 use crate::node::NodeOpts;
-use crate::util::{api, async_cmd};
+use crate::util::api;
 use crate::{docs, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/delete/long_about.txt");
@@ -30,17 +30,11 @@ pub struct DeleteCommand {
 }
 
 impl DeleteCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |ctx| async move {
-            self.async_run(&ctx, opts).await
-        })
-    }
-
     pub fn name(&self) -> String {
         "delete secure channel listener".into()
     }
 
-    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         let node = BackgroundNodeClient::create(ctx, &opts.state, &self.node_opts.at_node).await?;
         let req = api::delete_secure_channel_listener(&self.address);
         let response: DeleteSecureChannelListenerResponse = node.ask(ctx, req).await?;

@@ -94,14 +94,14 @@ impl<T: TerminalWriter + Debug + Send + 'static> NotificationHandler<T> {
                         if self.stop.load(Acquire) {
                             // Drain the channel
                             while let Ok(notification) = self.rx.try_recv() {
-                                self.handle_notification(notification).await;
+                                self.handle_notification(notification);
                             }
                             break;
                         }
                     }
                     notification = self.rx.recv() => {
                         if let Ok(notification) = notification {
-                            self.handle_notification(notification).await;
+                            self.handle_notification(notification);
                         }
                         // The channel was closed
                         else {
@@ -113,7 +113,7 @@ impl<T: TerminalWriter + Debug + Send + 'static> NotificationHandler<T> {
         });
     }
 
-    async fn handle_notification(&mut self, notification: Notification) {
+    fn handle_notification(&mut self, notification: Notification) {
         match notification {
             Notification::Message(contents) => {
                 let _ = self.terminal.write_line(contents);

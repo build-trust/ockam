@@ -21,7 +21,7 @@ pub struct ListCommand {
 impl Command for ListCommand {
     const NAME: &'static str = "project-admin list";
 
-    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
         let project = opts
             .state
             .projects()

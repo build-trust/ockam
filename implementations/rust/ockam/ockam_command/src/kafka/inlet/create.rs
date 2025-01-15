@@ -139,7 +139,7 @@ pub struct CreateCommand {
 impl Command for CreateCommand {
     const NAME: &'static str = "kafka-inlet create";
 
-    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
         initialize_default_node(ctx, &opts).await?;
         let cmd = self.parse_args(&opts).await?;
 
@@ -194,7 +194,7 @@ impl Command for CreateCommand {
                 .map_err(|e| miette!("Failed to start Kafka Inlet: {e}"))?;
 
             KafkaInletOutput {
-                node_name: node.node_name(),
+                node_name: node.node_name().to_string(),
                 from: InternetAddress::new(&cmd.from.hostname_port().to_string())
                     .ok_or(miette!("Invalid address"))?,
                 brokers_port_range: cmd.brokers_port_range(),

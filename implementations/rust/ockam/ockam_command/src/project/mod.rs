@@ -21,10 +21,13 @@ mod ticket;
 #[allow(unused)]
 pub mod util;
 mod version;
+
 pub use addon::AddonCommand;
 pub use create::CreateCommand;
 pub use delete::DeleteCommand;
 pub use ticket::TicketCommand;
+
+use ockam_node::Context;
 
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
 
@@ -55,18 +58,18 @@ pub enum ProjectSubcommand {
 }
 
 impl ProjectCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
-            ProjectSubcommand::Enroll(c) => c.run(opts),
-            ProjectSubcommand::Import(c) => c.run(opts),
-            ProjectSubcommand::List(c) => c.run(opts),
-            ProjectSubcommand::Show(c) => c.run(opts),
-            ProjectSubcommand::Version(c) => c.run(opts),
-            ProjectSubcommand::Information(c) => c.run(opts),
-            ProjectSubcommand::Ticket(c) => c.run(opts),
-            ProjectSubcommand::Create(c) => c.run(opts),
-            ProjectSubcommand::Delete(c) => c.run(opts),
-            ProjectSubcommand::Addon(c) => c.run(opts),
+            ProjectSubcommand::Enroll(c) => c.run(ctx, opts).await,
+            ProjectSubcommand::Import(c) => c.run(opts).await,
+            ProjectSubcommand::List(c) => c.run(ctx, opts).await,
+            ProjectSubcommand::Show(c) => c.run(ctx, opts).await,
+            ProjectSubcommand::Version(c) => c.run(ctx, opts).await,
+            ProjectSubcommand::Information(c) => c.run(ctx, opts).await,
+            ProjectSubcommand::Ticket(c) => c.run(ctx, opts).await,
+            ProjectSubcommand::Create(c) => c.run(ctx, opts).await,
+            ProjectSubcommand::Delete(c) => c.run(ctx, opts).await,
+            ProjectSubcommand::Addon(c) => c.run(ctx, opts).await,
         }
     }
 

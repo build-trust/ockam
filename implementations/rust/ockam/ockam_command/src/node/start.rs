@@ -8,10 +8,10 @@ use ockam_api::nodes::BackgroundNodeClient;
 
 use ockam_node::Context;
 
+use crate::node::node_callback::NodeCallback;
 use crate::node::show::get_node_resources;
 use crate::node::util::spawn_node;
 use crate::node::CreateCommand;
-use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/start/long_about.txt");
@@ -31,17 +31,11 @@ pub struct StartCommand {
 }
 
 impl StartCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |ctx| async move {
-            self.async_run(&ctx, opts).await
-        })
-    }
-
     pub fn name(&self) -> String {
         "node start".into()
     }
 
-    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         if self.node_name.is_some() || !opts.terminal.can_ask_for_user_input() {
             let node_name = opts
                 .state
@@ -126,8 +120,8 @@ async fn start_single_node(
         return Ok(());
     }
 
-    let mut node: BackgroundNodeClient = run_node(node_name, ctx, &opts).await?;
-    let node_status = get_node_resources(ctx, &opts.state, &mut node, true).await?;
+    let mut node = run_node(node_name, ctx, &opts).await?;
+    let node_status = get_node_resources(ctx, &opts.state, &mut node).await?;
     opts.terminal
         .stdout()
         .plain(&node_status)
@@ -173,17 +167,27 @@ async fn run_node(
         .map(|a| a.to_string())
         .unwrap_or("no transport address".to_string());
 
+    let node_callback = NodeCallback::create().await?;
+
     // Restart node
     #[allow(clippy::field_reassign_with_default)]
     let cmd = {
         let mut cmd = CreateCommand::default();
         cmd.name = node_name.to_string();
         cmd.tcp_listener_address = node_address;
+        cmd.tcp_callback_port = Some(node_callback.callback_port());
         cmd
     };
-    spawn_node(opts, cmd).await?;
+
+    let handle = spawn_node(opts, cmd)?;
+
+    tokio::select! {
+        _ = handle.wait_with_output() => { std::process::exit(1) }
+        _ = node_callback.wait_for_signal() => {}
+    }
 
     let node = BackgroundNodeClient::create_to_node(ctx, &opts.state, node_name)?;
+
     Ok(node)
 }
 

@@ -49,13 +49,13 @@ pub struct ProjectMemberCommand {
 }
 
 impl ProjectMemberCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
-            ProjectMemberSubcommand::List(c) => c.run(opts),
-            ProjectMemberSubcommand::ListIds(c) => c.run(opts),
-            ProjectMemberSubcommand::Add(c) => c.run(opts),
-            ProjectMemberSubcommand::Show(c) => c.run(opts),
-            ProjectMemberSubcommand::Delete(c) => c.run(opts),
+            ProjectMemberSubcommand::List(c) => c.run(ctx, opts).await,
+            ProjectMemberSubcommand::ListIds(c) => c.run(ctx, opts).await,
+            ProjectMemberSubcommand::Add(c) => c.run(ctx, opts).await,
+            ProjectMemberSubcommand::Show(c) => c.run(ctx, opts).await,
+            ProjectMemberSubcommand::Delete(c) => c.run(ctx, opts).await,
         }
     }
 

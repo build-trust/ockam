@@ -60,6 +60,8 @@ impl Drop for InMemoryNode {
         // stops. Except if they have been started with the `ockam node create` command
         // because in that case they can be restarted
         if !self.persistent {
+            // TODO: Should be a better way to do that, e.g. send a signal to a background async
+            //  task to do the job, or shutdown the node manually before dropping this value
             executor::block_on(async {
                 let result = self.cli_state.remove_node(&self.node_name).await;
                 if let Err(err) = result {

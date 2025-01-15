@@ -35,7 +35,7 @@ pub struct ListCommand {
 impl Command for ListCommand {
     const NAME: &'static str = "project-member list";
 
-    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> Result<()> {
+    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> Result<()> {
         let (authority_node_client, _) =
             authority_client(ctx, &opts, &self.identity_opts, &self.project_name).await?;
 

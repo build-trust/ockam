@@ -1,16 +1,15 @@
-use crate::node::show::wait_until_node_is_up;
 use crate::node::CreateCommand;
 use crate::run::parser::resource::utils::subprocess_stdio;
 use crate::shared_args::TrustOpts;
-use crate::{Command as CommandTrait, CommandGlobalOpts};
-use miette::Context as _;
+use crate::{Command, CommandGlobalOpts};
 use miette::IntoDiagnostic;
+use miette::{miette, Context as _};
 use ockam_core::env::get_env_with_default;
 use ockam_node::Context;
 use rand::random;
 use std::env::current_exe;
 use std::process::Stdio;
-use tokio::process::{Child, Command};
+use tokio::process::{Child, Command as TokioCommand};
 use tracing::info;
 
 pub struct NodeManagerDefaults {
@@ -39,12 +38,12 @@ pub async fn initialize_default_node(
         return Ok(());
     } else if opts.state.get_default_node().await.is_err() {
         let cmd = CreateCommand::default();
-        cmd.async_run(ctx, opts.clone()).await?;
+        cmd.run(ctx, opts.clone()).await?;
         opts.terminal.write_line("")?;
     } else {
         let node = opts.state.get_default_node().await?;
         if !node.is_running() {
-            wait_until_node_is_up(ctx, &opts.state, node.name()).await?;
+            return Err(miette!("Default node exists but is not running"));
         }
     }
     Ok(())
@@ -52,8 +51,7 @@ pub async fn initialize_default_node(
 
 /// Construct the argument list and re-execute the ockam
 /// CLI in foreground mode to start the newly created node
-#[allow(clippy::too_many_arguments)]
-pub async fn spawn_node(opts: &CommandGlobalOpts, cmd: CreateCommand) -> miette::Result<Child> {
+pub fn spawn_node(opts: &CommandGlobalOpts, cmd: CreateCommand) -> miette::Result<Child> {
     info!(
         "preparing to spawn a new node with name {} in the background",
         &cmd.name
@@ -75,6 +73,7 @@ pub async fn spawn_node(opts: &CommandGlobalOpts, cmd: CreateCommand) -> miette:
         trust_opts,
         opentelemetry_context,
         in_memory,
+        tcp_callback_port,
     } = cmd;
 
     let mut args = vec![
@@ -185,13 +184,18 @@ pub async fn spawn_node(opts: &CommandGlobalOpts, cmd: CreateCommand) -> miette:
         args.push("--in-memory".to_string());
     }
 
+    if let Some(tcp_callback_port) = tcp_callback_port {
+        args.push("--tcp-callback-port".to_string());
+        args.push(tcp_callback_port.to_string());
+    }
+
     args.push(name.to_owned());
 
-    run_ockam(args, opts.global_args.quiet).await
+    run_ockam(args, opts.global_args.quiet)
 }
 
 /// Run the ockam command line with specific arguments
-pub async fn run_ockam(args: Vec<String>, quiet: bool) -> miette::Result<Child> {
+pub fn run_ockam(args: Vec<String>, quiet: bool) -> miette::Result<Child> {
     info!("spawning a new process");
 
     // On systems with non-obvious path setups (or during
@@ -204,7 +208,7 @@ pub async fn run_ockam(args: Vec<String>, quiet: bool) -> miette::Result<Child> 
     });
 
     unsafe {
-        Command::new(ockam_exe)
+        TokioCommand::new(ockam_exe)
             .args(args)
             .stdout(subprocess_stdio(quiet))
             .stderr(subprocess_stdio(quiet))

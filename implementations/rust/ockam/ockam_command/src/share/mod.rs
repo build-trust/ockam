@@ -8,6 +8,8 @@ pub use show::ShowCommand;
 
 use crate::{docs, CommandGlobalOpts};
 
+use ockam_node::Context;
+
 mod accept;
 mod create;
 mod list;
@@ -39,15 +41,15 @@ pub enum ShareSubcommand {
 }
 
 impl ShareCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         use ShareSubcommand::*;
         match self.subcommand {
-            Accept(c) => c.run(opts),
-            Create(c) => c.run(opts),
-            List(c) => c.run(opts),
+            Accept(c) => c.run(ctx, opts).await,
+            Create(c) => c.run(ctx, opts).await,
+            List(c) => c.run(ctx, opts).await,
             Revoke => todo!(),
-            Service(c) => c.run(opts),
-            Show(c) => c.run(opts),
+            Service(c) => c.run(ctx, opts).await,
+            Show(c) => c.run(ctx, opts).await,
         }
     }
 

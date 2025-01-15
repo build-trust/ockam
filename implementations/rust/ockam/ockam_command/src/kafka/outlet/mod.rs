@@ -9,6 +9,7 @@ use self::list::ListCommand;
 use crate::kafka::outlet::show::ShowCommand;
 use crate::{Command, CommandGlobalOpts};
 use clap::{command, Args, Subcommand};
+use ockam_node::Context;
 
 /// Manage Kafka Outlets
 #[derive(Clone, Debug, Args)]
@@ -27,12 +28,12 @@ pub enum KafkaOutletSubcommand {
 }
 
 impl KafkaOutletCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
-            KafkaOutletSubcommand::Create(c) => c.run(opts),
-            KafkaOutletSubcommand::Show(c) => c.run(opts),
-            KafkaOutletSubcommand::Delete(c) => c.run(opts),
-            KafkaOutletSubcommand::List(c) => c.run(opts),
+            KafkaOutletSubcommand::Create(c) => c.run(ctx, opts).await,
+            KafkaOutletSubcommand::Show(c) => c.run(ctx, opts).await,
+            KafkaOutletSubcommand::Delete(c) => c.run(ctx, opts).await,
+            KafkaOutletSubcommand::List(c) => c.run(ctx, opts).await,
         }
     }
 

@@ -147,6 +147,8 @@ impl SqlxDatabase {
         configuration: &DatabaseConfiguration,
         migration_set: Option<impl MigrationSet>,
     ) -> Result<Self> {
+        debug!("Creating SQLx database using configuration");
+
         configuration.create_directory_if_necessary()?;
 
         // creating a new database might be failing a few times

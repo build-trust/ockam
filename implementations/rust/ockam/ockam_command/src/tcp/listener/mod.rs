@@ -7,6 +7,8 @@ pub(crate) use show::ShowCommand;
 
 use crate::CommandGlobalOpts;
 
+use ockam_node::Context;
+
 mod create;
 mod delete;
 mod list;
@@ -35,12 +37,12 @@ pub enum TcpListenerSubCommand {
 }
 
 impl TcpListenerCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
-            TcpListenerSubCommand::Create(c) => c.run(opts),
-            TcpListenerSubCommand::Delete(c) => c.run(opts),
-            TcpListenerSubCommand::List(c) => c.run(opts),
-            TcpListenerSubCommand::Show(c) => c.run(opts),
+            TcpListenerSubCommand::Create(c) => c.run(ctx, opts).await,
+            TcpListenerSubCommand::Delete(c) => c.run(ctx, opts).await,
+            TcpListenerSubCommand::List(c) => c.run(ctx, opts).await,
+            TcpListenerSubCommand::Show(c) => c.run(ctx, opts).await,
         }
     }
 

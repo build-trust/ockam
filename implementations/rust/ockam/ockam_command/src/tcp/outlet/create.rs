@@ -79,7 +79,7 @@ pub struct CreateCommand {
 impl Command for CreateCommand {
     const NAME: &'static str = "tcp-outlet create";
 
-    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
         initialize_default_node(ctx, &opts).await?;
         let cmd = self.parse_args(&opts).await?;
 
@@ -103,14 +103,14 @@ impl Command for CreateCommand {
             )
             .await?
         };
-        cmd.add_outlet_created_journey_event(&opts, &node_name, &outlet_status)
+        cmd.add_outlet_created_journey_event(&opts, node_name, &outlet_status)
             .await?;
 
         let worker_route = outlet_status.worker_route().into_diagnostic()?;
 
         let mut msg = fmt_ok!(
             "Created a new TCP Outlet in the Node {} at {} bound to {}\n",
-            color_primary(&node_name),
+            color_primary(node_name),
             color_primary(worker_route.to_string()),
             color_primary(cmd.to.to_string())
         );

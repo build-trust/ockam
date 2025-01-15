@@ -3,6 +3,7 @@ use clap::{Args, Subcommand};
 use create::CreateCommand;
 use delete::DeleteCommand;
 use list::ListCommand;
+use ockam_node::Context;
 use show::ShowCommand;
 
 use crate::{docs, Command, CommandGlobalOpts};
@@ -37,12 +38,12 @@ pub enum TcpOutletSubCommand {
 }
 
 impl TcpOutletCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
-            TcpOutletSubCommand::Create(c) => c.run(opts),
-            TcpOutletSubCommand::Delete(c) => c.run(opts),
-            TcpOutletSubCommand::List(c) => c.run(opts),
-            TcpOutletSubCommand::Show(c) => c.run(opts),
+            TcpOutletSubCommand::Create(c) => c.run(ctx, opts).await,
+            TcpOutletSubCommand::Delete(c) => c.run(ctx, opts).await,
+            TcpOutletSubCommand::List(c) => c.run(ctx, opts).await,
+            TcpOutletSubCommand::Show(c) => c.run(ctx, opts).await,
         }
     }
 

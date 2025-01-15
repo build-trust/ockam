@@ -12,7 +12,6 @@ use ockam_api::nodes::models::secure_channel::ShowSecureChannelResponse;
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_core::{route, Address, Result};
 
-use crate::util::async_cmd;
 use crate::{docs, util::api, CommandGlobalOpts};
 use ockam_api::output::Output;
 use ockam_api::ReverseLocalConverter;
@@ -36,12 +35,6 @@ pub struct ListCommand {
 }
 
 impl ListCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |ctx| async move {
-            self.async_run(&ctx, opts).await
-        })
-    }
-
     pub fn name(&self) -> String {
         "secure-channel list".into()
     }
@@ -81,7 +74,7 @@ impl ListCommand {
         Ok(SecureChannelListOutput { from, to, at })
     }
 
-    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         let node = BackgroundNodeClient::create(ctx, &opts.state, &self.at).await?;
 
         let is_finished: Mutex<bool> = Mutex::new(false);
@@ -104,7 +97,7 @@ impl ListCommand {
                 let request = api::show_secure_channel(&Address::from(channel_addr));
                 let show_response: ShowSecureChannelResponse = node.ask(ctx, request).await?;
                 let secure_channel_output =
-                    self.build_output(&node.node_name(), channel_addr, show_response)?;
+                    self.build_output(node.node_name(), channel_addr, show_response)?;
                 *is_finished.lock().await = true;
                 Ok(secure_channel_output)
             };

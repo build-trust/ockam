@@ -4903,7 +4903,6 @@ dependencies = [
  "ockam_executor",
  "ockam_macros",
  "ockam_transport_core",
- "once_cell",
  "opentelemetry",
  "percent-encoding",
  "regex",

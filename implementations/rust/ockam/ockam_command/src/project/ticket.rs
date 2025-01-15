@@ -87,11 +87,7 @@ pub struct TicketCommand {
 impl Command for TicketCommand {
     const NAME: &'static str = "project ticket";
 
-    fn retry_opts(&self) -> Option<RetryOpts> {
-        Some(self.retry_opts.clone())
-    }
-
-    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> Result<()> {
+    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> Result<()> {
         let cmd = self.parse_args(&opts).await?;
         let identity = opts
             .state

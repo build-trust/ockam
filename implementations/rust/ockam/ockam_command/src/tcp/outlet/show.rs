@@ -45,7 +45,7 @@ pub struct ShowCommand {
 impl Command for ShowCommand {
     const NAME: &'static str = "tcp-outlet show";
 
-    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
         Ok(ShowTui::run(ctx.try_clone().into_diagnostic()?, opts, self.clone()).await?)
     }
 }
@@ -82,7 +82,7 @@ impl ShowTui {
         mut cmd: ShowCommand,
     ) -> miette::Result<()> {
         let node = BackgroundNodeClient::create(&ctx, &opts.state, &cmd.at).await?;
-        cmd.at = Some(node.node_name());
+        cmd.at = Some(node.node_name().to_string());
 
         let tui = Self {
             ctx,
@@ -136,7 +136,7 @@ impl ShowCommandTui for ShowTui {
             .ask(&self.ctx, Request::get(format!("/node/outlet/{item_name}")))
             .await?;
         let info = OutletInformation {
-            node_name: self.node.node_name(),
+            node_name: self.node.node_name().to_string(),
             worker_address: outlet_status.worker_route().into_diagnostic()?,
             to: outlet_status.to.to_string(),
         };

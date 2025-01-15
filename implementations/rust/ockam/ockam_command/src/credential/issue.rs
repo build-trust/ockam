@@ -9,7 +9,6 @@ use ockam_core::compat::collections::HashMap;
 
 use crate::credential::CredentialOutput;
 use crate::output::CredentialAndPurposeKeyDisplay;
-use crate::util::async_cmd;
 use crate::util::parsers::duration_parser;
 use crate::{util::parsers::identity_identifier_parser, CommandGlobalOpts, Result};
 
@@ -41,12 +40,6 @@ pub struct IssueCommand {
 }
 
 impl IssueCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |_ctx| async move {
-            self.async_run(opts).await
-        })
-    }
-
     pub fn name(&self) -> String {
         "credential issue".into()
     }
@@ -62,7 +55,7 @@ impl IssueCommand {
         Ok(attributes)
     }
 
-    async fn async_run(&self, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(&self, opts: CommandGlobalOpts) -> miette::Result<()> {
         let authority = opts
             .state
             .get_identifier_by_optional_name(&self.as_identity)

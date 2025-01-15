@@ -12,7 +12,6 @@ use ockam_api::orchestrator::addon::Addons;
 use ockam_api::orchestrator::project::models::InfluxDBTokenLeaseManagerConfig;
 
 use crate::project::addon::check_configuration_completion;
-use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/configure_influxdb/long_about.txt");
@@ -114,17 +113,11 @@ pub struct AddonConfigureInfluxdbSubcommand {
 }
 
 impl AddonConfigureInfluxdbSubcommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |ctx| async move {
-            self.async_run(&ctx, opts).await
-        })
-    }
-
     pub fn name(&self) -> String {
         "project addon configure influxdb".into()
     }
 
-    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         let project_id = opts
             .state
             .projects()

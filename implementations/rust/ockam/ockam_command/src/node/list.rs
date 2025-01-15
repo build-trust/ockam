@@ -10,7 +10,6 @@ use tokio::try_join;
 use ockam_api::cli_state::nodes::NodeInfo;
 use ockam_api::colors::OckamColor;
 
-use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts, Result};
 use ockam_api::output::Output;
 
@@ -28,17 +27,11 @@ after_long_help = docs::after_help(AFTER_LONG_HELP)
 pub struct ListCommand {}
 
 impl ListCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |_ctx| async move {
-            self.async_run(opts).await
-        })
-    }
-
     pub fn name(&self) -> String {
         "node list".into()
     }
 
-    async fn async_run(&self, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(&self, opts: CommandGlobalOpts) -> miette::Result<()> {
         // Before printing node states we verify them.
         // We send a QueryStatus request to every node on
         // record. If the response yields a different pid to the

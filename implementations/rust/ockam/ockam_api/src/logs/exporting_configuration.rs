@@ -7,7 +7,6 @@ use crate::logs::ExportingEnabled;
 use crate::CliState;
 use ockam_core::env::{get_env_with_default, FromString};
 use ockam_core::errcode::{Kind, Origin};
-use ockam_node::Executor;
 use std::env::current_exe;
 use std::fmt::{Display, Formatter};
 use std::net::{SocketAddr, ToSocketAddrs};
@@ -116,14 +115,15 @@ impl ExportingConfiguration {
 
     /// Create a tracing configuration for a user command running in the foreground.
     /// (meaning that the process will shut down once the command has been executed)
-    pub fn foreground(state: &CliState) -> ockam_core::Result<ExportingConfiguration> {
-        match opentelemetry_endpoint(state)? {
+    pub async fn foreground(state: &CliState) -> ockam_core::Result<ExportingConfiguration> {
+        match opentelemetry_endpoint(state).await? {
             None => ExportingConfiguration::off(),
             Some(endpoint) => Ok(ExportingConfiguration {
                 enabled: exporting_enabled(
                     &endpoint,
                     opentelemetry_endpoint_foreground_connection_timeout()?,
-                )?,
+                )
+                .await?,
                 span_export_timeout: span_export_timeout()?,
                 log_export_timeout: log_export_timeout()?,
                 span_export_scheduled_delay: foreground_span_export_scheduled_delay()?,
@@ -139,14 +139,15 @@ impl ExportingConfiguration {
     }
 
     /// Create a tracing configuration for a background node
-    pub fn background(state: &CliState) -> ockam_core::Result<ExportingConfiguration> {
-        match opentelemetry_endpoint(state)? {
+    pub async fn background(state: &CliState) -> ockam_core::Result<ExportingConfiguration> {
+        match opentelemetry_endpoint(state).await? {
             None => ExportingConfiguration::off(),
             Some(endpoint) => Ok(ExportingConfiguration {
                 enabled: exporting_enabled(
                     &endpoint,
                     opentelemetry_endpoint_background_connection_timeout()?,
-                )?,
+                )
+                .await?,
                 span_export_timeout: span_export_timeout()?,
                 log_export_timeout: log_export_timeout()?,
                 span_export_scheduled_delay: background_span_export_scheduled_delay()?,
@@ -254,11 +255,11 @@ fn print_debug(message: impl Into<String>) {
 /// - Exporting has not been deactivated by the user
 /// - The opentelemetry endpoint is accessible
 ///
-fn exporting_enabled(
+async fn exporting_enabled(
     endpoint: &OpenTelemetryEndpoint,
     connection_check_timeout: Duration,
 ) -> ockam_core::Result<ExportingEnabled> {
-    if is_endpoint_accessible(&endpoint.url(), connection_check_timeout) {
+    if is_endpoint_accessible(&endpoint.url(), connection_check_timeout).await {
         print_debug("Exporting is enabled");
         Ok(ExportingEnabled::On)
     } else {
@@ -275,23 +276,37 @@ fn exporting_enabled(
 }
 
 /// Return true if the endpoint can be accessed with a TCP connection
-fn is_endpoint_accessible(url: &Url, connection_check_timeout: Duration) -> bool {
+async fn is_endpoint_accessible(url: &Url, connection_check_timeout: Duration) -> bool {
     match to_socket_addr(url) {
         Some(address) => {
             let retries = FibonacciBackoff::from_millis(100);
             let now = Instant::now();
 
+            // TODO: Not sure we need to retry really, also maybe it could happen in the background
+            //  to not slow things down
             for timeout_duration in retries {
                 print_debug(format!(
                     "trying to connect to {address} in {timeout_duration:?}"
                 ));
-                if std::net::TcpStream::connect_timeout(&address, timeout_duration).is_ok() {
-                    return true;
-                } else {
-                    if now.elapsed() >= connection_check_timeout {
-                        return false;
-                    };
-                    std::thread::sleep(timeout_duration);
+
+                let res = tokio::time::timeout(
+                    timeout_duration,
+                    tokio::net::TcpStream::connect(&address),
+                )
+                .await;
+
+                match res {
+                    Ok(res) => {
+                        if res.is_ok() {
+                            return true;
+                        }
+                    }
+                    Err(_) => {
+                        if now.elapsed() >= connection_check_timeout {
+                            return false;
+                        };
+                        tokio::time::sleep(timeout_duration).await;
+                    }
                 }
             }
             false
@@ -324,36 +339,27 @@ fn to_socket_addr(url: &Url) -> Option<SocketAddr> {
 /// Return the tracing endpoint, defined by an environment variable
 /// If the endpoint can be established with an Ockam portal to the opentelemetry-relay created in the project
 /// use that URL, otherwise use the HTTPS endpoint
-fn opentelemetry_endpoint(state: &CliState) -> ockam_core::Result<Option<OpenTelemetryEndpoint>> {
-    if !is_exporting_set()? {
-        print_debug("Exporting is turned off");
-        Ok(None)
-    } else {
-        let state = state.clone();
-        match Executor::execute_future(async move {
-            // if a project is defined try to use the OpenTelemetry portal
-            // and if we allow traces to be exported via a portal
-            if state.projects().get_default_project().await.is_ok()
-                && is_exporting_via_portal_set()?
-            {
-                print_debug("A default project exists. Getting the project export endpoint");
-                get_project_endpoint_url(&state).await
-            } else {
-                print_debug("A default project does not exist. Getting the default HTTPs endpoint");
-                get_https_endpoint()
-            }
-        }) {
-            Ok(Ok(url)) => Ok(Some(url)),
-            Ok(Err(e)) => {
-                print_debug(format!(
-                    "There was an issue when setting up the exporting of traces: {e:?}"
-                ));
-                Ok(None)
-            }
-            Err(e) => {
-                print_debug(format!("There was an issue when running the code setting up the exporting of traces: {e:?}"));
-                Ok(None)
-            }
+async fn opentelemetry_endpoint(
+    state: &CliState,
+) -> ockam_core::Result<Option<OpenTelemetryEndpoint>> {
+    let res = {
+        // if a project is defined try to use the OpenTelemetry portal
+        // and if we allow traces to be exported via a portal
+        if state.projects().get_default_project().await.is_ok() && is_exporting_via_portal_set()? {
+            print_debug("A default project exists. Getting the project export endpoint");
+            get_project_endpoint_url(state).await
+        } else {
+            print_debug("A default project does not exist. Getting the default HTTPs endpoint");
+            get_https_endpoint()
+        }
+    };
+    match res {
+        Ok(url) => Ok(Some(url)),
+        Err(e) => {
+            print_debug(format!(
+                "There was an issue when setting up the exporting of traces: {e:?}"
+            ));
+            Ok(None)
         }
     }
 }

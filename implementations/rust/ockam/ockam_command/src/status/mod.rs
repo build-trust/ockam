@@ -42,7 +42,7 @@ pub struct StatusCommand {
 impl Command for StatusCommand {
     const NAME: &'static str = "status";
 
-    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> Result<()> {
+    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> Result<()> {
         let identities_details = self.get_identities_details(&opts).await?;
         let nodes = self.get_nodes_resources(ctx, &opts).await?;
         let node = InMemoryNode::start(ctx, &opts.state)
@@ -91,7 +91,7 @@ impl StatusCommand {
             }
             let mut node =
                 BackgroundNodeClient::create(ctx, &opts.state, &Some(node.name())).await?;
-            nodes_resources.push(get_node_resources(ctx, &opts.state, &mut node, false).await?);
+            nodes_resources.push(get_node_resources(ctx, &opts.state, &mut node).await?);
         }
         if let Some(ref pb) = pb {
             pb.finish_and_clear();

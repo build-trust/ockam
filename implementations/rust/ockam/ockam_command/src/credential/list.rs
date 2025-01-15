@@ -1,15 +1,13 @@
 use clap::Args;
 use miette::IntoDiagnostic;
 
-use ockam::identity::{CredentialSqlxDatabase, Identifier};
-use ockam_api::colors::color_primary;
-
 use crate::credential::LocalCredentialOutput;
 use crate::node::NodeOpts;
-use crate::util::async_cmd;
 use crate::util::parsers::identity_identifier_parser;
 use crate::CommandGlobalOpts;
 use crate::Result;
+use ockam::identity::{CredentialSqlxDatabase, Identifier};
+use ockam_api::colors::color_primary;
 
 #[derive(Clone, Debug, Args)]
 pub struct ListCommand {
@@ -26,17 +24,11 @@ pub struct ListCommand {
 }
 
 impl ListCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |_ctx| async move {
-            self.async_run(opts).await
-        })
-    }
-
     pub fn name(&self) -> String {
         "credential list".into()
     }
 
-    async fn async_run(&self, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(&self, opts: CommandGlobalOpts) -> miette::Result<()> {
         let node_name = match self.node_opts.at_node.clone() {
             Some(name) => name,
             None => opts.state.get_default_node().await?.name(),

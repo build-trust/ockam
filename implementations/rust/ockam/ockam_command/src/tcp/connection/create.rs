@@ -39,7 +39,7 @@ pub struct CreateCommand {
 impl Command for CreateCommand {
     const NAME: &'static str = "tcp-connection create";
 
-    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
         initialize_default_node(ctx, &opts).await?;
         let node = BackgroundNodeClient::create(ctx, &opts.state, &self.from).await?;
         let payload = models::transport::CreateTcpConnection::new(self.address.clone());
@@ -47,7 +47,7 @@ impl Command for CreateCommand {
         let transport_status: TransportStatus = node.ask(ctx, request).await?;
 
         let output = TcpConnection::new(
-            node.node_name(),
+            node.node_name().to_string(),
             transport_status.socket_addr().into_diagnostic()?,
             transport_status.multiaddr().into_diagnostic()?,
         );

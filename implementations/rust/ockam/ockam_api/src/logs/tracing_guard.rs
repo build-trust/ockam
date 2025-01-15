@@ -45,19 +45,27 @@ impl TracingGuard {
         }
     }
 
-    pub fn shutdown(&self) {
-        global::shutdown_tracer_provider();
+    pub async fn shutdown(self) {
+        _ = tokio::task::spawn_blocking(|| {
+            global::shutdown_tracer_provider();
+        })
+        .await
     }
 
     /// Export the current batches of spans and log records
     /// This is used right after a background node has started to get the first logs
     /// and in tests otherwise
-    pub fn force_flush(&self) {
-        if let Some(logger_provider) = self.logger_provider.as_ref() {
-            logger_provider.force_flush();
-        }
-        if let Some(tracer_provider) = self.tracer_provider.as_ref() {
-            tracer_provider.force_flush();
-        }
+    pub async fn force_flush(&self) {
+        let logger_provider = self.logger_provider.clone();
+        let tracer_provider = self.tracer_provider.clone();
+        _ = tokio::task::spawn_blocking(|| {
+            if let Some(logger_provider) = logger_provider {
+                logger_provider.force_flush();
+            }
+            if let Some(tracer_provider) = tracer_provider {
+                tracer_provider.force_flush();
+            }
+        })
+        .await;
     }
 }

@@ -4,7 +4,6 @@ use clap::Args;
 use colorful::Colorful;
 use ockam_api::{fmt_err, fmt_info};
 
-use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/move/long_about.txt");
@@ -25,17 +24,11 @@ pub struct MoveCommand {
 }
 
 impl MoveCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |_ctx| async move {
-            self.async_run(opts).await
-        })
-    }
-
     pub fn name(&self) -> String {
         "move vault".into()
     }
 
-    async fn async_run(&self, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(&self, opts: CommandGlobalOpts) -> miette::Result<()> {
         let vault_name = self.name.clone();
         let vault_path = self.path.clone();
         match opts

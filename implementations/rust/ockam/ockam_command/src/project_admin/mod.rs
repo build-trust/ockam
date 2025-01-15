@@ -9,6 +9,8 @@ use crate::project_admin::delete::DeleteCommand;
 use crate::project_admin::list::ListCommand;
 use crate::{docs, Command, CommandGlobalOpts};
 
+use ockam_node::Context;
+
 #[derive(Clone, Debug, Args)]
 #[command(hide = docs::hide(), arg_required_else_help = true, subcommand_required = true,
 about = docs::about("Manage Project Admins in Ockam Orchestrator"))]
@@ -30,11 +32,11 @@ enum ProjectAdminSubcommand {
 }
 
 impl ProjectAdminCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
-            ProjectAdminSubcommand::List(c) => c.run(opts),
-            ProjectAdminSubcommand::Add(c) => c.run(opts),
-            ProjectAdminSubcommand::Delete(c) => c.run(opts),
+            ProjectAdminSubcommand::List(c) => c.run(ctx, opts).await,
+            ProjectAdminSubcommand::Add(c) => c.run(ctx, opts).await,
+            ProjectAdminSubcommand::Delete(c) => c.run(ctx, opts).await,
         }
     }
 

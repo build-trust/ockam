@@ -7,6 +7,7 @@ use delete::DeleteCommand;
 use list::ListCommand;
 use logs::LogCommand;
 use ockam_api::address::extract_address_value;
+use ockam_node::Context;
 use show::ShowCommand;
 use start::StartCommand;
 use stop::StopCommand;
@@ -74,16 +75,16 @@ impl NodeSubcommand {
 }
 
 impl NodeCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
-            NodeSubcommand::Create(c) => c.run(opts),
-            NodeSubcommand::Delete(c) => c.run(opts),
-            NodeSubcommand::List(c) => c.run(opts),
-            NodeSubcommand::Show(c) => c.run(opts),
-            NodeSubcommand::Start(c) => c.run(opts),
-            NodeSubcommand::Stop(c) => c.run(opts),
-            NodeSubcommand::Logs(c) => c.run(opts),
-            NodeSubcommand::Default(c) => c.run(opts),
+            NodeSubcommand::Create(c) => c.run(ctx, opts).await,
+            NodeSubcommand::Delete(c) => c.run(opts).await,
+            NodeSubcommand::List(c) => c.run(opts).await,
+            NodeSubcommand::Show(c) => c.run(ctx, opts).await,
+            NodeSubcommand::Start(c) => c.run(ctx, opts).await,
+            NodeSubcommand::Stop(c) => c.run(opts).await,
+            NodeSubcommand::Logs(c) => c.run(opts).await,
+            NodeSubcommand::Default(c) => c.run(opts).await,
         }
     }
 }

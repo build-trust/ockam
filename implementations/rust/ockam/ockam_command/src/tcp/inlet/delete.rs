@@ -46,7 +46,7 @@ pub struct DeleteCommand {
 impl Command for DeleteCommand {
     const NAME: &'static str = "tcp-inlet delete";
 
-    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
         Ok(DeleteTui::run(ctx, opts, self).await?)
     }
 }
@@ -113,7 +113,7 @@ impl DeleteCommandTui for DeleteTui {
             .plain(fmt_ok!(
                 "TCP Inlet with alias {} on Node {} has been deleted",
                 color_primary(item_name),
-                color_primary(&node_name)
+                color_primary(node_name)
             ))
             .json(serde_json::json!({ "alias": item_name, "node": node_name }))
             .write_line()?;

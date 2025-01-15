@@ -6,6 +6,8 @@ use crate::kafka::inlet::list::ListCommand;
 use crate::kafka::inlet::show::ShowCommand;
 use crate::{Command, CommandGlobalOpts};
 
+use ockam_node::Context;
+
 pub(crate) mod create;
 pub(crate) mod delete;
 pub(crate) mod list;
@@ -28,12 +30,12 @@ pub enum KafkaInletSubcommand {
 }
 
 impl KafkaInletCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
-            KafkaInletSubcommand::Create(c) => c.run(opts),
-            KafkaInletSubcommand::Show(c) => c.run(opts),
-            KafkaInletSubcommand::Delete(c) => c.run(opts),
-            KafkaInletSubcommand::List(c) => c.run(opts),
+            KafkaInletSubcommand::Create(c) => c.run(ctx, opts).await,
+            KafkaInletSubcommand::Show(c) => c.run(ctx, opts).await,
+            KafkaInletSubcommand::Delete(c) => c.run(ctx, opts).await,
+            KafkaInletSubcommand::List(c) => c.run(ctx, opts).await,
         }
     }
 

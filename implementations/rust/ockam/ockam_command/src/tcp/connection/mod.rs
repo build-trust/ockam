@@ -7,6 +7,8 @@ pub(crate) use list::ListCommand;
 use crate::tcp::connection::show::ShowCommand;
 use crate::{Command, CommandGlobalOpts};
 
+use ockam_node::Context;
+
 mod create;
 mod delete;
 mod list;
@@ -29,12 +31,12 @@ pub enum TcpConnectionSubCommand {
 }
 
 impl TcpConnectionCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
-            TcpConnectionSubCommand::Create(c) => c.run(opts),
-            TcpConnectionSubCommand::Delete(c) => c.run(opts),
-            TcpConnectionSubCommand::List(c) => c.run(opts),
-            TcpConnectionSubCommand::Show(c) => c.run(opts),
+            TcpConnectionSubCommand::Create(c) => c.run(ctx, opts).await,
+            TcpConnectionSubCommand::Delete(c) => c.run(ctx, opts).await,
+            TcpConnectionSubCommand::List(c) => c.run(ctx, opts).await,
+            TcpConnectionSubCommand::Show(c) => c.run(ctx, opts).await,
         }
     }
 

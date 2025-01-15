@@ -66,7 +66,7 @@ pub struct CreateCommand {
 impl Command for CreateCommand {
     const NAME: &'static str = "kafka-outlet create";
 
-    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
         initialize_default_node(ctx, &opts).await?;
         let cmd = self.parse_args(&opts).await?;
 
@@ -93,7 +93,7 @@ impl Command for CreateCommand {
                 .map_err(|e| miette!("Failed to start Kafka Outlet: {e}"))?;
 
             KafkaOutletOutput {
-                node_name: node.node_name(),
+                node_name: node.node_name().to_string(),
                 bootstrap_server: cmd.bootstrap_server.to_string(),
             }
         };

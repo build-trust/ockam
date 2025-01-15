@@ -64,7 +64,7 @@ impl Command for SendCommand {
         Some(self.retry_opts.clone())
     }
 
-    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
         // Process `--to` Multiaddr
         let (to, meta) = clean_nodes_multiaddr(&self.to, &opts.state)
             .await

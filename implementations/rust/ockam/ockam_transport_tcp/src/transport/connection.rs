@@ -111,7 +111,7 @@ impl TcpTransport {
         let peer = HostnamePort::from_str(&peer.into())?;
         debug!("Connecting to {}", peer.clone());
 
-        let (read_half, write_half) = connect(&peer).await?;
+        let (read_half, write_half) = connect(&peer, options.timeout).await?;
         let socket = read_half
             .peer_addr()
             .map_err(|e| ockam_core::Error::new(Origin::Transport, Kind::Internal, e))?;

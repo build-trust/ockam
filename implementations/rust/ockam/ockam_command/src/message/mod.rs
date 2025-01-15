@@ -4,6 +4,8 @@ pub use send::SendCommand;
 
 use crate::{Command, CommandGlobalOpts};
 
+use ockam_node::Context;
+
 mod send;
 
 /// Send and receive messages
@@ -21,9 +23,9 @@ pub enum MessageSubcommand {
 }
 
 impl MessageCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
-            MessageSubcommand::Send(c) => c.run(opts),
+            MessageSubcommand::Send(c) => c.run(ctx, opts).await,
         }
     }
 

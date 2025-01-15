@@ -3,7 +3,6 @@ use colorful::Colorful;
 use miette::miette;
 use ockam_api::fmt_ok;
 
-use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/default/long_about.txt");
@@ -21,17 +20,11 @@ pub struct DefaultCommand {
 }
 
 impl DefaultCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |_ctx| async move {
-            self.async_run(opts).await
-        })
-    }
-
     pub fn name(&self) -> String {
         "node default".into()
     }
 
-    async fn async_run(&self, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(&self, opts: CommandGlobalOpts) -> miette::Result<()> {
         if let Some(node_name) = &self.node_name {
             if opts
                 .state

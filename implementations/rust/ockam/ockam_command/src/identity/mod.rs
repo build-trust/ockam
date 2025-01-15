@@ -8,6 +8,8 @@ pub(crate) use show::ShowCommand;
 use crate::identity::default::DefaultCommand;
 use crate::{docs, Command, CommandGlobalOpts};
 
+use ockam_node::Context;
+
 mod create;
 mod default;
 mod delete;
@@ -38,13 +40,13 @@ pub enum IdentitySubcommand {
 }
 
 impl IdentityCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
-            IdentitySubcommand::Create(c) => c.run(opts),
-            IdentitySubcommand::Show(c) => c.run(opts),
-            IdentitySubcommand::List(c) => c.run(opts),
-            IdentitySubcommand::Delete(c) => c.run(opts),
-            IdentitySubcommand::Default(c) => c.run(opts),
+            IdentitySubcommand::Create(c) => c.run(ctx, opts).await,
+            IdentitySubcommand::Show(c) => c.run(opts).await,
+            IdentitySubcommand::List(c) => c.run(opts).await,
+            IdentitySubcommand::Delete(c) => c.run(opts).await,
+            IdentitySubcommand::Default(c) => c.run(opts).await,
         }
     }
 

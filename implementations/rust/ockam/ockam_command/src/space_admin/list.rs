@@ -21,7 +21,7 @@ pub struct ListCommand {
 impl Command for ListCommand {
     const NAME: &'static str = "space-admin list";
 
-    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
         let space = opts.state.get_space_by_name_or_default(&self.name).await?;
         let node =
             InMemoryNode::start_with_identity(ctx, &opts.state, self.identity_opts.identity_name)

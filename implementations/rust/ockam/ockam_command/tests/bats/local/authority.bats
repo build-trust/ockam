@@ -15,11 +15,8 @@ teardown() {
 # ===== TESTS
 
 @test "authority - an authority node must be shown as UP even if its tcp listener cannot be accessed" {
-  run_success "$OCKAM" identity create authority
-  authority_identity_full=$($OCKAM identity show --full --encoding hex authority)
-  trusted="{}"
   port="$(random_port)"
-  run_success "$OCKAM" authority create --tcp-listener-address="127.0.0.1:$port" --project-identifier 1 --trusted-identities "$trusted"
+  run_success "$OCKAM" authority create --tcp-listener-address="127.0.0.1:$port" --project-identifier 1 --trusted-identities "{}"
   sleep 1
 
   # the name of the node is authority-{project-identifier}

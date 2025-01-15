@@ -34,7 +34,7 @@ pub struct CreateCommand {
 impl Command for CreateCommand {
     const NAME: &'static str = "vault create";
 
-    async fn async_run(self, _ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+    async fn run(self, _ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
         if opts.state.get_named_vaults().await?.is_empty() {
             opts.terminal.write_line(fmt_info!(
             "This is the first vault to be created in this environment. It will be set as the default vault"

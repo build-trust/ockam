@@ -3,9 +3,8 @@ use crate::node::create::config::ConfigArgs;
 use crate::node::util::NodeManagerDefaults;
 use crate::service::config::Config;
 use crate::shared_args::TrustOpts;
-use crate::util::embedded_node_that_is_not_stopped;
 use crate::util::foreground_args::ForegroundArgs;
-use crate::util::{async_cmd, local_cmd, print_warning_for_deprecated_flag_no_effect};
+use crate::util::print_warning_for_deprecated_flag_no_effect;
 use crate::value_parsers::is_url;
 use crate::{docs, Command, CommandGlobalOpts, Result};
 use async_trait::async_trait;
@@ -29,6 +28,7 @@ use tracing::instrument;
 pub mod background;
 pub mod config;
 pub mod foreground;
+pub mod node_callback;
 
 const DEFAULT_NODE_NAME: &str = "_default_node_name";
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
@@ -45,6 +45,7 @@ after_long_help = docs::after_help(AFTER_LONG_HELP)
 pub struct CreateCommand {
     /// Name of the node or a configuration to set up the node.
     /// The configuration can be either a path to a local file or a URL.
+    /// TODO: Use Option<String>
     #[arg(value_name = "NAME_OR_CONFIGURATION", hide_default_value = true, default_value = DEFAULT_NODE_NAME)]
     pub name: String,
 
@@ -149,6 +150,11 @@ pub struct CreateCommand {
         env = "OCKAM_SQLITE_IN_MEMORY"
     )]
     pub in_memory: bool,
+
+    /// Port that a node should connect to when it's up and running, as a way to signal
+    /// the parent process
+    #[arg(hide = true, long)]
+    pub tcp_callback_port: Option<u16>,
 }
 
 impl Default for CreateCommand {
@@ -179,6 +185,7 @@ impl Default for CreateCommand {
                 child_process: false,
             },
             in_memory: false,
+            tcp_callback_port: None,
         }
     }
 }
@@ -188,43 +195,22 @@ impl Command for CreateCommand {
     const NAME: &'static str = "node create";
 
     #[instrument(skip_all)]
-    fn run(mut self, opts: CommandGlobalOpts) -> miette::Result<()> {
+    async fn run(mut self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        self.parse_args(&opts).await?;
+
         if self.should_run_config() {
-            async_cmd(&self.name(), opts.clone(), |ctx| async move {
-                self.parse_args(&opts).await?;
-                self.run_config(&ctx, opts).await
-            })
+            self.run_config(ctx, opts).await
         } else if self.foreground_args.foreground {
             if self.foreground_args.child_process {
                 opentelemetry::Context::current()
                     .span()
                     .set_attribute(KeyValue::new("background", "true"));
             }
-            local_cmd(embedded_node_that_is_not_stopped(
-                opts.rt.clone(),
-                |ctx| async move {
-                    self.parse_args(&opts).await?;
-                    self.foreground_mode(&ctx, opts).await
-                },
-            ))
-        } else {
-            async_cmd(&self.name(), opts.clone(), |ctx| async move {
-                self.parse_args(&opts).await?;
-                self.background_mode(&ctx, opts).await
-            })
-        }
-    }
 
-    async fn async_run(mut self, ctx: &Context, opts: CommandGlobalOpts) -> Result<()> {
-        self.parse_args(&opts).await?;
-        if self.should_run_config() {
-            self.run_config(ctx, opts).await?
-        } else if self.foreground_args.foreground {
-            self.foreground_mode(ctx, opts).await?
+            self.foreground_mode(ctx, opts).await
         } else {
-            self.background_mode(ctx, opts).await?
+            self.background_mode(opts).await
         }
-        Ok(())
     }
 }
 
@@ -266,11 +252,6 @@ impl CreateCommand {
     }
 
     async fn parse_args(&mut self, opts: &CommandGlobalOpts) -> miette::Result<()> {
-        // return error if trying to create an in-memory node in background mode
-        if !self.foreground_args.foreground && opts.state.is_using_in_memory_database()? {
-            return Err(miette!("Only foreground nodes can be created in-memory",));
-        }
-
         // return error if there are duplicated variables
         let mut variables = std::collections::HashMap::new();
         for (key, value) in self.config_args.variables.iter() {
@@ -318,16 +299,11 @@ impl CreateCommand {
             };
             if name == DEFAULT_NODE_NAME {
                 name = random_name();
-                if let Ok(default_node) = opts.state.get_default_node().await {
-                    if !default_node.is_running() {
-                        // The default node was stopped, so we can reuse the name
-                        name = default_node.name();
-                    }
-                }
             }
             name
         };
 
+        // FIXME: Avoid this check to avoid parent process needing db to create a background node
         if !self.skip_is_running_check
             && opts
                 .state
@@ -563,7 +539,6 @@ mod tests {
     #[test]
     fn get_default_node_name_no_previous_state() {
         let rt = Arc::new(tokio::runtime::Runtime::new().unwrap());
-        let rt_moved = rt.clone();
         rt.block_on(async {
             let opts = CommandGlobalOpts {
                 state: CliState::test().await.unwrap(),
@@ -577,9 +552,7 @@ mod tests {
                     "",
                     "",
                 ),
-                rt: rt_moved,
                 global_args: GlobalArgs::default(),
-                tracing_guard: None,
             };
             let mut cmd = CreateCommand::default();
             cmd.parse_args(&opts).await.unwrap();
@@ -622,77 +595,50 @@ mod tests {
         });
     }
 
-    #[test]
-    fn get_default_node_name_with_previous_state() {
-        let rt = Arc::new(tokio::runtime::Runtime::new().unwrap());
-        let rt_moved = rt.clone();
-        rt.block_on(async {
-            let opts = CommandGlobalOpts {
-                state: CliState::test().await.unwrap(),
-                terminal: Terminal::new(
-                    false,
-                    false,
-                    false,
-                    true,
-                    false,
-                    OutputFormat::Plain,
-                    "",
-                    "",
-                ),
-                rt: rt_moved,
-                global_args: GlobalArgs::default(),
-                tracing_guard: None,
-            };
+    #[ockam::test]
+    async fn get_default_node_name_with_previous_state(
+        _ctx: &mut Context,
+    ) -> ockam_core::Result<()> {
+        let opts = CommandGlobalOpts {
+            state: CliState::test().await.unwrap(),
+            terminal: Terminal::new(
+                false,
+                false,
+                false,
+                true,
+                false,
+                OutputFormat::Plain,
+                "",
+                "",
+            ),
+            global_args: GlobalArgs::default(),
+        };
 
-            let default_node_name = "n1";
-            opts.state.create_node(default_node_name).await.unwrap();
+        let default_node_name = "n1";
+        opts.state.create_node(default_node_name).await.unwrap();
 
-            let mut cmd = CreateCommand::default();
-            cmd.parse_args(&opts).await.unwrap();
-            assert_ne!(cmd.name, default_node_name);
+        let mut cmd = CreateCommand::default();
+        cmd.parse_args(&opts).await.unwrap();
+        assert_ne!(cmd.name, default_node_name);
 
-            // There is a default node stored in the state, but it's stopped.
-            // All the later calls should return the default node name.
-            opts.state.stop_node(default_node_name).await.unwrap();
-            let mut cmd = CreateCommand::default();
-            cmd.parse_args(&opts).await.unwrap();
-            assert_eq!(cmd.name, default_node_name);
+        let mut cmd = CreateCommand {
+            name: "n2".to_string(),
+            ..Default::default()
+        };
+        cmd.parse_args(&opts).await.unwrap();
+        assert_eq!(cmd.name, "n2");
 
-            let mut cmd = CreateCommand {
-                name: r#"{tcp-outlet: {to: "5500"}}"#.to_string(),
+        let mut cmd = CreateCommand {
+            name: "n2".to_string(),
+            config_args: ConfigArgs {
+                configuration: Some(r#"{tcp-outlet: {to: "5500"}}"#.to_string()),
                 ..Default::default()
-            };
-            cmd.parse_args(&opts).await.unwrap();
-            assert_eq!(cmd.name, default_node_name);
+            },
+            ..Default::default()
+        };
+        cmd.parse_args(&opts).await.unwrap();
+        assert_eq!(cmd.name, "n2");
 
-            let mut cmd = CreateCommand {
-                config_args: ConfigArgs {
-                    configuration: Some(r#"{tcp-outlet: {to: "5500"}}"#.to_string()),
-                    ..Default::default()
-                },
-                ..Default::default()
-            };
-            cmd.parse_args(&opts).await.unwrap();
-            assert_eq!(cmd.name, default_node_name);
-
-            // Unless we explicitly set a name
-            let mut cmd = CreateCommand {
-                name: "n2".to_string(),
-                ..Default::default()
-            };
-            cmd.parse_args(&opts).await.unwrap();
-            assert_eq!(cmd.name, "n2");
-
-            let mut cmd = CreateCommand {
-                name: "n2".to_string(),
-                config_args: ConfigArgs {
-                    configuration: Some(r#"{tcp-outlet: {to: "5500"}}"#.to_string()),
-                    ..Default::default()
-                },
-                ..Default::default()
-            };
-            cmd.parse_args(&opts).await.unwrap();
-            assert_eq!(cmd.name, "n2");
-        });
+        Ok(())
     }
 }

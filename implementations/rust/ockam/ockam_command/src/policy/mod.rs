@@ -3,13 +3,14 @@ use std::str::FromStr;
 use clap::{Args, Subcommand};
 use miette::miette;
 
-use ockam_abac::ResourceType;
-
 pub use crate::policy::create::CreateCommand;
 use crate::policy::delete::DeleteCommand;
 use crate::policy::list::ListCommand;
 use crate::policy::show::ShowCommand;
 use crate::{Command, CommandGlobalOpts};
+
+use ockam_abac::ResourceType;
+use ockam_node::Context;
 
 mod create;
 mod delete;
@@ -43,12 +44,12 @@ impl PolicySubcommand {
 }
 
 impl PolicyCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
-            PolicySubcommand::Create(c) => c.run(opts),
-            PolicySubcommand::Show(c) => c.run(opts),
-            PolicySubcommand::Delete(c) => c.run(opts),
-            PolicySubcommand::List(c) => c.run(opts),
+            PolicySubcommand::Create(c) => c.run(ctx, opts).await,
+            PolicySubcommand::Show(c) => c.run(ctx, opts).await,
+            PolicySubcommand::Delete(c) => c.run(ctx, opts).await,
+            PolicySubcommand::List(c) => c.run(ctx, opts).await,
         }
     }
 

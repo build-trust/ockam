@@ -23,7 +23,7 @@ use crate::project::util::{
     clean_projects_multiaddr, get_projects_secure_channels_from_config_lookup,
 };
 use crate::shared_args::IdentityOpts;
-use crate::util::{async_cmd, clean_nodes_multiaddr, exitcode};
+use crate::util::{clean_nodes_multiaddr, exitcode};
 
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
@@ -61,12 +61,6 @@ pub struct CreateCommand {
 }
 
 impl CreateCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |ctx| async move {
-            self.async_run(&ctx, opts).await
-        })
-    }
-
     pub fn name(&self) -> String {
         "secure-channel create".into()
     }
@@ -99,7 +93,7 @@ impl CreateCommand {
         clean_projects_multiaddr(to, projects_sc).wrap_err("Could not parse projects from route")
     }
 
-    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         initialize_default_node(ctx, &opts).await?;
         let node = BackgroundNodeClient::create_to_node(ctx, &opts.state, &self.from)?;
 

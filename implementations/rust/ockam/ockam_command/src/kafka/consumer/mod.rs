@@ -5,6 +5,8 @@ use crate::kafka::consumer::delete::DeleteCommand;
 use crate::kafka::consumer::list::ListCommand;
 use crate::CommandGlobalOpts;
 
+use ockam_node::Context;
+
 mod create;
 mod delete;
 mod list;
@@ -26,11 +28,11 @@ pub enum KafkaConsumerSubcommand {
 }
 
 impl KafkaConsumerCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
-            KafkaConsumerSubcommand::Create(c) => c.run(opts),
-            KafkaConsumerSubcommand::Delete(c) => c.run(opts),
-            KafkaConsumerSubcommand::List(c) => c.run(opts),
+            KafkaConsumerSubcommand::Create(c) => c.run(ctx, opts).await,
+            KafkaConsumerSubcommand::Delete(c) => c.run(ctx, opts).await,
+            KafkaConsumerSubcommand::List(c) => c.run(ctx, opts).await,
         }
     }
 

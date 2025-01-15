@@ -41,7 +41,7 @@ where
 
     async fn run(&self, ctx: &Context, opts: &CommandGlobalOpts) -> Result<()> {
         debug!("running command {} {:?}", self.name(), self);
-        Ok(self.clone().async_run_with_retry(ctx, opts.clone()).await?)
+        Ok(self.clone().run_with_retry(ctx, opts.clone()).await?)
     }
 }
 

@@ -29,7 +29,7 @@ pub struct AddCommand {
 impl Command for AddCommand {
     const NAME: &'static str = "project-admin add";
 
-    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
         let project = opts
             .state
             .projects()

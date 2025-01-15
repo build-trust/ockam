@@ -79,7 +79,7 @@ impl Command for CreateCommand {
         Some(self.retry_opts.clone())
     }
 
-    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
         if self.project_relay {
             print_warning_for_deprecated_flag_no_effect(&opts, "--project-relay")?;
         }

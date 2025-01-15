@@ -4,6 +4,8 @@ use list::ListCommand;
 
 use crate::{docs, CommandGlobalOpts};
 
+use ockam_node::Context;
+
 mod list;
 
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
@@ -27,9 +29,9 @@ pub enum WorkerSubcommand {
 }
 
 impl WorkerCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
-            WorkerSubcommand::List(c) => c.run(opts),
+            WorkerSubcommand::List(c) => c.run(ctx, opts).await,
         }
     }
 

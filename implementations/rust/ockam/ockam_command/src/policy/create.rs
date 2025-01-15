@@ -48,7 +48,7 @@ pub struct CreateCommand {
 impl Command for CreateCommand {
     const NAME: &'static str = "policy create";
 
-    async fn async_run(mut self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+    async fn run(mut self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
         initialize_default_node(ctx, &opts).await?;
 
         // Backwards compatibility

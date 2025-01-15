@@ -167,7 +167,7 @@ pub(crate) fn tcp_inlet_default_to_addr() -> String {
 impl Command for CreateCommand {
     const NAME: &'static str = "tcp-inlet create";
 
-    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
         initialize_default_node(ctx, &opts).await?;
         let cmd = self.parse_args(&opts).await?;
 
@@ -231,12 +231,12 @@ impl Command for CreateCommand {
         };
 
         let node_name = node.node_name();
-        cmd.add_inlet_created_event(&opts, &node_name, &inlet_status)
+        cmd.add_inlet_created_event(&opts, node_name, &inlet_status)
             .await?;
 
         let created_message = format!(
             "Created a new TCP Inlet in the Node {} bound to {}",
-            color_primary(&node_name),
+            color_primary(node_name),
             color_primary(cmd.from.to_string()),
         );
 

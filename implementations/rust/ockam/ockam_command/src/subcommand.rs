@@ -7,7 +7,7 @@ use std::time::Duration;
 use async_trait::async_trait;
 use clap::Subcommand;
 use colorful::Colorful;
-use miette::{miette, IntoDiagnostic};
+use miette::IntoDiagnostic;
 use tokio_retry::strategy::jitter;
 use tracing::warn;
 
@@ -59,7 +59,6 @@ use crate::tcp::connection::TcpConnectionCommand;
 use crate::tcp::inlet::TcpInletCommand;
 use crate::tcp::listener::TcpListenerCommand;
 use crate::tcp::outlet::TcpOutletCommand;
-use crate::util::async_cmd;
 use crate::vault::VaultCommand;
 use crate::worker::WorkerCommand;
 use crate::Error;
@@ -162,54 +161,54 @@ pub enum OckamSubcommand {
 
 impl OckamSubcommand {
     /// Run the subcommand
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self {
-            OckamSubcommand::Enroll(c) => c.run(opts),
+            OckamSubcommand::Enroll(c) => c.run(ctx, opts).await,
+            OckamSubcommand::Node(c) => c.run(ctx, opts).await,
+            OckamSubcommand::Vault(c) => c.run(ctx, opts).await,
+            OckamSubcommand::Identity(c) => c.run(ctx, opts).await,
+            OckamSubcommand::Project(c) => c.run(ctx, opts).await,
+            OckamSubcommand::Policy(c) => c.run(ctx, opts).await,
+            OckamSubcommand::Credential(c) => c.run(ctx, opts).await,
+            OckamSubcommand::Relay(c) => c.run(ctx, opts).await,
+            OckamSubcommand::TcpOutlet(c) => c.run(ctx, opts).await,
+            OckamSubcommand::TcpInlet(c) => c.run(ctx, opts).await,
+            OckamSubcommand::KafkaInlet(c) => c.run(ctx, opts).await,
+            OckamSubcommand::KafkaOutlet(c) => c.run(ctx, opts).await,
+            OckamSubcommand::InfluxDBInlet(c) => c.run(ctx, opts).await,
+            OckamSubcommand::InfluxDBOutlet(c) => c.run(ctx, opts).await,
+            OckamSubcommand::Rendezvous(c) => c.run(ctx, opts).await,
+            OckamSubcommand::Status(c) => c.run(ctx, opts).await,
+            OckamSubcommand::Reset(c) => c.run(ctx, opts).await,
+            OckamSubcommand::Run(c) => c.run(ctx, opts).await,
 
-            OckamSubcommand::Node(c) => c.run(opts),
-            OckamSubcommand::Vault(c) => c.run(opts),
-            OckamSubcommand::Identity(c) => c.run(opts),
-            OckamSubcommand::Project(c) => c.run(opts),
-            OckamSubcommand::Policy(c) => c.run(opts),
-            OckamSubcommand::Credential(c) => c.run(opts),
-            OckamSubcommand::Relay(c) => c.run(opts),
-            OckamSubcommand::TcpOutlet(c) => c.run(opts),
-            OckamSubcommand::TcpInlet(c) => c.run(opts),
-            OckamSubcommand::KafkaInlet(c) => c.run(opts),
-            OckamSubcommand::KafkaOutlet(c) => c.run(opts),
-            OckamSubcommand::InfluxDBInlet(c) => c.run(opts),
-            OckamSubcommand::InfluxDBOutlet(c) => c.run(opts),
-            OckamSubcommand::Rendezvous(c) => c.run(opts),
-            OckamSubcommand::Status(c) => c.run(opts),
-            OckamSubcommand::Reset(c) => c.run(opts),
-            OckamSubcommand::Run(c) => c.run(opts),
             OckamSubcommand::Manpages(c) => c.run(),
             OckamSubcommand::Completion(c) => c.run(),
             OckamSubcommand::Environment(c) => c.run(),
 
-            OckamSubcommand::Admin(c) => c.run(opts),
-            OckamSubcommand::Space(c) => c.run(opts),
-            OckamSubcommand::SpaceAdmin(c) => c.run(opts),
-            OckamSubcommand::ProjectAdmin(c) => c.run(opts),
-            OckamSubcommand::ProjectMember(c) => c.run(opts),
-            OckamSubcommand::Sidecar(c) => c.run(opts),
-            OckamSubcommand::Subscription(c) => c.run(opts),
-            OckamSubcommand::Lease(c) => c.run(opts),
-            OckamSubcommand::Authority(c) => c.run(opts),
-            OckamSubcommand::Service(c) => c.run(opts),
-            OckamSubcommand::Message(c) => c.run(opts),
+            OckamSubcommand::Admin(c) => c.run(ctx, opts).await,
+            OckamSubcommand::Space(c) => c.run(ctx, opts).await,
+            OckamSubcommand::SpaceAdmin(c) => c.run(ctx, opts).await,
+            OckamSubcommand::ProjectAdmin(c) => c.run(ctx, opts).await,
+            OckamSubcommand::ProjectMember(c) => c.run(ctx, opts).await,
+            OckamSubcommand::Sidecar(c) => c.run(ctx, opts).await,
+            OckamSubcommand::Subscription(c) => c.run(ctx, opts).await,
+            OckamSubcommand::Lease(c) => c.run(ctx, opts).await,
+            OckamSubcommand::Authority(c) => c.run(ctx, opts).await,
+            OckamSubcommand::Service(c) => c.run(ctx, opts).await,
+            OckamSubcommand::Message(c) => c.run(ctx, opts).await,
             OckamSubcommand::Markdown(c) => c.run(),
 
-            OckamSubcommand::MigrateDatabase(c) => c.run(opts),
-            OckamSubcommand::Worker(c) => c.run(opts),
-            OckamSubcommand::SecureChannelListener(c) => c.run(opts),
-            OckamSubcommand::SecureChannel(c) => c.run(opts),
-            OckamSubcommand::TcpListener(c) => c.run(opts),
-            OckamSubcommand::TcpConnection(c) => c.run(opts),
-            OckamSubcommand::FlowControl(c) => c.run(opts),
-            OckamSubcommand::KafkaConsumer(c) => c.run(opts),
-            OckamSubcommand::KafkaProducer(c) => c.run(opts),
-            OckamSubcommand::Share(c) => c.run(opts),
+            OckamSubcommand::MigrateDatabase(c) => c.run(ctx, opts).await,
+            OckamSubcommand::Worker(c) => c.run(ctx, opts).await,
+            OckamSubcommand::SecureChannelListener(c) => c.run(ctx, opts).await,
+            OckamSubcommand::SecureChannel(c) => c.run(ctx, opts).await,
+            OckamSubcommand::TcpListener(c) => c.run(ctx, opts).await,
+            OckamSubcommand::TcpConnection(c) => c.run(ctx, opts).await,
+            OckamSubcommand::FlowControl(c) => c.run(ctx, opts).await,
+            OckamSubcommand::KafkaConsumer(c) => c.run(ctx, opts).await,
+            OckamSubcommand::KafkaProducer(c) => c.run(ctx, opts).await,
+            OckamSubcommand::Share(c) => c.run(ctx, opts).await,
         }
     }
 
@@ -375,20 +374,7 @@ pub trait Command: Debug + Clone + Sized + Send + Sync + 'static {
         None
     }
 
-    fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        if Self::hide() {
-            return Err(miette!("This command is not available"));
-        }
-        async_cmd(Self::NAME, opts.clone(), |ctx| async move {
-            self.async_run_with_retry(&ctx, opts).await
-        })
-    }
-
-    async fn async_run_with_retry(
-        self,
-        ctx: &Context,
-        opts: CommandGlobalOpts,
-    ) -> miette::Result<()> {
+    async fn run_with_retry(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         if let Some(retry_opts) = self.retry_opts() {
             let (mut retry_count, retry_delay) =
                 match (retry_opts.retry_count(), retry_opts.retry_delay()) {
@@ -396,7 +382,7 @@ pub trait Command: Debug + Clone + Sized + Send + Sync + 'static {
                     (Some(count), None) => (count, Duration::from_secs(5)),
                     (None, Some(delay)) => (3, delay),
                     (None, None) => {
-                        self.async_run(ctx, opts).await?;
+                        self.run(ctx, opts).await?;
                         return Ok(());
                     }
                 };
@@ -406,7 +392,7 @@ pub trait Command: Debug + Clone + Sized + Send + Sync + 'static {
             );
             while retry_count > 0 {
                 let cmd = self.clone();
-                match cmd.async_run(ctx, opts.clone()).await {
+                match cmd.run(ctx, opts.clone()).await {
                     Ok(_) => break,
                     Err(report) => {
                         match report.downcast::<Error>() {
@@ -446,10 +432,10 @@ pub trait Command: Debug + Clone + Sized + Send + Sync + 'static {
             }
             Ok(())
         } else {
-            self.async_run(ctx, opts).await?;
+            self.run(ctx, opts).await?;
             Ok(())
         }
     }
 
-    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> Result<()>;
+    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> Result<()>;
 }

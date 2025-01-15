@@ -8,7 +8,6 @@ use ockam_api::cli_state::journeys::APPLICATION_EVENT_COMMAND_CONFIGURATION_FILE
 use std::path::PathBuf;
 use tracing::{instrument, Span};
 
-use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts};
 
 mod config;
@@ -34,18 +33,12 @@ pub struct RunCommand {
 }
 
 impl RunCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |ctx| async move {
-            self.async_run(&ctx, opts).await
-        })
-    }
-
     pub fn name(&self) -> String {
         "run".to_string()
     }
 
     #[instrument(skip_all, fields(app.event.command.configuration_file))]
-    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         let contents = match &self.inline {
             Some(contents) => contents.to_string(),
             None => {

@@ -1,5 +1,4 @@
 use crate::run::Config;
-use crate::util::async_cmd;
 use crate::util::parsers::hostname_parser;
 use crate::{docs, CommandGlobalOpts};
 use clap::Args;
@@ -52,17 +51,11 @@ struct Enroll {
 }
 
 impl SecureRelayOutlet {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |ctx| async move {
-            self.async_run(&ctx, opts).await
-        })
-    }
-
     pub fn name(&self) -> String {
         "show relay outlet".into()
     }
 
-    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         self.create_config_and_start(ctx, opts).await
     }
 

@@ -8,7 +8,6 @@ use ockam_api::nodes::InMemoryNode;
 use ockam_api::orchestrator::share::{InvitationListKind, Invitations};
 
 use crate::shared_args::IdentityOpts;
-use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts};
 
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
@@ -25,17 +24,11 @@ pub struct ListCommand {
 }
 
 impl ListCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |ctx| async move {
-            self.async_run(&ctx, opts).await
-        })
-    }
-
     pub fn name(&self) -> String {
         "list invitations".into()
     }
 
-    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         let is_finished: Mutex<bool> = Mutex::new(false);
         let node = InMemoryNode::start(ctx, &opts.state).await?;
         let controller = node.create_controller().await?;

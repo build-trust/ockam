@@ -4,8 +4,7 @@ use tokio::sync::broadcast::{channel, Receiver, Sender};
 
 use ockam::SqlxDatabase;
 use ockam_core::env::get_env_with_default;
-use ockam_node::database::{DatabaseConfiguration, DatabaseType, OCKAM_SQLITE_IN_MEMORY};
-use ockam_node::Executor;
+use ockam_node::database::{DatabaseConfiguration, DatabaseType};
 
 use crate::cli_state::error::Result;
 use crate::cli_state::CliStateError;
@@ -51,11 +50,6 @@ pub struct CliState {
 }
 
 impl CliState {
-    /// Create a new CliState in a given directory
-    pub fn new(mode: CliStateMode) -> Result<Self> {
-        Executor::execute_future(Self::create(mode))?
-    }
-
     pub fn dir(&self) -> Result<PathBuf> {
         match &self.mode {
             CliStateMode::Persistent(dir) => Ok(dir.to_path_buf()),
@@ -127,14 +121,14 @@ impl CliState {
 impl CliState {
     /// Return a new CliState using a default directory to store its data or
     /// using an in-memory storage if the OCKAM_SQLITE_IN_MEMORY environment variable is set to true
-    pub fn from_env() -> Result<Self> {
-        let in_memory = get_env_with_default::<bool>(OCKAM_SQLITE_IN_MEMORY, false)?;
+    pub async fn new(in_memory: bool) -> Result<Self> {
         let mode = if in_memory {
             CliStateMode::InMemory
         } else {
             CliStateMode::with_default_dir()?
         };
-        Self::new(mode)
+
+        Self::create(mode).await
     }
 
     /// Stop nodes and remove all the directories storing state
@@ -182,7 +176,7 @@ impl CliState {
     /// Backup and reset is used to save aside
     /// some corrupted local state for later inspection and then reset the state.
     /// The database is backed-up only if it is a SQLite database.
-    pub fn backup_and_reset() -> Result<()> {
+    pub async fn backup_and_reset() -> Result<()> {
         let dir = Self::default_dir()?;
 
         // Reset backup directory
@@ -202,7 +196,7 @@ impl CliState {
 
         // Reset state
         Self::delete_at(&dir)?;
-        Self::new(CliStateMode::Persistent(dir.clone()))?;
+        Self::create(CliStateMode::Persistent(dir.clone())).await?;
 
         let backup_dir = CliState::backup_default_dir()?;
         eprintln!("The {dir:?} directory has been reset and has been backed up to {backup_dir:?}");
@@ -234,15 +228,20 @@ impl CliState {
             std::fs::create_dir_all(dir.as_path())?;
         }
         let database = SqlxDatabase::create(&Self::make_database_configuration(&mode)?).await?;
-        let configuration = Self::make_application_database_configuration(&mode)?;
-        let application_database =
-            SqlxDatabase::create_application_database(&configuration).await?;
         debug!("Opened the main database with options {:?}", database);
+
+        // TODO: This should not be called unless we're running the App
+        let application_database = SqlxDatabase::create_application_database(
+            &Self::make_application_database_configuration(&mode)?,
+        )
+        .await?;
         debug!(
             "Opened the application database with options {:?}",
             application_database
         );
+
         let (notifications, _) = channel::<Notification>(NOTIFICATIONS_CHANNEL_CAPACITY);
+
         let state = Self {
             mode,
             database,
@@ -254,6 +253,7 @@ impl CliState {
             exporting_enabled: ExportingEnabled::Off,
             notifications,
         };
+
         Ok(state)
     }
 

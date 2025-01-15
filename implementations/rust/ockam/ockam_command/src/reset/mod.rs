@@ -14,7 +14,6 @@ use ockam_node::Context;
 
 use crate::branding::BrandingCompileEnvVars;
 use crate::docs;
-use crate::util::async_cmd;
 
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/after_long_help.txt");
@@ -37,14 +36,7 @@ pub struct ResetCommand {
     all: bool,
 }
 
-// TODO: Detach all eBPFs
 impl ResetCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |ctx| async move {
-            self.async_run(&ctx, opts).await
-        })
-    }
-
     pub fn name(&self) -> String {
         "reset".into()
     }
@@ -55,7 +47,7 @@ impl ResetCommand {
         }
     }
 
-    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         let delete_orchestrator_resources = BrandingCompileEnvVars::is_ockam_developer()
             && self.all
             && opts.state.is_enrolled().await.unwrap_or_default();

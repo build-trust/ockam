@@ -9,8 +9,11 @@ mod create;
 mod delete;
 mod list;
 mod show;
+
 pub use create::CreateCommand;
 pub use delete::DeleteCommand;
+
+use ockam_node::Context;
 
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
 
@@ -35,12 +38,12 @@ pub enum SpaceSubcommand {
 }
 
 impl SpaceCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
-            SpaceSubcommand::List(c) => c.run(opts),
-            SpaceSubcommand::Show(c) => c.run(opts),
-            SpaceSubcommand::Create(c) => c.run(opts),
-            SpaceSubcommand::Delete(c) => c.run(opts),
+            SpaceSubcommand::List(c) => c.run(ctx, opts).await,
+            SpaceSubcommand::Show(c) => c.run(ctx, opts).await,
+            SpaceSubcommand::Create(c) => c.run(ctx, opts).await,
+            SpaceSubcommand::Delete(c) => c.run(ctx, opts).await,
         }
     }
 

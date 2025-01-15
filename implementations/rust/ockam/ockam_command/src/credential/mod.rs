@@ -10,6 +10,7 @@ use ockam::identity::{Identifier, TimestampInSeconds};
 use ockam_api::output::Output;
 use ockam_api::terminal::fmt;
 use ockam_core::compat::collections::HashMap;
+use ockam_node::Context;
 pub(crate) use store::StoreCommand;
 pub(crate) use verify::VerifyCommand;
 
@@ -49,12 +50,12 @@ impl CredentialSubcommand {
 }
 
 impl CredentialCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
-            CredentialSubcommand::List(c) => c.run(opts),
-            CredentialSubcommand::Issue(c) => c.run(opts),
-            CredentialSubcommand::Store(c) => c.run(opts),
-            CredentialSubcommand::Verify(c) => c.run(opts),
+            CredentialSubcommand::List(c) => c.run(opts).await,
+            CredentialSubcommand::Issue(c) => c.run(opts).await,
+            CredentialSubcommand::Store(c) => c.run(ctx, opts).await,
+            CredentialSubcommand::Verify(c) => c.run(opts).await,
         }
     }
 

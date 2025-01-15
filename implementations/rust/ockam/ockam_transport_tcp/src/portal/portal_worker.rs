@@ -375,7 +375,7 @@ impl TcpPortalWorker {
             self.read_half = Some(ReadHalfWithTls(rx));
         } else {
             debug!(portal_type = %self.portal_type, sender_internal = %self.addresses.sender_internal, "connect to {}", self.hostname_port);
-            let (rx, tx) = connect(&self.hostname_port).await?;
+            let (rx, tx) = connect(&self.hostname_port, None).await?;
             self.write_half = Some(WriteHalfNoTls(tx));
             self.read_half = Some(ReadHalfNoTls(rx));
         }

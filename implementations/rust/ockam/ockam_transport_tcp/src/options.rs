@@ -1,11 +1,13 @@
 use crate::workers::Addresses;
 use ockam_core::compat::sync::Arc;
+use ockam_core::compat::time::Duration;
 use ockam_core::flow_control::{FlowControlId, FlowControlOutgoingAccessControl, FlowControls};
 use ockam_core::{Address, OutgoingAccessControl};
 
 /// Trust Options for a TCP connection
 #[derive(Debug)]
 pub struct TcpConnectionOptions {
+    pub(super) timeout: Option<Duration>,
     pub(super) consumer: Vec<FlowControlId>,
     pub(crate) flow_control_id: FlowControlId,
 }
@@ -15,6 +17,7 @@ impl TcpConnectionOptions {
     /// Mark this Tcp Receiver as a Producer with a random [`FlowControlId`]
     pub fn new() -> Self {
         Self {
+            timeout: None,
             consumer: vec![],
             flow_control_id: FlowControls::generate_flow_control_id(),
         }
@@ -30,6 +33,23 @@ impl TcpConnectionOptions {
     /// Getter for freshly generated [`FlowControlId`]
     pub fn flow_control_id(&self) -> FlowControlId {
         self.flow_control_id.clone()
+    }
+
+    /// Set connect timeout
+    pub fn set_timeout(mut self, timeout: Option<Duration>) -> Self {
+        self.timeout = timeout;
+        self
+    }
+
+    /// Set connect timeout
+    pub fn with_timeout(mut self, timeout: Duration) -> Self {
+        self.timeout = Some(timeout);
+        self
+    }
+
+    /// Connect timeout
+    pub fn timeout(&self) -> Option<Duration> {
+        self.timeout
     }
 }
 

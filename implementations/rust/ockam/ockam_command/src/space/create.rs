@@ -39,7 +39,7 @@ pub struct CreateCommand {
 impl Command for CreateCommand {
     const NAME: &'static str = "space create";
 
-    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> Result<()> {
+    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> Result<()> {
         if !opts
             .state
             .is_identity_enrolled(&self.identity_opts.identity_name)

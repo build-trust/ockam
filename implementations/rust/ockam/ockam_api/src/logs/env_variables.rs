@@ -21,7 +21,7 @@ pub(crate) const OCKAM_LOG_MAX_FILES: &str = "OCKAM_LOG_MAX_FILES";
 /// Log format. Accepted values, see LogFormat. For example: pretty, json, default
 pub(crate) const OCKAM_LOG_FORMAT: &str = "OCKAM_LOG_FORMAT";
 
-/// Filter for log messages based on crate names. Accepted values: 'all', 'default', 'comma-separated strings'. For example: ockam_core,ockam_api
+/// Filter for log messages based on crate names. Accepted values: 'all' or 'comma-separated strings'. For example: ockam_core,ockam_api
 pub(crate) const OCKAM_LOG_CRATES_FILTER: &str = "OCKAM_LOG_CRATES_FILTER";
 
 ///

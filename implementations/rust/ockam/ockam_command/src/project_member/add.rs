@@ -71,7 +71,7 @@ impl Command for AddCommand {
         Some(self.retry_opts.clone())
     }
 
-    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
         let (authority_node_client, project_name) =
             authority_client(ctx, &opts, &self.identity_opts, &self.project_name).await?;
 

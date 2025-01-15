@@ -43,11 +43,11 @@ pub enum AddonSubcommand {
 }
 
 impl AddonCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
-            AddonSubcommand::List(cmd) => cmd.run(opts),
-            AddonSubcommand::Disable(cmd) => cmd.run(opts),
-            AddonSubcommand::Configure(cmd) => cmd.run(opts),
+            AddonSubcommand::List(cmd) => cmd.run(ctx, opts).await,
+            AddonSubcommand::Disable(cmd) => cmd.run(ctx, opts).await,
+            AddonSubcommand::Configure(cmd) => cmd.run(ctx, opts).await,
         }
     }
 
@@ -74,16 +74,16 @@ pub enum ConfigureAddonCommand {
 }
 
 impl ConfigureAddonCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self {
-            ConfigureAddonCommand::Okta(cmd) => cmd.run(opts),
-            ConfigureAddonCommand::Influxdb(cmd) => cmd.run(opts),
-            ConfigureAddonCommand::Confluent(cmd) => cmd.run(opts),
-            ConfigureAddonCommand::InstaclustrKafka(cmd) => cmd.run(opts),
-            ConfigureAddonCommand::AivenKafka(cmd) => cmd.run(opts),
-            ConfigureAddonCommand::Redpanda(cmd) => cmd.run(opts),
-            ConfigureAddonCommand::Warpstream(cmd) => cmd.run(opts),
-            ConfigureAddonCommand::Kafka(cmd) => cmd.run(opts),
+            ConfigureAddonCommand::Okta(cmd) => cmd.run(ctx, opts).await,
+            ConfigureAddonCommand::Influxdb(cmd) => cmd.run(ctx, opts).await,
+            ConfigureAddonCommand::Confluent(cmd) => cmd.run(ctx, opts).await,
+            ConfigureAddonCommand::InstaclustrKafka(cmd) => cmd.run(ctx, opts).await,
+            ConfigureAddonCommand::AivenKafka(cmd) => cmd.run(ctx, opts).await,
+            ConfigureAddonCommand::Redpanda(cmd) => cmd.run(ctx, opts).await,
+            ConfigureAddonCommand::Warpstream(cmd) => cmd.run(ctx, opts).await,
+            ConfigureAddonCommand::Kafka(cmd) => cmd.run(ctx, opts, "Apache Kafka").await,
         }
     }
 

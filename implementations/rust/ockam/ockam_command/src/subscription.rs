@@ -10,7 +10,6 @@ use ockam_api::nodes::InMemoryNode;
 use ockam_api::output::Output;
 
 use crate::shared_args::IdentityOpts;
-use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts, Result};
 
 #[derive(Clone, Debug, Args)]
@@ -46,12 +45,6 @@ pub enum SubscriptionSubcommand {
 }
 
 impl SubscriptionCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |ctx| async move {
-            self.async_run(&ctx, opts).await
-        })
-    }
-
     pub fn name(&self) -> String {
         match &self.subcommand {
             SubscriptionSubcommand::Show { .. } => "subscription show",
@@ -59,7 +52,7 @@ impl SubscriptionCommand {
         .to_string()
     }
 
-    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         let node = InMemoryNode::start(ctx, &opts.state).await?;
         let controller = node.create_controller().await?;
 
