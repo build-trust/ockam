@@ -1,5 +1,4 @@
 use crate::docs;
-use crate::util::async_cmd;
 use crate::CommandGlobalOpts;
 use clap::Args;
 use miette::miette;
@@ -23,12 +22,6 @@ pub struct MigrateDatabaseCommand {
 }
 
 impl MigrateDatabaseCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |ctx| async move {
-            self.async_run(&ctx, opts).await
-        })
-    }
-
     pub fn name(&self) -> String {
         "migrate_database".into()
     }
@@ -38,7 +31,7 @@ impl MigrateDatabaseCommand {
     ///   - Or execute all the possible migrations and return the status after migration.
     ///
     /// This command returns true when used in scripts if the command successfully executed.
-    async fn async_run(&self, _ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(&self, _ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         match DatabaseConfiguration::postgres()? {
             Some(configuration) => {
                 let db = SqlxDatabase::create_no_migration(&configuration).await?;

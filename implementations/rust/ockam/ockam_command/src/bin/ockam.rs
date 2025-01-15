@@ -9,9 +9,13 @@ use ockam_command::util::exitcode;
 static GLOBAL: MiMalloc = MiMalloc;
 
 fn main() {
+    // use ockam_api::log;
+    // log("START");
+
     if let Err(e) = ockam_command::entry_point::run() {
         // initialization errors are displayed here
         eprintln!("{:?}", e);
         std::process::exit(exitcode::SOFTWARE);
     }
+    // log("END");
 }

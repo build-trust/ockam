@@ -79,7 +79,7 @@ pub struct CreateCommand {
 impl Command for CreateCommand {
     const NAME: &'static str = "tcp-outlet create";
 
-    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
         initialize_default_node(ctx, &opts).await?;
         let cmd = self.parse_args(&opts).await?;
 

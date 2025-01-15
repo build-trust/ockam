@@ -3,6 +3,7 @@ use clap::{Args, Subcommand};
 use create::CreateCommand;
 use delete::DeleteCommand;
 pub(crate) use list::ListCommand;
+use ockam_node::Context;
 pub(crate) use show::ShowCommand;
 
 use crate::{docs, Command, CommandGlobalOpts};
@@ -37,12 +38,12 @@ pub enum TcpInletSubCommand {
 }
 
 impl TcpInletCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
-            TcpInletSubCommand::Create(c) => c.run(opts),
-            TcpInletSubCommand::Delete(c) => c.run(opts),
-            TcpInletSubCommand::List(c) => c.run(opts),
-            TcpInletSubCommand::Show(c) => c.run(opts),
+            TcpInletSubCommand::Create(c) => c.run(ctx, opts).await,
+            TcpInletSubCommand::Delete(c) => c.run(ctx, opts).await,
+            TcpInletSubCommand::List(c) => c.run(ctx, opts).await,
+            TcpInletSubCommand::Show(c) => c.run(ctx, opts).await,
         }
     }
 

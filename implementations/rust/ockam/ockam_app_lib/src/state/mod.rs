@@ -96,8 +96,9 @@ impl AppState {
         application_state_callback: ApplicationStateCallback,
         notification_callback: NotificationCallback,
     ) -> Result<AppState> {
-        let cli_state = CliState::new(CliStateMode::with_default_dir()?)?;
         let rt = Arc::new(Runtime::new().expect("cannot create a tokio runtime"));
+        let cli_state =
+            rt.block_on(async move { CliState::create(CliStateMode::with_default_dir()?).await })?;
         let (context, _executor) = NodeBuilder::new()
             .no_logging()
             .with_runtime(rt.clone())

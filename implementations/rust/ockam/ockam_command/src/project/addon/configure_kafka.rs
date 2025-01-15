@@ -13,7 +13,6 @@ pub use redpanda::AddonConfigureRedpandaSubcommand;
 pub use warpstream::AddonConfigureWarpstreamSubcommand;
 
 use crate::project::addon::check_configuration_completion;
-use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts};
 
 pub mod aiven;
@@ -59,17 +58,11 @@ pub struct AddonConfigureKafkaSubcommand {
 }
 
 impl AddonConfigureKafkaSubcommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |ctx| async move {
-            self.async_run(&ctx, opts, "Apache Kafka").await
-        })
-    }
-
     pub fn name(&self) -> String {
         "configure kafka addon".into()
     }
 
-    async fn async_run(
+    pub async fn run(
         &self,
         ctx: &Context,
         opts: CommandGlobalOpts,

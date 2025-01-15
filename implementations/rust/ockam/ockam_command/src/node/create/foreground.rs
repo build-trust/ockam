@@ -1,4 +1,4 @@
-use crate::node::show::is_node_up;
+use crate::node::node_callback::NodeCallback;
 use crate::node::CreateCommand;
 use crate::util::foreground_args::wait_for_exit_signal;
 use crate::CommandGlobalOpts;
@@ -9,15 +9,15 @@ use ockam::udp::{UdpBindArguments, UdpBindOptions, UdpTransport};
 use ockam::Address;
 use ockam::Context;
 use ockam_api::fmt_log;
-use ockam_api::nodes::service::NodeManagerTransport;
-use ockam_api::nodes::BackgroundNodeClient;
+use ockam_api::nodes::service::{NodeManagerTransport, SecureChannelType};
 use ockam_api::nodes::InMemoryNode;
 use ockam_api::nodes::{
     service::{NodeManagerGeneralOptions, NodeManagerTransportOptions},
     NodeManagerWorker, NODEMANAGER_ADDR,
 };
 use ockam_api::terminal::notification::NotificationHandler;
-use ockam_core::{route, LOCAL};
+
+use ockam_core::LOCAL;
 use std::sync::Arc;
 use tokio::time::{sleep, Duration};
 use tracing::{debug, info, instrument};
@@ -85,7 +85,7 @@ impl CreateCommand {
             None
         };
 
-        let node_man = InMemoryNode::new(
+        let in_memory_node = InMemoryNode::new(
             ctx,
             NodeManagerGeneralOptions::new(
                 opts.state.clone(),
@@ -104,15 +104,19 @@ impl CreateCommand {
         .into_diagnostic()?;
         debug!("in-memory node created");
 
-        let node_manager = Arc::new(node_man);
-        let node_manager_worker = NodeManagerWorker::new(node_manager.clone());
+        let in_memory_node = Arc::new(in_memory_node);
+        let node_manager_worker = NodeManagerWorker::new(in_memory_node.clone());
         ctx.flow_controls()
             .add_consumer(&NODEMANAGER_ADDR.into(), tcp_listener.flow_control_id());
         ctx.start_worker(NODEMANAGER_ADDR, node_manager_worker)
             .into_diagnostic()?;
         debug!("node manager worker started");
 
-        if self.start_services(ctx, &opts).await.is_err() {
+        if self
+            .start_secure_channel_listener(ctx, &in_memory_node, &opts)
+            .await
+            .is_err()
+        {
             //TODO: Process should terminate on any error during its setup phase,
             //      not just during the start_services.
             //TODO: This sleep here is a workaround on some orchestrated environment,
@@ -126,7 +130,7 @@ impl CreateCommand {
             return Err(miette!("Failed to start services"));
         }
 
-        let node_resources = node_manager.get_node_resources().await?;
+        let node_resources = in_memory_node.get_node_resources().await?;
         opts.terminal
             .clone()
             .stdout()
@@ -134,6 +138,10 @@ impl CreateCommand {
             .machine(&node_name)
             .json_obj(&node_resources)?
             .write_line()?;
+
+        if let Some(tcp_callback_port) = self.tcp_callback_port {
+            NodeCallback::signal(tcp_callback_port);
+        }
 
         wait_for_exit_signal(
             &self.foreground_args,
@@ -144,38 +152,47 @@ impl CreateCommand {
 
         // Clean up and exit
         let _ = opts.state.stop_node(&node_name).await;
+
         Ok(())
     }
 
-    async fn start_services(&self, ctx: &Context, opts: &CommandGlobalOpts) -> miette::Result<()> {
-        if let Some(config) = &self.launch_configuration {
-            if let Some(startup_services) = &config.startup_services {
-                // Wait until the node is fully started
-                let mut node =
-                    BackgroundNodeClient::create(ctx, &opts.state, &Some(self.name.clone()))
-                        .await?;
-                if !is_node_up(ctx, &mut node, true).await? {
-                    return Err(miette!(
-                        "Couldn't start services because the node is not up"
-                    ));
-                }
+    async fn start_secure_channel_listener(
+        &self,
+        ctx: &Context,
+        in_memory_node: &InMemoryNode,
+        opts: &CommandGlobalOpts,
+    ) -> miette::Result<()> {
+        let launch_configuration = if let Some(launch_configuration) = &self.launch_configuration {
+            launch_configuration
+        } else {
+            return Ok(());
+        };
 
-                if let Some(cfg) = startup_services.secure_channel_listener.clone() {
-                    if !cfg.disabled {
-                        opts.terminal
-                            .write_line(fmt_log!("Starting secure-channel listener ..."))?;
-                        crate::secure_channel::listener::create::create_listener(
-                            ctx,
-                            Address::from((LOCAL, cfg.address)),
-                            cfg.authorized_identifiers,
-                            cfg.identity,
-                            route![],
-                        )
-                        .await?;
-                    }
-                }
+        let startup_services =
+            if let Some(startup_services) = &launch_configuration.startup_services {
+                startup_services
+            } else {
+                return Ok(());
+            };
+
+        if let Some(cfg) = startup_services.secure_channel_listener.as_ref() {
+            if cfg.disabled {
+                return Ok(());
             }
+
+            opts.terminal
+                .write_line(fmt_log!("Starting secure-channel listener ..."))?;
+            in_memory_node
+                .create_secure_channel_listener(
+                    Address::from((LOCAL, cfg.address.clone())),
+                    cfg.authorized_identifiers.clone(),
+                    cfg.identity.clone(),
+                    ctx,
+                    SecureChannelType::KeyExchangeAndMessages,
+                )
+                .await?;
         }
+
         Ok(())
     }
 }

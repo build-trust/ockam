@@ -1,9 +1,9 @@
-use clap::{command, Args, Subcommand};
-
 use crate::kafka::producer::create::CreateCommand;
 use crate::kafka::producer::delete::DeleteCommand;
 use crate::kafka::producer::list::ListCommand;
 use crate::CommandGlobalOpts;
+use clap::{command, Args, Subcommand};
+use ockam_node::Context;
 
 mod create;
 mod delete;
@@ -25,11 +25,11 @@ pub enum KafkaProducerSubcommand {
 }
 
 impl KafkaProducerCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
-            KafkaProducerSubcommand::Create(c) => c.run(opts),
-            KafkaProducerSubcommand::Delete(c) => c.run(opts),
-            KafkaProducerSubcommand::List(c) => c.run(opts),
+            KafkaProducerSubcommand::Create(c) => c.run(ctx, opts).await,
+            KafkaProducerSubcommand::Delete(c) => c.run(ctx, opts).await,
+            KafkaProducerSubcommand::List(c) => c.run(ctx, opts).await,
         }
     }
 

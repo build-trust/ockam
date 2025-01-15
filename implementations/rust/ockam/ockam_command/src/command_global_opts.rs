@@ -3,7 +3,6 @@ use console::Term;
 use miette::{miette, IntoDiagnostic};
 use std::process::exit;
 use std::sync::Arc;
-use tokio::runtime::Runtime;
 use tracing::{debug, info};
 
 use crate::command::{BIN_NAME, BRAND_NAME};
@@ -31,7 +30,6 @@ pub struct CommandGlobalOpts {
     pub global_args: GlobalArgs,
     pub state: CliState,
     pub terminal: Terminal<TerminalStream<Term>>,
-    pub rt: Arc<Runtime>,
     pub tracing_guard: Option<Arc<TracingGuard>>,
 }
 
@@ -42,13 +40,16 @@ impl CommandGlobalOpts {
     ///  - Initialize the CliState
     ///  - Get the runtime
     ///
-    pub fn new(
+    pub async fn new(
         arguments: &[String],
         global_args: &GlobalArgs,
         cmd: &OckamSubcommand,
+        in_memory: bool,
     ) -> miette::Result<Self> {
         load_compile_time_vars();
-        let mut state = match CliState::from_env() {
+
+        // TODO: Do we really need to instantiate CliState all the time?
+        let mut state = match CliState::new(in_memory).await {
             Ok(state) => state,
             Err(err) => {
                 // If the user is trying to run `ockam reset` and the local state is corrupted,
@@ -83,7 +84,9 @@ impl CommandGlobalOpts {
 
         let logging_configuration =
             Self::make_logging_configuration(global_args, cmd, Term::stdout().is_term())?;
-        let tracing_configuration = Self::make_tracing_configuration(&state, cmd)?;
+        let tracing_configuration = Self::make_tracing_configuration(&state, cmd).await?;
+        let tracing_guard =
+            Self::setup_logging_tracing(cmd, &logging_configuration, &tracing_configuration);
         let terminal = Terminal::new(
             logging_configuration.is_enabled(),
             logging_configuration.log_dir().is_some(),
@@ -94,8 +97,6 @@ impl CommandGlobalOpts {
             BIN_NAME,
             BRAND_NAME,
         );
-        let tracing_guard =
-            Self::setup_logging_tracing(cmd, &logging_configuration, &tracing_configuration);
 
         Self::log_inputs(
             arguments,
@@ -107,13 +108,10 @@ impl CommandGlobalOpts {
 
         state = state.set_tracing_enabled(tracing_configuration.is_enabled());
 
-        let rt = Arc::new(Runtime::new().expect("cannot initialize the tokio runtime"));
-
         Ok(Self {
             global_args: global_args.clone(),
             state,
             terminal,
-            rt,
             tracing_guard,
         })
     }
@@ -170,15 +168,19 @@ impl CommandGlobalOpts {
     }
 
     /// Create the tracing configuration, depending on the command to execute
-    fn make_tracing_configuration(
+    async fn make_tracing_configuration(
         state: &CliState,
         cmd: &OckamSubcommand,
     ) -> miette::Result<ExportingConfiguration> {
-        Ok(if cmd.is_background_node() {
-            ExportingConfiguration::background(state).into_diagnostic()?
+        if cmd.is_background_node() {
+            ExportingConfiguration::background(state)
+                .await
+                .into_diagnostic()
         } else {
-            ExportingConfiguration::foreground(state).into_diagnostic()?
-        })
+            ExportingConfiguration::foreground(state)
+                .await
+                .into_diagnostic()
+        }
     }
 
     /// Log the inputs and configurations used to execute the command

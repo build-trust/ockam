@@ -111,11 +111,6 @@ impl NodeBuilder {
             {
                 Arc::new(
                     tokio::runtime::Builder::new_multi_thread()
-                        // Using a lower stack size than the default (1MB),
-                        // this helps improve the cache hit ratio and reduces
-                        // the memory footprint.
-                        // Can be increased if needed.
-                        .thread_stack_size(1024 * 1024)
                         .enable_all()
                         .build()
                         .expect("cannot initialize the tokio runtime"),

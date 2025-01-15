@@ -1,5 +1,5 @@
 use clap::{Args, Subcommand};
-
+use ockam_node::Context;
 pub use send::SendCommand;
 
 use crate::{Command, CommandGlobalOpts};
@@ -21,9 +21,9 @@ pub enum MessageSubcommand {
 }
 
 impl MessageCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
-            MessageSubcommand::Send(c) => c.run(opts),
+            MessageSubcommand::Send(c) => c.run(ctx, opts).await,
         }
     }
 

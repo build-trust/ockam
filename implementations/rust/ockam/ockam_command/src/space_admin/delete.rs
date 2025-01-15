@@ -42,7 +42,7 @@ pub struct DeleteCommand {
 impl Command for DeleteCommand {
     const NAME: &'static str = "space-admin delete";
 
-    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
         Ok(DeleteTui::run(ctx, opts, self).await?)
     }
 }

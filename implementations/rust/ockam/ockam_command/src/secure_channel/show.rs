@@ -6,7 +6,6 @@ use ockam_api::nodes::models::secure_channel::ShowSecureChannelResponse;
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_core::Address;
 
-use crate::util::async_cmd;
 use crate::{docs, util::api, CommandGlobalOpts};
 use ockam_api::output::Output;
 
@@ -33,17 +32,11 @@ pub struct ShowCommand {
 }
 
 impl ShowCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |ctx| async move {
-            self.async_run(&ctx, opts).await
-        })
-    }
-
     pub fn name(&self) -> String {
         "secure-channel show".into()
     }
 
-    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         let node = BackgroundNodeClient::create(ctx, &opts.state, &self.at).await?;
 
         let address = &self.address;

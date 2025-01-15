@@ -381,6 +381,8 @@ PRAGMA busy_timeout = 10000;
         .log_slow_statements(LevelFilter::Trace, Duration::from_secs(1));
         let pool_options = PoolOptions::new().idle_timeout(None).max_lifetime(None);
 
+        println!("SQLITE");
+
         let pool = pool_options
             .connect_with(options)
             .await

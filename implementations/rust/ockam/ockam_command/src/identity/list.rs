@@ -1,14 +1,12 @@
 use std::fmt::Write;
 
+use crate::{docs, CommandGlobalOpts};
 use clap::Args;
 use colorful::Colorful;
 use ockam_api::colors::OckamColor;
 use ockam_api::output::Output;
 use serde::Serialize;
 use serde_json::json;
-
-use crate::util::async_cmd;
-use crate::{docs, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/list/long_about.txt");
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
@@ -24,17 +22,11 @@ const AFTER_LONG_HELP: &str = include_str!("./static/list/after_long_help.txt");
 pub struct ListCommand {}
 
 impl ListCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |_ctx| async move {
-            self.async_run(opts).await
-        })
-    }
-
     pub fn name(&self) -> String {
         "identity list".into()
     }
 
-    async fn async_run(&self, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(&self, opts: CommandGlobalOpts) -> miette::Result<()> {
         let mut identities_list: Vec<IdentityListOutput> = Vec::new();
 
         let identities = opts.state.get_named_identities().await?;

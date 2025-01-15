@@ -19,10 +19,8 @@ use ockam_core::compat::collections::BTreeMap;
 use ockam_core::compat::fmt;
 
 use crate::node::util::run_ockam;
-use crate::util::embedded_node_that_is_not_stopped;
 use crate::util::foreground_args::{wait_for_exit_signal, ForegroundArgs};
 use crate::util::parsers::internet_address_parser;
-use crate::util::{async_cmd, local_cmd};
 use crate::{docs, CommandGlobalOpts, Result};
 
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
@@ -213,23 +211,17 @@ impl CreateCommand {
             args.push("--disable_trust_context_id".to_string());
         }
 
-        run_ockam(args, opts.global_args.quiet).await
+        run_ockam(args, opts.global_args.quiet)
     }
 }
 
 impl CreateCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         if self.foreground {
             // Create a new node in the foreground (i.e. in this OS process)
-            local_cmd(embedded_node_that_is_not_stopped(
-                opts.rt.clone(),
-                |ctx| async move { self.start_authority_node(&ctx, opts).await },
-            ))
+            self.start_authority_node(ctx, opts).await
         } else {
-            // Create a new node running in the background (i.e. another, new OS process)
-            async_cmd(&self.name(), opts.clone(), |_ctx| async move {
-                self.create_background_node(opts).await
-            })
+            self.create_background_node(opts).await
         }
     }
 

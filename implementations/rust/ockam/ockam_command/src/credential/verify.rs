@@ -14,7 +14,6 @@ use ockam::identity::{
 use ockam_api::{fmt_err, fmt_log, fmt_ok};
 use ockam_vault::{SoftwareVaultForVerifyingSignatures, VaultForVerifyingSignatures};
 
-use crate::util::async_cmd;
 use crate::util::parsers::identity_identifier_parser;
 use crate::CommandGlobalOpts;
 
@@ -31,12 +30,6 @@ pub struct VerifyCommand {
 }
 
 impl VerifyCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |_ctx| async move {
-            self.async_run(opts).await
-        })
-    }
-
     pub fn name(&self) -> String {
         "credential verify".into()
     }
@@ -45,7 +38,7 @@ impl VerifyCommand {
         &self.issuer
     }
 
-    async fn async_run(&self, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(&self, opts: CommandGlobalOpts) -> miette::Result<()> {
         let (is_valid, plain) = match verify_credential(
             &opts,
             self.issuer(),

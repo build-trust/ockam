@@ -17,7 +17,6 @@ use ockam_core::TryClone;
 
 use crate::terminal::tui::DeleteCommandTui;
 use crate::tui::PluralTerm;
-use crate::util::async_cmd;
 
 #[derive(Clone, Debug, Args)]
 pub struct DeleteCommand {
@@ -32,17 +31,11 @@ pub struct DeleteCommand {
 }
 
 impl DeleteCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |ctx| async move {
-            self.async_run(&ctx, opts).await
-        })
-    }
-
     pub fn name(&self) -> String {
         "policy delete".into()
     }
 
-    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         DeleteTui::run(ctx, opts, self.clone()).await
     }
 }

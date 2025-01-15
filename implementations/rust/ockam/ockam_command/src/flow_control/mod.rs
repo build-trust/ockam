@@ -1,8 +1,8 @@
 use clap::{Args, Subcommand};
 
-pub use add_consumer::AddConsumerCommand;
-
 use crate::CommandGlobalOpts;
+pub use add_consumer::AddConsumerCommand;
+use ockam_node::Context;
 
 mod add_consumer;
 
@@ -20,9 +20,9 @@ pub enum FlowControlSubcommand {
 }
 
 impl FlowControlCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
-            FlowControlSubcommand::AddConsumer(c) => c.run(opts),
+            FlowControlSubcommand::AddConsumer(c) => c.run(ctx, opts).await,
         }
     }
 

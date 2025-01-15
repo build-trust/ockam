@@ -60,11 +60,7 @@ pub struct SendCommand {
 impl Command for SendCommand {
     const NAME: &'static str = "message send";
 
-    fn retry_opts(&self) -> Option<RetryOpts> {
-        Some(self.retry_opts.clone())
-    }
-
-    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
         // Process `--to` Multiaddr
         let (to, meta) = clean_nodes_multiaddr(&self.to, &opts.state)
             .await

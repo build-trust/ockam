@@ -36,7 +36,7 @@ pub struct ShowCommand {
 impl Command for ShowCommand {
     const NAME: &'static str = "tcp-inlet show";
 
-    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
         Ok(ShowTui::run(ctx.try_clone().into_diagnostic()?, opts, self.clone()).await?)
     }
 }

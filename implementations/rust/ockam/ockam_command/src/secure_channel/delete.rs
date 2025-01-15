@@ -11,7 +11,6 @@ use ockam_api::nodes::BackgroundNodeClient;
 use ockam_api::ReverseLocalConverter;
 use ockam_core::{Address, AddressParseError};
 
-use crate::util::async_cmd;
 use crate::util::{api, exitcode};
 use crate::{docs, CommandGlobalOpts};
 
@@ -40,12 +39,6 @@ pub struct DeleteCommand {
 }
 
 impl DeleteCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |ctx| async move {
-            self.async_run(&ctx, opts).await
-        })
-    }
-
     pub fn name(&self) -> String {
         "secure-channel delete".into()
     }
@@ -134,7 +127,7 @@ impl DeleteCommand {
         Ok(())
     }
 
-    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         if opts.terminal.confirmed_with_flag_or_prompt(
             self.yes,
             "Are you sure you want to delete this secure channel?",

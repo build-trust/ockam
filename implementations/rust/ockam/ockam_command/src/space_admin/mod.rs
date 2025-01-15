@@ -2,12 +2,12 @@ mod add;
 mod delete;
 mod list;
 
-use clap::{Args, Subcommand};
-
 use crate::space_admin::add::AddCommand;
 use crate::space_admin::delete::DeleteCommand;
 use crate::space_admin::list::ListCommand;
 use crate::{docs, Command, CommandGlobalOpts};
+use clap::{Args, Subcommand};
+use ockam_node::Context;
 
 #[derive(Clone, Debug, Args)]
 #[command(arg_required_else_help = true, subcommand_required = true,
@@ -30,11 +30,11 @@ enum SpaceAdminSubcommand {
 }
 
 impl SpaceAdminCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
-            SpaceAdminSubcommand::List(c) => c.run(opts),
-            SpaceAdminSubcommand::Add(c) => c.run(opts),
-            SpaceAdminSubcommand::Delete(c) => c.run(opts),
+            SpaceAdminSubcommand::List(c) => c.run(ctx, opts).await,
+            SpaceAdminSubcommand::Add(c) => c.run(ctx, opts).await,
+            SpaceAdminSubcommand::Delete(c) => c.run(ctx, opts).await,
         }
     }
 

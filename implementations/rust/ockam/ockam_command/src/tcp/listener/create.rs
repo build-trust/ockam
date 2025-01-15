@@ -12,7 +12,6 @@ use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
 
 use crate::node::util::initialize_default_node;
-use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts};
 
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
@@ -30,17 +29,11 @@ pub struct CreateCommand {
 }
 
 impl CreateCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |ctx| async move {
-            self.async_run(&ctx, opts).await
-        })
-    }
-
     pub fn name(&self) -> String {
         "tcp-listener create".into()
     }
 
-    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         initialize_default_node(ctx, &opts).await?;
         let node = BackgroundNodeClient::create(ctx, &opts.state, &self.at).await?;
         let transport_status: TransportStatus = node

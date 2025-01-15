@@ -60,3 +60,10 @@ pub use session::connection_status::ConnectionStatus;
 pub use ui::*;
 pub use util::*;
 pub use version::*;
+
+#[inline]
+pub fn log(str: &str) {
+    let now = chrono::Utc::now();
+    let now = now.to_rfc3339();
+    println!("{}: {}", now, str);
+}

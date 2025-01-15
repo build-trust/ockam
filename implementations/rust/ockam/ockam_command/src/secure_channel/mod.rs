@@ -12,6 +12,7 @@ pub use show::ShowCommand;
 
 use crate::{docs, CommandGlobalOpts};
 use clap::{Args, Subcommand};
+use ockam_node::Context;
 
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/after_long_help.txt");
@@ -42,12 +43,12 @@ enum SecureChannelSubcommand {
 }
 
 impl SecureChannelCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
-            SecureChannelSubcommand::Create(c) => c.run(opts),
-            SecureChannelSubcommand::Delete(c) => c.run(opts),
-            SecureChannelSubcommand::List(c) => c.run(opts),
-            SecureChannelSubcommand::Show(c) => c.run(opts),
+            SecureChannelSubcommand::Create(c) => c.run(ctx, opts).await,
+            SecureChannelSubcommand::Delete(c) => c.run(ctx, opts).await,
+            SecureChannelSubcommand::List(c) => c.run(ctx, opts).await,
+            SecureChannelSubcommand::Show(c) => c.run(ctx, opts).await,
         }
     }
 

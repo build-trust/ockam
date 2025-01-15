@@ -7,6 +7,7 @@ pub use list::ListCommand;
 use miette::IntoDiagnostic;
 use ockam_api::CliState;
 use ockam_multiaddr::MultiAddr;
+use ockam_node::Context;
 pub use show::ShowCommand;
 use std::str::FromStr;
 
@@ -31,12 +32,12 @@ pub enum LeaseSubcommand {
 }
 
 impl LeaseCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
-            LeaseSubcommand::Create(c) => c.run(opts),
-            LeaseSubcommand::List(c) => c.run(opts),
-            LeaseSubcommand::Show(c) => c.run(opts),
-            LeaseSubcommand::Revoke(c) => c.run(opts),
+            LeaseSubcommand::Create(c) => c.run(ctx, opts).await,
+            LeaseSubcommand::List(c) => c.run(ctx, opts).await,
+            LeaseSubcommand::Show(c) => c.run(ctx, opts).await,
+            LeaseSubcommand::Revoke(c) => c.run(ctx, opts).await,
         }
     }
 

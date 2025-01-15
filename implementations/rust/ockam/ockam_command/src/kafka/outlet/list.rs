@@ -22,7 +22,7 @@ pub struct ListCommand {
 impl Command for ListCommand {
     const NAME: &'static str = "kafka-outlet list";
 
-    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
         let node = BackgroundNodeClient::create(ctx, &opts.state, &self.node_opts.at_node).await?;
         let services: Vec<ServiceStatus> = node
             .ask(

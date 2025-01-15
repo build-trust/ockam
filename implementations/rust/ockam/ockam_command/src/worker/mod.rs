@@ -1,8 +1,8 @@
 use clap::{Args, Subcommand};
 
-use list::ListCommand;
-
 use crate::{docs, CommandGlobalOpts};
+use list::ListCommand;
+use ockam_node::Context;
 
 mod list;
 
@@ -27,9 +27,9 @@ pub enum WorkerSubcommand {
 }
 
 impl WorkerCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
-            WorkerSubcommand::List(c) => c.run(opts),
+            WorkerSubcommand::List(c) => c.run(ctx, opts).await,
         }
     }
 

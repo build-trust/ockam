@@ -5,15 +5,13 @@ use miette::IntoDiagnostic;
 use serde::Serialize;
 use serde_json::{json, to_string_pretty};
 
+use crate::identity::list::IdentityListOutput;
+use crate::output::{IdentifierDisplay, VerifyingPublicKeyDisplay};
+use crate::{docs, CommandGlobalOpts};
 use ockam::identity::verified_change::VerifiedChange;
 use ockam::identity::{Identifier, Identity};
 use ockam_api::cli_state::NamedIdentity;
 use ockam_api::output::{EncodeFormat, Output};
-
-use crate::identity::list::IdentityListOutput;
-use crate::output::{IdentifierDisplay, VerifyingPublicKeyDisplay};
-use crate::util::async_cmd;
-use crate::{docs, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/show/long_about.txt");
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
@@ -43,16 +41,11 @@ pub struct ShowCommand {
 }
 
 impl ShowCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |_ctx| async move {
-            self.async_run(opts).await
-        })
-    }
     pub fn name(&self) -> String {
         "identity show".into()
     }
 
-    async fn async_run(&self, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(&self, opts: CommandGlobalOpts) -> miette::Result<()> {
         if self.name.is_some() || !opts.terminal.can_ask_for_user_input() {
             ShowCommand::show_single_identity(&opts, &self.name, self.full, self.encoding.clone())
                 .await?;

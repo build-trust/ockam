@@ -19,7 +19,6 @@ use crate::enroll::OidcServiceExt;
 use crate::error::Error;
 use crate::operation::util::check_for_project_completion;
 use crate::project::util::check_project_readiness;
-use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts, Result};
 use ockam::Context;
 use ockam_api::cli_state::journeys::{JourneyEvent, USER_EMAIL, USER_NAME};
@@ -80,17 +79,11 @@ pub struct EnrollCommand {
 }
 
 impl EnrollCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |ctx| async move {
-            self.async_run(&ctx, opts).await
-        })
-    }
-
     pub fn name(&self) -> String {
         "enroll".to_string()
     }
 
-    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         if opts.global_args.output_format().is_json() {
             return Err(miette::miette!(
             "This command is interactive and requires you to open a web browser to complete enrollment. \

@@ -1,9 +1,7 @@
+use crate::{docs, CommandGlobalOpts};
 use clap::Args;
 use colorful::Colorful;
 use ockam_api::fmt_ok;
-
-use crate::util::async_cmd;
-use crate::{docs, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/logs/long_about.txt");
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
@@ -22,16 +20,11 @@ pub struct LogCommand {
 }
 
 impl LogCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |_ctx| async move {
-            self.async_run(opts).await
-        })
-    }
     pub fn name(&self) -> String {
         "node logs".into()
     }
 
-    async fn async_run(&self, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(&self, opts: CommandGlobalOpts) -> miette::Result<()> {
         let node_name = opts
             .state
             .get_node_or_default(&self.node_name)

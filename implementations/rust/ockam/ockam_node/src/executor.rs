@@ -23,13 +23,6 @@ use ockam_core::{
     Error,
 };
 
-// TODO: Either make this the only one place we create runtime, or vice verse: remove it from here
-#[cfg(feature = "std")]
-pub(crate) static RUNTIME: once_cell::sync::Lazy<ockam_core::compat::sync::Mutex<Option<Runtime>>> =
-    once_cell::sync::Lazy::new(|| {
-        ockam_core::compat::sync::Mutex::new(Some(Runtime::new().unwrap()))
-    });
-
 /// Underlying Ockam node executor
 ///
 /// This type is a small wrapper around an inner async runtime (`tokio` by
@@ -126,22 +119,6 @@ impl Executor {
                 Err(e)
             }
         }
-    }
-
-    /// Execute a future and block until a result is returned
-    /// This function can only be called to run futures before the Executor has been initialized.
-    /// Otherwise the Executor rt attribute needs to be accessed to execute or spawn futures
-    #[cfg(feature = "std")]
-    pub fn execute_future<F>(future: F) -> Result<F::Output>
-    where
-        F: Future + Send + 'static,
-        F::Output: Send + 'static,
-    {
-        let lock = RUNTIME.lock().unwrap();
-        let rt = lock.as_ref().expect("Runtime was consumed");
-        let join_body = rt.spawn(future.with_current_context());
-        rt.block_on(join_body.with_current_context())
-            .map_err(|e| Error::new(Origin::Executor, Kind::Unknown, e))
     }
 
     #[cfg(not(feature = "std"))]

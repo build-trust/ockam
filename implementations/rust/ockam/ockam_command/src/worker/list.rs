@@ -11,7 +11,7 @@ use ockam_api::nodes::BackgroundNodeClient;
 
 use crate::{docs, CommandGlobalOpts};
 
-use crate::util::{api, async_cmd};
+use crate::util::api;
 
 const LONG_ABOUT: &str = include_str!("./static/list/long_about.txt");
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
@@ -31,17 +31,11 @@ pub struct ListCommand {
 }
 
 impl ListCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |ctx| async move {
-            self.async_run(&ctx, opts).await
-        })
-    }
-
     pub fn name(&self) -> String {
         "workers list".into()
     }
 
-    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         let node = BackgroundNodeClient::create(ctx, &opts.state, &self.at).await?;
         let is_finished: Mutex<bool> = Mutex::new(false);
 

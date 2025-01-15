@@ -1,21 +1,19 @@
 use clap::Args;
 use colorful::Colorful;
-use miette::{miette, IntoDiagnostic, WrapErr};
-use minicbor::Decoder;
+use miette::{miette, WrapErr};
 
 use crate::{docs, CommandGlobalOpts};
 use ockam::identity::Identifier;
 use ockam::Context;
 use ockam_api::colors::OckamColor;
 use ockam_api::nodes::models::secure_channel::CreateSecureChannelListenerRequest;
-use ockam_api::nodes::{BackgroundNodeClient, NODEMANAGER_ADDR};
+use ockam_api::nodes::BackgroundNodeClient;
 use ockam_api::{fmt_log, fmt_ok};
-use ockam_core::api::{Request, ResponseHeader, Status};
-use ockam_core::{Address, Route};
+use ockam_core::api::Request;
+use ockam_core::Address;
 
 use crate::node::util::initialize_default_node;
 use crate::node::NodeOpts;
-use crate::util::{api, async_cmd, exitcode};
 
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
@@ -45,17 +43,11 @@ pub struct CreateCommand {
 }
 
 impl CreateCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |ctx| async move {
-            self.async_run(&ctx, opts).await
-        })
-    }
-
     pub fn name(&self) -> String {
         "create secure channel listener".into()
     }
 
-    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         initialize_default_node(ctx, &opts).await?;
         let node = BackgroundNodeClient::create(ctx, &opts.state, &self.node_opts.at_node).await?;
         let req = Request::post("/node/secure_channel_listener").body(
@@ -92,36 +84,6 @@ impl CreateCommand {
                 "An error occurred while creating the secure channel listener"
             ))
             .context(e),
-        }
-    }
-}
-
-pub async fn create_listener(
-    ctx: &Context,
-    addr: Address,
-    authorized_identifiers: Option<Vec<Identifier>>,
-    identity: Option<String>,
-    base_route: Route,
-) -> miette::Result<()> {
-    let resp: Vec<u8> = ctx
-        .send_and_receive(
-            base_route + NODEMANAGER_ADDR,
-            api::create_secure_channel_listener(&addr, authorized_identifiers, identity)?,
-        )
-        .await
-        .into_diagnostic()?;
-
-    let mut dec = Decoder::new(&resp);
-    let response = dec.decode::<ResponseHeader>().into_diagnostic()?;
-
-    match response.status() {
-        Some(Status::Ok) => {
-            println!("/service/{}", addr.address());
-            Ok(())
-        }
-        _ => {
-            eprintln!("An error occurred while creating the secure channel listener",);
-            std::process::exit(exitcode::CANTCREAT)
         }
     }
 }

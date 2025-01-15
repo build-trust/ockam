@@ -85,11 +85,7 @@ impl Debug for EnrollCommand {
 impl Command for EnrollCommand {
     const NAME: &'static str = "project enroll";
 
-    fn retry_opts(&self) -> Option<RetryOpts> {
-        Some(self.retry_opts.clone())
-    }
-
-    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
         // Store project if an enrollment ticket is passed
         let (project, enrollment_ticket) = if let Some(enrollment_ticket) = &self.enrollment_ticket
         {

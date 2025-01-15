@@ -1,4 +1,4 @@
-use crate::node::show::is_node_up;
+use crate::node::node_callback::NodeCallback;
 use crate::node::CreateCommand;
 use crate::run::parser::config::ConfigParser;
 use crate::run::parser::resource::*;
@@ -8,8 +8,7 @@ use crate::{docs, CommandGlobalOpts};
 use clap::Args;
 use miette::{miette, IntoDiagnostic};
 use ockam_api::cli_state::journeys::APPLICATION_EVENT_COMMAND_CONFIGURATION_FILE;
-use ockam_api::nodes::BackgroundNodeClient;
-use ockam_core::OpenTelemetryContext;
+use ockam_core::{OpenTelemetryContext, TryClone};
 use ockam_node::Context;
 use serde::{Deserialize, Serialize};
 use tracing::{debug, instrument, trace, Span};
@@ -248,25 +247,25 @@ impl NodeConfig {
 
         // Next, run the 'node create' command in a separate tokio task,
         // where the foreground node will run until stopped
-        let node_handle = {
-            let node_command = self
+        let (node_handle, callback) = {
+            let mut node_command = self
                 .node
                 .into_parsed_commands()?
                 .into_iter()
                 .next()
                 .ok_or(miette!("A node command should be defined"))?;
             let opts = opts.clone();
-            tokio::task::spawn_blocking(move || crate::Command::run(node_command, opts))
+            let ctx = ctx.try_clone()?;
+            let callback = NodeCallback::create().await?;
+            node_command.tcp_callback_port = Some(callback.callback_port());
+            let node_handle =
+                tokio::spawn(async move { crate::Command::run(node_command, &ctx, opts).await });
+
+            (node_handle, callback)
         };
 
         // Wait for the node to be up
-        let is_up = {
-            let mut node = BackgroundNodeClient::create_to_node(ctx, &opts.state, node_name)?;
-            is_node_up(ctx, &mut node, true).await?
-        };
-        if !is_up {
-            return Err(miette!("Node failed to start"));
-        }
+        callback.wait_for_signal().await?;
 
         // Run the other sections
         let node_name = Some(node_name);

@@ -11,12 +11,14 @@ impl AppState {
         if self.tracing_guard.get().is_some() {
             return;
         }
-        let state = {
-            let this = self.clone();
-            self.context()
-                .runtime()
-                .block_on(async move { this.state().await })
-        };
+
+        self.context()
+            .runtime()
+            .block_on(async move { self.setup_logging_tracing_impl().await });
+    }
+
+    async fn setup_logging_tracing_impl(&self) {
+        let state = self.state().await;
         let node_dir = state
             .node_dir(NODE_NAME)
             .expect("Failed to get node directory");
@@ -25,7 +27,7 @@ impl AppState {
             .add_crates(vec!["ockam_app_lib"]);
         let tracing_guard = LoggingTracing::setup(
             &logging_configuration(level_and_crates, Some(node_dir), Colored::Off).unwrap(),
-            &ExportingConfiguration::foreground(&state).unwrap(),
+            &ExportingConfiguration::foreground(&state).await.unwrap(),
             "portals",
             Some("portals".to_string()),
         );

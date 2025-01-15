@@ -7,12 +7,13 @@ use crate::{
     add_command_error_event, has_help_flag, has_version_flag, pager, replace_hyphen_with_stdin,
     util::exitcode, version::Version, OckamCommand,
 };
-use ockam_api::cli_state::CliState;
+use ockam_api::cli_state::{CliState, CliStateMode};
 use ockam_api::logs::{
     logging_configuration, Colored, ExportingConfiguration, LogLevelWithCratesFilter,
     LoggingTracing,
 };
 use ockam_api::output::Output;
+use ockam_node::NodeBuilder;
 
 /// Main method for running the command executable:
 ///
@@ -40,36 +41,73 @@ pub fn run() -> miette::Result<()> {
         print_version_and_exit();
     }
 
-    match OckamCommand::try_parse_from(input.clone()) {
-        Err(help) => {
-            // the -h or --help flag must not be interpreted as an error
-            if !has_help_flag(&input) {
-                let command = input
-                    .iter()
-                    .take_while(|a| !a.starts_with('-'))
-                    .collect::<Vec<_>>()
-                    .iter()
-                    .map(|s| s.to_string())
-                    .collect::<Vec<String>>()
-                    .join(" ");
-                let cli_state = CliState::from_env()?;
-                let level_and_crates = LogLevelWithCratesFilter::new().into_diagnostic()?;
-                let logging_configuration =
-                    logging_configuration(level_and_crates, None, Colored::On);
-                let _guard = LoggingTracing::setup(
-                    &logging_configuration.into_diagnostic()?,
-                    &ExportingConfiguration::foreground(&cli_state).into_diagnostic()?,
-                    "local node",
-                    None,
-                );
+    // log("Point 0.0");
 
-                let message = format!("could not parse the command: {}", command);
-                add_command_error_event(cli_state, &command, &message, input.join(" "))?;
-            };
-            pager::render_help(help);
+    let command_res = OckamCommand::try_parse_from(&input);
+
+    // log("Point 0.1");
+
+    let node_builder = NodeBuilder::new().no_logging();
+
+    // log("Point 0.2");
+
+    let (mut ctx, mut executor) = node_builder.build();
+
+    // log("Point 0.3");
+
+    executor.execute(async move {
+        // log("Point 0.4");
+
+        match command_res {
+            Ok(command) => command.run(&mut ctx, &input).await?,
+            Err(err) => handle_invalid_command(&input, err).await?,
         }
-        Ok(command) => command.run(input)?,
-    }
+
+        // log("Point 0.5");
+
+        ctx.shutdown_node().await?;
+
+        // log("Point 0.6");
+
+        Ok::<(), miette::Error>(())
+    })??;
+
+    // log("Point 0.7");
+
+    Ok(())
+}
+
+async fn handle_invalid_command(input: &[String], help: clap::Error) -> miette::Result<()> {
+    // log("Point 1.0");
+
+    // the -h or --help flag must not be interpreted as an error
+    if !has_help_flag(input) {
+        let command = input
+            .iter()
+            .take_while(|a| !a.starts_with('-'))
+            .collect::<Vec<_>>()
+            .iter()
+            .map(|s| s.to_string())
+            .collect::<Vec<String>>()
+            .join(" ");
+        // FIXME
+        let cli_state = CliState::create(CliStateMode::InMemory).await?;
+        let level_and_crates = LogLevelWithCratesFilter::new().into_diagnostic()?;
+        let logging_configuration = logging_configuration(level_and_crates, None, Colored::On);
+        let _guard = LoggingTracing::setup(
+            &logging_configuration.into_diagnostic()?,
+            &ExportingConfiguration::foreground(&cli_state)
+                .await
+                .into_diagnostic()?,
+            "local node",
+            None,
+        );
+
+        let message = format!("could not parse the command: {}", command);
+        add_command_error_event(cli_state, &command, &message, input.join(" ")).await?;
+    };
+    pager::render_help(help);
+
     Ok(())
 }
 

@@ -9,9 +9,9 @@ use clap::Parser;
 use colorful::Colorful;
 use ockam_api::fmt_warn;
 use ockam_core::OCKAM_TRACER_NAME;
-use ockam_node::database::OCKAM_SQLITE_IN_MEMORY;
-use opentelemetry::trace::{Link, SpanBuilder, TraceContextExt, Tracer};
-use opentelemetry::{global, Context};
+use ockam_node::Context;
+use opentelemetry::trace::{FutureExt, Link, SpanBuilder, TraceContextExt, Tracer};
+use opentelemetry::{global, Context as TelemetryContext};
 use tracing::{instrument, warn};
 
 const ABOUT: &str = include_str!("./static/about.txt");
@@ -48,7 +48,7 @@ pub struct OckamCommand {
 
 impl OckamCommand {
     /// Run the command
-    pub fn run(self, arguments: Vec<String>) -> miette::Result<()> {
+    pub async fn run(self, ctx: &mut Context, arguments: &[String]) -> miette::Result<()> {
         // If test_argument_parser is true, command arguments are checked
         // but the command is not executed. This is useful to test arguments
         // without having to execute their logic.
@@ -62,16 +62,19 @@ impl OckamCommand {
 
         let command_name = self.subcommand.name();
 
-        // Set the in-memory env var if needed
+        let mut in_memory = false;
+
         if let OckamSubcommand::Node(cmd) = &self.subcommand {
             if let crate::node::NodeSubcommand::Create(c) = &cmd.subcommand {
-                if c.in_memory {
-                    std::env::set_var(OCKAM_SQLITE_IN_MEMORY, "true");
-                }
+                in_memory = c.in_memory;
             }
         }
 
-        let options = CommandGlobalOpts::new(&arguments, &self.global_args, &self.subcommand)?;
+        // log("Point 2.0");
+        let options =
+            CommandGlobalOpts::new(arguments, &self.global_args, &self.subcommand, in_memory)
+                .await?;
+        // log("Point 2.1");
 
         if let Err(err) = check_if_an_upgrade_is_available(&options) {
             warn!("Failed to check for upgrade, error={err}");
@@ -83,7 +86,7 @@ impl OckamCommand {
         let tracer = global::tracer(OCKAM_TRACER_NAME);
         let result =
             if let Some(opentelemetry_context) = self.subcommand.get_opentelemetry_context() {
-                let context = Context::current();
+                let context = TelemetryContext::current();
                 let span_builder = SpanBuilder::from_name(command_name.clone().to_string())
                     .with_links(vec![Link::new(
                         opentelemetry_context
@@ -95,34 +98,45 @@ impl OckamCommand {
                         0,
                     )]);
                 let span = tracer.build_with_context(span_builder, &context);
-                let cx = Context::current_with_span(span);
-                let _guard = cx.clone().attach();
-                self.run_command(options.clone(), &command_name, &arguments)
+                let cx = TelemetryContext::current_with_span(span);
+                self.run_command(ctx, options.clone(), &command_name, arguments)
+                    .with_context(cx)
+                    .await
             } else {
-                tracer.in_span(command_name.clone(), |_| {
-                    self.run_command(options.clone(), &command_name, &arguments)
-                })
+                // log("Point 2.2");
+                let span = tracer.start(command_name.clone());
+                let cx = TelemetryContext::current_with_span(span);
+                self.run_command(ctx, options.clone(), &command_name, arguments)
+                    .with_context(cx)
+                    .await
             };
+
+        // log("Point 2.3");
         if let Err(ref e) = result {
             add_command_error_event(
                 options.state.clone(),
                 &command_name,
                 &format!("{e}"),
                 arguments.join(" "),
-            )?
+            )
+            .await?;
         };
-        options.shutdown();
+        // log("Point 2.4");
+        // FIXME
+        // options.shutdown();
+        // log("Point 2.5");
         result
     }
 
     #[instrument(skip_all, fields(command = self.subcommand.name()))]
-    fn run_command(
+    async fn run_command(
         self,
+        ctx: &Context,
         opts: CommandGlobalOpts,
         command_name: &str,
         arguments: &[String],
     ) -> miette::Result<()> {
-        add_command_event(opts.state.clone(), command_name, arguments.join(" "))?;
-        self.subcommand.run(opts)
+        add_command_event(opts.state.clone(), command_name, arguments.join(" ")).await?;
+        self.subcommand.run(ctx, opts).await
     }
 }

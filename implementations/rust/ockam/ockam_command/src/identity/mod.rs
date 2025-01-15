@@ -3,6 +3,7 @@ use clap::{Args, Subcommand};
 pub use create::CreateCommand;
 pub(crate) use delete::DeleteCommand;
 pub(crate) use list::ListCommand;
+use ockam_node::Context;
 pub(crate) use show::ShowCommand;
 
 use crate::identity::default::DefaultCommand;
@@ -38,13 +39,13 @@ pub enum IdentitySubcommand {
 }
 
 impl IdentityCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
-            IdentitySubcommand::Create(c) => c.run(opts),
-            IdentitySubcommand::Show(c) => c.run(opts),
-            IdentitySubcommand::List(c) => c.run(opts),
-            IdentitySubcommand::Delete(c) => c.run(opts),
-            IdentitySubcommand::Default(c) => c.run(opts),
+            IdentitySubcommand::Create(c) => c.run(ctx, opts).await,
+            IdentitySubcommand::Show(c) => c.run(opts).await,
+            IdentitySubcommand::List(c) => c.run(opts).await,
+            IdentitySubcommand::Delete(c) => c.run(opts).await,
+            IdentitySubcommand::Default(c) => c.run(opts).await,
         }
     }
 

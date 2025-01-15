@@ -3,10 +3,10 @@ mod get_my_address;
 
 use clap::{Args, Subcommand};
 
-use create::CreateCommand;
-
 use crate::rendezvous::get_my_address::GetMyAddressCommand;
 use crate::{docs, Command, CommandGlobalOpts};
+use create::CreateCommand;
+use ockam_node::Context;
 
 /// Manage Rendezvous server
 #[derive(Clone, Debug, Args)]
@@ -41,10 +41,10 @@ impl RendezvousSubcommand {
 }
 
 impl RendezvousCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
-            RendezvousSubcommand::Create(c) => c.run(opts),
-            RendezvousSubcommand::GetMyAddress(c) => c.run(opts),
+            RendezvousSubcommand::Create(c) => c.run(ctx, opts).await,
+            RendezvousSubcommand::GetMyAddress(c) => c.run(ctx, opts).await,
         }
     }
 }

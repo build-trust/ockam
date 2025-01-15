@@ -6,6 +6,7 @@ pub(crate) mod start;
 use crate::{docs, CommandGlobalOpts};
 use clap::{Args, Subcommand};
 use list::ListCommand;
+use ockam_node::Context;
 pub(crate) use start::StartCommand;
 
 #[derive(Clone, Debug, Args)]
@@ -24,10 +25,10 @@ pub enum ServiceSubcommand {
 }
 
 impl ServiceCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
-            ServiceSubcommand::Start(c) => c.run(opts),
-            ServiceSubcommand::List(c) => c.run(opts),
+            ServiceSubcommand::Start(c) => c.run(ctx, opts).await,
+            ServiceSubcommand::List(c) => c.run(ctx, opts).await,
         }
     }
 

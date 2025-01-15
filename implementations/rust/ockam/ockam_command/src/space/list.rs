@@ -28,7 +28,7 @@ pub struct ListCommand {
 impl Command for ListCommand {
     const NAME: &'static str = "space list";
 
-    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
         let node = InMemoryNode::start(ctx, &opts.state).await?;
 
         let spaces = {

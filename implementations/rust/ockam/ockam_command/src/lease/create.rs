@@ -34,7 +34,7 @@ pub struct CreateCommand {
 impl Command for CreateCommand {
     const NAME: &'static str = "lease create";
 
-    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
         let cmd = self.parse_args(&opts).await?;
 
         let node = InMemoryNode::start_with_identity_and_project_name(

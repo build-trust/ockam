@@ -7,7 +7,6 @@ use ockam_api::nodes::InMemoryNode;
 use ockam_api::orchestrator::project::ProjectsOrchestratorApi;
 
 use crate::shared_args::IdentityOpts;
-use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/delete/long_about.txt");
@@ -37,17 +36,11 @@ pub struct DeleteCommand {
 }
 
 impl DeleteCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |ctx| async move {
-            self.async_run(&ctx, opts).await
-        })
-    }
-
     pub fn name(&self) -> String {
         "project delete".into()
     }
 
-    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         if opts.terminal.confirmed_with_flag_or_prompt(
             self.yes,
             "Are you sure you want to delete this project?",

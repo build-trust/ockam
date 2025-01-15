@@ -132,9 +132,12 @@ struct State {
 
 impl State {
     fn new(config: Config, log: bool) -> Self {
-        let cli_state = CliState::new(CliStateMode::with_default_dir().unwrap())
-            .expect("cannot create cli state");
         let rt = Arc::new(Runtime::new().expect("cannot create a tokio runtime"));
+        let cli_state = rt.block_on(async move {
+            CliState::create(CliStateMode::with_default_dir().unwrap())
+                .await
+                .expect("cannot create cli state")
+        });
         let builder = if log {
             NodeBuilder::new()
         } else {

@@ -1,11 +1,10 @@
+use crate::util::print_warning_for_deprecated_flag_no_effect;
+use crate::{docs, CommandGlobalOpts};
 use clap::Args;
 use colorful::Colorful;
 use miette::miette;
 use ockam_api::colors::OckamColor;
 use ockam_api::{color, fmt_info, fmt_ok, fmt_warn};
-
-use crate::util::{async_cmd, print_warning_for_deprecated_flag_no_effect};
-use crate::{docs, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/stop/long_about.txt");
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
@@ -28,17 +27,11 @@ pub struct StopCommand {
 }
 
 impl StopCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |_ctx| async move {
-            self.async_run(opts).await
-        })
-    }
-
     pub fn name(&self) -> String {
         "node stop".into()
     }
 
-    async fn async_run(&self, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(&self, opts: CommandGlobalOpts) -> miette::Result<()> {
         if self.force {
             print_warning_for_deprecated_flag_no_effect(&opts, "--force")?;
         }

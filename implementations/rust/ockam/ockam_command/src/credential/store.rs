@@ -14,7 +14,6 @@ use ockam_api::{fmt_log, fmt_ok};
 use crate::credential::verify::verify_credential;
 use crate::node::util::initialize_default_node;
 use crate::node::NodeOpts;
-use crate::util::async_cmd;
 use crate::util::parsers::identity_identifier_parser;
 
 #[derive(Clone, Debug, Args)]
@@ -40,17 +39,11 @@ pub struct StoreCommand {
 }
 
 impl StoreCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |ctx| async move {
-            self.async_run(&ctx, opts).await
-        })
-    }
-
     pub fn name(&self) -> String {
         "credential store".into()
     }
 
-    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         // Set node name in state to store identity attributes to it
         initialize_default_node(ctx, &opts).await?;
         let node_name = opts

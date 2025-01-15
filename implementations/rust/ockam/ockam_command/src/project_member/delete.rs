@@ -48,7 +48,7 @@ pub struct DeleteCommand {
 impl Command for DeleteCommand {
     const NAME: &'static str = "project-member delete";
 
-    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
         if self.member.is_none() && !self.all {
             return Err(miette!(
                 "You need to specify either an identifier to delete or use the --all flag to delete all the members from a project."
