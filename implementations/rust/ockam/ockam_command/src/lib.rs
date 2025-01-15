@@ -49,6 +49,7 @@ mod lease;
 mod manpages;
 mod markdown;
 mod message;
+mod migrate_database;
 pub mod node;
 mod operation;
 mod output;

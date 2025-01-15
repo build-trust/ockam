@@ -1,5 +1,5 @@
 use crate::database::migrations::RustMigration;
-use crate::database::{FromSqlxError, ToVoid};
+use crate::database::{FromSqlxError, ToVoid, Version};
 use core::fmt;
 use minicbor::{CborLen, Decode, Encode};
 use ockam_core::{async_trait, Result};
@@ -17,7 +17,7 @@ impl RustMigration for PolicyTrustContextId {
         Self::name()
     }
 
-    fn version(&self) -> i64 {
+    fn version(&self) -> Version {
         Self::version()
     }
 
@@ -28,8 +28,8 @@ impl RustMigration for PolicyTrustContextId {
 
 impl PolicyTrustContextId {
     /// Migration version
-    pub fn version() -> i64 {
-        20240111100002
+    pub fn version() -> Version {
+        Version(20240111100002)
     }
 
     /// Migration name

@@ -1,9 +1,13 @@
+use crate::database::migrations::migration_support::migration_status::MigrationStatus;
 use crate::database::migrations::migration_support::rust_migration::RustMigration;
-use crate::database::{FromSqlxError, ToVoid};
+use crate::database::MigrationResult::MigrationSuccess;
+use crate::database::{FromSqlxError, MigrationFailure, MigrationResult, ToVoid};
+use core::fmt::{Display, Formatter};
 use ockam_core::compat::collections::HashSet;
 use ockam_core::compat::time::now;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::Result;
+use serde::Serialize;
 use sqlx::any::AnyRow;
 use sqlx::migrate::{AppliedMigration, Migrate, Migration as SqlxMigration};
 use sqlx::{query, Any, AnyConnection, Pool, Row};
@@ -23,8 +27,7 @@ pub struct Migrator {
 impl Migrator {
     /// Constructor
     pub fn new(sql_migrator: sqlx::migrate::Migrator) -> Result<Self> {
-        let iter = sql_migrator.iter().map(|m| m.version);
-
+        let iter = sql_migrator.iter().map(|m| Version(m.version));
         Self::check_duplicates(iter)?;
 
         Ok(Self {
@@ -33,7 +36,7 @@ impl Migrator {
         })
     }
 
-    fn check_duplicates(iter: impl Iterator<Item = i64>) -> Result<()> {
+    fn check_duplicates(iter: impl Iterator<Item = Version>) -> Result<()> {
         let mut versions = HashSet::new();
 
         for version in iter {
@@ -57,7 +60,6 @@ impl Migrator {
         rust_migrations: Vec<Box<dyn RustMigration>>,
     ) -> Result<()> {
         let iter = rust_migrations.iter().map(|m| m.version());
-
         Self::check_duplicates(iter)?;
 
         self.rust_migrations = rust_migrations;
@@ -77,11 +79,28 @@ impl Migrator {
         connection: &mut AnyConnection,
         up_to: Version,
     ) -> Result<bool> {
-        self.run_migrations_impl(connection, up_to, Mode::DryRun)
-            .await
+        let status = self
+            .run_migrations_impl(connection, up_to, Mode::DryRun)
+            .await?;
+        match status {
+            MigrationStatus::UpToDate(_) => Ok(false),
+            MigrationStatus::Todo(_, _) => Ok(true),
+            MigrationStatus::Failed(version, reason) => Err(ockam_core::Error::new(
+                Origin::Node,
+                Kind::Conflict,
+                format!(
+                    "Sql migration previously failed for version {}. Reason: {}",
+                    version, reason
+                ),
+            )),
+        }
     }
 
-    async fn run_migrations(&self, connection: &mut AnyConnection, up_to: Version) -> Result<bool> {
+    async fn run_migrations(
+        &self,
+        connection: &mut AnyConnection,
+        up_to: Version,
+    ) -> Result<MigrationStatus> {
         self.run_migrations_impl(connection, up_to, Mode::ApplyMigrations)
             .await
     }
@@ -91,21 +110,20 @@ impl Migrator {
         connection: &mut AnyConnection,
         up_to: Version,
         mode: Mode,
-    ) -> Result<bool> {
+    ) -> Result<MigrationStatus> {
         connection.ensure_migrations_table().await.into_core()?;
 
         let version = connection.dirty_version().await.into_core()?;
         if let Some(version) = version {
-            return Err(ockam_core::Error::new(
-                Origin::Node,
-                Kind::Conflict,
-                format!("Sql migration previously failed for version {}", version),
+            return Ok(MigrationStatus::create_failed(
+                Version(version),
+                MigrationFailure::DirtyVersion,
             ));
         }
 
         let migrations = {
             let sql_iterator = self.sql_migrator.migrations.iter().filter_map(|m| {
-                if m.version <= up_to {
+                if Version(m.version) <= up_to {
                     Some(NextMigration::Sql(m))
                 } else {
                     None
@@ -130,9 +148,15 @@ impl Migrator {
         // which was needed to track rust migrations that were added
         // before the _rust_migrations table existed
         let applied_migrations = connection.list_applied_migrations().await.into_core()?;
+        let last_applied_migration = applied_migrations.last().map(|m| Version(m.version));
+        let next_migration_to_apply = migrations
+            .last()
+            .map(|m| m.version())
+            .unwrap_or(Version::MIN);
 
         match mode {
             Mode::DryRun => {
+                let mut last_migrated_version = Version::MIN;
                 for migration in migrations.into_iter() {
                     let needs_migration = match migration {
                         NextMigration::Sql(sql_migration) => {
@@ -154,32 +178,53 @@ impl Migrator {
                     };
 
                     if needs_migration {
-                        return Ok(true);
-                    }
+                        return Ok(MigrationStatus::Todo(
+                            last_applied_migration,
+                            next_migration_to_apply,
+                        ));
+                    };
+                    last_migrated_version = migration.version();
                 }
-
-                Ok(false)
+                Ok(MigrationStatus::create_up_to_date(last_migrated_version))
             }
             Mode::ApplyMigrations => {
-                let mut migrated = false;
+                let mut last_migrated_version = Version::MIN;
                 for migration in migrations.into_iter() {
                     match migration {
                         NextMigration::Sql(sql_migration) => {
-                            migrated |= NextMigration::apply_sql_migration(
+                            match NextMigration::apply_sql_migration(
                                 sql_migration,
                                 connection,
                                 &applied_migrations,
                             )
-                            .await?;
+                            .await?
+                            {
+                                MigrationSuccess => (),
+                                MigrationResult::SomeMigrationError(failure) => {
+                                    return Ok(MigrationStatus::create_failed(
+                                        Version(sql_migration.version),
+                                        failure,
+                                    ))
+                                }
+                            }
                         }
                         NextMigration::Rust(rust_migration) => {
-                            migrated |=
-                                NextMigration::apply_rust_migration(rust_migration, connection)
-                                    .await?;
+                            match NextMigration::apply_rust_migration(rust_migration, connection)
+                                .await?
+                            {
+                                MigrationSuccess => (),
+                                MigrationResult::SomeMigrationError(failure) => {
+                                    return Ok(MigrationStatus::create_failed(
+                                        rust_migration.version(),
+                                        failure,
+                                    ))
+                                }
+                            }
                         }
                     }
+                    last_migrated_version = migration.version();
                 }
-                Ok(migrated)
+                Ok(MigrationStatus::create_up_to_date(last_migrated_version))
             }
         }
     }
@@ -227,12 +272,16 @@ impl Migrator {
 
 impl Migrator {
     /// Run migrations up to the specified version (inclusive)
-    pub(crate) async fn migrate_up_to(&self, pool: &Pool<Any>, up_to: Version) -> Result<()> {
+    pub(crate) async fn migrate_up_to(
+        &self,
+        pool: &Pool<Any>,
+        up_to: Version,
+    ) -> Result<MigrationStatus> {
         let mut connection = pool.acquire().await.into_core()?;
 
         if !self.needs_migration(&mut connection, up_to).await? {
             debug!("No database migrations was required");
-            return Ok(());
+            return Ok(MigrationStatus::create_up_to_date(up_to));
         }
 
         let is_sqlite = connection.backend_name() == "SQLite";
@@ -247,7 +296,7 @@ impl Migrator {
             connection.lock().await.into_core()?;
         };
 
-        let res = self.run_migrations(&mut connection, up_to).await;
+        let result = self.run_migrations(&mut connection, up_to).await;
         if is_sqlite {
             debug!("Migration completed, unlocking database");
             // This is not enough to unlock the database, according to the documentation,
@@ -261,14 +310,19 @@ impl Migrator {
         } else {
             connection.unlock().await.into_core()?;
         }
-
-        res?;
-        Ok(())
+        result
     }
 
     /// Run all migrations
-    pub async fn migrate(&self, pool: &Pool<Any>) -> Result<()> {
-        self.migrate_up_to(pool, i64::MAX).await
+    pub async fn migrate(&self, pool: &Pool<Any>) -> Result<MigrationStatus> {
+        self.migrate_up_to(pool, Version::MAX).await
+    }
+
+    /// Return the migration status
+    pub async fn migration_status(&self, pool: &Pool<Any>) -> Result<MigrationStatus> {
+        let mut connection = pool.acquire().await.into_core()?;
+        self.run_migrations_impl(&mut connection, Version::MAX, Mode::DryRun)
+            .await
     }
 }
 
@@ -279,13 +333,26 @@ impl Migrator {
         mut self,
         pool: &Pool<Any>,
         up_to: Version,
-    ) -> Result<()> {
+    ) -> Result<MigrationStatus> {
         self.rust_migrations.retain(|m| m.version() < up_to);
         self.migrate_up_to(pool, up_to).await
     }
 }
 
-type Version = i64;
+/// Migration version
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
+pub struct Version(pub i64);
+
+impl Display for Version {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl Version {
+    const MIN: Version = Version(0);
+    const MAX: Version = Version(i64::MAX);
+}
 
 #[derive(Debug)]
 enum NextMigration<'a> {
@@ -300,7 +367,7 @@ impl NextMigration<'_> {
 
     fn version(&self) -> Version {
         match self {
-            Self::Sql(m) => m.version,
+            Self::Sql(m) => Version(m.version),
             Self::Rust(m) => m.version(),
         }
     }
@@ -338,9 +405,9 @@ impl NextMigration<'_> {
         migration: &'a SqlxMigration,
         connection: &mut AnyConnection,
         applied_migrations: &[AppliedMigration],
-    ) -> Result<bool> {
+    ) -> Result<MigrationResult> {
         if migration.migration_type.is_down_migration() {
-            return Ok(false);
+            return Ok(MigrationResult::down_migration());
         }
         match applied_migrations
             .iter()
@@ -348,19 +415,21 @@ impl NextMigration<'_> {
         {
             Some(applied_migration) => {
                 if migration.checksum != applied_migration.checksum {
-                    return Err(ockam_core::Error::new(
-                        Origin::Node,
-                        Kind::Conflict,
-                        format!(
-                            "Checksum mismatch for sql migration '{}' for version {}",
-                            migration.description, migration.version,
+                    Ok(MigrationResult::incorrect_checksum(
+                        migration.description.to_string(),
+                        migration.sql.to_string(),
+                        String::from_utf8(migration.checksum.to_vec())
+                            .unwrap_or("actual migration checksum cannot be displayed".to_string()),
+                        String::from_utf8(migration.checksum.to_vec()).unwrap_or(
+                            "expected migration checksum cannot be displayed".to_string(),
                         ),
-                    ));
+                    ))
+                } else {
+                    Ok(MigrationSuccess)
                 }
-                Ok(false)
             }
             None => match connection.apply(migration).await.into_core() {
-                Ok(_) => Ok(true),
+                Ok(_) => Ok(MigrationSuccess),
                 Err(e) => Err(ockam_core::Error::new(
                     Origin::Node,
                     Kind::Conflict,
@@ -384,14 +453,14 @@ impl NextMigration<'_> {
     async fn apply_rust_migration(
         migration: &dyn RustMigration,
         connection: &mut AnyConnection,
-    ) -> Result<bool> {
+    ) -> Result<MigrationResult> {
         if Migrator::has_migrated(connection, migration.name()).await? {
-            return Ok(false);
+            return Ok(MigrationResult::success());
         }
         if migration.migrate(connection).await? {
             Migrator::mark_as_migrated(connection, migration.name()).await?;
         }
-        Ok(true)
+        Ok(MigrationSuccess)
     }
 }
 
@@ -440,9 +509,9 @@ mod tests {
     fn ordering_of_migrations() {
         let sql_1 = SqlxMigration::new(1, "sql_1".into(), MigrationType::Simple, "1".into(), true);
         let sql_2 = SqlxMigration::new(2, "sql_2".into(), MigrationType::Simple, "2".into(), true);
-        let rust_1: Box<dyn RustMigration> = Box::new(DummyRustMigration::new(1));
-        let rust_2: Box<dyn RustMigration> = Box::new(DummyRustMigration::new(2));
-        let rust_3: Box<dyn RustMigration> = Box::new(DummyRustMigration::new(3));
+        let rust_1: Box<dyn RustMigration> = Box::new(DummyRustMigration::new(Version(1)));
+        let rust_2: Box<dyn RustMigration> = Box::new(DummyRustMigration::new(Version(2)));
+        let rust_3: Box<dyn RustMigration> = Box::new(DummyRustMigration::new(Version(3)));
 
         let mut migrations = vec![
             NextMigration::Sql(&sql_2),

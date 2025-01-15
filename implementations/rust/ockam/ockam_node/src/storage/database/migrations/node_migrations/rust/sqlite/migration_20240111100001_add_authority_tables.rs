@@ -1,5 +1,5 @@
 use crate::database::migrations::RustMigration;
-use crate::database::{Boolean, FromSqlxError, Nullable, ToVoid};
+use crate::database::{Boolean, FromSqlxError, Nullable, ToVoid, Version};
 use ockam_core::{async_trait, Result};
 use sqlx::*;
 
@@ -13,7 +13,7 @@ impl RustMigration for AuthorityAttributes {
         Self::name()
     }
 
-    fn version(&self) -> i64 {
+    fn version(&self) -> Version {
         Self::version()
     }
 
@@ -24,8 +24,8 @@ impl RustMigration for AuthorityAttributes {
 
 impl AuthorityAttributes {
     /// Migration version
-    pub fn version() -> i64 {
-        20240111100001
+    pub fn version() -> Version {
+        Version(20240111100001)
     }
 
     /// Migration name

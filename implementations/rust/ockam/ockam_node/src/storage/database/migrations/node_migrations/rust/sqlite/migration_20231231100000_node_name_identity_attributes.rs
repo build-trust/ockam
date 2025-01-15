@@ -1,4 +1,4 @@
-use crate::database::{Boolean, FromSqlxError, Nullable, RustMigration, ToVoid};
+use crate::database::{Boolean, FromSqlxError, Nullable, RustMigration, ToVoid, Version};
 use ockam_core::{async_trait, Result};
 use sqlx::any::AnyRow;
 use sqlx::*;
@@ -13,7 +13,7 @@ impl RustMigration for NodeNameIdentityAttributes {
         Self::name()
     }
 
-    fn version(&self) -> i64 {
+    fn version(&self) -> Version {
         Self::version()
     }
 
@@ -24,8 +24,8 @@ impl RustMigration for NodeNameIdentityAttributes {
 
 impl NodeNameIdentityAttributes {
     /// Migration version
-    pub fn version() -> i64 {
-        20231231100000
+    pub fn version() -> Version {
+        Version(20231231100000)
     }
 
     /// Migration name

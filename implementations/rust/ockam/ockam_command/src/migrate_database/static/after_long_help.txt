@@ -1,0 +1,5 @@
+```sh
+# Migrate a Postgres database shared by multiple nodes.
+$ ockam migrate-postgres
+$ ockam migrate-postgres --dry-run
+```

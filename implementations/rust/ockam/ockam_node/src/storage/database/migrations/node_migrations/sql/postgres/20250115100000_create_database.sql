@@ -238,3 +238,14 @@ CREATE TABLE aead_secret
     type   TEXT  NOT NULL,    -- Secret type
     secret BYTEA NOT NULL     -- Secret binary
 );
+
+-----------------
+-- USER JOURNEYS
+-----------------
+
+CREATE TABLE host_journey
+(
+    opentelemetry_context          TEXT NOT NULL UNIQUE,
+    start_datetime                 TEXT NOT NULL,
+    previous_opentelemetry_context TEXT
+);

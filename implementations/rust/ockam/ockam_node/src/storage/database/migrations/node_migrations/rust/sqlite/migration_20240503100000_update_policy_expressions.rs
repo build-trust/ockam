@@ -1,5 +1,5 @@
 use crate::database::migrations::RustMigration;
-use crate::database::{FromSqlxError, ToVoid};
+use crate::database::{FromSqlxError, ToVoid, Version};
 use ockam_core::{async_trait, Result};
 use sqlx::*;
 
@@ -14,7 +14,7 @@ impl RustMigration for UpdatePolicyExpressions {
         Self::name()
     }
 
-    fn version(&self) -> i64 {
+    fn version(&self) -> Version {
         Self::version()
     }
 
@@ -25,8 +25,8 @@ impl RustMigration for UpdatePolicyExpressions {
 
 impl UpdatePolicyExpressions {
     /// Migration version
-    pub fn version() -> i64 {
-        20240503100000
+    pub fn version() -> Version {
+        Version(20240503100000)
     }
 
     /// Migration name

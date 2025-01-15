@@ -6,7 +6,7 @@ use ockam_node::Executor;
 use opentelemetry::trace::{TraceContextExt, Tracer};
 use opentelemetry::{global, Context};
 use std::collections::HashMap;
-use tracing::error;
+use tracing::{error, warn};
 
 /// This function creates a journey event describing the execution of a command
 pub fn add_command_event(
@@ -24,9 +24,13 @@ pub fn add_command_event(
                     APPLICATION_EVENT_COMMAND,
                     sanitize_command_arguments(command_arguments),
                 );
-                cli_state
+                if let Err(e) = cli_state
                     .add_journey_event(JourneyEvent::ok(command_name), attributes)
                     .await
+                {
+                    warn!("cannot save a journey event: {}", e);
+                }
+                Ok::<(), ockam_core::Error>(())
             })
         })
         .into_diagnostic()??;
@@ -56,9 +60,13 @@ pub fn add_command_error_event(
                     APPLICATION_EVENT_COMMAND,
                     sanitize_command_arguments(command_arguments),
                 );
-                cli_state
+                if let Err(e) = cli_state
                     .add_journey_error(&command, message, attributes)
                     .await
+                {
+                    warn!("cannot save a journey event: {}", e);
+                }
+                Ok::<(), ockam_core::Error>(())
             })
         })
         .into_diagnostic()??;

@@ -1,5 +1,5 @@
 use crate::database::migrations::RustMigration;
-use crate::database::{FromSqlxError, ToVoid};
+use crate::database::{FromSqlxError, ToVoid, Version};
 use ockam_core::{async_trait, Result};
 use sqlx::*;
 
@@ -13,7 +13,7 @@ impl RustMigration for SetAuthorityId {
         Self::name()
     }
 
-    fn version(&self) -> i64 {
+    fn version(&self) -> Version {
         Self::version()
     }
 
@@ -24,8 +24,8 @@ impl RustMigration for SetAuthorityId {
 
 impl SetAuthorityId {
     /// Migration version
-    pub fn version() -> i64 {
-        20250114100000
+    pub fn version() -> Version {
+        Version(20250114100000)
     }
 
     /// Migration name
@@ -118,15 +118,6 @@ mod test {
             true
         }));
         Ok(())
-    }
-
-    #[derive(FromRow)]
-    #[allow(dead_code)]
-    struct ResourceTypePolicyRow {
-        resource_type: String,
-        action: String,
-        expression: String,
-        node_name: String,
     }
 
     /// HELPERS

@@ -22,7 +22,7 @@ use crate::database::database_configuration::DatabaseConfiguration;
 use crate::database::migrations::application_migration_set::ApplicationMigrationSet;
 use crate::database::migrations::node_migration_set::NodeMigrationSet;
 use crate::database::migrations::MigrationSet;
-use crate::database::DatabaseType;
+use crate::database::{DatabaseType, MigrationStatus};
 use ockam_core::compat::rand::random_string;
 use ockam_core::compat::sync::Arc;
 use ockam_core::{Error, Result};
@@ -168,11 +168,21 @@ impl SqlxDatabase {
                 .await?;
 
                 let migrator = migration_set.create_migrator()?;
-                let result = migrator.migrate(&database.pool).await;
+                let status = migrator.migrate(&database.pool).await?;
                 database.close().await;
-
-                result?
-            }
+                match status {
+                    MigrationStatus::UpToDate(_) => (),
+                    MigrationStatus::Todo(_, _) => (),
+                    MigrationStatus::Failed(version, reason) => Err(Error::new(
+                        Origin::Node,
+                        Kind::Conflict,
+                        format!(
+                            "Sql migration previously failed for version {}. Reason: {}",
+                            version, reason
+                        ),
+                    ))?,
+                }
+            };
 
             // re-create the connection pool with the correct configuration
             Retry::spawn(retry_strategy, || async {
