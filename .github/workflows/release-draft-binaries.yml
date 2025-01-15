@@ -106,10 +106,29 @@ jobs:
 
           # verify signatures
           cosign verify-blob --key ockam.pub --signature sha256sums.txt.sig sha256sums.txt
+          "
 
-          # download ockam command binary for your architecture
+          declare -A binaries
+          binaries["x86_64-unknown-linux-gnu"]="Linux x86_64 GNU"
+          binaries["aarch64-unknown-linux-gnu"]="Linux AARCH_64 GNU"
+          binaries["x86_64-unknown-linux-musl"]="Linux x86_64 musl"
+          binaries["aarch64-unknown-linux-musl"]="Linux AARCH_64 musl"
+          binaries["armv7-unknown-linux-musleabihf"]="Linux ARMV7 musleabihf"
+          binaries["aarch64-apple-darwin"]="MacOS AARCH_64"
+          binaries["x86_64-apple-darwin"]="MacOS x86_64"
+
+          binaries_link=""
+
+          for target in "${!binaries[@]}"; do
+            binaries_link="$binaries_link
+          # download ockam binary for ${binaries[$target]}
           curl --proto '=https' --tlsv1.2 -sSfL -O \\
-            ${url_head}/ockam.x86_64-unknown-linux-gnu
+                ${url_head}/ockam.${target}
+          "
+          done
+
+          text="${text}
+          ${binaries_link}
 
           # verify that the sha256 hash of the downloaded binary is the same as
           # the corresponding hash mentioned in sha256sums.txt
