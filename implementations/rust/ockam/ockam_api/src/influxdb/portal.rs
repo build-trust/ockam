@@ -1,4 +1,4 @@
-use crate::influxdb::gateway::interceptor::HttpAuthInterceptorFactory;
+use crate::http::interceptor::HttpInterceptorFactory;
 use crate::influxdb::gateway::token_lease_refresher::TokenLeaseRefresher;
 use crate::influxdb::{LeaseUsage, StartInfluxDBLeaseIssuerRequest};
 use crate::nodes::models::portal::{
@@ -6,9 +6,8 @@ use crate::nodes::models::portal::{
 };
 use crate::nodes::service::tcp_inlets::create_inlet_payload;
 use crate::nodes::{BackgroundNodeClient, NodeManagerWorker};
-use crate::{ApiError, DefaultAddress};
+use crate::DefaultAddress;
 use minicbor::{CborLen, Decode, Encode};
-use ockam::flow_control::FlowControls;
 use ockam::identity::Identifier;
 use ockam::{Address, Context, Result};
 use ockam_abac::PolicyExpression;
@@ -19,9 +18,7 @@ use ockam_core::route;
 use ockam_multiaddr::proto::Service;
 use ockam_multiaddr::MultiAddr;
 use ockam_transport_core::HostnamePort;
-use ockam_transport_tcp::{
-    read_portal_payload_length, PortalInletInterceptor, PortalOutletInterceptor,
-};
+use ockam_transport_tcp::Direction;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -200,64 +197,40 @@ impl NodeManagerWorker {
 
     async fn create_http_outlet_interceptor(
         &self,
-        ctx: &Context,
+        context: &Context,
         interceptor_address: Address,
         outlet_address: Address,
         outlet_policy_expression: Option<PolicyExpression>,
         token_to_use: String,
     ) -> Result<(), Error> {
-        debug!(%interceptor_address, %outlet_address, ?outlet_policy_expression, %token_to_use, "Creating http outlet interceptor");
-        let default_secure_channel_listener_flow_control_id = ctx
-            .flow_controls()
-            .get_flow_control_with_spawner(&DefaultAddress::SECURE_CHANNEL_LISTENER.into())
-            .ok_or_else(|| {
-                ApiError::core("Unable to get flow control for secure channel listener")
-            })?;
-
         let policy_access_control = self
             .node_manager
             .policy_access_control(
                 self.node_manager.project_authority().clone(),
-                Resource::new(outlet_address.to_string(), ResourceType::TcpOutlet),
+                Resource::new(interceptor_address.to_string(), ResourceType::TcpInlet),
                 Action::HandleMessage,
-                outlet_policy_expression.clone(),
+                outlet_policy_expression,
             )
             .await?;
 
-        let spawner_flow_control_id = FlowControls::generate_flow_control_id();
+        let token_refresher = Arc::new(TokenLeaseRefresher::new_with_fixed_token(token_to_use));
 
-        let token_refresher = TokenLeaseRefresher::new_with_fixed_token(token_to_use);
-        let http_interceptor_factory = Arc::new(HttpAuthInterceptorFactory::new(token_refresher));
+        HttpInterceptorFactory::create_outlet_interceptor(
+            context,
+            interceptor_address,
+            outlet_address,
+            token_refresher,
+            Direction::FromInletToOutlet,
+            Some(policy_access_control),
+        )
+        .await?;
 
-        PortalOutletInterceptor::create(
-            ctx,
-            interceptor_address.clone(),
-            Some(spawner_flow_control_id.clone()),
-            http_interceptor_factory,
-            Arc::new(policy_access_control.create_outgoing(ctx)?),
-            Arc::new(policy_access_control.create_incoming()),
-            read_portal_payload_length(),
-        )?;
-
-        // every secure channel can reach this service
-        let flow_controls = ctx.flow_controls();
-        flow_controls.add_consumer(
-            &interceptor_address,
-            &default_secure_channel_listener_flow_control_id,
-        );
-
-        // this spawner flow control id is used to control communication with dynamically created
-        // outlets
-        flow_controls.add_spawner(&interceptor_address, &spawner_flow_control_id);
-
-        // allow communication with the tcp outlet
-        flow_controls.add_consumer(&outlet_address, &spawner_flow_control_id);
         Ok(())
     }
 
     async fn create_http_auth_interceptor(
         &self,
-        ctx: &Context,
+        context: &Context,
         inlet_alias: &String,
         inlet_policy_expression: Option<PolicyExpression>,
         lease_issuer_route: MultiAddr,
@@ -273,18 +246,21 @@ impl NodeManagerWorker {
             )
             .await?;
 
-        let token_refresher =
-            TokenLeaseRefresher::new(ctx, Arc::downgrade(&self.node_manager), lease_issuer_route)?;
-        let http_interceptor_factory = Arc::new(HttpAuthInterceptorFactory::new(token_refresher));
+        let token_refresher = Arc::new(TokenLeaseRefresher::new(
+            context,
+            Arc::downgrade(&self.node_manager),
+            lease_issuer_route,
+        )?);
 
-        PortalInletInterceptor::create(
-            ctx,
+        HttpInterceptorFactory::create_inlet_interceptor(
+            context,
             interceptor_address.clone(),
-            http_interceptor_factory,
-            Arc::new(policy_access_control.create_incoming()),
-            Arc::new(policy_access_control.create_outgoing(ctx)?),
-            read_portal_payload_length(),
-        )?;
+            token_refresher,
+            Direction::FromInletToOutlet,
+            Some(policy_access_control),
+        )
+        .await?;
+
         Ok(interceptor_address)
     }
 }

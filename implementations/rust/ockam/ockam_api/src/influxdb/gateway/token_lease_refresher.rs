@@ -1,3 +1,4 @@
+use crate::http::interceptor::HttpHeaderProvider;
 use crate::influxdb::lease_issuer::node_service::InfluxDBTokenLessorNodeServiceTrait;
 use crate::nodes::InMemoryNode;
 use ockam::{compat::time::now, Address, Mailboxes};
@@ -11,6 +12,23 @@ use std::sync::{Arc, RwLock as SyncRwLock, Weak};
 #[derive(Clone)]
 pub struct TokenLeaseRefresher {
     token: Arc<SyncRwLock<Option<String>>>,
+}
+
+impl HttpHeaderProvider for TokenLeaseRefresher {
+    fn read_headers(&self) -> ockam_core::Result<Vec<(String, String)>> {
+        let guard = self.token.read().unwrap();
+        match &*guard {
+            None => Err(ockam_core::Error::new(
+                Origin::Application,
+                Kind::Internal,
+                "No authorization token available",
+            )),
+            Some(token) => Ok(vec![(
+                "Authorization".to_string(),
+                format!("Token {}", token),
+            )]),
+        }
+    }
 }
 
 impl TokenLeaseRefresher {

@@ -1,25 +1,20 @@
-use httparse::{Header, Status};
+use crate::http::interceptor::HttpHeaderProvider;
+use httparse::{Header, Request, Status};
 use ockam_core::errcode::{Kind, Origin};
+use ockam_transport_tcp::Direction;
 use std::convert::TryInto;
+use std::io::Write as _;
 use tracing::error;
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum RequestState {
+pub enum HttpState {
     ParsingHeader(Option<Vec<u8>>),
     ParsingChunkedHeader(Option<Vec<u8>>),
     RemainingInChunk(usize),
     RemainingBody(usize),
 }
 
-pub(crate) trait ClientRequestWriter {
-    fn write_headers(
-        &self,
-        request: &httparse::Request,
-        buffer: &mut Vec<u8>,
-    ) -> ockam_core::Result<()>;
-}
-
-impl RequestState {
+impl HttpState {
     /* Parse the incoming data, attaching an Authorization header token to it.
      * data is received in chunks, and there is no warranty on what we get on each:
      * incomplete requests,  multiple requests, etc.
@@ -27,7 +22,8 @@ impl RequestState {
     pub(crate) fn process_http_buffer(
         &mut self,
         buf: &[u8],
-        request_writer: impl ClientRequestWriter,
+        direction: Direction,
+        header_provider: &(impl HttpHeaderProvider + ?Sized),
     ) -> ockam_core::Result<Vec<u8>> {
         let mut acc = Vec::with_capacity(buf.len());
         let mut cursor = buf;
@@ -36,7 +32,7 @@ impl RequestState {
                 return Ok(acc);
             }
             match self {
-                RequestState::ParsingHeader(prev) => {
+                HttpState::ParsingHeader(prev) => {
                     let (to_parse, prev_size): (&[u8], usize) = if let Some(b) = prev {
                         let prev_size = b.len();
                         b.extend_from_slice(cursor);
@@ -45,45 +41,77 @@ impl RequestState {
                         (cursor, 0usize)
                     };
                     let mut headers = [httparse::EMPTY_HEADER; 64];
-                    let mut req = httparse::Request::new(&mut headers);
-                    match req.parse(to_parse) {
-                        Ok(Status::Partial) if prev_size == 0 => {
-                            // No previous buffered, need to copy and own the unparsed data
-                            *self = RequestState::ParsingHeader(Some(cursor.to_vec()));
-                            return Ok(acc);
+                    match &direction {
+                        Direction::FromInletToOutlet => {
+                            let mut response = Request::new(&mut headers);
+                            match response.parse(to_parse) {
+                                Ok(Status::Partial) if prev_size == 0 => {
+                                    // No previous buffered, need to copy and own the unparsed data
+                                    *self = HttpState::ParsingHeader(Some(cursor.to_vec()));
+                                    return Ok(acc);
+                                }
+                                Ok(Status::Partial) => {
+                                    // There was a previous buffer, and we already added the newly data to it
+                                    return Ok(acc);
+                                }
+                                Ok(Status::Complete(body_offset)) => {
+                                    cursor = &cursor[body_offset - prev_size..];
+                                    let headers = header_provider.read_headers()?;
+                                    write_request_header(&response, headers, &mut acc)?;
+                                    *self = body_state(response.headers)?;
+                                }
+                                Err(e) => {
+                                    error!("Error parsing header: {:?}", e);
+                                    return Err(ockam_core::Error::new(
+                                        Origin::Transport,
+                                        Kind::Invalid,
+                                        e,
+                                    ));
+                                }
+                            }
                         }
-                        Ok(Status::Partial) => {
-                            // There was a previous buffer, and we already added the newly data to it
-                            return Ok(acc);
-                        }
-                        Ok(Status::Complete(body_offset)) => {
-                            cursor = &cursor[body_offset - prev_size..];
-                            request_writer.write_headers(&req, &mut acc)?;
-                            // interceptor::attach_auth_token_and_serialize_into(&req, &mut acc);
-                            *self = body_state(req.headers)?;
-                        }
-                        Err(e) => {
-                            error!("Error parsing header: {:?}", e);
-                            return Err(ockam_core::Error::new(
-                                Origin::Transport,
-                                Kind::Invalid,
-                                e,
-                            ));
+                        Direction::FromOutletToInlet => {
+                            let mut request = httparse::Response::new(&mut headers);
+                            match request.parse(to_parse) {
+                                Ok(Status::Partial) if prev_size == 0 => {
+                                    // No previous buffered, need to copy and own the unparsed data
+                                    *self = HttpState::ParsingHeader(Some(cursor.to_vec()));
+                                    return Ok(acc);
+                                }
+                                Ok(Status::Partial) => {
+                                    // There was a previous buffer, and we already added the newly data to it
+                                    return Ok(acc);
+                                }
+                                Ok(Status::Complete(body_offset)) => {
+                                    cursor = &cursor[body_offset - prev_size..];
+                                    let headers = header_provider.read_headers()?;
+                                    write_response_header(&request, headers, &mut acc)?;
+                                    *self = body_state(request.headers)?;
+                                }
+                                Err(e) => {
+                                    error!("Error parsing header: {:?}", e);
+                                    return Err(ockam_core::Error::new(
+                                        Origin::Transport,
+                                        Kind::Invalid,
+                                        e,
+                                    ));
+                                }
+                            }
                         }
                     }
                 }
-                RequestState::RemainingBody(remaining) => {
+                HttpState::RemainingBody(remaining) => {
                     if *remaining <= cursor.len() {
                         acc.extend_from_slice(&cursor[..*remaining]);
                         cursor = &cursor[*remaining..];
-                        *self = RequestState::ParsingHeader(None);
+                        *self = HttpState::ParsingHeader(None);
                     } else {
                         acc.extend_from_slice(cursor);
                         *remaining -= cursor.len();
                         return Ok(acc);
                     }
                 }
-                RequestState::ParsingChunkedHeader(prev) => {
+                HttpState::ParsingChunkedHeader(prev) => {
                     let (to_parse, prev_size): (&[u8], usize) = if let Some(b) = prev {
                         let prev_size = b.len();
                         b.extend_from_slice(cursor);
@@ -97,7 +125,7 @@ impl RequestState {
                             // chunk.. but having seen this on the wild as well.
                             acc.extend_from_slice(&to_parse[..2]);
                             cursor = &cursor[2 - prev_size..];
-                            *self = RequestState::ParsingHeader(None);
+                            *self = HttpState::ParsingHeader(None);
                         }
                         Ok(Status::Complete((3, 0))) => {
                             // this is just a proper 0\r\n final chunk.
@@ -105,18 +133,17 @@ impl RequestState {
                             cursor = &cursor[3 - prev_size..];
                             // There must be a final \r\n.  And no more chunks,
                             // so just reuse the RemainingBody state for this
-                            *self = RequestState::RemainingBody(2);
+                            *self = HttpState::RemainingBody(2);
                         }
                         Ok(Status::Complete((pos, chunk_size))) => {
                             acc.extend_from_slice(&to_parse[..pos]);
                             cursor = &cursor[pos - prev_size..];
                             let complete_size = chunk_size + 2; //chunks ends in \r\n
-                            *self =
-                                RequestState::RemainingInChunk(complete_size.try_into().unwrap());
+                            *self = HttpState::RemainingInChunk(complete_size.try_into().unwrap());
                         }
                         Ok(Status::Partial) if prev_size == 0 => {
                             // No previous buffered, need to copy and own the unparsed data
-                            *self = RequestState::ParsingChunkedHeader(Some(cursor.to_vec()));
+                            *self = HttpState::ParsingChunkedHeader(Some(cursor.to_vec()));
                             return Ok(acc);
                         }
                         Ok(Status::Partial) => {
@@ -133,11 +160,11 @@ impl RequestState {
                         }
                     }
                 }
-                RequestState::RemainingInChunk(size) => {
+                HttpState::RemainingInChunk(size) => {
                     if cursor.len() >= *size {
                         acc.extend_from_slice(&cursor[..*size]);
                         cursor = &cursor[*size..];
-                        *self = RequestState::ParsingChunkedHeader(None);
+                        *self = HttpState::ParsingChunkedHeader(None);
                     } else {
                         acc.extend_from_slice(cursor);
                         *size -= cursor.len();
@@ -149,20 +176,86 @@ impl RequestState {
     }
 }
 
-fn body_state(headers: &[Header]) -> ockam_core::Result<RequestState> {
+fn body_state(headers: &[Header]) -> ockam_core::Result<HttpState> {
     for h in headers {
         if h.name.eq_ignore_ascii_case("Content-Length") {
             if let Ok(str) = std::str::from_utf8(h.value) {
                 return str
                     .parse()
-                    .map(RequestState::RemainingBody)
+                    .map(HttpState::RemainingBody)
                     .map_err(|e| ockam_core::Error::new(Origin::Transport, Kind::Invalid, e));
             }
         } else if h.name.eq_ignore_ascii_case("Transfer-Encoding")
             && String::from_utf8(h.value.to_vec()).is_ok_and(|s| s.contains("chunked"))
         {
-            return Ok(RequestState::ParsingChunkedHeader(None));
+            return Ok(HttpState::ParsingChunkedHeader(None));
         }
     }
-    Ok(RequestState::ParsingHeader(None))
+    Ok(HttpState::ParsingHeader(None))
+}
+
+fn write_request_header(
+    request: &Request,
+    headers: Vec<(String, String)>,
+    buffer: &mut Vec<u8>,
+) -> ockam_core::Result<()> {
+    write!(
+        buffer,
+        "{} {} HTTP/1.{}\r\n",
+        request.method.unwrap(),
+        request.path.unwrap(),
+        request.version.unwrap()
+    )
+    .unwrap();
+
+    for h in &*request.headers {
+        if !headers
+            .iter()
+            .any(|(name, _)| name.eq_ignore_ascii_case(h.name))
+        {
+            write!(buffer, "{}: ", h.name).unwrap();
+            buffer.extend_from_slice(h.value);
+            buffer.extend_from_slice(b"\r\n");
+        }
+    }
+
+    for (name, value) in headers {
+        write!(buffer, "{}: {}\r\n", name, value).unwrap();
+    }
+
+    buffer.extend_from_slice(b"\r\n");
+    Ok(())
+}
+
+fn write_response_header(
+    response: &httparse::Response,
+    headers: Vec<(String, String)>,
+    buffer: &mut Vec<u8>,
+) -> ockam_core::Result<()> {
+    write!(
+        buffer,
+        "HTTP/1.{} {} {}\r\n",
+        response.version.unwrap(),
+        response.code.unwrap(),
+        response.reason.unwrap()
+    )
+    .unwrap();
+
+    for h in &*response.headers {
+        if !headers
+            .iter()
+            .any(|(name, _)| name.eq_ignore_ascii_case(h.name))
+        {
+            write!(buffer, "{}: ", h.name).unwrap();
+            buffer.extend_from_slice(h.value);
+            buffer.extend_from_slice(b"\r\n");
+        }
+    }
+
+    for (name, value) in headers {
+        write!(buffer, "{}: {}\r\n", name, value).unwrap();
+    }
+
+    buffer.extend_from_slice(b"\r\n");
+    Ok(())
 }
