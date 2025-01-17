@@ -115,7 +115,7 @@ impl Migrator {
 
         let version = connection.dirty_version().await.into_core()?;
         if let Some(version) = version {
-            return Ok(MigrationStatus::create_failed(
+            return Ok(MigrationStatus::Failed(
                 Version(version),
                 MigrationFailure::DirtyVersion,
             ));
@@ -185,7 +185,7 @@ impl Migrator {
                     };
                     last_migrated_version = migration.version();
                 }
-                Ok(MigrationStatus::create_up_to_date(last_migrated_version))
+                Ok(MigrationStatus::UpToDate(last_migrated_version))
             }
             Mode::ApplyMigrations => {
                 let mut last_migrated_version = Version::MIN;
@@ -200,8 +200,8 @@ impl Migrator {
                             .await?
                             {
                                 MigrationSuccess => (),
-                                MigrationResult::SomeMigrationError(failure) => {
-                                    return Ok(MigrationStatus::create_failed(
+                                MigrationResult::MigrationFailure(failure) => {
+                                    return Ok(MigrationStatus::Failed(
                                         Version(sql_migration.version),
                                         failure,
                                     ))
@@ -213,8 +213,8 @@ impl Migrator {
                                 .await?
                             {
                                 MigrationSuccess => (),
-                                MigrationResult::SomeMigrationError(failure) => {
-                                    return Ok(MigrationStatus::create_failed(
+                                MigrationResult::MigrationFailure(failure) => {
+                                    return Ok(MigrationStatus::Failed(
                                         rust_migration.version(),
                                         failure,
                                     ))
@@ -224,7 +224,7 @@ impl Migrator {
                     }
                     last_migrated_version = migration.version();
                 }
-                Ok(MigrationStatus::create_up_to_date(last_migrated_version))
+                Ok(MigrationStatus::UpToDate(last_migrated_version))
             }
         }
     }
@@ -281,7 +281,7 @@ impl Migrator {
 
         if !self.needs_migration(&mut connection, up_to).await? {
             debug!("No database migrations was required");
-            return Ok(MigrationStatus::create_up_to_date(up_to));
+            return Ok(MigrationStatus::UpToDate(up_to));
         }
 
         let is_sqlite = connection.backend_name() == "SQLite";

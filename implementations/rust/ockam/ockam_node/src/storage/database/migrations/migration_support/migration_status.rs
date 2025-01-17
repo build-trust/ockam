@@ -39,21 +39,6 @@ impl Display for MigrationStatus {
 }
 
 impl MigrationStatus {
-    /// Create a new MigrationStatus::UpToDate
-    pub fn create_up_to_date(current_version: Version) -> Self {
-        MigrationStatus::UpToDate(current_version)
-    }
-
-    /// Create a new MigrationStatus::Todo
-    pub fn create_to_do(current_version: Option<Version>, next_version: Version) -> Self {
-        MigrationStatus::Todo(current_version, next_version)
-    }
-
-    /// Create a new MigrationStatus::Failed
-    pub fn create_failed(version: Version, failure: MigrationFailure) -> Self {
-        MigrationStatus::Failed(version, failure)
-    }
-
     /// Return true if the database is up to date
     pub fn up_to_date(&self) -> bool {
         matches!(self, MigrationStatus::UpToDate(_))

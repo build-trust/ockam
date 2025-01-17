@@ -2,9 +2,7 @@ use crate::docs;
 use crate::util::async_cmd;
 use crate::CommandGlobalOpts;
 use clap::Args;
-use miette::IntoDiagnostic;
-use ockam_core::errcode::{Kind, Origin};
-use ockam_core::Error;
+use miette::miette;
 use ockam_node::database::node_migration_set::NodeMigrationSet;
 use ockam_node::database::{DatabaseConfiguration, MigrationSet, SqlxDatabase};
 use ockam_node::Context;
@@ -14,6 +12,7 @@ const AFTER_LONG_HELP: &str = include_str!("./static/after_long_help.txt");
 
 #[derive(Clone, Debug, Args)]
 #[command(
+    hide = true,
     long_about = docs::about(LONG_ABOUT),
     after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
@@ -54,7 +53,7 @@ impl MigrateDatabaseCommand {
 
                 Ok(())
             },
-            None => Err(Error::new(Origin::Core, Kind::NotFound, "There is no postgres database configuration, or it is incomplete. Please run ockam environment to check the database environment variables".to_string())).into_diagnostic()?,
+            None => Err(miette!("There is no postgres database configuration, or it is incomplete. Please run ockam environment to check the database environment variables")),
         }
     }
 }

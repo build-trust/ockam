@@ -7,7 +7,7 @@ pub enum MigrationResult {
     /// The migration was successful
     MigrationSuccess,
     /// The migration had a failure
-    SomeMigrationError(MigrationFailure),
+    MigrationFailure(MigrationFailure),
 }
 
 impl MigrationResult {
@@ -23,7 +23,7 @@ impl MigrationResult {
         actual_checksum: String,
         expected_checksum: String,
     ) -> Self {
-        Self::SomeMigrationError(MigrationFailure::IncorrectChecksum(
+        Self::MigrationFailure(MigrationFailure::IncorrectChecksum(
             description,
             sql,
             actual_checksum,
@@ -33,12 +33,12 @@ impl MigrationResult {
 
     /// Create a failure when a down migration was attempted
     pub fn down_migration() -> Self {
-        Self::SomeMigrationError(MigrationFailure::DownMigration)
+        Self::MigrationFailure(MigrationFailure::DownMigration)
     }
 
     /// Create a failure when a migration failed for a given version
     pub fn dirty_version() -> Self {
-        Self::SomeMigrationError(MigrationFailure::DirtyVersion)
+        Self::MigrationFailure(MigrationFailure::DirtyVersion)
     }
 }
 

@@ -35,6 +35,7 @@ use crate::lease::LeaseCommand;
 use crate::manpages::ManpagesCommand;
 use crate::markdown::MarkdownCommand;
 use crate::message::MessageCommand;
+use crate::migrate_database::MigrateDatabaseCommand;
 use crate::node::{NodeCommand, NodeSubcommand};
 use crate::policy::PolicyCommand;
 use crate::project::ProjectCommand;
@@ -152,7 +153,7 @@ impl OckamSubcommand {
             OckamSubcommand::Lease(c) => c.run(opts),
             OckamSubcommand::Authority(c) => c.run(opts),
             OckamSubcommand::Markdown(c) => c.run(),
-            OckamSubcommand::MigrateDatabase(c) => c.run(),
+            OckamSubcommand::MigrateDatabase(c) => c.run(opts),
             OckamSubcommand::Worker(c) => c.run(opts),
             OckamSubcommand::Service(c) => c.run(opts),
             OckamSubcommand::Message(c) => c.run(opts),
