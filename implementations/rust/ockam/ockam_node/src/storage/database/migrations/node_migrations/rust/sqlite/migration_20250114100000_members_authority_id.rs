@@ -1,5 +1,5 @@
 use crate::database::migrations::RustMigration;
-use crate::database::{FromSqlxError, ToVoid, Version};
+use crate::database::{FromSqlxError, SqlxDatabase, ToVoid, Version};
 use ockam_core::{async_trait, Result};
 use sqlx::*;
 
@@ -17,7 +17,11 @@ impl RustMigration for SetAuthorityId {
         Self::version()
     }
 
-    async fn migrate(&self, connection: &mut AnyConnection) -> Result<bool> {
+    async fn migrate(
+        &self,
+        _legacy_sqlite_database: Option<SqlxDatabase>,
+        connection: &mut AnyConnection,
+    ) -> Result<()> {
         Self::set_authority_id(connection).await
     }
 }
@@ -33,7 +37,7 @@ impl SetAuthorityId {
         "migration_20250114100000_members_authority_id"
     }
 
-    pub(crate) async fn set_authority_id(connection: &mut AnyConnection) -> Result<bool> {
+    pub(crate) async fn set_authority_id(connection: &mut AnyConnection) -> Result<()> {
         let mut transaction = Connection::begin(&mut *connection).await.into_core()?;
         let authority_id: Option<String> =
             query("SELECT identifier FROM node WHERE name = 'authority'")
@@ -53,7 +57,7 @@ impl SetAuthorityId {
         // Commit
         transaction.commit().await.void()?;
 
-        Ok(true)
+        Ok(())
     }
 }
 

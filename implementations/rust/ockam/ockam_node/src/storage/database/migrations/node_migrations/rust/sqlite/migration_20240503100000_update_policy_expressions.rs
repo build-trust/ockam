@@ -1,5 +1,5 @@
 use crate::database::migrations::RustMigration;
-use crate::database::{FromSqlxError, ToVoid, Version};
+use crate::database::{FromSqlxError, SqlxDatabase, ToVoid, Version};
 use ockam_core::{async_trait, Result};
 use sqlx::*;
 
@@ -18,7 +18,11 @@ impl RustMigration for UpdatePolicyExpressions {
         Self::version()
     }
 
-    async fn migrate(&self, connection: &mut AnyConnection) -> Result<bool> {
+    async fn migrate(
+        &self,
+        _legacy_sqlite_database: Option<SqlxDatabase>,
+        connection: &mut AnyConnection,
+    ) -> Result<()> {
         Self::migrate_policy_expressions(connection).await
     }
 }
@@ -34,7 +38,7 @@ impl UpdatePolicyExpressions {
         "migration_20240503100000_update_policy_expressions"
     }
 
-    pub(crate) async fn migrate_policy_expressions(connection: &mut AnyConnection) -> Result<bool> {
+    pub(crate) async fn migrate_policy_expressions(connection: &mut AnyConnection) -> Result<()> {
         let mut transaction = Connection::begin(&mut *connection).await.into_core()?;
         query("UPDATE resource_policy SET expression = '(= subject.has_credential \"true\")' WHERE expression = 'subject.has_credential'").execute(&mut *transaction).await.void()?;
         query("UPDATE resource_type_policy SET expression = '(= subject.has_credential \"true\")' WHERE expression = 'subject.has_credential'").execute(&mut *transaction).await.void()?;
@@ -42,7 +46,7 @@ impl UpdatePolicyExpressions {
         // Commit
         transaction.commit().await.void()?;
 
-        Ok(true)
+        Ok(())
     }
 }
 

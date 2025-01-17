@@ -98,7 +98,7 @@ opentelemetry = { version = "0.26.0", features = ["logs", "metrics", "trace"], o
 regex = { version = "1.10.6", default-features = false, optional = true }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 serde_json = { version = "1", optional = true }
-sqlx = { version = "0.8.3", optional = true, default-features = false, features = ["postgres", "sqlite", "any", "migrate", "runtime-tokio", "derive"] }
+sqlx = { version = "0.8.3", optional = true, default-features = false, features = ["postgres", "sqlite", "any", "migrate", "derive", "runtime-tokio"] }
 sqlx-core = { version = "0.8.3", optional = true, default-features = false }
 sqlx-postgres = { version = "0.8.2", optional = true, default-features = false }
 sqlx-sqlite = { version = "0.8.2", optional = true, default-features = false }

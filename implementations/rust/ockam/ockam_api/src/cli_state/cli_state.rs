@@ -273,17 +273,21 @@ impl CliState {
     }
 
     /// If the postgres database is configured, return the postgres configuration
+    ///
     pub(super) fn make_database_configuration(
         mode: &CliStateMode,
     ) -> Result<DatabaseConfiguration> {
-        match DatabaseConfiguration::postgres()? {
-            Some(configuration) => Ok(configuration),
-            None => match mode {
-                CliStateMode::Persistent(root_path) => Ok(DatabaseConfiguration::sqlite(
-                    root_path.join("database.sqlite3"),
-                )),
-                CliStateMode::InMemory => Ok(DatabaseConfiguration::sqlite_in_memory()),
-            },
+        match mode {
+            CliStateMode::Persistent(root_path) => {
+                let sqlite_path = root_path.join("database.sqlite3");
+                match DatabaseConfiguration::postgres_with_legacy_sqlite_path(Some(
+                    sqlite_path.clone(),
+                ))? {
+                    Some(configuration) => Ok(configuration),
+                    None => Ok(DatabaseConfiguration::sqlite(sqlite_path)),
+                }
+            }
+            CliStateMode::InMemory => Ok(DatabaseConfiguration::sqlite_in_memory()),
         }
     }
 

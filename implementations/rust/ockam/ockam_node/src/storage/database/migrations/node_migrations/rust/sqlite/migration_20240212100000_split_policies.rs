@@ -1,5 +1,5 @@
 use crate::database::migrations::RustMigration;
-use crate::database::{FromSqlxError, ToVoid, Version};
+use crate::database::{FromSqlxError, SqlxDatabase, ToVoid, Version};
 use ockam_core::{async_trait, Result};
 use sqlx::*;
 
@@ -18,7 +18,11 @@ impl RustMigration for SplitPolicies {
         Self::version()
     }
 
-    async fn migrate(&self, connection: &mut AnyConnection) -> Result<bool> {
+    async fn migrate(
+        &self,
+        _legacy_sqlite_database: Option<SqlxDatabase>,
+        connection: &mut AnyConnection,
+    ) -> Result<()> {
         Self::migrate_policies(connection).await
     }
 }
@@ -34,7 +38,7 @@ impl SplitPolicies {
         "migration_20240212100000_migrate_policies"
     }
 
-    pub(crate) async fn migrate_policies(connection: &mut AnyConnection) -> Result<bool> {
+    pub(crate) async fn migrate_policies(connection: &mut AnyConnection) -> Result<()> {
         let mut transaction = Connection::begin(&mut *connection).await.into_core()?;
 
         let query_policies =
@@ -67,7 +71,7 @@ impl SplitPolicies {
         // Commit
         transaction.commit().await.void()?;
 
-        Ok(true)
+        Ok(())
     }
 }
 

@@ -484,6 +484,7 @@ mod tests {
     /// - A port for the TCP listener (must not clash with another authority port)
     /// - An identity that should be trusted as an enroller
     fn create_configuration(
+        database_configuration: DatabaseConfiguration,
         authority: &Identifier,
         port: u16,
         trusted: &[Identifier],
@@ -501,9 +502,10 @@ mod tests {
                 PreTrustedIdentity::new(attributes, TimestampInSeconds(0), None, authority.clone()),
             );
         }
+
         Ok(Configuration {
             identifier: authority.clone(),
-            database_configuration: DatabaseConfiguration::postgres()?.unwrap(),
+            database_configuration,
             project_identifier: "123456".to_string(),
             tcp_listener_address: InternetAddress::new(&format!("127.0.0.1:{}", port)).unwrap(),
             secure_channel_listener_name: None,
@@ -554,13 +556,13 @@ mod tests {
         let identities = identities::create(db.clone(), node_name);
         let authority = identities.identities_creation().create_identity().await?;
 
-        let configuration = create_configuration(&authority, port, trusted)?;
+        let configuration =
+            create_configuration(db.configuration.clone(), &authority, port, trusted)?;
         let authority = Authority::create(&configuration, Some(db.clone())).await?;
         authority_node::start_node(ctx, &configuration, authority.clone()).await?;
         Ok(authority)
     }
 
-    /// Add a member
     /// Add a member
     async fn add_member(
         ctx: &Context,

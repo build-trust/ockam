@@ -1,7 +1,8 @@
 use crate::database::migrations::migration_support::migration_status::MigrationStatus;
 use crate::database::migrations::migration_support::rust_migration::RustMigration;
+use crate::database::postgres::migration_20250116100000_sqlite_initialization::InitializeFromSqlite;
 use crate::database::MigrationResult::MigrationSuccess;
-use crate::database::{FromSqlxError, MigrationFailure, MigrationResult, ToVoid};
+use crate::database::{FromSqlxError, MigrationFailure, MigrationResult, SqlxDatabase, ToVoid};
 use core::fmt::{Display, Formatter};
 use ockam_core::compat::collections::HashSet;
 use ockam_core::compat::time::now;
@@ -22,6 +23,8 @@ pub struct Migrator {
     rust_migrations: Vec<Box<dyn RustMigration>>,
     // Unsorted, no duplicates
     sql_migrator: sqlx::migrate::Migrator,
+    // A legacy sqlite database to potentially import to postgres
+    legacy_sqlite_database: Option<SqlxDatabase>,
 }
 
 impl Migrator {
@@ -33,6 +36,7 @@ impl Migrator {
         Ok(Self {
             rust_migrations: vec![],
             sql_migrator,
+            legacy_sqlite_database: None,
         })
     }
 
@@ -64,6 +68,15 @@ impl Migrator {
 
         self.rust_migrations = rust_migrations;
 
+        Ok(())
+    }
+
+    /// Set the database configuration
+    pub fn set_legacy_sqlite_database(
+        &mut self,
+        legacy_sqlite_database: Option<SqlxDatabase>,
+    ) -> Result<()> {
+        self.legacy_sqlite_database = legacy_sqlite_database;
         Ok(())
     }
 }
@@ -160,15 +173,11 @@ impl Migrator {
                 for migration in migrations.into_iter() {
                     let needs_migration = match migration {
                         NextMigration::Sql(sql_migration) => {
-                            NextMigration::needs_sql_migration(
-                                sql_migration,
-                                connection,
-                                &applied_migrations,
-                            )
-                            .await?
+                            self.needs_sql_migration(sql_migration, connection, &applied_migrations)
+                                .await?
                         }
                         NextMigration::Rust(rust_migration) => {
-                            NextMigration::needs_rust_migration(
+                            self.needs_rust_migration(
                                 rust_migration,
                                 connection,
                                 &applied_migrations,
@@ -192,12 +201,9 @@ impl Migrator {
                 for migration in migrations.into_iter() {
                     match migration {
                         NextMigration::Sql(sql_migration) => {
-                            match NextMigration::apply_sql_migration(
-                                sql_migration,
-                                connection,
-                                &applied_migrations,
-                            )
-                            .await?
+                            match self
+                                .apply_sql_migration(sql_migration, connection, &applied_migrations)
+                                .await?
                             {
                                 MigrationSuccess => (),
                                 MigrationResult::MigrationFailure(failure) => {
@@ -209,7 +215,8 @@ impl Migrator {
                             }
                         }
                         NextMigration::Rust(rust_migration) => {
-                            match NextMigration::apply_rust_migration(rust_migration, connection)
+                            match self
+                                .apply_rust_migration(rust_migration, connection)
                                 .await?
                             {
                                 MigrationSuccess => (),
@@ -228,10 +235,124 @@ impl Migrator {
             }
         }
     }
-}
 
-impl Migrator {
-    pub(crate) async fn has_migrated(
+    async fn needs_sql_migration<'a>(
+        &self,
+        migration: &'a SqlxMigration,
+        _connection: &mut AnyConnection,
+        applied_migrations: &[AppliedMigration],
+    ) -> Result<bool> {
+        if migration.migration_type.is_down_migration() {
+            return Ok(false);
+        }
+        match applied_migrations
+            .iter()
+            .find(|m| m.version == migration.version)
+        {
+            Some(applied_migration) => {
+                if migration.checksum != applied_migration.checksum {
+                    return Err(ockam_core::Error::new(
+                        Origin::Node,
+                        Kind::Conflict,
+                        format!(
+                            "Checksum mismatch for sql migration '{}' for version {}",
+                            migration.description, migration.version,
+                        ),
+                    ));
+                }
+                Ok(false)
+            }
+            None => Ok(true),
+        }
+    }
+
+    async fn apply_sql_migration<'a>(
+        &self,
+        migration: &'a SqlxMigration,
+        connection: &mut AnyConnection,
+        applied_migrations: &[AppliedMigration],
+    ) -> Result<MigrationResult> {
+        if migration.migration_type.is_down_migration() {
+            return Ok(MigrationResult::down_migration());
+        }
+        match applied_migrations
+            .iter()
+            .find(|m| m.version == migration.version)
+        {
+            Some(applied_migration) => {
+                if migration.checksum != applied_migration.checksum {
+                    Ok(MigrationResult::incorrect_checksum(
+                        migration.description.to_string(),
+                        migration.sql.to_string(),
+                        String::from_utf8(migration.checksum.to_vec())
+                            .unwrap_or("actual migration checksum cannot be displayed".to_string()),
+                        String::from_utf8(migration.checksum.to_vec()).unwrap_or(
+                            "expected migration checksum cannot be displayed".to_string(),
+                        ),
+                    ))
+                } else {
+                    Ok(MigrationSuccess)
+                }
+            }
+            None => match connection.apply(migration).await.into_core() {
+                Ok(_) => Ok(MigrationSuccess),
+                Err(e) => Err(ockam_core::Error::new(
+                    Origin::Node,
+                    Kind::Conflict,
+                    format!(
+                        "Failed to run the migration {}: {e:?}",
+                        migration.description
+                    ),
+                )),
+            },
+        }
+    }
+
+    async fn needs_rust_migration<'a>(
+        &self,
+        migration: &'a dyn RustMigration,
+        connection: &mut AnyConnection,
+        _applied_migrations: &[AppliedMigration],
+    ) -> Result<bool> {
+        Ok(!self.has_migrated(connection, migration.name()).await?)
+    }
+
+    async fn apply_rust_migration(
+        &self,
+        migration: &dyn RustMigration,
+        connection: &mut AnyConnection,
+    ) -> Result<MigrationResult> {
+        // If we are migrating data from a legacy sqlite db, we check the SQLite database
+        // to know if that import happened already
+        if migration.name() == InitializeFromSqlite::name() {
+            if let Some(sqlite_db) = &self.legacy_sqlite_database {
+                let mut sqlite_connection = sqlite_db.pool.acquire().await.into_core()?;
+                if !self
+                    .has_migrated(&mut sqlite_connection, migration.name())
+                    .await?
+                {
+                    migration
+                        .migrate(self.legacy_sqlite_database.clone(), connection)
+                        .await?;
+                    self.mark_as_migrated(&mut sqlite_connection, migration.name())
+                        .await?;
+                };
+            };
+        } else {
+            // Otherwise we check the status of the migration inside the postgres database
+            // and we run the migration if needed.
+            if !self.has_migrated(connection, migration.name()).await? {
+                migration
+                    .migrate(self.legacy_sqlite_database.clone(), connection)
+                    .await?;
+                self.mark_as_migrated(connection, migration.name()).await?;
+            }
+        };
+        Ok(MigrationSuccess)
+    }
+
+    async fn has_migrated(
+        &self,
         connection: &mut AnyConnection,
         migration_name: &str,
     ) -> Result<bool> {
@@ -247,7 +368,8 @@ impl Migrator {
         }
     }
 
-    pub(crate) async fn mark_as_migrated(
+    async fn mark_as_migrated(
+        &self,
         connection: &mut AnyConnection,
         migration_name: &str,
     ) -> Result<()> {
@@ -371,97 +493,6 @@ impl NextMigration<'_> {
             Self::Rust(m) => m.version(),
         }
     }
-
-    async fn needs_sql_migration<'a>(
-        migration: &'a SqlxMigration,
-        _connection: &mut AnyConnection,
-        applied_migrations: &[AppliedMigration],
-    ) -> Result<bool> {
-        if migration.migration_type.is_down_migration() {
-            return Ok(false);
-        }
-        match applied_migrations
-            .iter()
-            .find(|m| m.version == migration.version)
-        {
-            Some(applied_migration) => {
-                if migration.checksum != applied_migration.checksum {
-                    return Err(ockam_core::Error::new(
-                        Origin::Node,
-                        Kind::Conflict,
-                        format!(
-                            "Checksum mismatch for sql migration '{}' for version {}",
-                            migration.description, migration.version,
-                        ),
-                    ));
-                }
-                Ok(false)
-            }
-            None => Ok(true),
-        }
-    }
-
-    async fn apply_sql_migration<'a>(
-        migration: &'a SqlxMigration,
-        connection: &mut AnyConnection,
-        applied_migrations: &[AppliedMigration],
-    ) -> Result<MigrationResult> {
-        if migration.migration_type.is_down_migration() {
-            return Ok(MigrationResult::down_migration());
-        }
-        match applied_migrations
-            .iter()
-            .find(|m| m.version == migration.version)
-        {
-            Some(applied_migration) => {
-                if migration.checksum != applied_migration.checksum {
-                    Ok(MigrationResult::incorrect_checksum(
-                        migration.description.to_string(),
-                        migration.sql.to_string(),
-                        String::from_utf8(migration.checksum.to_vec())
-                            .unwrap_or("actual migration checksum cannot be displayed".to_string()),
-                        String::from_utf8(migration.checksum.to_vec()).unwrap_or(
-                            "expected migration checksum cannot be displayed".to_string(),
-                        ),
-                    ))
-                } else {
-                    Ok(MigrationSuccess)
-                }
-            }
-            None => match connection.apply(migration).await.into_core() {
-                Ok(_) => Ok(MigrationSuccess),
-                Err(e) => Err(ockam_core::Error::new(
-                    Origin::Node,
-                    Kind::Conflict,
-                    format!(
-                        "Failed to run the migration {}: {e:?}",
-                        migration.description
-                    ),
-                )),
-            },
-        }
-    }
-
-    async fn needs_rust_migration<'a>(
-        migration: &'a dyn RustMigration,
-        connection: &mut AnyConnection,
-        _applied_migrations: &[AppliedMigration],
-    ) -> Result<bool> {
-        Ok(!Migrator::has_migrated(connection, migration.name()).await?)
-    }
-
-    async fn apply_rust_migration(
-        migration: &dyn RustMigration,
-        connection: &mut AnyConnection,
-    ) -> Result<MigrationResult> {
-        if Migrator::has_migrated(connection, migration.name()).await? {
-            return Ok(MigrationResult::success());
-        }
-        if migration.migrate(connection).await? {
-            Migrator::mark_as_migrated(connection, migration.name()).await?;
-        }
-        Ok(MigrationSuccess)
-    }
 }
 
 impl Eq for NextMigration<'_> {}
@@ -566,8 +597,12 @@ mod tests {
             self.version
         }
 
-        async fn migrate(&self, _connection: &mut AnyConnection) -> Result<bool> {
-            Ok(true)
+        async fn migrate(
+            &self,
+            _legacy_sqlite_database: Option<SqlxDatabase>,
+            _connection: &mut AnyConnection,
+        ) -> Result<()> {
+            Ok(())
         }
     }
 }

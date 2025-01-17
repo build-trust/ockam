@@ -1,7 +1,7 @@
 use core::fmt::Debug;
 use sqlx::AnyConnection;
 
-use crate::database::Version;
+use crate::database::{SqlxDatabase, Version};
 use ockam_core::{async_trait, Result};
 
 /// Individual rust migration
@@ -14,5 +14,9 @@ pub trait RustMigration: Debug + Send + Sync {
     fn version(&self) -> Version;
 
     /// Execute the migration
-    async fn migrate(&self, connection: &mut AnyConnection) -> Result<bool>;
+    async fn migrate(
+        &self,
+        legacy_sqlite_database: Option<SqlxDatabase>,
+        connection: &mut AnyConnection,
+    ) -> Result<()>;
 }

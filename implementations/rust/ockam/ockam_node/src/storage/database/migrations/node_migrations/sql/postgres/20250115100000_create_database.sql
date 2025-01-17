@@ -5,8 +5,8 @@
 -- Create a table to support rust migrations
 CREATE TABLE IF NOT EXISTS _rust_migrations
 (
-    name   TEXT      NOT NULL,
-    run_on TIMESTAMP NOT NULL
+    name   TEXT    NOT NULL,
+    run_on INTEGER NOT NULL
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS name_index ON _rust_migrations (name);

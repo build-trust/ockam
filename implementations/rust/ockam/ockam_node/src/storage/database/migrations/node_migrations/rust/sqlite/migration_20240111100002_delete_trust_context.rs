@@ -1,5 +1,5 @@
 use crate::database::migrations::RustMigration;
-use crate::database::{FromSqlxError, ToVoid, Version};
+use crate::database::{FromSqlxError, SqlxDatabase, ToVoid, Version};
 use core::fmt;
 use minicbor::{CborLen, Decode, Encode};
 use ockam_core::{async_trait, Result};
@@ -21,7 +21,11 @@ impl RustMigration for PolicyTrustContextId {
         Self::version()
     }
 
-    async fn migrate(&self, connection: &mut AnyConnection) -> Result<bool> {
+    async fn migrate(
+        &self,
+        _legacy_sqlite_database: Option<SqlxDatabase>,
+        connection: &mut AnyConnection,
+    ) -> Result<()> {
         Self::migrate_update_policies(connection).await
     }
 }
@@ -39,7 +43,7 @@ impl PolicyTrustContextId {
 
     /// This migration updates policies to not rely on trust_context_id,
     /// also introduces `node_name` and  replicates policy for each existing node
-    pub(crate) async fn migrate_update_policies(connection: &mut AnyConnection) -> Result<bool> {
+    pub(crate) async fn migrate_update_policies(connection: &mut AnyConnection) -> Result<()> {
         let mut transaction = Connection::begin(&mut *connection).await.into_core()?;
 
         let query_node_names = query_as("SELECT name FROM node");
@@ -79,7 +83,7 @@ impl PolicyTrustContextId {
 
         transaction.commit().await.void()?;
 
-        Ok(true)
+        Ok(())
     }
 
     fn update_expression(expression: &Expr) -> String {

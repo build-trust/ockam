@@ -81,9 +81,22 @@ impl SqlxDatabase {
         Self::create(&DatabaseConfiguration::sqlite(path)).await
     }
 
+    /// Constructor for a sqlite database with no migrations
+    pub async fn create_sqlite_no_migration(path: impl AsRef<Path>) -> Result<Self> {
+        Self::create_no_migration(&DatabaseConfiguration::sqlite(path)).await
+    }
+
     /// Constructor for a sqlite application database
     pub async fn create_application_sqlite(path: impl AsRef<Path>) -> Result<Self> {
         Self::create_application_database(&DatabaseConfiguration::sqlite(path)).await
+    }
+
+    /// Constructor for a postgres database that doesn't apply migrations
+    pub async fn create_postgres_no_migration(legacy_sqlite_path: Option<PathBuf>) -> Result<Self> {
+        match DatabaseConfiguration::postgres_with_legacy_sqlite_path(legacy_sqlite_path)? {
+            Some(configuration) => Self::create_no_migration(&configuration).await,
+            None => Err(Error::new(Origin::Core, Kind::NotFound, "There is no postgres database configuration, or it is incomplete. Please run ockam environment to check the database environment variables".to_string())),
+        }
     }
 
     /// Constructor for a local postgres database with no data

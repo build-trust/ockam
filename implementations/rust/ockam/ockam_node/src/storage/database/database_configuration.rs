@@ -30,6 +30,8 @@ pub enum DatabaseConfiguration {
     Postgres {
         /// Connection string of the form postgres://[{user}:{password}@]{host}:{port}/{database_name}
         connection_string: String,
+        /// Path to a SQLite database that needs to be migrated to the Postgres database.
+        legacy_sqlite_path: Option<PathBuf>,
     },
 }
 
@@ -72,10 +74,19 @@ impl DatabaseUser {
 impl DatabaseConfiguration {
     /// Create a postgres database configuration from an environment variable.
     pub fn postgres() -> Result<Option<DatabaseConfiguration>> {
+        Self::postgres_with_legacy_sqlite_path(None)
+    }
+
+    /// Create a postgres database configuration from an environment variable.
+    /// An optional legacy sqlite path can be provided to migrate the sqlite database to postgres.
+    pub fn postgres_with_legacy_sqlite_path(
+        sqlite_path: Option<PathBuf>,
+    ) -> Result<Option<DatabaseConfiguration>> {
         if let Some(connection_string) = get_env::<String>(OCKAM_DATABASE_CONNECTION_URL)? {
             check_connection_string_format(&connection_string)?;
             Ok(Some(DatabaseConfiguration::Postgres {
                 connection_string: connection_string.to_owned(),
+                legacy_sqlite_path: sqlite_path,
             }))
         } else {
             Ok(None)
@@ -122,6 +133,17 @@ impl DatabaseConfiguration {
         }
     }
 
+    /// Return the legacy sqlite path if any
+    pub fn legacy_sqlite_path(&self) -> Option<PathBuf> {
+        match self {
+            DatabaseConfiguration::SqliteInMemory { .. } => None,
+            DatabaseConfiguration::SqlitePersistent { .. } => None,
+            DatabaseConfiguration::Postgres {
+                legacy_sqlite_path, ..
+            } => legacy_sqlite_path.clone(),
+        }
+    }
+
     /// Return the type of database that has been configured
     pub fn connection_string(&self) -> String {
         match self {
@@ -131,7 +153,9 @@ impl DatabaseConfiguration {
             DatabaseConfiguration::SqlitePersistent { path, .. } => {
                 Self::create_sqlite_on_disk_connection_string(path)
             }
-            DatabaseConfiguration::Postgres { connection_string } => connection_string.clone(),
+            DatabaseConfiguration::Postgres {
+                connection_string, ..
+            } => connection_string.clone(),
         }
     }
 
