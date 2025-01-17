@@ -4,8 +4,8 @@ use console::Term;
 
 use crate::{docs, Command, CommandGlobalOpts};
 use ockam::Context;
-use ockam_api::cloud::space::Spaces;
 use ockam_api::nodes::InMemoryNode;
+use ockam_api::orchestrator::space::Spaces;
 use ockam_api::terminal::{Terminal, TerminalStream};
 
 use crate::shared_args::IdentityOpts;

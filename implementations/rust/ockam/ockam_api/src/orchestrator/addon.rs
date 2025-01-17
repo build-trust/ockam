@@ -7,13 +7,12 @@ use ockam_core::api::Request;
 use ockam_core::async_trait;
 use ockam_node::Context;
 
-use crate::cloud::operation::CreateOperationResponse;
-use crate::cloud::project::models::{InfluxDBTokenLeaseManagerConfig, OktaConfig};
-use crate::cloud::{ControllerClient, HasSecureClient};
+use crate::orchestrator::operation::CreateOperationResponse;
+use crate::orchestrator::project::models::{InfluxDBTokenLeaseManagerConfig, OktaConfig};
+use crate::orchestrator::{ControllerClient, HasSecureClient};
 use crate::output::Output;
 use crate::Result;
 
-const TARGET: &str = "ockam_api::cloud::addon";
 const API_SERVICE: &str = "projects";
 
 #[derive(Encode, Decode, CborLen, Serialize, Deserialize, Debug)]
@@ -117,7 +116,7 @@ pub trait Addons {
 impl Addons for ControllerClient {
     #[instrument(skip_all, fields(project_id = project_id))]
     async fn list_addons(&self, ctx: &Context, project_id: &str) -> miette::Result<Vec<Addon>> {
-        trace!(target: TARGET, project_id, "listing addons");
+        trace!(project_id, "listing addons");
         let req = Request::get(format!("/v0/{project_id}/addons"));
         self.get_secure_client()
             .ask(ctx, API_SERVICE, req)
@@ -133,7 +132,7 @@ impl Addons for ControllerClient {
         project_id: &str,
         config: KafkaConfig,
     ) -> miette::Result<CreateOperationResponse> {
-        trace!(target: TARGET, project_id, "configuring kafka addon");
+        trace!(project_id, "configuring kafka addon");
         let req = Request::post(format!(
             "/v1/projects/{project_id}/configure_addon/confluent"
         ))
@@ -152,7 +151,7 @@ impl Addons for ControllerClient {
         project_id: &str,
         config: OktaConfig,
     ) -> miette::Result<CreateOperationResponse> {
-        trace!(target: TARGET, project_id, "configuring okta addon");
+        trace!(project_id, "configuring okta addon");
         let req =
             Request::post(format!("/v1/projects/{project_id}/configure_addon/okta")).body(config);
         self.get_secure_client()
@@ -170,7 +169,7 @@ impl Addons for ControllerClient {
         config: InfluxDBTokenLeaseManagerConfig,
     ) -> miette::Result<CreateOperationResponse> {
         //
-        trace!(target: TARGET, project_id, "configuring influxdb addon");
+        trace!(project_id, "configuring influxdb addon");
         let req = Request::post(format!(
             "/v1/projects/{project_id}/configure_addon/influxdb_token_lease_manager"
         ))
@@ -189,7 +188,7 @@ impl Addons for ControllerClient {
         project_id: &str,
         addon_id: &str,
     ) -> miette::Result<CreateOperationResponse> {
-        trace!(target: TARGET, project_id, "disabling addon");
+        trace!(project_id, "disabling addon");
         let req = Request::post(format!("/v1/projects/{project_id}/disable_addon"))
             .body(DisableAddon::new(addon_id));
         self.get_secure_client()

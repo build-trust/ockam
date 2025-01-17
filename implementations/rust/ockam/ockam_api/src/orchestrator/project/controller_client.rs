@@ -1,17 +1,16 @@
-use crate::cloud::operation::Operations;
-use crate::cloud::project::models::CreateProject;
-use crate::cloud::project::models::{OrchestratorVersionInfo, ProjectModel};
-use crate::cloud::{ControllerClient, HasSecureClient, ORCHESTRATOR_AWAIT_TIMEOUT};
+use crate::orchestrator::operation::Operations;
+use crate::orchestrator::project::models::CreateProject;
+use crate::orchestrator::project::models::{OrchestratorVersionInfo, ProjectModel};
+use crate::orchestrator::{ControllerClient, HasSecureClient, ORCHESTRATOR_AWAIT_TIMEOUT};
 
 use super::models::AdminInfo;
-use super::project::TARGET;
 
 use miette::{miette, IntoDiagnostic};
 use tokio_retry::strategy::FixedInterval;
 use tokio_retry::Retry;
 
-use crate::cloud::email_address::EmailAddress;
-use crate::cloud::project::Project;
+use crate::orchestrator::email_address::EmailAddress;
+use crate::orchestrator::project::Project;
 use ockam_core::api::Request;
 use ockam_node::Context;
 
@@ -23,7 +22,7 @@ impl ControllerClient {
         name: &str,
         users: Vec<String>,
     ) -> miette::Result<ProjectModel> {
-        trace!(target: TARGET, %space_id, project_name = name, "creating project");
+        trace!(%space_id, project_name = name, "creating project");
         let req = Request::post(format!("/v1/spaces/{space_id}/projects"))
             .body(CreateProject::new(name.to_string(), users));
         self.get_secure_client()
@@ -38,7 +37,7 @@ impl ControllerClient {
         ctx: &Context,
         project_id: &str,
     ) -> miette::Result<ProjectModel> {
-        trace!(target: TARGET, %project_id, "getting project");
+        trace!(%project_id, "getting project");
         let req = Request::get(format!("/v0/{project_id}"));
         self.get_secure_client()
             .ask(ctx, "projects", req)
@@ -53,7 +52,7 @@ impl ControllerClient {
         space_id: &str,
         project_id: &str,
     ) -> miette::Result<()> {
-        trace!(target: TARGET, %space_id, %project_id, "deleting project");
+        trace!(%space_id, %project_id, "deleting project");
         let req = Request::delete(format!("/v0/{space_id}/{project_id}"));
         self.get_secure_client()
             .tell(ctx, "projects", req)
@@ -66,7 +65,7 @@ impl ControllerClient {
         &self,
         ctx: &Context,
     ) -> miette::Result<OrchestratorVersionInfo> {
-        trace!(target: TARGET, "getting orchestrator version information");
+        trace!("getting orchestrator version information");
         self.get_secure_client()
             .ask(ctx, "version_info", Request::get(""))
             .await
@@ -80,7 +79,7 @@ impl ControllerClient {
         space_id: &str,
         email: &EmailAddress,
     ) -> miette::Result<AdminInfo> {
-        trace!(target: TARGET, "adding new space administrator");
+        trace!("adding new space administrator");
         let admins: Vec<AdminInfo> = self
             .get_secure_client()
             .ask(
@@ -104,7 +103,7 @@ impl ControllerClient {
         ctx: &Context,
         space_id: &str,
     ) -> miette::Result<Vec<AdminInfo>> {
-        trace!(target: TARGET, "listing space administrators");
+        trace!("listing space administrators");
         self.get_secure_client()
             .ask(
                 ctx,
@@ -122,7 +121,7 @@ impl ControllerClient {
         space_id: &str,
         email: &EmailAddress,
     ) -> miette::Result<()> {
-        trace!(target: TARGET, "deleting space administrator");
+        trace!("deleting space administrator");
         let _admins: Vec<AdminInfo> = self
             .get_secure_client()
             .ask(
@@ -142,7 +141,7 @@ impl ControllerClient {
         project_id: &str,
         email: &EmailAddress,
     ) -> miette::Result<AdminInfo> {
-        trace!(target: TARGET, "adding new project administrator");
+        trace!("adding new project administrator");
         let admins: Vec<AdminInfo> = self
             .get_secure_client()
             .ask(
@@ -166,7 +165,7 @@ impl ControllerClient {
         ctx: &Context,
         project_id: &str,
     ) -> miette::Result<Vec<AdminInfo>> {
-        trace!(target: TARGET, "listing project administrators");
+        trace!("listing project administrators");
         self.get_secure_client()
             .ask(
                 ctx,
@@ -184,7 +183,7 @@ impl ControllerClient {
         project_id: &str,
         email: &EmailAddress,
     ) -> miette::Result<()> {
-        trace!(target: TARGET, "deleting project administrator");
+        trace!("deleting project administrator");
         let _admins: Vec<AdminInfo> = self
             .get_secure_client()
             .ask(

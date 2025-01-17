@@ -2,9 +2,9 @@ use clap::Args;
 use colorful::Colorful;
 
 use ockam::Context;
-use ockam_api::cloud::project::ProjectsOrchestratorApi;
 use ockam_api::fmt_ok;
 use ockam_api::nodes::InMemoryNode;
+use ockam_api::orchestrator::project::ProjectsOrchestratorApi;
 
 use crate::shared_args::IdentityOpts;
 use crate::util::async_cmd;

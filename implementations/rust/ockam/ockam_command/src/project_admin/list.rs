@@ -3,8 +3,8 @@ use crate::{Command, CommandGlobalOpts};
 use async_trait::async_trait;
 use clap::Args;
 use ockam::Context;
-use ockam_api::cloud::project::ProjectsOrchestratorApi;
 use ockam_api::nodes::InMemoryNode;
+use ockam_api::orchestrator::project::ProjectsOrchestratorApi;
 
 /// List the Admins of a Project
 #[derive(Clone, Debug, Args)]

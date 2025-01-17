@@ -4,11 +4,11 @@ use async_trait::async_trait;
 use clap::Args;
 use colorful::Colorful;
 use ockam::Context;
-use ockam_api::cloud::email_address::EmailAddress;
-use ockam_api::cloud::project::ProjectsOrchestratorApi;
 use ockam_api::colors::color_primary;
 use ockam_api::fmt_ok;
 use ockam_api::nodes::InMemoryNode;
+use ockam_api::orchestrator::email_address::EmailAddress;
+use ockam_api::orchestrator::project::ProjectsOrchestratorApi;
 
 /// Add a new Admin to a Project
 #[derive(Clone, Debug, Args)]

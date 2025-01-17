@@ -1,6 +1,6 @@
-use crate::cloud::{ControllerClient, HasSecureClient};
 use crate::colors::{color_primary, OckamColor};
 use crate::date::UtcDateTime;
+use crate::orchestrator::{ControllerClient, HasSecureClient};
 use crate::output::Output;
 use crate::terminal::fmt;
 use colorful::{Colorful, RGB};
@@ -13,7 +13,6 @@ use std::fmt::{Display, Formatter, Write};
 use std::str::FromStr;
 use strum::{Display, EnumString};
 
-const TARGET: &str = "ockam_api::cloud::subscription";
 const API_SERVICE: &str = "subscriptions";
 
 pub const SUBSCRIPTION_PAGE: &str = "https://orchestrator.ockam.io";
@@ -312,7 +311,7 @@ impl Subscriptions for ControllerClient {
         subscription_data: String,
     ) -> Result<Reply<SubscriptionLegacy>> {
         let req_body = ActivateSubscription::existing(space_id, subscription_data);
-        trace!(target: TARGET, space_id = ?req_body.space_id, space_name = ?req_body.space_name, "activating subscription");
+        trace!(space_id = ?req_body.space_id, space_name = ?req_body.space_name, "activating subscription");
         let req = Request::post("/v0/activate").body(req_body);
         self.get_secure_client().ask(ctx, API_SERVICE, req).await
     }
@@ -323,7 +322,7 @@ impl Subscriptions for ControllerClient {
         ctx: &Context,
         subscription_id: String,
     ) -> Result<Reply<SubscriptionLegacy>> {
-        trace!(target: TARGET, subscription = %subscription_id, "unsubscribing");
+        trace!(subscription = %subscription_id, "unsubscribing");
         let req = Request::put(format!("/v0/{subscription_id}/unsubscribe"));
         self.get_secure_client().ask(ctx, API_SERVICE, req).await
     }
@@ -335,7 +334,7 @@ impl Subscriptions for ControllerClient {
         subscription_id: String,
         contact_info: String,
     ) -> Result<Reply<SubscriptionLegacy>> {
-        trace!(target: TARGET, subscription = %subscription_id, "updating subscription contact info");
+        trace!(subscription = %subscription_id, "updating subscription contact info");
         let req = Request::put(format!("/v0/{subscription_id}/contact_info")).body(contact_info);
         self.get_secure_client().ask(ctx, API_SERVICE, req).await
     }
@@ -347,14 +346,14 @@ impl Subscriptions for ControllerClient {
         subscription_id: String,
         new_space_id: String,
     ) -> Result<Reply<SubscriptionLegacy>> {
-        trace!(target: TARGET, subscription = %subscription_id, new_space_id = %new_space_id, "updating subscription space");
+        trace!(subscription = %subscription_id, new_space_id = %new_space_id, "updating subscription space");
         let req = Request::put(format!("/v0/{subscription_id}/space_id")).body(new_space_id);
         self.get_secure_client().ask(ctx, API_SERVICE, req).await
     }
 
     #[instrument(skip_all)]
     async fn get_subscriptions(&self, ctx: &Context) -> Result<Reply<Vec<SubscriptionLegacy>>> {
-        trace!(target: TARGET, "listing subscriptions");
+        trace!("listing subscriptions");
         let req = Request::get("/v0/");
         self.get_secure_client().ask(ctx, API_SERVICE, req).await
     }
@@ -365,7 +364,7 @@ impl Subscriptions for ControllerClient {
         ctx: &Context,
         subscription_id: String,
     ) -> Result<Reply<SubscriptionLegacy>> {
-        trace!(target: TARGET, subscription = %subscription_id, "getting subscription");
+        trace!(subscription = %subscription_id, "getting subscription");
         let req = Request::get(format!("/v0/{subscription_id}"));
         self.get_secure_client().ask(ctx, API_SERVICE, req).await
     }

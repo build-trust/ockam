@@ -7,7 +7,7 @@ use ockam::identity::{
 };
 use ockam::tcp::TcpTransport;
 use ockam_core::compat::sync::Arc;
-use ockam_core::env::{get_env, get_env_with_default, FromString};
+use ockam_core::env::{get_env, get_env_ignore_error, FromString};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{Error, Result, Route};
 use ockam_multiaddr::MultiAddr;
@@ -16,14 +16,14 @@ use ockam_node::Context;
 use crate::nodes::NodeManager;
 use crate::TransportRouteResolver;
 
-pub const OCKAM_CONTROLLER_ADDR: &str = "OCKAM_CONTROLLER_ADDR";
+pub const OCKAM_CONTROLLER_ADDRESS: &str = "OCKAM_CONTROLLER_ADDR";
 pub const DEFAULT_CONTROLLER_ADDRESS: &str = "/dnsaddr/orchestrator.ockam.io/tcp/6252/service/api";
 
 /// If it's present, its contents will be used and will have priority over the contents
 /// from ./static/controller.id.
 /// How to use: when running a command that spawns a background node or use an embedded node
 /// add the env variable. `OCKAM_CONTROLLER_IDENTITY_ID={identity.id-contents} ockam ...`
-pub const OCKAM_CONTROLLER_IDENTITY_ID: &str = "OCKAM_CONTROLLER_IDENTITY_ID";
+pub const OCKAM_CONTROLLER_IDENTIFIER: &str = "OCKAM_CONTROLLER_IDENTITY_ID";
 
 /// Total time to wait for Orchestrator long-running operations to complete
 pub const ORCHESTRATOR_AWAIT_TIMEOUT: Duration = Duration::from_secs(60 * 10);
@@ -222,21 +222,24 @@ impl NodeManager {
         })
     }
 
-    /// Load controller identity id from file.
-    /// If the env var `OCKAM_CONTROLLER_IDENTITY_ID` is set, that will be used to
-    /// load the identifier instead of the file.
+    /// Load the Controller Identifier from the env var `OCKAM_CONTROLLER_IDENTITY_ID` if it's set.
+    /// Otherwise, it will load it from a static file.
     pub fn load_controller_identifier() -> Result<Identifier> {
-        if let Ok(Some(idt)) = get_env::<Identifier>(OCKAM_CONTROLLER_IDENTITY_ID) {
+        if let Ok(Some(idt)) = get_env::<Identifier>(OCKAM_CONTROLLER_IDENTIFIER) {
             trace!(idt = %idt, "Read controller identifier from env");
             return Ok(idt);
         }
         Identifier::from_str(include_str!("../../static/controller.id"))
     }
 
+    /// Load the Controller Identifier from the env var `OCKAM_CONTROLLER_IDENTITY_ID` if it's set.
+    /// Defaults to `DEFAULT_CONTROLLER_ADDRESS` if not set.
     pub fn controller_multiaddr() -> MultiAddr {
-        let default_addr = MultiAddr::from_string(DEFAULT_CONTROLLER_ADDRESS)
-            .unwrap_or_else(|_| panic!("invalid Controller address: {DEFAULT_CONTROLLER_ADDRESS}"));
-        get_env_with_default::<MultiAddr>(OCKAM_CONTROLLER_ADDR, default_addr).unwrap()
+        get_env_ignore_error::<MultiAddr>(OCKAM_CONTROLLER_ADDRESS).unwrap_or_else(|| {
+            MultiAddr::from_string(DEFAULT_CONTROLLER_ADDRESS).unwrap_or_else(|_| {
+                panic!("invalid Controller address: {DEFAULT_CONTROLLER_ADDRESS}")
+            })
+        })
     }
 
     pub async fn controller_route() -> Result<Route> {

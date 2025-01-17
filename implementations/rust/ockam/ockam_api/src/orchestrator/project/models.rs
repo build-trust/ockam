@@ -1,8 +1,8 @@
-use crate::cloud::addon::KafkaConfig;
-use crate::cloud::email_address::EmailAddress;
-use crate::cloud::share::{RoleInShare, ShareScope};
 use crate::colors::color_primary;
 use crate::minicbor_url::Url;
+use crate::orchestrator::addon::KafkaConfig;
+use crate::orchestrator::email_address::EmailAddress;
+use crate::orchestrator::share::{RoleInShare, ShareScope};
 use crate::output::Output;
 use minicbor::{CborLen, Decode, Encode};
 use ockam::identity::Identifier;

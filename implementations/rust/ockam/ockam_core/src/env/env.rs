@@ -20,6 +20,11 @@ pub fn get_env<T: FromString>(var_name: &str) -> Result<Option<T>> {
     }
 }
 
+/// Get environmental value `var_name`. If value is not found returns None
+pub fn get_env_ignore_error<T: FromString>(var_name: &str) -> Option<T> {
+    get_env::<T>(var_name).ok().flatten()
+}
+
 /// Return true if `var_name` is set and has a valid value
 pub fn is_set<T: FromString>(var_name: &str) -> Result<bool> {
     Ok(get_env::<T>(var_name)?.is_some())

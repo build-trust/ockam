@@ -4,8 +4,8 @@ use miette::miette;
 
 use ockam::Context;
 use ockam_api::cli_state::random_name;
-use ockam_api::cloud::space::Spaces;
 use ockam_api::nodes::InMemoryNode;
+use ockam_api::orchestrator::space::Spaces;
 use ockam_api::output::Output;
 
 use crate::shared_args::IdentityOpts;

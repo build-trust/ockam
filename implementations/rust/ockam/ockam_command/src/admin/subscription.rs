@@ -5,8 +5,8 @@ use clap::{Args, Subcommand};
 use miette::{Context as _, IntoDiagnostic};
 
 use ockam::Context;
-use ockam_api::cloud::subscription::Subscriptions;
 use ockam_api::nodes::InMemoryNode;
+use ockam_api::orchestrator::subscription::Subscriptions;
 use ockam_api::output::Output;
 
 use crate::shared_args::IdentityOpts;

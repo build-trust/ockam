@@ -426,9 +426,9 @@ impl CreateCommand {
 
 #[cfg(test)]
 mod tests {
-    use ockam_api::cloud::project::models::ProjectModel;
-    use ockam_api::cloud::project::Project;
     use ockam_api::nodes::InMemoryNode;
+    use ockam_api::orchestrator::project::models::ProjectModel;
+    use ockam_api::orchestrator::project::Project;
 
     use crate::run::parser::resource::utils::parse_cmd_from_args;
 

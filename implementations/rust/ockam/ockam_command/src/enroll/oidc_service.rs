@@ -10,9 +10,9 @@ use reqwest::StatusCode;
 use tokio::time::{sleep, Duration};
 use tracing::{debug, instrument};
 
-use ockam_api::cloud::enroll::auth0::*;
 use ockam_api::colors::{color_email, color_uri, OckamColor};
 use ockam_api::enroll::oidc_service::OidcService;
+use ockam_api::orchestrator::enroll::auth0::*;
 use ockam_api::terminal::{Terminal, TerminalStream};
 use ockam_api::{fmt_err, fmt_log, fmt_ok};
 

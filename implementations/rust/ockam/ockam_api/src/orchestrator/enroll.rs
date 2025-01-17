@@ -1,21 +1,7 @@
-use miette::IntoDiagnostic;
 use minicbor::{CborLen, Decode, Encode};
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::fmt::{Debug, Formatter};
-
-use crate::cloud::enroll::enrollment_token::{
-    AuthenticateEnrollmentToken, EnrollmentToken, RequestEnrollmentToken,
-};
-use crate::cloud::{ControllerClient, HasSecureClient};
-
-use ockam::identity::Attributes;
-use ockam_core::api::Request;
-use ockam_core::async_trait;
-use ockam_node::Context;
-
-#[allow(dead_code)]
-const TARGET: &str = "ockam_api::cloud::enroll";
 
 #[derive(Encode, Decode, CborLen, Serialize, Deserialize, Clone)]
 #[cfg_attr(test, derive(PartialEq, Eq))]
@@ -35,60 +21,9 @@ impl Token {
     }
 }
 
-#[allow(dead_code)]
-#[async_trait]
-trait Enroll {
-    async fn generate_enrollment_token(
-        &self,
-        ctx: &Context,
-        attributes: Attributes,
-    ) -> miette::Result<EnrollmentToken>;
-
-    async fn authenticate_enrollment_token(
-        &self,
-        ctx: &Context,
-        enrollment_token: EnrollmentToken,
-    ) -> miette::Result<()>;
-}
-
-#[async_trait]
-impl Enroll for ControllerClient {
-    #[instrument(skip_all, fields(attributes = %attributes))]
-    async fn generate_enrollment_token(
-        &self,
-        ctx: &Context,
-        attributes: Attributes,
-    ) -> miette::Result<EnrollmentToken> {
-        trace!(target: TARGET, "generating tokens");
-        let req = Request::post("v0/").body(RequestEnrollmentToken::new(attributes));
-        self.get_secure_client()
-            .ask(ctx, "projects", req)
-            .await
-            .into_diagnostic()?
-            .miette_success("generate token")
-    }
-
-    #[instrument(skip_all)]
-    async fn authenticate_enrollment_token(
-        &self,
-        ctx: &Context,
-        enrollment_token: EnrollmentToken,
-    ) -> miette::Result<()> {
-        let req = Request::post("v0/enroll").body(AuthenticateEnrollmentToken {
-            token: enrollment_token.token,
-        });
-        trace!(target: TARGET, "authenticating token");
-        self.get_secure_client()
-            .tell(ctx, "enrollment_token_authenticator", req)
-            .await
-            .into_diagnostic()?
-            .miette_success("authenticate token")
-    }
-}
-
 pub mod auth0 {
     use super::*;
-    use crate::cloud::email_address::EmailAddress;
+    use crate::orchestrator::email_address::EmailAddress;
     use std::fmt::{Display, Formatter};
 
     // Req/Res types

@@ -6,10 +6,10 @@ use colorful::Colorful;
 use miette::{miette, IntoDiagnostic};
 
 use ockam::Context;
-use ockam_api::cloud::addon::Addons;
-use ockam_api::cloud::project::models::InfluxDBTokenLeaseManagerConfig;
 use ockam_api::fmt_ok;
 use ockam_api::nodes::InMemoryNode;
+use ockam_api::orchestrator::addon::Addons;
+use ockam_api::orchestrator::project::models::InfluxDBTokenLeaseManagerConfig;
 
 use crate::project::addon::check_configuration_completion;
 use crate::util::async_cmd;

@@ -1,10 +1,10 @@
-use crate::cloud::email_address::EmailAddress;
-use crate::cloud::share::{
+use crate::orchestrator::email_address::EmailAddress;
+use crate::orchestrator::share::{
     AcceptInvitation, AcceptedInvitation, CreateInvitation, CreateServiceInvitation,
     InvitationList, InvitationListKind, InvitationWithAccess, ListInvitations, RoleInShare,
     SentInvitation, ShareScope,
 };
-use crate::cloud::{ControllerClient, HasSecureClient};
+use crate::orchestrator::{ControllerClient, HasSecureClient};
 use miette::IntoDiagnostic;
 use ockam::identity::Identifier;
 use ockam_core::api::Request;

@@ -3,8 +3,8 @@ use ockam_core::Error;
 
 use crate::cli_state::CliState;
 use crate::cli_state::Result;
-use crate::cloud::email_address::EmailAddress;
-use crate::cloud::enroll::auth0::UserInfo;
+use crate::orchestrator::email_address::EmailAddress;
+use crate::orchestrator::enroll::auth0::UserInfo;
 
 impl CliState {
     #[instrument(skip_all, fields(user = %user))]

@@ -1,7 +1,7 @@
-use crate::cloud::email_address::EmailAddress;
-use crate::cloud::project::models::{AdminInfo, OrchestratorVersionInfo};
-use crate::cloud::project::{Project, ProjectsOrchestratorApi};
 use crate::nodes::InMemoryNode;
+use crate::orchestrator::email_address::EmailAddress;
+use crate::orchestrator::project::models::{AdminInfo, OrchestratorVersionInfo};
+use crate::orchestrator::project::{Project, ProjectsOrchestratorApi};
 use miette::IntoDiagnostic;
 use ockam_core::async_trait;
 use ockam_node::Context;
@@ -231,7 +231,7 @@ impl ProjectsOrchestratorApi for InMemoryNode {
 mod tests {
     use crate::cli_state::projects::Projects;
     use crate::cli_state::ProjectsSqlxDatabase;
-    use crate::cloud::project::models::ProjectModel;
+    use crate::orchestrator::project::models::ProjectModel;
     use ockam::identity::{
         identities, ChangeHistoryRepository, ChangeHistorySqlxDatabase, IdentitiesVerification,
     };

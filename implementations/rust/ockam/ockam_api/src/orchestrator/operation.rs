@@ -1,4 +1,4 @@
-use crate::cloud::{ControllerClient, HasSecureClient, ORCHESTRATOR_AWAIT_TIMEOUT};
+use crate::orchestrator::{ControllerClient, HasSecureClient, ORCHESTRATOR_AWAIT_TIMEOUT};
 use miette::{miette, IntoDiagnostic};
 use minicbor::{CborLen, Decode, Encode};
 use ockam_core::api::Request;
@@ -64,7 +64,6 @@ pub trait Operations {
     ) -> miette::Result<()>;
 }
 
-const TARGET: &str = "ockam_api::cloud::operation";
 const API_SERVICE: &str = "projects";
 
 #[async_trait]
@@ -75,7 +74,7 @@ impl Operations for ControllerClient {
         ctx: &Context,
         operation_id: &str,
     ) -> miette::Result<Option<Operation>> {
-        trace!(target: TARGET, operation_id, "getting operation");
+        trace!(operation_id, "getting operation");
         let req = Request::get(format!("/v1/operations/{operation_id}"));
         self.get_secure_client()
             .ask(ctx, API_SERVICE, req)

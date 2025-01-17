@@ -12,13 +12,13 @@ use ockam::Context;
 use ockam::NodeBuilder;
 use ockam::TryClone;
 use ockam_api::cli_state::{CliState, CliStateMode};
-use ockam_api::cloud::enroll::auth0::UserInfo;
-use ockam_api::cloud::project::Project;
-use ockam_api::cloud::{AuthorityNodeClient, ControllerClient};
 use ockam_api::logs::TracingGuard;
 use ockam_api::nodes::models::portal::OutletStatus;
 use ockam_api::nodes::service::{NodeManagerGeneralOptions, NodeManagerTransportOptions};
 use ockam_api::nodes::{BackgroundNodeClient, InMemoryNode, NodeManagerWorker, NODEMANAGER_ADDR};
+use ockam_api::orchestrator::enroll::auth0::UserInfo;
+use ockam_api::orchestrator::project::Project;
+use ockam_api::orchestrator::{AuthorityNodeClient, ControllerClient};
 
 use crate::api::notification::rust::{Notification, NotificationCallback};
 use crate::api::state::rust::{

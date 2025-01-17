@@ -7,7 +7,7 @@ use time::OffsetDateTime;
 
 use crate::cli_state::enrollments::IdentityEnrollment;
 use crate::cli_state::EnrollmentsRepository;
-use crate::cloud::email_address::EmailAddress;
+use crate::orchestrator::email_address::EmailAddress;
 use ockam::identity::Identifier;
 use ockam::{FromSqlxError, SqlxDatabase, ToVoid};
 use ockam_core::async_trait;

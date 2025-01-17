@@ -3,9 +3,9 @@ use clap::Args;
 use colorful::Colorful;
 
 use ockam::Context;
-use ockam_api::cloud::addon::Addons;
 use ockam_api::fmt_ok;
 use ockam_api::nodes::InMemoryNode;
+use ockam_api::orchestrator::addon::Addons;
 
 use crate::operation::util::check_for_operation_completion;
 use crate::util::async_cmd;

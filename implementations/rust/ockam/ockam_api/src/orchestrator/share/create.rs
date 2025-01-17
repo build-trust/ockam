@@ -5,8 +5,8 @@ use crate::Result;
 
 use super::{RoleInShare, ShareScope};
 use crate::cli_state::{CliState, EnrollmentTicket};
-use crate::cloud::email_address::EmailAddress;
 use crate::error::ApiError;
+use crate::orchestrator::email_address::EmailAddress;
 use ockam::identity::Identifier;
 
 #[derive(Clone, Debug, Encode, Decode, CborLen, Serialize)]

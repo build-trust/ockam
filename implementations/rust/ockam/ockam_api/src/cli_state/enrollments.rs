@@ -1,10 +1,10 @@
 use crate::authenticator::one_time_code::OneTimeCode;
 use crate::cli_state::Result;
 use crate::cli_state::{CliState, CliStateError};
-use crate::cloud::email_address::EmailAddress;
-use crate::cloud::project::models::ProjectModel;
 use crate::colors::{color_ok, color_primary, color_warn};
 use crate::error::ApiError;
+use crate::orchestrator::email_address::EmailAddress;
+use crate::orchestrator::project::models::ProjectModel;
 use crate::output::human_readable_time;
 use crate::terminal::fmt;
 use ockam::identity::{Identifier, Identity, TimestampInSeconds, Vault};

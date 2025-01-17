@@ -1,8 +1,8 @@
-use crate::cloud::project::Project;
 use crate::nodes::service::{
     CredentialScope, NodeManagerCredentialRetrieverOptions, NodeManagerTrustOptions,
 };
 use crate::nodes::NodeManager;
+use crate::orchestrator::project::Project;
 use crate::{ApiError, CliState, TransportRouteResolver};
 use ockam::identity::models::ChangeHistory;
 use ockam::identity::{IdentitiesVerification, RemoteCredentialRetrieverInfo};

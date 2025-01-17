@@ -4,11 +4,11 @@ use async_trait::async_trait;
 use clap::Args;
 use colorful::Colorful;
 use ockam::Context;
-use ockam_api::cloud::email_address::EmailAddress;
-use ockam_api::cloud::space::Spaces;
 use ockam_api::colors::color_primary;
 use ockam_api::fmt_ok;
 use ockam_api::nodes::InMemoryNode;
+use ockam_api::orchestrator::email_address::EmailAddress;
+use ockam_api::orchestrator::space::Spaces;
 
 /// Add a new Admin to a Space
 #[derive(Clone, Debug, Args)]

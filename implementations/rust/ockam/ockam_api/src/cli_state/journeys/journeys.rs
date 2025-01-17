@@ -2,8 +2,8 @@ use crate::cli_state::journeys::attributes::{
     default_attributes, make_host, make_host_trace_id, make_journey_span_id, make_project_trace_id,
 };
 use crate::cli_state::journeys::{Journey, JourneyEvent, ProjectJourney};
-use crate::cloud::project::Project;
 use crate::logs::CurrentSpan;
+use crate::orchestrator::project::Project;
 use crate::{CliState, Result};
 use chrono::{DateTime, Utc};
 use either::Either;

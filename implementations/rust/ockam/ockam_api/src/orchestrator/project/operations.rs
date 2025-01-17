@@ -1,5 +1,5 @@
-use crate::cloud::operation::{Operation, Operations};
 use crate::nodes::InMemoryNode;
+use crate::orchestrator::operation::{Operation, Operations};
 use ockam_core::async_trait;
 use ockam_node::Context;
 

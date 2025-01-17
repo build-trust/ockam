@@ -2,11 +2,11 @@ use serde::Serialize;
 use std::fmt::Write;
 use std::str::FromStr;
 
-use crate::cloud::enroll::auth0::UserInfo;
-use crate::cloud::project::models::ProjectModel;
-use crate::cloud::share::RoleInShare;
 use crate::colors::color_primary;
 use crate::error::ApiError;
+use crate::orchestrator::enroll::auth0::UserInfo;
+use crate::orchestrator::project::models::ProjectModel;
+use crate::orchestrator::share::RoleInShare;
 use crate::output::Output;
 use crate::terminal::fmt;
 
@@ -17,8 +17,6 @@ use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{Error, Result};
 use ockam_multiaddr::MultiAddr;
 use ockam_node::tokio;
-
-pub(super) const TARGET: &str = "ockam_api::cloud::project";
 
 #[derive(Debug, Clone, Serialize)]
 pub struct Project {
@@ -348,10 +346,10 @@ impl Output for Project {
 
 #[cfg(test)]
 mod tests {
-    use crate::cloud::enroll::auth0::UserInfo;
-    use crate::cloud::project::models::{ProjectModel, ProjectUserRole};
-    use crate::cloud::project::Project;
-    use crate::cloud::share::{RoleInShare, ShareScope};
+    use crate::orchestrator::enroll::auth0::UserInfo;
+    use crate::orchestrator::project::models::{ProjectModel, ProjectUserRole};
+    use crate::orchestrator::project::Project;
+    use crate::orchestrator::share::{RoleInShare, ShareScope};
     use quickcheck::{Arbitrary, Gen};
 
     #[tokio::test]

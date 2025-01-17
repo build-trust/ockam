@@ -5,8 +5,8 @@ use tokio::sync::Mutex;
 use tokio::try_join;
 
 use ockam::Context;
-use ockam_api::cloud::project::ProjectsOrchestratorApi;
 use ockam_api::nodes::InMemoryNode;
+use ockam_api::orchestrator::project::ProjectsOrchestratorApi;
 
 use crate::shared_args::IdentityOpts;
 use crate::util::async_cmd;

@@ -10,10 +10,10 @@ use tokio::time::Duration;
 use tokio_retry::{strategy::ExponentialBackoff, Retry};
 use tracing::{error, info};
 
-use crate::cloud::enroll::auth0::{AuthorizationCode, DeviceCode, OidcToken, UserInfo};
 use crate::enroll::ockam_oidc_provider::{authenticator_endpoint, OckamOidcProvider};
 use crate::enroll::oidc_provider::OidcProvider;
 use crate::error::ApiError;
+use crate::orchestrator::enroll::auth0::{AuthorizationCode, DeviceCode, OidcToken, UserInfo};
 use ockam::compat::fmt::Debug;
 use ockam_core::compat::rand::{thread_rng, RngCore};
 use ockam_core::Result;

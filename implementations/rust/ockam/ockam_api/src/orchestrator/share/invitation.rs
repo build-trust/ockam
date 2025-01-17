@@ -1,8 +1,8 @@
 use crate::address::extract_address_value;
 use crate::cli_state::{EnrollmentTicket, ExportedEnrollmentTicket};
-use crate::cloud::email_address::EmailAddress;
 use crate::date::is_expired;
 use crate::error::ApiError;
+use crate::orchestrator::email_address::EmailAddress;
 use crate::output::Output;
 use minicbor::{CborLen, Decode, Encode};
 use ockam::identity::Identifier;

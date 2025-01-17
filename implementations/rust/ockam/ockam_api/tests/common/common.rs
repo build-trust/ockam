@@ -9,9 +9,9 @@ use ockam::identity::{
 };
 use ockam_api::authority_node;
 use ockam_api::authority_node::{Authority, Configuration};
-use ockam_api::cloud::{AuthorityNodeClient, HasSecureClient};
 use ockam_api::config::lookup::InternetAddress;
 use ockam_api::nodes::NodeManager;
+use ockam_api::orchestrator::{AuthorityNodeClient, HasSecureClient};
 use ockam_core::Result;
 use ockam_multiaddr::MultiAddr;
 use ockam_node::database::DatabaseConfiguration;

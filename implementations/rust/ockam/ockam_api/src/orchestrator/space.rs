@@ -7,18 +7,16 @@ use ockam_core::api::Request;
 use ockam_core::async_trait;
 use ockam_node::Context;
 
-use crate::cloud::email_address::EmailAddress;
-use crate::cloud::project::models::AdminInfo;
-use crate::cloud::project::{Project, ProjectsOrchestratorApi};
-use crate::cloud::subscription::{Subscription, SUBSCRIPTION_PAGE};
-use crate::cloud::{ControllerClient, HasSecureClient};
 use crate::colors::{color_primary, color_uri, color_warn};
 use crate::nodes::InMemoryNode;
+use crate::orchestrator::email_address::EmailAddress;
+use crate::orchestrator::project::models::AdminInfo;
+use crate::orchestrator::project::{Project, ProjectsOrchestratorApi};
+use crate::orchestrator::subscription::{Subscription, SUBSCRIPTION_PAGE};
+use crate::orchestrator::{ControllerClient, HasSecureClient};
 use crate::output::{comma_separated, Output};
 use crate::terminal::fmt;
 use crate::{fmt_log, UtcDateTime};
-
-const TARGET: &str = "ockam_api::cloud::space";
 
 #[derive(Encode, Decode, CborLen, Serialize, Debug, Clone, PartialEq, Eq)]
 #[rustfmt::skip]
@@ -315,7 +313,7 @@ impl ControllerClient {
         name: &str,
         users: Vec<&str>,
     ) -> miette::Result<Space> {
-        trace!(target: TARGET, space = %name, "creating space");
+        trace!(space = %name, "creating space");
         let req = Request::post("/v0/").body(CreateSpace::new(
             name.into(),
             users.iter().map(|u| u.to_string()).collect(),
@@ -328,7 +326,7 @@ impl ControllerClient {
     }
 
     pub async fn get_space(&self, ctx: &Context, space_id: &str) -> miette::Result<Space> {
-        trace!(target: TARGET, space = %space_id, "getting space");
+        trace!(space = %space_id, "getting space");
         let req = Request::get(format!("/v0/{space_id}"));
         self.get_secure_client()
             .ask(ctx, "spaces", req)
@@ -338,7 +336,7 @@ impl ControllerClient {
     }
 
     pub async fn delete_space(&self, ctx: &Context, space_id: &str) -> miette::Result<()> {
-        trace!(target: TARGET, space = %space_id, "deleting space");
+        trace!(space = %space_id, "deleting space");
         let req = Request::delete(format!("/v0/{space_id}"));
         self.get_secure_client()
             .tell(ctx, "spaces", req)
@@ -348,7 +346,7 @@ impl ControllerClient {
     }
 
     pub async fn list_spaces(&self, ctx: &Context) -> miette::Result<Vec<Space>> {
-        trace!(target: TARGET, "listing spaces");
+        trace!("listing spaces");
         self.get_secure_client()
             .ask(ctx, "spaces", Request::get("/v0/"))
             .await
@@ -359,7 +357,7 @@ impl ControllerClient {
 
 #[cfg(test)]
 pub mod tests {
-    use crate::cloud::space::CreateSpace;
+    use crate::orchestrator::space::CreateSpace;
     use crate::schema::tests::validate_with_schema;
     use quickcheck::{quickcheck, Arbitrary, Gen, TestResult};
     use time::OffsetDateTime;

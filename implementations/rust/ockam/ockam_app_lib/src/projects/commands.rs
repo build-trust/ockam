@@ -6,8 +6,8 @@ use tracing::{debug, info, trace};
 
 use ockam_api::authenticator::enrollment_tokens::TokenIssuer;
 use ockam_api::cli_state::enrollments::EnrollmentTicket;
-use ockam_api::cloud::email_address::EmailAddress;
-use ockam_api::cloud::project::ProjectsOrchestratorApi;
+use ockam_api::orchestrator::email_address::EmailAddress;
+use ockam_api::orchestrator::project::ProjectsOrchestratorApi;
 
 use crate::projects::error::Error::ListingFailed;
 use crate::state::{AppState, StateKind};

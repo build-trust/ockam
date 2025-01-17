@@ -6,8 +6,8 @@ use tracing::warn;
 
 use ockam::identity::Identifier;
 use ockam_api::cli_state::enrollments::EnrollmentTicket;
-use ockam_api::cloud::email_address::EmailAddress;
-use ockam_api::cloud::share::InvitationWithAccess;
+use ockam_api::orchestrator::email_address::EmailAddress;
+use ockam_api::orchestrator::share::InvitationWithAccess;
 
 use crate::state::{AppState, ModelState};
 
@@ -327,7 +327,7 @@ impl IncomingService {
 mod tests {
     use ockam::Context;
     use ockam_api::cli_state::{CliState, ExportedEnrollmentTicket};
-    use ockam_api::cloud::share::{
+    use ockam_api::orchestrator::share::{
         InvitationWithAccess, ReceivedInvitation, RoleInShare, ServiceAccessDetails, ShareScope,
     };
 

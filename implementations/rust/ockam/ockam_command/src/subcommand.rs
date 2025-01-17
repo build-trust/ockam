@@ -34,7 +34,6 @@ use crate::rendezvous::RendezvousCommand;
 use crate::reset::ResetCommand;
 use crate::run::RunCommand;
 use crate::shared_args::RetryOpts;
-use crate::space::SpaceCommand;
 use crate::status::StatusCommand;
 use crate::tcp::inlet::TcpInletCommand;
 use crate::tcp::outlet::TcpOutletCommand;
@@ -53,6 +52,7 @@ cfg_if::cfg_if! {
         use crate::project_admin::ProjectAdminCommand;
         use crate::project_member::ProjectMemberCommand;
         use crate::sidecar::SidecarCommand;
+        use crate::space::SpaceCommand;
         use crate::space_admin::SpaceAdminCommand;
         use crate::subscription::SubscriptionCommand;
     }
@@ -80,7 +80,6 @@ pub enum OckamSubcommand {
     Node(NodeCommand),
     Vault(VaultCommand),
     Identity(IdentityCommand),
-    Space(SpaceCommand),
     Project(ProjectCommand),
     Policy(PolicyCommand),
     Credential(CredentialCommand),
@@ -106,6 +105,8 @@ pub enum OckamSubcommand {
     Enroll(EnrollCommand),
     #[cfg(feature = "admin_commands")]
     Admin(AdminCommand),
+    #[cfg(feature = "admin_commands")]
+    Space(SpaceCommand),
     #[cfg(feature = "admin_commands")]
     SpaceAdmin(SpaceAdminCommand),
     #[cfg(feature = "admin_commands")]
@@ -158,7 +159,6 @@ impl OckamSubcommand {
             OckamSubcommand::Node(c) => c.run(opts),
             OckamSubcommand::Vault(c) => c.run(opts),
             OckamSubcommand::Identity(c) => c.run(opts),
-            OckamSubcommand::Space(c) => c.run(opts),
             OckamSubcommand::Project(c) => c.run(opts),
             OckamSubcommand::Policy(c) => c.run(opts),
             OckamSubcommand::Credential(c) => c.run(opts),
@@ -181,6 +181,8 @@ impl OckamSubcommand {
             OckamSubcommand::Enroll(c) => c.run(opts),
             #[cfg(feature = "admin_commands")]
             OckamSubcommand::Admin(c) => c.run(opts),
+            #[cfg(feature = "admin_commands")]
+            OckamSubcommand::Space(c) => c.run(opts),
             #[cfg(feature = "admin_commands")]
             OckamSubcommand::SpaceAdmin(c) => c.run(opts),
             #[cfg(feature = "admin_commands")]
@@ -325,7 +327,6 @@ impl OckamSubcommand {
             OckamSubcommand::Node(c) => c.name(),
             OckamSubcommand::Vault(c) => c.name(),
             OckamSubcommand::Identity(c) => c.name(),
-            OckamSubcommand::Space(c) => c.name(),
             OckamSubcommand::Project(c) => c.name(),
             OckamSubcommand::Policy(c) => c.name(),
             OckamSubcommand::Credential(c) => c.name(),
@@ -348,6 +349,8 @@ impl OckamSubcommand {
             OckamSubcommand::Enroll(c) => c.name(),
             #[cfg(feature = "admin_commands")]
             OckamSubcommand::Admin(c) => c.name(),
+            #[cfg(feature = "admin_commands")]
+            OckamSubcommand::Space(c) => c.name(),
             #[cfg(feature = "admin_commands")]
             OckamSubcommand::SpaceAdmin(c) => c.name(),
             #[cfg(feature = "admin_commands")]

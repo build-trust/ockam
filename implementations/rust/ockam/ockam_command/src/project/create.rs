@@ -2,8 +2,8 @@ use clap::Args;
 
 use ockam::Context;
 use ockam_api::cli_state::random_name;
-use ockam_api::cloud::project::ProjectsOrchestratorApi;
 use ockam_api::nodes::InMemoryNode;
+use ockam_api::orchestrator::project::ProjectsOrchestratorApi;
 
 use crate::operation::util::check_for_project_completion;
 use crate::project::util::check_project_readiness;

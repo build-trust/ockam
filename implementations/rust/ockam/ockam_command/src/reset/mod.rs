@@ -4,9 +4,9 @@ use miette::{miette, WrapErr};
 use tracing::error;
 
 use crate::CommandGlobalOpts;
-use ockam_api::cloud::space::Spaces;
 use ockam_api::colors::OckamColor;
 use ockam_api::nodes::InMemoryNode;
+use ockam_api::orchestrator::space::Spaces;
 use ockam_api::terminal::notification::NotificationHandler;
 use ockam_api::terminal::ConfirmResult;
 use ockam_api::{color, fmt_ok, CliState};

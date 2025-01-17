@@ -1,7 +1,7 @@
 use crate::authenticator::one_time_code::OneTimeCode;
-use crate::cloud::enroll::auth0::{AuthenticateOidcToken, OidcToken};
-use crate::cloud::HasSecureClient;
 use crate::nodes::service::default_address::DefaultAddress;
+use crate::orchestrator::enroll::auth0::{AuthenticateOidcToken, OidcToken};
+use crate::orchestrator::HasSecureClient;
 use miette::IntoDiagnostic;
 use ockam::identity::models::CredentialAndPurposeKey;
 use ockam::identity::SecureClient;

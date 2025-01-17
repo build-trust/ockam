@@ -8,8 +8,8 @@ use ockam_node::Context;
 
 use crate::authenticator::direct::types::CreateToken;
 use crate::authenticator::one_time_code::OneTimeCode;
-use crate::cloud::{AuthorityNodeClient, HasSecureClient};
 use crate::nodes::service::default_address::DefaultAddress;
+use crate::orchestrator::{AuthorityNodeClient, HasSecureClient};
 
 #[async_trait]
 pub trait TokenIssuer {

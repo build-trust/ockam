@@ -14,10 +14,10 @@ use ockam::identity::{AttributesEntry, Identifier};
 use ockam_api::authenticator::direct::{
     OCKAM_ROLE_ATTRIBUTE_ENROLLER_VALUE, OCKAM_ROLE_ATTRIBUTE_KEY,
 };
-use ockam_api::cloud::project::Project;
-use ockam_api::cloud::AuthorityNodeClient;
 use ockam_api::colors::{color_primary, color_warn};
 use ockam_api::nodes::{InMemoryNode, NodeManager};
+use ockam_api::orchestrator::project::Project;
+use ockam_api::orchestrator::AuthorityNodeClient;
 use ockam_api::output::Output;
 use ockam_api::terminal::fmt;
 use ockam_api::CliState;

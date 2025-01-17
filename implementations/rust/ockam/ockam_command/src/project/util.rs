@@ -8,11 +8,11 @@ use tokio_retry::strategy::FixedInterval;
 use tokio_retry::Retry;
 use tracing::debug;
 
-use ockam_api::cloud::project::{Project, ProjectsOrchestratorApi};
-use ockam_api::cloud::{CredentialsEnabled, ORCHESTRATOR_AWAIT_TIMEOUT};
 use ockam_api::config::lookup::LookupMeta;
 use ockam_api::nodes::service::relay::SecureChannelsCreation;
 use ockam_api::nodes::InMemoryNode;
+use ockam_api::orchestrator::project::{Project, ProjectsOrchestratorApi};
+use ockam_api::orchestrator::{CredentialsEnabled, ORCHESTRATOR_AWAIT_TIMEOUT};
 use ockam_api::ReverseLocalConverter;
 use ockam_core::route;
 use ockam_multiaddr::{MultiAddr, Protocol};
@@ -58,9 +58,8 @@ pub async fn get_projects_secure_channels_from_config_lookup(
 
     // Create a secure channel for each project.
     for name in meta.project.iter() {
-        // Get the project node's access route + identity id from the config
+        // Get the project node's access route + identifier from the config
         let (project_access_route, project_identifier) = {
-            // This shouldn't fail, as we did a refresh above if we found any missing project.
             let project = opts
                 .state
                 .projects()

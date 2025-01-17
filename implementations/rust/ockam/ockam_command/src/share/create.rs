@@ -6,10 +6,10 @@ use tokio::try_join;
 use tracing::debug;
 
 use ockam::Context;
-use ockam_api::cloud::email_address::EmailAddress;
-use ockam_api::cloud::share::{Invitations, RoleInShare, ShareScope};
 use ockam_api::fmt_ok;
 use ockam_api::nodes::InMemoryNode;
+use ockam_api::orchestrator::email_address::EmailAddress;
+use ockam_api::orchestrator::share::{Invitations, RoleInShare, ShareScope};
 
 use crate::shared_args::IdentityOpts;
 use crate::util::async_cmd;

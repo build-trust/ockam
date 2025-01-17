@@ -14,14 +14,16 @@ use ockam_multiaddr::MultiAddr;
 
 use crate::cli_state::random_name;
 use crate::cli_state::CliState;
-use crate::cloud::project::Project;
-use crate::cloud::{AuthorityNodeClient, ControllerClient, CredentialsEnabled, ProjectNodeClient};
 use crate::nodes::models::transport::Port;
 use crate::nodes::service::default_address::DefaultAddress;
 use crate::nodes::service::{
     NodeManagerGeneralOptions, NodeManagerTransportOptions, NodeManagerTrustOptions,
 };
 use crate::nodes::{NodeManager, NODEMANAGER_ADDR};
+use crate::orchestrator::project::Project;
+use crate::orchestrator::{
+    AuthorityNodeClient, ControllerClient, CredentialsEnabled, ProjectNodeClient,
+};
 
 /// An `InMemoryNode` represents a full running node
 /// In addition to a `NodeManager`, which is used to handle all the entities related to a node

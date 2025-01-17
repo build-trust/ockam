@@ -6,9 +6,9 @@ pub use aiven::AddonConfigureAivenSubcommand;
 pub use confluent::AddonConfigureConfluentSubcommand;
 pub use instaclustr::AddonConfigureInstaclustrSubcommand;
 use ockam::Context;
-use ockam_api::cloud::addon::{Addons, KafkaConfig};
 use ockam_api::fmt_ok;
 use ockam_api::nodes::InMemoryNode;
+use ockam_api::orchestrator::addon::{Addons, KafkaConfig};
 pub use redpanda::AddonConfigureRedpandaSubcommand;
 pub use warpstream::AddonConfigureWarpstreamSubcommand;
 

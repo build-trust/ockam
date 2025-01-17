@@ -2,8 +2,8 @@ use ockam_core::errcode::{Kind, Origin};
 use ockam_core::Error;
 
 use crate::cli_state::CliState;
-use crate::cloud::space::Space;
-use crate::cloud::subscription::Subscription;
+use crate::orchestrator::space::Space;
+use crate::orchestrator::subscription::Subscription;
 
 use super::Result;
 
@@ -81,7 +81,7 @@ impl CliState {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::cloud::subscription::SubscriptionName;
+    use crate::orchestrator::subscription::SubscriptionName;
     use ockam_node::database::skip_if_postgres;
 
     #[tokio::test]

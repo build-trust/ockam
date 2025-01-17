@@ -7,10 +7,10 @@ use ockam_core::Error;
 use ockam_vault::SoftwareVaultForVerifyingSignatures;
 
 use crate::cli_state::{CliState, EnrollmentFilter, ProjectsRepository};
-use crate::cloud::email_address::EmailAddress;
-use crate::cloud::project::models::ProjectModel;
-use crate::cloud::project::Project;
-use crate::cloud::share::RoleInShare;
+use crate::orchestrator::email_address::EmailAddress;
+use crate::orchestrator::project::models::ProjectModel;
+use crate::orchestrator::project::Project;
+use crate::orchestrator::share::RoleInShare;
 
 use super::Result;
 

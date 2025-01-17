@@ -14,11 +14,11 @@ use crate::Result;
 use crate::{Command, CommandGlobalOpts};
 use ockam::Context;
 use ockam_api::cli_state::{EnrollmentFilter, IdentityEnrollment};
-use ockam_api::cloud::project::models::OrchestratorVersionInfo;
-use ockam_api::cloud::space::Space;
 use ockam_api::colors::color_primary;
 use ockam_api::nodes::models::node::NodeResources;
 use ockam_api::nodes::{BackgroundNodeClient, InMemoryNode};
+use ockam_api::orchestrator::project::models::OrchestratorVersionInfo;
+use ockam_api::orchestrator::space::Space;
 use ockam_api::output::Output;
 use ockam_api::{fmt_heading, fmt_log, fmt_separator, fmt_warn};
 

@@ -3,8 +3,8 @@ use clap::Args;
 use colorful::Colorful;
 use miette::IntoDiagnostic;
 
-use ockam_api::cloud::project::models::ProjectModel;
 use ockam_api::fmt_ok;
+use ockam_api::orchestrator::project::models::ProjectModel;
 
 use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts};

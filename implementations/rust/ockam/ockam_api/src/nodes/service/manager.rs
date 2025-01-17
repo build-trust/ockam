@@ -1,5 +1,3 @@
-use crate::cloud::project::Project;
-use crate::cloud::{AuthorityNodeClient, ControllerClient, CredentialsEnabled, ProjectNodeClient};
 use crate::nodes::connection::{
     Connection, ConnectionBuilder, PlainTcpInstantiator, PlainUdpInstantiator, ProjectInstantiator,
     SecureChannelInstantiator,
@@ -11,6 +9,10 @@ use crate::nodes::service::http::HttpServer;
 use crate::nodes::service::{
     CredentialRetrieverCreators, NodeManagerCredentialRetrieverOptions, NodeManagerTrustOptions,
     SecureChannelType,
+};
+use crate::orchestrator::project::Project;
+use crate::orchestrator::{
+    AuthorityNodeClient, ControllerClient, CredentialsEnabled, ProjectNodeClient,
 };
 
 use crate::cli_state::journeys::{NODE_NAME, USER_EMAIL, USER_NAME};

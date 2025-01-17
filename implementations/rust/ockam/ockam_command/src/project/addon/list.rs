@@ -2,8 +2,8 @@ use clap::builder::NonEmptyStringValueParser;
 use clap::Args;
 
 use ockam::Context;
-use ockam_api::cloud::addon::Addons;
 use ockam_api::nodes::InMemoryNode;
+use ockam_api::orchestrator::addon::Addons;
 
 use crate::util::async_cmd;
 use crate::CommandGlobalOpts;

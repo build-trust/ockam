@@ -4,8 +4,8 @@ use miette::IntoDiagnostic;
 use tracing::instrument;
 
 use ockam::Context;
-use ockam_api::cloud::project::ProjectsOrchestratorApi;
 use ockam_api::nodes::InMemoryNode;
+use ockam_api::orchestrator::project::ProjectsOrchestratorApi;
 use ockam_api::output::Output;
 use ockam_api::terminal::{Terminal, TerminalStream};
 use ockam_core::TryClone;

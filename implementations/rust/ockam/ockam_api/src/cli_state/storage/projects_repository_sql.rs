@@ -1,8 +1,8 @@
-use crate::cloud::addon::KafkaConfig;
-use crate::cloud::email_address::EmailAddress;
-use crate::cloud::project::models::{OktaConfig, ProjectModel, ProjectUserRole};
-use crate::cloud::share::{RoleInShare, ShareScope};
 use crate::minicbor_url::Url;
+use crate::orchestrator::addon::KafkaConfig;
+use crate::orchestrator::email_address::EmailAddress;
+use crate::orchestrator::project::models::{OktaConfig, ProjectModel, ProjectUserRole};
+use crate::orchestrator::share::{RoleInShare, ShareScope};
 use itertools::Itertools;
 use ockam::identity::Identifier;
 use ockam_core::async_trait;
@@ -634,7 +634,7 @@ mod test {
     use crate::cli_state::{
         SpacesRepository, SpacesSqlxDatabase, UsersRepository, UsersSqlxDatabase,
     };
-    use crate::cloud::enroll::auth0::UserInfo;
+    use crate::orchestrator::enroll::auth0::UserInfo;
     use ockam_node::database::with_sqlite_dbs;
     use std::sync::Arc;
 

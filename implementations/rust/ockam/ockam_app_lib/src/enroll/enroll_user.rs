@@ -3,10 +3,10 @@ use std::time::{Duration, Instant};
 use tracing::{debug, error, info, warn};
 
 use ockam_api::cli_state;
-use ockam_api::cloud::project::{Project, ProjectsOrchestratorApi};
-use ockam_api::cloud::space::{Space, Spaces};
 use ockam_api::enroll::enrollment::Enrollment;
 use ockam_api::enroll::oidc_service::OidcService;
+use ockam_api::orchestrator::project::{Project, ProjectsOrchestratorApi};
+use ockam_api::orchestrator::space::{Space, Spaces};
 
 use crate::api::notification::rust::{Kind, Notification};
 use crate::api::state::OrchestratorStatus;

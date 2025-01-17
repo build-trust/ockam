@@ -17,14 +17,13 @@ use crate::value_parsers::parse_enrollment_ticket;
 use crate::{docs, Command, CommandGlobalOpts, Error, Result};
 use ockam::Context;
 use ockam_api::cli_state::{EnrollmentTicket, NamedIdentity};
-use ockam_api::cloud::project::models::OktaAuth0;
-use ockam_api::cloud::project::ProjectsOrchestratorApi;
-use ockam_api::cloud::AuthorityNodeClient;
 use ockam_api::colors::color_primary;
 use ockam_api::enroll::enrollment::{EnrollStatus, Enrollment};
 use ockam_api::enroll::oidc_service::OidcService;
 use ockam_api::enroll::okta_oidc_provider::OktaOidcProvider;
 use ockam_api::nodes::InMemoryNode;
+use ockam_api::orchestrator::project::models::OktaAuth0;
+use ockam_api::orchestrator::AuthorityNodeClient;
 use ockam_api::output::{human_readable_time, Output};
 use ockam_api::terminal::fmt;
 use ockam_api::{fmt_log, fmt_ok};
@@ -129,7 +128,6 @@ impl Command for EnrollCommand {
         // Enroll if applicable
         if self.okta {
             self.use_okta(ctx, &opts, &authority_node_client).await?;
-            node.get_project(ctx, project.project_id()).await?;
         } else if let Some(enrollment_ticket) = enrollment_ticket {
             self.use_enrollment_ticket(ctx, &opts, &authority_node_client, enrollment_ticket)
                 .await?;
@@ -138,7 +136,8 @@ impl Command for EnrollCommand {
         // Issue credential
         let credential = if opts.state.is_using_in_memory_database()? || self.skip_credential_issue
         {
-            // When using an in-memory database, the credential issued in this command will be discarded
+            // When using an in-memory database, the credential issued in this command will be discarded,
+            // so we skip this step
             None
         } else {
             let pb = opts.terminal.spinner();

@@ -1,4 +1,4 @@
-use crate::cloud::space::Space;
+use crate::orchestrator::space::Space;
 use ockam_core::async_trait;
 use ockam_core::Result;
 use ockam_node::database::AutoRetry;

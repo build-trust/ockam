@@ -1,8 +1,8 @@
 use miette::IntoDiagnostic;
 use ockam::transport::HostnamePort;
 use ockam::Context;
-use ockam_api::cloud::email_address::EmailAddress;
-use ockam_api::cloud::share::{CreateServiceInvitation, InvitationListKind, Invitations};
+use ockam_api::orchestrator::email_address::EmailAddress;
+use ockam_api::orchestrator::share::{CreateServiceInvitation, InvitationListKind, Invitations};
 use ockam_core::Address;
 use tracing::{debug, info, trace, warn};
 

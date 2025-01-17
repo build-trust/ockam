@@ -10,13 +10,13 @@ use rustls::{ClientConfig, ClientConnection, Connection, RootCertStore, Stream};
 use rustls_pki_types::ServerName;
 
 use ockam::Context;
-use ockam_api::cloud::addon::Addons;
-use ockam_api::cloud::project::models::OktaConfig;
 use ockam_api::enroll::oidc_service::OidcService;
 use ockam_api::enroll::okta_oidc_provider::OktaOidcProvider;
 use ockam_api::fmt_ok;
 use ockam_api::minicbor_url::Url;
 use ockam_api::nodes::InMemoryNode;
+use ockam_api::orchestrator::addon::Addons;
+use ockam_api::orchestrator::project::models::OktaConfig;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::Error;
 

@@ -1,10 +1,10 @@
 use colorful::Colorful;
 use miette::miette;
 
-use ockam_api::cloud::operation::Operations;
-use ockam_api::cloud::project::{Project, ProjectsOrchestratorApi};
 use ockam_api::colors::OckamColor;
 use ockam_api::nodes::InMemoryNode;
+use ockam_api::orchestrator::operation::Operations;
+use ockam_api::orchestrator::project::{Project, ProjectsOrchestratorApi};
 use ockam_api::{fmt_log, fmt_para};
 use ockam_node::Context;
 

@@ -3,8 +3,8 @@ use clap::{Args, Subcommand};
 use miette::{miette, IntoDiagnostic};
 
 use ockam::Context;
-use ockam_api::cloud::subscription::{SubscriptionLegacy, Subscriptions};
-use ockam_api::cloud::ControllerClient;
+use ockam_api::orchestrator::subscription::{SubscriptionLegacy, Subscriptions};
+use ockam_api::orchestrator::ControllerClient;
 
 use ockam_api::nodes::InMemoryNode;
 use ockam_api::output::Output;

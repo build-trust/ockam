@@ -3,8 +3,8 @@ use crate::{Command, CommandGlobalOpts};
 use async_trait::async_trait;
 use clap::Args;
 use ockam::Context;
-use ockam_api::cloud::space::Spaces;
 use ockam_api::nodes::InMemoryNode;
+use ockam_api::orchestrator::space::Spaces;
 
 /// List the Admins of a Space
 #[derive(Clone, Debug, Args)]

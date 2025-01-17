@@ -7,7 +7,7 @@ use std::str::FromStr;
 use ockam::identity::Identifier;
 use ockam::Context;
 use ockam_api::authenticator::direct::Members;
-use ockam_api::cloud::AuthorityNodeClient;
+use ockam_api::orchestrator::AuthorityNodeClient;
 use ockam_api::output::Output;
 use ockam_api::terminal::{Terminal, TerminalStream};
 use ockam_core::TryClone;

@@ -1,5 +1,5 @@
 use ockam_api::cli_state::OCKAM_HOME;
-use ockam_api::cloud::{OCKAM_CONTROLLER_ADDR, OCKAM_CONTROLLER_IDENTITY_ID};
+use ockam_api::orchestrator::{OCKAM_CONTROLLER_ADDRESS, OCKAM_CONTROLLER_IDENTIFIER};
 use ockam_core::env::get_env_with_default;
 
 pub const OCKAM_COMMAND_BIN_NAME: &str = "OCKAM_COMMAND_BIN_NAME";
@@ -20,19 +20,19 @@ pub fn load_compile_time_vars() {
         }
     }
     if let Ok(orchestrator_identifier) = get_env_with_default(
-        OCKAM_CONTROLLER_IDENTITY_ID,
+        OCKAM_CONTROLLER_IDENTIFIER,
         env!("OCKAM_CONTROLLER_IDENTITY_ID").to_string(),
     ) {
         if !orchestrator_identifier.is_empty() {
-            std::env::set_var(OCKAM_CONTROLLER_IDENTITY_ID, orchestrator_identifier);
+            std::env::set_var(OCKAM_CONTROLLER_IDENTIFIER, orchestrator_identifier);
         }
     }
     if let Ok(orchestrator_address) = get_env_with_default(
-        OCKAM_CONTROLLER_ADDR,
+        OCKAM_CONTROLLER_ADDRESS,
         env!("OCKAM_CONTROLLER_ADDR").to_string(),
     ) {
         if !orchestrator_address.is_empty() {
-            std::env::set_var(OCKAM_CONTROLLER_ADDR, orchestrator_address);
+            std::env::set_var(OCKAM_CONTROLLER_ADDRESS, orchestrator_address);
         }
     }
 }

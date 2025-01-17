@@ -1,8 +1,8 @@
 use miette::{miette, IntoDiagnostic, Result, WrapErr};
 use ockam_api::cli_state::OCKAM_HOME;
-use ockam_api::cloud::{OCKAM_CONTROLLER_ADDR, OCKAM_CONTROLLER_IDENTITY_ID};
 use ockam_api::colors::color_primary;
 use ockam_api::fmt_log;
+use ockam_api::orchestrator::{OCKAM_CONTROLLER_ADDRESS, OCKAM_CONTROLLER_IDENTIFIER};
 use ockam_api::terminal::PADDING;
 use ockam_command::{
     OCKAM_COMMAND_BIN_NAME, OCKAM_COMMAND_BRAND_NAME, OCKAM_COMMAND_SUPPORT_EMAIL,
@@ -65,10 +65,10 @@ fn build_binary(bin_name: &str, brand_settings: Brand) -> Result<()> {
         cmd.env(OCKAM_HOME, home_dir);
     }
     if let Some(orchestrator_identifier) = brand_settings.orchestrator_identifier {
-        cmd.env(OCKAM_CONTROLLER_IDENTITY_ID, orchestrator_identifier);
+        cmd.env(OCKAM_CONTROLLER_IDENTIFIER, orchestrator_identifier);
     }
     if let Some(orchestrator_address) = brand_settings.orchestrator_address {
-        cmd.env(OCKAM_CONTROLLER_ADDR, orchestrator_address);
+        cmd.env(OCKAM_CONTROLLER_ADDRESS, orchestrator_address);
     }
     if let Some(build_args) = brand_settings.build_args {
         cmd.args(build_args.split_whitespace());

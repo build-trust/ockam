@@ -1,6 +1,6 @@
-use crate::cloud::email_address::EmailAddress;
-use crate::cloud::project::models::{AdminInfo, OrchestratorVersionInfo};
-use crate::cloud::project::Project;
+use crate::orchestrator::email_address::EmailAddress;
+use crate::orchestrator::project::models::{AdminInfo, OrchestratorVersionInfo};
+use crate::orchestrator::project::Project;
 use ockam_core::async_trait;
 use ockam_node::Context;
 

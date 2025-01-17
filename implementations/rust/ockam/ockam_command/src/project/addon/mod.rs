@@ -1,7 +1,7 @@
 use clap::{Args, Subcommand};
 
-use ockam_api::cloud::project::ProjectsOrchestratorApi;
 use ockam_api::nodes::InMemoryNode;
+use ockam_api::orchestrator::project::ProjectsOrchestratorApi;
 use ockam_node::Context;
 
 use crate::operation::util::check_for_operation_completion;

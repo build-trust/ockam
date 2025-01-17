@@ -363,10 +363,10 @@ mod tests {
     use crate::authenticator::one_time_code::OneTimeCode;
     use crate::authenticator::{PreTrustedIdentities, PreTrustedIdentity};
     use crate::authority_node;
-    use crate::cloud::AuthorityNodeClient;
     use crate::config::lookup::InternetAddress;
     use crate::enroll::enrollment::{EnrollStatus, Enrollment};
     use crate::nodes::NodeManager;
+    use crate::orchestrator::AuthorityNodeClient;
     use ockam::identity::{identities, secure_channels, TimestampInSeconds};
     use ockam_core::TryClone;
     use ockam_multiaddr::MultiAddr;
