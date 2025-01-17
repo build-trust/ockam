@@ -21,7 +21,9 @@ teardown() {
   port="$(random_port)"
   run_success "$OCKAM" authority create --tcp-listener-address="127.0.0.1:$port" --project-identifier 1 --trusted-identities "$trusted"
   sleep 1
-  run_success "$OCKAM" node show authority
+
+  # the name of the node is authority-{project-identifier}
+  run_success "$OCKAM" node show authority-1
   assert_output --partial "\"status\": \"running\""
 }
 
@@ -29,13 +31,19 @@ teardown() {
   port="$(random_port)"
   trusted="{}"
   run_success "$OCKAM" authority create --tcp-listener-address="127.0.0.1:$port" --project-identifier 1 --trusted-identities "$trusted"
-  run_success "$OCKAM" identity show authority
+  sleep 1
+
+  # the name of the authority identity is authority-{project-identifier}
+  run_success "$OCKAM" identity show authority-1
 }
 
 @test "authority - an authority identity is created by default for the authority node - with a given name" {
   port="$(random_port)"
   trusted="{}"
   run_success "$OCKAM" authority create --tcp-listener-address="127.0.0.1:$port" --project-identifier 1 --trusted-identities "$trusted" --identity ockam
+  sleep 1
+
+  # the name of the authority identity is untouched
   run_success "$OCKAM" identity show ockam
 }
 
@@ -76,7 +84,7 @@ teardown() {
   sleep 2 # wait for authority to start TCP listener
 
   # Make the admin present its project admin credential to the authority
-  run_success "$OCKAM" secure-channel create --from admin --to "/node/authority/service/api" --identity admin --credential $admin_cred
+  run_success "$OCKAM" secure-channel create --from admin --to "/node/authority-1/service/api" --identity admin --credential $admin_cred
 
   cat <<EOF >"$OCKAM_HOME/project.json"
 {

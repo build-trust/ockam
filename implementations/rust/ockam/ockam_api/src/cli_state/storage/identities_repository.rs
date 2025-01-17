@@ -37,6 +37,9 @@ pub trait IdentitiesRepository: Send + Sync + 'static {
         identifier: &Identifier,
     ) -> Result<Option<String>>;
 
+    /// Update a named identity name
+    async fn update_name(&self, identifier: &Identifier, name: &str) -> Result<()>;
+
     /// Return the identifier associated to a named identity
     async fn get_identifier(&self, name: &str) -> Result<Option<Identifier>>;
 
@@ -96,6 +99,10 @@ impl<T: IdentitiesRepository + Send + Sync + 'static> IdentitiesRepository for A
         identifier: &Identifier,
     ) -> Result<Option<String>> {
         retry!(self.wrapped.delete_identity_by_identifier(identifier))
+    }
+
+    async fn update_name(&self, identifier: &Identifier, name: &str) -> Result<()> {
+        retry!(self.wrapped.update_name(identifier, name))
     }
 
     async fn get_identifier(&self, name: &str) -> Result<Option<Identifier>> {

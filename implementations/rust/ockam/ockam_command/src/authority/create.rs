@@ -134,17 +134,6 @@ impl CreateCommand {
         if !self.skip_is_running_check {
             self.guard_node_is_not_already_running(opts).await?;
         }
-        // Create the authority identity if it has not been created before
-        // If no name is specified on the command line, create a unique name based on the project identifier
-        let identity_name = self.identity.clone().unwrap_or(self.authority_name());
-        if opts.state.get_named_identity(&identity_name).await.is_err() {
-            opts.state.create_identity_with_name(&identity_name).await?;
-        };
-
-        opts.state
-            .create_node_with_optional_identity(&self.node_name(), &self.identity)
-            .await?;
-
         // Construct the arguments list and re-execute the ockam
         // CLI in foreground mode to start the newly created node
         let mut args = vec![
@@ -291,9 +280,21 @@ impl CreateCommand {
         let state = opts.state.clone();
 
         // Create the authority identity if it has not been created before
+        // If no name is specified on the command line, create a unique name based on the project identifier
         let identity_name = self.identity.clone().unwrap_or(self.authority_name());
         if opts.state.get_named_identity(&identity_name).await.is_err() {
-            opts.state.create_identity_with_name(&identity_name).await?;
+            // If the authority is present under the "authority" the legacy name,
+            // update that name to include the project identifier
+            match opts.state.get_named_identity("authority").await {
+                Ok(authority) => {
+                    opts.state
+                        .update_named_identity_name(&authority.identifier(), &self.authority_name())
+                        .await?;
+                }
+                Err(_) => {
+                    opts.state.create_identity_with_name(&identity_name).await?;
+                }
+            }
         };
 
         let node = state

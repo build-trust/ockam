@@ -134,6 +134,15 @@ impl IdentitiesRepository for IdentitiesSqlxDatabase {
         }
     }
 
+    async fn update_name(&self, identifier: &Identifier, name: &str) -> Result<()> {
+        query("UPDATE named_identity SET name = $1 WHERE identifier = $2")
+            .bind(name)
+            .bind(identifier)
+            .execute(&*self.database.pool)
+            .await
+            .void()
+    }
+
     async fn get_identifier(&self, name: &str) -> Result<Option<Identifier>> {
         let query = query_as(
             "SELECT identifier, name, vault_name, is_default FROM named_identity WHERE name = $1",
@@ -395,6 +404,28 @@ mod tests {
                 .await?;
             let names: Vec<String> = result.iter().map(|i| i.name()).collect();
             assert_eq!(names, vec!["name1", "name3"]);
+
+            Ok(())
+        })
+        .await
+    }
+
+    #[tokio::test]
+    async fn test_update_name() -> Result<()> {
+        with_dbs(|db| async move {
+            let repository: Arc<dyn IdentitiesRepository> =
+                Arc::new(IdentitiesSqlxDatabase::new(db));
+
+            // A name can be associated to an identity
+            let identifier1 = create_identity().await?;
+            repository
+                .store_named_identity(&identifier1, "name1", "vault1")
+                .await?;
+
+            repository.update_name(&identifier1, "new-name1").await?;
+
+            let result = repository.get_named_identity("new-name1").await?;
+            assert_eq!(result.map(|i| i.name()), Some("new-name1".to_string()));
 
             Ok(())
         })

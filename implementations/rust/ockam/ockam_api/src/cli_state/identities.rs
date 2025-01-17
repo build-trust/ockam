@@ -348,6 +348,19 @@ impl CliState {
             ))?
         }
     }
+
+    /// Update the name associated to an identifier
+    #[instrument(skip_all, fields(identifier = %identifier, name = %name))]
+    pub async fn update_named_identity_name(
+        &self,
+        identifier: &Identifier,
+        name: &str,
+    ) -> Result<()> {
+        Ok(self
+            .identities_repository()
+            .update_name(identifier, name)
+            .await?)
+    }
 }
 
 /// Support methods
