@@ -197,14 +197,19 @@ impl SqlxDatabase {
             })
             .await?;
 
-            let database_schema_already_created: bool = sqlx::query("SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'identity')")
-                .fetch_one(&*database.pool)
-                .await.into_core()?.get(0);
-
             // Only run the postgres migrations if the database has never been created.
             // This is mostly for tests. In production the database schema must be created separately
             // during the first deployment.
-            if !database_schema_already_created {
+            let migrate_database = if configuration.database_type() == DatabaseType::Postgres {
+                let database_schema_already_created: bool = sqlx::query("SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'identity')")
+                    .fetch_one(&*database.pool)
+                    .await.into_core()?.get(0);
+                !database_schema_already_created
+            } else {
+                true
+            };
+
+            if migrate_database {
                 if let Some(migration_set) = migration_set {
                     let migrator = migration_set.create_migrator()?;
                     migrator.migrate(&database.pool).await?;

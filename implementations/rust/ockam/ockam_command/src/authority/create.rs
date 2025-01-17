@@ -223,7 +223,6 @@ impl CreateCommand {
         if self.disable_trust_context_id {
             args.push("--disable_trust_context_id".to_string());
         }
-        args.push(self.node_name());
 
         run_ockam(args, opts.global_args.quiet).await
     }
