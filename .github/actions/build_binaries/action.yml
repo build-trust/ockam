@@ -55,9 +55,9 @@ runs:
         fi
 
         if [[ $use_cross_build == "true" ]]; then
-          cross build --bin ockam --target ${{ inputs.target }} --release --no-default-features -F ockam_command/aws-lc -F ockam_command/admin_commands -F ockam_command/advanced_commands
+          cross build --bin ockam --target ${{ inputs.target }} --release --no-default-features -F ockam_command/aws-lc
         else
-          cargo build --bin ockam --target ${{ inputs.target }} --release --no-default-features -F ockam_command/aws-lc -F ockam_command/admin_commands -F ockam_command/advanced_commands
+          cargo build --bin ockam --target ${{ inputs.target }} --release --no-default-features -F ockam_command/aws-lc
         fi
 
         cp target/${{ inputs.target }}/release/ockam target/${{ inputs.target }}/release/ockam_command

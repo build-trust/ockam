@@ -52,7 +52,6 @@ cfg_aliases = "0.2.1"
 [dependencies]
 arboard = "3.4.1"
 async-trait = "0.1"
-cfg-if = "1.0.0"
 clap = { version = "4.5", features = ["derive", "cargo", "wrap_help"] }
 clap_complete = "4.5.28"
 clap_mangen = "0.2.23"
@@ -108,9 +107,7 @@ serial_test = "3.0.0"
 tempfile = "3.10.1"
 
 [features]
-default = ["rust-crypto", "privileged_portals", "admin_commands", "advanced_commands"]
+default = ["rust-crypto", "privileged_portals"]
 privileged_portals = ["ockam_api/privileged_portals"]
 aws-lc = ["ockam_vault/aws-lc", "ockam_api/aws-lc", "rustls/aws-lc-rs"]
 rust-crypto = ["ockam_vault/rust-crypto", "ockam_api/rust-crypto", "rustls/ring"]
-admin_commands = []
-advanced_commands = []

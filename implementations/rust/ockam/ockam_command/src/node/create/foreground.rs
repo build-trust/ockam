@@ -1,35 +1,26 @@
-use cfg_if::cfg_if;
-use miette::IntoDiagnostic;
-use std::sync::Arc;
-use tracing::{debug, info, instrument};
-
+use crate::node::show::is_node_up;
 use crate::node::CreateCommand;
 use crate::util::foreground_args::wait_for_exit_signal;
 use crate::CommandGlobalOpts;
+use miette::miette;
+use miette::IntoDiagnostic;
 use ockam::tcp::{TcpListenerOptions, TcpTransport};
 use ockam::udp::{UdpBindArguments, UdpBindOptions, UdpTransport};
+use ockam::Address;
 use ockam::Context;
+use ockam_api::fmt_log;
 use ockam_api::nodes::service::NodeManagerTransport;
+use ockam_api::nodes::BackgroundNodeClient;
 use ockam_api::nodes::InMemoryNode;
 use ockam_api::nodes::{
     service::{NodeManagerGeneralOptions, NodeManagerTransportOptions},
     NodeManagerWorker, NODEMANAGER_ADDR,
 };
 use ockam_api::terminal::notification::NotificationHandler;
-
-cfg_if! {
-    if #[cfg(feature = "advanced_commands")] {
-        use miette::miette;
-        use tokio::time::{sleep, Duration};
-
-        use ockam::Address;
-        use ockam_api::fmt_log;
-        use ockam_api::nodes::BackgroundNodeClient;
-        use ockam_core::{route, LOCAL};
-
-        use crate::node::show::is_node_up;
-    }
-}
+use ockam_core::{route, LOCAL};
+use std::sync::Arc;
+use tokio::time::{sleep, Duration};
+use tracing::{debug, info, instrument};
 
 impl CreateCommand {
     #[instrument(skip_all, fields(node_name = self.name))]
@@ -121,7 +112,6 @@ impl CreateCommand {
             .into_diagnostic()?;
         debug!("node manager worker started");
 
-        #[cfg(feature = "advanced_commands")]
         if self.start_services(ctx, &opts).await.is_err() {
             //TODO: Process should terminate on any error during its setup phase,
             //      not just during the start_services.
@@ -157,7 +147,6 @@ impl CreateCommand {
         Ok(())
     }
 
-    #[cfg(feature = "advanced_commands")]
     async fn start_services(&self, ctx: &Context, opts: &CommandGlobalOpts) -> miette::Result<()> {
         if let Some(config) = &self.launch_configuration {
             if let Some(startup_services) = &config.startup_services {

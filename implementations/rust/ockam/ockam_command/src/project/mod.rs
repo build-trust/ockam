@@ -9,27 +9,22 @@ pub use version::VersionCommand;
 
 use crate::{docs, Command, CommandGlobalOpts};
 
+mod addon;
+mod create;
+mod delete;
 pub(crate) mod enroll;
 mod import;
 mod info;
 mod list;
 mod show;
+mod ticket;
 #[allow(unused)]
 pub mod util;
 mod version;
-
-cfg_if::cfg_if! {
-    if #[cfg(feature = "admin_commands")] {
-        mod addon;
-        mod create;
-        mod delete;
-        mod ticket;
-        pub use addon::AddonCommand;
-        pub use create::CreateCommand;
-        pub use delete::DeleteCommand;
-        pub use ticket::TicketCommand;
-    }
-}
+pub use addon::AddonCommand;
+pub use create::CreateCommand;
+pub use delete::DeleteCommand;
+pub use ticket::TicketCommand;
 
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
 
@@ -53,14 +48,9 @@ pub enum ProjectSubcommand {
     Show(ShowCommand),
     Version(VersionCommand),
     Information(InfoCommand),
-
-    #[cfg(feature = "admin_commands")]
     Ticket(TicketCommand),
-    #[cfg(feature = "admin_commands")]
     Create(CreateCommand),
-    #[cfg(feature = "admin_commands")]
     Delete(DeleteCommand),
-    #[cfg(feature = "admin_commands")]
     Addon(AddonCommand),
 }
 
@@ -73,14 +63,9 @@ impl ProjectCommand {
             ProjectSubcommand::Show(c) => c.run(opts),
             ProjectSubcommand::Version(c) => c.run(opts),
             ProjectSubcommand::Information(c) => c.run(opts),
-
-            #[cfg(feature = "admin_commands")]
             ProjectSubcommand::Ticket(c) => c.run(opts),
-            #[cfg(feature = "admin_commands")]
             ProjectSubcommand::Create(c) => c.run(opts),
-            #[cfg(feature = "admin_commands")]
             ProjectSubcommand::Delete(c) => c.run(opts),
-            #[cfg(feature = "admin_commands")]
             ProjectSubcommand::Addon(c) => c.run(opts),
         }
     }
@@ -93,14 +78,9 @@ impl ProjectCommand {
             ProjectSubcommand::Show(c) => c.name(),
             ProjectSubcommand::Version(c) => c.name(),
             ProjectSubcommand::Information(c) => c.name(),
-
-            #[cfg(feature = "admin_commands")]
             ProjectSubcommand::Ticket(c) => c.name(),
-            #[cfg(feature = "admin_commands")]
             ProjectSubcommand::Create(c) => c.name(),
-            #[cfg(feature = "admin_commands")]
             ProjectSubcommand::Delete(c) => c.name(),
-            #[cfg(feature = "admin_commands")]
             ProjectSubcommand::Addon(c) => c.name(),
         }
     }

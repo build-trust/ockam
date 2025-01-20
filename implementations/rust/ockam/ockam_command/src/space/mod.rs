@@ -5,17 +5,12 @@ pub use show::ShowCommand;
 
 use crate::{docs, Command, CommandGlobalOpts};
 
+mod create;
+mod delete;
 mod list;
 mod show;
-
-cfg_if::cfg_if! {
-    if #[cfg(feature = "admin_commands")] {
-        mod create;
-        mod delete;
-        pub use create::CreateCommand;
-        pub use delete::DeleteCommand;
-    }
-}
+pub use create::CreateCommand;
+pub use delete::DeleteCommand;
 
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
 
@@ -35,10 +30,7 @@ pub struct SpaceCommand {
 pub enum SpaceSubcommand {
     List(ListCommand),
     Show(ShowCommand),
-
-    #[cfg(feature = "admin_commands")]
     Create(CreateCommand),
-    #[cfg(feature = "admin_commands")]
     Delete(DeleteCommand),
 }
 
@@ -47,10 +39,7 @@ impl SpaceCommand {
         match self.subcommand {
             SpaceSubcommand::List(c) => c.run(opts),
             SpaceSubcommand::Show(c) => c.run(opts),
-
-            #[cfg(feature = "admin_commands")]
             SpaceSubcommand::Create(c) => c.run(opts),
-            #[cfg(feature = "admin_commands")]
             SpaceSubcommand::Delete(c) => c.run(opts),
         }
     }
@@ -59,10 +48,7 @@ impl SpaceCommand {
         match &self.subcommand {
             SpaceSubcommand::List(c) => c.name(),
             SpaceSubcommand::Show(c) => c.name(),
-
-            #[cfg(feature = "admin_commands")]
             SpaceSubcommand::Create(c) => c.name(),
-            #[cfg(feature = "admin_commands")]
             SpaceSubcommand::Delete(c) => c.name(),
         }
     }

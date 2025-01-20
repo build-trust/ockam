@@ -15,64 +15,54 @@ use ockam_api::{fmt_log, fmt_warn, CliState};
 use ockam_core::OpenTelemetryContext;
 use ockam_node::Context;
 
+use crate::admin::AdminCommand;
+use crate::authority::{AuthorityCommand, AuthoritySubcommand};
 use crate::command_global_opts::CommandGlobalOpts;
 use crate::completion::CompletionCommand;
 use crate::credential::CredentialCommand;
 use crate::docs;
+use crate::enroll::EnrollCommand;
 use crate::environment::EnvironmentCommand;
+use crate::flow_control::FlowControlCommand;
 use crate::identity::IdentityCommand;
 use crate::influxdb::inlet::InfluxDBInletCommand;
 use crate::influxdb::outlet::InfluxDBOutletCommand;
+use crate::kafka::consumer::KafkaConsumerCommand;
 use crate::kafka::inlet::KafkaInletCommand;
 use crate::kafka::outlet::KafkaOutletCommand;
+use crate::kafka::producer::KafkaProducerCommand;
+use crate::lease::LeaseCommand;
 use crate::manpages::ManpagesCommand;
+use crate::markdown::MarkdownCommand;
+use crate::message::MessageCommand;
 use crate::node::{NodeCommand, NodeSubcommand};
 use crate::policy::PolicyCommand;
 use crate::project::ProjectCommand;
+use crate::project_admin::ProjectAdminCommand;
+use crate::project_member::ProjectMemberCommand;
 use crate::relay::RelayCommand;
 use crate::rendezvous::RendezvousCommand;
 use crate::reset::ResetCommand;
 use crate::run::RunCommand;
+use crate::secure_channel::listener::SecureChannelListenerCommand;
+use crate::secure_channel::SecureChannelCommand;
+use crate::service::ServiceCommand;
+use crate::share::ShareCommand;
 use crate::shared_args::RetryOpts;
+use crate::sidecar::SidecarCommand;
+use crate::space::SpaceCommand;
+use crate::space_admin::SpaceAdminCommand;
 use crate::status::StatusCommand;
+use crate::subscription::SubscriptionCommand;
+use crate::tcp::connection::TcpConnectionCommand;
 use crate::tcp::inlet::TcpInletCommand;
+use crate::tcp::listener::TcpListenerCommand;
 use crate::tcp::outlet::TcpOutletCommand;
 use crate::util::async_cmd;
 use crate::vault::VaultCommand;
+use crate::worker::WorkerCommand;
 use crate::Error;
 use crate::Result;
-
-cfg_if::cfg_if! {
-    if #[cfg(feature = "admin_commands")] {
-        use crate::enroll::EnrollCommand;
-        use crate::admin::AdminCommand;
-        use crate::authority::{AuthorityCommand, AuthoritySubcommand};
-        use crate::lease::LeaseCommand;
-        use crate::markdown::MarkdownCommand;
-        use crate::project_admin::ProjectAdminCommand;
-        use crate::project_member::ProjectMemberCommand;
-        use crate::sidecar::SidecarCommand;
-        use crate::space::SpaceCommand;
-        use crate::space_admin::SpaceAdminCommand;
-        use crate::subscription::SubscriptionCommand;
-    }
-}
-
-cfg_if::cfg_if! {
-    if #[cfg(feature = "advanced_commands")] {
-        use crate::flow_control::FlowControlCommand;
-        use crate::kafka::consumer::KafkaConsumerCommand;
-        use crate::kafka::producer::KafkaProducerCommand;
-        use crate::message::MessageCommand;
-        use crate::secure_channel::listener::SecureChannelListenerCommand;
-        use crate::secure_channel::SecureChannelCommand;
-        use crate::service::ServiceCommand;
-        use crate::share::ShareCommand;
-        use crate::tcp::listener::TcpListenerCommand;
-        use crate::tcp::connection::TcpConnectionCommand;
-        use crate::worker::WorkerCommand;
-    }
-}
 
 #[derive(Clone, Debug, Subcommand)]
 #[command(about = docs::about("List of commands which can be executed with `ockam`"))]
@@ -101,54 +91,27 @@ pub enum OckamSubcommand {
     Completion(CompletionCommand),
     Environment(EnvironmentCommand),
 
-    #[cfg(feature = "admin_commands")]
     Enroll(EnrollCommand),
-    #[cfg(feature = "admin_commands")]
     Admin(AdminCommand),
-    #[cfg(feature = "admin_commands")]
     Space(SpaceCommand),
-    #[cfg(feature = "admin_commands")]
     SpaceAdmin(SpaceAdminCommand),
-    #[cfg(feature = "admin_commands")]
     ProjectAdmin(ProjectAdminCommand),
-    #[cfg(feature = "admin_commands")]
     ProjectMember(ProjectMemberCommand),
-
-    #[cfg(feature = "admin_commands")]
     Sidecar(SidecarCommand),
-    #[cfg(feature = "admin_commands")]
     Subscription(SubscriptionCommand),
-    #[cfg(feature = "admin_commands")]
     Lease(LeaseCommand),
-    #[cfg(feature = "admin_commands")]
     Authority(AuthorityCommand),
-
-    #[cfg(feature = "admin_commands")]
     Markdown(MarkdownCommand),
-
-    #[cfg(feature = "advanced_commands")]
     Worker(WorkerCommand),
-    #[cfg(feature = "advanced_commands")]
     Service(ServiceCommand),
-    #[cfg(feature = "advanced_commands")]
     Message(MessageCommand),
-
-    #[cfg(feature = "advanced_commands")]
     SecureChannelListener(SecureChannelListenerCommand),
-    #[cfg(feature = "advanced_commands")]
     SecureChannel(SecureChannelCommand),
-    #[cfg(feature = "advanced_commands")]
     TcpListener(TcpListenerCommand),
-    #[cfg(feature = "advanced_commands")]
     TcpConnection(TcpConnectionCommand),
-    #[cfg(feature = "advanced_commands")]
     FlowControl(FlowControlCommand),
-
-    #[cfg(feature = "advanced_commands")]
     KafkaConsumer(KafkaConsumerCommand),
-    #[cfg(feature = "advanced_commands")]
     KafkaProducer(KafkaProducerCommand),
-    #[cfg(feature = "advanced_commands")]
     Share(ShareCommand),
 }
 
@@ -177,50 +140,27 @@ impl OckamSubcommand {
             OckamSubcommand::Completion(c) => c.run(),
             OckamSubcommand::Environment(c) => c.run(),
 
-            #[cfg(feature = "admin_commands")]
             OckamSubcommand::Enroll(c) => c.run(opts),
-            #[cfg(feature = "admin_commands")]
             OckamSubcommand::Admin(c) => c.run(opts),
-            #[cfg(feature = "admin_commands")]
             OckamSubcommand::Space(c) => c.run(opts),
-            #[cfg(feature = "admin_commands")]
             OckamSubcommand::SpaceAdmin(c) => c.run(opts),
-            #[cfg(feature = "admin_commands")]
             OckamSubcommand::ProjectAdmin(c) => c.run(opts),
-            #[cfg(feature = "admin_commands")]
             OckamSubcommand::ProjectMember(c) => c.run(opts),
-            #[cfg(feature = "admin_commands")]
             OckamSubcommand::Sidecar(c) => c.run(opts),
-            #[cfg(feature = "admin_commands")]
             OckamSubcommand::Subscription(c) => c.run(opts),
-            #[cfg(feature = "admin_commands")]
             OckamSubcommand::Lease(c) => c.run(opts),
-            #[cfg(feature = "admin_commands")]
             OckamSubcommand::Authority(c) => c.run(opts),
-            #[cfg(feature = "admin_commands")]
             OckamSubcommand::Markdown(c) => c.run(),
-
-            #[cfg(feature = "advanced_commands")]
             OckamSubcommand::Worker(c) => c.run(opts),
-            #[cfg(feature = "advanced_commands")]
             OckamSubcommand::Service(c) => c.run(opts),
-            #[cfg(feature = "advanced_commands")]
             OckamSubcommand::Message(c) => c.run(opts),
-            #[cfg(feature = "advanced_commands")]
             OckamSubcommand::SecureChannelListener(c) => c.run(opts),
-            #[cfg(feature = "advanced_commands")]
             OckamSubcommand::SecureChannel(c) => c.run(opts),
-            #[cfg(feature = "advanced_commands")]
             OckamSubcommand::TcpListener(c) => c.run(opts),
-            #[cfg(feature = "advanced_commands")]
             OckamSubcommand::TcpConnection(c) => c.run(opts),
-            #[cfg(feature = "advanced_commands")]
             OckamSubcommand::FlowControl(c) => c.run(opts),
-            #[cfg(feature = "advanced_commands")]
             OckamSubcommand::KafkaConsumer(c) => c.run(opts),
-            #[cfg(feature = "advanced_commands")]
             OckamSubcommand::KafkaProducer(c) => c.run(opts),
-            #[cfg(feature = "advanced_commands")]
             OckamSubcommand::Share(c) => c.run(opts),
         }
     }
@@ -244,7 +184,7 @@ impl OckamSubcommand {
                 NodeSubcommand::Create(cmd) => !cmd.foreground_args.child_process,
                 _ => false,
             },
-            #[cfg(feature = "admin_commands")]
+
             OckamSubcommand::Authority(cmd) => match &cmd.subcommand {
                 AuthoritySubcommand::Create(cmd) => !cmd.child_process,
             },
@@ -259,7 +199,7 @@ impl OckamSubcommand {
                 NodeSubcommand::Create(cmd) => cmd.foreground_args.child_process,
                 _ => false,
             },
-            #[cfg(feature = "admin_commands")]
+
             OckamSubcommand::Authority(cmd) => match &cmd.subcommand {
                 AuthoritySubcommand::Create(cmd) => cmd.child_process,
             },
@@ -280,7 +220,7 @@ impl OckamSubcommand {
                 }
                 _ => None,
             },
-            #[cfg(feature = "admin_commands")]
+
             OckamSubcommand::Authority(cmd) => match &cmd.subcommand {
                 AuthoritySubcommand::Create(cmd) => {
                     if cmd.child_process {
@@ -307,7 +247,7 @@ impl OckamSubcommand {
                 }
                 _ => None,
             },
-            #[cfg(feature = "admin_commands")]
+
             OckamSubcommand::Authority(cmd) => match &cmd.subcommand {
                 AuthoritySubcommand::Create(cmd) => {
                     if cmd.child_process || !cmd.foreground {
@@ -344,51 +284,27 @@ impl OckamSubcommand {
             OckamSubcommand::Manpages(c) => c.name(),
             OckamSubcommand::Completion(c) => c.name(),
             OckamSubcommand::Environment(c) => c.name(),
-
-            #[cfg(feature = "admin_commands")]
             OckamSubcommand::Enroll(c) => c.name(),
-            #[cfg(feature = "admin_commands")]
             OckamSubcommand::Admin(c) => c.name(),
-            #[cfg(feature = "admin_commands")]
             OckamSubcommand::Space(c) => c.name(),
-            #[cfg(feature = "admin_commands")]
             OckamSubcommand::SpaceAdmin(c) => c.name(),
-            #[cfg(feature = "admin_commands")]
             OckamSubcommand::ProjectAdmin(c) => c.name(),
-            #[cfg(feature = "admin_commands")]
             OckamSubcommand::ProjectMember(c) => c.name(),
-            #[cfg(feature = "admin_commands")]
             OckamSubcommand::Sidecar(c) => c.name(),
-            #[cfg(feature = "admin_commands")]
             OckamSubcommand::Subscription(c) => c.name(),
-            #[cfg(feature = "admin_commands")]
             OckamSubcommand::Lease(c) => c.name(),
-            #[cfg(feature = "admin_commands")]
             OckamSubcommand::Authority(c) => c.name(),
-            #[cfg(feature = "admin_commands")]
             OckamSubcommand::Markdown(c) => c.name(),
-
-            #[cfg(feature = "advanced_commands")]
             OckamSubcommand::Worker(c) => c.name(),
-            #[cfg(feature = "advanced_commands")]
             OckamSubcommand::Service(c) => c.name(),
-            #[cfg(feature = "advanced_commands")]
             OckamSubcommand::Message(c) => c.name(),
-            #[cfg(feature = "advanced_commands")]
             OckamSubcommand::SecureChannelListener(c) => c.name(),
-            #[cfg(feature = "advanced_commands")]
             OckamSubcommand::SecureChannel(c) => c.name(),
-            #[cfg(feature = "advanced_commands")]
             OckamSubcommand::TcpListener(c) => c.name(),
-            #[cfg(feature = "advanced_commands")]
             OckamSubcommand::TcpConnection(c) => c.name(),
-            #[cfg(feature = "advanced_commands")]
             OckamSubcommand::FlowControl(c) => c.name(),
-            #[cfg(feature = "advanced_commands")]
             OckamSubcommand::KafkaConsumer(c) => c.name(),
-            #[cfg(feature = "advanced_commands")]
             OckamSubcommand::KafkaProducer(c) => c.name(),
-            #[cfg(feature = "advanced_commands")]
             OckamSubcommand::Share(c) => c.name(),
         }
     }
