@@ -410,17 +410,15 @@ jobs:
           ref: ${{ github.event.inputs.release_branch }}
           path: aws
 
-      - name: Login to AWS
+      - name: Download Assets From AWS
         uses: ./aws/.github/actions/aws_upload
         with:
           aws_role: ${{ env.AWS_ROLE }}
           aws_role_session_name: aws_upload
           aws_region: ${{ env.AWS_REGION }}
-
-      - name: Fetch All Assets
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: aws s3 sync s3://${{ env.BUCKET_NAME }}/v${{ needs.create_release.outputs.version }} . && ls
+          bucket_name: ${{ env.BUCKET_NAME }}
+          release_version: "v${{ needs.create_release.outputs.version }}"
+          download_release_dir: "."
 
       - name: Generate File SHASum
         run: shasum -a 256 *ockam* > sha256sums.txt
