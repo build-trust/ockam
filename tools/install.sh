@@ -1,7 +1,6 @@
 #!/bin/bash
 
 set -e
-
 # This script fetches precompiled released Ockam binaries and
 # stores them in the current directory.
 # https://github.com/build-trust/ockam/releases
@@ -181,19 +180,23 @@ download() {
   required sed
 
   local _version _url
-  local _download_base_url="https://downloads.ockam.io"
+  local _download_base_url="https://downloads.ockam.io/command"
   local _binary_file_name="$1"
 
   if [ "$2" ]; then
     _version="$2"
-    _url="$_download_base_url/ockam_$_version/$_binary_file_name"
-
     info "Installing $_version"
   else
-    _url="https://github.com/build-trust/ockam/releases/latest/download/$_binary_file_name"
+    set -o pipefail
+
+    latest_tag_name=$(curl --fail --silent --show-error "https://api.github.com/repos/build-trust/ockam/releases/latest" | jq -r '.tag_name')
+    prefix="ockam_"
+    _version=${latest_tag_name#"$prefix"}
 
     info "Installing latest version"
   fi
+
+  _url="$_download_base_url/$_version/$_binary_file_name"
 
   info "Downloading $_url"
   curl --proto '=https' --tlsv1.2 --location --silent --fail --show-error --output "$install_path/bin/ockam" "$_url"
@@ -327,7 +330,7 @@ main() {
       fi
       shift
       ;;
-    
+
     -b | --binary-file)
       shift
       if test $# -gt 0; then

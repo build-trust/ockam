@@ -203,7 +203,6 @@ function release_ockam_binaries() {
 function release_ockam_package() {
   set -e
   tag="$1"
-  tag=${tag#"ockam_"}
   file_and_sha="$2"
   is_release="$3"
   branch="develop"
@@ -346,7 +345,7 @@ else
   latest_tag_name="$LATEST_TAG_NAME"
 fi
 
-version="${latest_tag_name//ockam_/}"
+release_version="${latest_tag_name//ockam_/}"
 
 if [[ $IS_DRAFT_RELEASE == true ]]; then
   # Get File hash from draft release
@@ -356,7 +355,7 @@ if [[ $IS_DRAFT_RELEASE == true ]]; then
   temp_dir=$(mktemp -d)
   pushd "$temp_dir"
 
-  curl -O -R "${OCKAM_RELEASE_URL}/${version}/sha256sums.txt"
+  curl -O -R "${OCKAM_RELEASE_URL}/${release_version}/sha256sums.txt"
 
   # TODO Ensure that SHA are cosign verified
   while read -r line; do
@@ -374,14 +373,14 @@ if [[ $IS_DRAFT_RELEASE == true ]]; then
 
   if [[ -z $SKIP_OCKAM_PACKAGE_RELEASE || $SKIP_OCKAM_PACKAGE_RELEASE == false ]]; then
     echo "Releasing Ockam docker image"
-    release_ockam_package "$latest_tag_name" "$file_and_sha" false
+    release_ockam_package "$release_version" "$file_and_sha" false
     success_info "Ockam docker package draft release successful...."
   fi
 
   # Homebrew Release
   if [[ -z $SKIP_HOMEBREW_BUMP || $SKIP_HOMEBREW_BUMP == false ]]; then
     echo "Bumping Homebrew"
-    homebrew_repo_bump "$latest_tag_name" "$file_and_sha"
+    homebrew_repo_bump "$release_version" "$file_and_sha"
     success_info "Homebrew release successful...."
   fi
 
@@ -407,7 +406,7 @@ if [[ $IS_DRAFT_RELEASE == false ]]; then
   # Check if the SHAsum file exists for the released binaries. We generate shasum file
   # after all binaries are released.
   if [[ -z $SKIP_OCKAM_DRAFT_RELEASE || $SKIP_OCKAM_DRAFT_RELEASE == false ]]; then
-    curl -O -R "${OCKAM_RELEASE_URL}/${version}/sha256sums.txt"
+    curl -O -R "${OCKAM_RELEASE_URL}/${release_version}/sha256sums.txt"
   fi
 
   # Check if there's an homebrew PR
