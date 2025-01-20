@@ -1,6 +1,7 @@
 #!/bin/bash
 
 set -e
+
 # This script fetches precompiled released Ockam binaries and
 # stores them in the current directory.
 # https://github.com/build-trust/ockam/releases
@@ -101,16 +102,6 @@ display_usage() {
   echo "    -h, --help                show brief help"
   echo "    -p, --install-path PATH   specify the location for installation"
   echo "                              (default path is ~/.ockam)"
-  echo "    -b, --binary-file FILE    specify the binary file to download"
-  echo "                              (default binary is detected based on OS and CPU)"
-  echo "                              available binaries are:"
-  echo "                                - x86_64-unknown-linux-gnu"
-  echo "                                - aarch64-unknown-linux-gnu"
-  echo "                                - x86_64-unknown-linux-musl"
-  echo "                                - aarch64-unknown-linux-musl"
-  echo "                                - armv7-unknown-linux-musleabihf"
-  echo "                                - aarch64-apple-darwin"
-  echo "                                - x86_64-apple-darwin"
   echo "    -v, --version VERSION     specify the version to install"
   echo "        --no-modify-path      do not add ockam to the PATH"
 }
@@ -180,23 +171,20 @@ download() {
   required sed
 
   local _version _url
-  local _download_base_url="https://downloads.ockam.io/command"
+  local _download_base_url="https://github.com/build-trust/ockam/releases/download"
+  local _api='https://api.github.com/repos/build-trust/ockam/releases'
   local _binary_file_name="$1"
 
   if [ "$2" ]; then
     _version="$2"
+    _url="$_download_base_url/ockam_$_version/$_binary_file_name"
+
     info "Installing $_version"
   else
-    set -o pipefail
-
-    latest_tag_name=$(curl --fail --silent --show-error "https://api.github.com/repos/build-trust/ockam/releases/latest" | jq -r '.tag_name')
-    prefix="ockam_"
-    _version=${latest_tag_name#"$prefix"}
+    _url="https://github.com/build-trust/ockam/releases/latest/download/$_binary_file_name"
 
     info "Installing latest version"
   fi
-
-  _url="$_download_base_url/$_version/$_binary_file_name"
 
   info "Downloading $_url"
   curl --proto '=https' --tlsv1.2 --location --silent --fail --show-error --output "$install_path/bin/ockam" "$_url"
@@ -297,9 +285,6 @@ main() {
   install_path="$HOME/.ockam"
   local _modify_path="true"
 
-  detect_binary_file_name
-  local _binary_file_name="$return_value"
-
   while test "$#" -gt 0; do
     case "$1" in
     -h | --help)
@@ -331,17 +316,6 @@ main() {
       shift
       ;;
 
-    -b | --binary-file)
-      shift
-      if test $# -gt 0; then
-        _binary_file_name="ockam.$1"
-      else
-        display_usage
-        exit 1
-      fi
-      shift
-      ;;
-
     --no-modify-path)
       shift
       _modify_path="false"
@@ -357,6 +331,9 @@ main() {
 
   echo
   info "Installing Ockam Command ..."
+
+  detect_binary_file_name
+  local _binary_file_name="$return_value"
 
   create_bin
   download "$_binary_file_name" "$_version"
