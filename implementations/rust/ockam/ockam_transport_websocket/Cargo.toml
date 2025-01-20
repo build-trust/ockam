@@ -1,6 +1,6 @@
 [package]
 name = "ockam_transport_websocket"
-version = "0.125.0"
+version = "0.126.0"
 authors = ["Ockam Developers"]
 categories = [
   "cryptography",
@@ -45,13 +45,13 @@ alloc = [
 
 [dependencies]
 futures-util = { version = "0.3", default-features = false, features = ["tokio-io"] }
-ockam_core = { path = "../ockam_core", version = "^0.123.0", default-features = false }
-ockam_node = { path = "../ockam_node", version = "^0.136.0", default-features = false }
-ockam_transport_core = { path = "../ockam_transport_core", version = "^0.100.0", default-features = false }
+ockam_core = { path = "../ockam_core", version = "^0.124.0", default-features = false }
+ockam_node = { path = "../ockam_node", version = "^0.137.0", default-features = false }
+ockam_transport_core = { path = "../ockam_transport_core", version = "^0.101.0", default-features = false }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 tokio = { version = "1.41", default-features = false, optional = true, features = ["rt-multi-thread", "sync", "net", "macros", "time", "io-std"] }
 tokio-tungstenite = { version = "0.24.0", default-features = false, optional = true, features = ["connect"] }
 tracing = { version = "0.1", default-features = false }
 
 [dev-dependencies]
-ockam_macros = { path = "../ockam_macros", version = "^0.36.0" }
+ockam_macros = { path = "../ockam_macros", version = "^0.37.0" }
