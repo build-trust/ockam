@@ -53,13 +53,7 @@ jobs:
           aws_region: ${{ vars.AWS_REGION }}
           bucket_name: ${{ vars.AWS_BUCKET_NAME }}
           release_version: "${{ github.event.inputs.tag }}"
-          download_release_dir: "."
-
-      - id: image
-        run: |
-          tag_name="${{ github.event.inputs.tag }}"
-          version=${tag_name:7}
-          echo "image=ghcr.io/${ORGANIZATION}/$ARTIFACT_NAME:${version}-draft" >> $GITHUB_OUTPUT
+          download_release_dir: "assets"
 
       - name: Update Docker Template
         run: |
@@ -106,7 +100,8 @@ jobs:
       - name: Build And Publish As Draft
         run: |
           tag_name="${{ github.event.inputs.tag }}"
-          version=${tag_name:7}
+          # strip off the 'v' prefix from v0.146.0
+          version=${tag_name:1}
 
           docker buildx build --push \
             --tag ghcr.io/${ORGANIZATION}/ockam:${version}-draft \
@@ -135,7 +130,8 @@ jobs:
         id: image
         run: |
           tag_name="${{ github.event.inputs.tag }}"
-          version=${tag_name:7}
+          # strip off the 'v' prefix
+          version=${tag_name:1}
           echo "version=${version}" >> $GITHUB_OUTPUT
 
       - name: Deploy Latest Image
