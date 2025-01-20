@@ -1,7 +1,7 @@
 use ockam_core::async_trait;
 use ockam_core::compat::boxed::Box;
-use ockam_core::{Address, Decodable, LocalMessage, Processor, Result, TransportMessage};
-use ockam_node::Context;
+use ockam_core::{Address, Decodable, LocalMessage, Result, TransportMessage};
+use ockam_node::{Context, Worker};
 use ockam_transport_core::TransportError;
 
 use crate::driver::Source;
@@ -32,11 +32,11 @@ where
 }
 
 #[async_trait]
-impl<A> Processor for BleRecvProcessor<A>
+impl<A> Worker for BleRecvProcessor<A>
 where
     A: BleStreamDriver + Send + 'static,
 {
-    type Context = Context;
+    type Message = ();
 
     async fn process(&mut self, ctx: &mut Context) -> Result<bool> {
         let mut buffer = [0_u8; crate::driver::MAX_OCKAM_MESSAGE_LENGTH];

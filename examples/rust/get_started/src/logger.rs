@@ -4,7 +4,6 @@ pub struct Logger;
 
 #[ockam::worker]
 impl Worker for Logger {
-    type Context = Context;
     type Message = Any;
 
     /// This handle function takes any incoming message and print its content as a UTF-8 string

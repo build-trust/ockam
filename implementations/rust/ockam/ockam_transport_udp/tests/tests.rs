@@ -1,6 +1,6 @@
 use ockam_core::compat::rand::{self, Rng};
-use ockam_core::{route, Result, Routed, Worker};
-use ockam_node::{Context, MessageSendReceiveOptions};
+use ockam_core::{route, Result, Routed};
+use ockam_node::{Context, MessageSendReceiveOptions, Worker};
 use ockam_transport_core::MAXIMUM_MESSAGE_LENGTH;
 use ockam_transport_udp::{UdpBindArguments, UdpBindOptions, UdpTransport, UDP};
 use std::net::SocketAddr;
@@ -442,7 +442,6 @@ impl Echoer {
 #[ockam_core::worker]
 impl Worker for Echoer {
     type Message = String;
-    type Context = Context;
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<String>) -> Result<()> {
         if self.check_sender_is_the_same {

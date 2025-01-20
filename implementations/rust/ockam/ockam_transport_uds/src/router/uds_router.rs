@@ -1,9 +1,9 @@
 use core::ops::Deref;
 use ockam_core::{
     async_trait, compat::sync::Arc, Address, AllowAll, Any, Decodable, LocalMessage, Mailbox,
-    Mailboxes, Result, Routed, Worker,
+    Mailboxes, Result, Routed,
 };
-use ockam_node::{Context, WorkerBuilder};
+use ockam_node::{Context, Worker, WorkerBuilder};
 use ockam_transport_core::TransportError;
 use std::collections::BTreeMap;
 use tracing::{debug, error, trace};
@@ -268,7 +268,6 @@ impl UdsRouter {
 
 #[async_trait]
 impl Worker for UdsRouter {
-    type Context = Context;
     type Message = Any;
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Any>) -> Result<()> {

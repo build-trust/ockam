@@ -13,8 +13,8 @@ use hyper_util::rt::TokioIo;
 use crate::nodes::models::transport::Port;
 use crate::nodes::NodeManager;
 use crate::{ApiError, HttpError, Result};
-use ockam_core::{async_trait, Address, Processor};
-use ockam_node::{Context, ProcessorBuilder};
+use ockam_core::{async_trait, Address};
+use ockam_node::{Context, Worker, WorkerBuilder};
 use serde::Serialize;
 use tokio::net::TcpListener;
 
@@ -46,7 +46,7 @@ impl HttpServer {
             node_manager: Arc::downgrade(&node_manager),
             tcp_listener: Arc::new(listener),
         };
-        ProcessorBuilder::new(processor)
+        WorkerBuilder::new(processor)
             .with_address(Address::random_tagged("node_http_server"))
             .start(context)?;
         info!("HTTP server listening on: {addr:?}");
@@ -108,15 +108,15 @@ impl HttpServerProcessor {
 }
 
 #[async_trait]
-impl Processor for HttpServerProcessor {
-    type Context = Context;
+impl Worker for HttpServerProcessor {
+    type Message = ();
 
-    async fn shutdown(&mut self, _context: &mut Self::Context) -> ockam_core::Result<()> {
+    async fn shutdown(&mut self, _context: &mut Context) -> ockam_core::Result<()> {
         debug!("Shutting down HttpServerProcessor");
         Ok(())
     }
 
-    async fn process(&mut self, _context: &mut Self::Context) -> ockam_core::Result<bool> {
+    async fn process(&mut self, _context: &mut Context) -> ockam_core::Result<bool> {
         if let Ok((stream, _)) = self.tcp_listener.accept().await {
             let io = TokioIo::new(stream);
             let service = service_fn(|req| {

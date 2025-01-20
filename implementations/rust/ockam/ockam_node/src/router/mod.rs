@@ -1,4 +1,3 @@
-mod processor;
 mod record;
 #[allow(clippy::module_inception)]
 mod router;

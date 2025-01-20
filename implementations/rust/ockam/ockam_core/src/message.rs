@@ -302,8 +302,7 @@ impl<M: Message + Debug> Debug for Routed<M> {
 ///
 /// #[ockam::worker]
 /// impl Worker for Logger {
-///     type Context = Context;
-///     type Message = Any;
+///     ///     type Message = Any;
 ///
 ///     /// This Worker will take any incoming message, print out the payload
 ///     /// and then forward it to the next hop in its onward route.

@@ -18,7 +18,6 @@ impl Relay {
 
 #[ockam::worker]
 impl Worker for Relay {
-    type Context = Context;
     type Message = Any;
 
     /// This handle function takes any incoming message and forwards

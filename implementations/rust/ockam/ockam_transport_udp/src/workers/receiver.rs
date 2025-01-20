@@ -3,8 +3,8 @@ use crate::messages::UdpTransportMessage;
 use crate::workers::pending_messages::PendingRoutingMessageStorage;
 use crate::UDP;
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::{async_trait, Address, Error, LocalMessage, Processor, Result, RouteBuilder};
-use ockam_node::Context;
+use ockam_core::{async_trait, Address, Error, LocalMessage, Result, RouteBuilder};
+use ockam_node::{Context, Worker};
 use std::net::SocketAddr;
 use tracing::{trace, warn};
 
@@ -50,10 +50,10 @@ impl UdpReceiverProcessor {
 }
 
 #[async_trait]
-impl Processor for UdpReceiverProcessor {
-    type Context = Context;
+impl Worker for UdpReceiverProcessor {
+    type Message = ();
 
-    async fn process(&mut self, ctx: &mut Self::Context) -> Result<bool> {
+    async fn process(&mut self, ctx: &mut Context) -> Result<bool> {
         trace!("Waiting for incoming UDP datagram...");
 
         self.buffer.clear();

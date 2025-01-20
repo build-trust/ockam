@@ -6,9 +6,9 @@ use std::sync::Arc;
 pub(crate) use handle::WebSocketRouterHandle;
 use ockam_core::{
     async_trait, Address, AllowAll, Any, Decodable, LocalMessage, Mailbox, Mailboxes, Message,
-    Result, Routed, Worker,
+    Result, Routed,
 };
-use ockam_node::{Context, WorkerBuilder};
+use ockam_node::{Context, Worker, WorkerBuilder};
 use ockam_transport_core::TransportError;
 
 use crate::workers::WorkerPair;
@@ -115,7 +115,6 @@ impl WebSocketRouter {
 #[async_trait]
 impl Worker for WebSocketRouter {
     type Message = Any;
-    type Context = Context;
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Any>) -> Result<()> {
         let return_route = msg.return_route().clone();

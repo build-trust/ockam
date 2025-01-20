@@ -1,11 +1,14 @@
 use crate::channel_types::OneshotReceiver;
-use crate::relay::CtrlSignal;
 use crate::tokio::runtime::Handle;
-use crate::Context;
-use cfg_if::cfg_if;
-use ockam_core::{Message, RelayMessage, Result, Routed, Worker};
-#[cfg(feature = "std")]
-use opentelemetry::trace::FutureExt;
+use crate::{Context, Worker};
+use ockam_core::Message;
+
+/// A signal type used to communicate between router and worker relay
+#[derive(Clone, Debug)]
+pub enum CtrlSignal {
+    /// Interrupt current message execution and shut down
+    InterruptStop,
+}
 
 /// Worker relay machinery
 ///
@@ -25,74 +28,9 @@ impl<W: Worker> WorkerRelay<W> {
 
 impl<W, M> WorkerRelay<W>
 where
-    W: Worker<Context = Context, Message = M>,
+    W: Worker<Message = M>,
     M: Message + Send + 'static,
 {
-    /// Convenience function to parse an incoming direct message and
-    /// wrap it in a [`Routed`]
-    ///
-    /// This provides return route information for workers via a
-    /// composition side-channel.
-    ///
-    /// This is currently called twice, once when the message is
-    /// dispatched to the worker for authorization and again for
-    /// handling. Two unpleasant ways to avoid this are:
-    ///
-    /// 1. Introduce a Sync bound on the Worker trait that allows us
-    ///    to pass the message by reference.
-    ///
-    /// 2. Introduce a Clone bound on the Message trait that allows us
-    ///    to perform a cheaper clone on the message.
-    ///
-    fn wrap_direct_message(relay_msg: RelayMessage) -> Routed<M> {
-        Routed::new(
-            relay_msg.destination().clone(),
-            relay_msg.source().clone(),
-            relay_msg.into_local_message(),
-        )
-    }
-
-    /// Receive and handle a single message
-    ///
-    /// Report errors as they occur, and signal whether the loop should
-    /// continue running or not
-    async fn recv_message(&mut self) -> Result<bool> {
-        let relay_msg = match self.ctx.receiver_next().await? {
-            Some(msg) => msg,
-            None => {
-                trace!("No more messages for worker {}", self.ctx.primary_address());
-                return Ok(false);
-            }
-        };
-
-        // Call the worker handle function - pass errors up
-        cfg_if! {
-            if #[cfg(feature = "std")] {
-                let tracing_context = relay_msg.local_message().tracing_context();
-                // We set the tracing context retrieved from the local message on the worker context
-                // This way, if the worker invokes ctx.send_message() to send a message to another worker,
-                // that same tracing context will be passed along when a LocalMessage will be created
-                // (see send_from_address_impl)
-                self.ctx.set_tracing_context(tracing_context.clone());
-
-                self.worker
-                    .handle_message(&mut self.ctx, Self::wrap_direct_message(relay_msg))
-                    // make sure we are using the latest tracing context to handle the message
-                    // the handle_message future
-                    .with_context(tracing_context.update().extract())
-                    .await?;
-            } else {
-                let routed = Self::wrap_direct_message(relay_msg);
-                self.worker
-                    .handle_message(&mut self.ctx, routed)
-                    .await?;
-                }
-        }
-
-        // Signal to the outer loop that we would like to run again
-        Ok(true)
-    }
-
     #[cfg_attr(not(feature = "std"), allow(unused_mut))]
     #[cfg_attr(not(feature = "std"), allow(unused_variables))]
     async fn run(mut self, mut ctrl_rx: OneshotReceiver<CtrlSignal>) {
@@ -112,7 +50,7 @@ where
         #[cfg(feature = "std")]
         loop {
             crate::tokio::select! {
-                result = self.recv_message() => {
+                result = self.worker.process(&mut self.ctx) => {
                     match result {
                         // Successful message handling -- keep running
                         Ok(true) => {},
@@ -139,19 +77,28 @@ where
         }
         #[cfg(not(feature = "std"))]
         loop {
-            match self.recv_message().await {
+            match self.worker.process(&mut self.ctx).await {
                 // Successful message handling -- keep running
                 Ok(true) => {}
-                // Successful message handling -- stop now
+                // No messages left -- stop now
                 Ok(false) => {
                     break;
                 }
                 // An error occurred -- log and continue
-                Err(e) => error!(
-                    "Error encountered during '{}' message handling: {}",
-                    self.ctx.primary_address(),
-                    e
-                ),
+                Err(e) => {
+                    #[cfg(feature = "debugger")]
+                    error!(
+                        "Error encountered during '{}' message handling: {:?}",
+                        self.ctx.primary_address(),
+                        e
+                    );
+                    #[cfg(not(feature = "debugger"))]
+                    error!(
+                        "Error encountered during '{}' message handling: {}",
+                        self.ctx.primary_address(),
+                        e
+                    );
+                }
             }
         }
 
@@ -165,10 +112,11 @@ where
     }
 }
 
-async fn shutdown_and_stop_ack<W>(worker: &mut W, ctx: &mut Context, stopped_from_router: bool)
-where
-    W: Worker<Context = Context>,
-{
+async fn shutdown_and_stop_ack<W: Worker>(
+    worker: &mut W,
+    ctx: &mut Context,
+    stopped_from_router: bool,
+) {
     // Run the shutdown hook for this worker
     // TODO: pass stopped_from_router to the shutdown, a Worker may choose different strategy on
     //  shutting down dependent workers based on that. E.g., TcpSender should stop TcpReceiver if

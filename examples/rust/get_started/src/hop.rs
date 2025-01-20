@@ -4,7 +4,6 @@ pub struct Hop;
 
 #[ockam::worker]
 impl Worker for Hop {
-    type Context = Context;
     type Message = Any;
 
     /// This handle function takes any incoming message and forwards

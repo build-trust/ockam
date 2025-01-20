@@ -55,9 +55,9 @@ mod delayed;
 mod error;
 mod executor;
 mod node;
-mod processor_builder;
-mod relay;
 mod router;
+mod worker;
+mod worker_relay;
 
 /// Support for storing persistent values
 pub mod storage;
@@ -71,9 +71,9 @@ pub use context::*;
 pub use delayed::*;
 pub use error::*;
 pub use executor::*;
-pub use processor_builder::ProcessorBuilder;
 #[cfg(feature = "std")]
 pub use storage::database;
+pub use worker::*;
 pub use worker_builder::WorkerBuilder;
 
 pub use node::{NodeBuilder, NullWorker};

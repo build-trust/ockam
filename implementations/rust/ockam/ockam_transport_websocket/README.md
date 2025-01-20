@@ -15,14 +15,13 @@ This crate requires the rust standard library `"std"`.
 We need to define the behavior of the worker that will be processing incoming messages.
 
 ```rust
-use ockam_core::{Worker, Result, Routed, async_trait};
-use ockam_node::Context;
+use ockam_core::{Result, Routed, async_trait};
+use ockam_node::{Context, Worker};
 
 struct MyWorker;
 
 #[async_trait]
 impl Worker for MyWorker {
-    type Context = Context;
     type Message = String;
 
     async fn handle_message(&mut self, _ctx: &mut Context, _msg: Routed<String>) -> Result<()> {
@@ -38,7 +37,7 @@ use ockam_node::NodeBuilder;
 use ockam_macros::node;
 
 #[ockam_macros::node(crate = "ockam_node")]
-async fn main(mut ctx: Context) -> Result<()> {//!
+async fn main(mut ctx: Context) -> Result<()> {
     let ws = WebSocketTransport::create(&ctx)?;
     ws.listen("localhost:8000").await?; // Listen on port 8000
 

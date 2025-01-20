@@ -7,7 +7,7 @@ use ockam_core::errcode::{Kind, Origin};
 use ockam_core::flow_control::FlowControlId;
 use ockam_core::{Address, AllowAll, DenyAll, Error, Result};
 use ockam_node::compat::asynchronous::resolve_peer;
-use ockam_node::{ProcessorBuilder, WorkerBuilder, WorkerShutdownPriority};
+use ockam_node::{WorkerBuilder, WorkerShutdownPriority};
 use ockam_transport_core::{parse_socket_addr, HostnamePort, TransportError};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use tokio::net::UdpSocket;
@@ -134,7 +134,7 @@ impl UdpTransport {
             options.size_options.pending_messages_per_peer,
             options.size_options.max_on_the_wire_packet_size,
         );
-        ProcessorBuilder::new(receiver)
+        WorkerBuilder::new(receiver)
             .with_address(addresses.receiver_address().clone())
             .with_incoming_access_control(DenyAll)
             .with_outgoing_access_control_arc(receiver_outgoing_access_control)

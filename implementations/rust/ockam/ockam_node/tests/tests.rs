@@ -7,9 +7,9 @@ use ockam_core::compat::{
 };
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{async_trait, Address, AllowAll, Any, Decodable, DenyAll, Message};
-use ockam_core::{route, Processor, Result, Routed, Worker};
+use ockam_core::{route, Result, Routed};
 use ockam_node::compat::futures::FutureExt;
-use ockam_node::{Context, MessageReceiveOptions, NodeBuilder};
+use ockam_node::{Context, MessageReceiveOptions, NodeBuilder, Worker};
 use serde::{Deserialize, Serialize};
 use std::sync::atomic::AtomicI8;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -74,16 +74,15 @@ struct SimpleWorker {
 #[async_trait]
 impl Worker for SimpleWorker {
     type Message = String;
-    type Context = Context;
 
-    async fn initialize(&mut self, _context: &mut Self::Context) -> Result<()> {
+    async fn initialize(&mut self, _context: &mut Context) -> Result<()> {
         self.initialize_was_called.store(true, Ordering::Relaxed);
         assert!(self.initialize_was_called.load(Ordering::Relaxed));
 
         Ok(())
     }
 
-    async fn shutdown(&mut self, _context: &mut Self::Context) -> Result<()> {
+    async fn shutdown(&mut self, _context: &mut Context) -> Result<()> {
         self.shutdown_was_called.store(true, Ordering::Relaxed);
         assert!(self.initialize_was_called.load(Ordering::Relaxed));
         assert!(self.shutdown_was_called.load(Ordering::Relaxed));
@@ -93,7 +92,7 @@ impl Worker for SimpleWorker {
 
     async fn handle_message(
         &mut self,
-        ctx: &mut Self::Context,
+        ctx: &mut Context,
         msg: Routed<Self::Message>,
     ) -> Result<()> {
         ctx.send(msg.return_route().clone(), msg.into_body()?).await
@@ -163,58 +162,17 @@ struct FailingWorkerProcessor {
 
 #[async_trait]
 impl Worker for FailingWorkerProcessor {
-    type Context = Context;
-    type Message = String;
+    type Message = ();
 
-    async fn initialize(&mut self, _context: &mut Self::Context) -> Result<()> {
-        Err(ockam_core::Error::new(Origin::Core, Kind::Internal, "test"))
-    }
-
-    async fn shutdown(&mut self, _context: &mut Self::Context) -> Result<()> {
-        self.shutdown_was_called.store(true, Ordering::Relaxed);
-        Ok(())
-    }
-
-    async fn handle_message(
-        &mut self,
-        _ctx: &mut Self::Context,
-        _msg: Routed<Self::Message>,
-    ) -> Result<()> {
-        Ok(())
-    }
-}
-
-#[allow(non_snake_case)]
-#[ockam_macros::test]
-async fn worker_initialize_fail_should_shutdown(ctx: &mut Context) -> Result<()> {
-    let shutdown_was_called = Arc::new(AtomicBool::new(false));
-    let address = Address::from_string("failing_worker");
-    let worker = FailingWorkerProcessor {
-        shutdown_was_called: shutdown_was_called.clone(),
-    };
-    let res = ctx.start_worker(address.clone(), worker);
-    assert!(res.is_ok());
-    sleep(Duration::new(1, 0)).await;
-    assert!(shutdown_was_called.load(Ordering::Relaxed));
-
-    assert!(!ctx.list_workers()?.contains(&address));
-
-    Ok(())
-}
-
-#[async_trait]
-impl Processor for FailingWorkerProcessor {
-    type Context = Context;
-
-    async fn process(&mut self, _ctx: &mut Self::Context) -> Result<bool> {
+    async fn process(&mut self, _ctx: &mut Context) -> Result<bool> {
         Ok(true)
     }
 
-    async fn initialize(&mut self, _context: &mut Self::Context) -> Result<()> {
+    async fn initialize(&mut self, _context: &mut Context) -> Result<()> {
         Err(ockam_core::Error::new(Origin::Core, Kind::Internal, "test"))
     }
 
-    async fn shutdown(&mut self, _context: &mut Self::Context) -> Result<()> {
+    async fn shutdown(&mut self, _context: &mut Context) -> Result<()> {
         self.shutdown_was_called.store(true, Ordering::Relaxed);
         Ok(())
     }
@@ -228,7 +186,7 @@ async fn processor_initialize_fail_should_shutdown(ctx: &mut Context) -> Result<
     let processor = FailingWorkerProcessor {
         shutdown_was_called: shutdown_was_called.clone(),
     };
-    let res = ctx.start_processor(address.clone(), processor);
+    let res = ctx.start_worker(address.clone(), processor);
     assert!(res.is_ok());
     sleep(Duration::new(1, 0)).await;
     assert!(shutdown_was_called.load(Ordering::Relaxed));
@@ -240,8 +198,8 @@ async fn processor_initialize_fail_should_shutdown(ctx: &mut Context) -> Result<
 struct DummyProcessor;
 
 #[async_trait]
-impl Processor for DummyProcessor {
-    type Context = Context;
+impl Worker for DummyProcessor {
+    type Message = ();
 
     async fn process(&mut self, _ctx: &mut Context) -> Result<bool> {
         tokio::task::yield_now().await;
@@ -251,10 +209,8 @@ impl Processor for DummyProcessor {
 
 #[ockam_macros::test]
 async fn starting_processor_with_dup_address_should_fail(ctx: &mut Context) -> Result<()> {
-    ctx.start_processor("dummy_processor", DummyProcessor)?;
-    assert!(ctx
-        .start_processor("dummy_processor", DummyProcessor)
-        .is_err());
+    ctx.start_worker("dummy_processor", DummyProcessor)?;
+    assert!(ctx.start_worker("dummy_processor", DummyProcessor).is_err());
     Ok(())
 }
 
@@ -265,17 +221,17 @@ struct CountingProcessor {
 }
 
 #[async_trait]
-impl Processor for CountingProcessor {
-    type Context = Context;
+impl Worker for CountingProcessor {
+    type Message = ();
 
-    async fn initialize(&mut self, _context: &mut Self::Context) -> Result<()> {
+    async fn initialize(&mut self, _context: &mut Context) -> Result<()> {
         self.initialize_was_called.store(true, Ordering::Relaxed);
         assert!(self.initialize_was_called.load(Ordering::Relaxed));
 
         Ok(())
     }
 
-    async fn shutdown(&mut self, _context: &mut Self::Context) -> Result<()> {
+    async fn shutdown(&mut self, _context: &mut Context) -> Result<()> {
         self.shutdown_was_called.store(true, Ordering::Relaxed);
         assert!(self.initialize_was_called.load(Ordering::Relaxed));
         assert!(self.shutdown_was_called.load(Ordering::Relaxed));
@@ -283,7 +239,7 @@ impl Processor for CountingProcessor {
         Ok(())
     }
 
-    async fn process(&mut self, _ctx: &mut Self::Context) -> Result<bool> {
+    async fn process(&mut self, _ctx: &mut Context) -> Result<bool> {
         let val = self.run_called_count.fetch_add(1, Ordering::Relaxed);
 
         Ok(val < 4)
@@ -309,7 +265,7 @@ async fn counting_processor__run_node_lifecycle__processor_lifecycle_should_be_f
         run_called_count: run_called_count_clone,
     };
 
-    ctx.start_processor("counting_processor", processor)?;
+    ctx.start_worker("counting_processor", processor)?;
     sleep(Duration::from_secs(1)).await;
 
     assert!(initialize_was_called.load(Ordering::Relaxed));
@@ -325,21 +281,21 @@ struct WaitingProcessor {
 }
 
 #[async_trait]
-impl Processor for WaitingProcessor {
-    type Context = Context;
+impl Worker for WaitingProcessor {
+    type Message = ();
 
-    async fn initialize(&mut self, _context: &mut Self::Context) -> Result<()> {
+    async fn initialize(&mut self, _context: &mut Context) -> Result<()> {
         self.initialize_was_called.store(true, Ordering::Relaxed);
         Ok(())
     }
 
-    async fn shutdown(&mut self, _context: &mut Self::Context) -> Result<()> {
+    async fn shutdown(&mut self, _context: &mut Context) -> Result<()> {
         self.shutdown_was_called.store(true, Ordering::Relaxed);
         assert!(self.initialize_was_called.load(Ordering::Relaxed));
         Ok(())
     }
 
-    async fn process(&mut self, _ctx: &mut Self::Context) -> Result<bool> {
+    async fn process(&mut self, _ctx: &mut Context) -> Result<bool> {
         sleep(Duration::from_secs(10)).await;
         Ok(true)
     }
@@ -356,7 +312,7 @@ async fn waiting_processor__shutdown__should_be_interrupted(ctx: &mut Context) -
         shutdown_was_called: shutdown_was_called.clone(),
     };
 
-    ctx.start_processor("waiting_processor", processor)?;
+    ctx.start_worker("waiting_processor", processor)?;
     sleep(Duration::from_secs(1)).await;
 
     ctx.stop_address(&"waiting_processor".into())?;
@@ -373,17 +329,17 @@ struct MessagingProcessor {
 }
 
 #[async_trait]
-impl Processor for MessagingProcessor {
-    type Context = Context;
+impl Worker for MessagingProcessor {
+    type Message = ();
 
-    async fn initialize(&mut self, _context: &mut Self::Context) -> Result<()> {
+    async fn initialize(&mut self, _context: &mut Context) -> Result<()> {
         self.initialize_was_called.store(true, Ordering::Relaxed);
         assert!(self.initialize_was_called.load(Ordering::Relaxed));
 
         Ok(())
     }
 
-    async fn shutdown(&mut self, _context: &mut Self::Context) -> Result<()> {
+    async fn shutdown(&mut self, _context: &mut Context) -> Result<()> {
         self.shutdown_was_called.store(true, Ordering::Relaxed);
         assert!(self.initialize_was_called.load(Ordering::Relaxed));
         assert!(self.shutdown_was_called.load(Ordering::Relaxed));
@@ -391,7 +347,7 @@ impl Processor for MessagingProcessor {
         Ok(())
     }
 
-    async fn process(&mut self, ctx: &mut Self::Context) -> Result<bool> {
+    async fn process(&mut self, ctx: &mut Context) -> Result<bool> {
         let msg = ctx.receive::<String>().await.unwrap();
         let route = msg.return_route().clone();
         let body = msg.into_body()?;
@@ -424,7 +380,7 @@ async fn waiting_processor__messaging__should_work(ctx: &mut Context) -> Result<
         shutdown_was_called: shutdown_was_called_clone,
     };
 
-    ctx.start_processor_with_access_control("messaging_processor", processor, AllowAll, AllowAll)?;
+    ctx.start_worker_with_access_control("messaging_processor", processor, AllowAll, AllowAll)?;
     sleep(Duration::from_millis(250)).await;
 
     let msg: String = ctx
@@ -454,7 +410,6 @@ struct BadWorker;
 
 #[ockam_core::worker]
 impl Worker for BadWorker {
-    type Context = Context;
     type Message = ();
 
     /// This shutdown function takes _way_ too long to complete
@@ -480,7 +435,6 @@ struct SendReceiveWorker;
 
 #[async_trait]
 impl Worker for SendReceiveWorker {
-    type Context = Context;
     type Message = Any;
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Any>) -> Result<()> {
@@ -528,19 +482,18 @@ struct DummyWorker;
 #[async_trait]
 impl Worker for DummyWorker {
     type Message = String;
-    type Context = Context;
 
-    async fn initialize(&mut self, _context: &mut Self::Context) -> Result<()> {
+    async fn initialize(&mut self, _context: &mut Context) -> Result<()> {
         Ok(())
     }
 
-    async fn shutdown(&mut self, _context: &mut Self::Context) -> Result<()> {
+    async fn shutdown(&mut self, _context: &mut Context) -> Result<()> {
         Ok(())
     }
 
     async fn handle_message(
         &mut self,
-        ctx: &mut Self::Context,
+        ctx: &mut Context,
         msg: Routed<Self::Message>,
     ) -> Result<()> {
         ctx.send(msg.return_route().clone(), msg.into_body()?).await
@@ -562,12 +515,11 @@ struct CountingErrorWorker {
 
 #[async_trait]
 impl Worker for CountingErrorWorker {
-    type Context = Context;
     type Message = Any;
 
     async fn handle_message(
         &mut self,
-        _context: &mut Self::Context,
+        _context: &mut Context,
         _msg: Routed<Self::Message>,
     ) -> Result<()> {
         let _ = self.counter.fetch_add(1, Ordering::Relaxed);

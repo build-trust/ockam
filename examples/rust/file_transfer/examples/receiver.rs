@@ -21,7 +21,6 @@ struct FileReception {
 
 #[ockam::worker]
 impl Worker for FileReception {
-    type Context = Context;
     type Message = FileData;
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Self::Message>) -> Result<()> {

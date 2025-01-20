@@ -2,8 +2,8 @@ use crate::influxdb::influxdb_api_client::InfluxDBApi;
 use crate::influxdb::lease_issuer::node_service::InfluxDBTokenLessorState;
 use crate::influxdb::lease_token::LeaseToken;
 use crate::ApiError;
-use ockam_core::{async_trait, Processor};
-use ockam_node::Context;
+use ockam_core::async_trait;
+use ockam_node::{Context, Worker};
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
 use std::sync::Arc;
@@ -72,10 +72,10 @@ impl InfluxDBTokenLessorProcessor {
 }
 
 #[async_trait]
-impl Processor for InfluxDBTokenLessorProcessor {
-    type Context = Context;
+impl Worker for InfluxDBTokenLessorProcessor {
+    type Message = ();
 
-    async fn initialize(&mut self, _context: &mut Self::Context) -> ockam_core::Result<()> {
+    async fn initialize(&mut self, _context: &mut Context) -> ockam_core::Result<()> {
         let mut max_retries = 5;
         loop {
             match self.list_tokens().await {
@@ -98,12 +98,12 @@ impl Processor for InfluxDBTokenLessorProcessor {
         Ok(())
     }
 
-    async fn shutdown(&mut self, _context: &mut Self::Context) -> ockam_core::Result<()> {
+    async fn shutdown(&mut self, _context: &mut Context) -> ockam_core::Result<()> {
         debug!("Shutting down InfluxDBTokenLessorProcessor");
         Ok(())
     }
 
-    async fn process(&mut self, _context: &mut Self::Context) -> ockam_core::Result<bool> {
+    async fn process(&mut self, _context: &mut Context) -> ockam_core::Result<bool> {
         if let Err(err) = self.revoke_outstanding_tokens().await {
             error!("Failed to revoke outstanding tokens: {err}");
         }

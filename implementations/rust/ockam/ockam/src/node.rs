@@ -2,14 +2,13 @@ use ockam_core::compat::string::String;
 use ockam_core::compat::sync::Arc;
 use ockam_core::flow_control::FlowControls;
 use ockam_core::{
-    Address, IncomingAccessControl, Message, OutgoingAccessControl, Processor, Result, Route,
-    Routed, TryClone, Worker,
+    Address, IncomingAccessControl, Message, OutgoingAccessControl, Result, Route, Routed, TryClone,
 };
 use ockam_identity::{
     CredentialRepository, IdentitiesAttributes, IdentitiesVerification,
     IdentityAttributesRepository, PurposeKeys, Vault,
 };
-use ockam_node::{Context, HasContext, MessageReceiveOptions, MessageSendReceiveOptions};
+use ockam_node::{Context, HasContext, MessageReceiveOptions, MessageSendReceiveOptions, Worker};
 use ockam_vault::storage::SecretsRepository;
 use ockam_vault::SigningSecretKeyHandle;
 
@@ -161,49 +160,20 @@ impl Node {
     }
 
     /// Start a new worker instance at the given address. Default Access Control is AllowAll
-    pub fn start_worker<W>(&self, address: impl Into<Address>, worker: W) -> Result<()>
-    where
-        W: Worker<Context = Context>,
-    {
+    pub fn start_worker<W: Worker>(&self, address: impl Into<Address>, worker: W) -> Result<()> {
         self.context.start_worker(address, worker)
     }
 
     /// Start a new worker instance at the given address with given Access Controls
-    pub fn start_worker_with_access_control<W>(
+    pub fn start_worker_with_access_control<W: Worker>(
         &self,
         address: impl Into<Address>,
         worker: W,
         incoming: impl IncomingAccessControl,
         outgoing: impl OutgoingAccessControl,
-    ) -> Result<()>
-    where
-        W: Worker<Context = Context>,
-    {
+    ) -> Result<()> {
         self.context
             .start_worker_with_access_control(address, worker, incoming, outgoing)
-    }
-
-    /// Start a new processor instance at the given address. Default Access Control is DenyAll
-    pub fn start_processor<P>(&self, address: impl Into<Address>, processor: P) -> Result<()>
-    where
-        P: Processor<Context = Context>,
-    {
-        self.context.start_processor(address, processor)
-    }
-
-    /// Start a new processor instance at the given address with given Access Controls
-    pub fn start_processor_with_access_control<P>(
-        &self,
-        address: impl Into<Address>,
-        processor: P,
-        incoming: impl IncomingAccessControl,
-        outgoing: impl OutgoingAccessControl,
-    ) -> Result<()>
-    where
-        P: Processor<Context = Context>,
-    {
-        self.context
-            .start_processor_with_access_control(address, processor, incoming, outgoing)
     }
 
     /// Signal to the local runtime to shut down

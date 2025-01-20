@@ -2,9 +2,9 @@ use std::os::unix::net::SocketAddr;
 
 use ockam_core::{
     async_trait, compat::sync::Arc, Address, AllowAll, Any, Decodable, DenyAll, LocalMessage,
-    Mailbox, Mailboxes, Message, Result, Routed, Worker,
+    Mailbox, Mailboxes, Message, Result, Routed,
 };
-use ockam_node::{Context, WorkerBuilder};
+use ockam_node::{Context, Worker, WorkerBuilder};
 use ockam_transport_core::{encode_transport_message, TransportError};
 use serde::{Deserialize, Serialize};
 use socket2::SockRef;
@@ -172,13 +172,12 @@ impl UdsSendWorker {
 
 #[async_trait]
 impl Worker for UdsSendWorker {
-    type Context = Context;
     type Message = Any;
 
     /// Connect to the UDS socket.
     ///
     /// Spawn a UDS Recceiver worker to processes incoming UDS messages
-    async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
+    async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
         let path = match self.peer.as_pathname() {
             Some(p) => p,
             None => {
@@ -229,12 +228,12 @@ impl Worker for UdsSendWorker {
             self.internal_addr.clone(),
         );
 
-        ctx.start_processor_with_access_control(self.rx_addr.clone(), receiver, DenyAll, AllowAll)?;
+        ctx.start_worker_with_access_control(self.rx_addr.clone(), receiver, DenyAll, AllowAll)?;
 
         Ok(())
     }
 
-    async fn shutdown(&mut self, ctx: &mut Self::Context) -> Result<()> {
+    async fn shutdown(&mut self, ctx: &mut Context) -> Result<()> {
         if self.rx_should_be_stopped {
             let _ = ctx.stop_address(self.rx_addr());
         }

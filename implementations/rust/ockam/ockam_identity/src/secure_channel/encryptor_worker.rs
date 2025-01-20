@@ -10,8 +10,8 @@ use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{
     async_trait, route, CowBytes, Decodable, Error, LocalMessage, NeutralMessage, Route,
 };
-use ockam_core::{Any, Result, Routed, Worker};
-use ockam_node::Context;
+use ockam_core::{Any, Result, Routed};
+use ockam_node::{Context, Worker};
 
 use crate::models::CredentialAndPurposeKey;
 use crate::secure_channel::addresses::Addresses;
@@ -130,7 +130,7 @@ impl EncryptorWorker {
     #[instrument(skip_all)]
     async fn handle_encrypt_api(
         &mut self,
-        ctx: &mut <Self as Worker>::Context,
+        ctx: &mut Context,
         msg: Routed<<Self as Worker>::Message>,
     ) -> Result<()> {
         trace!(
@@ -187,7 +187,7 @@ impl EncryptorWorker {
     #[instrument(skip_all)]
     async fn handle_encrypt(
         &mut self,
-        ctx: &mut <Self as Worker>::Context,
+        ctx: &mut Context,
         msg: Routed<<Self as Worker>::Message>,
     ) -> Result<()> {
         trace!(
@@ -235,7 +235,7 @@ impl EncryptorWorker {
     /// Asks credential retriever for a new credential and presents it to the other side, including
     /// the latest change_history
     #[instrument(skip_all)]
-    async fn handle_refresh_credentials(&mut self, ctx: &<Self as Worker>::Context) -> Result<()> {
+    async fn handle_refresh_credentials(&mut self, ctx: &Context) -> Result<()> {
         trace!(
             "Started credentials refresh for {}",
             self.addresses.encryptor
@@ -350,9 +350,8 @@ impl EncryptorWorker {
 #[async_trait]
 impl Worker for EncryptorWorker {
     type Message = Any;
-    type Context = Context;
 
-    async fn initialize(&mut self, _ctx: &mut Self::Context) -> Result<()> {
+    async fn initialize(&mut self, _ctx: &mut Context) -> Result<()> {
         if let Some(credential_retriever) = &self.credential_retriever {
             credential_retriever.subscribe(&self.addresses.encryptor_internal)?;
         }
@@ -363,7 +362,7 @@ impl Worker for EncryptorWorker {
     #[instrument(skip_all, name = "EncryptorWorker::handle_message", fields(worker = % ctx.primary_address()))]
     async fn handle_message(
         &mut self,
-        ctx: &mut Self::Context,
+        ctx: &mut Context,
         msg: Routed<Self::Message>,
     ) -> Result<()> {
         let msg_addr = msg.msg_addr();
@@ -388,7 +387,7 @@ impl Worker for EncryptorWorker {
     }
 
     #[instrument(skip_all, name = "EncryptorWorker::shutdown")]
-    async fn shutdown(&mut self, context: &mut Self::Context) -> Result<()> {
+    async fn shutdown(&mut self, context: &mut Context) -> Result<()> {
         if let Some(credential_retriever) = &self.credential_retriever {
             credential_retriever.unsubscribe(&self.addresses.encryptor_internal)?;
         }

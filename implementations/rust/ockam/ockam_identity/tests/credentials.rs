@@ -3,7 +3,7 @@ use std::time::Duration;
 
 use ockam_core::compat::sync::Arc;
 use ockam_core::{async_trait, Any, DenyAll};
-use ockam_core::{route, Result, Routed, Worker};
+use ockam_core::{route, Result, Routed};
 use ockam_identity::models::CredentialSchemaIdentifier;
 use ockam_identity::secure_channels::secure_channels;
 use ockam_identity::utils::AttributesBuilder;
@@ -12,7 +12,7 @@ use ockam_identity::{
     TrustIdentifierPolicy,
 };
 use ockam_node::workers::Echoer;
-use ockam_node::{Context, WorkerBuilder};
+use ockam_node::{Context, Worker, WorkerBuilder};
 
 #[ockam_macros::test]
 async fn full_flow_oneway(ctx: &mut Context) -> Result<()> {
@@ -379,12 +379,11 @@ struct CountingWorker {
 
 #[async_trait]
 impl Worker for CountingWorker {
-    type Context = Context;
     type Message = Any;
 
     async fn handle_message(
         &mut self,
-        _context: &mut Self::Context,
+        _context: &mut Context,
         _msg: Routed<Self::Message>,
     ) -> Result<()> {
         let _ = self.msgs_count.fetch_add(1, Ordering::Relaxed);

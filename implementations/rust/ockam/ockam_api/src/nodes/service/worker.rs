@@ -5,8 +5,8 @@ use crate::nodes::{InMemoryNode, NODEMANAGER_ADDR};
 use crate::DefaultAddress;
 use minicbor::Decoder;
 use ockam_core::api::{RequestHeader, Response};
-use ockam_core::{Address, Result, Routed, Worker};
-use ockam_node::Context;
+use ockam_core::{Address, Result, Routed};
+use ockam_node::{Context, Worker};
 use std::error::Error;
 use std::sync::Arc;
 
@@ -241,9 +241,8 @@ impl NodeManagerWorker {
 #[ockam::worker]
 impl Worker for NodeManagerWorker {
     type Message = Vec<u8>;
-    type Context = Context;
 
-    async fn shutdown(&mut self, _ctx: &mut Self::Context) -> Result<()> {
+    async fn shutdown(&mut self, _ctx: &mut Context) -> Result<()> {
         debug!(target: TARGET, "Shutting down NodeManagerWorker");
         Ok(())
     }

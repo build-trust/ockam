@@ -1,6 +1,6 @@
 use crate::channel_types::{oneshot_channel, MessageSender, OneshotReceiver, OneshotSender};
 use crate::error::{NodeError, NodeReason};
-use crate::relay::CtrlSignal;
+use crate::worker_relay::CtrlSignal;
 use crate::WorkerShutdownPriority;
 use core::default::Default;
 use core::fmt::Debug;
@@ -400,8 +400,6 @@ impl InternalMap {
 /// Additional metadata for worker records
 #[derive(Debug)]
 pub struct WorkerMeta {
-    #[allow(dead_code)]
-    pub processor: bool,
     pub detached: bool,
 }
 

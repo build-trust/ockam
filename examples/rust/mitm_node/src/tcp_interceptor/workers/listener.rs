@@ -1,7 +1,7 @@
 use crate::tcp_interceptor::{Role, TcpMitmProcessor, TcpMitmRegistry, TcpMitmTransport};
 use ockam_core::{async_trait, compat::net::SocketAddr};
-use ockam_core::{Address, Processor, Result};
-use ockam_node::Context;
+use ockam_core::{Address, Result};
+use ockam_node::{Context, Worker};
 use ockam_transport_core::TransportError;
 use tokio::net::{TcpListener, TcpStream};
 use tracing::debug;
@@ -34,15 +34,15 @@ impl TcpMitmListenProcessor {
             target_addr,
         };
 
-        ctx.start_processor(address.clone(), processor)?;
+        ctx.start_worker(address.clone(), processor)?;
 
         Ok((saddr, address))
     }
 }
 
 #[async_trait]
-impl Processor for TcpMitmListenProcessor {
-    type Context = Context;
+impl Worker for TcpMitmListenProcessor {
+    type Message = ();
 
     async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
         self.registry.add_listener(ctx.primary_address());
@@ -50,13 +50,13 @@ impl Processor for TcpMitmListenProcessor {
         Ok(())
     }
 
-    async fn shutdown(&mut self, ctx: &mut Self::Context) -> Result<()> {
+    async fn shutdown(&mut self, ctx: &mut Context) -> Result<()> {
         self.registry.remove_listener(ctx.primary_address());
 
         Ok(())
     }
 
-    async fn process(&mut self, ctx: &mut Self::Context) -> Result<bool> {
+    async fn process(&mut self, ctx: &mut Context) -> Result<bool> {
         debug!("Waiting for incoming TCP connection...");
 
         let (stream, _peer) = self.inner.accept().await.map_err(TransportError::from)?;

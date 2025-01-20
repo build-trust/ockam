@@ -6,8 +6,8 @@ use ockam_core::{
     compat::{net::SocketAddr, sync::Arc},
     AddressMetadata, AllowAll, AllowSourceAddress, DenyAll, LocalMessage,
 };
-use ockam_core::{Any, Decodable, Mailbox, Mailboxes, Message, Result, Routed, Worker};
-use ockam_node::{Context, WorkerBuilder, WorkerShutdownPriority};
+use ockam_core::{Any, Decodable, Mailbox, Mailboxes, Message, Result, Routed};
+use ockam_node::{Context, Worker, WorkerBuilder, WorkerShutdownPriority};
 
 use crate::transport_message::TcpTransportMessage;
 use ockam_transport_core::TransportError;
@@ -162,11 +162,10 @@ impl TcpSendWorker {
 
 #[async_trait]
 impl Worker for TcpSendWorker {
-    type Context = Context;
     type Message = Any;
 
     #[instrument(skip_all, name = "TcpSendWorker::initialize")]
-    async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
+    async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
         self.registry.add_sender_worker(TcpSenderInfo::new(
             self.addresses.sender_address().clone(),
             self.addresses.receiver_address().clone(),
@@ -195,7 +194,7 @@ impl Worker for TcpSendWorker {
     }
 
     #[instrument(skip_all, name = "TcpSendWorker::shutdown")]
-    async fn shutdown(&mut self, ctx: &mut Self::Context) -> Result<()> {
+    async fn shutdown(&mut self, ctx: &mut Context) -> Result<()> {
         self.registry
             .remove_sender_worker(self.addresses.sender_address());
 

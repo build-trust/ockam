@@ -6,8 +6,8 @@ use minicbor::Decoder;
 use ockam::identity::Identifier;
 use ockam_core::api::{Method, RequestHeader, Response};
 use ockam_core::compat::sync::Arc;
-use ockam_core::{Result, Routed, SecureChannelLocalInfo, Worker};
-use ockam_node::Context;
+use ockam_core::{Result, Routed, SecureChannelLocalInfo};
+use ockam_node::{Context, Worker};
 use tracing::trace;
 
 pub struct EnrollmentTokenAcceptorWorker {
@@ -28,7 +28,6 @@ impl EnrollmentTokenAcceptorWorker {
 
 #[ockam_core::worker]
 impl Worker for EnrollmentTokenAcceptorWorker {
-    type Context = Context;
     type Message = Vec<u8>;
 
     async fn handle_message(&mut self, c: &mut Context, m: Routed<Self::Message>) -> Result<()> {

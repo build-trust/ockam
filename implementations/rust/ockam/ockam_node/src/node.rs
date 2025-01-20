@@ -8,8 +8,7 @@ use ockam_core::OpenTelemetryContext;
 /// A minimal worker implementation that does nothing
 pub struct NullWorker;
 
-impl ockam_core::Worker for NullWorker {
-    type Context = Context;
+impl crate::Worker for NullWorker {
     type Message = (); // This message type is never used
 }
 

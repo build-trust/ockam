@@ -5,8 +5,8 @@ use tracing::trace;
 use ockam::identity::{Identifier, IdentitiesAttributes};
 use ockam_core::api::{Method, RequestHeader, Response};
 use ockam_core::compat::sync::Arc;
-use ockam_core::{Result, Routed, SecureChannelLocalInfo, Worker};
-use ockam_node::Context;
+use ockam_core::{Result, Routed, SecureChannelLocalInfo};
+use ockam_node::{Context, Worker};
 
 use crate::authenticator::direct::types::AddMember;
 use crate::authenticator::direct::DirectAuthenticator;
@@ -39,7 +39,6 @@ impl DirectAuthenticatorWorker {
 #[ockam_core::worker]
 impl Worker for DirectAuthenticatorWorker {
     type Message = Vec<u8>;
-    type Context = Context;
 
     async fn handle_message(&mut self, c: &mut Context, m: Routed<Self::Message>) -> Result<()> {
         let secure_channel_info = match SecureChannelLocalInfo::find_info(m.local_message()) {

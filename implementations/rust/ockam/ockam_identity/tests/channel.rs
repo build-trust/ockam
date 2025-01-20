@@ -4,7 +4,7 @@ use std::sync::atomic::{AtomicU8, Ordering};
 use ockam_core::compat::sync::Arc;
 use ockam_core::{
     route, Address, AllowAll, Any, DenyAll, Mailboxes, Result, Routed, SecureChannelLocalInfo,
-    Worker, SECURE_CHANNEL_IDENTIFIER,
+    SECURE_CHANNEL_IDENTIFIER,
 };
 use ockam_identity::models::{CredentialSchemaIdentifier, Identifier};
 use ockam_identity::secure_channels::secure_channels;
@@ -14,7 +14,7 @@ use ockam_identity::{
     SecureChannelListenerOptions, SecureChannelOptions, SecureChannels, TrustEveryonePolicy,
     TrustIdentifierPolicy, Vault,
 };
-use ockam_node::{Context, MessageReceiveOptions, WorkerBuilder};
+use ockam_node::{Context, MessageReceiveOptions, Worker, WorkerBuilder};
 use ockam_vault::{
     SoftwareVaultForSecureChannels, SoftwareVaultForSigning, SoftwareVaultForVerifyingSignatures,
 };
@@ -752,11 +752,10 @@ struct Receiver {
 #[ockam_core::async_trait]
 impl Worker for Receiver {
     type Message = Any;
-    type Context = Context;
 
     async fn handle_message(
         &mut self,
-        _context: &mut Self::Context,
+        _context: &mut Context,
         _msg: Routed<Self::Message>,
     ) -> Result<()> {
         self.received_count.fetch_add(1, Ordering::Relaxed);

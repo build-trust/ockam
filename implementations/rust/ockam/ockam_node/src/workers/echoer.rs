@@ -1,7 +1,7 @@
-use crate::Context;
+use crate::{Context, Worker};
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::string::String;
-use ockam_core::{Result, Routed, Worker};
+use ockam_core::{Result, Routed};
 
 /// A worker which accepts `String`s, and echos them (and the address) to
 /// the `debug!` log.
@@ -11,7 +11,6 @@ pub struct Echoer;
 
 #[ockam_core::worker]
 impl Worker for Echoer {
-    type Context = Context;
     type Message = String;
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<String>) -> Result<()> {

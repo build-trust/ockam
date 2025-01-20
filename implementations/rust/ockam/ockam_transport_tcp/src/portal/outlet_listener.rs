@@ -1,9 +1,9 @@
 use crate::portal::addresses::{Addresses, PortalType};
 use crate::{portal::TcpPortalWorker, PortalMessage, TcpOutletOptions, TcpRegistry};
 use ockam_core::{
-    async_trait, Address, DenyAll, NeutralMessage, Result, Routed, SecureChannelLocalInfo, Worker,
+    async_trait, Address, DenyAll, NeutralMessage, Result, Routed, SecureChannelLocalInfo,
 };
-use ockam_node::{Context, WorkerBuilder};
+use ockam_node::{Context, Worker, WorkerBuilder};
 use ockam_transport_core::{HostnamePort, TransportError};
 use tracing::{debug, instrument};
 
@@ -53,11 +53,10 @@ impl TcpOutletListenWorker {
 
 #[async_trait]
 impl Worker for TcpOutletListenWorker {
-    type Context = Context;
     type Message = NeutralMessage;
 
     #[instrument(skip_all, name = "TcpOutletListenWorker::initialize")]
-    async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
+    async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
         self.registry
             .add_outlet_listener_worker(ctx.primary_address());
 
@@ -65,7 +64,7 @@ impl Worker for TcpOutletListenWorker {
     }
 
     #[instrument(skip_all, name = "TcpOutletListenWorker::shutdown")]
-    async fn shutdown(&mut self, ctx: &mut Self::Context) -> Result<()> {
+    async fn shutdown(&mut self, ctx: &mut Context) -> Result<()> {
         self.registry
             .remove_outlet_listener_worker(ctx.primary_address());
 
@@ -75,7 +74,7 @@ impl Worker for TcpOutletListenWorker {
     #[instrument(skip_all, name = "TcpOutletListenWorker::handle_message")]
     async fn handle_message(
         &mut self,
-        ctx: &mut Self::Context,
+        ctx: &mut Context,
         msg: Routed<Self::Message>,
     ) -> Result<()> {
         let their_identifier = SecureChannelLocalInfo::find_info(msg.local_message())

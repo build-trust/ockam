@@ -7,7 +7,8 @@ use ockam_api::session::replacer::{
 };
 use ockam_core::compat::sync::Arc;
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::{async_trait, Any, Error, NeutralMessage, Result, Route, Routed, Worker};
+use ockam_core::{async_trait, Any, Error, NeutralMessage, Result, Route, Routed};
+use ockam_node::Worker;
 use std::sync::atomic::AtomicU8;
 use std::time::Duration;
 
@@ -31,7 +32,6 @@ impl MockEchoer {
 
 #[ockam::worker]
 impl Worker for MockEchoer {
-    type Context = Context;
     type Message = Any;
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Any>) -> Result<()> {
@@ -76,7 +76,6 @@ impl MockHop {
 
 #[ockam::worker]
 impl Worker for MockHop {
-    type Context = Context;
     type Message = Any;
 
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Any>) -> Result<()> {

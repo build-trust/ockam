@@ -207,12 +207,6 @@ pub fn _log_start_worker() {
     {}
 }
 
-/// TODO
-pub fn _log_start_processor() {
-    #[cfg(feature = "debugger")]
-    {}
-}
-
 // ----------------------------------------------------------------------------
 
 #[cfg(all(feature = "debugger", feature = "std"))]

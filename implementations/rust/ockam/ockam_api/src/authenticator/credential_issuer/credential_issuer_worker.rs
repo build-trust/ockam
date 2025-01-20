@@ -10,8 +10,8 @@ use ockam_core::api::{Method, RequestHeader, Response};
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
-use ockam_core::{Result, Routed, SecureChannelLocalInfo, Worker};
-use ockam_node::Context;
+use ockam_core::{Result, Routed, SecureChannelLocalInfo};
+use ockam_node::{Context, Worker};
 
 /// This struct runs as a Worker to issue credentials based on a request/response protocol
 pub struct CredentialIssuerWorker {
@@ -48,7 +48,6 @@ impl CredentialIssuerWorker {
 
 #[ockam_core::worker]
 impl Worker for CredentialIssuerWorker {
-    type Context = Context;
     type Message = Vec<u8>;
 
     async fn handle_message(&mut self, c: &mut Context, m: Routed<Self::Message>) -> Result<()> {

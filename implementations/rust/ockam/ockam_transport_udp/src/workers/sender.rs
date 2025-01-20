@@ -4,9 +4,9 @@ use crate::workers::pending_messages::TransportMessagesIterator;
 use crate::UDP;
 use core::str::FromStr;
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::{async_trait, Any, Error, Result, Routed, Worker};
+use ockam_core::{async_trait, Any, Error, Result, Routed};
 use ockam_node::compat::asynchronous::resolve_peer;
-use ockam_node::Context;
+use ockam_node::{Context, Worker};
 use ockam_transport_core::{HostnamePort, TransportError};
 use std::net::SocketAddr;
 use tracing::{error, trace, warn};
@@ -47,9 +47,8 @@ impl UdpSenderWorker {
 #[async_trait]
 impl Worker for UdpSenderWorker {
     type Message = Any;
-    type Context = Context;
 
-    async fn shutdown(&mut self, ctx: &mut Self::Context) -> Result<()> {
+    async fn shutdown(&mut self, ctx: &mut Context) -> Result<()> {
         let _ = ctx.stop_address(self.addresses.receiver_address());
 
         Ok(())
