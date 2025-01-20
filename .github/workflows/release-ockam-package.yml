@@ -38,6 +38,7 @@ jobs:
       actions: read
       contents: write
       packages: write
+      id-token: write
 
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
