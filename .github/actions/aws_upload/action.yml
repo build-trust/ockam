@@ -34,9 +34,9 @@ runs:
     - shell: bash
       if: ${{ inputs.file_name }}
       run: |
-        aws s3api put-object --bucket ${{ inputs.bucket_name }} --key ${{ inputs.release_version }}/${{ inputs.file_name }} --body ${{ inputs.file_name }}
+        aws s3api put-object --bucket ${{ inputs.bucket_name }} --key command/${{ inputs.release_version }}/${{ inputs.file_name }} --body ${{ inputs.file_name }}
 
     - shell: bash
       if: ${{ inputs.download_release_dir }}
       run: |
-        aws s3 cp s3://${{ inputs.bucket_name }}/${{ inputs.release_version }} ${{ inputs.download_release_dir }} --recursive
+        aws s3 cp s3://${{ inputs.bucket_name }}/command/${{ inputs.release_version }} ${{ inputs.download_release_dir }} --recursive
