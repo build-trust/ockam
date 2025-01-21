@@ -446,7 +446,7 @@ if [[ $IS_DRAFT_RELEASE == false ]]; then
   # Release Ockam package
   if [[ -z $SKIP_OCKAM_PACKAGE_RELEASE || $SKIP_OCKAM_PACKAGE_RELEASE == false ]]; then
     echo "Making Ockam container latest"
-    release_ockam_package "$latest_tag_name" "nil" true
+    release_ockam_package "$release_version" "nil" true
     delete_ockam_draft_package
     success_info "Ockam package release successful."
   fi
