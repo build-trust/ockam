@@ -54,7 +54,7 @@ where
                             e
                         );
                         #[cfg(not(feature = "debugger"))]
-                        error!(
+                        trace!(
                             "Error encountered during '{}' processing: {}",
                             ctx.primary_address(),
                             e
