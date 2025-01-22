@@ -26,6 +26,9 @@ pub struct Configuration {
     /// listener address for the TCP listener, for example "127.0.0.1:4000"
     pub tcp_listener_address: InternetAddress,
 
+    /// listener address for the TCP listener as a liveness check, for example "127.0.0.1:4300"
+    pub liveness_tcp_listener_address: InternetAddress,
+
     /// service name for the secure channel listener, for example "api"
     /// The default is DefaultAddress::SECURE_CHANNEL_LISTENER
     pub secure_channel_listener_name: Option<String>,
@@ -72,6 +75,11 @@ impl Configuration {
     /// Return the address for the TCP listener
     pub(crate) fn tcp_listener_address(&self) -> InternetAddress {
         self.tcp_listener_address.clone()
+    }
+
+    /// Return the address for the TCP liveness listener
+    pub(crate) fn liveness_tcp_listener_address(&self) -> InternetAddress {
+        self.liveness_tcp_listener_address.clone()
     }
 
     /// Return the service name for the secure_channel_listener

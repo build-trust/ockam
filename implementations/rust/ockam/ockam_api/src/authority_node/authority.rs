@@ -18,8 +18,9 @@ use ockam::identity::{
 use ockam::tcp::{TcpListenerOptions, TcpTransport};
 use ockam_core::compat::sync::Arc;
 use ockam_core::env::get_env;
+use ockam_core::errcode::{Kind, Origin};
 use ockam_core::flow_control::FlowControlId;
-use ockam_core::Result;
+use ockam_core::{Error, Result};
 use ockam_node::database::SqlxDatabase;
 use ockam_node::Context;
 
@@ -156,6 +157,18 @@ impl Authority {
             .await?;
 
         info!("started a TCP listener at {listener:?}");
+
+        let liveness_tcp_listener = tokio::net::TcpListener::bind(
+            configuration.liveness_tcp_listener_address().to_string(),
+        )
+        .await
+        .map_err(|e| Error::new(Origin::Api, Kind::Invalid, format!("{e:?}")))?;
+
+        info!("started a liveness TCP listener at {liveness_tcp_listener:?}");
+
+        self.start_liveness_tcp_listener(liveness_tcp_listener)
+            .await?;
+
         Ok(secure_channel_listener_flow_control_id)
     }
 
@@ -306,6 +319,20 @@ impl Authority {
             .add_consumer(&address.into(), secure_channel_flow_control_id);
 
         ctx.start_worker(address, Echoer)
+    }
+
+    /// Start the liveness tcp listener
+    pub async fn start_liveness_tcp_listener(
+        &self,
+        liveness_tcp_listener: tokio::net::TcpListener,
+    ) -> Result<()> {
+        let _handle = tokio::spawn(async move {
+            loop {
+                // Accept any incoming connection
+                let _result = liveness_tcp_listener.accept().await;
+            }
+        });
+        Ok(())
     }
 
     /// Add a member directly to storage, without additional validation
@@ -506,6 +533,7 @@ mod tests {
             database_configuration: DatabaseConfiguration::postgres()?.unwrap(),
             project_identifier: "123456".to_string(),
             tcp_listener_address: InternetAddress::new(&format!("127.0.0.1:{}", port)).unwrap(),
+            liveness_tcp_listener_address: InternetAddress::new(&format!("127.0.0.1:{}", 4300)).unwrap(),
             secure_channel_listener_name: None,
             authenticator_name: None,
             trusted_identities: PreTrustedIdentities::new(trusted_identities),

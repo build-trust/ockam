@@ -61,6 +61,17 @@ pub struct CreateCommand {
     )]
     tcp_listener_address: InternetAddress,
 
+    /// TCP listener address which can be used as a liveliness check
+    #[arg(
+        display_order = 900,
+        long,
+        short,
+        id = "LIVENESS_ADDRESS",
+        default_value = "127.0.0.1:4300",
+        value_parser = internet_address_parser
+    )]
+    liveness_tcp_listener_address: InternetAddress,
+
     /// Name of the Identity that the authority will use
     #[arg(long = "identity", value_name = "IDENTITY_NAME")]
     identity: Option<String>,
@@ -147,6 +158,8 @@ impl CreateCommand {
             "--child-process".to_string(),
             "--tcp-listener-address".to_string(),
             self.tcp_listener_address.to_string(),
+            "--liveness-tcp-listener-address".to_string(),
+            self.liveness_tcp_listener_address.to_string(),
             "--project-identifier".to_string(),
             self.project_identifier.clone(),
             "--trusted-identities".to_string(),
@@ -342,6 +355,7 @@ impl CreateCommand {
             database_configuration: opts.state.database_configuration()?,
             project_identifier: self.project_identifier.clone(),
             tcp_listener_address: self.tcp_listener_address.clone(),
+            liveness_tcp_listener_address: self.liveness_tcp_listener_address.clone(),
             secure_channel_listener_name: None,
             authenticator_name: None,
             trusted_identities,
