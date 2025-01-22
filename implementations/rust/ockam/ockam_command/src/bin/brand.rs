@@ -5,11 +5,11 @@ use ockam_api::fmt_log;
 use ockam_api::orchestrator::{OCKAM_CONTROLLER_ADDRESS, OCKAM_CONTROLLER_IDENTIFIER};
 use ockam_api::terminal::PADDING;
 use ockam_command::{
-    OCKAM_COMMAND_BIN_NAME, OCKAM_COMMAND_BRAND_NAME, OCKAM_COMMAND_SUPPORT_EMAIL,
+    OCKAM_COMMANDS, OCKAM_COMMAND_BIN_NAME, OCKAM_COMMAND_BRAND_NAME, OCKAM_COMMAND_SUPPORT_EMAIL,
 };
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::fmt::Display;
 use std::path::{Path, PathBuf};
 
@@ -69,6 +69,28 @@ fn build_binary(bin_name: &str, brand_settings: Brand) -> Result<()> {
     }
     if let Some(orchestrator_address) = brand_settings.orchestrator_address {
         cmd.env(OCKAM_CONTROLLER_ADDRESS, orchestrator_address);
+    }
+    if let Some(commands) = brand_settings.commands {
+        let process_command_name = |c: &str| {
+            // replace _ and - with space to support writing
+            // commands as "node create", "node-create" or "node_create
+            c.replace("_", " ").replace("-", " ")
+        };
+
+        // A comma separated list of commands in the format `command1=customName,command2,command3`
+        let env_value = commands
+            .iter()
+            .map(|c| match c {
+                Command::Simple(c) => process_command_name(c),
+                Command::Mapped(map) => map
+                    .iter()
+                    .map(|(k, v)| process_command_name(&format!("{}={}", k, v)))
+                    .collect::<Vec<String>>()
+                    .join(","),
+            })
+            .collect::<Vec<String>>()
+            .join(",");
+        cmd.env(OCKAM_COMMANDS, env_value);
     }
     if let Some(build_args) = brand_settings.build_args {
         cmd.args(build_args.split_whitespace());
@@ -131,6 +153,7 @@ struct Brand {
     home_dir: Option<String>,
     orchestrator_identifier: Option<String>,
     orchestrator_address: Option<String>,
+    commands: Option<Vec<Command>>,
     build_args: Option<String>,
 }
 
@@ -189,6 +212,13 @@ impl Display for Brand {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(untagged)]
+enum Command {
+    Simple(String),
+    Mapped(HashMap<String, String>),
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -202,6 +232,9 @@ mod tests {
             home_dir: /home/brand1
             orchestrator_identifier: brand1
             orchestrator_address: brand1.network
+            commands:
+              - node_list
+              - "node create": "init"
           bin2:
             support_email: bin2@support.io
             brand_name: Brand2
@@ -209,18 +242,21 @@ mod tests {
         let parsed: Config = serde_yaml::from_str(config).unwrap();
         assert_eq!(parsed.items.len(), 2);
         assert_eq!(parsed.items["bin1"].brand_name.as_deref(), Some("Brand1"));
-        assert_eq!(parsed.items["bin2"].support_email, "bin2@support.io");
         assert_eq!(parsed.items["bin2"].brand_name.as_deref(), Some("Brand2"));
 
         let mut processed = parsed.clone();
         processed.process_defaults().unwrap();
+
+        // No defaults used, should be the same as parsed
         assert_eq!(parsed.items["bin1"], processed.items["bin1"]);
 
+        // Check bin2 defaults
         let bin2 = &processed.items["bin2"];
         assert_eq!(bin2.support_email, "bin2@support.io");
         assert_eq!(bin2.brand_name.as_deref(), Some("Brand2"));
         assert_eq!(bin2.home_dir.as_ref().unwrap(), "$HOME/.bin2");
         assert_eq!(bin2.orchestrator_identifier.as_deref(), None);
         assert_eq!(bin2.orchestrator_address.as_deref(), None);
+        assert_eq!(bin2.commands.as_deref(), None);
     }
 }

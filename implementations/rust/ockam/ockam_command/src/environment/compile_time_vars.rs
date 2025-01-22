@@ -5,15 +5,20 @@ use ockam_core::env::get_env_with_default;
 pub const OCKAM_COMMAND_BIN_NAME: &str = "OCKAM_COMMAND_BIN_NAME";
 pub const OCKAM_COMMAND_BRAND_NAME: &str = "OCKAM_COMMAND_BRAND_NAME";
 pub const OCKAM_COMMAND_SUPPORT_EMAIL: &str = "OCKAM_COMMAND_SUPPORT_EMAIL";
+pub const OCKAM_COMMANDS: &str = "OCKAM_COMMANDS";
 
 pub const BIN_NAME: &str = env!("OCKAM_COMMAND_BIN_NAME");
 pub const BRAND_NAME: &str = env!("OCKAM_COMMAND_BRAND_NAME");
 pub const SUPPORT_EMAIL: &str = env!("OCKAM_COMMAND_SUPPORT_EMAIL");
+/// A comma separated list of commands that can be run
+/// in the format `command1=customName,command2,command3`
+pub const COMMANDS: &str = env!("OCKAM_COMMANDS");
 
 pub fn load_compile_time_vars() {
     std::env::set_var(OCKAM_COMMAND_BIN_NAME, BIN_NAME);
     std::env::set_var(OCKAM_COMMAND_BRAND_NAME, BRAND_NAME);
     std::env::set_var(OCKAM_COMMAND_SUPPORT_EMAIL, SUPPORT_EMAIL);
+    std::env::set_var(OCKAM_COMMANDS, COMMANDS);
     if let Ok(home_dir) = get_env_with_default(OCKAM_HOME, env!("OCKAM_HOME").to_string()) {
         if !home_dir.is_empty() {
             std::env::set_var(OCKAM_HOME, home_dir);

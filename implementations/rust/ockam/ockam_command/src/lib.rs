@@ -30,6 +30,7 @@ pub use terminal::*;
 mod admin;
 mod arguments;
 mod authority;
+mod branding;
 mod command;
 mod command_events;
 mod command_global_opts;

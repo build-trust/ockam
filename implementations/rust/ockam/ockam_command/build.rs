@@ -29,6 +29,10 @@ fn binary_name() {
     println!("cargo:rustc-env=OCKAM_HOME={home_dir}");
     println!("cargo:rerun-if-env-changed=OCKAM_HOME");
 
+    let commands = env::var("OCKAM_COMMANDS").unwrap_or("".to_string());
+    println!("cargo:rustc-env=OCKAM_COMMANDS={commands}");
+    println!("cargo:rerun-if-env-changed=OCKAM_COMMANDS");
+
     let orchestrator_identifier =
         env::var("OCKAM_CONTROLLER_IDENTITY_ID").unwrap_or("".to_string());
     println!("cargo:rustc-env=OCKAM_CONTROLLER_IDENTITY_ID={orchestrator_identifier}");

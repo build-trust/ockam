@@ -19,7 +19,7 @@ const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/after_long_help.txt");
 
 pub use crate::environment::compile_time_vars::{
-    BIN_NAME, BRAND_NAME, OCKAM_COMMAND_BIN_NAME, OCKAM_COMMAND_BRAND_NAME,
+    BIN_NAME, BRAND_NAME, OCKAM_COMMANDS, OCKAM_COMMAND_BIN_NAME, OCKAM_COMMAND_BRAND_NAME,
     OCKAM_COMMAND_SUPPORT_EMAIL,
 };
 

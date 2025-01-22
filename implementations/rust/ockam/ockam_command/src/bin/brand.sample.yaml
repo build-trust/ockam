@@ -5,3 +5,7 @@ bin:
   home_dir: /home/brand1 # if not set, will default to $HOME/.bin
   orchestrator_identifier: brand1 # if not set, will default to the OCKAM_CONTROLLER_IDENTITY_ID env var
   orchestrator_address: brand1.network # if not set, will default to the OCKAM_CONTROLLER_ADDR env var
+  commands:
+    - node: "host"
+    - node_list
+    - node_create: "init"

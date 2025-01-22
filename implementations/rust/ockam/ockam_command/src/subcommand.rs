@@ -7,7 +7,7 @@ use std::time::Duration;
 use async_trait::async_trait;
 use clap::Subcommand;
 use colorful::Colorful;
-use miette::IntoDiagnostic;
+use miette::{miette, IntoDiagnostic};
 use tokio_retry::strategy::jitter;
 use tracing::warn;
 
@@ -17,6 +17,7 @@ use ockam_node::Context;
 
 use crate::admin::AdminCommand;
 use crate::authority::{AuthorityCommand, AuthoritySubcommand};
+use crate::branding;
 use crate::command_global_opts::CommandGlobalOpts;
 use crate::completion::CompletionCommand;
 use crate::credential::CredentialCommand;
@@ -68,52 +69,94 @@ use crate::Result;
 #[derive(Clone, Debug, Subcommand)]
 #[command(about = docs::about("List of commands which can be executed with `ockam`"))]
 pub enum OckamSubcommand {
+    #[command(name = branding::name("enroll"), hide = branding::hide("enroll"))]
+    Enroll(EnrollCommand),
+
+    #[command(name = branding::name("node"), hide = branding::hide("node"))]
     Node(NodeCommand),
+    #[command(name = branding::name("vault"), hide = branding::hide("vault"))]
     Vault(VaultCommand),
+    #[command(name = branding::name("identity"), hide = branding::hide("identity"))]
     Identity(IdentityCommand),
+    #[command(name = branding::name("project"), hide = branding::hide("project"))]
     Project(ProjectCommand),
+    #[command(name = branding::name("policy"), hide = branding::hide("policy"))]
     Policy(PolicyCommand),
+    #[command(name = branding::name("credential"), hide = branding::hide("credential"))]
     Credential(CredentialCommand),
+    #[command(name = branding::name("relay"), hide = branding::hide("relay"))]
     Relay(RelayCommand),
+    #[command(name = branding::name("tcp-outlet"), hide = branding::hide("tcp-outlet"))]
     TcpOutlet(TcpOutletCommand),
+    #[command(name = branding::name("tcp-inlet"), hide = branding::hide("tcp-inlet"))]
     TcpInlet(TcpInletCommand),
+    #[command(name = branding::name("kafka-inlet"), hide = branding::hide("kafka-inlet"))]
     KafkaInlet(KafkaInletCommand),
+    #[command(name = branding::name("kafka-outlet"), hide = branding::hide("kafka-outlet"))]
     KafkaOutlet(KafkaOutletCommand),
-    #[command(name = "influxdb-inlet")]
+    #[command(name = branding::name("influxdb-inlet"), hide = branding::hide("influxdb-inlet"))]
     InfluxDBInlet(InfluxDBInletCommand),
-    #[command(name = "influxdb-outlet")]
+    #[command(name = branding::name("influxdb-outlet"), hide = branding::hide("influxdb-outlet"))]
     InfluxDBOutlet(InfluxDBOutletCommand),
-    #[command(hide = docs::hide())]
+    #[command(name = branding::name("rendezvous"), hide = branding::hide("rendezvous") || docs::hide())]
     Rendezvous(RendezvousCommand),
+    #[command(name = branding::name("status"), hide = branding::hide("status"))]
     Status(StatusCommand),
+    #[command(name = branding::name("reset"), hide = branding::hide("reset"))]
     Reset(ResetCommand),
+    #[command(name = branding::name("run"), hide = branding::hide("run"))]
     Run(RunCommand),
+    #[command(name = branding::name("manpages"), hide = branding::hide("manpages"))]
     Manpages(ManpagesCommand),
+    #[command(name = branding::name("completion"), hide = branding::hide("completion"))]
     Completion(CompletionCommand),
+    #[command(name = branding::name("environment"), hide = branding::hide("environment"))]
     Environment(EnvironmentCommand),
 
-    Enroll(EnrollCommand),
+    #[command(name = branding::name("admin"), hide = branding::hide("admin"))]
     Admin(AdminCommand),
+    #[command(name = branding::name("space"), hide = branding::hide("space"))]
     Space(SpaceCommand),
+    #[command(name = branding::name("space-admin"), hide = branding::hide("space-admin"))]
     SpaceAdmin(SpaceAdminCommand),
+    #[command(name = branding::name("project-admin"), hide = branding::hide("project-admin"))]
     ProjectAdmin(ProjectAdminCommand),
+    #[command(name = branding::name("project-member"), hide = branding::hide("project-member"))]
     ProjectMember(ProjectMemberCommand),
+    #[command(name = branding::name("sidecar"), hide = branding::hide("sidecar"))]
     Sidecar(SidecarCommand),
+    #[command(name = branding::name("subscription"), hide = branding::hide("subscription"))]
     Subscription(SubscriptionCommand),
+    #[command(name = branding::name("lease"), hide = branding::hide("lease"))]
     Lease(LeaseCommand),
+    #[command(name = branding::name("authority"), hide = branding::hide("authority"))]
     Authority(AuthorityCommand),
-    Markdown(MarkdownCommand),
-    Worker(WorkerCommand),
+    #[command(name = branding::name("service"), hide = branding::hide("service"))]
     Service(ServiceCommand),
+    #[command(name = branding::name("message"), hide = branding::hide("message"))]
     Message(MessageCommand),
+    #[command(name = branding::name("markdown"), hide = branding::hide("markdown"))]
+    Markdown(MarkdownCommand),
+
+    #[command(name = branding::name("migrate-database"), hide = branding::hide("migrate-database"))]
     MigrateDatabase(MigrateDatabaseCommand),
+    #[command(name = branding::name("worker"), hide = branding::hide("worker"))]
+    Worker(WorkerCommand),
+    #[command(name = branding::name("secure-channel-listener"), hide = branding::hide("secure-channel-listener"))]
     SecureChannelListener(SecureChannelListenerCommand),
+    #[command(name = branding::name("secure-channel"), hide = branding::hide("secure-channel"))]
     SecureChannel(SecureChannelCommand),
+    #[command(name = branding::name("tcp-listener"), hide = branding::hide("tcp-listener"))]
     TcpListener(TcpListenerCommand),
+    #[command(name = branding::name("tcp-connection"), hide = branding::hide("tcp-connection"))]
     TcpConnection(TcpConnectionCommand),
+    #[command(name = branding::name("flow-control"), hide = branding::hide("flow-control"))]
     FlowControl(FlowControlCommand),
+    #[command(name = branding::name("kafka-consumer"), hide = branding::hide("kafka-consumer"))]
     KafkaConsumer(KafkaConsumerCommand),
+    #[command(name = branding::name("kafka-producer"), hide = branding::hide("kafka-producer"))]
     KafkaProducer(KafkaProducerCommand),
+    #[command(name = branding::name("share"), hide = branding::hide("share"))]
     Share(ShareCommand),
 }
 
@@ -121,6 +164,8 @@ impl OckamSubcommand {
     /// Run the subcommand
     pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self {
+            OckamSubcommand::Enroll(c) => c.run(opts),
+
             OckamSubcommand::Node(c) => c.run(opts),
             OckamSubcommand::Vault(c) => c.run(opts),
             OckamSubcommand::Identity(c) => c.run(opts),
@@ -142,7 +187,6 @@ impl OckamSubcommand {
             OckamSubcommand::Completion(c) => c.run(),
             OckamSubcommand::Environment(c) => c.run(),
 
-            OckamSubcommand::Enroll(c) => c.run(opts),
             OckamSubcommand::Admin(c) => c.run(opts),
             OckamSubcommand::Space(c) => c.run(opts),
             OckamSubcommand::SpaceAdmin(c) => c.run(opts),
@@ -152,11 +196,12 @@ impl OckamSubcommand {
             OckamSubcommand::Subscription(c) => c.run(opts),
             OckamSubcommand::Lease(c) => c.run(opts),
             OckamSubcommand::Authority(c) => c.run(opts),
-            OckamSubcommand::Markdown(c) => c.run(),
-            OckamSubcommand::MigrateDatabase(c) => c.run(opts),
-            OckamSubcommand::Worker(c) => c.run(opts),
             OckamSubcommand::Service(c) => c.run(opts),
             OckamSubcommand::Message(c) => c.run(opts),
+            OckamSubcommand::Markdown(c) => c.run(),
+
+            OckamSubcommand::MigrateDatabase(c) => c.run(opts),
+            OckamSubcommand::Worker(c) => c.run(opts),
             OckamSubcommand::SecureChannelListener(c) => c.run(opts),
             OckamSubcommand::SecureChannel(c) => c.run(opts),
             OckamSubcommand::TcpListener(c) => c.run(opts),
@@ -267,6 +312,7 @@ impl OckamSubcommand {
     /// Return the subcommand name
     pub fn name(&self) -> String {
         match self {
+            OckamSubcommand::Enroll(c) => c.name(),
             OckamSubcommand::Node(c) => c.name(),
             OckamSubcommand::Vault(c) => c.name(),
             OckamSubcommand::Identity(c) => c.name(),
@@ -287,7 +333,6 @@ impl OckamSubcommand {
             OckamSubcommand::Manpages(c) => c.name(),
             OckamSubcommand::Completion(c) => c.name(),
             OckamSubcommand::Environment(c) => c.name(),
-            OckamSubcommand::Enroll(c) => c.name(),
             OckamSubcommand::Admin(c) => c.name(),
             OckamSubcommand::Space(c) => c.name(),
             OckamSubcommand::SpaceAdmin(c) => c.name(),
@@ -319,7 +364,11 @@ pub trait Command: Debug + Clone + Sized + Send + Sync + 'static {
     const NAME: &'static str;
 
     fn name(&self) -> String {
-        Self::NAME.into()
+        branding::CUSTOM_COMMANDS.name(Self::NAME).to_string()
+    }
+
+    fn hide() -> bool {
+        branding::CUSTOM_COMMANDS.hide(Self::NAME)
     }
 
     fn retry_opts(&self) -> Option<RetryOpts> {
@@ -327,6 +376,9 @@ pub trait Command: Debug + Clone + Sized + Send + Sync + 'static {
     }
 
     fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+        if Self::hide() {
+            return Err(miette!("This command is not available"));
+        }
         async_cmd(Self::NAME, opts.clone(), |ctx| async move {
             self.async_run_with_retry(&ctx, opts).await
         })
