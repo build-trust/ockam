@@ -1,4 +1,4 @@
-use crate::command::{BIN_NAME, BRAND_NAME};
+use crate::command::{BIN_NAME, BRAND_NAME, SUPPORT_EMAIL};
 use crate::Result;
 use colorful::Colorful;
 use ockam_api::terminal::TextHighlighter;
@@ -11,7 +11,9 @@ const PREVIEW_TAG: &str = include_str!("./static/preview_tag.txt");
 const UNSAFE_TOOLTIP_TEXT: &str = include_str!("./static/unsafe_tooltip.txt");
 const UNSAFE_TAG: &str = include_str!("./static/unsafe_tag.txt");
 
-const FOOTER: &str = "
+static FOOTER: Lazy<String> = Lazy::new(|| {
+    if BIN_NAME == "ockam" {
+        "
 Learn More:
 
 Use 'ockam <SUBCOMMAND> --help' for more information about a subcommand.
@@ -22,8 +24,22 @@ Learn more about Ockam: https://docs.ockam.io/reference/command
 Feedback:
 
 If you have questions, as you explore, join us on the contributors
-discord channel https://discord.ockam.io
-";
+discord channel https://discord.ockam.io"
+            .to_string()
+    } else {
+        format!(
+            "
+Learn More:
+
+Use 'ockam <SUBCOMMAND> --help' for more information about a subcommand.
+Where <SUBCOMMAND> might be: 'node', 'status', 'enroll', etc.
+
+Feedback:
+
+If you have questions, please email us on {SUPPORT_EMAIL}"
+        )
+    }
+});
 
 static HEADER_RE: Lazy<Regex> =
     Lazy::new(|| Regex::new("^(Examples|Learn More|Feedback):$".into()));
@@ -63,7 +79,7 @@ pub(crate) fn after_help(text: &str) -> &'static str {
     } else {
         processed.push_str("Examples:\n\n");
         processed.push_str(text);
-        processed.push_str(FOOTER);
+        processed.push_str(&FOOTER);
     }
     render(processed.as_str())
 }

@@ -20,7 +20,7 @@ const AFTER_LONG_HELP: &str = include_str!("./static/after_long_help.txt");
 
 pub use crate::environment::compile_time_vars::{
     BIN_NAME, BRAND_NAME, OCKAM_COMMANDS, OCKAM_COMMAND_BIN_NAME, OCKAM_COMMAND_BRAND_NAME,
-    OCKAM_COMMAND_SUPPORT_EMAIL,
+    OCKAM_COMMAND_SUPPORT_EMAIL, SUPPORT_EMAIL,
 };
 
 /// Top-level command, with:
