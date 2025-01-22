@@ -11,6 +11,15 @@ const PREVIEW_TAG: &str = include_str!("./static/preview_tag.txt");
 const UNSAFE_TOOLTIP_TEXT: &str = include_str!("./static/unsafe_tooltip.txt");
 const UNSAFE_TAG: &str = include_str!("./static/unsafe_tag.txt");
 
+static IS_MARKDOWN: Lazy<bool> =
+    Lazy::new(|| get_env_with_default("OCKAM_HELP_RENDER_MARKDOWN", false).unwrap_or(false));
+
+static HIDE: Lazy<bool> =
+    Lazy::new(|| get_env_with_default("OCKAM_HELP_SHOW_HIDDEN", true).unwrap_or(true));
+
+static HEADER_RE: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"^(Examples:|Learn More:|Feedback:).*$".into()));
+
 static FOOTER: Lazy<String> = Lazy::new(|| {
     if BIN_NAME == "ockam" {
         "
@@ -41,15 +50,8 @@ If you have questions, please email us on {SUPPORT_EMAIL}"
     }
 });
 
-static HEADER_RE: Lazy<Regex> =
-    Lazy::new(|| Regex::new("^(Examples|Learn More|Feedback):$".into()));
-
-fn is_markdown() -> bool {
-    get_env_with_default("OCKAM_HELP_RENDER_MARKDOWN", false).unwrap_or(false)
-}
-
 pub(crate) fn hide() -> bool {
-    get_env_with_default("OCKAM_HELP_SHOW_HIDDEN", true).unwrap_or(true)
+    *HIDE
 }
 
 pub(crate) fn about(text: &str) -> &'static str {
@@ -58,7 +60,7 @@ pub(crate) fn about(text: &str) -> &'static str {
 
 pub(crate) fn before_help(text: &str) -> &'static str {
     let mut processed = String::new();
-    if is_markdown() {
+    if *IS_MARKDOWN {
         if let Some(s) = enrich_preview_tag(text) {
             processed.push_str(&s);
         }
@@ -73,7 +75,7 @@ pub(crate) fn before_help(text: &str) -> &'static str {
 
 pub(crate) fn after_help(text: &str) -> &'static str {
     let mut processed = String::new();
-    if is_markdown() {
+    if *IS_MARKDOWN {
         processed.push_str("### Examples\n\n");
         processed.push_str(text);
     } else {
@@ -88,7 +90,7 @@ pub(crate) fn after_help(text: &str) -> &'static str {
 /// Otherwise, if it is a Markdown document just return a static string
 fn render(body: &str) -> &'static str {
     let body = process_branding(body);
-    if is_markdown() {
+    if *IS_MARKDOWN {
         Box::leak(body.into_boxed_str())
     } else {
         let syntax_highlighted = process_terminal_docs(body);
@@ -117,7 +119,7 @@ fn process_terminal_docs(input: String) -> String {
     for line in LinesWithEndings::from(&input) {
         // Bold and underline known headers
         if HEADER_RE.is_match(line) {
-            output.push(line.to_string().bold().underlined().to_string());
+            output.push(line.bold().underlined().to_string());
         }
         // Underline H4 headers
         else if line.starts_with("#### ") {

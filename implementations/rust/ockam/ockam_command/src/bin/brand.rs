@@ -21,9 +21,8 @@ static CRATE_DIR: Lazy<PathBuf> = Lazy::new(|| {
 
 static BIN_DIR: Lazy<PathBuf> = Lazy::new(|| CRATE_DIR.join("src/bin"));
 
-/// Builds the binaries with the passed configuration
-/// How to run:
-/// `cargo run --bin brand ./path/to/config.yaml --release`
+/// Builds the binaries with the passed configuration:
+/// `cargo run --bin brand ./path/to/config.yaml`
 /// `cargo run --bin brand "{bin1: {brand_name: "Name"}}"`
 fn main() -> Result<()> {
     // first argument: inline config or path to config file
@@ -93,7 +92,7 @@ fn build_binary(bin_name: &str, brand_settings: Brand) -> Result<()> {
         cmd.env(OCKAM_COMMANDS, env_value);
     }
     if let Some(build_args) = brand_settings.build_args {
-        cmd.args(build_args.split_whitespace());
+        cmd.args(build_args);
     }
 
     let res = cmd
@@ -154,7 +153,7 @@ struct Brand {
     orchestrator_identifier: Option<String>,
     orchestrator_address: Option<String>,
     commands: Option<Vec<Command>>,
-    build_args: Option<String>,
+    build_args: Option<Vec<String>>,
 }
 
 impl Display for Brand {
@@ -205,7 +204,10 @@ impl Display for Brand {
             writeln!(
                 f,
                 "{}",
-                fmt_log!("{PADDING}build args {}", color_primary(build_args))
+                fmt_log!(
+                    "{PADDING}build args {}",
+                    color_primary(build_args.join(" "))
+                )
             )?;
         }
         Ok(())
@@ -238,6 +240,10 @@ mod tests {
           bin2:
             support_email: bin2@support.io
             brand_name: Brand2
+            build_args:
+              - --release
+              - --target
+              - armv7-unknown-linux-gnueabihf
         "#;
         let parsed: Config = serde_yaml::from_str(config).unwrap();
         assert_eq!(parsed.items.len(), 2);
@@ -248,7 +254,8 @@ mod tests {
         processed.process_defaults().unwrap();
 
         // No defaults used, should be the same as parsed
-        assert_eq!(parsed.items["bin1"], processed.items["bin1"]);
+        let bin1 = &processed.items["bin1"];
+        assert_eq!(&parsed.items["bin1"], bin1);
 
         // Check bin2 defaults
         let bin2 = &processed.items["bin2"];
@@ -258,5 +265,9 @@ mod tests {
         assert_eq!(bin2.orchestrator_identifier.as_deref(), None);
         assert_eq!(bin2.orchestrator_address.as_deref(), None);
         assert_eq!(bin2.commands.as_deref(), None);
+        assert_eq!(
+            bin2.build_args.clone().unwrap(),
+            vec!["--release", "--target", "armv7-unknown-linux-gnueabihf",]
+        );
     }
 }

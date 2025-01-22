@@ -33,8 +33,8 @@ impl Debug for Command {
 }
 
 impl Commands {
-    pub fn from_env() -> Result<Self> {
-        let commands = COMMANDS
+    fn new(commands: &str) -> Result<Self> {
+        let commands = commands
             .split(',')
             .filter_map(|c| {
                 if c.is_empty() {
@@ -53,6 +53,10 @@ impl Commands {
             })
             .collect();
         Ok(Self { commands })
+    }
+
+    pub fn from_env() -> Result<Self> {
+        Self::new(COMMANDS)
     }
 
     pub fn hide(&self, command_name: &str) -> bool {
@@ -77,33 +81,28 @@ impl Commands {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::OCKAM_COMMANDS;
 
     #[test]
     fn test_hide() {
-        std::env::set_var(OCKAM_COMMANDS, "node create=host create,project,enroll");
-        let commands = Commands::from_env().unwrap();
+        let commands = Commands::new("node create=host create,project,enroll").unwrap();
         assert!(!commands.hide("node create"));
         assert!(!commands.hide("project"));
         assert!(!commands.hide("enroll"));
         assert!(commands.hide("command4"));
 
-        std::env::set_var(OCKAM_COMMANDS, "");
-        let commands = Commands::from_env().unwrap();
+        let commands = Commands::new("").unwrap();
         assert!(!commands.hide("command1"));
     }
 
     #[test]
     fn test_commands() {
-        std::env::set_var(OCKAM_COMMANDS, "node create=host create,project,enroll");
-        let commands = Commands::from_env().unwrap();
+        let commands = Commands::new("node create=host create,project,enroll").unwrap();
         assert_eq!(commands.name("node create"), "host create");
         assert_eq!(commands.name("project"), "project");
         assert_eq!(commands.name("enroll"), "enroll");
         assert_eq!(commands.name("command4"), "command4");
 
-        std::env::set_var(OCKAM_COMMANDS, "");
-        let commands = Commands::from_env().unwrap();
+        let commands = Commands::new("").unwrap();
         assert_eq!(commands.name("command1"), "command1");
     }
 }
