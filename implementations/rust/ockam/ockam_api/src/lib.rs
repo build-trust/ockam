@@ -43,6 +43,7 @@ pub mod influxdb;
 pub mod logs;
 mod schema;
 
+pub mod control_api;
 mod date;
 mod multiaddr_resolver;
 mod rendezvous_healthcheck;

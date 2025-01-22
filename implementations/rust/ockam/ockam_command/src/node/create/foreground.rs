@@ -1,14 +1,15 @@
 use crate::node::create::DEFAULT_NODE_NAME;
 use crate::node::node_callback::NodeCallback;
 use crate::node::CreateCommand;
+use crate::service::config::ControlApiNodeResolution;
 use crate::util::foreground_args::wait_for_exit_signal;
 use crate::CommandGlobalOpts;
 use miette::miette;
 use miette::IntoDiagnostic;
 use ockam::tcp::{TcpListenerOptions, TcpTransport};
 use ockam::udp::{UdpBindArguments, UdpBindOptions, UdpTransport};
-use ockam::Address;
-use ockam::Context;
+use ockam::{Address, Context};
+use ockam_api::control_api::frontend::NodeResolution;
 use ockam_api::cli_state::random_name;
 use ockam_api::colors::color_primary;
 use ockam_api::fmt_log;
@@ -16,13 +17,13 @@ use ockam_api::nodes::service::{NodeManagerTransport, SecureChannelType};
 use ockam_api::nodes::InMemoryNode;
 use ockam_api::nodes::{
     service::{NodeManagerGeneralOptions, NodeManagerTransportOptions},
-    NodeManagerWorker, NODEMANAGER_ADDR,
+    NodeManager, NodeManagerWorker, NODEMANAGER_ADDR,
 };
 use ockam_api::terminal::notification::NotificationHandler;
 use ockam_core::LOCAL;
 use std::sync::Arc;
 use tokio::time::{sleep, Duration};
-use tracing::{debug, info, instrument};
+use tracing::{debug, error, info, instrument};
 
 impl CreateCommand {
     #[instrument(skip_all, fields(node_name = self.name))]
@@ -93,7 +94,10 @@ impl CreateCommand {
             NodeManagerGeneralOptions::new(
                 opts.state.clone(),
                 node_name.clone(),
-                self.launch_configuration.is_none(),
+                self.launch_configuration
+                    .as_ref()
+                    .map(|c| c.start_default_services)
+                    .unwrap_or(true),
                 self.status_endpoint_port(),
                 true,
             ),
@@ -116,7 +120,7 @@ impl CreateCommand {
         debug!("node manager worker started");
 
         if self
-            .start_secure_channel_listener(ctx, &in_memory_node, &opts)
+            .start_services(ctx, in_memory_node.inner_clone(), &opts)
             .await
             .is_err()
         {
@@ -190,41 +194,77 @@ impl CreateCommand {
         Ok(())
     }
 
-    async fn start_secure_channel_listener(
+    async fn start_services(
         &self,
         ctx: &Context,
-        in_memory_node: &InMemoryNode,
+        node_manager: Arc<NodeManager>,
         opts: &CommandGlobalOpts,
     ) -> miette::Result<()> {
-        let launch_configuration = if let Some(launch_configuration) = &self.launch_configuration {
-            launch_configuration
-        } else {
-            return Ok(());
-        };
+        if let Some(config) = &self.launch_configuration {
+            if let Some(startup_services) = &config.startup_services {
+                if let Some(cfg) = startup_services.secure_channel_listener.as_ref() {
+                    if !cfg.disabled {
+                        opts.terminal
+                            .write_line(fmt_log!("Starting secure-channel listener ..."))?;
+                        node_manager
+                            .create_secure_channel_listener(
+                                Address::from((LOCAL, cfg.address.clone())),
+                                cfg.authorized_identifiers.clone(),
+                                cfg.identity.clone(),
+                                ctx,
+                                SecureChannelType::KeyExchangeAndMessages,
+                            )
+                            .await?;
+                    }
+                }
 
-        let startup_services =
-            if let Some(startup_services) = &launch_configuration.startup_services {
-                startup_services
-            } else {
-                return Ok(());
-            };
+                if let Some(configuration) = &startup_services.control_api {
+                    if configuration.frontend {
+                        let authentication_token = match &configuration.authentication_token {
+                            Some(token) => token.clone(),
+                            None => std::env::var("OCKAM_CONTROL_API_AUTHENTICATION_TOKEN")
+                                .map_err(|_| {
+                                    error!("Frontend Control API needs either `authentication_token` configuration or `OCKAM_CONTROL_API_AUTHENTICATION_TOKEN` environment variable to be set");
+                                    miette!("OCKAM_CONTROL_API_AUTHENTICATION_TOKEN not set")
+                                })?,
+                        };
 
-        if let Some(cfg) = startup_services.secure_channel_listener.as_ref() {
-            if cfg.disabled {
-                return Ok(());
+                        opts.terminal
+                            .write_line(fmt_log!("Starting control API Frontend..."))?;
+
+                        let node_resolution = match &configuration.node_resolution {
+                            ControlApiNodeResolution::Relay => NodeResolution::Relay,
+                            ControlApiNodeResolution::DirectConnection { suffix } => {
+                                NodeResolution::DirectConnection {
+                                    node_manager: node_manager.clone(),
+                                    suffix: suffix.clone(),
+                                    port: configuration.node_port,
+                                }
+                            }
+                        };
+
+                        node_manager
+                            .create_control_api_frontend(
+                                ctx,
+                                configuration.http_bind_address,
+                                node_resolution,
+                                authentication_token,
+                                Some(configuration.frontend_policy.clone()),
+                            )
+                            .await?;
+                    }
+
+                    if configuration.backend {
+                        opts.terminal
+                            .write_line(fmt_log!("Starting control API Backend..."))?;
+
+                        node_manager.create_control_api_backend(
+                            ctx,
+                            Some(configuration.backend_policy.clone()),
+                        )?;
+                    }
+                }
             }
-
-            opts.terminal
-                .write_line(fmt_log!("Starting secure-channel listener ..."))?;
-            in_memory_node
-                .create_secure_channel_listener(
-                    Address::from((LOCAL, cfg.address.clone())),
-                    cfg.authorized_identifiers.clone(),
-                    cfg.identity.clone(),
-                    ctx,
-                    SecureChannelType::KeyExchangeAndMessages,
-                )
-                .await?;
         }
 
         Ok(())

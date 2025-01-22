@@ -265,7 +265,10 @@ impl NodeManager {
                     self.secure_channels.identities().identities_attributes(),
                 )
         } else {
+            let sc_flow_id = secure_channel_listener.flow_control_id();
             options
+                .service_as_consumer(sc_flow_id)
+                .relay_as_consumer(sc_flow_id)
         };
 
         RelayService::create(ctx, DefaultAddress::RELAY_SERVICE, options)?;

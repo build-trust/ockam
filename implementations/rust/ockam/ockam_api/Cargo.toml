@@ -63,6 +63,7 @@ futures = { version = "0.3.30", features = [] }
 gethostname = "0.5.0"
 hex = { version = "0.4.3", default-features = false, features = ["alloc", "serde"] }
 home = "0.5"
+http = "1"
 http-body-util = "0"
 httparse = "1.9.5"
 hyper = { version = "1", default-features = false, features = ["server", "http1"] }
@@ -99,6 +100,7 @@ sqlx = { version = "0.8.3", default-features = false }
 sqlx-core = { version = "0.8.3", default-features = false }
 strip-ansi-escapes = "0.2"
 strum = { version = "0.26.3", default-features = false, features = ["derive"] }
+subtle = "2"
 syntect = { version = "5.2.0", default-features = false, features = ["default-syntaxes", "regex-onig"] }
 sysinfo = "0.32"
 termbg = "0.5.2"
@@ -160,6 +162,7 @@ default-features = false
 [dev-dependencies]
 cddl-cat = "0.6.1"
 hex = "0.4.3"
+hyper = { version = "1", default-features = false, features = ["server", "http1", "client"] }
 multimap = "0.10.0"
 ockam_macros = { path = "../ockam_macros", features = ["std"], version = "^0.37.0" }
 ockam_transport_core = { path = "../ockam_transport_core", version = "^0.101.0" }

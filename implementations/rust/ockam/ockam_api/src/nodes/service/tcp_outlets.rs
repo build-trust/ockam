@@ -230,7 +230,7 @@ impl NodeManager {
         }
     }
 
-    pub(super) fn show_outlet(&self, worker_addr: &Address) -> Option<OutletStatus> {
+    pub fn show_outlet(&self, worker_addr: &Address) -> Option<OutletStatus> {
         info!(%worker_addr, "Handling request to show outlet portal");
         if let Some(outlet_to_show) = self.registry.outlets.get(worker_addr) {
             debug!(%worker_addr, "Outlet not found in node registry");

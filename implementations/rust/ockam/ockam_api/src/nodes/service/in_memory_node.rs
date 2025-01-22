@@ -77,6 +77,11 @@ impl Drop for InMemoryNode {
 }
 
 impl InMemoryNode {
+    /// Return a clone of the inner NodeManager
+    pub fn inner_clone(&self) -> Arc<NodeManager> {
+        self.node_manager.clone()
+    }
+
     /// Start an in memory node
     pub async fn start(ctx: &Context, cli_state: &CliState) -> miette::Result<Self> {
         Self::start_with_project_name(ctx, cli_state, None).await

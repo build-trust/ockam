@@ -42,8 +42,8 @@ impl TryFrom<StaticHostnamePort> for HostnamePort {
 #[derive(Debug, Clone, PartialEq, Eq, Encode, Decode, CborLen)]
 #[rustfmt::skip]
 pub struct HostnamePort {
-    #[n(0)] hostname: String,
-    #[n(1)] port: u16,
+    #[n(0)] pub hostname: String,
+    #[n(1)] pub port: u16,
 }
 
 impl HostnamePort {
@@ -82,8 +82,8 @@ impl HostnamePort {
         let (hostname, port_str) = match hostname_port.split_once(':') {
             None => {
                 return Err(ockam_core::Error::new(
-                    Origin::Api,
-                    Kind::Serialization,
+                    Origin::Core,
+                    Kind::Parse,
                     "Invalid format. Expected 'hostname:port'".to_string(),
                 ))
             }
@@ -93,8 +93,8 @@ impl HostnamePort {
         // Validate port
         let port = port_str.parse::<u16>().map_err(|_| {
             ockam_core::Error::new(
-                Origin::Api,
-                Kind::Serialization,
+                Origin::Core,
+                Kind::Parse,
                 format!("Invalid port number {port_str}"),
             )
         })?;
@@ -102,8 +102,8 @@ impl HostnamePort {
         // Ensure the hostname is a valid ASCII string
         if !hostname.is_ascii() {
             return Err(ockam_core::Error::new(
-                Origin::Api,
-                Kind::Serialization,
+                Origin::Core,
+                Kind::Parse,
                 format!("Hostname must be ascii: {hostname_port}"),
             ));
         }
@@ -111,8 +111,8 @@ impl HostnamePort {
         // Validate hostname
         if hostname.is_empty() {
             return Err(ockam_core::Error::new(
-                Origin::Api,
-                Kind::Serialization,
+                Origin::Core,
+                Kind::Parse,
                 format!("Hostname cannot be empty {hostname}"),
             ));
         }
@@ -133,8 +133,8 @@ impl HostnamePort {
             || hostname.ends_with('.')
         {
             return Err(ockam_core::Error::new(
-                Origin::Api,
-                Kind::Serialization,
+                Origin::Core,
+                Kind::Parse,
                 format!("Hostname cannot start or end with a hyphen or dot {hostname}"),
             ));
         }
@@ -144,8 +144,8 @@ impl HostnamePort {
             // Segment can't be empty (i.e. two dots in a row)
             if segment.is_empty() {
                 return Err(ockam_core::Error::new(
-                    Origin::Api,
-                    Kind::Serialization,
+                    Origin::Core,
+                    Kind::Parse,
                     format!("Hostname segment cannot be empty {hostname}"),
                 ));
             }
@@ -153,8 +153,8 @@ impl HostnamePort {
             // Hostname segments (between dots) should be between 1 and 63 characters long
             if segment.len() > 63 {
                 return Err(ockam_core::Error::new(
-                    Origin::Api,
-                    Kind::Serialization,
+                    Origin::Core,
+                    Kind::Parse,
                     format!("Hostname segment too long {hostname}"),
                 ));
             }
@@ -164,8 +164,8 @@ impl HostnamePort {
                 .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
             {
                 return Err(ockam_core::Error::new(
-                    Origin::Api,
-                    Kind::Serialization,
+                    Origin::Core,
+                    Kind::Parse,
                     format!("Hostname contains invalid characters {hostname}"),
                 ));
             }
