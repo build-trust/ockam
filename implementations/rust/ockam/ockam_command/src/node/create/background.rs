@@ -41,8 +41,8 @@ impl CreateCommand {
         let handle = spawn_node(&opts, cmd)?;
 
         tokio::select! {
-            _ = handle.wait_with_output() => { std::process::exit(1) }
-            _ = node_callback.wait_for_signal() => {}
+            _ = handle.wait_with_output() => { info!("A1"); std::process::exit(1) }
+            _ = node_callback.wait_for_signal() => {info!("A2");}
         }
 
         opts.state

@@ -556,7 +556,6 @@ mod tests {
                     "",
                 ),
                 global_args: GlobalArgs::default(),
-                tracing_guard: None,
             };
             let mut cmd = CreateCommand::default();
             cmd.parse_args(&opts).await.unwrap();
@@ -616,7 +615,6 @@ mod tests {
                     "",
                 ),
                 global_args: GlobalArgs::default(),
-                tracing_guard: None,
             };
 
             let default_node_name = "n1";

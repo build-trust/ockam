@@ -8,6 +8,7 @@ use crate::{
     util::exitcode, version::Version, OckamCommand,
 };
 use ockam_api::cli_state::{CliState, CliStateMode};
+use ockam_api::log;
 use ockam_api::logs::{
     logging_configuration, Colored, ExportingConfiguration, LogLevelWithCratesFilter,
     LoggingTracing,
@@ -41,38 +42,38 @@ pub fn run() -> miette::Result<()> {
         print_version_and_exit();
     }
 
-    // log("Point 0.0");
+    log("Point 0.0");
 
     let command_res = OckamCommand::try_parse_from(&input);
 
-    // log("Point 0.1");
+    log("Point 0.1");
 
     let node_builder = NodeBuilder::new().no_logging();
 
-    // log("Point 0.2");
+    log("Point 0.2");
 
     let (mut ctx, mut executor) = node_builder.build();
 
-    // log("Point 0.3");
+    log("Point 0.3");
 
     executor.execute(async move {
-        // log("Point 0.4");
+        log("Point 0.4");
 
         match command_res {
             Ok(command) => command.run(&mut ctx, &input).await?,
             Err(err) => handle_invalid_command(&input, err).await?,
         }
 
-        // log("Point 0.5");
+        log("Point 0.5");
 
         ctx.shutdown_node().await?;
 
-        // log("Point 0.6");
+        log("Point 0.6");
 
         Ok::<(), miette::Error>(())
     })??;
 
-    // log("Point 0.7");
+    log("Point 0.7");
 
     Ok(())
 }

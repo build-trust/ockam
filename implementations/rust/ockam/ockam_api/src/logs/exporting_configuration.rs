@@ -342,31 +342,24 @@ fn to_socket_addr(url: &Url) -> Option<SocketAddr> {
 async fn opentelemetry_endpoint(
     state: &CliState,
 ) -> ockam_core::Result<Option<OpenTelemetryEndpoint>> {
-    if !is_exporting_set()? {
-        print_debug("Exporting is turned off");
-        Ok(None)
-    } else {
-        let res = {
-            // if a project is defined try to use the OpenTelemetry portal
-            // and if we allow traces to be exported via a portal
-            if state.projects().get_default_project().await.is_ok()
-                && is_exporting_via_portal_set()?
-            {
-                print_debug("A default project exists. Getting the project export endpoint");
-                get_project_endpoint_url(state).await
-            } else {
-                print_debug("A default project does not exist. Getting the default HTTPs endpoint");
-                get_https_endpoint()
-            }
-        };
-        match res {
-            Ok(url) => Ok(Some(url)),
-            Err(e) => {
-                print_debug(format!(
-                    "There was an issue when setting up the exporting of traces: {e:?}"
-                ));
-                Ok(None)
-            }
+    let res = {
+        // if a project is defined try to use the OpenTelemetry portal
+        // and if we allow traces to be exported via a portal
+        if state.projects().get_default_project().await.is_ok() && is_exporting_via_portal_set()? {
+            print_debug("A default project exists. Getting the project export endpoint");
+            get_project_endpoint_url(state).await
+        } else {
+            print_debug("A default project does not exist. Getting the default HTTPs endpoint");
+            get_https_endpoint()
+        }
+    };
+    match res {
+        Ok(url) => Ok(Some(url)),
+        Err(e) => {
+            print_debug(format!(
+                "There was an issue when setting up the exporting of traces: {e:?}"
+            ));
+            Ok(None)
         }
     }
 }

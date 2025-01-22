@@ -11,6 +11,7 @@ pub const BRAND_NAME: &str = env!("OCKAM_COMMAND_BRAND_NAME");
 pub const SUPPORT_EMAIL: &str = env!("OCKAM_COMMAND_SUPPORT_EMAIL");
 
 pub fn load_compile_time_vars() {
+    // FIXME
     std::env::set_var(OCKAM_COMMAND_BIN_NAME, BIN_NAME);
     std::env::set_var(OCKAM_COMMAND_BRAND_NAME, BRAND_NAME);
     std::env::set_var(OCKAM_COMMAND_SUPPORT_EMAIL, SUPPORT_EMAIL);
