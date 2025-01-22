@@ -291,7 +291,7 @@ impl FromString for MultiAddr {
         Self::from_str(s).map_err(|_| {
             ockam_core::Error::new(
                 ockam_core::errcode::Origin::Core,
-                ockam_core::errcode::Kind::Internal,
+                ockam_core::errcode::Kind::Parse,
                 "MultiAddr parse error",
             )
         })

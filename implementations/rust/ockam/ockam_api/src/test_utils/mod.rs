@@ -39,6 +39,7 @@ pub struct NodeManagerHandle {
     pub node_manager: Arc<InMemoryNode>,
     pub tcp: TcpTransport,
     pub secure_channels: Arc<SecureChannels>,
+    pub bind_address: SocketAddr,
 }
 
 impl Drop for NodeManagerHandle {
@@ -55,13 +56,13 @@ impl Drop for NodeManagerHandle {
 /// things *will* break.
 pub async fn start_manager_for_tests(
     context: &mut Context,
-    bind_addr: Option<&str>,
+    bind_address: Option<&str>,
     trust_options: Option<NodeManagerTrustOptions>,
 ) -> Result<NodeManagerHandle> {
     let tcp = TcpTransport::create(context)?;
     let tcp_listener = tcp
         .listen(
-            bind_addr.unwrap_or("127.0.0.1:0"),
+            bind_address.unwrap_or("127.0.0.1:0"),
             TcpListenerOptions::new(),
         )
         .await?;
@@ -122,6 +123,7 @@ pub async fn start_manager_for_tests(
         node_manager,
         tcp: tcp.try_clone()?,
         secure_channels,
+        bind_address: *tcp_listener.socket_address(),
     };
 
     Ok(handle)

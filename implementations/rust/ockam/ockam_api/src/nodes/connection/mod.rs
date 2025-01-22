@@ -56,6 +56,7 @@ impl Connection {
     }
 
     pub fn add_default_consumers(&self, ctx: &Context) {
+        self.add_consumer(ctx, &DefaultAddress::CONTROL_API.into());
         self.add_consumer(ctx, &DefaultAddress::KEY_EXCHANGER_LISTENER.into());
         self.add_consumer(ctx, &DefaultAddress::SECURE_CHANNEL_LISTENER.into());
         self.add_consumer(ctx, &DefaultAddress::UPPERCASE_SERVICE.into());

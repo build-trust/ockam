@@ -6,14 +6,17 @@ use core::time::Duration;
 use ockam_core::compat::{sync::Arc, vec::Vec};
 use ockam_core::{
     errcode::{Kind, Origin},
-    route, Address, AllowAll, AllowOnwardAddress, Error, LocalMessage, Mailboxes, Message,
-    RelayMessage, Result, Route, Routed,
+    route, Address, AllOutgoingAccessControl, AllowAll, AllowOnwardAddress, Error,
+    IncomingAccessControl, LocalMessage, Mailboxes, Message, OutgoingAccessControl, RelayMessage,
+    Result, Route, Routed,
 };
 use ockam_core::{LocalInfo, Mailbox};
 
 /// Full set of options to `send_and_receive_extended` function
 pub struct MessageSendReceiveOptions {
     message_wait: MessageWait,
+    incoming_access_control: Option<Arc<dyn IncomingAccessControl>>,
+    outgoing_access_control: Option<Arc<dyn OutgoingAccessControl>>,
 }
 
 impl Default for MessageSendReceiveOptions {
@@ -27,6 +30,8 @@ impl MessageSendReceiveOptions {
     pub fn new() -> Self {
         Self {
             message_wait: MessageWait::Timeout(DEFAULT_TIMEOUT),
+            incoming_access_control: None,
+            outgoing_access_control: None,
         }
     }
 
@@ -39,6 +44,24 @@ impl MessageSendReceiveOptions {
     /// Wait for the message forever
     pub fn without_timeout(mut self) -> Self {
         self.message_wait = MessageWait::Blocking;
+        self
+    }
+
+    /// Set incoming access control
+    pub fn with_incoming_access_control(
+        mut self,
+        incoming_access_control: Arc<dyn IncomingAccessControl>,
+    ) -> Self {
+        self.incoming_access_control = Some(incoming_access_control);
+        self
+    }
+
+    /// Set outgoing access control
+    pub fn with_outgoing_access_control(
+        mut self,
+        outgoing_access_control: Arc<dyn OutgoingAccessControl>,
+    ) -> Self {
+        self.outgoing_access_control = Some(outgoing_access_control);
         self
     }
 }
@@ -87,12 +110,30 @@ impl Context {
 
         let next = route.next()?.clone();
         let address = Address::random_tagged("Context.send_and_receive.detached");
+
+        let incoming_access_control =
+            if let Some(incoming_access_control) = options.incoming_access_control {
+                incoming_access_control
+            } else {
+                Arc::new(AllowAll)
+            };
+
+        let outgoing_access_control: Arc<dyn OutgoingAccessControl> =
+            if let Some(outgoing_access_control) = options.outgoing_access_control {
+                Arc::new(AllOutgoingAccessControl::new(vec![
+                    outgoing_access_control,
+                    Arc::new(AllowOnwardAddress(next.clone())),
+                ]))
+            } else {
+                Arc::new(AllowOnwardAddress(next.clone()))
+            };
+
         let mailboxes = Mailboxes::new(
             Mailbox::new(
                 address.clone(),
                 None,
-                Arc::new(AllowAll),
-                Arc::new(AllowOnwardAddress(next.clone())),
+                incoming_access_control,
+                outgoing_access_control,
             ),
             vec![],
         );
