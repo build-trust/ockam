@@ -1,4 +1,5 @@
 use miette::miette;
+use tokio::io::{AsyncBufReadExt, BufReader};
 use tracing::{debug, instrument};
 
 use ockam_api::cli_state::journeys::{JourneyEvent, NODE_NAME};
@@ -38,11 +39,51 @@ impl CreateCommand {
 
         // Run foreground node in a separate process
         // Output is handled in the foreground execution
-        let handle = spawn_node(&opts, cmd)?;
+        let mut handle = spawn_node(&opts, cmd)?;
+
+        let stdout = handle.stdout.take().map(|o| BufReader::new(o).lines());
+        let handle_out = if let Some(mut stdout) = stdout {
+            let handle = tokio::spawn(async move {
+                while let Ok(line) = stdout.next_line().await {
+                    if let Some(line) = line {
+                        println!("{}", line);
+                    } else {
+                        return;
+                    }
+                }
+            });
+            Some(handle)
+        } else {
+            None
+        };
+
+        let stderr = handle.stderr.take().map(|o| BufReader::new(o).lines());
+        let handle_err = if let Some(mut stderr) = stderr {
+            let handle = tokio::spawn(async move {
+                while let Ok(line) = stderr.next_line().await {
+                    if let Some(line) = line {
+                        eprintln!("{}", line);
+                    } else {
+                        return;
+                    }
+                }
+            });
+            Some(handle)
+        } else {
+            None
+        };
 
         tokio::select! {
-            _ = handle.wait_with_output() => { info!("A1"); std::process::exit(1) }
-            _ = node_callback.wait_for_signal() => {info!("A2");}
+            _ = handle.wait_with_output() => { std::process::exit(1) }
+            _ = node_callback.wait_for_signal() => {}
+        }
+
+        if let Some(handle) = handle_out {
+            _ = handle.abort();
+        }
+
+        if let Some(handle) = handle_err {
+            _ = handle.abort();
         }
 
         opts.state
