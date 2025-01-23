@@ -2,6 +2,7 @@ use ockam_core::compat::rand::random_string;
 use ockam_core::env::get_env;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{Error, Result};
+use percent_encoding::NON_ALPHANUMERIC;
 use std::fs::create_dir_all;
 use std::path::{Path, PathBuf};
 
@@ -9,6 +10,12 @@ use std::path::{Path, PathBuf};
 pub const OCKAM_SQLITE_IN_MEMORY: &str = "OCKAM_SQLITE_IN_MEMORY";
 /// Database connection URL
 pub const OCKAM_DATABASE_CONNECTION_URL: &str = "OCKAM_DATABASE_CONNECTION_URL";
+/// Database instance as HOST:PORT/name
+pub const OCKAM_DATABASE_INSTANCE: &str = "OCKAM_DATABASE_INSTANCE";
+/// Database user
+pub const OCKAM_DATABASE_USER: &str = "OCKAM_DATABASE_USER";
+/// Database password
+pub const OCKAM_DATABASE_PASSWORD: &str = "OCKAM_DATABASE_PASSWORD";
 
 /// Configuration for the database.
 /// We either use Sqlite or Postgres
@@ -82,8 +89,7 @@ impl DatabaseConfiguration {
     pub fn postgres_with_legacy_sqlite_path(
         sqlite_path: Option<PathBuf>,
     ) -> Result<Option<DatabaseConfiguration>> {
-        if let Some(connection_string) = get_env::<String>(OCKAM_DATABASE_CONNECTION_URL)? {
-            check_connection_string_format(&connection_string)?;
+        if let Some(connection_string) = get_database_connection_url()? {
             Ok(Some(DatabaseConfiguration::Postgres {
                 connection_string: connection_string.to_owned(),
                 legacy_sqlite_path: sqlite_path,
@@ -196,6 +202,35 @@ impl DatabaseConfiguration {
     }
 }
 
+/// We can either get the connection string directly from the OCKAM_DATABASE_CONNECTION_URL environment variable,
+/// or we can build it from 3 other variables.
+///
+/// This useful when:
+/// - The password is rotated externally.
+/// - The password needs to be url encoded.
+fn get_database_connection_url() -> Result<Option<String>> {
+    let connection_string = match get_env::<String>(OCKAM_DATABASE_CONNECTION_URL)? {
+        Some(connection_string) => connection_string,
+        None => {
+            match (
+                get_env::<String>(OCKAM_DATABASE_INSTANCE)?,
+                get_env::<String>(OCKAM_DATABASE_USER)?,
+                get_env::<String>(OCKAM_DATABASE_PASSWORD)?,
+            ) {
+                (Some(instance), Some(user), Some(password)) => {
+                    // A password can contain special characters, so we need to encode it.
+                    let url_encoded_password =
+                        percent_encoding::utf8_percent_encode(&password, NON_ALPHANUMERIC);
+                    format!("postgres://{user}:{url_encoded_password}@{instance}")
+                }
+                _ => return Ok(None),
+            }
+        }
+    };
+    check_connection_string_format(&connection_string)?;
+    Ok(Some(connection_string))
+}
+
 /// Check the format of a database connection string as `postgres://[{user}:{password}@]{host}:{port}/{database_name}`
 /// For now we only support postgres.
 fn check_connection_string_format(connection_string: &str) -> Result<()> {
@@ -251,6 +286,23 @@ fn check_connection_string_format(connection_string: &str) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::env;
+
+    #[test]
+    fn test_make_connection_url_from_separate_env_variables() -> Result<()> {
+        env::set_var(OCKAM_DATABASE_INSTANCE, "localhost:5432/ockam");
+        env::set_var(OCKAM_DATABASE_USER, "pgadmin");
+        env::set_var(OCKAM_DATABASE_PASSWORD, "xR::7Zp(h|<g<Q*t:5T");
+        assert_eq!(
+            get_database_connection_url().unwrap(),
+            Some(
+                "postgres://pgadmin:xR%3A%3A7Zp%28h%7C%3Cg%3CQ%2At%3A5T@localhost:5432/ockam"
+                    .into()
+            ),
+            "the password is url encoded"
+        );
+        Ok(())
+    }
 
     #[test]
     fn test_valid_connection_strings() -> Result<()> {
