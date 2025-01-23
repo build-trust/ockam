@@ -14,7 +14,6 @@ use ockam_core::{
 };
 use ockam_core::{Processor, Result};
 use ockam_node::{Context, ProcessorBuilder, WorkerShutdownPriority};
-use ockam_transport_core::TransportError;
 use tokio::{io::AsyncReadExt, net::tcp::OwnedReadHalf};
 use tracing::{debug, instrument, trace};
 
@@ -132,24 +131,24 @@ impl Processor for TcpRecvProcessor {
         let protocol_version = match self.read_half.read_u8().await {
             Ok(p) => p,
             Err(e) => {
+                trace!("Cannot read the Ockam protocol version: {:?}", &e);
                 self.notify_sender_stream_dropped(ctx, e).await?;
-                return Err(TransportError::GenericIo)?;
+                // stop this processor
+                ctx.stop_primary_address()?;
+                return Ok(());
             }
         };
 
         let _protocol_version = match TcpProtocolVersion::try_from(protocol_version) {
             Ok(v) => v,
-            Err(err) => {
-                self.notify_sender_stream_dropped(
-                    ctx,
-                    format!(
-                        "Received protocol message is unsupported: {}",
-                        protocol_version
-                    ),
-                )
-                .await?;
-
-                return Err(err)?;
+            Err(e) => {
+                let message =
+                    format!("Received protocol message is unsupported: {protocol_version}");
+                trace!("{}: {:?}", &message, &e);
+                self.notify_sender_stream_dropped(ctx, message).await?;
+                // stop this processor
+                ctx.stop_primary_address()?;
+                return Ok(());
             }
         };
 

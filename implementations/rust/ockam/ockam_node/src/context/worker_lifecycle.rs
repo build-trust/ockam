@@ -176,4 +176,9 @@ impl Context {
     pub fn stop_address(&self, address: &Address) -> Result<()> {
         self.router()?.stop_address(address, false)
     }
+
+    /// Stop a Worker or a Processor running on the context primary address
+    pub fn stop_primary_address(&self) -> Result<()> {
+        self.stop_address(self.primary_address())
+    }
 }
