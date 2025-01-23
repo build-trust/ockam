@@ -12,6 +12,10 @@ fn hash() {
 }
 
 fn binary_name() {
+    let is_developer = env::var("OCKAM_DEVELOPER").unwrap_or("false".to_string());
+    println!("cargo:rustc-env=OCKAM_DEVELOPER={is_developer}");
+    println!("cargo:rerun-if-env-changed=OCKAM_DEVELOPER");
+
     let bin_name = env::var("OCKAM_COMMAND_BIN_NAME").unwrap_or("ockam".to_string());
     println!("cargo:rustc-env=OCKAM_COMMAND_BIN_NAME={bin_name}");
     println!("cargo:rerun-if-env-changed=OCKAM_COMMAND_BIN_NAME");

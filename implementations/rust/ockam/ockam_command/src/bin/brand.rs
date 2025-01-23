@@ -4,7 +4,7 @@ use ockam_api::colors::color_primary;
 use ockam_api::fmt_log;
 use ockam_api::orchestrator::{OCKAM_CONTROLLER_ADDRESS, OCKAM_CONTROLLER_IDENTIFIER};
 use ockam_api::terminal::PADDING;
-use ockam_command::{
+use ockam_command::environment::compile_time_vars::{
     OCKAM_COMMANDS, OCKAM_COMMAND_BIN_NAME, OCKAM_COMMAND_BRAND_NAME, OCKAM_COMMAND_SUPPORT_EMAIL,
 };
 use once_cell::sync::Lazy;

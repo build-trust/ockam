@@ -11,7 +11,7 @@
 ///
 mod current_span;
 mod default_values;
-mod env_variables;
+pub mod env_variables;
 pub mod exporting_configuration;
 mod log_exporters;
 pub mod logging_configuration;

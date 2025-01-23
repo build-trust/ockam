@@ -9,8 +9,8 @@ use once_cell::sync::Lazy;
 use regex::Regex;
 use tracing::error;
 
-use crate::OckamCommand;
-use crate::{docs, BIN_NAME};
+use crate::environment::compile_time_vars::BIN_NAME;
+use crate::{docs, OckamCommand};
 
 #[derive(Clone, Debug, Args)]
 #[command(

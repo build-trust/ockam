@@ -12,7 +12,8 @@ use tracing::error;
 
 use ockam_core::env::get_env_with_default;
 
-use crate::{docs, OckamCommand, BIN_NAME};
+use crate::environment::compile_time_vars::BIN_NAME;
+use crate::{docs, OckamCommand};
 
 #[derive(Clone, Debug, Args)]
 #[command(

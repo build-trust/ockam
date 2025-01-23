@@ -1,5 +1,6 @@
 use crate::command_events::{add_command_error_event, add_command_event};
 use crate::command_global_opts::CommandGlobalOpts;
+use crate::environment::compile_time_vars::BIN_NAME;
 use crate::global_args::GlobalArgs;
 use crate::subcommand::OckamSubcommand;
 use crate::upgrade::check_if_an_upgrade_is_available;
@@ -17,11 +18,6 @@ use tracing::{instrument, warn};
 const ABOUT: &str = include_str!("./static/about.txt");
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/after_long_help.txt");
-
-pub use crate::environment::compile_time_vars::{
-    BIN_NAME, BRAND_NAME, OCKAM_COMMANDS, OCKAM_COMMAND_BIN_NAME, OCKAM_COMMAND_BRAND_NAME,
-    OCKAM_COMMAND_SUPPORT_EMAIL, SUPPORT_EMAIL,
-};
 
 /// Top-level command, with:
 ///  - Global arguments

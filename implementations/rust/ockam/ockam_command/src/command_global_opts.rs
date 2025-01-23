@@ -6,8 +6,7 @@ use std::sync::Arc;
 use tokio::runtime::Runtime;
 use tracing::{debug, info};
 
-use crate::command::{BIN_NAME, BRAND_NAME};
-use crate::environment::compile_time_vars::load_compile_time_vars;
+use crate::environment::compile_time_vars::{load_compile_time_vars, BIN_NAME, BRAND_NAME};
 use crate::subcommand::OckamSubcommand;
 use crate::util::exitcode;
 use crate::version::Version;

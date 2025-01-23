@@ -39,7 +39,7 @@ mod credential;
 mod docs;
 pub mod enroll;
 pub mod entry_point;
-mod environment;
+pub mod environment;
 pub mod error;
 mod flow_control;
 mod global_args;

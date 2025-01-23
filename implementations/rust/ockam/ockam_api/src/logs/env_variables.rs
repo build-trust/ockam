@@ -38,7 +38,7 @@ pub(crate) const OCKAM_OPENTELEMETRY_EXPORT: &str = "OCKAM_OPENTELEMETRY_EXPORT"
 pub(crate) const OCKAM_TELEMETRY_EXPORT_VIA_PORTAL: &str = "OCKAM_TELEMETRY_EXPORT_VIA_PORTAL";
 
 /// Boolean set to true if the current user is an Ockam developer
-pub(crate) const OCKAM_DEVELOPER: &str = "OCKAM_DEVELOPER";
+pub const OCKAM_DEVELOPER: &str = "OCKAM_DEVELOPER";
 
 /// If this variable is true, print statements will debug the setting of the OpenTelemetry export
 pub(crate) const OCKAM_OPENTELEMETRY_EXPORT_DEBUG: &str = "OCKAM_OPENTELEMETRY_EXPORT_DEBUG";

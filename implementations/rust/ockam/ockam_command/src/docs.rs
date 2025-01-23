@@ -1,4 +1,4 @@
-use crate::command::{BIN_NAME, BRAND_NAME, SUPPORT_EMAIL};
+use crate::environment::compile_time_vars::{BIN_NAME, BRAND_NAME, SUPPORT_EMAIL};
 use crate::Result;
 use colorful::Colorful;
 use ockam_api::terminal::TextHighlighter;

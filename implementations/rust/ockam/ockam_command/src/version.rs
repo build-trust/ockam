@@ -6,7 +6,7 @@ use ockam_api::output::Output;
 use serde::Serialize;
 use std::fmt::Display;
 
-use crate::BIN_NAME;
+use crate::environment::compile_time_vars::BIN_NAME;
 
 #[derive(Debug, Clone, Serialize)]
 pub(crate) struct Version {
