@@ -1,6 +1,7 @@
 use rand::random;
 use std::path::{Path, PathBuf};
 use tokio::sync::broadcast::{channel, Receiver, Sender};
+use tracing::info;
 
 use ockam::SqlxDatabase;
 use ockam_core::env::get_env_with_default;
@@ -122,12 +123,18 @@ impl CliState {
     /// Return a new CliState using a default directory to store its data or
     /// using an in-memory storage if the OCKAM_SQLITE_IN_MEMORY environment variable is set to true
     pub async fn new(in_memory: bool) -> Result<Self> {
+        error!("Point 3.1");
         let mode = if in_memory {
+            info!("Point 3.2");
             CliStateMode::InMemory
         } else {
+            info!("Point 3.3");
             CliStateMode::with_default_dir()?
         };
-        Self::create(mode).await
+        info!("Point 3.4");
+        let res = Self::create(mode).await;
+        info!("Point 3.5");
+        res
     }
 
     /// Stop nodes and remove all the directories storing state
@@ -223,26 +230,26 @@ impl CliState {
 impl CliState {
     /// Create a new CliState where the data is stored at a given path
     pub async fn create(mode: CliStateMode) -> Result<Self> {
-        // log("Point 4.0");
+        info!("Point 4.0");
         if let CliStateMode::Persistent(ref dir) = mode {
             std::fs::create_dir_all(dir.as_path())?;
         }
-        // log("Point 4.1");
+        info!("Point 4.1");
         let database = SqlxDatabase::create(&Self::make_database_configuration(&mode)?).await?;
-        // log("Point 4.2");
-        let configuration = Self::make_application_database_configuration(&mode)?;
-        // log("Point 4.3");
+        info!("Point 4.2");
         // FIXME
-        let application_database =
-            SqlxDatabase::create_application_database(&configuration).await?;
-        // log("Point 4.4");
+        let application_database = SqlxDatabase::create_application_database(
+            &Self::make_application_database_configuration(&mode)?,
+        )
+        .await?;
+        info!("Point 4.4");
         debug!("Opened the main database with options {:?}", database);
         debug!(
             "Opened the application database with options {:?}",
             application_database
         );
         let (notifications, _) = channel::<Notification>(NOTIFICATIONS_CHANNEL_CAPACITY);
-        // log("Point 4.5");
+        info!("Point 4.5");
         let state = Self {
             mode,
             database,
@@ -254,7 +261,7 @@ impl CliState {
             exporting_enabled: ExportingEnabled::Off,
             notifications,
         };
-        // log("Point 4.6");
+        info!("Point 4.6");
         Ok(state)
     }
 

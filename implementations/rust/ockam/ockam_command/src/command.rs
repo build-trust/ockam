@@ -21,7 +21,7 @@ use ockam_node::Context;
 use opentelemetry::trace::{FutureExt, Link, SpanBuilder, TraceContextExt, Tracer};
 use opentelemetry::{global, Context as TelemetryContext};
 use std::process::exit;
-use tracing::{info, instrument, warn};
+use tracing::{debug, info, instrument, warn};
 
 const ABOUT: &str = include_str!("./static/about.txt");
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
@@ -59,9 +59,13 @@ pub struct OckamCommand {
 
 impl OckamCommand {
     async fn init_cli_state(&self, in_memory: bool) -> CliState {
+        info!("Point 3.0");
         // TODO: Do we really need to instantiate CliState all the time?
         match CliState::new(in_memory).await {
-            Ok(state) => state,
+            Ok(state) => {
+                info!("Point 3.0.1");
+                state
+            }
             Err(err) => {
                 // If the user is trying to run `ockam reset` and the local state is corrupted,
                 // we can try to hard reset the local state.
@@ -187,54 +191,33 @@ impl OckamCommand {
         let logging_configuration = self.make_logging_configuration(Term::stdout().is_term())?;
 
         let (tracing_configuration, tracing_guard, cli_state) = if !is_exporting_set()? {
+            info!("Point 1.0");
             // Allows to have logging enabled before initializing CliState
             let tracing_configuration = ExportingConfiguration::off().into_diagnostic()?;
+            info!("Point 1.1");
             let tracing_guard =
                 self.setup_logging_tracing(&logging_configuration, &tracing_configuration);
-            let cli_state = self
-                .init_cli_state(in_memory)
-                .await
-                .set_tracing_enabled(tracing_configuration.is_enabled());
+            info!("Point 1.2");
 
-            (tracing_configuration, tracing_guard, cli_state)
+            (tracing_configuration, tracing_guard, None)
         } else {
+            info!("Point 1.4");
             let cli_state = self.init_cli_state(in_memory).await;
+            info!("Point 1.5");
             let tracing_configuration = self.make_tracing_configuration(&cli_state).await?;
+            info!("Point 1.6");
             let tracing_guard =
                 self.setup_logging_tracing(&logging_configuration, &tracing_configuration);
+            info!("Point 1.7");
             let cli_state = cli_state.set_tracing_enabled(tracing_configuration.is_enabled());
+            info!("Point 1.8");
 
-            (tracing_configuration, tracing_guard, cli_state)
+            (tracing_configuration, tracing_guard, Some(cli_state))
         };
 
-        let terminal = Terminal::new(
-            logging_configuration.is_enabled(),
-            logging_configuration.log_dir().is_some(),
-            self.global_args.quiet,
-            self.global_args.no_color,
-            self.global_args.no_input,
-            self.global_args.output_format(),
-            BIN_NAME,
-            BRAND_NAME,
-        );
-
-        info!("Point 2.0");
-        let options = CommandGlobalOpts::new(self.global_args.clone(), cli_state, terminal);
-
-        options.log_inputs(
-            arguments,
-            &self.subcommand,
-            &logging_configuration,
-            &tracing_configuration,
-        );
-        info!("Point 2.1");
-
-        if let Err(err) = check_if_an_upgrade_is_available(&options) {
-            warn!("Failed to check for upgrade, error={err}");
-            options
-                .terminal
-                .write_line(fmt_warn!("Failed to check for upgrade"))?;
-        }
+        info!("Tracing initialized");
+        debug!("{:#?}", logging_configuration);
+        debug!("{:#?}", tracing_configuration);
 
         let tracer = global::tracer(OCKAM_TRACER_NAME);
         let cx =
@@ -254,9 +237,48 @@ impl OckamCommand {
                 TelemetryContext::current_with_span(span)
             } else {
                 info!("Point 2.2");
-                let span = tracer.start(command_name.clone());
+                // let span = tracer.start(command_name.clone());
+                // TelemetryContext::current_with_span(span)
+                let context = TelemetryContext::current();
+                let span_builder = SpanBuilder::from_name(command_name.clone().to_string());
+                let span = tracer.build_with_context(span_builder, &context);
                 TelemetryContext::current_with_span(span)
             };
+
+        let cli_state = match cli_state {
+            Some(cli_state) => cli_state,
+            None => self
+                .init_cli_state(in_memory)
+                .with_context(cx.clone())
+                .await
+                .set_tracing_enabled(tracing_configuration.is_enabled()),
+        };
+
+        info!("Point 1.9");
+
+        let terminal = Terminal::new(
+            logging_configuration.is_enabled(),
+            logging_configuration.log_dir().is_some(),
+            self.global_args.quiet,
+            self.global_args.no_color,
+            self.global_args.no_input,
+            self.global_args.output_format(),
+            BIN_NAME,
+            BRAND_NAME,
+        );
+
+        info!("Point 2.0");
+        let options = CommandGlobalOpts::new(self.global_args.clone(), cli_state, terminal);
+
+        options.log_inputs(arguments, &self.subcommand);
+        info!("Point 2.1");
+
+        if let Err(err) = check_if_an_upgrade_is_available(&options) {
+            warn!("Failed to check for upgrade, error={err}");
+            options
+                .terminal
+                .write_line(fmt_warn!("Failed to check for upgrade"))?;
+        }
 
         let result = self
             .run_command(ctx, options.clone(), &command_name, arguments)

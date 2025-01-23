@@ -1,10 +1,9 @@
 use console::Term;
-use tracing::{debug, info};
+use tracing::debug;
 
 use crate::subcommand::OckamSubcommand;
 use crate::version::Version;
 use crate::GlobalArgs;
-use ockam_api::logs::{ExportingConfiguration, LoggingConfiguration};
 use ockam_api::terminal::{Terminal, TerminalStream};
 use ockam_api::CliState;
 
@@ -42,21 +41,11 @@ impl CommandGlobalOpts {
     }
 
     /// Log the inputs and configurations used to execute the command
-    pub(crate) fn log_inputs(
-        &self,
-        arguments: &[String],
-        cmd: &OckamSubcommand,
-        logging_configuration: &LoggingConfiguration,
-        tracing_configuration: &ExportingConfiguration,
-    ) {
+    pub(crate) fn log_inputs(&self, arguments: &[String], cmd: &OckamSubcommand) {
         debug!("Arguments: {}", arguments.join(" "));
         debug!("Global arguments: {:#?}", &self.global_args);
         debug!("Command: {:#?}", &cmd);
         debug!("Version: {}", Version::new().no_color());
-
-        info!("Tracing initialized");
-        debug!("{:#?}", logging_configuration);
-        debug!("{:#?}", tracing_configuration);
     }
 
     pub fn set_quiet(&self) -> Self {
