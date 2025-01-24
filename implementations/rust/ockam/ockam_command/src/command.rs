@@ -18,10 +18,10 @@ use ockam_api::terminal::Terminal;
 use ockam_api::{fmt_err, fmt_log, fmt_ok, fmt_warn, log, CliState};
 use ockam_core::OCKAM_TRACER_NAME;
 use ockam_node::Context;
-use opentelemetry::trace::{FutureExt, Link, SpanBuilder, TraceContextExt, Tracer};
+use opentelemetry::trace::{Link, SpanBuilder, TraceContextExt, Tracer};
 use opentelemetry::{global, Context as TelemetryContext};
 use std::process::exit;
-use tracing::{debug, info, instrument, warn};
+use tracing::{debug, info, info_span, instrument, warn, Instrument, Span};
 
 const ABOUT: &str = include_str!("./static/about.txt");
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
@@ -220,7 +220,8 @@ impl OckamCommand {
         debug!("{:#?}", tracing_configuration);
 
         let tracer = global::tracer(OCKAM_TRACER_NAME);
-        let cx =
+
+        let span =
             if let Some(opentelemetry_context) = self.subcommand.get_opentelemetry_context() {
                 let context = TelemetryContext::current();
                 let span_builder = SpanBuilder::from_name(command_name.clone().to_string())
@@ -233,23 +234,22 @@ impl OckamCommand {
                         vec![],
                         0,
                     )]);
-                let span = tracer.build_with_context(span_builder, &context);
-                TelemetryContext::current_with_span(span)
+                tracer.build_with_context(span_builder, &context)
             } else {
                 info!("Point 2.2");
                 // let span = tracer.start(command_name.clone());
                 // TelemetryContext::current_with_span(span)
                 let context = TelemetryContext::current();
                 let span_builder = SpanBuilder::from_name(command_name.clone().to_string());
-                let span = tracer.build_with_context(span_builder, &context);
-                TelemetryContext::current_with_span(span)
+
+                tracer.build_with_context(span_builder, &context)
             };
 
         let cli_state = match cli_state {
             Some(cli_state) => cli_state,
             None => self
                 .init_cli_state(in_memory)
-                .with_context(cx.clone())
+                .instrument(span)
                 .await
                 .set_tracing_enabled(tracing_configuration.is_enabled()),
         };
@@ -282,7 +282,7 @@ impl OckamCommand {
 
         let result = self
             .run_command(ctx, options.clone(), &command_name, arguments)
-            .with_context(cx)
+            .instrument(span)
             .await;
 
         info!("Point 2.3");
