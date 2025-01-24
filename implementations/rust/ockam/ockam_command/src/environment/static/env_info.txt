@@ -27,6 +27,7 @@ Database
 - OCKAM_DATABASE_INSTANCE: Database host, port and name in the form `{host}:{port}/{database_name}`.
 - OCKAM_DATABASE_USER: The database user
 - OCKAM_DATABASE_PASSWORD: The database user password
+- OCKAM_DATABASE_USER_AND_PASSWORD: The database user password as `{"username":"pgadmin", "password":"12345"}` for environments that provide both at the same time.
 
 Tracing
 - OCKAM_TELEMETRY_EXPORT: set this variable to a false value to disable tracing: `0`, `false`, `no`. Default value: `true`

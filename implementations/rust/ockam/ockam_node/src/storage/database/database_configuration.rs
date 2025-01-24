@@ -3,6 +3,7 @@ use ockam_core::env::get_env;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{Error, Result};
 use percent_encoding::NON_ALPHANUMERIC;
+use serde_json::Value;
 use std::fs::create_dir_all;
 use std::path::{Path, PathBuf};
 
@@ -16,6 +17,8 @@ pub const OCKAM_DATABASE_INSTANCE: &str = "OCKAM_DATABASE_INSTANCE";
 pub const OCKAM_DATABASE_USER: &str = "OCKAM_DATABASE_USER";
 /// Database password
 pub const OCKAM_DATABASE_PASSWORD: &str = "OCKAM_DATABASE_PASSWORD";
+/// Database user + password in the format {"username":"pgadmin", "password":"s3cr3t"}
+pub const OCKAM_DATABASE_USERNAME_AND_PASSWORD: &str = "OCKAM_DATABASE_USERNAME_AND_PASSWORD";
 
 /// Configuration for the database.
 /// We either use Sqlite or Postgres
@@ -203,28 +206,57 @@ impl DatabaseConfiguration {
 }
 
 /// We can either get the connection string directly from the OCKAM_DATABASE_CONNECTION_URL environment variable,
-/// or we can build it from 3 other variables.
+/// or we can build it from other variables. Either from:
+///
+///  - The database instance name + user + password,
+///  - Or the database instance name + user & password as a single JSON string.
 ///
 /// This useful when:
-/// - The password is rotated externally.
+///
+/// - The password is rotated externally, by the AWS Secrets Manager service.
 /// - The password needs to be url encoded.
+///
 fn get_database_connection_url() -> Result<Option<String>> {
     let connection_string = match get_env::<String>(OCKAM_DATABASE_CONNECTION_URL)? {
         Some(connection_string) => connection_string,
         None => {
-            match (
+            let (instance, user, password) = match (
                 get_env::<String>(OCKAM_DATABASE_INSTANCE)?,
                 get_env::<String>(OCKAM_DATABASE_USER)?,
                 get_env::<String>(OCKAM_DATABASE_PASSWORD)?,
+                get_env::<String>(OCKAM_DATABASE_USERNAME_AND_PASSWORD)?,
             ) {
-                (Some(instance), Some(user), Some(password)) => {
-                    // A password can contain special characters, so we need to encode it.
-                    let url_encoded_password =
-                        percent_encoding::utf8_percent_encode(&password, NON_ALPHANUMERIC);
-                    format!("postgres://{user}:{url_encoded_password}@{instance}")
+                (Some(instance), Some(user), Some(password), None) => (instance, user, password),
+                (Some(instance), None, None, Some(user_and_password)) => {
+                    let parsed: Value = serde_json::from_str(&user_and_password).map_err(|_| {
+                        Error::new(
+                            Origin::Api,
+                            Kind::Invalid,
+                            format!("Expected a JSON object. Got: {user_and_password}"),
+                        )
+                    })?;
+                    if let (Some(user), Some(password)) =
+                        (parsed["username"].as_str(), parsed["password"].as_str())
+                    {
+                        (instance, user.to_string(), password.to_string())
+                    } else {
+                        return Err(Error::new(
+                            Origin::Api,
+                            Kind::Invalid,
+                            format!(
+                                "Expected the username and password as `{}`.
+                            Got: {user_and_password}",
+                                r#"{"username":"pgadmin", "password":"12345"}"#
+                            ),
+                        ));
+                    }
                 }
                 _ => return Ok(None),
-            }
+            };
+            // A password can contain special characters, so we need to encode it.
+            let url_encoded_password =
+                percent_encoding::utf8_percent_encode(&password, NON_ALPHANUMERIC);
+            format!("postgres://{user}:{url_encoded_password}@{instance}")
         }
     };
     check_connection_string_format(&connection_string)?;
@@ -293,6 +325,24 @@ mod tests {
         env::set_var(OCKAM_DATABASE_INSTANCE, "localhost:5432/ockam");
         env::set_var(OCKAM_DATABASE_USER, "pgadmin");
         env::set_var(OCKAM_DATABASE_PASSWORD, "xR::7Zp(h|<g<Q*t:5T");
+        assert_eq!(
+            get_database_connection_url().unwrap(),
+            Some(
+                "postgres://pgadmin:xR%3A%3A7Zp%28h%7C%3Cg%3CQ%2At%3A5T@localhost:5432/ockam"
+                    .into()
+            ),
+            "the password is url encoded"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn test_make_connection_url_from_separate_env_variables_user_and_password() -> Result<()> {
+        env::set_var(OCKAM_DATABASE_INSTANCE, "localhost:5432/ockam");
+        env::set_var(
+            OCKAM_DATABASE_USERNAME_AND_PASSWORD,
+            r#"{"username":"pgadmin", "password":"xR::7Zp(h|<g<Q*t:5T"}"#,
+        );
         assert_eq!(
             get_database_connection_url().unwrap(),
             Some(
