@@ -18,10 +18,10 @@ use ockam_api::terminal::Terminal;
 use ockam_api::{fmt_err, fmt_log, fmt_ok, fmt_warn, log, CliState};
 use ockam_core::OCKAM_TRACER_NAME;
 use ockam_node::Context;
+use opentelemetry::global;
 use opentelemetry::trace::{Link, SpanBuilder, TraceContextExt, Tracer};
-use opentelemetry::{global, Context as TelemetryContext};
 use std::process::exit;
-use tracing::{debug, info, info_span, instrument, warn, Instrument, Span};
+use tracing::{debug, info, instrument, warn, Instrument};
 
 const ABOUT: &str = include_str!("./static/about.txt");
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
@@ -221,35 +221,29 @@ impl OckamCommand {
 
         let tracer = global::tracer(OCKAM_TRACER_NAME);
 
-        let span =
-            if let Some(opentelemetry_context) = self.subcommand.get_opentelemetry_context() {
-                let context = TelemetryContext::current();
-                let span_builder = SpanBuilder::from_name(command_name.clone().to_string())
-                    .with_links(vec![Link::new(
-                        opentelemetry_context
-                            .extract()
-                            .span()
-                            .span_context()
-                            .clone(),
-                        vec![],
-                        0,
-                    )]);
-                tracer.build_with_context(span_builder, &context)
-            } else {
-                info!("Point 2.2");
-                // let span = tracer.start(command_name.clone());
-                // TelemetryContext::current_with_span(span)
-                let context = TelemetryContext::current();
-                let span_builder = SpanBuilder::from_name(command_name.clone().to_string());
+        let span = if let Some(opentelemetry_context) = self.subcommand.get_opentelemetry_context()
+        {
+            let span_builder =
+                SpanBuilder::from_name(command_name.clone()).with_links(vec![Link::new(
+                    opentelemetry_context
+                        .extract()
+                        .span()
+                        .span_context()
+                        .clone(),
+                    vec![],
+                    0,
+                )]);
+            tracer.build(span_builder)
+        } else {
+            info!("Point 2.2");
+            tracer.start(command_name.clone())
+        };
 
-                tracer.build_with_context(span_builder, &context)
-            };
-
+        // TODO: Add another span here?
         let cli_state = match cli_state {
             Some(cli_state) => cli_state,
             None => self
                 .init_cli_state(in_memory)
-                .instrument(span)
                 .await
                 .set_tracing_enabled(tracing_configuration.is_enabled()),
         };
