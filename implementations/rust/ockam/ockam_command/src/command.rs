@@ -19,9 +19,9 @@ use ockam_api::{fmt_err, fmt_log, fmt_ok, fmt_warn, log, CliState};
 use ockam_core::OCKAM_TRACER_NAME;
 use ockam_node::Context;
 use opentelemetry::global;
-use opentelemetry::trace::{Link, SpanBuilder, TraceContextExt, Tracer};
+use opentelemetry::trace::{FutureExt, Link, SpanBuilder, TraceContextExt, Tracer};
 use std::process::exit;
-use tracing::{debug, info, instrument, warn, Instrument};
+use tracing::{debug, info, instrument, warn};
 
 const ABOUT: &str = include_str!("./static/about.txt");
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
@@ -274,9 +274,11 @@ impl OckamCommand {
                 .write_line(fmt_warn!("Failed to check for upgrade"))?;
         }
 
+        let telemetry_context = opentelemetry::Context::current_with_span(span);
+
         let result = self
             .run_command(ctx, options.clone(), &command_name, arguments)
-            .instrument(span)
+            .with_context(telemetry_context)
             .await;
 
         info!("Point 2.3");
@@ -292,7 +294,7 @@ impl OckamCommand {
         info!("Point 2.4");
 
         if let Some(tracing_guard) = tracing_guard {
-            ockam::compat::tokio::task::spawn_blocking(move || {
+            tokio::task::spawn_blocking(move || {
                 log("Point 2.5");
                 tracing_guard.force_flush();
                 log("Point 2.6");
