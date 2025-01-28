@@ -57,14 +57,12 @@ str-buf = "3.0.3"
 tokio = { version = "1.41", default-features = false, optional = true, features = ["sync", "time", "rt", "rt-multi-thread", "macros"] }
 tracing = { version = "0.1", default-features = false, features = ["attributes"] }
 wast = { version = "220.0.0", default-features = false, optional = true }
-winnow = { version = "0.6.18", default-features = false, optional = true, features = ["alloc"] }
+winnow = { version = "0.6.25", default-features = false, optional = true, features = ["alloc"] }
 
 [dev-dependencies]
-ockam_vault = { path = "../ockam_vault", default-features = false, features = ["rust-crypto"] }
 quickcheck = "1.0.3"
 rand = "0.8.5"
 serde_json = "1.0.133"
-tempfile = "3.10.1"
 
 [[bin]]
 name = "repl"

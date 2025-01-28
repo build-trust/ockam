@@ -284,14 +284,14 @@ mod parsers {
     use ockam_identity::Identifier;
     use winnow::ascii::multispace0;
     use winnow::combinator::{alt, delimited, separated};
-    use winnow::error::StrContext;
+    use winnow::error::{ContextError, StrContext};
     use winnow::stream::AsChar;
     use winnow::token::{literal, take_until, take_while};
-    use winnow::{IResult, PResult, Parser};
+    use winnow::{ModalResult, Parser};
 
     /// Top-level parser for boolean expressions as a series of 'or-ed' and-expressions
-    pub fn expr(i: &mut &str) -> PResult<BooleanExpr> {
-        fn or_separated(i: &mut &str) -> PResult<Vec<BooleanExpr>> {
+    pub fn expr(i: &mut &str) -> ModalResult<BooleanExpr> {
+        fn or_separated(i: &mut &str) -> ModalResult<Vec<BooleanExpr>> {
             separated(1.., and_expr, or).parse_next(i)
         }
 
@@ -304,8 +304,8 @@ mod parsers {
     }
 
     /// Parser for an and expression as a series of 'and-ed' not-expressions
-    pub fn and_expr(i: &mut &str) -> PResult<BooleanExpr> {
-        fn and_separated(i: &mut &str) -> PResult<Vec<BooleanExpr>> {
+    pub fn and_expr(i: &mut &str) -> ModalResult<BooleanExpr> {
+        fn and_separated(i: &mut &str) -> ModalResult<Vec<BooleanExpr>> {
             separated(1.., not_expr, and).parse_next(i)
         }
 
@@ -321,13 +321,13 @@ mod parsers {
     ///  - a nested not expression
     ///  - a parenthesized expression
     ///  - a single name
-    pub fn not_expr(i: &mut &str) -> PResult<BooleanExpr> {
-        fn nested_not_expr(i: &mut &str) -> PResult<BooleanExpr> {
+    pub fn not_expr(i: &mut &str) -> ModalResult<BooleanExpr> {
+        fn nested_not_expr(i: &mut &str) -> ModalResult<BooleanExpr> {
             (not, not_expr)
                 .parse_next(i)
                 .map(|(_, e)| BooleanExpr::not(e))
         }
-        fn parenthesized(i: &mut &str) -> PResult<BooleanExpr> {
+        fn parenthesized(i: &mut &str) -> ModalResult<BooleanExpr> {
             delimited(open_paren, expr, close_paren).parse_next(i)
         }
         alt([nested_not_expr, parenthesized, name])
@@ -338,7 +338,7 @@ mod parsers {
     // LEXED VALUES
 
     /// Parse a name
-    pub fn name(input: &mut &str) -> PResult<BooleanExpr> {
+    pub fn name(input: &mut &str) -> ModalResult<BooleanExpr> {
         let name = (
             // we forbid the first character to be a number or a dot
             take_while(1, |c| AsChar::is_alpha(c) || c == '_' || c == '-'),
@@ -365,7 +365,8 @@ mod parsers {
 
         // otherwise, keep processing the input to figure out if it's a name-value pair
         // peek the next char; continue only if it's an equal sign
-        let peeked: IResult<&str, &str> = take_while(1, |c| c == '=').parse_peek(input.as_ref());
+        let peeked: ModalResult<(&str, &str), ContextError> =
+            take_while(1, |c| c == '=').parse_peek(input.as_ref());
         let next_char_is_not_equal_sign = peeked.map(|(_, s)| s.is_empty()).unwrap_or(true);
         if next_char_is_not_equal_sign {
             return Ok(name);
@@ -379,7 +380,7 @@ mod parsers {
             .parse_next(input)?;
         // skip the opening '"' if any
         let is_quoted = {
-            let res: PResult<&str> = take_while(1, |c| c == '"').parse_next(input);
+            let res: ModalResult<&str> = take_while(1, |c| c == '"').parse_next(input);
             res.is_ok()
         };
         // parse the value as the next group of chars
@@ -404,27 +405,27 @@ mod parsers {
     }
 
     /// Parse the 'and' operator
-    pub fn and<'a>(input: &mut &'a str) -> PResult<&'a str> {
+    pub fn and<'a>(input: &mut &'a str) -> ModalResult<&'a str> {
         delimited(multispace0, literal("and"), multispace0).parse_next(input)
     }
 
     /// Parse the 'or' operator
-    pub fn or<'a>(input: &mut &'a str) -> PResult<&'a str> {
+    pub fn or<'a>(input: &mut &'a str) -> ModalResult<&'a str> {
         delimited(multispace0, literal("or"), multispace0).parse_next(input)
     }
 
     /// Parse the 'not' operator
-    pub fn not<'a>(input: &mut &'a str) -> PResult<&'a str> {
+    pub fn not<'a>(input: &mut &'a str) -> ModalResult<&'a str> {
         delimited(multispace0, literal("not"), multispace0).parse_next(input)
     }
 
     /// Parse an open parentheses '('
-    pub fn open_paren<'a>(input: &mut &'a str) -> PResult<&'a str> {
+    pub fn open_paren<'a>(input: &mut &'a str) -> ModalResult<&'a str> {
         delimited(multispace0, literal("("), multispace0).parse_next(input)
     }
 
     /// Parse a close parentheses ')'
-    pub fn close_paren<'a>(input: &mut &'a str) -> PResult<&'a str> {
+    pub fn close_paren<'a>(input: &mut &'a str) -> ModalResult<&'a str> {
         delimited(multispace0, literal(")"), multispace0).parse_next(input)
     }
 }

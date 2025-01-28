@@ -4700,7 +4700,6 @@ dependencies = [
  "ockam_executor",
  "ockam_identity",
  "ockam_node",
- "ockam_vault",
  "once_cell",
  "quickcheck",
  "rand",
@@ -4713,7 +4712,6 @@ dependencies = [
  "sqlx-core",
  "str-buf",
  "strum",
- "tempfile",
  "tokio",
  "tracing",
  "wast",
@@ -8880,9 +8878,9 @@ checksum = "589f6da84c646204747d1270a2a5661ea66ed1cced2631d546fdfb155959f9ec"
 
 [[package]]
 name = "winnow"
-version = "0.6.22"
+version = "0.6.25"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "39281189af81c07ec09db316b302a3e67bf9bd7cbf6c820b50e35fee9c2fa980"
+checksum = "ad699df48212c6cc6eb4435f35500ac6fd3b9913324f938aea302022ce19d310"
 dependencies = [
  "memchr",
 ]
