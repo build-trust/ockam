@@ -111,6 +111,8 @@ impl RemoteWorker {
             dst_port
         );
 
+        // TODO: Instead start a processor to do it, and drop messages if it's busy
+
         tcp_packet_writer
             .write_packet(src_port, dst_ip, dst_port, header_and_payload)
             .await?;
