@@ -4,7 +4,7 @@ mod highlighting;
 pub mod notification;
 pub mod term;
 
-pub use fmt::{get_separator_width, ICON_PADDING, PADDING};
+pub use fmt::{get_separator_width, ICON_PADDING, INDENTATION, PADDING};
 pub use highlighting::TextHighlighter;
 
 use crate::ui::output::OutputFormat;

@@ -6,7 +6,7 @@ use std::sync::Arc;
 use tokio::runtime::Runtime;
 use tracing::{debug, info};
 
-use crate::environment::compile_time_vars::{load_compile_time_vars, BIN_NAME, BRAND_NAME};
+use crate::branding::{load_compile_time_vars, BrandingCompileEnvVars};
 use crate::subcommand::OckamSubcommand;
 use crate::util::exitcode;
 use crate::version::Version;
@@ -54,7 +54,13 @@ impl CommandGlobalOpts {
                 // we can try to hard reset the local state.
                 if let OckamSubcommand::Reset(c) = cmd {
                     c.hard_reset();
-                    println!("{}", fmt_ok!("Local {} configuration deleted", BIN_NAME));
+                    println!(
+                        "{}",
+                        fmt_ok!(
+                            "Local {} configuration deleted",
+                            BrandingCompileEnvVars::bin_name()
+                        )
+                    );
                     exit(exitcode::OK);
                 }
                 eprintln!("{}", fmt_err!("Failed to initialize local state"));
@@ -62,7 +68,7 @@ impl CommandGlobalOpts {
                     "{}",
                     fmt_log!(
                         "Consider upgrading to the latest version of {} Command",
-                        BIN_NAME
+                        BrandingCompileEnvVars::bin_name()
                     )
                 );
                 let ockam_home = std::env::var("OCKAM_HOME").unwrap_or("~/.ockam".to_string());
@@ -90,8 +96,8 @@ impl CommandGlobalOpts {
             global_args.no_color,
             global_args.no_input,
             global_args.output_format(),
-            BIN_NAME,
-            BRAND_NAME,
+            BrandingCompileEnvVars::bin_name(),
+            BrandingCompileEnvVars::brand_name(),
         );
         let tracing_guard =
             Self::setup_logging_tracing(cmd, &logging_configuration, &tracing_configuration);

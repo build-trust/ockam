@@ -1,4 +1,3 @@
-use crate::environment::compile_time_vars::COMMANDS;
 use crate::Result;
 use once_cell::sync::Lazy;
 use std::fmt::{Debug, Formatter};
@@ -11,7 +10,7 @@ pub(crate) fn hide(name: &str) -> bool {
     CUSTOM_COMMANDS.hide(name)
 }
 
-pub(crate) static CUSTOM_COMMANDS: Lazy<Commands> =
+static CUSTOM_COMMANDS: Lazy<Commands> =
     Lazy::new(|| Commands::from_env().expect("Failed to load custom commands"));
 
 pub(crate) struct Commands {
@@ -56,7 +55,7 @@ impl Commands {
     }
 
     pub fn from_env() -> Result<Self> {
-        Self::new(COMMANDS)
+        Self::new(super::BrandingCompileEnvVars::commands())
     }
 
     pub fn hide(&self, command_name: &str) -> bool {

@@ -1,5 +1,3 @@
-pub mod compile_time_vars;
-
 use clap::Args;
 
 use crate::docs;

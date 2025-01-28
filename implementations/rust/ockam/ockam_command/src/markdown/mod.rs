@@ -9,7 +9,7 @@ use once_cell::sync::Lazy;
 use regex::Regex;
 use tracing::error;
 
-use crate::environment::compile_time_vars::BIN_NAME;
+use crate::branding::BrandingCompileEnvVars;
 use crate::{docs, OckamCommand};
 
 #[derive(Clone, Debug, Args)]
@@ -60,7 +60,10 @@ fn get_markdown_page_directory(cmd_mark_dir: &Option<String>) -> io::Result<Path
         }
         None => {
             let mut mark_dir = env::current_dir()?;
-            mark_dir.push(format!("{BIN_NAME}_markdown_pages"));
+            mark_dir.push(format!(
+                "{}_markdown_pages",
+                BrandingCompileEnvVars::bin_name()
+            ));
             println!("Markdown pages stored at: {}", mark_dir.display());
             mark_dir
         }
@@ -141,7 +144,7 @@ fn generate_markdown_page(
     write!(
         buffer,
         "## {} {} ",
-        p_cmd.replace(&format!("{BIN_NAME} "), ""),
+        p_cmd.replace(&format!("{} ", BrandingCompileEnvVars::bin_name()), ""),
         cmd.get_name()
     )?;
 

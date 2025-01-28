@@ -1,13 +1,14 @@
-bin:
-  support_email: support@domain.com
+acme:
+  support_email: support@acme.com
   # the following fields are optional
-  brand_name: Brand1 # if not set, will default to Bin
-  home_dir: /home/brand1 # if not set, will default to $HOME/.bin
-  orchestrator_identifier: brand1 # if not set, will default to the OCKAM_CONTROLLER_IDENTITY_ID env var
-  orchestrator_address: brand1.network # if not set, will default to the OCKAM_CONTROLLER_ADDR env var
+  brand_name: Acme # if not set, will default to Bin
+  home_dir: /home/acme # if not set, will default to $HOME/.bin
+  orchestrator_identifier: I25242aa3d4a7b5aa986fb2bec15b3780aad0530660e5e5a46c7f9ce429e9ec99 # if not set, will default to the OCKAM_CONTROLLER_IDENTIFIER env var
+  orchestrator_address: /dnsaddr/acme.io/tcp/6252/service/api # if not set, will default to the OCKAM_CONTROLLER_ADDRESS env var
   build_args: # if not set, will default to empty string
-    - --release
+    - --no-default-features
+    - --features
+    - 'no_std alloc software_vault rust-crypto'
   commands:
     - node: "host"
-    - node_list
-    - node_create: "init"
+    - project

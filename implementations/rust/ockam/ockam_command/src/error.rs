@@ -1,4 +1,4 @@
-use crate::environment::compile_time_vars::SUPPORT_EMAIL;
+use crate::branding::BrandingCompileEnvVars;
 use crate::util::exitcode::{self, ExitCode};
 use crate::version::Version;
 use colorful::Colorful;
@@ -175,7 +175,7 @@ impl miette::ReportHandler for ErrorReportHandler {
             fmt_log!(
                 "{} {}",
                 "If you need help, please email us on".dark_gray(),
-                SUPPORT_EMAIL.dark_gray()
+                BrandingCompileEnvVars::support_email().dark_gray()
             ),
             fmt_log!(
                 "{}",

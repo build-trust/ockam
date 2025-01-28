@@ -1,4 +1,4 @@
-use crate::environment::compile_time_vars::{BIN_NAME, BRAND_NAME, SUPPORT_EMAIL};
+use crate::branding::BrandingCompileEnvVars;
 use crate::Result;
 use colorful::Colorful;
 use ockam_api::terminal::TextHighlighter;
@@ -21,7 +21,7 @@ static HEADER_RE: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"^(Examples:|Learn More:|Feedback:).*$".into()));
 
 static FOOTER: Lazy<String> = Lazy::new(|| {
-    if BIN_NAME == "ockam" {
+    if BrandingCompileEnvVars::bin_name() == "ockam" {
         "
 Learn More:
 
@@ -45,7 +45,8 @@ Where <SUBCOMMAND> might be: 'node', 'status', 'enroll', etc.
 
 Feedback:
 
-If you have questions, please email us on {SUPPORT_EMAIL}"
+If you have questions, please email us on {}",
+            BrandingCompileEnvVars::support_email()
         )
     }
 });
@@ -99,13 +100,13 @@ fn render(body: &str) -> &'static str {
 }
 
 fn process_branding(text: &str) -> String {
-    let mut text = if BRAND_NAME != "Ockam" {
-        text.replace("Ockam", BRAND_NAME)
+    let mut text = if BrandingCompileEnvVars::brand_name() != "Ockam" {
+        text.replace("Ockam", BrandingCompileEnvVars::brand_name())
     } else {
         text.to_string()
     };
-    text = if BIN_NAME != "ockam" {
-        text.replace("ockam", BIN_NAME)
+    text = if BrandingCompileEnvVars::bin_name() != "ockam" {
+        text.replace("ockam", BrandingCompileEnvVars::bin_name())
     } else {
         text
     };

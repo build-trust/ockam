@@ -1,12 +1,11 @@
 //! Helpers to display version information
 
+use crate::branding::BrandingCompileEnvVars;
 use clap::crate_version;
 use ockam_api::colors::color_primary;
 use ockam_api::output::Output;
 use serde::Serialize;
 use std::fmt::Display;
-
-use crate::environment::compile_time_vars::BIN_NAME;
 
 #[derive(Debug, Clone, Serialize)]
 pub(crate) struct Version {
@@ -56,7 +55,8 @@ impl Version {
                 color_primary(&self.hash).to_string(),
             )
         };
-        let msg = format!("{BIN_NAME} {version}\ncompiled from {hash}");
+        let bin_name = BrandingCompileEnvVars::bin_name();
+        let msg = format!("{bin_name} {version}\ncompiled from {hash}");
         if self.multiline {
             Ok(msg)
         } else {

@@ -1,6 +1,6 @@
+use crate::branding::BrandingCompileEnvVars;
 use crate::command_events::{add_command_error_event, add_command_event};
 use crate::command_global_opts::CommandGlobalOpts;
-use crate::environment::compile_time_vars::BIN_NAME;
 use crate::global_args::GlobalArgs;
 use crate::subcommand::OckamSubcommand;
 use crate::upgrade::check_if_an_upgrade_is_available;
@@ -24,7 +24,7 @@ const AFTER_LONG_HELP: &str = include_str!("./static/after_long_help.txt");
 ///  - A specific subcommand
 #[derive(Debug, Parser)]
 #[command(
-name = BIN_NAME,
+name = BrandingCompileEnvVars::bin_name(),
 term_width = 100,
 about = docs::about(ABOUT),
 long_about = docs::about(LONG_ABOUT),

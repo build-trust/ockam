@@ -12,7 +12,7 @@ use tracing::error;
 
 use ockam_core::env::get_env_with_default;
 
-use crate::environment::compile_time_vars::BIN_NAME;
+use crate::branding::BrandingCompileEnvVars;
 use crate::{docs, OckamCommand};
 
 #[derive(Clone, Debug, Args)]
@@ -70,7 +70,7 @@ fn get_man_page_directory(cmd_man_dir: &Option<String>) -> crate::Result<PathBuf
             }
             None => {
                 let mut man_dir = env::current_dir().into_diagnostic()?;
-                man_dir.push(format!("{BIN_NAME}_man_pages"));
+                man_dir.push(format!("{}_man_pages", BrandingCompileEnvVars::bin_name()));
                 println!("Man pages stored at: {}", man_dir.display());
                 man_dir
             }

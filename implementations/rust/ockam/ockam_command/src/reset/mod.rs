@@ -12,8 +12,8 @@ use ockam_api::terminal::ConfirmResult;
 use ockam_api::{color, fmt_ok, CliState};
 use ockam_node::Context;
 
+use crate::branding::BrandingCompileEnvVars;
 use crate::docs;
-use crate::environment::compile_time_vars::is_ockam_developer;
 use crate::util::async_cmd;
 
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
@@ -56,8 +56,9 @@ impl ResetCommand {
     }
 
     async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
-        let delete_orchestrator_resources =
-            is_ockam_developer() && self.all && opts.state.is_enrolled().await.unwrap_or_default();
+        let delete_orchestrator_resources = BrandingCompileEnvVars::is_ockam_developer()
+            && self.all
+            && opts.state.is_enrolled().await.unwrap_or_default();
         if !self.yes {
             let msg = if delete_orchestrator_resources {
                 "This will delete the local Ockam configuration and remove your spaces from the Orchestrator. Are you sure?"

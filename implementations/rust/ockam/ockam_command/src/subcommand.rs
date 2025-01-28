@@ -17,7 +17,6 @@ use ockam_node::Context;
 
 use crate::admin::AdminCommand;
 use crate::authority::{AuthorityCommand, AuthoritySubcommand};
-use crate::branding;
 use crate::command_global_opts::CommandGlobalOpts;
 use crate::completion::CompletionCommand;
 use crate::credential::CredentialCommand;
@@ -65,98 +64,99 @@ use crate::vault::VaultCommand;
 use crate::worker::WorkerCommand;
 use crate::Error;
 use crate::Result;
+use crate::{branding, branding::command};
 
 #[derive(Clone, Debug, Subcommand)]
 #[command(about = docs::about("List of commands which can be executed with `ockam`"))]
 pub enum OckamSubcommand {
-    #[command(name = branding::name("enroll"), hide = branding::hide("enroll"))]
+    #[command(name = command::name("enroll"), hide = command::hide("enroll"))]
     Enroll(EnrollCommand),
 
-    #[command(name = branding::name("node"), hide = branding::hide("node"))]
+    #[command(name = command::name("node"), hide = command::hide("node"))]
     Node(NodeCommand),
-    #[command(name = branding::name("vault"), hide = branding::hide("vault"))]
+    #[command(name = command::name("vault"), hide = command::hide("vault"))]
     Vault(VaultCommand),
-    #[command(name = branding::name("identity"), hide = branding::hide("identity"))]
+    #[command(name = command::name("identity"), hide = command::hide("identity"))]
     Identity(IdentityCommand),
-    #[command(name = branding::name("project"), hide = branding::hide("project"))]
+    #[command(name = command::name("project"), hide = command::hide("project"))]
     Project(ProjectCommand),
-    #[command(name = branding::name("policy"), hide = branding::hide("policy"))]
+    #[command(name = command::name("policy"), hide = command::hide("policy"))]
     Policy(PolicyCommand),
-    #[command(name = branding::name("credential"), hide = branding::hide("credential"))]
+    #[command(name = command::name("credential"), hide = command::hide("credential"))]
     Credential(CredentialCommand),
-    #[command(name = branding::name("relay"), hide = branding::hide("relay"))]
+    #[command(name = command::name("relay"), hide = command::hide("relay"))]
     Relay(RelayCommand),
-    #[command(name = branding::name("tcp-outlet"), hide = branding::hide("tcp-outlet"))]
+    #[command(name = command::name("tcp-outlet"), hide = command::hide("tcp-outlet"))]
     TcpOutlet(TcpOutletCommand),
-    #[command(name = branding::name("tcp-inlet"), hide = branding::hide("tcp-inlet"))]
+    #[command(name = command::name("tcp-inlet"), hide = command::hide("tcp-inlet"))]
     TcpInlet(TcpInletCommand),
-    #[command(name = branding::name("kafka-inlet"), hide = branding::hide("kafka-inlet"))]
+    #[command(name = command::name("kafka-inlet"), hide = command::hide("kafka-inlet"))]
     KafkaInlet(KafkaInletCommand),
-    #[command(name = branding::name("kafka-outlet"), hide = branding::hide("kafka-outlet"))]
+    #[command(name = command::name("kafka-outlet"), hide = command::hide("kafka-outlet"))]
     KafkaOutlet(KafkaOutletCommand),
-    #[command(name = branding::name("influxdb-inlet"), hide = branding::hide("influxdb-inlet"))]
+    #[command(name = command::name("influxdb-inlet"), hide = command::hide("influxdb-inlet"))]
     InfluxDBInlet(InfluxDBInletCommand),
-    #[command(name = branding::name("influxdb-outlet"), hide = branding::hide("influxdb-outlet"))]
+    #[command(name = command::name("influxdb-outlet"), hide = command::hide("influxdb-outlet"))]
     InfluxDBOutlet(InfluxDBOutletCommand),
-    #[command(name = branding::name("rendezvous"), hide = branding::hide("rendezvous") || docs::hide())]
+    #[command(name = command::name("rendezvous"), hide = command::hide("rendezvous") || docs::hide())]
     Rendezvous(RendezvousCommand),
-    #[command(name = branding::name("status"), hide = branding::hide("status"))]
+    #[command(name = command::name("status"), hide = command::hide("status"))]
     Status(StatusCommand),
-    #[command(name = branding::name("reset"), hide = branding::hide("reset"))]
+    #[command(name = command::name("reset"), hide = command::hide("reset"))]
     Reset(ResetCommand),
-    #[command(name = branding::name("run"), hide = branding::hide("run"))]
+    #[command(name = command::name("run"), hide = command::hide("run"))]
     Run(RunCommand),
-    #[command(name = branding::name("manpages"), hide = branding::hide("manpages"))]
+    #[command(name = command::name("manpages"), hide = command::hide("manpages"))]
     Manpages(ManpagesCommand),
-    #[command(name = branding::name("completion"), hide = branding::hide("completion"))]
+    #[command(name = command::name("completion"), hide = command::hide("completion"))]
     Completion(CompletionCommand),
-    #[command(name = branding::name("environment"), hide = branding::hide("environment"))]
+    #[command(name = command::name("environment"), hide = command::hide("environment"))]
     Environment(EnvironmentCommand),
 
-    #[command(name = branding::name("admin"), hide = branding::hide("admin"))]
+    #[command(name = command::name("admin"), hide = command::hide("admin"))]
     Admin(AdminCommand),
-    #[command(name = branding::name("space"), hide = branding::hide("space"))]
+    #[command(name = command::name("space"), hide = command::hide("space"))]
     Space(SpaceCommand),
-    #[command(name = branding::name("space-admin"), hide = branding::hide("space-admin"))]
+    #[command(name = command::name("space-admin"), hide = command::hide("space-admin"))]
     SpaceAdmin(SpaceAdminCommand),
-    #[command(name = branding::name("project-admin"), hide = branding::hide("project-admin"))]
+    #[command(name = command::name("project-admin"), hide = command::hide("project-admin"))]
     ProjectAdmin(ProjectAdminCommand),
-    #[command(name = branding::name("project-member"), hide = branding::hide("project-member"))]
+    #[command(name = command::name("project-member"), hide = command::hide("project-member"))]
     ProjectMember(ProjectMemberCommand),
-    #[command(name = branding::name("sidecar"), hide = branding::hide("sidecar"))]
+    #[command(name = command::name("sidecar"), hide = command::hide("sidecar"))]
     Sidecar(SidecarCommand),
-    #[command(name = branding::name("subscription"), hide = branding::hide("subscription"))]
+    #[command(name = command::name("subscription"), hide = command::hide("subscription"))]
     Subscription(SubscriptionCommand),
-    #[command(name = branding::name("lease"), hide = branding::hide("lease"))]
+    #[command(name = command::name("lease"), hide = command::hide("lease"))]
     Lease(LeaseCommand),
-    #[command(name = branding::name("authority"), hide = branding::hide("authority"))]
+    #[command(name = command::name("authority"), hide = command::hide("authority"))]
     Authority(AuthorityCommand),
-    #[command(name = branding::name("service"), hide = branding::hide("service"))]
+    #[command(name = command::name("service"), hide = command::hide("service"))]
     Service(ServiceCommand),
-    #[command(name = branding::name("message"), hide = branding::hide("message"))]
+    #[command(name = command::name("message"), hide = command::hide("message"))]
     Message(MessageCommand),
-    #[command(name = branding::name("markdown"), hide = branding::hide("markdown"))]
+    #[command(name = command::name("markdown"), hide = command::hide("markdown"))]
     Markdown(MarkdownCommand),
 
-    #[command(name = branding::name("migrate-database"), hide = branding::hide("migrate-database"))]
+    #[command(name = command::name("migrate-database"), hide = command::hide("migrate-database"))]
     MigrateDatabase(MigrateDatabaseCommand),
-    #[command(name = branding::name("worker"), hide = branding::hide("worker"))]
+    #[command(name = command::name("worker"), hide = command::hide("worker"))]
     Worker(WorkerCommand),
-    #[command(name = branding::name("secure-channel-listener"), hide = branding::hide("secure-channel-listener"))]
+    #[command(name = command::name("secure-channel-listener"), hide = command::hide("secure-channel-listener"))]
     SecureChannelListener(SecureChannelListenerCommand),
-    #[command(name = branding::name("secure-channel"), hide = branding::hide("secure-channel"))]
+    #[command(name = command::name("secure-channel"), hide = command::hide("secure-channel"))]
     SecureChannel(SecureChannelCommand),
-    #[command(name = branding::name("tcp-listener"), hide = branding::hide("tcp-listener"))]
+    #[command(name = command::name("tcp-listener"), hide = command::hide("tcp-listener"))]
     TcpListener(TcpListenerCommand),
-    #[command(name = branding::name("tcp-connection"), hide = branding::hide("tcp-connection"))]
+    #[command(name = command::name("tcp-connection"), hide = command::hide("tcp-connection"))]
     TcpConnection(TcpConnectionCommand),
-    #[command(name = branding::name("flow-control"), hide = branding::hide("flow-control"))]
+    #[command(name = command::name("flow-control"), hide = command::hide("flow-control"))]
     FlowControl(FlowControlCommand),
-    #[command(name = branding::name("kafka-consumer"), hide = branding::hide("kafka-consumer"))]
+    #[command(name = command::name("kafka-consumer"), hide = command::hide("kafka-consumer"))]
     KafkaConsumer(KafkaConsumerCommand),
-    #[command(name = branding::name("kafka-producer"), hide = branding::hide("kafka-producer"))]
+    #[command(name = command::name("kafka-producer"), hide = command::hide("kafka-producer"))]
     KafkaProducer(KafkaProducerCommand),
-    #[command(name = branding::name("share"), hide = branding::hide("share"))]
+    #[command(name = command::name("share"), hide = command::hide("share"))]
     Share(ShareCommand),
 }
 
@@ -364,11 +364,11 @@ pub trait Command: Debug + Clone + Sized + Send + Sync + 'static {
     const NAME: &'static str;
 
     fn name(&self) -> String {
-        branding::CUSTOM_COMMANDS.name(Self::NAME).to_string()
+        branding::command::name(Self::NAME).to_string()
     }
 
     fn hide() -> bool {
-        branding::CUSTOM_COMMANDS.hide(Self::NAME)
+        branding::command::hide(Self::NAME)
     }
 
     fn retry_opts(&self) -> Option<RetryOpts> {

@@ -136,7 +136,7 @@ impl Command for TicketCommand {
             ProjectRoute::new(MultiAddr::from_str(&project.access_route)?)?,
             project
                 .identity
-                .as_ref()
+                .clone()
                 .ok_or(miette!("missing project's identity"))?,
             &project.name,
             project
@@ -147,7 +147,12 @@ impl Command for TicketCommand {
                 .authority_identity
                 .as_ref()
                 .ok_or(miette!("missing authority's change history"))?,
-            project.authority_access_route.as_ref(),
+            MultiAddr::from_str(
+                project
+                    .authority_access_route
+                    .as_ref()
+                    .ok_or(miette!("missing authority's route"))?,
+            )?,
         )
         .import()
         .await?;

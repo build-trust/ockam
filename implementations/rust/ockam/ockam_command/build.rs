@@ -12,39 +12,40 @@ fn hash() {
 }
 
 fn binary_name() {
-    let is_developer = env::var("OCKAM_DEVELOPER").unwrap_or("false".to_string());
-    println!("cargo:rustc-env=OCKAM_DEVELOPER={is_developer}");
-    println!("cargo:rerun-if-env-changed=OCKAM_DEVELOPER");
+    let is_developer = env::var("COMPILE_OCKAM_DEVELOPER").unwrap_or("false".to_string());
+    println!("cargo:rustc-env=COMPILE_OCKAM_DEVELOPER={is_developer}");
+    println!("cargo:rerun-if-env-changed=COMPILE_OCKAM_DEVELOPER");
 
-    let bin_name = env::var("OCKAM_COMMAND_BIN_NAME").unwrap_or("ockam".to_string());
-    println!("cargo:rustc-env=OCKAM_COMMAND_BIN_NAME={bin_name}");
-    println!("cargo:rerun-if-env-changed=OCKAM_COMMAND_BIN_NAME");
+    let bin_name = env::var("COMPILE_OCKAM_COMMAND_BIN_NAME").unwrap_or("ockam".to_string());
+    println!("cargo:rustc-env=COMPILE_OCKAM_COMMAND_BIN_NAME={bin_name}");
+    println!("cargo:rerun-if-env-changed=COMPILE_OCKAM_COMMAND_BIN_NAME");
 
-    let brand_name = env::var("OCKAM_COMMAND_BRAND_NAME").unwrap_or("Ockam".to_string());
-    println!("cargo:rustc-env=OCKAM_COMMAND_BRAND_NAME={brand_name}");
-    println!("cargo:rerun-if-env-changed=OCKAM_COMMAND_BRAND_NAME");
+    let brand_name = env::var("COMPILE_OCKAM_COMMAND_BRAND_NAME").unwrap_or("Ockam".to_string());
+    println!("cargo:rustc-env=COMPILE_OCKAM_COMMAND_BRAND_NAME={brand_name}");
+    println!("cargo:rerun-if-env-changed=COMPILE_OCKAM_COMMAND_BRAND_NAME");
 
-    let support_email =
-        env::var("OCKAM_COMMAND_SUPPORT_EMAIL").unwrap_or(format!("support@{}.com", bin_name));
-    println!("cargo:rustc-env=OCKAM_COMMAND_SUPPORT_EMAIL={support_email}");
-    println!("cargo:rerun-if-env-changed=OCKAM_COMMAND_SUPPORT_EMAIL");
+    let support_email = env::var("COMPILE_OCKAM_COMMAND_SUPPORT_EMAIL")
+        .unwrap_or(format!("support@{}.com", bin_name));
+    println!("cargo:rustc-env=COMPILE_OCKAM_COMMAND_SUPPORT_EMAIL={support_email}");
+    println!("cargo:rerun-if-env-changed=COMPILE_OCKAM_COMMAND_SUPPORT_EMAIL");
 
-    let home_dir = env::var("OCKAM_HOME").unwrap_or("".to_string());
-    println!("cargo:rustc-env=OCKAM_HOME={home_dir}");
-    println!("cargo:rerun-if-env-changed=OCKAM_HOME");
+    let home_dir = env::var("COMPILE_OCKAM_HOME").unwrap_or("".to_string());
+    println!("cargo:rustc-env=COMPILE_OCKAM_HOME={home_dir}");
+    println!("cargo:rerun-if-env-changed=COMPILE_OCKAM_HOME");
 
-    let commands = env::var("OCKAM_COMMANDS").unwrap_or("".to_string());
-    println!("cargo:rustc-env=OCKAM_COMMANDS={commands}");
-    println!("cargo:rerun-if-env-changed=OCKAM_COMMANDS");
+    let commands = env::var("COMPILE_OCKAM_COMMANDS").unwrap_or("".to_string());
+    println!("cargo:rustc-env=COMPILE_OCKAM_COMMANDS={commands}");
+    println!("cargo:rerun-if-env-changed=COMPILE_OCKAM_COMMANDS");
 
     let orchestrator_identifier =
-        env::var("OCKAM_CONTROLLER_IDENTITY_ID").unwrap_or("".to_string());
-    println!("cargo:rustc-env=OCKAM_CONTROLLER_IDENTITY_ID={orchestrator_identifier}");
-    println!("cargo:rerun-if-env-changed=OCKAM_CONTROLLER_IDENTITY_ID");
+        env::var("COMPILE_OCKAM_CONTROLLER_IDENTIFIER").unwrap_or("".to_string());
+    println!("cargo:rustc-env=COMPILE_OCKAM_CONTROLLER_IDENTIFIER={orchestrator_identifier}");
+    println!("cargo:rerun-if-env-changed=COMPILE_OCKAM_CONTROLLER_IDENTIFIER");
 
-    let orchestrator_address = env::var("OCKAM_CONTROLLER_ADDR").unwrap_or("".to_string());
-    println!("cargo:rustc-env=OCKAM_CONTROLLER_ADDR={orchestrator_address}");
-    println!("cargo:rerun-if-env-changed=OCKAM_CONTROLLER_ADDR");
+    let orchestrator_address =
+        env::var("COMPILE_OCKAM_CONTROLLER_ADDRESS").unwrap_or("".to_string());
+    println!("cargo:rustc-env=COMPILE_OCKAM_CONTROLLER_ADDRESS={orchestrator_address}");
+    println!("cargo:rerun-if-env-changed=COMPILE_OCKAM_CONTROLLER_ADDRESS");
 }
 
 fn main() {

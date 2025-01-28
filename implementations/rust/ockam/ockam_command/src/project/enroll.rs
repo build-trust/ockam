@@ -38,7 +38,7 @@ long_about = docs::about(LONG_ABOUT),
 after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct EnrollCommand {
-    /// Path, URL or inlined hex-encoded enrollment ticket
+    /// Path, URL or inlined enrollment ticket
     #[arg(
         display_order = 800,
         group = "authentication_method",
