@@ -25,6 +25,22 @@ const COMPILE_CONTROLLER_IDENTIFIER: &str = env!("COMPILE_OCKAM_CONTROLLER_IDENT
 /// in the format `command1=customName,command2,command3`
 const COMPILE_COMMANDS: &str = env!("COMPILE_OCKAM_COMMANDS");
 
+pub fn get_compile_time_vars() -> Vec<(&'static str, &'static str)> {
+    vec![
+        (COMPILE_OCKAM_DEVELOPER, COMPILE_DEVELOPER),
+        (COMPILE_OCKAM_HOME, COMPILE_HOME),
+        (COMPILE_OCKAM_COMMAND_BIN_NAME, COMPILE_BIN_NAME),
+        (COMPILE_OCKAM_COMMAND_BRAND_NAME, COMPILE_BRAND_NAME),
+        (COMPILE_OCKAM_COMMAND_SUPPORT_EMAIL, COMPILE_SUPPORT_EMAIL),
+        (COMPILE_OCKAM_CONTROLLER_ADDRESS, COMPILE_CONTROLLER_ADDRESS),
+        (
+            COMPILE_OCKAM_CONTROLLER_IDENTIFIER,
+            COMPILE_CONTROLLER_IDENTIFIER,
+        ),
+        (COMPILE_OCKAM_COMMANDS, COMPILE_COMMANDS),
+    ]
+}
+
 pub fn load_compile_time_vars() {
     // If OCKAM_DEVELOPER is not set, set it to the COMPILE_OCKAM_DEVELOPER value
     if get_env_ignore_error::<bool>(ockam_api::logs::env_variables::OCKAM_DEVELOPER).is_none() {
