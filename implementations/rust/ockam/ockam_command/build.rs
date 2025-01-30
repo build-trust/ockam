@@ -12,7 +12,8 @@ fn hash() {
 }
 
 fn binary_name() {
-    let is_developer = env::var("COMPILE_OCKAM_DEVELOPER").unwrap_or("false".to_string());
+    let is_developer = env::var("COMPILE_OCKAM_DEVELOPER")
+        .unwrap_or(env::var("OCKAM_DEVELOPER").unwrap_or("false".to_string()));
     println!("cargo:rustc-env=COMPILE_OCKAM_DEVELOPER={is_developer}");
     println!("cargo:rerun-if-env-changed=COMPILE_OCKAM_DEVELOPER");
 
@@ -29,7 +30,7 @@ fn binary_name() {
     println!("cargo:rustc-env=COMPILE_OCKAM_COMMAND_SUPPORT_EMAIL={support_email}");
     println!("cargo:rerun-if-env-changed=COMPILE_OCKAM_COMMAND_SUPPORT_EMAIL");
 
-    let home_dir = env::var("COMPILE_OCKAM_HOME").unwrap_or("".to_string());
+    let home_dir = env::var("COMPILE_OCKAM_HOME").unwrap_or(format!("$HOME/.{}", bin_name));
     println!("cargo:rustc-env=COMPILE_OCKAM_HOME={home_dir}");
     println!("cargo:rerun-if-env-changed=COMPILE_OCKAM_HOME");
 

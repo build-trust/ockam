@@ -41,83 +41,67 @@ fn main() -> Result<()> {
     let args = Args::parse();
 
     // Load the configuration
-    let mut config: Config = match serde_yaml::from_str(&args.configuration) {
+    let config: Config = match serde_yaml::from_str(&args.configuration) {
         Ok(config) => config,
         Err(_) => {
             let config = std::fs::read_to_string(&args.configuration).into_diagnostic()?;
             serde_yaml::from_str(&config).into_diagnostic()?
         }
     };
-    config.process_defaults()?;
 
     // Build the binaries
     for (bin_name, brand_config) in config.items {
-        build_binary(&bin_name, brand_config, args.dry_run)?;
+        build_binary(bin_name, brand_config, args.dry_run)?;
     }
     Ok(())
 }
 
 /// Builds the binary with the passed settings
-fn build_binary(bin_name: &str, brand_settings: Brand, dry_run: bool) -> Result<()> {
+fn build_binary(bin_name: String, brand_settings: Brand, dry_run: bool) -> Result<()> {
     brand_settings.validate()?;
 
     eprintln!(
         "{}\n{brand_settings}",
-        fmt_log!("Building binary {} with", color_primary(bin_name))
+        fmt_log!("Building binary {} with", color_primary(&bin_name))
     );
 
     if dry_run {
         return Ok(());
     }
 
-    let bin_path = create_temporary_binary_file(bin_name)?;
+    let bin_path = create_temporary_binary_file(&bin_name)?;
     let mut cmd = std::process::Command::new("cargo");
-    cmd.args(["build", "--bin", bin_name]);
-    cmd.env(COMPILE_OCKAM_COMMAND_BIN_NAME, bin_name);
-    cmd.env(
-        COMPILE_OCKAM_COMMAND_SUPPORT_EMAIL,
-        &brand_settings.support_email,
-    );
-    if let Some(brand_name) = brand_settings.brand_name {
-        cmd.env(COMPILE_OCKAM_COMMAND_BRAND_NAME, brand_name);
-    }
-    if let Some(home_dir) = brand_settings.home_dir {
-        cmd.env(COMPILE_OCKAM_HOME, home_dir);
-    }
-    if let Some(orchestrator_identifier) = brand_settings.orchestrator_identifier {
-        cmd.env(
-            COMPILE_OCKAM_CONTROLLER_IDENTIFIER,
-            orchestrator_identifier.to_string(),
-        );
-    }
-    if let Some(orchestrator_address) = brand_settings.orchestrator_address {
-        cmd.env(COMPILE_OCKAM_CONTROLLER_ADDRESS, orchestrator_address);
-    }
-    if let Some(commands) = brand_settings.commands {
-        let process_command_name = |c: &str| {
-            // replace _ and - with space to support writing
-            // commands as "node create", "node-create" or "node_create
-            c.replace("_", " ").replace("-", " ")
-        };
-
-        // A comma separated list of commands in the format `command1=customName,command2,command3`
-        let env_value = commands
-            .iter()
-            .map(|c| match c {
-                Command::Simple(c) => process_command_name(c),
-                Command::Mapped(map) => map
-                    .iter()
-                    .map(|(k, v)| process_command_name(&format!("{}={}", k, v)))
-                    .collect::<Vec<String>>()
-                    .join(","),
-            })
-            .collect::<Vec<String>>()
-            .join(",");
-        cmd.env(COMPILE_OCKAM_COMMANDS, env_value);
-    }
-    if let Some(build_args) = brand_settings.build_args {
+    cmd.args(["build", "--bin", &bin_name]);
+    if let Some(build_args) = &brand_settings.build_args {
         cmd.args(build_args);
     }
+    let commands = brand_settings.commands();
+    let brand_name = brand_settings.brand_name(&bin_name);
+    cmd.envs([
+        (COMPILE_OCKAM_DEVELOPER, "false".to_string()),
+        (
+            COMPILE_OCKAM_COMMAND_SUPPORT_EMAIL,
+            brand_settings.support_email,
+        ),
+        (COMPILE_OCKAM_COMMAND_BIN_NAME, bin_name.clone()),
+        (COMPILE_OCKAM_COMMAND_BRAND_NAME, brand_name),
+        (
+            COMPILE_OCKAM_HOME,
+            brand_settings.home_dir.unwrap_or_default(),
+        ),
+        (
+            COMPILE_OCKAM_CONTROLLER_IDENTIFIER,
+            brand_settings
+                .orchestrator_identifier
+                .map(|i| i.to_string())
+                .unwrap_or_default(),
+        ),
+        (
+            COMPILE_OCKAM_CONTROLLER_ADDRESS,
+            brand_settings.orchestrator_address.unwrap_or_default(),
+        ),
+        (COMPILE_OCKAM_COMMANDS, commands),
+    ]);
 
     let res = cmd
         .status()
@@ -144,31 +128,6 @@ struct Config {
     items: BTreeMap<String, Brand>,
 }
 
-impl Config {
-    fn process_defaults(&mut self) -> Result<()> {
-        for (bin_name, brand) in self.items.iter_mut() {
-            // Default brand_name to capitalized bin_name
-            if brand.brand_name.is_none() {
-                let mut brand_name = bin_name.to_string();
-                brand_name[..1].make_ascii_uppercase();
-                brand.brand_name = Some(brand_name);
-            }
-
-            // Default home_dir to $HOME/.{bin_name}
-            if brand.home_dir.is_none() {
-                brand.home_dir = Some(
-                    Path::new("$HOME")
-                        .join(format!(".{bin_name}"))
-                        .to_str()
-                        .ok_or(miette!("Failed to convert path to string"))?
-                        .to_string(),
-                )
-            }
-        }
-        Ok(())
-    }
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
 struct Brand {
     support_email: String,
@@ -189,6 +148,44 @@ impl Brand {
             }
         }
         Ok(())
+    }
+
+    fn brand_name(&self, bin_name: &str) -> String {
+        match &self.brand_name {
+            Some(b) => b.clone(),
+            None => {
+                let mut brand_name = bin_name.to_string();
+                brand_name[..1].make_ascii_uppercase();
+                brand_name
+            }
+        }
+    }
+
+    fn commands(&self) -> String {
+        match &self.commands {
+            None => String::new(),
+            Some(commands) => {
+                let process_command_name = |c: &str| {
+                    // replace _ and - with space to support writing
+                    // commands as "node create", "node-create" or "node_create
+                    c.replace("_", " ").replace("-", " ")
+                };
+
+                // A comma separated list of commands in the format `command1=customName,command2,command3`
+                commands
+                    .iter()
+                    .map(|c| match c {
+                        Command::Simple(c) => process_command_name(c),
+                        Command::Mapped(map) => map
+                            .iter()
+                            .map(|(k, v)| process_command_name(&format!("{}={}", k, v)))
+                            .collect::<Vec<String>>()
+                            .join(","),
+                    })
+                    .collect::<Vec<String>>()
+                    .join(",")
+            }
+        }
     }
 }
 
@@ -324,8 +321,7 @@ mod tests {
         assert_eq!(parsed.items["bin1"].brand_name.as_deref(), Some("Brand1"));
         assert_eq!(parsed.items["bin2"].brand_name.as_deref(), Some("Brand2"));
 
-        let mut processed = parsed.clone();
-        processed.process_defaults().unwrap();
+        let processed = parsed.clone();
 
         // No defaults used, should be the same as parsed
         let bin1 = &processed.items["bin1"];
@@ -335,7 +331,7 @@ mod tests {
         let bin2 = &processed.items["bin2"];
         assert_eq!(bin2.support_email, "bin2@support.io");
         assert_eq!(bin2.brand_name.as_deref(), Some("Brand2"));
-        assert_eq!(bin2.home_dir.as_ref().unwrap(), "$HOME/.bin2");
+        assert_eq!(bin2.home_dir.as_ref(), None);
         assert_eq!(bin2.orchestrator_identifier, None);
         assert_eq!(bin2.orchestrator_address.as_deref(), None);
         assert_eq!(bin2.commands.as_deref(), None);
