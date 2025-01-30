@@ -77,6 +77,7 @@ fn build_binary(bin_name: String, brand_settings: Brand, dry_run: bool) -> Resul
     }
     let commands = brand_settings.commands();
     let brand_name = brand_settings.brand_name(&bin_name);
+    let home_dir = brand_settings.home_dir(&bin_name);
     cmd.envs([
         (COMPILE_OCKAM_DEVELOPER, "false".to_string()),
         (
@@ -85,10 +86,7 @@ fn build_binary(bin_name: String, brand_settings: Brand, dry_run: bool) -> Resul
         ),
         (COMPILE_OCKAM_COMMAND_BIN_NAME, bin_name.clone()),
         (COMPILE_OCKAM_COMMAND_BRAND_NAME, brand_name),
-        (
-            COMPILE_OCKAM_HOME,
-            brand_settings.home_dir.unwrap_or_default(),
-        ),
+        (COMPILE_OCKAM_HOME, home_dir),
         (
             COMPILE_OCKAM_CONTROLLER_IDENTIFIER,
             brand_settings
@@ -158,6 +156,16 @@ impl Brand {
                 brand_name[..1].make_ascii_uppercase();
                 brand_name
             }
+        }
+    }
+
+    fn home_dir(&self, bin_name: &str) -> String {
+        match &self.home_dir {
+            Some(home_dir) => home_dir.clone(),
+            None => Path::new("$HOME")
+                .join(bin_name)
+                .to_string_lossy()
+                .to_string(),
         }
     }
 
@@ -310,7 +318,6 @@ mod tests {
               - "node create": "init"
           bin2:
             support_email: bin2@support.io
-            brand_name: Brand2
             build_args:
               - --release
               - --target
@@ -319,19 +326,19 @@ mod tests {
         let parsed: Config = serde_yaml::from_str(config).unwrap();
         assert_eq!(parsed.items.len(), 2);
         assert_eq!(parsed.items["bin1"].brand_name.as_deref(), Some("Brand1"));
-        assert_eq!(parsed.items["bin2"].brand_name.as_deref(), Some("Brand2"));
-
-        let processed = parsed.clone();
+        assert_eq!(parsed.items["bin2"].brand_name, None);
 
         // No defaults used, should be the same as parsed
-        let bin1 = &processed.items["bin1"];
+        let bin1 = &parsed.items["bin1"];
         assert_eq!(&parsed.items["bin1"], bin1);
 
         // Check bin2 defaults
-        let bin2 = &processed.items["bin2"];
+        let bin2 = &parsed.items["bin2"];
         assert_eq!(bin2.support_email, "bin2@support.io");
-        assert_eq!(bin2.brand_name.as_deref(), Some("Brand2"));
+        assert_eq!(bin2.brand_name, None);
+        assert_eq!(bin2.brand_name("bin2"), "Bin2");
         assert_eq!(bin2.home_dir.as_ref(), None);
+        assert_eq!(bin2.home_dir("bin2"), "$HOME/bin2");
         assert_eq!(bin2.orchestrator_identifier, None);
         assert_eq!(bin2.orchestrator_address.as_deref(), None);
         assert_eq!(bin2.commands.as_deref(), None);

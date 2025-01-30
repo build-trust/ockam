@@ -30,7 +30,7 @@ fn binary_name() {
     println!("cargo:rustc-env=COMPILE_OCKAM_COMMAND_SUPPORT_EMAIL={support_email}");
     println!("cargo:rerun-if-env-changed=COMPILE_OCKAM_COMMAND_SUPPORT_EMAIL");
 
-    let home_dir = env::var("COMPILE_OCKAM_HOME").unwrap_or(format!("$HOME/.{}", bin_name));
+    let home_dir = env::var("COMPILE_OCKAM_HOME").unwrap_or("".to_string());
     println!("cargo:rustc-env=COMPILE_OCKAM_HOME={home_dir}");
     println!("cargo:rerun-if-env-changed=COMPILE_OCKAM_HOME");
 
