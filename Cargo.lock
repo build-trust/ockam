@@ -4612,6 +4612,7 @@ dependencies = [
  "either",
  "flexi_logger",
  "futures 0.3.31",
+ "futures-core",
  "gethostname 0.5.0",
  "hex",
  "home",
@@ -4646,6 +4647,7 @@ dependencies = [
  "opentelemetry",
  "opentelemetry-appender-tracing",
  "opentelemetry-otlp",
+ "opentelemetry-proto",
  "opentelemetry-semantic-conventions",
  "opentelemetry_sdk",
  "petname",
@@ -4855,6 +4857,7 @@ dependencies = [
  "tempfile",
  "tokio",
  "tokio-retry",
+ "tower 0.4.13",
  "tracing",
  "tracing-attributes",
  "zeroize",
@@ -5202,9 +5205,11 @@ version = "0.26.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c9d3968ce3aefdcca5c27e3c4ea4391b37547726a70893aab52d3de95d5f8b34"
 dependencies = [
+ "hex",
  "opentelemetry",
  "opentelemetry_sdk",
  "prost",
+ "serde",
  "tonic",
 ]
 

@@ -373,7 +373,6 @@ mod tests {
     use ockam_node::database::{with_postgres, DatabaseConfiguration};
     use ockam_node::NodeBuilder;
     use std::future::Future;
-    use std::net::TcpListener;
     use std::str::FromStr;
     use std::time::Duration;
 
@@ -691,10 +690,11 @@ mod tests {
             result
         })?
     }
+}
 
-    fn random_port() -> u16 {
-        let listener = TcpListener::bind("127.0.0.1:0").expect("Failed to bind to address");
-        let address = listener.local_addr().expect("Failed to get local address");
-        address.port()
-    }
+#[cfg(test)]
+pub fn random_port() -> u16 {
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("Failed to bind to address");
+    let address = listener.local_addr().expect("Failed to get local address");
+    address.port()
 }
