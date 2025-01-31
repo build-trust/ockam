@@ -4,6 +4,7 @@ use std::time::Duration;
 
 use ockam::identity::{
     get_default_timeout, CredentialRetrieverCreator, Identifier, SecureChannels, SecureClient,
+    TrustIdentifierPolicy,
 };
 use ockam::tcp::TcpTransport;
 use ockam_core::compat::sync::Arc;
@@ -121,7 +122,7 @@ impl NodeManager {
                 None,
                 Arc::new(tcp_transport.clone()),
                 controller_route,
-                &controller_identifier,
+                Arc::new(TrustIdentifierPolicy::new(controller_identifier)),
                 caller_identifier,
                 get_default_timeout(),
                 get_default_timeout(),
@@ -155,7 +156,7 @@ impl NodeManager {
                 credential_retriever_creator,
                 Arc::new(tcp_transport.clone()),
                 authority_route,
-                authority_identifier,
+                Arc::new(TrustIdentifierPolicy::new(authority_identifier.clone())),
                 caller_identifier,
                 get_default_timeout(),
                 get_default_timeout(),
@@ -189,7 +190,7 @@ impl NodeManager {
                 credential_retriever_creator,
                 Arc::new(tcp_transport.clone()),
                 project_route,
-                project_identifier,
+                Arc::new(TrustIdentifierPolicy::new(project_identifier.clone())),
                 caller_identifier,
                 get_default_timeout(),
                 get_default_timeout(),
@@ -214,7 +215,7 @@ impl NodeManager {
                 None,
                 Arc::new(tcp_transport.clone()),
                 route,
-                identifier,
+                Arc::new(TrustIdentifierPolicy::new(identifier.clone())),
                 caller_identifier,
                 get_default_timeout(),
                 get_default_timeout(),
