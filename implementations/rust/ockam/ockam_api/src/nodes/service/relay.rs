@@ -19,7 +19,7 @@ use ockam_node::Context;
 use super::{NodeManager, NodeManagerWorker};
 use crate::colors::color_primary;
 use crate::nodes::connection::Connection;
-use crate::nodes::models::relay::{CreateRelay, RelayInfo, ReturnTiming};
+use crate::nodes::models::relay::{CreateRelay, RelayInfo, RelayInfoList, ReturnTiming};
 use crate::nodes::models::secure_channel::{
     CreateSecureChannelRequest, CreateSecureChannelResponse,
 };
@@ -99,11 +99,11 @@ impl NodeManagerWorker {
     pub async fn get_relays(
         &self,
         req: &RequestHeader,
-    ) -> Result<Response<Vec<RelayInfo>>, Response<Error>> {
+    ) -> Result<Response<RelayInfoList>, Response<Error>> {
         debug!("Handling GetRelays request");
         Ok(Response::ok()
             .with_headers(req)
-            .body(self.node_manager.get_relays().await))
+            .body(RelayInfoList(self.node_manager.get_relays().await)))
     }
 }
 

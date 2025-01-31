@@ -1,7 +1,8 @@
+use crate::alloc::string::ToString;
 use core::fmt::{Debug, Formatter};
 use minicbor::{CborLen, Decode, Encode};
-
-use crate::alloc::string::ToString;
+use ockam_core::compat::vec::Vec;
+use ockam_core::{cbor_encode_preallocate, Decodable, Encodable, Encoded, Message};
 
 /// Identifier length
 pub const IDENTIFIER_LEN: usize = 32;
@@ -19,6 +20,23 @@ pub struct Identifier(#[cbor(n(0), with = "minicbor::bytes")] pub [u8; IDENTIFIE
 impl Debug for Identifier {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         f.write_str(&self.to_string())
+    }
+}
+
+/// List of identifiers
+#[derive(Clone, Eq, PartialEq, Encode, Decode, CborLen, Message)]
+#[cbor(transparent)]
+pub struct IdentifierList(#[n(0)] pub Vec<Identifier>);
+
+impl Encodable for IdentifierList {
+    fn encode(self) -> ockam_core::Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for IdentifierList {
+    fn decode(e: &[u8]) -> ockam_core::Result<Self> {
+        Ok(minicbor::decode(e)?)
     }
 }
 

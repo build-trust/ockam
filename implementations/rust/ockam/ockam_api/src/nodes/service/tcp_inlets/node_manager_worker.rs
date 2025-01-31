@@ -2,13 +2,13 @@ use ockam::{route, Result};
 use ockam_core::api::{Error, Response};
 use ockam_node::Context;
 
-use crate::nodes::models::portal::{CreateInlet, InletStatus};
+use crate::nodes::models::portal::{CreateInlet, InletStatus, InletStatusList};
 use crate::nodes::NodeManagerWorker;
 
 impl NodeManagerWorker {
-    pub(crate) async fn get_inlets(&self) -> Result<Response<Vec<InletStatus>>, Response<Error>> {
+    pub(crate) async fn get_inlets(&self) -> Result<Response<InletStatusList>, Response<Error>> {
         let inlets = self.node_manager.list_inlets().await;
-        Ok(Response::ok().body(inlets))
+        Ok(Response::ok().body(InletStatusList(inlets)))
     }
 
     #[instrument(skip_all)]

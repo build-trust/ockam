@@ -4,7 +4,7 @@ use ockam_api::colors::OckamColor;
 use tokio::sync::Mutex;
 use tokio::try_join;
 
-use ockam_api::nodes::models::transport::TransportStatus;
+use ockam_api::nodes::models::transport::TransportStatusList;
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_core::api::Request;
 use ockam_node::Context;
@@ -35,10 +35,10 @@ impl ListCommand {
         let is_finished: Mutex<bool> = Mutex::new(false);
 
         let get_transports = async {
-            let transports: Vec<TransportStatus> =
+            let transports: TransportStatusList =
                 node.ask(ctx, Request::get("/node/tcp/connection")).await?;
             *is_finished.lock().await = true;
-            Ok(transports)
+            Ok(transports.0)
         };
 
         let output_messages = vec![format!(

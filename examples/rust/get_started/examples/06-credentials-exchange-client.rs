@@ -81,8 +81,8 @@ async fn main(ctx: Context) -> Result<()> {
 
     // Send a message to the worker at address "echoer".
     // Wait to receive a reply and print it.
-    let reply = node
-        .send_and_receive::<String>(
+    let reply: String = node
+        .send_and_receive(
             route![channel, DefaultAddress::ECHO_SERVICE],
             "Hello Ockam!".to_string(),
         )

@@ -1,6 +1,6 @@
 use crate::{
     compat::{collections::VecDeque, string::String, vec::Vec},
-    Address, Result, RouteError, TransportType,
+    serialize, Address, Encodable, Encoded, Result, RouteError, TransportType,
 };
 use core::fmt::{self, Display};
 use core::ops::{Add, AddAssign};
@@ -13,6 +13,12 @@ use serde::{Deserialize, Serialize};
 #[rustfmt::skip]
 pub struct Route {
     #[n(0)] inner: VecDeque<Address>,
+}
+
+impl Encodable for Route {
+    fn encode(self) -> Result<Encoded> {
+        serialize(self)
+    }
 }
 
 impl AddAssign for Route {

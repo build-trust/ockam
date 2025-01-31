@@ -7,8 +7,9 @@ use serde::Serialize;
 
 use ockam::identity::models::CredentialAndPurposeKey;
 use ockam::identity::{Identifier, SecureChannel, SecureChannelListener};
+use ockam::Message;
 use ockam_core::flow_control::FlowControlId;
-use ockam_core::{route, Address, Result};
+use ockam_core::{cbor_encode_preallocate, route, Address, Decodable, Encodable, Encoded, Result};
 use ockam_multiaddr::MultiAddr;
 
 use crate::colors::color_primary;
@@ -18,7 +19,7 @@ use crate::ReverseLocalConverter;
 //Requests
 
 /// Request body when instructing a node to create a Secure Channel
-#[derive(Debug, Clone, Encode, Decode, CborLen)]
+#[derive(Debug, Clone, Encode, Decode, CborLen, Message)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct CreateSecureChannelRequest {
@@ -29,6 +30,17 @@ pub struct CreateSecureChannelRequest {
     #[n(6)] pub credential: Option<CredentialAndPurposeKey>,
 }
 
+impl Encodable for CreateSecureChannelRequest {
+    fn encode(self) -> Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for CreateSecureChannelRequest {
+    fn decode(e: &[u8]) -> Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
+}
 impl CreateSecureChannelRequest {
     pub fn new(
         addr: &MultiAddr,
@@ -47,13 +59,24 @@ impl CreateSecureChannelRequest {
 }
 
 /// Request body when instructing a node to delete a Secure Channel
-#[derive(Debug, Clone, Encode, Decode, CborLen)]
+#[derive(Debug, Clone, Encode, Decode, CborLen, Message)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct DeleteSecureChannelRequest {
     #[n(1)] pub channel: Address,
 }
 
+impl Encodable for DeleteSecureChannelRequest {
+    fn encode(self) -> Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for DeleteSecureChannelRequest {
+    fn decode(e: &[u8]) -> Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
+}
 impl DeleteSecureChannelRequest {
     pub fn new(channel: &Address) -> Self {
         Self {
@@ -63,13 +86,24 @@ impl DeleteSecureChannelRequest {
 }
 
 /// Request body when instructing a node to show a Secure Channel
-#[derive(Debug, Clone, Encode, Decode, CborLen)]
+#[derive(Debug, Clone, Encode, Decode, CborLen, Message)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct ShowSecureChannelRequest {
     #[n(1)] pub channel: Address,
 }
 
+impl Encodable for ShowSecureChannelRequest {
+    fn encode(self) -> Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for ShowSecureChannelRequest {
+    fn decode(e: &[u8]) -> Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
+}
 impl ShowSecureChannelRequest {
     pub fn new(channel: &Address) -> Self {
         Self {
@@ -79,13 +113,24 @@ impl ShowSecureChannelRequest {
 }
 
 /// Request body when instructing a node to delete a Secure Channel Listener
-#[derive(Debug, Clone, Encode, Decode, CborLen)]
+#[derive(Debug, Clone, Encode, Decode, CborLen, Message)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct DeleteSecureChannelListenerRequest {
     #[n(1)] pub addr: Address,
 }
 
+impl Encodable for DeleteSecureChannelListenerRequest {
+    fn encode(self) -> Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for DeleteSecureChannelListenerRequest {
+    fn decode(e: &[u8]) -> Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
+}
 impl DeleteSecureChannelListenerRequest {
     pub fn new(addr: &Address) -> Self {
         Self {
@@ -95,11 +140,23 @@ impl DeleteSecureChannelListenerRequest {
 }
 
 /// Request body to show a Secure Channel Listener
-#[derive(Debug, Clone, Encode, Decode, CborLen)]
+#[derive(Debug, Clone, Encode, Decode, CborLen, Message)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct ShowSecureChannelListenerRequest {
     #[n(1)] pub addr: Address,
+}
+
+impl Encodable for ShowSecureChannelListenerRequest {
+    fn encode(self) -> Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for ShowSecureChannelListenerRequest {
+    fn decode(e: &[u8]) -> Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
 }
 
 impl ShowSecureChannelListenerRequest {
@@ -113,12 +170,24 @@ impl ShowSecureChannelListenerRequest {
 // Responses
 
 /// Response body when instructing a node to create a Secure Channel
-#[derive(Debug, Clone, Encode, Decode, CborLen)]
+#[derive(Debug, Clone, Encode, Decode, CborLen, Message)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct CreateSecureChannelResponse {
     #[n(1)] pub addr: Address,
     #[n(2)] pub flow_control_id: FlowControlId,
+}
+
+impl Encodable for CreateSecureChannelResponse {
+    fn encode(self) -> Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for CreateSecureChannelResponse {
+    fn decode(e: &[u8]) -> Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
 }
 
 impl CreateSecureChannelResponse {
@@ -146,7 +215,7 @@ impl Output for CreateSecureChannelResponse {
     }
 }
 
-#[derive(Debug, Clone, Encode, Decode, CborLen)]
+#[derive(Debug, Clone, Encode, Decode, CborLen, Message)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct CreateSecureChannelListenerRequest {
@@ -155,6 +224,17 @@ pub struct CreateSecureChannelListenerRequest {
     #[n(3)] pub identity_name: Option<String>,
 }
 
+impl Encodable for CreateSecureChannelListenerRequest {
+    fn encode(self) -> Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for CreateSecureChannelListenerRequest {
+    fn decode(e: &[u8]) -> Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
+}
 impl CreateSecureChannelListenerRequest {
     pub fn new(
         addr: &Address,
@@ -170,7 +250,7 @@ impl CreateSecureChannelListenerRequest {
 }
 
 /// Response body when deleting a Secure Channel Listener
-#[derive(Debug, Clone, Encode, Decode, CborLen)]
+#[derive(Debug, Clone, Encode, Decode, CborLen, Message)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct DeleteSecureChannelListenerResponse {
@@ -180,6 +260,18 @@ pub struct DeleteSecureChannelListenerResponse {
 impl DeleteSecureChannelListenerResponse {
     pub fn new(addr: Address) -> Self {
         Self { addr }
+    }
+}
+
+impl Encodable for DeleteSecureChannelListenerResponse {
+    fn encode(self) -> Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for DeleteSecureChannelListenerResponse {
+    fn decode(e: &[u8]) -> Result<Self> {
+        Ok(minicbor::decode(e)?)
     }
 }
 
@@ -194,13 +286,24 @@ impl Output for SecureChannelListener {
     }
 }
 
-#[derive(Debug, Clone, Encode, Decode, CborLen)]
+#[derive(Debug, Clone, Encode, Decode, CborLen, Message)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct DeleteSecureChannelResponse {
     #[n(1)] pub channel: Option<String>,
 }
 
+impl Encodable for DeleteSecureChannelResponse {
+    fn encode(self) -> Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for DeleteSecureChannelResponse {
+    fn decode(e: &[u8]) -> Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
+}
 impl DeleteSecureChannelResponse {
     pub fn new(channel: Option<Address>) -> Self {
         Self {
@@ -209,7 +312,7 @@ impl DeleteSecureChannelResponse {
     }
 }
 
-#[derive(Debug, Clone, Encode, Decode, CborLen, Serialize)]
+#[derive(Debug, Clone, Encode, Decode, CborLen, Serialize, Message)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct ShowSecureChannelResponse {
@@ -219,6 +322,17 @@ pub struct ShowSecureChannelResponse {
     #[n(4)] pub flow_control_id: Option<FlowControlId>,
 }
 
+impl Encodable for ShowSecureChannelResponse {
+    fn encode(self) -> Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for ShowSecureChannelResponse {
+    fn decode(e: &[u8]) -> Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
+}
 impl ShowSecureChannelResponse {
     pub fn new(info: Option<SecureChannelInfo>) -> Self {
         Self {
@@ -265,5 +379,20 @@ impl Output for ShowSecureChannelResponse {
         };
 
         Ok(s)
+    }
+}
+
+#[derive(Encode, Decode, CborLen, Debug, Default, Clone, Eq, PartialEq, Message)]
+pub struct SecureChannelList(#[n(0)] pub Vec<String>);
+
+impl Encodable for SecureChannelList {
+    fn encode(self) -> Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for SecureChannelList {
+    fn decode(e: &[u8]) -> Result<Self> {
+        Ok(minicbor::decode(e)?)
     }
 }

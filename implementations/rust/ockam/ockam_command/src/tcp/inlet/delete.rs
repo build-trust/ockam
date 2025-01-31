@@ -9,7 +9,7 @@ use crate::{docs, Command, CommandGlobalOpts};
 use ockam::Context;
 use ockam_api::colors::color_primary;
 use ockam_api::fmt_ok;
-use ockam_api::nodes::models::portal::InletStatus;
+use ockam_api::nodes::models::portal::InletStatusList;
 use ockam_api::nodes::service::tcp_inlets::Inlets;
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_api::terminal::{Terminal, TerminalStream};
@@ -97,11 +97,11 @@ impl DeleteCommandTui for DeleteTui {
     }
 
     async fn list_items_names(&self) -> miette::Result<Vec<String>> {
-        let inlets: Vec<InletStatus> = self
+        let inlets: InletStatusList = self
             .node
             .ask(&self.ctx, Request::get("/node/inlet"))
             .await?;
-        let names = inlets.into_iter().map(|i| i.alias).collect();
+        let names = inlets.0.into_iter().map(|i| i.alias).collect();
         Ok(names)
     }
 

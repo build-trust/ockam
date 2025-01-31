@@ -1,7 +1,5 @@
 //! Node Manager (Node Man, the superhero that we deserve)
 
-use minicbor::Encode;
-
 use ockam::Result;
 use ockam_core::api::{RequestHeader, Response};
 
@@ -28,21 +26,21 @@ mod trust;
 mod worker;
 
 pub use manager::*;
+use ockam_core::Message;
 pub use secure_channel::SecureChannelType;
 pub use trust::*;
 pub use worker::*;
 
 const TARGET: &str = "ockam_api::nodemanager::service";
 
-/// Append the request header to the Response and encode in vector format
-pub(crate) fn encode_response<T: Encode<()>>(
+/// Append the request header to the response and serialize the response body
+pub(crate) fn encode_response<T: Message>(
     req: &RequestHeader,
     res: std::result::Result<Response<T>, Response<ockam_core::api::Error>>,
-) -> Result<Vec<u8>> {
+) -> Result<Response<Vec<u8>>> {
     let v = match res {
-        Ok(r) => r.with_headers(req).to_vec()?,
-        Err(e) => e.with_headers(req).to_vec()?,
+        Ok(r) => r.with_headers(req).encode_body()?,
+        Err(e) => e.with_headers(req).encode_body()?,
     };
-
     Ok(v)
 }

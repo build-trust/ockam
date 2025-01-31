@@ -2,12 +2,12 @@ use std::net::SocketAddr;
 
 use ockam::tcp::{TcpConnectionOptions, TcpListenerOptions};
 use ockam::Result;
-use ockam_core::api::{Error, RequestHeader, Response};
+use ockam_core::api::{Error, Response};
 use ockam_node::Context;
 
 use super::{NodeManager, NodeManagerWorker};
 use crate::nodes::models::transport::{
-    CreateTcpConnection, CreateTcpListener, DeleteTransport, TransportStatus,
+    CreateTcpConnection, CreateTcpListener, DeleteTransport, TransportStatus, TransportStatusList,
 };
 
 impl NodeManager {
@@ -99,13 +99,8 @@ impl NodeManager {
 }
 
 impl NodeManagerWorker {
-    pub(super) async fn get_tcp_connections(
-        &self,
-        req: &RequestHeader,
-    ) -> Response<Vec<TransportStatus>> {
-        Response::ok()
-            .with_headers(req)
-            .body(self.node_manager.get_tcp_connections())
+    pub(super) async fn get_tcp_connections(&self) -> Response<TransportStatusList> {
+        Response::ok().body(TransportStatusList(self.node_manager.get_tcp_connections()))
     }
 
     pub(super) async fn get_tcp_connection(
@@ -121,13 +116,8 @@ impl NodeManagerWorker {
             })
     }
 
-    pub(super) async fn get_tcp_listeners(
-        &self,
-        req: &RequestHeader,
-    ) -> Response<Vec<TransportStatus>> {
-        Response::ok()
-            .with_headers(req)
-            .body(self.node_manager.get_tcp_listeners())
+    pub(super) async fn get_tcp_listeners(&self) -> Response<TransportStatusList> {
+        Response::ok().body(TransportStatusList(self.node_manager.get_tcp_listeners()))
     }
 
     pub(super) async fn get_tcp_listener(

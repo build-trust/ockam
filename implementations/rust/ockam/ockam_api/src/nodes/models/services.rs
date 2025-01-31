@@ -2,22 +2,39 @@ use crate::colors::{color_primary, color_warn};
 use crate::kafka::{ConsumerPublishing, ConsumerResolution};
 use crate::output::Output;
 use minicbor::{CborLen, Decode, Encode};
+use ockam::Message;
 use ockam_abac::PolicyExpression;
-use ockam_core::Address;
+use ockam_core::{cbor_encode_preallocate, Address, Decodable, Encodable, Encoded};
 use ockam_multiaddr::MultiAddr;
 use ockam_transport_core::HostnamePort;
 use serde::Serialize;
 use std::fmt::Display;
 
-#[derive(Debug, Clone, Encode, Decode, CborLen)]
+#[derive(Debug, Clone, Encode, Decode, CborLen, Message)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct StartServiceRequest<T> {
+pub struct StartServiceRequest<T: Encode<()> + CborLen<()> + for<'a> Decode<'a, ()> + Send + 'static> {
     #[n(1)] addr: String,
     #[n(2)] req: T,
 }
 
-impl<T> StartServiceRequest<T> {
+impl<T: Encode<()> + CborLen<()> + for<'a> Decode<'a, ()> + Send + 'static> Encodable
+    for StartServiceRequest<T>
+{
+    fn encode(self) -> ockam_core::Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl<T: Encode<()> + CborLen<()> + for<'a> Decode<'a, ()> + Send + 'static> Decodable
+    for StartServiceRequest<T>
+{
+    fn decode(e: &[u8]) -> ockam_core::Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
+}
+
+impl<T: Encode<()> + CborLen<()> + for<'a> Decode<'a, ()> + Send + 'static> StartServiceRequest<T> {
     pub fn new<S: Into<String>>(req: T, addr: S) -> Self {
         Self {
             addr: addr.into(),
@@ -34,11 +51,23 @@ impl<T> StartServiceRequest<T> {
     }
 }
 
-#[derive(Debug, Clone, Encode, Decode, CborLen)]
+#[derive(Debug, Clone, Encode, Decode, CborLen, Message)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct DeleteServiceRequest {
     #[n(1)] addr: String,
+}
+
+impl Encodable for DeleteServiceRequest {
+    fn encode(self) -> ockam_core::Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for DeleteServiceRequest {
+    fn decode(e: &[u8]) -> ockam_core::Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
 }
 
 impl DeleteServiceRequest {
@@ -51,13 +80,25 @@ impl DeleteServiceRequest {
     }
 }
 
-#[derive(Debug, Clone, Encode, Decode, CborLen)]
+#[derive(Debug, Clone, Encode, Decode, CborLen, Message)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct StartKafkaOutletRequest {
     #[n(1)] bootstrap_server_addr: HostnamePort,
     #[n(2)] tls: bool,
     #[n(3)] policy_expression: Option<PolicyExpression>,
+}
+
+impl Encodable for StartKafkaOutletRequest {
+    fn encode(self) -> ockam_core::Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for StartKafkaOutletRequest {
+    fn decode(e: &[u8]) -> ockam_core::Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
 }
 
 impl StartKafkaOutletRequest {
@@ -86,7 +127,7 @@ impl StartKafkaOutletRequest {
     }
 }
 
-#[derive(Debug, Clone, Encode, Decode, CborLen)]
+#[derive(Debug, Clone, Encode, Decode, CborLen, Message)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct StartKafkaInletRequest {
@@ -100,6 +141,18 @@ pub struct StartKafkaInletRequest {
     #[n(8)] consumer_policy_expression: Option<PolicyExpression>,
     #[n(9)] producer_policy_expression: Option<PolicyExpression>,
     #[n(10)] encrypted_fields: Vec<String>,
+}
+
+impl Encodable for StartKafkaInletRequest {
+    fn encode(self) -> ockam_core::Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for StartKafkaInletRequest {
+    fn decode(e: &[u8]) -> ockam_core::Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
 }
 
 impl StartKafkaInletRequest {
@@ -170,11 +223,23 @@ impl StartKafkaInletRequest {
 }
 
 /// Request body when instructing a node to start an Uppercase service
-#[derive(Debug, Clone, Encode, Decode, CborLen)]
+#[derive(Debug, Clone, Encode, Decode, CborLen, Message)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct StartUppercaseServiceRequest {
     #[n(1)] pub addr: String,
+}
+
+impl Encodable for StartUppercaseServiceRequest {
+    fn encode(self) -> ockam_core::Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for StartUppercaseServiceRequest {
+    fn decode(e: &[u8]) -> ockam_core::Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
 }
 
 impl StartUppercaseServiceRequest {
@@ -184,11 +249,23 @@ impl StartUppercaseServiceRequest {
 }
 
 /// Request body when instructing a node to start an Echoer service
-#[derive(Debug, Clone, Encode, Decode, CborLen)]
+#[derive(Debug, Clone, Encode, Decode, CborLen, Message)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct StartEchoerServiceRequest {
     #[n(1)] pub addr: String,
+}
+
+impl Encodable for StartEchoerServiceRequest {
+    fn encode(self) -> ockam_core::Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for StartEchoerServiceRequest {
+    fn decode(e: &[u8]) -> ockam_core::Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
 }
 
 impl StartEchoerServiceRequest {
@@ -198,11 +275,23 @@ impl StartEchoerServiceRequest {
 }
 
 /// Request body when instructing a node to start a Hop service
-#[derive(Debug, Clone, Encode, Decode, CborLen)]
+#[derive(Debug, Clone, Encode, Decode, CborLen, Message)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct StartHopServiceRequest {
     #[n(1)] pub addr: String,
+}
+
+impl Encodable for StartHopServiceRequest {
+    fn encode(self) -> ockam_core::Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for StartHopServiceRequest {
+    fn decode(e: &[u8]) -> ockam_core::Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
 }
 
 impl StartHopServiceRequest {
@@ -211,13 +300,25 @@ impl StartHopServiceRequest {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Encode, Decode, CborLen)]
+#[derive(Debug, Clone, Serialize, Encode, Decode, CborLen, Message)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct ServiceStatus {
     #[n(2)] pub addr: String,
     #[serde(rename = "type")]
     #[n(3)] pub service_type: String,
+}
+
+impl Encodable for ServiceStatus {
+    fn encode(self) -> ockam_core::Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for ServiceStatus {
+    fn decode(e: &[u8]) -> ockam_core::Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
 }
 
 impl ServiceStatus {
@@ -243,5 +344,19 @@ impl Display for ServiceStatus {
 impl Output for ServiceStatus {
     fn item(&self) -> crate::Result<String> {
         Ok(self.padded_display())
+    }
+}
+
+#[derive(Encode, Decode, CborLen, Debug, Default, Clone, Message)]
+pub struct ServiceStatusList(#[n(0)] pub Vec<ServiceStatus>);
+
+impl Encodable for ServiceStatusList {
+    fn encode(self) -> ockam_core::Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+impl Decodable for ServiceStatusList {
+    fn decode(e: &[u8]) -> ockam_core::Result<Self> {
+        Ok(minicbor::decode(e)?)
     }
 }

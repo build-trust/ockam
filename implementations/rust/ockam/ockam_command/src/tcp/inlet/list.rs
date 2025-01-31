@@ -1,6 +1,6 @@
 use clap::Args;
 
-use ockam_api::nodes::models::portal::InletStatus;
+use ockam_api::nodes::models::portal::InletStatusList;
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_core::api::Request;
 use ockam_node::Context;
@@ -28,13 +28,14 @@ impl ListCommand {
 
     pub async fn run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         let node = BackgroundNodeClient::create(ctx, &opts.state, &self.node.at_node).await?;
-        let inlets: Vec<InletStatus> = {
+        let inlets: InletStatusList = {
             let pb = opts.terminal.spinner();
             if let Some(pb) = pb.as_ref() {
                 pb.set_message(format!("Listing TCP Inlets on {}...", node.node_name()));
             }
             node.ask(ctx, Request::get("/node/inlet")).await?
         };
+        let inlets = inlets.0;
 
         let plain = opts.terminal.build_list(
             &inlets,

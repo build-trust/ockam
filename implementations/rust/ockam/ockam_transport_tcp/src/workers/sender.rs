@@ -4,7 +4,8 @@ use ockam_core::flow_control::FlowControlId;
 use ockam_core::{
     async_trait,
     compat::{net::SocketAddr, sync::Arc},
-    AddressMetadata, AllowAll, AllowSourceAddress, DenyAll, LocalMessage,
+    deserialize, serialize, AddressMetadata, AllowAll, AllowSourceAddress, DenyAll, Encodable,
+    Encoded, LocalMessage,
 };
 use ockam_core::{Any, Decodable, Mailbox, Mailboxes, Message, Result, Routed, Worker};
 use ockam_node::{Context, WorkerBuilder, WorkerShutdownPriority};
@@ -38,6 +39,18 @@ pub(crate) struct TcpSendWorker {
     mode: TcpConnectionMode,
     receiver_flow_control_id: FlowControlId,
     rx_should_be_stopped: bool,
+}
+
+impl Encodable for TcpSendWorkerMsg {
+    fn encode(self) -> Result<Encoded> {
+        serialize(self)
+    }
+}
+
+impl Decodable for TcpSendWorkerMsg {
+    fn decode(v: &[u8]) -> Result<Self> {
+        deserialize(v)
+    }
 }
 
 impl TcpSendWorker {

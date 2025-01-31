@@ -6,6 +6,8 @@ use crate::orchestrator::email_address::EmailAddress;
 use crate::output::Output;
 use minicbor::{CborLen, Decode, Encode};
 use ockam::identity::Identifier;
+use ockam::Message;
+use ockam_core::{cbor_encode_preallocate, Decodable, Encodable, Encoded};
 use serde::{Deserialize, Serialize};
 use std::{fmt::Display, str::FromStr};
 
@@ -73,12 +75,24 @@ impl FromStr for ShareScope {
     }
 }
 
-#[derive(Clone, Debug, Encode, Decode, CborLen, Deserialize, Serialize)]
+#[derive(Clone, Debug, Encode, Decode, CborLen, Deserialize, Serialize, Message)]
 #[cbor(map)]
 #[rustfmt::skip]
 pub struct InvitationWithAccess {
     #[n(1)] pub invitation: ReceivedInvitation,
     #[n(2)] pub service_access_details: Option<ServiceAccessDetails>,
+}
+
+impl Encodable for InvitationWithAccess {
+    fn encode(self) -> ockam_core::Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for InvitationWithAccess {
+    fn decode(e: &[u8]) -> ockam_core::Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
 }
 
 impl PartialEq for InvitationWithAccess {
@@ -117,7 +131,7 @@ impl Output for ReceivedInvitation {
     }
 }
 
-#[derive(Clone, Debug, Encode, Decode, CborLen, Deserialize, Serialize, PartialEq)]
+#[derive(Clone, Debug, Encode, Decode, CborLen, Deserialize, Serialize, PartialEq, Message)]
 #[cbor(map)]
 #[rustfmt::skip]
 pub struct SentInvitation {
@@ -131,6 +145,18 @@ pub struct SentInvitation {
     #[n(8)] pub target_id: String,
     #[n(9)] pub recipient_id: usize,
     #[n(10)] pub access_details: Option<ServiceAccessDetails>,
+}
+
+impl Encodable for SentInvitation {
+    fn encode(self) -> ockam_core::Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for SentInvitation {
+    fn decode(e: &[u8]) -> ockam_core::Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
 }
 
 impl SentInvitation {

@@ -1,8 +1,8 @@
 use std::os::unix::net::SocketAddr;
 
 use ockam_core::{
-    async_trait, compat::sync::Arc, Address, AllowAll, Any, Decodable, DenyAll, LocalMessage,
-    Mailbox, Mailboxes, Message, Result, Routed, Worker,
+    async_trait, compat::sync::Arc, deserialize, serialize, Address, AllowAll, Any, Decodable,
+    DenyAll, Encodable, Encoded, LocalMessage, Mailbox, Mailboxes, Message, Result, Routed, Worker,
 };
 use ockam_node::{Context, WorkerBuilder};
 use ockam_transport_core::{encode_transport_message, TransportError};
@@ -49,6 +49,18 @@ impl WorkerPair {
 #[derive(Serialize, Deserialize, Message, Clone)]
 pub(crate) enum UdsSendWorkerMsg {
     ConnectionClosed,
+}
+
+impl Encodable for UdsSendWorkerMsg {
+    fn encode(self) -> Result<Encoded> {
+        serialize(self)
+    }
+}
+
+impl Decodable for UdsSendWorkerMsg {
+    fn decode(v: &[u8]) -> Result<Self> {
+        deserialize(v)
+    }
 }
 
 pub(crate) struct UdsSendWorker {

@@ -4,14 +4,16 @@ use crate::terminal::fmt;
 use crate::ApiError;
 use minicbor::{CborLen, Decode, Encode};
 use ockam::identity::Identifier;
+use ockam::Message;
 use ockam_core::compat::fmt::Error as FmtError;
+use ockam_core::{cbor_encode_preallocate, Decodable, Encodable, Encoded};
 use serde::{Deserialize, Serialize};
 use std::cmp::PartialEq;
 use std::fmt::{Display, Formatter};
 use strum::{Display, EnumString};
 use time::OffsetDateTime;
 
-#[derive(Encode, Decode, CborLen, Serialize, Deserialize, Debug, Clone)]
+#[derive(Encode, Decode, CborLen, Serialize, Deserialize, Debug, Clone, Message)]
 #[cbor(map)]
 pub struct LeaseToken {
     #[cbor(n(1))]
@@ -31,6 +33,34 @@ pub struct LeaseToken {
 
     #[cbor(n(6))]
     pub status: TokenStatus,
+}
+
+impl Encodable for LeaseToken {
+    fn encode(self) -> ockam_core::Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for LeaseToken {
+    fn decode(e: &[u8]) -> ockam_core::Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
+}
+
+#[derive(Encode, Decode, CborLen, Serialize, Deserialize, Debug, Clone, Message)]
+#[cbor(transparent)]
+pub struct LeaseTokenList(#[n(0)] pub Vec<LeaseToken>);
+
+impl Encodable for LeaseTokenList {
+    fn encode(self) -> ockam_core::Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for LeaseTokenList {
+    fn decode(e: &[u8]) -> ockam_core::Result<Self> {
+        Ok(LeaseTokenList(minicbor::decode(e)?))
+    }
 }
 
 #[cfg(test)]

@@ -1,7 +1,6 @@
 use clap::{Args, Subcommand};
 use colorful::Colorful;
 use miette::WrapErr;
-use minicbor::Encode;
 
 use crate::{CommandGlobalOpts, Result};
 use ockam::Context;
@@ -10,6 +9,7 @@ use ockam_api::nodes::service::default_address::DefaultAddress;
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_api::{fmt_ok, fmt_warn};
 use ockam_core::api::Request;
+use ockam_core::Message;
 
 use crate::node::NodeOpts;
 use crate::util::api;
@@ -69,7 +69,7 @@ pub(crate) async fn start_service_impl<T>(
     req: Request<T>,
 ) -> Result<()>
 where
-    T: Encode<()>,
+    T: Message,
 {
     node.tell(ctx, req)
         .await

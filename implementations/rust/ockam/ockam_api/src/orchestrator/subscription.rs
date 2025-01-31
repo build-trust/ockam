@@ -4,9 +4,13 @@ use crate::orchestrator::{ControllerClient, HasSecureClient};
 use crate::output::Output;
 use crate::terminal::fmt;
 use colorful::{Colorful, RGB};
+use miette::IntoDiagnostic;
 use minicbor::{decode, encode, CborLen, Decode, Decoder, Encode};
-use ockam_core::api::{Error, Reply, Request, Status};
-use ockam_core::{self, async_trait, Result};
+use ockam::Message;
+use ockam_core::api::{Reply, Request};
+use ockam_core::{
+    self, async_trait, cbor_encode_preallocate, Decodable, Encodable, Encoded, Result,
+};
 use ockam_node::Context;
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter, Write};
@@ -17,7 +21,7 @@ const API_SERVICE: &str = "subscriptions";
 
 pub const SUBSCRIPTION_PAGE: &str = "https://orchestrator.ockam.io";
 
-#[derive(Encode, Decode, CborLen, Debug)]
+#[derive(Encode, Decode, CborLen, Debug, Message)]
 #[cfg_attr(test, derive(Clone))]
 #[rustfmt::skip]
 #[cbor(map)]
@@ -26,6 +30,18 @@ pub struct ActivateSubscription {
     #[n(2)] pub subscription_data: String,
     #[n(3)] pub space_name: Option<String>,
     #[n(4)] pub owner_emails: Option<Vec<String>>,
+}
+
+impl Encodable for ActivateSubscription {
+    fn encode(self) -> Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for ActivateSubscription {
+    fn decode(e: &[u8]) -> Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
 }
 
 impl ActivateSubscription {
@@ -189,7 +205,7 @@ impl<C> Encode<C> for SubscriptionName {
         e: &mut minicbor::Encoder<W>,
         ctx: &mut C,
     ) -> std::result::Result<(), encode::Error<W::Error>> {
-        self.to_string().encode(e, ctx)
+        <String as Encode<C>>::encode(&self.to_string(), e, ctx)
     }
 }
 
@@ -201,7 +217,7 @@ impl<C> CborLen<C> for SubscriptionName {
 
 impl<'b, C> Decode<'b, C> for SubscriptionName {
     fn decode(d: &mut Decoder<'b>, ctx: &mut C) -> std::result::Result<Self, decode::Error> {
-        SubscriptionName::from_str(&String::decode(d, ctx)?)
+        SubscriptionName::from_str(&<String as Decode<'b, C>>::decode(d, ctx)?)
             .map_err(|_| decode::Error::message("Invalid subscription name"))
     }
 }
@@ -223,7 +239,7 @@ impl SubscriptionName {
 /// The commands using this API were already removed, but the Controller still supports it.
 /// This struct along with the [Subscriptions] trait can be removed once the Controller stops
 /// supporting the legacy API.
-#[derive(Encode, Decode, CborLen, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[derive(Encode, Decode, CborLen, Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Message)]
 #[cbor(map)]
 pub struct SubscriptionLegacy {
     #[n(1)]
@@ -240,6 +256,18 @@ pub struct SubscriptionLegacy {
     pub contact_info: String,
     #[n(7)]
     pub space_id: Option<String>,
+}
+
+impl Encodable for SubscriptionLegacy {
+    fn encode(self) -> Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for SubscriptionLegacy {
+    fn decode(e: &[u8]) -> Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
 }
 
 impl Output for SubscriptionLegacy {
@@ -260,6 +288,22 @@ impl Output for SubscriptionLegacy {
     }
 }
 
+#[derive(Encode, Decode, CborLen, Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Message)]
+#[cbor(map)]
+pub struct SubscriptionLegacyList(#[n(0)] pub(crate) Vec<SubscriptionLegacy>);
+
+impl Encodable for SubscriptionLegacyList {
+    fn encode(self) -> Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for SubscriptionLegacyList {
+    fn decode(e: &[u8]) -> Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
+}
+
 #[async_trait]
 pub trait Subscriptions {
     async fn activate_subscription(
@@ -267,41 +311,41 @@ pub trait Subscriptions {
         ctx: &Context,
         space_id: String,
         subscription_data: String,
-    ) -> Result<Reply<SubscriptionLegacy>>;
+    ) -> miette::Result<SubscriptionLegacy>;
 
     async fn unsubscribe(
         &self,
         ctx: &Context,
         subscription_id: String,
-    ) -> Result<Reply<SubscriptionLegacy>>;
+    ) -> miette::Result<SubscriptionLegacy>;
 
     async fn update_subscription_contact_info(
         &self,
         ctx: &Context,
         subscription_id: String,
         contact_info: String,
-    ) -> Result<Reply<SubscriptionLegacy>>;
+    ) -> miette::Result<SubscriptionLegacy>;
 
     async fn update_subscription_space(
         &self,
         ctx: &Context,
         subscription_id: String,
         new_space_id: String,
-    ) -> Result<Reply<SubscriptionLegacy>>;
+    ) -> miette::Result<SubscriptionLegacy>;
 
-    async fn get_subscriptions(&self, ctx: &Context) -> Result<Reply<Vec<SubscriptionLegacy>>>;
+    async fn get_subscriptions(&self, ctx: &Context) -> miette::Result<Vec<SubscriptionLegacy>>;
 
     async fn get_subscription(
         &self,
         ctx: &Context,
         subscription_id: String,
-    ) -> Result<Reply<SubscriptionLegacy>>;
+    ) -> miette::Result<Option<SubscriptionLegacy>>;
 
     async fn get_subscription_by_space_id(
         &self,
         ctx: &Context,
         space_id: String,
-    ) -> Result<Reply<SubscriptionLegacy>>;
+    ) -> miette::Result<Option<SubscriptionLegacy>>;
 }
 
 #[async_trait]
@@ -312,11 +356,14 @@ impl Subscriptions for ControllerClient {
         ctx: &Context,
         space_id: String,
         subscription_data: String,
-    ) -> Result<Reply<SubscriptionLegacy>> {
+    ) -> miette::Result<SubscriptionLegacy> {
         let req_body = ActivateSubscription::existing(space_id, subscription_data);
         trace!(space_id = ?req_body.space_id, space_name = ?req_body.space_name, "activating subscription");
         let req = Request::post("/v0/activate").body(req_body);
-        self.get_secure_client().ask(ctx, API_SERVICE, req).await
+        self.get_secure_client()
+            .ask(ctx, API_SERVICE, req)
+            .await?
+            .miette_success("subscription legacy")
     }
 
     #[instrument(skip_all, fields(subscription_id = subscription_id))]
@@ -324,10 +371,13 @@ impl Subscriptions for ControllerClient {
         &self,
         ctx: &Context,
         subscription_id: String,
-    ) -> Result<Reply<SubscriptionLegacy>> {
+    ) -> miette::Result<SubscriptionLegacy> {
         trace!(subscription = %subscription_id, "unsubscribing");
         let req = Request::put(format!("/v0/{subscription_id}/unsubscribe"));
-        self.get_secure_client().ask(ctx, API_SERVICE, req).await
+        self.get_secure_client()
+            .ask(ctx, API_SERVICE, req)
+            .await?
+            .miette_success("subscription legacy")
     }
 
     #[instrument(skip_all, fields(subscription_id = subscription_id, contact_info = contact_info))]
@@ -336,10 +386,13 @@ impl Subscriptions for ControllerClient {
         ctx: &Context,
         subscription_id: String,
         contact_info: String,
-    ) -> Result<Reply<SubscriptionLegacy>> {
+    ) -> miette::Result<SubscriptionLegacy> {
         trace!(subscription = %subscription_id, "updating subscription contact info");
         let req = Request::put(format!("/v0/{subscription_id}/contact_info")).body(contact_info);
-        self.get_secure_client().ask(ctx, API_SERVICE, req).await
+        self.get_secure_client()
+            .ask(ctx, API_SERVICE, req)
+            .await?
+            .miette_success("subscription legacy")
     }
 
     #[instrument(skip_all, fields(subscription_id = subscription_id, new_space_id = new_space_id))]
@@ -348,17 +401,23 @@ impl Subscriptions for ControllerClient {
         ctx: &Context,
         subscription_id: String,
         new_space_id: String,
-    ) -> Result<Reply<SubscriptionLegacy>> {
+    ) -> miette::Result<SubscriptionLegacy> {
         trace!(subscription = %subscription_id, new_space_id = %new_space_id, "updating subscription space");
         let req = Request::put(format!("/v0/{subscription_id}/space_id")).body(new_space_id);
-        self.get_secure_client().ask(ctx, API_SERVICE, req).await
+        self.get_secure_client()
+            .ask(ctx, API_SERVICE, req)
+            .await
+            .into_diagnostic()?
+            .miette_success("subscription legacy")
     }
 
     #[instrument(skip_all)]
-    async fn get_subscriptions(&self, ctx: &Context) -> Result<Reply<Vec<SubscriptionLegacy>>> {
+    async fn get_subscriptions(&self, ctx: &Context) -> miette::Result<Vec<SubscriptionLegacy>> {
         trace!("listing subscriptions");
         let req = Request::get("/v0/");
-        self.get_secure_client().ask(ctx, API_SERVICE, req).await
+        let subscription_legacy_list: Reply<SubscriptionLegacyList> =
+            self.get_secure_client().ask(ctx, API_SERVICE, req).await?;
+        Ok(subscription_legacy_list.success()?.0)
     }
 
     #[instrument(skip_all, fields(subscription_id = subscription_id))]
@@ -366,10 +425,12 @@ impl Subscriptions for ControllerClient {
         &self,
         ctx: &Context,
         subscription_id: String,
-    ) -> Result<Reply<SubscriptionLegacy>> {
+    ) -> miette::Result<Option<SubscriptionLegacy>> {
         trace!(subscription = %subscription_id, "getting subscription");
         let req = Request::get(format!("/v0/{subscription_id}"));
-        self.get_secure_client().ask(ctx, API_SERVICE, req).await
+        let reply: Reply<SubscriptionLegacy> =
+            self.get_secure_client().ask(ctx, API_SERVICE, req).await?;
+        Ok(reply.found()?)
     }
 
     #[instrument(skip_all, fields(space_id = space_id))]
@@ -377,19 +438,11 @@ impl Subscriptions for ControllerClient {
         &self,
         ctx: &Context,
         space_id: String,
-    ) -> Result<Reply<SubscriptionLegacy>> {
-        let subscriptions: Vec<SubscriptionLegacy> =
-            self.get_subscriptions(ctx).await?.success()?;
-        let subscription = subscriptions
+    ) -> miette::Result<Option<SubscriptionLegacy>> {
+        let subscriptions: Vec<SubscriptionLegacy> = self.get_subscriptions(ctx).await?;
+        Ok(subscriptions
             .into_iter()
-            .find(|s| s.space_id == Some(space_id.clone()));
-        match subscription {
-            Some(subscription) => Ok(Reply::Successful(subscription)),
-            None => Ok(Reply::Failed(
-                Error::new_without_path(),
-                Some(Status::NotFound),
-            )),
-        }
+            .find(|s| s.space_id == Some(space_id.clone())))
     }
 }
 

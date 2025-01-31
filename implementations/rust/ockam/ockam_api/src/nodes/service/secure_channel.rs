@@ -1,11 +1,11 @@
 use std::time::Duration;
 
-use crate::nodes::models::secure_channel::CreateSecureChannelListenerRequest;
 use crate::nodes::models::secure_channel::CreateSecureChannelRequest;
 use crate::nodes::models::secure_channel::DeleteSecureChannelListenerRequest;
 use crate::nodes::models::secure_channel::DeleteSecureChannelRequest;
 use crate::nodes::models::secure_channel::ShowSecureChannelListenerRequest;
 use crate::nodes::models::secure_channel::ShowSecureChannelRequest;
+use crate::nodes::models::secure_channel::{CreateSecureChannelListenerRequest, SecureChannelList};
 use crate::nodes::models::secure_channel::{
     CreateSecureChannelResponse, DeleteSecureChannelListenerResponse, DeleteSecureChannelResponse,
     ShowSecureChannelResponse,
@@ -14,12 +14,12 @@ use crate::nodes::registry::SecureChannelInfo;
 use crate::nodes::service::default_address::DefaultAddress;
 use crate::nodes::{NodeManager, NodeManagerWorker};
 use ockam::identity::models::CredentialAndPurposeKey;
-use ockam::identity::Vault;
 use ockam::identity::{
     Identifier, Identities, SecureChannelListenerOptions, SecureChannelOptions, SecureChannels,
     TrustMultiIdentifiersPolicy,
 };
 use ockam::identity::{SecureChannel, SecureChannelListener};
+use ockam::identity::{SecureChannelListenerList, Vault};
 use ockam::identity::{SecureChannelSqlxDatabase, TrustEveryonePolicy};
 use ockam::{Address, Result, Route};
 use ockam_core::api::{Error, Response};
@@ -36,8 +36,8 @@ pub enum SecureChannelType {
 
 /// SECURE CHANNELS
 impl NodeManagerWorker {
-    pub fn list_secure_channels(&self) -> Result<Response<Vec<String>>, Response<Error>> {
-        Ok(Response::ok().body(self.node_manager.list_secure_channels()))
+    pub fn list_secure_channels(&self) -> Result<Response<SecureChannelList>, Response<Error>> {
+        Ok(Response::ok().body(SecureChannelList(self.node_manager.list_secure_channels())))
     }
 
     pub(super) async fn create_secure_channel(
@@ -157,8 +157,10 @@ impl NodeManagerWorker {
 
     pub fn list_secure_channel_listener(
         &self,
-    ) -> Result<Response<Vec<SecureChannelListener>>, Response<Error>> {
-        Ok(Response::ok().body(self.node_manager.list_secure_channel_listeners()))
+    ) -> Result<Response<SecureChannelListenerList>, Response<Error>> {
+        Ok(Response::ok().body(SecureChannelListenerList(
+            self.node_manager.list_secure_channel_listeners(),
+        )))
     }
 }
 

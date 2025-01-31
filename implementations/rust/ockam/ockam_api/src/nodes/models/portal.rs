@@ -4,24 +4,26 @@ use std::fmt::{Display, Formatter};
 use std::sync::Arc;
 use std::time::Duration;
 
-use minicbor::{CborLen, Decode, Encode};
-use ockam::identity::Identifier;
-use ockam::transport::HostnamePort;
-use ockam_abac::PolicyExpression;
-use ockam_core::{Address, IncomingAccessControl, OutgoingAccessControl, Route};
-use ockam_multiaddr::MultiAddr;
-use serde::{Deserialize, Serialize};
-
 use crate::colors::{color_primary, color_primary_alt};
 use crate::error::ApiError;
-
 use crate::output::Output;
 use crate::session::connection_status::ConnectionStatus;
 use crate::terminal::fmt;
 use crate::ReverseLocalConverter;
+use minicbor::{CborLen, Decode, Encode};
+use ockam::identity::Identifier;
+use ockam::transport::HostnamePort;
+use ockam::Message;
+use ockam_abac::PolicyExpression;
+use ockam_core::{
+    cbor_encode_preallocate, Address, Decodable, Encodable, Encoded, IncomingAccessControl,
+    OutgoingAccessControl, Route,
+};
+use ockam_multiaddr::MultiAddr;
+use serde::{Deserialize, Serialize};
 
 /// Request body to create an inlet
-#[derive(Clone, Debug, Encode, Decode, CborLen)]
+#[derive(Clone, Debug, Encode, Decode, CborLen, Message)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct CreateInlet {
@@ -61,6 +63,18 @@ pub struct CreateInlet {
     #[n(14)] pub(crate) skip_handshake: bool,
     /// Enable Nagle's algorithm for potentially higher throughput, but higher latency
     #[n(15)] pub(crate) enable_nagle: bool,
+}
+
+impl Encodable for CreateInlet {
+    fn encode(self) -> ockam_core::Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for CreateInlet {
+    fn decode(e: &[u8]) -> ockam_core::Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
 }
 
 impl CreateInlet {
@@ -163,7 +177,7 @@ impl CreateInlet {
 }
 
 /// Request body to create an outlet
-#[derive(Clone, Debug, Encode, Decode, CborLen)]
+#[derive(Clone, Debug, Encode, Decode, CborLen, Message)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct CreateOutlet {
@@ -186,6 +200,18 @@ pub struct CreateOutlet {
     #[n(7)] pub skip_handshake: bool,
     /// Enable Nagle's algorithm for potentially higher throughput, but higher latency
     #[n(8)] pub(crate) enable_nagle: bool,
+}
+
+impl Encodable for CreateOutlet {
+    fn encode(self) -> ockam_core::Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for CreateOutlet {
+    fn decode(e: &[u8]) -> ockam_core::Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
 }
 
 impl CreateOutlet {
@@ -216,7 +242,7 @@ impl CreateOutlet {
 }
 
 /// Response body when interacting with a portal endpoint
-#[derive(Clone, Debug, Encode, Decode, CborLen, Serialize)]
+#[derive(Clone, Debug, Encode, Decode, CborLen, Serialize, Message)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct InletStatus {
@@ -229,6 +255,18 @@ pub struct InletStatus {
     #[n(6)] pub status: ConnectionStatus,
     #[n(7)] pub outlet_addr: String,
     #[n(8)] pub privileged: bool,
+}
+
+impl Encodable for InletStatus {
+    fn encode(self) -> ockam_core::Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for InletStatus {
+    fn decode(e: &[u8]) -> ockam_core::Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
 }
 
 impl InletStatus {
@@ -302,8 +340,23 @@ impl Output for InletStatus {
     }
 }
 
+#[derive(Encode, Decode, CborLen, Debug, Default, Clone, Message)]
+pub struct InletStatusList(#[n(0)] pub Vec<InletStatus>);
+
+impl Encodable for InletStatusList {
+    fn encode(self) -> ockam_core::Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for InletStatusList {
+    fn decode(e: &[u8]) -> ockam_core::Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
+}
+
 /// Response body when interacting with a portal endpoint
-#[derive(Clone, Debug, Encode, Decode, CborLen, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Encode, Decode, CborLen, Serialize, Deserialize, PartialEq, Message)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct OutletStatus {
@@ -312,6 +365,18 @@ pub struct OutletStatus {
     /// An optional status payload
     #[n(3)] pub payload: Option<String>,
     #[n(4)] pub privileged: bool,
+}
+
+impl Encodable for OutletStatus {
+    fn encode(self) -> ockam_core::Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for OutletStatus {
+    fn decode(e: &[u8]) -> ockam_core::Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
 }
 
 impl OutletStatus {
@@ -365,6 +430,22 @@ impl Display for OutletStatus {
         }
 
         Ok(())
+    }
+}
+
+#[derive(Encode, Decode, CborLen, Debug, Default, Clone, Message)]
+#[cbor(transparent)]
+pub struct OutletStatusList(#[n(0)] pub Vec<OutletStatus>);
+
+impl Encodable for OutletStatusList {
+    fn encode(self) -> ockam_core::Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for OutletStatusList {
+    fn decode(e: &[u8]) -> ockam_core::Result<Self> {
+        Ok(minicbor::decode(e)?)
     }
 }
 

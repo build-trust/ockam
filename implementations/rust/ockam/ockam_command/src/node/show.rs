@@ -10,6 +10,7 @@ use ockam_api::terminal::{Terminal, TerminalStream};
 use ockam_api::CliState;
 use ockam_core::TryClone;
 use ockam_node::Context;
+use tracing::error;
 
 use crate::terminal::tui::ShowCommandTui;
 use crate::tui::PluralTerm;
@@ -116,16 +117,21 @@ pub async fn get_node_resources(
     cli_state: &CliState,
     node: &mut BackgroundNodeClient,
 ) -> miette::Result<NodeResources> {
-    if let Ok(resources) = node
+    match node
         .ask_with_timeout(ctx, api::get_node_resources(), Duration::from_secs(1))
         .await
     {
-        return Ok(resources);
+        Ok(resources) => Ok(resources),
+        Err(e) => {
+            error!(
+                "cannot get the node resources: {}. Returning the node information instead",
+                e
+            );
+            let node_info = cli_state.get_node(node.node_name()).await?;
+            let identity = cli_state
+                .get_named_identity_by_identifier(&node_info.identifier())
+                .await?;
+            NodeResources::empty(node_info, identity.name()).into_diagnostic()
+        }
     }
-
-    let node_info = cli_state.get_node(node.node_name()).await?;
-    let identity = cli_state
-        .get_named_identity_by_identifier(&node_info.identifier())
-        .await?;
-    NodeResources::empty(node_info, identity.name()).into_diagnostic()
 }

@@ -8,8 +8,10 @@ use crate::cli_state::{CliState, EnrollmentTicket};
 use crate::error::ApiError;
 use crate::orchestrator::email_address::EmailAddress;
 use ockam::identity::Identifier;
+use ockam::Message;
+use ockam_core::{cbor_encode_preallocate, Decodable, Encodable, Encoded};
 
-#[derive(Clone, Debug, Encode, Decode, CborLen, Serialize)]
+#[derive(Clone, Debug, Encode, Decode, CborLen, Serialize, Message)]
 #[cbor(map)]
 #[rustfmt::skip]
 pub struct CreateInvitation {
@@ -21,7 +23,19 @@ pub struct CreateInvitation {
     #[n(6)] pub target_id: String,
 }
 
-#[derive(Clone, Debug, Encode, Decode, CborLen, Deserialize, Serialize)]
+impl Encodable for CreateInvitation {
+    fn encode(self) -> ockam_core::Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for CreateInvitation {
+    fn decode(e: &[u8]) -> ockam_core::Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
+}
+
+#[derive(Clone, Debug, Encode, Decode, CborLen, Deserialize, Serialize, Message)]
 #[cbor(map)]
 #[rustfmt::skip]
 pub struct CreateServiceInvitation {
@@ -37,6 +51,18 @@ pub struct CreateServiceInvitation {
     #[n(8)] pub shared_node_identity: Identifier,
     #[n(9)] pub shared_node_route: String,
     #[n(10)] pub enrollment_ticket: String,
+}
+
+impl Encodable for CreateServiceInvitation {
+    fn encode(self) -> ockam_core::Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for CreateServiceInvitation {
+    fn decode(e: &[u8]) -> ockam_core::Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
 }
 
 impl CreateServiceInvitation {

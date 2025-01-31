@@ -9,7 +9,8 @@ impl Worker for Uppercase {
 
     #[instrument(skip_all, name = "Uppercase::handle_message")]
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<String>) -> Result<()> {
-        ctx.send(msg.return_route().clone(), msg.into_body()?.to_uppercase())
+        let return_route = msg.return_route().clone();
+        ctx.send(return_route.clone(), msg.into_body()?.to_uppercase())
             .await
     }
 }

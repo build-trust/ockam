@@ -3,8 +3,9 @@ use minicbor::{CborLen, Decode, Encode};
 use serde::Serialize;
 use std::fmt::{Display, Formatter, Write};
 
+use ockam::Message;
 use ockam_core::api::Request;
-use ockam_core::async_trait;
+use ockam_core::{async_trait, cbor_encode_preallocate, Decodable, Encodable, Encoded};
 use ockam_node::Context;
 
 use crate::colors::{color_primary, color_uri, color_warn};
@@ -18,7 +19,7 @@ use crate::output::{comma_separated, Output};
 use crate::terminal::fmt;
 use crate::{fmt_log, UtcDateTime};
 
-#[derive(Encode, Decode, CborLen, Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Encode, Decode, CborLen, Serialize, Debug, Clone, PartialEq, Eq, Message)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct Space {
@@ -26,6 +27,18 @@ pub struct Space {
     #[n(2)] pub name: String,
     #[n(3)] pub users: Vec<String>,
     #[n(4)] pub subscription: Option<Subscription>,
+}
+
+impl Encodable for Space {
+    fn encode(self) -> ockam_core::Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for Space {
+    fn decode(e: &[u8]) -> ockam_core::Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
 }
 
 impl Space {
@@ -122,13 +135,41 @@ impl Output for Space {
     }
 }
 
-#[derive(Encode, Decode, CborLen, Debug)]
+#[derive(Encode, Decode, CborLen, Debug, Message)]
 #[cfg_attr(test, derive(Clone))]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct CreateSpace {
     #[n(1)] pub name: String,
     #[n(2)] pub users: Vec<String>,
+}
+
+impl Encodable for CreateSpace {
+    fn encode(self) -> ockam_core::Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for CreateSpace {
+    fn decode(e: &[u8]) -> ockam_core::Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
+}
+
+#[derive(Encode, Decode, CborLen, Debug, Message)]
+#[cbor(transparent)]
+pub struct SpaceList(#[n(0)] pub Vec<Space>);
+
+impl Encodable for SpaceList {
+    fn encode(self) -> ockam_core::Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for SpaceList {
+    fn decode(e: &[u8]) -> ockam_core::Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
 }
 
 impl CreateSpace {
@@ -347,11 +388,13 @@ impl ControllerClient {
 
     pub async fn list_spaces(&self, ctx: &Context) -> miette::Result<Vec<Space>> {
         trace!("listing spaces");
-        self.get_secure_client()
+        let space_list: SpaceList = self
+            .get_secure_client()
             .ask(ctx, "spaces", Request::get("/v0/"))
             .await
             .into_diagnostic()?
-            .miette_success("list spaces")
+            .miette_success("list spaces")?;
+        Ok(space_list.0)
     }
 }
 

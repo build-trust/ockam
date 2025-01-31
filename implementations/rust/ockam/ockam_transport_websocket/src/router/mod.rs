@@ -5,8 +5,8 @@ use std::sync::Arc;
 
 pub(crate) use handle::WebSocketRouterHandle;
 use ockam_core::{
-    async_trait, Address, AllowAll, Any, Decodable, LocalMessage, Mailbox, Mailboxes, Message,
-    Result, Routed, Worker,
+    async_trait, deserialize, serialize, Address, AllowAll, Any, Decodable, Encodable, Encoded,
+    LocalMessage, Mailbox, Mailboxes, Message, Result, Routed, Worker,
 };
 use ockam_node::{Context, WorkerBuilder};
 use ockam_transport_core::TransportError;
@@ -28,9 +28,33 @@ pub enum WebSocketRouterRequest {
     },
 }
 
+impl Encodable for WebSocketRouterRequest {
+    fn encode(self) -> Result<Encoded> {
+        serialize(self)
+    }
+}
+
+impl Decodable for WebSocketRouterRequest {
+    fn decode(v: &[u8]) -> Result<Self> {
+        deserialize(v)
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Message)]
 pub enum WebSocketRouterResponse {
     Register(Result<()>),
+}
+
+impl Encodable for WebSocketRouterResponse {
+    fn encode(self) -> Result<Encoded> {
+        serialize(self)
+    }
+}
+
+impl Decodable for WebSocketRouterResponse {
+    fn decode(v: &[u8]) -> Result<Self> {
+        deserialize(v)
+    }
 }
 
 /// A WebSocket address router and connection listener.

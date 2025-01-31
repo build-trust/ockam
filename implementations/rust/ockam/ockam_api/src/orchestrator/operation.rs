@@ -1,15 +1,16 @@
 use crate::orchestrator::{ControllerClient, HasSecureClient, ORCHESTRATOR_AWAIT_TIMEOUT};
 use miette::{miette, IntoDiagnostic};
 use minicbor::{CborLen, Decode, Encode};
+use ockam::Message;
 use ockam_core::api::Request;
-use ockam_core::async_trait;
+use ockam_core::{async_trait, cbor_encode_preallocate, Decodable, Encodable, Encoded};
 use ockam_node::Context;
 use serde::{Deserialize, Serialize};
 use tokio_retry::strategy::FixedInterval;
 use tokio_retry::Retry;
 use tracing::trace;
 
-#[derive(Encode, Decode, CborLen, Serialize, Deserialize, Debug, Clone)]
+#[derive(Encode, Decode, CborLen, Serialize, Deserialize, Debug, Clone, Message)]
 #[cbor(map)]
 pub struct Operation {
     #[cbor(n(1))]
@@ -17,6 +18,18 @@ pub struct Operation {
 
     #[cbor(n(2))]
     pub status: Status,
+}
+
+impl Encodable for Operation {
+    fn encode(self) -> ockam_core::Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for Operation {
+    fn decode(e: &[u8]) -> ockam_core::Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
 }
 
 impl Operation {
@@ -33,13 +46,24 @@ impl Operation {
     }
 }
 
-#[derive(Encode, Decode, CborLen, Serialize, Deserialize, Debug, Default, Clone)]
+#[derive(Encode, Decode, CborLen, Serialize, Deserialize, Debug, Default, Clone, Message)]
 #[cbor(map)]
 pub struct CreateOperationResponse {
     #[cbor(n(1))]
     pub operation_id: String,
 }
 
+impl Encodable for CreateOperationResponse {
+    fn encode(self) -> ockam_core::Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for CreateOperationResponse {
+    fn decode(e: &[u8]) -> ockam_core::Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
+}
 #[derive(Encode, Decode, CborLen, Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[rustfmt::skip]
 #[cbor(index_only)]

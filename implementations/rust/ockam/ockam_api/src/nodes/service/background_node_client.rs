@@ -2,12 +2,11 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use miette::{miette, IntoDiagnostic};
-use minicbor::{Decode, Encode};
 
 use ockam::identity::get_default_timeout;
 use ockam::tcp::{TcpConnection, TcpConnectionOptions, TcpTransport};
 use ockam_core::api::{Reply, Request};
-use ockam_core::Route;
+use ockam_core::{Message, Route};
 use ockam_node::api::Client;
 use ockam_node::Context;
 
@@ -111,8 +110,8 @@ impl BackgroundNodeClient {
     /// Send a request and expect a decodable response
     pub async fn ask<T, R>(&self, ctx: &Context, req: Request<T>) -> miette::Result<R>
     where
-        T: Encode<()>,
-        R: for<'b> Decode<'b, ()>,
+        T: Message,
+        R: Message,
     {
         self.ask_and_get_reply(ctx, req)
             .await?
@@ -128,8 +127,8 @@ impl BackgroundNodeClient {
         timeout: Duration,
     ) -> miette::Result<R>
     where
-        T: Encode<()>,
-        R: for<'b> Decode<'b, ()>,
+        T: Message,
+        R: Message,
     {
         let (tcp_connection, client) = self.make_client_with_timeout(Some(timeout)).await?;
 
@@ -152,12 +151,11 @@ impl BackgroundNodeClient {
         req: Request<T>,
     ) -> miette::Result<Reply<R>>
     where
-        T: Encode<()>,
-        R: for<'b> Decode<'b, ()>,
+        T: Message,
+        R: Message,
     {
         let (tcp_connection, client) = self.make_client().await?;
         let res = client.ask(ctx, req).await.into_diagnostic();
-
         let _ = tcp_connection.stop(ctx);
         res
     }
@@ -165,7 +163,7 @@ impl BackgroundNodeClient {
     /// Send a request but don't decode the response
     pub async fn tell<T>(&self, ctx: &Context, req: Request<T>) -> miette::Result<()>
     where
-        T: Encode<()>,
+        T: Message,
     {
         let (tcp_connection, client) = self.make_client().await?;
         let res = client
@@ -186,7 +184,7 @@ impl BackgroundNodeClient {
         req: Request<T>,
     ) -> miette::Result<Reply<()>>
     where
-        T: Encode<()>,
+        T: Message,
     {
         let (tcp_connection, client) = self.make_client().await?;
         let res = client.tell(ctx, req).await.into_diagnostic();

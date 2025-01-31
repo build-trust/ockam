@@ -24,8 +24,9 @@ impl Token {
 pub mod auth0 {
     use super::*;
     use crate::orchestrator::email_address::EmailAddress;
+    use ockam::Message;
+    use ockam_core::{cbor_encode_preallocate, Decodable, Encodable, Encoded};
     use std::fmt::{Display, Formatter};
-
     // Req/Res types
 
     #[derive(serde::Deserialize, Debug, PartialEq, Eq)]
@@ -86,13 +87,25 @@ pub mod auth0 {
         }
     }
 
-    #[derive(Encode, Decode, CborLen, Debug)]
+    #[derive(Encode, Decode, CborLen, Debug, Message)]
     #[cfg_attr(test, derive(Clone))]
     #[rustfmt::skip]
     #[cbor(map)]
     pub struct AuthenticateOidcToken {
         #[n(1)] pub token_type: TokenType,
         #[n(2)] pub access_token: Token,
+    }
+
+    impl Encodable for AuthenticateOidcToken {
+        fn encode(self) -> ockam_core::Result<Encoded> {
+            cbor_encode_preallocate(self)
+        }
+    }
+
+    impl Decodable for AuthenticateOidcToken {
+        fn decode(e: &[u8]) -> ockam_core::Result<Self> {
+            Ok(minicbor::decode(e)?)
+        }
     }
 
     impl AuthenticateOidcToken {

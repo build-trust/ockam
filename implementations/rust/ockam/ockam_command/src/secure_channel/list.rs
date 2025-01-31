@@ -8,7 +8,7 @@ use tokio::try_join;
 
 use ockam::Context;
 use ockam_api::colors::OckamColor;
-use ockam_api::nodes::models::secure_channel::ShowSecureChannelResponse;
+use ockam_api::nodes::models::secure_channel::{SecureChannelList, ShowSecureChannelResponse};
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_core::{route, Address, Result};
 
@@ -79,10 +79,10 @@ impl ListCommand {
 
         let is_finished: Mutex<bool> = Mutex::new(false);
         let get_secure_channel_identifiers = async {
-            let secure_channel_identifiers: Vec<String> =
+            let secure_channel_identifiers: SecureChannelList =
                 node.ask(ctx, api::list_secure_channels()).await?;
             *is_finished.lock().await = true;
-            Ok(secure_channel_identifiers)
+            Ok(secure_channel_identifiers.0)
         };
 
         let output_messages = vec!["Retrieving secure channel identifiers...\n".to_string()];

@@ -39,6 +39,7 @@ use ockam_core::{
     IncomingAccessControl, OutgoingAccessControl, TryClone,
 };
 use ockam_multiaddr::MultiAddr;
+use ockam_node::api::Client;
 use ockam_node::Context;
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -295,6 +296,19 @@ impl NodeManager {
         }
 
         Ok(())
+    }
+
+    pub async fn make_client(
+        &self,
+        ctx: &Context,
+        to: &MultiAddr,
+        timeout: Option<Duration>,
+    ) -> ockam_core::Result<Client> {
+        let connection = self
+            .make_connection(ctx, to, self.identifier(), None, timeout)
+            .await?;
+        let route = connection.route()?;
+        Ok(Client::new(&route, timeout))
     }
 
     pub async fn make_connection(

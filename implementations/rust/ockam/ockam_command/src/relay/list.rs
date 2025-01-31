@@ -3,7 +3,7 @@ use clap::Args;
 use ockam::Context;
 use ockam_api::address::extract_address_value;
 use ockam_api::colors::color_primary;
-use ockam_api::nodes::models::relay::RelayInfo;
+use ockam_api::nodes::models::relay::RelayInfoList;
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_core::api::Request;
 
@@ -34,7 +34,7 @@ impl ListCommand {
 
     pub async fn run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         let node = BackgroundNodeClient::create(ctx, &opts.state, &self.to).await?;
-        let relays: Vec<RelayInfo> = {
+        let relays: RelayInfoList = {
             let pb = opts.terminal.spinner();
             if let Some(pb) = pb {
                 pb.set_message(format!(
@@ -45,13 +45,13 @@ impl ListCommand {
             node.ask(ctx, Request::get("/node/relay")).await?
         };
         let plain = opts.terminal.build_list(
-            &relays,
+            &relays.0,
             &format!("No Relays found on node {}", node.node_name()),
         )?;
         opts.terminal
             .to_stdout()
             .plain(plain)
-            .json_obj(relays)?
+            .json_obj(relays.0)?
             .write_line()?;
         Ok(())
     }
