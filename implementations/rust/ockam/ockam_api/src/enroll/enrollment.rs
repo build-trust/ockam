@@ -126,7 +126,7 @@ impl Enrollment for SecureClient {
         ctx: &Context,
         token: &OneTimeCode,
     ) -> miette::Result<EnrollStatus> {
-        let req = Request::post("/").body(token);
+        let req = Request::post("/").body(*token);
         trace!(target: TARGET, "present a token");
         match self
             .tell(ctx, DefaultAddress::ENROLLMENT_TOKEN_ACCEPTOR, req)

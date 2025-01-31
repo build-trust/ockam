@@ -54,11 +54,12 @@ impl Context {
     /// [`new_detached`]: Self::new_detached
     /// [`send`]: Self::send
     /// [`receive`]: Self::receive
-    pub async fn send_and_receive<M>(&self, route: impl Into<Route>, msg: impl Message) -> Result<M>
+    pub async fn send_and_receive<T, R>(&self, route: impl Into<Route>, msg: T) -> Result<R>
     where
-        M: Message,
+        T: Message,
+        R: Message,
     {
-        self.send_and_receive_extended::<M>(route, msg, MessageSendReceiveOptions::new())
+        self.send_and_receive_extended::<T, R>(route, msg, MessageSendReceiveOptions::new())
             .await?
             .into_body()
     }
@@ -72,14 +73,15 @@ impl Context {
     /// [`new_detached`]: Self::new_detached
     /// [`send`]: Self::send
     /// [`receive`]: Self::receive
-    pub async fn send_and_receive_extended<M>(
+    pub async fn send_and_receive_extended<T, R>(
         &self,
         route: impl Into<Route>,
-        msg: impl Message,
+        msg: T,
         options: MessageSendReceiveOptions,
-    ) -> Result<Routed<M>>
+    ) -> Result<Routed<R>>
     where
-        M: Message,
+        T: Message,
+        R: Message,
     {
         let route: Route = route.into();
 
@@ -111,7 +113,7 @@ impl Context {
 
         child_ctx.send(route, msg).await?;
         child_ctx
-            .receive_extended::<M>(
+            .receive_extended::<R>(
                 MessageReceiveOptions::new().with_message_wait(options.message_wait),
             )
             .await
@@ -146,8 +148,10 @@ impl Context {
     /// [`RouteBuilder`]: ockam_core::RouteBuilder
     ///
     /// ```rust
-    /// # use {ockam_node::Context, ockam_core::Result};
-    /// # async fn test(ctx: &mut Context) -> Result<()> {
+    /// # use {ockam_node::Context, ockam_core::Result};    /// #
+    /// use ockam_core::{deserialize, serialize, Decodable, Encodable, Encoded};
+    ///
+    /// async fn test(ctx: &mut Context) -> Result<()> {
     /// use ockam_core::Message;
     /// use serde::{Serialize, Deserialize};
     ///
@@ -160,6 +164,18 @@ impl Context {
     ///     }
     /// }
     ///
+    /// impl Encodable for MyMessage {
+    ///     fn encode(self) -> Result<Encoded> {
+    ///         Ok(serialize(self)?)
+    ///     }
+    /// }
+    ///
+    /// impl Decodable for MyMessage {
+    ///     fn decode(e: &[u8]) -> Result<Self> {
+    ///         Ok(deserialize(e)?)
+    ///     }
+    /// }
+    ///
     /// ctx.send("my-test-worker", MyMessage::new("Hello you there :)")).await?;
     /// Ok(())
     /// # }
@@ -167,7 +183,7 @@ impl Context {
     pub async fn send<R, M>(&self, route: R, msg: M) -> Result<()>
     where
         R: Into<Route>,
-        M: Message + Send + 'static,
+        M: Message,
     {
         self.send_from_address(route.into(), msg, self.primary_address().clone())
             .await
@@ -183,7 +199,7 @@ impl Context {
     ) -> Result<()>
     where
         R: Into<Route>,
-        M: Message + Send + 'static,
+        M: Message,
     {
         self.send_from_address_impl(
             route.into(),
@@ -215,7 +231,7 @@ impl Context {
     ) -> Result<()>
     where
         R: Into<Route>,
-        M: Message + Send + 'static,
+        M: Message,
     {
         self.send_from_address_impl(route.into(), msg, sending_address, Vec::new())
             .await
@@ -229,7 +245,7 @@ impl Context {
         local_info: Vec<LocalInfo>,
     ) -> Result<()>
     where
-        M: Message + Send + 'static,
+        M: Message,
     {
         // Check if the sender address exists
         if !self.mailboxes.contains(&sending_address) {

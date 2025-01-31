@@ -2,12 +2,14 @@ use ockam::tcp::TcpOutletOptions;
 use ockam::transport::HostnamePort;
 use ockam::{Address, Result};
 use ockam_abac::{Action, PolicyExpression, Resource, ResourceType};
-use ockam_core::api::{Error, Request, RequestHeader, Response};
+use ockam_core::api::{Error, Request, Response};
 use ockam_core::async_trait;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_node::Context;
 
-use crate::nodes::models::portal::{CreateOutlet, OutletAccessControl, OutletStatus};
+use crate::nodes::models::portal::{
+    CreateOutlet, OutletAccessControl, OutletStatus, OutletStatusList,
+};
 use crate::nodes::registry::OutletInfo;
 use crate::nodes::service::default_address::DefaultAddress;
 use crate::nodes::BackgroundNodeClient;
@@ -84,10 +86,9 @@ impl NodeManagerWorker {
         }
     }
 
-    pub(super) fn get_outlets(&self, req: &RequestHeader) -> Response<Vec<OutletStatus>> {
-        Response::ok()
-            .with_headers(req)
-            .body(self.node_manager.list_outlets())
+    pub(crate) async fn get_outlets(&self) -> Result<Response<OutletStatusList>, Response<Error>> {
+        let outlets = self.node_manager.list_outlets();
+        Ok(Response::ok().body(OutletStatusList(outlets)))
     }
 }
 

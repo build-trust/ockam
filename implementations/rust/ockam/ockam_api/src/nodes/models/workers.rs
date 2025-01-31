@@ -3,12 +3,26 @@ use crate::output::Output;
 use crate::Result;
 use colorful::Colorful;
 use minicbor::{CborLen, Decode, Encode};
+use ockam::Message;
+use ockam_core::{cbor_encode_preallocate, Decodable, Encodable, Encoded};
 
-#[derive(Debug, Clone, Encode, Decode, CborLen)]
+#[derive(Debug, Clone, Encode, Decode, CborLen, Message)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct WorkerStatus {
     #[n(2)] pub addr: String,
+}
+
+impl Encodable for WorkerStatus {
+    fn encode(self) -> ockam_core::Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for WorkerStatus {
+    fn decode(e: &[u8]) -> ockam_core::Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
 }
 
 impl WorkerStatus {
@@ -29,11 +43,23 @@ impl Output for WorkerStatus {
 }
 
 /// Response body for listing workers
-#[derive(Debug, Clone, Encode, Decode, CborLen)]
+#[derive(Debug, Clone, Encode, Decode, CborLen, Message)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct WorkerList {
     #[n(1)] pub list: Vec<WorkerStatus>,
+}
+
+impl Encodable for WorkerList {
+    fn encode(self) -> ockam_core::Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for WorkerList {
+    fn decode(e: &[u8]) -> ockam_core::Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
 }
 
 impl WorkerList {

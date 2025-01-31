@@ -25,8 +25,8 @@ impl RendezvousClient {
 
     /// Query the Rendezvous service
     pub async fn get_my_address(&self, ctx: &Context) -> Result<String> {
-        let res = ctx
-            .send_and_receive_extended::<RendezvousResponse>(
+        let res: RendezvousResponse = ctx
+            .send_and_receive_extended(
                 self.rendezvous_route.clone(),
                 RendezvousRequest::GetMyAddress,
                 MessageSendReceiveOptions::new().with_timeout(QUICK_TIMEOUT),
@@ -44,8 +44,8 @@ impl RendezvousClient {
 
     /// Query the Rendezvous service
     pub async fn ping(&self, ctx: &Context) -> Result<()> {
-        let res = ctx
-            .send_and_receive_extended::<RendezvousResponse>(
+        let res: RendezvousResponse = ctx
+            .send_and_receive_extended(
                 self.rendezvous_route.clone(),
                 RendezvousRequest::Ping,
                 MessageSendReceiveOptions::new().with_timeout(QUICK_TIMEOUT),

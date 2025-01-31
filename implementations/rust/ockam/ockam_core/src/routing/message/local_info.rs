@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::compat::string::String;
 use crate::compat::vec::Vec;
-use crate::Message;
+use crate::{deserialize, serialize, Decodable, Encodable, Encoded, Message};
 
 /// Contains metadata that will only be routed locally within the
 /// local Ockam Node.
@@ -30,5 +30,17 @@ impl LocalInfo {
     /// LocalInfo raw binary data
     pub fn data(&self) -> &[u8] {
         &self.data
+    }
+}
+
+impl Encodable for LocalInfo {
+    fn encode(self) -> crate::Result<Encoded> {
+        serialize(self)
+    }
+}
+
+impl Decodable for LocalInfo {
+    fn decode(e: &[u8]) -> crate::Result<Self> {
+        deserialize(e)
     }
 }

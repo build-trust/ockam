@@ -1,14 +1,28 @@
 use minicbor::{CborLen, Decode, Encode};
-use ockam::identity::Identifier;
-use std::collections::BTreeMap;
+use ockam::identity::{AttributesEntry, Identifier};
+use ockam::Message;
+use ockam_core::{cbor_encode_preallocate, Decodable, Encodable, Encoded};
+use std::collections::{BTreeMap, HashMap};
 use std::time::Duration;
 
-#[derive(Debug, Encode, Decode, CborLen)]
+#[derive(Debug, Encode, Decode, CborLen, Message)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct AddMember {
     #[n(1)] member: Identifier,
     #[b(2)] attributes: BTreeMap<String, String>,
+}
+
+impl Encodable for AddMember {
+    fn encode(self) -> ockam_core::Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for AddMember {
+    fn decode(e: &[u8]) -> ockam_core::Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
 }
 
 impl AddMember {
@@ -33,13 +47,25 @@ impl AddMember {
     }
 }
 
-#[derive(Debug, Encode, Decode, CborLen)]
+#[derive(Debug, Encode, Decode, CborLen, Message)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct CreateToken {
     #[b(1)] attributes: BTreeMap<String, String>,
     #[n(2)] ttl_secs: Option<u64>,
     #[n(3)] ttl_count: Option<u64>,
+}
+
+impl Encodable for CreateToken {
+    fn encode(self) -> ockam_core::Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for CreateToken {
+    fn decode(e: &[u8]) -> ockam_core::Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
 }
 
 impl CreateToken {
@@ -77,5 +103,21 @@ impl CreateToken {
 
     pub fn ttl_secs(&self) -> Option<u64> {
         self.ttl_secs
+    }
+}
+
+#[derive(Clone, Eq, PartialEq, Encode, Decode, CborLen, Message)]
+#[cbor(transparent)]
+pub struct MemberList(#[n(0)] pub HashMap<Identifier, AttributesEntry>);
+
+impl Encodable for MemberList {
+    fn encode(self) -> ockam_core::Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for MemberList {
+    fn decode(e: &[u8]) -> ockam_core::Result<Self> {
+        Ok(minicbor::decode(e)?)
     }
 }

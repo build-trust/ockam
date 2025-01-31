@@ -80,7 +80,7 @@ impl TcpConnectionOptions {
 }
 
 /// Trust Options for a TCP listener
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TcpListenerOptions {
     pub(crate) flow_control_id: FlowControlId,
 }

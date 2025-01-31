@@ -4,7 +4,7 @@ use console::Term;
 use miette::miette;
 use ockam_api::DefaultAddress;
 
-use ockam_api::nodes::models::services::ServiceStatus;
+use ockam_api::nodes::models::services::ServiceStatusList;
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_api::output::Output;
 use ockam_api::terminal::{Terminal, TerminalStream};
@@ -76,25 +76,26 @@ impl<'a> ShowCommandTui for ShowTui<'a> {
     }
 
     async fn list_items_names(&self) -> miette::Result<Vec<String>> {
-        let inlets: Vec<ServiceStatus> = self
+        let inlets: ServiceStatusList = self
             .node
             .ask(
                 self.ctx,
                 Request::get(format!("/node/services/{}", DefaultAddress::KAFKA_INLET)),
             )
             .await?;
-        let addresses = inlets.into_iter().map(|i| i.addr).collect();
+        let addresses = inlets.0.into_iter().map(|i| i.addr).collect();
         Ok(addresses)
     }
 
     async fn show_single(&self, item_name: &str) -> miette::Result<()> {
-        let inlets: Vec<ServiceStatus> = self
+        let inlets: ServiceStatusList = self
             .node
             .ask(
                 self.ctx,
                 Request::get(format!("/node/services/{}", DefaultAddress::KAFKA_INLET)),
             )
             .await?;
+        let inlets = inlets.0;
         let inlet = inlets
             .into_iter()
             .find(|i| i.addr == item_name)

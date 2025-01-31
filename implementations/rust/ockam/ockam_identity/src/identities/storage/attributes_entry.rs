@@ -6,12 +6,13 @@ use minicbor::{CborLen, Decode, Encode};
 use ockam_core::compat::borrow::ToOwned;
 use ockam_core::compat::string::String;
 use ockam_core::compat::{collections::BTreeMap, vec::Vec};
-use ockam_core::Result;
+use ockam_core::{cbor_encode_preallocate, Message};
+use ockam_core::{Decodable, Encodable, Encoded, Result};
 use serde::ser::SerializeMap;
 use serde::{Deserialize, Serialize};
 
 /// An entry on the AuthenticatedIdentities table.
-#[derive(Debug, Clone, Encode, Decode, CborLen, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Encode, Decode, CborLen, PartialEq, Eq, Serialize, Deserialize, Message)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct AttributesEntry {
@@ -21,6 +22,18 @@ pub struct AttributesEntry {
     #[n(2)] added_at: TimestampInSeconds,
     #[n(3)] expires_at: Option<TimestampInSeconds>,
     #[n(4)] attested_by: Option<Identifier>,
+}
+
+impl Encodable for AttributesEntry {
+    fn encode(self) -> Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for AttributesEntry {
+    fn decode(e: &[u8]) -> Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
 }
 
 fn serialize_attributes<S>(

@@ -4,7 +4,7 @@ use colorful::Colorful;
 use tokio::sync::Mutex;
 use tokio::try_join;
 
-use ockam::identity::SecureChannelListener;
+use ockam::identity::SecureChannelListenerList;
 use ockam::Context;
 use ockam_api::colors::OckamColor;
 use ockam_api::nodes::BackgroundNodeClient;
@@ -41,10 +41,10 @@ impl ListCommand {
         let is_finished: Mutex<bool> = Mutex::new(false);
 
         let get_listeners = async {
-            let listeners: Vec<SecureChannelListener> =
+            let listeners: SecureChannelListenerList =
                 node.ask(ctx, api::list_secure_channel_listener()).await?;
             *is_finished.lock().await = true;
-            Ok(listeners)
+            Ok(listeners.0)
         };
 
         let output_messages = vec![format!(

@@ -56,7 +56,7 @@ impl Worker for CredentialIssuer {
             )
             .await?;
 
-        let response = Response::ok().body(credential).to_vec()?;
+        let response = Response::ok().body(credential);
 
         self.call_counter.fetch_add(1, Ordering::Relaxed);
 

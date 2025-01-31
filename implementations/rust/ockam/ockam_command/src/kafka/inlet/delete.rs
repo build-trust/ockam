@@ -5,7 +5,7 @@ use console::Term;
 use ockam_api::colors::color_primary;
 use ockam_api::{fmt_ok, DefaultAddress};
 
-use ockam_api::nodes::models::services::{DeleteServiceRequest, ServiceStatus};
+use ockam_api::nodes::models::services::{DeleteServiceRequest, ServiceStatusList};
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_api::terminal::{Terminal, TerminalStream};
 use ockam_core::api::Request;
@@ -91,14 +91,14 @@ impl DeleteCommandTui for DeleteTui {
     }
 
     async fn list_items_names(&self) -> miette::Result<Vec<String>> {
-        let inlets: Vec<ServiceStatus> = self
+        let inlets: ServiceStatusList = self
             .node
             .ask(
                 &self.ctx,
                 Request::get(format!("/node/services/{}", DefaultAddress::KAFKA_INLET)),
             )
             .await?;
-        let addresses = inlets.into_iter().map(|i| i.addr).collect();
+        let addresses = inlets.0.into_iter().map(|i| i.addr).collect();
         Ok(addresses)
     }
 

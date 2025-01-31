@@ -7,7 +7,7 @@ use console::Term;
 use miette::{miette, IntoDiagnostic};
 use ockam::Context;
 use ockam_api::address::extract_address_value;
-use ockam_api::nodes::models::portal::InletStatus;
+use ockam_api::nodes::models::portal::{InletStatus, InletStatusList};
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_api::output::Output;
 use ockam_api::terminal::{Terminal, TerminalStream};
@@ -92,11 +92,12 @@ impl ShowCommandTui for ShowTui {
     }
 
     async fn list_items_names(&self) -> miette::Result<Vec<String>> {
-        let inlets: Vec<InletStatus> = self
+        let inlets: InletStatusList = self
             .node
             .ask(&self.ctx, Request::get("/node/inlet"))
             .await?;
         let items_names: Vec<String> = inlets
+            .0
             .into_iter()
             .map(|inlet| inlet.alias.to_string())
             .collect();

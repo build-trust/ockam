@@ -3,7 +3,10 @@ use crate::compat::{
     string::{String, ToString},
     vec::Vec,
 };
-use crate::{AddressParseError, AddressParseErrorKind, Result, TransportType, LOCAL};
+use crate::{
+    serialize, AddressParseError, AddressParseErrorKind, Encodable, Encoded, Result, TransportType,
+    LOCAL,
+};
 use core::fmt::{self, Debug, Display};
 use core::ops::Deref;
 use core::str::from_utf8;
@@ -43,6 +46,12 @@ pub struct Address {
 impl AsRef<Address> for Address {
     fn as_ref(&self) -> &Address {
         self
+    }
+}
+
+impl Encodable for Address {
+    fn encode(self) -> Result<Encoded> {
+        serialize(self)
     }
 }
 

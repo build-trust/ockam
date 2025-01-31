@@ -3,7 +3,7 @@ mod handle;
 use ockam_core::{
     async_trait,
     compat::{boxed::Box, collections::BTreeMap, vec::Vec},
-    AllowAll, Any, Mailbox, Mailboxes,
+    deserialize, serialize, AllowAll, Any, Encodable, Encoded, Mailbox, Mailboxes,
 };
 use ockam_core::{Address, Decodable, LocalMessage, Message, Result, Routed, Worker};
 use ockam_node::{Context, WorkerBuilder};
@@ -22,6 +22,18 @@ pub enum BleRouterMessage {
         /// The clients own worker bus address.
         self_addr: Address,
     },
+}
+
+impl Encodable for BleRouterMessage {
+    fn encode(self) -> Result<Encoded> {
+        serialize(self)
+    }
+}
+
+impl Decodable for BleRouterMessage {
+    fn decode(v: &[u8]) -> Result<Self> {
+        deserialize(v)
+    }
 }
 
 /// A Bluetooth Low Energy address router and connection listener

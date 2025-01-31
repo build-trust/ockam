@@ -1,14 +1,11 @@
 use crate::{CredentialRetrieverCreator, Identifier, SecureChannelOptions, TrustIdentifierPolicy};
-use minicbor::{Decode, Encode};
-use tracing::error;
-
 use crate::{SecureChannel, SecureChannels};
 use ockam_core::api::Reply::Successful;
 use ockam_core::api::{Error, Reply, Request, Response};
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::time::Duration;
 use ockam_core::compat::vec::Vec;
-use ockam_core::{self, route, Address, Result, Route};
+use ockam_core::{self, route, Address, Message, Result, Route};
 use ockam_node::api::Client;
 use ockam_node::Context;
 use ockam_transport_core::Transport;
@@ -161,20 +158,14 @@ impl SecureClient {
         req: Request<T>,
     ) -> Result<Reply<R>>
     where
-        T: Encode<()>,
-        R: for<'a> Decode<'a, ()>,
+        T: Message,
+        R: Message,
     {
-        match self
+        // TODO: we should return a Reply::Failed(timeout) error here
+        let response: Response<Vec<u8>> = self
             .request_with_timeout(ctx, api_service, req, self.request_timeout)
-            .await
-        {
-            Ok(bytes) => Response::parse_response_reply::<R>(bytes.as_slice()),
-            Err(err) => {
-                // TODO: we should return a Reply::Failed(timeout) error here
-                error!("Error during SecureClient::ask to {} {}", api_service, err);
-                Err(err)
-            }
-        }
+            .await?;
+        response.to_reply()
     }
 
     /// Send a request of type T and don't expect a reply
@@ -186,50 +177,52 @@ impl SecureClient {
         req: Request<T>,
     ) -> Result<Reply<()>>
     where
-        T: Encode<()>,
+        T: Message,
     {
         let request_header = req.header().clone();
-        let bytes = self
+        let response: Response<Vec<u8>> = self
             .request_with_timeout(ctx, api_service, req, self.request_timeout)
             // TODO: we should return a Reply::Failed(timeout) error here
             .await?;
-        let (response, decoder) = Response::parse_response_header(bytes.as_slice())?;
         if response.is_ok() {
             Ok(Successful(()))
         } else {
+            let status = response.header().status();
             Ok(Reply::Failed(
-                Error::from_failed_request(&request_header, &response.parse_err_msg(decoder)),
-                response.status(),
+                Error::from_failed_request(&request_header, &response.parse_err_msg()),
+                status,
             ))
         }
     }
 
-    /// Send a request of type T and expect an untyped reply
+    /// Send a request of type T and expect a response of type T
     /// See `ask` for more information
-    pub async fn request<T>(
+    pub async fn request<T, R>(
         &self,
         ctx: &Context,
         api_service: &str,
         req: Request<T>,
-    ) -> Result<Vec<u8>>
+    ) -> Result<Response<R>>
     where
-        T: Encode<()>,
+        T: Message,
+        R: Message,
     {
         self.request_with_timeout(ctx, api_service, req, self.request_timeout)
             .await
     }
 
-    /// Send a request of type T and expect an untyped reply within a specific timeout
+    /// Send a request of type T and expect a response of type R within a specific timeout
     /// See `ask` for more information
-    pub async fn request_with_timeout<T>(
+    pub async fn request_with_timeout<T, R>(
         &self,
         ctx: &Context,
         api_service: &str,
         req: Request<T>,
         timeout: Duration,
-    ) -> Result<Vec<u8>>
+    ) -> Result<Response<R>>
     where
-        T: Encode<()>,
+        T: Message,
+        R: Message,
     {
         let (secure_channel, transport_address) = self.create_secure_channel(ctx).await?;
         let route = route![secure_channel.clone(), api_service];

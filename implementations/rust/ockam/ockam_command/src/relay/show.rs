@@ -6,7 +6,7 @@ use miette::{miette, IntoDiagnostic};
 
 use ockam::Context;
 use ockam_api::address::extract_address_value;
-use ockam_api::nodes::models::relay::RelayInfo;
+use ockam_api::nodes::models::relay::{RelayInfo, RelayInfoList};
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_core::api::Request;
 use ockam_multiaddr::MultiAddr;
@@ -94,11 +94,11 @@ impl ShowCommandTui for ShowTui {
     }
 
     async fn list_items_names(&self) -> miette::Result<Vec<String>> {
-        let relays: Vec<RelayInfo> = self
+        let relays: RelayInfoList = self
             .node
             .ask(&self.ctx, Request::get("/node/relay"))
             .await?;
-        Ok(relays.into_iter().map(|i| i.name().to_string()).collect())
+        Ok(relays.0.into_iter().map(|i| i.name().to_string()).collect())
     }
 
     async fn show_single(&self, item_name: &str) -> miette::Result<()> {

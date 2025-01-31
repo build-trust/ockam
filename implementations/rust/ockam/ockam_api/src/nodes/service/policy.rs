@@ -4,7 +4,9 @@ use ockam_core::{async_trait, Result};
 use ockam_node::Context;
 use std::str::FromStr;
 
-use crate::nodes::models::policies::{PoliciesList, Policy, ResourceTypeOrName, SetPolicyRequest};
+use crate::nodes::models::policies::{
+    PoliciesList, Policy, ResourceTypeOrName, ResourceTypeOrNameOption, SetPolicyRequest,
+};
 use crate::nodes::{BackgroundNodeClient, NodeManagerWorker};
 
 use super::NodeManager;
@@ -191,7 +193,7 @@ impl Policies for BackgroundNodeClient {
         expression: &PolicyExpression,
     ) -> miette::Result<()> {
         let payload = SetPolicyRequest::new(resource.clone(), expression.clone());
-        let request = Request::post(policy_path(action)).body(payload);
+        let request = Request::post(policy_path(action)).body(payload.clone());
         self.tell(ctx, request).await?;
         Ok(())
     }
@@ -202,7 +204,7 @@ impl Policies for BackgroundNodeClient {
         resource: &ResourceTypeOrName,
         action: &Action,
     ) -> miette::Result<Policy> {
-        let request = Request::get(policy_path(action)).body(resource);
+        let request = Request::get(policy_path(action)).body(resource.clone());
         self.ask(ctx, request).await
     }
 
@@ -211,7 +213,7 @@ impl Policies for BackgroundNodeClient {
         ctx: &Context,
         resource: Option<&ResourceTypeOrName>,
     ) -> miette::Result<PoliciesList> {
-        let request = Request::get("/policy").body(resource);
+        let request = Request::get("/policy").body(ResourceTypeOrNameOption(resource.cloned()));
         self.ask(ctx, request).await
     }
 
@@ -221,7 +223,7 @@ impl Policies for BackgroundNodeClient {
         resource: &ResourceTypeOrName,
         action: &Action,
     ) -> miette::Result<()> {
-        let request = Request::delete(policy_path(action)).body(resource);
+        let request = Request::delete(policy_path(action)).body(resource.clone());
         self.tell(ctx, request).await?;
         Ok(())
     }

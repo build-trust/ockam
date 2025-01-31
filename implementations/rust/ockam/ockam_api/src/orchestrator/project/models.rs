@@ -6,10 +6,14 @@ use crate::orchestrator::share::{RoleInShare, ShareScope};
 use crate::output::Output;
 use minicbor::{CborLen, Decode, Encode};
 use ockam::identity::Identifier;
+use ockam::Message;
+use ockam_core::{cbor_encode_preallocate, Decodable, Encodable, Encoded};
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 
-#[derive(Encode, Decode, CborLen, Serialize, Deserialize, Debug, Default, Clone, Eq, PartialEq)]
+#[derive(
+    Encode, Decode, CborLen, Serialize, Deserialize, Debug, Default, Clone, Eq, PartialEq, Message,
+)]
 #[cbor(map)]
 pub struct ProjectModel {
     #[cbor(n(1))]
@@ -63,7 +67,37 @@ pub struct ProjectModel {
     pub project_change_history: Option<String>,
 }
 
-#[derive(Encode, Decode, CborLen, Debug)]
+impl Encodable for ProjectModel {
+    fn encode(self) -> ockam_core::Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for ProjectModel {
+    fn decode(e: &[u8]) -> ockam_core::Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
+}
+
+#[derive(
+    Encode, Decode, CborLen, Serialize, Deserialize, Debug, Default, Clone, Eq, PartialEq, Message,
+)]
+#[cbor(transparent)]
+pub struct ProjectModelList(#[n(0)] pub(crate) Vec<ProjectModel>);
+
+impl Encodable for ProjectModelList {
+    fn encode(self) -> ockam_core::Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for ProjectModelList {
+    fn decode(e: &[u8]) -> ockam_core::Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
+}
+
+#[derive(Encode, Decode, CborLen, Debug, Message)]
 #[cfg_attr(test, derive(Clone))]
 #[rustfmt::skip]
 #[cbor(map)]
@@ -72,13 +106,24 @@ pub struct CreateProject {
     #[n(3)] pub users: Vec<String>,
 }
 
+impl Encodable for CreateProject {
+    fn encode(self) -> ockam_core::Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for CreateProject {
+    fn decode(e: &[u8]) -> ockam_core::Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
+}
 impl CreateProject {
     pub fn new(name: String, users: Vec<String>) -> Self {
         Self { name, users }
     }
 }
 
-#[derive(Encode, Decode, CborLen, Serialize, Deserialize, Debug)]
+#[derive(Encode, Decode, CborLen, Serialize, Deserialize, Debug, Message)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct InfluxDBTokenLeaseManagerConfig {
@@ -89,6 +134,18 @@ pub struct InfluxDBTokenLeaseManagerConfig {
     #[cbor(n(5))] pub max_ttl_secs: i32,
     #[cbor(n(6))] pub user_access_rule: Option<String>,
     #[cbor(n(7))] pub admin_access_rule: Option<String>,
+}
+
+impl Encodable for InfluxDBTokenLeaseManagerConfig {
+    fn encode(self) -> ockam_core::Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for InfluxDBTokenLeaseManagerConfig {
+    fn decode(e: &[u8]) -> ockam_core::Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
 }
 
 impl InfluxDBTokenLeaseManagerConfig {
@@ -117,7 +174,7 @@ impl InfluxDBTokenLeaseManagerConfig {
     }
 }
 
-#[derive(Encode, Decode, CborLen, Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
+#[derive(Encode, Decode, CborLen, Serialize, Deserialize, Debug, Clone, Eq, PartialEq, Message)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct OktaConfig {
@@ -125,6 +182,18 @@ pub struct OktaConfig {
     #[cbor(n(2))] pub certificate: String,
     #[cbor(n(3))] pub client_id: String,
     #[cbor(n(4))] pub attributes: Vec<String>,
+}
+
+impl Encodable for OktaConfig {
+    fn encode(self) -> ockam_core::Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for OktaConfig {
+    fn decode(e: &[u8]) -> ockam_core::Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
 }
 
 impl OktaConfig {
@@ -156,7 +225,7 @@ impl OktaConfig {
     }
 }
 
-#[derive(Decode, Serialize, Deserialize, Debug, Default, Clone, Eq, PartialEq)]
+#[derive(Encode, Decode, CborLen, Serialize, Deserialize, Debug, Default, Clone, Eq, PartialEq)]
 #[cbor(map)]
 pub struct AdminInfo {
     /// The email of a space or project Admin
@@ -171,13 +240,33 @@ impl Display for AdminInfo {
     }
 }
 
+#[derive(
+    Encode, Decode, CborLen, Serialize, Deserialize, Debug, Default, Clone, Eq, PartialEq, Message,
+)]
+#[cbor(transparent)]
+pub struct AdminInfoList(#[n(0)] pub(crate) Vec<AdminInfo>);
+
+impl Encodable for AdminInfoList {
+    fn encode(self) -> ockam_core::Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for AdminInfoList {
+    fn decode(e: &[u8]) -> ockam_core::Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
+}
+
 impl Output for AdminInfo {
     fn item(&self) -> crate::Result<String> {
         Ok(self.padded_display())
     }
 }
 
-#[derive(Decode, Serialize, Deserialize, Debug, Default, Clone, Eq, PartialEq)]
+#[derive(
+    Encode, Decode, CborLen, Serialize, Deserialize, Debug, Default, Clone, Eq, PartialEq, Message,
+)]
 #[cbor(map)]
 pub struct OrchestratorVersionInfo {
     /// The version of the Orchestrator Controller
@@ -187,6 +276,18 @@ pub struct OrchestratorVersionInfo {
     /// The version of the Projects
     #[cbor(n(2))]
     pub project_version: Option<String>,
+}
+
+impl Encodable for OrchestratorVersionInfo {
+    fn encode(self) -> ockam_core::Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for OrchestratorVersionInfo {
+    fn decode(e: &[u8]) -> ockam_core::Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
 }
 
 impl OrchestratorVersionInfo {

@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use clap::Args;
 
-use ockam_api::nodes::models::services::ServiceStatus;
+use ockam_api::nodes::models::services::ServiceStatusList;
 use ockam_api::nodes::service::default_address::DefaultAddress;
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_core::api::Request;
@@ -26,12 +26,13 @@ impl Command for ListCommand {
 
     async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
         let node = BackgroundNodeClient::create(ctx, &opts.state, &self.node_opts.at_node).await?;
-        let services: Vec<ServiceStatus> = node
+        let services: ServiceStatusList = node
             .ask(
                 ctx,
                 Request::get(format!("/node/services/{}", DefaultAddress::KAFKA_INLET)),
             )
             .await?;
+        let services = services.0;
 
         let plain = opts.terminal.build_list(
             &services,

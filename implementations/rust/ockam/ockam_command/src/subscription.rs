@@ -1,6 +1,6 @@
 use clap::builder::NonEmptyStringValueParser;
 use clap::{Args, Subcommand};
-use miette::{miette, IntoDiagnostic};
+use miette::miette;
 
 use ockam::Context;
 use ockam_api::orchestrator::subscription::{SubscriptionLegacy, Subscriptions};
@@ -90,9 +90,7 @@ pub(crate) async fn get_subscription_by_id_or_space_id(
         (Some(subscription_id), _) => Ok(Some(
             controller
                 .get_subscription(ctx, subscription_id.clone())
-                .await
-                .and_then(|s| s.found())
-                .into_diagnostic()?
+                .await?
                 .ok_or_else(|| {
                     miette!(
                         "no subscription found for subscription id {}",
@@ -103,9 +101,7 @@ pub(crate) async fn get_subscription_by_id_or_space_id(
         (None, Some(space_id)) => Ok(Some(
             controller
                 .get_subscription_by_space_id(ctx, space_id.clone())
-                .await
-                .and_then(|s| s.found())
-                .into_diagnostic()?
+                .await?
                 .ok_or_else(|| miette!("no subscription found for space {}", space_id))?,
         )),
         _ => Ok(None),

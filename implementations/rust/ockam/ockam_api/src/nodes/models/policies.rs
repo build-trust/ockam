@@ -1,19 +1,32 @@
 use minicbor::{CborLen, Decode, Encode};
+use ockam::Message;
 use ockam_abac::{
     Action, Expr, PolicyExpression, ResourceName, ResourcePolicy, ResourceType, ResourceTypePolicy,
 };
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::Error;
+use ockam_core::{cbor_encode_preallocate, Decodable, Encodable, Encoded, Error};
 use serde::Serialize;
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 
-#[derive(Clone, Debug, Encode, Decode, CborLen)]
+#[derive(Clone, Debug, Encode, Decode, CborLen, Message)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct SetPolicyRequest {
     #[n(1)] pub resource: ResourceTypeOrName,
     #[n(2)] pub expression: PolicyExpression,
+}
+
+impl Encodable for SetPolicyRequest {
+    fn encode(self) -> ockam_core::Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for SetPolicyRequest {
+    fn decode(e: &[u8]) -> ockam_core::Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
 }
 
 impl SetPolicyRequest {
@@ -25,12 +38,24 @@ impl SetPolicyRequest {
     }
 }
 
-#[derive(Debug, Encode, Decode, CborLen, PartialEq, Eq)]
+#[derive(Debug, Encode, Decode, CborLen, PartialEq, Eq, Message)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct PoliciesList {
     #[n(1)] resource_policies: Vec<ResourcePolicy>,
     #[n(2)] resource_type_policies: Vec<ResourceTypePolicy>,
+}
+
+impl Encodable for PoliciesList {
+    fn encode(self) -> ockam_core::Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for PoliciesList {
+    fn decode(e: &[u8]) -> ockam_core::Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
 }
 
 impl PoliciesList {
@@ -63,13 +88,25 @@ impl PoliciesList {
 
 /// A view for the specific policy types returned by policies repositories. This is used
 /// to simplify the type returned by the NodeManager in the api requests.
-#[derive(Debug, Encode, Decode, CborLen, Serialize, PartialEq, Eq)]
+#[derive(Debug, Encode, Decode, CborLen, Serialize, PartialEq, Eq, Message)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct Policy {
     #[n(1)] resource: ResourceTypeOrName,
     #[n(2)] action: Action,
     #[n(3)] expression: Expr,
+}
+
+impl Encodable for Policy {
+    fn encode(self) -> ockam_core::Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for Policy {
+    fn decode(e: &[u8]) -> ockam_core::Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
 }
 
 impl Policy {
@@ -111,12 +148,40 @@ impl From<ResourcePolicy> for Policy {
 /// user-defined and can be anything.
 ///
 /// This type is used at the top level of the NodeManager to reduce the number of endpoints.
-#[derive(Clone, Debug, Encode, Decode, CborLen, Serialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Encode, Decode, CborLen, Serialize, PartialEq, Eq, Message)]
 #[serde(untagged)]
 #[rustfmt::skip]
 pub enum ResourceTypeOrName {
     #[n(1)] Type(#[n(1)] ResourceType),
     #[n(2)] Name(#[n(1)] ResourceName),
+}
+
+impl Encodable for ResourceTypeOrName {
+    fn encode(self) -> ockam_core::Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for ResourceTypeOrName {
+    fn decode(e: &[u8]) -> ockam_core::Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
+}
+
+#[derive(Clone, Debug, Encode, Decode, CborLen, PartialEq, Eq, Message)]
+#[cbor(transparent)]
+pub struct ResourceTypeOrNameOption(#[n(0)] pub Option<ResourceTypeOrName>);
+
+impl Encodable for ResourceTypeOrNameOption {
+    fn encode(self) -> ockam_core::Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for ResourceTypeOrNameOption {
+    fn decode(e: &[u8]) -> ockam_core::Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
 }
 
 impl ResourceTypeOrName {

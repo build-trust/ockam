@@ -6,7 +6,10 @@ use ockam_core::compat::{
     sync::Arc,
 };
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::{async_trait, Address, AllowAll, Any, Decodable, DenyAll, Message};
+use ockam_core::{
+    async_trait, deserialize, serialize, Address, AllowAll, Any, Decodable, DenyAll, Encodable,
+    Encoded, Message,
+};
 use ockam_core::{route, Processor, Result, Routed, Worker};
 use ockam_node::compat::futures::FutureExt;
 use ockam_node::{Context, MessageReceiveOptions, NodeBuilder};
@@ -503,9 +506,33 @@ enum SendReceiveRequest {
     Connect(),
 }
 
+impl Encodable for SendReceiveRequest {
+    fn encode(self) -> Result<Encoded> {
+        serialize(self)
+    }
+}
+
+impl Decodable for SendReceiveRequest {
+    fn decode(v: &[u8]) -> Result<Self> {
+        deserialize(v)
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Message)]
 enum SendReceiveResponse {
     Connect(Result<()>),
+}
+
+impl Encodable for SendReceiveResponse {
+    fn encode(self) -> Result<Encoded> {
+        serialize(self)
+    }
+}
+
+impl Decodable for SendReceiveResponse {
+    fn decode(v: &[u8]) -> Result<Self> {
+        deserialize(v)
+    }
 }
 
 /// Test the new method Context::send_and_receive().

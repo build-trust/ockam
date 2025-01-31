@@ -1,6 +1,9 @@
 #[cfg(feature = "std")]
 use crate::OpenTelemetryContext;
-use crate::{compat::vec::Vec, route, Address, Message, Route, TransportMessage};
+use crate::{
+    compat::vec::Vec, deserialize, route, serialize, Address, Decodable, Encodable, Encoded,
+    Message, Route, TransportMessage,
+};
 
 use crate::{LocalInfo, Result};
 use cfg_if::cfg_if;
@@ -258,6 +261,18 @@ impl LocalMessage {
 impl Default for LocalMessage {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl Encodable for LocalMessage {
+    fn encode(self) -> Result<Encoded> {
+        serialize(self)
+    }
+}
+
+impl Decodable for LocalMessage {
+    fn decode(e: &[u8]) -> Result<Self> {
+        deserialize(e)
     }
 }
 

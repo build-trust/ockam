@@ -62,6 +62,17 @@ pub fn try_clone_derive(input: TokenStream) -> TokenStream {
 /// pub struct MyStruct {
 ///     a: u32,
 /// }
+///
+/// impl Encodable for MyStruct {
+///     fn encode(&self) -> Result<Encoded>{
+///         serialize(self)
+///     }
+/// }
+/// impl Decodable for MyStruct {
+///     fn decode(e: &[u8]) -> Result<MyStruct> {
+///       deserialize(e)
+///     }
+/// }
 /// ```
 #[proc_macro_derive(Message)]
 pub fn message_derive(input: TokenStream) -> TokenStream {

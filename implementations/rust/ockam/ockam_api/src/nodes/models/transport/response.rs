@@ -4,16 +4,17 @@ use crate::nodes::service::ApiTransport;
 use crate::output::Output;
 use minicbor::{CborLen, Decode, Encode};
 use ockam::tcp::{TcpConnection, TcpListener, TcpListenerInfo, TcpSenderInfo};
+use ockam::Message;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::flow_control::FlowControlId;
-use ockam_core::{Error, Result};
+use ockam_core::{cbor_encode_preallocate, Decodable, Encodable, Encoded, Error, Result};
 use ockam_multiaddr::proto::Worker;
 use ockam_multiaddr::MultiAddr;
 use std::fmt::{Display, Formatter};
 use std::net::SocketAddrV4;
 
 /// Response body when interacting with a transport
-#[derive(Debug, Clone, Encode, Decode, CborLen, serde::Serialize)]
+#[derive(Debug, Clone, Encode, Decode, CborLen, serde::Serialize, Message)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct TransportStatus {
@@ -31,6 +32,18 @@ pub struct TransportStatus {
     #[n(5)] pub processor_address: String,
     /// Corresponding flow control id
     #[n(6)] pub flow_control_id: FlowControlId,
+}
+
+impl Encodable for TransportStatus {
+    fn encode(self) -> Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for TransportStatus {
+    fn decode(e: &[u8]) -> Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
 }
 
 impl TransportStatus {
@@ -137,5 +150,21 @@ impl Display for TransportStatus {
 impl Output for TransportStatus {
     fn item(&self) -> crate::Result<String> {
         Ok(self.padded_display())
+    }
+}
+
+#[derive(Encode, Decode, CborLen, Debug, Default, Clone, Message)]
+#[cbor(transparent)]
+pub struct TransportStatusList(#[n(0)] pub Vec<TransportStatus>);
+
+impl Encodable for TransportStatusList {
+    fn encode(self) -> Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for TransportStatusList {
+    fn decode(e: &[u8]) -> Result<Self> {
+        Ok(minicbor::decode(e)?)
     }
 }

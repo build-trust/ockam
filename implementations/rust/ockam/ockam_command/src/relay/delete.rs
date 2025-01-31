@@ -7,7 +7,7 @@ use crate::{docs, CommandGlobalOpts};
 use ockam::Context;
 use ockam_api::address::extract_address_value;
 use ockam_api::colors::OckamColor;
-use ockam_api::nodes::models::relay::RelayInfo;
+use ockam_api::nodes::models::relay::RelayInfoList;
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_api::terminal::{Terminal, TerminalStream};
 use ockam_api::{color, fmt_ok};
@@ -92,11 +92,11 @@ impl DeleteCommandTui for DeleteTui {
     }
 
     async fn list_items_names(&self) -> miette::Result<Vec<String>> {
-        let relays: Vec<RelayInfo> = self
+        let relays: RelayInfoList = self
             .node
             .ask(&self.ctx, Request::get("/node/relay"))
             .await?;
-        Ok(relays.into_iter().map(|i| i.name().to_string()).collect())
+        Ok(relays.0.into_iter().map(|i| i.name().to_string()).collect())
     }
 
     async fn delete_single(&self, relay_name: &str) -> miette::Result<()> {

@@ -10,7 +10,8 @@ use crate::error::ApiError;
 use crate::hop::Hop;
 use crate::nodes::models::node::{NodeResources, NodeStatus};
 use crate::nodes::models::services::{
-    ServiceStatus, StartEchoerServiceRequest, StartHopServiceRequest, StartUppercaseServiceRequest,
+    ServiceStatus, ServiceStatusList, StartEchoerServiceRequest, StartHopServiceRequest,
+    StartUppercaseServiceRequest,
 };
 use crate::nodes::registry::KafkaServiceKind;
 use crate::nodes::service::default_address::DefaultAddress;
@@ -66,16 +67,16 @@ impl NodeManagerWorker {
     pub(super) fn list_services_of_type(
         &self,
         service_type: &str,
-    ) -> Result<Response<Vec<ServiceStatus>>, Response<Error>> {
+    ) -> Result<Response<ServiceStatusList>, Response<Error>> {
         match self.node_manager.list_services_of_type(service_type) {
-            Ok(Either::Left(services)) => Ok(Response::ok().body(services)),
+            Ok(Either::Left(services)) => Ok(Response::ok().body(ServiceStatusList(services))),
             Ok(Either::Right(message)) => Err(Response::bad_request_no_request(&message)),
             Err(e) => Err(Response::internal_error_no_request(&e.to_string())),
         }
     }
 
-    pub(super) fn list_services(&self) -> Result<Response<Vec<ServiceStatus>>, Response<Error>> {
-        Ok(Response::ok().body(self.node_manager.list_services()))
+    pub(super) fn list_services(&self) -> Result<Response<ServiceStatusList>, Response<Error>> {
+        Ok(Response::ok().body(ServiceStatusList(self.node_manager.list_services())))
     }
 
     #[instrument(skip_all)]

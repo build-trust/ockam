@@ -25,8 +25,8 @@ async fn main(ctx: Context) -> Result<()> {
 
     // Send a message to the echoer worker via the channel.
     // Wait to receive a reply and print it.
-    let reply = node
-        .send_and_receive::<String>(route![channel, "echoer"], "Hello Ockam!".to_string())
+    let reply: String = node
+        .send_and_receive(route![channel, "echoer"], "Hello Ockam!".to_string())
         .await?;
     println!("App Received: {}", reply); // should print "Hello Ockam!"
 

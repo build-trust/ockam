@@ -10,12 +10,13 @@ use crate::{ApiError, DefaultAddress};
 use minicbor::{CborLen, Decode, Encode};
 use ockam::flow_control::FlowControls;
 use ockam::identity::Identifier;
+use ockam::Message;
 use ockam::{Address, Context, Result};
 use ockam_abac::PolicyExpression;
 use ockam_abac::{Action, Resource, ResourceType};
 use ockam_core::api::{Error, Reply, Request, Response};
-use ockam_core::async_trait;
-use ockam_core::route;
+use ockam_core::{async_trait, Decodable, Encodable, Encoded};
+use ockam_core::{cbor_encode_preallocate, route};
 use ockam_multiaddr::proto::Service;
 use ockam_multiaddr::MultiAddr;
 use ockam_transport_core::HostnamePort;
@@ -396,7 +397,7 @@ impl InfluxDBPortals for BackgroundNodeClient {
 }
 
 /// Request body to create an influxdb inlet
-#[derive(Clone, Debug, Encode, Decode, CborLen)]
+#[derive(Clone, Debug, Encode, Decode, CborLen, Message)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct CreateInfluxDBInlet {
@@ -405,6 +406,18 @@ pub struct CreateInfluxDBInlet {
     /// Route to the lease issuer.
     /// If not given it's derived from the outlet route
     #[n(3)] pub(crate) lease_issuer_address: Option<MultiAddr>,
+}
+
+impl Encodable for CreateInfluxDBInlet {
+    fn encode(self) -> Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for CreateInfluxDBInlet {
+    fn decode(e: &[u8]) -> Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
 }
 
 impl CreateInfluxDBInlet {
@@ -422,12 +435,24 @@ impl CreateInfluxDBInlet {
 }
 
 /// Request body to create an influxdb outlet
-#[derive(Clone, Debug, Encode, Decode, CborLen)]
+#[derive(Clone, Debug, Encode, Decode, CborLen, Message)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct CreateInfluxDBOutlet {
     #[n(1)] pub(crate) tcp_outlet: CreateOutlet,
     #[n(2)] pub(crate) influxdb_config: InfluxDBOutletConfig,
+}
+
+impl Encodable for CreateInfluxDBOutlet {
+    fn encode(self) -> Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for CreateInfluxDBOutlet {
+    fn decode(e: &[u8]) -> Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
 }
 
 #[derive(Clone, Debug, Encode, Decode, CborLen)]

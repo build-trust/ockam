@@ -7,7 +7,7 @@ use tokio::try_join;
 
 use crate::node::NodeOpts;
 use crate::{docs, CommandGlobalOpts};
-use ockam_api::nodes::models::portal::OutletStatus;
+use ockam_api::nodes::models::portal::OutletStatusList;
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_core::api::Request;
 use ockam_node::Context;
@@ -39,7 +39,7 @@ impl ListCommand {
         let is_finished: Mutex<bool> = Mutex::new(false);
 
         let send_req = async {
-            let res: Vec<OutletStatus> = node.ask(ctx, Request::get("/node/outlet")).await?;
+            let res: OutletStatusList = node.ask(ctx, Request::get("/node/outlet")).await?;
             *is_finished.lock().await = true;
             Ok(res)
         };
@@ -52,6 +52,7 @@ impl ListCommand {
         let progress_output = opts.terminal.loop_messages(&output_messages, &is_finished);
 
         let (outlets, _) = try_join!(send_req, progress_output)?;
+        let outlets = outlets.0;
 
         let list: String = {
             let empty_message = fmt_info!(

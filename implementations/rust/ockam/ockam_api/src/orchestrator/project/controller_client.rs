@@ -1,5 +1,5 @@
 use crate::orchestrator::operation::Operations;
-use crate::orchestrator::project::models::CreateProject;
+use crate::orchestrator::project::models::{AdminInfoList, CreateProject, ProjectModelList};
 use crate::orchestrator::project::models::{OrchestratorVersionInfo, ProjectModel};
 use crate::orchestrator::{ControllerClient, HasSecureClient, ORCHESTRATOR_AWAIT_TIMEOUT};
 
@@ -80,7 +80,7 @@ impl ControllerClient {
         email: &EmailAddress,
     ) -> miette::Result<AdminInfo> {
         trace!("adding new space administrator");
-        let admins: Vec<AdminInfo> = self
+        let admins: AdminInfoList = self
             .get_secure_client()
             .ask(
                 ctx,
@@ -91,6 +91,7 @@ impl ControllerClient {
             .into_diagnostic()?
             .miette_success("add space admins")?;
         admins
+            .0
             .into_iter()
             .find(|a| a.email == email.to_string())
             .ok_or(miette!(
@@ -104,7 +105,8 @@ impl ControllerClient {
         space_id: &str,
     ) -> miette::Result<Vec<AdminInfo>> {
         trace!("listing space administrators");
-        self.get_secure_client()
+        let admin_info_list: AdminInfoList = self
+            .get_secure_client()
             .ask(
                 ctx,
                 "spaces",
@@ -112,7 +114,8 @@ impl ControllerClient {
             )
             .await
             .into_diagnostic()?
-            .miette_success("get space admins")
+            .miette_success("get space admins")?;
+        Ok(admin_info_list.0)
     }
 
     pub async fn delete_space_admin(
@@ -122,7 +125,7 @@ impl ControllerClient {
         email: &EmailAddress,
     ) -> miette::Result<()> {
         trace!("deleting space administrator");
-        let _admins: Vec<AdminInfo> = self
+        let _admins: AdminInfoList = self
             .get_secure_client()
             .ask(
                 ctx,
@@ -142,7 +145,7 @@ impl ControllerClient {
         email: &EmailAddress,
     ) -> miette::Result<AdminInfo> {
         trace!("adding new project administrator");
-        let admins: Vec<AdminInfo> = self
+        let admins: AdminInfoList = self
             .get_secure_client()
             .ask(
                 ctx,
@@ -153,6 +156,7 @@ impl ControllerClient {
             .into_diagnostic()?
             .miette_success("add project admins")?;
         admins
+            .0
             .into_iter()
             .find(|a| a.email == email.to_string())
             .ok_or(miette!(
@@ -166,7 +170,8 @@ impl ControllerClient {
         project_id: &str,
     ) -> miette::Result<Vec<AdminInfo>> {
         trace!("listing project administrators");
-        self.get_secure_client()
+        let admin_info_list: AdminInfoList = self
+            .get_secure_client()
             .ask(
                 ctx,
                 "projects",
@@ -174,7 +179,8 @@ impl ControllerClient {
             )
             .await
             .into_diagnostic()?
-            .miette_success("get project admins")
+            .miette_success("get project admins")?;
+        Ok(admin_info_list.0)
     }
 
     pub async fn delete_project_admin(
@@ -184,7 +190,7 @@ impl ControllerClient {
         email: &EmailAddress,
     ) -> miette::Result<()> {
         trace!("deleting project administrator");
-        let _admins: Vec<AdminInfo> = self
+        let _admins: AdminInfoList = self
             .get_secure_client()
             .ask(
                 ctx,
@@ -200,11 +206,13 @@ impl ControllerClient {
     #[instrument(skip_all)]
     pub async fn list_projects(&self, ctx: &Context) -> miette::Result<Vec<ProjectModel>> {
         let req = Request::get("/v0");
-        self.get_secure_client()
+        let project_model_list: ProjectModelList = self
+            .get_secure_client()
             .ask(ctx, "projects", req)
             .await
             .into_diagnostic()?
-            .miette_success("list projects")
+            .miette_success("list projects")?;
+        Ok(project_model_list.0)
     }
 
     pub async fn wait_until_project_creation_operation_is_complete(

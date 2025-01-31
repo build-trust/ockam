@@ -1,6 +1,6 @@
 use ockam_core::bare::{read_slice, write_slice};
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::{Encodable, Encoded, Message, NeutralMessage};
+use ockam_core::{deserialize, serialize, Decodable, Encodable, Encoded, Message, NeutralMessage};
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
 
@@ -108,10 +108,22 @@ pub enum PortalInternalMessage {
     Disconnect,
 }
 
+impl Encodable for PortalInternalMessage {
+    fn encode(self) -> ockam_core::Result<Encoded> {
+        serialize(self)
+    }
+}
+
+impl Decodable for PortalInternalMessage {
+    fn decode(v: &[u8]) -> ockam_core::Result<Self> {
+        deserialize(v)
+    }
+}
+
 #[cfg(test)]
 mod test {
     use crate::PortalMessage;
-    use ockam_core::Message;
+    use ockam_core::{deserialize, serialize, Encoded, Message};
     use ockam_core::{Decodable, Encodable};
     use serde::{Deserialize, Serialize};
 
@@ -121,6 +133,18 @@ mod test {
         Pong,
         Disconnect,
         Payload(Vec<u8>),
+    }
+
+    impl Encodable for PortalMessageV1 {
+        fn encode(self) -> ockam_core::Result<Encoded> {
+            serialize(self)
+        }
+    }
+
+    impl Decodable for PortalMessageV1 {
+        fn decode(v: &[u8]) -> ockam_core::Result<Self> {
+            deserialize(v)
+        }
     }
 
     #[test]

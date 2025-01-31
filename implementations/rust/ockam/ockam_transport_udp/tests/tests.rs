@@ -157,8 +157,8 @@ async fn send_from_same_client_port(ctx: &mut Context) -> Result<()> {
             (UDP, addr.to_string()),
             "echoer"
         ];
-        let reply = ctx
-            .send_and_receive_extended::<String>(
+        let reply: String = ctx
+            .send_and_receive_extended(
                 r,
                 msg.clone(),
                 MessageSendReceiveOptions::new().with_timeout(TIMEOUT),
@@ -206,8 +206,8 @@ async fn send_receive_arbitrary_udp_peer(ctx: &mut Context) -> Result<()> {
                 (UDP, bind2.bind_address().to_string()),
                 "echoer"
             ];
-            let reply = ctx
-                .send_and_receive_extended::<String>(
+            let reply: String = ctx
+                .send_and_receive_extended(
                     r,
                     msg.clone(),
                     MessageSendReceiveOptions::new().with_timeout(TIMEOUT),
@@ -222,8 +222,8 @@ async fn send_receive_arbitrary_udp_peer(ctx: &mut Context) -> Result<()> {
                 (UDP, bind3.bind_address().to_string()),
                 "echoer"
             ];
-            let reply = ctx
-                .send_and_receive_extended::<String>(
+            let reply: String = ctx
+                .send_and_receive_extended(
                     r,
                     msg.clone(),
                     MessageSendReceiveOptions::new().with_timeout(TIMEOUT),
@@ -270,8 +270,8 @@ async fn send_receive_one_known_udp_peer(ctx: &mut Context) -> Result<()> {
                 .collect();
 
             let r = route![bind2.sender_address().clone(), "echoer"];
-            let reply = ctx
-                .send_and_receive_extended::<String>(
+            let reply: String = ctx
+                .send_and_receive_extended(
                     r,
                     msg.clone(),
                     MessageSendReceiveOptions::new().with_timeout(TIMEOUT),
@@ -286,8 +286,8 @@ async fn send_receive_one_known_udp_peer(ctx: &mut Context) -> Result<()> {
                 (UDP, bind2.bind_address().to_string()),
                 "echoer"
             ];
-            let reply = ctx
-                .send_and_receive_extended::<String>(
+            let reply: String = ctx
+                .send_and_receive_extended(
                     r,
                     msg.clone(),
                     MessageSendReceiveOptions::new().with_timeout(TIMEOUT),
@@ -345,8 +345,8 @@ async fn send_receive_two_known_udp_peers(ctx: &mut Context) -> Result<()> {
                 .collect();
 
             let r = route![bind2.sender_address().clone(), "echoer"];
-            let reply = ctx
-                .send_and_receive_extended::<String>(
+            let reply: String = ctx
+                .send_and_receive_extended(
                     r,
                     msg.clone(),
                     MessageSendReceiveOptions::new().with_timeout(TIMEOUT),
@@ -357,8 +357,8 @@ async fn send_receive_two_known_udp_peers(ctx: &mut Context) -> Result<()> {
             assert_eq!(reply, msg, "Should receive the same message");
 
             let r = route![bind1.sender_address().clone(), "echoer"];
-            let reply = ctx
-                .send_and_receive_extended::<String>(
+            let reply: String = ctx
+                .send_and_receive_extended(
                     r,
                     msg.clone(),
                     MessageSendReceiveOptions::new().with_timeout(TIMEOUT),
@@ -411,8 +411,8 @@ async fn send_receive_large_message(ctx: &mut Context) -> Result<()> {
         .collect();
 
     let r = route![bind2.sender_address().clone(), "echoer"];
-    let reply = ctx
-        .send_and_receive_extended::<String>(
+    let reply: String = ctx
+        .send_and_receive_extended(
             r,
             msg.clone(),
             MessageSendReceiveOptions::new().with_timeout(TIMEOUT),

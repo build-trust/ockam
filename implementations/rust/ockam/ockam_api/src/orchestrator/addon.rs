@@ -3,19 +3,19 @@ use minicbor::{CborLen, Decode, Encode};
 use serde::{Deserialize, Serialize};
 use std::fmt::Write;
 
-use ockam_core::api::Request;
-use ockam_core::async_trait;
-use ockam_node::Context;
-
 use crate::orchestrator::operation::CreateOperationResponse;
 use crate::orchestrator::project::models::{InfluxDBTokenLeaseManagerConfig, OktaConfig};
 use crate::orchestrator::{ControllerClient, HasSecureClient};
 use crate::output::Output;
 use crate::Result;
+use ockam::Message;
+use ockam_core::api::Request;
+use ockam_core::{async_trait, cbor_encode_preallocate, Decodable, Encodable, Encoded};
+use ockam_node::Context;
 
 const API_SERVICE: &str = "projects";
 
-#[derive(Encode, Decode, CborLen, Serialize, Deserialize, Debug)]
+#[derive(Encode, Decode, CborLen, Serialize, Deserialize, Debug, Message)]
 #[cfg_attr(test, derive(Clone))]
 #[cbor(map)]
 pub struct Addon {
@@ -25,6 +25,18 @@ pub struct Addon {
     pub description: String,
     #[n(3)]
     pub enabled: bool,
+}
+
+impl Encodable for Addon {
+    fn encode(self) -> ockam_core::Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for Addon {
+    fn decode(e: &[u8]) -> ockam_core::Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
 }
 
 impl Output for Addon {
@@ -39,12 +51,39 @@ impl Output for Addon {
     }
 }
 
-#[derive(Encode, Decode, CborLen, Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+#[derive(Encode, Decode, CborLen, Debug, Message)]
+#[cbor(transparent)]
+pub struct AddonList(#[n(0)] pub Vec<Addon>);
+
+impl Encodable for AddonList {
+    fn encode(self) -> ockam_core::Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for AddonList {
+    fn decode(e: &[u8]) -> ockam_core::Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
+}
+#[derive(Encode, Decode, CborLen, Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Message)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct KafkaConfig {
     #[serde(skip)]
     #[cbor(n(1))] pub bootstrap_server: String,
+}
+
+impl Encodable for KafkaConfig {
+    fn encode(self) -> ockam_core::Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for KafkaConfig {
+    fn decode(e: &[u8]) -> ockam_core::Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
 }
 
 impl KafkaConfig {
@@ -64,11 +103,23 @@ impl quickcheck::Arbitrary for KafkaConfig {
     }
 }
 
-#[derive(Encode, Decode, CborLen, Serialize, Deserialize, Debug)]
+#[derive(Encode, Decode, CborLen, Serialize, Deserialize, Debug, Message)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct DisableAddon {
     #[cbor(n(1))] pub addon_id: String,
+}
+
+impl Encodable for DisableAddon {
+    fn encode(self) -> ockam_core::Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for DisableAddon {
+    fn decode(e: &[u8]) -> ockam_core::Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
 }
 
 impl DisableAddon {
@@ -118,11 +169,13 @@ impl Addons for ControllerClient {
     async fn list_addons(&self, ctx: &Context, project_id: &str) -> miette::Result<Vec<Addon>> {
         trace!(project_id, "listing addons");
         let req = Request::get(format!("/v0/{project_id}/addons"));
-        self.get_secure_client()
+        let addon_list: AddonList = self
+            .get_secure_client()
             .ask(ctx, API_SERVICE, req)
             .await
             .into_diagnostic()?
-            .miette_success("list addons")
+            .miette_success("list addons")?;
+        Ok(addon_list.0)
     }
 
     #[instrument(skip_all, fields(project_id = project_id))]

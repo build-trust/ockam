@@ -16,8 +16,8 @@ async fn test1(ctx: &mut Context) -> Result<()> {
 
     let remote_info = RemoteRelay::create(ctx, route![], RemoteRelayOptions::new()).await?;
 
-    let resp = ctx
-        .send_and_receive::<String>(
+    let resp: String = ctx
+        .send_and_receive(
             route![remote_info.remote_address(), "echoer"],
             "Hello".to_string(),
         )
@@ -62,8 +62,8 @@ async fn test2(ctx: &mut Context) -> Result<()> {
         .connect(cloud_listener.socket_string(), TcpConnectionOptions::new())
         .await?;
 
-    let resp = ctx
-        .send_and_receive::<String>(
+    let resp: String = ctx
+        .send_and_receive(
             route![cloud_connection, remote_info.remote_address(), "echoer"],
             "Hello".to_string(),
         )
@@ -238,8 +238,8 @@ async fn test4(ctx: &mut Context) -> Result<()> {
         )
         .await?;
 
-    let resp = ctx
-        .send_and_receive::<String>(route![tunnel_channel, "echoer"], "Hello".to_string())
+    let resp: String = ctx
+        .send_and_receive(route![tunnel_channel, "echoer"], "Hello".to_string())
         .await?;
 
     assert_eq!(resp, "Hello");

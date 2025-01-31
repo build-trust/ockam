@@ -1,4 +1,4 @@
-use ockam_core::{Address, Message, Result};
+use ockam_core::{deserialize, serialize, Address, Decodable, Encodable, Encoded, Message, Result};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Message)]
@@ -21,6 +21,18 @@ pub enum UdsRouterRequest {
     },
 }
 
+impl Encodable for UdsRouterRequest {
+    fn encode(self) -> Result<Encoded> {
+        serialize(self)
+    }
+}
+
+impl Decodable for UdsRouterRequest {
+    fn decode(v: &[u8]) -> Result<Self> {
+        deserialize(v)
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Message)]
 pub enum UdsRouterResponse {
     /// Response containing a result when attempting to register a new client
@@ -31,4 +43,16 @@ pub enum UdsRouterResponse {
     Disconnect(Result<()>),
     /// Response containing a result when attempt to unregister
     Unregister(Result<()>),
+}
+
+impl Encodable for UdsRouterResponse {
+    fn encode(self) -> Result<Encoded> {
+        serialize(self)
+    }
+}
+
+impl Decodable for UdsRouterResponse {
+    fn decode(v: &[u8]) -> Result<Self> {
+        deserialize(v)
+    }
 }
