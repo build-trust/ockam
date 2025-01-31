@@ -15,7 +15,8 @@ use crate::models::CredentialAndPurposeKey;
 use crate::utils::now;
 use crate::{
     get_default_timeout, CachedCredentialRetriever, Identifier, RemoteCredentialRetrieverInfo,
-    SecureChannels, SecureClient, TimestampInSeconds, DEFAULT_CREDENTIAL_CLOCK_SKEW_GAP,
+    SecureChannels, SecureClient, TimestampInSeconds, TrustIdentifierPolicy,
+    DEFAULT_CREDENTIAL_CLOCK_SKEW_GAP,
 };
 
 /// This is the default interval before a credential expiration when we'll query for
@@ -277,7 +278,7 @@ impl RemoteCredentialRetriever {
             None,
             self.transport.clone(),
             self.issuer_info.route.clone(),
-            &self.issuer_info.issuer,
+            Arc::new(TrustIdentifierPolicy::new(self.issuer_info.issuer.clone())),
             &self.subject,
             self.timing_options.secure_channel_creation_timeout,
             self.timing_options.request_timeout,

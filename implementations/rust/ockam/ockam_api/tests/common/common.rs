@@ -167,7 +167,7 @@ pub fn change_client_identifier(
         new_credential_retriever_creator,
         client.transport(),
         client.secure_route().clone(),
-        client.server_identifier(),
+        client.server_trust_policy(),
         new_identifier,
         client.secure_channel_timeout(),
         client.request_timeout(),
