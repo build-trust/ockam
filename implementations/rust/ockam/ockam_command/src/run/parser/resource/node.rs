@@ -10,8 +10,9 @@ use crate::run::parser::building_blocks::{as_command_args, ArgKey, ArgValue};
 use crate::run::parser::resource::utils::parse_cmd_from_args;
 use crate::run::parser::resource::Resource;
 use crate::{node, Command, OckamSubcommand};
+use schemars::JsonSchema;
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default, JsonSchema)]
 pub struct Node {
     pub name: Option<ArgValue>,
     #[serde(alias = "skip-is-running-check")]

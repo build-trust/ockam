@@ -8,7 +8,9 @@ use crate::run::parser::building_blocks::{ArgsToCommands, UnnamedResources};
 use crate::run::parser::resource::utils::parse_cmd_from_args;
 use crate::{policy, Command, OckamSubcommand};
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+use schemars::JsonSchema;
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default, JsonSchema)]
 pub struct Policies {
     #[serde(alias = "policy")]
     pub policies: Option<UnnamedResources>,

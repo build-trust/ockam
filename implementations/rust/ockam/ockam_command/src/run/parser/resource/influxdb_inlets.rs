@@ -1,5 +1,6 @@
 use miette::{miette, Result};
 use ockam_api::colors::color_primary;
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::run::parser::building_blocks::{ArgsToCommands, ResourceNameOrMap};
@@ -8,7 +9,7 @@ use crate::influxdb::inlet::create::CreateCommand;
 use crate::run::parser::resource::utils::parse_cmd_from_args;
 use crate::{influxdb::inlet, Command, OckamSubcommand};
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default, JsonSchema)]
 pub struct InfluxDBInlets {
     #[serde(alias = "influxdb-inlets", alias = "influxdb-inlet")]
     pub influxdb_inlets: Option<ResourceNameOrMap>,

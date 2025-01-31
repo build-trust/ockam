@@ -8,8 +8,10 @@ use crate::run::parser::resource::utils::parse_cmd_from_args;
 
 use crate::tcp::outlet::create::CreateCommand;
 use crate::{tcp::outlet, Command, OckamSubcommand};
+use schemars::JsonSchema;
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default, JsonSchema)]
 pub struct TcpOutlets {
     #[serde(alias = "tcp-outlets", alias = "tcp-outlet")]
     pub tcp_outlets: Option<ResourceNameOrMap>,

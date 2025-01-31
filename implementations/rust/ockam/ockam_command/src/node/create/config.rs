@@ -13,6 +13,7 @@ use ockam_core::OpenTelemetryContext;
 use ockam_node::Context;
 use serde::{Deserialize, Serialize};
 use tracing::{debug, instrument, trace, Span};
+use schemars::JsonSchema;
 
 pub const ENROLLMENT_TICKET: &str = "ENROLLMENT_TICKET";
 
@@ -115,7 +116,7 @@ impl CreateCommand {
     }
 }
 
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize, Default, JsonSchema)]
 pub struct NodeConfig {
     #[serde(flatten)]
     pub version: Version,

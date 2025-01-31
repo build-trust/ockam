@@ -1,5 +1,6 @@
 use clap::Args as ClapArgs;
 use miette::{miette, Result};
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::fmt::Display;
@@ -53,7 +54,7 @@ pub trait ArgsToCommands: Sized {
 /// E.g. `vaults: v1`
 pub type ResourceName = String;
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(untagged)]
 pub enum ResourcesContainer {
     NameOrMap(ResourceNameOrMap),
@@ -98,7 +99,7 @@ impl ArgsToCommands for ResourcesContainer {
 ///     path: "./v2.path"
 ///     aws-kms: true
 /// ```
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct NamedResources {
     #[serde(flatten)]
     pub items: BTreeMap<ResourceName, Args>,
@@ -153,7 +154,7 @@ impl ArgsToCommands for NamedResources {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(untagged)]
 pub enum ResourceNameOrMap {
     Name(ResourceName),
@@ -201,7 +202,7 @@ impl ArgsToCommands for ResourceNameOrMap {
 ///   - path: "./v2.path"
 ///     aws-kms: false
 /// ```
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(untagged)]
 pub enum UnnamedResources {
     Single(Args),
@@ -239,7 +240,7 @@ impl ArgsToCommands for UnnamedResources {
 /// path: "./v1.path"
 /// aws-kms: false
 /// ```
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct Args {
     #[serde(flatten)]
     pub args: BTreeMap<ArgKey, ArgValue>,
@@ -277,12 +278,13 @@ impl From<&str> for ArgKey {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(untagged)]
 pub enum ArgValue {
     String(String),
     Int(isize),
     Bool(bool),
+    #[schemars(skip)]
     List(Vec<ArgValue>),
 }
 

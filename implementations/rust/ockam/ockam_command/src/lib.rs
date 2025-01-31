@@ -53,7 +53,7 @@ mod project;
 mod relay;
 mod rendezvous;
 mod reset;
-mod run;
+pub mod run;
 mod service;
 mod shared_args;
 mod space;

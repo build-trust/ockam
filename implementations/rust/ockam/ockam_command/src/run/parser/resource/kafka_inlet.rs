@@ -5,9 +5,10 @@ use crate::run::parser::resource::utils::parse_cmd_from_args;
 use crate::{kafka::inlet, Command, OckamSubcommand};
 use miette::{miette, Result};
 use ockam_api::colors::color_primary;
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default, JsonSchema)]
 pub struct KafkaInlet {
     #[serde(alias = "kafka-inlets", alias = "kafka-inlet")]
     pub kafka_inlet: Option<ResourceNameOrMap>,

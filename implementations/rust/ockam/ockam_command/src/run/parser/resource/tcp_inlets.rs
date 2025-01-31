@@ -1,5 +1,6 @@
 use miette::{miette, Result};
 use ockam_api::colors::color_primary;
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::run::parser::building_blocks::{ArgsToCommands, ResourceNameOrMap};
@@ -8,7 +9,7 @@ use crate::run::parser::resource::utils::parse_cmd_from_args;
 use crate::tcp::inlet::create::CreateCommand;
 use crate::{tcp::inlet, Command, OckamSubcommand};
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default, JsonSchema)]
 pub struct TcpInlets {
     #[serde(alias = "tcp-inlets", alias = "tcp-inlet")]
     pub tcp_inlets: Option<ResourceNameOrMap>,
