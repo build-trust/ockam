@@ -72,7 +72,7 @@ async fn kafka_portal_worker__pieces_of_kafka_message__message_assembled(
     let mut request_buffer = BytesMut::new();
     encode(
         &mut request_buffer,
-        create_request_header(ApiKey::MetadataKey),
+        create_request_header(ApiKey::Metadata),
         MetadataRequest::default(),
     );
 
@@ -118,12 +118,12 @@ async fn kafka_portal_worker__double_kafka_message__message_assembled(
     let mut request_buffer = BytesMut::new();
     encode(
         &mut request_buffer,
-        create_request_header(ApiKey::MetadataKey),
+        create_request_header(ApiKey::Metadata),
         MetadataRequest::default(),
     );
     encode(
         &mut request_buffer,
-        create_request_header(ApiKey::MetadataKey),
+        create_request_header(ApiKey::Metadata),
         MetadataRequest::default(),
     );
 
@@ -170,7 +170,7 @@ async fn kafka_portal_worker__bigger_than_limit_kafka_message__error(
     let mut request_buffer = BytesMut::new();
     encode(
         &mut request_buffer,
-        create_request_header(ApiKey::MetadataKey),
+        create_request_header(ApiKey::Metadata),
         MetadataRequest::default().with_unknown_tagged_fields(insanely_huge_tag),
     );
 
@@ -220,7 +220,7 @@ async fn kafka_portal_worker__almost_over_limit_than_limit_kafka_message__two_ka
     let mut huge_outgoing_request = BytesMut::new();
     encode(
         &mut huge_outgoing_request,
-        create_request_header(ApiKey::MetadataKey),
+        create_request_header(ApiKey::Metadata),
         MetadataRequest::default().with_unknown_tagged_fields(insanely_huge_tag.clone()),
     );
 
@@ -442,7 +442,7 @@ async fn kafka_portal_worker__metadata_exchange__response_changed(
     // let's create a real kafka request and pass it through the portal
     encode(
         &mut request_buffer,
-        create_request_header(ApiKey::MetadataKey),
+        create_request_header(ApiKey::Metadata),
         MetadataRequest::default(),
     );
 

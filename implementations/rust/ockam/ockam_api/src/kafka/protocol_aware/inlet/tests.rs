@@ -65,13 +65,17 @@ const TEST_KAFKA_API_VERSION: i16 = 13;
 
 pub fn create_kafka_produce_request(content: &[u8]) -> BytesMut {
     let header = RequestHeader::default()
-        .with_request_api_key(ApiKey::ProduceKey as i16)
+        .with_request_api_key(ApiKey::Produce as i16)
         .with_request_api_version(TEST_KAFKA_API_VERSION)
         .with_correlation_id(1)
         .with_client_id(Some(StrBytes::from_static_str("my-client-id")));
 
     let mut encoded = BytesMut::new();
-    RecordBatchEncoder::encode(
+    RecordBatchEncoder::encode::<
+        BytesMut,
+        std::slice::Iter<'_, Record>,
+        fn(&mut BytesMut, &mut BytesMut, Compression) -> Result<(), _>,
+    >(
         &mut encoded,
         [Record {
             transactional: false,
@@ -92,7 +96,6 @@ pub fn create_kafka_produce_request(content: &[u8]) -> BytesMut {
             version: 2,
             compression: Compression::None,
         },
-        None::<fn(&mut BytesMut, &mut BytesMut, Compression) -> Result<(), _>>,
     )
     .unwrap();
 
@@ -103,20 +106,18 @@ pub fn create_kafka_produce_request(content: &[u8]) -> BytesMut {
             .with_records(Some(encoded.freeze()))])];
     let request = ProduceRequest::default().with_topic_data(topic_data);
 
-    utils::encode_request(
-        &header,
-        &request,
-        TEST_KAFKA_API_VERSION,
-        ApiKey::ProduceKey,
-    )
-    .unwrap()
+    utils::encode_request(&header, &request, TEST_KAFKA_API_VERSION, ApiKey::Produce).unwrap()
 }
 
 pub fn create_kafka_fetch_response(content: &[u8]) -> BytesMut {
     let header = ResponseHeader::default().with_correlation_id(1);
 
     let mut encoded = BytesMut::new();
-    RecordBatchEncoder::encode(
+    RecordBatchEncoder::encode::<
+        BytesMut,
+        std::slice::Iter<'_, Record>,
+        fn(&mut BytesMut, &mut BytesMut, Compression) -> Result<(), _>,
+    >(
         &mut encoded,
         [Record {
             transactional: false,
@@ -137,7 +138,6 @@ pub fn create_kafka_fetch_response(content: &[u8]) -> BytesMut {
             version: 2,
             compression: Compression::None,
         },
-        None::<fn(&mut BytesMut, &mut BytesMut, Compression) -> Result<(), _>>,
     )
     .unwrap();
 
@@ -148,14 +148,14 @@ pub fn create_kafka_fetch_response(content: &[u8]) -> BytesMut {
             .with_partition_index(1)
             .with_records(Some(encoded.freeze()))])]);
 
-    utils::encode_response(&header, &response, TEST_KAFKA_API_VERSION, ApiKey::FetchKey).unwrap()
+    utils::encode_response(&header, &response, TEST_KAFKA_API_VERSION, ApiKey::Fetch).unwrap()
 }
 
 pub fn parse_produce_request(content: &[u8]) -> ProduceRequest {
     let mut buffer = BytesMut::from(content);
     let _header = RequestHeader::decode(
         &mut buffer,
-        ApiKey::ProduceKey.request_header_version(TEST_KAFKA_API_VERSION),
+        ApiKey::Produce.request_header_version(TEST_KAFKA_API_VERSION),
     )
     .unwrap();
     utils::decode_body(&mut buffer, TEST_KAFKA_API_VERSION).unwrap()
@@ -165,7 +165,7 @@ pub fn parse_fetch_response(content: &[u8]) -> FetchResponse {
     let mut buffer = BytesMut::from(content);
     let _header = ResponseHeader::decode(
         &mut buffer,
-        ApiKey::FetchKey.response_header_version(TEST_KAFKA_API_VERSION),
+        ApiKey::Fetch.response_header_version(TEST_KAFKA_API_VERSION),
     )
     .unwrap();
     utils::decode_body(&mut buffer, TEST_KAFKA_API_VERSION).unwrap()
@@ -255,10 +255,10 @@ pub async fn json_encrypt_specific_fields(context: &mut Context) -> ockam::Resul
         .records
         .unwrap();
 
-    let records = RecordBatchDecoder::decode(
-        &mut batch_content,
-        None::<fn(&mut Bytes, Compression) -> Result<Bytes, _>>,
-    )
+    let records = RecordBatchDecoder::decode::<
+        Bytes,
+        fn(&mut Bytes, Compression) -> Result<Bytes, _>,
+    >(&mut batch_content)
     .unwrap();
     let record = records.first().unwrap();
     let record_content = record.value.clone().unwrap();
@@ -299,7 +299,7 @@ pub async fn json_decrypt_specific_fields(context: &mut Context) -> ockam::Resul
         ],
     );
 
-    interceptor.add_request(1, ApiKey::FetchKey, TEST_KAFKA_API_VERSION);
+    interceptor.add_request(1, ApiKey::Fetch, TEST_KAFKA_API_VERSION);
 
     let field1_value = encode_field_value(json!("value1"));
     let field2_value = encode_field_value(json!({
@@ -336,10 +336,10 @@ pub async fn json_decrypt_specific_fields(context: &mut Context) -> ockam::Resul
         .first()
         .unwrap();
     let mut records = partition_data.records.clone().unwrap();
-    let records = RecordBatchDecoder::decode(
-        &mut records,
-        None::<fn(&mut Bytes, Compression) -> Result<Bytes, _>>,
-    )
+    let records = RecordBatchDecoder::decode::<
+        Bytes,
+        fn(&mut Bytes, Compression) -> Result<Bytes, _>,
+    >(&mut records)
     .unwrap();
 
     let record = records.first().unwrap();

@@ -56,8 +56,8 @@ aws-lc = ["ockam_vault/aws-lc"]
 rust-crypto = ["ockam_vault/rust-crypto"]
 
 [dependencies]
-aws-config = { version = "1.5.8", default-features = false, features = ["rustls", "rt-tokio"] }
-aws-sdk-kms = { version = "1.47.0", default-features = false, features = ["rustls"] }
+aws-config = { version = "1.5.15", default-features = false, features = ["rustls", "rt-tokio"] }
+aws-sdk-kms = { version = "1.58.0", default-features = false, features = ["rustls"] }
 ockam_core = { path = "../ockam_core", version = "^0.124.0", default-features = false }
 ockam_macros = { path = "../ockam_macros", version = "^0.37.0", default-features = false }
 ockam_node = { path = "../ockam_node", version = "^0.137.0", default-features = false }
@@ -68,7 +68,6 @@ thiserror = { version = "1.0.64" }
 tracing = { version = "0.1", default-features = false }
 
 [dev-dependencies]
-hex = { version = "0.4", default-features = false }
 tokio = { version = "1.41", features = ["full"] }
 
 [package.metadata.cargo-machete]

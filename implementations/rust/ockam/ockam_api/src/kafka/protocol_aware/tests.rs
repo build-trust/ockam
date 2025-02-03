@@ -85,12 +85,12 @@ mod test {
                         &RequestHeader::default()
                             .with_request_api_version(api_version)
                             .with_correlation_id(correlation_id)
-                            .with_request_api_key(ApiKey::ApiVersionsKey as i16),
+                            .with_request_api_key(ApiKey::ApiVersions as i16),
                         &ApiVersionsRequest::default()
                             .with_client_software_name(StrBytes::from_static_str("mr. software"))
                             .with_client_software_version(StrBytes::from_static_str("1.0.0")),
                         api_version,
-                        ApiKey::ApiVersionsKey,
+                        ApiKey::ApiVersions,
                     )
                     .unwrap(),
                 )
@@ -107,7 +107,7 @@ mod test {
                         &ResponseHeader::default().with_correlation_id(correlation_id),
                         &ApiVersionsResponse::default(),
                         api_version,
-                        ApiKey::ApiVersionsKey,
+                        ApiKey::ApiVersions,
                     )
                     .unwrap(),
                 )
@@ -128,10 +128,10 @@ mod test {
                         &RequestHeader::default()
                             .with_request_api_version(api_version)
                             .with_correlation_id(correlation_id)
-                            .with_request_api_key(ApiKey::MetadataKey as i16),
+                            .with_request_api_key(ApiKey::Metadata as i16),
                         &MetadataRequest::default(),
                         api_version,
-                        ApiKey::MetadataKey,
+                        ApiKey::Metadata,
                     )
                     .unwrap(),
                 )
@@ -148,7 +148,7 @@ mod test {
                         &ResponseHeader::default().with_correlation_id(correlation_id),
                         &MetadataResponse::default().with_controller_id(BrokerId::from(0_i32)),
                         api_version,
-                        ApiKey::MetadataKey,
+                        ApiKey::Metadata,
                     )
                     .unwrap(),
                 )

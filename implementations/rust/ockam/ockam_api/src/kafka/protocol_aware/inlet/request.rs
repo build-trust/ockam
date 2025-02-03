@@ -65,23 +65,23 @@ impl KafkaMessageRequestInterceptor for InletInterceptorImpl {
         );
 
         match api_key {
-            ApiKey::ApiVersionsKey => {
+            ApiKey::ApiVersions => {
                 debug!("api versions request: {:?}", header);
                 return self.handle_api_version_request(&mut buffer, &header).await;
             }
 
-            ApiKey::ProduceKey => {
+            ApiKey::Produce => {
                 if self.encrypt_content {
                     return self
                         .handle_produce_request(context, &mut buffer, &header)
                         .await;
                 }
             }
-            ApiKey::FetchKey => {
+            ApiKey::Fetch => {
                 self.handle_fetch_request(context, &mut buffer, &header)
                     .await?;
             }
-            ApiKey::MetadataKey | ApiKey::FindCoordinatorKey => {
+            ApiKey::Metadata | ApiKey::FindCoordinator => {
                 self.request_map.lock().unwrap().insert(
                     header.correlation_id,
                     RequestInfo {
@@ -94,11 +94,11 @@ impl KafkaMessageRequestInterceptor for InletInterceptorImpl {
             // we could somehow map them, but these operations are administrative
             // and should not impact consumer/producer flow
             // this is valid for both LeaderAndIsrKey and UpdateMetadataKey
-            ApiKey::LeaderAndIsrKey => {
+            ApiKey::LeaderAndIsr => {
                 warn!("leader and isr key not supported! closing connection");
                 return Err(InterceptError::InvalidData);
             }
-            ApiKey::UpdateMetadataKey => {
+            ApiKey::UpdateMetadata => {
                 warn!("update metadata not supported! closing connection");
                 return Err(InterceptError::InvalidData);
             }
@@ -128,7 +128,7 @@ impl InletInterceptorImpl {
         self.request_map.lock().unwrap().insert(
             header.correlation_id,
             RequestInfo {
-                request_api_key: ApiKey::ApiVersionsKey,
+                request_api_key: ApiKey::ApiVersions,
                 request_api_version,
             },
         );
@@ -136,12 +136,7 @@ impl InletInterceptorImpl {
         let mut header = header.clone();
         header.request_api_version = request_api_version;
 
-        encode_request(
-            &header,
-            &request,
-            request_api_version,
-            ApiKey::ApiVersionsKey,
-        )
+        encode_request(&header, &request, request_api_version, ApiKey::ApiVersions)
     }
 
     async fn handle_fetch_request(
@@ -188,7 +183,7 @@ impl InletInterceptorImpl {
         self.request_map.lock().unwrap().insert(
             header.correlation_id,
             RequestInfo {
-                request_api_key: ApiKey::FetchKey,
+                request_api_key: ApiKey::Fetch,
                 request_api_version: header.request_api_version,
             },
         );
@@ -210,10 +205,10 @@ impl InletInterceptorImpl {
             for data in &mut topic.partition_data {
                 if let Some(content) = data.records.take() {
                     let mut content = BytesMut::from(content.as_ref());
-                    let mut records = RecordBatchDecoder::decode(
-                        &mut content,
-                        None::<fn(&mut Bytes, Compression) -> Result<BytesMut, _>>,
-                    )
+                    let mut records = RecordBatchDecoder::decode::<
+                        BytesMut,
+                        fn(&mut Bytes, Compression) -> Result<BytesMut, _>,
+                    >(&mut content)
                     .map_err(|_| InterceptError::InvalidData)?;
 
                     for record in records.iter_mut() {
@@ -237,14 +232,17 @@ impl InletInterceptorImpl {
                     }
 
                     let mut encoded = BytesMut::new();
-                    RecordBatchEncoder::encode(
+                    RecordBatchEncoder::encode::<
+                        BytesMut,
+                        std::slice::Iter<'_, kafka_protocol::records::Record>,
+                        fn(&mut BytesMut, &mut BytesMut, Compression) -> Result<(), _>,
+                    >(
                         &mut encoded,
                         records.iter(),
                         &RecordEncodeOptions {
                             version: 2,
                             compression: Compression::None,
                         },
-                        None::<fn(&mut BytesMut, &mut BytesMut, Compression) -> Result<(), _>>,
                     )
                     .map_err(|_| InterceptError::InvalidData)?;
 
@@ -257,7 +255,7 @@ impl InletInterceptorImpl {
             header,
             &request,
             header.request_api_version,
-            ApiKey::ProduceKey,
+            ApiKey::Produce,
         )
     }
 

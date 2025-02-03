@@ -54,7 +54,7 @@ impl KafkaMessageResponseInterceptor for OutletInterceptorImpl {
 
             // the responses of metadata request contain the list of brokers addresses,
             // we override them with the outlets addresses
-            if request_info.request_api_key == ApiKey::MetadataKey {
+            if request_info.request_api_key == ApiKey::Metadata {
                 let response: MetadataResponse =
                     decode_body(&mut buffer, request_info.request_api_version)?;
 

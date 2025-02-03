@@ -192,10 +192,10 @@ async fn producer__flow_with_mock_kafka__content_encryption_and_decryption(
         .unwrap();
 
     let mut encrypted_body = BytesMut::from(encrypted_body.as_ref());
-    let records = RecordBatchDecoder::decode(
-        &mut encrypted_body,
-        None::<fn(&mut Bytes, Compression) -> Result<BytesMut, _>>,
-    )
+    let records = RecordBatchDecoder::decode::<
+        BytesMut,
+        fn(&mut Bytes, Compression) -> Result<BytesMut, _>,
+    >(&mut encrypted_body)
     .unwrap();
 
     // verify the message has been encrypted
@@ -235,10 +235,10 @@ async fn producer__flow_with_mock_kafka__content_encryption_and_decryption(
         .unwrap();
 
     let mut plain_content = BytesMut::from(plain_content.as_ref());
-    let records = RecordBatchDecoder::decode(
-        &mut plain_content,
-        None::<fn(&mut Bytes, Compression) -> Result<BytesMut, _>>,
-    )
+    let records = RecordBatchDecoder::decode::<
+        BytesMut,
+        fn(&mut Bytes, Compression) -> Result<BytesMut, _>,
+    >(&mut plain_content)
     .unwrap();
 
     assert_eq!(
@@ -262,20 +262,24 @@ async fn simulate_kafka_producer_and_read_request(
     send_kafka_produce_request(&mut kafka_client_connection).await;
     read_kafka_request::<&mut DuplexStream, RequestHeader, ProduceRequest>(
         producer_mock_kafka.stream(),
-        ApiKey::ProduceKey,
+        ApiKey::Produce,
     )
     .await
 }
 
 async fn send_kafka_produce_request(stream: &mut TcpStream) {
     let header = RequestHeader::default()
-        .with_request_api_key(ApiKey::ProduceKey as i16)
+        .with_request_api_key(ApiKey::Produce as i16)
         .with_request_api_version(TEST_KAFKA_API_VERSION)
         .with_correlation_id(1)
         .with_client_id(Some(StrBytes::from_static_str("my-client-id")));
 
     let mut encoded = BytesMut::new();
-    RecordBatchEncoder::encode(
+    RecordBatchEncoder::encode::<
+        BytesMut,
+        std::slice::Iter<'_, Record>,
+        fn(&mut BytesMut, &mut BytesMut, Compression) -> Result<(), _>,
+    >(
         &mut encoded,
         [Record {
             transactional: false,
@@ -296,7 +300,6 @@ async fn send_kafka_produce_request(stream: &mut TcpStream) {
             version: 2,
             compression: Compression::None,
         },
-        None::<fn(&mut BytesMut, &mut BytesMut, Compression) -> Result<(), _>>,
     )
     .unwrap();
 
@@ -307,7 +310,7 @@ async fn send_kafka_produce_request(stream: &mut TcpStream) {
             .with_records(Some(encoded.freeze()))])];
     let request = ProduceRequest::default().with_topic_data(topic_data);
 
-    send_kafka_request(stream, header, request, ApiKey::ProduceKey).await;
+    send_kafka_request(stream, header, request, ApiKey::Produce).await;
 }
 
 // this is needed in order to make the consumer create the relays to the secure
@@ -345,13 +348,13 @@ async fn simulate_kafka_consumer_and_read_response(
         &mut DuplexStream,
         RequestHeader,
         FetchRequest,
-    >(mock_kafka_connection.stream(), ApiKey::FetchKey)
+    >(mock_kafka_connection.stream(), ApiKey::Fetch)
     .await;
 
     send_kafka_fetch_response(mock_kafka_connection.stream(), producer_request).await;
     read_kafka_response::<&mut TcpStream, ResponseHeader, FetchResponse>(
         &mut kafka_client_connection,
-        ApiKey::FetchKey,
+        ApiKey::Fetch,
     )
     .await
 }
@@ -379,7 +382,7 @@ async fn send_kafka_fetch_response<S: AsyncWriteExt + Unpin>(
             .with_partitions(vec![PartitionData::default()
                 .with_partition_index(1)
                 .with_records(producer_content)])]),
-        ApiKey::FetchKey,
+        ApiKey::Fetch,
     )
     .await;
 }
@@ -388,7 +391,7 @@ async fn send_kafka_fetch_request(stream: &mut TcpStream) {
     send_kafka_request(
         stream,
         RequestHeader::default()
-            .with_request_api_key(ApiKey::FetchKey as i16)
+            .with_request_api_key(ApiKey::Fetch as i16)
             .with_request_api_version(TEST_KAFKA_API_VERSION)
             .with_correlation_id(1)
             .with_client_id(Some(StrBytes::from_static_str("my-client-id"))),
@@ -396,7 +399,7 @@ async fn send_kafka_fetch_request(stream: &mut TcpStream) {
             .with_topic(TopicName::from(StrBytes::from_static_str("my-topic-name")))
             .with_topic_id(Uuid::from_slice(b"my-topic-name___").unwrap())
             .with_partitions(vec![FetchPartition::default().with_partition(1)])]),
-        ApiKey::FetchKey,
+        ApiKey::Fetch,
     )
     .await;
 }

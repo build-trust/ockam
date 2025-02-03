@@ -38,7 +38,6 @@ This file contains attributions for any 3rd-party open source code used in this 
 | async-task | Apache-2.0, MIT | https://crates.io/crates/async-task |
 | async-trait | MIT, Apache-2.0 | https://crates.io/crates/async-trait |
 | atoi | MIT | https://crates.io/crates/atoi |
-| atomic | Apache-2.0, MIT | https://crates.io/crates/atomic |
 | atomic-polyfill | MIT, Apache-2.0 | https://crates.io/crates/atomic-polyfill |
 | atomic-waker | Apache-2.0, MIT | https://crates.io/crates/atomic-waker |
 | atsamd-hal | MIT, Apache-2.0 | https://crates.io/crates/atsamd-hal |
@@ -469,7 +468,6 @@ This file contains attributions for any 3rd-party open source code used in this 
 | serde_spanned | MIT, Apache-2.0 | https://crates.io/crates/serde_spanned |
 | serde_urlencoded | MIT, Apache-2.0 | https://crates.io/crates/serde_urlencoded |
 | sha1 | MIT, Apache-2.0 | https://crates.io/crates/sha1 |
-| sha1_smol | BSD-3-Clause | https://crates.io/crates/sha1_smol |
 | sha2 | MIT, Apache-2.0 | https://crates.io/crates/sha2 |
 | sharded-slab | MIT | https://crates.io/crates/sharded-slab |
 | shared_child | MIT | https://crates.io/crates/shared_child |

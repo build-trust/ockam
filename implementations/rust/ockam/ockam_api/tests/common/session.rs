@@ -1,5 +1,4 @@
 use core::sync::atomic::{AtomicBool, Ordering};
-use log::info;
 use ockam::{route, Address, Context};
 use ockam_api::session::replacer::{
     AdditionalSessionReplacer, CurrentInletStatus, ReplacerOutcome, ReplacerOutputKind,
@@ -10,6 +9,7 @@ use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{async_trait, Any, Error, NeutralMessage, Result, Route, Routed, Worker};
 use std::sync::atomic::AtomicU8;
 use std::time::Duration;
+use tracing::info;
 
 pub struct MockEchoer {
     pub responsive: Arc<AtomicBool>,

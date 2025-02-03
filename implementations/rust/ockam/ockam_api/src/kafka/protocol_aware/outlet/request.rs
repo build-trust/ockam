@@ -50,11 +50,11 @@ impl KafkaMessageRequestInterceptor for OutletInterceptorImpl {
 
         // we only need to keep track of the metadata request/response
         // to dynamically create an outlet for each broker
-        if api_key == ApiKey::MetadataKey {
+        if api_key == ApiKey::Metadata {
             self.request_map.lock().unwrap().insert(
                 header.correlation_id,
                 RequestInfo {
-                    request_api_key: ApiKey::MetadataKey,
+                    request_api_key: ApiKey::Metadata,
                     request_api_version: header.request_api_version,
                 },
             );
