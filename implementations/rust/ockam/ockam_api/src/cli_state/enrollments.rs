@@ -276,11 +276,17 @@ impl FromStr for LegacyEnrollmentTicket {
 
     fn from_str(contents: &str) -> std::result::Result<Self, Self::Err> {
         if let Ok(data) = hex::decode(contents) {
-            Ok(serde_json::from_slice(&data)
-                .map_err(|_err| ApiError::core("Failed to decode EnrollmentTicket json"))?)
+            debug!(%contents, "decoding hex-encoded LegacyEnrollmentTicket");
+            Ok(serde_json::from_slice(&data).map_err(|_err| {
+                ApiError::core(
+                    "Failed to decode LegacyEnrollmentTicket json from hex-encoded string",
+                )
+            })?)
         } else {
-            Ok(serde_json::from_str(contents)
-                .map_err(|_err| ApiError::core("Failed to decode EnrollmentTicket json"))?)
+            debug!(%contents, "decoding LegacyEnrollmentTicket from raw contents");
+            Ok(serde_json::from_str(contents).map_err(|_err| {
+                ApiError::core("Failed to decode LegacyEnrollmentTicket json from raw contents")
+            })?)
         }
     }
 }
@@ -370,6 +376,7 @@ impl FromStr for ExportedEnrollmentTicket {
         // Decode as comma-separated text
         let values: Vec<&str> = contents.split(',').collect();
         if values.len() < Self::MANDATORY_FIELDS_NUM {
+            error!(%contents, ?values, "missing fields in enrollment ticket: expected at least {}, got {}", Self::MANDATORY_FIELDS_NUM, values.len());
             return Err(ApiError::core("Missing fields in enrollment ticket").into());
         }
         let (
@@ -463,6 +470,7 @@ impl EnrollmentTicket {
         authority_change_history: impl Into<String>,
         authority_route: MultiAddr,
     ) -> Result<Self> {
+        debug!("Creating enrollment ticket");
         let project_id = project_id.into();
         let project_change_history = project_change_history.into();
         let project_identity = Identity::import_from_string(
@@ -493,6 +501,7 @@ impl EnrollmentTicket {
         one_time_code: OneTimeCode,
         project: &ProjectModel,
     ) -> Result<Self> {
+        debug!(?project, "Creating enrollment ticket from project");
         let project_change_history = project
             .project_change_history
             .as_ref()

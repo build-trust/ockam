@@ -4,7 +4,7 @@ use miette::{miette, Context, IntoDiagnostic};
 use ockam_api::cli_state::{EnrollmentTicket, ExportedEnrollmentTicket, LegacyEnrollmentTicket};
 use serde::Deserialize;
 use std::str::FromStr;
-use tracing::trace;
+use tracing::{trace, warn};
 use url::Url;
 
 /// Parse a single key-value pair
@@ -52,7 +52,7 @@ pub(crate) async fn parse_config_or_path_or_url<'de, T: Deserialize<'de>>(
                 Ok(value.to_string())
             } else {
                 Err(miette!(
-                    "Failed to parse value {} as a path, URL or configuration",
+                    "Failed to parse value {} as a path, URL or inline configuration",
                     value
                 ))
             }
@@ -61,9 +61,10 @@ pub(crate) async fn parse_config_or_path_or_url<'de, T: Deserialize<'de>>(
 }
 
 pub(crate) async fn parse_string_or_path_or_url(value: &str) -> miette::Result<String> {
-    parse_path_or_url(value)
-        .await
-        .or_else(|_| Ok(value.to_string()))
+    parse_path_or_url(value).await.or_else(|err| {
+        warn!(%value, %err, "Couldn't parse value as a path or URL. Returning plain value to be processed as inline contents");
+        Ok(value.to_string())
+    })
 }
 
 pub(crate) async fn parse_path_or_url(value: &str) -> miette::Result<String> {
@@ -85,7 +86,8 @@ pub(crate) async fn parse_path_or_url(value: &str) -> miette::Result<String> {
             .into_diagnostic()
             .context("Failed to read contents from file")
     } else {
-        Err(miette!("Failed to parse value {} as a path or URL", value))
+        warn!(%value, "Couldn't parse value as a path or URL");
+        Err(miette!("Couldn't parse value '{}' as a path or URL", value))
     }
 }
 
