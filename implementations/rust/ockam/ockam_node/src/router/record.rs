@@ -119,6 +119,8 @@ impl InternalMap {
             })?
             .clone();
 
+        debug!(%address, %primary_address, "Stopping address");
+
         self.flow_controls.cleanup_address(&primary_address);
 
         let record = if let Some(record) = records.remove(&primary_address) {

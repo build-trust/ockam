@@ -278,21 +278,21 @@ impl NodeManager {
         ctx: &Context,
         start_default_services: bool,
     ) -> ockam_core::Result<()> {
+        // Always start the echoer service as ockam_api::Session assumes it will be
+        // started unconditionally on every node. It's used for liveliness checks.
+        self.start_echoer_service(ctx, DefaultAddress::ECHO_SERVICE.into())
+            .await?;
+        for api_flow_control_id in &self.api_transport_flow_control_ids {
+            ctx.flow_controls()
+                .add_consumer(&DefaultAddress::ECHO_SERVICE.into(), api_flow_control_id);
+        }
+
         if start_default_services {
             self.api_sc_listener = Some(
                 self.initialize_default_services(ctx, &self.api_transport_flow_control_ids)
                     .await?,
             );
         }
-
-        // Always start the echoer service as ockam_api::Session assumes it will be
-        // started unconditionally on every node. It's used for liveliness checks.
-        for api_flow_control_id in &self.api_transport_flow_control_ids {
-            ctx.flow_controls()
-                .add_consumer(&DefaultAddress::ECHO_SERVICE.into(), api_flow_control_id);
-        }
-        self.start_echoer_service(ctx, DefaultAddress::ECHO_SERVICE.into())
-            .await?;
 
         Ok(())
     }
