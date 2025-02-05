@@ -93,7 +93,6 @@ sqlx = { version = "0.8.3", optional = true, default-features = false }
 sqlx-core = { version = "0.8.3", optional = true, default-features = false }
 static_assertions = "1.1.0"
 tokio-retry = { version = "0.3.0", default-features = false, optional = true }
-tower = { version = "0.4.13" }
 tracing = { version = "0.1", default-features = false }
 tracing-attributes = { version = "0.1", default-features = false }
 

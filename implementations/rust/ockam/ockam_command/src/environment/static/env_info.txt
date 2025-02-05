@@ -41,11 +41,10 @@ Tracing
 - OCKAM_BACKGROUND_SPAN_EXPORT_SCHEDULED_DELAY: Timeout for exporting the current batch of spans. Default value: `5s`.
 - OCKAM_SPAN_EXPORT_QUEUE_SIZE: Size of the queue used to store batched spans before export. When the queue is full, spans are dropped. Default value: `32768`
 - OCKAM_LOG_EXPORT_QUEUE_SIZE: Size of the queue used to store batched log records before export. When the queue is full, log records are dropped. Default value: `32768`
-- OCKAM_TRACING_GLOBAL_ERROR_HANDLER: Configuration for printing tracing/logging errors: `console`, `logfile`, `off`. Default value: `logfile`.
-- OCKAM_FOREGROUND_LOG_EXPORT_CUTOFF: Cutoff time for sending log records batches to an Telemetry foreground node, without waiting for a response. Default value: `3s`.
-- OCKAM_FOREGROUND_SPAN_EXPORT_CUTOFF: Cutoff time for sending span batches to an Telemetry foreground inlet, without waiting for a response. Default value: `3s`.
-- OCKAM_BACKGROUND_LOG_EXPORT_CUTOFF: Cutoff time for sending log records batches to an Telemetry background node, without waiting for a response. Default value: `3s`.
-- OCKAM_BACKGROUND_SPAN_EXPORT_CUTOFF: Cutoff time for sending span batches to an Telemetry background inlet, without waiting for a response. Default value: `3s`.
+- OCKAM_FOREGROUND_LOG_EXPORT_CUTOFF: Cutoff time for sending log records batches from a foreground command, without waiting for a response. Default value: `3s`.
+- OCKAM_FOREGROUND_SPAN_EXPORT_CUTOFF: Cutoff time for sending span batches from a foreground command, without waiting for a response. Default value: `3s`.
+- OCKAM_BACKGROUND_LOG_EXPORT_CUTOFF: Cutoff time for sending log records batches from a background node, without waiting for a response. Default value: `3s`.
+- OCKAM_BACKGROUND_SPAN_EXPORT_CUTOFF: Cutoff time for sending span batches from a background node, without waiting for a response. Default value: `3s`.
 
 UDP
 - OCKAM_RENDEZVOUS_SERVER: set this variable to the hostname and port of the Rendezvous service
@@ -66,7 +65,7 @@ Devs Usage
 - OCKAM_AUTHENTICATOR_ENDPOINT: a `string` that overrides the default endpoint of the authenticator. Defaults to `https://account.ockam.io`.
 - OCKAM_DEVELOPER: a `boolean` specifying if the current user is an Ockam developer (for more accurate metrics).
 - OCKAM_OPENTELEMETRY_EXPORT_DEBUG: a `boolean` specifying if debug messages must be printed to the console when the OpenTelemetry export is configured.
-- OCKAM_TELEMETRY_EXPORT_VIA_PORTAL: a `boolean` specifying if traces must be exported via a portal when a project exists (this feature flag is set to `false` for now)
+- OCKAM_TELEMETRY_EXPORT_VIA_PROJECT: a `boolean` specifying if traces must be exported via a secure channel to the project node (when it exists)
 - OCKAM_DEFAULT_TIMEOUT: a `Duration` used to timeout secure channels creation and API requests. Default value: `120s`.
 
 Internal (to enable some special behavior in the logic)

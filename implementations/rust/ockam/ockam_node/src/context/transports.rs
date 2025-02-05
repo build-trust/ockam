@@ -13,6 +13,12 @@ impl Context {
         transports.insert(transport.transport_type(), transport);
     }
 
+    /// Return a transport by type
+    pub fn get_transport(&self, transport_type: TransportType) -> Option<Arc<dyn Transport>> {
+        let transports = self.transports.read().unwrap();
+        transports.get(&transport_type).cloned()
+    }
+
     /// Return true if a given transport has already been registered
     pub fn is_transport_registered(&self, transport_type: TransportType) -> bool {
         let transports = self.transports.read().unwrap();
@@ -83,6 +89,7 @@ impl Context {
 #[cfg(test)]
 mod tests {
     use ockam_core::{async_trait, route, Address, LOCAL};
+    use std::any::Any;
 
     use super::*;
 
@@ -147,6 +154,10 @@ mod tests {
 
         fn disconnect(&self, _address: &Address) -> Result<()> {
             Ok(())
+        }
+
+        fn as_arc_any(self: Arc<Self>) -> Arc<dyn Any + Send + Sync> {
+            self
         }
     }
 }

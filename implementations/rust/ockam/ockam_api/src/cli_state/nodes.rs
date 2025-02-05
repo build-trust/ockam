@@ -23,6 +23,8 @@ use crate::config::lookup::InternetAddress;
 
 use crate::{fmt_warn, ConnectionStatus};
 
+pub const DEFAULT_NODE_NAME: &str = "_default_node_name";
+
 /// The methods below support the creation and update of local nodes
 impl CliState {
     /// Create a node, with some optional associated values, and start it

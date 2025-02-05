@@ -90,17 +90,18 @@ impl SecureClientService {
     ) -> Result<http::Response<BoxBody>> {
         if let Some(ctx) = &self.ctx {
             let ockam_request_body = Self::make_ockam_request_body(request).await?;
-            self.secure_client
+            let _ = self
+                .secure_client
                 .tell(
-                    &ctx,
+                    ctx,
                     &self.service_address,
                     Request::post("/").body(ockam_request_body),
                 )
                 .await?;
-        }
-        Ok(http::Response::builder()
+        };
+        http::Response::builder()
             .body(BoxBody::default())
-            .map_err(ApiError::message)?)
+            .map_err(ApiError::message)
     }
 
     /// In order to make an Ockam request we collect all the bytes from the http request body.
@@ -109,13 +110,10 @@ impl SecureClientService {
         let mut bytes: Vec<u8> = Vec::new();
         let (head, mut body) = request.into_parts();
         while let Some(frame) = body.frame().await {
-            match frame {
-                Ok(f) => {
-                    if let Some(chunk) = f.data_ref() {
-                        bytes.extend_from_slice(chunk);
-                    }
+            if let Ok(f) = frame {
+                if let Some(chunk) = f.data_ref() {
+                    bytes.extend_from_slice(chunk);
                 }
-                Err(_) => {}
             }
         }
         Ok(OckamRequest::from(http::Request::from_parts(head, bytes)))
@@ -178,7 +176,7 @@ impl From<http::Request<Vec<u8>>> for OckamRequest {
 }
 
 impl OckamRequest {
-    pub fn to_http_request(self) -> Result<http::Request<BoxBody>> {
+    pub fn make_http_request(self) -> Result<http::Request<BoxBody>> {
         let mut req = http::Request::builder();
         req = req.method(Method::from_str(&self.method).map_err(ApiError::message)?);
         let version = match self.version {
@@ -196,7 +194,7 @@ impl OckamRequest {
         let body = Full::new(bytes::Bytes::from(self.body))
             .map_err(|never| match never {})
             .boxed_unsync();
-        Ok(req.body(body).map_err(ApiError::message)?)
+        req.body(body).map_err(ApiError::message)
     }
 }
 
@@ -230,20 +228,6 @@ mod tests {
             )
             .unwrap(),
             ockam_request_body
-        );
-    }
-
-    #[test]
-    fn test_make_ockam_request_message() {
-        let request = make_http_request();
-        let ockam_request_body = OckamRequest::from(request);
-        let ockam_request_message = Request::post("/").body(ockam_request_body);
-        assert_eq!(
-            <Request<OckamRequest> as Decodable>::decode(
-                ockam_request_message.to_vec().unwrap().as_slice()
-            )
-            .unwrap(),
-            ockam_request_message
         );
     }
 

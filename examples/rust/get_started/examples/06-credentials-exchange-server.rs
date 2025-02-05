@@ -52,7 +52,7 @@ async fn main(ctx: Context) -> Result<()> {
     // as a member of the production cluster so it returns a signed credential
     // attesting to that knowledge.
     let authority_node = NodeManager::authority_node_client(
-        &tcp,
+        tcp.clone(),
         node.secure_channels().clone(),
         &issuer,
         &MultiAddr::try_from("/dnsaddr/localhost/tcp/5000/secure/api").unwrap(),

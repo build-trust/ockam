@@ -200,7 +200,6 @@ This file contains attributions for any 3rd-party open source code used in this 
 | ff | MIT, Apache-2.0 | https://crates.io/crates/ff |
 | fiat-crypto | MIT, Apache-2.0, BSD-1-Clause | https://crates.io/crates/fiat-crypto |
 | flate2 | MIT, Apache-2.0 | https://crates.io/crates/flate2 |
-| flexi_logger | MIT, Apache-2.0 | https://crates.io/crates/flexi_logger |
 | flume | Apache-2.0, MIT | https://crates.io/crates/flume |
 | fnv | Apache-2.0, MIT | https://crates.io/crates/fnv |
 | foldhash | Zlib | https://crates.io/crates/foldhash |
@@ -364,6 +363,7 @@ This file contains attributions for any 3rd-party open source code used in this 
 | openssl-probe | MIT, Apache-2.0 | https://crates.io/crates/openssl-probe |
 | opentelemetry | Apache-2.0 | https://crates.io/crates/opentelemetry |
 | opentelemetry-appender-tracing | Apache-2.0 | https://crates.io/crates/opentelemetry-appender-tracing |
+| opentelemetry-http | Apache-2.0 | https://crates.io/crates/opentelemetry-http |
 | opentelemetry-otlp | Apache-2.0 | https://crates.io/crates/opentelemetry-otlp |
 | opentelemetry-proto | Apache-2.0 | https://crates.io/crates/opentelemetry-proto |
 | opentelemetry-semantic-conventions | Apache-2.0 | https://crates.io/crates/opentelemetry-semantic-conventions |

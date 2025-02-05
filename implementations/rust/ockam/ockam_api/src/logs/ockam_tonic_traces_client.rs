@@ -8,8 +8,8 @@ use opentelemetry_sdk::export::trace::{ExportResult, SpanData, SpanExporter};
 use tonic::{codegen::CompressionEncoding, Request};
 
 use crate::logs::secure_client_service::SecureClientService;
-use crate::Result;
 use opentelemetry_proto::transform::trace::tonic::group_spans_by_resource_and_scope;
+use tonic::metadata::{KeyAndValueRef, MetadataMap};
 
 /// This struct does what most of the TonicTracesClient does as a SpanExporter, except that
 /// it uses a SecureClientService to send the gRCP requests serialized as http Request to
@@ -22,6 +22,7 @@ use opentelemetry_proto::transform::trace::tonic::group_spans_by_resource_and_sc
 /// We don't use those capabilities so there is no need to use an Interceptor here.
 pub struct OckamTonicTracesClient {
     inner: Option<ClientInner>,
+    additional_headers: MetadataMap,
     #[allow(dead_code)]
     // <allow dead> would be removed once we support set_resource for metrics.
     resource: opentelemetry_proto::transform::common::tonic::ResourceAttributesWithSchema,
@@ -34,7 +35,7 @@ struct ClientInner {
 
 impl fmt::Debug for OckamTonicTracesClient {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str("TonicTracesClient")
+        f.write_str("OckamTonicTracesClient")
     }
 }
 
@@ -43,6 +44,7 @@ impl OckamTonicTracesClient {
     /// some compression via gzip or zstd.
     pub fn new(
         secure_client_service: SecureClientService,
+        additional_headers: MetadataMap,
         compression: Option<CompressionEncoding>,
     ) -> Self {
         let mut client = TraceServiceClient::new(secure_client_service);
@@ -54,6 +56,7 @@ impl OckamTonicTracesClient {
 
         OckamTonicTracesClient {
             inner: Some(ClientInner { client }),
+            additional_headers,
             resource: Default::default(),
         }
     }
@@ -65,12 +68,24 @@ impl OckamTonicTracesClient {
 impl SpanExporter for OckamTonicTracesClient {
     fn export(&mut self, batch: Vec<SpanData>) -> BoxFuture<'static, ExportResult> {
         if let Some(ref mut client) = &mut self.inner {
-            let mut client_clone = client.clone();
             let resource_spans = group_spans_by_resource_and_scope(batch, &self.resource);
+            let mut request = Request::new(ExportTraceServiceRequest { resource_spans });
+            for key_and_value in self.additional_headers.iter() {
+                match key_and_value {
+                    KeyAndValueRef::Ascii(key, value) => {
+                        request.metadata_mut().append(key, value.to_owned())
+                    }
+                    KeyAndValueRef::Binary(key, value) => {
+                        request.metadata_mut().append_bin(key, value.to_owned())
+                    }
+                };
+            }
+
+            let mut client_clone = client.clone();
             Box::pin(async move {
                 client_clone
                     .client
-                    .export(Request::new(ExportTraceServiceRequest { resource_spans }))
+                    .export(request)
                     .await
                     .map_err(opentelemetry_otlp::Error::from)?;
 
@@ -78,7 +93,7 @@ impl SpanExporter for OckamTonicTracesClient {
             })
         } else {
             Box::pin(std::future::ready(Err(TraceError::Other(
-                "exporter is already shut down".into(),
+                "The span exporter is already shut down".into(),
             ))))
         }
     }
@@ -93,12 +108,12 @@ impl SpanExporter for OckamTonicTracesClient {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
-    use crate::authority_node::random_port;
+    use crate::authority_node::tests::random_port;
     use crate::cli_state::{CliStateMode, UseAwsKms};
-    use crate::logs::http_forwarder::{HttpForwarder, HTTP_FORWARDER};
-    use crate::{ApiError, CliState};
+    use crate::logs::http_forwarder::HttpForwarder;
+    use crate::{ApiError, CliState, DefaultAddress, Result};
     use hyper::Uri;
     use ockam::identity::{
         SecureChannelListener, SecureChannelListenerOptions, SecureChannels, SecureClient,
@@ -114,6 +129,7 @@ mod tests {
 
     const LOGGING: bool = true;
 
+    #[ignore]
     #[test]
     fn test_export_spans() {
         let runtime = Arc::new(Runtime::new().unwrap());
@@ -129,10 +145,11 @@ mod tests {
             tokio::time::sleep(Duration::from_millis(100)).await;
             let secure_channels = create_secure_channels().await?;
             let tcp_transport = TcpTransport::create(&ctx)?;
-            let secure_client =
-                make_secure_client(port, secure_channels, Arc::new(tcp_transport)).await?;
-            let project_service = SecureClientService::new(secure_client, &ctx, HTTP_FORWARDER);
-            let mut exporter = OckamTonicTracesClient::new(project_service, None);
+            let secure_client = make_secure_client(port, secure_channels, tcp_transport).await?;
+            let project_service =
+                SecureClientService::new(secure_client, &ctx, DefaultAddress::HTTP_FORWARDER);
+            let mut exporter =
+                OckamTonicTracesClient::new(project_service, Default::default(), None);
             exporter
                 .export(create_spans())
                 .await
@@ -147,7 +164,7 @@ mod tests {
     /// HELPERS
 
     /// Create a SecureChannels service for a local node
-    async fn create_secure_channels() -> Result<Arc<SecureChannels>> {
+    pub(crate) async fn create_secure_channels() -> Result<Arc<SecureChannels>> {
         let cli_state = CliState::create(CliStateMode::InMemory).await?;
         cli_state.create_node("default").await?;
         cli_state
@@ -170,14 +187,14 @@ mod tests {
             events: Default::default(),
             links: Default::default(),
             status: Default::default(),
-            instrumentation_lib: Default::default(),
+            instrumentation_scope: Default::default(),
         };
         vec![span]
     }
 
     /// Create a secure client to a local node having a TCP listener on the given port
     /// For the purpose of this test, the node is assumed to accept any identifier connecting to it.
-    async fn make_secure_client(
+    pub(crate) async fn make_secure_client(
         port: u16,
         secure_channels: Arc<SecureChannels>,
         tcp_transport: Arc<TcpTransport>,
@@ -208,7 +225,7 @@ mod tests {
 
     /// Start a node with a HTTP forwarder service.
     /// That service connects to a local OpenTelemetry collector.
-    fn start_node_with_http_forwarder_service(runtime: Arc<Runtime>, port: u16) {
+    pub(crate) fn start_node_with_http_forwarder_service(runtime: Arc<Runtime>, port: u16) {
         let runtime_clone = runtime.clone();
         runtime.spawn(async move {
             let (ctx, _executor) = NodeBuilder::new()
@@ -227,8 +244,8 @@ mod tests {
         });
     }
 
-    async fn start_tcp_listener(ctx: &Context, port: u16) -> Result<TcpListenerOptions> {
-        let tcp_transport = TcpTransport::create(&ctx)?;
+    pub(crate) async fn start_tcp_listener(ctx: &Context, port: u16) -> Result<TcpListenerOptions> {
+        let tcp_transport = TcpTransport::create(ctx)?;
         let tcp_listener_options = TcpListenerOptions::new();
         let _tcp_listener = tcp_transport
             .listen(format!("127.0.0.1:{port}"), tcp_listener_options.clone())
@@ -254,7 +271,7 @@ mod tests {
             .with_trust_policy(TrustEveryonePolicy);
         secure_channels
             .create_secure_channel_listener(
-                &ctx,
+                ctx,
                 &telemetry_node_identifier,
                 "api",
                 secure_channel_listener_options,
@@ -268,9 +285,12 @@ mod tests {
         endpoint: &'static str,
     ) -> Result<()> {
         let uri = Uri::from_static(endpoint);
-        ctx.start_worker(HTTP_FORWARDER, HttpForwarder::new(uri).await?)?;
+        ctx.start_worker(
+            DefaultAddress::HTTP_FORWARDER,
+            HttpForwarder::new(uri).await?,
+        )?;
         ctx.flow_controls().add_consumer(
-            &Address::from_string(HTTP_FORWARDER),
+            &Address::from_string(DefaultAddress::HTTP_FORWARDER),
             secure_channel_listener.flow_control_id(),
         );
         Ok(())

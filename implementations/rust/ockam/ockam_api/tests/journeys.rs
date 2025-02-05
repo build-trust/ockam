@@ -2,12 +2,15 @@ use chrono::Utc;
 use ockam_api::cli_state::journeys::{
     JourneyEvent, APPLICATION_EVENT_TIMESTAMP, EVENT_DURATION, USER_EMAIL, USER_NAME,
 };
-use ockam_api::logs::{ExportingConfiguration, LoggingConfiguration, LoggingTracing};
+use ockam_api::logs::{
+    get_https_endpoint, ExportingConfiguration, ExportingEnabled, LoggingConfiguration,
+    LoggingTracing,
+};
 use ockam_api::CliState;
 use opentelemetry::trace::{FutureExt, TraceContextExt, Tracer};
 use opentelemetry::{global, Context};
 use opentelemetry_sdk::export::trace::SpanData;
-use opentelemetry_sdk::testing::logs::InMemoryLogsExporter;
+use opentelemetry_sdk::testing::logs::InMemoryLogExporter;
 use opentelemetry_sdk::testing::trace::InMemorySpanExporter;
 use std::collections::HashMap;
 use std::ops::Add;
@@ -27,16 +30,20 @@ async fn test_create_journey_event() {
         .unwrap()
         .set_tracing_enabled(true);
 
-    let spans_exporter = InMemorySpanExporter::default();
-    let logs_exporter = InMemoryLogsExporter::default();
-
+    let span_exporter = InMemorySpanExporter::default();
+    let log_exporter = InMemoryLogExporter::default();
+    let endpoint = get_https_endpoint().unwrap();
     let tracing_guard = LoggingTracing::setup_with_exporters(
-        spans_exporter.clone(),
-        logs_exporter.clone(),
+        span_exporter.clone(),
+        log_exporter.clone(),
         &LoggingConfiguration::off()
             .unwrap()
             .set_crates(&["ockam_api"]),
-        &ExportingConfiguration::foreground(&cli).await.unwrap(),
+        &ExportingConfiguration::make_foreground_exporting_configuration(
+            endpoint,
+            ExportingEnabled::Off,
+        )
+        .unwrap(),
         "test",
         None,
     );
@@ -63,7 +70,7 @@ async fn test_create_journey_event() {
         .unwrap();
 
     tracing_guard.force_flush().await;
-    let mut spans = spans_exporter.get_finished_spans().unwrap();
+    let mut spans = span_exporter.get_finished_spans().unwrap();
     spans.sort_by_key(|s| s.start_time);
 
     // keep only application events

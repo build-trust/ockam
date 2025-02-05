@@ -64,7 +64,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     // create a secure channel to the authority
     // when creating the channel we check that the opposite side is indeed presenting the authority identity
     let authority_node = NodeManager::authority_node_client(
-        &tcp,
+        tcp.clone(),
         node.secure_channels().clone(),
         &control_plane,
         &MultiAddr::try_from("/dnsaddr/localhost/tcp/5000")?,
@@ -82,7 +82,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     // Create a credential retriever that will be used to obtain credentials
     let credential_retriever = Arc::new(RemoteCredentialRetrieverCreator::new(
         node.context().try_clone()?,
-        Arc::new(tcp.clone()),
+        tcp.clone(),
         node.secure_channels(),
         RemoteCredentialRetrieverInfo::create_for_project_member(
             project.authority_identifier(),

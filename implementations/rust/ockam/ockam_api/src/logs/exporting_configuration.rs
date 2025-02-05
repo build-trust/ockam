@@ -1,17 +1,18 @@
-use crate::address::get_free_address;
-use crate::cli_state::TcpInlet;
+use crate::cli_state::DEFAULT_NODE_NAME;
 use crate::config::UrlVar;
 use crate::logs::default_values::*;
 use crate::logs::env_variables::*;
 use crate::logs::ExportingEnabled;
-use crate::CliState;
+use crate::orchestrator::project::Project;
+use crate::Result;
+use crate::{ApiError, CliState, TransportRouteResolver};
+use ockam::identity::{get_default_timeout, SecureClient, TrustIdentifierPolicy};
 use ockam_core::env::{get_env_with_default, FromString};
-use ockam_core::errcode::{Kind, Origin};
-use std::env::current_exe;
-use std::fmt::{Display, Formatter};
+use ockam_node::Context;
+use ockam_transport_tcp::TcpTransport;
+use std::fmt::{Debug, Display, Formatter};
 use std::net::{SocketAddr, ToSocketAddrs};
-use std::process::{Command, Stdio};
-use std::str::FromStr;
+use std::sync::Arc;
 use std::time::Duration;
 use tokio::time::Instant;
 use tokio_retry::strategy::FibonacciBackoff;
@@ -29,7 +30,7 @@ use url::Url;
 ///
 /// The time necessary to send just a batch can be configured with the 'cutoff' variables.
 ///
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub struct ExportingConfiguration {
     /// If TracingEnabled::On then spans and log records are sent to an OpenTelemetry collector.
     /// Some parameters for exporting the
@@ -46,8 +47,8 @@ pub struct ExportingConfiguration {
     span_export_queue_size: u16,
     /// Size of the queue used to batch logs
     log_export_queue_size: u16,
-    /// Url of the OpenTelemetry collector
-    opentelemetry_endpoint: Url,
+    /// Endpoint for the telemetry collector
+    opentelemetry_endpoint: TelemetryEndpoint,
     /// True if the user is an Ockam developer
     /// This boolean is set on spans to distinguish internal usage for external usage
     is_ockam_developer: bool,
@@ -109,61 +110,45 @@ impl ExportingConfiguration {
     }
 
     /// Return the URL where to export spans and log records
-    pub fn opentelemetry_endpoint(&self) -> Url {
+    pub fn opentelemetry_endpoint(&self) -> TelemetryEndpoint {
         self.opentelemetry_endpoint.clone()
     }
 
     /// Create a tracing configuration for a user command running in the foreground.
     /// (meaning that the process will shut down once the command has been executed)
-    pub async fn foreground(state: &CliState) -> ockam_core::Result<ExportingConfiguration> {
-        match opentelemetry_endpoint(state).await? {
+    pub async fn foreground(state: &CliState, ctx: &Context) -> Result<ExportingConfiguration> {
+        match opentelemetry_endpoint(state, ctx).await? {
             None => ExportingConfiguration::off(),
-            Some(endpoint) => Ok(ExportingConfiguration {
-                enabled: exporting_enabled(
+            Some(endpoint) => {
+                let enabled = exporting_enabled(
                     &endpoint,
+                    ctx,
                     opentelemetry_endpoint_foreground_connection_timeout()?,
                 )
-                .await?,
-                span_export_timeout: span_export_timeout()?,
-                log_export_timeout: log_export_timeout()?,
-                span_export_scheduled_delay: foreground_span_export_scheduled_delay()?,
-                log_export_scheduled_delay: foreground_log_export_scheduled_delay()?,
-                span_export_queue_size: span_export_queue_size()?,
-                log_export_queue_size: log_export_queue_size()?,
-                opentelemetry_endpoint: endpoint.url(),
-                is_ockam_developer: is_ockam_developer()?,
-                span_export_cutoff: Some(foreground_span_export_portal_cutoff()?),
-                log_export_cutoff: Some(foreground_log_export_cutoff()?),
-            }),
+                .await?;
+                Self::make_foreground_exporting_configuration(endpoint, enabled)
+            }
         }
     }
 
     /// Create a tracing configuration for a background node
-    pub async fn background(state: &CliState) -> ockam_core::Result<ExportingConfiguration> {
-        match opentelemetry_endpoint(state).await? {
+    pub async fn background(state: &CliState, ctx: &Context) -> Result<ExportingConfiguration> {
+        match opentelemetry_endpoint(state, ctx).await? {
             None => ExportingConfiguration::off(),
-            Some(endpoint) => Ok(ExportingConfiguration {
-                enabled: exporting_enabled(
+            Some(endpoint) => {
+                let enabled = exporting_enabled(
                     &endpoint,
+                    ctx,
                     opentelemetry_endpoint_background_connection_timeout()?,
                 )
-                .await?,
-                span_export_timeout: span_export_timeout()?,
-                log_export_timeout: log_export_timeout()?,
-                span_export_scheduled_delay: background_span_export_scheduled_delay()?,
-                log_export_scheduled_delay: background_log_export_scheduled_delay()?,
-                span_export_queue_size: span_export_queue_size()?,
-                log_export_queue_size: log_export_queue_size()?,
-                opentelemetry_endpoint: endpoint.url(),
-                is_ockam_developer: is_ockam_developer()?,
-                span_export_cutoff: Some(background_span_export_portal_cutoff()?),
-                log_export_cutoff: Some(background_log_export_cutoff()?),
-            }),
+                .await?;
+                Self::make_background_exporting_configuration(endpoint, enabled)
+            }
         }
     }
 
     /// Create a a tracing configuration which is disabled
-    pub fn off() -> ockam_core::Result<ExportingConfiguration> {
+    pub fn off() -> Result<ExportingConfiguration> {
         Ok(ExportingConfiguration {
             enabled: ExportingEnabled::Off,
             span_export_timeout: DEFAULT_EXPORT_TIMEOUT,
@@ -172,16 +157,54 @@ impl ExportingConfiguration {
             log_export_scheduled_delay: DEFAULT_FOREGROUND_EXPORT_SCHEDULED_DELAY,
             span_export_queue_size: DEFAULT_SPAN_EXPORT_QUEUE_SIZE,
             log_export_queue_size: DEFAULT_LOG_EXPORT_QUEUE_SIZE,
-            opentelemetry_endpoint: Self::default_opentelemetry_endpoint()?,
+            opentelemetry_endpoint: Self::default_telemetry_endpoint()?,
             is_ockam_developer: is_ockam_developer()?,
             span_export_cutoff: None,
             log_export_cutoff: None,
         })
     }
 
+    pub fn make_foreground_exporting_configuration(
+        endpoint: TelemetryEndpoint,
+        enabled: ExportingEnabled,
+    ) -> Result<ExportingConfiguration> {
+        Ok(ExportingConfiguration {
+            enabled,
+            span_export_timeout: span_export_timeout()?,
+            log_export_timeout: log_export_timeout()?,
+            span_export_scheduled_delay: foreground_span_export_scheduled_delay()?,
+            log_export_scheduled_delay: foreground_log_export_scheduled_delay()?,
+            span_export_queue_size: span_export_queue_size()?,
+            log_export_queue_size: log_export_queue_size()?,
+            opentelemetry_endpoint: endpoint,
+            is_ockam_developer: is_ockam_developer()?,
+            span_export_cutoff: Some(foreground_span_export_portal_cutoff()?),
+            log_export_cutoff: Some(foreground_log_export_cutoff()?),
+        })
+    }
+
+    pub fn make_background_exporting_configuration(
+        endpoint: TelemetryEndpoint,
+        enabled: ExportingEnabled,
+    ) -> Result<ExportingConfiguration> {
+        Ok(ExportingConfiguration {
+            enabled,
+            span_export_timeout: span_export_timeout()?,
+            log_export_timeout: log_export_timeout()?,
+            span_export_scheduled_delay: background_span_export_scheduled_delay()?,
+            log_export_scheduled_delay: background_log_export_scheduled_delay()?,
+            span_export_queue_size: span_export_queue_size()?,
+            log_export_queue_size: log_export_queue_size()?,
+            opentelemetry_endpoint: endpoint,
+            is_ockam_developer: is_ockam_developer()?,
+            span_export_cutoff: Some(background_span_export_portal_cutoff()?),
+            log_export_cutoff: Some(background_log_export_cutoff()?),
+        })
+    }
+
     /// Return the default endpoint for exporting traces
-    fn default_opentelemetry_endpoint() -> ockam_core::Result<Url> {
-        Ok(UrlVar::from_string(DEFAULT_OPENTELEMETRY_ENDPOINT)?.url)
+    fn default_telemetry_endpoint() -> Result<TelemetryEndpoint> {
+        get_https_endpoint()
     }
 }
 
@@ -196,51 +219,56 @@ impl Display for ExportingConfiguration {
 /// This enum represents the 2 possible endpoints for exporting traces. Either via:
 ///
 ///  - An HTTPS collector
-///  - An Ockam portal to an HTTPS collector
+///  - An HTTP forwarder on the project node
 ///
-#[derive(Debug, Clone)]
-pub enum OpenTelemetryEndpoint {
-    PortalEndpoint(Url),
+#[derive(Clone)]
+pub enum TelemetryEndpoint {
+    ProjectEndpoint(SecureClient),
     HttpsEndpoint(Url),
 }
 
-impl OpenTelemetryEndpoint {
-    /// Return the URL to connect to
-    pub fn url(&self) -> Url {
+impl Display for TelemetryEndpoint {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            OpenTelemetryEndpoint::PortalEndpoint(url) => url.clone(),
-            OpenTelemetryEndpoint::HttpsEndpoint(url) => url.clone(),
+            TelemetryEndpoint::ProjectEndpoint(client) => {
+                f.write_str(&client.secure_route().to_string())
+            }
+            TelemetryEndpoint::HttpsEndpoint(url) => f.write_str(url.as_str()),
         }
     }
+}
 
-    /// Return true if the export must go through an Ockam portal
-    pub fn is_portal_endpoint(&self) -> bool {
-        match &self {
-            OpenTelemetryEndpoint::PortalEndpoint(_) => true,
-            OpenTelemetryEndpoint::HttpsEndpoint(_) => false,
-        }
+impl Debug for TelemetryEndpoint {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.to_string().as_str())
     }
 }
 
 /// Return true if the export of traces and log records is enabled,
 /// as decided by the OCKAM_TELEMETRY_EXPORT environment variable.
-pub fn is_exporting_set() -> ockam_core::Result<bool> {
-    get_env_with_default(
+pub fn is_exporting_set() -> Result<bool> {
+    Ok(get_env_with_default(
         OCKAM_TELEMETRY_EXPORT,
         // fallback to legacy env var
         get_env_with_default(OCKAM_OPENTELEMETRY_EXPORT, true)?,
-    )
+    )?)
 }
 
 /// Return true if traces and log records can be exported via a portal (when a project exists),
-/// as decided by the OCKAM_TELEMETRY_EXPORT_VIA_PORTAL environment variable.
-pub fn is_exporting_via_portal_set() -> ockam_core::Result<bool> {
-    get_env_with_default(OCKAM_TELEMETRY_EXPORT_VIA_PORTAL, false)
+/// as decided by the OCKAM_TELEMETRY_EXPORT_VIA_PROJECT environment variable.
+pub fn is_exporting_via_project_set() -> Result<bool> {
+    Ok(get_env_with_default(
+        OCKAM_TELEMETRY_EXPORT_VIA_PROJECT,
+        true,
+    )?)
 }
 
 /// Return true to display messages during the setup of the export
-pub fn is_export_debug_set() -> ockam_core::Result<bool> {
-    get_env_with_default(OCKAM_OPENTELEMETRY_EXPORT_DEBUG, false)
+pub fn is_export_debug_set() -> Result<bool> {
+    Ok(get_env_with_default(
+        OCKAM_OPENTELEMETRY_EXPORT_DEBUG,
+        false,
+    )?)
 }
 
 /// Print a debug statement if OCKAM_OPENTELEMETRY_EXPORT_DEBUG is true
@@ -253,22 +281,23 @@ fn print_debug(message: impl Into<String>) {
 /// Return ExportingEnabled::On if:
 ///
 /// - Exporting has not been deactivated by the user
-/// - The opentelemetry endpoint is accessible
+/// - The telemetry endpoint is accessible
 ///
 async fn exporting_enabled(
-    endpoint: &OpenTelemetryEndpoint,
+    endpoint: &TelemetryEndpoint,
+    ctx: &Context,
     connection_check_timeout: Duration,
 ) -> ockam_core::Result<ExportingEnabled> {
-    if is_endpoint_accessible(&endpoint.url(), connection_check_timeout).await {
+    if is_endpoint_accessible(endpoint, ctx, connection_check_timeout).await {
         print_debug("Exporting is enabled");
         Ok(ExportingEnabled::On)
     } else {
         let endpoint_kind = match endpoint {
-            OpenTelemetryEndpoint::HttpsEndpoint(_) => "OpenTelemetry collector endpoint",
-            OpenTelemetryEndpoint::PortalEndpoint(_) => "OpenTelemetry inlet",
+            TelemetryEndpoint::HttpsEndpoint(_) => "HTTPs telemetry collector endpoint",
+            TelemetryEndpoint::ProjectEndpoint(_) => "Project telemetry collector inlet",
         };
-        print_debug(format!("Exporting OpenTelemetry events is disabled because the {} at {} cannot be reached after {}ms", endpoint_kind, endpoint.url(), connection_check_timeout.as_millis()));
-        print_debug("You can disable the export of Telemetry events with: `export OCKAM_TELEMETRY_EXPORT=false` to avoid this connection check.");
+        print_debug(format!("Exporting telemetry events is disabled because the {} at {} cannot be reached after {}ms", endpoint_kind, endpoint, connection_check_timeout.as_millis()));
+        print_debug("You can disable the export of telemetry events with: `export OCKAM_TELEMETRY_EXPORT=false` to avoid this connection check.");
 
         print_debug("Exporting is disabled");
         Ok(ExportingEnabled::Off)
@@ -276,7 +305,38 @@ async fn exporting_enabled(
 }
 
 /// Return true if the endpoint can be accessed with a TCP connection
-async fn is_endpoint_accessible(url: &Url, connection_check_timeout: Duration) -> bool {
+async fn is_endpoint_accessible(
+    endpoint: &TelemetryEndpoint,
+    ctx: &Context,
+    connection_check_timeout: Duration,
+) -> bool {
+    match endpoint {
+        TelemetryEndpoint::ProjectEndpoint(client) => {
+            is_project_accessible(client, ctx, &connection_check_timeout).await
+        }
+        TelemetryEndpoint::HttpsEndpoint(url) => {
+            print_debug("check if the endpoint is accessible");
+            is_url_accessible(url, connection_check_timeout).await
+        }
+    }
+}
+
+/// Return true if the project node can be accessed with a secure channel
+async fn is_project_accessible(
+    secure_client: &SecureClient,
+    ctx: &Context,
+    connection_check_timeout: &Duration,
+) -> bool {
+    secure_client
+        .clone()
+        .with_secure_channel_timeout(connection_check_timeout)
+        .check_secure_channel(ctx)
+        .await
+        .is_ok()
+}
+
+/// Return true if the URL can be accessed with a TCP connection
+async fn is_url_accessible(url: &Url, connection_check_timeout: Duration) -> bool {
     match to_socket_addr(url) {
         Some(address) => {
             let retries = FibonacciBackoff::from_millis(100);
@@ -295,19 +355,21 @@ async fn is_endpoint_accessible(url: &Url, connection_check_timeout: Duration) -
                 )
                 .await;
 
-                match res {
-                    Ok(res) => {
-                        if res.is_ok() {
-                            return true;
-                        }
+                if let Ok(res) = res {
+                    if res.is_ok() {
+                        return true;
                     }
-                    Err(_) => {
-                        if now.elapsed() >= connection_check_timeout {
-                            return false;
-                        };
-                        tokio::time::sleep(timeout_duration).await;
-                    }
-                }
+                };
+                print_debug(format!(
+                    "elapsed: {:?}, timeout {:?}",
+                    now.elapsed(),
+                    connection_check_timeout
+                ));
+
+                if now.elapsed() >= connection_check_timeout {
+                    return false;
+                };
+                tokio::time::sleep(timeout_duration).await;
             }
             false
         }
@@ -336,269 +398,201 @@ fn to_socket_addr(url: &Url) -> Option<SocketAddr> {
     }
 }
 
-/// Return the tracing endpoint, defined by an environment variable
-/// If the endpoint can be established with an Ockam portal to the opentelemetry-relay created in the project
-/// use that URL, otherwise use the HTTPS endpoint
+/// Return the telemetry endpoint, defined by an environment variable
+/// If the endpoint can be established with a secure channel to the project node, use that endpoint
+/// otherwise use the HTTPS endpoint.
 async fn opentelemetry_endpoint(
-    state: &CliState,
-) -> ockam_core::Result<Option<OpenTelemetryEndpoint>> {
-    let res = {
-        // if a project is defined try to use the OpenTelemetry portal
-        // and if we allow traces to be exported via a portal
-        if state.projects().get_default_project().await.is_ok() && is_exporting_via_portal_set()? {
-            print_debug("A default project exists. Getting the project export endpoint");
-            get_project_endpoint_url(state).await
-        } else {
-            print_debug("A default project does not exist. Getting the default HTTPs endpoint");
-            get_https_endpoint()
-        }
-    };
-    match res {
-        Ok(url) => Ok(Some(url)),
-        Err(e) => {
-            print_debug(format!(
-                "There was an issue when setting up the exporting of traces: {e:?}"
-            ));
-            Ok(None)
-        }
-    }
-}
-
-/// When a project exists, return the OpenTelemetry node inlet address
-/// If the node does not exist, create it.
-/// If the node is not running, restart it.
-async fn get_project_endpoint_url(
     cli_state: &CliState,
-) -> ockam_core::Result<OpenTelemetryEndpoint> {
-    let node = cli_state.get_node(OCKAM_TELEMETRY_NODE_NAME).await.ok();
-    match node {
-        // If no opentelemetry node is running locally, start one
-        None => {
-            print_debug("There is no existing opentelemetry node. Starting one.");
-            let url = start_opentelemetry_node().await?;
-            print_debug(format!("The OpenTelemetry URL is {url}"));
-
-            Ok::<OpenTelemetryEndpoint, ockam_core::Error>(OpenTelemetryEndpoint::PortalEndpoint(
-                url,
-            ))
-        }
-        Some(node) => {
-            // If a node exists and is running, use it
-            if node.is_running() {
-                print_debug("An export node is running");
-                let tcp_inlet = get_opentelemetry_inlet(cli_state).await?;
-
-                print_debug("There is a TCP inlet configured for that node");
-                let url = socket_addr_to_url(&tcp_inlet.bind_addr().to_string())?;
-
-                print_debug(format!("The TCP inlet URL is {url}"));
-                Ok(OpenTelemetryEndpoint::PortalEndpoint(url))
+    ctx: &Context,
+) -> Result<Option<TelemetryEndpoint>> {
+    if is_exporting_via_project_set()? {
+        if let Ok(project) = cli_state.projects().get_default_project().await {
+            if project.is_ready() {
+                let project_route = project.authority_multiaddr()?;
+                print_debug(format!(
+                    "A default project exists. Telemetry data will be sent to {}",
+                    project_route
+                ));
+                Ok(Some(TelemetryEndpoint::ProjectEndpoint(
+                    make_authority_node_client(cli_state, ctx, project).await?,
+                )))
             } else {
-                print_debug("The export node is running, it is going to be recreated");
-                // if the node is not running, restart it and recreate the inlet
-                let url = restart_opentelemetry_node().await?;
-
-                print_debug(format!("The OpenTelemetry URL is {url})"));
-                Ok(OpenTelemetryEndpoint::PortalEndpoint(url))
+                print_debug(
+                    "The default project is not yet ready. Getting the default HTTPs endpoint instead",
+                );
+                Ok(Some(get_https_endpoint()?))
             }
+        } else {
+            print_debug(
+                "A default project does not exist. Getting the default HTTPs endpoint instead",
+            );
+            Ok(Some(get_https_endpoint()?))
         }
+    } else {
+        print_debug("A default project does not exist. Getting the default HTTPs endpoint");
+        Ok(Some(get_https_endpoint()?))
     }
 }
 
-/// Return the inlet used to export OpenTelemetry traces
-async fn get_opentelemetry_inlet(cli_state: &CliState) -> ockam_core::Result<TcpInlet> {
-    Ok(cli_state
-        .get_tcp_inlet(OCKAM_TELEMETRY_NODE_NAME, OCKAM_TELEMETRY_INLET_ALIAS)
-        .await?)
-}
+async fn make_authority_node_client(
+    cli_state: &CliState,
+    ctx: &Context,
+    project: Project,
+) -> Result<SecureClient> {
+    let authority_route = TransportRouteResolver::default()
+        .allow_tcp()
+        .resolve(project.authority_multiaddr()?)?;
+    let authority_identifier = project.authority_identifier().ok_or(ApiError::message(
+        "The default project must have an authority identifier",
+    ))?;
+    let default_node = if let Ok(node) = cli_state.get_default_node().await {
+        node
+    } else {
+        cli_state
+            .create_node_with_optional_identity(DEFAULT_NODE_NAME, &None)
+            .await?
+    };
+    let secure_channels = cli_state.secure_channels(&default_node.name()).await?;
 
-/// Return the default HTTPs endpoint
-fn get_https_endpoint() -> ockam_core::Result<OpenTelemetryEndpoint> {
-    Ok(OpenTelemetryEndpoint::HttpsEndpoint(
-        get_env_with_default(
-            OCKAM_OPENTELEMETRY_ENDPOINT,
-            UrlVar::new(ExportingConfiguration::default_opentelemetry_endpoint()?),
-        )?
-        .url,
+    Ok(SecureClient::new(
+        secure_channels,
+        None,
+        TcpTransport::create(ctx)?,
+        authority_route,
+        Arc::new(TrustIdentifierPolicy::new(authority_identifier)),
+        &default_node.identifier(),
+        get_default_timeout(),
+        get_default_timeout(),
     ))
 }
 
+/// Return the default HTTPs endpoint
+pub fn get_https_endpoint() -> Result<TelemetryEndpoint> {
+    Ok(TelemetryEndpoint::HttpsEndpoint(get_https_endpoint_url()?))
+}
+
+/// Return the default HTTPs endpoint URL
+pub fn get_https_endpoint_url() -> Result<Url> {
+    Ok(get_env_with_default::<UrlVar>(
+        OCKAM_OPENTELEMETRY_ENDPOINT,
+        UrlVar::from_string(DEFAULT_OPENTELEMETRY_ENDPOINT)?,
+    )?
+    .url)
+}
+
 /// Return true if the current user is an internal user
-fn is_ockam_developer() -> ockam_core::Result<bool> {
-    get_env_with_default(OCKAM_DEVELOPER, false)
+fn is_ockam_developer() -> Result<bool> {
+    Ok(get_env_with_default(OCKAM_DEVELOPER, false)?)
 }
 
 /// Return the export timeout for spans, defined by an environment variable
-pub fn span_export_timeout() -> ockam_core::Result<Duration> {
-    get_env_with_default(OCKAM_SPAN_EXPORT_TIMEOUT, DEFAULT_EXPORT_TIMEOUT)
+pub fn span_export_timeout() -> Result<Duration> {
+    Ok(get_env_with_default(
+        OCKAM_SPAN_EXPORT_TIMEOUT,
+        DEFAULT_EXPORT_TIMEOUT,
+    )?)
 }
 
 /// Return the endpoint connection timeout, for a background node, defined by an environment variable
-fn opentelemetry_endpoint_background_connection_timeout() -> ockam_core::Result<Duration> {
-    get_env_with_default(
+fn opentelemetry_endpoint_background_connection_timeout() -> Result<Duration> {
+    Ok(get_env_with_default(
         OCKAM_BACKGROUND_TELEMETRY_ENDPOINT_CONNECTION_TIMEOUT,
         DEFAULT_TELEMETRY_ENDPOINT_BACKGROUND_CONNECTION_TIMEOUT,
-    )
+    )?)
 }
 
 /// Return the endpoint connection timeout, for a foreground command, defined by an environment variable
-fn opentelemetry_endpoint_foreground_connection_timeout() -> ockam_core::Result<Duration> {
-    get_env_with_default(
+fn opentelemetry_endpoint_foreground_connection_timeout() -> Result<Duration> {
+    Ok(get_env_with_default(
         OCKAM_FOREGROUND_TELEMETRY_ENDPOINT_CONNECTION_TIMEOUT,
         DEFAULT_TELEMETRY_ENDPOINT_FOREGROUND_CONNECTION_TIMEOUT,
-    )
+    )?)
 }
 
 /// Return the delay between the export of 2 spans batches, for a foreground command, defined by an environment variable
-fn foreground_span_export_scheduled_delay() -> ockam_core::Result<Duration> {
-    get_env_with_default(
+fn foreground_span_export_scheduled_delay() -> Result<Duration> {
+    Ok(get_env_with_default(
         OCKAM_FOREGROUND_SPAN_EXPORT_SCHEDULED_DELAY,
         DEFAULT_FOREGROUND_EXPORT_SCHEDULED_DELAY,
-    )
+    )?)
 }
 
 /// Return the delay between the export of 2 spans batches, for a background node, defined by an environment variable
-fn background_span_export_scheduled_delay() -> ockam_core::Result<Duration> {
-    get_env_with_default(
+fn background_span_export_scheduled_delay() -> Result<Duration> {
+    Ok(get_env_with_default(
         OCKAM_BACKGROUND_SPAN_EXPORT_SCHEDULED_DELAY,
         DEFAULT_BACKGROUND_EXPORT_SCHEDULED_DELAY,
-    )
+    )?)
 }
 
 /// Return the size of the queue used to batch spans, defined by an environment variable
-fn span_export_queue_size() -> ockam_core::Result<u16> {
-    get_env_with_default(OCKAM_SPAN_EXPORT_QUEUE_SIZE, DEFAULT_SPAN_EXPORT_QUEUE_SIZE)
+fn span_export_queue_size() -> Result<u16> {
+    Ok(get_env_with_default(
+        OCKAM_SPAN_EXPORT_QUEUE_SIZE,
+        DEFAULT_SPAN_EXPORT_QUEUE_SIZE,
+    )?)
 }
 
 /// Return the size of the queue used to batch log records, defined by an environment variable
-fn log_export_queue_size() -> ockam_core::Result<u16> {
-    get_env_with_default(OCKAM_LOG_EXPORT_QUEUE_SIZE, DEFAULT_LOG_EXPORT_QUEUE_SIZE)
+fn log_export_queue_size() -> Result<u16> {
+    Ok(get_env_with_default(
+        OCKAM_LOG_EXPORT_QUEUE_SIZE,
+        DEFAULT_LOG_EXPORT_QUEUE_SIZE,
+    )?)
 }
 
 /// Return the export timeout for log records, defined by an environment variable
-pub fn log_export_timeout() -> ockam_core::Result<Duration> {
-    get_env_with_default(OCKAM_LOG_EXPORT_TIMEOUT, DEFAULT_EXPORT_TIMEOUT)
+pub fn log_export_timeout() -> Result<Duration> {
+    Ok(get_env_with_default(
+        OCKAM_LOG_EXPORT_TIMEOUT,
+        DEFAULT_EXPORT_TIMEOUT,
+    )?)
 }
 
 /// Return the delay between the export of 2 logs batches, for a foreground command, defined by an environment variable
-pub fn foreground_log_export_scheduled_delay() -> ockam_core::Result<Duration> {
-    get_env_with_default(
+pub fn foreground_log_export_scheduled_delay() -> Result<Duration> {
+    Ok(get_env_with_default(
         OCKAM_FOREGROUND_LOG_EXPORT_SCHEDULED_DELAY,
         DEFAULT_FOREGROUND_EXPORT_SCHEDULED_DELAY,
-    )
+    )?)
 }
 
 /// Return the delay between the export of 2 logs batches, for a background node, defined by an environment variable
-pub fn background_log_export_scheduled_delay() -> ockam_core::Result<Duration> {
-    get_env_with_default(
+pub fn background_log_export_scheduled_delay() -> Result<Duration> {
+    Ok(get_env_with_default(
         OCKAM_BACKGROUND_LOG_EXPORT_SCHEDULED_DELAY,
         DEFAULT_BACKGROUND_EXPORT_SCHEDULED_DELAY,
-    )
+    )?)
 }
 
 /// Return the maximum time for sending log record batches when using a foreground node
-pub fn foreground_log_export_cutoff() -> ockam_core::Result<Duration> {
-    get_env_with_default(
+pub fn foreground_log_export_cutoff() -> Result<Duration> {
+    Ok(get_env_with_default(
         OCKAM_FOREGROUND_LOG_EXPORT_CUTOFF,
         DEFAULT_FOREGROUND_LOG_EXPORT_CUTOFF,
-    )
+    )?)
 }
 
 /// Return the maximum time for sending span batches when using a foreground node
-pub fn foreground_span_export_portal_cutoff() -> ockam_core::Result<Duration> {
-    get_env_with_default(
+pub fn foreground_span_export_portal_cutoff() -> Result<Duration> {
+    Ok(get_env_with_default(
         OCKAM_FOREGROUND_SPAN_EXPORT_CUTOFF,
         DEFAULT_FOREGROUND_SPAN_EXPORT_CUTOFF,
-    )
+    )?)
 }
 
 /// Return the maximum time for sending log record batches when using a background node
-pub fn background_log_export_cutoff() -> ockam_core::Result<Duration> {
-    get_env_with_default(
+pub fn background_log_export_cutoff() -> Result<Duration> {
+    Ok(get_env_with_default(
         OCKAM_BACKGROUND_LOG_EXPORT_CUTOFF,
         DEFAULT_BACKGROUND_LOG_EXPORT_CUTOFF,
-    )
+    )?)
 }
 
 /// Return the maximum time for sending span batches when using a background node
-pub fn background_span_export_portal_cutoff() -> ockam_core::Result<Duration> {
-    get_env_with_default(
+pub fn background_span_export_portal_cutoff() -> Result<Duration> {
+    Ok(get_env_with_default(
         OCKAM_BACKGROUND_SPAN_EXPORT_CUTOFF,
         DEFAULT_BACKGROUND_SPAN_EXPORT_CUTOFF,
-    )
-}
-
-/// Delete the opentelemetry node and recreate it to restart the inlet
-async fn restart_opentelemetry_node() -> ockam_core::Result<Url> {
-    let args = vec![
-        "node".to_string(),
-        "delete".to_string(),
-        "-y".to_string(),
-        OCKAM_TELEMETRY_NODE_NAME.to_string(),
-    ];
-    run_ockam(args).await?;
-    start_opentelemetry_node().await
-}
-
-/// Start a node with an that will forward traces via a relay deployed by the authority node.
-/// The relay is connected to an outlet which sends traces to the OpenTelemetry collector
-async fn start_opentelemetry_node() -> ockam_core::Result<Url> {
-    // get a free address for the inlet
-    let local_address = get_free_address().map_err(|e| {
-        ockam_core::Error::new(
-            Origin::Api,
-            Kind::Io,
-            format!("cannot get a free address on this machine: {e:?}"),
-        )
-    })?;
-    // configure a node with an
-    let config = format!(
-        "{{nodes: {OCKAM_TELEMETRY_NODE_NAME}, tcp-inlets: {{telemetry-inlet: {{at: {OCKAM_TELEMETRY_NODE_NAME}, from: '{local_address}', via: {OCKAM_TELEMETRY_RELAY_NAME}, alias: {OCKAM_TELEMETRY_INLET_ALIAS}}}}}}}"
-    );
-    let args = vec![
-        "run".to_string(),
-        "--inline".to_string(),
-        config.to_string(),
-    ];
-    run_ockam(args).await?;
-    socket_addr_to_url(&local_address.to_string())
-}
-
-/// Create a URL from a socket address
-fn socket_addr_to_url(socket_addr: &str) -> ockam_core::Result<Url> {
-    Url::from_str(&format!("http://{socket_addr}")).map_err(|e| {
-        ockam_core::Error::new(
-            Origin::Api,
-            Kind::Serialization,
-            format!("{} is not a valid URL: {e:?}", socket_addr),
-        )
-    })
-}
-
-/// Run the ockam command line with specific arguments
-async fn run_ockam(args: Vec<String>) -> ockam_core::Result<()> {
-    let ockam_exe = current_exe().map_err(|e| {
-        ockam_core::Error::new(
-            Origin::Api,
-            Kind::Io,
-            format!("cannot get the current ockam exe: {e:?}"),
-        )
-    })?;
-
-    Command::new(ockam_exe)
-        .args(args.clone())
-        .env(OCKAM_TELEMETRY_EXPORT, "false")
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .stdin(Stdio::null())
-        .spawn()
-        .map_err(|e| {
-            let message = format!(
-                "cannot run the ockam command with arguments: {:?}. Got: {e:?}",
-                args.join(",")
-            );
-            print_debug(&message);
-            ockam_core::Error::new(Origin::Api, Kind::Io, message)
-        })?;
-    Ok(())
+    )?)
 }

@@ -1,6 +1,10 @@
 use crate::TransportError;
 use ockam_core::compat::{boxed::Box, vec::Vec};
 use ockam_core::{async_trait, Address, Encodable, Result, TransportMessage, TransportType};
+#[cfg(feature = "std")]
+use std::any::Any;
+#[cfg(feature = "std")]
+use std::sync::Arc;
 
 /// Generic representation of a Transport
 /// At minimum, a Transport must be able
@@ -20,6 +24,9 @@ pub trait Transport: Send + Sync + 'static {
 
     /// Stop all workers and free all resources associated with the connection
     fn disconnect(&self, address: &Address) -> Result<()>;
+
+    #[cfg(feature = "std")]
+    fn as_arc_any(self: Arc<Self>) -> Arc<dyn Any + Send + Sync>;
 }
 
 /// Helper that creates a length-prefixed buffer containing the given
