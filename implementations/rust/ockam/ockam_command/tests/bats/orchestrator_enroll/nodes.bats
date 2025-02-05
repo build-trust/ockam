@@ -72,6 +72,7 @@ EOF
     --variable SERVICE_PORT="$PYTHON_SERVER_PORT" &
   sleep 10
   run_success "$OCKAM" message send hello --timeout 2 --to "/node/n1/secure/api/service/echo"
+  run_success "$OCKAM" message send hello --timeout 5 --to "/project/default/service/forward_to_$RELAY_NAME/secure/api/service/echo"
   run_success curl -sfI --retry-all-errors --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$CLIENT_PORT"
 }
 
@@ -85,6 +86,7 @@ EOF
 
   # node created with expected name
   run_success "$OCKAM" message send --timeout 5 hello --to "/node/n1/secure/api/service/echo"
+  run_success "$OCKAM" message send --timeout 5 hello --to "/project/default/service/forward_to_$RELAY_NAME/secure/api/service/echo"
   # tcp-listener-address set to expected port
   run_success "$OCKAM" message send --timeout 5 hello --to "/dnsaddr/127.0.0.1/tcp/$NODE_PORT/secure/api/service/echo"
   # portal is working: inlet -> relay -> outlet -> python server
@@ -121,6 +123,7 @@ EOF
 
   # node created with expected name
   run_success "$OCKAM" message send --timeout 5 hello --to "/node/n1/secure/api/service/echo"
+  run_success "$OCKAM" message send --timeout 5 hello --to "/project/default/service/forward_to_$RELAY_NAME/secure/api/service/echo"
   # tcp-listener-address set to expected port
   run_success "$OCKAM" message send --timeout 5 hello --to "/dnsaddr/127.0.0.1/tcp/$NODE_PORT/secure/api/service/echo"
   # portal is working: inlet -> relay -> outlet -> python server

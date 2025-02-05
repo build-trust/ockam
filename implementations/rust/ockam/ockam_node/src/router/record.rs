@@ -119,7 +119,7 @@ impl InternalMap {
             })?
             .clone();
 
-        debug!(%address, %primary_address, "Stopping address");
+        debug!(%address, %primary_address, "stopping address");
 
         self.flow_controls.cleanup_address(&primary_address);
 
