@@ -581,6 +581,8 @@ This file contains attributions for any 3rd-party open source code used in this 
 | utf16_iter | Apache-2.0, MIT | https://crates.io/crates/utf16_iter |
 | utf8_iter | Apache-2.0, MIT | https://crates.io/crates/utf8_iter |
 | utf8parse | Apache-2.0, MIT | https://crates.io/crates/utf8parse |
+| utoipa | MIT, Apache-2.0 | https://crates.io/crates/utoipa |
+| utoipa-gen | MIT, Apache-2.0 | https://crates.io/crates/utoipa-gen |
 | uuid | Apache-2.0, MIT | https://crates.io/crates/uuid |
 | value-bag | Apache-2.0, MIT | https://crates.io/crates/value-bag |
 | vcell | MIT, Apache-2.0 | https://crates.io/crates/vcell |

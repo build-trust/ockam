@@ -1,3 +1,3 @@
 mod entrypoint;
-mod inlet;
-mod outlet;
+pub(super) mod inlet;
+pub(super) mod outlet;

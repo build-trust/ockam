@@ -1,7 +1,8 @@
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
+use utoipa::ToSchema;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct HostnamePort {
     pub hostname: String,
     pub port: u16,
@@ -24,4 +25,9 @@ impl TryFrom<&str> for HostnamePort {
             port: hostname.port,
         })
     }
+}
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct ErrorResponse {
+    pub message: String,
 }
