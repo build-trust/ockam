@@ -37,7 +37,7 @@ use crate::nodes::{NodeManagerWorker, NODEMANAGER_ADDR};
 pub struct NodeManagerHandle {
     pub cli_state: CliState,
     pub node_manager: Arc<InMemoryNode>,
-    pub tcp: TcpTransport,
+    pub tcp: Arc<TcpTransport>,
     pub secure_channels: Arc<SecureChannels>,
 }
 

@@ -245,6 +245,7 @@ impl Context {
 #[cfg(test)]
 mod tests {
     use ockam_core::{async_trait, Mailbox};
+    use std::any::Any;
 
     use super::*;
 
@@ -278,6 +279,10 @@ mod tests {
 
         fn disconnect(&self, _address: &Address) -> Result<()> {
             Ok(())
+        }
+
+        fn as_arc_any(self: Arc<Self>) -> Arc<dyn Any + Send + Sync> {
+            self
         }
     }
 }

@@ -1,12 +1,12 @@
+use crate::{TcpConnectionOptions, TcpListenerInfo, TcpRegistry, TcpSenderInfo, TcpTransport, TCP};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{async_trait, Address, Error, Result, TransportType, TryClone};
 use ockam_node::Context;
 use ockam_transport_core::Transport;
+use std::any::Any;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tracing::instrument;
-
-use crate::{TcpConnectionOptions, TcpListenerInfo, TcpRegistry, TcpSenderInfo, TcpTransport, TCP};
 
 impl TcpTransport {
     /// Create a TCP transport
@@ -20,13 +20,32 @@ impl TcpTransport {
     /// # Ok(()) }
     /// ```
     #[instrument(name = "create tcp transport", skip_all)]
-    pub fn create(ctx: &Context) -> Result<Self> {
+    pub fn create(ctx: &Context) -> Result<Arc<TcpTransport>> {
+        // don't register the TCP transport twice
+        match ctx.get_transport(TCP) {
+            Some(t) => {
+                let any_transport: Arc<dyn Any + Send + Sync> = t.as_arc_any();
+                Ok(any_transport.downcast::<TcpTransport>().map_err(|_| {
+                    Error::new(
+                        Origin::Transport,
+                        Kind::Internal,
+                        "the context should return a TCP transport for the TCP type",
+                    )
+                })?)
+            }
+            None => Self::create_new(ctx),
+        }
+    }
+
+    /// Create a brand new TCP transport
+    /// It replaces the previous TCP transport in the Context transport registry if it exists
+    pub fn create_new(ctx: &Context) -> Result<Arc<TcpTransport>> {
         let tcp = Self::new(ctx.try_clone()?);
         // make the TCP transport available in the list of supported transports for
         // later address resolution when socket addresses will need to be instantiated as TCP
         // worker addresses
         ctx.register_transport(Arc::new(tcp.clone()));
-        Ok(tcp)
+        Ok(Arc::new(tcp))
     }
 }
 
@@ -131,6 +150,10 @@ impl Transport for TcpTransport {
 
     fn disconnect(&self, address: &Address) -> Result<()> {
         self.disconnect(address)
+    }
+
+    fn as_arc_any(self: Arc<Self>) -> Arc<dyn Any + Send + Sync> {
+        self
     }
 }
 

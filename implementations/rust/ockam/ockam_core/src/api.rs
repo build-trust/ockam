@@ -18,7 +18,7 @@ use crate::errcode::{Kind, Origin};
 use crate::Result;
 
 /// A request header.
-#[derive(Debug, Clone, Encode, Decode, CborLen)]
+#[derive(Debug, PartialEq, Eq, Clone, Encode, Decode, CborLen)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct RequestHeader {
@@ -208,7 +208,7 @@ impl<T> Reply<T> {
 pub struct Id(#[n(0)] u32);
 
 /// Request methods.
-#[derive(Debug, Copy, Clone, Encode, Decode, CborLen)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Encode, Decode, CborLen)]
 #[rustfmt::skip]
 #[cbor(index_only)]
 pub enum Method {
@@ -516,7 +516,7 @@ impl<'a, const N: usize> Segments<'a, N> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Request<T = ()> {
     header: RequestHeader,
     body: Option<T>,

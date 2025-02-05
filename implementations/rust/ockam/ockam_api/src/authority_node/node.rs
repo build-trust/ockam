@@ -34,8 +34,13 @@ pub async fn start_node(
 
     // start an echo service so that the node can be queried as healthy
     authority.start_echo_service(ctx, &secure_channel_flow_control_id)?;
-
     debug!("echo service started");
+
+    // start the http forwarder for telemetry traces
+    authority
+        .start_http_forwarder(ctx, &secure_channel_flow_control_id, configuration)
+        .await?;
+    debug!("http forwarder started");
 
     info!("authority node started");
 

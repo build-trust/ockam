@@ -1,21 +1,9 @@
 use crate::cli_state::journeys::{APPLICATION_EVENT_NODE_NAME, APPLICATION_EVENT_OCKAM_DEVELOPER};
-use crate::cli_state::CliStateError::InvalidData;
-use crate::logs::http_forwarder::HTTP_FORWARDER;
-use crate::logs::ockam_tonic_traces_client::OckamTonicTracesClient;
-use crate::logs::secure_client_service::SecureClientService;
-use crate::CliState;
-use crate::Result;
-use crate::{ApiError, TransportRouteResolver};
 use futures::future::BoxFuture;
-use ockam::identity::{get_default_timeout, SecureClient, TrustIdentifierPolicy};
-use ockam_core::{async_trait, TryClone};
-use ockam_node::Context;
-use ockam_transport_tcp::TcpTransport;
-use opentelemetry::{ExportError, KeyValue};
+use ockam_core::async_trait;
+use opentelemetry::KeyValue;
 use opentelemetry_sdk::export::trace::{ExportResult, SpanData, SpanExporter};
-use std::sync::Arc;
 use std::time::Duration;
-use tonic::codec::CompressionEncoding;
 
 /// This exporter can be used to intercept the spans sent to an OpenTelemetry collector
 #[derive(Debug)]
@@ -132,96 +120,5 @@ impl<S: SpanExporter> OckamSpanExporter<S> {
             is_ockam_developer,
         ));
         span
-    }
-}
-
-#[derive(Debug)]
-struct SecureChannelExporter {
-    cli_state: CliState,
-    ctx: Option<Context>,
-    tcp_transport: Arc<TcpTransport>,
-}
-
-impl SecureChannelExporter {
-    pub fn new(
-        cli_state: CliState,
-        ctx: &Context,
-        tcp_transport: Arc<TcpTransport>,
-    ) -> SecureChannelExporter {
-        SecureChannelExporter {
-            cli_state: cli_state.clone(),
-            ctx: ctx.try_clone().ok(),
-            tcp_transport: tcp_transport.clone(),
-        }
-    }
-
-    async fn make_ockam_trace_client(
-        &self,
-        compression: Option<CompressionEncoding>,
-    ) -> Result<OckamTonicTracesClient> {
-        if let Some(ctx) = &self.ctx {
-            let secure_client_service = SecureClientService::new(
-                self.make_project_node_client().await?,
-                &ctx,
-                HTTP_FORWARDER,
-            );
-            Ok(OckamTonicTracesClient::new(
-                secure_client_service,
-                compression,
-            ))
-        } else {
-            Err(ApiError::message(
-                "cannot create a trace client without a context",
-            ))
-        }
-    }
-
-    async fn make_project_node_client(&self) -> Result<SecureClient> {
-        let project = self.cli_state.projects().get_default_project().await?;
-        let project_route = TransportRouteResolver::default()
-            .allow_tcp()
-            .resolve(project.project_multiaddr()?)?;
-        let project_identifier =
-            project
-                .project_identifier()
-                .ok_or(ApiError::CliState(InvalidData(
-                    "The default project must have a name".into(),
-                )))?;
-        let default_node = self.cli_state.get_default_node().await?;
-        let node_identifier = default_node.identifier();
-        let secure_channels = self.cli_state.secure_channels(&default_node.name()).await?;
-
-        Ok(SecureClient::new(
-            secure_channels,
-            None,
-            self.tcp_transport.clone(),
-            project_route,
-            Arc::new(TrustIdentifierPolicy::new(project_identifier)),
-            &node_identifier,
-            get_default_timeout(),
-            get_default_timeout(),
-        ))
-    }
-}
-
-impl Clone for SecureChannelExporter {
-    fn clone(&self) -> Self {
-        let ctx_clone = if let Some(ctx) = &self.ctx {
-            ctx.try_clone().ok()
-        } else {
-            None
-        };
-
-        SecureChannelExporter {
-            cli_state: self.cli_state.clone(),
-            ctx: ctx_clone,
-            tcp_transport: self.tcp_transport.clone(),
-        }
-    }
-}
-
-impl ExportError for ApiError {
-    fn exporter_name(&self) -> &'static str {
-        "ockam"
     }
 }

@@ -1,7 +1,8 @@
 use crate::logs::secure_client_service::OckamRequest;
 use crate::{ApiError, Result};
 use hyper::{http, Uri};
-use ockam_core::api::{Method, Request};
+use minicbor::Decoder;
+use ockam_core::api::{Method, RequestHeader};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{async_trait, Routed, Worker};
 use ockam_node::Context;
@@ -9,8 +10,6 @@ use std::future;
 use tonic::body::BoxBody;
 use tonic::client::GrpcService;
 use tonic::transport::Channel;
-
-pub const HTTP_FORWARDER: &str = "http_forwarder";
 
 /// The HttpForwarder worker accepts http requests serialized as Ockam messages
 /// and forwards them to an HTTP endpoint.
@@ -23,10 +22,16 @@ pub struct HttpForwarder {
 impl HttpForwarder {
     /// Create a Channel for the given URI
     pub async fn new(uri: Uri) -> Result<Self> {
-        let channel = Channel::builder(uri)
+        let channel = Channel::builder(uri.clone())
+            .tls_config(tonic::transport::ClientTlsConfig::new().with_native_roots())
+            .map_err(|e| {
+                ApiError::message(format!(
+                    "cannot create a TLS config for the HttpForwarder channel at {uri:?}: {e:?}"
+                ))
+            })?
             .connect()
             .await
-            .map_err(ApiError::message)?;
+            .map_err(|e| ApiError::message(format!("cannot connect to {uri:?}: {e:?}")))?;
 
         Ok(Self { channel })
     }
@@ -54,26 +59,26 @@ impl HttpForwarder {
 
 #[async_trait]
 impl Worker for HttpForwarder {
-    type Message = Request<OckamRequest>;
+    type Message = Vec<u8>;
     type Context = Context;
 
     async fn handle_message(
         &mut self,
         _ctx: &mut Context,
-        message: Routed<Request<OckamRequest>>,
+        message: Routed<Vec<u8>>,
     ) -> ockam_core::Result<()> {
-        let (header, body) = message.into_body()?.into_parts();
-        match (header.method(), header.path(), body) {
+        let body = message.into_body()?;
+        let mut dec = Decoder::new(&body);
+        let header: RequestHeader = dec.decode()?;
+        if let (Some(Method::Post), "/") = (header.method(), header.path()) {
+            let ockam_request: OckamRequest = dec.decode()?;
             // Every posted message must be forwarded
-            (Some(Method::Post), "/", Some(ockam_request)) => {
-                let http_request = ockam_request.to_http_request().map_err(|e| {
-                    ockam_core::Error::new(Origin::Api, Kind::Serialization, format!("{e:?}"))
-                })?;
-                self.forward_http_request(http_request)
-                    .await
-                    .map_err(|e| ockam_core::Error::new(Origin::Api, Kind::Io, format!("{e:?}")))?;
-            }
-            _ => (),
+            let http_request = ockam_request.make_http_request().map_err(|e| {
+                ockam_core::Error::new(Origin::Api, Kind::Serialization, format!("{e:?}"))
+            })?;
+            self.forward_http_request(http_request)
+                .await
+                .map_err(|e| ockam_core::Error::new(Origin::Api, Kind::Io, format!("{e:?}")))?;
         };
         Ok(())
     }

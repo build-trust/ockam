@@ -1,6 +1,6 @@
 use ockam_core::async_trait;
-use opentelemetry::logs::{LogResult, Severity};
 use opentelemetry_sdk::export::logs::{LogBatch, LogExporter};
+use opentelemetry_sdk::logs::LogResult;
 use std::time::Duration;
 
 /// This exporter can be used to intercept the log records sent to an OpenTelemetry collector
@@ -17,10 +17,6 @@ impl<L: LogExporter> LogExporter for DecoratedLogExporter<L> {
 
     fn shutdown(&mut self) {
         self.exporter.shutdown()
-    }
-
-    fn event_enabled(&self, level: Severity, target: &str, name: &str) -> bool {
-        self.exporter.event_enabled(level, target, name)
     }
 }
 
@@ -53,10 +49,6 @@ impl<L: LogExporter> LogExporter for OckamLogExporter<L> {
 
     fn shutdown(&mut self) {
         self.exporter.shutdown()
-    }
-
-    fn event_enabled(&self, level: Severity, target: &str, name: &str) -> bool {
-        self.exporter.event_enabled(level, target, name)
     }
 }
 

@@ -13,7 +13,7 @@ use ockam_api::logs::{
     LoggingTracing,
 };
 use ockam_api::output::Output;
-use ockam_node::NodeBuilder;
+use ockam_node::{Context, NodeBuilder};
 
 /// Main method for running the command executable:
 ///
@@ -50,7 +50,7 @@ pub fn run() -> miette::Result<()> {
     executor.execute(async move {
         let res = match command_res {
             Ok(command) => command.run(&ctx, &input).await,
-            Err(err) => handle_invalid_command(&input, err).await,
+            Err(err) => handle_invalid_command(&input, err, &ctx).await,
         };
 
         ctx.shutdown_node().await?;
@@ -61,7 +61,11 @@ pub fn run() -> miette::Result<()> {
     Ok(())
 }
 
-async fn handle_invalid_command(input: &[String], help: clap::Error) -> miette::Result<()> {
+async fn handle_invalid_command(
+    input: &[String],
+    help: clap::Error,
+    ctx: &Context,
+) -> miette::Result<()> {
     // the -h or --help flag must not be interpreted as an error
     if !has_help_flag(input) {
         let command = input
@@ -77,11 +81,12 @@ async fn handle_invalid_command(input: &[String], help: clap::Error) -> miette::
         let logging_configuration = logging_configuration(level_and_crates, None, Colored::On);
         let _guard = LoggingTracing::setup(
             &logging_configuration.into_diagnostic()?,
-            &ExportingConfiguration::foreground(&cli_state)
+            &ExportingConfiguration::foreground(&cli_state, ctx)
                 .await
                 .into_diagnostic()?,
             "local node",
             None,
+            ctx,
         );
 
         let message = format!("could not parse the command: {}", command);

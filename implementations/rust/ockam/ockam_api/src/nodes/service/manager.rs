@@ -54,8 +54,8 @@ pub struct NodeManager {
     pub(super) node_name: String,
     pub(super) node_identifier: Identifier,
     pub(crate) api_transport_flow_control_ids: Vec<FlowControlId>,
-    pub(crate) tcp_transport: TcpTransport,
-    pub(crate) udp_transport: Option<UdpTransport>,
+    pub(crate) tcp_transport: Arc<TcpTransport>,
+    pub(crate) udp_transport: Option<Arc<UdpTransport>>,
     pub(crate) secure_channels: Arc<SecureChannels>,
     pub(crate) api_sc_listener: Option<SecureChannelListener>,
     pub(crate) credential_retriever_creators: CredentialRetrieverCreators,
@@ -102,7 +102,7 @@ impl NodeManager {
             NodeManagerCredentialRetrieverOptions::Remote { info, scope } => {
                 Some(Arc::new(RemoteCredentialRetrieverCreator::new(
                     ctx.try_clone()?,
-                    Arc::new(transport_options.tcp.transport.clone()),
+                    transport_options.tcp.transport.clone(),
                     secure_channels.clone(),
                     info.clone(),
                     scope,
@@ -127,7 +127,7 @@ impl NodeManager {
             NodeManagerCredentialRetrieverOptions::Remote { info, scope } => {
                 Some(Arc::new(RemoteCredentialRetrieverCreator::new(
                     ctx.try_clone()?,
-                    Arc::new(transport_options.tcp.transport.clone()),
+                    transport_options.tcp.transport.clone(),
                     secure_channels.clone(),
                     info.clone(),
                     scope,
@@ -674,11 +674,11 @@ pub struct ApiTransport {
 #[derive(Debug)]
 pub struct NodeManagerTransport<T> {
     flow_control_id: FlowControlId,
-    transport: T,
+    transport: Arc<T>,
 }
 
 impl<T> NodeManagerTransport<T> {
-    pub fn new(flow_control_id: FlowControlId, transport: T) -> Self {
+    pub fn new(flow_control_id: FlowControlId, transport: Arc<T>) -> Self {
         Self {
             flow_control_id,
             transport,
@@ -700,7 +700,7 @@ impl NodeManagerTransportOptions {
         Self { tcp, udp }
     }
 
-    pub fn new_tcp(flow_control_id: FlowControlId, transport: TcpTransport) -> Self {
+    pub fn new_tcp(flow_control_id: FlowControlId, transport: Arc<TcpTransport>) -> Self {
         Self {
             tcp: NodeManagerTransport::new(flow_control_id, transport),
             udp: None,

@@ -17,6 +17,7 @@ mod http_forwarder;
 mod log_exporters;
 pub mod logging_configuration;
 mod logging_options;
+mod ockam_tonic_logs_client;
 mod ockam_tonic_traces_client;
 mod secure_client_service;
 pub mod setup;
@@ -26,6 +27,7 @@ mod tracing_options;
 
 pub use current_span::*;
 pub use exporting_configuration::*;
+pub use http_forwarder::*;
 pub use log_exporters::*;
 pub use logging_configuration::*;
 pub use logging_options::*;

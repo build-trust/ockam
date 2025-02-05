@@ -11,7 +11,7 @@ use async_trait::async_trait;
 use clap::Args;
 use colorful::Colorful;
 use miette::{miette, IntoDiagnostic, WrapErr};
-use ockam_api::cli_state::random_name;
+use ockam_api::cli_state::{random_name, DEFAULT_NODE_NAME};
 use ockam_api::colors::{color_error, color_primary};
 use ockam_api::nodes::models::transport::Port;
 use ockam_api::terminal::notification::NotificationHandler;
@@ -30,7 +30,6 @@ pub mod config;
 pub mod foreground;
 pub mod node_callback;
 
-const DEFAULT_NODE_NAME: &str = "_default_node_name";
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
 
