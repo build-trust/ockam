@@ -23,6 +23,7 @@ impl DefaultAddress {
     pub const KAFKA_INLET: &'static str = "kafka_inlet";
     pub const LEASE_MANAGER: &'static str = "lease_manager";
     pub const CONTROL_API: &'static str = "control_api";
+    pub const HTTP_FORWARDER: &'static str = "http_forwarder";
 
     pub fn get_rendezvous_server_address() -> Address {
         let server_address = std::env::var("OCKAM_RENDEZVOUS_SERVER")
@@ -46,7 +47,8 @@ impl DefaultAddress {
             | Self::KAFKA_INLET
             | Self::KAFKA_OUTLET
             | Self::LEASE_MANAGER
-            | Self::CONTROL_API)
+            | Self::CONTROL_API
+            | Self::HTTP_FORWARDER)
     }
 
     pub fn iter() -> impl Iterator<Item = &'static str> {
@@ -68,6 +70,7 @@ impl DefaultAddress {
             Self::KAFKA_OUTLET,
             Self::LEASE_MANAGER,
             Self::CONTROL_API,
+            Self::HTTP_FORWARDER,
         ]
         .iter()
         .copied()

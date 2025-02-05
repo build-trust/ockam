@@ -35,7 +35,7 @@ pub(crate) const OCKAM_TELEMETRY_EXPORT: &str = "OCKAM_TELEMETRY_EXPORT";
 pub(crate) const OCKAM_OPENTELEMETRY_EXPORT: &str = "OCKAM_OPENTELEMETRY_EXPORT";
 
 /// Decides if spans and log records should be exported via the project exporter portal. Accepted values, see BooleanVar. For example; true, false, 1, 0
-pub(crate) const OCKAM_TELEMETRY_EXPORT_VIA_PORTAL: &str = "OCKAM_TELEMETRY_EXPORT_VIA_PORTAL";
+pub(crate) const OCKAM_TELEMETRY_EXPORT_VIA_PROJECT: &str = "OCKAM_TELEMETRY_EXPORT_VIA_PROJECT";
 
 /// Boolean set to true if the current user is an Ockam developer
 pub const OCKAM_DEVELOPER: &str = "OCKAM_DEVELOPER";
@@ -63,15 +63,6 @@ pub(crate) const OCKAM_BACKGROUND_TELEMETRY_ENDPOINT_CONNECTION_TIMEOUT: &str =
 ///
 /// TELEMETRY COLLECTOR EXPORT CONFIGURATION
 ///
-
-/// Name of the background node used to export Telemetry traces
-pub(crate) const OCKAM_TELEMETRY_NODE_NAME: &str = "ockam-telemetry-inlet";
-
-/// Name of the inlet used to export Telemetry traces
-pub(crate) const OCKAM_TELEMETRY_INLET_ALIAS: &str = "ockam-telemetry";
-
-/// Name of the relay used to export Telemetry traces
-pub(crate) const OCKAM_TELEMETRY_RELAY_NAME: &str = "ockam-telemetry";
 
 /// Timeout for trying to export spans to the endpoint.
 /// Accepted values, see DurationVar. For example: 500ms
@@ -124,11 +115,3 @@ pub(crate) const OCKAM_BACKGROUND_LOG_EXPORT_CUTOFF: &str = "OCKAM_BACKGROUND_LO
 /// Maximum time for sending a span batch and not waiting for a response when running
 /// a background command to export span batches. For example: 200ms
 pub(crate) const OCKAM_BACKGROUND_SPAN_EXPORT_CUTOFF: &str = "OCKAM_BACKGROUND_SPAN_EXPORT_CUTOFF";
-
-///
-/// TELEMETRY COLLECTOR ERRORS CONFIGURATION
-///
-
-/// Global error handler for the tracing crate
-/// Accepted values, see GlobalErrorHandler. For example: off, console, logfile
-pub(crate) const OCKAM_TRACING_GLOBAL_ERROR_HANDLER: &str = "OCKAM_TRACING_GLOBAL_ERROR_HANDLER";

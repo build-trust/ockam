@@ -1,5 +1,3 @@
-use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
-
 use crate::multiaddr_resolver::{invalid_multiaddr_error, multiple_transport_hops_error};
 use ockam::tcp::{TcpConnection, TcpConnectionOptions, TcpTransport};
 use ockam::udp::{UdpBind, UdpBindArguments, UdpBindOptions, UdpTransport};
@@ -8,6 +6,8 @@ use ockam_core::flow_control::FlowControlId;
 use ockam_core::{Address, Error, Result, Route, LOCAL};
 use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Secure, Service, Tcp, Udp, Worker};
 use ockam_multiaddr::{MultiAddr, ProtoIter, Protocol};
+use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
+use std::sync::Arc;
 
 pub enum RemoteMultiaddrResolverConnection {
     Tcp(TcpConnection),
@@ -38,13 +38,13 @@ pub struct RemoteMultiaddrResolverResult {
 
 #[derive(Default, Clone, Debug)]
 pub struct RemoteMultiaddrResolver {
-    tcp: Option<TcpTransport>,
-    udp: Option<UdpTransport>,
+    tcp: Option<Arc<TcpTransport>>,
+    udp: Option<Arc<UdpTransport>>,
     udp_bind_address: Option<SocketAddr>,
 }
 
 impl RemoteMultiaddrResolver {
-    pub fn new(tcp: Option<TcpTransport>, udp: Option<UdpTransport>) -> Self {
+    pub fn new(tcp: Option<Arc<TcpTransport>>, udp: Option<Arc<UdpTransport>>) -> Self {
         Self {
             tcp,
             udp,
@@ -52,12 +52,16 @@ impl RemoteMultiaddrResolver {
         }
     }
 
-    pub fn with_tcp(&mut self, tcp: TcpTransport) -> &mut Self {
+    pub fn with_tcp(&mut self, tcp: Arc<TcpTransport>) -> &mut Self {
         self.tcp = Some(tcp);
         self
     }
 
-    pub fn with_udp(&mut self, udp: UdpTransport, bind_address: Option<SocketAddr>) -> &mut Self {
+    pub fn with_udp(
+        &mut self,
+        udp: Arc<UdpTransport>,
+        bind_address: Option<SocketAddr>,
+    ) -> &mut Self {
         self.udp = Some(udp);
         self.udp_bind_address = bind_address;
         self

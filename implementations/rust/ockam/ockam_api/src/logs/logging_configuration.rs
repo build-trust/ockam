@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use tracing_core::Level;
 use tracing_subscriber::EnvFilter;
 
-use super::{Colored, GlobalErrorHandler, LoggingEnabled};
+use super::{Colored, LoggingEnabled};
 use crate::logs::LogFormat;
 
 /// List of all the configuration parameters relevant for configuring the logs
@@ -17,8 +17,6 @@ pub struct LoggingConfiguration {
     enabled: LoggingEnabled,
     /// Verbosity required for a given span or log record
     level: Level,
-    /// This parameter specifies what to do when there are logging or tracing errors
-    global_error_handler: GlobalErrorHandler,
     /// Maximum log file size in bytes
     max_size_bytes: u64,
     /// Maximum number of log files for a given node
@@ -40,7 +38,6 @@ impl LoggingConfiguration {
     pub fn new(
         enabled: LoggingEnabled,
         level: Level,
-        global_error_handler: GlobalErrorHandler,
         max_size_bytes: u64,
         max_files: u64,
         format: LogFormat,
@@ -51,7 +48,6 @@ impl LoggingConfiguration {
         LoggingConfiguration {
             enabled,
             level,
-            global_error_handler,
             max_size_bytes,
             max_files,
             format,
@@ -69,11 +65,6 @@ impl LoggingConfiguration {
     /// Return the logging level
     pub fn level(&self) -> Level {
         self.level
-    }
-
-    /// Return the desired global error handler
-    pub fn global_error_handler(&self) -> GlobalErrorHandler {
-        self.global_error_handler
     }
 
     /// Return the maximum log file size
@@ -169,7 +160,6 @@ impl LoggingConfiguration {
         Ok(LoggingConfiguration::new(
             LoggingEnabled::Off,
             level_and_crates.level,
-            global_error_handler()?,
             0,
             0,
             LogFormat::Default,
@@ -185,7 +175,6 @@ impl LoggingConfiguration {
         Ok(LoggingConfiguration::new(
             LoggingEnabled::On,
             level_and_crates.level,
-            global_error_handler()?,
             log_max_size_bytes()?,
             log_max_files()?,
             log_format()?,
@@ -201,10 +190,6 @@ impl Display for LoggingConfiguration {
         f.debug_struct("LoggingConfiguration")
             .field("enabled", &self.enabled.to_string())
             .field("level", &self.level().to_string())
-            .field(
-                "global_error_handler",
-                &self.global_error_handler.to_string(),
-            )
             .field("max_size_bytes", &self.max_size_bytes)
             .field("max_files", &self.max_files)
             .field("format", &self.format)
@@ -231,7 +216,6 @@ pub fn logging_configuration(
     Ok(LoggingConfiguration::new(
         enabled,
         level_and_crates.level,
-        global_error_handler()?,
         log_max_size_bytes()?,
         log_max_files()?,
         log_format()?,
@@ -265,14 +249,6 @@ pub fn logging_enabled() -> ockam_core::Result<LoggingEnabled> {
             LoggingEnabled::Off
         }),
         None => Ok(LoggingEnabled::Off),
-    }
-}
-
-/// Return the strategy to use for reporting logging/tracing errors
-pub fn global_error_handler() -> ockam_core::Result<GlobalErrorHandler> {
-    match get_env::<GlobalErrorHandler>(OCKAM_TRACING_GLOBAL_ERROR_HANDLER)? {
-        Some(v) => Ok(v),
-        None => Ok(GlobalErrorHandler::LogFile),
     }
 }
 

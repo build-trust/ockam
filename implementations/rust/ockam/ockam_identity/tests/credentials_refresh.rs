@@ -273,7 +273,7 @@ async fn init(
 
     let retriever = Arc::new(RemoteCredentialRetrieverCreator::new_extended(
         ctx.try_clone()?,
-        Arc::new(tcp),
+        tcp,
         client_secure_channels.clone(),
         RemoteCredentialRetrieverInfo::create_for_project_member(
             authority.clone(),

@@ -53,7 +53,7 @@ impl NodeManager {
         credential_retriever_creator: Option<Arc<dyn CredentialRetrieverCreator>>,
     ) -> Result<AuthorityNodeClient> {
         NodeManager::authority_node_client(
-            &self.tcp_transport,
+            self.tcp_transport.clone(),
             self.secure_channels.clone(),
             authority_identifier,
             authority_route,
@@ -132,7 +132,7 @@ impl NodeManager {
 
     #[instrument(skip_all, fields(authority_identifier = %authority_identifier.clone(), authority_route = %authority_route.clone(), caller = %caller_identifier.clone()))]
     pub async fn authority_node_client(
-        tcp_transport: &TcpTransport,
+        tcp_transport: Arc<TcpTransport>,
         secure_channels: Arc<SecureChannels>,
         authority_identifier: &Identifier,
         authority_route: &MultiAddr,
@@ -154,7 +154,7 @@ impl NodeManager {
             secure_client: SecureClient::new(
                 secure_channels,
                 credential_retriever_creator,
-                Arc::new(tcp_transport.clone()),
+                tcp_transport.clone(),
                 authority_route,
                 Arc::new(TrustIdentifierPolicy::new(authority_identifier.clone())),
                 caller_identifier,

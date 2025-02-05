@@ -1,11 +1,11 @@
 use ockam::identity::models::ChangeHistory;
-use serde::{Deserialize, Serialize};
-
 use ockam::identity::Identifier;
 use ockam_core::compat::collections::HashMap;
 use ockam_core::compat::fmt;
 use ockam_core::compat::fmt::{Display, Formatter};
 use ockam_node::database::DatabaseConfiguration;
+use serde::{Deserialize, Serialize};
+use url::Url;
 
 use crate::authenticator::PreTrustedIdentities;
 use crate::config::lookup::InternetAddress;
@@ -55,6 +55,9 @@ pub struct Configuration {
     /// Will not include trust_context_id and project id into credential
     /// Set to true after old clients are updated
     pub disable_trust_context_id: bool,
+
+    /// Url of the OpenTelemetry collector endpoint
+    pub telemetry_endpoint_url: Option<Url>,
 }
 
 /// Local and private functions for the authority configuration
