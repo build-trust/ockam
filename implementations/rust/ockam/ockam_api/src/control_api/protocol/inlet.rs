@@ -1,5 +1,6 @@
 use crate::control_api::protocol::common::HostnamePort;
 use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 
 fn tcp_inlet_default_bind_address() -> HostnamePort {
     HostnamePort {
@@ -12,9 +13,9 @@ fn retry_wait_default() -> u64 {
     20000
 }
 
-#[derive(Debug, Serialize, Deserialize, Default)]
+#[derive(Debug, Serialize, Deserialize, Default, ToSchema)]
 #[serde(rename_all = "kebab-case")]
-pub(in crate::control_api) enum InletKind {
+pub enum InletKind {
     /// Uses the provided Multiaddress to connect to the Outlet
     #[default]
     Regular,
@@ -33,9 +34,9 @@ pub(in crate::control_api) enum InletKind {
     PrivilegedOnlyUdpPuncture,
 }
 
-#[derive(Debug, Serialize, Deserialize, Default)]
+#[derive(Debug, Serialize, Deserialize, Default, ToSchema)]
 #[serde(rename_all = "kebab-case")]
-pub(in crate::control_api) enum InletTls {
+pub enum InletTls {
     #[default]
     None,
     ProjectTls,
@@ -47,50 +48,57 @@ pub(in crate::control_api) enum InletTls {
     },
 }
 
-#[derive(Debug, Serialize, Deserialize, Eq, PartialEq)]
-pub(in crate::control_api) enum ConnectionStatus {
-    #[serde(rename = "up")]
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, ToSchema)]
+#[serde(rename_all = "kebab-case")]
+pub enum ConnectionStatus {
     Up,
-    #[serde(rename = "down")]
     Down,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub(in crate::control_api) struct CreateInletRequest {
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct CreateInletRequest {
     /// Name of the TCP Inlet;
-    /// By default, a random name will be generated
+    /// Whe omitted, a random name will be generated
     pub name: Option<String>,
     /// Kind of the Portal
-    #[serde(flatten)]
+    #[serde(default)]
     pub kind: InletKind,
     /// TLS Inlet implementation
     #[serde(default)]
+    #[schema(default = "none")]
     pub tls: InletTls,
     /// Bind address for the TCP Inlet
     #[serde(default = "tcp_inlet_default_bind_address")]
+    #[schema(default = tcp_inlet_default_bind_address)]
     pub from: HostnamePort,
     /// Multiaddress to a TCP Outlet
-    /// Example: /project/default/service/forward_to_node1/secure/api/service/outlet
+    #[schema(example = "/project/default/service/forward_to_node1/secure/api/service/outlet")]
     pub to: String,
     /// Identity to be used to create the secure channel;
-    /// by default, the node's identity will be used
+    /// When omitted, the node's identity will be used
     pub identity: Option<String>,
     /// Restrict access to the TCP Inlet to the provided identity;
-    /// by default, all identities are allowed;
-    /// Example: "Id3b788c6a89de8b1f2fd13743eb3123178cf6ec7c9253be8ddcf7e154abe016a"
+    /// When omitted, all identities are allowed;
+    #[schema(example = "Id3b788c6a89de8b1f2fd13743eb3123178cf6ec7c9253be8ddcf7e154abe016a")]
     pub authorized: Option<String>,
     /// Policy expression that will be used for access control to the TCP Inlet;
-    /// by default the policy set for the "tcp-inlet" resource type will be used
+    /// When omitted, the policy set for the "tcp-inlet" resource type will be used
     pub allow: Option<String>,
     /// When connection is lost, how long to wait before retrying to connect to the TCP Outlet;
     /// In milliseconds;
     #[serde(default = "retry_wait_default")]
+    #[schema(default = retry_wait_default)]
     pub retry_wait: u64,
 }
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct UpdateInletRequest {
+    /// Policy expression that will be used for access control to the TCP Inlet;
+    pub allow: Option<String>,
+}
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "kebab-case")]
-pub(in crate::control_api) struct InletStatus {
+pub struct InletStatus {
     pub name: String,
     pub status: ConnectionStatus,
     pub bind_address: HostnamePort,

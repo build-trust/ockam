@@ -1,9 +1,10 @@
 use crate::control_api::protocol::common::HostnamePort;
 use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 
-#[derive(Debug, Serialize, Deserialize, Default)]
+#[derive(Debug, Serialize, Deserialize, Default, ToSchema)]
 #[serde(rename_all = "kebab-case")]
-pub(in crate::control_api) enum OutletKind {
+pub enum OutletKind {
     /// Works as a regular TCP Outlet. It's compatible with UDP Puncture,
     /// but it must be enabled at node level.
     #[default]
@@ -13,7 +14,7 @@ pub(in crate::control_api) enum OutletKind {
     Privileged,
 }
 
-#[derive(Debug, Serialize, Deserialize, Default)]
+#[derive(Debug, Serialize, Deserialize, Default, ToSchema)]
 pub enum OutletTls {
     #[default]
     /// No TLS
@@ -22,7 +23,7 @@ pub enum OutletTls {
     Validate,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "kebab-case")]
 pub struct CreateOutletRequest {
     /// The kind of the outlet
@@ -38,7 +39,13 @@ pub struct CreateOutletRequest {
     pub allow: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct UpdateOutletRequest {
+    /// Policy expression that will be used for access control to the TCP Outlet;
+    pub allow: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "kebab-case")]
 pub struct OutletStatus {
     pub to: HostnamePort,

@@ -1,4 +1,4 @@
-use crate::control_api::{build_error_body, ControlApiHttpRequest, ControlApiHttpResponse};
+use crate::control_api::http::{build_error_body, ControlApiHttpRequest, ControlApiHttpResponse};
 use crate::nodes::NodeManager;
 use crate::DefaultAddress;
 use http_body_util::{BodyExt, Full};
@@ -411,8 +411,8 @@ impl NodeManager {
 #[cfg(test)]
 mod test {
     use crate::control_api::frontend::NodeResolution;
+    use crate::control_api::protocol::common::ErrorResponse;
     use crate::control_api::protocol::inlet::InletStatus;
-    use crate::control_api::ErrorResponse;
     use crate::hop::Hop;
     use crate::test_utils::start_manager_for_tests;
     use bytes::Bytes;

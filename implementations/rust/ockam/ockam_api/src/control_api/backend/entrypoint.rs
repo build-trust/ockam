@@ -1,4 +1,5 @@
-use crate::control_api::{ControlApiHttpRequest, ControlApiHttpResponse, ErrorResponse};
+use crate::control_api::http::{ControlApiHttpRequest, ControlApiHttpResponse};
+use crate::control_api::protocol::common::ErrorResponse;
 use crate::nodes::NodeManager;
 use crate::DefaultAddress;
 use http::{StatusCode, Uri};
