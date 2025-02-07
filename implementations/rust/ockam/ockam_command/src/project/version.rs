@@ -45,7 +45,7 @@ impl VersionCommand {
         );
 
         opts.terminal
-            .stdout()
+            .to_stdout()
             .plain(plain)
             .machine(project_version)
             .json(json)

@@ -38,7 +38,7 @@ impl Command for ListCommand {
             &format!("No Kafka Inlets found on {}", node.node_name()),
         )?;
         opts.terminal
-            .stdout()
+            .to_stdout()
             .plain(plain)
             .json_obj(&services)?
             .write_line()?;

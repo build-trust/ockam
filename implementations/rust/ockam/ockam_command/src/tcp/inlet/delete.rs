@@ -109,7 +109,7 @@ impl DeleteCommandTui for DeleteTui {
         let node_name = self.node.node_name();
         self.node.delete_inlet(&self.ctx, item_name).await?;
         self.terminal()
-            .stdout()
+            .to_stdout()
             .plain(fmt_ok!(
                 "TCP Inlet with alias {} on Node {} has been deleted",
                 color_primary(item_name),

@@ -52,7 +52,7 @@ impl VerifyCommand {
         };
 
         opts.terminal
-            .stdout()
+            .to_stdout()
             .plain(plain)
             .json(serde_json::json!({ "is_valid": is_valid }))
             .machine(is_valid.to_string())

@@ -52,7 +52,7 @@ impl ShowCommand {
         let plain = fmt_ok!("Invite {}", response.invitation.id);
         let json = serde_json::to_string(&response).into_diagnostic()?;
         opts.terminal
-            .stdout()
+            .to_stdout()
             .plain(plain)
             .json(json)
             .write_line()?;

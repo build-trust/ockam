@@ -47,7 +47,7 @@ impl Command for AddCommand {
             .await?;
 
         opts.terminal
-            .stdout()
+            .to_stdout()
             .plain(fmt_ok!(
                 "Email {} added as an admin to project {}",
                 color_primary(self.email.to_string()),

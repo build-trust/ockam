@@ -99,7 +99,7 @@ impl<'a> ShowCommandTui for ShowTui<'a> {
     async fn show_single(&self, item_name: &str) -> miette::Result<()> {
         let space = self.node.get_space_by_name(self.ctx, item_name).await?;
         self.terminal()
-            .stdout()
+            .to_stdout()
             .plain(space.item()?)
             .json_obj(&space)?
             .machine(&space.name)

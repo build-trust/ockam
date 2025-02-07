@@ -47,7 +47,7 @@ impl Command for CreateCommand {
             .await?;
 
         opts.terminal
-            .stdout()
+            .to_stdout()
             .plain(fmt_ok!("Vault created with name '{}'!", vault.name()))
             .machine(vault.name())
             .json(serde_json::json!({ "name": &vault.name() }))

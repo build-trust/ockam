@@ -42,7 +42,7 @@ impl MigrateDatabaseCommand {
                 };
 
                 let status = migrator.migration_status(&db.pool).await?;
-                opts.terminal.stdout().plain(&status).json_obj(&status)?.machine(status.up_to_date()).write_line()?;
+                opts.terminal.to_stdout().plain(&status).json_obj(&status)?.machine(status.up_to_date()).write_line()?;
 
                 Ok(())
             },

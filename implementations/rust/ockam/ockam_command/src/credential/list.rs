@@ -52,7 +52,7 @@ impl ListCommand {
         )?;
 
         opts.terminal
-            .stdout()
+            .to_stdout()
             .plain(list)
             .json_obj(credentials)?
             .write_line()?;

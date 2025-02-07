@@ -207,7 +207,7 @@ impl Command for TicketCommand {
         )?;
 
         opts.terminal
-            .stdout()
+            .to_stdout()
             .plain(format!("\n{encoded_ticket}"))
             .machine(encoded_ticket)
             .json(as_json)

@@ -63,7 +63,7 @@ impl OidcServiceExt for OidcService {
         if opts.terminal.is_quiet() {
             opts.terminal
                 .clone()
-                .stdout()
+                .to_stdout()
                 .plain(device_code.user_code.to_string())
                 .write_line()?;
         }

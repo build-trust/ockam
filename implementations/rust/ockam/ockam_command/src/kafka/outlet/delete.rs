@@ -109,7 +109,7 @@ impl DeleteCommandTui for DeleteTui {
             .await?;
         let node_name = self.node.node_name();
         self.terminal()
-            .stdout()
+            .to_stdout()
             .plain(fmt_ok!(
                 "Kafka Outlet with address {} on Node {} has been deleted",
                 color_primary(item_name),

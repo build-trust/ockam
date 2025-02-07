@@ -68,7 +68,7 @@ impl Command for CreateCommand {
             opts.terminal.write_line(msg)?;
         }
         opts.terminal
-            .stdout()
+            .to_stdout()
             .plain(space.item()?)
             .json_obj(&space)?
             .write_line()?;

@@ -137,7 +137,7 @@ impl Command for DeleteCommand {
         }
 
         opts.terminal
-            .stdout()
+            .to_stdout()
             .plain(output.to_string())
             .json_obj(&output)?
             .write_line()?;

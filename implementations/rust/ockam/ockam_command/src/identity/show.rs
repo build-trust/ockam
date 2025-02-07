@@ -58,7 +58,7 @@ impl ShowCommand {
         match identities_names.len() {
             0 => {
                 opts.terminal
-                    .stdout()
+                    .to_stdout()
                     .plain("There are no identities to show")
                     .write_line()?;
             }
@@ -79,7 +79,7 @@ impl ShowCommand {
 
                 if selected_names.is_empty() {
                     opts.terminal
-                        .stdout()
+                        .to_stdout()
                         .plain("No identities selected")
                         .write_line()?;
                     return Ok(());
@@ -127,7 +127,7 @@ impl ShowCommand {
 
         opts.terminal
             .clone()
-            .stdout()
+            .to_stdout()
             .plain(&plain)
             .json(json.into_diagnostic()?)
             .machine(&plain)
@@ -157,7 +157,7 @@ impl ShowCommand {
 
         opts.terminal
             .clone()
-            .stdout()
+            .to_stdout()
             .plain(list)
             .json(json!(&identities))
             .write_line()?;

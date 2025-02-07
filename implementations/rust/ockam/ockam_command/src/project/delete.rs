@@ -50,7 +50,7 @@ impl DeleteCommand {
             node.delete_project_by_name(ctx, &self.space_name, &self.project_name)
                 .await?;
             opts.terminal
-                .stdout()
+                .to_stdout()
                 .plain(fmt_ok!(
                     "Project with name '{}' has been deleted.",
                     &self.project_name

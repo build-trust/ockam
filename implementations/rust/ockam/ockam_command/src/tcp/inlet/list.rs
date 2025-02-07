@@ -41,7 +41,7 @@ impl ListCommand {
             &format!("No TCP Inlets found on {}", node.node_name()),
         )?;
         opts.terminal
-            .stdout()
+            .to_stdout()
             .plain(plain)
             .json_obj(&inlets)?
             .write_line()?;

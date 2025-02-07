@@ -6,7 +6,7 @@ use ockam_api::logs::CurrentSpan;
 use ockam_core::OpenTelemetryContext;
 
 use crate::node::node_callback::NodeCallback;
-use crate::node::util::spawn_node;
+use crate::node::util::{spawn_node, wait_while_draining_output};
 use crate::node::CreateCommand;
 use crate::CommandGlobalOpts;
 
@@ -41,7 +41,7 @@ impl CreateCommand {
         let handle = spawn_node(&opts, cmd)?;
 
         tokio::select! {
-            _ = handle.wait_with_output() => { std::process::exit(1) }
+            _ = wait_while_draining_output(&opts, handle) => { std::process::exit(1) }
             _ = node_callback.wait_for_signal() => {}
         }
 

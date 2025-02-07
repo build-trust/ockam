@@ -59,7 +59,7 @@ impl DeleteCommand {
             node.tell(ctx, req).await?;
 
             opts.terminal
-                .stdout()
+                .to_stdout()
                 .plain(fmt_ok!(
                     "TCP listener with address {address} on Node {} has been deleted",
                     node.node_name()

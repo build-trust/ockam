@@ -59,7 +59,7 @@ impl Command for CreateCommand {
             + &fmt_log!("and will expire at {}", color_primary(res.expires_at()?));
 
         opts.terminal
-            .stdout()
+            .to_stdout()
             .machine(&res.token)
             .plain(plain)
             .json_obj(res)?

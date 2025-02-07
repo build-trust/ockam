@@ -54,7 +54,7 @@ impl Command for ListCommand {
         let plain = &opts.terminal.build_list(&res, "No tokens found")?;
 
         opts.terminal
-            .stdout()
+            .to_stdout()
             .plain(plain)
             .json_obj(res)?
             .write_line()?;

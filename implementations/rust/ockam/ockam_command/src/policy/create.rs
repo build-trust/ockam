@@ -71,7 +71,7 @@ impl Command for CreateCommand {
         node.add_policy(ctx, &resource, &Action::HandleMessage, &self.allow)
             .await?;
         opts.terminal
-            .stdout()
+            .to_stdout()
             .plain(fmt_ok!(
                 "Policy created at node {}",
                 color_primary(node.node_name())

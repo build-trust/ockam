@@ -42,7 +42,7 @@ impl ShowCommand {
             .await?;
 
         opts.terminal
-            .stdout()
+            .to_stdout()
             .plain(
                 fmt_ok!("TCP Connection:\n")
                     + &fmt_log!(

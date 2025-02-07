@@ -18,7 +18,7 @@ use ockam_core::compat::collections::BTreeMap;
 use ockam_core::compat::fmt;
 
 use crate::node::node_callback::NodeCallback;
-use crate::node::util::run_ockam;
+use crate::node::util::{run_ockam, wait_while_draining_output};
 use crate::util::foreground_args::{wait_for_exit_signal, ForegroundArgs};
 use crate::util::parsers::internet_address_parser;
 use crate::{branding, docs, CommandGlobalOpts, Result};
@@ -221,10 +221,10 @@ impl CreateCommand {
         args.push("--tcp-callback-port".to_string());
         args.push(node_callback.callback_port().to_string());
 
-        let handle = run_ockam(args, opts.global_args.quiet)?;
+        let handle = run_ockam(args)?;
 
         tokio::select! {
-            _ = handle.wait_with_output() => { std::process::exit(1) }
+            _ = wait_while_draining_output(opts, handle) => { std::process::exit(1) }
             _ = node_callback.wait_for_signal() => {}
         }
 

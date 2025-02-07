@@ -116,7 +116,7 @@ impl ShowCommandTui for ShowTui {
             .map_err(Error::Retry)?;
 
         self.terminal()
-            .stdout()
+            .to_stdout()
             .plain(project.item()?)
             .json_obj(project)?
             .write_line()?;

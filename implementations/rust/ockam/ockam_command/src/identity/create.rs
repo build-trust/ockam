@@ -83,7 +83,7 @@ impl CreateCommand {
             .await?;
 
         opts.terminal
-            .stdout()
+            .to_stdout()
             .plain(
                 fmt_ok!(
                     "Identity {} \n",
@@ -131,7 +131,7 @@ impl CreateCommand {
             .await?;
 
         opts.terminal
-            .stdout()
+            .to_stdout()
             .plain(fmt_ok!(
                 "Identity imported successfully with name {}",
                 color_primary(&self.name)

@@ -107,7 +107,7 @@ impl ShowCommandTui for ShowTui {
             .await?;
         let member = MemberOutput::new(identifier, attributes);
         self.terminal()
-            .stdout()
+            .to_stdout()
             .plain(member.item()?)
             .json_obj(&member)?
             .write_line()?;

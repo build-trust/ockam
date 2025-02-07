@@ -109,7 +109,7 @@ impl ShowCommandTui for ShowTui {
             .ask(&self.ctx, Request::get(format!("/node/inlet/{item_name}")))
             .await?;
         self.terminal()
-            .stdout()
+            .to_stdout()
             .plain(inlet_status.item()?)
             .json_obj(inlet_status)?
             .write_line()?;

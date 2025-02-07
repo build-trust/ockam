@@ -89,7 +89,7 @@ impl ServiceCreateCommand {
         );
         let json = serde_json::to_string(&sent).into_diagnostic()?;
         opts.terminal
-            .stdout()
+            .to_stdout()
             .plain(plain)
             .json(json)
             .write_line()?;

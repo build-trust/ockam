@@ -30,7 +30,7 @@ impl InfoCommand {
         let node = InMemoryNode::start(ctx, &opts.state).await?;
         let project = node.get_project_by_name(ctx, &self.name).await?;
         opts.terminal
-            .stdout()
+            .to_stdout()
             .plain(project.item()?)
             .json(serde_json::to_string(&project).into_diagnostic()?)
             .write_line()?;

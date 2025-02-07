@@ -108,7 +108,7 @@ impl ShowCommandTui for ShowTui {
             .await?;
         let relay = RelayShowOutput::from(relay);
         self.terminal()
-            .stdout()
+            .to_stdout()
             .plain(relay.item()?)
             .machine(item_name)
             .json(serde_json::to_string(&relay).into_diagnostic()?)

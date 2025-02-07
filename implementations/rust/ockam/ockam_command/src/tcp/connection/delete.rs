@@ -42,7 +42,7 @@ impl DeleteCommand {
                 .body(models::transport::DeleteTransport::new(address.clone()));
             node.tell(ctx, req).await?;
             opts.terminal
-                .stdout()
+                .to_stdout()
                 .plain(fmt_ok!(
                     "TCP connection {address} has been successfully deleted"
                 ))

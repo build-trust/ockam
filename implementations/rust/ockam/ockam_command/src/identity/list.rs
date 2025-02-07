@@ -45,7 +45,7 @@ impl ListCommand {
             .build_list(&identities_list, "No identities found on this system.")?;
 
         opts.terminal
-            .stdout()
+            .to_stdout()
             .plain(list)
             .json(json!(&identities))
             .write_line()?;

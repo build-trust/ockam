@@ -153,7 +153,7 @@ impl DeleteCommandTui for DeleteTui {
             )
             .await?;
         self.terminal()
-            .stdout()
+            .to_stdout()
             .plain(fmt_ok!(
                 "Admin with email {} has been deleted from space {}",
                 color_primary(item_name),

@@ -10,7 +10,7 @@ use ockam_node::Context;
 
 use crate::node::node_callback::NodeCallback;
 use crate::node::show::get_node_resources;
-use crate::node::util::spawn_node;
+use crate::node::util::{spawn_node, wait_while_draining_output};
 use crate::node::CreateCommand;
 use crate::{docs, CommandGlobalOpts};
 
@@ -50,7 +50,7 @@ impl StartCommand {
         match inactive_nodes.len() {
             0 => {
                 opts.terminal
-                    .stdout()
+                    .to_stdout()
                     .plain(fmt_info!(
                         "All the nodes are already started, nothing to do. Exiting gratefully"
                     ))
@@ -66,7 +66,7 @@ impl StartCommand {
                 match selected_nodes.len() {
                     0 => {
                         opts.terminal
-                            .stdout()
+                            .to_stdout()
                             .plain(fmt_info!("No node selected, exiting gratefully!"))
                             .write_line()?;
                     }
@@ -77,7 +77,7 @@ impl StartCommand {
                             &selected_nodes.join(", ")
                         )) {
                             opts.terminal
-                                .stdout()
+                                .to_stdout()
                                 .plain(fmt_info!("No node selected, exiting gratefully!"))
                                 .write_line()?;
                             return Ok(());
@@ -87,7 +87,7 @@ impl StartCommand {
                             start_multiple_nodes(ctx, &opts, &selected_nodes).await?;
 
                         opts.terminal
-                            .stdout()
+                            .to_stdout()
                             .plain(formatted_starts_result.join("\n"))
                             .write_line()?;
                     }
@@ -111,7 +111,7 @@ async fn start_single_node(
     // Abort if node is already running
     if node_info.is_running() {
         opts.terminal
-            .stdout()
+            .to_stdout()
             .plain(fmt_err!(
                 "The node '{node_name}' is already running. If you want to restart it you can \
                     call `ockam node stop {node_name}` and then `ockam node start {node_name}`"
@@ -123,7 +123,7 @@ async fn start_single_node(
     let mut node = run_node(node_name, ctx, &opts).await?;
     let node_status = get_node_resources(ctx, &opts.state, &mut node).await?;
     opts.terminal
-        .stdout()
+        .to_stdout()
         .plain(&node_status)
         .json(serde_json::to_string(&node_status).into_diagnostic()?)
         .write_line()?;
@@ -182,7 +182,7 @@ async fn run_node(
     let handle = spawn_node(opts, cmd)?;
 
     tokio::select! {
-        _ = handle.wait_with_output() => { std::process::exit(1) }
+        _ = wait_while_draining_output(opts, handle) => { std::process::exit(1) }
         _ = node_callback.wait_for_signal() => {}
     }
 

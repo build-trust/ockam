@@ -52,7 +52,7 @@ impl ListCommand {
             let plain = opts.terminal.build_list(sent, "No sent shares found.")?;
             let json = serde_json::to_string(sent).into_diagnostic()?;
             opts.terminal
-                .stdout()
+                .to_stdout()
                 .plain(plain)
                 .json(json)
                 .write_line()?;
@@ -65,7 +65,7 @@ impl ListCommand {
                 .build_list(received, "No received shares found.")?;
             let json = serde_json::to_string(received).into_diagnostic()?;
             opts.terminal
-                .stdout()
+                .to_stdout()
                 .plain(plain)
                 .json(json)
                 .write_line()?;

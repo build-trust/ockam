@@ -118,7 +118,7 @@ impl StoreCommand {
         let (credential, _) = try_join!(send_req, progress_output)?;
 
         opts.terminal
-            .stdout()
+            .to_stdout()
             .machine(credential.clone())
             .json(serde_json::json!(
                 {

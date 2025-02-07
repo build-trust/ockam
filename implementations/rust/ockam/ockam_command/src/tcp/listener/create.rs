@@ -53,7 +53,7 @@ impl CreateCommand {
         multiaddr.push_back(Tcp::new(port)).into_diagnostic()?;
 
         opts.terminal
-            .stdout()
+            .to_stdout()
             .plain(
                 fmt_ok!("Tcp listener created! You can send messages to it via this route:\n")
                     + &fmt_log!("{multiaddr}"),

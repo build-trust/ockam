@@ -63,7 +63,7 @@ impl ListCommand {
                 node.node_name()
             ),
         )?;
-        opts.terminal.stdout().plain(list).write_line()?;
+        opts.terminal.to_stdout().plain(list).write_line()?;
 
         Ok(())
     }

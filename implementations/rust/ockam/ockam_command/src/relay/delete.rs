@@ -108,7 +108,7 @@ impl DeleteCommandTui for DeleteTui {
             )
             .await?;
         self.terminal()
-            .stdout()
+            .to_stdout()
             .plain(fmt_ok!(
                 "Relay with name {} on Node {} has been deleted",
                 color!(relay_name, OckamColor::PrimaryResource),

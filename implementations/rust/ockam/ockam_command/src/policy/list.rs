@@ -56,7 +56,7 @@ impl ListCommand {
                 policies.resource_type_policies(),
                 &format!("No policies on Node {}", &node.node_name()),
             )?;
-            opts.terminal.stdout().plain(list).write_line()?;
+            opts.terminal.to_stdout().plain(list).write_line()?;
             return Ok(());
         }
 
@@ -78,7 +78,7 @@ impl ListCommand {
             plain
         };
         opts.terminal
-            .stdout()
+            .to_stdout()
             .plain(plain)
             .json(json)
             .write_line()?;

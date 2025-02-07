@@ -133,7 +133,7 @@ impl CreateCommand {
         let node_resources = in_memory_node.get_node_resources().await?;
         opts.terminal
             .clone()
-            .stdout()
+            .to_stdout()
             .plain(self.plain_output(&opts, &node_name).await?)
             .machine(&node_name)
             .json_obj(&node_resources)?

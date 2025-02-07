@@ -119,7 +119,7 @@ impl DeleteCommandTui for DeleteTui {
             ResourceTypeOrName::Name(_) => "resource",
         };
         self.terminal()
-            .stdout()
+            .to_stdout()
             .plain(fmt_ok!(
                 "Policy for {resource_kind} {} has been deleted",
                 color_primary(resource.to_string())
