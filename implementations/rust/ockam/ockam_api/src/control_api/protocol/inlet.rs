@@ -1,4 +1,4 @@
-use crate::control_api::protocol::common::HostnamePort;
+use crate::control_api::protocol::common::{ConnectionStatus, HostnamePort};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
@@ -48,14 +48,8 @@ pub enum InletTls {
     },
 }
 
-#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, ToSchema)]
-#[serde(rename_all = "kebab-case")]
-pub enum ConnectionStatus {
-    Up,
-    Down,
-}
-
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "kebab-case")]
 pub struct CreateInletRequest {
     /// Name of the TCP Inlet;
     /// Whe omitted, a random name will be generated
@@ -91,6 +85,7 @@ pub struct CreateInletRequest {
     pub retry_wait: u64,
 }
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "kebab-case")]
 pub struct UpdateInletRequest {
     /// Policy expression that will be used for access control to the TCP Inlet;
     pub allow: Option<String>,
@@ -114,10 +109,7 @@ impl TryFrom<crate::nodes::models::portal::InletStatus> for InletStatus {
         let bind_address = HostnamePort::try_from(status.bind_addr.as_str())?;
 
         Ok(InletStatus {
-            status: match status.status {
-                crate::ConnectionStatus::Up => ConnectionStatus::Up,
-                crate::ConnectionStatus::Down => ConnectionStatus::Down,
-            },
+            status: status.status.into(),
             bind_address,
             name: status.alias,
             current_route: status.outlet_route.map(|r| r.to_string()),

@@ -586,7 +586,7 @@ mod tests {
         member: &Identifier,
         attribute_key: &str,
     ) -> Result<Option<String>> {
-        let attributes_entry = client.show_member(ctx, member.clone()).await.unwrap();
+        let attributes_entry = client.show_member(ctx, member).await.unwrap();
         Ok(attributes_entry
             .attrs()
             .get(&attribute_key.as_bytes().to_vec())

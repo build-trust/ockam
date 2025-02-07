@@ -82,14 +82,14 @@ impl CreateRelay {
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct RelayInfo {
-    #[n(1)] forwarding_route: Option<String>,
-    #[n(2)] remote_address: Option<String>,
-    #[n(3)] worker_address: Option<String>,
-    #[n(4)] flow_control_id: Option<FlowControlId>,
-    #[n(5)] connection_status: ConnectionStatus,
-    #[n(6)] destination_address: MultiAddr,
-    #[n(7)] name: String,
-    #[n(8)] last_failure: Option<String>,
+    #[n(1)] pub forwarding_route: Option<String>,
+    #[n(2)] pub remote_address: Option<String>,
+    #[n(3)] pub worker_address: Option<String>,
+    #[n(4)] pub flow_control_id: Option<FlowControlId>,
+    #[n(5)] pub connection_status: ConnectionStatus,
+    #[n(6)] pub destination_address: MultiAddr,
+    #[n(7)] pub name: String,
+    #[n(8)] pub last_failure: Option<String>,
 }
 
 impl RelayInfo {

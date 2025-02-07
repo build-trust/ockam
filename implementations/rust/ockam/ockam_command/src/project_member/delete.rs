@@ -70,9 +70,7 @@ impl Command for DeleteCommand {
 
         // Delete the passed member
         if let Some(member) = &self.member {
-            authority_node_client
-                .delete_member(ctx, member.clone())
-                .await?;
+            authority_node_client.delete_member(ctx, member).await?;
             output.identifiers.push(member.clone());
         }
         // Try to delete all members except the current default identity
@@ -112,9 +110,7 @@ impl Command for DeleteCommand {
                     let ctx = ctx.try_clone()?;
                     set.spawn(async move {
                         sleep(tokio_retry::strategy::jitter(Duration::from_millis(500))).await;
-                        if let Err(e) = authority_node_client
-                            .delete_member(&ctx, identifier.clone())
-                            .await
+                        if let Err(e) = authority_node_client.delete_member(&ctx, &identifier).await
                         {
                             warn!("Failed to delete member {identifier}: {e}",);
                             None

@@ -71,6 +71,23 @@ impl Worker for HttpControlNodeApiBackend {
                 self.handle_tcp_outlet(context, request.method.as_str(), resource_id, request.body)
                     .await
             }
+            "relay" => {
+                self.handle_relay(context, request.method.as_str(), resource_id, request.body)
+                    .await
+            }
+            "ticket" => {
+                self.handle_ticket(context, request.method.as_str(), resource_id, request.body)
+                    .await
+            }
+            "authority-member" => {
+                self.handle_authority_member(
+                    context,
+                    request.method.as_str(),
+                    resource_id,
+                    request.body,
+                )
+                .await
+            }
             _ => ControlApiHttpResponse::with_body(
                 StatusCode::BAD_REQUEST,
                 ErrorResponse {

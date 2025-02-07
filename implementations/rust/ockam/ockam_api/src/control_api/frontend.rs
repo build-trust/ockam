@@ -134,9 +134,11 @@ impl HttpControlNodeApiFrontend {
                 let result = match error.code().kind {
                     Kind::Timeout => Response::builder()
                         .status(504)
+                        .header("Content-Type", "application/json")
                         .body(build_error_body("Request timed out")),
                     _ => Response::builder()
                         .status(500)
+                        .header("Content-Type", "application/json")
                         .body(build_error_body(&error.to_string())),
                 };
 
@@ -242,6 +244,7 @@ impl HttpControlNodeApiFrontend {
                         error!("Failed to create connection to node: {:?}", error);
                         return Response::builder()
                             .status(502)
+                            .header("Content-Type", "application/json")
                             .body(build_error_body("Node not reachable"))
                             .map_err(Self::map_http_err);
                     }
@@ -273,10 +276,12 @@ impl HttpControlNodeApiFrontend {
                 return match error.code().kind {
                     Kind::NotFound => Response::builder()
                         .status(502)
+                        .header("Content-Type", "application/json")
                         .body(build_error_body("Node not reachable"))
                         .map_err(Self::map_http_err),
                     _ => Response::builder()
                         .status(500)
+                        .header("Content-Type", "application/json")
                         .body(build_error_body(&error.to_string()))
                         .map_err(Self::map_http_err),
                 }
@@ -290,6 +295,7 @@ impl HttpControlNodeApiFrontend {
 
         Response::builder()
             .status(response.status)
+            .header("Content-Type", "application/json")
             .body(body)
             .map_err(Self::map_http_err)
     }
@@ -309,6 +315,7 @@ impl HttpControlNodeApiFrontend {
                 return Ok(Some(
                     Response::builder()
                         .status(401)
+                        .header("Content-Type", "application/json")
                         .body(build_error_body("Missing authentication token"))
                         .map_err(Self::map_http_err)?,
                 ))
@@ -321,6 +328,7 @@ impl HttpControlNodeApiFrontend {
                 return Ok(Some(
                     Response::builder()
                         .status(401)
+                        .header("Content-Type", "application/json")
                         .body(build_error_body("Invalid authentication token"))
                         .map_err(Self::map_http_err)?,
                 ))
@@ -345,6 +353,7 @@ impl HttpControlNodeApiFrontend {
             Ok(Some(
                 Response::builder()
                     .status(401)
+                    .header("Content-Type", "application/json")
                     .body(build_error_body("Invalid authentication token"))
                     .map_err(Self::map_http_err)?,
             ))

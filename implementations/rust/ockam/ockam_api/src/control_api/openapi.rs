@@ -1,5 +1,7 @@
 use super::backend::inlet::*;
 use super::backend::outlet::*;
+use super::backend::relay::*;
+use super::backend::ticket::*;
 use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
 use utoipa::{Modify, OpenApi};
 
@@ -40,6 +42,12 @@ impl Modify for Authentications {
         handle_tcp_outlet_list,
         handle_tcp_outlet_delete,
         handle_tcp_outlet_get,
+        handle_relay_create,
+        handle_relay_list,
+        handle_relay_get,
+        handle_relay_delete,
+        handle_ticket_create,
+        handle_ticket_enroll,
     ),
     security(
         ("bearer" = [])

@@ -93,7 +93,16 @@ impl NodeManagerWorker {
         req: &RequestHeader,
         alias: &str,
     ) -> Result<Response<RelayInfo>, Response<Error>> {
-        self.node_manager.show_relay(req, alias).await
+        debug!("Handling ShowRelay request");
+        if let Some(relay_info) = self.node_manager.show_relay(alias).await {
+            Ok(Response::ok().with_headers(req).body(relay_info))
+        } else {
+            error!(%alias, "Relay not found in the node registry");
+            Err(Response::not_found(
+                req,
+                &format!("Relay with alias {alias} not found."),
+            ))
+        }
     }
 
     pub async fn get_relays(
@@ -233,28 +242,18 @@ impl NodeManager {
         }
     }
 
-    /// This function finds an existing relay and returns its configuration
-    pub(super) async fn show_relay(
-        &self,
-        req: &RequestHeader,
-        alias: &str,
-    ) -> Result<Response<RelayInfo>, Response<Error>> {
-        debug!("Handling ShowRelay request");
+    /// This function finds an existing relay and returns its current status
+    pub async fn show_relay(&self, alias: &str) -> Option<RelayInfo> {
         if let Some(registry_info) = self.registry.relays.get(alias) {
             let session = registry_info.session.lock().await;
-
             let relay_info = RelayInfo::from_session(
                 &session,
                 registry_info.destination_address.clone(),
                 registry_info.alias.clone(),
             );
-            Ok(Response::ok().with_headers(req).body(relay_info))
+            Some(relay_info)
         } else {
-            error!(%alias, "Relay not found in the node registry");
-            Err(Response::not_found(
-                req,
-                &format!("Relay with alias {alias} not found."),
-            ))
+            None
         }
     }
 }
