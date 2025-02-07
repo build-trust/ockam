@@ -31,3 +31,43 @@ impl TryFrom<&str> for HostnamePort {
 pub struct ErrorResponse {
     pub message: String,
 }
+
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, ToSchema)]
+#[serde(rename_all = "kebab-case")]
+pub enum ConnectionStatus {
+    Up,
+    Down,
+}
+
+impl From<crate::ConnectionStatus> for ConnectionStatus {
+    fn from(status: crate::ConnectionStatus) -> Self {
+        match status {
+            crate::ConnectionStatus::Up => ConnectionStatus::Up,
+            crate::ConnectionStatus::Down => ConnectionStatus::Down,
+        }
+    }
+}
+
+pub fn default_authority() -> Authority {
+    Authority::Project { name: None }
+}
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "kebab-case")]
+pub enum Authority {
+    Project {
+        /// Name of the project
+        /// When omitted, the default project will be used
+        name: Option<String>,
+    },
+    Node {
+        /// Multiaddress to the node that will be used as an authority;
+        /// When omitted, the default node will be used
+        #[schema(example = "/dnsaddr/my-authority.example.com/tcp/4001/secure/api")]
+        route: String,
+        /// Identifier of the authority node
+        #[schema(example = "Id3b788c6a89de8b1f2fd13743eb3123178cf6ec7c9253be8ddcf7e154abe016a")]
+        identity: String,
+        // TODO: Add the possibility to specify the whole public identity
+    },
+}

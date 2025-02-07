@@ -109,6 +109,19 @@ impl AttributesEntry {
         &self.attributes
     }
 
+    /// Convert the binary attributes to strings
+    pub fn string_attributes(self) -> BTreeMap<String, String> {
+        self.attributes
+            .into_iter()
+            .map(|(vec_key, vec_value)| {
+                (
+                    String::from_utf8_lossy(&vec_key).to_string(),
+                    String::from_utf8_lossy(&vec_value).to_string(),
+                )
+            })
+            .collect()
+    }
+
     /// The entry attributes as a list of key=value strings
     pub fn deserialized_key_value_attrs(&self) -> Vec<String> {
         let mut attributes = vec![];

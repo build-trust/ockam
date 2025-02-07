@@ -15,6 +15,7 @@ pub enum OutletKind {
 }
 
 #[derive(Debug, Serialize, Deserialize, Default, ToSchema)]
+#[serde(rename_all = "kebab-case")]
 pub enum OutletTls {
     #[default]
     /// No TLS
@@ -40,6 +41,7 @@ pub struct CreateOutletRequest {
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "kebab-case")]
 pub struct UpdateOutletRequest {
     /// Policy expression that will be used for access control to the TCP Outlet;
     pub allow: Option<String>,

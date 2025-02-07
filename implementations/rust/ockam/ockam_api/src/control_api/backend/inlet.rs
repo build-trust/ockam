@@ -146,6 +146,8 @@ async fn handle_tcp_inlet_create(
             disable_tcp_fallback,
             privileged,
             tls_certificate_provider,
+            false,
+            false,
         )
         .await;
     match result {
@@ -309,8 +311,8 @@ async fn handle_tcp_inlet_get(
 #[cfg(test)]
 mod test {
     use crate::control_api::http::{ControlApiHttpRequest, ControlApiHttpResponse};
-    use crate::control_api::protocol::common::HostnamePort;
-    use crate::control_api::protocol::inlet::{ConnectionStatus, CreateInletRequest, InletStatus};
+    use crate::control_api::protocol::common::{ConnectionStatus, HostnamePort};
+    use crate::control_api::protocol::inlet::{CreateInletRequest, InletStatus};
     use crate::test_utils::start_manager_for_tests;
     use crate::DefaultAddress;
     use ockam_core::{Address, NeutralMessage};

@@ -42,10 +42,7 @@ async fn admin_cant_delete_admin(ctx: &mut Context) -> Result<()> {
     //TODO: should we return error if trying to remove a non-existing identity?, currently
     //      we don't detect that. It could lead to problems if the enroller make a mistake with
     //      the identifier to remove, and assume it was ok because the command didn't error out.
-    let res = admin1
-        .client
-        .delete_member(ctx, admin2.identifier.clone())
-        .await;
+    let res = admin1.client.delete_member(ctx, &admin2.identifier).await;
     assert!(res.is_ok());
 
     // admin2 is not deleted
@@ -128,11 +125,7 @@ async fn admin_can_delete_enroller(ctx: &mut Context) -> Result<()> {
     assert_eq!(members.len(), 1);
     assert!(members.contains(&enroller));
 
-    admin
-        .client
-        .delete_member(ctx, enroller.clone())
-        .await
-        .unwrap();
+    admin.client.delete_member(ctx, &enroller).await.unwrap();
 
     let members = admin.client.list_member_ids(ctx).await.unwrap();
     assert_eq!(members.len(), 0);
@@ -209,11 +202,7 @@ async fn admin_can_delete_member(ctx: &mut Context) -> Result<()> {
     assert_eq!(members.len(), 1);
     assert!(members.contains(&member));
 
-    admin
-        .client
-        .delete_member(ctx, member.clone())
-        .await
-        .unwrap();
+    admin.client.delete_member(ctx, &member).await.unwrap();
 
     let members = admin.client.list_member_ids(ctx).await.unwrap();
     assert_eq!(members.len(), 0);
@@ -373,10 +362,7 @@ async fn enroller_can_delete_member(ctx: &mut Context) -> Result<()> {
 
     let enroller_client = change_client_identifier(&admin.client, &enroller, None);
 
-    enroller_client
-        .delete_member(ctx, member.clone())
-        .await
-        .unwrap();
+    enroller_client.delete_member(ctx, &member).await.unwrap();
 
     let members = admin.client.list_member_ids(ctx).await.unwrap();
     assert_eq!(members.len(), 1);
@@ -414,9 +400,7 @@ async fn enroller_cant_delete_admin(ctx: &mut Context) -> Result<()> {
 
     let enroller_client = change_client_identifier(&admin.client, &enroller, None);
 
-    let res = enroller_client
-        .delete_member(ctx, admin.identifier.clone())
-        .await;
+    let res = enroller_client.delete_member(ctx, &admin.identifier).await;
     assert!(res.is_err());
 
     let members = admin.client.list_member_ids(ctx).await.unwrap();
@@ -509,10 +493,10 @@ async fn enroller_cant_delete_enroller(ctx: &mut Context) -> Result<()> {
 
     let enroller_client = change_client_identifier(&admin.client, &enroller1, None);
 
-    let res = enroller_client.delete_member(ctx, enroller1.clone()).await;
+    let res = enroller_client.delete_member(ctx, &enroller1).await;
     assert!(res.is_err());
 
-    let res = enroller_client.delete_member(ctx, enroller2.clone()).await;
+    let res = enroller_client.delete_member(ctx, &enroller2).await;
     assert!(res.is_err());
 
     let members = admin.client.list_member_ids(ctx).await.unwrap();
@@ -559,7 +543,7 @@ async fn member_cant_do_anything(ctx: &mut Context) -> Result<()> {
         .await
         .unwrap();
 
-    let res = member_client.delete_member(ctx, member2.clone()).await;
+    let res = member_client.delete_member(ctx, &member2).await;
     assert!(res.is_err());
 
     let res = member_client.list_members(ctx).await;

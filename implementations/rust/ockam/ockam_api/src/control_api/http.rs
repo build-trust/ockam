@@ -66,6 +66,24 @@ impl ControlApiHttpResponse {
         )
     }
 
+    pub fn bad_request(message: impl Display) -> ockam_core::Result<ControlApiHttpResponse> {
+        Self::with_body(
+            StatusCode::BAD_REQUEST,
+            ErrorResponse {
+                message: format!("Bad request: {message}"),
+            },
+        )
+    }
+
+    pub fn not_found(message: impl Display) -> ockam_core::Result<ControlApiHttpResponse> {
+        Self::with_body(
+            StatusCode::NOT_FOUND,
+            ErrorResponse {
+                message: message.to_string(),
+            },
+        )
+    }
+
     pub fn internal_error(error: impl Display) -> ockam_core::Result<ControlApiHttpResponse> {
         Self::with_body(
             StatusCode::INTERNAL_SERVER_ERROR,

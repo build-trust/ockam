@@ -101,10 +101,7 @@ impl ShowCommandTui for ShowTui {
 
     async fn show_single(&self, item_name: &str) -> miette::Result<()> {
         let identifier = Identifier::from_str(item_name).into_diagnostic()?;
-        let attributes = self
-            .client
-            .show_member(&self.ctx, identifier.clone())
-            .await?;
+        let attributes = self.client.show_member(&self.ctx, &identifier).await?;
         let member = MemberOutput::new(identifier, attributes);
         self.terminal()
             .to_stdout()

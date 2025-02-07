@@ -166,6 +166,10 @@ impl Project {
         self.authority_identity().map(|i| i.identifier().clone())
     }
 
+    pub fn authority_socket_addr(&self) -> Option<&String> {
+        self.authority_socket_addr.as_ref()
+    }
+
     pub fn authority_multiaddr(&self) -> Result<&MultiAddr> {
         match &self.authority_multiaddr {
             Some(authority_multiaddr) => Ok(authority_multiaddr),
