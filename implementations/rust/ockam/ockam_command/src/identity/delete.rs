@@ -87,7 +87,7 @@ impl DeleteCommandTui for DeleteTui {
         let state = &self.opts.state;
         state.delete_identity_by_name(item_name).await?;
         self.terminal()
-            .stdout()
+            .to_stdout()
             .plain(fmt_ok!(
                 "The identity named {} has been deleted",
                 color_primary(item_name)

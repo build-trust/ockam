@@ -203,7 +203,7 @@ impl Command for CreateCommand {
         };
 
         opts.terminal
-            .stdout()
+            .to_stdout()
             .plain(inlet.item()?)
             .json_obj(inlet)?
             .write_line()?;

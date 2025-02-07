@@ -89,7 +89,7 @@ impl ShowCommandTui for ShowTui {
     async fn show_single(&self, item_name: &str) -> miette::Result<()> {
         let vault = VaultOutput::new(&self.opts.state.get_named_vault(item_name).await?);
         self.terminal()
-            .stdout()
+            .to_stdout()
             .plain(vault.item()?)
             .json(serde_json::to_string(&vault).into_diagnostic()?)
             .machine(vault.name())

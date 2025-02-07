@@ -57,7 +57,7 @@ impl ListCommand {
                 node.node_name().color(OckamColor::PrimaryResource.color())
             ),
         )?;
-        opts.terminal.stdout().plain(list).write_line()?;
+        opts.terminal.to_stdout().plain(list).write_line()?;
         Ok(())
     }
 }

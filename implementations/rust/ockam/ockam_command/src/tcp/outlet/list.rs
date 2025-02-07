@@ -76,7 +76,7 @@ impl ListCommand {
             .collect();
 
         opts.terminal
-            .stdout()
+            .to_stdout()
             .plain(list)
             .json(serde_json::json!(json))
             .write_line()?;

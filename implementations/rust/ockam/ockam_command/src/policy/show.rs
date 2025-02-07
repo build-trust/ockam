@@ -115,7 +115,7 @@ impl ShowCommandTui for ShowTui {
             ResourceTypeOrName::Name(_) => "resource",
         };
         self.terminal()
-            .stdout()
+            .to_stdout()
             .plain(fmt_ok!(
                 "Policy for {resource_kind} {} is {}",
                 color_primary(policy.resource().to_string()),

@@ -57,7 +57,7 @@ impl Command for ListCommand {
             .terminal
             .build_list(&members, "No members found on the Authority node")?;
         opts.terminal
-            .stdout()
+            .to_stdout()
             .plain(plain)
             .json_obj(&members)?
             .write_line()?;

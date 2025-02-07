@@ -33,7 +33,7 @@ impl ListCommand {
         let plain = opts.terminal.build_list(&vaults, "No Vaults found")?;
         let json = serde_json::to_string(&vaults).into_diagnostic()?;
         opts.terminal
-            .stdout()
+            .to_stdout()
             .plain(plain)
             .json(json)
             .write_line()?;

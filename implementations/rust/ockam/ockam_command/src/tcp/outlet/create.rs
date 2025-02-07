@@ -135,7 +135,7 @@ impl Command for CreateCommand {
         }
 
         opts.terminal
-            .stdout()
+            .to_stdout()
             .plain(msg)
             .machine(worker_route)
             .json(serde_json::to_string(&outlet_status).into_diagnostic()?)

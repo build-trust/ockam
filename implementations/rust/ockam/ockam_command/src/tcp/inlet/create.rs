@@ -283,7 +283,7 @@ impl Command for CreateCommand {
         }
 
         opts.terminal
-            .stdout()
+            .to_stdout()
             .plain(plain)
             .machine(inlet_status.bind_addr.to_string())
             .json(serde_json::json!(&inlet_status))

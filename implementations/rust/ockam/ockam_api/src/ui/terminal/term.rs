@@ -77,7 +77,7 @@ mod tests {
         sut.write("1").unwrap();
         sut.rewrite("1-r\n").unwrap();
         sut.write_line("2".red().to_string()).unwrap();
-        sut.stdout()
+        sut.to_stdout()
             .plain("This is a human message")
             .machine("This is a machine message")
             .write_line()

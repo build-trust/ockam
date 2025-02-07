@@ -58,7 +58,7 @@ impl Command for RevokeCommand {
         node.revoke_token(ctx, &at, &cmd.token_id).await?;
 
         opts.terminal
-            .stdout()
+            .to_stdout()
             .plain(fmt_ok!(
                 "Token with id {} has been revoked.",
                 color_primary(&cmd.token_id)

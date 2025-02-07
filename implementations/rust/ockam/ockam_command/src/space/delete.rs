@@ -108,7 +108,7 @@ impl DeleteCommandTui for DeleteTui {
         self.node.delete_space_by_name(&self.ctx, item_name).await?;
 
         self.terminal()
-            .stdout()
+            .to_stdout()
             .plain(fmt_ok!(
                 "The space with name {} has been deleted",
                 color!(item_name, OckamColor::PrimaryResource)

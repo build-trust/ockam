@@ -49,7 +49,7 @@ impl ListCommand {
             &format!("No Relays found on node {}", node.node_name()),
         )?;
         opts.terminal
-            .stdout()
+            .to_stdout()
             .plain(plain)
             .json_obj(relays)?
             .write_line()?;

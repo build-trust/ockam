@@ -122,7 +122,7 @@ impl DeleteCommandTui for DeleteTui {
             )
             .await?;
         self.terminal()
-            .stdout()
+            .to_stdout()
             .plain(fmt_ok!(
                 "TCP Outlet with alias {} on node {} has been deleted",
                 color_primary(item_name),

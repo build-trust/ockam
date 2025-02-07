@@ -35,7 +35,7 @@ impl DefaultCommand {
                 } else {
                     opts.state.set_as_default_identity(name).await?;
                     opts.terminal
-                        .stdout()
+                        .to_stdout()
                         .plain(fmt_ok!("The identity named '{}' is now the default", &name))
                         .machine(name)
                         .write_line()?;
@@ -44,7 +44,7 @@ impl DefaultCommand {
             None => {
                 let identity = opts.state.get_or_create_default_named_identity().await?;
                 opts.terminal
-                    .stdout()
+                    .to_stdout()
                     .plain(fmt_ok!(
                         "The name of the default identity is '{}'",
                         identity.name()

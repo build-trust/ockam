@@ -53,7 +53,7 @@ impl Command for CreateCommand {
         );
 
         opts.terminal
-            .stdout()
+            .to_stdout()
             .plain(output.item()?)
             .machine(output.address.to_string())
             .json(serde_json::to_string(&output).into_diagnostic()?)

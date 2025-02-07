@@ -30,7 +30,7 @@ impl Command for ListCommand {
 
         let list = &opts.terminal.build_list(&admins, "No admins found")?;
         opts.terminal
-            .stdout()
+            .to_stdout()
             .plain(list)
             .json_obj(admins)?
             .write_line()?;

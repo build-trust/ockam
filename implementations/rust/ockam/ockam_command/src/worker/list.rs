@@ -58,7 +58,7 @@ impl ListCommand {
             &workers.list,
             &format!("No workers found on {}.", node.node_name()),
         )?;
-        opts.terminal.stdout().plain(list).write_line()?;
+        opts.terminal.to_stdout().plain(list).write_line()?;
 
         Ok(())
     }

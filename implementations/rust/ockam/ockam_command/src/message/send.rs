@@ -134,7 +134,7 @@ impl Command for SendCommand {
                 .context("Received content is not a valid utf8 string")?
         };
 
-        opts.terminal.stdout().plain(result).write_line()?;
+        opts.terminal.to_stdout().plain(result).write_line()?;
         Ok(())
     }
 }

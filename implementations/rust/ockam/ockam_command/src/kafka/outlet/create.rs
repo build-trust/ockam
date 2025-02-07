@@ -99,7 +99,7 @@ impl Command for CreateCommand {
         };
 
         opts.terminal
-            .stdout()
+            .to_stdout()
             .plain(outlet.item()?)
             .json_obj(outlet)?
             .write_line()?;

@@ -137,7 +137,7 @@ impl Command for CreateCommand {
         };
 
         opts.terminal
-            .stdout()
+            .to_stdout()
             .plain(fmt_ok!(
                 "Created a new InfluxDB Outlet in the Node {} at {} bound to {}\n\n",
                 color_primary(node.node_name()),

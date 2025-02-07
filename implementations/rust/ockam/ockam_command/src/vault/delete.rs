@@ -86,7 +86,7 @@ impl DeleteCommandTui for DeleteTui {
     async fn delete_single(&self, item_name: &str) -> miette::Result<()> {
         self.opts.state.delete_named_vault(item_name).await?;
         self.terminal()
-            .stdout()
+            .to_stdout()
             .plain(fmt_ok!(
                 "Vault with name {} has been deleted",
                 color!(item_name, OckamColor::PrimaryResource)

@@ -43,7 +43,7 @@ impl AddonListSubcommand {
             &addons,
             &format!("No addons enabled for project {project_name}"),
         )?;
-        opts.terminal.stdout().plain(output).write_line()?;
+        opts.terminal.to_stdout().plain(output).write_line()?;
         Ok(())
     }
 }

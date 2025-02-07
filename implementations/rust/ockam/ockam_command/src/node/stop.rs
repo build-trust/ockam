@@ -47,7 +47,7 @@ impl StopCommand {
             .collect::<Vec<String>>();
         if running_nodes.is_empty() {
             opts.terminal
-                .stdout()
+                .to_stdout()
                 .plain(fmt_info!("There are no nodes running"))
                 .write_line()?;
             return Ok(());
@@ -85,7 +85,7 @@ impl StopCommand {
                 match selected_item_names.len() {
                     0 => {
                         opts.terminal
-                            .stdout()
+                            .to_stdout()
                             .plain(fmt_info!("No nodes selected to stop"))
                             .write_line()?;
                     }
@@ -118,6 +118,6 @@ async fn stop_node(opts: CommandGlobalOpts, node_name: &str) -> miette::Result<(
             color!(node_name, OckamColor::PrimaryResource)
         )
     };
-    opts.terminal.stdout().plain(output).write_line()?;
+    opts.terminal.to_stdout().plain(output).write_line()?;
     Ok(())
 }

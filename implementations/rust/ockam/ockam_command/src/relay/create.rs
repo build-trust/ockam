@@ -130,7 +130,7 @@ impl Command for CreateCommand {
                     fmt_ok!("Relay will be created automatically from {from} → {to} as soon as a connection can be established.")
                 };
                 opts.terminal
-                    .stdout()
+                    .to_stdout()
                     .plain(plain)
                     .json_obj(relay_info)?
                     .write_line()?;
@@ -159,7 +159,7 @@ impl Command for CreateCommand {
                     };
 
                     opts.terminal
-                        .stdout()
+                        .to_stdout()
                         .plain(plain)
                         .machine(remote_address.to_string())
                         .json_obj(relay_info)?
@@ -172,7 +172,7 @@ impl Command for CreateCommand {
                             + &fmt_info!("It will automatically connect to the Relay as soon as it is available")
                     };
                     opts.terminal
-                        .stdout()
+                        .to_stdout()
                         .plain(plain)
                         .json_obj(relay_info)?
                         .write_line()?;

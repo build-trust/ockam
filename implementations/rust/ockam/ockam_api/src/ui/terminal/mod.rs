@@ -62,6 +62,14 @@ impl<T: TerminalWriter + Debug, W> Terminal<T, W> {
             }
         }
     }
+
+    pub fn stdout(&self) -> T {
+        self.stdout.clone()
+    }
+
+    pub fn stderr(&self) -> T {
+        self.stderr.clone()
+    }
 }
 
 /// A small wrapper around the `Write` trait, enriched with CLI
@@ -300,7 +308,7 @@ impl<W: TerminalWriter + Debug> Terminal<W, ToStdErr> {
         Ok(output)
     }
 
-    pub fn stdout(self) -> Terminal<W, ToStdOut> {
+    pub fn to_stdout(self) -> Terminal<W, ToStdOut> {
         Terminal {
             stdout: self.stdout,
             stderr: self.stderr,

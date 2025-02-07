@@ -141,7 +141,7 @@ impl ShowCommandTui for ShowTui {
             to: outlet_status.to.to_string(),
         };
         self.terminal()
-            .stdout()
+            .to_stdout()
             .plain(info.item()?)
             .json_obj(info)?
             .write_line()?;

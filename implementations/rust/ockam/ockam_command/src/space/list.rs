@@ -45,7 +45,7 @@ impl Command for ListCommand {
         )?;
 
         opts.terminal
-            .stdout()
+            .to_stdout()
             .plain(plain)
             .json_obj(&spaces)?
             .write_line()?;

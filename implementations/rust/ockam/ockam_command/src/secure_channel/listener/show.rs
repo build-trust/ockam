@@ -39,7 +39,7 @@ impl ShowCommand {
         let req = api::show_secure_channel_listener(address);
         node.tell(ctx, req).await?;
         opts.terminal
-            .stdout()
+            .to_stdout()
             .plain(format!("/service/{}", self.address.address()))
             .write_line()?;
         Ok(())

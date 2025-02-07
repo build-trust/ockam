@@ -28,7 +28,7 @@ pub trait ShowCommandTui {
         let items_names = self.list_items_names().await?;
         if items_names.is_empty() {
             terminal
-                .stdout()
+                .to_stdout()
                 .plain(fmt_info!(
                     "There are no {} to show{}",
                     Self::ITEM_NAME.plural(),
@@ -71,7 +71,7 @@ pub trait ShowCommandTui {
                 match selected_item_names.len() {
                     0 => {
                         terminal
-                            .stdout()
+                            .to_stdout()
                             .plain(fmt_info!(
                                 "No {} selected to show",
                                 Self::ITEM_NAME.plural()
@@ -86,7 +86,7 @@ pub trait ShowCommandTui {
                         for item_name in selected_item_names {
                             if self.show_single(&item_name).await.is_err() {
                                 self.terminal()
-                                    .stdout()
+                                    .to_stdout()
                                     .plain(fmt_warn!(
                                         "Failed to show {} {}",
                                         Self::ITEM_NAME.singular(),
@@ -133,7 +133,7 @@ where
         for item_name in items_names {
             if self.delete_single(&item_name).await.is_err() {
                 self.terminal()
-                    .stdout()
+                    .to_stdout()
                     .plain(fmt_warn!(
                         "Failed to delete {} {}",
                         Self::ITEM_NAME.singular(),
@@ -155,7 +155,7 @@ where
                     if _self.delete_single(&item_name).await.is_err() {
                         _self
                             .terminal()
-                            .stdout()
+                            .to_stdout()
                             .plain(fmt_warn!(
                                 "Failed to delete {} {}",
                                 Self::ITEM_NAME.singular(),
@@ -177,7 +177,7 @@ where
 
         if items_names.is_empty() {
             terminal
-                .stdout()
+                .to_stdout()
                 .plain(fmt_info!(
                     "There are no {} to delete",
                     Self::ITEM_NAME.plural()
@@ -250,7 +250,7 @@ where
                 match selected_item_names.len() {
                     0 => {
                         terminal
-                            .stdout()
+                            .to_stdout()
                             .plain(fmt_info!(
                                 "No {} selected to delete",
                                 Self::ITEM_NAME.plural()

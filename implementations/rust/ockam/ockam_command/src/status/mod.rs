@@ -58,7 +58,7 @@ impl Command for StatusCommand {
         let status =
             StatusData::from_parts(orchestrator_version, spaces, identities_details, nodes)?;
         opts.terminal
-            .stdout()
+            .to_stdout()
             .plain(&status)
             .json(serde_json::to_string(&status).into_diagnostic()?)
             .write_line()?;

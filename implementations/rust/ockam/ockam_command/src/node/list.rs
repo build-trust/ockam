@@ -92,7 +92,7 @@ pub fn print_nodes_info(
 
     opts.terminal
         .clone()
-        .stdout()
+        .to_stdout()
         .plain(plain)
         .json(json)
         .write_line()?;

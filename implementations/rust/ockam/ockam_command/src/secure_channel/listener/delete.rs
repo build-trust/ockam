@@ -40,7 +40,7 @@ impl DeleteCommand {
         let response: DeleteSecureChannelListenerResponse = node.ask(ctx, req).await?;
         let addr = response.addr;
         opts.terminal
-            .stdout()
+            .to_stdout()
             .plain(fmt_ok!(
                 "Deleted secure-channel listener with address '{addr}' on node '{}'",
                 node.node_name()

@@ -38,7 +38,7 @@ impl ImportCommand {
             .await?;
 
         opts.terminal
-            .stdout()
+            .to_stdout()
             .plain(fmt_ok!("Successfully imported project {}", &project.name))
             .write_line()?;
 

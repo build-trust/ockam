@@ -167,7 +167,7 @@ impl Command for EnrollCommand {
         let output = ProjectEnrollOutput::new(identity, project_name, credential);
         opts.terminal
             .clone()
-            .stdout()
+            .to_stdout()
             .plain(output.item()?)
             .json_obj(output)?
             .write_line()?;

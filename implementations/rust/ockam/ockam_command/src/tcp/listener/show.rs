@@ -39,7 +39,7 @@ impl ShowCommand {
             )
             .await?;
         opts.terminal
-            .stdout()
+            .to_stdout()
             .plain(&transport_status)
             .json(serde_json::to_string(&transport_status).into_diagnostic()?)
             .write_line()?;

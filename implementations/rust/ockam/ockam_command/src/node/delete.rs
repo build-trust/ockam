@@ -98,7 +98,7 @@ impl DeleteCommandTui for DeleteTui {
     async fn delete_single(&self, item_name: &str) -> miette::Result<()> {
         self.opts.state.delete_node(item_name).await?;
         self.terminal()
-            .stdout()
+            .to_stdout()
             .plain(fmt_ok!(
                 "The node with name {} has been deleted",
                 color_primary(item_name)

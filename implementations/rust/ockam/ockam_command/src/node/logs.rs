@@ -33,7 +33,7 @@ impl LogCommand {
             .name();
         let log_path = opts.state.stdout_logs(&node_name)?.display().to_string();
         opts.terminal
-            .stdout()
+            .to_stdout()
             .plain(fmt_ok!("The path for the log file is: {log_path}"))
             .machine(&log_path)
             .json(serde_json::json!({ "path": log_path }))

@@ -43,7 +43,7 @@ impl ShowCommand {
         let response: ShowSecureChannelResponse =
             node.ask(ctx, api::show_secure_channel(address)).await?;
         opts.terminal
-            .stdout()
+            .to_stdout()
             .plain(response.item()?)
             .json(serde_json::to_string(&response).into_diagnostic()?)
             .write_line()?;

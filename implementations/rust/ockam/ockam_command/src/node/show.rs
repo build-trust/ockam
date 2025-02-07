@@ -103,7 +103,7 @@ impl ShowCommandTui for ShowTui {
         self.opts
             .terminal
             .clone()
-            .stdout()
+            .to_stdout()
             .plain(&node_resources)
             .json(serde_json::to_string(&node_resources).into_diagnostic()?)
             .write_line()?;

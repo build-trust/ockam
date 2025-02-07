@@ -100,7 +100,7 @@ impl<'a> ShowCommandTui for ShowTui<'a> {
             .find(|i| i.addr == item_name)
             .ok_or_else(|| miette!("Kafka Outlet not found"))?;
         self.terminal()
-            .stdout()
+            .to_stdout()
             .plain(outlet.item()?)
             .json_obj(&outlet)?
             .write_line()?;

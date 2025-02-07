@@ -57,7 +57,7 @@ impl Command for ShowCommand {
         let res = node.get_token(ctx, &at, &cmd.token_id).await?;
 
         opts.terminal
-            .stdout()
+            .to_stdout()
             .machine(res.token.to_string())
             .plain(res.item()?)
             .json_obj(res)?

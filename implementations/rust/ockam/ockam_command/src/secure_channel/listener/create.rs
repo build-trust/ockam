@@ -62,7 +62,7 @@ impl CreateCommand {
             Ok(_) => {
                 let address = format!("/service/{}", self.address.address());
                 opts.terminal
-                    .stdout()
+                    .to_stdout()
                     .plain(
                         fmt_ok!(
                             "Secure Channel Listener at {} created successfully\n",

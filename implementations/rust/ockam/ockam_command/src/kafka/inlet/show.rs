@@ -100,7 +100,7 @@ impl<'a> ShowCommandTui for ShowTui<'a> {
             .find(|i| i.addr == item_name)
             .ok_or_else(|| miette!("Kafka Inlet not found"))?;
         self.terminal()
-            .stdout()
+            .to_stdout()
             .plain(inlet.item()?)
             .json_obj(&inlet)?
             .write_line()?;

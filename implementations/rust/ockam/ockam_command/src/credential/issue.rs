@@ -88,7 +88,7 @@ impl IssueCommand {
             .encode_value(&CredentialAndPurposeKeyDisplay(credential.clone()))?;
         let output = CredentialOutput::from_credential(credential)?;
         opts.terminal
-            .stdout()
+            .to_stdout()
             .plain(output.item()?)
             .json_obj(output)?
             .machine(machine)

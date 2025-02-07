@@ -38,7 +38,7 @@ impl DefaultCommand {
             } else {
                 opts.state.set_default_node(node_name).await?;
                 opts.terminal
-                    .stdout()
+                    .to_stdout()
                     .plain(fmt_ok!("The node '{node_name}' is now the default"))
                     .machine(node_name)
                     .write_line()?;
@@ -47,7 +47,7 @@ impl DefaultCommand {
             let default_node_name = opts.state.get_default_node().await?.name();
             let _ = opts
                 .terminal
-                .stdout()
+                .to_stdout()
                 .plain(fmt_ok!("The default node is '{default_node_name}'"))
                 .write_line();
         }

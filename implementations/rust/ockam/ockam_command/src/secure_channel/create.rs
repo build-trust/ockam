@@ -148,7 +148,7 @@ impl CreateCommand {
 
         let from = format!("/node/{}", node.node_name());
         opts.terminal
-            .stdout()
+            .to_stdout()
             .plain(
                 fmt_ok!(
                     "Secure Channel at {} created successfully\n",
