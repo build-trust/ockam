@@ -398,11 +398,11 @@ pub mod tests {
     use std::str::FromStr;
 
     quickcheck! {
-        fn subcription_legacy(s: SubscriptionLegacy) -> TestResult {
+        fn subscription_legacy(s: SubscriptionLegacy) -> TestResult {
             validate_with_schema("subscription_legacy", s)
         }
 
-        fn activate_subcription(s: ActivateSubscription) -> TestResult {
+        fn activate_subscription(s: ActivateSubscription) -> TestResult {
             validate_with_schema("activate_subscription", s)
         }
     }
