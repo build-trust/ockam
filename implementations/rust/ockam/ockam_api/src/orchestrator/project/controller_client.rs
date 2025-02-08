@@ -156,7 +156,7 @@ impl ControllerClient {
             .into_iter()
             .find(|a| a.email == email.to_string())
             .ok_or(miette!(
-                "A user with email {email} was not added to proejct {project_id}"
+                "A user with email {email} was not added to project {project_id}"
             ))
     }
 
