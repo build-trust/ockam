@@ -135,11 +135,7 @@ impl Router {
 
     /// Stop the worker
     pub fn stop_address(&self, addr: &Address, skip_sending_stop_signal: bool) -> Result<()> {
-        debug!("Stopping address '{}'", addr);
-
-        self.map.stop(addr, skip_sending_stop_signal)?;
-
-        Ok(())
+        self.map.stop(addr, skip_sending_stop_signal)
     }
 
     #[cfg(feature = "std")]
