@@ -2,6 +2,7 @@ use colorful::Colorful;
 use ockam::identity::models::ChangeHistory;
 use ockam::identity::{Identifier, Identity};
 use ockam_core::errcode::{Kind, Origin};
+use ockam_core::notifier::notify;
 use ockam_core::Error;
 use ockam_vault::{HandleToSecret, SigningSecretKeyHandle};
 
@@ -44,17 +45,17 @@ impl CliState {
         let named_identity = self
             .store_named_identity(&identity, name, vault_name)
             .await?;
-        self.notify_message(fmt_ok!(
+        notify(fmt_ok!(
             "Generated a new Identity named {}.",
             color_primary(named_identity.name())
         ));
-        self.notify_message(fmt_log!(
+        notify(fmt_log!(
             "{} has Identifier {}",
             color_primary(named_identity.name()),
             color_primary(named_identity.identifier().to_string())
         ));
         if named_identity.is_default() {
-            self.notify_message(fmt_ok!(
+            notify(fmt_ok!(
                 "Marked {} as your default Identity, on this machine.\n",
                 color_primary(named_identity.name())
             ));
@@ -260,7 +261,7 @@ impl CliState {
             Some(named_identity) => Ok(named_identity),
             // Create a new default identity.
             None => {
-                self.notify_message(fmt_log!(
+                notify(fmt_log!(
                     "There is no default Identity on this machine, generating one...\n"
                 ));
                 self.create_identity_with_name(&random_name()).await

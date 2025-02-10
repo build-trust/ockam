@@ -1,51 +1,17 @@
+use crate::fmt_log;
 use crate::terminal::{Terminal, TerminalWriter};
-use crate::{fmt_log, CliState};
 use core::sync::atomic::AtomicBool;
 use core::sync::atomic::Ordering::{Acquire, Release};
 use indicatif::ProgressBar;
+use ockam_core::notifier::Notification;
 use std::fmt::Debug;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::select;
-
 use tokio::sync::broadcast::Receiver;
 use tokio::time::sleep;
 
 const REPORTING_CHANNEL_POLL_DELAY: Duration = Duration::from_millis(20);
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum Notification {
-    Message(String),
-    Progress(String),
-    ProgressFinishWithMessage(String),
-    ProgressFinishAndClear(),
-}
-
-impl Notification {
-    pub fn contents(&self) -> Option<&str> {
-        match self {
-            Notification::Message(contents) => Some(contents),
-            Notification::Progress(contents) => Some(contents),
-            Notification::ProgressFinishWithMessage(contents) => Some(contents),
-            Notification::ProgressFinishAndClear() => None,
-        }
-    }
-
-    pub fn message(contents: impl Into<String>) -> Self {
-        Self::Message(contents.into())
-    }
-
-    pub fn progress(contents: impl Into<String>) -> Self {
-        Self::Progress(contents.into())
-    }
-
-    pub fn progress_finish(contents: impl Into<Option<String>>) -> Self {
-        match contents.into() {
-            Some(contents) => Self::ProgressFinishWithMessage(contents),
-            None => Self::ProgressFinishAndClear(),
-        }
-    }
-}
 
 pub struct NotificationHandle {
     stop: Arc<AtomicBool>,
@@ -59,7 +25,7 @@ impl Drop for NotificationHandle {
 
 /// This struct displays notifications coming from the CliState when commands are executed
 #[derive(Debug)]
-pub struct NotificationHandler<T: TerminalWriter + Debug + Send + 'static> {
+pub struct NotificationHandler<T: TerminalWriter + Send + 'static> {
     /// Channel to receive notifications
     rx: Receiver<Notification>,
     /// If there is a progress bar, it is used to display messages as they arrive with a spinner
@@ -71,13 +37,13 @@ pub struct NotificationHandler<T: TerminalWriter + Debug + Send + 'static> {
     stop: Arc<AtomicBool>,
 }
 
-impl<T: TerminalWriter + Debug + Send + 'static> NotificationHandler<T> {
+impl<T: TerminalWriter + Send + 'static> NotificationHandler<T> {
     /// Create a new NotificationsProgress without progress bar.
     /// The notifications are printed as they arrive and stay on screen
-    pub fn start(cli_state: &CliState, terminal: Terminal<T>) -> NotificationHandle {
+    pub fn start(terminal: Terminal<T>) -> NotificationHandle {
         let stop = Arc::new(AtomicBool::new(false));
         let _self = NotificationHandler {
-            rx: cli_state.subscribe_to_notifications(),
+            rx: ockam_core::notifier::receiver(),
             terminal: terminal.clone(),
             progress_bar: None,
             stop: stop.clone(),
@@ -92,6 +58,7 @@ impl<T: TerminalWriter + Debug + Send + 'static> NotificationHandler<T> {
                 select! {
                     _ = sleep(REPORTING_CHANNEL_POLL_DELAY) => {
                         if self.stop.load(Acquire) {
+                            debug!("stopping notification handler");
                             // Drain the channel
                             while let Ok(notification) = self.rx.try_recv() {
                                 self.handle_notification(notification);
@@ -101,10 +68,12 @@ impl<T: TerminalWriter + Debug + Send + 'static> NotificationHandler<T> {
                     }
                     notification = self.rx.recv() => {
                         if let Ok(notification) = notification {
+                            trace!(?notification, "received notification");
                             self.handle_notification(notification);
                         }
                         // The channel was closed
                         else {
+                            debug!("notification channel closed");
                             break;
                         }
                     }
@@ -116,26 +85,25 @@ impl<T: TerminalWriter + Debug + Send + 'static> NotificationHandler<T> {
     fn handle_notification(&mut self, notification: Notification) {
         match notification {
             Notification::Message(contents) => {
-                let _ = self.terminal.write_line(contents);
+                let _ = self.terminal.write_line(self.process_contents(contents));
             }
             Notification::Progress(contents) => {
-                if self.terminal.can_use_progress_bar() {
+                if self.terminal.can_use_interactive_elements() {
                     if self.progress_bar.is_none() {
                         self.progress_bar = self.terminal.spinner();
                     }
                     if let Some(pb) = self.progress_bar.as_ref() {
-                        pb.set_message(contents);
+                        pb.set_message(self.process_contents(contents));
                     }
                 }
                 // If the progress bar can't be used (non-tty), handle as a regular message
                 else {
-                    // Since progress bar messages are not formatted, apply the log formatting here
-                    let _ = self.terminal.write_line(fmt_log!("{}", contents));
+                    let _ = self.terminal.write_line(self.process_contents(contents));
                 }
             }
             Notification::ProgressFinishWithMessage(contents) => {
                 if let Some(pb) = self.progress_bar.take() {
-                    pb.finish_with_message(contents);
+                    pb.finish_with_message(self.process_contents(contents));
                 }
             }
             Notification::ProgressFinishAndClear() => {
@@ -143,6 +111,19 @@ impl<T: TerminalWriter + Debug + Send + 'static> NotificationHandler<T> {
                     pb.finish_and_clear();
                 }
             }
+        }
+    }
+
+    fn process_contents(&self, contents: String) -> String {
+        // if has an expected padding, return as is
+        if contents.starts_with(crate::terminal::PADDING)
+            || contents.starts_with(crate::terminal::ICON_PADDING)
+        {
+            contents
+        }
+        // if not, format as a log message
+        else {
+            fmt_log!("{}", contents)
         }
     }
 }

@@ -11,6 +11,7 @@ use ockam::udp::{UdpPuncture, UdpPunctureNegotiation, UdpTransport};
 use ockam::Result;
 use ockam_abac::{Action, PolicyExpression, Resource};
 use ockam_core::errcode::{Kind, Origin};
+use ockam_core::notifier::notify;
 use ockam_core::{async_trait, route, Error, IncomingAccessControl, OutgoingAccessControl, Route};
 use ockam_multiaddr::proto::Project as ProjectProto;
 use ockam_multiaddr::MultiAddr;
@@ -299,25 +300,21 @@ impl SessionReplacer for InletSessionReplacer {
     }
 
     async fn on_session_down(&self) {
-        if let Some(node_manager) = self.node_manager.upgrade() {
-            node_manager.cli_state.notify_message(
-                fmt_warn!(
-                    "The TCP Inlet at {} lost the connection to the TCP Outlet at {}\n",
-                    color_primary(&self.listen_addr),
-                    color_primary(&self.outlet_addr)
-                ) + &fmt_info!("Attempting to reconnect...\n"),
-            );
-        }
+        notify(
+            fmt_warn!(
+                "The TCP Inlet at {} lost the connection to the TCP Outlet at {}\n",
+                color_primary(&self.listen_addr),
+                color_primary(&self.outlet_addr)
+            ) + &fmt_info!("Attempting to reconnect...\n"),
+        );
     }
 
     async fn on_session_replaced(&self) {
-        if let Some(node_manager) = self.node_manager.upgrade() {
-            node_manager.cli_state.notify_message(fmt_ok!(
-                "The TCP Inlet at {} has restored the connection to the TCP Outlet at {}\n",
-                color_primary(&self.listen_addr),
-                color_primary(&self.outlet_addr)
-            ));
-        }
+        notify(fmt_ok!(
+            "The TCP Inlet at {} has restored the connection to the TCP Outlet at {}\n",
+            color_primary(&self.listen_addr),
+            color_primary(&self.outlet_addr)
+        ));
     }
 }
 

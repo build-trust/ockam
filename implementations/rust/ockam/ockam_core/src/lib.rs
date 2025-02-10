@@ -82,6 +82,7 @@ mod cbor;
 mod error;
 mod identity;
 mod message;
+pub mod notifier;
 mod processor;
 mod routing;
 mod uint;

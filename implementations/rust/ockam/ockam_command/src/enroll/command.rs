@@ -113,8 +113,7 @@ impl EnrollCommand {
         display_header(&opts);
 
         let identity = {
-            let _notification_handler =
-                NotificationHandler::start(&opts.state, opts.terminal.clone());
+            let _notification_handler = NotificationHandler::start(opts.terminal.clone());
             opts.state
                 .get_named_identity_or_default(&self.identity)
                 .await?

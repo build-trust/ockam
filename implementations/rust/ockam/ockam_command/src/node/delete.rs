@@ -58,7 +58,7 @@ pub struct DeleteTui {
 
 impl DeleteTui {
     pub async fn run(opts: CommandGlobalOpts, cmd: DeleteCommand) -> miette::Result<()> {
-        let _notification_handler = NotificationHandler::start(&opts.state, opts.terminal.clone());
+        let _notification_handler = NotificationHandler::start(opts.terminal.clone());
         let tui = Self { opts, cmd };
         tui.delete().await
     }

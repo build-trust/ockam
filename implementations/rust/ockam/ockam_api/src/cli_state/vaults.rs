@@ -5,6 +5,7 @@ use crate::{fmt_log, fmt_ok, fmt_warn};
 use colorful::Colorful;
 use ockam::identity::{Identities, Vault};
 use ockam_core::errcode::{Kind, Origin};
+use ockam_core::notifier::notify;
 use ockam_node::database::SqlxDatabase;
 use ockam_vault_aws::AwsSigningVault;
 use std::fmt::Write;
@@ -124,7 +125,7 @@ impl CliState {
                 .delete_identity(&identity.name())
                 .await
             {
-                self.notify_message(fmt_warn!(
+                notify(fmt_warn!(
                     "Failed to delete the identity {}: {err}",
                     color_primary(identity.name())
                 ));
@@ -139,7 +140,7 @@ impl CliState {
         let vaults = self.vaults_repository().get_named_vaults().await?;
         for vault in vaults {
             if let Err(err) = self.delete_named_vault(&vault.name()).await {
-                self.notify_message(fmt_warn!(
+                notify(fmt_warn!(
                     "Failed to delete the vault {}: {err}",
                     color_primary(vault.name())
                 ));
@@ -182,7 +183,7 @@ impl CliState {
             return Ok(existing_vault);
         }
 
-        self.notify_message(fmt_log!(
+        notify(fmt_log!(
             "This Identity needs a Vault to store its secrets."
         ));
         let named_vault = if self
@@ -191,13 +192,13 @@ impl CliState {
             .await?
             .is_none()
         {
-            self.notify_message(fmt_log!(
+            notify(fmt_log!(
                 "There is no default Vault on this machine, creating one..."
             ));
             let vault = self
                 .create_database_vault(vault_name.to_string(), UseAwsKms::No)
                 .await?;
-            self.notify_message(fmt_ok!(
+            notify(fmt_ok!(
                 "Created a new Vault named {}.",
                 color_primary(vault_name)
             ));
@@ -210,7 +211,7 @@ impl CliState {
                     UseAwsKms::No,
                 )
                 .await?;
-            self.notify_message(fmt_ok!(
+            notify(fmt_ok!(
                 "Created a new Vault named {} on your disk.",
                 color_primary(vault_name)
             ));
@@ -218,7 +219,7 @@ impl CliState {
         };
 
         if named_vault.is_default() {
-            self.notify_message(fmt_ok!(
+            notify(fmt_ok!(
                 "Marked this new Vault as your default Vault, on this machine.\n"
             ));
         }

@@ -374,7 +374,7 @@ impl CreateCommand {
         opts: &CommandGlobalOpts,
         identity_name: &Option<String>,
     ) -> Result<String> {
-        let _notification_handler = NotificationHandler::start(&opts.state, opts.terminal.clone());
+        let _notification_handler = NotificationHandler::start(opts.terminal.clone());
         Ok(match identity_name {
             Some(name) => {
                 if let Ok(identity) = opts.state.get_named_identity(name).await {

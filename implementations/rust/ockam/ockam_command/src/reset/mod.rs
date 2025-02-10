@@ -80,8 +80,7 @@ impl ResetCommand {
             }
         }
         {
-            let _notification_handler =
-                NotificationHandler::start(&opts.state, opts.terminal.clone());
+            let _notification_handler = NotificationHandler::start(opts.terminal.clone());
             opts.state.reset().await?;
         }
 

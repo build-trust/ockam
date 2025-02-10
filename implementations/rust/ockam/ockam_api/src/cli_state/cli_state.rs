@@ -1,20 +1,13 @@
-use rand::random;
-use std::path::{Path, PathBuf};
-use tokio::sync::broadcast::{channel, Receiver, Sender};
-
-use ockam::SqlxDatabase;
-use ockam_core::env::get_env_with_default;
-use ockam_node::database::{DatabaseConfiguration, DatabaseType};
-
 use crate::cli_state::error::Result;
 use crate::cli_state::CliStateError;
 use crate::logs::ExportingEnabled;
-use crate::terminal::notification::Notification;
+use ockam::SqlxDatabase;
+use ockam_core::env::get_env_with_default;
+use ockam_node::database::{DatabaseConfiguration, DatabaseType};
+use rand::random;
+use std::path::{Path, PathBuf};
 
 pub const OCKAM_HOME: &str = "OCKAM_HOME";
-
-/// Maximum number of notifications present in the channel
-const NOTIFICATIONS_CHANNEL_CAPACITY: usize = 16;
 
 /// The CliState struct manages all the data persisted locally.
 ///
@@ -45,8 +38,6 @@ pub struct CliState {
     database: SqlxDatabase,
     application_database: SqlxDatabase,
     exporting_enabled: ExportingEnabled,
-    /// Broadcast channel to be notified of major events during a process supported by the CliState API
-    notifications: Sender<Notification>,
 }
 
 impl CliState {
@@ -90,30 +81,6 @@ impl CliState {
 
     pub fn application_database_configuration(&self) -> Result<DatabaseConfiguration> {
         Self::make_application_database_configuration(&self.mode)
-    }
-
-    pub fn subscribe_to_notifications(&self) -> Receiver<Notification> {
-        self.notifications.subscribe()
-    }
-
-    pub fn notify_message(&self, message: impl Into<String>) {
-        self.notify(Notification::message(message));
-    }
-
-    pub fn notify_progress(&self, message: impl Into<String>) {
-        self.notify(Notification::progress(message));
-    }
-
-    pub fn notify_progress_finish(&self, message: impl Into<String>) {
-        self.notify(Notification::progress_finish(Some(message.into())));
-    }
-
-    pub fn notify_progress_finish_and_clear(&self) {
-        self.notify(Notification::progress_finish(None));
-    }
-
-    fn notify(&self, notification: Notification) {
-        let _ = self.notifications.send(notification);
     }
 }
 
@@ -240,8 +207,6 @@ impl CliState {
             application_database
         );
 
-        let (notifications, _) = channel::<Notification>(NOTIFICATIONS_CHANNEL_CAPACITY);
-
         let state = Self {
             mode,
             database,
@@ -251,7 +216,6 @@ impl CliState {
             // the function set_tracing_enabled can be used to enable tracing, which
             // is eventually used to trace user journeys.
             exporting_enabled: ExportingEnabled::Off,
-            notifications,
         };
 
         Ok(state)

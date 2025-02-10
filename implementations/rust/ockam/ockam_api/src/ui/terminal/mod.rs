@@ -28,7 +28,7 @@ use tracing::warn;
 
 /// A terminal abstraction to handle commands' output and messages styling.
 #[derive(Clone, Debug)]
-pub struct Terminal<T: TerminalWriter + Debug, WriteMode = ToStdErr> {
+pub struct Terminal<T: TerminalWriter, WriteMode = ToStdErr> {
     stdout: T,
     stderr: T,
     logging_enabled: bool,
@@ -41,7 +41,7 @@ pub struct Terminal<T: TerminalWriter + Debug, WriteMode = ToStdErr> {
     max_height_row_count: usize,
 }
 
-impl<T: TerminalWriter + Debug, W> Terminal<T, W> {
+impl<T: TerminalWriter, W> Terminal<T, W> {
     pub fn is_quiet(&self) -> bool {
         self.quiet
     }
@@ -86,7 +86,7 @@ impl<T: Write + Debug + Clone> TerminalStream<T> {
 }
 
 /// Trait defining the main methods to write messages to a terminal stream.
-pub trait TerminalWriter: Clone {
+pub trait TerminalWriter: Clone + Debug {
     fn stdout(no_color: bool, branding: OutputBranding) -> Self;
     fn stderr(no_color: bool, branding: OutputBranding) -> Self;
     fn is_tty(&self) -> bool;
@@ -98,7 +98,7 @@ pub trait TerminalWriter: Clone {
 }
 
 // Core functions
-impl<W: TerminalWriter + Debug> Terminal<W> {
+impl<W: TerminalWriter> Terminal<W> {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         logging_enabled: bool,
@@ -231,7 +231,7 @@ impl<W: TerminalWriter + Debug> Terminal<W> {
 }
 
 // Logging mode
-impl<W: TerminalWriter + Debug> Terminal<W, ToStdErr> {
+impl<W: TerminalWriter> Terminal<W, ToStdErr> {
     pub fn is_tty(&self) -> bool {
         self.stderr.is_tty()
     }
@@ -319,7 +319,7 @@ impl<W: TerminalWriter + Debug> Terminal<W, ToStdErr> {
 }
 
 // Finished mode
-impl<W: TerminalWriter + Debug> Terminal<W, ToStdOut> {
+impl<W: TerminalWriter> Terminal<W, ToStdOut> {
     pub fn is_tty(&self) -> bool {
         self.stdout.is_tty()
     }
@@ -396,13 +396,13 @@ impl<W: TerminalWriter + Debug> Terminal<W, ToStdOut> {
 }
 
 // Extensions
-impl<W: TerminalWriter + Debug> Terminal<W> {
-    pub fn can_use_progress_bar(&self) -> bool {
+impl<W: TerminalWriter> Terminal<W> {
+    pub fn can_use_interactive_elements(&self) -> bool {
         self.stderr.is_tty() && self.can_write_to_stderr()
     }
 
     pub fn spinner(&self) -> Option<ProgressBar> {
-        if !self.can_use_progress_bar() {
+        if !self.can_use_interactive_elements() {
             return None;
         }
 

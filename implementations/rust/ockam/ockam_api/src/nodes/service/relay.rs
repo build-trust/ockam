@@ -4,18 +4,6 @@ use std::time::Duration;
 use colorful::Colorful;
 use miette::IntoDiagnostic;
 
-use ockam::identity::models::CredentialAndPurposeKey;
-use ockam::identity::Identifier;
-use ockam::remote::{RemoteRelay, RemoteRelayOptions};
-use ockam::Result;
-use ockam_core::api::{Error, Request, RequestHeader, Response};
-use ockam_core::errcode::{Kind, Origin};
-use ockam_core::{async_trait, Address, TryClone};
-use ockam_multiaddr::MultiAddr;
-use ockam_node::compat::asynchronous::Mutex as AsyncMutex;
-use ockam_node::compat::asynchronous::Mutex;
-use ockam_node::Context;
-
 use super::{NodeManager, NodeManagerWorker};
 use crate::colors::color_primary;
 use crate::nodes::connection::Connection;
@@ -30,6 +18,18 @@ use crate::nodes::BackgroundNodeClient;
 use crate::session::replacer::{ReplacerOutcome, ReplacerOutputKind, SessionReplacer};
 use crate::session::session::Session;
 use crate::{fmt_info, fmt_ok, fmt_warn};
+use ockam::identity::models::CredentialAndPurposeKey;
+use ockam::identity::Identifier;
+use ockam::remote::{RemoteRelay, RemoteRelayOptions};
+use ockam::Result;
+use ockam_core::api::{Error, Request, RequestHeader, Response};
+use ockam_core::errcode::{Kind, Origin};
+use ockam_core::notifier::notify;
+use ockam_core::{async_trait, Address, TryClone};
+use ockam_multiaddr::MultiAddr;
+use ockam_node::compat::asynchronous::Mutex as AsyncMutex;
+use ockam_node::compat::asynchronous::Mutex;
+use ockam_node::Context;
 
 impl NodeManagerWorker {
     pub async fn create_relay(
@@ -377,23 +377,19 @@ impl SessionReplacer for RelaySessionReplacer {
     }
 
     async fn on_session_down(&self) {
-        if let Some(node_manager) = self.node_manager.upgrade() {
-            node_manager.cli_state.notify_message(
-                fmt_warn!(
-                    "The Node lost the connection to the Relay at {}\n",
-                    color_primary(&self.addr)
-                ) + &fmt_info!("Attempting to reconnect...\n"),
-            );
-        }
+        notify(
+            fmt_warn!(
+                "The Node lost the connection to the Relay at {}\n",
+                color_primary(&self.addr)
+            ) + &fmt_info!("Attempting to reconnect...\n"),
+        );
     }
 
     async fn on_session_replaced(&self) {
-        if let Some(node_manager) = self.node_manager.upgrade() {
-            node_manager.cli_state.notify_message(fmt_ok!(
-                "The Node has restored the connection to the Relay at {}\n",
-                color_primary(&self.addr)
-            ));
-        }
+        notify(fmt_ok!(
+            "The Node has restored the connection to the Relay at {}\n",
+            color_primary(&self.addr)
+        ));
     }
 }
 

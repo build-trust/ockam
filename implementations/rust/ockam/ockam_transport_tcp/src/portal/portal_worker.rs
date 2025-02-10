@@ -6,8 +6,8 @@ use crate::transport::{connect, connect_tls};
 use crate::{portal::TcpPortalRecvProcessor, PortalInternalMessage, PortalMessage, TcpRegistry};
 use ockam_core::compat::{boxed::Box, sync::Arc};
 use ockam_core::{
-    async_trait, AllowAll, AllowOnwardAddress, AllowSourceAddress, Decodable, DenyAll,
-    IncomingAccessControl, LocalInfoIdentifier, Mailbox, Mailboxes, OutgoingAccessControl,
+    async_trait, notifier::notify, AllowAll, AllowOnwardAddress, AllowSourceAddress, Decodable,
+    DenyAll, IncomingAccessControl, LocalInfoIdentifier, Mailbox, Mailboxes, OutgoingAccessControl,
     SecureChannelLocalInfo,
 };
 use ockam_core::{Any, Result, Route, Routed, Worker};
@@ -529,6 +529,14 @@ impl Worker for TcpPortalWorker {
         self.registry
             .add_portal_worker(&self.addresses.sender_remote);
 
+        if self.portal_type == PortalType::Outlet {
+            notify(format!(
+                "Outlet at {} received connection from {}",
+                &self.hostname_port,
+                &self.remote_route.clone().unwrap_or(Route::new().build()),
+            ));
+        }
+
         info!(portal_type = %self.portal_type, sender_internal = %self.addresses.sender_internal,
             "tcp portal worker initialized"
         );
@@ -647,6 +655,13 @@ impl TcpPortalWorker {
 
     #[instrument(skip_all)]
     async fn handle_disconnect(&mut self, ctx: &Context) -> Result<()> {
+        if self.portal_type == PortalType::Outlet {
+            notify(format!(
+                "Outlet at {} was disconnected from {}",
+                &self.hostname_port,
+                &self.remote_route.clone().unwrap_or(Route::new().build()),
+            ));
+        }
         info!(portal_type = %self.portal_type, sender_internal = %self.addresses.sender_internal,
             "tcp stream was dropped");
         self.start_disconnection(ctx, DisconnectionReason::FailedRx)

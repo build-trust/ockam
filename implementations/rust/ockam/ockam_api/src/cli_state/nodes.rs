@@ -1,3 +1,7 @@
+use crate::cli_state::{random_name, NamedVault, Result};
+use crate::cli_state::{CliState, CliStateError};
+use crate::colors::color_primary;
+use crate::config::lookup::InternetAddress;
 use colorful::Colorful;
 use minicbor::{CborLen, Decode, Encode};
 use nix::errno::Errno;
@@ -6,6 +10,9 @@ use ockam::identity::utils::now;
 use ockam::identity::Identifier;
 use ockam::tcp::TcpListener;
 use ockam_core::errcode::{Kind, Origin};
+use ockam_core::notifier::{
+    notify, notify_end_spinner, notify_end_spinner_and_clear, notify_with_spinner,
+};
 use ockam_core::Error;
 use ockam_multiaddr::proto::{DnsAddr, Node, Tcp};
 use ockam_multiaddr::MultiAddr;
@@ -15,11 +22,6 @@ use std::path::PathBuf;
 use std::process;
 use std::time::Duration;
 use sysinfo::{Pid, ProcessStatus, ProcessesToUpdate, System};
-
-use crate::cli_state::{random_name, NamedVault, Result};
-use crate::cli_state::{CliState, CliStateError};
-use crate::colors::color_primary;
-use crate::config::lookup::InternetAddress;
 
 use crate::{fmt_warn, ConnectionStatus};
 
@@ -116,7 +118,7 @@ impl CliState {
         let nodes = self.nodes_repository().get_nodes().await?;
         for node in nodes {
             if let Err(err) = self.delete_node(&node.name()).await {
-                self.notify_message(fmt_warn!(
+                notify(fmt_warn!(
                     "Failed to delete the node {}: {err}",
                     color_primary(node.name())
                 ));
@@ -177,7 +179,7 @@ impl CliState {
                     error!(name=%node_name, %pid, %e, "failed to stop node process with SIGKILL");
                     return Err(e);
                 } else {
-                    self.notify_progress_finish(format!(
+                    notify_end_spinner(format!(
                         "The node {} has been stopped",
                         color_primary(node_name),
                     ));
@@ -214,12 +216,12 @@ impl CliState {
                     // Return if max attempts have been reached
                     if attempts > max_attempts {
                         warn!(name = %node_name, %pid, %signal, "node process did not exit");
-                        self.notify_progress_finish_and_clear();
+                        notify_end_spinner_and_clear();
                         return Err(err);
                     }
                     // Notify the user that the node is stopping if it takes too long
                     if attempts == show_message_at_attempt {
-                        self.notify_progress(format!(
+                        notify_with_spinner(format!(
                             "Waiting for node's {} process {} to stop",
                             color_primary(node_name),
                             color_primary(pid)
@@ -230,7 +232,7 @@ impl CliState {
                 }
             }
         }
-        self.notify_progress_finish_and_clear();
+        notify_end_spinner_and_clear();
         Ok(())
     }
 
