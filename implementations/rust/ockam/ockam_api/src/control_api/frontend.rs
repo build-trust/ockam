@@ -25,6 +25,7 @@ const MAX_REQUEST_SIZE: usize = 256 * 1024;
 const TIMEOUT: Duration = Duration::from_secs(30);
 
 pub struct HttpControlNodeApiFrontend {
+    node_manager: Arc<NodeManager>,
     listener: TcpListener,
     authentication_token: String,
     context: Option<Arc<Context>>,
@@ -66,6 +67,7 @@ impl Processor for HttpControlNodeApiFrontend {
             Self::route_request(
                 request,
                 context,
+                self.node_manager.clone(),
                 self.node_resolution.clone(),
                 self.authentication_token.clone(),
                 self.incoming_access_control.clone(),
@@ -86,6 +88,7 @@ impl Processor for HttpControlNodeApiFrontend {
 
 impl HttpControlNodeApiFrontend {
     async fn new(
+        node_manager: Arc<NodeManager>,
         bind_address: SocketAddr,
         authentication_token: String,
         node_resolution: NodeResolution,
@@ -97,6 +100,7 @@ impl HttpControlNodeApiFrontend {
             .map_err(TransportError::from)?;
 
         Ok(Self {
+            node_manager,
             listener,
             authentication_token,
             context: None,
@@ -113,6 +117,7 @@ impl HttpControlNodeApiFrontend {
     async fn route_request(
         request: Request<IncomingBody>,
         context: Arc<Context>,
+        node_manager: Arc<NodeManager>,
         node_resolution: NodeResolution,
         authentication_token: String,
         incoming_access_control: Arc<dyn IncomingAccessControl>,
@@ -121,6 +126,7 @@ impl HttpControlNodeApiFrontend {
         match Self::route_request_impl(
             request,
             context,
+            node_manager,
             node_resolution,
             authentication_token,
             incoming_access_control,
@@ -156,6 +162,7 @@ impl HttpControlNodeApiFrontend {
     async fn route_request_impl(
         request: Request<IncomingBody>,
         context: Arc<Context>,
+        node_manager: Arc<NodeManager>,
         node_resolution: NodeResolution,
         authentication_token: String,
         incoming_access_control: Arc<dyn IncomingAccessControl>,
@@ -207,46 +214,67 @@ impl HttpControlNodeApiFrontend {
             .map_err(|_| Error::new(Origin::Api, Kind::Internal, "Failed to encode request"))?;
 
         let node_connection;
-        let node_route = match &node_resolution {
-            NodeResolution::Relay => {
-                node_connection = None;
-                route![
-                    Address::from_string(format!("forward_to_{node_name}")),
-                    DefaultAddress::CONTROL_API
-                ]
+        // "self" is shorthand for the current node
+        let node_route = if node_name == "self" {
+            node_connection = None;
+            let result = node_manager
+                .make_connection(
+                    &context,
+                    &format!("/secure/api/service/{}", DefaultAddress::CONTROL_API).parse()?,
+                    node_manager.identifier(),
+                    None,
+                    None,
+                )
+                .await;
+            match result {
+                Ok(connection) => connection.route()?,
+                Err(error) => {
+                    error!("Failed to create connection to node: {:?}", error);
+                    return Response::builder()
+                        .status(502)
+                        .header("Content-Type", "application/json")
+                        .body(build_error_body("Node not reachable"))
+                        .map_err(Self::map_http_err);
+                }
             }
-            NodeResolution::DirectConnection {
-                node_manager,
-                suffix,
-                port,
-            } => {
-                let result = node_manager
-                    .make_connection(
-                        &context,
-                        &format!(
-                            "/dnsaddr/{node_name}{suffix}/tcp/{port}/secure/api/service/{}",
-                            DefaultAddress::CONTROL_API
+        } else {
+            match &node_resolution {
+                NodeResolution::Relay => {
+                    node_connection = None;
+                    route![
+                        Address::from_string(format!("forward_to_{node_name}")),
+                        DefaultAddress::CONTROL_API
+                    ]
+                }
+                NodeResolution::DirectConnection { suffix, port } => {
+                    let result = node_manager
+                        .make_connection(
+                            &context,
+                            &format!(
+                                "/dnsaddr/{node_name}{suffix}/tcp/{port}/secure/api/service/{}",
+                                DefaultAddress::CONTROL_API
+                            )
+                            .parse()?,
+                            node_manager.identifier(),
+                            None,
+                            None,
                         )
-                        .parse()?,
-                        node_manager.identifier(),
-                        None,
-                        None,
-                    )
-                    .await;
+                        .await;
 
-                match result {
-                    Ok(connection) => {
-                        let route = connection.route()?;
-                        node_connection = Some(connection);
-                        route
-                    }
-                    Err(error) => {
-                        error!("Failed to create connection to node: {:?}", error);
-                        return Response::builder()
-                            .status(502)
-                            .header("Content-Type", "application/json")
-                            .body(build_error_body("Node not reachable"))
-                            .map_err(Self::map_http_err);
+                    match result {
+                        Ok(connection) => {
+                            let route = connection.route()?;
+                            node_connection = Some(connection);
+                            route
+                        }
+                        Err(error) => {
+                            error!("Failed to create connection to node: {:?}", error);
+                            return Response::builder()
+                                .status(502)
+                                .header("Content-Type", "application/json")
+                                .body(build_error_body("Node not reachable"))
+                                .map_err(Self::map_http_err);
+                        }
                     }
                 }
             }
@@ -264,7 +292,7 @@ impl HttpControlNodeApiFrontend {
             .await;
 
         // close the connection regardless of the result
-        if let NodeResolution::DirectConnection { node_manager, .. } = node_resolution {
+        if let NodeResolution::DirectConnection { .. } = node_resolution {
             if let Some(connection) = node_connection {
                 connection.close(&context, &node_manager)?;
             }
@@ -364,16 +392,12 @@ impl HttpControlNodeApiFrontend {
 #[derive(Clone)]
 pub enum NodeResolution {
     Relay,
-    DirectConnection {
-        node_manager: Arc<NodeManager>,
-        suffix: String,
-        port: u16,
-    },
+    DirectConnection { suffix: String, port: u16 },
 }
 
 impl NodeManager {
     pub async fn create_control_api_frontend(
-        &self,
+        self: &Arc<NodeManager>,
         context: &Context,
         bind_address: SocketAddr,
         node_resolution: NodeResolution,
@@ -404,6 +428,7 @@ impl NodeManager {
         }
 
         let frontend = HttpControlNodeApiFrontend::new(
+            self.clone(),
             bind_address,
             authentication_token,
             node_resolution,
@@ -619,7 +644,6 @@ mod test {
                 context,
                 SocketAddr::from(([127, 0, 0, 1], 0)),
                 NodeResolution::DirectConnection {
-                    node_manager: handle.node_manager.inner_clone(),
                     suffix: ".localhost".to_string(),
                     port: handle.bind_address.port(),
                 },
@@ -657,7 +681,6 @@ mod test {
                 context,
                 SocketAddr::from(([127, 0, 0, 1], 0)),
                 NodeResolution::DirectConnection {
-                    node_manager: handle.node_manager.inner_clone(),
                     suffix: ".localhost".to_string(),
                     port: 0,
                 },
