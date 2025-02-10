@@ -439,7 +439,7 @@ impl Session {
     async fn run_loop(
         ctx: Context,
         key: String,
-        initial_connect_was_called: bool,
+        mut initial_connect_was_called: bool,
         collector_address: Address,
         shared_state: SharedState,
         ping_interval: Duration,
@@ -479,6 +479,7 @@ impl Session {
                 // The session is down, or we reached the maximum number of failures
                 _ => {
                     let mut replacer = shared_state.replacer.lock().await;
+                    debug!(key = %key, %initial_connect_was_called, %first_creation, pings = %pings.len(), "session state");
 
                     if first_creation && !initial_connect_was_called {
                         debug!(key = %key, "session is down. starting");
@@ -487,7 +488,7 @@ impl Session {
                         warn!(key = %key, "session unresponsive. replacing");
                     }
 
-                    if !first_creation && pings.len() > 0 {
+                    if initial_connect_was_called && pings.len() > 0 {
                         replacer.on_session_down().await;
                     }
 
@@ -502,9 +503,9 @@ impl Session {
                     match replacer.create().await {
                         Ok(replacer_outcome) => {
                             info!(key = %key, ping_route = %replacer_outcome.ping_route, "replacement is up");
-                            if !first_creation {
-                                replacer.on_session_replaced().await;
-                            }
+
+                            initial_connect_was_called = true;
+                            replacer.on_session_replaced().await;
 
                             shared_state.status.set_up(replacer_outcome.ping_route);
                             shared_state

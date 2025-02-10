@@ -26,6 +26,17 @@ impl PortalType {
             PortalType::PrivilegedInlet | PortalType::PrivilegedOutlet => true,
         }
     }
+
+    pub fn is_inlet(&self) -> bool {
+        match self {
+            PortalType::Inlet | PortalType::PrivilegedInlet => true,
+            PortalType::Outlet | PortalType::PrivilegedOutlet => false,
+        }
+    }
+
+    pub fn is_outlet(&self) -> bool {
+        !self.is_inlet()
+    }
 }
 
 impl Display for PortalType {

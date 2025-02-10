@@ -529,7 +529,27 @@ impl Worker for TcpPortalWorker {
         self.registry
             .add_portal_worker(&self.addresses.sender_remote);
 
-        info!(portal_type = %self.portal_type, sender_internal = %self.addresses.sender_internal,
+        if self.portal_type.is_inlet() {
+            info!(
+                "The TCP Inlet at {} connected to {}",
+                &self.hostname_port,
+                self.their_identifier
+                    .as_ref()
+                    .map(|i| i.to_string())
+                    .unwrap_or_else(|| "unknown".to_string()),
+            );
+        } else if self.portal_type.is_outlet() {
+            info!(
+                "The TCP Outlet at {} received connection from {}",
+                &self.hostname_port,
+                self.their_identifier
+                    .as_ref()
+                    .map(|i| i.to_string())
+                    .unwrap_or_else(|| "unknown".to_string()),
+            );
+        }
+
+        debug!(portal_type = %self.portal_type, sender_internal = %self.addresses.sender_internal,
             "tcp portal worker initialized"
         );
 
@@ -647,7 +667,21 @@ impl TcpPortalWorker {
 
     #[instrument(skip_all)]
     async fn handle_disconnect(&mut self, ctx: &Context) -> Result<()> {
-        info!(portal_type = %self.portal_type, sender_internal = %self.addresses.sender_internal,
+        let portal_type_str = if self.portal_type.is_inlet() {
+            "TCP Inlet"
+        } else {
+            "TCP Outlet"
+        };
+        info!(
+            "The {} at {} was disconnected from to {}",
+            portal_type_str,
+            &self.hostname_port,
+            self.their_identifier
+                .as_ref()
+                .map(|i| i.to_string())
+                .unwrap_or_else(|| "unknown".to_string()),
+        );
+        debug!(portal_type = %self.portal_type, sender_internal = %self.addresses.sender_internal,
             "tcp stream was dropped");
         self.start_disconnection(ctx, DisconnectionReason::FailedRx)
             .await
