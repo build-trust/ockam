@@ -69,6 +69,7 @@ pub fn create_configuration(
         account_authority: None,
         enforce_admin_checks: false,
         disable_trust_context_id: false,
+        telemetry_endpoint_url: None,
     })
 }
 
@@ -126,7 +127,7 @@ pub async fn start_authority(
             .await?;
 
         let authority_node_client = NodeManager::authority_node_client(
-            &TcpTransport::create(ctx)?,
+            TcpTransport::create(ctx)?,
             secure_channels.clone(),
             &configuration.identifier,
             &MultiAddr::try_from("/secure/api")?,
@@ -167,7 +168,7 @@ pub fn change_client_identifier(
         new_credential_retriever_creator,
         client.transport(),
         client.secure_route().clone(),
-        client.server_identifier(),
+        client.server_trust_policy(),
         new_identifier,
         client.secure_channel_timeout(),
         client.request_timeout(),

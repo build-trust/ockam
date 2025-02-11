@@ -4,6 +4,7 @@ use std::time::Duration;
 
 use ockam::identity::{
     get_default_timeout, CredentialRetrieverCreator, Identifier, SecureChannels, SecureClient,
+    TrustIdentifierPolicy,
 };
 use ockam::tcp::TcpTransport;
 use ockam_core::compat::sync::Arc;
@@ -52,7 +53,7 @@ impl NodeManager {
         credential_retriever_creator: Option<Arc<dyn CredentialRetrieverCreator>>,
     ) -> Result<AuthorityNodeClient> {
         NodeManager::authority_node_client(
-            &self.tcp_transport,
+            self.tcp_transport.clone(),
             self.secure_channels.clone(),
             authority_identifier,
             authority_route,
@@ -121,7 +122,7 @@ impl NodeManager {
                 None,
                 Arc::new(tcp_transport.clone()),
                 controller_route,
-                &controller_identifier,
+                Arc::new(TrustIdentifierPolicy::new(controller_identifier)),
                 caller_identifier,
                 get_default_timeout(),
                 get_default_timeout(),
@@ -131,7 +132,7 @@ impl NodeManager {
 
     #[instrument(skip_all, fields(authority_identifier = %authority_identifier.clone(), authority_route = %authority_route.clone(), caller = %caller_identifier.clone()))]
     pub async fn authority_node_client(
-        tcp_transport: &TcpTransport,
+        tcp_transport: Arc<TcpTransport>,
         secure_channels: Arc<SecureChannels>,
         authority_identifier: &Identifier,
         authority_route: &MultiAddr,
@@ -153,9 +154,9 @@ impl NodeManager {
             secure_client: SecureClient::new(
                 secure_channels,
                 credential_retriever_creator,
-                Arc::new(tcp_transport.clone()),
+                tcp_transport.clone(),
                 authority_route,
-                authority_identifier,
+                Arc::new(TrustIdentifierPolicy::new(authority_identifier.clone())),
                 caller_identifier,
                 get_default_timeout(),
                 get_default_timeout(),
@@ -189,7 +190,7 @@ impl NodeManager {
                 credential_retriever_creator,
                 Arc::new(tcp_transport.clone()),
                 project_route,
-                project_identifier,
+                Arc::new(TrustIdentifierPolicy::new(project_identifier.clone())),
                 caller_identifier,
                 get_default_timeout(),
                 get_default_timeout(),
@@ -214,7 +215,7 @@ impl NodeManager {
                 None,
                 Arc::new(tcp_transport.clone()),
                 route,
-                identifier,
+                Arc::new(TrustIdentifierPolicy::new(identifier.clone())),
                 caller_identifier,
                 get_default_timeout(),
                 get_default_timeout(),

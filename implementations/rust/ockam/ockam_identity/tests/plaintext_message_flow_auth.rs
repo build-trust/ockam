@@ -67,8 +67,8 @@ async fn test1(ctx: &mut Context) -> Result<()> {
 // Bob: TCP listener + Secure Channel listener
 #[ockam_macros::test]
 async fn test2(ctx: &mut Context) -> Result<()> {
-    let tcp_alice = TcpTransport::create(ctx)?;
-    let tcp_bob = TcpTransport::create(ctx)?;
+    let tcp_alice = TcpTransport::create_new(ctx)?;
+    let tcp_bob = TcpTransport::create_new(ctx)?;
 
     let listener = tcp_bob
         .listen("127.0.0.1:0", TcpListenerOptions::new())

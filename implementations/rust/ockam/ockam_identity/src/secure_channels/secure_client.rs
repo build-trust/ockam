@@ -1,4 +1,4 @@
-use crate::{CredentialRetrieverCreator, Identifier, SecureChannelOptions, TrustIdentifierPolicy};
+use crate::{CredentialRetrieverCreator, Identifier, SecureChannelOptions, TrustPolicy};
 use minicbor::{Decode, Encode};
 use tracing::error;
 
@@ -36,8 +36,8 @@ pub struct SecureClient {
     transport: Arc<dyn Transport>,
     // destination for the secure channel
     secure_route: Route,
-    // identifier of the secure channel responder
-    server_identifier: Identifier,
+    // trust policy for the secure channel responder
+    server_trust_policy: Arc<dyn TrustPolicy>,
     // identifier of the secure channel initiator
     client_identifier: Identifier,
     // timeout for creating secure channel
@@ -54,7 +54,7 @@ impl SecureClient {
         credential_retriever_creator: Option<Arc<dyn CredentialRetrieverCreator>>,
         transport: Arc<dyn Transport>,
         server_route: Route,
-        server_identifier: &Identifier,
+        server_trust_policy: Arc<dyn TrustPolicy>,
         client_identifier: &Identifier,
         secure_channel_timeout: Duration,
         request_timeout: Duration,
@@ -64,7 +64,7 @@ impl SecureClient {
             credential_retriever_creator,
             transport,
             secure_route: server_route,
-            server_identifier: server_identifier.clone(),
+            server_trust_policy: server_trust_policy.clone(),
             client_identifier: client_identifier.clone(),
             secure_channel_timeout,
             request_timeout,
@@ -91,9 +91,9 @@ impl SecureClient {
         &self.secure_route
     }
 
-    /// Server Identifier
-    pub fn server_identifier(&self) -> &Identifier {
-        &self.server_identifier
+    /// Trust policy for the server side
+    pub fn server_trust_policy(&self) -> Arc<dyn TrustPolicy> {
+        self.server_trust_policy.clone()
     }
 
     /// Client Identifier
@@ -258,7 +258,7 @@ impl SecureClient {
         )
         .await?;
         let options = SecureChannelOptions::new()
-            .with_trust_policy(TrustIdentifierPolicy::new(self.server_identifier.clone()))
+            .with_trust_policy(self.server_trust_policy())
             .with_timeout(self.secure_channel_timeout);
 
         let options =

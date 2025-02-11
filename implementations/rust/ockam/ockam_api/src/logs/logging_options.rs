@@ -1,6 +1,5 @@
 use nu_ansi_term::{Color, Style};
 use ockam_core::env::FromString;
-use ockam_core::errcode::{Kind, Origin};
 use std::fmt::{Debug, Display, Formatter};
 use tracing_core::{Event, Level, Subscriber};
 use tracing_subscriber::fmt::format::Writer;
@@ -31,38 +30,6 @@ impl FromString for LoggingEnabled {
                 LoggingEnabled::Off
             }
         })
-    }
-}
-
-#[derive(Debug, PartialEq, Eq, Copy, Clone)]
-pub enum GlobalErrorHandler {
-    Off,
-    Console,
-    LogFile,
-}
-
-impl Display for GlobalErrorHandler {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            GlobalErrorHandler::Off => f.write_str("off"),
-            GlobalErrorHandler::Console => f.write_str("console"),
-            GlobalErrorHandler::LogFile => f.write_str("logfile"),
-        }
-    }
-}
-
-impl FromString for GlobalErrorHandler {
-    fn from_string(s: &str) -> ockam_core::Result<Self> {
-        match s {
-            "off" => Ok(GlobalErrorHandler::Off),
-            "console" => Ok(GlobalErrorHandler::Console),
-            "logfile" => Ok(GlobalErrorHandler::LogFile),
-            _ => Err(ockam_core::Error::new(
-                Origin::Api,
-                Kind::Serialization,
-                format!("incorrect value for the global error handler {s}"),
-            )),
-        }
     }
 }
 

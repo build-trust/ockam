@@ -1,3 +1,4 @@
+use hyper::Uri;
 use std::collections::BTreeMap;
 use tracing::info;
 
@@ -10,6 +11,11 @@ use crate::authenticator::{
     AuthorityEnrollmentTokenRepository, AuthorityEnrollmentTokenSqlxDatabase, AuthorityMember,
     AuthorityMembersRepository, AuthorityMembersSqlxDatabase,
 };
+use crate::authority_node::Configuration;
+use crate::echoer::Echoer;
+use crate::logs::HttpForwarder;
+use crate::nodes::service::default_address::DefaultAddress;
+use crate::ApiError;
 use ockam::identity::utils::now;
 use ockam::identity::{
     Identifier, Identities, SecureChannelListenerOptions, SecureChannelSqlxDatabase,
@@ -18,14 +24,11 @@ use ockam::identity::{
 use ockam::tcp::{TcpListenerOptions, TcpTransport};
 use ockam_core::compat::sync::Arc;
 use ockam_core::env::get_env;
+use ockam_core::errcode::{Kind, Origin};
 use ockam_core::flow_control::FlowControlId;
-use ockam_core::Result;
+use ockam_core::{Error, Result};
 use ockam_node::database::SqlxDatabase;
 use ockam_node::Context;
-
-use crate::authority_node::Configuration;
-use crate::echoer::Echoer;
-use crate::nodes::service::default_address::DefaultAddress;
 
 /// This struct represents an Authority, which is an
 /// Identity which other identities trust to authenticate attributes
@@ -308,6 +311,32 @@ impl Authority {
         ctx.start_worker(address, Echoer)
     }
 
+    /// Start an http forwarder service
+    pub async fn start_http_forwarder(
+        &self,
+        ctx: &Context,
+        secure_channel_flow_control_id: &FlowControlId,
+        configuration: &Configuration,
+    ) -> Result<()> {
+        if let Some(telemetry_endpoint_url) = &configuration.telemetry_endpoint_url {
+            let address = DefaultAddress::HTTP_FORWARDER;
+
+            ctx.flow_controls()
+                .add_consumer(&address.into(), secure_channel_flow_control_id);
+
+            let url = telemetry_endpoint_url.to_string();
+            let uri = url
+                .parse::<Uri>()
+                .map_err(|e| Error::new(Origin::Ockam, Kind::Invalid, e))?;
+            debug!("start an http forwarder at '{uri}'");
+            ctx.start_worker(
+                address,
+                HttpForwarder::new(uri).await.map_err(ApiError::core)?,
+            )?
+        };
+        Ok(())
+    }
+
     /// Add a member directly to storage, without additional validation
     /// This is used during the authority start-up to add an identity for exporting traces
     pub async fn add_member(
@@ -354,7 +383,7 @@ impl Authority {
 }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
     use super::*;
     use crate::authenticator::direct::{
         Members, OCKAM_ROLE_ATTRIBUTE_ENROLLER_VALUE, OCKAM_ROLE_ATTRIBUTE_KEY,
@@ -373,9 +402,9 @@ mod tests {
     use ockam_node::database::{with_postgres, DatabaseConfiguration};
     use ockam_node::NodeBuilder;
     use std::future::Future;
-    use std::net::TcpListener;
     use std::str::FromStr;
     use std::time::Duration;
+    use url::Url;
 
     /// This test gets a reference to the postgres database and starts 2 authority nodes
     /// to make sure that they can work even when using the same database.
@@ -403,6 +432,7 @@ mod tests {
 
                 let authority1 = start_authority_node(
                     db.clone(),
+                    None,
                     &ctx1,
                     port1,
                     "authority-node-1",
@@ -411,6 +441,7 @@ mod tests {
                 .await?;
                 let authority2 = start_authority_node(
                     db,
+                    None,
                     &ctx2,
                     port2,
                     "authority-node-2",
@@ -485,6 +516,7 @@ mod tests {
     /// - An identity that should be trusted as an enroller
     fn create_configuration(
         database_configuration: DatabaseConfiguration,
+        telemetry_endpoint_url: Option<Url>,
         authority: &Identifier,
         port: u16,
         trusted: &[Identifier],
@@ -517,6 +549,7 @@ mod tests {
             account_authority: None,
             enforce_admin_checks: false,
             disable_trust_context_id: false,
+            telemetry_endpoint_url,
         })
     }
 
@@ -529,7 +562,7 @@ mod tests {
         caller: &Identifier,
     ) -> Result<AuthorityNodeClient> {
         let client = NodeManager::authority_node_client(
-            &TcpTransport::create(ctx)?,
+            TcpTransport::create(ctx)?,
             secure_channels,
             authority_identifier,
             authority_route,
@@ -548,6 +581,7 @@ mod tests {
     ///  - An identifier for an enroller
     async fn start_authority_node(
         db: SqlxDatabase,
+        telemetry_endpoint_url: Option<Url>,
         ctx: &Context,
         port: u16,
         node_name: &str,
@@ -556,8 +590,13 @@ mod tests {
         let identities = identities::create(db.clone(), node_name);
         let authority = identities.identities_creation().create_identity().await?;
 
-        let configuration =
-            create_configuration(db.configuration.clone(), &authority, port, trusted)?;
+        let configuration = create_configuration(
+            db.configuration.clone(),
+            telemetry_endpoint_url,
+            &authority,
+            port,
+            trusted,
+        )?;
         let authority = Authority::create(&configuration, Some(db.clone())).await?;
         authority_node::start_node(ctx, &configuration, authority.clone()).await?;
         Ok(authority)
@@ -692,8 +731,9 @@ mod tests {
         })?
     }
 
-    fn random_port() -> u16 {
-        let listener = TcpListener::bind("127.0.0.1:0").expect("Failed to bind to address");
+    pub fn random_port() -> u16 {
+        let listener =
+            std::net::TcpListener::bind("127.0.0.1:0").expect("Failed to bind to address");
         let address = listener.local_addr().expect("Failed to get local address");
         address.port()
     }

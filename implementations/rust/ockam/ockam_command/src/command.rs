@@ -102,9 +102,10 @@ impl OckamCommand {
     fn setup_logging_tracing(
         &self,
         logging_configuration: &LoggingConfiguration,
-        tracing_configuration: &ExportingConfiguration,
+        exporting_configuration: &ExportingConfiguration,
+        ctx: &Context,
     ) -> Option<TracingGuard> {
-        if !logging_configuration.is_enabled() && !tracing_configuration.is_enabled() {
+        if !logging_configuration.is_enabled() && !exporting_configuration.is_enabled() {
             return None;
         };
 
@@ -115,9 +116,10 @@ impl OckamCommand {
         };
         let tracing_guard = LoggingTracing::setup(
             logging_configuration,
-            tracing_configuration,
+            exporting_configuration,
             app_name,
             self.subcommand.node_name(),
+            ctx,
         );
 
         Some(tracing_guard)
@@ -146,17 +148,18 @@ impl OckamCommand {
         }
     }
 
-    /// Create the tracing configuration, depending on the command to execute
-    async fn make_tracing_configuration(
+    /// Create the exporting configuration, depending on the command to execute
+    async fn make_exporting_configuration(
         &self,
         state: &CliState,
+        ctx: &Context,
     ) -> miette::Result<ExportingConfiguration> {
         if self.subcommand.is_background_node() {
-            ExportingConfiguration::background(state)
+            ExportingConfiguration::background(state, ctx)
                 .await
                 .into_diagnostic()
         } else {
-            ExportingConfiguration::foreground(state)
+            ExportingConfiguration::foreground(state, ctx)
                 .await
                 .into_diagnostic()
         }
@@ -189,26 +192,27 @@ impl OckamCommand {
 
         let logging_configuration = self.make_logging_configuration(Term::stdout().is_term())?;
 
-        let (tracing_configuration, tracing_guard, cli_state) = if !is_exporting_set()? {
+        let (exporting_configuration, tracing_guard, cli_state) = if !is_exporting_set()? {
             // Allows to have logging enabled before initializing CliState
-            let tracing_configuration = ExportingConfiguration::off().into_diagnostic()?;
+            let exporting_configuration = ExportingConfiguration::off().into_diagnostic()?;
             let tracing_guard =
-                self.setup_logging_tracing(&logging_configuration, &tracing_configuration);
+                self.setup_logging_tracing(&logging_configuration, &exporting_configuration, ctx);
 
-            (tracing_configuration, tracing_guard, None)
+            (exporting_configuration, tracing_guard, None)
         } else {
             let cli_state = self.init_cli_state(in_memory).await;
-            let tracing_configuration = self.make_tracing_configuration(&cli_state).await?;
+            let exporting_configuration =
+                self.make_exporting_configuration(&cli_state, ctx).await?;
             let tracing_guard =
-                self.setup_logging_tracing(&logging_configuration, &tracing_configuration);
-            let cli_state = cli_state.set_tracing_enabled(tracing_configuration.is_enabled());
+                self.setup_logging_tracing(&logging_configuration, &exporting_configuration, ctx);
+            let cli_state = cli_state.set_tracing_enabled(exporting_configuration.is_enabled());
 
-            (tracing_configuration, tracing_guard, Some(cli_state))
+            (exporting_configuration, tracing_guard, Some(cli_state))
         };
 
         info!("Tracing initialized");
         debug!("{:#?}", logging_configuration);
-        debug!("{:#?}", tracing_configuration);
+        debug!("{:#?}", exporting_configuration);
 
         let tracer = global::tracer(OCKAM_TRACER_NAME);
 
@@ -237,7 +241,7 @@ impl OckamCommand {
                 .init_cli_state(in_memory)
                 .with_context(cx.clone())
                 .await
-                .set_tracing_enabled(tracing_configuration.is_enabled()),
+                .set_tracing_enabled(exporting_configuration.is_enabled()),
         };
 
         let terminal = Terminal::new(

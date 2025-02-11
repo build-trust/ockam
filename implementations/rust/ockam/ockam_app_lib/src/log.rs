@@ -3,6 +3,8 @@ use ockam_api::logs::{
     logging_configuration, Colored, ExportingConfiguration, LogLevelWithCratesFilter,
     LoggingTracing,
 };
+use ockam_core::TryClone;
+use ockam_node::Context;
 
 impl AppState {
     /// Setup logging and tracing for the Portals application
@@ -12,12 +14,14 @@ impl AppState {
             return;
         }
 
-        self.context()
-            .runtime()
-            .block_on(async move { self.setup_logging_tracing_impl().await });
+        let ctx = self.context();
+        if let Ok(ctx_clone) = ctx.try_clone() {
+            ctx.runtime()
+                .block_on(async move { self.setup_logging_tracing_impl(&ctx_clone).await });
+        }
     }
 
-    async fn setup_logging_tracing_impl(&self) {
+    async fn setup_logging_tracing_impl(&self, ctx: &Context) {
         let state = self.state().await;
         let node_dir = state
             .node_dir(NODE_NAME)
@@ -27,9 +31,12 @@ impl AppState {
             .add_crates(vec!["ockam_app_lib"]);
         let tracing_guard = LoggingTracing::setup(
             &logging_configuration(level_and_crates, Some(node_dir), Colored::Off).unwrap(),
-            &ExportingConfiguration::foreground(&state).await.unwrap(),
+            &ExportingConfiguration::foreground(&state, ctx)
+                .await
+                .unwrap(),
             "portals",
             Some("portals".to_string()),
+            ctx,
         );
         self.tracing_guard
             .set(tracing_guard)

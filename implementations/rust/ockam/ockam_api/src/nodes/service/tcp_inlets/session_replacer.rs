@@ -31,7 +31,7 @@ use crate::{fmt_info, fmt_ok, fmt_warn, DefaultAddress};
 
 pub(super) struct InletSessionReplacer {
     pub(super) node_manager: Weak<NodeManager>,
-    pub(super) udp_transport: Option<UdpTransport>,
+    pub(super) udp_transport: Option<Arc<UdpTransport>>,
     pub(super) context: Context,
     pub(super) listen_addr: String,
     pub(super) outlet_addr: MultiAddr,

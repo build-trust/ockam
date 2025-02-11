@@ -79,7 +79,7 @@ impl TcpTransport {
 /// This is the case for an ockam::Node, so you can write `node.create_tcp_transport()`
 pub trait TcpTransportExtension: HasContext {
     /// Create a TCP transport
-    fn create_tcp_transport(&self) -> Result<TcpTransport> {
+    fn create_tcp_transport(&self) -> Result<Arc<TcpTransport>> {
         TcpTransport::create(self.get_context())
     }
 }
