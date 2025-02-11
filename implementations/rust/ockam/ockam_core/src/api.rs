@@ -612,7 +612,20 @@ impl<T: Decodable> Decodable for Request<T> {
         let mut dec = Decoder::new(&deserialized);
         let header: RequestHeader = dec.decode()?;
         if header.has_body() {
-            let body = dec.input().get(dec.position()..deserialized.len()).unwrap();
+            let body = dec
+                .input()
+                .get(dec.position()..deserialized.len())
+                .ok_or_else(|| {
+                    crate::Error::new(
+                        Origin::Api,
+                        Kind::Internal,
+                        format!(
+                            "can't access the remaining input bytes: {}/{}",
+                            dec.position(),
+                            deserialized.len()
+                        ),
+                    )
+                })?;
             Ok(Request {
                 header,
                 body: Some(<T as Decodable>::decode(body)?),
@@ -725,7 +738,20 @@ impl<T: Decodable> Decodable for Response<T> {
         let header: ResponseHeader = dec.decode()?;
         if header.is_ok() {
             if header.has_body() {
-                let body = dec.input().get(dec.position()..deserialized.len()).unwrap();
+                let body = dec
+                    .input()
+                    .get(dec.position()..deserialized.len())
+                    .ok_or_else(|| {
+                        crate::Error::new(
+                            Origin::Api,
+                            Kind::Internal,
+                            format!(
+                                "can't access the remaining input bytes: {}/{}",
+                                dec.position(),
+                                deserialized.len()
+                            ),
+                        )
+                    })?;
                 Ok(Response {
                     header,
                     body: Some(<T as Decodable>::decode(body)?),
