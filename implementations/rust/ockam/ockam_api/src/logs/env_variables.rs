@@ -34,8 +34,23 @@ pub(crate) const OCKAM_TELEMETRY_EXPORT: &str = "OCKAM_TELEMETRY_EXPORT";
 /// Deprecated, use OCKAM_TELEMETRY_EXPORT instead
 pub(crate) const OCKAM_OPENTELEMETRY_EXPORT: &str = "OCKAM_OPENTELEMETRY_EXPORT";
 
-/// Decides if spans and log records should be exported via the project exporter portal. Accepted values, see BooleanVar. For example; true, false, 1, 0
+/// Decides if spans and log records should be exported via a secure channel to the project node. Accepted values, see BooleanVar. For example; true, false, 1, 0
 pub(crate) const OCKAM_TELEMETRY_EXPORT_VIA_PROJECT: &str = "OCKAM_TELEMETRY_EXPORT_VIA_PROJECT";
+
+/// Decides if spans and log records should be exported via a secure channel to the authority node. Accepted values, see BooleanVar. For example; true, false, 1, 0
+pub(crate) const OCKAM_TELEMETRY_EXPORT_VIA_AUTHORITY: &str =
+    "OCKAM_TELEMETRY_EXPORT_VIA_AUTHORITY";
+
+/// Route to a node accepting telemetry data, over a secure channel. Accepted values, see MultiAddr. For example: /dnsaddr/localhost/tcp/30002/service/a4da84b7-af6f-4ba6-bf58-709f2b5f0153/service/api
+pub(crate) const OCKAM_TELEMETRY_EXPORT_NODE_ROUTE: &str = "OCKAM_TELEMETRY_EXPORT_NODE_ROUTE";
+
+/// Identifier of a node accepting telemetry data, over a secure channel. Accepted values, see Identifier. For example: Ief435842446fe86b7880c08d4187073711ec810136880d61cd04a9aa08e74eef
+pub(crate) const OCKAM_TELEMETRY_EXPORT_NODE_IDENTIFIER: &str =
+    "OCKAM_TELEMETRY_EXPORT_NODE_IDENTIFIER";
+
+/// Name of the service forwarding telemetry data on a node accepting telemetry data, over a secure channel. For example: grpc_forwarder
+pub(crate) const OCKAM_TELEMETRY_EXPORT_NODE_FORWARDER_SERVICE: &str =
+    "OCKAM_TELEMETRY_EXPORT_NODE_FORWARDER_SERVICE";
 
 /// Boolean set to true if the current user is an Ockam developer
 pub const OCKAM_DEVELOPER: &str = "OCKAM_DEVELOPER";

@@ -9,21 +9,61 @@ collector serves as a central point of collection and can forward this data to a
 
 # Configuration
 
-There are two ways to send telemetry data to the collector:
+When the `OCKAM_OPENTELEMETRY_EXPORT` environment variable is set to `true`, there are various ways to send telemetry
+data to the collector:
 
 1. Via a secure channel to your project and then to the collector (the default).
-2. Directly via HTTP.
+1. Via a secure channel to your project's authority node and then to the collector.
+1. Via a secure channel to an arbitrary Ockam node and then to the collector.
+1. Directly via HTTP.
 
 ## Sending telemetry data directly via a secure channel to the project
 
-This behaviour can be disabled by setting the `OCKAM_TELEMETRY_EXPORT_VIA_PROJECT` environment variable to `false`.
-In that case, if `OCKAM_OPENTELEMETRY_EXPORT` is set to true, the telemetry data will be sent directly via HTTP.
+This behaviour is controlled by the `OCKAM_TELEMETRY_EXPORT_VIA_PROJECT` environment variable (the default is `true`).
 
 This mode is only active if a default project can be detected locally and is accessible via a secure channel.
-Then, the telemetry data is sent as Ockam messages to the authority node of the project and forwarded to the collector.
+In that case, the telemetry data is sent as Ockam messages to the project node and then forwarded to the collector.
+
+### Services configuration
+
+The project node must be started with the following configuration:
+
+```elixir
+  config :ockam_services,
+    services:
+      {:grpc_forwarder,
+      [
+        address: "grpc_forwarder",
+        grpc_endpoint: "http://opentelemetry-collector:4317",
+        authorization: [{Ockam.Worker.Authorization, :from_secure_channel}]
+      ]}
+```
+
+The value of `grpc_endpoint` must be set to the endpoint of an accessible OpenTelemetry collector.
+
+## Sending telemetry data directly via a secure channel to the authority node
+
+This behaviour is controlled by the `OCKAM_TELEMETRY_EXPORT_VIA_PROJECT` environment variable (the default is `false`).
+
+This mode is only active if a default project can be detected locally and is accessible via a secure channel.
+Then, the telemetry data is sent as Ockam messages to the project's authority node and forwarded to the collector.
+
+### Configuration
 
 In order for the forwarding to work, the authority node be configured with the `OCKAM_OPENTELEMETRY_ENDPOINT` set to
-the collector endpoint.
+the collector endpoint URL, for example `http://opentelemetry-collector:4317`.
+
+## Sending telemetry data directly via a secure channel to an arbitrary Ockam node
+
+This behaviour is controlled by the setting of two environment variables:
+
+- `OCKAM_TELEMETRY_EXPORT_NODE_ROUTE` a route to the node to connect. For example:
+  `/dnsaddr/localhost/tcp/4000/secure/api`. Note that the presence of `secure/api` in the address is going to trigger
+  the creation of a secure channel.
+- `OCKAM_TELEMETRY_EXPORT_NODE_IDENTIFIER` the identifier of the node that we are connecting to.
+- `OCKAM_TELEMETRY_EXPORT_NODE_FORWARDER_SERVICE` the address of the `GrpcForwarder` service started on the remote node.
+  The default is `grpc_forwarder` (see the project configuration above where that name is used to start the
+  `GrpcForwarder` for example)
 
 ## Sending telemetry data directly via HTTP
 
@@ -31,8 +71,7 @@ In order to do this you need to set the following environment variables:
 
 - `OCKAM_TELEMETRY_EXPORT=true`: this is the default value.
 - `OCKAM_OPENTELEMETRY_ENDPOINT=http://opentelemetry-collector:4317`, assuming that your OpenTelemetry collector is
-  running a gRPC
-  endpoint on port 4317.
+  running a gRPC endpoint on port 4317.
 
 The `receivers` section of your collector configuration file should look like this:
 
@@ -48,7 +87,7 @@ Notes:
 
 - The `0.0.0.0` address, which enables the accessibility of the port 4317 on all network interfaces.
   This is in particular required if you deploy an Opentelemetry collector in a container.
-- It is possible to use a HTTPs address for the endpoint.
+- It is also possible to use a HTTPs address for the endpoint.
 
 ## Cutoff times
 

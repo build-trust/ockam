@@ -12,8 +12,8 @@ use opentelemetry_proto::transform::trace::tonic::group_spans_by_resource_and_sc
 use tonic::metadata::{KeyAndValueRef, MetadataMap};
 
 /// This struct does what most of the TonicTracesClient does as a SpanExporter, except that
-/// it uses a SecureClientService to send the gRCP requests serialized as http Request to
-/// an HTTP forwarder service located in another Ockam node, via a secure channel.
+/// it uses a SecureClientService to send the gRPC requests serialized as http Request to
+/// a gRPC forwarder service located in another Ockam node, via a secure channel.
 ///
 /// Note that the original TonicTracesClient can also be parameterized with an Interceptor to:
 ///  - Potentially drop some requests
@@ -64,7 +64,7 @@ impl OckamTonicTracesClient {
 
 /// Implement the SpanExporter trait for OckamTonicTracesClient
 /// If the inner client is available, use it to export the traces as an ExportTraceServiceRequest
-/// to the remote collector, via the secure channel and an HTTP forwarder service on the other node.
+/// to the remote collector, via the secure channel and a gRPC forwarder service on the other node.
 impl SpanExporter for OckamTonicTracesClient {
     fn export(&mut self, batch: Vec<SpanData>) -> BoxFuture<'static, ExportResult> {
         if let Some(ref mut client) = &mut self.inner {
@@ -112,7 +112,7 @@ pub(crate) mod tests {
     use super::*;
     use crate::authority_node::tests::random_port;
     use crate::cli_state::{CliStateMode, UseAwsKms};
-    use crate::logs::http_forwarder::HttpForwarder;
+    use crate::logs::grpc_forwarder::GrpcForwarder;
     use crate::{ApiError, CliState, DefaultAddress, Result};
     use hyper::Uri;
     use ockam::identity::{
@@ -134,7 +134,7 @@ pub(crate) mod tests {
     fn test_export_spans() {
         let runtime = Arc::new(Runtime::new().unwrap());
         let port = random_port();
-        start_node_with_http_forwarder_service(runtime.clone(), port);
+        start_node_with_grpc_forwarder_service(runtime.clone(), port);
 
         let (ctx, mut executor) = NodeBuilder::new()
             .with_logging(LOGGING)
@@ -147,7 +147,7 @@ pub(crate) mod tests {
             let tcp_transport = TcpTransport::create(&ctx)?;
             let secure_client = make_secure_client(port, secure_channels, tcp_transport).await?;
             let project_service =
-                SecureClientService::new(secure_client, &ctx, DefaultAddress::HTTP_FORWARDER);
+                SecureClientService::new(secure_client, &ctx, DefaultAddress::GRPC_FORWARDER);
             let mut exporter =
                 OckamTonicTracesClient::new(project_service, Default::default(), None);
             exporter
@@ -223,9 +223,9 @@ pub(crate) mod tests {
         ))
     }
 
-    /// Start a node with a HTTP forwarder service.
+    /// Start a node with a GRPC forwarder service.
     /// That service connects to a local OpenTelemetry collector.
-    pub(crate) fn start_node_with_http_forwarder_service(runtime: Arc<Runtime>, port: u16) {
+    pub(crate) fn start_node_with_grpc_forwarder_service(runtime: Arc<Runtime>, port: u16) {
         let runtime_clone = runtime.clone();
         runtime.spawn(async move {
             let (ctx, _executor) = NodeBuilder::new()
@@ -233,7 +233,7 @@ pub(crate) mod tests {
                 .with_runtime(runtime_clone)
                 .build();
 
-            // start a TCP listener, and a secure channel listener and the http forwarder service.
+            // start a TCP listener, and a secure channel listener and the grpc forwarder service.
             let tcp_listener_options = start_tcp_listener(&ctx, port).await?;
             let secure_channel_listener =
                 start_secure_channel_listener(&ctx, tcp_listener_options).await?;
@@ -286,11 +286,11 @@ pub(crate) mod tests {
     ) -> Result<()> {
         let uri = Uri::from_static(endpoint);
         ctx.start_worker(
-            DefaultAddress::HTTP_FORWARDER,
-            HttpForwarder::new(uri).await?,
+            DefaultAddress::GRPC_FORWARDER,
+            GrpcForwarder::new(uri).await?,
         )?;
         ctx.flow_controls().add_consumer(
-            &Address::from_string(DefaultAddress::HTTP_FORWARDER),
+            &Address::from_string(DefaultAddress::GRPC_FORWARDER),
             secure_channel_listener.flow_control_id(),
         );
         Ok(())

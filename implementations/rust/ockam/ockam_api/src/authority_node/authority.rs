@@ -13,7 +13,7 @@ use crate::authenticator::{
 };
 use crate::authority_node::Configuration;
 use crate::echoer::Echoer;
-use crate::logs::HttpForwarder;
+use crate::logs::GrpcForwarder;
 use crate::nodes::service::default_address::DefaultAddress;
 use crate::ApiError;
 use ockam::identity::utils::now;
@@ -311,15 +311,15 @@ impl Authority {
         ctx.start_worker(address, Echoer)
     }
 
-    /// Start an http forwarder service
-    pub async fn start_http_forwarder(
+    /// Start a gRPC forwarder service
+    pub async fn start_grpc_forwarder(
         &self,
         ctx: &Context,
         secure_channel_flow_control_id: &FlowControlId,
         configuration: &Configuration,
     ) -> Result<()> {
         if let Some(telemetry_endpoint_url) = &configuration.telemetry_endpoint_url {
-            let address = DefaultAddress::HTTP_FORWARDER;
+            let address = DefaultAddress::GRPC_FORWARDER;
 
             ctx.flow_controls()
                 .add_consumer(&address.into(), secure_channel_flow_control_id);
@@ -328,10 +328,10 @@ impl Authority {
             let uri = url
                 .parse::<Uri>()
                 .map_err(|e| Error::new(Origin::Ockam, Kind::Invalid, e))?;
-            debug!("start an http forwarder at '{uri}'");
+            debug!("start a grpc forwarder at '{uri}'");
             ctx.start_worker(
                 address,
-                HttpForwarder::new(uri).await.map_err(ApiError::core)?,
+                GrpcForwarder::new(uri).await.map_err(ApiError::core)?,
             )?
         };
         Ok(())

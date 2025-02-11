@@ -1,8 +1,7 @@
-use crate::logs::secure_client_service::OckamRequest;
+use crate::logs::secure_client_service::OckamGrpcRequest;
 use crate::{ApiError, Result};
 use hyper::{http, Uri};
-use minicbor::Decoder;
-use ockam_core::api::{Method, RequestHeader};
+use ockam_core::api::{Method, Request};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{async_trait, Routed, Worker};
 use ockam_node::Context;
@@ -11,15 +10,15 @@ use tonic::body::BoxBody;
 use tonic::client::GrpcService;
 use tonic::transport::Channel;
 
-/// The HttpForwarder worker accepts http requests serialized as Ockam messages
+/// The GrpcForwarder worker accepts gRPC requests serialized as Ockam messages
 /// and forwards them to an HTTP endpoint.
 ///
 /// Note that we don't wait for a response from the endpoint.
-pub struct HttpForwarder {
+pub struct GrpcForwarder {
     channel: Channel,
 }
 
-impl HttpForwarder {
+impl GrpcForwarder {
     /// Create a Channel for the given URI
     pub async fn new(uri: Uri) -> Result<Self> {
         let channel = Channel::builder(uri.clone())
@@ -58,20 +57,20 @@ impl HttpForwarder {
 }
 
 #[async_trait]
-impl Worker for HttpForwarder {
-    type Message = Vec<u8>;
+impl Worker for GrpcForwarder {
+    type Message = Request<OckamGrpcRequest>;
     type Context = Context;
 
     async fn handle_message(
         &mut self,
         _ctx: &mut Context,
-        message: Routed<Vec<u8>>,
+        message: Routed<Request<OckamGrpcRequest>>,
     ) -> ockam_core::Result<()> {
-        let body = message.into_body()?;
-        let mut dec = Decoder::new(&body);
-        let header: RequestHeader = dec.decode()?;
-        if let (Some(Method::Post), "/") = (header.method(), header.path()) {
-            let ockam_request: OckamRequest = dec.decode()?;
+        let request = message.into_body()?;
+        let (header, body) = request.into_parts();
+        if let (Some(Method::Post), "/", Some(ockam_request)) =
+            (header.method(), header.path(), body)
+        {
             // Every posted message must be forwarded
             let http_request = ockam_request.make_http_request().map_err(|e| {
                 ockam_core::Error::new(Origin::Api, Kind::Serialization, format!("{e:?}"))

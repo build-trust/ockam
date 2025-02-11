@@ -3,10 +3,10 @@ use crate::Result;
 use futures_core::future::BoxFuture;
 use http_body_util::{BodyExt, Full};
 use hyper::{http, Method, Version};
-use minicbor::{Decode, Decoder, Encode};
+use minicbor::{CborLen, Decode, Encode};
 use ockam::identity::SecureClient;
 use ockam_core::api::Request;
-use ockam_core::{Decodable, Encodable, Encoded, TryClone};
+use ockam_core::{cbor_encode_preallocate, Decodable, Encodable, Encoded, Message, TryClone};
 use ockam_node::Context;
 use std::str::FromStr;
 use std::task::Poll;
@@ -90,7 +90,13 @@ impl SecureClientService {
     ) -> Result<http::Response<BoxBody>> {
         if let Some(ctx) = &self.ctx {
             let ockam_request_body = Self::make_ockam_request_body(request).await?;
-            let _ = self
+
+            trace!(
+                "Sending a request to {} => 0#{}",
+                self.secure_client.secure_route(),
+                self.service_address
+            );
+            let r = self
                 .secure_client
                 .tell(
                     ctx,
@@ -98,6 +104,9 @@ impl SecureClientService {
                     Request::post("/").body(ockam_request_body),
                 )
                 .await?;
+            if let Some(e) = r.error()? {
+                trace!("Sending a request - received an error {e}");
+            }
         };
         http::Response::builder()
             .body(BoxBody::default())
@@ -106,7 +115,7 @@ impl SecureClientService {
 
     /// In order to make an Ockam request we collect all the bytes from the http request body.
     /// We could improve this by chunking the original body into several Ockam messages if the original body is too big.
-    async fn make_ockam_request_body(request: http::Request<BoxBody>) -> Result<OckamRequest> {
+    async fn make_ockam_request_body(request: http::Request<BoxBody>) -> Result<OckamGrpcRequest> {
         let mut bytes: Vec<u8> = Vec::new();
         let (head, mut body) = request.into_parts();
         while let Some(frame) = body.frame().await {
@@ -116,29 +125,34 @@ impl SecureClientService {
                 }
             }
         }
-        Ok(OckamRequest::from(http::Request::from_parts(head, bytes)))
+        Ok(OckamGrpcRequest::from(http::Request::from_parts(
+            head, bytes,
+        )))
     }
 }
 
-/// This struct represent an http Request sent as an Encodable Ockam message
+/// This struct represent an gRPC Request sent as an Encodable Ockam message
 ///
 /// The from and to_http_request methods are used to convert between the two.
 ///
-#[derive(Debug, Clone, Encode, Decode, PartialEq, Eq)]
-pub struct OckamRequest {
-    #[n(0)]
-    method: String,
+#[derive(Debug, Clone, Encode, Decode, CborLen, Message, PartialEq, Eq)]
+#[cbor(map)]
+pub struct OckamGrpcRequest {
     #[n(1)]
-    uri: String,
+    method: String,
     #[n(2)]
-    version: HttpVersion,
+    uri: String,
     #[n(3)]
-    headers: Vec<(String, String)>,
+    version: HttpVersion,
     #[n(4)]
+    headers: Vec<(String, String)>,
+    #[cbor(with = "minicbor::bytes")]
+    #[n(5)]
     body: Vec<u8>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Encode, Decode)]
+#[derive(Debug, Clone, PartialEq, Eq, Encode, Decode, CborLen)]
+#[cbor(index_only)]
 enum HttpVersion {
     #[n(0)]
     Http09,
@@ -152,7 +166,7 @@ enum HttpVersion {
     Http3,
 }
 
-impl From<http::Request<Vec<u8>>> for OckamRequest {
+impl From<http::Request<Vec<u8>>> for OckamGrpcRequest {
     fn from(req: http::Request<Vec<u8>>) -> Self {
         Self {
             method: req.method().to_string(),
@@ -175,7 +189,7 @@ impl From<http::Request<Vec<u8>>> for OckamRequest {
     }
 }
 
-impl OckamRequest {
+impl OckamGrpcRequest {
     pub fn make_http_request(self) -> Result<http::Request<BoxBody>> {
         let mut req = http::Request::builder();
         req = req.method(Method::from_str(&self.method).map_err(ApiError::message)?);
@@ -198,16 +212,15 @@ impl OckamRequest {
     }
 }
 
-impl Decodable for OckamRequest {
-    fn decode(bytes: &[u8]) -> ockam_core::Result<Self> {
-        let mut decoder = Decoder::new(bytes);
-        Ok(decoder.decode()?)
+impl Encodable for OckamGrpcRequest {
+    fn encode(self) -> ockam_core::Result<Encoded> {
+        cbor_encode_preallocate(self)
     }
 }
 
-impl Encodable for OckamRequest {
-    fn encode(self) -> ockam_core::Result<Encoded> {
-        Ok(minicbor::to_vec(self)?)
+impl Decodable for OckamGrpcRequest {
+    fn decode(e: &[u8]) -> ockam_core::Result<Self> {
+        Ok(minicbor::decode(e)?)
     }
 }
 
@@ -219,9 +232,9 @@ mod tests {
     #[test]
     fn test_make_ockam_request_body() {
         let request = make_http_request();
-        let ockam_request_body = OckamRequest::from(request);
+        let ockam_request_body = OckamGrpcRequest::from(request);
         assert_eq!(
-            <OckamRequest as Decodable>::decode(
+            <OckamGrpcRequest as Decodable>::decode(
                 minicbor::to_vec(ockam_request_body.clone())
                     .unwrap()
                     .as_slice()

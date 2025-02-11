@@ -142,6 +142,19 @@ impl<T> Reply<T> {
         }
     }
 
+    /// Return an error message if any.
+    #[track_caller]
+    pub fn error(&self) -> Result<Option<String>> {
+        match self {
+            Reply::Successful(_) => Ok(None),
+            Reply::Failed(e, _) => Ok(Some(
+                e.message()
+                    .unwrap_or("no message defined for this error")
+                    .to_string(),
+            )),
+        }
+    }
+
     #[cfg(feature = "std")]
     #[track_caller]
     pub fn miette_success(self, request_kind: &str) -> Result<T, miette::Report> {

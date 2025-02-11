@@ -8,7 +8,6 @@ use crate::logs::{
     TelemetryEndpoint,
 };
 use crate::logs::{LogFormat, OckamSpanExporter};
-use crate::DefaultAddress;
 use gethostname::gethostname;
 use ockam_node::Context;
 use opentelemetry::trace::TracerProvider;
@@ -202,9 +201,9 @@ fn create_log_exporter(
     let log_export_timeout = exporting_configuration.log_export_timeout();
 
     match exporting_configuration.opentelemetry_endpoint() {
-        TelemetryEndpoint::ProjectEndpoint(client) => {
+        TelemetryEndpoint::SecureChannelEndpoint(client, forwarder_service_name) => {
             opentelemetry_otlp::LogExporter::new(OckamTonicLogsClient::new(
-                SecureClientService::new(client, ctx, DefaultAddress::HTTP_FORWARDER),
+                SecureClientService::new(client, ctx, &forwarder_service_name),
                 get_otlp_headers(),
                 Some(CompressionEncoding::Gzip),
             ))
@@ -230,9 +229,9 @@ fn create_span_exporter(
 ) -> opentelemetry_otlp::SpanExporter {
     let trace_export_timeout = exporting_configuration.span_export_timeout();
     match exporting_configuration.opentelemetry_endpoint() {
-        TelemetryEndpoint::ProjectEndpoint(client) => {
+        TelemetryEndpoint::SecureChannelEndpoint(client, forwarder_service_name) => {
             opentelemetry_otlp::SpanExporter::new(OckamTonicTracesClient::new(
-                SecureClientService::new(client, ctx, DefaultAddress::HTTP_FORWARDER),
+                SecureClientService::new(client, ctx, &forwarder_service_name),
                 get_otlp_headers(),
                 Some(CompressionEncoding::Gzip),
             ))

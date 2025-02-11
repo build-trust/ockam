@@ -8,6 +8,7 @@ defmodule Ockam.Services.Provider.Routing do
 
   alias Ockam.Services.Echo, as: EchoService
   alias Ockam.Services.Forwarding, as: ForwardingService
+  alias Ockam.Services.GrpcForwarder
   alias Ockam.Services.PubSub, as: PubSubService
   alias Ockam.Services.Relay.StaticForwarding
   alias Ockam.Services.Relay.StaticForwardingAPI
@@ -20,7 +21,8 @@ defmodule Ockam.Services.Provider.Routing do
     :static_forwarding,
     :static_forwarding_api,
     :pub_sub,
-    :tracing
+    :tracing,
+    :grpc_forwarder
   ]
 
   @impl true
@@ -64,5 +66,10 @@ defmodule Ockam.Services.Provider.Routing do
 
   def child_spec(:tracing, args) do
     {TracingService, Keyword.merge([address: "tracing"], args)}
+  end
+
+  @impl true
+  def child_spec(:grpc_forwarder, args) do
+    {GrpcForwarder, Keyword.merge([address: "grpc_forwarder"], args)}
   end
 end
