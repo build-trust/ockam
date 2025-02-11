@@ -36,11 +36,11 @@ pub async fn start_node(
     authority.start_echo_service(ctx, &secure_channel_flow_control_id)?;
     debug!("echo service started");
 
-    // start the http forwarder for telemetry traces
+    // start the grpc forwarder for telemetry traces
     authority
-        .start_http_forwarder(ctx, &secure_channel_flow_control_id, configuration)
+        .start_grpc_forwarder(ctx, &secure_channel_flow_control_id, configuration)
         .await?;
-    debug!("http forwarder started");
+    debug!("grpc forwarder started");
 
     info!("authority node started");
 

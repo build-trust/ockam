@@ -169,7 +169,7 @@ impl SecureClient {
         response.to_reply()
     }
 
-    /// Send a request of type T and don't expect a reply
+    /// Send a request of type T and don't expect a reply body
     /// See `ask` for more information
     pub async fn tell<T>(
         &self,

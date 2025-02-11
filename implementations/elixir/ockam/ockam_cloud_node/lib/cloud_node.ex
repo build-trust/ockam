@@ -41,6 +41,9 @@ defmodule Ockam.CloudNode do
             []
         end
 
+      {nil, nil} ->
+        []
+
       _other ->
         Logger.info(
           "Invalid cleanup config: #{inspect(crontab)} : #{inspect(idle_timeout)}. Ignoring"

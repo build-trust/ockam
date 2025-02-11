@@ -14,6 +14,7 @@ pub struct DecoratedSpanExporter<S: SpanExporter> {
 #[async_trait]
 impl<S: SpanExporter> SpanExporter for DecoratedSpanExporter<S> {
     fn export(&mut self, batch: Vec<SpanData>) -> BoxFuture<'static, ExportResult> {
+        debug!("exporting {} spans", batch.len());
         self.exporter.export(batch)
     }
 

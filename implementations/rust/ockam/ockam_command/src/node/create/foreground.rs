@@ -1,4 +1,3 @@
-use crate::node::create::DEFAULT_NODE_NAME;
 use crate::node::node_callback::NodeCallback;
 use crate::node::CreateCommand;
 use crate::service::config::ControlApiNodeResolution;
@@ -9,7 +8,7 @@ use miette::IntoDiagnostic;
 use ockam::tcp::{TcpListenerOptions, TcpTransport};
 use ockam::udp::{UdpBindArguments, UdpBindOptions, UdpTransport};
 use ockam::{Address, Context};
-use ockam_api::cli_state::random_name;
+use ockam_api::cli_state::{random_name, DEFAULT_NODE_NAME};
 use ockam_api::colors::color_primary;
 use ockam_api::control_api::frontend::NodeResolution;
 use ockam_api::fmt_log;

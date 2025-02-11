@@ -50,6 +50,8 @@ defmodule Ockam.Services.MixProject do
       {:credo, "~> 1.6", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.1", only: [:dev], runtime: false},
       {:ex_doc, "~> 0.25", only: :dev, runtime: false},
+      {:grpc, "~> 0.9.0"},
+      {:gun, "~> 2.0"},
       {:ockam, path: "../ockam"},
       {:ockam_metrics, path: "../ockam_metrics"},
       {:ockam_abac, path: "../ockam_abac"},

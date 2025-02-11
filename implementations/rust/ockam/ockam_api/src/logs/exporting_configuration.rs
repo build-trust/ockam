@@ -3,11 +3,11 @@ use crate::config::UrlVar;
 use crate::logs::default_values::*;
 use crate::logs::env_variables::*;
 use crate::logs::ExportingEnabled;
-use crate::orchestrator::project::Project;
-use crate::Result;
 use crate::{ApiError, CliState, TransportRouteResolver};
-use ockam::identity::{get_default_timeout, SecureClient, TrustIdentifierPolicy};
+use crate::{DefaultAddress, Result};
+use ockam::identity::{get_default_timeout, Identifier, SecureClient, TrustIdentifierPolicy};
 use ockam_core::env::{get_env_with_default, FromString};
+use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
 use ockam_transport_tcp::TcpTransport;
 use std::fmt::{Debug, Display, Formatter};
@@ -219,20 +219,23 @@ impl Display for ExportingConfiguration {
 /// This enum represents the 2 possible endpoints for exporting traces. Either via:
 ///
 ///  - An HTTPS collector
-///  - An HTTP forwarder on the project node
+///  - An gRPC forwarder on a remote node, accessed via a secure channel
 ///
 #[derive(Clone)]
 pub enum TelemetryEndpoint {
-    ProjectEndpoint(SecureClient),
+    SecureChannelEndpoint(SecureClient, String),
     HttpsEndpoint(Url),
 }
 
 impl Display for TelemetryEndpoint {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            TelemetryEndpoint::ProjectEndpoint(client) => {
-                f.write_str(&client.secure_route().to_string())
-            }
+            TelemetryEndpoint::SecureChannelEndpoint(client, forwarder_service_name) => f
+                .write_fmt(format_args!(
+                    "{} => 0#{}",
+                    &client.secure_route().to_string(),
+                    forwarder_service_name
+                )),
             TelemetryEndpoint::HttpsEndpoint(url) => f.write_str(url.as_str()),
         }
     }
@@ -260,6 +263,42 @@ pub fn is_exporting_via_project_set() -> Result<bool> {
     Ok(get_env_with_default(
         OCKAM_TELEMETRY_EXPORT_VIA_PROJECT,
         true,
+    )?)
+}
+
+/// Return true if traces and log records can be exported via a portal (when a project exists),
+/// as decided by the OCKAM_TELEMETRY_EXPORT_VIA_PROJECT environment variable.
+pub fn is_exporting_via_authority_set() -> Result<bool> {
+    Ok(get_env_with_default(
+        OCKAM_TELEMETRY_EXPORT_VIA_AUTHORITY,
+        false,
+    )?)
+}
+
+/// Return the route to the node accepting telemetry data
+/// as decided by the OCKAM_TELEMETRY_EXPORT_NODE_ROUTE environment variable.
+pub fn telemetry_export_node_route() -> Result<Option<MultiAddr>> {
+    Ok(get_env_with_default(
+        OCKAM_TELEMETRY_EXPORT_NODE_ROUTE,
+        None,
+    )?)
+}
+
+/// Return the identifier to the node accepting telemetry data
+/// as decided by the OCKAM_TELEMETRY_EXPORT_NODE_IDENTIFIER environment variable.
+pub fn telemetry_export_node_identifier() -> Result<Option<Identifier>> {
+    Ok(get_env_with_default(
+        OCKAM_TELEMETRY_EXPORT_NODE_IDENTIFIER,
+        None,
+    )?)
+}
+
+/// Return the name of the service collecting telemetry data on a remote node
+/// as decided by the OCKAM_TELEMETRY_EXPORT_NODE_FORWARDER_SERVICE environment variable.
+pub fn telemetry_export_node_forwarder_service() -> Result<String> {
+    Ok(get_env_with_default(
+        OCKAM_TELEMETRY_EXPORT_NODE_FORWARDER_SERVICE,
+        DefaultAddress::GRPC_FORWARDER.to_string(),
     )?)
 }
 
@@ -294,7 +333,7 @@ async fn exporting_enabled(
     } else {
         let endpoint_kind = match endpoint {
             TelemetryEndpoint::HttpsEndpoint(_) => "HTTPs telemetry collector endpoint",
-            TelemetryEndpoint::ProjectEndpoint(_) => "Project telemetry collector inlet",
+            TelemetryEndpoint::SecureChannelEndpoint(_, _) => "Node telemetry collector endpoint",
         };
         print_debug(format!("Exporting telemetry events is disabled because the {} at {} cannot be reached after {}ms", endpoint_kind, endpoint, connection_check_timeout.as_millis()));
         print_debug("You can disable the export of telemetry events with: `export OCKAM_TELEMETRY_EXPORT=false` to avoid this connection check.");
@@ -311,8 +350,8 @@ async fn is_endpoint_accessible(
     connection_check_timeout: Duration,
 ) -> bool {
     match endpoint {
-        TelemetryEndpoint::ProjectEndpoint(client) => {
-            is_project_accessible(client, ctx, &connection_check_timeout).await
+        TelemetryEndpoint::SecureChannelEndpoint(client, _) => {
+            is_node_accessible(client, ctx, &connection_check_timeout).await
         }
         TelemetryEndpoint::HttpsEndpoint(url) => {
             print_debug("check if the endpoint is accessible");
@@ -322,7 +361,7 @@ async fn is_endpoint_accessible(
 }
 
 /// Return true if the project node can be accessed with a secure channel
-async fn is_project_accessible(
+async fn is_node_accessible(
     secure_client: &SecureClient,
     ctx: &Context,
     connection_check_timeout: &Duration,
@@ -405,46 +444,71 @@ async fn opentelemetry_endpoint(
     cli_state: &CliState,
     ctx: &Context,
 ) -> Result<Option<TelemetryEndpoint>> {
-    if is_exporting_via_project_set()? {
-        if let Ok(project) = cli_state.projects().get_default_project().await {
-            if project.is_ready() {
-                let project_route = project.authority_multiaddr()?;
-                print_debug(format!(
-                    "A default project exists. Telemetry data will be sent to {}",
-                    project_route
-                ));
-                Ok(Some(TelemetryEndpoint::ProjectEndpoint(
-                    make_authority_node_client(cli_state, ctx, project).await?,
-                )))
+    let route_and_identifier = match (
+        telemetry_export_node_route()?,
+        telemetry_export_node_identifier()?,
+    ) {
+        (Some(route), Some(identifier)) => Some((route, identifier)),
+        _ => {
+            if let Ok(project) = cli_state.projects().get_default_project().await {
+                if project.is_ready() {
+                    let via_project = is_exporting_via_project_set()?;
+                    let via_authority = is_exporting_via_authority_set()? && !via_project;
+
+                    if via_project {
+                        print_debug("The project node is used as a telemetry endpoint");
+                        Some((
+                            project.project_multiaddr()?.clone(),
+                            project.project_identifier().ok_or(ApiError::message(
+                                "The default project must have an identifier",
+                            ))?,
+                        ))
+                    } else if via_authority {
+                        print_debug("The authority node is used as a telemetry endpoint");
+                        Some((
+                            project.authority_multiaddr()?.clone(),
+                            project.authority_identifier().ok_or(ApiError::message(
+                                "The default project authority must have an identifier",
+                            ))?,
+                        ))
+                    } else {
+                        print_debug(
+                            "The default project is ready but export via the project node or the authority node is disabled. Getting the default HTTPs endpoint",
+                        );
+                        None
+                    }
+                } else {
+                    print_debug(
+                        "The default project is not ready. Getting the default HTTPs endpoint",
+                    );
+                    None
+                }
             } else {
-                print_debug(
-                    "The default project is not yet ready. Getting the default HTTPs endpoint instead",
-                );
-                Ok(Some(get_https_endpoint()?))
+                print_debug("There is no default project. Getting the default HTTPs endpoint");
+                None
             }
-        } else {
-            print_debug(
-                "A default project does not exist. Getting the default HTTPs endpoint instead",
-            );
-            Ok(Some(get_https_endpoint()?))
         }
+    };
+
+    let endpoint = if let Some((route, identifier)) = route_and_identifier {
+        let client = make_secure_client(cli_state, ctx, route, identifier).await?;
+        TelemetryEndpoint::SecureChannelEndpoint(client, telemetry_export_node_forwarder_service()?)
     } else {
-        print_debug("A default project does not exist. Getting the default HTTPs endpoint");
-        Ok(Some(get_https_endpoint()?))
-    }
+        get_https_endpoint()?
+    };
+    print_debug(format!("Exporting telemetry data to: {endpoint}"));
+    Ok(Some(endpoint))
 }
 
-async fn make_authority_node_client(
+async fn make_secure_client(
     cli_state: &CliState,
     ctx: &Context,
-    project: Project,
+    route: MultiAddr,
+    identifier: Identifier,
 ) -> Result<SecureClient> {
-    let authority_route = TransportRouteResolver::default()
+    let project_route = TransportRouteResolver::default()
         .allow_tcp()
-        .resolve(project.authority_multiaddr()?)?;
-    let authority_identifier = project.authority_identifier().ok_or(ApiError::message(
-        "The default project must have an authority identifier",
-    ))?;
+        .resolve(&route)?;
     let default_node = if let Ok(node) = cli_state.get_default_node().await {
         node
     } else {
@@ -458,8 +522,8 @@ async fn make_authority_node_client(
         secure_channels,
         None,
         TcpTransport::create(ctx)?,
-        authority_route,
-        Arc::new(TrustIdentifierPolicy::new(authority_identifier)),
+        project_route,
+        Arc::new(TrustIdentifierPolicy::new(identifier)),
         &default_node.identifier(),
         get_default_timeout(),
         get_default_timeout(),

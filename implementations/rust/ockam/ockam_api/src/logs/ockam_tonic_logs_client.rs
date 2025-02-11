@@ -10,8 +10,8 @@ use tonic::metadata::{KeyAndValueRef, MetadataMap};
 use tonic::{async_trait, codegen::CompressionEncoding, Request};
 
 /// This struct does what most of the TonicLogsClient does as a LogExporter, except that
-/// it uses a SecureClientService to send the gRCP requests serialized as http Request to
-/// an HTTP forwarder service located in another Ockam node, via a secure channel.
+/// it uses a SecureClientService to send the gRPC requests serialized as http Request to
+/// a gRPC forwarder service located in another Ockam node, via a secure channel.
 ///
 /// Note that the original TonicLogsClient can also be parameterized with an Interceptor to:
 ///  - Potentially drop some requests
@@ -62,7 +62,7 @@ impl OckamTonicLogsClient {
 
 /// Implement the LogsExporter trait for OckamTonicLogsClient
 /// If the inner client is available, use it to export the logs as an ExportLogsServiceRequest
-/// to the remote collector, via the secure channel and an HTTP forwarder service on the other node.
+/// to the remote collector, via the secure channel and a gRPC forwarder service on the other node.
 #[async_trait]
 impl LogExporter for OckamTonicLogsClient {
     async fn export(&mut self, batch: LogBatch<'_>) -> LogResult<()> {
@@ -124,7 +124,7 @@ mod tests {
     fn test_export_logs() {
         let runtime = Arc::new(Runtime::new().unwrap());
         let port = random_port();
-        start_node_with_http_forwarder_service(runtime.clone(), port);
+        start_node_with_grpc_forwarder_service(runtime.clone(), port);
 
         let (ctx, mut executor) = NodeBuilder::new()
             .with_logging(LOGGING)
@@ -137,7 +137,7 @@ mod tests {
             let tcp_transport = TcpTransport::create(&ctx)?;
             let secure_client = make_secure_client(port, secure_channels, tcp_transport).await?;
             let project_service =
-                SecureClientService::new(secure_client, &ctx, DefaultAddress::HTTP_FORWARDER);
+                SecureClientService::new(secure_client, &ctx, DefaultAddress::GRPC_FORWARDER);
             let mut exporter = OckamTonicLogsClient::new(project_service, Default::default(), None);
             let record = LogRecord::default();
             let scope = InstrumentationScope::default();
