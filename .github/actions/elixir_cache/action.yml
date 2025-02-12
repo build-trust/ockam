@@ -14,7 +14,7 @@ runs:
   steps:
     - name: Restore and save cache
       if: ${{ github.event_name == 'schedule' }}
-      uses: actions/cache@67b839edb68371cc5014f6cea11c9aa77238de78
+      uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57
       with:
         path: |
           **/deps
@@ -24,7 +24,7 @@ runs:
 
     - name: Restore Cache
       if: ${{ github.event_name != 'schedule' }}
-      uses: actions/cache/restore@67b839edb68371cc5014f6cea11c9aa77238de78
+      uses: actions/cache/restore@1bd1e32a3bdc45362d1e726936510720a7c30a57
       with:
         path: |
           **/deps
