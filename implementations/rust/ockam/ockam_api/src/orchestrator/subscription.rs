@@ -163,6 +163,8 @@ impl Output for Subscription {
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, Display, EnumString)]
 pub enum SubscriptionName {
+    #[strum(to_string = "Platinum", ascii_case_insensitive)]
+    Platinum,
     #[strum(to_string = "Gold", ascii_case_insensitive)]
     Gold,
     #[strum(to_string = "Silver", ascii_case_insensitive)]
@@ -207,6 +209,7 @@ impl<'b, C> Decode<'b, C> for SubscriptionName {
 impl SubscriptionName {
     pub fn colored(&self) -> String {
         let color = match self {
+            SubscriptionName::Platinum => RGB::new(229, 228, 226),
             SubscriptionName::Gold => RGB::new(255, 215, 0),
             SubscriptionName::Silver => RGB::new(230, 232, 250),
             SubscriptionName::Bronze => RGB::new(140, 120, 83),
@@ -446,9 +449,10 @@ pub mod tests {
     impl Arbitrary for SubscriptionName {
         fn arbitrary(g: &mut Gen) -> Self {
             match u8::arbitrary(g) % 4 {
-                0 => SubscriptionName::Gold,
-                1 => SubscriptionName::Silver,
-                2 => SubscriptionName::Bronze,
+                0 => SubscriptionName::Platinum,
+                1 => SubscriptionName::Gold,
+                2 => SubscriptionName::Silver,
+                3 => SubscriptionName::Bronze,
                 _ => SubscriptionName::Basic,
             }
         }
@@ -457,6 +461,8 @@ pub mod tests {
     #[test]
     fn test_subscription_name_parsing() {
         let cases = [
+            ("Platinum", "Platinum", SubscriptionName::Platinum),
+            ("platinum", "Platinum", SubscriptionName::Platinum),
             ("Gold", "Gold", SubscriptionName::Gold),
             ("gold", "Gold", SubscriptionName::Gold),
             ("Silver", "Silver", SubscriptionName::Silver),
