@@ -34,6 +34,10 @@ impl Worker for HttpControlNodeApiBackend {
         message: Routed<Self::Message>,
     ) -> ockam_core::Result<()> {
         let request: ControlApiHttpRequest = minicbor::decode(message.payload())?;
+        info!(
+            "Received Node Control API {} request for {}",
+            request.method, request.uri
+        );
 
         let uri = Uri::from_str(&request.uri).unwrap();
         // The syntax for restful API is:
@@ -42,6 +46,7 @@ impl Worker for HttpControlNodeApiBackend {
 
         let path = uri.path().split('/').collect::<Vec<&str>>();
         if path.len() < 3 {
+            warn!("Invalid URI: {uri}");
             return context
                 .send(
                     message.return_route().clone(),
@@ -88,32 +93,41 @@ impl Worker for HttpControlNodeApiBackend {
                 )
                 .await
             }
-            _ => ControlApiHttpResponse::with_body(
-                StatusCode::BAD_REQUEST,
-                ErrorResponse {
-                    message: "Unknown resource kind".to_string(),
-                },
-            ),
+            _ => {
+                warn!("Invalid resource kind: {resource_kind}");
+                ControlApiHttpResponse::with_body(
+                    StatusCode::BAD_REQUEST,
+                    ErrorResponse {
+                        message: "Unknown resource kind".to_string(),
+                    },
+                )
+            }
         };
 
         let response = match result {
-            Ok(response) => response,
-            Err(error) => match error.code().kind {
-                // We make an assumption that every parsing error originates from the
-                // client; This is not necessarily always true, but it's a good approximation
-                Kind::Parse => ControlApiHttpResponse::with_body(
-                    StatusCode::BAD_REQUEST,
-                    ErrorResponse {
-                        message: error.to_string(),
-                    },
-                )?,
-                _ => ControlApiHttpResponse::with_body(
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    ErrorResponse {
-                        message: error.to_string(),
-                    },
-                )?,
-            },
+            Ok(response) => {
+                info!("Processed request for {}", request.uri);
+                response
+            }
+            Err(error) => {
+                warn!("Error processing request: {error:?}");
+                match error.code().kind {
+                    // We make an assumption that every parsing error originates from the
+                    // client; This is not necessarily always true, but it's a good approximation
+                    Kind::Parse => ControlApiHttpResponse::with_body(
+                        StatusCode::BAD_REQUEST,
+                        ErrorResponse {
+                            message: error.to_string(),
+                        },
+                    )?,
+                    _ => ControlApiHttpResponse::with_body(
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        ErrorResponse {
+                            message: error.to_string(),
+                        },
+                    )?,
+                }
+            }
         };
 
         let response = minicbor::to_vec(&response)?;

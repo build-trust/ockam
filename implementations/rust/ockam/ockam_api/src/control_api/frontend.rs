@@ -10,8 +10,8 @@ use hyper_util::rt::TokioIo;
 use ockam_abac::{IncomingAbac, OutgoingAbac, PolicyExpression};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{
-    async_trait, cbor_encode_preallocate, route, Address, AllowAll, Error, IncomingAccessControl,
-    NeutralMessage, OutgoingAccessControl, Processor, Routed, TryClone,
+    async_trait, cbor_encode_preallocate, AllowAll, Error, IncomingAccessControl, NeutralMessage,
+    OutgoingAccessControl, Processor, Routed, TryClone,
 };
 use ockam_node::{Context, MessageSendReceiveOptions};
 use ockam_transport_core::TransportError;
@@ -171,6 +171,7 @@ impl HttpControlNodeApiFrontend {
         if let Some(response) = Self::authenticate_request(&request, authentication_token)? {
             return Ok(response);
         }
+        info!("Received request for path {}", request.uri().path());
 
         let uri = request.uri().clone();
 
@@ -189,7 +190,6 @@ impl HttpControlNodeApiFrontend {
 
         let method = request.method().to_string();
         let node_name = &path[1..first_slash + 1];
-        debug!("Received request for node: {}", node_name);
 
         let body = http_body_util::Limited::new(request.into_body(), MAX_REQUEST_SIZE);
         let serialized_body = body
@@ -213,76 +213,50 @@ impl HttpControlNodeApiFrontend {
         let message = cbor_encode_preallocate(&control_api_request)
             .map_err(|_| Error::new(Origin::Api, Kind::Internal, "Failed to encode request"))?;
 
-        let node_connection;
         // "self" is shorthand for the current node
-        let node_route = if node_name == "self" {
-            node_connection = None;
-            let result = node_manager
-                .make_connection(
-                    &context,
-                    &format!("/secure/api/service/{}", DefaultAddress::CONTROL_API).parse()?,
-                    node_manager.identifier(),
-                    None,
-                    None,
-                )
-                .await;
-            match result {
-                Ok(connection) => connection.route()?,
-                Err(error) => {
-                    error!("Failed to create connection to node: {:?}", error);
-                    return Response::builder()
-                        .status(502)
-                        .header("Content-Type", "application/json")
-                        .body(build_error_body("Node not reachable"))
-                        .map_err(Self::map_http_err);
-                }
-            }
+        let destination = if node_name == "self" {
+            format!("/secure/api/service/{}", DefaultAddress::CONTROL_API)
         } else {
             match &node_resolution {
                 NodeResolution::Relay => {
-                    node_connection = None;
-                    route![
-                        Address::from_string(format!("forward_to_{node_name}")),
+                    format!(
+                        "/service/forward_to_{node_name}/secure/api/service/{}",
                         DefaultAddress::CONTROL_API
-                    ]
+                    )
                 }
                 NodeResolution::DirectConnection { suffix, port } => {
-                    let result = node_manager
-                        .make_connection(
-                            &context,
-                            &format!(
-                                "/dnsaddr/{node_name}{suffix}/tcp/{port}/secure/api/service/{}",
-                                DefaultAddress::CONTROL_API
-                            )
-                            .parse()?,
-                            node_manager.identifier(),
-                            None,
-                            None,
-                        )
-                        .await;
-
-                    match result {
-                        Ok(connection) => {
-                            let route = connection.route()?;
-                            node_connection = Some(connection);
-                            route
-                        }
-                        Err(error) => {
-                            error!("Failed to create connection to node: {:?}", error);
-                            return Response::builder()
-                                .status(502)
-                                .header("Content-Type", "application/json")
-                                .body(build_error_body("Node not reachable"))
-                                .map_err(Self::map_http_err);
-                        }
-                    }
+                    format!(
+                        "/dnsaddr/{node_name}{suffix}/tcp/{port}/secure/api/service/{}",
+                        DefaultAddress::CONTROL_API
+                    )
                 }
+            }
+        };
+
+        let result = node_manager
+            .make_connection(
+                &context,
+                &destination.parse()?,
+                node_manager.identifier(),
+                None,
+                None,
+            )
+            .await;
+        let node_connection = match result {
+            Ok(connection) => connection,
+            Err(error) => {
+                error!("Failed to create connection to node: {:?}", error);
+                return Response::builder()
+                    .status(502)
+                    .header("Content-Type", "application/json")
+                    .body(build_error_body("Node not reachable"))
+                    .map_err(Self::map_http_err);
             }
         };
 
         let result: ockam_core::Result<Routed<NeutralMessage>> = context
             .send_and_receive_extended(
-                node_route,
+                node_connection.route()?,
                 NeutralMessage::from(message),
                 MessageSendReceiveOptions::new()
                     .with_timeout(TIMEOUT)
@@ -292,26 +266,30 @@ impl HttpControlNodeApiFrontend {
             .await;
 
         // close the connection regardless of the result
-        if let NodeResolution::DirectConnection { .. } = node_resolution {
-            if let Some(connection) = node_connection {
-                connection.close(&context, &node_manager)?;
-            }
-        }
+        node_connection.close(&context, &node_manager)?;
 
         let response = match result {
             Ok(response) => response,
             Err(error) => {
                 return match error.code().kind {
-                    Kind::NotFound => Response::builder()
-                        .status(502)
-                        .header("Content-Type", "application/json")
-                        .body(build_error_body("Node not reachable"))
-                        .map_err(Self::map_http_err),
-                    _ => Response::builder()
-                        .status(500)
-                        .header("Content-Type", "application/json")
-                        .body(build_error_body(&error.to_string()))
-                        .map_err(Self::map_http_err),
+                    Kind::NotFound => {
+                        warn!("Node not found: {:?}", error);
+                        Response::builder()
+                            .status(502)
+                            .header("Content-Type", "application/json")
+                            .body(build_error_body("Node not reachable"))
+                            .map_err(Self::map_http_err)
+                    }
+                    _ => {
+                        warn!("Error processing request: {error:?}");
+                        Response::builder()
+                            .status(500)
+                            .header("Content-Type", "application/json")
+                            .body(build_error_body(
+                                "Could not communicate with the target node",
+                            ))
+                            .map_err(Self::map_http_err)
+                    }
                 }
             }
         };
@@ -340,26 +318,28 @@ impl HttpControlNodeApiFrontend {
         let auth_header = match headers.get("Authorization") {
             Some(header) => header,
             None => {
+                warn!("Missing authentication token");
                 return Ok(Some(
                     Response::builder()
                         .status(401)
                         .header("Content-Type", "application/json")
                         .body(build_error_body("Missing authentication token"))
                         .map_err(Self::map_http_err)?,
-                ))
+                ));
             }
         };
 
         let authentication_header = match auth_header.to_str() {
             Ok(header) => header,
             Err(_) => {
+                warn!("Invalid authentication token header");
                 return Ok(Some(
                     Response::builder()
                         .status(401)
                         .header("Content-Type", "application/json")
-                        .body(build_error_body("Invalid authentication token"))
+                        .body(build_error_body("Invalid authentication token header"))
                         .map_err(Self::map_http_err)?,
-                ))
+                ));
             }
         };
 
@@ -378,6 +358,7 @@ impl HttpControlNodeApiFrontend {
         if authenticated {
             Ok(None)
         } else {
+            warn!("Invalid authentication token");
             Ok(Some(
                 Response::builder()
                     .status(401)

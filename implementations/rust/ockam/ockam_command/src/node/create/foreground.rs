@@ -9,9 +9,9 @@ use miette::IntoDiagnostic;
 use ockam::tcp::{TcpListenerOptions, TcpTransport};
 use ockam::udp::{UdpBindArguments, UdpBindOptions, UdpTransport};
 use ockam::{Address, Context};
-use ockam_api::control_api::frontend::NodeResolution;
 use ockam_api::cli_state::random_name;
 use ockam_api::colors::color_primary;
+use ockam_api::control_api::frontend::NodeResolution;
 use ockam_api::fmt_log;
 use ockam_api::nodes::service::{NodeManagerTransport, SecureChannelType};
 use ockam_api::nodes::InMemoryNode;
@@ -234,9 +234,9 @@ impl CreateCommand {
 
                         let node_resolution = match &configuration.node_resolution {
                             ControlApiNodeResolution::Relay => NodeResolution::Relay,
-                            ControlApiNodeResolution::DirectConnection { suffix } => {
+                            ControlApiNodeResolution::DirectConnection => {
                                 NodeResolution::DirectConnection {
-                                    suffix: suffix.clone(),
+                                    suffix: configuration.node_resolution_suffix.clone(),
                                     port: configuration.node_port,
                                 }
                             }

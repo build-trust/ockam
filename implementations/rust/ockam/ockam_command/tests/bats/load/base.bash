@@ -54,6 +54,21 @@ setup_home_dir() {
   fi
 }
 
+# Waits for a port to be open
+function wait_for_port() {
+  local port=$1
+  local timeout=10
+  local end=$(($(date +%s) + $timeout))
+
+  while ! netstat -latn -p tcp | grep $port >/dev/null; do
+    if [ $(date +%s) -gt $end ]; then
+      echo "Timeout waiting for port $port to be open"
+      exit 1
+    fi
+    sleep 0.1
+  done
+}
+
 mkdir -p "$HOME/.bats-tests"
 teardown_home_dir() {
   IFS=';' read -ra DIRS <<<"$HOME_DIRS"

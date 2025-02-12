@@ -1,3 +1,4 @@
+use crate::control_api::backend::common;
 use crate::control_api::backend::entrypoint::HttpControlNodeApiBackend;
 use crate::control_api::http::ControlApiHttpResponse;
 use crate::control_api::protocol::relay::{CreateRelayRequest, RelayStatus};
@@ -28,7 +29,10 @@ impl HttpControlNodeApiBackend {
                 None => ControlApiHttpResponse::missing_resource_id(),
                 Some(id) => handle_relay_delete(&self.node_manager, id).await,
             },
-            _ => ControlApiHttpResponse::invalid_method(),
+            _ => {
+                warn!("Invalid method: {method}");
+                ControlApiHttpResponse::invalid_method()
+            }
         }
     }
 }
@@ -56,17 +60,9 @@ async fn handle_relay_create(
     node_manager: &Arc<NodeManager>,
     body: Option<Vec<u8>>,
 ) -> ockam_core::Result<ControlApiHttpResponse> {
-    let request: CreateRelayRequest = if let Some(body) = body {
-        match serde_json::from_slice(&body) {
-            Ok(request) => request,
-            Err(_error) => {
-                warn!("Invalid request body");
-                return ControlApiHttpResponse::invalid_body();
-            }
-        }
-    } else {
-        warn!("Missing request body");
-        return ControlApiHttpResponse::missing_body();
+    let request: CreateRelayRequest = match common::parse_request_body(body) {
+        Ok(value) => value,
+        Err(value) => return value,
     };
 
     let to = if let Ok(to) = MultiAddr::try_from(request.to.as_str()) {
@@ -109,7 +105,7 @@ async fn handle_relay_create(
             // TODO: specialize errors
             // name already exists
             warn!("Failed to create Relay: {:?}", error);
-            ControlApiHttpResponse::internal_error(error)
+            ControlApiHttpResponse::internal_error("Failed to create Relay")
         }
     }
 }
@@ -162,7 +158,7 @@ async fn handle_relay_delete(
         Ok(_) => ControlApiHttpResponse::without_body(StatusCode::NO_CONTENT),
         Err(error) => {
             warn!("Failed to delete Relay: {:?}", error);
-            ControlApiHttpResponse::internal_error(error)
+            ControlApiHttpResponse::internal_error("Failed to delete Relay")
         }
     }
 }

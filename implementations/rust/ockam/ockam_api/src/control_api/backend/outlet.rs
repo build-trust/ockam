@@ -1,3 +1,4 @@
+use crate::control_api::backend::common;
 use crate::control_api::backend::entrypoint::HttpControlNodeApiBackend;
 use crate::control_api::http::ControlApiHttpResponse;
 use crate::control_api::protocol::common::ErrorResponse;
@@ -35,7 +36,10 @@ impl HttpControlNodeApiBackend {
                 None => ControlApiHttpResponse::missing_resource_id(),
                 Some(id) => handle_tcp_outlet_delete(&self.node_manager, id).await,
             },
-            _ => ControlApiHttpResponse::invalid_method(),
+            _ => {
+                warn!("Invalid method: {method}");
+                ControlApiHttpResponse::invalid_method()
+            }
         }
     }
 }
@@ -64,17 +68,9 @@ async fn handle_tcp_outlet_create(
     node_manager: &Arc<NodeManager>,
     body: Option<Vec<u8>>,
 ) -> ockam_core::Result<ControlApiHttpResponse> {
-    let request: CreateOutletRequest = if let Some(body) = body {
-        match serde_json::from_slice(&body) {
-            Ok(request) => request,
-            Err(_error) => {
-                warn!("Invalid request body");
-                return ControlApiHttpResponse::invalid_body();
-            }
-        }
-    } else {
-        warn!("Missing request body");
-        return ControlApiHttpResponse::missing_body();
+    let request: CreateOutletRequest = match common::parse_request_body(body) {
+        Ok(value) => value,
+        Err(value) => return value,
     };
 
     let allow = OutletAccessControl::WithPolicyExpression(match request.allow {
@@ -118,7 +114,7 @@ async fn handle_tcp_outlet_create(
                     message: error.to_string(),
                 },
             ),
-            _ => ControlApiHttpResponse::internal_error(error),
+            _ => ControlApiHttpResponse::internal_error("Failed to create outlet"),
         },
     }
 }
@@ -148,17 +144,9 @@ async fn handle_tcp_outlet_update(
     resource_id: &str,
     body: Option<Vec<u8>>,
 ) -> ockam_core::Result<ControlApiHttpResponse> {
-    let request: UpdateOutletRequest = if let Some(body) = body {
-        match serde_json::from_slice(&body) {
-            Ok(request) => request,
-            Err(_error) => {
-                warn!("Invalid request body");
-                return ControlApiHttpResponse::invalid_body();
-            }
-        }
-    } else {
-        warn!("Missing request body");
-        return ControlApiHttpResponse::missing_body();
+    let request: UpdateOutletRequest = match common::parse_request_body(body) {
+        Ok(value) => value,
+        Err(value) => return value,
     };
 
     if node_manager.show_outlet(&resource_id.into()).is_none() {

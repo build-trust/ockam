@@ -1,4 +1,4 @@
-mod authority_member;
+pub(super) mod authority_member;
 mod common;
 mod entrypoint;
 pub(super) mod inlet;

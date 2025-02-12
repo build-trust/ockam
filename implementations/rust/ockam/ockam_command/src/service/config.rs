@@ -51,13 +51,11 @@ pub struct SecureChannelListenerConfig {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
-#[serde(tag = "kind", content = "content")]
+#[serde(rename_all = "kebab-case")]
 pub enum ControlApiNodeResolution {
     #[default]
     Relay,
-    DirectConnection {
-        suffix: String,
-    },
+    DirectConnection,
 }
 
 fn default_control_api_bind_address() -> SocketAddr {
@@ -65,11 +63,11 @@ fn default_control_api_bind_address() -> SocketAddr {
 }
 
 fn default_frontend_policy() -> PolicyExpression {
-    BooleanExpression(BooleanExpr::from_str("control_api_frontend").unwrap())
+    BooleanExpression(BooleanExpr::from_str("node_control_api_frontend").unwrap())
 }
 
 fn default_backend_policy() -> PolicyExpression {
-    BooleanExpression(BooleanExpr::from_str("control_api_backend").unwrap())
+    BooleanExpression(BooleanExpr::from_str("node_control_api_backend").unwrap())
 }
 
 fn default_node_port() -> u16 {
@@ -97,9 +95,13 @@ pub struct ControlApiConfig {
     #[serde(default = "default_control_api_bind_address")]
     pub(crate) http_bind_address: SocketAddr,
 
-    /// Port to connect to nodes.
+    /// Port to use when connecting to nodes.
     #[serde(default = "default_node_port")]
     pub(crate) node_port: u16,
+
+    /// Suffix to use when connecting to nodes.
+    #[serde(default)]
+    pub(crate) node_resolution_suffix: String,
 
     /// Authentication token for the control API.
     /// When undefined, the environment variable `OCKAM_CONTROL_API_AUTHENTICATION_TOKEN` will be used.

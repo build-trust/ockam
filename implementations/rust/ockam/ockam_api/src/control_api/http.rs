@@ -6,7 +6,6 @@ use minicbor::{CborLen, Decode, Encode};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::Error;
 use serde::Serialize;
-use std::fmt::Display;
 use tracing::error;
 
 #[derive(Debug, Encode, Decode, CborLen)]
@@ -66,7 +65,7 @@ impl ControlApiHttpResponse {
         )
     }
 
-    pub fn bad_request(message: impl Display) -> ockam_core::Result<ControlApiHttpResponse> {
+    pub fn bad_request(message: &str) -> ockam_core::Result<ControlApiHttpResponse> {
         Self::with_body(
             StatusCode::BAD_REQUEST,
             ErrorResponse {
@@ -75,7 +74,7 @@ impl ControlApiHttpResponse {
         )
     }
 
-    pub fn not_found(message: impl Display) -> ockam_core::Result<ControlApiHttpResponse> {
+    pub fn not_found(message: &str) -> ockam_core::Result<ControlApiHttpResponse> {
         Self::with_body(
             StatusCode::NOT_FOUND,
             ErrorResponse {
@@ -84,7 +83,7 @@ impl ControlApiHttpResponse {
         )
     }
 
-    pub fn internal_error(error: impl Display) -> ockam_core::Result<ControlApiHttpResponse> {
+    pub fn internal_error(error: &str) -> ockam_core::Result<ControlApiHttpResponse> {
         Self::with_body(
             StatusCode::INTERNAL_SERVER_ERROR,
             ErrorResponse {
