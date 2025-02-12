@@ -1,3 +1,4 @@
+use crate::node::create::DEFAULT_NODE_NAME;
 use crate::node::node_callback::NodeCallback;
 use crate::node::CreateCommand;
 use crate::util::foreground_args::wait_for_exit_signal;
@@ -8,6 +9,8 @@ use ockam::tcp::{TcpListenerOptions, TcpTransport};
 use ockam::udp::{UdpBindArguments, UdpBindOptions, UdpTransport};
 use ockam::Address;
 use ockam::Context;
+use ockam_api::cli_state::random_name;
+use ockam_api::colors::color_primary;
 use ockam_api::fmt_log;
 use ockam_api::nodes::service::{NodeManagerTransport, SecureChannelType};
 use ockam_api::nodes::InMemoryNode;
@@ -16,7 +19,6 @@ use ockam_api::nodes::{
     NodeManagerWorker, NODEMANAGER_ADDR,
 };
 use ockam_api::terminal::notification::NotificationHandler;
-
 use ockam_core::LOCAL;
 use std::sync::Arc;
 use tokio::time::{sleep, Duration};
@@ -25,10 +27,11 @@ use tracing::{debug, info, instrument};
 impl CreateCommand {
     #[instrument(skip_all, fields(node_name = self.name))]
     pub(super) async fn foreground_mode(
-        &self,
+        &mut self,
         ctx: &Context,
         opts: CommandGlobalOpts,
     ) -> miette::Result<()> {
+        self.check_foreground_args(&opts).await?;
         let node_name = self.name.clone();
         debug!("creating node in foreground mode");
 
@@ -152,6 +155,37 @@ impl CreateCommand {
 
         // Clean up and exit
         let _ = opts.state.stop_node(&node_name).await;
+
+        Ok(())
+    }
+
+    /// Checks that the arguments specific to foreground nodes are valid.
+    async fn check_foreground_args(&mut self, opts: &CommandGlobalOpts) -> miette::Result<()> {
+        if !self.skip_is_running_check
+            && opts
+                .state
+                .get_node(&self.name)
+                .await
+                .ok()
+                .map(|n| n.is_running())
+                .unwrap_or(false)
+        {
+            return Err(miette!(
+                "Node {} is already running",
+                color_primary(&self.name)
+            ));
+        }
+
+        // return error if trying to create an in-memory node in background mode
+        if !self.foreground_args.foreground && opts.state.is_using_in_memory_database()? {
+            return Err(miette!("Only foreground nodes can be created in-memory",));
+        }
+
+        // if the default node name is used
+        if self.name == DEFAULT_NODE_NAME {
+            // initialize it with a random name
+            self.name = random_name();
+        }
 
         Ok(())
     }

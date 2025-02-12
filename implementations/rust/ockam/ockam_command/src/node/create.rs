@@ -11,7 +11,6 @@ use async_trait::async_trait;
 use clap::Args;
 use colorful::Colorful;
 use miette::{miette, IntoDiagnostic, WrapErr};
-use ockam_api::cli_state::random_name;
 use ockam_api::colors::{color_error, color_primary};
 use ockam_api::nodes::models::transport::Port;
 use ockam_api::terminal::notification::NotificationHandler;
@@ -291,34 +290,6 @@ impl CreateCommand {
             self.name = DEFAULT_NODE_NAME.to_string();
         }
 
-        self.name = {
-            let mut name = if let Ok(node_config) = self.parse_node_config().await {
-                node_config.node.name().unwrap_or(self.name.clone())
-            } else {
-                self.name.clone()
-            };
-            if name == DEFAULT_NODE_NAME {
-                name = random_name();
-            }
-            name
-        };
-
-        // FIXME: Avoid this check to avoid parent process needing db to create a background node
-        if !self.skip_is_running_check
-            && opts
-                .state
-                .get_node(&self.name)
-                .await
-                .ok()
-                .map(|n| n.is_running())
-                .unwrap_or(false)
-        {
-            return Err(miette!(
-                "Node {} is already running",
-                color_primary(&self.name)
-            ));
-        }
-
         if self.http_server {
             print_warning_for_deprecated_flag_no_effect(opts, "http-server")?;
         }
@@ -412,7 +383,6 @@ mod tests {
     use ockam_api::output::{OutputBranding, OutputFormat};
     use ockam_api::terminal::Terminal;
     use ockam_api::CliState;
-    use std::sync::Arc;
 
     #[test]
     fn command_can_be_parsed_from_name() {
@@ -536,62 +506,60 @@ mod tests {
         assert!(!cmd.should_run_config());
     }
 
-    #[test]
-    fn get_default_node_name_no_previous_state() {
-        let rt = Arc::new(tokio::runtime::Runtime::new().unwrap());
-        rt.block_on(async {
-            let opts = CommandGlobalOpts {
-                state: CliState::test().await.unwrap(),
-                terminal: Terminal::new(
-                    false,
-                    false,
-                    false,
-                    true,
-                    false,
-                    OutputFormat::Plain,
-                    OutputBranding::default(),
-                ),
-                global_args: GlobalArgs::default(),
-            };
-            let mut cmd = CreateCommand::default();
-            cmd.parse_args(&opts).await.unwrap();
-            assert_ne!(cmd.name, DEFAULT_NODE_NAME);
+    #[tokio::test]
+    async fn get_default_node_name_no_previous_state() {
+        let opts = CommandGlobalOpts {
+            state: CliState::test().await.unwrap(),
+            terminal: Terminal::new(
+                false,
+                false,
+                false,
+                true,
+                false,
+                OutputFormat::Plain,
+                OutputBranding::default(),
+            ),
+            global_args: GlobalArgs::default(),
+        };
+        let mut cmd = CreateCommand::default();
+        cmd.parse_args(&opts).await.unwrap();
+        // The default name is changed if needed when parsing the config
+        assert_eq!(cmd.name, DEFAULT_NODE_NAME);
 
-            let mut cmd = CreateCommand {
-                name: r#"{tcp-outlet: {to: "5500"}}"#.to_string(),
-                ..Default::default()
-            };
-            cmd.parse_args(&opts).await.unwrap();
-            assert_ne!(cmd.name, DEFAULT_NODE_NAME);
+        let mut cmd = CreateCommand {
+            name: r#"{tcp-outlet: {to: "5500"}}"#.to_string(),
+            ..Default::default()
+        };
+        cmd.parse_args(&opts).await.unwrap();
+        assert_eq!(cmd.name, DEFAULT_NODE_NAME);
 
-            let mut cmd = CreateCommand {
-                config_args: ConfigArgs {
-                    configuration: Some(r#"{tcp-outlet: {to: "5500"}}"#.to_string()),
-                    ..Default::default()
-                },
+        let mut cmd = CreateCommand {
+            config_args: ConfigArgs {
+                configuration: Some(r#"{tcp-outlet: {to: "5500"}}"#.to_string()),
                 ..Default::default()
-            };
-            cmd.parse_args(&opts).await.unwrap();
-            assert_ne!(cmd.name, DEFAULT_NODE_NAME);
+            },
+            ..Default::default()
+        };
+        cmd.parse_args(&opts).await.unwrap();
+        assert_eq!(cmd.name, DEFAULT_NODE_NAME);
 
-            let mut cmd = CreateCommand {
-                name: "n1".to_string(),
-                ..Default::default()
-            };
-            cmd.parse_args(&opts).await.unwrap();
-            assert_eq!(cmd.name, "n1");
+        let mut cmd = CreateCommand {
+            name: "n1".to_string(),
+            ..Default::default()
+        };
+        cmd.parse_args(&opts).await.unwrap();
+        assert_eq!(cmd.name, "n1");
 
-            let mut cmd = CreateCommand {
-                name: "n1".to_string(),
-                config_args: ConfigArgs {
-                    configuration: Some(r#"{tcp-outlet: {to: "5500"}}"#.to_string()),
-                    ..Default::default()
-                },
+        let mut cmd = CreateCommand {
+            name: "n1".to_string(),
+            config_args: ConfigArgs {
+                configuration: Some(r#"{tcp-outlet: {to: "5500"}}"#.to_string()),
                 ..Default::default()
-            };
-            cmd.parse_args(&opts).await.unwrap();
-            assert_eq!(cmd.name, "n1");
-        });
+            },
+            ..Default::default()
+        };
+        cmd.parse_args(&opts).await.unwrap();
+        assert_eq!(cmd.name, "n1");
     }
 
     #[ockam::test]

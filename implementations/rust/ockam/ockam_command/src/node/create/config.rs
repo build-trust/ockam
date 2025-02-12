@@ -3,11 +3,12 @@ use crate::node::CreateCommand;
 use crate::run::parser::config::ConfigParser;
 use crate::run::parser::resource::*;
 use crate::run::parser::Version;
-use crate::value_parsers::{parse_config_or_path_or_url, parse_key_val};
+use crate::value_parsers::{parse_key_val, read_config_contents_from_path_or_url_or_inline};
 use crate::{docs, CommandGlobalOpts};
 use clap::Args;
 use miette::{miette, IntoDiagnostic};
 use ockam_api::cli_state::journeys::APPLICATION_EVENT_COMMAND_CONFIGURATION_FILE;
+use ockam_api::cli_state::random_name;
 use ockam_core::{OpenTelemetryContext, TryClone};
 use ockam_node::Context;
 use serde::{Deserialize, Serialize};
@@ -47,7 +48,7 @@ impl CreateCommand {
     pub async fn run_config(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         debug!("running node create with a node config");
         let mut node_config = self.parse_node_config().await?;
-        node_config.merge(&self).await?;
+        node_config.merge(&self)?;
         trace!(?node_config, "merged node config with command args");
         let node_name = node_config.node.name().ok_or(miette!(
             "Node name should be set to the command's default value"
@@ -73,7 +74,7 @@ impl CreateCommand {
     pub(super) async fn get_node_config_contents(&self) -> miette::Result<String> {
         match self.config_args.configuration.clone() {
             Some(contents) => Ok(contents),
-            None => match parse_config_or_path_or_url::<NodeConfig>(&self.name).await {
+            None => match read_config_contents_from_path_or_url_or_inline(&self.name).await {
                 Ok(contents) => Ok(contents),
                 Err(err) => {
                     // If just the enrollment ticket is passed, create a minimal configuration
@@ -93,7 +94,7 @@ impl CreateCommand {
     ///  - an inline configuration
     /// or read the `configuration` argument
     #[instrument(skip_all, fields(app.event.command.configuration_file))]
-    pub(super) async fn parse_node_config(&self) -> miette::Result<NodeConfig> {
+    async fn parse_node_config(&self) -> miette::Result<NodeConfig> {
         let contents = self.get_node_config_contents().await?;
         // Set environment variables from the cli command args
         // This needs to be done before parsing the configuration
@@ -147,7 +148,7 @@ impl NodeConfig {
 
     /// Merge the arguments of the node defined in the config with the arguments from the
     /// "create" command, giving precedence to the command args.
-    async fn merge(&mut self, cmd: &CreateCommand) -> miette::Result<()> {
+    fn merge(&mut self, cmd: &CreateCommand) -> miette::Result<()> {
         // Set environment variables from the cli command again
         // to override the duplicate entries from the config file.
         for (key, value) in &cmd.config_args.variables {
@@ -158,9 +159,6 @@ impl NodeConfig {
         }
 
         // Set default values to the config, if not present
-        if self.node.name.is_none() {
-            self.node.name = Some(cmd.name.clone().into());
-        }
         if self.node.opentelemetry_context.is_none() {
             self.node.opentelemetry_context = Some(
                 serde_json::to_string(&OpenTelemetryContext::current())
@@ -171,8 +169,13 @@ impl NodeConfig {
 
         // Override config values with passed command args
         let default_cmd_args = CreateCommand::default();
-        if cmd.name.ne(&default_cmd_args.name) && cmd.name_arg_is_a_node_name() {
+        // If the command defines a node name, it should override the inline config
+        if cmd.name_arg_is_a_node_name() && cmd.name.ne(&default_cmd_args.name) {
             self.node.name = Some(cmd.name.clone().into());
+        }
+        // If the node name was not assigned, generate a random one
+        if self.node.name.is_none() && cmd.name.eq(&default_cmd_args.name) {
+            self.node.name = Some(random_name().into());
         }
         if let Some(ticket) = &cmd.config_args.enrollment_ticket {
             self.project_enroll.ticket = Some(ticket.clone());
@@ -354,6 +357,7 @@ impl NodeConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::node::create::DEFAULT_NODE_NAME;
     use ockam_api::cli_state::ExportedEnrollmentTicket;
 
     #[tokio::test]
@@ -446,7 +450,7 @@ mod tests {
             ..Default::default()
         };
         let mut config = cmd.parse_node_config().await.unwrap();
-        config.merge(&cmd).await.unwrap();
+        config.merge(&cmd).unwrap();
         assert_eq!(config.node.name, Some("n1".into()));
 
         // Same with inline config
@@ -458,7 +462,7 @@ mod tests {
             ..Default::default()
         };
         let mut config = cmd.parse_node_config().await.unwrap();
-        config.merge(&cmd).await.unwrap();
+        config.merge(&cmd).unwrap();
         assert_eq!(config.node.name, Some("n1".into()));
 
         // If the command defines a node name, it should override the inline config
@@ -471,16 +475,16 @@ mod tests {
             ..Default::default()
         };
         let mut config = cmd.parse_node_config().await.unwrap();
-        config.merge(&cmd).await.unwrap();
+        config.merge(&cmd).unwrap();
         assert_eq!(config.node.name, Some("n2".into()));
     }
 
-    #[tokio::test]
-    async fn merge_config_with_cli() {
+    #[test]
+    fn merge_config_with_cli() {
         let cli_enrollment_ticket = ExportedEnrollmentTicket::new_test();
         let cli_enrollment_ticket_encoded = cli_enrollment_ticket.to_string();
 
-        let cli_args = CreateCommand {
+        let cmd = CreateCommand {
             tcp_listener_address: "127.0.0.1:1234".to_string(),
             config_args: ConfigArgs {
                 enrollment_ticket: Some(cli_enrollment_ticket_encoded.clone()),
@@ -492,7 +496,7 @@ mod tests {
         // No node config, cli args should be used
         let contents = String::new();
         let mut config = NodeConfig::parse(contents).unwrap();
-        config.merge(&cli_args).await.unwrap();
+        config.merge(&cmd).unwrap();
         let node = config.node.into_parsed_commands().unwrap().pop().unwrap();
         assert_eq!(node.tcp_listener_address, "127.0.0.1:1234");
         assert_eq!(
@@ -512,13 +516,46 @@ mod tests {
         "#
         .to_string();
         let mut config = NodeConfig::parse(contents).unwrap();
-        config.merge(&cli_args).await.unwrap();
+        config.merge(&cmd).unwrap();
         let node = config.node.into_parsed_commands().unwrap().pop().unwrap();
         assert_eq!(node.name, "n1");
-        assert_eq!(node.tcp_listener_address, cli_args.tcp_listener_address);
+        assert_eq!(node.tcp_listener_address, cmd.tcp_listener_address);
         assert_eq!(
             config.project_enroll.ticket,
             Some(cli_enrollment_ticket_encoded.clone())
         );
+    }
+
+    #[test]
+    fn merge_config_with_cli_node_name() {
+        let cases = [
+            (CreateCommand::default(), "relay: r1", None), // random
+            (CreateCommand::default(), "name: n1", Some("n1")),
+            (
+                CreateCommand {
+                    name: "n2".into(),
+                    ..Default::default()
+                },
+                "name: n1",
+                Some("n2"), // command has priority
+            ),
+            (
+                CreateCommand {
+                    name: "n2".into(),
+                    ..Default::default()
+                },
+                "relay: r1",
+                Some("n2"), // command has priority
+            ),
+        ];
+        for (cmd, config, expected) in cases.into_iter() {
+            let mut config = NodeConfig::parse(config.to_string()).unwrap();
+            config.merge(&cmd).unwrap();
+            let node = config.node.into_parsed_commands().unwrap().pop().unwrap();
+            match expected {
+                Some(expected) => assert_eq!(node.name, expected),
+                None => assert_ne!(node.name, DEFAULT_NODE_NAME),
+            }
+        }
     }
 }
