@@ -12,7 +12,7 @@ use std::sync::Arc;
 
 pub async fn create_authority_client(
     node_manager: &Arc<NodeManager>,
-    authority: Authority,
+    authority: &Authority,
     caller_identifier: &Option<String>,
 ) -> ockam_core::Result<Result<AuthorityNodeClient, ControlApiHttpResponse>> {
     let caller_identifier = if let Some(identity) = caller_identifier {
@@ -26,12 +26,13 @@ pub async fn create_authority_client(
             if let Ok(project) = node_manager
                 .cli_state
                 .projects()
-                .get_project_by_name(&name)
+                .get_project_by_name(name)
                 .await
             {
                 create_project_authority_with_project(node_manager, &project, &caller_identifier)
                     .await?
             } else {
+                warn!("Project {name} not found");
                 return Ok(Err(ControlApiHttpResponse::not_found("Project not found")?));
             }
         }
@@ -45,24 +46,27 @@ pub async fn create_authority_client(
                 create_project_authority_with_project(node_manager, &project, &caller_identifier)
                     .await?
             } else {
+                warn!("No default project");
                 return Ok(Err(ControlApiHttpResponse::bad_request(
-                    "Missing default project",
+                    "No default project",
                 )?));
             }
         }
 
-        Authority::Node { route, identity } => {
+        Authority::Provided { route, identity } => {
             let route = if let Ok(route) = MultiAddr::try_from(route.as_str()) {
                 route
             } else {
+                warn!("Invalid authority route");
                 return Ok(Err(ControlApiHttpResponse::bad_request(
                     "Invalid authority route",
                 )?));
             };
 
-            let identifier = if let Ok(identifier) = Identifier::from_str(&identity) {
+            let identifier = if let Ok(identifier) = Identifier::from_str(identity) {
                 identifier
             } else {
+                warn!("Invalid identity");
                 return Ok(Err(ControlApiHttpResponse::bad_request(
                     "Invalid identity",
                 )?));
@@ -113,14 +117,33 @@ pub async fn create_project_authority_with_project(
         .await
 }
 
+pub fn parse_optional_request_body<T: DeserializeOwned + Default>(
+    body: Option<Vec<u8>>,
+) -> Result<T, ockam_core::Result<ControlApiHttpResponse>> {
+    if let Some(body) = body {
+        if body.is_empty() {
+            Ok(T::default())
+        } else {
+            match serde_json::from_slice(&body) {
+                Ok(request) => Ok(request),
+                Err(error) => {
+                    warn!("Invalid request body: {error:?}");
+                    Err(ControlApiHttpResponse::invalid_body())
+                }
+            }
+        }
+    } else {
+        Ok(T::default())
+    }
+}
 pub fn parse_request_body<T: DeserializeOwned>(
     body: Option<Vec<u8>>,
 ) -> Result<T, ockam_core::Result<ControlApiHttpResponse>> {
     let request: T = if let Some(body) = body {
         match serde_json::from_slice(&body) {
             Ok(request) => request,
-            Err(_error) => {
-                warn!("Invalid request body");
+            Err(error) => {
+                warn!("Invalid request body: {error:?}");
                 return Err(ControlApiHttpResponse::invalid_body());
             }
         }

@@ -1,3 +1,4 @@
+use super::backend::authority_member::*;
 use super::backend::inlet::*;
 use super::backend::outlet::*;
 use super::backend::relay::*;
@@ -48,6 +49,10 @@ impl Modify for Authentications {
         handle_relay_delete,
         handle_ticket_create,
         handle_ticket_enroll,
+        handle_authority_member_add_or_update,
+        handle_authority_member_list,
+        handle_authority_member_get,
+        handle_authority_member_remove
     ),
     security(
         ("bearer" = [])

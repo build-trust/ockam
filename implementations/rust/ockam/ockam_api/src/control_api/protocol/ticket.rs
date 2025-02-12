@@ -1,5 +1,5 @@
-use super::common::default_authority;
-use crate::control_api::protocol::common::{Authority, HostnamePort};
+use super::common::{default_project_information, Project};
+use crate::control_api::protocol::common::HostnamePort;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use utoipa::ToSchema;
@@ -27,10 +27,10 @@ pub struct CreateTicketRequest {
     /// When omitted, the default identity will be used
     #[schema(examples("Id3b788c6a89de8b1f2fd13743eb3123178cf6ec7c9253be8ddcf7e154abe016a"))]
     pub identity: Option<String>,
-    /// Authority to use when creating the ticket;
-    #[serde(default = "default_authority")]
-    #[schema(default = default_authority)]
-    pub authority: Authority,
+    /// Project information to use when creating the ticket;
+    #[serde(default = "default_project_information")]
+    #[schema(default = default_project_information)]
+    pub project: Project,
     /// Number of times the ticket can be used to enroll;
     #[serde(default = "default_usage_count")]
     #[schema(default = default_usage_count)]

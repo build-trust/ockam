@@ -34,6 +34,8 @@ pub struct CreateOutletRequest {
     /// The destination address of the TCP connection
     pub to: HostnamePort,
     /// The TLS configuration for the outlet
+    #[serde(default)]
+    #[schema(default = "None")]
     pub tls: OutletTls,
     /// Policy expression that will be used for access control to the TCP Outlet;
     /// by default the policy set for the "tcp-outlet" resource type will be used

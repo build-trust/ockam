@@ -42,7 +42,10 @@ impl HttpControlNodeApiBackend {
                     handle_authority_member_remove(context, &self.node_manager, body, id).await
                 }
             },
-            _ => ControlApiHttpResponse::invalid_method(),
+            _ => {
+                warn!("Invalid method: {method}");
+                ControlApiHttpResponse::invalid_method()
+            }
         }
     }
 }
@@ -78,7 +81,7 @@ async fn handle_authority_member_add_or_update(
     };
 
     let authority_client =
-        match create_authority_client(node_manager, request.authority, &request.identity).await? {
+        match create_authority_client(node_manager, &request.authority, &request.identity).await? {
             Ok(authority_client) => authority_client,
             Err(direct_response) => {
                 return Ok(direct_response);
@@ -88,6 +91,7 @@ async fn handle_authority_member_add_or_update(
     let member_identity = if let Ok(identifier) = Identifier::from_str(member_identity) {
         identifier
     } else {
+        warn!("Invalid member identity");
         return ControlApiHttpResponse::bad_request("Invalid member identity");
     };
 
@@ -96,7 +100,10 @@ async fn handle_authority_member_add_or_update(
         .await;
     match result {
         Ok(_) => ControlApiHttpResponse::without_body(StatusCode::CREATED),
-        Err(error) => ControlApiHttpResponse::internal_error(error),
+        Err(error) => {
+            warn!("Error adding member: {error}");
+            ControlApiHttpResponse::internal_error("Adding member failed")
+        }
     }
 }
 
@@ -123,13 +130,13 @@ async fn handle_authority_member_list(
     node_manager: &Arc<NodeManager>,
     body: Option<Vec<u8>>,
 ) -> ockam_core::Result<ControlApiHttpResponse> {
-    let request: ListAuthorityMembersRequest = match common::parse_request_body(body) {
+    let request: ListAuthorityMembersRequest = match common::parse_optional_request_body(body) {
         Ok(value) => value,
         Err(value) => return value,
     };
 
     let authority_client =
-        match create_authority_client(node_manager, request.authority, &request.identity).await? {
+        match create_authority_client(node_manager, &request.authority, &request.identity).await? {
             Ok(authority_client) => authority_client,
             Err(direct_response) => {
                 return Ok(direct_response);
@@ -148,7 +155,10 @@ async fn handle_authority_member_list(
                 .collect();
             ControlApiHttpResponse::with_body(StatusCode::OK, members)
         }
-        Err(error) => ControlApiHttpResponse::internal_error(error),
+        Err(error) => {
+            warn!("Error listing members: {error}");
+            ControlApiHttpResponse::internal_error("Listing members failed")
+        }
     }
 }
 
@@ -165,6 +175,11 @@ async fn handle_authority_member_list(
         ("node" = String, description = "Destination node name"),
         ("member" = String, description = "Member identity", example = "Id3b788c6a89de8b1f2fd13743eb3123178cf6ec7c9253be8ddcf7e154abe016a"),
     ),
+    request_body(
+        content = GetAuthorityMemberRequest,
+        content_type = "application/json",
+        description = "Get member request"
+    )
 )]
 async fn handle_authority_member_get(
     context: &Context,
@@ -172,13 +187,13 @@ async fn handle_authority_member_get(
     body: Option<Vec<u8>>,
     resource_id: &str,
 ) -> ockam_core::Result<ControlApiHttpResponse> {
-    let request: GetAuthorityMemberRequest = match common::parse_request_body(body) {
+    let request: GetAuthorityMemberRequest = match common::parse_optional_request_body(body) {
         Ok(value) => value,
         Err(value) => return value,
     };
 
     let authority_client =
-        match create_authority_client(node_manager, request.authority, &request.identity).await? {
+        match create_authority_client(node_manager, &request.authority, &request.identity).await? {
             Ok(authority_client) => authority_client,
             Err(direct_response) => {
                 return Ok(direct_response);
@@ -188,6 +203,7 @@ async fn handle_authority_member_get(
     let member_identity = if let Ok(identifier) = Identifier::from_str(resource_id) {
         identifier
     } else {
+        warn!("Invalid member identity");
         return ControlApiHttpResponse::bad_request("Invalid member identity");
     };
 
@@ -204,7 +220,8 @@ async fn handle_authority_member_get(
         ),
         Err(error) => {
             //TODO: handle not found
-            ControlApiHttpResponse::internal_error(error)
+            warn!("Error getting member: {error}");
+            ControlApiHttpResponse::internal_error("Getting member failed")
         }
     }
 }
@@ -234,13 +251,13 @@ async fn handle_authority_member_remove(
     body: Option<Vec<u8>>,
     resource_id: &str,
 ) -> ockam_core::Result<ControlApiHttpResponse> {
-    let request: RemoveAuthorityMemberRequest = match common::parse_request_body(body) {
+    let request: RemoveAuthorityMemberRequest = match common::parse_optional_request_body(body) {
         Ok(value) => value,
         Err(value) => return value,
     };
 
     let authority_client =
-        match create_authority_client(node_manager, request.authority, &request.identity).await? {
+        match create_authority_client(node_manager, &request.authority, &request.identity).await? {
             Ok(authority_client) => authority_client,
             Err(direct_response) => {
                 return Ok(direct_response);
@@ -260,7 +277,8 @@ async fn handle_authority_member_remove(
         Ok(_) => ControlApiHttpResponse::without_body(StatusCode::NO_CONTENT),
         Err(error) => {
             //TODO: handle not found
-            ControlApiHttpResponse::internal_error(error)
+            warn!("Error removing member: {error}");
+            ControlApiHttpResponse::internal_error("Deleting member failed")
         }
     }
 }

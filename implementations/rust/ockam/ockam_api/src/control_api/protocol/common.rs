@@ -1,3 +1,4 @@
+use ockam::identity::{Identity, Vault};
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 use utoipa::ToSchema;
@@ -60,7 +61,7 @@ pub enum Authority {
         /// When omitted, the default project will be used
         name: Option<String>,
     },
-    Node {
+    Provided {
         /// Multiaddress to the node that will be used as an authority;
         /// When omitted, the default node will be used
         #[schema(example = "/dnsaddr/my-authority.example.com/tcp/4001/secure/api")]
@@ -70,4 +71,65 @@ pub enum Authority {
         identity: String,
         // TODO: Add the possibility to specify the whole public identity
     },
+}
+
+pub fn default_project_name() -> String {
+    "default".to_string()
+}
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "kebab-case")]
+pub enum Project {
+    Existing {
+        /// Name of the project
+        /// When omitted, the default project will be used
+        name: Option<String>,
+    },
+    Provided {
+        /// Name of the project;
+        /// When omitted, the default project will be used
+        #[serde(default = "default_project_name")]
+        #[schema(example = "my-project", default = default_project_name)]
+        project_name: String,
+        /// Multiaddress to the node that will be used as an authority;
+        #[schema(example = "/dnsaddr/my-authority.example.com/tcp/4001/secure/api")]
+        authority_route: String,
+        /// Full public identity of the authority node
+        #[schema(example = "81825837830101583285f...")]
+        authority_change_history: String,
+        /// Multiaddress to the node that will be used as a project;
+        #[schema(example = "/dnsaddr/my-project.example.com/tcp/4000/service/api")]
+        project_route: String,
+        /// Full public identity of the project node
+        #[schema(example = "81825837830101583285f...")]
+        project_change_history: String,
+    },
+}
+
+pub fn default_project_information() -> Project {
+    Project::Existing { name: None }
+}
+
+impl Project {
+    pub async fn to_project_authority(&self) -> ockam_core::Result<Authority> {
+        match self {
+            Project::Existing { name } => Ok(Authority::Project { name: name.clone() }),
+            Project::Provided {
+                authority_route,
+                authority_change_history,
+                ..
+            } => {
+                let identity = Identity::import_from_string(
+                    None,
+                    authority_change_history,
+                    Vault::create_verifying_vault(),
+                )
+                .await?;
+                Ok(Authority::Provided {
+                    route: authority_route.clone(),
+                    identity: identity.identifier().to_string(),
+                })
+            }
+        }
+    }
 }

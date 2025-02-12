@@ -38,6 +38,15 @@ pub struct ListAuthorityMembersRequest {
     pub authority: Authority,
 }
 
+impl Default for ListAuthorityMembersRequest {
+    fn default() -> Self {
+        Self {
+            identity: None,
+            authority: default_authority(),
+        }
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "kebab-case")]
 pub struct GetAuthorityMemberRequest {
@@ -51,6 +60,15 @@ pub struct GetAuthorityMemberRequest {
     pub authority: Authority,
 }
 
+impl Default for GetAuthorityMemberRequest {
+    fn default() -> Self {
+        Self {
+            identity: None,
+            authority: default_authority(),
+        }
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "kebab-case")]
 pub struct RemoveAuthorityMemberRequest {
@@ -62,6 +80,15 @@ pub struct RemoveAuthorityMemberRequest {
     #[serde(default = "default_authority")]
     #[schema(default = default_authority)]
     pub authority: Authority,
+}
+
+impl Default for RemoveAuthorityMemberRequest {
+    fn default() -> Self {
+        Self {
+            identity: None,
+            authority: default_authority(),
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]

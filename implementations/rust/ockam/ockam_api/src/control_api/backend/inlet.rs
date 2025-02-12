@@ -1,3 +1,4 @@
+use crate::control_api::backend::common;
 use crate::control_api::backend::entrypoint::HttpControlNodeApiBackend;
 use crate::control_api::http::ControlApiHttpResponse;
 use crate::control_api::protocol::inlet::{CreateInletRequest, InletKind, InletTls};
@@ -33,7 +34,10 @@ impl HttpControlNodeApiBackend {
                 None => ControlApiHttpResponse::missing_resource_id(),
                 Some(id) => handle_tcp_inlet_delete(&self.node_manager, id).await,
             },
-            _ => ControlApiHttpResponse::invalid_method(),
+            _ => {
+                warn!("Invalid method: {method}");
+                ControlApiHttpResponse::invalid_method()
+            }
         }
     }
 }
@@ -61,17 +65,9 @@ async fn handle_tcp_inlet_create(
     node_manager: &Arc<NodeManager>,
     body: Option<Vec<u8>>,
 ) -> ockam_core::Result<ControlApiHttpResponse> {
-    let request: CreateInletRequest = if let Some(body) = body {
-        match serde_json::from_slice(&body) {
-            Ok(request) => request,
-            Err(_error) => {
-                warn!("Invalid request body");
-                return ControlApiHttpResponse::invalid_body();
-            }
-        }
-    } else {
-        warn!("Missing request body");
-        return ControlApiHttpResponse::missing_body();
+    let request: CreateInletRequest = match common::parse_request_body(body) {
+        Ok(value) => value,
+        Err(value) => return value,
     };
 
     let allow = match request.allow {
@@ -159,7 +155,7 @@ async fn handle_tcp_inlet_create(
             // name already exists
             // port already bound
             warn!("Failed to create tcp inlet: {:?}", error);
-            ControlApiHttpResponse::internal_error(error)
+            ControlApiHttpResponse::internal_error("Failed to create tcp inlet")
         }
     }
 }
@@ -189,17 +185,9 @@ async fn handle_tcp_inlet_update(
     resource_id: &str,
     body: Option<Vec<u8>>,
 ) -> ockam_core::Result<ControlApiHttpResponse> {
-    let request: UpdateInletRequest = if let Some(body) = body {
-        match serde_json::from_slice(&body) {
-            Ok(request) => request,
-            Err(_error) => {
-                warn!("Invalid request body");
-                return ControlApiHttpResponse::invalid_body();
-            }
-        }
-    } else {
-        warn!("Missing request body");
-        return ControlApiHttpResponse::missing_body();
+    let request: UpdateInletRequest = match common::parse_request_body(body) {
+        Ok(value) => value,
+        Err(value) => return value,
     };
 
     if node_manager.show_inlet(resource_id).await.is_none() {
@@ -276,7 +264,7 @@ async fn handle_tcp_inlet_delete(
         Ok(_) => ControlApiHttpResponse::without_body(StatusCode::NO_CONTENT),
         Err(error) => {
             warn!("Failed to delete tcp inlet: {:?}", error);
-            ControlApiHttpResponse::internal_error(error)
+            ControlApiHttpResponse::internal_error("Failed to delete tcp inlet")
         }
     }
 }
