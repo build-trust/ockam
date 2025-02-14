@@ -76,7 +76,8 @@ pub struct CreateInletRequest {
     #[schema(example = "Id3b788c6a89de8b1f2fd13743eb3123178cf6ec7c9253be8ddcf7e154abe016a")]
     pub authorized: Option<String>,
     /// Policy expression that will be used for access control to the TCP Inlet;
-    /// When omitted, the policy set for the "tcp-inlet" resource type will be used
+    /// When omitted, the policy set for the "tcp-inlet" resource type will be used.
+    /// [Learn more about Policies expression on the Ockam documentation](https://docs.ockam.io/reference/protocols/access-controls).
     pub allow: Option<String>,
     /// When connection is lost, how long to wait before retrying to connect to the TCP Outlet;
     /// In milliseconds;
@@ -88,17 +89,25 @@ pub struct CreateInletRequest {
 #[serde(rename_all = "kebab-case")]
 pub struct UpdateInletRequest {
     /// Policy expression that will be used for access control to the TCP Inlet;
+    /// When omitted, the policy set for the "tcp-inlet" resource type will be used.
+    /// [Learn more about Policies expression on the Ockam documentation](https://docs.ockam.io/reference/protocols/access-controls).
     pub allow: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "kebab-case")]
 pub struct InletStatus {
+    /// Name of the TCP Inlet
     pub name: String,
+    /// Status of the TCP Inlet
     pub status: ConnectionStatus,
+    /// Bind address of the TCP Inlet
     pub bind_address: HostnamePort,
+    /// The current route of the TCP Inlet, populated only when the status is `up`
     pub current_route: Option<String>,
+    /// Multiaddress to the TCP Outlet
     pub to: String,
+    /// Whether the TCP Inlet is of privileged kind
     pub privileged: bool,
 }
 
