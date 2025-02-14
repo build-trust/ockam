@@ -2,6 +2,7 @@ use crate::control_api::backend::common;
 use crate::control_api::backend::entrypoint::HttpControlNodeApiBackend;
 use crate::control_api::http::ControlApiHttpResponse;
 use crate::control_api::protocol::relay::{CreateRelayRequest, RelayStatus};
+use crate::control_api::ControlApiError;
 use crate::nodes::models::relay::ReturnTiming;
 use crate::nodes::NodeManager;
 use http::StatusCode;
@@ -18,7 +19,9 @@ impl HttpControlNodeApiBackend {
         method: &str,
         resource_id: Option<&str>,
         body: Option<Vec<u8>>,
-    ) -> ockam_core::Result<ControlApiHttpResponse> {
+    ) -> Result<ControlApiHttpResponse, ControlApiError> {
+        let resource_name = "tcp-outlet";
+        let resource_name_identifier = "tcp_outlet_name";
         match method {
             "PUT" => handle_relay_create(context, &self.node_manager, body).await,
             "GET" => match resource_id {
@@ -26,12 +29,15 @@ impl HttpControlNodeApiBackend {
                 Some(id) => handle_relay_get(&self.node_manager, id).await,
             },
             "DELETE" => match resource_id {
-                None => ControlApiHttpResponse::missing_resource_id(),
+                None => ControlApiHttpResponse::missing_resource_id(
+                    resource_name,
+                    resource_name_identifier,
+                ),
                 Some(id) => handle_relay_delete(&self.node_manager, id).await,
             },
             _ => {
                 warn!("Invalid method: {method}");
-                ControlApiHttpResponse::invalid_method()
+                ControlApiHttpResponse::invalid_method(method, vec!["PUT", "GET", "DELETE"])
             }
         }
     }
@@ -59,17 +65,15 @@ async fn handle_relay_create(
     context: &Context,
     node_manager: &Arc<NodeManager>,
     body: Option<Vec<u8>>,
-) -> ockam_core::Result<ControlApiHttpResponse> {
-    let request: CreateRelayRequest = match common::parse_request_body(body) {
-        Ok(value) => value,
-        Err(value) => return value,
-    };
+) -> Result<ControlApiHttpResponse, ControlApiError> {
+    let request: CreateRelayRequest = common::parse_request_body(body)?;
 
-    let to = if let Ok(to) = MultiAddr::try_from(request.to.as_str()) {
-        to
-    } else {
-        warn!("Invalid 'to' address");
-        return ControlApiHttpResponse::invalid_body();
+    let to = match MultiAddr::try_from(request.to.as_str()) {
+        Ok(to) => to,
+        Err(error) => {
+            warn!("Invalid 'to' address: {error:?}");
+            return ControlApiHttpResponse::invalid_body();
+        }
     };
 
     let name = request.name.unwrap_or_else(random_string);
@@ -98,9 +102,10 @@ async fn handle_relay_create(
         )
         .await;
     match result {
-        Ok(status) => {
-            ControlApiHttpResponse::with_body(StatusCode::CREATED, RelayStatus::from(status))
-        }
+        Ok(status) => Ok(ControlApiHttpResponse::with_body(
+            StatusCode::CREATED,
+            RelayStatus::from(status),
+        )?),
         Err(error) => {
             // TODO: specialize errors
             // name already exists
@@ -125,14 +130,14 @@ async fn handle_relay_create(
 )]
 async fn handle_relay_list(
     node_manager: &Arc<NodeManager>,
-) -> ockam_core::Result<ControlApiHttpResponse> {
+) -> Result<ControlApiHttpResponse, ControlApiError> {
     let mut inlets: Vec<RelayStatus> = Vec::new();
 
     for status in node_manager.get_relays().await {
         inlets.push(RelayStatus::from(status));
     }
 
-    ControlApiHttpResponse::with_body(StatusCode::OK, inlets)
+    Ok(ControlApiHttpResponse::with_body(StatusCode::OK, inlets)?)
 }
 
 #[utoipa::path(
@@ -152,10 +157,12 @@ async fn handle_relay_list(
 async fn handle_relay_delete(
     node_manager: &Arc<NodeManager>,
     resource_id: &str,
-) -> ockam_core::Result<ControlApiHttpResponse> {
+) -> Result<ControlApiHttpResponse, ControlApiError> {
     let result = node_manager.delete_relay_impl(resource_id).await;
     match result {
-        Ok(_) => ControlApiHttpResponse::without_body(StatusCode::NO_CONTENT),
+        Ok(_) => Ok(ControlApiHttpResponse::without_body(
+            StatusCode::NO_CONTENT,
+        )?),
         Err(error) => {
             warn!("Failed to delete Relay: {:?}", error);
             ControlApiHttpResponse::internal_error("Failed to delete Relay")
@@ -181,11 +188,12 @@ async fn handle_relay_delete(
 async fn handle_relay_get(
     node_manager: &Arc<NodeManager>,
     resource_id: &str,
-) -> ockam_core::Result<ControlApiHttpResponse> {
+) -> Result<ControlApiHttpResponse, ControlApiError> {
     match node_manager.show_relay(resource_id).await {
-        None => ControlApiHttpResponse::without_body(StatusCode::NOT_FOUND),
-        Some(status) => {
-            ControlApiHttpResponse::with_body(StatusCode::OK, RelayStatus::from(status))
-        }
+        None => ControlApiHttpResponse::not_found("Relay not found"),
+        Some(status) => Ok(ControlApiHttpResponse::with_body(
+            StatusCode::OK,
+            RelayStatus::from(status),
+        )?),
     }
 }

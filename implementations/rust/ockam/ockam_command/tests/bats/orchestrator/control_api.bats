@@ -65,7 +65,7 @@ teardown() {
     "{\"start_default_services\": true, \"startup_services\":{ \
       \"control_api\":{\"authentication_token\": \"token\", \"backend\":false, \"frontend\":true, \"http_bind_address\":\"127.0.0.1:${api_port}\", \
       \"node_resolution\":\"direct-connection\", \
-      \"node_port\":${expected_connection_port} \
+      \"connection_node_port\":${expected_connection_port} \
     }}}"
   wait_for_port $api_port
 

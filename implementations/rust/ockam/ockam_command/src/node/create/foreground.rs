@@ -236,8 +236,8 @@ impl CreateCommand {
                             ControlApiNodeResolution::Relay => NodeResolution::Relay,
                             ControlApiNodeResolution::DirectConnection => {
                                 NodeResolution::DirectConnection {
-                                    suffix: configuration.node_resolution_suffix.clone(),
-                                    port: configuration.node_port,
+                                    pattern: configuration.node_resolution_pattern.clone(),
+                                    port: configuration.connection_node_port,
                                 }
                             }
                         };

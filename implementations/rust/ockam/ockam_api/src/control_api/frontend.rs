@@ -224,9 +224,10 @@ impl HttpControlNodeApiFrontend {
                         DefaultAddress::CONTROL_API
                     )
                 }
-                NodeResolution::DirectConnection { suffix, port } => {
+                NodeResolution::DirectConnection { pattern, port } => {
+                    let node_address = pattern.replace("{name}", node_name);
                     format!(
-                        "/dnsaddr/{node_name}{suffix}/tcp/{port}/secure/api/service/{}",
+                        "/dnsaddr/{node_address}/tcp/{port}/secure/api/service/{}",
                         DefaultAddress::CONTROL_API
                     )
                 }
@@ -373,7 +374,7 @@ impl HttpControlNodeApiFrontend {
 #[derive(Clone)]
 pub enum NodeResolution {
     Relay,
-    DirectConnection { suffix: String, port: u16 },
+    DirectConnection { pattern: String, port: u16 },
 }
 
 impl NodeManager {
@@ -625,7 +626,7 @@ mod test {
                 context,
                 SocketAddr::from(([127, 0, 0, 1], 0)),
                 NodeResolution::DirectConnection {
-                    suffix: ".localhost".to_string(),
+                    pattern: "{name}.localhost".to_string(),
                     port: handle.bind_address.port(),
                 },
                 "token".to_str(),
@@ -662,7 +663,7 @@ mod test {
                 context,
                 SocketAddr::from(([127, 0, 0, 1], 0)),
                 NodeResolution::DirectConnection {
-                    suffix: ".localhost".to_string(),
+                    pattern: "{name}.localhost".to_string(),
                     port: 0,
                 },
                 "token".to_str(),

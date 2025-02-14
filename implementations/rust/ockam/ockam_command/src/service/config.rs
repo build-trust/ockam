@@ -70,8 +70,12 @@ fn default_backend_policy() -> PolicyExpression {
     BooleanExpression(BooleanExpr::from_str("node_control_api_backend").unwrap())
 }
 
-fn default_node_port() -> u16 {
+fn default_connection_node_port() -> u16 {
     4100
+}
+
+fn default_node_resolution_pattern() -> String {
+    "{name}".to_string()
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -96,12 +100,15 @@ pub struct ControlApiConfig {
     pub(crate) http_bind_address: SocketAddr,
 
     /// Port to use when connecting to nodes.
-    #[serde(default = "default_node_port")]
-    pub(crate) node_port: u16,
+    #[serde(default = "default_connection_node_port")]
+    pub(crate) connection_node_port: u16,
 
-    /// Suffix to use when connecting to nodes.
-    #[serde(default)]
-    pub(crate) node_resolution_suffix: String,
+    /// Pattern to use when connecting to nodes.
+    /// {name} will be replaced with the node name.
+    /// When `name` is "node1", and the pattern is "my-{name}.example.com", the resulting address
+    /// will be "my-node1.example.com".
+    #[serde(default = "default_node_resolution_pattern")]
+    pub(crate) node_resolution_pattern: String,
 
     /// Authentication token for the control API.
     /// When undefined, the environment variable `OCKAM_CONTROL_API_AUTHENTICATION_TOKEN` will be used.

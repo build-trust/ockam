@@ -1,4 +1,5 @@
 use crate::control_api::protocol::common::ErrorResponse;
+use crate::control_api::ControlApiError;
 use bytes::Bytes;
 use http::StatusCode;
 use http_body_util::Full;
@@ -6,7 +7,6 @@ use minicbor::{CborLen, Decode, Encode};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::Error;
 use serde::Serialize;
-use tracing::error;
 
 #[derive(Debug, Encode, Decode, CborLen)]
 #[rustfmt::skip]
@@ -47,67 +47,83 @@ impl ControlApiHttpResponse {
         })
     }
 
-    pub fn invalid_body() -> ockam_core::Result<ControlApiHttpResponse> {
-        Self::with_body(
+    pub fn invalid_body<T>() -> Result<T, ControlApiError> {
+        Err(Self::with_body(
             StatusCode::BAD_REQUEST,
             ErrorResponse {
                 message: "Invalid request body".to_string(),
             },
-        )
+        )?
+        .into())
     }
 
-    pub fn missing_body() -> ockam_core::Result<ControlApiHttpResponse> {
-        Self::with_body(
+    pub fn missing_body<T>() -> Result<T, ControlApiError> {
+        Err(Self::with_body(
             StatusCode::BAD_REQUEST,
             ErrorResponse {
                 message: "Missing request body".to_string(),
             },
-        )
+        )?
+        .into())
     }
 
-    pub fn bad_request(message: &str) -> ockam_core::Result<ControlApiHttpResponse> {
-        Self::with_body(
+    pub fn bad_request<T>(message: &str) -> Result<T, ControlApiError> {
+        Err(Self::with_body(
             StatusCode::BAD_REQUEST,
             ErrorResponse {
                 message: format!("Bad request: {message}"),
             },
-        )
+        )?
+        .into())
     }
 
-    pub fn not_found(message: &str) -> ockam_core::Result<ControlApiHttpResponse> {
-        Self::with_body(
+    pub fn not_found<T>(message: &str) -> Result<T, ControlApiError> {
+        Err(Self::with_body(
             StatusCode::NOT_FOUND,
             ErrorResponse {
                 message: message.to_string(),
             },
-        )
+        )?
+        .into())
     }
 
-    pub fn internal_error(error: &str) -> ockam_core::Result<ControlApiHttpResponse> {
-        Self::with_body(
+    pub fn internal_error<T>(error: &str) -> Result<T, ControlApiError> {
+        Err(Self::with_body(
             StatusCode::INTERNAL_SERVER_ERROR,
             ErrorResponse {
                 message: format!("Internal server error: {error}"),
             },
-        )
+        )?
+        .into())
     }
 
-    pub fn invalid_method() -> ockam_core::Result<ControlApiHttpResponse> {
-        Self::with_body(
+    pub fn invalid_method<T>(
+        method: &str,
+        allowed_methods: Vec<&str>,
+    ) -> Result<T, ControlApiError> {
+        Err(Self::with_body(
             StatusCode::METHOD_NOT_ALLOWED,
             ErrorResponse {
-                message: "Method not allowed".to_string(),
+                message: format!(
+                    "Invalid method {method} for this API. Supported methods are: {}",
+                    allowed_methods.join(", ")
+                ),
             },
-        )
+        )?
+        .into())
     }
 
-    pub fn missing_resource_id() -> ockam_core::Result<ControlApiHttpResponse> {
-        Self::with_body(
+    pub fn missing_resource_id<T>(
+        resource_name: &str,
+        resource_name_identifier: &str,
+    ) -> Result<T, ControlApiError> {
+        Err(Self::with_body(
             StatusCode::BAD_REQUEST,
             ErrorResponse {
-                message: "Missing resource ID".to_string(),
+                message: format!("Missing parameter {resource_name}. The HTTP path should be /{{node-name}}/{resource_name}/{{{resource_name_identifier}}}"),
             },
-        )
+        )?
+        .into())
     }
 }
 
