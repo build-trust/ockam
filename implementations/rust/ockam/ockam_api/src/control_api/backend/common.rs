@@ -61,7 +61,7 @@ pub async fn create_authority_client(
                 }
                 Err(error) => {
                     warn!("No default project: {error:?}");
-                    return ControlApiHttpResponse::bad_request("No default project");
+                    return ControlApiHttpResponse::not_found("Default default project not found");
                 }
             }
         }

@@ -5,9 +5,9 @@ use crate::control_api::backend::common;
 use crate::control_api::backend::common::{create_authority_client, parse_identifier};
 use crate::control_api::backend::entrypoint::HttpControlNodeApiBackend;
 use crate::control_api::http::ControlApiHttpResponse;
-use crate::control_api::protocol::common::{ErrorResponse, HostnamePort, Project};
+use crate::control_api::protocol::common::{ErrorResponse, HostnamePort, NodeName, Project};
 use crate::control_api::protocol::ticket::{
-    AuthorityInformation, CreateTicketRequest, EnrollTicketRequest, Ticket,
+    AuthorityInformation, CreateTicketRequest, EnrollProjectRequest, Ticket,
 };
 use crate::control_api::ControlApiError;
 use crate::enroll::enrollment::{EnrollStatus, Enrollment};
@@ -26,36 +26,58 @@ impl HttpControlNodeApiBackend {
         &self,
         context: &Context,
         method: &str,
-        _resource_id: Option<&str>,
+        resource_id: Option<&str>,
         body: Option<Vec<u8>>,
     ) -> Result<ControlApiHttpResponse, ControlApiError> {
+        let resource_name = "tickets";
         match method {
-            "PUT" => handle_ticket_create(context, &self.node_manager, body).await,
-            "POST" => handle_ticket_enroll(context, &self.node_manager, body).await,
+            "POST" => {
+                if let Some(resource_id) = resource_id {
+                    if resource_id == "enroll" {
+                        handle_ticket_enroll(context, &self.node_manager, body).await
+                    } else {
+                        ControlApiHttpResponse::bad_request(
+                            &format!("The HTTP path should be /{{node-name}}/{resource_name} or /{{node-name}}/{resource_name}/enroll")
+                        )
+                    }
+                } else {
+                    handle_ticket_create(context, &self.node_manager, body).await
+                }
+            }
             _ => {
                 warn!("Invalid method: {method}");
-                ControlApiHttpResponse::invalid_method(method, vec!["PUT", "POST"])
+                ControlApiHttpResponse::invalid_method(method, vec!["POST"])
             }
         }
     }
 }
 
 #[utoipa::path(
-    put,
+    post,
     operation_id = "create_ticket",
     summary = "Create a new Ticket",
-    path = "/{node}/ticket",
-    tags = ["ticket"],
+    description =
+"Create a new Ticket, the main parameters are `attributes`, the list of attributes associated
+with the ticket, and `project`, the target project for the ticket. In the vast majority of cases,
+specifying the project name will be enough, but it's also possible to specify a custom Ockam
+Authority and a custom node acting as a Project.
+You can also limit the validity of the ticket by specifying the `usage_count` and `expires_in`
+fields.
+The ticket is returned as an opaque string that can be used to enroll to a project, either via API
+or via CLI with the `ockam project enroll` command.",
+    path = "/{node}/tickets",
+    tags = ["Tickets"],
     responses(
         (status = CREATED, description = "Successfully created", body = Ticket),
+        (status = NOT_FOUND, description = "Specified project not found", body = ErrorResponse),
     ),
     params(
-        ("node" = String, description = "Destination node name"),
+        ("node" = NodeName,),
     ),
     request_body(
         content = CreateTicketRequest,
         content_type = "application/json",
-        description = "Creation request"
+        description = "Create Ticket request"
     )
 )]
 async fn handle_ticket_create(
@@ -75,7 +97,7 @@ async fn handle_ticket_create(
     let result = authority_client
         .create_token(
             context,
-            request.attributes,
+            request.attributes.0,
             Some(Duration::from_secs(request.expires_in)),
             Some(request.usage_count),
         )
@@ -197,22 +219,27 @@ async fn create_encoded_ticket(
 
 #[utoipa::path(
     post,
-    operation_id = "enroll_ticket",
-    summary = "Enroll a Ticket",
-    path = "/{node}/ticket",
-    tags = ["ticket"],
+    operation_id = "project_enroll",
+    summary = "Enroll to a Project using a Ticket",
+    description =
+"This API enroll a node to a Project using the provided Ticket.
+Note that this API imports the Project in the node database, but the node won't be able to use
+it until it restarts.
+The easiest way to use a ticket is to specify the ticket directly during the node creation.",
+    path = "/{node}/tickets/enroll",
+    tags = ["Tickets"],
     responses(
         (status = CREATED, description = "Successfully enrolled, new credential can be used right away", body = AuthorityInformation),
         (status = OK, description = "The node was already enrolled, no change in state", body = AuthorityInformation),
         (status = ACCEPTED, description = "Enrolled, but the node needs a restart", body = AuthorityInformation),
     ),
     params(
-        ("node" = String, description = "Destination node name"),
+        ("node" = NodeName,),
     ),
     request_body(
-        content = EnrollTicketRequest,
+        content = EnrollProjectRequest,
         content_type = "application/json",
-        description = "Enrollment request"
+        description = "Project enrollment request"
     )
 )]
 async fn handle_ticket_enroll(
@@ -220,7 +247,7 @@ async fn handle_ticket_enroll(
     node_manager: &Arc<NodeManager>,
     body: Option<Vec<u8>>,
 ) -> Result<ControlApiHttpResponse, ControlApiError> {
-    let request: EnrollTicketRequest = common::parse_request_body(body)?;
+    let request: EnrollProjectRequest = common::parse_request_body(body)?;
 
     let caller_identifier = if let Some(identity) = request.identity {
         parse_identifier(&identity, "identity to enroll")?

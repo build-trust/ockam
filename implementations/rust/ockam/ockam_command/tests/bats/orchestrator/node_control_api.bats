@@ -45,7 +45,7 @@ teardown() {
   run_success curl -vf \
     -H 'Authorization: Bearer token' \
     -o inlet-list.json \
-    "http://localhost:${api_port}/red/tcp-inlet"
+    "http://localhost:${api_port}/red/tcp-inlets"
   run_success cat inlet-list.json
   assert_output "[]"
 }
@@ -82,7 +82,7 @@ teardown() {
   run_success curl -vf \
     -H 'Authorization: Bearer token' \
     -o inlet-list.json \
-    "http://localhost:${api_port}/localhost/tcp-inlet"
+    "http://localhost:${api_port}/localhost/tcp-inlets"
   run_success cat inlet-list.json
   assert_output "[]"
 }
@@ -105,11 +105,11 @@ teardown() {
 
   # create outlet
   run_success curl -vf \
-    -X PUT \
+    -X POST \
     -H 'Authorization: Bearer token' \
     -d "{\"kind\":\"regular\",\"address\":\"my-outlet\",\"to\":{\"hostname\":\"localhost\", \"port\":$PYTHON_SERVER_PORT}}" \
     -o outlet-creation.json \
-    "http://localhost:${api_port}/self/tcp-outlet"
+    "http://localhost:${api_port}/self/tcp-outlets"
   run_success sh -c "cat outlet-creation.json | jq -rc .address"
   assert_output "my-outlet"
 
@@ -117,7 +117,7 @@ teardown() {
   run_success curl -vf \
     -H 'Authorization: Bearer token' \
     -o outlet.json \
-    "http://localhost:${api_port}/self/tcp-outlet/my-outlet"
+    "http://localhost:${api_port}/self/tcp-outlets/my-outlet"
   run_success sh -c "cat outlet.json | jq -rc .address"
   assert_output "my-outlet"
 
@@ -125,17 +125,17 @@ teardown() {
   run_success curl -vf \
     -H 'Authorization: Bearer token' \
     -o outlet-list.json \
-    "http://localhost:${api_port}/self/tcp-outlet"
+    "http://localhost:${api_port}/self/tcp-outlets"
   run_success sh -c "cat outlet-list.json | jq -rc .[0].address"
   assert_output "my-outlet"
 
   # create inlet
   run_success curl -vf \
-    -X PUT \
+    -X POST \
     -H 'Authorization: Bearer token' \
     -d "{\"from\":{\"hostname\":\"127.0.0.1\",\"port\":0},\"kind\":\"regular\",\"name\":\"my-inlet\",\"to\":\"/secure/api/service/my-outlet\"}" \
     -o inlet-creation.json \
-    "http://localhost:${api_port}/self/tcp-inlet"
+    "http://localhost:${api_port}/self/tcp-inlets"
   inlet_port=$(cat inlet-creation.json | jq -rc '."bind-address".port')
   wait_for_port $inlet_port
 
@@ -143,7 +143,7 @@ teardown() {
   run_success curl -vf \
     -H 'Authorization: Bearer token' \
     -o inlet.json \
-    "http://localhost:${api_port}/self/tcp-inlet/my-inlet"
+    "http://localhost:${api_port}/self/tcp-inlets/my-inlet"
   run_success sh -c "cat inlet.json | jq -rc .name"
   assert_output "my-inlet"
 
@@ -151,23 +151,23 @@ teardown() {
   run_success curl -vf \
     -H 'Authorization: Bearer token' \
     -o inlet-list.json \
-    "http://localhost:${api_port}/self/tcp-inlet"
+    "http://localhost:${api_port}/self/tcp-inlets"
   run_success sh -c "cat inlet-list.json | jq -rc .[0].name"
   assert_output "my-inlet"
 
-  # verify that the inlet is working
+  # verify that the portal is working
   run_success curl -sfI --retry-all-errors --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$inlet_port"
 
   # delete the outlet
   run_success curl -vf \
     -X DELETE \
     -H 'Authorization: Bearer token' \
-    "http://localhost:${api_port}/self/tcp-outlet/my-outlet"
+    "http://localhost:${api_port}/self/tcp-outlets/my-outlet"
 
   run_success curl -vf \
     -H 'Authorization: Bearer token' \
     -o outlet-list.json \
-    "http://localhost:${api_port}/self/tcp-outlet"
+    "http://localhost:${api_port}/self/tcp-outlets"
   run_success sh -c "cat outlet-list.json | jq -rc ."
   assert_output "[]"
 
@@ -175,12 +175,12 @@ teardown() {
   run_success curl -vf \
     -X DELETE \
     -H 'Authorization: Bearer token' \
-    "http://localhost:${api_port}/self/tcp-inlet/my-inlet"
+    "http://localhost:${api_port}/self/tcp-inlets/my-inlet"
 
   run_success curl -vf \
     -H 'Authorization: Bearer token' \
     -o inlet-list.json \
-    "http://localhost:${api_port}/self/tcp-inlet"
+    "http://localhost:${api_port}/self/tcp-inlets"
   run_success sh -c "cat inlet-list.json | jq -rc ."
   assert_output "[]"
 }
@@ -204,11 +204,11 @@ teardown() {
 
   # create relay
   run_success curl -vf \
-    -X PUT \
+    -X POST \
     -H 'Authorization: Bearer token' \
     -d "{\"address\":\"my-address\",\"name\":\"my-relay\",\"to\":\"/project/default\"}" \
     -o relay-creation.json \
-    "http://localhost:${api_port}/self/relay"
+    "http://localhost:${api_port}/self/relays"
   run_success sh -c "cat relay-creation.json | jq -rc .name"
   assert_output "my-relay"
 
@@ -217,7 +217,7 @@ teardown() {
     run_success curl -vf \
       -H 'Authorization: Bearer token' \
       -o relay.json \
-      "http://localhost:${api_port}/self/relay/my-relay"
+      "http://localhost:${api_port}/self/relays/my-relay"
     run_success sh -c "cat relay.json | jq -rc .name"
     assert_output "my-relay"
 
@@ -235,7 +235,7 @@ teardown() {
   run_success curl -vf \
     -H 'Authorization: Bearer token' \
     -o relay-list.json \
-    "http://localhost:${api_port}/self/relay"
+    "http://localhost:${api_port}/self/relays"
   run_success sh -c "cat relay-list.json | jq -rc .[0].name"
   assert_output "my-relay"
 
@@ -247,13 +247,13 @@ teardown() {
   run_success curl -vf \
     -X DELETE \
     -H 'Authorization: Bearer token' \
-    "http://localhost:${api_port}/self/relay/my-relay"
+    "http://localhost:${api_port}/self/relays/my-relay"
 
   # verify that the relay is deleted
   run_success curl -vf \
     -H 'Authorization: Bearer token' \
     -o relay-list.json \
-    "http://localhost:${api_port}/self/relay"
+    "http://localhost:${api_port}/self/relays"
   run_success sh -c "cat relay-list.json | jq -rc ."
   assert_output "[]"
 }
@@ -277,11 +277,11 @@ teardown() {
 
   # create ticket
   run_success curl -vf \
-    -X PUT \
+    -X POST \
     -H 'Authorization: Bearer token' \
     -d "{\"attributes\":{\"ockam-role\":\"member\",\"my-attribute\":\"my-value\"}}" \
     -o ticket-creation.json \
-    "http://localhost:${api_port}/self/ticket"
+    "http://localhost:${api_port}/self/tickets"
   ticket=$(cat ticket-creation.json | jq -rc .encoded)
 
   # use the ticket with a dedicated identity
@@ -294,7 +294,7 @@ teardown() {
     -H 'Authorization: Bearer token' \
     -d "{\"ticket\":\"$ticket\",\"identity\":\"$identifier\"}" \
     -o enrollment.json \
-    "http://localhost:${api_port}/self/ticket"
+    "http://localhost:${api_port}/self/tickets/enroll"
   run_success sh -c "cat enrollment.json | jq -rc .identity"
 }
 
@@ -348,11 +348,11 @@ EOF
   )
 
   run_success curl -vf \
-    -X PUT \
+    -X POST \
     -H 'Authorization: Bearer token' \
     -d "${request}" \
     -o ticket-creation.json \
-    "http://localhost:${api_port}/self/ticket"
+    "http://localhost:${api_port}/self/tickets"
   ticket=$(cat ticket-creation.json | jq -rc .encoded)
 
   # use the ticket with a dedicated identity
@@ -365,7 +365,7 @@ EOF
     -H 'Authorization: Bearer token' \
     -d "{\"ticket\":\"$ticket\",\"identity\":\"$identifier\"}" \
     -o enrollment.json \
-    "http://localhost:${api_port}/self/ticket"
+    "http://localhost:${api_port}/self/tickets/enroll"
   run_success sh -c "cat enrollment.json | jq -rc .identity"
 }
 
@@ -391,13 +391,13 @@ EOF
     -X PUT \
     -H 'Authorization: Bearer token' \
     -d "{\"attributes\":{\"ockam-role\":\"member\",\"my-attribute\":\"my-value\"}}" \
-    "http://localhost:${api_port}/self/authority-member/Ia641901932d24b8a63b51cb78ebe099b3341dcbd6aaa202cc36868bec72bbd48"
+    "http://localhost:${api_port}/self/authority-members/Ia641901932d24b8a63b51cb78ebe099b3341dcbd6aaa202cc36868bec72bbd48"
 
   # get member
   run_success curl -vf \
     -H 'Authorization: Bearer token' \
     -o get-member.json \
-    "http://localhost:${api_port}/self/authority-member/Ia641901932d24b8a63b51cb78ebe099b3341dcbd6aaa202cc36868bec72bbd48"
+    "http://localhost:${api_port}/self/authority-members/Ia641901932d24b8a63b51cb78ebe099b3341dcbd6aaa202cc36868bec72bbd48"
   run_success sh -c "cat get-member.json | jq -rc .attributes.\\\"my-attribute\\\""
   assert_output "my-value"
   run_success sh -c "cat get-member.json | jq -rc .identity"
@@ -407,7 +407,7 @@ EOF
   run_success curl -vf \
     -H 'Authorization: Bearer token' \
     -o list-members.json \
-    "http://localhost:${api_port}/self/authority-member"
+    "http://localhost:${api_port}/self/authority-members"
   # check that the identity is listed as a member by making a search with jq
   run_success sh -c "cat list-members.json | jq -rc '.[] | select(.identity == \"Ia641901932d24b8a63b51cb78ebe099b3341dcbd6aaa202cc36868bec72bbd48\").attributes.\"my-attribute\"'"
   assert_output "my-value"
@@ -416,10 +416,10 @@ EOF
   run_success curl -vf \
     -X DELETE \
     -H 'Authorization: Bearer token' \
-    "http://localhost:${api_port}/self/authority-member/Ia641901932d24b8a63b51cb78ebe099b3341dcbd6aaa202cc36868bec72bbd48"
+    "http://localhost:${api_port}/self/authority-members/Ia641901932d24b8a63b51cb78ebe099b3341dcbd6aaa202cc36868bec72bbd48"
 
   # verify that the member is deleted
   run_failure curl -vf \
     -H 'Authorization: Bearer token' \
-    "http://localhost:${api_port}/self/authority-member/Ia641901932d24b8a63b51cb78ebe099b3341dcbd6aaa202cc36868bec72bbd48"
+    "http://localhost:${api_port}/self/authority-members/Ia641901932d24b8a63b51cb78ebe099b3341dcbd6aaa202cc36868bec72bbd48"
 }

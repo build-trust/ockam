@@ -1,6 +1,7 @@
 use crate::control_api::backend::common;
 use crate::control_api::backend::entrypoint::HttpControlNodeApiBackend;
 use crate::control_api::http::ControlApiHttpResponse;
+use crate::control_api::protocol::common::{ErrorResponse, NodeName};
 use crate::control_api::protocol::inlet::{CreateInletRequest, InletKind, InletTls};
 use crate::control_api::protocol::inlet::{InletStatus, UpdateInletRequest};
 use crate::control_api::ControlApiError;
@@ -21,10 +22,10 @@ impl HttpControlNodeApiBackend {
         resource_id: Option<&str>,
         body: Option<Vec<u8>>,
     ) -> Result<ControlApiHttpResponse, ControlApiError> {
-        let resource_name = "tcp-inlet";
+        let resource_name = "tcp-inlets";
         let resource_name_identifier = "tcp_inlet_name";
         match method {
-            "PUT" => handle_tcp_inlet_create(context, &self.node_manager, body).await,
+            "POST" => handle_tcp_inlet_create(context, &self.node_manager, body).await,
             "GET" => match resource_id {
                 None => handle_tcp_inlet_list(&self.node_manager).await,
                 Some(id) => handle_tcp_inlet_get(&self.node_manager, id).await,
@@ -47,7 +48,7 @@ impl HttpControlNodeApiBackend {
                 warn!("Invalid method: {method}");
                 ControlApiHttpResponse::invalid_method(
                     method,
-                    vec!["PUT", "GET", "PATCH", "DELETE"],
+                    vec!["POST", "GET", "PATCH", "DELETE"],
                 )
             }
         }
@@ -55,16 +56,21 @@ impl HttpControlNodeApiBackend {
 }
 
 #[utoipa::path(
-    put,
+    post,
     operation_id = "create_tcp_inlet",
     summary = "Create a new TCP Inlet",
-    path = "/{node}/tcp-inlet",
-    tags = ["portal", "tcp-inlet"],
+    description =
+"Create a TCP Inlet, the main parameters are the destination `to`, and the bind address `from`.
+You can also choose to the listen with a valid TLS certificate, restrict access to the Inlet with
+`authorized` and `allow`, and select a specialized Portals with `kind`.
+The creation will be asynchronous and the initial status will be `down`.",
+    path = "/{node}/tcp-inlets",
+    tags = ["Portals"],
     responses(
         (status = CREATED, description = "Successfully created", body = InletStatus),
     ),
     params(
-        ("node" = String, description = "Destination node name"),
+        ("node" = NodeName,),
     ),
     request_body(
         content = CreateInletRequest,
@@ -194,15 +200,19 @@ async fn handle_tcp_inlet_create(
     patch,
     operation_id = "update_tcp_inlet",
     summary = "Update a TCP Inlet",
-    path = "/{node}/tcp-inlet/{resource_id}",
-    tags = ["portal", "tcp-inlet"],
+    description =
+"Update the specified TCP Inlet by name.
+Currently only `allow` policy expression can be updated, for more advanced updates it's necessary
+to delete the TCP Inlet and create a new one.",
+    path = "/{node}/tcp-inlets/{tcp_inlet_name}",
+    tags = ["Portals"],
     responses(
         (status = OK, description = "Successfully updated", body = InletStatus),
-        (status = NOT_FOUND, description = "Not found"),
+        (status = NOT_FOUND, description = "TCP Inlet not found", body = ErrorResponse),
     ),
     params(
-        ("node" = String, description = "Destination node name"),
-        ("resource_id" = String, description = "Resource ID")
+        ("node" = NodeName,),
+        ("tcp_inlet_name" = String, description = "TCP Inlet name"),
     ),
     request_body(
         content = UpdateInletRequest,
@@ -218,7 +228,7 @@ async fn handle_tcp_inlet_update(
     let request: UpdateInletRequest = common::parse_request_body(body)?;
 
     if node_manager.show_inlet(resource_id).await.is_none() {
-        return ControlApiHttpResponse::not_found("Inlet not found");
+        return ControlApiHttpResponse::not_found("TCP Inlet not found");
     }
 
     if let Some(allow) = request.allow {
@@ -247,13 +257,14 @@ async fn handle_tcp_inlet_update(
     get,
     operation_id = "list_tcp_inlet",
     summary = "List all TCP Inlets",
-    path = "/{node}/tcp-inlet",
-    tags = ["portal", "tcp-inlet"],
+    description = "List all TCP Inlets created in the node regardless of their status.",
+    path = "/{node}/tcp-inlets",
+    tags = ["Portals"],
     responses(
         (status = OK, description = "Successfully listed", body = Vec<InletStatus>),
     ),
     params(
-        ("node" = String, description = "Destination node name"),
+        ("node" = NodeName,),
     )
 )]
 async fn handle_tcp_inlet_list(
@@ -270,14 +281,15 @@ async fn handle_tcp_inlet_list(
     delete,
     operation_id = "delete_tcp_inlet",
     summary = "Delete a TCP Inlet",
-    path = "/{node}/tcp-inlet/{resource_id}",
-    tags = ["portal", "tcp-inlet"],
+    description = "Delete the specified TCP Inlet by name.",
+    path = "/{node}/tcp-inlets/{tcp_inlet_name}",
+    tags = ["Portals"],
     responses(
         (status = NO_CONTENT, description = "Successfully deleted"),
     ),
     params(
-        ("node" = String, description = "Destination node name"),
-        ("resource_id" = String, description = "Resource ID")
+        ("node" = NodeName,),
+        ("tcp_inlet_name" = String, description = "TCP Inlet name"),
     )
 )]
 async fn handle_tcp_inlet_delete(
@@ -300,15 +312,16 @@ async fn handle_tcp_inlet_delete(
     get,
     operation_id = "get_tcp_inlet",
     summary = "Get a TCP Inlet",
-    path = "/{node}/tcp-inlet/{resource_id}",
-    tags = ["portal", "tcp-inlet"],
+    description = "Get the specified TCP Inlet by name",
+    path = "/{node}/tcp-inlets/{tcp_inlet_name}",
+    tags = ["Portals"],
     responses(
         (status = OK, description = "Successfully retrieved", body = InletStatus),
-        (status = NOT_FOUND, description = "Resource not found"),
+        (status = NOT_FOUND, description = "TCP Inlet not found", body = ErrorResponse),
     ),
     params(
-        ("node" = String, description = "Destination node name"),
-        ("resource_id" = String, description = "Resource ID")
+        ("node" = NodeName,),
+        ("tcp_inlet_name" = String, description = "TCP Inlet name")
     )
 )]
 async fn handle_tcp_inlet_get(
@@ -345,8 +358,8 @@ mod test {
             .create_control_api_backend(context, None)?;
 
         let request = ControlApiHttpRequest {
-            method: "PUT".to_string(),
-            uri: "/node-name/tcp-inlet".to_string(),
+            method: "POST".to_string(),
+            uri: "/node-name/tcp-inlets".to_string(),
             body: Some(
                 serde_json::to_vec(&CreateInletRequest {
                     name: Some("inlet-name".to_string()),
@@ -388,7 +401,7 @@ mod test {
 
         let request = ControlApiHttpRequest {
             method: "GET".to_string(),
-            uri: "/node-name/tcp-inlet/inlet-name".to_string(),
+            uri: "/node-name/tcp-inlets/inlet-name".to_string(),
             body: None,
         };
 
@@ -409,7 +422,7 @@ mod test {
 
         let request = ControlApiHttpRequest {
             method: "GET".to_string(),
-            uri: "/node-name/tcp-inlet".to_string(),
+            uri: "/node-name/tcp-inlets".to_string(),
             body: None,
         };
 
@@ -431,7 +444,7 @@ mod test {
 
         let request = ControlApiHttpRequest {
             method: "DELETE".to_string(),
-            uri: "/node-name/tcp-inlet/inlet-name".to_string(),
+            uri: "/node-name/tcp-inlets/inlet-name".to_string(),
             body: None,
         };
 
@@ -446,7 +459,7 @@ mod test {
 
         let request = ControlApiHttpRequest {
             method: "GET".to_string(),
-            uri: "/node-name/tcp-inlet/inlet-name".to_string(),
+            uri: "/node-name/tcp-inlets/inlet-name".to_string(),
             body: None,
         };
 
@@ -462,7 +475,7 @@ mod test {
 
         let request = ControlApiHttpRequest {
             method: "GET".to_string(),
-            uri: "/node-name/tcp-inlet".to_string(),
+            uri: "/node-name/tcp-inlets".to_string(),
             body: None,
         };
 

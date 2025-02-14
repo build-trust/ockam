@@ -1,6 +1,7 @@
 use crate::control_api::backend::common;
 use crate::control_api::backend::entrypoint::HttpControlNodeApiBackend;
 use crate::control_api::http::ControlApiHttpResponse;
+use crate::control_api::protocol::common::{ErrorResponse, NodeName};
 use crate::control_api::protocol::relay::{CreateRelayRequest, RelayStatus};
 use crate::control_api::ControlApiError;
 use crate::nodes::models::relay::ReturnTiming;
@@ -20,10 +21,10 @@ impl HttpControlNodeApiBackend {
         resource_id: Option<&str>,
         body: Option<Vec<u8>>,
     ) -> Result<ControlApiHttpResponse, ControlApiError> {
-        let resource_name = "tcp-outlet";
-        let resource_name_identifier = "tcp_outlet_name";
+        let resource_name = "relays";
+        let resource_name_identifier = "relay_name";
         match method {
-            "PUT" => handle_relay_create(context, &self.node_manager, body).await,
+            "POST" => handle_relay_create(context, &self.node_manager, body).await,
             "GET" => match resource_id {
                 None => handle_relay_list(&self.node_manager).await,
                 Some(id) => handle_relay_get(&self.node_manager, id).await,
@@ -37,23 +38,30 @@ impl HttpControlNodeApiBackend {
             },
             _ => {
                 warn!("Invalid method: {method}");
-                ControlApiHttpResponse::invalid_method(method, vec!["PUT", "GET", "DELETE"])
+                ControlApiHttpResponse::invalid_method(method, vec!["POST", "GET", "DELETE"])
             }
         }
     }
 }
 
 #[utoipa::path(
-    put,
+    post,
     operation_id = "create_relay",
     summary = "Create a new Relay",
-    path = "/{node}/relay",
-    tags = ["relay"],
+    description =
+"Create a new Relay, the main parameters are the destination node `to` and the `name`.
+The address inherits the name value, but it's possible to specify it to allow the creation
+of multiple relays with the same address to different nodes.
+The creation will be asynchronous and the initial status will be `down`.
+Note that a specific `ockam-relay` attribute is required to allow the relay creation in the
+destination node.",
+    path = "/{node}/relays",
+    tags = ["Relays"],
     responses(
         (status = CREATED, description = "Successfully created", body = RelayStatus),
     ),
     params(
-        ("node" = String, description = "Destination node name"),
+        ("node" = NodeName,),
     ),
     request_body(
         content = CreateRelayRequest,
@@ -119,13 +127,14 @@ async fn handle_relay_create(
     get,
     operation_id = "list_relay",
     summary = "List all Relays",
-    path = "/{node}/relay",
-    tags = ["relay"],
+    description = "List all Relays created in the node regardless of their status.",
+    path = "/{node}/relays",
+    tags = ["Relays"],
     responses(
         (status = OK, description = "Successfully listed", body = Vec<RelayStatus>),
     ),
     params(
-        ("node" = String, description = "Destination node name"),
+        ("node" = NodeName,),
     )
 )]
 async fn handle_relay_list(
@@ -144,14 +153,15 @@ async fn handle_relay_list(
     delete,
     operation_id = "delete_relay",
     summary = "Delete a Relay",
-    path = "/{node}/relay/{resource_id}",
-    tags = ["relay"],
+    description = "Delete the specified Relay by name.",
+    path = "/{node}/relays/{relay_name}",
+    tags = ["Relays"],
     responses(
         (status = NO_CONTENT, description = "Successfully deleted"),
     ),
     params(
-        ("node" = String, description = "Destination node name"),
-        ("resource_id" = String, description = "Resource ID")
+        ("node" = NodeName,),
+        ("relay_name" = String, description = "Relay name"),
     )
 )]
 async fn handle_relay_delete(
@@ -174,15 +184,16 @@ async fn handle_relay_delete(
     get,
     operation_id = "get_relay",
     summary = "Get a Relay",
-    path = "/{node}/relay/{resource_id}",
-    tags = ["relay"],
+    description = "Get the specified Relay by name.",
+    path = "/{node}/relays/{relay_name}",
+    tags = ["Relays"],
     responses(
         (status = OK, description = "Successfully retrieved", body = RelayStatus),
-        (status = NOT_FOUND, description = "Resource not found"),
+        (status = NOT_FOUND, description = "Relay not found", body = ErrorResponse),
     ),
     params(
-        ("node" = String, description = "Destination node name"),
-        ("resource_id" = String, description = "Resource ID")
+        ("node" = NodeName,),
+        ("relay_name" = String, description = "Relay name"),
     )
 )]
 async fn handle_relay_get(

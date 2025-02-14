@@ -1,7 +1,6 @@
-use super::common::{default_project_information, Project};
+use super::common::{default_project_information, Attributes, Project};
 use crate::control_api::protocol::common::HostnamePort;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
 use utoipa::ToSchema;
 
 fn default_usage_count() -> u64 {
@@ -15,14 +14,7 @@ fn default_expires_in() -> u64 {
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "kebab-case")]
 pub struct CreateTicketRequest {
-    /// Attributes in `key=value` format to be attached to the member;
-    #[schema(examples(
-        "ockam-role=member",
-        "ockam-role=enroller",
-        "ockam-relay=foo",
-        "my-attribute=my-value"
-    ))]
-    pub attributes: BTreeMap<String, String>,
+    pub attributes: Attributes,
     /// Identity to use when contacting the Authority node;
     /// When omitted, the default identity will be used
     #[schema(examples("Id3b788c6a89de8b1f2fd13743eb3123178cf6ec7c9253be8ddcf7e154abe016a"))]
@@ -52,7 +44,7 @@ pub struct Ticket {
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
-pub struct EnrollTicketRequest {
+pub struct EnrollProjectRequest {
     /// Identity to enroll;
     /// When omitted, the default identity will be used
     #[schema(examples("Id3b788c6a89de8b1f2fd13743eb3123178cf6ec7c9253be8ddcf7e154abe016a"))]

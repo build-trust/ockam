@@ -1,7 +1,34 @@
 use ockam::identity::{Identity, Vault};
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use std::str::FromStr;
 use utoipa::ToSchema;
+
+// This is an alias for documentation purposes only
+/// The destination node name.
+/// Depending on the type of node resolution used, it can be a relay name
+/// or a dns address.
+/// The special value `self` can be used to refer to the current node.
+#[derive(Serialize, Deserialize, ToSchema)]
+pub struct NodeName(String);
+
+// This is an alias for documentation purposes only
+#[derive(Serialize, Deserialize, ToSchema, Debug)]
+#[schema(
+    description =
+r#"
+Credential attributes.
+Attributes are key-value pairs that can be used to describe a credential.
+Ockam uses `ockam-` as a prefix for its own attributes.
+[You can learn more about attributes in the Ockam documentation](https://docs.ockam.io/reference/protocols/access-controls)
+"#,
+    example = json!({
+        "ockam-role": "member",
+        "ockam-relay": "relay-name",
+        "my-attribute": "my-value",
+    })
+)]
+pub struct Attributes(pub BTreeMap<String, String>);
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct HostnamePort {

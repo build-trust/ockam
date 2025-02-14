@@ -69,23 +69,23 @@ impl Worker for HttpControlNodeApiBackend {
         let resource_id = path.get(3).copied();
 
         let result: Result<ControlApiHttpResponse, ControlApiError> = match resource_kind.as_str() {
-            "tcp-inlet" => {
+            "tcp-inlets" => {
                 self.handle_tcp_inlet(context, request.method.as_str(), resource_id, request.body)
                     .await
             }
-            "tcp-outlet" => {
+            "tcp-outlets" => {
                 self.handle_tcp_outlet(context, request.method.as_str(), resource_id, request.body)
                     .await
             }
-            "relay" => {
+            "relays" => {
                 self.handle_relay(context, request.method.as_str(), resource_id, request.body)
                     .await
             }
-            "ticket" => Ok(self
+            "tickets" => Ok(self
                 .handle_ticket(context, request.method.as_str(), resource_id, request.body)
                 .await
                 .unwrap()),
-            "authority-member" => {
+            "authority-members" => {
                 self.handle_authority_member(
                     context,
                     request.method.as_str(),
@@ -97,11 +97,11 @@ impl Worker for HttpControlNodeApiBackend {
             _ => {
                 warn!("Invalid resource kind: {resource_kind}");
                 let valid_resources = [
-                    "tcp-inlet",
-                    "tcp-outlet",
-                    "relay",
-                    "ticket",
-                    "authority-member",
+                    "tcp-inlets",
+                    "tcp-outlets",
+                    "relays",
+                    "tickets",
+                    "authority-members",
                 ];
                 let message = format!(
                     "Invalid resource kind: {resource_kind}. Possible: {}",

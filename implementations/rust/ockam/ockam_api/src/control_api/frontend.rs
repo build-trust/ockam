@@ -489,7 +489,7 @@ mod test {
             .await?;
 
         let response: Response<ErrorResponse> = send_http_request(
-            Request::get(format!("http://{bind_address}/node1/tcp-inlet"))
+            Request::get(format!("http://{bind_address}/node1/tcp-inlets"))
                 .body(())
                 .unwrap(),
         )
@@ -499,7 +499,7 @@ mod test {
         assert_eq!(response.body().message, "Missing authentication token");
 
         let response: Response<ErrorResponse> = send_http_request(
-            Request::get(format!("http://{bind_address}/node1/tcp-inlet"))
+            Request::get(format!("http://{bind_address}/node1/tcp-inlets"))
                 .header("Authorization", "invalid_token")
                 .body(())
                 .unwrap(),
@@ -510,7 +510,7 @@ mod test {
         assert_eq!(response.body().message, "Invalid authentication token");
 
         let response: Response<ErrorResponse> = send_http_request(
-            Request::get(format!("http://{bind_address}/node1/tcp-inlet"))
+            Request::get(format!("http://{bind_address}/node1/tcp-inlets"))
                 .header("Authorization", "Bearer invalid_token")
                 .body(())
                 .unwrap(),
@@ -521,7 +521,7 @@ mod test {
         assert_eq!(response.body().message, "Invalid authentication token");
 
         let response: Response<ErrorResponse> = send_http_request(
-            Request::get(format!("http://{bind_address}/node1/tcp-inlet"))
+            Request::get(format!("http://{bind_address}/node1/tcp-inlets"))
                 .header("Authorization", "Bearer token")
                 .body(())
                 .unwrap(),
@@ -531,7 +531,7 @@ mod test {
         assert_eq!(response.status().as_u16(), 502);
 
         let response: Response<ErrorResponse> = send_http_request(
-            Request::get(format!("http://{bind_address}/node1/tcp-inlet"))
+            Request::get(format!("http://{bind_address}/node1/tcp-inlets"))
                 .header("Authorization", "token")
                 .body(())
                 .unwrap(),
@@ -565,7 +565,7 @@ mod test {
         context.start_worker("forward_to_node1", Hop)?;
 
         let response: Response<Vec<InletStatus>> = send_http_request(
-            Request::get(format!("http://{bind_address}/node1/tcp-inlet"))
+            Request::get(format!("http://{bind_address}/node1/tcp-inlets"))
                 .header("Authorization", "Bearer token")
                 .body(())
                 .unwrap(),
@@ -600,7 +600,7 @@ mod test {
 
         let response: Response<ErrorResponse> = send_http_request(
             Request::get(format!(
-                "http://{bind_address}/non-existing-node/tcp-inlet/"
+                "http://{bind_address}/non-existing-node/tcp-inlets/"
             ))
             .header("Authorization", "Bearer token")
             .body(())
@@ -639,7 +639,7 @@ mod test {
             .create_control_api_backend(context, None)?;
 
         let response: Response<Vec<InletStatus>> = send_http_request(
-            Request::get(format!("http://{bind_address}/node1/tcp-inlet"))
+            Request::get(format!("http://{bind_address}/node1/tcp-inlets"))
                 .header("Authorization", "Bearer token")
                 .body(())
                 .unwrap(),
@@ -676,10 +676,12 @@ mod test {
             .create_control_api_backend(context, None)?;
 
         let response: Response<ErrorResponse> = send_http_request(
-            Request::get(format!("http://{bind_address}/non-existing-node/tcp-inlet"))
-                .header("Authorization", "Bearer token")
-                .body(())
-                .unwrap(),
+            Request::get(format!(
+                "http://{bind_address}/non-existing-node/tcp-inlets"
+            ))
+            .header("Authorization", "Bearer token")
+            .body(())
+            .unwrap(),
         )
         .await;
 

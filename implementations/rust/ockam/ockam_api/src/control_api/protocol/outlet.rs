@@ -38,7 +38,8 @@ pub struct CreateOutletRequest {
     #[schema(default = "None")]
     pub tls: OutletTls,
     /// Policy expression that will be used for access control to the TCP Outlet;
-    /// by default the policy set for the "tcp-outlet" resource type will be used
+    /// by default, the policy set for the "tcp-outlet" resource type will be used.
+    /// [Learn more about Policies expression on the Ockam documentation](https://docs.ockam.io/reference/protocols/access-controls).
     pub allow: Option<String>,
 }
 
@@ -46,14 +47,19 @@ pub struct CreateOutletRequest {
 #[serde(rename_all = "kebab-case")]
 pub struct UpdateOutletRequest {
     /// Policy expression that will be used for access control to the TCP Outlet;
+    /// by default, the policy set for the "tcp-outlet" resource type will be used.
+    /// [Learn more about Policies expression on the Ockam documentation](https://docs.ockam.io/reference/protocols/access-controls).
     pub allow: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "kebab-case")]
 pub struct OutletStatus {
+    /// The address of the outlet
     pub to: HostnamePort,
+    /// The address of the worker, this also acts as an identifier of the TCP Outlet within the node
     pub address: String,
+    /// Whether the outlet is of privileged kind
     pub privileged: bool,
 }
 

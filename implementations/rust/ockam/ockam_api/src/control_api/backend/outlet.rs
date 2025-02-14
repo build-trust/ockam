@@ -1,7 +1,7 @@
 use crate::control_api::backend::common;
 use crate::control_api::backend::entrypoint::HttpControlNodeApiBackend;
 use crate::control_api::http::ControlApiHttpResponse;
-use crate::control_api::protocol::common::ErrorResponse;
+use crate::control_api::protocol::common::{ErrorResponse, NodeName};
 use crate::control_api::protocol::outlet::{
     CreateOutletRequest, OutletKind, OutletStatus, OutletTls, UpdateOutletRequest,
 };
@@ -23,10 +23,10 @@ impl HttpControlNodeApiBackend {
         resource_id: Option<&str>,
         body: Option<Vec<u8>>,
     ) -> Result<ControlApiHttpResponse, ControlApiError> {
-        let resource_name = "tcp-outlet";
+        let resource_name = "tcp-outlets";
         let resource_name_identifier = "tcp_outlet_name";
         match method {
-            "PUT" => handle_tcp_outlet_create(context, &self.node_manager, body).await,
+            "POST" => handle_tcp_outlet_create(context, &self.node_manager, body).await,
             "GET" => match resource_id {
                 None => handle_tcp_outlet_list(&self.node_manager).await,
                 Some(id) => handle_tcp_outlet_get(&self.node_manager, id).await,
@@ -49,7 +49,7 @@ impl HttpControlNodeApiBackend {
                 warn!("Invalid method: {method}");
                 ControlApiHttpResponse::invalid_method(
                     method,
-                    vec!["PUT", "GET", "PATCH", "DELETE"],
+                    vec!["POST", "GET", "PATCH", "DELETE"],
                 )
             }
         }
@@ -57,17 +57,23 @@ impl HttpControlNodeApiBackend {
 }
 
 #[utoipa::path(
-    put,
+    post,
     operation_id = "create_tcp_outlet",
     summary = "Create a TCP Outlet",
-    path = "/{node}/tcp-outlet",
-    tags = ["portal", "tcp-outlet"],
+    description =
+"Create a new TCP Outlet, the main parameter are the destination `to`, and the worker address
+`address` which is used to identify the outlet within the node.
+The `kind` parameter can be used to create a special outlet, and the `tls` parameter can be used to
+connect to TLS endpoints.
+The creation will be synchronous, without any blocking operation.",
+    path = "/{node}/tcp-outlets",
+    tags = ["Portals"],
     responses(
         (status = CREATED, description = "Successfully created", body = OutletStatus),
         (status = CONFLICT, description = "Already exists", body = ErrorResponse),
     ),
     params(
-        ("node" = String, description = "Destination node name"),
+        ("node" = NodeName,),
     ),
     request_body(
         content = CreateOutletRequest,
@@ -133,15 +139,19 @@ async fn handle_tcp_outlet_create(
     patch,
     operation_id = "update_tcp_outlet",
     summary = "Update a TCP Outlet",
-    path = "/{node}/tcp-outlet/{resource_id}",
-    tags = ["portal", "tcp-outlet"],
+    description =
+"Update the specified TCP Outlet by address.
+Currently only `allow` policy expression can be updated, for more advanced updates it's necessary
+to delete the TCP Outlet and create a new one.",
+    path = "/{node}/tcp-outlets/{tcp_outlet_address}",
+    tags = ["Portals"],
     responses(
         (status = OK, description = "Successfully updated", body = OutletStatus),
-        (status = NOT_FOUND, description = "Not found"),
+        (status = NOT_FOUND, description = "TCP Outlet not found", body = ErrorResponse),
     ),
     params(
-        ("node" = String, description = "Destination node name"),
-        ("resource_id" = String, description = "Resource ID")
+        ("node" = NodeName,),
+        ("tcp_outlet_address" = String, description = "TCP Outlet address"),
     ),
     request_body(
         content = UpdateOutletRequest,
@@ -186,8 +196,9 @@ async fn handle_tcp_outlet_update(
     get,
     operation_id = "list_tcp_outlets",
     summary = "List all TCP Outlets",
-    path = "/{node}/tcp-outlet",
-    tags = ["portal", "tcp-outlet"],
+    description = "List all TCP Outlets created in the node.",
+    path = "/{node}/tcp-outlets",
+    tags = ["Portals"],
     responses(
         (status = OK, description = "Successfully listed", body = Vec<OutletStatus>),
     ),
@@ -210,15 +221,16 @@ async fn handle_tcp_outlet_list(
     get,
     operation_id = "get_tcp_outlet",
     summary = "Get a TCP Outlet",
-    path = "/{node}/tcp-outlet/{resource_id}",
-    tags = ["portal", "tcp-outlet"],
+    description = "Get the specified TCP Outlet by address.",
+    path = "/{node}/tcp-outlets/{tcp_outlet_address}",
+    tags = ["Portals"],
     responses(
         (status = OK, description = "Successfully retrieved", body = OutletStatus),
-        (status = NOT_FOUND, description = "Not found"),
+        (status = NOT_FOUND, description = "TCP Outlet not found", body = ErrorResponse),
     ),
     params(
-        ("node" = String, description = "Destination node name"),
-        ("resource_id" = String, description = "Outlet address"),
+        ("node" = NodeName,),
+        ("tcp_outlet_address" = String, description = "TCP Outlet address"),
     )
 )]
 async fn handle_tcp_outlet_get(
@@ -239,15 +251,16 @@ async fn handle_tcp_outlet_get(
     delete,
     operation_id = "delete_tcp_outlet",
     summary = "Delete a TCP Outlet",
-    path = "/{node}/tcp-outlet/{resource_id}",
-    tags = ["portal", "tcp-outlet"],
+    description = "Delete the specified TCP Outlet by address.",
+    path = "/{node}/tcp-outlets/{tcp_outlet_address}",
+    tags = ["Portals"],
     responses(
         (status = NO_CONTENT, description = "Successfully deleted"),
-        (status = NOT_FOUND, description = "Not found"),
+        (status = NOT_FOUND, description = "TCP Outlet not found", body = ErrorResponse),
     ),
     params(
-        ("node" = String, description = "Destination node name"),
-        ("resource_id" = String, description = "Outlet address"),
+        ("node" = NodeName,),
+        ("tcp_outlet_address" = String, description = "TCP Outlet address"),
     )
 )]
 async fn handle_tcp_outlet_delete(
@@ -284,8 +297,8 @@ mod test {
             .create_control_api_backend(context, None)?;
 
         let request = ControlApiHttpRequest {
-            method: "PUT".to_string(),
-            uri: "/node-name/tcp-outlet".to_string(),
+            method: "POST".to_string(),
+            uri: "/node-name/tcp-outlets".to_string(),
             body: Some(
                 serde_json::to_vec(&CreateOutletRequest {
                     kind: OutletKind::Regular,
@@ -317,7 +330,7 @@ mod test {
 
         let request = ControlApiHttpRequest {
             method: "GET".to_string(),
-            uri: "/node-name/tcp-outlet/outlet-address".to_string(),
+            uri: "/node-name/tcp-outlets/outlet-address".to_string(),
             body: None,
         };
 
@@ -337,7 +350,7 @@ mod test {
 
         let request = ControlApiHttpRequest {
             method: "GET".to_string(),
-            uri: "/node-name/tcp-outlet".to_string(),
+            uri: "/node-name/tcp-outlets".to_string(),
             body: None,
         };
 
@@ -358,7 +371,7 @@ mod test {
 
         let request = ControlApiHttpRequest {
             method: "DELETE".to_string(),
-            uri: "/node-name/tcp-outlet/outlet-address".to_string(),
+            uri: "/node-name/tcp-outlets/outlet-address".to_string(),
             body: None,
         };
 
@@ -373,7 +386,7 @@ mod test {
 
         let request = ControlApiHttpRequest {
             method: "GET".to_string(),
-            uri: "/node-name/tcp-outlet/outlet-address".to_string(),
+            uri: "/node-name/tcp-outlets/outlet-address".to_string(),
             body: None,
         };
 
@@ -389,7 +402,7 @@ mod test {
 
         let request = ControlApiHttpRequest {
             method: "GET".to_string(),
-            uri: "/node-name/tcp-outlet".to_string(),
+            uri: "/node-name/tcp-outlets".to_string(),
             body: None,
         };
 

@@ -7,6 +7,7 @@ use crate::control_api::protocol::authority_member::{
     AddOrUpdateAuthorityMemberRequest, AuthorityMember, GetAuthorityMemberRequest,
     ListAuthorityMembersRequest, RemoveAuthorityMemberRequest,
 };
+use crate::control_api::protocol::common::{Attributes, ErrorResponse, NodeName};
 use crate::control_api::ControlApiError;
 use crate::nodes::NodeManager;
 use http::StatusCode;
@@ -21,7 +22,7 @@ impl HttpControlNodeApiBackend {
         resource_id: Option<&str>,
         body: Option<Vec<u8>>,
     ) -> Result<ControlApiHttpResponse, ControlApiError> {
-        let resource_name = "authority-member";
+        let resource_name = "authority-members";
         let resource_name_identifier = "authority_member_identity";
         match method {
             "PUT" => match resource_id {
@@ -61,13 +62,17 @@ impl HttpControlNodeApiBackend {
     put,
     operation_id = "add_or_update_authority_member",
     summary = "Add or update an Authority Member",
-    path = "/{node}/authority-member/{member}",
-    tags = ["authority-member"],
+    description =
+"Add or update an Authority Member with the specified attributes.
+Attributes will overwrite the existing ones if the member already exists.",
+    path = "/{node}/authority-members/{member}",
+    tags = ["Authority Members"],
     responses(
         (status = CREATED, description = "Successfully created"),
+        (status = NOT_FOUND, description = "Specified project not found", body = ErrorResponse),
     ),
     params(
-        ("node" = String, description = "Destination node name"),
+        ("node" = NodeName,),
         ("member" = String, description = "Member identity", example = "Id3b788c6a89de8b1f2fd13743eb3123178cf6ec7c9253be8ddcf7e154abe016a"),
     ),
     request_body(
@@ -90,7 +95,7 @@ async fn handle_authority_member_add_or_update(
         create_authority_client(node_manager, &request.authority, &request.identity).await?;
 
     let result = authority_client
-        .add_member(context, member_identity, request.attributes)
+        .add_member(context, member_identity, request.attributes.0)
         .await;
     match result {
         Ok(_) => Ok(ControlApiHttpResponse::without_body(StatusCode::CREATED)?),
@@ -105,18 +110,20 @@ async fn handle_authority_member_add_or_update(
     get,
     operation_id = "list_authority_members",
     summary = "List Authority Members",
-    path = "/{node}/authority-member",
-    tags = ["authority-member"],
+    description = "List all members of the Authority.",
+    path = "/{node}/authority-members",
+    tags = ["Authority Members"],
     responses(
         (status = OK, description = "Successfully retrieved", body = Vec<AuthorityMember>),
+        (status = NOT_FOUND, description = "Specified project not found", body = ErrorResponse),
     ),
     params(
-        ("node" = String, description = "Destination node name"),
+        ("node" = NodeName,),
     ),
     request_body(
         content = ListAuthorityMembersRequest,
         content_type = "application/json",
-        description = "Creation request"
+        description = "Optional list request"
     )
 )]
 async fn handle_authority_member_list(
@@ -136,7 +143,7 @@ async fn handle_authority_member_list(
                 .into_iter()
                 .map(|(identity, attributes_entry)| AuthorityMember {
                     identity: identity.to_string(),
-                    attributes: attributes_entry.string_attributes(),
+                    attributes: Attributes(attributes_entry.string_attributes()),
                 })
                 .collect();
             Ok(ControlApiHttpResponse::with_body(StatusCode::OK, members)?)
@@ -152,19 +159,21 @@ async fn handle_authority_member_list(
     get,
     operation_id = "get_authority_member",
     summary = "Get Authority Member",
-    path = "/{node}/authority-member/{member}",
-    tags = ["authority-member"],
+    description = "Get the specified member of the Authority by identity.",
+    path = "/{node}/authority-members/{member}",
+    tags = ["Authority Members"],
     responses(
         (status = OK, description = "Successfully retrieved", body = AuthorityMember),
+        (status = NOT_FOUND, description = "Specified project not found", body = ErrorResponse),
     ),
     params(
-        ("node" = String, description = "Destination node name"),
+        ("node" = NodeName,),
         ("member" = String, description = "Member identity", example = "Id3b788c6a89de8b1f2fd13743eb3123178cf6ec7c9253be8ddcf7e154abe016a"),
     ),
     request_body(
         content = GetAuthorityMemberRequest,
         content_type = "application/json",
-        description = "Get member request"
+        description = "Optional get member request"
     )
 )]
 async fn handle_authority_member_get(
@@ -188,7 +197,7 @@ async fn handle_authority_member_get(
             StatusCode::OK,
             AuthorityMember {
                 identity: member_identity.to_string(),
-                attributes: attributes_entry.string_attributes(),
+                attributes: Attributes(attributes_entry.string_attributes()),
             },
         )?),
         Err(error) => {
@@ -203,19 +212,21 @@ async fn handle_authority_member_get(
     delete,
     operation_id = "remove_authority_member",
     summary = "Remove an Authority Member",
-    path = "/{node}/authority-member/{member}",
-    tags = ["authority-member"],
+    description = "Remove the specified member of the Authority by identity.",
+    path = "/{node}/authority-members/{member}",
+    tags = ["Authority Members"],
     responses(
         (status = OK, description = "Successfully removed"),
+        (status = NOT_FOUND, description = "Specified project not found", body = ErrorResponse),
     ),
     params(
-        ("node" = String, description = "Destination node name"),
+        ("node" = NodeName,),
         ("member" = String, description = "Member identity", example = "Id3b788c6a89de8b1f2fd13743eb3123178cf6ec7c9253be8ddcf7e154abe016a"),
     ),
     request_body(
         content = RemoveAuthorityMemberRequest,
         content_type = "application/json",
-        description = "Remove member request"
+        description = "Optional remove member request"
     )
 )]
 async fn handle_authority_member_remove(
