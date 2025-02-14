@@ -2,18 +2,19 @@ use crate::authenticator::enrollment_tokens::TokenIssuer;
 use crate::authenticator::one_time_code::OneTimeCode;
 use crate::cli_state::{ExportedEnrollmentTicket, ProjectRoute};
 use crate::control_api::backend::common;
-use crate::control_api::backend::common::create_authority_client;
+use crate::control_api::backend::common::{create_authority_client, parse_identifier};
 use crate::control_api::backend::entrypoint::HttpControlNodeApiBackend;
 use crate::control_api::http::ControlApiHttpResponse;
 use crate::control_api::protocol::common::{ErrorResponse, HostnamePort, Project};
 use crate::control_api::protocol::ticket::{
     AuthorityInformation, CreateTicketRequest, EnrollTicketRequest, Ticket,
 };
+use crate::control_api::ControlApiError;
 use crate::enroll::enrollment::{EnrollStatus, Enrollment};
 use crate::nodes::NodeManager;
 use crate::orchestrator::HasSecureClient;
 use http::StatusCode;
-use ockam::identity::{Identifier, Identity, Vault};
+use ockam::identity::{Identity, Vault};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_node::Context;
 use std::str::FromStr;
@@ -27,13 +28,13 @@ impl HttpControlNodeApiBackend {
         method: &str,
         _resource_id: Option<&str>,
         body: Option<Vec<u8>>,
-    ) -> ockam_core::Result<ControlApiHttpResponse> {
+    ) -> Result<ControlApiHttpResponse, ControlApiError> {
         match method {
             "PUT" => handle_ticket_create(context, &self.node_manager, body).await,
             "POST" => handle_ticket_enroll(context, &self.node_manager, body).await,
             _ => {
                 warn!("Invalid method: {method}");
-                ControlApiHttpResponse::invalid_method()
+                ControlApiHttpResponse::invalid_method(method, vec!["PUT", "POST"])
             }
         }
     }
@@ -61,24 +62,15 @@ async fn handle_ticket_create(
     context: &Context,
     node_manager: &Arc<NodeManager>,
     body: Option<Vec<u8>>,
-) -> ockam_core::Result<ControlApiHttpResponse> {
-    let request: CreateTicketRequest = match common::parse_request_body(body) {
-        Ok(value) => value,
-        Err(value) => return value,
-    };
+) -> Result<ControlApiHttpResponse, ControlApiError> {
+    let request: CreateTicketRequest = common::parse_request_body(body)?;
 
-    let authority_client = match create_authority_client(
+    let authority_client = create_authority_client(
         node_manager,
         &request.project.to_project_authority().await?,
         &request.identity,
     )
-    .await?
-    {
-        Ok(authority_client) => authority_client,
-        Err(direct_response) => {
-            return Ok(direct_response);
-        }
-    };
+    .await?;
 
     let result = authority_client
         .create_token(
@@ -92,14 +84,14 @@ async fn handle_ticket_create(
     match result {
         Ok(token) => {
             info!("Successfully created token");
-            ControlApiHttpResponse::with_body(
+            Ok(ControlApiHttpResponse::with_body(
                 StatusCode::CREATED,
                 Ticket {
                     encoded: create_encoded_ticket(node_manager, request.project, token)
                         .await?
                         .to_string(),
                 },
-            )
+            )?)
         }
         Err(error) => {
             warn!("Error creating token: {error:?}");
@@ -227,14 +219,11 @@ async fn handle_ticket_enroll(
     context: &Context,
     node_manager: &Arc<NodeManager>,
     body: Option<Vec<u8>>,
-) -> ockam_core::Result<ControlApiHttpResponse> {
-    let request: EnrollTicketRequest = match common::parse_request_body(body) {
-        Ok(value) => value,
-        Err(value) => return value,
-    };
+) -> Result<ControlApiHttpResponse, ControlApiError> {
+    let request: EnrollTicketRequest = common::parse_request_body(body)?;
 
     let caller_identifier = if let Some(identity) = request.identity {
-        Identifier::from_str(&identity)?
+        parse_identifier(&identity, "identity to enroll")?
     } else {
         node_manager.identifier()
     };
@@ -267,7 +256,8 @@ async fn handle_ticket_enroll(
             Origin::Api,
             Kind::Internal,
             "Project has no authority address",
-        ));
+        )
+        .into());
     };
 
     let authority_route = project.authority_multiaddr().map(|m| m.to_string())?;
@@ -300,34 +290,48 @@ async fn handle_ticket_enroll(
                     };
                 if needs_restart {
                     // enrolled, but the authority is not being used
-                    ControlApiHttpResponse::with_body(StatusCode::ACCEPTED, authority_info)
+                    Ok(ControlApiHttpResponse::with_body(
+                        StatusCode::ACCEPTED,
+                        authority_info,
+                    )?)
                 } else {
                     // enrolled, and the authority is already being used
-                    ControlApiHttpResponse::with_body(StatusCode::CREATED, authority_info)
+                    Ok(ControlApiHttpResponse::with_body(
+                        StatusCode::CREATED,
+                        authority_info,
+                    )?)
                 }
             }
             EnrollStatus::AlreadyEnrolled => {
                 // already enrolled
-                ControlApiHttpResponse::with_body(StatusCode::OK, authority_info)
+                Ok(ControlApiHttpResponse::with_body(
+                    StatusCode::OK,
+                    authority_info,
+                )?)
             }
-            EnrollStatus::UnexpectedStatus(error, status) => ControlApiHttpResponse::with_body(
+            EnrollStatus::UnexpectedStatus(error, status) => {
+                Err(ControlApiHttpResponse::with_body(
+                    StatusCode::BAD_GATEWAY,
+                    ErrorResponse {
+                        message: format!("Unexpected status: {} ({})", status, error),
+                    },
+                )?
+                .into())
+            }
+            EnrollStatus::FailedNoStatus(error) => Err(ControlApiHttpResponse::with_body(
                 StatusCode::BAD_GATEWAY,
                 ErrorResponse {
-                    message: format!("Unexpected status: {} ({})", status, error),
+                    message: format!("Authority Communication error: {}", error),
                 },
-            ),
-            EnrollStatus::FailedNoStatus(error) => ControlApiHttpResponse::with_body(
-                StatusCode::BAD_GATEWAY,
-                ErrorResponse {
-                    message: format!("Communication error: {}", error),
-                },
-            ),
+            )?
+            .into()),
         },
-        Err(error) => ControlApiHttpResponse::with_body(
+        Err(error) => Err(ControlApiHttpResponse::with_body(
             StatusCode::BAD_GATEWAY,
             ErrorResponse {
-                message: format!("Communication error: {}", error),
+                message: format!("Authority Communication error: {}", error),
             },
-        ),
+        )?
+        .into()),
     }
 }

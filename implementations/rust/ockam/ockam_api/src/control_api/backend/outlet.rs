@@ -5,6 +5,7 @@ use crate::control_api::protocol::common::ErrorResponse;
 use crate::control_api::protocol::outlet::{
     CreateOutletRequest, OutletKind, OutletStatus, OutletTls, UpdateOutletRequest,
 };
+use crate::control_api::ControlApiError;
 use crate::nodes::models::portal::OutletAccessControl;
 use crate::nodes::NodeManager;
 use http::StatusCode;
@@ -21,7 +22,9 @@ impl HttpControlNodeApiBackend {
         method: &str,
         resource_id: Option<&str>,
         body: Option<Vec<u8>>,
-    ) -> ockam_core::Result<ControlApiHttpResponse> {
+    ) -> Result<ControlApiHttpResponse, ControlApiError> {
+        let resource_name = "tcp-outlet";
+        let resource_name_identifier = "tcp_outlet_name";
         match method {
             "PUT" => handle_tcp_outlet_create(context, &self.node_manager, body).await,
             "GET" => match resource_id {
@@ -29,16 +32,25 @@ impl HttpControlNodeApiBackend {
                 Some(id) => handle_tcp_outlet_get(&self.node_manager, id).await,
             },
             "PATCH" => match resource_id {
-                None => ControlApiHttpResponse::missing_resource_id(),
+                None => ControlApiHttpResponse::missing_resource_id(
+                    resource_name,
+                    resource_name_identifier,
+                ),
                 Some(id) => handle_tcp_outlet_update(&self.node_manager, id, body).await,
             },
             "DELETE" => match resource_id {
-                None => ControlApiHttpResponse::missing_resource_id(),
+                None => ControlApiHttpResponse::missing_resource_id(
+                    resource_name,
+                    resource_name_identifier,
+                ),
                 Some(id) => handle_tcp_outlet_delete(&self.node_manager, id).await,
             },
             _ => {
                 warn!("Invalid method: {method}");
-                ControlApiHttpResponse::invalid_method()
+                ControlApiHttpResponse::invalid_method(
+                    method,
+                    vec!["PUT", "GET", "PATCH", "DELETE"],
+                )
             }
         }
     }
@@ -67,11 +79,8 @@ async fn handle_tcp_outlet_create(
     context: &Context,
     node_manager: &Arc<NodeManager>,
     body: Option<Vec<u8>>,
-) -> ockam_core::Result<ControlApiHttpResponse> {
-    let request: CreateOutletRequest = match common::parse_request_body(body) {
-        Ok(value) => value,
-        Err(value) => return value,
-    };
+) -> Result<ControlApiHttpResponse, ControlApiError> {
+    let request: CreateOutletRequest = common::parse_request_body(body)?;
 
     let allow = OutletAccessControl::WithPolicyExpression(match request.allow {
         None => None,
@@ -103,17 +112,18 @@ async fn handle_tcp_outlet_create(
         .await;
 
     match result {
-        Ok(outlet_status) => ControlApiHttpResponse::with_body(
+        Ok(outlet_status) => Ok(ControlApiHttpResponse::with_body(
             StatusCode::CREATED,
             OutletStatus::from(outlet_status),
-        ),
+        )?),
         Err(error) => match error.code().kind {
-            Kind::AlreadyExists => ControlApiHttpResponse::with_body(
+            Kind::AlreadyExists => Err(ControlApiHttpResponse::with_body(
                 StatusCode::CONFLICT,
                 ErrorResponse {
                     message: error.to_string(),
                 },
-            ),
+            )?
+            .into()),
             _ => ControlApiHttpResponse::internal_error("Failed to create outlet"),
         },
     }
@@ -143,14 +153,11 @@ async fn handle_tcp_outlet_update(
     node_manager: &Arc<NodeManager>,
     resource_id: &str,
     body: Option<Vec<u8>>,
-) -> ockam_core::Result<ControlApiHttpResponse> {
-    let request: UpdateOutletRequest = match common::parse_request_body(body) {
-        Ok(value) => value,
-        Err(value) => return value,
-    };
+) -> Result<ControlApiHttpResponse, ControlApiError> {
+    let request: UpdateOutletRequest = common::parse_request_body(body)?;
 
     if node_manager.show_outlet(&resource_id.into()).is_none() {
-        return ControlApiHttpResponse::without_body(StatusCode::NOT_FOUND);
+        return ControlApiHttpResponse::not_found("Outlet not found");
     }
 
     if let Some(allow) = request.allow {
@@ -190,13 +197,13 @@ async fn handle_tcp_outlet_update(
 )]
 async fn handle_tcp_outlet_list(
     node_manager: &Arc<NodeManager>,
-) -> ockam_core::Result<ControlApiHttpResponse> {
+) -> Result<ControlApiHttpResponse, ControlApiError> {
     let outlets: Vec<OutletStatus> = node_manager
         .list_outlets()
         .into_iter()
         .map(OutletStatus::from)
         .collect();
-    ControlApiHttpResponse::with_body(StatusCode::OK, outlets)
+    Ok(ControlApiHttpResponse::with_body(StatusCode::OK, outlets)?)
 }
 
 #[utoipa::path(
@@ -217,13 +224,14 @@ async fn handle_tcp_outlet_list(
 async fn handle_tcp_outlet_get(
     node_manager: &Arc<NodeManager>,
     resource_id: &str,
-) -> ockam_core::Result<ControlApiHttpResponse> {
+) -> Result<ControlApiHttpResponse, ControlApiError> {
     let result = node_manager.show_outlet(&Address::from_string(resource_id));
     match result {
-        None => ControlApiHttpResponse::without_body(StatusCode::NOT_FOUND),
-        Some(status) => {
-            ControlApiHttpResponse::with_body(StatusCode::OK, OutletStatus::from(status))
-        }
+        None => ControlApiHttpResponse::not_found("Outlet not found"),
+        Some(status) => Ok(ControlApiHttpResponse::with_body(
+            StatusCode::OK,
+            OutletStatus::from(status),
+        )?),
     }
 }
 
@@ -245,17 +253,19 @@ async fn handle_tcp_outlet_get(
 async fn handle_tcp_outlet_delete(
     node_manager: &Arc<NodeManager>,
     resource_id: &str,
-) -> ockam_core::Result<ControlApiHttpResponse> {
+) -> Result<ControlApiHttpResponse, ControlApiError> {
     node_manager
         .delete_outlet(&Address::from_string(resource_id))
         .await?;
-    ControlApiHttpResponse::without_body(StatusCode::NO_CONTENT)
+    Ok(ControlApiHttpResponse::without_body(
+        StatusCode::NO_CONTENT,
+    )?)
 }
 
 #[cfg(test)]
 mod test {
     use crate::control_api::http::{ControlApiHttpRequest, ControlApiHttpResponse};
-    use crate::control_api::protocol::common::HostnamePort;
+    use crate::control_api::protocol::common::{ErrorResponse, HostnamePort};
     use crate::control_api::protocol::outlet::{CreateOutletRequest, OutletKind, OutletStatus};
     use crate::test_utils::start_manager_for_tests;
     use crate::DefaultAddress;
@@ -374,7 +384,8 @@ mod test {
 
         let response: ControlApiHttpResponse = minicbor::decode(&encoded_response.into_vec())?;
         assert_eq!(response.status, 404);
-        assert!(response.body.is_empty());
+        let body: ErrorResponse = serde_json::from_slice(response.body.as_slice()).unwrap();
+        assert_eq!(body.message, "Outlet not found");
 
         let request = ControlApiHttpRequest {
             method: "GET".to_string(),

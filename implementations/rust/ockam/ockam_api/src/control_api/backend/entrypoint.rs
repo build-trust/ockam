@@ -1,5 +1,6 @@
 use crate::control_api::http::{ControlApiHttpRequest, ControlApiHttpResponse};
 use crate::control_api::protocol::common::ErrorResponse;
+use crate::control_api::ControlApiError;
 use crate::nodes::NodeManager;
 use crate::DefaultAddress;
 use http::{StatusCode, Uri};
@@ -67,7 +68,7 @@ impl Worker for HttpControlNodeApiBackend {
         let resource_kind = path[2].to_lowercase();
         let resource_id = path.get(3).copied();
 
-        let result: ockam_core::Result<ControlApiHttpResponse> = match resource_kind.as_str() {
+        let result: Result<ControlApiHttpResponse, ControlApiError> = match resource_kind.as_str() {
             "tcp-inlet" => {
                 self.handle_tcp_inlet(context, request.method.as_str(), resource_id, request.body)
                     .await
@@ -80,10 +81,10 @@ impl Worker for HttpControlNodeApiBackend {
                 self.handle_relay(context, request.method.as_str(), resource_id, request.body)
                     .await
             }
-            "ticket" => {
-                self.handle_ticket(context, request.method.as_str(), resource_id, request.body)
-                    .await
-            }
+            "ticket" => Ok(self
+                .handle_ticket(context, request.method.as_str(), resource_id, request.body)
+                .await
+                .unwrap()),
             "authority-member" => {
                 self.handle_authority_member(
                     context,
@@ -95,12 +96,18 @@ impl Worker for HttpControlNodeApiBackend {
             }
             _ => {
                 warn!("Invalid resource kind: {resource_kind}");
-                ControlApiHttpResponse::with_body(
-                    StatusCode::BAD_REQUEST,
-                    ErrorResponse {
-                        message: "Unknown resource kind".to_string(),
-                    },
-                )
+                let valid_resources = [
+                    "tcp-inlet",
+                    "tcp-outlet",
+                    "relay",
+                    "ticket",
+                    "authority-member",
+                ];
+                let message = format!(
+                    "Invalid resource kind: {resource_kind}. Possible: {}",
+                    valid_resources.join(", ")
+                );
+                ControlApiHttpResponse::bad_request(&message)
             }
         };
 
@@ -110,22 +117,40 @@ impl Worker for HttpControlNodeApiBackend {
                 response
             }
             Err(error) => {
-                warn!("Error processing request: {error:?}");
-                match error.code().kind {
-                    // We make an assumption that every parsing error originates from the
-                    // client; This is not necessarily always true, but it's a good approximation
-                    Kind::Parse => ControlApiHttpResponse::with_body(
-                        StatusCode::BAD_REQUEST,
-                        ErrorResponse {
-                            message: error.to_string(),
-                        },
-                    )?,
-                    _ => ControlApiHttpResponse::with_body(
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        ErrorResponse {
-                            message: error.to_string(),
-                        },
-                    )?,
+                match error {
+                    ControlApiError::Response(response) => {
+                        warn!(
+                            "The API {} {} failed with status {}",
+                            request.method,
+                            request.uri,
+                            StatusCode::try_from(response.status)
+                                .map(|s| s.to_string())
+                                .unwrap_or_else(|_| response.status.to_string())
+                        );
+                        response
+                    }
+                    ControlApiError::OckamError(error) => {
+                        warn!(
+                            "The API {} {} failed with an expected error: {error:?}",
+                            request.method, request.uri
+                        );
+                        match error.code().kind {
+                            // We make an assumption that every parsing error originates from the
+                            // client; This is not necessarily always true, but it's a good approximation
+                            Kind::Parse => ControlApiHttpResponse::with_body(
+                                StatusCode::BAD_REQUEST,
+                                ErrorResponse {
+                                    message: error.to_string(),
+                                },
+                            )?,
+                            _ => ControlApiHttpResponse::with_body(
+                                StatusCode::INTERNAL_SERVER_ERROR,
+                                ErrorResponse {
+                                    message: error.to_string(),
+                                },
+                            )?,
+                        }
+                    }
                 }
             }
         };

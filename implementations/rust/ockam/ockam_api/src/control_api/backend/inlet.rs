@@ -3,6 +3,7 @@ use crate::control_api::backend::entrypoint::HttpControlNodeApiBackend;
 use crate::control_api::http::ControlApiHttpResponse;
 use crate::control_api::protocol::inlet::{CreateInletRequest, InletKind, InletTls};
 use crate::control_api::protocol::inlet::{InletStatus, UpdateInletRequest};
+use crate::control_api::ControlApiError;
 use crate::nodes::NodeManager;
 use http::StatusCode;
 use ockam_abac::{Action, Expr, PolicyExpression, ResourceName};
@@ -19,7 +20,9 @@ impl HttpControlNodeApiBackend {
         method: &str,
         resource_id: Option<&str>,
         body: Option<Vec<u8>>,
-    ) -> ockam_core::Result<ControlApiHttpResponse> {
+    ) -> Result<ControlApiHttpResponse, ControlApiError> {
+        let resource_name = "tcp-inlet";
+        let resource_name_identifier = "tcp_inlet_name";
         match method {
             "PUT" => handle_tcp_inlet_create(context, &self.node_manager, body).await,
             "GET" => match resource_id {
@@ -27,16 +30,25 @@ impl HttpControlNodeApiBackend {
                 Some(id) => handle_tcp_inlet_get(&self.node_manager, id).await,
             },
             "PATCH" => match resource_id {
-                None => ControlApiHttpResponse::missing_resource_id(),
+                None => ControlApiHttpResponse::missing_resource_id(
+                    resource_name,
+                    resource_name_identifier,
+                ),
                 Some(id) => handle_tcp_inlet_update(&self.node_manager, id, body).await,
             },
             "DELETE" => match resource_id {
-                None => ControlApiHttpResponse::missing_resource_id(),
+                None => ControlApiHttpResponse::missing_resource_id(
+                    resource_name,
+                    resource_name_identifier,
+                ),
                 Some(id) => handle_tcp_inlet_delete(&self.node_manager, id).await,
             },
             _ => {
                 warn!("Invalid method: {method}");
-                ControlApiHttpResponse::invalid_method()
+                ControlApiHttpResponse::invalid_method(
+                    method,
+                    vec!["PUT", "GET", "PATCH", "DELETE"],
+                )
             }
         }
     }
@@ -64,12 +76,8 @@ async fn handle_tcp_inlet_create(
     context: &Context,
     node_manager: &Arc<NodeManager>,
     body: Option<Vec<u8>>,
-) -> ockam_core::Result<ControlApiHttpResponse> {
-    let request: CreateInletRequest = match common::parse_request_body(body) {
-        Ok(value) => value,
-        Err(value) => return value,
-    };
-
+) -> Result<ControlApiHttpResponse, ControlApiError> {
+    let request: CreateInletRequest = common::parse_request_body(body)?;
     let allow = match request.allow {
         None => None,
         Some(policy) => Some(PolicyExpression::try_from(policy.as_str())?),
@@ -114,7 +122,25 @@ async fn handle_tcp_inlet_create(
 
     let tls_certificate_provider: Option<MultiAddr> = match request.tls {
         InletTls::None => None,
-        InletTls::ProjectTls => Some("/project/default/service/tls_certificate_provider".parse()?),
+        InletTls::ProjectTls => {
+            let default_project = match node_manager
+                .cli_state
+                .projects()
+                .get_default_project()
+                .await
+            {
+                Ok(project) => project,
+                Err(error) => {
+                    warn!("Failed to get default project: {:?}", error);
+                    return ControlApiHttpResponse::internal_error("Failed to get default project");
+                }
+            };
+            let default_project_name = default_project.name();
+            Some(
+                format!("/project/{default_project_name}/service/tls_certificate_provider")
+                    .parse()?,
+            )
+        }
         InletTls::CustomTlsProvider {
             tls_certificate_provider,
         } => Some(tls_certificate_provider.parse()?),
@@ -122,7 +148,10 @@ async fn handle_tcp_inlet_create(
 
     let authorized = match request.authorized {
         None => None,
-        Some(authorized) => Some(authorized.parse()?),
+        Some(authorized) => Some(common::parse_identifier(
+            authorized.as_str(),
+            "Invalid authorized identity",
+        )?),
     };
 
     let result = node_manager
@@ -147,9 +176,10 @@ async fn handle_tcp_inlet_create(
         )
         .await;
     match result {
-        Ok(status) => {
-            ControlApiHttpResponse::with_body(StatusCode::CREATED, InletStatus::try_from(status)?)
-        }
+        Ok(status) => Ok(ControlApiHttpResponse::with_body(
+            StatusCode::CREATED,
+            InletStatus::try_from(status)?,
+        )?),
         Err(error) => {
             // TODO: specialize errors
             // name already exists
@@ -184,14 +214,11 @@ async fn handle_tcp_inlet_update(
     node_manager: &Arc<NodeManager>,
     resource_id: &str,
     body: Option<Vec<u8>>,
-) -> ockam_core::Result<ControlApiHttpResponse> {
-    let request: UpdateInletRequest = match common::parse_request_body(body) {
-        Ok(value) => value,
-        Err(value) => return value,
-    };
+) -> Result<ControlApiHttpResponse, ControlApiError> {
+    let request: UpdateInletRequest = common::parse_request_body(body)?;
 
     if node_manager.show_inlet(resource_id).await.is_none() {
-        return ControlApiHttpResponse::without_body(StatusCode::NOT_FOUND);
+        return ControlApiHttpResponse::not_found("Inlet not found");
     }
 
     if let Some(allow) = request.allow {
@@ -231,14 +258,12 @@ async fn handle_tcp_inlet_update(
 )]
 async fn handle_tcp_inlet_list(
     node_manager: &Arc<NodeManager>,
-) -> ockam_core::Result<ControlApiHttpResponse> {
+) -> Result<ControlApiHttpResponse, ControlApiError> {
     let mut inlets: Vec<InletStatus> = Vec::new();
-
     for status in node_manager.list_inlets().await {
         inlets.push(InletStatus::try_from(status)?);
     }
-
-    ControlApiHttpResponse::with_body(StatusCode::OK, inlets)
+    Ok(ControlApiHttpResponse::with_body(StatusCode::OK, inlets)?)
 }
 
 #[utoipa::path(
@@ -258,10 +283,12 @@ async fn handle_tcp_inlet_list(
 async fn handle_tcp_inlet_delete(
     node_manager: &Arc<NodeManager>,
     resource_id: &str,
-) -> ockam_core::Result<ControlApiHttpResponse> {
+) -> Result<ControlApiHttpResponse, ControlApiError> {
     let result = node_manager.delete_inlet(resource_id).await;
     match result {
-        Ok(_) => ControlApiHttpResponse::without_body(StatusCode::NO_CONTENT),
+        Ok(_) => Ok(ControlApiHttpResponse::without_body(
+            StatusCode::NO_CONTENT,
+        )?),
         Err(error) => {
             warn!("Failed to delete tcp inlet: {:?}", error);
             ControlApiHttpResponse::internal_error("Failed to delete tcp inlet")
@@ -287,19 +314,20 @@ async fn handle_tcp_inlet_delete(
 async fn handle_tcp_inlet_get(
     node_manager: &Arc<NodeManager>,
     resource_id: &str,
-) -> ockam_core::Result<ControlApiHttpResponse> {
+) -> Result<ControlApiHttpResponse, ControlApiError> {
     match node_manager.show_inlet(resource_id).await {
-        None => ControlApiHttpResponse::without_body(StatusCode::NOT_FOUND),
-        Some(status) => {
-            ControlApiHttpResponse::with_body(StatusCode::OK, InletStatus::try_from(status)?)
-        }
+        None => ControlApiHttpResponse::not_found("Inlet not found"),
+        Some(status) => Ok(ControlApiHttpResponse::with_body(
+            StatusCode::OK,
+            InletStatus::try_from(status)?,
+        )?),
     }
 }
 
 #[cfg(test)]
 mod test {
     use crate::control_api::http::{ControlApiHttpRequest, ControlApiHttpResponse};
-    use crate::control_api::protocol::common::{ConnectionStatus, HostnamePort};
+    use crate::control_api::protocol::common::{ConnectionStatus, ErrorResponse, HostnamePort};
     use crate::control_api::protocol::inlet::{CreateInletRequest, InletStatus};
     use crate::test_utils::start_manager_for_tests;
     use crate::DefaultAddress;
@@ -429,7 +457,8 @@ mod test {
 
         let response: ControlApiHttpResponse = minicbor::decode(&encoded_response.into_vec())?;
         assert_eq!(response.status, 404);
-        assert!(response.body.is_empty());
+        let body: ErrorResponse = serde_json::from_slice(response.body.as_slice()).unwrap();
+        assert_eq!(body.message, "Inlet not found");
 
         let request = ControlApiHttpRequest {
             method: "GET".to_string(),
