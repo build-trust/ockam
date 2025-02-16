@@ -154,38 +154,33 @@ impl FencedCodeBlockHighlighter<'_> {
     }
 }
 
-/// Enrich the `[Preview]` tag with html
-fn enrich_preview_tag(text: &str) -> Option<String> {
-    if !text.contains(PREVIEW_TAG) {
+/// Enrich a specific tag with HTML
+fn enrich_tag(text: &str, tag: &str, tooltip_text: &str, display_text: &str) -> Option<String> {
+    if !text.contains(tag) {
         return None;
     }
 
-    // Converts [Preview] to <div class="chip t">Preview<div class="tt">..</div></div>
+    // Converts [Tag_name] to <div class="chip t">Tag_name<div class="tt">..</div></div>
     let mut tooltip = String::new();
-    for line in PREVIEW_TOOLTIP_TEXT.trim_end().lines() {
+    for line in tooltip_text.trim_end().lines() {
         tooltip.push_str(&format!("<p>{}</p>", line));
     }
     tooltip = format!("<div class=\"tt\">{tooltip}</div>");
-    let preview_tag = "<b>Preview</b>";
-    let container = format!("<div class=\"chip t\">{}{}</div>\n", preview_tag, tooltip);
-    Some(text.replace(PREVIEW_TAG, &container))
+    let container = format!(
+        "<div class=\"chip t\"><b>{}</b>{}</div>\n",
+        display_text, tooltip
+    );
+    Some(text.replace(tag, &container))
+}
+
+/// Enrich the `[Preview]` tag with html
+fn enrich_preview_tag(text: &str) -> Option<String> {
+    enrich_tag(text, PREVIEW_TAG, PREVIEW_TOOLTIP_TEXT, "Preview")
 }
 
 /// Enrich the `[Unsafe]` tag with html
 fn enrich_unsafe_tag(text: &str) -> Option<String> {
-    if !text.contains(UNSAFE_TAG) {
-        return None;
-    }
-
-    // Converts [Unsafe] to <div class="chip t">Unsafe<div class="tt">..</div></div>
-    let mut tooltip = String::new();
-    for line in UNSAFE_TOOLTIP_TEXT.trim_end().lines() {
-        tooltip.push_str(&format!("<p>{}</p>", line));
-    }
-    tooltip = format!("<div class=\"tt\">{tooltip}</div>");
-    let unsafe_tag = "<b>Unsafe</b>";
-    let container = format!("<div class=\"chip t\">{}{}</div>\n", unsafe_tag, tooltip);
-    Some(text.replace(UNSAFE_TAG, &container))
+    enrich_tag(text, UNSAFE_TAG, UNSAFE_TOOLTIP_TEXT, "Unsafe")
 }
 
 #[cfg(test)]
