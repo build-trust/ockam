@@ -157,7 +157,10 @@ impl miette::ReportHandler for ErrorReportHandler {
             error_code = Some(format!("Error code: {code}"));
         }
         // Add the padding we use in console output and print it
-        for line in graphical_handler_output.lines() {
+        for line in graphical_handler_output
+            .lines()
+            .filter(|line| !line.is_empty())
+        {
             writeln!(f, "{}{}", fmt::MIETTE_PADDING, line)?;
         }
         writeln!(f)?;

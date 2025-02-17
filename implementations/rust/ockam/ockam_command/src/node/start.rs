@@ -10,7 +10,7 @@ use ockam_node::Context;
 
 use crate::node::node_callback::NodeCallback;
 use crate::node::show::get_node_resources;
-use crate::node::util::{spawn_node, wait_while_draining_output};
+use crate::node::util::{spawn_node, wait_for_node_callback};
 use crate::node::CreateCommand;
 use crate::{docs, CommandGlobalOpts};
 
@@ -178,13 +178,8 @@ async fn run_node(
         cmd.tcp_callback_port = Some(node_callback.callback_port());
         cmd
     };
-
     let handle = spawn_node(opts, cmd)?;
-
-    tokio::select! {
-        _ = wait_while_draining_output(opts, handle) => { std::process::exit(1) }
-        _ = node_callback.wait_for_signal() => {}
-    }
+    wait_for_node_callback(handle, node_callback).await?;
 
     let node = BackgroundNodeClient::create_to_node(ctx, &opts.state, node_name)?;
 
