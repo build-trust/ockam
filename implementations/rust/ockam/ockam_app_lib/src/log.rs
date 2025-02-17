@@ -1,7 +1,7 @@
 use crate::state::{AppState, NODE_NAME};
 use ockam_api::logs::{
-    logging_configuration, Colored, ExportingConfiguration, LogLevelWithCratesFilter,
-    LoggingTracing,
+    logging_configuration, logging_enabled, Colored, ExportingConfiguration, LogFormat,
+    LogLevelWithCratesFilter, LoggingTracing,
 };
 use ockam_core::TryClone;
 use ockam_node::Context;
@@ -30,7 +30,14 @@ impl AppState {
             .unwrap()
             .add_crates(vec!["ockam_app_lib"]);
         let tracing_guard = LoggingTracing::setup(
-            &logging_configuration(level_and_crates, Some(node_dir), Colored::Off).unwrap(),
+            &logging_configuration(
+                level_and_crates,
+                Some(node_dir),
+                Colored::Off,
+                LogFormat::Default,
+                logging_enabled().unwrap(),
+            )
+            .unwrap(),
             &ExportingConfiguration::foreground(&state, ctx)
                 .await
                 .unwrap(),

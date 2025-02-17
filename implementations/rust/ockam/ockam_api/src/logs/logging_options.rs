@@ -1,3 +1,4 @@
+use crate::fmt_log;
 use nu_ansi_term::{Color, Style};
 use ockam_core::env::FromString;
 use std::fmt::{Debug, Display, Formatter};
@@ -43,6 +44,7 @@ pub enum Colored {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum LogFormat {
     Default,
+    User,
     Pretty,
     Json,
 }
@@ -50,6 +52,7 @@ pub enum LogFormat {
 impl FromString for LogFormat {
     fn from_string(s: &str) -> ockam_core::Result<Self> {
         match s {
+            "user" => Ok(LogFormat::User),
             "pretty" => Ok(LogFormat::Pretty),
             "json" => Ok(LogFormat::Json),
             _ => Ok(LogFormat::Default),
@@ -61,6 +64,7 @@ impl Display for LogFormat {
     fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
         match self {
             LogFormat::Default => write!(f, "default"),
+            LogFormat::User => write!(f, "user"),
             LogFormat::Pretty => write!(f, "pretty"),
             LogFormat::Json => write!(f, "json"),
         }
@@ -169,6 +173,39 @@ where
                 dimmed.suffix()
             )?;
         }
+
+        writeln!(writer)
+    }
+}
+
+#[derive(Default)]
+pub struct OckamUserLogFormat {}
+
+impl OckamUserLogFormat {
+    pub const TARGET: &'static str = "ockam_command::user";
+
+    pub fn new() -> Self {
+        Self {}
+    }
+}
+
+impl<S, N> FormatEvent<S, N> for OckamUserLogFormat
+where
+    S: Subscriber + for<'a> LookupSpan<'a>,
+    N: for<'a> FormatFields<'a> + 'static,
+{
+    fn format_event(
+        &self,
+        ctx: &FmtContext<'_, S, N>,
+        mut writer: Writer<'_>,
+        event: &Event<'_>,
+    ) -> std::fmt::Result {
+        // Padding
+        writer.write_str(&fmt_log!(""))?;
+
+        // Event
+        ctx.format_fields(writer.by_ref(), event)?;
+        writer.write_char(' ')?;
 
         writeln!(writer)
     }

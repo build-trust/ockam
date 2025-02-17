@@ -1,13 +1,18 @@
 use core::fmt::Display;
 use ockam_core::Address;
+use ockam_transport_core::HostnamePort;
 
 /// Enumerate all portal types
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub(crate) enum PortalType {
-    Inlet,
+    Inlet {
+        listener_address: HostnamePort,
+    },
     Outlet,
     #[allow(unused)]
-    PrivilegedInlet,
+    PrivilegedInlet {
+        listener_address: HostnamePort,
+    },
     #[allow(unused)]
     PrivilegedOutlet,
 }
@@ -15,27 +20,16 @@ pub(crate) enum PortalType {
 impl PortalType {
     pub fn str(&self) -> &'static str {
         match self {
-            PortalType::Inlet | PortalType::PrivilegedInlet => "inlet",
+            PortalType::Inlet { .. } | PortalType::PrivilegedInlet { .. } => "inlet",
             PortalType::Outlet | PortalType::PrivilegedOutlet => "outlet",
         }
     }
 
     pub fn is_privileged(&self) -> bool {
         match self {
-            PortalType::Inlet | PortalType::Outlet => false,
-            PortalType::PrivilegedInlet | PortalType::PrivilegedOutlet => true,
+            PortalType::Inlet { .. } | PortalType::Outlet => false,
+            PortalType::PrivilegedInlet { .. } | PortalType::PrivilegedOutlet => true,
         }
-    }
-
-    pub fn is_inlet(&self) -> bool {
-        match self {
-            PortalType::Inlet | PortalType::PrivilegedInlet => true,
-            PortalType::Outlet | PortalType::PrivilegedOutlet => false,
-        }
-    }
-
-    pub fn is_outlet(&self) -> bool {
-        !self.is_inlet()
     }
 }
 
@@ -47,6 +41,7 @@ impl Display for PortalType {
 
 #[derive(Clone, Debug)]
 pub(crate) struct Addresses {
+    pub(crate) portal_type: PortalType,
     /// Used to receive messages from the corresponding receiver `receiver_internal` Address
     pub(crate) sender_internal: Address,
     /// Used to receive messages from the other side's Receiver
@@ -83,6 +78,7 @@ impl Addresses {
         ));
 
         Self {
+            portal_type,
             sender_internal,
             sender_remote,
             receiver_internal,

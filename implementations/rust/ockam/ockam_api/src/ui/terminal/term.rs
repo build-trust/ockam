@@ -61,13 +61,16 @@ mod tests {
     use dialoguer::console::Term;
 
     use crate::output::{OutputBranding, OutputFormat};
-    use crate::terminal::{Terminal, TerminalStream};
+    use crate::terminal::{LoggingOptions, Terminal, TerminalStream};
 
     #[test]
     fn test_write() {
         let sut: Terminal<TerminalStream<Term>> = Terminal::new(
-            false,
-            false,
+            LoggingOptions {
+                enabled: false,
+                logging_to_file: false,
+                with_user_format: false,
+            },
             false,
             false,
             false,

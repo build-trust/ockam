@@ -12,10 +12,11 @@ use console::Term;
 use miette::{miette, IntoDiagnostic};
 use ockam_api::colors::color_primary;
 use ockam_api::logs::{
-    is_exporting_set, logging_configuration, Colored, ExportingConfiguration,
-    LogLevelWithCratesFilter, LoggingConfiguration, LoggingTracing, TracingGuard,
+    is_exporting_set, logging_configuration, logging_enabled, Colored, CratesFilter,
+    ExportingConfiguration, LogFormat, LogLevelWithCratesFilter, LoggingConfiguration,
+    LoggingEnabled, LoggingTracing, OckamUserLogFormat, TracingGuard,
 };
-use ockam_api::terminal::Terminal;
+use ockam_api::terminal::{LoggingOptions, Terminal};
 use ockam_api::{fmt_err, fmt_log, fmt_ok, fmt_warn, CliState};
 use ockam_core::OCKAM_TRACER_NAME;
 use ockam_node::Context;
@@ -127,24 +128,39 @@ impl OckamCommand {
 
     /// Create the logging configuration, depending on the command to execute
     fn make_logging_configuration(&self, is_tty: bool) -> miette::Result<LoggingConfiguration> {
-        let log_path = self.subcommand.log_path();
         if self.subcommand.is_background_node() {
-            Ok(LoggingConfiguration::background(log_path).into_diagnostic()?)
+            Ok(LoggingConfiguration::background(self.subcommand.log_path()).into_diagnostic()?)
         } else {
-            let level_and_crates = LogLevelWithCratesFilter::from_verbose(self.global_args.verbose)
-                .into_diagnostic()?;
-            let log_path =
-                if level_and_crates.explicit_verbose_flag || self.subcommand.is_foreground_node() {
-                    None
-                } else {
-                    Some(CliState::command_log_path(self.subcommand.name().as_str())?)
-                };
+            let verbose = self.global_args.verbose;
+            let mut level_and_crates =
+                LogLevelWithCratesFilter::from_verbose(verbose).into_diagnostic()?;
+            let mut log_path = if level_and_crates.explicit_verbose_flag {
+                None
+            } else {
+                Some(CliState::command_log_path(self.subcommand.name().as_str())?)
+            };
+            let mut logging_enabled = logging_enabled()?;
+            let mut default_log_format = LogFormat::Default;
+            if self.subcommand.is_foreground_node() && verbose == 0 {
+                log_path = None;
+                logging_enabled = LoggingEnabled::On;
+                level_and_crates.crates_filter =
+                    CratesFilter::Selected(vec![OckamUserLogFormat::TARGET.to_string()]);
+                default_log_format = LogFormat::User;
+            }
             let colored = if !self.global_args.no_color && is_tty && log_path.is_none() {
                 Colored::On
             } else {
                 Colored::Off
             };
-            Ok(logging_configuration(level_and_crates, log_path, colored).into_diagnostic()?)
+            Ok(logging_configuration(
+                level_and_crates,
+                log_path,
+                colored,
+                default_log_format,
+                logging_enabled,
+            )
+            .into_diagnostic()?)
         }
     }
 
@@ -192,14 +208,7 @@ impl OckamCommand {
 
         let logging_configuration = self.make_logging_configuration(Term::stdout().is_term())?;
 
-        let (exporting_configuration, tracing_guard, cli_state) = if !is_exporting_set()? {
-            // Allows to have logging enabled before initializing CliState
-            let exporting_configuration = ExportingConfiguration::off().into_diagnostic()?;
-            let tracing_guard =
-                self.setup_logging_tracing(&logging_configuration, &exporting_configuration, ctx);
-
-            (exporting_configuration, tracing_guard, None)
-        } else {
+        let (exporting_configuration, tracing_guard, cli_state) = if is_exporting_set()? {
             let cli_state = self.init_cli_state(in_memory).await;
             let exporting_configuration =
                 self.make_exporting_configuration(&cli_state, ctx).await?;
@@ -208,6 +217,13 @@ impl OckamCommand {
             let cli_state = cli_state.set_tracing_enabled(exporting_configuration.is_enabled());
 
             (exporting_configuration, tracing_guard, Some(cli_state))
+        } else {
+            // Allows having logging enabled before initializing CliState
+            let exporting_configuration = ExportingConfiguration::off().into_diagnostic()?;
+            let tracing_guard =
+                self.setup_logging_tracing(&logging_configuration, &exporting_configuration, ctx);
+
+            (exporting_configuration, tracing_guard, None)
         };
 
         info!("Tracing initialized");
@@ -245,8 +261,11 @@ impl OckamCommand {
         };
 
         let terminal = Terminal::new(
-            logging_configuration.is_enabled(),
-            logging_configuration.log_dir().is_some(),
+            LoggingOptions {
+                enabled: logging_configuration.is_enabled(),
+                logging_to_file: logging_configuration.log_dir().is_some(),
+                with_user_format: logging_configuration.format() == LogFormat::User,
+            },
             self.global_args.quiet,
             self.global_args.no_color,
             self.global_args.no_input,

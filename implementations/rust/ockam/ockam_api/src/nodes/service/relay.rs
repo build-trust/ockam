@@ -162,6 +162,7 @@ impl NodeManager {
             node_manager: Arc::downgrade(self),
             context: ctx.try_clone()?,
             addr: address.clone(),
+            alias: alias.clone(),
             relay_address: relay_address.clone(),
             connection: None,
             relay_worker_address: None,
@@ -288,6 +289,7 @@ impl InMemoryNode {
 struct RelaySessionReplacer {
     node_manager: Weak<NodeManager>,
     context: Context,
+    alias: String,
     relay_address: Option<String>,
 
     // current status
@@ -379,7 +381,9 @@ impl SessionReplacer for RelaySessionReplacer {
         if let Some(node_manager) = self.node_manager.upgrade() {
             node_manager.cli_state.notify_message(
                 fmt_warn!(
-                    "The Node lost the connection to the Relay at {}\n",
+                    "The Node {} lost the connection to the Relay {} listening at {}\n",
+                    color_primary(&node_manager.node_name),
+                    color_primary(&self.alias),
                     color_primary(&self.addr)
                 ) + &fmt_info!("Attempting to reconnect...\n"),
             );
@@ -389,7 +393,9 @@ impl SessionReplacer for RelaySessionReplacer {
     async fn on_session_replaced(&self) {
         if let Some(node_manager) = self.node_manager.upgrade() {
             node_manager.cli_state.notify_message(fmt_ok!(
-                "The Node has restored the connection to the Relay at {}\n",
+                "The Node {} has restored the connection to the Relay {} listening at {}\n",
+                color_primary(&node_manager.node_name),
+                color_primary(&self.alias),
                 color_primary(&self.addr)
             ));
         }

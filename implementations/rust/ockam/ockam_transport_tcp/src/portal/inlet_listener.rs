@@ -182,7 +182,11 @@ impl Processor for TcpInletListenProcessor {
             .set_nodelay(!self.options.enable_nagle)
             .map_err(TransportError::from)?;
 
-        let addresses = Addresses::generate(PortalType::Inlet);
+        let addresses = Addresses::generate(PortalType::Inlet {
+            listener_address: HostnamePort::from(
+                self.inner.local_addr().map_err(TransportError::from)?,
+            ),
+        });
 
         let inlet_shared_state = self.inlet_shared_state.read().unwrap().clone();
 

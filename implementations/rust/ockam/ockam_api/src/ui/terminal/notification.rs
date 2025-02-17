@@ -78,7 +78,7 @@ impl<T: TerminalWriter + Debug + Send + 'static> NotificationHandler<T> {
         let stop = Arc::new(AtomicBool::new(false));
         let _self = NotificationHandler {
             rx: cli_state.subscribe_to_notifications(),
-            terminal: terminal.clone(),
+            terminal,
             progress_bar: None,
             stop: stop.clone(),
         };

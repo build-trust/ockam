@@ -31,8 +31,7 @@ use tracing::warn;
 pub struct Terminal<T: TerminalWriter + Debug, WriteMode = ToStdErr> {
     stdout: T,
     stderr: T,
-    logging_enabled: bool,
-    logging_goes_to_file: bool,
+    logging_options: LoggingOptions,
     quiet: bool,
     no_input: bool,
     output_format: OutputFormat,
@@ -47,7 +46,7 @@ impl<T: TerminalWriter + Debug, W> Terminal<T, W> {
     }
 
     fn log_msg(&self, msg: &str) {
-        if !self.logging_enabled {
+        if !self.logging_options.enabled {
             return;
         }
         for line in msg.lines() {
@@ -70,6 +69,13 @@ impl<T: TerminalWriter + Debug, W> Terminal<T, W> {
     pub fn stderr(&self) -> T {
         self.stderr.clone()
     }
+}
+
+#[derive(Clone, Debug)]
+pub struct LoggingOptions {
+    pub enabled: bool,
+    pub logging_to_file: bool,
+    pub with_user_format: bool,
 }
 
 /// A small wrapper around the `Write` trait, enriched with CLI
@@ -109,8 +115,7 @@ pub trait TerminalWriter: Clone {
 impl<W: TerminalWriter + Debug> Terminal<W> {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
-        logging_enabled: bool,
-        logging_goes_to_file: bool,
+        logging_options: LoggingOptions,
         quiet: bool,
         no_color: bool,
         no_input: bool,
@@ -125,8 +130,7 @@ impl<W: TerminalWriter + Debug> Terminal<W> {
         Self {
             stdout,
             stderr,
-            logging_enabled,
-            logging_goes_to_file,
+            logging_options,
             quiet,
             no_input,
             output_format,
@@ -134,18 +138,6 @@ impl<W: TerminalWriter + Debug> Terminal<W> {
             max_width_col_count,
             max_height_row_count: 5,
         }
-    }
-
-    pub fn quiet(logging_enabled: bool, logging_goes_to_file: bool) -> Self {
-        Self::new(
-            logging_enabled,
-            logging_goes_to_file,
-            true,
-            false,
-            false,
-            OutputFormat::Plain,
-            OutputBranding::default(),
-        )
     }
 
     /// Prompt the user for a confirmation.
@@ -245,8 +237,8 @@ impl<W: TerminalWriter + Debug> Terminal<W, ToStdErr> {
     }
 
     /// Return true if log messages are emitted to the console
-    fn logging_to_console_only(&self) -> bool {
-        self.logging_enabled && !self.logging_goes_to_file
+    fn logging_to_console(&self) -> bool {
+        self.logging_options.enabled && !self.logging_options.logging_to_file
     }
 
     /// Return true if we can write to stderr
@@ -254,7 +246,7 @@ impl<W: TerminalWriter + Debug> Terminal<W, ToStdErr> {
     ///  - all the messages are logged to the console
     ///  - or quiet is true
     fn can_write_to_stderr(&self) -> bool {
-        !self.logging_to_console_only() && !self.is_quiet()
+        self.logging_options.with_user_format || (!self.logging_to_console() && !self.is_quiet())
     }
 
     pub fn write(&self, msg: impl AsRef<str>) -> Result<()> {
@@ -312,8 +304,7 @@ impl<W: TerminalWriter + Debug> Terminal<W, ToStdErr> {
         Terminal {
             stdout: self.stdout,
             stderr: self.stderr,
-            logging_enabled: self.logging_enabled,
-            logging_goes_to_file: self.logging_goes_to_file,
+            logging_options: self.logging_options,
             quiet: self.quiet,
             no_input: self.no_input,
             output_format: self.output_format,
@@ -354,14 +345,14 @@ impl<W: TerminalWriter + Debug> Terminal<W, ToStdOut> {
     }
 
     /// Return true if log messages are emitted to the console
-    fn logging_to_console_only(&self) -> bool {
-        self.logging_enabled && !self.logging_goes_to_file
+    fn logging_to_console(&self) -> bool {
+        self.logging_options.enabled && !self.logging_options.logging_to_file
     }
 
     /// Return true if we can write to stdout
     /// We can write to stdout unless all the messages are logged to the console
     fn can_write_to_stdout(&self) -> bool {
-        !self.logging_to_console_only()
+        self.logging_options.with_user_format || !self.logging_to_console()
     }
 
     pub fn write_line(mut self) -> Result<()> {

@@ -302,7 +302,8 @@ impl SessionReplacer for InletSessionReplacer {
         if let Some(node_manager) = self.node_manager.upgrade() {
             node_manager.cli_state.notify_message(
                 fmt_warn!(
-                    "The TCP Inlet at {} lost the connection to the TCP Outlet at {}\n",
+                    "The TCP Inlet {} listening at {} lost the connection to the TCP Outlet at {}\n",
+                    color_primary(&self.resource.resource_name),
                     color_primary(&self.listen_addr),
                     color_primary(&self.outlet_addr)
                 ) + &fmt_info!("Attempting to reconnect...\n"),
@@ -313,7 +314,8 @@ impl SessionReplacer for InletSessionReplacer {
     async fn on_session_replaced(&self) {
         if let Some(node_manager) = self.node_manager.upgrade() {
             node_manager.cli_state.notify_message(fmt_ok!(
-                "The TCP Inlet at {} has restored the connection to the TCP Outlet at {}\n",
+                "The TCP Inlet {} listening at {} has restored the connection to the TCP Outlet at {}\n",
+                color_primary(&self.resource.resource_name),
                 color_primary(&self.listen_addr),
                 color_primary(&self.outlet_addr)
             ));

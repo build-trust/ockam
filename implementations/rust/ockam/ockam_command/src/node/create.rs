@@ -300,6 +300,12 @@ impl CreateCommand {
         // if no config is used and the name arg is the default node name, set a random name
         else if self.config_args.configuration.is_none() && self.name == DEFAULT_NODE_NAME {
             self.name = random_name();
+            if let Ok(default_node) = opts.state.get_default_node().await {
+                if !default_node.is_running() {
+                    // The default node was stopped, so we can reuse the name
+                    self.name = default_node.name();
+                }
+            }
         }
 
         if self.http_server {
@@ -393,7 +399,7 @@ mod tests {
     use crate::run::parser::resource::utils::parse_cmd_from_args;
     use crate::GlobalArgs;
     use ockam_api::output::{OutputBranding, OutputFormat};
-    use ockam_api::terminal::Terminal;
+    use ockam_api::terminal::{LoggingOptions, Terminal};
     use ockam_api::CliState;
 
     #[test]
@@ -523,8 +529,11 @@ mod tests {
         let opts = CommandGlobalOpts {
             state: CliState::test().await.unwrap(),
             terminal: Terminal::new(
-                false,
-                false,
+                LoggingOptions {
+                    enabled: false,
+                    logging_to_file: false,
+                    with_user_format: false,
+                },
                 false,
                 true,
                 false,
@@ -581,8 +590,11 @@ mod tests {
         let opts = CommandGlobalOpts {
             state: CliState::test().await.unwrap(),
             terminal: Terminal::new(
-                false,
-                false,
+                LoggingOptions {
+                    enabled: false,
+                    logging_to_file: false,
+                    with_user_format: false,
+                },
                 false,
                 true,
                 false,
