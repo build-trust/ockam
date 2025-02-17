@@ -11,6 +11,7 @@ use async_trait::async_trait;
 use clap::Args;
 use colorful::Colorful;
 use miette::{miette, IntoDiagnostic, WrapErr};
+use ockam_api::cli_state::random_name;
 use ockam_api::colors::{color_error, color_primary};
 use ockam_api::nodes::models::transport::Port;
 use ockam_api::terminal::notification::NotificationHandler;
@@ -286,8 +287,19 @@ impl CreateCommand {
         // if the name arg is a config, move it to the configuration field and replace
         // the node name with its default value
         if self.name_arg_is_a_config() {
-            self.config_args.configuration = Some(self.get_node_config_contents().await?);
+            let config = self.get_node_config_contents().await?;
             self.name = DEFAULT_NODE_NAME.to_string();
+            // if the configuration has not a node name defined, set a random name
+            if let Ok(config) = serde_yaml::from_str::<NodeConfig>(&config) {
+                if config.node.name.is_none() {
+                    self.name = random_name();
+                }
+            }
+            self.config_args.configuration = Some(config);
+        }
+        // if the name arg is a node name, and it's the default node name, set a random name
+        else if self.name == DEFAULT_NODE_NAME {
+            self.name = random_name();
         }
 
         if self.http_server {
