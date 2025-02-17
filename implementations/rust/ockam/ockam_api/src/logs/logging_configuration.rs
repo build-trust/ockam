@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use tracing_core::Level;
 use tracing_subscriber::EnvFilter;
 
-use super::{Colored, LoggingEnabled};
+use super::{Colored, LoggingEnabled, OckamUserLogFormat};
 use crate::logs::LogFormat;
 
 /// List of all the configuration parameters relevant for configuring the logs
@@ -26,9 +26,9 @@ pub struct LoggingConfiguration {
     /// This parameter specifies if the log output is colored (typically in terminals supporting it)
     colored: Colored,
     /// Director where log files must be created.
-    /// If no directory is defined then log messages appear on the console
+    /// If no directory is defined, then log messages appear on the console
     log_dir: Option<PathBuf>,
-    /// List of create for which we want to keep log messages
+    /// List of crates for which we want to keep log messages
     crates: Option<Vec<String>>,
 }
 
@@ -207,18 +207,20 @@ pub fn logging_configuration(
     level_and_crates: LogLevelWithCratesFilter,
     log_dir: Option<PathBuf>,
     colored: Colored,
+    default_log_format: LogFormat,
+    enabled: LoggingEnabled,
 ) -> ockam_core::Result<LoggingConfiguration> {
     let enabled = if level_and_crates.explicit_verbose_flag {
         LoggingEnabled::On
     } else {
-        logging_enabled()?
+        enabled
     };
     Ok(LoggingConfiguration::new(
         enabled,
         level_and_crates.level,
         log_max_size_bytes()?,
         log_max_files()?,
-        log_format()?,
+        get_env_with_default(OCKAM_LOG_FORMAT, default_log_format)?,
         colored,
         log_dir,
         level_and_crates.crates_filter.clone(),
@@ -353,6 +355,7 @@ impl CratesFilter {
             CratesFilter::Basic => Some(vec![
                 "ockam_api::ui::terminal".to_string(),
                 "ockam_command".to_string(),
+                OckamUserLogFormat::TARGET.to_string(),
             ]),
             CratesFilter::Core => Some(vec![
                 "ockam".to_string(),
@@ -363,6 +366,7 @@ impl CratesFilter {
                 "ockam_transport_tcp".to_string(),
                 "ockam_api".to_string(),
                 "ockam_command".to_string(),
+                OckamUserLogFormat::TARGET.to_string(),
             ]),
             CratesFilter::Selected(list) => Some(list.clone()),
         }

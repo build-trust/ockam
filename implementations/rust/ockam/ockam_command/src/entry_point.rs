@@ -10,8 +10,8 @@ use crate::{
 };
 use ockam_api::cli_state::{CliState, CliStateMode};
 use ockam_api::logs::{
-    logging_configuration, Colored, ExportingConfiguration, LogLevelWithCratesFilter,
-    LoggingTracing,
+    logging_configuration, logging_enabled, Colored, ExportingConfiguration, LogFormat,
+    LogLevelWithCratesFilter, LoggingTracing,
 };
 use ockam_api::output::Output;
 use ockam_node::{Context, NodeBuilder};
@@ -79,7 +79,13 @@ async fn handle_invalid_command(
             .join(" ");
         let cli_state = CliState::create(CliStateMode::InMemory).await?;
         let level_and_crates = LogLevelWithCratesFilter::new().into_diagnostic()?;
-        let logging_configuration = logging_configuration(level_and_crates, None, Colored::On);
+        let logging_configuration = logging_configuration(
+            level_and_crates,
+            None,
+            Colored::On,
+            LogFormat::Default,
+            logging_enabled()?,
+        );
         let _guard = LoggingTracing::setup(
             &logging_configuration.into_diagnostic()?,
             &ExportingConfiguration::foreground(&cli_state, ctx)

@@ -286,7 +286,9 @@ impl OckamSubcommand {
         match self {
             OckamSubcommand::Node(cmd) => match &cmd.subcommand {
                 NodeSubcommand::Create(cmd) => {
-                    if cmd.foreground_args.child_process || !cmd.foreground_args.foreground {
+                    let is_spawned_node = cmd.foreground_args.child_process;
+                    let no_foreground_flag = !cmd.foreground_args.foreground;
+                    if is_spawned_node || no_foreground_flag {
                         CliState::default_node_dir(&cmd.name).ok()
                     } else {
                         None
@@ -297,7 +299,9 @@ impl OckamSubcommand {
 
             OckamSubcommand::Authority(cmd) => match &cmd.subcommand {
                 AuthoritySubcommand::Create(cmd) => {
-                    if cmd.child_process || !cmd.foreground {
+                    let is_spawned_node = cmd.child_process;
+                    let no_foreground_flag = !cmd.foreground;
+                    if is_spawned_node || no_foreground_flag {
                         CliState::default_node_dir(&cmd.node_name()).ok()
                     } else {
                         None

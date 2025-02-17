@@ -57,7 +57,6 @@ pub(crate) struct TcpPortalWorker {
     addresses: Addresses,
     remote_route: Option<Route>,
     is_disconnecting: bool,
-    portal_type: PortalType,
     last_received_packet_counter: u16,
     outgoing_access_control: Arc<dyn OutgoingAccessControl>,
     is_tls: bool,
@@ -206,12 +205,7 @@ impl TcpPortalWorker {
         handshake_mode: HandshakeMode,
         enable_nagle: bool,
     ) -> Result<()> {
-        let portal_type = if streams.is_some() {
-            PortalType::Inlet
-        } else {
-            PortalType::Outlet
-        };
-        debug!(%portal_type, sender_remote=%addresses.sender_remote, %is_tls, "creating portal worker");
+        debug!(%addresses.portal_type, sender_remote=%addresses.sender_remote, %is_tls, "creating portal worker");
 
         let (rx, tx) = match streams {
             // A TcpStream is provided in case of an inlet
@@ -232,7 +226,6 @@ impl TcpPortalWorker {
             addresses: addresses.clone(),
             remote_route,
             is_disconnecting: false,
-            portal_type,
             last_received_packet_counter: u16::MAX,
             is_tls,
             outgoing_access_control: outgoing_access_control.clone(),
@@ -354,12 +347,12 @@ impl TcpPortalWorker {
             .is_err()
         {
             debug!(
-                portal_type = %self.portal_type, sender_internal = %self.addresses.sender_internal,
+                portal_type = %self.addresses.portal_type, sender_internal = %self.addresses.sender_internal,
                 "error notifying the other side of portal that the connection is dropped",
             );
         } else {
             debug!(
-                portal_type = %self.portal_type, sender_internal = %self.addresses.sender_internal,
+                portal_type = %self.addresses.portal_type, sender_internal = %self.addresses.sender_internal,
                 "notified the other side of portal that the connection is dropped",
             );
         }
@@ -369,11 +362,11 @@ impl TcpPortalWorker {
     fn stop_receiver(&self, ctx: &Context) {
         match ctx.stop_address(&self.addresses.receiver_remote) {
             Ok(_) => {
-                debug!(portal_type = %self.portal_type, sender_internal = %self.addresses.sender_internal,
+                debug!(portal_type = %self.addresses.portal_type, sender_internal = %self.addresses.sender_internal,
                 "stopped receiver due to connection drop");
             }
             Err(_) => {
-                debug!(portal_type = %self.portal_type, sender_internal = %self.addresses.sender_internal,
+                debug!(portal_type = %self.addresses.portal_type, sender_internal = %self.addresses.sender_internal,
                 "error stopping receiver due to connection drop");
             }
         }
@@ -431,7 +424,7 @@ impl TcpPortalWorker {
             }
         }
 
-        debug!(portal_type = %self.portal_type, sender_internal = %self.addresses.sender_internal,
+        debug!(portal_type = %self.addresses.portal_type, sender_internal = %self.addresses.sender_internal,
             "stopped due to connection drop");
 
         Ok(())
@@ -447,7 +440,7 @@ impl TcpPortalWorker {
         )
         .await?;
 
-        debug!(portal_type = %self.portal_type, sender_internal = %self.addresses.sender_internal, "sent ping");
+        debug!(portal_type = %self.addresses.portal_type, sender_internal = %self.addresses.sender_internal, "sent ping");
 
         if self.skip_handshake() {
             self.remote_route = Some(ping_route.clone());
@@ -461,12 +454,12 @@ impl TcpPortalWorker {
 
     async fn connect(&mut self) -> Result<()> {
         if self.is_tls {
-            debug!(portal_type = %self.portal_type, sender_internal = %self.addresses.sender_internal, "connect to {} via TLS", &self.hostname_port);
+            debug!(portal_type = %self.addresses.portal_type, sender_internal = %self.addresses.sender_internal, "connect to {} via TLS", &self.hostname_port);
             let (rx, tx) = connect_tls(&self.hostname_port, self.enable_nagle).await?;
             self.write_half = Some(WriteHalfWithTls(tx));
             self.read_half = Some(ReadHalfWithTls(rx));
         } else {
-            debug!(portal_type = %self.portal_type, sender_internal = %self.addresses.sender_internal, "connect to {}", self.hostname_port);
+            debug!(portal_type = %self.addresses.portal_type, sender_internal = %self.addresses.sender_internal, "connect to {}", self.hostname_port);
             let (rx, tx) = connect(&self.hostname_port, self.enable_nagle, None).await?;
             self.write_half = Some(WriteHalfNoTls(tx));
             self.read_half = Some(ReadHalfNoTls(rx));
@@ -496,7 +489,7 @@ impl TcpPortalWorker {
 
         self.start_receiver(ctx, pong_route.clone())?;
 
-        debug!(portal_type = %self.portal_type, sender_internal = %self.addresses.sender_internal, "sent pong");
+        debug!(portal_type = %self.addresses.portal_type, sender_internal = %self.addresses.sender_internal, "sent pong");
 
         self.remote_route = Some(pong_route);
         Ok(State::Initialized)
@@ -529,27 +522,25 @@ impl Worker for TcpPortalWorker {
         self.registry
             .add_portal_worker(&self.addresses.sender_remote);
 
-        if self.portal_type.is_inlet() {
-            info!(
-                "The TCP Inlet at {} connected to {}",
-                &self.hostname_port,
-                self.their_identifier
-                    .as_ref()
-                    .map(|i| i.to_string())
-                    .unwrap_or_else(|| "unknown".to_string()),
-            );
-        } else if self.portal_type.is_outlet() {
-            info!(
-                "The TCP Outlet at {} received connection from {}",
-                &self.hostname_port,
-                self.their_identifier
-                    .as_ref()
-                    .map(|i| i.to_string())
-                    .unwrap_or_else(|| "unknown".to_string()),
-            );
+        let (portal_type, listener_address) = match &self.addresses.portal_type {
+            PortalType::Inlet { listener_address }
+            | PortalType::PrivilegedInlet { listener_address } => ("TCP Inlet", listener_address),
+            PortalType::Outlet | PortalType::PrivilegedOutlet => {
+                ("TCP Outlet", &self.hostname_port)
+            }
+        };
+        info! {
+            target: "ockam_command::user",
+            "The {} listening at {} connected to {}",
+            portal_type,
+            listener_address,
+            self.their_identifier
+                .as_ref()
+                .map(|i| i.to_string())
+                .unwrap_or_else(|| "unknown".to_string()),
         }
 
-        debug!(portal_type = %self.portal_type, sender_internal = %self.addresses.sender_internal,
+        debug!(portal_type = %self.addresses.portal_type, sender_internal = %self.addresses.sender_internal,
             "tcp portal worker initialized"
         );
 
@@ -622,7 +613,7 @@ impl Worker for TcpPortalWorker {
                 self.handle_receive_pong(ctx, return_route)
             }
             State::Initialized => {
-                trace!(portal_type = %self.portal_type, sender_internal = %self.addresses.sender_internal,
+                trace!(portal_type = %self.addresses.portal_type, sender_internal = %self.addresses.sender_internal,
                     "received {} tcp packet",
                     if remote_packet { "remote" } else { "internal " },
                 );
@@ -659,7 +650,7 @@ impl TcpPortalWorker {
     #[instrument(skip_all)]
     fn handle_receive_pong(&mut self, ctx: &Context, return_route: Route) -> Result<()> {
         self.start_receiver(ctx, return_route.clone())?;
-        debug!(portal_type = %self.portal_type, sender_internal = %self.addresses.sender_internal, "received pong");
+        debug!(portal_type = %self.addresses.portal_type, sender_internal = %self.addresses.sender_internal, "received pong");
         self.remote_route = Some(return_route);
         self.state = State::Initialized;
         Ok(())
@@ -667,21 +658,24 @@ impl TcpPortalWorker {
 
     #[instrument(skip_all)]
     async fn handle_disconnect(&mut self, ctx: &Context) -> Result<()> {
-        let portal_type_str = if self.portal_type.is_inlet() {
-            "TCP Inlet"
-        } else {
-            "TCP Outlet"
+        let (portal_type, listener_address) = match &self.addresses.portal_type {
+            PortalType::Inlet { listener_address }
+            | PortalType::PrivilegedInlet { listener_address } => ("TCP Inlet", listener_address),
+            PortalType::Outlet | PortalType::PrivilegedOutlet => {
+                ("TCP Outlet", &self.hostname_port)
+            }
         };
-        info!(
-            "The {} at {} was disconnected from to {}",
-            portal_type_str,
-            &self.hostname_port,
+        info! {
+            target: "ockam_command::user",
+            "The {} listening at {} was disconnected from {}",
+            portal_type,
+            listener_address,
             self.their_identifier
                 .as_ref()
                 .map(|i| i.to_string())
                 .unwrap_or_else(|| "unknown".to_string()),
-        );
-        debug!(portal_type = %self.portal_type, sender_internal = %self.addresses.sender_internal,
+        }
+        debug!(portal_type = %self.addresses.portal_type, sender_internal = %self.addresses.sender_internal,
             "tcp stream was dropped");
         self.start_disconnection(ctx, DisconnectionReason::FailedRx)
             .await
@@ -707,7 +701,7 @@ impl TcpPortalWorker {
             WriteHalfWithTls(tx) => tx.write_all(payload).await,
         };
         if let Err(err) = result {
-            warn!(portal_type = %self.portal_type, %err,
+            warn!(portal_type = %self.addresses.portal_type, %err,
                 "failed to send message to peer {} with error",
                 self.hostname_port
             );
@@ -732,7 +726,7 @@ impl TcpPortalWorker {
             };
 
             if packet_counter != expected_counter {
-                warn!(portal_type = %self.portal_type,
+                warn!(portal_type = %self.addresses.portal_type,
                     "Received packet with counter {} while expecting {}, disconnecting",
                     packet_counter, expected_counter
                 );

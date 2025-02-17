@@ -5,7 +5,7 @@ use crate::logs::secure_client_service::SecureClientService;
 use crate::logs::tracing_guard::TracingGuard;
 use crate::logs::{
     ExportingConfiguration, LoggingConfiguration, OckamLogExporter, OckamLogFormat,
-    TelemetryEndpoint,
+    OckamUserLogFormat, TelemetryEndpoint,
 };
 use crate::logs::{LogFormat, OckamSpanExporter};
 use gethostname::gethostname;
@@ -131,6 +131,9 @@ impl LoggingTracing {
             LogFormat::Default => layers
                 .with(appender.event_format(OckamLogFormat::new()))
                 .try_init(),
+            LogFormat::User => layers
+                .with(appender.event_format(OckamUserLogFormat::new()))
+                .try_init(),
         };
         result.expect("Failed to initialize tracing subscriber");
 
@@ -151,6 +154,9 @@ impl LoggingTracing {
                 LogFormat::Json => layers.with(appender.json()).try_init(),
                 LogFormat::Default => layers
                     .with(appender.event_format(OckamLogFormat::new()))
+                    .try_init(),
+                LogFormat::User => layers
+                    .with(appender.event_format(OckamUserLogFormat::new()))
                     .try_init(),
             };
             result.expect("Failed to initialize tracing subscriber");

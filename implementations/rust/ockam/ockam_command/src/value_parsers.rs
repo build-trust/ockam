@@ -5,7 +5,7 @@ use miette::{miette, Context, IntoDiagnostic};
 use ockam_api::cli_state::{EnrollmentTicket, ExportedEnrollmentTicket, LegacyEnrollmentTicket};
 use ockam_api::colors::color_primary;
 use std::str::FromStr;
-use tracing::{trace, warn};
+use tracing::{debug, trace};
 use url::Url;
 
 /// Parse a single key-value pair
@@ -65,7 +65,7 @@ pub(crate) async fn read_contents_from_string_or_path_or_url(
     value: &str,
 ) -> miette::Result<String> {
     read_contents_from_path_or_url(value).await.or_else(|err| {
-        warn!(%value, %err, "Couldn't parse value as a path or URL. Returning plain value to be processed as inline contents");
+        debug!(%value, %err, "Couldn't parse value as a path or URL. Returning plain value to be processed as inline contents");
         Ok(value.to_string())
     })
 }
@@ -89,7 +89,7 @@ pub(crate) async fn read_contents_from_path_or_url(value: &str) -> miette::Resul
             .into_diagnostic()
             .context("Failed to read contents from file")
     } else {
-        warn!(%value, "Couldn't parse value as a path or URL");
+        debug!(%value, "Couldn't parse value as a path or URL");
         Err(miette!(
             "Couldn't parse value {} as a path or URL",
             color_primary(value)
