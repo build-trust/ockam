@@ -186,6 +186,7 @@ This file contains attributions for any 3rd-party open source code used in this 
 | embedded-storage | MIT, Apache-2.0 | https://crates.io/crates/embedded-storage |
 | encode_unicode | Apache-2.0, MIT | https://crates.io/crates/encode_unicode |
 | endian-type | MIT | https://crates.io/crates/endian-type |
+| enum-as-inner | MIT, Apache-2.0 | https://crates.io/crates/enum-as-inner |
 | enumflags2 | MIT, Apache-2.0 | https://crates.io/crates/enumflags2 |
 | enumflags2_derive | MIT, Apache-2.0 | https://crates.io/crates/enumflags2_derive |
 | env_home | MIT, Apache-2.0 | https://crates.io/crates/env_home |
@@ -520,6 +521,7 @@ This file contains attributions for any 3rd-party open source code used in this 
 | sync_wrapper | Apache-2.0 | https://crates.io/crates/sync_wrapper |
 | synstructure | MIT | https://crates.io/crates/synstructure |
 | syntect | MIT | https://crates.io/crates/syntect |
+| sysctl | MIT | https://crates.io/crates/sysctl |
 | sysinfo | MIT | https://crates.io/crates/sysinfo |
 | tempfile | MIT, Apache-2.0 | https://crates.io/crates/tempfile |
 | termbg | MIT, Apache-2.0 | https://crates.io/crates/termbg |
