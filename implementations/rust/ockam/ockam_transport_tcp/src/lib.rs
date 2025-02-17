@@ -40,6 +40,9 @@ pub use transport::*;
 /// eBPF backed TCP portals that works on TCP level rather than on top of TCP
 pub mod privileged_portal;
 
+/// MPTCP support
+pub mod mptcp;
+
 /// Transport type for TCP addresses
 pub const TCP: ockam_core::TransportType = ockam_core::TransportType::new(1);
 
