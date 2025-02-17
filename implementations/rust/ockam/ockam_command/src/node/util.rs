@@ -1,20 +1,17 @@
 use crate::branding::BrandingCompileEnvVars;
+use crate::node::node_callback::NodeCallback;
 use crate::node::CreateCommand;
 use crate::shared_args::TrustOpts;
 use crate::{branding, Command as CommandTrait, CommandGlobalOpts};
-use console::Term;
 use miette::IntoDiagnostic;
 use miette::{miette, Context as _};
-use ockam_api::terminal::{TerminalStream, TerminalWriter};
 use ockam_core::env::get_env_with_default;
 use ockam_node::Context;
 use rand::random;
 use std::env::current_exe;
-use std::process::{ExitStatus, Stdio};
-use tokio::io::{self, AsyncBufReadExt, AsyncRead};
+use std::process::Stdio;
 use tokio::process::{Child, Command as TokioCommand};
-use tokio::try_join;
-use tracing::info;
+use tracing::{debug, info, trace};
 
 pub struct NodeManagerDefaults {
     pub node_name: String,
@@ -195,12 +192,12 @@ pub fn spawn_node(opts: &CommandGlobalOpts, cmd: CreateCommand) -> miette::Resul
 
     args.push(name.to_owned());
 
-    run_ockam(args)
+    run_ockam(args, opts.global_args.quiet)
 }
 
 /// Run the ockam command line with specific arguments
-pub fn run_ockam(args: Vec<String>) -> miette::Result<Child> {
-    info!("spawning a new process");
+pub fn run_ockam(args: Vec<String>, quiet: bool) -> miette::Result<Child> {
+    debug!("spawning a new process");
 
     // On systems with non-obvious path setups (or during
     // development) re-executing the current binary is a more
@@ -214,8 +211,8 @@ pub fn run_ockam(args: Vec<String>) -> miette::Result<Child> {
     unsafe {
         TokioCommand::new(ockam_exe)
             .args(args)
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
+            .stdout(subprocess_stdio(quiet))
+            .stderr(subprocess_stdio(quiet))
             .stdin(Stdio::null())
             // This unsafe block will only panic if the closure panics, which shouldn't happen
             .pre_exec(|| {
@@ -229,41 +226,37 @@ pub fn run_ockam(args: Vec<String>) -> miette::Result<Child> {
     }
 }
 
-pub async fn wait_while_draining_output(
-    opts: &CommandGlobalOpts,
-    mut handle: Child,
-) -> miette::Result<ExitStatus> {
-    async fn drain<Reader: AsyncRead + Unpin>(
-        mut writer: TerminalStream<Term>,
-        reader: Option<Reader>,
-        quiet: bool,
-    ) -> io::Result<()> {
-        if quiet {
-            // If we're running in quiet mode, we supress the child output
-            return Ok(());
-        }
+fn subprocess_stdio(quiet: bool) -> Stdio {
+    if quiet {
+        // If we're running in quiet mode, we don't need to propagate
+        // the stdout/stderr to the child process
+        Stdio::null()
+    } else {
+        // Otherwise, we need to inherit the stdout/stderr of the current process
+        // to see the output written in the spawned process
+        Stdio::inherit()
+    }
+    // NOTE: we can't use Stdio::piped() here because we lose the ability to
+    // pipe the child process's output down to another stream (e.g. a file).
+    // With piped streams, we can only write to a buffer that is consumed by
+    // the parent process, which would limit the output flexibility.
+}
 
-        if let Some(reader) = reader {
-            let reader = io::BufReader::new(reader);
-            let mut lines = reader.lines();
-            while let Some(line) = lines.next_line().await? {
-                let _ = writer.write(line);
+pub async fn wait_for_node_callback(
+    mut handle: Child,
+    node_callback: NodeCallback,
+) -> miette::Result<()> {
+    tokio::select! {
+        res = handle.wait() => {
+            trace!(?res, "node output drained");
+            let status = res.into_diagnostic()?;
+            if !status.success() {
+                std::process::exit(status.code().unwrap_or(1));
             }
         }
-
-        Ok(())
+        _ = node_callback.wait_for_signal() => {
+            trace!("node callback received");
+        }
     }
-
-    let parent_stdout = opts.terminal.stdout();
-    let parent_stderr = opts.terminal.stderr();
-
-    let child_stdout = handle.stdout.take();
-    let child_stderr = handle.stderr.take();
-
-    let stdout_fut = drain(parent_stdout, child_stdout, opts.global_args.quiet);
-    let stderr_fut = drain(parent_stderr, child_stderr, opts.global_args.quiet);
-
-    let (status, _, _) = try_join!(handle.wait(), stdout_fut, stderr_fut).into_diagnostic()?;
-
-    Ok(status)
+    Ok(())
 }

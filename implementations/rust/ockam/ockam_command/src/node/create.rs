@@ -297,8 +297,8 @@ impl CreateCommand {
             }
             self.config_args.configuration = Some(config);
         }
-        // if the name arg is a node name, and it's the default node name, set a random name
-        else if self.name == DEFAULT_NODE_NAME {
+        // if no config is used and the name arg is the default node name, set a random name
+        else if self.config_args.configuration.is_none() && self.name == DEFAULT_NODE_NAME {
             self.name = random_name();
         }
 
@@ -535,15 +535,14 @@ mod tests {
         };
         let mut cmd = CreateCommand::default();
         cmd.parse_args(&opts).await.unwrap();
-        // The default name is changed if needed when parsing the config
-        assert_eq!(cmd.name, DEFAULT_NODE_NAME);
+        assert_ne!(cmd.name, DEFAULT_NODE_NAME);
 
         let mut cmd = CreateCommand {
             name: r#"{tcp-outlet: {to: "5500"}}"#.to_string(),
             ..Default::default()
         };
         cmd.parse_args(&opts).await.unwrap();
-        assert_eq!(cmd.name, DEFAULT_NODE_NAME);
+        assert_ne!(cmd.name, DEFAULT_NODE_NAME);
 
         let mut cmd = CreateCommand {
             config_args: ConfigArgs {
@@ -553,6 +552,7 @@ mod tests {
             ..Default::default()
         };
         cmd.parse_args(&opts).await.unwrap();
+        // The default name is changed if needed when parsing the config
         assert_eq!(cmd.name, DEFAULT_NODE_NAME);
 
         let mut cmd = CreateCommand {
