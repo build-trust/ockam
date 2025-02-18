@@ -51,7 +51,7 @@ impl BackgroundNodeClient {
         cli_state: &CliState,
         node_name: &str,
     ) -> miette::Result<BackgroundNodeClient> {
-        let tcp_transport = TcpTransport::create(ctx).into_diagnostic()?;
+        let tcp_transport = TcpTransport::get_or_create(ctx).into_diagnostic()?;
         BackgroundNodeClient::new(&tcp_transport, cli_state, node_name)
     }
 

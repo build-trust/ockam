@@ -16,7 +16,7 @@ const TIMEOUT: Duration = Duration::from_secs(5);
 #[ockam_macros::test]
 async fn reply_from_correct_server_port(ctx: &mut Context) -> Result<()> {
     // Transport
-    let transport = UdpTransport::create(ctx)?;
+    let transport = UdpTransport::get_or_create(ctx)?;
 
     // Listener
     ctx.start_worker("echoer", Echoer::new(true))?;
@@ -80,7 +80,7 @@ async fn recover_from_sender_error(ctx: &mut Context) -> Result<()> {
     debug!("addr_nok = {:?}", addr_nok);
 
     // Transport
-    let transport = UdpTransport::create(ctx)?;
+    let transport = UdpTransport::get_or_create(ctx)?;
 
     // Listener
     ctx.start_worker("echoer", Echoer::new(true))?;
@@ -129,7 +129,7 @@ async fn send_from_same_client_port(ctx: &mut Context) -> Result<()> {
     debug!("bind_addrs = {:?}", bind_addrs);
 
     // Transport
-    let transport = UdpTransport::create(ctx)?;
+    let transport = UdpTransport::get_or_create(ctx)?;
 
     // Listeners
     // Note: it is the Echoer which is checking the UDP ports for this test
@@ -174,7 +174,7 @@ async fn send_from_same_client_port(ctx: &mut Context) -> Result<()> {
 #[ockam_macros::test]
 async fn send_receive_arbitrary_udp_peer(ctx: &mut Context) -> Result<()> {
     // Transport
-    let transport = UdpTransport::create(ctx)?;
+    let transport = UdpTransport::get_or_create(ctx)?;
 
     ctx.start_worker("echoer", Echoer::new(true))?;
     let bind1 = transport
@@ -240,7 +240,7 @@ async fn send_receive_arbitrary_udp_peer(ctx: &mut Context) -> Result<()> {
 #[ockam_macros::test]
 async fn send_receive_one_known_udp_peer(ctx: &mut Context) -> Result<()> {
     // Transport
-    let transport = UdpTransport::create(ctx)?;
+    let transport = UdpTransport::get_or_create(ctx)?;
 
     ctx.start_worker("echoer", Echoer::new(false))?;
     let bind1 = transport
@@ -308,7 +308,7 @@ async fn send_receive_two_known_udp_peers(ctx: &mut Context) -> Result<()> {
     debug!("bind_addrs = {:?}", bind_addrs);
 
     // Transport
-    let transport = UdpTransport::create(ctx)?;
+    let transport = UdpTransport::get_or_create(ctx)?;
 
     ctx.start_worker("echoer", Echoer::new(false))?;
     let bind1 = transport
@@ -379,7 +379,7 @@ async fn send_receive_large_message(ctx: &mut Context) -> Result<()> {
     debug!("bind_addrs = {:?}", bind_addrs);
 
     // Transport
-    let transport = UdpTransport::create(ctx)?;
+    let transport = UdpTransport::get_or_create(ctx)?;
 
     ctx.start_worker("echoer", Echoer::new(false))?;
     let bind1 = transport

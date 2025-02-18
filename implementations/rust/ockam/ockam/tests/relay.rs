@@ -37,7 +37,7 @@ async fn test2(ctx: &mut Context) -> Result<()> {
         .service_as_consumer(&tcp_listener_options.spawner_flow_control_id())
         .relay_as_consumer(&tcp_listener_options.spawner_flow_control_id());
     RelayService::create(ctx, "forwarding_service", options)?;
-    let cloud_tcp = TcpTransport::create(ctx)?;
+    let cloud_tcp = TcpTransport::get_or_create(ctx)?;
 
     let cloud_listener = cloud_tcp
         .listen("127.0.0.1:0", tcp_listener_options)
@@ -49,7 +49,7 @@ async fn test2(ctx: &mut Context) -> Result<()> {
     ctx.flow_controls()
         .add_consumer(&"echoer".into(), &tcp_options.flow_control_id());
 
-    let server_tcp = TcpTransport::create(ctx)?;
+    let server_tcp = TcpTransport::get_or_create(ctx)?;
     let cloud_connection = server_tcp
         .connect(cloud_listener.socket_string(), tcp_options)
         .await?;
@@ -57,7 +57,7 @@ async fn test2(ctx: &mut Context) -> Result<()> {
     let remote_info =
         RemoteRelay::create(ctx, cloud_connection.clone(), RemoteRelayOptions::new()).await?;
 
-    let client_tcp = TcpTransport::create(ctx)?;
+    let client_tcp = TcpTransport::get_or_create(ctx)?;
     let cloud_connection = client_tcp
         .connect(cloud_listener.socket_string(), TcpConnectionOptions::new())
         .await?;
@@ -82,7 +82,7 @@ async fn test3(ctx: &mut Context) -> Result<()> {
         .service_as_consumer(&tcp_listener_options.spawner_flow_control_id())
         .relay_as_consumer(&tcp_listener_options.spawner_flow_control_id());
     RelayService::create(ctx, "forwarding_service", options)?;
-    let cloud_tcp = TcpTransport::create(ctx)?;
+    let cloud_tcp = TcpTransport::get_or_create(ctx)?;
     let cloud_listener = cloud_tcp
         .listen("127.0.0.1:0", tcp_listener_options)
         .await?;
@@ -90,7 +90,7 @@ async fn test3(ctx: &mut Context) -> Result<()> {
     let tcp_options = TcpConnectionOptions::new();
     let server_tcp_flow_control_id = tcp_options.flow_control_id();
 
-    let server_tcp = TcpTransport::create(ctx)?;
+    let server_tcp = TcpTransport::get_or_create(ctx)?;
     let cloud_connection = server_tcp
         .connect(cloud_listener.socket_string(), tcp_options)
         .await?;
@@ -171,7 +171,7 @@ async fn test4(ctx: &mut Context) -> Result<()> {
         cloud_secure_channel_listener_options,
     )?;
 
-    let cloud_tcp = TcpTransport::create(ctx)?;
+    let cloud_tcp = TcpTransport::get_or_create(ctx)?;
     let cloud_listener = cloud_tcp
         .listen("127.0.0.1:0", cloud_tcp_listener_options)
         .await?;
@@ -187,7 +187,7 @@ async fn test4(ctx: &mut Context) -> Result<()> {
         &server_secure_channel_listener_options.spawner_flow_control_id(),
     );
 
-    let server_tcp = TcpTransport::create(ctx)?;
+    let server_tcp = TcpTransport::get_or_create(ctx)?;
     let cloud_server_connection = server_tcp
         .connect(cloud_listener.socket_string(), TcpConnectionOptions::new())
         .await?;
@@ -211,7 +211,7 @@ async fn test4(ctx: &mut Context) -> Result<()> {
         RemoteRelay::create(ctx, cloud_server_channel.clone(), RemoteRelayOptions::new()).await?;
 
     // Client
-    let client_tcp = TcpTransport::create(ctx)?;
+    let client_tcp = TcpTransport::get_or_create(ctx)?;
     let cloud_client_connection = client_tcp
         .connect(cloud_listener.socket_string(), TcpConnectionOptions::new())
         .await?;

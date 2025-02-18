@@ -15,12 +15,12 @@ mod common;
 // Bob: TCP listener + Secure Channel listener
 #[ockam_macros::test]
 async fn test1(ctx: &mut Context) -> Result<()> {
-    let tcp_bob = TcpTransport::create(ctx)?;
+    let tcp_bob = TcpTransport::get_or_create(ctx)?;
     let listener = tcp_bob
         .listen("127.0.0.1:0", TcpListenerOptions::new())
         .await?;
 
-    let tcp_alice = TcpTransport::create(ctx)?;
+    let tcp_alice = TcpTransport::get_or_create(ctx)?;
     let connection_to_bob = tcp_alice
         .connect(listener.socket_string(), TcpConnectionOptions::new())
         .await?;

@@ -13,7 +13,7 @@ use ockam_transport_tcp::{
 const LENGTH: usize = 32;
 
 async fn setup(ctx: &Context, skip_handshake: bool) -> Result<(String, TcpListener)> {
-    let tcp = TcpTransport::create(ctx)?;
+    let tcp = TcpTransport::get_or_create(ctx)?;
 
     let listener = {
         let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
@@ -170,7 +170,7 @@ async fn portal__tcp_connection__should_succeed__impl(
     let options = TcpListenerOptions::new();
     let outlet_flow_control_id = options.spawner_flow_control_id();
 
-    let tcp = TcpTransport::create(ctx)?;
+    let tcp = TcpTransport::get_or_create(ctx)?;
 
     let listener = tcp.listen("127.0.0.1:0", options).await?;
 
@@ -248,7 +248,7 @@ async fn portal__tcp_connection_with_invalid_message_flow__should_not_succeed__i
 
     let options = TcpListenerOptions::new();
 
-    let tcp = TcpTransport::create(ctx)?;
+    let tcp = TcpTransport::get_or_create(ctx)?;
 
     let tcp_listener = tcp.listen("127.0.0.1:0", options).await?;
 
@@ -318,7 +318,7 @@ async fn portal__update_route__should_succeed__impl(
     let payload1 = generate_binary();
     let payload2 = generate_binary();
 
-    let tcp = TcpTransport::create(ctx)?;
+    let tcp = TcpTransport::get_or_create(ctx)?;
 
     let listener_outlet = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let listener_node = tcp.listen("127.0.0.1:0", TcpListenerOptions::new()).await?;

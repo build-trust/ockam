@@ -686,7 +686,7 @@ pub(crate) async fn make_node_manager(
     ctx: Arc<Context>,
     cli_state: &CliState,
 ) -> miette::Result<Arc<InMemoryNode>> {
-    let tcp = TcpTransport::create(&ctx).into_diagnostic()?;
+    let tcp = TcpTransport::get_or_create(&ctx).into_diagnostic()?;
     let options = TcpListenerOptions::new();
     let listener = tcp
         .listen(&"127.0.0.1:0", options)

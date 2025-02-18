@@ -8,7 +8,7 @@ use tracing::info;
 #[ignore]
 #[ockam_macros::test(timeout = 400000)]
 async fn tcp_keepalive_test(ctx: &mut Context) -> Result<()> {
-    let tcp = TcpTransport::create(ctx)?;
+    let tcp = TcpTransport::get_or_create(ctx)?;
 
     let message: String = rand::thread_rng()
         .sample_iter(&rand::distributions::Alphanumeric)

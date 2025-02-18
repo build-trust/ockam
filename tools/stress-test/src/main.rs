@@ -170,7 +170,7 @@ impl State {
         ctx: Arc<Context>,
         cli_state: &CliState,
     ) -> ockam::Result<Arc<InMemoryNode>> {
-        let tcp = TcpTransport::create(&ctx)?;
+        let tcp = TcpTransport::get_or_create(&ctx)?;
         let options = TcpListenerOptions::new();
         let listener = tcp.listen(&"127.0.0.1:0", options).await?;
 

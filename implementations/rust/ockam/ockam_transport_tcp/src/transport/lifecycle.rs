@@ -16,11 +16,11 @@ impl TcpTransport {
     /// # use ockam_node::Context;
     /// # use ockam_core::Result;
     /// # async fn test(ctx: Context) -> Result<()> {
-    /// let tcp = TcpTransport::create(&ctx)?;
+    /// let tcp = TcpTransport::get_or_create(&ctx)?;
     /// # Ok(()) }
     /// ```
-    #[instrument(name = "create tcp transport", skip_all)]
-    pub fn create(ctx: &Context) -> Result<Arc<TcpTransport>> {
+    #[instrument(name = "get or create tcp transport", skip_all)]
+    pub fn get_or_create(ctx: &Context) -> Result<Arc<TcpTransport>> {
         // don't register the TCP transport twice
         match ctx.get_transport(TCP) {
             Some(t) => {
@@ -166,7 +166,7 @@ mod tests {
 
     #[ockam_macros::test]
     async fn test_resolve_address(ctx: &mut Context) -> Result<()> {
-        let tcp = TcpTransport::create(ctx)?;
+        let tcp = TcpTransport::get_or_create(ctx)?;
         let tcp_address = "127.0.0.1:0";
         let initial_workers = ctx.list_workers()?;
         let listener = TcpListener::bind(tcp_address)
@@ -205,7 +205,7 @@ mod tests {
 
     #[ockam_macros::test]
     async fn test_resolve_route_with_dns_address(ctx: &mut Context) -> Result<()> {
-        let tcp = TcpTransport::create(ctx)?;
+        let tcp = TcpTransport::get_or_create(ctx)?;
         let tcp_address = "127.0.0.1:0";
         let listener = TcpListener::bind(tcp_address)
             .await

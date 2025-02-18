@@ -20,7 +20,7 @@ use tracing::{debug, info, warn};
 ///
 /// // Start a Rendezvous service with address 'rendezvous' and listen on UDP port 4000
 /// RendezvousService::start(&ctx, "rendezvous")?;
-/// let udp = UdpTransport::create(&ctx)?;
+/// let udp = UdpTransport::get_or_create(&ctx)?;
 /// let bind = udp.bind(UdpBindArguments::new().with_bind_address("0.0.0.0:4000")?, UdpBindOptions::new()).await?;
 /// ctx.flow_controls().add_consumer(&"rendezvous".into(), bind.flow_control_id());
 /// # Ok(()) }
@@ -181,7 +181,7 @@ mod tests {
     /// Helper
     async fn test_setup(ctx: &mut Context) -> Result<(Route, UdpBind)> {
         // Create transport, start rendezvous service, start echo service and listen
-        let transport = UdpTransport::create(ctx)?;
+        let transport = UdpTransport::get_or_create(ctx)?;
         RendezvousService::start(ctx, "rendezvous")?;
 
         let udp_bind = transport

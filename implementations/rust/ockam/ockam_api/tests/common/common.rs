@@ -127,7 +127,7 @@ pub async fn start_authority(
             .await?;
 
         let authority_node_client = NodeManager::authority_node_client(
-            TcpTransport::create(ctx)?,
+            TcpTransport::get_or_create(ctx)?,
             secure_channels.clone(),
             &configuration.identifier,
             &MultiAddr::try_from("/secure/api")?,

@@ -43,7 +43,8 @@ The value of `grpc_endpoint` must be set to the endpoint of an accessible OpenTe
 
 ## Sending telemetry data directly via a secure channel to the authority node
 
-This behaviour is controlled by the `OCKAM_TELEMETRY_EXPORT_VIA_PROJECT` environment variable (the default is `false`).
+This behaviour is controlled by the `OCKAM_TELEMETRY_EXPORT_VIA_AUTHORITY` environment variable (the default is
+`false`).
 
 This mode is only active if a default project can be detected locally and is accessible via a secure channel.
 Then, the telemetry data is sent as Ockam messages to the project's authority node and forwarded to the collector.
@@ -58,8 +59,9 @@ the collector endpoint URL, for example `http://opentelemetry-collector:4317`.
 This behaviour is controlled by the setting of two environment variables:
 
 - `OCKAM_TELEMETRY_EXPORT_NODE_ROUTE` a route to the node to connect. For example:
-  `/dnsaddr/localhost/tcp/4000/secure/api`. Note that the presence of `secure/api` in the address is going to trigger
-  the creation of a secure channel.
+  `/dnsaddr/localhost/tcp/4000/secure/api`. Note that the presence of `secure/api` in the address is what's triggering
+  the creation of a secure channel and allows a node to send telemetry data without having to expose an OpenTelemetry
+  collector residing in your private network.
 - `OCKAM_TELEMETRY_EXPORT_NODE_IDENTIFIER` the identifier of the node that we are connecting to.
 - `OCKAM_TELEMETRY_EXPORT_NODE_FORWARDER_SERVICE` the address of the `GrpcForwarder` service started on the remote node.
   The default is `grpc_forwarder` (see the project configuration above where that name is used to start the

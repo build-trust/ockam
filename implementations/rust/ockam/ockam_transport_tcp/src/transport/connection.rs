@@ -98,7 +98,7 @@ impl TcpTransport {
     /// # use ockam_node::Context;
     /// # use ockam_core::Result;
     /// # async fn test(ctx: Context) -> Result<()> {
-    /// let tcp = TcpTransport::create(&ctx)?;
+    /// let tcp = TcpTransport::get_or_create(&ctx)?;
     /// tcp.listen("127.0.0.1:8000", TcpListenerOptions::new()).await?; // Listen on port 8000
     /// let connection = tcp.connect("127.0.0.1:5000", TcpConnectionOptions::new()).await?; // and connect to port 5000
     /// # Ok(()) }
