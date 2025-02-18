@@ -190,7 +190,10 @@ impl SecureClient {
         } else {
             let status = response.header().status();
             Ok(Reply::Failed(
-                Error::from_failed_request(&request_header, &response.parse_err_msg()),
+                response.get_error().unwrap_or(Error::from_failed_request(
+                    &request_header,
+                    "no error message",
+                )),
                 status,
             ))
         }

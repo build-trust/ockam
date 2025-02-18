@@ -696,6 +696,10 @@ impl<T> Response<T> {
     pub fn has_body(&self) -> bool {
         self.header.has_body()
     }
+
+    pub fn get_error(&self) -> Option<Error> {
+        self.error.clone()
+    }
 }
 
 impl<T: Encodable> Response<T> {
