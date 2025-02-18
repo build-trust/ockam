@@ -654,8 +654,7 @@ impl<T: Message> Message for Request<T> {}
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Response<T = ()> {
     header: ResponseHeader,
-    body: Option<T>,
-    error: Option<Error>,
+    body: Option<core::result::Result<T, Error>>,
 }
 
 impl<T> Response<T> {
@@ -679,8 +678,8 @@ impl<T> Response<T> {
         &self.header
     }
 
-    pub fn into_parts(self) -> (ResponseHeader, Option<T>, Option<Error>) {
-        (self.header, self.body, self.error)
+    pub fn into_parts(self) -> (ResponseHeader, Option<core::result::Result<T, Error>>) {
+        (self.header, self.body)
     }
 
     /// Convenient wrapper to append the requests header to the response
@@ -696,6 +695,14 @@ impl<T> Response<T> {
     pub fn has_body(&self) -> bool {
         self.header.has_body()
     }
+
+    pub fn get_body(self) -> Option<T> {
+        self.body.and_then(|b| b.ok())
+    }
+
+    pub fn get_error(self) -> Option<Error> {
+        self.body.and_then(|b| b.err())
+    }
 }
 
 impl<T: Encodable> Response<T> {
@@ -706,9 +713,20 @@ impl<T: Encodable> Response<T> {
         let mut e = Encoder::new(buf);
         e.encode(&self.header)?;
         if let Some(b) = self.body {
-            e.writer_mut()
-                .write_all(&<T as Encodable>::encode(b).map_err(encode::Error::message)?)
-                .map_err(|_| encode::Error::message("encoding error"))?;
+            match b {
+                Ok(t) => {
+                    e.writer_mut()
+                        .write_all(&<T as Encodable>::encode(t).map_err(encode::Error::message)?)
+                        .map_err(|_| encode::Error::message("encoding error"))?;
+                }
+                Err(error) => {
+                    e.writer_mut()
+                        .write_all(
+                            &<Error as Encodable>::encode(error).map_err(encode::Error::message)?,
+                        )
+                        .map_err(|_| encode::Error::message("encoding error"))?;
+                }
+            }
         }
         Ok(())
     }
@@ -720,19 +738,20 @@ impl<T: Encodable> Response<T> {
     }
 
     pub fn encode_body(self) -> Result<Response<Vec<u8>>> {
-        let (header, body, error_message) = self.into_parts();
+        let (header, body) = self.into_parts();
         let r = if let Some(b) = body {
-            Response {
-                header,
-                body: Some(<T as Encodable>::encode(b)?),
-                error: error_message,
+            match b {
+                Ok(t) => Response {
+                    header,
+                    body: Some(Ok(<T as Encodable>::encode(t)?)),
+                },
+                Err(e) => Response {
+                    header,
+                    body: Some(Err(e)),
+                },
             }
         } else {
-            Response {
-                header,
-                body: None,
-                error: error_message,
-            }
+            Response { header, body: None }
         };
         Ok(r)
     }
@@ -767,15 +786,10 @@ impl<T: Decodable> Decodable for Response<T> {
                     })?;
                 Ok(Response {
                     header,
-                    body: Some(<T as Decodable>::decode(body)?),
-                    error: None,
+                    body: Some(Ok(<T as Decodable>::decode(body)?)),
                 })
             } else {
-                Ok(Response {
-                    header,
-                    body: None,
-                    error: None,
-                })
+                Ok(Response { header, body: None })
             }
         } else {
             let error = if matches!(dec.datatype(), Ok(Type::String)) {
@@ -787,8 +801,7 @@ impl<T: Decodable> Decodable for Response<T> {
 
             Ok(Response {
                 header,
-                body: None,
-                error: Some(error),
+                body: Some(Err(error)),
             })
         }
     }
@@ -798,26 +811,25 @@ impl<T: Message> Message for Response<T> {}
 
 impl Response<Vec<u8>> {
     pub fn to_reply<T: Decodable>(self) -> Result<Reply<T>> {
-        let (header, body, error) = self.into_parts();
-        if header.is_ok() {
-            if let Some(body) = body {
-                match T::decode(body.as_slice()) {
+        let (header, body) = self.into_parts();
+        if let Some(body) = body {
+            match body {
+                Ok(t) => match T::decode(t.as_slice()) {
                     Err(e) => Err(crate::Error::new(
                         Origin::Api,
                         Kind::Serialization,
                         format!("{e:?}"),
                     )),
                     Ok(r) => Ok(Reply::Successful(r)),
-                }
-            } else {
-                Err(crate::Error::new(
-                    Origin::Api,
-                    Kind::Serialization,
-                    "expected a message body, got nothing".to_string(),
-                ))
+                },
+                Err(error) => Ok(Reply::Failed(error, header.status())),
             }
-        } else if let Some(error) = error {
-            Ok(Reply::Failed(error, header.status()))
+        } else if header.is_ok() {
+            Err(crate::Error::new(
+                Origin::Api,
+                Kind::Serialization,
+                "expected a message body, got nothing".to_string(),
+            ))
         } else {
             Err(crate::Error::new(
                 Origin::Api,
@@ -844,8 +856,7 @@ impl Response<()> {
     pub fn body<T: Encodable>(self, b: T) -> Response<T> {
         let mut b = Response {
             header: self.header,
-            body: Some(b),
-            error: None,
+            body: Some(Ok(b)),
         };
         b.header.has_body = true;
         b
@@ -858,7 +869,6 @@ impl Response {
         Response {
             header: ResponseHeader::new(re, status, false),
             body: None,
-            error: None,
         }
     }
 
@@ -958,15 +968,24 @@ impl Response {
 impl Response<Vec<u8>> {
     pub fn parse_error<T>(self) -> Result<Reply<T>> {
         let status = self.header().status;
-        let body = self.body.unwrap_or_default();
-        let error = if let Ok(msg) = <String as Decodable>::decode(&body) {
-            Ok(Error::new_without_path().with_message(msg))
-        } else {
-            <Error as Decodable>::decode(&body)
-        };
-        match error {
-            Ok(e) => Ok(Reply::Failed(e, status)),
-            Err(e) => Err(crate::Error::new(Origin::Api, Kind::Serialization, e)),
+        match self.body {
+            None => Err(crate::Error::new(
+                Origin::Api,
+                Kind::Serialization,
+                "missing body",
+            )),
+            Some(Ok(b)) => {
+                let error = if let Ok(msg) = <String as Decodable>::decode(&b) {
+                    Ok(Error::new_without_path().with_message(msg))
+                } else {
+                    <Error as Decodable>::decode(&b)
+                };
+                match error {
+                    Ok(e) => Ok(Reply::Failed(e, status)),
+                    Err(e) => Err(crate::Error::new(Origin::Api, Kind::Serialization, e)),
+                }
+            }
+            Some(Err(error)) => Ok(Reply::Failed(error, status)),
         }
     }
 
@@ -977,26 +996,38 @@ impl Response<Vec<u8>> {
         let has_body = self.has_body();
 
         match status {
-            Some(status) if has_body => {
-                let body = self.body.unwrap_or_default();
-                let error = if let Ok(msg) = <String as Decodable>::decode(&body) {
-                    Ok(format!("Message: {msg}"))
-                } else {
-                    <Error as Decodable>::decode(&body).map(|msg| format!("Message: {msg}"))
-                };
-                match error {
-                    Ok(err) => {
-                        format!(
-                            "An error occurred while processing the request. Status code: {status}. {err}"
-                        )
-                    }
-                    Err(err) => {
-                        let msg = format!("No error message could be found in response: {err}");
-                        error!(msg);
-                        msg
+            Some(status) if has_body => match self.body {
+                None => {
+                    format!(
+                        "No error message could be found in the response. Status code: {status}"
+                    )
+                }
+                Some(Ok(b)) => {
+                    let error = if let Ok(msg) = <String as Decodable>::decode(&b) {
+                        Ok(format!("Message: {msg}"))
+                    } else {
+                        <Error as Decodable>::decode(&b).map(|msg| format!("Message: {msg}"))
+                    };
+                    match error {
+                        Ok(err) => {
+                            format!(
+                                    "An error occurred while processing the request. Status code: {status}. {err}"
+                                )
+                        }
+                        Err(err) => {
+                            let msg =
+                                format!("No error message could be read from the response: {err}");
+                            error!(msg);
+                            msg
+                        }
                     }
                 }
-            }
+                Some(Err(err)) => {
+                    format!(
+                            "An error occurred while processing the request. Status code: {status}. {err}"
+                        )
+                }
+            },
             Some(status) => {
                 format!("An error occurred while processing the request. Status code: {status}")
             }
@@ -1088,7 +1119,7 @@ mod tests {
         let request = Request::post("path").body(person.clone());
         let decoded: Request<Vec<u8>> =
             Request::decode(&Request::encode(request.clone()).unwrap()).unwrap();
-        let decoded_person = <Person as Decodable>::decode(&decoded.body.unwrap_or_default()).ok();
+        let decoded_person = <Person as Decodable>::decode(&decoded.body.unwrap()).ok();
         assert_eq!(decoded_person, Some(person));
     }
 
@@ -1123,7 +1154,7 @@ mod tests {
         let request = Response::ok().body(person.clone());
         let decoded: Response<Vec<u8>> =
             Response::decode(&Response::encode(request.clone()).unwrap()).unwrap();
-        let decoded_person = <Person as Decodable>::decode(&decoded.body.unwrap_or_default()).ok();
+        let decoded_person = <Person as Decodable>::decode(&decoded.body.unwrap().unwrap()).ok();
         assert_eq!(decoded_person, Some(person));
     }
 
