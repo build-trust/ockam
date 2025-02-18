@@ -20,7 +20,7 @@ use ockam_node::{Context, HasContext};
 ///
 /// Be aware that only one `TcpTransport` can exist per node, as it
 /// registers itself as a router for the `TCP` address type.  Multiple
-/// calls to [`TcpTransport::create`](crate::TcpTransport::create)
+/// calls to [`TcpTransport::create`](crate::TcpTransport::get_or_create)
 /// will fail.
 ///
 /// To listen for incoming connections use
@@ -36,7 +36,7 @@ use ockam_node::{Context, HasContext};
 /// # use ockam_node::Context;
 /// # use ockam_core::Result;
 /// # async fn test(ctx: Context) -> Result<()> {
-/// let tcp = TcpTransport::create(&ctx)?;
+/// let tcp = TcpTransport::get_or_create(&ctx)?;
 /// tcp.listen("127.0.0.1:8000", TcpListenerOptions::new()).await?; // Listen on port 8000
 /// tcp.connect("127.0.0.1:5000", TcpConnectionOptions::new()).await?; // And connect to port 5000
 /// # Ok(()) }
@@ -49,7 +49,7 @@ use ockam_node::{Context, HasContext};
 /// # use ockam_node::Context;
 /// # use ockam_core::Result;
 /// # async fn test(ctx: Context) -> Result<()> {
-/// let tcp = TcpTransport::create(&ctx)?;
+/// let tcp = TcpTransport::get_or_create(&ctx)?;
 /// tcp.listen("127.0.0.1:8000", TcpListenerOptions::new()).await?; // Listen on port 8000
 /// tcp.listen("127.0.0.1:9000", TcpListenerOptions::new()).await?; // Listen on port 9000
 /// # Ok(()) }
@@ -80,7 +80,7 @@ impl TcpTransport {
 pub trait TcpTransportExtension: HasContext {
     /// Create a TCP transport
     fn create_tcp_transport(&self) -> Result<Arc<TcpTransport>> {
-        TcpTransport::create(self.get_context())
+        TcpTransport::get_or_create(self.get_context())
     }
 }
 

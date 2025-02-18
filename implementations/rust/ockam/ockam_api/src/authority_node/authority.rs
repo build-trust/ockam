@@ -149,7 +149,7 @@ impl Authority {
         info!("started a secure channel listener with name '{listener_name}'");
 
         // Create a TCP listener and wait for incoming connections
-        let tcp = TcpTransport::create(ctx)?;
+        let tcp = TcpTransport::get_or_create(ctx)?;
 
         let listener = tcp
             .listen(
@@ -562,7 +562,7 @@ pub mod tests {
         caller: &Identifier,
     ) -> Result<AuthorityNodeClient> {
         let client = NodeManager::authority_node_client(
-            TcpTransport::create(ctx)?,
+            TcpTransport::get_or_create(ctx)?,
             secure_channels,
             authority_identifier,
             authority_route,

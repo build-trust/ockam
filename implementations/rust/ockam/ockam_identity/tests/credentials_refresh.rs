@@ -210,7 +210,7 @@ async fn init(
     ttl: Duration,
     timing_options: RemoteCredentialRetrieverTimingOptions,
 ) -> Result<InitResult> {
-    let tcp = TcpTransport::create(ctx)?;
+    let tcp = TcpTransport::get_or_create(ctx)?;
 
     let client_secure_channels = secure_channels().await?;
     let authority_secure_channels = secure_channels().await?;

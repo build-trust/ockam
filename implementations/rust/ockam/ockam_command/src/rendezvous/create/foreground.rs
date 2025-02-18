@@ -25,7 +25,7 @@ impl CreateCommand {
 
         RendezvousService::start(ctx, DefaultAddress::RENDEZVOUS_SERVICE).into_diagnostic()?;
 
-        let udp = UdpTransport::create(ctx).into_diagnostic()?;
+        let udp = UdpTransport::get_or_create(ctx).into_diagnostic()?;
         let bind = udp
             .bind(
                 UdpBindArguments::new().with_bind_socket_address(udp_address),

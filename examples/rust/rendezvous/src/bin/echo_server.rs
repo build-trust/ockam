@@ -5,7 +5,7 @@ use ockam_transport_udp::{UdpBindArguments, UdpBindOptions, UdpTransport};
 
 #[ockam_macros::node]
 async fn main(ctx: Context) -> Result<()> {
-    let udp = UdpTransport::create(&ctx)?;
+    let udp = UdpTransport::get_or_create(&ctx)?;
     let bind = udp
         .bind(
             UdpBindArguments::new().with_bind_address("127.0.0.1:8000")?,

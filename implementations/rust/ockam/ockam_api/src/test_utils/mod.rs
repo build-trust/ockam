@@ -59,7 +59,7 @@ pub async fn start_manager_for_tests(
     bind_address: Option<&str>,
     trust_options: Option<NodeManagerTrustOptions>,
 ) -> Result<NodeManagerHandle> {
-    let tcp = TcpTransport::create(context)?;
+    let tcp = TcpTransport::get_or_create(context)?;
     let tcp_listener = tcp
         .listen(
             bind_address.unwrap_or("127.0.0.1:0"),

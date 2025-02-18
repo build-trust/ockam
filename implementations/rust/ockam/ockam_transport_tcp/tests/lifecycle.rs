@@ -13,7 +13,7 @@ async fn tcp_lifecycle__two_connections__should_both_work(ctx: &mut Context) -> 
         .add_consumer(&"echoer".into(), &options.spawner_flow_control_id());
     ctx.start_worker("echoer", Echoer)?;
 
-    let transport = TcpTransport::create(ctx)?;
+    let transport = TcpTransport::get_or_create(ctx)?;
     let listener = transport.listen("127.0.0.1:0", options).await?;
 
     let msg1: String = rand::thread_rng()
@@ -55,7 +55,7 @@ async fn tcp_lifecycle__disconnect__should_stop_worker(ctx: &mut Context) -> Res
         .add_consumer(&"echoer".into(), &options.spawner_flow_control_id());
     ctx.start_worker("echoer", Echoer)?;
 
-    let transport = TcpTransport::create(ctx)?;
+    let transport = TcpTransport::get_or_create(ctx)?;
     let listener = transport.listen("127.0.0.1:0", options).await?;
 
     let msg1: String = rand::thread_rng()
@@ -121,7 +121,7 @@ async fn tcp_lifecycle__stop_listener__should_stop_accepting_connections(
 
     ctx.start_worker("echoer", Echoer)?;
 
-    let transport = TcpTransport::create(ctx)?;
+    let transport = TcpTransport::get_or_create(ctx)?;
     let listener = transport.listen("127.0.0.1:0", options).await?;
 
     let msg1: String = rand::thread_rng()

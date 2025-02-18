@@ -18,7 +18,7 @@ use tonic::codegen::Service;
 /// SecureClient.
 ///
 /// The Context is an Option since because it is necessary to clone this struct and attempting
-/// to attempt a Context could fail if the current node is being shut down.
+/// to clone a Context could fail if the current node is being shut down.
 ///
 pub struct SecureClientService {
     secure_client: SecureClient,

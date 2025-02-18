@@ -30,6 +30,7 @@ pub mod config;
 pub mod foreground;
 pub mod node_callback;
 
+const DEFAULT_NODE_NAME: &str = "_default_node_name";
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
 

@@ -134,7 +134,7 @@ mod tests {
             // wait until the forwarder node is up
             tokio::time::sleep(Duration::from_millis(100)).await;
             let secure_channels = create_secure_channels().await?;
-            let tcp_transport = TcpTransport::create(&ctx)?;
+            let tcp_transport = TcpTransport::get_or_create(&ctx)?;
             let secure_client = make_secure_client(port, secure_channels, tcp_transport).await?;
             let project_service =
                 SecureClientService::new(secure_client, &ctx, DefaultAddress::GRPC_FORWARDER);

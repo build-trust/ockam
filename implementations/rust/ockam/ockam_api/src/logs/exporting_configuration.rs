@@ -1,4 +1,4 @@
-use crate::cli_state::DEFAULT_NODE_NAME;
+use crate::cli_state::random_name;
 use crate::config::UrlVar;
 use crate::logs::default_values::*;
 use crate::logs::env_variables::*;
@@ -513,7 +513,7 @@ async fn make_secure_client(
         node
     } else {
         cli_state
-            .create_node_with_optional_identity(DEFAULT_NODE_NAME, &None)
+            .create_node_with_optional_identity(&random_name(), &None)
             .await?
     };
     let secure_channels = cli_state.secure_channels(&default_node.name()).await?;
@@ -521,7 +521,7 @@ async fn make_secure_client(
     Ok(SecureClient::new(
         secure_channels,
         None,
-        TcpTransport::create(ctx)?,
+        TcpTransport::get_or_create(ctx)?,
         project_route,
         Arc::new(TrustIdentifierPolicy::new(identifier)),
         &default_node.identifier(),

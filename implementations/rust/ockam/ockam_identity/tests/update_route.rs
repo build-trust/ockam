@@ -75,7 +75,7 @@ async fn test_update_decryptor_route(ctx: &mut Context) -> Result<()> {
 
 #[ockam_macros::test]
 async fn test_update_decryptor_route_tcp(ctx: &mut Context) -> Result<()> {
-    let tcp = TcpTransport::create(ctx)?;
+    let tcp = TcpTransport::get_or_create(ctx)?;
 
     let tcp_listener1 = tcp.listen("127.0.0.1:0", TcpListenerOptions::new()).await?;
     let tcp_listener2 = tcp.listen("127.0.0.1:0", TcpListenerOptions::new()).await?;

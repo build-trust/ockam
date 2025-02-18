@@ -37,7 +37,7 @@ impl GrpcForwarder {
 
     /// Forward an http Request.
     /// We don't wait for a response here.
-    async fn forward_http_request(&mut self, request: http::Request<BoxBody>) -> Result<()> {
+    async fn forward_grpc_request(&mut self, request: http::Request<BoxBody>) -> Result<()> {
         self.ready().await.map_err(ApiError::core)?;
         let _ = self
             .channel
@@ -75,7 +75,7 @@ impl Worker for GrpcForwarder {
             let http_request = ockam_request.make_http_request().map_err(|e| {
                 ockam_core::Error::new(Origin::Api, Kind::Serialization, format!("{e:?}"))
             })?;
-            self.forward_http_request(http_request)
+            self.forward_grpc_request(http_request)
                 .await
                 .map_err(|e| ockam_core::Error::new(Origin::Api, Kind::Io, format!("{e:?}")))?;
         };

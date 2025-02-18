@@ -1,3 +1,4 @@
+use crate::node::create::DEFAULT_NODE_NAME;
 use crate::node::node_callback::NodeCallback;
 use crate::node::CreateCommand;
 use crate::service::config::ControlApiNodeResolution;
@@ -8,7 +9,7 @@ use miette::IntoDiagnostic;
 use ockam::tcp::{TcpListenerOptions, TcpTransport};
 use ockam::udp::{UdpBindArguments, UdpBindOptions, UdpTransport};
 use ockam::{Address, Context};
-use ockam_api::cli_state::{random_name, DEFAULT_NODE_NAME};
+use ockam_api::cli_state::random_name;
 use ockam_api::colors::color_primary;
 use ockam_api::control_api::frontend::NodeResolution;
 use ockam_api::fmt_log;
@@ -47,7 +48,7 @@ impl CreateCommand {
             .into_diagnostic()?;
 
         // Create TCP transport
-        let tcp = TcpTransport::create(ctx).into_diagnostic()?;
+        let tcp = TcpTransport::get_or_create(ctx).into_diagnostic()?;
         let tcp_listener = tcp
             .listen(&self.tcp_listener_address, TcpListenerOptions::new())
             .await
@@ -74,7 +75,7 @@ impl CreateCommand {
         debug!("node info persisted {node_info:?}");
 
         let udp_options = if self.udp {
-            let udp = UdpTransport::create(ctx).into_diagnostic()?;
+            let udp = UdpTransport::get_or_create(ctx).into_diagnostic()?;
             let options = UdpBindOptions::new();
             let flow_control_id = options.flow_control_id();
             udp.bind(
