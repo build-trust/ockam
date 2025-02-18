@@ -255,8 +255,7 @@ impl InfluxDBTokenLessorWorkerApi for InfluxDBTokenLessorWorker {
         let is_authorized_to_revoke = self
             .get_token(requester, token_id)
             .await?
-            .into_parts()
-            .1
+            .get_body()
             .is_some();
         if !is_authorized_to_revoke {
             return Err(Response::unauthorized_no_request(

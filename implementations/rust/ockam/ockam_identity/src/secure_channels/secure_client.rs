@@ -189,8 +189,12 @@ impl SecureClient {
             Ok(Successful(()))
         } else {
             let status = response.header().status();
+            // The "missing error" case should not happen because we would have failed deserialization
+            // in the case of a ko response with no error body.
             Ok(Reply::Failed(
-                Error::from_failed_request(&request_header, &response.parse_err_msg()),
+                response
+                    .get_error()
+                    .unwrap_or(Error::from_failed_request(&request_header, "missing error")),
                 status,
             ))
         }
