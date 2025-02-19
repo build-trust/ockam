@@ -2,7 +2,9 @@ use crate::authenticator::enrollment_tokens::TokenIssuer;
 use crate::authenticator::one_time_code::OneTimeCode;
 use crate::cli_state::{ExportedEnrollmentTicket, ProjectRoute};
 use crate::control_api::backend::common;
-use crate::control_api::backend::common::{create_authority_client, parse_identifier};
+use crate::control_api::backend::common::{
+    create_authority_client, parse_identifier, ResourceKind,
+};
 use crate::control_api::backend::entrypoint::HttpControlNodeApiBackend;
 use crate::control_api::http::ControlApiHttpResponse;
 use crate::control_api::protocol::common::{ErrorResponse, HostnamePort, NodeName, Project};
@@ -13,7 +15,7 @@ use crate::control_api::ControlApiError;
 use crate::enroll::enrollment::{EnrollStatus, Enrollment};
 use crate::nodes::NodeManager;
 use crate::orchestrator::HasSecureClient;
-use http::StatusCode;
+use http::{Method, StatusCode};
 use ockam::identity::{Identity, Vault};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_node::Context;
@@ -25,13 +27,13 @@ impl HttpControlNodeApiBackend {
     pub(super) async fn handle_ticket(
         &self,
         context: &Context,
-        method: &str,
+        method: Method,
         resource_id: Option<&str>,
         body: Option<Vec<u8>>,
     ) -> Result<ControlApiHttpResponse, ControlApiError> {
-        let resource_name = "tickets";
+        let resource_name = ResourceKind::Tickets.name();
         match method {
-            "POST" => {
+            Method::POST => {
                 if let Some(resource_id) = resource_id {
                     if resource_id == "enroll" {
                         handle_ticket_enroll(context, &self.node_manager, body).await
@@ -46,7 +48,7 @@ impl HttpControlNodeApiBackend {
             }
             _ => {
                 warn!("Invalid method: {method}");
-                ControlApiHttpResponse::invalid_method(method, vec!["POST"])
+                ControlApiHttpResponse::invalid_method(method, vec![Method::POST])
             }
         }
     }
@@ -222,7 +224,7 @@ async fn create_encoded_ticket(
     operation_id = "project_enroll",
     summary = "Enroll to a Project using a Ticket",
     description =
-"This API enroll a node to a Project using the provided Ticket.
+"This API enrolls a node to a Project using the provided Ticket.
 Note that this API imports the Project in the node database, but the node won't be able to use
 it until it restarts.
 The easiest way to use a ticket is to specify the ticket directly during the node creation.",

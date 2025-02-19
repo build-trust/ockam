@@ -1,4 +1,5 @@
 use crate::control_api::backend::common;
+use crate::control_api::backend::common::ResourceKind;
 use crate::control_api::backend::entrypoint::HttpControlNodeApiBackend;
 use crate::control_api::http::ControlApiHttpResponse;
 use crate::control_api::protocol::common::{ErrorResponse, NodeName};
@@ -6,7 +7,7 @@ use crate::control_api::protocol::inlet::{CreateInletRequest, InletKind, InletTl
 use crate::control_api::protocol::inlet::{InletStatus, UpdateInletRequest};
 use crate::control_api::ControlApiError;
 use crate::nodes::NodeManager;
-use http::StatusCode;
+use http::{Method, StatusCode};
 use ockam_abac::{Action, Expr, PolicyExpression, ResourceName};
 use ockam_core::compat::rand::random_string;
 use ockam_core::Route;
@@ -18,37 +19,29 @@ impl HttpControlNodeApiBackend {
     pub(super) async fn handle_tcp_inlet(
         &self,
         context: &Context,
-        method: &str,
+        method: Method,
         resource_id: Option<&str>,
         body: Option<Vec<u8>>,
     ) -> Result<ControlApiHttpResponse, ControlApiError> {
-        let resource_name = "tcp-inlets";
-        let resource_name_identifier = "tcp_inlet_name";
         match method {
-            "POST" => handle_tcp_inlet_create(context, &self.node_manager, body).await,
-            "GET" => match resource_id {
+            Method::POST => handle_tcp_inlet_create(context, &self.node_manager, body).await,
+            Method::GET => match resource_id {
                 None => handle_tcp_inlet_list(&self.node_manager).await,
                 Some(id) => handle_tcp_inlet_get(&self.node_manager, id).await,
             },
-            "PATCH" => match resource_id {
-                None => ControlApiHttpResponse::missing_resource_id(
-                    resource_name,
-                    resource_name_identifier,
-                ),
+            Method::PATCH => match resource_id {
+                None => ControlApiHttpResponse::missing_resource_id(ResourceKind::TcpInlets),
                 Some(id) => handle_tcp_inlet_update(&self.node_manager, id, body).await,
             },
-            "DELETE" => match resource_id {
-                None => ControlApiHttpResponse::missing_resource_id(
-                    resource_name,
-                    resource_name_identifier,
-                ),
+            Method::DELETE => match resource_id {
+                None => ControlApiHttpResponse::missing_resource_id(ResourceKind::TcpInlets),
                 Some(id) => handle_tcp_inlet_delete(&self.node_manager, id).await,
             },
             _ => {
                 warn!("Invalid method: {method}");
                 ControlApiHttpResponse::invalid_method(
                     method,
-                    vec!["POST", "GET", "PATCH", "DELETE"],
+                    vec![Method::POST, Method::GET, Method::PATCH, Method::DELETE],
                 )
             }
         }
@@ -61,8 +54,8 @@ impl HttpControlNodeApiBackend {
     summary = "Create a new TCP Inlet",
     description =
 "Create a TCP Inlet, the main parameters are the destination `to`, and the bind address `from`.
-You can also choose to the listen with a valid TLS certificate, restrict access to the Inlet with
-`authorized` and `allow`, and select a specialized Portals with `kind`.
+You can also choose to listen with a valid TLS certificate, restrict access to the Inlet with
+`authorized` and `allow`, and select a specialized Portal with `kind`.
 The creation will be asynchronous and the initial status will be `down`.",
     path = "/{node}/tcp-inlets",
     tags = ["Portals"],
@@ -202,7 +195,7 @@ async fn handle_tcp_inlet_create(
     summary = "Update a TCP Inlet",
     description =
 "Update the specified TCP Inlet by name.
-Currently only `allow` policy expression can be updated, for more advanced updates it's necessary
+Currently the only `allow` policy expression can be updated, for more advanced updates it's necessary
 to delete the TCP Inlet and create a new one.",
     path = "/{node}/tcp-inlets/{tcp_inlet_name}",
     tags = ["Portals"],
@@ -393,7 +386,6 @@ mod test {
         assert_eq!(inlet_status.status, ConnectionStatus::Down);
         assert_eq!(inlet_status.current_route, None);
         assert_eq!(inlet_status.to, "/service/outlet");
-        assert!(!inlet_status.privileged);
         assert_eq!(inlet_status.bind_address.hostname, "127.0.0.1");
         assert!(inlet_status.bind_address.port > 0);
 
@@ -418,7 +410,6 @@ mod test {
         assert_eq!(inlet_status.status, ConnectionStatus::Up);
         assert_eq!(inlet_status.current_route, Some("0#outlet".to_string()));
         assert_eq!(inlet_status.to, "/service/outlet");
-        assert!(!inlet_status.privileged);
 
         let request = ControlApiHttpRequest {
             method: "GET".to_string(),
@@ -440,7 +431,6 @@ mod test {
         assert_eq!(inlets[0].status, ConnectionStatus::Up);
         assert_eq!(inlets[0].current_route, Some("0#outlet".to_string()));
         assert_eq!(inlets[0].to, "/service/outlet");
-        assert!(!inlets[0].privileged);
 
         let request = ControlApiHttpRequest {
             method: "DELETE".to_string(),

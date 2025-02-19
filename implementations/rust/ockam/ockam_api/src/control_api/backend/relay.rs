@@ -1,4 +1,5 @@
 use crate::control_api::backend::common;
+use crate::control_api::backend::common::ResourceKind;
 use crate::control_api::backend::entrypoint::HttpControlNodeApiBackend;
 use crate::control_api::http::ControlApiHttpResponse;
 use crate::control_api::protocol::common::{ErrorResponse, NodeName};
@@ -6,7 +7,7 @@ use crate::control_api::protocol::relay::{CreateRelayRequest, RelayStatus};
 use crate::control_api::ControlApiError;
 use crate::nodes::models::relay::ReturnTiming;
 use crate::nodes::NodeManager;
-use http::StatusCode;
+use http::{Method, StatusCode};
 use ockam::identity::Identifier;
 use ockam_core::compat::rand::random_string;
 use ockam_multiaddr::MultiAddr;
@@ -17,28 +18,26 @@ impl HttpControlNodeApiBackend {
     pub(super) async fn handle_relay(
         &self,
         context: &Context,
-        method: &str,
+        method: Method,
         resource_id: Option<&str>,
         body: Option<Vec<u8>>,
     ) -> Result<ControlApiHttpResponse, ControlApiError> {
-        let resource_name = "relays";
-        let resource_name_identifier = "relay_name";
         match method {
-            "POST" => handle_relay_create(context, &self.node_manager, body).await,
-            "GET" => match resource_id {
+            Method::POST => handle_relay_create(context, &self.node_manager, body).await,
+            Method::GET => match resource_id {
                 None => handle_relay_list(&self.node_manager).await,
                 Some(id) => handle_relay_get(&self.node_manager, id).await,
             },
-            "DELETE" => match resource_id {
-                None => ControlApiHttpResponse::missing_resource_id(
-                    resource_name,
-                    resource_name_identifier,
-                ),
+            Method::DELETE => match resource_id {
+                None => ControlApiHttpResponse::missing_resource_id(ResourceKind::Relays),
                 Some(id) => handle_relay_delete(&self.node_manager, id).await,
             },
             _ => {
                 warn!("Invalid method: {method}");
-                ControlApiHttpResponse::invalid_method(method, vec!["POST", "GET", "DELETE"])
+                ControlApiHttpResponse::invalid_method(
+                    method,
+                    vec![Method::POST, Method::GET, Method::DELETE],
+                )
             }
         }
     }
@@ -53,8 +52,8 @@ impl HttpControlNodeApiBackend {
 The address inherits the name value, but it's possible to specify it to allow the creation
 of multiple relays with the same address to different nodes.
 The creation will be asynchronous and the initial status will be `down`.
-Note that a specific `ockam-relay` attribute is required to allow the relay creation in the
-destination node.",
+Note that, to allow the relay creation in the destination node, the caller identity credential must
+have an `ockam-relay` attribute set with the relay name.",
     path = "/{node}/relays",
     tags = ["Relays"],
     responses(

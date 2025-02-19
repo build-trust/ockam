@@ -28,8 +28,8 @@ impl Modify for Authentications {
 
 const MAIN_DESCRIPTION: &str = r#"
 ## Overview
-This API is designed to control Ockam nodes via HTTP requests without having to use Ockam Command or Ockam library.
-You can expect a similar abstraction level as Ockam Command, but with a more programmatic approach.
+This API is designed to control Ockam nodes via HTTP requests without having to use Ockam command or Ockam library.
+You can expect a similar abstraction level as Ockam command, but with a more programmatic approach.
 
 The endpoint will receive the HTTP request and forward it to the selected node using the `node`
 parameter. How the node will be selected starting from the name is configuration dependent.
@@ -39,11 +39,12 @@ Current major `0.Y.Z` is considered unstable and may have breaking changes.
 Future versions will follow semantic versioning, breaking changes will be reflected in the major version number.
 
 ## Authentication
-Only a simple bearer token is required to authenticate. The token is passed in the `Authorization`
-header: `Authorization: Bearer my-secret-token`.
+Only a simple bearer token is required to authenticate. The token is provided by the user in the
+configuration or via environment variable, it's then passed in the `Authorization` header:
+ `Authorization: Bearer my-secret-token`.
 
-## Development
-The easiest way to get development started is to use this API with the Ockam Command and run a single node acting both as a frontend and backend.
+## Getting Started
+The easiest way to get development started is to use this API with the Ockam command and run a single node acting both as a frontend and backend.
 ```sh
 ockam node create --foreground -vv --launch-configuration '{
   "start_default_services": true,
@@ -73,7 +74,7 @@ It's highly recommended to check the logs of the Ockam nodes for more informatio
         name = "Portals",
         external_docs(
             url = "https://docs.ockam.io/reference/command/advanced-routing#portal",
-            description = "Learn more about Portals on Ockam Command documentation"
+            description = "Learn more about Portals on Ockam command documentation"
         ),
         description =
 "
@@ -86,12 +87,12 @@ establish end-to-end protocols with services that operate in remote private netw
         name = "Relays",
         external_docs(
             url = "https://docs.ockam.io/reference/command/advanced-routing#relays",
-            description = "Learn more about Relays on Ockam Command documentation"
+            description = "Learn more about Relays on Ockam command documentation"
         ),
         description =
 "
 Relays make it possible to establish end-to-end protocols with services operating in a remote
-private networks, without requiring a remote service to expose listening ports to an outside hostile
+private network, without requiring a remote service to expose listening ports to an outside hostile
 network like the Internet.
 ",
         ),(

@@ -1,9 +1,11 @@
+use crate::control_api::backend::common::ResourceKind;
 use crate::control_api::http::{ControlApiHttpRequest, ControlApiHttpResponse};
 use crate::control_api::protocol::common::ErrorResponse;
 use crate::control_api::ControlApiError;
 use crate::nodes::NodeManager;
 use crate::DefaultAddress;
-use http::{StatusCode, Uri};
+use http::{Method, StatusCode, Uri};
+use itertools::Itertools;
 use ockam_abac::{IncomingAbac, OutgoingAbac, PolicyExpression};
 use ockam_core::errcode::Kind;
 use ockam_core::{
@@ -64,48 +66,56 @@ impl Worker for HttpControlNodeApiBackend {
         // we can ignore the node identifier since it has been already addressed by
         // the reverse proxy
         let _node_identifier = path[1];
+        let raw_resource_kind = path[2].to_lowercase();
 
-        let resource_kind = path[2].to_lowercase();
+        let resource_kind = ResourceKind::from_str(&raw_resource_kind);
         let resource_id = path.get(3).copied();
+        let method = match Method::try_from(request.method.as_str()) {
+            Ok(method) => method,
+            Err(_) => {
+                warn!("Invalid method: {}", request.method);
+                return context
+                    .send(
+                        message.return_route().clone(),
+                        NeutralMessage::from(minicbor::to_vec(
+                            &ControlApiHttpResponse::with_body(
+                                StatusCode::BAD_REQUEST,
+                                ErrorResponse {
+                                    message: "Invalid method".to_string(),
+                                },
+                            )?,
+                        )?),
+                    )
+                    .await;
+            }
+        };
 
-        let result: Result<ControlApiHttpResponse, ControlApiError> = match resource_kind.as_str() {
-            "tcp-inlets" => {
-                self.handle_tcp_inlet(context, request.method.as_str(), resource_id, request.body)
+        let result: Result<ControlApiHttpResponse, ControlApiError> = match resource_kind {
+            Some(ResourceKind::TcpInlets) => {
+                self.handle_tcp_inlet(context, method, resource_id, request.body)
                     .await
             }
-            "tcp-outlets" => {
-                self.handle_tcp_outlet(context, request.method.as_str(), resource_id, request.body)
+            Some(ResourceKind::TcpOutlets) => {
+                self.handle_tcp_outlet(context, method, resource_id, request.body)
                     .await
             }
-            "relays" => {
-                self.handle_relay(context, request.method.as_str(), resource_id, request.body)
+            Some(ResourceKind::Relays) => {
+                self.handle_relay(context, method, resource_id, request.body)
                     .await
             }
-            "tickets" => Ok(self
-                .handle_ticket(context, request.method.as_str(), resource_id, request.body)
+            Some(ResourceKind::Tickets) => Ok(self
+                .handle_ticket(context, method, resource_id, request.body)
                 .await
                 .unwrap()),
-            "authority-members" => {
-                self.handle_authority_member(
-                    context,
-                    request.method.as_str(),
-                    resource_id,
-                    request.body,
-                )
-                .await
+            Some(ResourceKind::AuthorityMembers) => {
+                self.handle_authority_member(context, method, resource_id, request.body)
+                    .await
             }
-            _ => {
-                warn!("Invalid resource kind: {resource_kind}");
-                let valid_resources = [
-                    "tcp-inlets",
-                    "tcp-outlets",
-                    "relays",
-                    "tickets",
-                    "authority-members",
-                ];
+            None => {
+                warn!("Invalid resource kind: {raw_resource_kind}");
                 let message = format!(
-                    "Invalid resource kind: {resource_kind}. Possible: {}",
-                    valid_resources.join(", ")
+                    "Invalid resource kind: {raw_resource_kind}. Possible: {}",
+                    ResourceKind::enumerate().iter().join(", ")
                 );
                 ControlApiHttpResponse::bad_request(&message)
             }

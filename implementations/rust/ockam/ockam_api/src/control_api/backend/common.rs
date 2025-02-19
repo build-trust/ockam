@@ -1,15 +1,90 @@
 use crate::control_api::http::ControlApiHttpResponse;
-use crate::control_api::protocol::common::Authority;
+use crate::control_api::protocol::common::{Authority, ErrorResponse};
 use crate::control_api::ControlApiError;
 use crate::nodes::NodeManager;
 use crate::orchestrator::project::Project;
 use crate::orchestrator::AuthorityNodeClient;
+use http::StatusCode;
 use ockam::identity::Identifier;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_multiaddr::MultiAddr;
 use serde::de::DeserializeOwned;
+use std::fmt::Display;
 use std::str::FromStr;
 use std::sync::Arc;
+
+pub(super) enum ResourceKind {
+    TcpInlets,
+    TcpOutlets,
+    Relays,
+    Tickets,
+    AuthorityMembers,
+}
+
+impl ResourceKind {
+    pub fn enumerate() -> Vec<Self> {
+        vec![
+            Self::TcpInlets,
+            Self::TcpOutlets,
+            Self::Relays,
+            Self::Tickets,
+            Self::AuthorityMembers,
+        ]
+    }
+    pub fn from_str(resource: &str) -> Option<Self> {
+        match resource {
+            "tcp-inlets" => Some(Self::TcpInlets),
+            "tcp-outlets" => Some(Self::TcpOutlets),
+            "relays" => Some(Self::Relays),
+            "tickets" => Some(Self::Tickets),
+            "authority-members" => Some(Self::AuthorityMembers),
+            _ => None,
+        }
+    }
+
+    pub fn name(&self) -> &'static str {
+        match self {
+            Self::TcpInlets => "tcp-inlets",
+            Self::TcpOutlets => "tcp-outlets",
+            Self::Relays => "relays",
+            Self::Tickets => "tickets",
+            Self::AuthorityMembers => "authority-members",
+        }
+    }
+
+    pub fn parameter_name(&self) -> &'static str {
+        match self {
+            Self::TcpInlets => "inlet_name",
+            Self::TcpOutlets => "outlet_address",
+            Self::Relays => "relay_name",
+            Self::Tickets => "",
+            Self::AuthorityMembers => "authority_member",
+        }
+    }
+}
+
+impl Display for ResourceKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.name())
+    }
+}
+
+impl ControlApiHttpResponse {
+    pub(super) fn missing_resource_id<T>(
+        resource_kind: ResourceKind,
+    ) -> Result<T, ControlApiError> {
+        let resource_name = resource_kind.name();
+        let resource_name_identifier = resource_kind.parameter_name();
+
+        Err(Self::with_body(
+            StatusCode::BAD_REQUEST,
+            ErrorResponse {
+                message: format!("Missing parameter {resource_name}. The HTTP path should be /{{node-name}}/{resource_name}/{{{resource_name_identifier}}}"),
+            },
+        )?
+            .into())
+    }
+}
 
 pub async fn create_authority_client(
     node_manager: &Arc<NodeManager>,
@@ -61,7 +136,7 @@ pub async fn create_authority_client(
                 }
                 Err(error) => {
                     warn!("No default project: {error:?}");
-                    return ControlApiHttpResponse::not_found("Default default project not found");
+                    return ControlApiHttpResponse::not_found("Default project not found");
                 }
             }
         }
