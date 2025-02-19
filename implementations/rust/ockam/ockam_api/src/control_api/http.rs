@@ -1,7 +1,7 @@
 use crate::control_api::protocol::common::ErrorResponse;
 use crate::control_api::ControlApiError;
 use bytes::Bytes;
-use http::StatusCode;
+use http::{Method, StatusCode};
 use http_body_util::Full;
 use minicbor::{CborLen, Decode, Encode};
 use ockam_core::errcode::{Kind, Origin};
@@ -98,29 +98,20 @@ impl ControlApiHttpResponse {
     }
 
     pub fn invalid_method<T>(
-        method: &str,
-        allowed_methods: Vec<&str>,
+        method: Method,
+        allowed_methods: Vec<Method>,
     ) -> Result<T, ControlApiError> {
         Err(Self::with_body(
             StatusCode::METHOD_NOT_ALLOWED,
             ErrorResponse {
                 message: format!(
                     "Invalid method {method} for this API. Supported methods are: {}",
-                    allowed_methods.join(", ")
+                    allowed_methods
+                        .iter()
+                        .map(|m| m.as_str())
+                        .collect::<Vec<&str>>()
+                        .join(", ")
                 ),
-            },
-        )?
-        .into())
-    }
-
-    pub fn missing_resource_id<T>(
-        resource_name: &str,
-        resource_name_identifier: &str,
-    ) -> Result<T, ControlApiError> {
-        Err(Self::with_body(
-            StatusCode::BAD_REQUEST,
-            ErrorResponse {
-                message: format!("Missing parameter {resource_name}. The HTTP path should be /{{node-name}}/{resource_name}/{{{resource_name_identifier}}}"),
             },
         )?
         .into())

@@ -1,6 +1,6 @@
 use crate::authenticator::direct::Members;
 use crate::control_api::backend::common;
-use crate::control_api::backend::common::create_authority_client;
+use crate::control_api::backend::common::{create_authority_client, ResourceKind};
 use crate::control_api::backend::entrypoint::HttpControlNodeApiBackend;
 use crate::control_api::http::ControlApiHttpResponse;
 use crate::control_api::protocol::authority_member::{
@@ -10,7 +10,7 @@ use crate::control_api::protocol::authority_member::{
 use crate::control_api::protocol::common::{Attributes, ErrorResponse, NodeName};
 use crate::control_api::ControlApiError;
 use crate::nodes::NodeManager;
-use http::StatusCode;
+use http::{Method, StatusCode};
 use ockam_node::Context;
 use std::sync::Arc;
 
@@ -18,41 +18,36 @@ impl HttpControlNodeApiBackend {
     pub(super) async fn handle_authority_member(
         &self,
         context: &Context,
-        method: &str,
+        method: Method,
         resource_id: Option<&str>,
         body: Option<Vec<u8>>,
     ) -> Result<ControlApiHttpResponse, ControlApiError> {
-        let resource_name = "authority-members";
-        let resource_name_identifier = "authority_member_identity";
         match method {
-            "PUT" => match resource_id {
-                None => ControlApiHttpResponse::missing_resource_id(
-                    resource_name,
-                    resource_name_identifier,
-                ),
+            Method::PUT => match resource_id {
+                None => ControlApiHttpResponse::missing_resource_id(ResourceKind::AuthorityMembers),
                 Some(id) => {
                     handle_authority_member_add_or_update(context, &self.node_manager, body, id)
                         .await
                 }
             },
-            "GET" => match resource_id {
+            Method::GET => match resource_id {
                 None => handle_authority_member_list(context, &self.node_manager, body).await,
                 Some(id) => {
                     handle_authority_member_get(context, &self.node_manager, body, id).await
                 }
             },
-            "DELETE" => match resource_id {
-                None => ControlApiHttpResponse::missing_resource_id(
-                    resource_name,
-                    resource_name_identifier,
-                ),
+            Method::DELETE => match resource_id {
+                None => ControlApiHttpResponse::missing_resource_id(ResourceKind::AuthorityMembers),
                 Some(id) => {
                     handle_authority_member_remove(context, &self.node_manager, body, id).await
                 }
             },
             _ => {
                 warn!("Invalid method: {method}");
-                ControlApiHttpResponse::invalid_method(method, vec!["PUT", "GET", "DELETE"])
+                ControlApiHttpResponse::invalid_method(
+                    method,
+                    vec![Method::PUT, Method::GET, Method::DELETE],
+                )
             }
         }
     }

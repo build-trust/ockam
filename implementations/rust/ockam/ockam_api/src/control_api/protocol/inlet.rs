@@ -77,7 +77,7 @@ pub struct CreateInletRequest {
     pub authorized: Option<String>,
     /// Policy expression that will be used for access control to the TCP Inlet;
     /// When omitted, the policy set for the "tcp-inlet" resource type will be used.
-    /// [Learn more about Policies expression on the Ockam documentation](https://docs.ockam.io/reference/protocols/access-controls).
+    /// [Learn more about Policies expressions on the Ockam documentation](https://docs.ockam.io/reference/protocols/access-controls).
     pub allow: Option<String>,
     /// When connection is lost, how long to wait before retrying to connect to the TCP Outlet;
     /// In milliseconds;
@@ -107,8 +107,6 @@ pub struct InletStatus {
     pub current_route: Option<String>,
     /// Multiaddress to the TCP Outlet
     pub to: String,
-    /// Whether the TCP Inlet is of privileged kind
-    pub privileged: bool,
 }
 
 impl TryFrom<crate::nodes::models::portal::InletStatus> for InletStatus {
@@ -123,7 +121,6 @@ impl TryFrom<crate::nodes::models::portal::InletStatus> for InletStatus {
             name: status.alias,
             current_route: status.outlet_route.map(|r| r.to_string()),
             to: status.outlet_addr,
-            privileged: status.privileged,
         })
     }
 }
