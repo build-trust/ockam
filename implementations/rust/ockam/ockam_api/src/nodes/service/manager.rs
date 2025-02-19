@@ -87,7 +87,7 @@ impl NodeManager {
             .store_default_resource_type_policies()
             .await?;
 
-        let secure_channels = cli_state.secure_channels(&node_name).await?;
+        let secure_channels = cli_state.secure_channels_for_node(&node_name).await?;
 
         let project_member_credential_retriever_creator: Option<
             Arc<dyn CredentialRetrieverCreator>,
