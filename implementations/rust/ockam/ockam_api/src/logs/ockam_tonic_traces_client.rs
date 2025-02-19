@@ -170,7 +170,7 @@ pub(crate) mod tests {
         cli_state
             .create_named_vault(None, None, UseAwsKms::No)
             .await?;
-        Ok(cli_state.secure_channels("default").await?)
+        Ok(cli_state.secure_channels_for_node("default").await?)
     }
 
     /// Create an arbitrary batch of spans
