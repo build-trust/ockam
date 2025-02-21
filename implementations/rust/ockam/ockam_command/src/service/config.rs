@@ -1,4 +1,4 @@
-use miette::{Context as _, IntoDiagnostic};
+use miette::{miette, Context as _, IntoDiagnostic};
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
 use std::path::Path;
@@ -10,43 +10,72 @@ use ockam_abac::PolicyExpression::BooleanExpression;
 use ockam_abac::{BooleanExpr, PolicyExpression};
 use ockam_api::nodes::service::default_address::DefaultAddress;
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct Config {
-    #[serde(default)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[serde(default)]
+pub struct ServicesConfig {
+    #[serde(alias = "start-default-services")]
     pub(crate) start_default_services: bool,
-    pub(crate) startup_services: Option<ServiceConfigs>,
+    #[serde(
+        alias = "startup_services",
+        alias = "startup-services",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub(crate) services: Option<ServiceConfigs>,
 }
 
-impl Config {
-    pub(crate) fn read<P: AsRef<Path>>(path: P) -> Result<Self> {
+impl ServicesConfig {
+    pub(crate) fn from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
         let s = std::fs::read_to_string(path.as_ref())
             .into_diagnostic()
-            .context(format!("failed to read {:?}", path.as_ref()))?;
-        let c = serde_json::from_str(&s)
-            .into_diagnostic()
-            .context(format!("invalid config {:?}", path.as_ref()))?;
-        Ok(c)
+            .context(format!(
+                "failed to read services config from {:?}",
+                path.as_ref()
+            ))?;
+        Self::from_string(&s)
+    }
+
+    pub(crate) fn from_string(contents: &str) -> Result<Self> {
+        if let Ok(c) = serde_yaml::from_str(contents) {
+            return Ok(c);
+        }
+        if let Ok(c) = serde_json::from_str(contents) {
+            return Ok(c);
+        }
+        Err(miette!(format!("invalid config {:?}", contents)))
+    }
+
+    pub(crate) fn to_string(&self) -> Result<String> {
+        serde_json::to_string(&self).into_diagnostic()
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[serde(default)]
 pub struct ServiceConfigs {
+    #[serde(
+        alias = "secure-channel-listener",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub(crate) secure_channel_listener: Option<SecureChannelListenerConfig>,
+    #[serde(alias = "control-api", skip_serializing_if = "Option::is_none")]
     pub(crate) control_api: Option<ControlApiConfig>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[serde(default)]
 pub struct SecureChannelListenerConfig {
-    #[serde(default = "sec_listener_default_addr")]
+    #[serde(default = "default_secure_listener_address")]
     pub(crate) address: String,
 
-    #[serde(default)]
+    #[serde(
+        alias = "authorized-identifiers",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub(crate) authorized_identifiers: Option<Vec<Identifier>>,
 
-    #[serde(default)]
     pub(crate) disabled: bool,
 
-    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) identity: Option<String>,
 }
 
@@ -86,35 +115,48 @@ pub struct ControlApiConfig {
     #[serde(default)]
     pub(crate) backend: bool,
 
-    #[serde(default = "default_frontend_policy")]
+    #[serde(alias = "frontend-policy", default = "default_frontend_policy")]
     pub(crate) frontend_policy: PolicyExpression,
 
-    #[serde(default = "default_backend_policy")]
+    #[serde(alias = "backend_policy", default = "default_backend_policy")]
     pub(crate) backend_policy: PolicyExpression,
 
     /// How to reach nodes.
-    #[serde(default)]
+    #[serde(alias = "node-resolution", default)]
     pub(crate) node_resolution: ControlApiNodeResolution,
 
-    #[serde(default = "default_control_api_bind_address")]
+    #[serde(
+        alias = "http-bind-address",
+        default = "default_control_api_bind_address"
+    )]
     pub(crate) http_bind_address: SocketAddr,
 
     /// Port to use when connecting to nodes.
-    #[serde(default = "default_connection_node_port")]
+    #[serde(
+        alias = "connection-node-port",
+        default = "default_connection_node_port"
+    )]
     pub(crate) connection_node_port: u16,
 
     /// Pattern to use when connecting to nodes.
     /// {name} will be replaced with the node name.
     /// When `name` is "node1", and the pattern is "my-{name}.example.com", the resulting address
     /// will be "my-node1.example.com".
-    #[serde(default = "default_node_resolution_pattern")]
+    #[serde(
+        alias = "node-resolution-pattern",
+        default = "default_node_resolution_pattern"
+    )]
     pub(crate) node_resolution_pattern: String,
 
     /// Authentication token for the control API.
     /// When undefined, the environment variable `OCKAM_CONTROL_API_AUTHENTICATION_TOKEN` will be used.
+    #[serde(
+        alias = "authentication-token",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub(crate) authentication_token: Option<String>,
 }
 
-fn sec_listener_default_addr() -> String {
+fn default_secure_listener_address() -> String {
     DefaultAddress::SECURE_CHANNEL_LISTENER.to_string()
 }

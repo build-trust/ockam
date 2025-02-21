@@ -264,3 +264,19 @@ EOF
   # stop the node
   run_success kill -9 $pid
 }
+
+@test "node - create with invalid configuration" {
+  # Note that passing an invalid inline yaml configuration will not fail when not using strict json syntax.
+  # This is inherent to the yaml parser used by the command, not the command logic itself.
+  # For example, a configuration like "{name: n, tcp-listener-address 127.0.0.1:3333}" will parse the "name"
+  # field correctly, but will ignore the fact that it couldn't parse the "tcp-listener-address" field.
+  run_failure "$OCKAM" node create --configuration "{\"name\": \"n\", \"tcp-listener-address\" \"127.0.0.1:3333\"}"
+  run_failure "$OCKAM" node create "{\"name\": \"n\", \"tcp-listener-address\" \"127.0.0.1:3333\"}"
+  run_failure "$OCKAM" node create "{\"name\": \"n\" \"tcp-listener-address\": \"127.0.0.1:3333\"}"
+
+  cat <<EOF >"$OCKAM_HOME/node.yaml"
+name: n1
+tcp-listener-address 127.0.0.1:3333
+EOF
+  run_failure "$OCKAM" node create "$OCKAM_HOME/node.yaml"
+}

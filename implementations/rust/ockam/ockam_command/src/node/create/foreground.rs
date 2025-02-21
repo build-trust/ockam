@@ -94,7 +94,7 @@ impl CreateCommand {
             NodeManagerGeneralOptions::new(
                 opts.state.clone(),
                 node_name.clone(),
-                self.launch_configuration
+                self.services
                     .as_ref()
                     .map(|c| c.start_default_services)
                     .unwrap_or(true),
@@ -200,8 +200,8 @@ impl CreateCommand {
         node_manager: Arc<NodeManager>,
         opts: &CommandGlobalOpts,
     ) -> miette::Result<()> {
-        if let Some(config) = &self.launch_configuration {
-            if let Some(startup_services) = &config.startup_services {
+        if let Some(config) = &self.services {
+            if let Some(startup_services) = &config.services {
                 if let Some(cfg) = startup_services.secure_channel_listener.as_ref() {
                     if !cfg.disabled {
                         opts.terminal
@@ -218,9 +218,9 @@ impl CreateCommand {
                     }
                 }
 
-                if let Some(configuration) = &startup_services.control_api {
-                    if configuration.frontend {
-                        let authentication_token = match &configuration.authentication_token {
+                if let Some(config) = &startup_services.control_api {
+                    if config.frontend {
+                        let authentication_token = match &config.authentication_token {
                             Some(token) => token.clone(),
                             None => std::env::var("OCKAM_CONTROL_API_AUTHENTICATION_TOKEN")
                                 .map_err(|_| {
@@ -232,12 +232,12 @@ impl CreateCommand {
                         opts.terminal
                             .write_line(fmt_log!("Starting control API Frontend..."))?;
 
-                        let node_resolution = match &configuration.node_resolution {
+                        let node_resolution = match &config.node_resolution {
                             ControlApiNodeResolution::Relay => NodeResolution::Relay,
                             ControlApiNodeResolution::DirectConnection => {
                                 NodeResolution::DirectConnection {
-                                    pattern: configuration.node_resolution_pattern.clone(),
-                                    port: configuration.connection_node_port,
+                                    pattern: config.node_resolution_pattern.clone(),
+                                    port: config.connection_node_port,
                                 }
                             }
                         };
@@ -245,22 +245,20 @@ impl CreateCommand {
                         node_manager
                             .create_control_api_frontend(
                                 ctx,
-                                configuration.http_bind_address,
+                                config.http_bind_address,
                                 node_resolution,
                                 authentication_token,
-                                Some(configuration.frontend_policy.clone()),
+                                Some(config.frontend_policy.clone()),
                             )
                             .await?;
                     }
 
-                    if configuration.backend {
+                    if config.backend {
                         opts.terminal
                             .write_line(fmt_log!("Starting control API Backend..."))?;
 
-                        node_manager.create_control_api_backend(
-                            ctx,
-                            Some(configuration.backend_policy.clone()),
-                        )?;
+                        node_manager
+                            .create_control_api_backend(ctx, Some(config.backend_policy.clone()))?;
                     }
                 }
             }

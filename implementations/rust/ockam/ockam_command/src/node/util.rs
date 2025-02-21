@@ -69,7 +69,7 @@ pub fn spawn_node(opts: &CommandGlobalOpts, cmd: CreateCommand) -> miette::Resul
         no_status_endpoint,
         status_endpoint_port,
         udp,
-        launch_configuration,
+        services,
         identity,
         trust_opts,
         opentelemetry_context,
@@ -148,8 +148,8 @@ pub fn spawn_node(opts: &CommandGlobalOpts, cmd: CreateCommand) -> miette::Resul
         args.push("--udp".to_string());
     }
 
-    if let Some(config) = launch_configuration {
-        args.push("--launch-config".to_string());
+    if let Some(config) = services {
+        args.push("--services".to_string());
         args.push(serde_json::to_string(&config).unwrap());
     }
 

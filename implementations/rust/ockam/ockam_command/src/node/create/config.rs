@@ -210,12 +210,8 @@ impl NodeConfig {
         if let Some(project) = &cmd.trust_opts.project_name {
             self.node.project = Some(project.clone().into());
         }
-        if let Some(launch_config) = &cmd.launch_configuration {
-            self.node.launch_config = Some(
-                serde_json::to_string(launch_config)
-                    .into_diagnostic()?
-                    .into(),
-            );
+        if let Some(services) = &cmd.services {
+            self.node.services = Some(Services::from_arg(services)?);
         }
         if let Some(context) = &cmd.opentelemetry_context {
             self.node.opentelemetry_context =
@@ -421,8 +417,8 @@ mod tests {
         assert_eq!(res.project_enroll.ticket, Some(ticket_encoded));
     }
 
-    #[test]
-    fn parse_demo_config_files() {
+    #[tokio::test]
+    async fn parse_demo_config_files() {
         let demo_files_dir = std::env::current_dir()
             .unwrap()
             .join("src")
@@ -434,8 +430,44 @@ mod tests {
             let file = file.unwrap();
             let path = file.path();
             let contents = std::fs::read_to_string(&path).unwrap();
-            let res = NodeConfig::parse(contents);
-            res.unwrap();
+
+            let mut config1 = NodeConfig::parse(contents.clone()).unwrap();
+
+            let cmd = CreateCommand {
+                name: contents,
+                ..Default::default()
+            };
+            let config2 = cmd.parse_node_config().await.unwrap();
+            assert_eq!(config1, config2);
+
+            config1.merge(&cmd).unwrap();
+        }
+    }
+
+    #[tokio::test]
+    async fn parse_err_demo_config_files() {
+        let demo_files_dir = std::env::current_dir()
+            .unwrap()
+            .join("src")
+            .join("node")
+            .join("create")
+            .join("err_demo_config_files");
+        let files = std::fs::read_dir(demo_files_dir).unwrap();
+        for file in files {
+            let file = file.unwrap();
+            let path = file.path();
+            let file_name = path.file_name().unwrap().to_str().unwrap();
+            let contents = std::fs::read_to_string(&path).unwrap();
+
+            let res = NodeConfig::parse(contents.clone());
+            assert!(res.is_err(), "{file_name} should fail to be parsed");
+
+            let cmd = CreateCommand {
+                name: contents,
+                ..Default::default()
+            };
+            let res = cmd.parse_node_config().await;
+            assert!(res.is_err(), "{file_name} should fail to be parsed");
         }
     }
 

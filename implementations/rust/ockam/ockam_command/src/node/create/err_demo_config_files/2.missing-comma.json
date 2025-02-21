@@ -1,0 +1,12 @@
+{
+  "name": "n1",
+  "tcp-listener-address": "127.0.0.1:3333",
+  "start_default_services": true
+  "services": {
+    "control_api": {
+      "authentication_token": "token",
+      "backend": true,
+      "node_resolution": "direct-connection"
+    }
+  }
+}

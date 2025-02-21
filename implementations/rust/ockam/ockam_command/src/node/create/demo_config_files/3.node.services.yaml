@@ -1,0 +1,7 @@
+name: n1
+tcp-listener-address: 127.0.0.1:3333
+services:
+  control-api:
+    authentication-token: token
+    backend: true
+    node-resolution: direct-connection
