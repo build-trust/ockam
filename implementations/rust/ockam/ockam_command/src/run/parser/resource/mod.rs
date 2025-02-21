@@ -3,7 +3,7 @@ pub use influxdb_inlets::InfluxDBInlets;
 pub use influxdb_outlets::InfluxDBOutlets;
 pub use kafka_inlet::KafkaInlet;
 pub use kafka_outlet::KafkaOutlet;
-pub use node::Node;
+pub use node::{Node, Services};
 pub use nodes::Nodes;
 pub use policies::Policies;
 pub use project_enroll::ProjectEnroll;

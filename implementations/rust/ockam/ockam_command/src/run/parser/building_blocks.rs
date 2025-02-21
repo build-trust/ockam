@@ -31,7 +31,7 @@ pub trait ArgsToCommands: Sized {
     }
 
     /// Similar to [`into_commands`](Self::into_commands), but passing the name of the argument
-    /// in the configuration file that will be used as the name of the resource in relative the command.
+    /// in the configuration file that will be used as the name of the resource in the relative the command.
     fn into_commands_with_name_arg<C, F>(
         self,
         _get_subcommand: F,

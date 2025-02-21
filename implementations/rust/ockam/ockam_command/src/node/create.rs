@@ -1,7 +1,7 @@
 use crate::node::config::NodeConfig;
 use crate::node::create::config::ConfigArgs;
 use crate::node::util::NodeManagerDefaults;
-use crate::service::config::Config;
+use crate::service::config::ServicesConfig;
 use crate::shared_args::TrustOpts;
 use crate::util::foreground_args::ForegroundArgs;
 use crate::util::print_warning_for_deprecated_flag_no_effect;
@@ -120,8 +120,8 @@ pub struct CreateCommand {
     /// A configuration in JSON format to set up the node services.
     /// Node configuration is run asynchronously and may take several
     /// seconds to complete.
-    #[arg(hide = true, long, visible_alias = "launch-config", value_parser = parse_launch_config)]
-    pub launch_configuration: Option<Config>,
+    #[arg(hide = true, long, visible_alias = "launch-configuration", visible_alias = "launch-config", value_parser = parse_launch_config)]
+    pub services: Option<ServicesConfig>,
 
     #[arg(long = "identity", value_name = "IDENTITY_NAME")]
     #[arg(help = docs::about("\
@@ -175,7 +175,7 @@ impl Default for CreateCommand {
             no_status_endpoint: false,
             status_endpoint_port: None,
             udp: false,
-            launch_configuration: None,
+            services: None,
             identity: None,
             trust_opts: node_manager_defaults.trust_opts,
             opentelemetry_context: None,
@@ -375,14 +375,14 @@ impl CreateCommand {
     }
 }
 
-fn parse_launch_config(config_or_path: &str) -> Result<Config> {
-    match serde_json::from_str::<Config>(config_or_path) {
+fn parse_launch_config(config_or_path: &str) -> Result<ServicesConfig> {
+    match serde_json::from_str::<ServicesConfig>(config_or_path) {
         Ok(c) => Ok(c),
         Err(_) => {
             let path = PathBuf::from_str(config_or_path)
                 .into_diagnostic()
                 .wrap_err(format!("Invalid path {config_or_path}"))?;
-            Config::read(path)
+            ServicesConfig::from_file(path)
         }
     }
 }

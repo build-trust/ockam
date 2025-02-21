@@ -1,14 +1,15 @@
 use std::collections::BTreeMap;
 
-use miette::{miette, Result};
+use miette::{miette, IntoDiagnostic, Result};
 use ockam_api::colors::color_primary;
 use serde::{Deserialize, Serialize};
 
 use crate::node::CreateCommand;
-use crate::run::parser::building_blocks::{as_command_args, ArgKey, ArgValue};
+use crate::run::parser::building_blocks::{as_command_args, ArgKey, ArgValue, NamedResources};
 
 use crate::run::parser::resource::utils::parse_cmd_from_args;
 use crate::run::parser::resource::Resource;
+use crate::service::config::ServicesConfig;
 use crate::{node, Command, OckamSubcommand};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
@@ -31,8 +32,8 @@ pub struct Node {
     pub status_endpoint_port: Option<ArgValue>,
     pub identity: Option<ArgValue>,
     pub project: Option<ArgValue>,
-    #[serde(alias = "launch-config")]
-    pub launch_config: Option<ArgValue>,
+    #[serde(flatten, alias = "launch-config")]
+    pub services: Option<Services>,
     #[serde(alias = "opentelemetry-context")]
     pub opentelemetry_context: Option<ArgValue>,
     pub udp: Option<ArgValue>,
@@ -81,8 +82,12 @@ impl Resource<CreateCommand> for Node {
         if let Some(project) = self.project {
             args.insert("project".into(), project);
         }
-        if let Some(launch_config) = self.launch_config {
-            args.insert("launch-config".into(), launch_config);
+        if let Some(services) = self.services {
+            if let Ok(services) = services.into_arg() {
+                if let Ok(services) = serde_json::to_string(&services) {
+                    args.insert("services".into(), services.into());
+                }
+            }
         }
         if let Some(opentelemetry_context) = self.opentelemetry_context {
             args.insert("opentelemetry-context".into(), opentelemetry_context);
@@ -155,9 +160,44 @@ impl Node {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct Services {
+    #[serde(alias = "start-default-services")]
+    pub start_default_services: Option<ArgValue>,
+    pub services: Option<NamedResources>,
+}
+
+impl Services {
+    /// Parse the services fields into a `ServicesConfig` struct
+    pub fn into_arg(self) -> Result<ServicesConfig> {
+        let mut as_json = serde_json::json!({
+            "services": self.services,
+        });
+        if let Some(start_default_services) = self.start_default_services {
+            as_json["start-default-services"] = serde_json::json!(start_default_services);
+        }
+        serde_json::from_value(as_json).into_diagnostic()
+    }
+
+    pub fn from_arg(arg: &ServicesConfig) -> Result<Self> {
+        Self::from_string(&arg.to_string()?)
+    }
+
+    fn from_string(contents: &str) -> Result<Self> {
+        if let Ok(c) = serde_yaml::from_str(contents) {
+            return Ok(c);
+        }
+        if let Ok(c) = serde_json::from_str(contents) {
+            return Ok(c);
+        }
+        Err(miette!(format!("invalid services config {:?}", contents)))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::service::config::ControlApiNodeResolution;
 
     #[test]
     fn node_config() {
@@ -177,25 +217,111 @@ mod tests {
 
         // Multiple arguments
         let config = r#"
-            name: n1
-            tcp-listener-address: 127.0.0.1:1234
-            skip-is-running-check: true
+        name: n1
+        tcp-listener-address: 127.0.0.1:1234
+        skip-is-running-check: true
+        "#;
+        test(config);
+
+        // Services
+        let config = r#"
+        name: n1
+        tcp-listener-address: 127.0.0.1:3333
+        start_default_services: true
+        services:
+          startup_services:
+            control_api:
+              authentication_token: token
+              backend: true
+              node_resolution: direct-connection
         "#;
         test(config);
 
         // With other sections
         let config = r#"
-            relays: r1
+        relays: r1
 
-            name: n1
-            tcp-listener-address: 127.0.0.1:1234
-            skip-is-running-check: true
+        name: n1
+        tcp-listener-address: 127.0.0.1:1234
+        skip-is-running-check: true
 
-            tcp_inlets:
-              ti1:
-                from: 6060
-                at: n
+        tcp_inlets:
+          ti1:
+            from: 6060
+            at: n
         "#;
         test(config);
+    }
+
+    #[test]
+    fn services_config() {
+        let test = |c: &str| {
+            // Convert yaml yo struct representation
+            let parsed: Services = serde_yaml::from_str(c).unwrap();
+            // Convert yaml struct to command argument representation
+            let arg = parsed.clone().into_arg().unwrap();
+            // Convert command argument representation back to yaml struct representation
+            let parsed_again = Services::from_arg(&arg).unwrap();
+            // Convert yaml struct representation back to command argument representation to compare
+            let arg_again = parsed_again.clone().into_arg().unwrap();
+            // We compare the `ServicesConfig` struct as it's easier to compare basic types (bools, strings, etc)
+            // than comparing the `Services` struct which has a `NamedResources` field and the types can be dynamic
+            assert_eq!(arg, arg_again);
+        };
+
+        // Start default services
+        let config = r#"
+        start-default-services: true
+        "#;
+        test(config);
+
+        // Single service
+        let config = r#"
+        services:
+          secure-channel-listener:
+            address: api
+        "#;
+        test(config);
+
+        let config = r#"
+        services:
+          control-api:
+            authentication-token: token
+            backend: true
+            node-resolution: direct-connection
+        "#;
+        test(config);
+
+        // Multiple services
+        let config = r#"
+        start-default-services: true
+        services:
+          secure-channel-listener:
+            address: api
+            disabled: true
+          control-api:
+            authentication-token: token
+            backend: true
+            node-resolution: direct-connection
+        "#;
+        test(config);
+
+        // Check values
+        let parsed: Services = serde_yaml::from_str(config).unwrap();
+        let arg = parsed.clone().into_arg().unwrap();
+        assert!(arg.start_default_services);
+
+        let services = arg.services.unwrap();
+        let secure_channel_listener = services.secure_channel_listener.unwrap();
+        assert_eq!(secure_channel_listener.address, "api");
+        assert!(secure_channel_listener.disabled);
+
+        let control_api = services.control_api.unwrap();
+        assert_eq!(control_api.authentication_token.unwrap(), "token");
+        assert!(control_api.backend);
+        assert_eq!(
+            control_api.node_resolution,
+            ControlApiNodeResolution::DirectConnection
+        );
     }
 }

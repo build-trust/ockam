@@ -24,21 +24,27 @@ teardown() {
   setup_home_dir
   run_success "$OCKAM" project enroll "${ticket}"
 
-  run_success "$OCKAM" node create \
-    --tcp-listener-address "127.0.0.1:${frontend_node_port}" \
-    --launch-configuration \
-    "{\"start_default_services\": true, \"startup_services\":{ \
-      \"control_api\":{\"authentication_token\": \"token\", \"backend\":true, \"frontend\":true, \"http_bind_address\":\"127.0.0.1:${api_port}\", \
-      \"node_resolution\":\"relay\" \
-    }}}"
+  run_success "$OCKAM" node create "{\
+  tcp-listener-address: \"127.0.0.1:${frontend_node_port}\",
+  start-default-services: true,
+  services: {
+    control-api: {
+      authentication-token: token,
+      backend: true,
+      frontend: true,
+      http-bind-address: \"127.0.0.1:${api_port}\",
+      node-resolution: relay
+  }}}"
   wait_for_port $api_port
 
   # create a node with a relay in the api node
-  run_success "$OCKAM" node create red \
-    --launch-configuration \
-    "{\"start_default_services\": true, \"startup_services\":{ \
-      \"control_api\":{ \"backend\":true,\"node_resolution\":\"direct-connection\" \
-    }}}"
+  run_success "$OCKAM" node create red --configuration "{\
+  start-default-services: true,
+  services: {
+    control-api: {
+      backend: true,
+      node-resolution: direct-connection
+  }}}"
   run_success "$OCKAM" relay create --to red --at "/ip4/127.0.0.1/tcp/${frontend_node_port}/secure/api" red
 
   # verify that it can be accessed via control node api

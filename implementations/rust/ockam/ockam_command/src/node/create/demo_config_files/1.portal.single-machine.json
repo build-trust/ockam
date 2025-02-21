@@ -1,0 +1,15 @@
+{
+  "name": "n1",
+  "tcp-listener-address": "127.0.0.1:1234",
+  "relay": "default",
+  "tcp-outlet": {
+    "db-outlet": {
+      "to": 1235
+    }
+  },
+  "tcp-inlet": {
+    "web-inlet": {
+      "from": 1236
+    }
+  }
+}
