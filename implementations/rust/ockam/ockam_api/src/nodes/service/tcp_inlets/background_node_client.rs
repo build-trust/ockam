@@ -2,23 +2,24 @@ use ockam::identity::Identifier;
 use ockam_abac::PolicyExpression;
 use ockam_core::api::{Reply, Request};
 use ockam_core::{async_trait, Route};
-use ockam_multiaddr::proto::Project as ProjectProto;
-use ockam_multiaddr::{MultiAddr, Protocol};
+use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
 use ockam_transport_core::HostnamePort;
 use std::time::Duration;
 
-use crate::nodes::models::portal::{CreateInlet, InletStatus};
+use crate::nodes::models::portal::{CreateInlet, InletStatusView};
 use crate::nodes::service::tcp_inlets::Inlets;
 use crate::nodes::BackgroundNodeClient;
 
 #[allow(clippy::too_many_arguments)]
 pub fn create_inlet_payload(
     listen_addr: &HostnamePort,
-    outlet_addr: &MultiAddr,
+    target_redundancy: usize,
+    outlet_addresses: Vec<MultiAddr>,
     alias: &str,
     authorized_identifier: &Option<Identifier>,
     policy_expression: &Option<PolicyExpression>,
+    ping_timeout: Duration,
     wait_for_outlet_timeout: Duration,
     wait_connection: bool,
     secure_channel_identifier: &Option<Identifier>,
@@ -30,33 +31,19 @@ pub fn create_inlet_payload(
     enable_nagle: bool,
     prefix_route: Route,
 ) -> CreateInlet {
-    let via_project = outlet_addr.matches(0, &[ProjectProto::CODE.into()]);
-    let mut payload = if via_project {
-        CreateInlet::via_project(
-            listen_addr.clone(),
-            outlet_addr.clone(),
-            alias.into(),
-            wait_connection,
-            enable_udp_puncture,
-            disable_tcp_fallback,
-            privileged,
-            skip_handshake,
-            enable_nagle,
-        )
-    } else {
-        CreateInlet::to_node(
-            listen_addr.clone(),
-            outlet_addr.clone(),
-            alias.into(),
-            authorized_identifier.clone(),
-            wait_connection,
-            enable_udp_puncture,
-            disable_tcp_fallback,
-            privileged,
-            skip_handshake,
-            enable_nagle,
-        )
-    };
+    let mut payload = CreateInlet::new(
+        listen_addr.clone(),
+        target_redundancy,
+        outlet_addresses.clone(),
+        alias.into(),
+        authorized_identifier.clone(),
+        wait_connection,
+        enable_udp_puncture,
+        disable_tcp_fallback,
+        privileged,
+        skip_handshake,
+        enable_nagle,
+    );
     if let Some(e) = policy_expression.as_ref() {
         payload.set_policy_expression(e.clone())
     }
@@ -66,8 +53,9 @@ pub fn create_inlet_payload(
     if let Some(tls_provider) = tls_certificate_provider {
         payload.set_tls_certificate_provider(tls_provider.clone())
     }
+    payload.set_ping_timeout(ping_timeout);
     payload.set_prefix_route(prefix_route);
-    payload.set_wait_ms(wait_for_outlet_timeout.as_millis() as u64);
+    payload.set_wait_for_outlet(wait_for_outlet_timeout);
     payload
 }
 
@@ -77,10 +65,12 @@ impl Inlets for BackgroundNodeClient {
         &self,
         ctx: &Context,
         listen_addr: &HostnamePort,
-        outlet_addr: &MultiAddr,
+        target_redundancy: usize,
+        outlet_addresses: Vec<MultiAddr>,
         alias: &str,
         authorized_identifier: &Option<Identifier>,
         policy_expression: &Option<PolicyExpression>,
+        ping_timeout: Duration,
         wait_for_outlet_timeout: Duration,
         wait_connection: bool,
         secure_channel_identifier: &Option<Identifier>,
@@ -91,14 +81,16 @@ impl Inlets for BackgroundNodeClient {
         skip_handshake: bool,
         enable_nagle: bool,
         prefix_route: Route,
-    ) -> miette::Result<Reply<InletStatus>> {
+    ) -> miette::Result<Reply<InletStatusView>> {
         let request = {
             let payload = create_inlet_payload(
                 listen_addr,
-                outlet_addr,
+                target_redundancy,
+                outlet_addresses,
                 alias,
                 authorized_identifier,
                 policy_expression,
+                ping_timeout,
                 wait_for_outlet_timeout,
                 wait_connection,
                 secure_channel_identifier,
@@ -115,7 +107,11 @@ impl Inlets for BackgroundNodeClient {
         self.ask_and_get_reply(ctx, request).await
     }
 
-    async fn show_inlet(&self, ctx: &Context, alias: &str) -> miette::Result<Reply<InletStatus>> {
+    async fn show_inlet(
+        &self,
+        ctx: &Context,
+        alias: &str,
+    ) -> miette::Result<Reply<InletStatusView>> {
         let request = Request::get(format!("/node/inlet/{alias}"));
         self.ask_and_get_reply(ctx, request).await
     }

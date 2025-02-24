@@ -1,13 +1,13 @@
-use rand::random;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Mutex as SyncMutex;
-
 use crate::nodes::service::default_address::DefaultAddress;
 use crate::session::collector::Collector;
 use crate::session::connection_status::ConnectionStatus;
 use crate::session::ping::Ping;
 use crate::session::replacer::{AdditionalSessionReplacer, ReplacerOutputKind, SessionReplacer};
 use crate::session::status::{Status, StatusInternal};
+use rand::random;
+use std::ops::Div;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Mutex as SyncMutex;
 
 use ockam::LocalMessage;
 use ockam_core::compat::sync::Arc;
@@ -22,7 +22,15 @@ use ockam_node::{tokio, WorkerBuilder};
 
 const MAX_FAILURES: usize = 3;
 const RETRY_DELAY: Duration = Duration::from_secs(5);
-const PING_INTERVAL: Duration = Duration::from_secs(10);
+const DEFAULT_PING_INTERVAL: Duration = Duration::from_secs(10);
+
+fn calculate_ping_interval(ping_timeout: Option<Duration>) -> Duration {
+    if let Some(ping_timeout) = ping_timeout {
+        ping_timeout.div(MAX_FAILURES as u32)
+    } else {
+        DEFAULT_PING_INTERVAL
+    }
+}
 
 /// State that is accessed from multiple places/threads, therefore needs to be wrapper in Arc<Mutex<>>
 #[derive(Clone)]
@@ -63,6 +71,7 @@ struct AdditionalState {
     shared_state: AdditionalSharedState,
 }
 
+#[derive(Clone)]
 pub struct AdditionalSessionOptions {
     replacer: Arc<AsyncMutex<dyn AdditionalSessionReplacer>>,
     enable_fallback: bool,
@@ -88,12 +97,13 @@ impl AdditionalSessionOptions {
     pub fn create(
         replacer: Arc<AsyncMutex<dyn AdditionalSessionReplacer>>,
         enable_fallback: bool,
+        ping_timeout: Option<Duration>,
     ) -> Self {
         Self {
             replacer,
             enable_fallback,
             retry_delay: RETRY_DELAY,
-            ping_interval: PING_INTERVAL,
+            ping_interval: calculate_ping_interval(ping_timeout),
         }
     }
 }
@@ -152,13 +162,14 @@ impl Session {
         ctx: &Context,
         replacer: Arc<AsyncMutex<dyn SessionReplacer>>,
         additional_session_options: Option<AdditionalSessionOptions>,
+        ping_timeout: Option<Duration>,
     ) -> Result<Self> {
         Self::create_extended(
             ctx,
             replacer,
             additional_session_options,
             RETRY_DELAY,
-            PING_INTERVAL,
+            calculate_ping_interval(ping_timeout),
         )
     }
 
@@ -385,7 +396,6 @@ impl Session {
     /// Stop everything
     pub async fn stop(&mut self) {
         self.stop_additional().await;
-
         self.stop_main().await;
     }
 

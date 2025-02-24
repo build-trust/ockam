@@ -191,9 +191,11 @@ impl InMemoryNode {
         self
     }
 
-    pub async fn stop(&self, ctx: &Context) -> Result<()> {
-        for session in self.registry.inlets.values() {
-            session.session.lock().await.stop().await;
+    pub async fn stop(&self, context: &Context) -> Result<()> {
+        for (alias, inlet_info) in self.registry.inlets.entries() {
+            if let Err(error) = inlet_info.stop(context).await {
+                error!(%alias, %error, "Failed to stop inlet");
+            }
         }
 
         for session in self.registry.relays.values() {
@@ -201,7 +203,7 @@ impl InMemoryNode {
         }
 
         for addr in DefaultAddress::iter() {
-            let result = ctx.stop_address(&addr.into());
+            let result = context.stop_address(&addr.into());
             // when stopping we can safely ignore missing services
             if let Err(err) = result {
                 if err.code().kind == Kind::NotFound {

@@ -155,10 +155,12 @@ pub fn measure_buffer_latency_two_nodes_portal() {
                     HostnamePort::localhost(0),
                     route![],
                     route![],
-                    second_node_listen_address
+                    0,
+                    vec![second_node_listen_address
                         .multi_addr()?
-                        .concat(&MultiAddr::from_string("/secure/api/service/outlet")?)?,
+                        .concat(&MultiAddr::from_string("/secure/api/service/outlet")?)?],
                     "inlet_alias".to_string(),
+                    None,
                     None,
                     None,
                     None,
@@ -174,7 +176,7 @@ pub fn measure_buffer_latency_two_nodes_portal() {
                 .await?;
 
             // connect to inlet_status.bind_addr and send dummy payload
-            let mut socket = TcpStream::connect(inlet_status.bind_addr.clone())
+            let mut socket = TcpStream::connect(inlet_status.bind_address.clone())
                 .await
                 .unwrap();
 
@@ -253,10 +255,12 @@ pub fn measure_connection_latency_two_nodes_portal() {
                     HostnamePort::new("127.0.0.1", 0)?,
                     route![],
                     route![],
-                    second_node_listen_address
+                    0,
+                    vec![second_node_listen_address
                         .multi_addr()?
-                        .concat(&MultiAddr::from_string("/secure/api/service/outlet")?)?,
+                        .concat(&MultiAddr::from_string("/secure/api/service/outlet")?)?],
                     "inlet_alias".to_string(),
+                    None,
                     None,
                     None,
                     None,
@@ -275,7 +279,7 @@ pub fn measure_connection_latency_two_nodes_portal() {
 
             for _ in 0..1000 {
                 // connect to inlet_status.bind_addr and send dummy payload
-                let mut socket = TcpStream::connect(inlet_status.bind_addr.clone())
+                let mut socket = TcpStream::connect(inlet_status.bind_address.clone())
                     .await
                     .unwrap();
 

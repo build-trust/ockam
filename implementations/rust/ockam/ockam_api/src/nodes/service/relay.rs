@@ -169,7 +169,7 @@ impl NodeManager {
             authorized: authorized.clone(),
         };
 
-        let mut session = Session::create(ctx, Arc::new(Mutex::new(replacer)), None)?;
+        let mut session = Session::create(ctx, Arc::new(Mutex::new(replacer)), None, None)?;
 
         let remote_relay_info = match return_timing {
             ReturnTiming::Immediately => None,

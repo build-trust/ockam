@@ -1,11 +1,10 @@
-use crate::portal::{InletSharedState, TcpInletListenProcessor};
+use crate::portal::{InletRouteMutableState, InletSharedState, TcpInletListenProcessor};
 use crate::{portal::TcpOutletListenWorker, TcpInletOptions, TcpOutletOptions, TcpTransport};
 use core::fmt;
 use core::fmt::{Debug, Formatter};
 use ockam_core::compat::net::SocketAddr;
-use ockam_core::compat::sync::{Arc, RwLock as SyncRwLock};
 use ockam_core::flow_control::FlowControls;
-use ockam_core::{Address, Result, Route};
+use ockam_core::{route, Address, Result, Route};
 use ockam_node::Context;
 use ockam_transport_core::{parse_socket_addr, HostnamePort};
 use tracing::{debug, instrument, Level};
@@ -24,9 +23,8 @@ impl TcpTransport {
     /// let route_path = route!["outlet"];
     ///
     /// let tcp = TcpTransport::get_or_create(&ctx)?;
-    /// let address: Address = "inlet".into();
-    /// tcp.create_inlet(address.clone(), route_path, TcpInletOptions::new()).await?;
-    /// # tcp.stop_inlet(&address)?;
+    /// let tcp_inlet = tcp.create_inlet("localhost", route_path, TcpInletOptions::new()).await?;
+    /// # tcp_inlet.stop(&ctx)?;
     /// # Ok(()) }
     /// ```
     #[instrument(skip(self), fields(address = ? bind_addr.clone().into(), outlet_route = ? outlet_route.clone()), level = Level::TRACE)]
@@ -37,14 +35,47 @@ impl TcpTransport {
         options: TcpInletOptions,
     ) -> Result<TcpInlet> {
         let socket_address = parse_socket_addr(&bind_addr.into())?;
-        TcpInletListenProcessor::start(
-            &self.ctx,
-            self.registry.clone(),
-            outlet_route.into(),
-            socket_address,
-            options,
-        )
-        .await
+
+        let tcp_inlet =
+            TcpInletListenProcessor::start(&self.ctx, self.registry.clone(), socket_address)
+                .await?;
+
+        // Add the only route to the shared state
+        tcp_inlet.inlet_shared_state.add_route(
+            "main".to_string(),
+            InletRouteMutableState::create(
+                &self.ctx,
+                outlet_route.into(),
+                options.is_paused,
+                options,
+            )?,
+        )?;
+
+        Ok(tcp_inlet)
+    }
+
+    /// Create Tcp Inlet that listens on bind_addr, transforms Tcp stream into Ockam Routable
+    /// Messages and forward them to Outlet using outlet_route. Inlet is bidirectional: Ockam
+    /// Messages sent to Inlet from Outlet (using return route) will be streamed to Tcp connection.
+    /// Pair of corresponding Inlet and Outlet is called Portal.
+    ///
+    /// ```rust
+    /// # use std::net::SocketAddr;
+    /// # use ockam_transport_tcp::{TcpInletOptions, TcpTransport};
+    /// # use ockam_node::Context;
+    /// # use ockam_core::{AllowAll, Result, route, Address};
+    /// # async fn test(ctx: Context) -> Result<()> {
+    /// let route_path = route!["outlet"];
+    ///
+    /// let tcp = TcpTransport::get_or_create(&ctx)?;
+    /// let tcp_inlet = tcp.crate_inlet_multi("localhost:4000".parse().unwrap()).await?;
+    /// tcp_inlet.add_route(&ctx, "first_route_key".to_string(), route_path, TcpInletOptions::new())?;
+    /// # tcp_inlet.stop(&ctx)?;
+    /// # Ok(()) }
+    /// ```
+    #[instrument(skip(self), fields(address = ? bind_addr))]
+    pub async fn crate_inlet_multi(&self, bind_addr: SocketAddr) -> Result<TcpInlet> {
+        TcpInletListenProcessor::start(&self.ctx, self.registry.clone(), bind_addr).await
     }
 
     /// Stop inlet at addr
@@ -132,7 +163,7 @@ impl TcpTransport {
 #[derive(Clone, Debug)]
 pub struct TcpInlet {
     socket_address: SocketAddr,
-    inlet_shared_state: Arc<SyncRwLock<InletSharedState>>,
+    inlet_shared_state: InletSharedState,
     state: TcpInletState,
 }
 
@@ -170,7 +201,7 @@ impl TcpInlet {
     pub fn new_regular(
         socket_address: SocketAddr,
         processor_address: Address,
-        inlet_shared_state: Arc<SyncRwLock<InletSharedState>>,
+        inlet_shared_state: InletSharedState,
     ) -> Self {
         Self {
             socket_address,
@@ -183,7 +214,7 @@ impl TcpInlet {
     pub fn new_privileged(
         socket_address: SocketAddr,
         portal_worker_address: Address,
-        inlet_shared_state: Arc<SyncRwLock<InletSharedState>>,
+        inlet_shared_state: InletSharedState,
     ) -> Self {
         Self {
             socket_address,
@@ -212,10 +243,6 @@ impl TcpInlet {
         }
     }
 
-    fn build_new_full_route(new_route: Route, old_route: &Route) -> Result<Route> {
-        Ok(new_route + old_route.recipient()?.clone())
-    }
-
     /// Update the route to the outlet node.
     /// This is useful if we re-create a secure channel if because, e.g., the other node wasn't
     /// reachable, or if we want to switch transport, e.g., from relayed to UDP NAT puncture.
@@ -223,23 +250,62 @@ impl TcpInlet {
     ///        only newly accepted connections will use the new route.
     ///        For privileged Portals old connections can continue work in case the Identifier of the
     ///        Outlet node didn't change
-    pub fn update_outlet_node_route(&self, ctx: &Context, new_route: Route) -> Result<()> {
-        let mut inlet_shared_state = self.inlet_shared_state.write().unwrap();
-
-        let new_route = Self::build_new_full_route(new_route, inlet_shared_state.route())?;
+    pub fn update_outlet_route_and_unpause(
+        &self,
+        ctx: &Context,
+        route_key: &str,
+        new_route: Route,
+        options: TcpInletOptions,
+    ) -> Result<()> {
         let next = new_route.next()?.clone();
-        inlet_shared_state.update_route(ctx, new_route)?;
-
+        self.inlet_shared_state
+            .update_route_and_unpause(ctx, route_key, new_route, options)?;
         self.update_flow_controls(ctx.flow_controls(), next);
-
         Ok(())
     }
 
-    /// Pause TCP Inlet, all incoming TCP streams will be dropped.
-    pub fn pause(&self) {
+    /// Add a new route to the Inlet
+    pub fn add_route(
+        &self,
+        ctx: &Context,
+        route_key: String,
+        route: Route,
+        options: TcpInletOptions,
+    ) -> Result<()> {
+        let next = route.next()?.clone();
+        self.inlet_shared_state.add_route(
+            route_key,
+            InletRouteMutableState::create(ctx, route, options.is_paused, options)?,
+        )?;
+        self.update_flow_controls(ctx.flow_controls(), next);
+        Ok(())
+    }
+
+    /// List all route keys
+    pub fn list_all_route_keys(&self) -> Vec<String> {
+        self.inlet_shared_state.list_all_route_keys()
+    }
+
+    /// Adds an empty route to the Inlet shared state, returns true if the route was added
+    /// false if the route key already exists
+    pub fn reserve_route_key(&self, ctx: &Context, route_key: String) -> Result<bool> {
+        let inlet_route_state =
+            InletRouteMutableState::create(ctx, route![], true, TcpInletOptions::new())?;
+        Ok(self
+            .inlet_shared_state
+            .try_add_route(route_key, inlet_route_state))
+    }
+
+    /// Remove route from the Inlet shared state by route_key.
+    /// No new connections will be accepted on this route.
+    pub fn remove_route(&self, route_key: &str) {
+        self.inlet_shared_state.remove_route(route_key);
+    }
+
+    /// Pause TCP Inlet route, the route will not be used for new incoming TCP streams.
+    pub fn pause_route(&self, route_key: &str) {
         debug!(address = %self.socket_address, "pausing inlet");
-        let mut inlet_shared_state = self.inlet_shared_state.write().unwrap();
-        inlet_shared_state.set_is_paused(true);
+        self.inlet_shared_state.pause(route_key);
     }
 
     fn update_flow_controls(&self, flow_controls: &FlowControls, next: Address) {
@@ -255,21 +321,6 @@ impl TcpInlet {
             }
             TcpInletState::Regular { .. } => {}
         }
-    }
-
-    /// Unpause TCP Inlet and update the outlet route.
-    pub fn unpause(&self, ctx: &Context, new_route: Route) -> Result<()> {
-        let mut inlet_shared_state = self.inlet_shared_state.write().unwrap();
-
-        let new_route = Self::build_new_full_route(new_route, inlet_shared_state.route())?;
-        let next = new_route.next()?.clone();
-
-        inlet_shared_state.update_route(ctx, new_route)?;
-        inlet_shared_state.set_is_paused(false);
-
-        self.update_flow_controls(ctx.flow_controls(), next);
-
-        Ok(())
     }
 
     /// Stop the Inlet

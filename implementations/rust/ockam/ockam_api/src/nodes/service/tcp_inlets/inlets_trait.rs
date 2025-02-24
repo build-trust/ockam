@@ -7,7 +7,7 @@ use ockam_node::Context;
 use ockam_transport_core::HostnamePort;
 use std::time::Duration;
 
-use crate::nodes::models::portal::InletStatus;
+use crate::nodes::models::portal::InletStatusView;
 
 #[async_trait]
 pub trait Inlets {
@@ -16,10 +16,12 @@ pub trait Inlets {
         &self,
         ctx: &Context,
         listen_addr: &HostnamePort,
-        outlet_addr: &MultiAddr,
+        target_redundancy: usize,
+        outlet_addresses: Vec<MultiAddr>,
         alias: &str,
         authorized_identifier: &Option<Identifier>,
         policy_expression: &Option<PolicyExpression>,
+        ping_timeout: Duration,
         wait_for_outlet_timeout: Duration,
         wait_connection: bool,
         secure_channel_identifier: &Option<Identifier>,
@@ -30,9 +32,13 @@ pub trait Inlets {
         skip_handshake: bool,
         enable_nagle: bool,
         prefix_route: Route,
-    ) -> miette::Result<Reply<InletStatus>>;
+    ) -> miette::Result<Reply<InletStatusView>>;
 
-    async fn show_inlet(&self, ctx: &Context, alias: &str) -> miette::Result<Reply<InletStatus>>;
+    async fn show_inlet(
+        &self,
+        ctx: &Context,
+        alias: &str,
+    ) -> miette::Result<Reply<InletStatusView>>;
 
     async fn delete_inlet(&self, ctx: &Context, inlet_alias: &str) -> miette::Result<Reply<()>>;
 }

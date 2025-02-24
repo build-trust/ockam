@@ -91,9 +91,6 @@ async fn portal__standard_flow__should_succeed__impl(
         stream
     });
 
-    // Wait till the listener is up
-    tokio::time::sleep(Duration::from_millis(250)).await;
-
     let mut stream = TcpStream::connect(inlet_addr).await.unwrap();
     write_binary(&mut stream, payload1).await;
     read_assert_binary(&mut stream, payload2).await;
@@ -133,9 +130,6 @@ async fn portal__reverse_flow__should_succeed__impl(
         read_assert_binary(&mut stream, payload1).await;
         stream
     });
-
-    // Wait till listener is up
-    tokio::time::sleep(Duration::from_millis(250)).await;
 
     let mut stream = TcpStream::connect(inlet_addr).await.unwrap();
     read_assert_binary(&mut stream, payload2).await;
@@ -206,9 +200,6 @@ async fn portal__tcp_connection__should_succeed__impl(
         read_assert_binary(&mut stream, payload1).await;
     });
 
-    // Wait till listener is up
-    tokio::time::sleep(Duration::from_millis(250)).await;
-
     let mut stream = TcpStream::connect(inlet.socket_address()).await.unwrap();
     read_assert_binary(&mut stream, payload2).await;
     write_binary(&mut stream, payload1).await;
@@ -217,8 +208,6 @@ async fn portal__tcp_connection__should_succeed__impl(
     assert!(res.is_ok());
 
     drop(stream);
-
-    tokio::time::sleep(Duration::from_millis(250)).await;
 
     Ok(())
 }
@@ -283,17 +272,12 @@ async fn portal__tcp_connection_with_invalid_message_flow__should_not_succeed__i
         }
     });
 
-    // Wait till listener is up
-    tokio::time::sleep(Duration::from_millis(250)).await;
-
     let mut stream = TcpStream::connect(inlet.socket_address()).await.unwrap();
     read_should_timeout(&mut stream).await;
 
     handle.abort();
 
     drop(stream);
-
-    tokio::time::sleep(Duration::from_millis(250)).await;
 
     Ok(())
 }
@@ -346,14 +330,14 @@ async fn portal__update_route__should_succeed__impl(
             listener_node.socket_address().to_string(),
             TcpConnectionOptions::new(),
         )
-        .await
-        .unwrap();
+        .await?;
 
+    let options = TcpInletOptions::new().set_skip_handshake(skip_handshake);
     let inlet = tcp
         .create_inlet(
             "127.0.0.1:0",
             route![node_connection1.clone(), "outlet"],
-            TcpInletOptions::new().set_skip_handshake(skip_handshake),
+            options.clone(),
         )
         .await?;
 
@@ -371,16 +355,18 @@ async fn portal__update_route__should_succeed__impl(
         stream
     });
 
-    // Wait till the listener is up
-    tokio::time::sleep(Duration::from_millis(250)).await;
-
     let mut stream = TcpStream::connect(inlet.socket_address()).await.unwrap();
     write_binary(&mut stream, payload1).await;
     read_assert_binary(&mut stream, payload2).await;
 
     node_connection1.stop(ctx)?;
 
-    inlet.update_outlet_node_route(ctx, route![node_connection2])?;
+    inlet.update_outlet_route_and_unpause(
+        ctx,
+        "main",
+        route![node_connection2, "outlet"],
+        options,
+    )?;
 
     let mut stream = TcpStream::connect(inlet.socket_address()).await.unwrap();
     write_binary(&mut stream, payload1).await;
@@ -390,8 +376,6 @@ async fn portal__update_route__should_succeed__impl(
     assert!(res.is_ok());
 
     drop(stream);
-
-    tokio::time::sleep(Duration::from_millis(250)).await;
 
     Ok(())
 }

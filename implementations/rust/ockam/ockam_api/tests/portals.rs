@@ -51,8 +51,10 @@ async fn inlet_outlet_local_successful(context: &mut Context) -> ockam::Result<(
             HostnamePort::localhost(0),
             route![],
             route![],
-            MultiAddr::from_str("/secure/api/service/outlet")?,
+            0,
+            vec![MultiAddr::from_str("/secure/api/service/outlet")?],
             "alias".to_string(),
+            None,
             None,
             None,
             None,
@@ -68,13 +70,16 @@ async fn inlet_outlet_local_successful(context: &mut Context) -> ockam::Result<(
         .await?;
 
     assert_eq!(inlet_status.alias, "alias");
-    assert_eq!(inlet_status.status, ConnectionStatus::Up);
-    assert_eq!(inlet_status.outlet_addr, "/secure/api/service/outlet");
-    assert_ne!(inlet_status.bind_addr, "127.0.0.1:0");
-    assert!(inlet_status.outlet_route.is_some());
+    assert_eq!(inlet_status.connection, ConnectionStatus::Up);
+    assert_eq!(
+        inlet_status.outlet_addresses,
+        vec!["/secure/api/service/outlet"],
+    );
+    assert_ne!(inlet_status.bind_address, "127.0.0.1:0");
+    assert!(!inlet_status.outlet_routes.is_empty());
 
     // connect to inlet_status.bind_addr and send dummy payload
-    let mut socket = TcpStream::connect(inlet_status.bind_addr).await.unwrap();
+    let mut socket = TcpStream::connect(inlet_status.bind_address).await.unwrap();
     socket.write_all(b"hello").await.unwrap();
 
     let mut buf = [0u8; 5];
@@ -131,10 +136,12 @@ fn portal_node_goes_down_reconnect() {
                     HostnamePort::localhost(0),
                     route![],
                     route![],
-                    second_node_listen_address
+                    0,
+                    vec![second_node_listen_address
                         .multi_addr()?
-                        .concat(&MultiAddr::from_str("/secure/api/service/outlet")?)?,
+                        .concat(&MultiAddr::from_str("/secure/api/service/outlet")?)?],
                     "inlet_alias".to_string(),
+                    None,
                     None,
                     None,
                     None,
@@ -150,7 +157,7 @@ fn portal_node_goes_down_reconnect() {
                 .await?;
 
             // connect to inlet_status.bind_addr and send dummy payload
-            let mut socket = TcpStream::connect(inlet_status.bind_addr.clone())
+            let mut socket = TcpStream::connect(inlet_status.bind_address.clone())
                 .await
                 .unwrap();
             socket.write_all(b"hello").await.unwrap();
@@ -168,7 +175,7 @@ fn portal_node_goes_down_reconnect() {
                     .show_inlet("inlet_alias")
                     .await
                     .unwrap();
-                if inlet_status.status == ConnectionStatus::Down {
+                if inlet_status.connection == ConnectionStatus::Down {
                     break;
                 }
                 tokio::time::sleep(Duration::from_millis(5000)).await;
@@ -203,13 +210,13 @@ fn portal_node_goes_down_reconnect() {
                     .show_inlet("inlet_alias")
                     .await
                     .unwrap();
-                if inlet_status.status == ConnectionStatus::Up {
+                if inlet_status.connection == ConnectionStatus::Up {
                     break;
                 }
                 tokio::time::sleep(Duration::from_millis(5000)).await;
             }
 
-            let mut socket = TcpStream::connect(inlet_status.bind_addr).await.unwrap();
+            let mut socket = TcpStream::connect(inlet_status.bind_address).await.unwrap();
             socket.write_all(b"hello").await.unwrap();
 
             let mut buf = [0u8; 5];
@@ -295,10 +302,12 @@ fn portal_low_bandwidth_connection_keep_working_for_60s() {
                     HostnamePort::localhost(0),
                     route![],
                     route![],
-                    InternetAddress::from(passthrough_server_handle.chosen_addr)
+                    0,
+                    vec![InternetAddress::from(passthrough_server_handle.chosen_addr)
                         .multi_addr()?
-                        .concat(&MultiAddr::from_str("/secure/api/service/outlet")?)?,
+                        .concat(&MultiAddr::from_str("/secure/api/service/outlet")?)?],
                     "inlet_alias".to_string(),
+                    None,
                     None,
                     None,
                     None,
@@ -317,7 +326,7 @@ fn portal_low_bandwidth_connection_keep_working_for_60s() {
 
             // connect to inlet_status.bind_addr and send dummy payload
             let mut buf = [0u8; 48 * 1024];
-            let mut stream = TcpStream::connect(inlet_status.bind_addr.clone())
+            let mut stream = TcpStream::connect(inlet_status.bind_address.clone())
                 .await
                 .unwrap();
 
@@ -350,7 +359,7 @@ fn portal_low_bandwidth_connection_keep_working_for_60s() {
                     .show_inlet("inlet_alias")
                     .await
                     .unwrap();
-                assert_eq!(inlet_status.status, ConnectionStatus::Up);
+                assert_eq!(inlet_status.connection, ConnectionStatus::Up);
                 tokio::time::sleep(Duration::from_millis(1000)).await;
             }
 
@@ -413,10 +422,12 @@ fn portal_heavy_load_exchanged() {
                     HostnamePort::localhost(0),
                     route![],
                     route![],
-                    second_node_listen_address
+                    0,
+                    vec![second_node_listen_address
                         .multi_addr()?
-                        .concat(&MultiAddr::from_str("/secure/api/service/outlet")?)?,
+                        .concat(&MultiAddr::from_str("/secure/api/service/outlet")?)?],
                     "inlet_alias".to_string(),
+                    None,
                     None,
                     None,
                     None,
@@ -442,7 +453,7 @@ fn portal_heavy_load_exchanged() {
                 payload
             };
 
-            let stream = TcpStream::connect(inlet_status.bind_addr.clone())
+            let stream = TcpStream::connect(inlet_status.bind_address.clone())
                 .await
                 .unwrap();
 
@@ -570,10 +581,12 @@ fn test_portal_payload_transfer(outgoing_disruption: Disruption, incoming_disrup
                     HostnamePort::localhost(0),
                     route![],
                     route![],
-                    InternetAddress::from(passthrough_server_handle.chosen_addr)
+                    0,
+                    vec![InternetAddress::from(passthrough_server_handle.chosen_addr)
                         .multi_addr()?
-                        .concat(&MultiAddr::from_str("/secure/api/service/outlet")?)?,
+                        .concat(&MultiAddr::from_str("/secure/api/service/outlet")?)?],
                     "inlet_alias".to_string(),
+                    None,
                     None,
                     None,
                     None,
@@ -596,7 +609,7 @@ fn test_portal_payload_transfer(outgoing_disruption: Disruption, incoming_disrup
             rand::thread_rng().fill_bytes(&mut random_buffer);
 
             // connect to inlet_status.bind_addr and send dummy payload
-            let stream = TcpStream::connect(inlet_status.bind_addr.clone())
+            let stream = TcpStream::connect(inlet_status.bind_address.clone())
                 .await
                 .unwrap();
 

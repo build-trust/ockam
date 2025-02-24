@@ -1,8 +1,8 @@
+use itertools::Itertools;
+use sqlx::*;
 use std::net::SocketAddr;
 use std::str::FromStr;
 use std::sync::Arc;
-
-use sqlx::*;
 use tracing::debug;
 
 use crate::cli_state::storage::tcp_portals_repository::TcpPortalsRepository;
@@ -62,8 +62,14 @@ impl TcpPortalsRepository for TcpPortalsSqlxDatabase {
             ON CONFLICT DO NOTHING"#,
         )
         .bind(node_name)
-        .bind(tcp_inlet.bind_addr().to_string())
-        .bind(tcp_inlet.outlet_addr().to_string())
+        .bind(tcp_inlet.bind_address().to_string())
+        .bind(
+            tcp_inlet
+                .outlet_addresses()
+                .iter()
+                .map(|x| x.to_string())
+                .join("//"), // we store MultiAddr denormalized and separated by "//"
+        )
         .bind(tcp_inlet.alias())
         .bind(tcp_inlet.privileged());
         query.execute(&*self.database.pool).await.void()?;
@@ -158,18 +164,24 @@ struct TcpInletRow {
 impl TcpInletRow {
     fn bind_addr(&self) -> Result<SocketAddr> {
         SocketAddr::from_str(&self.bind_addr)
-            .map_err(|e| ockam_core::Error::new(Origin::Api, Kind::Serialization, format!("{e:?}")))
+            .map_err(|e| Error::new(Origin::Api, Kind::Serialization, format!("{e:?}")))
     }
 
-    fn outlet_addr(&self) -> Result<MultiAddr> {
-        MultiAddr::from_str(&self.outlet_addr)
-            .map_err(|e| ockam_core::Error::new(Origin::Api, Kind::Serialization, format!("{e:?}")))
+    fn outlet_addresses(&self) -> Result<Vec<MultiAddr>> {
+        // we store MultiAddr denormalized and separated by "//"
+        self.outlet_addr
+            .split("//")
+            .map(|x| {
+                MultiAddr::from_str(x)
+                    .map_err(|e| Error::new(Origin::Api, Kind::Serialization, format!("{e:?}")))
+            })
+            .collect()
     }
 
     fn tcp_inlet(&self) -> Result<TcpInlet> {
         Ok(TcpInlet::new(
             &self.bind_addr()?,
-            &self.outlet_addr()?,
+            self.outlet_addresses()?,
             &self.alias,
             self.privileged.to_bool(),
         ))
@@ -212,7 +224,7 @@ mod tests {
 
             let tcp_inlet = TcpInlet::new(
                 &SocketAddr::from_str("127.0.0.1:80").unwrap(),
-                &MultiAddr::from_str("/node/outlet").unwrap(),
+                ["/node/outlet1".parse()?, "/node/outlet2".parse()?].to_vec(),
                 "alias",
                 true,
             );

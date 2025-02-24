@@ -1,20 +1,22 @@
 #[cfg(privileged_portals_support)]
 mod tests {
     use log::info;
+    use std::net::SocketAddr;
+    use std::sync::Arc;
     use std::time::Duration;
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
     use tokio::net::{TcpListener, TcpStream};
 
     use ockam_core::compat::rand::random;
-    use ockam_core::{route, Result};
+    use ockam_core::{route, AllowAll, Result};
     use ockam_node::Context;
     use ockam_transport_tcp::{TcpInletOptions, TcpOutletOptions, TcpTransport};
 
     const LENGTH: usize = 32;
 
-    async fn setup(tcp: &TcpTransport) -> Result<(String, TcpListener)> {
+    async fn setup(context: &Context, tcp: &TcpTransport) -> Result<(String, TcpListener)> {
         let listener = {
-            let listener = TcpListener::bind("localhost:0").await.unwrap();
+            let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
 
             let bind_address = listener.local_addr().unwrap().to_string();
             info!("Listener address: {}", bind_address);
@@ -28,8 +30,19 @@ mod tests {
         };
 
         let inlet = tcp
-            .create_privileged_inlet("localhost:0", route!["outlet"], TcpInletOptions::new())
+            .create_privileged_inlet(
+                SocketAddr::from(([127, 0, 0, 1], 0)),
+                Arc::new(AllowAll),
+                Arc::new(AllowAll),
+            )
             .await?;
+
+        inlet.add_route(
+            context,
+            "main".to_string(),
+            route!["outlet"],
+            TcpInletOptions::default(),
+        )?;
 
         let inlet_address = inlet.socket_address().to_string();
 
@@ -62,7 +75,7 @@ mod tests {
         let payload1 = generate_binary();
         let payload2 = generate_binary();
 
-        let (inlet_addr, listener) = setup(&tcp).await?;
+        let (inlet_addr, listener) = setup(ctx, &tcp).await?;
 
         let handle = tokio::spawn(async move {
             let (mut stream, _) = listener.accept().await.unwrap();

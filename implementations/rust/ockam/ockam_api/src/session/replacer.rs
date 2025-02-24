@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use ockam::remote::RemoteRelayInfo;
-use ockam_core::{async_trait, Address, Result, Route};
+use ockam_core::{async_trait, Result, Route};
 
 //most sessions replacer are dependent on the node manager, if many session
 //fails concurrently, which is the common scenario we need extra time
@@ -27,14 +27,14 @@ pub trait AdditionalSessionReplacer: Send + Sync + 'static {
 }
 
 #[derive(Debug, Clone)]
-pub struct CurrentInletStatus {
+pub struct ActiveInletRoute {
     pub route: Route,
-    pub worker: Option<Address>,
+    // TODO: add an established timestamp, maybe some counters?
 }
 
 #[derive(Debug, Clone)]
 pub enum ReplacerOutputKind {
-    Inlet(CurrentInletStatus),
+    Inlet(ActiveInletRoute),
     Relay(RemoteRelayInfo),
 }
 

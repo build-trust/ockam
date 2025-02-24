@@ -2,7 +2,7 @@
 
 use crate::cli_state::{NodeInfo, NodeProcessStatus};
 use crate::colors::color_primary;
-use crate::nodes::models::portal::{InletStatus, OutletStatus};
+use crate::nodes::models::portal::{InletStatusView, OutletStatus};
 use crate::nodes::models::services::ServiceStatus;
 use crate::nodes::models::transport::TransportStatus;
 use crate::output::Output;
@@ -76,7 +76,7 @@ pub struct NodeResources {
     #[n(6)] pub status_endpoint_address: Option<InternetAddress>,
     #[n(7)] pub transports: Vec<TransportStatus>,
     #[n(8)] pub secure_channel_listeners: Vec<SecureChannelListener>,
-    #[n(9)] pub inlets: Vec<InletStatus>,
+    #[n(9)] pub inlets: Vec<InletStatusView>,
     #[n(10)] pub outlets: Vec<OutletStatus>,
     #[n(11)] pub services: Vec<ServiceStatus>,
 }
@@ -100,7 +100,7 @@ impl NodeResources {
         identity_name: String,
         transports: Vec<TransportStatus>,
         listeners: Vec<SecureChannelListener>,
-        inlets: Vec<InletStatus>,
+        inlets: Vec<InletStatusView>,
         outlets: Vec<OutletStatus>,
         services: Vec<ServiceStatus>,
     ) -> Result<Self> {

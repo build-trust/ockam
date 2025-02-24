@@ -1,7 +1,7 @@
 use core::sync::atomic::{AtomicBool, Ordering};
-use ockam::{route, Address, Context};
+use ockam::{route, Context};
 use ockam_api::session::replacer::{
-    AdditionalSessionReplacer, CurrentInletStatus, ReplacerOutcome, ReplacerOutputKind,
+    ActiveInletRoute, AdditionalSessionReplacer, ReplacerOutcome, ReplacerOutputKind,
     SessionReplacer,
 };
 use ockam_core::compat::sync::Arc;
@@ -161,10 +161,7 @@ impl SessionReplacer for MockReplacer {
 
         Ok(ReplacerOutcome {
             ping_route: self.ping_route.clone(),
-            kind: ReplacerOutputKind::Inlet(CurrentInletStatus {
-                route: route![],
-                worker: Some(Address::from_string("echo")),
-            }),
+            kind: ReplacerOutputKind::Inlet(ActiveInletRoute { route: route![] }),
         })
     }
 

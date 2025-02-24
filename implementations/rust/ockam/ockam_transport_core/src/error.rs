@@ -147,7 +147,7 @@ impl From<TransportError> for Error {
             BindFailed => Kind::Io,
             ConnectionDrop => Kind::Io,
             AlreadyConnected => Kind::Io,
-            PeerNotFound => Kind::Misuse,
+            PeerNotFound => Kind::NotFound,
             PeerBusy => Kind::Io,
             UnknownRoute => Kind::Misuse,
             InvalidAddress(_) => Kind::Misuse,

@@ -1,5 +1,5 @@
 use crate::cli_state::random_name;
-use crate::DefaultAddress;
+use crate::{ConnectionStatus, DefaultAddress};
 
 use ockam::identity::Identifier;
 use ockam::identity::{SecureChannel, SecureChannelListener};
@@ -11,9 +11,13 @@ use ockam_multiaddr::MultiAddr;
 use ockam_node::compat::asynchronous::Mutex as AsyncMutex;
 use ockam_transport_core::HostnamePort;
 
+use crate::session::replacer::{ActiveInletRoute, ReplacerOutputKind};
 use crate::session::session::Session;
+use ockam_node::Context;
+use ockam_transport_tcp::TcpInlet;
 use std::fmt::Display;
 use std::hash::Hash;
+use std::net::SocketAddr;
 use std::sync::Arc;
 
 #[derive(Default)]
@@ -133,25 +137,78 @@ impl KafkaServiceInfo {
 }
 
 #[derive(Clone)]
-pub(crate) struct InletInfo {
-    pub(crate) bind_addr: String,
-    pub(crate) outlet_addr: MultiAddr,
-    pub(crate) session: Arc<AsyncMutex<Session>>,
+pub(crate) struct TcpInletHandle {
+    pub(crate) tcp_inlet: Arc<TcpInlet>,
+    pub(crate) outlet_addresses: Vec<MultiAddr>,
+    pub(crate) sessions: Arc<AsyncMutex<Vec<Session>>>,
     pub(crate) privileged: bool,
 }
 
-impl InletInfo {
+impl TcpInletHandle {
     pub(crate) fn new(
-        bind_addr: &str,
-        outlet_addr: MultiAddr,
-        session: Session,
+        tcp_inlet: Arc<TcpInlet>,
+        outlet_addresses: Vec<MultiAddr>,
+        sessions: Vec<Session>,
         privileged: bool,
     ) -> Self {
         Self {
-            bind_addr: bind_addr.to_owned(),
-            outlet_addr,
-            session: Arc::new(AsyncMutex::new(session)),
+            tcp_inlet,
+            outlet_addresses,
+            sessions: Arc::new(AsyncMutex::new(sessions)),
             privileged,
+        }
+    }
+
+    pub(crate) fn bind_address(&self) -> SocketAddr {
+        self.tcp_inlet.socket_address()
+    }
+
+    pub(crate) async fn stop(&self, context: &Context) -> ockam_core::Result<()> {
+        for session in self.sessions.lock().await.iter_mut() {
+            session.stop().await;
+        }
+        self.tcp_inlet.stop(context)
+    }
+
+    /// Returns all available statuses, usually one per session, but could be fewer
+    /// if a session was recently added
+    pub(crate) async fn summary(&self) -> InletStateSummary {
+        let sessions = self.sessions.lock().await;
+        let states = sessions
+            .iter()
+            .flat_map(|s| {
+                s.last_outcome().map(|outcome| match outcome {
+                    ReplacerOutputKind::Inlet(inlet_status) => inlet_status,
+                    _ => panic!("Unexpected outcome"),
+                })
+            })
+            .collect();
+
+        // the number of sessions is the target redundancy
+        InletStateSummary::new(states, sessions.len())
+    }
+}
+
+/// An Internal representation of the state of an Inlet across all sessions
+#[derive(Default)]
+pub(crate) struct InletStateSummary {
+    pub(crate) active_routes: Vec<ActiveInletRoute>,
+    pub(crate) target_redundancy: usize,
+}
+
+impl InletStateSummary {
+    pub(crate) fn new(statuses: Vec<ActiveInletRoute>, target_redundancy: usize) -> Self {
+        Self {
+            active_routes: statuses,
+            target_redundancy,
+        }
+    }
+
+    pub(crate) fn connection_status(&self) -> ConnectionStatus {
+        if self.active_routes.is_empty() {
+            ConnectionStatus::Down
+        } else {
+            ConnectionStatus::Up
         }
     }
 }
@@ -194,7 +251,7 @@ pub(crate) struct Registry {
     pub(crate) hop_services: RegistryOf<Address, HopServiceInfo>,
     pub(crate) http_headers_interceptors: RegistryOf<Address, HttpHeaderInterceptorInfo>,
     pub(crate) relays: RegistryOf<String, RegistryRelayInfo>,
-    pub(crate) inlets: RegistryOf<String, InletInfo>,
+    pub(crate) inlets: RegistryOf<String, TcpInletHandle>,
     pub(crate) outlets: RegistryOf<Address, OutletInfo>,
     pub(crate) influxdb_services: RegistryOf<Address, ()>, // TODO: what should we persist here?
 }

@@ -184,7 +184,7 @@ teardown() {
   run_success curl -vf \
     -X POST \
     -H 'Authorization: Bearer token' \
-    -d "{\"from\":{\"hostname\":\"127.0.0.1\",\"port\":0},\"kind\":\"regular\",\"name\":\"my-inlet\",\"to\":\"/secure/api/service/my-outlet\"}" \
+    -d "{\"from\":{\"hostname\":\"127.0.0.1\",\"port\":0},\"kind\":\"regular\",\"name\":\"my-inlet\",\"to\":[\"/secure/api/service/my-outlet\"]}" \
     -o inlet-creation.json \
     "http://localhost:${api_port}/self/tcp-inlets"
   inlet_port=$(cat inlet-creation.json | jq -rc '."bind-address".port')
@@ -261,7 +261,7 @@ teardown() {
   run_success curl -vf \
     -X POST \
     -H 'Authorization: Bearer token' \
-    -d "{\"from\":{\"hostname\":\"127.0.0.1\",\"port\":0},\"kind\":\"regular\",\"name\":\"my-inlet\",\"to\":\"/secure/api/service/my-outlet\"}" \
+    -d "{\"from\":{\"hostname\":\"127.0.0.1\",\"port\":0},\"kind\":\"regular\",\"name\":\"my-inlet\",\"to\":[\"/secure/api/service/my-outlet\"]}" \
     -o inlet-creation.json \
     "http://localhost:${api_port}/self/tcp-inlets"
   inlet_port=$(cat inlet-creation.json | jq -rc '."bind-address".port')
@@ -270,7 +270,7 @@ teardown() {
   run_success curl -v \
     -X POST \
     -H 'Authorization: Bearer token' \
-    -d "{\"from\":{\"hostname\":\"127.0.0.1\",\"port\":${inlet_port}},\"kind\":\"regular\",\"name\":\"my-inlet\",\"to\":\"/secure/api/service/my-outlet\"}" \
+    -d "{\"from\":{\"hostname\":\"127.0.0.1\",\"port\":${inlet_port}},\"kind\":\"regular\",\"name\":\"my-inlet\",\"to\":[\"/secure/api/service/my-outlet\"]}" \
     -o error-output.json \
     "http://localhost:${api_port}/self/tcp-inlets"
   run_success cat error-output.json

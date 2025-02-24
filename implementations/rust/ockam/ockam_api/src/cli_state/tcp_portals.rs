@@ -16,11 +16,11 @@ impl CliState {
         &self,
         node_name: &str,
         bind_addr: &SocketAddr,
-        outlet_addr: &MultiAddr,
+        outlet_addresses: Vec<MultiAddr>,
         alias: &str,
         privileged: bool,
     ) -> Result<TcpInlet> {
-        let tcp_inlet = TcpInlet::new(bind_addr, outlet_addr, alias, privileged);
+        let tcp_inlet = TcpInlet::new(bind_addr, outlet_addresses, alias, privileged);
         self.tcp_portals_repository()
             .store_tcp_inlet(node_name, &tcp_inlet)
             .await?;

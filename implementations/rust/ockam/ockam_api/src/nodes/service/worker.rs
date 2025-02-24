@@ -227,7 +227,7 @@ impl NodeManagerWorker {
                 encode_response(&header, self.delete_outlet(&addr).await)
             }
             (Delete, ["node", "inlet", alias]) => {
-                encode_response(&header, self.delete_inlet(alias).await)
+                encode_response(&header, self.delete_inlet(ctx, alias).await)
             }
             (Delete, ["node", "portal"]) => todo!(),
 

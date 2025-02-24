@@ -13,6 +13,7 @@ use ockam::identity::Identifier;
 use std::time::Duration;
 
 /// Creates a secure connection to the project using provided credential
+#[derive(Debug)]
 pub(crate) struct ProjectInstantiator {
     identifier: Identifier,
     timeout: Option<Duration>,

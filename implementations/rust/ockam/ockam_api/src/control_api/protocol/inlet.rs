@@ -13,6 +13,10 @@ fn retry_wait_default() -> u64 {
     20000
 }
 
+fn ping_timeout_default() -> u64 {
+    10_000
+}
+
 #[derive(Debug, Serialize, Deserialize, Default, ToSchema)]
 #[serde(rename_all = "kebab-case")]
 pub enum InletKind {
@@ -65,9 +69,13 @@ pub struct CreateInletRequest {
     #[serde(default = "tcp_inlet_default_bind_address")]
     #[schema(default = tcp_inlet_default_bind_address)]
     pub from: HostnamePort,
-    /// Multiaddress to a TCP Outlet
+    /// Multiaddresses to a TCP Outlet
     #[schema(example = "/project/default/service/forward_to_node1/secure/api/service/outlet")]
-    pub to: String,
+    pub to: Vec<String>,
+    /// Target redundancy for the TCP Inlet routes; 0 means only one route is instantiated;
+    /// When omitted, the number of provided Multiaddresses minus one applies
+    #[serde(default)]
+    pub target_redundancy: Option<usize>,
     /// Identity to be used to create the secure channel;
     /// When omitted, the node's identity will be used
     pub identity: Option<String>,
@@ -84,6 +92,11 @@ pub struct CreateInletRequest {
     #[serde(default = "retry_wait_default")]
     #[schema(default = retry_wait_default)]
     pub retry_wait: u64,
+    /// How long until the outlet route is considered disconnected;
+    /// In milliseconds
+    #[serde(default = "ping_timeout_default")]
+    #[schema(default = ping_timeout_default)]
+    pub ping_timeout: u64,
 }
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "kebab-case")]
@@ -103,24 +116,33 @@ pub struct InletStatus {
     pub status: ConnectionStatus,
     /// Bind address of the TCP Inlet
     pub bind_address: HostnamePort,
-    /// The current route of the TCP Inlet, populated only when the status is `up`
-    pub current_route: Option<String>,
-    /// Multiaddress to the TCP Outlet
-    pub to: String,
+    /// The active route of the TCP Inlet, empty when the connection is down
+    pub active_routes: Vec<String>,
+    /// The number of target redundant routes, 0 means only one route is instantiated
+    pub target_redundancy: usize,
+    /// Multiaddresses to the TCP Outlet
+    pub to: Vec<String>,
 }
 
-impl TryFrom<crate::nodes::models::portal::InletStatus> for InletStatus {
+impl TryFrom<crate::nodes::models::portal::InletStatusView> for InletStatus {
     type Error = ockam_core::Error;
 
-    fn try_from(status: crate::nodes::models::portal::InletStatus) -> Result<Self, Self::Error> {
-        let bind_address = HostnamePort::try_from(status.bind_addr.as_str())?;
+    fn try_from(
+        status: crate::nodes::models::portal::InletStatusView,
+    ) -> Result<Self, Self::Error> {
+        let bind_address = HostnamePort::try_from(status.bind_address.as_str())?;
 
         Ok(InletStatus {
-            status: status.status.into(),
+            status: status.connection.into(),
             bind_address,
             name: status.alias,
-            current_route: status.outlet_route.map(|r| r.to_string()),
-            to: status.outlet_addr,
+            active_routes: status
+                .outlet_routes
+                .into_iter()
+                .map(|r| r.to_string())
+                .collect(),
+            target_redundancy: status.target_redundancy,
+            to: status.outlet_addresses,
         })
     }
 }

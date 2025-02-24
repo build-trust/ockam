@@ -8,7 +8,7 @@ use ockam_transport_core::HostnamePort;
 use std::time::Duration;
 use tracing::Level;
 
-use crate::nodes::models::portal::InletStatus;
+use crate::nodes::models::portal::InletStatusView;
 use crate::nodes::InMemoryNode;
 
 impl InMemoryNode {
@@ -20,10 +20,12 @@ impl InMemoryNode {
         listen_addr: HostnamePort,
         prefix_route: Route,
         suffix_route: Route,
-        outlet_addr: MultiAddr,
+        target_redundancy: usize,
+        outlet_addresses: Vec<MultiAddr>,
         alias: String,
         policy_expression: Option<PolicyExpression>,
-        wait_for_outlet_duration: Option<Duration>,
+        ping_timeout: Option<Duration>,
+        wait_for_outlet: Option<Duration>,
         authorized: Option<Identifier>,
         wait_connection: bool,
         secure_channel_identifier: Option<Identifier>,
@@ -33,17 +35,19 @@ impl InMemoryNode {
         tls_certificate_provider: Option<MultiAddr>,
         skip_handshake: bool,
         enable_nagle: bool,
-    ) -> Result<InletStatus> {
+    ) -> Result<InletStatusView> {
         self.node_manager
             .create_inlet(
                 ctx,
-                listen_addr.clone(),
-                prefix_route.clone(),
-                suffix_route.clone(),
-                outlet_addr.clone(),
+                listen_addr,
+                prefix_route,
+                suffix_route,
+                target_redundancy,
+                outlet_addresses,
                 alias,
                 policy_expression,
-                wait_for_outlet_duration,
+                ping_timeout,
+                wait_for_outlet,
                 authorized,
                 wait_connection,
                 secure_channel_identifier,

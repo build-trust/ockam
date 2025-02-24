@@ -1,6 +1,7 @@
 //! Inlets and outlet request/response types
 
 use std::fmt::{Display, Formatter};
+use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -9,6 +10,7 @@ use crate::error::ApiError;
 use crate::multiaddr_resolver::{
     deserialize_address_from_local_service, serialize_address_as_local_service,
 };
+use crate::nodes::registry::InletStateSummary;
 use crate::output::Output;
 use crate::session::connection_status::ConnectionStatus;
 use crate::terminal::fmt;
@@ -35,39 +37,43 @@ pub struct CreateInlet {
     /// The peer address.
     /// This can either be the address of an already
     /// created outlet, or a forwarding mechanism via ockam cloud.
-    #[n(2)] pub(crate) outlet_addr: MultiAddr,
+    #[n(2)] pub(crate) outlet_addresses: Vec<MultiAddr>,
+    /// TCP Inlet route redundancy. 0 means only one route is instantiated.
+    #[n(3)] pub(crate) target_redundancy: usize,
     /// A human-friendly alias for this portal endpoint
-    #[b(3)] pub(crate) alias: String,
+    #[b(4)] pub(crate) alias: String,
     /// An authorised identity for secure channels.
     /// Only set for non-project addresses as for projects the project's
     /// authorised identity will be used.
-    #[n(4)] pub(crate) authorized: Option<Identifier>,
+    #[n(5)] pub(crate) authorized: Option<Identifier>,
+    /// How long until the outlet route is considered disconnected.
+    #[n(6)] pub(crate) ping_timeout: Option<Duration>,
     /// The maximum duration to wait for an outlet to be available
-    #[n(5)] pub(crate) wait_for_outlet_duration: Option<Duration>,
+    #[n(7)] pub(crate) wait_for_outlet: Option<Duration>,
     /// The expression for the access control policy for this inlet.
     /// If not set, the policy set for the [TCP inlet resource type](ockam_abac::ResourceType::TcpInlet)
     /// will be used.
-    #[n(6)] pub(crate) policy_expression: Option<PolicyExpression>,
+    #[n(8)] pub(crate) policy_expression: Option<PolicyExpression>,
     /// Create the inlet and wait for the outlet to connect
-    #[n(7)] pub(crate) wait_connection: bool,
+    #[n(9)] pub(crate) wait_connection: bool,
     /// The identifier to be used to create the secure channel.
     /// If not set, the node's identifier will be used.
-    #[n(8)] pub(crate) secure_channel_identifier: Option<Identifier>,
+    #[n(10)] pub(crate) secure_channel_identifier: Option<Identifier>,
     /// Enable UDP NAT puncture.
-    #[n(9)] pub(crate) enable_udp_puncture: bool,
+    #[n(11)] pub(crate) enable_udp_puncture: bool,
     /// Disable fallback to TCP.
     /// TCP won't be used to transfer data between the Inlet and the Outlet.
-    #[n(11)] pub(crate) disable_tcp_fallback: bool,
+    #[n(12)] pub(crate) disable_tcp_fallback: bool,
     /// Use eBPF and RawSocket to access TCP packets instead of TCP data stream.
-    #[n(12)] pub(crate) privileged: bool,
+    #[n(13)] pub(crate) privileged: bool,
     /// TLS certificate provider route.
-    #[n(13)] pub(crate) tls_certificate_provider: Option<MultiAddr>,
+    #[n(14)] pub(crate) tls_certificate_provider: Option<MultiAddr>,
     /// Skip Portal handshake for lower latency, but also lower throughput
-    #[n(14)] pub(crate) skip_handshake: bool,
+    #[n(15)] pub(crate) skip_handshake: bool,
     /// Enable Nagle's algorithm for potentially higher throughput, but higher latency
-    #[n(15)] pub(crate) enable_nagle: bool,
+    #[n(16)] pub(crate) enable_nagle: bool,
     /// The prefix route to be used for interceptors.
-    #[n(16)] pub(crate) prefix_route: Route,
+    #[n(17)] pub(crate) prefix_route: Route,
 }
 
 impl Encodable for CreateInlet {
@@ -84,40 +90,10 @@ impl Decodable for CreateInlet {
 
 impl CreateInlet {
     #[allow(clippy::too_many_arguments)]
-    pub fn via_project(
+    pub fn new(
         listen: HostnamePort,
-        to: MultiAddr,
-        alias: String,
-        wait_connection: bool,
-        enable_udp_puncture: bool,
-        disable_tcp_fallback: bool,
-        privileged: bool,
-        skip_handshake: bool,
-        enable_nagle: bool,
-    ) -> Self {
-        Self {
-            listen_addr: listen,
-            outlet_addr: to,
-            alias,
-            authorized: None,
-            wait_for_outlet_duration: None,
-            policy_expression: None,
-            wait_connection,
-            secure_channel_identifier: None,
-            enable_udp_puncture,
-            disable_tcp_fallback,
-            privileged,
-            tls_certificate_provider: None,
-            skip_handshake,
-            enable_nagle,
-            prefix_route: Default::default(),
-        }
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    pub fn to_node(
-        listen: HostnamePort,
-        to: MultiAddr,
+        target_redundancy: usize,
+        to: Vec<MultiAddr>,
         alias: String,
         auth: Option<Identifier>,
         wait_connection: bool,
@@ -129,10 +105,12 @@ impl CreateInlet {
     ) -> Self {
         Self {
             listen_addr: listen,
-            outlet_addr: to,
+            outlet_addresses: to,
+            target_redundancy,
             alias,
             authorized: auth,
-            wait_for_outlet_duration: None,
+            ping_timeout: None,
+            wait_for_outlet: None,
             policy_expression: None,
             wait_connection,
             secure_channel_identifier: None,
@@ -154,8 +132,12 @@ impl CreateInlet {
         self.prefix_route = route;
     }
 
-    pub fn set_wait_ms(&mut self, ms: u64) {
-        self.wait_for_outlet_duration = Some(Duration::from_millis(ms))
+    pub fn set_ping_timeout(&mut self, ping_timeout: Duration) {
+        self.ping_timeout = Some(ping_timeout)
+    }
+
+    pub fn set_wait_for_outlet(&mut self, wait_for_outlet_duration: Duration) {
+        self.wait_for_outlet = Some(wait_for_outlet_duration);
     }
 
     pub fn set_policy_expression(&mut self, expression: PolicyExpression) {
@@ -164,26 +146,6 @@ impl CreateInlet {
 
     pub fn set_secure_channel_identifier(&mut self, identifier: Identifier) {
         self.secure_channel_identifier = Some(identifier);
-    }
-
-    pub fn listen_addr(&self) -> HostnamePort {
-        self.listen_addr.clone()
-    }
-
-    pub fn outlet_addr(&self) -> &MultiAddr {
-        &self.outlet_addr
-    }
-
-    pub fn authorized(&self) -> Option<Identifier> {
-        self.authorized.clone()
-    }
-
-    pub fn alias(&self) -> String {
-        self.alias.clone()
-    }
-
-    pub fn wait_for_outlet_duration(&self) -> Option<Duration> {
-        self.wait_for_outlet_duration
     }
 }
 
@@ -256,83 +218,99 @@ impl CreateOutlet {
 #[derive(Clone, Debug, Encode, Decode, CborLen, Serialize, Message)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct InletStatus {
-    #[n(1)] pub bind_addr: String,
-    #[n(2)] pub worker_addr: Option<String>,
-    #[n(3)] pub alias: String,
-    /// An optional status payload
-    #[n(4)] pub payload: Option<String>,
-    #[n(5)] pub outlet_route: Option<String>,
-    #[n(6)] pub status: ConnectionStatus,
-    #[n(7)] pub outlet_addr: String,
-    #[n(8)] pub privileged: bool,
+pub struct InletStatusView {
+    #[n(1)] pub bind_address: String,
+    #[n(2)] pub alias: String,
+    #[n(3)] pub outlet_addresses: Vec<String>,
+    #[n(4)] pub privileged: bool,
+    /// Status of the inlet, up if at least one session is up
+    #[n(5)] pub connection: ConnectionStatus,
+    #[n(6)] pub outlet_routes: Vec<String>,
+    #[n(7)] pub target_redundancy: usize,
 }
 
-impl Encodable for InletStatus {
+impl Encodable for InletStatusView {
     fn encode(self) -> ockam_core::Result<Encoded> {
         cbor_encode_preallocate(self)
     }
 }
 
-impl Decodable for InletStatus {
+impl Decodable for InletStatusView {
     fn decode(e: &[u8]) -> ockam_core::Result<Self> {
         Ok(minicbor::decode(e)?)
     }
 }
 
-impl InletStatus {
+impl InletStatusView {
     #[allow(clippy::too_many_arguments)]
-    pub fn new(
-        bind_addr: impl Into<String>,
-        worker_addr: impl Into<Option<String>>,
+    pub(crate) fn new(
+        bind_address: SocketAddr,
         alias: impl Into<String>,
-        payload: impl Into<Option<String>>,
-        outlet_route: impl Into<Option<String>>,
-        status: ConnectionStatus,
-        outlet_addr: impl Into<String>,
+        outlet_addresses: &[MultiAddr],
         privileged: bool,
+        summary: InletStateSummary,
     ) -> Self {
         Self {
-            bind_addr: bind_addr.into(),
-            worker_addr: worker_addr.into(),
+            bind_address: bind_address.to_string(),
             alias: alias.into(),
-            payload: payload.into(),
-            outlet_route: outlet_route.into(),
-            status,
-            outlet_addr: outlet_addr.into(),
+            outlet_routes: summary
+                .active_routes
+                .iter()
+                .map(|s| s.route.to_string())
+                .collect(),
+            target_redundancy: summary.target_redundancy,
+            connection: summary.connection_status(),
+            outlet_addresses: outlet_addresses.iter().map(|a| a.to_string()).collect(),
             privileged,
         }
     }
 }
 
-impl Display for InletStatus {
+impl Display for InletStatusView {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         writeln!(
             f,
             "TCP Inlet {} at {} is {}",
             color_primary(&self.alias),
-            color_primary(&self.bind_addr),
-            self.status,
+            color_primary(&self.bind_address),
+            self.connection,
         )?;
-        writeln!(
-            f,
-            "{}With outlet address {}",
-            fmt::INDENTATION,
-            color_primary(&self.outlet_addr)
-        )?;
-        if let Some(r) = self
-            .outlet_route
-            .as_ref()
-            .and_then(Route::parse)
-            .and_then(|r| ReverseLocalConverter::convert_route(&r).ok())
-        {
-            writeln!(
-                f,
-                "{}And service route {}",
-                fmt::INDENTATION,
-                color_primary(r.to_string())
-            )?;
+
+        if self.outlet_addresses.is_empty() {
+            writeln!(f, "{}With no outlet address", fmt::INDENTATION)?;
+        } else {
+            writeln!(f, "{}With outlet address:", fmt::INDENTATION)?;
+            for address in &self.outlet_addresses {
+                writeln!(
+                    f,
+                    "{}{}{}",
+                    fmt::INDENTATION,
+                    fmt::INDENTATION,
+                    color_primary(address)
+                )?;
+            }
         }
+
+        if self.outlet_routes.is_empty() {
+            writeln!(f, "{}With no service routes", fmt::INDENTATION)?;
+        } else {
+            writeln!(f, "{}With service routes:", fmt::INDENTATION)?;
+            for route in self
+                .outlet_routes
+                .iter()
+                .flat_map(Route::parse)
+                .flat_map(|r| ReverseLocalConverter::convert_route(&r).ok())
+            {
+                writeln!(
+                    f,
+                    "{}{}{}",
+                    fmt::INDENTATION,
+                    fmt::INDENTATION,
+                    color_primary(route.to_string())
+                )?;
+            }
+        }
+
         if self.privileged {
             writeln!(
                 f,
@@ -345,14 +323,14 @@ impl Display for InletStatus {
     }
 }
 
-impl Output for InletStatus {
+impl Output for InletStatusView {
     fn item(&self) -> crate::Result<String> {
         Ok(self.padded_display())
     }
 }
 
 #[derive(Encode, Decode, CborLen, Debug, Default, Clone, Message)]
-pub struct InletStatusList(#[n(0)] pub Vec<InletStatus>);
+pub struct InletStatusList(#[n(0)] pub Vec<InletStatusView>);
 
 impl Encodable for InletStatusList {
     fn encode(self) -> ockam_core::Result<Encoded> {

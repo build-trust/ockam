@@ -19,7 +19,7 @@ use ockam_abac::PolicyExpression;
 use ockam_api::colors::{color_primary, color_warn};
 use ockam_api::kafka::portal::KafkaPortals;
 use ockam_api::kafka::{ConsumerPublishing, ConsumerResolution};
-use ockam_api::nodes::models::portal::InletStatus;
+use ockam_api::nodes::models::portal::InletStatusView;
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_api::output::Output;
 use ockam_api::port_range::PortRange;
@@ -175,7 +175,7 @@ impl Command for CreateCommand {
                 consumer_publishing = ConsumerPublishing::Relay(cmd.to.clone());
             }
 
-            let result: InletStatus = node
+            let result: InletStatusView = node
                 .create_kafka_inlet(
                     ctx,
                     &cmd.name,
@@ -195,7 +195,7 @@ impl Command for CreateCommand {
 
             KafkaInletOutput {
                 node_name: node.node_name().to_string(),
-                from: result.bind_addr,
+                from: result.bind_address,
                 brokers_port_range: cmd.brokers_port_range(),
                 to: cmd.to.clone(),
             }

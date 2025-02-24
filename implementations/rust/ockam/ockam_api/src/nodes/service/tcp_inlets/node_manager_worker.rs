@@ -3,7 +3,7 @@ use ockam_core::api::{Error, Response};
 use ockam_node::Context;
 use tracing::Level;
 
-use crate::nodes::models::portal::{CreateInlet, InletStatus, InletStatusList};
+use crate::nodes::models::portal::{CreateInlet, InletStatusList, InletStatusView};
 use crate::nodes::NodeManagerWorker;
 
 impl NodeManagerWorker {
@@ -17,13 +17,15 @@ impl NodeManagerWorker {
         &self,
         ctx: &Context,
         create_inlet: CreateInlet,
-    ) -> Result<Response<InletStatus>, Response<Error>> {
+    ) -> Result<Response<InletStatusView>, Response<Error>> {
         let CreateInlet {
             listen_addr,
-            outlet_addr,
+            target_redundancy,
+            outlet_addresses,
             alias,
             authorized,
-            wait_for_outlet_duration,
+            ping_timeout,
+            wait_for_outlet,
             policy_expression,
             wait_connection,
             secure_channel_identifier,
@@ -42,10 +44,12 @@ impl NodeManagerWorker {
                 listen_addr,
                 prefix_route,
                 route![],
-                outlet_addr,
+                target_redundancy,
+                outlet_addresses,
                 alias,
                 policy_expression,
-                wait_for_outlet_duration,
+                ping_timeout,
+                wait_for_outlet,
                 authorized,
                 wait_connection,
                 secure_channel_identifier,
@@ -65,9 +69,10 @@ impl NodeManagerWorker {
 
     pub(crate) async fn delete_inlet(
         &self,
+        context: &Context,
         alias: &str,
-    ) -> Result<Response<InletStatus>, Response<Error>> {
-        match self.node_manager.delete_inlet(alias).await {
+    ) -> Result<Response<InletStatusView>, Response<Error>> {
+        match self.node_manager.delete_inlet(context, alias).await {
             Ok(status) => Ok(Response::ok().body(status)),
             Err(e) => Err(Response::bad_request_no_request(&format!("{e:?}"))),
         }
@@ -76,7 +81,7 @@ impl NodeManagerWorker {
     pub(crate) async fn show_inlet(
         &self,
         alias: &str,
-    ) -> Result<Response<InletStatus>, Response<Error>> {
+    ) -> Result<Response<InletStatusView>, Response<Error>> {
         match self.node_manager.show_inlet(alias).await {
             Some(inlet) => Ok(Response::ok().body(inlet)),
             None => Err(Response::not_found_no_request(&format!(

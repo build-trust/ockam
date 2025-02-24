@@ -4,10 +4,10 @@ use crate::portal::{InletSharedState, ReadHalfMaybeTls, WriteHalfMaybeTls};
 use crate::{portal::TcpPortalWorker, TcpInlet, TcpInletOptions, TcpRegistry};
 use log::warn;
 use ockam_core::compat::net::SocketAddr;
-use ockam_core::compat::sync::{Arc, RwLock as SyncRwLock};
+use ockam_core::compat::sync::Arc;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{async_trait, compat::boxed::Box, Result};
-use ockam_core::{Address, Processor, Route};
+use ockam_core::{Address, Processor};
 use ockam_node::Context;
 use ockam_transport_core::{HostnamePort, TransportError};
 use rustls::pki_types::CertificateDer;
@@ -16,7 +16,7 @@ use std::time::Duration;
 use tokio::net::TcpListener;
 use tokio::time::Instant;
 use tokio_rustls::{TlsAcceptor, TlsStream};
-use tracing::{debug, error, instrument, Level};
+use tracing::{debug, error, instrument, trace, Level};
 
 /// A TCP Portal Inlet listen processor
 ///
@@ -26,22 +26,19 @@ use tracing::{debug, error, instrument, Level};
 pub(crate) struct TcpInletListenProcessor {
     registry: TcpRegistry,
     inner: TcpListener,
-    inlet_shared_state: Arc<SyncRwLock<InletSharedState>>,
-    options: TcpInletOptions,
+    inlet_shared_state: InletSharedState,
 }
 
 impl TcpInletListenProcessor {
     pub fn new(
         registry: TcpRegistry,
         inner: TcpListener,
-        inlet_shared_state: Arc<SyncRwLock<InletSharedState>>,
-        options: TcpInletOptions,
+        inlet_shared_state: InletSharedState,
     ) -> Self {
         Self {
             registry,
             inner,
             inlet_shared_state,
-            options,
         }
     }
 
@@ -50,9 +47,7 @@ impl TcpInletListenProcessor {
     pub(crate) async fn start(
         ctx: &Context,
         registry: TcpRegistry,
-        outlet_listener_route: Route,
         addr: SocketAddr,
-        options: TcpInletOptions,
     ) -> Result<TcpInlet> {
         let processor_address = Address::random_tagged("TcpInletListenProcessor");
 
@@ -65,11 +60,9 @@ impl TcpInletListenProcessor {
             }
         };
         let socket_addr = inner.local_addr().map_err(TransportError::from)?;
-        let inlet_shared_state =
-            InletSharedState::create(ctx, outlet_listener_route, options.is_paused)?;
-        let inlet_shared_state = Arc::new(SyncRwLock::new(inlet_shared_state));
-        let processor = Self::new(registry, inner, inlet_shared_state.clone(), options);
 
+        let inlet_shared_state: InletSharedState = Default::default();
+        let processor = Self::new(registry, inner, inlet_shared_state.clone());
         ctx.start_processor(processor_address.clone(), processor)?;
 
         Ok(TcpInlet::new_regular(
@@ -178,8 +171,20 @@ impl Processor for TcpInletListenProcessor {
     async fn process(&mut self, ctx: &mut Self::Context) -> Result<bool> {
         let (stream, socket_addr) = self.inner.accept().await.map_err(TransportError::from)?;
 
+        let inlet_route_mutable_state = self.inlet_shared_state.choose_active_route().await;
+        let inlet_route_state = inlet_route_mutable_state.snapshot();
+
+        trace!(
+            "selected route: {} for a new TCP portal",
+            inlet_route_state.route()
+        );
+
+        // options are route-specific since authorization could be different depending
+        // on the project
+        let options = inlet_route_state.options();
+
         stream
-            .set_nodelay(!self.options.enable_nagle)
+            .set_nodelay(!options.enable_nagle)
             .map_err(TransportError::from)?;
 
         let addresses = Addresses::generate(PortalType::Inlet {
@@ -187,21 +192,13 @@ impl Processor for TcpInletListenProcessor {
                 self.inner.local_addr().map_err(TransportError::from)?,
             ),
         });
-
-        let inlet_shared_state = self.inlet_shared_state.read().unwrap().clone();
-
-        if inlet_shared_state.is_paused() {
-            // Just drop the stream
-            return Ok(true);
-        }
-
         TcpInletOptions::setup_flow_control(
             ctx.flow_controls(),
             &addresses,
-            inlet_shared_state.route().next()?,
+            inlet_route_state.route().next()?,
         );
 
-        let streams = if let Some(certificate_provider) = &self.options.tls_certificate_provider {
+        let streams = if let Some(certificate_provider) = &options.tls_certificate_provider {
             let (rx, tx) = tokio::io::split(TlsStream::from(
                 Self::create_acceptor(ctx, certificate_provider, DEFAULT_TIMEOUT)
                     .await?
@@ -228,13 +225,13 @@ impl Processor for TcpInletListenProcessor {
             self.registry.clone(),
             streams,
             HostnamePort::from(socket_addr),
-            inlet_shared_state.route().clone(),
-            inlet_shared_state.their_identifier(),
+            inlet_route_state.route().clone(),
+            inlet_route_state.their_identifier(),
             addresses,
-            self.options.incoming_access_control.clone(),
-            self.options.outgoing_access_control.clone(),
-            self.options.portal_payload_length,
-            self.options.skip_handshake,
+            options.incoming_access_control.clone(),
+            options.outgoing_access_control.clone(),
+            options.portal_payload_length,
+            options.skip_handshake,
         )?;
 
         Ok(true)

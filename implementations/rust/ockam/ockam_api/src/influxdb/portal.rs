@@ -2,7 +2,7 @@ use crate::influxdb::gateway::interceptor::HttpAuthInterceptorFactory;
 use crate::influxdb::gateway::token_lease_refresher::TokenLeaseRefresher;
 use crate::influxdb::{LeaseUsage, StartInfluxDBLeaseIssuerRequest};
 use crate::nodes::models::portal::{
-    CreateInlet, CreateOutlet, InletStatus, OutletAccessControl, OutletStatus,
+    CreateInlet, CreateOutlet, InletStatusView, OutletAccessControl, OutletStatus,
 };
 use crate::nodes::service::tcp_inlets::create_inlet_payload;
 use crate::nodes::{BackgroundNodeClient, NodeManagerWorker};
@@ -113,13 +113,15 @@ impl NodeManagerWorker {
         &self,
         ctx: &Context,
         body: CreateInfluxDBInlet,
-    ) -> Result<Response<InletStatus>, Response<Error>> {
+    ) -> Result<Response<InletStatusView>, Response<Error>> {
         let CreateInlet {
             listen_addr,
-            outlet_addr,
+            target_redundancy,
+            outlet_addresses,
             alias,
             authorized,
-            wait_for_outlet_duration,
+            ping_timeout,
+            wait_for_outlet,
             policy_expression,
             wait_connection,
             secure_channel_identifier,
@@ -133,7 +135,13 @@ impl NodeManagerWorker {
         } = body.tcp_inlet.clone();
 
         //TODO: should be an easier way to tweak the multiaddr
-        let mut issuer_route = outlet_addr.clone();
+        let mut issuer_route = if let Some(first) = outlet_addresses.first() {
+            first.clone()
+        } else {
+            return Err(Response::bad_request_no_request(
+                "The outlet address is invalid",
+            ));
+        };
         let outlet_addr_last_service = issuer_route
             .pop_back()
             .ok_or_else(|| Response::bad_request_no_request("The outlet address is invalid"))?;
@@ -187,10 +195,12 @@ impl NodeManagerWorker {
                 listen_addr,
                 prefix_route,
                 suffix_route,
-                outlet_addr,
+                target_redundancy,
+                outlet_addresses,
                 alias,
                 policy_expression,
-                wait_for_outlet_duration,
+                ping_timeout,
+                wait_for_outlet,
                 authorized,
                 wait_connection,
                 secure_channel_identifier,
@@ -306,10 +316,12 @@ pub trait InfluxDBPortals {
         &self,
         ctx: &Context,
         listen_addr: &HostnamePort,
-        outlet_addr: &MultiAddr,
+        target_redundancy: usize,
+        outlet_addr: Vec<MultiAddr>,
         alias: &str,
         authorized_identifier: &Option<Identifier>,
         policy_expression: &Option<PolicyExpression>,
+        ping_timeout: Duration,
         wait_for_outlet_timeout: Duration,
         wait_connection: bool,
         secure_channel_identifier: &Option<Identifier>,
@@ -318,7 +330,7 @@ pub trait InfluxDBPortals {
         tls_certificate_provider: &Option<MultiAddr>,
         lease_usage: LeaseUsage,
         lease_issuer_route: Option<MultiAddr>,
-    ) -> miette::Result<Reply<InletStatus>>;
+    ) -> miette::Result<Reply<InletStatusView>>;
 
     #[allow(clippy::too_many_arguments)]
     async fn create_influxdb_outlet(
@@ -361,10 +373,12 @@ impl InfluxDBPortals for BackgroundNodeClient {
         &self,
         ctx: &Context,
         listen_addr: &HostnamePort,
-        outlet_addr: &MultiAddr,
+        target_redundancy: usize,
+        outlet_addr: Vec<MultiAddr>,
         alias: &str,
         authorized_identifier: &Option<Identifier>,
         policy_expression: &Option<PolicyExpression>,
+        ping_timeout: Duration,
         wait_for_outlet_timeout: Duration,
         wait_connection: bool,
         secure_channel_identifier: &Option<Identifier>,
@@ -373,14 +387,16 @@ impl InfluxDBPortals for BackgroundNodeClient {
         tls_certificate_provider: &Option<MultiAddr>,
         lease_usage: LeaseUsage,
         lease_issuer_route: Option<MultiAddr>,
-    ) -> miette::Result<Reply<InletStatus>> {
+    ) -> miette::Result<Reply<InletStatusView>> {
         let request = {
             let inlet_payload = create_inlet_payload(
                 listen_addr,
+                target_redundancy,
                 outlet_addr,
                 alias,
                 authorized_identifier,
                 policy_expression,
+                ping_timeout,
                 wait_for_outlet_timeout,
                 wait_connection,
                 secure_channel_identifier,

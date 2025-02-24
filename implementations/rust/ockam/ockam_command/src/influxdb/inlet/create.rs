@@ -1,6 +1,6 @@
 use crate::node::util::initialize_default_node;
 use crate::shared_args::OptionalTimeoutArg;
-use crate::tcp::inlet::create::{tcp_inlet_default_from_addr, tcp_inlet_default_to_addr};
+use crate::tcp::inlet::create::{tcp_inlet_default_from_addr, tcp_inlet_default_to_addr_vec};
 use crate::tcp::util::alias_parser;
 use crate::util::parsers::duration_parser;
 use crate::util::parsers::hostname_parser;
@@ -19,11 +19,11 @@ use ockam_api::address::extract_address_value;
 use ockam_api::cli_state::random_name;
 use ockam_api::colors::color_primary;
 use ockam_api::influxdb::{InfluxDBPortals, LeaseUsage};
-use ockam_api::nodes::models::portal::InletStatus;
+use ockam_api::nodes::models::portal::InletStatusView;
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_api::{fmt_info, fmt_log, fmt_ok, fmt_warn, CliState, ConnectionStatus};
 use ockam_core::api::{Reply, Status};
-use ockam_multiaddr::{proto, MultiAddr, Protocol};
+use ockam_multiaddr::MultiAddr;
 use ockam_node::compat::asynchronous::resolve_peer;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -60,8 +60,13 @@ pub struct CreateCommand {
     /// or just the name of the service as `outlet` or `/service/outlet`.
     /// If you are passing just the service name, consider using `--via` to specify the
     /// relay name (e.g. `ockam tcp-inlet create --to outlet --via myrelay`).
-    #[arg(long, display_order = 900, id = "ROUTE", default_value_t = tcp_inlet_default_to_addr())]
-    pub to: String,
+    #[arg(long, display_order = 900, id = "ROUTE", default_values_t = tcp_inlet_default_to_addr_vec())]
+    pub to: Vec<String>,
+
+    /// Target redundancy for the InfluxDB Inlet routes; 0 means only one route is instantiated.
+    /// When omitted, the number of provided `to` routes minus one applies.
+    #[arg(long)]
+    pub target_redundancy: Option<usize>,
 
     /// Name of the relay that this InfluxDB Inlet will use to connect to the InfluxDB Outlet.
     ///
@@ -98,6 +103,10 @@ pub struct CreateCommand {
     /// Time to wait for the outlet to be available.
     #[arg(long, display_order = 900, id = "WAIT", default_value = "5s", value_parser = duration_parser)]
     pub connection_wait: Duration,
+
+    /// How long until the outlet route is considered disconnected.
+    #[arg(long, default_value = "5s", value_parser = duration_parser)]
+    pub ping_timeout: Duration,
 
     /// Time to wait before retrying to connect to the InfluxDB Outlet.
     #[arg(long, display_order = 900, id = "RETRY", default_value = "20s", value_parser = duration_parser)]
@@ -164,6 +173,9 @@ impl Command for CreateCommand {
         initialize_default_node(ctx, &opts).await?;
         let cmd = self.parse_args(&opts).await?;
 
+        // TODO: properly handle printing of multiple outlets
+        let to = cmd.to.join(", ");
+
         let mut node = BackgroundNodeClient::create(ctx, opts.state.clone(), &cmd.at).await?;
         cmd.timeout.timeout.map(|t| node.set_timeout_mut(t));
 
@@ -177,14 +189,16 @@ impl Command for CreateCommand {
             }
 
             loop {
-                let result: Reply<InletStatus> = node
+                let result: Reply<InletStatusView> = node
                     .create_influxdb_inlet(
                         ctx,
                         cmd.from.hostname_port(),
-                        &cmd.to(),
+                        cmd.target_redundancy(),
+                        cmd.to(),
                         cmd.name.as_ref().expect("The `name` argument should be set to its default value if not provided"),
                         &cmd.authorized,
                         &cmd.allow,
+                        cmd.ping_timeout,
                         cmd.connection_wait,
                         !cmd.no_connection_wait,
                         &cmd
@@ -217,7 +231,7 @@ impl Command for CreateCommand {
                         if let Some(pb) = pb.as_ref() {
                             pb.set_message(format!(
                                 "Waiting for InfluxDB Inlet {} to be available... Retrying momentarily\n",
-                                color_primary(&cmd.to)
+                                color_primary(&to)
                             ));
                         }
                         tokio::time::sleep(cmd.retry_wait).await
@@ -231,32 +245,32 @@ impl Command for CreateCommand {
         let created_message = format!(
             "Created a new InfluxDB Inlet in the Node {} bound to {}",
             color_primary(node_name),
-            color_primary(&inlet_status.bind_addr),
+            color_primary(&inlet_status.bind_address),
         );
 
         let plain = if cmd.no_connection_wait {
             fmt_ok!("{created_message}\n")
                 + &fmt_log!("It will automatically connect to the InfluxDB Outlet at {} as soon as it is available\n",
-                color_primary(&cmd.to)
+                color_primary(&to)
             )
-        } else if inlet_status.status == ConnectionStatus::Up {
+        } else if inlet_status.connection == ConnectionStatus::Up {
             fmt_ok!("{created_message}\n")
                 + &fmt_log!(
                     "sending traffic to the TCP Outlet at {}\n",
-                    color_primary(&cmd.to)
+                    color_primary(&to)
                 )
         } else {
             fmt_warn!("{created_message}\n")
                 + &fmt_log!(
                 "but failed to connect to the TCP Outlet at {}\n",
-                color_primary(&cmd.to)
+                color_primary(&to)
             ) + &fmt_info!("It will automatically connect to the InfluxDB Outlet as soon as it is available\n")
         };
 
         opts.terminal
             .to_stdout()
             .plain(plain)
-            .machine(inlet_status.bind_addr.to_string())
+            .machine(inlet_status.bind_address.to_string())
             .json_obj(&inlet_status)?
             .write_line()?;
 
@@ -288,16 +302,13 @@ impl CreateCommand {
             .into_diagnostic()?;
         port_is_free_guard(&from)?;
 
-        self.to = crate::tcp::inlet::create::CreateCommand::parse_arg_to(
-            opts.state.clone(),
-            self.to,
-            self.via.as_ref(),
-        )
-        .await?;
-        if self.to().matches(0, &[proto::Project::CODE.into()]) && self.authorized.is_some() {
-            return Err(miette!(
-                "--authorized can not be used with project addresses"
-            ))?;
+        for to in self.to.iter_mut() {
+            *to = crate::tcp::inlet::create::CreateCommand::parse_arg_to(
+                opts.state.clone(),
+                to.to_string(),
+                self.via.as_ref(),
+            )
+            .await?;
         }
 
         self.tls_certificate_provider =
@@ -324,8 +335,16 @@ impl CreateCommand {
         Ok(self)
     }
 
-    pub fn to(&self) -> MultiAddr {
-        MultiAddr::from_str(&self.to).unwrap()
+    pub fn to(&self) -> Vec<MultiAddr> {
+        self.to
+            .iter()
+            .map(|t| MultiAddr::from_str(t).unwrap())
+            .collect()
+    }
+
+    pub fn target_redundancy(&self) -> usize {
+        self.target_redundancy
+            .unwrap_or(self.to.len().saturating_sub(1))
     }
 
     pub async fn secure_channel_identifier(

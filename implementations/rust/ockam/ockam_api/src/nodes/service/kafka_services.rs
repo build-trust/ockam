@@ -8,7 +8,7 @@ use crate::kafka::{
     kafka_policy_expression, ConsumerPublishing, ConsumerResolution, KafkaInletController,
     KAFKA_OUTLET_BOOTSTRAP_ADDRESS, KAFKA_OUTLET_INTERCEPTOR_ADDRESS,
 };
-use crate::nodes::models::portal::{InletStatus, OutletAccessControl, OutletStatus};
+use crate::nodes::models::portal::{InletStatusView, OutletAccessControl, OutletStatus};
 use crate::nodes::models::services::{
     DeleteServiceRequest, StartKafkaInletRequest, StartKafkaOutletRequest, StartServiceRequest,
 };
@@ -36,7 +36,7 @@ impl NodeManagerWorker {
         &self,
         context: &Context,
         body: StartServiceRequest<StartKafkaInletRequest>,
-    ) -> Result<Response<InletStatus>, Response<Error>> {
+    ) -> Result<Response<InletStatusView>, Response<Error>> {
         let request = body.request();
         match self
             .node_manager
@@ -126,7 +126,7 @@ impl InMemoryNode {
         inlet_policy_expression: Option<PolicyExpression>,
         consumer_policy_expression: Option<PolicyExpression>,
         producer_policy_expression: Option<PolicyExpression>,
-    ) -> Result<InletStatus> {
+    ) -> Result<InletStatusView> {
         let consumer_policy_access_control = self
             .policy_access_control(
                 self.project_authority().clone(),
@@ -210,9 +210,11 @@ impl InMemoryNode {
                     KAFKA_OUTLET_INTERCEPTOR_ADDRESS,
                     KAFKA_OUTLET_BOOTSTRAP_ADDRESS
                 ],
-                outlet_node_multiaddr,
+                0,
+                vec![outlet_node_multiaddr],
                 inlet_alias,
                 inlet_policy_expression.clone(),
+                None,
                 None,
                 None,
                 true,

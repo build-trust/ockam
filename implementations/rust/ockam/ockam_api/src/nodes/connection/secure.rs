@@ -12,6 +12,7 @@ use ockam_multiaddr::{Match, MultiAddr, Protocol};
 use ockam_node::Context;
 
 /// Creates secure connection from existing transport
+#[derive(Debug)]
 pub(crate) struct SecureChannelInstantiator {
     identifier: Identifier,
     authorized_identities: Option<Vec<Identifier>>,
@@ -45,8 +46,8 @@ impl Instantiator for SecureChannelInstantiator {
         transport_route: Route,
         extracted: (MultiAddr, MultiAddr, MultiAddr),
     ) -> Result<Changes, Error> {
-        let (_before, secure_piece, after) = extracted;
-        debug!(%secure_piece, %transport_route, "creating secure channel");
+        let (before, secure_piece, after) = extracted;
+        debug!(%before, %secure_piece, %after, %transport_route, "creating secure channel");
         let route = LocalMultiaddrResolver::resolve(&secure_piece)?;
 
         let sc_ctx = ctx.try_clone()?;

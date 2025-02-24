@@ -71,8 +71,8 @@ impl<T: TcpPortalsRepository> TcpPortalsRepository for AutoRetry<T> {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TcpInlet {
-    bind_addr: SocketAddr,
-    outlet_addr: MultiAddr,
+    bind_address: SocketAddr,
+    outlet_addresses: Vec<MultiAddr>,
     alias: String,
     privileged: bool,
 }
@@ -80,28 +80,28 @@ pub struct TcpInlet {
 impl TcpInlet {
     pub fn new(
         bind_addr: &SocketAddr,
-        outlet_addr: &MultiAddr,
+        outlet_addresses: Vec<MultiAddr>,
         alias: &str,
         privileged: bool,
     ) -> TcpInlet {
         Self {
-            bind_addr: *bind_addr,
-            outlet_addr: outlet_addr.clone(),
+            bind_address: *bind_addr,
+            outlet_addresses,
             alias: alias.to_string(),
             privileged,
         }
     }
 
-    pub fn bind_addr(&self) -> SocketAddr {
-        self.bind_addr
+    pub fn bind_address(&self) -> SocketAddr {
+        self.bind_address
     }
 
-    pub fn outlet_addr(&self) -> MultiAddr {
-        self.outlet_addr.clone()
+    pub fn outlet_addresses(&self) -> &[MultiAddr] {
+        &self.outlet_addresses
     }
 
-    pub fn alias(&self) -> String {
-        self.alias.clone()
+    pub fn alias(&self) -> &str {
+        &self.alias
     }
 
     pub fn privileged(&self) -> bool {

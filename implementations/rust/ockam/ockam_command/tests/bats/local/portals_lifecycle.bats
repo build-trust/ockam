@@ -53,7 +53,7 @@ teardown() {
   # Check that inlet is available for deletion and delete it
   run_success $OCKAM tcp-inlet show test-inlet --at /node/n2 --output json
   assert_output --partial "\"alias\": \"test-inlet\""
-  assert_output --partial "\"bind_addr\": \"127.0.0.1:$inlet_port\""
+  assert_output --partial "\"bind_address\": \"127.0.0.1:$inlet_port\""
 
   run_success $OCKAM tcp-inlet delete "test-inlet" --at /node/n2 --yes
 

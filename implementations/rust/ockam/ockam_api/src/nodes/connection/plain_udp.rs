@@ -9,6 +9,7 @@ use ockam_multiaddr::{Match, MultiAddr, Protocol};
 use ockam_node::Context;
 
 /// Creates the tcp connection.
+#[derive(Debug)]
 pub(crate) struct PlainUdpInstantiator {}
 
 impl PlainUdpInstantiator {

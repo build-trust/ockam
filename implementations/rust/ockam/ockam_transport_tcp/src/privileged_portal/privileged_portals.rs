@@ -1,17 +1,17 @@
 use crate::portal::InletSharedState;
 use crate::privileged_portal::{InternalProcessor, Port, RemoteWorker};
-use crate::{TcpInlet, TcpInletOptions, TcpOutletOptions, TcpTransport};
+use crate::{TcpInlet, TcpOutletOptions, TcpTransport};
 use caps::Capability::{CAP_BPF, CAP_NET_ADMIN, CAP_NET_RAW, CAP_SYS_ADMIN};
 use caps::{CapSet, Capability};
 use core::fmt::Debug;
 use log::{debug, error};
 use nix::unistd::Uid;
-use ockam_core::compat::sync::{Arc, RwLock as SyncRwLock};
-use ockam_core::{Address, DenyAll, Result, Route};
+use ockam_core::{Address, DenyAll, IncomingAccessControl, OutgoingAccessControl, Result};
 use ockam_node::compat::asynchronous::resolve_peer;
 use ockam_node::{ProcessorBuilder, WorkerBuilder};
 use ockam_transport_core::{HostnamePort, TransportError};
-use std::net::IpAddr;
+use std::net::{IpAddr, SocketAddr};
+use std::sync::Arc;
 use tokio::net::TcpListener;
 use tokio::sync::mpsc::channel;
 use tracing::instrument;
@@ -55,21 +55,16 @@ impl TcpTransport {
     }
 
     /// Create a Privileged Inlet
-    #[instrument(skip(self), fields(outlet_route=?outlet_route.clone()), level = Level::TRACE)]
+    #[instrument(skip(self))]
     pub async fn create_privileged_inlet(
         &self,
-        bind_addr: impl Into<String> + Clone + Debug,
-        outlet_route: impl Into<Route> + Clone + Debug,
-        options: TcpInletOptions,
+        bind_addr: SocketAddr,
+        incoming_access_control: Arc<dyn IncomingAccessControl>,
+        outgoing_access_control: Arc<dyn OutgoingAccessControl>,
     ) -> Result<TcpInlet> {
         Self::check_capabilities()?;
 
-        let outlet_route = outlet_route.into();
-
-        let next = outlet_route.next().cloned()?;
-
-        let bind_addr = bind_addr.into();
-        let tcp_listener = TcpListener::bind(bind_addr.clone())
+        let tcp_listener = TcpListener::bind(bind_addr)
             .await
             .map_err(|_| TransportError::BindFailed)?;
         let local_address = tcp_listener
@@ -91,19 +86,12 @@ impl TcpTransport {
 
         let tcp_packet_writer = self.start_raw_socket_processor_if_needed().await?;
 
-        let inlet_shared_state = InletSharedState::create(self.ctx(), outlet_route.clone(), false)?;
-        let inlet_shared_state = Arc::new(SyncRwLock::new(inlet_shared_state));
-
         let remote_worker_address = Address::random_tagged("Ebpf.RemoteWorker.Inlet");
         let internal_worker_address = Address::random_tagged("Ebpf.InternalWorker.Inlet");
 
-        TcpInletOptions::setup_flow_control_for_address(
-            self.ctx().flow_controls(),
-            &remote_worker_address,
-            &next,
-        );
-
         let (sender, receiver) = channel(20); // FIXME
+
+        let inlet_shared_state = InletSharedState::default();
 
         let inlet_info = self.ebpf_support.inlet_registry.create_inlet(
             remote_worker_address.clone(),
@@ -123,7 +111,7 @@ impl TcpTransport {
         );
         WorkerBuilder::new(remote_worker)
             .with_address(remote_worker_address.clone())
-            .with_incoming_access_control_arc(options.incoming_access_control)
+            .with_incoming_access_control_arc(incoming_access_control)
             .with_outgoing_access_control(DenyAll)
             .start(self.ctx())?;
 
@@ -131,7 +119,7 @@ impl TcpTransport {
         ProcessorBuilder::new(internal_worker)
             .with_address(internal_worker_address.clone())
             .with_incoming_access_control(DenyAll)
-            .with_outgoing_access_control_arc(options.outgoing_access_control)
+            .with_outgoing_access_control_arc(outgoing_access_control)
             .start(self.ctx())?;
 
         Ok(TcpInlet::new_privileged(

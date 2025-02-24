@@ -375,9 +375,9 @@ impl MultiAddr {
         self.as_ref().is_empty()
     }
 
-    /// Address length in bytes.
+    /// Return the number of complete multiaddr components.
     pub fn len(&self) -> usize {
-        self.as_ref().len()
+        self.iter().count()
     }
 
     /// Add a protocol to the end of this address.
@@ -435,7 +435,7 @@ impl MultiAddr {
         ));
         if let Some((o, c, Checked(p))) = iter.last() {
             debug_assert!(self.dat.ends_with(p));
-            let dlen = self.len();
+            let dlen = self.as_ref().len();
             let plen = p.len();
             let val = split_off(&mut self.dat, self.off + dlen - plen);
             self.dat.truncate(self.off + o);
@@ -537,11 +537,11 @@ impl MultiAddr {
     }
     /// Check if the protocol codes starts with the given code.
     pub fn starts_with(&self, code: Code) -> bool {
-        self.matches(0, &[code.into()])
+        self.matches_at(0, &[code.into()])
     }
 
     /// Check if the protocol codes match the given sequence.
-    pub fn matches<'a, I>(&self, start: usize, codes: I) -> bool
+    pub fn matches_at<'a, I>(&self, start: usize, codes: I) -> bool
     where
         I: IntoIterator<Item = &'a Match>,
         I::IntoIter: ExactSizeIterator,
@@ -564,6 +564,16 @@ impl MultiAddr {
             }
         }
         n == 0
+    }
+
+    // Check if the protocol codes matches the given sequence at any position.
+    pub fn find(&self, codes: &[Match]) -> Option<(ProtoValue, usize)> {
+        for n in 0..self.len() {
+            if self.matches_at(n, codes) {
+                return Some((self.iter().nth(n).unwrap(), n));
+            }
+        }
+        None
     }
 
     pub fn split(&self, at: usize) -> (MultiAddr, MultiAddr) {

@@ -1,4 +1,4 @@
-use crate::portal::InletSharedState;
+use crate::portal::{InletRouteMutableState, InletSharedState};
 use crate::privileged_portal::packet::RawSocketReadResult;
 use crate::privileged_portal::{ConnectionIdentifier, Port};
 use ockam_core::compat::sync::{Arc, RwLock as SyncRwLock};
@@ -30,7 +30,7 @@ impl InletRegistry {
         sender: Sender<RawSocketReadResult>,
         port: Port,
         tcp_listener: TcpListener,
-        inlet_shared_state: Arc<SyncRwLock<InletSharedState>>,
+        inlet_shared_state: InletSharedState,
     ) -> Inlet {
         let mut inlets = self.inlets.write().unwrap();
 
@@ -70,7 +70,7 @@ pub struct Inlet {
     /// Port
     pub port: Port,
     /// Route to the corresponding Outlet
-    pub inlet_shared_state: Arc<SyncRwLock<InletSharedState>>,
+    pub inlet_shared_state: InletSharedState,
     /// Hold to mark the port as taken
     pub _tcp_listener: Arc<TcpListener>,
     /// Same map with different key
@@ -90,7 +90,7 @@ impl Inlet {
         );
         self.connections2.write().unwrap().insert(
             InletConnectionKey2 {
-                their_identifier: connection.their_identifier.clone(),
+                their_identifier: connection.inlet_mutable_route_state.their_identifier(),
                 connection_identifier: connection.connection_identifier.clone(),
             },
             connection,
@@ -144,8 +144,6 @@ struct InletConnectionKey2 {
 
 /// Inlet Mapping
 pub struct InletConnection {
-    /// Identity Identifier of the other side
-    pub their_identifier: Option<LocalInfoIdentifier>,
     /// Unique connection Identifier
     pub connection_identifier: ConnectionIdentifier,
     /// We can listen of multiple IPs
@@ -154,4 +152,6 @@ pub struct InletConnection {
     pub client_ip: Ipv4Addr,
     /// Client port
     pub client_port: Port,
+    /// Live Inlet Route State, route changes are reflected
+    pub inlet_mutable_route_state: InletRouteMutableState,
 }

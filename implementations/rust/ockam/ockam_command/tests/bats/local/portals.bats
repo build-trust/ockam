@@ -19,7 +19,7 @@ teardown() {
   run_success "$OCKAM" node create n2
 
   run_success "$OCKAM" tcp-outlet create --at /node/n1 --to "$PYTHON_SERVER_PORT"
-  addr=$("$OCKAM" tcp-inlet create inlet --at /node/n2 --to /node/n1/service/outlet --jq '.bind_addr')
+  addr=$("$OCKAM" tcp-inlet create inlet --at /node/n2 --to /node/n1/service/outlet --jq '.bind_address')
 
   addr=${addr//\"/}
   host_port=(${addr//:/ })
@@ -71,15 +71,19 @@ teardown() {
 }
 
 @test "portals - create an inlet/outlet pair and move tcp traffic through it, where the outlet points to an HTTPs endpoint" {
+  if [[ "$OCKAM_PRIVILEGED" = "1" ]]; then
+    skip "OCKAM_PRIVILEGE not supported"
+  fi
+
   run_success "$OCKAM" node create n1
   run_success "$OCKAM" node create n2
 
-  run_success "$OCKAM" tcp-outlet create --at /node/n1 --to google.com:443
+  # rust-lang.org rejects http requests to its port 443
+  run_success "$OCKAM" tcp-outlet create --at /node/n1 --to rust-lang.org:443 --tls
   port="$(random_port)"
-  run_success "$OCKAM" tcp-inlet create --at /node/n2 --from "$port" --to /node/n1/service/outlet
+  run_success "$OCKAM" tcp-inlet create --http-header 'Host: rust-lang.org' --at /node/n2 --from "$port" --to /node/n1/service/outlet
 
-  # This test does not pass on CI
-  # run_success curl --fail --head --max-time 10 "127.0.0.1:$port"
+  run_success curl --fail --head --max-time 10 "127.0.0.1:${port}"
 }
 
 @test "portals - create an inlet/outlet pair with relay through a relay and move tcp traffic through it" {
@@ -142,15 +146,19 @@ teardown() {
 }
 
 @test "portals no handshake - create an inlet/outlet pair and move tcp traffic through it, where the outlet points to an HTTPs endpoint" {
+  if [[ "$OCKAM_PRIVILEGED" = "1" ]]; then
+    skip "OCKAM_PRIVILEGE not supported"
+  fi
+
   run_success "$OCKAM" node create n1
   run_success "$OCKAM" node create n2
 
-  run_success "$OCKAM" tcp-outlet create --at /node/n1 --to google.com:443 --skip-handshake
+  # rust-lang.org rejects http requests to its port 443
+  run_success "$OCKAM" tcp-outlet create --at /node/n1 --to rust-lang.org:443 --skip-handshake --tls
   port="$(random_port)"
-  run_success "$OCKAM" tcp-inlet create --at /node/n2 --from "$port" --to /node/n1/service/outlet --skip-handshake
+  run_success "$OCKAM" tcp-inlet create --skip-handshake --http-header 'Host: rust-lang.org' --at /node/n2 --from "$port" --to /node/n1/service/outlet
 
-  # This test does not pass on CI
-  # run_success curl --fail --head --max-time 10 "127.0.0.1:$port"
+  run_success curl --fail --head --max-time 10 "127.0.0.1:${port}"
 }
 
 @test "portals no handshake - create an inlet/outlet pair with relay through a relay and move tcp traffic through it" {
@@ -211,7 +219,7 @@ teardown() {
 
   run_success "$OCKAM" node create green
   inlet_port="$(random_port)"
-  run_success "$OCKAM" tcp-inlet create --at /node/green --from "$inlet_port" --to /node/blue/secure/api/service/outlet
+  run_success "$OCKAM" tcp-inlet create --ping-timeout 500ms --at /node/green --from "$inlet_port" --to /node/blue/secure/api/service/outlet
   run_success curl -sfI --retry-all-errors --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$inlet_port"
 
   run_success "$OCKAM" node delete blue --yes
@@ -220,7 +228,7 @@ teardown() {
   run_success "$OCKAM" node create blue --tcp-listener-address "127.0.0.1:$node_port"
   run_success "$OCKAM" tcp-outlet create --at /node/blue --to "$PYTHON_SERVER_PORT"
 
-  sleep 15
+  sleep 1
   run_success curl -sfI --retry-all-errors --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$inlet_port"
 }
 
@@ -228,12 +236,12 @@ teardown() {
   run_success "$OCKAM" node create n1
   node_port="$(random_port)"
   inlet_port="$(random_port)"
-  run_success "$OCKAM" tcp-inlet create --at /node/n1 --from "${inlet_port}" --to "/ip4/127.0.0.1/tcp/${node_port}/service/outlet"
+  run_success "$OCKAM" tcp-inlet create --ping-timeout 500ms --at /node/n1 --from "${inlet_port}" --to "/ip4/127.0.0.1/tcp/${node_port}/service/outlet"
 
   run_success "$OCKAM" node create n2 --tcp-listener-address "127.0.0.1:${node_port}"
   run_success "$OCKAM" tcp-outlet create --at /node/n2 --to "$PYTHON_SERVER_PORT"
 
-  sleep 15
+  sleep 1
   run_success curl -sfI --retry-all-errors --retry-delay 5 --retry 10 -m 5 "127.0.0.1:${inlet_port}"
 }
 
@@ -455,4 +463,41 @@ teardown() {
 
   wait_for_port ${inlet_port}
   run_success curl -sf -m 5 "http://127.0.0.1:${inlet_port}"
+}
+
+@test "portals - highly available portal keep working after relay is deleted" {
+  # blue is the outlet node
+  run_success "$OCKAM" node create blue
+  run_success "$OCKAM" tcp-outlet create --at /node/blue --to "$PYTHON_SERVER_PORT"
+
+  # create relays nodes
+  run_success "$OCKAM" node create relay1
+  run_success "$OCKAM" node create relay2
+
+  run_success "$OCKAM" relay create --at /node/relay1 --to /node/blue blue1
+  run_success "$OCKAM" relay create --at /node/relay2 --to /node/blue blue2
+
+  # green is the inlet node
+  run_success "$OCKAM" node create green
+  inlet_port="$(random_port)"
+  run_success "$OCKAM" tcp-inlet create \
+    --from "$inlet_port" \
+    --at /node/green \
+    --ping-timeout 500ms \
+    --to /node/relay1/secure/api/service/forward_to_blue1/secure/api/service/outlet \
+    --to /node/relay2/secure/api/service/forward_to_blue2/secure/api/service/outlet
+
+  run_success curl -sfI --retry-all-errors --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$inlet_port"
+
+  # delete relay1
+  run_success "$OCKAM" node delete relay1 --yes
+
+  # sleep to make sure the timeout is triggered
+  sleep 1
+
+  # check that the connection is still working by querying multiple times
+  for i in {1..10}; do
+    # no retray, as we want to check that every connection is successful
+    run_success curl -sfI -m 1 "127.0.0.1:$inlet_port"
+  done
 }

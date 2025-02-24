@@ -1,5 +1,5 @@
 use crate::kafka::{ConsumerPublishing, ConsumerResolution};
-use crate::nodes::models::portal::{InletStatus, OutletStatus};
+use crate::nodes::models::portal::{InletStatusView, OutletStatus};
 use crate::nodes::models::services::{
     StartKafkaInletRequest, StartKafkaOutletRequest, StartServiceRequest,
 };
@@ -29,7 +29,7 @@ pub trait KafkaPortals {
         inlet_policy_expression: Option<PolicyExpression>,
         consumer_policy_expression: Option<PolicyExpression>,
         producer_policy_expression: Option<PolicyExpression>,
-    ) -> miette::Result<Reply<InletStatus>>;
+    ) -> miette::Result<Reply<InletStatusView>>;
 
     async fn create_kafka_outlet(
         &self,
@@ -57,7 +57,7 @@ impl KafkaPortals for BackgroundNodeClient {
         inlet_policy_expression: Option<PolicyExpression>,
         consumer_policy_expression: Option<PolicyExpression>,
         producer_policy_expression: Option<PolicyExpression>,
-    ) -> miette::Result<Reply<InletStatus>> {
+    ) -> miette::Result<Reply<InletStatusView>> {
         let request = {
             let payload = StartKafkaInletRequest::new(
                 bind_address,

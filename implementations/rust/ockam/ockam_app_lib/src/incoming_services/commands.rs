@@ -1,4 +1,3 @@
-use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -18,7 +17,6 @@ use ockam_api::nodes::service::tcp_inlets::Inlets;
 use ockam_api::ConnectionStatus;
 use ockam_core::api::Reply;
 use ockam_core::route;
-use ockam_multiaddr::MultiAddr;
 use tracing::{debug, error, info, warn};
 
 impl AppState {
@@ -110,7 +108,7 @@ impl AppState {
                     .show_inlet(&self.context(), service.inlet_name())
                     .await
                 {
-                    if inlet.status == ConnectionStatus::Up {
+                    if inlet.connection == ConnectionStatus::Up {
                         debug!(node = %inlet_node_name, alias = %inlet.alias, "TCP inlet is already up");
                         return true;
                     }
@@ -200,11 +198,15 @@ impl AppState {
             .create_inlet(
                 &self.context(),
                 &HostnamePort::from(bind_address),
-                &MultiAddr::from_str(&service.service_route(Some(project_name.as_str())))
-                    .into_diagnostic()?,
+                0,
+                vec![service
+                    .service_route(Some(project_name.as_str()))
+                    .parse()
+                    .into_diagnostic()?],
                 &inlet_alias,
                 &None,
                 &Some(FullExpression(expr)),
+                Duration::from_secs(5),
                 Duration::from_secs(5),
                 true,
                 &None,

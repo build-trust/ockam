@@ -15,6 +15,7 @@ use ockam_core::Route;
 use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
 use std::sync::Arc;
+use std::time::Duration;
 
 impl HttpControlNodeApiBackend {
     pub(super) async fn handle_tcp_inlet(
@@ -36,7 +37,7 @@ impl HttpControlNodeApiBackend {
             },
             Method::DELETE => match resource_id {
                 None => ControlApiHttpResponse::missing_resource_id(ResourceKind::TcpInlets),
-                Some(id) => handle_tcp_inlet_delete(&self.node_manager, id).await,
+                Some(id) => handle_tcp_inlet_delete(context, &self.node_manager, id).await,
             },
             _ => {
                 warn!("Invalid method: {method}");
@@ -155,16 +156,28 @@ async fn handle_tcp_inlet_create(
         )?),
     };
 
+    if request.to.is_empty() {
+        return ControlApiHttpResponse::bad_request("`to` must not be empty");
+    }
+
+    let to = request
+        .to
+        .iter()
+        .map(|to| to.parse())
+        .collect::<Result<Vec<_>, _>>()?;
+
     let result = node_manager
         .create_inlet(
             context,
             request.from.try_into()?,
             Route::default(),
             Route::default(),
-            request.to.parse()?,
+            request.target_redundancy.unwrap_or(to.len() - 1),
+            to,
             request.name.unwrap_or_else(random_string),
             allow,
             None,
+            Some(Duration::from_millis(request.ping_timeout)),
             authorized,
             false,
             None,
@@ -292,10 +305,11 @@ async fn handle_tcp_inlet_list(
     )
 )]
 async fn handle_tcp_inlet_delete(
+    context: &Context,
     node_manager: &Arc<NodeManager>,
     resource_id: &str,
 ) -> Result<ControlApiHttpResponse, ControlApiError> {
-    let result = node_manager.delete_inlet(resource_id).await;
+    let result = node_manager.delete_inlet(context, resource_id).await;
     match result {
         Ok(_) => Ok(ControlApiHttpResponse::without_body(
             StatusCode::NO_CONTENT,
@@ -368,11 +382,13 @@ mod test {
                         hostname: "127.0.0.1".to_string(),
                         port: 0,
                     },
-                    to: "/service/outlet".to_string(),
+                    to: vec!["/service/outlet".to_string()],
+                    target_redundancy: None,
                     identity: None,
                     authorized: None,
                     allow: None,
-                    retry_wait: 1000,
+                    retry_wait: 1_000,
+                    ping_timeout: 1_000,
                 })
                 .unwrap(),
             ),
@@ -390,8 +406,8 @@ mod test {
         let inlet_status: InletStatus = serde_json::from_slice(response.body.as_slice()).unwrap();
         assert_eq!(inlet_status.name, "inlet-name");
         assert_eq!(inlet_status.status, ConnectionStatus::Down);
-        assert_eq!(inlet_status.current_route, None);
-        assert_eq!(inlet_status.to, "/service/outlet");
+        assert!(inlet_status.active_routes.is_empty());
+        assert_eq!(inlet_status.to, vec!["/service/outlet"]);
         assert_eq!(inlet_status.bind_address.hostname, "127.0.0.1");
         assert!(inlet_status.bind_address.port > 0);
 
@@ -414,8 +430,8 @@ mod test {
         let inlet_status: InletStatus = serde_json::from_slice(response.body.as_slice()).unwrap();
         assert_eq!(inlet_status.name, "inlet-name");
         assert_eq!(inlet_status.status, ConnectionStatus::Up);
-        assert_eq!(inlet_status.current_route, Some("0#outlet".to_string()));
-        assert_eq!(inlet_status.to, "/service/outlet");
+        assert_eq!(inlet_status.active_routes, vec!["0#outlet".to_string()]);
+        assert_eq!(inlet_status.to, vec!["/service/outlet"]);
 
         let request = ControlApiHttpRequest {
             method: "GET".to_string(),
@@ -435,8 +451,8 @@ mod test {
         assert_eq!(inlets.len(), 1);
         assert_eq!(inlets[0].name, "inlet-name");
         assert_eq!(inlets[0].status, ConnectionStatus::Up);
-        assert_eq!(inlets[0].current_route, Some("0#outlet".to_string()));
-        assert_eq!(inlets[0].to, "/service/outlet");
+        assert_eq!(inlets[0].active_routes, vec!["0#outlet".to_string()]);
+        assert_eq!(inlets[0].to, vec!["/service/outlet"]);
 
         let request = ControlApiHttpRequest {
             method: "DELETE".to_string(),

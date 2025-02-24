@@ -200,7 +200,7 @@ pub struct Changes {
 /// Takes in a [`MultiAddr`] and instantiate it, can be implemented for any protocol.
 /// Each [`Instantiator`] is limited to a single [`Match`] list.
 #[async_trait]
-pub trait Instantiator: Send + Sync + 'static {
+pub trait Instantiator: Debug + Send + Sync + 'static {
     /// Returns a list of matches for the search within the [`MultiAddr`]
     fn matches(&self) -> Vec<Match>;
 
@@ -257,59 +257,55 @@ impl ConnectionBuilder {
         //executing a regex-like search, shifting the starting point one by one
         //not efficient by any mean, but it shouldn't be an issue
         let codes = instantiator.matches();
-        let length = codes.len();
         let mut start = 0;
 
-        if self.current_multiaddr.len() > length {
-            while start < self.current_multiaddr.len() - length {
-                if self.current_multiaddr.matches(start, &codes) {
-                    // the transport route should include only the pieces before the match
-                    self.transport_route = self
-                        .recalculate_transport_route(
-                            ctx,
-                            self.current_multiaddr.split(start).0,
-                            false,
-                        )
-                        .await?;
-                    let mut changes = instantiator
-                        .instantiate(
-                            ctx,
-                            node_manager,
-                            self.transport_route.clone(),
-                            self.extract(start, instantiator.matches().len()),
-                        )
-                        .await?;
+        while start < self.current_multiaddr.len() {
+            if self.current_multiaddr.matches_at(start, &codes) {
+                // the transport route should include only the pieces before the match
+                self.transport_route = self
+                    .recalculate_transport_route(ctx, self.current_multiaddr.split(start).0, false)
+                    .await?;
+                let mut changes = instantiator
+                    .instantiate(
+                        ctx,
+                        node_manager,
+                        self.transport_route.clone(),
+                        self.extract(start, instantiator.matches().len()),
+                    )
+                    .await?;
 
-                    self.current_multiaddr = changes.current_multiaddr;
-                    self.secure_channel_encryptors
-                        .append(&mut changes.secure_channel_encryptors);
+                self.current_multiaddr = changes.current_multiaddr;
+                self.secure_channel_encryptors
+                    .append(&mut changes.secure_channel_encryptors);
 
-                    if changes.tcp_connection.is_some() {
-                        if self.tcp_connection.is_some() {
-                            return Err(ockam_core::Error::new(
-                                Origin::Transport,
-                                Kind::Unsupported,
-                                "multiple transport connections created in a `MultiAddr`",
-                            ));
-                        }
-                        self.tcp_connection = changes.tcp_connection;
+                if changes.tcp_connection.is_some() {
+                    if self.tcp_connection.is_some() {
+                        return Err(ockam_core::Error::new(
+                            Origin::Transport,
+                            Kind::Unsupported,
+                            "multiple transport connections created in a `MultiAddr`",
+                        ));
                     }
-
-                    if changes.udp_bind.is_some() {
-                        if self.udp_bind.is_some() {
-                            return Err(ockam_core::Error::new(
-                                Origin::Transport,
-                                Kind::Unsupported,
-                                "multiple transport connections created in a `MultiAddr`",
-                            ));
-                        }
-                        self.udp_bind = changes.udp_bind;
-                    }
-
-                    if changes.flow_control_id.is_some() {
-                        self.flow_control_id = changes.flow_control_id;
-                    }
+                    self.tcp_connection = changes.tcp_connection;
                 }
+
+                if changes.udp_bind.is_some() {
+                    if self.udp_bind.is_some() {
+                        return Err(ockam_core::Error::new(
+                            Origin::Transport,
+                            Kind::Unsupported,
+                            "multiple transport connections created in a `MultiAddr`",
+                        ));
+                    }
+                    self.udp_bind = changes.udp_bind;
+                }
+
+                if changes.flow_control_id.is_some() {
+                    self.flow_control_id = changes.flow_control_id;
+                }
+
+                start = 0;
+            } else {
                 start += 1;
             }
         }
