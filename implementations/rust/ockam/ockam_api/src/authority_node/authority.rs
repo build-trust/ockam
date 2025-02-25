@@ -325,14 +325,30 @@ impl Authority {
                 .add_consumer(&address.into(), secure_channel_flow_control_id);
 
             let url = telemetry_endpoint_url.to_string();
-            let uri = url
+            if let Ok(uri) = url
                 .parse::<Uri>()
-                .map_err(|e| Error::new(Origin::Ockam, Kind::Invalid, e))?;
-            debug!("start a grpc forwarder at '{uri}'");
-            ctx.start_worker(
-                address,
-                GrpcForwarder::new(uri).await.map_err(ApiError::core)?,
-            )?
+                .map_err(|e| Error::new(Origin::Ockam, Kind::Invalid, e))
+            {
+                debug!("Start a grpc forwarder at '{uri}'");
+                match GrpcForwarder::new(uri.clone())
+                    .await
+                    .map_err(ApiError::core)
+                {
+                    Ok(grpc_forwarder) => match ctx.start_worker(address, grpc_forwarder) {
+                        Ok(_) => {
+                            debug!("Started a grpc forwarder at '{uri}'");
+                        }
+                        Err(e) => {
+                            error!("Cannot start the grpc forwarder at '{uri}': {e:?}")
+                        }
+                    },
+                    Err(e) => {
+                        error!("Cannot start the grpc forwarder: {e:?}")
+                    }
+                }
+            } else {
+                error!("Cannot start the grpc forwarder, can't parse the opentelemetry endpoint: {url}")
+            }
         };
         Ok(())
     }
