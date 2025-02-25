@@ -6,6 +6,7 @@ use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{async_trait, Routed, Worker};
 use ockam_node::Context;
 use std::future;
+use std::time::Duration;
 use tonic::body::BoxBody;
 use tonic::client::GrpcService;
 use tonic::transport::Channel;
@@ -28,6 +29,7 @@ impl GrpcForwarder {
                     "cannot create a TLS config for the HttpForwarder channel at {uri:?}: {e:?}"
                 ))
             })?
+            .connect_timeout(Duration::from_secs(5))
             .connect()
             .await
             .map_err(|e| ApiError::message(format!("cannot connect to {uri:?}: {e:?}")))?;
