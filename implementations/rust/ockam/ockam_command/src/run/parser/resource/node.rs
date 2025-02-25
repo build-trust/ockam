@@ -83,9 +83,13 @@ impl Resource<CreateCommand> for Node {
             args.insert("project".into(), project);
         }
         if let Some(services) = self.services {
-            if let Ok(services) = services.into_arg() {
-                if let Ok(services) = serde_json::to_string(&services) {
-                    args.insert("services".into(), services.into());
+            // Because the services is flattened, `self.services` will be Some even if it's not
+            // defined in the config, so we need to check if the inner fields are defined first.
+            if services.services.is_some() || services.start_default_services.is_some() {
+                if let Ok(services) = services.into_arg() {
+                    if let Ok(services) = serde_json::to_string(&services) {
+                        args.insert("services".into(), services.into());
+                    }
                 }
             }
         }
@@ -201,19 +205,19 @@ mod tests {
 
     #[test]
     fn node_config() {
-        let test = |c: &str| {
+        let get_parsed_cmd = |c: &str| {
             let parsed: Node = serde_yaml::from_str(c).unwrap();
             let cmds = parsed.into_parsed_commands().unwrap();
             assert_eq!(cmds.len(), 1);
-            let cmd = cmds.into_iter().next().unwrap();
-            assert_eq!(cmd.name, "n1");
+            cmds.into_iter().next().unwrap()
         };
 
         // Name only
         let config = r#"
             name: n1
         "#;
-        test(config);
+        let cmd = get_parsed_cmd(config);
+        assert_eq!(cmd.name, "n1");
 
         // Multiple arguments
         let config = r#"
@@ -221,7 +225,11 @@ mod tests {
         tcp-listener-address: 127.0.0.1:1234
         skip-is-running-check: true
         "#;
-        test(config);
+        let cmd = get_parsed_cmd(config);
+        assert_eq!(cmd.name, "n1");
+        assert_eq!(cmd.tcp_listener_address, "127.0.0.1:1234");
+        assert!(cmd.skip_is_running_check);
+        assert!(cmd.services.is_none());
 
         // Services
         let config = r#"
@@ -229,13 +237,26 @@ mod tests {
         tcp-listener-address: 127.0.0.1:3333
         start_default_services: true
         services:
-          startup_services:
-            control_api:
-              authentication_token: token
-              backend: true
-              node_resolution: direct-connection
+          control_api:
+            authentication_token: token
+            backend: true
+            node_resolution: direct-connection
         "#;
-        test(config);
+        let cmd = get_parsed_cmd(config);
+        assert_eq!(cmd.name, "n1");
+        assert_eq!(cmd.tcp_listener_address, "127.0.0.1:3333");
+        let services = cmd.services.unwrap();
+        assert!(&services.start_default_services);
+        assert_eq!(
+            services
+                .services
+                .unwrap()
+                .control_api
+                .unwrap()
+                .authentication_token
+                .unwrap(),
+            "token"
+        );
 
         // With other sections
         let config = r#"
@@ -250,12 +271,14 @@ mod tests {
             from: 6060
             at: n
         "#;
-        test(config);
+        let cmd = get_parsed_cmd(config);
+        assert_eq!(cmd.name, "n1");
+        assert_eq!(cmd.tcp_listener_address, "127.0.0.1:1234");
     }
 
     #[test]
     fn services_config() {
-        let test = |c: &str| {
+        let get_parsed_config = |c: &str| {
             // Convert yaml yo struct representation
             let parsed: Services = serde_yaml::from_str(c).unwrap();
             // Convert yaml struct to command argument representation
@@ -267,13 +290,16 @@ mod tests {
             // We compare the `ServicesConfig` struct as it's easier to compare basic types (bools, strings, etc)
             // than comparing the `Services` struct which has a `NamedResources` field and the types can be dynamic
             assert_eq!(arg, arg_again);
+            arg
         };
 
         // Start default services
         let config = r#"
         start-default-services: true
         "#;
-        test(config);
+        let parsed = get_parsed_config(config);
+        assert!(parsed.start_default_services);
+        assert!(parsed.services.is_none());
 
         // Single service
         let config = r#"
@@ -281,7 +307,11 @@ mod tests {
           secure-channel-listener:
             address: api
         "#;
-        test(config);
+        let parsed = get_parsed_config(config);
+        assert!(!parsed.start_default_services);
+        let services = parsed.services.unwrap();
+        let secure_channel_listener = services.secure_channel_listener.unwrap();
+        assert_eq!(secure_channel_listener.address, "api");
 
         let config = r#"
         services:
@@ -290,7 +320,16 @@ mod tests {
             backend: true
             node-resolution: direct-connection
         "#;
-        test(config);
+        let parsed = get_parsed_config(config);
+        assert!(!parsed.start_default_services);
+        let services = parsed.services.unwrap();
+        let control_api = services.control_api.unwrap();
+        assert_eq!(control_api.authentication_token.unwrap(), "token");
+        assert!(control_api.backend);
+        assert_eq!(
+            control_api.node_resolution,
+            ControlApiNodeResolution::DirectConnection
+        );
 
         // Multiple services
         let config = r#"
@@ -304,14 +343,10 @@ mod tests {
             backend: true
             node-resolution: direct-connection
         "#;
-        test(config);
+        let parsed = get_parsed_config(config);
+        assert!(parsed.start_default_services);
 
-        // Check values
-        let parsed: Services = serde_yaml::from_str(config).unwrap();
-        let arg = parsed.clone().into_arg().unwrap();
-        assert!(arg.start_default_services);
-
-        let services = arg.services.unwrap();
+        let services = parsed.services.unwrap();
         let secure_channel_listener = services.secure_channel_listener.unwrap();
         assert_eq!(secure_channel_listener.address, "api");
         assert!(secure_channel_listener.disabled);
