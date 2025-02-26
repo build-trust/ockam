@@ -5050,6 +5050,7 @@ dependencies = [
  "aes-gcm",
  "arrayref",
  "aws-lc-rs",
+ "base64ct",
  "cfg-if",
  "ed25519-dalek",
  "hex",

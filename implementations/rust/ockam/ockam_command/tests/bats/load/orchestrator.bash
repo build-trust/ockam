@@ -47,3 +47,16 @@ function copy_enrolled_home_dir() {
     cp -a $OCKAM_HOME_BASE/database.sqlite3 $OCKAM_HOME/
   fi
 }
+
+export DEFAULT_TICKET_PATH="$OCKAM_HOME_BASE/.tmp/default.ticket"
+function get_default_ticket() {
+  if [ ! -z "${ORCHESTRATOR_TESTS}" ]; then
+    # if the ticket doesn't exist, create it
+    if [ ! -f "$DEFAULT_TICKET_PATH" ]; then
+      OCKAM_HOME=$OCKAM_HOME_BASE "$OCKAM" project ticket --usage-count 1000 --expires-in 1h >$DEFAULT_TICKET_PATH
+    fi
+
+  fi
+  # return the path to the ticket
+  echo "$DEFAULT_TICKET_PATH"
+}
