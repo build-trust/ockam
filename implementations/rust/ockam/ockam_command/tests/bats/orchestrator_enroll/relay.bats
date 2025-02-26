@@ -21,7 +21,7 @@ teardown() {
   relay_name=$(random_str)
   relay_ticket_path="$OCKAM_HOME/relay.ticket"
 
-  run_success bash -c "$OCKAM project ticket --usage-count 1 --relay $relay_name > $relay_ticket_path"
+  run_success bash -c "$OCKAM project ticket --usage-count 5 --relay $relay_name > $relay_ticket_path"
 
   setup_home_dir
   $OCKAM project enroll $relay_ticket_path

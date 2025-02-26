@@ -14,10 +14,11 @@ teardown() {
 }
 
 @test "node control api - relay node resolution" {
+  relay=$(random_str)
   ticket=$($OCKAM project ticket \
     --attribute node_control_api_backend \
     --attribute node_control_api_frontend \
-    --relay red)
+    --relay $relay)
   api_port="$(random_port)"
   frontend_node_port="$(random_port)"
 
@@ -45,7 +46,7 @@ teardown() {
       backend: true,
       node-resolution: direct-connection
   }}}"
-  run_success "$OCKAM" relay create --to red --at "/ip4/127.0.0.1/tcp/${frontend_node_port}/secure/api" red
+  run_success "$OCKAM" relay create --to red --at "/ip4/127.0.0.1/tcp/${frontend_node_port}/secure/api" ${relay}
 
   # verify that it can be accessed via control node api
   run_success curl -vf \
@@ -95,6 +96,7 @@ teardown() {
 
 @test "node control api - portals" {
   ticket=$($OCKAM project ticket \
+    --usage-count 5 \
     --attribute node_control_api_backend \
     --attribute node_control_api_frontend)
   api_port="$(random_port)"
@@ -193,6 +195,7 @@ teardown() {
 
 @test "node control api - relay" {
   ticket=$($OCKAM project ticket \
+    --usage-count 5 \
     --attribute node_control_api_backend \
     --attribute node_control_api_frontend \
     --relay "my-address")
@@ -266,6 +269,7 @@ teardown() {
 
 @test "node control api - ticket" {
   ticket=$($OCKAM project ticket \
+    --usage-count 5 \
     --enroller \
     --attribute node_control_api_backend \
     --attribute node_control_api_frontend)
@@ -306,6 +310,7 @@ teardown() {
 
 @test "node control api - local authority ticket" {
   ticket=$($OCKAM project ticket \
+    --usage-count 5 \
     --enroller \
     --attribute node_control_api_backend \
     --attribute node_control_api_frontend)
@@ -377,6 +382,7 @@ EOF
 
 @test "node control api - authority members" {
   ticket=$($OCKAM project ticket \
+    --usage-count 5 \
     --enroller \
     --attribute node_control_api_backend \
     --attribute node_control_api_frontend)
