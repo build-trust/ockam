@@ -29,12 +29,10 @@ where
         {
             match hex::decode(value.as_bytes()) {
                 Ok(decoded) => Ok(decoded),
-                Err(_) => {
-                    return Err(serde::de::Error::invalid_value(
-                        Unexpected::Other("invalid hex"),
-                        &self,
-                    ))
-                }
+                Err(_) => Err(serde::de::Error::invalid_value(
+                    Unexpected::Other("invalid hex"),
+                    &self,
+                )),
             }
         }
 

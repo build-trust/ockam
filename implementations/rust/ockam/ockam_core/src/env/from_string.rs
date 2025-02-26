@@ -14,7 +14,7 @@ pub trait FromString: Sized {
     fn from_string(s: &str) -> Result<Self>;
 }
 
-/// Instances
+// Instances
 
 impl<T: FromString> FromString for Option<T> {
     fn from_string(s: &str) -> Result<Self> {

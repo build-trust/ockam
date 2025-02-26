@@ -670,7 +670,7 @@ mod tests {
         test_parse_error(&mut "a=\"\"", "the value can't be empty");
     }
 
-    /// HELPERS
+    // HELPERS
 
     /// Test the parsing of a name
     fn test_parse_name(input: &str) {

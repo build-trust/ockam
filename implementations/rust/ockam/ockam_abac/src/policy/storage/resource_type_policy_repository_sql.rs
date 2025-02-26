@@ -245,7 +245,7 @@ mod test {
         Ok(())
     }
 
-    /// HELPERS
+    // HELPERS
     async fn create_repository() -> Result<Arc<dyn ResourceTypePoliciesRepository>> {
         Ok(Arc::new(ResourceTypePolicySqlxDatabase::create().await?))
     }

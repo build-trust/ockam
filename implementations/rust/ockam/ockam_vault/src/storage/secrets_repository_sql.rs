@@ -481,7 +481,7 @@ mod test {
         Ok(())
     }
 
-    /// HELPERS
+    // HELPERS
     async fn create_repository() -> Result<Arc<dyn SecretsRepository>> {
         Ok(Arc::new(SecretsSqlxDatabase::create().await?))
     }

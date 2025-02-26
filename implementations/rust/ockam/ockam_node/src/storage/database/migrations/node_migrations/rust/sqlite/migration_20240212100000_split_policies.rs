@@ -177,7 +177,7 @@ mod test {
         node_name: String,
     }
 
-    /// HELPERS
+    // HELPERS
     fn insert_policy(resource: &str) -> Query<Any, AnyArguments> {
         let action = "handle_message";
         let expression = random_string();

@@ -222,7 +222,7 @@ impl<'a> ProtoValue<'a> {
     }
 }
 
-impl<'a> AsRef<[u8]> for ProtoValue<'a> {
+impl AsRef<[u8]> for ProtoValue<'_> {
     fn as_ref(&self) -> &[u8] {
         &self.data()
     }

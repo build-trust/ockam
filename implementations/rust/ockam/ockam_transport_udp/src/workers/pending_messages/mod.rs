@@ -114,7 +114,7 @@ mod tests {
         Ok(())
     }
 
-    impl<'a> UdpTransportMessage<'a> {
+    impl UdpTransportMessage<'_> {
         pub fn into_owned(self) -> UdpTransportMessage<'static> {
             UdpTransportMessage {
                 version: self.version,

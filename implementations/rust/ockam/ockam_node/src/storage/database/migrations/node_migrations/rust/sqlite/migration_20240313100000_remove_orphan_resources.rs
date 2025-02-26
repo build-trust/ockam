@@ -166,7 +166,7 @@ mod test {
 
         Ok(())
     }
-    /// HELPERS
+    // HELPERS
     fn insert_resource<'a>(
         resource: &'a str,
         node_name: &'a str,

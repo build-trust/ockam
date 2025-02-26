@@ -432,7 +432,7 @@ mod tests {
         .await
     }
 
-    /// HELPERS
+    // HELPERS
     async fn create_identity() -> Result<Identifier> {
         let identities = identities().await?;
         identities.identities_creation().create_identity().await

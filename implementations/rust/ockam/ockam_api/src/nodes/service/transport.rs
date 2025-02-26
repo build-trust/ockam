@@ -133,7 +133,7 @@ impl NodeManagerWorker {
             })
     }
 
-    pub(super) async fn create_tcp_connection<'a>(
+    pub(super) async fn create_tcp_connection(
         &self,
         ctx: &Context,
         create: CreateTcpConnection,
@@ -150,7 +150,7 @@ impl NodeManagerWorker {
             })
     }
 
-    pub(super) async fn create_tcp_listener<'a>(
+    pub(super) async fn create_tcp_listener(
         &self,
         create: CreateTcpListener,
     ) -> Result<Response<TransportStatus>, Response<Error>> {

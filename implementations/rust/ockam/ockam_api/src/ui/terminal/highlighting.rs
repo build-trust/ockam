@@ -33,7 +33,7 @@ pub struct TextHighlighter<'a> {
     pub theme: &'a Theme,
 }
 
-impl<'a> TextHighlighter<'a> {
+impl TextHighlighter<'_> {
     pub fn new(syntax: &str) -> Result<Self> {
         let syntax = SYNTAX_SET_NEWLINES
             .find_syntax_by_extension(syntax)

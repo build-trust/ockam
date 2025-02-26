@@ -89,7 +89,7 @@ async fn test_log_and_traces() {
     )
 }
 
-/// HELPERS
+// HELPERS
 
 fn make_configuration() -> ockam_core::Result<LoggingConfiguration> {
     Ok(LoggingConfiguration::new(

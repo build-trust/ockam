@@ -93,7 +93,7 @@ mod tests {
         Ok(())
     }
 
-    /// HELPERS
+    // HELPERS
     async fn create_attributes_entry(
         identifier: &Identifier,
         now: TimestampInSeconds,

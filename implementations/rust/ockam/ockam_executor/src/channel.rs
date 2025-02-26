@@ -104,7 +104,7 @@ pub struct SendFuture<'a, T> {
     value: Option<T>,
 }
 
-impl<'a, T> Future for SendFuture<'a, T> {
+impl<T> Future for SendFuture<'_, T> {
     type Output = Result<(), error::SendError<T>>;
 
     fn poll(mut self: Pin<&mut Self>, context: &mut Context<'_>) -> Poll<Self::Output> {
@@ -133,7 +133,7 @@ impl<'a, T> Future for SendFuture<'a, T> {
     }
 }
 
-impl<'a, T> Unpin for SendFuture<'a, T> {}
+impl<T> Unpin for SendFuture<'_, T> {}
 
 /// Receiver
 pub struct Receiver<T>(Arc<Inner<T>>);
@@ -158,7 +158,7 @@ pub struct ReceiveFuture<'a, T> {
     inner: &'a Inner<T>,
 }
 
-impl<'a, T> Future for ReceiveFuture<'a, T> {
+impl<T> Future for ReceiveFuture<'_, T> {
     type Output = Option<T>;
 
     fn poll(self: Pin<&mut Self>, context: &mut Context<'_>) -> Poll<Self::Output> {

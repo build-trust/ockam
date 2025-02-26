@@ -99,7 +99,7 @@ mod tests {
         Ok(())
     }
 
-    /// HELPERS
+    // HELPERS
     async fn create_credential() -> Result<CredentialAndPurposeKey> {
         let identities = identities().await?;
         let issuer = identities.identities_creation().create_identity().await?;

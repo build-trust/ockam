@@ -255,7 +255,7 @@ mod tests {
         assert_eq!(now_as_string(datetime("2024-03-31T12:00:00Z")), "240330");
     }
 
-    /// HELPERS
+    // HELPERS
     fn datetime(s: &str) -> DateTime<Utc> {
         Utc.from_utc_datetime(&DateTime::parse_from_rfc3339(s).unwrap().naive_utc())
     }

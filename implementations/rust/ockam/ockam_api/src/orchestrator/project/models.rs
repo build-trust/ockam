@@ -367,7 +367,7 @@ mod tests {
         }
     }
 
-    /// HELPERS
+    // HELPERS
 
     impl Arbitrary for OktaConfig {
         fn arbitrary(g: &mut Gen) -> Self {

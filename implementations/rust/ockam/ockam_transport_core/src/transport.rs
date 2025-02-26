@@ -6,13 +6,12 @@ use std::any::Any;
 #[cfg(feature = "std")]
 use std::sync::Arc;
 
+pub const MAXIMUM_MESSAGE_LENGTH: usize = u16::MAX as usize;
+
 /// Generic representation of a Transport
 /// At minimum, a Transport must be able
 ///  - return its type
 ///  - instantiate workers for all the addresses with that transport type in a Route
-
-pub const MAXIMUM_MESSAGE_LENGTH: usize = u16::MAX as usize;
-
 #[async_trait]
 pub trait Transport: Send + Sync + 'static {
     /// Return the type of the Transport

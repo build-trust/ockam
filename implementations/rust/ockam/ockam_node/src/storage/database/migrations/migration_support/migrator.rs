@@ -236,9 +236,9 @@ impl Migrator {
         }
     }
 
-    async fn needs_sql_migration<'a>(
+    async fn needs_sql_migration(
         &self,
-        migration: &'a SqlxMigration,
+        migration: &SqlxMigration,
         _connection: &mut AnyConnection,
         applied_migrations: &[AppliedMigration],
     ) -> Result<bool> {
@@ -266,9 +266,9 @@ impl Migrator {
         }
     }
 
-    async fn apply_sql_migration<'a>(
+    async fn apply_sql_migration(
         &self,
-        migration: &'a SqlxMigration,
+        migration: &SqlxMigration,
         connection: &mut AnyConnection,
         applied_migrations: &[AppliedMigration],
     ) -> Result<MigrationResult> {
@@ -308,9 +308,9 @@ impl Migrator {
         }
     }
 
-    async fn needs_rust_migration<'a>(
+    async fn needs_rust_migration(
         &self,
-        migration: &'a dyn RustMigration,
+        migration: &dyn RustMigration,
         connection: &mut AnyConnection,
         _applied_migrations: &[AppliedMigration],
     ) -> Result<bool> {

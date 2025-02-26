@@ -1158,7 +1158,7 @@ mod tests {
         assert_eq!(decoded_person, Some(person));
     }
 
-    /// HELPERS
+    // HELPERS
 
     #[derive(Debug, Clone, Eq, PartialEq, Encode, Decode, CborLen, Message)]
     struct Person {

@@ -72,7 +72,7 @@ impl<'a> From<CowBytes<'a>> for Cow<'a, [u8]> {
     }
 }
 
-impl<'a> Deref for CowBytes<'a> {
+impl Deref for CowBytes<'_> {
     type Target = [u8];
 
     fn deref(&self) -> &Self::Target {

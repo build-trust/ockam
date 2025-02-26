@@ -442,7 +442,7 @@ mod test {
     use std::net::SocketAddr;
     use tokio::net::TcpStream;
 
-    async fn send_http_request<'a, S: Serialize + Send, D: DeserializeOwned + Send>(
+    async fn send_http_request<S: Serialize + Send, D: DeserializeOwned + Send>(
         request: Request<S>,
     ) -> Response<D> {
         let host = request.uri().host().expect("uri has no host");

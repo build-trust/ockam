@@ -1,6 +1,6 @@
-///
-/// LOGGING CONFIGURATION
-///
+//
+// LOGGING CONFIGURATION
+//
 
 /// Decides if logs should be created. Accepted values, see FromString<bool>. For example; true, false, 1, 0
 pub(crate) const OCKAM_LOGGING: &str = "OCKAM_LOGGING";
@@ -8,9 +8,9 @@ pub(crate) const OCKAM_LOGGING: &str = "OCKAM_LOGGING";
 /// Required log level. Accepted values, see LevelVar. For example: trace, debug, info, warn, error
 pub(crate) const OCKAM_LOG_LEVEL: &str = "OCKAM_LOG_LEVEL";
 
-///
-/// LOG FILE CONFIGURATION
-///
+//
+//LOG FILE CONFIGURATION
+//
 
 /// Max size of a log file before it is rotated, in Mb
 pub(crate) const OCKAM_LOG_MAX_SIZE_MB: &str = "OCKAM_LOG_MAX_SIZE_MB";
@@ -24,9 +24,9 @@ pub(crate) const OCKAM_LOG_FORMAT: &str = "OCKAM_LOG_FORMAT";
 /// Filter for log messages based on crate names. Accepted values: 'all' or 'comma-separated strings'. For example: ockam_core,ockam_api
 pub(crate) const OCKAM_LOG_CRATES_FILTER: &str = "OCKAM_LOG_CRATES_FILTER";
 
-///
-/// TRACING CONFIGURATION
-///
+//
+// TRACING CONFIGURATION
+//
 
 /// Decides if spans and log records should be created and exported. Accepted values, see BooleanVar. For example; true, false, 1, 0
 pub(crate) const OCKAM_TELEMETRY_EXPORT: &str = "OCKAM_TELEMETRY_EXPORT";
@@ -58,9 +58,9 @@ pub const OCKAM_DEVELOPER: &str = "OCKAM_DEVELOPER";
 /// If this variable is true, print statements will debug the setting of the OpenTelemetry export
 pub(crate) const OCKAM_OPENTELEMETRY_EXPORT_DEBUG: &str = "OCKAM_OPENTELEMETRY_EXPORT_DEBUG";
 
-///
-/// TELEMETRY COLLECTOR ENDPOINT CONFIGURATION
-///
+//
+// TELEMETRY COLLECTOR ENDPOINT CONFIGURATION
+//
 
 /// URL for the OpenTelemetry collector. Accepted values, see UrlVar. For example: http://127.0.0.1:4317
 pub(crate) const OCKAM_OPENTELEMETRY_ENDPOINT: &str = "OCKAM_OPENTELEMETRY_ENDPOINT";
@@ -75,9 +75,9 @@ pub(crate) const OCKAM_FOREGROUND_TELEMETRY_ENDPOINT_CONNECTION_TIMEOUT: &str =
 pub(crate) const OCKAM_BACKGROUND_TELEMETRY_ENDPOINT_CONNECTION_TIMEOUT: &str =
     "OCKAM_BACKGROUND_TELEMETRY_ENDPOINT_CONNECTION_TIMEOUT";
 
-///
-/// TELEMETRY COLLECTOR EXPORT CONFIGURATION
-///
+//
+// TELEMETRY COLLECTOR EXPORT CONFIGURATION
+//
 
 /// Timeout for trying to export spans to the endpoint.
 /// Accepted values, see DurationVar. For example: 500ms
