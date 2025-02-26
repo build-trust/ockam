@@ -244,7 +244,7 @@ mod tests {
         );
     }
 
-    /// HELPERS
+    // HELPERS
     fn make_http_request() -> http::Request<Vec<u8>> {
         http::Request::builder()
             .method(Method::GET)

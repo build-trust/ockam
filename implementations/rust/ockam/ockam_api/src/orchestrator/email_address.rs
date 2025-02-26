@@ -116,7 +116,7 @@ mod tests {
         }
     }
 
-    /// HELPERS
+    // HELPERS
 
     /// This newtype generates equal email addresses
     #[derive(Clone, PartialEq, Eq, Debug)]

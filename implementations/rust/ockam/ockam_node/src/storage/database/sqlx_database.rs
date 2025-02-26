@@ -718,7 +718,7 @@ pub mod tests {
         Ok(())
     }
 
-    /// HELPERS
+    // HELPERS
     async fn insert_identity(db: &SqlxDatabase) -> Result<AnyQueryResult> {
         sqlx::query("INSERT INTO named_identity (identifier, name, vault_name, is_default) VALUES ($1, $2, $3, $4)")
             .bind("Ifa804b7fca12a19eed206ae180b5b576860ae651")

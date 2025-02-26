@@ -226,7 +226,7 @@ mod tests {
         Ok(())
     }
 
-    /// HELPERS
+    // HELPERS
     async fn create_identity(db: SqlxDatabase, name: &str) -> Result<Identity> {
         let identities = identities().await?;
         let identifier = identities.identities_creation().create_identity().await?;

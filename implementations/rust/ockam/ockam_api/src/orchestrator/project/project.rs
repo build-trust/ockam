@@ -389,7 +389,7 @@ mod tests {
         assert!(project.is_admin(&create_user("TEST@OCKAM.IO")));
     }
 
-    /// HELPERS
+    // HELPERS
     fn create_admin(email: &str) -> ProjectUserRole {
         ProjectUserRole {
             email: email.try_into().unwrap(),

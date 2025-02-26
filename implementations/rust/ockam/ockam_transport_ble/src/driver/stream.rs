@@ -54,7 +54,7 @@ where
         (*guard).write(buffer).await
     }
 
-    async fn poll<'a, 'b>(&'a self, buffer: &'b mut [u8]) -> Result<crate::driver::BleEvent<'b>> {
+    async fn poll<'a>(&self, buffer: &'a mut [u8]) -> Result<crate::driver::BleEvent<'a>> {
         let mut guard = self.inner.lock().await;
         (*guard).poll(buffer).await
     }
@@ -83,10 +83,7 @@ impl<A> Source<A>
 where
     A: BleStreamDriver + Send,
 {
-    pub async fn poll<'a, 'b>(
-        &'a self,
-        buffer: &'b mut [u8],
-    ) -> Result<crate::driver::BleEvent<'b>> {
+    pub async fn poll<'a>(&self, buffer: &'a mut [u8]) -> Result<crate::driver::BleEvent<'a>> {
         self.inner.poll(buffer).await
     }
 }

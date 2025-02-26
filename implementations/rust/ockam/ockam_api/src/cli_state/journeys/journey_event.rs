@@ -1,7 +1,7 @@
 use opentelemetry::Key;
 use std::fmt::{Display, Formatter};
 
-/// List of attribute keys for journey event creation
+// List of attribute keys for journey event creation
 
 pub const TCP_OUTLET_AT: &Key = &Key::from_static_str("app.tcp_outlet.at");
 pub const TCP_OUTLET_FROM: &Key = &Key::from_static_str("app.tcp_outlet.from");

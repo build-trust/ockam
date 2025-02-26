@@ -75,7 +75,7 @@ impl<'a> From<CowStr<'a>> for Cow<'a, str> {
     }
 }
 
-impl<'a> Deref for CowStr<'a> {
+impl Deref for CowStr<'_> {
     type Target = str;
 
     fn deref(&self) -> &Self::Target {
@@ -83,19 +83,19 @@ impl<'a> Deref for CowStr<'a> {
     }
 }
 
-impl<'a> Display for CowStr<'a> {
+impl Display for CowStr<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         self.0.fmt(f)
     }
 }
 
-impl<'a, S: ?Sized + AsRef<str>> PartialEq<S> for CowStr<'a> {
+impl<S: ?Sized + AsRef<str>> PartialEq<S> for CowStr<'_> {
     fn eq(&self, other: &S) -> bool {
         self.0 == other.as_ref()
     }
 }
 
-impl<'a> AsRef<str> for CowStr<'a> {
+impl AsRef<str> for CowStr<'_> {
     fn as_ref(&self) -> &str {
         self.0.as_ref()
     }

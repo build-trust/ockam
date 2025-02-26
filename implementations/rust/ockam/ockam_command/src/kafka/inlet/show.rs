@@ -58,7 +58,7 @@ impl<'a> ShowTui<'a> {
 }
 
 #[async_trait]
-impl<'a> ShowCommandTui for ShowTui<'a> {
+impl ShowCommandTui for ShowTui<'_> {
     const ITEM_NAME: PluralTerm = PluralTerm::KafkaInlet;
 
     fn cmd_arg_item_name(&self) -> Option<String> {

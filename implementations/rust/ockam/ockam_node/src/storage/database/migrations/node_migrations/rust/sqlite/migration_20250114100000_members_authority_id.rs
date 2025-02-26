@@ -124,7 +124,7 @@ mod test {
         Ok(())
     }
 
-    /// HELPERS
+    // HELPERS
     fn insert_member(identifier: &str) -> Query<'_, Any, AnyArguments<'_>> {
         query("INSERT INTO authority_member (identifier, added_by, added_at, is_pre_trusted, attributes) VALUES ($1, $2, $3, $4, $5)")
             .bind(identifier)

@@ -610,7 +610,7 @@ mod tests {
         test_failure("a or b", &format!("The first identifier of the expression: `a or b` must be an operation. The available operations are: {}", OPERATORS.join(", ")));
     }
 
-    /// HELPERS
+    // HELPERS
     fn test_failure(s: &str, expected_message: &str) {
         match parse(s) {
             Err(e) => assert!(e.to_string().contains(expected_message)),

@@ -523,7 +523,7 @@ pub mod tests {
         result.unwrap()
     }
 
-    /// HELPERS
+    // HELPERS
 
     /// Create an Authority configuration with:
     ///

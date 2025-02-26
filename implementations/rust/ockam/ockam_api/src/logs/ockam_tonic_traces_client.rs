@@ -161,7 +161,7 @@ pub(crate) mod tests {
         assert!(result.is_ok());
     }
 
-    /// HELPERS
+    // HELPERS
 
     /// Create a SecureChannels service for a local node
     pub(crate) async fn create_secure_channels() -> Result<Arc<SecureChannels>> {

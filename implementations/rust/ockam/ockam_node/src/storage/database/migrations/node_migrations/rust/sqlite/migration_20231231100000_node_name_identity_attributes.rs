@@ -192,7 +192,7 @@ mod test {
         Ok(())
     }
 
-    /// HELPERS
+    // HELPERS
     fn create_attributes(identifier: &str) -> Result<Vec<u8>> {
         ockam_core::cbor_encode_preallocate(BTreeMap::from([
             ("name".as_bytes().to_vec(), identifier.as_bytes().to_vec()),

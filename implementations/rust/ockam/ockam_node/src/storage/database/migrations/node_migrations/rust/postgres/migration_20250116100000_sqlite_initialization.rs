@@ -393,7 +393,7 @@ mod test {
         Ok(())
     }
 
-    /// HELPERS
+    // HELPERS
     async fn insert_aead_secrets(sqlite_database: SqlxDatabase) -> Result<()> {
         for index in &["1", "2"] {
             let q = format!(

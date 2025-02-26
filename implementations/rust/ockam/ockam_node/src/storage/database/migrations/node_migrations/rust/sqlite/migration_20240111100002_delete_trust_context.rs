@@ -307,7 +307,7 @@ mod test {
         Ok(())
     }
 
-    /// HELPERS
+    // HELPERS
     fn insert_policy(
         resource: String,
         action: String,

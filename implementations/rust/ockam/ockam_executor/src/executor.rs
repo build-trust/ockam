@@ -41,7 +41,7 @@ pub struct Executor<'a> {
     marker: core::marker::PhantomData<&'a ()>,
 }
 
-impl<'a> Executor<'a> {
+impl Executor<'_> {
     pub fn new() -> Self {
         Self {
             tasks: UnsafeCell::new(BTreeMap::new()),
@@ -168,7 +168,7 @@ impl<'a> Executor<'a> {
     }
 }
 
-impl<'a> Default for Executor<'a> {
+impl Default for Executor<'_> {
     fn default() -> Self {
         Self::new()
     }
@@ -271,7 +271,7 @@ struct TaskWaker<'a> {
     marker: core::marker::PhantomData<&'a ()>,
 }
 
-impl<'a> TaskWaker<'a> {
+impl TaskWaker<'_> {
     fn new(task_id: TaskId, task_queue: Arc<SegQueue<TaskId>>) -> Waker {
         Waker::from(Arc::new(TaskWaker {
             task_id,
@@ -285,7 +285,7 @@ impl<'a> TaskWaker<'a> {
     }
 }
 
-impl<'a> Wake for TaskWaker<'a> {
+impl Wake for TaskWaker<'_> {
     fn wake(self: Arc<Self>) {
         self.reschedule_task();
     }

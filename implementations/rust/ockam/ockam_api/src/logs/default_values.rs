@@ -1,9 +1,9 @@
 use crate::logs::LogFormat;
 use std::time::Duration;
 
-///
-/// LOGGING
-///
+//
+// LOGGING
+//
 
 /// Log format for files. See LogFormat for other values
 pub(crate) const DEFAULT_LOG_FORMAT: LogFormat = LogFormat::Default;
@@ -18,9 +18,9 @@ pub(crate) const DEFAULT_LOG_MAX_FILES: u64 = 60;
 pub(crate) const DEFAULT_OPENTELEMETRY_ENDPOINT: &str =
     "https://otelcoll.orchestrator.ockam.io:443";
 
-///
-/// TRACING
-///
+//
+// TRACING
+//
 
 /// Timeout for trying to access the Telemetry collector endpoint when running a command
 /// It is quite high but experimentation shows that sometimes there's quite some lag even if the endpoint is available

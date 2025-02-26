@@ -448,7 +448,7 @@ mod tests {
         .await
     }
 
-    /// HELPERS
+    // HELPERS
     fn list_file_names(dir: &Path) -> Vec<String> {
         fs::read_dir(dir)
             .unwrap()

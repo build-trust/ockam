@@ -268,7 +268,7 @@ mod tests {
         .await
     }
 
-    /// HELPERS
+    // HELPERS
     async fn create_attributes_entry(
         identifier: &Identifier,
         now: TimestampInSeconds,

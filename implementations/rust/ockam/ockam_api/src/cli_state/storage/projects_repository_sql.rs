@@ -755,7 +755,7 @@ mod test {
         .await
     }
 
-    /// HELPERS
+    // HELPERS
     fn create_project(
         id: &str,
         name: &str,

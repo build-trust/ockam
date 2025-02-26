@@ -133,7 +133,7 @@ mod test {
         node_name: String,
     }
 
-    /// HELPERS
+    // HELPERS
     fn insert_resource_policy(resource: &str) -> Query<'_, Any, AnyArguments<'_>> {
         let action = "handle_message";
         let expression = "subject.has_credential";
