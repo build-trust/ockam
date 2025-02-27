@@ -208,22 +208,14 @@ pub fn run_ockam(args: Vec<String>, quiet: bool) -> miette::Result<Child> {
             .into()
     });
 
-    unsafe {
-        TokioCommand::new(ockam_exe)
-            .args(args)
-            .stdout(subprocess_stdio(quiet))
-            .stderr(subprocess_stdio(quiet))
-            .stdin(Stdio::null())
-            // This unsafe block will only panic if the closure panics, which shouldn't happen
-            .pre_exec(|| {
-                // Detach the process from the parent
-                nix::unistd::setsid().map_err(std::io::Error::from)?;
-                Ok(())
-            })
-            .spawn()
-            .into_diagnostic()
-            .context("failed to spawn node")
-    }
+    TokioCommand::new(ockam_exe)
+        .args(args)
+        .stdout(subprocess_stdio(quiet))
+        .stderr(subprocess_stdio(quiet))
+        .stdin(Stdio::null())
+        .spawn()
+        .into_diagnostic()
+        .context("failed to spawn node")
 }
 
 fn subprocess_stdio(quiet: bool) -> Stdio {
