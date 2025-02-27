@@ -52,7 +52,7 @@ teardown() {
   run_success curl -vf \
     -H 'Authorization: Bearer token' \
     -o inlet-list.json \
-    "http://localhost:${api_port}/red/tcp-inlets"
+    "http://localhost:${api_port}/${relay}/tcp-inlets"
   run_success cat inlet-list.json
   assert_output "[]"
 }
