@@ -639,6 +639,7 @@ This file contains attributions for any 3rd-party open source code used in this 
 | windows_x86_64_msvc | MIT, Apache-2.0 | https://crates.io/crates/windows_x86_64_msvc |
 | winnow | MIT | https://crates.io/crates/winnow |
 | winsafe | MIT | https://crates.io/crates/winsafe |
+| wit-bindgen-rt | Apache-2.0 WITH LLVM-exception, Apache-2.0, MIT | https://crates.io/crates/wit-bindgen-rt |
 | write16 | Apache-2.0, MIT | https://crates.io/crates/write16 |
 | writeable | Unicode-3.0 | https://crates.io/crates/writeable |
 | x11-clipboard | MIT | https://crates.io/crates/x11-clipboard |
