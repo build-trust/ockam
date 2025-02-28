@@ -444,6 +444,7 @@ impl NodeManager {
             .await?
             .wait_until_project_is_ready(ctx, project.model())
             .await?;
+
         let project = self
             .cli_state
             .projects()
@@ -457,6 +458,7 @@ impl NodeManager {
         ctx: &Context,
         project: &Project,
         caller_identity_name: Option<String>,
+        skip_controller_call: bool,
     ) -> miette::Result<AuthorityNodeClient> {
         let caller_identifier = self
             .get_identifier_by_name(caller_identity_name)
@@ -476,7 +478,18 @@ impl NodeManager {
         };
 
         // Make sure that the project is ready otherwise the next call will fail
-        let project = self.wait_until_project_is_ready(ctx, project).await?;
+        // Note:  the skip_controller_call workaround is because
+        //   1) There are cases of projects running entirely self-service, and the
+        //      existing code _does_ call orchestrator' controller endpoint.
+        //   2) The checks done aren't universally valid, there are cases where
+        //      just the authority exists, and we need to call the authority in order
+        //      to bring up the rest of the system.  So "project" node doesn't exist
+        //      at that point
+        let project = if !skip_controller_call {
+            self.wait_until_project_is_ready(ctx, project).await?
+        } else {
+            project.clone()
+        };
 
         self.make_authority_node_client(
             &project

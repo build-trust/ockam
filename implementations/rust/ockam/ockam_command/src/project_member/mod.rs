@@ -114,7 +114,7 @@ pub(super) async fn create_authority_client(
         .get_identity_name_or_default(&identity_opts.identity_name)
         .await?;
 
-    node.create_authority_client_with_project(ctx, project, Some(identity))
+    node.create_authority_client_with_project(ctx, project, Some(identity), false)
         .await
 }
 

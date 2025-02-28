@@ -214,7 +214,7 @@ async fn check_authority_node_accessible(
     spinner_option: Option<ProgressBar>,
 ) -> Result<Project> {
     let authority_node = node
-        .create_authority_client_with_project(ctx, &project, None)
+        .create_authority_client_with_project(ctx, &project, None, false)
         .await?;
 
     if let Some(spinner) = spinner_option.as_ref() {
