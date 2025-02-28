@@ -81,6 +81,10 @@ pub struct TicketCommand {
     /// Return the ticket using the legacy encoding format
     #[arg(long, hide = true)]
     legacy: bool,
+
+    /// Don't wait for "project to be ready", that end up calling orchestrator
+    #[arg(long, hide = true)]
+    skip_controller_call: bool,
 }
 
 #[async_trait]
@@ -108,7 +112,12 @@ impl Command for TicketCommand {
             .await?;
 
         let authority_node_client = node
-            .create_authority_client_with_project(ctx, &project, Some(identity))
+            .create_authority_client_with_project(
+                ctx,
+                &project,
+                Some(identity),
+                cmd.skip_controller_call,
+            )
             .await?;
 
         let attributes = cmd.attributes()?;

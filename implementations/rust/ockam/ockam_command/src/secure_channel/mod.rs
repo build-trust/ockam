@@ -3,11 +3,13 @@ pub(crate) mod listener;
 mod create;
 mod delete;
 mod list;
+mod peer_info;
 mod show;
 
 pub use create::CreateCommand;
 pub use delete::DeleteCommand;
 pub use list::ListCommand;
+pub use peer_info::PeerInfoCommand;
 pub use show::ShowCommand;
 
 use crate::{docs, CommandGlobalOpts};
@@ -40,6 +42,8 @@ enum SecureChannelSubcommand {
     List(ListCommand),
     #[command(display_order = 800)]
     Show(ShowCommand),
+    #[command(display_order = 800)]
+    PeerInfo(PeerInfoCommand),
 }
 
 impl SecureChannelCommand {
@@ -49,6 +53,7 @@ impl SecureChannelCommand {
             SecureChannelSubcommand::Delete(c) => c.run(ctx, opts).await,
             SecureChannelSubcommand::List(c) => c.run(ctx, opts).await,
             SecureChannelSubcommand::Show(c) => c.run(ctx, opts).await,
+            SecureChannelSubcommand::PeerInfo(c) => c.run(ctx, opts).await,
         }
     }
 
@@ -58,6 +63,7 @@ impl SecureChannelCommand {
             SecureChannelSubcommand::Delete(c) => c.name(),
             SecureChannelSubcommand::List(c) => c.name(),
             SecureChannelSubcommand::Show(c) => c.name(),
+            SecureChannelSubcommand::PeerInfo(c) => c.name(),
         }
     }
 }

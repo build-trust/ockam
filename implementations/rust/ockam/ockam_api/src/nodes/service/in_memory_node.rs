@@ -253,10 +253,16 @@ impl InMemoryNode {
         ctx: &Context,
         project: &Project,
         caller_identity_name: Option<String>,
+        skip_controller_call: bool,
     ) -> miette::Result<AuthorityNodeClient> {
         let client = self
             .node_manager
-            .create_authority_client_with_project(ctx, project, caller_identity_name)
+            .create_authority_client_with_project(
+                ctx,
+                project,
+                caller_identity_name,
+                skip_controller_call,
+            )
             .await?;
         if let Some(timeout) = self.timeout {
             Ok(client

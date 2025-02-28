@@ -384,7 +384,7 @@ impl AppState {
     ) -> Result<AuthorityNodeClient> {
         let node_manager = self.node_manager.read().await;
         Ok(node_manager
-            .create_authority_client_with_project(ctx, project, caller_identity_name)
+            .create_authority_client_with_project(ctx, project, caller_identity_name, false)
             .await?)
     }
 
