@@ -89,7 +89,7 @@ opentelemetry = { version = "0.27", features = ["logs", "metrics", "trace"] }
 opentelemetry-appender-tracing = { version = "0.27" }
 opentelemetry-otlp = { version = "0.27", features = ["logs", "metrics", "trace", "grpc-tonic", "gzip-tonic", "tls", "tls-roots", "hyper-client"], default-features = false }
 opentelemetry-proto = { version = "0.27", features = ["full"] }
-opentelemetry-semantic-conventions = { version = "0.27", features = ["semconv_experimental"] }
+opentelemetry-semantic-conventions = { version = "0.28", features = ["semconv_experimental"] }
 opentelemetry_sdk = { version = "0.27", features = ["logs", "metrics", "trace", "rt-tokio", "rt-tokio-current-thread", "testing"], default-features = false }
 petname = { version = "2.0.2", default-features = false, features = ["default-rng", "default-words"] }
 r3bl_rs_utils_core = "0.9"
