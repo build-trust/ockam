@@ -114,7 +114,7 @@ impl Space {
 
 impl Display for Space {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "{}", color_primary(&self.name))?;
+        writeln!(f, "{}:", color_primary(&self.name))?;
         writeln!(f, "{}Id: {}", fmt::INDENTATION, color_primary(&self.id))?;
         writeln!(
             f,

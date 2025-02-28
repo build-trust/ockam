@@ -2,7 +2,6 @@ use crate::nodes::InMemoryNode;
 use crate::orchestrator::email_address::EmailAddress;
 use crate::orchestrator::project::models::{AdminInfo, OrchestratorVersionInfo};
 use crate::orchestrator::project::{Project, ProjectsOrchestratorApi};
-use miette::IntoDiagnostic;
 use ockam_core::async_trait;
 use ockam_node::Context;
 
@@ -133,14 +132,7 @@ impl ProjectsOrchestratorApi for InMemoryNode {
         match self.create_controller().await?.list_projects(ctx).await {
             Ok(project_models) => {
                 for project_model in project_models {
-                    info!(
-                        "retrieved project {}/{}",
-                        project_model.name, project_model.id
-                    );
-                    let project = Project::import(project_model.clone())
-                        .await
-                        .into_diagnostic()?;
-                    self.cli_state.projects().store_project(project).await?;
+                    self.get_project(ctx, &project_model.id).await?;
                 }
             }
             Err(e) => warn!("could not get the list of projects from the controller {e:?}"),

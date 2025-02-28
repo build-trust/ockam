@@ -1,8 +1,8 @@
 use serde::Serialize;
-use std::fmt::Write;
+use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 
-use crate::colors::color_primary;
+use crate::colors::{color_primary, color_warn};
 use crate::error::ApiError;
 use crate::orchestrator::enroll::auth0::UserInfo;
 use crate::orchestrator::project::models::ProjectModel;
@@ -10,7 +10,7 @@ use crate::orchestrator::share::RoleInShare;
 use crate::output::Output;
 use crate::terminal::fmt;
 
-use crate::TransportRouteResolver;
+use crate::{ConnectionStatus, TransportRouteResolver};
 use ockam::identity::{Identifier, Identity, Vault};
 use ockam_core::compat::collections::HashSet;
 use ockam_core::errcode::{Kind, Origin};
@@ -222,57 +222,32 @@ impl Project {
     }
 }
 
-impl Output for Project {
-    fn item(&self) -> crate::Result<String> {
-        let mut f = String::new();
-        write!(f, "{}{}", fmt::PADDING, color_primary(self.name()))?;
+impl Display for Project {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", color_primary(self.name()))?;
         writeln!(f, ":")?;
+        let status = ConnectionStatus::from(self.model().running.unwrap_or(false));
+        writeln!(f, "{}The project is {status}", fmt::INDENTATION,)?;
+        writeln!(f, "{}Id: {}", fmt::INDENTATION, self.project_id())?;
         writeln!(
             f,
-            "{}{}Id: {}",
-            fmt::PADDING,
+            "{}Space: {}",
             fmt::INDENTATION,
-            self.project_id()
+            color_warn(self.space_name())
         )?;
         writeln!(
             f,
-            "{}{}Name: {}",
-            fmt::PADDING,
+            "{}Route: {}",
             fmt::INDENTATION,
-            self.name()
+            color_primary(
+                self.project_multiaddr()
+                    .map(|m| m.to_string())
+                    .unwrap_or("N/A".to_string())
+            )
         )?;
         writeln!(
             f,
-            "{}{}Space: {}",
-            fmt::PADDING,
-            fmt::INDENTATION,
-            self.space_name()
-        )?;
-        writeln!(
-            f,
-            "{}{}Route: {}",
-            fmt::PADDING,
-            fmt::INDENTATION,
-            self.project_multiaddr()
-                .map(|m| m.to_string())
-                .unwrap_or("N/A".to_string())
-        )?;
-        writeln!(
-            f,
-            "{}{}Address: {}",
-            fmt::PADDING,
-            fmt::INDENTATION,
-            self.project_multiaddr()
-                .map(|m| TransportRouteResolver::default()
-                    .allow_tcp()
-                    .socket_address(m)
-                    .unwrap_or("N/A".to_string()))
-                .unwrap_or("N/A".to_string())
-        )?;
-        writeln!(
-            f,
-            "{}{}Identifier: {}",
-            fmt::PADDING,
+            "{}Identifier: {}",
             fmt::INDENTATION,
             self.project_identifier()
                 .map(|i| i.to_string())
@@ -280,22 +255,7 @@ impl Output for Project {
         )?;
         writeln!(
             f,
-            "{}{}Version: {}",
-            fmt::PADDING,
-            fmt::INDENTATION,
-            self.model().version.as_deref().unwrap_or("N/A")
-        )?;
-        writeln!(
-            f,
-            "{}{}Is running: {}",
-            fmt::PADDING,
-            fmt::INDENTATION,
-            self.model().running.unwrap_or(false)
-        )?;
-        writeln!(
-            f,
-            "{}{}Authority route: {}",
-            fmt::PADDING,
+            "{}Authority route: {}",
             fmt::INDENTATION,
             self.authority_multiaddr()
                 .map(|m| m.to_string())
@@ -303,20 +263,7 @@ impl Output for Project {
         )?;
         writeln!(
             f,
-            "{}{}Authority address: {}",
-            fmt::PADDING,
-            fmt::INDENTATION,
-            self.authority_multiaddr()
-                .map(|m| TransportRouteResolver::default()
-                    .allow_tcp()
-                    .socket_address(m)
-                    .unwrap_or("N/A".to_string()))
-                .unwrap_or("N/A".to_string())
-        )?;
-        writeln!(
-            f,
-            "{}{}Authority identifier: {}",
-            fmt::PADDING,
+            "{}Authority identifier: {}",
             fmt::INDENTATION,
             self.authority_identifier()
                 .map(|i| i.to_string())
@@ -324,27 +271,23 @@ impl Output for Project {
         )?;
         writeln!(
             f,
-            "{}{}Egress allow list: {}",
-            fmt::PADDING,
+            "{}Egress allow list: {}",
             fmt::INDENTATION,
-            self.egress_allow_list.join(", ")
+            color_primary(self.egress_allow_list.join(", "))
         )?;
-        Ok(f)
-    }
-
-    fn as_list_item(&self) -> crate::Result<String> {
-        let mut f = String::new();
-        writeln!(f, "Id: {}", self.project_id())?;
-        writeln!(f, "Name: {}", self.name())?;
-        writeln!(f, "Space: {}", self.space_name())?;
         writeln!(
             f,
-            "Route: {}",
-            self.project_multiaddr()
-                .map(|m| m.to_string())
-                .unwrap_or("N/A".to_string())
+            "{}Version: {}",
+            fmt::INDENTATION,
+            self.model().version.as_deref().unwrap_or("N/A")
         )?;
-        Ok(f)
+        Ok(())
+    }
+}
+
+impl Output for Project {
+    fn item(&self) -> crate::Result<String> {
+        Ok(self.padded_display())
     }
 }
 

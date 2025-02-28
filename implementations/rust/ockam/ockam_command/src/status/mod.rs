@@ -7,22 +7,23 @@ use miette::IntoDiagnostic;
 use serde::Serialize;
 use tracing::warn;
 
+use crate::docs;
 use crate::node::show::get_node_resources;
 use crate::shared_args::TimeoutArg;
 use crate::version::Version;
 use crate::Result;
 use crate::{Command, CommandGlobalOpts};
+
 use ockam::Context;
 use ockam_api::cli_state::{EnrollmentFilter, IdentityEnrollment};
 use ockam_api::colors::color_primary;
 use ockam_api::nodes::models::node::NodeResources;
 use ockam_api::nodes::{BackgroundNodeClient, InMemoryNode};
 use ockam_api::orchestrator::project::models::OrchestratorVersionInfo;
+use ockam_api::orchestrator::project::Project;
 use ockam_api::orchestrator::space::Space;
 use ockam_api::output::Output;
 use ockam_api::{fmt_heading, fmt_log, fmt_separator, fmt_warn};
-
-use crate::docs;
 
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/after_long_help.txt");
@@ -55,8 +56,14 @@ impl Command for StatusCommand {
             .map_err(|e| warn!(%e, "Failed to retrieve orchestrator version"))
             .unwrap_or_default();
         let spaces = opts.state.get_spaces().await?;
-        let status =
-            StatusData::from_parts(orchestrator_version, spaces, identities_details, nodes)?;
+        let projects = opts.state.projects().get_projects().await?;
+        let status = StatusData::from_parts(
+            orchestrator_version,
+            spaces,
+            projects,
+            identities_details,
+            nodes,
+        )?;
         opts.terminal
             .to_stdout()
             .plain(&status)
@@ -105,6 +112,7 @@ struct StatusData {
     ockam_version: Version,
     orchestrator_version: OrchestratorVersionInfo,
     spaces: Vec<Space>,
+    projects: Vec<Project>,
     identities: Vec<IdentityEnrollment>,
     nodes: Vec<NodeResources>,
 }
@@ -113,6 +121,7 @@ impl StatusData {
     fn from_parts(
         orchestrator_version: OrchestratorVersionInfo,
         spaces: Vec<Space>,
+        projects: Vec<Project>,
         identities: Vec<IdentityEnrollment>,
         nodes: Vec<NodeResources>,
     ) -> Result<Self> {
@@ -120,6 +129,7 @@ impl StatusData {
             ockam_version: Version::new(),
             orchestrator_version,
             spaces,
+            projects,
             identities,
             nodes,
         })
@@ -159,7 +169,7 @@ impl Display for StatusData {
             writeln!(
                 f,
                 "{}",
-                fmt_log!("Consider running `ockam enroll` or `ockam space create` to create your first space.")
+                fmt_log!("Consider running `ockam enroll` to create your first space.")
             )?;
         } else {
             writeln!(f, "{}", fmt_heading!("Spaces"))?;
@@ -168,6 +178,26 @@ impl Display for StatusData {
                     writeln!(f)?;
                 }
                 writeln!(f, "{}", space.iter_output().pad())?;
+            }
+        }
+
+        if self.projects.is_empty() {
+            writeln!(f, "{}", fmt_separator!())?;
+            writeln!(f, "{}", fmt_warn!("No projects found"))?;
+            if !self.spaces.is_empty() {
+                writeln!(
+                    f,
+                    "{}",
+                    fmt_log!("Consider running `ockam enroll` to create your first project.")
+                )?;
+            }
+        } else {
+            writeln!(f, "{}", fmt_heading!("Projects"))?;
+            for (idx, project) in self.projects.iter().enumerate() {
+                if idx > 0 {
+                    writeln!(f)?;
+                }
+                writeln!(f, "{}", project.iter_output().pad())?;
             }
         }
 
