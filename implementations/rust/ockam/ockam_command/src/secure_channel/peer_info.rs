@@ -1,4 +1,4 @@
-use crate::shared_args::IdentityOpts;
+use crate::shared_args::{IdentityOpts, TimeoutArg};
 use crate::{docs, CommandGlobalOpts};
 use clap::Args;
 use miette::IntoDiagnostic;
@@ -38,6 +38,9 @@ pub struct PeerInfoCommand {
 
     #[command(flatten)]
     identity_opts: IdentityOpts,
+
+    #[command(flatten)]
+    pub timeout: TimeoutArg,
 }
 
 impl PeerInfoCommand {
@@ -62,7 +65,7 @@ impl PeerInfoCommand {
                 Some(identity_name),
                 None,
                 None,
-                None,
+                Some(self.timeout.timeout),
                 SecureChannelType::KeyExchangeAndMessages,
             )
             .await?;
