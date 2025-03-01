@@ -73,7 +73,7 @@ httparse = "1.9.5"
 hyper = { version = "1", default-features = false, features = ["server", "http1", "client"] }
 hyper-util = { version = "0", default-features = false, features = ["server", "http1", "tokio"] }
 indicatif = "0.17"
-itertools = "0.13.0"
+itertools = "0.14.0"
 jaq-core = "1"
 jaq-interpret = "1"
 jaq-parse = "1"
