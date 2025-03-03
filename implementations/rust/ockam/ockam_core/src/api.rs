@@ -3,6 +3,7 @@
 use core::fmt::{self, Display, Formatter};
 use hashbrown::HashMap;
 
+use minicbor::bytes::ByteVec;
 use minicbor::data::Type;
 use minicbor::encode::{self, Encoder, Write};
 use minicbor::{CborLen, Decode, Decoder, Encode};
@@ -794,9 +795,22 @@ impl<T: Decodable> Decodable for Response<T> {
         } else {
             let error = if matches!(dec.datatype(), Ok(Type::String)) {
                 dec.decode::<String>()
-                    .map(|msg| Error::new_without_path().with_message(msg))?
+                    .map(|msg| Error::new_without_path().with_message(msg))
+                    .unwrap_or_default()
+            } else if matches!(dec.datatype(), Ok(Type::Bytes)) {
+                // Try to decode the error as a string from bytes if the datatype is not specified as
+                // as a string. This could happen accidentally on some Elixir codepaths.n
+                if let Some(message) = dec
+                    .decode::<ByteVec>()
+                    .ok()
+                    .and_then(|v| String::from_utf8(v.to_vec()).ok())
+                {
+                    Error::new_without_path().with_message(message)
+                } else {
+                    dec.decode::<Error>().unwrap_or_default()
+                }
             } else {
-                dec.decode::<Error>()?
+                dec.decode::<Error>().unwrap_or_default()
             };
 
             Ok(Response {
