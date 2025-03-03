@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.148.0 - 2025-03-03
+
+### Added
+
+- Optimize node creation:
+- Make portal handshake optional
+- Integrate the new span exporter with the rest of the application
+- Address review comments
+- Added the possibility to overwrite http headers in inlets
+- Add log format for user-facing terminal logs
+- Updated dependencies
+
 ## 0.147.0 - 2025-01-20
 
 ### Added

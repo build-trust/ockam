@@ -4,6 +4,51 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.148.0 - 2025-03-03
+
+### Added
+
+- Add a command to migrate a postgres database
+- Hide the migrate-database command
+- Custom branding config allows you to specify which commands are included
+- In the command, use a different footer when the binary is not ockam
+- Disable --all functionality in reset command if `OCKAM_DEVELOPER` is not set
+- In enrollment tickets, derive id from project route's service
+- Improve defaults handling of branding compile env vars
+- Show env values in `environment` command
+- Optimize node creation:
+- Add missing branding replacements in ockam_command
+- Make portal handshake optional
+- Implemented control api http server
+- In `Node Control API`, added crud for relay, ticket, and authority members
+- Added `self` reference as node name in `Node Control API`
+- Node control api: bat tests for all apis and relative fixes
+- Integrate the new span exporter with the rest of the application
+- Send telemetry data to the project node
+- Address review comments
+- Add support for "launch-configuration" in node's config
+- Added the possibility to overwrite http headers in inlets
+- Add projects to the output of the status command
+- Add log format for user-facing terminal logs
+- Updated dependencies
+
+### Changed
+
+- Use localhost constructor for `HostnamePort`
+- Logic of handling the default node name in `node create`
+- Enable requests to be messages
+- Merge functions for enriching tags
+
+### Fixed
+
+- Usage of compile time ockam home env var
+- Command subprocess read child's pipes instead of copying them
+- Node control api fixes and error handling refactorings
+- Set node name on background nodes, instead of delegating to the foreground node
+- Node subprocess inherits output streams
+- Handle default value for services in node config
+- In `node create`, detach background process
+
 ## 0.147.0 - 2025-01-20
 
 ### Added
