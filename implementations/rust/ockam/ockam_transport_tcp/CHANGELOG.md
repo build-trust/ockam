@@ -4,6 +4,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.136.0 - 2025-03-03
+
+### Added
+
+- Don't return an error when a tcp processor does not receive an ockam message
+- Optimize node creation:
+- Make portal handshake optional
+- Integrate the new span exporter with the rest of the application
+- Address review comments
+- Added the possibility to overwrite http headers in inlets
+- Add connect/disconnect logs to portal worker
+- Add log format for user-facing terminal logs
+- Updated dependencies
+
+### Changed
+
+- Enable requests to be messages
+
 ## 0.135.0 - 2025-01-20
 
 ### Added
