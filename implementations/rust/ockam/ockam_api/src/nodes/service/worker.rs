@@ -111,9 +111,10 @@ impl NodeManagerWorker {
                 &header,
                 self.delete_secure_channel(Decodable::decode(&body)?, ctx),
             ),
-            (Get, ["node", "show_secure_channel"]) => {
-                encode_response(&header, self.show_secure_channel(Decodable::decode(&body)?))
-            }
+            (Get, ["node", "show_secure_channel"]) => encode_response(
+                &header,
+                self.show_secure_channel(Decodable::decode(&body)?).await,
+            ),
             (Post, ["node", "secure_channel_listener"]) => encode_response(
                 &header,
                 self.create_secure_channel_listener(Decodable::decode(&body)?, ctx)

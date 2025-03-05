@@ -88,20 +88,21 @@ impl NodeManagerWorker {
         Ok(response)
     }
 
-    pub fn show_secure_channel(
+    pub async fn show_secure_channel(
         &self,
         show_secure_channel: ShowSecureChannelRequest,
     ) -> Result<Response<ShowSecureChannelResponse>, Response<Error>> {
         let ShowSecureChannelRequest { channel: address } = show_secure_channel;
-
-        let response = self
+        let secure_channel = self.node_manager.get_secure_channel(&address)?;
+        let change_history = self
             .node_manager
-            .get_secure_channel(&address)
-            .map(|secure_channel| {
-                Response::ok().body(ShowSecureChannelResponse::new(Some(secure_channel)))
-            })?;
-
-        Ok(response)
+            .secure_channels()
+            .identities()
+            .get_change_history(secure_channel.sc().their_identifier())
+            .await?;
+        let res = ShowSecureChannelResponse::new(secure_channel)?
+            .with_their_change_history(change_history)?;
+        Ok(Response::ok().body(res))
     }
 }
 
@@ -287,12 +288,12 @@ impl NodeManager {
             })
     }
 
-    pub fn list_secure_channels(&self) -> Vec<String> {
+    pub fn list_secure_channels(&self) -> Vec<Address> {
         let registry = &self.registry.secure_channels;
         let secure_channel_list = registry.list();
         secure_channel_list
             .into_iter()
-            .map(|secure_channel| secure_channel.sc().encryptor_address().to_string())
+            .map(|secure_channel| secure_channel.sc().encryptor_address().clone())
             .collect()
     }
 }
