@@ -33,10 +33,7 @@ pub fn print_path(p: &Path) -> String {
 /// Example:
 ///     if n1 has address of 127.0.0.1:1234
 ///     `/node/n1` -> `/ip4/127.0.0.1/tcp/1234`
-pub async fn process_nodes_multiaddr(
-    addr: &MultiAddr,
-    cli_state: &CliState,
-) -> crate::Result<MultiAddr> {
+pub async fn process_nodes_multiaddr(addr: &MultiAddr, cli_state: &CliState) -> Result<MultiAddr> {
     let mut processed_addr = MultiAddr::default();
     for proto in addr.iter() {
         match proto.code() {

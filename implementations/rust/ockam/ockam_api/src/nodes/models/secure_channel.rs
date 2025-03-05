@@ -1,11 +1,10 @@
-use colorful::Colorful;
-
+use std::fmt::Display;
 use std::time::Duration;
 
 use minicbor::{CborLen, Decode, Encode};
 use serde::Serialize;
 
-use ockam::identity::models::CredentialAndPurposeKey;
+use ockam::identity::models::{ChangeHistory, CredentialAndPurposeKey};
 use ockam::identity::{Identifier, SecureChannel, SecureChannelListener};
 use ockam::Message;
 use ockam_core::flow_control::FlowControlId;
@@ -15,7 +14,9 @@ use ockam_multiaddr::MultiAddr;
 use crate::colors::color_primary;
 use crate::nodes::registry::SecureChannelInfo;
 use crate::output::Output;
+use crate::terminal::fmt;
 use crate::ReverseLocalConverter;
+
 //Requests
 
 /// Request body when instructing a node to create a Secure Channel
@@ -316,10 +317,12 @@ impl DeleteSecureChannelResponse {
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct ShowSecureChannelResponse {
-    #[n(1)] pub channel: Option<String>,
-    #[n(2)] pub route: Option<String>,
-    #[n(3)] pub authorized_identifiers: Option<Vec<String>>,
-    #[n(4)] pub flow_control_id: Option<FlowControlId>,
+    #[n(1)] pub address: MultiAddr,
+    #[n(2)] pub route: MultiAddr,
+    #[n(3)] pub authorized_identifiers: Option<Vec<Identifier>>,
+    #[n(4)] pub flow_control_id: FlowControlId,
+    #[n(5)] pub their_identifier: Identifier,
+    #[n(6)] pub their_change_history: Option<String>,
 }
 
 impl Encodable for ShowSecureChannelResponse {
@@ -333,57 +336,61 @@ impl Decodable for ShowSecureChannelResponse {
         Ok(minicbor::decode(e)?)
     }
 }
+
 impl ShowSecureChannelResponse {
-    pub fn new(info: Option<SecureChannelInfo>) -> Self {
-        Self {
-            channel: info
-                .clone()
-                .map(|info| info.sc().encryptor_address().to_string()),
-            route: info.clone().map(|info| info.route().to_string()),
-            authorized_identifiers: info
-                .clone()
-                .map(|info| {
-                    info.clone()
-                        .authorized_identifiers()
-                        .map(|ids| ids.iter().map(|iid| iid.to_string()).collect())
-                })
-                .unwrap_or(None),
-            flow_control_id: info.map(|info| info.sc().flow_control_id().clone()),
+    pub fn new(info: SecureChannelInfo) -> Result<Self> {
+        Ok(Self {
+            address: ReverseLocalConverter::convert_address(info.sc().encryptor_address())?,
+            route: ReverseLocalConverter::convert_route(info.route())?,
+            authorized_identifiers: info.authorized_identifiers().map(|ids| ids.to_vec()),
+            flow_control_id: info.sc().flow_control_id().clone(),
+            their_identifier: info.sc().their_identifier().clone(),
+            their_change_history: None,
+        })
+    }
+
+    pub fn with_their_change_history(mut self, change_history: ChangeHistory) -> Result<Self> {
+        self.their_change_history = Some(change_history.export_as_string()?);
+        Ok(self)
+    }
+}
+
+impl Display for ShowSecureChannelResponse {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(
+            f,
+            "Secure channel running at {}",
+            color_primary(&self.address)
+        )?;
+
+        let route_ma = &self.route.to_string();
+        writeln!(f, "With route to {}", color_primary(route_ma))?;
+
+        if let Some(authorized) = &self.authorized_identifiers {
+            writeln!(f, "{}Authorized identifiers:", fmt::INDENTATION)?;
+            for id in authorized {
+                writeln!(f, "{}{}{}", fmt::INDENTATION, fmt::INDENTATION, id)?;
+            }
         }
+
+        writeln!(
+            f,
+            "Their identifier: {}",
+            color_primary(&self.their_identifier)
+        )?;
+
+        Ok(())
     }
 }
 
 impl Output for ShowSecureChannelResponse {
     fn item(&self) -> crate::Result<String> {
-        let s = match &self.channel {
-            Some(addr) => {
-                format!(
-                    "\n  Secure Channel:\n{} {}\n{} {}\n{} {}",
-                    "  •         At: ".light_magenta(),
-                    ReverseLocalConverter::convert_route(&route![addr.to_string()])?
-                        .to_string()
-                        .light_yellow(),
-                    "  •         To: ".light_magenta(),
-                    self.route.clone().unwrap().light_yellow(),
-                    "  • Authorized: ".light_magenta(),
-                    self.authorized_identifiers
-                        .as_ref()
-                        .unwrap_or(&vec!["none".to_string()])
-                        .iter()
-                        .map(|id| id.clone().light_yellow().to_string())
-                        .collect::<Vec<String>>()
-                        .join("\n\t")
-                )
-            }
-            None => format!("{}", "Channel not found".red()),
-        };
-
-        Ok(s)
+        Ok(self.padded_display())
     }
 }
 
 #[derive(Encode, Decode, CborLen, Debug, Default, Clone, Eq, PartialEq, Message)]
-pub struct SecureChannelList(#[n(0)] pub Vec<String>);
+pub struct SecureChannelList(#[n(0)] pub Vec<Address>);
 
 impl Encodable for SecureChannelList {
     fn encode(self) -> Result<Encoded> {

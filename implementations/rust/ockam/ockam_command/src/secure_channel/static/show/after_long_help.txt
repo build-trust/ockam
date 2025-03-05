@@ -1,3 +1,4 @@
 ```sh
-$ ockam secure-channel show 8eb3bfc8a6419f24c05ddd627d144bec --at n1
+$ ockam secure-channel show --at /node/n1/service/8eb3bfc8a6419f24c05ddd627d144bec
+$ ockam secure-channel show --at /dnsaddr/localhost/tcp/1111/service/api
 ```
