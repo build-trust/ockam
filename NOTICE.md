@@ -431,7 +431,7 @@ This file contains attributions for any 3rd-party open source code used in this 
 | regex-syntax | MIT, Apache-2.0 | https://crates.io/crates/regex-syntax |
 | reqwest | MIT, Apache-2.0 | https://crates.io/crates/reqwest |
 | rfc6979 | Apache-2.0, MIT | https://crates.io/crates/rfc6979 |
-| ring |  | https://crates.io/crates/ring |
+| ring | Apache-2.0, ISC | https://crates.io/crates/ring |
 | riscv | ISC | https://crates.io/crates/riscv |
 | roff | MIT, Apache-2.0 | https://crates.io/crates/roff |
 | rustc-demangle | MIT, Apache-2.0 | https://crates.io/crates/rustc-demangle |
