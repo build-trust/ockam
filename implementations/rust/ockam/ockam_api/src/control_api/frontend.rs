@@ -13,6 +13,7 @@ use ockam_core::{
     async_trait, cbor_encode_preallocate, AllowAll, Error, IncomingAccessControl, NeutralMessage,
     OutgoingAccessControl, Processor, Routed, TryClone,
 };
+use ockam_multiaddr::MultiAddr;
 use ockam_node::{Context, MessageSendReceiveOptions};
 use ockam_transport_core::TransportError;
 use std::net::SocketAddr;
@@ -218,9 +219,9 @@ impl HttpControlNodeApiFrontend {
             format!("/secure/api/service/{}", DefaultAddress::CONTROL_API)
         } else {
             match &node_resolution {
-                NodeResolution::Relay => {
+                NodeResolution::Relay { relay_node } => {
                     format!(
-                        "/service/forward_to_{node_name}/secure/api/service/{}",
+                        "{relay_node}/service/forward_to_{node_name}/secure/api/service/{}",
                         DefaultAddress::CONTROL_API
                     )
                 }
@@ -373,7 +374,7 @@ impl HttpControlNodeApiFrontend {
 
 #[derive(Clone)]
 pub enum NodeResolution {
-    Relay,
+    Relay { relay_node: MultiAddr },
     DirectConnection { pattern: String, port: u16 },
 }
 
@@ -436,6 +437,7 @@ mod test {
     use http::{Request, Response};
     use http_body_util::{BodyExt, Full};
     use hyper_util::rt::TokioIo;
+    use ockam_multiaddr::MultiAddr;
     use ockam_node::Context;
     use serde::de::DeserializeOwned;
     use serde::Serialize;
@@ -482,7 +484,9 @@ mod test {
             .create_control_api_frontend(
                 context,
                 SocketAddr::from(([127, 0, 0, 1], 0)),
-                NodeResolution::Relay,
+                NodeResolution::Relay {
+                    relay_node: MultiAddr::default(),
+                },
                 "token".to_str(),
                 None,
             )
@@ -552,7 +556,9 @@ mod test {
             .create_control_api_frontend(
                 context,
                 SocketAddr::from(([127, 0, 0, 1], 0)),
-                NodeResolution::Relay,
+                NodeResolution::Relay {
+                    relay_node: MultiAddr::default(),
+                },
                 "token".to_str(),
                 None,
             )
@@ -588,7 +594,9 @@ mod test {
             .create_control_api_frontend(
                 context,
                 SocketAddr::from(([127, 0, 0, 1], 0)),
-                NodeResolution::Relay,
+                NodeResolution::Relay {
+                    relay_node: MultiAddr::default(),
+                },
                 "token".to_str(),
                 None,
             )

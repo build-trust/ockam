@@ -137,25 +137,52 @@ async fn create_encoded_ticket(
     let authority_change_history;
     let authority_route;
 
+    let overridden_project_route;
+    let overridden_authority_route;
+
     let project = match &project_information {
-        Project::Existing { name: Some(name) } => Some(
-            node_manager
-                .cli_state
-                .projects()
-                .get_project_by_name(name)
-                .await?,
-        ),
-        Project::Existing { name: None } => Some(
-            node_manager
-                .cli_state
-                .projects()
-                .get_default_project()
-                .await?,
-        ),
-        _ => None,
+        Project::Existing {
+            name: Some(name),
+            project_route,
+            authority_route,
+        } => {
+            overridden_project_route = project_route;
+            overridden_authority_route = authority_route;
+            Some(
+                node_manager
+                    .cli_state
+                    .projects()
+                    .get_project_by_name(name)
+                    .await?,
+            )
+        }
+        Project::Existing {
+            name: None,
+            project_route,
+            authority_route,
+        } => {
+            overridden_project_route = project_route;
+            overridden_authority_route = authority_route;
+            Some(
+                node_manager
+                    .cli_state
+                    .projects()
+                    .get_default_project()
+                    .await?,
+            )
+        }
+        _ => {
+            overridden_project_route = &None;
+            overridden_authority_route = &None;
+            None
+        }
     };
     if let Some(project) = project {
-        project_route = ProjectRoute::new(project.project_multiaddr().cloned()?)?;
+        project_route = if let Some(project_route) = overridden_project_route {
+            ProjectRoute::new(project_route.parse()?)?
+        } else {
+            ProjectRoute::new(project.project_multiaddr().cloned()?)?
+        };
         project_identifier = if let Some(identifier) = project.project_identifier() {
             identifier
         } else {
@@ -184,7 +211,11 @@ async fn create_encoded_ticket(
                 "Project has no authority identity",
             ));
         };
-        authority_route = project.authority_multiaddr().cloned()?;
+        authority_route = if let Some(authority_route) = overridden_authority_route {
+            authority_route.parse()?
+        } else {
+            project.authority_multiaddr().cloned()?
+        };
     } else if let Project::Provided {
         project_name: provided_project_name,
         authority_route: provided_authority_route,
@@ -223,17 +254,13 @@ async fn create_encoded_ticket(
     post,
     operation_id = "project_enroll",
     summary = "Enroll to a Project using a Ticket",
-    description =
-"This API enrolls a node to a Project using the provided Ticket.
-Note that this API imports the Project in the node database, but the node won't be able to use
-it until it restarts.
-The easiest way to use a ticket is to specify the ticket directly during the node creation.",
+    description = "This API enrolls a node to a Project using the provided Ticket.",
     path = "/{node}/tickets/enroll",
     tags = ["Tickets"],
     responses(
-        (status = CREATED, description = "Successfully enrolled, new credential can be used right away", body = AuthorityInformation),
+        (status = CREATED, description = "Successfully enrolled", body = AuthorityInformation),
         (status = OK, description = "The node was already enrolled, no change in state", body = AuthorityInformation),
-        (status = ACCEPTED, description = "Enrolled, but the node needs a restart", body = AuthorityInformation),
+        (status = ACCEPTED, description = "Enrolled, but the project's authority does not match the node's authority.", body = AuthorityInformation),
     ),
     params(
         ("node" = NodeName,),
@@ -311,13 +338,13 @@ async fn handle_ticket_enroll(
     match result {
         Ok(status) => match status {
             EnrollStatus::EnrolledSuccessfully => {
-                let needs_restart =
+                let different_authority =
                     if let Some(current_authority) = node_manager.project_authority() {
                         current_authority != authority_identifier
                     } else {
                         true
                     };
-                if needs_restart {
+                if different_authority {
                     // enrolled, but the authority is not being used
                     Ok(ControlApiHttpResponse::with_body(
                         StatusCode::ACCEPTED,

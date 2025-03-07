@@ -85,7 +85,7 @@ impl Resource<CreateCommand> for Node {
         if let Some(services) = self.services {
             // Because the services is flattened, `self.services` will be Some even if it's not
             // defined in the config, so we need to check if the inner fields are defined first.
-            if services.services.is_some() || services.start_default_services.is_some() {
+            if services.services.is_some() {
                 if let Ok(services) = services.into_arg() {
                     if let Ok(services) = serde_json::to_string(&services) {
                         args.insert("services".into(), services.into());
@@ -166,20 +166,15 @@ impl Node {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct Services {
-    #[serde(alias = "start-default-services")]
-    pub start_default_services: Option<ArgValue>,
     pub services: Option<NamedResources>,
 }
 
 impl Services {
     /// Parse the services fields into a `ServicesConfig` struct
     pub fn into_arg(self) -> Result<ServicesConfig> {
-        let mut as_json = serde_json::json!({
+        let as_json = serde_json::json!({
             "services": self.services,
         });
-        if let Some(start_default_services) = self.start_default_services {
-            as_json["start-default-services"] = serde_json::json!(start_default_services);
-        }
         serde_json::from_value(as_json).into_diagnostic()
     }
 
@@ -246,7 +241,6 @@ mod tests {
         assert_eq!(cmd.name, "n1");
         assert_eq!(cmd.tcp_listener_address, "127.0.0.1:3333");
         let services = cmd.services.unwrap();
-        assert!(&services.start_default_services);
         assert_eq!(
             services
                 .services
@@ -293,14 +287,6 @@ mod tests {
             arg
         };
 
-        // Start default services
-        let config = r#"
-        start-default-services: true
-        "#;
-        let parsed = get_parsed_config(config);
-        assert!(parsed.start_default_services);
-        assert!(parsed.services.is_none());
-
         // Single service
         let config = r#"
         services:
@@ -308,7 +294,6 @@ mod tests {
             address: api
         "#;
         let parsed = get_parsed_config(config);
-        assert!(!parsed.start_default_services);
         let services = parsed.services.unwrap();
         let secure_channel_listener = services.secure_channel_listener.unwrap();
         assert_eq!(secure_channel_listener.address, "api");
@@ -321,7 +306,6 @@ mod tests {
             node-resolution: direct-connection
         "#;
         let parsed = get_parsed_config(config);
-        assert!(!parsed.start_default_services);
         let services = parsed.services.unwrap();
         let control_api = services.control_api.unwrap();
         assert_eq!(control_api.authentication_token.unwrap(), "token");
@@ -333,7 +317,6 @@ mod tests {
 
         // Multiple services
         let config = r#"
-        start-default-services: true
         services:
           secure-channel-listener:
             address: api
@@ -344,7 +327,6 @@ mod tests {
             node-resolution: direct-connection
         "#;
         let parsed = get_parsed_config(config);
-        assert!(parsed.start_default_services);
 
         let services = parsed.services.unwrap();
         let secure_channel_listener = services.secure_channel_listener.unwrap();

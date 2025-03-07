@@ -13,8 +13,6 @@ use ockam_api::nodes::service::default_address::DefaultAddress;
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 #[serde(default)]
 pub struct ServicesConfig {
-    #[serde(alias = "start-default-services")]
-    pub(crate) start_default_services: bool,
     #[serde(
         alias = "startup_services",
         alias = "startup-services",
@@ -118,7 +116,7 @@ pub struct ControlApiConfig {
     #[serde(alias = "frontend-policy", default = "default_frontend_policy")]
     pub(crate) frontend_policy: PolicyExpression,
 
-    #[serde(alias = "backend_policy", default = "default_backend_policy")]
+    #[serde(alias = "backend-policy", default = "default_backend_policy")]
     pub(crate) backend_policy: PolicyExpression,
 
     /// How to reach nodes.
@@ -147,6 +145,15 @@ pub struct ControlApiConfig {
         default = "default_node_resolution_pattern"
     )]
     pub(crate) node_resolution_pattern: String,
+
+    /// During node resolution, the frontend expects the relays in the provided node.
+    /// By default, relays are expected in the default project.
+    /// To use local relay, use an empty string.
+    #[serde(
+        alias = "node-resolution-relay-node",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub(crate) node_resolution_relay_node: Option<String>,
 
     /// Authentication token for the control API.
     /// When undefined, the environment variable `OCKAM_CONTROL_API_AUTHENTICATION_TOKEN` will be used.
