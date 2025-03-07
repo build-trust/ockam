@@ -20,6 +20,7 @@ use ockam_api::nodes::{
 };
 use ockam_api::terminal::notification::NotificationHandler;
 use ockam_core::LOCAL;
+use ockam_multiaddr::MultiAddr;
 use std::sync::Arc;
 use tokio::time::{sleep, Duration};
 use tracing::{debug, error, info, instrument};
@@ -93,10 +94,7 @@ impl CreateCommand {
             NodeManagerGeneralOptions::new(
                 opts.state.clone(),
                 node_name.clone(),
-                self.services
-                    .as_ref()
-                    .map(|c| c.start_default_services)
-                    .unwrap_or(true),
+                true,
                 self.status_endpoint_port(),
                 true,
             ),
@@ -229,7 +227,20 @@ impl CreateCommand {
                             .write_line(fmt_log!("Starting control API Frontend..."))?;
 
                         let node_resolution = match &config.node_resolution {
-                            ControlApiNodeResolution::Relay => NodeResolution::Relay,
+                            ControlApiNodeResolution::Relay => {
+                                let relay_node = if let Some(node_resolution_relay_node) =
+                                    &config.node_resolution_relay_node
+                                {
+                                    node_resolution_relay_node.parse()?
+                                } else if let Ok(default_project_name) =
+                                    node_manager.default_project_name().await
+                                {
+                                    format!("/project/{default_project_name}").parse()?
+                                } else {
+                                    MultiAddr::default()
+                                };
+                                NodeResolution::Relay { relay_node }
+                            }
                             ControlApiNodeResolution::DirectConnection => {
                                 NodeResolution::DirectConnection {
                                     pattern: config.node_resolution_pattern.clone(),
@@ -244,7 +255,7 @@ impl CreateCommand {
                                 config.http_bind_address,
                                 node_resolution,
                                 authentication_token,
-                                Some(config.frontend_policy.clone()),
+                                Some(config.backend_policy.clone()),
                             )
                             .await?;
                     }
@@ -253,8 +264,10 @@ impl CreateCommand {
                         opts.terminal
                             .write_line(fmt_log!("Starting control API Backend..."))?;
 
-                        node_manager
-                            .create_control_api_backend(ctx, Some(config.backend_policy.clone()))?;
+                        node_manager.create_control_api_backend(
+                            ctx,
+                            Some(config.frontend_policy.clone()),
+                        )?;
                     }
                 }
             }

@@ -111,6 +111,20 @@ pub enum Project {
         /// Name of the project
         /// When omitted, the default project will be used
         name: Option<String>,
+        /// Multiaddress to the node that will be used as an authority;
+        /// The Multiaddress will only be embedded in the ticket, but not used
+        /// for the actual connection;
+        /// When omitted, the existing authority route will be used
+        #[serde(default)]
+        #[schema(example = "/dnsaddr/my-authority.example.com/tcp/4001/secure/api")]
+        authority_route: Option<String>,
+        /// Multiaddress to the node that will be used as a project;
+        /// The Multiaddress will only be embedded in the ticket, but not used
+        /// for the actual connection;
+        /// When omitted, the existing project route will be used
+        #[serde(default)]
+        #[schema(example = "/dnsaddr/my-project.example.com/tcp/4000/service/api")]
+        project_route: Option<String>,
     },
     Provided {
         /// Name of the project;
@@ -134,13 +148,17 @@ pub enum Project {
 }
 
 pub fn default_project_information() -> Project {
-    Project::Existing { name: None }
+    Project::Existing {
+        name: None,
+        project_route: None,
+        authority_route: None,
+    }
 }
 
 impl Project {
     pub async fn to_project_authority(&self) -> ockam_core::Result<Authority> {
         match self {
-            Project::Existing { name } => Ok(Authority::Project { name: name.clone() }),
+            Project::Existing { name, .. } => Ok(Authority::Project { name: name.clone() }),
             Project::Provided {
                 authority_route,
                 authority_change_history,

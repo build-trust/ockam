@@ -374,6 +374,15 @@ impl NodeManager {
         ))
     }
 
+    pub async fn default_project_name(&self) -> ockam_core::Result<String> {
+        Ok(self
+            .cli_state
+            .projects()
+            .get_default_project()
+            .await
+            .map(|project| project.name().to_string())?)
+    }
+
     pub fn identifier(&self) -> Identifier {
         self.node_identifier.clone()
     }

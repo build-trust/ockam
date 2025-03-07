@@ -47,13 +47,12 @@ configuration or via environment variable, it's then passed in the `Authorizatio
 The easiest way to get development started is to use this API with the Ockam command and run a single node acting both as a frontend and backend.
 ```sh
 ockam node create --foreground -vv --configuration '{
-  "start_default_services": true,
   "services": {
-    "control_api": {
-      "authentication_token": "my-secret-token",
+    "control-api": {
+      "authentication-token": "my-secret-token",
       "backend": true,
       "frontend": true,
-      "http_bind_address": "127.0.0.1:8080"
+      "http-bind-address": "127.0.0.1:8080"
     }
   }
 }'

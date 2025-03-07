@@ -25,27 +25,26 @@ teardown() {
   setup_home_dir
   run_success "$OCKAM" project enroll "${ticket}"
 
-  run_success "$OCKAM" node create "{\
-  tcp-listener-address: \"127.0.0.1:${frontend_node_port}\",
-  start-default-services: true,
-  services: {
-    control-api: {
-      authentication-token: token,
-      backend: true,
-      frontend: true,
-      http-bind-address: \"127.0.0.1:${api_port}\",
-      node-resolution: relay
-  }}}"
+  run_success "$OCKAM" node create "
+    tcp-listener-address: 127.0.0.1:${frontend_node_port}
+    services:
+      control-api:
+        authentication-token: token
+        backend: true
+        frontend: true
+        http-bind-address: 127.0.0.1:${api_port}
+        node-resolution: relay
+        node-resolution-relay-node: ''
+  "
   wait_for_port $api_port
 
   # create a node with a relay in the api node
-  run_success "$OCKAM" node create red --configuration "{\
-  start-default-services: true,
-  services: {
-    control-api: {
-      backend: true,
-      node-resolution: direct-connection
-  }}}"
+  run_success "$OCKAM" node create red "
+    services:
+      control-api:
+        backend: true
+        node-resolution: direct-connection
+    "
   run_success "$OCKAM" relay create --to red --at "/ip4/127.0.0.1/tcp/${frontend_node_port}/secure/api" ${relay}
 
   # verify that it can be accessed via control node api
@@ -67,22 +66,26 @@ teardown() {
 
   api_port="$(random_port)"
   expected_connection_port="$(random_port)"
-  run_success "$OCKAM" node create \
-    --launch-configuration \
-    "{\"start_default_services\": true, \"startup_services\":{ \
-      \"control_api\":{\"authentication_token\": \"token\", \"backend\":false, \"frontend\":true, \"http_bind_address\":\"127.0.0.1:${api_port}\", \
-      \"node_resolution\":\"direct-connection\", \
-      \"connection_node_port\":${expected_connection_port} \
-    }}}"
+  run_success "$OCKAM" node create "
+    services:
+      control-api:
+        frontend: true
+        backend: true
+        authentication-token: token
+        http-bind-address: 127.0.0.1:${api_port}
+        node-resolution: direct-connection
+        connection-node-port: ${expected_connection_port}
+  "
   wait_for_port $api_port
 
   # create a node with listening on the expected port
-  run_success "$OCKAM" node create \
-    --tcp-listener-address "127.0.0.1:${expected_connection_port}" \
-    --launch-configuration \
-    "{\"start_default_services\": true, \"startup_services\":{ \
-      \"control_api\":{ \"backend\":true,\"node_resolution\":\"direct-connection\" \
-    }}}"
+  run_success "$OCKAM" node create "
+    tcp-listener-address: 127.0.0.1:${expected_connection_port}
+    services:
+      control-api:
+        backend: true
+        node-resolution: direct-connection
+    "
   wait_for_port ${expected_connection_port}
 
   # verify that it can be accessed via control node api
@@ -104,11 +107,15 @@ teardown() {
   setup_home_dir
   run_success "$OCKAM" project enroll "${ticket}"
 
-  run_success "$OCKAM" node create \
-    --launch-configuration \
-    "{\"start_default_services\": true, \"startup_services\":{ \
-      \"control_api\":{\"authentication_token\": \"token\", \"backend\":true, \"frontend\":true, \"http_bind_address\":\"127.0.0.1:${api_port}\" \
-    }}}"
+  run_success "$OCKAM" node create "
+    services:
+      control-api:
+        authentication-token: token
+        backend: true
+        frontend: true
+        http-bind-address: 127.0.0.1:${api_port}
+        node-resolution-relay-node: ''
+  "
   wait_for_port $api_port
 
   # create outlet
@@ -204,11 +211,15 @@ teardown() {
   setup_home_dir
   run_success "$OCKAM" project enroll "${ticket}"
 
-  run_success "$OCKAM" node create \
-    --launch-configuration \
-    "{\"start_default_services\": true, \"startup_services\":{ \
-      \"control_api\":{\"authentication_token\": \"token\", \"backend\":true, \"frontend\":true, \"http_bind_address\":\"127.0.0.1:${api_port}\" \
-    }}}"
+  run_success "$OCKAM" node create "
+    services:
+      control-api:
+        authentication-token: token
+        backend: true
+        frontend: true
+        http-bind-address: 127.0.0.1:${api_port}
+        node-resolution-relay-node: ''
+    "
   wait_for_port $api_port
 
   # create relay
@@ -278,11 +289,15 @@ teardown() {
   setup_home_dir
   run_success "$OCKAM" project enroll "${ticket}"
 
-  run_success "$OCKAM" node create \
-    --launch-configuration \
-    "{\"start_default_services\": true, \"startup_services\":{ \
-      \"control_api\":{\"authentication_token\": \"token\", \"backend\":true, \"frontend\":true, \"http_bind_address\":\"127.0.0.1:${api_port}\" \
-    }}}"
+  run_success "$OCKAM" node create "
+    services:
+      control-api:
+        authentication-token: token
+        backend: true
+        frontend: true
+        http-bind-address: 127.0.0.1:${api_port}
+        node-resolution-relay-node: ''
+    "
   wait_for_port $api_port
 
   # create ticket
@@ -319,11 +334,15 @@ teardown() {
   setup_home_dir
   run_success "$OCKAM" project enroll "${ticket}"
 
-  run_success "$OCKAM" node create \
-    --launch-configuration \
-    "{\"start_default_services\": true, \"startup_services\":{ \
-      \"control_api\":{\"authentication_token\": \"token\", \"backend\":true, \"frontend\":true, \"http_bind_address\":\"127.0.0.1:${api_port}\" \
-    }}}"
+  run_success "$OCKAM" node create "
+    services:
+      control-api:
+        authentication-token: token
+        backend: true
+        frontend: true
+        http-bind-address: 127.0.0.1:${api_port}
+        node-resolution-relay-node: ''
+    "
   wait_for_port $api_port
 
   default_identifier=$($OCKAM identity show --output json | jq -rc .identifier)
@@ -391,11 +410,15 @@ EOF
   setup_home_dir
   run_success "$OCKAM" project enroll "${ticket}"
 
-  run_success "$OCKAM" node create \
-    --launch-configuration \
-    "{\"start_default_services\": true, \"startup_services\":{ \
-      \"control_api\":{\"authentication_token\": \"token\", \"backend\":true, \"frontend\":true, \"http_bind_address\":\"127.0.0.1:${api_port}\" \
-    }}}"
+  run_success "$OCKAM" node create "
+    services:
+      control-api:
+        authentication-token: token
+        backend: true
+        frontend: true
+        http-bind-address: 127.0.0.1:${api_port}
+        node-resolution-relay-node: ''
+    "
   wait_for_port $api_port
 
   # add member

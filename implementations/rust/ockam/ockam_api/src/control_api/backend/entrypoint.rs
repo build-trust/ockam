@@ -103,10 +103,10 @@ impl Worker for HttpControlNodeApiBackend {
                 self.handle_relay(context, method, resource_id, request.body)
                     .await
             }
-            Some(ResourceKind::Tickets) => Ok(self
-                .handle_ticket(context, method, resource_id, request.body)
-                .await
-                .unwrap()),
+            Some(ResourceKind::Tickets) => {
+                self.handle_ticket(context, method, resource_id, request.body)
+                    .await
+            }
             Some(ResourceKind::AuthorityMembers) => {
                 self.handle_authority_member(context, method, resource_id, request.body)
                     .await
