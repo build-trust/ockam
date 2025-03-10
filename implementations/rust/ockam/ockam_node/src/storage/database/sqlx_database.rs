@@ -342,9 +342,11 @@ impl SqlxDatabase {
                     let _ = connection
                         .execute(
                             r#"
-PRAGMA synchronous = EXTRA;
+PRAGMA synchronous = NORMAL;
 PRAGMA locking_mode = NORMAL;
 PRAGMA busy_timeout = 10000;
+PRAGMA cache_size = -50000; -- 50 MB
+PRAGMA mmap_size = 52428800; -- 50 MB
                 "#,
                         )
                         .await

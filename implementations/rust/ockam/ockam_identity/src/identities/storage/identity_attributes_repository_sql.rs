@@ -54,16 +54,18 @@ impl IdentityAttributesSqlxDatabase {
 
 #[async_trait]
 impl IdentityAttributesRepository for IdentityAttributesSqlxDatabase {
-    async fn get_attributes(
+    async fn get_non_expired_attributes(
         &self,
         identity: &Identifier,
         attested_by: &Identifier,
+        now: TimestampInSeconds,
     ) -> Result<Option<AttributesEntry>> {
         let query = query_as(
-            "SELECT identifier, attributes, added, expires, attested_by FROM identity_attributes WHERE identifier = $1 AND attested_by = $2 AND node_name = $3"
+            "SELECT identifier, attributes, added, expires, attested_by FROM identity_attributes WHERE identifier = $1 AND attested_by = $2 AND (expires > $3 or expires IS NULL) AND node_name = $4"
             )
             .bind(identity)
             .bind(attested_by)
+            .bind(now)
             .bind(&self.node_name);
         let identity_attributes: Option<IdentityAttributesRow> = query
             .fetch_optional(&*self.database.pool)
@@ -186,12 +188,12 @@ mod tests {
                 .await?;
 
             let result = repository
-                .get_attributes(&identifier1, &identifier1)
+                .get_non_expired_attributes(&identifier1, &identifier1, now)
                 .await?;
             assert_eq!(result, Some(attributes1.clone()));
 
             let result = repository
-                .get_attributes(&identifier2, &identifier2)
+                .get_non_expired_attributes(&identifier2, &identifier2, now)
                 .await?;
             assert_eq!(result, Some(attributes2.clone()));
 
@@ -236,17 +238,17 @@ mod tests {
             repository.delete_expired_attributes(now.add(10)).await?;
 
             let result = repository
-                .get_attributes(&identifier1, &identifier1)
+                .get_non_expired_attributes(&identifier1, &identifier1, now)
                 .await?;
             assert_eq!(result, None);
 
             let result = repository
-                .get_attributes(&identifier2, &identifier2)
+                .get_non_expired_attributes(&identifier2, &identifier2, now)
                 .await?;
             assert_eq!(result, None);
 
             let result = repository
-                .get_attributes(&identifier3, &identifier3)
+                .get_non_expired_attributes(&identifier3, &identifier3, now)
                 .await?;
             assert_eq!(
                 result,
@@ -255,7 +257,7 @@ mod tests {
             );
 
             let result = repository
-                .get_attributes(&identifier4, &identifier4)
+                .get_non_expired_attributes(&identifier4, &identifier4, now)
                 .await?;
             assert_eq!(
                 result,

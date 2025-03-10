@@ -11,10 +11,11 @@ use ockam_node::retry;
 #[async_trait]
 pub trait IdentityAttributesRepository: Send + Sync + 'static {
     /// Get the attributes associated with the given identity identifier
-    async fn get_attributes(
+    async fn get_non_expired_attributes(
         &self,
         subject: &Identifier,
         attested_by: &Identifier,
+        now: TimestampInSeconds,
     ) -> Result<Option<AttributesEntry>>;
 
     /// Set the attributes associated with the given identity identifier.
@@ -28,12 +29,15 @@ pub trait IdentityAttributesRepository: Send + Sync + 'static {
 #[cfg(feature = "std")]
 #[async_trait]
 impl<T: IdentityAttributesRepository> IdentityAttributesRepository for AutoRetry<T> {
-    async fn get_attributes(
+    async fn get_non_expired_attributes(
         &self,
         subject: &Identifier,
         attested_by: &Identifier,
+        now: TimestampInSeconds,
     ) -> Result<Option<AttributesEntry>> {
-        retry!(self.wrapped.get_attributes(subject, attested_by))
+        retry!(self
+            .wrapped
+            .get_non_expired_attributes(subject, attested_by, now))
     }
 
     async fn put_attributes(&self, subject: &Identifier, entry: AttributesEntry) -> Result<()> {

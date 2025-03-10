@@ -32,8 +32,12 @@ impl IdentitiesAttributes {
         subject: &Identifier,
         attested_by: &Identifier,
     ) -> Result<Option<AttributesEntry>> {
-        self.repository.delete_expired_attributes(now()?).await?;
-        self.repository.get_attributes(subject, attested_by).await
+        let now = now()?;
+        // FIXME: This should be run periodically in a separate task
+        // self.repository.delete_expired_attributes(now()?).await?;
+        self.repository
+            .get_non_expired_attributes(subject, attested_by, now)
+            .await
     }
 
     /// Set the attributes associated with the given identity identifier.

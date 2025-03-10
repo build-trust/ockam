@@ -53,49 +53,25 @@ impl AuthorityEnrollmentTokenRepository for AuthorityEnrollmentTokenSqlxDatabase
         one_time_code: OneTimeCode,
         now: TimestampInSeconds,
     ) -> Result<Option<EnrollmentToken>> {
-        // We need to delete expired tokens regularly
-        // Also makes sure we don't get expired tokens later inside this function
-        let query1 = query("DELETE FROM authority_enrollment_token WHERE expires_at <= $1")
-            .bind(now.0 as i64);
+        // FIXME: We need to delete expired tokens regularly
+        // FIXME 2: Also now need to clear tokens with ttl_count = 0
 
-        let res = query1.execute(&*self.database.pool).await.into_core()?;
-        debug!("Deleted {} expired enrollment tokens", res.rows_affected());
+        let query = query_as("UPDATE authority_enrollment_token SET ttl_count = ttl_count - 1 WHERE one_time_code = $1 AND expires_at > $2 AND ttl_count > 0 RETURNING one_time_code, reference, issued_by, created_at, expires_at, ttl_count, attributes")
+            .bind(one_time_code)
+            .bind(now);
+        let row: Option<EnrollmentTokenRow> = query
+            .fetch_optional(&*self.database.pool)
+            .await
+            .into_core()?;
+        let token = if let Some(row) = row {
+            let mut t = EnrollmentToken::try_from(row)?;
 
-        let mut transaction = self.database.pool.begin().await.into_core()?;
+            t.ttl_count += 1; // We decremented it inside the query
 
-        let query2 = query_as("SELECT one_time_code, reference, issued_by, created_at, expires_at, ttl_count, attributes FROM authority_enrollment_token WHERE one_time_code = $1")
-            .bind(one_time_code);
-        let row: Option<EnrollmentTokenRow> =
-            query2.fetch_optional(&mut *transaction).await.into_core()?;
-        let token: Option<EnrollmentToken> = row.map(|r| r.try_into()).transpose()?;
-
-        if let Some(token) = &token {
-            if token.ttl_count <= 1 {
-                let query3 =
-                    query("DElETE FROM authority_enrollment_token WHERE one_time_code = $1")
-                        .bind(one_time_code);
-                query3.execute(&mut *transaction).await.void()?;
-                debug!(
-                    "Deleted enrollment token because it has been used. Reference: {}",
-                    token.reference()
-                );
-            } else {
-                let new_ttl_count = token.ttl_count - 1;
-                let query3 = query(
-                    "UPDATE authority_enrollment_token SET ttl_count = $1 WHERE one_time_code = $2",
-                )
-                .bind(new_ttl_count as i64)
-                .bind(one_time_code);
-                query3.execute(&mut *transaction).await.void()?;
-                debug!(
-                    "Decreasing enrollment token usage count to {}. Reference: {}",
-                    new_ttl_count,
-                    token.reference()
-                );
-            }
-        }
-
-        transaction.commit().await.void()?;
+            Some(t)
+        } else {
+            None
+        };
 
         Ok(token)
     }
