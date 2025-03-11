@@ -17,6 +17,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use time::OffsetDateTime;
 use tokio::sync::RwLock;
+use tracing::Level;
 
 #[derive(Clone)]
 pub(crate) struct InfluxDBTokenLessorWorker {
@@ -46,7 +47,7 @@ impl InfluxDBTokenLessorWorker {
         Ok(_self)
     }
 
-    #[instrument(skip_all, fields(method = ?request.header().method(), path = request.header().path()))]
+    #[instrument(skip_all, fields(method = ?request.header().method(), path = request.header().path()), level = Level::TRACE)]
     async fn handle_request(
         &mut self,
         _ctx: &mut Context,
@@ -98,7 +99,7 @@ impl Worker for InfluxDBTokenLessorWorker {
         Ok(())
     }
 
-    #[instrument(skip_all, name = "InfluxDBTokenLessorWorker::handle_message")]
+    #[instrument(skip_all, name = "InfluxDBTokenLessorWorker::handle_message", level = Level::TRACE)]
     async fn handle_message(
         &mut self,
         ctx: &mut Context,

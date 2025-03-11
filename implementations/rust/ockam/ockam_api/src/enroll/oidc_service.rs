@@ -8,6 +8,7 @@ use serde::de::DeserializeOwned;
 use tiny_http::{HTTPVersion, Header, Response, Server};
 use tokio::time::Duration;
 use tokio_retry::{strategy::ExponentialBackoff, Retry};
+use tracing::Level;
 use tracing::{error, info};
 
 use crate::enroll::ockam_oidc_provider::{authenticator_endpoint, OckamOidcProvider};
@@ -52,7 +53,7 @@ impl OidcService {
 
     /// Request an authorization token with a PKCE flow
     /// See the full protocol here: https://datatracker.ietf.org/doc/html/rfc7636
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     pub async fn get_token_with_pkce(&self) -> Result<OidcToken> {
         let code_verifier = self.create_code_verifier();
         let authorization_code = self.authorization_code(&code_verifier).await?;
@@ -247,18 +248,18 @@ impl OidcService {
                     // avoiding the browser to send multiple requests
                     // to the same server instance
                     let mut writer = request.into_writer();
-                    response.raw_print( &mut writer,
-                        HTTPVersion(1, 0),
-                        &[],
-                        true,
-                        None
-                    ).and_then(|_|writer.flush())
+                    response.raw_print(&mut writer,
+                                       HTTPVersion(1, 0),
+                                       &[],
+                                       true,
+                                       None,
+                    ).and_then(|_| writer.flush())
                         .map_err(|e| {
-                        ApiError::message(
-                            format!("error while trying to send a response to a request on {server_url}: {e}"),
-                        )
-                    })
-                },
+                            ApiError::message(
+                                format!("error while trying to send a response to a request on {server_url}: {e}"),
+                            )
+                        })
+                }
                 Ok(None) => Err(ApiError::message(
                     format!("timeout while trying to receive a request on {server_url} (waited for {redirect_timeout:?})"),
                 )),

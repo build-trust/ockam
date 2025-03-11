@@ -9,6 +9,7 @@ use ockam_multiaddr::MultiAddr;
 use ockam_node::{Context, MessageSendReceiveOptions};
 use std::str::FromStr;
 use std::time::Duration;
+use tracing::Level;
 
 const TARGET: &str = "ockam_api::message";
 
@@ -25,7 +26,7 @@ pub trait Messages {
 
 #[async_trait]
 impl Messages for NodeManager {
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     async fn send_message<T: Message, R: Message>(
         &self,
         ctx: &Context,
@@ -56,7 +57,7 @@ impl Messages for NodeManager {
 
 #[async_trait]
 impl Messages for BackgroundNodeClient {
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     async fn send_message<T: Message, R: Message>(
         &self,
         ctx: &Context,

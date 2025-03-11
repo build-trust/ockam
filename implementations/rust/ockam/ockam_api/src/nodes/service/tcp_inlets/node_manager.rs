@@ -1,5 +1,6 @@
 use std::sync::Arc;
 use std::time::Duration;
+use tracing::Level;
 
 use crate::address::get_free_address_for;
 use ockam::identity::Identifier;
@@ -22,7 +23,7 @@ use crate::session::session::{AdditionalSessionOptions, Session};
 
 impl NodeManager {
     #[allow(clippy::too_many_arguments)]
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     pub async fn create_inlet(
         self: &Arc<Self>,
         ctx: &Context,

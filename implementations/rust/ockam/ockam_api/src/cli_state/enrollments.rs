@@ -14,11 +14,12 @@ use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 use time::OffsetDateTime;
+use tracing::Level;
 
 /// The following CliState methods help keeping track of
 /// the enrollment status of identities.
 impl CliState {
-    #[instrument(skip_all, fields(name = name.clone()))]
+    #[instrument(skip_all, fields(name = name.clone()), level = Level::TRACE)]
     pub async fn is_identity_enrolled(&self, name: &Option<String>) -> Result<bool> {
         let repository = self.enrollment_repository();
 

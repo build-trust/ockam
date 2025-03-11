@@ -1,5 +1,6 @@
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::Error;
+use tracing::Level;
 
 use crate::cli_state::CliState;
 use crate::orchestrator::space::Space;
@@ -8,7 +9,7 @@ use crate::orchestrator::subscription::Subscription;
 use super::Result;
 
 impl CliState {
-    #[instrument(skip_all, fields(space_id = space_id, space_name = space_name))]
+    #[instrument(skip_all, fields(space_id = space_id, space_name = space_name), level = Level::TRACE)]
     pub async fn store_space(
         &self,
         space_id: &str,
@@ -28,7 +29,7 @@ impl CliState {
         Ok(space)
     }
 
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     pub async fn get_default_space(&self) -> Result<Space> {
         match self.spaces_repository().get_default_space().await? {
             Some(space) => Ok(space),
@@ -40,7 +41,7 @@ impl CliState {
         }
     }
 
-    #[instrument(skip_all, fields(name = name))]
+    #[instrument(skip_all, fields(name = name), level = Level::TRACE)]
     pub async fn get_space_by_name(&self, name: &str) -> Result<Space> {
         match self.spaces_repository().get_space_by_name(name).await? {
             Some(space) => Ok(space),
@@ -52,7 +53,7 @@ impl CliState {
         }
     }
 
-    #[instrument(skip_all, fields(name = name))]
+    #[instrument(skip_all, fields(name = name), level = Level::TRACE)]
     pub async fn get_space_by_name_or_default(&self, name: &Option<String>) -> Result<Space> {
         match name {
             Some(name) => self.get_space_by_name(name.as_str()).await,
@@ -60,19 +61,19 @@ impl CliState {
         }
     }
 
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     pub async fn get_spaces(&self) -> Result<Vec<Space>> {
         Ok(self.spaces_repository().get_spaces().await?)
     }
 
-    #[instrument(skip_all, fields(space_id = space_id))]
+    #[instrument(skip_all, fields(space_id = space_id), level = Level::TRACE)]
     pub async fn delete_space(&self, space_id: &str) -> Result<()> {
         let repository = self.spaces_repository();
         repository.delete_space(space_id).await?;
         Ok(())
     }
 
-    #[instrument(skip_all, fields(space_id = space_id))]
+    #[instrument(skip_all, fields(space_id = space_id), level = Level::TRACE)]
     pub async fn set_space_as_default(&self, space_id: &str) -> Result<()> {
         Ok(self.spaces_repository().set_default_space(space_id).await?)
     }

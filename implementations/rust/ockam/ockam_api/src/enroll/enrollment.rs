@@ -8,6 +8,7 @@ use ockam::identity::SecureClient;
 use ockam_core::api::{Reply, Request, Status};
 use ockam_core::async_trait;
 use ockam_node::Context;
+use tracing::Level;
 
 const TARGET: &str = "ockam_api::cloud::enroll";
 
@@ -80,7 +81,7 @@ impl<T: HasSecureClient + Send + Sync> Enrollment for T {
 // FiXME: this has duplicate with AuthorityNodeClient
 #[async_trait]
 impl Enrollment for SecureClient {
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     async fn enroll_with_oidc_token(
         &self,
         ctx: &Context,
@@ -105,7 +106,7 @@ impl Enrollment for SecureClient {
         }
     }
 
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     async fn enroll_with_oidc_token_okta(
         &self,
         ctx: &Context,
@@ -120,7 +121,7 @@ impl Enrollment for SecureClient {
             .into_diagnostic()
     }
 
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     async fn present_token(
         &self,
         ctx: &Context,
@@ -148,7 +149,7 @@ impl Enrollment for SecureClient {
         }
     }
 
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     async fn issue_credential(&self, ctx: &Context) -> miette::Result<CredentialAndPurposeKey> {
         let req = Request::post("/");
         trace!(target: TARGET, "getting a credential");

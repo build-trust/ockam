@@ -25,6 +25,7 @@ use ockam_transport_tcp::{
 };
 use std::sync::Arc;
 use std::time::Duration;
+use tracing::Level;
 
 impl NodeManagerWorker {
     pub(crate) async fn start_influxdb_outlet_service(
@@ -333,7 +334,7 @@ pub trait InfluxDBPortals {
 
 #[async_trait]
 impl InfluxDBPortals for BackgroundNodeClient {
-    #[instrument(skip(self, ctx))]
+    #[instrument(skip(self, ctx), level = Level::TRACE)]
     #[allow(clippy::too_many_arguments)]
     async fn create_influxdb_outlet(
         &self,
@@ -354,7 +355,7 @@ impl InfluxDBPortals for BackgroundNodeClient {
         self.ask(ctx, req).await
     }
 
-    #[instrument(skip(self, ctx))]
+    #[instrument(skip(self, ctx), level = Level::TRACE)]
     #[allow(clippy::too_many_arguments)]
     async fn create_influxdb_inlet(
         &self,

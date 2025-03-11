@@ -3,6 +3,7 @@ use std::time::Duration;
 
 use futures::executor;
 use miette::IntoDiagnostic;
+use tracing::Level;
 
 use ockam::identity::models::ChangeHistory;
 use ockam::identity::{Identifier, SecureChannels};
@@ -131,7 +132,7 @@ impl InMemoryNode {
     }
 
     /// Start an in memory node
-    #[instrument(name = "start in-memory node", skip_all)]
+    #[instrument(name = "start in-memory node", skip_all, level = Level::TRACE)]
     pub async fn start_node(
         ctx: &Context,
         cli_state: &CliState,
@@ -215,7 +216,7 @@ impl InMemoryNode {
     }
 
     /// Create a new in memory node with various options
-    #[instrument(name = "new in-memory node", skip_all, fields(node_name = general_options.node_name))]
+    #[instrument(name = "new in-memory node", skip_all, fields(node_name = general_options.node_name), level = Level::TRACE)]
     pub async fn new(
         ctx: &Context,
         general_options: NodeManagerGeneralOptions,

@@ -44,6 +44,7 @@ use ockam_node::Context;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
+use tracing::Level;
 
 /// Node manager provides high-level operations to
 ///  - send messages
@@ -66,7 +67,7 @@ pub struct NodeManager {
 
 impl NodeManager {
     /// Create a new NodeManager with the node name from the ockam CLI
-    #[instrument(name = "create_node_manager", skip_all, fields(node_name = general_options.node_name))]
+    #[instrument(name = "create_node_manager", skip_all, fields(node_name = general_options.node_name), level = Level::TRACE)]
     pub async fn create(
         ctx: &Context,
         general_options: NodeManagerGeneralOptions,
@@ -438,7 +439,7 @@ impl NodeManager {
 
     /// Wait until the project is ready to be used
     /// At this stage the project authority node must be up and running
-    #[instrument(skip_all, fields(project_id = project.project_id()))]
+    #[instrument(skip_all, fields(project_id = project.project_id()), level = Level::TRACE)]
     pub async fn wait_until_project_is_ready(
         &self,
         ctx: &Context,

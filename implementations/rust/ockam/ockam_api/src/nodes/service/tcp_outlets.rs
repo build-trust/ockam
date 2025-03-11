@@ -6,6 +6,7 @@ use ockam_core::api::{Error, Request, Response};
 use ockam_core::async_trait;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_node::Context;
+use tracing::Level;
 
 use crate::nodes::models::portal::{
     CreateOutlet, OutletAccessControl, OutletStatus, OutletStatusList,
@@ -17,7 +18,7 @@ use crate::nodes::BackgroundNodeClient;
 use super::{NodeManager, NodeManagerWorker};
 
 impl NodeManagerWorker {
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     pub(super) async fn create_outlet(
         &self,
         ctx: &Context,
@@ -94,7 +95,7 @@ impl NodeManagerWorker {
 
 impl NodeManager {
     #[allow(clippy::too_many_arguments)]
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     pub async fn create_outlet(
         &self,
         ctx: &Context,
@@ -266,7 +267,7 @@ pub trait Outlets {
 
 #[async_trait]
 impl Outlets for BackgroundNodeClient {
-    #[instrument(skip_all, fields(to = % to, from = ? from))]
+    #[instrument(skip_all, fields(to = % to, from = ? from), level = Level::TRACE)]
     async fn create_outlet(
         &self,
         ctx: &Context,
