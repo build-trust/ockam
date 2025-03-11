@@ -12,7 +12,7 @@ use ockam_api::cli_state::random_name;
 use ockam_core::{OpenTelemetryContext, TryClone};
 use ockam_node::Context;
 use serde::{Deserialize, Serialize};
-use tracing::{debug, instrument, trace, Span};
+use tracing::{debug, instrument, trace, Level, Span};
 
 pub const ENROLLMENT_TICKET: &str = "ENROLLMENT_TICKET";
 
@@ -34,7 +34,8 @@ pub struct ConfigArgs {
     /// The variables passed here will have precedence over global environment variables.
     /// This argument can be used multiple times, each time adding a new key-value pair.
     /// Example: `--variable KEY1=VALUE1 --variable KEY2=VALUE2`
-    #[arg(long = "variable", value_name = "VARIABLE", value_parser = parse_key_val::<String, String>)]
+    #[arg(long = "variable", value_name = "VARIABLE", value_parser = parse_key_val::<String, String>
+    )]
     pub variables: Vec<(String, String)>,
 
     /// A flag used internally to indicate that the node was started from a configuration file.
@@ -44,7 +45,7 @@ pub struct ConfigArgs {
 
 impl CreateCommand {
     /// Run the creation of a node using a node configuration
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     pub async fn run_config(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         debug!("running node create with a node config");
         let mut node_config = self.parse_node_config().await?;
@@ -93,7 +94,7 @@ impl CreateCommand {
     ///  - a local path to a configuration file
     ///  - an inline configuration
     /// or read the `configuration` argument
-    #[instrument(skip_all, fields(app.event.command.configuration_file))]
+    #[instrument(skip_all, fields(app.event.command.configuration_file), level = Level::TRACE)]
     async fn parse_node_config(&self) -> miette::Result<NodeConfig> {
         let contents = self.get_node_config_contents().await?;
         // Set environment variables from the cli command args

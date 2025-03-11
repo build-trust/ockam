@@ -15,6 +15,7 @@ use std::path::PathBuf;
 use std::process;
 use std::time::Duration;
 use sysinfo::{Pid, ProcessStatus, ProcessesToUpdate, System};
+use tracing::Level;
 
 use crate::cli_state::{random_name, NamedVault, Result};
 use crate::cli_state::{CliState, CliStateError};
@@ -26,7 +27,7 @@ use crate::{fmt_warn, ConnectionStatus};
 /// The methods below support the creation and update of local nodes
 impl CliState {
     /// Create a node, with some optional associated values, and start it
-    #[instrument(skip_all, fields(node_name = node_name, identity_name = identity_name.clone()))]
+    #[instrument(skip_all, fields(node_name = node_name, identity_name = identity_name.clone()), level = Level::TRACE)]
     pub async fn start_node_with_optional_values(
         &self,
         node_name: &str,
@@ -51,7 +52,7 @@ impl CliState {
     }
 
     /// Create a node, with an optional identity name. That identity is used by the `NodeManager` to create secure channels
-    #[instrument(skip_all, fields(node_name = node_name, identity_name = identity_name.clone()))]
+    #[instrument(skip_all, fields(node_name = node_name, identity_name = identity_name.clone()), level = Level::TRACE)]
     pub async fn create_node_with_optional_identity(
         &self,
         node_name: &str,
@@ -69,7 +70,7 @@ impl CliState {
 
     /// This method creates a node with an associated identity
     /// The vault used to create the identity is the default vault
-    #[instrument(skip_all, fields(node_name = node_name))]
+    #[instrument(skip_all, fields(node_name = node_name), level = Level::TRACE)]
     pub async fn create_node(&self, node_name: &str) -> Result<NodeInfo> {
         let identity = self.create_identity_with_name(&random_name()).await?;
         self.create_node_with_identifier(node_name, &identity.identifier())
@@ -103,7 +104,7 @@ impl CliState {
     /// Delete a node
     ///  - first stop it if it is running
     ///  - then remove it from persistent storage
-    #[instrument(skip_all, fields(node_name = node_name))]
+    #[instrument(skip_all, fields(node_name = node_name), level = Level::TRACE)]
     pub async fn delete_node(&self, node_name: &str) -> Result<()> {
         self.stop_node(node_name).await?;
         self.remove_node(node_name).await?;
@@ -111,7 +112,7 @@ impl CliState {
     }
 
     /// Delete all created nodes
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     pub async fn delete_all_nodes(&self) -> Result<()> {
         let nodes = self.nodes_repository().get_nodes().await?;
         for node in nodes {
@@ -129,7 +130,7 @@ impl CliState {
     ///
     ///  - remove it from the repository
     ///  - remove the node log files
-    #[instrument(skip_all, fields(node_name = node_name))]
+    #[instrument(skip_all, fields(node_name = node_name), level = Level::TRACE)]
     pub async fn remove_node(&self, node_name: &str) -> Result<()> {
         // remove the node from the database
         let repository = self.nodes_repository();
@@ -151,7 +152,7 @@ impl CliState {
     }
 
     /// Stop a background node
-    #[instrument(skip_all, fields(node_name = node_name))]
+    #[instrument(skip_all, fields(node_name = node_name), level = Level::TRACE)]
     pub async fn stop_node(&self, node_name: &str) -> Result<()> {
         debug!(name=%node_name, "stopping node...");
         let node = self.get_node(node_name).await?;
@@ -262,13 +263,13 @@ impl CliState {
     }
 
     /// Set a node as the default node
-    #[instrument(skip_all, fields(node_name = node_name))]
+    #[instrument(skip_all, fields(node_name = node_name), level = Level::TRACE)]
     pub async fn set_default_node(&self, node_name: &str) -> Result<()> {
         Ok(self.nodes_repository().set_default_node(node_name).await?)
     }
 
     /// Set a TCP listener address on a node when the TCP listener has been started
-    #[instrument(skip_all, fields(node_name = node_name, address = %address))]
+    #[instrument(skip_all, fields(node_name = node_name, address = %address), level = Level::TRACE)]
     pub async fn set_tcp_listener_address(
         &self,
         node_name: &str,
@@ -280,7 +281,7 @@ impl CliState {
         Ok(())
     }
 
-    #[instrument(skip_all, fields(node_name = node_name, address = %address))]
+    #[instrument(skip_all, fields(node_name = node_name, address = %address), level = Level::TRACE)]
     pub async fn set_node_http_server_addr(
         &self,
         node_name: &str,
@@ -295,7 +296,7 @@ impl CliState {
     /// Specify that a node is an authority node
     /// This is used to display the node status since if the node TCP listener is not accessible
     /// without a secure channel
-    #[instrument(skip_all, fields(node_name = node_name))]
+    #[instrument(skip_all, fields(node_name = node_name), level = Level::TRACE)]
     pub async fn set_as_authority_node(&self, node_name: &str) -> Result<()> {
         Ok(self
             .nodes_repository()
@@ -305,7 +306,7 @@ impl CliState {
 
     /// Set the current process id on a background node
     /// Keeping track of a background node process id allows us to kill its process when stopping the node
-    #[instrument(skip_all, fields(node_name = node_name, pid = %pid))]
+    #[instrument(skip_all, fields(node_name = node_name, pid = %pid), level = Level::TRACE)]
     pub async fn set_node_pid(&self, node_name: &str, pid: u32) -> Result<()> {
         Ok(self.nodes_repository().set_node_pid(node_name, pid).await?)
     }
@@ -314,7 +315,7 @@ impl CliState {
 /// The following methods return nodes data
 impl CliState {
     /// Return a node by name
-    #[instrument(skip_all, fields(node_name = node_name))]
+    #[instrument(skip_all, fields(node_name = node_name), level = Level::TRACE)]
     pub async fn get_node(&self, node_name: &str) -> Result<NodeInfo> {
         if let Some(node) = self.nodes_repository().get_node(node_name).await? {
             Ok(node)
@@ -327,13 +328,13 @@ impl CliState {
     }
 
     /// Return all the created nodes
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     pub async fn get_nodes(&self) -> Result<Vec<NodeInfo>> {
         Ok(self.nodes_repository().get_nodes().await?)
     }
 
     /// Return information about the default node (if there is one)
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     pub async fn get_default_node(&self) -> Result<NodeInfo> {
         Ok(self
             .nodes_repository()
@@ -343,7 +344,7 @@ impl CliState {
     }
 
     /// Return the node information for the given node name, otherwise for the default node
-    #[instrument(skip_all, fields(node_name = node_name.clone()))]
+    #[instrument(skip_all, fields(node_name = node_name.clone()), level = Level::TRACE)]
     pub async fn get_node_or_default(&self, node_name: &Option<String>) -> Result<NodeInfo> {
         match node_name {
             Some(name) => self.get_node(name).await,
@@ -352,7 +353,7 @@ impl CliState {
     }
 
     /// Return the stdout log file used by a node
-    #[instrument(skip_all, fields(node_name = node_name))]
+    #[instrument(skip_all, fields(node_name = node_name), level = Level::TRACE)]
     pub fn stdout_logs(&self, node_name: &str) -> Result<PathBuf> {
         let node_dir = self.create_node_dir(node_name)?;
         let current_log_file = std::fs::read_dir(node_dir)?
@@ -379,7 +380,7 @@ impl CliState {
 /// Private functions
 impl CliState {
     /// This method creates a node
-    #[instrument(skip_all, fields(node_name = node_name, identifier = %identifier))]
+    #[instrument(skip_all, fields(node_name = node_name, identifier = %identifier), level = Level::TRACE)]
     pub async fn create_node_with_identifier(
         &self,
         node_name: &str,
@@ -414,7 +415,7 @@ impl CliState {
     }
 
     /// Return the nodes using a given identity
-    #[instrument(skip_all, fields(identity_name = identity_name))]
+    #[instrument(skip_all, fields(identity_name = identity_name), level = Level::TRACE)]
     pub(super) async fn get_nodes_by_identity_name(
         &self,
         identity_name: &str,
@@ -427,7 +428,7 @@ impl CliState {
     }
 
     /// Return the vault which was used to create the identity associated to a node
-    #[instrument(skip_all, fields(node_name = node_name))]
+    #[instrument(skip_all, fields(node_name = node_name), level = Level::TRACE)]
     pub(super) async fn get_node_vault(&self, node_name: &str) -> Result<NamedVault> {
         let identifier = self.get_node(node_name).await?.identifier();
         let identity = self.get_named_identity_by_identifier(&identifier).await?;

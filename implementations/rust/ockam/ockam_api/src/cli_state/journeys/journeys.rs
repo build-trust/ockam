@@ -13,6 +13,7 @@ use opentelemetry::{global, Context, Key, KeyValue};
 use std::collections::HashMap;
 use std::ops::Add;
 use std::time::{Duration, SystemTime};
+use tracing::Level;
 
 pub const USER_NAME: &Key = &Key::from_static_str("app.user_name");
 pub const USER_EMAIL: &Key = &Key::from_static_str("app.user_email");
@@ -76,7 +77,7 @@ const DEFAULT_JOURNEY_MAX_DURATION: Duration = Duration::from_secs(5 * 86400);
 ///
 impl CliState {
     /// This method adds a successful event to the project/host journeys
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     pub async fn add_journey_event(
         &self,
         event: JourneyEvent,
@@ -86,7 +87,7 @@ impl CliState {
     }
 
     /// This method adds an error event to the project/host journeys
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     pub async fn add_journey_error(
         &self,
         command_name: &str,

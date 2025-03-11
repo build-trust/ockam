@@ -23,10 +23,10 @@ use ockam_core::LOCAL;
 use ockam_multiaddr::MultiAddr;
 use std::sync::Arc;
 use tokio::time::{sleep, Duration};
-use tracing::{debug, error, info, instrument};
+use tracing::{debug, error, info, instrument, Level};
 
 impl CreateCommand {
-    #[instrument(skip_all, fields(node_name = self.name))]
+    #[instrument(skip_all, fields(node_name = self.name), level = Level::TRACE)]
     pub(super) async fn foreground_mode(
         &mut self,
         ctx: &Context,

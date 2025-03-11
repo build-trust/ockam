@@ -4,6 +4,7 @@ use ockam::identity::{Identifier, Identity};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::Error;
 use ockam_vault::{HandleToSecret, SigningSecretKeyHandle};
+use tracing::Level;
 
 use crate::cli_state::{random_name, CliState, Result};
 use crate::colors::color_primary;
@@ -28,7 +29,7 @@ use crate::{fmt_log, fmt_ok};
 impl CliState {
     /// Create an identity associated with a name and a specific vault name
     /// If there is already an identity with that name, return its identifier
-    #[instrument(skip_all, fields(name = %name, vault_name = %vault_name))]
+    #[instrument(skip_all, fields(name = %name, vault_name = %vault_name), level = Level::TRACE)]
     pub async fn create_identity_with_name_and_vault(
         &self,
         name: &str,
@@ -64,7 +65,7 @@ impl CliState {
 
     /// Create an identity associated with a name, using the default vault
     /// If there is already an identity with that name, return its identifier
-    #[instrument(skip_all, fields(name = %name))]
+    #[instrument(skip_all, fields(name = %name), level = Level::TRACE)]
     pub async fn create_identity_with_name(&self, name: &str) -> Result<NamedIdentity> {
         let vault = self.get_or_create_default_named_vault().await?;
         self.create_identity_with_name_and_vault(name, &vault.name())
@@ -74,7 +75,7 @@ impl CliState {
     /// Create an identity with specific key id.
     /// This method is used when the vault is a KMS vault and we just need to store a key id
     /// for the identity key existing in the KMS
-    #[instrument(skip_all, fields(name = %name, vault_name = %vault_name, key_id = %key_id))]
+    #[instrument(skip_all, fields(name = %name, vault_name = %vault_name, key_id = %key_id), level = Level::TRACE)]
     pub async fn create_identity_with_key_id(
         &self,
         name: &str,
@@ -123,13 +124,13 @@ impl CliState {
 ///
 impl CliState {
     /// Return all named identities
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     pub async fn get_named_identities(&self) -> Result<Vec<NamedIdentity>> {
         Ok(self.identities_repository().get_named_identities().await?)
     }
 
     /// Return a named identity given its name
-    #[instrument(skip_all, fields(name = %name))]
+    #[instrument(skip_all, fields(name = %name), level = Level::TRACE)]
     pub async fn get_named_identity(&self, name: &str) -> Result<NamedIdentity> {
         let repository = self.identities_repository();
         match repository.get_named_identity(name).await? {
@@ -151,7 +152,7 @@ impl CliState {
     }
 
     /// Return a named identity given its name or the default named identity
-    #[instrument(skip_all, fields(name = name.clone()))]
+    #[instrument(skip_all, fields(name = name.clone()), level = Level::TRACE)]
     pub async fn get_named_identity_or_default(
         &self,
         name: &Option<String>,
@@ -171,7 +172,7 @@ impl CliState {
 
     /// Return the identifier for identity given an optional name.
     /// If that name is None, then we return the identifier of the default identity
-    #[instrument(skip_all, fields(name = name.clone()))]
+    #[instrument(skip_all, fields(name = name.clone()), level = Level::TRACE)]
     pub async fn get_identifier_by_optional_name(
         &self,
         name: &Option<String>,
@@ -190,7 +191,7 @@ impl CliState {
 
     /// Return a full identity from its name
     /// Use the default identity if no name is given
-    #[instrument(skip_all, fields(name = name.clone()))]
+    #[instrument(skip_all, fields(name = name.clone()), level = Level::TRACE)]
     pub async fn get_identity_by_optional_name(&self, name: &Option<String>) -> Result<Identity> {
         let named_identity = match name {
             Some(name) => {
@@ -222,7 +223,7 @@ impl CliState {
     }
 
     /// Return the identity with the given identifier
-    #[instrument(skip_all, fields(identifier = %identifier))]
+    #[instrument(skip_all, fields(identifier = %identifier), level = Level::TRACE)]
     pub async fn get_identity(&self, identifier: &Identifier) -> Result<Identity> {
         match self
             .change_history_repository()
@@ -242,14 +243,14 @@ impl CliState {
 
     /// Return the name of the default identity.
     /// This function creates the default identity if it does not exist!
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     pub async fn get_default_identity_name(&self) -> Result<String> {
         Ok(self.get_or_create_default_named_identity().await?.name())
     }
 
     /// Return the default named identity
     /// This function creates the default identity if it does not exist!
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     pub async fn get_or_create_default_named_identity(&self) -> Result<NamedIdentity> {
         match self
             .identities_repository()
@@ -271,7 +272,7 @@ impl CliState {
     /// Return:
     /// - the given name if defined
     /// - or the name of the default identity (which is created if it does not already exist!)
-    #[instrument(skip_all, fields(name = name.clone()))]
+    #[instrument(skip_all, fields(name = name.clone()), level = Level::TRACE)]
     pub async fn get_identity_name_or_default(&self, name: &Option<String>) -> Result<String> {
         match name {
             Some(name) => Ok(name.clone()),
@@ -280,7 +281,7 @@ impl CliState {
     }
 
     /// Return the named identity with the given identifier
-    #[instrument(skip_all, fields(identifier = %identifier))]
+    #[instrument(skip_all, fields(identifier = %identifier), level = Level::TRACE)]
     pub async fn get_named_identity_by_identifier(
         &self,
         identifier: &Identifier,
@@ -300,7 +301,7 @@ impl CliState {
     }
 
     /// Return true if there is an identity with that name and it is the default one
-    #[instrument(skip_all, fields(name = %name))]
+    #[instrument(skip_all, fields(name = %name), level = Level::TRACE)]
     pub async fn is_default_identity_by_name(&self, name: &str) -> Result<bool> {
         Ok(self
             .identities_repository()
@@ -315,7 +316,7 @@ impl CliState {
 impl CliState {
     /// Set a named identity as the default
     /// Return an error if that identity does not exist
-    #[instrument(skip_all, fields(name = %name))]
+    #[instrument(skip_all, fields(name = %name), level = Level::TRACE)]
     pub async fn set_as_default_identity(&self, name: &str) -> Result<()> {
         Ok(self.identities_repository().set_as_default(name).await?)
     }
@@ -326,7 +327,7 @@ impl CliState {
     ///  - then remove the the name association to the identity
     ///  - and remove the identity change history
     ///
-    #[instrument(skip_all, fields(name = %name))]
+    #[instrument(skip_all, fields(name = %name), level = Level::TRACE)]
     pub async fn delete_identity_by_name(&self, name: &str) -> Result<()> {
         let nodes = self.get_nodes_by_identity_name(name).await?;
         if nodes.is_empty() {
@@ -350,7 +351,7 @@ impl CliState {
     }
 
     /// Update the name associated to an identifier
-    #[instrument(skip_all, fields(identifier = %identifier, name = %name))]
+    #[instrument(skip_all, fields(identifier = %identifier, name = %name), level = Level::TRACE)]
     pub async fn update_named_identity_name(
         &self,
         identifier: &Identifier,
@@ -367,7 +368,7 @@ impl CliState {
 impl CliState {
     /// Once a identity has been created, store it.
     /// If there is no previous default identity we set it as the default identity
-    #[instrument(skip_all, fields(name = %name, identifier = %identifier, vault_name = %vault_name))]
+    #[instrument(skip_all, fields(name = %name, identifier = %identifier, vault_name = %vault_name), level = Level::TRACE)]
     pub async fn store_named_identity(
         &self,
         identifier: &Identifier,
@@ -391,7 +392,7 @@ impl CliState {
     }
 
     /// Return the change history of a persisted identity
-    #[instrument(skip_all, fields(identifier = %identifier))]
+    #[instrument(skip_all, fields(identifier = %identifier), level = Level::TRACE)]
     async fn get_change_history(&self, identifier: &Identifier) -> Result<ChangeHistory> {
         match self
             .change_history_repository()

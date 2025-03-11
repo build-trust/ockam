@@ -1,6 +1,7 @@
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 use std::time::Duration;
+use tracing::Level;
 
 use ockam::identity::{
     get_default_timeout, CredentialRetrieverCreator, Identifier, SecureChannels, SecureClient,
@@ -44,7 +45,7 @@ impl Display for CredentialsEnabled {
 }
 
 impl NodeManager {
-    #[instrument(skip_all, fields(authority_identifier = %authority_identifier.clone(), authority_route = %authority_route.clone(), caller = %caller_identifier.clone()))]
+    #[instrument(skip_all, fields(authority_identifier = %authority_identifier.clone(), authority_route = %authority_route.clone(), caller = %caller_identifier.clone()), level = Level::TRACE)]
     pub(crate) async fn make_authority_node_client(
         &self,
         authority_identifier: &Identifier,
@@ -63,7 +64,8 @@ impl NodeManager {
         .await
     }
 
-    #[instrument(skip_all, fields(project_identifier = %project_identifier.clone(), project_multiaddr = %project_multiaddr.clone(), caller = %caller_identifier.clone(), credentials_enabled = %credentials_enabled))]
+    #[instrument(skip_all, fields(project_identifier = %project_identifier.clone(), project_multiaddr = %project_multiaddr.clone(), caller = %caller_identifier.clone(), credentials_enabled = %credentials_enabled
+    ))]
     pub(crate) async fn make_project_node_client(
         &self,
         project_identifier: &Identifier,
@@ -89,7 +91,8 @@ impl NodeManager {
         .await
     }
 
-    #[instrument(skip_all, fields(identifier = %identifier.clone(), multiaddr = %multiaddr.clone(), caller = %caller_identifier.clone()))]
+    #[instrument(skip_all, fields(identifier = %identifier.clone(), multiaddr = %multiaddr.clone(), caller = %caller_identifier.clone()
+    ))]
     pub async fn make_secure_client(
         &self,
         identifier: &Identifier,
@@ -130,7 +133,8 @@ impl NodeManager {
         })
     }
 
-    #[instrument(skip_all, fields(authority_identifier = %authority_identifier.clone(), authority_route = %authority_route.clone(), caller = %caller_identifier.clone()))]
+    #[instrument(skip_all, fields(authority_identifier = %authority_identifier.clone(), authority_route = %authority_route.clone(), caller = %caller_identifier.clone()
+    ))]
     pub async fn authority_node_client(
         tcp_transport: Arc<TcpTransport>,
         secure_channels: Arc<SecureChannels>,
@@ -164,7 +168,8 @@ impl NodeManager {
         })
     }
 
-    #[instrument(skip_all, fields(project_identifier = %project_identifier.clone(), project_multiaddr = %project_multiaddr.clone(), caller = %caller_identifier.clone()))]
+    #[instrument(skip_all, fields(project_identifier = %project_identifier.clone(), project_multiaddr = %project_multiaddr.clone(), caller = %caller_identifier.clone()
+    ))]
     pub async fn project_node_client(
         tcp_transport: &TcpTransport,
         secure_channels: Arc<SecureChannels>,

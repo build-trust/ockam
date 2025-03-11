@@ -9,6 +9,7 @@ use ockam_core::{Address, Decodable, Result, Routed, Worker};
 use ockam_node::Context;
 use std::error::Error;
 use std::sync::Arc;
+use tracing::Level;
 
 #[derive(Clone)]
 pub struct NodeManagerWorker {
@@ -31,7 +32,7 @@ impl NodeManagerWorker {
 impl NodeManagerWorker {
     //////// Request matching and response handling ////////
 
-    #[instrument(skip_all, fields(method = ?request.header().method(), path = request.header().path()))]
+    #[instrument(skip_all, fields(method = ?request.header().method(), path = request.header().path()), level = Level::TRACE)]
     async fn handle_request(
         &mut self,
         ctx: &mut Context,

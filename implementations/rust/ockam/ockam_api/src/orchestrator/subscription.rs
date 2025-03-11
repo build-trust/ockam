@@ -18,6 +18,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter, Write};
 use std::str::FromStr;
 use strum::{Display, EnumString};
+use tracing::Level;
 use url::Url;
 
 const API_SERVICE: &str = "subscriptions";
@@ -363,7 +364,7 @@ pub trait Subscriptions {
 
 #[async_trait]
 impl Subscriptions for ControllerClient {
-    #[instrument(skip_all, fields(space_id = space_id, subscription_data = subscription_data))]
+    #[instrument(skip_all, fields(space_id = space_id, subscription_data = subscription_data), level = Level::TRACE)]
     async fn activate_subscription(
         &self,
         ctx: &Context,
@@ -379,7 +380,7 @@ impl Subscriptions for ControllerClient {
             .miette_success("subscription legacy")
     }
 
-    #[instrument(skip_all, fields(subscription_id = subscription_id))]
+    #[instrument(skip_all, fields(subscription_id = subscription_id), level = Level::TRACE)]
     async fn unsubscribe(
         &self,
         ctx: &Context,
@@ -393,7 +394,7 @@ impl Subscriptions for ControllerClient {
             .miette_success("subscription legacy")
     }
 
-    #[instrument(skip_all, fields(subscription_id = subscription_id, contact_info = contact_info))]
+    #[instrument(skip_all, fields(subscription_id = subscription_id, contact_info = contact_info), level = Level::TRACE)]
     async fn update_subscription_contact_info(
         &self,
         ctx: &Context,
@@ -408,7 +409,7 @@ impl Subscriptions for ControllerClient {
             .miette_success("subscription legacy")
     }
 
-    #[instrument(skip_all, fields(subscription_id = subscription_id, new_space_id = new_space_id))]
+    #[instrument(skip_all, fields(subscription_id = subscription_id, new_space_id = new_space_id), level = Level::TRACE)]
     async fn update_subscription_space(
         &self,
         ctx: &Context,
@@ -424,7 +425,7 @@ impl Subscriptions for ControllerClient {
             .miette_success("subscription legacy")
     }
 
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     async fn get_subscriptions(&self, ctx: &Context) -> miette::Result<Vec<SubscriptionLegacy>> {
         trace!("listing subscriptions");
         let req = Request::get("/v0/");
@@ -433,7 +434,7 @@ impl Subscriptions for ControllerClient {
         Ok(subscription_legacy_list.success()?.0)
     }
 
-    #[instrument(skip_all, fields(subscription_id = subscription_id))]
+    #[instrument(skip_all, fields(subscription_id = subscription_id), level = Level::TRACE)]
     async fn get_subscription(
         &self,
         ctx: &Context,
@@ -446,7 +447,7 @@ impl Subscriptions for ControllerClient {
         Ok(reply.found()?)
     }
 
-    #[instrument(skip_all, fields(space_id = space_id))]
+    #[instrument(skip_all, fields(space_id = space_id), level = Level::TRACE)]
     async fn get_subscription_by_space_id(
         &self,
         ctx: &Context,

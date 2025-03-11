@@ -5,6 +5,7 @@ use ockam_transport_core::Transport;
 use std::any::Any;
 use std::sync::Arc;
 use tracing::instrument;
+use tracing::Level;
 
 use crate::UdpBindArguments;
 use crate::{UdpBindOptions, UdpTransport, UDP};
@@ -20,7 +21,7 @@ impl UdpTransport {
     /// let udp = UdpTransport::get_or_create(&ctx)?;
     /// # Ok(()) }
     /// ```
-    #[instrument(name = "get or create udp transport", skip_all)]
+    #[instrument(name = "get or create udp transport", skip_all, level = Level::TRACE)]
     pub fn get_or_create(ctx: &Context) -> Result<Arc<UdpTransport>> {
         // don't register the UDP transport twice
         match ctx.get_transport(UDP) {

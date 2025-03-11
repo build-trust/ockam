@@ -2,6 +2,7 @@ use miette::IntoDiagnostic;
 use minicbor::{CborLen, Decode, Encode};
 use serde::{Deserialize, Serialize};
 use std::fmt::Write;
+use tracing::Level;
 
 use crate::orchestrator::operation::CreateOperationResponse;
 use crate::orchestrator::project::models::{InfluxDBTokenLeaseManagerConfig, OktaConfig};
@@ -165,7 +166,7 @@ pub trait Addons {
 
 #[async_trait]
 impl Addons for ControllerClient {
-    #[instrument(skip_all, fields(project_id = project_id))]
+    #[instrument(skip_all, fields(project_id = project_id), level = Level::TRACE)]
     async fn list_addons(&self, ctx: &Context, project_id: &str) -> miette::Result<Vec<Addon>> {
         trace!(project_id, "listing addons");
         let req = Request::get(format!("/v0/{project_id}/addons"));

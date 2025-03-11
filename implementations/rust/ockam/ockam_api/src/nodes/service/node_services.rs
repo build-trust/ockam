@@ -4,6 +4,7 @@ use ockam::{Address, Context, Result};
 use ockam_abac::{Action, Resource, ResourceType};
 use ockam_core::api::{Error, Response};
 use ockam_node::WorkerBuilder;
+use tracing::Level;
 
 use crate::echoer::Echoer;
 use crate::error::ApiError;
@@ -79,7 +80,7 @@ impl NodeManagerWorker {
         Ok(Response::ok().body(ServiceStatusList(self.node_manager.list_services())))
     }
 
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     pub(super) async fn get_node_status(&self) -> Result<Response<NodeStatus>, Response<Error>> {
         match self.node_manager.get_node_status().await {
             Ok(node_status) => Ok(Response::ok().body(node_status)),
@@ -87,7 +88,7 @@ impl NodeManagerWorker {
         }
     }
 
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     pub(super) async fn get_node_resources(
         &self,
     ) -> Result<Response<NodeResources>, Response<Error>> {

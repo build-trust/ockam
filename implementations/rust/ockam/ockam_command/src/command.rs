@@ -24,7 +24,7 @@ use opentelemetry::global;
 use opentelemetry::trace::{FutureExt, Link, SpanBuilder, TraceContextExt, Tracer};
 use opentelemetry::Context as OtelContext;
 use std::process::exit;
-use tracing::{debug, info, instrument, warn};
+use tracing::{debug, info, instrument, warn, Level};
 
 const ABOUT: &str = include_str!("./static/about.txt");
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
@@ -307,7 +307,7 @@ impl OckamCommand {
         result
     }
 
-    #[instrument(skip_all, fields(command = self.subcommand.name()))]
+    #[instrument(skip_all, fields(command = self.subcommand.name()), level = Level::TRACE)]
     async fn run_command(
         self,
         ctx: &Context,
