@@ -5,8 +5,8 @@ use miette::IntoDiagnostic;
 
 use crate::branding::BrandingCompileEnvVars;
 use crate::{
-    add_command_error_event, has_help_flag, has_version_flag, pager, replace_hyphen_with_stdin,
-    util::exitcode, version::Version, OckamCommand,
+    add_command_error_event, get_env_attributes, has_help_flag, has_version_flag, pager,
+    replace_hyphen_with_stdin, util::exitcode, version::Version, OckamCommand,
 };
 use ockam_api::cli_state::{CliState, CliStateMode};
 use ockam_api::logs::{
@@ -41,6 +41,19 @@ pub fn run() -> miette::Result<()> {
     if has_version_flag(&input) {
         print_version_and_exit();
     }
+
+    // allows environment variables to be set via command line as a workaround for the lack of
+    // environment variable support in kubernetes probes
+    let input = if let Some((attributes, remaining_arguments)) = get_env_attributes(&input)? {
+        for (key, value) in attributes {
+            // set the environment variable while we are still single-threaded
+            // and before the arguments are parsed
+            std::env::set_var(key, value);
+        }
+        remaining_arguments
+    } else {
+        input
+    };
 
     let command_res = OckamCommand::try_parse_from(&input);
 
