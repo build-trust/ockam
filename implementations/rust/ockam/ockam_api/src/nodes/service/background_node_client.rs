@@ -211,7 +211,7 @@ impl BackgroundNodeClient {
     ) -> miette::Result<TcpConnection> {
         let node_info = self.cli_state.get_node(&self.node_name).await?;
         let tcp_listener_address = node_info
-            .tcp_listener_address()
+            .tcp_connect_address()
             .ok_or(miette!(
                 "an api transport should have been started for node {:?}",
                 &node_info

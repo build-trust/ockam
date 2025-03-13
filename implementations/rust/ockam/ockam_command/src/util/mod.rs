@@ -67,7 +67,7 @@ pub async fn clean_nodes_multiaddr(
                 let alias = p.cast::<Node>().expect("Failed to parse node name");
                 let node_info = cli_state.get_node(&alias).await?;
                 let addr = node_info
-                    .tcp_listener_address()
+                    .tcp_connect_address()
                     .ok_or(miette!("No transport API has been set on the node"))?;
                 match &addr {
                     InternetAddress::Dns(dns, _) => new_ma.push_back(DnsAddr::new(dns))?,
