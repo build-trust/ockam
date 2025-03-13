@@ -79,7 +79,7 @@ impl NodeCommand {
         match self.subcommand {
             NodeSubcommand::Create(c) => c.run(ctx, opts).await,
             NodeSubcommand::Delete(c) => c.run(opts).await,
-            NodeSubcommand::List(c) => c.run(opts).await,
+            NodeSubcommand::List(c) => c.run(ctx, opts).await,
             NodeSubcommand::Show(c) => c.run(ctx, opts).await,
             NodeSubcommand::Start(c) => c.run(ctx, opts).await,
             NodeSubcommand::Stop(c) => c.run(opts).await,

@@ -1,17 +1,15 @@
+use async_trait::async_trait;
 use clap::Args;
 use colorful::Colorful;
-use indoc::formatdoc;
-use miette::IntoDiagnostic;
 use ockam_api::cli_state::NodeProcessStatus;
 use serde::Serialize;
-use tokio::sync::Mutex;
-use tokio::try_join;
 
 use ockam_api::cli_state::nodes::NodeInfo;
-use ockam_api::colors::OckamColor;
+use ockam_api::colors::{color_primary, OckamColor};
 
-use crate::{docs, CommandGlobalOpts, Result};
+use crate::{docs, Command, CommandGlobalOpts, Result};
 use ockam_api::output::Output;
+use ockam_node::Context;
 
 const LONG_ABOUT: &str = include_str!("./static/list/long_about.txt");
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
@@ -26,78 +24,40 @@ after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct ListCommand {}
 
-impl ListCommand {
-    pub fn name(&self) -> String {
-        "node list".into()
-    }
+#[async_trait]
+impl Command for ListCommand {
+    const NAME: &'static str = "node list";
 
-    pub async fn run(&self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        // Before printing node states we verify them.
-        // We send a QueryStatus request to every node on
-        // record. If the response yields a different pid to the
-        // one in config, we update the pid stored in the config.
-        // This should only happen if the node has failed in the past,
-        // and has been restarted by something that is not this CLI.
-        let node_names: Vec<_> = {
-            let nodes = opts.state.get_nodes().await?;
-            nodes.iter().map(|n| n.name()).collect()
-        };
+    async fn run(self, _ctx: &Context, opts: CommandGlobalOpts) -> Result<()> {
+        let spinner = opts.terminal.spinner();
+        if let Some(spinner) = spinner.as_ref() {
+            spinner.set_message("Retrieving nodes...");
+        }
 
-        let nodes = get_nodes_info(&opts, node_names).await?;
-        print_nodes_info(&opts, nodes)?;
+        let nodes: Vec<NodeListOutput> = opts
+            .state
+            .get_nodes()
+            .await?
+            .iter()
+            .map(NodeListOutput::from_node_info)
+            .collect();
+
+        if let Some(spinner) = spinner {
+            spinner.finish_and_clear();
+        }
+
+        let plain = opts
+            .terminal
+            .build_list(&nodes, "No nodes found on this system")?;
+
+        opts.terminal
+            .to_stdout()
+            .plain(plain)
+            .json_obj(&nodes)?
+            .write_line()?;
+
         Ok(())
     }
-}
-
-pub async fn get_nodes_info(
-    opts: &CommandGlobalOpts,
-    node_names: Vec<String>,
-) -> Result<Vec<NodeListOutput>> {
-    let mut nodes: Vec<NodeListOutput> = Vec::new();
-
-    for node_name in node_names {
-        let is_finished: Mutex<bool> = Mutex::new(false);
-
-        let get_node_status = async {
-            let node = opts.state.get_node(&node_name).await?;
-            *is_finished.lock().await = true;
-            Ok(node)
-        };
-
-        let output_messages = vec![format!(
-            "Retrieving node {}...\n",
-            node_name
-                .to_string()
-                .color(OckamColor::PrimaryResource.color())
-        )];
-        let progress_output = opts.terminal.loop_messages(&output_messages, &is_finished);
-
-        let (node, _) = try_join!(get_node_status, progress_output)?;
-
-        nodes.push(NodeListOutput::from_node_info(&node));
-    }
-
-    Ok(nodes)
-}
-
-pub fn print_nodes_info(
-    opts: &CommandGlobalOpts,
-    nodes: Vec<NodeListOutput>,
-) -> miette::Result<()> {
-    let plain = opts
-        .terminal
-        .build_list(&nodes, "No nodes found on this system.")?;
-
-    let json = serde_json::to_string(&nodes).into_diagnostic()?;
-
-    opts.terminal
-        .clone()
-        .to_stdout()
-        .plain(plain)
-        .json(json)
-        .write_line()?;
-
-    Ok(())
 }
 
 #[derive(Serialize)]
@@ -138,17 +98,11 @@ impl Output for NodeListOutput {
         let (status, process) = match self.status {
             NodeProcessStatus::Running(pid) => (
                 "UP".color(OckamColor::Success.color()),
-                format!(
-                    "Process id {}",
-                    pid.to_string().color(OckamColor::PrimaryResource.color())
-                ),
+                format!("With PID {}", color_primary(pid)),
             ),
             NodeProcessStatus::Zombie(pid) => (
                 "ZOMBIE".color(OckamColor::Failure.color()),
-                format!(
-                    "Process id {}",
-                    pid.to_string().color(OckamColor::PrimaryResource.color())
-                ),
+                format!("With PID {}", color_primary(pid)),
             ),
             NodeProcessStatus::Stopped => (
                 "DOWN".color(OckamColor::Failure.color()),
@@ -161,14 +115,13 @@ impl Output for NodeListOutput {
             false => "".to_string(),
         };
 
-        let output = formatdoc! {"
-        Node {node_name}{default} {status}
-        {process}",
-        node_name = self
-            .node_name
-            .to_string()
-            .color(OckamColor::PrimaryResource.color()),
-        };
+        let output = format!(
+            "Node {}{} is {}\n{}",
+            color_primary(&self.node_name),
+            default,
+            status,
+            process
+        );
 
         Ok(output)
     }
