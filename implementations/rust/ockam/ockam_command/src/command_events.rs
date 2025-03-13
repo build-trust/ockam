@@ -1,8 +1,5 @@
 use ockam_api::cli_state::journeys::{JourneyEvent, APPLICATION_EVENT_COMMAND};
 use ockam_api::CliState;
-use ockam_core::OCKAM_TRACER_NAME;
-use opentelemetry::trace::{FutureExt, Span, TraceContextExt, Tracer};
-use opentelemetry::{global, Context};
 use std::collections::HashMap;
 use tracing::warn;
 
@@ -13,10 +10,6 @@ pub async fn add_command_event(
     command_arguments: String,
 ) -> miette::Result<()> {
     let command_name = command.to_string();
-    let tracer = global::tracer(OCKAM_TRACER_NAME);
-
-    let span = tracer.start(command_name.clone());
-    let ctx = Context::current_with_span(span);
 
     let mut attributes = HashMap::new();
     attributes.insert(
@@ -25,7 +18,6 @@ pub async fn add_command_event(
     );
     if let Err(e) = cli_state
         .add_journey_event(JourneyEvent::ok(command_name), attributes)
-        .with_context(ctx)
         .await
     {
         warn!("cannot save a journey event: {}", e);
@@ -43,10 +35,6 @@ pub async fn add_command_error_event(
 ) -> miette::Result<()> {
     let message = message.to_string();
     let command = command_name.to_string();
-    let tracer = global::tracer(OCKAM_TRACER_NAME);
-    let mut span = tracer.start(format!("'{}' error", command));
-    span.set_status(opentelemetry::trace::Status::error(message.clone()));
-    let ctx = Context::current_with_span(span);
 
     let mut attributes = HashMap::new();
     attributes.insert(
@@ -55,12 +43,10 @@ pub async fn add_command_error_event(
     );
     if let Err(e) = cli_state
         .add_journey_error(&command, message, attributes)
-        .with_context(ctx)
         .await
     {
         warn!("cannot save a journey event: {}", e);
     }
-
     Ok(())
 }
 

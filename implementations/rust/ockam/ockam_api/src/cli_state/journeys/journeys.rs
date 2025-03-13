@@ -8,7 +8,7 @@ use crate::{CliState, Result};
 use chrono::{DateTime, Utc};
 use either::Either;
 use ockam_core::{OpenTelemetryContext, OCKAM_TRACER_NAME};
-use opentelemetry::trace::{Link, SpanBuilder, SpanId, TraceContextExt, TraceId, Tracer};
+use opentelemetry::trace::{Link, Span, SpanBuilder, SpanId, TraceContextExt, TraceId, Tracer};
 use opentelemetry::{global, Context, Key, KeyValue};
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
@@ -100,7 +100,7 @@ impl CliState {
         event: JourneyEvent,
         attributes: HashMap<&Key, String>,
     ) -> Result<()> {
-        self.add_a_journey_event(event, attributes).await
+        self.add_a_journey_event(event, attributes, None).await
     }
 
     /// This method adds an error event to the project/host journeys
@@ -112,8 +112,9 @@ impl CliState {
         attributes: HashMap<&Key, String>,
     ) -> Result<()> {
         self.add_a_journey_event(
-            JourneyEvent::error(command_name.to_string(), message),
+            JourneyEvent::error(command_name.to_string(), message.clone()),
             attributes,
+            Some(message),
         )
         .await
     }
@@ -126,6 +127,7 @@ impl CliState {
         &self,
         event: JourneyEvent,
         attributes: HashMap<&Key, String>,
+        error_message: Option<String>,
     ) -> Result<()> {
         if !self.is_tracing_enabled() {
             return Ok(());
@@ -135,11 +137,25 @@ impl CliState {
         let (host_journey, project_journey) = self
             .get_journeys(project.clone().map(|p| p.project_id().to_string()))
             .await?;
-        self.make_span_from_journey(&project, &event, &attributes, host_journey, "host")
-            .await?;
+        self.make_span_from_journey(
+            &project,
+            &event,
+            &attributes,
+            &error_message,
+            host_journey,
+            "host",
+        )
+        .await?;
         if let Some(project_journey) = project_journey {
-            self.make_span_from_journey(&project, &event, &attributes, project_journey, "project")
-                .await?;
+            self.make_span_from_journey(
+                &project,
+                &event,
+                &attributes,
+                &error_message,
+                project_journey,
+                "project",
+            )
+            .await?;
         }
         Ok(())
     }
@@ -153,6 +169,7 @@ impl CliState {
         project: &Option<Project>,
         event: &JourneyEvent,
         attributes: &HashMap<&Key, String>,
+        error_message: &Option<String>,
         journey: Journey,
         trace_type: &str,
     ) -> Result<()> {
@@ -169,7 +186,10 @@ impl CliState {
             .with_start_time(start_time)
             .with_end_time(end_time)
             .with_links(vec![Link::new(event_span_context.clone(), vec![], 0)]);
-        let span = tracer.build_with_context(span_builder, &journey.extract_context());
+        let mut span = tracer.build_with_context(span_builder, &journey.extract_context());
+        if let Some(message) = error_message {
+            span.set_status(opentelemetry::trace::Status::error(message.clone()));
+        }
         let cx = Context::current_with_span(span);
         let _guard = cx.attach();
         self.set_current_span_attributes(event, attributes, project);

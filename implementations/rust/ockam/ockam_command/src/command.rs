@@ -248,9 +248,9 @@ impl OckamCommand {
         } else {
             tracer.start(command_name.clone())
         };
+
         let cx = OtelContext::current_with_span(span);
 
-        // TODO: Add another span here?
         let cli_state = match cli_state {
             Some(cli_state) => cli_state,
             None => self
