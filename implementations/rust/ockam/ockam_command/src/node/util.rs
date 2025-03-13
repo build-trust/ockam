@@ -197,7 +197,7 @@ pub fn spawn_node(opts: &CommandGlobalOpts, cmd: CreateCommand) -> miette::Resul
 
 /// Run the ockam command line with specific arguments
 pub fn run_ockam(args: Vec<String>, quiet: bool) -> miette::Result<Child> {
-    debug!("spawning a new process");
+    debug!("spawning a new process with args: {:?}", args);
 
     // On systems with non-obvious path setups (or during
     // development) re-executing the current binary is a more
