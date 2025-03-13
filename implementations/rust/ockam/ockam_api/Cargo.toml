@@ -1,6 +1,6 @@
 [package]
 name = "ockam_api"
-version = "0.91.0"
+version = "0.92.0"
 authors = ["Ockam Developers"]
 categories = [
   "cryptography",
@@ -155,7 +155,7 @@ default-features = false
 features = ["std"]
 
 [dependencies.ockam]
-version = "^0.148.0"
+version = "^0.149.0"
 path = "../ockam"
 default-features = false
 features = ["std", "ockam_transport_tcp", "ockam_transport_udp", "storage"]
