@@ -42,6 +42,8 @@ struct LatencyCommand {
     count: u32,
     #[arg(long, default_value = "false")]
     tls: bool,
+    #[arg(long)]
+    seconds: Option<u64>,
 }
 
 #[derive(Debug, Args, Clone)]
@@ -58,6 +60,8 @@ struct ThroughputCommand {
     tls: bool,
     #[arg(long, default_value = DEFAULT_BUFFER_SIZE, env = "BUFFER_SIZE")]
     buffer_size: usize,
+    #[arg(long)]
+    seconds: Option<u64>,
 }
 
 #[derive(Subcommand, Debug, Clone)]
@@ -161,39 +165,58 @@ async fn throughput(command: ThroughputCommand) {
         }
     });
 
-    // read and report the speed
-    let outgoing_buffer = vec![0u8; command.buffer_size];
-    let mut total_bytes = 0;
-    let mut iterations = 0;
+    let mut total_bytes: usize = 0;
+    let future = async {
+        // read and report the speed
+        let outgoing_buffer = vec![0u8; command.buffer_size];
+        let mut round_bytes = 0;
+        let mut iterations = 0;
 
-    let mut start = Instant::now();
-    loop {
-        let result = stream_write.write_all(&outgoing_buffer).await;
-        iterations += 1;
-        match result {
-            Ok(()) => {
-                total_bytes += outgoing_buffer.len();
+        let mut start = Instant::now();
+        loop {
+            let result = stream_write.write_all(&outgoing_buffer).await;
+            iterations += 1;
+            match result {
+                Ok(()) => {
+                    round_bytes += outgoing_buffer.len();
+                    total_bytes += outgoing_buffer.len();
+                }
+                Err(err) => {
+                    println!("Failed to write: {:?}", err);
+                    return;
+                }
             }
-            Err(err) => {
-                println!("Failed to write: {:?}", err);
-                return;
+
+            if iterations > 10_000 {
+                iterations = 0;
+                let elapsed = start.elapsed();
+                let seconds = elapsed.as_secs();
+                if seconds >= 1 {
+                    println!(
+                        "Outgoing Throughput: {:.2} Gbps",
+                        (round_bytes as f32 / elapsed.as_secs_f32()) * 8.0 / 1_000_000_000.0
+                    );
+                    start = Instant::now();
+                    round_bytes = 0;
+                }
             }
         }
+    };
 
-        if iterations > 10_000 {
-            iterations = 0;
-            let elapsed = start.elapsed();
-            let seconds = elapsed.as_secs();
-            if seconds >= 1 {
-                println!(
-                    "Outgoing Throughput: {:.2} Gbps",
-                    (total_bytes as f32 / elapsed.as_secs_f32()) * 8.0 / 1_000_000_000.0
-                );
-                start = Instant::now();
-                total_bytes = 0;
-            }
-        }
+    let begin = Instant::now();
+
+    // use a timeout when specified
+    if let Some(seconds) = command.seconds {
+        let _ = tokio::time::timeout(tokio::time::Duration::from_secs(seconds), future).await;
+    } else {
+        future.await;
     }
+
+    let elapsed = begin.elapsed();
+    println!(
+        "Average Throughput Speed: {:.2} Gbps",
+        (total_bytes as f32 / elapsed.as_secs_f32()) * 8.0 / 1_000_000_000.0
+    );
 }
 
 async fn latency(command: LatencyCommand) {
@@ -212,81 +235,89 @@ async fn latency(command: LatencyCommand) {
         None
     };
 
-    for _ in 0..command.count {
-        let result = tokio::net::TcpStream::connect(command.address).await;
-        match result {
-            Ok(stream) => {
-                stream.set_nodelay(true).unwrap();
+    let future = async {
+        for _ in 0..command.count {
+            let result = tokio::net::TcpStream::connect(command.address).await;
+            match result {
+                Ok(stream) => {
+                    stream.set_nodelay(true).unwrap();
 
-                let mut stream_write: Box<dyn AsyncWrite + Unpin>;
-                let mut stream_read: Box<dyn AsyncRead + Unpin>;
+                    let mut stream_write: Box<dyn AsyncWrite + Unpin>;
+                    let mut stream_read: Box<dyn AsyncRead + Unpin>;
 
-                let start = Instant::now();
+                    let start = Instant::now();
 
-                if let Some(tls_connector) = &tls_connector {
-                    let result = tls_connector
-                        .connect(ServerName::IpAddress(command.address.ip().into()), stream)
-                        .await;
-                    match result {
-                        Ok(stream) => {
-                            let (r, w) = tokio::io::split(stream);
-                            stream_read = Box::new(r);
-                            stream_write = Box::new(w);
+                    if let Some(tls_connector) = &tls_connector {
+                        let result = tls_connector
+                            .connect(ServerName::IpAddress(command.address.ip().into()), stream)
+                            .await;
+                        match result {
+                            Ok(stream) => {
+                                let (r, w) = tokio::io::split(stream);
+                                stream_read = Box::new(r);
+                                stream_write = Box::new(w);
+                            }
+                            Err(error) => {
+                                println!("Failed to connect: {:?}", error);
+                                continue;
+                            }
                         }
-                        Err(error) => {
-                            println!("Failed to connect: {:?}", error);
-                            continue;
-                        }
+                    } else {
+                        let (r, w) = tokio::io::split(stream);
+                        stream_read = Box::new(r);
+                        stream_write = Box::new(w);
                     }
-                } else {
-                    let (r, w) = tokio::io::split(stream);
-                    stream_read = Box::new(r);
-                    stream_write = Box::new(w);
-                }
 
-                let result = stream_write.write_all("hello".as_bytes()).await;
-                if let Err(err) = result {
-                    println!("Failed to write: {:?}", err);
-                    continue;
-                }
-                let result = stream_read.read_exact(&mut incoming_buffer).await;
-                if let Err(err) = result {
-                    println!("Failed to read: {:?}", err);
-                    continue;
-                }
-                let first_rtt = start.elapsed();
-                first_rtt_measurements.push(first_rtt);
+                    let result = stream_write.write_all("hello".as_bytes()).await;
+                    if let Err(err) = result {
+                        println!("Failed to write: {:?}", err);
+                        continue;
+                    }
+                    let result = stream_read.read_exact(&mut incoming_buffer).await;
+                    if let Err(err) = result {
+                        println!("Failed to read: {:?}", err);
+                        continue;
+                    }
+                    let first_rtt = start.elapsed();
+                    first_rtt_measurements.push(first_rtt);
 
-                let result = stream_write.write_all("hello".as_bytes()).await;
-                if let Err(err) = result {
-                    println!("Failed to write: {:?}", err);
-                    continue;
+                    let result = stream_write.write_all("hello".as_bytes()).await;
+                    if let Err(err) = result {
+                        println!("Failed to write: {:?}", err);
+                        continue;
+                    }
+                    let result = stream_read.read_exact(&mut incoming_buffer).await;
+                    if let Err(err) = result {
+                        println!("Failed to read: {:?}", err);
+                        continue;
+                    }
+                    let second_rtt = start.elapsed() - first_rtt;
+                    second_rtt_measurements.push(second_rtt);
+                    println!(
+                        "Connection + First RTT: {}ms {}us, Second RTT: {}ms {}us",
+                        first_rtt.as_millis(),
+                        first_rtt.as_micros(),
+                        second_rtt.as_millis(),
+                        second_rtt.as_micros()
+                    );
                 }
-                let result = stream_read.read_exact(&mut incoming_buffer).await;
-                if let Err(err) = result {
-                    println!("Failed to read: {:?}", err);
-                    continue;
+                Err(err) => {
+                    println!("Failed to connect: {:?}", err);
                 }
-                let second_rtt = start.elapsed() - first_rtt;
-                second_rtt_measurements.push(second_rtt);
-                println!(
-                    "Connection + First RTT: {}ms {}us, Second RTT: {}ms {}us",
-                    first_rtt.as_millis(),
-                    first_rtt.as_micros(),
-                    second_rtt.as_millis(),
-                    second_rtt.as_micros()
-                );
-            }
-            Err(err) => {
-                println!("Failed to connect: {:?}", err);
             }
         }
+    };
+
+    if let Some(seconds) = command.seconds {
+        let _ = tokio::time::timeout(tokio::time::Duration::from_secs(seconds), future).await;
+    } else {
+        future.await;
     }
 
     let total: std::time::Duration = first_rtt_measurements.iter().sum();
-    let first_average = total / command.count;
+    let first_average = total / first_rtt_measurements.len() as u32;
     let total: std::time::Duration = second_rtt_measurements.iter().sum();
-    let second_average = total / command.count;
+    let second_average = total / second_rtt_measurements.len() as u32;
     println!(
         "Average - Connection + First RTT: {}ms {}us, Second RTT: {}ms {}us",
         first_average.as_millis(),
