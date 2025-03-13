@@ -1,4 +1,6 @@
 use either::Either;
+use tracing::Level;
+
 use ockam::identity::utils::now;
 use ockam::identity::Identifier;
 use ockam_core::compat::sync::Arc;
@@ -33,7 +35,7 @@ impl EnrollmentTokenAcceptor {
         }
     }
 
-    #[instrument(skip_all, fields(from = %from))]
+    #[instrument(skip_all, fields(from = %from), level = Level::TRACE)]
     pub async fn accept_token(
         &mut self,
         otc: OneTimeCode,

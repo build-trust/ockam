@@ -8,7 +8,7 @@ use ockam_core::flow_control::FlowControls;
 use ockam_core::{Address, Result, Route};
 use ockam_node::Context;
 use ockam_transport_core::{parse_socket_addr, HostnamePort};
-use tracing::{debug, instrument};
+use tracing::{debug, instrument, Level};
 
 impl TcpTransport {
     /// Create Tcp Inlet that listens on bind_addr, transforms Tcp stream into Ockam Routable
@@ -29,7 +29,7 @@ impl TcpTransport {
     /// # tcp.stop_inlet(&address)?;
     /// # Ok(()) }
     /// ```
-    #[instrument(skip(self), fields(address = ? bind_addr.clone().into(), outlet_route = ? outlet_route.clone()))]
+    #[instrument(skip(self), fields(address = ? bind_addr.clone().into(), outlet_route = ? outlet_route.clone()), level = Level::TRACE)]
     pub async fn create_inlet(
         &self,
         bind_addr: impl Into<String> + Clone + Debug,
@@ -62,7 +62,7 @@ impl TcpTransport {
     /// tcp.stop_inlet(&address)?;
     /// # Ok(()) }
     /// ```
-    #[instrument(skip(self), fields(address = ? address))]
+    #[instrument(skip(self), fields(address = ? address), level = Level::TRACE)]
     pub fn stop_inlet(&self, address: &Address) -> Result<()> {
         self.ctx.stop_address(address)?;
 
@@ -89,7 +89,7 @@ impl TcpTransport {
     /// # tcp.stop_outlet(&address)?;
     /// # Ok(()) }
     /// ```
-    #[instrument(skip(self), fields(address = ? address.clone().into(), peer=peer.clone().to_string()))]
+    #[instrument(skip(self), fields(address = ? address.clone().into(), peer=peer.clone().to_string()), level = Level::TRACE)]
     pub fn create_outlet(
         &self,
         address: impl Into<Address> + Clone + Debug,
@@ -122,7 +122,7 @@ impl TcpTransport {
     /// tcp.stop_outlet(&address)?;
     /// # Ok(()) }
     /// ```
-    #[instrument(skip(self), fields(address = % address))]
+    #[instrument(skip(self), fields(address = % address), level = Level::TRACE)]
     pub fn stop_outlet(&self, address: &Address) -> Result<()> {
         self.ctx.stop_address(address)
     }

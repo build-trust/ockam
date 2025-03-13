@@ -29,7 +29,7 @@ impl CliState {
         }
     }
 
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     pub async fn is_default_identity_enrolled(&self) -> Result<bool> {
         Ok(self
             .enrollment_repository()
@@ -37,7 +37,7 @@ impl CliState {
             .await?)
     }
 
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     pub async fn identity_should_enroll(&self, name: &Option<String>, force: bool) -> Result<bool> {
         if force {
             return Ok(true);
@@ -52,7 +52,7 @@ impl CliState {
         Ok(!self.is_identity_enrolled(name).await?)
     }
 
-    #[instrument(skip_all, fields(identifier = %identifier))]
+    #[instrument(skip_all, fields(identifier = %identifier), level = Level::TRACE)]
     pub async fn set_identifier_as_enrolled(
         &self,
         identifier: &Identifier,
@@ -68,7 +68,7 @@ impl CliState {
     ///
     ///  - all the currently enrolled entities
     ///  - all the known identities and their corresponding enrollment state
-    #[instrument(skip_all, fields(filter = %filter))]
+    #[instrument(skip_all, fields(filter = %filter), level = Level::TRACE)]
     pub async fn get_identity_enrollments(
         &self,
         filter: EnrollmentFilter,
@@ -94,7 +94,7 @@ impl CliState {
     /// Return true if the user is enrolled.
     /// At the moment this check only verifies that there is a default project.
     /// This project should be the project that is created at the end of the enrollment procedure
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     pub async fn is_enrolled(&self) -> miette::Result<bool> {
         if !self.is_default_identity_enrolled().await? {
             return Ok(false);

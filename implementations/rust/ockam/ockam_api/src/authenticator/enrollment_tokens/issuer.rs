@@ -2,6 +2,7 @@ use either::Either;
 use rand::distributions::Alphanumeric;
 use rand::Rng;
 use std::collections::BTreeMap;
+use tracing::Level;
 
 use ockam::identity::utils::now;
 use ockam::identity::{Identifier, IdentitiesAttributes};
@@ -50,7 +51,7 @@ impl EnrollmentTokenIssuer {
         }
     }
 
-    #[instrument(skip_all, fields(enroller = %enroller, token_duration = token_duration.map_or("n/a".to_string(), |d| d.as_secs().to_string()), ttl_count = ttl_count.map_or("n/a".to_string(), |t| t.to_string())))]
+    #[instrument(skip_all, fields(enroller = %enroller, token_duration = token_duration.map_or("n/a".to_string(), |d| d.as_secs().to_string()), ttl_count = ttl_count.map_or("n/a".to_string(), |t| t.to_string())), level = Level::TRACE)]
     pub async fn issue_token(
         &self,
         enroller: &Identifier,

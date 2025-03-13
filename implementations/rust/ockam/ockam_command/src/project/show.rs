@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use clap::Args;
 use miette::IntoDiagnostic;
-use tracing::instrument;
+use tracing::{instrument, Level};
 
 use ockam::Context;
 use ockam_api::nodes::InMemoryNode;
@@ -107,7 +107,7 @@ impl ShowCommandTui for ShowTui {
         Ok(project)
     }
 
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     async fn show_single(&self, item_name: &str) -> miette::Result<()> {
         let project = self
             .node

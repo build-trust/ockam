@@ -54,7 +54,7 @@ impl TcpTransport {
     }
 
     /// Create a Privileged Inlet
-    #[instrument(skip(self), fields(outlet_route=?outlet_route.clone()))]
+    #[instrument(skip(self), fields(outlet_route=?outlet_route.clone()), level = Level::TRACE)]
     pub async fn create_privileged_inlet(
         &self,
         bind_addr: impl Into<String> + Clone + Debug,
@@ -141,7 +141,7 @@ impl TcpTransport {
     }
 
     /// Stop the Privileged Inlet
-    #[instrument(skip(self), fields(port=port))]
+    #[instrument(skip(self), fields(port=port), level = Level::TRACE)]
     pub fn stop_privileged_inlet(&self, port: Port) -> Result<()> {
         self.ebpf_support.inlet_registry.delete_inlet(port);
 
@@ -149,7 +149,7 @@ impl TcpTransport {
     }
 
     /// Create a Privileged Outlet
-    #[instrument(skip(self), fields(address = ? address.clone().into(), peer=peer.clone().to_string()))]
+    #[instrument(skip(self), fields(address = ? address.clone().into(), peer=peer.clone().to_string()), level = Level::TRACE)]
     pub async fn create_privileged_outlet(
         &self,
         address: impl Into<Address> + Clone + Debug,
@@ -219,7 +219,7 @@ impl TcpTransport {
     }
 
     /// Stop the Privileged Inlet
-    #[instrument(skip(self), fields(address = % address))]
+    #[instrument(skip(self), fields(address = % address), level = Level::TRACE)]
     pub fn stop_privileged_outlet(&self, address: &Address) -> Result<()> {
         self.ctx().stop_address(address)?;
 

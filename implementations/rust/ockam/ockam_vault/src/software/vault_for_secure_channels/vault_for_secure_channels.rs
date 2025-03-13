@@ -1,5 +1,6 @@
 use sha2::{Digest, Sha256};
 use tracing::instrument;
+use tracing::Level;
 
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::collections::BTreeMap;
@@ -279,7 +280,7 @@ impl VaultForSecureChannels for SoftwareVaultForSecureChannels {
         Ok(HkdfOutput(Sha256HkdfOutput(output)))
     }
 
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     async fn aead_encrypt(
         &self,
         secret_key_handle: &AeadSecretKeyHandle,
@@ -292,7 +293,7 @@ impl VaultForSecureChannels for SoftwareVaultForSecureChannels {
         aes.encrypt_message(plain_text, nonce, aad)
     }
 
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     async fn aead_decrypt<'a>(
         &self,
         secret_key_handle: &AeadSecretKeyHandle,
@@ -307,7 +308,7 @@ impl VaultForSecureChannels for SoftwareVaultForSecureChannels {
         Ok(plaintext)
     }
 
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     async fn persist_aead_key(&self, secret_key_handle: &AeadSecretKeyHandle) -> Result<()> {
         let secret = self.get_aead_secret(secret_key_handle).await?;
         self.secrets_repository
@@ -315,7 +316,7 @@ impl VaultForSecureChannels for SoftwareVaultForSecureChannels {
             .await
     }
 
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     async fn load_aead_key(&self, secret_key_handle: &AeadSecretKeyHandle) -> Result<()> {
         let Some(secret) = self
             .secrets_repository
@@ -428,7 +429,7 @@ impl VaultForSecureChannels for SoftwareVaultForSecureChannels {
         Ok(handle)
     }
 
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     async fn delete_aead_secret_key(&self, secret_key_handle: AeadSecretKeyHandle) -> Result<bool> {
         Ok(self
             .ephemeral_aead_secrets

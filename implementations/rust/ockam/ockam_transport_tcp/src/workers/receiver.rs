@@ -15,7 +15,7 @@ use ockam_core::{
 use ockam_core::{Processor, Result};
 use ockam_node::{Context, ProcessorBuilder, WorkerShutdownPriority};
 use tokio::{io::AsyncReadExt, net::tcp::OwnedReadHalf};
-use tracing::{debug, instrument, trace};
+use tracing::{debug, instrument, trace, Level};
 
 /// A TCP receiving message processor
 ///
@@ -57,7 +57,7 @@ impl TcpRecvProcessor {
     }
 
     #[allow(clippy::too_many_arguments)]
-    #[instrument(skip_all, name = "TcpRecvProcessor::start")]
+    #[instrument(skip_all, name = "TcpRecvProcessor::start", level = Level::TRACE)]
     pub fn start(
         ctx: &Context,
         registry: TcpRegistry,
@@ -119,7 +119,7 @@ impl TcpRecvProcessor {
 impl Processor for TcpRecvProcessor {
     type Context = Context;
 
-    #[instrument(skip_all, name = "TcpRecvProcessor::initialize")]
+    #[instrument(skip_all, name = "TcpRecvProcessor::initialize", level = Level::TRACE)]
     async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
         self.registry.add_receiver_processor(TcpReceiverInfo::new(
             ctx.primary_address().clone(),
@@ -156,7 +156,7 @@ impl Processor for TcpRecvProcessor {
         Ok(())
     }
 
-    #[instrument(skip_all, name = "TcpRecvProcessor::shutdown")]
+    #[instrument(skip_all, name = "TcpRecvProcessor::shutdown", level = Level::TRACE)]
     async fn shutdown(&mut self, ctx: &mut Self::Context) -> Result<()> {
         self.registry
             .remove_receiver_processor(ctx.primary_address());
@@ -175,7 +175,7 @@ impl Processor for TcpRecvProcessor {
     ///    Context to avoid spawning a zombie task.
     /// 3. We must also stop the TcpReceive loop when the worker gets
     ///    killed by the user or node.
-    #[instrument(skip_all, name = "TcpRecvProcessor::process", fields(worker = %ctx.primary_address()))]
+    #[instrument(skip_all, name = "TcpRecvProcessor::process", fields(worker = %ctx.primary_address()), level = Level::TRACE)]
     async fn process(&mut self, ctx: &mut Context) -> Result<bool> {
         // Read the message length
         let len = match self.read_half.read_u32().await {

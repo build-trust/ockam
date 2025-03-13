@@ -1,5 +1,5 @@
 use miette::miette;
-use tracing::{debug, instrument};
+use tracing::{debug, instrument, Level};
 
 use ockam_api::cli_state::journeys::{JourneyEvent, NODE_NAME};
 use ockam_api::logs::CurrentSpan;
@@ -12,7 +12,7 @@ use crate::CommandGlobalOpts;
 
 impl CreateCommand {
     // Create a new node running in the background (i.e. another, new OS process)
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     pub(crate) async fn background_mode(&self, opts: CommandGlobalOpts) -> miette::Result<()> {
         let node_name = self.name.clone();
         debug!(%node_name, "creating node in background mode");

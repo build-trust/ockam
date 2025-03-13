@@ -2,6 +2,7 @@ use ockam_core::compat::sync::Arc;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{Error, Result};
 use ockam_vault::{AeadSecretKeyHandle, VaultForSecureChannels};
+use tracing::Level;
 use tracing_attributes::instrument;
 
 use crate::secure_channel::handshake::handshake::AES_GCM_TAGSIZE;
@@ -20,7 +21,7 @@ pub(crate) struct Encryptor {
 pub(crate) const KEY_RENEWAL_INTERVAL: u64 = 32;
 
 impl Encryptor {
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     pub async fn rekey(
         vault: &Arc<dyn VaultForSecureChannels>,
         key: &AeadSecretKeyHandle,
@@ -42,7 +43,7 @@ impl Encryptor {
         vault.convert_secret_buffer_to_aead_key(buffer).await
     }
 
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     pub async fn encrypt(&mut self, payload: &mut [u8]) -> Result<()> {
         let current_nonce = self.nonce;
 
@@ -85,7 +86,7 @@ impl Encryptor {
         }
     }
 
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     pub(crate) async fn shutdown(&self) -> Result<()> {
         if !self.vault.delete_aead_secret_key(self.key.clone()).await? {
             Err(Error::new(

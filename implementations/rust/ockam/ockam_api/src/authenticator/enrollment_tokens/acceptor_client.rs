@@ -1,4 +1,5 @@
 use miette::IntoDiagnostic;
+use tracing::Level;
 
 use ockam_core::api::Request;
 use ockam_core::async_trait;
@@ -15,7 +16,7 @@ pub trait TokenAcceptor {
 
 #[async_trait]
 impl TokenAcceptor for AuthorityNodeClient {
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     async fn present_token(&self, ctx: &Context, token: OneTimeCode) -> miette::Result<()> {
         let req = Request::post("/").body(token);
         self.get_secure_client()

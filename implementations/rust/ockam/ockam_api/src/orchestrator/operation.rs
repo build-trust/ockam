@@ -8,7 +8,7 @@ use ockam_node::Context;
 use serde::{Deserialize, Serialize};
 use tokio_retry::strategy::FixedInterval;
 use tokio_retry::Retry;
-use tracing::trace;
+use tracing::{trace, Level};
 
 #[derive(Encode, Decode, CborLen, Serialize, Deserialize, Debug, Clone, Message)]
 #[cbor(map)]
@@ -92,7 +92,7 @@ const API_SERVICE: &str = "projects";
 
 #[async_trait]
 impl Operations for ControllerClient {
-    #[instrument(skip_all, fields(operation_id = operation_id))]
+    #[instrument(skip_all, fields(operation_id = operation_id), level = Level::TRACE)]
     async fn get_operation(
         &self,
         ctx: &Context,
@@ -108,7 +108,7 @@ impl Operations for ControllerClient {
             .into_diagnostic()
     }
 
-    #[instrument(skip_all, fields(operation_id = operation_id))]
+    #[instrument(skip_all, fields(operation_id = operation_id), level = Level::TRACE)]
     async fn wait_until_operation_is_complete(
         &self,
         ctx: &Context,

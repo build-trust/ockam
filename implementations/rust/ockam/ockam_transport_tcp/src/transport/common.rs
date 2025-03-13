@@ -11,10 +11,10 @@ use tokio::net::TcpStream;
 use tokio_rustls::rustls::pki_types::ServerName;
 use tokio_rustls::rustls::{ClientConfig, RootCertStore};
 use tokio_rustls::{TlsConnector, TlsStream};
-use tracing::{debug, instrument};
+use tracing::{debug, instrument, Level};
 
 /// Connect to a socket address via a regular TcpStream
-#[instrument(skip_all)]
+#[instrument(skip_all, level = Level::TRACE)]
 pub(crate) async fn connect(
     to: &HostnamePort,
     enable_nagle: bool,
@@ -80,7 +80,7 @@ pub(crate) async fn create_tcp_stream(
 
 /// Connect to a socket address via a TlsStream
 #[allow(clippy::type_complexity)]
-#[instrument(skip_all)]
+#[instrument(skip_all, level = Level::TRACE)]
 pub(crate) async fn connect_tls(
     to: &HostnamePort,
     enable_nagle: bool,

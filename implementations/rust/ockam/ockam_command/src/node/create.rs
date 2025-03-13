@@ -25,7 +25,7 @@ use regex::Regex;
 use std::fmt::Write;
 use std::net::Ipv4Addr;
 use std::{path::PathBuf, str::FromStr};
-use tracing::instrument;
+use tracing::{instrument, Level};
 
 pub mod background;
 pub mod config;
@@ -202,7 +202,7 @@ impl Default for CreateCommand {
 impl Command for CreateCommand {
     const NAME: &'static str = "node create";
 
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     async fn run(mut self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         self.parse_args(&opts).await?;
 

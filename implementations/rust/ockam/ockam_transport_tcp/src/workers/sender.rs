@@ -15,7 +15,7 @@ use ockam_transport_core::TransportError;
 use serde::{Deserialize, Serialize};
 use tokio::io::AsyncWriteExt;
 use tokio::net::tcp::OwnedWriteHalf;
-use tracing::{debug, instrument, trace, warn};
+use tracing::{debug, instrument, trace, warn, Level};
 
 #[derive(Serialize, Deserialize, Message, Clone)]
 pub(crate) enum TcpSendWorkerMsg {
@@ -80,7 +80,7 @@ impl TcpSendWorker {
     /// Create a `(TcpSendWorker, TcpRecvProcessor)` pair that opens and
     /// manages the connection with the given peer
     #[allow(clippy::too_many_arguments)]
-    #[instrument(skip_all, name = "TcpSendWorker::start")]
+    #[instrument(skip_all, name = "TcpSendWorker::start", level = Level::TRACE)]
     pub(crate) fn start(
         ctx: &Context,
         registry: TcpRegistry,
@@ -127,7 +127,7 @@ impl TcpSendWorker {
         Ok(())
     }
 
-    #[instrument(skip_all, name = "TcpSendWorker::stop")]
+    #[instrument(skip_all, name = "TcpSendWorker::stop", level = Level::TRACE)]
     fn stop(&self, ctx: &Context) -> Result<()> {
         ctx.stop_primary_address()
     }
@@ -178,7 +178,7 @@ impl Worker for TcpSendWorker {
     type Context = Context;
     type Message = Any;
 
-    #[instrument(skip_all, name = "TcpSendWorker::initialize")]
+    #[instrument(skip_all, name = "TcpSendWorker::initialize", level = Level::TRACE)]
     async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
         self.registry.add_sender_worker(TcpSenderInfo::new(
             self.addresses.sender_address().clone(),
@@ -207,7 +207,7 @@ impl Worker for TcpSendWorker {
         Ok(())
     }
 
-    #[instrument(skip_all, name = "TcpSendWorker::shutdown")]
+    #[instrument(skip_all, name = "TcpSendWorker::shutdown", level = Level::TRACE)]
     async fn shutdown(&mut self, ctx: &mut Self::Context) -> Result<()> {
         self.registry
             .remove_sender_worker(self.addresses.sender_address());
@@ -221,7 +221,7 @@ impl Worker for TcpSendWorker {
 
     // TcpSendWorker will receive messages from the TcpRouter to send
     // across the TcpStream to our friend
-    #[instrument(skip_all, name = "TcpSendWorker::handle_message", fields(worker = %ctx.primary_address()))]
+    #[instrument(skip_all, name = "TcpSendWorker::handle_message", fields(worker = %ctx.primary_address()), level = Level::TRACE)]
     async fn handle_message(
         &mut self,
         ctx: &mut Context,

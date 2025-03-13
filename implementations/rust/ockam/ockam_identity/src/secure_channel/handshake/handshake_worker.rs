@@ -11,7 +11,7 @@ use ockam_core::{Result, Worker};
 use ockam_node::callback::CallbackSender;
 use ockam_node::{Context, WorkerBuilder};
 use ockam_vault::AeadSecretKeyHandle;
-use tracing::{debug, error, info, trace, warn};
+use tracing::{debug, error, info, trace, warn, Level};
 use tracing_attributes::instrument;
 
 use crate::models::Identifier;
@@ -261,7 +261,7 @@ impl HandshakeWorker {
     ///   - one for decryption
     ///
     /// See also the handle_decrypt method.
-    #[instrument(skip_all, name = "HandshakeWorker::handle_message")]
+    #[instrument(skip_all, name = "HandshakeWorker::handle_message", level = Level::TRACE)]
     async fn handle_handshake(
         &mut self,
         context: &mut Context,
@@ -321,7 +321,7 @@ impl HandshakeWorker {
     ///
     /// In reality, there's only one worker, the HandshakeWorker, serves as both a worker for handshakes
     /// and for decryption.
-    #[instrument(skip_all, name = "DecryptorWorker::handle_message")]
+    #[instrument(skip_all, name = "DecryptorWorker::handle_message", level = Level::TRACE)]
     async fn handle_decrypt(&mut self, context: &mut Context, message: Routed<Any>) -> Result<()> {
         trace!(
             remote_route = ?self.remote_route,

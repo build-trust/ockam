@@ -7,7 +7,7 @@ use ockam_core::{
 };
 use ockam_node::{Context, WorkerBuilder};
 use ockam_transport_core::{HostnamePort, TransportError};
-use tracing::{debug, instrument};
+use tracing::{debug, instrument, Level};
 
 /// A TCP Portal Outlet listen worker
 ///
@@ -32,7 +32,7 @@ impl TcpOutletListenWorker {
         }
     }
 
-    #[instrument(skip_all, name = "TcpOutletListenWorker::start")]
+    #[instrument(skip_all, name = "TcpOutletListenWorker::start", level = Level::TRACE)]
     pub(crate) fn start(
         ctx: &Context,
         registry: TcpRegistry,
@@ -82,7 +82,7 @@ impl Worker for TcpOutletListenWorker {
     type Context = Context;
     type Message = NeutralMessage;
 
-    #[instrument(skip_all, name = "TcpOutletListenWorker::initialize")]
+    #[instrument(skip_all, name = "TcpOutletListenWorker::initialize", level = Level::TRACE)]
     async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
         self.registry
             .add_outlet_listener_worker(ctx.primary_address());
@@ -90,7 +90,7 @@ impl Worker for TcpOutletListenWorker {
         Ok(())
     }
 
-    #[instrument(skip_all, name = "TcpOutletListenWorker::shutdown")]
+    #[instrument(skip_all, name = "TcpOutletListenWorker::shutdown", level = Level::TRACE)]
     async fn shutdown(&mut self, ctx: &mut Self::Context) -> Result<()> {
         self.registry
             .remove_outlet_listener_worker(ctx.primary_address());
@@ -98,7 +98,7 @@ impl Worker for TcpOutletListenWorker {
         Ok(())
     }
 
-    #[instrument(skip_all, name = "TcpOutletListenWorker::handle_message")]
+    #[instrument(skip_all, name = "TcpOutletListenWorker::handle_message", level = Level::TRACE)]
     async fn handle_message(
         &mut self,
         ctx: &mut Self::Context,

@@ -18,7 +18,7 @@ use tokio::io::{AsyncRead, AsyncWriteExt, ReadHalf, WriteHalf};
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::net::TcpStream;
 use tokio_rustls::TlsStream;
-use tracing::{debug, info, instrument, trace, warn};
+use tracing::{debug, info, instrument, trace, warn, Level};
 
 /// Enumerate all `TcpPortalWorker` states
 ///
@@ -77,7 +77,7 @@ pub(crate) enum WriteHalfMaybeTls {
 
 impl TcpPortalWorker {
     /// Start a new `TcpPortalWorker` of type [`TypeName::Inlet`]
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     #[allow(clippy::too_many_arguments)]
     pub(super) fn start_new_inlet(
         ctx: &Context,
@@ -118,7 +118,7 @@ impl TcpPortalWorker {
 
     /// Start a new `TcpPortalWorker` of type [`TypeName::Outlet`]
     #[allow(clippy::too_many_arguments)]
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     pub(super) fn start_new_outlet(
         ctx: &Context,
         registry: TcpRegistry,
@@ -151,7 +151,7 @@ impl TcpPortalWorker {
 
     /// Start a new `TcpPortalWorker` of type [`TypeName::Outlet`]
     #[allow(clippy::too_many_arguments)]
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     pub(super) fn start_new_outlet_no_handshake(
         ctx: &Context,
         registry: TcpRegistry,
@@ -188,7 +188,7 @@ impl TcpPortalWorker {
 
     /// Start a new `TcpPortalWorker`
     #[allow(clippy::too_many_arguments)]
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     fn start(
         ctx: &Context,
         registry: TcpRegistry,
@@ -274,7 +274,7 @@ impl TcpPortalWorker {
     }
 
     /// Start a `TcpPortalRecvProcessor`
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     fn start_receiver(&mut self, ctx: &Context, onward_route: Route) -> Result<()> {
         if let Some(rx) = self.read_half.take() {
             match rx {
@@ -323,7 +323,7 @@ impl TcpPortalWorker {
         Ok(())
     }
 
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     async fn notify_remote_about_disconnection(&mut self, ctx: &Context) {
         // Notify the other end
         let remote_route = if let Some(remote_route) = self.remote_route.take() {
@@ -358,7 +358,7 @@ impl TcpPortalWorker {
         }
     }
 
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     fn stop_receiver(&self, ctx: &Context) {
         match ctx.stop_address(&self.addresses.receiver_remote) {
             Ok(_) => {
@@ -372,13 +372,13 @@ impl TcpPortalWorker {
         }
     }
 
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     fn stop_sender(&self, ctx: &Context) -> Result<()> {
         ctx.stop_address(&self.addresses.sender_internal)
     }
 
     /// Start the portal disconnection process
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     async fn start_disconnection(
         &mut self,
         ctx: &Context,
@@ -430,7 +430,7 @@ impl TcpPortalWorker {
         Ok(())
     }
 
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     async fn handle_send_ping(&mut self, ctx: &Context, ping_route: Route) -> Result<State> {
         // Force creation of Outlet on the other side
         ctx.send_from_address(
@@ -468,7 +468,7 @@ impl TcpPortalWorker {
         Ok(())
     }
 
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     async fn handle_send_pong(&mut self, ctx: &Context, pong_route: Route) -> Result<State> {
         if self.write_half.is_some() {
             // Should not happen
@@ -501,7 +501,7 @@ impl Worker for TcpPortalWorker {
     type Context = Context;
     type Message = Any;
 
-    #[instrument(skip_all, name = "TcpPortalWorker::initialize")]
+    #[instrument(skip_all, name = "TcpPortalWorker::initialize", level = Level::TRACE)]
     async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
         match &self.state {
             State::SendPing { ping_route } => {
@@ -547,7 +547,7 @@ impl Worker for TcpPortalWorker {
         Ok(())
     }
 
-    #[instrument(skip_all, name = "TcpPortalWorker::shutdown")]
+    #[instrument(skip_all, name = "TcpPortalWorker::shutdown", level = Level::TRACE)]
     async fn shutdown(&mut self, _ctx: &mut Self::Context) -> Result<()> {
         if let HandshakeMode::Skip { map } = &mut self.handshake_mode {
             if let Some((map_key, outlet_listener_registry)) = map.take() {
@@ -567,7 +567,7 @@ impl Worker for TcpPortalWorker {
 
     // TcpSendWorker will receive messages from the TcpRouter to send
     // across the TcpStream to our friend
-    #[instrument(skip_all, name = "TcpPortalWorker::handle_message")]
+    #[instrument(skip_all, name = "TcpPortalWorker::handle_message", level = Level::TRACE)]
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Any>) -> Result<()> {
         if self.is_disconnecting {
             return Ok(());
@@ -647,7 +647,7 @@ impl Worker for TcpPortalWorker {
 }
 
 impl TcpPortalWorker {
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     fn handle_receive_pong(&mut self, ctx: &Context, return_route: Route) -> Result<()> {
         self.start_receiver(ctx, return_route.clone())?;
         debug!(portal_type = %self.addresses.portal_type, sender_internal = %self.addresses.sender_internal, "received pong");
@@ -656,7 +656,7 @@ impl TcpPortalWorker {
         Ok(())
     }
 
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     async fn handle_disconnect(&mut self, ctx: &Context) -> Result<()> {
         let (portal_type, listener_address) = match &self.addresses.portal_type {
             PortalType::Inlet { listener_address }
@@ -681,7 +681,7 @@ impl TcpPortalWorker {
             .await
     }
 
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     async fn handle_payload(
         &mut self,
         ctx: &Context,
@@ -712,7 +712,7 @@ impl TcpPortalWorker {
         Ok(())
     }
 
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     async fn check_packet_counter(
         &mut self,
         ctx: &Context,
