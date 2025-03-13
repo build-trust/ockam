@@ -572,6 +572,43 @@ impl NodeInfo {
         self.tcp_listener_address.clone()
     }
 
+    /// Extract a connection address given the tcp listener address.
+    /// A binding address can coincide with the connection address, but not
+    /// in case the tcp listener binds to a specific network range.
+    /// Since extracting the right IP address to use in these cases is error-prone, we
+    /// just handle the unspecified bind `0.0.0.0` IP here.
+    pub fn tcp_connect_address(&self) -> Option<InternetAddress> {
+        if let Some(tcp_listener_address) = &self.tcp_listener_address {
+            match tcp_listener_address {
+                InternetAddress::Dns(_, _) => self.tcp_listener_address.clone(),
+                InternetAddress::V4(address) => {
+                    if address.ip().is_unspecified() {
+                        Some(InternetAddress::V4(std::net::SocketAddrV4::new(
+                            std::net::Ipv4Addr::LOCALHOST,
+                            address.port(),
+                        )))
+                    } else {
+                        self.tcp_listener_address.clone()
+                    }
+                }
+                InternetAddress::V6(address) => {
+                    if address.ip().is_unspecified() {
+                        Some(InternetAddress::V6(std::net::SocketAddrV6::new(
+                            std::net::Ipv6Addr::LOCALHOST,
+                            address.port(),
+                            address.flowinfo(),
+                            address.scope_id(),
+                        )))
+                    } else {
+                        self.tcp_listener_address.clone()
+                    }
+                }
+            }
+        } else {
+            None
+        }
+    }
+
     pub fn tcp_listener_multi_address(&self) -> Result<MultiAddr> {
         Ok(self
             .tcp_listener_address
