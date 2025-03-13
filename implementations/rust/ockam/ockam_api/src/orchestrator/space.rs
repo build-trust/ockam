@@ -2,6 +2,7 @@ use miette::IntoDiagnostic;
 use minicbor::{CborLen, Decode, Encode};
 use serde::Serialize;
 use std::fmt::{Display, Formatter, Write};
+use tracing::Level;
 
 use ockam::Message;
 use ockam_core::api::Request;
@@ -220,7 +221,7 @@ pub trait Spaces {
 
 #[async_trait]
 impl Spaces for InMemoryNode {
-    #[instrument(skip_all, fields(space_name = name))]
+    #[instrument(skip_all, fields(space_name = name), level = Level::TRACE)]
     async fn create_space(
         &self,
         ctx: &Context,
@@ -240,7 +241,7 @@ impl Spaces for InMemoryNode {
         Ok(space)
     }
 
-    #[instrument(skip_all, fields(space_id = space_id))]
+    #[instrument(skip_all, fields(space_id = space_id), level = Level::TRACE)]
     async fn get_space(&self, ctx: &Context, space_id: &str) -> miette::Result<Space> {
         let controller = self.create_controller().await?;
         let space = controller.get_space(ctx, space_id).await?;
@@ -255,7 +256,7 @@ impl Spaces for InMemoryNode {
         Ok(space)
     }
 
-    #[instrument(skip_all, fields(space_name = space_name))]
+    #[instrument(skip_all, fields(space_name = space_name), level = Level::TRACE)]
     async fn get_space_by_name(&self, ctx: &Context, space_name: &str) -> miette::Result<Space> {
         let space_id = self
             .cli_state
@@ -265,7 +266,7 @@ impl Spaces for InMemoryNode {
         self.get_space(ctx, &space_id).await
     }
 
-    #[instrument(skip_all, fields(space_id = space_id))]
+    #[instrument(skip_all, fields(space_id = space_id), level = Level::TRACE)]
     async fn delete_space(&self, ctx: &Context, space_id: &str) -> miette::Result<()> {
         let space_projects = self
             .cli_state
@@ -286,7 +287,7 @@ impl Spaces for InMemoryNode {
         Ok(())
     }
 
-    #[instrument(skip_all, fields(space_name = space_name))]
+    #[instrument(skip_all, fields(space_name = space_name), level = Level::TRACE)]
     async fn delete_space_by_name(&self, ctx: &Context, space_name: &str) -> miette::Result<()> {
         let space_id = self
             .cli_state
@@ -296,7 +297,7 @@ impl Spaces for InMemoryNode {
         self.delete_space(ctx, &space_id).await
     }
 
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     async fn get_spaces(&self, ctx: &Context) -> miette::Result<Vec<Space>> {
         let controller = self.create_controller().await?;
         let spaces = controller.list_spaces(ctx).await?;

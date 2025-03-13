@@ -8,6 +8,7 @@ use super::models::AdminInfo;
 use miette::{miette, IntoDiagnostic};
 use tokio_retry::strategy::FixedInterval;
 use tokio_retry::Retry;
+use tracing::Level;
 
 use crate::orchestrator::email_address::EmailAddress;
 use crate::orchestrator::project::Project;
@@ -203,7 +204,7 @@ impl ControllerClient {
         Ok(())
     }
 
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     pub async fn list_projects(&self, ctx: &Context) -> miette::Result<Vec<ProjectModel>> {
         let req = Request::get("/v0");
         let project_model_list: ProjectModelList = self

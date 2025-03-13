@@ -18,7 +18,7 @@ use crate::{
 
 use crate::secure_channel::encryptor_worker::SecureChannelSharedState;
 use ockam_vault::{AeadSecretKeyHandle, VaultForSecureChannels};
-use tracing::{debug, info, trace, warn};
+use tracing::{debug, info, trace, warn, Level};
 use tracing_attributes::instrument;
 
 pub(crate) struct DecryptorHandler {
@@ -63,7 +63,7 @@ impl DecryptorHandler {
         }
     }
 
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     pub(crate) async fn handle_decrypt_api(
         &mut self,
         ctx: &mut Context,
@@ -182,7 +182,7 @@ impl DecryptorHandler {
         Ok(())
     }
 
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     pub(crate) async fn handle_decrypt(
         &mut self,
         ctx: &mut Context,
@@ -248,7 +248,7 @@ impl Decryptor {
         }
     }
 
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     pub async fn decrypt<'a>(&mut self, payload: &'a mut [u8]) -> Result<(&'a [u8], Nonce)> {
         if payload.len() < NOISE_NONCE_LEN {
             return Err(IdentityError::InvalidNonce)?;
@@ -303,7 +303,7 @@ impl Decryptor {
     }
 
     /// Remove the channel keys on shutdown
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     pub(crate) async fn shutdown(&self) -> Result<()> {
         self.vault
             .delete_aead_secret_key(self.key_tracker.current_key.clone())

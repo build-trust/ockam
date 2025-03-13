@@ -10,7 +10,7 @@ use opentelemetry::global;
 use opentelemetry::trace::Tracer;
 use tokio::io::AsyncRead;
 use tokio::io::AsyncReadExt;
-use tracing::{debug, error, instrument};
+use tracing::{debug, error, instrument, Level};
 
 /// A TCP Portal receiving message processor
 ///
@@ -52,7 +52,7 @@ impl<R: AsyncRead + Unpin + Send + Sync + 'static> TcpPortalRecvProcessor<R> {
 impl<R: AsyncRead + Unpin + Send + Sync + 'static> Processor for TcpPortalRecvProcessor<R> {
     type Context = Context;
 
-    #[instrument(skip_all, name = "TcpPortalRecvProcessor::initialize")]
+    #[instrument(skip_all, name = "TcpPortalRecvProcessor::initialize", level = Level::TRACE)]
     async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
         self.registry
             .add_portal_receiver_processor(ctx.primary_address());
@@ -60,7 +60,7 @@ impl<R: AsyncRead + Unpin + Send + Sync + 'static> Processor for TcpPortalRecvPr
         Ok(())
     }
 
-    #[instrument(skip_all, name = "TcpPortalRecvProcessor::shutdown")]
+    #[instrument(skip_all, name = "TcpPortalRecvProcessor::shutdown", level = Level::TRACE)]
     async fn shutdown(&mut self, ctx: &mut Self::Context) -> Result<()> {
         self.registry
             .remove_portal_receiver_processor(ctx.primary_address());
@@ -68,7 +68,7 @@ impl<R: AsyncRead + Unpin + Send + Sync + 'static> Processor for TcpPortalRecvPr
         Ok(())
     }
 
-    #[instrument(skip_all, name = "TcpPortalRecvProcessor::process")]
+    #[instrument(skip_all, name = "TcpPortalRecvProcessor::process", level = Level::TRACE)]
     async fn process(&mut self, ctx: &mut Context) -> Result<bool> {
         self.buf.clear();
 

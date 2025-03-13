@@ -179,7 +179,7 @@ impl Addons for ControllerClient {
         Ok(addon_list.0)
     }
 
-    #[instrument(skip_all, fields(project_id = project_id))]
+    #[instrument(skip_all, fields(project_id = project_id), level = Level::TRACE)]
     async fn configure_confluent_addon(
         &self,
         ctx: &Context,
@@ -198,7 +198,7 @@ impl Addons for ControllerClient {
             .miette_success("configure kafka addon")
     }
 
-    #[instrument(skip_all, fields(project_id = project_id))]
+    #[instrument(skip_all, fields(project_id = project_id), level = Level::TRACE)]
     async fn configure_okta_addon(
         &self,
         ctx: &Context,
@@ -215,7 +215,7 @@ impl Addons for ControllerClient {
             .miette_success("configure okta addon")
     }
 
-    #[instrument(skip_all, fields(project_id = project_id))]
+    #[instrument(skip_all, fields(project_id = project_id), level = Level::TRACE)]
     async fn configure_influxdb_addon(
         &self,
         ctx: &Context,
@@ -235,7 +235,7 @@ impl Addons for ControllerClient {
             .miette_success("configure influxdb addon")
     }
 
-    #[instrument(skip_all, fields(project_id = project_id, addon_id = addon_id))]
+    #[instrument(skip_all, fields(project_id = project_id, addon_id = addon_id), level = Level::TRACE)]
     async fn disable_addon(
         &self,
         ctx: &Context,

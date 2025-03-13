@@ -5,7 +5,7 @@ use ockam_core::{Address, Processor, Result};
 use ockam_node::{Context, ProcessorBuilder, WorkerShutdownPriority};
 use ockam_transport_core::TransportError;
 use tokio::net::TcpListener;
-use tracing::{debug, instrument};
+use tracing::{debug, instrument, Level};
 
 /// A TCP Listen processor
 ///
@@ -20,7 +20,7 @@ pub(crate) struct TcpListenProcessor {
 }
 
 impl TcpListenProcessor {
-    #[instrument(skip_all, name = "TcpListenProcessor::start")]
+    #[instrument(skip_all, name = "TcpListenProcessor::start", level = Level::TRACE)]
     pub(crate) async fn start(
         ctx: &Context,
         registry: TcpRegistry,
@@ -56,7 +56,7 @@ impl TcpListenProcessor {
 impl Processor for TcpListenProcessor {
     type Context = Context;
 
-    #[instrument(skip_all, name = "TcpListenProcessor::initialize")]
+    #[instrument(skip_all, name = "TcpListenProcessor::initialize", level = Level::TRACE)]
     async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
         self.registry.add_listener_processor(TcpListenerInfo::new(
             ctx.primary_address().clone(),
@@ -67,7 +67,7 @@ impl Processor for TcpListenProcessor {
         Ok(())
     }
 
-    #[instrument(skip_all, name = "TcpListenProcessor::shutdown")]
+    #[instrument(skip_all, name = "TcpListenProcessor::shutdown", level = Level::TRACE)]
     async fn shutdown(&mut self, ctx: &mut Self::Context) -> Result<()> {
         self.registry
             .remove_listener_processor(ctx.primary_address());
@@ -75,7 +75,7 @@ impl Processor for TcpListenProcessor {
         Ok(())
     }
 
-    #[instrument(skip_all, name = "TcpListenProcessor::process")]
+    #[instrument(skip_all, name = "TcpListenProcessor::process", level = Level::TRACE)]
     async fn process(&mut self, ctx: &mut Self::Context) -> Result<bool> {
         debug!("Waiting for incoming TCP connection...");
 

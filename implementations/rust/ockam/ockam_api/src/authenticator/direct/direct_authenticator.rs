@@ -1,5 +1,6 @@
 use either::Either;
 use std::collections::{BTreeMap, HashMap};
+use tracing::Level;
 
 use ockam::identity::utils::now;
 use ockam::identity::Identifier;
@@ -76,7 +77,7 @@ impl DirectAuthenticator {
         }
     }
 
-    #[instrument(skip_all, fields(enroller = %enroller, identifier = %identifier))]
+    #[instrument(skip_all, fields(enroller = %enroller, identifier = %identifier), level = Level::TRACE)]
     pub async fn add_member(
         &self,
         enroller: &Identifier,
@@ -141,7 +142,7 @@ impl DirectAuthenticator {
         Ok(Either::Left(()))
     }
 
-    #[instrument(skip_all, fields(enroller = %enroller))]
+    #[instrument(skip_all, fields(enroller = %enroller), level = Level::TRACE)]
     pub async fn show_member(
         &self,
         enroller: &Identifier,
@@ -183,7 +184,7 @@ impl DirectAuthenticator {
         }
     }
 
-    #[instrument(skip_all, fields(enroller = %enroller))]
+    #[instrument(skip_all, fields(enroller = %enroller), level = Level::TRACE)]
     pub async fn list_members(
         &self,
         enroller: &Identifier,
@@ -220,7 +221,7 @@ impl DirectAuthenticator {
         Ok(Either::Left(res))
     }
 
-    #[instrument(skip_all, fields(enroller = %enroller))]
+    #[instrument(skip_all, fields(enroller = %enroller), level = Level::TRACE)]
     pub async fn delete_all_members(
         &self,
         enroller: &Identifier,
@@ -238,7 +239,7 @@ impl DirectAuthenticator {
         }
     }
 
-    #[instrument(skip_all, fields(enroller = %enroller, identifier = %identifier))]
+    #[instrument(skip_all, fields(enroller = %enroller, identifier = %identifier), level = Level::TRACE)]
     pub async fn delete_member(
         &self,
         enroller: &Identifier,

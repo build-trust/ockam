@@ -16,7 +16,7 @@ use std::time::Duration;
 use tokio::net::TcpListener;
 use tokio::time::Instant;
 use tokio_rustls::{TlsAcceptor, TlsStream};
-use tracing::{debug, error, instrument};
+use tracing::{debug, error, instrument, Level};
 
 /// A TCP Portal Inlet listen processor
 ///
@@ -46,7 +46,7 @@ impl TcpInletListenProcessor {
     }
 
     /// Start a new `TcpInletListenProcessor`
-    #[instrument(skip_all, name = "TcpInletListenProcessor::start")]
+    #[instrument(skip_all, name = "TcpInletListenProcessor::start", level = Level::TRACE)]
     pub(crate) async fn start(
         ctx: &Context,
         registry: TcpRegistry,
@@ -158,7 +158,7 @@ const DEFAULT_TIMEOUT: Duration = Duration::from_secs(2 * 60);
 impl Processor for TcpInletListenProcessor {
     type Context = Context;
 
-    #[instrument(skip_all, name = "TcpInletListenProcessor::initialize")]
+    #[instrument(skip_all, name = "TcpInletListenProcessor::initialize", level = Level::TRACE)]
     async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
         self.registry
             .add_inlet_listener_processor(ctx.primary_address());
@@ -166,7 +166,7 @@ impl Processor for TcpInletListenProcessor {
         Ok(())
     }
 
-    #[instrument(skip_all, name = "TcpInletListenProcessor::shutdown")]
+    #[instrument(skip_all, name = "TcpInletListenProcessor::shutdown", level = Level::TRACE)]
     async fn shutdown(&mut self, ctx: &mut Self::Context) -> Result<()> {
         self.registry
             .remove_inlet_listener_processor(ctx.primary_address());
@@ -174,7 +174,7 @@ impl Processor for TcpInletListenProcessor {
         Ok(())
     }
 
-    #[instrument(skip_all, name = "TcpInletListenProcessor::process")]
+    #[instrument(skip_all, name = "TcpInletListenProcessor::process", level = Level::TRACE)]
     async fn process(&mut self, ctx: &mut Self::Context) -> Result<bool> {
         let (stream, socket_addr) = self.inner.accept().await.map_err(TransportError::from)?;
 

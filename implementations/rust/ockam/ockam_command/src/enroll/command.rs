@@ -13,7 +13,7 @@ use r3bl_tui::{
 };
 use tokio::sync::Mutex;
 use tokio::try_join;
-use tracing::{error, info, instrument, warn};
+use tracing::{error, info, instrument, warn, Level};
 
 use crate::enroll::OidcServiceExt;
 use crate::error::Error;
@@ -102,7 +102,7 @@ impl EnrollCommand {
         authorization_code_flow = % self.authorization_code_flow,
         force = % self.force,
         skip_orchestrator_resources_creation = % self.skip_orchestrator_resources_creation,
-        ))]
+        ), level = Level::TRACE)]
     async fn run_impl(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         ctrlc_handler(opts.clone());
 
@@ -347,7 +347,7 @@ fn ctrlc_handler(opts: CommandGlobalOpts) {
         .expect("Error setting Ctrl-C handler");
 }
 
-#[instrument(skip_all)]
+#[instrument(skip_all, level = Level::TRACE)]
 async fn retrieve_user_space_and_project(
     opts: &CommandGlobalOpts,
     ctx: &Context,

@@ -1,5 +1,5 @@
 use miette::IntoDiagnostic;
-use tracing::{error, info, instrument};
+use tracing::{error, info, instrument, Level};
 
 use crate::rendezvous::create::CreateCommand;
 use crate::util::foreground_args::wait_for_exit_signal;
@@ -10,7 +10,7 @@ use ockam::Context;
 use ockam_api::{DefaultAddress, RendezvousHealthcheck};
 
 impl CreateCommand {
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     pub(super) async fn foreground_mode(
         &self,
         ctx: &Context,
