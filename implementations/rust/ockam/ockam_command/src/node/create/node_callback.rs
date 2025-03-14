@@ -1,4 +1,4 @@
-use miette::miette;
+use miette::{miette, IntoDiagnostic};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
 /// A callback node should call when it's up and running, implemented via creating a localhost TCP
@@ -34,18 +34,18 @@ impl NodeCallback {
             .accept()
             .await
             .map_err(|_| miette!("Failed to accept node callback connection"))?;
-
         Ok(())
     }
 
     /// Send the signal to the parent process
-    pub fn signal(callback_port: u16) {
-        // let the parent process or whatever started us know that we're up and running
-        // no need to wait for that operation to complete, so spawn to the background
-        tokio::spawn(tokio::net::TcpStream::connect(SocketAddr::new(
+    pub async fn signal(callback_port: u16) -> miette::Result<()> {
+        tokio::net::TcpStream::connect(SocketAddr::new(
             IpAddr::V4(Ipv4Addr::LOCALHOST),
             callback_port,
-        )));
+        ))
+        .await
+        .into_diagnostic()?;
+        Ok(())
     }
 
     /// TPC port used for the callback

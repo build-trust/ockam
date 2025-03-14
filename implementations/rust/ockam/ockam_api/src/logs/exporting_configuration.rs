@@ -14,7 +14,7 @@ use std::net::{SocketAddr, ToSocketAddrs};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::time::Instant;
-use tokio_retry::strategy::FibonacciBackoff;
+use tokio_retry::strategy::FixedInterval;
 use url::Url;
 
 /// The exporting configuration contains all the parameters needed to configure the OpenTelemetry tracing layer.
@@ -377,7 +377,7 @@ async fn is_node_accessible(
 async fn is_url_accessible(url: &Url, connection_check_timeout: Duration) -> bool {
     match to_socket_addr(url) {
         Some(address) => {
-            let retries = FibonacciBackoff::from_millis(100);
+            let retries = FixedInterval::from_millis(100);
             let now = Instant::now();
 
             // TODO: Not sure we need to retry really, also maybe it could happen in the background

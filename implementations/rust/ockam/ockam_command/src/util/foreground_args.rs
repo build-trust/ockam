@@ -1,3 +1,4 @@
+use crate::node::node_callback::NodeCallback;
 use crate::CommandGlobalOpts;
 use clap::Args;
 use colorful::Colorful;
@@ -27,6 +28,7 @@ pub struct ForegroundArgs {
 pub async fn wait_for_exit_signal(
     args: &ForegroundArgs,
     opts: &CommandGlobalOpts,
+    tcp_callback_port: Option<u16>,
     msg: &str,
 ) -> miette::Result<()> {
     let (tx, mut rx) = tokio::sync::mpsc::channel(2);
@@ -84,6 +86,10 @@ pub async fn wait_for_exit_signal(
     if opts.terminal.is_tty() {
         opts.terminal.write_line("")?;
         opts.terminal.write(fmt_log!("{}", msg))?;
+    }
+
+    if let Some(tcp_callback_port) = tcp_callback_port {
+        NodeCallback::signal(tcp_callback_port).await?;
     }
 
     // Wait for signal SIGINT, SIGTERM, SIGHUP or EOF; or for the tx to be closed.
