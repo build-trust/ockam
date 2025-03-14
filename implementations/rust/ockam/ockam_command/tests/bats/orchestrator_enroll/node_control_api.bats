@@ -39,7 +39,7 @@ teardown() {
   wait_for_port $api_port
 
   # create a node with a relay in the api node
-  run_success "$OCKAM" node create red "
+  run_success "$OCKAM" node create red --configuration "
     services:
       control-api:
         backend: true
