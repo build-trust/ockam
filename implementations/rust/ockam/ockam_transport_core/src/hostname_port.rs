@@ -1,6 +1,7 @@
 use crate::parse_socket_addr;
 use core::fmt::{Display, Formatter};
 use core::net::IpAddr;
+use core::net::Ipv4Addr;
 use core::net::SocketAddr;
 use core::str::FromStr;
 use minicbor::{CborLen, Decode, Encode};
@@ -179,7 +180,7 @@ impl HostnamePort {
 
     pub fn localhost(port: u16) -> Self {
         Self {
-            hostname: "127.0.0.1".into(),
+            hostname: Ipv4Addr::LOCALHOST.to_string(),
             port,
         }
     }

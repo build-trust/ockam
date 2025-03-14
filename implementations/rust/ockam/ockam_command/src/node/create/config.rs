@@ -201,8 +201,10 @@ impl NodeConfig {
         if cmd.no_status_endpoint != default_cmd_args.no_status_endpoint {
             self.node.no_status_endpoint = Some(cmd.no_status_endpoint.into());
         }
-        if let Some(port) = cmd.status_endpoint_port {
-            self.node.status_endpoint_port = Some((port as isize).into());
+        if let Some(address) = &cmd.status_endpoint {
+            self.node.status_endpoint = Some(address.as_str().into());
+        } else if let Some(port) = cmd.status_endpoint_port {
+            self.node.status_endpoint = Some(format!("127.0.0.1:{port}").into());
         }
         if let Some(identity) = &cmd.identity {
             self.node.identity = Some(identity.clone().into());
