@@ -188,6 +188,12 @@ teardown() {
   run_success curl -fsI -m 2 127.0.0.1:$port
 }
 
+@test "node - the HTTP server is enabled with a specific address" {
+  port=$(random_port)
+  run_success $OCKAM node create --status-endpoint 127.0.0.1:$port
+  run_success curl -fsI -m 2 127.0.0.1:$port
+}
+
 @test "node - multiple nodes get assigned a different HTTP server port" {
   run_success $OCKAM node create n1
   run_success $OCKAM node show n1 --output json

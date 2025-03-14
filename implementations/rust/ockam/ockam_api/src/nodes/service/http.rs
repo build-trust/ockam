@@ -10,7 +10,7 @@ use hyper::service::service_fn;
 use hyper::{Method, Request, Response};
 use hyper_util::rt::TokioIo;
 
-use crate::nodes::models::transport::Port;
+use crate::nodes::models::transport::BindAddress;
 use crate::nodes::NodeManager;
 use crate::{ApiError, HttpError, Result};
 use ockam_core::{async_trait, Address, Processor};
@@ -33,10 +33,10 @@ impl HttpServer {
     pub async fn start(
         context: &Context,
         node_manager: Arc<NodeManager>,
-        port: Port,
+        bind_address: BindAddress,
     ) -> Result<SocketAddr> {
-        debug!("Starting HTTP server on port: {port:?}");
-        let listener = port.bind_to_tcp_listener().await?;
+        debug!("Starting HTTP server on address: {bind_address:?}");
+        let listener = bind_address.bind().await?;
         let addr = listener.local_addr()?;
         node_manager
             .cli_state

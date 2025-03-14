@@ -11,9 +11,10 @@ use async_trait::async_trait;
 use clap::Args;
 use colorful::Colorful;
 use miette::{miette, IntoDiagnostic, WrapErr};
+use ockam::transport::parse_socket_addr;
 use ockam_api::cli_state::random_name;
 use ockam_api::colors::{color_error, color_primary};
-use ockam_api::nodes::models::transport::Port;
+use ockam_api::nodes::models::transport::{BindAddress, Port};
 use ockam_api::terminal::notification::NotificationHandler;
 use ockam_api::{fmt_log, fmt_ok};
 use ockam_core::{opentelemetry_context_parser, OpenTelemetryContext};
@@ -22,6 +23,7 @@ use opentelemetry::trace::TraceContextExt;
 use opentelemetry::KeyValue;
 use regex::Regex;
 use std::fmt::Write;
+use std::net::Ipv4Addr;
 use std::{path::PathBuf, str::FromStr};
 use tracing::instrument;
 
@@ -34,7 +36,7 @@ const DEFAULT_NODE_NAME: &str = "_default_node_name";
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
 
-const DEFAULT_NODE_STATUS_ENDPOINT_PORT: u16 = 23345;
+const DEFAULT_NODE_STATUS_ENDPOINT_PORT: Port = Port::TryExplicitOrRandom(23345);
 
 /// Create a new node
 #[derive(Clone, Debug, Args)]
@@ -103,9 +105,14 @@ pub struct CreateCommand {
     )]
     pub no_status_endpoint: bool,
 
-    /// Specify the port that the status endpoint will listen to.
-    #[arg(long, value_name = "PORT")]
+    /// [DEPRECATED] Specify the port that the status endpoint will listen to.
+    /// To specify a port, use `--status-endpoint` instead.
+    #[arg(long, value_name = "PORT", conflicts_with = "status_endpoint")]
     pub status_endpoint_port: Option<u16>,
+
+    /// Specify the address and port that the status endpoint will listen to.
+    #[arg(long, value_name = "BIND_ADDRESS")]
+    pub status_endpoint: Option<String>,
 
     /// Enable UDP transport puncture.
     #[arg(
@@ -174,6 +181,7 @@ impl Default for CreateCommand {
             http_server: false,
             no_status_endpoint: false,
             status_endpoint_port: None,
+            status_endpoint: None,
             udp: false,
             services: None,
             identity: None,
@@ -315,11 +323,30 @@ impl CreateCommand {
         Ok(())
     }
 
-    fn status_endpoint_port(&self) -> Option<Port> {
-        match (self.no_status_endpoint, self.status_endpoint_port) {
-            (true, _) => None,
-            (false, Some(port)) => Some(Port::Explicit(port)),
-            (false, None) => Some(Port::TryExplicitOrRandom(DEFAULT_NODE_STATUS_ENDPOINT_PORT)),
+    fn status_endpoint(&self) -> Result<Option<BindAddress>> {
+        if self.no_status_endpoint {
+            return Ok(None);
+        }
+
+        if let Some(port) = self.status_endpoint_port {
+            Ok(Some(BindAddress::new(
+                Ipv4Addr::LOCALHOST.to_string(),
+                Port::Explicit(port),
+            )))
+        } else {
+            match &self.status_endpoint {
+                Some(bind_address) => {
+                    let bind_address = parse_socket_addr(bind_address)?;
+                    Ok(Some(BindAddress::new(
+                        bind_address.ip().to_string(),
+                        Port::Explicit(bind_address.port()),
+                    )))
+                }
+                None => Ok(Some(BindAddress::new(
+                    Ipv4Addr::LOCALHOST.to_string(),
+                    DEFAULT_NODE_STATUS_ENDPOINT_PORT,
+                ))),
+            }
         }
     }
 

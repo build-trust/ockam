@@ -95,7 +95,7 @@ impl CreateCommand {
                 opts.state.clone(),
                 node_name.clone(),
                 true,
-                self.status_endpoint_port(),
+                self.status_endpoint()?,
                 true,
             ),
             NodeManagerTransportOptions::new(

@@ -9,6 +9,7 @@ use ockam_core::env::get_env_with_default;
 use ockam_node::Context;
 use rand::random;
 use std::env::current_exe;
+use std::net::Ipv4Addr;
 use std::process::Stdio;
 use tokio::process::{Child, Command as TokioCommand};
 use tracing::{debug, info, trace};
@@ -68,6 +69,7 @@ pub fn spawn_node(opts: &CommandGlobalOpts, cmd: CreateCommand) -> miette::Resul
         http_server,
         no_status_endpoint,
         status_endpoint_port,
+        status_endpoint,
         udp,
         services,
         identity,
@@ -140,8 +142,12 @@ pub fn spawn_node(opts: &CommandGlobalOpts, cmd: CreateCommand) -> miette::Resul
         args.push("--no-status-endpoint".to_string());
     }
     if let Some(status_endpoint_port) = status_endpoint_port {
-        args.push("--status-endpoint-port".to_string());
-        args.push(status_endpoint_port.to_string());
+        args.push("--status-endpoint".to_string());
+        args.push(format!("{}:{}", Ipv4Addr::LOCALHOST, status_endpoint_port));
+    }
+    if let Some(status_endpoint) = status_endpoint {
+        args.push("--status-endpoint".to_string());
+        args.push(status_endpoint);
     }
 
     if udp {

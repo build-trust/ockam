@@ -28,8 +28,8 @@ pub struct Node {
     pub http_server: Option<ArgValue>,
     #[serde(alias = "no-status-endpoint")]
     pub no_status_endpoint: Option<ArgValue>,
-    #[serde(alias = "status-endpoint-port")]
-    pub status_endpoint_port: Option<ArgValue>,
+    #[serde(alias = "status-endpoint")]
+    pub status_endpoint: Option<ArgValue>,
     pub identity: Option<ArgValue>,
     pub project: Option<ArgValue>,
     #[serde(flatten, alias = "launch-config")]
@@ -73,8 +73,8 @@ impl Resource<CreateCommand> for Node {
         if let Some(no_status_endpoint) = self.no_status_endpoint {
             args.insert("no-status-endpoint".into(), no_status_endpoint);
         }
-        if let Some(status_endpoint_port) = self.status_endpoint_port {
-            args.insert("status-endpoint-port".into(), status_endpoint_port);
+        if let Some(status_endpoint) = self.status_endpoint {
+            args.insert("status-endpoint".into(), status_endpoint);
         }
         if let Some(identity) = self.identity {
             args.insert("identity".into(), identity);

@@ -14,7 +14,7 @@ use ockam_multiaddr::MultiAddr;
 
 use crate::cli_state::random_name;
 use crate::cli_state::CliState;
-use crate::nodes::models::transport::Port;
+use crate::nodes::models::transport::BindAddress;
 use crate::nodes::service::default_address::DefaultAddress;
 use crate::nodes::service::{
     NodeManagerGeneralOptions, NodeManagerTransportOptions, NodeManagerTrustOptions,
@@ -136,7 +136,7 @@ impl InMemoryNode {
         ctx: &Context,
         cli_state: &CliState,
         identity_name: &str,
-        status_endpoint_port: Option<Port>,
+        status_endpoint: Option<BindAddress>,
         project_name: Option<String>,
         authority_identity: Option<ChangeHistory>,
         authority_route: Option<MultiAddr>,
@@ -172,7 +172,7 @@ impl InMemoryNode {
                 cli_state.clone(),
                 node.name(),
                 false,
-                status_endpoint_port,
+                status_endpoint,
                 false,
             ),
             NodeManagerTransportOptions::new_tcp(tcp_listener.flow_control_id().clone(), tcp),
