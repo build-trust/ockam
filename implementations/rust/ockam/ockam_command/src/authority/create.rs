@@ -381,10 +381,6 @@ impl CreateCommand {
             .await
             .into_diagnostic()?;
 
-        if let Some(tcp_callback_port) = self.tcp_callback_port {
-            NodeCallback::signal(tcp_callback_port);
-        }
-
         let foreground_args = ForegroundArgs {
             child_process: self.child_process,
             exit_on_eof: false,
@@ -393,6 +389,7 @@ impl CreateCommand {
         wait_for_exit_signal(
             &foreground_args,
             &opts,
+            self.tcp_callback_port,
             "To exit and stop the Authority node, please press Ctrl+C\n",
         )
         .await?;

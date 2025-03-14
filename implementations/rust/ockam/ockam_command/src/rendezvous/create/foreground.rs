@@ -47,6 +47,7 @@ impl CreateCommand {
         wait_for_exit_signal(
             &self.foreground_args,
             &opts,
+            None,
             "To exit and stop the Rendezvous Server, please press Ctrl+C\n",
         )
         .await?;

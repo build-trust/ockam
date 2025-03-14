@@ -1,5 +1,4 @@
 use crate::node::create::DEFAULT_NODE_NAME;
-use crate::node::node_callback::NodeCallback;
 use crate::node::CreateCommand;
 use crate::service::config::ControlApiNodeResolution;
 use crate::util::foreground_args::wait_for_exit_signal;
@@ -146,13 +145,10 @@ impl CreateCommand {
             .json_obj(&node_resources)?
             .write_line()?;
 
-        if let Some(tcp_callback_port) = self.tcp_callback_port {
-            NodeCallback::signal(tcp_callback_port);
-        }
-
         wait_for_exit_signal(
             &self.foreground_args,
             &opts,
+            self.tcp_callback_port,
             "To exit and stop the Node, please press Ctrl+C\n",
         )
         .await?;
