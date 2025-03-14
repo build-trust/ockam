@@ -63,25 +63,34 @@ impl Processor for HttpControlNodeApiFrontend {
             }
         };
 
-        let service = service_fn(|request| {
-            let context = context.clone();
-            Self::route_request(
-                request,
-                context,
-                self.node_manager.clone(),
-                self.node_resolution.clone(),
-                self.authentication_token.clone(),
-                self.incoming_access_control.clone(),
-                self.outgoing_access_control.clone(),
-            )
-        });
+        let service = {
+            let node_manager = self.node_manager.clone();
+            let node_resolution = self.node_resolution.clone();
+            let authentication_token = self.authentication_token.clone();
+            let incoming_access_control = self.incoming_access_control.clone();
+            let outgoing_access_control = self.outgoing_access_control.clone();
 
-        if let Err(err) = http1::Builder::new()
-            .serve_connection(TokioIo::new(stream), service)
-            .await
-        {
-            error!("HTTP server error: {:?}", err);
-        }
+            service_fn(move |request| {
+                Self::route_request(
+                    request,
+                    context.clone(),
+                    node_manager.clone(),
+                    node_resolution.clone(),
+                    authentication_token.clone(),
+                    incoming_access_control.clone(),
+                    outgoing_access_control.clone(),
+                )
+            })
+        };
+
+        tokio::spawn(async move {
+            if let Err(err) = http1::Builder::new()
+                .serve_connection(TokioIo::new(stream), service)
+                .await
+            {
+                error!("HTTP server error: {:?}", err);
+            }
+        });
 
         Ok(true)
     }
