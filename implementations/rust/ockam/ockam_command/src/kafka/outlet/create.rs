@@ -2,7 +2,6 @@ use async_trait::async_trait;
 
 use clap::{command, Args};
 use colorful::Colorful;
-use miette::miette;
 use serde::Serialize;
 use std::fmt::Write;
 
@@ -11,12 +10,11 @@ use ockam::Context;
 use ockam_abac::PolicyExpression;
 use ockam_api::address::extract_address_value;
 use ockam_api::colors::{color_primary, color_warn};
-use ockam_api::nodes::models::services::StartKafkaOutletRequest;
-use ockam_api::nodes::models::services::StartServiceRequest;
+use ockam_api::kafka::portal::KafkaPortals;
+use ockam_api::nodes::models::portal::OutletStatus;
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_api::output::Output;
 use ockam_api::{fmt_log, fmt_ok, fmt_warn};
-use ockam_core::api::Request;
 
 use crate::node::util::initialize_default_node;
 use crate::util::parsers::hostname_parser;
@@ -79,18 +77,18 @@ impl Command for CreateCommand {
                 ));
             }
 
-            let payload = StartKafkaOutletRequest::new(
-                cmd.bootstrap_server.clone().into(),
-                cmd.tls || cmd.bootstrap_server.is_tls(),
-                cmd.policy_expression,
-            );
-            let payload = StartServiceRequest::new(payload, &cmd.name);
-            let req = Request::post("/node/services/kafka_outlet").body(payload);
             let node =
                 BackgroundNodeClient::create(ctx, &opts.state, &cmd.node_opts.at_node).await?;
-            node.tell(ctx, req)
-                .await
-                .map_err(|e| miette!("Failed to start Kafka Outlet: {e}"))?;
+            let _res: OutletStatus = node
+                .create_kafka_outlet(
+                    ctx,
+                    &cmd.name,
+                    cmd.bootstrap_server.clone().into(),
+                    cmd.tls || cmd.bootstrap_server.is_tls(),
+                    cmd.policy_expression,
+                )
+                .await?
+                .success()?;
 
             KafkaOutletOutput {
                 node_name: node.node_name().to_string(),

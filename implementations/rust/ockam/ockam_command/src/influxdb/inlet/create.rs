@@ -230,7 +230,7 @@ impl Command for CreateCommand {
         let created_message = format!(
             "Created a new InfluxDB Inlet in the Node {} bound to {}",
             color_primary(node_name),
-            color_primary(cmd.from.to_string()),
+            color_primary(&inlet_status.bind_addr),
         );
 
         let plain = if cmd.no_connection_wait {

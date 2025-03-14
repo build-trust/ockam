@@ -17,14 +17,13 @@ use miette::miette;
 use ockam::transport::SchemeHostnamePort;
 use ockam_abac::PolicyExpression;
 use ockam_api::colors::{color_primary, color_warn};
-use ockam_api::config::lookup::InternetAddress;
+use ockam_api::kafka::portal::KafkaPortals;
 use ockam_api::kafka::{ConsumerPublishing, ConsumerResolution};
-use ockam_api::nodes::models::services::{StartKafkaInletRequest, StartServiceRequest};
+use ockam_api::nodes::models::portal::InletStatus;
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_api::output::Output;
 use ockam_api::port_range::PortRange;
 use ockam_api::{fmt_log, fmt_ok, fmt_warn};
-use ockam_core::api::Request;
 use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
 use serde::Serialize;
@@ -175,28 +174,27 @@ impl Command for CreateCommand {
                 consumer_publishing = ConsumerPublishing::Relay(cmd.to.clone());
             }
 
-            let payload = StartKafkaInletRequest::new(
-                cmd.from.clone().into(),
-                cmd.brokers_port_range(),
-                cmd.to.clone(),
-                !cmd.no_content_encryption,
-                cmd.encrypted_fields.clone(),
-                consumer_resolution,
-                consumer_publishing,
-                cmd.inlet_policy_expression.clone(),
-                cmd.consumer_policy_expression.clone(),
-                cmd.producer_policy_expression.clone(),
-            );
-            let payload = StartServiceRequest::new(payload, &cmd.name);
-            let req = Request::post("/node/services/kafka_inlet").body(payload);
-            node.tell(ctx, req)
-                .await
-                .map_err(|e| miette!("Failed to start Kafka Inlet: {e}"))?;
+            let result: InletStatus = node
+                .create_kafka_inlet(
+                    ctx,
+                    &cmd.name,
+                    cmd.from.clone().into(),
+                    cmd.brokers_port_range(),
+                    cmd.to.clone(),
+                    !cmd.no_content_encryption,
+                    cmd.encrypted_fields.clone(),
+                    consumer_resolution,
+                    consumer_publishing,
+                    cmd.inlet_policy_expression.clone(),
+                    cmd.consumer_policy_expression.clone(),
+                    cmd.producer_policy_expression.clone(),
+                )
+                .await?
+                .success()?;
 
             KafkaInletOutput {
                 node_name: node.node_name().to_string(),
-                from: InternetAddress::new(&cmd.from.hostname_port().to_string())
-                    .ok_or(miette!("Invalid address"))?,
+                from: result.bind_addr,
                 brokers_port_range: cmd.brokers_port_range(),
                 to: cmd.to.clone(),
             }
@@ -256,7 +254,7 @@ impl CreateCommand {
 #[derive(Serialize)]
 struct KafkaInletOutput {
     node_name: String,
-    from: InternetAddress,
+    from: String,
     brokers_port_range: PortRange,
     to: MultiAddr,
 }

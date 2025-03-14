@@ -4,6 +4,7 @@
 mod inlet_controller;
 pub(crate) mod key_exchange;
 mod outlet_controller;
+pub mod portal;
 pub(crate) mod protocol_aware;
 #[cfg(test)]
 mod tests;

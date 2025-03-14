@@ -8,7 +8,7 @@ use crate::kafka::{
     kafka_policy_expression, ConsumerPublishing, ConsumerResolution, KafkaInletController,
     KAFKA_OUTLET_BOOTSTRAP_ADDRESS, KAFKA_OUTLET_INTERCEPTOR_ADDRESS,
 };
-use crate::nodes::models::portal::OutletAccessControl;
+use crate::nodes::models::portal::{InletStatus, OutletAccessControl, OutletStatus};
 use crate::nodes::models::services::{
     DeleteServiceRequest, StartKafkaInletRequest, StartKafkaOutletRequest, StartServiceRequest,
 };
@@ -36,7 +36,7 @@ impl NodeManagerWorker {
         &self,
         context: &Context,
         body: StartServiceRequest<StartKafkaInletRequest>,
-    ) -> Result<Response<()>, Response<Error>> {
+    ) -> Result<Response<InletStatus>, Response<Error>> {
         let request = body.request();
         match self
             .node_manager
@@ -56,7 +56,7 @@ impl NodeManagerWorker {
             )
             .await
         {
-            Ok(_) => Ok(Response::ok().body(())),
+            Ok(status) => Ok(Response::ok().body(status)),
             Err(e) => Err(Response::internal_error_no_request(&e.to_string())),
         }
     }
@@ -65,7 +65,7 @@ impl NodeManagerWorker {
         &self,
         context: &Context,
         body: StartServiceRequest<StartKafkaOutletRequest>,
-    ) -> Result<Response<()>, Response<Error>> {
+    ) -> Result<Response<OutletStatus>, Response<Error>> {
         let request = body.request();
         match self
             .node_manager
@@ -78,7 +78,7 @@ impl NodeManagerWorker {
             )
             .await
         {
-            Ok(_) => Ok(Response::ok().body(())),
+            Ok(status) => Ok(Response::ok().body(status)),
             Err(e) => Err(Response::internal_error_no_request(&e.to_string())),
         }
     }
@@ -126,7 +126,7 @@ impl InMemoryNode {
         inlet_policy_expression: Option<PolicyExpression>,
         consumer_policy_expression: Option<PolicyExpression>,
         producer_policy_expression: Option<PolicyExpression>,
-    ) -> Result<()> {
+    ) -> Result<InletStatus> {
         let consumer_policy_access_control = self
             .policy_access_control(
                 self.project_authority().clone(),
@@ -201,29 +201,30 @@ impl InMemoryNode {
         let inlet_alias = format!("kafka-inlet-{}", random_string());
 
         // create the kafka bootstrap inlet
-        self.create_inlet(
-            context,
-            bind_address,
-            route![interceptor_address.clone()],
-            route![
-                KAFKA_OUTLET_INTERCEPTOR_ADDRESS,
-                KAFKA_OUTLET_BOOTSTRAP_ADDRESS
-            ],
-            outlet_node_multiaddr,
-            inlet_alias,
-            inlet_policy_expression.clone(),
-            None,
-            None,
-            true,
-            None,
-            false,
-            false,
-            false,
-            None,
-            false,
-            false,
-        )
-        .await?;
+        let inlet_status = self
+            .create_inlet(
+                context,
+                bind_address,
+                route![interceptor_address.clone()],
+                route![
+                    KAFKA_OUTLET_INTERCEPTOR_ADDRESS,
+                    KAFKA_OUTLET_BOOTSTRAP_ADDRESS
+                ],
+                outlet_node_multiaddr,
+                inlet_alias,
+                inlet_policy_expression.clone(),
+                None,
+                None,
+                true,
+                None,
+                false,
+                false,
+                false,
+                None,
+                false,
+                false,
+            )
+            .await?;
 
         let policy_access_control = self
             .policy_access_control(
@@ -253,7 +254,7 @@ impl InMemoryNode {
             KafkaServiceInfo::new(KafkaServiceKind::Inlet),
         );
 
-        Ok(())
+        Ok(inlet_status)
     }
 
     pub async fn start_kafka_outlet_service(
@@ -263,7 +264,7 @@ impl InMemoryNode {
         bootstrap_server_addr: HostnamePort,
         tls: bool,
         outlet_policy_expression: Option<PolicyExpression>,
-    ) -> Result<()> {
+    ) -> Result<OutletStatus> {
         let default_secure_channel_listener_flow_control_id = context
             .flow_controls()
             .get_flow_control_with_spawner(&DefaultAddress::SECURE_CHANNEL_LISTENER.into())
@@ -318,25 +319,26 @@ impl InMemoryNode {
             &spawner_flow_control_id,
         );
 
-        self.create_outlet(
-            context,
-            bootstrap_server_addr,
-            tls,
-            Some(KAFKA_OUTLET_BOOTSTRAP_ADDRESS.into()),
-            false,
-            OutletAccessControl::WithPolicyExpression(outlet_policy_expression),
-            false,
-            false,
-            false,
-        )
-        .await?;
+        let outlet_status = self
+            .create_outlet(
+                context,
+                bootstrap_server_addr,
+                tls,
+                Some(KAFKA_OUTLET_BOOTSTRAP_ADDRESS.into()),
+                false,
+                OutletAccessControl::WithPolicyExpression(outlet_policy_expression),
+                false,
+                false,
+                false,
+            )
+            .await?;
 
         self.registry.kafka_services.insert(
             service_address,
             KafkaServiceInfo::new(KafkaServiceKind::Outlet),
         );
 
-        Ok(())
+        Ok(outlet_status)
     }
 
     /// Delete a Kafka service from the registry.
