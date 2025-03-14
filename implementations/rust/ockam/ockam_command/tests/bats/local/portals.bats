@@ -14,6 +14,21 @@ teardown() {
 
 # ===== TESTS
 
+@test "portals - create inlet at random port" {
+  run_success "$OCKAM" node create n1
+  run_success "$OCKAM" node create n2
+
+  run_success "$OCKAM" tcp-outlet create --at /node/n1 --to "$PYTHON_SERVER_PORT"
+  addr=$("$OCKAM" tcp-inlet create inlet --at /node/n2 --to /node/n1/service/outlet --jq '.bind_addr')
+
+  addr=${addr//\"/}
+  host_port=(${addr//:/ })
+  [[ "${host_port[0]}" == "127.0.0.1" ]] || fail "Host should be 127.0.0.1, got: ${host_port[0]}"
+  [[ "${host_port[1]}" != "0" ]] || fail "Port should be other than 0, got ${host_port[1]}"
+
+  run_success curl -sfI --retry-all-errors --retry-delay 5 --retry 10 -m 5 "$addr"
+}
+
 @test "portals - create an inlet/outlet pair and move tcp traffic through it" {
   run_success "$OCKAM" node create n1
   run_success "$OCKAM" node create n2
