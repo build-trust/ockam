@@ -10,6 +10,7 @@ use crate::nodes::NodeManager;
 use http::{Method, StatusCode};
 use ockam_abac::{Action, Expr, PolicyExpression, ResourceName};
 use ockam_core::compat::rand::random_string;
+use ockam_core::errcode::Kind;
 use ockam_core::Route;
 use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
@@ -61,6 +62,7 @@ The creation will be asynchronous and the initial status will be `down`.",
     tags = ["Portals"],
     responses(
         (status = CREATED, description = "Successfully created", body = InletStatus),
+        (status = CONFLICT, description = "TCP Inlet with the same name or port already exists", body = ErrorResponse),
     ),
     params(
         ("node" = NodeName,),
@@ -181,10 +183,14 @@ async fn handle_tcp_inlet_create(
         )?),
         Err(error) => {
             // TODO: specialize errors
-            // name already exists
-            // port already bound
             warn!("Failed to create tcp inlet: {:?}", error);
-            ControlApiHttpResponse::internal_error("Failed to create tcp inlet")
+            let code = error.code();
+            match code.kind {
+                Kind::AlreadyExists => ControlApiHttpResponse::conflict(
+                    "TCP Inlet with the same name or port already exists",
+                ),
+                _ => ControlApiHttpResponse::internal_error("Failed to create tcp inlet"),
+            }
         }
     }
 }

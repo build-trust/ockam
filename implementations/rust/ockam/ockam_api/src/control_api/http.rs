@@ -87,6 +87,16 @@ impl ControlApiHttpResponse {
         .into())
     }
 
+    pub fn conflict<T>(message: &str) -> Result<T, ControlApiError> {
+        Err(Self::with_body(
+            StatusCode::CONFLICT,
+            ErrorResponse {
+                message: message.to_string(),
+            },
+        )?
+        .into())
+    }
+
     pub fn internal_error<T>(error: &str) -> Result<T, ControlApiError> {
         Err(Self::with_body(
             StatusCode::INTERNAL_SERVER_ERROR,

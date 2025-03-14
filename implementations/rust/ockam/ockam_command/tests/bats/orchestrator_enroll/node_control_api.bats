@@ -97,6 +97,42 @@ teardown() {
   assert_output "[]"
 }
 
+@test "node control api - timeout doesn't block other requests" {
+  ticket=$($OCKAM project ticket \
+    --usage-count 5 \
+    --attribute node_control_api_backend \
+    --attribute node_control_api_frontend)
+  api_port="$(random_port)"
+
+  setup_home_dir
+  run_success "$OCKAM" project enroll "${ticket}"
+
+  run_success "$OCKAM" node create "
+    services:
+      control-api:
+        authentication-token: token
+        backend: true
+        frontend: true
+        http-bind-address: 127.0.0.1:${api_port}
+  "
+  wait_for_port $api_port
+
+  curl -vf \
+    -H 'Authorization: Bearer token' \
+    -o inlet-list.json \
+    --max-time 2 \
+    "http://localhost:${api_port}/non-existing-node/tcp-inlets" &
+
+  run_success curl -vf \
+    -H 'Authorization: Bearer token' \
+    --connect-timeout 2 \
+    --max-time 2 \
+    -o inlet-list.json \
+    "http://localhost:${api_port}/self/tcp-inlets"
+  run_success cat inlet-list.json
+  assert_output "[]"
+}
+
 @test "node control api - portals" {
   ticket=$($OCKAM project ticket \
     --usage-count 5 \
@@ -198,6 +234,47 @@ teardown() {
     "http://localhost:${api_port}/self/tcp-inlets"
   run_success sh -c "cat inlet-list.json | jq -rc ."
   assert_output "[]"
+}
+
+@test "node control api - inlet with same name" {
+  ticket=$($OCKAM project ticket \
+    --usage-count 5 \
+    --attribute node_control_api_backend \
+    --attribute node_control_api_frontend)
+  api_port="$(random_port)"
+
+  setup_home_dir
+  run_success "$OCKAM" project enroll "${ticket}"
+
+  run_success "$OCKAM" node create "
+    services:
+      control-api:
+        authentication-token: token
+        backend: true
+        frontend: true
+        http-bind-address: 127.0.0.1:${api_port}
+        node-resolution-relay-node: ''
+  "
+  wait_for_port $api_port
+
+  # create inlet
+  run_success curl -vf \
+    -X POST \
+    -H 'Authorization: Bearer token' \
+    -d "{\"from\":{\"hostname\":\"127.0.0.1\",\"port\":0},\"kind\":\"regular\",\"name\":\"my-inlet\",\"to\":\"/secure/api/service/my-outlet\"}" \
+    -o inlet-creation.json \
+    "http://localhost:${api_port}/self/tcp-inlets"
+  inlet_port=$(cat inlet-creation.json | jq -rc '."bind-address".port')
+  wait_for_port $inlet_port
+
+  run_success curl -v \
+    -X POST \
+    -H 'Authorization: Bearer token' \
+    -d "{\"from\":{\"hostname\":\"127.0.0.1\",\"port\":${inlet_port}},\"kind\":\"regular\",\"name\":\"my-inlet\",\"to\":\"/secure/api/service/my-outlet\"}" \
+    -o error-output.json \
+    "http://localhost:${api_port}/self/tcp-inlets"
+  run_success cat error-output.json
+  assert_output --partial "name or port already exists"
 }
 
 @test "node control api - relay" {
