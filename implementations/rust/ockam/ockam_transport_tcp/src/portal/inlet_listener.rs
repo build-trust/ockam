@@ -1,10 +1,12 @@
 use crate::portal::addresses::{Addresses, PortalType};
 use crate::portal::tls_certificate::TlsCertificateProvider;
 use crate::portal::{InletSharedState, ReadHalfMaybeTls, WriteHalfMaybeTls};
+use crate::transport::set_socket_buffer_size;
 use crate::{portal::TcpPortalWorker, TcpInlet, TcpInletOptions, TcpRegistry};
 use log::warn;
 use ockam_core::compat::net::SocketAddr;
 use ockam_core::compat::sync::{Arc, RwLock as SyncRwLock};
+use ockam_core::env::get_env;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{async_trait, compat::boxed::Box, Result};
 use ockam_core::{Address, Processor, Route};
@@ -12,6 +14,7 @@ use ockam_node::Context;
 use ockam_transport_core::{HostnamePort, TransportError};
 use rustls::pki_types::CertificateDer;
 use std::io::BufReader;
+use std::os::fd::AsRawFd;
 use std::time::Duration;
 use tokio::net::TcpListener;
 use tokio::time::Instant;
@@ -64,6 +67,11 @@ impl TcpInletListenProcessor {
                 return Err(TransportError::from(err))?;
             }
         };
+
+        if let Ok(Some(buffer_size)) = get_env::<usize>("OCKAM_TCP_PORTAL_SOCKET_LENGTH") {
+            set_socket_buffer_size(inner.as_raw_fd(), buffer_size)?;
+        }
+
         let socket_addr = inner.local_addr().map_err(TransportError::from)?;
         let inlet_shared_state =
             InletSharedState::create(ctx, outlet_listener_route, options.is_paused)?;

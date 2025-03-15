@@ -29,7 +29,7 @@ impl TcpListenProcessor {
         options: TcpListenerOptions,
     ) -> Result<(SocketAddr, Address)> {
         debug!("Binding TcpListener to {}", addr);
-        let inner = bind_tcp_listener(addr, options.enable_mptcp).await?;
+        let inner = bind_tcp_listener(addr, options.enable_mptcp, options.buffer_size).await?;
         let saddr = inner.local_addr().map_err(TransportError::from)?;
 
         let address = Address::random_tagged("TcpListenProcessor");

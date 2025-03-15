@@ -6,6 +6,7 @@ use crate::transport::{connect_tcp, connect_tls};
 use crate::{portal::TcpPortalRecvProcessor, PortalInternalMessage, PortalMessage, TcpRegistry};
 use core::fmt::{Display, Formatter};
 use ockam_core::compat::{boxed::Box, sync::Arc};
+use ockam_core::env::get_env;
 use ockam_core::{
     async_trait, AllowAll, AllowOnwardAddress, AllowSourceAddress, Decodable, DenyAll,
     IncomingAccessControl, LocalInfoIdentifier, Mailbox, Mailboxes, OutgoingAccessControl,
@@ -477,10 +478,18 @@ impl TcpPortalWorker {
     }
 
     async fn connect(&mut self) -> Result<()> {
+        let buffer_size = get_env::<usize>("OCKAM_TCP_PORTAL_SOCKET_LENGTH")
+            .ok()
+            .flatten();
         if self.is_tls {
             debug!(portal_type = %self.addresses.portal_type, sender_internal = %self.addresses.sender_internal, "connect to {} via TLS", &self.hostname_port);
-            let (rx, tx) =
-                connect_tls(&self.hostname_port, self.enable_mptcp, self.enable_nagle).await?;
+            let (rx, tx) = connect_tls(
+                &self.hostname_port,
+                self.enable_mptcp,
+                self.enable_nagle,
+                buffer_size,
+            )
+            .await?;
             self.write_half = Some(WriteHalfWithTls(tx));
             self.read_half = Some(ReadHalfWithTls(rx));
         } else {
@@ -490,6 +499,7 @@ impl TcpPortalWorker {
                 self.enable_mptcp,
                 self.enable_nagle,
                 None,
+                buffer_size,
             )
             .await?
             .into_split();
