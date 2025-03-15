@@ -1,6 +1,7 @@
 use crate::workers::Addresses;
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::time::Duration;
+use ockam_core::env::get_env;
 use ockam_core::flow_control::{FlowControlId, FlowControlOutgoingAccessControl, FlowControls};
 use ockam_core::{Address, OutgoingAccessControl};
 
@@ -11,17 +12,20 @@ pub struct TcpConnectionOptions {
     pub(super) consumer: Vec<FlowControlId>,
     pub(crate) flow_control_id: FlowControlId,
     pub(crate) enable_mptcp: bool,
+    pub(crate) buffer_size: Option<usize>,
 }
 
 impl TcpConnectionOptions {
     #[allow(clippy::new_without_default)]
     /// Mark this Tcp Receiver as a Producer with a random [`FlowControlId`]
     pub fn new() -> Self {
+        let buffer_size = get_env("OCKAM_TCP_SOCKET_LENGTH").ok().flatten();
         Self {
             timeout: None,
             consumer: vec![],
             flow_control_id: FlowControls::generate_flow_control_id(),
             enable_mptcp: false,
+            buffer_size,
         }
     }
 
@@ -65,6 +69,12 @@ impl TcpConnectionOptions {
         self.enable_mptcp = true;
         self
     }
+
+    /// Set socket buffer size
+    pub fn set_buffer_size(mut self, buffer_size: Option<usize>) -> Self {
+        self.buffer_size = buffer_size;
+        self
+    }
 }
 
 impl TcpConnectionOptions {
@@ -98,6 +108,7 @@ impl TcpConnectionOptions {
 pub struct TcpListenerOptions {
     pub(crate) flow_control_id: FlowControlId,
     pub(crate) enable_mptcp: bool,
+    pub(crate) buffer_size: Option<usize>,
 }
 
 impl TcpListenerOptions {
@@ -106,9 +117,11 @@ impl TcpListenerOptions {
     /// with Spawner's [`FlowControlId`]
     #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
+        let buffer_size = get_env("OCKAM_TCP_SOCKET_LENGTH").ok().flatten();
         Self {
             flow_control_id: FlowControls::generate_flow_control_id(),
             enable_mptcp: false,
+            buffer_size,
         }
     }
 
@@ -126,6 +139,12 @@ impl TcpListenerOptions {
     /// Enable MPTCP support
     pub fn enable_mptcp(mut self) -> Self {
         self.enable_mptcp = true;
+        self
+    }
+
+    /// Set socket buffer size
+    pub fn set_buffer_size(mut self, buffer_size: Option<usize>) -> Self {
+        self.buffer_size = buffer_size;
         self
     }
 }

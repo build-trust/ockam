@@ -82,6 +82,8 @@ pub enum TransportError {
     InvalidOckamPortalPacket(String),
     /// Connection timeout
     ConnectionTimeout,
+    /// Invalid socket options
+    SockOpt(String),
 }
 
 impl ockam_core::compat::error::Error for TransportError {}
@@ -133,6 +135,7 @@ impl core::fmt::Display for TransportError {
             ),
             Self::InvalidOckamPortalPacket(e) => write!(f, "invalid OckamPortalPacket: {}", e),
             Self::ConnectionTimeout => write!(f, "connection timed out"),
+            Self::SockOpt(e) => write!(f, "socket options failed: {}", e),
         }
     }
 }
@@ -175,6 +178,7 @@ impl From<TransportError> for Error {
             IdentifierChanged => Kind::Conflict,
             InvalidOckamPortalPacket(_) => Kind::Invalid,
             ConnectionTimeout => Kind::Io,
+            SockOpt(_) => Kind::Io,
         };
 
         Error::new(Origin::Transport, kind, err)
