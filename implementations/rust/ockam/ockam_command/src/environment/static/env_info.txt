@@ -54,10 +54,12 @@ UDP
 TCP
 - OCKAM_PRIVILEGED: if variable is set, all TCP Inlets/Outlets will use eBPF (overrides `--privileged` argument for `ockam tcp-inlet create` and `ockam tcp-outlet create`). WARNING: This flag value should be equal on both ends of a portal (inlet and outlet)
 - OCKAM_TCP_PORTAL_PAYLOAD_LENGTH: size of the buffer into which TCP Portal reads the TCP stream. Default value: `128 * 1024`
+- OCKAM_TCP_PORTAL_SOCKET_LENGTH: Length of the socket for inlet listeners and outlet connections (`SO_SNDBUF` and `SO_RCVBUF`)
 - OCKAM_TCP_PORTAL_SKIP_HANDSHAKE: skip Portal handshake for lower latency, but also lower throughput. WARNING: This flag value should be equal on both ends of a portal (inlet and outlet)
 - OCKAM_TCP_PORTAL_ENABLE_NAGLE: enable Nagle's algorithm for Portal TCP streams for potentially higher throughput, but higher latency
 - OCKAM_TCP_PORTAL_ENABLE_MPTCP: Enables MPTCP support for inlet listeners and outlet connections
 - OCKAM_ENABLE_MPTCP: Enables MPTCP on the node's TCP listener
+- OCKAM_TCP_SOCKET_LENGTH: Length of the socket for TCP listeners and connections (`SO_SNDBUF` and `SO_RCVBUF`)
 
 Devs Usage
 - OCKAM: a `string` that defines the path to the ockam binary to use.

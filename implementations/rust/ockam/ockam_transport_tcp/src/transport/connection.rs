@@ -111,10 +111,15 @@ impl TcpTransport {
         let peer = HostnamePort::from_str(&peer.into())?;
         debug!("Connecting to {}", peer.clone());
 
-        let (read_half, write_half) =
-            connect_tcp(&peer, options.enable_mptcp, false, options.timeout)
-                .await?
-                .into_split();
+        let (read_half, write_half) = connect_tcp(
+            &peer,
+            options.enable_mptcp,
+            false,
+            options.timeout,
+            options.buffer_size,
+        )
+        .await?
+        .into_split();
         let socket = read_half
             .peer_addr()
             .map_err(|e| ockam_core::Error::new(Origin::Transport, Kind::Internal, e))?;
