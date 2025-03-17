@@ -47,8 +47,7 @@ impl DeleteCommand {
                     "TCP connection {address} has been successfully deleted"
                 ))
                 .json(serde_json::json!({ "address": address }))
-                .write_line()
-                .unwrap();
+                .write_line()?;
         }
         Ok(())
     }
