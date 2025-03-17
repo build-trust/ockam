@@ -82,14 +82,19 @@ impl Output for TcpConnection {
             output,
             "{}",
             fmt_ok!(
-                "A TCP connection was created at the node {}",
-                color_primary(&self.from)
+                "A TCP connection with worker address {}",
+                color_primary(self.address.to_string()),
             ),
         )?;
         writeln!(
             output,
             "{}",
-            fmt_log!("to the address {}", color_primary(self.to.to_string()))
+            fmt_log!("was created at the Node {}", color_primary(&self.from)),
+        )?;
+        writeln!(
+            output,
+            "{}",
+            fmt_log!("bound to {}", color_primary(self.to.to_string()))
         )?;
         Ok(output)
     }
