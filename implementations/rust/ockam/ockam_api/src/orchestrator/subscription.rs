@@ -3,11 +3,13 @@ use crate::date::UtcDateTime;
 use crate::orchestrator::{ControllerClient, HasSecureClient};
 use crate::output::Output;
 use crate::terminal::fmt;
+use crate::{ApiError, ParseError};
 use colorful::{Colorful, RGB};
 use miette::IntoDiagnostic;
 use minicbor::{decode, encode, CborLen, Decode, Decoder, Encode};
 use ockam::Message;
 use ockam_core::api::{Reply, Request};
+use ockam_core::env::get_env_with_default;
 use ockam_core::{
     self, async_trait, cbor_encode_preallocate, Decodable, Encodable, Encoded, Result,
 };
@@ -16,10 +18,21 @@ use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter, Write};
 use std::str::FromStr;
 use strum::{Display, EnumString};
+use url::Url;
 
 const API_SERVICE: &str = "subscriptions";
 
-pub const SUBSCRIPTION_PAGE: &str = "https://orchestrator.ockam.io";
+/// The URL of the Ockam's Orchestrator UI
+const OCKAM_ORCHESTRATOR_UI_URL: &str = "OCKAM_ORCHESTRATOR_UI_URL";
+const DEFAULT_OCKAM_ORCHESTRATOR_UI_URL: &str = "https://orchestrator.ockam.io/";
+
+pub fn subscription_page() -> crate::Result<Url> {
+    Url::from_str(&get_env_with_default(
+        OCKAM_ORCHESTRATOR_UI_URL,
+        DEFAULT_OCKAM_ORCHESTRATOR_UI_URL.to_string(),
+    )?)
+    .map_err(|e| ApiError::Parse(ParseError::Url(e)))
+}
 
 #[derive(Encode, Decode, CborLen, Debug, Message)]
 #[cfg_attr(test, derive(Clone))]
@@ -451,6 +464,7 @@ pub mod tests {
     use super::*;
     use crate::schema::tests::validate_with_schema;
     use quickcheck::{quickcheck, Arbitrary, Gen, TestResult};
+    use serial_test::serial;
     use std::str::FromStr;
 
     quickcheck! {
@@ -538,5 +552,17 @@ pub mod tests {
             assert_eq!(SubscriptionName::from_str(from_str).unwrap(), expected);
             assert_eq!(expected.to_string(), to_string);
         }
+    }
+
+    #[test]
+    #[serial]
+    fn test_orchestrator_url_env() {
+        std::env::remove_var(OCKAM_ORCHESTRATOR_UI_URL);
+        let url = subscription_page().unwrap();
+        assert_eq!(url.as_str(), DEFAULT_OCKAM_ORCHESTRATOR_UI_URL);
+
+        std::env::set_var(OCKAM_ORCHESTRATOR_UI_URL, "https://example.com/");
+        let url = subscription_page().unwrap();
+        assert_eq!(url.as_str(), "https://example.com/");
     }
 }

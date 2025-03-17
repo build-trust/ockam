@@ -13,7 +13,7 @@ use crate::nodes::InMemoryNode;
 use crate::orchestrator::email_address::EmailAddress;
 use crate::orchestrator::project::models::AdminInfo;
 use crate::orchestrator::project::{Project, ProjectsOrchestratorApi};
-use crate::orchestrator::subscription::{Subscription, SUBSCRIPTION_PAGE};
+use crate::orchestrator::subscription::{subscription_page, Subscription};
 use crate::orchestrator::{ControllerClient, HasSecureClient};
 use crate::output::{comma_separated, Output};
 use crate::terminal::fmt;
@@ -98,7 +98,7 @@ impl Space {
             }
             if subscription.is_free_trial {
                 writeln!(f)?;
-                writeln!(f, "{}", fmt_log!("Please go to {} and subscribe before the trial ends to avoid any service interruptions.", color_uri(SUBSCRIPTION_PAGE)))?;
+                writeln!(f, "{}", fmt_log!("Please go to {} and subscribe before the trial ends to avoid any service interruptions.", color_uri(subscription_page()?)))?;
                 writeln!(f, "{}", fmt_log!("{}", color_warn("If you don't subscribe in that time, your Space and all associated Projects will be permanently deleted.")))?;
             }
         } else {

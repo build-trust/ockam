@@ -63,6 +63,7 @@ Devs Usage
 - OCKAM_CONTROLLER_ADDR: a `string` that overrides the default address of the controller.
 - OCKAM_CONTROLLER_IDENTITY_ID: a `string` that overrides the default identifier of the controller.
 - OCKAM_AUTHENTICATOR_ENDPOINT: a `string` that overrides the default endpoint of the authenticator. Defaults to `https://account.ockam.io`.
+- OCKAM_ORCHESTRATOR_UI_URL: a `string` that overrides the default URL of the orchestrator UI. Defaults to `https://orchestrator.ockam.io`.
 - OCKAM_DEVELOPER: a `boolean` specifying if the current user is an Ockam developer (for more accurate metrics).
 - OCKAM_OPENTELEMETRY_EXPORT_DEBUG: a `boolean` specifying if debug messages must be printed to the console when the OpenTelemetry export is configured.
 - OCKAM_TELEMETRY_EXPORT_VIA_PROJECT: a `boolean` specifying if traces must be exported via a secure channel to the project node (when it exists)
