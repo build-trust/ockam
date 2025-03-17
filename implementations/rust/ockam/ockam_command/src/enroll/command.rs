@@ -30,7 +30,7 @@ use ockam_api::orchestrator::enroll::auth0::*;
 use ockam_api::orchestrator::project::Project;
 use ockam_api::orchestrator::project::ProjectsOrchestratorApi;
 use ockam_api::orchestrator::space::{Space, Spaces};
-use ockam_api::orchestrator::subscription::SUBSCRIPTION_PAGE;
+use ockam_api::orchestrator::subscription::subscription_page;
 use ockam_api::orchestrator::ControllerClient;
 use ockam_api::terminal::notification::NotificationHandler;
 use ockam_api::{fmt_err, fmt_log, fmt_ok, fmt_warn};
@@ -422,6 +422,8 @@ async fn get_user_space(
         node.get_spaces(ctx).await?
     };
 
+    let subscription_page = subscription_page()?.to_string();
+
     let space = match spaces.first() {
         // If the identity has no spaces, create one
         None => {
@@ -430,7 +432,7 @@ async fn get_user_space(
                 .write_line(fmt_log!("No Spaces are accessible to your account.\n"))?;
             opts.terminal.write_line(fmt_log!(
                 "Please go to {} and subscribe to create a new Space.",
-                color_uri(SUBSCRIPTION_PAGE)
+                color_uri(&subscription_page)
             ))?;
 
             if skip_orchestrator_resources_creation {
@@ -453,7 +455,7 @@ async fn get_user_space(
                     ))?;
                     opts.terminal.write_line(fmt_log!(
                         "Please go to {} and subscribe to use your Space.",
-                        color_uri(SUBSCRIPTION_PAGE)
+                        color_uri(&subscription_page)
                     ))?;
                     ask_user_to_subscribe_and_wait_for_space_to_be_ready(opts, ctx, node).await?
                 }
@@ -467,7 +469,7 @@ async fn get_user_space(
                         ))?;
                         opts.terminal.write_line(fmt_log!(
                             "Please go to {} and subscribe to one of our paid plans to use your Space.",
-                            color_uri(SUBSCRIPTION_PAGE)
+                            color_uri(&subscription_page)
                         ))?;
                         if let Some(grace_period_end_date) = subscription.grace_period_end_date()? {
                             let date = grace_period_end_date.format_human().into_diagnostic()?;
@@ -493,7 +495,7 @@ async fn get_user_space(
         // At this point, the space should have a subscription, but just in case
         miette!(
             "Please go to {} and try again",
-            color_uri(SUBSCRIPTION_PAGE)
+            color_uri(&subscription_page)
         )
         .wrap_err("The Space does not have a subscription plan attached.")
     })?;
@@ -512,12 +514,14 @@ async fn ask_user_to_subscribe_and_wait_for_space_to_be_ready(
     ctx: &Context,
     node: &InMemoryNode,
 ) -> Result<Space> {
+    let subscription_page = subscription_page()?.to_string();
+
     opts.terminal.write_line("")?;
     if opts.terminal.can_ask_for_user_input() {
         opts.terminal.write(fmt_log!(
             "Press {} to open {} in your browser.",
             " ENTER ↵ ".bg_white().black().blink(),
-            color_uri(SUBSCRIPTION_PAGE)
+            color_uri(&subscription_page)
         ))?;
 
         let mut input = String::new();
@@ -533,10 +537,10 @@ async fn ask_user_to_subscribe_and_wait_for_space_to_be_ready(
             }
         }
     }
-    if open::that(SUBSCRIPTION_PAGE).is_err() {
+    if open::that(&subscription_page).is_err() {
         opts.terminal.write_line(fmt_err!(
             "Couldn't open your browser from the terminal. Please open {} manually.",
-            color_uri(SUBSCRIPTION_PAGE)
+            color_uri(&subscription_page)
         ))?;
     }
 
