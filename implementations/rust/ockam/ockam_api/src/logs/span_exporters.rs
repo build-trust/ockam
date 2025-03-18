@@ -1,4 +1,7 @@
-use crate::cli_state::journeys::{APPLICATION_EVENT_NODE_NAME, APPLICATION_EVENT_OCKAM_DEVELOPER};
+use crate::cli_state::journeys::attributes::make_host;
+use crate::cli_state::journeys::{
+    APPLICATION_EVENT_HOST, APPLICATION_EVENT_NODE_NAME, APPLICATION_EVENT_OCKAM_DEVELOPER,
+};
 use futures::future::BoxFuture;
 use ockam_core::async_trait;
 use opentelemetry::KeyValue;
@@ -49,7 +52,7 @@ pub struct OckamSpanExporter<S: SpanExporter> {
 impl<S: SpanExporter> SpanExporter for OckamSpanExporter<S> {
     fn export(&mut self, batch: Vec<SpanData>) -> BoxFuture<'static, ExportResult> {
         let f = self.exporter.export(self.add_attributes(
-            batch,
+            self.filter(batch),
             self.node_name.clone(),
             self.is_ockam_developer,
         ));
@@ -120,6 +123,21 @@ impl<S: SpanExporter> OckamSpanExporter<S> {
             APPLICATION_EVENT_OCKAM_DEVELOPER.clone(),
             is_ockam_developer,
         ));
+        span.attributes
+            .push(KeyValue::new(APPLICATION_EVENT_HOST.clone(), make_host()));
         span
+    }
+
+    fn filter(&self, batch: Vec<SpanData>) -> Vec<SpanData> {
+        batch
+            .into_iter()
+            .filter_map(|s| self.filter_span(s))
+            .collect()
+    }
+
+    fn filter_span(&self, mut span: SpanData) -> Option<SpanData> {
+        // drop span events since they are log messages that we already send as logs records.
+        span.events.events = vec![];
+        Some(span)
     }
 }

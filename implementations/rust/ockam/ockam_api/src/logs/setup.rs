@@ -9,6 +9,7 @@ use crate::logs::{
 };
 use crate::logs::{LogFormat, OckamSpanExporter};
 use gethostname::gethostname;
+use ockam_core::OCKAM_TRACER_NAME;
 use ockam_node::Context;
 use opentelemetry::trace::TracerProvider;
 use opentelemetry::{global, KeyValue};
@@ -402,7 +403,7 @@ fn create_tracer<S: SpanExporter + 'static>(
         .with_resource(make_resource(app_name))
         .build();
 
-    let tracer = provider.tracer("ockam");
+    let tracer = provider.tracer(OCKAM_TRACER_NAME);
     let _ = global::set_tracer_provider(provider.clone());
     (tracer, provider)
 }
