@@ -603,15 +603,13 @@ impl Worker for TcpPortalWorker {
             .map(|l| l.their_identifier())
             .ok();
 
-        if remote_packet {
-            if their_identifier != self.their_identifier {
-                debug!(
-                    "identifier changed from {:?} to {:?}",
-                    self.their_identifier.as_ref().map(|i| i.to_string()),
-                    their_identifier.as_ref().map(|i| i.to_string()),
-                );
-                return Err(TransportError::IdentifierChanged)?;
-            }
+        if remote_packet && their_identifier != self.their_identifier {
+            debug!(
+                "identifier changed from {:?} to {:?}",
+                self.their_identifier.as_ref().map(|i| i.to_string()),
+                their_identifier.as_ref().map(|i| i.to_string()),
+            );
+            return Err(TransportError::IdentifierChanged)?;
         }
 
         let return_route = msg.return_route;
@@ -787,12 +785,12 @@ impl TcpPortalWorker {
             ])
             .start(&tracer);
 
-        self.their_identifier
-            .as_ref()
-            .map(|i| span.set_attribute(KeyValue::new("expected_identifier", i.to_string())));
-        their_identifier
-            .as_ref()
-            .map(|i| span.set_attribute(KeyValue::new("actual_identifier", i.to_string())));
+        if let Some(i) = self.their_identifier.as_ref() {
+            span.set_attribute(KeyValue::new("expected_identifier", i.to_string()))
+        }
+        if let Some(i) = their_identifier.as_ref() {
+            span.set_attribute(KeyValue::new("actual_identifier", i.to_string()))
+        }
         Ok(span)
     }
 }
