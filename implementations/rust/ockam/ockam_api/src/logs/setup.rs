@@ -8,6 +8,7 @@ use crate::logs::{
     OckamUserLogFormat, TelemetryEndpoint,
 };
 use crate::logs::{LogFormat, OckamSpanExporter};
+use crate::CliState;
 use gethostname::gethostname;
 use ockam_core::OCKAM_TRACER_NAME;
 use ockam_node::Context;
@@ -23,6 +24,7 @@ use opentelemetry_sdk::trace::{BatchConfig, BatchConfigBuilder, BatchSpanProcess
 use opentelemetry_sdk::{logs, Resource};
 use opentelemetry_semantic_conventions::attribute;
 use std::io::{empty, stdout};
+use std::sync::Arc;
 use tonic::codec::CompressionEncoding;
 use tonic::metadata::*;
 use tracing_appender::non_blocking::NonBlocking;
@@ -46,29 +48,29 @@ impl LoggingTracing {
     ///
     /// The TracingGuard is used to flush all events when dropped.
     pub fn setup(
+        cli_state: Arc<CliState>,
         logging_configuration: &LoggingConfiguration,
         exporting_configuration: &ExportingConfiguration,
         app_name: &str,
-        node_name: Option<String>,
         ctx: &Context,
     ) -> TracingGuard {
         if exporting_configuration.is_enabled() && logging_configuration.is_enabled() {
             // set-up logging and tracing
             Self::setup_with_exporters(
+                cli_state,
                 create_span_exporter(exporting_configuration, ctx),
                 create_log_exporter(exporting_configuration, ctx),
                 logging_configuration,
                 exporting_configuration,
                 app_name,
-                node_name,
             )
         } else if exporting_configuration.is_enabled() {
             Self::setup_tracing_only(
+                cli_state,
                 create_span_exporter(exporting_configuration, ctx),
                 logging_configuration,
                 exporting_configuration,
                 app_name,
-                node_name,
             )
         } else {
             Self::setup_local_logging_only(logging_configuration)
@@ -82,12 +84,12 @@ impl LoggingTracing {
         T: SpanExporter + Send + 'static,
         L: LogExporter + Send + 'static,
     >(
+        cli_state: Arc<CliState>,
         span_exporter: T,
         log_exporter: L,
         logging_configuration: &LoggingConfiguration,
         exporting_configuration: &ExportingConfiguration,
         app_name: &str,
-        node_name: Option<String>,
     ) -> TracingGuard {
         // configure the logging layer exporting OpenTelemetry log records
         let (logging_layer, logger_provider) =
@@ -95,8 +97,8 @@ impl LoggingTracing {
 
         // configure the tracing layer exporting OpenTelemetry spans
         let (tracing_layer, tracer_provider) = create_opentelemetry_tracing_layer(
+            cli_state,
             app_name,
-            node_name,
             exporting_configuration,
             span_exporter,
         );
@@ -169,15 +171,15 @@ impl LoggingTracing {
     ///  - the LoggingConfiguration is used to filter spans (via its EnvFilter) and configure the global error handler
     ///  - the Exporting configuration is used to send spans and log records to an OpenTelemetry collector
     pub fn setup_tracing_only<T: SpanExporter + Send + 'static>(
+        cli_state: Arc<CliState>,
         span_exporter: T,
         logging_configuration: &LoggingConfiguration,
         exporting_configuration: &ExportingConfiguration,
         app_name: &str,
-        node_name: Option<String>,
     ) -> TracingGuard {
         let (tracing_layer, tracer_provider) = create_opentelemetry_tracing_layer(
+            cli_state,
             app_name,
-            node_name,
             exporting_configuration,
             span_exporter,
         );
@@ -263,8 +265,8 @@ fn create_opentelemetry_tracing_layer<
     R: Subscriber + Send + 'static + for<'a> LookupSpan<'a>,
     S: SpanExporter + Send + 'static,
 >(
+    cli_state: Arc<CliState>,
     app_name: &str,
-    node_name: Option<String>,
     exporting_configuration: &ExportingConfiguration,
     span_exporter: S,
 ) -> (
@@ -285,8 +287,8 @@ fn create_opentelemetry_tracing_layer<
         app,
         batch_config,
         OckamSpanExporter::new(
+            cli_state,
             span_exporter,
-            node_name,
             is_ockam_developer,
             span_export_cutoff,
         ),

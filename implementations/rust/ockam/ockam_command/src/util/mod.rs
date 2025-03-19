@@ -1,8 +1,3 @@
-use std::{
-    net::{SocketAddr, TcpListener},
-    path::Path,
-};
-
 use colorful::Colorful;
 use miette::miette;
 use ockam_api::cli_state::CliState;
@@ -11,6 +6,11 @@ use ockam_api::config::lookup::{InternetAddress, LookupMeta};
 use ockam_api::fmt_warn;
 use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Project, Space, Tcp};
 use ockam_multiaddr::{proto::Node, MultiAddr, Protocol};
+use std::sync::Arc;
+use std::{
+    net::{SocketAddr, TcpListener},
+    path::Path,
+};
 
 use crate::{CommandGlobalOpts, Result};
 
@@ -33,7 +33,10 @@ pub fn print_path(p: &Path) -> String {
 /// Example:
 ///     if n1 has address of 127.0.0.1:1234
 ///     `/node/n1` -> `/ip4/127.0.0.1/tcp/1234`
-pub async fn process_nodes_multiaddr(addr: &MultiAddr, cli_state: &CliState) -> Result<MultiAddr> {
+pub async fn process_nodes_multiaddr(
+    addr: &MultiAddr,
+    cli_state: Arc<CliState>,
+) -> Result<MultiAddr> {
     let mut processed_addr = MultiAddr::default();
     for proto in addr.iter() {
         match proto.code() {
@@ -56,7 +59,7 @@ pub async fn process_nodes_multiaddr(addr: &MultiAddr, cli_state: &CliState) -> 
 /// qualified address to the target
 pub async fn clean_nodes_multiaddr(
     input: &MultiAddr,
-    cli_state: &CliState,
+    cli_state: Arc<CliState>,
 ) -> Result<(MultiAddr, LookupMeta)> {
     let mut new_ma = MultiAddr::default();
     let mut lookup_meta = LookupMeta::default();
@@ -139,7 +142,7 @@ mod tests {
 
     #[ockam_macros::test(crate = "ockam")]
     async fn test_process_multi_addr(_ctx: &mut Context) -> ockam::Result<()> {
-        let cli_state = CliState::test().await?;
+        let cli_state = Arc::new(CliState::test().await?);
 
         cli_state.create_node("n1").await?;
 
@@ -165,13 +168,15 @@ mod tests {
         ];
         for (ma, expected) in test_cases {
             if let Ok(addr) = expected {
-                let result = process_nodes_multiaddr(&ma, &cli_state)
+                let result = process_nodes_multiaddr(&ma, cli_state.clone())
                     .await
                     .unwrap()
                     .to_string();
                 assert_eq!(result, addr);
             } else {
-                assert!(process_nodes_multiaddr(&ma, &cli_state).await.is_err());
+                assert!(process_nodes_multiaddr(&ma, cli_state.clone())
+                    .await
+                    .is_err());
             }
         }
         Ok(())

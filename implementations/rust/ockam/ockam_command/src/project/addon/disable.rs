@@ -45,7 +45,7 @@ impl AddonDisableSubcommand {
             .await?
             .project_id()
             .to_string();
-        let node = InMemoryNode::start(ctx, &opts.state).await?;
+        let node = InMemoryNode::start(ctx, opts.state.clone()).await?;
         let controller = node.create_controller().await?;
 
         let response = controller

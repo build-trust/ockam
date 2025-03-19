@@ -35,7 +35,7 @@ use crate::nodes::{NodeManagerWorker, NODEMANAGER_ADDR};
 ///   temporary directory, and possibly of sub-processes.
 /// - useful access to the NodeManager
 pub struct NodeManagerHandle {
-    pub cli_state: CliState,
+    pub cli_state: Arc<CliState>,
     pub node_manager: Arc<InMemoryNode>,
     pub tcp: Arc<TcpTransport>,
     pub secure_channels: Arc<SecureChannels>,
@@ -67,7 +67,7 @@ pub async fn start_manager_for_tests(
         )
         .await?;
 
-    let cli_state = CliState::system().await?;
+    let cli_state = Arc::new(CliState::system().await?);
 
     let node_name = random_name();
     cli_state

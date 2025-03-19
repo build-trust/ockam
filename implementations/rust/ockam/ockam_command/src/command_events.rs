@@ -1,11 +1,12 @@
 use ockam_api::cli_state::journeys::{JourneyEvent, APPLICATION_EVENT_COMMAND};
 use ockam_api::CliState;
 use std::collections::HashMap;
+use std::sync::Arc;
 use tracing::warn;
 
 /// This function creates a journey event describing the execution of a command
 pub async fn add_command_event(
-    cli_state: CliState,
+    cli_state: Arc<CliState>,
     command: &str,
     command_arguments: String,
 ) -> miette::Result<()> {
@@ -28,7 +29,7 @@ pub async fn add_command_event(
 
 /// This function creates a journey event describing the error resulting from the execution of a command
 pub async fn add_command_error_event(
-    cli_state: CliState,
+    cli_state: Arc<CliState>,
     command_name: &str,
     message: &str,
     command_arguments: String,

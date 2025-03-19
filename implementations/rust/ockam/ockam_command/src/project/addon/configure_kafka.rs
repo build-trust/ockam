@@ -77,7 +77,7 @@ impl AddonConfigureKafkaSubcommand {
             .to_string();
         let config = KafkaConfig::new(self.config.bootstrap_server.clone());
 
-        let node = InMemoryNode::start(ctx, &opts.state).await?;
+        let node = InMemoryNode::start(ctx, opts.state.clone()).await?;
         let controller = node.create_controller().await?;
 
         let response = controller

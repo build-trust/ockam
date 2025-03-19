@@ -30,6 +30,7 @@ impl AppState {
             .unwrap()
             .add_crates(vec!["ockam_app_lib"]);
         let tracing_guard = LoggingTracing::setup(
+            state.clone(),
             &logging_configuration(
                 level_and_crates,
                 Some(node_dir),
@@ -42,7 +43,6 @@ impl AppState {
                 .await
                 .unwrap(),
             "portals",
-            Some("portals".to_string()),
             ctx,
         );
         self.tracing_guard

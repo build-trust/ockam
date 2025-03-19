@@ -31,7 +31,7 @@ impl Command for ListCommand {
     const NAME: &'static str = "secure-channel list";
 
     async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
-        let node = BackgroundNodeClient::create(ctx, &opts.state, &self.at).await?;
+        let node = BackgroundNodeClient::create(ctx, opts.state.clone(), &self.at).await?;
 
         let spinner = opts.terminal.spinner();
         if let Some(spinner) = &spinner {

@@ -116,7 +116,7 @@ impl Command for EnrollCommand {
             .await?;
         let node = InMemoryNode::start_with_project_name(
             ctx,
-            &opts.state,
+            opts.state.clone(),
             Some(project.name().to_string()),
         )
         .await?

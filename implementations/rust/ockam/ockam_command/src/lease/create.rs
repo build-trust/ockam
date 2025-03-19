@@ -39,7 +39,7 @@ impl Command for CreateCommand {
 
         let node = InMemoryNode::start_with_identity_and_project_name(
             ctx,
-            &opts.state,
+            opts.state.clone(),
             cmd.identity_opts.identity_name.clone(),
             cmd.trust_opts.project_name.clone(),
         )
@@ -71,7 +71,7 @@ impl Command for CreateCommand {
 
 impl CreateCommand {
     async fn parse_args(mut self, opts: &CommandGlobalOpts) -> crate::Result<Self> {
-        self.at = super::resolve_at_arg(&self.at, &opts.state).await?;
+        self.at = super::resolve_at_arg(&self.at, opts.state.clone()).await?;
         Ok(self)
     }
 }

@@ -54,7 +54,7 @@ impl DeleteTui {
         opts: CommandGlobalOpts,
         cmd: DeleteCommand,
     ) -> miette::Result<()> {
-        let node = BackgroundNodeClient::create(ctx, &opts.state, &cmd.at).await?;
+        let node = BackgroundNodeClient::create(ctx, opts.state.clone(), &cmd.at).await?;
         let tui = Self {
             ctx: ctx.try_clone().into_diagnostic()?,
             opts,

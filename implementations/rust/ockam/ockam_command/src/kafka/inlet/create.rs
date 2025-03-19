@@ -152,7 +152,8 @@ impl Command for CreateCommand {
             }
 
             let node =
-                BackgroundNodeClient::create(ctx, &opts.state, &cmd.node_opts.at_node).await?;
+                BackgroundNodeClient::create(ctx, opts.state.clone(), &cmd.node_opts.at_node)
+                    .await?;
 
             let consumer_resolution;
             if let Some(route) = &cmd.consumer {
@@ -242,7 +243,7 @@ impl CreateCommand {
             ));
         }
 
-        self.to = process_nodes_multiaddr(&self.to, &opts.state).await?;
+        self.to = process_nodes_multiaddr(&self.to, opts.state.clone()).await?;
         Ok(self)
     }
 

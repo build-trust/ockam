@@ -132,7 +132,7 @@ impl DeleteCommand {
             self.yes,
             "Are you sure you want to delete this secure channel?",
         )? {
-            let node = BackgroundNodeClient::create(ctx, &opts.state, &self.at).await?;
+            let node = BackgroundNodeClient::create(ctx, opts.state.clone(), &self.at).await?;
             let address = &self.address;
             let response: DeleteSecureChannelResponse =
                 node.ask(ctx, api::delete_secure_channel(address)).await?;

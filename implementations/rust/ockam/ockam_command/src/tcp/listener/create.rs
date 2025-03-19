@@ -35,7 +35,7 @@ impl CreateCommand {
 
     pub async fn run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         initialize_default_node(ctx, &opts).await?;
-        let node = BackgroundNodeClient::create(ctx, &opts.state, &self.at).await?;
+        let node = BackgroundNodeClient::create(ctx, opts.state.clone(), &self.at).await?;
         let transport_status: TransportStatus = node
             .ask(
                 ctx,

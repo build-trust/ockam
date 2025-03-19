@@ -33,7 +33,7 @@ impl ListCommand {
     }
 
     pub async fn run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
-        let node = BackgroundNodeClient::create(ctx, &opts.state, &self.to).await?;
+        let node = BackgroundNodeClient::create(ctx, opts.state.clone(), &self.to).await?;
         let relays: RelayInfoList = {
             let pb = opts.terminal.spinner();
             if let Some(pb) = pb {

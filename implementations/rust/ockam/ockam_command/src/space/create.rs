@@ -50,7 +50,7 @@ impl Command for CreateCommand {
             ));
         };
 
-        let node = InMemoryNode::start(ctx, &opts.state).await?;
+        let node = InMemoryNode::start(ctx, opts.state.clone()).await?;
 
         let space = {
             let pb = opts.terminal.spinner();

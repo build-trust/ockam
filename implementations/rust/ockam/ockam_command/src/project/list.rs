@@ -33,7 +33,7 @@ impl ListCommand {
     }
 
     pub async fn run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
-        let node = InMemoryNode::start(ctx, &opts.state).await?;
+        let node = InMemoryNode::start(ctx, opts.state.clone()).await?;
         let is_finished: Mutex<bool> = Mutex::new(false);
         let get_projects = async {
             let projects = node.get_admin_projects(ctx).await?;

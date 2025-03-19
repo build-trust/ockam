@@ -93,7 +93,7 @@ impl Command for CreateCommand {
         initialize_default_node(ctx, &opts).await?;
         let cmd = self.parse_args(&opts).await?;
 
-        let node = BackgroundNodeClient::create(ctx, &opts.state, &cmd.at).await?;
+        let node = BackgroundNodeClient::create(ctx, opts.state.clone(), &cmd.at).await?;
         let node_name = node.node_name();
         let outlet_status = {
             let pb = opts.terminal.spinner();

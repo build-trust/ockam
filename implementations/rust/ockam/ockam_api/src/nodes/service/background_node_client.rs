@@ -20,7 +20,7 @@ use crate::nodes::NODEMANAGER_ADDR;
 /// and expect responses with a value of type `R`
 #[derive(Clone)]
 pub struct BackgroundNodeClient {
-    cli_state: CliState,
+    cli_state: Arc<CliState>,
     node_name: String,
     to: Route,
     timeout: Option<Duration>,
@@ -36,7 +36,7 @@ impl BackgroundNodeClient {
     /// a node specified by the user or the default node if no node name is given.
     pub async fn create(
         ctx: &Context,
-        cli_state: &CliState,
+        cli_state: Arc<CliState>,
         node_name: &Option<String>,
     ) -> miette::Result<BackgroundNodeClient> {
         let node_name = match node_name.clone() {
@@ -48,7 +48,7 @@ impl BackgroundNodeClient {
 
     pub fn create_to_node(
         ctx: &Context,
-        cli_state: &CliState,
+        cli_state: Arc<CliState>,
         node_name: &str,
     ) -> miette::Result<BackgroundNodeClient> {
         let tcp_transport = TcpTransport::get_or_create(ctx).into_diagnostic()?;
@@ -57,7 +57,7 @@ impl BackgroundNodeClient {
 
     pub async fn create_to_node_with_tcp(
         tcp: &TcpTransport,
-        cli_state: &CliState,
+        cli_state: Arc<CliState>,
         node_name: &str,
     ) -> miette::Result<BackgroundNodeClient> {
         BackgroundNodeClient::new(tcp, cli_state, node_name)
@@ -66,7 +66,7 @@ impl BackgroundNodeClient {
     /// Create a new client to send requests to a running background node
     pub fn new(
         tcp_transport: &TcpTransport,
-        cli_state: &CliState,
+        cli_state: Arc<CliState>,
         node_name: &str,
     ) -> miette::Result<BackgroundNodeClient> {
         Ok(BackgroundNodeClient {

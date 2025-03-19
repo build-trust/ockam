@@ -1,9 +1,9 @@
 use async_trait::async_trait;
-use std::str::FromStr;
-
 use clap::Args;
 use colorful::Colorful;
 use miette::{miette, IntoDiagnostic};
+use std::str::FromStr;
+use std::sync::Arc;
 use tracing::debug;
 
 use ockam::identity::Identifier;
@@ -91,7 +91,7 @@ impl Command for CreateCommand {
         let alias = cmd.relay_name();
         let return_timing = cmd.return_timing();
 
-        let node = BackgroundNodeClient::create(ctx, &opts.state, &cmd.to).await?;
+        let node = BackgroundNodeClient::create(ctx, opts.state.clone(), &cmd.to).await?;
         let relay_info = {
             if at.starts_with(Project::CODE) && cmd.authorized.is_some() {
                 return Err(miette!(
@@ -201,14 +201,15 @@ impl CreateCommand {
             .await
             .ok()
             .map(|p| p.name().to_string());
-        let at = Self::parse_arg_at(&opts.state, self.at, default_project_name.as_deref()).await?;
+        let at = Self::parse_arg_at(opts.state.clone(), self.at, default_project_name.as_deref())
+            .await?;
         self.project_relay |= at.starts_with(Project::CODE);
         self.at = at.to_string();
         Ok(self)
     }
 
     async fn parse_arg_at(
-        state: &CliState,
+        state: Arc<CliState>,
         at: impl Into<String>,
         default_project_name: Option<&str>,
     ) -> Result<MultiAddr> {
@@ -249,38 +250,39 @@ mod tests {
 
     #[ockam_macros::test(crate = "ockam")]
     async fn test_parse_arg_at(ctx: &mut Context) -> ockam::Result<()> {
-        let state = CliState::test().await?;
+        let state = Arc::new(CliState::test().await?);
         let default_project_name = Some("p1");
 
         // Invalid values
-        CreateCommand::parse_arg_at(&state, "/alice/service", default_project_name)
+        CreateCommand::parse_arg_at(state.clone(), "/alice/service", default_project_name)
             .await
             .expect_err("Invalid protocol");
-        CreateCommand::parse_arg_at(&state, "my/project", default_project_name)
+        CreateCommand::parse_arg_at(state.clone(), "my/project", default_project_name)
             .await
             .expect_err("Invalid protocol");
-        CreateCommand::parse_arg_at(&state, "alice", default_project_name)
+        CreateCommand::parse_arg_at(state.clone(), "alice", default_project_name)
             .await
             .expect_err("Node doesn't exist");
 
         // The placeholder is replaced when using the arg's default value
-        let res = CreateCommand::parse_arg_at(&state, default_at_addr(), default_project_name)
-            .await
-            .unwrap()
-            .to_string();
+        let res =
+            CreateCommand::parse_arg_at(state.clone(), default_at_addr(), default_project_name)
+                .await
+                .unwrap()
+                .to_string();
         assert_eq!(res, "/project/p1");
 
         // The user provides a full project route
         let addr = "/project/p1";
-        let res = CreateCommand::parse_arg_at(&state, addr, default_project_name)
+        let res = CreateCommand::parse_arg_at(state.clone(), addr, default_project_name)
             .await
             .unwrap()
             .to_string();
         assert_eq!(res, addr);
 
         // The user provides the name of a node
-        let node = InMemoryNode::start(ctx, &state).await.unwrap();
-        let res = CreateCommand::parse_arg_at(&state, &node.node_name(), default_project_name)
+        let node = InMemoryNode::start(ctx, state.clone()).await.unwrap();
+        let res = CreateCommand::parse_arg_at(state, &node.node_name(), default_project_name)
             .await
             .unwrap()
             .to_string();

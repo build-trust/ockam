@@ -84,14 +84,14 @@ impl InMemoryNode {
     }
 
     /// Start an in memory node
-    pub async fn start(ctx: &Context, cli_state: &CliState) -> miette::Result<Self> {
+    pub async fn start(ctx: &Context, cli_state: Arc<CliState>) -> miette::Result<Self> {
         Self::start_with_project_name(ctx, cli_state, None).await
     }
 
     /// Start an in memory node with some project
     pub async fn start_with_project_name(
         ctx: &Context,
-        cli_state: &CliState,
+        cli_state: Arc<CliState>,
         project_name: Option<String>,
     ) -> miette::Result<Self> {
         let default_identity_name = cli_state
@@ -113,7 +113,7 @@ impl InMemoryNode {
     /// Start an in memory node with some identity and project
     pub async fn start_with_identity_and_project_name(
         ctx: &Context,
-        cli_state: &CliState,
+        cli_state: Arc<CliState>,
         identity: Option<String>,
         project_name: Option<String>,
     ) -> miette::Result<Self> {
@@ -124,7 +124,7 @@ impl InMemoryNode {
     /// Start an in memory node with a specific identity
     pub async fn start_with_identity(
         ctx: &Context,
-        cli_state: &CliState,
+        cli_state: Arc<CliState>,
         identity: Option<String>,
     ) -> miette::Result<InMemoryNode> {
         let identity = cli_state.get_identity_name_or_default(&identity).await?;
@@ -135,7 +135,7 @@ impl InMemoryNode {
     #[instrument(name = "start in-memory node", skip_all, level = Level::TRACE)]
     pub async fn start_node(
         ctx: &Context,
-        cli_state: &CliState,
+        cli_state: Arc<CliState>,
         identity_name: &str,
         status_endpoint: Option<BindAddress>,
         project_name: Option<String>,
@@ -345,12 +345,12 @@ mod tests {
 
     #[ockam::test]
     async fn test_start_twice(ctx: &mut Context) -> Result<()> {
-        let cli = CliState::test().await?;
+        let cli = Arc::new(CliState::test().await?);
 
-        let node_manager1 = InMemoryNode::start(ctx, &cli).await;
+        let node_manager1 = InMemoryNode::start(ctx, cli.clone()).await;
         assert!(node_manager1.is_ok());
 
-        let node_manager2 = InMemoryNode::start(ctx, &cli).await;
+        let node_manager2 = InMemoryNode::start(ctx, cli).await;
         if let Err(e) = node_manager2 {
             panic!("cannot start the node manager a second time: {e:?}");
         }

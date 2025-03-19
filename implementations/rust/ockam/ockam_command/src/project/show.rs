@@ -60,7 +60,7 @@ impl ShowTui {
         opts: CommandGlobalOpts,
         project_name: Option<String>,
     ) -> miette::Result<()> {
-        let node = InMemoryNode::start(&ctx, &opts.state).await?;
+        let node = InMemoryNode::start(&ctx, opts.state.clone()).await?;
         let tui = Self {
             ctx,
             opts,

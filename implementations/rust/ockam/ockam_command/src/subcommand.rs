@@ -258,7 +258,9 @@ impl OckamSubcommand {
     pub fn is_local_node(&self) -> bool {
         match self {
             OckamSubcommand::Node(cmd) => match &cmd.subcommand {
-                NodeSubcommand::Create(cmd) => cmd.foreground_args.foreground || cmd.foreground_args.child_process,
+                NodeSubcommand::Create(cmd) => {
+                    cmd.foreground_args.foreground || cmd.foreground_args.child_process
+                }
                 _ => false,
             },
 

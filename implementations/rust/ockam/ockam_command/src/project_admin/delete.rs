@@ -69,7 +69,7 @@ impl DeleteTui {
             .await?;
         let node = InMemoryNode::start_with_identity_and_project_name(
             ctx,
-            &opts.state,
+            opts.state.clone(),
             cmd.identity_opts.identity_name.clone(),
             Some(project.project_name().to_string()),
         )

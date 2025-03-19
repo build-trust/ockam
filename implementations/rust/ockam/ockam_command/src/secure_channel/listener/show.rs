@@ -34,7 +34,8 @@ impl ShowCommand {
     }
 
     pub async fn run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
-        let node = BackgroundNodeClient::create(ctx, &opts.state, &self.node_opts.at_node).await?;
+        let node =
+            BackgroundNodeClient::create(ctx, opts.state.clone(), &self.node_opts.at_node).await?;
         let address = &self.address;
         let req = api::show_secure_channel_listener(address);
         node.tell(ctx, req).await?;

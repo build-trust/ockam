@@ -122,7 +122,7 @@ impl AddonConfigureOktaSubcommand {
         auth0.validate_provider_config().await?;
 
         // Do request
-        let node = InMemoryNode::start(ctx, &opts.state).await?;
+        let node = InMemoryNode::start(ctx, opts.state.clone()).await?;
         let controller = node.create_controller().await?;
 
         let response = controller

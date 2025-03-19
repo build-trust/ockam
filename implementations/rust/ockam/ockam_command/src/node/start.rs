@@ -121,7 +121,7 @@ async fn start_single_node(
     }
 
     let mut node = run_node(node_name, ctx, &opts).await?;
-    let node_status = get_node_resources(ctx, &opts.state, &mut node).await?;
+    let node_status = get_node_resources(ctx, opts.state.clone(), &mut node).await?;
     opts.terminal
         .to_stdout()
         .plain(&node_status)
@@ -181,7 +181,7 @@ async fn run_node(
     let handle = spawn_node(opts, cmd)?;
     wait_for_node_callback(handle, node_callback).await?;
 
-    let node = BackgroundNodeClient::create_to_node(ctx, &opts.state, node_name)?;
+    let node = BackgroundNodeClient::create_to_node(ctx, opts.state.clone(), node_name)?;
 
     Ok(node)
 }

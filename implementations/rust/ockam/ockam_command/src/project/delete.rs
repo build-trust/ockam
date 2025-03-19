@@ -45,7 +45,7 @@ impl DeleteCommand {
             self.yes,
             "Are you sure you want to delete this project?",
         )? {
-            let node = InMemoryNode::start(ctx, &opts.state).await?;
+            let node = InMemoryNode::start(ctx, opts.state.clone()).await?;
 
             node.delete_project_by_name(ctx, &self.space_name, &self.project_name)
                 .await?;

@@ -67,7 +67,7 @@ impl Command for CreateCommand {
         let resource = ResourceTypeOrName::new(self.resource_type.as_ref(), self.resource.as_ref())
             .into_diagnostic()?;
 
-        let node = BackgroundNodeClient::create(ctx, &opts.state, &self.at).await?;
+        let node = BackgroundNodeClient::create(ctx, opts.state.clone(), &self.at).await?;
         node.add_policy(ctx, &resource, &Action::HandleMessage, &self.allow)
             .await?;
         opts.terminal

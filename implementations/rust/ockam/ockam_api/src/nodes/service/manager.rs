@@ -52,7 +52,7 @@ use tracing::Level;
 ///  - configure the trust
 ///  - manage persistent data
 pub struct NodeManager {
-    pub(crate) cli_state: CliState,
+    pub(crate) cli_state: Arc<CliState>,
     pub(super) node_name: String,
     pub(super) node_identifier: Identifier,
     pub(crate) api_transport_flow_control_ids: Vec<FlowControlId>,
@@ -669,7 +669,7 @@ impl NodeManager {
 
 #[derive(Debug)]
 pub struct NodeManagerGeneralOptions {
-    pub(super) cli_state: CliState,
+    pub(super) cli_state: Arc<CliState>,
     pub(super) node_name: String,
     pub(super) start_default_services: bool,
     pub(super) status_endpoint: Option<BindAddress>,
@@ -678,7 +678,7 @@ pub struct NodeManagerGeneralOptions {
 
 impl NodeManagerGeneralOptions {
     pub fn new(
-        cli_state: CliState,
+        cli_state: Arc<CliState>,
         node_name: String,
         start_default_services: bool,
         status_endpoint: Option<BindAddress>,

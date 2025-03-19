@@ -26,6 +26,7 @@ use ockam_core::api::{Reply, Status};
 use ockam_multiaddr::{proto, MultiAddr, Protocol};
 use ockam_node::compat::asynchronous::resolve_peer;
 use std::str::FromStr;
+use std::sync::Arc;
 use std::time::Duration;
 use tracing::trace;
 
@@ -163,7 +164,7 @@ impl Command for CreateCommand {
         initialize_default_node(ctx, &opts).await?;
         let cmd = self.parse_args(&opts).await?;
 
-        let mut node = BackgroundNodeClient::create(ctx, &opts.state, &cmd.at).await?;
+        let mut node = BackgroundNodeClient::create(ctx, opts.state.clone(), &cmd.at).await?;
         cmd.timeout.timeout.map(|t| node.set_timeout_mut(t));
 
         let inlet_status = {
@@ -187,7 +188,7 @@ impl Command for CreateCommand {
                         cmd.connection_wait,
                         !cmd.no_connection_wait,
                         &cmd
-                            .secure_channel_identifier(&opts.state)
+                            .secure_channel_identifier(opts.state.clone())
                             .await?,
                         cmd.udp || cmd.from.is_udp(),
                         cmd.no_tcp_fallback,
@@ -288,7 +289,7 @@ impl CreateCommand {
         port_is_free_guard(&from)?;
 
         self.to = crate::tcp::inlet::create::CreateCommand::parse_arg_to(
-            &opts.state,
+            opts.state.clone(),
             self.to,
             self.via.as_ref(),
         )
@@ -329,7 +330,7 @@ impl CreateCommand {
 
     pub async fn secure_channel_identifier(
         &self,
-        state: &CliState,
+        state: Arc<CliState>,
     ) -> miette::Result<Option<Identifier>> {
         if let Some(identity_name) = self.identity.as_ref() {
             Ok(Some(state.get_identifier_by_name(identity_name).await?))

@@ -1,6 +1,7 @@
 use async_trait::async_trait;
 use clap::Args;
 use miette::miette;
+use std::sync::Arc;
 
 use ockam::Context;
 use ockam_api::nodes::models::secure_channel::ShowSecureChannelResponse;
@@ -44,59 +45,64 @@ impl Command for ShowCommand {
     const NAME: &'static str = "secure-channel show";
 
     async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
-        let response = match extract_node_name_and_service_from_multiaddr(&self.at, &opts.state)
-            .await?
-        {
-            // Get the secure channel from a local node
-            Some((node_name, sc_address)) => {
-                let node = BackgroundNodeClient::create(ctx, &opts.state, &Some(node_name)).await?;
-                let response: ShowSecureChannelResponse =
-                    node.ask(ctx, api::show_secure_channel(&sc_address)).await?;
-                response
-            }
-            // Get the secure channel given a multiaddr
-            None => {
-                let identity = opts
-                    .state
-                    .get_named_identity_or_default(&self.identity_opts.identity_name)
-                    .await?;
-
-                let node =
-                    InMemoryNode::start_with_identity(ctx, &opts.state, Some(identity.name()))
+        let response =
+            match extract_node_name_and_service_from_multiaddr(&self.at, opts.state.clone()).await?
+            {
+                // Get the secure channel from a local node
+                Some((node_name, sc_address)) => {
+                    let node =
+                        BackgroundNodeClient::create(ctx, opts.state.clone(), &Some(node_name))
+                            .await?;
+                    let response: ShowSecureChannelResponse =
+                        node.ask(ctx, api::show_secure_channel(&sc_address)).await?;
+                    response
+                }
+                // Get the secure channel given a multiaddr
+                None => {
+                    let identity = opts
+                        .state
+                        .get_named_identity_or_default(&self.identity_opts.identity_name)
                         .await?;
 
-                let secure_channel = node
-                    .create_secure_channel(
+                    let node = InMemoryNode::start_with_identity(
                         ctx,
-                        self.at.clone(),
+                        opts.state.clone(),
                         Some(identity.name()),
-                        None,
-                        None,
-                        Some(self.timeout.timeout),
-                        SecureChannelType::KeyExchangeAndMessages,
                     )
                     .await?;
 
-                let peer_identifier = secure_channel.their_identifier();
+                    let secure_channel = node
+                        .create_secure_channel(
+                            ctx,
+                            self.at.clone(),
+                            Some(identity.name()),
+                            None,
+                            None,
+                            Some(self.timeout.timeout),
+                            SecureChannelType::KeyExchangeAndMessages,
+                        )
+                        .await?;
 
-                let change_history = node
-                    .secure_channels()
-                    .identities()
-                    .get_change_history(peer_identifier)
-                    .await?;
+                    let peer_identifier = secure_channel.their_identifier();
 
-                ShowSecureChannelResponse {
-                    address: ReverseLocalConverter::convert_address(
-                        secure_channel.encryptor_address(),
-                    )?,
-                    route: self.at,
-                    authorized_identifiers: None,
-                    flow_control_id: secure_channel.flow_control_id().clone(),
-                    their_identifier: secure_channel.their_identifier().clone(),
-                    their_change_history: Some(change_history.export_as_string()?),
+                    let change_history = node
+                        .secure_channels()
+                        .identities()
+                        .get_change_history(peer_identifier)
+                        .await?;
+
+                    ShowSecureChannelResponse {
+                        address: ReverseLocalConverter::convert_address(
+                            secure_channel.encryptor_address(),
+                        )?,
+                        route: self.at,
+                        authorized_identifiers: None,
+                        flow_control_id: secure_channel.flow_control_id().clone(),
+                        their_identifier: secure_channel.their_identifier().clone(),
+                        their_change_history: Some(change_history.export_as_string()?),
+                    }
                 }
-            }
-        };
+            };
 
         opts.terminal
             .to_stdout()
@@ -114,7 +120,7 @@ impl Command for ShowCommand {
 ///     `/node/n1/service/1234` -> `(n1, 1234)`
 async fn extract_node_name_and_service_from_multiaddr(
     addr: &MultiAddr,
-    cli_state: &CliState,
+    cli_state: Arc<CliState>,
 ) -> miette::Result<Option<(String, Address)>> {
     let mut iter = addr.iter();
     if let Some(proto) = iter.next() {
@@ -148,12 +154,12 @@ mod tests {
 
     #[tokio::test]
     async fn test_extract_node_name_and_service_from_multiaddr_valid() -> Result<()> {
-        let cli_state = CliState::test().await?;
+        let cli_state = Arc::new(CliState::test().await?);
         cli_state.create_node("n1").await?;
 
         let multiaddr: MultiAddr = "/node/n1/service/1234".parse()?;
 
-        let result = extract_node_name_and_service_from_multiaddr(&multiaddr, &cli_state).await?;
+        let result = extract_node_name_and_service_from_multiaddr(&multiaddr, cli_state).await?;
         assert!(result.is_some());
         let (node_name, address) = result.unwrap();
         assert_eq!(node_name, "n1");
@@ -163,20 +169,20 @@ mod tests {
 
     #[tokio::test]
     async fn test_extract_node_name_and_service_from_multiaddr_invalid_node() -> Result<()> {
-        let cli_state = CliState::test().await?;
+        let cli_state = Arc::new(CliState::test().await?);
         let multiaddr: MultiAddr = "/node/invalid/service/1234".parse()?;
 
-        let result = extract_node_name_and_service_from_multiaddr(&multiaddr, &cli_state).await;
+        let result = extract_node_name_and_service_from_multiaddr(&multiaddr, cli_state).await;
         assert!(result.is_err());
         Ok(())
     }
 
     #[tokio::test]
     async fn test_extract_node_name_and_service_from_multiaddr_no_node() -> Result<()> {
-        let cli_state = CliState::test().await?;
+        let cli_state = Arc::new(CliState::test().await?);
         let multiaddr: MultiAddr = "/service/1234".parse()?;
 
-        let result = extract_node_name_and_service_from_multiaddr(&multiaddr, &cli_state).await?;
+        let result = extract_node_name_and_service_from_multiaddr(&multiaddr, cli_state).await?;
         assert!(result.is_none());
         Ok(())
     }

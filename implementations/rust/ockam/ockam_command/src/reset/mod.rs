@@ -81,7 +81,7 @@ impl ResetCommand {
         }
         {
             let _notification_handler =
-                NotificationHandler::start(&opts.state, opts.terminal.clone());
+                NotificationHandler::start(opts.state.clone(), opts.terminal.clone());
             opts.state.reset().await?;
         }
 
@@ -100,7 +100,7 @@ async fn delete_orchestrator_resources_impl(
     ctx: &Context,
     opts: CommandGlobalOpts,
 ) -> miette::Result<()> {
-    let node = InMemoryNode::start(ctx, &opts.state).await?;
+    let node = InMemoryNode::start(ctx, opts.state.clone()).await?;
     let spaces = node
         .get_spaces(ctx)
         .await

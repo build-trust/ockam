@@ -66,7 +66,7 @@ impl DeleteTui {
         let space = opts.state.get_space_by_name_or_default(&cmd.name).await?;
         let node = InMemoryNode::start_with_identity(
             ctx,
-            &opts.state,
+            opts.state.clone(),
             cmd.identity_opts.identity_name.clone(),
         )
         .await?;

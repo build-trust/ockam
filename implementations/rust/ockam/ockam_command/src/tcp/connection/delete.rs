@@ -36,7 +36,8 @@ impl DeleteCommand {
             "Are you sure you want to delete this TCP connection?",
         )? {
             let node =
-                BackgroundNodeClient::create(ctx, &opts.state, &self.node_opts.at_node).await?;
+                BackgroundNodeClient::create(ctx, opts.state.clone(), &self.node_opts.at_node)
+                    .await?;
             let address = self.address.clone();
             let req = Request::delete("/node/tcp/connection")
                 .body(models::transport::DeleteTransport::new(address.clone()));

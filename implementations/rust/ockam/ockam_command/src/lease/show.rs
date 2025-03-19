@@ -43,7 +43,7 @@ impl Command for ShowCommand {
 
         let node = InMemoryNode::start_with_identity_and_project_name(
             ctx,
-            &opts.state,
+            opts.state.clone(),
             cmd.identity_opts.identity_name.clone(),
             cmd.trust_opts.project_name.clone(),
         )
@@ -53,7 +53,7 @@ impl Command for ShowCommand {
         opts.terminal
             .write_line(fmt_log!("Retrieving influxdb token...\n"))?;
 
-        let (at, _meta) = clean_nodes_multiaddr(&cmd.at, &opts.state).await?;
+        let (at, _meta) = clean_nodes_multiaddr(&cmd.at, opts.state.clone()).await?;
         let res = node.get_token(ctx, &at, &cmd.token_id).await?;
 
         opts.terminal
@@ -69,7 +69,7 @@ impl Command for ShowCommand {
 
 impl ShowCommand {
     async fn parse_args(mut self, opts: &CommandGlobalOpts) -> crate::Result<Self> {
-        self.at = super::resolve_at_arg(&self.at, &opts.state).await?;
+        self.at = super::resolve_at_arg(&self.at, opts.state.clone()).await?;
         Ok(self)
     }
 }

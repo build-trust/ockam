@@ -2,6 +2,7 @@ use chrono::Utc;
 use ockam_api::cli_state::journeys::{
     JourneyEvent, APPLICATION_EVENT_TIMESTAMP, EVENT_DURATION, USER_EMAIL, USER_NAME,
 };
+use ockam_api::cli_state::{random_name, CliStateMode};
 use ockam_api::logs::{
     get_https_endpoint, ExportingConfiguration, ExportingEnabled, LoggingConfiguration,
     LoggingTracing,
@@ -14,8 +15,7 @@ use opentelemetry_sdk::testing::logs::InMemoryLogExporter;
 use opentelemetry_sdk::testing::trace::InMemorySpanExporter;
 use std::collections::HashMap;
 use std::ops::Add;
-
-use ockam_api::cli_state::{random_name, CliStateMode};
+use std::sync::Arc;
 use tempfile::NamedTempFile;
 
 /// This test needs to be an integration test
@@ -25,15 +25,18 @@ use tempfile::NamedTempFile;
 async fn test_create_journey_event() {
     let db_file = NamedTempFile::new().unwrap();
     let cli_state_directory = db_file.path().parent().unwrap().join(random_name());
-    let cli = CliState::create(CliStateMode::Persistent(cli_state_directory))
-        .await
-        .unwrap()
-        .set_tracing_enabled(true);
+    let cli_state = Arc::new(
+        CliState::create(CliStateMode::Persistent(cli_state_directory))
+            .await
+            .unwrap()
+            .set_tracing_enabled(true),
+    );
 
     let span_exporter = InMemorySpanExporter::default();
     let log_exporter = InMemoryLogExporter::default();
     let endpoint = get_https_endpoint().unwrap();
     let tracing_guard = LoggingTracing::setup_with_exporters(
+        cli_state.clone(),
         span_exporter.clone(),
         log_exporter.clone(),
         &LoggingConfiguration::off()
@@ -45,7 +48,6 @@ async fn test_create_journey_event() {
         )
         .unwrap(),
         "test",
-        None,
     );
     let tracer = global::tracer("ockam-test");
     let span = tracer.start("user event");
@@ -56,15 +58,18 @@ async fn test_create_journey_event() {
     let mut map = HashMap::new();
     map.insert(USER_EMAIL, "etorreborre@yahoo.com".to_string());
     map.insert(USER_NAME, "eric".to_string());
-    cli.add_journey_event(JourneyEvent::Enrolled, map.clone())
+    cli_state
+        .add_journey_event(JourneyEvent::Enrolled, map.clone())
         .with_context(cx.clone())
         .await
         .unwrap();
-    cli.add_journey_event(JourneyEvent::PortalCreated, map)
+    cli_state
+        .add_journey_event(JourneyEvent::PortalCreated, map)
         .with_context(cx.clone())
         .await
         .unwrap();
-    cli.add_journey_error("command", "sorry".to_string(), HashMap::default())
+    cli_state
+        .add_journey_error("command", "sorry".to_string(), HashMap::default())
         .with_context(cx.clone())
         .await
         .unwrap();

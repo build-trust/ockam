@@ -8,9 +8,11 @@ use opentelemetry::trace::Tracer;
 use opentelemetry_sdk::testing::logs::InMemoryLogExporter;
 use opentelemetry_sdk::testing::trace::InMemorySpanExporter;
 use std::fs;
+use std::sync::Arc;
 use tempfile::NamedTempFile;
 
 use ockam_api::cli_state::random_name;
+use ockam_api::CliState;
 use tracing::{error, info};
 use tracing_core::Level;
 
@@ -25,6 +27,7 @@ async fn test_log_and_traces() {
     let log_exporter = InMemoryLogExporter::default();
     let endpoint = get_https_endpoint().unwrap();
     let guard = LoggingTracing::setup_with_exporters(
+        Arc::new(CliState::test().await.unwrap()),
         span_exporter.clone(),
         log_exporter.clone(),
         &make_configuration()
@@ -36,7 +39,6 @@ async fn test_log_and_traces() {
         )
         .unwrap(),
         "test",
-        None,
     );
 
     let tracer = global::tracer("ockam-test");

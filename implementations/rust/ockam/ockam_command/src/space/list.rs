@@ -29,7 +29,7 @@ impl Command for ListCommand {
     const NAME: &'static str = "space list";
 
     async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
-        let node = InMemoryNode::start(ctx, &opts.state).await?;
+        let node = InMemoryNode::start(ctx, opts.state.clone()).await?;
 
         let spaces = {
             let pb = opts.terminal.spinner();

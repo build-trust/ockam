@@ -46,7 +46,7 @@ impl Command for StatusCommand {
     async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> Result<()> {
         let identities_details = self.get_identities_details(&opts).await?;
         let nodes = self.get_nodes_resources(ctx, &opts).await?;
-        let node = InMemoryNode::start(ctx, &opts.state)
+        let node = InMemoryNode::start(ctx, opts.state.clone())
             .await?
             .with_timeout(self.timeout.timeout);
         let controller = node.create_controller().await?;
@@ -97,8 +97,8 @@ impl StatusCommand {
                 pb.set_message(format!("Retrieving node {}...", node.name()));
             }
             let mut node =
-                BackgroundNodeClient::create(ctx, &opts.state, &Some(node.name())).await?;
-            nodes_resources.push(get_node_resources(ctx, &opts.state, &mut node).await?);
+                BackgroundNodeClient::create(ctx, opts.state.clone(), &Some(node.name())).await?;
+            nodes_resources.push(get_node_resources(ctx, opts.state.clone(), &mut node).await?);
         }
         if let Some(ref pb) = pb {
             pb.finish_and_clear();
