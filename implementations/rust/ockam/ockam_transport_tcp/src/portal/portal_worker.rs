@@ -4,21 +4,27 @@ use crate::portal::portal_worker::ReadHalfMaybeTls::{ReadHalfNoTls, ReadHalfWith
 use crate::portal::portal_worker::WriteHalfMaybeTls::{WriteHalfNoTls, WriteHalfWithTls};
 use crate::transport::{connect, connect_tls};
 use crate::{portal::TcpPortalRecvProcessor, PortalInternalMessage, PortalMessage, TcpRegistry};
+use core::fmt::{Display, Formatter};
+use log::kv::Value;
 use ockam_core::compat::{boxed::Box, sync::Arc};
 use ockam_core::{
     async_trait, AllowAll, AllowOnwardAddress, AllowSourceAddress, Decodable, DenyAll,
-    IncomingAccessControl, LocalInfoIdentifier, Mailbox, Mailboxes, OutgoingAccessControl,
-    SecureChannelLocalInfo,
+    IncomingAccessControl, LocalInfoIdentifier, Mailbox, Mailboxes, OpenTelemetryContext,
+    OutgoingAccessControl, SecureChannelLocalInfo, OCKAM_TRACER_NAME,
 };
 use ockam_core::{Any, Result, Route, Routed, Worker};
 use ockam_node::{Context, ProcessorBuilder, WorkerBuilder, WorkerShutdownPriority};
 use ockam_transport_core::{HostnamePort, TransportError};
+use opentelemetry::global::BoxedSpan;
+use opentelemetry::trace::{FutureExt, Span, TraceContextExt, Tracer};
+use opentelemetry::{global, KeyValue};
+use std::ops::Deref;
 use std::time::Duration;
 use tokio::io::{AsyncRead, AsyncWriteExt, ReadHalf, WriteHalf};
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::net::TcpStream;
 use tokio_rustls::TlsStream;
-use tracing::{debug, info, instrument, trace, warn, Level};
+use tracing::{debug, info, info_span, instrument, trace, warn, Level};
 
 /// Enumerate all `TcpPortalWorker` states
 ///
@@ -26,12 +32,23 @@ use tracing::{debug, info, instrument, trace, warn, Level};
 ///
 /// `Outlet`: `SendPong` -> `Initialized`
 /// `Inlet`: `SendPing` -> `ReceivePong` -> `Initialized`
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 enum State {
     SendPing { ping_route: Route },
     SendPong { pong_route: Route },
     ReceivePong,
     Initialized,
+}
+
+impl Display for State {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        match self {
+            State::SendPing { .. } => f.write_str("send-ping"),
+            State::SendPong { .. } => f.write_str("send-pong"),
+            State::ReceivePong => f.write_str("receive-pong"),
+            State::Initialized => f.write_str("initialized"),
+        }
+    }
 }
 
 pub(crate) enum HandshakeMode {
@@ -567,7 +584,7 @@ impl Worker for TcpPortalWorker {
 
     // TcpSendWorker will receive messages from the TcpRouter to send
     // across the TcpStream to our friend
-    #[instrument(skip_all, name = "TcpPortalWorker::handle_message", level = Level::TRACE)]
+    // #[instrument(skip_all, name = "TcpPortalWorker::handle_message_root", fields(state, actual_identifier, expected_identifier), level = Level::INFO)]
     async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Any>) -> Result<()> {
         if self.is_disconnecting {
             return Ok(());
@@ -584,11 +601,11 @@ impl Worker for TcpPortalWorker {
         }
 
         let remote_packet = recipient != self.addresses.sender_internal;
-        if remote_packet {
-            let their_identifier = SecureChannelLocalInfo::find_info_from_list(&msg.local_info)
-                .map(|l| l.their_identifier())
-                .ok();
+        let their_identifier = SecureChannelLocalInfo::find_info_from_list(&msg.local_info)
+            .map(|l| l.their_identifier())
+            .ok();
 
+        if remote_packet {
             if their_identifier != self.their_identifier {
                 debug!(
                     "identifier changed from {:?} to {:?}",
@@ -601,7 +618,6 @@ impl Worker for TcpPortalWorker {
 
         let return_route = msg.return_route;
         let payload = msg.payload;
-
         match &self.state {
             State::ReceivePong => {
                 if !remote_packet {
@@ -620,6 +636,10 @@ impl Worker for TcpPortalWorker {
 
                 if remote_packet {
                     let msg = PortalMessage::decode(&payload)?;
+                    if !msg.is_disconnect() {
+                        let span = self.start_span(ctx, &their_identifier)?;
+                        ctx.set_tracing_context_from_span(span);
+                    }
                     // Send to Tcp stream
                     match msg {
                         PortalMessage::Payload(payload, packet_counter) => {
@@ -737,5 +757,44 @@ impl TcpPortalWorker {
             self.last_received_packet_counter = packet_counter;
         };
         Ok(())
+    }
+
+    fn start_span(
+        &self,
+        ctx: &Context,
+        their_identifier: &Option<LocalInfoIdentifier>,
+    ) -> Result<BoxedSpan> {
+        let name = match self.addresses.portal_type {
+            PortalType::Inlet { .. } => "receive_ockam_message_from_outlet",
+            PortalType::Outlet => "receive_ockam_message_from_inlet",
+            PortalType::PrivilegedInlet { .. } => "receive_ockam_message_from_privileged_outlet",
+            PortalType::PrivilegedOutlet => "receive_ockam_message_from_privileged_inlet",
+        };
+        let tracer = global::tracer(OCKAM_TRACER_NAME);
+        let mut span = tracer
+            .span_builder(name)
+            .with_attributes(vec![
+                KeyValue::new("portal_state", self.state.to_string()),
+                KeyValue::new("hostname_port", self.hostname_port.to_string()),
+                KeyValue::new("portal_type", self.addresses.portal_type.to_string()),
+                KeyValue::new("worker_address", ctx.primary_address().to_string()),
+                KeyValue::new(
+                    "worker_other_addresses",
+                    ctx.additional_addresses()
+                        .map(|a| a.to_string())
+                        .collect::<Vec<String>>()
+                        .join(",")
+                        .to_string(),
+                ),
+            ])
+            .start(&tracer);
+
+        self.their_identifier
+            .as_ref()
+            .map(|i| span.set_attribute(KeyValue::new("expected_identifier", i.to_string())));
+        their_identifier
+            .as_ref()
+            .map(|i| span.set_attribute(KeyValue::new("actual_identifier", i.to_string())));
+        Ok(span)
     }
 }

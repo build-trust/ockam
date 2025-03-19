@@ -65,6 +65,15 @@ impl<'de> PortalMessage<'de> {
     pub fn to_neutral_message(self) -> ockam_core::Result<NeutralMessage> {
         Ok(NeutralMessage::from(self.encode()?))
     }
+
+    pub fn is_disconnect(&self) -> bool {
+        match self {
+            PortalMessage::Disconnect => true,
+            PortalMessage::Ping => false,
+            PortalMessage::Pong => false,
+            PortalMessage::Payload(_, _) => false,
+        }
+    }
 }
 
 impl Encodable for PortalMessage<'_> {

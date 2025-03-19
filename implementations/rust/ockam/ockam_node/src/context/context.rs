@@ -18,6 +18,7 @@ use core::fmt::{Debug, Formatter};
 use ockam_core::compat::sync::Weak;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_transport_core::Transport;
+use opentelemetry::trace::{Span, TraceContextExt};
 
 /// A default timeout in seconds
 pub const DEFAULT_TIMEOUT: Duration = Duration::from_secs(30);
@@ -147,6 +148,14 @@ impl Context {
     #[cfg(feature = "std")]
     pub fn set_tracing_context(&mut self, tracing_context: OpenTelemetryContext) {
         self.tracing_context = tracing_context
+    }
+
+    /// Set the current tracing context from a started span
+    #[cfg(feature = "std")]
+    pub fn set_tracing_context_from_span(&mut self, span: impl Span) {
+        let context =
+            opentelemetry::Context::new().with_remote_span_context(span.span_context().clone());
+        self.tracing_context = OpenTelemetryContext::inject(&context)
     }
 }
 

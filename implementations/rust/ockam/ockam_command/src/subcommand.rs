@@ -258,24 +258,12 @@ impl OckamSubcommand {
     pub fn node_name(&self) -> Option<String> {
         match self {
             OckamSubcommand::Node(cmd) => match &cmd.subcommand {
-                NodeSubcommand::Create(cmd) => {
-                    if cmd.foreground_args.child_process {
-                        Some(cmd.name.clone())
-                    } else {
-                        None
-                    }
-                }
+                NodeSubcommand::Create(cmd) => Some(cmd.name.clone()),
                 _ => None,
             },
 
             OckamSubcommand::Authority(cmd) => match &cmd.subcommand {
-                AuthoritySubcommand::Create(cmd) => {
-                    if cmd.child_process {
-                        Some(cmd.node_name())
-                    } else {
-                        None
-                    }
-                }
+                AuthoritySubcommand::Create(cmd) => Some(cmd.node_name()),
             },
             _ => None,
         }
