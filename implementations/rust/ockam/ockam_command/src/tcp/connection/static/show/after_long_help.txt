@@ -1,7 +1,7 @@
 ```sh
-# To show a TCP connection given its internal address
+# To show a TCP Connection given its worker address
 $ ockam tcp-connection show d59c01ab8d9683f8c454df746e627b43
 
-# To show a TCP connection given its socket address
+# To show a TCP Connection given its socket address
 $ ockam tcp-connection show 127.0.0.1:5000
 ```

@@ -111,7 +111,7 @@ impl ShowCommandTui for ShowTui {
             .clone()
             .to_stdout()
             .plain(&node_resources)
-            .json(serde_json::to_string(&node_resources).into_diagnostic()?)
+            .json_obj(&node_resources)?
             .write_line()?;
         Ok(())
     }

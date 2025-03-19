@@ -16,28 +16,33 @@ teardown() {
 
 @test "tcp connection - CRUD" {
   port="$(random_port)"
-  addr="127.0.0.1:$port"
-  run_success "$OCKAM" node create n1 --tcp-listener-address "$addr"
+  run_success "$OCKAM" node create n1 --tcp-listener-address "127.0.0.1:$port"
 
   # Create tcp-connection and check output
-  run_success "$OCKAM" tcp-connection create --from n1 --to "$addr" --output json
-  assert_output --partial "n1"
-  assert_output --partial $addr
+  addr=$("$OCKAM" tcp-connection create --from n1 --to "127.0.0.1:$port")
 
   # Check that the connection is listed
-  run_success "$OCKAM" tcp-connection list --at n1
+  run_success "$OCKAM" tcp-connection list --at n1 --output json
   assert_output --partial "$addr"
+  assert_output --partial "127.0.0.1:$port"
 
   # Show the connection details
-  run_success "$OCKAM" tcp-connection show --at n1 "$addr"
+  run_success "$OCKAM" tcp-connection show --at n1 "$addr" --output json
   assert_output --partial "$addr"
+  assert_output --partial "127.0.0.1:$port"
+
+  # It also works passing the socket address
+  run_success "$OCKAM" tcp-connection show --at n1 "127.0.0.1:$port" --output json
+  assert_output --partial "$addr"
+  assert_output --partial "127.0.0.1:$port"
 
   # Delete the connection
   run_success "$OCKAM" tcp-connection delete --at n1 "$addr" --yes
 
   # Check that it's no longer listed
-  run_success "$OCKAM" tcp-connection list --at n1
+  run_success "$OCKAM" tcp-connection list --at n1 --output json
   refute_output --partial "$addr"
+  refute_output --partial "127.0.0.1:$port"
 }
 
 @test "tcp listener - CRUD" {

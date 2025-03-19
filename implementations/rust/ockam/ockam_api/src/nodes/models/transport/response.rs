@@ -2,6 +2,7 @@ use crate::colors::color_primary;
 use crate::nodes::models::transport::{TransportMode, TransportType};
 use crate::nodes::service::ApiTransport;
 use crate::output::Output;
+use crate::terminal::fmt;
 use minicbor::{CborLen, Decode, Encode};
 use ockam::tcp::{TcpConnection, TcpListener, TcpListenerInfo, TcpSenderInfo};
 use ockam::Message;
@@ -25,9 +26,9 @@ pub struct TransportStatus {
     #[serde(rename = "mode")]
     #[n(2)] pub tm: TransportMode,
     /// Corresponding socket address
-    #[n(3)] pub socket_addr: String,
+    #[n(3)] pub socket_address: String,
     /// Corresponding worker address
-    #[n(4)] pub worker_addr: String,
+    #[n(4)] pub worker_address: String,
     /// Corresponding worker address
     #[n(5)] pub processor_address: String,
     /// Corresponding flow control id
@@ -52,7 +53,7 @@ impl TransportStatus {
     }
 
     pub fn socket_addr(&self) -> Result<SocketAddrV4> {
-        self.socket_addr
+        self.socket_address
             .parse::<SocketAddrV4>()
             .map_err(|err| Error::new(Origin::Transport, Kind::Invalid, err))
     }
@@ -60,9 +61,9 @@ impl TransportStatus {
     pub fn multiaddr(&self) -> Result<MultiAddr> {
         let mut m = MultiAddr::default();
         let worker_address = self
-            .worker_addr
+            .worker_address
             .strip_prefix("0#")
-            .unwrap_or(self.worker_addr.as_ref());
+            .unwrap_or(self.worker_address.as_ref());
         m.push_back(Worker::new(worker_address))?;
 
         Ok(m)
@@ -74,8 +75,8 @@ impl From<ApiTransport> for TransportStatus {
         Self {
             tt: value.tt,
             tm: value.tm,
-            socket_addr: value.socket_address.to_string(),
-            worker_addr: value.worker_address.clone(),
+            socket_address: value.socket_address.to_string(),
+            worker_address: value.worker_address.clone(),
             processor_address: value.processor_address.clone(),
             flow_control_id: value.flow_control_id,
         }
@@ -87,8 +88,8 @@ impl From<TcpSenderInfo> for TransportStatus {
         Self {
             tt: TransportType::Tcp,
             tm: (*value.mode()).into(),
-            socket_addr: value.socket_address().to_string(),
-            worker_addr: value.address().to_string(),
+            socket_address: value.socket_address().to_string(),
+            worker_address: value.address().to_string(),
             processor_address: value.receiver_address().to_string(),
             flow_control_id: value.flow_control_id().clone(),
         }
@@ -100,8 +101,8 @@ impl From<TcpListenerInfo> for TransportStatus {
         Self {
             tt: TransportType::Tcp,
             tm: TransportMode::Listen,
-            socket_addr: value.socket_address().to_string(),
-            worker_addr: "<none>".into(),
+            socket_address: value.socket_address().to_string(),
+            worker_address: "<none>".into(),
             processor_address: value.address().to_string(),
             flow_control_id: value.flow_control_id().clone(),
         }
@@ -113,8 +114,8 @@ impl From<TcpConnection> for TransportStatus {
         Self {
             tt: TransportType::Tcp,
             tm: TransportMode::Outgoing,
-            socket_addr: value.socket_address().to_string(),
-            worker_addr: value.sender_address().to_string(),
+            socket_address: value.socket_address().to_string(),
+            worker_address: value.sender_address().to_string(),
             processor_address: value.receiver_address().to_string(),
             flow_control_id: value.flow_control_id().clone(),
         }
@@ -126,8 +127,8 @@ impl From<TcpListener> for TransportStatus {
         Self {
             tt: TransportType::Tcp,
             tm: TransportMode::Listen,
-            socket_addr: value.socket_address().to_string(),
-            worker_addr: "<none>".into(),
+            socket_address: value.socket_address().to_string(),
+            worker_address: "<none>".into(),
             processor_address: value.processor_address().to_string(),
             flow_control_id: value.flow_control_id().clone(),
         }
@@ -136,12 +137,13 @@ impl From<TcpListener> for TransportStatus {
 
 impl Display for TransportStatus {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(
+        writeln!(f, "{}:", color_primary(&self.worker_address))?;
+        writeln!(f, "{}{} {} Connection", fmt::INDENTATION, self.tt, self.tm,)?;
+        writeln!(
             f,
-            "{}, {} at {}",
-            self.tt,
-            self.tm,
-            color_primary(&self.socket_addr)
+            "{}bound to {}",
+            fmt::INDENTATION,
+            color_primary(&self.socket_address)
         )?;
         Ok(())
     }
