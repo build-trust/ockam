@@ -83,8 +83,8 @@ pub trait ShowCommandTui {
                         self.show_single(item_name).await?;
                     }
                     _ => {
-                        for item_name in selected_item_names {
-                            if self.show_single(&item_name).await.is_err() {
+                        for (idx, item_name) in selected_item_names.iter().enumerate() {
+                            if self.show_single(item_name).await.is_err() {
                                 self.terminal()
                                     .to_stdout()
                                     .plain(fmt_warn!(
@@ -93,6 +93,9 @@ pub trait ShowCommandTui {
                                         color_primary(item_name)
                                     ))
                                     .write_line()?;
+                            }
+                            if idx < selected_item_names.len() - 1 {
+                                self.terminal().write_line("")?;
                             }
                         }
                     }
@@ -292,6 +295,7 @@ pub enum PluralTerm {
     ProjectAdmin,
     TcpInlet,
     TcpOutlet,
+    TcpConnection,
     KafkaInlet,
     KafkaOutlet,
     Policy,
@@ -311,6 +315,7 @@ impl PluralTerm {
             PluralTerm::ProjectAdmin => "project admin",
             PluralTerm::TcpInlet => "tcp inlet",
             PluralTerm::TcpOutlet => "tcp outlet",
+            PluralTerm::TcpConnection => "tcp connection",
             PluralTerm::KafkaInlet => "kafka inlet",
             PluralTerm::KafkaOutlet => "kafka outlet",
             PluralTerm::Policy => "policy",
@@ -330,6 +335,7 @@ impl PluralTerm {
             PluralTerm::ProjectAdmin => "project admins",
             PluralTerm::TcpInlet => "tcp inlets",
             PluralTerm::TcpOutlet => "tcp outlets",
+            PluralTerm::TcpConnection => "tcp connections",
             PluralTerm::KafkaInlet => "kafka inlets",
             PluralTerm::KafkaOutlet => "kafka outlets",
             PluralTerm::Policy => "policies",

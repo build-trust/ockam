@@ -175,7 +175,14 @@ impl Display for NodeResources {
         } else {
             writeln!(f, "{}{}Transports:", fmt::PADDING, fmt::INDENTATION)?;
             for t in &self.transports {
-                writeln!(f, "{}{}{}", fmt::PADDING, fmt::INDENTATION.repeat(2), t)?;
+                write!(f, "{}{}", fmt::PADDING, fmt::INDENTATION.repeat(2))?;
+                writeln!(
+                    f,
+                    "{}, {} at {}",
+                    t.tt,
+                    t.tm,
+                    color_primary(&t.socket_address)
+                )?;
             }
         }
 
