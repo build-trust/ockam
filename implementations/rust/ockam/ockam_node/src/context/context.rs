@@ -18,6 +18,7 @@ use core::fmt::{Debug, Formatter};
 use ockam_core::compat::sync::Weak;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_transport_core::Transport;
+#[cfg(feature = "std")]
 use opentelemetry::trace::{Span, TraceContextExt};
 
 /// A default timeout in seconds
