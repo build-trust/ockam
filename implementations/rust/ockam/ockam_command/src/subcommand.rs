@@ -254,6 +254,21 @@ impl OckamSubcommand {
         }
     }
 
+    /// Return true if this command represents the execution of a local node
+    pub fn is_local_node(&self) -> bool {
+        match self {
+            OckamSubcommand::Node(cmd) => match &cmd.subcommand {
+                NodeSubcommand::Create(cmd) => cmd.foreground_args.foreground || cmd.foreground_args.child_process,
+                _ => false,
+            },
+
+            OckamSubcommand::Authority(cmd) => match &cmd.subcommand {
+                AuthoritySubcommand::Create(cmd) => cmd.foreground || cmd.child_process,
+            },
+            _ => false,
+        }
+    }
+
     /// Return the node name for an ockam node create command
     pub fn node_name(&self) -> Option<String> {
         match self {

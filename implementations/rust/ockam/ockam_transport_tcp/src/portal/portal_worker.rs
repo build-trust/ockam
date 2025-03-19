@@ -5,26 +5,24 @@ use crate::portal::portal_worker::WriteHalfMaybeTls::{WriteHalfNoTls, WriteHalfW
 use crate::transport::{connect, connect_tls};
 use crate::{portal::TcpPortalRecvProcessor, PortalInternalMessage, PortalMessage, TcpRegistry};
 use core::fmt::{Display, Formatter};
-use log::kv::Value;
 use ockam_core::compat::{boxed::Box, sync::Arc};
 use ockam_core::{
     async_trait, AllowAll, AllowOnwardAddress, AllowSourceAddress, Decodable, DenyAll,
-    IncomingAccessControl, LocalInfoIdentifier, Mailbox, Mailboxes, OpenTelemetryContext,
-    OutgoingAccessControl, SecureChannelLocalInfo, OCKAM_TRACER_NAME,
+    IncomingAccessControl, LocalInfoIdentifier, Mailbox, Mailboxes, OutgoingAccessControl,
+    SecureChannelLocalInfo, OCKAM_TRACER_NAME,
 };
 use ockam_core::{Any, Result, Route, Routed, Worker};
 use ockam_node::{Context, ProcessorBuilder, WorkerBuilder, WorkerShutdownPriority};
 use ockam_transport_core::{HostnamePort, TransportError};
 use opentelemetry::global::BoxedSpan;
-use opentelemetry::trace::{FutureExt, Span, TraceContextExt, Tracer};
+use opentelemetry::trace::{Span, Tracer};
 use opentelemetry::{global, KeyValue};
-use std::ops::Deref;
 use std::time::Duration;
 use tokio::io::{AsyncRead, AsyncWriteExt, ReadHalf, WriteHalf};
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::net::TcpStream;
 use tokio_rustls::TlsStream;
-use tracing::{debug, info, info_span, instrument, trace, warn, Level};
+use tracing::{debug, info, instrument, trace, warn, Level};
 
 /// Enumerate all `TcpPortalWorker` states
 ///

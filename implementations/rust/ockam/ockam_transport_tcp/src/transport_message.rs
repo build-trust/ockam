@@ -1,5 +1,4 @@
 use cfg_if::cfg_if;
-use log::info;
 use minicbor::{CborLen, Decode, Encode};
 use ockam_core::compat::string::String;
 #[cfg(feature = "std")]

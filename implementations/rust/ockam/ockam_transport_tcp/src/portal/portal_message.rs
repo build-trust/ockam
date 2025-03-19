@@ -66,6 +66,7 @@ impl<'de> PortalMessage<'de> {
         Ok(NeutralMessage::from(self.encode()?))
     }
 
+    /// Return true for a disconnect message
     pub fn is_disconnect(&self) -> bool {
         match self {
             PortalMessage::Disconnect => true,
