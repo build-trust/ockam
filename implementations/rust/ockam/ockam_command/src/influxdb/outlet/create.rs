@@ -136,15 +136,17 @@ impl Command for CreateCommand {
             .await?
         };
 
+        let worker_route = outlet_status.worker_route()?;
+
         opts.terminal
             .to_stdout()
             .plain(fmt_ok!(
                 "Created a new InfluxDB Outlet in the Node {} at {} bound to {}\n\n",
                 color_primary(node.node_name()),
-                color_primary(&outlet_status.worker_addr),
+                color_primary(worker_route.to_string()),
                 color_primary(&cmd.to)
             ))
-            .machine(&outlet_status.worker_addr)
+            .machine(&worker_route)
             .json_obj(&outlet_status)?
             .write_line()?;
         Ok(())

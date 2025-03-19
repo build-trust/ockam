@@ -70,7 +70,7 @@ impl From<crate::nodes::models::portal::OutletStatus> for OutletStatus {
                 hostname: status.to.hostname,
                 port: status.to.port,
             },
-            address: status.worker_addr.address().to_string(),
+            address: status.worker_address.address().to_string(),
             privileged: status.privileged,
         }
     }

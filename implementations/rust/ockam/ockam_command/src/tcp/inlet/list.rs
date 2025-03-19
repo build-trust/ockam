@@ -31,7 +31,7 @@ impl ListCommand {
         let inlets: InletStatusList = {
             let pb = opts.terminal.spinner();
             if let Some(pb) = pb.as_ref() {
-                pb.set_message(format!("Listing TCP Inlets on {}...", node.node_name()));
+                pb.set_message(format!("Listing TCP Inlets at {}...", node.node_name()));
             }
             node.ask(ctx, Request::get("/node/inlet")).await?
         };
@@ -39,7 +39,7 @@ impl ListCommand {
 
         let plain = opts.terminal.build_list(
             &inlets,
-            &format!("No TCP Inlets found on {}", node.node_name()),
+            &format!("No TCP Inlets found at {}", node.node_name()),
         )?;
         opts.terminal
             .to_stdout()

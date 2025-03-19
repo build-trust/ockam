@@ -108,7 +108,7 @@ impl TcpPortalsRepository for TcpPortalsSqlxDatabase {
         )
         .bind(node_name)
         .bind(tcp_outlet_status.to.to_string())
-        .bind(tcp_outlet_status.worker_addr.to_string())
+        .bind(tcp_outlet_status.worker_address.to_string())
         .bind(tcp_outlet_status.payload.as_ref())
         .bind(tcp_outlet_status.privileged);
         query.execute(&*self.database.pool).await.void()?;
@@ -189,10 +189,10 @@ impl TcpOutletStatusRow {
     fn tcp_outlet_status(&self) -> Result<OutletStatus> {
         let to = HostnamePort::from_str(&self.socket_addr)
             .map_err(|e| Error::new(Origin::Application, Kind::Serialization, e.to_string()))?;
-        let worker_addr = Address::from_string(&self.worker_addr);
+        let worker_address = Address::from_string(&self.worker_addr);
         Ok(OutletStatus {
             to,
-            worker_addr,
+            worker_address,
             payload: self.payload.clone(),
             privileged: self.privileged.to_bool(),
         })

@@ -109,7 +109,7 @@ impl DeleteCommandTui for DeleteTui {
         let items_names: Vec<String> = res
             .0
             .iter()
-            .map(|outlet| outlet.worker_addr.address().to_string())
+            .map(|outlet| outlet.worker_address.address().to_string())
             .collect();
         Ok(items_names)
     }
