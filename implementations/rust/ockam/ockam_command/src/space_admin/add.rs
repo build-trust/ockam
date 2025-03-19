@@ -31,9 +31,12 @@ impl Command for AddCommand {
 
     async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
         let space = opts.state.get_space_by_name_or_default(&self.name).await?;
-        let node =
-            InMemoryNode::start_with_identity(ctx, &opts.state, self.identity_opts.identity_name)
-                .await?;
+        let node = InMemoryNode::start_with_identity(
+            ctx,
+            opts.state.clone(),
+            self.identity_opts.identity_name,
+        )
+        .await?;
         let admin = node
             .add_space_admin(ctx, &space.space_id(), &self.email)
             .await?;

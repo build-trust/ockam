@@ -66,7 +66,7 @@ impl Command for SendCommand {
 
     async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
         // Process `--to` Multiaddr
-        let (to, meta) = clean_nodes_multiaddr(&self.to, &opts.state)
+        let (to, meta) = clean_nodes_multiaddr(&self.to, opts.state.clone())
             .await
             .context("Argument '--to' is invalid")
             .map_err(Error::Retry)?;
@@ -74,7 +74,8 @@ impl Command for SendCommand {
         // Setup environment depending on whether we are sending the message from a background node
         // or an in-memory node
         let result = if let Some(node) = &self.from {
-            let client = BackgroundNodeClient::create_to_node(ctx, &opts.state, node.as_str())?;
+            let client =
+                BackgroundNodeClient::create_to_node(ctx, opts.state.clone(), node.as_str())?;
             self.send_message(&client, ctx, &to).await?
         } else {
             let identity_name = opts
@@ -86,7 +87,7 @@ impl Command for SendCommand {
 
             let node_manager = InMemoryNode::start_node(
                 ctx,
-                &opts.state,
+                opts.state.clone(),
                 &identity_name,
                 None,
                 self.trust_opts.project_name.clone(),

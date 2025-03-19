@@ -73,7 +73,7 @@ impl CreateCommand {
         ctx: &Context,
         node: &BackgroundNodeClient,
     ) -> miette::Result<MultiAddr> {
-        let (to, meta) = clean_nodes_multiaddr(&self.to, &opts.state)
+        let (to, meta) = clean_nodes_multiaddr(&self.to, opts.state.clone())
             .await
             .wrap_err(format!("Could not convert {} into route", &self.to))?;
         let identity_name = opts
@@ -95,7 +95,7 @@ impl CreateCommand {
 
     pub async fn run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         initialize_default_node(ctx, &opts).await?;
-        let node = BackgroundNodeClient::create_to_node(ctx, &opts.state, &self.from)?;
+        let node = BackgroundNodeClient::create_to_node(ctx, opts.state.clone(), &self.from)?;
 
         opts.terminal
             .write_line(fmt_log!("Creating Secure Channel...\n"))?;

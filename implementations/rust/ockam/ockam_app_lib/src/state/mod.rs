@@ -59,7 +59,7 @@ pub const PROJECT_NAME: &str = "default";
 #[derive(Clone)]
 pub struct AppState {
     context: Arc<Context>,
-    state: Arc<RwLock<CliState>>,
+    state: Arc<RwLock<Arc<CliState>>>,
     orchestrator_status: Arc<Mutex<OrchestratorStatus>>,
     model_state: Arc<RwLock<ModelState>>,
     model_state_repository: Arc<RwLock<Arc<dyn ModelStateRepository>>>,
@@ -79,7 +79,7 @@ pub struct AppState {
     pub(crate) tracing_guard: Arc<OnceLock<TracingGuard>>,
 }
 
-async fn create_node_manager(ctx: Arc<Context>, cli_state: &CliState) -> Arc<InMemoryNode> {
+async fn create_node_manager(ctx: Arc<Context>, cli_state: Arc<CliState>) -> Arc<InMemoryNode> {
     match make_node_manager(ctx.clone(), cli_state).await {
         Ok(w) => w,
         Err(e) => {
@@ -111,7 +111,7 @@ impl AppState {
                 context,
                 Some(application_state_callback),
                 Some(notification_callback),
-                cli_state,
+                Arc::new(cli_state),
             )
             .await
         };
@@ -121,7 +121,7 @@ impl AppState {
 
     /// Creates a new AppState for testing purposes
     #[cfg(test)]
-    pub async fn test(context: &Context, cli_state: CliState) -> AppState {
+    pub async fn test(context: &Context, cli_state: Arc<CliState>) -> AppState {
         Self::make(
             Arc::new(context.try_clone().unwrap()),
             None,
@@ -135,11 +135,11 @@ impl AppState {
         context: Arc<Context>,
         application_state_callback: Option<ApplicationStateCallback>,
         notification_callback: Option<NotificationCallback>,
-        cli_state: CliState,
+        cli_state: Arc<CliState>,
     ) -> AppState {
         // create the application state and its dependencies
-        let node_manager = create_node_manager(context.clone(), &cli_state).await;
-        let model_state_repository = create_model_state_repository(&cli_state);
+        let node_manager = create_node_manager(context.clone(), cli_state.clone()).await;
+        let model_state_repository = create_model_state_repository(cli_state.clone());
         let model_state = model_state_repository
             .load(&node_manager.node_name())
             .await
@@ -284,7 +284,7 @@ impl AppState {
             let mut writer = self.model_state.write().await;
             *writer = ModelState::default();
         }
-        let cli_state = &self.state().await;
+        let cli_state = self.state().await;
         let new_state_repository = create_model_state_repository(cli_state);
         {
             let mut writer = self.model_state_repository.write().await;
@@ -300,7 +300,7 @@ impl AppState {
         let mut state = self.state.write().await;
         match state.recreate().await {
             Ok(s) => {
-                *state = s;
+                *state = s.into();
                 info!("reset the cli state");
             }
             Err(e) => error!("Failed to reset the state {e:?}"),
@@ -325,7 +325,7 @@ impl AppState {
         }
         info!("stopped all the ctx workers");
 
-        let new_node_manager = make_node_manager(self.context.clone(), &self.state().await).await?;
+        let new_node_manager = make_node_manager(self.context.clone(), self.state().await).await?;
         *node_manager = new_node_manager;
         info!("set a new node manager");
         Ok(())
@@ -359,7 +359,7 @@ impl AppState {
 
     /// Return the application cli state
     /// This can be used to manage the on-disk state for projects, identities, vaults, etc...
-    pub async fn state(&self) -> CliState {
+    pub async fn state(&self) -> Arc<CliState> {
         let state = self.state.read().await;
         state.clone()
     }
@@ -391,7 +391,7 @@ impl AppState {
     pub async fn background_node(&self, node_name: &str) -> Result<BackgroundNodeClient> {
         let tcp = self.node_manager.read().await.tcp_transport().try_clone()?;
         Ok(
-            BackgroundNodeClient::create_to_node_with_tcp(&tcp, &self.state().await, node_name)
+            BackgroundNodeClient::create_to_node_with_tcp(&tcp, self.state().await, node_name)
                 .await?,
         )
     }
@@ -684,7 +684,7 @@ impl AppState {
 /// Make a node manager with a default node called "default"
 pub(crate) async fn make_node_manager(
     ctx: Arc<Context>,
-    cli_state: &CliState,
+    cli_state: Arc<CliState>,
 ) -> miette::Result<Arc<InMemoryNode>> {
     let tcp = TcpTransport::get_or_create(&ctx).into_diagnostic()?;
     let options = TcpListenerOptions::new();
@@ -729,6 +729,6 @@ pub(crate) async fn make_node_manager(
 }
 
 /// Create the repository containing the model state
-fn create_model_state_repository(state: &CliState) -> Arc<dyn ModelStateRepository> {
+fn create_model_state_repository(state: Arc<CliState>) -> Arc<dyn ModelStateRepository> {
     Arc::new(ModelStateSqlxDatabase::new(state.database()))
 }

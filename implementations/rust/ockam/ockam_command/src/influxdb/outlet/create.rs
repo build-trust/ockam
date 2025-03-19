@@ -116,7 +116,7 @@ impl Command for CreateCommand {
             ))?;
         };
 
-        let node = BackgroundNodeClient::create(ctx, &opts.state, &cmd.at).await?;
+        let node = BackgroundNodeClient::create(ctx, opts.state.clone(), &cmd.at).await?;
         let outlet_status = {
             let pb = opts.terminal.spinner();
             if let Some(pb) = pb.as_ref() {

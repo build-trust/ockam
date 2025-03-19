@@ -35,7 +35,8 @@ impl DeleteCommand {
     }
 
     pub async fn run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
-        let node = BackgroundNodeClient::create(ctx, &opts.state, &self.node_opts.at_node).await?;
+        let node =
+            BackgroundNodeClient::create(ctx, opts.state.clone(), &self.node_opts.at_node).await?;
         let req = api::delete_secure_channel_listener(&self.address);
         let response: DeleteSecureChannelListenerResponse = node.ask(ctx, req).await?;
         let addr = response.addr;

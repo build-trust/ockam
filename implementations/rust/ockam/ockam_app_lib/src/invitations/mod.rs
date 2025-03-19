@@ -34,7 +34,7 @@ impl AppState {
         let project = cli_state.projects().get_default_project().await?;
 
         Ok(CreateServiceInvitation::new(
-            &cli_state,
+            cli_state,
             None,
             project.name().to_string(),
             recipient_email.clone(),

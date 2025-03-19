@@ -36,6 +36,7 @@ use ockam_node::compat::asynchronous::resolve_peer;
 
 use std::collections::HashMap;
 use std::str::FromStr;
+use std::sync::Arc;
 use std::time::Duration;
 use tracing::trace;
 
@@ -190,7 +191,7 @@ impl Command for CreateCommand {
         initialize_default_node(ctx, &opts).await?;
         let cmd = self.parse_args(&opts).await?;
 
-        let mut node = BackgroundNodeClient::create(ctx, &opts.state, &cmd.at).await?;
+        let mut node = BackgroundNodeClient::create(ctx, opts.state.clone(), &cmd.at).await?;
         cmd.timeout.timeout.map(|t| node.set_timeout_mut(t));
 
         let inlet_status = {
@@ -250,7 +251,7 @@ impl Command for CreateCommand {
                         &cmd.allow,
                         cmd.connection_wait,
                         !cmd.no_connection_wait,
-                        &cmd.secure_channel_identifier(&opts.state).await?,
+                        &cmd.secure_channel_identifier(opts.state.clone()).await?,
                         cmd.udp || cmd.from.is_udp(),
                         cmd.no_tcp_fallback,
                         cmd.privileged,
@@ -347,7 +348,7 @@ impl CreateCommand {
 
     pub async fn secure_channel_identifier(
         &self,
-        state: &CliState,
+        state: Arc<CliState>,
     ) -> miette::Result<Option<Identifier>> {
         if let Some(identity_name) = self.identity.as_ref() {
             Ok(Some(state.get_identifier_by_name(identity_name).await?))
@@ -398,7 +399,7 @@ impl CreateCommand {
             .into_diagnostic()?;
         port_is_free_guard(&from)?;
 
-        self.to = Self::parse_arg_to(&opts.state, self.to, self.via.as_ref()).await?;
+        self.to = Self::parse_arg_to(opts.state.clone(), self.to, self.via.as_ref()).await?;
         if self.to().matches(0, &[proto::Project::CODE.into()]) && self.authorized.is_some() {
             return Err(miette!(
                 "--authorized can not be used with project addresses"
@@ -420,7 +421,7 @@ impl CreateCommand {
     }
 
     pub(crate) async fn parse_arg_to(
-        state: &CliState,
+        state: Arc<CliState>,
         to: impl Into<String>,
         via: Option<&String>,
     ) -> miette::Result<String> {
@@ -502,8 +503,8 @@ mod tests {
     #[ockam_macros::test]
     async fn parse_arg_to(ctx: &mut Context) -> ockam_core::Result<()> {
         // Setup
-        let state = CliState::test().await.unwrap();
-        let node = InMemoryNode::start(ctx, &state).await.unwrap();
+        let state = Arc::new(CliState::test().await.unwrap());
+        let node = InMemoryNode::start(ctx, state.clone()).await.unwrap();
         let node_name = node.node_name();
         let node_port = state
             .get_node(&node_name)
@@ -528,13 +529,13 @@ mod tests {
         // Invalid "to" values throw an error
         let cases = ["/alice/service", "alice/relay"];
         for to in cases {
-            CreateCommand::parse_arg_to(&state, to, None)
+            CreateCommand::parse_arg_to(state.clone(), to, None)
                 .await
                 .expect_err("Invalid multiaddr");
         }
 
         // "to" default value
-        let res = CreateCommand::parse_arg_to(&state, tcp_inlet_default_to_addr(), None)
+        let res = CreateCommand::parse_arg_to(state.clone(), tcp_inlet_default_to_addr(), None)
             .await
             .unwrap();
         assert_eq!(
@@ -549,13 +550,15 @@ mod tests {
             (&format!("/node/{node_name}/service/myoutlet"), Some(format!("/ip4/127.0.0.1/tcp/{node_port}/service/myoutlet"))),
         ];
         for (to, expected) in cases {
-            let res = CreateCommand::parse_arg_to(&state, to, None).await.unwrap();
+            let res = CreateCommand::parse_arg_to(state.clone(), to, None)
+                .await
+                .unwrap();
             let expected = expected.unwrap_or(to.to_string());
             assert_eq!(res, expected);
         }
 
         // "to" argument accepts the name of the service
-        let res = CreateCommand::parse_arg_to(&state, "myoutlet", None)
+        let res = CreateCommand::parse_arg_to(state.clone(), "myoutlet", None)
             .await
             .unwrap();
         assert_eq!(
@@ -577,7 +580,7 @@ mod tests {
             ),
         ];
         for (to, via, expected) in cases {
-            let res = CreateCommand::parse_arg_to(&state, &to, Some(&via.to_string()))
+            let res = CreateCommand::parse_arg_to(state.clone(), &to, Some(&via.to_string()))
                 .await
                 .unwrap();
             assert_eq!(res, expected.to_string());
@@ -585,7 +588,7 @@ mod tests {
 
         // if "to" is passed as a full route and also "via" is passed, return an error
         let to = "/project/p1/service/forward_to_n1/secure/api/service/outlet";
-        CreateCommand::parse_arg_to(&state, to, Some(&"myrelay".to_string()))
+        CreateCommand::parse_arg_to(state.clone(), to, Some(&"myrelay".to_string()))
             .await
             .expect_err("'via' can't be passed if 'to' is a full route");
 

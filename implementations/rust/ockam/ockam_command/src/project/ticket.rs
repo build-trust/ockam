@@ -100,7 +100,7 @@ impl Command for TicketCommand {
 
         let node = InMemoryNode::start_with_project_name(
             ctx,
-            &opts.state,
+            opts.state.clone(),
             cmd.trust_opts.project_name.clone(),
         )
         .await?;

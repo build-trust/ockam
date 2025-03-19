@@ -41,7 +41,8 @@ impl StartCommand {
     }
 
     pub async fn run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
-        let node = BackgroundNodeClient::create(ctx, &opts.state, &self.node_opts.at_node).await?;
+        let node =
+            BackgroundNodeClient::create(ctx, opts.state.clone(), &self.node_opts.at_node).await?;
         let addr = match &self.create_subcommand {
             StartSubCommand::Hop { addr, .. } => {
                 start_hop_service(ctx, &node, addr).await?;

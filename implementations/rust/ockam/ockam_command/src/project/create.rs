@@ -41,7 +41,7 @@ impl CreateCommand {
     }
 
     pub(crate) async fn run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
-        let node = InMemoryNode::start(ctx, &opts.state).await?;
+        let node = InMemoryNode::start(ctx, opts.state.clone()).await?;
         let project = node
             .create_project(ctx, &self.space_name, &self.project_name, vec![])
             .await?;

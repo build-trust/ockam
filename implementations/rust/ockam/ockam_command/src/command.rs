@@ -24,6 +24,7 @@ use opentelemetry::global;
 use opentelemetry::trace::{FutureExt, Link, SpanBuilder, TraceContextExt, Tracer};
 use opentelemetry::Context as OtelContext;
 use std::process::exit;
+use std::sync::Arc;
 use tracing::{debug, info, instrument, warn, Level};
 
 const ABOUT: &str = include_str!("./static/about.txt");
@@ -102,6 +103,7 @@ impl OckamCommand {
     /// If the node is a background node we always enable logging, regardless of environment variables
     fn setup_logging_tracing(
         &self,
+        cli_state: Arc<CliState>,
         logging_configuration: &LoggingConfiguration,
         exporting_configuration: &ExportingConfiguration,
         ctx: &Context,
@@ -116,10 +118,10 @@ impl OckamCommand {
             "cli"
         };
         let tracing_guard = LoggingTracing::setup(
+            cli_state,
             logging_configuration,
             exporting_configuration,
             app_name,
-            self.subcommand.node_name(),
             ctx,
         );
 
@@ -212,16 +214,26 @@ impl OckamCommand {
             let cli_state = self.init_cli_state(in_memory).await;
             let exporting_configuration =
                 self.make_exporting_configuration(&cli_state, ctx).await?;
-            let tracing_guard =
-                self.setup_logging_tracing(&logging_configuration, &exporting_configuration, ctx);
             let cli_state = cli_state.set_tracing_enabled(exporting_configuration.is_enabled());
+            let cli_state = Arc::new(cli_state);
+            let tracing_guard = self.setup_logging_tracing(
+                cli_state.clone(),
+                &logging_configuration,
+                &exporting_configuration,
+                ctx,
+            );
 
             (exporting_configuration, tracing_guard, Some(cli_state))
         } else {
             // Allows having logging enabled before initializing CliState
             let exporting_configuration = ExportingConfiguration::off().into_diagnostic()?;
-            let tracing_guard =
-                self.setup_logging_tracing(&logging_configuration, &exporting_configuration, ctx);
+            let cli_state = self.init_cli_state(true).await;
+            let tracing_guard = self.setup_logging_tracing(
+                Arc::new(cli_state),
+                &logging_configuration,
+                &exporting_configuration,
+                ctx,
+            );
 
             (exporting_configuration, tracing_guard, None)
         };
@@ -253,11 +265,12 @@ impl OckamCommand {
 
         let cli_state = match cli_state {
             Some(cli_state) => cli_state,
-            None => self
-                .init_cli_state(in_memory)
-                .with_context(cx.clone())
-                .await
-                .set_tracing_enabled(exporting_configuration.is_enabled()),
+            None => Arc::new(
+                self.init_cli_state(in_memory)
+                    .with_context(cx.clone())
+                    .await
+                    .set_tracing_enabled(exporting_configuration.is_enabled()),
+            ),
         };
 
         let terminal = Terminal::new(

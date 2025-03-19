@@ -46,7 +46,8 @@ impl<'a> ShowTui<'a> {
         opts: CommandGlobalOpts,
         cmd: &'a ShowCommand,
     ) -> miette::Result<()> {
-        let node = BackgroundNodeClient::create(ctx, &opts.state, &cmd.node_opts.at_node).await?;
+        let node =
+            BackgroundNodeClient::create(ctx, opts.state.clone(), &cmd.node_opts.at_node).await?;
         let tui = Self {
             ctx,
             opts,

@@ -29,7 +29,7 @@ impl Command for ListCommand {
             .await?;
         let node = InMemoryNode::start_with_identity_and_project_name(
             ctx,
-            &opts.state,
+            opts.state.clone(),
             self.identity_opts.identity_name,
             Some(project.project_name().to_string()),
         )

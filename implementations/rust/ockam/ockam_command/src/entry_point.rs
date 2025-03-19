@@ -1,7 +1,7 @@
-use std::process::exit;
-
 use clap::{Command, Parser};
 use miette::IntoDiagnostic;
+use std::process::exit;
+use std::sync::Arc;
 
 use crate::branding::BrandingCompileEnvVars;
 use crate::{
@@ -99,13 +99,15 @@ async fn handle_invalid_command(
             LogFormat::Default,
             logging_enabled()?,
         );
+        let exporting_configuration = ExportingConfiguration::foreground(&cli_state, ctx)
+            .await
+            .into_diagnostic()?;
+        let cli_state = Arc::new(cli_state);
         let _guard = LoggingTracing::setup(
+            cli_state.clone(),
             &logging_configuration.into_diagnostic()?,
-            &ExportingConfiguration::foreground(&cli_state, ctx)
-                .await
-                .into_diagnostic()?,
+            &exporting_configuration,
             "local node",
-            None,
             ctx,
         );
 

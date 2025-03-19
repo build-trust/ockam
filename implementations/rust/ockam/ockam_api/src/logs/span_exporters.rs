@@ -1,12 +1,17 @@
 use crate::cli_state::journeys::attributes::make_host;
 use crate::cli_state::journeys::{
-    APPLICATION_EVENT_HOST, APPLICATION_EVENT_NODE_NAME, APPLICATION_EVENT_OCKAM_DEVELOPER,
+    APPLICATION_EVENT_HOST, APPLICATION_EVENT_NODE_IDENTIFIER, APPLICATION_EVENT_NODE_NAME,
+    APPLICATION_EVENT_OCKAM_DEVELOPER,
 };
+use crate::CliState;
 use futures::future::BoxFuture;
+use futures::FutureExt;
 use ockam_core::async_trait;
 use opentelemetry::KeyValue;
 use opentelemetry_sdk::export::trace::{ExportResult, SpanData, SpanExporter};
+use std::sync::Arc;
 use std::time::Duration;
+use tokio::sync::Mutex;
 
 /// This exporter can be used to intercept the spans sent to an OpenTelemetry collector
 #[derive(Debug)]
@@ -41,22 +46,30 @@ impl<S: SpanExporter> DecoratedSpanExporter<S> {
 /// This exporter can be used to intercept the spans sent to an OpenTelemetry collector
 /// and add custom attributes
 #[derive(Debug)]
-pub struct OckamSpanExporter<S: SpanExporter> {
-    exporter: S,
-    node_name: Option<String>,
+pub struct OckamSpanExporter<S: SpanExporter + 'static> {
+    cli_state: Arc<CliState>,
+    exporter: Arc<Mutex<S>>,
     is_ockam_developer: bool,
     span_export_cutoff: Option<Duration>,
 }
 
 #[async_trait]
-impl<S: SpanExporter> SpanExporter for OckamSpanExporter<S> {
+impl<S: SpanExporter + 'static> SpanExporter for OckamSpanExporter<S> {
     fn export(&mut self, batch: Vec<SpanData>) -> BoxFuture<'static, ExportResult> {
-        let f = self.exporter.export(self.add_attributes(
-            self.filter(batch),
-            self.node_name.clone(),
-            self.is_ockam_developer,
-        ));
+        let cli_state = self.cli_state.clone();
+        let is_ockam_developer = self.is_ockam_developer;
         let span_export_cutoff = self.span_export_cutoff;
+        let exporter = self.exporter.clone();
+
+        let f = async move {
+            let mut exporter = exporter.lock().await;
+            exporter
+                .export(
+                    Self::add_attributes(cli_state, Self::filter(batch), is_ockam_developer).await,
+                )
+                .await
+        }
+        .boxed();
 
         Box::pin(async move {
             match span_export_cutoff {
@@ -71,54 +84,66 @@ impl<S: SpanExporter> SpanExporter for OckamSpanExporter<S> {
 
     fn shutdown(&mut self) {
         debug!("shutting down the span exporter");
-        self.exporter.shutdown()
+        let mut exporter = self.exporter.blocking_lock(); // Use blocking_lock() to acquire a lock synchronously
+        exporter.shutdown();
     }
 
     fn force_flush(&mut self) -> BoxFuture<'static, ExportResult> {
         debug!("flushing the span exporter");
-        self.exporter.force_flush()
+        let exporter = self.exporter.clone();
+        async move {
+            let mut exporter = exporter.lock().await;
+            exporter.force_flush().await
+        }
+        .boxed()
     }
 }
 
 impl<S: SpanExporter> OckamSpanExporter<S> {
     pub fn new(
+        cli_state: Arc<CliState>,
         exporter: S,
-        node_name: Option<String>,
         is_ockam_developer: bool,
         span_export_cutoff: Option<Duration>,
     ) -> OckamSpanExporter<S> {
         OckamSpanExporter {
-            exporter,
-            node_name,
+            cli_state,
+            exporter: Arc::new(Mutex::new(exporter)),
             is_ockam_developer,
             span_export_cutoff,
         }
     }
 
-    fn add_attributes(
-        &self,
+    async fn add_attributes(
+        cli_state: Arc<CliState>,
         batch: Vec<SpanData>,
-        node_name: Option<String>,
         is_ockam_developer: bool,
     ) -> Vec<SpanData> {
-        batch
-            .into_iter()
-            .map(|s| self.add_attributes_to_span(s, node_name.clone(), is_ockam_developer))
-            .collect()
+        let mut result = vec![];
+        for span in batch.into_iter() {
+            result.push(
+                Self::add_attributes_to_span(cli_state.clone(), span, is_ockam_developer).await,
+            )
+        }
+        result
     }
 
-    fn add_attributes_to_span(
-        &self,
+    async fn add_attributes_to_span(
+        cli_state: Arc<CliState>,
         mut span: SpanData,
-        node_name: Option<String>,
         is_ockam_developer: bool,
     ) -> SpanData {
-        if let Some(node_name) = node_name {
+        if let Ok(node_info) = cli_state.get_default_node().await {
             span.attributes.push(KeyValue::new(
                 APPLICATION_EVENT_NODE_NAME.clone(),
-                node_name,
+                node_info.name(),
+            ));
+            span.attributes.push(KeyValue::new(
+                APPLICATION_EVENT_NODE_IDENTIFIER.clone(),
+                node_info.identifier().to_string(),
             ));
         };
+
         span.attributes.push(KeyValue::new(
             APPLICATION_EVENT_OCKAM_DEVELOPER.clone(),
             is_ockam_developer,
@@ -128,14 +153,14 @@ impl<S: SpanExporter> OckamSpanExporter<S> {
         span
     }
 
-    fn filter(&self, batch: Vec<SpanData>) -> Vec<SpanData> {
+    fn filter(batch: Vec<SpanData>) -> Vec<SpanData> {
         batch
             .into_iter()
-            .filter_map(|s| self.filter_span(s))
+            .filter_map(|s| Self::filter_span(s))
             .collect()
     }
 
-    fn filter_span(&self, mut span: SpanData) -> Option<SpanData> {
+    fn filter_span(mut span: SpanData) -> Option<SpanData> {
         // drop span events since they are log messages that we already send as logs records.
         span.events.events = vec![];
         Some(span)

@@ -106,7 +106,7 @@ impl EnrollCommand {
     async fn run_impl(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         ctrlc_handler(opts.clone());
 
-        if self.is_already_enrolled(&opts.state, &opts).await? {
+        if self.is_already_enrolled(opts.state.clone(), &opts).await? {
             return Ok(());
         }
 
@@ -114,7 +114,7 @@ impl EnrollCommand {
 
         let identity = {
             let _notification_handler =
-                NotificationHandler::start(&opts.state, opts.terminal.clone());
+                NotificationHandler::start(opts.state.clone(), opts.terminal.clone());
             opts.state
                 .get_named_identity_or_default(&self.identity)
                 .await?
@@ -122,8 +122,9 @@ impl EnrollCommand {
 
         let identity_name = identity.name();
         let identifier = identity.identifier();
-        let node = InMemoryNode::start_with_identity(ctx, &opts.state, Some(identity_name.clone()))
-            .await?;
+        let node =
+            InMemoryNode::start_with_identity(ctx, opts.state.clone(), Some(identity_name.clone()))
+                .await?;
 
         let user_info = self.enroll_identity(ctx, &opts, &node).await?;
 
@@ -198,7 +199,7 @@ impl EnrollCommand {
     /// Check if the identity is already enrolled and display a message to the user.
     async fn is_already_enrolled(
         &self,
-        cli_state: &CliState,
+        cli_state: Arc<CliState>,
         opts: &CommandGlobalOpts,
     ) -> miette::Result<bool> {
         let mut is_already_enrolled = !cli_state

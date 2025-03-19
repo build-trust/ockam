@@ -146,7 +146,7 @@ impl AddonConfigureInfluxdbSubcommand {
             self.admin_access_role.clone(),
         );
 
-        let node = InMemoryNode::start(ctx, &opts.state).await?;
+        let node = InMemoryNode::start(ctx, opts.state.clone()).await?;
         let controller = node.create_controller().await?;
 
         let response = controller

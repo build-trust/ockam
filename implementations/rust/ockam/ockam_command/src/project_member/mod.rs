@@ -1,15 +1,12 @@
 use std::collections::BTreeMap;
 
+use add::{AddCommand, OCKAM_RELAY_ATTRIBUTE};
 use clap::Args;
 use clap::Subcommand;
-use miette::miette;
-use serde::Serialize;
-use std::fmt::Write;
-
-use add::{AddCommand, OCKAM_RELAY_ATTRIBUTE};
 use delete::DeleteCommand;
 use list::ListCommand;
 use list_ids::ListIdsCommand;
+use miette::miette;
 use ockam::identity::{AttributesEntry, Identifier};
 use ockam_api::authenticator::direct::{
     OCKAM_ROLE_ATTRIBUTE_ENROLLER_VALUE, OCKAM_ROLE_ATTRIBUTE_KEY,
@@ -22,6 +19,9 @@ use ockam_api::output::Output;
 use ockam_api::terminal::fmt;
 use ockam_api::CliState;
 use ockam_node::Context;
+use serde::Serialize;
+use std::fmt::Write;
+use std::sync::Arc;
 
 use crate::project_member::show::ShowCommand;
 use crate::shared_args::IdentityOpts;
@@ -90,15 +90,15 @@ pub(super) async fn authority_client(
     identity_opts: &IdentityOpts,
     project_name: &Option<String>,
 ) -> crate::Result<(AuthorityNodeClient, String)> {
-    let node =
-        InMemoryNode::start_with_project_name(ctx, &opts.state, project_name.clone()).await?;
+    let node = InMemoryNode::start_with_project_name(ctx, opts.state.clone(), project_name.clone())
+        .await?;
     let project = opts
         .state
         .projects()
         .get_project_by_name_or_default(project_name)
         .await?;
     Ok((
-        create_authority_client(ctx, &node, &opts.state, identity_opts, &project).await?,
+        create_authority_client(ctx, &node, opts.state.clone(), identity_opts, &project).await?,
         project.name().to_string(),
     ))
 }
@@ -106,7 +106,7 @@ pub(super) async fn authority_client(
 pub(super) async fn create_authority_client(
     ctx: &Context,
     node: &NodeManager,
-    cli_state: &CliState,
+    cli_state: Arc<CliState>,
     identity_opts: &IdentityOpts,
     project: &Project,
 ) -> crate::Result<AuthorityNodeClient> {

@@ -78,7 +78,8 @@ impl Command for CreateCommand {
             }
 
             let node =
-                BackgroundNodeClient::create(ctx, &opts.state, &cmd.node_opts.at_node).await?;
+                BackgroundNodeClient::create(ctx, opts.state.clone(), &cmd.node_opts.at_node)
+                    .await?;
             let _res: OutletStatus = node
                 .create_kafka_outlet(
                     ctx,

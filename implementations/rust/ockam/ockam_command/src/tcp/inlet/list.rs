@@ -27,7 +27,8 @@ impl ListCommand {
     }
 
     pub async fn run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
-        let node = BackgroundNodeClient::create(ctx, &opts.state, &self.node.at_node).await?;
+        let node =
+            BackgroundNodeClient::create(ctx, opts.state.clone(), &self.node.at_node).await?;
         let inlets: InletStatusList = {
             let pb = opts.terminal.spinner();
             if let Some(pb) = pb.as_ref() {

@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use std::sync::Arc;
 use std::time::Duration;
 
 use clap::Args;
@@ -97,10 +98,14 @@ impl ShowCommandTui for ShowTui {
     }
 
     async fn show_single(&self, item_name: &str) -> miette::Result<()> {
-        let mut node =
-            BackgroundNodeClient::create(&self.ctx, &self.opts.state, &Some(item_name.to_string()))
-                .await?;
-        let node_resources = get_node_resources(&self.ctx, &self.opts.state, &mut node).await?;
+        let mut node = BackgroundNodeClient::create(
+            &self.ctx,
+            self.opts.state.clone(),
+            &Some(item_name.to_string()),
+        )
+        .await?;
+        let node_resources =
+            get_node_resources(&self.ctx, self.opts.state.clone(), &mut node).await?;
         self.opts
             .terminal
             .clone()
@@ -114,7 +119,7 @@ impl ShowCommandTui for ShowTui {
 
 pub async fn get_node_resources(
     ctx: &Context,
-    cli_state: &CliState,
+    cli_state: Arc<CliState>,
     node: &mut BackgroundNodeClient,
 ) -> miette::Result<NodeResources> {
     match node

@@ -41,7 +41,7 @@ impl Command for CreateCommand {
 
     async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
         initialize_default_node(ctx, &opts).await?;
-        let node = BackgroundNodeClient::create(ctx, &opts.state, &self.from).await?;
+        let node = BackgroundNodeClient::create(ctx, opts.state.clone(), &self.from).await?;
         let payload = models::transport::CreateTcpConnection::new(self.address.clone());
         let request = Request::post("/node/tcp/connection").body(payload);
         let transport_status: TransportStatus = node.ask(ctx, request).await?;

@@ -74,7 +74,7 @@ pub struct NotificationHandler<T: TerminalWriter + Debug + Send + 'static> {
 impl<T: TerminalWriter + Debug + Send + 'static> NotificationHandler<T> {
     /// Create a new NotificationsProgress without progress bar.
     /// The notifications are printed as they arrive and stay on screen
-    pub fn start(cli_state: &CliState, terminal: Terminal<T>) -> NotificationHandle {
+    pub fn start(cli_state: Arc<CliState>, terminal: Terminal<T>) -> NotificationHandle {
         let stop = Arc::new(AtomicBool::new(false));
         let _self = NotificationHandler {
             rx: cli_state.subscribe_to_notifications(),

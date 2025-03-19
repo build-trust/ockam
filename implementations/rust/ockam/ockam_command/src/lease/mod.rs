@@ -8,11 +8,11 @@ pub use list::ListCommand;
 pub use show::ShowCommand;
 
 use miette::IntoDiagnostic;
-use std::str::FromStr;
-
 use ockam_api::CliState;
 use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
+use std::str::FromStr;
+use std::sync::Arc;
 
 mod create;
 mod list;
@@ -60,7 +60,7 @@ fn lease_at_default_value() -> MultiAddr {
         .expect("Invalid default value for at")
 }
 
-async fn resolve_at_arg(at: &MultiAddr, state: &CliState) -> miette::Result<MultiAddr> {
+async fn resolve_at_arg(at: &MultiAddr, state: Arc<CliState>) -> miette::Result<MultiAddr> {
     let mut at = at.to_string();
     if at.contains("<default_project_name>") {
         let project_name = state

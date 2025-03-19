@@ -36,7 +36,7 @@ impl ListCommand {
     }
 
     pub async fn run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
-        let node = BackgroundNodeClient::create(ctx, &opts.state, &self.at).await?;
+        let node = BackgroundNodeClient::create(ctx, opts.state.clone(), &self.at).await?;
         let is_finished: Mutex<bool> = Mutex::new(false);
 
         let get_workers = async {

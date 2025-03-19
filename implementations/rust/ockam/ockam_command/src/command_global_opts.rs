@@ -1,4 +1,5 @@
 use console::Term;
+use std::sync::Arc;
 use tracing::debug;
 
 use crate::subcommand::OckamSubcommand;
@@ -18,7 +19,7 @@ pub struct CommandGlobalOpts {
     pub global_args: GlobalArgs,
     // TODO: This is not the place for it. We could propagate it more granularly and even avoid
     //  creating it for some commands.
-    pub state: CliState,
+    pub state: Arc<CliState>,
     pub terminal: Terminal<TerminalStream<Term>>,
 }
 
@@ -31,7 +32,7 @@ impl CommandGlobalOpts {
     ///
     pub fn new(
         global_args: GlobalArgs,
-        state: CliState,
+        state: Arc<CliState>,
         terminal: Terminal<TerminalStream<Term>>,
     ) -> Self {
         Self {

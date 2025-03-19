@@ -1,5 +1,6 @@
 use minicbor::{CborLen, Decode, Encode};
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 
 use crate::Result;
 
@@ -67,7 +68,7 @@ impl Decodable for CreateServiceInvitation {
 
 impl CreateServiceInvitation {
     pub async fn new<S: AsRef<str>>(
-        cli_state: &CliState,
+        cli_state: Arc<CliState>,
         expires_at: Option<String>,
         project_name: S,
         recipient_email: EmailAddress,

@@ -330,6 +330,7 @@ mod tests {
     use ockam_api::orchestrator::share::{
         InvitationWithAccess, ReceivedInvitation, RoleInShare, ServiceAccessDetails, ShareScope,
     };
+    use std::sync::Arc;
 
     use crate::incoming_services::PersistentIncomingService;
     use crate::state::AppState;
@@ -375,7 +376,7 @@ mod tests {
     async fn test_inlet_data_from_invitation(context: &mut Context) -> ockam::Result<()> {
         // in this test we want to validate data loading from the accepted invitation
         // as well as using the related persistent data
-        let app_state = AppState::test(context, CliState::test().await?).await;
+        let app_state = AppState::test(context, Arc::new(CliState::test().await?)).await;
 
         let mut invitation = create_invitation_with(None);
 

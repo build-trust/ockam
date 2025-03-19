@@ -64,7 +64,7 @@ impl CreateCommand {
         } else {
             // Enable the notifications only on explicit foreground nodes.
             Some(NotificationHandler::start(
-                &opts.state,
+                opts.state.clone(),
                 opts.terminal.clone(),
             ))
         };

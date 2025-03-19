@@ -390,7 +390,8 @@ impl CreateCommand {
         opts: &CommandGlobalOpts,
         identity_name: &Option<String>,
     ) -> Result<String> {
-        let _notification_handler = NotificationHandler::start(&opts.state, opts.terminal.clone());
+        let _notification_handler =
+            NotificationHandler::start(opts.state.clone(), opts.terminal.clone());
         Ok(match identity_name {
             Some(name) => {
                 if let Ok(identity) = opts.state.get_named_identity(name).await {
@@ -428,6 +429,7 @@ mod tests {
     use ockam_api::output::{OutputBranding, OutputFormat};
     use ockam_api::terminal::{LoggingOptions, Terminal};
     use ockam_api::CliState;
+    use std::sync::Arc;
 
     #[test]
     fn command_can_be_parsed_from_name() {
@@ -554,7 +556,7 @@ mod tests {
     #[tokio::test]
     async fn get_default_node_name_no_previous_state() {
         let opts = CommandGlobalOpts {
-            state: CliState::test().await.unwrap(),
+            state: Arc::new(CliState::test().await.unwrap()),
             terminal: Terminal::new(
                 LoggingOptions {
                     enabled: false,
@@ -615,7 +617,7 @@ mod tests {
         _ctx: &mut Context,
     ) -> ockam_core::Result<()> {
         let opts = CommandGlobalOpts {
-            state: CliState::test().await.unwrap(),
+            state: Arc::new(CliState::test().await.unwrap()),
             terminal: Terminal::new(
                 LoggingOptions {
                     enabled: false,

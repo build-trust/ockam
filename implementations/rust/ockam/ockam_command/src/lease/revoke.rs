@@ -44,7 +44,7 @@ impl Command for RevokeCommand {
 
         let node = InMemoryNode::start_with_identity_and_project_name(
             ctx,
-            &opts.state,
+            opts.state.clone(),
             cmd.identity_opts.identity_name.clone(),
             cmd.trust_opts.project_name.clone(),
         )
@@ -54,7 +54,7 @@ impl Command for RevokeCommand {
         opts.terminal
             .write_line(fmt_log!("Revoking influxdb token {}...\n", cmd.token_id))?;
 
-        let (at, _meta) = clean_nodes_multiaddr(&cmd.at, &opts.state).await?;
+        let (at, _meta) = clean_nodes_multiaddr(&cmd.at, opts.state.clone()).await?;
         node.revoke_token(ctx, &at, &cmd.token_id).await?;
 
         opts.terminal
@@ -73,7 +73,7 @@ impl Command for RevokeCommand {
 
 impl RevokeCommand {
     async fn parse_args(mut self, opts: &CommandGlobalOpts) -> crate::Result<Self> {
-        self.at = super::resolve_at_arg(&self.at, &opts.state).await?;
+        self.at = super::resolve_at_arg(&self.at, opts.state.clone()).await?;
         Ok(self)
     }
 }

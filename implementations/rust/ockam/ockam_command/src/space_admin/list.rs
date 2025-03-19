@@ -23,9 +23,12 @@ impl Command for ListCommand {
 
     async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
         let space = opts.state.get_space_by_name_or_default(&self.name).await?;
-        let node =
-            InMemoryNode::start_with_identity(ctx, &opts.state, self.identity_opts.identity_name)
-                .await?;
+        let node = InMemoryNode::start_with_identity(
+            ctx,
+            opts.state.clone(),
+            self.identity_opts.identity_name,
+        )
+        .await?;
         let admins = node.list_space_admins(ctx, &space.space_id()).await?;
 
         let list = &opts.terminal.build_list(&admins, "No admins found")?;

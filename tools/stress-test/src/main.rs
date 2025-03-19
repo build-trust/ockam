@@ -138,6 +138,7 @@ impl State {
                 .await
                 .expect("cannot create cli state")
         });
+        let cli_state = Arc::new(cli_state);
         let builder = if log {
             NodeBuilder::new()
         } else {
@@ -148,7 +149,7 @@ impl State {
 
         let runtime = context.runtime().clone();
         let node_manager = runtime
-            .block_on(Self::make_node_manager(context.clone(), &cli_state))
+            .block_on(Self::make_node_manager(context.clone(), cli_state))
             .expect("cannot create node manager");
 
         Self {
@@ -168,7 +169,7 @@ impl State {
 
     async fn make_node_manager(
         ctx: Arc<Context>,
-        cli_state: &CliState,
+        cli_state: Arc<CliState>,
     ) -> ockam::Result<Arc<InMemoryNode>> {
         let tcp = TcpTransport::get_or_create(&ctx)?;
         let options = TcpListenerOptions::new();
