@@ -1,16 +1,14 @@
 use crate::portal::addresses::{Addresses, PortalType};
 use crate::{PortalInternalMessage, PortalMessage, TcpRegistry};
 use ockam_core::compat::vec::Vec;
-use ockam_core::{
-    async_trait, Encodable, LocalMessage, OpenTelemetryContext, Route, OCKAM_TRACER_NAME,
-};
+use ockam_core::{async_trait, Encodable, LocalMessage, Route, OCKAM_TRACER_NAME};
 use ockam_core::{route, Processor, Result};
 use ockam_node::Context;
-use opentelemetry::trace::{Span, SpanContext, TraceContextExt, Tracer};
+use opentelemetry::trace::{Span, Tracer};
 use opentelemetry::{global, KeyValue};
 use tokio::io::AsyncRead;
 use tokio::io::AsyncReadExt;
-use tracing::{debug, error, info, info_span, instrument, Instrument, Level};
+use tracing::{debug, error, instrument, Level};
 
 /// A TCP Portal receiving message processor
 ///

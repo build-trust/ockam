@@ -110,7 +110,7 @@ impl OckamCommand {
             return None;
         };
 
-        let app_name = if self.subcommand.is_background_node() {
+        let app_name = if self.subcommand.is_local_node() {
             "local node"
         } else {
             "cli"
