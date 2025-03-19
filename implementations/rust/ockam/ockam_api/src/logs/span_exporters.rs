@@ -1,8 +1,11 @@
 use crate::cli_state::journeys::attributes::make_host;
 use crate::cli_state::journeys::{
     APPLICATION_EVENT_HOST, APPLICATION_EVENT_NODE_IDENTIFIER, APPLICATION_EVENT_NODE_NAME,
-    APPLICATION_EVENT_OCKAM_DEVELOPER,
+    APPLICATION_EVENT_OCKAM_DEVELOPER, APPLICATION_EVENT_PROJECT_ID,
+    APPLICATION_EVENT_PROJECT_NAME,
 };
+use crate::cli_state::NodeInfo;
+use crate::orchestrator::project::Project;
 use crate::CliState;
 use futures::future::BoxFuture;
 use futures::FutureExt;
@@ -51,6 +54,7 @@ pub struct OckamSpanExporter<S: SpanExporter + 'static> {
     exporter: Arc<Mutex<S>>,
     is_ockam_developer: bool,
     span_export_cutoff: Option<Duration>,
+    span_attributes: Arc<Mutex<Option<SpanAttributes>>>,
 }
 
 #[async_trait]
@@ -60,12 +64,27 @@ impl<S: SpanExporter + 'static> SpanExporter for OckamSpanExporter<S> {
         let is_ockam_developer = self.is_ockam_developer;
         let span_export_cutoff = self.span_export_cutoff;
         let exporter = self.exporter.clone();
+        let span_attributes = self.span_attributes.clone();
 
         let f = async move {
             let mut exporter = exporter.lock().await;
+
+            // initialize span attributes from local data if they haven't been initialized yet.
+            let mut span_attributes = span_attributes.lock().await;
+            let attributes = if span_attributes.is_none() {
+                SpanAttributes {
+                    node_info: cli_state.get_default_node().await.ok(),
+                    project: cli_state.projects().get_default_project().await.ok(),
+                }
+            } else {
+                SpanAttributes::default()
+            };
+            *span_attributes = Some(attributes.clone());
+
             exporter
                 .export(
-                    Self::add_attributes(cli_state, Self::filter(batch), is_ockam_developer).await,
+                    Self::add_attributes(&attributes, Self::filter(batch), is_ockam_developer)
+                        .await,
                 )
                 .await
         }
@@ -84,7 +103,7 @@ impl<S: SpanExporter + 'static> SpanExporter for OckamSpanExporter<S> {
 
     fn shutdown(&mut self) {
         debug!("shutting down the span exporter");
-        let mut exporter = self.exporter.blocking_lock(); // Use blocking_lock() to acquire a lock synchronously
+        let mut exporter = self.exporter.blocking_lock();
         exporter.shutdown();
     }
 
@@ -111,29 +130,29 @@ impl<S: SpanExporter> OckamSpanExporter<S> {
             exporter: Arc::new(Mutex::new(exporter)),
             is_ockam_developer,
             span_export_cutoff,
+            span_attributes: Arc::new(Mutex::new(None)),
         }
     }
 
     async fn add_attributes(
-        cli_state: Arc<CliState>,
+        span_attributes: &SpanAttributes,
         batch: Vec<SpanData>,
         is_ockam_developer: bool,
     ) -> Vec<SpanData> {
         let mut result = vec![];
         for span in batch.into_iter() {
-            result.push(
-                Self::add_attributes_to_span(cli_state.clone(), span, is_ockam_developer).await,
-            )
+            result
+                .push(Self::add_attributes_to_span(span_attributes, span, is_ockam_developer).await)
         }
         result
     }
 
     async fn add_attributes_to_span(
-        cli_state: Arc<CliState>,
+        span_attributes: &SpanAttributes,
         mut span: SpanData,
         is_ockam_developer: bool,
     ) -> SpanData {
-        if let Ok(node_info) = cli_state.get_default_node().await {
+        if let Some(node_info) = &span_attributes.node_info {
             span.attributes.push(KeyValue::new(
                 APPLICATION_EVENT_NODE_NAME.clone(),
                 node_info.name(),
@@ -141,6 +160,17 @@ impl<S: SpanExporter> OckamSpanExporter<S> {
             span.attributes.push(KeyValue::new(
                 APPLICATION_EVENT_NODE_IDENTIFIER.clone(),
                 node_info.identifier().to_string(),
+            ));
+        };
+
+        if let Some(project) = &span_attributes.project {
+            span.attributes.push(KeyValue::new(
+                APPLICATION_EVENT_PROJECT_ID.clone(),
+                project.project_id().to_string(),
+            ));
+            span.attributes.push(KeyValue::new(
+                APPLICATION_EVENT_PROJECT_NAME.clone(),
+                project.name().to_string(),
             ));
         };
 
@@ -165,4 +195,10 @@ impl<S: SpanExporter> OckamSpanExporter<S> {
         span.events.events = vec![];
         Some(span)
     }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Default)]
+struct SpanAttributes {
+    node_info: Option<NodeInfo>,
+    project: Option<Project>,
 }

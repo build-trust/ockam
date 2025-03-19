@@ -15,6 +15,7 @@ use std::net::IpAddr;
 use tokio::net::TcpListener;
 use tokio::sync::mpsc::channel;
 use tracing::instrument;
+use tracing::Level;
 
 impl TcpTransport {
     /// Check if privileged portals can be run with current permissions

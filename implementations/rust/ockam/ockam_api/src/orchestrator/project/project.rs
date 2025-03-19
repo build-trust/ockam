@@ -18,7 +18,7 @@ use ockam_core::{Error, Result};
 use ockam_multiaddr::MultiAddr;
 use ockam_node::tokio;
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 pub struct Project {
     #[serde(flatten)]
     model: ProjectModel,
