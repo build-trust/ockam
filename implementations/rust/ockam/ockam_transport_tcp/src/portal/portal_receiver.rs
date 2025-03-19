@@ -1,4 +1,4 @@
-use crate::portal::addresses::Addresses;
+use crate::portal::addresses::{Addresses, PortalType};
 use crate::{PortalInternalMessage, PortalMessage, TcpRegistry};
 use ockam_core::compat::vec::Vec;
 use ockam_core::{
@@ -6,11 +6,11 @@ use ockam_core::{
 };
 use ockam_core::{route, Processor, Result};
 use ockam_node::Context;
-use opentelemetry::global;
-use opentelemetry::trace::Tracer;
+use opentelemetry::trace::{Span, SpanContext, TraceContextExt, Tracer};
+use opentelemetry::{global, KeyValue};
 use tokio::io::AsyncRead;
 use tokio::io::AsyncReadExt;
-use tracing::{debug, error, instrument, Level};
+use tracing::{debug, error, info, info_span, instrument, Instrument, Level};
 
 /// A TCP Portal receiving message processor
 ///
@@ -68,7 +68,6 @@ impl<R: AsyncRead + Unpin + Send + Sync + 'static> Processor for TcpPortalRecvPr
         Ok(())
     }
 
-    #[instrument(skip_all, name = "TcpPortalRecvProcessor::process", level = Level::TRACE)]
     async fn process(&mut self, ctx: &mut Context) -> Result<bool> {
         self.buf.clear();
 
@@ -80,14 +79,8 @@ impl<R: AsyncRead + Unpin + Send + Sync + 'static> Processor for TcpPortalRecvPr
             }
         };
 
-        let tracer = global::tracer(OCKAM_TRACER_NAME);
-        let tracing_context = tracer.in_span("TcpPortalRecvProcessor::forward_message", |cx| {
-            OpenTelemetryContext::inject(&cx)
-        });
-
         if self.buf.is_empty() {
             // Notify Sender that connection was closed
-            ctx.set_tracing_context(tracing_context.clone());
             if let Err(err) = ctx
                 .send_from_address(
                     route![self.addresses.sender_internal.clone()],
@@ -101,31 +94,22 @@ impl<R: AsyncRead + Unpin + Send + Sync + 'static> Processor for TcpPortalRecvPr
                     err
                 );
             }
+            return self.disconnect(ctx).await;
+        };
 
-            if let Err(err) = ctx
-                .forward_from_address(
-                    LocalMessage::new()
-                        .with_tracing_context(tracing_context.clone())
-                        .with_onward_route(self.onward_route.clone())
-                        .with_return_route(route![self.addresses.sender_remote.clone()])
-                        .with_payload(PortalMessage::Disconnect.encode()?),
-                    self.addresses.receiver_remote.clone(),
-                )
-                .await
-            {
-                debug!(
-                    "Error notifying the other side of the portal about dropped connection {}",
-                    err
-                );
-            }
+        self.send_message(ctx).await
+    }
+}
 
-            return Ok(false);
-        }
+impl<R: AsyncRead + Unpin + Send + Sync + 'static> TcpPortalRecvProcessor<R> {
+    async fn send_message(&mut self, ctx: &mut Context) -> Result<bool> {
+        let span = self.start_span(ctx)?;
+        ctx.set_tracing_context_from_span(span);
 
         // Loop just in case buf was extended (should not happen though)
         for chunk in self.buf.chunks(self.portal_payload_length) {
             let msg = LocalMessage::new()
-                .with_tracing_context(tracing_context.clone())
+                .with_tracing_context(ctx.tracing_context())
                 .with_onward_route(self.onward_route.clone())
                 .with_return_route(route![self.addresses.sender_remote.clone()])
                 .with_payload(
@@ -138,5 +122,52 @@ impl<R: AsyncRead + Unpin + Send + Sync + 'static> Processor for TcpPortalRecvPr
         }
 
         Ok(true)
+    }
+
+    async fn disconnect(&mut self, ctx: &mut Context) -> Result<bool> {
+        if let Err(err) = ctx
+            .forward_from_address(
+                LocalMessage::new()
+                    .with_onward_route(self.onward_route.clone())
+                    .with_return_route(route![self.addresses.sender_remote.clone()])
+                    .with_payload(PortalMessage::Disconnect.encode()?),
+                self.addresses.receiver_remote.clone(),
+            )
+            .await
+        {
+            debug!(
+                "Error notifying the other side of the portal about dropped connection {}",
+                err
+            );
+        }
+
+        Ok(false)
+    }
+
+    fn start_span(&self, ctx: &Context) -> Result<impl Span> {
+        let name = match self.addresses.portal_type {
+            PortalType::Inlet { .. } => "receive_tcp_message_at_inlet",
+            PortalType::Outlet => "receive_tcp_message_at_outlet",
+            PortalType::PrivilegedInlet { .. } => "receive_tcp_message_at_privileged_inlet",
+            PortalType::PrivilegedOutlet => "receive_tcp_message_at_privileged_outlet",
+        };
+        let tracer = global::tracer(OCKAM_TRACER_NAME);
+        let span = tracer
+            .span_builder(name)
+            .with_attributes(vec![
+                KeyValue::new("portal_type", self.addresses.portal_type.to_string()),
+                KeyValue::new("onward_route", self.onward_route.to_string()),
+                KeyValue::new("worker_address", ctx.primary_address().to_string()),
+                KeyValue::new(
+                    "worker_other_addresses",
+                    ctx.additional_addresses()
+                        .map(|a| a.to_string())
+                        .collect::<Vec<String>>()
+                        .join(",")
+                        .to_string(),
+                ),
+            ])
+            .start(&tracer);
+        Ok(span)
     }
 }
