@@ -129,7 +129,7 @@ impl Command for CreateCommand {
 
         if cmd.privileged {
             msg += &fmt_info!(
-                "This Outlet is operating in {} mode\n",
+                "This TCP Outlet is operating in {} mode\n",
                 color_primary_alt("privileged".to_string())
             );
         }

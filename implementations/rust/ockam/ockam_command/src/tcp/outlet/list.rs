@@ -1,9 +1,5 @@
 use clap::Args;
-use colorful::Colorful;
 use ockam_api::colors::color_primary;
-use ockam_api::fmt_info;
-use tokio::sync::Mutex;
-use tokio::try_join;
 
 use crate::node::NodeOpts;
 use crate::{docs, CommandGlobalOpts};
@@ -36,50 +32,33 @@ impl ListCommand {
     pub async fn run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         let node = BackgroundNodeClient::create(ctx, &opts.state, &self.node_opts.at_node).await?;
 
-        let is_finished: Mutex<bool> = Mutex::new(false);
+        let spinner = opts.terminal.spinner();
+        if let Some(spinner) = &spinner {
+            spinner.set_message(format!(
+                "Listing TCP Outlets at {}...",
+                color_primary(node.node_name())
+            ));
+        }
 
-        let send_req = async {
-            let res: OutletStatusList = node.ask(ctx, Request::get("/node/outlet")).await?;
-            *is_finished.lock().await = true;
-            Ok(res)
-        };
-
-        let output_messages = vec![format!(
-            "Listing TCP Outlets on node {}...\n",
-            color_primary(node.node_name())
-        )];
-
-        let progress_output = opts.terminal.loop_messages(&output_messages, &is_finished);
-
-        let (outlets, _) = try_join!(send_req, progress_output)?;
+        let outlets: OutletStatusList = node.ask(ctx, Request::get("/node/outlet")).await?;
         let outlets = outlets.0;
 
-        let list: String = {
-            let empty_message = fmt_info!(
-                "No TCP Outlets found on node {}",
-                color_primary(node.node_name())
-            );
-            match outlets.is_empty() {
-                true => empty_message,
-                false => opts.terminal.build_list(&outlets, &empty_message)?,
-            }
-        };
+        if let Some(spinner) = &spinner {
+            spinner.finish_and_clear();
+        }
 
-        let json: Vec<_> = outlets
-            .iter()
-            .map(|outlet| {
-                Ok(serde_json::json!({
-                    "from": outlet.worker_route()?,
-                    "to": outlet.to,
-                }))
-            })
-            .flat_map(|res: Result<_, ockam_core::Error>| res.ok())
-            .collect();
+        let list = opts.terminal.build_list(
+            &outlets,
+            &format!(
+                "No TCP Outlets found at {}",
+                color_primary(node.node_name())
+            ),
+        )?;
 
         opts.terminal
             .to_stdout()
             .plain(list)
-            .json(serde_json::json!(json))
+            .json_obj(outlets)?
             .write_line()?;
 
         Ok(())

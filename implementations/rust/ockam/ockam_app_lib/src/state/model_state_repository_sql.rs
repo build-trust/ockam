@@ -58,7 +58,7 @@ impl ModelStateRepository for ModelStateSqlxDatabase {
             )
             .bind(node_name)
             .bind(tcp_outlet_status.to.to_string())
-            .bind(tcp_outlet_status.worker_addr.to_string())
+            .bind(tcp_outlet_status.worker_address.to_string())
             .bind(tcp_outlet_status.payload.as_ref())
             .bind(tcp_outlet_status.privileged);
             query.execute(&mut *transaction).await.void()?;
@@ -129,7 +129,7 @@ impl TcpOutletStatusRow {
         let worker_addr = Address::from_string(&self.worker_addr);
         Ok(OutletStatus {
             to,
-            worker_addr,
+            worker_address: worker_addr,
             payload: self.payload.to_option(),
             privileged: self.privileged.to_bool(),
         })

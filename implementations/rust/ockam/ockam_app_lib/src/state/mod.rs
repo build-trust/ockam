@@ -518,7 +518,7 @@ impl AppState {
                 .await
                 .into_iter()
                 .map(|outlet| LocalService {
-                    name: outlet.worker_addr.address().to_string(),
+                    name: outlet.worker_address.address().to_string(),
                     address: outlet.to.hostname().to_string(),
                     port: outlet.to.port(),
                     scheme: None,

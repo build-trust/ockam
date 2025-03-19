@@ -6,6 +6,9 @@ use std::time::Duration;
 
 use crate::colors::{color_primary, color_primary_alt};
 use crate::error::ApiError;
+use crate::multiaddr_resolver::{
+    deserialize_address_from_local_service, serialize_address_as_local_service,
+};
 use crate::output::Output;
 use crate::session::connection_status::ConnectionStatus;
 use crate::terminal::fmt;
@@ -303,13 +306,19 @@ impl InletStatus {
 }
 
 impl Display for InletStatus {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         writeln!(
             f,
-            "Inlet {} at {} is {}",
+            "TCP Inlet {} at {} is {}",
             color_primary(&self.alias),
             color_primary(&self.bind_addr),
             self.status,
+        )?;
+        writeln!(
+            f,
+            "{}With outlet address {}",
+            fmt::INDENTATION,
+            color_primary(&self.outlet_addr)
         )?;
         if let Some(r) = self
             .outlet_route
@@ -319,21 +328,15 @@ impl Display for InletStatus {
         {
             writeln!(
                 f,
-                "{}With route to outlet {}",
+                "{}And service route {}",
                 fmt::INDENTATION,
                 color_primary(r.to_string())
             )?;
         }
-        writeln!(
-            f,
-            "{}Outlet Address: {}",
-            fmt::INDENTATION,
-            color_primary(&self.outlet_addr)
-        )?;
         if self.privileged {
             writeln!(
                 f,
-                "{}This Inlet is operating in {} mode",
+                "{}Operating in {} mode",
                 fmt::INDENTATION,
                 color_primary_alt("privileged".to_string())
             )?;
@@ -369,7 +372,9 @@ impl Decodable for InletStatusList {
 #[cbor(map)]
 pub struct OutletStatus {
     #[n(1)] pub to: HostnamePort,
-    #[n(2)] pub worker_addr: Address,
+    #[serde(serialize_with = "serialize_address_as_local_service")]
+    #[serde(deserialize_with = "deserialize_address_from_local_service")]
+    #[n(2)] pub worker_address: Address,
     /// An optional status payload
     #[n(3)] pub payload: Option<String>,
     #[n(4)] pub privileged: bool,
@@ -390,27 +395,27 @@ impl Decodable for OutletStatus {
 impl OutletStatus {
     pub fn new(
         to: HostnamePort,
-        worker_addr: Address,
+        worker_address: Address,
         payload: impl Into<Option<String>>,
         privileged: bool,
     ) -> Self {
         Self {
             to,
-            worker_addr,
+            worker_address,
             payload: payload.into(),
             privileged,
         }
     }
 
     pub fn worker_route(&self) -> Result<MultiAddr, ockam_core::Error> {
-        ReverseLocalConverter::convert_address(&self.worker_addr)
+        ReverseLocalConverter::convert_address(&self.worker_address)
     }
 
     pub fn worker_name(&self) -> Result<String, ockam_core::Error> {
         match self.worker_route()?.last() {
             Some(worker_name) => String::from_utf8(worker_name.data().to_vec())
                 .map_err(|_| ApiError::core("Invalid Worker Address")),
-            None => Ok(self.worker_addr.to_string()),
+            None => Ok(self.worker_address.to_string()),
         }
     }
 }
@@ -419,7 +424,7 @@ impl Display for OutletStatus {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "Outlet at {} is connected to {}",
+            "TCP Outlet at {} is connected to {}",
             color_primary(
                 self.worker_route()
                     .map_err(|_| std::fmt::Error)?
@@ -431,7 +436,7 @@ impl Display for OutletStatus {
         if self.privileged {
             writeln!(
                 f,
-                "{}This Outlet is operating in {} mode",
+                "{}Operating in {} mode",
                 fmt::INDENTATION,
                 color_primary_alt("privileged".to_string())
             )?;

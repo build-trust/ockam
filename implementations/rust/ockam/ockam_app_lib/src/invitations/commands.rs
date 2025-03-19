@@ -196,7 +196,7 @@ impl AppState {
 
         let to = outlets
             .into_iter()
-            .find(|o| &o.worker_addr == outlet_worker_addr)
+            .find(|o| &o.worker_address == outlet_worker_addr)
             .map(|o| o.to);
 
         if let Some(to) = to {
