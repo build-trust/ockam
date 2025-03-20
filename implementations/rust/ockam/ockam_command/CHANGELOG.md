@@ -4,6 +4,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.150.0 - 2025-03-20
+
+### Added
+
+- Polishing node control api
+- Deprecating `--status-endpoint-port` in favor of `--status-endpoint`
+- Add worker address to the output of `tcp-connection create`
+- Add env var to control the orchestrator ui url
+- Updated dependencies
+
+### Changed
+
+- Simplify `node list` command
+
+### Fixed
+
+- Await signalling the parent process in the foreground node
+- In inlets commands, show the bound port to portal in the output
+- Use localhost to connect to the node when the binding address is `0.0.0.0` or `[::]`
+
 ## 0.149.0 - 2025-03-13
 
 ### Added
