@@ -2,7 +2,7 @@
 
 use crate::cli_state::{NodeInfo, NodeProcessStatus};
 use crate::colors::color_primary;
-use crate::nodes::models::portal::{InletStatus, OutletStatus};
+use crate::nodes::models::portal::{InletStatus, TcpOutletInfo};
 use crate::nodes::models::services::ServiceStatus;
 use crate::nodes::models::transport::TransportStatus;
 use crate::output::Output;
@@ -77,7 +77,7 @@ pub struct NodeResources {
     #[n(7)] pub transports: Vec<TransportStatus>,
     #[n(8)] pub secure_channel_listeners: Vec<SecureChannelListener>,
     #[n(9)] pub inlets: Vec<InletStatus>,
-    #[n(10)] pub outlets: Vec<OutletStatus>,
+    #[n(10)] pub outlets: Vec<TcpOutletInfo>,
     #[n(11)] pub services: Vec<ServiceStatus>,
 }
 
@@ -101,7 +101,7 @@ impl NodeResources {
         transports: Vec<TransportStatus>,
         listeners: Vec<SecureChannelListener>,
         inlets: Vec<InletStatus>,
-        outlets: Vec<OutletStatus>,
+        outlets: Vec<TcpOutletInfo>,
         services: Vec<ServiceStatus>,
     ) -> Result<Self> {
         Ok(Self {

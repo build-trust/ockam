@@ -7,8 +7,10 @@ use tracing::debug;
 
 use crate::cli_state::storage::tcp_portals_repository::TcpPortalsRepository;
 use crate::cli_state::TcpInlet;
-use crate::nodes::models::portal::OutletStatus;
+use crate::nodes::models::portal::TcpOutletInfo;
+use crate::nodes::service::tcp_outlets::TcpOutletParameters;
 use ockam::{FromSqlxError, SqlxDatabase, ToVoid};
+use ockam_abac::PolicyExpression;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::Error;
 use ockam_core::Result;
@@ -95,22 +97,39 @@ impl TcpPortalsRepository for TcpPortalsSqlxDatabase {
         Ok(())
     }
 
+    async fn list_tcp_inlets(&self, node_name: &str) -> Result<Vec<TcpInlet>> {
+        let query = query_as(
+            "SELECT bind_addr, outlet_addr, alias, privileged FROM tcp_inlet WHERE node_name = $1",
+        )
+        .bind(node_name);
+        let result: Vec<TcpInletRow> = query.fetch_all(&*self.database.pool).await.into_core()?;
+        Ok(result
+            .into_iter()
+            .map(|r| r.tcp_inlet())
+            .collect::<Result<Vec<_>>>()?)
+    }
+
     async fn store_tcp_outlet(
         &self,
         node_name: &str,
-        tcp_outlet_status: &OutletStatus,
-    ) -> ockam_core::Result<()> {
+        tcp_outlet_status: &TcpOutletInfo,
+    ) -> Result<()> {
         let query = query(
             r#"
-            INSERT INTO tcp_outlet_status (node_name, socket_addr, worker_addr, payload, privileged)
-            VALUES ($1, $2, $3, $4, $5)
+            INSERT INTO tcp_outlet (
+               node_name, "to", worker_address, policy_expression, tls, privileged, skip_handshake, enable_nagle
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
             ON CONFLICT DO NOTHING"#,
         )
         .bind(node_name)
-        .bind(tcp_outlet_status.to.to_string())
-        .bind(tcp_outlet_status.worker_addr.to_string())
-        .bind(tcp_outlet_status.payload.as_ref())
-        .bind(tcp_outlet_status.privileged);
+        .bind(tcp_outlet_status.parameters.to.to_string())
+        .bind(tcp_outlet_status.worker_address.address())
+        .bind(tcp_outlet_status.parameters.policy_expression.as_ref().map(|e| e.to_string()))
+        .bind(tcp_outlet_status.parameters.tls)
+        .bind(tcp_outlet_status.parameters.privileged)
+        .bind(tcp_outlet_status.parameters.skip_handshake)
+        .bind(tcp_outlet_status.parameters.enable_nagle);
         query.execute(&*self.database.pool).await.void()?;
         Ok(())
     }
@@ -118,29 +137,49 @@ impl TcpPortalsRepository for TcpPortalsSqlxDatabase {
     async fn get_tcp_outlet(
         &self,
         node_name: &str,
-        worker_addr: &Address,
-    ) -> ockam_core::Result<Option<OutletStatus>> {
-        let query = query_as("SELECT socket_addr, worker_addr, payload, privileged FROM tcp_outlet_status WHERE node_name = $1 AND worker_addr = $2")
+        worker_address: &Address,
+    ) -> ockam_core::Result<Option<TcpOutletInfo>> {
+        let query = query_as(
+            r#"
+            SELECT "to", worker_address, policy_expression, tls, privileged, skip_handshake, enable_nagle
+            FROM tcp_outlet WHERE node_name = $1 AND worker_address = $2
+            "#
+            )
             .bind(node_name)
-            .bind(worker_addr.to_string());
+            .bind(worker_address.address());
         let result: Option<TcpOutletStatusRow> = query
             .fetch_optional(&*self.database.pool)
             .await
             .into_core()?;
-        Ok(result.map(|r| r.tcp_outlet_status()).transpose()?)
+        Ok(result.map(|r| r.tcp_outlet()).transpose()?)
     }
 
     async fn delete_tcp_outlet(
         &self,
         node_name: &str,
-        worker_addr: &Address,
+        worker_address: &Address,
     ) -> ockam_core::Result<()> {
-        let query =
-            query("DELETE FROM tcp_outlet_status WHERE node_name = $1 AND worker_addr = $2")
-                .bind(node_name)
-                .bind(worker_addr.to_string());
+        let query = query("DELETE FROM tcp_outlet WHERE node_name = $1 AND worker_address = $2")
+            .bind(node_name)
+            .bind(worker_address.address());
         query.execute(&*self.database.pool).await.into_core()?;
         Ok(())
+    }
+
+    async fn list_tcp_outlets(&self, node_name: &str) -> Result<Vec<TcpOutletInfo>> {
+        let query = query_as(
+            r#"
+            SELECT "to", worker_address, policy_expression, tls, privileged, skip_handshake, enable_nagle
+            FROM tcp_outlet WHERE node_name = $1
+        "#,
+        )
+        .bind(node_name);
+        let result: Vec<TcpOutletStatusRow> =
+            query.fetch_all(&*self.database.pool).await.into_core()?;
+        Ok(result
+            .into_iter()
+            .map(|r| r.tcp_outlet())
+            .collect::<Result<Vec<_>>>()?)
     }
 }
 
@@ -179,22 +218,37 @@ impl TcpInletRow {
 /// Low-level representation of a row in the tcp_outlet_status table
 #[derive(sqlx::FromRow)]
 struct TcpOutletStatusRow {
-    socket_addr: String,
-    worker_addr: String,
-    payload: Option<String>,
+    to: String,
+    policy_expression: Option<String>,
+    worker_address: String,
+    tls: Boolean,
     privileged: Boolean,
+    skip_handshake: Boolean,
+    enable_nagle: Boolean,
 }
 
 impl TcpOutletStatusRow {
-    fn tcp_outlet_status(&self) -> Result<OutletStatus> {
-        let to = HostnamePort::from_str(&self.socket_addr)
+    fn tcp_outlet(&self) -> Result<TcpOutletInfo> {
+        let to = HostnamePort::from_str(&self.to)
             .map_err(|e| Error::new(Origin::Application, Kind::Serialization, e.to_string()))?;
-        let worker_addr = Address::from_string(&self.worker_addr);
-        Ok(OutletStatus {
-            to,
-            worker_addr,
-            payload: self.payload.clone(),
-            privileged: self.privileged.to_bool(),
+        let worker_address = Address::from_string(&self.worker_address);
+        let policy_expression = if let Some(expression) = &self.policy_expression {
+            Some(PolicyExpression::from_str(expression)?)
+        } else {
+            None
+        };
+
+        Ok(TcpOutletInfo {
+            parameters: TcpOutletParameters {
+                to,
+                policy_expression,
+                worker_address: Some(worker_address.clone()),
+                tls: self.tls.to_bool(),
+                privileged: self.privileged.to_bool(),
+                skip_handshake: self.skip_handshake.to_bool(),
+                enable_nagle: self.enable_nagle.to_bool(),
+            },
+            worker_address,
         })
     }
 }
@@ -202,6 +256,7 @@ impl TcpOutletStatusRow {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::nodes::service::tcp_outlets::TcpOutletParameters;
     use ockam_node::database::with_dbs;
 
     #[tokio::test]
@@ -220,22 +275,28 @@ mod tests {
             let actual = repository.get_tcp_inlet("node_name", "alias").await?;
             assert_eq!(actual, Some(tcp_inlet.clone()));
 
+            let inlets = repository.list_tcp_inlets("node_name").await?;
+            assert_eq!(inlets, vec![tcp_inlet.clone()]);
+
             repository.delete_tcp_inlet("node_name", "alias").await?;
             let actual = repository.get_tcp_inlet("node_name", "alias").await?;
             assert_eq!(actual, None);
 
             let worker_addr = Address::from_str("worker_addr").unwrap();
-            let tcp_outlet_status = OutletStatus::new(
-                HostnamePort::from_str("127.0.0.1:80").unwrap(),
+            let tcp_outlet_status = TcpOutletInfo::new(
+                TcpOutletParameters::new(HostnamePort::from_str("127.0.0.1:80").unwrap())
+                    .with_worker_address(worker_addr.clone())
+                    .with_privileged(true),
                 worker_addr.clone(),
-                Some("payload".to_string()),
-                true,
             );
             repository
                 .store_tcp_outlet("node_name", &tcp_outlet_status)
                 .await?;
             let actual = repository.get_tcp_outlet("node_name", &worker_addr).await?;
             assert_eq!(actual, Some(tcp_outlet_status.clone()));
+
+            let outlets = repository.list_tcp_outlets("node_name").await?;
+            assert_eq!(outlets, vec![tcp_outlet_status.clone()]);
 
             repository
                 .delete_tcp_outlet("node_name", &worker_addr)

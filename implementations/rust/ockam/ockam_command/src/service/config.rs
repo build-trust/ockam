@@ -1,14 +1,15 @@
-use miette::{miette, Context as _, IntoDiagnostic};
-use serde::{Deserialize, Serialize};
-use std::net::SocketAddr;
-use std::path::Path;
-use std::str::FromStr;
-
+use crate::util::parsers::duration_parser;
 use crate::Result;
+use miette::{miette, Context as _, IntoDiagnostic};
 use ockam::identity::Identifier;
 use ockam_abac::PolicyExpression::BooleanExpression;
 use ockam_abac::{BooleanExpr, PolicyExpression};
 use ockam_api::nodes::service::default_address::DefaultAddress;
+use serde::{Deserialize, Serialize};
+use std::net::SocketAddr;
+use std::path::Path;
+use std::str::FromStr;
+use std::time::Duration;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 #[serde(default)]
@@ -55,8 +56,15 @@ pub struct ServiceConfigs {
         skip_serializing_if = "Option::is_none"
     )]
     pub(crate) secure_channel_listener: Option<SecureChannelListenerConfig>,
+
     #[serde(alias = "control-api", skip_serializing_if = "Option::is_none")]
     pub(crate) control_api: Option<ControlApiConfig>,
+
+    #[serde(
+        alias = "portal-synchronization",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub(crate) portal_synchronization_config: Option<PortalSynchronizationConfig>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
@@ -166,4 +174,18 @@ pub struct ControlApiConfig {
 
 fn default_secure_listener_address() -> String {
     DefaultAddress::SECURE_CHANNEL_LISTENER.to_string()
+}
+
+fn default_synchronization_interval() -> Duration {
+    Duration::from_secs(10)
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct PortalSynchronizationConfig {
+    #[serde(default)]
+    pub(crate) enabled: bool,
+
+    #[serde(default = "default_synchronization_interval", value_parser = duration_parser)]
+    pub(crate) interval: Duration,
 }

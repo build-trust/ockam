@@ -10,7 +10,7 @@ use ockam::Context;
 use ockam_api::nodes::models::portal::OutletStatusList;
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_api::terminal::{Terminal, TerminalStream};
-use ockam_api::{address::extract_address_value, nodes::models::portal::OutletStatus};
+use ockam_api::{address::extract_address_value, nodes::models::portal::TcpOutletInfo};
 use ockam_core::api::Request;
 use ockam_core::TryClone;
 use ockam_multiaddr::MultiAddr;
@@ -127,20 +127,20 @@ impl ShowCommandTui for ShowTui {
         let items_names: Vec<String> = outlets
             .0
             .into_iter()
-            .map(|outlet| outlet.worker_addr.address().to_string())
+            .map(|outlet| outlet.worker_address.address().to_string())
             .collect();
         Ok(items_names)
     }
 
     async fn show_single(&self, item_name: &str) -> miette::Result<()> {
-        let outlet_status: OutletStatus = self
+        let outlet_status: TcpOutletInfo = self
             .node
             .ask(&self.ctx, Request::get(format!("/node/outlet/{item_name}")))
             .await?;
         let info = OutletInformation {
             node_name: self.node.node_name().to_string(),
             worker_address: outlet_status.worker_route().into_diagnostic()?,
-            to: outlet_status.to.to_string(),
+            to: outlet_status.parameters.to.to_string(),
         };
         self.terminal()
             .to_stdout()

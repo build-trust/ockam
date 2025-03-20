@@ -1,11 +1,10 @@
 use super::Result;
 use crate::cli_state::TcpInlet;
-use crate::nodes::models::portal::OutletStatus;
+use crate::nodes::models::portal::TcpOutletInfo;
 use crate::CliState;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::Address;
 use ockam_multiaddr::MultiAddr;
-use ockam_transport_core::HostnamePort;
 use std::net::SocketAddr;
 
 impl CliState {
@@ -56,18 +55,12 @@ impl CliState {
     pub async fn create_tcp_outlet(
         &self,
         node_name: &str,
-        to: &HostnamePort,
-        worker_addr: &Address,
-        payload: &Option<String>,
-        privileged: bool,
-    ) -> Result<OutletStatus> {
-        let tcp_outlet_status =
-            OutletStatus::new(to.clone(), worker_addr.clone(), payload.clone(), privileged);
-
+        tcp_outlet_info: &TcpOutletInfo,
+    ) -> Result<()> {
         self.tcp_portals_repository()
-            .store_tcp_outlet(node_name, &tcp_outlet_status)
+            .store_tcp_outlet(node_name, tcp_outlet_info)
             .await?;
-        Ok(tcp_outlet_status)
+        Ok(())
     }
 
     /// Delete a TCP outlet
@@ -76,6 +69,15 @@ impl CliState {
         Ok(self
             .tcp_portals_repository()
             .delete_tcp_outlet(node_name, worker_addr)
+            .await?)
+    }
+
+    //// List all TCP outlets
+    #[instrument(skip_all)]
+    pub async fn list_tcp_outlets(&self, node_name: &str) -> Result<Vec<TcpOutletInfo>> {
+        Ok(self
+            .tcp_portals_repository()
+            .list_tcp_outlets(node_name)
             .await?)
     }
 }

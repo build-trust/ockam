@@ -1,4 +1,6 @@
 use crate::cli_state::random_name;
+use crate::nodes::models::portal::TcpOutletInfo;
+use crate::session::session::Session;
 use crate::DefaultAddress;
 
 use ockam::identity::Identifier;
@@ -9,9 +11,6 @@ use ockam_core::compat::sync::RwLock as SyncRwLock;
 use ockam_core::{Address, Route};
 use ockam_multiaddr::MultiAddr;
 use ockam_node::compat::asynchronous::Mutex as AsyncMutex;
-use ockam_transport_core::HostnamePort;
-
-use crate::session::session::Session;
 use std::fmt::Display;
 use std::hash::Hash;
 use std::sync::Arc;
@@ -157,27 +156,6 @@ impl InletInfo {
 }
 
 #[derive(Clone)]
-pub struct OutletInfo {
-    pub(crate) to: HostnamePort,
-    pub(crate) worker_addr: Address,
-    pub(crate) privileged: bool,
-}
-
-impl OutletInfo {
-    pub(crate) fn new(to: HostnamePort, worker_addr: Option<&Address>, privileged: bool) -> Self {
-        let worker_addr = match worker_addr {
-            Some(addr) => addr.clone(),
-            None => Address::from_string(""),
-        };
-        Self {
-            to,
-            worker_addr,
-            privileged,
-        }
-    }
-}
-
-#[derive(Clone)]
 pub struct RegistryRelayInfo {
     pub(crate) destination_address: MultiAddr,
     pub(crate) alias: String,
@@ -195,7 +173,7 @@ pub(crate) struct Registry {
     pub(crate) http_headers_interceptors: RegistryOf<Address, HttpHeaderInterceptorInfo>,
     pub(crate) relays: RegistryOf<String, RegistryRelayInfo>,
     pub(crate) inlets: RegistryOf<String, InletInfo>,
-    pub(crate) outlets: RegistryOf<Address, OutletInfo>,
+    pub(crate) outlets: RegistryOf<Address, TcpOutletInfo>,
     pub(crate) influxdb_services: RegistryOf<Address, ()>, // TODO: what should we persist here?
 }
 
@@ -255,7 +233,7 @@ impl<K: Hash + Eq + Clone, V: Clone> RegistryOf<K, V> {
     }
 }
 
-impl RegistryOf<Address, OutletInfo> {
+impl RegistryOf<Address, TcpOutletInfo> {
     pub fn generate_worker_addr(&self, worker_addr: Option<Address>) -> Address {
         match worker_addr {
             Some(addr) => addr,
@@ -275,6 +253,8 @@ impl RegistryOf<Address, OutletInfo> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::nodes::service::tcp_outlets::TcpOutletParameters;
+    use ockam_transport_core::HostnamePort;
 
     #[test]
     fn outlet_registry_generate_worker_address_start_with_none() {
@@ -342,7 +322,10 @@ mod tests {
         assert_ne!(worker_addr, DefaultAddress::OUTLET_SERVICE.into());
     }
 
-    fn outlet_info(worker_addr: Address) -> OutletInfo {
-        OutletInfo::new(HostnamePort::localhost(0), Some(&worker_addr), true)
+    fn outlet_info(worker_addr: Address) -> TcpOutletInfo {
+        TcpOutletInfo::new(
+            TcpOutletParameters::new(HostnamePort::localhost(0)),
+            worker_addr,
+        )
     }
 }

@@ -7,7 +7,7 @@ use crate::control_api::protocol::outlet::{
     CreateOutletRequest, OutletKind, OutletStatus, OutletTls, UpdateOutletRequest,
 };
 use crate::control_api::ControlApiError;
-use crate::nodes::models::portal::OutletAccessControl;
+use crate::nodes::service::tcp_outlets::TcpOutletParameters;
 use crate::nodes::NodeManager;
 use http::{Method, StatusCode};
 use ockam_abac::{Action, Expr, PolicyExpression, ResourceName};
@@ -81,35 +81,27 @@ async fn handle_tcp_outlet_create(
 ) -> Result<ControlApiHttpResponse, ControlApiError> {
     let request: CreateOutletRequest = common::parse_request_body(body)?;
 
-    let allow = OutletAccessControl::WithPolicyExpression(match request.allow {
+    let policy_expression = match request.allow {
         None => None,
         Some(policy) => Some(PolicyExpression::try_from(policy.as_str())?),
-    });
+    };
 
     let tls = match request.tls {
         OutletTls::None => false,
         OutletTls::Validate => true,
     };
 
-    let priviledged = match request.kind {
+    let privileged = match request.kind {
         OutletKind::Regular => false,
         OutletKind::Privileged => true,
     };
 
-    let result = node_manager
-        .create_outlet(
-            context,
-            request.to.try_into()?,
-            tls,
-            request.address.map(Address::from_string),
-            true,
-            allow,
-            priviledged,
-            false,
-            false,
-        )
-        .await;
+    let parameters = TcpOutletParameters::new(request.to.try_into()?)
+        .with_policy_expression(policy_expression)
+        .with_tls(tls)
+        .with_privileged(privileged);
 
+    let result = node_manager.create_outlet(context, parameters).await;
     match result {
         Ok(outlet_status) => Ok(ControlApiHttpResponse::with_body(
             StatusCode::CREATED,

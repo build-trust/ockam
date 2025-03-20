@@ -1,4 +1,4 @@
-use crate::nodes::models::portal::OutletStatus;
+use crate::nodes::models::portal::TcpOutletInfo;
 use ockam_core::Result;
 use ockam_core::{async_trait, Address};
 use ockam_multiaddr::MultiAddr;
@@ -15,12 +15,14 @@ pub trait TcpPortalsRepository: Send + Sync + 'static {
     async fn get_tcp_inlet(&self, node_name: &str, alias: &str) -> Result<Option<TcpInlet>>;
     /// Delete the configuration of a TcpInlet for a given node name and inlet alias
     async fn delete_tcp_inlet(&self, node_name: &str, alias: &str) -> Result<()>;
+    /// List all TcpInlets for a given node name
+    async fn list_tcp_inlets(&self, node_name: &str) -> Result<Vec<TcpInlet>>;
 
     /// Store the configuration of a TcpOutlet for a given node name
     async fn store_tcp_outlet(
         &self,
         node_name: &str,
-        tcp_outlet_status: &OutletStatus,
+        tcp_outlet_status: &TcpOutletInfo,
     ) -> Result<()>;
 
     /// Return the configuration of a TcpOutlet for a given node name and worker address
@@ -28,10 +30,13 @@ pub trait TcpPortalsRepository: Send + Sync + 'static {
         &self,
         node_name: &str,
         worker_addr: &Address,
-    ) -> Result<Option<OutletStatus>>;
+    ) -> Result<Option<TcpOutletInfo>>;
 
     /// Delete the configuration of a TcpOutlet for a given node name and worker address
     async fn delete_tcp_outlet(&self, node_name: &str, worker_addr: &Address) -> Result<()>;
+
+    /// List all TcpOutlets for a given node name
+    async fn list_tcp_outlets(&self, node_name: &str) -> Result<Vec<TcpOutletInfo>>;
 }
 
 #[async_trait]
@@ -48,10 +53,14 @@ impl<T: TcpPortalsRepository> TcpPortalsRepository for AutoRetry<T> {
         retry!(self.wrapped.delete_tcp_inlet(node_name, alias))
     }
 
+    async fn list_tcp_inlets(&self, node_name: &str) -> Result<Vec<TcpInlet>> {
+        retry!(self.wrapped.list_tcp_inlets(node_name))
+    }
+
     async fn store_tcp_outlet(
         &self,
         node_name: &str,
-        tcp_outlet_status: &OutletStatus,
+        tcp_outlet_status: &TcpOutletInfo,
     ) -> Result<()> {
         retry!(self.wrapped.store_tcp_outlet(node_name, tcp_outlet_status))
     }
@@ -60,12 +69,16 @@ impl<T: TcpPortalsRepository> TcpPortalsRepository for AutoRetry<T> {
         &self,
         node_name: &str,
         worker_addr: &Address,
-    ) -> Result<Option<OutletStatus>> {
+    ) -> Result<Option<TcpOutletInfo>> {
         retry!(self.wrapped.get_tcp_outlet(node_name, worker_addr))
     }
 
     async fn delete_tcp_outlet(&self, node_name: &str, worker_addr: &Address) -> Result<()> {
         retry!(self.wrapped.delete_tcp_outlet(node_name, worker_addr))
+    }
+
+    async fn list_tcp_outlets(&self, node_name: &str) -> Result<Vec<TcpOutletInfo>> {
+        retry!(self.wrapped.list_tcp_outlets(node_name))
     }
 }
 

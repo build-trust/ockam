@@ -11,7 +11,7 @@ use ockam_abac::PolicyExpression;
 use ockam_api::address::extract_address_value;
 use ockam_api::colors::{color_primary, color_warn};
 use ockam_api::kafka::portal::KafkaPortals;
-use ockam_api::nodes::models::portal::OutletStatus;
+use ockam_api::nodes::models::portal::TcpOutletInfo;
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_api::output::Output;
 use ockam_api::{fmt_log, fmt_ok, fmt_warn};
@@ -79,7 +79,7 @@ impl Command for CreateCommand {
 
             let node =
                 BackgroundNodeClient::create(ctx, &opts.state, &cmd.node_opts.at_node).await?;
-            let _res: OutletStatus = node
+            let _res: TcpOutletInfo = node
                 .create_kafka_outlet(
                     ctx,
                     &cmd.name,

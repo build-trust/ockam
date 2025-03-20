@@ -2,7 +2,7 @@ use crate::nodes::connection::{
     Connection, ConnectionBuilder, PlainTcpInstantiator, PlainUdpInstantiator, ProjectInstantiator,
     SecureChannelInstantiator,
 };
-use crate::nodes::models::portal::OutletStatus;
+use crate::nodes::models::portal::TcpOutletInfo;
 use crate::nodes::models::transport::{BindAddress, TransportMode, TransportType};
 use crate::nodes::registry::Registry;
 use crate::nodes::service::http::HttpServer;
@@ -414,20 +414,8 @@ impl NodeManager {
         &self.tcp_transport
     }
 
-    pub fn list_outlets(&self) -> Vec<OutletStatus> {
-        self.registry
-            .outlets
-            .entries()
-            .iter()
-            .map(|(_, info)| {
-                OutletStatus::new(
-                    info.to.clone(),
-                    info.worker_addr.clone(),
-                    None,
-                    info.privileged,
-                )
-            })
-            .collect()
+    pub fn list_outlets(&self) -> Vec<TcpOutletInfo> {
+        self.registry.outlets.values()
     }
 
     /// Delete the current node data

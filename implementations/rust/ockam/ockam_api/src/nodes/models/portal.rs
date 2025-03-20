@@ -1,11 +1,11 @@
 //! Inlets and outlet request/response types
 
 use std::fmt::{Display, Formatter};
-use std::sync::Arc;
 use std::time::Duration;
 
 use crate::colors::{color_primary, color_primary_alt};
 use crate::error::ApiError;
+use crate::nodes::service::tcp_outlets::TcpOutletParameters;
 use crate::output::Output;
 use crate::session::connection_status::ConnectionStatus;
 use crate::terminal::fmt;
@@ -15,12 +15,9 @@ use ockam::identity::Identifier;
 use ockam::transport::HostnamePort;
 use ockam::Message;
 use ockam_abac::PolicyExpression;
-use ockam_core::{
-    cbor_encode_preallocate, Address, Decodable, Encodable, Encoded, IncomingAccessControl,
-    OutgoingAccessControl, Route,
-};
+use ockam_core::{cbor_encode_preallocate, Address, Decodable, Encodable, Encoded, Route};
 use ockam_multiaddr::MultiAddr;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 /// Request body to create an inlet
 #[derive(Clone, Debug, Encode, Decode, CborLen, Message)]
@@ -364,58 +361,48 @@ impl Decodable for InletStatusList {
 }
 
 /// Response body when interacting with a portal endpoint
-#[derive(Clone, Debug, Encode, Decode, CborLen, Serialize, Deserialize, PartialEq, Message)]
+#[derive(Clone, Debug, PartialEq, Serialize, Encode, Decode, CborLen, Message)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct OutletStatus {
-    #[n(1)] pub to: HostnamePort,
-    #[n(2)] pub worker_addr: Address,
-    /// An optional status payload
-    #[n(3)] pub payload: Option<String>,
-    #[n(4)] pub privileged: bool,
+pub struct TcpOutletInfo {
+    #[n(1)] pub parameters: TcpOutletParameters,
+    #[n(2)] pub worker_address: Address,
 }
 
-impl Encodable for OutletStatus {
+impl Encodable for TcpOutletInfo {
     fn encode(self) -> ockam_core::Result<Encoded> {
         cbor_encode_preallocate(self)
     }
 }
 
-impl Decodable for OutletStatus {
+impl Decodable for TcpOutletInfo {
     fn decode(e: &[u8]) -> ockam_core::Result<Self> {
         Ok(minicbor::decode(e)?)
     }
 }
 
-impl OutletStatus {
-    pub fn new(
-        to: HostnamePort,
-        worker_addr: Address,
-        payload: impl Into<Option<String>>,
-        privileged: bool,
-    ) -> Self {
+impl TcpOutletInfo {
+    pub fn new(parameters: TcpOutletParameters, worker_address: Address) -> Self {
         Self {
-            to,
-            worker_addr,
-            payload: payload.into(),
-            privileged,
+            parameters,
+            worker_address,
         }
     }
 
     pub fn worker_route(&self) -> Result<MultiAddr, ockam_core::Error> {
-        ReverseLocalConverter::convert_address(&self.worker_addr)
+        ReverseLocalConverter::convert_address(&self.worker_address)
     }
 
     pub fn worker_name(&self) -> Result<String, ockam_core::Error> {
         match self.worker_route()?.last() {
             Some(worker_name) => String::from_utf8(worker_name.data().to_vec())
                 .map_err(|_| ApiError::core("Invalid Worker Address")),
-            None => Ok(self.worker_addr.to_string()),
+            None => Ok(self.worker_address.to_string()),
         }
     }
 }
 
-impl Display for OutletStatus {
+impl Display for TcpOutletInfo {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
@@ -425,10 +412,10 @@ impl Display for OutletStatus {
                     .map_err(|_| std::fmt::Error)?
                     .to_string()
             ),
-            color_primary(self.to.to_string()),
+            color_primary(self.parameters.to.to_string()),
         )?;
 
-        if self.privileged {
+        if self.parameters.privileged {
             writeln!(
                 f,
                 "{}This Outlet is operating in {} mode",
@@ -443,7 +430,7 @@ impl Display for OutletStatus {
 
 #[derive(Encode, Decode, CborLen, Debug, Default, Clone, Message)]
 #[cbor(transparent)]
-pub struct OutletStatusList(#[n(0)] pub Vec<OutletStatus>);
+pub struct OutletStatusList(#[n(0)] pub Vec<TcpOutletInfo>);
 
 impl Encodable for OutletStatusList {
     fn encode(self) -> ockam_core::Result<Encoded> {
@@ -457,19 +444,8 @@ impl Decodable for OutletStatusList {
     }
 }
 
-impl Output for OutletStatus {
+impl Output for TcpOutletInfo {
     fn item(&self) -> Result<String, ApiError> {
         Ok(self.padded_display())
     }
-}
-
-#[derive(Debug)]
-pub enum OutletAccessControl {
-    AccessControl(
-        (
-            Arc<dyn IncomingAccessControl>,
-            Arc<dyn OutgoingAccessControl>,
-        ),
-    ),
-    WithPolicyExpression(Option<PolicyExpression>),
 }

@@ -1,5 +1,5 @@
 use crate::kafka::{ConsumerPublishing, ConsumerResolution};
-use crate::nodes::models::portal::{InletStatus, OutletStatus};
+use crate::nodes::models::portal::{InletStatus, TcpOutletInfo};
 use crate::nodes::models::services::{
     StartKafkaInletRequest, StartKafkaOutletRequest, StartServiceRequest,
 };
@@ -38,7 +38,7 @@ pub trait KafkaPortals {
         bootstrap_server_addr: HostnamePort,
         tls: bool,
         policy_expression: Option<PolicyExpression>,
-    ) -> miette::Result<Reply<OutletStatus>>;
+    ) -> miette::Result<Reply<TcpOutletInfo>>;
 }
 
 #[async_trait]
@@ -84,7 +84,7 @@ impl KafkaPortals for BackgroundNodeClient {
         bootstrap_server_addr: HostnamePort,
         tls: bool,
         policy_expression: Option<PolicyExpression>,
-    ) -> miette::Result<Reply<OutletStatus>> {
+    ) -> miette::Result<Reply<TcpOutletInfo>> {
         let request = {
             let payload =
                 StartKafkaOutletRequest::new(bootstrap_server_addr, tls, policy_expression);

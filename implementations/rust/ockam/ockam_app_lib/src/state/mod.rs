@@ -13,7 +13,7 @@ use ockam::NodeBuilder;
 use ockam::TryClone;
 use ockam_api::cli_state::{CliState, CliStateMode};
 use ockam_api::logs::TracingGuard;
-use ockam_api::nodes::models::portal::OutletStatus;
+use ockam_api::nodes::models::portal::TcpOutletInfo;
 use ockam_api::nodes::service::{NodeManagerGeneralOptions, NodeManagerTransportOptions};
 use ockam_api::nodes::{BackgroundNodeClient, InMemoryNode, NodeManagerWorker, NODEMANAGER_ADDR};
 use ockam_api::orchestrator::enroll::auth0::UserInfo;
@@ -99,11 +99,14 @@ impl AppState {
         let rt = Arc::new(Runtime::new().expect("cannot create a tokio runtime"));
         let cli_state =
             rt.block_on(async move { CliState::create(CliStateMode::with_default_dir()?).await })?;
-        let (context, _executor) = NodeBuilder::new()
+        let (context, executor) = NodeBuilder::new()
             .no_logging()
             .with_runtime(rt.clone())
             .build();
         let context = Arc::new(context);
+
+        // everlasting runtime to avoid shutdown issues
+        core::mem::forget(executor);
 
         let runtime = context.runtime().clone();
         let future = async {
@@ -412,7 +415,7 @@ impl AppState {
     }
 
     /// Return the list of currently running outlets
-    pub async fn tcp_outlet_list(&self) -> Vec<OutletStatus> {
+    pub async fn tcp_outlet_list(&self) -> Vec<TcpOutletInfo> {
         let node_manager = self.node_manager.read().await;
         node_manager.list_outlets()
     }
@@ -518,9 +521,9 @@ impl AppState {
                 .await
                 .into_iter()
                 .map(|outlet| LocalService {
-                    name: outlet.worker_addr.address().to_string(),
-                    address: outlet.to.hostname().to_string(),
-                    port: outlet.to.port(),
+                    name: outlet.worker_address.address().to_string(),
+                    address: outlet.parameters.to.hostname().to_string(),
+                    port: outlet.parameters.to.port(),
                     scheme: None,
                     shared_with: vec![],
                     available: true,

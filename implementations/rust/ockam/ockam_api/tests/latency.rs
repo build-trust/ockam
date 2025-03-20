@@ -7,7 +7,7 @@ use tokio::net::TcpStream;
 use tokio::runtime::Runtime;
 use tokio::time::timeout;
 
-use ockam_api::nodes::models::portal::OutletAccessControl;
+use ockam_api::nodes::service::tcp_outlets::TcpOutletParameters;
 use ockam_api::test_utils::{start_tcp_echo_server, TestNode};
 use ockam_core::env::FromString;
 use ockam_core::errcode::{Kind, Origin};
@@ -134,14 +134,12 @@ pub fn measure_buffer_latency_two_nodes_portal() {
                 .node_manager
                 .create_outlet(
                     &second_node.context,
-                    echo_server_handle.chosen_addr.clone(),
-                    false,
-                    Some(Address::from_string("outlet")),
-                    true,
-                    OutletAccessControl::AccessControl((Arc::new(AllowAll), Arc::new(AllowAll))),
-                    false,
-                    false,
-                    true,
+                    TcpOutletParameters::new(echo_server_handle.chosen_addr.clone())
+                        .with_worker_address(Address::from_string("outlet"))
+                        .with_enable_nagle(false)
+                        .with_skip_handshake(true)
+                        .ephemeral()
+                        .with_custom_access_control(Arc::new(AllowAll), Arc::new(AllowAll)),
                 )
                 .await?;
 
@@ -232,14 +230,12 @@ pub fn measure_connection_latency_two_nodes_portal() {
                 .node_manager
                 .create_outlet(
                     &second_node.context,
-                    echo_server_handle.chosen_addr.clone(),
-                    false,
-                    Some(Address::from_string("outlet")),
-                    true,
-                    OutletAccessControl::AccessControl((Arc::new(AllowAll), Arc::new(AllowAll))),
-                    false,
-                    true,
-                    true,
+                    TcpOutletParameters::new(echo_server_handle.chosen_addr.clone())
+                        .with_worker_address(Address::from_string("outlet"))
+                        .with_enable_nagle(false)
+                        .with_skip_handshake(true)
+                        .ephemeral()
+                        .with_custom_access_control(Arc::new(AllowAll), Arc::new(AllowAll)),
                 )
                 .await?;
 

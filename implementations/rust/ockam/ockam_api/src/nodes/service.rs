@@ -23,6 +23,7 @@ mod certificate_provider;
 mod http;
 mod interceptors;
 mod manager;
+mod synchronizer;
 mod trust;
 mod worker;
 

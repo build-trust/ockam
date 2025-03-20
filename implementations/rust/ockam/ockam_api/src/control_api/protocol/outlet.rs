@@ -63,15 +63,15 @@ pub struct OutletStatus {
     pub privileged: bool,
 }
 
-impl From<crate::nodes::models::portal::OutletStatus> for OutletStatus {
-    fn from(status: crate::nodes::models::portal::OutletStatus) -> Self {
+impl From<crate::nodes::models::portal::TcpOutletInfo> for OutletStatus {
+    fn from(status: crate::nodes::models::portal::TcpOutletInfo) -> Self {
         OutletStatus {
             to: HostnamePort {
-                hostname: status.to.hostname,
-                port: status.to.port,
+                hostname: status.parameters.to.hostname,
+                port: status.parameters.to.port,
             },
-            address: status.worker_addr.address().to_string(),
-            privileged: status.privileged,
+            address: status.worker_address.address().to_string(),
+            privileged: status.parameters.privileged,
         }
     }
 }

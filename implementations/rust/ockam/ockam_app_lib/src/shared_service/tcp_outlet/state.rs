@@ -5,18 +5,20 @@ use tracing::{debug, error};
 use crate::incoming_services::PersistentIncomingService;
 use crate::state::{AppState, ModelState};
 use ockam::Address;
-use ockam_api::nodes::models::portal::{OutletAccessControl, OutletStatus};
+use ockam_api::nodes::models::portal::TcpOutletInfo;
+use ockam_api::nodes::service::tcp_outlets::TcpOutletParameters;
 
 impl ModelState {
-    pub fn add_tcp_outlet(&mut self, status: OutletStatus) {
+    pub fn add_tcp_outlet(&mut self, status: TcpOutletInfo) {
         self.tcp_outlets.push(status);
     }
 
     pub fn delete_tcp_outlet(&mut self, worker_addr: &Address) {
-        self.tcp_outlets.retain(|x| &x.worker_addr != worker_addr);
+        self.tcp_outlets
+            .retain(|x| &x.worker_address != worker_addr);
     }
 
-    pub fn get_tcp_outlets(&self) -> &[OutletStatus] {
+    pub fn get_tcp_outlets(&self) -> &[TcpOutletInfo] {
         &self.tcp_outlets
     }
 
@@ -37,14 +39,14 @@ impl AppState {
         let context = self.context();
         for tcp_outlet in self.model(|m| m.get_tcp_outlets().to_vec()).await {
             let access_control = match self
-                .create_invitations_access_control(tcp_outlet.worker_addr.clone())
+                .create_invitations_access_control(tcp_outlet.worker_address.clone())
                 .await
             {
                 Ok(a) => a,
                 Err(e) => {
                     error!(
                         ?e,
-                        worker_addr = %tcp_outlet.worker_addr,
+                        worker_addr = %tcp_outlet.worker_address,
                         "Failed to create access control"
                     );
                     continue;
@@ -57,34 +59,27 @@ impl AppState {
                 Err(e) => {
                     error!(
                         ?e,
-                        worker_addr = %tcp_outlet.worker_addr,
+                        worker_addr = %tcp_outlet.worker_address,
                         "Failed to create access control"
                     );
                     continue;
                 }
             };
 
-            debug!(worker_addr = %tcp_outlet.worker_addr, "Restoring outlet");
+            debug!(worker_addr = %tcp_outlet.worker_address, "Restoring outlet");
             let _ = node_manager
                 .create_outlet(
                     &context,
-                    tcp_outlet.to,
-                    false,
-                    Some(tcp_outlet.worker_addr.clone()),
-                    true,
-                    OutletAccessControl::AccessControl((
-                        Arc::new(incoming_ac),
-                        Arc::new(outgoing_ac),
-                    )),
-                    false,
-                    false,
-                    false,
+                    TcpOutletParameters::new(tcp_outlet.parameters.to)
+                        .with_worker_address(tcp_outlet.worker_address.clone())
+                        .ephemeral()
+                        .with_custom_access_control(Arc::new(incoming_ac), Arc::new(outgoing_ac)),
                 )
                 .await
                 .map_err(|e| {
                     error!(
                         ?e,
-                        worker_addr = %tcp_outlet.worker_addr,
+                        worker_addr = %tcp_outlet.worker_address,
                         "Failed to restore outlet"
                     );
                 });

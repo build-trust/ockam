@@ -1,5 +1,5 @@
 use crate::kafka::kafka_outlet_address;
-use crate::nodes::models::portal::OutletAccessControl;
+use crate::nodes::service::tcp_outlets::{Reachability, TcpOutletParameters};
 use crate::nodes::NodeManager;
 use ockam::compat::tokio::sync::Mutex;
 use ockam::transport::HostnamePort;
@@ -71,17 +71,15 @@ impl KafkaOutletController {
                 .node_manager
                 .create_outlet(
                     context,
-                    HostnamePort::from_str(&address)?,
-                    self.tls,
-                    Some(kafka_outlet_address(broker_id)),
-                    false,
-                    OutletAccessControl::WithPolicyExpression(self.policy_expression.clone()),
-                    false,
-                    false,
-                    false,
+                    TcpOutletParameters::new(HostnamePort::from_str(&address)?)
+                        .with_tls(self.tls)
+                        .with_worker_address(kafka_outlet_address(broker_id))
+                        .with_policy_expression(self.policy_expression.clone())
+                        .ephemeral()
+                        .with_reachability(Reachability::DynamicallyConfigured),
                 )
                 .await
-                .map(|info| info.to)?;
+                .map(|info| info.parameters.to)?;
 
             inner.broker_map.insert(broker_id, hostname_port);
         }

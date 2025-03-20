@@ -5,7 +5,7 @@ use ockam::compat::asynchronous::resolve_peer;
 use ockam::transport::HostnamePort;
 use ockam::Address;
 use ockam_api::address::extract_address_value;
-use ockam_api::nodes::models::portal::OutletAccessControl;
+use ockam_api::nodes::service::tcp_outlets::{Reachability, TcpOutletParameters};
 use std::str::FromStr;
 use std::sync::Arc;
 use tracing::{debug, info};
@@ -41,14 +41,11 @@ impl AppState {
         match node_manager
             .create_outlet(
                 &self.context(),
-                HostnamePort::from(socket_addr),
-                false,
-                Some(worker_addr.clone()),
-                true,
-                OutletAccessControl::AccessControl((Arc::new(incoming_ac), Arc::new(outgoing_ac))),
-                false,
-                false,
-                false,
+                TcpOutletParameters::new(HostnamePort::from(socket_addr))
+                    .with_worker_address(worker_addr.clone())
+                    .ephemeral()
+                    .with_reachability(Reachability::ViaDefaultSecureChannel)
+                    .with_custom_access_control(Arc::new(incoming_ac), Arc::new(outgoing_ac)),
             )
             .await
         {

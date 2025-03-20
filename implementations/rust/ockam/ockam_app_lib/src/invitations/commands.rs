@@ -196,8 +196,8 @@ impl AppState {
 
         let to = outlets
             .into_iter()
-            .find(|o| &o.worker_addr == outlet_worker_addr)
-            .map(|o| o.to);
+            .find(|o| &o.worker_address == outlet_worker_addr)
+            .map(|o| o.parameters.to);
 
         if let Some(to) = to {
             self.create_service_invitation_by_socket_addr(ctx, recipient_email, to)

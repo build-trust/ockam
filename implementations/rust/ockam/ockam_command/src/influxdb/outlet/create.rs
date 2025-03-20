@@ -141,10 +141,10 @@ impl Command for CreateCommand {
             .plain(fmt_ok!(
                 "Created a new InfluxDB Outlet in the Node {} at {} bound to {}\n\n",
                 color_primary(node.node_name()),
-                color_primary(&outlet_status.worker_addr),
+                color_primary(&outlet_status.worker_address),
                 color_primary(&cmd.to)
             ))
-            .machine(&outlet_status.worker_addr)
+            .machine(&outlet_status.worker_address)
             .json_obj(&outlet_status)?
             .write_line()?;
         Ok(())

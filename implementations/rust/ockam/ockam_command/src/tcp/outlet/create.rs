@@ -15,7 +15,7 @@ use ockam_api::cli_state::journeys::{
     JourneyEvent, NODE_NAME, TCP_OUTLET_AT, TCP_OUTLET_FROM, TCP_OUTLET_TO,
 };
 use ockam_api::colors::{color_primary, color_primary_alt};
-use ockam_api::nodes::models::portal::OutletStatus;
+use ockam_api::nodes::models::portal::TcpOutletInfo;
 use ockam_api::nodes::service::tcp_outlets::Outlets;
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_api::{fmt_info, fmt_log, fmt_ok, fmt_warn};
@@ -164,7 +164,7 @@ impl CreateCommand {
         &self,
         opts: &CommandGlobalOpts,
         node_name: &str,
-        outlet_status: &OutletStatus,
+        outlet_status: &TcpOutletInfo,
     ) -> miette::Result<()> {
         let mut attributes = HashMap::new();
         attributes.insert(TCP_OUTLET_AT, node_name.to_string());

@@ -1,10 +1,9 @@
 use crate::influxdb::gateway::interceptor::HttpAuthInterceptorFactory;
 use crate::influxdb::gateway::token_lease_refresher::TokenLeaseRefresher;
 use crate::influxdb::{LeaseUsage, StartInfluxDBLeaseIssuerRequest};
-use crate::nodes::models::portal::{
-    CreateInlet, CreateOutlet, InletStatus, OutletAccessControl, OutletStatus,
-};
+use crate::nodes::models::portal::{CreateInlet, CreateOutlet, InletStatus, TcpOutletInfo};
 use crate::nodes::service::tcp_inlets::create_inlet_payload;
+use crate::nodes::service::tcp_outlets::{Reachability, TcpOutletParameters};
 use crate::nodes::{BackgroundNodeClient, NodeManagerWorker};
 use crate::{ApiError, DefaultAddress};
 use minicbor::{CborLen, Decode, Encode};
@@ -31,7 +30,7 @@ impl NodeManagerWorker {
         &self,
         ctx: &Context,
         body: CreateInfluxDBOutlet,
-    ) -> Result<Response<OutletStatus>, Response<Error>> {
+    ) -> Result<Response<TcpOutletInfo>, Response<Error>> {
         debug!("Starting InfluxDB Outlet service");
         let CreateOutlet {
             hostname_port,
@@ -87,22 +86,25 @@ impl NodeManagerWorker {
                 address
             }
         };
+
+        let parameters = TcpOutletParameters::new(hostname_port)
+            .with_tls(tls)
+            .with_worker_address(outlet_address)
+            .with_policy_expression(policy_expression)
+            .with_privileged(privileged)
+            .with_skip_handshake(skip_handshake)
+            .with_enable_nagle(enable_nagle);
+
+        let parameters = if reachable_from_default_secure_channel {
+            parameters.into()
+        } else {
+            parameters
+                .ephemeral()
+                .with_reachability(Reachability::DynamicallyConfigured)
+        };
+
         // Start the outlet
-        match self
-            .node_manager
-            .create_outlet(
-                ctx,
-                hostname_port,
-                tls,
-                Some(outlet_address),
-                reachable_from_default_secure_channel,
-                OutletAccessControl::WithPolicyExpression(policy_expression),
-                privileged,
-                skip_handshake,
-                enable_nagle,
-            )
-            .await
-        {
+        match self.node_manager.create_outlet(ctx, parameters).await {
             Ok(outlet_status) => Ok(Response::ok().body(outlet_status)),
             Err(e) => Err(Response::bad_request_no_request(&format!("{e:?}"))),
         }
@@ -328,7 +330,7 @@ pub trait InfluxDBPortals {
         from: Option<&Address>,
         policy_expression: Option<PolicyExpression>,
         influxdb_config: InfluxDBOutletConfig,
-    ) -> miette::Result<OutletStatus>;
+    ) -> miette::Result<TcpOutletInfo>;
 }
 
 #[async_trait]
@@ -343,7 +345,7 @@ impl InfluxDBPortals for BackgroundNodeClient {
         from: Option<&Address>,
         policy_expression: Option<PolicyExpression>,
         influxdb_config: InfluxDBOutletConfig,
-    ) -> miette::Result<OutletStatus> {
+    ) -> miette::Result<TcpOutletInfo> {
         let mut outlet_payload =
             CreateOutlet::new(to, tls, from.cloned(), true, false, false, false);
         if let Some(policy_expression) = policy_expression {

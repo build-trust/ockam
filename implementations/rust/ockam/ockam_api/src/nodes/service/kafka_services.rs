@@ -8,12 +8,13 @@ use crate::kafka::{
     kafka_policy_expression, ConsumerPublishing, ConsumerResolution, KafkaInletController,
     KAFKA_OUTLET_BOOTSTRAP_ADDRESS, KAFKA_OUTLET_INTERCEPTOR_ADDRESS,
 };
-use crate::nodes::models::portal::{InletStatus, OutletAccessControl, OutletStatus};
+use crate::nodes::models::portal::{InletStatus, TcpOutletInfo};
 use crate::nodes::models::services::{
     DeleteServiceRequest, StartKafkaInletRequest, StartKafkaOutletRequest, StartServiceRequest,
 };
 use crate::nodes::registry::{KafkaServiceInfo, KafkaServiceKind};
 use crate::nodes::service::default_address::DefaultAddress;
+use crate::nodes::service::tcp_outlets::{Reachability, TcpOutletParameters};
 use crate::nodes::InMemoryNode;
 use crate::port_range::PortRange;
 use ockam::transport::HostnamePort;
@@ -65,7 +66,7 @@ impl NodeManagerWorker {
         &self,
         context: &Context,
         body: StartServiceRequest<StartKafkaOutletRequest>,
-    ) -> Result<Response<OutletStatus>, Response<Error>> {
+    ) -> Result<Response<TcpOutletInfo>, Response<Error>> {
         let request = body.request();
         match self
             .node_manager
@@ -264,7 +265,7 @@ impl InMemoryNode {
         bootstrap_server_addr: HostnamePort,
         tls: bool,
         outlet_policy_expression: Option<PolicyExpression>,
-    ) -> Result<OutletStatus> {
+    ) -> Result<TcpOutletInfo> {
         let default_secure_channel_listener_flow_control_id = context
             .flow_controls()
             .get_flow_control_with_spawner(&DefaultAddress::SECURE_CHANNEL_LISTENER.into())
@@ -322,14 +323,12 @@ impl InMemoryNode {
         let outlet_status = self
             .create_outlet(
                 context,
-                bootstrap_server_addr,
-                tls,
-                Some(KAFKA_OUTLET_BOOTSTRAP_ADDRESS.into()),
-                false,
-                OutletAccessControl::WithPolicyExpression(outlet_policy_expression),
-                false,
-                false,
-                false,
+                TcpOutletParameters::new(bootstrap_server_addr)
+                    .with_tls(tls)
+                    .with_worker_address(KAFKA_OUTLET_BOOTSTRAP_ADDRESS.into())
+                    .with_policy_expression(outlet_policy_expression)
+                    .ephemeral()
+                    .with_reachability(Reachability::DynamicallyConfigured),
             )
             .await?;
 

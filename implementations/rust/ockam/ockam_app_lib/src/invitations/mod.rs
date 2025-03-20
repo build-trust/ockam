@@ -26,7 +26,7 @@ impl AppState {
                 }
                 m.tcp_outlets
                     .iter()
-                    .find(|o| &o.to == to)
+                    .find(|o| &o.parameters.to == to)
                     .map(|o| o.worker_route())
             })
             .await
