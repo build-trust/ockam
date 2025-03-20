@@ -188,6 +188,7 @@ This file contains attributions for any 3rd-party open source code used in this 
 | endian-type | MIT | https://crates.io/crates/endian-type |
 | enumflags2 | MIT, Apache-2.0 | https://crates.io/crates/enumflags2 |
 | enumflags2_derive | MIT, Apache-2.0 | https://crates.io/crates/enumflags2_derive |
+| env_home | MIT, Apache-2.0 | https://crates.io/crates/env_home |
 | equivalent | Apache-2.0, MIT | https://crates.io/crates/equivalent |
 | errno | MIT, Apache-2.0 | https://crates.io/crates/errno |
 | error-code | BSL-1.0 | https://crates.io/crates/error-code |
