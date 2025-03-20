@@ -28,6 +28,7 @@ pub enum OutletTls {
 #[serde(rename_all = "kebab-case")]
 pub struct CreateOutletRequest {
     /// The kind of the outlet
+    #[serde(default)]
     pub kind: OutletKind,
     /// The address of the outlet, also acts as an identifier for the resource
     pub address: Option<String>,

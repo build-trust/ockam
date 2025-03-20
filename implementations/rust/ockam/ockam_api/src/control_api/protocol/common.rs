@@ -333,7 +333,7 @@ mod tests {
         // Just port
         let json = json!("8080");
         let result: HostnamePort = serde_json::from_value(json).unwrap();
-        assert_eq!(result.hostname, "127.0.0.1"); // localhost
+        assert_eq!(result.hostname, "127.0.0.1");
         assert_eq!(result.port, 8080);
     }
 
@@ -348,7 +348,7 @@ mod tests {
         assert_eq!(result.hostname, "example.com");
         assert_eq!(result.port, 8080);
 
-        // Duplicate fields -- It keeps the last one
+        // Duplicate fields; It keeps the last one
         let json = json!({
             "hostname": "example.com",
             "hostname": "duplicate.com",
