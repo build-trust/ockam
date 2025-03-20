@@ -1,6 +1,6 @@
 [package]
 name = "ockam_transport_udp"
-version = "0.80.0"
+version = "0.81.0"
 authors = ["Ockam Developers"]
 autoexamples = false
 categories = [
@@ -32,8 +32,8 @@ alloc = ["minicbor/alloc"]
 cfg-if = "1.0.0"
 minicbor = { version = "0.25.1", default-features = false, features = ["derive"] }
 ockam_core = { path = "../ockam_core", version = "^0.125.0", default-features = false }
-ockam_node = { path = "../ockam_node", version = "^0.138.0" }
-ockam_transport_core = { path = "../ockam_transport_core", version = "^0.102.0" }
+ockam_node = { path = "../ockam_node", version = "^0.139.0" }
+ockam_transport_core = { path = "../ockam_transport_core", version = "^0.103.0" }
 rand = "0.8"
 tokio = { version = "1.41.0", features = ["rt-multi-thread", "sync", "net", "macros", "time", "io-util"] }
 tracing = { version = "0.1", default-features = false }
