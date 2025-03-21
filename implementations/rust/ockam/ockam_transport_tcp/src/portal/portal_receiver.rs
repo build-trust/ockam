@@ -1,5 +1,6 @@
 use crate::portal::addresses::Addresses;
 use crate::{PortalInternalMessage, PortalMessage, TcpRegistry};
+use log::info;
 use ockam_core::compat::vec::Vec;
 use ockam_core::{
     async_trait, Encodable, LocalMessage, OpenTelemetryContext, Route, OCKAM_TRACER_NAME,
@@ -8,8 +9,9 @@ use ockam_core::{route, Processor, Result};
 use ockam_node::Context;
 use opentelemetry::global;
 use opentelemetry::trace::Tracer;
-use tokio::io::AsyncRead;
+use std::time::Duration;
 use tokio::io::AsyncReadExt;
+use tokio::io::{AsyncRead, AsyncWriteExt};
 use tracing::{debug, error, instrument};
 
 /// A TCP Portal receiving message processor
@@ -25,6 +27,7 @@ pub(crate) struct TcpPortalRecvProcessor<R> {
     onward_route: Route,
     payload_packet_counter: u16,
     portal_payload_length: usize,
+    buffer_to_send: Vec<u8>,
 }
 
 impl<R: AsyncRead + Unpin + Send + Sync + 'static> TcpPortalRecvProcessor<R> {
@@ -35,6 +38,7 @@ impl<R: AsyncRead + Unpin + Send + Sync + 'static> TcpPortalRecvProcessor<R> {
         addresses: Addresses,
         onward_route: Route,
         portal_payload_length: usize,
+        buffer_to_send: Vec<u8>,
     ) -> Self {
         Self {
             registry,
@@ -44,6 +48,7 @@ impl<R: AsyncRead + Unpin + Send + Sync + 'static> TcpPortalRecvProcessor<R> {
             onward_route,
             payload_packet_counter: 0,
             portal_payload_length,
+            buffer_to_send,
         }
     }
 }
@@ -72,13 +77,31 @@ impl<R: AsyncRead + Unpin + Send + Sync + 'static> Processor for TcpPortalRecvPr
     async fn process(&mut self, ctx: &mut Context) -> Result<bool> {
         self.buf.clear();
 
-        let _len = match self.read_half.read_buf(&mut self.buf).await {
-            Ok(len) => len,
-            Err(err) => {
-                error!("Tcp Portal connection read failed with error: {}", err);
-                return Ok(false);
+        if self.buffer_to_send.is_empty() {
+            let _len = match self.read_half.read_buf(&mut self.buf).await {
+                Ok(len) => len,
+                Err(err) => {
+                    error!("Tcp Portal connection read failed with error: {}", err);
+                    return Ok(false);
+                }
+            };
+        } else {
+            info!("Sending buffered data: {}", self.buffer_to_send.len());
+
+            if self.buffer_to_send.len() == 347 {
+                // write only the first 8 bytes
+                self.buf
+                    .write_all(&self.buffer_to_send[0..8])
+                    .await
+                    .unwrap();
+                self.buffer_to_send.drain(0..8);
+            } else {
+                tokio::time::sleep(Duration::from_millis(100)).await;
+                self.buf.write_all(&self.buffer_to_send).await.unwrap();
+                self.buffer_to_send.clear();
             }
-        };
+            info!("self.buf: {}", self.buf.len());
+        }
 
         let tracer = global::tracer(OCKAM_TRACER_NAME);
         let tracing_context = tracer.in_span("TcpPortalRecvProcessor::forward_message", |cx| {

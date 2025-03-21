@@ -63,6 +63,8 @@ pub(crate) struct TcpPortalWorker {
     portal_payload_length: usize,
     handshake_mode: HandshakeMode,
     enable_nagle: bool,
+    buffer_to_ignore: Vec<u8>,
+    buffer_to_send: Vec<u8>,
 }
 
 pub(crate) enum ReadHalfMaybeTls {
@@ -91,6 +93,8 @@ impl TcpPortalWorker {
         outgoing_access_control: Arc<dyn OutgoingAccessControl>, // To propagate to the receiver
         portal_payload_length: usize,
         skip_handshake: bool,
+        buffer_to_send: Vec<u8>,
+        buffer_to_ignore: Vec<u8>,
     ) -> Result<()> {
         let handshake_mode = if skip_handshake {
             HandshakeMode::Skip { map: None }
@@ -113,6 +117,8 @@ impl TcpPortalWorker {
             portal_payload_length,
             handshake_mode,
             false,
+            buffer_to_send,
+            buffer_to_ignore,
         )
     }
 
@@ -146,6 +152,8 @@ impl TcpPortalWorker {
             portal_payload_length,
             HandshakeMode::Regular,
             false,
+            vec![],
+            vec![],
         )
     }
 
@@ -183,6 +191,8 @@ impl TcpPortalWorker {
                 map: Some((map_key, outlet_listener_registry)),
             },
             false,
+            vec![],
+            vec![],
         )
     }
 
@@ -204,6 +214,8 @@ impl TcpPortalWorker {
         portal_payload_length: usize,
         handshake_mode: HandshakeMode,
         enable_nagle: bool,
+        buffer_to_send: Vec<u8>,
+        buffer_to_ignore: Vec<u8>,
     ) -> Result<()> {
         debug!(%addresses.portal_type, sender_remote=%addresses.sender_remote, %is_tls, "creating portal worker");
 
@@ -232,6 +244,8 @@ impl TcpPortalWorker {
             portal_payload_length,
             enable_nagle,
             handshake_mode,
+            buffer_to_send,
+            buffer_to_ignore,
         };
 
         let internal_mailbox = Mailbox::new(
@@ -278,8 +292,12 @@ impl TcpPortalWorker {
     fn start_receiver(&mut self, ctx: &Context, onward_route: Route) -> Result<()> {
         if let Some(rx) = self.read_half.take() {
             match rx {
-                ReadHalfNoTls(rx) => self.start_receive_processor(ctx, onward_route, rx),
-                ReadHalfWithTls(rx) => self.start_receive_processor(ctx, onward_route, rx),
+                ReadHalfNoTls(rx) => {
+                    self.start_receive_processor(ctx, onward_route, rx, self.buffer_to_send.clone())
+                }
+                ReadHalfWithTls(rx) => {
+                    self.start_receive_processor(ctx, onward_route, rx, self.buffer_to_send.clone())
+                }
             }
         } else {
             Err(TransportError::PortalInvalidState)?
@@ -292,6 +310,7 @@ impl TcpPortalWorker {
         ctx: &Context,
         onward_route: Route,
         rx: R,
+        buffer_to_send: Vec<u8>,
     ) -> Result<()> {
         let receiver = TcpPortalRecvProcessor::new(
             self.registry.clone(),
@@ -299,6 +318,7 @@ impl TcpPortalWorker {
             self.addresses.clone(),
             onward_route,
             self.portal_payload_length,
+            buffer_to_send,
         );
 
         let remote = Mailbox::new(
@@ -695,6 +715,37 @@ impl TcpPortalWorker {
         } else {
             return Err(TransportError::PortalInvalidState)?;
         };
+
+        info!("payload size before: {}", payload.len());
+
+        let payload = if self.buffer_to_ignore.is_empty() {
+            info!("No buffer to ignore");
+            payload
+        } else {
+            let bytes_to_verify_and_ignore = self.buffer_to_ignore.len();
+            info!("Ignoring {} bytes", bytes_to_verify_and_ignore);
+            if payload.len() >= bytes_to_verify_and_ignore {
+                info!("Received packet with buffer to ignore, ignoring");
+                let to_verify = &payload[..bytes_to_verify_and_ignore];
+                if self.buffer_to_ignore != to_verify {
+                    warn!(portal_type = %self.addresses.portal_type,
+                        "Received invalid packet, disconnecting"
+                    );
+                    self.start_disconnection(ctx, DisconnectionReason::InvalidCounter)
+                        .await?;
+                    return Err(TransportError::RecvBadMessage)?;
+                }
+                self.buffer_to_ignore.clear();
+                &payload[bytes_to_verify_and_ignore..]
+            } else {
+                todo!("shouldn't be neede yet")
+            }
+        };
+
+        info!("payload size after: {}", payload.len());
+        if payload.is_empty() {
+            return Ok(());
+        }
 
         let result = match tx {
             WriteHalfNoTls(tx) => tx.write_all(payload).await,
