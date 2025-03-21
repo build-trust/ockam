@@ -14,8 +14,8 @@ use crate::nodes::BackgroundNodeClient;
 
 #[allow(clippy::too_many_arguments)]
 pub fn create_inlet_payload(
-    listen_addr: &HostnamePort,
-    outlet_addr: &MultiAddr,
+    listen_addr: Option<&HostnamePort>,
+    outlet_addr: Option<&MultiAddr>,
     alias: &str,
     authorized_identifier: &Option<Identifier>,
     policy_expression: &Option<PolicyExpression>,
@@ -29,12 +29,16 @@ pub fn create_inlet_payload(
     skip_handshake: bool,
     enable_nagle: bool,
     prefix_route: Route,
+    sni: Option<String>,
 ) -> CreateInlet {
-    let via_project = outlet_addr.matches(0, &[ProjectProto::CODE.into()]);
+    let via_project = outlet_addr
+        .as_ref()
+        .map(|a| a.matches(0, &[ProjectProto::CODE.into()]))
+        .unwrap_or(false);
     let mut payload = if via_project {
         CreateInlet::via_project(
-            listen_addr.clone(),
-            outlet_addr.clone(),
+            listen_addr.cloned(),
+            outlet_addr.cloned(),
             alias.into(),
             wait_connection,
             enable_udp_puncture,
@@ -42,11 +46,12 @@ pub fn create_inlet_payload(
             privileged,
             skip_handshake,
             enable_nagle,
+            sni,
         )
     } else {
         CreateInlet::to_node(
-            listen_addr.clone(),
-            outlet_addr.clone(),
+            listen_addr.cloned(),
+            outlet_addr.cloned(),
             alias.into(),
             authorized_identifier.clone(),
             wait_connection,
@@ -55,6 +60,7 @@ pub fn create_inlet_payload(
             privileged,
             skip_handshake,
             enable_nagle,
+            sni,
         )
     };
     if let Some(e) = policy_expression.as_ref() {
@@ -76,8 +82,8 @@ impl Inlets for BackgroundNodeClient {
     async fn create_inlet(
         &self,
         ctx: &Context,
-        listen_addr: &HostnamePort,
-        outlet_addr: &MultiAddr,
+        listen_addr: Option<&HostnamePort>,
+        outlet_addr: Option<&MultiAddr>,
         alias: &str,
         authorized_identifier: &Option<Identifier>,
         policy_expression: &Option<PolicyExpression>,
@@ -91,6 +97,7 @@ impl Inlets for BackgroundNodeClient {
         skip_handshake: bool,
         enable_nagle: bool,
         prefix_route: Route,
+        sni: Option<String>,
     ) -> miette::Result<Reply<InletStatus>> {
         let request = {
             let payload = create_inlet_payload(
@@ -109,6 +116,7 @@ impl Inlets for BackgroundNodeClient {
                 skip_handshake,
                 enable_nagle,
                 prefix_route,
+                sni,
             );
             Request::post("/node/inlet").body(payload)
         };

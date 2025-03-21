@@ -151,6 +151,7 @@ pub struct TcpOutletOptions {
     pub(crate) portal_payload_length: usize,
     pub(crate) skip_handshake: bool,
     pub(crate) enable_nagle: bool,
+    pub(crate) psql_tls: bool,
 }
 
 impl TcpOutletOptions {
@@ -164,6 +165,7 @@ impl TcpOutletOptions {
             portal_payload_length: read_portal_payload_length(),
             skip_handshake: false,
             enable_nagle: false,
+            psql_tls: false,
         }
     }
 
@@ -188,6 +190,16 @@ impl TcpOutletOptions {
     /// Enable Nagle's algorithm for potentially higher throughput, but higher latency
     pub fn enable_nagle(mut self) -> Self {
         self.enable_nagle = true;
+        self
+    }
+
+    pub fn set_psql_tls(mut self, psql_tls: bool) -> Self {
+        self.psql_tls = psql_tls;
+        self
+    }
+
+    pub fn enable_psql_tls(mut self) -> Self {
+        self.psql_tls = true;
         self
     }
 

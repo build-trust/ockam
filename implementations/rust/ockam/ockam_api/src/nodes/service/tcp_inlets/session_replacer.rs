@@ -33,7 +33,7 @@ pub(super) struct InletSessionReplacer {
     pub(super) node_manager: Weak<NodeManager>,
     pub(super) udp_transport: Option<Arc<UdpTransport>>,
     pub(super) context: Context,
-    pub(super) listen_addr: String,
+    pub(super) listen_addr: Option<String>,
     pub(super) outlet_addr: MultiAddr,
     pub(super) prefix_route: Route,
     pub(super) suffix_route: Route,
@@ -57,6 +57,7 @@ pub(super) struct InletSessionReplacer {
     pub(super) privileged: bool,
     pub(super) skip_handshake: bool,
     pub(super) enable_nagle: bool,
+    pub(super) sni: Option<String>,
 }
 
 impl InletSessionReplacer {
@@ -188,10 +189,28 @@ impl InletSessionReplacer {
                         ));
                     }
                 } else {
-                    node_manager
-                        .tcp_transport
-                        .create_inlet(self.listen_addr.clone(), normalized_route.clone(), options)
-                        .await?
+                    match self.listen_addr.as_ref() {
+                        None => {
+                            node_manager
+                                .tcp_transport
+                                .create_sni_inlet(
+                                    self.sni.clone().unwrap(),
+                                    normalized_route.clone(),
+                                    options,
+                                )
+                                .await?
+                        }
+                        Some(listen_addr) => {
+                            node_manager
+                                .tcp_transport
+                                .create_inlet(
+                                    listen_addr.clone(),
+                                    normalized_route.clone(),
+                                    options,
+                                )
+                                .await?
+                        }
+                    }
                 };
 
                 let inlet_address = inlet.processor_address().cloned();
@@ -304,7 +323,7 @@ impl SessionReplacer for InletSessionReplacer {
                 fmt_warn!(
                     "The TCP Inlet {} listening at {} lost the connection to the TCP Outlet at {}\n",
                     color_primary(&self.resource.resource_name),
-                    color_primary(&self.listen_addr),
+                    color_primary(self.listen_addr.as_ref().unwrap_or(&"<>".to_string())),
                     color_primary(&self.outlet_addr)
                 ) + &fmt_info!("Attempting to reconnect...\n"),
             );
@@ -316,7 +335,7 @@ impl SessionReplacer for InletSessionReplacer {
             node_manager.cli_state.notify_message(fmt_ok!(
                 "The TCP Inlet {} listening at {} has restored the connection to the TCP Outlet at {}\n",
                 color_primary(&self.resource.resource_name),
-                color_primary(&self.listen_addr),
+                color_primary(self.listen_addr.as_ref().unwrap_or(&"<>".to_string())),
                 color_primary(&self.outlet_addr)
             ));
         }

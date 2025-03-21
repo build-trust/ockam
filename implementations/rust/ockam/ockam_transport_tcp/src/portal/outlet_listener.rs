@@ -182,6 +182,7 @@ impl Worker for TcpOutletListenWorker {
                 self.options.incoming_access_control.clone(),
                 self.options.outgoing_access_control.clone(),
                 self.options.portal_payload_length,
+                self.options.psql_tls,
             )?;
 
             debug!("Created Tcp Outlet at {}", addresses.sender_remote);

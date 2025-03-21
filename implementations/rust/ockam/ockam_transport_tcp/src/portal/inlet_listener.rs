@@ -2,6 +2,7 @@ use crate::portal::addresses::{Addresses, PortalType};
 use crate::portal::tls_certificate::TlsCertificateProvider;
 use crate::portal::{InletSharedState, ReadHalfMaybeTls, WriteHalfMaybeTls};
 use crate::{portal::TcpPortalWorker, TcpInlet, TcpInletOptions, TcpRegistry};
+use core::str::FromStr;
 use log::warn;
 use ockam_core::compat::net::SocketAddr;
 use ockam_core::compat::sync::{Arc, RwLock as SyncRwLock};
@@ -13,10 +14,20 @@ use ockam_transport_core::{HostnamePort, TransportError};
 use rustls::pki_types::CertificateDer;
 use std::io::BufReader;
 use std::time::Duration;
-use tokio::net::TcpListener;
+use tokio::net::{TcpListener, TcpStream};
+use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::time::Instant;
 use tokio_rustls::{TlsAcceptor, TlsStream};
 use tracing::{debug, error, instrument};
+
+enum Mode {
+    Tcp(TcpListener),
+    Sni {
+        sender: Sender<(TcpStream, SocketAddr)>,
+        receiver: Receiver<(TcpStream, SocketAddr)>,
+        sni: String,
+    },
+}
 
 /// A TCP Portal Inlet listen processor
 ///
@@ -25,7 +36,7 @@ use tracing::{debug, error, instrument};
 /// [`TcpTransport::create_inlet`](crate::TcpTransport::create_inlet).
 pub(crate) struct TcpInletListenProcessor {
     registry: TcpRegistry,
-    inner: TcpListener,
+    mode: Mode,
     inlet_shared_state: Arc<SyncRwLock<InletSharedState>>,
     options: TcpInletOptions,
 }
@@ -39,7 +50,26 @@ impl TcpInletListenProcessor {
     ) -> Self {
         Self {
             registry,
-            inner,
+            mode: Mode::Tcp(inner),
+            inlet_shared_state,
+            options,
+        }
+    }
+
+    pub fn new_sni(
+        registry: TcpRegistry,
+        sni: String,
+        inlet_shared_state: Arc<SyncRwLock<InletSharedState>>,
+        options: TcpInletOptions,
+    ) -> Self {
+        let (sender, receiver) = tokio::sync::mpsc::channel(16);
+        Self {
+            registry,
+            mode: Mode::Sni {
+                sender,
+                receiver,
+                sni,
+            },
             inlet_shared_state,
             options,
         }
@@ -74,6 +104,32 @@ impl TcpInletListenProcessor {
 
         Ok(TcpInlet::new_regular(
             socket_addr,
+            processor_address,
+            inlet_shared_state,
+        ))
+    }
+
+    /// Start a new `TcpInletListenProcessor`
+    #[instrument(skip_all, name = "TcpInletListenProcessor::start")]
+    pub(crate) async fn start_sni(
+        ctx: &Context,
+        registry: TcpRegistry,
+        sni: String,
+        outlet_listener_route: Route,
+        options: TcpInletOptions,
+    ) -> Result<TcpInlet> {
+        let processor_address = Address::random_tagged("TcpInletListenProcessor.Sni");
+
+        debug!("Starting TcpPortalListenerWorker for SNI {}", sni);
+        let inlet_shared_state =
+            InletSharedState::create(ctx, outlet_listener_route, options.is_paused)?;
+        let inlet_shared_state = Arc::new(SyncRwLock::new(inlet_shared_state));
+        let processor = Self::new_sni(registry, sni, inlet_shared_state.clone(), options);
+
+        ctx.start_processor(processor_address.clone(), processor)?;
+
+        Ok(TcpInlet::new_regular(
+            SocketAddr::from_str("255.255.255.255:0").unwrap(),
             processor_address,
             inlet_shared_state,
         ))
@@ -150,6 +206,13 @@ impl TcpInletListenProcessor {
             return Ok(TlsAcceptor::from(Arc::new(config)));
         }
     }
+
+    fn is_sni(&self) -> bool {
+        match &self.mode {
+            Mode::Tcp(_) => false,
+            Mode::Sni { .. } => true,
+        }
+    }
 }
 
 const DEFAULT_TIMEOUT: Duration = Duration::from_secs(2 * 60);
@@ -163,6 +226,15 @@ impl Processor for TcpInletListenProcessor {
         self.registry
             .add_inlet_listener_processor(ctx.primary_address());
 
+        if let Mode::Sni {
+            sender,
+            receiver: _receiver,
+            sni,
+        } = &self.mode
+        {
+            self.registry.add_sni_listener(sni.clone(), sender.clone());
+        }
+
         Ok(())
     }
 
@@ -171,21 +243,31 @@ impl Processor for TcpInletListenProcessor {
         self.registry
             .remove_inlet_listener_processor(ctx.primary_address());
 
+        if let Mode::Sni {
+            sender: _sender,
+            receiver: _receiver,
+            sni,
+        } = &self.mode
+        {
+            self.registry.remove_sni_listener(sni);
+        }
+
         Ok(())
     }
 
     #[instrument(skip_all, name = "TcpInletListenProcessor::process")]
     async fn process(&mut self, ctx: &mut Self::Context) -> Result<bool> {
-        let (stream, socket_addr) = self.inner.accept().await.map_err(TransportError::from)?;
+        let (stream, socket_addr) = match &mut self.mode {
+            Mode::Tcp(inner) => inner.accept().await.map_err(TransportError::from)?,
+            Mode::Sni { receiver, .. } => receiver.recv().await.unwrap(),
+        };
 
         stream
             .set_nodelay(!self.options.enable_nagle)
             .map_err(TransportError::from)?;
 
         let addresses = Addresses::generate(PortalType::Inlet {
-            listener_address: HostnamePort::from(
-                self.inner.local_addr().map_err(TransportError::from)?,
-            ),
+            listener_address: HostnamePort::new("test.com", 443)?,
         });
 
         let inlet_shared_state = self.inlet_shared_state.read().unwrap().clone();
@@ -235,6 +317,7 @@ impl Processor for TcpInletListenProcessor {
             self.options.outgoing_access_control.clone(),
             self.options.portal_payload_length,
             self.options.skip_handshake,
+            self.is_sni(),
         )?;
 
         Ok(true)

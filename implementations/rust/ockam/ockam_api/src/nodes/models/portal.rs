@@ -28,11 +28,11 @@ use serde::{Deserialize, Serialize};
 #[cbor(map)]
 pub struct CreateInlet {
     /// The address the portal should listen at.
-    #[n(1)] pub(crate) listen_addr: HostnamePort,
+    #[n(1)] pub(crate) listen_addr: Option<HostnamePort>,
     /// The peer address.
     /// This can either be the address of an already
     /// created outlet, or a forwarding mechanism via ockam cloud.
-    #[n(2)] pub(crate) outlet_addr: MultiAddr,
+    #[n(2)] pub(crate) outlet_addr: Option<MultiAddr>,
     /// A human-friendly alias for this portal endpoint
     #[b(3)] pub(crate) alias: String,
     /// An authorised identity for secure channels.
@@ -65,6 +65,7 @@ pub struct CreateInlet {
     #[n(15)] pub(crate) enable_nagle: bool,
     /// The prefix route to be used for interceptors.
     #[n(16)] pub(crate) prefix_route: Route,
+    #[n(17)] pub(crate) sni: Option<String>,
 }
 
 impl Encodable for CreateInlet {
@@ -82,8 +83,8 @@ impl Decodable for CreateInlet {
 impl CreateInlet {
     #[allow(clippy::too_many_arguments)]
     pub fn via_project(
-        listen: HostnamePort,
-        to: MultiAddr,
+        listen: Option<HostnamePort>,
+        to: Option<MultiAddr>,
         alias: String,
         wait_connection: bool,
         enable_udp_puncture: bool,
@@ -91,6 +92,7 @@ impl CreateInlet {
         privileged: bool,
         skip_handshake: bool,
         enable_nagle: bool,
+        sni: Option<String>,
     ) -> Self {
         Self {
             listen_addr: listen,
@@ -108,13 +110,14 @@ impl CreateInlet {
             skip_handshake,
             enable_nagle,
             prefix_route: Default::default(),
+            sni,
         }
     }
 
     #[allow(clippy::too_many_arguments)]
     pub fn to_node(
-        listen: HostnamePort,
-        to: MultiAddr,
+        listen: Option<HostnamePort>,
+        to: Option<MultiAddr>,
         alias: String,
         auth: Option<Identifier>,
         wait_connection: bool,
@@ -123,6 +126,7 @@ impl CreateInlet {
         privileged: bool,
         skip_handshake: bool,
         enable_nagle: bool,
+        sni: Option<String>,
     ) -> Self {
         Self {
             listen_addr: listen,
@@ -140,6 +144,7 @@ impl CreateInlet {
             skip_handshake,
             enable_nagle,
             prefix_route: Default::default(),
+            sni,
         }
     }
 
@@ -163,11 +168,11 @@ impl CreateInlet {
         self.secure_channel_identifier = Some(identifier);
     }
 
-    pub fn listen_addr(&self) -> HostnamePort {
+    pub fn listen_addr(&self) -> Option<HostnamePort> {
         self.listen_addr.clone()
     }
 
-    pub fn outlet_addr(&self) -> &MultiAddr {
+    pub fn outlet_addr(&self) -> &Option<MultiAddr> {
         &self.outlet_addr
     }
 
@@ -181,6 +186,10 @@ impl CreateInlet {
 
     pub fn wait_for_outlet_duration(&self) -> Option<Duration> {
         self.wait_for_outlet_duration
+    }
+
+    pub fn sni(&self) -> Option<String> {
+        self.sni.clone()
     }
 }
 
@@ -207,7 +216,8 @@ pub struct CreateOutlet {
     /// Skip Portal handshake for lower latency, but also lower throughput
     #[n(7)] pub skip_handshake: bool,
     /// Enable Nagle's algorithm for potentially higher throughput, but higher latency
-    #[n(8)] pub(crate) enable_nagle: bool,
+    #[n(8)] pub enable_nagle: bool,
+    #[n(9)] pub psql_tls: bool,
 }
 
 impl Encodable for CreateOutlet {
@@ -231,6 +241,7 @@ impl CreateOutlet {
         privileged: bool,
         skip_handshake: bool,
         enable_nagle: bool,
+        psql_tls: bool,
     ) -> Self {
         Self {
             hostname_port,
@@ -241,6 +252,7 @@ impl CreateOutlet {
             privileged,
             skip_handshake,
             enable_nagle,
+            psql_tls,
         }
     }
 

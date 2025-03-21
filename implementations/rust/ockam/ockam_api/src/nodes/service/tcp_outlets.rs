@@ -32,6 +32,7 @@ impl NodeManagerWorker {
             privileged,
             skip_handshake,
             enable_nagle,
+            psql_tls,
         } = create_outlet;
 
         match self
@@ -46,6 +47,7 @@ impl NodeManagerWorker {
                 privileged,
                 skip_handshake,
                 enable_nagle,
+                psql_tls,
             )
             .await
         {
@@ -106,6 +108,7 @@ impl NodeManager {
         privileged: bool,
         skip_handshake: bool,
         enable_nagle: bool,
+        psql_tls: bool,
     ) -> Result<OutletStatus> {
         let worker_addr = self.registry.outlets.generate_worker_addr(worker_addr);
 
@@ -143,7 +146,8 @@ impl NodeManager {
                 .with_outgoing_access_control(outgoing_ac)
                 .with_tls(tls)
                 .set_skip_handshake(skip_handshake)
-                .set_enable_nagle(enable_nagle);
+                .set_enable_nagle(enable_nagle)
+                .set_psql_tls(psql_tls);
             if self.project_authority().is_none() {
                 for api_transport_flow_control_id in &self.api_transport_flow_control_ids {
                     options = options.as_consumer(api_transport_flow_control_id)
@@ -261,6 +265,7 @@ pub trait Outlets {
         privileged: bool,
         skip_handshake: bool,
         enable_nagle: bool,
+        psql_tls: bool,
     ) -> miette::Result<OutletStatus>;
 }
 
@@ -277,6 +282,7 @@ impl Outlets for BackgroundNodeClient {
         privileged: bool,
         skip_handshake: bool,
         enable_nagle: bool,
+        psql_tls: bool,
     ) -> miette::Result<OutletStatus> {
         let mut payload = CreateOutlet::new(
             to,
@@ -286,6 +292,7 @@ impl Outlets for BackgroundNodeClient {
             privileged,
             skip_handshake,
             enable_nagle,
+            psql_tls,
         );
         if let Some(policy_expression) = policy_expression {
             payload.set_policy_expression(policy_expression);

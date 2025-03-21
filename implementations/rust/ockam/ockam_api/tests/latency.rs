@@ -142,6 +142,7 @@ pub fn measure_buffer_latency_two_nodes_portal() {
                     false,
                     false,
                     true,
+                    false,
                 )
                 .await?;
 
@@ -152,12 +153,14 @@ pub fn measure_buffer_latency_two_nodes_portal() {
                 .node_manager
                 .create_inlet(
                     &first_node.context,
-                    HostnamePort::localhost(0),
+                    Some(HostnamePort::localhost(0)),
                     route![],
                     route![],
-                    second_node_listen_address
-                        .multi_addr()?
-                        .concat(&MultiAddr::from_string("/secure/api/service/outlet")?)?,
+                    Some(
+                        second_node_listen_address
+                            .multi_addr()?
+                            .concat(&MultiAddr::from_string("/secure/api/service/outlet")?)?,
+                    ),
                     "inlet_alias".to_string(),
                     None,
                     None,
@@ -170,6 +173,7 @@ pub fn measure_buffer_latency_two_nodes_portal() {
                     None,
                     false,
                     true,
+                    None,
                 )
                 .await?;
 
@@ -240,6 +244,7 @@ pub fn measure_connection_latency_two_nodes_portal() {
                     false,
                     true,
                     true,
+                    false,
                 )
                 .await?;
 
@@ -250,12 +255,14 @@ pub fn measure_connection_latency_two_nodes_portal() {
                 .node_manager
                 .create_inlet(
                     &first_node.context,
-                    HostnamePort::new("127.0.0.1", 0)?,
+                    Some(HostnamePort::new("127.0.0.1", 0)?),
                     route![],
                     route![],
-                    second_node_listen_address
-                        .multi_addr()?
-                        .concat(&MultiAddr::from_string("/secure/api/service/outlet")?)?,
+                    Some(
+                        second_node_listen_address
+                            .multi_addr()?
+                            .concat(&MultiAddr::from_string("/secure/api/service/outlet")?)?,
+                    ),
                     "inlet_alias".to_string(),
                     None,
                     None,
@@ -268,6 +275,7 @@ pub fn measure_connection_latency_two_nodes_portal() {
                     None,
                     true,
                     true,
+                    None,
                 )
                 .await?;
 

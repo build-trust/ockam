@@ -42,6 +42,7 @@ impl NodeManagerWorker {
             tls,
             skip_handshake,
             enable_nagle,
+            psql_tls,
         } = body.tcp_outlet;
         let address = self
             .node_manager
@@ -100,6 +101,7 @@ impl NodeManagerWorker {
                 privileged,
                 skip_handshake,
                 enable_nagle,
+                psql_tls,
             )
             .await
         {
@@ -132,7 +134,7 @@ impl NodeManagerWorker {
         } = body.tcp_inlet.clone();
 
         //TODO: should be an easier way to tweak the multiaddr
-        let mut issuer_route = outlet_addr.clone();
+        let mut issuer_route = outlet_addr.clone().unwrap();
         let outlet_addr_last_service = issuer_route
             .pop_back()
             .ok_or_else(|| Response::bad_request_no_request("The outlet address is invalid"))?;
@@ -199,6 +201,7 @@ impl NodeManagerWorker {
                 tls_certificate_provider,
                 skip_handshake,
                 enable_nagle,
+                None,
             )
             .await
         {
@@ -345,7 +348,7 @@ impl InfluxDBPortals for BackgroundNodeClient {
         influxdb_config: InfluxDBOutletConfig,
     ) -> miette::Result<OutletStatus> {
         let mut outlet_payload =
-            CreateOutlet::new(to, tls, from.cloned(), true, false, false, false);
+            CreateOutlet::new(to, tls, from.cloned(), true, false, false, false, false);
         if let Some(policy_expression) = policy_expression {
             outlet_payload.set_policy_expression(policy_expression);
         }
@@ -375,8 +378,8 @@ impl InfluxDBPortals for BackgroundNodeClient {
     ) -> miette::Result<Reply<InletStatus>> {
         let request = {
             let inlet_payload = create_inlet_payload(
-                listen_addr,
-                outlet_addr,
+                Some(listen_addr),
+                Some(outlet_addr),
                 alias,
                 authorized_identifier,
                 policy_expression,
@@ -390,6 +393,7 @@ impl InfluxDBPortals for BackgroundNodeClient {
                 false,
                 false,
                 route![],
+                None,
             );
             let payload = CreateInfluxDBInlet::new(inlet_payload, lease_usage, lease_issuer_route);
             Request::post("/node/influxdb_inlet").body(payload)

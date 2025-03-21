@@ -204,13 +204,13 @@ impl InMemoryNode {
         let inlet_status = self
             .create_inlet(
                 context,
-                bind_address,
+                Some(bind_address),
                 route![interceptor_address.clone()],
                 route![
                     KAFKA_OUTLET_INTERCEPTOR_ADDRESS,
                     KAFKA_OUTLET_BOOTSTRAP_ADDRESS
                 ],
-                outlet_node_multiaddr,
+                Some(outlet_node_multiaddr),
                 inlet_alias,
                 inlet_policy_expression.clone(),
                 None,
@@ -223,6 +223,7 @@ impl InMemoryNode {
                 None,
                 false,
                 false,
+                None,
             )
             .await?;
 
@@ -327,6 +328,7 @@ impl InMemoryNode {
                 Some(KAFKA_OUTLET_BOOTSTRAP_ADDRESS.into()),
                 false,
                 OutletAccessControl::WithPolicyExpression(outlet_policy_expression),
+                false,
                 false,
                 false,
                 false,

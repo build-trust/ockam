@@ -79,6 +79,7 @@ impl KafkaOutletController {
                     false,
                     false,
                     false,
+                    false,
                 )
                 .await
                 .map(|info| info.to)?;

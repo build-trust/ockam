@@ -2,8 +2,10 @@ use crate::portal::addresses::{Addresses, PortalType};
 use crate::portal::outlet_listener_registry::{MapKey, OutletListenerRegistry};
 use crate::portal::portal_worker::ReadHalfMaybeTls::{ReadHalfNoTls, ReadHalfWithTls};
 use crate::portal::portal_worker::WriteHalfMaybeTls::{WriteHalfNoTls, WriteHalfWithTls};
+use crate::portal::{PSQL_REQUEST_TLS_BIN, PSQL_RESPONSE_TLS_BIN};
 use crate::transport::{connect, connect_tls};
 use crate::{portal::TcpPortalRecvProcessor, PortalInternalMessage, PortalMessage, TcpRegistry};
+use log::error;
 use ockam_core::compat::{boxed::Box, sync::Arc};
 use ockam_core::{
     async_trait, AllowAll, AllowOnwardAddress, AllowSourceAddress, Decodable, DenyAll,
@@ -14,7 +16,7 @@ use ockam_core::{Any, Result, Route, Routed, Worker};
 use ockam_node::{Context, ProcessorBuilder, WorkerBuilder, WorkerShutdownPriority};
 use ockam_transport_core::{HostnamePort, TransportError};
 use std::time::Duration;
-use tokio::io::{AsyncRead, AsyncWriteExt, ReadHalf, WriteHalf};
+use tokio::io::{AsyncRead, AsyncReadExt, AsyncWriteExt, ReadHalf, WriteHalf};
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::net::TcpStream;
 use tokio_rustls::TlsStream;
@@ -63,6 +65,7 @@ pub(crate) struct TcpPortalWorker {
     portal_payload_length: usize,
     handshake_mode: HandshakeMode,
     enable_nagle: bool,
+    psql_tls: bool,
 }
 
 pub(crate) enum ReadHalfMaybeTls {
@@ -91,6 +94,7 @@ impl TcpPortalWorker {
         outgoing_access_control: Arc<dyn OutgoingAccessControl>, // To propagate to the receiver
         portal_payload_length: usize,
         skip_handshake: bool,
+        psql_tls: bool,
     ) -> Result<()> {
         let handshake_mode = if skip_handshake {
             HandshakeMode::Skip { map: None }
@@ -113,6 +117,7 @@ impl TcpPortalWorker {
             portal_payload_length,
             handshake_mode,
             false,
+            psql_tls,
         )
     }
 
@@ -130,6 +135,7 @@ impl TcpPortalWorker {
         incoming_access_control: Arc<dyn IncomingAccessControl>,
         outgoing_access_control: Arc<dyn OutgoingAccessControl>,
         portal_payload_length: usize,
+        psql_tls: bool,
     ) -> Result<()> {
         Self::start(
             ctx,
@@ -146,6 +152,7 @@ impl TcpPortalWorker {
             portal_payload_length,
             HandshakeMode::Regular,
             false,
+            psql_tls,
         )
     }
 
@@ -183,6 +190,7 @@ impl TcpPortalWorker {
                 map: Some((map_key, outlet_listener_registry)),
             },
             false,
+            false,
         )
     }
 
@@ -204,6 +212,7 @@ impl TcpPortalWorker {
         portal_payload_length: usize,
         handshake_mode: HandshakeMode,
         enable_nagle: bool,
+        psql_tls: bool,
     ) -> Result<()> {
         debug!(%addresses.portal_type, sender_remote=%addresses.sender_remote, %is_tls, "creating portal worker");
 
@@ -232,6 +241,7 @@ impl TcpPortalWorker {
             portal_payload_length,
             enable_nagle,
             handshake_mode,
+            psql_tls,
         };
 
         let internal_mailbox = Mailbox::new(
@@ -460,7 +470,27 @@ impl TcpPortalWorker {
             self.read_half = Some(ReadHalfWithTls(rx));
         } else {
             debug!(portal_type = %self.addresses.portal_type, sender_internal = %self.addresses.sender_internal, "connect to {}", self.hostname_port);
-            let (rx, tx) = connect(&self.hostname_port, self.enable_nagle, None).await?;
+            let (mut rx, mut tx) = connect(&self.hostname_port, self.enable_nagle, None).await?;
+
+            if self.psql_tls {
+                info!("Connecting to PSQL. Sending TLS Request");
+                tx.write_all(&PSQL_REQUEST_TLS_BIN)
+                    .await
+                    .map_err(TransportError::from)?;
+                info!("Connecting to PSQL. Receiving TLS Request");
+                let mut response = [0u8; PSQL_RESPONSE_TLS_BIN.len()];
+                rx.read_exact(&mut response)
+                    .await
+                    .map_err(TransportError::from)?;
+
+                if response != PSQL_RESPONSE_TLS_BIN {
+                    error!("Connecting to PSQL. Invalid response");
+                    return Err(TransportError::PortalInvalidState)?;
+                }
+
+                info!("Connecting to PSQL. Success");
+            }
+
             self.write_half = Some(WriteHalfNoTls(tx));
             self.read_half = Some(ReadHalfNoTls(rx));
         }

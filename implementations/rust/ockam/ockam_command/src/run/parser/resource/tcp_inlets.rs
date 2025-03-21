@@ -71,14 +71,14 @@ mod tests {
         assert_eq!(cmds.len(), 2);
         assert_eq!(cmds[0].name.as_ref().unwrap(), "ti1");
         assert_eq!(
-            cmds[0].from,
-            SchemeHostnamePort::new("tcp", "127.0.0.1", 6060).unwrap()
+            cmds[0].from.clone(),
+            Some(SchemeHostnamePort::new("tcp", "127.0.0.1", 6060).unwrap())
         );
         assert_eq!(cmds[0].at.as_ref().unwrap(), "n");
         assert_eq!(cmds[1].name.as_ref().unwrap(), "ti2");
         assert_eq!(
             cmds[1].from,
-            SchemeHostnamePort::new("tcp", "127.0.0.1", 6061).unwrap()
+            Some(SchemeHostnamePort::new("tcp", "127.0.0.1", 6061).unwrap())
         );
         assert_eq!(cmds[1].at.as_ref(), Some(&default_node_name));
 
@@ -95,12 +95,12 @@ mod tests {
         assert_eq!(cmds.len(), 2);
         assert_eq!(
             cmds[0].from,
-            SchemeHostnamePort::new("tcp", "127.0.0.1", 6060).unwrap()
+            Some(SchemeHostnamePort::new("tcp", "127.0.0.1", 6060).unwrap())
         );
         assert_eq!(cmds[0].at.as_ref().unwrap(), "n");
         assert_eq!(
             cmds[1].from,
-            SchemeHostnamePort::new("tcp", "127.0.0.1", 6061).unwrap()
+            Some(SchemeHostnamePort::new("tcp", "127.0.0.1", 6061).unwrap())
         );
         assert_eq!(cmds[1].at.as_ref(), Some(&default_node_name));
     }

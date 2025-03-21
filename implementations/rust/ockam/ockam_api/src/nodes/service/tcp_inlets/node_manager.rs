@@ -1,3 +1,5 @@
+use std::net::SocketAddr;
+use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -26,10 +28,10 @@ impl NodeManager {
     pub async fn create_inlet(
         self: &Arc<Self>,
         ctx: &Context,
-        listen_address: HostnamePort,
+        listen_address: Option<HostnamePort>,
         prefix_route: Route,
         suffix_route: Route,
-        outlet_address: MultiAddr,
+        outlet_address: Option<MultiAddr>,
         alias: String,
         policy_expression: Option<PolicyExpression>,
         wait_for_outlet_duration: Option<Duration>,
@@ -43,12 +45,11 @@ impl NodeManager {
         tls_certificate_provider: Option<MultiAddr>,
         skip_handshake: bool,
         enable_nagle: bool,
+        sni: Option<String>,
     ) -> Result<InletStatus> {
         debug! {
-            %listen_address,
             prefix = %prefix_route,
             suffix = %suffix_route,
-            %outlet_address,
             %alias,
             %enable_udp_puncture,
             %disable_tcp_fallback,
@@ -69,18 +70,26 @@ impl NodeManager {
             None
         };
 
-        // the port could be zero, to simplify the following code we
-        // resolve the address to a full socket address
-        let socket_addr = ockam_node::compat::asynchronous::resolve_peer(&listen_address).await?;
-        let listen_addr = if listen_address.port() == 0 {
-            get_free_address_for(&socket_addr.ip().to_string())
-                .map_err(|err| ockam_core::Error::new(Origin::Transport, Kind::Invalid, err))?
+        let listen_addr = if let Some(listen_address) = listen_address {
+            // the port could be zero, to simplify the following code we
+            // resolve the address to a full socket address
+            let socket_addr =
+                ockam_node::compat::asynchronous::resolve_peer(&listen_address).await?;
+            if listen_address.port() == 0 {
+                Some(
+                    get_free_address_for(&socket_addr.ip().to_string()).map_err(|err| {
+                        ockam_core::Error::new(Origin::Transport, Kind::Invalid, err)
+                    })?,
+                )
+            } else {
+                Some(socket_addr)
+            }
         } else {
-            socket_addr
+            None
         };
 
         // Check registry for duplicated alias or bind address
-        {
+        if let Some(listen_addr) = &listen_addr {
             let registry = &self.registry.inlets;
 
             // Check that there is no entry in the registry with the same alias
@@ -109,11 +118,35 @@ impl NodeManager {
             }
         }
 
+        let outlet_address = match outlet_address {
+            Some(outlet_address) => outlet_address,
+            None => {
+                let listen_addr = listen_addr.unwrap();
+                let processor_address = self
+                    .tcp_transport
+                    .create_sni_root_inlet(listen_addr.to_string())
+                    .await?;
+
+                let status = InletStatus::new(
+                    listen_addr.to_string(),
+                    processor_address.address().to_string(),
+                    alias,
+                    None,
+                    None,
+                    ConnectionStatus::Up,
+                    "<>".to_string(),
+                    false,
+                );
+
+                return Ok(status);
+            }
+        };
+
         let replacer = InletSessionReplacer {
             node_manager: Arc::downgrade(self),
             udp_transport,
             context: ctx.try_clone()?,
-            listen_addr: listen_addr.to_string(),
+            listen_addr: listen_addr.map(|a| a.to_string()),
             outlet_addr: outlet_address.clone(),
             prefix_route,
             suffix_route,
@@ -133,12 +166,14 @@ impl NodeManager {
             privileged,
             skip_handshake,
             enable_nagle,
+            sni,
         };
 
         let replacer = Arc::new(Mutex::new(replacer));
 
         let main_replacer: Arc<Mutex<dyn SessionReplacer>> = replacer.clone();
 
+        let listen_addr = listen_addr.unwrap_or(SocketAddr::from_str("255.255.255.255:0").unwrap());
         let _ = self
             .cli_state
             .create_tcp_inlet(
@@ -211,8 +246,6 @@ impl NodeManager {
         );
 
         info! {
-            %listen_address,
-            %outlet_address,
             %alias,
             "inlet created"
         }
