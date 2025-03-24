@@ -127,10 +127,10 @@ impl KafkaInletController {
             node_manager
                 .create_inlet(
                     context,
-                    inlet_bind_address.clone(),
+                    Some(inlet_bind_address.clone()),
                     inner.local_interceptor_route.clone(),
                     inner.remote_interceptor_route.clone() + kafka_outlet_address(broker_id),
-                    inner.outlet_node_multiaddr.clone(),
+                    Some(inner.outlet_node_multiaddr.clone()),
                     format!("kafka-inlet-{}", random_string()),
                     self.policy_expression.clone(),
                     None,
@@ -143,6 +143,7 @@ impl KafkaInletController {
                     None,
                     false,
                     false,
+                    None,
                 )
                 .await?;
 

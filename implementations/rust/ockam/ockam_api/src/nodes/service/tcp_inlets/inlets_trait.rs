@@ -15,8 +15,8 @@ pub trait Inlets {
     async fn create_inlet(
         &self,
         ctx: &Context,
-        listen_addr: &HostnamePort,
-        outlet_addr: &MultiAddr,
+        listen_addr: Option<&HostnamePort>,
+        outlet_addr: Option<&MultiAddr>,
         alias: &str,
         authorized_identifier: &Option<Identifier>,
         policy_expression: &Option<PolicyExpression>,
@@ -30,6 +30,7 @@ pub trait Inlets {
         skip_handshake: bool,
         enable_nagle: bool,
         prefix_route: Route,
+        sni: Option<String>,
     ) -> miette::Result<Reply<InletStatus>>;
 
     async fn show_inlet(&self, ctx: &Context, alias: &str) -> miette::Result<Reply<InletStatus>>;

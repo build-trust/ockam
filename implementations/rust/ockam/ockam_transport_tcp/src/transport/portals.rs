@@ -1,4 +1,4 @@
-use crate::portal::{InletSharedState, TcpInletListenProcessor};
+use crate::portal::{InletSharedState, TcpInletListenProcessor, TcpSniRootInletListenProcessor};
 use crate::{portal::TcpOutletListenWorker, TcpInletOptions, TcpOutletOptions, TcpTransport};
 use core::fmt;
 use core::fmt::{Debug, Formatter};
@@ -42,6 +42,33 @@ impl TcpTransport {
             self.registry.clone(),
             outlet_route.into(),
             socket_address,
+            options,
+        )
+        .await
+    }
+
+    #[instrument(skip(self), fields(address = ? bind_addr.clone().into()))]
+    pub async fn create_sni_root_inlet(
+        &self,
+        bind_addr: impl Into<String> + Clone + Debug,
+    ) -> Result<Address> {
+        let socket_address = parse_socket_addr(&bind_addr.into())?;
+        TcpSniRootInletListenProcessor::start(&self.ctx, self.registry.clone(), socket_address)
+            .await
+    }
+
+    #[instrument(skip(self), fields(sni, outlet_route = ? outlet_route.clone()))]
+    pub async fn create_sni_inlet(
+        &self,
+        sni: String,
+        outlet_route: impl Into<Route> + Clone + Debug,
+        options: TcpInletOptions,
+    ) -> Result<TcpInlet> {
+        TcpInletListenProcessor::start_sni(
+            &self.ctx,
+            self.registry.clone(),
+            sni,
+            outlet_route.into(),
             options,
         )
         .await

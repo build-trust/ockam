@@ -60,8 +60,8 @@ pub struct CreateCommand {
     /// To enable TLS, the `ockam-tls-certificate` credential attribute is required.
     /// It will use the default project TLS certificate provider `/project/default/service/tls_certificate_provider`.
     /// To specify a different certificate provider, use `--tls-certificate-provider`.
-    #[arg(long, display_order = 900, id = "SOCKET_ADDRESS", hide_default_value = true, default_value_t = tcp_inlet_default_from_addr(), value_parser = hostname_parser)]
-    pub from: SchemeHostnamePort,
+    #[arg(long, display_order = 900, id = "SOCKET_ADDRESS", hide_default_value = true, value_parser = hostname_parser)]
+    pub from: Option<SchemeHostnamePort>,
 
     /// Route to a TCP Outlet or the name of the TCP Outlet service you want to connect to.
     ///
@@ -72,8 +72,8 @@ pub struct CreateCommand {
     /// or just the name of the service as `outlet` or `/service/outlet`.
     /// If you are passing just the service name, consider using `--via` to specify the
     /// relay name (e.g. `ockam tcp-inlet create --to outlet --via myrelay`).
-    #[arg(long, display_order = 900, id = "ROUTE", default_value_t = tcp_inlet_default_to_addr())]
-    pub to: String,
+    #[arg(long, display_order = 900, id = "ROUTE")]
+    pub to: Option<String>,
 
     /// Name of the relay that this TCP Inlet will use to connect to the TCP Outlet.
     ///
@@ -172,6 +172,9 @@ pub struct CreateCommand {
     /// will be discarded. This option assumes the protocol is HTTP/1.0 or HTTP/1.1.
     /// It expects a key-value pair in the format `key:value`. It can be specified multiple times.
     pub http_header: Vec<(String, String)>,
+
+    #[arg(long, display_order = 900, id = "SNI")]
+    pub sni: Option<String>,
 }
 
 pub(crate) fn tcp_inlet_default_from_addr() -> SchemeHostnamePort {
@@ -235,7 +238,12 @@ impl Command for CreateCommand {
             if let Some(pb) = pb.as_ref() {
                 pb.set_message(format!(
                     "Creating TCP Inlet at {}...\n",
-                    color_primary(cmd.from.to_string())
+                    color_primary(
+                        cmd.from
+                            .as_ref()
+                            .map(ToString::to_string)
+                            .unwrap_or_else(|| "<>".to_string())
+                    )
                 ));
             }
 
@@ -243,21 +251,22 @@ impl Command for CreateCommand {
                 let result: Reply<InletStatus> = node
                     .create_inlet(
                         ctx,
-                        cmd.from.hostname_port(),
-                        &cmd.to(),
+                        cmd.from.as_ref().map(SchemeHostnamePort::hostname_port),
+                        cmd.to().as_ref(),
                         cmd.name.as_ref().expect("The `name` argument should be set to its default value if not provided"),
                         &cmd.authorized,
                         &cmd.allow,
                         cmd.connection_wait,
                         !cmd.no_connection_wait,
                         &cmd.secure_channel_identifier(&opts.state).await?,
-                        cmd.udp || cmd.from.is_udp(),
+                        cmd.udp || cmd.from.as_ref().map(|f|f.is_udp()).unwrap_or(false),
                         cmd.no_tcp_fallback,
                         cmd.privileged,
                         &cmd.tls_certificate_provider,
                         cmd.skip_handshake,
                         cmd.enable_nagle,
                         prefix_route.clone(),
+                        cmd.sni.clone()
                     )
                     .await?;
 
@@ -280,7 +289,7 @@ impl Command for CreateCommand {
                         if let Some(pb) = pb.as_ref() {
                             pb.set_message(format!(
                                 "Waiting for TCP Inlet {} to be available... Retrying momentarily\n",
-                                color_primary(&cmd.to)
+                                color_primary(cmd.to.clone().unwrap_or_else(|| "<>".to_string()))
                             ));
                         }
                         tokio::time::sleep(cmd.retry_wait).await
@@ -303,19 +312,19 @@ impl Command for CreateCommand {
             fmt_ok!("{created_message}\n")
                 + &fmt_info!(
                     "It will automatically connect to the TCP Outlet at {} as soon as it is available\n",
-                    color_primary(&cmd.to)
+                    color_primary(cmd.to.clone().unwrap_or_else(|| "<>".to_string()))
                 )
         } else if inlet_status.status == ConnectionStatus::Up {
             fmt_ok!("{created_message}\n")
                 + &fmt_log!(
                     "sending traffic to the TCP Outlet at {}\n",
-                    color_primary(&cmd.to)
+                    color_primary(cmd.to.clone().unwrap_or_else(|| "<>".to_string()))
                 )
         } else {
             fmt_warn!("{created_message}\n")
                 + &fmt_log!(
                     "but it failed to connect to the TCP Outlet at {}\n",
-                    color_primary(&cmd.to)
+                    color_primary(cmd.to.clone().unwrap_or_else(|| "<>".to_string()))
                 )
                 + &fmt_info!(
                     "It will automatically connect to the TCP Outlet as soon as it is available\n",
@@ -341,8 +350,8 @@ impl Command for CreateCommand {
 }
 
 impl CreateCommand {
-    pub fn to(&self) -> MultiAddr {
-        MultiAddr::from_str(&self.to).unwrap()
+    pub fn to(&self) -> Option<MultiAddr> {
+        self.to.as_ref().map(|to| MultiAddr::from_str(to).unwrap())
     }
 
     pub async fn secure_channel_identifier(
@@ -364,8 +373,12 @@ impl CreateCommand {
     ) -> miette::Result<()> {
         let mut attributes = HashMap::new();
         attributes.insert(TCP_INLET_AT, node_name.to_string());
-        attributes.insert(TCP_INLET_FROM, self.from.to_string());
-        attributes.insert(TCP_INLET_TO, self.to.clone());
+        if let Some(from) = self.from.as_ref() {
+            attributes.insert(TCP_INLET_FROM, from.to_string());
+        }
+        if let Some(to) = self.to.as_ref() {
+            attributes.insert(TCP_INLET_TO, to.clone());
+        }
         attributes.insert(TCP_INLET_ALIAS, inlet.alias.clone());
         attributes.insert(TCP_INLET_CONNECTION_STATUS, inlet.status.to_string());
         attributes.insert(NODE_NAME, node_name.to_string());
@@ -393,22 +406,31 @@ impl CreateCommand {
             self.name = self.name.or_else(|| Some(random_name()));
         }
 
-        let from = resolve_peer(self.from.hostname_port())
-            .await
-            .into_diagnostic()?;
-        port_is_free_guard(&from)?;
+        if let Some(from) = self.from.as_ref() {
+            let from = resolve_peer(from.hostname_port()).await.into_diagnostic()?;
+            port_is_free_guard(&from)?;
+        }
 
-        self.to = Self::parse_arg_to(&opts.state, self.to, self.via.as_ref()).await?;
-        if self.to().matches(0, &[proto::Project::CODE.into()]) && self.authorized.is_some() {
-            return Err(miette!(
-                "--authorized can not be used with project addresses"
-            ))?;
+        if let Some(to) = self.to.take() {
+            let to = Self::parse_arg_to(&opts.state, to, self.via.as_ref()).await?;
+            self.to = Some(to);
+
+            if self
+                .to()
+                .unwrap()
+                .matches(0, &[proto::Project::CODE.into()])
+                && self.authorized.is_some()
+            {
+                return Err(miette!(
+                    "--authorized can not be used with project addresses"
+                ))?;
+            }
         }
 
         self.tls_certificate_provider =
             if let Some(tls_certificate_provider) = &self.tls_certificate_provider {
                 Some(tls_certificate_provider.clone())
-            } else if self.tls || self.from.is_tls() {
+            } else if self.tls || self.from.as_ref().map(|f| f.is_tls()).unwrap_or(false) {
                 Some(MultiAddr::from_str(
                     "/project/default/service/tls_certificate_provider",
                 )?)

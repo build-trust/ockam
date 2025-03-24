@@ -158,10 +158,10 @@ async fn handle_tcp_inlet_create(
     let result = node_manager
         .create_inlet(
             context,
-            request.from.try_into()?,
+            Some(request.from.try_into()?),
             Route::default(),
             Route::default(),
-            request.to.parse()?,
+            Some(request.to.parse()?),
             request.name.unwrap_or_else(random_string),
             allow,
             None,
@@ -174,6 +174,7 @@ async fn handle_tcp_inlet_create(
             tls_certificate_provider,
             false,
             false,
+            None,
         )
         .await;
     match result {

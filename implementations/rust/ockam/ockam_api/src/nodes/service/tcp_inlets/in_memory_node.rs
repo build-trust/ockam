@@ -16,10 +16,10 @@ impl InMemoryNode {
     pub async fn create_inlet(
         &self,
         ctx: &Context,
-        listen_addr: HostnamePort,
+        listen_addr: Option<HostnamePort>,
         prefix_route: Route,
         suffix_route: Route,
-        outlet_addr: MultiAddr,
+        outlet_addr: Option<MultiAddr>,
         alias: String,
         policy_expression: Option<PolicyExpression>,
         wait_for_outlet_duration: Option<Duration>,
@@ -32,6 +32,7 @@ impl InMemoryNode {
         tls_certificate_provider: Option<MultiAddr>,
         skip_handshake: bool,
         enable_nagle: bool,
+        sni: Option<String>,
     ) -> Result<InletStatus> {
         self.node_manager
             .create_inlet(
@@ -52,6 +53,7 @@ impl InMemoryNode {
                 tls_certificate_provider,
                 skip_handshake,
                 enable_nagle,
+                sni,
             )
             .await
     }

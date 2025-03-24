@@ -199,9 +199,11 @@ impl AppState {
         inlet_node
             .create_inlet(
                 &self.context(),
-                &HostnamePort::from(bind_address),
-                &MultiAddr::from_str(&service.service_route(Some(project_name.as_str())))
-                    .into_diagnostic()?,
+                Some(&HostnamePort::from(bind_address)),
+                Some(
+                    &MultiAddr::from_str(&service.service_route(Some(project_name.as_str())))
+                        .into_diagnostic()?,
+                ),
                 &inlet_alias,
                 &None,
                 &Some(FullExpression(expr)),
@@ -215,6 +217,7 @@ impl AppState {
                 false,
                 false,
                 route![],
+                None,
             )
             .await
             .map_err(|err| {

@@ -38,6 +38,7 @@ async fn inlet_outlet_local_successful(context: &mut Context) -> ockam::Result<(
             false,
             false,
             false,
+            false,
         )
         .await?;
 
@@ -48,10 +49,10 @@ async fn inlet_outlet_local_successful(context: &mut Context) -> ockam::Result<(
         .node_manager
         .create_inlet(
             context,
-            HostnamePort::localhost(0),
+            Some(HostnamePort::localhost(0)),
             route![],
             route![],
-            MultiAddr::from_str("/secure/api/service/outlet")?,
+            Some(MultiAddr::from_str("/secure/api/service/outlet")?),
             "alias".to_string(),
             None,
             None,
@@ -64,6 +65,7 @@ async fn inlet_outlet_local_successful(context: &mut Context) -> ockam::Result<(
             None,
             false,
             false,
+            None,
         )
         .await?;
 
@@ -118,6 +120,7 @@ fn portal_node_goes_down_reconnect() {
                     false,
                     false,
                     false,
+                    false,
                 )
                 .await?;
 
@@ -128,12 +131,14 @@ fn portal_node_goes_down_reconnect() {
                 .node_manager
                 .create_inlet(
                     &first_node.context,
-                    HostnamePort::localhost(0),
+                    Some(HostnamePort::localhost(0)),
                     route![],
                     route![],
-                    second_node_listen_address
-                        .multi_addr()?
-                        .concat(&MultiAddr::from_str("/secure/api/service/outlet")?)?,
+                    Some(
+                        second_node_listen_address
+                            .multi_addr()?
+                            .concat(&MultiAddr::from_str("/secure/api/service/outlet")?)?,
+                    ),
                     "inlet_alias".to_string(),
                     None,
                     None,
@@ -146,6 +151,7 @@ fn portal_node_goes_down_reconnect() {
                     None,
                     false,
                     false,
+                    None,
                 )
                 .await?;
 
@@ -190,6 +196,7 @@ fn portal_node_goes_down_reconnect() {
                     Some(Address::from_string("outlet")),
                     true,
                     OutletAccessControl::AccessControl((Arc::new(AllowAll), Arc::new(AllowAll))),
+                    false,
                     false,
                     false,
                     false,
@@ -270,6 +277,7 @@ fn portal_low_bandwidth_connection_keep_working_for_60s() {
                     false,
                     false,
                     false,
+                    false,
                 )
                 .await?;
 
@@ -292,12 +300,14 @@ fn portal_low_bandwidth_connection_keep_working_for_60s() {
                 .node_manager
                 .create_inlet(
                     &first_node.context,
-                    HostnamePort::localhost(0),
+                    Some(HostnamePort::localhost(0)),
                     route![],
                     route![],
-                    InternetAddress::from(passthrough_server_handle.chosen_addr)
-                        .multi_addr()?
-                        .concat(&MultiAddr::from_str("/secure/api/service/outlet")?)?,
+                    Some(
+                        InternetAddress::from(passthrough_server_handle.chosen_addr)
+                            .multi_addr()?
+                            .concat(&MultiAddr::from_str("/secure/api/service/outlet")?)?,
+                    ),
                     "inlet_alias".to_string(),
                     None,
                     None,
@@ -310,6 +320,7 @@ fn portal_low_bandwidth_connection_keep_working_for_60s() {
                     None,
                     false,
                     false,
+                    None,
                 )
                 .await?;
 
@@ -395,6 +406,7 @@ fn portal_heavy_load_exchanged() {
                     false,
                     false,
                     false,
+                    false,
                 )
                 .await?;
 
@@ -410,12 +422,14 @@ fn portal_heavy_load_exchanged() {
                 .node_manager
                 .create_inlet(
                     &first_node.context,
-                    HostnamePort::localhost(0),
+                    Some(HostnamePort::localhost(0)),
                     route![],
                     route![],
-                    second_node_listen_address
-                        .multi_addr()?
-                        .concat(&MultiAddr::from_str("/secure/api/service/outlet")?)?,
+                    Some(
+                        second_node_listen_address
+                            .multi_addr()?
+                            .concat(&MultiAddr::from_str("/secure/api/service/outlet")?)?,
+                    ),
                     "inlet_alias".to_string(),
                     None,
                     None,
@@ -428,6 +442,7 @@ fn portal_heavy_load_exchanged() {
                     None,
                     false,
                     false,
+                    None,
                 )
                 .await?;
 
@@ -545,6 +560,7 @@ fn test_portal_payload_transfer(outgoing_disruption: Disruption, incoming_disrup
                     false,
                     false,
                     false,
+                    false,
                 )
                 .await?;
 
@@ -567,12 +583,14 @@ fn test_portal_payload_transfer(outgoing_disruption: Disruption, incoming_disrup
                 .node_manager
                 .create_inlet(
                     &first_node.context,
-                    HostnamePort::localhost(0),
+                    Some(HostnamePort::localhost(0)),
                     route![],
                     route![],
-                    InternetAddress::from(passthrough_server_handle.chosen_addr)
-                        .multi_addr()?
-                        .concat(&MultiAddr::from_str("/secure/api/service/outlet")?)?,
+                    Some(
+                        InternetAddress::from(passthrough_server_handle.chosen_addr)
+                            .multi_addr()?
+                            .concat(&MultiAddr::from_str("/secure/api/service/outlet")?)?,
+                    ),
                     "inlet_alias".to_string(),
                     None,
                     None,
@@ -585,6 +603,7 @@ fn test_portal_payload_transfer(outgoing_disruption: Disruption, incoming_disrup
                     None,
                     false,
                     false,
+                    None,
                 )
                 .await?;
 

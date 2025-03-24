@@ -33,6 +33,7 @@ impl NodeManagerWorker {
             skip_handshake,
             enable_nagle,
             prefix_route,
+            sni,
         } = create_inlet;
         match self
             .node_manager
@@ -54,6 +55,7 @@ impl NodeManagerWorker {
                 tls_certificate_provider,
                 skip_handshake,
                 enable_nagle,
+                sni,
             )
             .await
         {

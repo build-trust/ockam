@@ -83,6 +83,9 @@ pub struct CreateCommand {
     /// Enable Nagle's algorithm for potentially higher throughput, but higher latency
     #[arg(long, env = "OCKAM_TCP_PORTAL_ENABLE_NAGLE", value_parser = FalseyValueParser::default())]
     pub enable_nagle: bool,
+
+    #[arg(long, value_parser = FalseyValueParser::default())]
+    pub psql_tls: bool,
 }
 
 #[async_trait]
@@ -112,6 +115,7 @@ impl Command for CreateCommand {
                 cmd.privileged,
                 cmd.skip_handshake,
                 cmd.enable_nagle,
+                cmd.psql_tls,
             )
             .await?
         };
