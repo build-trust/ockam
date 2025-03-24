@@ -110,7 +110,7 @@ syntect = { version = "5.2.0", default-features = false, features = ["default-sy
 sysinfo = "0.32"
 termbg = "0.5.2"
 thiserror = "1.0"
-time = { version = "0.3.36", default-features = false, features = ["std", "formatting", "local-offset", "macros"] }
+time = { version = "=0.3.39", default-features = false, features = ["std", "formatting", "local-offset", "macros"] }
 tiny_http = "0.12.0"
 tokio = { version = "1.41.0", features = ["full"] }
 tokio-retry = "0.3.0"
