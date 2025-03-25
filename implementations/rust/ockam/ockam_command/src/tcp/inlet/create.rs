@@ -54,9 +54,9 @@ pub struct CreateCommand {
     #[arg(long, display_order = 900, id = "NODE_NAME", value_parser = extract_address_value)]
     pub at: Option<String>,
 
-    /// Address on which to accept TCP connections, in the format `<scheme>://<hostname>:<port>`.
-    /// At least the port must be provided. The default scheme is `tcp` and the default hostname is `127.0.0.1`.
-    /// If the argument is not set, a random port will be used on the default address.
+    /// Address on which to accept TCP connections, in the format `<scheme>://<host>:<port>`.
+    /// At least the port must be provided. The default scheme is `tcp` and the default host is `127.0.0.1`.
+    /// If the argument is not set, a random port will be used on the default address `tcp://127.0.0.1`.
     ///
     /// To enable TLS, the `ockam-tls-certificate` credential attribute is required.
     /// It will use the default project TLS certificate provider `/project/default/service/tls_certificate_provider`.
@@ -70,7 +70,7 @@ pub struct CreateCommand {
     ///
     /// If you are connecting to a remote node through a relay in the Orchestrator you can either
     /// provide the full route to the TCP Outlet as `/project/myproject/service/forward_to_myrelay/secure/api/service/outlet`,
-    /// or just the name of the service as `outlet` or `/service/outlet`.
+    /// or just the service name as `outlet` or `/service/outlet`.
     /// If you are passing just the service name, consider using `--via` to specify the
     /// relay name (e.g. `ockam tcp-inlet create --to outlet --via myrelay`).
     #[arg(long, display_order = 900, id = "ROUTE", default_value_t = tcp_inlet_default_to_addr())]
@@ -88,7 +88,8 @@ pub struct CreateCommand {
     #[arg(long, value_name = "IDENTITY_NAME", display_order = 900)]
     pub identity: Option<String>,
 
-    /// Authorized identifier for secure channel connection
+    /// Restrict access to the TCP Inlet to the provided identity.
+    /// When omitted, all identities are allowed.
     #[arg(long, name = "AUTHORIZED", display_order = 900)]
     pub authorized: Option<Identifier>,
 

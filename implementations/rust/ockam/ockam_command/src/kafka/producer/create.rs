@@ -25,7 +25,7 @@ pub struct CreateCommand {
     #[arg(long, default_value_t = kafka_inlet_default_addr())]
     addr: String,
 
-    /// The address where the client will connect, in the format `<scheme>://<hostname>:<port>`.
+    /// The address where the client will connect, in the format `<scheme>://<host>:<port>`.
     #[arg(long, id = "SOCKET_ADDRESS", default_value_t = kafka_default_producer_server(), value_parser = hostname_parser)]
     bootstrap_server: SchemeHostnamePort,
 

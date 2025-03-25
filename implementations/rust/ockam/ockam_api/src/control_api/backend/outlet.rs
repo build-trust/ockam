@@ -55,11 +55,11 @@ impl HttpControlNodeApiBackend {
     operation_id = "create_tcp_outlet",
     summary = "Create a TCP Outlet",
     description =
-"Create a new TCP Outlet.
-The main parameters are the destination `to`, and the service address `name` which is
+"The main parameters are the destination `to`, and the service address `name` which is
 used to identify the outlet within the node.
 The `kind` parameter can be used to create a special outlet, and the `tls` parameter
 can be used to connect to TLS endpoints.
+
 The creation will be synchronous, without any blocking operation.",
     path = "/{node}/tcp-outlets",
     tags = ["Portals"],
@@ -84,10 +84,7 @@ async fn handle_tcp_outlet_create(
     let request: CreateOutletRequest = common::parse_request_body(body)?;
     let request = CreateOutletRequestValidated::try_from(request)?;
 
-    let allow = OutletAccessControl::WithPolicyExpression(match request.allow {
-        None => None,
-        Some(policy) => Some(policy),
-    });
+    let allow = OutletAccessControl::WithPolicyExpression(request.allow.map(|policy| policy));
 
     let tls = match request.tls {
         None => false,
@@ -136,7 +133,8 @@ async fn handle_tcp_outlet_create(
     operation_id = "update_tcp_outlet",
     summary = "Update a TCP Outlet",
     description =
-"Update the specified TCP Outlet.
+"Update a TCP Outlet given its name.
+
 Only the `allow` policy expression can be updated.
 To update any other field, delete the TCP Outlet and create a new one.",
     path = "/{node}/tcp-outlets/{name}",
@@ -192,7 +190,7 @@ async fn handle_tcp_outlet_update(
     get,
     operation_id = "list_tcp_outlets",
     summary = "List all TCP Outlets",
-    description = "List all TCP Outlets created in the node.",
+    description = "List all TCP Outlets created in a node.",
     path = "/{node}/tcp-outlets",
     tags = ["Portals"],
     responses(
@@ -217,7 +215,7 @@ async fn handle_tcp_outlet_list(
     get,
     operation_id = "get_tcp_outlet",
     summary = "Get a TCP Outlet",
-    description = "Get the specified TCP Outlet.",
+    description = "Get a TCP Outlet given its name.",
     path = "/{node}/tcp-outlets/{name}",
     tags = ["Portals"],
     responses(
@@ -247,7 +245,7 @@ async fn handle_tcp_outlet_get(
     delete,
     operation_id = "delete_tcp_outlet",
     summary = "Delete a TCP Outlet",
-    description = "Delete the specified TCP Outlet.",
+    description = "Delete a TCP Outlet given its name.",
     path = "/{node}/tcp-outlets/{name}",
     tags = ["Portals"],
     responses(

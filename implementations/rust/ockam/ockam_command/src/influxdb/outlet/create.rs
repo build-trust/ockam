@@ -29,7 +29,7 @@ pub struct CreateCommand {
     #[arg(value_parser = extract_address_value)]
     pub name: Option<String>,
 
-    /// Address where your InfluxDB server is running, in the format `<scheme>://<hostname>:<port>`.
+    /// Address where your InfluxDB server is running, in the format `<scheme>://<host>:<port>`.
     /// At least the port must be provided. The default scheme is `tcp` and the default hostname is `127.0.0.1`.
     #[arg(long, display_order = 900, id = "SOCKET_ADDRESS", value_parser = hostname_parser)]
     pub to: SchemeHostnamePort,
