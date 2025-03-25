@@ -11,39 +11,38 @@ mod protocol;
 
 use crate::cli_state::CliStateError;
 use crate::control_api::http::ControlApiHttpResponse;
+use miette::Diagnostic;
 pub use openapi::generate_schema;
+use strum::Display;
+use thiserror::Error;
 
-#[derive(Debug)]
+#[derive(Debug, Display, Error, Diagnostic)]
 pub enum ControlApiError {
     Response(ControlApiHttpResponse),
-    OckamError(ockam_core::Error),
+    Ockam(#[from] ockam_core::Error),
 }
+
 impl From<ControlApiHttpResponse> for ControlApiError {
     fn from(response: ControlApiHttpResponse) -> Self {
         Self::Response(response)
     }
 }
 
-impl From<ockam_core::Error> for ControlApiError {
-    fn from(error: ockam_core::Error) -> Self {
-        Self::OckamError(error)
-    }
+macro_rules! impl_from_for_control_api_error {
+    ($($err_type:ty),*) => {
+        $(
+            impl From<$err_type> for ControlApiError {
+                fn from(error: $err_type) -> Self {
+                    Self::Ockam(ockam_core::Error::from(error))
+                }
+            }
+        )*
+    };
 }
 
-impl From<CliStateError> for ControlApiError {
-    fn from(error: CliStateError) -> Self {
-        Self::OckamError(ockam_core::Error::from(error))
-    }
-}
-
-impl From<ockam_multiaddr::Error> for ControlApiError {
-    fn from(error: ockam_multiaddr::Error) -> Self {
-        Self::OckamError(ockam_core::Error::from(error))
-    }
-}
-
-impl From<ockam_abac::ParseError> for ControlApiError {
-    fn from(error: ockam_abac::ParseError) -> Self {
-        Self::OckamError(ockam_core::Error::from(error))
-    }
-}
+impl_from_for_control_api_error!(
+    CliStateError,
+    ockam_multiaddr::Error,
+    ockam_abac::ParseError,
+    crate::error::ParseError
+);

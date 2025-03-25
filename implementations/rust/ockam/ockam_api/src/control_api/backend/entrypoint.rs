@@ -139,7 +139,7 @@ impl Worker for HttpControlNodeApiBackend {
                         );
                         response
                     }
-                    ControlApiError::OckamError(error) => {
+                    ControlApiError::Ockam(error) => {
                         warn!(
                             "The API {} {} failed with an expected error: {error:?}",
                             request.method, request.uri

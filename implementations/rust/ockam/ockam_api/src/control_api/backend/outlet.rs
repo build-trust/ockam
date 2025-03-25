@@ -4,13 +4,14 @@ use crate::control_api::backend::entrypoint::HttpControlNodeApiBackend;
 use crate::control_api::http::ControlApiHttpResponse;
 use crate::control_api::protocol::common::{ErrorResponse, NodeName};
 use crate::control_api::protocol::outlet::{
-    CreateOutletRequest, OutletKind, OutletStatus, OutletTls, UpdateOutletRequest,
+    CreateOutletRequest, CreateOutletRequestValidated, OutletKind, OutletStatus,
+    UpdateOutletRequest,
 };
 use crate::control_api::ControlApiError;
 use crate::nodes::models::portal::OutletAccessControl;
 use crate::nodes::NodeManager;
 use http::{Method, StatusCode};
-use ockam_abac::{Action, Expr, PolicyExpression, ResourceName};
+use ockam_abac::{Action, Expr, ResourceName};
 use ockam_core::errcode::Kind;
 use ockam_core::Address;
 use ockam_node::Context;
@@ -54,10 +55,11 @@ impl HttpControlNodeApiBackend {
     operation_id = "create_tcp_outlet",
     summary = "Create a TCP Outlet",
     description =
-"Create a new TCP Outlet, the main parameter are the destination `to`, and the worker address
-`address` which is used to identify the outlet within the node.
-The `kind` parameter can be used to create a special outlet, and the `tls` parameter can be used to
-connect to TLS endpoints.
+"Create a new TCP Outlet.
+The main parameters are the destination `to`, and the service address `name` which is
+used to identify the outlet within the node.
+The `kind` parameter can be used to create a special outlet, and the `tls` parameter
+can be used to connect to TLS endpoints.
 The creation will be synchronous, without any blocking operation.",
     path = "/{node}/tcp-outlets",
     tags = ["Portals"],
@@ -80,18 +82,19 @@ async fn handle_tcp_outlet_create(
     body: Option<Vec<u8>>,
 ) -> Result<ControlApiHttpResponse, ControlApiError> {
     let request: CreateOutletRequest = common::parse_request_body(body)?;
+    let request = CreateOutletRequestValidated::try_from(request)?;
 
     let allow = OutletAccessControl::WithPolicyExpression(match request.allow {
         None => None,
-        Some(policy) => Some(PolicyExpression::try_from(policy.as_str())?),
+        Some(policy) => Some(policy),
     });
 
     let tls = match request.tls {
-        OutletTls::None => false,
-        OutletTls::Validate => true,
+        None => false,
+        Some(_) => true,
     };
 
-    let priviledged = match request.kind {
+    let privileged = match request.kind {
         OutletKind::Regular => false,
         OutletKind::Privileged => true,
     };
@@ -101,10 +104,10 @@ async fn handle_tcp_outlet_create(
             context,
             request.to.try_into()?,
             tls,
-            request.address.map(Address::from_string),
+            request.name.map(Address::from_string),
             true,
             allow,
-            priviledged,
+            privileged,
             false,
             false,
             false,
@@ -134,10 +137,10 @@ async fn handle_tcp_outlet_create(
     operation_id = "update_tcp_outlet",
     summary = "Update a TCP Outlet",
     description =
-"Update the specified TCP Outlet by address.
-Currently only `allow` policy expression can be updated, for more advanced updates it's necessary
-to delete the TCP Outlet and create a new one.",
-    path = "/{node}/tcp-outlets/{tcp_outlet_address}",
+"Update the specified TCP Outlet.
+Only the `allow` policy expression can be updated.
+To update any other field, delete the TCP Outlet and create a new one.",
+    path = "/{node}/tcp-outlets/{name}",
     tags = ["Portals"],
     responses(
         (status = OK, description = "Successfully updated", body = OutletStatus),
@@ -145,7 +148,7 @@ to delete the TCP Outlet and create a new one.",
     ),
     params(
         ("node" = NodeName,),
-        ("tcp_outlet_address" = String, description = "TCP Outlet address"),
+        ("name" = String, description = "TCP Outlet name (service address)"),
     ),
     request_body(
         content = UpdateOutletRequest,
@@ -215,8 +218,8 @@ async fn handle_tcp_outlet_list(
     get,
     operation_id = "get_tcp_outlet",
     summary = "Get a TCP Outlet",
-    description = "Get the specified TCP Outlet by address.",
-    path = "/{node}/tcp-outlets/{tcp_outlet_address}",
+    description = "Get the specified TCP Outlet.",
+    path = "/{node}/tcp-outlets/{name}",
     tags = ["Portals"],
     responses(
         (status = OK, description = "Successfully retrieved", body = OutletStatus),
@@ -224,7 +227,7 @@ async fn handle_tcp_outlet_list(
     ),
     params(
         ("node" = NodeName,),
-        ("tcp_outlet_address" = String, description = "TCP Outlet address"),
+        ("name" = String, description = "TCP Outlet name (service address)"),
     )
 )]
 async fn handle_tcp_outlet_get(
@@ -245,8 +248,8 @@ async fn handle_tcp_outlet_get(
     delete,
     operation_id = "delete_tcp_outlet",
     summary = "Delete a TCP Outlet",
-    description = "Delete the specified TCP Outlet by address.",
-    path = "/{node}/tcp-outlets/{tcp_outlet_address}",
+    description = "Delete the specified TCP Outlet.",
+    path = "/{node}/tcp-outlets/{name}",
     tags = ["Portals"],
     responses(
         (status = NO_CONTENT, description = "Successfully deleted"),
@@ -254,7 +257,7 @@ async fn handle_tcp_outlet_get(
     ),
     params(
         ("node" = NodeName,),
-        ("tcp_outlet_address" = String, description = "TCP Outlet address"),
+        ("name" = String, description = "TCP Outlet name (service address)"),
     )
 )]
 async fn handle_tcp_outlet_delete(
@@ -272,7 +275,7 @@ async fn handle_tcp_outlet_delete(
 #[cfg(test)]
 mod test {
     use crate::control_api::http::{ControlApiHttpRequest, ControlApiHttpResponse};
-    use crate::control_api::protocol::common::{ErrorResponse, HostnamePort};
+    use crate::control_api::protocol::common::ErrorResponse;
     use crate::control_api::protocol::outlet::{CreateOutletRequest, OutletKind, OutletStatus};
     use crate::test_utils::start_manager_for_tests;
     use crate::DefaultAddress;
@@ -296,11 +299,8 @@ mod test {
             body: Some(
                 serde_json::to_vec(&CreateOutletRequest {
                     kind: OutletKind::Regular,
-                    address: Some("outlet-address".to_string()),
-                    to: HostnamePort {
-                        hostname: "127.0.0.1".to_string(),
-                        port: 1234,
-                    },
+                    name: Some("outlet-address".to_string()),
+                    to: "127.0.0.1:1234".to_string(),
                     tls: Default::default(),
                     allow: None,
                 })
@@ -317,9 +317,8 @@ mod test {
         assert_eq!(response.status, 201);
 
         let outlet_status: OutletStatus = serde_json::from_slice(response.body.as_slice()).unwrap();
-        assert_eq!(outlet_status.address, "outlet-address");
-        assert_eq!(outlet_status.to.hostname, "127.0.0.1");
-        assert_eq!(outlet_status.to.port, 1234);
+        assert_eq!(outlet_status.name, "outlet-address");
+        assert_eq!(outlet_status.to, "127.0.0.1:1234");
         assert!(!outlet_status.privileged);
 
         let request = ControlApiHttpRequest {
@@ -337,9 +336,8 @@ mod test {
         assert_eq!(response.status, 200);
 
         let outlet_status: OutletStatus = serde_json::from_slice(response.body.as_slice()).unwrap();
-        assert_eq!(outlet_status.address, "outlet-address");
-        assert_eq!(outlet_status.to.hostname, "127.0.0.1");
-        assert_eq!(outlet_status.to.port, 1234);
+        assert_eq!(outlet_status.name, "outlet-address");
+        assert_eq!(outlet_status.to, "127.0.0.1:1234");
         assert!(!outlet_status.privileged);
 
         let request = ControlApiHttpRequest {
@@ -358,9 +356,8 @@ mod test {
 
         let outlets: Vec<OutletStatus> = serde_json::from_slice(response.body.as_slice()).unwrap();
         assert_eq!(outlets.len(), 1);
-        assert_eq!(outlets[0].address, "outlet-address");
-        assert_eq!(outlets[0].to.hostname, "127.0.0.1");
-        assert_eq!(outlets[0].to.port, 1234);
+        assert_eq!(outlets[0].name, "outlet-address");
+        assert_eq!(outlet_status.to, "127.0.0.1:1234");
         assert!(!outlets[0].privileged);
 
         let request = ControlApiHttpRequest {

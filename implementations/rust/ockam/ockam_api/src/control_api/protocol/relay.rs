@@ -8,7 +8,7 @@ pub struct CreateRelayRequest {
     /// Name of Relay;
     /// Whe omitted, a random name will be generated
     pub name: Option<String>,
-    /// Multiaddress to the node that will be used as a relay;
+    /// Route to the node that will be used as a relay;
     #[schema(example = "/project/default")]
     pub to: String,
     /// The address of the relay;

@@ -31,7 +31,7 @@ long_about = docs::about(LONG_ABOUT),
 after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct CreateCommand {
-    /// Address of your TCP Outlet, which is part of a route used in other commands.
+    /// Service address of your TCP Outlet, which is part of a route used in other commands.
     /// This unique address identifies the TCP Outlet worker on the Node on your local machine.
     /// Examples are `/service/my-outlet` or `my-outlet`.
     /// If not provided, `outlet` will be used, or a random address will be generated if `outlet` is taken.
@@ -39,7 +39,8 @@ pub struct CreateCommand {
     #[arg(value_parser = extract_address_value)]
     pub name: Option<String>,
 
-    /// TCP address where your TCP server is running: domain:port. Your Outlet will send raw TCP traffic to it
+    /// Network address where your application is listening to.
+    /// Your TCP Outlet will forward raw TCP traffic to this destination.
     #[arg(long, id = "SOCKET_ADDRESS", display_order = 900, value_parser = hostname_parser)]
     pub to: SchemeHostnamePort,
 
