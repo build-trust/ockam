@@ -1,8 +1,13 @@
 use crate::control_api::protocol::common::HostnamePort;
+use crate::control_api::ControlApiError;
+use ockam_abac::PolicyExpression;
+use ockam_core::Address;
 use serde::{Deserialize, Serialize};
+use std::str::FromStr;
+use strum::EnumString;
 use utoipa::ToSchema;
 
-#[derive(Debug, Serialize, Deserialize, Default, ToSchema)]
+#[derive(Debug, Serialize, Deserialize, EnumString, Default, ToSchema)]
 #[serde(rename_all = "kebab-case")]
 pub enum OutletKind {
     /// Works as a regular TCP Outlet. It's compatible with UDP Puncture,
@@ -14,64 +19,111 @@ pub enum OutletKind {
     Privileged,
 }
 
-#[derive(Debug, Serialize, Deserialize, Default, ToSchema)]
+#[derive(Debug, Serialize, Deserialize, EnumString, ToSchema)]
 #[serde(rename_all = "kebab-case")]
 pub enum OutletTls {
-    #[default]
-    /// No TLS
-    None,
-    /// The destination uses TLS, the connection will be fully validated.
+    /// If the destination uses TLS, the connection will be fully validated.
     Validate,
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "kebab-case")]
 pub struct CreateOutletRequest {
-    /// The kind of the outlet
+    /// Service address of your TCP Outlet.
+    /// This unique address identifies the TCP Outlet worker on the Node on your local machine.
+    /// Examples are `/service/my-outlet` or `my-outlet`.
+    /// If not provided, `outlet` will be used, or a random address will be generated if `outlet` is taken.
+    /// You will need this address when creating a TCP Inlet.
+    #[serde(alias = "address")]
+    #[schema(example = "my-outlet")]
+    pub name: Option<String>,
+
+    /// Network address where your application is listening to.
+    /// Your TCP Outlet will forward raw TCP traffic to this destination.
+    #[schema(example = "dev.environment:1234")]
+    pub to: String,
+
+    /// The TLS configuration for the TCP Outlet.
     #[serde(default)]
-    pub kind: OutletKind,
-    /// The address of the outlet, also acts as an identifier for the resource
-    pub address: Option<String>,
-    /// The destination address of the TCP connection
-    pub to: HostnamePort,
-    /// The TLS configuration for the outlet
-    #[serde(default)]
-    #[schema(default = "None")]
-    pub tls: OutletTls,
-    /// Policy expression that will be used for access control to the TCP Outlet;
-    /// by default, the policy set for the "tcp-outlet" resource type will be used.
-    /// [Learn more about Policies expression on the Ockam documentation](https://docs.ockam.io/reference/protocols/access-controls).
+    #[schema(default = default_outlet_tls)]
+    pub tls: Option<OutletTls>,
+
+    /// Policy expression that will be used for access control to the TCP Outlet.
+    /// If you don't provide it, the policy set for the "tcp-outlet" resource type will be used.
+    /// [Learn more about Policy expressions on the Ockam documentation](https://docs.ockam.io/reference/protocols/access-controls).
+    #[schema(example = "user1")]
     pub allow: Option<String>,
+
+    /// The kind of the TCP Outlet.
+    #[serde(default)]
+    #[schema(default = OutletKind::default)]
+    pub kind: OutletKind,
+}
+
+fn default_outlet_tls() -> Option<OutletTls> {
+    None
+}
+
+pub struct CreateOutletRequestValidated {
+    pub name: Option<Address>,
+    pub to: HostnamePort,
+    pub tls: Option<OutletTls>,
+    pub allow: Option<PolicyExpression>,
+    pub kind: OutletKind,
+}
+
+impl TryFrom<CreateOutletRequest> for CreateOutletRequestValidated {
+    type Error = ControlApiError;
+
+    fn try_from(request: CreateOutletRequest) -> Result<Self, Self::Error> {
+        let name = match request.name {
+            Some(name) => Some(Address::from_str(&name).map_err(crate::error::ParseError::from)?),
+            None => None,
+        };
+        let to = HostnamePort::try_from(request.to.as_str()).map_err(ControlApiError::from)?;
+        let allow = match &request.allow {
+            Some(allow) => Some(PolicyExpression::from_str(allow).map_err(ControlApiError::from)?),
+            None => None,
+        };
+        Ok(CreateOutletRequestValidated {
+            name,
+            to,
+            tls: request.tls,
+            allow,
+            kind: request.kind,
+        })
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "kebab-case")]
 pub struct UpdateOutletRequest {
-    /// Policy expression that will be used for access control to the TCP Outlet;
-    /// by default, the policy set for the "tcp-outlet" resource type will be used.
-    /// [Learn more about Policies expression on the Ockam documentation](https://docs.ockam.io/reference/protocols/access-controls).
+    /// Policy expression that will be used for access control to the TCP Outlet.
+    /// If you don't provide it, the policy set for the "tcp-outlet" resource type will be used.
+    /// [Learn more about Policy expressions on the Ockam documentation](https://docs.ockam.io/reference/protocols/access-controls).
+    #[schema(example = "user1")]
     pub allow: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "kebab-case")]
 pub struct OutletStatus {
-    /// The address of the outlet
-    pub to: HostnamePort,
-    /// The address of the worker, this also acts as an identifier of the TCP Outlet within the node
-    pub address: String,
-    /// Whether the outlet is of privileged kind
+    /// The network address of the TCP Outlet.
+    #[schema(example = "dev.environment:1234")]
+    pub to: String,
+    /// The name, or service address, of the TCP Outlet.
+    /// It acts as the identifier of the TCP Outlet within the node.
+    #[schema(example = "my-outlet")]
+    pub name: String,
+    /// Whether the TCP Outlet is of privileged kind.
     pub privileged: bool,
 }
 
 impl From<crate::nodes::models::portal::OutletStatus> for OutletStatus {
     fn from(status: crate::nodes::models::portal::OutletStatus) -> Self {
         OutletStatus {
-            to: HostnamePort {
-                hostname: status.to.hostname,
-                port: status.to.port,
-            },
-            address: status.worker_address.address().to_string(),
+            to: status.to.to_string(),
+            name: status.worker_address.address().to_string(),
             privileged: status.privileged,
         }
     }

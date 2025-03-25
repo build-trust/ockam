@@ -64,6 +64,9 @@ pub enum ParseError {
     Addr(#[from] std::net::AddrParseError),
 
     #[error(transparent)]
+    OckamAddress(#[from] ockam_core::AddressParseError),
+
+    #[error(transparent)]
     Url(#[from] url::ParseError),
 
     #[error(transparent)]
