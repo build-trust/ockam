@@ -52,6 +52,7 @@ impl LoggingTracing {
         logging_configuration: &LoggingConfiguration,
         exporting_configuration: &ExportingConfiguration,
         app_name: &str,
+        node_name: Option<String>,
         ctx: &Context,
     ) -> TracingGuard {
         if exporting_configuration.is_enabled() && logging_configuration.is_enabled() {
@@ -63,6 +64,7 @@ impl LoggingTracing {
                 logging_configuration,
                 exporting_configuration,
                 app_name,
+                node_name,
             )
         } else if exporting_configuration.is_enabled() {
             Self::setup_tracing_only(
@@ -71,6 +73,7 @@ impl LoggingTracing {
                 logging_configuration,
                 exporting_configuration,
                 app_name,
+                node_name,
             )
         } else {
             Self::setup_local_logging_only(logging_configuration)
@@ -90,6 +93,7 @@ impl LoggingTracing {
         logging_configuration: &LoggingConfiguration,
         exporting_configuration: &ExportingConfiguration,
         app_name: &str,
+        node_name: Option<String>,
     ) -> TracingGuard {
         // configure the logging layer exporting OpenTelemetry log records
         let (logging_layer, logger_provider) =
@@ -99,6 +103,7 @@ impl LoggingTracing {
         let (tracing_layer, tracer_provider) = create_opentelemetry_tracing_layer(
             cli_state,
             app_name,
+            node_name,
             exporting_configuration,
             span_exporter,
         );
@@ -176,10 +181,12 @@ impl LoggingTracing {
         logging_configuration: &LoggingConfiguration,
         exporting_configuration: &ExportingConfiguration,
         app_name: &str,
+        node_name: Option<String>,
     ) -> TracingGuard {
         let (tracing_layer, tracer_provider) = create_opentelemetry_tracing_layer(
             cli_state,
             app_name,
+            node_name,
             exporting_configuration,
             span_exporter,
         );
@@ -267,6 +274,7 @@ fn create_opentelemetry_tracing_layer<
 >(
     cli_state: Arc<CliState>,
     app_name: &str,
+    node_name: Option<String>,
     exporting_configuration: &ExportingConfiguration,
     span_exporter: S,
 ) -> (
@@ -289,6 +297,7 @@ fn create_opentelemetry_tracing_layer<
         OckamSpanExporter::new(
             cli_state,
             span_exporter,
+            node_name,
             is_ockam_developer,
             span_export_cutoff,
         ),

@@ -48,6 +48,7 @@ async fn test_create_journey_event() {
         )
         .unwrap(),
         "test",
+        Some("node-name".into()),
     );
     let tracer = global::tracer("ockam-test");
     let span = tracer.start("user event");

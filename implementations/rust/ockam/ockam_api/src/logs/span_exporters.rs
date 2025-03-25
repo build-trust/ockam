@@ -52,6 +52,7 @@ impl<S: SpanExporter> DecoratedSpanExporter<S> {
 pub struct OckamSpanExporter<S: SpanExporter + 'static> {
     cli_state: Arc<CliState>,
     exporter: Arc<Mutex<S>>,
+    node_name: Option<String>,
     is_ockam_developer: bool,
     span_export_cutoff: Option<Duration>,
     span_attributes: Arc<Mutex<Option<SpanAttributes>>>,
@@ -65,6 +66,7 @@ impl<S: SpanExporter + 'static> SpanExporter for OckamSpanExporter<S> {
         let span_export_cutoff = self.span_export_cutoff;
         let exporter = self.exporter.clone();
         let span_attributes = self.span_attributes.clone();
+        let node_name = self.node_name.clone();
 
         let f = async move {
             let mut exporter = exporter.lock().await;
@@ -73,7 +75,7 @@ impl<S: SpanExporter + 'static> SpanExporter for OckamSpanExporter<S> {
             let mut span_attributes = span_attributes.lock().await;
             let attributes = if span_attributes.is_none() {
                 SpanAttributes {
-                    node_info: cli_state.get_default_node().await.ok(),
+                    node_info: cli_state.get_node_or_default(&node_name).await.ok(),
                     project: cli_state.projects().get_default_project().await.ok(),
                 }
             } else {
@@ -122,12 +124,14 @@ impl<S: SpanExporter> OckamSpanExporter<S> {
     pub fn new(
         cli_state: Arc<CliState>,
         exporter: S,
+        node_name: Option<String>,
         is_ockam_developer: bool,
         span_export_cutoff: Option<Duration>,
     ) -> OckamSpanExporter<S> {
         OckamSpanExporter {
             cli_state,
             exporter: Arc::new(Mutex::new(exporter)),
+            node_name,
             is_ockam_developer,
             span_export_cutoff,
             span_attributes: Arc::new(Mutex::new(None)),

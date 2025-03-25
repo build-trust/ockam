@@ -43,6 +43,7 @@ impl AppState {
                 .await
                 .unwrap(),
             "portals",
+            None,
             ctx,
         );
         self.tracing_guard

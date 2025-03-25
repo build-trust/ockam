@@ -122,6 +122,7 @@ impl OckamCommand {
             logging_configuration,
             exporting_configuration,
             app_name,
+            self.subcommand.node_name(),
             ctx,
         );
 
