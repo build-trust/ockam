@@ -276,7 +276,7 @@ impl CliState {
         }
     }
 
-    /// Return a list of journeys for which we want to add spans
+    /// Return the host journey and the project journey if it exists.
     async fn get_journeys(&self, project_id: Option<String>) -> Result<(Journey, Option<Journey>)> {
         let now = *Context::current()
             .get::<DateTime<Utc>>()

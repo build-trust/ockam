@@ -108,6 +108,7 @@ async fn handle_invalid_command(
             &logging_configuration.into_diagnostic()?,
             &exporting_configuration,
             "local node",
+            None,
             ctx,
         );
 

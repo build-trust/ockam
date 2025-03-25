@@ -39,6 +39,7 @@ async fn test_log_and_traces() {
         )
         .unwrap(),
         "test",
+        Some("node-name".into()),
     );
 
     let tracer = global::tracer("ockam-test");
