@@ -3,12 +3,14 @@ use crate::control_api::backend::common::ResourceKind;
 use crate::control_api::backend::entrypoint::HttpControlNodeApiBackend;
 use crate::control_api::http::ControlApiHttpResponse;
 use crate::control_api::protocol::common::{ErrorResponse, NodeName};
-use crate::control_api::protocol::inlet::{CreateInletRequest, InletKind, InletTls};
+use crate::control_api::protocol::inlet::{
+    CreateInletRequest, CreateInletRequestValidated, InletKind, InletTls,
+};
 use crate::control_api::protocol::inlet::{InletStatus, UpdateInletRequest};
 use crate::control_api::ControlApiError;
 use crate::nodes::NodeManager;
 use http::{Method, StatusCode};
-use ockam_abac::{Action, Expr, PolicyExpression, ResourceName};
+use ockam_abac::{Action, Expr, ResourceName};
 use ockam_core::compat::rand::random_string;
 use ockam_core::errcode::Kind;
 use ockam_core::Route;
@@ -54,9 +56,10 @@ impl HttpControlNodeApiBackend {
     operation_id = "create_tcp_inlet",
     summary = "Create a new TCP Inlet",
     description =
-"Create a TCP Inlet, the main parameters are the destination `to`, and the bind address `from`.
-You can also choose to listen with a valid TLS certificate, restrict access to the Inlet with
-`authorized` and `allow`, and select a specialized Portal with `kind`.
+"The main parameters are the destination `to`, and the bind address `from`.
+You can also attach a TLS certificate in the `tls` object, restrict access to the TCP Inlet with
+`authorized` and `allow`, or select a specialized Portal with `kind`.
+
 The creation will be asynchronous and the initial status will be `down`.",
     path = "/{node}/tcp-inlets",
     tags = ["Portals"],
@@ -79,10 +82,7 @@ async fn handle_tcp_inlet_create(
     body: Option<Vec<u8>>,
 ) -> Result<ControlApiHttpResponse, ControlApiError> {
     let request: CreateInletRequest = common::parse_request_body(body)?;
-    let allow = match request.allow {
-        None => None,
-        Some(policy) => Some(PolicyExpression::try_from(policy.as_str())?),
-    };
+    let request = CreateInletRequestValidated::try_from(request)?;
 
     let enable_udp_puncture;
     let disable_tcp_fallback;
@@ -94,12 +94,12 @@ async fn handle_tcp_inlet_create(
             disable_tcp_fallback = false;
             privileged = false;
         }
-        InletKind::UdpPucture => {
+        InletKind::UdpPuncture => {
             enable_udp_puncture = true;
             disable_tcp_fallback = false;
             privileged = false;
         }
-        InletKind::OnlyUdpPucture => {
+        InletKind::OnlyUdpPuncture => {
             enable_udp_puncture = true;
             disable_tcp_fallback = true;
             privileged = false;
@@ -122,52 +122,48 @@ async fn handle_tcp_inlet_create(
     }
 
     let tls_certificate_provider: Option<MultiAddr> = match request.tls {
-        InletTls::None => None,
-        InletTls::ProjectTls => {
-            let default_project = match node_manager
-                .cli_state
-                .projects()
-                .get_default_project()
-                .await
-            {
-                Ok(project) => project,
-                Err(error) => {
-                    warn!("Failed to get default project: {:?}", error);
-                    return ControlApiHttpResponse::internal_error("Failed to get default project");
-                }
-            };
-            let default_project_name = default_project.name();
-            Some(
-                format!("/project/{default_project_name}/service/tls_certificate_provider")
-                    .parse()?,
-            )
-        }
-        InletTls::CustomTlsProvider {
-            tls_certificate_provider,
-        } => Some(tls_certificate_provider.parse()?),
-    };
-
-    let authorized = match request.authorized {
         None => None,
-        Some(authorized) => Some(common::parse_identifier(
-            authorized.as_str(),
-            "Invalid authorized identity",
-        )?),
+        Some(tls) => match tls {
+            InletTls::ProjectTls => {
+                let default_project = match node_manager
+                    .cli_state
+                    .projects()
+                    .get_default_project()
+                    .await
+                {
+                    Ok(project) => project,
+                    Err(error) => {
+                        warn!("Failed to get default project: {:?}", error);
+                        return ControlApiHttpResponse::internal_error(
+                            "Failed to get default project",
+                        );
+                    }
+                };
+                let default_project_name = default_project.name();
+                Some(
+                    format!("/project/{default_project_name}/service/tls_certificate_provider")
+                        .parse()?,
+                )
+            }
+            InletTls::CustomTlsProvider {
+                tls_certificate_provider,
+            } => Some(tls_certificate_provider.parse()?),
+        },
     };
 
     let result = node_manager
         .create_inlet(
             context,
-            request.from.try_into()?,
+            request.from,
             Route::default(),
             Route::default(),
-            request.to.parse()?,
+            request.to,
             request.name.unwrap_or_else(random_string),
-            allow,
-            None,
-            authorized,
+            request.allow,
+            Some(request.retry_wait),
+            request.authorized,
             false,
-            None,
+            request.identity,
             enable_udp_puncture,
             disable_tcp_fallback,
             privileged,
@@ -201,10 +197,11 @@ async fn handle_tcp_inlet_create(
     operation_id = "update_tcp_inlet",
     summary = "Update a TCP Inlet",
     description =
-"Update the specified TCP Inlet by name.
-Currently the only `allow` policy expression can be updated, for more advanced updates it's necessary
-to delete the TCP Inlet and create a new one.",
-    path = "/{node}/tcp-inlets/{tcp_inlet_name}",
+"Update a TCP Inlet given its name.
+
+Only the `allow` policy expression can be updated.
+To update any other field, delete the TCP Inlet and create a new one.",
+    path = "/{node}/tcp-inlets/{name}",
     tags = ["Portals"],
     responses(
         (status = OK, description = "Successfully updated", body = InletStatus),
@@ -212,7 +209,7 @@ to delete the TCP Inlet and create a new one.",
     ),
     params(
         ("node" = NodeName,),
-        ("tcp_inlet_name" = String, description = "TCP Inlet name"),
+        ("name" = String, description = "TCP Inlet name"),
     ),
     request_body(
         content = UpdateInletRequest,
@@ -257,7 +254,7 @@ async fn handle_tcp_inlet_update(
     get,
     operation_id = "list_tcp_inlet",
     summary = "List all TCP Inlets",
-    description = "List all TCP Inlets created in the node regardless of their status.",
+    description = "List all TCP Inlets created in a node regardless of their statuses.",
     path = "/{node}/tcp-inlets",
     tags = ["Portals"],
     responses(
@@ -281,15 +278,15 @@ async fn handle_tcp_inlet_list(
     delete,
     operation_id = "delete_tcp_inlet",
     summary = "Delete a TCP Inlet",
-    description = "Delete the specified TCP Inlet by name.",
-    path = "/{node}/tcp-inlets/{tcp_inlet_name}",
+    description = "Delete a TCP Inlet given its name.",
+    path = "/{node}/tcp-inlets/{name}",
     tags = ["Portals"],
     responses(
         (status = NO_CONTENT, description = "Successfully deleted"),
     ),
     params(
         ("node" = NodeName,),
-        ("tcp_inlet_name" = String, description = "TCP Inlet name"),
+        ("name" = String, description = "TCP Inlet name"),
     )
 )]
 async fn handle_tcp_inlet_delete(
@@ -312,8 +309,8 @@ async fn handle_tcp_inlet_delete(
     get,
     operation_id = "get_tcp_inlet",
     summary = "Get a TCP Inlet",
-    description = "Get the specified TCP Inlet by name",
-    path = "/{node}/tcp-inlets/{tcp_inlet_name}",
+    description = "Get a TCP Inlet given its name.",
+    path = "/{node}/tcp-inlets/{name}",
     tags = ["Portals"],
     responses(
         (status = OK, description = "Successfully retrieved", body = InletStatus),
@@ -321,7 +318,7 @@ async fn handle_tcp_inlet_delete(
     ),
     params(
         ("node" = NodeName,),
-        ("tcp_inlet_name" = String, description = "TCP Inlet name")
+        ("name" = String, description = "TCP Inlet name")
     )
 )]
 async fn handle_tcp_inlet_get(
@@ -370,6 +367,7 @@ mod test {
                         port: 0,
                     },
                     to: "/service/outlet".to_string(),
+                    via: None,
                     identity: None,
                     authorized: None,
                     allow: None,
@@ -393,8 +391,9 @@ mod test {
         assert_eq!(inlet_status.status, ConnectionStatus::Down);
         assert_eq!(inlet_status.current_route, None);
         assert_eq!(inlet_status.to, "/service/outlet");
-        assert_eq!(inlet_status.bind_address.hostname, "127.0.0.1");
-        assert!(inlet_status.bind_address.port > 0);
+        let bind_address = HostnamePort::try_from(inlet_status.bind_address.as_str())?;
+        assert_eq!(bind_address.hostname, "127.0.0.1");
+        assert!(bind_address.port > 0);
 
         tokio::time::sleep(Duration::from_millis(100)).await;
 

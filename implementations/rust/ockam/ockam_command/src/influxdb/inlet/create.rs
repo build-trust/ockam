@@ -41,7 +41,7 @@ pub struct CreateCommand {
     #[arg(long, display_order = 900, id = "NODE_NAME", value_parser = extract_address_value)]
     pub at: Option<String>,
 
-    /// Address on which to accept InfluxDB connections, in the format `<scheme>://<hostname>:<port>`.
+    /// Address on which to accept InfluxDB connections, in the format `<scheme>://<host>:<port>`.
     /// At least the port must be provided. The default scheme is `tcp` and the default hostname is `127.0.0.1`.
     /// If the argument is not set, a random port will be used on the default address.
     ///

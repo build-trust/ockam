@@ -30,15 +30,17 @@ pub enum OutletTls {
 #[serde(rename_all = "kebab-case")]
 pub struct CreateOutletRequest {
     /// Service address of your TCP Outlet.
+    ///
     /// This unique address identifies the TCP Outlet worker on the Node on your local machine.
     /// Examples are `/service/my-outlet` or `my-outlet`.
+    ///
     /// If not provided, `outlet` will be used, or a random address will be generated if `outlet` is taken.
     /// You will need this address when creating a TCP Inlet.
     #[serde(alias = "address")]
     #[schema(example = "my-outlet")]
     pub name: Option<String>,
 
-    /// Network address where your application is listening to.
+    /// Network address where your application is listening to, in the format `<host>:<port>`.
     /// Your TCP Outlet will forward raw TCP traffic to this destination.
     #[schema(example = "dev.environment:1234")]
     pub to: String,
@@ -49,7 +51,9 @@ pub struct CreateOutletRequest {
     pub tls: Option<OutletTls>,
 
     /// Policy expression that will be used for access control to the TCP Outlet.
+    ///
     /// If you don't provide it, the policy set for the "tcp-outlet" resource type will be used.
+    ///
     /// [Learn more about Policy expressions on the Ockam documentation](https://docs.ockam.io/reference/protocols/access-controls).
     #[schema(example = "user1")]
     pub allow: Option<String>,
@@ -99,7 +103,9 @@ impl TryFrom<CreateOutletRequest> for CreateOutletRequestValidated {
 #[serde(rename_all = "kebab-case")]
 pub struct UpdateOutletRequest {
     /// Policy expression that will be used for access control to the TCP Outlet.
+    ///
     /// If you don't provide it, the policy set for the "tcp-outlet" resource type will be used.
+    ///
     /// [Learn more about Policy expressions on the Ockam documentation](https://docs.ockam.io/reference/protocols/access-controls).
     #[schema(example = "user1")]
     pub allow: Option<String>,
@@ -108,10 +114,10 @@ pub struct UpdateOutletRequest {
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "kebab-case")]
 pub struct OutletStatus {
-    /// The network address of the TCP Outlet.
+    /// Network address of the TCP Outlet, in the format `<host>:<port>`.
     #[schema(example = "dev.environment:1234")]
     pub to: String,
-    /// The name, or service address, of the TCP Outlet.
+    /// Name, or service address, of the TCP Outlet.
     /// It acts as the identifier of the TCP Outlet within the node.
     #[schema(example = "my-outlet")]
     pub name: String,
