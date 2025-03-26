@@ -1,4 +1,4 @@
-use crate::control_api::protocol::common::{ConnectionStatus, HostnamePort};
+use crate::control_api::protocol::common::{ConnectionStatus, HostPort};
 use crate::control_api::ControlApiError;
 use ockam::identity::Identifier;
 use ockam_abac::PolicyExpression;
@@ -8,9 +8,9 @@ use std::str::FromStr;
 use std::time::Duration;
 use utoipa::ToSchema;
 
-fn tcp_inlet_default_bind_address() -> HostnamePort {
-    HostnamePort {
-        hostname: "127.0.0.1".to_string(),
+fn tcp_inlet_default_bind_address() -> HostPort {
+    HostPort {
+        host: "127.0.0.1".to_string(),
         port: 0,
     }
 }
@@ -64,10 +64,10 @@ pub struct CreateInletRequest {
     /// At least the port must be provided.
     ///
     /// The default host is `127.0.0.1`.
-    /// If not set, a random port will be used on the default host.
+    /// If not set, a random port will be used.
     #[serde(default = "tcp_inlet_default_bind_address")]
     #[schema(default = tcp_inlet_default_bind_address)]
-    pub from: HostnamePort,
+    pub from: HostPort,
 
     /// Route to a TCP Outlet or the name of the TCP Outlet service you want to connect to.
     ///
@@ -217,7 +217,7 @@ impl TryFrom<crate::nodes::models::portal::InletStatus> for InletStatus {
     type Error = ockam_core::Error;
 
     fn try_from(status: crate::nodes::models::portal::InletStatus) -> Result<Self, Self::Error> {
-        let bind_address = HostnamePort::try_from(status.bind_addr.as_str())?;
+        let bind_address = HostPort::try_from(status.bind_addr.as_str())?;
 
         Ok(InletStatus {
             status: status.status.into(),

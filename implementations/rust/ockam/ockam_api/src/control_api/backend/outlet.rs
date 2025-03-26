@@ -84,12 +84,9 @@ async fn handle_tcp_outlet_create(
     let request: CreateOutletRequest = common::parse_request_body(body)?;
     let request = CreateOutletRequestValidated::try_from(request)?;
 
-    let allow = OutletAccessControl::WithPolicyExpression(request.allow.map(|policy| policy));
+    let allow = OutletAccessControl::WithPolicyExpression(request.allow);
 
-    let tls = match request.tls {
-        None => false,
-        Some(_) => true,
-    };
+    let tls = request.tls.is_some();
 
     let privileged = match request.kind {
         OutletKind::Regular => false,
@@ -99,7 +96,7 @@ async fn handle_tcp_outlet_create(
     let result = node_manager
         .create_outlet(
             context,
-            request.to.try_into()?,
+            request.to,
             tls,
             request.name.map(Address::from_string),
             true,
@@ -272,7 +269,7 @@ async fn handle_tcp_outlet_delete(
 #[cfg(test)]
 mod test {
     use crate::control_api::http::{ControlApiHttpRequest, ControlApiHttpResponse};
-    use crate::control_api::protocol::common::ErrorResponse;
+    use crate::control_api::protocol::common::{ErrorResponse, HostPort};
     use crate::control_api::protocol::outlet::{CreateOutletRequest, OutletKind, OutletStatus};
     use crate::test_utils::start_manager_for_tests;
     use crate::DefaultAddress;
@@ -297,7 +294,10 @@ mod test {
                 serde_json::to_vec(&CreateOutletRequest {
                     kind: OutletKind::Regular,
                     name: Some("outlet-address".to_string()),
-                    to: "127.0.0.1:1234".to_string(),
+                    to: HostPort {
+                        host: "127.0.0.1".to_string(),
+                        port: 1234,
+                    },
                     tls: Default::default(),
                     allow: None,
                 })

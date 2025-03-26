@@ -1,5 +1,5 @@
 use super::common::{default_project_information, Attributes, Project};
-use crate::control_api::protocol::common::HostnamePort;
+use crate::control_api::protocol::common::HostPort;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
@@ -62,5 +62,5 @@ pub struct AuthorityInformation {
     /// Identity of the authority node
     pub identity: String,
     /// Hostname and port of the authority node
-    pub address: HostnamePort,
+    pub address: HostPort,
 }
