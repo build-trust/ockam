@@ -223,6 +223,9 @@ impl NodeConfig {
         if cmd.udp != default_cmd_args.udp {
             self.node.udp = Some(cmd.udp.into());
         }
+        if cmd.enable_mptcp != default_cmd_args.enable_mptcp {
+            self.node.enable_mptcp = Some(cmd.enable_mptcp.into());
+        }
 
         Ok(())
     }

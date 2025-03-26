@@ -7,7 +7,7 @@ use ockam::identity::{
     SecureChannelOptions, TrustMultiIdentifiersPolicy,
 };
 use ockam::remote::RemoteRelayOptions;
-use ockam::tcp::{TcpOutletOptions, TcpTransportExtension};
+use ockam::tcp::{TcpOutletOptions, TcpTransportExtension, TCP};
 use ockam::transport::HostnamePort;
 use ockam::{node, Context, Result};
 use ockam_api::authenticator::enrollment_tokens::TokenAcceptor;
@@ -82,6 +82,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     // Create a credential retriever that will be used to obtain credentials
     let credential_retriever = Arc::new(RemoteCredentialRetrieverCreator::new(
         node.context().try_clone()?,
+        TCP,
         tcp.clone(),
         node.secure_channels(),
         RemoteCredentialRetrieverInfo::create_for_project_member(

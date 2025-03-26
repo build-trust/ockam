@@ -37,6 +37,7 @@ pub struct Node {
     #[serde(alias = "opentelemetry-context")]
     pub opentelemetry_context: Option<ArgValue>,
     pub udp: Option<ArgValue>,
+    pub enable_mptcp: Option<ArgValue>,
     #[serde(alias = "udp-listener-address")]
     pub udp_listener_address: Option<ArgValue>,
     #[serde(alias = "in-memory")]
@@ -98,6 +99,9 @@ impl Resource<CreateCommand> for Node {
         }
         if let Some(udp) = self.udp {
             args.insert("udp".into(), udp);
+        }
+        if let Some(enable_mptcp) = self.enable_mptcp {
+            args.insert("enable-mptcp".into(), enable_mptcp);
         }
         if let Some(in_memory) = self.in_memory {
             args.insert("in-memory".into(), in_memory);

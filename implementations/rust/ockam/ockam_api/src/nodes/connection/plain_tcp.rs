@@ -4,7 +4,7 @@ use crate::{RemoteMultiaddrResolver, RemoteMultiaddrResolverConnection, ReverseL
 
 use crate::nodes::NodeManager;
 use ockam_core::{async_trait, Error, Route};
-use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Tcp};
+use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Mptcp, Tcp};
 use ockam_multiaddr::{Match, MultiAddr, Protocol};
 use ockam_node::Context;
 
@@ -23,7 +23,7 @@ impl Instantiator for PlainTcpInstantiator {
         vec![
             // matches any tcp address followed by a tcp protocol
             Match::any([DnsAddr::CODE, Ip4::CODE, Ip6::CODE]),
-            Tcp::CODE.into(),
+            Match::any([Tcp::CODE, Mptcp::CODE]),
         ]
     }
 

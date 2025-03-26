@@ -1,5 +1,5 @@
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::{async_trait, Address, Error, Result, TransportType, TryClone};
+use ockam_core::{async_trait, Address, Error, Result, TryClone};
 use ockam_node::Context;
 use ockam_transport_core::Transport;
 use std::any::Any;
@@ -42,7 +42,7 @@ impl UdpTransport {
                 // make the UDP transport available in the list of supported transports for
                 // later address resolution when socket addresses will need to be instantiated as UDP
                 // worker addresses
-                ctx.register_transport(Arc::new(udp.clone()));
+                ctx.register_transport(UDP, Arc::new(udp.clone()));
                 Ok(Arc::new(udp))
             }
         }
@@ -58,10 +58,6 @@ impl UdpTransport {
 
 #[async_trait]
 impl Transport for UdpTransport {
-    fn transport_type(&self) -> TransportType {
-        UDP
-    }
-
     async fn resolve_address(&self, address: &Address) -> Result<Address> {
         if address.transport_type() == UDP {
             Ok(self

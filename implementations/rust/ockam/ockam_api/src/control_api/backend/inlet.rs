@@ -174,6 +174,7 @@ async fn handle_tcp_inlet_create(
             tls_certificate_provider,
             false,
             false,
+            false,
         )
         .await;
     match result {

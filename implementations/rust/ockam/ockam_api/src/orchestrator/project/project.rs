@@ -209,6 +209,7 @@ impl Project {
     }
 
     pub async fn try_connect_tcp(&self) -> Result<bool> {
+        // TODO: Add a timeout?
         match &self.project_socket_addr {
             None => Ok(false),
             Some(project_socket_addr) => Ok(tokio::net::TcpStream::connect(project_socket_addr)

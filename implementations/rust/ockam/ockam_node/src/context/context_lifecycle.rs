@@ -252,16 +252,17 @@ mod tests {
     #[ockam_macros::test(crate = "crate")]
     async fn test_copy(ctx: &mut Context) -> Result<()> {
         let transport = Arc::new(SomeTransport());
-        ctx.register_transport(transport.clone());
+        let transport_type = TransportType::new(99);
+        ctx.register_transport(transport_type, transport.clone());
 
         // after a copy with new mailboxes the list of transports should be intact
         let mailboxes = Mailboxes::new(Mailbox::deny_all("address"), vec![]);
         let (copy, _, _) = ctx.new_with_mailboxes(mailboxes.clone(), ContextMode::Attached);
-        assert!(copy.is_transport_registered(transport.transport_type()));
+        assert!(copy.is_transport_registered(transport_type));
 
         // after a detached copy with new mailboxes the list of transports should be intact
         let (copy, _, _) = ctx.new_with_mailboxes(mailboxes, ContextMode::Attached);
-        assert!(copy.is_transport_registered(transport.transport_type()));
+        assert!(copy.is_transport_registered(transport_type));
         Ok(())
     }
 
@@ -269,10 +270,6 @@ mod tests {
 
     #[async_trait]
     impl Transport for SomeTransport {
-        fn transport_type(&self) -> TransportType {
-            TransportType::new(0)
-        }
-
         async fn resolve_address(&self, address: &Address) -> Result<Address> {
             Ok(address.clone())
         }

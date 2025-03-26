@@ -2,7 +2,7 @@ use miette::miette;
 
 use ockam_core::Result;
 use ockam_multiaddr::proto::{
-    DnsAddr, Ip4, Ip6, Node, Project, Secure, Service, Space, Tcp, Worker,
+    DnsAddr, Ip4, Ip6, Mptcp, Node, Project, Secure, Service, Space, Tcp, Worker,
 };
 use ockam_multiaddr::{Code, MultiAddr, Protocol};
 
@@ -65,6 +65,7 @@ pub fn local_worker(code: &Code) -> Result<bool> {
         | Ip4::CODE
         | Ip6::CODE
         | Tcp::CODE
+        | Mptcp::CODE
         | Secure::CODE => Ok(false),
         Worker::CODE | Service::CODE => Ok(true),
 

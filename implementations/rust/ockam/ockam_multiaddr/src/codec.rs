@@ -1,5 +1,5 @@
 use super::{Buffer, Checked, Code, Codec, Protocol};
-use crate::proto::{DnsAddr, Node, Project, Secure, Service, Space, Tcp, Udp, Worker};
+use crate::proto::{DnsAddr, Mptcp, Node, Project, Secure, Service, Space, Tcp, Udp, Worker};
 use crate::{Error, ProtoValue};
 use core::fmt;
 use unsigned_varint::decode;
@@ -49,6 +49,13 @@ impl Codec for StdCodec {
                 let (x, y) = input.split_at(2);
                 Ok((Checked(x), y))
             }
+            Mptcp::CODE => {
+                if input.len() < 2 {
+                    return Err(Error::required_bytes(Mptcp::CODE, 2));
+                }
+                let (x, y) = input.split_at(2);
+                Ok((Checked(x), y))
+            }
             Udp::CODE => {
                 if input.len() < 2 {
                     return Err(Error::required_bytes(Udp::CODE, 2));
@@ -82,6 +89,7 @@ impl Codec for StdCodec {
             #[cfg(feature = "std")]
             crate::proto::Ip6::CODE => crate::proto::Ip6::read_bytes(input).is_ok(),
             Tcp::CODE => Tcp::read_bytes(input).is_ok(),
+            Mptcp::CODE => Mptcp::read_bytes(input).is_ok(),
             Udp::CODE => Udp::read_bytes(input).is_ok(),
             DnsAddr::CODE => DnsAddr::read_bytes(input).is_ok(),
             Service::CODE => Service::read_bytes(input).is_ok(),
@@ -101,6 +109,7 @@ impl Codec for StdCodec {
             #[cfg(feature = "std")]
             crate::proto::Ip6::CODE => crate::proto::Ip6::read_bytes(val.data())?.write_bytes(buf),
             Tcp::CODE => Tcp::read_bytes(val.data())?.write_bytes(buf),
+            Mptcp::CODE => Mptcp::read_bytes(val.data())?.write_bytes(buf),
             Udp::CODE => Udp::read_bytes(val.data())?.write_bytes(buf),
             DnsAddr::CODE => DnsAddr::read_bytes(val.data())?.write_bytes(buf),
             Service::CODE => Service::read_bytes(val.data())?.write_bytes(buf),
@@ -136,6 +145,10 @@ impl Codec for StdCodec {
             }
             Tcp::PREFIX => {
                 Tcp::read_str(value)?.write_bytes(buf);
+                Ok(())
+            }
+            Mptcp::PREFIX => {
+                Mptcp::read_str(value)?.write_bytes(buf);
                 Ok(())
             }
             Udp::PREFIX => {
@@ -193,6 +206,10 @@ impl Codec for StdCodec {
             }
             Tcp::CODE => {
                 Tcp::read_bytes(value)?.write_str(f)?;
+                Ok(())
+            }
+            Mptcp::CODE => {
+                Mptcp::read_bytes(value)?.write_str(f)?;
                 Ok(())
             }
             Udp::CODE => {

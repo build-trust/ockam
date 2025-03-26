@@ -50,7 +50,10 @@ impl CreateCommand {
         // Create TCP transport
         let tcp = TcpTransport::get_or_create(ctx).into_diagnostic()?;
         let tcp_listener = tcp
-            .listen(&self.tcp_listener_address, TcpListenerOptions::new())
+            .listen(
+                &self.tcp_listener_address,
+                TcpListenerOptions::new().set_enable_mptcp(self.enable_mptcp),
+            )
             .await
             .into_diagnostic()?;
         info!("TCP listener at {}", tcp_listener.socket_address());

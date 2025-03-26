@@ -2,10 +2,10 @@ use ockam_core::compat::boxed::Box;
 use ockam_core::compat::collections::BTreeMap;
 use ockam_core::compat::string::String;
 use ockam_core::compat::sync::Arc;
-use ockam_core::{async_trait, Address, AllowAll, DenyAll, Mailboxes, Result};
+use ockam_core::{async_trait, Address, AllowAll, DenyAll, Mailboxes, Result, TransportType};
 use ockam_node::compat::asynchronous::RwLock;
 use ockam_node::Context;
-use ockam_transport_core::Transport;
+use ockam_transport_core::{Transport, TransportImpl};
 use tracing::debug;
 
 use crate::{
@@ -16,7 +16,7 @@ use crate::{
 /// Creator for [`RemoteCredentialRetriever`]
 pub struct RemoteCredentialRetrieverCreator {
     ctx: Context,
-    transport: Arc<dyn Transport>,
+    transport: TransportImpl,
     secure_channels: Arc<SecureChannels>,
     info: RemoteCredentialRetrieverInfo,
     scope: String,
@@ -30,6 +30,7 @@ impl RemoteCredentialRetrieverCreator {
     /// Constructor
     pub fn new(
         ctx: Context,
+        transport_type: TransportType,
         transport: Arc<dyn Transport>,
         secure_channels: Arc<SecureChannels>,
         info: RemoteCredentialRetrieverInfo,
@@ -37,7 +38,10 @@ impl RemoteCredentialRetrieverCreator {
     ) -> Self {
         Self {
             ctx,
-            transport,
+            transport: TransportImpl {
+                t_type: transport_type,
+                transport,
+            },
             secure_channels,
             info,
             scope,
@@ -49,6 +53,7 @@ impl RemoteCredentialRetrieverCreator {
     /// Constructor
     pub fn new_extended(
         ctx: Context,
+        transport_type: TransportType,
         transport: Arc<dyn Transport>,
         secure_channels: Arc<SecureChannels>,
         info: RemoteCredentialRetrieverInfo,
@@ -57,7 +62,10 @@ impl RemoteCredentialRetrieverCreator {
     ) -> Self {
         Self {
             ctx,
-            transport,
+            transport: TransportImpl {
+                t_type: transport_type,
+                transport,
+            },
             secure_channels,
             info,
             scope,

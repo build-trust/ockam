@@ -168,6 +168,10 @@ pub struct CreateCommand {
     #[arg(long, env = "OCKAM_TCP_PORTAL_ENABLE_NAGLE", value_parser = FalseyValueParser::default())]
     pub enable_nagle: bool,
 
+    /// Enable MPTCP support
+    #[arg(long, env = "OCKAM_TCP_PORTAL_ENABLE_MPTCP", value_parser = FalseyValueParser::default())]
+    pub enable_mptcp: bool,
+
     #[arg(long, value_name = "HTTP_HEADER", value_parser = http_header_parser)]
     /// Set the provided HTTP headers in the client request. Existing headers with the same name
     /// will be discarded. This option assumes the protocol is HTTP/1.0 or HTTP/1.1.
@@ -258,6 +262,7 @@ impl Command for CreateCommand {
                         &cmd.tls_certificate_provider,
                         cmd.skip_handshake,
                         cmd.enable_nagle,
+                        cmd.enable_mptcp,
                         prefix_route.clone(),
                     )
                     .await?;

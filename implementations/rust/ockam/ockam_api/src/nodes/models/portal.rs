@@ -66,8 +66,10 @@ pub struct CreateInlet {
     #[n(14)] pub(crate) skip_handshake: bool,
     /// Enable Nagle's algorithm for potentially higher throughput, but higher latency
     #[n(15)] pub(crate) enable_nagle: bool,
+    /// Enable MPTCP
+    #[n(16)] pub enable_mptcp: bool,
     /// The prefix route to be used for interceptors.
-    #[n(16)] pub(crate) prefix_route: Route,
+    #[n(17)] pub(crate) prefix_route: Route,
 }
 
 impl Encodable for CreateInlet {
@@ -94,6 +96,7 @@ impl CreateInlet {
         privileged: bool,
         skip_handshake: bool,
         enable_nagle: bool,
+        enable_mptcp: bool,
     ) -> Self {
         Self {
             listen_addr: listen,
@@ -110,6 +113,7 @@ impl CreateInlet {
             tls_certificate_provider: None,
             skip_handshake,
             enable_nagle,
+            enable_mptcp,
             prefix_route: Default::default(),
         }
     }
@@ -126,6 +130,7 @@ impl CreateInlet {
         privileged: bool,
         skip_handshake: bool,
         enable_nagle: bool,
+        enable_mptcp: bool,
     ) -> Self {
         Self {
             listen_addr: listen,
@@ -142,6 +147,7 @@ impl CreateInlet {
             tls_certificate_provider: None,
             skip_handshake,
             enable_nagle,
+            enable_mptcp,
             prefix_route: Default::default(),
         }
     }
@@ -210,7 +216,9 @@ pub struct CreateOutlet {
     /// Skip Portal handshake for lower latency, but also lower throughput
     #[n(7)] pub skip_handshake: bool,
     /// Enable Nagle's algorithm for potentially higher throughput, but higher latency
-    #[n(8)] pub(crate) enable_nagle: bool,
+    #[n(8)] pub enable_nagle: bool,
+    /// Enable MPTCP
+    #[n(9)] pub enable_mptcp: bool,
 }
 
 impl Encodable for CreateOutlet {
@@ -226,6 +234,7 @@ impl Decodable for CreateOutlet {
 }
 
 impl CreateOutlet {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         hostname_port: HostnamePort,
         tls: bool,
@@ -234,6 +243,7 @@ impl CreateOutlet {
         privileged: bool,
         skip_handshake: bool,
         enable_nagle: bool,
+        enable_mptcp: bool,
     ) -> Self {
         Self {
             hostname_port,
@@ -244,6 +254,7 @@ impl CreateOutlet {
             privileged,
             skip_handshake,
             enable_nagle,
+            enable_mptcp,
         }
     }
 

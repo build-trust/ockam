@@ -29,6 +29,7 @@ pub trait Inlets {
         tls_certificate_provider: &Option<MultiAddr>,
         skip_handshake: bool,
         enable_nagle: bool,
+        enable_mptcp: bool,
         prefix_route: Route,
     ) -> miette::Result<Reply<InletStatus>>;
 

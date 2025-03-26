@@ -2,7 +2,7 @@ use crate::portal::addresses::{Addresses, PortalType};
 use crate::portal::outlet_listener_registry::{MapKey, OutletListenerRegistry};
 use crate::portal::portal_worker::ReadHalfMaybeTls::{ReadHalfNoTls, ReadHalfWithTls};
 use crate::portal::portal_worker::WriteHalfMaybeTls::{WriteHalfNoTls, WriteHalfWithTls};
-use crate::transport::{connect, connect_tls};
+use crate::transport::{connect_tcp, connect_tls};
 use crate::{portal::TcpPortalRecvProcessor, PortalInternalMessage, PortalMessage, TcpRegistry};
 use core::fmt::{Display, Formatter};
 use ockam_core::compat::{boxed::Box, sync::Arc};
@@ -78,6 +78,7 @@ pub(crate) struct TcpPortalWorker {
     portal_payload_length: usize,
     handshake_mode: HandshakeMode,
     enable_nagle: bool,
+    enable_mptcp: bool,
 }
 
 pub(crate) enum ReadHalfMaybeTls {
@@ -106,6 +107,7 @@ impl TcpPortalWorker {
         outgoing_access_control: Arc<dyn OutgoingAccessControl>, // To propagate to the receiver
         portal_payload_length: usize,
         skip_handshake: bool,
+        enable_mptcp: bool,
     ) -> Result<()> {
         let handshake_mode = if skip_handshake {
             HandshakeMode::Skip { map: None }
@@ -128,6 +130,7 @@ impl TcpPortalWorker {
             portal_payload_length,
             handshake_mode,
             false,
+            enable_mptcp,
         )
     }
 
@@ -145,6 +148,7 @@ impl TcpPortalWorker {
         incoming_access_control: Arc<dyn IncomingAccessControl>,
         outgoing_access_control: Arc<dyn OutgoingAccessControl>,
         portal_payload_length: usize,
+        enable_mptcp: bool,
     ) -> Result<()> {
         Self::start(
             ctx,
@@ -161,6 +165,7 @@ impl TcpPortalWorker {
             portal_payload_length,
             HandshakeMode::Regular,
             false,
+            enable_mptcp,
         )
     }
 
@@ -179,6 +184,7 @@ impl TcpPortalWorker {
         portal_payload_length: usize,
         map_key: MapKey,
         outlet_listener_registry: OutletListenerRegistry,
+        enable_mptcp: bool,
     ) -> Result<()> {
         Self::start(
             ctx,
@@ -198,6 +204,7 @@ impl TcpPortalWorker {
                 map: Some((map_key, outlet_listener_registry)),
             },
             false,
+            enable_mptcp,
         )
     }
 
@@ -219,6 +226,7 @@ impl TcpPortalWorker {
         portal_payload_length: usize,
         handshake_mode: HandshakeMode,
         enable_nagle: bool,
+        enable_mptcp: bool,
     ) -> Result<()> {
         debug!(%addresses.portal_type, sender_remote=%addresses.sender_remote, %is_tls, "creating portal worker");
 
@@ -247,6 +255,7 @@ impl TcpPortalWorker {
             portal_payload_length,
             enable_nagle,
             handshake_mode,
+            enable_mptcp,
         };
 
         let internal_mailbox = Mailbox::new(
@@ -470,12 +479,20 @@ impl TcpPortalWorker {
     async fn connect(&mut self) -> Result<()> {
         if self.is_tls {
             debug!(portal_type = %self.addresses.portal_type, sender_internal = %self.addresses.sender_internal, "connect to {} via TLS", &self.hostname_port);
-            let (rx, tx) = connect_tls(&self.hostname_port, self.enable_nagle).await?;
+            let (rx, tx) =
+                connect_tls(&self.hostname_port, self.enable_mptcp, self.enable_nagle).await?;
             self.write_half = Some(WriteHalfWithTls(tx));
             self.read_half = Some(ReadHalfWithTls(rx));
         } else {
             debug!(portal_type = %self.addresses.portal_type, sender_internal = %self.addresses.sender_internal, "connect to {}", self.hostname_port);
-            let (rx, tx) = connect(&self.hostname_port, self.enable_nagle, None).await?;
+            let (rx, tx) = connect_tcp(
+                &self.hostname_port,
+                self.enable_mptcp,
+                self.enable_nagle,
+                None,
+            )
+            .await?
+            .into_split();
             self.write_half = Some(WriteHalfNoTls(tx));
             self.read_half = Some(ReadHalfNoTls(rx));
         }

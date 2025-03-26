@@ -8,9 +8,9 @@ use crate::Context;
 
 impl Context {
     /// Return the list of supported transports
-    pub fn register_transport(&self, transport: Arc<dyn Transport>) {
+    pub fn register_transport(&self, transport_type: TransportType, transport: Arc<dyn Transport>) {
         let mut transports = self.transports.write().unwrap();
-        transports.insert(transport.transport_type(), transport);
+        transports.insert(transport_type, transport);
     }
 
     /// Return a transport by type
@@ -96,19 +96,21 @@ mod tests {
     #[ockam_macros::test(crate = "crate")]
     async fn test_transports(ctx: &mut Context) -> Result<()> {
         let transport = Arc::new(SomeTransport());
-        ctx.register_transport(transport.clone());
-        assert!(ctx.is_transport_registered(transport.transport_type()));
+        let transport_type = TransportType::new(99);
+        ctx.register_transport(transport_type, transport.clone());
+        assert!(ctx.is_transport_registered(transport_type));
         Ok(())
     }
 
     #[ockam_macros::test(crate = "crate")]
     async fn test_resolve_route(ctx: &mut Context) -> Result<()> {
         let transport = Arc::new(SomeTransport());
-        ctx.register_transport(transport.clone());
+        let transport_type = TransportType::new(99);
+        ctx.register_transport(transport_type, transport.clone());
 
         // resolve a route with known transports
         let result = ctx
-            .resolve_transport_route(route![(transport.transport_type(), "address")])
+            .resolve_transport_route(route![(transport_type, "address")])
             .await;
         assert!(result.is_ok());
 
@@ -143,10 +145,6 @@ mod tests {
 
     #[async_trait]
     impl Transport for SomeTransport {
-        fn transport_type(&self) -> TransportType {
-            TransportType::new(10)
-        }
-
         /// This implementation simply marks each address as a local address
         async fn resolve_address(&self, address: &Address) -> Result<Address> {
             Ok(Address::new(LOCAL, address.clone().inner()))
