@@ -337,7 +337,7 @@ async fn handle_tcp_inlet_get(
 #[cfg(test)]
 mod test {
     use crate::control_api::http::{ControlApiHttpRequest, ControlApiHttpResponse};
-    use crate::control_api::protocol::common::{ConnectionStatus, ErrorResponse, HostnamePort};
+    use crate::control_api::protocol::common::{ConnectionStatus, ErrorResponse, HostPort};
     use crate::control_api::protocol::inlet::{CreateInletRequest, InletStatus};
     use crate::test_utils::start_manager_for_tests;
     use crate::DefaultAddress;
@@ -362,8 +362,8 @@ mod test {
                     name: Some("inlet-name".to_string()),
                     kind: Default::default(),
                     tls: Default::default(),
-                    from: HostnamePort {
-                        hostname: "127.0.0.1".to_string(),
+                    from: HostPort {
+                        host: "127.0.0.1".to_string(),
                         port: 0,
                     },
                     to: "/service/outlet".to_string(),
@@ -391,8 +391,8 @@ mod test {
         assert_eq!(inlet_status.status, ConnectionStatus::Down);
         assert_eq!(inlet_status.current_route, None);
         assert_eq!(inlet_status.to, "/service/outlet");
-        let bind_address = HostnamePort::try_from(inlet_status.bind_address.as_str())?;
-        assert_eq!(bind_address.hostname, "127.0.0.1");
+        let bind_address = HostPort::try_from(inlet_status.bind_address.as_str())?;
+        assert_eq!(bind_address.host, "127.0.0.1");
         assert!(bind_address.port > 0);
 
         tokio::time::sleep(Duration::from_millis(100)).await;

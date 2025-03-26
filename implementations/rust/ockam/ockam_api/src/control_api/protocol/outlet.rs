@@ -1,4 +1,4 @@
-use crate::control_api::protocol::common::HostnamePort;
+use crate::control_api::protocol::common::HostPort;
 use crate::control_api::ControlApiError;
 use ockam_abac::PolicyExpression;
 use ockam_core::Address;
@@ -43,7 +43,7 @@ pub struct CreateOutletRequest {
     /// Network address where your application is listening to, in the format `<host>:<port>`.
     /// Your TCP Outlet will forward raw TCP traffic to this destination.
     #[schema(example = "dev.environment:1234")]
-    pub to: String,
+    pub to: HostPort,
 
     /// The TLS configuration for the TCP Outlet.
     #[serde(default)]
@@ -70,7 +70,7 @@ fn default_outlet_tls() -> Option<OutletTls> {
 
 pub struct CreateOutletRequestValidated {
     pub name: Option<Address>,
-    pub to: HostnamePort,
+    pub to: ockam_transport_core::HostnamePort,
     pub tls: Option<OutletTls>,
     pub allow: Option<PolicyExpression>,
     pub kind: OutletKind,
@@ -84,7 +84,7 @@ impl TryFrom<CreateOutletRequest> for CreateOutletRequestValidated {
             Some(name) => Some(Address::from_str(&name).map_err(crate::error::ParseError::from)?),
             None => None,
         };
-        let to = HostnamePort::try_from(request.to.as_str()).map_err(ControlApiError::from)?;
+        let to = request.to.try_into()?;
         let allow = match &request.allow {
             Some(allow) => Some(PolicyExpression::from_str(allow).map_err(ControlApiError::from)?),
             None => None,

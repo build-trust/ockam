@@ -7,7 +7,7 @@ use crate::control_api::backend::common::{
 };
 use crate::control_api::backend::entrypoint::HttpControlNodeApiBackend;
 use crate::control_api::http::ControlApiHttpResponse;
-use crate::control_api::protocol::common::{ErrorResponse, HostnamePort, NodeName, Project};
+use crate::control_api::protocol::common::{ErrorResponse, HostPort, NodeName, Project};
 use crate::control_api::protocol::ticket::{
     AuthorityInformation, CreateTicketRequest, EnrollProjectRequest, Ticket,
 };
@@ -306,7 +306,7 @@ async fn handle_ticket_enroll(
             .await?;
 
     let address = if let Some(address) = project.authority_socket_addr() {
-        HostnamePort::try_from(address.as_str())?
+        HostPort::try_from(address.as_str())?
     } else {
         return Err(ockam_core::Error::new(
             Origin::Api,
