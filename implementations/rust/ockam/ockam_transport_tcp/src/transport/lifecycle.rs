@@ -1,6 +1,8 @@
-use crate::{TcpConnectionOptions, TcpListenerInfo, TcpRegistry, TcpSenderInfo, TcpTransport, TCP};
+use crate::{
+    TcpConnectionOptions, TcpListenerInfo, TcpRegistry, TcpSenderInfo, TcpTransport, MPTCP, TCP,
+};
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::{async_trait, Address, Error, Result, TransportType, TryClone};
+use ockam_core::{async_trait, Address, Error, Result, TryClone};
 use ockam_node::Context;
 use ockam_transport_core::Transport;
 use std::any::Any;
@@ -44,8 +46,11 @@ impl TcpTransport {
         // make the TCP transport available in the list of supported transports for
         // later address resolution when socket addresses will need to be instantiated as TCP
         // worker addresses
-        ctx.register_transport(Arc::new(tcp.clone()));
-        Ok(Arc::new(tcp))
+
+        let tcp_arc = Arc::new(tcp.clone());
+        ctx.register_transport(TCP, tcp_arc.clone());
+        ctx.register_transport(MPTCP, tcp_arc.clone());
+        Ok(tcp_arc)
     }
 }
 
@@ -126,26 +131,29 @@ impl TcpTransport {
 
 #[async_trait]
 impl Transport for TcpTransport {
-    fn transport_type(&self) -> TransportType {
-        TCP
-    }
-
     async fn resolve_address(&self, address: &Address) -> Result<Address> {
-        if address.transport_type() == TCP {
-            Ok(self
-                .connect(address.address().to_string(), TcpConnectionOptions::new())
-                .await?
-                .into())
+        let enable_mptcp = if address.transport_type() == TCP {
+            false
+        } else if address.transport_type() == MPTCP {
+            true
         } else {
-            Err(Error::new(
+            return Err(Error::new(
                 Origin::Transport,
                 Kind::NotFound,
                 format!(
                     "this address can not be resolved by a TCP transport {}",
                     address
                 ),
-            ))
-        }
+            ));
+        };
+
+        Ok(self
+            .connect(
+                address.address().to_string(),
+                TcpConnectionOptions::new().set_enable_mptcp(enable_mptcp),
+            )
+            .await?
+            .into())
     }
 
     fn disconnect(&self, address: &Address) -> Result<()> {

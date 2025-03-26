@@ -20,6 +20,7 @@ pub struct TcpInletOptions {
     pub(crate) portal_payload_length: usize,
     pub(crate) skip_handshake: bool,
     pub(crate) enable_nagle: bool,
+    pub(crate) enable_mptcp: bool,
 }
 
 impl TcpInletOptions {
@@ -33,6 +34,7 @@ impl TcpInletOptions {
             portal_payload_length: read_portal_payload_length(),
             skip_handshake: false,
             enable_nagle: false,
+            enable_mptcp: false,
         }
     }
 
@@ -57,6 +59,18 @@ impl TcpInletOptions {
     /// Enable Nagle's algorithm for potentially higher throughput, but higher latency
     pub fn enable_nagle(mut self) -> Self {
         self.enable_nagle = true;
+        self
+    }
+
+    /// Enable or disable MPTCP support
+    pub fn set_enable_mptcp(mut self, enable_mptcp: bool) -> Self {
+        self.enable_mptcp = enable_mptcp;
+        self
+    }
+
+    /// Enable MPTCP support
+    pub fn enable_mptcp(mut self) -> Self {
+        self.enable_mptcp = true;
         self
     }
 
@@ -151,6 +165,7 @@ pub struct TcpOutletOptions {
     pub(crate) portal_payload_length: usize,
     pub(crate) skip_handshake: bool,
     pub(crate) enable_nagle: bool,
+    pub(crate) enable_mptcp: bool,
 }
 
 impl TcpOutletOptions {
@@ -164,6 +179,7 @@ impl TcpOutletOptions {
             portal_payload_length: read_portal_payload_length(),
             skip_handshake: false,
             enable_nagle: false,
+            enable_mptcp: false,
         }
     }
 
@@ -188,6 +204,18 @@ impl TcpOutletOptions {
     /// Enable Nagle's algorithm for potentially higher throughput, but higher latency
     pub fn enable_nagle(mut self) -> Self {
         self.enable_nagle = true;
+        self
+    }
+
+    /// Enable or disable MPTCP support
+    pub fn set_enable_mptcp(mut self, enable_mptcp: bool) -> Self {
+        self.enable_mptcp = enable_mptcp;
+        self
+    }
+
+    /// Enable MPTCP support
+    pub fn enable_mptcp(mut self) -> Self {
+        self.enable_mptcp = true;
         self
     }
 

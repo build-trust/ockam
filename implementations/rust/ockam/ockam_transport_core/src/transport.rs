@@ -1,10 +1,9 @@
 use crate::TransportError;
+use ockam_core::compat::sync::Arc;
 use ockam_core::compat::{boxed::Box, vec::Vec};
 use ockam_core::{async_trait, Address, Encodable, Result, TransportMessage, TransportType};
 #[cfg(feature = "std")]
 use std::any::Any;
-#[cfg(feature = "std")]
-use std::sync::Arc;
 
 pub const MAXIMUM_MESSAGE_LENGTH: usize = u16::MAX as usize;
 
@@ -12,11 +11,15 @@ pub const MAXIMUM_MESSAGE_LENGTH: usize = u16::MAX as usize;
 /// At minimum, a Transport must be able
 ///  - return its type
 ///  - instantiate workers for all the addresses with that transport type in a Route
+
+#[derive(Clone)]
+pub struct TransportImpl {
+    pub t_type: TransportType,
+    pub transport: Arc<dyn Transport>,
+}
+
 #[async_trait]
 pub trait Transport: Send + Sync + 'static {
-    /// Return the type of the Transport
-    fn transport_type(&self) -> TransportType;
-
     /// Instantiate transport workers for in order to communicate with a remote address
     /// and return the local address of the transport worker
     async fn resolve_address(&self, address: &Address) -> Result<Address>;

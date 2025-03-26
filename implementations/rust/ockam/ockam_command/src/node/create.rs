@@ -8,6 +8,7 @@ use crate::util::print_warning_for_deprecated_flag_no_effect;
 use crate::value_parsers::is_url;
 use crate::{docs, Command, CommandGlobalOpts, Result};
 use async_trait::async_trait;
+use clap::builder::FalseyValueParser;
 use clap::Args;
 use colorful::Colorful;
 use miette::{miette, IntoDiagnostic, WrapErr};
@@ -124,6 +125,10 @@ pub struct CreateCommand {
     )]
     pub udp: bool,
 
+    /// Enable MPTCP support
+    #[arg(long, env = "OCKAM_ENABLE_MPTCP", value_parser = FalseyValueParser::default())]
+    pub enable_mptcp: bool,
+
     /// A configuration in JSON format to set up the node services.
     /// Node configuration is run asynchronously and may take several
     /// seconds to complete.
@@ -183,6 +188,7 @@ impl Default for CreateCommand {
             status_endpoint_port: None,
             status_endpoint: None,
             udp: false,
+            enable_mptcp: false,
             services: None,
             identity: None,
             trust_opts: node_manager_defaults.trust_opts,

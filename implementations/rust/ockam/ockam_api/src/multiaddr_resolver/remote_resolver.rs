@@ -4,7 +4,7 @@ use ockam::udp::{UdpBind, UdpBindArguments, UdpBindOptions, UdpTransport};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::flow_control::FlowControlId;
 use ockam_core::{Address, Error, Result, Route, LOCAL};
-use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Secure, Service, Tcp, Udp, Worker};
+use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Mptcp, Secure, Service, Tcp, Udp, Worker};
 use ockam_multiaddr::{MultiAddr, ProtoIter, Protocol};
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 use std::sync::Arc;
@@ -163,19 +163,23 @@ impl RemoteMultiaddrResolver {
         tcp: &TcpTransport,
         ma: &MultiAddr,
         peer: String,
+        enable_mptcp: bool,
     ) -> Result<TcpConnection> {
-        tcp.connect(peer, TcpConnectionOptions::new())
-            .await
-            .map_err(|err| {
-                Error::new(
-                    Origin::Api,
-                    Kind::Io,
-                    format!(
-                        "Couldn't make TCP connection while resolving multiaddr: {}. Err: {}",
-                        ma, err
-                    ),
-                )
-            })
+        tcp.connect(
+            peer,
+            TcpConnectionOptions::new().set_enable_mptcp(enable_mptcp),
+        )
+        .await
+        .map_err(|err| {
+            Error::new(
+                Origin::Api,
+                Kind::Io,
+                format!(
+                    "Couldn't make TCP connection while resolving multiaddr: {}. Err: {}",
+                    ma, err
+                ),
+            )
+        })
     }
 
     async fn connect_udp(&self, udp: &UdpTransport, ma: &MultiAddr, peer: &str) -> Result<UdpBind> {
@@ -210,7 +214,16 @@ impl RemoteMultiaddrResolver {
     ) -> Result<RemoteMultiaddrResolverConnection> {
         let next = it.next().ok_or_else(|| invalid_multiaddr_error(ma))?;
 
-        if let Some(port) = next.cast::<Tcp>() {
+        #[allow(clippy::manual_map)]
+        let tcp_info = if let Some(port) = next.cast::<Tcp>() {
+            Some((*port, false))
+        } else if let Some(port) = next.cast::<Mptcp>() {
+            Some((*port, true))
+        } else {
+            None
+        };
+
+        if let Some((port, enable_mptcp)) = tcp_info {
             let tcp = self.tcp.as_ref().ok_or_else(|| {
                 Error::new(
                     Origin::Api,
@@ -219,8 +232,8 @@ impl RemoteMultiaddrResolver {
                 )
             })?;
 
-            let peer = format!("{}:{}", peer, *port);
-            let connection = self.connect_tcp(tcp, ma, peer).await?;
+            let peer = format!("{}:{}", peer, port);
+            let connection = self.connect_tcp(tcp, ma, peer, enable_mptcp).await?;
 
             return Ok(RemoteMultiaddrResolverConnection::Tcp(connection));
         }

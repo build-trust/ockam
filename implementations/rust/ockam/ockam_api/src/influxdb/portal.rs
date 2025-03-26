@@ -43,6 +43,7 @@ impl NodeManagerWorker {
             tls,
             skip_handshake,
             enable_nagle,
+            enable_mptcp,
         } = body.tcp_outlet;
         let address = self
             .node_manager
@@ -101,6 +102,7 @@ impl NodeManagerWorker {
                 privileged,
                 skip_handshake,
                 enable_nagle,
+                enable_mptcp,
             )
             .await
         {
@@ -129,7 +131,8 @@ impl NodeManagerWorker {
             tls_certificate_provider,
             skip_handshake,
             enable_nagle,
-            ..
+            enable_mptcp,
+            prefix_route: _prefix_route,
         } = body.tcp_inlet.clone();
 
         //TODO: should be an easier way to tweak the multiaddr
@@ -200,6 +203,7 @@ impl NodeManagerWorker {
                 tls_certificate_provider,
                 skip_handshake,
                 enable_nagle,
+                enable_mptcp,
             )
             .await
         {
@@ -346,7 +350,7 @@ impl InfluxDBPortals for BackgroundNodeClient {
         influxdb_config: InfluxDBOutletConfig,
     ) -> miette::Result<OutletStatus> {
         let mut outlet_payload =
-            CreateOutlet::new(to, tls, from.cloned(), true, false, false, false);
+            CreateOutlet::new(to, tls, from.cloned(), true, false, false, false, false);
         if let Some(policy_expression) = policy_expression {
             outlet_payload.set_policy_expression(policy_expression);
         }
@@ -388,6 +392,7 @@ impl InfluxDBPortals for BackgroundNodeClient {
                 disable_tcp_fallback,
                 false,
                 tls_certificate_provider,
+                false,
                 false,
                 false,
                 route![],

@@ -30,6 +30,7 @@ pub fn create_async_fd_raw_socket(
 fn create_raw_socket_fd(proto: Proto) -> Result<AsyncFd<OwnedFd>> {
     // Unfortunately, SockProtocol enum doesn't support arbitrary values
     let proto: SockProtocol = unsafe { mem::transmute(proto as i32) };
+    // TODO: Consider using socket2 crate
     let res = nix::sys::socket::socket(
         AddressFamily::Inet,
         SockType::Raw,

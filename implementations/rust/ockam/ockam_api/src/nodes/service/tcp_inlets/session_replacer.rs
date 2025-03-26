@@ -57,6 +57,7 @@ pub(super) struct InletSessionReplacer {
     pub(super) privileged: bool,
     pub(super) skip_handshake: bool,
     pub(super) enable_nagle: bool,
+    pub(super) enable_mptcp: bool,
 }
 
 impl InletSessionReplacer {
@@ -113,7 +114,8 @@ impl InletSessionReplacer {
             .with_incoming_access_control(incoming_ac)
             .with_outgoing_access_control(outgoing_ac)
             .set_skip_handshake(self.skip_handshake)
-            .set_enable_nagle(self.enable_nagle);
+            .set_enable_nagle(self.enable_nagle)
+            .set_enable_mptcp(self.enable_mptcp);
 
         let options = if self.udp_puncture_enabled() && self.disable_tcp_fallback {
             options.paused()

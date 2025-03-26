@@ -8,7 +8,8 @@ use ockam::identity::{get_default_timeout, Identifier, SecureClient, TrustIdenti
 use ockam_core::env::{get_env_with_default, FromString};
 use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
-use ockam_transport_tcp::TcpTransport;
+use ockam_transport_core::TransportImpl;
+use ockam_transport_tcp::{TcpTransport, TCP};
 use std::fmt::{Debug, Display, Formatter};
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::sync::Arc;
@@ -526,7 +527,10 @@ async fn make_secure_client(
     Ok(SecureClient::new(
         secure_channels,
         None,
-        TcpTransport::get_or_create(ctx)?,
+        TransportImpl {
+            t_type: TCP,
+            transport: TcpTransport::get_or_create(ctx)?,
+        },
         project_route,
         Arc::new(TrustIdentifierPolicy::new(identifier)),
         &node_identifier,

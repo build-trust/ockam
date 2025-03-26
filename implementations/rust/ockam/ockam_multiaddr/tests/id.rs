@@ -1,5 +1,7 @@
 use core::fmt;
-use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Node, Project, Secure, Service, Space, Tcp};
+use ockam_multiaddr::proto::{
+    DnsAddr, Ip4, Ip6, Mptcp, Node, Project, Secure, Service, Space, Tcp,
+};
 use ockam_multiaddr::{Code, Match, MultiAddr, Protocol};
 use quickcheck::{quickcheck, Arbitrary, Gen};
 use rand::distributions::{Alphanumeric, DistString};
@@ -100,6 +102,10 @@ quickcheck! {
                         addr.push_back(Tcp::new(0)).unwrap();
                         prot.push_back(Tcp::CODE);
                     }
+                    Mptcp::CODE => {
+                        addr.push_back(Mptcp::new(0)).unwrap();
+                        prot.push_back(Mptcp::CODE);
+                    }
                     DnsAddr::CODE => {
                         addr.push_back(DnsAddr::new("localhost")).unwrap();
                         prot.push_back(DnsAddr::CODE);
@@ -145,6 +151,7 @@ quickcheck! {
 
 const PROTOS: &[Code] = &[
     Tcp::CODE,
+    Mptcp::CODE,
     DnsAddr::CODE,
     Ip4::CODE,
     Ip6::CODE,
@@ -161,6 +168,7 @@ impl Arbitrary for Addr {
         for _ in 0..g.size() {
             match *g.choose(PROTOS).unwrap() {
                 Tcp::CODE => a.push_back(Tcp::new(u16::arbitrary(g))).unwrap(),
+                Mptcp::CODE => a.push_back(Mptcp::new(u16::arbitrary(g))).unwrap(),
                 DnsAddr::CODE => a.push_back(DnsAddr::new(gen_hostname())).unwrap(),
                 Ip4::CODE => a.push_back(Ip4::new(Ipv4Addr::arbitrary(g))).unwrap(),
                 Ip6::CODE => a.push_back(Ip6::new(Ipv6Addr::arbitrary(g))).unwrap(),

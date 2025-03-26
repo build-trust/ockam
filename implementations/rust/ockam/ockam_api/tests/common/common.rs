@@ -166,7 +166,7 @@ pub fn change_client_identifier(
     let client = SecureClient::new(
         client.secure_channels(),
         new_credential_retriever_creator,
-        client.transport(),
+        client.transport().clone(),
         client.secure_route().clone(),
         client.server_trust_policy(),
         new_identifier,

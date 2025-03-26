@@ -9,7 +9,7 @@ use ockam_core::compat::vec::Vec;
 use ockam_core::{self, route, Address, Message, Result, Route};
 use ockam_node::api::Client;
 use ockam_node::Context;
-use ockam_transport_core::Transport;
+use ockam_transport_core::TransportImpl;
 
 /// This client creates a secure channel to a node
 /// and can then send a typed request to that node (and receive a typed response)
@@ -31,7 +31,7 @@ pub struct SecureClient {
     // Credential retriever
     credential_retriever_creator: Option<Arc<dyn CredentialRetrieverCreator>>,
     // transport to instantiate connections
-    transport: Arc<dyn Transport>,
+    transport: TransportImpl,
     // destination for the secure channel
     secure_route: Route,
     // trust policy for the secure channel responder
@@ -50,7 +50,7 @@ impl SecureClient {
     pub fn new(
         secure_channels: Arc<SecureChannels>,
         credential_retriever_creator: Option<Arc<dyn CredentialRetrieverCreator>>,
-        transport: Arc<dyn Transport>,
+        transport: TransportImpl,
         server_route: Route,
         server_trust_policy: Arc<dyn TrustPolicy>,
         client_identifier: &Identifier,
@@ -80,8 +80,8 @@ impl SecureClient {
     }
 
     /// Transport
-    pub fn transport(&self) -> Arc<dyn Transport> {
-        self.transport.clone()
+    pub fn transport(&self) -> &TransportImpl {
+        &self.transport
     }
 
     /// Route
@@ -237,7 +237,7 @@ impl SecureClient {
             .secure_channels
             .stop_secure_channel(ctx, secure_channel.encryptor_address());
         if let Some(transport_address) = transport_address {
-            let _ = self.transport.disconnect(&transport_address);
+            let _ = self.transport.transport.disconnect(&transport_address);
         }
         // we delay the unwrapping of the response to make sure that the secure channel is
         // properly stopped first
@@ -249,10 +249,9 @@ impl SecureClient {
         &self,
         ctx: &Context,
     ) -> Result<(SecureChannel, Option<Address>)> {
-        let transport_type = self.transport.transport_type();
         let (resolved_route, transport_address) = Context::resolve_transport_route_static(
             self.secure_route.clone(),
-            [(transport_type, self.transport.clone())].into(),
+            [(self.transport.t_type, self.transport.transport.clone())].into(),
         )
         .await?;
         let options = SecureChannelOptions::new()
@@ -281,7 +280,7 @@ impl SecureClient {
             .secure_channels
             .stop_secure_channel(ctx, secure_channel.encryptor_address());
         if let Some(transport_address) = transport_address {
-            let _ = self.transport.disconnect(&transport_address);
+            let _ = self.transport.transport.disconnect(&transport_address);
         }
 
         Ok(())

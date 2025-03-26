@@ -71,6 +71,7 @@ pub fn spawn_node(opts: &CommandGlobalOpts, cmd: CreateCommand) -> miette::Resul
         status_endpoint_port,
         status_endpoint,
         udp,
+        enable_mptcp,
         services,
         identity,
         trust_opts,
@@ -148,6 +149,10 @@ pub fn spawn_node(opts: &CommandGlobalOpts, cmd: CreateCommand) -> miette::Resul
     if let Some(status_endpoint) = status_endpoint {
         args.push("--status-endpoint".to_string());
         args.push(status_endpoint);
+    }
+
+    if enable_mptcp {
+        args.push("--enable-mptcp".to_string());
     }
 
     if udp {

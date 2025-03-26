@@ -33,6 +33,7 @@ impl InMemoryNode {
         tls_certificate_provider: Option<MultiAddr>,
         skip_handshake: bool,
         enable_nagle: bool,
+        enable_mptcp: bool,
     ) -> Result<InletStatus> {
         self.node_manager
             .create_inlet(
@@ -53,6 +54,7 @@ impl InMemoryNode {
                 tls_certificate_provider,
                 skip_handshake,
                 enable_nagle,
+                enable_mptcp,
             )
             .await
     }

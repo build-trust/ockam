@@ -142,6 +142,7 @@ pub fn measure_buffer_latency_two_nodes_portal() {
                     false,
                     false,
                     true,
+                    false,
                 )
                 .await?;
 
@@ -170,6 +171,7 @@ pub fn measure_buffer_latency_two_nodes_portal() {
                     None,
                     false,
                     true,
+                    false,
                 )
                 .await?;
 
@@ -240,6 +242,7 @@ pub fn measure_connection_latency_two_nodes_portal() {
                     false,
                     true,
                     true,
+                    false,
                 )
                 .await?;
 
@@ -268,6 +271,7 @@ pub fn measure_connection_latency_two_nodes_portal() {
                     None,
                     true,
                     true,
+                    false,
                 )
                 .await?;
 

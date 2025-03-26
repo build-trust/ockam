@@ -28,6 +28,7 @@ pub fn create_inlet_payload(
     tls_certificate_provider: &Option<MultiAddr>,
     skip_handshake: bool,
     enable_nagle: bool,
+    enable_mptcp: bool,
     prefix_route: Route,
 ) -> CreateInlet {
     let via_project = outlet_addr.matches(0, &[ProjectProto::CODE.into()]);
@@ -42,6 +43,7 @@ pub fn create_inlet_payload(
             privileged,
             skip_handshake,
             enable_nagle,
+            enable_mptcp,
         )
     } else {
         CreateInlet::to_node(
@@ -55,6 +57,7 @@ pub fn create_inlet_payload(
             privileged,
             skip_handshake,
             enable_nagle,
+            enable_mptcp,
         )
     };
     if let Some(e) = policy_expression.as_ref() {
@@ -90,6 +93,7 @@ impl Inlets for BackgroundNodeClient {
         tls_certificate_provider: &Option<MultiAddr>,
         skip_handshake: bool,
         enable_nagle: bool,
+        enable_mptcp: bool,
         prefix_route: Route,
     ) -> miette::Result<Reply<InletStatus>> {
         let request = {
@@ -108,6 +112,7 @@ impl Inlets for BackgroundNodeClient {
                 tls_certificate_provider,
                 skip_handshake,
                 enable_nagle,
+                enable_mptcp,
                 prefix_route,
             );
             Request::post("/node/inlet").body(payload)

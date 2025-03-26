@@ -41,6 +41,7 @@ use ockam_core::{
 use ockam_multiaddr::MultiAddr;
 use ockam_node::api::Client;
 use ockam_node::Context;
+use ockam_transport_tcp::TCP;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
@@ -104,6 +105,7 @@ impl NodeManager {
             NodeManagerCredentialRetrieverOptions::Remote { info, scope } => {
                 Some(Arc::new(RemoteCredentialRetrieverCreator::new(
                     ctx.try_clone()?,
+                    TCP,
                     transport_options.tcp.transport.clone(),
                     secure_channels.clone(),
                     info.clone(),
@@ -129,6 +131,7 @@ impl NodeManager {
             NodeManagerCredentialRetrieverOptions::Remote { info, scope } => {
                 Some(Arc::new(RemoteCredentialRetrieverCreator::new(
                     ctx.try_clone()?,
+                    TCP,
                     transport_options.tcp.transport.clone(),
                     secure_channels.clone(),
                     info.clone(),

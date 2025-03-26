@@ -77,12 +77,17 @@ pub struct CreateCommand {
 
     /// Skip Portal handshake for lower latency, but also lower throughput
     /// WARNING: This flag value should be equal on both ends of a portal (inlet and outlet)
-    #[arg(long, env = "OCKAM_TCP_PORTAL_SKIP_HANDSHAKE", value_parser = FalseyValueParser::default())]
+    #[arg(long, env = "OCKAM_TCP_PORTAL_SKIP_HANDSHAKE", value_parser = FalseyValueParser::default()
+    )]
     pub skip_handshake: bool,
 
     /// Enable Nagle's algorithm for potentially higher throughput, but higher latency
     #[arg(long, env = "OCKAM_TCP_PORTAL_ENABLE_NAGLE", value_parser = FalseyValueParser::default())]
     pub enable_nagle: bool,
+
+    /// Enable MPTCP support
+    #[arg(long, env = "OCKAM_TCP_PORTAL_ENABLE_MPTCP", value_parser = FalseyValueParser::default())]
+    pub enable_mptcp: bool,
 }
 
 #[async_trait]
@@ -112,6 +117,7 @@ impl Command for CreateCommand {
                 cmd.privileged,
                 cmd.skip_handshake,
                 cmd.enable_nagle,
+                cmd.enable_mptcp,
             )
             .await?
         };
