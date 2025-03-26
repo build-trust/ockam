@@ -1,5 +1,7 @@
+use crate::common_api::tcp_inlet_create::{parse_to_address, tcp_inlet_default_to_address};
 use crate::control_api::protocol::common::{ConnectionStatus, HostPort};
 use crate::control_api::ControlApiError;
+use crate::CliState;
 use ockam::identity::Identifier;
 use ockam_abac::PolicyExpression;
 use ockam_multiaddr::MultiAddr;
@@ -7,17 +9,6 @@ use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 use std::time::Duration;
 use utoipa::ToSchema;
-
-fn tcp_inlet_default_bind_address() -> HostPort {
-    HostPort {
-        host: "127.0.0.1".to_string(),
-        port: 0,
-    }
-}
-
-fn retry_wait_default() -> u64 {
-    20000
-}
 
 #[derive(Debug, Serialize, Deserialize, Default, ToSchema)]
 #[serde(rename_all = "kebab-case")]
@@ -80,6 +71,7 @@ pub struct CreateInletRequest {
     /// If you are passing just the service name, consider using `via` to specify the
     /// relay name.
     #[schema(example = "/project/default/service/forward_to_myrelay/secure/api/service/outlet")]
+    #[serde(default = "tcp_inlet_default_to_address")]
     pub to: String,
 
     /// Name of the relay that this TCP Inlet will use to connect to the TCP Outlet.
@@ -124,6 +116,17 @@ pub struct CreateInletRequest {
     pub tls: Option<InletTls>,
 }
 
+fn tcp_inlet_default_bind_address() -> HostPort {
+    HostPort {
+        host: "127.0.0.1".to_string(),
+        port: 0,
+    }
+}
+
+fn retry_wait_default() -> u64 {
+    20000
+}
+
 fn default_inlet_tls() -> Option<InletTls> {
     None
 }
@@ -144,13 +147,19 @@ pub struct CreateInletRequestValidated {
     pub tls: Option<InletTls>,
 }
 
-impl TryFrom<CreateInletRequest> for CreateInletRequestValidated {
-    type Error = ControlApiError;
-
-    fn try_from(request: CreateInletRequest) -> Result<Self, Self::Error> {
+impl CreateInletRequestValidated {
+    pub async fn from_request(
+        state: &CliState,
+        request: CreateInletRequest,
+    ) -> Result<Self, ControlApiError> {
         let name = request.name;
         let from = request.from.try_into()?;
-        let to = MultiAddr::try_from(request.to.as_str()).map_err(ControlApiError::from)?;
+        let to = {
+            let to = parse_to_address(state, request.to, request.via.as_ref())
+                .await
+                .map_err(ControlApiError::from)?;
+            MultiAddr::try_from(to.as_str()).map_err(ControlApiError::from)?
+        };
         let identity = request
             .identity
             .map(|id| Identifier::from_str(&id).map_err(ControlApiError::from))
@@ -218,7 +227,6 @@ impl TryFrom<crate::nodes::models::portal::InletStatus> for InletStatus {
 
     fn try_from(status: crate::nodes::models::portal::InletStatus) -> Result<Self, Self::Error> {
         let bind_address = HostPort::try_from(status.bind_addr.as_str())?;
-
         Ok(InletStatus {
             status: status.status.into(),
             bind_address: bind_address.to_string(),

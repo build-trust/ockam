@@ -12,6 +12,7 @@ mod protocol;
 use crate::cli_state::CliStateError;
 use crate::control_api::http::ControlApiHttpResponse;
 use miette::Diagnostic;
+use ockam_core::errcode::Origin;
 pub use openapi::generate_schema;
 use strum::Display;
 use thiserror::Error;
@@ -25,6 +26,15 @@ pub enum ControlApiError {
 impl From<ControlApiHttpResponse> for ControlApiError {
     fn from(response: ControlApiHttpResponse) -> Self {
         Self::Response(response)
+    }
+}
+
+impl From<miette::Error> for ControlApiError {
+    fn from(error: miette::Error) -> Self {
+        Self::Ockam(ockam_core::Error::new_unknown(
+            Origin::Application,
+            error.to_string(),
+        ))
     }
 }
 

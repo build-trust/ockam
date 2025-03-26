@@ -1,13 +1,13 @@
 use clap::{Args, Subcommand};
 
 use self::revoke::RevokeCommand;
-use crate::util::process_nodes_multiaddr;
 use crate::{Command, CommandGlobalOpts, Error};
 pub use create::CreateCommand;
 pub use list::ListCommand;
 pub use show::ShowCommand;
 
 use miette::IntoDiagnostic;
+use ockam_api::address::process_nodes_multiaddr;
 use ockam_api::CliState;
 use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
@@ -75,5 +75,5 @@ async fn resolve_at_arg(at: &MultiAddr, state: Arc<CliState>) -> miette::Result<
 
     // Parse "to" as a multiaddr again with all the values in place
     let to = MultiAddr::from_str(&at).into_diagnostic()?;
-    process_nodes_multiaddr(&to, state).await
+    process_nodes_multiaddr(&to, &state).await
 }

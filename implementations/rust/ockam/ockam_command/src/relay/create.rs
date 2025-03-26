@@ -8,7 +8,7 @@ use tracing::debug;
 
 use ockam::identity::Identifier;
 use ockam::Context;
-use ockam_api::address::extract_address_value;
+use ockam_api::address::{extract_address_value, process_nodes_multiaddr};
 use ockam_api::colors::color_primary;
 
 use ockam_api::nodes::models::relay::ReturnTiming;
@@ -20,7 +20,7 @@ use ockam_multiaddr::{MultiAddr, Protocol};
 
 use crate::node::util::initialize_default_node;
 use crate::shared_args::RetryOpts;
-use crate::util::{print_warning_for_deprecated_flag_no_effect, process_nodes_multiaddr};
+use crate::util::print_warning_for_deprecated_flag_no_effect;
 use crate::{docs, Command, CommandGlobalOpts, Error, Result};
 
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
@@ -224,7 +224,7 @@ impl CreateCommand {
             at = at.replace("$DEFAULT_PROJECT_NAME", project_name);
         }
         let ma = MultiAddr::from_str(&at).map_err(|_| Error::arg_validation("at", at, None))?;
-        process_nodes_multiaddr(&ma, state).await
+        process_nodes_multiaddr(&ma, &state).await
     }
 
     fn return_timing(&self) -> ReturnTiming {

@@ -1,6 +1,6 @@
 use crate::node::util::initialize_default_node;
 use crate::shared_args::OptionalTimeoutArg;
-use crate::tcp::inlet::create::{tcp_inlet_default_from_addr, tcp_inlet_default_to_addr};
+use crate::tcp::inlet::create::tcp_inlet_default_from_addr;
 use crate::tcp::util::alias_parser;
 use crate::util::parsers::duration_parser;
 use crate::util::parsers::hostname_parser;
@@ -18,6 +18,7 @@ use ockam_abac::PolicyExpression;
 use ockam_api::address::extract_address_value;
 use ockam_api::cli_state::random_name;
 use ockam_api::colors::color_primary;
+use ockam_api::common_api::tcp_inlet_create::{parse_to_address, tcp_inlet_default_to_address};
 use ockam_api::influxdb::{InfluxDBPortals, LeaseUsage};
 use ockam_api::nodes::models::portal::InletStatus;
 use ockam_api::nodes::BackgroundNodeClient;
@@ -60,7 +61,7 @@ pub struct CreateCommand {
     /// or just the name of the service as `outlet` or `/service/outlet`.
     /// If you are passing just the service name, consider using `--via` to specify the
     /// relay name (e.g. `ockam tcp-inlet create --to outlet --via myrelay`).
-    #[arg(long, display_order = 900, id = "ROUTE", default_value_t = tcp_inlet_default_to_addr())]
+    #[arg(long, display_order = 900, id = "ROUTE", default_value_t = tcp_inlet_default_to_address())]
     pub to: String,
 
     /// Name of the relay that this InfluxDB Inlet will use to connect to the InfluxDB Outlet.
@@ -288,12 +289,7 @@ impl CreateCommand {
             .into_diagnostic()?;
         port_is_free_guard(&from)?;
 
-        self.to = crate::tcp::inlet::create::CreateCommand::parse_arg_to(
-            opts.state.clone(),
-            self.to,
-            self.via.as_ref(),
-        )
-        .await?;
+        self.to = parse_to_address(&opts.state, self.to, self.via.as_ref()).await?;
         if self.to().matches(0, &[proto::Project::CODE.into()]) && self.authorized.is_some() {
             return Err(miette!(
                 "--authorized can not be used with project addresses"

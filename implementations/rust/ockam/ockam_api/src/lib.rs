@@ -43,6 +43,7 @@ pub mod influxdb;
 pub mod logs;
 mod schema;
 
+pub mod common_api;
 pub mod control_api;
 mod date;
 mod http;

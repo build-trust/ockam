@@ -60,6 +60,13 @@ impl From<miette::Error> for ApiError {
 
 #[derive(Debug, thiserror::Error, Diagnostic)]
 pub enum ParseError {
+    #[error("invalid value '({value:?})' for '{var_name}'{err}")]
+    Validation {
+        var_name: String,
+        value: String,
+        err: String,
+    },
+
     #[error(transparent)]
     Addr(#[from] std::net::AddrParseError),
 
@@ -83,6 +90,17 @@ pub enum ParseError {
 
     #[error(transparent)]
     MultiAddr(#[from] ockam_multiaddr::Error),
+}
+
+impl ParseError {
+    #[track_caller]
+    pub fn validation<T: fmt::Debug>(var_name: &str, value: T, err: Option<&str>) -> Self {
+        ParseError::Validation {
+            var_name: var_name.to_string(),
+            value: format!("{:?}", value),
+            err: err.map(|e| format!(": {e}")).unwrap_or_default(),
+        }
+    }
 }
 
 impl From<ParseError> for ockam_core::Error {
