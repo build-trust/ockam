@@ -3,6 +3,8 @@ use std::str::FromStr;
 use std::time::Duration;
 use tracing::Level;
 
+use crate::nodes::NodeManager;
+use crate::TransportRouteResolver;
 use ockam::identity::{
     get_default_timeout, CredentialRetrieverCreator, Identifier, SecureChannels, SecureClient,
     TrustIdentifierPolicy,
@@ -14,9 +16,8 @@ use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{Error, Result, Route};
 use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
-
-use crate::nodes::NodeManager;
-use crate::TransportRouteResolver;
+use ockam_transport_core::TransportImpl;
+use ockam_transport_tcp::TCP;
 
 pub const OCKAM_CONTROLLER_ADDRESS: &str = "OCKAM_CONTROLLER_ADDR";
 pub const DEFAULT_CONTROLLER_ADDRESS: &str = "/dnsaddr/orchestrator.ockam.io/tcp/6252/service/api";
@@ -123,7 +124,10 @@ impl NodeManager {
             secure_client: SecureClient::new(
                 secure_channels,
                 None,
-                Arc::new(tcp_transport.clone()),
+                TransportImpl {
+                    t_type: TCP,
+                    transport: Arc::new(tcp_transport.clone()),
+                },
                 controller_route,
                 Arc::new(TrustIdentifierPolicy::new(controller_identifier)),
                 caller_identifier,
@@ -158,7 +162,10 @@ impl NodeManager {
             secure_client: SecureClient::new(
                 secure_channels,
                 credential_retriever_creator,
-                tcp_transport.clone(),
+                TransportImpl {
+                    t_type: TCP,
+                    transport: tcp_transport.clone(),
+                },
                 authority_route,
                 Arc::new(TrustIdentifierPolicy::new(authority_identifier.clone())),
                 caller_identifier,
@@ -193,7 +200,10 @@ impl NodeManager {
             secure_client: SecureClient::new(
                 secure_channels,
                 credential_retriever_creator,
-                Arc::new(tcp_transport.clone()),
+                TransportImpl {
+                    t_type: TCP,
+                    transport: Arc::new(tcp_transport.clone()),
+                },
                 project_route,
                 Arc::new(TrustIdentifierPolicy::new(project_identifier.clone())),
                 caller_identifier,
@@ -218,7 +228,10 @@ impl NodeManager {
             secure_client: SecureClient::new(
                 secure_channels,
                 None,
-                Arc::new(tcp_transport.clone()),
+                TransportImpl {
+                    t_type: TCP,
+                    transport: Arc::new(tcp_transport.clone()),
+                },
                 route,
                 Arc::new(TrustIdentifierPolicy::new(identifier.clone())),
                 caller_identifier,

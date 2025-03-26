@@ -1,27 +1,42 @@
-use std::{
-    future::{poll_fn, Future},
-    io,
-    net::SocketAddr,
-};
-
+use std::{future::poll_fn, io};
 use tokio::net::{lookup_host, TcpListener, TcpStream, ToSocketAddrs};
 
 use super::sys::MptcpSocketBuilder;
 
-// FIXME
-async fn resolve_each_addr<A: ToSocketAddrs, F, Fut, T>(addr: &A, mut f: F) -> io::Result<T>
-where
-    F: FnMut(SocketAddr) -> Fut,
-    Fut: Future<Output = io::Result<T>>,
-{
+/// Connect using MPTCP
+pub async fn connect_mptcp(addr: impl ToSocketAddrs) -> io::Result<TcpStream> {
     let addrs = lookup_host(addr).await?;
+
     let mut last_err = None;
+
     for addr in addrs {
-        match f(addr).await {
-            Ok(l) => return Ok(l),
+        let stream = {
+            let sock = MptcpSocketBuilder::new_for_addr(addr)?
+                .set_nonblocking()?
+                .connect(addr)
+                .and_then(|sock| TcpStream::from_std(sock.into()))?;
+
+            // Once we've connected, wait for the stream to be writable as
+            // that's when the actual connection has been initiated. Once we're
+            // writable we check for `take_socket_error` to see if the connect
+            // actually hit an error or not.
+            //
+            // If all that succeeded then we ship everything on up.
+            poll_fn(|cx| sock.poll_write_ready(cx)).await?;
+
+            if let Some(e) = sock.take_error()? {
+                return Err(e);
+            }
+
+            Ok(sock)
+        };
+
+        match stream {
+            Ok(stream) => return Ok(stream),
             Err(e) => last_err = Some(e),
         }
     }
+
     Err(last_err.unwrap_or_else(|| {
         io::Error::new(
             io::ErrorKind::InvalidInput,
@@ -30,53 +45,42 @@ where
     }))
 }
 
-/// Connect using MPTCP
-pub async fn connect_mptcp<A: ToSocketAddrs>(addr: A) -> io::Result<TcpStream> {
-    resolve_each_addr(&addr, |addr| async move {
-        let sock = MptcpSocketBuilder::new_for_addr(addr)?
-            .set_nonblocking()?
-            .connect(addr)
-            .and_then(|sock| TcpStream::from_std(sock.into()))?;
-        // Wait for the socket to be writable
-        poll_fn(|cx| sock.poll_write_ready(cx)).await?;
-        Ok(sock)
-    })
-    .await
-}
-
 /// Bind using MPTCP
-pub async fn bind_mptcp(addr: SocketAddr) -> io::Result<TcpListener> {
-    let socket = MptcpSocketBuilder::new_for_addr(addr)?
-        .set_nonblocking()?
-        .bind(addr)?;
+pub async fn bind_mptcp(addr: impl ToSocketAddrs) -> io::Result<TcpListener> {
+    let addrs = lookup_host(addr).await?;
 
-    TcpListener::from_std(socket.into())
+    let mut last_err = None;
+
+    for addr in addrs {
+        let listener = {
+            let builder = MptcpSocketBuilder::new_for_addr(addr)?.set_nonblocking()?;
+
+            #[cfg(not(windows))]
+            let builder = builder.set_reuse()?;
+
+            let socket = builder.bind(addr)?;
+
+            TcpListener::from_std(socket.into())
+        };
+
+        match listener {
+            Ok(listener) => return Ok(listener),
+            Err(e) => last_err = Some(e),
+        }
+    }
+
+    Err(last_err.unwrap_or_else(|| {
+        io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "could not resolve to any address",
+        )
+    }))
 }
 
-#[cfg(all(test, target_os = "linux"))]
+#[cfg(test)]
 mod tests {
-    use crate::mptcp::tokio::resolve_each_addr;
     use crate::mptcp::{bind_mptcp, connect_mptcp, is_mptcp_enabled};
-    use std::net::{IpAddr, Ipv4Addr, SocketAddr, SocketAddrV4};
-
-    #[tokio::test]
-    async fn test_resolve_each_addr() {
-        let addr = "127.0.0.1:80";
-        let result = resolve_each_addr(&addr, |addr| async move {
-            assert_eq!(addr.port(), 80);
-            assert_eq!(addr.ip(), IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)));
-            Ok(())
-        })
-        .await;
-        assert!(result.is_ok());
-    }
-
-    #[tokio::test]
-    async fn test_resolve_each_addr_error() {
-        let addr = "thisisanerror";
-        let result = resolve_each_addr(&addr, |_| async { Ok(()) }).await;
-        assert!(result.is_err());
-    }
+    use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 
     #[tokio::test]
     async fn test_mptcp_socket() {
@@ -91,15 +95,16 @@ mod tests {
             assert!(listener.is_ok());
         } else {
             assert!(listener.is_err());
+            return;
         }
 
-        let local_addr = listener.unwrap().local_addr().unwrap();
+        let listener = listener.unwrap();
+        let local_addr = listener.local_addr().unwrap();
 
         let stream = connect_mptcp(local_addr).await;
-        if mptcp_enabled {
-            assert!(stream.is_ok());
-        } else {
-            assert!(stream.is_err());
+
+        if let Err(err) = stream {
+            panic!("{}", err);
         }
     }
 }

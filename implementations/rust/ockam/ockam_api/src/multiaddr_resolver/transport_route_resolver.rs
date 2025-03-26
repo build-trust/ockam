@@ -1,11 +1,11 @@
 use std::net::{SocketAddrV4, SocketAddrV6};
 
 use crate::multiaddr_resolver::{invalid_multiaddr_error, multiple_transport_hops_error};
-use ockam::tcp::TCP;
+use ockam::tcp::{MPTCP, TCP};
 use ockam::udp::UDP;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{Address, Error, Result, Route, TransportType, LOCAL};
-use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Secure, Service, Tcp, Udp, Worker};
+use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Mptcp, Secure, Service, Tcp, Udp, Worker};
 use ockam_multiaddr::{MultiAddr, ProtoIter, ProtoValue, Protocol};
 
 #[derive(Default, Debug, Clone)]
@@ -156,7 +156,16 @@ impl TransportRouteResolver {
     }
 
     fn parse_port(&self, ma: &MultiAddr, next: &ProtoValue) -> Result<(TransportType, u16)> {
-        if let Some(port) = next.cast::<Tcp>() {
+        #[allow(clippy::manual_map)]
+        let tcp_info = if let Some(port) = next.cast::<Tcp>() {
+            Some((*port, TCP))
+        } else if let Some(port) = next.cast::<Mptcp>() {
+            Some((*port, MPTCP))
+        } else {
+            None
+        };
+
+        if let Some((tcp_port, transport_type)) = tcp_info {
             if !self.allow_tcp {
                 return Err(Error::new(
                     Origin::Api,
@@ -165,7 +174,7 @@ impl TransportRouteResolver {
                 ));
             }
 
-            return Ok((TCP, port.0));
+            return Ok((transport_type, tcp_port));
         }
 
         if let Some(port) = next.cast::<Udp>() {

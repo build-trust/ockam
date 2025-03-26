@@ -153,6 +153,7 @@ impl Worker for TcpOutletListenWorker {
                 self.options.portal_payload_length,
                 map_key.clone(),
                 self.outlet_registry.clone(),
+                self.options.enable_mptcp,
             )?;
 
             debug!("Created Tcp Outlet at {}", addresses.sender_remote);
@@ -182,6 +183,7 @@ impl Worker for TcpOutletListenWorker {
                 self.options.incoming_access_control.clone(),
                 self.options.outgoing_access_control.clone(),
                 self.options.portal_payload_length,
+                self.options.enable_mptcp,
             )?;
 
             debug!("Created Tcp Outlet at {}", addresses.sender_remote);

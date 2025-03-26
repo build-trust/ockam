@@ -121,6 +121,7 @@ pub(crate) mod tests {
     };
     use ockam_core::{route, Address};
     use ockam_node::{Context, NodeBuilder};
+    use ockam_transport_core::TransportImpl;
     use ockam_transport_tcp::{TcpListenerOptions, TcpTransport, TCP};
     use opentelemetry::trace::{SpanContext, SpanId, SpanKind};
     use std::sync::Arc;
@@ -214,7 +215,10 @@ pub(crate) mod tests {
         Ok(SecureClient::new(
             secure_channels,
             None,
-            tcp_transport,
+            TransportImpl {
+                t_type: TCP,
+                transport: tcp_transport,
+            },
             route,
             Arc::new(TrustEveryonePolicy),
             &client_identifier,

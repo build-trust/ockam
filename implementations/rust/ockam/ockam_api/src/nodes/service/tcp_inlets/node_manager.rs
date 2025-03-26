@@ -44,6 +44,7 @@ impl NodeManager {
         tls_certificate_provider: Option<MultiAddr>,
         skip_handshake: bool,
         enable_nagle: bool,
+        enable_mptcp: bool,
     ) -> Result<InletStatus> {
         debug! {
             %listen_address,
@@ -134,6 +135,7 @@ impl NodeManager {
             privileged,
             skip_handshake,
             enable_nagle,
+            enable_mptcp,
         };
 
         let replacer = Arc::new(Mutex::new(replacer));

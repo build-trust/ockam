@@ -9,7 +9,7 @@ use ockam_core::compat::vec::Vec;
 use ockam_core::{route, Address, Result};
 use ockam_node::compat::asynchronous::Mutex;
 use ockam_node::Context;
-use ockam_transport_core::Transport;
+use ockam_transport_core::TransportImpl;
 
 use crate::models::CredentialAndPurposeKey;
 use crate::utils::now;
@@ -71,7 +71,7 @@ pub(super) struct LastPresentedCredential {
 #[derive(Clone)]
 pub struct RemoteCredentialRetriever {
     ctx: Arc<Context>,
-    transport: Arc<dyn Transport>,
+    transport: TransportImpl,
     secure_channels: Arc<SecureChannels>,
     pub(super) issuer_info: RemoteCredentialRetrieverInfo,
     pub(super) subject: Identifier,
@@ -88,7 +88,7 @@ impl RemoteCredentialRetriever {
     /// Create a new remote credential retriever
     pub fn new(
         ctx: Context,
-        transport: Arc<dyn Transport>,
+        transport: TransportImpl,
         secure_channels: Arc<SecureChannels>,
         issuer_info: RemoteCredentialRetrieverInfo,
         subject: Identifier,

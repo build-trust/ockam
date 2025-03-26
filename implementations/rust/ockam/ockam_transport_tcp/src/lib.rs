@@ -46,5 +46,8 @@ pub mod mptcp;
 /// Transport type for TCP addresses
 pub const TCP: ockam_core::TransportType = ockam_core::TransportType::new(1);
 
+/// Transport type for MPTCP addresses
+pub const MPTCP: ockam_core::TransportType = ockam_core::TransportType::new(6);
+
 /// 16 MB
 pub const MAX_MESSAGE_SIZE: usize = 16 * 1024 * 1024;

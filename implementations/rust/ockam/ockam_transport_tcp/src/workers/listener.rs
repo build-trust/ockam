@@ -1,3 +1,4 @@
+use crate::transport::bind_tcp_listener;
 use crate::workers::{Addresses, TcpRecvProcessor};
 use crate::{TcpConnectionMode, TcpListenerInfo, TcpListenerOptions, TcpRegistry, TcpSendWorker};
 use ockam_core::{async_trait, compat::net::SocketAddr};
@@ -28,9 +29,7 @@ impl TcpListenProcessor {
         options: TcpListenerOptions,
     ) -> Result<(SocketAddr, Address)> {
         debug!("Binding TcpListener to {}", addr);
-        let inner = TcpListener::bind(addr)
-            .await
-            .map_err(TransportError::from)?;
+        let inner = bind_tcp_listener(addr, options.enable_mptcp).await?;
         let saddr = inner.local_addr().map_err(TransportError::from)?;
 
         let address = Address::random_tagged("TcpListenProcessor");

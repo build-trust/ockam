@@ -1,49 +1,74 @@
+use crate::mptcp::{bind_mptcp, connect_mptcp};
 use cfg_if::cfg_if;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{Error, Result};
 use ockam_transport_core::{HostnamePort, TransportError};
 use socket2::{SockRef, TcpKeepalive};
+use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::io::{ReadHalf, WriteHalf};
-use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
-use tokio::net::TcpStream;
+use tokio::net::{TcpListener, TcpStream};
 use tokio_rustls::rustls::pki_types::ServerName;
 use tokio_rustls::rustls::{ClientConfig, RootCertStore};
 use tokio_rustls::{TlsConnector, TlsStream};
 use tracing::{debug, instrument, Level};
 
-/// Connect to a socket address via a regular TcpStream
-#[instrument(skip_all, level = Level::TRACE)]
-pub(crate) async fn connect(
-    to: &HostnamePort,
-    enable_nagle: bool,
-    timeout: Option<Duration>,
-) -> Result<(OwnedReadHalf, OwnedWriteHalf)> {
-    Ok(create_tcp_stream(to, enable_nagle, timeout)
-        .await?
-        .into_split())
+pub(crate) async fn bind_tcp_listener(at: SocketAddr, enable_mptcp: bool) -> Result<TcpListener> {
+    if !enable_mptcp {
+        return Ok(TcpListener::bind(&at).await.map_err(TransportError::from)?);
+    }
+
+    let socket = bind_mptcp(at).await.map_err(TransportError::from)?;
+
+    Ok(socket)
 }
 
-/// Create a TCP stream to a given socket address
-pub(crate) async fn create_tcp_stream(
+async fn create_tcp_stream(to: &HostnamePort, enable_mptcp: bool) -> Result<TcpStream> {
+    if !enable_mptcp {
+        return Ok(TcpStream::connect(to.to_string())
+            .await
+            .map_err(TransportError::from)?);
+    }
+
+    // TODO: Add timeout
+    let socket = connect_mptcp(to.to_string())
+        .await
+        .map_err(TransportError::from)?;
+
+    Ok(socket)
+}
+
+async fn create_tcp_stream_timeout(
     to: &HostnamePort,
+    enable_mptcp: bool,
+    timeout: Option<Duration>,
+) -> Result<TcpStream> {
+    match timeout {
+        Some(timeout) => {
+            match tokio::time::timeout(timeout, create_tcp_stream(to, enable_mptcp)).await {
+                Ok(result) => result,
+                Err(_) => {
+                    debug!(addr = %to, timeout = %timeout.as_secs(),  "Timeout");
+                    Err(TransportError::ConnectionTimeout)?
+                }
+            }
+        }
+        None => create_tcp_stream(to, enable_mptcp).await,
+    }
+}
+
+/// Connect to a socket address via a regular TcpStream
+#[instrument(skip_all, level = Level::TRACE)]
+pub(crate) async fn connect_tcp(
+    to: &HostnamePort,
+    enable_mptcp: bool,
     enable_nagle: bool,
     timeout: Option<Duration>,
 ) -> Result<TcpStream> {
     debug!(addr = %to, "Connecting");
 
-    let result = if let Some(timeout) = timeout {
-        match tokio::time::timeout(timeout, TcpStream::connect(to.to_string())).await {
-            Ok(result) => result,
-            Err(_) => {
-                debug!(addr = %to, timeout = %timeout.as_secs(),  "Timeout");
-                return Err(TransportError::ConnectionTimeout)?;
-            }
-        }
-    } else {
-        TcpStream::connect(to.to_string()).await
-    };
+    let result = create_tcp_stream_timeout(to, enable_mptcp, timeout).await;
 
     let connection = match result {
         Ok(c) => {
@@ -52,7 +77,7 @@ pub(crate) async fn create_tcp_stream(
         }
         Err(e) => {
             debug!(addr = %to, err = %e, "Failed to connect");
-            return Err(TransportError::from(e))?;
+            return Err(e);
         }
     };
 
@@ -83,6 +108,7 @@ pub(crate) async fn create_tcp_stream(
 #[instrument(skip_all, level = Level::TRACE)]
 pub(crate) async fn connect_tls(
     to: &HostnamePort,
+    enable_mptcp: bool,
     enable_nagle: bool,
 ) -> Result<(
     ReadHalf<TlsStream<TcpStream>>,
@@ -91,7 +117,7 @@ pub(crate) async fn connect_tls(
     debug!(to = %to, "Trying to connect using TLS");
 
     // create a tcp stream
-    let connection = create_tcp_stream(to, enable_nagle, None).await?;
+    let connection = connect_tcp(to, enable_mptcp, enable_nagle, None).await?;
 
     // create a TLS connector
     let tls_connector = create_tls_connector().await?;

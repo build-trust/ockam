@@ -235,6 +235,7 @@ impl Processor for TcpInletListenProcessor {
             self.options.outgoing_access_control.clone(),
             self.options.portal_payload_length,
             self.options.skip_handshake,
+            self.options.enable_mptcp,
         )?;
 
         Ok(true)

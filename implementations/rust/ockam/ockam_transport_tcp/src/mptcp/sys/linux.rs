@@ -34,6 +34,12 @@ impl MptcpSocketBuilder {
         Ok(self)
     }
 
+    /// Set REUSE_ADDR
+    pub fn set_reuse(self) -> io::Result<Self> {
+        self.0.reuse_address()?;
+        Ok(self)
+    }
+
     /// Connect
     pub fn connect(self, addr: SocketAddr) -> io::Result<Socket> {
         let socket = self.0;
@@ -51,7 +57,7 @@ impl MptcpSocketBuilder {
     pub fn bind(self, addr: SocketAddr) -> io::Result<Socket> {
         let socket = self.0;
         socket.bind(&addr.into())?;
-        socket.listen(0)?;
+        socket.listen(1024)?;
         Ok(socket)
     }
 }

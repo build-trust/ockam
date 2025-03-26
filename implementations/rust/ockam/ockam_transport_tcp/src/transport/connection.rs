@@ -1,4 +1,4 @@
-use crate::transport::connect;
+use crate::transport::connect_tcp;
 use crate::workers::{Addresses, TcpRecvProcessor, TcpSendWorker};
 use crate::{TcpConnectionMode, TcpConnectionOptions, TcpTransport};
 use core::fmt;
@@ -111,7 +111,10 @@ impl TcpTransport {
         let peer = HostnamePort::from_str(&peer.into())?;
         debug!("Connecting to {}", peer.clone());
 
-        let (read_half, write_half) = connect(&peer, false, options.timeout).await?;
+        let (read_half, write_half) =
+            connect_tcp(&peer, options.enable_mptcp, false, options.timeout)
+                .await?
+                .into_split();
         let socket = read_half
             .peer_addr()
             .map_err(|e| ockam_core::Error::new(Origin::Transport, Kind::Internal, e))?;

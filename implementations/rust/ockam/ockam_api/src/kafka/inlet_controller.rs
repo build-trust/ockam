@@ -143,6 +143,7 @@ impl KafkaInletController {
                     None,
                     false,
                     false,
+                    false,
                 )
                 .await?;
 

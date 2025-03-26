@@ -5,6 +5,7 @@ use ockam::identity::{
     TrustMultiIdentifiersPolicy,
 };
 use ockam::node;
+use ockam::tcp::{TcpInletOptions, TcpTransportExtension, TCP};
 use ockam::{route, Context, Result};
 use ockam_api::authenticator::enrollment_tokens::TokenAcceptor;
 use ockam_api::authenticator::one_time_code::OneTimeCode;
@@ -13,7 +14,6 @@ use ockam_api::{RemoteMultiaddrResolver, TransportRouteResolver};
 use ockam_core::compat::sync::Arc;
 use ockam_core::TryClone;
 use ockam_multiaddr::MultiAddr;
-use ockam_transport_tcp::{TcpInletOptions, TcpTransportExtension};
 
 /// This node supports an "edge" server which can connect to a "control" node
 /// in order to connect its TCP inlet to the "control" node TCP outlet
@@ -80,6 +80,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     // Create a credential retriever that will be used to obtain credentials
     let credential_retriever = Arc::new(RemoteCredentialRetrieverCreator::new(
         node.context().try_clone()?,
+        TCP,
         tcp.clone(),
         node.secure_channels(),
         RemoteCredentialRetrieverInfo::create_for_project_member(

@@ -26,6 +26,12 @@ impl MptcpSocketBuilder {
         Ok(self)
     }
 
+    /// Set REUSE_ADDR
+    pub fn set_reuse(self) -> io::Result<Self> {
+        self.0.reuse_address()?;
+        Ok(self)
+    }
+
     /// Connect
     pub fn connect(self, addr: SocketAddr) -> io::Result<Socket> {
         let socket = self.0;

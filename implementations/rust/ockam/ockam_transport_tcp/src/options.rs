@@ -10,6 +10,7 @@ pub struct TcpConnectionOptions {
     pub(super) timeout: Option<Duration>,
     pub(super) consumer: Vec<FlowControlId>,
     pub(crate) flow_control_id: FlowControlId,
+    pub(crate) enable_mptcp: bool,
 }
 
 impl TcpConnectionOptions {
@@ -20,6 +21,7 @@ impl TcpConnectionOptions {
             timeout: None,
             consumer: vec![],
             flow_control_id: FlowControls::generate_flow_control_id(),
+            enable_mptcp: false,
         }
     }
 
@@ -50,6 +52,18 @@ impl TcpConnectionOptions {
     /// Connect timeout
     pub fn timeout(&self) -> Option<Duration> {
         self.timeout
+    }
+
+    /// Enable or disable MPTCP support
+    pub fn set_enable_mptcp(mut self, enable_mptcp: bool) -> Self {
+        self.enable_mptcp = enable_mptcp;
+        self
+    }
+
+    /// Enable MPTCP support
+    pub fn enable_mptcp(mut self) -> Self {
+        self.enable_mptcp = true;
+        self
     }
 }
 
@@ -83,6 +97,7 @@ impl TcpConnectionOptions {
 #[derive(Debug, Clone)]
 pub struct TcpListenerOptions {
     pub(crate) flow_control_id: FlowControlId,
+    pub(crate) enable_mptcp: bool,
 }
 
 impl TcpListenerOptions {
@@ -93,12 +108,25 @@ impl TcpListenerOptions {
     pub fn new() -> Self {
         Self {
             flow_control_id: FlowControls::generate_flow_control_id(),
+            enable_mptcp: false,
         }
     }
 
     /// Getter for freshly generated [`FlowControlId`]
     pub fn spawner_flow_control_id(&self) -> FlowControlId {
         self.flow_control_id.clone()
+    }
+
+    /// Enable or disable MPTCP support
+    pub fn set_enable_mptcp(mut self, enable_mptcp: bool) -> Self {
+        self.enable_mptcp = enable_mptcp;
+        self
+    }
+
+    /// Enable MPTCP support
+    pub fn enable_mptcp(mut self) -> Self {
+        self.enable_mptcp = true;
+        self
     }
 }
 

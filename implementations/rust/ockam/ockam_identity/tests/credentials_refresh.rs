@@ -14,7 +14,7 @@ use ockam_identity::{
     SecureChannels,
 };
 use ockam_node::Context;
-use ockam_transport_tcp::TcpTransport;
+use ockam_transport_tcp::{TcpTransport, TCP};
 
 struct CredentialIssuer {
     delay: Duration,
@@ -273,6 +273,7 @@ async fn init(
 
     let retriever = Arc::new(RemoteCredentialRetrieverCreator::new_extended(
         ctx.try_clone()?,
+        TCP,
         tcp,
         client_secure_channels.clone(),
         RemoteCredentialRetrieverInfo::create_for_project_member(
