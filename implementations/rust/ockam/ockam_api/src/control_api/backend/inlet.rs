@@ -82,7 +82,8 @@ async fn handle_tcp_inlet_create(
     body: Option<Vec<u8>>,
 ) -> Result<ControlApiHttpResponse, ControlApiError> {
     let request: CreateInletRequest = common::parse_request_body(body)?;
-    let request = CreateInletRequestValidated::try_from(request)?;
+    let request =
+        CreateInletRequestValidated::from_request(&node_manager.cli_state, request).await?;
 
     let enable_udp_puncture;
     let disable_tcp_fallback;
@@ -339,14 +340,18 @@ mod test {
     use crate::control_api::http::{ControlApiHttpRequest, ControlApiHttpResponse};
     use crate::control_api::protocol::common::{ConnectionStatus, ErrorResponse, HostPort};
     use crate::control_api::protocol::inlet::{CreateInletRequest, InletStatus};
+    use crate::orchestrator::project::models::ProjectModel;
+    use crate::orchestrator::project::Project;
     use crate::test_utils::start_manager_for_tests;
     use crate::DefaultAddress;
+    use ockam::identity::Identifier;
     use ockam_core::{Address, NeutralMessage};
     use ockam_node::Context;
+    use std::str::FromStr;
     use std::time::Duration;
 
     #[ockam::test]
-    pub async fn tcp_inlet_create_get_list_delete(context: &mut Context) -> ockam_core::Result<()> {
+    async fn tcp_inlet_create_get_list_delete(context: &mut Context) -> ockam_core::Result<()> {
         let handle = start_manager_for_tests(context, None, None).await?;
         let address: Address = DefaultAddress::CONTROL_API.into();
 
@@ -485,6 +490,80 @@ mod test {
 
         let inlets: Vec<InletStatus> = serde_json::from_slice(response.body.as_slice()).unwrap();
         assert_eq!(inlets.len(), 0);
+
+        Ok(())
+    }
+
+    #[ockam::test]
+    async fn tcp_inlet_create_using_via(context: &mut Context) -> ockam_core::Result<()> {
+        let handle = start_manager_for_tests(context, None, None).await?;
+
+        let project = ProjectModel {
+            identity: Some(
+                Identifier::from_str(
+                    "Ie92f183eb4c324804ef4d62962dea94cf095a265a1b2c3d4e5f6a6b5c4d3e2f1",
+                )
+                .unwrap(),
+            ),
+            name: "p1".to_string(),
+            ..Default::default()
+        };
+        let project = Project::import(project).await.unwrap();
+        handle
+            .cli_state
+            .projects()
+            .store_project(project)
+            .await
+            .unwrap();
+
+        let address: Address = DefaultAddress::CONTROL_API.into();
+        handle
+            .node_manager
+            .create_control_api_backend(context, None)?;
+
+        // Create an inlet using "from" as an object
+        let request = ControlApiHttpRequest {
+            method: "POST".to_string(),
+            uri: "/node-name/tcp-inlets".to_string(),
+            body: Some(
+                serde_json::to_vec(&CreateInletRequest {
+                    name: Some("inlet-name".to_string()),
+                    kind: Default::default(),
+                    tls: Default::default(),
+                    from: HostPort {
+                        host: "127.0.0.1".to_string(),
+                        port: 0,
+                    },
+                    to: "myoutlet".to_string(),
+                    via: Some("myrelay".to_string()),
+                    identity: None,
+                    authorized: None,
+                    allow: None,
+                    retry_wait: 1000,
+                })
+                .unwrap(),
+            ),
+        };
+
+        let encoded_request = NeutralMessage::from(minicbor::to_vec(&request)?);
+        let encoded_response: NeutralMessage = context
+            .send_and_receive(address.clone(), encoded_request)
+            .await?;
+
+        let response: ControlApiHttpResponse = minicbor::decode(&encoded_response.into_vec())?;
+        assert_eq!(response.status, 201);
+
+        let inlet_status: InletStatus = serde_json::from_slice(response.body.as_slice()).unwrap();
+        assert_eq!(inlet_status.name, "inlet-name");
+        assert_eq!(inlet_status.status, ConnectionStatus::Down);
+        assert_eq!(inlet_status.current_route, None);
+        assert_eq!(
+            inlet_status.to,
+            "/project/p1/service/forward_to_myrelay/secure/api/service/myoutlet"
+        );
+        let bind_address = HostPort::try_from(inlet_status.bind_address.as_str())?;
+        assert_eq!(bind_address.host, "127.0.0.1");
+        assert!(bind_address.port > 0);
 
         Ok(())
     }

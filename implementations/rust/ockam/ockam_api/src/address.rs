@@ -1,11 +1,11 @@
-use std::net::{SocketAddr, TcpListener};
-use std::str::FromStr;
-
+use crate::error::ApiError;
+use crate::CliState;
+use miette::miette;
 use ockam_core::Result;
 use ockam_multiaddr::proto::{Node, Project, Service};
 use ockam_multiaddr::{MultiAddr, Protocol};
-
-use crate::error::ApiError;
+use std::net::{SocketAddr, TcpListener};
+use std::str::FromStr;
 
 /// Get address value from a string.
 ///
@@ -49,6 +49,32 @@ pub fn extract_address_value(input: &str) -> Result<String, ApiError> {
         )));
     }
     Ok(addr)
+}
+
+/// Replace the node's name with its address or leave it if it's another type of address.
+///
+/// Example:
+///     if n1 has address of 127.0.0.1:1234
+///     `/node/n1` -> `/ip4/127.0.0.1/tcp/1234`
+pub async fn process_nodes_multiaddr(
+    addr: &MultiAddr,
+    cli_state: &CliState,
+) -> miette::Result<MultiAddr> {
+    let mut processed_addr = MultiAddr::default();
+    for proto in addr.iter() {
+        match proto.code() {
+            Node::CODE => {
+                let alias = proto
+                    .cast::<Node>()
+                    .ok_or_else(|| miette!("Invalid node address protocol"))?;
+                let node_info = cli_state.get_node(&alias).await?;
+                let addr = node_info.tcp_listener_multi_address()?;
+                processed_addr.try_extend(&addr)?
+            }
+            _ => processed_addr.push_back_value(&proto)?,
+        }
+    }
+    Ok(processed_addr)
 }
 
 pub fn get_free_address() -> Result<SocketAddr, ApiError> {

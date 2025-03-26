@@ -28,32 +28,6 @@ pub fn print_path(p: &Path) -> String {
     p.to_str().unwrap_or("<unprintable>").to_string()
 }
 
-/// Replace the node's name with its address or leave it if it's another type of address.
-///
-/// Example:
-///     if n1 has address of 127.0.0.1:1234
-///     `/node/n1` -> `/ip4/127.0.0.1/tcp/1234`
-pub async fn process_nodes_multiaddr(
-    addr: &MultiAddr,
-    cli_state: Arc<CliState>,
-) -> Result<MultiAddr> {
-    let mut processed_addr = MultiAddr::default();
-    for proto in addr.iter() {
-        match proto.code() {
-            Node::CODE => {
-                let alias = proto
-                    .cast::<Node>()
-                    .ok_or_else(|| miette!("Invalid node address protocol"))?;
-                let node_info = cli_state.get_node(&alias).await?;
-                let addr = node_info.tcp_listener_multi_address()?;
-                processed_addr.try_extend(&addr)?
-            }
-            _ => processed_addr.push_back_value(&proto)?,
-        }
-    }
-    Ok(processed_addr)
-}
-
 /// Go through a multiaddr and remove all instances of
 /// `/node/<whatever>` out of it and replaces it with a fully
 /// qualified address to the target
@@ -137,6 +111,7 @@ pub fn print_warning_for_deprecated_flag_no_effect(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ockam_api::address::process_nodes_multiaddr;
     use ockam_node::Context;
     use std::str::FromStr;
 
@@ -168,15 +143,13 @@ mod tests {
         ];
         for (ma, expected) in test_cases {
             if let Ok(addr) = expected {
-                let result = process_nodes_multiaddr(&ma, cli_state.clone())
+                let result = process_nodes_multiaddr(&ma, &cli_state)
                     .await
                     .unwrap()
                     .to_string();
                 assert_eq!(result, addr);
             } else {
-                assert!(process_nodes_multiaddr(&ma, cli_state.clone())
-                    .await
-                    .is_err());
+                assert!(process_nodes_multiaddr(&ma, &cli_state).await.is_err());
             }
         }
         Ok(())

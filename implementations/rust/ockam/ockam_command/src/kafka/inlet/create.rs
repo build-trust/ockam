@@ -3,7 +3,7 @@ use crate::kafka::make_brokers_port_range;
 use crate::node::util::initialize_default_node;
 use crate::tcp::util::alias_parser;
 use crate::util::parsers::hostname_parser;
-use crate::util::{print_warning_for_deprecated_flag_replaced, process_nodes_multiaddr};
+use crate::util::print_warning_for_deprecated_flag_replaced;
 use crate::{
     docs,
     kafka::{kafka_default_inlet_bind_address, kafka_inlet_default_addr},
@@ -16,6 +16,7 @@ use colorful::Colorful;
 use miette::miette;
 use ockam::transport::SchemeHostnamePort;
 use ockam_abac::PolicyExpression;
+use ockam_api::address::process_nodes_multiaddr;
 use ockam_api::colors::{color_primary, color_warn};
 use ockam_api::kafka::portal::KafkaPortals;
 use ockam_api::kafka::{ConsumerPublishing, ConsumerResolution};
@@ -243,7 +244,7 @@ impl CreateCommand {
             ));
         }
 
-        self.to = process_nodes_multiaddr(&self.to, opts.state.clone()).await?;
+        self.to = process_nodes_multiaddr(&self.to, &opts.state).await?;
         Ok(self)
     }
 
