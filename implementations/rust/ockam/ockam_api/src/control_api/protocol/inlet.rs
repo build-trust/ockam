@@ -1,10 +1,11 @@
 use crate::common_api::tcp_inlet_create::{parse_to_address, tcp_inlet_default_to_address};
-use crate::control_api::protocol::common::{ConnectionStatus, HostPort};
+use crate::control_api::protocol::common::{ConnectionStatus, HostPortRequest, HostPortResponse};
 use crate::control_api::ControlApiError;
 use crate::CliState;
 use ockam::identity::Identifier;
 use ockam_abac::PolicyExpression;
 use ockam_multiaddr::MultiAddr;
+use ockam_transport_core::HostnamePort;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 use std::time::Duration;
@@ -58,7 +59,8 @@ pub struct CreateInletRequest {
     /// If not set, a random port will be used.
     #[serde(default = "tcp_inlet_default_bind_address")]
     #[schema(default = tcp_inlet_default_bind_address)]
-    pub from: HostPort,
+    #[schema(example = "127.0.0.1:1234")]
+    pub from: HostPortRequest,
 
     /// Route to a TCP Outlet or the name of the TCP Outlet service you want to connect to.
     ///
@@ -116,8 +118,8 @@ pub struct CreateInletRequest {
     pub tls: Option<InletTls>,
 }
 
-fn tcp_inlet_default_bind_address() -> HostPort {
-    HostPort {
+fn tcp_inlet_default_bind_address() -> HostPortRequest {
+    HostPortRequest {
         host: "127.0.0.1".to_string(),
         port: 0,
     }
@@ -212,11 +214,10 @@ pub struct InletStatus {
     #[schema(example = ConnectionStatus::Up)]
     pub status: ConnectionStatus,
     /// Bind address of the TCP Inlet
-    #[schema(example = "127.0.0.1:1234")]
-    pub bind_address: String,
-    /// The current route of the TCP Inlet, populated only when the status is `up`
-    // TODO: what shape does this have?
-    pub current_route: Option<String>,
+    pub bind_address: HostPortResponse,
+    /// The internal route of the TCP Inlet to the Tcp Outlet.
+    /// Populated only after the connection is done (i.e., the status is `up`).
+    pub internal_route: Option<String>,
     /// Route to the TCP Outlet
     #[schema(example = "/project/default/service/forward_to_myrelay/secure/api/service/outlet")]
     pub to: String,
@@ -226,12 +227,16 @@ impl TryFrom<crate::nodes::models::portal::InletStatus> for InletStatus {
     type Error = ockam_core::Error;
 
     fn try_from(status: crate::nodes::models::portal::InletStatus) -> Result<Self, Self::Error> {
-        let bind_address = HostPort::try_from(status.bind_addr.as_str())?;
+        let bind_address = HostnamePort::try_from(status.bind_addr.as_str())?;
+        let bind_address = HostPortResponse {
+            host: bind_address.hostname,
+            port: bind_address.port,
+        };
         Ok(InletStatus {
             status: status.status.into(),
-            bind_address: bind_address.to_string(),
+            bind_address,
             name: status.alias,
-            current_route: status.outlet_route.map(|r| r.to_string()),
+            internal_route: status.outlet_route.map(|r| r.to_string()),
             to: status.outlet_addr,
         })
     }

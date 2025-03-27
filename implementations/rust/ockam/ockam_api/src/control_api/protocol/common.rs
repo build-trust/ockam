@@ -32,13 +32,28 @@ Ockam uses `ockam-` as a prefix for its own attributes.
 )]
 pub struct Attributes(pub BTreeMap<String, String>);
 
-#[derive(Debug)]
-pub struct HostPort {
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct HostPortResponse {
     pub host: String,
     pub port: u16,
 }
 
-impl PartialSchema for HostPort {
+impl From<HostPortRequest> for HostPortResponse {
+    fn from(request: HostPortRequest) -> Self {
+        HostPortResponse {
+            host: request.host,
+            port: request.port,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct HostPortRequest {
+    pub host: String,
+    pub port: u16,
+}
+
+impl PartialSchema for HostPortRequest {
     fn schema() -> RefOr<Schema> {
         RefOr::T(Schema::OneOf(
             OneOfBuilder::new()
@@ -78,28 +93,28 @@ impl PartialSchema for HostPort {
     }
 }
 
-impl ToSchema for HostPort {}
+impl ToSchema for HostPortRequest {}
 
-impl TryInto<ockam_transport_core::HostnamePort> for HostPort {
+impl TryInto<ockam_transport_core::HostnamePort> for HostPortRequest {
     type Error = ockam_core::Error;
     fn try_into(self) -> Result<ockam_transport_core::HostnamePort, Self::Error> {
         ockam_transport_core::HostnamePort::new(self.host, self.port)
     }
 }
 
-impl TryFrom<&str> for HostPort {
+impl TryFrom<&str> for HostPortRequest {
     type Error = ockam_core::Error;
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         let hostname = ockam_transport_core::HostnamePort::from_str(value)?;
-        Ok(HostPort {
+        Ok(HostPortRequest {
             host: hostname.hostname,
             port: hostname.port,
         })
     }
 }
 
-impl Serialize for HostPort {
+impl Serialize for HostPortRequest {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -108,7 +123,7 @@ impl Serialize for HostPort {
     }
 }
 
-impl<'de> Deserialize<'de> for HostPort {
+impl<'de> Deserialize<'de> for HostPortRequest {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
@@ -116,7 +131,7 @@ impl<'de> Deserialize<'de> for HostPort {
         struct HostnamePortVisitor;
 
         impl<'de> serde::de::Visitor<'de> for HostnamePortVisitor {
-            type Value = HostPort;
+            type Value = HostPortRequest;
 
             fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
                 formatter.write_str("a string in format 'hostname:port' or an object with 'hostname' and 'port' fields")
@@ -126,7 +141,7 @@ impl<'de> Deserialize<'de> for HostPort {
             where
                 E: serde::de::Error,
             {
-                HostPort::try_from(value).map_err(serde::de::Error::custom)
+                HostPortRequest::try_from(value).map_err(serde::de::Error::custom)
             }
 
             fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
@@ -138,7 +153,7 @@ impl<'de> Deserialize<'de> for HostPort {
 
                 while let Some(key) = map.next_key::<String>()? {
                     match key.as_str() {
-                        "hostname" => {
+                        "host" | "hostname" => {
                             if hostname.is_some() {
                                 return Err(serde::de::Error::duplicate_field("hostname"));
                             }
@@ -160,7 +175,7 @@ impl<'de> Deserialize<'de> for HostPort {
                     hostname.ok_or_else(|| serde::de::Error::missing_field("hostname"))?;
                 let port = port.ok_or_else(|| serde::de::Error::missing_field("port"))?;
 
-                Ok(HostPort {
+                Ok(HostPortRequest {
                     host: hostname,
                     port,
                 })
@@ -171,7 +186,7 @@ impl<'de> Deserialize<'de> for HostPort {
     }
 }
 
-impl Display for HostPort {
+impl Display for HostPortRequest {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         ockam_transport_core::HostnamePort {
             hostname: self.host.clone(),
@@ -314,25 +329,25 @@ mod tests {
     fn test_hostname_port_deserialize_string() {
         // Deserialize from string format
         let json = json!("localhost:8080");
-        let result: HostPort = serde_json::from_value(json).unwrap();
+        let result: HostPortRequest = serde_json::from_value(json).unwrap();
         assert_eq!(result.host, "localhost");
         assert_eq!(result.port, 8080);
 
         // IPv4 address
         let json = json!("127.0.0.1:9000");
-        let result: HostPort = serde_json::from_value(json).unwrap();
+        let result: HostPortRequest = serde_json::from_value(json).unwrap();
         assert_eq!(result.host, "127.0.0.1");
         assert_eq!(result.port, 9000);
 
         // IPv6 address
         let json = json!("[::1]:8080");
-        let result: HostPort = serde_json::from_value(json).unwrap();
+        let result: HostPortRequest = serde_json::from_value(json).unwrap();
         assert_eq!(result.host, "[::1]");
         assert_eq!(result.port, 8080);
 
         // Just port
         let json = json!("8080");
-        let result: HostPort = serde_json::from_value(json).unwrap();
+        let result: HostPortRequest = serde_json::from_value(json).unwrap();
         assert_eq!(result.host, "127.0.0.1");
         assert_eq!(result.port, 8080);
     }
@@ -344,7 +359,15 @@ mod tests {
             "hostname": "example.com",
             "port": 8080
         });
-        let result: HostPort = serde_json::from_value(json).unwrap();
+        let result: HostPortRequest = serde_json::from_value(json).unwrap();
+        assert_eq!(result.host, "example.com");
+        assert_eq!(result.port, 8080);
+
+        let json = json!({
+            "host": "example.com",
+            "port": 8080
+        });
+        let result: HostPortRequest = serde_json::from_value(json).unwrap();
         assert_eq!(result.host, "example.com");
         assert_eq!(result.port, 8080);
 
@@ -354,7 +377,7 @@ mod tests {
             "hostname": "duplicate.com",
             "port": 8080
         });
-        let result = serde_json::from_value::<HostPort>(json).unwrap();
+        let result = serde_json::from_value::<HostPortRequest>(json).unwrap();
         assert_eq!(result.host, "duplicate.com");
         assert_eq!(result.port, 8080);
     }
@@ -363,33 +386,33 @@ mod tests {
     fn test_hostname_port_deserialize_error_cases() {
         // Invalid string format
         let json = json!("invalid_format");
-        let result = serde_json::from_value::<HostPort>(json);
+        let result = serde_json::from_value::<HostPortRequest>(json);
         assert!(result.is_err());
 
         // Missing hostname in object
         let json = json!({
             "port": 8080
         });
-        let result = serde_json::from_value::<HostPort>(json);
+        let result = serde_json::from_value::<HostPortRequest>(json);
         assert!(result.is_err());
 
         // Missing port in object
         let json = json!({
             "hostname": "example.com"
         });
-        let result = serde_json::from_value::<HostPort>(json);
+        let result = serde_json::from_value::<HostPortRequest>(json);
         assert!(result.is_err());
     }
 
     #[test]
     fn test_hostname_port_serde() {
-        let original = HostPort {
+        let original = HostPortRequest {
             host: "example.com".to_string(),
             port: 8080,
         };
 
         let serialized = serde_json::to_string(&original).unwrap();
-        let deserialized: HostPort = serde_json::from_str(&serialized).unwrap();
+        let deserialized: HostPortRequest = serde_json::from_str(&serialized).unwrap();
 
         assert_eq!(original.host, deserialized.host);
         assert_eq!(original.port, deserialized.port);

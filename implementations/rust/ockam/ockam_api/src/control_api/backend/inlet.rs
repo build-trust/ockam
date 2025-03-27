@@ -54,7 +54,7 @@ impl HttpControlNodeApiBackend {
 #[utoipa::path(
     post,
     operation_id = "create_tcp_inlet",
-    summary = "Create a new TCP Inlet",
+    summary = "Create a TCP Inlet",
     description =
 "The main parameters are the destination `to`, and the bind address `from`.
 You can also attach a TLS certificate in the `tls` object, restrict access to the TCP Inlet with
@@ -338,7 +338,7 @@ async fn handle_tcp_inlet_get(
 #[cfg(test)]
 mod test {
     use crate::control_api::http::{ControlApiHttpRequest, ControlApiHttpResponse};
-    use crate::control_api::protocol::common::{ConnectionStatus, ErrorResponse, HostPort};
+    use crate::control_api::protocol::common::{ConnectionStatus, ErrorResponse, HostPortRequest};
     use crate::control_api::protocol::inlet::{CreateInletRequest, InletStatus};
     use crate::orchestrator::project::models::ProjectModel;
     use crate::orchestrator::project::Project;
@@ -367,7 +367,7 @@ mod test {
                     name: Some("inlet-name".to_string()),
                     kind: Default::default(),
                     tls: Default::default(),
-                    from: HostPort {
+                    from: HostPortRequest {
                         host: "127.0.0.1".to_string(),
                         port: 0,
                     },
@@ -394,11 +394,10 @@ mod test {
         let inlet_status: InletStatus = serde_json::from_slice(response.body.as_slice()).unwrap();
         assert_eq!(inlet_status.name, "inlet-name");
         assert_eq!(inlet_status.status, ConnectionStatus::Down);
-        assert_eq!(inlet_status.current_route, None);
+        assert_eq!(inlet_status.internal_route, None);
         assert_eq!(inlet_status.to, "/service/outlet");
-        let bind_address = HostPort::try_from(inlet_status.bind_address.as_str())?;
-        assert_eq!(bind_address.host, "127.0.0.1");
-        assert!(bind_address.port > 0);
+        assert_eq!(inlet_status.bind_address.host, "127.0.0.1");
+        assert!(inlet_status.bind_address.port > 0);
 
         tokio::time::sleep(Duration::from_millis(100)).await;
 
@@ -419,7 +418,7 @@ mod test {
         let inlet_status: InletStatus = serde_json::from_slice(response.body.as_slice()).unwrap();
         assert_eq!(inlet_status.name, "inlet-name");
         assert_eq!(inlet_status.status, ConnectionStatus::Up);
-        assert_eq!(inlet_status.current_route, Some("0#outlet".to_string()));
+        assert_eq!(inlet_status.internal_route, Some("0#outlet".to_string()));
         assert_eq!(inlet_status.to, "/service/outlet");
 
         let request = ControlApiHttpRequest {
@@ -440,7 +439,7 @@ mod test {
         assert_eq!(inlets.len(), 1);
         assert_eq!(inlets[0].name, "inlet-name");
         assert_eq!(inlets[0].status, ConnectionStatus::Up);
-        assert_eq!(inlets[0].current_route, Some("0#outlet".to_string()));
+        assert_eq!(inlets[0].internal_route, Some("0#outlet".to_string()));
         assert_eq!(inlets[0].to, "/service/outlet");
 
         let request = ControlApiHttpRequest {
@@ -530,7 +529,7 @@ mod test {
                     name: Some("inlet-name".to_string()),
                     kind: Default::default(),
                     tls: Default::default(),
-                    from: HostPort {
+                    from: HostPortRequest {
                         host: "127.0.0.1".to_string(),
                         port: 0,
                     },
@@ -556,14 +555,13 @@ mod test {
         let inlet_status: InletStatus = serde_json::from_slice(response.body.as_slice()).unwrap();
         assert_eq!(inlet_status.name, "inlet-name");
         assert_eq!(inlet_status.status, ConnectionStatus::Down);
-        assert_eq!(inlet_status.current_route, None);
+        assert_eq!(inlet_status.internal_route, None);
         assert_eq!(
             inlet_status.to,
             "/project/p1/service/forward_to_myrelay/secure/api/service/myoutlet"
         );
-        let bind_address = HostPort::try_from(inlet_status.bind_address.as_str())?;
-        assert_eq!(bind_address.host, "127.0.0.1");
-        assert!(bind_address.port > 0);
+        assert_eq!(inlet_status.bind_address.host, "127.0.0.1");
+        assert!(inlet_status.bind_address.port > 0);
 
         Ok(())
     }
