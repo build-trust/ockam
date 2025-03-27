@@ -286,3 +286,13 @@ tcp-listener-address 127.0.0.1:3333
 EOF
   run_failure "$OCKAM" node create "$OCKAM_HOME/node.yaml"
 }
+
+@test "node - fail when binding to a port already in use" {
+  port=$(random_port)
+  run_success $OCKAM node create --tcp-listener-address 127.0.0.1:$port
+
+  run_failure $OCKAM node create --tcp-listener-address 127.0.0.1:$port
+  run_failure $OCKAM node create "{\"tcp-listener-address\": \"127.0.0.1:$port\"}"
+  run_failure $OCKAM node create --foreground --tcp-listener-address 127.0.0.1:$port
+  run_failure $OCKAM node create --foreground "{\"tcp-listener-address\": \"127.0.0.1:$port\"}"
+}

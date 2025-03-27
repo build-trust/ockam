@@ -269,29 +269,34 @@ impl NodeConfig {
             (node_handle, callback)
         };
 
-        // Wait for the node to be up
-        callback.wait_for_signal().await?;
+        let node_exit_future = async { node_handle.await.map_err(|err| miette!("{err:?}")) };
 
-        // Run the other sections
-        let node_name = Some(node_name);
-        let other_sections: Vec<ParsedCommands> = vec![
-            self.policies.into_parsed_commands()?.into(),
-            self.relays.into_parsed_commands(node_name)?.into(),
-            self.tcp_outlets.into_parsed_commands(node_name)?.into(),
-            self.tcp_inlets.into_parsed_commands(node_name)?.into(),
-            self.influxdb_outlets
-                .into_parsed_commands(node_name)?
-                .into(),
-            self.influxdb_inlets.into_parsed_commands(node_name)?.into(),
-            self.kafka_outlet.into_parsed_commands(node_name)?.into(),
-            self.kafka_inlet.into_parsed_commands(node_name)?.into(),
-        ];
-        opts.terminal.write_line("")?;
-        Self::run_commands_sections(ctx, opts, other_sections).await?;
-        opts.terminal.write_line("")?;
+        // Wait for either the callback signal or the node to exit
+        tokio::select! {
+            result = callback.wait_for_signal() => {
+                result?;
 
-        // Block on the node until it exits
-        let _ = node_handle.await.into_diagnostic()?;
+                // Run the other sections
+                let node_name = Some(node_name);
+                let other_sections: Vec<ParsedCommands> = vec![
+                    self.policies.into_parsed_commands()?.into(),
+                    self.relays.into_parsed_commands(node_name)?.into(),
+                    self.tcp_outlets.into_parsed_commands(node_name)?.into(),
+                    self.tcp_inlets.into_parsed_commands(node_name)?.into(),
+                    self.influxdb_outlets
+                        .into_parsed_commands(node_name)?
+                        .into(),
+                    self.influxdb_inlets.into_parsed_commands(node_name)?.into(),
+                    self.kafka_outlet.into_parsed_commands(node_name)?.into(),
+                    self.kafka_inlet.into_parsed_commands(node_name)?.into(),
+                ];
+                opts.terminal.write_line("")?;
+                Self::run_commands_sections(ctx, opts, other_sections).await?;
+                opts.terminal.write_line("")?;
+            },
+            result = node_exit_future => result??,
+        }
+
         Ok(())
     }
 

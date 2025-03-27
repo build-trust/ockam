@@ -71,10 +71,8 @@ impl TcpTransport {
         let bind_addr = bind_addr.into();
         let tcp_listener = TcpListener::bind(bind_addr.clone())
             .await
-            .map_err(|_| TransportError::BindFailed)?;
-        let local_address = tcp_listener
-            .local_addr()
-            .map_err(|_| TransportError::BindFailed)?;
+            .map_err(TransportError::from)?;
+        let local_address = tcp_listener.local_addr().map_err(TransportError::from)?;
 
         if !local_address.ip().is_ipv4() {
             return Err(TransportError::ExpectedIPv4Address)?;

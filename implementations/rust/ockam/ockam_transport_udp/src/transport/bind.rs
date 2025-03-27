@@ -85,7 +85,7 @@ impl UdpTransport {
         // Bind new socket
         let socket = UdpSocket::bind(arguments.bind_address)
             .await
-            .map_err(|_| TransportError::BindFailed)?;
+            .map_err(TransportError::from)?;
 
         if let Some(_peer) = &arguments.peer_address {
             // TODO: Would be better to tie this socket to a specific peer when
