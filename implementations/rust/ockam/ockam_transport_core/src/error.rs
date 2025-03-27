@@ -1,6 +1,6 @@
 use ockam_core::{
     compat::io,
-    compat::string::String,
+    compat::string::{String, ToString},
     errcode::{Kind, Origin},
     Error,
 };
@@ -13,7 +13,7 @@ pub enum TransportError {
     /// Failed to receive a malformed message
     RecvBadMessage,
     /// Failed to bind to the desired socket
-    BindFailed,
+    BindFailed(String),
     /// Connection was dropped unexpectedly
     ConnectionDrop,
     /// Connection was already established
@@ -90,7 +90,7 @@ impl core::fmt::Display for TransportError {
         match self {
             Self::SendBadMessage => write!(f, "failed to send a malformed message"),
             Self::RecvBadMessage => write!(f, "failed to receive a malformed message"),
-            Self::BindFailed => write!(f, "failed to bind to the desired socket"),
+            Self::BindFailed(e) => write!(f, "failed to bind to the desired socket: {e}"),
             Self::ConnectionDrop => write!(f, "connection was dropped unexpectedly"),
             Self::AlreadyConnected => write!(f, "already connected"),
             Self::PeerNotFound => write!(f, "connection peer was not found"),
@@ -144,7 +144,7 @@ impl From<TransportError> for Error {
         let kind = match err {
             SendBadMessage => Kind::Serialization,
             RecvBadMessage => Kind::Serialization,
-            BindFailed => Kind::Io,
+            BindFailed(_) => Kind::Io,
             ConnectionDrop => Kind::Io,
             AlreadyConnected => Kind::Io,
             PeerNotFound => Kind::Misuse,
@@ -186,6 +186,9 @@ impl From<io::Error> for TransportError {
     fn from(e: io::Error) -> Self {
         match e.kind() {
             io::ErrorKind::ConnectionRefused => Self::PeerNotFound,
+            io::ErrorKind::AddrNotAvailable | io::ErrorKind::AddrInUse => {
+                Self::BindFailed(e.to_string())
+            }
             _ => Self::GenericIo,
         }
     }

@@ -244,6 +244,10 @@ pub async fn wait_for_node_callback(
     mut handle: Child,
     node_callback: NodeCallback,
 ) -> miette::Result<()> {
+    debug!(
+        callback_port = node_callback.callback_port(),
+        "waiting for node to be ready"
+    );
     tokio::select! {
         res = handle.wait() => {
             trace!(?res, "node output drained");

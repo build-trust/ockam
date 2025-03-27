@@ -1,5 +1,6 @@
 use miette::{miette, IntoDiagnostic};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use tracing::trace;
 
 /// A callback node should call when it's up and running, implemented via creating a localhost TCP
 /// connection
@@ -20,6 +21,8 @@ impl NodeCallback {
             .local_addr()
             .map_err(|_| miette!("Failed to get callback listener port"))?
             .port();
+
+        trace!(%callback_port, "callback listener created");
 
         Ok(Self {
             tcp_listener,

@@ -74,10 +74,8 @@ impl RemoteWorker {
         //         However, we don't know it here.
         let tcp_listener = TcpListener::bind("127.0.0.1:0")
             .await
-            .map_err(|_| TransportError::BindFailed)?;
-        let local_addr = tcp_listener
-            .local_addr()
-            .map_err(|_| TransportError::BindFailed)?;
+            .map_err(TransportError::from)?;
+        let local_addr = tcp_listener.local_addr().map_err(TransportError::from)?;
         let assigned_port = local_addr.port();
 
         debug!("New TCP connection. Assigned socket {}", local_addr);
