@@ -101,12 +101,6 @@ mod tests {
         let listener = listener.unwrap();
         let local_addr = listener.local_addr().unwrap();
 
-        tokio::spawn(async move {
-            loop {
-                listener.accept().await.unwrap();
-            }
-        });
-
         let stream = connect_mptcp(local_addr).await;
 
         if let Err(err) = stream {
