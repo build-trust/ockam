@@ -110,7 +110,7 @@ async fn handle_tcp_outlet_create(
     match result {
         Ok(outlet_status) => Ok(ControlApiHttpResponse::with_body(
             StatusCode::CREATED,
-            OutletStatus::from(outlet_status),
+            OutletStatus::try_from(outlet_status)?,
         )?),
         Err(error) => match error.code().kind {
             Kind::AlreadyExists => Err(ControlApiHttpResponse::with_body(
@@ -200,11 +200,10 @@ async fn handle_tcp_outlet_update(
 async fn handle_tcp_outlet_list(
     node_manager: &Arc<NodeManager>,
 ) -> Result<ControlApiHttpResponse, ControlApiError> {
-    let outlets: Vec<OutletStatus> = node_manager
-        .list_outlets()
-        .into_iter()
-        .map(OutletStatus::from)
-        .collect();
+    let mut outlets: Vec<OutletStatus> = Vec::new();
+    for status in node_manager.list_outlets() {
+        outlets.push(OutletStatus::try_from(status)?);
+    }
     Ok(ControlApiHttpResponse::with_body(StatusCode::OK, outlets)?)
 }
 
@@ -233,7 +232,7 @@ async fn handle_tcp_outlet_get(
         None => ControlApiHttpResponse::not_found("Outlet not found"),
         Some(status) => Ok(ControlApiHttpResponse::with_body(
             StatusCode::OK,
-            OutletStatus::from(status),
+            OutletStatus::try_from(status)?,
         )?),
     }
 }
@@ -269,7 +268,7 @@ async fn handle_tcp_outlet_delete(
 #[cfg(test)]
 mod test {
     use crate::control_api::http::{ControlApiHttpRequest, ControlApiHttpResponse};
-    use crate::control_api::protocol::common::{ErrorResponse, HostPort};
+    use crate::control_api::protocol::common::{ErrorResponse, HostPortRequest};
     use crate::control_api::protocol::outlet::{CreateOutletRequest, OutletKind, OutletStatus};
     use crate::test_utils::start_manager_for_tests;
     use crate::DefaultAddress;
@@ -294,7 +293,7 @@ mod test {
                 serde_json::to_vec(&CreateOutletRequest {
                     kind: OutletKind::Regular,
                     name: Some("outlet-address".to_string()),
-                    to: HostPort {
+                    to: HostPortRequest {
                         host: "127.0.0.1".to_string(),
                         port: 1234,
                     },
@@ -314,8 +313,9 @@ mod test {
         assert_eq!(response.status, 201);
 
         let outlet_status: OutletStatus = serde_json::from_slice(response.body.as_slice()).unwrap();
-        assert_eq!(outlet_status.name, "outlet-address");
-        assert_eq!(outlet_status.to, "127.0.0.1:1234");
+        assert_eq!(outlet_status.address, "outlet-address");
+        assert_eq!(outlet_status.to.host, "127.0.0.1");
+        assert_eq!(outlet_status.to.port, 1234);
         assert!(!outlet_status.privileged);
 
         let request = ControlApiHttpRequest {
@@ -333,8 +333,9 @@ mod test {
         assert_eq!(response.status, 200);
 
         let outlet_status: OutletStatus = serde_json::from_slice(response.body.as_slice()).unwrap();
-        assert_eq!(outlet_status.name, "outlet-address");
-        assert_eq!(outlet_status.to, "127.0.0.1:1234");
+        assert_eq!(outlet_status.address, "outlet-address");
+        assert_eq!(outlet_status.to.host, "127.0.0.1");
+        assert_eq!(outlet_status.to.port, 1234);
         assert!(!outlet_status.privileged);
 
         let request = ControlApiHttpRequest {
@@ -353,8 +354,9 @@ mod test {
 
         let outlets: Vec<OutletStatus> = serde_json::from_slice(response.body.as_slice()).unwrap();
         assert_eq!(outlets.len(), 1);
-        assert_eq!(outlets[0].name, "outlet-address");
-        assert_eq!(outlet_status.to, "127.0.0.1:1234");
+        assert_eq!(outlets[0].address, "outlet-address");
+        assert_eq!(outlets[0].to.host, "127.0.0.1");
+        assert_eq!(outlets[0].to.port, 1234);
         assert!(!outlets[0].privileged);
 
         let request = ControlApiHttpRequest {

@@ -1,4 +1,4 @@
-use crate::control_api::protocol::common::HostPort;
+use crate::control_api::protocol::common::{HostPortRequest, HostPortResponse};
 use crate::control_api::ControlApiError;
 use ockam_abac::PolicyExpression;
 use ockam_core::Address;
@@ -43,7 +43,7 @@ pub struct CreateOutletRequest {
     /// Network address where your application is listening to, in the format `<host>:<port>`.
     /// Your TCP Outlet will forward raw TCP traffic to this destination.
     #[schema(example = "dev.environment:1234")]
-    pub to: HostPort,
+    pub to: HostPortRequest,
 
     /// The TLS configuration for the TCP Outlet.
     #[serde(default)]
@@ -115,8 +115,11 @@ pub struct UpdateOutletRequest {
 #[serde(rename_all = "kebab-case")]
 pub struct OutletStatus {
     /// Network address of the TCP Outlet, in the format `<host>:<port>`.
-    #[schema(example = "dev.environment:1234")]
-    pub to: String,
+    pub to: HostPortResponse,
+    /// Name, or service address, of the TCP Outlet.
+    /// It acts as the identifier of the TCP Outlet within the node.
+    #[schema(example = "my-outlet", deprecated)]
+    pub address: String,
     /// Name, or service address, of the TCP Outlet.
     /// It acts as the identifier of the TCP Outlet within the node.
     #[schema(example = "my-outlet")]
@@ -125,12 +128,19 @@ pub struct OutletStatus {
     pub privileged: bool,
 }
 
-impl From<crate::nodes::models::portal::OutletStatus> for OutletStatus {
-    fn from(status: crate::nodes::models::portal::OutletStatus) -> Self {
-        OutletStatus {
-            to: status.to.to_string(),
+impl TryFrom<crate::nodes::models::portal::OutletStatus> for OutletStatus {
+    type Error = ockam_core::Error;
+
+    fn try_from(status: crate::nodes::models::portal::OutletStatus) -> Result<Self, Self::Error> {
+        let to = HostPortResponse {
+            host: status.to.hostname,
+            port: status.to.port,
+        };
+        Ok(OutletStatus {
+            to,
+            address: status.worker_address.address().to_string(),
             name: status.worker_address.address().to_string(),
             privileged: status.privileged,
-        }
+        })
     }
 }

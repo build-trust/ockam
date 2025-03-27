@@ -154,14 +154,33 @@ teardown() {
   "
   wait_for_port $api_port
 
+  # create outlet with deprecated fields and delete it
+  run_success curl -vf \
+    -X POST \
+    -H 'Authorization: Bearer token' \
+    -d "{\"kind\":\"regular\",\"address\":\"outlet1\",\"to\":{\"hostname\":\"localhost\", \"port\":$PYTHON_SERVER_PORT}}" \
+    -o outlet-creation.json \
+    "http://localhost:${api_port}/self/tcp-outlets"
+  run_success sh -c "cat outlet-creation.json | jq -rc .name"
+  assert_output "outlet1"
+  run_success sh -c "cat outlet-creation.json | jq -rc .address" # Deprecated field is still returned
+  assert_output "outlet1"
+
+  run_success curl -vf \
+    -X DELETE \
+    -H 'Authorization: Bearer token' \
+    "http://localhost:${api_port}/self/tcp-outlets/outlet1"
+
   # create outlet
   run_success curl -vf \
     -X POST \
     -H 'Authorization: Bearer token' \
-    -d "{\"kind\":\"regular\",\"address\":\"my-outlet\",\"to\":{\"hostname\":\"localhost\", \"port\":$PYTHON_SERVER_PORT}}" \
+    -d "{\"kind\":\"regular\",\"name\":\"my-outlet\",\"to\":\"localhost:$PYTHON_SERVER_PORT\"}" \
     -o outlet-creation.json \
     "http://localhost:${api_port}/self/tcp-outlets"
-  run_success sh -c "cat outlet-creation.json | jq -rc .address"
+  run_success sh -c "cat outlet-creation.json | jq -rc .name"
+  assert_output "my-outlet"
+  run_success sh -c "cat outlet-creation.json | jq -rc .address" # Deprecated field is still returned
   assert_output "my-outlet"
 
   # verify that the outlet can be retrieved
@@ -169,7 +188,7 @@ teardown() {
     -H 'Authorization: Bearer token' \
     -o outlet.json \
     "http://localhost:${api_port}/self/tcp-outlets/my-outlet"
-  run_success sh -c "cat outlet.json | jq -rc .address"
+  run_success sh -c "cat outlet.json | jq -rc .name"
   assert_output "my-outlet"
 
   # verify that the outlet is listed
@@ -177,8 +196,20 @@ teardown() {
     -H 'Authorization: Bearer token' \
     -o outlet-list.json \
     "http://localhost:${api_port}/self/tcp-outlets"
-  run_success sh -c "cat outlet-list.json | jq -rc .[0].address"
+  run_success sh -c "cat outlet-list.json | jq -rc .[0].name"
   assert_output "my-outlet"
+
+  # create inlet with deprecated fields and delete it
+  run_success curl -vf \
+    -X POST \
+    -H 'Authorization: Bearer token' \
+    -d "{\"from\":\"127.0.0.1:0\",\"kind\":\"regular\",\"name\":\"inlet1\",\"to\":\"/secure/api/service/my-outlet\"}" \
+    -o inlet-creation.json \
+    "http://localhost:${api_port}/self/tcp-inlets"
+  run_success curl -vf \
+    -X DELETE \
+    -H 'Authorization: Bearer token' \
+    "http://localhost:${api_port}/self/tcp-inlets/inlet1"
 
   # create inlet
   run_success curl -vf \
