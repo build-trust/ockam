@@ -17,6 +17,7 @@ use ockam_api::colors::{color_error, color_primary};
 use ockam_api::nodes::models::transport::{BindAddress, Port};
 use ockam_api::terminal::notification::NotificationHandler;
 use ockam_api::{fmt_log, fmt_ok};
+use ockam_core::env::parse_duration;
 use ockam_core::{opentelemetry_context_parser, OpenTelemetryContext};
 use ockam_node::Context;
 use opentelemetry::trace::TraceContextExt;
@@ -24,6 +25,7 @@ use opentelemetry::KeyValue;
 use regex::Regex;
 use std::fmt::Write;
 use std::net::Ipv4Addr;
+use std::time::Duration;
 use std::{path::PathBuf, str::FromStr};
 use tracing::{instrument, Level};
 
@@ -162,6 +164,11 @@ pub struct CreateCommand {
     /// the parent process
     #[arg(hide = true, long)]
     pub tcp_callback_port: Option<u16>,
+
+    /// Delay before shutting down the node, needed in Kubernetes to allow the node to
+    /// handle existing requests before shutting down.
+    #[arg(hide = true, long, value_name = "DURATION", value_parser = parse_duration)]
+    pub shutdown_delay: Option<Duration>,
 }
 
 impl Default for CreateCommand {
@@ -194,6 +201,7 @@ impl Default for CreateCommand {
             },
             in_memory: false,
             tcp_callback_port: None,
+            shutdown_delay: None,
         }
     }
 }

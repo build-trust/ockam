@@ -2,6 +2,7 @@ use crate::node::create::DEFAULT_NODE_NAME;
 use crate::node::CreateCommand;
 use crate::service::config::ControlApiNodeResolution;
 use crate::util::foreground_args::wait_for_exit_signal;
+use crate::util::parsers::duration_to_human_format;
 use crate::CommandGlobalOpts;
 use miette::miette;
 use miette::IntoDiagnostic;
@@ -150,6 +151,16 @@ impl CreateCommand {
             "To exit and stop the Node, please press Ctrl+C\n",
         )
         .await?;
+
+        // this is needed in kubernetes to handle pending requests after the pod has
+        // been marked for deletion
+        if let Some(shutdown_delay) = self.shutdown_delay {
+            opts.terminal.clone().write_line(fmt_log!(
+                "Waiting for {} seconds before terminating the node",
+                duration_to_human_format(&shutdown_delay),
+            ))?;
+            sleep(shutdown_delay).await;
+        }
 
         // Clean up and exit
         let _ = opts.state.stop_node(&node_name).await;

@@ -77,6 +77,7 @@ pub fn spawn_node(opts: &CommandGlobalOpts, cmd: CreateCommand) -> miette::Resul
         opentelemetry_context,
         in_memory,
         tcp_callback_port,
+        shutdown_delay,
     } = cmd;
 
     let mut args = vec![
@@ -180,6 +181,11 @@ pub fn spawn_node(opts: &CommandGlobalOpts, cmd: CreateCommand) -> miette::Resul
     if let Some(authority_route) = trust_opts.authority_route {
         args.push("--authority-route".to_string());
         args.push(authority_route.to_string());
+    }
+
+    if let Some(shutdown_delay) = shutdown_delay {
+        args.push("--shutdown-delay".to_string());
+        args.push(format!("{}ms", shutdown_delay.as_millis()));
     }
 
     if let Some(opentelemetry_context) = opentelemetry_context {
