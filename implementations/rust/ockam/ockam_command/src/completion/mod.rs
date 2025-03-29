@@ -3,6 +3,7 @@ use std::io;
 use clap::{Args, CommandFactory};
 use clap_complete::{generate, Shell};
 
+use crate::branding::BrandingCompileEnvVars;
 use crate::{docs, OckamCommand};
 
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
@@ -28,7 +29,7 @@ impl CompletionCommand {
         generate(
             self.shell,
             &mut OckamCommand::command(),
-            "ockam",
+            BrandingCompileEnvVars::bin_name(),
             &mut io::stdout(),
         );
         Ok(())

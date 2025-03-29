@@ -18,7 +18,7 @@ INPUT=$(jq "." $1)
 # "adler 1.0.2 registry+https://github.com/rust-lang/crates.io-index"
 regex="(.*) [0-9]+\.[0-9]+\.[0-9]+ \(*(.*)\+(.*)"
 
-declare -A crates
+crates=()
 
 while IFS= read -r key; do
   if [[ $key =~ $regex ]]; then
@@ -28,11 +28,21 @@ while IFS= read -r key; do
     url=${BASH_REMATCH[3]}
     license=$(jq --arg key "$key" --raw-output '.[$key].licenses | join(", ")' <<<$INPUT)
 
-    if [[ ! -z ${crates[$crate_name]} ]]; then
+    # Check if crate_name is a duplicate
+    duplicate=false
+    for crate in "${crates[@]}"; do
+      if [[ "$crate" == "$crate_name" ]]; then
+        duplicate=true
+        break
+      fi
+    done
+
+    if [[ "$duplicate" == true ]]; then
       continue
     fi
 
-    crates[$crate_name]='true'
+    # Add crate_name to the list of processed crates
+    crates+=("$crate_name")
 
     # Strip URL of trailing )
     url="${url//\)/}"

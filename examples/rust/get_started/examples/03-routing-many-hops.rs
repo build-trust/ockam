@@ -9,12 +9,12 @@ async fn main(ctx: Context) -> Result<()> {
     let mut node = node(ctx).await?;
 
     // Start an Echoer worker at address "echoer"
-    node.start_worker("echoer", Echoer).await?;
+    node.start_worker("echoer", Echoer)?;
 
     // Start 3 hop workers at addresses "h1", "h2" and "h3".
-    node.start_worker("h1", Hop).await?;
-    node.start_worker("h2", Hop).await?;
-    node.start_worker("h3", Hop).await?;
+    node.start_worker("h1", Hop)?;
+    node.start_worker("h2", Hop)?;
+    node.start_worker("h3", Hop)?;
 
     // Send a message to the echoer worker via the "h1", "h2", and "h3" workers
     let r = route!["h1", "h2", "h3", "echoer"];
@@ -25,5 +25,5 @@ async fn main(ctx: Context) -> Result<()> {
     println!("App Received: {}", reply.into_body()?); // should print "Hello Ockam!"
 
     // Stop all workers, stop the node, cleanup and return.
-    node.stop().await
+    node.shutdown().await
 }

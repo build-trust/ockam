@@ -2,73 +2,81 @@ use chrono::Utc;
 use ockam_api::cli_state::journeys::{
     JourneyEvent, APPLICATION_EVENT_TIMESTAMP, EVENT_DURATION, USER_EMAIL, USER_NAME,
 };
-use ockam_api::logs::{ExportingConfiguration, LoggingConfiguration, LoggingTracing};
+use ockam_api::cli_state::{random_name, CliStateMode};
+use ockam_api::logs::{
+    get_https_endpoint, ExportingConfiguration, ExportingEnabled, LoggingConfiguration,
+    LoggingTracing,
+};
 use ockam_api::CliState;
-use ockam_node::Executor;
-use opentelemetry::global;
-use opentelemetry::trace::{FutureExt, Tracer};
+use opentelemetry::trace::{FutureExt, TraceContextExt, Tracer};
+use opentelemetry::{global, Context};
 use opentelemetry_sdk::export::trace::SpanData;
-use opentelemetry_sdk::testing::logs::InMemoryLogsExporter;
+use opentelemetry_sdk::testing::logs::InMemoryLogExporter;
 use opentelemetry_sdk::testing::trace::InMemorySpanExporter;
 use std::collections::HashMap;
 use std::ops::Add;
-
-use ockam_api::cli_state::random_name;
+use std::sync::Arc;
 use tempfile::NamedTempFile;
 
 /// This test needs to be an integration test
 /// It needs to run in isolation because
 /// it sets up some global spans / logs exporters that might interact with other tests
-#[test]
-fn test_create_journey_event() {
-    let spans_exporter = InMemorySpanExporter::default();
-    let logs_exporter = InMemoryLogsExporter::default();
+#[tokio::test]
+async fn test_create_journey_event() {
+    let db_file = NamedTempFile::new().unwrap();
+    let cli_state_directory = db_file.path().parent().unwrap().join(random_name());
+    let cli_state = Arc::new(
+        CliState::create(CliStateMode::Persistent(cli_state_directory))
+            .await
+            .unwrap()
+            .set_tracing_enabled(true),
+    );
 
+    let span_exporter = InMemorySpanExporter::default();
+    let log_exporter = InMemoryLogExporter::default();
+    let endpoint = get_https_endpoint().unwrap();
     let tracing_guard = LoggingTracing::setup_with_exporters(
-        spans_exporter.clone(),
-        logs_exporter.clone(),
+        cli_state.clone(),
+        span_exporter.clone(),
+        log_exporter.clone(),
         &LoggingConfiguration::off()
             .unwrap()
             .set_crates(&["ockam_api"]),
-        &ExportingConfiguration::foreground().unwrap(),
+        &ExportingConfiguration::make_foreground_exporting_configuration(
+            endpoint,
+            ExportingEnabled::Off,
+        )
+        .unwrap(),
         "test",
-        None,
+        Some("node-name".into()),
     );
     let tracer = global::tracer("ockam-test");
-    let result = tracer.in_span("user event", |cx| {
-        let _guard = cx.with_value(Utc::now()).attach();
+    let span = tracer.start("user event");
+    let cx = Context::current_with_span(span);
 
-        Executor::execute_future(
-            async move {
-                let db_file = NamedTempFile::new().unwrap();
-                let cli_state_directory = db_file.path().parent().unwrap().join(random_name());
-                let cli = CliState::create(cli_state_directory)
-                    .await
-                    .unwrap()
-                    .set_tracing_enabled(true);
+    let _guard = cx.with_value(Utc::now()).attach();
 
-                let mut map = HashMap::new();
-                map.insert(USER_EMAIL, "etorreborre@yahoo.com".to_string());
-                map.insert(USER_NAME, "eric".to_string());
-                cli.add_journey_event(JourneyEvent::Enrolled, map.clone())
-                    .await
-                    .unwrap();
-                cli.add_journey_event(JourneyEvent::PortalCreated, map)
-                    .await
-                    .unwrap();
-                cli.add_journey_error("command", "sorry".to_string(), HashMap::default())
-                    .await
-                    .unwrap();
-            }
-            .with_current_context(),
-        )
-    });
-    if let Err(e) = result {
-        panic!("{e:?}");
-    }
+    let mut map = HashMap::new();
+    map.insert(USER_EMAIL, "etorreborre@yahoo.com".to_string());
+    map.insert(USER_NAME, "eric".to_string());
+    cli_state
+        .add_journey_event(JourneyEvent::Enrolled, map.clone())
+        .with_context(cx.clone())
+        .await
+        .unwrap();
+    cli_state
+        .add_journey_event(JourneyEvent::PortalCreated, map)
+        .with_context(cx.clone())
+        .await
+        .unwrap();
+    cli_state
+        .add_journey_error("command", "sorry".to_string(), HashMap::default())
+        .with_context(cx.clone())
+        .await
+        .unwrap();
 
-    tracing_guard.force_flush();
-    let mut spans = spans_exporter.get_finished_spans().unwrap();
+    tracing_guard.force_flush().await;
+    let mut spans = span_exporter.get_finished_spans().unwrap();
     spans.sort_by_key(|s| s.start_time);
 
     // keep only application events

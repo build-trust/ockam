@@ -2,7 +2,7 @@
 
 use crate::config::lookup::InternetAddress;
 use crate::nodes::service::{NodeManagerCredentialRetrieverOptions, NodeManagerTrustOptions};
-use ockam_node::{Context, NodeBuilder};
+use ockam_node::{Context, Executor, NodeBuilder};
 use sqlx::__rt::timeout;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::ops::Deref;
@@ -20,7 +20,7 @@ use ockam::identity::SecureChannels;
 use ockam::tcp::{TcpListenerOptions, TcpTransport};
 use ockam::transport::HostnamePort;
 use ockam::Result;
-use ockam_core::AsyncTryClone;
+use ockam_core::TryClone;
 use ockam_node::database::{DatabaseConfiguration, SqlxDatabase};
 
 use crate::authenticator::credential_issuer::{DEFAULT_CREDENTIAL_VALIDITY, PROJECT_MEMBER_SCHEMA};
@@ -35,10 +35,11 @@ use crate::nodes::{NodeManagerWorker, NODEMANAGER_ADDR};
 ///   temporary directory, and possibly of sub-processes.
 /// - useful access to the NodeManager
 pub struct NodeManagerHandle {
-    pub cli_state: CliState,
+    pub cli_state: Arc<CliState>,
     pub node_manager: Arc<InMemoryNode>,
-    pub tcp: TcpTransport,
+    pub tcp: Arc<TcpTransport>,
     pub secure_channels: Arc<SecureChannels>,
+    pub bind_address: SocketAddr,
 }
 
 impl Drop for NodeManagerHandle {
@@ -55,22 +56,22 @@ impl Drop for NodeManagerHandle {
 /// things *will* break.
 pub async fn start_manager_for_tests(
     context: &mut Context,
-    bind_addr: Option<&str>,
+    bind_address: Option<&str>,
     trust_options: Option<NodeManagerTrustOptions>,
 ) -> Result<NodeManagerHandle> {
-    let tcp = TcpTransport::create(context).await?;
+    let tcp = TcpTransport::get_or_create(context)?;
     let tcp_listener = tcp
         .listen(
-            bind_addr.unwrap_or("127.0.0.1:0"),
+            bind_address.unwrap_or("127.0.0.1:0"),
             TcpListenerOptions::new(),
         )
         .await?;
 
-    let cli_state = CliState::system().await?;
+    let cli_state = Arc::new(CliState::system().await?);
 
     let node_name = random_name();
     cli_state
-        .start_node_with_optional_values(&node_name, &None, &None, Some(&tcp_listener))
+        .start_node_with_optional_values(&node_name, &None, Some(&tcp_listener))
         .await
         .unwrap();
 
@@ -98,7 +99,7 @@ pub async fn start_manager_for_tests(
         NodeManagerGeneralOptions::new(cli_state.clone(), node_name, true, None, false),
         NodeManagerTransportOptions::new_tcp(
             tcp_listener.flow_control_id().clone(),
-            tcp.async_try_clone().await?,
+            tcp.try_clone()?,
         ),
         trust_options.unwrap_or_else(|| {
             NodeManagerTrustOptions::new(
@@ -114,16 +115,15 @@ pub async fn start_manager_for_tests(
     let node_manager = Arc::new(node_manager);
     let node_manager_worker = NodeManagerWorker::new(node_manager.clone());
 
-    context
-        .start_worker(NODEMANAGER_ADDR, node_manager_worker)
-        .await?;
+    context.start_worker(NODEMANAGER_ADDR, node_manager_worker)?;
 
     let secure_channels = node_manager.secure_channels();
     let handle = NodeManagerHandle {
         cli_state,
         node_manager,
-        tcp: tcp.async_try_clone().await?,
+        tcp: tcp.try_clone()?,
         secure_channels,
+        bind_address: *tcp_listener.socket_address(),
     };
 
     Ok(handle)
@@ -199,6 +199,7 @@ pub async fn start_tcp_echo_server() -> EchoServerHandle {
 }
 
 pub struct TestNode {
+    pub executor: Executor,
     pub context: Context,
     pub node_manager_handle: NodeManagerHandle,
 }
@@ -208,19 +209,17 @@ impl TestNode {
     /// needs be cleaned-up before a test is executed
     pub async fn clean() -> Result<()> {
         if let Some(configuration) = DatabaseConfiguration::postgres()? {
-            let db = SqlxDatabase::create_no_migration(&configuration)
-                .await
-                .unwrap();
+            let db = SqlxDatabase::create_no_migration(&configuration).await?;
             db.drop_all_postgres_tables().await?;
         };
         Ok(())
     }
 
     pub async fn create(runtime: Arc<Runtime>, listen_addr: Option<&str>) -> Self {
-        let (mut context, mut executor) = NodeBuilder::new().with_runtime(runtime.clone()).build();
-        runtime.spawn(async move {
-            executor.start_router().await.expect("cannot start router");
-        });
+        let (mut context, executor) = NodeBuilder::new()
+            .with_runtime(runtime)
+            .no_logging()
+            .build();
         let node_manager_handle = start_manager_for_tests(
             &mut context,
             listen_addr,
@@ -235,6 +234,7 @@ impl TestNode {
         .expect("cannot start node manager");
 
         Self {
+            executor,
             context,
             node_manager_handle,
         }

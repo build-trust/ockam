@@ -5,6 +5,8 @@ use create::CreateCommand;
 
 use crate::{docs, CommandGlobalOpts};
 
+use ockam_node::Context;
+
 mod create;
 
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
@@ -22,9 +24,9 @@ pub struct AuthorityCommand {
 }
 
 impl AuthorityCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
-            AuthoritySubcommand::Create(c) => c.run(opts),
+            AuthoritySubcommand::Create(c) => c.run(ctx, opts).await,
         }
     }
 

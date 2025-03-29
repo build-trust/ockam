@@ -17,9 +17,7 @@ async fn connect__unavailable__should_fail(ctx: &mut Context) -> Result<()> {
         MockReplacer::default(),
     ));
 
-    let session_ctx = ctx
-        .new_detached(Address::random_tagged("Session.ctx"), DenyAll, AllowAll)
-        .await?;
+    let session_ctx = ctx.new_detached(Address::random_tagged("Session.ctx"), DenyAll, AllowAll)?;
 
     // Create a new Session instance
     let mut session = Session::new(
@@ -45,8 +43,7 @@ async fn connect__unavailable__should_fail(ctx: &mut Context) -> Result<()> {
         .load(Ordering::Relaxed));
 
     // Session relies on echo to verify if a session is alive
-    ctx.start_worker(Address::from_string("echo"), MockEchoer::new())
-        .await?;
+    ctx.start_worker(Address::from_string("echo"), MockEchoer::new())?;
 
     mock_replacer
         .lock()
@@ -67,9 +64,7 @@ async fn connect__available__should_succeed(ctx: &mut Context) -> Result<()> {
         MockReplacer::default(),
     ));
 
-    let session_ctx = ctx
-        .new_detached(Address::random_tagged("Session.ctx"), DenyAll, AllowAll)
-        .await?;
+    let session_ctx = ctx.new_detached(Address::random_tagged("Session.ctx"), DenyAll, AllowAll)?;
 
     // Create a new Session instance
     let mut session = Session::new(
@@ -81,8 +76,7 @@ async fn connect__available__should_succeed(ctx: &mut Context) -> Result<()> {
     );
 
     // Session relies on echo to verify if a session is alive
-    ctx.start_worker(Address::from_string("echo"), MockEchoer::new())
-        .await?;
+    ctx.start_worker(Address::from_string("echo"), MockEchoer::new())?;
 
     let res = session.initial_connect().await;
     assert!(res.is_ok());
@@ -97,9 +91,7 @@ async fn start_monitoring__available__should_be_up_fast(ctx: &mut Context) -> Re
         MockReplacer::default(),
     ));
 
-    let session_ctx = ctx
-        .new_detached(Address::random_tagged("Session.ctx"), DenyAll, AllowAll)
-        .await?;
+    let session_ctx = ctx.new_detached(Address::random_tagged("Session.ctx"), DenyAll, AllowAll)?;
 
     // Create a new Session instance
     let mut session = Session::new(
@@ -111,21 +103,14 @@ async fn start_monitoring__available__should_be_up_fast(ctx: &mut Context) -> Re
     );
 
     // Session relies on echo to verify if a session is alive
-    ctx.start_worker(Address::from_string("echo"), MockEchoer::new())
-        .await?;
+    ctx.start_worker(Address::from_string("echo"), MockEchoer::new())?;
 
-    assert!(
-        !ctx.is_worker_registered_at(session.collector_address().clone())
-            .await?
-    );
+    assert!(!ctx.is_worker_registered_at(session.collector_address())?);
 
     // Start the Session in a separate task
-    session.start_monitoring().await?;
+    session.start_monitoring()?;
 
-    assert!(
-        ctx.is_worker_registered_at(session.collector_address().clone())
-            .await?
-    );
+    assert!(ctx.is_worker_registered_at(session.collector_address())?);
 
     let mut time_to_restore = 0;
 
@@ -172,9 +157,7 @@ async fn start_monitoring__temporary_unavailable__should_eventually_be_up(
         MockReplacer::default(),
     ));
 
-    let session_ctx = ctx
-        .new_detached(Address::random_tagged("Session.ctx"), DenyAll, AllowAll)
-        .await?;
+    let session_ctx = ctx.new_detached(Address::random_tagged("Session.ctx"), DenyAll, AllowAll)?;
 
     // Create a new Session instance
     let mut session = Session::new(
@@ -186,8 +169,7 @@ async fn start_monitoring__temporary_unavailable__should_eventually_be_up(
     );
 
     // Session relies on echo to verify if a session is alive
-    ctx.start_worker(Address::from_string("echo"), MockEchoer::new())
-        .await?;
+    ctx.start_worker(Address::from_string("echo"), MockEchoer::new())?;
 
     mock_replacer
         .lock()
@@ -196,7 +178,7 @@ async fn start_monitoring__temporary_unavailable__should_eventually_be_up(
         .store(false, Ordering::Relaxed);
 
     // Start the Session in a separate task
-    session.start_monitoring().await?;
+    session.start_monitoring()?;
 
     ctx.sleep(Duration::from_millis(250)).await;
 
@@ -248,9 +230,7 @@ async fn start_monitoring__go_down__should_notice(ctx: &mut Context) -> Result<(
         MockReplacer::default(),
     ));
 
-    let session_ctx = ctx
-        .new_detached(Address::random_tagged("Session.ctx"), DenyAll, AllowAll)
-        .await?;
+    let session_ctx = ctx.new_detached(Address::random_tagged("Session.ctx"), DenyAll, AllowAll)?;
 
     // Create a new Session instance
     let mut session = Session::new(
@@ -264,13 +244,12 @@ async fn start_monitoring__go_down__should_notice(ctx: &mut Context) -> Result<(
     // Session relies on echo to verify if a session is alive
     let echoer = MockEchoer::new();
     let echoer_responsive = echoer.responsive.clone();
-    ctx.start_worker(Address::from_string("echo"), echoer)
-        .await?;
+    ctx.start_worker(Address::from_string("echo"), echoer)?;
 
     session.initial_connect().await?;
 
     // Start the Session in a separate task
-    session.start_monitoring().await?;
+    session.start_monitoring()?;
 
     ctx.sleep(Duration::from_secs(5)).await;
 
@@ -315,9 +294,7 @@ async fn start_monitoring__packet_lost__should_be_up(ctx: &mut Context) -> Resul
         MockReplacer::default(),
     ));
 
-    let session_ctx = ctx
-        .new_detached(Address::random_tagged("Session.ctx"), DenyAll, AllowAll)
-        .await?;
+    let session_ctx = ctx.new_detached(Address::random_tagged("Session.ctx"), DenyAll, AllowAll)?;
 
     // Create a new Session instance
     let mut session = Session::new(
@@ -331,15 +308,14 @@ async fn start_monitoring__packet_lost__should_be_up(ctx: &mut Context) -> Resul
     // Session relies on echo to verify if a session is alive
     let echoer = MockEchoer::new();
     let echoer_drop_every = echoer.drop_every.clone();
-    ctx.start_worker(Address::from_string("echo"), echoer)
-        .await?;
+    ctx.start_worker(Address::from_string("echo"), echoer)?;
 
     echoer_drop_every.store(2, Ordering::Relaxed);
 
     session.initial_connect().await?;
 
     // Start the Session in a separate task
-    session.start_monitoring().await?;
+    session.start_monitoring()?;
 
     for _ in 0..100 {
         assert!(session.last_outcome().is_some());
@@ -364,9 +340,7 @@ async fn start_monitoring__unstable_connection__should_be_resilient(
         MockReplacer::default(),
     ));
 
-    let session_ctx = ctx
-        .new_detached(Address::random_tagged("Session.ctx"), DenyAll, AllowAll)
-        .await?;
+    let session_ctx = ctx.new_detached(Address::random_tagged("Session.ctx"), DenyAll, AllowAll)?;
 
     // Create a new Session instance
     let mut session = Session::new(
@@ -380,13 +354,12 @@ async fn start_monitoring__unstable_connection__should_be_resilient(
     // Session relies on echo to verify if a session is alive
     let echoer = MockEchoer::new();
     let echoer_responsive = echoer.responsive.clone();
-    ctx.start_worker(Address::from_string("echo"), echoer)
-        .await?;
+    ctx.start_worker(Address::from_string("echo"), echoer)?;
 
     session.initial_connect().await?;
 
     // Start the Session in a separate task
-    session.start_monitoring().await?;
+    session.start_monitoring()?;
 
     for _ in 0..5 {
         echoer_responsive.store(false, Ordering::Relaxed);

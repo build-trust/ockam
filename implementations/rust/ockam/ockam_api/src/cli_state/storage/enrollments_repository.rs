@@ -1,5 +1,5 @@
 use crate::cli_state::enrollments::IdentityEnrollment;
-use crate::cloud::email_address::EmailAddress;
+use crate::orchestrator::email_address::EmailAddress;
 use ockam::identity::Identifier;
 use ockam_core::async_trait;
 use ockam_core::Result;

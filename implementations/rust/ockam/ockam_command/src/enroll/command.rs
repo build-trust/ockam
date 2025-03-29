@@ -13,26 +13,25 @@ use r3bl_tui::{
 };
 use tokio::sync::Mutex;
 use tokio::try_join;
-use tracing::{error, info, instrument, warn};
+use tracing::{error, info, instrument, warn, Level};
 
 use crate::enroll::OidcServiceExt;
 use crate::error::Error;
 use crate::operation::util::check_for_project_completion;
 use crate::project::util::check_project_readiness;
-use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts, Result};
 use ockam::Context;
 use ockam_api::cli_state::journeys::{JourneyEvent, USER_EMAIL, USER_NAME};
-use ockam_api::cloud::enroll::auth0::*;
-use ockam_api::cloud::project::Project;
-use ockam_api::cloud::project::ProjectsOrchestratorApi;
-use ockam_api::cloud::space::{Space, Spaces};
-use ockam_api::cloud::subscription::SUBSCRIPTION_PAGE;
-use ockam_api::cloud::ControllerClient;
 use ockam_api::colors::{color_primary, color_uri, color_warn, OckamColor};
 use ockam_api::enroll::enrollment::{EnrollStatus, Enrollment};
 use ockam_api::enroll::oidc_service::OidcService;
 use ockam_api::nodes::InMemoryNode;
+use ockam_api::orchestrator::enroll::auth0::*;
+use ockam_api::orchestrator::project::Project;
+use ockam_api::orchestrator::project::ProjectsOrchestratorApi;
+use ockam_api::orchestrator::space::{Space, Spaces};
+use ockam_api::orchestrator::subscription::subscription_page;
+use ockam_api::orchestrator::ControllerClient;
 use ockam_api::terminal::notification::NotificationHandler;
 use ockam_api::{fmt_err, fmt_log, fmt_ok, fmt_warn};
 use ockam_api::{fmt_separator, CliState};
@@ -40,19 +39,21 @@ use ockam_api::{fmt_separator, CliState};
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/after_long_help.txt");
 
-/// Enroll your Ockam Identity with Ockam Orchestrator
 #[derive(Clone, Debug, Args)]
 #[command(
+about = docs::about("Enroll your Ockam Identity with Ockam Orchestrator"),
 long_about = docs::about(LONG_ABOUT),
 after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct EnrollCommand {
-    /// The name of an existing Ockam Identity that you wish to enroll.
-    /// You can use `ockam identity list` to get a list of existing Identities.
-    /// To create a new Identity, use `ockam identity create`.
-    /// If you don't specify an Identity name, and you don't have a default Identity, this command
-    /// will create a default Identity for you and save it locally in the default Vault
     #[arg(global = true, value_name = "IDENTITY_NAME", long)]
+    #[arg(help = docs::about("\
+    The name of an existing Ockam Identity that you wish to enroll. \
+    You can use `ockam identity list` to get a list of existing Identities. \
+    To create a new Identity, use `ockam identity create`. \
+    If you don't specify an Identity name, and you don't have a default Identity, this command \
+    will create a default Identity for you and save it locally in the default Vault
+    "))]
     pub identity: Option<String>,
 
     /// This option allows you to bypass pasting the one-time code and confirming device
@@ -78,17 +79,11 @@ pub struct EnrollCommand {
 }
 
 impl EnrollCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |ctx| async move {
-            self.async_run(&ctx, opts).await
-        })
-    }
-
     pub fn name(&self) -> String {
         "enroll".to_string()
     }
 
-    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         if opts.global_args.output_format().is_json() {
             return Err(miette::miette!(
             "This command is interactive and requires you to open a web browser to complete enrollment. \
@@ -107,11 +102,11 @@ impl EnrollCommand {
         authorization_code_flow = % self.authorization_code_flow,
         force = % self.force,
         skip_orchestrator_resources_creation = % self.skip_orchestrator_resources_creation,
-        ))]
+        ), level = Level::TRACE)]
     async fn run_impl(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         ctrlc_handler(opts.clone());
 
-        if self.is_already_enrolled(&opts.state, &opts).await? {
+        if self.is_already_enrolled(opts.state.clone(), &opts).await? {
             return Ok(());
         }
 
@@ -119,7 +114,7 @@ impl EnrollCommand {
 
         let identity = {
             let _notification_handler =
-                NotificationHandler::start(&opts.state, opts.terminal.clone());
+                NotificationHandler::start(opts.state.clone(), opts.terminal.clone());
             opts.state
                 .get_named_identity_or_default(&self.identity)
                 .await?
@@ -127,8 +122,9 @@ impl EnrollCommand {
 
         let identity_name = identity.name();
         let identifier = identity.identifier();
-        let node = InMemoryNode::start_with_identity(ctx, &opts.state, Some(identity_name.clone()))
-            .await?;
+        let node =
+            InMemoryNode::start_with_identity(ctx, opts.state.clone(), Some(identity_name.clone()))
+                .await?;
 
         let user_info = self.enroll_identity(ctx, &opts, &node).await?;
 
@@ -203,7 +199,7 @@ impl EnrollCommand {
     /// Check if the identity is already enrolled and display a message to the user.
     async fn is_already_enrolled(
         &self,
-        cli_state: &CliState,
+        cli_state: Arc<CliState>,
         opts: &CommandGlobalOpts,
     ) -> miette::Result<bool> {
         let mut is_already_enrolled = !cli_state
@@ -352,7 +348,7 @@ fn ctrlc_handler(opts: CommandGlobalOpts) {
         .expect("Error setting Ctrl-C handler");
 }
 
-#[instrument(skip_all)]
+#[instrument(skip_all, level = Level::TRACE)]
 async fn retrieve_user_space_and_project(
     opts: &CommandGlobalOpts,
     ctx: &Context,
@@ -427,6 +423,8 @@ async fn get_user_space(
         node.get_spaces(ctx).await?
     };
 
+    let subscription_page = subscription_page()?.to_string();
+
     let space = match spaces.first() {
         // If the identity has no spaces, create one
         None => {
@@ -435,7 +433,7 @@ async fn get_user_space(
                 .write_line(fmt_log!("No Spaces are accessible to your account.\n"))?;
             opts.terminal.write_line(fmt_log!(
                 "Please go to {} and subscribe to create a new Space.",
-                color_uri(SUBSCRIPTION_PAGE)
+                color_uri(&subscription_page)
             ))?;
 
             if skip_orchestrator_resources_creation {
@@ -458,7 +456,7 @@ async fn get_user_space(
                     ))?;
                     opts.terminal.write_line(fmt_log!(
                         "Please go to {} and subscribe to use your Space.",
-                        color_uri(SUBSCRIPTION_PAGE)
+                        color_uri(&subscription_page)
                     ))?;
                     ask_user_to_subscribe_and_wait_for_space_to_be_ready(opts, ctx, node).await?
                 }
@@ -472,7 +470,7 @@ async fn get_user_space(
                         ))?;
                         opts.terminal.write_line(fmt_log!(
                             "Please go to {} and subscribe to one of our paid plans to use your Space.",
-                            color_uri(SUBSCRIPTION_PAGE)
+                            color_uri(&subscription_page)
                         ))?;
                         if let Some(grace_period_end_date) = subscription.grace_period_end_date()? {
                             let date = grace_period_end_date.format_human().into_diagnostic()?;
@@ -498,7 +496,7 @@ async fn get_user_space(
         // At this point, the space should have a subscription, but just in case
         miette!(
             "Please go to {} and try again",
-            color_uri(SUBSCRIPTION_PAGE)
+            color_uri(&subscription_page)
         )
         .wrap_err("The Space does not have a subscription plan attached.")
     })?;
@@ -517,12 +515,14 @@ async fn ask_user_to_subscribe_and_wait_for_space_to_be_ready(
     ctx: &Context,
     node: &InMemoryNode,
 ) -> Result<Space> {
+    let subscription_page = subscription_page()?.to_string();
+
     opts.terminal.write_line("")?;
     if opts.terminal.can_ask_for_user_input() {
         opts.terminal.write(fmt_log!(
             "Press {} to open {} in your browser.",
             " ENTER ↵ ".bg_white().black().blink(),
-            color_uri(SUBSCRIPTION_PAGE)
+            color_uri(&subscription_page)
         ))?;
 
         let mut input = String::new();
@@ -538,10 +538,10 @@ async fn ask_user_to_subscribe_and_wait_for_space_to_be_ready(
             }
         }
     }
-    if open::that(SUBSCRIPTION_PAGE).is_err() {
+    if open::that(&subscription_page).is_err() {
         opts.terminal.write_line(fmt_err!(
             "Couldn't open your browser from the terminal. Please open {} manually.",
-            color_uri(SUBSCRIPTION_PAGE)
+            color_uri(&subscription_page)
         ))?;
     }
 

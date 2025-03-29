@@ -8,7 +8,7 @@ use ockam::compat::tokio;
 use ockam::{Context, Processor, Route, Routed, Worker};
 use ockam_api::nodes::InMemoryNode;
 use ockam_core::flow_control::FlowControlId;
-use ockam_core::{async_trait, route, Address, AllowAll, DenyAll, NeutralMessage};
+use ockam_core::{async_trait, Address, AllowAll, DenyAll, NeutralMessage};
 use ockam_multiaddr::MultiAddr;
 
 use crate::config::Throughput;
@@ -45,7 +45,7 @@ pub async fn create(
 
     context
         .flow_controls()
-        .add_consumer(receiver_address.clone(), &relay_flow_control_id);
+        .add_consumer(&receiver_address, &relay_flow_control_id);
 
     let worker = PortalSimulatorReceiver {
         messages_out_of_order: portal_stats.messages_out_of_order.clone(),
@@ -56,7 +56,6 @@ pub async fn create(
 
     context
         .start_worker(receiver_address.clone(), worker)
-        .await
         .unwrap();
 
     let connection = node
@@ -64,7 +63,7 @@ pub async fn create(
         .await?;
 
     let processor = PortalSimulatorSender {
-        to: route![connection.route()?, relay_address, receiver_address],
+        to: connection.route()? + relay_address + receiver_address,
         throughput,
         bytes_sent: portal_stats.bytes_sent.clone(),
         messages_sent: portal_stats.messages_sent.clone(),
@@ -72,7 +71,6 @@ pub async fn create(
 
     context
         .start_processor_with_access_control(sender_address, processor, DenyAll, AllowAll)
-        .await
         .unwrap();
 
     Ok(portal_stats)

@@ -4,7 +4,9 @@ use std::fmt::Display;
 use ockam::identity::Identifier;
 use ockam::remote::RemoteRelayInfo;
 use ockam::route;
+use ockam::Message;
 use ockam_core::flow_control::FlowControlId;
+use ockam_core::{cbor_encode_preallocate, Decodable, Encodable, Encoded};
 use ockam_multiaddr::MultiAddr;
 
 use crate::colors::color_primary;
@@ -21,7 +23,7 @@ pub enum ReturnTiming {
 }
 
 /// Request body when instructing a node to create a relay
-#[derive(Debug, Clone, Encode, Decode, CborLen)]
+#[derive(Debug, Clone, Encode, Decode, CborLen, Message)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct CreateRelay {
@@ -37,6 +39,18 @@ pub struct CreateRelay {
     #[n(4)] pub(crate) relay_address: Option<String>,
     /// When to return.
     #[n(5)] pub(crate) return_timing: ReturnTiming,
+}
+
+impl Encodable for CreateRelay {
+    fn encode(self) -> ockam_core::Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for CreateRelay {
+    fn decode(e: &[u8]) -> ockam_core::Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
 }
 
 impl CreateRelay {
@@ -78,18 +92,30 @@ impl CreateRelay {
 }
 
 /// Response body when creating a relay
-#[derive(Debug, Clone, Encode, Decode, CborLen, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Encode, Decode, CborLen, serde::Serialize, serde::Deserialize, Message)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct RelayInfo {
-    #[n(1)] forwarding_route: Option<String>,
-    #[n(2)] remote_address: Option<String>,
-    #[n(3)] worker_address: Option<String>,
-    #[n(4)] flow_control_id: Option<FlowControlId>,
-    #[n(5)] connection_status: ConnectionStatus,
-    #[n(6)] destination_address: MultiAddr,
-    #[n(7)] name: String,
-    #[n(8)] last_failure: Option<String>,
+    #[n(1)] pub forwarding_route: Option<String>,
+    #[n(2)] pub remote_address: Option<String>,
+    #[n(3)] pub worker_address: Option<String>,
+    #[n(4)] pub flow_control_id: Option<FlowControlId>,
+    #[n(5)] pub connection_status: ConnectionStatus,
+    #[n(6)] pub destination_address: MultiAddr,
+    #[n(7)] pub name: String,
+    #[n(8)] pub last_failure: Option<String>,
+}
+
+impl Encodable for RelayInfo {
+    fn encode(self) -> ockam_core::Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for RelayInfo {
+    fn decode(e: &[u8]) -> ockam_core::Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
 }
 
 impl RelayInfo {
@@ -217,5 +243,20 @@ impl Display for RelayInfo {
 impl Output for RelayInfo {
     fn item(&self) -> crate::Result<String> {
         Ok(self.padded_display())
+    }
+}
+
+#[derive(Encode, Decode, CborLen, Debug, Default, Clone, Message)]
+pub struct RelayInfoList(#[n(0)] pub Vec<RelayInfo>);
+
+impl Encodable for RelayInfoList {
+    fn encode(self) -> ockam_core::Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for RelayInfoList {
+    fn decode(e: &[u8]) -> ockam_core::Result<Self> {
+        Ok(minicbor::decode(e)?)
     }
 }

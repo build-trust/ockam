@@ -22,7 +22,7 @@ pub enum OrchestratorStatus {
 
 pub mod rust {
     pub use crate::api::state::OrchestratorStatus;
-    use ockam_api::cloud::email_address::EmailAddress;
+    use ockam_api::orchestrator::email_address::EmailAddress;
     use std::cmp::Ordering;
 
     #[derive(Clone, Debug, Eq, PartialEq)]

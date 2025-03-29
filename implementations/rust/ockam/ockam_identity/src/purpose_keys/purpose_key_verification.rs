@@ -1,13 +1,14 @@
 use ockam_core::compat::sync::Arc;
 use ockam_core::Result;
 use ockam_vault::VaultForVerifyingSignatures;
+use tracing::trace;
 
 use crate::models::{Identifier, PurposeKeyAttestation, PurposeKeyAttestationData, VersionedData};
 use crate::utils::now;
 use crate::{ChangeHistoryRepository, IdentitiesVerification, IdentityError, TimestampInSeconds};
 
 /// We allow purpose keys to be created in the future related to this machine's time due to
-/// possible time dyssynchronization
+/// possible time desynchronization
 const MAX_ALLOWED_TIME_DRIFT: TimestampInSeconds = TimestampInSeconds(60);
 
 /// This struct supports all the services related to identities
@@ -45,6 +46,8 @@ impl PurposeKeyVerification {
         expected_subject: Option<&Identifier>,
         attestation: &PurposeKeyAttestation,
     ) -> Result<PurposeKeyAttestationData> {
+        trace!(?expected_subject, "verifying purpose key attestation");
+
         let versioned_data_hash = self.verifying_vault.sha256(&attestation.data).await?;
 
         let versioned_data: VersionedData = minicbor::decode(&attestation.data)?;
@@ -117,6 +120,8 @@ impl PurposeKeyVerification {
         {
             return Err(IdentityError::PurposeKeyAttestationVerificationFailed)?;
         }
+
+        trace!(?expected_subject, "verified purpose key attestation");
 
         Ok(purpose_key_data)
     }

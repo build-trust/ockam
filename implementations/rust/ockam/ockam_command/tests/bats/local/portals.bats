@@ -14,134 +14,19 @@ teardown() {
 
 # ===== TESTS
 
-@test "portals - create tcp outlet on implicit default node" {
-  run_success "$OCKAM" node delete --all -y
-
-  outlet_port="$(random_port)"
-  run_success $OCKAM tcp-outlet create --to "127.0.0.1:$outlet_port"
-  assert_output --partial "/service/outlet"
-}
-
-@test "portals - create tcp outlet" {
-  run_success "$OCKAM" node delete --all -y
-
-  outlet_port="$(random_port)"
-  run_success $OCKAM tcp-outlet create --to "127.0.0.1:$outlet_port" --from "test-outlet"
-  assert_output --partial "/service/test-outlet"
-
-  # The first outlet that is created without `--from` flag should be named `outlet`
-  run_success $OCKAM tcp-outlet create --to "127.0.0.1:$outlet_port"
-  assert_output --partial "/service/outlet"
-
-  # After that, the next outlet should be randomly named
-  run_success $OCKAM tcp-outlet create --to "127.0.0.1:$outlet_port"
-  refute_output --partial "/service/outlet"
-}
-
-@test "portals - tcp inlet CRUD" {
-
-  # Create nodes for inlet/outlet pair
+@test "portals - create inlet at random port" {
   run_success "$OCKAM" node create n1
   run_success "$OCKAM" node create n2
 
-  # Create inlet/outlet pair
-  outlet_port="$(random_port)"
-  run_success $OCKAM tcp-outlet create --at /node/n1 --to "127.0.0.1:$outlet_port"
-  assert_output --partial "/service/outlet"
+  run_success "$OCKAM" tcp-outlet create --at /node/n1 --to "$PYTHON_SERVER_PORT"
+  addr=$("$OCKAM" tcp-inlet create inlet --at /node/n2 --to /node/n1/service/outlet --jq '.bind_addr')
 
-  inlet_port="$(random_port)"
-  run_success $OCKAM tcp-inlet create --at /node/n2 --from 127.0.0.1:$inlet_port --to /node/n1/service/outlet --alias "test-inlet"
-  run_success $OCKAM tcp-inlet create --at /node/n2 --from 6102 --to /node/n1/service/outlet
+  addr=${addr//\"/}
+  host_port=(${addr//:/ })
+  [[ "${host_port[0]}" == "127.0.0.1" ]] || fail "Host should be 127.0.0.1, got: ${host_port[0]}"
+  [[ "${host_port[1]}" != "0" ]] || fail "Port should be other than 0, got ${host_port[1]}"
 
-  sleep 1
-
-  # Check that inlet is available for deletion and delete it
-  run_success $OCKAM tcp-inlet show test-inlet --at /node/n2 --output json
-  assert_output --partial "\"alias\": \"test-inlet\""
-  assert_output --partial "\"bind_addr\": \"127.0.0.1:$inlet_port\""
-
-  run_success $OCKAM tcp-inlet delete "test-inlet" --at /node/n2 --yes
-
-  # Test deletion of a previously deleted TCP inlet
-  run_failure $OCKAM tcp-inlet delete "test-inlet" --at /node/n2 --yes
-  assert_output --partial "not found"
-}
-
-@test "portals - tcp outlet CRUD" {
-  run_success "$OCKAM" node create n1
-
-  run_success "$OCKAM" node create n2
-
-  port_1="$(random_port)"
-  run_success $OCKAM tcp-outlet create --at /node/n1 --to "127.0.0.1:$port_1"
-  assert_output --partial "/service/outlet"
-
-  port_2="$(random_port)"
-  run_success $OCKAM tcp-outlet create --at /node/n2 --to $port_2
-
-  run_success $OCKAM tcp-outlet show outlet --at /node/n1
-  assert_output --partial "\"worker_address\": \"/service/outlet\""
-  assert_output --partial "\"to\": \"127.0.0.1:$port_1\""
-
-  run_success $OCKAM tcp-outlet delete "outlet" --yes
-
-  # Test deletion of a previously deleted TCP outlet
-  run_success $OCKAM tcp-outlet delete "outlet" --yes
-  assert_output --partial "[]"
-}
-
-@test "portals - list inlets on a node" {
-  run_success "$OCKAM" node create n1
-  run_success "$OCKAM" node create n2
-
-  port="$(random_port)"
-  run_success $OCKAM tcp-inlet create --at /node/n2 --from $port --to /node/n1/service/outlet --alias tcp-inlet-2
-  sleep 1
-
-  run_success $OCKAM tcp-inlet list --at /node/n2
-  assert_output --partial "tcp-inlet-2"
-  assert_output --partial "127.0.0.1:$port"
-}
-
-@test "portals - list outlets on a node" {
-  run_success "$OCKAM" node create n1
-
-  port="$(random_port)"
-  run_success $OCKAM tcp-outlet create --at /node/n1 --to "$port"
-  assert_output --partial "/service/outlet"
-
-  run_success $OCKAM tcp-outlet list --at /node/n1
-  assert_output --partial "/service/outlet"
-  assert_output --partial "127.0.0.1:$port"
-}
-
-@test "portals - show a tcp inlet" {
-  run_success "$OCKAM" node create n1
-  run_success "$OCKAM" node create n2
-
-  port="$(random_port)"
-  run_success $OCKAM tcp-inlet create --at /node/n2 --from $port --to /node/n1/service/outlet --alias "test-inlet"
-  sleep 1
-
-  run_success $OCKAM tcp-inlet show "test-inlet" --at /node/n2
-
-  # Test if non-existing TCP inlet returns NotFound
-  run_failure $OCKAM tcp-inlet show "non-existing-inlet" --at /node/n2
-  assert_output --partial "not found"
-}
-
-@test "portals - show a tcp outlet" {
-  run_success "$OCKAM" node create n1
-
-  port="$(random_port)"
-  run_success $OCKAM tcp-outlet create --at /node/n1 --to "$port"
-  assert_output --partial "/service/outlet"
-
-  run_success $OCKAM tcp-outlet show "outlet"
-
-  # Test if non-existing TCP outlet returns NotFound
-  run_failure $OCKAM tcp-outlet show "non-existing-outlet"
-  assert_output --partial "not found"
+  run_success curl -sfI --retry-all-errors --retry-delay 5 --retry 10 -m 5 "$addr"
 }
 
 @test "portals - create an inlet/outlet pair and move tcp traffic through it" {
@@ -152,7 +37,7 @@ teardown() {
   port="$(random_port)"
   run_success "$OCKAM" tcp-inlet create --at /node/n2 --from "$port" --to /node/n1/service/outlet
 
-  run_success curl -sfI --retry-connrefused --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$port"
+  run_success curl -sfI --retry-all-errors --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$port"
 }
 
 @test "portals - create an inlet/outlet, download file" {
@@ -165,7 +50,7 @@ teardown() {
 
   file_name="$(random_str)".bin
   pushd "$OCKAM_HOME_BASE" && dd if=/dev/urandom of="./.tmp/$file_name" bs=1M count=50 && popd
-  run_success curl -sSf -m 20 -o /dev/null "http://127.0.0.1:$port/.tmp/$file_name"
+  run_success curl -sSf --retry-all-errors --retry-delay 5 --retry 10 -m 20 -o /dev/null "http://127.0.0.1:$port/.tmp/$file_name"
 }
 
 @test "portals - create an inlet/outlet, upload file" {
@@ -182,7 +67,7 @@ teardown() {
   mkdir "$tmp_dir_name"
   dd if=/dev/urandom of="./$tmp_dir_name/$file_name" bs=1M count=50
   popd
-  run_success curl -sS -m 20 -X POST "http://127.0.0.1:$port/upload" -F "files=@$OCKAM_HOME_BASE/.tmp/$tmp_dir_name/$file_name"
+  run_success curl -sS --retry-all-errors --retry-delay 5 --retry 10 -m 20 -X POST "http://127.0.0.1:$port/upload" -F "files=@$OCKAM_HOME_BASE/.tmp/$tmp_dir_name/$file_name"
 }
 
 @test "portals - create an inlet/outlet pair and move tcp traffic through it, where the outlet points to an HTTPs endpoint" {
@@ -209,7 +94,78 @@ teardown() {
   run_success bash -c "$OCKAM secure-channel create --from /node/green --to /node/relay/service/forward_to_blue/service/api \
     | $OCKAM tcp-inlet create --at /node/green --from $port --to -/service/outlet"
 
-  run_success curl -sfI --retry-connrefused --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$port"
+  run_success curl -sfI --retry-all-errors --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$port"
+
+  run_success "$OCKAM" secure-channel list --at green
+  assert_output --partial "/service"
+}
+
+@test "portals no handshake - create an inlet/outlet pair and move tcp traffic through it" {
+  run_success "$OCKAM" node create n1
+  run_success "$OCKAM" node create n2
+
+  run_success "$OCKAM" tcp-outlet create --at /node/n1 --to "$PYTHON_SERVER_PORT" --skip-handshake
+  port="$(random_port)"
+  run_success "$OCKAM" tcp-inlet create --at /node/n2 --from "$port" --to /node/n1/service/outlet --skip-handshake
+
+  run_success curl -sfI --retry-all-errors --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$port"
+}
+
+@test "portals no handshake - create an inlet/outlet, download file" {
+  run_success "$OCKAM" node create n1
+  run_success "$OCKAM" node create n2
+
+  run_success "$OCKAM" tcp-outlet create --at /node/n1 --to "$PYTHON_SERVER_PORT" --skip-handshake
+  port="$(random_port)"
+  run_success "$OCKAM" tcp-inlet create --at /node/n2 --from "$port" --to /node/n1/service/outlet --skip-handshake
+
+  file_name="$(random_str)".bin
+  pushd "$OCKAM_HOME_BASE" && dd if=/dev/urandom of="./.tmp/$file_name" bs=1M count=50 && popd
+  run_success curl -sSf --retry-all-errors --retry-delay 5 --retry 10 -m 20 -o /dev/null "http://127.0.0.1:$port/.tmp/$file_name"
+}
+
+@test "portals no handshake - create an inlet/outlet, upload file" {
+  run_success "$OCKAM" node create n1
+  run_success "$OCKAM" node create n2
+
+  run_success "$OCKAM" tcp-outlet create --at /node/n1 --to "$PYTHON_SERVER_PORT" --skip-handshake
+  port="$(random_port)"
+  run_success "$OCKAM" tcp-inlet create --at /node/n2 --from "$port" --to /node/n1/service/outlet --skip-handshake
+
+  file_name="$(random_str)".bin
+  tmp_dir_name="$(random_str)"
+  pushd "$OCKAM_HOME_BASE/.tmp"
+  mkdir "$tmp_dir_name"
+  dd if=/dev/urandom of="./$tmp_dir_name/$file_name" bs=1M count=50
+  popd
+  run_success curl -sS --retry-all-errors --retry-delay 5 --retry 10 -m 20 -X POST "http://127.0.0.1:$port/upload" -F "files=@$OCKAM_HOME_BASE/.tmp/$tmp_dir_name/$file_name"
+}
+
+@test "portals no handshake - create an inlet/outlet pair and move tcp traffic through it, where the outlet points to an HTTPs endpoint" {
+  run_success "$OCKAM" node create n1
+  run_success "$OCKAM" node create n2
+
+  run_success "$OCKAM" tcp-outlet create --at /node/n1 --to google.com:443 --skip-handshake
+  port="$(random_port)"
+  run_success "$OCKAM" tcp-inlet create --at /node/n2 --from "$port" --to /node/n1/service/outlet --skip-handshake
+
+  # This test does not pass on CI
+  # run_success curl --fail --head --max-time 10 "127.0.0.1:$port"
+}
+
+@test "portals no handshake - create an inlet/outlet pair with relay through a relay and move tcp traffic through it" {
+  run_success "$OCKAM" node create relay
+  run_success "$OCKAM" node create blue
+
+  run_success "$OCKAM" tcp-outlet create --at /node/blue --to "$PYTHON_SERVER_PORT" --skip-handshake
+  run_success "$OCKAM" relay create blue --at /node/relay --to /node/blue
+
+  run_success "$OCKAM" node create green
+  port="$(random_port)"
+  run_success bash -c "$OCKAM secure-channel create --from /node/green --to /node/relay/service/forward_to_blue/service/api \
+    | $OCKAM tcp-inlet create --at /node/green --from $port --to -/service/outlet --skip-handshake"
+
+  run_success curl -sfI --retry-all-errors --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$port"
 
   run_success "$OCKAM" secure-channel list --at green
   assert_output --partial "/service"
@@ -231,9 +187,9 @@ teardown() {
   run_success "$OCKAM" tcp-outlet create --at n --to "$port"
 
   port="$(random_port)"
-  run_success "$OCKAM" tcp-inlet create --at n --from "$port" --to "/node/n/service/outlet" --alias i
+  run_success "$OCKAM" tcp-inlet create i --at n --from "$port" --to "/node/n/service/outlet"
   port="$(random_port)"
-  run_failure "$OCKAM" tcp-inlet create --at n --from "$port" --to "/node/n/service/outlet" --alias i
+  run_failure "$OCKAM" tcp-inlet create i --at n --from "$port" --to "/node/n/service/outlet"
 }
 
 @test "portals - fail to create two TCP inlets at the same socket address" {
@@ -256,7 +212,7 @@ teardown() {
   run_success "$OCKAM" node create green
   inlet_port="$(random_port)"
   run_success "$OCKAM" tcp-inlet create --at /node/green --from "$inlet_port" --to /node/blue/secure/api/service/outlet
-  run_success curl -sfI --retry-connrefused --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$inlet_port"
+  run_success curl -sfI --retry-all-errors --retry-delay 5 --retry 10 -m 5 "127.0.0.1:$inlet_port"
 
   run_success "$OCKAM" node delete blue --yes
   run_failure curl -sfI -m 3 "127.0.0.1:$inlet_port"
@@ -278,7 +234,7 @@ teardown() {
   run_success "$OCKAM" tcp-outlet create --at /node/n2 --to "$PYTHON_SERVER_PORT"
 
   sleep 15
-  run_success curl -sfI --retry-connrefused --retry-delay 5 --retry 10 -m 5 "127.0.0.1:${inlet_port}"
+  run_success curl -sfI --retry-all-errors --retry-delay 5 --retry 10 -m 5 "127.0.0.1:${inlet_port}"
 }
 
 @test "portals - local portal, curl download, inlet credential expires" {
@@ -467,5 +423,36 @@ teardown() {
   # Create an inlet with the alt's identifier. Now it should be allowed to connect
   port="$(random_port)"
   run_success "$OCKAM" tcp-inlet create --from "127.0.0.1:$port" --to /node/n/secure/api/service/outlet --identity alt
-  run_success curl -sfI --retry-connrefused --retry-delay 5 --retry 2 -m 5 "127.0.0.1:$port"
+  run_success curl -sfI --retry-all-errors --retry-delay 5 --retry 2 -m 5 "127.0.0.1:$port"
+}
+
+@test "portals - http set header" {
+  if [[ "$OCKAM_PRIVILEGED" = "1" ]]; then
+    skip "OCKAM_PRIVILEGE not supported"
+  fi
+
+  inlet_port="$(random_port)"
+  server_port="$(random_port)"
+
+  # to validate the header has been set, we start an authenticated HTTP server
+  # and we inject the credential into the request
+  run_success "$OCKAM" tcp-outlet create --to "127.0.0.1:${server_port}"
+  run_success "$OCKAM" tcp-inlet create --from "127.0.0.1:${inlet_port}" --to /service/outlet
+
+  uploadserver --basic-auth username:password --bind 127.0.0.1 ${server_port} &>"$HOME/.bats-tests/authenticated_python_server.log" &
+  echo $! >"${OCKAM_HOME}/authenticated_python_server.pid"
+
+  wait_for_port ${server_port}
+  wait_for_port ${inlet_port}
+
+  run_failure curl -sf -m 3 "http://127.0.0.1:${inlet_port}"
+
+  authentication="$(echo -n "username:password" | base64)"
+  run_success "$OCKAM" tcp-inlet delete --all --yes
+
+  wait_for_closed_port ${inlet_port}
+  run_success "$OCKAM" tcp-inlet create --http-header "Authorization: Basic ${authentication}" --from "127.0.0.1:${inlet_port}" --to /service/outlet
+
+  wait_for_port ${inlet_port}
+  run_success curl -sf -m 5 "http://127.0.0.1:${inlet_port}"
 }

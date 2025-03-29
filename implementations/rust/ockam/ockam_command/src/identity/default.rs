@@ -3,7 +3,6 @@ use colorful::Colorful;
 use miette::miette;
 use ockam_api::fmt_ok;
 
-use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/default/long_about.txt");
@@ -21,17 +20,11 @@ pub struct DefaultCommand {
 }
 
 impl DefaultCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |_ctx| async move {
-            self.async_run(opts).await
-        })
-    }
-
     pub fn name(&self) -> String {
         "identity default".into()
     }
 
-    async fn async_run(&self, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(&self, opts: CommandGlobalOpts) -> miette::Result<()> {
         match &self.name {
             Some(name) => {
                 if opts.state.is_default_identity_by_name(name).await? {
@@ -42,7 +35,7 @@ impl DefaultCommand {
                 } else {
                     opts.state.set_as_default_identity(name).await?;
                     opts.terminal
-                        .stdout()
+                        .to_stdout()
                         .plain(fmt_ok!("The identity named '{}' is now the default", &name))
                         .machine(name)
                         .write_line()?;
@@ -51,7 +44,7 @@ impl DefaultCommand {
             None => {
                 let identity = opts.state.get_or_create_default_named_identity().await?;
                 opts.terminal
-                    .stdout()
+                    .to_stdout()
                     .plain(fmt_ok!(
                         "The name of the default identity is '{}'",
                         identity.name()

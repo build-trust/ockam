@@ -8,7 +8,7 @@ async fn main(ctx: Context) -> Result<()> {
     // Create a node with default implementations
     let mut node = node(ctx).await?;
     // Initialize the TCP Transport
-    let tcp = node.create_tcp_transport().await?;
+    let tcp = node.create_tcp_transport()?;
 
     // Create an Identity to represent Alice.
     let alice = node.create_identity().await?;

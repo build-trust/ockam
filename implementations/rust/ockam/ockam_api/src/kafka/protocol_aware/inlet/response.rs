@@ -58,13 +58,13 @@ impl KafkaMessageResponseInterceptor for InletInterceptorImpl {
             );
 
             match request_info.request_api_key {
-                ApiKey::ApiVersionsKey => {
+                ApiKey::ApiVersions => {
                     return self
                         .handle_api_versions_response(&mut buffer, request_info, &header)
                         .await;
                 }
 
-                ApiKey::FetchKey => {
+                ApiKey::Fetch => {
                     if self.encrypt_content {
                         return self
                             .handle_fetch_response(context, &mut buffer, &request_info, &header)
@@ -72,7 +72,7 @@ impl KafkaMessageResponseInterceptor for InletInterceptorImpl {
                     }
                 }
 
-                ApiKey::FindCoordinatorKey => {
+                ApiKey::FindCoordinator => {
                     return self
                         .handle_find_coordinator_response(
                             context,
@@ -84,7 +84,7 @@ impl KafkaMessageResponseInterceptor for InletInterceptorImpl {
                         .await;
                 }
 
-                ApiKey::MetadataKey => {
+                ApiKey::Metadata => {
                     return self
                         .handle_metadata_response(
                             context,
@@ -140,13 +140,13 @@ impl InletInterceptorImpl {
 
             // Request and responses share the same api version range.
             let ockam_supported_range = match api_key {
-                ApiKey::ProduceKey => ProduceResponse::VERSIONS,
-                ApiKey::FetchKey => FetchResponse::VERSIONS,
-                ApiKey::ListOffsetsKey => ListOffsetsResponse::VERSIONS,
-                ApiKey::MetadataKey => MetadataResponse::VERSIONS,
-                ApiKey::ApiVersionsKey => ApiVersionsResponse::VERSIONS,
-                ApiKey::CreateTopicsKey => CreateTopicsResponse::VERSIONS,
-                ApiKey::FindCoordinatorKey => FindCoordinatorResponse::VERSIONS,
+                ApiKey::Produce => ProduceResponse::VERSIONS,
+                ApiKey::Fetch => FetchResponse::VERSIONS,
+                ApiKey::ListOffsets => ListOffsetsResponse::VERSIONS,
+                ApiKey::Metadata => MetadataResponse::VERSIONS,
+                ApiKey::ApiVersions => ApiVersionsResponse::VERSIONS,
+                ApiKey::CreateTopics => CreateTopicsResponse::VERSIONS,
+                ApiKey::FindCoordinator => FindCoordinatorResponse::VERSIONS,
                 _ => {
                     // we only need to check the APIs that we actually use
                     continue;
@@ -175,7 +175,7 @@ impl InletInterceptorImpl {
             header,
             &response,
             request_info.request_api_version,
-            ApiKey::ApiVersionsKey,
+            ApiKey::ApiVersions,
         )
     }
 
@@ -232,7 +232,7 @@ impl InletInterceptorImpl {
             header,
             &response,
             request_info.request_api_version,
-            ApiKey::MetadataKey,
+            ApiKey::Metadata,
         )
     }
 
@@ -272,7 +272,7 @@ impl InletInterceptorImpl {
             header,
             &response,
             request_info.request_api_version,
-            ApiKey::FindCoordinatorKey,
+            ApiKey::FindCoordinator,
         )
     }
 
@@ -292,10 +292,10 @@ impl InletInterceptorImpl {
             for partition in response.partitions.iter_mut() {
                 if let Some(content) = partition.records.take() {
                     let mut content = BytesMut::from(content.as_ref());
-                    let mut records = RecordBatchDecoder::decode(
-                        &mut content,
-                        None::<fn(&mut Bytes, Compression) -> Result<BytesMut, _>>,
-                    )
+                    let mut records = RecordBatchDecoder::decode::<
+                        BytesMut,
+                        fn(&mut Bytes, Compression) -> Result<BytesMut, _>,
+                    >(&mut content)
                     .map_err(|_| InterceptError::InvalidData)?;
 
                     for record in records.iter_mut() {
@@ -310,14 +310,17 @@ impl InletInterceptorImpl {
                     }
 
                     let mut encoded = BytesMut::new();
-                    RecordBatchEncoder::encode(
+                    RecordBatchEncoder::encode::<
+                        BytesMut,
+                        std::slice::Iter<'_, kafka_protocol::records::Record>,
+                        fn(&mut BytesMut, &mut BytesMut, Compression) -> Result<(), _>,
+                    >(
                         &mut encoded,
                         records.iter(),
                         &RecordEncodeOptions {
                             version: 2,
                             compression: Compression::None,
                         },
-                        None::<fn(&mut BytesMut, &mut BytesMut, Compression) -> Result<(), _>>,
                     )
                     .map_err(|_| InterceptError::InvalidData)?;
                     partition.records = Some(encoded.freeze());
@@ -329,7 +332,7 @@ impl InletInterceptorImpl {
             header,
             &response,
             request_info.request_api_version,
-            ApiKey::FetchKey,
+            ApiKey::Fetch,
         )
     }
 

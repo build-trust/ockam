@@ -10,18 +10,22 @@ use crate::{ApiError, DefaultAddress};
 use minicbor::{CborLen, Decode, Encode};
 use ockam::flow_control::FlowControls;
 use ockam::identity::Identifier;
+use ockam::Message;
 use ockam::{Address, Context, Result};
 use ockam_abac::PolicyExpression;
 use ockam_abac::{Action, Resource, ResourceType};
 use ockam_core::api::{Error, Reply, Request, Response};
-use ockam_core::async_trait;
-use ockam_core::route;
+use ockam_core::{async_trait, Decodable, Encodable, Encoded};
+use ockam_core::{cbor_encode_preallocate, route};
 use ockam_multiaddr::proto::Service;
 use ockam_multiaddr::MultiAddr;
 use ockam_transport_core::HostnamePort;
-use ockam_transport_tcp::{PortalInletInterceptor, PortalOutletInterceptor};
+use ockam_transport_tcp::{
+    read_portal_payload_length, PortalInletInterceptor, PortalOutletInterceptor,
+};
 use std::sync::Arc;
 use std::time::Duration;
+use tracing::Level;
 
 impl NodeManagerWorker {
     pub(crate) async fn start_influxdb_outlet_service(
@@ -37,13 +41,15 @@ impl NodeManagerWorker {
             policy_expression,
             privileged,
             tls,
+            skip_handshake,
+            enable_nagle,
+            enable_mptcp,
         } = body.tcp_outlet;
         let address = self
             .node_manager
             .registry
             .outlets
-            .generate_worker_addr(worker_addr)
-            .await;
+            .generate_worker_addr(worker_addr);
         let outlet_address = match body.influxdb_config {
             InfluxDBOutletConfig::OutletWithFixedToken(token) => {
                 let outlet_addr: Address = format!("{}_outlet", address.address()).into();
@@ -94,6 +100,9 @@ impl NodeManagerWorker {
                 reachable_from_default_secure_channel,
                 OutletAccessControl::WithPolicyExpression(policy_expression),
                 privileged,
+                skip_handshake,
+                enable_nagle,
+                enable_mptcp,
             )
             .await
         {
@@ -120,6 +129,10 @@ impl NodeManagerWorker {
             disable_tcp_fallback,
             privileged,
             tls_certificate_provider,
+            skip_handshake,
+            enable_nagle,
+            enable_mptcp,
+            prefix_route: _prefix_route,
         } = body.tcp_inlet.clone();
 
         //TODO: should be an easier way to tweak the multiaddr
@@ -188,6 +201,9 @@ impl NodeManagerWorker {
                 disable_tcp_fallback,
                 privileged,
                 tls_certificate_provider,
+                skip_handshake,
+                enable_nagle,
+                enable_mptcp,
             )
             .await
         {
@@ -232,24 +248,24 @@ impl NodeManagerWorker {
             interceptor_address.clone(),
             Some(spawner_flow_control_id.clone()),
             http_interceptor_factory,
-            Arc::new(policy_access_control.create_outgoing(ctx).await?),
+            Arc::new(policy_access_control.create_outgoing(ctx)?),
             Arc::new(policy_access_control.create_incoming()),
-        )
-        .await?;
+            read_portal_payload_length(),
+        )?;
 
         // every secure channel can reach this service
         let flow_controls = ctx.flow_controls();
         flow_controls.add_consumer(
-            interceptor_address.clone(),
+            &interceptor_address,
             &default_secure_channel_listener_flow_control_id,
         );
 
         // this spawner flow control id is used to control communication with dynamically created
         // outlets
-        flow_controls.add_spawner(interceptor_address, &spawner_flow_control_id);
+        flow_controls.add_spawner(&interceptor_address, &spawner_flow_control_id);
 
         // allow communication with the tcp outlet
-        flow_controls.add_consumer(outlet_address, &spawner_flow_control_id);
+        flow_controls.add_consumer(&outlet_address, &spawner_flow_control_id);
         Ok(())
     }
 
@@ -272,18 +288,17 @@ impl NodeManagerWorker {
             .await?;
 
         let token_refresher =
-            TokenLeaseRefresher::new(ctx, Arc::downgrade(&self.node_manager), lease_issuer_route)
-                .await?;
+            TokenLeaseRefresher::new(ctx, Arc::downgrade(&self.node_manager), lease_issuer_route)?;
         let http_interceptor_factory = Arc::new(HttpAuthInterceptorFactory::new(token_refresher));
 
-        PortalInletInterceptor::create(
+        PortalInletInterceptor::start_listener(
             ctx,
             interceptor_address.clone(),
             http_interceptor_factory,
             Arc::new(policy_access_control.create_incoming()),
-            Arc::new(policy_access_control.create_outgoing(ctx).await?),
-        )
-        .await?;
+            Arc::new(policy_access_control.create_outgoing(ctx)?),
+            read_portal_payload_length(),
+        )?;
         Ok(interceptor_address)
     }
 }
@@ -323,7 +338,7 @@ pub trait InfluxDBPortals {
 
 #[async_trait]
 impl InfluxDBPortals for BackgroundNodeClient {
-    #[instrument(skip(self, ctx))]
+    #[instrument(skip(self, ctx), level = Level::TRACE)]
     #[allow(clippy::too_many_arguments)]
     async fn create_influxdb_outlet(
         &self,
@@ -334,7 +349,8 @@ impl InfluxDBPortals for BackgroundNodeClient {
         policy_expression: Option<PolicyExpression>,
         influxdb_config: InfluxDBOutletConfig,
     ) -> miette::Result<OutletStatus> {
-        let mut outlet_payload = CreateOutlet::new(to, tls, from.cloned(), true, false);
+        let mut outlet_payload =
+            CreateOutlet::new(to, tls, from.cloned(), true, false, false, false, false);
         if let Some(policy_expression) = policy_expression {
             outlet_payload.set_policy_expression(policy_expression);
         }
@@ -343,7 +359,7 @@ impl InfluxDBPortals for BackgroundNodeClient {
         self.ask(ctx, req).await
     }
 
-    #[instrument(skip(self, ctx))]
+    #[instrument(skip(self, ctx), level = Level::TRACE)]
     #[allow(clippy::too_many_arguments)]
     async fn create_influxdb_inlet(
         &self,
@@ -376,6 +392,10 @@ impl InfluxDBPortals for BackgroundNodeClient {
                 disable_tcp_fallback,
                 false,
                 tls_certificate_provider,
+                false,
+                false,
+                false,
+                route![],
             );
             let payload = CreateInfluxDBInlet::new(inlet_payload, lease_usage, lease_issuer_route);
             Request::post("/node/influxdb_inlet").body(payload)
@@ -385,7 +405,7 @@ impl InfluxDBPortals for BackgroundNodeClient {
 }
 
 /// Request body to create an influxdb inlet
-#[derive(Clone, Debug, Encode, Decode, CborLen)]
+#[derive(Clone, Debug, Encode, Decode, CborLen, Message)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct CreateInfluxDBInlet {
@@ -394,6 +414,18 @@ pub struct CreateInfluxDBInlet {
     /// Route to the lease issuer.
     /// If not given it's derived from the outlet route
     #[n(3)] pub(crate) lease_issuer_address: Option<MultiAddr>,
+}
+
+impl Encodable for CreateInfluxDBInlet {
+    fn encode(self) -> Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for CreateInfluxDBInlet {
+    fn decode(e: &[u8]) -> Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
 }
 
 impl CreateInfluxDBInlet {
@@ -411,12 +443,24 @@ impl CreateInfluxDBInlet {
 }
 
 /// Request body to create an influxdb outlet
-#[derive(Clone, Debug, Encode, Decode, CborLen)]
+#[derive(Clone, Debug, Encode, Decode, CborLen, Message)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct CreateInfluxDBOutlet {
     #[n(1)] pub(crate) tcp_outlet: CreateOutlet,
     #[n(2)] pub(crate) influxdb_config: InfluxDBOutletConfig,
+}
+
+impl Encodable for CreateInfluxDBOutlet {
+    fn encode(self) -> Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for CreateInfluxDBOutlet {
+    fn decode(e: &[u8]) -> Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
 }
 
 #[derive(Clone, Debug, Encode, Decode, CborLen)]

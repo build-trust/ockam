@@ -17,7 +17,11 @@ defmodule Ockam.Metrics.Application do
       else
         []
       end ++
-        telemetry_poller()
+        if Application.get_env(:ockam_metrics, :start_telemetry_poller, true) do
+          telemetry_poller()
+        else
+          []
+        end
 
     Supervisor.start_link(children, strategy: :one_for_one, name: __MODULE__)
   end

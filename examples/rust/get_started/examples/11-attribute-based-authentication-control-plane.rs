@@ -7,14 +7,14 @@ use ockam::identity::{
     SecureChannelOptions, TrustMultiIdentifiersPolicy,
 };
 use ockam::remote::RemoteRelayOptions;
-use ockam::tcp::{TcpOutletOptions, TcpTransportExtension};
+use ockam::tcp::{TcpOutletOptions, TcpTransportExtension, TCP};
 use ockam::transport::HostnamePort;
 use ockam::{node, Context, Result};
 use ockam_api::authenticator::enrollment_tokens::TokenAcceptor;
 use ockam_api::authenticator::one_time_code::OneTimeCode;
 use ockam_api::nodes::NodeManager;
 use ockam_api::{RemoteMultiaddrResolver, TransportRouteResolver};
-use ockam_core::AsyncTryClone;
+use ockam_core::TryClone;
 use ockam_multiaddr::MultiAddr;
 
 /// This node supports a "control" server on which several "edge" devices can connect
@@ -54,7 +54,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     // Create a node with default implementations
     let node = node(ctx).await?;
     // Initialize the TCP transport
-    let tcp = node.create_tcp_transport().await?;
+    let tcp = node.create_tcp_transport()?;
 
     // Create an Identity for the control node
     let control_plane = node.create_identity().await?;
@@ -64,7 +64,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     // create a secure channel to the authority
     // when creating the channel we check that the opposite side is indeed presenting the authority identity
     let authority_node = NodeManager::authority_node_client(
-        &tcp,
+        tcp.clone(),
         node.secure_channels().clone(),
         &control_plane,
         &MultiAddr::try_from("/dnsaddr/localhost/tcp/5000")?,
@@ -81,8 +81,9 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
 
     // Create a credential retriever that will be used to obtain credentials
     let credential_retriever = Arc::new(RemoteCredentialRetrieverCreator::new(
-        node.context().async_try_clone().await?,
-        Arc::new(tcp.clone()),
+        node.context().try_clone()?,
+        TCP,
+        tcp.clone(),
         node.secure_channels(),
         RemoteCredentialRetrieverInfo::create_for_project_member(
             project.authority_identifier(),
@@ -104,18 +105,16 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
         Some(project.authority_identifier()),
         "component",
         "edge",
-    )
-    .await?;
+    )?;
 
     // 4. create a tcp outlet with the above policy
     tcp.create_outlet(
         "outlet",
-        HostnamePort::new("127.0.0.1", 5000),
+        HostnamePort::localhost(5000),
         TcpOutletOptions::new()
             .with_incoming_access_control_impl(incoming_access_control)
             .with_outgoing_access_control_impl(outgoing_access_control),
-    )
-    .await?;
+    )?;
 
     // 5. create a relay on the Ockam orchestrator
 
@@ -143,8 +142,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
 
     // 6. create a secure channel listener which will allow the edge node to
     //    start a secure channel when it is ready
-    node.create_secure_channel_listener(&control_plane, "untrusted", SecureChannelListenerOptions::new())
-        .await?;
+    node.create_secure_channel_listener(&control_plane, "untrusted", SecureChannelListenerOptions::new())?;
     println!("created a secure channel listener");
 
     // don't stop the node

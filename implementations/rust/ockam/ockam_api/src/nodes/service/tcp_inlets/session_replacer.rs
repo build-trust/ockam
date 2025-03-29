@@ -1,11 +1,10 @@
-use crate::nodes::service::certificate_provider::ProjectCertificateProvider;
 use ockam_transport_tcp::new_certificate_provider_cache;
 use std::sync::{Arc, Weak};
 use std::time::Duration;
 
+use colorful::Colorful;
 use tokio::time::timeout;
 
-use crate::DefaultAddress;
 use ockam::identity::{Identifier, SecureChannel};
 use ockam::tcp::TcpInletOptions;
 use ockam::udp::{UdpPuncture, UdpPunctureNegotiation, UdpTransport};
@@ -18,18 +17,21 @@ use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
 use ockam_transport_tcp::TcpInlet;
 
+use crate::colors::color_primary;
 use crate::error::ApiError;
 use crate::nodes::connection::Connection;
+use crate::nodes::service::certificate_provider::ProjectCertificateProvider;
 use crate::nodes::service::SecureChannelType;
 use crate::nodes::NodeManager;
 use crate::session::replacer::{
     AdditionalSessionReplacer, CurrentInletStatus, ReplacerOutcome, ReplacerOutputKind,
     SessionReplacer, MAX_RECOVERY_TIME,
 };
+use crate::{fmt_info, fmt_ok, fmt_warn, DefaultAddress};
 
 pub(super) struct InletSessionReplacer {
     pub(super) node_manager: Weak<NodeManager>,
-    pub(super) udp_transport: Option<UdpTransport>,
+    pub(super) udp_transport: Option<Arc<UdpTransport>>,
     pub(super) context: Context,
     pub(super) listen_addr: String,
     pub(super) outlet_addr: MultiAddr,
@@ -53,6 +55,9 @@ pub(super) struct InletSessionReplacer {
     pub(super) udp_puncture: Option<UdpPuncture>,
     pub(super) additional_route: Option<Route>,
     pub(super) privileged: bool,
+    pub(super) skip_handshake: bool,
+    pub(super) enable_nagle: bool,
+    pub(super) enable_mptcp: bool,
 }
 
 impl InletSessionReplacer {
@@ -107,7 +112,10 @@ impl InletSessionReplacer {
         let (incoming_ac, outgoing_ac) = self.access_control(node_manager).await?;
         let options = TcpInletOptions::new()
             .with_incoming_access_control(incoming_ac)
-            .with_outgoing_access_control(outgoing_ac);
+            .with_outgoing_access_control(outgoing_ac)
+            .set_skip_handshake(self.skip_handshake)
+            .set_enable_nagle(self.enable_nagle)
+            .set_enable_mptcp(self.enable_mptcp);
 
         let options = if self.udp_puncture_enabled() && self.disable_tcp_fallback {
             options.paused()
@@ -127,8 +135,8 @@ impl InletSessionReplacer {
     }
 
     async fn create_impl(&mut self, node_manager: &NodeManager) -> Result<ReplacerOutcome> {
-        self.pause_inlet().await;
-        self.close_connection(node_manager).await;
+        self.pause_inlet();
+        self.close_connection(node_manager);
 
         let connection = node_manager
             .make_connection(
@@ -146,11 +154,8 @@ impl InletSessionReplacer {
         let transport_route = connection.transport_route();
 
         //we expect a fully normalized MultiAddr
-        let normalized_route = route![
-            self.prefix_route.clone(),
-            connection_route.clone(),
-            self.suffix_route.clone()
-        ];
+        let normalized_route =
+            self.prefix_route.clone() + connection_route + self.suffix_route.clone();
 
         // Drop the last address as it will be appended automatically under the hood
         let normalized_stripped_route: Route = normalized_route.clone().modify().pop_back().into();
@@ -158,9 +163,7 @@ impl InletSessionReplacer {
         // Finally, attempt to create/update inlet using the new route
         let inlet_address = match self.inlet.clone() {
             Some(inlet) => {
-                inlet
-                    .unpause(&self.context, normalized_stripped_route.clone())
-                    .await?;
+                inlet.unpause(&self.context, normalized_stripped_route.clone())?;
 
                 inlet.processor_address().cloned()
             }
@@ -203,6 +206,9 @@ impl InletSessionReplacer {
         };
 
         self.main_route = Some(normalized_stripped_route);
+        info!(address = ?inlet_address,
+            route = %self.main_route.as_ref().map(|r| r.to_string()).unwrap_or("None".to_string()),
+            "tcp inlet restored");
 
         Ok(ReplacerOutcome {
             ping_route: transport_route,
@@ -213,16 +219,16 @@ impl InletSessionReplacer {
         })
     }
 
-    async fn pause_inlet(&mut self) {
+    fn pause_inlet(&mut self) {
         if let Some(inlet) = self.inlet.as_mut() {
-            inlet.pause().await;
+            inlet.pause();
         }
     }
 
-    async fn close_inlet(&mut self) {
+    fn close_inlet(&mut self) {
         if let Some(inlet) = self.inlet.take() {
             // The previous inlet worker needs to be stopped:
-            let result = inlet.stop(&self.context).await;
+            let result = inlet.stop(&self.context);
 
             if let Err(err) = result {
                 error!(
@@ -234,9 +240,9 @@ impl InletSessionReplacer {
         }
     }
 
-    async fn close_connection(&mut self, node_manager: &NodeManager) {
+    fn close_connection(&mut self, node_manager: &NodeManager) {
         if let Some(connection) = self.connection.take() {
-            let result = connection.close(&self.context, node_manager).await;
+            let result = connection.close(&self.context, node_manager);
             if let Err(err) = result {
                 error!(?err, "Failed to close connection");
             }
@@ -273,7 +279,7 @@ impl SessionReplacer for InletSessionReplacer {
                 Err(ApiError::core("timeout"))
             }
             Ok(Err(e)) => {
-                warn!(%self.outlet_addr, err = %e, "error creating new tcp inlet");
+                warn!(%self.outlet_addr, err = %e, "failed to create tcp inlet");
                 Err(e)
             }
             Ok(Ok(route)) => Ok(route),
@@ -290,8 +296,32 @@ impl SessionReplacer for InletSessionReplacer {
             return;
         };
 
-        self.close_inlet().await;
-        self.close_connection(&node_manager).await;
+        self.close_inlet();
+        self.close_connection(&node_manager);
+    }
+
+    async fn on_session_down(&self) {
+        if let Some(node_manager) = self.node_manager.upgrade() {
+            node_manager.cli_state.notify_message(
+                fmt_warn!(
+                    "The TCP Inlet {} listening at {} lost the connection to the TCP Outlet at {}\n",
+                    color_primary(&self.resource.resource_name),
+                    color_primary(&self.listen_addr),
+                    color_primary(&self.outlet_addr)
+                ) + &fmt_info!("Attempting to reconnect...\n"),
+            );
+        }
+    }
+
+    async fn on_session_replaced(&self) {
+        if let Some(node_manager) = self.node_manager.upgrade() {
+            node_manager.cli_state.notify_message(fmt_ok!(
+                "The TCP Inlet {} listening at {} has restored the connection to the TCP Outlet at {}\n",
+                color_primary(&self.resource.resource_name),
+                color_primary(&self.listen_addr),
+                color_primary(&self.outlet_addr)
+            ));
+        }
     }
 }
 
@@ -342,8 +372,7 @@ impl AdditionalSessionReplacer for InletSessionReplacer {
 
         let main_route: Route = main_route.modify().pop_back().into();
 
-        let additional_sc_route =
-            route![main_route.clone(), DefaultAddress::SECURE_CHANNEL_LISTENER];
+        let additional_sc_route = main_route.clone() + DefaultAddress::SECURE_CHANNEL_LISTENER;
 
         let additional_sc = node_manager
             .create_secure_channel_internal(
@@ -368,10 +397,7 @@ impl AdditionalSessionReplacer for InletSessionReplacer {
 
         let puncture = UdpPunctureNegotiation::start_negotiation(
             &self.context,
-            route![
-                main_route.clone(),
-                DefaultAddress::UDP_PUNCTURE_NEGOTIATION_LISTENER
-            ],
+            main_route + DefaultAddress::UDP_PUNCTURE_NEGOTIATION_LISTENER,
             &udp_transport,
             rendezvous_route,
             // TODO: Have a dedicated timeout
@@ -388,7 +414,7 @@ impl AdditionalSessionReplacer for InletSessionReplacer {
         additional_sc.update_remote_node_route(route![puncture.sender_address()])?;
 
         let new_route = route![additional_sc.clone()];
-        inlet.unpause(&self.context, new_route.clone()).await?;
+        inlet.unpause(&self.context, new_route.clone())?;
 
         self.additional_route = Some(new_route.clone());
 
@@ -402,20 +428,20 @@ impl AdditionalSessionReplacer for InletSessionReplacer {
             match self.main_route.as_ref() {
                 Some(main_route) if enable_fallback => {
                     // Switch Inlet to the main route
-                    let res = inlet.unpause(&self.context, main_route.clone()).await;
+                    let res = inlet.unpause(&self.context, main_route.clone());
 
                     if let Some(err) = res.err() {
                         error!("Error switching Inlet to the main route {}", err);
                     }
                 }
                 _ => {
-                    inlet.pause().await;
+                    inlet.pause();
                 }
             }
         }
 
         if let Some(secure_channel) = self.additional_secure_channel.take() {
-            let res = self.context.stop_worker(secure_channel).await;
+            let res = self.context.stop_address(secure_channel.as_ref());
 
             if let Some(err) = res.err() {
                 error!("Error closing secure channel {}", err);
@@ -423,7 +449,7 @@ impl AdditionalSessionReplacer for InletSessionReplacer {
         }
 
         if let Some(puncture) = self.udp_puncture.take() {
-            let res = puncture.stop(&self.context).await;
+            let res = puncture.stop(&self.context);
 
             if let Some(err) = res.err() {
                 error!("Error stopping puncture {}", err);

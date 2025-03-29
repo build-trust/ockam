@@ -34,7 +34,7 @@ impl TcpOutlets {
     ) -> Result<Vec<CreateCommand>> {
         match self.tcp_outlets {
             Some(c) => {
-                let mut cmds = c.into_commands_with_name_arg(Self::get_subcommand, Some("from"))?;
+                let mut cmds = c.into_commands(Self::get_subcommand)?;
                 if let Some(node_name) = default_node_name {
                     for cmd in cmds.iter_mut() {
                         if cmd.at.is_none() {
@@ -52,7 +52,8 @@ impl TcpOutlets {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ockam::transport::HostnamePort;
+    use ockam::transport::SchemeHostnamePort;
+    use std::str::FromStr;
 
     #[test]
     fn tcp_outlet_config() {
@@ -62,7 +63,7 @@ mod tests {
                 to: 6060
                 at: n
               to2:
-                to: 6061
+                to: tls://127.0.0.1:6061
                 from: my_outlet
         "#;
         let parsed: TcpOutlets = serde_yaml::from_str(config).unwrap();
@@ -71,11 +72,19 @@ mod tests {
             .into_parsed_commands(Some(&default_node_name))
             .unwrap();
         assert_eq!(cmds.len(), 2);
-        assert_eq!(cmds[0].from.clone().unwrap(), "to1");
-        assert_eq!(cmds[0].to, HostnamePort::new("127.0.0.1", 6060));
+        assert_eq!(cmds[0].name.clone().unwrap(), "to1");
+        assert!(cmds[0].from.is_none());
+        assert_eq!(
+            cmds[0].to,
+            SchemeHostnamePort::from_str("tcp://127.0.0.1:6060").unwrap()
+        );
         assert_eq!(cmds[0].at.as_ref().unwrap(), "n");
+        assert_eq!(cmds[1].name.clone().unwrap(), "to2");
         assert_eq!(cmds[1].from.clone().unwrap(), "my_outlet");
-        assert_eq!(cmds[1].to, HostnamePort::new("127.0.0.1", 6061));
+        assert_eq!(
+            cmds[1].to,
+            SchemeHostnamePort::from_str("tls://127.0.0.1:6061").unwrap()
+        );
         assert_eq!(cmds[1].at.as_ref(), Some(&default_node_name));
     }
 }

@@ -1,20 +1,22 @@
-use crate::channel_types::small_channel;
 use crate::context::MessageWait;
+use crate::error::*;
 use crate::{debugger, Context, MessageReceiveOptions, DEFAULT_TIMEOUT};
-use crate::{error::*, NodeMessage};
 use cfg_if::cfg_if;
 use core::time::Duration;
 use ockam_core::compat::{sync::Arc, vec::Vec};
 use ockam_core::{
     errcode::{Kind, Origin},
-    route, Address, AllowAll, AllowOnwardAddress, Error, LocalMessage, Mailboxes, Message,
-    RelayMessage, Result, Route, Routed,
+    route, Address, AllOutgoingAccessControl, AllowAll, AllowOnwardAddress, Error,
+    IncomingAccessControl, LocalMessage, Mailboxes, Message, OutgoingAccessControl, RelayMessage,
+    Result, Route, Routed,
 };
 use ockam_core::{LocalInfo, Mailbox};
 
 /// Full set of options to `send_and_receive_extended` function
 pub struct MessageSendReceiveOptions {
     message_wait: MessageWait,
+    incoming_access_control: Option<Arc<dyn IncomingAccessControl>>,
+    outgoing_access_control: Option<Arc<dyn OutgoingAccessControl>>,
 }
 
 impl Default for MessageSendReceiveOptions {
@@ -28,6 +30,8 @@ impl MessageSendReceiveOptions {
     pub fn new() -> Self {
         Self {
             message_wait: MessageWait::Timeout(DEFAULT_TIMEOUT),
+            incoming_access_control: None,
+            outgoing_access_control: None,
         }
     }
 
@@ -40,6 +44,24 @@ impl MessageSendReceiveOptions {
     /// Wait for the message forever
     pub fn without_timeout(mut self) -> Self {
         self.message_wait = MessageWait::Blocking;
+        self
+    }
+
+    /// Set incoming access control
+    pub fn with_incoming_access_control(
+        mut self,
+        incoming_access_control: Arc<dyn IncomingAccessControl>,
+    ) -> Self {
+        self.incoming_access_control = Some(incoming_access_control);
+        self
+    }
+
+    /// Set outgoing access control
+    pub fn with_outgoing_access_control(
+        mut self,
+        outgoing_access_control: Arc<dyn OutgoingAccessControl>,
+    ) -> Self {
+        self.outgoing_access_control = Some(outgoing_access_control);
         self
     }
 }
@@ -55,11 +77,12 @@ impl Context {
     /// [`new_detached`]: Self::new_detached
     /// [`send`]: Self::send
     /// [`receive`]: Self::receive
-    pub async fn send_and_receive<M>(&self, route: impl Into<Route>, msg: impl Message) -> Result<M>
+    pub async fn send_and_receive<T, R>(&self, route: impl Into<Route>, msg: T) -> Result<R>
     where
-        M: Message,
+        T: Message,
+        R: Message,
     {
-        self.send_and_receive_extended::<M>(route, msg, MessageSendReceiveOptions::new())
+        self.send_and_receive_extended::<T, R>(route, msg, MessageSendReceiveOptions::new())
             .await?
             .into_body()
     }
@@ -73,24 +96,44 @@ impl Context {
     /// [`new_detached`]: Self::new_detached
     /// [`send`]: Self::send
     /// [`receive`]: Self::receive
-    pub async fn send_and_receive_extended<M>(
+    pub async fn send_and_receive_extended<T, R>(
         &self,
         route: impl Into<Route>,
-        msg: impl Message,
+        msg: T,
         options: MessageSendReceiveOptions,
-    ) -> Result<Routed<M>>
+    ) -> Result<Routed<R>>
     where
-        M: Message,
+        T: Message,
+        R: Message,
     {
         let route: Route = route.into();
 
         let next = route.next()?.clone();
         let address = Address::random_tagged("Context.send_and_receive.detached");
+
+        let incoming_access_control =
+            if let Some(incoming_access_control) = options.incoming_access_control {
+                incoming_access_control
+            } else {
+                Arc::new(AllowAll)
+            };
+
+        let outgoing_access_control: Arc<dyn OutgoingAccessControl> =
+            if let Some(outgoing_access_control) = options.outgoing_access_control {
+                Arc::new(AllOutgoingAccessControl::new(vec![
+                    outgoing_access_control,
+                    Arc::new(AllowOnwardAddress(next.clone())),
+                ]))
+            } else {
+                Arc::new(AllowOnwardAddress(next.clone()))
+            };
+
         let mailboxes = Mailboxes::new(
             Mailbox::new(
                 address.clone(),
-                Arc::new(AllowAll),
-                Arc::new(AllowOnwardAddress(next.clone())),
+                None,
+                incoming_access_control,
+                outgoing_access_control,
             ),
             vec![],
         );
@@ -101,17 +144,17 @@ impl Context {
             .map(|x| x.flow_control_id().clone())
         {
             // To be able to receive the response
-            self.flow_controls.add_consumer(address, &flow_control_id);
+            self.flow_controls.add_consumer(&address, &flow_control_id);
         }
 
-        let mut child_ctx = self.new_detached_with_mailboxes(mailboxes).await?;
+        let mut child_ctx = self.new_detached_with_mailboxes(mailboxes)?;
 
         #[cfg(feature = "std")]
         child_ctx.set_tracing_context(self.tracing_context());
 
         child_ctx.send(route, msg).await?;
         child_ctx
-            .receive_extended::<M>(
+            .receive_extended::<R>(
                 MessageReceiveOptions::new().with_message_wait(options.message_wait),
             )
             .await
@@ -146,8 +189,10 @@ impl Context {
     /// [`RouteBuilder`]: ockam_core::RouteBuilder
     ///
     /// ```rust
-    /// # use {ockam_node::Context, ockam_core::Result};
-    /// # async fn test(ctx: &mut Context) -> Result<()> {
+    /// # use {ockam_node::Context, ockam_core::Result};    /// #
+    /// use ockam_core::{deserialize, serialize, Decodable, Encodable, Encoded};
+    ///
+    /// async fn test(ctx: &mut Context) -> Result<()> {
     /// use ockam_core::Message;
     /// use serde::{Serialize, Deserialize};
     ///
@@ -160,6 +205,18 @@ impl Context {
     ///     }
     /// }
     ///
+    /// impl Encodable for MyMessage {
+    ///     fn encode(self) -> Result<Encoded> {
+    ///         Ok(serialize(self)?)
+    ///     }
+    /// }
+    ///
+    /// impl Decodable for MyMessage {
+    ///     fn decode(e: &[u8]) -> Result<Self> {
+    ///         Ok(deserialize(e)?)
+    ///     }
+    /// }
+    ///
     /// ctx.send("my-test-worker", MyMessage::new("Hello you there :)")).await?;
     /// Ok(())
     /// # }
@@ -167,9 +224,9 @@ impl Context {
     pub async fn send<R, M>(&self, route: R, msg: M) -> Result<()>
     where
         R: Into<Route>,
-        M: Message + Send + 'static,
+        M: Message,
     {
-        self.send_from_address(route.into(), msg, self.address())
+        self.send_from_address(route.into(), msg, self.primary_address().clone())
             .await
     }
 
@@ -183,10 +240,15 @@ impl Context {
     ) -> Result<()>
     where
         R: Into<Route>,
-        M: Message + Send + 'static,
+        M: Message,
     {
-        self.send_from_address_impl(route.into(), msg, self.address(), local_info)
-            .await
+        self.send_from_address_impl(
+            route.into(),
+            msg,
+            self.primary_address().clone(),
+            local_info,
+        )
+        .await
     }
 
     /// Send a message to an address or via a fully-qualified route
@@ -210,7 +272,7 @@ impl Context {
     ) -> Result<()>
     where
         R: Into<Route>,
-        M: Message + Send + 'static,
+        M: Message,
     {
         self.send_from_address_impl(route.into(), msg, sending_address, Vec::new())
             .await
@@ -224,7 +286,7 @@ impl Context {
         local_info: Vec<LocalInfo>,
     ) -> Result<()>
     where
-        M: Message + Send + 'static,
+        M: Message,
     {
         // Check if the sender address exists
         if !self.mailboxes.contains(&sending_address) {
@@ -232,7 +294,6 @@ impl Context {
         }
 
         // First resolve the next hop in the route
-        let (reply_tx, mut reply_rx) = small_channel();
         let addr = match route.next() {
             Ok(next) => next.clone(),
             Err(err) => {
@@ -242,16 +303,7 @@ impl Context {
             }
         };
 
-        let req = NodeMessage::SenderReq(addr, reply_tx);
-        self.sender
-            .send(req)
-            .await
-            .map_err(NodeError::from_send_err)?;
-        let (addr, sender) = reply_rx
-            .recv()
-            .await
-            .ok_or_else(|| NodeError::NodeState(NodeReason::Unknown).internal())??
-            .take_sender()?;
+        let sender = self.router()?.resolve(&addr)?;
 
         // Pack the payload into a TransportMessage
         let payload = msg.encode().map_err(|_| NodeError::Data.internal())?;
@@ -276,7 +328,7 @@ impl Context {
         }
 
         // Pack local message into a RelayMessage wrapper
-        let relay_msg = RelayMessage::new(sending_address.clone(), addr, local_msg);
+        let relay_msg = RelayMessage::new(sending_address, addr, local_msg);
 
         debugger::log_outgoing_message(self, &relay_msg);
 
@@ -311,7 +363,8 @@ impl Context {
     /// [`Context::send`]: crate::Context::send
     /// [`LocalMessage`]: ockam_core::LocalMessage
     pub async fn forward(&self, local_msg: LocalMessage) -> Result<()> {
-        self.forward_from_address(local_msg, self.address()).await
+        self.forward_from_address(local_msg, self.primary_address().clone())
+            .await
     }
 
     /// Forward a transport message to its next routing destination
@@ -337,7 +390,6 @@ impl Context {
         }
 
         // First resolve the next hop in the route
-        let (reply_tx, mut reply_rx) = small_channel();
         let addr = match local_msg.onward_route().next() {
             Ok(next) => next.clone(),
             Err(err) => {
@@ -349,16 +401,7 @@ impl Context {
                 return Err(err);
             }
         };
-        let req = NodeMessage::SenderReq(addr, reply_tx);
-        self.sender
-            .send(req)
-            .await
-            .map_err(NodeError::from_send_err)?;
-        let (addr, sender) = reply_rx
-            .recv()
-            .await
-            .ok_or_else(|| NodeError::NodeState(NodeReason::Unknown).internal())??
-            .take_sender()?;
+        let sender = self.router()?.resolve(&addr)?;
 
         // Pack the transport message into a RelayMessage wrapper
         let relay_msg = RelayMessage::new(sending_address, addr, local_msg);

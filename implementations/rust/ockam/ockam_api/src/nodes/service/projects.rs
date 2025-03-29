@@ -1,14 +1,14 @@
-use crate::cloud::email_address::EmailAddress;
-use crate::cloud::project::models::{AdminInfo, OrchestratorVersionInfo};
-use crate::cloud::project::{Project, ProjectsOrchestratorApi};
 use crate::nodes::InMemoryNode;
-use miette::IntoDiagnostic;
+use crate::orchestrator::email_address::EmailAddress;
+use crate::orchestrator::project::models::{AdminInfo, OrchestratorVersionInfo};
+use crate::orchestrator::project::{Project, ProjectsOrchestratorApi};
 use ockam_core::async_trait;
 use ockam_node::Context;
+use tracing::Level;
 
 #[async_trait]
 impl ProjectsOrchestratorApi for InMemoryNode {
-    #[instrument(skip_all, fields(project_name = project_name, space_name = space_name))]
+    #[instrument(skip_all, fields(project_name = project_name, space_name = space_name), level = Level::TRACE)]
     async fn create_project(
         &self,
         ctx: &Context,
@@ -29,7 +29,7 @@ impl ProjectsOrchestratorApi for InMemoryNode {
         Ok(project)
     }
 
-    #[instrument(skip_all, fields(project_id = project_id))]
+    #[instrument(skip_all, fields(project_id = project_id), level = Level::TRACE)]
     async fn get_project(&self, ctx: &Context, project_id: &str) -> miette::Result<Project> {
         let controller = self.create_controller().await?;
 
@@ -47,7 +47,7 @@ impl ProjectsOrchestratorApi for InMemoryNode {
         }
     }
 
-    #[instrument(skip_all, fields(project_name = project_name))]
+    #[instrument(skip_all, fields(project_name = project_name), level = Level::TRACE)]
     async fn get_project_by_name_or_default(
         &self,
         ctx: &Context,
@@ -63,7 +63,7 @@ impl ProjectsOrchestratorApi for InMemoryNode {
         self.get_project(ctx, &project_id).await
     }
 
-    #[instrument(skip_all, fields(project_name = project_name))]
+    #[instrument(skip_all, fields(project_name = project_name), level = Level::TRACE)]
     async fn get_project_by_name(
         &self,
         ctx: &Context,
@@ -79,7 +79,7 @@ impl ProjectsOrchestratorApi for InMemoryNode {
         self.get_project(ctx, &project_id).await
     }
 
-    #[instrument(skip_all, fields(project_id = project_id, space_id = space_id))]
+    #[instrument(skip_all, fields(project_id = project_id, space_id = space_id), level = Level::TRACE)]
     async fn delete_project(
         &self,
         ctx: &Context,
@@ -92,7 +92,7 @@ impl ProjectsOrchestratorApi for InMemoryNode {
         Ok(self.cli_state.projects().delete_project(project_id).await?)
     }
 
-    #[instrument(skip_all, fields(project_name = project_name, space_name = space_name))]
+    #[instrument(skip_all, fields(project_name = project_name, space_name = space_name), level = Level::TRACE)]
     async fn delete_project_by_name(
         &self,
         ctx: &Context,
@@ -109,7 +109,7 @@ impl ProjectsOrchestratorApi for InMemoryNode {
             .await
     }
 
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     async fn get_orchestrator_version_info(
         &self,
         ctx: &Context,
@@ -121,7 +121,7 @@ impl ProjectsOrchestratorApi for InMemoryNode {
             .await?)
     }
 
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     async fn get_admin_projects(&self, ctx: &Context) -> miette::Result<Vec<Project>> {
         // If there is no user in the database, the identity used an enrollment ticket
         // but it didn't enroll to the Orchestrator. Therefore, it won't have any admin projects.
@@ -133,14 +133,7 @@ impl ProjectsOrchestratorApi for InMemoryNode {
         match self.create_controller().await?.list_projects(ctx).await {
             Ok(project_models) => {
                 for project_model in project_models {
-                    info!(
-                        "retrieved project {}/{}",
-                        project_model.name, project_model.id
-                    );
-                    let project = Project::import(project_model.clone())
-                        .await
-                        .into_diagnostic()?;
-                    self.cli_state.projects().store_project(project).await?;
+                    self.get_project(ctx, &project_model.id).await?;
                 }
             }
             Err(e) => warn!("could not get the list of projects from the controller {e:?}"),
@@ -159,7 +152,7 @@ impl ProjectsOrchestratorApi for InMemoryNode {
 
     /// Wait until the operation associated with the project creation is complete
     /// At this stage the project node must be up and running
-    #[instrument(skip_all, fields(project_id = project.project_id()))]
+    #[instrument(skip_all, fields(project_id = project.project_id()), level = Level::TRACE)]
     async fn wait_until_project_creation_operation_is_complete(
         &self,
         ctx: &Context,
@@ -180,7 +173,7 @@ impl ProjectsOrchestratorApi for InMemoryNode {
 
     /// Wait until the project is ready to be used
     /// At this stage the project authority node must be up and running
-    #[instrument(skip_all, fields(project_id = project.project_id()))]
+    #[instrument(skip_all, fields(project_id = project.project_id()), level = Level::TRACE)]
     async fn wait_until_project_is_ready(
         &self,
         ctx: &Context,
@@ -231,7 +224,7 @@ impl ProjectsOrchestratorApi for InMemoryNode {
 mod tests {
     use crate::cli_state::projects::Projects;
     use crate::cli_state::ProjectsSqlxDatabase;
-    use crate::cloud::project::models::ProjectModel;
+    use crate::orchestrator::project::models::ProjectModel;
     use ockam::identity::{
         identities, ChangeHistoryRepository, ChangeHistorySqlxDatabase, IdentitiesVerification,
     };

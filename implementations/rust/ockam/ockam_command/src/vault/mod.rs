@@ -7,6 +7,8 @@ use crate::vault::move_vault::MoveCommand;
 use crate::vault::show::ShowCommand;
 use crate::{docs, Command, CommandGlobalOpts};
 
+use ockam_node::Context;
+
 mod create;
 mod delete;
 mod list;
@@ -38,13 +40,13 @@ pub enum VaultSubcommand {
 }
 
 impl VaultCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
-            VaultSubcommand::Create(cmd) => cmd.run(opts),
-            VaultSubcommand::Move(cmd) => cmd.run(opts),
-            VaultSubcommand::Show(cmd) => cmd.run(opts),
-            VaultSubcommand::List(cmd) => cmd.run(opts),
-            VaultSubcommand::Delete(cmd) => cmd.run(opts),
+            VaultSubcommand::Create(cmd) => cmd.run(ctx, opts).await,
+            VaultSubcommand::Move(cmd) => cmd.run(opts).await,
+            VaultSubcommand::Show(cmd) => cmd.run(opts).await,
+            VaultSubcommand::List(cmd) => cmd.run(opts).await,
+            VaultSubcommand::Delete(cmd) => cmd.run(opts).await,
         }
     }
 

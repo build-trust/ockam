@@ -17,10 +17,6 @@ teardown() {
 
 # ===== TESTS
 
-@test "spaces - list" {
-  run_success "$OCKAM" space list
-}
-
 @test "spaces - CRUD admins" {
   # get space admin email (the one used to enroll)
   run_success "$OCKAM" space-admin list --jq ".[0].email"

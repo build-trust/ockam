@@ -6,7 +6,7 @@ use ockam::{node, route, Context, Result, Route};
 async fn main(ctx: Context) -> Result<()> {
     // Initialize the TCP Transport.
     let node = node(ctx).await?;
-    let tcp = node.create_tcp_transport().await?;
+    let tcp = node.create_tcp_transport()?;
 
     // Create a Vault to store our cryptographic keys and an Identity to represent this Node.
     // Then initiate a handshake with the secure channel listener on the node that has the
@@ -47,7 +47,7 @@ async fn main(ctx: Context) -> Result<()> {
     tcp.create_inlet(inlet_address, route_to_outlet, TcpInletOptions::new())
         .await?;
 
-    // We won't call ctx.stop() here,
+    // We won't call ctx.shutdown_node() here,
     // so this program will keep running until you interrupt it with Ctrl-C.
     Ok(())
 }

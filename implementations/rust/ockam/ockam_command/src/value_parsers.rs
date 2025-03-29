@@ -1,10 +1,11 @@
+use crate::node::config::NodeConfig;
 use crate::util::parsers::hostname_parser;
 use crate::CommandGlobalOpts;
 use miette::{miette, Context, IntoDiagnostic};
 use ockam_api::cli_state::{EnrollmentTicket, ExportedEnrollmentTicket, LegacyEnrollmentTicket};
-use serde::Deserialize;
+use ockam_api::colors::color_primary;
 use std::str::FromStr;
-use tracing::trace;
+use tracing::{debug, trace};
 use url::Url;
 
 /// Parse a single key-value pair
@@ -30,7 +31,7 @@ pub async fn parse_enrollment_ticket(
     value: &str,
 ) -> miette::Result<EnrollmentTicket> {
     trace!(%value, "parsing enrollment ticket");
-    let contents = parse_string_or_path_or_url(value).await?;
+    let contents = read_contents_from_string_or_path_or_url(value).await?;
 
     // Try to parse it using the old format
     if let Ok(ticket) = LegacyEnrollmentTicket::from_str(&contents) {
@@ -42,31 +43,34 @@ pub async fn parse_enrollment_ticket(
         .await?)
 }
 
-pub(crate) async fn parse_config_or_path_or_url<'de, T: Deserialize<'de>>(
-    value: &'de str,
+pub(crate) async fn read_config_contents_from_path_or_url_or_inline(
+    value: &str,
 ) -> miette::Result<String> {
-    match parse_path_or_url(value).await {
-        Ok(contents) => Ok(contents),
-        Err(_) => {
-            if serde_yaml::from_str::<T>(value).is_ok() {
-                Ok(value.to_string())
-            } else {
-                Err(miette!(
-                    "Failed to parse value {} as a path, URL or configuration",
-                    value
-                ))
-            }
-        }
+    let contents = match read_contents_from_path_or_url(value).await {
+        Ok(contents) => contents,
+        Err(_) => value.to_string(),
+    };
+    let parsed = serde_yaml::from_str::<NodeConfig>(&contents);
+    if !contents.is_empty() && parsed.is_ok() {
+        Ok(contents)
+    } else {
+        Err(miette!(
+            "Failed to parse configuration from value {} as a path, URL or inline contents",
+            color_primary(value)
+        ))
     }
 }
 
-pub(crate) async fn parse_string_or_path_or_url(value: &str) -> miette::Result<String> {
-    parse_path_or_url(value)
-        .await
-        .or_else(|_| Ok(value.to_string()))
+pub(crate) async fn read_contents_from_string_or_path_or_url(
+    value: &str,
+) -> miette::Result<String> {
+    read_contents_from_path_or_url(value).await.or_else(|err| {
+        debug!(%value, %err, "Couldn't parse value as a path or URL. Returning plain value to be processed as inline contents");
+        Ok(value.to_string())
+    })
 }
 
-pub(crate) async fn parse_path_or_url(value: &str) -> miette::Result<String> {
+pub(crate) async fn read_contents_from_path_or_url(value: &str) -> miette::Result<String> {
     // If the URL is valid, download the contents
     if let Some(url) = is_url(value) {
         reqwest::get(url)
@@ -85,7 +89,11 @@ pub(crate) async fn parse_path_or_url(value: &str) -> miette::Result<String> {
             .into_diagnostic()
             .context("Failed to read contents from file")
     } else {
-        Err(miette!("Failed to parse value {} as a path or URL", value))
+        debug!(%value, "Couldn't parse value as a path or URL");
+        Err(miette!(
+            "Couldn't parse value {} as a path or URL",
+            color_primary(value)
+        ))
     }
 }
 

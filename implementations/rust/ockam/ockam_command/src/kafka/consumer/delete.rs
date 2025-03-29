@@ -3,6 +3,8 @@ use clap::Args;
 use crate::util::print_warning_for_deprecated_flag_replaced;
 use crate::{docs, node::NodeOpts, Command, CommandGlobalOpts};
 
+use ockam_node::Context;
+
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
 
 /// Delete a Kafka Consumer.
@@ -18,7 +20,7 @@ pub struct DeleteCommand {
 }
 
 impl DeleteCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         print_warning_for_deprecated_flag_replaced(&opts, &self.name(), "kafka-inlet")?;
         crate::kafka::inlet::delete::DeleteCommand {
             node_opts: self.node_opts,
@@ -26,7 +28,8 @@ impl DeleteCommand {
             all: false,
             yes: false,
         }
-        .run(opts)
+        .run(ctx, opts)
+        .await
     }
 
     pub fn name(&self) -> String {

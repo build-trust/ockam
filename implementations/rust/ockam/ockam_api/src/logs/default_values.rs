@@ -1,9 +1,9 @@
 use crate::logs::LogFormat;
 use std::time::Duration;
 
-///
-/// LOGGING
-///
+//
+// LOGGING
+//
 
 /// Log format for files. See LogFormat for other values
 pub(crate) const DEFAULT_LOG_FORMAT: LogFormat = LogFormat::Default;
@@ -18,19 +18,19 @@ pub(crate) const DEFAULT_LOG_MAX_FILES: u64 = 60;
 pub(crate) const DEFAULT_OPENTELEMETRY_ENDPOINT: &str =
     "https://otelcoll.orchestrator.ockam.io:443";
 
-///
-/// TRACING
-///
+//
+// TRACING
+//
 
-/// Timeout for trying to access the OpenTelemetry collector endpoint when running a command
+/// Timeout for trying to access the Telemetry collector endpoint when running a command
 /// It is quite high but experimentation shows that sometimes there's quite some lag even if the endpoint is available
-pub(crate) const DEFAULT_OPENTELEMETRY_ENDPOINT_FOREGROUND_CONNECTION_TIMEOUT: Duration =
+pub(crate) const DEFAULT_TELEMETRY_ENDPOINT_FOREGROUND_CONNECTION_TIMEOUT: Duration =
     Duration::from_millis(500);
 
-/// Timeout for trying to access the OpenTelemetry collector endpoint for a background
+/// Timeout for trying to access the Telemetry collector endpoint for a background
 /// Since the node is going to run uninterrupted, we leave a longer amount of time than for a command
 /// to try to reach the endpoint
-pub(crate) const DEFAULT_OPENTELEMETRY_ENDPOINT_BACKGROUND_CONNECTION_TIMEOUT: Duration =
+pub(crate) const DEFAULT_TELEMETRY_ENDPOINT_BACKGROUND_CONNECTION_TIMEOUT: Duration =
     Duration::from_secs(2);
 
 /// Timeout for exporting spans or log records

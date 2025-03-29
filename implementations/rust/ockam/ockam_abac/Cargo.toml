@@ -1,6 +1,6 @@
 [package]
 name = "ockam_abac"
-version = "0.76.0"
+version = "0.80.0"
 authors = ["Ockam Developers"]
 categories = ["cryptography"]
 edition = "2021"
@@ -26,6 +26,7 @@ std = [
   "either/use_std",
   "once_cell/std",
   "sqlx",
+  "sqlx-core",
   "regex",
   "tokio",
   "wast",
@@ -38,31 +39,30 @@ std = [
 cfg-if = "1.0.0"
 either = { version = "1.13.0", default-features = false }
 minicbor = { version = "0.25.1", default-features = false, features = ["derive"] }
-ockam_core = { version = "0.122.0", path = "../ockam_core", default-features = false }
-ockam_identity = { version = "0.130.0", path = "../ockam_identity", default-features = false }
-ockam_node = { version = "0.135.0", path = "../ockam_node", default-features = false }
+ockam_core = { version = "0.125.0", path = "../ockam_core", default-features = false }
+ockam_identity = { version = "0.134.0", path = "../ockam_identity", default-features = false }
+ockam_node = { version = "0.139.0", path = "../ockam_node", default-features = false }
 once_cell = { version = "1.19.0", default-features = false, features = ["alloc"] }
 serde = { version = "1", default-features = false, features = ["derive"] }
 strum = { version = "0.26.3", default-features = false, features = ["derive"] }
 
 # optional:
-ockam_executor = { version = "0.91.0", path = "../ockam_executor", default-features = false, optional = true }
+ockam_executor = { version = "0.94.0", path = "../ockam_executor", default-features = false, optional = true }
 regex = { version = "1.10.6", default-features = false, optional = true }
 rustyline = { version = "14.0.0", optional = true }
 rustyline-derive = { version = "0.10.0", optional = true }
-sqlx = { version = "0.8.2", optional = true, default-features = false }
+sqlx = { version = "0.8.3", optional = true, default-features = false }
+sqlx-core = { version = "0.8.3", optional = true, default-features = false }
 str-buf = "3.0.3"
 tokio = { version = "1.41", default-features = false, optional = true, features = ["sync", "time", "rt", "rt-multi-thread", "macros"] }
 tracing = { version = "0.1", default-features = false, features = ["attributes"] }
 wast = { version = "220.0.0", default-features = false, optional = true }
-winnow = { version = "0.6.18", default-features = false, optional = true, features = ["alloc"] }
+winnow = { version = "0.6.25", default-features = false, optional = true, features = ["alloc"] }
 
 [dev-dependencies]
-ockam_vault = { path = "../ockam_vault", default-features = false, features = ["rust-crypto"] }
 quickcheck = "1.0.3"
 rand = "0.8.5"
 serde_json = "1.0.133"
-tempfile = "3.10.1"
 
 [[bin]]
 name = "repl"

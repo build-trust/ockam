@@ -1,4 +1,4 @@
-use crate::cloud::project::models::OktaAuth0;
+use crate::orchestrator::project::models::OktaAuth0;
 use ockam_core::Result;
 use std::time::Duration;
 use url::Url;

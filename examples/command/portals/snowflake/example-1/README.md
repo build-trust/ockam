@@ -115,7 +115,7 @@ spec:
           allow: snowflake-api-service-inlet
     env:
         OCKAM_DISABLE_UPGRADE_CHECK: true
-        OCKAM_OPENTELEMETRY_EXPORT: false
+        OCKAM_TELEMETRY_EXPORT: false
 $$
 EXTERNAL_ACCESS_INTEGRATIONS = (OCKAM);
 

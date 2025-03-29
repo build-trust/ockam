@@ -4,6 +4,68 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.139.0 - 2025-03-20
+
+### Added
+
+- Updated dependencies
+
+## 0.138.0 - 2025-03-03
+
+### Added
+
+- Add a command to migrate a postgres database
+- Hide the migrate-database command
+- Migrate an existing sqlite database to postgres
+- Add more environment variables to build the postgres connection url
+- Don't return an error when a tcp processor does not receive an ockam message
+- Provide additional ways to pass the database password
+- Optimize node creation:
+- Make portal handshake optional
+- Implemented control api http server
+- Integrate the new span exporter with the rest of the application
+- Updated dependencies
+
+### Changed
+
+- Enable requests to be messages
+
+### Fixed
+
+- Fix "debugger" feature
+- Echo service initialization
+- Echo service initialization
+
+## 0.137.0 - 2025-01-20
+
+### Added
+
+- Rewrite `ockam_node`
+- Update the postgres schema
+- Don't run postgres migrations automatically on startup
+- Make sure that reset can not remove postgres data
+- Isolate member data by authority
+- Updated dependencies
+
+### Fixed
+
+- Fix the migration of in-memory sqlite dbs
+
+## 0.136.0 - 2025-01-09
+
+### Added
+
+- Simplify `node create` execution
+- Improve logs for tcp portals creation
+- Session replacer sends notifications on session lost/replaced
+- Simplify the retrieval of the postgres connection url
+- Improvements to portals commands arguments
+- Updated dependencies
+
+### Changed
+
+- Extract `OCKAM_SQLITE_IN_MEMORY` env var usage up to the cli state initialization
+
 ## 0.135.0 - 2024-12-12
 
 ### Added

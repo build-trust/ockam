@@ -15,7 +15,7 @@ indent_style = space
 indent_size = 2
 
 # Let the corresponding language formatters deal with indent size
-[{{*.{ex,exs,erl,c,h,rs,cmake,cmake.in,stderr,ts,md,plist},CMakeLists.txt,Cargo.lock}}]
+[{{*.{ex,exs,erl,c,h,rs,cmake,cmake.in,stderr,ts,md,plist,ipynb},CMakeLists.txt,Cargo.lock}}]
 indent_size = unset
 
 [*.{drawio,svg}]
@@ -54,3 +54,9 @@ insert_final_newline = unset
 trim_trailing_whitespace = unset
 indent_style = unset
 indent_size = unset
+
+# identity.id test file
+[*.id]
+charset = ""
+end_of_line = unset
+insert_final_newline = unset

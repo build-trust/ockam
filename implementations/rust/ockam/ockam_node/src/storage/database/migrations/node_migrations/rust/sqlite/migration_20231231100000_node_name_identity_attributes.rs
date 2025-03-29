@@ -1,4 +1,6 @@
-use crate::database::{Boolean, FromSqlxError, Nullable, RustMigration, ToVoid};
+use crate::database::{
+    Boolean, FromSqlxError, Nullable, RustMigration, SqlxDatabase, ToVoid, Version,
+};
 use ockam_core::{async_trait, Result};
 use sqlx::any::AnyRow;
 use sqlx::*;
@@ -13,19 +15,23 @@ impl RustMigration for NodeNameIdentityAttributes {
         Self::name()
     }
 
-    fn version(&self) -> i64 {
+    fn version(&self) -> Version {
         Self::version()
     }
 
-    async fn migrate(&self, connection: &mut AnyConnection) -> Result<bool> {
+    async fn migrate(
+        &self,
+        _legacy_sqlite_database: Option<SqlxDatabase>,
+        connection: &mut AnyConnection,
+    ) -> Result<()> {
         Self::migrate_attributes_node_name(connection).await
     }
 }
 
 impl NodeNameIdentityAttributes {
     /// Migration version
-    pub fn version() -> i64 {
-        20231231100000
+    pub fn version() -> Version {
+        Version(20231231100000)
     }
 
     /// Migration name
@@ -38,9 +44,7 @@ impl NodeNameIdentityAttributes {
     }
 
     /// Duplicate all attributes entry for every known node
-    pub(crate) async fn migrate_attributes_node_name(
-        connection: &mut AnyConnection,
-    ) -> Result<bool> {
+    pub(crate) async fn migrate_attributes_node_name(connection: &mut AnyConnection) -> Result<()> {
         // don't run the migration twice
         let data_migration_needed: Option<AnyRow> =
             query(&Self::table_exists("identity_attributes_old"))
@@ -53,7 +57,7 @@ impl NodeNameIdentityAttributes {
 
         if !data_migration_needed {
             // Trigger marking as migrated
-            return Ok(true);
+            return Ok(());
         };
 
         let mut transaction = Connection::begin(&mut *connection).await.into_core()?;
@@ -90,7 +94,7 @@ impl NodeNameIdentityAttributes {
 
         transaction.commit().await.void()?;
 
-        Ok(true)
+        Ok(())
     }
 }
 
@@ -188,7 +192,7 @@ mod test {
         Ok(())
     }
 
-    /// HELPERS
+    // HELPERS
     fn create_attributes(identifier: &str) -> Result<Vec<u8>> {
         ockam_core::cbor_encode_preallocate(BTreeMap::from([
             ("name".as_bytes().to_vec(), identifier.as_bytes().to_vec()),

@@ -34,7 +34,7 @@ pub fn default_attributes<'a>() -> HashMap<&'a Key, String> {
 ///  - The next 25 characters identify the host
 ///  - The last 6 characters are the 'now' date as YYMMDD
 ///
-pub(crate) fn make_host_trace_id(now: DateTime<Utc>) -> TraceId {
+pub fn make_host_trace_id(now: DateTime<Utc>) -> TraceId {
     let machine = adjust(make_host(), 25, '1');
     // date as a 6 characters string
     let now = now_as_string(now);
@@ -54,7 +54,7 @@ pub(crate) fn make_host_trace_id(now: DateTime<Utc>) -> TraceId {
 ///    This allows to bucket all the spans in the same trace, even if the spans come from  different machines which
 ///    can start their own project journey trace independently.
 ///
-pub(crate) fn make_project_trace_id(project_id: &str, now: DateTime<Utc>) -> TraceId {
+pub fn make_project_trace_id(project_id: &str, now: DateTime<Utc>) -> TraceId {
     // take the whole project without '-' as the base for the trace id
     // make sure that there exactly 25 characters
     let project_id_trace_id = adjust(project_id.to_string().replace('-', ""), 25, '1');
@@ -255,7 +255,7 @@ mod tests {
         assert_eq!(now_as_string(datetime("2024-03-31T12:00:00Z")), "240330");
     }
 
-    /// HELPERS
+    // HELPERS
     fn datetime(s: &str) -> DateTime<Utc> {
         Utc.from_utc_datetime(&DateTime::parse_from_rfc3339(s).unwrap().naive_utc())
     }

@@ -1,6 +1,6 @@
 use super::SpacesRepository;
-use crate::cloud::space::Space;
-use crate::cloud::subscription::{Subscription, SubscriptionName};
+use crate::orchestrator::space::Space;
+use crate::orchestrator::subscription::{Subscription, SubscriptionName};
 use ockam_core::async_trait;
 use ockam_core::Result;
 use ockam_node::database::AutoRetry;
@@ -332,14 +332,14 @@ impl SubscriptionRow {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::cloud::subscription::SubscriptionName;
-    use ockam_node::database::with_dbs;
+    use crate::orchestrator::subscription::SubscriptionName;
+    use ockam_node::database::with_sqlite_dbs;
     use std::ops::Add;
     use time::ext::NumericalDuration;
 
     #[tokio::test]
     async fn test_repository() -> Result<()> {
-        with_dbs(|db| async move {
+        with_sqlite_dbs(|db| async move {
             let repository = SpacesSqlxDatabase::new(db);
 
             // create and store 2 spaces

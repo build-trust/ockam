@@ -4,6 +4,113 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.93.0 - 2025-03-20
+
+### Added
+
+- Polishing node control api
+- Deprecating `--status-endpoint-port` in favor of `--status-endpoint`
+- Add env var to control the orchestrator ui url
+- Updated dependencies
+
+### Fixed
+
+- Await signalling the parent process in the foreground node
+- In inlets commands, show the bound port to portal in the output
+- Use localhost to connect to the node when the binding address is `0.0.0.0` or `[::]`
+- Control node api - using multiple tasks to avoid outage during requests timeout
+- Control node api - return a dedicated error when inlet name or port are already in use
+
+## 0.92.0 - 2025-03-13
+
+### Added
+
+- Add command to retrieve the identity listening at some endpoint
+- Updated dependencies
+
+### Changed
+
+- Merge `secure-channel peer-info` command into the `show` command
+
+## 0.91.0 - 2025-03-03
+
+### Added
+
+- Migrate an existing sqlite database to postgres
+- Disable --all functionality in reset command if `OCKAM_DEVELOPER` is not set
+- In enrollment tickets, derive id from project route's service
+- Optimize node creation:
+- Add missing branding replacements in ockam_command
+- Make portal handshake optional
+- Add platinum to `Subscriptions` enum to format it properly
+- Implemented control api http server
+- Added `OpenAPI` schema for `Control Node API`
+- In `Node Control API`, added crud for relay, ticket, and authority members
+- Added `self` reference as node name in `Node Control API`
+- Node control api: bat tests for all apis and relative fixes
+- Add a span exporter using a secure channel
+- Integrate the new span exporter with the rest of the application
+- Send telemetry data to the project node
+- Address review comments
+- Don't create a default node for the telemetry secure client
+- Node control openapi documentation
+- Add support for "launch-configuration" in node's config
+- Added the possibility to overwrite http headers in inlets
+- Add projects to the output of the status command
+- Add connect/disconnect logs to portal worker
+- Add log format for user-facing terminal logs
+- Updated dependencies
+
+### Changed
+
+- Use localhost constructor for `HostnamePort`
+- Bump kafka-protocol from 0.13 to 0.14
+- Enable requests to be messages
+- Generalize the configuration of a secure client
+
+### Fixed
+
+- Echo service initialization
+- Command subprocess read child's pipes instead of copying them
+- Node control api fixes and error handling refactorings
+- Fix the deserializaton of error messages in responses
+- Node control api fixes and minor refactorings
+- Protect the start of a grpc forwarder against an incorrect configuration
+
+## 0.90.0 - 2025-01-20
+
+### Added
+
+- Rewrite `ockam_node`
+- Update the postgres schema
+- Make sure that reset can not remove postgres data
+- Isolate member data by authority
+- Add binary to compile branded command binaries
+- Update the legacy authority identity name
+- Updated dependencies
+
+### Changed
+
+- Rename cloud module to orchestrator
+
+## 0.89.0 - 2025-01-09
+
+### Added
+
+- Introduce env variables to adjust transport performance
+- Simplify `node create` execution
+- Improve logs for relay creation
+- Improve logs for tcp portals creation
+- Add a custom log format to change the fields order
+- Session replacer sends notifications on session lost/replaced
+- Improvements to portals commands arguments
+- Updated dependencies
+
+### Changed
+
+- Extract `OCKAM_SQLITE_IN_MEMORY` env var usage up to the cli state initialization
+- Rename telemetry env vars
+
 ## 0.88.0 - 2024-12-12
 
 ### Added

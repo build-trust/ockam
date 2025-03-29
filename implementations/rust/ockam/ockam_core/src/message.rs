@@ -73,33 +73,57 @@ pub trait Message: Encodable + Decodable + Send + 'static {}
 
 impl Message for () {}
 
-impl Message for Vec<u8> {}
-
 impl Message for String {}
 
-// Auto-implement message trait for types that _can_ be messages.
-impl<T> Encodable for T
-where
-    T: Serialize,
-{
+impl Message for Vec<u8> {}
+
+impl Encodable for Vec<u8> {
     fn encode(self) -> Result<Encoded> {
-        // Serializing directly to allow better serialization
-        // inlining for a measurable performance improvement.
-        let mut vec = Vec::new();
-        let mut serializer = Serializer::new(VecWrite::new(&mut vec));
-        self.serialize(&mut serializer)?;
-        Ok(vec)
+        Ok(self)
     }
 }
 
-// Auto-implement message trait for types that _can_ be messages.
-impl<T> Decodable for T
-where
-    T: DeserializeOwned,
-{
-    fn decode(encoded: &[u8]) -> Result<Self> {
-        Ok(serde_bare::from_slice(encoded)?)
+impl Decodable for Vec<u8> {
+    fn decode(e: &[u8]) -> Result<Self> {
+        Ok(e.to_vec())
     }
+}
+
+impl Encodable for () {
+    fn encode(self) -> Result<Encoded> {
+        Ok(vec![])
+    }
+}
+
+impl Decodable for () {
+    fn decode(_e: &[u8]) -> Result<Self> {
+        Ok(())
+    }
+}
+
+impl Encodable for String {
+    fn encode(self) -> Result<Encoded> {
+        serialize(self)
+    }
+}
+
+impl Decodable for String {
+    fn decode(e: &[u8]) -> Result<Self> {
+        deserialize(e)
+    }
+}
+
+/// Serialize a type using serde_bare
+pub fn serialize<T: Serialize>(t: T) -> Result<Encoded> {
+    let mut vec = Vec::new();
+    let mut serializer = Serializer::new(VecWrite::new(&mut vec));
+    t.serialize(&mut serializer)?;
+    Ok(vec)
+}
+
+/// Serialize a type using serde_bare
+pub fn deserialize<T: DeserializeOwned>(encoded: &[u8]) -> Result<T> {
+    Ok(serde_bare::from_slice(encoded)?)
 }
 
 /// A message type that is not subject to any encoding or decoding.
@@ -214,14 +238,14 @@ impl<M: Message> Routed<M> {
 
     /// Return a copy of the message address.
     #[inline]
-    pub fn msg_addr(&self) -> Address {
-        self.msg_addr.clone()
+    pub fn msg_addr(&self) -> &Address {
+        &self.msg_addr
     }
 
     /// True sender of the message
     #[inline]
-    pub fn src_addr(&self) -> Address {
-        self.src_addr.clone()
+    pub fn src_addr(&self) -> &Address {
+        &self.src_addr
     }
 
     /// Return a copy of the onward route for the wrapped message.
@@ -262,7 +286,7 @@ impl<M: Message> Routed<M> {
     /// Return a reference to the underlying transport message's binary payload.
     #[inline]
     pub fn payload(&self) -> &[u8] {
-        self.local_msg.payload_ref()
+        self.local_msg.payload()
     }
 
     /// Consume the message wrapper and return the underlying transport message's binary payload.

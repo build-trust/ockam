@@ -1,16 +1,17 @@
 use ockam::identity::{Identifier, IdentitiesVerification};
 use std::collections::HashMap;
 use std::sync::Arc;
+use tracing::Level;
 
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::Error;
 use ockam_vault::SoftwareVaultForVerifyingSignatures;
 
 use crate::cli_state::{CliState, EnrollmentFilter, ProjectsRepository};
-use crate::cloud::email_address::EmailAddress;
-use crate::cloud::project::models::ProjectModel;
-use crate::cloud::project::Project;
-use crate::cloud::share::RoleInShare;
+use crate::orchestrator::email_address::EmailAddress;
+use crate::orchestrator::project::models::ProjectModel;
+use crate::orchestrator::project::Project;
+use crate::orchestrator::share::RoleInShare;
 
 use super::Result;
 
@@ -30,13 +31,13 @@ impl Projects {
         }
     }
 
-    #[instrument(skip_all, fields(project_id = project_model.id))]
+    #[instrument(skip_all, fields(project_id = project_model.id), level = Level::TRACE)]
     pub async fn import_and_store_project(&self, project_model: ProjectModel) -> Result<Project> {
         let project = Project::import(project_model.clone()).await?;
         self.store_project(project).await
     }
 
-    #[instrument(skip_all, fields(project_id = project.project_id()))]
+    #[instrument(skip_all, fields(project_id = project.project_id()), level = Level::TRACE)]
     pub async fn store_project(&self, project: Project) -> Result<Project> {
         if let Some(project_identity) = project.project_identity() {
             self.identities_verification
@@ -54,19 +55,19 @@ impl Projects {
         Ok(project)
     }
 
-    #[instrument(skip_all, fields(project_id = project.id))]
+    #[instrument(skip_all, fields(project_id = project.id), level = Level::TRACE)]
     pub async fn store_project_model(&self, project: &ProjectModel) -> Result<()> {
         self.projects_repository.store_project(project).await?;
         Ok(())
     }
 
-    #[instrument(skip_all, fields(project_id = project_id))]
+    #[instrument(skip_all, fields(project_id = project_id), level = Level::TRACE)]
     pub async fn delete_project(&self, project_id: &str) -> Result<()> {
         self.projects_repository.delete_project(project_id).await?;
         Ok(())
     }
 
-    #[instrument(skip_all, fields(project_id = project_id))]
+    #[instrument(skip_all, fields(project_id = project_id), level = Level::TRACE)]
     pub async fn set_default_project(&self, project_id: &str) -> Result<()> {
         self.projects_repository
             .set_default_project(project_id)
@@ -74,7 +75,7 @@ impl Projects {
         Ok(())
     }
 
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     pub async fn get_default_project(&self) -> Result<Project> {
         match self.projects_repository.get_default_project().await? {
             Some(project) => Ok(Project::import(project).await?),
@@ -86,7 +87,7 @@ impl Projects {
         }
     }
 
-    #[instrument(skip_all, fields(name = name))]
+    #[instrument(skip_all, fields(name = name), level = Level::TRACE)]
     pub async fn get_project_by_name(&self, name: &str) -> Result<Project> {
         match self.projects_repository.get_project_by_name(name).await? {
             Some(project) => Ok(Project::import(project).await?),
@@ -98,7 +99,7 @@ impl Projects {
         }
     }
 
-    #[instrument(skip_all, fields(project_id = project_id))]
+    #[instrument(skip_all, fields(project_id = project_id), level = Level::TRACE)]
     pub async fn get_project(&self, project_id: &str) -> Result<Project> {
         match self.projects_repository.get_project(project_id).await? {
             Some(project) => Ok(Project::import(project).await?),
@@ -110,7 +111,7 @@ impl Projects {
         }
     }
 
-    #[instrument(skip_all, fields(project_name = project_name.clone()))]
+    #[instrument(skip_all, fields(project_name = project_name.clone()), level = Level::TRACE)]
     pub async fn get_project_by_name_or_default(
         &self,
         project_name: &Option<String>,
@@ -121,7 +122,7 @@ impl Projects {
         }
     }
 
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     pub async fn get_projects(&self) -> Result<Vec<Project>> {
         let project_models = self.projects_repository.get_projects().await?;
 
@@ -134,7 +135,7 @@ impl Projects {
         Ok(projects)
     }
 
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     pub async fn get_projects_grouped_by_name(&self) -> Result<HashMap<String, Project>> {
         let mut projects = HashMap::new();
         for project in self.get_projects().await? {

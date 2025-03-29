@@ -5,11 +5,10 @@ use tokio::sync::Mutex;
 use tokio::try_join;
 
 use ockam::Context;
-use ockam_api::cloud::project::ProjectsOrchestratorApi;
 use ockam_api::nodes::InMemoryNode;
+use ockam_api::orchestrator::project::ProjectsOrchestratorApi;
 
 use crate::shared_args::IdentityOpts;
-use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/list/long_about.txt");
@@ -29,18 +28,12 @@ pub struct ListCommand {
 }
 
 impl ListCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |ctx| async move {
-            self.async_run(&ctx, opts).await
-        })
-    }
-
     pub fn name(&self) -> String {
         "project list".into()
     }
 
-    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
-        let node = InMemoryNode::start(ctx, &opts.state).await?;
+    pub async fn run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        let node = InMemoryNode::start(ctx, opts.state.clone()).await?;
         let is_finished: Mutex<bool> = Mutex::new(false);
         let get_projects = async {
             let projects = node.get_admin_projects(ctx).await?;
@@ -58,7 +51,7 @@ impl ListCommand {
         let json = serde_json::to_string(&projects).into_diagnostic()?;
 
         opts.terminal
-            .stdout()
+            .to_stdout()
             .plain(plain)
             .json(json)
             .write_line()?;

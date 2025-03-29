@@ -1,5 +1,3 @@
-use miette::IntoDiagnostic;
-use ockam::identity::Identifier;
 use ockam_api::nodes::models::flow_controls::AddConsumer;
 use ockam_api::nodes::models::services::StartHopServiceRequest;
 use ockam_api::nodes::service::default_address::DefaultAddress;
@@ -8,13 +6,6 @@ use ockam_core::api::Request;
 use ockam_core::flow_control::FlowControlId;
 use ockam_core::Address;
 use ockam_multiaddr::MultiAddr;
-
-use crate::Result;
-
-/// Construct a request to query node status
-pub(crate) fn query_status() -> Request<()> {
-    Request::get("/node")
-}
 
 pub(crate) fn get_node_resources() -> Request<()> {
     Request::get("/node/resources")
@@ -52,26 +43,6 @@ pub(crate) fn show_secure_channel(
 ) -> Request<models::secure_channel::ShowSecureChannelRequest> {
     let payload = models::secure_channel::ShowSecureChannelRequest::new(addr);
     Request::get("/node/show_secure_channel").body(payload)
-}
-
-/// Construct a request to create Secure Channel Listeners
-pub(crate) fn create_secure_channel_listener(
-    addr: &Address,
-    authorized_identifiers: Option<Vec<Identifier>>,
-    identity_name: Option<String>,
-) -> Result<Vec<u8>> {
-    let payload = models::secure_channel::CreateSecureChannelListenerRequest::new(
-        addr,
-        authorized_identifiers,
-        identity_name,
-    );
-
-    let mut buf = vec![];
-    Request::post("/node/secure_channel_listener")
-        .body(payload)
-        .encode(&mut buf)
-        .into_diagnostic()?;
-    Ok(buf)
 }
 
 /// Construct a request to list Secure Channel Listeners

@@ -5,13 +5,12 @@ use clap::{Args, Subcommand};
 use miette::{Context as _, IntoDiagnostic};
 
 use ockam::Context;
-use ockam_api::cloud::subscription::Subscriptions;
 use ockam_api::nodes::InMemoryNode;
+use ockam_api::orchestrator::subscription::Subscriptions;
 use ockam_api::output::Output;
 
 use crate::shared_args::IdentityOpts;
 use crate::subscription::get_subscription_by_id_or_space_id;
-use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts};
 
 const HELP_DETAIL: &str = "";
@@ -132,18 +131,12 @@ enum SubscriptionUpdateSubcommand {
 }
 
 impl SubscriptionCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |ctx| async move {
-            self.async_run(&ctx, opts).await
-        })
-    }
-
     pub fn name(&self) -> String {
         "admin subscription".into()
     }
 
-    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
-        let node = InMemoryNode::start(ctx, &opts.state).await?;
+    pub async fn run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        let node = InMemoryNode::start(ctx, opts.state.clone()).await?;
         let controller = node.create_controller().await?;
 
         match &self.subcommand {
@@ -157,17 +150,11 @@ impl SubscriptionCommand {
 
                 let response = controller
                     .activate_subscription(ctx, space.clone(), json)
-                    .await
-                    .into_diagnostic()?;
+                    .await?;
                 opts.terminal.write_line(&response.item()?)?
             }
             SubscriptionSubcommand::List => {
-                let response = controller
-                    .get_subscriptions(ctx)
-                    .await
-                    .into_diagnostic()?
-                    .success()
-                    .into_diagnostic()?;
+                let response = controller.get_subscriptions(ctx).await?;
                 let output = opts
                     .terminal
                     .build_list(&response, "No Subscriptions found")?;
@@ -186,10 +173,7 @@ impl SubscriptionCommand {
                 .await?
                 {
                     Some(subscription) => {
-                        let response = controller
-                            .unsubscribe(ctx, subscription.id)
-                            .await
-                            .into_diagnostic()?;
+                        let response = controller.unsubscribe(ctx, subscription.id).await?;
                         opts.terminal.write_line(&response.item()?)?
                     }
                     None => opts
@@ -219,8 +203,7 @@ impl SubscriptionCommand {
                             Some(subscription) => {
                                 let response = controller
                                     .update_subscription_contact_info(ctx, subscription.id, json)
-                                    .await
-                                    .into_diagnostic()?;
+                                    .await?;
                                 opts.terminal.write_line(&response.item()?)?
                             }
                             None => opts.terminal.write_line(
@@ -248,8 +231,7 @@ impl SubscriptionCommand {
                                         subscription.id,
                                         new_space_id.clone(),
                                     )
-                                    .await
-                                    .into_diagnostic()?;
+                                    .await?;
                                 opts.terminal.write_line(&response.item()?)?
                             }
                             None => opts.terminal.write_line(

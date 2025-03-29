@@ -7,7 +7,7 @@ use ockam::{node, Context, Result};
 async fn main(ctx: Context) -> Result<()> {
     // Initialize the TCP Transport.
     let node = node(ctx).await?;
-    let tcp = node.create_tcp_transport().await?;
+    let tcp = node.create_tcp_transport()?;
 
     let e = node.create_identity().await?;
 
@@ -16,8 +16,7 @@ async fn main(ctx: Context) -> Result<()> {
 
     let secure_channel_listener_options = SecureChannelListenerOptions::new().as_consumer(&tcp_flow_control_id);
     let secure_channel_flow_control_id = secure_channel_listener_options.spawner_flow_control_id();
-    node.create_secure_channel_listener(&e, "secure_channel_listener", secure_channel_listener_options)
-        .await?;
+    node.create_secure_channel_listener(&e, "secure_channel_listener", secure_channel_listener_options)?;
 
     // Expect first command line argument to be the TCP address of a target TCP server.
     // For example: 127.0.0.1:4002
@@ -40,8 +39,7 @@ async fn main(ctx: Context) -> Result<()> {
         "outlet",
         outlet_target.try_into()?,
         TcpOutletOptions::new().as_consumer(&secure_channel_flow_control_id),
-    )
-    .await?;
+    )?;
 
     // To allow Inlet Node and others to initiate an end-to-end secure channel with this program
     // we connect with 1.node.ockam.network:4000 as a TCP client and ask the forwarding
@@ -57,7 +55,7 @@ async fn main(ctx: Context) -> Result<()> {
     println!("Forwarding address in Hub is:");
     println!("{}", relay.remote_address());
 
-    // We won't call ctx.stop() here,
+    // We won't call ctx.shutdown_node() here,
     // so this program will keep running until you interrupt it with Ctrl-C.
     Ok(())
 }

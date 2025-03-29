@@ -3,7 +3,10 @@ use crate::compat::{
     string::{String, ToString},
     vec::Vec,
 };
-use crate::{AddressParseError, AddressParseErrorKind, Result, TransportType, LOCAL};
+use crate::{
+    serialize, AddressParseError, AddressParseErrorKind, Encodable, Encoded, Result, TransportType,
+    LOCAL,
+};
 use core::fmt::{self, Debug, Display};
 use core::ops::Deref;
 use core::str::from_utf8;
@@ -38,6 +41,18 @@ pub struct Address {
     // It's binary but in most cases we assume it to be a UTF-8 string
     #[cbor(with = "minicbor::bytes")]
     #[n(1)] inner: Vec<u8>,
+}
+
+impl AsRef<Address> for Address {
+    fn as_ref(&self) -> &Address {
+        self
+    }
+}
+
+impl Encodable for Address {
+    fn encode(self) -> Result<Encoded> {
+        serialize(self)
+    }
 }
 
 impl Address {

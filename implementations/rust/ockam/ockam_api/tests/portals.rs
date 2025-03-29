@@ -36,17 +36,20 @@ async fn inlet_outlet_local_successful(context: &mut Context) -> ockam::Result<(
             true,
             OutletAccessControl::AccessControl((Arc::new(AllowAll), Arc::new(AllowAll))),
             false,
+            false,
+            false,
+            false,
         )
         .await?;
 
     assert_eq!(outlet_status.to, echo_server_handle.chosen_addr);
-    assert_eq!(outlet_status.worker_addr.address(), "outlet");
+    assert_eq!(outlet_status.worker_address.address(), "outlet");
 
     let inlet_status = node_manager_handle
         .node_manager
         .create_inlet(
             context,
-            HostnamePort::new("127.0.0.1", 0),
+            HostnamePort::localhost(0),
             route![],
             route![],
             MultiAddr::from_str("/secure/api/service/outlet")?,
@@ -60,6 +63,9 @@ async fn inlet_outlet_local_successful(context: &mut Context) -> ockam::Result<(
             false,
             false,
             None,
+            false,
+            false,
+            false,
         )
         .await?;
 
@@ -112,6 +118,9 @@ fn portal_node_goes_down_reconnect() {
                     true,
                     OutletAccessControl::AccessControl((Arc::new(AllowAll), Arc::new(AllowAll))),
                     false,
+                    false,
+                    false,
+                    false,
                 )
                 .await?;
 
@@ -122,7 +131,7 @@ fn portal_node_goes_down_reconnect() {
                 .node_manager
                 .create_inlet(
                     &first_node.context,
-                    HostnamePort::new("127.0.0.1", 0),
+                    HostnamePort::localhost(0),
                     route![],
                     route![],
                     second_node_listen_address
@@ -138,6 +147,9 @@ fn portal_node_goes_down_reconnect() {
                     false,
                     false,
                     None,
+                    false,
+                    false,
+                    false,
                 )
                 .await?;
 
@@ -151,7 +163,7 @@ fn portal_node_goes_down_reconnect() {
             socket.read_exact(&mut buf).await.unwrap();
             assert_eq!(&buf, b"hello");
 
-            second_node.context.stop().await?;
+            second_node.context.shutdown_node().await?;
 
             // now let's verify the inlet has been detected as down
             loop {
@@ -183,6 +195,9 @@ fn portal_node_goes_down_reconnect() {
                     true,
                     OutletAccessControl::AccessControl((Arc::new(AllowAll), Arc::new(AllowAll))),
                     false,
+                    false,
+                    false,
+                    false,
                 )
                 .await?;
 
@@ -206,8 +221,8 @@ fn portal_node_goes_down_reconnect() {
             socket.read_exact(&mut buf).await.unwrap();
             assert_eq!(&buf, b"hello");
 
-            third_node.context.stop().await?;
-            first_node.context.stop().await?;
+            third_node.context.shutdown_node().await?;
+            first_node.context.shutdown_node().await?;
 
             Ok(())
         };
@@ -258,6 +273,9 @@ fn portal_low_bandwidth_connection_keep_working_for_60s() {
                     true,
                     OutletAccessControl::AccessControl((Arc::new(AllowAll), Arc::new(AllowAll))),
                     false,
+                    false,
+                    false,
+                    false,
                 )
                 .await?;
 
@@ -280,7 +298,7 @@ fn portal_low_bandwidth_connection_keep_working_for_60s() {
                 .node_manager
                 .create_inlet(
                     &first_node.context,
-                    HostnamePort::new("127.0.0.1", 0),
+                    HostnamePort::localhost(0),
                     route![],
                     route![],
                     InternetAddress::from(passthrough_server_handle.chosen_addr)
@@ -296,6 +314,9 @@ fn portal_low_bandwidth_connection_keep_working_for_60s() {
                     false,
                     false,
                     None,
+                    false,
+                    false,
+                    false,
                 )
                 .await?;
 
@@ -340,8 +361,8 @@ fn portal_low_bandwidth_connection_keep_working_for_60s() {
                 tokio::time::sleep(Duration::from_millis(1000)).await;
             }
 
-            second_node.context.stop().await?;
-            first_node.context.stop().await?;
+            second_node.context.shutdown_node().await?;
+            first_node.context.shutdown_node().await?;
 
             Ok(())
         };
@@ -379,6 +400,9 @@ fn portal_heavy_load_exchanged() {
                     true,
                     OutletAccessControl::AccessControl((Arc::new(AllowAll), Arc::new(AllowAll))),
                     false,
+                    false,
+                    false,
+                    false,
                 )
                 .await?;
 
@@ -394,7 +418,7 @@ fn portal_heavy_load_exchanged() {
                 .node_manager
                 .create_inlet(
                     &first_node.context,
-                    HostnamePort::new("127.0.0.1", 0),
+                    HostnamePort::localhost(0),
                     route![],
                     route![],
                     second_node_listen_address
@@ -410,6 +434,9 @@ fn portal_heavy_load_exchanged() {
                     false,
                     false,
                     None,
+                    false,
+                    false,
+                    false,
                 )
                 .await?;
 
@@ -451,8 +478,8 @@ fn portal_heavy_load_exchanged() {
             assert!(payload == incoming_buffer);
 
             let _ = join_tx.await.unwrap();
-            second_node.context.stop().await?;
-            first_node.context.stop().await?;
+            second_node.context.shutdown_node().await?;
+            first_node.context.shutdown_node().await?;
 
             Ok(())
         };
@@ -525,6 +552,9 @@ fn test_portal_payload_transfer(outgoing_disruption: Disruption, incoming_disrup
                     true,
                     OutletAccessControl::AccessControl((Arc::new(AllowAll), Arc::new(AllowAll))),
                     false,
+                    false,
+                    false,
+                    false,
                 )
                 .await?;
 
@@ -547,7 +577,7 @@ fn test_portal_payload_transfer(outgoing_disruption: Disruption, incoming_disrup
                 .node_manager
                 .create_inlet(
                     &first_node.context,
-                    HostnamePort::new("127.0.0.1", 0),
+                    HostnamePort::localhost(0),
                     route![],
                     route![],
                     InternetAddress::from(passthrough_server_handle.chosen_addr)
@@ -563,6 +593,9 @@ fn test_portal_payload_transfer(outgoing_disruption: Disruption, incoming_disrup
                     false,
                     false,
                     None,
+                    false,
+                    false,
+                    false,
                 )
                 .await?;
 
@@ -603,8 +636,8 @@ fn test_portal_payload_transfer(outgoing_disruption: Disruption, incoming_disrup
             // using assert to avoid MB of data being shown in the logs
             assert!(random_buffer[0..size] == incoming_buffer[0..size]);
 
-            second_node.context.stop().await?;
-            first_node.context.stop().await?;
+            second_node.context.shutdown_node().await?;
+            first_node.context.shutdown_node().await?;
 
             Ok(())
         };

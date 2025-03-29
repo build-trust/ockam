@@ -2,12 +2,11 @@ use clap::Args;
 use colorful::Colorful;
 
 use ockam::Context;
-use ockam_api::cloud::project::ProjectsOrchestratorApi;
 use ockam_api::fmt_ok;
 use ockam_api::nodes::InMemoryNode;
+use ockam_api::orchestrator::project::ProjectsOrchestratorApi;
 
 use crate::shared_args::IdentityOpts;
-use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/delete/long_about.txt");
@@ -37,27 +36,21 @@ pub struct DeleteCommand {
 }
 
 impl DeleteCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |ctx| async move {
-            self.async_run(&ctx, opts).await
-        })
-    }
-
     pub fn name(&self) -> String {
         "project delete".into()
     }
 
-    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         if opts.terminal.confirmed_with_flag_or_prompt(
             self.yes,
             "Are you sure you want to delete this project?",
         )? {
-            let node = InMemoryNode::start(ctx, &opts.state).await?;
+            let node = InMemoryNode::start(ctx, opts.state.clone()).await?;
 
             node.delete_project_by_name(ctx, &self.space_name, &self.project_name)
                 .await?;
             opts.terminal
-                .stdout()
+                .to_stdout()
                 .plain(fmt_ok!(
                     "Project with name '{}' has been deleted.",
                     &self.project_name

@@ -5,30 +5,34 @@ use ockam_core::compat::collections::VecDeque;
 use ockam_core::Result;
 use tracing::{error, trace};
 
-const MAX_PENDING_MESSAGES_U16: u16 = 5;
-const MAX_PENDING_MESSAGES_USIZE: usize = MAX_PENDING_MESSAGES_U16 as usize;
-
 /// Pending routing messages for a certain peer
 /// This storage will cache packets (until they fit into the cache) and assemble them into
 /// full Ockam Routing message when all parts are receiver. Then the Ockam routing message is
 /// sent to the node.
 pub(crate) struct PeerPendingRoutingMessageStorage {
     // Reusable buffers to avoid excess allocations
+    // TODO: Can we share them between other peers?
     buffer_queue: VecDeque<Vec<u8>>,
     // Oldest routing number we can accept
     oldest_routing_number: RoutingNumber,
+    // Max number of messages we cache
+    max_pending_messages: u16,
     // Messages with following routing numbers:
-    // [self.oldest_routing_number, ..., self.oldest_routing_number + MAX_PENDING_MESSAGES_USIZE - 1]
-    pending_messages: [PendingMessageState; MAX_PENDING_MESSAGES_USIZE],
+    // [self.oldest_routing_number, ..., self.oldest_routing_number + max_pending_messages - 1]
+    pending_messages: Vec<PendingMessageState>,
 }
 
 impl PeerPendingRoutingMessageStorage {
     // Create given the first received message
-    pub(crate) fn new(routing_number: RoutingNumber) -> Self {
+    pub(crate) fn new(routing_number: RoutingNumber, max_pending_messages: u16) -> Self {
+        let mut pending_messages = Vec::with_capacity(max_pending_messages as usize);
+        pending_messages.resize_with(max_pending_messages as usize, Default::default);
+
         Self {
             buffer_queue: Default::default(),
             oldest_routing_number: routing_number,
-            pending_messages: Default::default(),
+            max_pending_messages,
+            pending_messages,
         }
     }
 
@@ -58,15 +62,15 @@ impl PeerPendingRoutingMessageStorage {
         let diff = transport_message.routing_number - self.oldest_routing_number;
 
         // Move self.pending_messages if needed and update the diff
-        let diff = if diff >= MAX_PENDING_MESSAGES_U16 {
+        let diff = if diff >= self.max_pending_messages {
             // We received a much newer message, we need to drop one or few older messages so that
             // this message fits into our self.pending_messages
 
             // Length of the shift we need to perform on our self.pending_messages array
-            let shift = diff - MAX_PENDING_MESSAGES_U16 + 1;
+            let shift = diff - self.max_pending_messages + 1;
 
             // Drop the messages that don't fit anymore
-            let number_of_messages_to_drop = min(shift, MAX_PENDING_MESSAGES_U16) as usize;
+            let number_of_messages_to_drop = min(shift, self.max_pending_messages) as usize;
 
             for i in 0..number_of_messages_to_drop {
                 match self.pending_messages[i].take() {
@@ -93,8 +97,8 @@ impl PeerPendingRoutingMessageStorage {
             }
 
             // If we didn't drop all the messages, move the rest to the left
-            if shift < MAX_PENDING_MESSAGES_U16 {
-                let number_of_messages_to_shift = (MAX_PENDING_MESSAGES_U16 - shift) as usize;
+            if shift < self.max_pending_messages {
+                let number_of_messages_to_shift = (self.max_pending_messages - shift) as usize;
                 for i in 0..number_of_messages_to_shift {
                     self.pending_messages[i] = self.pending_messages[i + shift as usize].take();
                 }

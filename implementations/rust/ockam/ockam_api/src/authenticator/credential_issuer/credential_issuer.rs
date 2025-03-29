@@ -7,6 +7,7 @@ use ockam::identity::utils::AttributesBuilder;
 use ockam::identity::{Attributes, Credentials, Identifier, IdentitiesAttributes};
 use ockam_core::compat::sync::Arc;
 use ockam_core::Result;
+use tracing::Level;
 
 /// Legacy value, should be removed when all clients are updated to the latest version
 pub const TRUST_CONTEXT_ID: &[u8] = b"trust_context_id";
@@ -32,7 +33,7 @@ pub struct CredentialIssuer {
 impl CredentialIssuer {
     /// Create a new credentials issuer
     #[allow(clippy::too_many_arguments)]
-    #[instrument(skip_all, fields(issuer = %issuer, project_identifier = project_identifier.clone(), credential_ttl = credential_ttl.map_or("n/a".to_string(), |d| d.as_secs().to_string())))]
+    #[instrument(skip_all, fields(issuer = %issuer, project_identifier = project_identifier.clone(), credential_ttl = credential_ttl.map_or("n/a".to_string(), |d| d.as_secs().to_string())), level = Level::TRACE)]
     pub fn new(
         members: Arc<dyn AuthorityMembersRepository>,
         identities_attributes: Arc<IdentitiesAttributes>,
@@ -66,7 +67,7 @@ impl CredentialIssuer {
         }
     }
 
-    #[instrument(skip_all, fields(subject = %subject))]
+    #[instrument(skip_all, fields(subject = %subject), level = Level::TRACE)]
     pub async fn issue_credential(
         &self,
         subject: &Identifier,
@@ -108,7 +109,7 @@ impl CredentialIssuer {
 
         // Otherwise, check if it's a member managed by this authority
 
-        let member = match self.members.get_member(subject).await? {
+        let member = match self.members.get_member(&self.issuer, subject).await? {
             Some(member) => member,
             None => return Ok(None),
         };

@@ -1,42 +1,45 @@
 use ockam_api::logs::{
-    global_error_handler, Colored, CratesFilter, ExportingConfiguration, LogFormat,
+    get_https_endpoint, Colored, CratesFilter, ExportingConfiguration, ExportingEnabled, LogFormat,
     LoggingConfiguration, LoggingEnabled, LoggingTracing,
 };
 
 use opentelemetry::global;
 use opentelemetry::trace::Tracer;
-
-use opentelemetry_sdk::{self as sdk};
-use sdk::testing::logs::*;
-use sdk::testing::trace::*;
-
+use opentelemetry_sdk::testing::logs::InMemoryLogExporter;
+use opentelemetry_sdk::testing::trace::InMemorySpanExporter;
 use std::fs;
-
+use std::sync::Arc;
 use tempfile::NamedTempFile;
 
 use ockam_api::cli_state::random_name;
+use ockam_api::CliState;
 use tracing::{error, info};
 use tracing_core::Level;
 
 /// These tests need to be integration tests
 /// They need to run in isolation because
 /// they set up some global spans / logs exporters that might interact with other tests
-#[test]
-fn test_log_and_traces() {
+#[tokio::test]
+async fn test_log_and_traces() {
     let temp_file = NamedTempFile::new().unwrap();
     let log_directory = &temp_file.path().parent().unwrap().join(random_name());
-
-    let spans_exporter = InMemorySpanExporter::default();
-    let logs_exporter = InMemoryLogsExporter::default();
+    let span_exporter = InMemorySpanExporter::default();
+    let log_exporter = InMemoryLogExporter::default();
+    let endpoint = get_https_endpoint().unwrap();
     let guard = LoggingTracing::setup_with_exporters(
-        spans_exporter.clone(),
-        logs_exporter.clone(),
+        Arc::new(CliState::test().await.unwrap()),
+        span_exporter.clone(),
+        log_exporter.clone(),
         &make_configuration()
             .unwrap()
             .set_log_directory(log_directory.into()),
-        &ExportingConfiguration::foreground().unwrap(),
+        &ExportingConfiguration::make_foreground_exporting_configuration(
+            endpoint,
+            ExportingEnabled::Off,
+        )
+        .unwrap(),
         "test",
-        None,
+        Some("node-name".into()),
     );
 
     let tracer = global::tracer("ockam-test");
@@ -46,13 +49,14 @@ fn test_log_and_traces() {
     });
 
     // check that the spans are exported
-    guard.force_flush();
-    let spans = spans_exporter.get_finished_spans().unwrap();
+    guard.force_flush().await;
+
+    let spans = span_exporter.get_finished_spans().unwrap();
     assert_eq!(spans.len(), 1);
     let parent_span = spans.first().unwrap();
 
     // check that log records are exported
-    let logs = logs_exporter.get_emitted_logs().unwrap();
+    let logs = log_exporter.get_emitted_logs().unwrap();
     assert_eq!(logs.len(), 2);
     for log in logs {
         assert_eq!(
@@ -69,12 +73,12 @@ fn test_log_and_traces() {
         if file_path.to_string_lossy().contains("stdout") {
             let contents = fs::read_to_string(file_path).unwrap();
             assert!(
-                contents.contains("INFO logging_tracing: inside span"),
+                contents.contains("INFO inside span logging_tracing"),
                 "{:?}",
                 contents
             );
             assert!(
-                contents.contains("ERROR logging_tracing: something went wrong!"),
+                contents.contains("ERROR something went wrong! logging_tracing"),
                 "{:?}",
                 contents
             );
@@ -88,13 +92,12 @@ fn test_log_and_traces() {
     )
 }
 
-/// HELPERS
+// HELPERS
 
 fn make_configuration() -> ockam_core::Result<LoggingConfiguration> {
     Ok(LoggingConfiguration::new(
         LoggingEnabled::On,
         Level::TRACE,
-        global_error_handler()?,
         100,
         60,
         LogFormat::Default,

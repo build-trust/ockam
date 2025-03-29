@@ -154,6 +154,8 @@ pub enum WorkerReason {
     Faulty,
     /// The worker is otherwise corrupt and can not be recovered
     Corrupt,
+    /// Couldn't send shutdown signal
+    CtrlChannelError,
 }
 
 impl fmt::Display for WorkerReason {
@@ -165,6 +167,7 @@ impl fmt::Display for WorkerReason {
                 Self::Shutdown => "target worker is shutting down",
                 Self::Faulty => "target worker is faulty and waiting for supervisor",
                 Self::Corrupt => "target worker is corrupt and can not be recovered",
+                Self::CtrlChannelError => "target worker cannot receive shutdown signal",
             }
         )
     }

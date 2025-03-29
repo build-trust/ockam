@@ -1,6 +1,4 @@
-use crate::{CredentialRetrieverCreator, Identifier, SecureChannelOptions, TrustIdentifierPolicy};
-use minicbor::{Decode, Encode};
-use tracing::error;
+use crate::{CredentialRetrieverCreator, Identifier, SecureChannelOptions, TrustPolicy};
 
 use crate::{SecureChannel, SecureChannels};
 use ockam_core::api::Reply::Successful;
@@ -8,10 +6,10 @@ use ockam_core::api::{Error, Reply, Request, Response};
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::time::Duration;
 use ockam_core::compat::vec::Vec;
-use ockam_core::{self, route, Address, Result, Route};
+use ockam_core::{self, route, Address, Message, Result, Route};
 use ockam_node::api::Client;
 use ockam_node::Context;
-use ockam_transport_core::Transport;
+use ockam_transport_core::TransportImpl;
 
 /// This client creates a secure channel to a node
 /// and can then send a typed request to that node (and receive a typed response)
@@ -33,11 +31,11 @@ pub struct SecureClient {
     // Credential retriever
     credential_retriever_creator: Option<Arc<dyn CredentialRetrieverCreator>>,
     // transport to instantiate connections
-    transport: Arc<dyn Transport>,
+    transport: TransportImpl,
     // destination for the secure channel
     secure_route: Route,
-    // identifier of the secure channel responder
-    server_identifier: Identifier,
+    // trust policy for the secure channel responder
+    server_trust_policy: Arc<dyn TrustPolicy>,
     // identifier of the secure channel initiator
     client_identifier: Identifier,
     // timeout for creating secure channel
@@ -52,9 +50,9 @@ impl SecureClient {
     pub fn new(
         secure_channels: Arc<SecureChannels>,
         credential_retriever_creator: Option<Arc<dyn CredentialRetrieverCreator>>,
-        transport: Arc<dyn Transport>,
+        transport: TransportImpl,
         server_route: Route,
-        server_identifier: &Identifier,
+        server_trust_policy: Arc<dyn TrustPolicy>,
         client_identifier: &Identifier,
         secure_channel_timeout: Duration,
         request_timeout: Duration,
@@ -64,7 +62,7 @@ impl SecureClient {
             credential_retriever_creator,
             transport,
             secure_route: server_route,
-            server_identifier: server_identifier.clone(),
+            server_trust_policy: server_trust_policy.clone(),
             client_identifier: client_identifier.clone(),
             secure_channel_timeout,
             request_timeout,
@@ -82,8 +80,8 @@ impl SecureClient {
     }
 
     /// Transport
-    pub fn transport(&self) -> Arc<dyn Transport> {
-        self.transport.clone()
+    pub fn transport(&self) -> &TransportImpl {
+        &self.transport
     }
 
     /// Route
@@ -91,9 +89,9 @@ impl SecureClient {
         &self.secure_route
     }
 
-    /// Server Identifier
-    pub fn server_identifier(&self) -> &Identifier {
-        &self.server_identifier
+    /// Trust policy for the server side
+    pub fn server_trust_policy(&self) -> Arc<dyn TrustPolicy> {
+        self.server_trust_policy.clone()
     }
 
     /// Client Identifier
@@ -126,6 +124,14 @@ impl SecureClient {
             ..self
         }
     }
+
+    /// Change the client Identifier
+    pub fn with_client_identifier(self, client_identifier: &Identifier) -> Self {
+        Self {
+            client_identifier: client_identifier.clone(),
+            ..self
+        }
+    }
 }
 
 impl SecureClient {
@@ -153,23 +159,17 @@ impl SecureClient {
         req: Request<T>,
     ) -> Result<Reply<R>>
     where
-        T: Encode<()>,
-        R: for<'a> Decode<'a, ()>,
+        T: Message,
+        R: Message,
     {
-        match self
+        // TODO: we should return a Reply::Failed(timeout) error here
+        let response: Response<Vec<u8>> = self
             .request_with_timeout(ctx, api_service, req, self.request_timeout)
-            .await
-        {
-            Ok(bytes) => Response::parse_response_reply::<R>(bytes.as_slice()),
-            Err(err) => {
-                // TODO: we should return a Reply::Failed(timeout) error here
-                error!("Error during SecureClient::ask to {} {}", api_service, err);
-                Err(err)
-            }
-        }
+            .await?;
+        response.to_reply()
     }
 
-    /// Send a request of type T and don't expect a reply
+    /// Send a request of type T and don't expect a reply body
     /// See `ask` for more information
     pub async fn tell<T>(
         &self,
@@ -178,50 +178,56 @@ impl SecureClient {
         req: Request<T>,
     ) -> Result<Reply<()>>
     where
-        T: Encode<()>,
+        T: Message,
     {
         let request_header = req.header().clone();
-        let bytes = self
+        let response: Response<Vec<u8>> = self
             .request_with_timeout(ctx, api_service, req, self.request_timeout)
             // TODO: we should return a Reply::Failed(timeout) error here
             .await?;
-        let (response, decoder) = Response::parse_response_header(bytes.as_slice())?;
         if response.is_ok() {
             Ok(Successful(()))
         } else {
+            let status = response.header().status();
+            // The "missing error" case should not happen because we would have failed deserialization
+            // in the case of a ko response with no error body.
             Ok(Reply::Failed(
-                Error::from_failed_request(&request_header, &response.parse_err_msg(decoder)),
-                response.status(),
+                response
+                    .get_error()
+                    .unwrap_or(Error::from_failed_request(&request_header, "missing error")),
+                status,
             ))
         }
     }
 
-    /// Send a request of type T and expect an untyped reply
+    /// Send a request of type T and expect a response of type T
     /// See `ask` for more information
-    pub async fn request<T>(
+    pub async fn request<T, R>(
         &self,
         ctx: &Context,
         api_service: &str,
         req: Request<T>,
-    ) -> Result<Vec<u8>>
+    ) -> Result<Response<R>>
     where
-        T: Encode<()>,
+        T: Message,
+        R: Message,
     {
         self.request_with_timeout(ctx, api_service, req, self.request_timeout)
             .await
     }
 
-    /// Send a request of type T and expect an untyped reply within a specific timeout
+    /// Send a request of type T and expect a response of type R within a specific timeout
     /// See `ask` for more information
-    pub async fn request_with_timeout<T>(
+    pub async fn request_with_timeout<T, R>(
         &self,
         ctx: &Context,
         api_service: &str,
         req: Request<T>,
         timeout: Duration,
-    ) -> Result<Vec<u8>>
+    ) -> Result<Response<R>>
     where
-        T: Encode<()>,
+        T: Message,
+        R: Message,
     {
         let (secure_channel, transport_address) = self.create_secure_channel(ctx).await?;
         let route = route![secure_channel.clone(), api_service];
@@ -229,10 +235,9 @@ impl SecureClient {
         let response = client.request(ctx, req).await;
         let _ = self
             .secure_channels
-            .stop_secure_channel(ctx, secure_channel.encryptor_address())
-            .await;
+            .stop_secure_channel(ctx, secure_channel.encryptor_address());
         if let Some(transport_address) = transport_address {
-            let _ = self.transport.disconnect(transport_address).await;
+            let _ = self.transport.transport.disconnect(&transport_address);
         }
         // we delay the unwrapping of the response to make sure that the secure channel is
         // properly stopped first
@@ -244,14 +249,13 @@ impl SecureClient {
         &self,
         ctx: &Context,
     ) -> Result<(SecureChannel, Option<Address>)> {
-        let transport_type = self.transport.transport_type();
         let (resolved_route, transport_address) = Context::resolve_transport_route_static(
             self.secure_route.clone(),
-            [(transport_type, self.transport.clone())].into(),
+            [(self.transport.t_type, self.transport.transport.clone())].into(),
         )
         .await?;
         let options = SecureChannelOptions::new()
-            .with_trust_policy(TrustIdentifierPolicy::new(self.server_identifier.clone()))
+            .with_trust_policy(self.server_trust_policy())
             .with_timeout(self.secure_channel_timeout);
 
         let options =
@@ -274,10 +278,9 @@ impl SecureClient {
         let (secure_channel, transport_address) = self.create_secure_channel(ctx).await?;
         let _ = self
             .secure_channels
-            .stop_secure_channel(ctx, secure_channel.encryptor_address())
-            .await;
+            .stop_secure_channel(ctx, secure_channel.encryptor_address());
         if let Some(transport_address) = transport_address {
-            let _ = self.transport.disconnect(transport_address).await;
+            let _ = self.transport.transport.disconnect(&transport_address);
         }
 
         Ok(())

@@ -6,13 +6,14 @@ use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
 use ockam_transport_core::HostnamePort;
 use std::time::Duration;
+use tracing::Level;
 
 use crate::nodes::models::portal::InletStatus;
 use crate::nodes::InMemoryNode;
 
 impl InMemoryNode {
     #[allow(clippy::too_many_arguments)]
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     pub async fn create_inlet(
         &self,
         ctx: &Context,
@@ -30,6 +31,9 @@ impl InMemoryNode {
         disable_tcp_fallback: bool,
         privileged: bool,
         tls_certificate_provider: Option<MultiAddr>,
+        skip_handshake: bool,
+        enable_nagle: bool,
+        enable_mptcp: bool,
     ) -> Result<InletStatus> {
         self.node_manager
             .create_inlet(
@@ -48,6 +52,9 @@ impl InMemoryNode {
                 disable_tcp_fallback,
                 privileged,
                 tls_certificate_provider,
+                skip_handshake,
+                enable_nagle,
+                enable_mptcp,
             )
             .await
     }

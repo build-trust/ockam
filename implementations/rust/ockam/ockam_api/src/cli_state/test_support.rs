@@ -1,5 +1,5 @@
-use crate::cli_state::Result;
 use crate::cli_state::{random_name, CliState, CliStateError};
+use crate::cli_state::{CliStateMode, Result};
 use ockam_node::database::SqlxDatabase;
 use std::path::PathBuf;
 
@@ -10,12 +10,13 @@ impl CliState {
     /// all previous state if the database being used is Postgres.
     pub async fn test() -> Result<Self> {
         let test_dir = Self::test_dir()?;
+        let mode = CliStateMode::Persistent(test_dir);
 
         // clean the existing state if any
-        let db = SqlxDatabase::create(&CliState::make_database_configuration(&test_dir)?).await?;
+        let db = SqlxDatabase::create(&CliState::make_database_configuration(&mode)?).await?;
         db.drop_all_postgres_tables().await?;
 
-        Self::create(test_dir).await
+        Self::create(mode).await
     }
 
     /// Return a test CliState with a random root directory
@@ -24,7 +25,8 @@ impl CliState {
     /// any previous state if the database being used is Postgres.
     pub async fn system() -> Result<Self> {
         let test_dir = Self::test_dir()?;
-        Self::create(test_dir).await
+        let mode = CliStateMode::Persistent(test_dir);
+        Self::create(mode).await
     }
 
     /// Return a random root directory

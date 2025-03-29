@@ -8,8 +8,11 @@ pub(crate) use delete::DeleteCommand;
 pub(crate) use list::ListCommand;
 pub(crate) use show::ShowCommand;
 
-use crate::CommandGlobalOpts;
 use clap::{Args, Subcommand};
+
+use crate::CommandGlobalOpts;
+
+use ockam_node::Context;
 
 /// Manage Secure Channel Listeners
 #[derive(Clone, Debug, Args)]
@@ -32,12 +35,12 @@ pub enum SecureChannelListenerSubcommand {
 }
 
 impl SecureChannelListenerCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
-            SecureChannelListenerSubcommand::Create(c) => c.run(opts),
-            SecureChannelListenerSubcommand::Delete(c) => c.run(opts),
-            SecureChannelListenerSubcommand::List(c) => c.run(opts),
-            SecureChannelListenerSubcommand::Show(c) => c.run(opts),
+            SecureChannelListenerSubcommand::Create(c) => c.run(ctx, opts).await,
+            SecureChannelListenerSubcommand::Delete(c) => c.run(ctx, opts).await,
+            SecureChannelListenerSubcommand::List(c) => c.run(ctx, opts).await,
+            SecureChannelListenerSubcommand::Show(c) => c.run(ctx, opts).await,
         }
     }
 

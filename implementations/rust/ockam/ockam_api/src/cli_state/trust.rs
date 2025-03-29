@@ -1,8 +1,8 @@
-use crate::cloud::project::Project;
 use crate::nodes::service::{
     CredentialScope, NodeManagerCredentialRetrieverOptions, NodeManagerTrustOptions,
 };
 use crate::nodes::NodeManager;
+use crate::orchestrator::project::Project;
 use crate::{ApiError, CliState, TransportRouteResolver};
 use ockam::identity::models::ChangeHistory;
 use ockam::identity::{IdentitiesVerification, RemoteCredentialRetrieverInfo};
@@ -10,6 +10,7 @@ use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{Error, Result};
 use ockam_multiaddr::MultiAddr;
 use ockam_vault::SoftwareVaultForVerifyingSignatures;
+use tracing::Level;
 
 impl CliState {
     async fn retrieve_trust_options_explicit_project_authority(
@@ -187,7 +188,7 @@ impl CliState {
     ///  1. Either we explicitly know the Authority identity that we trust, and optionally route to its node to request
     ///     a new credential
     ///  2. Or we know the project name (or have default one) that contains identity and route to the Authority node
-    #[instrument(skip_all, fields(project_name = project_name.clone(), authority_identity = authority_identity.as_ref().map(|a| a.to_string()).unwrap_or("n/a".to_string()), authority_route = authority_route.clone().map_or("n/a".to_string(), |r| r.to_string())))]
+    #[instrument(skip_all, fields(project_name = project_name.clone(), authority_identity = authority_identity.as_ref().map(|a| a.to_string()).unwrap_or("n/a".to_string()), authority_route = authority_route.clone().map_or("n/a".to_string(), |r| r.to_string())), level = Level::TRACE)]
     pub async fn retrieve_trust_options(
         &self,
         project_name: &Option<String>,

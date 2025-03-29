@@ -10,7 +10,7 @@ use ockam::Context;
 use ockam_api::authenticator::direct::Members;
 use ockam_api::colors::color_primary;
 use ockam_api::{fmt_info, fmt_ok};
-use ockam_core::AsyncTryClone;
+use ockam_core::TryClone;
 use serde::Serialize;
 use std::fmt::Display;
 use std::time::Duration;
@@ -48,7 +48,7 @@ pub struct DeleteCommand {
 impl Command for DeleteCommand {
     const NAME: &'static str = "project-member delete";
 
-    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
         if self.member.is_none() && !self.all {
             return Err(miette!(
                 "You need to specify either an identifier to delete or use the --all flag to delete all the members from a project."
@@ -70,9 +70,7 @@ impl Command for DeleteCommand {
 
         // Delete the passed member
         if let Some(member) = &self.member {
-            authority_node_client
-                .delete_member(ctx, member.clone())
-                .await?;
+            authority_node_client.delete_member(ctx, member).await?;
             output.identifiers.push(member.clone());
         }
         // Try to delete all members except the current default identity
@@ -109,12 +107,10 @@ impl Command for DeleteCommand {
                 let mut set: JoinSet<Option<Identifier>> = JoinSet::new();
                 for identifier in chunk {
                     let authority_node_client = authority_node_client.clone();
-                    let ctx = ctx.async_try_clone().await?;
+                    let ctx = ctx.try_clone()?;
                     set.spawn(async move {
                         sleep(tokio_retry::strategy::jitter(Duration::from_millis(500))).await;
-                        if let Err(e) = authority_node_client
-                            .delete_member(&ctx, identifier.clone())
-                            .await
+                        if let Err(e) = authority_node_client.delete_member(&ctx, &identifier).await
                         {
                             warn!("Failed to delete member {identifier}: {e}",);
                             None
@@ -137,7 +133,7 @@ impl Command for DeleteCommand {
         }
 
         opts.terminal
-            .stdout()
+            .to_stdout()
             .plain(output.to_string())
             .json_obj(&output)?
             .write_line()?;

@@ -9,11 +9,11 @@ use crate::{docs, Command, CommandGlobalOpts};
 use ockam::Context;
 use ockam_api::colors::color_primary;
 use ockam_api::fmt_ok;
-use ockam_api::nodes::models::portal::OutletStatus;
+use ockam_api::nodes::models::portal::OutletStatusList;
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_api::terminal::{Terminal, TerminalStream};
 use ockam_core::api::Request;
-use ockam_core::AsyncTryClone;
+use ockam_core::TryClone;
 
 use crate::terminal::tui::DeleteCommandTui;
 use crate::tui::PluralTerm;
@@ -51,12 +51,12 @@ pub struct DeleteCommand {
 impl Command for DeleteCommand {
     const NAME: &'static str = "tcp-outlet delete";
 
-    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
         Ok(DeleteTui::run(ctx, opts, self).await?)
     }
 }
 
-#[derive(AsyncTryClone)]
+#[derive(TryClone)]
 pub struct DeleteTui {
     ctx: Context,
     opts: CommandGlobalOpts,
@@ -70,9 +70,10 @@ impl DeleteTui {
         opts: CommandGlobalOpts,
         cmd: DeleteCommand,
     ) -> miette::Result<()> {
-        let node = BackgroundNodeClient::create(ctx, &opts.state, &cmd.node_opts.at_node).await?;
+        let node =
+            BackgroundNodeClient::create(ctx, opts.state.clone(), &cmd.node_opts.at_node).await?;
         let tui = Self {
-            ctx: ctx.async_try_clone().await?,
+            ctx: ctx.try_clone()?,
             opts,
             cmd,
             node,
@@ -102,13 +103,14 @@ impl DeleteCommandTui for DeleteTui {
     }
 
     async fn list_items_names(&self) -> miette::Result<Vec<String>> {
-        let res: Vec<OutletStatus> = self
+        let res: OutletStatusList = self
             .node
             .ask(&self.ctx, Request::get("/node/outlet"))
             .await?;
         let items_names: Vec<String> = res
+            .0
             .iter()
-            .map(|outlet| outlet.worker_addr.address().to_string())
+            .map(|outlet| outlet.worker_address.address().to_string())
             .collect();
         Ok(items_names)
     }
@@ -122,11 +124,11 @@ impl DeleteCommandTui for DeleteTui {
             )
             .await?;
         self.terminal()
-            .stdout()
+            .to_stdout()
             .plain(fmt_ok!(
                 "TCP Outlet with alias {} on node {} has been deleted",
                 color_primary(item_name),
-                color_primary(&node_name)
+                color_primary(node_name)
             ))
             .machine(item_name)
             .json(serde_json::json!({ "alias": item_name, "node": node_name }))

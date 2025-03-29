@@ -49,7 +49,7 @@ impl NodeManager {
             return Ok(Some(AddConsumerError::InvalidAddress(consumer.clone())));
         };
 
-        ctx.flow_controls().add_consumer(address, flow_control_id);
+        ctx.flow_controls().add_consumer(&address, flow_control_id);
 
         Ok(None)
     }

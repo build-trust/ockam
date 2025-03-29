@@ -4,6 +4,55 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.150.0 - 2025-03-20
+
+### Added
+
+- Updated dependencies
+
+## 0.149.0 - 2025-03-13
+
+### Added
+
+- Add command to retrieve the identity listening at some endpoint
+- Updated dependencies
+
+## 0.148.0 - 2025-03-03
+
+### Added
+
+- Optimize node creation:
+- Make portal handshake optional
+- Integrate the new span exporter with the rest of the application
+- Address review comments
+- Added the possibility to overwrite http headers in inlets
+- Add log format for user-facing terminal logs
+- Updated dependencies
+
+## 0.147.0 - 2025-01-20
+
+### Added
+
+- Rewrite `ockam_node`
+- Update the postgres schema
+- Updated dependencies
+
+### Changed
+
+- Rename cloud module to orchestrator
+
+## 0.146.0 - 2025-01-09
+
+### Added
+
+- Simplify `node create` execution
+- Improvements to portals commands arguments
+- Updated dependencies
+
+### Changed
+
+- Extract `OCKAM_SQLITE_IN_MEMORY` env var usage up to the cli state initialization
+
 ## 0.145.0 - 2024-12-12
 
 ### Added

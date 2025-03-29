@@ -1,27 +1,27 @@
 use std::collections::BTreeMap;
 
+use add::{AddCommand, OCKAM_RELAY_ATTRIBUTE};
 use clap::Args;
 use clap::Subcommand;
-use miette::miette;
-use serde::Serialize;
-use std::fmt::Write;
-
-use add::{AddCommand, OCKAM_RELAY_ATTRIBUTE};
 use delete::DeleteCommand;
 use list::ListCommand;
 use list_ids::ListIdsCommand;
+use miette::miette;
 use ockam::identity::{AttributesEntry, Identifier};
 use ockam_api::authenticator::direct::{
     OCKAM_ROLE_ATTRIBUTE_ENROLLER_VALUE, OCKAM_ROLE_ATTRIBUTE_KEY,
 };
-use ockam_api::cloud::project::Project;
-use ockam_api::cloud::AuthorityNodeClient;
 use ockam_api::colors::{color_primary, color_warn};
 use ockam_api::nodes::{InMemoryNode, NodeManager};
+use ockam_api::orchestrator::project::Project;
+use ockam_api::orchestrator::AuthorityNodeClient;
 use ockam_api::output::Output;
 use ockam_api::terminal::fmt;
 use ockam_api::CliState;
 use ockam_node::Context;
+use serde::Serialize;
+use std::fmt::Write;
+use std::sync::Arc;
 
 use crate::project_member::show::ShowCommand;
 use crate::shared_args::IdentityOpts;
@@ -49,13 +49,13 @@ pub struct ProjectMemberCommand {
 }
 
 impl ProjectMemberCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
-            ProjectMemberSubcommand::List(c) => c.run(opts),
-            ProjectMemberSubcommand::ListIds(c) => c.run(opts),
-            ProjectMemberSubcommand::Add(c) => c.run(opts),
-            ProjectMemberSubcommand::Show(c) => c.run(opts),
-            ProjectMemberSubcommand::Delete(c) => c.run(opts),
+            ProjectMemberSubcommand::List(c) => c.run(ctx, opts).await,
+            ProjectMemberSubcommand::ListIds(c) => c.run(ctx, opts).await,
+            ProjectMemberSubcommand::Add(c) => c.run(ctx, opts).await,
+            ProjectMemberSubcommand::Show(c) => c.run(ctx, opts).await,
+            ProjectMemberSubcommand::Delete(c) => c.run(ctx, opts).await,
         }
     }
 
@@ -90,15 +90,15 @@ pub(super) async fn authority_client(
     identity_opts: &IdentityOpts,
     project_name: &Option<String>,
 ) -> crate::Result<(AuthorityNodeClient, String)> {
-    let node =
-        InMemoryNode::start_with_project_name(ctx, &opts.state, project_name.clone()).await?;
+    let node = InMemoryNode::start_with_project_name(ctx, opts.state.clone(), project_name.clone())
+        .await?;
     let project = opts
         .state
         .projects()
         .get_project_by_name_or_default(project_name)
         .await?;
     Ok((
-        create_authority_client(ctx, &node, &opts.state, identity_opts, &project).await?,
+        create_authority_client(ctx, &node, opts.state.clone(), identity_opts, &project).await?,
         project.name().to_string(),
     ))
 }
@@ -106,7 +106,7 @@ pub(super) async fn authority_client(
 pub(super) async fn create_authority_client(
     ctx: &Context,
     node: &NodeManager,
-    cli_state: &CliState,
+    cli_state: Arc<CliState>,
     identity_opts: &IdentityOpts,
     project: &Project,
 ) -> crate::Result<AuthorityNodeClient> {
@@ -114,7 +114,7 @@ pub(super) async fn create_authority_client(
         .get_identity_name_or_default(&identity_opts.identity_name)
         .await?;
 
-    node.create_authority_client_with_project(ctx, project, Some(identity))
+    node.create_authority_client_with_project(ctx, project, Some(identity), false)
         .await
 }
 

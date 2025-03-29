@@ -51,11 +51,12 @@ impl Connection {
         if let Some(flow_control_id) = &self.flow_control_id {
             context
                 .flow_controls()
-                .add_consumer(address.clone(), flow_control_id);
+                .add_consumer(address, flow_control_id);
         }
     }
 
     pub fn add_default_consumers(&self, ctx: &Context) {
+        self.add_consumer(ctx, &DefaultAddress::CONTROL_API.into());
         self.add_consumer(ctx, &DefaultAddress::KEY_EXCHANGER_LISTENER.into());
         self.add_consumer(ctx, &DefaultAddress::SECURE_CHANNEL_LISTENER.into());
         self.add_consumer(ctx, &DefaultAddress::UPPERCASE_SERVICE.into());
@@ -75,9 +76,9 @@ impl Connection {
         })
     }
 
-    pub async fn close(&self, context: &Context, node_manager: &NodeManager) -> Result<()> {
+    pub fn close(&self, context: &Context, node_manager: &NodeManager) -> Result<()> {
         for encryptor in &self.secure_channel_encryptors {
-            if let Err(error) = node_manager.delete_secure_channel(context, encryptor).await {
+            if let Err(error) = node_manager.delete_secure_channel(context, encryptor) {
                 match error.code().kind {
                     Kind::NotFound => {
                         debug!("cannot find and delete secure channel `{encryptor}`: {error}");
@@ -96,7 +97,7 @@ impl Connection {
 
         if let Some(tcp_connection) = self.tcp_connection.as_ref() {
             let address = tcp_connection.sender_address().clone();
-            if let Err(error) = node_manager.tcp_transport.disconnect(address.clone()).await {
+            if let Err(error) = node_manager.tcp_transport.disconnect(&address) {
                 match error.code().kind {
                     Kind::NotFound => {
                         debug!("cannot find and disconnect tcp worker `{tcp_connection}`");
@@ -111,15 +112,14 @@ impl Connection {
         }
 
         if let Some(udp_bind) = self.udp_bind.as_ref() {
-            let address = udp_bind.sender_address().clone();
+            let address = udp_bind.sender_address();
             if let Err(error) = node_manager
                 .udp_transport
                 .as_ref()
                 .ok_or_else(|| {
                     ockam_core::Error::new(Origin::Node, Kind::Internal, "UDP transport is missing")
                 })?
-                .unbind(address.clone())
-                .await
+                .unbind(address)
             {
                 match error.code().kind {
                     Kind::NotFound => {
@@ -344,10 +344,7 @@ impl ConnectionBuilder {
                     // last piece only if it's a terminal (a service connecting to another node)
                     if last_pass && is_last {
                         let is_terminal = ctx
-                            .get_metadata(address.clone())
-                            .await
-                            .ok()
-                            .flatten()
+                            .get_metadata(&address)?
                             .map(|m| m.is_terminal)
                             .unwrap_or(false);
 

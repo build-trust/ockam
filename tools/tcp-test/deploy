@@ -1,0 +1,40 @@
+#!/bin/bash
+
+# This scripts deploys a tcp test client and an ockam client to a remote machine accessible via ssh.
+
+set -e
+
+cd "$(dirname "$0")"/../../
+
+if [ "$#" -lt 1 ]; then
+    echo "usage: $0 <[username@]host> [-p port]"
+    exit 1
+fi
+
+SSH_ENDPOINT="$1"
+SSH_PORT=22
+
+if [ "$#" -eq 3 ] && [ "$2" == "-p" ]; then
+    SSH_PORT="$3"
+fi
+
+function ssh {
+    /usr/bin/env ssh -q -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=QUIET -o ConnectTimeout=5 "${SSH_ENDPOINT}" -p ${SSH_PORT} "$@"
+}
+
+function scp {
+    /usr/bin/env scp -q -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=QUIET -o ConnectTimeout=5 -P ${SSH_PORT} "$@"
+}
+
+TARGET_ARCHITECTURE=$(ssh uname -m)
+
+# always use cross-compilation to avoid reliance on new and unsupported glibc versions
+DOCKER_DEFAULT_PLATFORM=linux/amd64 cross build --bin=tcp-test --bin=ockam -F aws-lc --release --target "${TARGET_ARCHITECTURE}-unknown-linux-gnu"
+echo "uploading..."
+
+scp \
+  "target/${TARGET_ARCHITECTURE}-unknown-linux-gnu/release/ockam" \
+  "target/${TARGET_ARCHITECTURE}-unknown-linux-gnu/release/tcp-test" \
+  "${SSH_ENDPOINT}:"
+
+ssh sudo mv ockam tcp-test /usr/local/bin/

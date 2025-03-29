@@ -6,6 +6,7 @@ use ockam::transport::HostnamePort;
 use ockam::Address;
 use ockam_api::address::extract_address_value;
 use ockam_api::nodes::models::portal::OutletAccessControl;
+use std::str::FromStr;
 use std::sync::Arc;
 use tracing::{debug, info};
 
@@ -21,9 +22,12 @@ impl AppState {
         } else {
             format!("{DEFAULT_HOST}:{to}")
         };
-        let socket_addr = resolve_peer(addr).await.into_diagnostic().wrap_err(
-            "Invalid address. The expected formats are 'host:port', 'ip:port' or 'port'",
-        )?;
+        let socket_addr = resolve_peer(&HostnamePort::from_str(&addr)?)
+            .await
+            .into_diagnostic()
+            .wrap_err(
+                "Invalid address. The expected formats are 'host:port', 'ip:port' or 'port'",
+            )?;
         let worker_addr: Address = extract_address_value(&from)
             .wrap_err("Invalid service address")?
             .into();
@@ -33,7 +37,7 @@ impl AppState {
             .await?;
 
         let incoming_ac = ac.create_incoming();
-        let outgoing_ac = ac.create_outgoing(self.context_ref()).await?;
+        let outgoing_ac = ac.create_outgoing(self.context_ref())?;
         match node_manager
             .create_outlet(
                 &self.context(),
@@ -42,6 +46,9 @@ impl AppState {
                 Some(worker_addr.clone()),
                 true,
                 OutletAccessControl::AccessControl((Arc::new(incoming_ac), Arc::new(outgoing_ac))),
+                false,
+                false,
+                false,
                 false,
             )
             .await

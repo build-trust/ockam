@@ -3,25 +3,32 @@ use core::{
     sync::atomic::{AtomicBool, AtomicUsize, Ordering},
     time::Duration,
 };
-use ockam_core::compat::{collections::BTreeMap, sync::Arc};
+use ockam_core::compat::{collections::HashMap, sync::Arc};
 use ockam_core::env::get_env;
+use opentelemetry::trace::FutureExt;
 use std::{fs::OpenOptions, io::Write};
+use tokio::runtime::Handle;
 
 pub struct Metrics {
-    rt: Arc<Runtime>,
+    runtime_handle: Handle,
     router: (Arc<AtomicUsize>, Arc<AtomicUsize>),
 }
 
 impl Metrics {
     /// Create a new Metrics collector with access to the runtime
     pub(crate) fn new(
-        rt: &Arc<Runtime>,
+        runtime_handle: Handle,
         router: (Arc<AtomicUsize>, Arc<AtomicUsize>),
     ) -> Arc<Self> {
         Arc::new(Self {
-            rt: Arc::clone(rt),
+            runtime_handle,
             router,
         })
+    }
+
+    pub(crate) fn spawn(self: Arc<Self>, alive: Arc<AtomicBool>) {
+        self.runtime_handle
+            .spawn(self.run(alive).with_current_context());
     }
 
     /// Spawned by the Executor to periodically collect metrics
@@ -66,13 +73,13 @@ impl Metrics {
         freq: u64,
         acc: &mut MetricsReport,
     ) -> MetricsReport {
-        let m = self.rt.metrics();
+        let m = self.runtime_handle.metrics();
 
         let tokio_workers = m.num_workers();
         let router_addr_count = self.router.0.load(Ordering::Acquire);
         let router_cluster_count = self.router.1.load(Ordering::Acquire);
 
-        let mut tokio_busy_ms = BTreeMap::new();
+        let mut tokio_busy_ms = HashMap::new();
         for wid in 0..tokio_workers {
             // Get the previously accumulated
             let acc_ms = acc.tokio_busy_ms.get(&wid).unwrap_or(&0);
@@ -96,7 +103,7 @@ impl Metrics {
 #[derive(Default)]
 #[allow(unused)]
 pub struct MetricsReport {
-    tokio_busy_ms: BTreeMap<usize, u128>,
+    tokio_busy_ms: HashMap<usize, u128>,
     router_addr_count: usize,
     router_cluster_count: usize,
 }

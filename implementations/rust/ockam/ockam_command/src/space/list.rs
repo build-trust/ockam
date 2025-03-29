@@ -2,8 +2,8 @@ use async_trait::async_trait;
 use clap::Args;
 
 use ockam::Context;
-use ockam_api::cloud::space::Spaces;
 use ockam_api::nodes::InMemoryNode;
+use ockam_api::orchestrator::space::Spaces;
 
 use crate::shared_args::IdentityOpts;
 use crate::{docs, Command, CommandGlobalOpts};
@@ -28,8 +28,8 @@ pub struct ListCommand {
 impl Command for ListCommand {
     const NAME: &'static str = "space list";
 
-    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
-        let node = InMemoryNode::start(ctx, &opts.state).await?;
+    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+        let node = InMemoryNode::start(ctx, opts.state.clone()).await?;
 
         let spaces = {
             let pb = opts.terminal.spinner();
@@ -45,7 +45,7 @@ impl Command for ListCommand {
         )?;
 
         opts.terminal
-            .stdout()
+            .to_stdout()
             .plain(plain)
             .json_obj(&spaces)?
             .write_line()?;

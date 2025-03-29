@@ -1,35 +1,28 @@
 use std::fmt::{Display, Formatter};
-use std::str::FromStr;
 
 use clap::Args;
-use colorful::Colorful;
 use miette::{miette, IntoDiagnostic, WrapErr};
 use serde::{Deserialize, Serialize};
-use tokio::fs::read_to_string;
-use tokio_retry::strategy::FixedInterval;
-use tokio_retry::Retry;
-use tracing::{debug, error, info};
 
 use ockam::identity::models::ChangeHistory;
 use ockam::identity::utils::now;
 use ockam::identity::{Identifier, Identity, TimestampInSeconds, Vault};
 use ockam::Context;
 use ockam_api::authenticator::{PreTrustedIdentities, PreTrustedIdentity};
+use ockam_api::authority_node;
 use ockam_api::authority_node::{Authority, OktaConfiguration};
-use ockam_api::cloud::project::models::ProjectModel;
 use ockam_api::colors::color_primary;
 use ockam_api::config::lookup::InternetAddress;
+use ockam_api::logs::get_https_endpoint_url;
 use ockam_api::nodes::service::default_address::DefaultAddress;
-use ockam_api::{authority_node, fmt_err};
 use ockam_core::compat::collections::BTreeMap;
 use ockam_core::compat::fmt;
 
-use crate::node::util::run_ockam;
-use crate::util::embedded_node_that_is_not_stopped;
+use crate::node::node_callback::NodeCallback;
+use crate::node::util::{run_ockam, wait_for_node_callback};
 use crate::util::foreground_args::{wait_for_exit_signal, ForegroundArgs};
 use crate::util::parsers::internet_address_parser;
-use crate::util::{async_cmd, local_cmd};
-use crate::{docs, CommandGlobalOpts, Result};
+use crate::{branding, docs, CommandGlobalOpts, Result};
 
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
@@ -43,10 +36,6 @@ before_help = docs::before_help(PREVIEW_TAG),
 after_long_help = docs::after_help(AFTER_LONG_HELP),
 )]
 pub struct CreateCommand {
-    /// Name of the node
-    #[arg(default_value = "authority")]
-    pub node_name: String,
-
     /// Run the node in foreground.
     #[arg(long, short, value_name = "BOOL", default_value_t = false)]
     pub foreground: bool,
@@ -130,6 +119,11 @@ pub struct CreateCommand {
     /// TODO: Set to true after old clients are updated
     #[arg(long, value_name = "DISABLE_TRUST_CONTEXT_ID", default_value_t = false)]
     disable_trust_context_id: bool,
+
+    /// Port that a node should connect to when it's up and running, as a way to signal
+    /// the parent process
+    #[arg(hide = true, long)]
+    pub tcp_callback_port: Option<u16>,
 }
 
 impl CreateCommand {
@@ -144,17 +138,6 @@ impl CreateCommand {
         if !self.skip_is_running_check {
             self.guard_node_is_not_already_running(opts).await?;
         }
-        // Create the authority identity if it has not been created before
-        // If no name is specified on the command line, use "authority"
-        let identity_name = self.identity.clone().unwrap_or("authority".to_string());
-        if opts.state.get_named_identity(&identity_name).await.is_err() {
-            opts.state.create_identity_with_name(&identity_name).await?;
-        };
-
-        opts.state
-            .create_node_with_optional_values(&self.node_name, &self.identity, &None)
-            .await?;
-
         // Construct the arguments list and re-execute the ockam
         // CLI in foreground mode to start the newly created node
         let mut args = vec![
@@ -162,7 +145,7 @@ impl CreateCommand {
                 0 => "-vv".to_string(),
                 v => format!("-{}", "v".repeat(v as usize)),
             },
-            "authority".to_string(),
+            branding::command::name("authority").to_string(),
             "create".to_string(),
             "--foreground".to_string(),
             "--child-process".to_string(),
@@ -233,25 +216,26 @@ impl CreateCommand {
         if self.disable_trust_context_id {
             args.push("--disable_trust_context_id".to_string());
         }
-        args.push(self.node_name.to_string());
 
-        run_ockam(args, opts.global_args.quiet).await
+        let node_callback = NodeCallback::create().await?;
+
+        args.push("--tcp-callback-port".to_string());
+        args.push(node_callback.callback_port().to_string());
+
+        let handle = run_ockam(args, opts.global_args.quiet)?;
+        wait_for_node_callback(handle, node_callback).await?;
+
+        Ok(())
     }
 }
 
 impl CreateCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         if self.foreground {
             // Create a new node in the foreground (i.e. in this OS process)
-            local_cmd(embedded_node_that_is_not_stopped(
-                opts.rt.clone(),
-                |ctx| async move { self.start_authority_node(&ctx, opts).await },
-            ))
+            self.start_authority_node(ctx, opts).await
         } else {
-            // Create a new node running in the background (i.e. another, new OS process)
-            async_cmd(&self.name(), opts.clone(), |_ctx| async move {
-                self.create_background_node(opts).await
-            })
+            self.create_background_node(opts).await
         }
     }
 
@@ -282,7 +266,9 @@ impl CreateCommand {
     /// Given a Context start a node in a new OS process
     async fn create_background_node(&self, opts: CommandGlobalOpts) -> miette::Result<()> {
         // Spawn node in another, new process
-        self.spawn_background_node(&opts).await
+        self.spawn_background_node(&opts).await?;
+
+        Ok(())
     }
 
     /// Start an authority node:
@@ -301,19 +287,30 @@ impl CreateCommand {
         let state = opts.state.clone();
 
         // Create the authority identity if it has not been created before
-        // If no name is specified on the command line, use "authority"
-        let identity_name = self.identity.clone().unwrap_or("authority".to_string());
+        // If no name is specified on the command line, create a unique name based on the project identifier
+        let identity_name = self.identity.clone().unwrap_or(self.authority_name());
         if opts.state.get_named_identity(&identity_name).await.is_err() {
-            opts.state.create_identity_with_name(&identity_name).await?;
+            // If the authority is present under the "authority" the legacy name,
+            // update that name to include the project identifier
+            match opts.state.get_named_identity("authority").await {
+                Ok(authority) => {
+                    opts.state
+                        .update_named_identity_name(&authority.identifier(), &self.authority_name())
+                        .await?;
+                }
+                Err(_) => {
+                    opts.state.create_identity_with_name(&identity_name).await?;
+                }
+            }
         };
 
         let node = state
-            .start_node_with_optional_values(&self.node_name, &Some(identity_name), &None, None)
+            .start_node_with_optional_values(&self.node_name(), &Some(identity_name), None)
             .await?;
         state
-            .set_tcp_listener_address(&node.name(), &self.tcp_listener_address)
+            .set_tcp_listener_address(&self.node_name(), &self.tcp_listener_address)
             .await?;
-        state.set_as_authority_node(&node.name()).await?;
+        state.set_as_authority_node(&self.node_name()).await?;
 
         let okta_configuration = match (&self.tenant_base_url, &self.certificate, &self.attributes)
         {
@@ -347,54 +344,6 @@ impl CreateCommand {
             None => None,
         };
 
-        // Create an identity for exporting opentelemetry traces
-        let exporter = "ockam-opentelemetry-exporter";
-        let exporter_identity = match opts.state.get_named_identity(exporter).await {
-            Ok(exporter) => exporter,
-            Err(_) => opts.state.create_identity_with_name(exporter).await?,
-        };
-
-        // Create a default project in the database. That project information is used by the
-        // ockam-opentelemetry-exporter to create a relay
-        let mut attributes = BTreeMap::new();
-        if let (Some(project_access_route), Some(project_identity_identifier_file)) = (
-            self.project_access_route.clone(),
-            self.project_identity_identifier_file.clone(),
-        ) {
-            let authority_identity = opts.state.get_identity(&node.identifier()).await?;
-            let authority_port = self.tcp_listener_address.port();
-            let project_identity_identifier = self
-                .read_project_identity_identifier(&opts, project_identity_identifier_file)
-                .await?;
-            let project = ProjectModel {
-                id: self.project_identifier.clone(),
-                name: "default".to_string(),
-                access_route: project_access_route,
-                project_change_history: None,
-                identity: Some(project_identity_identifier.clone()),
-                authority_access_route: Some(format!(
-                    "/dnsaddr/127.0.0.1/tcp/{}/service/api",
-                    authority_port
-                )),
-                authority_identity: Some(authority_identity.export_as_string().into_diagnostic()?),
-                running: Some(true),
-                space_name: "default".to_string(),
-                space_id: "1".to_string(),
-                okta_config: None,
-                kafka_config: None,
-                version: None,
-                operation_id: None,
-                users: vec![],
-                user_roles: vec![],
-            };
-            opts.state.projects().store_project_model(&project).await?;
-            attributes.insert("ockam-relay".to_string(), "ockam-opentelemetry".to_string());
-            attributes.insert(
-                "trust_context_id".to_string(),
-                self.project_identifier.clone(),
-            );
-        }
-
         let configuration = authority_node::Configuration {
             identifier: node.identifier(),
             database_configuration: opts.state.database_configuration()?,
@@ -409,6 +358,7 @@ impl CreateCommand {
             account_authority,
             enforce_admin_checks: self.enforce_admin_checks,
             disable_trust_context_id: self.disable_trust_context_id,
+            telemetry_endpoint_url: get_https_endpoint_url().ok(),
         };
 
         // SQLite doesn't like when the same database is opened by multiple times
@@ -426,11 +376,6 @@ impl CreateCommand {
         let authority = Authority::create(&configuration, database)
             .await
             .into_diagnostic()?;
-        authority
-            .add_member(&exporter_identity.identifier(), &attributes)
-            .await
-            .into_diagnostic()?;
-        info!("added the ockam-opentelemetry-exporter ({}) identity as a member with the permission to create a relay named ockam-opentelemetry", exporter_identity.identifier());
 
         authority_node::start_node(ctx, &configuration, authority)
             .await
@@ -444,12 +389,13 @@ impl CreateCommand {
         wait_for_exit_signal(
             &foreground_args,
             &opts,
+            self.tcp_callback_port,
             "To exit and stop the Authority node, please press Ctrl+C\n",
         )
         .await?;
 
         // Clean up and exit
-        let _ = opts.state.stop_node(&self.node_name).await;
+        let _ = opts.state.stop_node(&self.node_name()).await;
         Ok(())
     }
 
@@ -458,11 +404,11 @@ impl CreateCommand {
         opts: &CommandGlobalOpts,
     ) -> miette::Result<()> {
         if !self.child_process {
-            if let Ok(node) = opts.state.get_node(&self.node_name).await {
+            if let Ok(node) = opts.state.get_node(&self.node_name()).await {
                 if node.is_running() {
                     return Err(miette!(
                         "Node {} is already running",
-                        color_primary(&self.node_name)
+                        color_primary(self.node_name())
                     ));
                 }
             }
@@ -470,53 +416,15 @@ impl CreateCommand {
         Ok(())
     }
 
-    /// Read the identifier of the project identity from
-    /// the file path provided as a command line parameter until the reading succeeds.
-    /// We need to retry several times. That file is written by the project node and
-    /// since the project and authority nodes are started concurrently we don't know exactly when
-    /// this file becomes available
-    async fn read_project_identity_identifier(
-        &self,
-        opts: &CommandGlobalOpts,
-        project_identity_identifier_file: String,
-    ) -> miette::Result<Identifier> {
-        debug!(
-            "retrieving the project identity identifier from {}",
-            &project_identity_identifier_file
-        );
-        let retry_strategy = FixedInterval::from_millis(5000).take(100);
-        let identifier_string = match Retry::spawn(retry_strategy, || async {
-            read_to_string(project_identity_identifier_file.clone())
-                .await
-                .map_err(|e| {
-                    error!("cannot read the project identifier file: {e:?}");
-                    e
-                })
-        })
-        .await
-        {
-            Err(e) => {
-                error!("command failed: {e:?}");
-                let _ = opts
-                    .terminal
-                    .write_line(fmt_err!("Command failed with error: {e:?}"));
-                return Err(e).into_diagnostic();
-            }
-            Ok(identifier_string) => identifier_string,
-        };
+    // The authority identity name is built with the project identifier to make sure that it is unique.
+    fn authority_name(&self) -> String {
+        format!("authority-{}", self.project_identifier)
+    }
 
-        match Identifier::from_str(&identifier_string) {
-            Err(e) => {
-                let _ = opts.terminal.write_line(fmt_err!(
-                    "cannot read the project identity identifier: {e:?}"
-                ));
-                Err(e).into_diagnostic()
-            }
-            Ok(identifier) => {
-                info!(identifier=%identifier, "retrieved the project identity identifier");
-                Ok(identifier)
-            }
-        }
+    // The name of the authority node is the name of the authority to make sure that there are
+    // no 2 authority nodes with the same name.
+    pub fn node_name(&self) -> String {
+        self.authority_name()
     }
 }
 
@@ -605,7 +513,7 @@ mod tests {
         Ok(())
     }
 
-    /// HELPERS
+    // HELPERS
     async fn create_identity() -> Result<Identifier> {
         let identities = identities().await?;
         Ok(identities.identities_creation().create_identity().await?)

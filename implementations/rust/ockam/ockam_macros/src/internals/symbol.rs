@@ -12,7 +12,7 @@ pub(crate) const OCKAM_CRATE: Symbol = Symbol("crate");
 pub(crate) const TIMEOUT_MS: Symbol = Symbol("timeout");
 
 // Derive's helper attributes
-pub(crate) const ASYNC_TRY_CLONE: Symbol = Symbol("async_try_clone");
+pub(crate) const TRY_CLONE: Symbol = Symbol("try_clone");
 
 impl PartialEq<Symbol> for Ident {
     fn eq(&self, word: &Symbol) -> bool {
@@ -20,7 +20,7 @@ impl PartialEq<Symbol> for Ident {
     }
 }
 
-impl<'a> PartialEq<Symbol> for &'a Ident {
+impl PartialEq<Symbol> for &Ident {
     fn eq(&self, word: &Symbol) -> bool {
         *self == word.0
     }
@@ -32,7 +32,7 @@ impl PartialEq<Symbol> for Path {
     }
 }
 
-impl<'a> PartialEq<Symbol> for &'a Path {
+impl PartialEq<Symbol> for &Path {
     fn eq(&self, word: &Symbol) -> bool {
         self.is_ident(word.0)
     }

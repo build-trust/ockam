@@ -4,7 +4,7 @@ use miette::{miette, IntoDiagnostic};
 use ockam_api::colors::color_primary;
 use ockam_api::terminal::{Terminal, TerminalStream};
 use ockam_api::{fmt_info, fmt_warn};
-use ockam_core::AsyncTryClone;
+use ockam_core::TryClone;
 use std::time::Duration;
 use tokio::task::JoinSet;
 use tokio::time::sleep;
@@ -28,7 +28,7 @@ pub trait ShowCommandTui {
         let items_names = self.list_items_names().await?;
         if items_names.is_empty() {
             terminal
-                .stdout()
+                .to_stdout()
                 .plain(fmt_info!(
                     "There are no {} to show{}",
                     Self::ITEM_NAME.plural(),
@@ -71,7 +71,7 @@ pub trait ShowCommandTui {
                 match selected_item_names.len() {
                     0 => {
                         terminal
-                            .stdout()
+                            .to_stdout()
                             .plain(fmt_info!(
                                 "No {} selected to show",
                                 Self::ITEM_NAME.plural()
@@ -83,16 +83,19 @@ pub trait ShowCommandTui {
                         self.show_single(item_name).await?;
                     }
                     _ => {
-                        for item_name in selected_item_names {
-                            if self.show_single(&item_name).await.is_err() {
+                        for (idx, item_name) in selected_item_names.iter().enumerate() {
+                            if self.show_single(item_name).await.is_err() {
                                 self.terminal()
-                                    .stdout()
+                                    .to_stdout()
                                     .plain(fmt_warn!(
                                         "Failed to show {} {}",
                                         Self::ITEM_NAME.singular(),
                                         color_primary(item_name)
                                     ))
                                     .write_line()?;
+                            }
+                            if idx < selected_item_names.len() - 1 {
+                                self.terminal().write_line("")?;
                             }
                         }
                     }
@@ -112,7 +115,7 @@ fn get_opt_node_name_message(node_name: Option<&str>) -> String {
 }
 
 #[ockam_core::async_trait]
-pub trait DeleteCommandTui: AsyncTryClone + Send
+pub trait DeleteCommandTui: TryClone + Send
 where
     Self: 'static,
 {
@@ -133,7 +136,7 @@ where
         for item_name in items_names {
             if self.delete_single(&item_name).await.is_err() {
                 self.terminal()
-                    .stdout()
+                    .to_stdout()
                     .plain(fmt_warn!(
                         "Failed to delete {} {}",
                         Self::ITEM_NAME.singular(),
@@ -149,13 +152,13 @@ where
         for chunk in items_names.chunks(10).map(|c| c.to_vec()) {
             let mut set: JoinSet<miette::Result<()>> = JoinSet::new();
             for item_name in chunk {
-                let _self = self.async_try_clone().await.into_diagnostic()?;
+                let _self = self.try_clone().into_diagnostic()?;
                 set.spawn(async move {
                     sleep(tokio_retry::strategy::jitter(Duration::from_millis(500))).await;
                     if _self.delete_single(&item_name).await.is_err() {
                         _self
                             .terminal()
-                            .stdout()
+                            .to_stdout()
                             .plain(fmt_warn!(
                                 "Failed to delete {} {}",
                                 Self::ITEM_NAME.singular(),
@@ -177,7 +180,7 @@ where
 
         if items_names.is_empty() {
             terminal
-                .stdout()
+                .to_stdout()
                 .plain(fmt_info!(
                     "There are no {} to delete",
                     Self::ITEM_NAME.plural()
@@ -250,7 +253,7 @@ where
                 match selected_item_names.len() {
                     0 => {
                         terminal
-                            .stdout()
+                            .to_stdout()
                             .plain(fmt_info!(
                                 "No {} selected to delete",
                                 Self::ITEM_NAME.plural()
@@ -292,6 +295,7 @@ pub enum PluralTerm {
     ProjectAdmin,
     TcpInlet,
     TcpOutlet,
+    TcpConnection,
     KafkaInlet,
     KafkaOutlet,
     Policy,
@@ -311,6 +315,7 @@ impl PluralTerm {
             PluralTerm::ProjectAdmin => "project admin",
             PluralTerm::TcpInlet => "tcp inlet",
             PluralTerm::TcpOutlet => "tcp outlet",
+            PluralTerm::TcpConnection => "tcp connection",
             PluralTerm::KafkaInlet => "kafka inlet",
             PluralTerm::KafkaOutlet => "kafka outlet",
             PluralTerm::Policy => "policy",
@@ -330,6 +335,7 @@ impl PluralTerm {
             PluralTerm::ProjectAdmin => "project admins",
             PluralTerm::TcpInlet => "tcp inlets",
             PluralTerm::TcpOutlet => "tcp outlets",
+            PluralTerm::TcpConnection => "tcp connections",
             PluralTerm::KafkaInlet => "kafka inlets",
             PluralTerm::KafkaOutlet => "kafka outlets",
             PluralTerm::Policy => "policies",

@@ -7,6 +7,7 @@ use delete::DeleteCommand;
 use list::ListCommand;
 use logs::LogCommand;
 use ockam_api::address::extract_address_value;
+use ockam_node::Context;
 use show::ShowCommand;
 use start::StartCommand;
 use stop::StopCommand;
@@ -29,10 +30,10 @@ const AFTER_LONG_HELP: &str = include_str!("./static/after_long_help.txt");
 /// Manage Nodes
 #[derive(Clone, Debug, Args)]
 #[command(
-arg_required_else_help = true,
-subcommand_required = true,
-long_about = docs::about(LONG_ABOUT),
-after_long_help = docs::after_help(AFTER_LONG_HELP)
+    arg_required_else_help = true,
+    subcommand_required = true,
+    long_about = docs::about(LONG_ABOUT),
+    after_long_help = docs::after_help(AFTER_LONG_HELP),
 )]
 pub struct NodeCommand {
     #[command(subcommand)]
@@ -48,20 +49,13 @@ impl NodeCommand {
 #[derive(Clone, Debug, Subcommand)]
 #[allow(clippy::large_enum_variant)]
 pub enum NodeSubcommand {
-    #[command(display_order = 800)]
     Create(CreateCommand),
-    #[command(display_order = 800)]
     Delete(DeleteCommand),
-    #[command(display_order = 800)]
     List(ListCommand),
-    #[command(display_order = 800)]
     Logs(LogCommand),
     Show(ShowCommand),
-    #[command(display_order = 800)]
     Start(StartCommand),
-    #[command(display_order = 800)]
     Stop(StopCommand),
-    #[command(display_order = 800)]
     Default(DefaultCommand),
 }
 
@@ -81,16 +75,16 @@ impl NodeSubcommand {
 }
 
 impl NodeCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
-            NodeSubcommand::Create(c) => c.run(opts),
-            NodeSubcommand::Delete(c) => c.run(opts),
-            NodeSubcommand::List(c) => c.run(opts),
-            NodeSubcommand::Show(c) => c.run(opts),
-            NodeSubcommand::Start(c) => c.run(opts),
-            NodeSubcommand::Stop(c) => c.run(opts),
-            NodeSubcommand::Logs(c) => c.run(opts),
-            NodeSubcommand::Default(c) => c.run(opts),
+            NodeSubcommand::Create(c) => c.run(ctx, opts).await,
+            NodeSubcommand::Delete(c) => c.run(opts).await,
+            NodeSubcommand::List(c) => c.run(ctx, opts).await,
+            NodeSubcommand::Show(c) => c.run(ctx, opts).await,
+            NodeSubcommand::Start(c) => c.run(ctx, opts).await,
+            NodeSubcommand::Stop(c) => c.run(opts).await,
+            NodeSubcommand::Logs(c) => c.run(opts).await,
+            NodeSubcommand::Default(c) => c.run(opts).await,
         }
     }
 }

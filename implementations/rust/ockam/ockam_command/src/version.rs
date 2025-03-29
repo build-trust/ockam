@@ -1,5 +1,6 @@
 //! Helpers to display version information
 
+use crate::branding::BrandingCompileEnvVars;
 use clap::crate_version;
 use ockam_api::colors::color_primary;
 use ockam_api::output::Output;
@@ -54,7 +55,8 @@ impl Version {
                 color_primary(&self.hash).to_string(),
             )
         };
-        let msg = format!("ockam {version}\ncompiled from {hash}");
+        let bin_name = BrandingCompileEnvVars::bin_name();
+        let msg = format!("{bin_name} {version}\ncompiled from {hash}");
         if self.multiline {
             Ok(msg)
         } else {

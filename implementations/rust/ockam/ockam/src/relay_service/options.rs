@@ -117,7 +117,7 @@ impl RelayServiceOptions {
         address: &Address,
     ) {
         for id in &self.consumer_service {
-            flow_controls.add_consumer(address.clone(), id);
+            flow_controls.add_consumer(address, id);
         }
     }
 
@@ -127,7 +127,7 @@ impl RelayServiceOptions {
         address: &Address,
     ) {
         for id in &self.consumer_relay {
-            flow_controls.add_consumer(address.clone(), id);
+            flow_controls.add_consumer(address, id);
         }
     }
 }

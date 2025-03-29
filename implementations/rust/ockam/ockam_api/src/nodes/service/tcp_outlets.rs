@@ -2,12 +2,15 @@ use ockam::tcp::TcpOutletOptions;
 use ockam::transport::HostnamePort;
 use ockam::{Address, Result};
 use ockam_abac::{Action, PolicyExpression, Resource, ResourceType};
-use ockam_core::api::{Error, Request, RequestHeader, Response};
+use ockam_core::api::{Error, Request, Response};
 use ockam_core::async_trait;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_node::Context;
+use tracing::Level;
 
-use crate::nodes::models::portal::{CreateOutlet, OutletAccessControl, OutletStatus};
+use crate::nodes::models::portal::{
+    CreateOutlet, OutletAccessControl, OutletStatus, OutletStatusList,
+};
 use crate::nodes::registry::OutletInfo;
 use crate::nodes::service::default_address::DefaultAddress;
 use crate::nodes::BackgroundNodeClient;
@@ -15,7 +18,7 @@ use crate::nodes::BackgroundNodeClient;
 use super::{NodeManager, NodeManagerWorker};
 
 impl NodeManagerWorker {
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     pub(super) async fn create_outlet(
         &self,
         ctx: &Context,
@@ -28,6 +31,9 @@ impl NodeManagerWorker {
             policy_expression,
             tls,
             privileged,
+            skip_handshake,
+            enable_nagle,
+            enable_mptcp,
         } = create_outlet;
 
         match self
@@ -40,6 +46,9 @@ impl NodeManagerWorker {
                 reachable_from_default_secure_channel,
                 OutletAccessControl::WithPolicyExpression(policy_expression),
                 privileged,
+                skip_handshake,
+                enable_nagle,
+                enable_mptcp,
             )
             .await
         {
@@ -68,11 +77,11 @@ impl NodeManagerWorker {
         }
     }
 
-    pub(super) async fn show_outlet(
+    pub(super) fn show_outlet(
         &self,
         worker_addr: &Address,
     ) -> Result<Response<OutletStatus>, Response<Error>> {
-        match self.node_manager.show_outlet(worker_addr).await {
+        match self.node_manager.show_outlet(worker_addr) {
             Some(outlet) => Ok(Response::ok().body(outlet)),
             None => Err(Response::not_found_no_request(&format!(
                 "Outlet with address {worker_addr} not found"
@@ -80,17 +89,15 @@ impl NodeManagerWorker {
         }
     }
 
-    pub(super) async fn get_outlets(&self, req: &RequestHeader) -> Response<Vec<OutletStatus>> {
-        Response::ok()
-            .with_headers(req)
-            .body(self.node_manager.list_outlets().await)
+    pub(crate) async fn get_outlets(&self) -> Result<Response<OutletStatusList>, Response<Error>> {
+        let outlets = self.node_manager.list_outlets();
+        Ok(Response::ok().body(OutletStatusList(outlets)))
     }
 }
 
 impl NodeManager {
-    #[instrument(skip(self, ctx))]
     #[allow(clippy::too_many_arguments)]
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     pub async fn create_outlet(
         &self,
         ctx: &Context,
@@ -100,20 +107,16 @@ impl NodeManager {
         reachable_from_default_secure_channel: bool,
         access_control: OutletAccessControl,
         privileged: bool,
+        skip_handshake: bool,
+        enable_nagle: bool,
+        enable_mptcp: bool,
     ) -> Result<OutletStatus> {
-        let worker_addr = self
-            .registry
-            .outlets
-            .generate_worker_addr(worker_addr)
-            .await;
+        let worker_addr = self.registry.outlets.generate_worker_addr(worker_addr);
 
-        info!(
-            "Handling request to create outlet portal to {to} with worker {:?}",
-            worker_addr
-        );
+        debug!(%to, address = %worker_addr, "creating outlet");
 
         // Check registry for a duplicated key
-        if self.registry.outlets.contains_key(&worker_addr).await {
+        if self.registry.outlets.contains_key(&worker_addr) {
             let message = format!("A TCP outlet with address '{worker_addr}' already exists");
             return Err(ockam_core::Error::new(
                 Origin::Node,
@@ -142,7 +145,11 @@ impl NodeManager {
             let mut options = TcpOutletOptions::new()
                 .with_incoming_access_control(incoming_ac)
                 .with_outgoing_access_control(outgoing_ac)
-                .with_tls(tls);
+                .with_tls(tls)
+                .set_skip_handshake(skip_handshake)
+                .set_enable_nagle(enable_nagle)
+                .set_enable_mptcp(enable_mptcp);
+
             if self.project_authority().is_none() {
                 for api_transport_flow_control_id in &self.api_transport_flow_control_ids {
                     options = options.as_consumer(api_transport_flow_control_id)
@@ -179,23 +186,21 @@ impl NodeManager {
         } else {
             self.tcp_transport
                 .create_outlet(worker_addr.clone(), to.clone(), options)
-                .await
         };
 
         Ok(match res {
             Ok(_) => {
                 // TODO: Use better way to store outlets?
-                self.registry
-                    .outlets
-                    .insert(
-                        worker_addr.clone(),
-                        OutletInfo::new(to.clone(), Some(&worker_addr), privileged),
-                    )
-                    .await;
-
-                self.cli_state
+                self.registry.outlets.insert(
+                    worker_addr.clone(),
+                    OutletInfo::new(to.clone(), Some(&worker_addr), privileged),
+                );
+                let outlet = self
+                    .cli_state
                     .create_tcp_outlet(&self.node_name, &to, &worker_addr, &None, privileged)
-                    .await?
+                    .await?;
+                info!(%to, address = %worker_addr, "outlet created");
+                outlet
             }
             Err(e) => {
                 warn!(at = %to, err = %e, "Failed to create TCP outlet");
@@ -211,7 +216,7 @@ impl NodeManager {
 
     pub async fn delete_outlet(&self, worker_addr: &Address) -> Result<Option<OutletInfo>> {
         info!(%worker_addr, "Handling request to delete outlet portal");
-        if let Some(deleted_outlet) = self.registry.outlets.remove(worker_addr).await {
+        if let Some(deleted_outlet) = self.registry.outlets.remove(worker_addr) {
             debug!(%worker_addr, "Successfully removed outlet from node registry");
 
             self.cli_state
@@ -221,11 +226,7 @@ impl NodeManager {
                 .delete_resource(&worker_addr.address().into())
                 .await?;
 
-            if let Err(e) = self
-                .tcp_transport
-                .stop_outlet(deleted_outlet.worker_addr.clone())
-                .await
-            {
+            if let Err(e) = self.tcp_transport.stop_outlet(&deleted_outlet.worker_addr) {
                 warn!(%worker_addr, %e, "Failed to stop outlet worker");
             }
             trace!(%worker_addr, "Successfully stopped outlet");
@@ -236,9 +237,9 @@ impl NodeManager {
         }
     }
 
-    pub(super) async fn show_outlet(&self, worker_addr: &Address) -> Option<OutletStatus> {
+    pub fn show_outlet(&self, worker_addr: &Address) -> Option<OutletStatus> {
         info!(%worker_addr, "Handling request to show outlet portal");
-        if let Some(outlet_to_show) = self.registry.outlets.get(worker_addr).await {
+        if let Some(outlet_to_show) = self.registry.outlets.get(worker_addr) {
             debug!(%worker_addr, "Outlet not found in node registry");
             Some(OutletStatus::new(
                 outlet_to_show.to,
@@ -255,6 +256,7 @@ impl NodeManager {
 
 #[async_trait]
 pub trait Outlets {
+    #[allow(clippy::too_many_arguments)]
     async fn create_outlet(
         &self,
         ctx: &Context,
@@ -263,12 +265,15 @@ pub trait Outlets {
         from: Option<&Address>,
         policy_expression: Option<PolicyExpression>,
         privileged: bool,
+        skip_handshake: bool,
+        enable_nagle: bool,
+        enable_mptcp: bool,
     ) -> miette::Result<OutletStatus>;
 }
 
 #[async_trait]
 impl Outlets for BackgroundNodeClient {
-    #[instrument(skip_all, fields(to = % to, from = ? from))]
+    #[instrument(skip_all, fields(to = % to, from = ? from), level = Level::TRACE)]
     async fn create_outlet(
         &self,
         ctx: &Context,
@@ -277,8 +282,20 @@ impl Outlets for BackgroundNodeClient {
         from: Option<&Address>,
         policy_expression: Option<PolicyExpression>,
         privileged: bool,
+        skip_handshake: bool,
+        enable_nagle: bool,
+        enable_mptcp: bool,
     ) -> miette::Result<OutletStatus> {
-        let mut payload = CreateOutlet::new(to, tls, from.cloned(), true, privileged);
+        let mut payload = CreateOutlet::new(
+            to,
+            tls,
+            from.cloned(),
+            true,
+            privileged,
+            skip_handshake,
+            enable_nagle,
+            enable_mptcp,
+        );
         if let Some(policy_expression) = policy_expression {
             payload.set_policy_expression(policy_expression);
         }

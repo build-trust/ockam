@@ -1,0 +1,5 @@
+error: only `ockam`, `ockam_core` or `crate` are supported, got `my_crate`
+ --> tests/try_clone/fail_if_attr_crate_unsupported.rs:4:21
+  |
+4 | #[try_clone(crate = "my_crate")]
+  |                     ^^^^^^^^^^

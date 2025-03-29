@@ -4,13 +4,14 @@ use tokio::sync::broadcast::{channel, Receiver, Sender};
 
 use ockam::SqlxDatabase;
 use ockam_core::env::get_env_with_default;
-use ockam_node::database::DatabaseConfiguration;
-use ockam_node::Executor;
+use ockam_node::database::{DatabaseConfiguration, DatabaseType};
 
 use crate::cli_state::error::Result;
 use crate::cli_state::CliStateError;
 use crate::logs::ExportingEnabled;
 use crate::terminal::notification::Notification;
+
+pub const OCKAM_HOME: &str = "OCKAM_HOME";
 
 /// Maximum number of notifications present in the channel
 const NOTIFICATIONS_CHANNEL_CAPACITY: usize = 16;
@@ -40,23 +41,20 @@ const NOTIFICATIONS_CHANNEL_CAPACITY: usize = 16;
 ///
 #[derive(Debug, Clone)]
 pub struct CliState {
-    dir: PathBuf,
+    pub mode: CliStateMode,
     database: SqlxDatabase,
     application_database: SqlxDatabase,
     exporting_enabled: ExportingEnabled,
-    /// Broadcast channel to be notified of major events during a process supported by the
-    /// CliState API
+    /// Broadcast channel to be notified of major events during a process supported by the CliState API
     notifications: Sender<Notification>,
 }
 
 impl CliState {
-    /// Create a new CliState in a given directory
-    pub fn new(dir: &Path) -> Result<Self> {
-        Executor::execute_future(Self::create(dir.into()))?
-    }
-
-    pub fn dir(&self) -> PathBuf {
-        self.dir.clone()
+    pub fn dir(&self) -> Result<PathBuf> {
+        match &self.mode {
+            CliStateMode::Persistent(dir) => Ok(dir.to_path_buf()),
+            CliStateMode::InMemory => Self::default_dir(),
+        }
     }
 
     pub fn database(&self) -> SqlxDatabase {
@@ -68,7 +66,14 @@ impl CliState {
     }
 
     pub fn database_configuration(&self) -> Result<DatabaseConfiguration> {
-        Self::make_database_configuration(&self.dir)
+        Self::make_database_configuration(&self.mode)
+    }
+
+    pub fn is_using_in_memory_database(&self) -> Result<bool> {
+        match self.database_configuration()? {
+            DatabaseConfiguration::SqliteInMemory { .. } => Ok(true),
+            _ => Ok(false),
+        }
     }
 
     pub fn is_database_path(&self, path: &Path) -> bool {
@@ -84,7 +89,7 @@ impl CliState {
     }
 
     pub fn application_database_configuration(&self) -> Result<DatabaseConfiguration> {
-        Self::make_application_database_configuration(&self.dir)
+        Self::make_application_database_configuration(&self.mode)
     }
 
     pub fn subscribe_to_notifications(&self) -> Receiver<Notification> {
@@ -108,24 +113,38 @@ impl CliState {
     }
 
     fn notify(&self, notification: Notification) {
-        debug!("{:?}", notification.contents());
         let _ = self.notifications.send(notification);
     }
 }
 
 /// These functions allow to create and reset the local state
 impl CliState {
-    /// Return a new CliState using a default directory to store its data
-    pub fn with_default_dir() -> Result<Self> {
-        Self::new(Self::default_dir()?.as_path())
+    /// Return a new CliState using a default directory to store its data or
+    /// using an in-memory storage if the OCKAM_SQLITE_IN_MEMORY environment variable is set to true
+    pub async fn new(in_memory: bool) -> Result<Self> {
+        let mode = if in_memory {
+            CliStateMode::InMemory
+        } else {
+            CliStateMode::with_default_dir()?
+        };
+
+        Self::create(mode).await
     }
 
     /// Stop nodes and remove all the directories storing state
+    /// Don't touch the database data if Postgres is used and reset was called accidentally.
     pub async fn reset(&self) -> Result<()> {
-        self.delete_all_named_identities().await?;
-        self.delete_all_nodes().await?;
-        self.delete_all_named_vaults().await?;
-        self.delete().await
+        if Self::make_database_configuration(&self.mode)?.database_type() == DatabaseType::Postgres
+        {
+            Err(CliStateError::InvalidOperation(
+                "Cannot reset the database when using Postgres".to_string(),
+            ))
+        } else {
+            self.delete_all_named_identities().await?;
+            self.delete_all_nodes().await?;
+            self.delete_all_named_vaults().await?;
+            self.delete().await
+        }
     }
 
     /// Removes all the directories storing state without loading the current state
@@ -137,25 +156,27 @@ impl CliState {
 
     /// Delete the local database and log files
     pub async fn delete(&self) -> Result<()> {
-        self.database.drop_postgres_node_tables().await?;
         self.delete_local_data()
     }
 
     /// Delete the local data on disk: sqlite database file and log files
     pub fn delete_local_data(&self) -> Result<()> {
-        Self::delete_at(&self.dir)
+        if let CliStateMode::Persistent(dir) = &self.mode {
+            Self::delete_at(dir)?;
+        }
+        Ok(())
     }
 
     /// Reset all directories and return a new CliState
     pub async fn recreate(&self) -> Result<CliState> {
         self.reset().await?;
-        Self::create(self.dir.clone()).await
+        Self::create(self.mode.clone()).await
     }
 
     /// Backup and reset is used to save aside
     /// some corrupted local state for later inspection and then reset the state.
     /// The database is backed-up only if it is a SQLite database.
-    pub fn backup_and_reset() -> Result<()> {
+    pub async fn backup_and_reset() -> Result<()> {
         let dir = Self::default_dir()?;
 
         // Reset backup directory
@@ -175,10 +196,9 @@ impl CliState {
 
         // Reset state
         Self::delete_at(&dir)?;
-        let state = Self::new(&dir)?;
+        Self::create(CliStateMode::Persistent(dir.clone())).await?;
 
-        let dir = &state.dir;
-        let backup_dir = CliState::backup_default_dir().unwrap();
+        let backup_dir = CliState::backup_default_dir()?;
         eprintln!("The {dir:?} directory has been reset and has been backed up to {backup_dir:?}");
         Ok(())
     }
@@ -203,20 +223,27 @@ impl CliState {
 /// Low-level functions for creating / deleting CliState files
 impl CliState {
     /// Create a new CliState where the data is stored at a given path
-    pub async fn create(dir: PathBuf) -> Result<Self> {
-        std::fs::create_dir_all(&dir)?;
-        let database = SqlxDatabase::create(&Self::make_database_configuration(&dir)?).await?;
-        let configuration = Self::make_application_database_configuration(&dir)?;
-        let application_database =
-            SqlxDatabase::create_application_database(&configuration).await?;
+    pub async fn create(mode: CliStateMode) -> Result<Self> {
+        if let CliStateMode::Persistent(ref dir) = mode {
+            std::fs::create_dir_all(dir.as_path())?;
+        }
+        let database = SqlxDatabase::create(&Self::make_database_configuration(&mode)?).await?;
         debug!("Opened the main database with options {:?}", database);
+
+        // TODO: This should not be called unless we're running the App
+        let application_database = SqlxDatabase::create_application_database(
+            &Self::make_application_database_configuration(&mode)?,
+        )
+        .await?;
         debug!(
             "Opened the application database with options {:?}",
             application_database
         );
+
         let (notifications, _) = channel::<Notification>(NOTIFICATIONS_CHANNEL_CAPACITY);
+
         let state = Self {
-            dir,
+            mode,
             database,
             application_database,
             // We initialize the CliState with no tracing.
@@ -226,6 +253,7 @@ impl CliState {
             exporting_enabled: ExportingEnabled::Off,
             notifications,
         };
+
         Ok(state)
     }
 
@@ -245,51 +273,68 @@ impl CliState {
     }
 
     /// If the postgres database is configured, return the postgres configuration
-    pub(super) fn make_database_configuration(root_path: &Path) -> Result<DatabaseConfiguration> {
-        match DatabaseConfiguration::postgres()? {
-            Some(configuration) => Ok(configuration),
-            None => Ok(DatabaseConfiguration::sqlite(
-                root_path.join("database.sqlite3").as_path(),
-            )),
+    ///
+    pub(super) fn make_database_configuration(
+        mode: &CliStateMode,
+    ) -> Result<DatabaseConfiguration> {
+        match mode {
+            CliStateMode::Persistent(root_path) => {
+                let sqlite_path = root_path.join("database.sqlite3");
+                match DatabaseConfiguration::postgres_with_legacy_sqlite_path(Some(
+                    sqlite_path.clone(),
+                ))? {
+                    Some(configuration) => Ok(configuration),
+                    None => Ok(DatabaseConfiguration::sqlite(sqlite_path)),
+                }
+            }
+            CliStateMode::InMemory => Ok(DatabaseConfiguration::sqlite_in_memory()),
         }
     }
 
     /// If the postgres database is configured, return the postgres configuration
     pub(super) fn make_application_database_configuration(
-        root_path: &Path,
+        mode: &CliStateMode,
     ) -> Result<DatabaseConfiguration> {
         match DatabaseConfiguration::postgres()? {
             Some(configuration) => Ok(configuration),
-            None => Ok(DatabaseConfiguration::sqlite(
-                root_path.join("application_database.sqlite3").as_path(),
-            )),
+            None => match mode {
+                CliStateMode::Persistent(root_path) => Ok(DatabaseConfiguration::sqlite(
+                    root_path.join("application_database.sqlite3"),
+                )),
+                CliStateMode::InMemory => Ok(DatabaseConfiguration::sqlite_in_memory()),
+            },
         }
     }
 
-    pub(super) fn make_node_dir_path(root_path: &Path, node_name: &str) -> PathBuf {
+    pub(super) fn make_node_dir_path(root_path: impl AsRef<Path>, node_name: &str) -> PathBuf {
         Self::make_nodes_dir_path(root_path).join(node_name)
     }
 
-    pub(super) fn make_command_log_path(root_path: &Path, command_name: &str) -> PathBuf {
+    pub(super) fn make_command_log_path(
+        root_path: impl AsRef<Path>,
+        command_name: &str,
+    ) -> PathBuf {
         Self::make_commands_log_dir_path(root_path).join(command_name)
     }
 
-    pub(super) fn make_nodes_dir_path(root_path: &Path) -> PathBuf {
-        root_path.join("nodes")
+    pub(super) fn make_nodes_dir_path(root_path: impl AsRef<Path>) -> PathBuf {
+        root_path.as_ref().join("nodes")
     }
 
-    pub(super) fn make_commands_log_dir_path(root_path: &Path) -> PathBuf {
-        root_path.join("commands")
+    pub(super) fn make_commands_log_dir_path(root_path: impl AsRef<Path>) -> PathBuf {
+        root_path.as_ref().join("commands")
     }
 
     /// Delete the state files
-    fn delete_at(root_path: &Path) -> Result<()> {
+    fn delete_at(root_path: &PathBuf) -> Result<()> {
         // Delete nodes logs
         let _ = std::fs::remove_dir_all(Self::make_nodes_dir_path(root_path));
         // Delete command logs
         let _ = std::fs::remove_dir_all(Self::make_commands_log_dir_path(root_path));
         // Delete the nodes database, keep the application database
-        if let Some(path) = Self::make_database_configuration(root_path)?.path() {
+        if let Some(path) =
+            Self::make_database_configuration(&CliStateMode::Persistent(root_path.clone()))?.path()
+        {
             std::fs::remove_file(path)?;
         };
         Ok(())
@@ -299,7 +344,7 @@ impl CliState {
     /// That directory is determined by `OCKAM_HOME` environment variable and is
     /// $OCKAM_HOME/.ockam.
     ///
-    /// If $OCKAM_HOME is not defined then $HOME is used instead
+    /// If $OCKAM_HOME is not defined, then $HOME is used instead
     pub(super) fn default_dir() -> Result<PathBuf> {
         Ok(get_env_with_default::<PathBuf>(
             "OCKAM_HOME",
@@ -315,91 +360,95 @@ pub fn random_name() -> String {
     petname::petname(2, "-").unwrap_or(hex::encode(random::<[u8; 4]>()))
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum CliStateMode {
+    Persistent(PathBuf),
+    InMemory,
+}
+
+impl CliStateMode {
+    pub fn with_default_dir() -> Result<Self> {
+        Ok(Self::Persistent(CliState::default_dir()?))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use itertools::Itertools;
-    use ockam_node::database::DatabaseType;
-    use sqlx::any::AnyRow;
-    use sqlx::Row;
+    use ockam_node::database::{skip_if_postgres, DatabaseType};
     use std::fs;
     use tempfile::NamedTempFile;
 
     #[tokio::test]
     async fn test_reset() -> Result<()> {
-        let db_file = NamedTempFile::new().unwrap();
-        let cli_state_directory = db_file.path().parent().unwrap().join(random_name());
-        let db = SqlxDatabase::create(&CliState::make_database_configuration(
-            &cli_state_directory,
-        )?)
-        .await?;
-        db.drop_all_postgres_tables().await?;
-        let cli = CliState::create(cli_state_directory.clone()).await?;
+        // We don't need to test reset with Postgres since we don't want reset be used accidentally
+        // with a Postgres database (resetting in that case throws an error).
+        skip_if_postgres(|| async {
+            let db_file = NamedTempFile::new().unwrap();
+            let cli_state_directory = db_file.path().parent().unwrap().join(random_name());
+            let mode = CliStateMode::Persistent(cli_state_directory.clone());
+            let cli = CliState::create(mode).await?;
 
-        // create 2 vaults
-        // the second vault is using a separate file
-        let _vault1 = cli.get_or_create_named_vault("vault1").await?;
-        let _vault2 = cli.get_or_create_named_vault("vault2").await?;
+            // create 2 vaults
+            // the second vault is using a separate file
+            let _vault1 = cli.get_or_create_named_vault("vault1").await?;
+            let _vault2 = cli.get_or_create_named_vault("vault2").await?;
 
-        // create 2 identities
-        let identity1 = cli
-            .create_identity_with_name_and_vault("identity1", "vault1")
-            .await?;
-        let identity2 = cli
-            .create_identity_with_name_and_vault("identity2", "vault2")
-            .await?;
+            // create 2 identities
+            let identity1 = cli
+                .create_identity_with_name_and_vault("identity1", "vault1")
+                .await?;
+            let identity2 = cli
+                .create_identity_with_name_and_vault("identity2", "vault2")
+                .await?;
 
-        // create 2 nodes
-        let _node1 = cli
-            .create_node_with_identifier("node1", &identity1.identifier())
-            .await?;
-        let _node2 = cli
-            .create_node_with_identifier("node2", &identity2.identifier())
-            .await?;
+            // create 2 nodes
+            let _node1 = cli
+                .create_node_with_identifier("node1", &identity1.identifier())
+                .await?;
+            let _node2 = cli
+                .create_node_with_identifier("node2", &identity2.identifier())
+                .await?;
 
-        let file_names = list_file_names(&cli_state_directory);
-        let expected = match cli.database_configuration()?.database_type() {
-            DatabaseType::Sqlite => vec![
-                "vault-vault2".to_string(),
-                "application_database.sqlite3".to_string(),
-                "database.sqlite3".to_string(),
-            ],
-            DatabaseType::Postgres => vec!["vault-vault2".to_string()],
-        };
+            let file_names = list_file_names(&cli_state_directory);
 
-        assert_eq!(
-            file_names.iter().sorted().as_slice(),
-            expected.iter().sorted().as_slice()
-        );
+            // this test is not executed with Postgres
+            let expected = match cli.database_configuration()?.database_type() {
+                DatabaseType::Sqlite => vec![
+                    "vault-vault2".to_string(),
+                    "application_database.sqlite3".to_string(),
+                    "database.sqlite3".to_string(),
+                ],
+                DatabaseType::Postgres => vec![],
+            };
 
-        // reset the local state
-        cli.reset().await?;
-        let result = fs::read_dir(&cli_state_directory);
-        assert!(result.is_ok(), "the cli state directory is not deleted");
+            assert_eq!(
+                file_names.iter().sorted().as_slice(),
+                expected.iter().sorted().as_slice()
+            );
 
-        match cli.database_configuration()?.database_type() {
-            DatabaseType::Sqlite => {
-                // When the database is SQLite, only the application database must remain
-                let file_names = list_file_names(&cli_state_directory);
-                let expected = vec!["application_database.sqlite3".to_string()];
-                assert_eq!(file_names, expected);
-            }
-            DatabaseType::Postgres => {
-                // When the database is Postgres, only the journey tables must remain
-                let tables: Vec<AnyRow> = sqlx::query(
-                    "SELECT tablename::text FROM pg_tables WHERE schemaname = 'public'",
-                )
-                .fetch_all(&*db.pool)
-                .await
-                .unwrap();
-                let actual: Vec<String> = tables.iter().map(|r| r.get(0)).sorted().collect();
-                assert_eq!(actual, vec!["host_journey", "project_journey"]);
-            }
-        };
-        Ok(())
+            // reset the local state
+            cli.reset().await?;
+            let result = fs::read_dir(&cli_state_directory);
+            assert!(result.is_ok(), "the cli state directory is not deleted");
+
+            // this test is not executed with Postgres
+            match cli.database_configuration()?.database_type() {
+                DatabaseType::Sqlite => {
+                    // When the database is SQLite, only the application database must remain
+                    let file_names = list_file_names(&cli_state_directory);
+                    let expected = vec!["application_database.sqlite3".to_string()];
+                    assert_eq!(file_names, expected);
+                }
+                DatabaseType::Postgres => (),
+            };
+            Ok(())
+        })
+        .await
     }
 
-    /// HELPERS
+    // HELPERS
     fn list_file_names(dir: &Path) -> Vec<String> {
         fs::read_dir(dir)
             .unwrap()

@@ -16,7 +16,7 @@ services:
     environment:
       ENROLLMENT_TICKET: ${ENROLLMENT_TICKET}
       OCKAM_DEVELOPER: ${OCKAM_DEVELOPER:-false}
-      OCKAM_OPENTELEMETRY_EXPORT: "false"
+      OCKAM_TELEMETRY_EXPORT: "false"
     command:
       - node
       - create

@@ -115,9 +115,7 @@ config :ockam_services,
     # discovery service
     Ockam.Services.Provider.Discovery,
     # proxies for remote services
-    Ockam.Services.Provider.Proxy,
-    # proxies to services in other nodes
-    Ockam.Services.Provider.Sidecar
+    Ockam.Services.Provider.Proxy
   ],
   services: services
 
@@ -185,3 +183,45 @@ config :logger, :console,
   metadata: [:module, :line, :pid],
   format_string: "$dateT$time $metadata[$level] $message\n",
   format: {Ockam.CloudNode.LogFormatter, :format}
+
+if Mix.env() == :test do
+  config :logger, level: :debug
+
+  opentelemetry_proxy_service =
+    if System.get_env("OCKAM_OPENTELEMETRY_ENDPOINT", nil) != nil do
+      grpc_endpoint = System.get_env("OCKAM_OPENTELEMETRY_ENDPOINT")
+
+      [
+        {:echo,
+         [
+           address: "echo",
+           log_level: :debug,
+           authorization: []
+         ]},
+        {:grpc_forwarder,
+         [
+           address: "grpc_forwarder",
+           grpc_endpoint: grpc_endpoint,
+           authorization: []
+         ]}
+      ]
+    else
+      []
+    end
+
+  config :ockam_services,
+    service_providers: [
+      Ockam.Services.Provider.Routing,
+      Ockam.Services.Provider.SecureChannel,
+      Ockam.Services.Provider.Proxy
+    ],
+    services: opentelemetry_proxy_service
+
+  config :ockam_metrics,
+    start_telemetry_poller: false
+
+  config :ockam, identity_module: Ockam.Identity.Stub
+
+  config :ockam_cloud_node,
+    storage_path: "./test"
+end

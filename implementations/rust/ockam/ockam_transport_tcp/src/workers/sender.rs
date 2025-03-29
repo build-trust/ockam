@@ -4,17 +4,18 @@ use ockam_core::flow_control::FlowControlId;
 use ockam_core::{
     async_trait,
     compat::{net::SocketAddr, sync::Arc},
-    AllowAll, AllowSourceAddress, DenyAll, LocalMessage,
+    deserialize, serialize, AddressMetadata, AllowAll, AllowSourceAddress, DenyAll, Encodable,
+    Encoded, LocalMessage,
 };
 use ockam_core::{Any, Decodable, Mailbox, Mailboxes, Message, Result, Routed, Worker};
-use ockam_node::{Context, WorkerBuilder};
+use ockam_node::{Context, WorkerBuilder, WorkerShutdownPriority};
 
 use crate::transport_message::TcpTransportMessage;
 use ockam_transport_core::TransportError;
 use serde::{Deserialize, Serialize};
 use tokio::io::AsyncWriteExt;
 use tokio::net::tcp::OwnedWriteHalf;
-use tracing::{info, instrument, trace, warn};
+use tracing::{debug, instrument, trace, warn, Level};
 
 #[derive(Serialize, Deserialize, Message, Clone)]
 pub(crate) enum TcpSendWorkerMsg {
@@ -38,6 +39,18 @@ pub(crate) struct TcpSendWorker {
     mode: TcpConnectionMode,
     receiver_flow_control_id: FlowControlId,
     rx_should_be_stopped: bool,
+}
+
+impl Encodable for TcpSendWorkerMsg {
+    fn encode(self) -> Result<Encoded> {
+        serialize(self)
+    }
+}
+
+impl Decodable for TcpSendWorkerMsg {
+    fn decode(v: &[u8]) -> Result<Self> {
+        deserialize(v)
+    }
 }
 
 impl TcpSendWorker {
@@ -67,8 +80,8 @@ impl TcpSendWorker {
     /// Create a `(TcpSendWorker, TcpRecvProcessor)` pair that opens and
     /// manages the connection with the given peer
     #[allow(clippy::too_many_arguments)]
-    #[instrument(skip_all, name = "TcpSendWorker::start")]
-    pub(crate) async fn start(
+    #[instrument(skip_all, name = "TcpSendWorker::start", level = Level::TRACE)]
+    pub(crate) fn start(
         ctx: &Context,
         registry: TcpRegistry,
         write_half: OwnedWriteHalf,
@@ -89,12 +102,17 @@ impl TcpSendWorker {
 
         let main_mailbox = Mailbox::new(
             addresses.sender_address().clone(),
+            Some(AddressMetadata {
+                is_terminal: true,
+                attributes: vec![],
+            }),
             Arc::new(AllowAll),
             Arc::new(DenyAll),
         );
 
         let internal_mailbox = Mailbox::new(
             addresses.sender_internal_address().clone(),
+            None,
             Arc::new(AllowSourceAddress(
                 addresses.receiver_internal_address().clone(),
             )),
@@ -103,19 +121,15 @@ impl TcpSendWorker {
 
         WorkerBuilder::new(sender_worker)
             .with_mailboxes(Mailboxes::new(main_mailbox.clone(), vec![internal_mailbox]))
-            .terminal(addresses.sender_address().clone())
-            .start(ctx)
-            .await?;
+            .with_shutdown_priority(WorkerShutdownPriority::Priority2)
+            .start(ctx)?;
 
         Ok(())
     }
 
-    #[instrument(skip_all, name = "TcpSendWorker::stop")]
-    async fn stop(&self, ctx: &Context) -> Result<()> {
-        ctx.stop_worker(self.addresses.sender_address().clone())
-            .await?;
-
-        Ok(())
+    #[instrument(skip_all, name = "TcpSendWorker::stop", level = Level::TRACE)]
+    fn stop(&self, ctx: &Context) -> Result<()> {
+        ctx.stop_primary_address()
     }
 
     fn serialize_message(&mut self, local_message: LocalMessage) -> Result<()> {
@@ -164,10 +178,8 @@ impl Worker for TcpSendWorker {
     type Context = Context;
     type Message = Any;
 
-    #[instrument(skip_all, name = "TcpSendWorker::initialize")]
+    #[instrument(skip_all, name = "TcpSendWorker::initialize", level = Level::TRACE)]
     async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
-        ctx.set_cluster(crate::CLUSTER_NAME).await?;
-
         self.registry.add_sender_worker(TcpSenderInfo::new(
             self.addresses.sender_address().clone(),
             self.addresses.receiver_address().clone(),
@@ -187,7 +199,7 @@ impl Worker for TcpSendWorker {
                 "Failed to send protocol version to peer {}",
                 self.socket_address
             );
-            self.stop(ctx).await?;
+            self.stop(ctx)?;
 
             return Ok(());
         }
@@ -195,15 +207,13 @@ impl Worker for TcpSendWorker {
         Ok(())
     }
 
-    #[instrument(skip_all, name = "TcpSendWorker::shutdown")]
+    #[instrument(skip_all, name = "TcpSendWorker::shutdown", level = Level::TRACE)]
     async fn shutdown(&mut self, ctx: &mut Self::Context) -> Result<()> {
         self.registry
             .remove_sender_worker(self.addresses.sender_address());
 
         if self.rx_should_be_stopped {
-            let _ = ctx
-                .stop_processor(self.addresses.receiver_address().clone())
-                .await;
+            let _ = ctx.stop_address(self.addresses.receiver_address());
         }
 
         Ok(())
@@ -211,26 +221,26 @@ impl Worker for TcpSendWorker {
 
     // TcpSendWorker will receive messages from the TcpRouter to send
     // across the TcpStream to our friend
-    #[instrument(skip_all, name = "TcpSendWorker::handle_message", fields(worker = %ctx.address()))]
+    #[instrument(skip_all, name = "TcpSendWorker::handle_message", fields(worker = %ctx.primary_address()), level = Level::TRACE)]
     async fn handle_message(
         &mut self,
         ctx: &mut Context,
         msg: Routed<Self::Message>,
     ) -> Result<()> {
         let recipient = msg.msg_addr();
-        if &recipient == self.addresses.sender_internal_address() {
+        if recipient == self.addresses.sender_internal_address() {
             let msg = TcpSendWorkerMsg::decode(msg.payload())?;
 
             match msg {
                 TcpSendWorkerMsg::ConnectionClosed => {
-                    info!(
+                    debug!(
                         "Stopping sender due to closed connection {}",
                         self.socket_address
                     );
                     // No need to stop Receiver as it notified us about connection drop and will
                     // stop itself
                     self.rx_should_be_stopped = false;
-                    self.stop(ctx).await?;
+                    self.stop(ctx)?;
 
                     return Ok(());
                 }
@@ -243,14 +253,14 @@ impl Worker for TcpSendWorker {
 
             if let Err(err) = self.serialize_message(local_message) {
                 // Close the stream
-                self.stop(ctx).await?;
+                self.stop(ctx)?;
 
                 return Err(err);
             };
 
             if self.write_half.write_all(&self.buffer).await.is_err() {
                 warn!("Failed to send message to peer {}", self.socket_address);
-                self.stop(ctx).await?;
+                self.stop(ctx)?;
 
                 return Ok(());
             }

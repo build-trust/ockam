@@ -1,16 +1,18 @@
 use crate::authenticator::one_time_code::OneTimeCode;
-use crate::cloud::enroll::auth0::{AuthenticateOidcToken, OidcToken};
-use crate::cloud::HasSecureClient;
 use crate::nodes::service::default_address::DefaultAddress;
+use crate::orchestrator::enroll::auth0::{AuthenticateOidcToken, OidcToken};
+use crate::orchestrator::HasSecureClient;
 use miette::IntoDiagnostic;
 use ockam::identity::models::CredentialAndPurposeKey;
 use ockam::identity::SecureClient;
 use ockam_core::api::{Reply, Request, Status};
 use ockam_core::async_trait;
 use ockam_node::Context;
+use tracing::Level;
 
 const TARGET: &str = "ockam_api::cloud::enroll";
 
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum EnrollStatus {
     EnrolledSuccessfully,
     AlreadyEnrolled,
@@ -79,7 +81,7 @@ impl<T: HasSecureClient + Send + Sync> Enrollment for T {
 // FiXME: this has duplicate with AuthorityNodeClient
 #[async_trait]
 impl Enrollment for SecureClient {
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     async fn enroll_with_oidc_token(
         &self,
         ctx: &Context,
@@ -104,7 +106,7 @@ impl Enrollment for SecureClient {
         }
     }
 
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     async fn enroll_with_oidc_token_okta(
         &self,
         ctx: &Context,
@@ -119,13 +121,13 @@ impl Enrollment for SecureClient {
             .into_diagnostic()
     }
 
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     async fn present_token(
         &self,
         ctx: &Context,
         token: &OneTimeCode,
     ) -> miette::Result<EnrollStatus> {
-        let req = Request::post("/").body(token);
+        let req = Request::post("/").body(*token);
         trace!(target: TARGET, "present a token");
         match self
             .tell(ctx, DefaultAddress::ENROLLMENT_TOKEN_ACCEPTOR, req)
@@ -147,7 +149,7 @@ impl Enrollment for SecureClient {
         }
     }
 
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     async fn issue_credential(&self, ctx: &Context) -> miette::Result<CredentialAndPurposeKey> {
         let req = Request::post("/");
         trace!(target: TARGET, "getting a credential");

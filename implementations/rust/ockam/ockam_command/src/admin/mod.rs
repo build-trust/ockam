@@ -3,6 +3,8 @@ use clap::{Args, Subcommand};
 use crate::shared_args::IdentityOpts;
 use crate::{docs, CommandGlobalOpts};
 
+use ockam_node::Context;
+
 mod subscription;
 
 const HELP_DETAIL: &str = "";
@@ -24,9 +26,9 @@ pub enum AdminSubCommand {
 }
 
 impl AdminCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
-            AdminSubCommand::Subscription(c) => c.run(opts),
+            AdminSubCommand::Subscription(c) => c.run(ctx, opts).await,
         }
     }
 

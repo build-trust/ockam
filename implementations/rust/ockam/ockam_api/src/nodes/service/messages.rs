@@ -1,56 +1,53 @@
-use miette::IntoDiagnostic;
-use std::str::FromStr;
-use std::time::Duration;
-use tracing::trace;
-
-use minicbor::{CborLen, Decode, Encode};
-
-use ockam_core::api::{Error, Request, Response};
-use ockam_core::{self, async_trait, Result};
-use ockam_multiaddr::MultiAddr;
-use ockam_node::{Context, MessageSendReceiveOptions};
-
 use crate::error::ApiError;
 use crate::nodes::{BackgroundNodeClient, NodeManager, NodeManagerWorker};
+use miette::IntoDiagnostic;
+use minicbor::encode::Write;
+use minicbor::{encode, CborLen, Decode, Decoder, Encode, Encoder};
+use ockam_core::api::{Error, Request, Response};
+use ockam_core::{self, async_trait, Decodable, Encodable, Encoded, Message, Result};
+use ockam_multiaddr::MultiAddr;
+use ockam_node::{Context, MessageSendReceiveOptions};
+use std::str::FromStr;
+use std::time::Duration;
+use tracing::Level;
 
 const TARGET: &str = "ockam_api::message";
 
 #[async_trait]
 pub trait Messages {
-    async fn send_message(
+    async fn send_message<T: Message, R: Message>(
         &self,
         ctx: &Context,
         to: &MultiAddr,
-        message: Vec<u8>,
+        message: T,
         timeout: Option<Duration>,
-    ) -> miette::Result<Vec<u8>>;
+    ) -> miette::Result<R>;
 }
 
 #[async_trait]
 impl Messages for NodeManager {
-    #[instrument(skip_all)]
-    async fn send_message(
+    #[instrument(skip_all, level = Level::TRACE)]
+    async fn send_message<T: Message, R: Message>(
         &self,
         ctx: &Context,
         to: &MultiAddr,
-        message: Vec<u8>,
+        message: T,
         timeout: Option<Duration>,
-    ) -> miette::Result<Vec<u8>> {
-        let msg_length = message.len();
+    ) -> miette::Result<R> {
         let connection = self
             .make_connection(ctx, to, self.identifier(), None, timeout)
             .await
             .into_diagnostic()?;
         let route = connection.route().into_diagnostic()?;
 
-        trace!(route = %route, msg_l = %msg_length, "sending message");
+        trace!(route = %route, "sending message");
         let options = if let Some(timeout) = timeout {
             MessageSendReceiveOptions::new().with_timeout(timeout)
         } else {
             MessageSendReceiveOptions::new()
         };
         Ok(ctx
-            .send_and_receive_extended::<Vec<u8>>(route, message, options)
+            .send_and_receive_extended(route, message, options)
             .await
             .into_diagnostic()?
             .into_body()
@@ -60,27 +57,27 @@ impl Messages for NodeManager {
 
 #[async_trait]
 impl Messages for BackgroundNodeClient {
-    #[instrument(skip_all)]
-    async fn send_message(
+    #[instrument(skip_all, level = Level::TRACE)]
+    async fn send_message<T: Message, R: Message>(
         &self,
         ctx: &Context,
         to: &MultiAddr,
-        message: Vec<u8>,
+        message: T,
         timeout: Option<Duration>,
-    ) -> miette::Result<Vec<u8>> {
+    ) -> miette::Result<R> {
         let request = Request::post("v0/message").body(SendMessage::new(to, message));
         Ok(self.clone().set_timeout(timeout).ask(ctx, request).await?)
     }
 }
 
 impl NodeManagerWorker {
-    pub(crate) async fn send_message(
+    pub(crate) async fn send_message<T: Message, R: Message>(
         &self,
         ctx: &Context,
-        send_message: SendMessage,
-    ) -> Result<Response<Vec<u8>>, Response<Error>> {
+        send_message: SendMessage<T>,
+    ) -> Result<Response<R>, Response<Error>> {
         let multiaddr = send_message.multiaddr()?;
-        let msg = send_message.message.to_vec();
+        let msg = send_message.message;
 
         let res = self
             .node_manager
@@ -98,17 +95,54 @@ impl NodeManagerWorker {
     }
 }
 
-#[derive(Encode, Decode, CborLen, Debug)]
-#[cfg_attr(test, derive(Clone))]
+#[derive(Debug, Clone, Encode, Decode, CborLen, Message)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct SendMessage {
+pub struct SendMessage<T: Message> {
     #[n(1)] pub route: String,
-    #[n(2)] pub message: Vec<u8>,
+    #[n(2)] pub message: T,
 }
 
-impl SendMessage {
-    pub fn new(route: &MultiAddr, message: Vec<u8>) -> Self {
+impl<T: Message> SendMessage<T> {
+    fn encode_send_message<W>(self, buf: W) -> Result<(), encode::Error<W::Error>>
+    where
+        W: Write,
+    {
+        let mut e = Encoder::new(buf);
+        e.encode(&self.route)?;
+        e.writer_mut()
+            .write_all(&<T as Encodable>::encode(self.message).map_err(encode::Error::message)?)
+            .map_err(|_| encode::Error::message("encoding error"))?;
+        Ok(())
+    }
+
+    fn into_vec(self) -> Result<Vec<u8>, encode::Error<<Vec<u8> as Write>::Error>> {
+        let mut buf = Vec::new();
+        self.encode_send_message(&mut buf)?;
+        Ok(buf)
+    }
+}
+
+impl<T: Message> Encodable for SendMessage<T> {
+    fn encode(self) -> Result<Encoded> {
+        Ok(self.into_vec()?)
+    }
+}
+
+impl<T: Message> Decodable for SendMessage<T> {
+    fn decode(e: &[u8]) -> Result<Self> {
+        let mut dec = Decoder::new(e);
+        let route: String = dec.decode()?;
+        let message = dec.input().get(dec.position()..e.len()).unwrap();
+        Ok(SendMessage {
+            route,
+            message: <T as Decodable>::decode(message)?,
+        })
+    }
+}
+
+impl<T: Message> SendMessage<T> {
+    pub fn new(route: &MultiAddr, message: T) -> Self {
         Self {
             route: route.to_string(),
             message,

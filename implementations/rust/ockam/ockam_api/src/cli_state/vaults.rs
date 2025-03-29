@@ -1,3 +1,7 @@
+use crate::cli_state::{random_name, CliState, CliStateError, Result};
+use crate::colors::color_primary;
+use crate::output::Output;
+use crate::{fmt_log, fmt_ok, fmt_warn};
 use colorful::Colorful;
 use ockam::identity::{Identities, Vault};
 use ockam_core::errcode::{Kind, Origin};
@@ -8,11 +12,7 @@ use std::fmt::{Debug, Display, Formatter};
 use std::fs::OpenOptions;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-
-use crate::cli_state::{random_name, CliState, CliStateError, Result};
-use crate::colors::color_primary;
-use crate::output::Output;
-use crate::{fmt_log, fmt_ok, fmt_warn};
+use tracing::Level;
 
 static DEFAULT_VAULT_NAME: &str = "default";
 
@@ -27,7 +27,7 @@ impl CliState {
     /// If the path is not specified then:
     ///   - if this is the first vault then secrets are persisted in the main database
     ///   - if this is a new vault then secrets are persisted in $OCKAM_HOME/vault_name
-    #[instrument(skip_all, fields(vault_name = vault_name.clone()))]
+    #[instrument(skip_all, fields(vault_name = vault_name.clone()), level = Level::TRACE)]
     pub async fn create_named_vault(
         &self,
         vault_name: Option<String>,
@@ -62,7 +62,7 @@ impl CliState {
                     .store_vault(&vault_name, VaultType::database(use_aws_kms))
                     .await?),
                 Some(_) => {
-                    let path = self.make_vault_path(&vault_name);
+                    let path = self.make_vault_path(&vault_name)?;
                     Ok(self
                         .create_local_vault(vault_name, &path, use_aws_kms)
                         .await?)
@@ -75,7 +75,7 @@ impl CliState {
     }
 
     /// Delete an existing vault
-    #[instrument(skip_all, fields(vault_name = vault_name))]
+    #[instrument(skip_all, fields(vault_name = vault_name), level = Level::TRACE)]
     pub async fn delete_named_vault(&self, vault_name: &str) -> Result<()> {
         // first check that no identity is using the vault
         let identities_repository = self.identities_repository();
@@ -116,7 +116,7 @@ impl CliState {
     }
 
     /// Delete all named identities
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     pub async fn delete_all_named_identities(&self) -> Result<()> {
         let identities_repository = self.identities_repository();
         let identities = identities_repository.get_named_identities().await?;
@@ -135,7 +135,7 @@ impl CliState {
     }
 
     /// Delete all vaults and their files
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     pub async fn delete_all_named_vaults(&self) -> Result<()> {
         let vaults = self.vaults_repository().get_named_vaults().await?;
         for vault in vaults {
@@ -153,14 +153,14 @@ impl CliState {
 /// The methods below provide an API to query named vaults.
 impl CliState {
     /// Return all the named vaults
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     pub async fn get_named_vaults(&self) -> Result<Vec<NamedVault>> {
         Ok(self.vaults_repository().get_named_vaults().await?)
     }
 
     /// Return the vault with a given name
     /// and raise an error if the vault is not found
-    #[instrument(skip_all, fields(vault_name = vault_name))]
+    #[instrument(skip_all, fields(vault_name = vault_name), level = Level::TRACE)]
     pub async fn get_named_vault(&self, vault_name: &str) -> Result<NamedVault> {
         let result = self.vaults_repository().get_named_vault(vault_name).await?;
         Ok(result.ok_or_else(|| {
@@ -175,7 +175,7 @@ impl CliState {
     /// Return a vault if it already exists, otherwise
     /// Create a new vault using a default path: either the database path for the first vault
     /// or a path using the vault name
-    #[instrument(skip_all, fields(vault_name = vault_name))]
+    #[instrument(skip_all, fields(vault_name = vault_name), level = Level::TRACE)]
     pub async fn get_or_create_named_vault(&self, vault_name: &str) -> Result<NamedVault> {
         let vaults_repository = self.vaults_repository();
 
@@ -207,7 +207,7 @@ impl CliState {
             let vault = self
                 .create_local_vault(
                     vault_name.to_string(),
-                    &self.make_vault_path(vault_name),
+                    &self.make_vault_path(vault_name)?,
                     UseAwsKms::No,
                 )
                 .await?;
@@ -230,7 +230,7 @@ impl CliState {
     /// Return the existing vault if there is only one
     /// If it doesn't exist, the vault is created with the name 'default'
     /// If there are more than one vaults, return an error
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     pub async fn get_or_create_default_named_vault(&self) -> Result<NamedVault> {
         let vaults = self.vaults_repository().get_named_vaults().await?;
         match &vaults[..] {
@@ -249,7 +249,7 @@ impl CliState {
 
     /// Return either the default vault or a vault with the given name
     /// If the default vault is required and does not exist it is created.
-    #[instrument(skip_all, fields(vault_name = vault_name.clone()))]
+    #[instrument(skip_all, fields(vault_name = vault_name.clone()), level = Level::TRACE)]
     pub async fn get_named_vault_or_default(
         &self,
         vault_name: &Option<String>,
@@ -262,7 +262,7 @@ impl CliState {
 
     /// Move a vault file to another location if the vault is not the default vault
     /// contained in the main database
-    #[instrument(skip_all, fields(vault_name = vault_name, path = path.to_string_lossy().to_string()))]
+    #[instrument(skip_all, fields(vault_name = vault_name, path = path.to_string_lossy().to_string()), level = Level::TRACE)]
     pub async fn move_vault(&self, vault_name: &str, path: &Path) -> Result<()> {
         let repository = self.vaults_repository();
         let vault = self.get_named_vault(vault_name).await?;
@@ -293,7 +293,7 @@ impl CliState {
     }
 
     /// Make a concrete vault based on the NamedVault metadata
-    #[instrument(skip_all, fields(vault_name = named_vault.name))]
+    #[instrument(skip_all, fields(vault_name = named_vault.name), level = Level::TRACE)]
     pub async fn make_vault(&self, named_vault: NamedVault) -> Result<Vault> {
         let db = match named_vault.vault_type {
             VaultType::DatabaseVault { .. } => self.database(),
@@ -396,8 +396,8 @@ impl CliState {
 
     /// Decide which path to use for a vault path:
     ///   - otherwise return a new path alongside the database $OCKAM_HOME/vault-{vault_name}
-    fn make_vault_path(&self, vault_name: &str) -> PathBuf {
-        self.dir().join(format!("vault-{vault_name}"))
+    fn make_vault_path(&self, vault_name: &str) -> Result<PathBuf> {
+        Ok(self.dir()?.join(format!("vault-{vault_name}")))
     }
 }
 
@@ -557,6 +557,7 @@ mod tests {
     use super::*;
     use ockam::identity::models::{PurposeKeyAttestation, PurposeKeyAttestationSignature};
     use ockam::identity::Purpose;
+    use ockam_node::database::skip_if_postgres;
     use ockam_vault::{
         ECDSASHA256CurveP256SecretKey, ECDSASHA256CurveP256Signature, HandleToSecret,
         SigningSecret, SigningSecretKeyHandle, X25519SecretKey, X25519SecretKeyHandle,
@@ -683,7 +684,7 @@ mod tests {
 
         // try to move it. That should fail because the first vault is
         // stored in the main database
-        let new_vault_path = cli.dir().join("new-vault-name");
+        let new_vault_path = cli.dir()?.join("new-vault-name");
         let result = cli.move_vault("vault1", &new_vault_path).await;
         assert!(result.is_err());
 
@@ -692,7 +693,7 @@ mod tests {
 
         // try to move it. This should succeed
         let result = cli
-            .move_vault("vault2", &cli.dir().join("new-vault-name"))
+            .move_vault("vault2", &cli.dir()?.join("new-vault-name"))
             .await;
         if let Err(e) = result {
             panic!("{}", e.to_string())
@@ -732,14 +733,24 @@ mod tests {
         assert!(result.path_as_string().unwrap().contains("vault-secrets"));
 
         // if we reset, we can check that the first vault gets the user defined name
-        // instead of default
-        cli.reset().await?;
-        let cli = CliState::test().await?;
-        let result = cli
-            .create_named_vault(Some("secrets".to_string()), None, UseAwsKms::No)
-            .await?;
-        assert_eq!(result.name(), "secrets".to_string());
-        assert_eq!(result.vault_type(), VaultType::database(UseAwsKms::No));
+        // instead of default.
+        // We only test this for sqlite since we can't reset with postgres.
+
+        skip_if_postgres(move || {
+            let cli_clone = cli.clone();
+            async move {
+                cli_clone.reset().await?;
+                let cli = CliState::test().await?;
+                let result = cli
+                    .create_named_vault(Some("secrets".to_string()), None, UseAwsKms::No)
+                    .await?;
+                assert_eq!(result.name(), "secrets".to_string());
+                assert_eq!(result.vault_type(), VaultType::database(UseAwsKms::No));
+                let result: Result<()> = Ok(());
+                result
+            }
+        })
+        .await?;
 
         Ok(())
     }
@@ -747,7 +758,7 @@ mod tests {
     #[tokio::test]
     async fn test_create_vault_with_a_user_path() -> Result<()> {
         let cli = CliState::test().await?;
-        let vault_path = cli.dir().join(random_name());
+        let vault_path = cli.dir()?.join(random_name());
 
         let result = cli
             .create_named_vault(

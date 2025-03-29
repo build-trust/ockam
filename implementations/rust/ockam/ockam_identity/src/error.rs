@@ -83,8 +83,11 @@ impl core::fmt::Display for IdentityError {
 impl From<IdentityError> for Error {
     #[track_caller]
     fn from(err: IdentityError) -> Self {
-        let kind = Kind::Unknown; // FIXME: fill these in with more
-                                  // meaningful error kinds
+        // FIXME: fill these in with more meaningful error kinds
+        let kind = match err {
+            IdentityError::InvalidIdentifier(_) => Kind::Parse,
+            _ => Kind::Unknown,
+        };
         Error::new(Origin::Identity, kind, err)
     }
 }

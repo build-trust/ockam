@@ -6,13 +6,12 @@ use colorful::Colorful;
 use miette::{miette, IntoDiagnostic};
 
 use ockam::Context;
-use ockam_api::cloud::addon::Addons;
-use ockam_api::cloud::project::models::InfluxDBTokenLeaseManagerConfig;
 use ockam_api::fmt_ok;
 use ockam_api::nodes::InMemoryNode;
+use ockam_api::orchestrator::addon::Addons;
+use ockam_api::orchestrator::project::models::InfluxDBTokenLeaseManagerConfig;
 
 use crate::project::addon::check_configuration_completion;
-use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/configure_influxdb/long_about.txt");
@@ -25,8 +24,8 @@ long_about = docs::about(LONG_ABOUT),
 after_long_help = docs::after_help(AFTER_LONG_HELP),
 )]
 pub struct AddonConfigureInfluxdbSubcommand {
-    /// Ockam Project Name
     #[arg(
+        help = docs::about("Ockam Project Name"),
         long = "project",
         id = "project",
         value_name = "PROJECT_NAME",
@@ -92,8 +91,8 @@ pub struct AddonConfigureInfluxdbSubcommand {
     )]
     max_ttl_secs: i32,
 
-    /// Ockam Access Rule for who can use the token lease service
     #[arg(
+        help = docs::about("Ockam Access Rule for who can use the token lease service"),
         long = "user-access-role",
         id = "user-access-role",
         hide = true,
@@ -102,9 +101,9 @@ pub struct AddonConfigureInfluxdbSubcommand {
     )]
     user_access_role: Option<String>,
 
-    /// Ockam Access Rule for who can manage the token lease service
     #[arg(
-        long = "adamin-access-role",
+        help = docs::about("Ockam Access Rule for who can manage the token lease service"),
+        long = "admin-access-role",
         id = "admin-access-role",
         hide = true,
         value_name = "ADMIN_ACCESS_ROLE",
@@ -114,17 +113,11 @@ pub struct AddonConfigureInfluxdbSubcommand {
 }
 
 impl AddonConfigureInfluxdbSubcommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |ctx| async move {
-            self.async_run(&ctx, opts).await
-        })
-    }
-
     pub fn name(&self) -> String {
         "project addon configure influxdb".into()
     }
 
-    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         let project_id = opts
             .state
             .projects()
@@ -153,7 +146,7 @@ impl AddonConfigureInfluxdbSubcommand {
             self.admin_access_role.clone(),
         );
 
-        let node = InMemoryNode::start(ctx, &opts.state).await?;
+        let node = InMemoryNode::start(ctx, opts.state.clone()).await?;
         let controller = node.create_controller().await?;
 
         let response = controller

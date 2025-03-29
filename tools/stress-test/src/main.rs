@@ -10,6 +10,7 @@ use ockam::abac::tokio::runtime::Runtime;
 use ockam::compat::tokio;
 use ockam::tcp::{TcpListenerOptions, TcpTransport};
 use ockam::{Context, NodeBuilder};
+use ockam_api::cli_state::CliStateMode;
 use ockam_api::nodes::service::{NodeManagerGeneralOptions, NodeManagerTransportOptions};
 use ockam_api::nodes::{InMemoryNode, NodeManagerWorker, NODEMANAGER_ADDR};
 use ockam_api::CliState;
@@ -22,6 +23,11 @@ mod display;
 mod execution;
 mod portal_simulator;
 mod stats;
+
+use mimalloc::MiMalloc;
+
+#[global_allocator]
+static GLOBAL: MiMalloc = MiMalloc;
 
 #[derive(Debug, Args, Clone)]
 struct RunCommand {
@@ -126,27 +132,24 @@ struct State {
 
 impl State {
     fn new(config: Config, log: bool) -> Self {
-        let cli_state = CliState::with_default_dir().expect("cannot create cli state");
         let rt = Arc::new(Runtime::new().expect("cannot create a tokio runtime"));
+        let cli_state = rt.block_on(async move {
+            CliState::create(CliStateMode::with_default_dir().unwrap())
+                .await
+                .expect("cannot create cli state")
+        });
+        let cli_state = Arc::new(cli_state);
         let builder = if log {
             NodeBuilder::new()
         } else {
             NodeBuilder::new().no_logging()
         };
-        let (context, mut executor) = builder.with_runtime(rt.clone()).build();
+        let (context, _executor) = builder.with_runtime(rt.clone()).build();
         let context = Arc::new(context);
-
-        // start the router, it is needed for the node manager creation
-        rt.spawn(async move {
-            executor
-                .start_router()
-                .await
-                .expect("cannot start executor")
-        });
 
         let runtime = context.runtime().clone();
         let node_manager = runtime
-            .block_on(Self::make_node_manager(context.clone(), &cli_state))
+            .block_on(Self::make_node_manager(context.clone(), cli_state))
             .expect("cannot create node manager");
 
         Self {
@@ -166,14 +169,14 @@ impl State {
 
     async fn make_node_manager(
         ctx: Arc<Context>,
-        cli_state: &CliState,
+        cli_state: Arc<CliState>,
     ) -> ockam::Result<Arc<InMemoryNode>> {
-        let tcp = TcpTransport::create(&ctx).await?;
+        let tcp = TcpTransport::get_or_create(&ctx)?;
         let options = TcpListenerOptions::new();
         let listener = tcp.listen(&"127.0.0.1:0", options).await?;
 
         let _ = cli_state
-            .start_node_with_optional_values(NODE_NAME, &None, &None, Some(&listener))
+            .start_node_with_optional_values(NODE_NAME, &None, Some(&listener))
             .await?;
 
         let trust_options = cli_state
@@ -197,11 +200,10 @@ impl State {
         );
 
         let node_manager_worker = NodeManagerWorker::new(node_manager.clone());
-        ctx.start_worker(NODEMANAGER_ADDR, node_manager_worker)
-            .await?;
+        ctx.start_worker(NODEMANAGER_ADDR, node_manager_worker)?;
 
         ctx.flow_controls()
-            .add_consumer(NODEMANAGER_ADDR, listener.flow_control_id());
+            .add_consumer(&NODEMANAGER_ADDR.into(), listener.flow_control_id());
         Ok(node_manager)
     }
 }

@@ -5,11 +5,11 @@ use console::Term;
 use ockam_api::colors::color_primary;
 use ockam_api::{fmt_ok, DefaultAddress};
 
-use ockam_api::nodes::models::services::{DeleteServiceRequest, ServiceStatus};
+use ockam_api::nodes::models::services::{DeleteServiceRequest, ServiceStatusList};
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_api::terminal::{Terminal, TerminalStream};
 use ockam_core::api::Request;
-use ockam_core::AsyncTryClone;
+use ockam_core::TryClone;
 use ockam_node::Context;
 
 use crate::tui::{DeleteCommandTui, PluralTerm};
@@ -40,12 +40,12 @@ pub struct DeleteCommand {
 impl Command for DeleteCommand {
     const NAME: &'static str = "kafka-inlet delete";
 
-    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
         Ok(DeleteTui::run(ctx, opts, self).await?)
     }
 }
 
-#[derive(AsyncTryClone)]
+#[derive(TryClone)]
 struct DeleteTui {
     ctx: Context,
     opts: CommandGlobalOpts,
@@ -59,9 +59,10 @@ impl DeleteTui {
         opts: CommandGlobalOpts,
         cmd: DeleteCommand,
     ) -> miette::Result<()> {
-        let node = BackgroundNodeClient::create(ctx, &opts.state, &cmd.node_opts.at_node).await?;
+        let node =
+            BackgroundNodeClient::create(ctx, opts.state.clone(), &cmd.node_opts.at_node).await?;
         let tui = Self {
-            ctx: ctx.async_try_clone().await?,
+            ctx: ctx.try_clone()?,
             opts,
             node,
             cmd,
@@ -91,14 +92,14 @@ impl DeleteCommandTui for DeleteTui {
     }
 
     async fn list_items_names(&self) -> miette::Result<Vec<String>> {
-        let inlets: Vec<ServiceStatus> = self
+        let inlets: ServiceStatusList = self
             .node
             .ask(
                 &self.ctx,
                 Request::get(format!("/node/services/{}", DefaultAddress::KAFKA_INLET)),
             )
             .await?;
-        let addresses = inlets.into_iter().map(|i| i.addr).collect();
+        let addresses = inlets.0.into_iter().map(|i| i.addr).collect();
         Ok(addresses)
     }
 
@@ -112,11 +113,11 @@ impl DeleteCommandTui for DeleteTui {
             .await?;
         let node_name = self.node.node_name();
         self.terminal()
-            .stdout()
+            .to_stdout()
             .plain(fmt_ok!(
                 "Kafka Inlet with address {} on Node {} has been deleted",
                 color_primary(item_name),
-                color_primary(&node_name)
+                color_primary(node_name)
             ))
             .json(serde_json::json!({ "address": item_name, "node": node_name }))
             .write_line()?;

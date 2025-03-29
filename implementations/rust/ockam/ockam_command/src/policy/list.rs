@@ -9,7 +9,6 @@ use ockam_api::colors::color_primary;
 use ockam_api::nodes::models::policies::ResourceTypeOrName;
 use ockam_api::nodes::{BackgroundNodeClient, Policies};
 
-use crate::util::async_cmd;
 use crate::CommandGlobalOpts;
 
 #[derive(Clone, Debug, Args)]
@@ -21,18 +20,12 @@ pub struct ListCommand {
 }
 
 impl ListCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |ctx| async move {
-            self.async_run(&ctx, opts).await
-        })
-    }
-
     pub fn name(&self) -> String {
         "policy list".into()
     }
 
-    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
-        let node = BackgroundNodeClient::create(ctx, &opts.state, &self.at).await?;
+    pub async fn run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        let node = BackgroundNodeClient::create(ctx, opts.state.clone(), &self.at).await?;
         let is_finished: Mutex<bool> = Mutex::new(false);
 
         let output_messages = if self.resource.is_none() {
@@ -63,7 +56,7 @@ impl ListCommand {
                 policies.resource_type_policies(),
                 &format!("No policies on Node {}", &node.node_name()),
             )?;
-            opts.terminal.stdout().plain(list).write_line()?;
+            opts.terminal.to_stdout().plain(list).write_line()?;
             return Ok(());
         }
 
@@ -85,7 +78,7 @@ impl ListCommand {
             plain
         };
         opts.terminal
-            .stdout()
+            .to_stdout()
             .plain(plain)
             .json(json)
             .write_line()?;

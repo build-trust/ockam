@@ -1,12 +1,14 @@
+use crate::{
+    TcpConnectionOptions, TcpListenerInfo, TcpRegistry, TcpSenderInfo, TcpTransport, MPTCP, TCP,
+};
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::{async_trait, Address, AsyncTryClone, Error, Result, TransportType};
+use ockam_core::{async_trait, Address, Error, Result, TryClone};
 use ockam_node::Context;
 use ockam_transport_core::Transport;
+use std::any::Any;
 use std::net::SocketAddr;
 use std::sync::Arc;
-use tracing::instrument;
-
-use crate::{TcpConnectionOptions, TcpListenerInfo, TcpRegistry, TcpSenderInfo, TcpTransport, TCP};
+use tracing::{instrument, Level};
 
 impl TcpTransport {
     /// Create a TCP transport
@@ -16,17 +18,39 @@ impl TcpTransport {
     /// # use ockam_node::Context;
     /// # use ockam_core::Result;
     /// # async fn test(ctx: Context) -> Result<()> {
-    /// let tcp = TcpTransport::create(&ctx).await?;
+    /// let tcp = TcpTransport::get_or_create(&ctx)?;
     /// # Ok(()) }
     /// ```
-    #[instrument(name = "create tcp transport", skip_all)]
-    pub async fn create(ctx: &Context) -> Result<Self> {
-        let tcp = Self::new(ctx.async_try_clone().await?);
+    #[instrument(name = "get or create tcp transport", skip_all, level = Level::TRACE)]
+    pub fn get_or_create(ctx: &Context) -> Result<Arc<TcpTransport>> {
+        // don't register the TCP transport twice
+        match ctx.get_transport(TCP) {
+            Some(t) => {
+                let any_transport: Arc<dyn Any + Send + Sync> = t.as_arc_any();
+                Ok(any_transport.downcast::<TcpTransport>().map_err(|_| {
+                    Error::new(
+                        Origin::Transport,
+                        Kind::Internal,
+                        "the context should return a TCP transport for the TCP type",
+                    )
+                })?)
+            }
+            None => Self::create_new(ctx),
+        }
+    }
+
+    /// Create a brand new TCP transport
+    /// It replaces the previous TCP transport in the Context transport registry if it exists
+    pub fn create_new(ctx: &Context) -> Result<Arc<TcpTransport>> {
+        let tcp = Self::new(ctx.try_clone()?);
         // make the TCP transport available in the list of supported transports for
         // later address resolution when socket addresses will need to be instantiated as TCP
         // worker addresses
-        ctx.register_transport(Arc::new(tcp.clone()));
-        Ok(tcp)
+
+        let tcp_arc = Arc::new(tcp.clone());
+        ctx.register_transport(TCP, tcp_arc.clone());
+        ctx.register_transport(MPTCP, tcp_arc.clone());
+        Ok(tcp_arc)
     }
 }
 
@@ -107,30 +131,37 @@ impl TcpTransport {
 
 #[async_trait]
 impl Transport for TcpTransport {
-    fn transport_type(&self) -> TransportType {
-        TCP
-    }
-
-    async fn resolve_address(&self, address: Address) -> Result<Address> {
-        if address.transport_type() == TCP {
-            Ok(self
-                .connect(address.address().to_string(), TcpConnectionOptions::new())
-                .await?
-                .into())
+    async fn resolve_address(&self, address: &Address) -> Result<Address> {
+        let enable_mptcp = if address.transport_type() == TCP {
+            false
+        } else if address.transport_type() == MPTCP {
+            true
         } else {
-            Err(Error::new(
+            return Err(Error::new(
                 Origin::Transport,
                 Kind::NotFound,
                 format!(
                     "this address can not be resolved by a TCP transport {}",
                     address
                 ),
-            ))
-        }
+            ));
+        };
+
+        Ok(self
+            .connect(
+                address.address().to_string(),
+                TcpConnectionOptions::new().set_enable_mptcp(enable_mptcp),
+            )
+            .await?
+            .into())
     }
 
-    async fn disconnect(&self, address: Address) -> Result<()> {
-        self.disconnect(address).await
+    fn disconnect(&self, address: &Address) -> Result<()> {
+        self.disconnect(address)
+    }
+
+    fn as_arc_any(self: Arc<Self>) -> Arc<dyn Any + Send + Sync> {
+        self
     }
 }
 
@@ -143,9 +174,9 @@ mod tests {
 
     #[ockam_macros::test]
     async fn test_resolve_address(ctx: &mut Context) -> Result<()> {
-        let tcp = TcpTransport::create(ctx).await?;
+        let tcp = TcpTransport::get_or_create(ctx)?;
         let tcp_address = "127.0.0.1:0";
-        let initial_workers = ctx.list_workers().await?;
+        let initial_workers = ctx.list_workers()?;
         let listener = TcpListener::bind(tcp_address)
             .await
             .map_err(TransportError::from)?;
@@ -159,11 +190,11 @@ mod tests {
         });
 
         let resolved = tcp
-            .resolve_address(Address::new_with_string(TCP, local_address.clone()))
+            .resolve_address(&Address::new_with_string(TCP, local_address.clone()))
             .await?;
 
         // there are 2 additional workers
-        let mut additional_workers = ctx.list_workers().await?;
+        let mut additional_workers = ctx.list_workers()?;
         additional_workers.retain(|w| !initial_workers.contains(w));
         assert_eq!(additional_workers.len(), 2);
 
@@ -172,7 +203,7 @@ mod tests {
 
         // trying to resolve the address a second time should still work
         let _route = tcp
-            .resolve_address(Address::new_with_string(TCP, local_address))
+            .resolve_address(&Address::new_with_string(TCP, local_address))
             .await?;
 
         tokio::time::sleep(Duration::from_millis(250)).await;
@@ -182,7 +213,7 @@ mod tests {
 
     #[ockam_macros::test]
     async fn test_resolve_route_with_dns_address(ctx: &mut Context) -> Result<()> {
-        let tcp = TcpTransport::create(ctx).await?;
+        let tcp = TcpTransport::get_or_create(ctx)?;
         let tcp_address = "127.0.0.1:0";
         let listener = TcpListener::bind(tcp_address)
             .await
@@ -196,7 +227,7 @@ mod tests {
         });
 
         let result = tcp
-            .resolve_address(Address::new_with_string(
+            .resolve_address(&Address::new_with_string(
                 TCP,
                 format!("localhost:{}", socket_address.port()),
             ))

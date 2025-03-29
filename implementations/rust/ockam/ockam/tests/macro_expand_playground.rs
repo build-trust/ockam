@@ -7,5 +7,5 @@
 #[ockam::test(crate = "ockam", timeout = 100)]
 #[ignore]
 async fn my_test(ctx: &mut ockam::Context) -> ockam::Result<()> {
-    ctx.stop().await
+    ctx.shutdown_node().await
 }

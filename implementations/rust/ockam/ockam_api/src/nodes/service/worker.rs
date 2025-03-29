@@ -1,14 +1,15 @@
-use crate::nodes::models::policies::SetPolicyRequest;
+use crate::nodes::models::policies::{ResourceTypeOrNameOption, SetPolicyRequest};
 use crate::nodes::registry::KafkaServiceKind;
+use crate::nodes::service::messages::SendMessage;
 use crate::nodes::service::{encode_response, TARGET};
 use crate::nodes::{InMemoryNode, NODEMANAGER_ADDR};
 use crate::DefaultAddress;
-use minicbor::Decoder;
-use ockam_core::api::{RequestHeader, Response};
-use ockam_core::{Address, Result, Routed, Worker};
+use ockam_core::api::{Request, Response};
+use ockam_core::{Address, Decodable, Result, Routed, Worker};
 use ockam_node::Context;
 use std::error::Error;
 use std::sync::Arc;
+use tracing::Level;
 
 #[derive(Clone)]
 pub struct NodeManagerWorker {
@@ -23,7 +24,7 @@ impl NodeManagerWorker {
     // TODO: This is never called.
     pub async fn stop(&self, ctx: &Context) -> Result<()> {
         self.node_manager.stop(ctx).await?;
-        ctx.stop_worker(NODEMANAGER_ADDR).await?;
+        ctx.stop_address(&NODEMANAGER_ADDR.into())?;
         Ok(())
     }
 }
@@ -31,221 +32,280 @@ impl NodeManagerWorker {
 impl NodeManagerWorker {
     //////// Request matching and response handling ////////
 
-    #[instrument(skip_all, fields(method = ?req.method(), path = req.path()))]
+    #[instrument(skip_all, fields(method = ?request.header().method(), path = request.header().path()), level = Level::TRACE)]
     async fn handle_request(
         &mut self,
         ctx: &mut Context,
-        req: &RequestHeader,
-        dec: &mut Decoder<'_>,
-    ) -> Result<Vec<u8>> {
+        request: Request<Vec<u8>>,
+    ) -> Result<Response<Vec<u8>>> {
+        let (header, body) = request.into_parts();
+        let body = body.unwrap_or_default();
         debug! {
             target: TARGET,
-            id     = %req.id(),
-            method = ?req.method(),
-            path   = %req.path(),
-            body   = %req.has_body(),
+            id     = %header.id(),
+            method = ?header.method(),
+            path   = %header.path(),
+            body   = %header.has_body(),
             "request"
         }
 
         use ockam_core::api::Method::*;
-        let path = req.path();
-        let path_segments = req.path_segments::<5>();
-        let method = match req.method() {
+        let path = header.path();
+        let path_segments = header.path_segments::<5>();
+        let method = match header.method() {
             Some(m) => m,
             None => todo!(),
         };
 
-        let r = match (method, path_segments.as_slice()) {
+        match (method, path_segments.as_slice()) {
             // ==*== Basic node information ==*==
-            (Get, ["node"]) => encode_response(req, self.get_node_status().await)?,
-            (Get, ["node", "resources"]) => encode_response(req, self.get_node_resources().await)?,
+            (Get, ["node"]) => encode_response(&header, self.get_node_status().await),
+            (Get, ["node", "resources"]) => {
+                encode_response(&header, self.get_node_resources().await)
+            }
 
             // ==*== Tcp Connection ==*==
-            (Get, ["node", "tcp", "connection"]) => self.get_tcp_connections(req).await.to_vec()?,
+            (Get, ["node", "tcp", "connection"]) => {
+                encode_response(&header, Ok(self.get_tcp_connections().await))
+            }
             (Get, ["node", "tcp", "connection", address]) => {
-                encode_response(req, self.get_tcp_connection(address.to_string()).await)?
+                encode_response(&header, self.get_tcp_connection(address.to_string()).await)
             }
-            (Post, ["node", "tcp", "connection"]) => {
-                encode_response(req, self.create_tcp_connection(ctx, dec.decode()?).await)?
-            }
-            (Delete, ["node", "tcp", "connection"]) => {
-                encode_response(req, self.delete_tcp_connection(dec.decode()?).await)?
-            }
+            (Post, ["node", "tcp", "connection"]) => encode_response(
+                &header,
+                self.create_tcp_connection(ctx, Decodable::decode(&body)?)
+                    .await,
+            ),
+            (Delete, ["node", "tcp", "connection"]) => encode_response(
+                &header,
+                self.delete_tcp_connection(Decodable::decode(&body)?),
+            ),
 
             // ==*== Tcp Listeners ==*==
-            (Get, ["node", "tcp", "listener"]) => self.get_tcp_listeners(req).await.to_vec()?,
+            (Get, ["node", "tcp", "listener"]) => {
+                encode_response(&header, Ok(self.get_tcp_listeners().await))
+            }
             (Get, ["node", "tcp", "listener", address]) => {
-                encode_response(req, self.get_tcp_listener(address.to_string()).await)?
+                encode_response(&header, self.get_tcp_listener(address.to_string()).await)
             }
-            (Post, ["node", "tcp", "listener"]) => {
-                encode_response(req, self.create_tcp_listener(dec.decode()?).await)?
-            }
+            (Post, ["node", "tcp", "listener"]) => encode_response(
+                &header,
+                self.create_tcp_listener(Decodable::decode(&body)?).await,
+            ),
             (Delete, ["node", "tcp", "listener"]) => {
-                encode_response(req, self.delete_tcp_listener(dec.decode()?).await)?
+                encode_response(&header, self.delete_tcp_listener(Decodable::decode(&body)?))
             }
 
             // ==*== Secure channels ==*==
             (Get, ["node", "secure_channel"]) => {
-                encode_response(req, self.list_secure_channels().await)?
+                encode_response(&header, self.list_secure_channels())
             }
             (Get, ["node", "secure_channel_listener"]) => {
-                encode_response(req, self.list_secure_channel_listener().await)?
+                encode_response(&header, self.list_secure_channel_listener())
             }
-            (Post, ["node", "secure_channel"]) => {
-                encode_response(req, self.create_secure_channel(dec.decode()?, ctx).await)?
-            }
-            (Delete, ["node", "secure_channel"]) => {
-                encode_response(req, self.delete_secure_channel(dec.decode()?, ctx).await)?
-            }
-            (Get, ["node", "show_secure_channel"]) => {
-                encode_response(req, self.show_secure_channel(dec.decode()?).await)?
-            }
+            (Post, ["node", "secure_channel"]) => encode_response(
+                &header,
+                self.create_secure_channel(Decodable::decode(&body)?, ctx)
+                    .await,
+            ),
+            (Delete, ["node", "secure_channel"]) => encode_response(
+                &header,
+                self.delete_secure_channel(Decodable::decode(&body)?, ctx),
+            ),
+            (Get, ["node", "show_secure_channel"]) => encode_response(
+                &header,
+                self.show_secure_channel(Decodable::decode(&body)?).await,
+            ),
             (Post, ["node", "secure_channel_listener"]) => encode_response(
-                req,
-                self.create_secure_channel_listener(dec.decode()?, ctx)
+                &header,
+                self.create_secure_channel_listener(Decodable::decode(&body)?, ctx)
                     .await,
-            )?,
+            ),
             (Delete, ["node", "secure_channel_listener"]) => encode_response(
-                req,
-                self.delete_secure_channel_listener(dec.decode()?, ctx)
-                    .await,
-            )?,
-            (Get, ["node", "show_secure_channel_listener"]) => {
-                encode_response(req, self.show_secure_channel_listener(dec.decode()?).await)?
-            }
+                &header,
+                self.delete_secure_channel_listener(Decodable::decode(&body)?, ctx),
+            ),
+            (Get, ["node", "show_secure_channel_listener"]) => encode_response(
+                &header,
+                self.show_secure_channel_listener(Decodable::decode(&body)?),
+            ),
 
             // ==*== Services ==*==
-            (Post, ["node", "services", DefaultAddress::UPPERCASE_SERVICE]) => {
-                encode_response(req, self.start_uppercase_service(ctx, dec.decode()?).await)?
-            }
-            (Post, ["node", "services", DefaultAddress::ECHO_SERVICE]) => {
-                encode_response(req, self.start_echoer_service(ctx, dec.decode()?).await)?
-            }
-            (Post, ["node", "services", DefaultAddress::HOP_SERVICE]) => {
-                encode_response(req, self.start_hop_service(ctx, dec.decode()?).await)?
-            }
+            (Post, ["node", "services", DefaultAddress::UPPERCASE_SERVICE]) => encode_response(
+                &header,
+                self.start_uppercase_service(ctx, Decodable::decode(&body)?),
+            ),
+            (Post, ["node", "services", DefaultAddress::ECHO_SERVICE]) => encode_response(
+                &header,
+                self.start_echoer_service(ctx, Decodable::decode(&body)?)
+                    .await,
+            ),
+            (Post, ["node", "services", DefaultAddress::HOP_SERVICE]) => encode_response(
+                &header,
+                self.start_hop_service(ctx, Decodable::decode(&body)?),
+            ),
             (Post, ["node", "services", DefaultAddress::KAFKA_OUTLET]) => encode_response(
-                req,
-                self.start_kafka_outlet_service(ctx, dec.decode()?).await,
-            )?,
+                &header,
+                self.start_kafka_outlet_service(ctx, Decodable::decode(&body)?)
+                    .await,
+            ),
             (Delete, ["node", "services", DefaultAddress::KAFKA_OUTLET]) => encode_response(
-                req,
-                self.delete_kafka_service(ctx, dec.decode()?, KafkaServiceKind::Outlet)
+                &header,
+                self.delete_kafka_service(ctx, Decodable::decode(&body)?, KafkaServiceKind::Outlet)
                     .await,
-            )?,
+            ),
             (Post, ["node", "services", DefaultAddress::KAFKA_INLET]) => encode_response(
-                req,
-                self.start_kafka_inlet_service(ctx, dec.decode()?).await,
-            )?,
+                &header,
+                self.start_kafka_inlet_service(ctx, Decodable::decode(&body)?)
+                    .await,
+            ),
             (Delete, ["node", "services", DefaultAddress::KAFKA_INLET]) => encode_response(
-                req,
-                self.delete_kafka_service(ctx, dec.decode()?, KafkaServiceKind::Inlet)
+                &header,
+                self.delete_kafka_service(ctx, Decodable::decode(&body)?, KafkaServiceKind::Inlet)
                     .await,
-            )?,
+            ),
+            (Post, ["node", "services", DefaultAddress::HTTP_HEADERS_SERVICE]) => encode_response(
+                &header,
+                self.start_http_header_service(ctx, Decodable::decode(&body)?)
+                    .await,
+            ),
+            (Delete, ["node", "services", DefaultAddress::HTTP_HEADERS_SERVICE]) => {
+                encode_response(
+                    &header,
+                    self.delete_http_overwrite_header_service(ctx, Decodable::decode(&body)?)
+                        .await,
+                )
+            }
             (Post, ["node", "services", DefaultAddress::LEASE_MANAGER]) => encode_response(
-                req,
-                self.start_influxdb_lease_issuer_service(ctx, dec.decode()?)
+                &header,
+                self.start_influxdb_lease_issuer_service(ctx, Decodable::decode(&body)?)
                     .await,
-            )?,
+            ),
             (Delete, ["node", "services", DefaultAddress::LEASE_MANAGER]) => encode_response(
-                req,
-                self.delete_influxdb_lease_issuer_service(ctx, dec.decode()?)
-                    .await,
-            )?,
-            (Get, ["node", "services"]) => encode_response(req, self.list_services().await)?,
+                &header,
+                self.delete_influxdb_lease_issuer_service(ctx, Decodable::decode(&body)?),
+            ),
+            (Get, ["node", "services"]) => encode_response(&header, self.list_services()),
             (Get, ["node", "services", service_type]) => {
-                encode_response(req, self.list_services_of_type(service_type).await)?
+                encode_response(&header, self.list_services_of_type(service_type))
             }
 
             // ==*== Relay commands ==*==
             (Get, ["node", "relay", alias]) => {
-                encode_response(req, self.show_relay(req, alias).await)?
+                encode_response(&header, self.show_relay(&header, alias).await)
             }
-            (Get, ["node", "relay"]) => encode_response(req, self.get_relays(req).await)?,
+            (Get, ["node", "relay"]) => encode_response(&header, self.get_relays(&header).await),
             (Delete, ["node", "relay", alias]) => {
-                encode_response(req, self.delete_relay(req, alias).await)?
+                encode_response(&header, self.delete_relay(&header, alias).await)
             }
-            (Post, ["node", "relay"]) => {
-                encode_response(req, self.create_relay(ctx, req, dec.decode()?).await)?
-            }
+            (Post, ["node", "relay"]) => encode_response(
+                &header,
+                self.create_relay(ctx, &header, Decodable::decode(&body)?)
+                    .await,
+            ),
 
             // ==*== Inlets & Outlets ==*==
-            (Get, ["node", "inlet"]) => encode_response(req, self.get_inlets().await)?,
-            (Get, ["node", "inlet", alias]) => encode_response(req, self.show_inlet(alias).await)?,
-            (Get, ["node", "outlet"]) => self.get_outlets(req).await.to_vec()?,
+            (Get, ["node", "inlet"]) => encode_response(&header, self.get_inlets().await),
+            (Get, ["node", "inlet", alias]) => {
+                encode_response(&header, self.show_inlet(alias).await)
+            }
+            (Get, ["node", "outlet"]) => encode_response(&header, self.get_outlets().await),
             (Get, ["node", "outlet", addr]) => {
                 let addr: Address = addr.to_string().into();
-                encode_response(req, self.show_outlet(&addr).await)?
+                encode_response(&header, self.show_outlet(&addr))
             }
-            (Post, ["node", "inlet"]) => {
-                encode_response(req, self.create_inlet(ctx, dec.decode()?).await)?
-            }
-            (Post, ["node", "outlet"]) => {
-                encode_response(req, self.create_outlet(ctx, dec.decode()?).await)?
-            }
+            (Post, ["node", "inlet"]) => encode_response(
+                &header,
+                self.create_inlet(ctx, Decodable::decode(&body)?).await,
+            ),
+            (Post, ["node", "outlet"]) => encode_response(
+                &header,
+                self.create_outlet(ctx, Decodable::decode(&body)?).await,
+            ),
             (Delete, ["node", "outlet", addr]) => {
                 let addr: Address = addr.to_string().into();
-                encode_response(req, self.delete_outlet(&addr).await)?
+                encode_response(&header, self.delete_outlet(&addr).await)
             }
             (Delete, ["node", "inlet", alias]) => {
-                encode_response(req, self.delete_inlet(alias).await)?
+                encode_response(&header, self.delete_inlet(alias).await)
             }
             (Delete, ["node", "portal"]) => todo!(),
 
             // ==*== InfluxDB Inlets & Outlets  ==*==
             (Post, ["node", "influxdb_inlet"]) => encode_response(
-                req,
-                self.start_influxdb_inlet_service(ctx, dec.decode()?).await,
-            )?,
+                &header,
+                self.start_influxdb_inlet_service(ctx, Decodable::decode(&body)?)
+                    .await,
+            ),
             (Post, ["node", "influxdb_outlet"]) => encode_response(
-                req,
-                self.start_influxdb_outlet_service(ctx, dec.decode()?).await,
-            )?,
+                &header,
+                self.start_influxdb_outlet_service(ctx, Decodable::decode(&body)?)
+                    .await,
+            ),
 
             // ==*== Flow Controls ==*==
-            (Post, ["node", "flow_controls", "add_consumer"]) => {
-                encode_response(req, self.add_consumer(ctx, dec.decode()?).await)?
-            }
+            (Post, ["node", "flow_controls", "add_consumer"]) => encode_response(
+                &header,
+                self.add_consumer(ctx, Decodable::decode(&body)?).await,
+            ),
 
             // ==*== Workers ==*==
-            (Get, ["node", "workers"]) => encode_response(req, self.list_workers(ctx).await)?,
+            (Get, ["node", "workers"]) => encode_response(&header, self.list_workers(ctx).await),
 
             // ==*== Policies ==*==
             (Post, ["policy", action]) => {
-                let payload: SetPolicyRequest = dec.decode()?;
+                let payload: SetPolicyRequest = Decodable::decode(&body)?;
                 encode_response(
-                    req,
+                    &header,
                     self.add_policy(action, payload.resource, payload.expression)
                         .await,
-                )?
+                )
             }
-            (Get, ["policy", action]) => {
-                encode_response(req, self.get_policy(action, dec.decode()?).await)?
+            (Get, ["policy", action]) => encode_response(
+                &header,
+                self.get_policy(action, Decodable::decode(&body)?).await,
+            ),
+            (Get, ["policy"]) => {
+                let resource_type_or_name_option: ResourceTypeOrNameOption =
+                    Decodable::decode(&body)?;
+                encode_response(
+                    &header,
+                    self.list_policies(resource_type_or_name_option.0).await,
+                )
             }
-            (Get, ["policy"]) => encode_response(req, self.list_policies(dec.decode()?).await)?,
-            (Delete, ["policy", action]) => {
-                encode_response(req, self.delete_policy(action, dec.decode()?).await)?
-            }
+            (Delete, ["policy", action]) => encode_response(
+                &header,
+                self.delete_policy(action, Decodable::decode(&body)?).await,
+            ),
 
             // ==*== Messages ==*==
             (Post, ["v0", "message"]) => {
-                encode_response(req, self.send_message(ctx, dec.decode()?).await)?
+                let send_message: SendMessage<Vec<u8>> = Decodable::decode(&body)?;
+                encode_response(
+                    &header,
+                    self.send_message::<Vec<u8>, Vec<u8>>(ctx, send_message)
+                        .await,
+                )
             }
 
             // ==*== Catch-all for Unimplemented APIs ==*==
             _ => {
                 warn!(%method, %path, "Called invalid endpoint");
-                Response::bad_request(req, &format!("Invalid endpoint: {} {}", method, path))
-                    .to_vec()?
+                encode_response::<Vec<u8>>(
+                    &header,
+                    Err(Response::bad_request(
+                        &header,
+                        &format!("Invalid endpoint: {} {}", method, path),
+                    )),
+                )
             }
-        };
-        Ok(r)
+        }
     }
 }
 
 #[ockam::worker]
 impl Worker for NodeManagerWorker {
-    type Message = Vec<u8>;
+    type Message = Request<Vec<u8>>;
     type Context = Context;
 
     async fn shutdown(&mut self, _ctx: &mut Self::Context) -> Result<()> {
@@ -253,39 +313,38 @@ impl Worker for NodeManagerWorker {
         Ok(())
     }
 
-    async fn handle_message(&mut self, ctx: &mut Context, msg: Routed<Vec<u8>>) -> Result<()> {
+    async fn handle_message(
+        &mut self,
+        ctx: &mut Context,
+        msg: Routed<Request<Vec<u8>>>,
+    ) -> Result<()> {
         let return_route = msg.return_route().clone();
-        let body = msg.into_body()?;
-        let mut dec = Decoder::new(&body);
-        let req: RequestHeader = match dec.decode() {
-            Ok(r) => r,
-            Err(e) => {
-                error!("Failed to decode request: {:?}", e);
-                return Ok(());
-            }
-        };
-
-        let r = match self.handle_request(ctx, &req, &mut dec).await {
+        let request = msg.into_body()?;
+        let request_header = request.header().clone();
+        let r = match self.handle_request(ctx, request).await {
             Ok(r) => r,
             Err(err) => {
                 error! {
                     target: TARGET,
-                    re     = %req.id(),
-                    method = ?req.method(),
-                    path   = %req.path(),
+                    re     = %request_header.id(),
+                    method = ?request_header.method(),
+                    path   = %request_header.path(),
                     code   = %err.code(),
                     cause  = ?err.source(),
                     "failed to handle request"
                 }
-                Response::internal_error(&req, &format!("failed to handle request: {err} {req:?}"))
-                    .to_vec()?
+                Response::internal_error(
+                    &request_header,
+                    &format!("failed to handle request: {err}"),
+                )
+                .encode_body()?
             }
         };
         debug! {
             target: TARGET,
-            re     = %req.id(),
-            method = ?req.method(),
-            path   = %req.path(),
+            re     = %request_header.id(),
+            method = ?request_header.method(),
+            path   = %request_header.path(),
             "responding"
         }
         ctx.send(return_route, r).await

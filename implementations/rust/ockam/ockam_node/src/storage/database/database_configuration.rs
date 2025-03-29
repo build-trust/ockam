@@ -2,19 +2,23 @@ use ockam_core::compat::rand::random_string;
 use ockam_core::env::get_env;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{Error, Result};
+use percent_encoding::NON_ALPHANUMERIC;
+use serde_json::Value;
 use std::fs::create_dir_all;
 use std::path::{Path, PathBuf};
 
-/// Database host environment variable
-pub const OCKAM_POSTGRES_HOST: &str = "OCKAM_POSTGRES_HOST";
-/// Database port environment variable
-pub const OCKAM_POSTGRES_PORT: &str = "OCKAM_POSTGRES_PORT";
-/// Database name environment variable
-pub const OCKAM_POSTGRES_DATABASE_NAME: &str = "OCKAM_POSTGRES_DATABASE_NAME";
-/// Database user environment variable
-pub const OCKAM_POSTGRES_USER: &str = "OCKAM_POSTGRES_USER";
-/// Database password environment variable
-pub const OCKAM_POSTGRES_PASSWORD: &str = "OCKAM_POSTGRES_PASSWORD";
+/// Use an in-memory SQLite database
+pub const OCKAM_SQLITE_IN_MEMORY: &str = "OCKAM_SQLITE_IN_MEMORY";
+/// Database connection URL
+pub const OCKAM_DATABASE_CONNECTION_URL: &str = "OCKAM_DATABASE_CONNECTION_URL";
+/// Database instance as HOST:PORT/name
+pub const OCKAM_DATABASE_INSTANCE: &str = "OCKAM_DATABASE_INSTANCE";
+/// Database user
+pub const OCKAM_DATABASE_USER: &str = "OCKAM_DATABASE_USER";
+/// Database password
+pub const OCKAM_DATABASE_PASSWORD: &str = "OCKAM_DATABASE_PASSWORD";
+/// Database user + password in the format {"username":"pgadmin", "password":"s3cr3t"}
+pub const OCKAM_DATABASE_USERNAME_AND_PASSWORD: &str = "OCKAM_DATABASE_USERNAME_AND_PASSWORD";
 
 /// Configuration for the database.
 /// We either use Sqlite or Postgres
@@ -34,14 +38,10 @@ pub enum DatabaseConfiguration {
     },
     /// Configuration for a Postgres database
     Postgres {
-        /// Database host name
-        host: String,
-        /// Database host port
-        port: u16,
-        /// Database name
-        database_name: String,
-        /// Database user
-        user: Option<DatabaseUser>,
+        /// Connection string of the form postgres://[{user}:{password}@]{host}:{port}/{database_name}
+        connection_string: String,
+        /// Path to a SQLite database that needs to be migrated to the Postgres database.
+        legacy_sqlite_path: Option<PathBuf>,
     },
 }
 
@@ -82,39 +82,30 @@ impl DatabaseUser {
 }
 
 impl DatabaseConfiguration {
-    /// Create a postgres database configuration from environment variables.
-    ///
-    /// At minima, the database host and port must be provided.
+    /// Create a postgres database configuration from an environment variable.
     pub fn postgres() -> Result<Option<DatabaseConfiguration>> {
-        let host: Option<String> = get_env(OCKAM_POSTGRES_HOST)?;
-        let port: Option<u16> = get_env(OCKAM_POSTGRES_PORT)?;
-        let database_name: String =
-            get_env(OCKAM_POSTGRES_DATABASE_NAME)?.unwrap_or("postgres".to_string());
-        let user: Option<String> = get_env(OCKAM_POSTGRES_USER)?;
-        let password: Option<String> = get_env(OCKAM_POSTGRES_PASSWORD)?;
-        match (host, port) {
-            (Some(host), Some(port)) => match (user, password) {
-                (Some(user), Some(password)) => Ok(Some(DatabaseConfiguration::Postgres {
-                    host,
-                    port,
-                    database_name,
-                    user: Some(DatabaseUser::new(user, password)),
-                })),
-                _ => Ok(Some(DatabaseConfiguration::Postgres {
-                    host,
-                    port,
-                    database_name,
-                    user: None,
-                })),
-            },
-            _ => Ok(None),
+        Self::postgres_with_legacy_sqlite_path(None)
+    }
+
+    /// Create a postgres database configuration from an environment variable.
+    /// An optional legacy sqlite path can be provided to migrate the sqlite database to postgres.
+    pub fn postgres_with_legacy_sqlite_path(
+        sqlite_path: Option<PathBuf>,
+    ) -> Result<Option<DatabaseConfiguration>> {
+        if let Some(connection_string) = get_database_connection_url()? {
+            Ok(Some(DatabaseConfiguration::Postgres {
+                connection_string: connection_string.to_owned(),
+                legacy_sqlite_path: sqlite_path,
+            }))
+        } else {
+            Ok(None)
         }
     }
 
     /// Create a local sqlite configuration
-    pub fn sqlite(path: &Path) -> DatabaseConfiguration {
+    pub fn sqlite(path: impl AsRef<Path>) -> DatabaseConfiguration {
         DatabaseConfiguration::SqlitePersistent {
-            path: path.to_path_buf(),
+            path: path.as_ref().to_path_buf(),
             single_connection: false,
         }
     }
@@ -151,6 +142,17 @@ impl DatabaseConfiguration {
         }
     }
 
+    /// Return the legacy sqlite path if any
+    pub fn legacy_sqlite_path(&self) -> Option<PathBuf> {
+        match self {
+            DatabaseConfiguration::SqliteInMemory { .. } => None,
+            DatabaseConfiguration::SqlitePersistent { .. } => None,
+            DatabaseConfiguration::Postgres {
+                legacy_sqlite_path, ..
+            } => legacy_sqlite_path.clone(),
+        }
+    }
+
     /// Return the type of database that has been configured
     pub fn connection_string(&self) -> String {
         match self {
@@ -161,16 +163,8 @@ impl DatabaseConfiguration {
                 Self::create_sqlite_on_disk_connection_string(path)
             }
             DatabaseConfiguration::Postgres {
-                host,
-                port,
-                database_name,
-                user,
-            } => Self::create_postgres_connection_string(
-                host.clone(),
-                *port,
-                database_name.clone(),
-                user.clone(),
-            ),
+                connection_string, ..
+            } => connection_string.clone(),
         }
     }
 
@@ -209,17 +203,189 @@ impl DatabaseConfiguration {
         let url_string = &path.to_string_lossy().to_string();
         format!("sqlite://{url_string}?mode=rwc")
     }
+}
 
-    fn create_postgres_connection_string(
-        host: String,
-        port: u16,
-        database_name: String,
-        user: Option<DatabaseUser>,
-    ) -> String {
-        let user_password = match user {
-            Some(user) => format!("{}:{}@", user.user_name(), user.password()),
-            None => "".to_string(),
+/// We can either get the connection string directly from the OCKAM_DATABASE_CONNECTION_URL environment variable,
+/// or we can build it from other variables. Either from:
+///
+///  - The database instance name + user + password,
+///  - Or the database instance name + user & password as a single JSON string.
+///
+/// This useful when:
+///
+/// - The password is rotated externally, by the AWS Secrets Manager service.
+/// - The password needs to be url encoded.
+///
+fn get_database_connection_url() -> Result<Option<String>> {
+    let connection_string = match get_env::<String>(OCKAM_DATABASE_CONNECTION_URL)? {
+        Some(connection_string) => connection_string,
+        None => {
+            let (instance, user, password) = match (
+                get_env::<String>(OCKAM_DATABASE_INSTANCE)?,
+                get_env::<String>(OCKAM_DATABASE_USER)?,
+                get_env::<String>(OCKAM_DATABASE_PASSWORD)?,
+                get_env::<String>(OCKAM_DATABASE_USERNAME_AND_PASSWORD)?,
+            ) {
+                (Some(instance), Some(user), Some(password), None) => (instance, user, password),
+                (Some(instance), None, None, Some(user_and_password)) => {
+                    let parsed: Value = serde_json::from_str(&user_and_password).map_err(|_| {
+                        Error::new(
+                            Origin::Api,
+                            Kind::Invalid,
+                            format!("Expected a JSON object. Got: {user_and_password}"),
+                        )
+                    })?;
+                    if let (Some(user), Some(password)) =
+                        (parsed["username"].as_str(), parsed["password"].as_str())
+                    {
+                        (instance, user.to_string(), password.to_string())
+                    } else {
+                        return Err(Error::new(
+                            Origin::Api,
+                            Kind::Invalid,
+                            format!(
+                                "Expected the username and password as `{}`.
+                            Got: {user_and_password}",
+                                r#"{"username":"pgadmin", "password":"12345"}"#
+                            ),
+                        ));
+                    }
+                }
+                _ => return Ok(None),
+            };
+            // A password can contain special characters, so we need to encode it.
+            let url_encoded_password =
+                percent_encoding::utf8_percent_encode(&password, NON_ALPHANUMERIC);
+            format!("postgres://{user}:{url_encoded_password}@{instance}")
+        }
+    };
+    check_connection_string_format(&connection_string)?;
+    Ok(Some(connection_string))
+}
+
+/// Check the format of a database connection string as `postgres://[{user}:{password}@]{host}:{port}/{database_name}`
+/// For now we only support postgres.
+fn check_connection_string_format(connection_string: &str) -> Result<()> {
+    if let Some(no_prefix) = connection_string.strip_prefix("postgres://") {
+        let host_port_db_name = match no_prefix.split('@').collect::<Vec<_>>()[..] {
+            [host_port_db_name] => host_port_db_name,
+            [user_and_password, host_port_db_name] => {
+                let user_and_password = user_and_password.split(':').collect::<Vec<_>>();
+                if user_and_password.len() != 2 {
+                    return Err(Error::new(
+                        Origin::Api,
+                        Kind::Invalid,
+                        "A database connection URL must specify the user and password as user:password".to_string(),
+                    ));
+                }
+                host_port_db_name
+            }
+            _ => {
+                return Err(Error::new(
+                    Origin::Api,
+                    Kind::Invalid,
+                    "A database connection URL can only have one @ separator to specify the user name and password".to_string(),
+                ));
+            }
         };
-        format!("postgres://{user_password}{host}:{port}/{database_name}")
+        match host_port_db_name.split('/').collect::<Vec<_>>()[..] {
+            [host_port, _] => {
+                let host_port = host_port.split(':').collect::<Vec<_>>();
+                if host_port.len() != 2 {
+                    return Err(Error::new(
+                        Origin::Api,
+                        Kind::Invalid,
+                        "A database connection URL must have a host and a port specified as host:port".to_string(),
+                    ));
+                }
+                Ok(())
+            }
+            _ => Err(Error::new(
+                Origin::Api,
+                Kind::Invalid,
+                "A database connection URL must have a host, a port and a database name as host:port/database_name".to_string(),
+            )),
+        }
+    } else {
+        Err(Error::new(
+            Origin::Api,
+            Kind::Invalid,
+            "A database connection must start with postgres://".to_string(),
+        ))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::env;
+
+    #[test]
+    fn test_make_connection_url_from_separate_env_variables() -> Result<()> {
+        env::set_var(OCKAM_DATABASE_INSTANCE, "localhost:5432/ockam");
+        env::set_var(OCKAM_DATABASE_USER, "pgadmin");
+        env::set_var(OCKAM_DATABASE_PASSWORD, "xR::7Zp(h|<g<Q*t:5T");
+        assert_eq!(
+            get_database_connection_url().unwrap(),
+            Some(
+                "postgres://pgadmin:xR%3A%3A7Zp%28h%7C%3Cg%3CQ%2At%3A5T@localhost:5432/ockam"
+                    .into()
+            ),
+            "the password is url encoded"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn test_make_connection_url_from_separate_env_variables_user_and_password() -> Result<()> {
+        env::set_var(OCKAM_DATABASE_INSTANCE, "localhost:5432/ockam");
+        env::set_var(
+            OCKAM_DATABASE_USERNAME_AND_PASSWORD,
+            r#"{"username":"pgadmin", "password":"xR::7Zp(h|<g<Q*t:5T"}"#,
+        );
+        assert_eq!(
+            get_database_connection_url().unwrap(),
+            Some(
+                "postgres://pgadmin:xR%3A%3A7Zp%28h%7C%3Cg%3CQ%2At%3A5T@localhost:5432/ockam"
+                    .into()
+            ),
+            "the password is url encoded"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn test_valid_connection_strings() -> Result<()> {
+        assert!(
+            check_connection_string_format("postgres://user:pass@localhost:5432/dbname").is_ok()
+        );
+        assert!(check_connection_string_format("postgres://localhost:5432/dbname").is_ok());
+        Ok(())
+    }
+
+    #[test]
+    fn test_invalid_connection_strings() {
+        assert!(
+            check_connection_string_format("mysql://localhost:5432/dbname").is_err(),
+            "incorrect protocol"
+        );
+        assert!(
+            check_connection_string_format("postgres://user@localhost:5432/dbname").is_err(),
+            "missing password"
+        );
+        assert!(
+            check_connection_string_format("postgres://user:pass@host@localhost:5432/dbname")
+                .is_err(),
+            "multiple @ symbols"
+        );
+        assert!(
+            check_connection_string_format("postgres://user:pass@localhost/dbname").is_err(),
+            "missing port"
+        );
+        assert!(
+            check_connection_string_format("postgres://user:pass@localhost:5432").is_err(),
+            "missing database name"
+        );
+        assert!(check_connection_string_format("").is_err(), "empty string");
     }
 }

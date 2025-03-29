@@ -1,4 +1,4 @@
 #[ockam::node]
 fn foo(c: ockam::Context) {
-    c.stop().await.unwrap();
+    c.shutdown_node().await.unwrap();
 }

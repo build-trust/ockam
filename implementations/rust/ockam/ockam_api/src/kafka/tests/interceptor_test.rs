@@ -22,7 +22,7 @@ use ockam_core::{route, Address, AllowAll, NeutralMessage, Routed, Worker};
 use ockam_multiaddr::MultiAddr;
 use ockam_node::database::SqlxDatabase;
 use ockam_node::Context;
-use ockam_transport_tcp::{PortalInterceptorWorker, PortalMessage, MAX_PAYLOAD_SIZE};
+use ockam_transport_tcp::{read_portal_payload_length, PortalInterceptorWorker, PortalMessage};
 
 use crate::kafka::inlet_controller::KafkaInletController;
 use crate::kafka::key_exchange::controller::KafkaKeyExchangeControllerImpl;
@@ -72,7 +72,7 @@ async fn kafka_portal_worker__pieces_of_kafka_message__message_assembled(
     let mut request_buffer = BytesMut::new();
     encode(
         &mut request_buffer,
-        create_request_header(ApiKey::MetadataKey),
+        create_request_header(ApiKey::Metadata),
         MetadataRequest::default(),
     );
 
@@ -82,13 +82,16 @@ async fn kafka_portal_worker__pieces_of_kafka_message__message_assembled(
     // send 2 distinct pieces and see if the kafka message is re-assembled back
     context
         .send(
-            route![portal_inlet_address.clone(), context.address()],
+            route![
+                portal_inlet_address.clone(),
+                context.primary_address().clone()
+            ],
             PortalMessage::Payload(first_piece_of_payload, None).to_neutral_message()?,
         )
         .await?;
     context
         .send(
-            route![portal_inlet_address, context.address()],
+            route![portal_inlet_address, context.primary_address().clone()],
             PortalMessage::Payload(second_piece_of_payload, None).to_neutral_message()?,
         )
         .await?;
@@ -115,19 +118,22 @@ async fn kafka_portal_worker__double_kafka_message__message_assembled(
     let mut request_buffer = BytesMut::new();
     encode(
         &mut request_buffer,
-        create_request_header(ApiKey::MetadataKey),
+        create_request_header(ApiKey::Metadata),
         MetadataRequest::default(),
     );
     encode(
         &mut request_buffer,
-        create_request_header(ApiKey::MetadataKey),
+        create_request_header(ApiKey::Metadata),
         MetadataRequest::default(),
     );
 
     let double_payload = request_buffer.as_ref();
     context
         .send(
-            route![portal_inlet_address.clone(), context.address()],
+            route![
+                portal_inlet_address.clone(),
+                context.primary_address().clone()
+            ],
             PortalMessage::Payload(double_payload, None).to_neutral_message()?,
         )
         .await?;
@@ -164,15 +170,18 @@ async fn kafka_portal_worker__bigger_than_limit_kafka_message__error(
     let mut request_buffer = BytesMut::new();
     encode(
         &mut request_buffer,
-        create_request_header(ApiKey::MetadataKey),
+        create_request_header(ApiKey::Metadata),
         MetadataRequest::default().with_unknown_tagged_fields(insanely_huge_tag),
     );
 
     let huge_payload = request_buffer.as_ref();
-    for chunk in huge_payload.chunks(MAX_PAYLOAD_SIZE) {
+    for chunk in huge_payload.chunks(read_portal_payload_length()) {
         let _error = context
             .send(
-                route![portal_inlet_address.clone(), context.address()],
+                route![
+                    portal_inlet_address.clone(),
+                    context.primary_address().clone()
+                ],
                 PortalMessage::Payload(chunk, None).to_neutral_message()?,
             )
             .await;
@@ -211,7 +220,7 @@ async fn kafka_portal_worker__almost_over_limit_than_limit_kafka_message__two_ka
     let mut huge_outgoing_request = BytesMut::new();
     encode(
         &mut huge_outgoing_request,
-        create_request_header(ApiKey::MetadataKey),
+        create_request_header(ApiKey::Metadata),
         MetadataRequest::default().with_unknown_tagged_fields(insanely_huge_tag.clone()),
     );
 
@@ -219,17 +228,18 @@ async fn kafka_portal_worker__almost_over_limit_than_limit_kafka_message__two_ka
         buffer: Default::default(),
     };
 
-    context
-        .start_worker(
-            Address::from_string("tcp_payload_receiver"),
-            receiver.clone(),
-        )
-        .await?;
+    context.start_worker(
+        Address::from_string("tcp_payload_receiver"),
+        receiver.clone(),
+    )?;
 
     // let's duplicate the message
     huge_outgoing_request.extend(huge_outgoing_request.clone());
 
-    for chunk in huge_outgoing_request.as_ref().chunks(MAX_PAYLOAD_SIZE) {
+    for chunk in huge_outgoing_request
+        .as_ref()
+        .chunks(read_portal_payload_length())
+    {
         context
             .send(
                 route![portal_inlet_address.clone(), "tcp_payload_receiver"],
@@ -314,7 +324,7 @@ async fn setup_only_worker(context: &mut Context, handle: &NodeManagerHandle) ->
     PortalInterceptorWorker::create_inlet_interceptor(
         context,
         None,
-        route![context.address()],
+        route![context.primary_address().clone()],
         Arc::new(AllowAll),
         Arc::new(AllowAll),
         Arc::new(KafkaMessageInterceptorWrapper::new(
@@ -327,8 +337,8 @@ async fn setup_only_worker(context: &mut Context, handle: &NodeManagerHandle) ->
             )),
             TEST_MAX_KAFKA_MESSAGE_SIZE,
         )),
+        read_portal_payload_length(),
     )
-    .await
     .unwrap()
 }
 
@@ -412,7 +422,7 @@ async fn kafka_portal_worker__metadata_exchange__response_changed(
     let portal_inlet_address = PortalInterceptorWorker::create_inlet_interceptor(
         context,
         None,
-        route![context.address()],
+        route![context.primary_address().clone()],
         Arc::new(AllowAll),
         Arc::new(AllowAll),
         Arc::new(KafkaMessageInterceptorWrapper::new(
@@ -425,20 +435,20 @@ async fn kafka_portal_worker__metadata_exchange__response_changed(
             )),
             MAX_KAFKA_MESSAGE_SIZE,
         )),
-    )
-    .await?;
+        read_portal_payload_length(),
+    )?;
 
     let mut request_buffer = BytesMut::new();
     // let's create a real kafka request and pass it through the portal
     encode(
         &mut request_buffer,
-        create_request_header(ApiKey::MetadataKey),
+        create_request_header(ApiKey::Metadata),
         MetadataRequest::default(),
     );
 
     context
         .send(
-            route![portal_inlet_address, context.address()],
+            route![portal_inlet_address, context.primary_address().clone()],
             PortalMessage::Payload(&request_buffer, None).to_neutral_message()?,
         )
         .await?;

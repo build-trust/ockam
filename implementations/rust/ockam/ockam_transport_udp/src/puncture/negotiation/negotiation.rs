@@ -25,7 +25,7 @@ impl UdpPunctureNegotiation {
         let next = onward_route.next()?.clone();
 
         let address = Address::random_tagged("UdpPunctureNegotiator.initiator");
-        let mut child_ctx = ctx.new_detached(address, AllowAll, AllowAll).await?;
+        let mut child_ctx = ctx.new_detached(address, AllowAll, AllowAll)?;
 
         if let Some(flow_control_id) = ctx
             .flow_controls()
@@ -34,7 +34,7 @@ impl UdpPunctureNegotiation {
         {
             // To be able to receive the response
             ctx.flow_controls()
-                .add_consumer(child_ctx.address(), &flow_control_id);
+                .add_consumer(child_ctx.primary_address(), &flow_control_id);
         }
 
         // We create a new bind for each puncture. Ownership will be transferred to the
@@ -49,7 +49,7 @@ impl UdpPunctureNegotiation {
 
         debug!(
             "Initializing UdpPunctureNegotiation Initiator at {}",
-            child_ctx.address_ref()
+            child_ctx.primary_address()
         );
         let client = RendezvousClient::new(&udp_bind, rendezvous_route);
         let my_udp_public_address = match client.get_my_address(ctx).await {
@@ -59,14 +59,14 @@ impl UdpPunctureNegotiation {
                     "Error getting UDP public address for the initiator: {}",
                     err
                 );
-                udp.unbind(udp_bind.sender_address().clone()).await?;
+                udp.unbind(udp_bind.sender_address())?;
                 return Err(err);
             }
         };
 
         info!(
             "UdpPunctureNegotiation Initiator {} got its public address: {}",
-            child_ctx.address_ref(),
+            child_ctx.primary_address(),
             my_udp_public_address
         );
 
@@ -94,11 +94,11 @@ impl UdpPunctureNegotiation {
             Err(err) => {
                 error!(
                     "Error receiving response for Udp Puncture at: {}. {}",
-                    child_ctx.address_ref(),
+                    child_ctx.primary_address(),
                     err
                 );
 
-                udp.unbind(udp_bind.sender_address().clone()).await?;
+                udp.unbind(udp_bind.sender_address())?;
                 return Err(err);
             }
         };
@@ -108,11 +108,11 @@ impl UdpPunctureNegotiation {
             Err(err) => {
                 error!(
                     "Invalid response for Udp Puncture at: {}. {}",
-                    child_ctx.address_ref(),
+                    child_ctx.primary_address(),
                     err
                 );
 
-                udp.unbind(udp_bind.sender_address().clone()).await?;
+                udp.unbind(udp_bind.sender_address())?;
                 return Err(err);
             }
         };
@@ -128,8 +128,7 @@ impl UdpPunctureNegotiation {
             Address::from(response.responder_remote_address),
             options,
             false,
-        )
-        .await?;
+        )?;
 
         Ok(puncture)
     }

@@ -39,12 +39,12 @@ pub struct RevokeCommand {
 impl Command for RevokeCommand {
     const NAME: &'static str = "lease revoke";
 
-    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
         let cmd = self.parse_args(&opts).await?;
 
         let node = InMemoryNode::start_with_identity_and_project_name(
             ctx,
-            &opts.state,
+            opts.state.clone(),
             cmd.identity_opts.identity_name.clone(),
             cmd.trust_opts.project_name.clone(),
         )
@@ -54,11 +54,11 @@ impl Command for RevokeCommand {
         opts.terminal
             .write_line(fmt_log!("Revoking influxdb token {}...\n", cmd.token_id))?;
 
-        let (at, _meta) = clean_nodes_multiaddr(&cmd.at, &opts.state).await?;
+        let (at, _meta) = clean_nodes_multiaddr(&cmd.at, opts.state.clone()).await?;
         node.revoke_token(ctx, &at, &cmd.token_id).await?;
 
         opts.terminal
-            .stdout()
+            .to_stdout()
             .plain(fmt_ok!(
                 "Token with id {} has been revoked.",
                 color_primary(&cmd.token_id)
@@ -73,7 +73,7 @@ impl Command for RevokeCommand {
 
 impl RevokeCommand {
     async fn parse_args(mut self, opts: &CommandGlobalOpts) -> crate::Result<Self> {
-        self.at = super::resolve_at_arg(&self.at, &opts.state).await?;
+        self.at = super::resolve_at_arg(&self.at, opts.state.clone()).await?;
         Ok(self)
     }
 }

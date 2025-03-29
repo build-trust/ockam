@@ -4,6 +4,7 @@ mod inlet_shared_state;
 mod interceptor;
 pub mod options;
 mod outlet_listener;
+mod outlet_listener_registry;
 mod portal_message;
 mod portal_receiver;
 mod portal_worker;

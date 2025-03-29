@@ -6,8 +6,8 @@ use tracing::warn;
 
 use ockam::identity::Identifier;
 use ockam_api::cli_state::enrollments::EnrollmentTicket;
-use ockam_api::cloud::email_address::EmailAddress;
-use ockam_api::cloud::share::InvitationWithAccess;
+use ockam_api::orchestrator::email_address::EmailAddress;
+use ockam_api::orchestrator::share::InvitationWithAccess;
 
 use crate::state::{AppState, ModelState};
 
@@ -327,9 +327,10 @@ impl IncomingService {
 mod tests {
     use ockam::Context;
     use ockam_api::cli_state::{CliState, ExportedEnrollmentTicket};
-    use ockam_api::cloud::share::{
+    use ockam_api::orchestrator::share::{
         InvitationWithAccess, ReceivedInvitation, RoleInShare, ServiceAccessDetails, ShareScope,
     };
+    use std::sync::Arc;
 
     use crate::incoming_services::PersistentIncomingService;
     use crate::state::AppState;
@@ -375,7 +376,7 @@ mod tests {
     async fn test_inlet_data_from_invitation(context: &mut Context) -> ockam::Result<()> {
         // in this test we want to validate data loading from the accepted invitation
         // as well as using the related persistent data
-        let app_state = AppState::test(context, CliState::test().await?).await;
+        let app_state = AppState::test(context, Arc::new(CliState::test().await?)).await;
 
         let mut invitation = create_invitation_with(None);
 
@@ -454,6 +455,6 @@ mod tests {
         assert_eq!("custom_user_name", service.name());
         assert_eq!("/project/project_id/service/forward_to_I12ab34cd56ef12ab34cd56ef12ab34cd56ef12aba1b2c3d4e5f6a6b5c4d3e2f1/secure/api/service/remote_service_name", service.service_route(None));
 
-        context.stop().await
+        context.shutdown_node().await
     }
 }

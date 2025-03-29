@@ -16,6 +16,7 @@
 //!     ```bash
 //!     cd implementations/rust/ockam/ockam_command && cargo install --path .
 //!     ```
+
 pub use arguments::*;
 pub use command::*;
 pub use command_events::*;
@@ -29,6 +30,7 @@ pub use terminal::*;
 mod admin;
 mod arguments;
 mod authority;
+pub mod branding;
 mod command;
 mod command_events;
 mod command_global_opts;
@@ -37,16 +39,18 @@ mod credential;
 mod docs;
 pub mod enroll;
 pub mod entry_point;
-mod environment;
+pub mod environment;
 pub mod error;
 mod flow_control;
 mod global_args;
 pub mod identity;
+mod influxdb;
 mod kafka;
 mod lease;
 mod manpages;
 mod markdown;
 mod message;
+mod migrate_database;
 pub mod node;
 mod operation;
 mod output;
@@ -61,7 +65,6 @@ mod reset;
 mod run;
 mod secure_channel;
 mod service;
-#[cfg(feature = "orchestrator")]
 mod share;
 mod shared_args;
 mod sidecar;
@@ -78,5 +81,3 @@ pub mod value_parsers;
 mod vault;
 mod version;
 mod worker;
-
-mod influxdb;

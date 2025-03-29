@@ -11,11 +11,10 @@
 )]
 #![cfg_attr(not(feature = "std"), no_std)]
 
-#[cfg(feature = "std")]
-extern crate core;
-
 #[cfg(feature = "alloc")]
 extern crate alloc;
+#[cfg(feature = "std")]
+extern crate core;
 
 mod options;
 mod portal;
@@ -31,7 +30,7 @@ pub use options::{TcpConnectionOptions, TcpListenerOptions};
 pub use portal::{
     new_certificate_provider_cache, Direction, PortalInletInterceptor, PortalInterceptor,
     PortalInterceptorFactory, PortalInterceptorWorker, PortalInternalMessage, PortalMessage,
-    PortalOutletInterceptor, TlsCertificate, TlsCertificateProvider, MAX_PAYLOAD_SIZE,
+    PortalOutletInterceptor, TlsCertificate, TlsCertificateProvider,
 };
 pub use protocol_version::*;
 pub use registry::*;
@@ -41,10 +40,14 @@ pub use transport::*;
 /// eBPF backed TCP portals that works on TCP level rather than on top of TCP
 pub mod privileged_portal;
 
-pub(crate) const CLUSTER_NAME: &str = "_internals.transport.tcp";
+/// MPTCP support
+pub mod mptcp;
 
 /// Transport type for TCP addresses
 pub const TCP: ockam_core::TransportType = ockam_core::TransportType::new(1);
+
+/// Transport type for MPTCP addresses
+pub const MPTCP: ockam_core::TransportType = ockam_core::TransportType::new(6);
 
 /// 16 MB
 pub const MAX_MESSAGE_SIZE: usize = 16 * 1024 * 1024;

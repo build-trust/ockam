@@ -80,6 +80,10 @@ pub enum TransportError {
     IdentifierChanged,
     /// Invalid OckamPortalPacket
     InvalidOckamPortalPacket(String),
+    /// Connection timeout
+    ConnectionTimeout,
+    /// Invalid socket options
+    SockOpt(String),
 }
 
 impl ockam_core::compat::error::Error for TransportError {}
@@ -130,6 +134,8 @@ impl core::fmt::Display for TransportError {
                 "identifier of the other side of the portal has changed when updating the route"
             ),
             Self::InvalidOckamPortalPacket(e) => write!(f, "invalid OckamPortalPacket: {}", e),
+            Self::ConnectionTimeout => write!(f, "connection timed out"),
+            Self::SockOpt(e) => write!(f, "socket options failed: {}", e),
         }
     }
 }
@@ -171,6 +177,8 @@ impl From<TransportError> for Error {
             PrivilegedPortalsPrerequisitesCheckFailed(_) => Kind::Misuse,
             IdentifierChanged => Kind::Conflict,
             InvalidOckamPortalPacket(_) => Kind::Invalid,
+            ConnectionTimeout => Kind::Io,
+            SockOpt(_) => Kind::Io,
         };
 
         Error::new(Origin::Transport, kind, err)

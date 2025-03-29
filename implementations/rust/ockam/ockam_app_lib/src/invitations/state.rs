@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use tracing::debug;
 
-use ockam_api::cloud::share::{
+use ockam_api::orchestrator::share::{
     InvitationList, InvitationWithAccess, ReceivedInvitation, SentInvitation,
 };
 
@@ -87,7 +87,7 @@ pub struct AcceptedInvitations {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ockam_api::cloud::share::{RoleInShare, ShareScope};
+    use ockam_api::orchestrator::share::{RoleInShare, ShareScope};
 
     #[test]
     fn test_replace_by() {

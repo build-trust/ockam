@@ -2,6 +2,7 @@ use either::Either;
 use rand::distributions::Alphanumeric;
 use rand::Rng;
 use std::collections::BTreeMap;
+use tracing::Level;
 
 use ockam::identity::utils::now;
 use ockam::identity::{Identifier, IdentitiesAttributes};
@@ -26,6 +27,7 @@ pub struct EnrollmentTokenIssuerError(pub String);
 pub type EnrollmentTokenIssuerResult<T> = Either<T, EnrollmentTokenIssuerError>;
 
 pub struct EnrollmentTokenIssuer {
+    authority: Identifier,
     pub(super) tokens: Arc<dyn AuthorityEnrollmentTokenRepository>,
     pub(super) members: Arc<dyn AuthorityMembersRepository>,
     pub(super) identities_attributes: Arc<IdentitiesAttributes>,
@@ -34,12 +36,14 @@ pub struct EnrollmentTokenIssuer {
 
 impl EnrollmentTokenIssuer {
     pub fn new(
+        authority: &Identifier,
         tokens: Arc<dyn AuthorityEnrollmentTokenRepository>,
         members: Arc<dyn AuthorityMembersRepository>,
         identities_attributes: Arc<IdentitiesAttributes>,
         account_authority: Option<AccountAuthorityInfo>,
     ) -> Self {
         Self {
+            authority: authority.clone(),
             tokens,
             members,
             identities_attributes,
@@ -47,7 +51,7 @@ impl EnrollmentTokenIssuer {
         }
     }
 
-    #[instrument(skip_all, fields(enroller = %enroller, token_duration = token_duration.map_or("n/a".to_string(), |d| d.as_secs().to_string()), ttl_count = ttl_count.map_or("n/a".to_string(), |t| t.to_string())))]
+    #[instrument(skip_all, fields(enroller = %enroller, token_duration = token_duration.map_or("n/a".to_string(), |d| d.as_secs().to_string()), ttl_count = ttl_count.map_or("n/a".to_string(), |t| t.to_string())), level = Level::TRACE)]
     pub async fn issue_token(
         &self,
         enroller: &Identifier,
@@ -56,6 +60,7 @@ impl EnrollmentTokenIssuer {
         ttl_count: Option<u64>,
     ) -> Result<EnrollmentTokenIssuerResult<OneTimeCode>> {
         let check = EnrollerAccessControlChecks::check_identifier(
+            &self.authority,
             self.members.clone(),
             self.identities_attributes.clone(),
             enroller,

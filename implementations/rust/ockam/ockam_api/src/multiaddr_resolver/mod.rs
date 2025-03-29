@@ -1,6 +1,7 @@
 mod local_resolver;
 mod remote_resolver;
 mod reverse_local_converter;
+mod serde_utils;
 mod transport_route_resolver;
 
 pub use local_resolver::*;
@@ -9,6 +10,7 @@ use ockam_core::Error;
 use ockam_multiaddr::MultiAddr;
 pub use remote_resolver::*;
 pub use reverse_local_converter::*;
+pub use serde_utils::*;
 pub use transport_route_resolver::*;
 
 fn invalid_multiaddr_error(ma: &MultiAddr) -> Error {

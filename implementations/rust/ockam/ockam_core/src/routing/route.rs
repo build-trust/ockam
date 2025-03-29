@@ -1,8 +1,9 @@
 use crate::{
     compat::{collections::VecDeque, string::String, vec::Vec},
-    Address, Result, RouteError, TransportType,
+    serialize, Address, Encodable, Encoded, Result, RouteError, TransportType,
 };
 use core::fmt::{self, Display};
+use core::ops::{Add, AddAssign};
 use minicbor::{CborLen, Decode, Encode};
 use serde::{Deserialize, Serialize};
 
@@ -12,6 +13,56 @@ use serde::{Deserialize, Serialize};
 #[rustfmt::skip]
 pub struct Route {
     #[n(0)] inner: VecDeque<Address>,
+}
+
+impl Encodable for Route {
+    fn encode(self) -> Result<Encoded> {
+        serialize(self)
+    }
+}
+
+impl AddAssign for Route {
+    fn add_assign(&mut self, mut rhs: Self) {
+        self.inner.append(&mut rhs.inner);
+    }
+}
+
+impl Add for Route {
+    type Output = Route;
+
+    fn add(mut self, rhs: Self) -> Self::Output {
+        self += rhs;
+        self
+    }
+}
+
+impl Add<Route> for Address {
+    type Output = Route;
+
+    fn add(self, rhs: Route) -> Self::Output {
+        rhs.modify().prepend(self).build()
+    }
+}
+
+impl<T> AddAssign<T> for Route
+where
+    T: Into<Address>,
+{
+    fn add_assign(&mut self, rhs: T) {
+        self.inner.push_back(rhs.into());
+    }
+}
+
+impl<T> Add<T> for Route
+where
+    T: Into<Address>,
+{
+    type Output = Route;
+
+    fn add(mut self, rhs: T) -> Self::Output {
+        self += rhs;
+        self
+    }
 }
 
 impl Route {
@@ -425,11 +476,8 @@ impl RouteBuilder {
     ///     .into();
     /// ```
     ///
-    pub fn append_route(mut self, route: Route) -> Self {
-        route
-            .inner
-            .into_iter()
-            .for_each(|addr| self.inner.push_back(addr));
+    pub fn append_route(mut self, route: impl Into<Route>) -> Self {
+        self.inner.append(&mut route.into().inner);
         self
     }
 

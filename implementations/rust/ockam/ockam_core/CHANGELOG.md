@@ -4,6 +4,43 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.125.0 - 2025-03-03
+
+### Added
+
+- Make portal handshake optional
+- Send telemetry data to the project node
+- Updated dependencies
+
+### Changed
+
+- Enable requests to be messages
+- Use a more recent version of actions/cache
+
+### Fixed
+
+- Fix "debugger" feature
+- Fix the deserializaton of error messages in responses
+- Fix a decoding error for decoding request error messages
+
+## 0.124.0 - 2025-01-20
+
+### Added
+
+- Rewrite `ockam_node`
+- Updated dependencies
+
+### Changed
+
+- Rename cloud module to orchestrator
+
+## 0.123.0 - 2025-01-09
+
+### Added
+
+- Introduce env variables to adjust transport performance
+- Updated dependencies
+
 ## 0.122.0 - 2024-12-04
 
 ### Added

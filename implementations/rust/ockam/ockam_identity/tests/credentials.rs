@@ -38,14 +38,12 @@ async fn full_flow_oneway(ctx: &mut Context) -> Result<()> {
         )
         .await?;
 
-    secure_channels
-        .create_secure_channel_listener(
-            ctx,
-            &server,
-            "listener",
-            SecureChannelListenerOptions::new().with_authority(authority.clone()),
-        )
-        .await?;
+    secure_channels.create_secure_channel_listener(
+        ctx,
+        &server,
+        "listener",
+        SecureChannelListenerOptions::new().with_authority(authority.clone()),
+    )?;
 
     secure_channels
         .create_secure_channel(
@@ -96,16 +94,14 @@ async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
         )
         .await?;
 
-    secure_channels
-        .create_secure_channel_listener(
-            ctx,
-            &client1,
-            "listener",
-            SecureChannelListenerOptions::new()
-                .with_authority(authority.clone())
-                .with_credential(credential)?,
-        )
-        .await?;
+    secure_channels.create_secure_channel_listener(
+        ctx,
+        &client1,
+        "listener",
+        SecureChannelListenerOptions::new()
+            .with_authority(authority.clone())
+            .with_credential(credential)?,
+    )?;
 
     let credential = credentials
         .credentials_creation()
@@ -174,9 +170,8 @@ async fn access_control(ctx: &mut Context) -> Result<()> {
     let client2 = identities_creation.create_identity().await?;
 
     let options = SecureChannelListenerOptions::new().with_authority(authority.clone());
-    let listener = secure_channels
-        .create_secure_channel_listener(ctx, &server, "listener", options)
-        .await?;
+    let listener =
+        secure_channels.create_secure_channel_listener(ctx, &server, "listener", options)?;
 
     let credential1 = credentials
         .credentials_creation()
@@ -220,14 +215,13 @@ async fn access_control(ctx: &mut Context) -> Result<()> {
         CredentialAccessControl::new(&required_attributes, authority, identities_attributes);
 
     ctx.flow_controls()
-        .add_consumer("counter", listener.flow_control_id());
+        .add_consumer(&"counter".into(), listener.flow_control_id());
 
     WorkerBuilder::new(worker)
         .with_address("counter")
         .with_incoming_access_control(access_control)
         .with_outgoing_access_control(DenyAll)
-        .start(ctx)
-        .await?;
+        .start(ctx)?;
     ctx.sleep(Duration::from_millis(100)).await;
     assert_eq!(counter.load(Ordering::Relaxed), 0);
 
@@ -269,14 +263,12 @@ async fn missing_authority__handshake_should_succeed(ctx: &mut Context) -> Resul
         )
         .await?;
 
-    let listener = secure_channels
-        .create_secure_channel_listener(
-            ctx,
-            &server,
-            "listener",
-            SecureChannelListenerOptions::new(),
-        )
-        .await?;
+    let listener = secure_channels.create_secure_channel_listener(
+        ctx,
+        &server,
+        "listener",
+        SecureChannelListenerOptions::new(),
+    )?;
 
     let sc = secure_channels
         .create_secure_channel(
@@ -298,9 +290,9 @@ async fn missing_authority__handshake_should_succeed(ctx: &mut Context) -> Resul
 
     // However secure channel should be operational anyways
 
-    ctx.start_worker("echo", Echoer).await?;
+    ctx.start_worker("echo", Echoer)?;
     ctx.flow_controls()
-        .add_consumer("echo", listener.flow_control_id());
+        .add_consumer(&"echo".into(), listener.flow_control_id());
 
     let msg: String = ctx
         .send_and_receive(route![sc, "echo"], "Test".to_string())
@@ -336,14 +328,12 @@ async fn invalid_credential__handshake_should_succeed(ctx: &mut Context) -> Resu
         )
         .await?;
 
-    let listener = secure_channels
-        .create_secure_channel_listener(
-            ctx,
-            &server,
-            "listener",
-            SecureChannelListenerOptions::new().with_authority(authority.clone()),
-        )
-        .await?;
+    let listener = secure_channels.create_secure_channel_listener(
+        ctx,
+        &server,
+        "listener",
+        SecureChannelListenerOptions::new().with_authority(authority.clone()),
+    )?;
 
     let sc = secure_channels
         .create_secure_channel(
@@ -371,9 +361,9 @@ async fn invalid_credential__handshake_should_succeed(ctx: &mut Context) -> Resu
 
     // However secure channel should be operational anyways
 
-    ctx.start_worker("echo", Echoer).await?;
+    ctx.start_worker("echo", Echoer)?;
     ctx.flow_controls()
-        .add_consumer("echo", listener.flow_control_id());
+        .add_consumer(&"echo".into(), listener.flow_control_id());
 
     let msg: String = ctx
         .send_and_receive(route![sc, "echo"], "Test".to_string())

@@ -1,9 +1,8 @@
 use minicbor::{CborLen, Decode, Encode};
-
 use ockam_core::compat::string::String;
 use ockam_core::compat::vec::Vec;
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::{Error, Result};
+use ockam_core::{cbor_encode_preallocate, Decodable, Encodable, Encoded, Error, Message, Result};
 
 use crate::alloc::string::ToString;
 use crate::models::{Credential, CredentialData, PurposeKeyAttestation};
@@ -11,7 +10,7 @@ use crate::TimestampInSeconds;
 
 /// [`Credential`] and the corresponding [`PurposeKeyAttestation`] that was used to issue that
 /// [`Credential`] and will be used to verify it
-#[derive(Clone, Debug, PartialEq, Eq, Encode, Decode, CborLen)]
+#[derive(Clone, Debug, PartialEq, Eq, Encode, Decode, CborLen, Message)]
 #[rustfmt::skip]
 pub struct CredentialAndPurposeKey {
     /// [`Credential`]
@@ -19,6 +18,18 @@ pub struct CredentialAndPurposeKey {
     /// Corresponding [`PurposeKeyAttestation`] that was used to issue that
     /// [`Credential`] and will be used to verify it
     #[n(1)] pub purpose_key_attestation: PurposeKeyAttestation,
+}
+
+impl Encodable for CredentialAndPurposeKey {
+    fn encode(self) -> Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for CredentialAndPurposeKey {
+    fn decode(e: &[u8]) -> Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
 }
 
 impl CredentialAndPurposeKey {
@@ -29,7 +40,7 @@ impl CredentialAndPurposeKey {
 
     /// Encode the credential as a CBOR bytes
     pub fn encode_as_cbor_bytes(&self) -> Result<Vec<u8>> {
-        ockam_core::cbor_encode_preallocate(self)
+        cbor_encode_preallocate(self)
     }
 
     /// Decode the credential from bytes
@@ -88,7 +99,7 @@ mod tests {
         Ok(())
     }
 
-    /// HELPERS
+    // HELPERS
     async fn create_credential() -> Result<CredentialAndPurposeKey> {
         let identities = identities().await?;
         let issuer = identities.identities_creation().create_identity().await?;

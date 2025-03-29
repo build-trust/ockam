@@ -1,7 +1,6 @@
 use clap::{Args, Subcommand};
 use colorful::Colorful;
 use miette::WrapErr;
-use minicbor::Encode;
 
 use crate::{CommandGlobalOpts, Result};
 use ockam::Context;
@@ -10,9 +9,10 @@ use ockam_api::nodes::service::default_address::DefaultAddress;
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_api::{fmt_ok, fmt_warn};
 use ockam_core::api::Request;
+use ockam_core::Message;
 
 use crate::node::NodeOpts;
-use crate::util::{api, async_cmd};
+use crate::util::api;
 
 /// Start a specified service
 #[derive(Clone, Debug, Args)]
@@ -36,18 +36,13 @@ fn hop_default_addr() -> String {
 }
 
 impl StartCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |ctx| async move {
-            self.async_run(&ctx, opts).await
-        })
-    }
-
     pub fn name(&self) -> String {
         "service start".into()
     }
 
-    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
-        let node = BackgroundNodeClient::create(ctx, &opts.state, &self.node_opts.at_node).await?;
+    pub async fn run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        let node =
+            BackgroundNodeClient::create(ctx, opts.state.clone(), &self.node_opts.at_node).await?;
         let addr = match &self.create_subcommand {
             StartSubCommand::Hop { addr, .. } => {
                 start_hop_service(ctx, &node, addr).await?;
@@ -75,7 +70,7 @@ pub(crate) async fn start_service_impl<T>(
     req: Request<T>,
 ) -> Result<()>
 where
-    T: Encode<()>,
+    T: Message,
 {
     node.tell(ctx, req)
         .await

@@ -8,10 +8,10 @@ use ockam_api::nodes::BackgroundNodeClient;
 
 use ockam_node::Context;
 
+use crate::node::node_callback::NodeCallback;
 use crate::node::show::get_node_resources;
-use crate::node::util::spawn_node;
+use crate::node::util::{spawn_node, wait_for_node_callback};
 use crate::node::CreateCommand;
-use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/start/long_about.txt");
@@ -31,17 +31,11 @@ pub struct StartCommand {
 }
 
 impl StartCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |ctx| async move {
-            self.async_run(&ctx, opts).await
-        })
-    }
-
     pub fn name(&self) -> String {
         "node start".into()
     }
 
-    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         if self.node_name.is_some() || !opts.terminal.can_ask_for_user_input() {
             let node_name = opts
                 .state
@@ -56,7 +50,7 @@ impl StartCommand {
         match inactive_nodes.len() {
             0 => {
                 opts.terminal
-                    .stdout()
+                    .to_stdout()
                     .plain(fmt_info!(
                         "All the nodes are already started, nothing to do. Exiting gratefully"
                     ))
@@ -72,7 +66,7 @@ impl StartCommand {
                 match selected_nodes.len() {
                     0 => {
                         opts.terminal
-                            .stdout()
+                            .to_stdout()
                             .plain(fmt_info!("No node selected, exiting gratefully!"))
                             .write_line()?;
                     }
@@ -83,7 +77,7 @@ impl StartCommand {
                             &selected_nodes.join(", ")
                         )) {
                             opts.terminal
-                                .stdout()
+                                .to_stdout()
                                 .plain(fmt_info!("No node selected, exiting gratefully!"))
                                 .write_line()?;
                             return Ok(());
@@ -93,7 +87,7 @@ impl StartCommand {
                             start_multiple_nodes(ctx, &opts, &selected_nodes).await?;
 
                         opts.terminal
-                            .stdout()
+                            .to_stdout()
                             .plain(formatted_starts_result.join("\n"))
                             .write_line()?;
                     }
@@ -117,7 +111,7 @@ async fn start_single_node(
     // Abort if node is already running
     if node_info.is_running() {
         opts.terminal
-            .stdout()
+            .to_stdout()
             .plain(fmt_err!(
                 "The node '{node_name}' is already running. If you want to restart it you can \
                     call `ockam node stop {node_name}` and then `ockam node start {node_name}`"
@@ -126,10 +120,10 @@ async fn start_single_node(
         return Ok(());
     }
 
-    let mut node: BackgroundNodeClient = run_node(node_name, ctx, &opts).await?;
-    let node_status = get_node_resources(ctx, &opts.state, &mut node, true).await?;
+    let mut node = run_node(node_name, ctx, &opts).await?;
+    let node_status = get_node_resources(ctx, opts.state.clone(), &mut node).await?;
     opts.terminal
-        .stdout()
+        .to_stdout()
         .plain(&node_status)
         .json(serde_json::to_string(&node_status).into_diagnostic()?)
         .write_line()?;
@@ -173,17 +167,22 @@ async fn run_node(
         .map(|a| a.to_string())
         .unwrap_or("no transport address".to_string());
 
+    let node_callback = NodeCallback::create().await?;
+
     // Restart node
     #[allow(clippy::field_reassign_with_default)]
     let cmd = {
         let mut cmd = CreateCommand::default();
         cmd.name = node_name.to_string();
         cmd.tcp_listener_address = node_address;
+        cmd.tcp_callback_port = Some(node_callback.callback_port());
         cmd
     };
-    spawn_node(opts, cmd).await?;
+    let handle = spawn_node(opts, cmd)?;
+    wait_for_node_callback(handle, node_callback).await?;
 
-    let node = BackgroundNodeClient::create_to_node(ctx, &opts.state, node_name).await?;
+    let node = BackgroundNodeClient::create_to_node(ctx, opts.state.clone(), node_name)?;
+
     Ok(node)
 }
 

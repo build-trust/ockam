@@ -77,6 +77,9 @@ impl KafkaOutletController {
                     false,
                     OutletAccessControl::WithPolicyExpression(self.policy_expression.clone()),
                     false,
+                    false,
+                    false,
+                    false,
                 )
                 .await
                 .map(|info| info.to)?;

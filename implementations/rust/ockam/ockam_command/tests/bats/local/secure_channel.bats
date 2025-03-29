@@ -14,6 +14,23 @@ teardown() {
 
 # ===== TESTS
 
+@test "secure channel - CRUD" {
+  port=$(random_port)
+  run_success "$OCKAM" node create n1
+  run_success "$OCKAM" node create n2 --tcp-listener-address="127.0.0.1:$port"
+  run_success "$OCKAM" secure-channel create --from n1 --to /node/n2/service/api
+
+  address=$("$OCKAM" secure-channel list --at n1 --jq '.[0].address') # this will have the form of "/service/d8d0ff24"
+  address="${address//\"/}"                                           # remove quotes from address string
+
+  # retrieve from local node
+  run_success "$OCKAM" secure-channel show --at "/node/n1$address" --jq '.route'
+  assert_output --partial "/service/api"
+  # retrieve given an arbitrary address
+  run_success "$OCKAM" secure-channel show --at "/dnsaddr/localhost/tcp/$port/service/api" --jq '.route'
+  assert_output --partial "/service/api"
+}
+
 @test "secure channel - create secure channel and send message through it" {
   run_success "$OCKAM" node create n1
   run_success "$OCKAM" node create n2

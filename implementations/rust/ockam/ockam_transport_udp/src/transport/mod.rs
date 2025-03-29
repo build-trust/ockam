@@ -20,8 +20,8 @@ pub struct UdpTransport {
 #[async_trait]
 pub trait UdpTransportExtension: HasContext {
     /// Create a UDP transport
-    async fn create_udp_transport(&self) -> Result<UdpTransport> {
-        UdpTransport::create(self.get_context()).await
+    async fn create_udp_transport(&self) -> Result<Arc<UdpTransport>> {
+        UdpTransport::get_or_create(self.get_context())
     }
 }
 

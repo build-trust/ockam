@@ -14,43 +14,52 @@ CLI Behavior
 
 Logging
 - OCKAM_LOG (deprecated, use OCKAM_LOGGING and OCKAM_LOG_LEVEL instead): a `string` that defines the verbosity of the logs when the `--verbose` argument is not passed: `info`, `warn`, `error`, `debug` or `trace`.
-- OCKAM_LOGGING: set this variable to any value in order to enable logging.
+- OCKAM_LOGGING: set this variable to a true value to enable logging: `1`, `true`, `yes`. Default value: `false`
 - OCKAM_LOG_LEVEL: a `string` that defines the verbosity of the logs when the `--verbose` argument is not passed: `info`, `warn`, `error`, `debug` or `trace`. Default value: `debug`.
 - OCKAM_LOG_FORMAT: a `string` that overrides the default format of the logs: `default`, `json`, or `pretty`. Default value: `default`.
 - OCKAM_LOG_MAX_SIZE_MB: an `integer` that defines the maximum size of a log file in MB. Default value `100`.
 - OCKAM_LOG_MAX_FILES: an `integer` that defines the maximum number of log files to keep per node. Default value `60`.
-- OCKAM_LOG_CRATES_FILTER: a filter for log messages based on crate names: `all`, `default`, comma-separated list of crate names. Default value: `default`, i.e. the list of `ockam` crates.
+- OCKAM_LOG_CRATES_FILTER: crates to use as a filter for log messages: `all`, `basic`, `core` or a comma-separated list of crate names. If no value is specified the filter used depends on the log level. The INFO level only displays `basic` messages, other levels display the core `ockam` crates.
 
 Database
-- OCKAM_POSTGRES_HOST: Postgres database host. Example: 'localhost'.
-- OCKAM_POSTGRES_PORT: Postgres database port. Example: 5432.
-- OCKAM_POSTGRES_DATABASE_NAME: Postgres database name. Default value: 'postgres'.
-- OCKAM_POSTGRES_USER: Postgres database user. If it is not set, no authorization will be used to access the database.
-- OCKAM_POSTGRES_PASSWORD: Postgres database password. If it is not set, no authorization will be used to access the database.
+- OCKAM_SQLITE_IN_MEMORY: a `boolean` to set the SQLite mode to `memory`. This can only be used in the `node create` command with the `--foreground` flag. Default value: `false`.
+- OCKAM_DATABASE_CONNECTION_URL: Database url in the form `postgres://[{user}:{password}@]{host}:{port}/{database_name}`. Alternatively provide INSTANCE + USER + PASSWORD below. Example: 'postgres://admin:secr3t@localhost:5432/ockam'.
+- OCKAM_DATABASE_INSTANCE: Database host, port and name in the form `{host}:{port}/{database_name}`.
+- OCKAM_DATABASE_USER: The database user
+- OCKAM_DATABASE_PASSWORD: The database user password
+- OCKAM_DATABASE_USER_AND_PASSWORD: The database user password as `{"username":"pgadmin", "password":"12345"}` for environments that provide both at the same time.
 
 Tracing
-- OCKAM_OPENTELEMETRY_EXPORT: set this variable to a false value to disable tracing: `0`, `false`, `no`. Default value: `true`
+- OCKAM_TELEMETRY_EXPORT: set this variable to a false value to disable tracing: `0`, `false`, `no`. Default value: `true`
 - OCKAM_OPENTELEMETRY_ENDPOINT: the URL of an OpenTelemetry collector accepting gRPC.
 - OCKAM_OPENTELEMETRY_HEADERS: additional headers for the OTLP collector. This is where the Honeycomb API key can be specified if sending traces to Honeycomb directly.
-- OCKAM_FOREGROUND_OPENTELEMETRY_ENDPOINT_CONNECTION_TIMEOUT: Timeout for checking the availability of the OpenTelemetry collector endpoint for commands. Default value: `500ms`.
-- OCKAM_BACKGROUND_OPENTELEMETRY_ENDPOINT_CONNECTION_TIMEOUT: Timeout for checking the availability of the OpenTelemetry collector endpoint for a background node. Default value: `5s`.
+- OCKAM_FOREGROUND_TELEMETRY_ENDPOINT_CONNECTION_TIMEOUT: Timeout for checking the availability of the OpenTelemetry collector endpoint for commands. Default value: `500ms`.
+- OCKAM_BACKGROUND_TELEMETRY_ENDPOINT_CONNECTION_TIMEOUT: Timeout for checking the availability of the OpenTelemetry collector endpoint for a background node. Default value: `5s`.
 - OCKAM_SPAN_EXPORT_TIMEOUT: Timeout for trying to export spans. Default value: `5s`.
 - OCKAM_LOG_EXPORT_TIMEOUT: Timeout for trying to export log records. Default value: `5s`.
 - OCKAM_FOREGROUND_SPAN_EXPORT_SCHEDULED_DELAY: Timeout for exporting the current batch of spans. Default value: `1000s` (this value is high to avoid a deadlock in the tracing library).
 - OCKAM_BACKGROUND_SPAN_EXPORT_SCHEDULED_DELAY: Timeout for exporting the current batch of spans. Default value: `5s`.
 - OCKAM_SPAN_EXPORT_QUEUE_SIZE: Size of the queue used to store batched spans before export. When the queue is full, spans are dropped. Default value: `32768`
 - OCKAM_LOG_EXPORT_QUEUE_SIZE: Size of the queue used to store batched log records before export. When the queue is full, log records are dropped. Default value: `32768`
-- OCKAM_TRACING_GLOBAL_ERROR_HANDLER: Configuration for printing tracing/logging errors: `console`, `logfile`, `off`. Default value: `logfile`.
-- OCKAM_FOREGROUND_LOG_EXPORT_CUTOFF: Cutoff time for sending log records batches to an OpenTelemetry foreground node, without waiting for a response. Default value: `3s`.
-- OCKAM_FOREGROUND_SPAN_EXPORT_CUTOFF: Cutoff time for sending span batches to an OpenTelemetry foreground inlet, without waiting for a response. Default value: `3s`.
-- OCKAM_BACKGROUND_LOG_EXPORT_CUTOFF: Cutoff time for sending log records batches to an OpenTelemetry baclground node, without waiting for a response. Default value: `3s`.
-- OCKAM_BACKGROUND_SPAN_EXPORT_CUTOFF: Cutoff time for sending span batches to an OpenTelemetry background inlet, without waiting for a response. Default value: `3s`.
+- OCKAM_FOREGROUND_LOG_EXPORT_CUTOFF: Cutoff time for sending log records batches from a foreground command, without waiting for a response. Default value: `3s`.
+- OCKAM_FOREGROUND_SPAN_EXPORT_CUTOFF: Cutoff time for sending span batches from a foreground command, without waiting for a response. Default value: `3s`.
+- OCKAM_BACKGROUND_LOG_EXPORT_CUTOFF: Cutoff time for sending log records batches from a background node, without waiting for a response. Default value: `3s`.
+- OCKAM_BACKGROUND_SPAN_EXPORT_CUTOFF: Cutoff time for sending span batches from a background node, without waiting for a response. Default value: `3s`.
 
-UDP Puncture
+UDP
 - OCKAM_RENDEZVOUS_SERVER: set this variable to the hostname and port of the Rendezvous service
+- OCKAM_UDP_PENDING_MESSAGES_PER_PEER: maximum number of messages per UDP peer that are cached to be assembled if their parts arrive out of order. Default value: 5
+- OCKAM_UDP_MAX_ON_THE_WIRE_PACKET_SIZE: maximum size of a UDP packet on the wire. Default value: 508
 
-TCP Portals
-- OCKAM_PRIVILEGED: if variable is set, all TCP Inlets/Outlets will use eBPF (overrides `--privileged` argument for `ockam tcp-inlet create` and `ockam tcp-outlet create`).
+TCP
+- OCKAM_PRIVILEGED: if variable is set, all TCP Inlets/Outlets will use eBPF (overrides `--privileged` argument for `ockam tcp-inlet create` and `ockam tcp-outlet create`). WARNING: This flag value should be equal on both ends of a portal (inlet and outlet)
+- OCKAM_TCP_PORTAL_PAYLOAD_LENGTH: size of the buffer into which TCP Portal reads the TCP stream. Default value: `128 * 1024`
+- OCKAM_TCP_PORTAL_SOCKET_LENGTH: Length of the socket for inlet listeners and outlet connections (`SO_SNDBUF` and `SO_RCVBUF`)
+- OCKAM_TCP_PORTAL_SKIP_HANDSHAKE: skip Portal handshake for lower latency, but also lower throughput. WARNING: This flag value should be equal on both ends of a portal (inlet and outlet)
+- OCKAM_TCP_PORTAL_ENABLE_NAGLE: enable Nagle's algorithm for Portal TCP streams for potentially higher throughput, but higher latency
+- OCKAM_TCP_PORTAL_ENABLE_MPTCP: Enables MPTCP support for inlet listeners and outlet connections
+- OCKAM_ENABLE_MPTCP: Enables MPTCP on the node's TCP listener
+- OCKAM_TCP_SOCKET_LENGTH: Length of the socket for TCP listeners and connections (`SO_SNDBUF` and `SO_RCVBUF`)
 
 Devs Usage
 - OCKAM: a `string` that defines the path to the ockam binary to use.
@@ -58,9 +67,11 @@ Devs Usage
 - OCKAM_CONTROLLER_ADDR: a `string` that overrides the default address of the controller.
 - OCKAM_CONTROLLER_IDENTITY_ID: a `string` that overrides the default identifier of the controller.
 - OCKAM_AUTHENTICATOR_ENDPOINT: a `string` that overrides the default endpoint of the authenticator. Defaults to `https://account.ockam.io`.
+- OCKAM_ORCHESTRATOR_UI_URL: a `string` that overrides the default URL of the orchestrator UI. Defaults to `https://orchestrator.ockam.io`.
 - OCKAM_DEVELOPER: a `boolean` specifying if the current user is an Ockam developer (for more accurate metrics).
 - OCKAM_OPENTELEMETRY_EXPORT_DEBUG: a `boolean` specifying if debug messages must be printed to the console when the OpenTelemetry export is configured.
-- OCKAM_OPENTELEMETRY_EXPORT_VIA_PORTAL: a `boolean` specifying if traces must be exported via a portal when a project exists (this feature flag is set to `false` for now)
+- OCKAM_TELEMETRY_EXPORT_VIA_PROJECT: a `boolean` specifying if traces must be exported via a secure channel to the project node (when it exists)
+- OCKAM_TELEMETRY_EXPORT_VIA_AUTHORITY: a `boolean` specifying if traces must be exported via a secure channel to the authority node (when it exists). The `OCKAM_TELEMETRY_EXPORT_VIA_PROJECT` value takes precedence.
 - OCKAM_DEFAULT_TIMEOUT: a `Duration` used to timeout secure channels creation and API requests. Default value: `120s`.
 
 Internal (to enable some special behavior in the logic)

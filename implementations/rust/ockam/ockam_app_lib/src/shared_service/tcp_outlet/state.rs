@@ -13,7 +13,8 @@ impl ModelState {
     }
 
     pub fn delete_tcp_outlet(&mut self, worker_addr: &Address) {
-        self.tcp_outlets.retain(|x| &x.worker_addr != worker_addr);
+        self.tcp_outlets
+            .retain(|x| &x.worker_address != worker_addr);
     }
 
     pub fn get_tcp_outlets(&self) -> &[OutletStatus] {
@@ -37,14 +38,14 @@ impl AppState {
         let context = self.context();
         for tcp_outlet in self.model(|m| m.get_tcp_outlets().to_vec()).await {
             let access_control = match self
-                .create_invitations_access_control(tcp_outlet.worker_addr.clone())
+                .create_invitations_access_control(tcp_outlet.worker_address.clone())
                 .await
             {
                 Ok(a) => a,
                 Err(e) => {
                     error!(
                         ?e,
-                        worker_addr = %tcp_outlet.worker_addr,
+                        worker_addr = %tcp_outlet.worker_address,
                         "Failed to create access control"
                     );
                     continue;
@@ -52,37 +53,40 @@ impl AppState {
             };
 
             let incoming_ac = access_control.create_incoming();
-            let outgoing_ac = match access_control.create_outgoing(self.context_ref()).await {
+            let outgoing_ac = match access_control.create_outgoing(self.context_ref()) {
                 Ok(a) => a,
                 Err(e) => {
                     error!(
                         ?e,
-                        worker_addr = %tcp_outlet.worker_addr,
+                        worker_addr = %tcp_outlet.worker_address,
                         "Failed to create access control"
                     );
                     continue;
                 }
             };
 
-            debug!(worker_addr = %tcp_outlet.worker_addr, "Restoring outlet");
+            debug!(worker_addr = %tcp_outlet.worker_address, "Restoring outlet");
             let _ = node_manager
                 .create_outlet(
                     &context,
                     tcp_outlet.to,
                     false,
-                    Some(tcp_outlet.worker_addr.clone()),
+                    Some(tcp_outlet.worker_address.clone()),
                     true,
                     OutletAccessControl::AccessControl((
                         Arc::new(incoming_ac),
                         Arc::new(outgoing_ac),
                     )),
                     false,
+                    false,
+                    false,
+                    false,
                 )
                 .await
                 .map_err(|e| {
                     error!(
                         ?e,
-                        worker_addr = %tcp_outlet.worker_addr,
+                        worker_addr = %tcp_outlet.worker_address,
                         "Failed to restore outlet"
                     );
                 });

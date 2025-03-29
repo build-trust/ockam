@@ -11,6 +11,7 @@ use sqlx::pool::PoolOptions;
 use sqlx::{Any, ConnectOptions, Pool};
 use sqlx_core::any::AnyConnection;
 use sqlx_core::executor::Executor;
+use sqlx_core::row::Row;
 use tempfile::NamedTempFile;
 use tokio_retry::strategy::{jitter, FixedInterval};
 use tokio_retry::Retry;
@@ -21,7 +22,7 @@ use crate::database::database_configuration::DatabaseConfiguration;
 use crate::database::migrations::application_migration_set::ApplicationMigrationSet;
 use crate::database::migrations::node_migration_set::NodeMigrationSet;
 use crate::database::migrations::MigrationSet;
-use crate::database::DatabaseType;
+use crate::database::{DatabaseType, MigrationStatus};
 use ockam_core::compat::rand::random_string;
 use ockam_core::compat::sync::Arc;
 use ockam_core::{Error, Result};
@@ -76,13 +77,26 @@ impl SqlxDatabase {
     }
 
     /// Constructor for a sqlite database
-    pub async fn create_sqlite(path: &Path) -> Result<Self> {
+    pub async fn create_sqlite(path: impl AsRef<Path>) -> Result<Self> {
         Self::create(&DatabaseConfiguration::sqlite(path)).await
     }
 
+    /// Constructor for a sqlite database with no migrations
+    pub async fn create_sqlite_no_migration(path: impl AsRef<Path>) -> Result<Self> {
+        Self::create_no_migration(&DatabaseConfiguration::sqlite(path)).await
+    }
+
     /// Constructor for a sqlite application database
-    pub async fn create_application_sqlite(path: &Path) -> Result<Self> {
+    pub async fn create_application_sqlite(path: impl AsRef<Path>) -> Result<Self> {
         Self::create_application_database(&DatabaseConfiguration::sqlite(path)).await
+    }
+
+    /// Constructor for a postgres database that doesn't apply migrations
+    pub async fn create_postgres_no_migration(legacy_sqlite_path: Option<PathBuf>) -> Result<Self> {
+        match DatabaseConfiguration::postgres_with_legacy_sqlite_path(legacy_sqlite_path)? {
+            Some(configuration) => Self::create_no_migration(&configuration).await,
+            None => Err(Error::new(Origin::Core, Kind::NotFound, "There is no postgres database configuration, or it is incomplete. Please run ockam environment to check the database environment variables".to_string())),
+        }
     }
 
     /// Constructor for a local postgres database with no data
@@ -133,6 +147,8 @@ impl SqlxDatabase {
         configuration: &DatabaseConfiguration,
         migration_set: Option<impl MigrationSet>,
     ) -> Result<Self> {
+        debug!("Creating SQLx database using configuration");
+
         configuration.create_directory_if_necessary()?;
 
         // creating a new database might be failing a few times
@@ -167,11 +183,21 @@ impl SqlxDatabase {
                 .await?;
 
                 let migrator = migration_set.create_migrator()?;
-                let result = migrator.migrate(&database.pool).await;
+                let status = migrator.migrate(&database.pool).await?;
                 database.close().await;
-
-                result?
-            }
+                match status {
+                    MigrationStatus::UpToDate(_) => (),
+                    MigrationStatus::Todo(_, _) => (),
+                    MigrationStatus::Failed(version, reason) => Err(Error::new(
+                        Origin::Node,
+                        Kind::Conflict,
+                        format!(
+                            "Sql migration previously failed for version {}. Reason: {}",
+                            version, reason
+                        ),
+                    ))?,
+                }
+            };
 
             // re-create the connection pool with the correct configuration
             Retry::spawn(retry_strategy, || async {
@@ -196,9 +222,23 @@ impl SqlxDatabase {
             })
             .await?;
 
-            if let Some(migration_set) = migration_set {
-                let migrator = migration_set.create_migrator()?;
-                migrator.migrate(&database.pool).await?;
+            // Only run the postgres migrations if the database has never been created.
+            // This is mostly for tests. In production the database schema must be created separately
+            // during the first deployment.
+            let migrate_database = if configuration.database_type() == DatabaseType::Postgres {
+                let database_schema_already_created: bool = sqlx::query("SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'identity')")
+                    .fetch_one(&*database.pool)
+                    .await.into_core()?.get(0);
+                !database_schema_already_created
+            } else {
+                true
+            };
+
+            if migrate_database {
+                if let Some(migration_set) = migration_set {
+                    let migrator = migration_set.create_migrator()?;
+                    migrator.migrate(&database.pool).await?;
+                }
             }
 
             database
@@ -326,7 +366,7 @@ PRAGMA busy_timeout = 10000;
     }
 
     /// Create a connection for a SQLite database
-    pub async fn create_sqlite_single_connection_pool(path: &Path) -> Result<Pool<Any>> {
+    pub async fn create_sqlite_single_connection_pool(path: impl AsRef<Path>) -> Result<Pool<Any>> {
         Self::create_connection_pool(&DatabaseConfiguration::sqlite(path).single_connection()).await
     }
 
@@ -334,11 +374,17 @@ PRAGMA busy_timeout = 10000;
         install_default_drivers();
         // SQLite in-memory DB get wiped if there is no connection to it.
         // The below setting tries to ensure there is always an open connection
+        let file_name = random_string();
+        let options = AnyConnectOptions::from_str(
+            format!("sqlite:file:{file_name}?mode=memory&cache=shared").as_str(),
+        )
+        .map_err(Self::map_sql_err)?
+        .log_statements(LevelFilter::Trace)
+        .log_slow_statements(LevelFilter::Trace, Duration::from_secs(1));
         let pool_options = PoolOptions::new().idle_timeout(None).max_lifetime(None);
 
-        let file_name = random_string();
         let pool = pool_options
-            .connect(format!("sqlite:file:{file_name}?mode=memory&cache=shared").as_str())
+            .connect_with(options)
             .await
             .map_err(Self::map_sql_err)?;
         Ok(pool)
@@ -420,6 +466,21 @@ impl Clean {
     }
 }
 
+/// This function can be used to run some test code with the 2 SQLite databases implementations
+pub async fn with_sqlite_dbs<F, Fut>(f: F) -> Result<()>
+where
+    F: Fn(SqlxDatabase) -> Fut + Send + Sync + 'static,
+    Fut: Future<Output = Result<()>> + Send + 'static,
+{
+    let db = SqlxDatabase::in_memory("test").await?;
+    rethrow("SQLite in memory", f(db)).await?;
+
+    let db_file = NamedTempFile::new().unwrap();
+    let db = SqlxDatabase::create_sqlite(db_file.path()).await?;
+    rethrow("SQLite on disk", f(db)).await?;
+    Ok(())
+}
+
 /// This function can be used to run some test code with the 3 different databases implementations
 pub async fn with_dbs<F, Fut>(f: F) -> Result<()>
 where
@@ -433,10 +494,35 @@ where
     let db = SqlxDatabase::create_sqlite(db_file.path()).await?;
     rethrow("SQLite on disk", f(db)).await?;
 
-    // only run the postgres tests if the OCKAM_POSTGRES_* environment variables are set
+    // only run the postgres tests if the OCKAM_DATABASE_CONNECTION_URL environment variables is set
+    with_postgres(f).await?;
+    Ok(())
+}
+
+/// This function can be used to run some test code with a postgres database
+pub async fn with_postgres<F, Fut>(f: F) -> Result<()>
+where
+    F: Fn(SqlxDatabase) -> Fut + Send + Sync + 'static,
+    Fut: Future<Output = Result<()>> + Send + 'static,
+{
+    // only run the postgres tests if the OCKAM_DATABASE_CONNECTION_URL environment variables is set
     if let Ok(db) = SqlxDatabase::create_new_postgres().await {
+        db.truncate_all_postgres_tables().await?;
         rethrow("Postgres local", f(db.clone())).await?;
-        db.drop_all_postgres_tables().await?;
+    };
+    Ok(())
+}
+
+/// This function can be used to avoid running a test if the postgres database is used.
+pub async fn skip_if_postgres<F, Fut, R>(f: F) -> std::result::Result<(), R>
+where
+    F: Fn() -> Fut + Send + Sync + 'static,
+    Fut: Future<Output = std::result::Result<(), R>> + Send + 'static,
+    R: From<Error>,
+{
+    // only run the postgres tests if the OCKAM_DATABASE_CONNECTION_URL environment variable is not set
+    if DatabaseConfiguration::postgres()?.is_none() {
+        f().await?
     };
     Ok(())
 }
@@ -455,7 +541,7 @@ where
     let db = SqlxDatabase::create_application_sqlite(db_file.path()).await?;
     rethrow("SQLite on disk", f(db)).await?;
 
-    // only run the postgres tests if the OCKAM_POSTGRES_* environment variables are set
+    // only run the postgres tests if the OCKAM_DATABASE_CONNECTION_URL environment variable is set
     if let Ok(db) = SqlxDatabase::create_new_application_postgres().await {
         rethrow("Postgres local", f(db.clone())).await?;
         db.drop_all_postgres_tables().await?;
@@ -632,7 +718,7 @@ pub mod tests {
         Ok(())
     }
 
-    /// HELPERS
+    // HELPERS
     async fn insert_identity(db: &SqlxDatabase) -> Result<AnyQueryResult> {
         sqlx::query("INSERT INTO named_identity (identifier, name, vault_name, is_default) VALUES ($1, $2, $3, $4)")
             .bind("Ifa804b7fca12a19eed206ae180b5b576860ae651")

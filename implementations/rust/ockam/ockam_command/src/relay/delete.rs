@@ -7,16 +7,15 @@ use crate::{docs, CommandGlobalOpts};
 use ockam::Context;
 use ockam_api::address::extract_address_value;
 use ockam_api::colors::OckamColor;
-use ockam_api::nodes::models::relay::RelayInfo;
+use ockam_api::nodes::models::relay::RelayInfoList;
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_api::terminal::{Terminal, TerminalStream};
 use ockam_api::{color, fmt_ok};
 use ockam_core::api::Request;
-use ockam_core::AsyncTryClone;
+use ockam_core::TryClone;
 
 use crate::terminal::tui::DeleteCommandTui;
 use crate::tui::PluralTerm;
-use crate::util::async_cmd;
 
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
 
@@ -38,27 +37,16 @@ pub struct DeleteCommand {
 }
 
 impl DeleteCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |ctx| async move {
-            self.async_run(&ctx, opts).await
-        })
-    }
-
     pub fn name(&self) -> String {
         "relay delete".into()
     }
 
-    pub async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
-        DeleteTui::run(
-            ctx.async_try_clone().await.into_diagnostic()?,
-            opts,
-            self.clone(),
-        )
-        .await
+    pub async fn run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        DeleteTui::run(ctx.try_clone().into_diagnostic()?, opts, self.clone()).await
     }
 }
 
-#[derive(AsyncTryClone)]
+#[derive(TryClone)]
 struct DeleteTui {
     ctx: Context,
     opts: CommandGlobalOpts,
@@ -72,7 +60,7 @@ impl DeleteTui {
         opts: CommandGlobalOpts,
         cmd: DeleteCommand,
     ) -> miette::Result<()> {
-        let node = BackgroundNodeClient::create(&ctx, &opts.state, &cmd.at).await?;
+        let node = BackgroundNodeClient::create(&ctx, opts.state.clone(), &cmd.at).await?;
         let tui = Self {
             ctx,
             opts,
@@ -104,11 +92,11 @@ impl DeleteCommandTui for DeleteTui {
     }
 
     async fn list_items_names(&self) -> miette::Result<Vec<String>> {
-        let relays: Vec<RelayInfo> = self
+        let relays: RelayInfoList = self
             .node
             .ask(&self.ctx, Request::get("/node/relay"))
             .await?;
-        Ok(relays.into_iter().map(|i| i.name().to_string()).collect())
+        Ok(relays.0.into_iter().map(|i| i.name().to_string()).collect())
     }
 
     async fn delete_single(&self, relay_name: &str) -> miette::Result<()> {
@@ -120,7 +108,7 @@ impl DeleteCommandTui for DeleteTui {
             )
             .await?;
         self.terminal()
-            .stdout()
+            .to_stdout()
             .plain(fmt_ok!(
                 "Relay with name {} on Node {} has been deleted",
                 color!(relay_name, OckamColor::PrimaryResource),

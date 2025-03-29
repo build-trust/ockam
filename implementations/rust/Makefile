@@ -49,11 +49,7 @@ nextest_%:
 	cargo --locked nextest --config-file $(ROOT_DIR)/tools/nextest/.config/nextest.toml run -E 'package($*)' --no-fail-fast
 	cargo --locked test --doc
 test_postgres:
-	export OCKAM_POSTGRES_HOST=localhost
-	export OCKAM_POSTGRES_PORT=5433
-	export OCKAM_POSTGRES_DATABASE_NAME=test
-	export OCKAM_POSTGRES_USER=postgres
-	export OCKAM_POSTGRES_PASSWORD=password
+	export OCKAM_DATABASE_CONNECTION_URL=postgres://postgres:password@localhost:5433/test
 	cargo --locked nextest --config-file $(ROOT_DIR)/tools/nextest/.config/nextest.toml run -E 'test(sql) or test(cli_state)' --no-fail-fast --test-threads 1
 
 lint: lint_cargo_fmt_check lint_cargo_deny lint_cargo_clippy

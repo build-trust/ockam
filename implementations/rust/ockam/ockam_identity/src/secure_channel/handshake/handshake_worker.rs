@@ -4,14 +4,14 @@ use ockam_core::compat::boxed::Box;
 use ockam_core::compat::sync::{Arc, RwLock};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{
-    AllowAll, Any, DenyAll, Error, Mailbox, Mailboxes, NeutralMessage, OutgoingAccessControl,
-    Route, Routed, SecureChannelMetadata,
+    AddressMetadata, AllowAll, Any, DenyAll, Error, Mailbox, Mailboxes, NeutralMessage,
+    OutgoingAccessControl, Route, Routed, SecureChannelMetadata,
 };
 use ockam_core::{Result, Worker};
 use ockam_node::callback::CallbackSender;
 use ockam_node::{Context, WorkerBuilder};
 use ockam_vault::AeadSecretKeyHandle;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, error, info, trace, warn, Level};
 use tracing_attributes::instrument;
 
 use crate::models::Identifier;
@@ -74,10 +74,10 @@ impl Worker for HandshakeWorker {
         if let Some(state_machine) = self.state_machine.as_mut() {
             match state_machine.on_event(Initialize).await? {
                 SendMessage(message) => {
-                    debug!(
-                        "remote route {:?}, decryptor remote {:?}",
-                        self.remote_route.clone(),
-                        self.addresses.decryptor_remote.clone()
+                    trace!(
+                        remote_route = ?self.remote_route,
+                        decryptor_remote = %self.addresses.decryptor_remote,
+                        "sending message",
                     );
                     context
                         .send_from_address(
@@ -116,7 +116,7 @@ impl Worker for HandshakeWorker {
     }
 
     async fn shutdown(&mut self, context: &mut Self::Context) -> Result<()> {
-        let _ = context.stop_worker(self.addresses.encryptor.clone()).await;
+        let _ = context.stop_address(&self.addresses.encryptor);
         self.secure_channels
             .secure_channel_registry
             .unregister_channel(&self.addresses.encryptor);
@@ -213,13 +213,9 @@ impl HandshakeWorker {
                 &addresses,
                 decryptor_outgoing_access_control,
             ))
-            .start(context)
-            .await?;
+            .start(context)?;
 
-        debug!(
-            "Starting SecureChannel {} at remote: {}, local: {}",
-            role, addresses.decryptor_remote, addresses.encryptor
-        );
+        debug!(decryptor=%my_identifier, encryptor=%addresses.encryptor, "starting SecureChannel {role}");
 
         // before sending messages make sure that the handshake is finished and
         // the encryptor worker is ready
@@ -232,11 +228,18 @@ impl HandshakeWorker {
                     match res {
                         Ok(their_identifier) => Some(their_identifier),
                         Err(err) => {
-                            error!(
-                            "Timeout {:?} or error reached when creating secure channel for: {}. Encryptor: {}. Error: {err:?}",
-                            timeout, my_identifier, addresses.encryptor
-                        );
-
+                            match err.code().kind {
+                                Kind::Timeout => {
+                                    warn!(?timeout, identifier=%my_identifier, encryptor=%addresses.encryptor,
+                                        "timeout reached when creating secure channel",
+                                    );
+                                }
+                                _ => {
+                                    error!(identifier=%my_identifier, encryptor=%addresses.encryptor, ?err,
+                                        "failed to create secure channel",
+                                    );
+                                }
+                            }
                             return Err(err);
                         }
                     }
@@ -258,12 +261,17 @@ impl HandshakeWorker {
     ///   - one for decryption
     ///
     /// See also the handle_decrypt method.
-    #[instrument(skip_all, name = "HandshakeWorker::handle_message")]
+    #[instrument(skip_all, name = "HandshakeWorker::handle_message", level = Level::TRACE)]
     async fn handle_handshake(
         &mut self,
         context: &mut Context,
         message: Routed<Any>,
     ) -> Result<()> {
+        trace!(
+            remote_route = ?self.remote_route,
+            decryptor_remote = %self.addresses.decryptor_remote,
+            "handling handshake message",
+        );
         let message = message.into_local_message();
         let return_route = message.return_route;
         let payload = message.payload;
@@ -313,20 +321,25 @@ impl HandshakeWorker {
     ///
     /// In reality, there's only one worker, the HandshakeWorker, serves as both a worker for handshakes
     /// and for decryption.
-    #[instrument(skip_all, name = "DecryptorWorker::handle_message")]
+    #[instrument(skip_all, name = "DecryptorWorker::handle_message", level = Level::TRACE)]
     async fn handle_decrypt(&mut self, context: &mut Context, message: Routed<Any>) -> Result<()> {
+        trace!(
+            remote_route = ?self.remote_route,
+            decryptor_remote = %self.addresses.decryptor_remote,
+            "handling decrypt message",
+        );
         let decryptor_handler = self.decryptor_handler.as_mut().unwrap();
         let msg_addr = message.msg_addr();
 
         if self.key_exchange_only {
-            if msg_addr == self.addresses.decryptor_api {
+            if msg_addr == &self.addresses.decryptor_api {
                 decryptor_handler.handle_decrypt_api(context, message).await
             } else {
                 Err(IdentityError::UnknownChannelMsgDestination)?
             }
-        } else if msg_addr == self.addresses.decryptor_remote {
+        } else if msg_addr == &self.addresses.decryptor_remote {
             decryptor_handler.handle_decrypt(context, message).await
-        } else if msg_addr == self.addresses.decryptor_api {
+        } else if msg_addr == &self.addresses.decryptor_api {
             decryptor_handler.handle_decrypt_api(context, message).await
         } else {
             Err(IdentityError::UnknownChannelMsgDestination)?
@@ -351,6 +364,7 @@ impl HandshakeWorker {
     ) -> Mailboxes {
         let remote_mailbox = Mailbox::new(
             addresses.decryptor_remote.clone(),
+            None,
             // Doesn't matter since we check incoming messages cryptographically,
             // but this may be reduced to allowing only from the transport connection that was used
             // to create this channel initially
@@ -360,11 +374,13 @@ impl HandshakeWorker {
         );
         let internal_mailbox = Mailbox::new(
             addresses.decryptor_internal.clone(),
+            None,
             Arc::new(DenyAll),
             decryptor_outgoing_access_control,
         );
         let api_mailbox = Mailbox::new(
             addresses.decryptor_api.clone(),
+            None,
             Arc::new(AllowAll),
             Arc::new(AllowAll),
         );
@@ -424,16 +440,24 @@ impl HandshakeWorker {
 
             let main_mailbox = Mailbox::new(
                 self.addresses.encryptor.clone(),
+                Some(AddressMetadata {
+                    is_terminal: true,
+                    attributes: vec![SecureChannelMetadata::attribute(
+                        their_identifier.clone().into(),
+                    )],
+                }),
                 Arc::new(AllowAll),
                 Arc::new(AllowAll),
             );
             let api_mailbox = Mailbox::new(
                 self.addresses.encryptor_api.clone(),
+                None,
                 Arc::new(AllowAll),
                 Arc::new(AllowAll),
             );
             let internal_mailbox = Mailbox::new(
                 self.addresses.encryptor_internal.clone(),
+                None,
                 Arc::new(AllowAll),
                 Arc::new(DenyAll),
             );
@@ -443,14 +467,7 @@ impl HandshakeWorker {
                     main_mailbox,
                     vec![api_mailbox, internal_mailbox],
                 ))
-                .terminal_with_attributes(
-                    self.addresses.encryptor.clone(),
-                    vec![SecureChannelMetadata::attribute(
-                        their_identifier.clone().into(),
-                    )],
-                )
-                .start(context)
-                .await?;
+                .start(context)?;
         }
 
         self.persist(
@@ -460,10 +477,9 @@ impl HandshakeWorker {
         .await;
 
         info!(
-            "Initialized SecureChannel {} at local: {}, remote: {}",
+            local = %self.addresses.encryptor, remote = %self.addresses.decryptor_remote,
+            "initialized SecureChannel {}",
             self.role.str(),
-            &self.addresses.encryptor,
-            &self.addresses.decryptor_remote
         );
 
         let their_decryptor_address = self
@@ -493,10 +509,8 @@ impl HandshakeWorker {
 
     async fn persist(&self, their_identifier: Identifier, decryption_key: &AeadSecretKeyHandle) {
         let Some(repository) = &self.secure_channel_repository else {
-            info!(
-                "Skipping persistence. Local: {}, Remote: {}",
-                self.addresses.encryptor, &self.addresses.decryptor_remote
-            );
+            debug!(local = %self.addresses.encryptor, remote = %self.addresses.decryptor_remote,
+                "Skipping persistence. No repository provided");
             return;
         };
 
@@ -510,17 +524,12 @@ impl HandshakeWorker {
         );
         match repository.put(sc).await {
             Ok(_) => {
-                info!(
-                    "Successfully persisted secure channel. Local: {}, Remote: {}",
-                    self.addresses.encryptor, &self.addresses.decryptor_remote,
-                );
+                info!(local = %self.addresses.encryptor, remote = %self.addresses.decryptor_remote,
+                    "Successfully persisted secure channel");
             }
             Err(err) => {
-                warn!(
-                    "Error while persisting secure channel: {err}. Local: {}, Remote: {}",
-                    self.addresses.encryptor, &self.addresses.decryptor_remote
-                );
-
+                warn!(local = %self.addresses.encryptor, remote = %self.addresses.decryptor_remote, %err,
+                    "Error while persisting secure channel");
                 return;
             }
         }
@@ -533,10 +542,8 @@ impl HandshakeWorker {
             .persist_aead_key(decryption_key)
             .await
         {
-            warn!(
-                "Error persisting secure channel key: {err}. Local: {}, Remote: {}",
-                self.addresses.encryptor, &self.addresses.decryptor_remote
-            );
+            warn!(local = %self.addresses.encryptor, remote = %self.addresses.decryptor_remote, %err,
+                "Error persisting secure channel key");
         };
     }
 

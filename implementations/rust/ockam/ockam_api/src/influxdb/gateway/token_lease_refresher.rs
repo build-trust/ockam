@@ -6,31 +6,30 @@ use ockam_core::{api::Error, AllowAll, DenyAll};
 use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
 use std::cmp::max;
-use std::sync::{Arc, Weak};
-use tokio::sync::RwLock;
+use std::sync::{Arc, RwLock as SyncRwLock, Weak};
 
 #[derive(Clone)]
 pub struct TokenLeaseRefresher {
-    token: Arc<RwLock<Option<String>>>,
+    token: Arc<SyncRwLock<Option<String>>>,
 }
 
 impl TokenLeaseRefresher {
     pub fn new_with_fixed_token(token: String) -> TokenLeaseRefresher {
-        let token = Arc::new(RwLock::new(Some(token)));
+        let token = Arc::new(SyncRwLock::new(Some(token)));
         Self { token }
     }
-    pub async fn new(
+    pub fn new(
         ctx: &Context,
         node_manager: Weak<InMemoryNode>,
         lease_issuer_route: MultiAddr,
     ) -> Result<TokenLeaseRefresher, Error> {
-        let token = Arc::new(RwLock::new(None));
-        let mailboxes = Mailboxes::main(
+        let token = Arc::new(SyncRwLock::new(None));
+        let mailboxes = Mailboxes::primary(
             Address::random_tagged("LeaseRetriever"),
             Arc::new(DenyAll),
             Arc::new(AllowAll),
         );
-        let new_ctx = ctx.new_detached_with_mailboxes(mailboxes).await?;
+        let new_ctx = ctx.new_detached_with_mailboxes(mailboxes)?;
 
         let token_clone = token.clone();
         ockam_node::spawn(async move {
@@ -49,13 +48,13 @@ impl TokenLeaseRefresher {
         Ok(Self { token })
     }
 
-    pub async fn get_token(&self) -> Option<String> {
-        self.token.read().await.clone()
+    pub fn get_token(&self) -> Option<String> {
+        self.token.read().unwrap().clone()
     }
 }
 
 async fn refresh_loop(
-    token: Arc<RwLock<Option<String>>>,
+    token: Arc<SyncRwLock<Option<String>>>,
     ctx: Context,
     node_manager: Weak<InMemoryNode>,
     lease_issuer_route: MultiAddr,
@@ -71,7 +70,7 @@ async fn refresh_loop(
             Ok(new_token) => {
                 let duration = new_token.expires_at as u64 - now_t;
                 debug!("Auth Token obtained expires at {}", new_token.expires_at);
-                let mut t = token.write().await;
+                let mut t = token.write().unwrap();
                 *t = Some(new_token.token);
                 // We request a new token once reaching half its duration, with a minimum
                 // of 5 seconds.

@@ -1,15 +1,12 @@
-use std::collections::HashMap;
-use std::str::FromStr;
-
+use crate::node::util::initialize_default_node;
+use crate::util::parsers::hostname_parser;
+use crate::{docs, Command, CommandGlobalOpts};
 use async_trait::async_trait;
 use clap::builder::FalseyValueParser;
 use clap::Args;
 use colorful::Colorful;
 use miette::IntoDiagnostic;
-
-use crate::node::util::initialize_default_node;
-use crate::{docs, Command, CommandGlobalOpts};
-use ockam::transport::HostnamePort;
+use ockam::transport::SchemeHostnamePort;
 use ockam::Address;
 use ockam::Context;
 use ockam_abac::PolicyExpression;
@@ -21,7 +18,8 @@ use ockam_api::colors::{color_primary, color_primary_alt};
 use ockam_api::nodes::models::portal::OutletStatus;
 use ockam_api::nodes::service::tcp_outlets::Outlets;
 use ockam_api::nodes::BackgroundNodeClient;
-use ockam_api::{fmt_info, fmt_ok};
+use ockam_api::{fmt_info, fmt_log, fmt_ok, fmt_warn};
+use std::collections::HashMap;
 
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
@@ -33,20 +31,24 @@ long_about = docs::about(LONG_ABOUT),
 after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct CreateCommand {
+    /// Address of your TCP Outlet, which is part of a route used in other commands.
+    /// This unique address identifies the TCP Outlet worker on the Node on your local machine.
+    /// Examples are `/service/my-outlet` or `my-outlet`.
+    /// If not provided, `outlet` will be used, or a random address will be generated if `outlet` is taken.
+    /// You will need this address when creating a TCP Inlet using `ockam tcp-inlet create`.
+    #[arg(value_parser = extract_address_value)]
+    pub name: Option<String>,
+
     /// TCP address where your TCP server is running: domain:port. Your Outlet will send raw TCP traffic to it
-    #[arg(long, display_order = 900, id = "HOSTNAME_PORT", value_parser = HostnamePort::from_str)]
-    pub to: HostnamePort,
+    #[arg(long, id = "SOCKET_ADDRESS", display_order = 900, value_parser = hostname_parser)]
+    pub to: SchemeHostnamePort,
 
     /// If set, the outlet will establish a TLS connection over TCP
     #[arg(long, display_order = 900, id = "BOOLEAN")]
     pub tls: bool,
 
-    /// Address of your TCP Outlet, which is part of a route that is used in other
-    /// commands. This address must be unique. This address identifies the TCP Outlet
-    /// worker, on the node, on your local machine. Examples are `/service/my-outlet` or
-    /// `my-outlet`. If you don't provide it, `/service/outlet` will be used. You will
-    /// need this address when you create a TCP Inlet (using `ockam tcp-inlet create --to
-    /// <OUTLET_ADDRESS>`)
+    /// Alternative to the <NAME> positional argument.
+    /// Address of your TCP Outlet, which is part of a route used in other commands.
     #[arg(long, display_order = 902, id = "OUTLET_ADDRESS", value_parser = extract_address_value)]
     pub from: Option<String>,
 
@@ -55,12 +57,11 @@ pub struct CreateCommand {
     #[arg(long, display_order = 903, id = "NODE_NAME", value_parser = extract_address_value)]
     pub at: Option<String>,
 
-    /// Policy expression that will be used for access control to the TCP Outlet.
-    /// If you don't provide it, the policy set for the "tcp-outlet" resource type will be used.
-    ///
-    /// You can check the fallback policy with `ockam policy show --resource-type tcp-outlet`.
+    #[arg(help = docs::about("\
+    Policy expression that will be used for access control to the TCP Outlet. \
+    If you don't provide it, the policy set for the \"tcp-outlet\" resource type will be used. \
+    \n\nYou can check the fallback policy with `ockam policy show --resource-type tcp-outlet`"))]
     #[arg(
-        hide = true,
         long,
         visible_alias = "expression",
         display_order = 904,
@@ -70,58 +71,77 @@ pub struct CreateCommand {
 
     /// Use eBPF and RawSocket to access TCP packets instead of TCP data stream.
     /// If `OCKAM_PRIVILEGED` env variable is set to 1, this argument will be `true`.
+    /// WARNING: This flag value should be equal on both ends of a portal (inlet and outlet)
     #[arg(long, env = "OCKAM_PRIVILEGED", value_parser = FalseyValueParser::default(), hide = true)]
     pub privileged: bool,
+
+    /// Skip Portal handshake for lower latency, but also lower throughput
+    /// WARNING: This flag value should be equal on both ends of a portal (inlet and outlet)
+    #[arg(long, env = "OCKAM_TCP_PORTAL_SKIP_HANDSHAKE", value_parser = FalseyValueParser::default()
+    )]
+    pub skip_handshake: bool,
+
+    /// Enable Nagle's algorithm for potentially higher throughput, but higher latency
+    #[arg(long, env = "OCKAM_TCP_PORTAL_ENABLE_NAGLE", value_parser = FalseyValueParser::default())]
+    pub enable_nagle: bool,
+
+    /// Enable MPTCP support
+    #[arg(long, env = "OCKAM_TCP_PORTAL_ENABLE_MPTCP", value_parser = FalseyValueParser::default())]
+    pub enable_mptcp: bool,
 }
 
 #[async_trait]
 impl Command for CreateCommand {
     const NAME: &'static str = "tcp-outlet create";
 
-    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
         initialize_default_node(ctx, &opts).await?;
+        let cmd = self.parse_args(&opts).await?;
 
-        let node = BackgroundNodeClient::create(ctx, &opts.state, &self.at).await?;
+        let node = BackgroundNodeClient::create(ctx, opts.state.clone(), &cmd.at).await?;
         let node_name = node.node_name();
         let outlet_status = {
             let pb = opts.terminal.spinner();
             if let Some(pb) = pb.as_ref() {
                 pb.set_message(format!(
                     "Creating a new TCP Outlet to {}...\n",
-                    color_primary(self.to.to_string())
+                    color_primary(cmd.to.to_string())
                 ));
             }
             node.create_outlet(
                 ctx,
-                self.to.clone(),
-                self.tls,
-                self.from.clone().map(Address::from).as_ref(),
-                self.allow.clone(),
-                self.privileged,
+                cmd.to.clone().into(),
+                cmd.tls,
+                cmd.name.clone().map(Address::from).as_ref(),
+                cmd.allow.clone(),
+                cmd.privileged,
+                cmd.skip_handshake,
+                cmd.enable_nagle,
+                cmd.enable_mptcp,
             )
             .await?
         };
-        self.add_outlet_created_journey_event(&opts, &node_name, &outlet_status)
+        cmd.add_outlet_created_journey_event(&opts, node_name, &outlet_status)
             .await?;
 
         let worker_route = outlet_status.worker_route().into_diagnostic()?;
 
         let mut msg = fmt_ok!(
             "Created a new TCP Outlet in the Node {} at {} bound to {}\n",
-            color_primary(&node_name),
+            color_primary(node_name),
             color_primary(worker_route.to_string()),
-            color_primary(self.to.to_string())
+            color_primary(cmd.to.to_string())
         );
 
-        if self.privileged {
+        if cmd.privileged {
             msg += &fmt_info!(
-                "This Outlet is operating in {} mode\n",
+                "This TCP Outlet is operating in {} mode\n",
                 color_primary_alt("privileged".to_string())
             );
         }
 
         opts.terminal
-            .stdout()
+            .to_stdout()
             .plain(msg)
             .machine(worker_route)
             .json(serde_json::to_string(&outlet_status).into_diagnostic()?)
@@ -132,6 +152,20 @@ impl Command for CreateCommand {
 }
 
 impl CreateCommand {
+    async fn parse_args(mut self, opts: &CommandGlobalOpts) -> miette::Result<Self> {
+        if let Some(from) = self.from.as_ref() {
+            if self.name.is_some() {
+                opts.terminal.write_line(
+                    fmt_warn!("The <NAME> argument is being overridden by the --from flag")
+                        + &fmt_log!("Consider using either the <NAME> argument or the --from flag"),
+                )?;
+            }
+            self.name = Some(from.clone());
+        }
+
+        Ok(self)
+    }
+
     pub async fn add_outlet_created_journey_event(
         &self,
         opts: &CommandGlobalOpts,

@@ -1,6 +1,6 @@
 [package]
 name = "ockam_vault"
-version = "0.128.0"
+version = "0.132.0"
 authors = ["Ockam Developers"]
 categories = [
   "cryptography",
@@ -45,6 +45,7 @@ std = [
   "alloc",
   "p256/std",
   "storage",
+  "base64ct",
 ]
 
 # Feature: "no_std" enables functionality required for platforms
@@ -69,26 +70,28 @@ alloc = [
   "p256/pem",
 ]
 
-storage = ["ockam_node/storage", "sqlx"]
+storage = ["ockam_node/storage", "sqlx", "sqlx-core"]
 
 [dependencies]
 aes-gcm = { version = "0.10", default-features = false, features = ["aes", "zeroize"], optional = true }
 arrayref = "0.3"
 aws-lc-rs = { version = "=1.11", default-features = false, features = ["non-fips", "bindgen"], optional = true }
+base64ct = { version = "=1.6.0", optional = true }
 cfg-if = "1.0.0"
 ed25519-dalek = { version = "2.1", default-features = false, features = ["fast", "rand_core", "zeroize"] }
 hex = { version = "0.4", default-features = false }
 hkdf = { version = "0.12", default-features = false }
 minicbor = { version = "0.25.1", default-features = false, features = ["derive"] }
-ockam_core = { path = "../ockam_core", version = "^0.122.0", default-features = false }
-ockam_macros = { path = "../ockam_macros", version = "^0.36.0", default-features = false }
-ockam_node = { path = "../ockam_node", version = "^0.135.0", default-features = false, optional = true }
+ockam_core = { path = "../ockam_core", version = "^0.125.0", default-features = false }
+ockam_macros = { path = "../ockam_macros", version = "^0.38.0", default-features = false }
+ockam_node = { path = "../ockam_node", version = "^0.139.0", default-features = false, optional = true }
 # ECDSA providers:
 p256 = { version = "0.13.2", default-features = false }
 rand_pcg = { version = "0.3.1", default-features = false, optional = true }
 serde = { version = "1", default-features = false, features = ["derive"] }
 sha2 = { version = "0.10", default-features = false }
-sqlx = { version = "0.8.2", optional = true, default-features = false }
+sqlx = { version = "0.8.3", optional = true, default-features = false }
+sqlx-core = { version = "0.8.3", optional = true, default-features = false }
 static_assertions = "1.1.0"
 tracing = { version = "0.1", default-features = false }
 x25519-dalek = { version = "2.0.1", default-features = false, features = ["precomputed-tables", "static_secrets", "zeroize"] }
@@ -97,9 +100,9 @@ zeroize = { version = "1.8.1", features = ["zeroize_derive"] }
 [dev-dependencies]
 serde_bare = { version = "0.5.0" }
 serde_json = { version = "1" }
-tempfile = { version = "3.10.1" }
+tempfile = { version = "3.17.1" }
 tokio = { version = "1.41", features = ["full"] }
 trybuild = { version = "1.0", features = ["diff"] }
 
 [package.metadata.cargo-machete]
-ignored = ["ockam_macros", "rand_pcg"]
+ignored = ["ockam_macros", "rand_pcg", "base64ct"]

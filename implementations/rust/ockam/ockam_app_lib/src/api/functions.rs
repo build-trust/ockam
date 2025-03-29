@@ -16,7 +16,7 @@ use crate::api::{state, to_c_string};
 use crate::cli::check_ockam_executable;
 use crate::state::AppState;
 use ockam_api::cli_state::CliState;
-use ockam_api::cloud::email_address::EmailAddress;
+use ockam_api::orchestrator::email_address::EmailAddress;
 use ockam_core::Address;
 use std::ffi::c_char;
 use std::pin::Pin;
@@ -302,10 +302,14 @@ extern "C" fn reset_application_state() {
             });
         }
         None => {
-            // allow disk state reset even if we don't have an application state
-            CliState::backup_and_reset().expect(
+            let app_state = unsafe { APPLICATION_STATE.as_ref() }.expect(ERROR_NOT_INITIALIZED);
+
+            app_state.context().runtime().block_on(async {
+                // allow disk state reset even if we don't have an application state
+                CliState::backup_and_reset().await.expect(
                 "Failed to initialize CliState. Try to manually remove the '~/.ockam' directory",
             );
+            })
         }
     }
 }

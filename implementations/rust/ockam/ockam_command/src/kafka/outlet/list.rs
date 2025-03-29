@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use clap::Args;
 
-use ockam_api::nodes::models::services::ServiceStatus;
+use ockam_api::nodes::models::services::ServiceStatusList;
 use ockam_api::nodes::service::default_address::DefaultAddress;
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_core::api::Request;
@@ -22,21 +22,23 @@ pub struct ListCommand {
 impl Command for ListCommand {
     const NAME: &'static str = "kafka-outlet list";
 
-    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
-        let node = BackgroundNodeClient::create(ctx, &opts.state, &self.node_opts.at_node).await?;
-        let services: Vec<ServiceStatus> = node
+    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+        let node =
+            BackgroundNodeClient::create(ctx, opts.state.clone(), &self.node_opts.at_node).await?;
+        let services: ServiceStatusList = node
             .ask(
                 ctx,
                 Request::get(format!("/node/services/{}", DefaultAddress::KAFKA_OUTLET)),
             )
             .await?;
+        let services = services.0;
 
         let plain = opts.terminal.build_list(
             &services,
             &format!("No Kafka Outlets found on {}", node.node_name()),
         )?;
         opts.terminal
-            .stdout()
+            .to_stdout()
             .plain(plain)
             .json_obj(&services)?
             .write_line()?;

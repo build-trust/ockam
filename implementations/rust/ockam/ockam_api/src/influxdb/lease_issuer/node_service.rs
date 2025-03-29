@@ -1,16 +1,16 @@
 use crate::influxdb::influxdb_api_client::InfluxDBApiClient;
 use crate::influxdb::lease_issuer::processor::InfluxDBTokenLessorProcessor;
 use crate::influxdb::lease_issuer::worker::InfluxDBTokenLessorWorker;
-use crate::influxdb::lease_token::LeaseToken;
+use crate::influxdb::lease_token::{LeaseToken, LeaseTokenList};
 use crate::nodes::models::services::{DeleteServiceRequest, StartServiceRequest};
-use crate::nodes::service::messages::Messages;
 use crate::nodes::{InMemoryNode, NodeManagerWorker};
 use crate::{ApiError, DefaultAddress};
 use miette::IntoDiagnostic;
 use minicbor::{CborLen, Decode, Encode};
+use ockam::Message;
 use ockam_abac::{Action, PolicyExpression, Resource, ResourceType};
 use ockam_core::api::{Error, Request, Response};
-use ockam_core::{async_trait, Address};
+use ockam_core::{async_trait, cbor_encode_preallocate, Address, Decodable, Encodable, Encoded};
 use ockam_multiaddr::MultiAddr;
 use ockam_node::{Context, ProcessorBuilder, WorkerBuilder};
 use std::cmp::Reverse;
@@ -38,7 +38,7 @@ impl NodeManagerWorker {
         }
     }
 
-    pub(crate) async fn delete_influxdb_lease_issuer_service(
+    pub(crate) fn delete_influxdb_lease_issuer_service(
         &self,
         context: &Context,
         req: DeleteServiceRequest,
@@ -46,8 +46,7 @@ impl NodeManagerWorker {
         let address = req.address();
         match self
             .node_manager
-            .delete_influxdb_lease_issuer_service(context, address.clone())
-            .await
+            .delete_influxdb_lease_issuer_service(context, &address)
         {
             Ok(Some(_)) => Ok(Response::ok()),
             Ok(None) => Err(Response::not_found_no_request(&format!(
@@ -73,10 +72,9 @@ impl InMemoryNode {
             .ok_or_else(|| {
                 ApiError::core("Unable to get flow control for secure channel listener")
             })?;
-        context.flow_controls().add_consumer(
-            address.clone(),
-            &default_secure_channel_listener_flow_control_id,
-        );
+        context
+            .flow_controls()
+            .add_consumer(&address, &default_secure_channel_listener_flow_control_id);
 
         let (incoming_ac, outgoing_ac) = self
             .access_control(
@@ -95,50 +93,42 @@ impl InMemoryNode {
             req.influxdb_token,
             req.lease_permissions,
             req.expires_in,
-        )
-        .await?;
+        )?;
         let processor = InfluxDBTokenLessorProcessor::new(worker.state.clone());
 
         WorkerBuilder::new(worker)
             .with_address(address.clone())
             .with_incoming_access_control_arc(incoming_ac)
             .with_outgoing_access_control_arc(outgoing_ac)
-            .start(context)
-            .await?;
-        self.registry
-            .influxdb_services
-            .insert(address.clone(), ())
-            .await;
+            .start(context)?;
+        self.registry.influxdb_services.insert(address.clone(), ());
 
         ProcessorBuilder::new(processor)
             .with_address(format!("{address}-processor"))
-            .start(context)
-            .await?;
+            .start(context)?;
 
         Ok(())
     }
 
-    async fn delete_influxdb_lease_issuer_service(
+    fn delete_influxdb_lease_issuer_service(
         &self,
         context: &Context,
-        address: Address,
+        address: &Address,
     ) -> Result<Option<()>, Error> {
         debug!(address = %address,"Deleting influxdb lease issuer service");
-        match self.registry.influxdb_services.get(&address).await {
+        match self.registry.influxdb_services.get(address) {
             None => Ok(None),
             Some(_) => {
-                context.stop_worker(address.clone()).await?;
-                context
-                    .stop_processor(format!("{address}-processor"))
-                    .await?;
-                self.registry.influxdb_services.remove(&address).await;
+                context.stop_address(address)?;
+                context.stop_address(&format!("{address}-processor").into())?;
+                self.registry.influxdb_services.remove(address);
                 Ok(Some(()))
             }
         }
     }
 }
 
-#[derive(Debug, Clone, Encode, Decode, CborLen, PartialEq)]
+#[derive(Debug, Clone, Encode, Decode, CborLen, PartialEq, Message)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct StartInfluxDBLeaseIssuerRequest {
@@ -148,6 +138,18 @@ pub struct StartInfluxDBLeaseIssuerRequest {
     #[n(4)] pub lease_permissions: String,
     #[n(5)] pub expires_in: Duration,
     #[n(6)] pub policy_expression: Option<PolicyExpression>,
+}
+
+impl Encodable for StartInfluxDBLeaseIssuerRequest {
+    fn encode(self) -> ockam_core::Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for StartInfluxDBLeaseIssuerRequest {
+    fn decode(e: &[u8]) -> ockam_core::Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
 }
 
 #[async_trait]
@@ -174,9 +176,12 @@ pub trait InfluxDBTokenLessorNodeServiceTrait {
 #[async_trait]
 impl InfluxDBTokenLessorNodeServiceTrait for InMemoryNode {
     async fn create_token(&self, ctx: &Context, at: &MultiAddr) -> miette::Result<LeaseToken> {
-        let req = Request::post("/").to_vec().into_diagnostic()?;
-        let bytes = self.send_message(ctx, at, req, None).await?;
-        Response::parse_response_body::<LeaseToken>(bytes.as_slice()).into_diagnostic()
+        let client = self.node_manager.make_client(ctx, at, None).await?;
+        let reply = client
+            .ask(ctx, Request::post("/"))
+            .await
+            .into_diagnostic()?;
+        Ok(reply.success()?)
     }
 
     async fn get_token(
@@ -185,11 +190,12 @@ impl InfluxDBTokenLessorNodeServiceTrait for InMemoryNode {
         at: &MultiAddr,
         token_id: &str,
     ) -> miette::Result<LeaseToken> {
-        let req = Request::get(format!("/{token_id}"))
-            .to_vec()
+        let client = self.node_manager.make_client(ctx, at, None).await?;
+        let reply = client
+            .ask(ctx, Request::get(format!("/{token_id}")))
+            .await
             .into_diagnostic()?;
-        let bytes = self.send_message(ctx, at, req, None).await?;
-        Response::parse_response_body::<LeaseToken>(bytes.as_slice()).into_diagnostic()
+        Ok(reply.success()?)
     }
 
     async fn revoke_token(
@@ -198,19 +204,22 @@ impl InfluxDBTokenLessorNodeServiceTrait for InMemoryNode {
         at: &MultiAddr,
         token_id: &str,
     ) -> miette::Result<()> {
-        let req = Request::delete(format!("/{token_id}"))
-            .to_vec()
+        let client = self.node_manager.make_client(ctx, at, None).await?;
+        let reply = client
+            .tell(ctx, Request::delete(format!("/{token_id}")))
+            .await
             .into_diagnostic()?;
-        let bytes = self.send_message(ctx, at, req, None).await?;
-        Response::parse_response_reply_with_empty_body(bytes.as_slice())
-            .and_then(|r| r.success())
-            .into_diagnostic()
+        Ok(reply.success()?)
     }
 
     async fn list_tokens(&self, ctx: &Context, at: &MultiAddr) -> miette::Result<Vec<LeaseToken>> {
-        let req = Request::get("/").to_vec().into_diagnostic()?;
-        let bytes = self.send_message(ctx, at, req, None).await?;
-        Response::parse_response_body::<Vec<LeaseToken>>(bytes.as_slice()).into_diagnostic()
+        let client = self.node_manager.make_client(ctx, at, None).await?;
+        let lease_token_list: LeaseTokenList = client
+            .ask(ctx, Request::get("/"))
+            .await
+            .into_diagnostic()?
+            .miette_success("lease token list")?;
+        Ok(lease_token_list.0)
     }
 }
 

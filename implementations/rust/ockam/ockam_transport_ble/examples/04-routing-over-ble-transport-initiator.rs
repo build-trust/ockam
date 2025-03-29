@@ -20,7 +20,7 @@ async fn async_main(mut ctx: Context) -> Result<()> {
     let ble_client = BleClient::with_adapter(ble_adapter);
 
     // Initialize the BLE Transport.
-    let ble = BleTransport::create(&ctx).await?;
+    let ble = BleTransport::create(&ctx)?;
 
     // Try to connect to BleServer
     ble.connect(ble_client, "ockam_ble_1".to_string()).await?;
@@ -34,5 +34,5 @@ async fn async_main(mut ctx: Context) -> Result<()> {
     println!("[main] App Received: {}", reply.into_body()?); // should print "Hello Ockam!"
 
     // Stop all workers, stop the node, cleanup and return.
-    ctx.stop().await
+    ctx.shutdown_node().await
 }

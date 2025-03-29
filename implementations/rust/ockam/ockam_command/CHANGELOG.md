@@ -4,6 +4,131 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.150.0 - 2025-03-20
+
+### Added
+
+- Polishing node control api
+- Deprecating `--status-endpoint-port` in favor of `--status-endpoint`
+- Add worker address to the output of `tcp-connection create`
+- Add env var to control the orchestrator ui url
+- Updated dependencies
+
+### Changed
+
+- Simplify `node list` command
+
+### Fixed
+
+- Await signalling the parent process in the foreground node
+- In inlets commands, show the bound port to portal in the output
+- Use localhost to connect to the node when the binding address is `0.0.0.0` or `[::]`
+
+## 0.149.0 - 2025-03-13
+
+### Added
+
+- Add command to retrieve the identity listening at some endpoint
+- Add `--env` parameter to write environment variables before parsing command
+- Updated dependencies
+
+### Changed
+
+- Merge `secure-channel peer-info` command into the `show` command
+
+## 0.148.0 - 2025-03-03
+
+### Added
+
+- Add a command to migrate a postgres database
+- Hide the migrate-database command
+- Custom branding config allows you to specify which commands are included
+- In the command, use a different footer when the binary is not ockam
+- Disable --all functionality in reset command if `OCKAM_DEVELOPER` is not set
+- In enrollment tickets, derive id from project route's service
+- Improve defaults handling of branding compile env vars
+- Show env values in `environment` command
+- Optimize node creation:
+- Add missing branding replacements in ockam_command
+- Make portal handshake optional
+- Implemented control api http server
+- In `Node Control API`, added crud for relay, ticket, and authority members
+- Added `self` reference as node name in `Node Control API`
+- Node control api: bat tests for all apis and relative fixes
+- Integrate the new span exporter with the rest of the application
+- Send telemetry data to the project node
+- Address review comments
+- Add support for "launch-configuration" in node's config
+- Added the possibility to overwrite http headers in inlets
+- Add projects to the output of the status command
+- Add log format for user-facing terminal logs
+- Updated dependencies
+
+### Changed
+
+- Use localhost constructor for `HostnamePort`
+- Logic of handling the default node name in `node create`
+- Enable requests to be messages
+- Merge functions for enriching tags
+
+### Fixed
+
+- Usage of compile time ockam home env var
+- Command subprocess read child's pipes instead of copying them
+- Node control api fixes and error handling refactorings
+- Set node name on background nodes, instead of delegating to the foreground node
+- Node subprocess inherits output streams
+- Handle default value for services in node config
+- In `node create`, detach background process
+
+## 0.147.0 - 2025-01-20
+
+### Added
+
+- Rewrite `ockam_node`
+- Don't create a member for an opentelemetry node
+- Update the postgres schema
+- Isolate member data by authority
+- Add binary to compile branded command binaries
+- Update the legacy authority identity name
+- Updated dependencies
+
+### Changed
+
+- Rename cloud module to orchestrator
+- Revert command features
+
+### Fixed
+
+- Fix the migration of in-memory sqlite dbs
+
+## 0.146.0 - 2025-01-09
+
+### Added
+
+- Simplify `node create` execution
+- To reduce memory fragmentation use mimalloc in command and stress-test
+- Sort credentials output alphabetically
+- Improve logs for relay creation
+- Improve stdout output for `node create`
+- Improve logs for tcp portals creation
+- Add a custom log format to change the fields order
+- Session replacer sends notifications on session lost/replaced
+- Add "unsafe" tag to commands that are considered unsafe
+- Improvements to portals commands arguments
+- Updated dependencies
+
+### Changed
+
+- Extract `OCKAM_SQLITE_IN_MEMORY` env var usage up to the cli state initialization
+- Update cli documentation for the `status` and `reset` commands
+
+### Fixed
+
+- `project enroll` command won't issue a credential if run in-memory
+- Newlines between commands run in a configuration
+- Fix bats test on kafka-inlet args parsing
+
 ## 0.145.0 - 2024-12-12
 
 ### Added

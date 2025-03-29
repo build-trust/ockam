@@ -2,11 +2,12 @@ use super::{Addresses, UdpSocketWrite};
 use crate::messages::{RoutingNumber, UdpRoutingMessage};
 use crate::workers::pending_messages::TransportMessagesIterator;
 use crate::UDP;
+use core::str::FromStr;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{async_trait, Any, Error, Result, Routed, Worker};
 use ockam_node::compat::asynchronous::resolve_peer;
 use ockam_node::Context;
-use ockam_transport_core::TransportError;
+use ockam_transport_core::{HostnamePort, TransportError};
 use std::net::SocketAddr;
 use tracing::{error, trace, warn};
 
@@ -22,6 +23,7 @@ pub(crate) struct UdpSenderWorker {
     peer: Option<SocketAddr>,
     /// Current number of the packet
     current_routing_number: RoutingNumber,
+    max_payload_size_per_packet: usize,
 }
 
 impl UdpSenderWorker {
@@ -30,12 +32,14 @@ impl UdpSenderWorker {
         addresses: Addresses,
         socket_write: UdpSocketWrite,
         peer: Option<SocketAddr>,
+        max_payload_size_per_packet: usize,
     ) -> Self {
         Self {
             addresses,
             socket_write,
             peer,
             current_routing_number: RoutingNumber::default(),
+            max_payload_size_per_packet,
         }
     }
 }
@@ -46,9 +50,7 @@ impl Worker for UdpSenderWorker {
     type Context = Context;
 
     async fn shutdown(&mut self, ctx: &mut Self::Context) -> Result<()> {
-        let _ = ctx
-            .stop_processor(self.addresses.receiver_address().clone())
-            .await;
+        let _ = ctx.stop_address(self.addresses.receiver_address());
 
         Ok(())
     }
@@ -67,7 +69,7 @@ impl Worker for UdpSenderWorker {
             *peer
         } else {
             // Resolve peer address to IPv4 SocketAddr(s).
-            let peer_addr = msg.next_on_onward_route()?;
+            let peer_addr = msg.next_on_onward_route()?.clone();
             msg = msg.pop_front_onward_route()?;
 
             if peer_addr.transport_type() != UDP {
@@ -76,8 +78,7 @@ impl Worker for UdpSenderWorker {
                 return Err(TransportError::UnknownRoute)?;
             }
 
-            // Avoid doing that each time
-            resolve_peer(peer_addr.address().to_string()).await?
+            resolve_peer(&HostnamePort::from_str(peer_addr.address())?).await?
         };
 
         // Error on conditions that _might_ put the sink
@@ -91,6 +92,7 @@ impl Worker for UdpSenderWorker {
         let messages = TransportMessagesIterator::new(
             self.current_routing_number,
             &UdpRoutingMessage::from(msg),
+            self.max_payload_size_per_packet,
         )?;
 
         self.current_routing_number.increment();

@@ -6,14 +6,13 @@ pub use aiven::AddonConfigureAivenSubcommand;
 pub use confluent::AddonConfigureConfluentSubcommand;
 pub use instaclustr::AddonConfigureInstaclustrSubcommand;
 use ockam::Context;
-use ockam_api::cloud::addon::{Addons, KafkaConfig};
 use ockam_api::fmt_ok;
 use ockam_api::nodes::InMemoryNode;
+use ockam_api::orchestrator::addon::{Addons, KafkaConfig};
 pub use redpanda::AddonConfigureRedpandaSubcommand;
 pub use warpstream::AddonConfigureWarpstreamSubcommand;
 
 use crate::project::addon::check_configuration_completion;
-use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts};
 
 pub mod aiven;
@@ -28,8 +27,8 @@ const AFTER_LONG_HELP: &str = include_str!("./static/configure_kafka/after_long_
 /// Configure the Apache Kafka addon for a project
 #[derive(Clone, Debug, Args)]
 pub struct KafkaCommandConfig {
-    /// Ockam project name
     #[arg(
+        help = docs::about("Ockam project name"),
         long = "project",
         id = "project",
         value_name = "PROJECT_NAME",
@@ -59,17 +58,11 @@ pub struct AddonConfigureKafkaSubcommand {
 }
 
 impl AddonConfigureKafkaSubcommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |ctx| async move {
-            self.async_run(&ctx, opts, "Apache Kafka").await
-        })
-    }
-
     pub fn name(&self) -> String {
         "configure kafka addon".into()
     }
 
-    async fn async_run(
+    pub async fn run(
         &self,
         ctx: &Context,
         opts: CommandGlobalOpts,
@@ -84,7 +77,7 @@ impl AddonConfigureKafkaSubcommand {
             .to_string();
         let config = KafkaConfig::new(self.config.bootstrap_server.clone());
 
-        let node = InMemoryNode::start(ctx, &opts.state).await?;
+        let node = InMemoryNode::start(ctx, opts.state.clone()).await?;
         let controller = node.create_controller().await?;
 
         let response = controller

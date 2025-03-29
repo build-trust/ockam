@@ -48,7 +48,7 @@ teardown() {
   run_failure $OCKAM kafka-inlet create --to /secure/api --from $(random_port)
   # Create a second inlet
   port="$(random_port)"
-  run_success $OCKAM kafka-inlet create --to /secure/api --from $port --addr inlet2 --jq '.'
+  run_success $OCKAM kafka-inlet create inlet2 --to /secure/api --from $port --jq '.'
   assert_output --partial "\"from\": \"127.0.0.1:$port\""
   assert_output --partial "\"to\": \"/secure/api\""
 
@@ -74,4 +74,24 @@ teardown() {
   assert_output 1
   run_success $OCKAM kafka-inlet list --jq '.[].addr'
   assert_output --partial "inlet2"
+}
+
+@test "kafka - create with deprecated alias --addr flag" {
+  # Ignore `name` if `addr` is also passed
+  port="$(random_port)"
+  run_success $OCKAM kafka-inlet create kinlet-name --addr kinlet --to /secure/api --from $port --jq '.'
+  assert_output --partial "\"from\": \"127.0.0.1:$port\""
+  assert_output --partial "\"to\": \"/secure/api\""
+
+  run_success $OCKAM kafka-inlet show kinlet --jq '.'
+  assert_output --partial "kinlet"
+
+  # Use `addr`
+  port="$(random_port)"
+  run_success $OCKAM kafka-inlet create --addr kinlet2 --to /secure/api --from $port --jq '.'
+  assert_output --partial "\"from\": \"127.0.0.1:$port\""
+  assert_output --partial "\"to\": \"/secure/api\""
+
+  run_success $OCKAM kafka-inlet show kinlet2 --jq '.'
+  assert_output --partial "kinlet2"
 }

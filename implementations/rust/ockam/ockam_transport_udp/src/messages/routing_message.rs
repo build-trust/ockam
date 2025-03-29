@@ -86,9 +86,7 @@ impl From<LocalMessage> for UdpRoutingMessage<'_> {
 
         cfg_if! {
             if #[cfg(feature = "std")] {
-                // make sure to pass the latest tracing context
-                let new_tracing_context = LocalMessage::start_new_tracing_context(value.tracing_context.update(), "UdpRoutingMessage");
-                routing_message.with_tracing_context(new_tracing_context)
+                routing_message.with_tracing_context(value.tracing_context.to_string())
             } else {
                 routing_message
             }

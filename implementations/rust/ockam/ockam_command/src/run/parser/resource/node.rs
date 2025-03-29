@@ -1,14 +1,15 @@
 use std::collections::BTreeMap;
 
-use miette::{miette, Result};
+use miette::{miette, IntoDiagnostic, Result};
 use ockam_api::colors::color_primary;
 use serde::{Deserialize, Serialize};
 
 use crate::node::CreateCommand;
-use crate::run::parser::building_blocks::{as_command_args, ArgKey, ArgValue};
+use crate::run::parser::building_blocks::{as_command_args, ArgKey, ArgValue, NamedResources};
 
 use crate::run::parser::resource::utils::parse_cmd_from_args;
 use crate::run::parser::resource::Resource;
+use crate::service::config::ServicesConfig;
 use crate::{node, Command, OckamSubcommand};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
@@ -27,17 +28,20 @@ pub struct Node {
     pub http_server: Option<ArgValue>,
     #[serde(alias = "no-status-endpoint")]
     pub no_status_endpoint: Option<ArgValue>,
-    #[serde(alias = "status-endpoint-port")]
-    pub status_endpoint_port: Option<ArgValue>,
+    #[serde(alias = "status-endpoint")]
+    pub status_endpoint: Option<ArgValue>,
     pub identity: Option<ArgValue>,
     pub project: Option<ArgValue>,
-    #[serde(alias = "launch-config")]
-    pub launch_config: Option<ArgValue>,
+    #[serde(flatten, alias = "launch-config")]
+    pub services: Option<Services>,
     #[serde(alias = "opentelemetry-context")]
     pub opentelemetry_context: Option<ArgValue>,
     pub udp: Option<ArgValue>,
+    pub enable_mptcp: Option<ArgValue>,
     #[serde(alias = "udp-listener-address")]
     pub udp_listener_address: Option<ArgValue>,
+    #[serde(alias = "in-memory")]
+    pub in_memory: Option<ArgValue>,
 }
 
 impl Resource<CreateCommand> for Node {
@@ -70,8 +74,8 @@ impl Resource<CreateCommand> for Node {
         if let Some(no_status_endpoint) = self.no_status_endpoint {
             args.insert("no-status-endpoint".into(), no_status_endpoint);
         }
-        if let Some(status_endpoint_port) = self.status_endpoint_port {
-            args.insert("status-endpoint-port".into(), status_endpoint_port);
+        if let Some(status_endpoint) = self.status_endpoint {
+            args.insert("status-endpoint".into(), status_endpoint);
         }
         if let Some(identity) = self.identity {
             args.insert("identity".into(), identity);
@@ -79,15 +83,28 @@ impl Resource<CreateCommand> for Node {
         if let Some(project) = self.project {
             args.insert("project".into(), project);
         }
-        if let Some(launch_config) = self.launch_config {
-            args.insert("launch-config".into(), launch_config);
+        if let Some(services) = self.services {
+            // Because the services is flattened, `self.services` will be Some even if it's not
+            // defined in the config, so we need to check if the inner fields are defined first.
+            if services.services.is_some() {
+                if let Ok(services) = services.into_arg() {
+                    if let Ok(services) = serde_json::to_string(&services) {
+                        args.insert("services".into(), services.into());
+                    }
+                }
+            }
         }
         if let Some(opentelemetry_context) = self.opentelemetry_context {
             args.insert("opentelemetry-context".into(), opentelemetry_context);
         }
-
         if let Some(udp) = self.udp {
             args.insert("udp".into(), udp);
+        }
+        if let Some(enable_mptcp) = self.enable_mptcp {
+            args.insert("enable-mptcp".into(), enable_mptcp);
+        }
+        if let Some(in_memory) = self.in_memory {
+            args.insert("in-memory".into(), in_memory);
         }
 
         if args.is_empty() {
@@ -151,47 +168,181 @@ impl Node {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct Services {
+    pub services: Option<NamedResources>,
+}
+
+impl Services {
+    /// Parse the services fields into a `ServicesConfig` struct
+    pub fn into_arg(self) -> Result<ServicesConfig> {
+        let as_json = serde_json::json!({
+            "services": self.services,
+        });
+        serde_json::from_value(as_json).into_diagnostic()
+    }
+
+    pub fn from_arg(arg: &ServicesConfig) -> Result<Self> {
+        Self::from_string(&arg.to_string()?)
+    }
+
+    fn from_string(contents: &str) -> Result<Self> {
+        if let Ok(c) = serde_yaml::from_str(contents) {
+            return Ok(c);
+        }
+        if let Ok(c) = serde_json::from_str(contents) {
+            return Ok(c);
+        }
+        Err(miette!(format!("invalid services config {:?}", contents)))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::service::config::ControlApiNodeResolution;
 
     #[test]
     fn node_config() {
-        let test = |c: &str| {
+        let get_parsed_cmd = |c: &str| {
             let parsed: Node = serde_yaml::from_str(c).unwrap();
             let cmds = parsed.into_parsed_commands().unwrap();
             assert_eq!(cmds.len(), 1);
-            let cmd = cmds.into_iter().next().unwrap();
-            assert_eq!(cmd.name, "n1");
+            cmds.into_iter().next().unwrap()
         };
 
         // Name only
         let config = r#"
             name: n1
         "#;
-        test(config);
+        let cmd = get_parsed_cmd(config);
+        assert_eq!(cmd.name, "n1");
 
         // Multiple arguments
         let config = r#"
-            name: n1
-            tcp-listener-address: 127.0.0.1:1234
-            skip-is-running-check: true
+        name: n1
+        tcp-listener-address: 127.0.0.1:1234
+        skip-is-running-check: true
         "#;
-        test(config);
+        let cmd = get_parsed_cmd(config);
+        assert_eq!(cmd.name, "n1");
+        assert_eq!(cmd.tcp_listener_address, "127.0.0.1:1234");
+        assert!(cmd.skip_is_running_check);
+        assert!(cmd.services.is_none());
+
+        // Services
+        let config = r#"
+        name: n1
+        tcp-listener-address: 127.0.0.1:3333
+        start_default_services: true
+        services:
+          control_api:
+            authentication_token: token
+            backend: true
+            node_resolution: direct-connection
+        "#;
+        let cmd = get_parsed_cmd(config);
+        assert_eq!(cmd.name, "n1");
+        assert_eq!(cmd.tcp_listener_address, "127.0.0.1:3333");
+        let services = cmd.services.unwrap();
+        assert_eq!(
+            services
+                .services
+                .unwrap()
+                .control_api
+                .unwrap()
+                .authentication_token
+                .unwrap(),
+            "token"
+        );
 
         // With other sections
         let config = r#"
-            relays: r1
+        relays: r1
 
-            name: n1
-            tcp-listener-address: 127.0.0.1:1234
-            skip-is-running-check: true
+        name: n1
+        tcp-listener-address: 127.0.0.1:1234
+        skip-is-running-check: true
 
-            tcp_inlets:
-              ti1:
-                from: 6060
-                at: n
+        tcp_inlets:
+          ti1:
+            from: 6060
+            at: n
         "#;
-        test(config);
+        let cmd = get_parsed_cmd(config);
+        assert_eq!(cmd.name, "n1");
+        assert_eq!(cmd.tcp_listener_address, "127.0.0.1:1234");
+    }
+
+    #[test]
+    fn services_config() {
+        let get_parsed_config = |c: &str| {
+            // Convert yaml yo struct representation
+            let parsed: Services = serde_yaml::from_str(c).unwrap();
+            // Convert yaml struct to command argument representation
+            let arg = parsed.clone().into_arg().unwrap();
+            // Convert command argument representation back to yaml struct representation
+            let parsed_again = Services::from_arg(&arg).unwrap();
+            // Convert yaml struct representation back to command argument representation to compare
+            let arg_again = parsed_again.clone().into_arg().unwrap();
+            // We compare the `ServicesConfig` struct as it's easier to compare basic types (bools, strings, etc)
+            // than comparing the `Services` struct which has a `NamedResources` field and the types can be dynamic
+            assert_eq!(arg, arg_again);
+            arg
+        };
+
+        // Single service
+        let config = r#"
+        services:
+          secure-channel-listener:
+            address: api
+        "#;
+        let parsed = get_parsed_config(config);
+        let services = parsed.services.unwrap();
+        let secure_channel_listener = services.secure_channel_listener.unwrap();
+        assert_eq!(secure_channel_listener.address, "api");
+
+        let config = r#"
+        services:
+          control-api:
+            authentication-token: token
+            backend: true
+            node-resolution: direct-connection
+        "#;
+        let parsed = get_parsed_config(config);
+        let services = parsed.services.unwrap();
+        let control_api = services.control_api.unwrap();
+        assert_eq!(control_api.authentication_token.unwrap(), "token");
+        assert!(control_api.backend);
+        assert_eq!(
+            control_api.node_resolution,
+            ControlApiNodeResolution::DirectConnection
+        );
+
+        // Multiple services
+        let config = r#"
+        services:
+          secure-channel-listener:
+            address: api
+            disabled: true
+          control-api:
+            authentication-token: token
+            backend: true
+            node-resolution: direct-connection
+        "#;
+        let parsed = get_parsed_config(config);
+
+        let services = parsed.services.unwrap();
+        let secure_channel_listener = services.secure_channel_listener.unwrap();
+        assert_eq!(secure_channel_listener.address, "api");
+        assert!(secure_channel_listener.disabled);
+
+        let control_api = services.control_api.unwrap();
+        assert_eq!(control_api.authentication_token.unwrap(), "token");
+        assert!(control_api.backend);
+        assert_eq!(
+            control_api.node_resolution,
+            ControlApiNodeResolution::DirectConnection
+        );
     }
 }

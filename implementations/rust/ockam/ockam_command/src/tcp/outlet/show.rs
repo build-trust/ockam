@@ -1,18 +1,16 @@
 use async_trait::async_trait;
-use core::fmt::Write;
 
 use clap::Args;
 use console::Term;
 use miette::{miette, IntoDiagnostic};
-use serde::Serialize;
 
 use ockam::Context;
+use ockam_api::nodes::models::portal::OutletStatusList;
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_api::terminal::{Terminal, TerminalStream};
 use ockam_api::{address::extract_address_value, nodes::models::portal::OutletStatus};
 use ockam_core::api::Request;
-use ockam_core::AsyncTryClone;
-use ockam_multiaddr::MultiAddr;
+use ockam_core::TryClone;
 
 use crate::tcp::util::alias_parser;
 use crate::{docs, Command, CommandGlobalOpts};
@@ -45,31 +43,8 @@ pub struct ShowCommand {
 impl Command for ShowCommand {
     const NAME: &'static str = "tcp-outlet show";
 
-    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
-        Ok(ShowTui::run(
-            ctx.async_try_clone().await.into_diagnostic()?,
-            opts,
-            self.clone(),
-        )
-        .await?)
-    }
-}
-
-#[derive(Debug, Serialize)]
-struct OutletInformation {
-    node_name: String,
-    worker_address: MultiAddr,
-    to: String,
-}
-
-impl Output for OutletInformation {
-    fn item(&self) -> ockam_api::Result<String> {
-        let mut w = String::new();
-        write!(w, "Outlet")?;
-        write!(w, "\n  On Node: {}", self.node_name)?;
-        write!(w, "\n  From address: {}", self.worker_address)?;
-        write!(w, "\n  To TCP server: {}", self.to)?;
-        Ok(w)
+    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+        Ok(ShowTui::run(ctx.try_clone().into_diagnostic()?, opts, self.clone()).await?)
     }
 }
 
@@ -86,8 +61,8 @@ impl ShowTui {
         opts: CommandGlobalOpts,
         mut cmd: ShowCommand,
     ) -> miette::Result<()> {
-        let node = BackgroundNodeClient::create(&ctx, &opts.state, &cmd.at).await?;
-        cmd.at = Some(node.node_name());
+        let node = BackgroundNodeClient::create(&ctx, opts.state.clone(), &cmd.at).await?;
+        cmd.at = Some(node.node_name().to_string());
 
         let tui = Self {
             ctx,
@@ -124,13 +99,14 @@ impl ShowCommandTui for ShowTui {
     }
 
     async fn list_items_names(&self) -> miette::Result<Vec<String>> {
-        let outlets: Vec<OutletStatus> = self
+        let outlets: OutletStatusList = self
             .node
             .ask(&self.ctx, Request::get("/node/outlet"))
             .await?;
         let items_names: Vec<String> = outlets
+            .0
             .into_iter()
-            .map(|outlet| outlet.worker_addr.address().to_string())
+            .map(|outlet| outlet.worker_address.address().to_string())
             .collect();
         Ok(items_names)
     }
@@ -140,15 +116,10 @@ impl ShowCommandTui for ShowTui {
             .node
             .ask(&self.ctx, Request::get(format!("/node/outlet/{item_name}")))
             .await?;
-        let info = OutletInformation {
-            node_name: self.node.node_name(),
-            worker_address: outlet_status.worker_route().into_diagnostic()?,
-            to: outlet_status.to.to_string(),
-        };
         self.terminal()
-            .stdout()
-            .plain(info.item()?)
-            .json_obj(info)?
+            .to_stdout()
+            .plain(outlet_status.item()?)
+            .json_obj(outlet_status)?
             .write_line()?;
         Ok(())
     }

@@ -13,6 +13,6 @@ libc = "0.2"
 regex = "1.10"
 shellwords = "1.1"
 tempfile = "3"
-thiserror = "1.0"
+thiserror = "2.0.9"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }

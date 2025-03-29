@@ -7,9 +7,9 @@ use ockam_transport_websocket::{WebSocketTransport, WS};
 #[ignore]
 #[ockam_macros::test]
 async fn send_receive(ctx: &mut Context) -> Result<()> {
-    let transport = WebSocketTransport::create(ctx).await?;
+    let transport = WebSocketTransport::create(ctx)?;
     let listener_address = transport.listen("127.0.0.1:0").await?;
-    ctx.start_worker("echoer", Echoer).await?;
+    ctx.start_worker("echoer", Echoer)?;
 
     // Sender
     {
@@ -19,7 +19,7 @@ async fn send_receive(ctx: &mut Context) -> Result<()> {
             .map(char::from)
             .collect();
         let r = route![(WS, listener_address.to_string()), "echoer"];
-        let reply = ctx.send_and_receive::<String>(r, msg.clone()).await?;
+        let reply: String = ctx.send_and_receive(r, msg.clone()).await?;
 
         assert_eq!(reply, msg, "Should receive the same message");
     };

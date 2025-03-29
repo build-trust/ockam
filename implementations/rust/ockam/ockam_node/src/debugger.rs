@@ -8,7 +8,7 @@ use ockam_core::{Address, Mailbox, Mailboxes};
 
 #[cfg(feature = "debugger")]
 use ockam_core::compat::{
-    collections::BTreeMap,
+    collections::HashMap,
     sync::{Arc, RwLock},
     vec::Vec,
 };
@@ -23,13 +23,13 @@ use core::{
 #[derive(Default)]
 struct Debugger {
     /// Map context inheritance from parent main `Mailbox` to child [`Mailboxes`]
-    inherited_mb: Arc<RwLock<BTreeMap<Mailbox, Vec<Mailboxes>>>>,
+    inherited_mb: Arc<RwLock<HashMap<Mailbox, Vec<Mailboxes>>>>,
     /// Map message destination to source
-    incoming: Arc<RwLock<BTreeMap<Address, Vec<Address>>>>,
+    incoming: Arc<RwLock<HashMap<Address, Vec<Address>>>>,
     /// Map message destination `Mailbox` to source [`Mailbox`]
-    incoming_mb: Arc<RwLock<BTreeMap<Mailbox, Vec<Address>>>>,
+    incoming_mb: Arc<RwLock<HashMap<Mailbox, Vec<Address>>>>,
     /// Map message source to destinations
-    outgoing: Arc<RwLock<BTreeMap<Address, Vec<Address>>>>,
+    outgoing: Arc<RwLock<HashMap<Address, Vec<Address>>>>,
 }
 
 /// Return a mutable reference to the global debugger instance
@@ -80,84 +80,70 @@ fn instance() -> &'static Debugger {
 ///    to communicate to each other.
 /// 2. Understanding the ockam source code.
 ///
-pub fn log_incoming_message(_receiving_ctx: &Context, _relay_msg: &RelayMessage) {
-    #[cfg(feature = "debugger")]
+#[cfg(feature = "debugger")]
+pub fn log_incoming_message(receiving_ctx: &Context, relay_msg: &RelayMessage) {
+    static COUNTER: AtomicU32 = AtomicU32::new(0);
+
+    tracing::trace!(
+        "log_incoming_message #{:03}: {} -> {} ({})",
+        COUNTER.fetch_add(1, Ordering::Relaxed),
+        relay_msg.source(),              // sending address
+        relay_msg.destination(),         // receiving address
+        receiving_ctx.primary_address(), // actual receiving context address
+    );
+
+    let instance = instance();
+    instance
+        .incoming
+        .write()
+        .unwrap()
+        .entry(relay_msg.destination().clone())
+        .or_default()
+        .push(relay_msg.source().clone());
+
+    if let Some(destination_mb) = receiving_ctx
+        .mailboxes()
+        .find_mailbox(relay_msg.destination())
     {
-        static COUNTER: AtomicU32 = AtomicU32::new(0);
-
-        tracing::trace!(
-            "log_incoming_message #{:03}: {} -> {} ({})",
-            COUNTER.fetch_add(1, Ordering::Relaxed),
-            _relay_msg.source(),      // sending address
-            _relay_msg.destination(), // receiving address
-            _receiving_ctx.address(), // actual receiving context address
-        );
-
-        match instance().incoming.write() {
-            Ok(mut incoming) => {
-                let source = _relay_msg.source().clone();
-                let destination = _relay_msg.destination().clone();
-                incoming
-                    .entry(destination)
-                    .or_insert_with(Vec::new)
-                    .push(source);
-            }
-            Err(e) => {
-                tracing::error!("debugger panicked: {}", e);
-                panic!("log_incoming_message");
-            }
-        }
-
-        match instance().incoming_mb.write() {
-            Ok(mut incoming_mb) => {
-                let source = _relay_msg.source().clone();
-                let destination = _relay_msg.destination().clone();
-                if let Some(destination_mb) = _receiving_ctx.mailboxes().find_mailbox(&destination)
-                {
-                    incoming_mb
-                        .entry(destination_mb.clone())
-                        .or_insert_with(Vec::new)
-                        .push(source);
-                }
-            }
-            Err(e) => {
-                tracing::error!("debugger panicked: {}", e);
-                panic!("log_incoming_message");
-            }
-        }
+        instance
+            .incoming_mb
+            .write()
+            .unwrap()
+            .entry(destination_mb.clone())
+            .or_insert_with(Vec::new)
+            .push(relay_msg.source().clone());
     }
 }
+
+/// No-op
+#[cfg(not(feature = "debugger"))]
+pub fn log_incoming_message(_receiving_ctx: &Context, _relay_msg: &RelayMessage) {}
 
 /// Log outgoing message traffic
-pub fn log_outgoing_message(_sending_ctx: &Context, _relay_msg: &RelayMessage) {
-    #[cfg(feature = "debugger")]
-    {
-        static COUNTER: AtomicU32 = AtomicU32::new(0);
+#[cfg(feature = "debugger")]
+pub fn log_outgoing_message(sending_ctx: &Context, relay_msg: &RelayMessage) {
+    static COUNTER: AtomicU32 = AtomicU32::new(0);
 
-        tracing::trace!(
-            "log_outgoing_message #{:03}: {} ({}) -> {}",
-            COUNTER.fetch_add(1, Ordering::Relaxed),
-            _relay_msg.source(),      // sending address
-            _sending_ctx.address(),   // actual sending context address
-            _relay_msg.destination(), // receiving address
-        );
+    tracing::trace!(
+        "log_outgoing_message #{:03}: {} ({}) -> {}",
+        COUNTER.fetch_add(1, Ordering::Relaxed),
+        relay_msg.source(),            // sending address
+        sending_ctx.primary_address(), // actual sending context address
+        relay_msg.destination(),       // receiving address
+    );
 
-        match instance().outgoing.write() {
-            Ok(mut outgoing) => {
-                let source = _relay_msg.source().clone();
-                let destination = _relay_msg.destination().clone();
-                outgoing
-                    .entry(source)
-                    .or_insert_with(Vec::new)
-                    .push(destination);
-            }
-            Err(e) => {
-                tracing::error!("debugger panicked: {}", e);
-                panic!("log_incoming_message");
-            }
-        }
-    }
+    instance()
+        .outgoing
+        .write()
+        .unwrap()
+        .entry(relay_msg.source().clone())
+        .or_default()
+        .push(relay_msg.destination().clone());
 }
+
+/// No-op
+#[cfg(not(feature = "debugger"))]
+pub fn log_outgoing_message(_sending_ctx: &Context, _relay_msg: &RelayMessage) {}
 
 /// Log Context creation
 ///
@@ -172,35 +158,30 @@ pub fn log_outgoing_message(_sending_ctx: &Context, _relay_msg: &RelayMessage) {
 ///    contexts created by a top-level worker or processor interface
 /// 3. Tracking down "orphan" contexts that could be vulnerable to
 ///    hostile messages
-pub fn log_inherit_context(_tag: &str, _parent: &Context, _child: &Context) {
-    #[cfg(feature = "debugger")]
-    {
-        static COUNTER: AtomicU32 = AtomicU32::new(0);
+#[cfg(feature = "debugger")]
+pub fn log_inherit_context(tag: &str, parent: &Context, child: &Context) {
+    static COUNTER: AtomicU32 = AtomicU32::new(0);
 
-        tracing::trace!(
-            "log_inherit_context #{:03}\n{:?}\nBegat {}\n{:?}\n",
-            COUNTER.fetch_add(1, Ordering::Relaxed),
-            _parent.mailboxes(),
-            _tag,
-            _child.mailboxes(),
-        );
+    tracing::trace!(
+        "log_inherit_context #{:03}\n{:?}\nBegat {}\n{:?}\n",
+        COUNTER.fetch_add(1, Ordering::Relaxed),
+        parent.mailboxes(),
+        tag,
+        child.mailboxes(),
+    );
 
-        match instance().inherited_mb.write() {
-            Ok(mut inherited_mb) => {
-                let parent = _parent.mailboxes().main_mailbox().clone();
-                let children = _child.mailboxes().clone();
-                inherited_mb
-                    .entry(parent)
-                    .or_insert_with(Vec::new)
-                    .push(children);
-            }
-            Err(e) => {
-                tracing::error!("debugger panicked: {}", e);
-                panic!("log_incoming_message");
-            }
-        }
-    }
+    instance()
+        .inherited_mb
+        .write()
+        .unwrap()
+        .entry(parent.mailboxes().primary_mailbox().clone())
+        .or_default()
+        .push(child.mailboxes().clone());
 }
+
+/// No-op
+#[cfg(not(feature = "debugger"))]
+pub fn log_inherit_context(_tag: &str, _parent: &Context, _child: &Context) {}
 
 /// TODO
 pub fn _log_start_worker() {
@@ -250,13 +231,13 @@ pub fn generate_graphs<W: Write>(w: &mut BufWriter<W>) -> io::Result<()> {
     }
 
     // generate mailboxes set
-    use ockam_core::compat::collections::BTreeSet;
-    let mut mailboxes = BTreeSet::new();
+    use ockam_core::compat::collections::HashSet;
+    let mut mailboxes = HashSet::new();
     if let Ok(inherited_mb) = instance().inherited_mb.read() {
         for (parent, children) in inherited_mb.iter() {
             for child in children.iter() {
                 mailboxes.insert(parent.clone());
-                mailboxes.insert(child.main_mailbox().clone());
+                mailboxes.insert(child.primary_mailbox().clone());
                 for mailbox in child.additional_mailboxes().iter() {
                     mailboxes.insert(mailbox.clone());
                 }
@@ -288,7 +269,7 @@ pub fn generate_graphs<W: Write>(w: &mut BufWriter<W>) -> io::Result<()> {
         Ok(inherited_mb) => {
             for (parent, children) in inherited_mb.iter() {
                 for child in children.iter() {
-                    let mut child_ids = vec![id(child.main_mailbox())];
+                    let mut child_ids = vec![id(child.primary_mailbox())];
                     for mailbox in child.additional_mailboxes().iter() {
                         let child_id = id(mailbox);
                         child_ids.push(child_id);

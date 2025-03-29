@@ -2,17 +2,19 @@ use crate::cli_state::journeys::attributes::{
     default_attributes, make_host, make_host_trace_id, make_journey_span_id, make_project_trace_id,
 };
 use crate::cli_state::journeys::{Journey, JourneyEvent, ProjectJourney};
-use crate::cloud::project::Project;
 use crate::logs::CurrentSpan;
+use crate::orchestrator::project::Project;
 use crate::{CliState, Result};
 use chrono::{DateTime, Utc};
 use either::Either;
 use ockam_core::{OpenTelemetryContext, OCKAM_TRACER_NAME};
-use opentelemetry::trace::{Link, SpanBuilder, SpanId, TraceContextExt, TraceId, Tracer};
+use opentelemetry::trace::{Link, Span, SpanBuilder, SpanId, TraceContextExt, TraceId, Tracer};
 use opentelemetry::{global, Context, Key, KeyValue};
 use std::collections::HashMap;
+use std::fmt::{Display, Formatter};
 use std::ops::Add;
 use std::time::{Duration, SystemTime};
+use tracing::Level;
 
 pub const USER_NAME: &Key = &Key::from_static_str("app.user_name");
 pub const USER_EMAIL: &Key = &Key::from_static_str("app.user_email");
@@ -38,6 +40,8 @@ pub const APPLICATION_EVENT_PROJECT_AUTHORITY_IDENTIFIER: &Key =
     &Key::from_static_str("app.event.project.authority_identifier");
 
 pub const APPLICATION_EVENT_NODE_NAME: &Key = &Key::from_static_str("app.event.node_name");
+pub const APPLICATION_EVENT_NODE_IDENTIFIER: &Key =
+    &Key::from_static_str("app.event.node_identifier");
 pub const APPLICATION_EVENT_OCKAM_DEVELOPER: &Key =
     &Key::from_static_str("app.event.ockam_developer");
 pub const APPLICATION_EVENT_TRACE_ID: &Key = &Key::from_static_str("app.event.trace_id");
@@ -51,6 +55,22 @@ pub const APPLICATION_EVENT_OCKAM_HOME: &Key = &Key::from_static_str("app.event.
 pub const APPLICATION_EVENT_OCKAM_VERSION: &Key = &Key::from_static_str("app.event.ockam_version");
 pub const APPLICATION_EVENT_OCKAM_GIT_HASH: &Key =
     &Key::from_static_str("app.event.ockam_git_hash");
+pub const APPLICATION_EVENT_TRACE_TYPE: &Key = &Key::from_static_str("app.event.trace_type");
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum TraceType {
+    Host,
+    Project,
+}
+
+impl Display for TraceType {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            TraceType::Host => f.write_str("host"),
+            TraceType::Project => f.write_str("project"),
+        }
+    }
+}
 
 /// Journey events have a fixed duration
 pub const EVENT_DURATION: Duration = Duration::from_secs(100);
@@ -76,17 +96,17 @@ const DEFAULT_JOURNEY_MAX_DURATION: Duration = Duration::from_secs(5 * 86400);
 ///
 impl CliState {
     /// This method adds a successful event to the project/host journeys
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     pub async fn add_journey_event(
         &self,
         event: JourneyEvent,
         attributes: HashMap<&Key, String>,
     ) -> Result<()> {
-        self.add_a_journey_event(event, attributes).await
+        self.add_a_journey_event(event, attributes, None).await
     }
 
     /// This method adds an error event to the project/host journeys
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     pub async fn add_journey_error(
         &self,
         command_name: &str,
@@ -94,8 +114,9 @@ impl CliState {
         attributes: HashMap<&Key, String>,
     ) -> Result<()> {
         self.add_a_journey_event(
-            JourneyEvent::error(command_name.to_string(), message),
+            JourneyEvent::error(command_name.to_string(), message.clone()),
             attributes,
+            Some(message),
         )
         .await
     }
@@ -108,34 +129,73 @@ impl CliState {
         &self,
         event: JourneyEvent,
         attributes: HashMap<&Key, String>,
+        error_message: Option<String>,
     ) -> Result<()> {
         if !self.is_tracing_enabled() {
             return Ok(());
         }
 
+        let project = self.projects().get_default_project().await.ok();
+        let (host_journey, project_journey) = self
+            .get_journeys(project.clone().map(|p| p.project_id().to_string()))
+            .await?;
+        self.make_span_from_journey(
+            &project,
+            &event,
+            &attributes,
+            &error_message,
+            host_journey,
+            "host",
+        )
+        .await?;
+        if let Some(project_journey) = project_journey {
+            self.make_span_from_journey(
+                &project,
+                &event,
+                &attributes,
+                &error_message,
+                project_journey,
+                "project",
+            )
+            .await?;
+        }
+        Ok(())
+    }
+
+    /// Create a span that will get its trace_id from the journey context
+    /// The trace_type is used to differentiate between the host and the project journeys.
+    /// We can later on use this information to filter all the spans for a given host, or all the spans
+    /// for a given project.
+    async fn make_span_from_journey(
+        &self,
+        project: &Option<Project>,
+        event: &JourneyEvent,
+        attributes: &HashMap<&Key, String>,
+        error_message: &Option<String>,
+        journey: Journey,
+        trace_type: &str,
+    ) -> Result<()> {
         // get the journey context
         let tracer = global::tracer(OCKAM_TRACER_NAME);
         let event_span_context = Context::current().span().span_context().clone();
-        let project = self.projects().get_default_project().await.ok();
 
         // for both the host and the project journey create a span with a fixed duration
         // and add attributes to the span
         let start_time = SystemTime::from(Utc::now());
         let end_time = start_time.add(EVENT_DURATION);
 
-        let journeys = self
-            .get_journeys(project.clone().map(|p| p.project_id().to_string()))
-            .await?;
-        for journey in journeys {
-            let span_builder = SpanBuilder::from_name(event.to_string())
-                .with_start_time(start_time)
-                .with_end_time(end_time)
-                .with_links(vec![Link::new(event_span_context.clone(), vec![], 0)]);
-            let span = tracer.build_with_context(span_builder, &journey.extract_context());
-            let cx = Context::current_with_span(span);
-            let _guard = cx.attach();
-            self.set_current_span_attributes(&event, &attributes, &project)
+        let span_builder = SpanBuilder::from_name(event.to_string())
+            .with_start_time(start_time)
+            .with_end_time(end_time)
+            .with_links(vec![Link::new(event_span_context.clone(), vec![], 0)]);
+        let mut span = tracer.build_with_context(span_builder, &journey.extract_context());
+        if let Some(message) = error_message {
+            span.set_status(opentelemetry::trace::Status::error(message.clone()));
         }
+        let cx = Context::current_with_span(span);
+        let _guard = cx.attach();
+        self.set_current_span_attributes(event, attributes, project);
+        CurrentSpan::set_attribute(APPLICATION_EVENT_TRACE_TYPE, trace_type);
         Ok(())
     }
 
@@ -216,16 +276,14 @@ impl CliState {
         }
     }
 
-    /// Return a list of journeys for which we want to add spans
-    async fn get_journeys(&self, project_id: Option<String>) -> Result<Vec<Journey>> {
+    /// Return the host journey and the project journey if it exists.
+    async fn get_journeys(&self, project_id: Option<String>) -> Result<(Journey, Option<Journey>)> {
         let now = *Context::current()
             .get::<DateTime<Utc>>()
             .unwrap_or(&Utc::now());
 
-        let mut result = vec![];
-
         let max_duration = DEFAULT_JOURNEY_MAX_DURATION;
-        let journey = match self.get_host_journey(now, max_duration).await? {
+        let host_journey = match self.get_host_journey(now, max_duration).await? {
             Some(Either::Right(journey)) => journey,
             Some(Either::Left(journey)) => {
                 self.create_host_journey(Some(journey.opentelemetry_context()), now)
@@ -233,9 +291,8 @@ impl CliState {
             }
             None => self.create_host_journey(None, now).await?,
         };
-        result.push(journey);
 
-        if let Some(project_id) = project_id {
+        let project_journey = if let Some(project_id) = project_id {
             let journey = match self
                 .get_project_journey(&project_id, now, max_duration)
                 .await?
@@ -251,10 +308,12 @@ impl CliState {
                 }
                 None => self.create_project_journey(&project_id, None, now).await?,
             };
-            result.push(journey.to_journey());
+            Some(journey.to_journey())
+        } else {
+            None
         };
 
-        Ok(result)
+        Ok((host_journey, project_journey))
     }
 
     /// When a project is deleted the project journeys need to be restarted

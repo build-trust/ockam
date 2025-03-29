@@ -6,8 +6,8 @@ use tracing::info;
 use ockam::Context;
 use ockam_api::address::extract_address_value;
 use ockam_api::nodes::service::messages::Messages;
-use ockam_api::nodes::BackgroundNodeClient;
 use ockam_api::nodes::InMemoryNode;
+use ockam_api::nodes::{BackgroundNodeClient, NodeManager};
 use ockam_multiaddr::MultiAddr;
 
 use crate::project::util::{
@@ -21,10 +21,10 @@ use crate::{docs, Command, CommandGlobalOpts, Error};
 const LONG_ABOUT: &str = include_str!("./static/send/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/send/after_long_help.txt");
 
-/// Send a message to an Ockam node
 #[derive(Clone, Debug, Args)]
 #[command(
 arg_required_else_help = true,
+about = docs::about("Send a message to an Ockam node"),
 long_about = docs::about(LONG_ABOUT),
 after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
@@ -64,29 +64,19 @@ impl Command for SendCommand {
         Some(self.retry_opts.clone())
     }
 
-    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
         // Process `--to` Multiaddr
-        let (to, meta) = clean_nodes_multiaddr(&self.to, &opts.state)
+        let (to, meta) = clean_nodes_multiaddr(&self.to, opts.state.clone())
             .await
             .context("Argument '--to' is invalid")
             .map_err(Error::Retry)?;
 
-        let msg_bytes = if self.hex {
-            hex::decode(self.message.clone())
-                .into_diagnostic()
-                .context("The message is not a valid hex string")?
-        } else {
-            self.message.as_bytes().to_vec()
-        };
-
         // Setup environment depending on whether we are sending the message from a background node
         // or an in-memory node
-        let response: Vec<u8> = if let Some(node) = &self.from {
-            BackgroundNodeClient::create_to_node(ctx, &opts.state, node.as_str())
-                .await?
-                .send_message(ctx, &to, msg_bytes, Some(self.timeout.timeout))
-                .await
-                .map_err(Error::Retry)?
+        let result = if let Some(node) = &self.from {
+            let client =
+                BackgroundNodeClient::create_to_node(ctx, opts.state.clone(), node.as_str())?;
+            self.send_message(&client, ctx, &to).await?
         } else {
             let identity_name = opts
                 .state
@@ -97,7 +87,7 @@ impl Command for SendCommand {
 
             let node_manager = InMemoryNode::start_node(
                 ctx,
-                &opts.state,
+                opts.state.clone(),
                 &identity_name,
                 None,
                 self.trust_opts.project_name.clone(),
@@ -121,21 +111,38 @@ impl Command for SendCommand {
             .map_err(Error::Retry)?;
             let to = clean_projects_multiaddr(to, projects_sc)?;
             info!("sending to {to}");
-            node_manager
-                .send_message(ctx, &to, msg_bytes, Some(self.timeout.timeout))
-                .await
-                .map_err(Error::Retry)?
+            let n: &NodeManager = &node_manager;
+            self.send_message(n, ctx, &to).await?
         };
 
-        let result = if self.hex {
-            hex::encode(response)
-        } else {
-            String::from_utf8(response)
-                .into_diagnostic()
-                .context("Received content is not a valid utf8 string")?
-        };
-
-        opts.terminal.stdout().plain(result).write_line()?;
+        opts.terminal.to_stdout().plain(result).write_line()?;
         Ok(())
+    }
+}
+
+impl SendCommand {
+    async fn send_message(
+        self,
+        client: &impl Messages,
+        ctx: &Context,
+        to: &MultiAddr,
+    ) -> crate::Result<String> {
+        if self.hex {
+            let to_send = hex::decode(self.message.clone())
+                .into_diagnostic()
+                .context("The message is not a valid hex string")?;
+            let response: Vec<u8> = client
+                .send_message(ctx, to, to_send, Some(self.timeout.timeout))
+                .await
+                .map_err(Error::Retry)?;
+            Ok(hex::encode(response))
+        } else {
+            client
+                .send_message(ctx, to, self.message, Some(self.timeout.timeout))
+                .await
+                .map_err(Error::Retry)
+                .into_diagnostic()
+                .context("Received content is not a valid utf8 string")
+        }
     }
 }

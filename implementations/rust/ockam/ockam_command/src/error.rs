@@ -1,3 +1,4 @@
+use crate::branding::BrandingCompileEnvVars;
 use crate::util::exitcode::{self, ExitCode};
 use crate::version::Version;
 use colorful::Colorful;
@@ -156,7 +157,10 @@ impl miette::ReportHandler for ErrorReportHandler {
             error_code = Some(format!("Error code: {code}"));
         }
         // Add the padding we use in console output and print it
-        for line in graphical_handler_output.lines() {
+        for line in graphical_handler_output
+            .lines()
+            .filter(|line| !line.is_empty())
+        {
             writeln!(f, "{}{}", fmt::MIETTE_PADDING, line)?;
         }
         writeln!(f)?;
@@ -172,8 +176,9 @@ impl miette::ReportHandler for ErrorReportHandler {
             f,
             "\n{}\n{}",
             fmt_log!(
-                "{}",
-                "If you need help, please email us on support@ockam.io".dark_gray()
+                "{} {}",
+                "If you need help, please email us on".dark_gray(),
+                BrandingCompileEnvVars::support_email().dark_gray()
             ),
             fmt_log!(
                 "{}",

@@ -55,7 +55,12 @@ impl From<TcpTransportMessage<'_>> for LocalMessage {
         let local_message = LocalMessage::new();
 
         #[cfg(feature = "std")]
-        let local_message = local_message.with_tracing_context(value.tracing_context());
+        let local_message =
+            if let Some(tc) = value.tracing_context.and_then(|tc| tc.try_into().ok()) {
+                local_message.with_tracing_context(tc)
+            } else {
+                local_message
+            };
 
         local_message
             .with_onward_route(value.onward_route)
@@ -75,9 +80,7 @@ impl From<LocalMessage> for TcpTransportMessage<'_> {
 
         cfg_if! {
             if #[cfg(feature = "std")] {
-                // make sure to pass the latest tracing context
-                let new_tracing_context = LocalMessage::start_new_tracing_context(value.tracing_context.update(), "TcpTransportMessage");
-                transport_message.with_tracing_context(new_tracing_context)
+                transport_message.with_tracing_context(value.tracing_context.to_string())
             } else {
                 transport_message
             }

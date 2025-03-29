@@ -43,3 +43,13 @@ impl TryFrom<String> for ConnectionStatus {
         }
     }
 }
+
+impl From<bool> for ConnectionStatus {
+    fn from(value: bool) -> Self {
+        if value {
+            ConnectionStatus::Up
+        } else {
+            ConnectionStatus::Down
+        }
+    }
+}

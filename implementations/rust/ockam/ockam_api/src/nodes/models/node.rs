@@ -9,29 +9,46 @@ use crate::output::Output;
 use crate::terminal::fmt;
 use minicbor::{CborLen, Decode, Encode};
 use ockam::identity::{Identifier, SecureChannelListener};
-use ockam_core::Result;
+use ockam_core::{cbor_encode_preallocate, Decodable, Encodable, Encoded, Result};
 use ockam_multiaddr::MultiAddr;
 use serde::Serialize;
 
 use crate::config::lookup::InternetAddress;
+use ockam::Message;
 use std::fmt::{Display, Formatter};
 
 /// Response body for a node status request
-#[derive(Debug, Clone, Serialize, Encode, Decode, CborLen)]
+#[derive(Debug, Clone, Serialize, Encode, Decode, CborLen, Message)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct NodeStatus {
     #[n(1)] pub name: String,
     #[n(2)] pub identifier: Identifier,
-    #[n(3)] pub status: NodeProcessStatus,
+    #[n(3)] pub process_status: NodeProcessStatus,
+}
+
+impl Encodable for NodeStatus {
+    fn encode(self) -> Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for NodeStatus {
+    fn decode(e: &[u8]) -> Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
 }
 
 impl NodeStatus {
-    pub fn new(name: impl Into<String>, identifier: Identifier, status: NodeProcessStatus) -> Self {
+    pub fn new(
+        name: impl Into<String>,
+        identifier: Identifier,
+        process_status: NodeProcessStatus,
+    ) -> Self {
         Self {
             name: name.into(),
             identifier,
-            status,
+            process_status,
         }
     }
 }
@@ -41,12 +58,12 @@ impl From<&NodeInfo> for NodeStatus {
         Self {
             name: node.name(),
             identifier: node.identifier(),
-            status: node.status(),
+            process_status: node.status(),
         }
     }
 }
 
-#[derive(Debug, Serialize, Encode, Decode, CborLen)]
+#[derive(Debug, Serialize, Encode, Decode, CborLen, Message)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct NodeResources {
@@ -62,6 +79,18 @@ pub struct NodeResources {
     #[n(9)] pub inlets: Vec<InletStatus>,
     #[n(10)] pub outlets: Vec<OutletStatus>,
     #[n(11)] pub services: Vec<ServiceStatus>,
+}
+
+impl Encodable for NodeResources {
+    fn encode(self) -> Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for NodeResources {
+    fn decode(e: &[u8]) -> Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -146,7 +175,14 @@ impl Display for NodeResources {
         } else {
             writeln!(f, "{}{}Transports:", fmt::PADDING, fmt::INDENTATION)?;
             for t in &self.transports {
-                writeln!(f, "{}{}{}", fmt::PADDING, fmt::INDENTATION.repeat(2), t)?;
+                write!(f, "{}{}", fmt::PADDING, fmt::INDENTATION.repeat(2))?;
+                writeln!(
+                    f,
+                    "{}, {} at {}",
+                    t.tt,
+                    t.tm,
+                    color_primary(&t.socket_address)
+                )?;
             }
         }
 

@@ -38,7 +38,6 @@ This file contains attributions for any 3rd-party open source code used in this 
 | async-task | Apache-2.0, MIT | https://crates.io/crates/async-task |
 | async-trait | MIT, Apache-2.0 | https://crates.io/crates/async-trait |
 | atoi | MIT | https://crates.io/crates/atoi |
-| atomic | Apache-2.0, MIT | https://crates.io/crates/atomic |
 | atomic-polyfill | MIT, Apache-2.0 | https://crates.io/crates/atomic-polyfill |
 | atomic-waker | Apache-2.0, MIT | https://crates.io/crates/atomic-waker |
 | atsamd-hal | MIT, Apache-2.0 | https://crates.io/crates/atsamd-hal |
@@ -185,10 +184,12 @@ This file contains attributions for any 3rd-party open source code used in this 
 | embedded-dma | MIT, Apache-2.0 | https://crates.io/crates/embedded-dma |
 | embedded-hal | MIT, Apache-2.0 | https://crates.io/crates/embedded-hal |
 | embedded-storage | MIT, Apache-2.0 | https://crates.io/crates/embedded-storage |
-| encode_unicode | MIT, Apache-2.0 | https://crates.io/crates/encode_unicode |
+| encode_unicode | Apache-2.0, MIT | https://crates.io/crates/encode_unicode |
 | endian-type | MIT | https://crates.io/crates/endian-type |
+| enum-as-inner | MIT, Apache-2.0 | https://crates.io/crates/enum-as-inner |
 | enumflags2 | MIT, Apache-2.0 | https://crates.io/crates/enumflags2 |
 | enumflags2_derive | MIT, Apache-2.0 | https://crates.io/crates/enumflags2_derive |
+| env_home | MIT, Apache-2.0 | https://crates.io/crates/env_home |
 | equivalent | Apache-2.0, MIT | https://crates.io/crates/equivalent |
 | errno | MIT, Apache-2.0 | https://crates.io/crates/errno |
 | error-code | BSL-1.0 | https://crates.io/crates/error-code |
@@ -201,7 +202,6 @@ This file contains attributions for any 3rd-party open source code used in this 
 | ff | MIT, Apache-2.0 | https://crates.io/crates/ff |
 | fiat-crypto | MIT, Apache-2.0, BSD-1-Clause | https://crates.io/crates/fiat-crypto |
 | flate2 | MIT, Apache-2.0 | https://crates.io/crates/flate2 |
-| flexi_logger | MIT, Apache-2.0 | https://crates.io/crates/flexi_logger |
 | flume | Apache-2.0, MIT | https://crates.io/crates/flume |
 | fnv | Apache-2.0, MIT | https://crates.io/crates/fnv |
 | foldhash | Zlib | https://crates.io/crates/foldhash |
@@ -304,6 +304,7 @@ This file contains attributions for any 3rd-party open source code used in this 
 | libdbus-sys | Apache-2.0, MIT | https://crates.io/crates/libdbus-sys |
 | libloading | ISC | https://crates.io/crates/libloading |
 | libm | MIT, Apache-2.0 | https://crates.io/crates/libm |
+| libmimalloc-sys | MIT | https://crates.io/crates/libmimalloc-sys |
 | libsqlite3-sys | MIT | https://crates.io/crates/libsqlite3-sys |
 | linked-hash-map | MIT, Apache-2.0 | https://crates.io/crates/linked-hash-map |
 | linux-raw-sys | Apache-2.0 WITH LLVM-exception, Apache-2.0, MIT | https://crates.io/crates/linux-raw-sys |
@@ -320,6 +321,7 @@ This file contains attributions for any 3rd-party open source code used in this 
 | memoffset | MIT | https://crates.io/crates/memoffset |
 | miette | Apache-2.0 | https://crates.io/crates/miette |
 | miette-derive | Apache-2.0 | https://crates.io/crates/miette-derive |
+| mimalloc | MIT | https://crates.io/crates/mimalloc |
 | mime | MIT, Apache-2.0 | https://crates.io/crates/mime |
 | minicbor | BlueOak-1.0.0 | https://crates.io/crates/minicbor |
 | minicbor-derive | BlueOak-1.0.0 | https://crates.io/crates/minicbor-derive |
@@ -363,6 +365,7 @@ This file contains attributions for any 3rd-party open source code used in this 
 | openssl-probe | MIT, Apache-2.0 | https://crates.io/crates/openssl-probe |
 | opentelemetry | Apache-2.0 | https://crates.io/crates/opentelemetry |
 | opentelemetry-appender-tracing | Apache-2.0 | https://crates.io/crates/opentelemetry-appender-tracing |
+| opentelemetry-http | Apache-2.0 | https://crates.io/crates/opentelemetry-http |
 | opentelemetry-otlp | Apache-2.0 | https://crates.io/crates/opentelemetry-otlp |
 | opentelemetry-proto | Apache-2.0 | https://crates.io/crates/opentelemetry-proto |
 | opentelemetry-semantic-conventions | Apache-2.0 | https://crates.io/crates/opentelemetry-semantic-conventions |
@@ -377,6 +380,7 @@ This file contains attributions for any 3rd-party open source code used in this 
 | parking_lot_core | MIT, Apache-2.0 | https://crates.io/crates/parking_lot_core |
 | paste | MIT, Apache-2.0 | https://crates.io/crates/paste |
 | pathdiff | MIT, Apache-2.0 | https://crates.io/crates/pathdiff |
+| pem | MIT | https://crates.io/crates/pem |
 | pem-rfc7468 | Apache-2.0, MIT | https://crates.io/crates/pem-rfc7468 |
 | percent-encoding | MIT, Apache-2.0 | https://crates.io/crates/percent-encoding |
 | petname | Apache-2.0 | https://crates.io/crates/petname |
@@ -420,6 +424,7 @@ This file contains attributions for any 3rd-party open source code used in this 
 | rand_pcg | MIT, Apache-2.0 | https://crates.io/crates/rand_pcg |
 | rayon | MIT, Apache-2.0 | https://crates.io/crates/rayon |
 | rayon-core | MIT, Apache-2.0 | https://crates.io/crates/rayon-core |
+| rcgen | MIT, Apache-2.0 | https://crates.io/crates/rcgen |
 | redox_syscall | MIT | https://crates.io/crates/redox_syscall |
 | reedline | MIT | https://crates.io/crates/reedline |
 | regex | MIT, Apache-2.0 | https://crates.io/crates/regex |
@@ -428,7 +433,7 @@ This file contains attributions for any 3rd-party open source code used in this 
 | regex-syntax | MIT, Apache-2.0 | https://crates.io/crates/regex-syntax |
 | reqwest | MIT, Apache-2.0 | https://crates.io/crates/reqwest |
 | rfc6979 | Apache-2.0, MIT | https://crates.io/crates/rfc6979 |
-| ring |  | https://crates.io/crates/ring |
+| ring | Apache-2.0, ISC | https://crates.io/crates/ring |
 | riscv | ISC | https://crates.io/crates/riscv |
 | roff | MIT, Apache-2.0 | https://crates.io/crates/roff |
 | rustc-demangle | MIT, Apache-2.0 | https://crates.io/crates/rustc-demangle |
@@ -465,7 +470,6 @@ This file contains attributions for any 3rd-party open source code used in this 
 | serde_spanned | MIT, Apache-2.0 | https://crates.io/crates/serde_spanned |
 | serde_urlencoded | MIT, Apache-2.0 | https://crates.io/crates/serde_urlencoded |
 | sha1 | MIT, Apache-2.0 | https://crates.io/crates/sha1 |
-| sha1_smol | BSD-3-Clause | https://crates.io/crates/sha1_smol |
 | sha2 | MIT, Apache-2.0 | https://crates.io/crates/sha2 |
 | sharded-slab | MIT | https://crates.io/crates/sharded-slab |
 | shared_child | MIT | https://crates.io/crates/shared_child |
@@ -483,14 +487,12 @@ This file contains attributions for any 3rd-party open source code used in this 
 | size-of-derive | MIT, Apache-2.0 | https://crates.io/crates/size-of-derive |
 | slab | MIT | https://crates.io/crates/slab |
 | smallvec | MIT, Apache-2.0 | https://crates.io/crates/smallvec |
-| smawk | MIT | https://crates.io/crates/smawk |
 | smithay-client-toolkit | MIT | https://crates.io/crates/smithay-client-toolkit |
 | smithay-clipboard | MIT | https://crates.io/crates/smithay-clipboard |
 | snap | BSD-3-Clause | https://crates.io/crates/snap |
 | socket2 | MIT, Apache-2.0 | https://crates.io/crates/socket2 |
 | spin | MIT | https://crates.io/crates/spin |
 | spki | Apache-2.0, MIT | https://crates.io/crates/spki |
-| sqlformat | MIT, Apache-2.0 | https://crates.io/crates/sqlformat |
 | sqlx | MIT, Apache-2.0 | https://crates.io/crates/sqlx |
 | sqlx-core | MIT, Apache-2.0 | https://crates.io/crates/sqlx-core |
 | sqlx-macros | MIT, Apache-2.0 | https://crates.io/crates/sqlx-macros |
@@ -519,6 +521,7 @@ This file contains attributions for any 3rd-party open source code used in this 
 | sync_wrapper | Apache-2.0 | https://crates.io/crates/sync_wrapper |
 | synstructure | MIT | https://crates.io/crates/synstructure |
 | syntect | MIT | https://crates.io/crates/syntect |
+| sysctl | MIT | https://crates.io/crates/sysctl |
 | sysinfo | MIT | https://crates.io/crates/sysinfo |
 | tempfile | MIT, Apache-2.0 | https://crates.io/crates/tempfile |
 | termbg | MIT, Apache-2.0 | https://crates.io/crates/termbg |
@@ -564,13 +567,12 @@ This file contains attributions for any 3rd-party open source code used in this 
 | tungstenite | MIT, Apache-2.0 | https://crates.io/crates/tungstenite |
 | typenum | MIT, Apache-2.0 | https://crates.io/crates/typenum |
 | unicode-bidi | MIT, Apache-2.0 | https://crates.io/crates/unicode-bidi |
-| unicode-ident | MIT, Apache-2.0, Unicode-DFS-2016 | https://crates.io/crates/unicode-ident |
+| unicode-ident | MIT, Apache-2.0, Unicode-3.0 | https://crates.io/crates/unicode-ident |
 | unicode-linebreak | Apache-2.0 | https://crates.io/crates/unicode-linebreak |
 | unicode-normalization | MIT, Apache-2.0 | https://crates.io/crates/unicode-normalization |
 | unicode-properties | MIT, Apache-2.0 | https://crates.io/crates/unicode-properties |
 | unicode-segmentation | MIT, Apache-2.0 | https://crates.io/crates/unicode-segmentation |
 | unicode-width | MIT, Apache-2.0 | https://crates.io/crates/unicode-width |
-| unicode_categories | MIT, Apache-2.0 | https://crates.io/crates/unicode_categories |
 | universal-hash | MIT, Apache-2.0 | https://crates.io/crates/universal-hash |
 | unsafe-libyaml | MIT | https://crates.io/crates/unsafe-libyaml |
 | unsigned-varint | MIT | https://crates.io/crates/unsigned-varint |
@@ -582,8 +584,9 @@ This file contains attributions for any 3rd-party open source code used in this 
 | utf16_iter | Apache-2.0, MIT | https://crates.io/crates/utf16_iter |
 | utf8_iter | Apache-2.0, MIT | https://crates.io/crates/utf8_iter |
 | utf8parse | Apache-2.0, MIT | https://crates.io/crates/utf8parse |
+| utoipa | MIT, Apache-2.0 | https://crates.io/crates/utoipa |
+| utoipa-gen | MIT, Apache-2.0 | https://crates.io/crates/utoipa-gen |
 | uuid | Apache-2.0, MIT | https://crates.io/crates/uuid |
-| valuable | MIT | https://crates.io/crates/valuable |
 | value-bag | Apache-2.0, MIT | https://crates.io/crates/value-bag |
 | vcell | MIT, Apache-2.0 | https://crates.io/crates/vcell |
 | vcpkg | MIT, Apache-2.0 | https://crates.io/crates/vcpkg |
@@ -639,6 +642,7 @@ This file contains attributions for any 3rd-party open source code used in this 
 | windows_x86_64_msvc | MIT, Apache-2.0 | https://crates.io/crates/windows_x86_64_msvc |
 | winnow | MIT | https://crates.io/crates/winnow |
 | winsafe | MIT | https://crates.io/crates/winsafe |
+| wit-bindgen-rt | Apache-2.0 WITH LLVM-exception, Apache-2.0, MIT | https://crates.io/crates/wit-bindgen-rt |
 | write16 | Apache-2.0, MIT | https://crates.io/crates/write16 |
 | writeable | Unicode-3.0 | https://crates.io/crates/writeable |
 | x11-clipboard | MIT | https://crates.io/crates/x11-clipboard |
@@ -649,6 +653,7 @@ This file contains attributions for any 3rd-party open source code used in this 
 | xml-rs | MIT | https://crates.io/crates/xml-rs |
 | xmlparser | MIT, Apache-2.0 | https://crates.io/crates/xmlparser |
 | yaml-rust | MIT, Apache-2.0 | https://crates.io/crates/yaml-rust |
+| yasna | MIT, Apache-2.0 | https://crates.io/crates/yasna |
 | yoke | Unicode-3.0 | https://crates.io/crates/yoke |
 | yoke-derive | Unicode-3.0 | https://crates.io/crates/yoke-derive |
 | zerocopy | BSD-2-Clause, Apache-2.0, MIT | https://crates.io/crates/zerocopy |

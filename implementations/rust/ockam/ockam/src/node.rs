@@ -2,8 +2,8 @@ use ockam_core::compat::string::String;
 use ockam_core::compat::sync::Arc;
 use ockam_core::flow_control::FlowControls;
 use ockam_core::{
-    Address, AsyncTryClone, IncomingAccessControl, Message, OutgoingAccessControl, Processor,
-    Result, Route, Routed, Worker,
+    Address, IncomingAccessControl, Message, OutgoingAccessControl, Processor, Result, Route,
+    Routed, TryClone, Worker,
 };
 use ockam_identity::{
     CredentialRepository, IdentitiesAttributes, IdentitiesVerification,
@@ -46,8 +46,7 @@ pub struct Node {
 ///   let node = Node::builder()
 ///       .await?
 ///       .with_secrets_repository(Arc::new(SecretsSqlxDatabase::create().await?))
-///       .build(&ctx)
-///       .await?;
+///       .build(&ctx)?;
 ///   Ok(node)
 /// }
 ///
@@ -135,15 +134,18 @@ impl Node {
     }
 
     /// Spawns a SecureChannel listener at given `Address` with given [`SecureChannelListenerOptions`]
-    pub async fn create_secure_channel_listener(
+    pub fn create_secure_channel_listener(
         &self,
         identifier: &Identifier,
         address: impl Into<Address>,
         options: impl Into<SecureChannelListenerOptions>,
     ) -> Result<SecureChannelListener> {
-        self.secure_channels()
-            .create_secure_channel_listener(self.get_context(), identifier, address, options)
-            .await
+        self.secure_channels().create_secure_channel_listener(
+            self.get_context(),
+            identifier,
+            address,
+            options,
+        )
     }
 
     /// Initiate a SecureChannel using `Route` to the SecureChannel listener and [`SecureChannelOptions`]
@@ -159,15 +161,15 @@ impl Node {
     }
 
     /// Start a new worker instance at the given address. Default Access Control is AllowAll
-    pub async fn start_worker<W>(&self, address: impl Into<Address>, worker: W) -> Result<()>
+    pub fn start_worker<W>(&self, address: impl Into<Address>, worker: W) -> Result<()>
     where
         W: Worker<Context = Context>,
     {
-        self.context.start_worker(address, worker).await
+        self.context.start_worker(address, worker)
     }
 
     /// Start a new worker instance at the given address with given Access Controls
-    pub async fn start_worker_with_access_control<W>(
+    pub fn start_worker_with_access_control<W>(
         &self,
         address: impl Into<Address>,
         worker: W,
@@ -179,19 +181,18 @@ impl Node {
     {
         self.context
             .start_worker_with_access_control(address, worker, incoming, outgoing)
-            .await
     }
 
     /// Start a new processor instance at the given address. Default Access Control is DenyAll
-    pub async fn start_processor<P>(&self, address: impl Into<Address>, processor: P) -> Result<()>
+    pub fn start_processor<P>(&self, address: impl Into<Address>, processor: P) -> Result<()>
     where
         P: Processor<Context = Context>,
     {
-        self.context.start_processor(address, processor).await
+        self.context.start_processor(address, processor)
     }
 
     /// Start a new processor instance at the given address with given Access Controls
-    pub async fn start_processor_with_access_control<P>(
+    pub fn start_processor_with_access_control<P>(
         &self,
         address: impl Into<Address>,
         processor: P,
@@ -203,12 +204,11 @@ impl Node {
     {
         self.context
             .start_processor_with_access_control(address, processor, incoming, outgoing)
-            .await
     }
 
     /// Signal to the local runtime to shut down
-    pub async fn stop(&mut self) -> Result<()> {
-        self.context.stop().await
+    pub async fn shutdown(&mut self) -> Result<()> {
+        self.context.shutdown_node().await
     }
 
     /// Send a message to an address or via a fully-qualified route
@@ -384,9 +384,9 @@ impl NodeBuilder {
     }
 
     /// Build top level services
-    pub async fn build(self, ctx: &Context) -> Result<Node> {
+    pub fn build(self, ctx: &Context) -> Result<Node> {
         Ok(Node {
-            context: ctx.async_try_clone().await?,
+            context: ctx.try_clone()?,
             secure_channels: self.builder.build(),
         })
     }

@@ -31,7 +31,7 @@ pub struct ListIdsCommand {
 impl Command for ListIdsCommand {
     const NAME: &'static str = "project-member list-ids";
 
-    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> Result<()> {
+    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> Result<()> {
         let (authority_node_client, _) =
             authority_client(ctx, &opts, &self.identity_opts, &self.project_name).await?;
 
@@ -46,7 +46,7 @@ impl Command for ListIdsCommand {
             .terminal
             .build_list(&member_ids, "No members found on the Authority node")?;
         opts.terminal
-            .stdout()
+            .to_stdout()
             .plain(plain)
             .json_obj(&member_ids)?
             .write_line()?;

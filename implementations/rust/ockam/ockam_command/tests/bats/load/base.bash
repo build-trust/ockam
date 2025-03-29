@@ -54,6 +54,44 @@ setup_home_dir() {
   fi
 }
 
+list_open_tcp_ports() {
+  if [[ "$OSTYPE" == "darwin"* ]]; then
+    netstat -an -p tcp
+  else
+    netstat -ant
+  fi
+}
+
+# Waits for a port to be open
+wait_for_port() {
+  local port=$1
+  local timeout=10
+  local end=$(($(date +%s) + $timeout))
+
+  while ! list_open_tcp_ports | grep -e "[.:]$port" >/dev/null; do
+    if [ $(date +%s) -gt $end ]; then
+      echo "Timeout waiting for port $port to be open"
+      exit 1
+    fi
+    sleep 0.1
+  done
+}
+
+# Waits for a port to be open
+wait_for_closed_port() {
+  local port=$1
+  local timeout=10
+  local end=$(($(date +%s) + $timeout))
+
+  while list_open_tcp_ports | grep -e "[.:]$port.*LISTEN" >/dev/null; do
+    if [ $(date +%s) -gt $end ]; then
+      echo "Timeout waiting for port $port to be closed"
+      exit 1
+    fi
+    sleep 0.1
+  done
+}
+
 mkdir -p "$HOME/.bats-tests"
 teardown_home_dir() {
   IFS=';' read -ra DIRS <<<"$HOME_DIRS"
@@ -68,6 +106,14 @@ teardown_home_dir() {
       cp -r "$OCKAM_HOME" "$HOME/.bats-tests"
     fi
     run $OCKAM node delete --all --yes
+
+    # kill every process stored in the root with the name *.pid
+    for pid_file in $(find "${dir}" -name '*.pid'); do
+      pid=$(cat "$pid_file")
+      kill -9 $pid
+      wait $pid 2>/dev/null || true
+      rm -f "$pid_file"
+    done
   done
   export OCKAM_HOME=$OCKAM_HOME_BASE
   run $OCKAM node delete --all --yes
@@ -110,7 +156,7 @@ random_port() {
   i=0
   while [[ $i -lt $max_retries ]]; do
     port=$(shuf -i 10000-65535 -n 1 --random-source=/dev/urandom)
-    netstat -latn -p tcp | grep $port >/dev/null
+    list_open_tcp_ports | grep -e "[.:]$port" >/dev/null
     if [[ $? == 1 ]]; then
       break
     fi
@@ -136,8 +182,8 @@ run_failure() {
 
 bats_require_minimum_version 1.5.0
 
-# Disable the opentelemetry export to improve performances
-export OCKAM_OPENTELEMETRY_EXPORT=false
+# Disable the telemetry export to improve performances
+export OCKAM_TELEMETRY_EXPORT=false
 
 # Set a high timeout for CI tests
 export OCKAM_DEFAULT_TIMEOUT=5m

@@ -1,11 +1,12 @@
+use crate::transport::bind_tcp_listener;
 use crate::workers::{Addresses, TcpRecvProcessor};
 use crate::{TcpConnectionMode, TcpListenerInfo, TcpListenerOptions, TcpRegistry, TcpSendWorker};
 use ockam_core::{async_trait, compat::net::SocketAddr};
 use ockam_core::{Address, Processor, Result};
-use ockam_node::Context;
+use ockam_node::{Context, ProcessorBuilder, WorkerShutdownPriority};
 use ockam_transport_core::TransportError;
 use tokio::net::TcpListener;
-use tracing::{debug, instrument};
+use tracing::{debug, instrument, Level};
 
 /// A TCP Listen processor
 ///
@@ -20,7 +21,7 @@ pub(crate) struct TcpListenProcessor {
 }
 
 impl TcpListenProcessor {
-    #[instrument(skip_all, name = "TcpListenProcessor::start")]
+    #[instrument(skip_all, name = "TcpListenProcessor::start", level = Level::TRACE)]
     pub(crate) async fn start(
         ctx: &Context,
         registry: TcpRegistry,
@@ -28,9 +29,7 @@ impl TcpListenProcessor {
         options: TcpListenerOptions,
     ) -> Result<(SocketAddr, Address)> {
         debug!("Binding TcpListener to {}", addr);
-        let inner = TcpListener::bind(addr)
-            .await
-            .map_err(TransportError::from)?;
+        let inner = bind_tcp_listener(addr, options.enable_mptcp, options.buffer_size).await?;
         let saddr = inner.local_addr().map_err(TransportError::from)?;
 
         let address = Address::random_tagged("TcpListenProcessor");
@@ -43,7 +42,10 @@ impl TcpListenProcessor {
             options,
         };
 
-        ctx.start_processor(address.clone(), processor).await?;
+        ProcessorBuilder::new(processor)
+            .with_address(address.clone())
+            .with_shutdown_priority(WorkerShutdownPriority::Priority5)
+            .start(ctx)?;
 
         Ok((saddr, address))
     }
@@ -53,12 +55,10 @@ impl TcpListenProcessor {
 impl Processor for TcpListenProcessor {
     type Context = Context;
 
-    #[instrument(skip_all, name = "TcpListenProcessor::initialize")]
+    #[instrument(skip_all, name = "TcpListenProcessor::initialize", level = Level::TRACE)]
     async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
-        ctx.set_cluster(crate::CLUSTER_NAME).await?;
-
         self.registry.add_listener_processor(TcpListenerInfo::new(
-            ctx.address(),
+            ctx.primary_address().clone(),
             self.socket_address,
             self.options.flow_control_id.clone(),
         ));
@@ -66,19 +66,22 @@ impl Processor for TcpListenProcessor {
         Ok(())
     }
 
-    #[instrument(skip_all, name = "TcpListenProcessor::shutdown")]
+    #[instrument(skip_all, name = "TcpListenProcessor::shutdown", level = Level::TRACE)]
     async fn shutdown(&mut self, ctx: &mut Self::Context) -> Result<()> {
-        self.registry.remove_listener_processor(&ctx.address());
+        self.registry
+            .remove_listener_processor(ctx.primary_address());
 
         Ok(())
     }
 
-    #[instrument(skip_all, name = "TcpListenProcessor::process")]
+    #[instrument(skip_all, name = "TcpListenProcessor::process", level = Level::TRACE)]
     async fn process(&mut self, ctx: &mut Self::Context) -> Result<bool> {
         debug!("Waiting for incoming TCP connection...");
 
         // Wait for an incoming connection
         let (stream, peer) = self.inner.accept().await.map_err(TransportError::from)?;
+
+        stream.set_nodelay(true).map_err(TransportError::from)?;
         debug!("TCP connection accepted");
 
         let mode = TcpConnectionMode::Incoming;
@@ -104,8 +107,7 @@ impl Processor for TcpListenProcessor {
             peer,
             mode,
             &receiver_flow_control_id,
-        )
-        .await?;
+        )?;
 
         // Processor to receive messages over the wire and forward them to the node
         TcpRecvProcessor::start(
@@ -117,8 +119,7 @@ impl Processor for TcpListenProcessor {
             mode,
             &receiver_flow_control_id,
             receiver_outgoing_access_control,
-        )
-        .await?;
+        )?;
 
         Ok(true)
     }

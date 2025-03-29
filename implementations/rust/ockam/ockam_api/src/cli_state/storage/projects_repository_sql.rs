@@ -1,8 +1,8 @@
-use crate::cloud::addon::KafkaConfig;
-use crate::cloud::email_address::EmailAddress;
-use crate::cloud::project::models::{OktaConfig, ProjectModel, ProjectUserRole};
-use crate::cloud::share::{RoleInShare, ShareScope};
 use crate::minicbor_url::Url;
+use crate::orchestrator::addon::KafkaConfig;
+use crate::orchestrator::email_address::EmailAddress;
+use crate::orchestrator::project::models::{OktaConfig, ProjectModel, ProjectUserRole};
+use crate::orchestrator::share::{RoleInShare, ShareScope};
 use itertools::Itertools;
 use ockam::identity::Identifier;
 use ockam_core::async_trait;
@@ -14,8 +14,8 @@ use ockam_node::database::{Boolean, FromSqlxError, Nullable, SqlxDatabase, ToVoi
 use sqlx::any::AnyRow;
 use sqlx::encode::IsNull;
 use sqlx::error::BoxDynError;
-use sqlx::postgres::any::AnyArgumentBuffer;
 use sqlx::*;
+use sqlx_core::any::AnyArgumentBuffer;
 use std::str::FromStr;
 use std::sync::Arc;
 
@@ -634,13 +634,13 @@ mod test {
     use crate::cli_state::{
         SpacesRepository, SpacesSqlxDatabase, UsersRepository, UsersSqlxDatabase,
     };
-    use crate::cloud::enroll::auth0::UserInfo;
-    use ockam_node::database::with_dbs;
+    use crate::orchestrator::enroll::auth0::UserInfo;
+    use ockam_node::database::with_sqlite_dbs;
     use std::sync::Arc;
 
     #[tokio::test]
     async fn test_repository() -> Result<()> {
-        with_dbs(|db| async move {
+        with_sqlite_dbs(|db| async move {
             let repository: Arc<dyn UsersRepository> = Arc::new(UsersSqlxDatabase::new(db.clone()));
             repository
                 .store_user(&UserInfo {
@@ -736,7 +736,7 @@ mod test {
 
     #[tokio::test]
     async fn test_store_project_space() -> Result<()> {
-        with_dbs(|db| async move {
+        with_sqlite_dbs(|db| async move {
             let projects_repository: Arc<dyn ProjectsRepository> =
                 Arc::new(ProjectsSqlxDatabase::new(db.clone()));
 
@@ -755,7 +755,7 @@ mod test {
         .await
     }
 
-    /// HELPERS
+    // HELPERS
     fn create_project(
         id: &str,
         name: &str,

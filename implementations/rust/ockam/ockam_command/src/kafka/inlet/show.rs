@@ -4,7 +4,7 @@ use console::Term;
 use miette::miette;
 use ockam_api::DefaultAddress;
 
-use ockam_api::nodes::models::services::ServiceStatus;
+use ockam_api::nodes::models::services::ServiceStatusList;
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_api::output::Output;
 use ockam_api::terminal::{Terminal, TerminalStream};
@@ -28,7 +28,7 @@ pub struct ShowCommand {
 impl Command for ShowCommand {
     const NAME: &'static str = "kafka-inlet show";
 
-    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
         Ok(ShowTui::run(ctx, opts, &self).await?)
     }
 }
@@ -46,7 +46,8 @@ impl<'a> ShowTui<'a> {
         opts: CommandGlobalOpts,
         cmd: &'a ShowCommand,
     ) -> miette::Result<()> {
-        let node = BackgroundNodeClient::create(ctx, &opts.state, &cmd.node_opts.at_node).await?;
+        let node =
+            BackgroundNodeClient::create(ctx, opts.state.clone(), &cmd.node_opts.at_node).await?;
         let tui = Self {
             ctx,
             opts,
@@ -58,7 +59,7 @@ impl<'a> ShowTui<'a> {
 }
 
 #[async_trait]
-impl<'a> ShowCommandTui for ShowTui<'a> {
+impl ShowCommandTui for ShowTui<'_> {
     const ITEM_NAME: PluralTerm = PluralTerm::KafkaInlet;
 
     fn cmd_arg_item_name(&self) -> Option<String> {
@@ -76,31 +77,32 @@ impl<'a> ShowCommandTui for ShowTui<'a> {
     }
 
     async fn list_items_names(&self) -> miette::Result<Vec<String>> {
-        let inlets: Vec<ServiceStatus> = self
+        let inlets: ServiceStatusList = self
             .node
             .ask(
                 self.ctx,
                 Request::get(format!("/node/services/{}", DefaultAddress::KAFKA_INLET)),
             )
             .await?;
-        let addresses = inlets.into_iter().map(|i| i.addr).collect();
+        let addresses = inlets.0.into_iter().map(|i| i.addr).collect();
         Ok(addresses)
     }
 
     async fn show_single(&self, item_name: &str) -> miette::Result<()> {
-        let inlets: Vec<ServiceStatus> = self
+        let inlets: ServiceStatusList = self
             .node
             .ask(
                 self.ctx,
                 Request::get(format!("/node/services/{}", DefaultAddress::KAFKA_INLET)),
             )
             .await?;
+        let inlets = inlets.0;
         let inlet = inlets
             .into_iter()
             .find(|i| i.addr == item_name)
             .ok_or_else(|| miette!("Kafka Inlet not found"))?;
         self.terminal()
-            .stdout()
+            .to_stdout()
             .plain(inlet.item()?)
             .json_obj(&inlet)?
             .write_line()?;

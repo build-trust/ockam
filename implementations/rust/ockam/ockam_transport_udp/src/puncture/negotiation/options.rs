@@ -74,10 +74,10 @@ impl UdpPunctureNegotiationListenerOptions {
         address: &Address,
     ) {
         for id in &self.consumer {
-            flow_controls.add_consumer(address.clone(), id);
+            flow_controls.add_consumer(address, id);
         }
 
-        flow_controls.add_spawner(address.clone(), &self.flow_control_id);
+        flow_controls.add_spawner(address, &self.flow_control_id);
     }
 
     /// Spawner [`FlowControlId`]

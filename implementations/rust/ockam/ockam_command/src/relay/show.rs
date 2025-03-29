@@ -6,7 +6,7 @@ use miette::{miette, IntoDiagnostic};
 
 use ockam::Context;
 use ockam_api::address::extract_address_value;
-use ockam_api::nodes::models::relay::RelayInfo;
+use ockam_api::nodes::models::relay::{RelayInfo, RelayInfoList};
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_core::api::Request;
 use ockam_multiaddr::MultiAddr;
@@ -15,12 +15,11 @@ use ockam_api::colors::OckamColor;
 use ockam_api::output::Output;
 use ockam_api::terminal::{Terminal, TerminalStream};
 use ockam_api::ConnectionStatus;
-use ockam_core::AsyncTryClone;
+use ockam_core::TryClone;
 use serde::Serialize;
 
 use crate::terminal::tui::ShowCommandTui;
 use crate::tui::PluralTerm;
-use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts};
 
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
@@ -42,22 +41,12 @@ pub struct ShowCommand {
 }
 
 impl ShowCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |ctx| async move {
-            self.async_run(&ctx, opts).await
-        })
-    }
     pub fn name(&self) -> String {
         "relay show".into()
     }
 
-    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
-        ShowTui::run(
-            ctx.async_try_clone().await.into_diagnostic()?,
-            opts,
-            self.clone(),
-        )
-        .await
+    pub async fn run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        ShowTui::run(ctx.try_clone().into_diagnostic()?, opts, self.clone()).await
     }
 }
 
@@ -74,7 +63,7 @@ impl ShowTui {
         opts: CommandGlobalOpts,
         cmd: ShowCommand,
     ) -> miette::Result<()> {
-        let node = BackgroundNodeClient::create(&ctx, &opts.state, &cmd.at).await?;
+        let node = BackgroundNodeClient::create(&ctx, opts.state.clone(), &cmd.at).await?;
         let tui = Self {
             ctx,
             opts,
@@ -105,11 +94,11 @@ impl ShowCommandTui for ShowTui {
     }
 
     async fn list_items_names(&self) -> miette::Result<Vec<String>> {
-        let relays: Vec<RelayInfo> = self
+        let relays: RelayInfoList = self
             .node
             .ask(&self.ctx, Request::get("/node/relay"))
             .await?;
-        Ok(relays.into_iter().map(|i| i.name().to_string()).collect())
+        Ok(relays.0.into_iter().map(|i| i.name().to_string()).collect())
     }
 
     async fn show_single(&self, item_name: &str) -> miette::Result<()> {
@@ -119,7 +108,7 @@ impl ShowCommandTui for ShowTui {
             .await?;
         let relay = RelayShowOutput::from(relay);
         self.terminal()
-            .stdout()
+            .to_stdout()
             .plain(relay.item()?)
             .machine(item_name)
             .json(serde_json::to_string(&relay).into_diagnostic()?)

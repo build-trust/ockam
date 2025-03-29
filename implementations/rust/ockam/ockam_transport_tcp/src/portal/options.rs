@@ -1,16 +1,26 @@
 use crate::portal::addresses::Addresses;
 use crate::TlsCertificateProvider;
 use ockam_core::compat::sync::Arc;
+use ockam_core::env::get_env_with_default_ignore_error;
 use ockam_core::flow_control::{FlowControlId, FlowControls};
 use ockam_core::{Address, AllowAll, IncomingAccessControl, OutgoingAccessControl};
 
-/// Trust Options for an Inlet
+/// Maximum allowed size for a payload for TCP Portal
+pub fn read_portal_payload_length() -> usize {
+    get_env_with_default_ignore_error("OCKAM_TCP_PORTAL_PAYLOAD_LENGTH", 128 * 1024)
+}
+
+/// Options for an Inlet
 #[derive(Clone, Debug)]
 pub struct TcpInletOptions {
     pub(crate) incoming_access_control: Arc<dyn IncomingAccessControl>,
     pub(crate) outgoing_access_control: Arc<dyn OutgoingAccessControl>,
     pub(crate) is_paused: bool,
     pub(crate) tls_certificate_provider: Option<Arc<dyn TlsCertificateProvider>>,
+    pub(crate) portal_payload_length: usize,
+    pub(crate) skip_handshake: bool,
+    pub(crate) enable_nagle: bool,
+    pub(crate) enable_mptcp: bool,
 }
 
 impl TcpInletOptions {
@@ -21,7 +31,47 @@ impl TcpInletOptions {
             outgoing_access_control: Arc::new(AllowAll),
             is_paused: false,
             tls_certificate_provider: None,
+            portal_payload_length: read_portal_payload_length(),
+            skip_handshake: false,
+            enable_nagle: false,
+            enable_mptcp: false,
         }
+    }
+
+    /// Skip Portal handshake for lower latency, but also lower throughput
+    pub fn set_skip_handshake(mut self, skip_handshake: bool) -> Self {
+        self.skip_handshake = skip_handshake;
+        self
+    }
+
+    /// Skip Portal handshake for lower latency, but also lower throughput
+    pub fn skip_handshake(mut self) -> Self {
+        self.skip_handshake = true;
+        self
+    }
+
+    /// Enable Nagle's algorithm for potentially higher throughput, but higher latency
+    pub fn set_enable_nagle(mut self, enable_nagle: bool) -> Self {
+        self.enable_nagle = enable_nagle;
+        self
+    }
+
+    /// Enable Nagle's algorithm for potentially higher throughput, but higher latency
+    pub fn enable_nagle(mut self) -> Self {
+        self.enable_nagle = true;
+        self
+    }
+
+    /// Enable or disable MPTCP support
+    pub fn set_enable_mptcp(mut self, enable_mptcp: bool) -> Self {
+        self.enable_mptcp = enable_mptcp;
+        self
+    }
+
+    /// Enable MPTCP support
+    pub fn enable_mptcp(mut self) -> Self {
+        self.enable_mptcp = true;
+        self
     }
 
     /// Set TCP inlet to paused mode after start. No unpause call [`TcpInlet::unpause`]
@@ -81,12 +131,12 @@ impl TcpInletOptions {
         addresses: &Addresses,
         next: &Address,
     ) {
-        Self::setup_flow_control_for_address(flow_controls, addresses.sender_remote.clone(), next)
+        Self::setup_flow_control_for_address(flow_controls, &addresses.sender_remote, next)
     }
 
     pub(crate) fn setup_flow_control_for_address(
         flow_controls: &FlowControls,
-        address: Address,
+        address: &Address,
         next: &Address,
     ) {
         if let Some(flow_control_id) = flow_controls
@@ -105,13 +155,17 @@ impl Default for TcpInletOptions {
     }
 }
 
-/// Trust Options for an Outlet
+/// Options for an Outlet
 #[derive(Clone, Debug)]
 pub struct TcpOutletOptions {
     pub(crate) consumer: Vec<FlowControlId>,
     pub(crate) incoming_access_control: Arc<dyn IncomingAccessControl>,
     pub(crate) outgoing_access_control: Arc<dyn OutgoingAccessControl>,
     pub(crate) tls: bool,
+    pub(crate) portal_payload_length: usize,
+    pub(crate) skip_handshake: bool,
+    pub(crate) enable_nagle: bool,
+    pub(crate) enable_mptcp: bool,
 }
 
 impl TcpOutletOptions {
@@ -122,7 +176,47 @@ impl TcpOutletOptions {
             incoming_access_control: Arc::new(AllowAll),
             outgoing_access_control: Arc::new(AllowAll),
             tls: false,
+            portal_payload_length: read_portal_payload_length(),
+            skip_handshake: false,
+            enable_nagle: false,
+            enable_mptcp: false,
         }
+    }
+
+    /// Skip Portal handshake for lower latency, but also lower throughput
+    pub fn set_skip_handshake(mut self, skip_handshake: bool) -> Self {
+        self.skip_handshake = skip_handshake;
+        self
+    }
+
+    /// Skip Portal handshake for lower latency, but also lower throughput
+    pub fn skip_handshake(mut self) -> Self {
+        self.skip_handshake = true;
+        self
+    }
+
+    /// Enable Nagle's algorithm for potentially higher throughput, but higher latency
+    pub fn set_enable_nagle(mut self, enable_nagle: bool) -> Self {
+        self.enable_nagle = enable_nagle;
+        self
+    }
+
+    /// Enable Nagle's algorithm for potentially higher throughput, but higher latency
+    pub fn enable_nagle(mut self) -> Self {
+        self.enable_nagle = true;
+        self
+    }
+
+    /// Enable or disable MPTCP support
+    pub fn set_enable_mptcp(mut self, enable_mptcp: bool) -> Self {
+        self.enable_mptcp = enable_mptcp;
+        self
+    }
+
+    /// Enable MPTCP support
+    pub fn enable_mptcp(mut self) -> Self {
+        self.enable_mptcp = true;
+        self
     }
 
     /// Set Incoming Access Control
@@ -182,7 +276,7 @@ impl TcpOutletOptions {
         address: &Address,
     ) {
         for id in &self.consumer {
-            flow_controls.add_consumer(address.clone(), id);
+            flow_controls.add_consumer(address, id);
         }
     }
 
@@ -194,11 +288,8 @@ impl TcpOutletOptions {
         // Check if the Worker that send us this message is a Producer
         // If yes - outlet worker will be added to that flow control to be able to receive further
         // messages from that Producer
-        if let Some(producer_flow_control_id) = flow_controls
-            .get_flow_control_with_producer(src_addr)
-            .map(|x| x.flow_control_id().clone())
-        {
-            flow_controls.add_consumer(addresses.sender_remote.clone(), &producer_flow_control_id);
+        if let Some(producer_info) = flow_controls.get_flow_control_with_producer(src_addr) {
+            flow_controls.add_consumer(&addresses.sender_remote, producer_info.flow_control_id());
         }
     }
 }
@@ -207,4 +298,14 @@ impl Default for TcpOutletOptions {
     fn default() -> Self {
         Self::new()
     }
+}
+
+#[allow(non_snake_case)]
+#[test]
+fn tcp_portal_options_portal_length__env_var_set__pulls_correct_value() {
+    let length: usize = rand::random();
+    std::env::set_var("OCKAM_TCP_PORTAL_PAYLOAD_LENGTH", length.to_string());
+
+    assert_eq!(TcpInletOptions::default().portal_payload_length, length);
+    assert_eq!(TcpOutletOptions::default().portal_payload_length, length);
 }

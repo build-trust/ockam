@@ -3,8 +3,8 @@ use crate::{Command, CommandGlobalOpts};
 use async_trait::async_trait;
 use clap::Args;
 use ockam::Context;
-use ockam_api::cloud::project::ProjectsOrchestratorApi;
 use ockam_api::nodes::InMemoryNode;
+use ockam_api::orchestrator::project::ProjectsOrchestratorApi;
 
 /// List the Admins of a Project
 #[derive(Clone, Debug, Args)]
@@ -21,7 +21,7 @@ pub struct ListCommand {
 impl Command for ListCommand {
     const NAME: &'static str = "project-admin list";
 
-    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
         let project = opts
             .state
             .projects()
@@ -29,7 +29,7 @@ impl Command for ListCommand {
             .await?;
         let node = InMemoryNode::start_with_identity_and_project_name(
             ctx,
-            &opts.state,
+            opts.state.clone(),
             self.identity_opts.identity_name,
             Some(project.project_name().to_string()),
         )
@@ -38,7 +38,7 @@ impl Command for ListCommand {
 
         let list = &opts.terminal.build_list(&admins, "No admins found")?;
         opts.terminal
-            .stdout()
+            .to_stdout()
             .plain(list)
             .json_obj(admins)?
             .write_line()?;

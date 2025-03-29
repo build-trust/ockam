@@ -1,0 +1,19 @@
+{
+  "redirects": [
+    {
+      "source": "/",
+      "destination": "/api"
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/api/update",
+      "destination": "/api"
+    }
+  ],
+  "functions": {
+    "api/**/*": {
+      "maxDuration": 300
+    }
+  }
+}

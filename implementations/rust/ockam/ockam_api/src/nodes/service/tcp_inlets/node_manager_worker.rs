@@ -1,17 +1,18 @@
 use ockam::{route, Result};
 use ockam_core::api::{Error, Response};
 use ockam_node::Context;
+use tracing::Level;
 
-use crate::nodes::models::portal::{CreateInlet, InletStatus};
+use crate::nodes::models::portal::{CreateInlet, InletStatus, InletStatusList};
 use crate::nodes::NodeManagerWorker;
 
 impl NodeManagerWorker {
-    pub(crate) async fn get_inlets(&self) -> Result<Response<Vec<InletStatus>>, Response<Error>> {
+    pub(crate) async fn get_inlets(&self) -> Result<Response<InletStatusList>, Response<Error>> {
         let inlets = self.node_manager.list_inlets().await;
-        Ok(Response::ok().body(inlets))
+        Ok(Response::ok().body(InletStatusList(inlets)))
     }
 
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     pub(crate) async fn create_inlet(
         &self,
         ctx: &Context,
@@ -30,13 +31,17 @@ impl NodeManagerWorker {
             disable_tcp_fallback,
             privileged,
             tls_certificate_provider,
+            skip_handshake,
+            enable_nagle,
+            enable_mptcp,
+            prefix_route,
         } = create_inlet;
         match self
             .node_manager
             .create_inlet(
                 ctx,
                 listen_addr,
-                route![],
+                prefix_route,
                 route![],
                 outlet_addr,
                 alias,
@@ -49,6 +54,9 @@ impl NodeManagerWorker {
                 disable_tcp_fallback,
                 privileged,
                 tls_certificate_provider,
+                skip_handshake,
+                enable_nagle,
+                enable_mptcp,
             )
             .await
         {

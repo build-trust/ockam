@@ -1,7 +1,7 @@
 use sqlx::encode::IsNull;
 use sqlx::error::BoxDynError;
-use sqlx::postgres::any::AnyArgumentBuffer;
 use sqlx::*;
+use sqlx_core::any::AnyArgumentBuffer;
 use std::sync::Arc;
 use tracing::debug;
 use zeroize::{Zeroize, ZeroizeOnDrop};
@@ -481,7 +481,7 @@ mod test {
         Ok(())
     }
 
-    /// HELPERS
+    // HELPERS
     async fn create_repository() -> Result<Arc<dyn SecretsRepository>> {
         Ok(Arc::new(SecretsSqlxDatabase::create().await?))
     }

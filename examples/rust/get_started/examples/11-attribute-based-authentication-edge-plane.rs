@@ -5,15 +5,15 @@ use ockam::identity::{
     TrustMultiIdentifiersPolicy,
 };
 use ockam::node;
+use ockam::tcp::{TcpInletOptions, TcpTransportExtension, TCP};
 use ockam::{route, Context, Result};
 use ockam_api::authenticator::enrollment_tokens::TokenAcceptor;
 use ockam_api::authenticator::one_time_code::OneTimeCode;
 use ockam_api::nodes::NodeManager;
 use ockam_api::{RemoteMultiaddrResolver, TransportRouteResolver};
 use ockam_core::compat::sync::Arc;
-use ockam_core::AsyncTryClone;
+use ockam_core::TryClone;
 use ockam_multiaddr::MultiAddr;
-use ockam_transport_tcp::{TcpInletOptions, TcpTransportExtension};
 
 /// This node supports an "edge" server which can connect to a "control" node
 /// in order to connect its TCP inlet to the "control" node TCP outlet
@@ -51,7 +51,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     // Create a node with default implementations
     let node = node(ctx).await?;
     // Use the TCP transport
-    let tcp = node.create_tcp_transport().await?;
+    let tcp = node.create_tcp_transport()?;
 
     // Create an Identity for the edge plane
     let edge_plane = node.create_identity().await?;
@@ -61,7 +61,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
     // create a secure channel to the authority
     // when creating the channel we check that the opposite side is indeed presenting the authority identity
     let authority_node = NodeManager::authority_node_client(
-        &tcp,
+        tcp.clone(),
         node.secure_channels().clone(),
         &edge_plane,
         &MultiAddr::try_from("/dnsaddr/localhost/tcp/5000")?,
@@ -79,8 +79,9 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
 
     // Create a credential retriever that will be used to obtain credentials
     let credential_retriever = Arc::new(RemoteCredentialRetrieverCreator::new(
-        node.context().async_try_clone().await?,
-        Arc::new(tcp.clone()),
+        node.context().try_clone()?,
+        TCP,
+        tcp.clone(),
         node.secure_channels(),
         RemoteCredentialRetrieverInfo::create_for_project_member(
             project.authority_identifier(),
@@ -102,8 +103,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
         Some(project.authority_identifier()),
         "component",
         "control",
-    )
-    .await?;
+    )?;
 
     // 4. create a tcp inlet with the above policy
 

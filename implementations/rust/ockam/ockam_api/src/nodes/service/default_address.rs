@@ -10,6 +10,8 @@ impl DefaultAddress {
     pub const UPPERCASE_SERVICE: &'static str = "uppercase";
     pub const ECHO_SERVICE: &'static str = "echo";
     pub const HOP_SERVICE: &'static str = "hop";
+    pub const HTTP_HEADERS_SERVICE: &'static str = "http_headers";
+    pub const REMOTE_PROXY_VAULT: &'static str = "remote_proxy_vault";
     pub const SECURE_CHANNEL_LISTENER: &'static str = "api";
     pub const KEY_EXCHANGER_LISTENER: &'static str = "key_exchanger";
     pub const UDP_PUNCTURE_NEGOTIATION_LISTENER: &'static str = "udp";
@@ -22,6 +24,8 @@ impl DefaultAddress {
     pub const KAFKA_OUTLET: &'static str = "kafka_outlet";
     pub const KAFKA_INLET: &'static str = "kafka_inlet";
     pub const LEASE_MANAGER: &'static str = "lease_manager";
+    pub const CONTROL_API: &'static str = "control_api";
+    pub const GRPC_FORWARDER: &'static str = "grpc_forwarder";
 
     pub fn get_rendezvous_server_address() -> Address {
         let server_address = std::env::var("OCKAM_RENDEZVOUS_SERVER")
@@ -44,7 +48,9 @@ impl DefaultAddress {
             | Self::OKTA_IDENTITY_PROVIDER
             | Self::KAFKA_INLET
             | Self::KAFKA_OUTLET
-            | Self::LEASE_MANAGER)
+            | Self::LEASE_MANAGER
+            | Self::CONTROL_API
+            | Self::GRPC_FORWARDER)
     }
 
     pub fn iter() -> impl Iterator<Item = &'static str> {
@@ -65,6 +71,8 @@ impl DefaultAddress {
             Self::KAFKA_INLET,
             Self::KAFKA_OUTLET,
             Self::LEASE_MANAGER,
+            Self::CONTROL_API,
+            Self::GRPC_FORWARDER,
         ]
         .iter()
         .copied()

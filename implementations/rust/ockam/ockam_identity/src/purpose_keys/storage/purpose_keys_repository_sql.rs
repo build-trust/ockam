@@ -1,8 +1,8 @@
 use core::str::FromStr;
 use sqlx::encode::IsNull;
 use sqlx::error::BoxDynError;
-use sqlx::postgres::any::AnyArgumentBuffer;
 use sqlx::*;
+use sqlx_core::any::AnyArgumentBuffer;
 use std::sync::Arc;
 use tracing::debug;
 
@@ -212,7 +212,7 @@ mod tests {
         Ok(())
     }
 
-    /// HELPERS
+    // HELPERS
     async fn create_repository() -> Result<Arc<dyn PurposeKeysRepository>> {
         Ok(Arc::new(PurposeKeysSqlxDatabase::create().await?))
     }

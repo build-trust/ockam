@@ -1,8 +1,8 @@
 use ockam::identity::TimestampInSeconds;
 use sqlx::encode::IsNull;
 use sqlx::error::BoxDynError;
-use sqlx::postgres::any::AnyArgumentBuffer;
 use sqlx::*;
+use sqlx_core::any::AnyArgumentBuffer;
 use std::sync::Arc;
 
 use crate::authenticator::one_time_code::OneTimeCode;

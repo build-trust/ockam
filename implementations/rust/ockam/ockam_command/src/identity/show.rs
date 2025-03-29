@@ -12,7 +12,6 @@ use ockam_api::output::{EncodeFormat, Output};
 
 use crate::identity::list::IdentityListOutput;
 use crate::output::{IdentifierDisplay, VerifyingPublicKeyDisplay};
-use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/show/long_about.txt");
@@ -43,16 +42,11 @@ pub struct ShowCommand {
 }
 
 impl ShowCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |_ctx| async move {
-            self.async_run(opts).await
-        })
-    }
     pub fn name(&self) -> String {
         "identity show".into()
     }
 
-    async fn async_run(&self, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(&self, opts: CommandGlobalOpts) -> miette::Result<()> {
         if self.name.is_some() || !opts.terminal.can_ask_for_user_input() {
             ShowCommand::show_single_identity(&opts, &self.name, self.full, self.encoding.clone())
                 .await?;
@@ -64,7 +58,7 @@ impl ShowCommand {
         match identities_names.len() {
             0 => {
                 opts.terminal
-                    .stdout()
+                    .to_stdout()
                     .plain("There are no identities to show")
                     .write_line()?;
             }
@@ -85,7 +79,7 @@ impl ShowCommand {
 
                 if selected_names.is_empty() {
                     opts.terminal
-                        .stdout()
+                        .to_stdout()
                         .plain("No identities selected")
                         .write_line()?;
                     return Ok(());
@@ -133,7 +127,7 @@ impl ShowCommand {
 
         opts.terminal
             .clone()
-            .stdout()
+            .to_stdout()
             .plain(&plain)
             .json(json.into_diagnostic()?)
             .machine(&plain)
@@ -163,7 +157,7 @@ impl ShowCommand {
 
         opts.terminal
             .clone()
-            .stdout()
+            .to_stdout()
             .plain(list)
             .json(json!(&identities))
             .write_line()?;

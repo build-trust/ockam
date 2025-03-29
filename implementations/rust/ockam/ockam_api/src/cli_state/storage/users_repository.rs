@@ -1,5 +1,5 @@
-use crate::cloud::email_address::EmailAddress;
-use crate::cloud::enroll::auth0::UserInfo;
+use crate::orchestrator::email_address::EmailAddress;
+use crate::orchestrator::enroll::auth0::UserInfo;
 use ockam_core::async_trait;
 use ockam_core::Result;
 use ockam_node::database::AutoRetry;

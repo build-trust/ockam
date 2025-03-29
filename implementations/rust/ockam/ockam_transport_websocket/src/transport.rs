@@ -27,7 +27,7 @@ use crate::{parse_socket_addr, WebSocketRouter, WebSocketRouterHandle, WS};
 /// # use ockam_core::Result;
 /// # use ockam_node::Context;
 /// # async fn test(ctx: Context) -> Result<()> {
-/// let ws = WebSocketTransport::create(&ctx).await?;
+/// let ws = WebSocketTransport::create(&ctx)?;
 /// ws.listen("127.0.0.1:8000").await?; // Listen on port 8000
 /// ws.connect("127.0.0.1:5000").await?; // And connect to port 5000
 /// # Ok(()) }
@@ -40,7 +40,7 @@ use crate::{parse_socket_addr, WebSocketRouter, WebSocketRouterHandle, WS};
 /// # use ockam_core::{Address, Result};
 /// # use ockam_node::Context;
 /// # async fn test(ctx: Context) -> Result<()> {
-/// let ws = WebSocketTransport::create(&ctx).await?;
+/// let ws = WebSocketTransport::create(&ctx)?;
 /// ws.listen("127.0.0.1:8000").await?; // Listen on port 8000
 /// ws.listen("127.0.0.1:9000").await?; // Listen on port 9000
 /// # Ok(()) }
@@ -57,11 +57,11 @@ impl WebSocketTransport {
     /// # use ockam_node::Context;
     /// # use ockam_core::Result;
     /// # async fn test(ctx: Context) -> Result<()> {
-    /// let ws = WebSocketTransport::create(&ctx).await?;
+    /// let ws = WebSocketTransport::create(&ctx)?;
     /// # Ok(()) }
     /// ```
-    pub async fn create(ctx: &Context) -> Result<WebSocketTransport> {
-        let router_handle = WebSocketRouter::register(ctx).await?;
+    pub fn create(ctx: &Context) -> Result<WebSocketTransport> {
+        let router_handle = WebSocketRouter::register(ctx)?;
         Ok(Self { router_handle })
     }
 
@@ -72,7 +72,7 @@ impl WebSocketTransport {
     /// # use ockam_node::Context;
     /// # use ockam_core::Result;
     /// # async fn test(ctx: Context) -> Result<()> {
-    /// let ws = WebSocketTransport::create(&ctx).await?;
+    /// let ws = WebSocketTransport::create(&ctx)?;
     /// ws.listen("127.0.0.1:8000").await?; // Listen on port 8000
     /// ws.connect("127.0.0.1:5000").await?; // and connect to port 5000
     /// # Ok(()) }
@@ -93,7 +93,7 @@ impl WebSocketTransport {
     /// # use ockam_node::Context;
     /// # use ockam_core::Result;
     /// # async fn test(ctx: Context) -> Result<()> {
-    /// let ws = WebSocketTransport::create(&ctx).await?;
+    /// let ws = WebSocketTransport::create(&ctx)?;
     /// ws.listen("127.0.0.1:8000").await?;
     /// # Ok(()) }
     pub async fn listen<S: AsRef<str>>(&self, bind_addr: S) -> Result<SocketAddr> {
@@ -108,7 +108,7 @@ impl WebSocketTransport {
 pub trait WebSocketTransportExtension: HasContext {
     /// Create a WebSocket transport
     async fn create_web_socket_transport(&self) -> Result<WebSocketTransport> {
-        WebSocketTransport::create(self.get_context()).await
+        WebSocketTransport::create(self.get_context())
     }
 }
 

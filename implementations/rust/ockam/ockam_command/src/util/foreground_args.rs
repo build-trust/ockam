@@ -1,3 +1,4 @@
+use crate::node::node_callback::NodeCallback;
 use crate::CommandGlobalOpts;
 use clap::Args;
 use colorful::Colorful;
@@ -27,9 +28,20 @@ pub struct ForegroundArgs {
 pub async fn wait_for_exit_signal(
     args: &ForegroundArgs,
     opts: &CommandGlobalOpts,
+    tcp_callback_port: Option<u16>,
     msg: &str,
 ) -> miette::Result<()> {
     let (tx, mut rx) = tokio::sync::mpsc::channel(2);
+
+    // When running a background node, at this point we don't expect any further output to be written to the
+    // parent process, so we close stdin, stdout, and stderr to fully detach the child process.
+    // This avoids blocking issues in the parent process when the command is run in environments where the
+    // terminal session remains open until all subprocesses exit (e.g. through ssh).
+    if args.child_process {
+        let _ = nix::unistd::close(0).map_err(std::io::Error::from); // stdin
+        let _ = nix::unistd::close(1).map_err(std::io::Error::from); // stdout
+        let _ = nix::unistd::close(2).map_err(std::io::Error::from); // stderr
+    }
 
     // Register a handler for SIGINT, SIGTERM, SIGHUP
     {
@@ -43,7 +55,8 @@ pub async fn wait_for_exit_signal(
                 let _ = tx.blocking_send(());
                 info!("Exit signal received");
                 if !is_child_process {
-                    let _ = terminal.write_line(fmt_warn!("Exit signal received"));
+                    let _ =
+                        terminal.write_line("\n".to_string() + &fmt_warn!("Exit signal received"));
                 }
                 processed = true
             }
@@ -70,8 +83,13 @@ pub async fn wait_for_exit_signal(
 
     debug!("waiting for exit signal");
 
-    if !args.child_process {
-        opts.terminal.write_line(fmt_log!("{}", msg))?;
+    if opts.terminal.is_tty() {
+        opts.terminal.write_line("")?;
+        opts.terminal.write(fmt_log!("{}", msg))?;
+    }
+
+    if let Some(tcp_callback_port) = tcp_callback_port {
+        NodeCallback::signal(tcp_callback_port).await?;
     }
 
     // Wait for signal SIGINT, SIGTERM, SIGHUP or EOF; or for the tx to be closed.

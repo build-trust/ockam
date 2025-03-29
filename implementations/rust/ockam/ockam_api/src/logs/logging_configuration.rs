@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use tracing_core::Level;
 use tracing_subscriber::EnvFilter;
 
-use super::{Colored, GlobalErrorHandler, LoggingEnabled};
+use super::{Colored, LoggingEnabled, OckamUserLogFormat};
 use crate::logs::LogFormat;
 
 /// List of all the configuration parameters relevant for configuring the logs
@@ -17,8 +17,6 @@ pub struct LoggingConfiguration {
     enabled: LoggingEnabled,
     /// Verbosity required for a given span or log record
     level: Level,
-    /// This parameter specifies what to do when there are logging or tracing errors
-    global_error_handler: GlobalErrorHandler,
     /// Maximum log file size in bytes
     max_size_bytes: u64,
     /// Maximum number of log files for a given node
@@ -28,9 +26,9 @@ pub struct LoggingConfiguration {
     /// This parameter specifies if the log output is colored (typically in terminals supporting it)
     colored: Colored,
     /// Director where log files must be created.
-    /// If no directory is defined then log messages appear on the console
+    /// If no directory is defined, then log messages appear on the console
     log_dir: Option<PathBuf>,
-    /// List of create for which we want to keep log messages
+    /// List of crates for which we want to keep log messages
     crates: Option<Vec<String>>,
 }
 
@@ -40,7 +38,6 @@ impl LoggingConfiguration {
     pub fn new(
         enabled: LoggingEnabled,
         level: Level,
-        global_error_handler: GlobalErrorHandler,
         max_size_bytes: u64,
         max_files: u64,
         format: LogFormat,
@@ -51,7 +48,6 @@ impl LoggingConfiguration {
         LoggingConfiguration {
             enabled,
             level,
-            global_error_handler,
             max_size_bytes,
             max_files,
             format,
@@ -69,11 +65,6 @@ impl LoggingConfiguration {
     /// Return the logging level
     pub fn level(&self) -> Level {
         self.level
-    }
-
-    /// Return the desired global error handler
-    pub fn global_error_handler(&self) -> GlobalErrorHandler {
-        self.global_error_handler
     }
 
     /// Return the maximum log file size
@@ -169,7 +160,6 @@ impl LoggingConfiguration {
         Ok(LoggingConfiguration::new(
             LoggingEnabled::Off,
             level_and_crates.level,
-            global_error_handler()?,
             0,
             0,
             LogFormat::Default,
@@ -185,7 +175,6 @@ impl LoggingConfiguration {
         Ok(LoggingConfiguration::new(
             LoggingEnabled::On,
             level_and_crates.level,
-            global_error_handler()?,
             log_max_size_bytes()?,
             log_max_files()?,
             log_format()?,
@@ -201,10 +190,6 @@ impl Display for LoggingConfiguration {
         f.debug_struct("LoggingConfiguration")
             .field("enabled", &self.enabled.to_string())
             .field("level", &self.level().to_string())
-            .field(
-                "global_error_handler",
-                &self.global_error_handler.to_string(),
-            )
             .field("max_size_bytes", &self.max_size_bytes)
             .field("max_files", &self.max_files)
             .field("format", &self.format)
@@ -222,19 +207,20 @@ pub fn logging_configuration(
     level_and_crates: LogLevelWithCratesFilter,
     log_dir: Option<PathBuf>,
     colored: Colored,
+    default_log_format: LogFormat,
+    enabled: LoggingEnabled,
 ) -> ockam_core::Result<LoggingConfiguration> {
     let enabled = if level_and_crates.explicit_verbose_flag {
         LoggingEnabled::On
     } else {
-        logging_enabled()?
+        enabled
     };
     Ok(LoggingConfiguration::new(
         enabled,
         level_and_crates.level,
-        global_error_handler()?,
         log_max_size_bytes()?,
         log_max_files()?,
-        log_format()?,
+        get_env_with_default(OCKAM_LOG_FORMAT, default_log_format)?,
         colored,
         log_dir,
         level_and_crates.crates_filter.clone(),
@@ -265,14 +251,6 @@ pub fn logging_enabled() -> ockam_core::Result<LoggingEnabled> {
             LoggingEnabled::Off
         }),
         None => Ok(LoggingEnabled::Off),
-    }
-}
-
-/// Return the strategy to use for reporting logging/tracing errors
-pub fn global_error_handler() -> ockam_core::Result<GlobalErrorHandler> {
-    match get_env::<GlobalErrorHandler>(OCKAM_TRACING_GLOBAL_ERROR_HANDLER)? {
-        Some(v) => Ok(v),
-        None => Ok(GlobalErrorHandler::LogFile),
     }
 }
 
@@ -377,6 +355,7 @@ impl CratesFilter {
             CratesFilter::Basic => Some(vec![
                 "ockam_api::ui::terminal".to_string(),
                 "ockam_command".to_string(),
+                OckamUserLogFormat::TARGET.to_string(),
             ]),
             CratesFilter::Core => Some(vec![
                 "ockam".to_string(),
@@ -387,6 +366,7 @@ impl CratesFilter {
                 "ockam_transport_tcp".to_string(),
                 "ockam_api".to_string(),
                 "ockam_command".to_string(),
+                OckamUserLogFormat::TARGET.to_string(),
             ]),
             CratesFilter::Selected(list) => Some(list.clone()),
         }

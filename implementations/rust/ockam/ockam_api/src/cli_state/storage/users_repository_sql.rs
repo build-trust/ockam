@@ -2,8 +2,8 @@ use itertools::Itertools;
 use sqlx::*;
 use std::sync::Arc;
 
-use crate::cloud::email_address::EmailAddress;
-use crate::cloud::enroll::auth0::UserInfo;
+use crate::orchestrator::email_address::EmailAddress;
+use crate::orchestrator::enroll::auth0::UserInfo;
 use ockam_core::async_trait;
 use ockam_core::Result;
 use ockam_node::database::AutoRetry;
@@ -218,12 +218,12 @@ impl UserRow {
 mod test {
     use super::*;
 
-    use ockam_node::database::with_dbs;
+    use ockam_node::database::with_sqlite_dbs;
     use std::sync::Arc;
 
     #[tokio::test]
     async fn test_repository() -> Result<()> {
-        with_dbs(|db| async move {
+        with_sqlite_dbs(|db| async move {
             let repository: Arc<dyn UsersRepository> = Arc::new(UsersSqlxDatabase::new(db));
 
             let my_email_address: EmailAddress = "me@ockam.io".try_into().unwrap();

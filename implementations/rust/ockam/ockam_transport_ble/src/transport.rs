@@ -1,8 +1,7 @@
 use core::str::FromStr;
 use core::sync::atomic::{AtomicBool, Ordering};
 
-use ockam_core::compat::boxed::Box;
-use ockam_core::{async_trait, AsyncTryClone, Result};
+use ockam_core::Result;
 use ockam_node::Context;
 
 use crate::driver::{BleClient, BleServer};
@@ -34,7 +33,7 @@ use crate::BleAddr;
 ///     let ble_client = BleClient::with_adapter(ble_adapter);
 ///
 ///     // Initialize the BLE Transport.
-///     let ble = BleTransport::create(&ctx).await?;
+///     let ble = BleTransport::create(&ctx)?;
 ///
 ///     // Try to connect to BleServer
 ///     ble.connect(ble_client, "ockam_ble_1".to_string()).await?;
@@ -44,24 +43,15 @@ pub struct BleTransport {
     router_handle: BleRouterHandle,
 }
 
-#[async_trait]
-impl AsyncTryClone for BleTransport {
-    async fn async_try_clone(&self) -> Result<Self> {
-        Ok(Self {
-            router_handle: self.router_handle.async_try_clone().await?,
-        })
-    }
-}
-
 impl BleTransport {
     /// Create a new BLE transport and router for the current node
-    pub async fn create(ctx: &Context) -> Result<Self> {
+    pub fn create(ctx: &Context) -> Result<Self> {
         static CREATED: AtomicBool = AtomicBool::new(false);
         if CREATED.swap(true, Ordering::SeqCst) {
             panic!("You may only create one BleTransport per node.");
         }
 
-        let router_handle = BleRouter::register(ctx).await?;
+        let router_handle = BleRouter::register(ctx)?;
 
         Ok(Self { router_handle })
     }

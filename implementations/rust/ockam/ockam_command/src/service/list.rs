@@ -6,11 +6,11 @@ use tokio::try_join;
 
 use ockam::Context;
 use ockam_api::colors::OckamColor;
-use ockam_api::nodes::models::services::ServiceStatus;
+use ockam_api::nodes::models::services::ServiceStatusList;
 use ockam_api::nodes::BackgroundNodeClient;
 
 use crate::node::NodeOpts;
-use crate::util::{api, async_cmd};
+use crate::util::api;
 use crate::CommandGlobalOpts;
 
 /// List service(s) of a given node
@@ -21,24 +21,19 @@ pub struct ListCommand {
 }
 
 impl ListCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |ctx| async move {
-            self.async_run(&ctx, opts).await
-        })
-    }
-
     pub fn name(&self) -> String {
         "service list".into()
     }
 
-    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
-        let node = BackgroundNodeClient::create(ctx, &opts.state, &self.node_opts.at_node).await?;
+    pub async fn run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        let node =
+            BackgroundNodeClient::create(ctx, opts.state.clone(), &self.node_opts.at_node).await?;
         let is_finished: Mutex<bool> = Mutex::new(false);
 
         let get_services = async {
-            let services: Vec<ServiceStatus> = node.ask(ctx, api::list_services()).await?;
+            let services: ServiceStatusList = node.ask(ctx, api::list_services()).await?;
             *is_finished.lock().await = true;
-            Ok(services)
+            Ok(services.0)
         };
 
         let output_messages = vec![format!(
@@ -56,7 +51,7 @@ impl ListCommand {
         )?;
         let json = serde_json::to_string(&services).into_diagnostic()?;
         opts.terminal
-            .stdout()
+            .to_stdout()
             .plain(plain)
             .json(json)
             .write_line()?;

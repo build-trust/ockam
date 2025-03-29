@@ -2,12 +2,13 @@ use crate::workers::{split_socket, Addresses, UdpReceiverProcessor, UdpSenderWor
 use crate::{UdpBindOptions, UdpTransport};
 use core::fmt;
 use core::fmt::Formatter;
+use core::str::FromStr;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::flow_control::FlowControlId;
 use ockam_core::{Address, AllowAll, DenyAll, Error, Result};
 use ockam_node::compat::asynchronous::resolve_peer;
-use ockam_node::{ProcessorBuilder, WorkerBuilder};
-use ockam_transport_core::{parse_socket_addr, TransportError};
+use ockam_node::{ProcessorBuilder, WorkerBuilder, WorkerShutdownPriority};
+use ockam_transport_core::{parse_socket_addr, HostnamePort, TransportError};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use tokio::net::UdpSocket;
 use tracing::{debug, error};
@@ -52,7 +53,7 @@ impl UdpBindArguments {
 
     /// Set peer address if we communicate with one specific peer
     pub async fn with_peer_address(mut self, peer_address: impl AsRef<str>) -> Result<Self> {
-        let peer_address = resolve_peer(peer_address.as_ref().to_string()).await?;
+        let peer_address = resolve_peer(&HostnamePort::from_str(peer_address.as_ref())?).await?;
         self.peer_address = Some(peer_address);
 
         Ok(self)
@@ -114,22 +115,31 @@ impl UdpTransport {
         let receiver_outgoing_access_control =
             options.create_receiver_outgoing_access_control(self.ctx.flow_controls());
 
-        let sender = UdpSenderWorker::new(addresses.clone(), socket_write, arguments.peer_address);
+        let sender = UdpSenderWorker::new(
+            addresses.clone(),
+            socket_write,
+            arguments.peer_address,
+            options.size_options.max_payload_size_per_packet,
+        );
         WorkerBuilder::new(sender)
             .with_address(addresses.sender_address().clone())
             .with_incoming_access_control(AllowAll)
             .with_outgoing_access_control(DenyAll)
-            .start(&self.ctx)
-            .await?;
+            .start(&self.ctx)?;
 
-        let receiver =
-            UdpReceiverProcessor::new(addresses.clone(), socket_read, arguments.peer_address);
+        let receiver = UdpReceiverProcessor::new(
+            addresses.clone(),
+            socket_read,
+            arguments.peer_address,
+            options.size_options.pending_messages_per_peer,
+            options.size_options.max_on_the_wire_packet_size,
+        );
         ProcessorBuilder::new(receiver)
             .with_address(addresses.receiver_address().clone())
             .with_incoming_access_control(DenyAll)
             .with_outgoing_access_control_arc(receiver_outgoing_access_control)
-            .start(&self.ctx)
-            .await?;
+            .with_shutdown_priority(WorkerShutdownPriority::Priority1)
+            .start(&self.ctx)?;
 
         let bind = UdpBind::new(
             addresses,
@@ -142,8 +152,8 @@ impl UdpTransport {
     }
 
     /// Interrupt an active TCP connection given its Sender `Address`
-    pub async fn unbind(&self, address: impl Into<Address>) -> Result<()> {
-        self.ctx.stop_worker(address.into()).await
+    pub fn unbind(&self, address: &Address) -> Result<()> {
+        self.ctx.stop_address(address)
     }
 }
 
@@ -215,5 +225,11 @@ impl UdpBind {
 impl From<UdpBind> for Address {
     fn from(value: UdpBind) -> Self {
         value.addresses.sender_address().clone()
+    }
+}
+
+impl AsRef<Address> for UdpBind {
+    fn as_ref(&self) -> &Address {
+        self.addresses.sender_address()
     }
 }

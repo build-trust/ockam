@@ -16,9 +16,11 @@
 mod error;
 mod hostname_port;
 mod parse_socket;
+mod scheme_hostname_port;
 mod transport;
 
 pub use error::TransportError;
 pub use hostname_port::*;
 pub use parse_socket::*;
+pub use scheme_hostname_port::*;
 pub use transport::*;

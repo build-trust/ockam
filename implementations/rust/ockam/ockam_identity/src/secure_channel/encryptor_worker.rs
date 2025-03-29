@@ -1,6 +1,6 @@
 use core::sync::atomic::{AtomicBool, Ordering};
 
-use tracing::{debug, error, info, warn};
+use tracing::{debug, error, info, trace, warn, Level};
 use tracing_attributes::instrument;
 
 use ockam_core::compat::boxed::Box;
@@ -99,33 +99,44 @@ impl EncryptorWorker {
         ctx: &Context,
         msg: SecureChannelPaddedMessage<'static>,
     ) -> Result<Vec<u8>> {
+        trace!(
+            role=%self.role,
+            encryptor=%self.addresses.encryptor,
+            "encrypting message");
+
         let expected_len = minicbor::len(&msg);
         let mut destination = vec![0u8; NOISE_NONCE_LEN + expected_len + AES_GCM_TAGSIZE];
         minicbor::encode(&msg, &mut destination[NOISE_NONCE_LEN..])?;
 
         match self.encryptor.encrypt(&mut destination).await {
-            Ok(()) => Ok(destination),
+            Ok(()) => {
+                trace!(
+                    role=%self.role,
+                    encryptor=%self.addresses.encryptor,
+                    "message encrypted");
+                Ok(destination)
+            }
             // If encryption failed, that means we have some internal error,
             // and we may be in an invalid state, it's better to stop the Worker
             Err(err) => {
-                let address = self.addresses.encryptor.clone();
+                let address = &self.addresses.encryptor;
                 error!("Error while encrypting: {err} at: {address}");
-                ctx.stop_worker(address).await?;
+                ctx.stop_address(address)?;
                 Err(err)
             }
         }
     }
 
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     async fn handle_encrypt_api(
         &mut self,
         ctx: &mut <Self as Worker>::Context,
         msg: Routed<<Self as Worker>::Message>,
     ) -> Result<()> {
-        debug!(
-            "SecureChannel {} received Encrypt API {}",
-            self.role, &self.addresses.encryptor
-        );
+        trace!(
+            role=%self.role,
+            encryptor=%self.addresses.encryptor,
+            "handling encrypt API message");
 
         let msg = msg.into_local_message();
         let return_route = msg.return_route;
@@ -161,23 +172,28 @@ impl EncryptorWorker {
         ctx.send_from_address(return_route, response, self.addresses.encryptor_api.clone())
             .await?;
 
+        trace!(
+            role=%self.role,
+            encryptor=%self.addresses.encryptor,
+            "sent encrypt API response");
+
         if should_stop {
-            ctx.stop_worker(self.addresses.encryptor.clone()).await?;
+            ctx.stop_address(&self.addresses.encryptor)?;
         }
 
         Ok(())
     }
 
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     async fn handle_encrypt(
         &mut self,
         ctx: &mut <Self as Worker>::Context,
         msg: Routed<<Self as Worker>::Message>,
     ) -> Result<()> {
-        debug!(
-            "SecureChannel {} received Encrypt {}",
-            self.role, &self.addresses.encryptor
-        );
+        trace!(
+            role=%self.role,
+            encryptor=%self.addresses.encryptor,
+            "handling encrypt message");
 
         let msg = msg.into_local_message();
         let mut onward_route = msg.onward_route;
@@ -208,14 +224,19 @@ impl EncryptorWorker {
         ctx.forward_from_address(msg, self.addresses.encryptor.clone())
             .await?;
 
+        debug!(
+            role=%self.role,
+            encryptor=%self.addresses.encryptor,
+            "forwarded message to decryptor");
+
         Ok(())
     }
 
     /// Asks credential retriever for a new credential and presents it to the other side, including
     /// the latest change_history
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     async fn handle_refresh_credentials(&mut self, ctx: &<Self as Worker>::Context) -> Result<()> {
-        debug!(
+        trace!(
             "Started credentials refresh for {}",
             self.addresses.encryptor
         );
@@ -283,6 +304,11 @@ impl EncryptorWorker {
         )
         .await?;
 
+        trace!(
+            role=%self.role,
+            encryptor=%self.addresses.encryptor,
+            "credentials refresh sent");
+
         self.last_presented_credential = Some(credential);
 
         Ok(())
@@ -334,7 +360,7 @@ impl Worker for EncryptorWorker {
         Ok(())
     }
 
-    #[instrument(skip_all, name = "EncryptorWorker::handle_message", fields(worker = % ctx.address()))]
+    #[instrument(skip_all, name = "EncryptorWorker::handle_message", fields(worker = % ctx.primary_address()), level = Level::TRACE)]
     async fn handle_message(
         &mut self,
         ctx: &mut Self::Context,
@@ -343,16 +369,16 @@ impl Worker for EncryptorWorker {
         let msg_addr = msg.msg_addr();
 
         if self.key_exchange_only {
-            if msg_addr == self.addresses.encryptor_api {
+            if msg_addr == &self.addresses.encryptor_api {
                 self.handle_encrypt_api(ctx, msg).await?;
             } else {
                 return Err(IdentityError::UnknownChannelMsgDestination)?;
             }
-        } else if msg_addr == self.addresses.encryptor {
+        } else if msg_addr == &self.addresses.encryptor {
             self.handle_encrypt(ctx, msg).await?;
-        } else if msg_addr == self.addresses.encryptor_api {
+        } else if msg_addr == &self.addresses.encryptor_api {
             self.handle_encrypt_api(ctx, msg).await?;
-        } else if msg_addr == self.addresses.encryptor_internal {
+        } else if msg_addr == &self.addresses.encryptor_internal {
             self.handle_refresh_credentials(ctx).await?;
         } else {
             return Err(IdentityError::UnknownChannelMsgDestination)?;
@@ -361,15 +387,13 @@ impl Worker for EncryptorWorker {
         Ok(())
     }
 
-    #[instrument(skip_all, name = "EncryptorWorker::shutdown")]
+    #[instrument(skip_all, name = "EncryptorWorker::shutdown", level = Level::TRACE)]
     async fn shutdown(&mut self, context: &mut Self::Context) -> Result<()> {
         if let Some(credential_retriever) = &self.credential_retriever {
             credential_retriever.unsubscribe(&self.addresses.encryptor_internal)?;
         }
 
-        let _ = context
-            .stop_worker(self.addresses.decryptor_internal.clone())
-            .await;
+        let _ = context.stop_address(&self.addresses.decryptor_internal);
         if self.shared_state.should_send_close.load(Ordering::Relaxed) {
             let _ = self.send_close_channel(context).await;
         }

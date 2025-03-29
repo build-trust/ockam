@@ -8,11 +8,11 @@ use console::Term;
 use miette::{miette, IntoDiagnostic};
 use reqwest::StatusCode;
 use tokio::time::{sleep, Duration};
-use tracing::{debug, instrument};
+use tracing::{debug, instrument, Level};
 
-use ockam_api::cloud::enroll::auth0::*;
 use ockam_api::colors::{color_email, color_uri, OckamColor};
 use ockam_api::enroll::oidc_service::OidcService;
+use ockam_api::orchestrator::enroll::auth0::*;
 use ockam_api::terminal::{Terminal, TerminalStream};
 use ockam_api::{fmt_err, fmt_log, fmt_ok};
 
@@ -51,7 +51,7 @@ pub trait OidcServiceExt {
 
 #[async_trait]
 impl OidcServiceExt for OidcService {
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     async fn get_token_interactively(&self, opts: &CommandGlobalOpts) -> Result<OidcToken> {
         let device_code = self.device_code().await?;
 
@@ -63,7 +63,7 @@ impl OidcServiceExt for OidcService {
         if opts.terminal.is_quiet() {
             opts.terminal
                 .clone()
-                .stdout()
+                .to_stdout()
                 .plain(device_code.user_code.to_string())
                 .write_line()?;
         }
@@ -138,7 +138,7 @@ impl OidcServiceExt for OidcService {
         self.get_token_from_browser(opts, dc, uri).await
     }
 
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     async fn wait_for_email_verification(
         &self,
         token: &OidcToken,

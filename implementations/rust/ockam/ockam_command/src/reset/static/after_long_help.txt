@@ -1,0 +1,11 @@
+```sh
+# Removes the local Ockam configuration including all Identities and Nodes.
+$ ockam reset
+
+# Removes orchestrator resources (i.e. Spaces and Projects)
+# in addition to deleting the local state.
+$ ockam reset --all
+
+# To confirm without prompting.
+$ ockam reset -y
+```

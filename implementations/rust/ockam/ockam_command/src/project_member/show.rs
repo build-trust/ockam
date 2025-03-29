@@ -7,10 +7,10 @@ use std::str::FromStr;
 use ockam::identity::Identifier;
 use ockam::Context;
 use ockam_api::authenticator::direct::Members;
-use ockam_api::cloud::AuthorityNodeClient;
+use ockam_api::orchestrator::AuthorityNodeClient;
 use ockam_api::output::Output;
 use ockam_api::terminal::{Terminal, TerminalStream};
-use ockam_core::AsyncTryClone;
+use ockam_core::TryClone;
 
 use crate::project_member::{authority_client, MemberOutput};
 use crate::shared_args::IdentityOpts;
@@ -44,8 +44,8 @@ pub struct ShowCommand {
 impl Command for ShowCommand {
     const NAME: &'static str = "project-member show";
 
-    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
-        Ok(ShowTui::run(ctx.async_try_clone().await.into_diagnostic()?, opts, self).await?)
+    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+        Ok(ShowTui::run(ctx.try_clone().into_diagnostic()?, opts, self).await?)
     }
 }
 
@@ -101,13 +101,10 @@ impl ShowCommandTui for ShowTui {
 
     async fn show_single(&self, item_name: &str) -> miette::Result<()> {
         let identifier = Identifier::from_str(item_name).into_diagnostic()?;
-        let attributes = self
-            .client
-            .show_member(&self.ctx, identifier.clone())
-            .await?;
+        let attributes = self.client.show_member(&self.ctx, &identifier).await?;
         let member = MemberOutput::new(identifier, attributes);
         self.terminal()
-            .stdout()
+            .to_stdout()
             .plain(member.item()?)
             .json_obj(&member)?
             .write_line()?;

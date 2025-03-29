@@ -4,6 +4,8 @@ use crate::sidecar::secure_relay_inlet::SecureRelayInlet;
 use crate::sidecar::secure_relay_outlet::SecureRelayOutlet;
 use crate::{docs, CommandGlobalOpts};
 
+use ockam_node::Context;
+
 mod secure_relay_inlet;
 mod secure_relay_outlet;
 
@@ -30,10 +32,10 @@ pub enum SidecarSubcommand {
 }
 
 impl SidecarCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
-            SidecarSubcommand::SecureRelayOutlet(c) => c.run(opts),
-            SidecarSubcommand::SecureRelayInlet(c) => c.run(opts),
+            SidecarSubcommand::SecureRelayOutlet(c) => c.run(ctx, opts).await,
+            SidecarSubcommand::SecureRelayInlet(c) => c.run(ctx, opts).await,
         }
     }
 

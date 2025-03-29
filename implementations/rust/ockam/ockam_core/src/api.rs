@@ -3,6 +3,7 @@
 use core::fmt::{self, Display, Formatter};
 use hashbrown::HashMap;
 
+use minicbor::bytes::ByteVec;
 use minicbor::data::Type;
 use minicbor::encode::{self, Encoder, Write};
 use minicbor::{CborLen, Decode, Decoder, Encode};
@@ -15,10 +16,12 @@ use crate::compat::rand;
 use crate::compat::string::String;
 use crate::compat::vec::Vec;
 use crate::errcode::{Kind, Origin};
-use crate::Result;
+use crate::{
+    cbor_encode_preallocate, deserialize, serialize, Decodable, Encodable, Encoded, Message, Result,
+};
 
 /// A request header.
-#[derive(Debug, Clone, Encode, Decode, CborLen)]
+#[derive(Debug, PartialEq, Eq, Clone, Encode, Decode, CborLen)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct RequestHeader {
@@ -54,7 +57,7 @@ impl RequestHeader {
 }
 
 /// The response header.
-#[derive(Debug, Clone, Encode, Decode, CborLen)]
+#[derive(Debug, Clone, Encode, Decode, CborLen, PartialEq, Eq)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct ResponseHeader {
@@ -77,35 +80,6 @@ impl ResponseHeader {
     pub fn is_ok(&self) -> bool {
         self.status.map(|s| s == Status::Ok).unwrap_or(false)
     }
-
-    /// If the response is not successful and the response has a body
-    /// parse the response body as an error
-    pub fn parse_err_msg(&self, mut dec: Decoder) -> String {
-        match self.status() {
-            Some(status) if self.has_body() => {
-                let err = if matches!(dec.datatype(), Ok(Type::String)) {
-                    dec.decode::<String>()
-                        .map(|msg| format!("Message: {msg}"))
-                        .unwrap_or_default()
-                } else {
-                    dec.decode::<Error>()
-                        .map(|e| {
-                            e.message()
-                                .map(|msg| format!("Message: {msg}"))
-                                .unwrap_or_default()
-                        })
-                        .unwrap_or_default()
-                };
-                format!(
-                    "An error occurred while processing the request. Status code: {status}. {err}"
-                )
-            }
-            Some(status) => {
-                format!("An error occurred while processing the request. Status code: {status}")
-            }
-            None => "No status code found in response".to_string(),
-        }
-    }
 }
 
 /// The Reply enum separates two possible cases when interpreting a Response
@@ -125,7 +99,7 @@ impl<T: Serialize> Serialize for Reply<T> {
         match self {
             Reply::Successful(t) => t.serialize(serializer),
             Reply::Failed(e, Some(s)) => {
-                let mut map = HashMap::new();
+                let mut map: HashMap<&str, String> = Default::default();
                 map.insert("error", e.to_string());
                 map.insert("status", s.to_string());
                 serializer.collect_map(map)
@@ -169,6 +143,19 @@ impl<T> Reply<T> {
         }
     }
 
+    /// Return an error message if any.
+    #[track_caller]
+    pub fn error(&self) -> Result<Option<String>> {
+        match self {
+            Reply::Successful(_) => Ok(None),
+            Reply::Failed(e, _) => Ok(Some(
+                e.message()
+                    .unwrap_or("no message defined for this error")
+                    .to_string(),
+            )),
+        }
+    }
+
     #[cfg(feature = "std")]
     #[track_caller]
     pub fn miette_success(self, request_kind: &str) -> Result<T, miette::Report> {
@@ -208,7 +195,7 @@ impl<T> Reply<T> {
 pub struct Id(#[n(0)] u32);
 
 /// Request methods.
-#[derive(Debug, Copy, Clone, Encode, Decode, CborLen)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone, Encode, Decode, CborLen)]
 #[rustfmt::skip]
 #[cbor(index_only)]
 pub enum Method {
@@ -335,7 +322,7 @@ impl ResponseHeader {
 }
 
 /// An error type used in response bodies.
-#[derive(Debug, Clone, Default, Encode, Decode, CborLen)]
+#[derive(Debug, Clone, Default, Encode, Decode, CborLen, Message, PartialEq, Eq)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct Error {
@@ -348,6 +335,18 @@ pub struct Error {
     /// The cause of the error, if any.
     #[b(4)] cause: Option<Box<Error>>,
 
+}
+
+impl Encodable for Error {
+    fn encode(self) -> Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for Error {
+    fn decode(e: &[u8]) -> Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
 }
 
 impl Error {
@@ -516,7 +515,7 @@ impl<'a, const N: usize> Segments<'a, N> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Request<T = ()> {
     header: RequestHeader,
     body: Option<T>,
@@ -544,6 +543,10 @@ impl<T> Request<T> {
 
     pub fn into_parts(self) -> (RequestHeader, Option<T>) {
         (self.header, self.body)
+    }
+
+    pub fn has_body(&self) -> bool {
+        self.header.has_body
     }
 }
 
@@ -577,7 +580,7 @@ impl Request {
 }
 
 impl Request<()> {
-    pub fn body<T: Encode<()>>(self, b: T) -> Request<T> {
+    pub fn body<T: Message>(self, b: T) -> Request<T> {
         let mut b = Request {
             header: self.header,
             body: Some(b),
@@ -587,31 +590,72 @@ impl Request<()> {
     }
 }
 
-impl<T: Encode<()>> Request<T> {
-    pub fn encode<W>(&self, buf: W) -> Result<(), encode::Error<W::Error>>
+impl<T: Encodable> Request<T> {
+    fn encode_request<W>(self, buf: W) -> Result<(), encode::Error<W::Error>>
     where
         W: Write,
     {
         let mut e = Encoder::new(buf);
         e.encode(&self.header)?;
-        if let Some(b) = &self.body {
-            e.encode(b)?;
+        if let Some(b) = self.body {
+            e.writer_mut()
+                .write_all(&<T as Encodable>::encode(b).map_err(encode::Error::message)?)
+                .map_err(|_| encode::Error::message("encoding error"))?;
         }
         Ok(())
     }
 
-    pub fn to_vec(&self) -> Result<Vec<u8>, encode::Error<<Vec<u8> as Write>::Error>> {
+    fn into_vec(self) -> Result<Vec<u8>, encode::Error<<Vec<u8> as Write>::Error>> {
         let mut buf = Vec::new();
-        self.encode(&mut buf)?;
-
+        self.encode_request(&mut buf)?;
         Ok(buf)
     }
 }
 
-#[derive(Debug)]
+impl<T: Encodable> Encodable for Request<T> {
+    /// This double serialization of requests with both
+    /// cbor and then serde_bare is not necessary and could be removed
+    fn encode(self) -> Result<Encoded> {
+        serialize(self.into_vec()?)
+    }
+}
+
+impl<T: Decodable> Decodable for Request<T> {
+    fn decode(e: &[u8]) -> Result<Self> {
+        let deserialized = deserialize::<Vec<u8>>(e)?;
+        let mut dec = Decoder::new(&deserialized);
+        let header: RequestHeader = dec.decode()?;
+        if header.has_body() {
+            let body = dec
+                .input()
+                .get(dec.position()..deserialized.len())
+                .ok_or_else(|| {
+                    crate::Error::new(
+                        Origin::Api,
+                        Kind::Internal,
+                        format!(
+                            "can't access the remaining input bytes: {}/{}",
+                            dec.position(),
+                            deserialized.len()
+                        ),
+                    )
+                })?;
+            Ok(Request {
+                header,
+                body: Some(<T as Decodable>::decode(body)?),
+            })
+        } else {
+            Ok(Request { header, body: None })
+        }
+    }
+}
+
+impl<T: Message> Message for Request<T> {}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Response<T = ()> {
     header: ResponseHeader,
-    body: Option<T>,
+    body: Option<core::result::Result<T, Error>>,
 }
 
 impl<T> Response<T> {
@@ -635,21 +679,198 @@ impl<T> Response<T> {
         &self.header
     }
 
-    pub fn into_parts(self) -> (ResponseHeader, Option<T>) {
+    pub fn into_parts(self) -> (ResponseHeader, Option<core::result::Result<T, Error>>) {
         (self.header, self.body)
     }
+
     /// Convenient wrapper to append the requests header to the response
     pub fn with_headers(self, req: &RequestHeader) -> Self {
         let id = req.id;
         self.re(id)
     }
+
+    pub fn is_ok(&self) -> bool {
+        self.header.is_ok()
+    }
+
+    pub fn has_body(&self) -> bool {
+        self.header.has_body()
+    }
+
+    pub fn get_body(self) -> Option<T> {
+        self.body.and_then(|b| b.ok())
+    }
+
+    pub fn get_error(self) -> Option<Error> {
+        self.body.and_then(|b| b.err())
+    }
+}
+
+impl<T: Encodable> Response<T> {
+    pub fn encode_response<W>(self, buf: W) -> Result<(), encode::Error<W::Error>>
+    where
+        W: Write,
+    {
+        let mut e = Encoder::new(buf);
+        e.encode(&self.header)?;
+        if let Some(b) = self.body {
+            match b {
+                Ok(t) => {
+                    e.writer_mut()
+                        .write_all(&<T as Encodable>::encode(t).map_err(encode::Error::message)?)
+                        .map_err(|_| encode::Error::message("encoding error"))?;
+                }
+                Err(error) => {
+                    e.writer_mut()
+                        .write_all(
+                            &<Error as Encodable>::encode(error).map_err(encode::Error::message)?,
+                        )
+                        .map_err(|_| encode::Error::message("encoding error"))?;
+                }
+            }
+        }
+        Ok(())
+    }
+
+    fn into_vec(self) -> Result<Vec<u8>, encode::Error<<Vec<u8> as Write>::Error>> {
+        let mut buf = Vec::new();
+        self.encode_response(&mut buf)?;
+        Ok(buf)
+    }
+
+    pub fn encode_body(self) -> Result<Response<Vec<u8>>> {
+        let (header, body) = self.into_parts();
+        let r = if let Some(b) = body {
+            match b {
+                Ok(t) => Response {
+                    header,
+                    body: Some(Ok(<T as Encodable>::encode(t)?)),
+                },
+                Err(e) => Response {
+                    header,
+                    body: Some(Err(e)),
+                },
+            }
+        } else {
+            Response { header, body: None }
+        };
+        Ok(r)
+    }
+}
+
+impl<T: Encodable> Encodable for Response<T> {
+    fn encode(self) -> Result<Encoded> {
+        serialize(self.into_vec()?)
+    }
+}
+
+impl<T: Decodable> Decodable for Response<T> {
+    fn decode(e: &[u8]) -> Result<Self> {
+        let deserialized = deserialize::<Vec<u8>>(e)?;
+        let mut dec = Decoder::new(&deserialized);
+        let header: ResponseHeader = dec.decode()?;
+        if header.is_ok() {
+            if header.has_body() {
+                let body = dec
+                    .input()
+                    .get(dec.position()..deserialized.len())
+                    .ok_or_else(|| {
+                        crate::Error::new(
+                            Origin::Api,
+                            Kind::Internal,
+                            format!(
+                                "can't access the remaining input bytes: {}/{}",
+                                dec.position(),
+                                deserialized.len()
+                            ),
+                        )
+                    })?;
+                Ok(Response {
+                    header,
+                    body: Some(Ok(<T as Decodable>::decode(body)?)),
+                })
+            } else {
+                Ok(Response { header, body: None })
+            }
+        } else {
+            let error = if matches!(dec.datatype(), Ok(Type::String)) {
+                dec.decode::<String>()
+                    .map(|msg| Error::new_without_path().with_message(msg))
+                    .unwrap_or_default()
+            } else if matches!(dec.datatype(), Ok(Type::Bytes)) {
+                // Try to decode the error as a string from bytes if the datatype is not specified as
+                // as a string. This could happen accidentally on some Elixir codepaths.n
+                if let Some(message) = dec
+                    .decode::<ByteVec>()
+                    .ok()
+                    .and_then(|v| String::from_utf8(v.to_vec()).ok())
+                {
+                    Error::new_without_path().with_message(message)
+                } else {
+                    dec.decode::<Error>().unwrap_or_default()
+                }
+            } else {
+                dec.decode::<Error>().unwrap_or_default()
+            };
+
+            Ok(Response {
+                header,
+                body: Some(Err(error)),
+            })
+        }
+    }
+}
+
+impl<T: Message> Message for Response<T> {}
+
+impl Response<Vec<u8>> {
+    pub fn to_reply<T: Decodable>(self) -> Result<Reply<T>> {
+        let (header, body) = self.into_parts();
+        if let Some(body) = body {
+            match body {
+                Ok(t) => match T::decode(t.as_slice()) {
+                    Err(e) => Err(crate::Error::new(
+                        Origin::Api,
+                        Kind::Serialization,
+                        format!("{e:?}"),
+                    )),
+                    Ok(r) => Ok(Reply::Successful(r)),
+                },
+                Err(error) => Ok(Reply::Failed(error, header.status())),
+            }
+        } else if header.is_ok() {
+            Err(crate::Error::new(
+                Origin::Api,
+                Kind::Serialization,
+                "expected a message body, got nothing".to_string(),
+            ))
+        } else {
+            Err(crate::Error::new(
+                Origin::Api,
+                Kind::Serialization,
+                "expected an error message, got nothing".to_string(),
+            ))
+        }
+    }
+
+    pub fn to_empty_reply(self, request_header: &RequestHeader) -> Result<Reply<()>> {
+        let status = self.header().status();
+        if !self.is_ok() {
+            Ok(Reply::Failed(
+                Error::from_failed_request(request_header, &self.parse_err_msg()),
+                status,
+            ))
+        } else {
+            Ok(Reply::Successful(()))
+        }
+    }
 }
 
 impl Response<()> {
-    pub fn body<T: Encode<()>>(self, b: T) -> Response<T> {
+    pub fn body<T: Encodable>(self, b: T) -> Response<T> {
         let mut b = Response {
             header: self.header,
-            body: Some(b),
+            body: Some(Ok(b)),
         };
         b.header.has_body = true;
         b
@@ -758,109 +979,74 @@ impl Response {
     }
 }
 
-impl Response {
-    /// Parse the response header and if it is ok
-    /// parse and decode the response body
-    pub fn parse_response_body<T>(bytes: &[u8]) -> Result<T>
-    where
-        T: for<'a> Decode<'a, ()>,
-    {
-        Self::parse_response_reply(bytes).and_then(|r| r.success())
+impl Response<Vec<u8>> {
+    pub fn parse_error<T>(self) -> Result<Reply<T>> {
+        let status = self.header().status;
+        match self.body {
+            None => Err(crate::Error::new(
+                Origin::Api,
+                Kind::Serialization,
+                "missing body",
+            )),
+            Some(Ok(b)) => {
+                let error = if let Ok(msg) = <String as Decodable>::decode(&b) {
+                    Ok(Error::new_without_path().with_message(msg))
+                } else {
+                    <Error as Decodable>::decode(&b)
+                };
+                match error {
+                    Ok(e) => Ok(Reply::Failed(e, status)),
+                    Err(e) => Err(crate::Error::new(Origin::Api, Kind::Serialization, e)),
+                }
+            }
+            Some(Err(error)) => Ok(Reply::Failed(error, status)),
+        }
     }
 
-    /// Parse the response header and if it is ok
-    /// parse the response body
-    pub fn parse_response_reply<T>(bytes: &[u8]) -> Result<Reply<T>>
-    where
-        T: for<'a> Decode<'a, ()>,
-    {
-        let (response, mut decoder) = Self::parse_response_header(bytes)?;
-        if response.is_ok() {
-            // if the response is OK, try to decode the body as T
-            if response.has_body() {
-                match decoder.decode() {
-                    Ok(t) => Ok(Reply::Successful(t)),
-                    Err(e) => {
-                        #[cfg(all(feature = "alloc", feature = "minicbor/half"))]
-                        error!(%e, dec = %minicbor::display(bytes), hex = %hex::encode(bytes), "Failed to decode response");
-                        Err(crate::Error::new(
-                            Origin::Api,
-                            Kind::Serialization,
-                            format!("Failed to decode response body: {}", e),
-                        ))
+    /// If the response is not successful and the response has a body
+    /// parse the response body as an error
+    pub fn parse_err_msg(self) -> String {
+        let status = self.header().status;
+        let has_body = self.has_body();
+
+        match status {
+            Some(status) if has_body => match self.body {
+                None => {
+                    format!(
+                        "No error message could be found in the response. Status code: {status}"
+                    )
+                }
+                Some(Ok(b)) => {
+                    let error = if let Ok(msg) = <String as Decodable>::decode(&b) {
+                        Ok(format!("Message: {msg}"))
+                    } else {
+                        <Error as Decodable>::decode(&b).map(|msg| format!("Message: {msg}"))
+                    };
+                    match error {
+                        Ok(err) => {
+                            format!(
+                                    "An error occurred while processing the request. Status code: {status}. {err}"
+                                )
+                        }
+                        Err(err) => {
+                            let msg =
+                                format!("No error message could be read from the response: {err}");
+                            error!(msg);
+                            msg
+                        }
                     }
                 }
-            // otherwise return a decoding error
-            } else {
-                Err(crate::Error::new(
-                    Origin::Api,
-                    Kind::Serialization,
-                    "expected a message body, got nothing".to_string(),
-                ))
+                Some(Err(err)) => {
+                    format!(
+                            "An error occurred while processing the request. Status code: {status}. {err}"
+                        )
+                }
+            },
+            Some(status) => {
+                format!("An error occurred while processing the request. Status code: {status}")
             }
-        // if the status is not ok, try to read the response body as an error
-        } else {
-            Self::parse_error::<T>(&mut decoder, response.status())
+            None => "No status code found in response".to_string(),
         }
-    }
-
-    /// Parse the response header
-    pub fn parse_response_reply_with_empty_body(bytes: &[u8]) -> Result<Reply<()>> {
-        let (response, mut decoder) = Self::parse_response_header(bytes)?;
-        if response.is_ok() {
-            Ok(Reply::Successful(()))
-        } else {
-            Self::parse_error(&mut decoder, response.status())
-        }
-    }
-
-    /// Parse the response header and return it + the Decoder to continue parsing if necessary
-    pub fn parse_response_header(bytes: &[u8]) -> Result<(ResponseHeader, Decoder)> {
-        #[cfg(all(feature = "alloc", feature = "minicbor/half"))]
-        trace! {
-            dec = %minicbor::display(bytes),
-            hex = %hex::encode(bytes),
-            "Received CBOR message"
-        };
-
-        let mut dec = Decoder::new(bytes);
-        let hdr = dec.decode::<ResponseHeader>()?;
-        Ok((hdr, dec))
-    }
-
-    fn parse_error<T>(decoder: &mut Decoder, status: Option<Status>) -> Result<Reply<T>> {
-        let error = if matches!(decoder.datatype(), Ok(Type::String)) {
-            decoder
-                .decode::<String>()
-                .map(|msg| Error::new_without_path().with_message(msg))
-        } else {
-            decoder.decode::<Error>()
-        };
-        match error {
-            Ok(e) => Ok(Reply::Failed(e, status)),
-            Err(e) => Err(crate::Error::new(Origin::Api, Kind::Serialization, e)),
-        }
-    }
-}
-
-impl<T: Encode<()>> Response<T> {
-    pub fn encode<W>(&self, buf: W) -> Result<(), encode::Error<W::Error>>
-    where
-        W: Write,
-    {
-        let mut e = Encoder::new(buf);
-        e.encode(&self.header)?;
-        if let Some(b) = &self.body {
-            e.encode(b)?;
-        }
-        Ok(())
-    }
-
-    pub fn to_vec(self) -> Result<Vec<u8>, encode::Error<<Vec<u8> as Write>::Error>> {
-        let mut buf = Vec::new();
-        self.encode(&mut buf)?;
-
-        Ok(buf)
     }
 }
 
@@ -913,6 +1099,98 @@ mod tests {
             assert!(minicbor::decode::<RequestHeader>(&cbor_c).is_err());
             assert!(minicbor::decode::<ResponseHeader>(&cbor_c).is_err());
             TestResult::passed()
+        }
+    }
+
+    #[test]
+    fn test_roundtrip_request() {
+        // round-trip a request with no body
+        let request = Request::post("path");
+        assert_eq!(
+            Request::decode(&Request::encode(request.clone()).unwrap()).ok(),
+            Some(request)
+        );
+
+        // round-trip a request with a unit body
+        let request = Request::post("path").body(());
+        assert_eq!(
+            Request::decode(&Request::encode(request.clone()).unwrap()).ok(),
+            Some(request)
+        );
+
+        // round-trip a request with an encodable body
+        let person = Person {
+            name: "me".into(),
+            age: 42,
+        };
+        let request = Request::post("path").body(person.clone());
+        assert_eq!(
+            Request::decode(&Request::encode(request.clone()).unwrap()).ok(),
+            Some(request)
+        );
+
+        // Decode only the header of a request
+        let request = Request::post("path").body(person.clone());
+        let decoded: Request<Vec<u8>> =
+            Request::decode(&Request::encode(request.clone()).unwrap()).unwrap();
+        let decoded_person = <Person as Decodable>::decode(&decoded.body.unwrap()).ok();
+        assert_eq!(decoded_person, Some(person));
+    }
+
+    #[test]
+    fn test_roundtrip_response() {
+        // round-trip a response with no body
+        let response = Response::ok();
+        assert_eq!(
+            Response::decode(&Response::encode(response.clone()).unwrap()).ok(),
+            Some(response)
+        );
+
+        // round-trip a response with a unit body
+        let response = Response::ok().body(());
+        assert_eq!(
+            Response::decode(&Response::encode(response.clone()).unwrap()).ok(),
+            Some(response)
+        );
+
+        // round-trip a response with an encodable body
+        let person = Person {
+            name: "me".into(),
+            age: 42,
+        };
+        let response = Response::ok().body(person.clone());
+        assert_eq!(
+            Response::decode(&Response::encode(response.clone()).unwrap()).ok(),
+            Some(response)
+        );
+
+        // Decode only the header of a response
+        let request = Response::ok().body(person.clone());
+        let decoded: Response<Vec<u8>> =
+            Response::decode(&Response::encode(request.clone()).unwrap()).unwrap();
+        let decoded_person = <Person as Decodable>::decode(&decoded.body.unwrap().unwrap()).ok();
+        assert_eq!(decoded_person, Some(person));
+    }
+
+    // HELPERS
+
+    #[derive(Debug, Clone, Eq, PartialEq, Encode, Decode, CborLen, Message)]
+    struct Person {
+        #[n(1)]
+        name: String,
+        #[n(2)]
+        age: u8,
+    }
+
+    impl Encodable for Person {
+        fn encode(self) -> Result<Encoded> {
+            cbor_encode_preallocate(self)
+        }
+    }
+
+    impl Decodable for Person {
+        fn decode(encoded: &[u8]) -> Result<Self> {
+            Ok(minicbor::decode(encoded)?)
         }
     }
 

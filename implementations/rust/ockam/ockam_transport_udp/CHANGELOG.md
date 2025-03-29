@@ -4,6 +4,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.81.0 - 2025-03-20
+
+### Added
+
+- Updated dependencies
+
+## 0.80.0 - 2025-03-03
+
+### Added
+
+- Make portal handshake optional
+- Integrate the new span exporter with the rest of the application
+- Address review comments
+- Updated dependencies
+
+### Changed
+
+- Enable requests to be messages
+
+## 0.79.0 - 2025-01-20
+
+### Added
+
+- Rewrite `ockam_node`
+- Updated dependencies
+
+## 0.78.0 - 2025-01-09
+
+### Added
+
+- Introduce env variables to adjust transport performance
+- Improvements to portals commands arguments
+- Updated dependencies
+
 ## 0.77.0 - 2024-12-12
 
 ### Added

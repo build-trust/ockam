@@ -4,24 +4,29 @@ use std::fmt::{Display, Formatter};
 use std::sync::Arc;
 use std::time::Duration;
 
-use minicbor::{CborLen, Decode, Encode};
-use ockam::identity::Identifier;
-use ockam::transport::HostnamePort;
-use ockam_abac::PolicyExpression;
-use ockam_core::{Address, IncomingAccessControl, OutgoingAccessControl, Route};
-use ockam_multiaddr::MultiAddr;
-use serde::{Deserialize, Serialize};
-
 use crate::colors::{color_primary, color_primary_alt};
 use crate::error::ApiError;
-
+use crate::multiaddr_resolver::{
+    deserialize_address_from_local_service, serialize_address_as_local_service,
+};
 use crate::output::Output;
 use crate::session::connection_status::ConnectionStatus;
 use crate::terminal::fmt;
 use crate::ReverseLocalConverter;
+use minicbor::{CborLen, Decode, Encode};
+use ockam::identity::Identifier;
+use ockam::transport::HostnamePort;
+use ockam::Message;
+use ockam_abac::PolicyExpression;
+use ockam_core::{
+    cbor_encode_preallocate, Address, Decodable, Encodable, Encoded, IncomingAccessControl,
+    OutgoingAccessControl, Route,
+};
+use ockam_multiaddr::MultiAddr;
+use serde::{Deserialize, Serialize};
 
 /// Request body to create an inlet
-#[derive(Clone, Debug, Encode, Decode, CborLen)]
+#[derive(Clone, Debug, Encode, Decode, CborLen, Message)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct CreateInlet {
@@ -57,6 +62,26 @@ pub struct CreateInlet {
     #[n(12)] pub(crate) privileged: bool,
     /// TLS certificate provider route.
     #[n(13)] pub(crate) tls_certificate_provider: Option<MultiAddr>,
+    /// Skip Portal handshake for lower latency, but also lower throughput
+    #[n(14)] pub(crate) skip_handshake: bool,
+    /// Enable Nagle's algorithm for potentially higher throughput, but higher latency
+    #[n(15)] pub(crate) enable_nagle: bool,
+    /// Enable MPTCP
+    #[n(16)] pub enable_mptcp: bool,
+    /// The prefix route to be used for interceptors.
+    #[n(17)] pub(crate) prefix_route: Route,
+}
+
+impl Encodable for CreateInlet {
+    fn encode(self) -> ockam_core::Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for CreateInlet {
+    fn decode(e: &[u8]) -> ockam_core::Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
 }
 
 impl CreateInlet {
@@ -69,6 +94,9 @@ impl CreateInlet {
         enable_udp_puncture: bool,
         disable_tcp_fallback: bool,
         privileged: bool,
+        skip_handshake: bool,
+        enable_nagle: bool,
+        enable_mptcp: bool,
     ) -> Self {
         Self {
             listen_addr: listen,
@@ -83,6 +111,10 @@ impl CreateInlet {
             disable_tcp_fallback,
             privileged,
             tls_certificate_provider: None,
+            skip_handshake,
+            enable_nagle,
+            enable_mptcp,
+            prefix_route: Default::default(),
         }
     }
 
@@ -96,6 +128,9 @@ impl CreateInlet {
         enable_udp_puncture: bool,
         disable_tcp_fallback: bool,
         privileged: bool,
+        skip_handshake: bool,
+        enable_nagle: bool,
+        enable_mptcp: bool,
     ) -> Self {
         Self {
             listen_addr: listen,
@@ -110,11 +145,19 @@ impl CreateInlet {
             disable_tcp_fallback,
             privileged,
             tls_certificate_provider: None,
+            skip_handshake,
+            enable_nagle,
+            enable_mptcp,
+            prefix_route: Default::default(),
         }
     }
 
     pub fn set_tls_certificate_provider(&mut self, provider: MultiAddr) {
         self.tls_certificate_provider = Some(provider);
+    }
+
+    pub fn set_prefix_route(&mut self, route: Route) {
+        self.prefix_route = route;
     }
 
     pub fn set_wait_ms(&mut self, ms: u64) {
@@ -151,7 +194,7 @@ impl CreateInlet {
 }
 
 /// Request body to create an outlet
-#[derive(Clone, Debug, Encode, Decode, CborLen)]
+#[derive(Clone, Debug, Encode, Decode, CborLen, Message)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct CreateOutlet {
@@ -169,16 +212,38 @@ pub struct CreateOutlet {
     /// will be used.
     #[n(5)] pub policy_expression: Option<PolicyExpression>,
     /// Use eBPF and RawSocket to access TCP packets instead of TCP data stream.
-    #[n(6)] pub privileged: bool
+    #[n(6)] pub privileged: bool,
+    /// Skip Portal handshake for lower latency, but also lower throughput
+    #[n(7)] pub skip_handshake: bool,
+    /// Enable Nagle's algorithm for potentially higher throughput, but higher latency
+    #[n(8)] pub enable_nagle: bool,
+    /// Enable MPTCP
+    #[n(9)] pub enable_mptcp: bool,
+}
+
+impl Encodable for CreateOutlet {
+    fn encode(self) -> ockam_core::Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for CreateOutlet {
+    fn decode(e: &[u8]) -> ockam_core::Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
 }
 
 impl CreateOutlet {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         hostname_port: HostnamePort,
         tls: bool,
         worker_addr: Option<Address>,
         reachable_from_default_secure_channel: bool,
         privileged: bool,
+        skip_handshake: bool,
+        enable_nagle: bool,
+        enable_mptcp: bool,
     ) -> Self {
         Self {
             hostname_port,
@@ -187,6 +252,9 @@ impl CreateOutlet {
             reachable_from_default_secure_channel,
             policy_expression: None,
             privileged,
+            skip_handshake,
+            enable_nagle,
+            enable_mptcp,
         }
     }
 
@@ -196,7 +264,7 @@ impl CreateOutlet {
 }
 
 /// Response body when interacting with a portal endpoint
-#[derive(Clone, Debug, Encode, Decode, CborLen, Serialize)]
+#[derive(Clone, Debug, Encode, Decode, CborLen, Serialize, Message)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct InletStatus {
@@ -209,6 +277,18 @@ pub struct InletStatus {
     #[n(6)] pub status: ConnectionStatus,
     #[n(7)] pub outlet_addr: String,
     #[n(8)] pub privileged: bool,
+}
+
+impl Encodable for InletStatus {
+    fn encode(self) -> ockam_core::Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for InletStatus {
+    fn decode(e: &[u8]) -> ockam_core::Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
 }
 
 impl InletStatus {
@@ -237,13 +317,19 @@ impl InletStatus {
 }
 
 impl Display for InletStatus {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         writeln!(
             f,
-            "Inlet {} at {} is {}",
+            "TCP Inlet {} at {} is {}",
             color_primary(&self.alias),
             color_primary(&self.bind_addr),
             self.status,
+        )?;
+        writeln!(
+            f,
+            "{}With outlet address {}",
+            fmt::INDENTATION,
+            color_primary(&self.outlet_addr)
         )?;
         if let Some(r) = self
             .outlet_route
@@ -253,21 +339,15 @@ impl Display for InletStatus {
         {
             writeln!(
                 f,
-                "{}With route to outlet {}",
+                "{}And service route {}",
                 fmt::INDENTATION,
                 color_primary(r.to_string())
             )?;
         }
-        writeln!(
-            f,
-            "{}Outlet Address: {}",
-            fmt::INDENTATION,
-            color_primary(&self.outlet_addr)
-        )?;
         if self.privileged {
             writeln!(
                 f,
-                "{}This Inlet is operating in {} mode",
+                "{}Operating in {} mode",
                 fmt::INDENTATION,
                 color_primary_alt("privileged".to_string())
             )?;
@@ -282,42 +362,71 @@ impl Output for InletStatus {
     }
 }
 
+#[derive(Encode, Decode, CborLen, Debug, Default, Clone, Message)]
+pub struct InletStatusList(#[n(0)] pub Vec<InletStatus>);
+
+impl Encodable for InletStatusList {
+    fn encode(self) -> ockam_core::Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for InletStatusList {
+    fn decode(e: &[u8]) -> ockam_core::Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
+}
+
 /// Response body when interacting with a portal endpoint
-#[derive(Clone, Debug, Encode, Decode, CborLen, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Encode, Decode, CborLen, Serialize, Deserialize, PartialEq, Message)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct OutletStatus {
     #[n(1)] pub to: HostnamePort,
-    #[n(2)] pub worker_addr: Address,
+    #[serde(serialize_with = "serialize_address_as_local_service")]
+    #[serde(deserialize_with = "deserialize_address_from_local_service")]
+    #[n(2)] pub worker_address: Address,
     /// An optional status payload
     #[n(3)] pub payload: Option<String>,
     #[n(4)] pub privileged: bool,
 }
 
+impl Encodable for OutletStatus {
+    fn encode(self) -> ockam_core::Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for OutletStatus {
+    fn decode(e: &[u8]) -> ockam_core::Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
+}
+
 impl OutletStatus {
     pub fn new(
         to: HostnamePort,
-        worker_addr: Address,
+        worker_address: Address,
         payload: impl Into<Option<String>>,
         privileged: bool,
     ) -> Self {
         Self {
             to,
-            worker_addr,
+            worker_address,
             payload: payload.into(),
             privileged,
         }
     }
 
     pub fn worker_route(&self) -> Result<MultiAddr, ockam_core::Error> {
-        ReverseLocalConverter::convert_address(&self.worker_addr)
+        ReverseLocalConverter::convert_address(&self.worker_address)
     }
 
     pub fn worker_name(&self) -> Result<String, ockam_core::Error> {
         match self.worker_route()?.last() {
             Some(worker_name) => String::from_utf8(worker_name.data().to_vec())
                 .map_err(|_| ApiError::core("Invalid Worker Address")),
-            None => Ok(self.worker_addr.to_string()),
+            None => Ok(self.worker_address.to_string()),
         }
     }
 }
@@ -326,7 +435,7 @@ impl Display for OutletStatus {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "Outlet at {} is connected to {}",
+            "TCP Outlet at {} is connected to {}",
             color_primary(
                 self.worker_route()
                     .map_err(|_| std::fmt::Error)?
@@ -338,13 +447,29 @@ impl Display for OutletStatus {
         if self.privileged {
             writeln!(
                 f,
-                "{}This Outlet is operating in {} mode",
+                "{}Operating in {} mode",
                 fmt::INDENTATION,
                 color_primary_alt("privileged".to_string())
             )?;
         }
 
         Ok(())
+    }
+}
+
+#[derive(Encode, Decode, CborLen, Debug, Default, Clone, Message)]
+#[cbor(transparent)]
+pub struct OutletStatusList(#[n(0)] pub Vec<OutletStatus>);
+
+impl Encodable for OutletStatusList {
+    fn encode(self) -> ockam_core::Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for OutletStatusList {
+    fn decode(e: &[u8]) -> ockam_core::Result<Self> {
+        Ok(minicbor::decode(e)?)
     }
 }
 

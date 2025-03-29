@@ -1,4 +1,4 @@
-use crate::tcp_interceptor::{Role, TcpMitmProcessor, TcpMitmRegistry, TcpMitmTransport, CLUSTER_NAME};
+use crate::tcp_interceptor::{Role, TcpMitmProcessor, TcpMitmRegistry, TcpMitmTransport};
 use ockam_core::{async_trait, compat::net::SocketAddr};
 use ockam_core::{Address, Processor, Result};
 use ockam_node::Context;
@@ -34,7 +34,7 @@ impl TcpMitmListenProcessor {
             target_addr,
         };
 
-        ctx.start_processor(address.clone(), processor).await?;
+        ctx.start_processor(address.clone(), processor)?;
 
         Ok((saddr, address))
     }
@@ -45,15 +45,13 @@ impl Processor for TcpMitmListenProcessor {
     type Context = Context;
 
     async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
-        ctx.set_cluster(CLUSTER_NAME).await?;
-
-        self.registry.add_listener(&ctx.address());
+        self.registry.add_listener(ctx.primary_address());
 
         Ok(())
     }
 
     async fn shutdown(&mut self, ctx: &mut Self::Context) -> Result<()> {
-        self.registry.remove_listener(&ctx.address());
+        self.registry.remove_listener(ctx.primary_address());
 
         Ok(())
     }
@@ -82,8 +80,7 @@ impl Processor for TcpMitmListenProcessor {
             target_read_half,
             write_half,
             self.registry.clone(),
-        )
-        .await?;
+        )?;
 
         // Forward from the source connection to the target
         TcpMitmProcessor::start(
@@ -94,8 +91,7 @@ impl Processor for TcpMitmListenProcessor {
             read_half,
             target_write_half,
             self.registry.clone(),
-        )
-        .await?;
+        )?;
 
         Ok(true)
     }

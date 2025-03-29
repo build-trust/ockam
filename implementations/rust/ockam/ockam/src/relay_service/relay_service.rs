@@ -20,7 +20,7 @@ pub struct RelayService {
 
 impl RelayService {
     /// Start a forwarding service
-    pub async fn create(
+    pub fn create(
         ctx: &Context,
         address: impl Into<Address>,
         options: RelayServiceOptions,
@@ -33,6 +33,7 @@ impl RelayService {
             options.setup_flow_control_for_relay_service(ctx.flow_controls(), alias);
             additional_mailboxes.push(Mailbox::new(
                 alias.clone(),
+                None,
                 options.service_incoming_access_control.clone(),
                 Arc::new(DenyAll),
             ));
@@ -45,13 +46,13 @@ impl RelayService {
             .with_mailboxes(Mailboxes::new(
                 Mailbox::new(
                     address.clone(),
+                    None,
                     service_incoming_access_control,
                     Arc::new(DenyAll),
                 ),
                 additional_mailboxes,
             ))
-            .start(ctx)
-            .await?;
+            .start(ctx)?;
 
         info!("Relay service started at {address}");
 
@@ -132,6 +133,10 @@ impl Worker for RelayService {
         let payload = final_relay_name.clone().encode()?;
         let final_relay_address = Address::from_string(final_relay_name);
 
+        if ctx.stop_address(&final_relay_address).is_ok() {
+            info!("Removed existing alias on {}", final_relay_address);
+        }
+
         self.options
             .setup_flow_control_for_relay(ctx.flow_controls(), &final_relay_address);
 
@@ -141,8 +146,7 @@ impl Worker for RelayService {
             forward_route,
             payload.to_vec(),
             self.options.relays_incoming_access_control.clone(),
-        )
-        .await?;
+        )?;
 
         Ok(())
     }

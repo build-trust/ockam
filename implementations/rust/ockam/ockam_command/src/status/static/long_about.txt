@@ -1,0 +1,5 @@
+This command shows information such as the current version of Ockam in use, the Ockam Orchestrator and Project versions, as well as your Spaces and the users associated with them.
+
+It also lists any cryptographic Identities stored in your Vault and their enrollment status with the Ockam Orchestrator.
+
+Additionally, it shows a quick overview of any available Nodes: their status, associated routes and protocols, listeners and services, and more.

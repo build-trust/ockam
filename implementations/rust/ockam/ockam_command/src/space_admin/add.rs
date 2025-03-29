@@ -4,11 +4,11 @@ use async_trait::async_trait;
 use clap::Args;
 use colorful::Colorful;
 use ockam::Context;
-use ockam_api::cloud::email_address::EmailAddress;
-use ockam_api::cloud::space::Spaces;
 use ockam_api::colors::color_primary;
 use ockam_api::fmt_ok;
 use ockam_api::nodes::InMemoryNode;
+use ockam_api::orchestrator::email_address::EmailAddress;
+use ockam_api::orchestrator::space::Spaces;
 
 /// Add a new Admin to a Space
 #[derive(Clone, Debug, Args)]
@@ -29,17 +29,20 @@ pub struct AddCommand {
 impl Command for AddCommand {
     const NAME: &'static str = "space-admin add";
 
-    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
         let space = opts.state.get_space_by_name_or_default(&self.name).await?;
-        let node =
-            InMemoryNode::start_with_identity(ctx, &opts.state, self.identity_opts.identity_name)
-                .await?;
+        let node = InMemoryNode::start_with_identity(
+            ctx,
+            opts.state.clone(),
+            self.identity_opts.identity_name,
+        )
+        .await?;
         let admin = node
             .add_space_admin(ctx, &space.space_id(), &self.email)
             .await?;
 
         opts.terminal
-            .stdout()
+            .to_stdout()
             .plain(fmt_ok!(
                 "Email {} added as an admin to space {}",
                 color_primary(self.email.to_string()),

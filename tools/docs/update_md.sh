@@ -18,9 +18,9 @@ cargo -q install --path .
 popd &>/dev/null || exit
 
 # Look for md files from this directory
-for FILE_NAME in $(find "$DOCS_HOME" -type f -name "*.md"); do
+while IFS= read -r FILE_NAME; do
   echo "==> $FILE_NAME"
   TMP=$(mktemp)
   EXAMPLES_DIR="$OCKAM_HOME/examples/rust/get_started" example_blocks "$FILE_NAME" >"$TMP"
   cat "$TMP" >"$FILE_NAME"
-done
+done < <(find "$DOCS_HOME" -type f -name "*.md")

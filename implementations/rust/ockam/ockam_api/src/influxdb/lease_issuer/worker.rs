@@ -2,13 +2,12 @@ use crate::influxdb::influxdb_api_client::{
     InfluxDBApi, InfluxDBApiClient, InfluxDBCreateTokenRequest,
 };
 use crate::influxdb::lease_issuer::node_service::InfluxDBTokenLessorState;
-use crate::influxdb::lease_token::LeaseToken;
+use crate::influxdb::lease_token::{LeaseToken, LeaseTokenList};
 use crate::nodes::service::encode_response;
 use crate::ApiError;
-use minicbor::Decoder;
 use ockam::identity::Identifier;
 use ockam_core::api::Method::{Delete, Get, Post};
-use ockam_core::api::{RequestHeader, Response};
+use ockam_core::api::{Request, Response};
 use ockam_core::{async_trait, Address, Routed, SecureChannelLocalInfo, Worker};
 use ockam_node::Context;
 use std::cmp::Reverse;
@@ -18,6 +17,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use time::OffsetDateTime;
 use tokio::sync::RwLock;
+use tracing::Level;
 
 #[derive(Clone)]
 pub(crate) struct InfluxDBTokenLessorWorker {
@@ -25,7 +25,7 @@ pub(crate) struct InfluxDBTokenLessorWorker {
 }
 
 impl InfluxDBTokenLessorWorker {
-    pub(crate) async fn new(
+    pub(crate) fn new(
         address: Address,
         influxdb_address: String,
         influxdb_org_id: String,
@@ -47,52 +47,51 @@ impl InfluxDBTokenLessorWorker {
         Ok(_self)
     }
 
-    #[instrument(skip_all, fields(method = ?req.method(), path = req.path()))]
+    #[instrument(skip_all, fields(method = ?request.header().method(), path = request.header().path()), level = Level::TRACE)]
     async fn handle_request(
         &mut self,
         _ctx: &mut Context,
         requester: &Identifier,
-        req: &RequestHeader,
-        _dec: &mut Decoder<'_>,
-    ) -> ockam_core::Result<Vec<u8>> {
+        request: Request<Vec<u8>>,
+    ) -> ockam_core::Result<Response<Vec<u8>>> {
+        let header = request.header();
         debug! {
-            id     = %req.id(),
-            method = ?req.method(),
-            path   = %req.path(),
-            body   = %req.has_body(),
+            id     = %header.id(),
+            method = ?header.method(),
+            path   = %header.path(),
+            body   = %header.has_body(),
             "request"
         }
 
-        let path = req.path();
-        let path_segments = req.path_segments::<5>();
-        let method = match req.method() {
+        let path = header.path();
+        let path_segments = header.path_segments::<5>();
+        let method = match header.method() {
             Some(m) => m,
             None => todo!(),
         };
         debug!(path_segments = ?path_segments.as_slice().iter().map(|s| s.to_string()).collect::<Vec<_>>(), "Handling request");
 
         // [""] correspond to the root "/" path
-        let r = match (method, path_segments.as_slice()) {
-            (Post, [""]) => encode_response(req, self.create_token(requester).await)?,
-            (Get, [""]) => encode_response(req, self.list_tokens(requester).await)?,
-            (Get, [token_id]) => encode_response(req, self.get_token(requester, token_id).await)?,
+        match (method, path_segments.as_slice()) {
+            (Post, [""]) => encode_response(header, self.create_token(requester).await),
+            (Get, [""]) => encode_response(header, self.list_tokens(requester).await),
+            (Get, [token_id]) => encode_response(header, self.get_token(requester, token_id).await),
             (Delete, [token_id]) => {
-                encode_response(req, self.revoke_token(requester, token_id).await)?
+                encode_response(header, self.revoke_token(requester, token_id).await)
             }
             // ==*== Catch-all for Unimplemented APIs ==*==
             _ => {
                 warn!(%method, %path, "Called invalid endpoint");
-                Response::bad_request(req, &format!("Invalid endpoint: {} {}", method, path))
-                    .to_vec()?
+                Response::bad_request(header, &format!("Invalid endpoint: {} {}", method, path))
+                    .encode_body()
             }
-        };
-        Ok(r)
+        }
     }
 }
 
 #[ockam::worker]
 impl Worker for InfluxDBTokenLessorWorker {
-    type Message = Vec<u8>;
+    type Message = Request<Vec<u8>>;
     type Context = Context;
 
     async fn shutdown(&mut self, _ctx: &mut Self::Context) -> ockam_core::Result<()> {
@@ -100,49 +99,44 @@ impl Worker for InfluxDBTokenLessorWorker {
         Ok(())
     }
 
-    #[instrument(skip_all, name = "InfluxDBTokenLessorWorker::handle_message")]
+    #[instrument(skip_all, name = "InfluxDBTokenLessorWorker::handle_message", level = Level::TRACE)]
     async fn handle_message(
         &mut self,
         ctx: &mut Context,
-        msg: Routed<Vec<u8>>,
+        msg: Routed<Request<Vec<u8>>>,
     ) -> ockam_core::Result<()> {
         let requester_identifier = Identifier::from(
             SecureChannelLocalInfo::find_info(msg.local_message())?.their_identifier(),
         );
 
         let return_route = msg.return_route().clone();
-        let body = msg.into_body()?;
-        let mut dec = Decoder::new(&body);
-        let req: RequestHeader = match dec.decode() {
-            Ok(r) => r,
-            Err(e) => {
-                error!("Failed to decode request: {:?}", e);
-                return Ok(());
-            }
-        };
-
+        let request = msg.into_body()?;
+        let header = request.header().clone();
         let r = match self
-            .handle_request(ctx, &requester_identifier, &req, &mut dec)
+            .handle_request(ctx, &requester_identifier, request)
             .await
         {
             Ok(r) => r,
             Err(err) => {
                 error! {
-                    re     = %req.id(),
-                    method = ?req.method(),
-                    path   = %req.path(),
+                    re     = %header.id(),
+                    method = ?header.method(),
+                    path   = %header.path(),
                     code   = %err.code(),
                     cause  = ?err.source(),
                     "failed to handle request"
                 }
-                Response::internal_error(&req, &format!("failed to handle request: {err} {req:?}"))
-                    .to_vec()?
+                Response::internal_error(
+                    &header,
+                    &format!("failed to handle request: {err} {header:?}"),
+                )
+                .encode_body()?
             }
         };
         debug! {
-            re     = %req.id(),
-            method = ?req.method(),
-            path   = %req.path(),
+            re     = %header.id(),
+            method = ?header.method(),
+            path   = %header.path(),
             "responding"
         }
         ctx.send(return_route, r).await
@@ -171,7 +165,7 @@ pub trait InfluxDBTokenLessorWorkerApi {
     async fn list_tokens(
         &self,
         requester: &Identifier,
-    ) -> Result<Response<Vec<LeaseToken>>, Response<ockam_core::api::Error>>;
+    ) -> Result<Response<LeaseTokenList>, Response<ockam_core::api::Error>>;
 }
 
 #[async_trait]
@@ -262,8 +256,7 @@ impl InfluxDBTokenLessorWorkerApi for InfluxDBTokenLessorWorker {
         let is_authorized_to_revoke = self
             .get_token(requester, token_id)
             .await?
-            .into_parts()
-            .1
+            .get_body()
             .is_some();
         if !is_authorized_to_revoke {
             return Err(Response::unauthorized_no_request(
@@ -296,7 +289,7 @@ impl InfluxDBTokenLessorWorkerApi for InfluxDBTokenLessorWorker {
     async fn list_tokens(
         &self,
         requester: &Identifier,
-    ) -> Result<Response<Vec<LeaseToken>>, Response<ockam_core::api::Error>> {
+    ) -> Result<Response<LeaseTokenList>, Response<ockam_core::api::Error>> {
         debug!(%requester, "Listing tokens");
         let influxdb_tokens = {
             let state = self.state.read().await;
@@ -328,6 +321,6 @@ impl InfluxDBTokenLessorWorkerApi for InfluxDBTokenLessorWorker {
             state.active_tokens = lease_tokens.iter().map(|t| Reverse(t.clone())).collect();
         }
         info!("Found {} tokens", lease_tokens.len());
-        Ok(Response::ok().body(lease_tokens))
+        Ok(Response::ok().body(LeaseTokenList(lease_tokens)))
     }
 }

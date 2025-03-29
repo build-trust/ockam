@@ -17,14 +17,13 @@ use crate::value_parsers::parse_enrollment_ticket;
 use crate::{docs, Command, CommandGlobalOpts, Error, Result};
 use ockam::Context;
 use ockam_api::cli_state::{EnrollmentTicket, NamedIdentity};
-use ockam_api::cloud::project::models::OktaAuth0;
-use ockam_api::cloud::project::ProjectsOrchestratorApi;
-use ockam_api::cloud::AuthorityNodeClient;
 use ockam_api::colors::color_primary;
 use ockam_api::enroll::enrollment::{EnrollStatus, Enrollment};
 use ockam_api::enroll::oidc_service::OidcService;
 use ockam_api::enroll::okta_oidc_provider::OktaOidcProvider;
 use ockam_api::nodes::InMemoryNode;
+use ockam_api::orchestrator::project::models::OktaAuth0;
+use ockam_api::orchestrator::AuthorityNodeClient;
 use ockam_api::output::{human_readable_time, Output};
 use ockam_api::terminal::fmt;
 use ockam_api::{fmt_log, fmt_ok};
@@ -39,7 +38,7 @@ long_about = docs::about(LONG_ABOUT),
 after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct EnrollCommand {
-    /// Path, URL or inlined hex-encoded enrollment ticket
+    /// Path, URL or inlined enrollment ticket
     #[arg(
         display_order = 800,
         group = "authentication_method",
@@ -64,6 +63,9 @@ pub struct EnrollCommand {
     /// Override the default timeout duration in environments where enrollment can take a long time
     #[arg(long, value_name = "TIMEOUT", default_value = "240s", value_parser = duration_parser)]
     pub timeout: Duration,
+
+    #[arg(hide = true, long, default_value = "false")]
+    pub skip_credential_issue: bool,
 }
 
 /// This custom Debug instance hides the enrollment ticket
@@ -87,7 +89,7 @@ impl Command for EnrollCommand {
         Some(self.retry_opts.clone())
     }
 
-    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
         // Store project if an enrollment ticket is passed
         let (project, enrollment_ticket) = if let Some(enrollment_ticket) = &self.enrollment_ticket
         {
@@ -114,36 +116,41 @@ impl Command for EnrollCommand {
             .await?;
         let node = InMemoryNode::start_with_project_name(
             ctx,
-            &opts.state,
+            opts.state.clone(),
             Some(project.name().to_string()),
         )
         .await?
         .with_timeout(self.timeout);
         let authority_node_client = node
-            .create_authority_client_with_project(ctx, &project, Some(identity.name()))
+            .create_authority_client_with_project(ctx, &project, Some(identity.name()), false)
             .await?;
 
         // Enroll if applicable
         if self.okta {
             self.use_okta(ctx, &opts, &authority_node_client).await?;
-            node.get_project(ctx, project.project_id()).await?;
         } else if let Some(enrollment_ticket) = enrollment_ticket {
             self.use_enrollment_ticket(ctx, &opts, &authority_node_client, enrollment_ticket)
                 .await?;
         }
 
         // Issue credential
-        let credential = {
+        let credential = if opts.state.is_using_in_memory_database()? || self.skip_credential_issue
+        {
+            // When using an in-memory database, the credential issued in this command will be discarded,
+            // so we skip this step
+            None
+        } else {
             let pb = opts.terminal.spinner();
             if let Some(pb) = pb.as_ref() {
                 pb.set_message("Issuing credential...");
             }
-            authority_node_client
+            let credential = authority_node_client
                 .issue_credential(ctx)
                 .await
                 .map_err(Error::Retry)
                 .into_diagnostic()
-                .wrap_err("Failed to decode the credential received from the project authority")?
+                .wrap_err("Failed to decode the credential received from the project authority")?;
+            Some(CredentialOutput::from_credential(credential)?)
         };
 
         // Get the project name to display to the user.
@@ -157,14 +164,10 @@ impl Command for EnrollCommand {
         };
 
         // Output
-        let output = ProjectEnrollOutput::new(
-            identity,
-            project_name,
-            CredentialOutput::from_credential(credential)?,
-        );
+        let output = ProjectEnrollOutput::new(identity, project_name, credential);
         opts.terminal
             .clone()
-            .stdout()
+            .to_stdout()
             .plain(output.item()?)
             .json_obj(output)?
             .write_line()?;
@@ -250,11 +253,15 @@ impl EnrollCommand {
 struct ProjectEnrollOutput {
     identity: NamedIdentity,
     project_name: String,
-    credential: CredentialOutput,
+    credential: Option<CredentialOutput>,
 }
 
 impl ProjectEnrollOutput {
-    fn new(identity: NamedIdentity, project_name: String, credential: CredentialOutput) -> Self {
+    fn new(
+        identity: NamedIdentity,
+        project_name: String,
+        credential: Option<CredentialOutput>,
+    ) -> Self {
         Self {
             identity,
             project_name,
@@ -276,41 +283,46 @@ impl Output for ProjectEnrollOutput {
             )
         )?;
 
-        writeln!(
-            f,
-            "{}",
-            fmt_log!("The identity has a credential in this project")
-        )?;
-        writeln!(
-            f,
-            "{}",
-            fmt_log!(
-                "created at {} that expires at {}\n",
-                color_primary(human_readable_time(self.credential.created_at)),
-                color_primary(human_readable_time(self.credential.expires_at))
-            )
-        )?;
-
-        if !&self.credential.attributes.is_empty() {
+        if let Some(credential) = self.credential.as_ref() {
+            writeln!(
+                f,
+                "{}",
+                fmt_log!("The identity has a credential in this project")
+            )?;
             writeln!(
                 f,
                 "{}",
                 fmt_log!(
-                    "The following attributes are attested by the project's membership authority:"
+                    "created at {} that expires at {}\n",
+                    color_primary(human_readable_time(credential.created_at)),
+                    color_primary(human_readable_time(credential.expires_at))
                 )
             )?;
-            for (k, v) in self.credential.attributes.iter() {
+
+            if !credential.attributes.is_empty() {
                 writeln!(
                     f,
                     "{}",
                     fmt_log!(
-                        "{}{}",
-                        fmt::INDENTATION,
-                        color_primary(format!("\"{k}={v}\""))
-                    )
+                    "The following attributes are attested by the project's membership authority:"
+                )
                 )?;
+                let mut attributes = credential.attributes.iter().collect::<Vec<_>>();
+                attributes.sort();
+                for (k, v) in attributes.iter() {
+                    writeln!(
+                        f,
+                        "{}",
+                        fmt_log!(
+                            "{}{}",
+                            fmt::INDENTATION,
+                            color_primary(format!("\"{k}={v}\""))
+                        )
+                    )?;
+                }
             }
         }
+
         Ok(f)
     }
 }

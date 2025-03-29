@@ -1,6 +1,9 @@
 #[cfg(feature = "std")]
 use crate::OpenTelemetryContext;
-use crate::{compat::vec::Vec, route, Address, Message, Route, TransportMessage};
+use crate::{
+    compat::vec::Vec, deserialize, route, serialize, Address, Decodable, Encodable, Encoded,
+    Message, Route, TransportMessage,
+};
 
 use crate::{LocalInfo, Result};
 use cfg_if::cfg_if;
@@ -63,8 +66,8 @@ impl LocalMessage {
     }
 
     /// Return the next address on the onward route
-    pub fn next_on_onward_route(&self) -> Result<Address> {
-        Ok(self.onward_route.next()?.clone())
+    pub fn next_on_onward_route(&self) -> Result<&Address> {
+        self.onward_route.next()
     }
 
     /// Return true if an address exists on the onward route
@@ -79,25 +82,21 @@ impl LocalMessage {
     }
 
     /// Prepend an address on the onward route
-    pub fn push_front_onward_route(mut self, address: &Address) -> Self {
-        self.onward_route = self.onward_route.modify().prepend(address.clone()).into();
+    pub fn push_front_onward_route(mut self, address: Address) -> Self {
+        self.onward_route = address + self.onward_route;
         self
     }
 
     /// Replace the first address on the onward route
-    pub fn replace_front_onward_route(self, address: &Address) -> Result<Self> {
+    pub fn replace_front_onward_route(self, address: Address) -> Result<Self> {
         Ok(self
             .pop_front_onward_route()?
             .push_front_onward_route(address))
     }
 
     /// Prepend a route to the onward route
-    pub fn prepend_front_onward_route(mut self, route: &Route) -> Self {
-        self.onward_route = self
-            .onward_route
-            .modify()
-            .prepend_route(route.clone())
-            .into();
+    pub fn prepend_front_onward_route(mut self, route: Route) -> Self {
+        self.onward_route = route + self.onward_route;
         self
     }
 
@@ -119,23 +118,19 @@ impl LocalMessage {
     }
 
     /// Prepend an address to the return route
-    pub fn push_front_return_route(mut self, address: &Address) -> Self {
-        self.return_route = self.return_route.modify().prepend(address.clone()).into();
+    pub fn push_front_return_route(mut self, address: Address) -> Self {
+        self.return_route = address + self.return_route;
         self
     }
 
     /// Prepend a route to the return route
-    pub fn prepend_front_return_route(mut self, route: &Route) -> Self {
-        self.return_route = self
-            .return_route
-            .modify()
-            .prepend_route(route.clone())
-            .into();
+    pub fn prepend_front_return_route(mut self, route: Route) -> Self {
+        self.return_route = route + self.return_route;
         self
     }
 
     /// Remove the first address on the onward route and push another address on the return route
-    pub fn step_forward(self, address: &Address) -> Result<Self> {
+    pub fn step_forward(self, address: Address) -> Result<Self> {
         Ok(self
             .pop_front_onward_route()?
             .push_front_return_route(address))
@@ -147,7 +142,7 @@ impl LocalMessage {
     }
 
     /// Return a reference to the message payload
-    pub fn payload_ref(&self) -> &[u8] {
+    pub fn payload(&self) -> &[u8] {
         &self.payload
     }
 
@@ -162,13 +157,8 @@ impl LocalMessage {
         self
     }
 
-    /// Return the message local info
-    pub fn local_info(&self) -> Vec<LocalInfo> {
-        self.local_info.clone()
-    }
-
     /// Return a reference to the message local info
-    pub fn local_info_ref(&self) -> &[LocalInfo] {
+    pub fn local_info(&self) -> &[LocalInfo] {
         &self.local_info
     }
 
@@ -219,58 +209,29 @@ impl LocalMessage {
 
         cfg_if! {
             if #[cfg(feature = "std")] {
-                // make sure to pass the latest tracing context
-                let new_tracing_context = Self::start_new_tracing_context(self.tracing_context.update(), "TransportMessage");
-                transport_message.with_tracing_context(new_tracing_context)
+                transport_message.with_tracing_context(self.tracing_context.to_string())
             } else {
                 transport_message
             }
         }
-    }
-
-    /// - A new trace is started
-    /// - The previous trace and the new trace are linked together
-    ///
-    /// We start a new trace here in order to make sure that each transport message is always
-    /// associated to a globally unique trace id and then cannot be correlated with another transport
-    /// message that would leave the same node for example.
-    ///
-    /// We can still navigate the two created traces as one thanks to their link.
-    #[cfg(feature = "std")]
-    pub fn start_new_tracing_context(
-        tracing_context: OpenTelemetryContext,
-        span_prefix: &str,
-    ) -> String {
-        use crate::OCKAM_TRACER_NAME;
-        use opentelemetry::trace::{Link, SpanBuilder, TraceContextExt, Tracer};
-        use opentelemetry::{global, Context};
-
-        // start a new trace for this transport message, and link it to the previous trace, via the current tracing context
-        let tracer = global::tracer(OCKAM_TRACER_NAME);
-        let span_builder = SpanBuilder::from_name(format!("{}::start_trace", span_prefix))
-            .with_links(vec![Link::new(
-                tracing_context.extract().span().span_context().clone(),
-                vec![],
-                0,
-            )]);
-        let span = tracer.build_with_context(span_builder, &Context::default());
-        let cx = Context::current_with_span(span);
-
-        // create a span to close the previous trace and link it to the new trace
-        let span_builder = SpanBuilder::from_name(format!("{}::end_trace", span_prefix))
-            .with_links(vec![Link::new(cx.span().span_context().clone(), vec![], 0)]);
-        let _ = tracer.build_with_context(span_builder, &tracing_context.extract());
-
-        // create the new opentelemetry context
-        let new_tracing_context = OpenTelemetryContext::inject(&cx);
-
-        new_tracing_context.to_string()
     }
 }
 
 impl Default for LocalMessage {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl Encodable for LocalMessage {
+    fn encode(self) -> Result<Encoded> {
+        serialize(self)
+    }
+}
+
+impl Decodable for LocalMessage {
+    fn decode(e: &[u8]) -> Result<Self> {
+        deserialize(e)
     }
 }
 

@@ -4,13 +4,13 @@ use colorful::Colorful;
 use tokio::sync::Mutex;
 use tokio::try_join;
 
-use ockam::identity::SecureChannelListener;
+use ockam::identity::SecureChannelListenerList;
 use ockam::Context;
 use ockam_api::colors::OckamColor;
 use ockam_api::nodes::BackgroundNodeClient;
 
 use crate::node::NodeOpts;
-use crate::util::{api, async_cmd};
+use crate::util::api;
 use crate::{docs, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/list/long_about.txt");
@@ -32,24 +32,20 @@ pub struct ListCommand {
 }
 
 impl ListCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |ctx| async move {
-            self.async_run(&ctx, opts).await
-        })
-    }
     pub fn name(&self) -> String {
         "secure-channel-listeners list".into()
     }
 
-    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
-        let node = BackgroundNodeClient::create(ctx, &opts.state, &self.node_opts.at_node).await?;
+    pub async fn run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        let node =
+            BackgroundNodeClient::create(ctx, opts.state.clone(), &self.node_opts.at_node).await?;
         let is_finished: Mutex<bool> = Mutex::new(false);
 
         let get_listeners = async {
-            let listeners: Vec<SecureChannelListener> =
+            let listeners: SecureChannelListenerList =
                 node.ask(ctx, api::list_secure_channel_listener()).await?;
             *is_finished.lock().await = true;
-            Ok(listeners)
+            Ok(listeners.0)
         };
 
         let output_messages = vec![format!(
@@ -68,7 +64,7 @@ impl ListCommand {
                 node.node_name()
             ),
         )?;
-        opts.terminal.stdout().plain(list).write_line()?;
+        opts.terminal.to_stdout().plain(list).write_line()?;
 
         Ok(())
     }

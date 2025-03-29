@@ -1,3 +1,4 @@
+use crate::branding::{BrandingCompileEnvVars, OUTPUT_BRANDING};
 use crate::Result;
 use colorful::Colorful;
 use ockam_api::terminal::TextHighlighter;
@@ -5,7 +6,23 @@ use ockam_core::env::get_env_with_default;
 use once_cell::sync::Lazy;
 use syntect::{parsing::Regex, util::LinesWithEndings};
 
-const FOOTER: &str = "
+const PREVIEW_TOOLTIP_TEXT: &str = include_str!("./static/preview_tooltip.txt");
+const PREVIEW_TAG: &str = include_str!("./static/preview_tag.txt");
+const UNSAFE_TOOLTIP_TEXT: &str = include_str!("./static/unsafe_tooltip.txt");
+const UNSAFE_TAG: &str = include_str!("./static/unsafe_tag.txt");
+
+static IS_MARKDOWN: Lazy<bool> =
+    Lazy::new(|| get_env_with_default("OCKAM_HELP_RENDER_MARKDOWN", false).unwrap_or(false));
+
+static HIDE: Lazy<bool> =
+    Lazy::new(|| get_env_with_default("OCKAM_HELP_SHOW_HIDDEN", true).unwrap_or(true));
+
+static HEADER_RE: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"^(Examples:|Learn More:|Feedback:).*$".into()));
+
+static FOOTER: Lazy<String> = Lazy::new(|| {
+    if BrandingCompileEnvVars::bin_name() == "ockam" {
+        "
 Learn More:
 
 Use 'ockam <SUBCOMMAND> --help' for more information about a subcommand.
@@ -16,18 +33,26 @@ Learn more about Ockam: https://docs.ockam.io/reference/command
 Feedback:
 
 If you have questions, as you explore, join us on the contributors
-discord channel https://discord.ockam.io
-";
+discord channel https://discord.ockam.io"
+            .to_string()
+    } else {
+        format!(
+            "
+Learn More:
 
-static HEADER_RE: Lazy<Regex> =
-    Lazy::new(|| Regex::new("^(Examples|Learn More|Feedback):$".into()));
+Use 'ockam <SUBCOMMAND> --help' for more information about a subcommand.
+Where <SUBCOMMAND> might be: 'node', 'status', 'enroll', etc.
 
-fn is_markdown() -> bool {
-    get_env_with_default("OCKAM_HELP_RENDER_MARKDOWN", false).unwrap_or(false)
-}
+Feedback:
+
+If you have questions, please email us on {}",
+            BrandingCompileEnvVars::support_email()
+        )
+    }
+});
 
 pub(crate) fn hide() -> bool {
-    get_env_with_default("OCKAM_HELP_SHOW_HIDDEN", true).unwrap_or(true)
+    *HIDE
 }
 
 pub(crate) fn about(text: &str) -> &'static str {
@@ -36,8 +61,13 @@ pub(crate) fn about(text: &str) -> &'static str {
 
 pub(crate) fn before_help(text: &str) -> &'static str {
     let mut processed = String::new();
-    if is_markdown() {
-        processed.push_str(&enrich_preview_tag(text));
+    if *IS_MARKDOWN {
+        if let Some(s) = enrich_preview_tag(text) {
+            processed.push_str(&s);
+        }
+        if let Some(s) = enrich_unsafe_tag(text) {
+            processed.push_str(&s);
+        }
     } else {
         processed.push_str(text);
     }
@@ -46,13 +76,13 @@ pub(crate) fn before_help(text: &str) -> &'static str {
 
 pub(crate) fn after_help(text: &str) -> &'static str {
     let mut processed = String::new();
-    if is_markdown() {
+    if *IS_MARKDOWN {
         processed.push_str("### Examples\n\n");
         processed.push_str(text);
     } else {
         processed.push_str("Examples:\n\n");
         processed.push_str(text);
-        processed.push_str(FOOTER);
+        processed.push_str(&FOOTER);
     }
     render(processed.as_str())
 }
@@ -60,10 +90,11 @@ pub(crate) fn after_help(text: &str) -> &'static str {
 /// Render the string if the document should be displayed in a terminal
 /// Otherwise, if it is a Markdown document just return a static string
 fn render(body: &str) -> &'static str {
-    if is_markdown() {
-        Box::leak(body.to_string().into_boxed_str())
+    let body = OUTPUT_BRANDING.replace(body);
+    if *IS_MARKDOWN {
+        Box::leak(body.into_boxed_str())
     } else {
-        let syntax_highlighted = process_terminal_docs(body.to_string());
+        let syntax_highlighted = process_terminal_docs(body);
         Box::leak(syntax_highlighted.into_boxed_str())
     }
 }
@@ -75,7 +106,7 @@ fn process_terminal_docs(input: String) -> String {
     for line in LinesWithEndings::from(&input) {
         // Bold and underline known headers
         if HEADER_RE.is_match(line) {
-            output.push(line.to_string().bold().underlined().to_string());
+            output.push(line.bold().underlined().to_string());
         }
         // Underline H4 headers
         else if line.starts_with("#### ") {
@@ -123,19 +154,33 @@ impl FencedCodeBlockHighlighter<'_> {
     }
 }
 
-const PREVIEW_TOOLTIP_TEXT: &str = include_str!("./static/preview_tooltip.txt");
+/// Enrich a specific tag with HTML
+fn enrich_tag(text: &str, tag: &str, tooltip_text: &str, display_text: &str) -> Option<String> {
+    if !text.contains(tag) {
+        return None;
+    }
 
-/// Enrich the `[Preview]` tag with html
-fn enrich_preview_tag(text: &str) -> String {
-    // Converts [Preview] to <div class="chip t">Preview<div class="tt">..</div></div>
+    // Converts [Tag_name] to <div class="chip t">Tag_name<div class="tt">..</div></div>
     let mut tooltip = String::new();
-    for line in PREVIEW_TOOLTIP_TEXT.trim_end().lines() {
+    for line in tooltip_text.trim_end().lines() {
         tooltip.push_str(&format!("<p>{}</p>", line));
     }
     tooltip = format!("<div class=\"tt\">{tooltip}</div>");
-    let preview = "<b>Preview</b>";
-    let container = format!("<div class=\"chip t\">{}{}</div>", preview, tooltip);
-    text.replace("[Preview]", &container)
+    let container = format!(
+        "<div class=\"chip t\"><b>{}</b>{}</div>\n",
+        display_text, tooltip
+    );
+    Some(text.replace(tag, &container))
+}
+
+/// Enrich the `[Preview]` tag with html
+fn enrich_preview_tag(text: &str) -> Option<String> {
+    enrich_tag(text, PREVIEW_TAG, PREVIEW_TOOLTIP_TEXT, "Preview")
+}
+
+/// Enrich the `[Unsafe]` tag with html
+fn enrich_unsafe_tag(text: &str) -> Option<String> {
+    enrich_tag(text, UNSAFE_TAG, UNSAFE_TOOLTIP_TEXT, "Unsafe")
 }
 
 #[cfg(test)]

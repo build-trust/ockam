@@ -4,8 +4,8 @@ use miette::miette;
 
 use ockam::Context;
 use ockam_api::cli_state::random_name;
-use ockam_api::cloud::space::Spaces;
 use ockam_api::nodes::InMemoryNode;
+use ockam_api::orchestrator::space::Spaces;
 use ockam_api::output::Output;
 
 use crate::shared_args::IdentityOpts;
@@ -23,8 +23,8 @@ long_about = docs::about(LONG_ABOUT),
 after_long_help = docs::after_help(AFTER_LONG_HELP),
 )]
 pub struct CreateCommand {
-    /// Name of the space - must be unique across all Ockam Orchestrator users.
     #[arg(display_order = 1001, value_name = "SPACE_NAME", default_value_t = random_name(), hide_default_value = true, value_parser = validate_space_name)]
+    #[arg(help = docs::about("Name of the `BIN_NAME` space - must be unique across all Ockam Orchestrator users."))]
     pub name: String,
 
     /// Administrators for this space
@@ -39,7 +39,7 @@ pub struct CreateCommand {
 impl Command for CreateCommand {
     const NAME: &'static str = "space create";
 
-    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> Result<()> {
+    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> Result<()> {
         if !opts
             .state
             .is_identity_enrolled(&self.identity_opts.identity_name)
@@ -50,7 +50,7 @@ impl Command for CreateCommand {
             ));
         };
 
-        let node = InMemoryNode::start(ctx, &opts.state).await?;
+        let node = InMemoryNode::start(ctx, opts.state.clone()).await?;
 
         let space = {
             let pb = opts.terminal.spinner();
@@ -68,7 +68,7 @@ impl Command for CreateCommand {
             opts.terminal.write_line(msg)?;
         }
         opts.terminal
-            .stdout()
+            .to_stdout()
             .plain(space.item()?)
             .json_obj(&space)?
             .write_line()?;

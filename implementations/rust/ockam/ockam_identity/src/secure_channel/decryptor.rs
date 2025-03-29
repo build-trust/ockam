@@ -1,6 +1,6 @@
 use core::sync::atomic::Ordering;
 use ockam_core::compat::sync::Arc;
-use ockam_core::{route, Any, Result, Route, Routed, SecureChannelLocalInfo};
+use ockam_core::{Any, Result, Route, Routed, SecureChannelLocalInfo};
 use ockam_core::{Decodable, LocalMessage};
 use ockam_node::Context;
 
@@ -18,7 +18,7 @@ use crate::{
 
 use crate::secure_channel::encryptor_worker::SecureChannelSharedState;
 use ockam_vault::{AeadSecretKeyHandle, VaultForSecureChannels};
-use tracing::{debug, info, trace, warn};
+use tracing::{debug, info, trace, warn, Level};
 use tracing_attributes::instrument;
 
 pub(crate) struct DecryptorHandler {
@@ -63,7 +63,7 @@ impl DecryptorHandler {
         }
     }
 
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     pub(crate) async fn handle_decrypt_api(
         &mut self,
         ctx: &mut Context,
@@ -107,19 +107,14 @@ impl DecryptorHandler {
             let mut remote_route = self.shared_state.remote_route.write().unwrap();
             // Only overwrite if we know that's the latest address
             if remote_route.last_nonce < nonce {
-                let their_decryptor_address = remote_route.route.recipient()?;
-                remote_route.route =
-                    route![encrypted_msg_return_route, their_decryptor_address.clone()];
+                let their_decryptor_address = remote_route.route.recipient()?.clone();
+                remote_route.route = encrypted_msg_return_route + their_decryptor_address;
                 remote_route.last_nonce = nonce;
             }
         }
 
         // Add encryptor hop in the return_route (instead of our address)
-        let return_route = msg
-            .return_route
-            .modify()
-            .prepend(self.addresses.encryptor.clone())
-            .into();
+        let return_route = self.addresses.encryptor.clone() + msg.return_route;
 
         // Mark message LocalInfo with IdentitySecureChannelLocalInfo,
         // replacing any pre-existing entries
@@ -147,13 +142,15 @@ impl DecryptorHandler {
         }
     }
 
-    async fn handle_close(&mut self, ctx: &mut Context) -> Result<()> {
+    fn handle_close(&mut self, ctx: &mut Context) -> Result<()> {
         // Prevent sending another Close message
         self.shared_state
             .should_send_close
             .store(false, Ordering::Relaxed);
         // Should be enough to stop the encryptor, since it will stop the decryptor
-        ctx.stop_worker(self.addresses.encryptor.clone()).await
+        ctx.stop_address(&self.addresses.encryptor)?;
+
+        Ok(())
     }
 
     async fn handle_refresh_credentials(
@@ -185,7 +182,7 @@ impl DecryptorHandler {
         Ok(())
     }
 
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     pub(crate) async fn handle_decrypt(
         &mut self,
         ctx: &mut Context,
@@ -215,7 +212,7 @@ impl DecryptorHandler {
             SecureChannelMessage::RefreshCredentials(decrypted_msg) => {
                 self.handle_refresh_credentials(ctx, decrypted_msg).await?
             }
-            SecureChannelMessage::Close => self.handle_close(ctx).await?,
+            SecureChannelMessage::Close => self.handle_close(ctx)?,
         };
 
         Ok(())
@@ -251,7 +248,7 @@ impl Decryptor {
         }
     }
 
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     pub async fn decrypt<'a>(&mut self, payload: &'a mut [u8]) -> Result<(&'a [u8], Nonce)> {
         if payload.len() < NOISE_NONCE_LEN {
             return Err(IdentityError::InvalidNonce)?;
@@ -306,7 +303,7 @@ impl Decryptor {
     }
 
     /// Remove the channel keys on shutdown
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     pub(crate) async fn shutdown(&self) -> Result<()> {
         self.vault
             .delete_aead_secret_key(self.key_tracker.current_key.clone())

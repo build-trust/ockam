@@ -16,16 +16,16 @@ const TIMEOUT: Duration = Duration::from_secs(5);
 #[ockam_macros::test]
 async fn reply_from_correct_server_port(ctx: &mut Context) -> Result<()> {
     // Transport
-    let transport = UdpTransport::create(ctx).await?;
+    let transport = UdpTransport::get_or_create(ctx)?;
 
     // Listener
-    ctx.start_worker("echoer", Echoer::new(true)).await?;
+    ctx.start_worker("echoer", Echoer::new(true))?;
     let bind = transport
         .bind(UdpBindArguments::new(), UdpBindOptions::new())
         .await?;
 
     ctx.flow_controls()
-        .add_consumer("echoer", bind.flow_control_id());
+        .add_consumer(&"echoer".into(), bind.flow_control_id());
 
     // Sender
     {
@@ -80,10 +80,10 @@ async fn recover_from_sender_error(ctx: &mut Context) -> Result<()> {
     debug!("addr_nok = {:?}", addr_nok);
 
     // Transport
-    let transport = UdpTransport::create(ctx).await?;
+    let transport = UdpTransport::get_or_create(ctx)?;
 
     // Listener
-    ctx.start_worker("echoer", Echoer::new(true)).await?;
+    ctx.start_worker("echoer", Echoer::new(true))?;
     let bind = transport
         .bind(
             UdpBindArguments::new().with_bind_address(addr_ok.clone())?,
@@ -91,7 +91,7 @@ async fn recover_from_sender_error(ctx: &mut Context) -> Result<()> {
         )
         .await?;
     ctx.flow_controls()
-        .add_consumer("echoer", bind.flow_control_id());
+        .add_consumer(&"echoer".into(), bind.flow_control_id());
 
     // Send message to try and cause a socket send error
     let r = route![bind.sender_address().clone(), (UDP, addr_nok), "echoer"];
@@ -129,11 +129,11 @@ async fn send_from_same_client_port(ctx: &mut Context) -> Result<()> {
     debug!("bind_addrs = {:?}", bind_addrs);
 
     // Transport
-    let transport = UdpTransport::create(ctx).await?;
+    let transport = UdpTransport::get_or_create(ctx)?;
 
     // Listeners
     // Note: it is the Echoer which is checking the UDP ports for this test
-    ctx.start_worker("echoer", Echoer::new(true)).await?;
+    ctx.start_worker("echoer", Echoer::new(true))?;
     let mut binds = vec![];
     for addr in &bind_addrs {
         let bind = transport
@@ -144,7 +144,7 @@ async fn send_from_same_client_port(ctx: &mut Context) -> Result<()> {
             .await?;
 
         ctx.flow_controls()
-            .add_consumer("echoer", bind.flow_control_id());
+            .add_consumer(&"echoer".into(), bind.flow_control_id());
 
         binds.push(bind);
     }
@@ -157,8 +157,8 @@ async fn send_from_same_client_port(ctx: &mut Context) -> Result<()> {
             (UDP, addr.to_string()),
             "echoer"
         ];
-        let reply = ctx
-            .send_and_receive_extended::<String>(
+        let reply: String = ctx
+            .send_and_receive_extended(
                 r,
                 msg.clone(),
                 MessageSendReceiveOptions::new().with_timeout(TIMEOUT),
@@ -174,9 +174,9 @@ async fn send_from_same_client_port(ctx: &mut Context) -> Result<()> {
 #[ockam_macros::test]
 async fn send_receive_arbitrary_udp_peer(ctx: &mut Context) -> Result<()> {
     // Transport
-    let transport = UdpTransport::create(ctx).await?;
+    let transport = UdpTransport::get_or_create(ctx)?;
 
-    ctx.start_worker("echoer", Echoer::new(true)).await?;
+    ctx.start_worker("echoer", Echoer::new(true))?;
     let bind1 = transport
         .bind(UdpBindArguments::new(), UdpBindOptions::new())
         .await?;
@@ -188,9 +188,9 @@ async fn send_receive_arbitrary_udp_peer(ctx: &mut Context) -> Result<()> {
         .await?;
 
     ctx.flow_controls()
-        .add_consumer("echoer", bind2.flow_control_id());
+        .add_consumer(&"echoer".into(), bind2.flow_control_id());
     ctx.flow_controls()
-        .add_consumer("echoer", bind3.flow_control_id());
+        .add_consumer(&"echoer".into(), bind3.flow_control_id());
 
     // Sender
     {
@@ -206,8 +206,8 @@ async fn send_receive_arbitrary_udp_peer(ctx: &mut Context) -> Result<()> {
                 (UDP, bind2.bind_address().to_string()),
                 "echoer"
             ];
-            let reply = ctx
-                .send_and_receive_extended::<String>(
+            let reply: String = ctx
+                .send_and_receive_extended(
                     r,
                     msg.clone(),
                     MessageSendReceiveOptions::new().with_timeout(TIMEOUT),
@@ -222,8 +222,8 @@ async fn send_receive_arbitrary_udp_peer(ctx: &mut Context) -> Result<()> {
                 (UDP, bind3.bind_address().to_string()),
                 "echoer"
             ];
-            let reply = ctx
-                .send_and_receive_extended::<String>(
+            let reply: String = ctx
+                .send_and_receive_extended(
                     r,
                     msg.clone(),
                     MessageSendReceiveOptions::new().with_timeout(TIMEOUT),
@@ -240,9 +240,9 @@ async fn send_receive_arbitrary_udp_peer(ctx: &mut Context) -> Result<()> {
 #[ockam_macros::test]
 async fn send_receive_one_known_udp_peer(ctx: &mut Context) -> Result<()> {
     // Transport
-    let transport = UdpTransport::create(ctx).await?;
+    let transport = UdpTransport::get_or_create(ctx)?;
 
-    ctx.start_worker("echoer", Echoer::new(false)).await?;
+    ctx.start_worker("echoer", Echoer::new(false))?;
     let bind1 = transport
         .bind(UdpBindArguments::new(), UdpBindOptions::new())
         .await?;
@@ -256,9 +256,9 @@ async fn send_receive_one_known_udp_peer(ctx: &mut Context) -> Result<()> {
         .await?;
 
     ctx.flow_controls()
-        .add_consumer("echoer", bind1.flow_control_id());
+        .add_consumer(&"echoer".into(), bind1.flow_control_id());
     ctx.flow_controls()
-        .add_consumer("echoer", bind2.flow_control_id());
+        .add_consumer(&"echoer".into(), bind2.flow_control_id());
 
     // Sender
     {
@@ -270,8 +270,8 @@ async fn send_receive_one_known_udp_peer(ctx: &mut Context) -> Result<()> {
                 .collect();
 
             let r = route![bind2.sender_address().clone(), "echoer"];
-            let reply = ctx
-                .send_and_receive_extended::<String>(
+            let reply: String = ctx
+                .send_and_receive_extended(
                     r,
                     msg.clone(),
                     MessageSendReceiveOptions::new().with_timeout(TIMEOUT),
@@ -286,8 +286,8 @@ async fn send_receive_one_known_udp_peer(ctx: &mut Context) -> Result<()> {
                 (UDP, bind2.bind_address().to_string()),
                 "echoer"
             ];
-            let reply = ctx
-                .send_and_receive_extended::<String>(
+            let reply: String = ctx
+                .send_and_receive_extended(
                     r,
                     msg.clone(),
                     MessageSendReceiveOptions::new().with_timeout(TIMEOUT),
@@ -308,9 +308,9 @@ async fn send_receive_two_known_udp_peers(ctx: &mut Context) -> Result<()> {
     debug!("bind_addrs = {:?}", bind_addrs);
 
     // Transport
-    let transport = UdpTransport::create(ctx).await?;
+    let transport = UdpTransport::get_or_create(ctx)?;
 
-    ctx.start_worker("echoer", Echoer::new(false)).await?;
+    ctx.start_worker("echoer", Echoer::new(false))?;
     let bind1 = transport
         .bind(
             UdpBindArguments::new()
@@ -331,9 +331,9 @@ async fn send_receive_two_known_udp_peers(ctx: &mut Context) -> Result<()> {
         .await?;
 
     ctx.flow_controls()
-        .add_consumer("echoer", bind1.flow_control_id());
+        .add_consumer(&"echoer".into(), bind1.flow_control_id());
     ctx.flow_controls()
-        .add_consumer("echoer", bind2.flow_control_id());
+        .add_consumer(&"echoer".into(), bind2.flow_control_id());
 
     // Sender
     {
@@ -345,8 +345,8 @@ async fn send_receive_two_known_udp_peers(ctx: &mut Context) -> Result<()> {
                 .collect();
 
             let r = route![bind2.sender_address().clone(), "echoer"];
-            let reply = ctx
-                .send_and_receive_extended::<String>(
+            let reply: String = ctx
+                .send_and_receive_extended(
                     r,
                     msg.clone(),
                     MessageSendReceiveOptions::new().with_timeout(TIMEOUT),
@@ -357,8 +357,8 @@ async fn send_receive_two_known_udp_peers(ctx: &mut Context) -> Result<()> {
             assert_eq!(reply, msg, "Should receive the same message");
 
             let r = route![bind1.sender_address().clone(), "echoer"];
-            let reply = ctx
-                .send_and_receive_extended::<String>(
+            let reply: String = ctx
+                .send_and_receive_extended(
                     r,
                     msg.clone(),
                     MessageSendReceiveOptions::new().with_timeout(TIMEOUT),
@@ -379,9 +379,9 @@ async fn send_receive_large_message(ctx: &mut Context) -> Result<()> {
     debug!("bind_addrs = {:?}", bind_addrs);
 
     // Transport
-    let transport = UdpTransport::create(ctx).await?;
+    let transport = UdpTransport::get_or_create(ctx)?;
 
-    ctx.start_worker("echoer", Echoer::new(false)).await?;
+    ctx.start_worker("echoer", Echoer::new(false))?;
     let bind1 = transport
         .bind(
             UdpBindArguments::new()
@@ -402,7 +402,7 @@ async fn send_receive_large_message(ctx: &mut Context) -> Result<()> {
         .await?;
 
     ctx.flow_controls()
-        .add_consumer("echoer", bind1.flow_control_id());
+        .add_consumer(&"echoer".into(), bind1.flow_control_id());
 
     let msg: String = rand::thread_rng()
         .sample_iter(&rand::distributions::Alphanumeric)
@@ -411,8 +411,8 @@ async fn send_receive_large_message(ctx: &mut Context) -> Result<()> {
         .collect();
 
     let r = route![bind2.sender_address().clone(), "echoer"];
-    let reply = ctx
-        .send_and_receive_extended::<String>(
+    let reply: String = ctx
+        .send_and_receive_extended(
             r,
             msg.clone(),
             MessageSendReceiveOptions::new().with_timeout(TIMEOUT),

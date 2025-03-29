@@ -1,14 +1,18 @@
+use clap::{Args, Subcommand};
+
 use self::revoke::RevokeCommand;
 use crate::util::process_nodes_multiaddr;
 use crate::{Command, CommandGlobalOpts, Error};
-use clap::{Args, Subcommand};
 pub use create::CreateCommand;
 pub use list::ListCommand;
+pub use show::ShowCommand;
+
 use miette::IntoDiagnostic;
 use ockam_api::CliState;
 use ockam_multiaddr::MultiAddr;
-pub use show::ShowCommand;
+use ockam_node::Context;
 use std::str::FromStr;
+use std::sync::Arc;
 
 mod create;
 mod list;
@@ -31,12 +35,12 @@ pub enum LeaseSubcommand {
 }
 
 impl LeaseCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
-            LeaseSubcommand::Create(c) => c.run(opts),
-            LeaseSubcommand::List(c) => c.run(opts),
-            LeaseSubcommand::Show(c) => c.run(opts),
-            LeaseSubcommand::Revoke(c) => c.run(opts),
+            LeaseSubcommand::Create(c) => c.run(ctx, opts).await,
+            LeaseSubcommand::List(c) => c.run(ctx, opts).await,
+            LeaseSubcommand::Show(c) => c.run(ctx, opts).await,
+            LeaseSubcommand::Revoke(c) => c.run(ctx, opts).await,
         }
     }
 
@@ -56,7 +60,7 @@ fn lease_at_default_value() -> MultiAddr {
         .expect("Invalid default value for at")
 }
 
-async fn resolve_at_arg(at: &MultiAddr, state: &CliState) -> miette::Result<MultiAddr> {
+async fn resolve_at_arg(at: &MultiAddr, state: Arc<CliState>) -> miette::Result<MultiAddr> {
     let mut at = at.to_string();
     if at.contains("<default_project_name>") {
         let project_name = state

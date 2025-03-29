@@ -1,6 +1,7 @@
 use crate::env::error;
 use crate::errcode::{Kind, Origin};
 use crate::{Error, Result};
+use core::str::FromStr;
 use once_cell::sync::OnceCell;
 use regex::Regex;
 use std::path::PathBuf;
@@ -13,7 +14,7 @@ pub trait FromString: Sized {
     fn from_string(s: &str) -> Result<Self>;
 }
 
-/// Instances
+// Instances
 
 impl<T: FromString> FromString for Option<T> {
     fn from_string(s: &str) -> Result<Self> {
@@ -43,6 +44,12 @@ impl FromString for char {
         }
 
         Ok(s.chars().next().unwrap())
+    }
+}
+
+impl FromString for usize {
+    fn from_string(s: &str) -> Result<Self> {
+        usize::from_str(s).map_err(|err| error(format!("usize parsing error: {err}")))
     }
 }
 

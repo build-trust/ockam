@@ -1,6 +1,6 @@
 use crate::compat::string::{String, ToString};
 use crate::errcode::{Kind, Origin};
-use crate::{AddressAndMetadata, Error, LocalInfoIdentifier, Result, SECURE_CHANNEL_IDENTIFIER};
+use crate::{AddressMetadata, Error, LocalInfoIdentifier, Result, SECURE_CHANNEL_IDENTIFIER};
 
 /// SecureChannel Metadata used for Terminal Address
 pub struct SecureChannelMetadata {
@@ -34,19 +34,15 @@ impl SecureChannelMetadata {
     }
 
     /// Get the Identifier of the other side of the Secure Channel
-    pub fn from_terminal_address(terminal: &AddressAndMetadata) -> Result<Self> {
+    pub fn from_terminal_address_metadata(terminal: &AddressMetadata) -> Result<Self> {
         let identifier = if let Some(identifier) =
-            terminal
-                .metadata
-                .attributes
-                .iter()
-                .find_map(|(key, value)| {
-                    if key == SECURE_CHANNEL_IDENTIFIER {
-                        Some(value.clone())
-                    } else {
-                        None
-                    }
-                }) {
+            terminal.attributes.iter().find_map(|(key, value)| {
+                if key == SECURE_CHANNEL_IDENTIFIER {
+                    Some(value.clone())
+                } else {
+                    None
+                }
+            }) {
             identifier
         } else {
             return Err(Self::error_type_id());

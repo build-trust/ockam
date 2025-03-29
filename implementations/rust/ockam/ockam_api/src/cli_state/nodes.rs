@@ -15,10 +15,10 @@ use std::path::PathBuf;
 use std::process;
 use std::time::Duration;
 use sysinfo::{Pid, ProcessStatus, ProcessesToUpdate, System};
+use tracing::Level;
 
 use crate::cli_state::{random_name, NamedVault, Result};
 use crate::cli_state::{CliState, CliStateError};
-use crate::cloud::project::Project;
 use crate::colors::color_primary;
 use crate::config::lookup::InternetAddress;
 
@@ -27,17 +27,15 @@ use crate::{fmt_warn, ConnectionStatus};
 /// The methods below support the creation and update of local nodes
 impl CliState {
     /// Create a node, with some optional associated values, and start it
-    #[instrument(skip_all, fields(node_name = node_name, identity_name = identity_name.clone(), project_name = project_name.clone()
-    ))]
+    #[instrument(skip_all, fields(node_name = node_name, identity_name = identity_name.clone()), level = Level::TRACE)]
     pub async fn start_node_with_optional_values(
         &self,
         node_name: &str,
         identity_name: &Option<String>,
-        project_name: &Option<String>,
         tcp_listener: Option<&TcpListener>,
     ) -> Result<NodeInfo> {
         let mut node = self
-            .create_node_with_optional_values(node_name, identity_name, project_name)
+            .create_node_with_optional_identity(node_name, identity_name)
             .await?;
         if node.pid.is_none() {
             let pid = process::id();
@@ -53,17 +51,12 @@ impl CliState {
         Ok(node)
     }
 
-    /// Create a node, with some optional associated values:
-    ///
-    ///  - an identity name. That identity is used by the `NodeManager` to create secure channels
-    ///  - a project name. It is used to create policies on resources provisioned on a node (like a TCP outlet for example)
-    #[instrument(skip_all, fields(node_name = node_name, identity_name = identity_name.clone(), project_name = project_name.clone()
-    ))]
-    pub async fn create_node_with_optional_values(
+    /// Create a node, with an optional identity name. That identity is used by the `NodeManager` to create secure channels
+    #[instrument(skip_all, fields(node_name = node_name, identity_name = identity_name.clone()), level = Level::TRACE)]
+    pub async fn create_node_with_optional_identity(
         &self,
         node_name: &str,
         identity_name: &Option<String>,
-        project_name: &Option<String>,
     ) -> Result<NodeInfo> {
         let identity = match identity_name {
             Some(name) => self.get_named_identity(name).await?,
@@ -72,13 +65,12 @@ impl CliState {
         let node = self
             .create_node_with_identifier(node_name, &identity.identifier())
             .await?;
-        self.set_node_project(node_name, project_name).await?;
         Ok(node)
     }
 
     /// This method creates a node with an associated identity
     /// The vault used to create the identity is the default vault
-    #[instrument(skip_all, fields(node_name = node_name))]
+    #[instrument(skip_all, fields(node_name = node_name), level = Level::TRACE)]
     pub async fn create_node(&self, node_name: &str) -> Result<NodeInfo> {
         let identity = self.create_identity_with_name(&random_name()).await?;
         self.create_node_with_identifier(node_name, &identity.identifier())
@@ -87,7 +79,7 @@ impl CliState {
 
     pub fn backup_logs(&self, node_name: &str) -> Result<()> {
         // Atm node dir only has logs
-        let node_dir = self.node_dir(node_name);
+        let node_dir = self.node_dir(node_name)?;
 
         let now = now()?;
 
@@ -112,7 +104,7 @@ impl CliState {
     /// Delete a node
     ///  - first stop it if it is running
     ///  - then remove it from persistent storage
-    #[instrument(skip_all, fields(node_name = node_name))]
+    #[instrument(skip_all, fields(node_name = node_name), level = Level::TRACE)]
     pub async fn delete_node(&self, node_name: &str) -> Result<()> {
         self.stop_node(node_name).await?;
         self.remove_node(node_name).await?;
@@ -120,7 +112,7 @@ impl CliState {
     }
 
     /// Delete all created nodes
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     pub async fn delete_all_nodes(&self) -> Result<()> {
         let nodes = self.nodes_repository().get_nodes().await?;
         for node in nodes {
@@ -134,32 +126,11 @@ impl CliState {
         Ok(())
     }
 
-    /// This method can be used to start a local node first
-    /// then create a project, and associate it to the node
-    #[instrument(skip_all, fields(node_name = node_name, project_name = project_name.clone()))]
-    pub async fn set_node_project(
-        &self,
-        node_name: &str,
-        project_name: &Option<String>,
-    ) -> Result<()> {
-        let project = match project_name {
-            Some(name) => Some(self.projects().get_project_by_name(name).await?),
-            None => self.projects().get_default_project().await.ok(),
-        };
-
-        if let Some(project) = project {
-            self.nodes_repository()
-                .set_node_project_name(node_name, project.name())
-                .await?
-        };
-        Ok(())
-    }
-
     /// Remove a node:
     ///
     ///  - remove it from the repository
     ///  - remove the node log files
-    #[instrument(skip_all, fields(node_name = node_name))]
+    #[instrument(skip_all, fields(node_name = node_name), level = Level::TRACE)]
     pub async fn remove_node(&self, node_name: &str) -> Result<()> {
         // remove the node from the database
         let repository = self.nodes_repository();
@@ -175,13 +146,13 @@ impl CliState {
         }
 
         // remove the node directory
-        let _ = std::fs::remove_dir_all(self.node_dir(node_name));
+        let _ = std::fs::remove_dir_all(self.node_dir(node_name)?);
         debug!(name=%node_name, "node deleted");
         Ok(())
     }
 
     /// Stop a background node
-    #[instrument(skip_all, fields(node_name = node_name))]
+    #[instrument(skip_all, fields(node_name = node_name), level = Level::TRACE)]
     pub async fn stop_node(&self, node_name: &str) -> Result<()> {
         debug!(name=%node_name, "stopping node...");
         let node = self.get_node(node_name).await?;
@@ -292,13 +263,13 @@ impl CliState {
     }
 
     /// Set a node as the default node
-    #[instrument(skip_all, fields(node_name = node_name))]
+    #[instrument(skip_all, fields(node_name = node_name), level = Level::TRACE)]
     pub async fn set_default_node(&self, node_name: &str) -> Result<()> {
         Ok(self.nodes_repository().set_default_node(node_name).await?)
     }
 
     /// Set a TCP listener address on a node when the TCP listener has been started
-    #[instrument(skip_all, fields(node_name = node_name, address = %address))]
+    #[instrument(skip_all, fields(node_name = node_name, address = %address), level = Level::TRACE)]
     pub async fn set_tcp_listener_address(
         &self,
         node_name: &str,
@@ -310,7 +281,7 @@ impl CliState {
         Ok(())
     }
 
-    #[instrument(skip_all, fields(node_name = node_name, address = %address))]
+    #[instrument(skip_all, fields(node_name = node_name, address = %address), level = Level::TRACE)]
     pub async fn set_node_http_server_addr(
         &self,
         node_name: &str,
@@ -325,7 +296,7 @@ impl CliState {
     /// Specify that a node is an authority node
     /// This is used to display the node status since if the node TCP listener is not accessible
     /// without a secure channel
-    #[instrument(skip_all, fields(node_name = node_name))]
+    #[instrument(skip_all, fields(node_name = node_name), level = Level::TRACE)]
     pub async fn set_as_authority_node(&self, node_name: &str) -> Result<()> {
         Ok(self
             .nodes_repository()
@@ -335,7 +306,7 @@ impl CliState {
 
     /// Set the current process id on a background node
     /// Keeping track of a background node process id allows us to kill its process when stopping the node
-    #[instrument(skip_all, fields(node_name = node_name, pid = %pid))]
+    #[instrument(skip_all, fields(node_name = node_name, pid = %pid), level = Level::TRACE)]
     pub async fn set_node_pid(&self, node_name: &str, pid: u32) -> Result<()> {
         Ok(self.nodes_repository().set_node_pid(node_name, pid).await?)
     }
@@ -344,7 +315,7 @@ impl CliState {
 /// The following methods return nodes data
 impl CliState {
     /// Return a node by name
-    #[instrument(skip_all, fields(node_name = node_name))]
+    #[instrument(skip_all, fields(node_name = node_name), level = Level::TRACE)]
     pub async fn get_node(&self, node_name: &str) -> Result<NodeInfo> {
         if let Some(node) = self.nodes_repository().get_node(node_name).await? {
             Ok(node)
@@ -357,13 +328,13 @@ impl CliState {
     }
 
     /// Return all the created nodes
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     pub async fn get_nodes(&self) -> Result<Vec<NodeInfo>> {
         Ok(self.nodes_repository().get_nodes().await?)
     }
 
     /// Return information about the default node (if there is one)
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = Level::TRACE)]
     pub async fn get_default_node(&self) -> Result<NodeInfo> {
         Ok(self
             .nodes_repository()
@@ -373,7 +344,7 @@ impl CliState {
     }
 
     /// Return the node information for the given node name, otherwise for the default node
-    #[instrument(skip_all, fields(node_name = node_name.clone()))]
+    #[instrument(skip_all, fields(node_name = node_name.clone()), level = Level::TRACE)]
     pub async fn get_node_or_default(&self, node_name: &Option<String>) -> Result<NodeInfo> {
         match node_name {
             Some(name) => self.get_node(name).await,
@@ -381,25 +352,8 @@ impl CliState {
         }
     }
 
-    /// Return the project associated to a node if there is one
-    #[instrument(skip_all, fields(node_name = node_name))]
-    pub async fn get_node_project(&self, node_name: &str) -> Result<Project> {
-        match self
-            .nodes_repository()
-            .get_node_project_name(node_name)
-            .await?
-        {
-            Some(project_name) => self.projects().get_project_by_name(&project_name).await,
-            None => Err(Error::new(
-                Origin::Api,
-                Kind::NotFound,
-                format!("there is no project associated to node {node_name}"),
-            ))?,
-        }
-    }
-
     /// Return the stdout log file used by a node
-    #[instrument(skip_all, fields(node_name = node_name))]
+    #[instrument(skip_all, fields(node_name = node_name), level = Level::TRACE)]
     pub fn stdout_logs(&self, node_name: &str) -> Result<PathBuf> {
         let node_dir = self.create_node_dir(node_name)?;
         let current_log_file = std::fs::read_dir(node_dir)?
@@ -426,7 +380,7 @@ impl CliState {
 /// Private functions
 impl CliState {
     /// This method creates a node
-    #[instrument(skip_all, fields(node_name = node_name, identifier = %identifier))]
+    #[instrument(skip_all, fields(node_name = node_name, identifier = %identifier), level = Level::TRACE)]
     pub async fn create_node_with_identifier(
         &self,
         node_name: &str,
@@ -461,7 +415,7 @@ impl CliState {
     }
 
     /// Return the nodes using a given identity
-    #[instrument(skip_all, fields(identity_name = identity_name))]
+    #[instrument(skip_all, fields(identity_name = identity_name), level = Level::TRACE)]
     pub(super) async fn get_nodes_by_identity_name(
         &self,
         identity_name: &str,
@@ -474,7 +428,7 @@ impl CliState {
     }
 
     /// Return the vault which was used to create the identity associated to a node
-    #[instrument(skip_all, fields(node_name = node_name))]
+    #[instrument(skip_all, fields(node_name = node_name), level = Level::TRACE)]
     pub(super) async fn get_node_vault(&self, node_name: &str) -> Result<NamedVault> {
         let identifier = self.get_node(node_name).await?.identifier();
         let identity = self.get_named_identity_by_identifier(&identifier).await?;
@@ -483,7 +437,7 @@ impl CliState {
 
     /// Create a directory used to store files specific to a node
     fn create_node_dir(&self, node_name: &str) -> Result<PathBuf> {
-        let path = self.node_dir(node_name);
+        let path = self.node_dir(node_name)?;
         std::fs::create_dir_all(&path)?;
         Ok(path)
     }
@@ -497,8 +451,8 @@ impl CliState {
     }
 
     /// Return the directory used by a node
-    pub fn node_dir(&self, node_name: &str) -> PathBuf {
-        Self::make_node_dir_path(&self.dir(), node_name)
+    pub fn node_dir(&self, node_name: &str) -> Result<PathBuf> {
+        Ok(Self::make_node_dir_path(self.dir()?, node_name))
     }
 
     /// Return a log path to be used for a given command
@@ -619,6 +573,43 @@ impl NodeInfo {
         self.tcp_listener_address.clone()
     }
 
+    /// Extract a connection address given the tcp listener address.
+    /// A binding address can coincide with the connection address, but not
+    /// in case the tcp listener binds to a specific network range.
+    /// Since extracting the right IP address to use in these cases is error-prone, we
+    /// just handle the unspecified bind `0.0.0.0` IP here.
+    pub fn tcp_connect_address(&self) -> Option<InternetAddress> {
+        if let Some(tcp_listener_address) = &self.tcp_listener_address {
+            match tcp_listener_address {
+                InternetAddress::Dns(_, _) => self.tcp_listener_address.clone(),
+                InternetAddress::V4(address) => {
+                    if address.ip().is_unspecified() {
+                        Some(InternetAddress::V4(std::net::SocketAddrV4::new(
+                            std::net::Ipv4Addr::LOCALHOST,
+                            address.port(),
+                        )))
+                    } else {
+                        self.tcp_listener_address.clone()
+                    }
+                }
+                InternetAddress::V6(address) => {
+                    if address.ip().is_unspecified() {
+                        Some(InternetAddress::V6(std::net::SocketAddrV6::new(
+                            std::net::Ipv6Addr::LOCALHOST,
+                            address.port(),
+                            address.flowinfo(),
+                            address.scope_id(),
+                        )))
+                    } else {
+                        self.tcp_listener_address.clone()
+                    }
+                }
+            }
+        } else {
+            None
+        }
+    }
+
     pub fn tcp_listener_multi_address(&self) -> Result<MultiAddr> {
         Ok(self
             .tcp_listener_address
@@ -701,7 +692,6 @@ impl NodeInfo {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cloud::project::models::ProjectModel;
     use crate::config::lookup::InternetAddress;
     use std::net::SocketAddr;
     use std::str::FromStr;
@@ -788,7 +778,7 @@ mod tests {
             "the node information is not available anymore"
         );
         assert!(
-            !cli.node_dir(node1).exists(),
+            !cli.node_dir(node1).unwrap().exists(),
             "the node directory must be deleted"
         );
 
@@ -799,12 +789,12 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_create_node_with_optional_values() -> Result<()> {
+    async fn test_create_node_with_optional_identity() -> Result<()> {
         let cli = CliState::test().await?;
 
         // a node can be created with just a name
         let node = cli
-            .create_node_with_optional_values("node-1", &None, &None)
+            .create_node_with_optional_identity("node-1", &None)
             .await?;
         let result = cli.get_node(&node.name()).await?;
         assert_eq!(result.name(), node.name());
@@ -812,43 +802,10 @@ mod tests {
         // a node can be created with a name and an existing identity
         let identity = cli.create_identity_with_name("name").await?;
         let node = cli
-            .create_node_with_optional_values("node-2", &Some(identity.name()), &None)
+            .create_node_with_optional_identity("node-2", &Some(identity.name()))
             .await?;
         let result = cli.get_node(&node.name()).await?;
         assert_eq!(result.identifier(), identity.identifier());
-
-        // a node can be created with a name, an existing identity and an existing project
-        let project = ProjectModel {
-            id: "project_id".to_string(),
-            name: "project_name".to_string(),
-            space_name: "1".to_string(),
-            access_route: "".to_string(),
-            users: vec![],
-            space_id: "1".to_string(),
-            identity: None,
-            project_change_history: None,
-            authority_access_route: None,
-            authority_identity: None,
-            okta_config: None,
-            kafka_config: None,
-            version: None,
-            running: None,
-            operation_id: None,
-            user_roles: vec![],
-        };
-        cli.projects()
-            .import_and_store_project(project.clone())
-            .await?;
-
-        let node = cli
-            .create_node_with_optional_values(
-                "node-4",
-                &Some(identity.name()),
-                &Some(project.name.clone()),
-            )
-            .await?;
-        let result = cli.get_node_project(&node.name()).await?;
-        assert_eq!(result.name(), &project.name);
 
         Ok(())
     }

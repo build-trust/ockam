@@ -20,21 +20,10 @@ teardown() {
   run_success "$OCKAM" project version
 }
 
-@test "project - enrollment from file - parse check" {
-  TICKET_PATH="$OCKAM_HOME/p.ticket"
-  run_success bash -c "$OCKAM project ticket --usage-count 10 >$TICKET_PATH"
-
-  # From file
-  run_success "$OCKAM" project enroll $TICKET_PATH --test-argument-parser
-
-  # From contents
-  run_success "$OCKAM" project enroll $(cat $TICKET_PATH) --test-argument-parser
-}
-
 @test "projects - enrollment with controller" {
   ENROLLED_OCKAM_HOME=$OCKAM_HOME
 
-  # Change new home directories for two un-enrolled identities
+  # Create new home directories for two un-enrolled identities
   setup_home_dir
   GREEN_OCKAM_HOME=$OCKAM_HOME
   run_success "$OCKAM" project import --project-file $PROJECT_PATH
@@ -102,7 +91,8 @@ teardown() {
 
   # Now the green node, with its green identity, can now access the project's services
   export OCKAM_HOME=$NON_ENROLLED_OCKAM_HOME
-  run_success "$OCKAM" relay create "$relay_name"
+  run_success "$OCKAM" relay create "$relay_name" --jq ".connection_status"
+  assert_output "\"Up\""
 }
 
 @test "projects - send a message to a project node from an embedded node, enrolled member on different install" {

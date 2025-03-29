@@ -7,12 +7,12 @@ use console::Term;
 use miette::{miette, IntoDiagnostic};
 use ockam::Context;
 use ockam_api::address::extract_address_value;
-use ockam_api::nodes::models::portal::InletStatus;
+use ockam_api::nodes::models::portal::{InletStatus, InletStatusList};
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_api::output::Output;
 use ockam_api::terminal::{Terminal, TerminalStream};
 use ockam_core::api::Request;
-use ockam_core::AsyncTryClone;
+use ockam_core::TryClone;
 
 const PREVIEW_TAG: &str = include_str!("../../static/preview_tag.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/show/after_long_help.txt");
@@ -36,13 +36,8 @@ pub struct ShowCommand {
 impl Command for ShowCommand {
     const NAME: &'static str = "tcp-inlet show";
 
-    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
-        Ok(ShowTui::run(
-            ctx.async_try_clone().await.into_diagnostic()?,
-            opts,
-            self.clone(),
-        )
-        .await?)
+    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+        Ok(ShowTui::run(ctx.try_clone().into_diagnostic()?, opts, self.clone()).await?)
     }
 }
 
@@ -59,8 +54,8 @@ impl ShowTui {
         opts: CommandGlobalOpts,
         mut cmd: ShowCommand,
     ) -> miette::Result<()> {
-        let node = BackgroundNodeClient::create(&ctx, &opts.state, &cmd.at).await?;
-        cmd.at = Some(node.node_name());
+        let node = BackgroundNodeClient::create(&ctx, opts.state.clone(), &cmd.at).await?;
+        cmd.at = Some(node.node_name().to_string());
 
         let tui = Self {
             ctx,
@@ -97,11 +92,12 @@ impl ShowCommandTui for ShowTui {
     }
 
     async fn list_items_names(&self) -> miette::Result<Vec<String>> {
-        let inlets: Vec<InletStatus> = self
+        let inlets: InletStatusList = self
             .node
             .ask(&self.ctx, Request::get("/node/inlet"))
             .await?;
         let items_names: Vec<String> = inlets
+            .0
             .into_iter()
             .map(|inlet| inlet.alias.to_string())
             .collect();
@@ -114,7 +110,7 @@ impl ShowCommandTui for ShowTui {
             .ask(&self.ctx, Request::get(format!("/node/inlet/{item_name}")))
             .await?;
         self.terminal()
-            .stdout()
+            .to_stdout()
             .plain(inlet_status.item()?)
             .json_obj(inlet_status)?
             .write_line()?;

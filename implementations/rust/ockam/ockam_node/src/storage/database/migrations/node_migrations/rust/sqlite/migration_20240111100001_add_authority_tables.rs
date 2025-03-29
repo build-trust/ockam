@@ -1,5 +1,5 @@
 use crate::database::migrations::RustMigration;
-use crate::database::{Boolean, FromSqlxError, Nullable, ToVoid};
+use crate::database::{Boolean, FromSqlxError, Nullable, SqlxDatabase, ToVoid, Version};
 use ockam_core::{async_trait, Result};
 use sqlx::*;
 
@@ -13,19 +13,23 @@ impl RustMigration for AuthorityAttributes {
         Self::name()
     }
 
-    fn version(&self) -> i64 {
+    fn version(&self) -> Version {
         Self::version()
     }
 
-    async fn migrate(&self, connection: &mut AnyConnection) -> Result<bool> {
+    async fn migrate(
+        &self,
+        _legacy_sqlite_database: Option<SqlxDatabase>,
+        connection: &mut AnyConnection,
+    ) -> Result<()> {
         Self::migrate_authority_attributes_to_members(connection).await
     }
 }
 
 impl AuthorityAttributes {
     /// Migration version
-    pub fn version() -> i64 {
-        20240111100001
+    pub fn version() -> Version {
+        Version(20240111100001)
     }
 
     /// Migration name
@@ -37,7 +41,7 @@ impl AuthorityAttributes {
     /// Duplicate all attributes entry for every known node
     pub(crate) async fn migrate_authority_attributes_to_members(
         connection: &mut AnyConnection,
-    ) -> Result<bool> {
+    ) -> Result<()> {
         let mut transaction = Connection::begin(&mut *connection).await.into_core()?;
 
         let query_node_names = query_as("SELECT name, is_authority FROM node");
@@ -74,7 +78,7 @@ impl AuthorityAttributes {
 
         transaction.commit().await.void()?;
 
-        Ok(true)
+        Ok(())
     }
 }
 
@@ -200,7 +204,7 @@ mod test {
         Ok(())
     }
 
-    /// HELPERS
+    // HELPERS
     fn create_attributes(attributes: Vec<(Vec<u8>, Vec<u8>)>) -> Result<Vec<u8>> {
         let map: BTreeMap<Vec<u8>, Vec<u8>> = attributes.into_iter().collect();
         ockam_core::cbor_encode_preallocate(map)

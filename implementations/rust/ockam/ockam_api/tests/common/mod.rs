@@ -4,5 +4,3 @@ pub mod common;
 pub mod session;
 #[allow(dead_code)]
 pub mod test_spans;
-#[allow(dead_code)]
-pub mod trace_code;

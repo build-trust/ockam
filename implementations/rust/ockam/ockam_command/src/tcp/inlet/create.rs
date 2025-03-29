@@ -1,20 +1,20 @@
-use std::collections::HashMap;
-use std::str::FromStr;
-use std::time::Duration;
-
+use crate::node::util::initialize_default_node;
+use crate::shared_args::OptionalTimeoutArg;
+use crate::tcp::util::alias_parser;
+use crate::util::parsers::duration_parser;
+use crate::util::parsers::hostname_parser;
+use crate::util::parsers::http_header_parser;
+use crate::util::{
+    port_is_free_guard, print_warning_for_deprecated_flag_replaced, process_nodes_multiaddr,
+};
+use crate::{docs, Command, CommandGlobalOpts, Error};
 use async_trait::async_trait;
 use clap::builder::FalseyValueParser;
 use clap::Args;
 use colorful::Colorful;
 use miette::{miette, IntoDiagnostic};
-use tracing::trace;
-
-use crate::node::util::initialize_default_node;
-use crate::shared_args::OptionalTimeoutArg;
-use crate::tcp::util::alias_parser;
-use crate::{docs, Command, CommandGlobalOpts, Error};
 use ockam::identity::Identifier;
-use ockam::transport::HostnamePort;
+use ockam::transport::SchemeHostnamePort;
 use ockam::Context;
 use ockam_abac::PolicyExpression;
 use ockam_api::address::extract_address_value;
@@ -29,13 +29,16 @@ use ockam_api::nodes::service::tcp_inlets::Inlets;
 use ockam_api::nodes::BackgroundNodeClient;
 use ockam_api::{fmt_info, fmt_log, fmt_ok, fmt_warn, ConnectionStatus};
 use ockam_core::api::{Reply, Status};
+use ockam_core::{route, Address};
 use ockam_multiaddr::proto;
 use ockam_multiaddr::{MultiAddr, Protocol as _};
 use ockam_node::compat::asynchronous::resolve_peer;
 
-use crate::util::parsers::duration_parser;
-use crate::util::parsers::hostname_parser;
-use crate::util::{port_is_free_guard, process_nodes_multiaddr};
+use std::collections::HashMap;
+use std::str::FromStr;
+use std::sync::Arc;
+use std::time::Duration;
+use tracing::trace;
 
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
 
@@ -43,13 +46,23 @@ const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt"
 #[derive(Clone, Debug, Args)]
 #[command(after_long_help = docs::after_help(AFTER_LONG_HELP))]
 pub struct CreateCommand {
+    /// Assign a name to this TCP Inlet
+    #[arg(id = "NAME", value_parser = alias_parser)]
+    pub name: Option<String>,
+
     /// Node on which to start the TCP Inlet.
     #[arg(long, display_order = 900, id = "NODE_NAME", value_parser = extract_address_value)]
     pub at: Option<String>,
 
-    /// Address on which to accept TCP connections.
-    #[arg(long, display_order = 900, id = "SOCKET_ADDRESS", hide_default_value = true, default_value_t = default_from_addr(), value_parser = hostname_parser)]
-    pub from: HostnamePort,
+    /// Address on which to accept TCP connections, in the format `<scheme>://<hostname>:<port>`.
+    /// At least the port must be provided. The default scheme is `tcp` and the default hostname is `127.0.0.1`.
+    /// If the argument is not set, a random port will be used on the default address.
+    ///
+    /// To enable TLS, the `ockam-tls-certificate` credential attribute is required.
+    /// It will use the default project TLS certificate provider `/project/default/service/tls_certificate_provider`.
+    /// To specify a different certificate provider, use `--tls-certificate-provider`.
+    #[arg(long, display_order = 900, id = "SOCKET_ADDRESS", hide_default_value = true, default_value_t = tcp_inlet_default_from_addr(), value_parser = hostname_parser)]
+    pub from: SchemeHostnamePort,
 
     /// Route to a TCP Outlet or the name of the TCP Outlet service you want to connect to.
     ///
@@ -60,7 +73,7 @@ pub struct CreateCommand {
     /// or just the name of the service as `outlet` or `/service/outlet`.
     /// If you are passing just the service name, consider using `--via` to specify the
     /// relay name (e.g. `ockam tcp-inlet create --to outlet --via myrelay`).
-    #[arg(long, display_order = 900, id = "ROUTE", default_value_t = default_to_addr())]
+    #[arg(long, display_order = 900, id = "ROUTE", default_value_t = tcp_inlet_default_to_addr())]
     pub to: String,
 
     /// Name of the relay that this TCP Inlet will use to connect to the TCP Outlet.
@@ -79,16 +92,15 @@ pub struct CreateCommand {
     #[arg(long, name = "AUTHORIZED", display_order = 900)]
     pub authorized: Option<Identifier>,
 
-    /// Assign a name to this TCP Inlet.
+    /// [DEPRECATED] Use the <NAME> positional argument instead
     #[arg(long, display_order = 900, id = "ALIAS", value_parser = alias_parser)]
     pub alias: Option<String>,
 
-    /// Policy expression that will be used for access control to the TCP Inlet.
-    /// If you don't provide it, the policy set for the "tcp-inlet" resource type will be used.
-    ///
-    /// You can check the fallback policy with `ockam policy show --resource-type tcp-inlet`.
+    #[arg(help = docs::about("\
+     Policy expression that will be used for access control to the TCP Inlet. \
+     If you don't provide it, the policy set for the \"tcp-inlet\" resource type will be used. \
+     \n\nYou can check the fallback policy with `ockam policy show --resource-type tcp-inlet`."))]
     #[arg(
-        hide = true,
         long,
         visible_alias = "expression",
         display_order = 900,
@@ -111,7 +123,7 @@ pub struct CreateCommand {
     #[arg(long, default_value = "false")]
     pub no_connection_wait: bool,
 
-    /// Enable UDP NAT puncture.
+    /// [DEPRECATED] Use the `udp` scheme in the `--from` argument.
     #[arg(
         long,
         visible_alias = "enable-udp-puncture",
@@ -134,27 +146,44 @@ pub struct CreateCommand {
 
     /// Use eBPF and RawSocket to access TCP packets instead of TCP data stream.
     /// If `OCKAM_PRIVILEGED` env variable is set to 1, this argument will be `true`.
+    /// WARNING: This flag value should be equal on both ends of a portal (inlet and outlet)
     #[arg(long, env = "OCKAM_PRIVILEGED", value_parser = FalseyValueParser::default(), hide = true)]
     pub privileged: bool,
 
+    /// [DEPRECATED] Use the `tls` scheme in the `--from` argument.
     #[arg(long, value_name = "BOOL", default_value_t = false, hide = true)]
-    /// Enable TLS for the TCP Inlet.
-    /// Uses the default project TLS certificate provider, `/project/default/service/tls_certificate_provider`.
-    /// To specify a different certificate provider, use `--tls-certificate-provider`.
-    /// Requires `ockam-tls-certificate` credential attribute.
     pub tls: bool,
 
-    #[arg(long, value_name = "ROUTE", hide = true)]
     /// Enable TLS for the TCP Inlet using the provided certificate provider.
     /// Requires `ockam-tls-certificate` credential attribute.
+    #[arg(long, value_name = "ROUTE", hide = true)]
     pub tls_certificate_provider: Option<MultiAddr>,
+
+    /// Skip Portal handshake for lower latency, but also lower throughput
+    /// WARNING: This flag value should be equal on both ends of a portal (inlet and outlet)
+    #[arg(long, env = "OCKAM_TCP_PORTAL_SKIP_HANDSHAKE", value_parser = FalseyValueParser::default())]
+    pub skip_handshake: bool,
+
+    /// Enable Nagle's algorithm for potentially higher throughput, but higher latency
+    #[arg(long, env = "OCKAM_TCP_PORTAL_ENABLE_NAGLE", value_parser = FalseyValueParser::default())]
+    pub enable_nagle: bool,
+
+    /// Enable MPTCP support
+    #[arg(long, env = "OCKAM_TCP_PORTAL_ENABLE_MPTCP", value_parser = FalseyValueParser::default())]
+    pub enable_mptcp: bool,
+
+    #[arg(long, value_name = "HTTP_HEADER", value_parser = http_header_parser)]
+    /// Set the provided HTTP headers in the client request. Existing headers with the same name
+    /// will be discarded. This option assumes the protocol is HTTP/1.0 or HTTP/1.1.
+    /// It expects a key-value pair in the format `key:value`. It can be specified multiple times.
+    pub http_header: Vec<(String, String)>,
 }
 
-pub(crate) fn default_from_addr() -> HostnamePort {
-    HostnamePort::new("127.0.0.1", 0)
+pub(crate) fn tcp_inlet_default_from_addr() -> SchemeHostnamePort {
+    SchemeHostnamePort::from_str("127.0.0.1:0").unwrap()
 }
 
-fn default_to_addr() -> String {
+pub(crate) fn tcp_inlet_default_to_addr() -> String {
     "/project/<default_project_name>/service/forward_to_<default_relay_name>/secure/api/service/<default_service_name>".to_string()
 }
 
@@ -162,18 +191,52 @@ fn default_to_addr() -> String {
 impl Command for CreateCommand {
     const NAME: &'static str = "tcp-inlet create";
 
-    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
         initialize_default_node(ctx, &opts).await?;
-
-        let privileged = self.privileged;
-
         let cmd = self.parse_args(&opts).await?;
 
-        let mut node = BackgroundNodeClient::create(ctx, &opts.state, &cmd.at).await?;
+        let mut node = BackgroundNodeClient::create(ctx, opts.state.clone(), &cmd.at).await?;
         cmd.timeout.timeout.map(|t| node.set_timeout_mut(t));
 
         let inlet_status = {
             let pb = opts.terminal.spinner();
+
+            let prefix_route = if !cmd.http_header.is_empty() {
+                let overwrite_http_header_address = Address::random_tagged("http_interceptor");
+
+                if let Some(pb) = pb.as_ref() {
+                    pb.set_message(format!(
+                        "Creating HTTP Interceptor Service at {}...\n",
+                        color_primary(&overwrite_http_header_address)
+                    ));
+                }
+
+                let result = node
+                    .create_http_header_overwrite_service(
+                        ctx,
+                        &overwrite_http_header_address,
+                        cmd.http_header.clone(),
+                    )
+                    .await;
+
+                match result {
+                    Ok(_) => {
+                        if let Some(pb) = pb.as_ref() {
+                            let created_message = format!(
+                                "Created a new HTTP Interceptor Service bound to {}\n",
+                                color_primary(overwrite_http_header_address.to_string()),
+                            );
+                            pb.set_message(fmt_ok!("{}", created_message));
+                        }
+                    }
+                    Err(_) => Err(miette!("Failed to create interceptor"))?,
+                }
+
+                route![overwrite_http_header_address]
+            } else {
+                route![]
+            };
+
             if let Some(pb) = pb.as_ref() {
                 pb.set_message(format!(
                     "Creating TCP Inlet at {}...\n",
@@ -185,18 +248,22 @@ impl Command for CreateCommand {
                 let result: Reply<InletStatus> = node
                     .create_inlet(
                         ctx,
-                        &cmd.from,
+                        cmd.from.hostname_port(),
                         &cmd.to(),
-                        cmd.alias.as_ref().expect("The `alias` argument should be set to its default value if not provided"),
+                        cmd.name.as_ref().expect("The `name` argument should be set to its default value if not provided"),
                         &cmd.authorized,
                         &cmd.allow,
                         cmd.connection_wait,
                         !cmd.no_connection_wait,
-                        &cmd.secure_channel_identifier(&opts.state).await?,
-                        cmd.udp,
+                        &cmd.secure_channel_identifier(opts.state.clone()).await?,
+                        cmd.udp || cmd.from.is_udp(),
                         cmd.no_tcp_fallback,
                         cmd.privileged,
                         &cmd.tls_certificate_provider,
+                        cmd.skip_handshake,
+                        cmd.enable_nagle,
+                        cmd.enable_mptcp,
+                        prefix_route.clone(),
                     )
                     .await?;
 
@@ -229,49 +296,47 @@ impl Command for CreateCommand {
         };
 
         let node_name = node.node_name();
-        cmd.add_inlet_created_event(&opts, &node_name, &inlet_status)
+        cmd.add_inlet_created_event(&opts, node_name, &inlet_status)
             .await?;
 
         let created_message = format!(
-            "Created a new TCP Inlet in the Node {} bound to {}\n",
-            color_primary(&node_name),
-            color_primary(cmd.from.to_string()),
+            "Created a new TCP Inlet in the Node {} bound to {}",
+            color_primary(node_name),
+            color_primary(inlet_status.bind_addr.to_string()),
         );
 
-        let created_message = fmt_ok!("{}", created_message);
-
         let mut plain = if cmd.no_connection_wait {
-            created_message
-                + &fmt_log!(
+            fmt_ok!("{created_message}\n")
+                + &fmt_info!(
                     "It will automatically connect to the TCP Outlet at {} as soon as it is available\n",
                     color_primary(&cmd.to)
                 )
         } else if inlet_status.status == ConnectionStatus::Up {
-            created_message
+            fmt_ok!("{created_message}\n")
                 + &fmt_log!(
                     "sending traffic to the TCP Outlet at {}\n",
                     color_primary(&cmd.to)
                 )
         } else {
-            let mut msg = fmt_warn!("A TCP Inlet was created in the Node {} bound to {} but failed to connect to the TCP Outlet at {}\n",
-                color_primary(&node_name),
-                color_primary(cmd.from.to_string()),
-                color_primary(&cmd.to));
-
-            msg += &fmt_info!("It will retry to connect automatically\n");
-
-            msg
+            fmt_warn!("{created_message}\n")
+                + &fmt_log!(
+                    "but it failed to connect to the TCP Outlet at {}\n",
+                    color_primary(&cmd.to)
+                )
+                + &fmt_info!(
+                    "It will automatically connect to the TCP Outlet as soon as it is available\n",
+                )
         };
 
-        if privileged {
+        if cmd.privileged {
             plain += &fmt_info!(
-                "This Inlet is operating in {} mode\n",
+                "This TCP Inlet is operating in {} mode\n",
                 color_primary_alt("privileged".to_string())
             );
         }
 
         opts.terminal
-            .stdout()
+            .to_stdout()
             .plain(plain)
             .machine(inlet_status.bind_addr.to_string())
             .json(serde_json::json!(&inlet_status))
@@ -288,7 +353,7 @@ impl CreateCommand {
 
     pub async fn secure_channel_identifier(
         &self,
-        state: &CliState,
+        state: Arc<CliState>,
     ) -> miette::Result<Option<Identifier>> {
         if let Some(identity_name) = self.identity.as_ref() {
             Ok(Some(state.get_identifier_by_name(identity_name).await?))
@@ -317,36 +382,56 @@ impl CreateCommand {
     }
 
     pub async fn parse_args(mut self, opts: &CommandGlobalOpts) -> miette::Result<Self> {
-        self.alias = self.alias.or_else(|| Some(random_name()));
-        let from = resolve_peer(self.from.to_string())
+        if let Some(alias) = self.alias.as_ref() {
+            print_warning_for_deprecated_flag_replaced(
+                opts,
+                "alias",
+                "the <NAME> positional argument",
+            )?;
+            if self.name.is_some() {
+                opts.terminal.write_line(
+                    fmt_warn!("The <NAME> argument is being overridden by the --alias flag")
+                        + &fmt_log!("Consider removing the --alias flag"),
+                )?;
+            }
+            self.name = Some(alias.clone());
+        } else {
+            self.name = self.name.or_else(|| Some(random_name()));
+        }
+
+        let from = resolve_peer(self.from.hostname_port())
             .await
             .into_diagnostic()?;
         port_is_free_guard(&from)?;
-        self.to = Self::parse_arg_to(&opts.state, self.to, self.via.as_ref()).await?;
+
+        self.to = Self::parse_arg_to(opts.state.clone(), self.to, self.via.as_ref()).await?;
         if self.to().matches(0, &[proto::Project::CODE.into()]) && self.authorized.is_some() {
             return Err(miette!(
                 "--authorized can not be used with project addresses"
             ))?;
         }
-        self.tls_certificate_provider = if let Some(tls_certificate_provider) =
-            &self.tls_certificate_provider
-        {
-            Some(tls_certificate_provider.clone())
-        } else if self.tls {
-            Some(MultiAddr::from_str("/project/default/service/tls_certificate_provider").unwrap())
-        } else {
-            None
-        };
+
+        self.tls_certificate_provider =
+            if let Some(tls_certificate_provider) = &self.tls_certificate_provider {
+                Some(tls_certificate_provider.clone())
+            } else if self.tls || self.from.is_tls() {
+                Some(MultiAddr::from_str(
+                    "/project/default/service/tls_certificate_provider",
+                )?)
+            } else {
+                None
+            };
+
         Ok(self)
     }
 
-    async fn parse_arg_to(
-        state: &CliState,
+    pub(crate) async fn parse_arg_to(
+        state: Arc<CliState>,
         to: impl Into<String>,
         via: Option<&String>,
     ) -> miette::Result<String> {
         let mut to = to.into();
-        let to_is_default = to == default_to_addr();
+        let to_is_default = to == tcp_inlet_default_to_addr();
         let mut service_name = "outlet".to_string();
         let relay_name = via.cloned().unwrap_or("default".to_string());
 
@@ -380,7 +465,7 @@ impl CreateCommand {
                 // "to" refers to the service name
                 service_name = to.to_string();
                 // and we set "to" to the default route, so we can do the replacements later
-                to = default_to_addr();
+                to = tcp_inlet_default_to_addr();
             }
         }
 
@@ -406,9 +491,9 @@ impl CreateCommand {
 
 #[cfg(test)]
 mod tests {
-    use ockam_api::cloud::project::models::ProjectModel;
-    use ockam_api::cloud::project::Project;
     use ockam_api::nodes::InMemoryNode;
+    use ockam_api::orchestrator::project::models::ProjectModel;
+    use ockam_api::orchestrator::project::Project;
 
     use crate::run::parser::resource::utils::parse_cmd_from_args;
 
@@ -423,8 +508,8 @@ mod tests {
     #[ockam_macros::test]
     async fn parse_arg_to(ctx: &mut Context) -> ockam_core::Result<()> {
         // Setup
-        let state = CliState::test().await.unwrap();
-        let node = InMemoryNode::start(ctx, &state).await.unwrap();
+        let state = Arc::new(CliState::test().await.unwrap());
+        let node = InMemoryNode::start(ctx, state.clone()).await.unwrap();
         let node_name = node.node_name();
         let node_port = state
             .get_node(&node_name)
@@ -449,13 +534,13 @@ mod tests {
         // Invalid "to" values throw an error
         let cases = ["/alice/service", "alice/relay"];
         for to in cases {
-            CreateCommand::parse_arg_to(&state, to, None)
+            CreateCommand::parse_arg_to(state.clone(), to, None)
                 .await
                 .expect_err("Invalid multiaddr");
         }
 
         // "to" default value
-        let res = CreateCommand::parse_arg_to(&state, default_to_addr(), None)
+        let res = CreateCommand::parse_arg_to(state.clone(), tcp_inlet_default_to_addr(), None)
             .await
             .unwrap();
         assert_eq!(
@@ -470,13 +555,15 @@ mod tests {
             (&format!("/node/{node_name}/service/myoutlet"), Some(format!("/ip4/127.0.0.1/tcp/{node_port}/service/myoutlet"))),
         ];
         for (to, expected) in cases {
-            let res = CreateCommand::parse_arg_to(&state, to, None).await.unwrap();
+            let res = CreateCommand::parse_arg_to(state.clone(), to, None)
+                .await
+                .unwrap();
             let expected = expected.unwrap_or(to.to_string());
             assert_eq!(res, expected);
         }
 
         // "to" argument accepts the name of the service
-        let res = CreateCommand::parse_arg_to(&state, "myoutlet", None)
+        let res = CreateCommand::parse_arg_to(state.clone(), "myoutlet", None)
             .await
             .unwrap();
         assert_eq!(
@@ -487,7 +574,7 @@ mod tests {
         // "via" argument is used to replace the relay name
         let cases = [
             (
-                default_to_addr(),
+                tcp_inlet_default_to_addr(),
                 "myrelay",
                 "/project/p1/service/forward_to_myrelay/secure/api/service/outlet",
             ),
@@ -498,7 +585,7 @@ mod tests {
             ),
         ];
         for (to, via, expected) in cases {
-            let res = CreateCommand::parse_arg_to(&state, &to, Some(&via.to_string()))
+            let res = CreateCommand::parse_arg_to(state.clone(), &to, Some(&via.to_string()))
                 .await
                 .unwrap();
             assert_eq!(res, expected.to_string());
@@ -506,7 +593,7 @@ mod tests {
 
         // if "to" is passed as a full route and also "via" is passed, return an error
         let to = "/project/p1/service/forward_to_n1/secure/api/service/outlet";
-        CreateCommand::parse_arg_to(&state, to, Some(&"myrelay".to_string()))
+        CreateCommand::parse_arg_to(state.clone(), to, Some(&"myrelay".to_string()))
             .await
             .expect_err("'via' can't be passed if 'to' is a full route");
 

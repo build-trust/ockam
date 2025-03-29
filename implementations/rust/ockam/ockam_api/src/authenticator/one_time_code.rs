@@ -1,23 +1,36 @@
 use core::str::FromStr;
 use minicbor::bytes::ByteArray;
 use minicbor::{CborLen, Decode, Encode};
+use ockam::Message;
 use ockam_core::compat::rand;
 use ockam_core::compat::rand::RngCore;
 use ockam_core::compat::string::String;
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::Error;
-use ockam_core::Result;
+use ockam_core::{cbor_encode_preallocate, Result};
+use ockam_core::{Decodable, Encodable, Encoded, Error};
 use serde::{Deserialize, Serialize};
 use std::fmt::{Debug, Formatter};
 
 /// A one-time code can be used to enroll
 /// a node with some authenticated attributes
 /// It can be retrieved with a command like `ockam project ticket --attribute component=control`
-#[derive(Clone, Encode, Decode, CborLen, PartialEq, Eq, Copy)]
+#[derive(Clone, Encode, Decode, CborLen, PartialEq, Eq, Copy, Message)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct OneTimeCode {
     #[n(1)] code: ByteArray<32>,
+}
+
+impl Encodable for OneTimeCode {
+    fn encode(self) -> Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for OneTimeCode {
+    fn decode(e: &[u8]) -> Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
 }
 
 impl Debug for OneTimeCode {

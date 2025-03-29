@@ -2,13 +2,12 @@ use clap::Args;
 
 use ockam::Context;
 use ockam_api::cli_state::random_name;
-use ockam_api::cloud::project::ProjectsOrchestratorApi;
 use ockam_api::nodes::InMemoryNode;
+use ockam_api::orchestrator::project::ProjectsOrchestratorApi;
 
 use crate::operation::util::check_for_project_completion;
 use crate::project::util::check_project_readiness;
 use crate::shared_args::IdentityOpts;
-use crate::util::async_cmd;
 use crate::util::parsers::project_name_parser;
 use crate::{docs, CommandGlobalOpts};
 use ockam_api::output::Output;
@@ -37,29 +36,19 @@ pub struct CreateCommand {
 }
 
 impl CreateCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |ctx| async move {
-            self.async_run(&ctx, opts).await
-        })
-    }
-
     pub fn name(&self) -> String {
         "project create".into()
     }
 
-    pub(crate) async fn async_run(
-        &self,
-        ctx: &Context,
-        opts: CommandGlobalOpts,
-    ) -> miette::Result<()> {
-        let node = InMemoryNode::start(ctx, &opts.state).await?;
+    pub(crate) async fn run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        let node = InMemoryNode::start(ctx, opts.state.clone()).await?;
         let project = node
             .create_project(ctx, &self.space_name, &self.project_name, vec![])
             .await?;
         let project = check_for_project_completion(&opts, ctx, &node, project).await?;
         let project = check_project_readiness(&opts, ctx, &node, project).await?;
         opts.terminal
-            .stdout()
+            .to_stdout()
             .plain(project.item()?)
             .json(serde_json::json!(&project))
             .write_line()?;

@@ -1,8 +1,9 @@
 use clap::Args;
 
 use crate::project::addon::configure_kafka::{AddonConfigureKafkaSubcommand, KafkaCommandConfig};
-use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts};
+
+use ockam_node::Context;
 
 const LONG_ABOUT: &str = include_str!("../static/configure_aiven/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("../static/configure_aiven/after_long_help.txt");
@@ -19,14 +20,12 @@ pub struct AddonConfigureAivenSubcommand {
 }
 
 impl AddonConfigureAivenSubcommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |ctx| async move {
-            AddonConfigureKafkaSubcommand {
-                config: self.config,
-            }
-            .async_run(&ctx, opts, "Aiven (Kafka)")
-            .await
-        })
+    pub async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        AddonConfigureKafkaSubcommand {
+            config: self.config,
+        }
+        .run(ctx, opts, "Aiven (Kafka)")
+        .await
     }
 
     pub fn name(&self) -> String {

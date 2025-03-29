@@ -3,6 +3,7 @@ use std::time::Duration;
 
 use futures::executor;
 use miette::IntoDiagnostic;
+use tracing::Level;
 
 use ockam::identity::models::ChangeHistory;
 use ockam::identity::{Identifier, SecureChannels};
@@ -14,14 +15,16 @@ use ockam_multiaddr::MultiAddr;
 
 use crate::cli_state::random_name;
 use crate::cli_state::CliState;
-use crate::cloud::project::Project;
-use crate::cloud::{AuthorityNodeClient, ControllerClient, CredentialsEnabled, ProjectNodeClient};
-use crate::nodes::models::transport::Port;
+use crate::nodes::models::transport::BindAddress;
 use crate::nodes::service::default_address::DefaultAddress;
 use crate::nodes::service::{
     NodeManagerGeneralOptions, NodeManagerTransportOptions, NodeManagerTrustOptions,
 };
 use crate::nodes::{NodeManager, NODEMANAGER_ADDR};
+use crate::orchestrator::project::Project;
+use crate::orchestrator::{
+    AuthorityNodeClient, ControllerClient, CredentialsEnabled, ProjectNodeClient,
+};
 
 /// An `InMemoryNode` represents a full running node
 /// In addition to a `NodeManager`, which is used to handle all the entities related to a node
@@ -58,6 +61,8 @@ impl Drop for InMemoryNode {
         // stops. Except if they have been started with the `ockam node create` command
         // because in that case they can be restarted
         if !self.persistent {
+            // TODO: Should be a better way to do that, e.g. send a signal to a background async
+            //  task to do the job, or shutdown the node manually before dropping this value
             executor::block_on(async {
                 let result = self.cli_state.remove_node(&self.node_name).await;
                 if let Err(err) = result {
@@ -73,15 +78,20 @@ impl Drop for InMemoryNode {
 }
 
 impl InMemoryNode {
+    /// Return a clone of the inner NodeManager
+    pub fn inner_clone(&self) -> Arc<NodeManager> {
+        self.node_manager.clone()
+    }
+
     /// Start an in memory node
-    pub async fn start(ctx: &Context, cli_state: &CliState) -> miette::Result<Self> {
+    pub async fn start(ctx: &Context, cli_state: Arc<CliState>) -> miette::Result<Self> {
         Self::start_with_project_name(ctx, cli_state, None).await
     }
 
     /// Start an in memory node with some project
     pub async fn start_with_project_name(
         ctx: &Context,
-        cli_state: &CliState,
+        cli_state: Arc<CliState>,
         project_name: Option<String>,
     ) -> miette::Result<Self> {
         let default_identity_name = cli_state
@@ -103,7 +113,7 @@ impl InMemoryNode {
     /// Start an in memory node with some identity and project
     pub async fn start_with_identity_and_project_name(
         ctx: &Context,
-        cli_state: &CliState,
+        cli_state: Arc<CliState>,
         identity: Option<String>,
         project_name: Option<String>,
     ) -> miette::Result<Self> {
@@ -114,7 +124,7 @@ impl InMemoryNode {
     /// Start an in memory node with a specific identity
     pub async fn start_with_identity(
         ctx: &Context,
-        cli_state: &CliState,
+        cli_state: Arc<CliState>,
         identity: Option<String>,
     ) -> miette::Result<InMemoryNode> {
         let identity = cli_state.get_identity_name_or_default(&identity).await?;
@@ -122,19 +132,19 @@ impl InMemoryNode {
     }
 
     /// Start an in memory node
-    #[instrument(name = "start in-memory node", skip_all)]
+    #[instrument(name = "start in-memory node", skip_all, level = Level::TRACE)]
     pub async fn start_node(
         ctx: &Context,
-        cli_state: &CliState,
+        cli_state: Arc<CliState>,
         identity_name: &str,
-        status_endpoint_port: Option<Port>,
+        status_endpoint: Option<BindAddress>,
         project_name: Option<String>,
         authority_identity: Option<ChangeHistory>,
         authority_route: Option<MultiAddr>,
     ) -> miette::Result<InMemoryNode> {
         let defaults = NodeManagerDefaults::default();
 
-        let tcp = TcpTransport::create(ctx).await.into_diagnostic()?;
+        let tcp = TcpTransport::get_or_create(ctx).into_diagnostic()?;
         let tcp_listener = tcp
             .listen(
                 defaults.tcp_listener_address.as_str(),
@@ -147,7 +157,6 @@ impl InMemoryNode {
             .start_node_with_optional_values(
                 &defaults.node_name,
                 &Some(identity_name.to_string()),
-                &project_name,
                 Some(&tcp_listener),
             )
             .await
@@ -164,7 +173,7 @@ impl InMemoryNode {
                 cli_state.clone(),
                 node.name(),
                 false,
-                status_endpoint_port,
+                status_endpoint,
                 false,
             ),
             NodeManagerTransportOptions::new_tcp(tcp_listener.flow_control_id().clone(), tcp),
@@ -173,7 +182,7 @@ impl InMemoryNode {
         .await
         .into_diagnostic()?;
         ctx.flow_controls()
-            .add_consumer(NODEMANAGER_ADDR, tcp_listener.flow_control_id());
+            .add_consumer(&NODEMANAGER_ADDR.into(), tcp_listener.flow_control_id());
         Ok(node_manager)
     }
 
@@ -183,16 +192,16 @@ impl InMemoryNode {
     }
 
     pub async fn stop(&self, ctx: &Context) -> Result<()> {
-        for session in self.registry.inlets.values().await {
+        for session in self.registry.inlets.values() {
             session.session.lock().await.stop().await;
         }
 
-        for session in self.registry.relays.values().await {
+        for session in self.registry.relays.values() {
             session.session.lock().await.stop().await;
         }
 
         for addr in DefaultAddress::iter() {
-            let result = ctx.stop_worker(addr).await;
+            let result = ctx.stop_address(&addr.into());
             // when stopping we can safely ignore missing services
             if let Err(err) = result {
                 if err.code().kind == Kind::NotFound {
@@ -207,7 +216,7 @@ impl InMemoryNode {
     }
 
     /// Create a new in memory node with various options
-    #[instrument(name = "new in-memory node", skip_all, fields(node_name = general_options.node_name))]
+    #[instrument(name = "new in-memory node", skip_all, fields(node_name = general_options.node_name), level = Level::TRACE)]
     pub async fn new(
         ctx: &Context,
         general_options: NodeManagerGeneralOptions,
@@ -245,10 +254,16 @@ impl InMemoryNode {
         ctx: &Context,
         project: &Project,
         caller_identity_name: Option<String>,
+        skip_controller_call: bool,
     ) -> miette::Result<AuthorityNodeClient> {
         let client = self
             .node_manager
-            .create_authority_client_with_project(ctx, project, caller_identity_name)
+            .create_authority_client_with_project(
+                ctx,
+                project,
+                caller_identity_name,
+                skip_controller_call,
+            )
             .await?;
         if let Some(timeout) = self.timeout {
             Ok(client
@@ -330,12 +345,12 @@ mod tests {
 
     #[ockam::test]
     async fn test_start_twice(ctx: &mut Context) -> Result<()> {
-        let cli = CliState::test().await?;
+        let cli = Arc::new(CliState::test().await?);
 
-        let node_manager1 = InMemoryNode::start(ctx, &cli).await;
+        let node_manager1 = InMemoryNode::start(ctx, cli.clone()).await;
         assert!(node_manager1.is_ok());
 
-        let node_manager2 = InMemoryNode::start(ctx, &cli).await;
+        let node_manager2 = InMemoryNode::start(ctx, cli).await;
         if let Err(e) = node_manager2 {
             panic!("cannot start the node manager a second time: {e:?}");
         }

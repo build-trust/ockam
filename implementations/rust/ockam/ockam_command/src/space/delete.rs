@@ -9,12 +9,12 @@ use crate::terminal::tui::DeleteCommandTui;
 use crate::tui::PluralTerm;
 use crate::{docs, Command, CommandGlobalOpts};
 use ockam::Context;
-use ockam_api::cloud::space::Spaces;
 use ockam_api::colors::OckamColor;
 use ockam_api::nodes::InMemoryNode;
+use ockam_api::orchestrator::space::Spaces;
 use ockam_api::terminal::{Terminal, TerminalStream};
 use ockam_api::{color, fmt_ok};
-use ockam_core::AsyncTryClone;
+use ockam_core::TryClone;
 
 const LONG_ABOUT: &str = include_str!("./static/delete/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
@@ -43,12 +43,12 @@ pub struct DeleteCommand {
 impl Command for DeleteCommand {
     const NAME: &'static str = "space delete";
 
-    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
         Ok(DeleteTui::run(ctx, opts, self).await?)
     }
 }
 
-#[derive(AsyncTryClone)]
+#[derive(TryClone)]
 pub struct DeleteTui {
     ctx: Context,
     opts: CommandGlobalOpts,
@@ -62,9 +62,9 @@ impl DeleteTui {
         opts: CommandGlobalOpts,
         cmd: DeleteCommand,
     ) -> miette::Result<()> {
-        let node = InMemoryNode::start(ctx, &opts.state).await?;
+        let node = InMemoryNode::start(ctx, opts.state.clone()).await?;
         let tui = Self {
-            ctx: ctx.async_try_clone().await?,
+            ctx: ctx.try_clone()?,
             opts,
             node: Arc::new(node),
             cmd,
@@ -108,7 +108,7 @@ impl DeleteCommandTui for DeleteTui {
         self.node.delete_space_by_name(&self.ctx, item_name).await?;
 
         self.terminal()
-            .stdout()
+            .to_stdout()
             .plain(fmt_ok!(
                 "The space with name {} has been deleted",
                 color!(item_name, OckamColor::PrimaryResource)

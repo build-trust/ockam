@@ -4,8 +4,8 @@ use console::Term;
 
 use crate::{docs, Command, CommandGlobalOpts};
 use ockam::Context;
-use ockam_api::cloud::space::Spaces;
 use ockam_api::nodes::InMemoryNode;
+use ockam_api::orchestrator::space::Spaces;
 use ockam_api::terminal::{Terminal, TerminalStream};
 
 use crate::shared_args::IdentityOpts;
@@ -37,7 +37,7 @@ pub struct ShowCommand {
 impl Command for ShowCommand {
     const NAME: &'static str = "space show";
 
-    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
         Ok(ShowTui::run(ctx, opts, self).await?)
     }
 }
@@ -55,7 +55,7 @@ impl<'a> ShowTui<'a> {
         opts: CommandGlobalOpts,
         cmd: ShowCommand,
     ) -> miette::Result<()> {
-        let node = InMemoryNode::start(ctx, &opts.state).await?;
+        let node = InMemoryNode::start(ctx, opts.state.clone()).await?;
         let tui = Self {
             ctx,
             opts,
@@ -67,7 +67,7 @@ impl<'a> ShowTui<'a> {
 }
 
 #[ockam_core::async_trait]
-impl<'a> ShowCommandTui for ShowTui<'a> {
+impl ShowCommandTui for ShowTui<'_> {
     const ITEM_NAME: PluralTerm = PluralTerm::Space;
 
     fn cmd_arg_item_name(&self) -> Option<String> {
@@ -99,7 +99,7 @@ impl<'a> ShowCommandTui for ShowTui<'a> {
     async fn show_single(&self, item_name: &str) -> miette::Result<()> {
         let space = self.node.get_space_by_name(self.ctx, item_name).await?;
         self.terminal()
-            .stdout()
+            .to_stdout()
             .plain(space.item()?)
             .json_obj(&space)?
             .machine(&space.name)

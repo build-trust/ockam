@@ -188,6 +188,12 @@ teardown() {
   run_success curl -fsI -m 2 127.0.0.1:$port
 }
 
+@test "node - the HTTP server is enabled with a specific address" {
+  port=$(random_port)
+  run_success $OCKAM node create --status-endpoint 127.0.0.1:$port
+  run_success curl -fsI -m 2 127.0.0.1:$port
+}
+
 @test "node - multiple nodes get assigned a different HTTP server port" {
   run_success $OCKAM node create n1
   run_success $OCKAM node show n1 --output json
@@ -223,4 +229,60 @@ teardown() {
 name: n1
 EOF
   run_success "$OCKAM" node create "$OCKAM_HOME/node.yaml"
+}
+
+@test "node - create in-memory foreground node, with env var" {
+  # create a node in-memory
+  OCKAM_SQLITE_IN_MEMORY=true "$OCKAM" node create n1 -f -vv >$OCKAM_HOME/node.logs &
+  pid=$!
+  sleep 2
+
+  # check logs
+  run_success cat $OCKAM_HOME/node.logs
+  assert_output --partial "Created a new Node named n1"
+
+  # no database or files should be created
+  run_failure ls -l "$OCKAM_HOME/nodes"
+  run_failure ls -l "$OCKAM_HOME/database.sqlite3"
+  run_success $OCKAM node show n1
+  assert_output "[]"
+
+  # stop the node
+  run_success kill -9 $pid
+}
+
+@test "node - create in-memory foreground node, with flag" {
+  # create a node in-memory
+  "$OCKAM" node create n1 --in-memory -f -vv >$OCKAM_HOME/node.logs &
+  pid=$!
+  sleep 2
+
+  # check logs
+  run_success cat $OCKAM_HOME/node.logs
+  assert_output --partial "Created a new Node named n1"
+
+  # no database or files should be created
+  run_failure ls -l "$OCKAM_HOME/nodes"
+  run_failure ls -l "$OCKAM_HOME/database.sqlite3"
+  run_success $OCKAM node show n1
+  assert_output "[]"
+
+  # stop the node
+  run_success kill -9 $pid
+}
+
+@test "node - create with invalid configuration" {
+  # Note that passing an invalid inline yaml configuration will not fail when not using strict json syntax.
+  # This is inherent to the yaml parser used by the command, not the command logic itself.
+  # For example, a configuration like "{name: n, tcp-listener-address 127.0.0.1:3333}" will parse the "name"
+  # field correctly, but will ignore the fact that it couldn't parse the "tcp-listener-address" field.
+  run_failure "$OCKAM" node create --configuration "{\"name\": \"n\", \"tcp-listener-address\" \"127.0.0.1:3333\"}"
+  run_failure "$OCKAM" node create "{\"name\": \"n\", \"tcp-listener-address\" \"127.0.0.1:3333\"}"
+  run_failure "$OCKAM" node create "{\"name\": \"n\" \"tcp-listener-address\": \"127.0.0.1:3333\"}"
+
+  cat <<EOF >"$OCKAM_HOME/node.yaml"
+name: n1
+tcp-listener-address 127.0.0.1:3333
+EOF
+  run_failure "$OCKAM" node create "$OCKAM_HOME/node.yaml"
 }

@@ -123,7 +123,7 @@ impl std::error::Error for EvalError {
 impl From<ParseError> for ockam_core::Error {
     #[track_caller]
     fn from(e: ParseError) -> Self {
-        ockam_core::Error::new(Origin::Application, Kind::Invalid, e.to_string())
+        ockam_core::Error::new(Origin::Application, Kind::Parse, e.to_string())
     }
 }
 

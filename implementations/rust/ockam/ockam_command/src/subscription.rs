@@ -1,16 +1,15 @@
 use clap::builder::NonEmptyStringValueParser;
 use clap::{Args, Subcommand};
-use miette::{miette, IntoDiagnostic};
+use miette::miette;
 
 use ockam::Context;
-use ockam_api::cloud::subscription::{SubscriptionLegacy, Subscriptions};
-use ockam_api::cloud::ControllerClient;
+use ockam_api::orchestrator::subscription::{SubscriptionLegacy, Subscriptions};
+use ockam_api::orchestrator::ControllerClient;
 
 use ockam_api::nodes::InMemoryNode;
 use ockam_api::output::Output;
 
 use crate::shared_args::IdentityOpts;
-use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts, Result};
 
 #[derive(Clone, Debug, Args)]
@@ -46,12 +45,6 @@ pub enum SubscriptionSubcommand {
 }
 
 impl SubscriptionCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |ctx| async move {
-            self.async_run(&ctx, opts).await
-        })
-    }
-
     pub fn name(&self) -> String {
         match &self.subcommand {
             SubscriptionSubcommand::Show { .. } => "subscription show",
@@ -59,8 +52,8 @@ impl SubscriptionCommand {
         .to_string()
     }
 
-    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
-        let node = InMemoryNode::start(ctx, &opts.state).await?;
+    pub async fn run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        let node = InMemoryNode::start(ctx, opts.state.clone()).await?;
         let controller = node.create_controller().await?;
 
         match &self.subcommand {
@@ -97,9 +90,7 @@ pub(crate) async fn get_subscription_by_id_or_space_id(
         (Some(subscription_id), _) => Ok(Some(
             controller
                 .get_subscription(ctx, subscription_id.clone())
-                .await
-                .and_then(|s| s.found())
-                .into_diagnostic()?
+                .await?
                 .ok_or_else(|| {
                     miette!(
                         "no subscription found for subscription id {}",
@@ -110,9 +101,7 @@ pub(crate) async fn get_subscription_by_id_or_space_id(
         (None, Some(space_id)) => Ok(Some(
             controller
                 .get_subscription_by_space_id(ctx, space_id.clone())
-                .await
-                .and_then(|s| s.found())
-                .into_diagnostic()?
+                .await?
                 .ok_or_else(|| miette!("no subscription found for space {}", space_id))?,
         )),
         _ => Ok(None),

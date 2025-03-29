@@ -2,12 +2,12 @@ use std::net::SocketAddr;
 
 use ockam::tcp::{TcpConnectionOptions, TcpListenerOptions};
 use ockam::Result;
-use ockam_core::api::{Error, RequestHeader, Response};
+use ockam_core::api::{Error, Response};
 use ockam_node::Context;
 
 use super::{NodeManager, NodeManagerWorker};
 use crate::nodes::models::transport::{
-    CreateTcpConnection, CreateTcpListener, DeleteTransport, TransportStatus,
+    CreateTcpConnection, CreateTcpListener, DeleteTransport, TransportStatus, TransportStatusList,
 };
 
 impl NodeManager {
@@ -48,9 +48,9 @@ impl NodeManager {
 
         // Add all Hop workers as consumers for Demo purposes
         // Production nodes should not run any Hop workers
-        for hop in self.registry.hop_services.keys().await {
+        for hop in self.registry.hop_services.keys() {
             ctx.flow_controls()
-                .add_consumer(hop.clone(), &options.flow_control_id());
+                .add_consumer(&hop, &options.flow_control_id());
         }
 
         let connection = self.tcp_transport.connect(address, options).await?;
@@ -63,7 +63,7 @@ impl NodeManager {
         Ok(listener.into())
     }
 
-    async fn delete_tcp_connection(&self, address: String) -> Result<(), String> {
+    fn delete_tcp_connection(&self, address: String) -> Result<(), String> {
         let sender_address = match address.parse::<SocketAddr>() {
             Ok(socket_address) => self
                 .tcp_transport()
@@ -76,12 +76,11 @@ impl NodeManager {
         };
 
         self.tcp_transport
-            .disconnect(sender_address.clone())
-            .await
+            .disconnect(&sender_address)
             .map_err(|err| format!("Unable to disconnect from {sender_address}: {err}"))
     }
 
-    async fn delete_tcp_listener(&self, address: String) -> Result<(), String> {
+    fn delete_tcp_listener(&self, address: String) -> Result<(), String> {
         let listener_address = match address.parse::<SocketAddr>() {
             Ok(socket_address) => self
                 .tcp_transport()
@@ -95,19 +94,13 @@ impl NodeManager {
 
         self.tcp_transport
             .stop_listener(&listener_address)
-            .await
             .map_err(|err| format!("Unable to stop listener {listener_address}: {err}"))
     }
 }
 
 impl NodeManagerWorker {
-    pub(super) async fn get_tcp_connections(
-        &self,
-        req: &RequestHeader,
-    ) -> Response<Vec<TransportStatus>> {
-        Response::ok()
-            .with_headers(req)
-            .body(self.node_manager.get_tcp_connections())
+    pub(super) async fn get_tcp_connections(&self) -> Response<TransportStatusList> {
+        Response::ok().body(TransportStatusList(self.node_manager.get_tcp_connections()))
     }
 
     pub(super) async fn get_tcp_connection(
@@ -123,13 +116,8 @@ impl NodeManagerWorker {
             })
     }
 
-    pub(super) async fn get_tcp_listeners(
-        &self,
-        req: &RequestHeader,
-    ) -> Response<Vec<TransportStatus>> {
-        Response::ok()
-            .with_headers(req)
-            .body(self.node_manager.get_tcp_listeners())
+    pub(super) async fn get_tcp_listeners(&self) -> Response<TransportStatusList> {
+        Response::ok().body(TransportStatusList(self.node_manager.get_tcp_listeners()))
     }
 
     pub(super) async fn get_tcp_listener(
@@ -145,7 +133,7 @@ impl NodeManagerWorker {
             })
     }
 
-    pub(super) async fn create_tcp_connection<'a>(
+    pub(super) async fn create_tcp_connection(
         &self,
         ctx: &Context,
         create: CreateTcpConnection,
@@ -162,7 +150,7 @@ impl NodeManagerWorker {
             })
     }
 
-    pub(super) async fn create_tcp_listener<'a>(
+    pub(super) async fn create_tcp_listener(
         &self,
         create: CreateTcpListener,
     ) -> Result<Response<TransportStatus>, Response<Error>> {
@@ -178,7 +166,7 @@ impl NodeManagerWorker {
             })
     }
 
-    pub(super) async fn delete_tcp_connection(
+    pub(super) fn delete_tcp_connection(
         &self,
         delete: DeleteTransport,
     ) -> Result<Response<()>, Response<Error>> {
@@ -186,12 +174,11 @@ impl NodeManagerWorker {
 
         self.node_manager
             .delete_tcp_connection(delete.address)
-            .await
             .map(|status| Response::ok().body(status))
             .map_err(|msg| Response::bad_request_no_request(&msg))
     }
 
-    pub(super) async fn delete_tcp_listener(
+    pub(super) fn delete_tcp_listener(
         &self,
         delete: DeleteTransport,
     ) -> Result<Response<()>, Response<Error>> {
@@ -199,7 +186,6 @@ impl NodeManagerWorker {
 
         self.node_manager
             .delete_tcp_listener(delete.address)
-            .await
             .map(|status| Response::ok().body(status))
             .map_err(|msg| Response::bad_request_no_request(&msg))
     }

@@ -35,15 +35,13 @@ impl Debug for OutgoingAbac {
 impl OutgoingAbac {
     /// Create an AccessControl which will verify that the receiver of
     /// a message has an authenticated attribute that resolves the expression to `true`
-    pub async fn create(
+    pub fn create(
         ctx: &Context,
         identities_attributes: Arc<IdentitiesAttributes>,
         authority: Option<Identifier>,
         expression: Expr,
     ) -> Result<Self> {
-        let ctx = ctx
-            .new_detached(Address::random_tagged("OutgoingAbac"), DenyAll, DenyAll)
-            .await?;
+        let ctx = ctx.new_detached(Address::random_tagged("OutgoingAbac"), DenyAll, DenyAll)?;
         let abac = Abac::new(identities_attributes, authority, Env::new());
 
         Ok(Self {
@@ -55,7 +53,7 @@ impl OutgoingAbac {
 
     /// Create an AccessControl which will verify that the receiver of
     /// a message has an authenticated attribute with the correct name and value
-    pub async fn create_name_value(
+    pub fn create_name_value(
         ctx: &Context,
         identities_attributes: Arc<IdentitiesAttributes>,
         authority: Option<Identifier>,
@@ -67,22 +65,22 @@ impl OutgoingAbac {
             Ident(format!("{SUBJECT_KEY}.{attribute_name}")),
             Str(attribute_value.into()),
         ]);
-        Self::create(ctx, identities_attributes, authority, expression).await
+        Self::create(ctx, identities_attributes, authority, expression)
     }
 
     /// Create an AccessControl which will verify that the receiver of
     /// a message has an authenticated credential without checking any attributes
-    pub async fn check_credential_only(
+    pub fn check_credential_only(
         ctx: &Context,
         identities_attributes: Arc<IdentitiesAttributes>,
         authority: Identifier,
     ) -> Result<Self> {
-        Self::create(ctx, identities_attributes, Some(authority), true.into()).await
+        Self::create(ctx, identities_attributes, Some(authority), true.into())
     }
 
     /// Returns true if the sender of the message is validated by the expression stored in AbacAccessControl
     pub async fn is_authorized_impl(&self, relay_msg: &RelayMessage) -> Result<bool> {
-        let identifier = match Abac::get_outgoing_identifier(&self.ctx, relay_msg).await? {
+        let identifier = match Abac::get_outgoing_identifier(&self.ctx, relay_msg)? {
             Some(identifier) => identifier,
             None => {
                 debug! {

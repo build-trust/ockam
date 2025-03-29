@@ -7,7 +7,7 @@ use ockam_core::compat::collections::HashMap;
 use ockam_core::compat::rand::random_string;
 use ockam_core::compat::sync::Arc;
 use ockam_core::errcode::{Kind, Origin};
-use ockam_core::{route, Error};
+use ockam_core::Error;
 use ockam_core::{Result, Route};
 use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
@@ -118,7 +118,7 @@ impl KafkaInletController {
             }
 
             let inlet_bind_address =
-                HostnamePort::new(inner.bind_hostname.clone(), inner.current_port);
+                HostnamePort::new(inner.bind_hostname.clone(), inner.current_port)?;
 
             let node_manager = self.node_manager.upgrade().ok_or_else(|| {
                 Error::new(Origin::Node, Kind::Internal, "node manager was shut down")
@@ -129,10 +129,7 @@ impl KafkaInletController {
                     context,
                     inlet_bind_address.clone(),
                     inner.local_interceptor_route.clone(),
-                    route![
-                        inner.remote_interceptor_route.clone(),
-                        kafka_outlet_address(broker_id)
-                    ],
+                    inner.remote_interceptor_route.clone() + kafka_outlet_address(broker_id),
                     inner.outlet_node_multiaddr.clone(),
                     format!("kafka-inlet-{}", random_string()),
                     self.policy_expression.clone(),
@@ -144,6 +141,9 @@ impl KafkaInletController {
                     false,
                     false,
                     None,
+                    false,
+                    false,
+                    false,
                 )
                 .await?;
 

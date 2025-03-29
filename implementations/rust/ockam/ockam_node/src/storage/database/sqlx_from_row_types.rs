@@ -1,5 +1,5 @@
+use sqlx::any::AnyTypeInfoKind;
 use sqlx::error::BoxDynError;
-use sqlx::postgres::any::AnyTypeInfoKind;
 use sqlx::{Any, Database, Decode, Type, Value, ValueRef};
 use sqlx_core::any::AnyValueRef;
 

@@ -11,11 +11,15 @@
 ///
 mod current_span;
 mod default_values;
-mod env_variables;
+pub mod env_variables;
 pub mod exporting_configuration;
+mod grpc_forwarder;
 mod log_exporters;
 pub mod logging_configuration;
 mod logging_options;
+mod ockam_tonic_logs_client;
+mod ockam_tonic_traces_client;
+mod secure_client_service;
 pub mod setup;
 mod span_exporters;
 mod tracing_guard;
@@ -23,6 +27,7 @@ mod tracing_options;
 
 pub use current_span::*;
 pub use exporting_configuration::*;
+pub use grpc_forwarder::*;
 pub use log_exporters::*;
 pub use logging_configuration::*;
 pub use logging_options::*;

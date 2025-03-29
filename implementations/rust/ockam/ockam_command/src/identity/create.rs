@@ -45,8 +45,9 @@ pub struct CreateCommand {
 impl Command for CreateCommand {
     const NAME: &'static str = "identity create";
 
-    async fn async_run(self, _ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
-        let _notification_handler = NotificationHandler::start(&opts.state, opts.terminal.clone());
+    async fn run(self, _ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+        let _notification_handler =
+            NotificationHandler::start(opts.state.clone(), opts.terminal.clone());
         let vault = match &self.vault {
             Some(vault_name) => opts.state.get_or_create_named_vault(vault_name).await?,
             None => opts.state.get_or_create_default_named_vault().await?,
@@ -83,7 +84,7 @@ impl CreateCommand {
             .await?;
 
         opts.terminal
-            .stdout()
+            .to_stdout()
             .plain(
                 fmt_ok!(
                     "Identity {} \n",
@@ -131,7 +132,7 @@ impl CreateCommand {
             .await?;
 
         opts.terminal
-            .stdout()
+            .to_stdout()
             .plain(fmt_ok!(
                 "Identity imported successfully with name {}",
                 color_primary(&self.name)

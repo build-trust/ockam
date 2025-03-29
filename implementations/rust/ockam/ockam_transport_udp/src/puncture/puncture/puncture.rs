@@ -24,7 +24,7 @@ pub struct UdpPuncture {
 // TODO: PUNCTURE make keepalives adjustable
 
 impl UdpPuncture {
-    pub(crate) async fn create(
+    pub(crate) fn create(
         ctx: &Context,
         bind: UdpBind,
         peer_udp_address: String,
@@ -50,8 +50,7 @@ impl UdpPuncture {
             notify_puncture_open_sender,
             options,
             redirect_first_message_to_transport,
-        )
-        .await?;
+        )?;
 
         Ok(UdpPuncture {
             notify_puncture_open_receiver,
@@ -76,9 +75,8 @@ impl UdpPuncture {
     }
 
     /// Stop the receiver (which will shut down everything else as well)
-    pub async fn stop(&self, ctx: &Context) -> Result<()> {
-        ctx.stop_worker(self.addresses.receiver_address().clone())
-            .await
+    pub fn stop(&self, ctx: &Context) -> Result<()> {
+        ctx.stop_address(self.addresses.receiver_address())
     }
 
     /// Flow Control Id

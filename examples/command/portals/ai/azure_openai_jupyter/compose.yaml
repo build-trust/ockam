@@ -1,0 +1,16 @@
+services:
+  notebook:
+    environment:
+    - GRANT_SUDO=true
+    - ENROLLMENT_TICKET=${ENROLLMENT_TICKET}
+    - PROJECT_ID=${PROJECT_ID}
+    - AZURE_OPENAI_API_KEY=${AZURE_OPENAI_API_KEY}
+    - AZURE_OPENAI_API_VERSION=2024-02-15-preview
+    - OPENAI_API_VERSION=2024-02-15-preview
+    - AZURE_OPENAI_DEPLOYMENT_NAME=gpt-4o-mini
+    - AZURE_OPENAI_ENDPOINT=https://az-openai.${PROJECT_ID}.ockam.network:443
+    build: .
+    ports:
+    - "8888:8888"
+    volumes:
+    - ./notebooks:/home/jovyan/notebooks

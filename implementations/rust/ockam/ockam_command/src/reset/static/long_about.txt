@@ -1,0 +1,3 @@
+The `reset` command is dangerous and should be used with caution as it will remove all local state PERMANENTLY. This behaviour can be useful for cleaning up your development environment and starting afresh from scratch. However, you'll typically want to use specific delete commands such as `node delete`, `identity delete`, and `space delete` for more granular control on deletes.
+
+Note that running `reset` will also sign you out of your Ockam account. You can sign in again and reactivate your machine with `ockam enroll`.

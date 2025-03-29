@@ -1,8 +1,8 @@
 use ockam_core::{async_trait, route, AllowAll};
 use ockam_node::Context;
 use ockam_transport_tcp::{
-    Direction, PortalInletInterceptor, PortalInterceptor, PortalInterceptorFactory,
-    TcpInletOptions, TcpOutletOptions, TcpTransport,
+    read_portal_payload_length, Direction, PortalInletInterceptor, PortalInterceptor,
+    PortalInterceptorFactory, TcpInletOptions, TcpOutletOptions, TcpTransport,
 };
 use rand::random;
 use std::sync::{Arc, Mutex};
@@ -46,7 +46,7 @@ impl PortalInterceptorFactory for MockPortalInterceptorFactory {
 async fn setup(
     context: &mut Context,
 ) -> ockam_core::Result<(String, TcpListener, Arc<MockPortalInterceptor>)> {
-    let tcp = TcpTransport::create(context).await?;
+    let tcp = TcpTransport::get_or_create(context)?;
 
     let listener = {
         let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
@@ -55,14 +55,13 @@ async fn setup(
             "outlet",
             bind_address.try_into().unwrap(),
             TcpOutletOptions::new(),
-        )
-        .await?;
+        )?;
         listener
     };
 
     let mock_portal_interceptor = Arc::new(MockPortalInterceptor::default());
 
-    PortalInletInterceptor::create(
+    PortalInletInterceptor::start_listener(
         context,
         "interceptor_listener".into(),
         Arc::new(MockPortalInterceptorFactory {
@@ -70,8 +69,8 @@ async fn setup(
         }),
         Arc::new(AllowAll),
         Arc::new(AllowAll),
+        read_portal_payload_length(),
     )
-    .await
     .unwrap();
 
     let inlet = tcp

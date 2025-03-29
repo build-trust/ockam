@@ -81,17 +81,17 @@ pub struct TicketCommand {
     /// Return the ticket using the legacy encoding format
     #[arg(long, hide = true)]
     legacy: bool,
+
+    /// Don't wait for "project to be ready", that end up calling orchestrator
+    #[arg(long, hide = true)]
+    skip_controller_call: bool,
 }
 
 #[async_trait]
 impl Command for TicketCommand {
     const NAME: &'static str = "project ticket";
 
-    fn retry_opts(&self) -> Option<RetryOpts> {
-        Some(self.retry_opts.clone())
-    }
-
-    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> Result<()> {
+    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> Result<()> {
         let cmd = self.parse_args(&opts).await?;
         let identity = opts
             .state
@@ -100,7 +100,7 @@ impl Command for TicketCommand {
 
         let node = InMemoryNode::start_with_project_name(
             ctx,
-            &opts.state,
+            opts.state.clone(),
             cmd.trust_opts.project_name.clone(),
         )
         .await?;
@@ -112,7 +112,12 @@ impl Command for TicketCommand {
             .await?;
 
         let authority_node_client = node
-            .create_authority_client_with_project(ctx, &project, Some(identity))
+            .create_authority_client_with_project(
+                ctx,
+                &project,
+                Some(identity),
+                cmd.skip_controller_call,
+            )
             .await?;
 
         let attributes = cmd.attributes()?;
@@ -136,7 +141,7 @@ impl Command for TicketCommand {
             ProjectRoute::new(MultiAddr::from_str(&project.access_route)?)?,
             project
                 .identity
-                .as_ref()
+                .clone()
                 .ok_or(miette!("missing project's identity"))?,
             &project.name,
             project
@@ -147,7 +152,12 @@ impl Command for TicketCommand {
                 .authority_identity
                 .as_ref()
                 .ok_or(miette!("missing authority's change history"))?,
-            project.authority_access_route.as_ref(),
+            MultiAddr::from_str(
+                project
+                    .authority_access_route
+                    .as_ref()
+                    .ok_or(miette!("missing authority's route"))?,
+            )?,
         )
         .import()
         .await?;
@@ -173,7 +183,8 @@ impl Command for TicketCommand {
         } else {
             let mut attributes_msg =
                 fmt_log!("The redeemer will be assigned the following attributes:\n");
-
+            let mut attributes: Vec<_> = attributes.iter().collect();
+            attributes.sort();
             for (key, value) in &attributes {
                 attributes_msg += &fmt_log!(
                     "{}{}",
@@ -205,7 +216,7 @@ impl Command for TicketCommand {
         )?;
 
         opts.terminal
-            .stdout()
+            .to_stdout()
             .plain(format!("\n{encoded_ticket}"))
             .machine(encoded_ticket)
             .json(as_json)

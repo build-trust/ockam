@@ -7,6 +7,8 @@ pub(crate) use show::ShowCommand;
 
 use crate::{docs, Command, CommandGlobalOpts};
 
+use ockam_node::Context;
+
 mod create;
 mod delete;
 mod list;
@@ -37,12 +39,12 @@ pub enum RelaySubCommand {
 }
 
 impl RelayCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
-            RelaySubCommand::Create(c) => c.run(opts),
-            RelaySubCommand::List(c) => c.run(opts),
-            RelaySubCommand::Show(c) => c.run(opts),
-            RelaySubCommand::Delete(c) => c.run(opts),
+            RelaySubCommand::Create(c) => c.run(ctx, opts).await,
+            RelaySubCommand::List(c) => c.run(ctx, opts).await,
+            RelaySubCommand::Show(c) => c.run(ctx, opts).await,
+            RelaySubCommand::Delete(c) => c.run(ctx, opts).await,
         }
     }
 

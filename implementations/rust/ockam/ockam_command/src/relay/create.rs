@@ -1,10 +1,10 @@
 use async_trait::async_trait;
-use std::str::FromStr;
-
 use clap::Args;
 use colorful::Colorful;
 use miette::{miette, IntoDiagnostic};
-use tracing::info;
+use std::str::FromStr;
+use std::sync::Arc;
+use tracing::debug;
 
 use ockam::identity::Identifier;
 use ockam::Context;
@@ -79,7 +79,7 @@ impl Command for CreateCommand {
         Some(self.retry_opts.clone())
     }
 
-    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
         if self.project_relay {
             print_warning_for_deprecated_flag_no_effect(&opts, "--project-relay")?;
         }
@@ -91,14 +91,18 @@ impl Command for CreateCommand {
         let alias = cmd.relay_name();
         let return_timing = cmd.return_timing();
 
-        let node = BackgroundNodeClient::create(ctx, &opts.state, &cmd.to).await?;
+        let node = BackgroundNodeClient::create(ctx, opts.state.clone(), &cmd.to).await?;
         let relay_info = {
             if at.starts_with(Project::CODE) && cmd.authorized.is_some() {
                 return Err(miette!(
                     "--authorized can not be used with project addresses"
                 ))?;
             };
-            info!("creating a relay at {} to {}", at, node.node_name());
+            debug!(
+                "sending request to {} to create a relay at {}",
+                node.node_name(),
+                at
+            );
             let pb = opts.terminal.spinner();
             if let Some(pb) = pb.as_ref() {
                 pb.set_message(format!(
@@ -123,12 +127,10 @@ impl Command for CreateCommand {
                 let plain = {
                     let from = color_primary(&at);
                     let to = color_primary(format!("/node/{}", &node.node_name()));
-
                     fmt_ok!("Relay will be created automatically from {from} → {to} as soon as a connection can be established.")
                 };
-
                 opts.terminal
-                    .stdout()
+                    .to_stdout()
                     .plain(plain)
                     .json_obj(relay_info)?
                     .write_line()?;
@@ -157,22 +159,20 @@ impl Command for CreateCommand {
                     };
 
                     opts.terminal
-                        .stdout()
+                        .to_stdout()
                         .plain(plain)
                         .machine(remote_address.to_string())
                         .json_obj(relay_info)?
                         .write_line()?;
                 } else {
                     let plain = {
-                        let from = color_primary(&at);
-                        let to = color_primary(format!("/node/{}", &node.node_name()));
-
-                        fmt_warn!("A relay was created at {to} but failed to connect to {from}\n")
-                            + &fmt_info!("It will retry to connect automatically")
+                        let at = color_primary(&at);
+                        let node = color_primary(format!("/node/{}", &node.node_name()));
+                        fmt_warn!("A relay was created at {node} but failed to connect to {at}\n")
+                            + &fmt_info!("It will automatically connect to the Relay as soon as it is available")
                     };
-
                     opts.terminal
-                        .stdout()
+                        .to_stdout()
                         .plain(plain)
                         .json_obj(relay_info)?
                         .write_line()?;
@@ -201,14 +201,15 @@ impl CreateCommand {
             .await
             .ok()
             .map(|p| p.name().to_string());
-        let at = Self::parse_arg_at(&opts.state, self.at, default_project_name.as_deref()).await?;
+        let at = Self::parse_arg_at(opts.state.clone(), self.at, default_project_name.as_deref())
+            .await?;
         self.project_relay |= at.starts_with(Project::CODE);
         self.at = at.to_string();
         Ok(self)
     }
 
     async fn parse_arg_at(
-        state: &CliState,
+        state: Arc<CliState>,
         at: impl Into<String>,
         default_project_name: Option<&str>,
     ) -> Result<MultiAddr> {
@@ -249,38 +250,39 @@ mod tests {
 
     #[ockam_macros::test(crate = "ockam")]
     async fn test_parse_arg_at(ctx: &mut Context) -> ockam::Result<()> {
-        let state = CliState::test().await?;
+        let state = Arc::new(CliState::test().await?);
         let default_project_name = Some("p1");
 
         // Invalid values
-        CreateCommand::parse_arg_at(&state, "/alice/service", default_project_name)
+        CreateCommand::parse_arg_at(state.clone(), "/alice/service", default_project_name)
             .await
             .expect_err("Invalid protocol");
-        CreateCommand::parse_arg_at(&state, "my/project", default_project_name)
+        CreateCommand::parse_arg_at(state.clone(), "my/project", default_project_name)
             .await
             .expect_err("Invalid protocol");
-        CreateCommand::parse_arg_at(&state, "alice", default_project_name)
+        CreateCommand::parse_arg_at(state.clone(), "alice", default_project_name)
             .await
             .expect_err("Node doesn't exist");
 
         // The placeholder is replaced when using the arg's default value
-        let res = CreateCommand::parse_arg_at(&state, default_at_addr(), default_project_name)
-            .await
-            .unwrap()
-            .to_string();
+        let res =
+            CreateCommand::parse_arg_at(state.clone(), default_at_addr(), default_project_name)
+                .await
+                .unwrap()
+                .to_string();
         assert_eq!(res, "/project/p1");
 
         // The user provides a full project route
         let addr = "/project/p1";
-        let res = CreateCommand::parse_arg_at(&state, addr, default_project_name)
+        let res = CreateCommand::parse_arg_at(state.clone(), addr, default_project_name)
             .await
             .unwrap()
             .to_string();
         assert_eq!(res, addr);
 
         // The user provides the name of a node
-        let node = InMemoryNode::start(ctx, &state).await.unwrap();
-        let res = CreateCommand::parse_arg_at(&state, &node.node_name(), default_project_name)
+        let node = InMemoryNode::start(ctx, state.clone()).await.unwrap();
+        let res = CreateCommand::parse_arg_at(state, &node.node_name(), default_project_name)
             .await
             .unwrap()
             .to_string();

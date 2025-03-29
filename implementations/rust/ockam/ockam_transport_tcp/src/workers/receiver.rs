@@ -13,10 +13,9 @@ use ockam_core::{
     OutgoingAccessControl,
 };
 use ockam_core::{Processor, Result};
-use ockam_node::{Context, ProcessorBuilder};
-use ockam_transport_core::TransportError;
+use ockam_node::{Context, ProcessorBuilder, WorkerShutdownPriority};
 use tokio::{io::AsyncReadExt, net::tcp::OwnedReadHalf};
-use tracing::{info, instrument, trace};
+use tracing::{debug, instrument, trace, Level};
 
 /// A TCP receiving message processor
 ///
@@ -58,8 +57,8 @@ impl TcpRecvProcessor {
     }
 
     #[allow(clippy::too_many_arguments)]
-    #[instrument(skip_all, name = "TcpRecvProcessor::start")]
-    pub async fn start(
+    #[instrument(skip_all, name = "TcpRecvProcessor::start", level = Level::TRACE)]
+    pub fn start(
         ctx: &Context,
         registry: TcpRegistry,
         read_half: OwnedReadHalf,
@@ -80,11 +79,13 @@ impl TcpRecvProcessor {
 
         let mailbox = Mailbox::new(
             addresses.receiver_address().clone(),
+            None,
             Arc::new(DenyAll),
             receiver_outgoing_access_control,
         );
         let internal = Mailbox::new(
             addresses.receiver_internal_address().clone(),
+            None,
             Arc::new(DenyAll),
             Arc::new(AllowOnwardAddress(
                 addresses.sender_internal_address().clone(),
@@ -92,24 +93,25 @@ impl TcpRecvProcessor {
         );
         ProcessorBuilder::new(receiver)
             .with_mailboxes(Mailboxes::new(mailbox, vec![internal]))
-            .start(ctx)
-            .await?;
+            .with_shutdown_priority(WorkerShutdownPriority::Priority1)
+            .start(ctx)?;
 
         Ok(())
     }
 
-    async fn notify_sender_stream_dropped(&self, ctx: &Context, msg: impl Display) -> Result<()> {
-        info!(
+    async fn notify_sender_stream_dropped(&self, ctx: &Context, msg: impl Display) {
+        debug!(
             "Connection to peer '{}' was closed; dropping stream. {}",
             self.socket_address, msg
         );
 
-        ctx.send_from_address(
-            self.addresses.sender_internal_address().clone(),
-            TcpSendWorkerMsg::ConnectionClosed,
-            self.addresses.receiver_internal_address().clone(),
-        )
-        .await
+        _ = ctx
+            .send_from_address(
+                self.addresses.sender_internal_address().clone(),
+                TcpSendWorkerMsg::ConnectionClosed,
+                self.addresses.receiver_internal_address().clone(),
+            )
+            .await;
     }
 }
 
@@ -117,12 +119,10 @@ impl TcpRecvProcessor {
 impl Processor for TcpRecvProcessor {
     type Context = Context;
 
-    #[instrument(skip_all, name = "TcpRecvProcessor::initialize")]
+    #[instrument(skip_all, name = "TcpRecvProcessor::initialize", level = Level::TRACE)]
     async fn initialize(&mut self, ctx: &mut Context) -> Result<()> {
-        ctx.set_cluster(crate::CLUSTER_NAME).await?;
-
         self.registry.add_receiver_processor(TcpReceiverInfo::new(
-            ctx.address(),
+            ctx.primary_address().clone(),
             self.addresses.sender_address().clone(),
             self.socket_address,
             self.mode,
@@ -132,33 +132,34 @@ impl Processor for TcpRecvProcessor {
         let protocol_version = match self.read_half.read_u8().await {
             Ok(p) => p,
             Err(e) => {
-                self.notify_sender_stream_dropped(ctx, e).await?;
-                return Err(TransportError::GenericIo)?;
+                trace!("Cannot read the Ockam protocol version: {:?}", &e);
+                self.notify_sender_stream_dropped(ctx, e).await;
+                // stop this processor
+                ctx.stop_primary_address()?;
+                return Ok(());
             }
         };
 
         let _protocol_version = match TcpProtocolVersion::try_from(protocol_version) {
             Ok(v) => v,
-            Err(err) => {
-                self.notify_sender_stream_dropped(
-                    ctx,
-                    format!(
-                        "Received protocol message is unsupported: {}",
-                        protocol_version
-                    ),
-                )
-                .await?;
-
-                return Err(err)?;
+            Err(e) => {
+                let message =
+                    format!("Received protocol message is unsupported: {protocol_version}");
+                trace!("{}: {:?}", &message, &e);
+                self.notify_sender_stream_dropped(ctx, message).await;
+                // stop this processor
+                ctx.stop_primary_address()?;
+                return Ok(());
             }
         };
 
         Ok(())
     }
 
-    #[instrument(skip_all, name = "TcpRecvProcessor::shutdown")]
+    #[instrument(skip_all, name = "TcpRecvProcessor::shutdown", level = Level::TRACE)]
     async fn shutdown(&mut self, ctx: &mut Self::Context) -> Result<()> {
-        self.registry.remove_receiver_processor(&ctx.address());
+        self.registry
+            .remove_receiver_processor(ctx.primary_address());
 
         Ok(())
     }
@@ -174,13 +175,13 @@ impl Processor for TcpRecvProcessor {
     ///    Context to avoid spawning a zombie task.
     /// 3. We must also stop the TcpReceive loop when the worker gets
     ///    killed by the user or node.
-    #[instrument(skip_all, name = "TcpRecvProcessor::process", fields(worker = %ctx.address()))]
+    #[instrument(skip_all, name = "TcpRecvProcessor::process", fields(worker = %ctx.primary_address()), level = Level::TRACE)]
     async fn process(&mut self, ctx: &mut Context) -> Result<bool> {
         // Read the message length
         let len = match self.read_half.read_u32().await {
             Ok(l) => l,
             Err(e) => {
-                self.notify_sender_stream_dropped(ctx, e).await?;
+                self.notify_sender_stream_dropped(ctx, e).await;
                 return Ok(false);
             }
         };
@@ -192,7 +193,7 @@ impl Processor for TcpRecvProcessor {
                     ctx,
                     format!("Received message len doesn't fit usize: {}", len),
                 )
-                .await?;
+                .await;
                 return Ok(false);
             }
         };
@@ -205,7 +206,7 @@ impl Processor for TcpRecvProcessor {
                     len_usize, MAX_MESSAGE_SIZE
                 ),
             )
-            .await?;
+            .await;
             return Ok(false);
         }
 
@@ -220,7 +221,7 @@ impl Processor for TcpRecvProcessor {
         match self.read_half.read_exact(&mut self.incoming_buffer).await {
             Ok(_) => {}
             Err(e) => {
-                self.notify_sender_stream_dropped(ctx, e).await?;
+                self.notify_sender_stream_dropped(ctx, e).await;
                 return Ok(false);
             }
         }
@@ -229,7 +230,7 @@ impl Processor for TcpRecvProcessor {
         let transport_message: TcpTransportMessage = match minicbor::decode(&self.incoming_buffer) {
             Ok(msg) => msg,
             Err(e) => {
-                self.notify_sender_stream_dropped(ctx, e).await?;
+                self.notify_sender_stream_dropped(ctx, e).await;
                 return Ok(false);
             }
         };
@@ -242,7 +243,8 @@ impl Processor for TcpRecvProcessor {
 
         // Insert the peer address into the return route so that
         // reply routing can be properly resolved
-        let local_message = local_message.push_front_return_route(self.addresses.sender_address());
+        let local_message =
+            local_message.push_front_return_route(self.addresses.sender_address().clone());
 
         trace!("Message onward route: {}", local_message.onward_route());
         trace!("Message return route: {}", local_message.return_route());

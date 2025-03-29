@@ -7,11 +7,13 @@ use clap::{Args, Subcommand};
 use crate::space_admin::add::AddCommand;
 use crate::space_admin::delete::DeleteCommand;
 use crate::space_admin::list::ListCommand;
-use crate::{Command, CommandGlobalOpts};
+use crate::{docs, Command, CommandGlobalOpts};
 
-/// Manage Space Admins in Ockam Orchestrator
+use ockam_node::Context;
+
 #[derive(Clone, Debug, Args)]
-#[command(arg_required_else_help = true, subcommand_required = true)]
+#[command(arg_required_else_help = true, subcommand_required = true,
+about = docs::about("Manage Space Admins in Ockam Orchestrator"))]
 pub struct SpaceAdminCommand {
     #[command(subcommand)]
     subcommand: SpaceAdminSubcommand,
@@ -30,11 +32,11 @@ enum SpaceAdminSubcommand {
 }
 
 impl SpaceAdminCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
-            SpaceAdminSubcommand::List(c) => c.run(opts),
-            SpaceAdminSubcommand::Add(c) => c.run(opts),
-            SpaceAdminSubcommand::Delete(c) => c.run(opts),
+            SpaceAdminSubcommand::List(c) => c.run(ctx, opts).await,
+            SpaceAdminSubcommand::Add(c) => c.run(ctx, opts).await,
+            SpaceAdminSubcommand::Delete(c) => c.run(ctx, opts).await,
         }
     }
 

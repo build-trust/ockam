@@ -4,7 +4,7 @@ use miette::miette;
 use ockam_api::colors::OckamColor;
 use ockam_api::{color, fmt_info, fmt_ok, fmt_warn};
 
-use crate::util::{async_cmd, print_warning_for_deprecated_flag_no_effect};
+use crate::util::print_warning_for_deprecated_flag_no_effect;
 use crate::{docs, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/stop/long_about.txt");
@@ -28,17 +28,11 @@ pub struct StopCommand {
 }
 
 impl StopCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |_ctx| async move {
-            self.async_run(opts).await
-        })
-    }
-
     pub fn name(&self) -> String {
         "node stop".into()
     }
 
-    async fn async_run(&self, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(&self, opts: CommandGlobalOpts) -> miette::Result<()> {
         if self.force {
             print_warning_for_deprecated_flag_no_effect(&opts, "--force")?;
         }
@@ -53,7 +47,7 @@ impl StopCommand {
             .collect::<Vec<String>>();
         if running_nodes.is_empty() {
             opts.terminal
-                .stdout()
+                .to_stdout()
                 .plain(fmt_info!("There are no nodes running"))
                 .write_line()?;
             return Ok(());
@@ -91,7 +85,7 @@ impl StopCommand {
                 match selected_item_names.len() {
                     0 => {
                         opts.terminal
-                            .stdout()
+                            .to_stdout()
                             .plain(fmt_info!("No nodes selected to stop"))
                             .write_line()?;
                     }
@@ -124,6 +118,6 @@ async fn stop_node(opts: CommandGlobalOpts, node_name: &str) -> miette::Result<(
             color!(node_name, OckamColor::PrimaryResource)
         )
     };
-    opts.terminal.stdout().plain(output).write_line()?;
+    opts.terminal.to_stdout().plain(output).write_line()?;
     Ok(())
 }

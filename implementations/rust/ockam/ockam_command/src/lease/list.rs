@@ -33,12 +33,12 @@ pub struct ListCommand {
 impl Command for ListCommand {
     const NAME: &'static str = "lease list";
 
-    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
         let cmd = self.parse_args(&opts).await?;
 
         let node = InMemoryNode::start_with_identity_and_project_name(
             ctx,
-            &opts.state,
+            opts.state.clone(),
             cmd.identity_opts.identity_name.clone(),
             cmd.trust_opts.project_name.clone(),
         )
@@ -48,13 +48,13 @@ impl Command for ListCommand {
         opts.terminal
             .write_line(fmt_log!("Listing influxdb tokens...\n"))?;
 
-        let (at, _meta) = clean_nodes_multiaddr(&cmd.at, &opts.state).await?;
+        let (at, _meta) = clean_nodes_multiaddr(&cmd.at, opts.state.clone()).await?;
         let res = node.list_tokens(ctx, &at).await?;
 
         let plain = &opts.terminal.build_list(&res, "No tokens found")?;
 
         opts.terminal
-            .stdout()
+            .to_stdout()
             .plain(plain)
             .json_obj(res)?
             .write_line()?;
@@ -65,7 +65,7 @@ impl Command for ListCommand {
 
 impl ListCommand {
     async fn parse_args(mut self, opts: &CommandGlobalOpts) -> crate::Result<Self> {
-        self.at = super::resolve_at_arg(&self.at, &opts.state).await?;
+        self.at = super::resolve_at_arg(&self.at, opts.state.clone()).await?;
         Ok(self)
     }
 }

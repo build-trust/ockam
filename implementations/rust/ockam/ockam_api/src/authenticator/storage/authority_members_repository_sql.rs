@@ -43,9 +43,15 @@ impl AuthorityMembersSqlxDatabase {
 
 #[async_trait]
 impl AuthorityMembersRepository for AuthorityMembersSqlxDatabase {
-    async fn get_member(&self, identifier: &Identifier) -> Result<Option<AuthorityMember>> {
-        let query = query_as("SELECT identifier, added_by, added_at, is_pre_trusted, attributes FROM authority_member WHERE identifier = $1")
-            .bind(identifier);
+    async fn get_member(
+        &self,
+        authority: &Identifier,
+        identifier: &Identifier,
+    ) -> Result<Option<AuthorityMember>> {
+        let query = query_as("SELECT identifier, added_by, added_at, is_pre_trusted, attributes FROM authority_member WHERE authority_id = $1 AND identifier = $2")
+            .bind(authority)
+            .bind(identifier)
+            ;
         let row: Option<AuthorityMemberRow> = query
             .fetch_optional(&*self.database.pool)
             .await
@@ -53,56 +59,66 @@ impl AuthorityMembersRepository for AuthorityMembersSqlxDatabase {
         row.map(|r| r.try_into()).transpose()
     }
 
-    async fn get_members(&self) -> Result<Vec<AuthorityMember>> {
-        let query = query_as("SELECT identifier, added_by, added_at, is_pre_trusted, attributes FROM authority_member");
-        let row: Vec<AuthorityMemberRow> =
-            query.fetch_all(&*self.database.pool).await.into_core()?;
+    async fn get_members(&self, authority: &Identifier) -> Result<Vec<AuthorityMember>> {
+        let query = query_as("SELECT identifier, added_by, added_at, is_pre_trusted, attributes FROM authority_member WHERE authority_id = $1");
+        let row: Vec<AuthorityMemberRow> = query
+            .bind(authority)
+            .fetch_all(&*self.database.pool)
+            .await
+            .into_core()?;
         row.into_iter().map(|r| r.try_into()).collect()
     }
 
-    async fn delete_member(&self, identifier: &Identifier) -> Result<()> {
+    async fn delete_member(&self, authority: &Identifier, identifier: &Identifier) -> Result<()> {
         let query =
-            query("DELETE FROM authority_member WHERE identifier = $1 AND is_pre_trusted = $2")
+            query("DELETE FROM authority_member WHERE authority_id = $1 AND identifier = $2 AND is_pre_trusted = $3")
+                .bind(authority)
                 .bind(identifier)
                 .bind(false);
         query.execute(&*self.database.pool).await.void()
     }
 
-    async fn add_member(&self, member: AuthorityMember) -> Result<()> {
+    async fn add_member(&self, authority: &Identifier, member: AuthorityMember) -> Result<()> {
         let query = query(r#"
-             INSERT INTO authority_member (identifier, added_by, added_at, is_pre_trusted, attributes)
-             VALUES ($1, $2, $3, $4, $5)
+             INSERT INTO authority_member (identifier, added_by, added_at, is_pre_trusted, attributes, authority_id)
+             VALUES ($1, $2, $3, $4, $5, $6)
              ON CONFLICT (identifier)
-             DO UPDATE SET added_by = $2, added_at = $3, is_pre_trusted = $4, attributes = $5"#)
+             DO UPDATE SET added_by = $2, added_at = $3, is_pre_trusted = $4, attributes = $5, authority_id = $6"#)
             .bind(member.identifier())
             .bind(member.added_by())
             .bind(member.added_at())
             .bind(member.is_pre_trusted())
-            .bind(ockam_core::cbor_encode_preallocate(member.attributes())?);
+            .bind(ockam_core::cbor_encode_preallocate(member.attributes())?)
+            .bind(authority);
 
         query.execute(&*self.database.pool).await.void()
     }
 
     async fn bootstrap_pre_trusted_members(
         &self,
+        authority: &Identifier,
         pre_trusted_identities: &PreTrustedIdentities,
     ) -> Result<()> {
         let mut transaction = self.database.begin().await.into_core()?;
-        let query1 = query("DELETE FROM authority_member WHERE is_pre_trusted = $1").bind(true);
+        let query1 =
+            query("DELETE FROM authority_member WHERE authority_id = $1 AND is_pre_trusted = $2")
+                .bind(authority)
+                .bind(true);
         query1.execute(&mut *transaction).await.void()?;
 
         for (identifier, pre_trusted_identity) in pre_trusted_identities.deref() {
             let query2 =
                 query(r#"
-                      INSERT INTO authority_member (identifier, added_by, added_at, is_pre_trusted, attributes)
-                      VALUES ($1, $2, $3, $4, $5)
+                      INSERT INTO authority_member (identifier, added_by, added_at, is_pre_trusted, attributes, authority_id)
+                      VALUES ($1, $2, $3, $4, $5, $6)
                       ON CONFLICT (identifier)
-                      DO UPDATE SET added_by = $2, added_at = $3, is_pre_trusted = $4, attributes = $5"#)
+                      DO UPDATE SET added_by = $2, added_at = $3, is_pre_trusted = $4, attributes = $5, authority_id = $6"#)
                     .bind(identifier)
                     .bind(pre_trusted_identity.attested_by())
                     .bind(pre_trusted_identity.added_at())
                     .bind(true)
-                    .bind(ockam_core::cbor_encode_preallocate(pre_trusted_identity.attrs())?);
+                    .bind(ockam_core::cbor_encode_preallocate(pre_trusted_identity.attrs())?)
+                    .bind(authority);
 
             query2.execute(&mut *transaction).await.void()?;
         }
@@ -143,6 +159,7 @@ mod tests {
             let admin = random_identifier();
             let timestamp1 = now()?;
 
+            let authority = random_identifier();
             let identifier1 = random_identifier();
             let mut attributes1 = BTreeMap::<Vec<u8>, Vec<u8>>::default();
             attributes1.insert(
@@ -156,9 +173,12 @@ mod tests {
                 timestamp1,
                 false,
             );
-            repository.add_member(member1.clone()).await?;
+            repository.add_member(&authority, member1.clone()).await?;
 
-            let members = repository.get_members().await?;
+            let m1 = repository.get_member(&authority, &identifier1).await?;
+            assert_eq!(m1, Some(member1.clone()));
+
+            let members = repository.get_members(&authority).await?;
             assert_eq!(members.len(), 1);
             assert!(members.contains(&member1));
 
@@ -173,16 +193,16 @@ mod tests {
                 timestamp2,
                 false,
             );
-            repository.add_member(member2.clone()).await?;
+            repository.add_member(&authority, member2.clone()).await?;
 
-            let members = repository.get_members().await?;
+            let members = repository.get_members(&authority).await?;
             assert_eq!(members.len(), 2);
             assert!(members.contains(&member1));
             assert!(members.contains(&member2));
 
-            repository.delete_member(&identifier1).await?;
+            repository.delete_member(&authority, &identifier1).await?;
 
-            let members = repository.get_members().await?;
+            let members = repository.get_members(&authority).await?;
             assert_eq!(members.len(), 1);
             assert!(members.contains(&member2));
 
@@ -231,10 +251,10 @@ mod tests {
             );
 
             repository
-                .bootstrap_pre_trusted_members(&pre_trusted_identities.into())
+                .bootstrap_pre_trusted_members(&authority, &pre_trusted_identities.into())
                 .await?;
 
-            let members = repository.get_members().await?;
+            let members = repository.get_members(&authority).await?;
             assert_eq!(members.len(), 2);
             let member1 = members
                 .iter()
@@ -254,9 +274,9 @@ mod tests {
             assert_eq!(member2.attributes(), &attributes2);
             assert!(member2.is_pre_trusted());
 
-            repository.delete_member(&identifier1).await?;
+            repository.delete_member(&authority, &identifier1).await?;
 
-            let members = repository.get_members().await?;
+            let members = repository.get_members(&authority).await?;
             assert_eq!(members.len(), 2);
             assert!(members.contains(member2));
             assert!(members.contains(member1));

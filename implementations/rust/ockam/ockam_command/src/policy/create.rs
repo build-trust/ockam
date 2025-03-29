@@ -48,7 +48,7 @@ pub struct CreateCommand {
 impl Command for CreateCommand {
     const NAME: &'static str = "policy create";
 
-    async fn async_run(mut self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+    async fn run(mut self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
         initialize_default_node(ctx, &opts).await?;
 
         // Backwards compatibility
@@ -67,11 +67,11 @@ impl Command for CreateCommand {
         let resource = ResourceTypeOrName::new(self.resource_type.as_ref(), self.resource.as_ref())
             .into_diagnostic()?;
 
-        let node = BackgroundNodeClient::create(ctx, &opts.state, &self.at).await?;
+        let node = BackgroundNodeClient::create(ctx, opts.state.clone(), &self.at).await?;
         node.add_policy(ctx, &resource, &Action::HandleMessage, &self.allow)
             .await?;
         opts.terminal
-            .stdout()
+            .to_stdout()
             .plain(fmt_ok!(
                 "Policy created at node {}",
                 color_primary(node.node_name())

@@ -1,10 +1,5 @@
-🚀 _[Portals for Mac](https://github.com/build-trust/ockam/blob/develop/examples/app/portals/README.md) – A macOS app built in Swift that uses the Ockam Rust library to privately share a service on your Mac with anyone, anywhere. The service is shared securely over an end-to-end encrypted and mutually authenticated Ockam Portal. Your friends will have access to it on their *localhost*! This app is a great example of the kinds of things you can build with Ockam_ [👉](https://github.com/build-trust/ockam/blob/develop/examples/app/portals/README.md)
-
----
 
 <a href="https://discord.gg/RAbjRr3kds"><img alt="Discord" src="https://img.shields.io/discord/1074960884490833952?label=Discord&logo=discord&style=flat&logoColor=white"></a>
-[![RepoRater](https://repo-rater.eddiehub.io/api/badge?owner=build-trust&name=ockam)](https://repo-rater.eddiehub.io/rate?owner=build-trust&name=ockam)
-
 
 # Trust for Data-in-Motion
 

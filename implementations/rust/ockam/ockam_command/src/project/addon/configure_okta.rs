@@ -10,18 +10,17 @@ use rustls::{ClientConfig, ClientConnection, Connection, RootCertStore, Stream};
 use rustls_pki_types::ServerName;
 
 use ockam::Context;
-use ockam_api::cloud::addon::Addons;
-use ockam_api::cloud::project::models::OktaConfig;
 use ockam_api::enroll::oidc_service::OidcService;
 use ockam_api::enroll::okta_oidc_provider::OktaOidcProvider;
 use ockam_api::fmt_ok;
 use ockam_api::minicbor_url::Url;
 use ockam_api::nodes::InMemoryNode;
+use ockam_api::orchestrator::addon::Addons;
+use ockam_api::orchestrator::project::models::OktaConfig;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::Error;
 
 use crate::project::addon::check_configuration_completion;
-use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts, Result};
 
 const LONG_ABOUT: &str = include_str!("./static/configure_influxdb/long_about.txt");
@@ -36,8 +35,8 @@ before_help = docs::before_help(PREVIEW_TAG),
 after_long_help = docs::after_help(AFTER_LONG_HELP),
 )]
 pub struct AddonConfigureOktaSubcommand {
-    /// Ockam Project name
     #[arg(
+        help = docs::about("Ockam Project name"),
         long = "project",
         id = "project",
         value_name = "PROJECT_NAME",
@@ -68,7 +67,7 @@ pub struct AddonConfigureOktaSubcommand {
     #[arg(long = "cert-path", group = "cert", value_name = "CERTIFICATE_PATH")]
     certificate_path: Option<PathBuf>,
 
-    /// Okta Client ID.
+    /// Okta Client ID
     #[arg(
         long,
         id = "client_id",
@@ -77,23 +76,17 @@ pub struct AddonConfigureOktaSubcommand {
     )]
     client_id: String,
 
-    /// Attributes names to copy from Okta userprofile into Ockam credential.
+    #[arg(help = docs::about("Attributes names to copy from Okta userprofile into Ockam credential"))]
     #[arg(short, long = "attribute", value_name = "ATTRIBUTE")]
     attributes: Vec<String>,
 }
 
 impl AddonConfigureOktaSubcommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |ctx| async move {
-            self.async_run(&ctx, opts).await
-        })
-    }
-
     pub fn name(&self) -> String {
         "project addon configure okta".into()
     }
 
-    async fn async_run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         let project_id = opts
             .state
             .projects()
@@ -129,7 +122,7 @@ impl AddonConfigureOktaSubcommand {
         auth0.validate_provider_config().await?;
 
         // Do request
-        let node = InMemoryNode::start(ctx, &opts.state).await?;
+        let node = InMemoryNode::start(ctx, opts.state.clone()).await?;
         let controller = node.create_controller().await?;
 
         let response = controller

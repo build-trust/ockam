@@ -1,8 +1,10 @@
+mod branding;
 mod encode_format;
 mod ockam_abac;
 mod output_format;
 mod utils;
 
+pub use branding::OutputBranding;
 pub use encode_format::EncodeFormat;
 pub use output_format::OutputFormat;
 pub use utils::*;

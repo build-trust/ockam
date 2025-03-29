@@ -1,6 +1,6 @@
 use crate::terminal::tui::DeleteCommandTui;
 use crate::tui::PluralTerm;
-use crate::util::{async_cmd, print_warning_for_deprecated_flag_no_effect};
+use crate::util::print_warning_for_deprecated_flag_no_effect;
 use crate::{docs, CommandGlobalOpts};
 use clap::Args;
 use colorful::Colorful;
@@ -9,7 +9,6 @@ use ockam_api::colors::color_primary;
 use ockam_api::fmt_ok;
 use ockam_api::terminal::notification::NotificationHandler;
 use ockam_api::terminal::{Terminal, TerminalStream};
-use ockam_core::AsyncTryClone;
 
 const LONG_ABOUT: &str = include_str!("./static/delete/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
@@ -39,17 +38,11 @@ pub struct DeleteCommand {
 }
 
 impl DeleteCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |_ctx| async move {
-            self.async_run(opts).await
-        })
-    }
-
     pub fn name(&self) -> String {
         "node delete".into()
     }
 
-    async fn async_run(&self, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(&self, opts: CommandGlobalOpts) -> miette::Result<()> {
         if self.force {
             print_warning_for_deprecated_flag_no_effect(&opts, "--force")?;
         }
@@ -57,7 +50,7 @@ impl DeleteCommand {
     }
 }
 
-#[derive(AsyncTryClone)]
+#[derive(Clone)]
 pub struct DeleteTui {
     opts: CommandGlobalOpts,
     cmd: DeleteCommand,
@@ -65,7 +58,8 @@ pub struct DeleteTui {
 
 impl DeleteTui {
     pub async fn run(opts: CommandGlobalOpts, cmd: DeleteCommand) -> miette::Result<()> {
-        let _notification_handler = NotificationHandler::start(&opts.state, opts.terminal.clone());
+        let _notification_handler =
+            NotificationHandler::start(opts.state.clone(), opts.terminal.clone());
         let tui = Self { opts, cmd };
         tui.delete().await
     }
@@ -105,7 +99,7 @@ impl DeleteCommandTui for DeleteTui {
     async fn delete_single(&self, item_name: &str) -> miette::Result<()> {
         self.opts.state.delete_node(item_name).await?;
         self.terminal()
-            .stdout()
+            .to_stdout()
             .plain(fmt_ok!(
                 "The node with name {} has been deleted",
                 color_primary(item_name)

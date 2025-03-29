@@ -1,8 +1,6 @@
 use std::os::unix::net::SocketAddr;
 
-use ockam_core::{
-    async_trait, compat::sync::Arc, Address, AsyncTryClone, DenyAll, Mailbox, Mailboxes, Result,
-};
+use ockam_core::{Address, Result, TryClone};
 use ockam_node::Context;
 use ockam_transport_core::TransportError;
 
@@ -17,31 +15,12 @@ use super::{UdsRouterRequest, UdsRouterResponse};
 /// A handle to connect to a [`UdsRouter`](crate::router::UdsRouter)
 ///
 /// Dropping this handle is harmless
+#[derive(TryClone)]
+#[try_clone(crate = "ockam_core")]
 pub(crate) struct UdsRouterHandle {
     ctx: Context,
     main_addr: Address,
     api_addr: Address,
-}
-
-#[async_trait]
-impl AsyncTryClone for UdsRouterHandle {
-    async fn async_try_clone(&self) -> Result<Self> {
-        let mailboxes = Mailboxes::new(
-            Mailbox::new(
-                Address::random_tagged("UdsRouterHandle.async_try_clone.detached"),
-                Arc::new(DenyAll),
-                Arc::new(DenyAll),
-            ),
-            vec![],
-        );
-        let child_ctx = self.ctx.new_detached_with_mailboxes(mailboxes).await?;
-
-        Ok(Self::new(
-            child_ctx,
-            self.main_addr.clone(),
-            self.api_addr.clone(),
-        ))
-    }
 }
 
 impl UdsRouterHandle {
@@ -67,9 +46,9 @@ impl UdsRouterHandle {
 
 impl UdsRouterHandle {
     /// Bind an incoming connection listener for this router
-    pub async fn bind(&self, addr: impl Into<SocketAddr>) -> Result<SocketAddr> {
+    pub fn bind(&self, addr: impl Into<SocketAddr>) -> Result<SocketAddr> {
         let socket_addr = addr.into();
-        UdsListenProcessor::start(&self.ctx, self.async_try_clone().await?, socket_addr).await
+        UdsListenProcessor::start(&self.ctx, self.try_clone()?, socket_addr)
     }
 
     /// Establish an outgoing UDS connection on an existing transport

@@ -5,6 +5,8 @@ use crate::kafka::producer::delete::DeleteCommand;
 use crate::kafka::producer::list::ListCommand;
 use crate::CommandGlobalOpts;
 
+use ockam_node::Context;
+
 mod create;
 mod delete;
 mod list;
@@ -25,11 +27,11 @@ pub enum KafkaProducerSubcommand {
 }
 
 impl KafkaProducerCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
-            KafkaProducerSubcommand::Create(c) => c.run(opts),
-            KafkaProducerSubcommand::Delete(c) => c.run(opts),
-            KafkaProducerSubcommand::List(c) => c.run(opts),
+            KafkaProducerSubcommand::Create(c) => c.run(ctx, opts).await,
+            KafkaProducerSubcommand::Delete(c) => c.run(ctx, opts).await,
+            KafkaProducerSubcommand::List(c) => c.run(ctx, opts).await,
         }
     }
 

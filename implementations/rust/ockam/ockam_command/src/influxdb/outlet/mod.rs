@@ -1,8 +1,10 @@
 use clap::{Args, Subcommand};
 
-use create::InfluxDBCreateCommand;
-
 use crate::{docs, Command, CommandGlobalOpts};
+
+use create::CreateCommand;
+
+use ockam_node::Context;
 
 pub(crate) mod create;
 
@@ -22,13 +24,13 @@ pub struct InfluxDBOutletCommand {
 
 #[derive(Clone, Debug, Subcommand)]
 pub enum InfluxDBOutletSubCommand {
-    Create(InfluxDBCreateCommand),
+    Create(CreateCommand),
 }
 
 impl InfluxDBOutletCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
-            InfluxDBOutletSubCommand::Create(c) => c.run(opts),
+            InfluxDBOutletSubCommand::Create(c) => c.run(ctx, opts).await,
         }
     }
 

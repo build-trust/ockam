@@ -40,10 +40,11 @@ impl EnrollerAccessControlChecks {
     }
 
     pub(crate) async fn check_is_member(
+        authority: &Identifier,
         members: Arc<dyn AuthorityMembersRepository>,
         identifier: &Identifier,
     ) -> Result<EnrollerCheckResult> {
-        let r = match members.get_member(identifier).await? {
+        let r = match members.get_member(authority, identifier).await? {
             Some(member) => {
                 let is_enroller = Self::check_bin_attributes_is_enroller(member.attributes());
                 EnrollerCheckResult {
@@ -65,12 +66,13 @@ impl EnrollerAccessControlChecks {
     }
 
     pub(crate) async fn check_identifier(
+        authority: &Identifier,
         members: Arc<dyn AuthorityMembersRepository>,
         identities_attributes: Arc<IdentitiesAttributes>,
         identifier: &Identifier,
         account_authority: &Option<AccountAuthorityInfo>,
     ) -> Result<EnrollerCheckResult> {
-        let mut r = Self::check_is_member(members, identifier).await?;
+        let mut r = Self::check_is_member(authority, members, identifier).await?;
 
         if let Some(info) = account_authority {
             if let Some(attrs) = identities_attributes

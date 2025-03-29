@@ -1,6 +1,5 @@
 use crate::terminal::tui::DeleteCommandTui;
 use crate::tui::PluralTerm;
-use crate::util::async_cmd;
 use crate::{docs, CommandGlobalOpts};
 use clap::Args;
 use colorful::Colorful;
@@ -8,7 +7,6 @@ use console::Term;
 use ockam_api::colors::OckamColor;
 use ockam_api::terminal::{Terminal, TerminalStream};
 use ockam_api::{color, fmt_ok};
-use ockam_core::AsyncTryClone;
 
 const LONG_ABOUT: &str = include_str!("./static/delete/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
@@ -32,22 +30,16 @@ pub struct DeleteCommand {
 }
 
 impl DeleteCommand {
-    pub fn run(self, opts: CommandGlobalOpts) -> miette::Result<()> {
-        async_cmd(&self.name(), opts.clone(), |_ctx| async move {
-            self.async_run(opts).await
-        })
-    }
-
     pub fn name(&self) -> String {
         "vault delete".into()
     }
 
-    async fn async_run(&self, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(&self, opts: CommandGlobalOpts) -> miette::Result<()> {
         DeleteTui::run(opts, self.clone()).await
     }
 }
 
-#[derive(AsyncTryClone)]
+#[derive(Clone)]
 pub struct DeleteTui {
     opts: CommandGlobalOpts,
     cmd: DeleteCommand,
@@ -94,7 +86,7 @@ impl DeleteCommandTui for DeleteTui {
     async fn delete_single(&self, item_name: &str) -> miette::Result<()> {
         self.opts.state.delete_named_vault(item_name).await?;
         self.terminal()
-            .stdout()
+            .to_stdout()
             .plain(fmt_ok!(
                 "Vault with name {} has been deleted",
                 color!(item_name, OckamColor::PrimaryResource)

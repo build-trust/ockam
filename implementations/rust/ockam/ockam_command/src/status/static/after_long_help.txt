@@ -1,0 +1,4 @@
+```sh
+# Display information about your Ockam instance and your Orchestrator resources.
+$ ockam status
+```

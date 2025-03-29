@@ -7,13 +7,13 @@ use colorful::Colorful;
 use console::Term;
 use miette::IntoDiagnostic;
 use ockam::Context;
-use ockam_api::cloud::email_address::EmailAddress;
-use ockam_api::cloud::project::{Project, ProjectsOrchestratorApi};
 use ockam_api::colors::color_primary;
 use ockam_api::fmt_ok;
 use ockam_api::nodes::InMemoryNode;
+use ockam_api::orchestrator::email_address::EmailAddress;
+use ockam_api::orchestrator::project::{Project, ProjectsOrchestratorApi};
 use ockam_api::terminal::{Terminal, TerminalStream};
-use ockam_core::AsyncTryClone;
+use ockam_core::TryClone;
 use std::sync::Arc;
 
 /// Delete an Admin from a Project
@@ -42,12 +42,12 @@ pub struct DeleteCommand {
 impl Command for DeleteCommand {
     const NAME: &'static str = "project-admin delete";
 
-    async fn async_run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
         Ok(DeleteTui::run(ctx, opts, self).await?)
     }
 }
 
-#[derive(AsyncTryClone)]
+#[derive(TryClone)]
 pub struct DeleteTui {
     ctx: Context,
     opts: CommandGlobalOpts,
@@ -69,13 +69,13 @@ impl DeleteTui {
             .await?;
         let node = InMemoryNode::start_with_identity_and_project_name(
             ctx,
-            &opts.state,
+            opts.state.clone(),
             cmd.identity_opts.identity_name.clone(),
             Some(project.project_name().to_string()),
         )
         .await?;
         let tui = Self {
-            ctx: ctx.async_try_clone().await?,
+            ctx: ctx.try_clone()?,
             opts,
             node: Arc::new(node),
             cmd,
@@ -124,7 +124,7 @@ impl DeleteCommandTui for DeleteTui {
             )
             .await?;
         self.terminal()
-            .stdout()
+            .to_stdout()
             .plain(fmt_ok!(
                 "Admin with email {} has been deleted from project {}",
                 color_primary(item_name),

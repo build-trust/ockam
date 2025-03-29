@@ -4,6 +4,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.103.0 - 2025-03-20
+
+### Added
+
+- Deprecating `--status-endpoint-port` in favor of `--status-endpoint`
+- Updated dependencies
+
+## 0.102.0 - 2025-03-03
+
+### Added
+
+- Optimize node creation:
+- Implemented control api http server
+- Integrate the new span exporter with the rest of the application
+- Updated dependencies
+
+### Changed
+
+- Use localhost constructor for `HostnamePort`
+
+## 0.101.0 - 2025-01-20
+
+### Added
+
+- Rewrite `ockam_node`
+- Updated dependencies
+
+## 0.100.0 - 2025-01-09
+
+### Added
+
+- Improvements to portals commands arguments
+- Updated dependencies
+
 ## 0.99.0 - 2024-12-04
 
 ### Added

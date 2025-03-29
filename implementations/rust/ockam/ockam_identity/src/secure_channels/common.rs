@@ -4,8 +4,10 @@ use core::fmt;
 use core::fmt::Formatter;
 use minicbor::{CborLen, Decode, Encode};
 use ockam_core::compat::sync::{Arc, RwLock};
+use ockam_core::compat::vec::Vec;
 use ockam_core::flow_control::{FlowControlId, FlowControls};
-use ockam_core::{route, Address, Result, Route};
+use ockam_core::{cbor_encode_preallocate, Message};
+use ockam_core::{Address, Decodable, Encodable, Encoded, Result, Route};
 use serde::Serialize;
 
 /// Result of [`super::SecureChannels::create_secure_channel()`] call.
@@ -22,6 +24,12 @@ pub struct SecureChannel {
 impl From<SecureChannel> for Address {
     fn from(value: SecureChannel) -> Self {
         value.addresses.encryptor
+    }
+}
+
+impl AsRef<Address> for SecureChannel {
+    fn as_ref(&self) -> &Address {
+        &self.addresses.encryptor
     }
 }
 
@@ -89,8 +97,8 @@ impl SecureChannel {
 
         let old_route = remote_route.clone();
 
-        let their_decryptor_address = old_route.route.recipient()?;
-        let new_route = route![new_route, their_decryptor_address.clone()];
+        let their_decryptor_address = old_route.route.recipient()?.clone();
+        let new_route = new_route + their_decryptor_address;
 
         remote_route.route = new_route;
 
@@ -119,13 +127,25 @@ impl SecureChannel {
 }
 
 /// Result of [`super::SecureChannels::create_secure_channel_listener()`] call.
-#[derive(Debug, Clone, Encode, Decode, CborLen, Serialize)]
+#[derive(Debug, Clone, Encode, Decode, CborLen, Serialize, Message)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct SecureChannelListener {
     #[n(1)] address: Address,
     #[n(2)] flow_control_id: FlowControlId,
     #[n(3)] is_key_exchange_only: bool,
+}
+
+impl Encodable for SecureChannelListener {
+    fn encode(self) -> Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for SecureChannelListener {
+    fn decode(e: &[u8]) -> Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
 }
 
 impl fmt::Display for SecureChannelListener {
@@ -165,5 +185,21 @@ impl SecureChannelListener {
     /// api address. Encryption part may be absent.
     pub fn is_key_exchange_only(&self) -> bool {
         self.is_key_exchange_only
+    }
+}
+
+/// List of [`SecureChannelListener`]s
+#[derive(Encode, Decode, CborLen, Debug, Default, Clone, Message)]
+pub struct SecureChannelListenerList(#[n(0)] pub Vec<SecureChannelListener>);
+
+impl Encodable for SecureChannelListenerList {
+    fn encode(self) -> Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for SecureChannelListenerList {
+    fn decode(e: &[u8]) -> Result<Self> {
+        Ok(minicbor::decode(e)?)
     }
 }

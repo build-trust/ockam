@@ -32,7 +32,7 @@ impl Worker for RemoteRelay {
         ctx: &mut Context,
         msg: Routed<Self::Message>,
     ) -> Result<()> {
-        if msg.msg_addr() == self.addresses.main_remote {
+        if msg.msg_addr() == &self.addresses.main_remote {
             let mut local_message = msg.into_local_message();
 
             // Remove my address from the onward_route
@@ -42,7 +42,7 @@ impl Worker for RemoteRelay {
                 Err(_) => {
                     debug!(registration_route = %self.registration_route, "RemoteRelay received service message");
 
-                    let payload = String::decode(local_message.payload_ref())
+                    let payload = String::decode(local_message.payload())
                         .map_err(|_| OckamError::InvalidResponseFromRelayService)?;
                     // using ends_with() instead of == to allow for prefixes
                     if self.registration_payload != "register"
