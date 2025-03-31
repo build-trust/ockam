@@ -3744,9 +3744,9 @@ dependencies = [
 
 [[package]]
 name = "kafka-protocol"
-version = "0.14.0"
+version = "0.14.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8cf55ee60ccc7ec31d65c9567c186144d98e870b513fc7159854f281caa69656"
+checksum = "0ce8ca397fccce043d8e1c12ab0122d2facf9249c57ef030ab90f62449413294"
 dependencies = [
  "anyhow",
  "bytes 1.9.0",
