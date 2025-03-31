@@ -22,7 +22,7 @@ pub enum OutletKind {
 #[derive(Debug, Serialize, Deserialize, EnumString, ToSchema)]
 #[serde(rename_all = "kebab-case")]
 pub enum OutletTls {
-    /// If the destination uses TLS, the connection will be fully validated.
+    /// The destination is expected to be a TLS endpoint and will be fully validated.
     Validate,
 }
 

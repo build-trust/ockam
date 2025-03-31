@@ -7,9 +7,9 @@ use utoipa::openapi::{ObjectBuilder, OneOfBuilder, RefOr, Schema};
 use utoipa::{PartialSchema, ToSchema};
 
 // This is an alias for documentation purposes only
-/// The destination node name.
+/// The name of the node that will process the request.
 /// Depending on the type of node resolution used, it can be a relay name
-/// or a dns address.
+/// or a DNS address.
 /// The special value `self` can be used to refer to the current node.
 #[derive(Serialize, Deserialize, ToSchema)]
 pub struct NodeName(String);

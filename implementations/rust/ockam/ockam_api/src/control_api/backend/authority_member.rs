@@ -153,8 +153,8 @@ async fn handle_authority_member_list(
 #[utoipa::path(
     get,
     operation_id = "get_authority_member",
-    summary = "Get Authority Member",
-    description = "Get the specified member of the Authority by identity.",
+    summary = "Get an Authority Member",
+    description = "Get an Authority Member given its identity.",
     path = "/{node}/authority-members/{member}",
     tags = ["Authority Members"],
     responses(
@@ -207,7 +207,7 @@ async fn handle_authority_member_get(
     delete,
     operation_id = "remove_authority_member",
     summary = "Remove an Authority Member",
-    description = "Remove the specified member of the Authority by identity.",
+    description = "Remove an Authority Member given its identity.",
     path = "/{node}/authority-members/{member}",
     tags = ["Authority Members"],
     responses(
