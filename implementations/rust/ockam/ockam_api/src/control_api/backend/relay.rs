@@ -46,12 +46,14 @@ impl HttpControlNodeApiBackend {
 #[utoipa::path(
     post,
     operation_id = "create_relay",
-    summary = "Create a new Relay",
+    summary = "Create a Relay",
     description =
-"Create a new Relay, the main parameters are the destination node `to` and the `name`.
-The address inherits the name value, but it's possible to specify it to allow the creation
-of multiple relays with the same address to different nodes.
+"The main parameters are the destination node `to` and the `name`.
+By default, the address inherits the name value, but it's possible to specify it to allow the creation
+of multiple relays with the same address on different nodes.
+
 The creation will be asynchronous and the initial status will be `down`.
+
 Note that, to allow the relay creation in the destination node, the caller identity credential must
 have an `ockam-relay` attribute set with the relay name.",
     path = "/{node}/relays",
@@ -152,15 +154,15 @@ async fn handle_relay_list(
     delete,
     operation_id = "delete_relay",
     summary = "Delete a Relay",
-    description = "Delete the specified Relay by name.",
-    path = "/{node}/relays/{relay_name}",
+    description = "Delete a Relay given its name.",
+    path = "/{node}/relays/{name}",
     tags = ["Relays"],
     responses(
         (status = NO_CONTENT, description = "Successfully deleted"),
     ),
     params(
         ("node" = NodeName,),
-        ("relay_name" = String, description = "Relay name"),
+        ("name" = String, description = "Relay name"),
     )
 )]
 async fn handle_relay_delete(
@@ -183,8 +185,8 @@ async fn handle_relay_delete(
     get,
     operation_id = "get_relay",
     summary = "Get a Relay",
-    description = "Get the specified Relay by name.",
-    path = "/{node}/relays/{relay_name}",
+    description = "Get a Relay given its name.",
+    path = "/{node}/relays/{name}",
     tags = ["Relays"],
     responses(
         (status = OK, description = "Successfully retrieved", body = RelayStatus),
@@ -192,7 +194,7 @@ async fn handle_relay_delete(
     ),
     params(
         ("node" = NodeName,),
-        ("relay_name" = String, description = "Relay name"),
+        ("name" = String, description = "Relay name"),
     )
 )]
 async fn handle_relay_get(

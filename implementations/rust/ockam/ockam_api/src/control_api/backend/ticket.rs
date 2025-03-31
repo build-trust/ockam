@@ -57,15 +57,15 @@ impl HttpControlNodeApiBackend {
 #[utoipa::path(
     post,
     operation_id = "create_ticket",
-    summary = "Create a new Ticket",
+    summary = "Create a Ticket",
     description =
-"Create a new Ticket, the main parameters are `attributes`, the list of attributes associated
-with the ticket, and `project`, the target project for the ticket. In the vast majority of cases,
-specifying the project name will be enough, but it's also possible to specify a custom Ockam
+"The main parameters are the `attributes` associated with the ticket, and target `project` for the ticket.
+Normally, specifying the project name will be enough, but it's also possible to specify a custom Ockam
 Authority and a custom node acting as a Project.
-You can also limit the validity of the ticket by specifying the `usage_count` and `expires_in`
-fields.
-The ticket is returned as an opaque string that can be used to enroll to a project, either via API
+You can also configure how long the ticket is valid, and how many times it can be redeemed
+by specifying the `usage-count` and `expires-in` fields.
+
+The ticket is returned as a string that can be used to enroll to a project, either via API
 or via CLI with the `ockam project enroll` command.",
     path = "/{node}/tickets",
     tags = ["Tickets"],
@@ -253,8 +253,15 @@ async fn create_encoded_ticket(
 #[utoipa::path(
     post,
     operation_id = "project_enroll",
-    summary = "Enroll to a Project using a Ticket",
-    description = "This API enrolls a node to a Project using the provided Ticket.",
+    summary = "Enroll to a Project",
+    description =
+"Enrolls an identity to a Project using the provided Ticket.
+
+When an identity is enrolled, they become a member of the Project, and they get a credential at the end of this process.
+The Project's Membership Authority will cryptographically attest to the specific attributes that the ticket
+was created with. As a member, they can request a credential whenever they need one.
+Credentials do not live forever, and expire.
+",
     path = "/{node}/tickets/enroll",
     tags = ["Tickets"],
     responses(
