@@ -292,7 +292,7 @@ EOF
   run_success $OCKAM node create --tcp-listener-address 127.0.0.1:$port
 
   run_failure $OCKAM node create --tcp-listener-address 127.0.0.1:$port
-  run_failure $OCKAM node create "{\"tcp-listener-address\": \"127.0.0.1:$port\"}"
+  run_failure $OCKAM node create "{\"name\": \"n2\"}" --tcp-listener-address 127.0.0.1:$port
   run_failure $OCKAM node create --foreground --tcp-listener-address 127.0.0.1:$port
-  run_failure $OCKAM node create --foreground "{\"tcp-listener-address\": \"127.0.0.1:$port\"}"
+  run_failure $OCKAM node create --foreground "{\"name\": \"n3\"}" --tcp-listener-address 127.0.0.1:$port
 }
