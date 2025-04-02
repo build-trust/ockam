@@ -269,33 +269,52 @@ impl NodeConfig {
             (node_handle, callback)
         };
 
-        let node_exit_future = async { node_handle.await.map_err(|err| miette!("{err:?}")) };
+        // Create a oneshot channel to signal if the node failed to start
+        let (tx, rx) = tokio::sync::oneshot::channel::<()>();
 
-        // Wait for either the callback signal or the node to exit
-        tokio::select! {
-            result = callback.wait_for_signal() => {
-                result?;
+        // Create future to monitor the node process
+        let node_monitor = async move {
+            match node_handle.await {
+                Ok(result) => result,
+                Err(err) => {
+                    let _ = tx.send(());
+                    Err(miette!("{err:?}"))
+                }
+            }
+        };
 
-                // Run the other sections
-                let node_name = Some(node_name);
-                let other_sections: Vec<ParsedCommands> = vec![
-                    self.policies.into_parsed_commands()?.into(),
-                    self.relays.into_parsed_commands(node_name)?.into(),
-                    self.tcp_outlets.into_parsed_commands(node_name)?.into(),
-                    self.tcp_inlets.into_parsed_commands(node_name)?.into(),
-                    self.influxdb_outlets
-                        .into_parsed_commands(node_name)?
-                        .into(),
-                    self.influxdb_inlets.into_parsed_commands(node_name)?.into(),
-                    self.kafka_outlet.into_parsed_commands(node_name)?.into(),
-                    self.kafka_inlet.into_parsed_commands(node_name)?.into(),
-                ];
-                opts.terminal.write_line("")?;
-                Self::run_commands_sections(ctx, opts, other_sections).await?;
-                opts.terminal.write_line("")?;
-            },
-            result = node_exit_future => result??,
-        }
+        // Try to run config commands after node starts
+        let config_commands_future = async {
+            tokio::select! {
+                _ = callback.wait_for_signal() => {
+                    let node_name = Some(node_name);
+                    let other_sections: Vec<ParsedCommands> = vec![
+                        self.policies.into_parsed_commands()?.into(),
+                        self.relays.into_parsed_commands(node_name)?.into(),
+                        self.tcp_outlets.into_parsed_commands(node_name)?.into(),
+                        self.tcp_inlets.into_parsed_commands(node_name)?.into(),
+                        self.influxdb_outlets
+                            .into_parsed_commands(node_name)?
+                            .into(),
+                        self.influxdb_inlets.into_parsed_commands(node_name)?.into(),
+                        self.kafka_outlet.into_parsed_commands(node_name)?.into(),
+                        self.kafka_inlet.into_parsed_commands(node_name)?.into(),
+                    ];
+                    Self::run_commands_sections(ctx, opts, other_sections).await?;
+                    Ok::<(), miette::Error>(())
+                }
+                // If we receive a signal from the node, it means it failed to start.
+                // The callback will never resolve, so we exit early.
+                _result = rx => {
+                    Ok::<(), miette::Error>(())
+                }
+            }
+        };
+
+        // Wait for both futures to complete
+        let (res1, res2) = tokio::join!(node_monitor, config_commands_future);
+        res1?;
+        res2?;
 
         Ok(())
     }
