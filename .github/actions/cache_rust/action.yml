@@ -18,3 +18,14 @@ runs:
         # Only save if the workflow is running on the develop branch (cron job)
         save-if: ${{ github.event_name == 'schedule' }}
         workspaces: "${{ inputs.directory_to_cache != '' && format('{0} -> target', inputs.directory_to_cache) || '' }}"
+
+    - name: Delete Unused Space
+      shell: bash
+      run: |
+        set -ex
+        df -h
+        (df -h && sudo rm -rf "/usr/local/share/boost" && echo "cleaned boost") || true
+        (df -h && sudo rm -rf "$AGENT_TOOLSDIRECTORY" && echo "cleaned agent") || true
+        (df -h && sudo rm -rf "/usr/share/dotnet" && echo "cleaned dotnet") || true
+        (df -h && sudo rm -rf "/opt/ghc" && echo "cleaned ghc") || true
+        df -h
