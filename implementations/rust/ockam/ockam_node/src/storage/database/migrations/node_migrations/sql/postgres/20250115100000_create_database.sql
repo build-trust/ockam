@@ -249,3 +249,103 @@ CREATE TABLE host_journey
     start_datetime                 TEXT NOT NULL,
     previous_opentelemetry_context TEXT
 );
+
+---------------------------
+-- PROJECTS, SPACES, USERS
+---------------------------
+
+-- This table stores data about projects as returned by the Controller
+CREATE TABLE project
+(
+    project_id               TEXT PRIMARY KEY, -- Id of the project
+    project_name             TEXT    NOT NULL, -- Name of the project
+    is_default               BOOLEAN NOT NULL, -- Boolean indicating if this project is the default one (0 means true)
+    space_id                 TEXT    NOT NULL, -- Id of the space associated to the project
+    space_name               TEXT    NOT NULL, -- Name of the space associated to the project
+    project_identifier       TEXT,             -- Project identifier
+    project_change_history   TEXT,             -- Project identity change history
+    access_route             TEXT    NOT NULL, -- Route used to create a secure channel to the project
+    authority_change_history TEXT,             -- Authority identity change history
+    authority_access_route   TEXT,             -- Route to the authority associated to the project
+    version                  TEXT,             -- Orchestrator software version
+    running                  BOOLEAN,          -- Boolean indicating if this project is currently accessible
+    operation_id             TEXT              -- Optional id of the operation currently creating the project on the Controller side
+);
+
+-- This table provides the list of users associated to a given project
+CREATE TABLE user_project
+(
+    user_email TEXT NOT NULL, -- User email
+    project_id TEXT NOT NULL  -- Project id
+);
+
+-- This table provides additional information for users associated to a project or a space
+CREATE TABLE user_role
+(
+    user_id    INTEGER NOT NULL, -- User id
+    project_id TEXT    NOT NULL, -- Project id
+    user_email TEXT    NOT NULL, -- User email
+    role       TEXT    NOT NULL, -- Role of the user: admin or member
+    scope      TEXT    NOT NULL  -- Scope of the role: space, project, or service
+);
+
+-- This table stores data about spaces as returned by the controller
+CREATE TABLE space
+(
+    space_id   TEXT PRIMARY KEY, -- Identifier of the space
+    space_name TEXT    NOT NULL, -- Name of the space
+    is_default BOOLEAN NOT NULL  -- Boolean indicating if this project is the default one (0 means true)
+);
+
+-- This table provides the list of users associated to a given project
+CREATE TABLE user_space
+(
+    user_email TEXT NOT NULL, -- User email
+    space_id   TEXT NOT NULL  -- Space id
+);
+
+-- This table stores the subscription for a given space
+CREATE TABLE subscription
+(
+    space_id      TEXT PRIMARY KEY, -- Space id
+    name          TEXT    NOT NULL, -- Name of the subscription
+    is_free_trial BOOLEAN NOT NULL, -- Boolean indicating if the subscription is a free trial
+    marketplace   TEXT,             -- Marketplace where the subscription was purchased (AWS, Azure, GCP, etc.)
+    start_date    INTEGER,          -- Start date of the subscription (UNIX timestamps in seconds since epoch)
+    end_date      INTEGER           -- End date of the subscription (UNIX timestamps in seconds since epoch)
+);
+
+-- This table provides additional information for users after they have been authenticated
+CREATE TABLE "user"
+(
+    email          TEXT PRIMARY KEY, -- User email
+    sub            TEXT    NOT NULL, -- (Sub)ject: unique identifier for the user
+    nickname       TEXT    NOT NULL, -- User nickname (or handle)
+    name           TEXT    NOT NULL, -- User name
+    picture        TEXT    NOT NULL, -- Link to a user picture
+    updated_at     TEXT    NOT NULL, -- ISO-8601 date: when this user information was last updated
+    email_verified INTEGER NOT NULL, -- Boolean indicating if the user email has been verified (0 means true)
+    is_default     BOOLEAN NOT NULL  -- Boolean indicating if this user is the default user locally (0 means true)
+);
+
+-- This table stores the time when a given identity was enrolled
+-- In the current project
+CREATE TABLE identity_enrollment
+(
+    identifier  TEXT    NOT NULL UNIQUE, -- Identifier of the identity
+    enrolled_at INTEGER NOT NULL,        -- UNIX timestamp in seconds
+    email       TEXT                     -- User email used for the enrollment
+);
+
+
+------------------
+-- RUST MIGRATIONS
+------------------
+
+CREATE TABLE IF NOT EXISTS _rust_migrations
+(
+    name   TEXT      NOT NULL,
+    run_on TIMESTAMP NOT NULL
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS name_index ON _rust_migrations (name);
