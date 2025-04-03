@@ -16,6 +16,7 @@ use ockam_core::OpenTelemetryContext;
 use ockam_node::Context;
 
 use crate::admin::AdminCommand;
+use crate::ai::AiCommand;
 use crate::authority::{AuthorityCommand, AuthoritySubcommand};
 use crate::branding::command;
 use crate::command_global_opts::CommandGlobalOpts;
@@ -70,6 +71,9 @@ use crate::Result;
 pub enum OckamSubcommand {
     #[command(name = command::name("enroll"), hide = command::hide("enroll"))]
     Enroll(EnrollCommand),
+
+    #[command(name = command::name("ai"), hide = command::hide("ai"))]
+    Ai(AiCommand),
 
     #[command(name = command::name("node"), hide = command::hide("node"))]
     Node(NodeCommand),
@@ -164,6 +168,8 @@ impl OckamSubcommand {
     pub async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self {
             OckamSubcommand::Enroll(c) => c.run(ctx, opts).await,
+            OckamSubcommand::Ai(c) => c.run(ctx, opts).await,
+
             OckamSubcommand::Node(c) => c.run(ctx, opts).await,
             OckamSubcommand::Vault(c) => c.run(ctx, opts).await,
             OckamSubcommand::Identity(c) => c.run(ctx, opts).await,
@@ -321,6 +327,7 @@ impl OckamSubcommand {
     pub fn name(&self) -> String {
         match self {
             OckamSubcommand::Enroll(c) => c.name(),
+            OckamSubcommand::Ai(c) => c.name(),
             OckamSubcommand::Node(c) => c.name(),
             OckamSubcommand::Vault(c) => c.name(),
             OckamSubcommand::Identity(c) => c.name(),

@@ -28,6 +28,7 @@ pub use subcommand::*;
 pub use terminal::*;
 
 mod admin;
+mod ai;
 mod arguments;
 mod authority;
 pub mod branding;
