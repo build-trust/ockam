@@ -27,12 +27,14 @@ pub trait Enrollment {
         &self,
         ctx: &Context,
         token: OidcToken,
+        is_ai_cloud_account: bool,
     ) -> miette::Result<EnrollStatus>;
 
     async fn enroll_with_oidc_token_okta(
         &self,
         ctx: &Context,
         token: OidcToken,
+        is_ai_enrollment: bool,
     ) -> miette::Result<()>;
 
     async fn present_token(
@@ -55,9 +57,10 @@ impl<T: HasSecureClient + Send + Sync> Enrollment for T {
         &self,
         ctx: &Context,
         token: OidcToken,
+        is_ai_cloud_account: bool,
     ) -> miette::Result<EnrollStatus> {
         self.get_secure_client()
-            .enroll_with_oidc_token(ctx, token)
+            .enroll_with_oidc_token(ctx, token, is_ai_cloud_account)
             .await
     }
 
@@ -65,9 +68,10 @@ impl<T: HasSecureClient + Send + Sync> Enrollment for T {
         &self,
         ctx: &Context,
         token: OidcToken,
+        is_ai_enrollment: bool,
     ) -> miette::Result<()> {
         self.get_secure_client()
-            .enroll_with_oidc_token_okta(ctx, token)
+            .enroll_with_oidc_token_okta(ctx, token, is_ai_enrollment)
             .await
     }
 
@@ -99,8 +103,10 @@ impl Enrollment for SecureClient {
         &self,
         ctx: &Context,
         token: OidcToken,
+        is_ai_cloud_account: bool,
     ) -> miette::Result<EnrollStatus> {
-        let req = Request::post("v0/enroll").body(AuthenticateOidcToken::new(token));
+        let req =
+            Request::post("v0/enroll").body(AuthenticateOidcToken::new(token, is_ai_cloud_account));
         trace!(target: TARGET, "executing auth0 flow");
         let reply = self
             .tell(ctx, "auth0_authenticator", req)
@@ -124,8 +130,10 @@ impl Enrollment for SecureClient {
         &self,
         ctx: &Context,
         token: OidcToken,
+        is_ai_enrollment: bool,
     ) -> miette::Result<()> {
-        let req = Request::post("v0/enroll").body(AuthenticateOidcToken::new(token));
+        let req =
+            Request::post("v0/enroll").body(AuthenticateOidcToken::new(token, is_ai_enrollment));
         trace!(target: TARGET, "executing auth0 flow");
         self.tell(ctx, DefaultAddress::OKTA_IDENTITY_PROVIDER, req)
             .await

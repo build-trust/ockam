@@ -157,7 +157,7 @@ impl OidcServiceExt for OidcService {
                 }
                 terminal.map(|terminal| {
                     terminal.write_line(fmt_ok!(
-                        "Signed into account <{}> and activated this machine.",
+                        "Signed into account {} and activated this machine.",
                         color_email(user_info.email.to_string())
                     ))
                 });
@@ -165,7 +165,7 @@ impl OidcServiceExt for OidcService {
             } else {
                 if let Some(spinner) = pb.as_ref() {
                     spinner.set_message(format!(
-                        "Email <{}> pending verification. Please check your inbox...",
+                        "Email {} pending verification. Please check your inbox...",
                         color_email(user_info.email.to_string())
                     ))
                 }
