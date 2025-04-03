@@ -1,6 +1,7 @@
 pub use cow_bytes::*;
 pub use cow_str::*;
 
+mod cbor_tests;
 mod cow_bytes;
 mod cow_str;
 pub(crate) mod schema;

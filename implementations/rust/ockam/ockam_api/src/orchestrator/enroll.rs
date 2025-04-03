@@ -94,6 +94,7 @@ pub mod auth0 {
     pub struct AuthenticateOidcToken {
         #[n(1)] pub token_type: TokenType,
         #[n(2)] pub access_token: Token,
+        #[n(3)] pub is_ai_cloud_account: Option<bool>,
     }
 
     impl Encodable for AuthenticateOidcToken {
@@ -109,10 +110,11 @@ pub mod auth0 {
     }
 
     impl AuthenticateOidcToken {
-        pub fn new(token: OidcToken) -> Self {
+        pub fn new(token: OidcToken, is_ai_cloud_account: bool) -> Self {
             Self {
                 token_type: token.token_type,
                 access_token: token.access_token,
+                is_ai_cloud_account: Some(is_ai_cloud_account),
             }
         }
     }

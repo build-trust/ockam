@@ -5,13 +5,15 @@ use crate::enroll::handler::EnrollHandler;
 use crate::{docs, Command, CommandGlobalOpts};
 use ockam::Context;
 
-const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
-const AFTER_LONG_HELP: &str = include_str!("./static/after_long_help.txt");
+const LONG_ABOUT: &str = include_str!("./static/enroll/long_about.txt");
+const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
+const AFTER_LONG_HELP: &str = include_str!("./static/enroll/after_long_help.txt");
 
+/// Enroll your Ockam Identity with Ockam Orchestrator
 #[derive(Clone, Debug, Args)]
 #[command(
-about = docs::about("Enroll your Ockam Identity with Ockam Orchestrator"),
 long_about = docs::about(LONG_ABOUT),
+before_help = docs::before_help(PREVIEW_TAG),
 after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct EnrollCommand {
@@ -32,33 +34,20 @@ pub struct EnrollCommand {
     /// the same account information
     #[arg(long)]
     pub authorization_code_flow: bool,
-
-    /// By default this command skips the enrollment process if the Identity you specified
-    /// (using `--identity`), or the default Identity, is already enrolled, by checking
-    /// its status. Use this flag to force the execution of the Identity enrollment
-    /// process.
-    #[arg(long)]
-    pub force: bool,
-
-    /// Use this flag to skip creating Orchestrator resources. When you use this flag, we
-    /// only check whether the Orchestrator resources are created. And if they are not, we
-    /// will continue without creating them.
-    #[arg(hide = true, long = "skip-resource-creation", conflicts_with = "force")]
-    pub skip_orchestrator_resources_creation: bool,
 }
 
 #[async_trait]
 impl Command for EnrollCommand {
-    const NAME: &'static str = "enroll";
+    const NAME: &'static str = "ai enroll";
 
     async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         let handler = EnrollHandler {
             opts: opts.clone(),
             identity_name: self.identity.clone(),
             authorization_code_flow: self.authorization_code_flow,
-            force: self.force,
-            skip_orchestrator_resources_creation: self.skip_orchestrator_resources_creation,
-            is_ai_cloud_account: false,
+            force: false,
+            skip_orchestrator_resources_creation: true,
+            is_ai_cloud_account: true,
         };
         handler.run(ctx).await?;
         Ok(())
