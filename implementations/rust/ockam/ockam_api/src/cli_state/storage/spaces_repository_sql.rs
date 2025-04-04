@@ -122,7 +122,7 @@ impl SpacesRepository for SpacesSqlxDatabase {
              INSERT INTO subscription (space_id, name, is_free_trial, marketplace, start_date, end_date)
              VALUES ($1, $2, $3, $4, $5, $6)
              ON CONFLICT (space_id)
-             DO UPDATE SET space_id = $1, name = $2, is_free_trial = $3, marketplace = $4, start_date = $5, end_date = $6",
+             DO UPDATE SET name = $2, is_free_trial = $3, marketplace = $4, start_date = $5, end_date = $6",
             )
                 .bind(&space.id)
                 .bind(subscription.name.to_string())
