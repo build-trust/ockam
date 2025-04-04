@@ -8,6 +8,7 @@ use ockam::identity::SecureClient;
 use ockam_core::api::{Reply, Request, Status};
 use ockam_core::async_trait;
 use ockam_node::Context;
+use std::collections::HashMap;
 use tracing::Level;
 
 const TARGET: &str = "ockam_api::cloud::enroll";
@@ -41,6 +42,11 @@ pub trait Enrollment {
     ) -> miette::Result<EnrollStatus>;
 
     async fn issue_credential(&self, ctx: &Context) -> miette::Result<CredentialAndPurposeKey>;
+
+    async fn get_subject_attributes(
+        &self,
+        ctx: &Context,
+    ) -> miette::Result<HashMap<Vec<u8>, Vec<u8>>>;
 }
 
 #[async_trait]
@@ -75,6 +81,13 @@ impl<T: HasSecureClient + Send + Sync> Enrollment for T {
 
     async fn issue_credential(&self, ctx: &Context) -> miette::Result<CredentialAndPurposeKey> {
         self.get_secure_client().issue_credential(ctx).await
+    }
+
+    async fn get_subject_attributes(
+        &self,
+        ctx: &Context,
+    ) -> miette::Result<HashMap<Vec<u8>, Vec<u8>>> {
+        self.get_secure_client().get_subject_attributes(ctx).await
     }
 }
 
@@ -158,5 +171,22 @@ impl Enrollment for SecureClient {
             .into_diagnostic()?
             .success()
             .into_diagnostic()
+    }
+
+    #[instrument(skip_all, level = Level::TRACE)]
+    async fn get_subject_attributes(
+        &self,
+        ctx: &Context,
+    ) -> miette::Result<HashMap<Vec<u8>, Vec<u8>>> {
+        let credential = self.issue_credential(ctx).await?;
+        let attributes: HashMap<_, _> = credential
+            .credential
+            .get_credential_data()?
+            .subject_attributes
+            .map
+            .into_iter()
+            .map(|(k, v)| (Vec::<u8>::from(k), Vec::<u8>::from(v)))
+            .collect();
+        Ok(attributes)
     }
 }

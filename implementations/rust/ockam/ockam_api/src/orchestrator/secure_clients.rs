@@ -47,7 +47,7 @@ impl Display for CredentialsEnabled {
 
 impl NodeManager {
     #[instrument(skip_all, fields(authority_identifier = %authority_identifier.clone(), authority_route = %authority_route.clone(), caller = %caller_identifier.clone()), level = Level::TRACE)]
-    pub(crate) async fn make_authority_node_client(
+    pub async fn make_authority_node_client(
         &self,
         authority_identifier: &Identifier,
         authority_route: &MultiAddr,
@@ -67,7 +67,7 @@ impl NodeManager {
 
     #[instrument(skip_all, fields(project_identifier = %project_identifier.clone(), project_multiaddr = %project_multiaddr.clone(), caller = %caller_identifier.clone(), credentials_enabled = %credentials_enabled
     ), level = Level::TRACE)]
-    pub(crate) async fn make_project_node_client(
+    pub async fn make_project_node_client(
         &self,
         project_identifier: &Identifier,
         project_multiaddr: &MultiAddr,
