@@ -110,7 +110,6 @@ impl Command for CreateCommand {
                 ));
             }
             node.create_outlet(
-                ctx,
                 cmd.to.clone().into(),
                 cmd.tls,
                 cmd.name.clone().map(Address::from).as_ref(),

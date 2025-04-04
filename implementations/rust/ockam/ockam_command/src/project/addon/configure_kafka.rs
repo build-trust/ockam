@@ -83,8 +83,7 @@ impl AddonConfigureKafkaSubcommand {
         let response = controller
             .configure_confluent_addon(ctx, &project_id, config)
             .await?;
-        check_configuration_completion(&opts, ctx, &node, &project_id, &response.operation_id)
-            .await?;
+        check_configuration_completion(&opts, &node, &project_id, &response.operation_id).await?;
 
         opts.terminal
             .write_line(fmt_ok!("{} addon configured successfully", addon_name))?;

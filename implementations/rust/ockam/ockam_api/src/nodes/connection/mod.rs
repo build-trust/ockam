@@ -76,9 +76,9 @@ impl Connection {
         })
     }
 
-    pub fn close(&self, context: &Context, node_manager: &NodeManager) -> Result<()> {
+    pub fn close(&self, node_manager: &NodeManager) -> Result<()> {
         for encryptor in &self.secure_channel_encryptors {
-            if let Err(error) = node_manager.delete_secure_channel(context, encryptor) {
+            if let Err(error) = node_manager.delete_secure_channel(encryptor) {
                 match error.code().kind {
                     Kind::NotFound => {
                         debug!("cannot find and delete secure channel `{encryptor}`: {error}");
@@ -213,7 +213,6 @@ pub trait Instantiator: Send + Sync + 'static {
     /// The returned [`Changes`] will be used to update the builder state.
     async fn instantiate(
         &self,
-        ctx: &Context,
         node_manager: &NodeManager,
         transport_route: Route,
         extracted: (MultiAddr, MultiAddr, MultiAddr),
@@ -250,7 +249,6 @@ impl ConnectionBuilder {
     /// user make sure higher protocol abstraction are called before lower level ones
     pub async fn instantiate(
         mut self,
-        ctx: &Context,
         node_manager: &NodeManager,
         instantiator: impl Instantiator,
     ) -> Result<Self, ockam_core::Error> {
@@ -260,6 +258,7 @@ impl ConnectionBuilder {
         let length = codes.len();
         let mut start = 0;
 
+        let ctx = node_manager.ctx();
         if self.current_multiaddr.len() > length {
             while start < self.current_multiaddr.len() - length {
                 if self.current_multiaddr.matches(start, &codes) {
@@ -273,7 +272,6 @@ impl ConnectionBuilder {
                         .await?;
                     let mut changes = instantiator
                         .instantiate(
-                            ctx,
                             node_manager,
                             self.transport_route.clone(),
                             self.extract(start, instantiator.matches().len()),

@@ -245,13 +245,7 @@ impl HttpControlNodeApiFrontend {
         };
 
         let result = node_manager
-            .make_connection(
-                &context,
-                &destination.parse()?,
-                node_manager.identifier(),
-                None,
-                None,
-            )
+            .make_connection(&destination.parse()?, node_manager.identifier(), None, None)
             .await;
         let node_connection = match result {
             Ok(connection) => connection,
@@ -277,7 +271,7 @@ impl HttpControlNodeApiFrontend {
             .await;
 
         // close the connection regardless of the result
-        node_connection.close(&context, &node_manager)?;
+        node_connection.close(&node_manager)?;
 
         let response = match result {
             Ok(response) => response,

@@ -170,7 +170,7 @@ impl NodeManager {
         };
 
         debug!("initializing services");
-        s.initialize_services(ctx, general_options.start_default_services)
+        s.initialize_services(general_options.start_default_services)
             .await?;
 
         let s = Arc::new(s);
@@ -216,24 +216,23 @@ impl NodeManager {
 
     async fn initialize_default_services(
         &self,
-        ctx: &Context,
         api_flow_control_ids: &[FlowControlId],
     ) -> ockam_core::Result<SecureChannelListener> {
         // Start services
+        let ctx = self.ctx();
         for api_flow_control_id in api_flow_control_ids {
             ctx.flow_controls().add_consumer(
                 &DefaultAddress::UPPERCASE_SERVICE.into(),
                 api_flow_control_id,
             );
         }
-        self.start_uppercase_service_impl(ctx, DefaultAddress::UPPERCASE_SERVICE.into())?;
+        self.start_uppercase_service_impl(DefaultAddress::UPPERCASE_SERVICE.into())?;
 
         let secure_channel_listener = self
             .create_secure_channel_listener(
                 DefaultAddress::SECURE_CHANNEL_LISTENER.into(),
                 None, // Not checking identifiers here in favor of credential check
                 None,
-                ctx,
                 SecureChannelType::KeyExchangeAndMessages,
             )
             .await?;
@@ -283,13 +282,13 @@ impl NodeManager {
 
     async fn initialize_services(
         &mut self,
-        ctx: &Context,
         start_default_services: bool,
     ) -> ockam_core::Result<()> {
         // Always start the echoer service as ockam_api::Session assumes it will be
         // started unconditionally on every node. It's used for liveliness checks.
-        self.start_echoer_service(ctx, DefaultAddress::ECHO_SERVICE.into())
+        self.start_echoer_service(DefaultAddress::ECHO_SERVICE.into())
             .await?;
+        let ctx = self.ctx();
         for api_flow_control_id in &self.api_transport_flow_control_ids {
             ctx.flow_controls()
                 .add_consumer(&DefaultAddress::ECHO_SERVICE.into(), api_flow_control_id);
@@ -297,7 +296,7 @@ impl NodeManager {
 
         if start_default_services {
             self.api_sc_listener = Some(
-                self.initialize_default_services(ctx, &self.api_transport_flow_control_ids)
+                self.initialize_default_services(&self.api_transport_flow_control_ids)
                     .await?,
             );
         }
@@ -307,12 +306,11 @@ impl NodeManager {
 
     pub async fn make_client(
         &self,
-        ctx: &Context,
         to: &MultiAddr,
         timeout: Option<Duration>,
     ) -> ockam_core::Result<Client> {
         let connection = self
-            .make_connection(ctx, to, self.identifier(), None, timeout)
+            .make_connection(to, self.identifier(), None, timeout)
             .await?;
         let route = connection.route()?;
         Ok(Client::new(&route, timeout))
@@ -320,41 +318,34 @@ impl NodeManager {
 
     pub async fn make_connection(
         &self,
-        ctx: &Context,
         address: &MultiAddr,
         identifier: Identifier,
         authorized: Option<Identifier>,
         timeout: Option<Duration>,
     ) -> ockam_core::Result<Connection> {
         let authorized = authorized.map(|authorized| vec![authorized]);
-        self.connect(ctx, address, identifier, authorized, timeout)
-            .await
+        self.connect(address, identifier, authorized, timeout).await
     }
 
     /// Resolve project ID (if any), create secure channel (if needed) and create a tcp connection
     /// Returns [`Connection`]
     async fn connect(
         &self,
-        ctx: &Context,
         address: &MultiAddr,
         identifier: Identifier,
         authorized: Option<Vec<Identifier>>,
         timeout: Option<Duration>,
     ) -> ockam_core::Result<Connection> {
         debug!(%address, ?timeout, "connecting");
+        let ctx = self.ctx();
         let connection = ConnectionBuilder::new(address.clone())
-            .instantiate(
-                ctx,
-                self,
-                ProjectInstantiator::new(identifier.clone(), timeout),
-            )
+            .instantiate(self, ProjectInstantiator::new(identifier.clone(), timeout))
             .await?
-            .instantiate(ctx, self, PlainTcpInstantiator::new())
+            .instantiate(self, PlainTcpInstantiator::new())
             .await?
-            .instantiate(ctx, self, PlainUdpInstantiator::new())
+            .instantiate(self, PlainUdpInstantiator::new())
             .await?
             .instantiate(
-                ctx,
                 self,
                 SecureChannelInstantiator::new(&identifier, timeout, authorized.clone()),
             )
@@ -443,15 +434,12 @@ impl NodeManager {
     /// Wait until the project is ready to be used
     /// At this stage the project authority node must be up and running
     #[instrument(skip_all, fields(project_id = project.project_id()), level = Level::TRACE)]
-    pub async fn wait_until_project_is_ready(
-        &self,
-        ctx: &Context,
-        project: &Project,
-    ) -> miette::Result<Project> {
+    pub async fn wait_until_project_is_ready(&self, project: &Project) -> miette::Result<Project> {
         if project.is_ready() {
             return Ok(project.clone());
         }
 
+        let ctx = self.ctx();
         let project = self
             .create_controller()
             .await?
@@ -468,7 +456,6 @@ impl NodeManager {
 
     pub async fn create_authority_client_with_project(
         &self,
-        ctx: &Context,
         project: &Project,
         caller_identity_name: Option<String>,
         skip_controller_call: bool,
@@ -499,7 +486,7 @@ impl NodeManager {
         //      to bring up the rest of the system.  So "project" node doesn't exist
         //      at that point
         let project = if !skip_controller_call {
-            self.wait_until_project_is_ready(ctx, project).await?
+            self.wait_until_project_is_ready(project).await?
         } else {
             project.clone()
         };
@@ -519,7 +506,6 @@ impl NodeManager {
 
     pub async fn create_authority_client_with_authority(
         &self,
-        _ctx: &Context,
         authority_identifier: &Identifier,
         authority_route: &MultiAddr,
         caller_identity_name: Option<String>,
@@ -578,7 +564,6 @@ impl NodeManager {
 
     pub(crate) async fn access_control(
         &self,
-        ctx: &Context,
         authority: Option<Identifier>,
         resource: Resource,
         action: Action,
@@ -587,6 +572,7 @@ impl NodeManager {
         Arc<dyn IncomingAccessControl>,
         Arc<dyn OutgoingAccessControl>,
     )> {
+        let ctx = self.ctx();
         let resource_name_str = resource.resource_name.as_str();
         let resource_type_str = resource.resource_type.to_string();
         let action_str = action.as_ref();
@@ -672,6 +658,11 @@ impl NodeManager {
     /// Secure channel on address "api"
     pub fn api_sc_listener(&self) -> &Option<SecureChannelListener> {
         &self.api_sc_listener
+    }
+
+    /// Context
+    pub fn ctx(&self) -> &Context {
+        self.tcp_transport.ctx()
     }
 }
 

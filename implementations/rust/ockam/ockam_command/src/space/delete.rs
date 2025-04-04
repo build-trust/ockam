@@ -105,7 +105,7 @@ impl DeleteCommandTui for DeleteTui {
     }
 
     async fn delete_single(&self, item_name: &str) -> miette::Result<()> {
-        self.node.delete_space_by_name(&self.ctx, item_name).await?;
+        self.node.delete_space_by_name(item_name).await?;
 
         self.terminal()
             .to_stdout()

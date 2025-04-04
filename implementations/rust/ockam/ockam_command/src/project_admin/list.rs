@@ -34,7 +34,7 @@ impl Command for ListCommand {
             Some(project.project_name().to_string()),
         )
         .await?;
-        let admins = node.list_project_admins(ctx, project.project_id()).await?;
+        let admins = node.list_project_admins(project.project_id()).await?;
 
         let list = &opts.terminal.build_list(&admins, "No admins found")?;
         opts.terminal

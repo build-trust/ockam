@@ -3,7 +3,6 @@ use ockam_core::api::{Error, Response};
 use ockam_core::flow_control::FlowControlId;
 use ockam_core::Result;
 use ockam_multiaddr::MultiAddr;
-use ockam_node::Context;
 use std::fmt::Display;
 
 use super::NodeManagerWorker;
@@ -14,12 +13,12 @@ use crate::LocalMultiaddrResolver;
 impl NodeManagerWorker {
     pub(super) async fn add_consumer(
         &self,
-        ctx: &Context,
+
         consumer: AddConsumer,
     ) -> Result<Response, Response<Error>> {
         match self
             .node_manager
-            .add_consumer(ctx, consumer.address(), consumer.flow_control_id())
+            .add_consumer(consumer.address(), consumer.flow_control_id())
             .await
         {
             Ok(None) => Ok(Response::ok()),
@@ -35,10 +34,10 @@ impl NodeManager {
     /// otherwise a  AddConsumerError is returned
     pub async fn add_consumer(
         &self,
-        ctx: &Context,
         consumer: &MultiAddr,
         flow_control_id: &FlowControlId,
     ) -> Result<Option<AddConsumerError>> {
+        let ctx = self.ctx();
         let mut route = LocalMultiaddrResolver::resolve(consumer)?;
 
         let address = match route.step().ok() {

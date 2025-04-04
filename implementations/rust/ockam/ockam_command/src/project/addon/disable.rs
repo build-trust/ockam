@@ -52,8 +52,7 @@ impl AddonDisableSubcommand {
             .disable_addon(ctx, &project_id, &self.addon_id)
             .await?;
         let operation_id = response.operation_id;
-        check_for_operation_completion(&opts, ctx, &node, &operation_id, "the addon disabling")
-            .await?;
+        check_for_operation_completion(&opts, &node, &operation_id, "the addon disabling").await?;
 
         opts.terminal
             .write_line(fmt_ok!("Addon disabled successfully"))?;

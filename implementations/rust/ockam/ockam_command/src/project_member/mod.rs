@@ -98,13 +98,12 @@ pub(super) async fn authority_client(
         .get_project_by_name_or_default(project_name)
         .await?;
     Ok((
-        create_authority_client(ctx, &node, opts.state.clone(), identity_opts, &project).await?,
+        create_authority_client(&node, opts.state.clone(), identity_opts, &project).await?,
         project.name().to_string(),
     ))
 }
 
 pub(super) async fn create_authority_client(
-    ctx: &Context,
     node: &NodeManager,
     cli_state: Arc<CliState>,
     identity_opts: &IdentityOpts,
@@ -114,7 +113,7 @@ pub(super) async fn create_authority_client(
         .get_identity_name_or_default(&identity_opts.identity_name)
         .await?;
 
-    node.create_authority_client_with_project(ctx, project, Some(identity), false)
+    node.create_authority_client_with_project(project, Some(identity), false)
         .await
 }
 

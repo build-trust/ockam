@@ -24,7 +24,7 @@ pub struct BackgroundNodeClient {
     node_name: String,
     to: Route,
     timeout: Option<Duration>,
-    tcp_transport: Arc<TcpTransport>,
+    pub(crate) tcp_transport: Arc<TcpTransport>,
 }
 
 impl BackgroundNodeClient {

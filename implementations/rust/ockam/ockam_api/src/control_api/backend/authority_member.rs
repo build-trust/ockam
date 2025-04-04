@@ -17,11 +17,11 @@ use std::sync::Arc;
 impl HttpControlNodeApiBackend {
     pub(super) async fn handle_authority_member(
         &self,
-        context: &Context,
         method: Method,
         resource_id: Option<&str>,
         body: Option<Vec<u8>>,
     ) -> Result<ControlApiHttpResponse, ControlApiError> {
+        let context = self.node_manager.ctx();
         match method {
             Method::PUT => match resource_id {
                 None => ControlApiHttpResponse::missing_resource_id(ResourceKind::AuthorityMembers),

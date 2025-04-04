@@ -90,7 +90,6 @@ impl TcpInletListenProcessor {
     /// Returns a TLS acceptor, in case of failure it retries until the timeout is hit.
     /// The timeout is not a hard limit and may be surpassed.
     async fn create_acceptor(
-        context: &Context,
         certificate_provider: &Arc<dyn TlsCertificateProvider>,
         timeout: Duration,
     ) -> Result<TlsAcceptor> {
@@ -105,7 +104,7 @@ impl TcpInletListenProcessor {
                 ));
             }
 
-            let certificate = match certificate_provider.get_certificate(context).await {
+            let certificate = match certificate_provider.get_certificate().await {
                 Ok(certificate) => certificate,
                 Err(error) => {
                     if error.code().kind == Kind::Timeout {
@@ -211,7 +210,7 @@ impl Processor for TcpInletListenProcessor {
 
         let streams = if let Some(certificate_provider) = &self.options.tls_certificate_provider {
             let (rx, tx) = tokio::io::split(TlsStream::from(
-                Self::create_acceptor(ctx, certificate_provider, DEFAULT_TIMEOUT)
+                Self::create_acceptor(certificate_provider, DEFAULT_TIMEOUT)
                     .await?
                     .accept(stream)
                     .await

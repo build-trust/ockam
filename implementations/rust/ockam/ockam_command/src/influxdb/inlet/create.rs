@@ -49,7 +49,8 @@ pub struct CreateCommand {
     /// To enable TLS, the `ockam-tls-certificate` credential attribute is required.
     /// It will use the default project TLS certificate provider `/project/default/service/tls_certificate_provider`.
     /// To specify a different certificate provider, use `--tls-certificate-provider`.
-    #[arg(long, display_order = 900, id = "SOCKET_ADDRESS", hide_default_value = true, default_value_t = tcp_inlet_default_from_addr(), value_parser = hostname_parser)]
+    #[arg(long, display_order = 900, id = "SOCKET_ADDRESS", hide_default_value = true, default_value_t = tcp_inlet_default_from_addr(), value_parser = hostname_parser
+    )]
     pub from: SchemeHostnamePort,
 
     /// Route to a InfluxDB Outlet or the name of the InfluxDB Outlet service you want to connect to.
@@ -61,7 +62,8 @@ pub struct CreateCommand {
     /// or just the name of the service as `outlet` or `/service/outlet`.
     /// If you are passing just the service name, consider using `--via` to specify the
     /// relay name (e.g. `ockam tcp-inlet create --to outlet --via myrelay`).
-    #[arg(long, display_order = 900, id = "ROUTE", default_value_t = tcp_inlet_default_to_address())]
+    #[arg(long, display_order = 900, id = "ROUTE", default_value_t = tcp_inlet_default_to_address()
+    )]
     pub to: String,
 
     /// Name of the relay that this InfluxDB Inlet will use to connect to the InfluxDB Outlet.
@@ -97,11 +99,13 @@ pub struct CreateCommand {
     pub allow: Option<PolicyExpression>,
 
     /// Time to wait for the outlet to be available.
-    #[arg(long, display_order = 900, id = "WAIT", default_value = "5s", value_parser = duration_parser)]
+    #[arg(long, display_order = 900, id = "WAIT", default_value = "5s", value_parser = duration_parser
+    )]
     pub connection_wait: Duration,
 
     /// Time to wait before retrying to connect to the InfluxDB Outlet.
-    #[arg(long, display_order = 900, id = "RETRY", default_value = "20s", value_parser = duration_parser)]
+    #[arg(long, display_order = 900, id = "RETRY", default_value = "20s", value_parser = duration_parser
+    )]
     pub retry_wait: Duration,
 
     #[command(flatten)]
@@ -180,7 +184,6 @@ impl Command for CreateCommand {
             loop {
                 let result: Reply<InletStatus> = node
                     .create_influxdb_inlet(
-                        ctx,
                         cmd.from.hostname_port(),
                         &cmd.to(),
                         cmd.name.as_ref().expect("The `name` argument should be set to its default value if not provided"),

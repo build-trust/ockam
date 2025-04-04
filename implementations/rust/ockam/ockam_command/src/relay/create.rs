@@ -111,7 +111,6 @@ impl Command for CreateCommand {
                 ));
             }
             node.create_relay(
-                ctx,
                 &at,
                 alias.clone(),
                 cmd.authorized,

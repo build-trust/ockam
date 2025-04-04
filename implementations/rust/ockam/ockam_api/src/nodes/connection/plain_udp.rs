@@ -6,7 +6,6 @@ use crate::nodes::NodeManager;
 use ockam_core::{async_trait, Error, Route};
 use ockam_multiaddr::proto::{DnsAddr, Ip4, Ip6, Udp};
 use ockam_multiaddr::{Match, MultiAddr, Protocol};
-use ockam_node::Context;
 
 /// Creates the tcp connection.
 pub(crate) struct PlainUdpInstantiator {}
@@ -29,7 +28,6 @@ impl Instantiator for PlainUdpInstantiator {
 
     async fn instantiate(
         &self,
-        _ctx: &Context,
         node_manager: &NodeManager,
         _transport_route: Route,
         extracted: (MultiAddr, MultiAddr, MultiAddr),

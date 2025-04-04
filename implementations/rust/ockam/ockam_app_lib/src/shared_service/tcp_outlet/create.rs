@@ -40,7 +40,6 @@ impl AppState {
         let outgoing_ac = ac.create_outgoing(self.context_ref())?;
         match node_manager
             .create_outlet(
-                &self.context(),
                 HostnamePort::from(socket_addr),
                 false,
                 Some(worker_addr.clone()),

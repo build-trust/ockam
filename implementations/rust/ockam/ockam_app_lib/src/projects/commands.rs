@@ -1,5 +1,4 @@
 use miette::IntoDiagnostic;
-use ockam::Context;
 use std::collections::BTreeMap;
 use std::time::Duration;
 use tracing::{debug, info, trace};
@@ -18,7 +17,6 @@ use super::error::{Error, Result};
 impl AppState {
     pub(crate) async fn create_enrollment_ticket(
         &self,
-        ctx: &Context,
         project_id: &str,
         invitation_email: &EmailAddress,
     ) -> Result<EnrollmentTicket> {
@@ -31,7 +29,7 @@ impl AppState {
             .ok_or_else(|| Error::ProjectNotFound(project_id.to_owned()))?
             .clone();
         let authority_node = self
-            .authority_node(ctx, &project, None)
+            .authority_node(&project, None)
             .await
             .into_diagnostic()?;
         let otc = authority_node
@@ -56,7 +54,7 @@ impl AppState {
 
         let node_manager = self.node_manager().await;
         let projects = node_manager
-            .get_admin_projects(&self.context())
+            .get_admin_projects()
             .await
             .map_err(|e| ListingFailed(e.to_string()))?;
         debug!("Projects fetched");

@@ -29,7 +29,7 @@ impl Command for ListCommand {
             self.identity_opts.identity_name,
         )
         .await?;
-        let admins = node.list_space_admins(ctx, &space.space_id()).await?;
+        let admins = node.list_space_admins(&space.space_id()).await?;
 
         let list = &opts.terminal.build_list(&admins, "No admins found")?;
         opts.terminal

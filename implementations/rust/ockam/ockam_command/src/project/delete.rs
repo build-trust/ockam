@@ -47,7 +47,7 @@ impl DeleteCommand {
         )? {
             let node = InMemoryNode::start(ctx, opts.state.clone()).await?;
 
-            node.delete_project_by_name(ctx, &self.space_name, &self.project_name)
+            node.delete_project_by_name(&self.space_name, &self.project_name)
                 .await?;
             opts.terminal
                 .to_stdout()

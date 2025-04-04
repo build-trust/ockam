@@ -215,12 +215,11 @@ impl AppState {
 
     /// Asynchronously shutdown the application
     pub fn shutdown(&self) {
-        let context = self.context();
         let runtime = self.context.runtime().clone();
 
         let this = self.clone();
         runtime.spawn(async move {
-            let result = this.node_manager.write().await.stop(&context).await;
+            let result = this.node_manager.write().await.stop().await;
             if let Err(e) = result {
                 error!(?e, "Failed to shutdown the node manager")
             }
@@ -313,7 +312,7 @@ impl AppState {
     pub async fn reset_node_manager(&self) -> miette::Result<()> {
         let mut node_manager = self.node_manager.write().await;
         node_manager
-            .stop(&self.context)
+            .stop()
             .await
             .into_diagnostic()
             .wrap_err("Failed to stop the node manager")?;
@@ -378,13 +377,12 @@ impl AppState {
 
     pub async fn authority_node(
         &self,
-        ctx: &Context,
         project: &Project,
         caller_identity_name: Option<String>,
     ) -> Result<AuthorityNodeClient> {
         let node_manager = self.node_manager.read().await;
         Ok(node_manager
-            .create_authority_client_with_project(ctx, project, caller_identity_name, false)
+            .create_authority_client_with_project(project, caller_identity_name, false)
             .await?)
     }
 

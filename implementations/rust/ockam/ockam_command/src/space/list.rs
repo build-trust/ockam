@@ -36,7 +36,7 @@ impl Command for ListCommand {
             if let Some(pb) = pb.as_ref() {
                 pb.set_message("Listing spaces...");
             }
-            node.get_spaces(ctx).await?
+            node.get_spaces().await?
         };
 
         let plain = opts.terminal.build_list(

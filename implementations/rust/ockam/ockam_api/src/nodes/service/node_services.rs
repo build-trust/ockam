@@ -1,11 +1,5 @@
 use either::Either;
 
-use ockam::{Address, Context, Result};
-use ockam_abac::{Action, Resource, ResourceType};
-use ockam_core::api::{Error, Response};
-use ockam_node::WorkerBuilder;
-use tracing::Level;
-
 use crate::echoer::Echoer;
 use crate::error::ApiError;
 use crate::hop::Hop;
@@ -18,18 +12,22 @@ use crate::nodes::registry::KafkaServiceKind;
 use crate::nodes::service::default_address::DefaultAddress;
 use crate::nodes::NodeManager;
 use crate::uppercase::Uppercase;
+use ockam::{Address, Result};
+use ockam_abac::{Action, Resource, ResourceType};
+use ockam_core::api::{Error, Response};
+use ockam_node::WorkerBuilder;
+use tracing::Level;
 
 use super::NodeManagerWorker;
 
 impl NodeManagerWorker {
     pub(super) fn start_uppercase_service(
         &self,
-        ctx: &Context,
         request: StartUppercaseServiceRequest,
     ) -> Result<Response, Response<Error>> {
         match self
             .node_manager
-            .start_uppercase_service_impl(ctx, request.addr.into())
+            .start_uppercase_service_impl(request.addr.into())
         {
             Ok(_) => Ok(Response::ok()),
             Err(e) => Err(Response::internal_error_no_request(&e.to_string())),
@@ -38,12 +36,11 @@ impl NodeManagerWorker {
 
     pub(super) async fn start_echoer_service(
         &self,
-        ctx: &Context,
         request: StartEchoerServiceRequest,
     ) -> Result<Response, Response<Error>> {
         match self
             .node_manager
-            .start_echoer_service(ctx, request.addr.into())
+            .start_echoer_service(request.addr.into())
             .await
         {
             Ok(_) => Ok(Response::ok()),
@@ -53,13 +50,9 @@ impl NodeManagerWorker {
 
     pub(super) fn start_hop_service(
         &self,
-        ctx: &Context,
         request: StartHopServiceRequest,
     ) -> Result<Response, Response<Error>> {
-        match self
-            .node_manager
-            .start_hop_service(ctx, request.addr.into())
-        {
+        match self.node_manager.start_hop_service(request.addr.into()) {
             Ok(_) => Ok(Response::ok()),
             Err(e) => Err(Response::internal_error_no_request(&e.to_string())),
         }
@@ -172,12 +165,14 @@ impl NodeManager {
         list
     }
 
-    pub(super) fn start_uppercase_service_impl(&self, ctx: &Context, addr: Address) -> Result<()> {
+    pub(super) fn start_uppercase_service_impl(&self, addr: Address) -> Result<()> {
         if self.registry.uppercase_services.contains_key(&addr) {
             return Err(ApiError::core(format!(
                 "uppercase service already exists at {addr}"
             )));
         }
+
+        let ctx = self.ctx();
 
         ctx.start_worker(addr.clone(), Uppercase)?;
 
@@ -190,18 +185,19 @@ impl NodeManager {
         Ok(())
     }
 
-    pub(super) async fn start_echoer_service(&self, ctx: &Context, addr: Address) -> Result<()> {
+    pub(super) async fn start_echoer_service(&self, addr: Address) -> Result<()> {
         if self.registry.echoer_services.contains_key(&addr) {
             return Err(ApiError::core(format!(
                 "echoer service already exists at {addr}"
             )));
         }
 
+        let ctx = self.ctx();
+
         _ = ctx.stop_address(&addr);
 
         let (incoming_ac, outgoing_ac) = self
             .access_control(
-                ctx,
                 self.project_authority(),
                 Resource::new(addr.address(), ResourceType::Echoer),
                 Action::HandleMessage,
@@ -224,13 +220,14 @@ impl NodeManager {
         Ok(())
     }
 
-    pub(super) fn start_hop_service(&self, ctx: &Context, addr: Address) -> Result<()> {
+    pub(super) fn start_hop_service(&self, addr: Address) -> Result<()> {
         if self.registry.hop_services.contains_key(&addr) {
             return Err(ApiError::core(format!(
                 "hop service already exists at {addr}"
             )));
         }
 
+        let ctx = self.ctx();
         for api_transport_flow_control_id in &self.api_transport_flow_control_ids {
             ctx.flow_controls()
                 .add_consumer(&addr, api_transport_flow_control_id);

@@ -17,7 +17,7 @@ use crate::nodes::service::default_address::DefaultAddress;
 use crate::nodes::InMemoryNode;
 use crate::port_range::PortRange;
 use ockam::transport::HostnamePort;
-use ockam::{Address, Context, Result};
+use ockam::{Address, Result};
 use ockam_abac::PolicyExpression;
 use ockam_abac::{Action, Resource, ResourceType};
 use ockam_core::api::{Error, Response};
@@ -34,14 +34,12 @@ use std::sync::Arc;
 impl NodeManagerWorker {
     pub(super) async fn start_kafka_inlet_service(
         &self,
-        context: &Context,
         body: StartServiceRequest<StartKafkaInletRequest>,
     ) -> Result<Response<InletStatus>, Response<Error>> {
         let request = body.request();
         match self
             .node_manager
             .start_kafka_inlet_service(
-                context,
                 Address::from_string(body.address()),
                 request.bind_address(),
                 request.brokers_port_range(),
@@ -63,14 +61,12 @@ impl NodeManagerWorker {
 
     pub(super) async fn start_kafka_outlet_service(
         &self,
-        context: &Context,
         body: StartServiceRequest<StartKafkaOutletRequest>,
     ) -> Result<Response<OutletStatus>, Response<Error>> {
         let request = body.request();
         match self
             .node_manager
             .start_kafka_outlet_service(
-                context,
                 Address::from_string(body.address()),
                 request.bootstrap_server_addr(),
                 request.tls(),
@@ -85,13 +81,12 @@ impl NodeManagerWorker {
 
     pub(crate) async fn delete_kafka_service(
         &self,
-        ctx: &Context,
         delete_service_request: DeleteServiceRequest,
         kind: KafkaServiceKind,
     ) -> Result<Response<()>, Response<Error>> {
         match self
             .node_manager
-            .delete_kafka_service(ctx, delete_service_request.address(), kind)
+            .delete_kafka_service(delete_service_request.address(), kind)
             .await
         {
             Ok(DeleteKafkaServiceResult::ServiceDeleted) => Ok(Response::ok()),
@@ -114,7 +109,6 @@ impl InMemoryNode {
     #[allow(clippy::too_many_arguments)]
     pub async fn start_kafka_inlet_service(
         &self,
-        context: &Context,
         interceptor_address: Address,
         bind_address: HostnamePort,
         brokers_port_range: (u16, u16),
@@ -127,6 +121,7 @@ impl InMemoryNode {
         consumer_policy_expression: Option<PolicyExpression>,
         producer_policy_expression: Option<PolicyExpression>,
     ) -> Result<InletStatus> {
+        let context = self.ctx();
         let consumer_policy_access_control = self
             .policy_access_control(
                 self.project_authority().clone(),
@@ -161,7 +156,7 @@ impl InMemoryNode {
         );
 
         self.node_manager
-            .start_key_exchanger_service(context, DefaultAddress::KEY_EXCHANGER_LISTENER.into())
+            .start_key_exchanger_service(DefaultAddress::KEY_EXCHANGER_LISTENER.into())
             .await?;
 
         let inlet_policy_expression = if let Some(inlet_policy_expression) = inlet_policy_expression
@@ -203,7 +198,6 @@ impl InMemoryNode {
         // create the kafka bootstrap inlet
         let inlet_status = self
             .create_inlet(
-                context,
                 bind_address,
                 route![interceptor_address.clone()],
                 route![
@@ -260,12 +254,12 @@ impl InMemoryNode {
 
     pub async fn start_kafka_outlet_service(
         &self,
-        context: &Context,
         service_address: Address,
         bootstrap_server_addr: HostnamePort,
         tls: bool,
         outlet_policy_expression: Option<PolicyExpression>,
     ) -> Result<OutletStatus> {
+        let context = self.ctx();
         let default_secure_channel_listener_flow_control_id = context
             .flow_controls()
             .get_flow_control_with_spawner(&DefaultAddress::SECURE_CHANNEL_LISTENER.into())
@@ -322,7 +316,6 @@ impl InMemoryNode {
 
         let outlet_status = self
             .create_outlet(
-                context,
                 bootstrap_server_addr,
                 tls,
                 Some(KAFKA_OUTLET_BOOTSTRAP_ADDRESS.into()),
@@ -347,11 +340,11 @@ impl InMemoryNode {
     /// The expected kind must match the actual kind
     pub async fn delete_kafka_service(
         &self,
-        ctx: &Context,
         address: Address,
         kind: KafkaServiceKind,
     ) -> Result<DeleteKafkaServiceResult> {
         debug!(address = %address, kind = %kind, "Deleting kafka service");
+        let ctx = self.ctx();
         match self.registry.kafka_services.get(&address) {
             None => Ok(DeleteKafkaServiceResult::ServiceNotFound { address, kind }),
             Some(e) => {

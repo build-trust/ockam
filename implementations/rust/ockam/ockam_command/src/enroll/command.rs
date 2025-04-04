@@ -128,13 +128,9 @@ impl EnrollCommand {
 
         let user_info = self.enroll_identity(ctx, &opts, &node).await?;
 
-        if let Err(error) = retrieve_user_space_and_project(
-            &opts,
-            ctx,
-            &node,
-            self.skip_orchestrator_resources_creation,
-        )
-        .await
+        if let Err(error) =
+            retrieve_user_space_and_project(&opts, &node, self.skip_orchestrator_resources_creation)
+                .await
         {
             // Display output to user
             opts.terminal
@@ -351,28 +347,21 @@ fn ctrlc_handler(opts: CommandGlobalOpts) {
 #[instrument(skip_all, level = Level::TRACE)]
 async fn retrieve_user_space_and_project(
     opts: &CommandGlobalOpts,
-    ctx: &Context,
     node: &InMemoryNode,
     skip_orchestrator_resources_creation: bool,
 ) -> miette::Result<Project> {
     opts.terminal.write_line(fmt_separator!())?;
-    let space = get_user_space(opts, ctx, node, skip_orchestrator_resources_creation)
+    let space = get_user_space(opts, node, skip_orchestrator_resources_creation)
         .await
         .wrap_err("Unable to retrieve and set a Space as default")?
         .ok_or(miette!("No Space was found"))?;
-    let project = get_user_project(
-        opts,
-        ctx,
-        node,
-        skip_orchestrator_resources_creation,
-        &space,
-    )
-    .await
-    .wrap_err(format!(
-        "Unable to retrieve and set a Project as default with Space {}",
-        color_primary(&space.name)
-    ))?
-    .ok_or(miette!("No Project was found"))?;
+    let project = get_user_project(opts, node, skip_orchestrator_resources_creation, &space)
+        .await
+        .wrap_err(format!(
+            "Unable to retrieve and set a Project as default with Space {}",
+            color_primary(&space.name)
+        ))?
+        .ok_or(miette!("No Project was found"))?;
     opts.terminal.write_line(fmt_separator!())?;
     Ok(project)
 }
@@ -406,7 +395,6 @@ pub async fn enroll_with_node(
 
 async fn get_user_space(
     opts: &CommandGlobalOpts,
-    ctx: &Context,
     node: &InMemoryNode,
     skip_orchestrator_resources_creation: bool,
 ) -> miette::Result<Option<Space>> {
@@ -420,7 +408,7 @@ async fn get_user_space(
         if let Some(spinner) = sp.as_ref() {
             spinner.set_message("Checking for any existing Spaces...");
         }
-        node.get_spaces(ctx).await?
+        node.get_spaces().await?
     };
 
     let subscription_page = subscription_page()?.to_string();
@@ -440,7 +428,7 @@ async fn get_user_space(
                 return Ok(None);
             }
 
-            ask_user_to_subscribe_and_wait_for_space_to_be_ready(opts, ctx, node).await?
+            ask_user_to_subscribe_and_wait_for_space_to_be_ready(opts, node).await?
         }
         Some(space) => {
             opts.terminal.write_line(fmt_log!(
@@ -458,7 +446,7 @@ async fn get_user_space(
                         "Please go to {} and subscribe to use your Space.",
                         color_uri(&subscription_page)
                     ))?;
-                    ask_user_to_subscribe_and_wait_for_space_to_be_ready(opts, ctx, node).await?
+                    ask_user_to_subscribe_and_wait_for_space_to_be_ready(opts, node).await?
                 }
                 Some(subscription) => {
                     // if there is a subscription, check that it's not expired
@@ -481,8 +469,7 @@ async fn get_user_space(
                             };
                             opts.terminal.write_line(fmt_log!("{}", color_warn(msg)))?;
                         }
-                        ask_user_to_subscribe_and_wait_for_space_to_be_ready(opts, ctx, node)
-                            .await?
+                        ask_user_to_subscribe_and_wait_for_space_to_be_ready(opts, node).await?
                     }
                     // otherwise return the space as is
                     else {
@@ -512,7 +499,6 @@ async fn get_user_space(
 
 async fn ask_user_to_subscribe_and_wait_for_space_to_be_ready(
     opts: &CommandGlobalOpts,
-    ctx: &Context,
     node: &InMemoryNode,
 ) -> Result<Space> {
     let subscription_page = subscription_page()?.to_string();
@@ -554,7 +540,7 @@ async fn ask_user_to_subscribe_and_wait_for_space_to_be_ready(
         spinner.set_message(msg);
     }
     let space = loop {
-        let spaces = node.get_spaces(ctx).await?;
+        let spaces = node.get_spaces().await?;
         if let Some(space) = spaces.into_iter().next() {
             if space.has_valid_subscription() {
                 break space;
@@ -567,7 +553,6 @@ async fn ask_user_to_subscribe_and_wait_for_space_to_be_ready(
 
 async fn get_user_project(
     opts: &CommandGlobalOpts,
-    ctx: &Context,
     node: &InMemoryNode,
     skip_orchestrator_resources_creation: bool,
     space: &Space,
@@ -583,7 +568,7 @@ async fn get_user_project(
         if let Some(spinner) = sp.as_ref() {
             spinner.set_message("Checking for any existing Projects...");
         }
-        node.get_admin_projects(ctx).await?
+        node.get_admin_projects().await?
     };
 
     // If the space has no projects, create one
@@ -606,7 +591,7 @@ async fn get_user_project(
             let project_name = "default".to_string();
             let get_project = async {
                 let project = node
-                    .create_project(ctx, &space.name, &project_name, vec![])
+                    .create_project(&space.name, &project_name, vec![])
                     .await?;
                 *is_finished.lock().await = true;
                 Ok(project)
@@ -624,7 +609,7 @@ async fn get_user_project(
                 color_primary(&project_name)
             ))?;
 
-            check_for_project_completion(opts, ctx, node, project).await?
+            check_for_project_completion(opts, node, project).await?
         }
         Some(project) => {
             opts.terminal.write_line(fmt_log!(
@@ -636,7 +621,7 @@ async fn get_user_project(
         }
     };
 
-    let project = check_project_readiness(opts, ctx, node, project).await?;
+    let project = check_project_readiness(opts, node, project).await?;
     // store the updated project
     opts.state.projects().store_project(project.clone()).await?;
 

@@ -113,7 +113,6 @@ impl Command for TicketCommand {
 
         let authority_node_client = node
             .create_authority_client_with_project(
-                ctx,
                 &project,
                 Some(identity),
                 cmd.skip_controller_call,

@@ -26,7 +26,6 @@ use ockam_core::api::{Error, Response};
 use ockam_core::compat::sync::Arc;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_multiaddr::MultiAddr;
-use ockam_node::Context;
 
 #[derive(PartialOrd, PartialEq, Debug)]
 pub enum SecureChannelType {
@@ -43,7 +42,6 @@ impl NodeManagerWorker {
     pub(super) async fn create_secure_channel(
         &mut self,
         create_secure_channel: CreateSecureChannelRequest,
-        ctx: &Context,
     ) -> Result<Response<CreateSecureChannelResponse>, Response<Error>> {
         let CreateSecureChannelRequest {
             addr,
@@ -57,7 +55,6 @@ impl NodeManagerWorker {
         let response = self
             .node_manager
             .create_secure_channel(
-                ctx,
                 addr,
                 identity,
                 authorized_identifiers,
@@ -75,7 +72,6 @@ impl NodeManagerWorker {
     pub fn delete_secure_channel(
         &self,
         delete_secure_channel: DeleteSecureChannelRequest,
-        ctx: &Context,
     ) -> Result<Response<DeleteSecureChannelResponse>, Response<Error>> {
         let DeleteSecureChannelRequest {
             channel: address, ..
@@ -83,7 +79,7 @@ impl NodeManagerWorker {
 
         let response = self
             .node_manager
-            .delete_secure_channel(ctx, &address)
+            .delete_secure_channel(&address)
             .map(|_| Response::ok().body(DeleteSecureChannelResponse::new(Some(address))))?;
         Ok(response)
     }
@@ -111,7 +107,6 @@ impl NodeManagerWorker {
     pub async fn create_secure_channel_listener(
         &self,
         create_secure_channel_listener: CreateSecureChannelListenerRequest,
-        ctx: &Context,
     ) -> Result<Response<()>, Response<Error>> {
         let CreateSecureChannelListenerRequest {
             addr,
@@ -126,7 +121,6 @@ impl NodeManagerWorker {
                 addr,
                 authorized_identifiers,
                 identity_name,
-                ctx,
                 SecureChannelType::KeyExchangeAndMessages,
             )
             .await
@@ -137,13 +131,12 @@ impl NodeManagerWorker {
     pub fn delete_secure_channel_listener(
         &self,
         delete_secure_channel_listener: DeleteSecureChannelListenerRequest,
-        ctx: &Context,
     ) -> Result<Response<DeleteSecureChannelListenerResponse>, Response<Error>> {
         let DeleteSecureChannelListenerRequest { addr } = delete_secure_channel_listener;
 
         let response = self
             .node_manager
-            .delete_secure_channel_listener(ctx, &addr)
+            .delete_secure_channel_listener(&addr)
             .map(|_| Response::ok().body(DeleteSecureChannelListenerResponse::new(addr)))?;
         Ok(response)
     }
@@ -170,7 +163,6 @@ impl NodeManager {
     #[allow(clippy::too_many_arguments)]
     pub async fn create_secure_channel(
         &self,
-        ctx: &Context,
         addr: MultiAddr,
         identity_name: Option<String>,
         authorized_identifiers: Option<Vec<Identifier>>,
@@ -181,11 +173,10 @@ impl NodeManager {
         let identifier = self.get_identifier_by_name(identity_name.clone()).await?;
 
         let connection = self
-            .make_connection(ctx, &addr, identifier.clone(), None, timeout)
+            .make_connection(&addr, identifier.clone(), None, timeout)
             .await?;
         let sc = self
             .create_secure_channel_internal(
-                ctx,
                 connection.route()?,
                 &identifier,
                 authorized_identifiers,
@@ -202,7 +193,6 @@ impl NodeManager {
     #[allow(clippy::too_many_arguments)]
     pub(crate) async fn create_secure_channel_internal(
         &self,
-        ctx: &Context,
         sc_route: Route,
         identifier: &Identifier,
         authorized_identifiers: Option<Vec<Identifier>>,
@@ -211,6 +201,7 @@ impl NodeManager {
         secure_channel_type: SecureChannelType,
     ) -> Result<SecureChannel> {
         debug!(route = %sc_route, %identifier, "initiating secure channel");
+        let ctx = self.ctx();
         let options = SecureChannelOptions::new();
 
         let options = if let Some(timeout) = timeout {
@@ -260,7 +251,8 @@ impl NodeManager {
         Ok(sc)
     }
 
-    pub fn delete_secure_channel(&self, ctx: &Context, addr: &Address) -> Result<()> {
+    pub fn delete_secure_channel(&self, addr: &Address) -> Result<()> {
+        let ctx = self.ctx();
         debug!(%addr, "deleting secure channel");
         if self.registry.secure_channels.get_by_addr(addr).is_none() {
             return Err(ockam_core::Error::new(
@@ -302,7 +294,6 @@ impl NodeManager {
 impl NodeManager {
     pub(super) async fn start_key_exchanger_service(
         &self,
-        context: &Context,
         address: Address,
     ) -> Result<SecureChannelListener> {
         // skip creation if it already exists
@@ -314,7 +305,6 @@ impl NodeManager {
             address.clone(),
             None,
             None,
-            context,
             SecureChannelType::KeyExchangeOnly,
         )
         .await
@@ -325,13 +315,13 @@ impl NodeManager {
         address: Address,
         authorized_identifiers: Option<Vec<Identifier>>,
         identity_name: Option<String>,
-        ctx: &Context,
         secure_channel_type: SecureChannelType,
     ) -> Result<SecureChannelListener> {
         debug!(
             "Handling request to create a new secure channel listener: {}",
             address
         );
+        let ctx = self.ctx();
 
         let named_identity = match identity_name {
             Some(identity_name) => self.cli_state.get_named_identity(&identity_name).await?,
@@ -419,12 +409,9 @@ impl NodeManager {
         Ok(listener)
     }
 
-    pub fn delete_secure_channel_listener(
-        &self,
-        ctx: &Context,
-        addr: &Address,
-    ) -> Result<SecureChannelListener> {
+    pub fn delete_secure_channel_listener(&self, addr: &Address) -> Result<SecureChannelListener> {
         debug!("deleting secure channel listener: {addr}");
+        let ctx = self.ctx();
         ctx.stop_address(addr)?;
         self.registry
             .secure_channel_listeners

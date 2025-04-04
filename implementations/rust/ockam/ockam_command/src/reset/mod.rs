@@ -102,7 +102,7 @@ async fn delete_orchestrator_resources_impl(
 ) -> miette::Result<()> {
     let node = InMemoryNode::start(ctx, opts.state.clone()).await?;
     let spaces = node
-        .get_spaces(ctx)
+        .get_spaces()
         .await
         .wrap_err("Failed to retrieve spaces from the Orchestrator")?;
     if spaces.is_empty() {
@@ -119,7 +119,7 @@ async fn delete_orchestrator_resources_impl(
                 color!(space.name, OckamColor::PrimaryResource)
             ))
         };
-        node.delete_space(ctx, &space.id).await?;
+        node.delete_space(&space.id).await?;
         if let Some(s) = pb.as_ref() {
             s.set_message(format!(
                 "Space {} deleted from the Orchestrator",

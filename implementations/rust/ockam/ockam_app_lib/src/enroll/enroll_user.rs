@@ -147,13 +147,12 @@ impl AppState {
     async fn retrieve_space(&self) -> Result<Space> {
         info!("retrieving the user's space");
         let node_manager = self.node_manager().await;
-        let context = self.context();
 
         // list the spaces that the user can access
         // and sort them by name to make sure to get the same space every time
         // if several spaces are available
         let spaces = {
-            let mut spaces = node_manager.get_spaces(&context).await?;
+            let mut spaces = node_manager.get_spaces().await?;
             spaces.sort_by(|s1, s2| s1.name.cmp(&s2.name));
             spaces
         };
@@ -164,9 +163,7 @@ impl AppState {
             Some(space) => space.clone(),
             None => {
                 let space_name = cli_state::random_name();
-                node_manager
-                    .create_space(&self.context(), &space_name, vec![])
-                    .await?
+                node_manager.create_space(&space_name, vec![]).await?
             }
         };
 
@@ -176,7 +173,7 @@ impl AppState {
     async fn retrieve_project(&self, space: &Space) -> Result<Project> {
         info!("retrieving the user project");
         let node_manager = self.node_manager().await;
-        let projects = node_manager.get_admin_projects(&self.context()).await?;
+        let projects = node_manager.get_admin_projects().await?;
         let main_project = projects.iter().find(|p| p.name() == PROJECT_NAME);
 
         let project = match main_project {
@@ -190,16 +187,13 @@ impl AppState {
                         This can take up to 3 minutes."
                             .to_string(),
                 });
-                let ctx = &self.context();
                 let project = node_manager
-                    .create_project(ctx, &space.name, PROJECT_NAME, vec![])
+                    .create_project(&space.name, PROJECT_NAME, vec![])
                     .await?;
                 let project = node_manager
-                    .wait_until_project_creation_operation_is_complete(ctx, project)
+                    .wait_until_project_creation_operation_is_complete(project)
                     .await?;
-                node_manager
-                    .wait_until_project_is_ready(ctx, project)
-                    .await?
+                node_manager.wait_until_project_is_ready(project).await?
             }
         };
         // set the selected project as the default one

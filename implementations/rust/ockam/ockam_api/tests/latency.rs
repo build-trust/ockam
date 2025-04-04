@@ -35,7 +35,6 @@ pub fn measure_message_latency_two_nodes() {
             let secure_channel = first_node
                 .node_manager
                 .create_secure_channel(
-                    &first_node.context,
                     second_node
                         .listen_address()
                         .await
@@ -133,7 +132,6 @@ pub fn measure_buffer_latency_two_nodes_portal() {
             let _outlet_status = second_node
                 .node_manager
                 .create_outlet(
-                    &second_node.context,
                     echo_server_handle.chosen_addr.clone(),
                     false,
                     Some(Address::from_string("outlet")),
@@ -152,7 +150,6 @@ pub fn measure_buffer_latency_two_nodes_portal() {
             let inlet_status = first_node
                 .node_manager
                 .create_inlet(
-                    &first_node.context,
                     HostnamePort::localhost(0),
                     route![],
                     route![],
@@ -233,7 +230,6 @@ pub fn measure_connection_latency_two_nodes_portal() {
             let _outlet_status = second_node
                 .node_manager
                 .create_outlet(
-                    &second_node.context,
                     echo_server_handle.chosen_addr.clone(),
                     false,
                     Some(Address::from_string("outlet")),
@@ -252,7 +248,6 @@ pub fn measure_connection_latency_two_nodes_portal() {
             let inlet_status = first_node
                 .node_manager
                 .create_inlet(
-                    &first_node.context,
                     HostnamePort::new("127.0.0.1", 0)?,
                     route![],
                     route![],

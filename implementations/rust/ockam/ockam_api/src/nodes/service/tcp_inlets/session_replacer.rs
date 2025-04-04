@@ -99,7 +99,6 @@ impl InletSessionReplacer {
 
         node_manager
             .access_control(
-                &self.context,
                 authority,
                 self.resource.clone(),
                 Action::HandleMessage,
@@ -140,7 +139,6 @@ impl InletSessionReplacer {
 
         let connection = node_manager
             .make_connection(
-                &self.context,
                 &self.outlet_addr,
                 self.secure_channel_identifier
                     .clone()
@@ -242,7 +240,7 @@ impl InletSessionReplacer {
 
     fn close_connection(&mut self, node_manager: &NodeManager) {
         if let Some(connection) = self.connection.take() {
-            let result = connection.close(&self.context, node_manager);
+            let result = connection.close(node_manager);
             if let Err(err) = result {
                 error!(?err, "Failed to close connection");
             }
@@ -376,7 +374,6 @@ impl AdditionalSessionReplacer for InletSessionReplacer {
 
         let additional_sc = node_manager
             .create_secure_channel_internal(
-                &self.context,
                 additional_sc_route,
                 self.secure_channel_identifier
                     .as_ref()

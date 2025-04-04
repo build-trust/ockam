@@ -128,8 +128,7 @@ impl AddonConfigureOktaSubcommand {
         let response = controller
             .configure_okta_addon(ctx, &project_id, okta_config)
             .await?;
-        check_configuration_completion(&opts, ctx, &node, &project_id, &response.operation_id)
-            .await?;
+        check_configuration_completion(&opts, &node, &project_id, &response.operation_id).await?;
 
         opts.terminal
             .write_line(fmt_ok!("Okta addon configured successfully"))?;

@@ -22,8 +22,9 @@ impl NodeManagerWorker {
     }
 
     // TODO: This is never called.
-    pub async fn stop(&self, ctx: &Context) -> Result<()> {
-        self.node_manager.stop(ctx).await?;
+    pub async fn stop(&self) -> Result<()> {
+        let ctx = self.node_manager.tcp_transport.ctx();
+        self.node_manager.stop().await?;
         ctx.stop_address(&NODEMANAGER_ADDR.into())?;
         Ok(())
     }
@@ -33,11 +34,7 @@ impl NodeManagerWorker {
     //////// Request matching and response handling ////////
 
     #[instrument(skip_all, fields(method = ?request.header().method(), path = request.header().path()), level = Level::TRACE)]
-    async fn handle_request(
-        &mut self,
-        ctx: &mut Context,
-        request: Request<Vec<u8>>,
-    ) -> Result<Response<Vec<u8>>> {
+    async fn handle_request(&mut self, request: Request<Vec<u8>>) -> Result<Response<Vec<u8>>> {
         let (header, body) = request.into_parts();
         let body = body.unwrap_or_default();
         debug! {
@@ -73,8 +70,7 @@ impl NodeManagerWorker {
             }
             (Post, ["node", "tcp", "connection"]) => encode_response(
                 &header,
-                self.create_tcp_connection(ctx, Decodable::decode(&body)?)
-                    .await,
+                self.create_tcp_connection(Decodable::decode(&body)?).await,
             ),
             (Delete, ["node", "tcp", "connection"]) => encode_response(
                 &header,
@@ -105,12 +101,11 @@ impl NodeManagerWorker {
             }
             (Post, ["node", "secure_channel"]) => encode_response(
                 &header,
-                self.create_secure_channel(Decodable::decode(&body)?, ctx)
-                    .await,
+                self.create_secure_channel(Decodable::decode(&body)?).await,
             ),
             (Delete, ["node", "secure_channel"]) => encode_response(
                 &header,
-                self.delete_secure_channel(Decodable::decode(&body)?, ctx),
+                self.delete_secure_channel(Decodable::decode(&body)?),
             ),
             (Get, ["node", "show_secure_channel"]) => encode_response(
                 &header,
@@ -118,12 +113,12 @@ impl NodeManagerWorker {
             ),
             (Post, ["node", "secure_channel_listener"]) => encode_response(
                 &header,
-                self.create_secure_channel_listener(Decodable::decode(&body)?, ctx)
+                self.create_secure_channel_listener(Decodable::decode(&body)?)
                     .await,
             ),
             (Delete, ["node", "secure_channel_listener"]) => encode_response(
                 &header,
-                self.delete_secure_channel_listener(Decodable::decode(&body)?, ctx),
+                self.delete_secure_channel_listener(Decodable::decode(&body)?),
             ),
             (Get, ["node", "show_secure_channel_listener"]) => encode_response(
                 &header,
@@ -133,57 +128,55 @@ impl NodeManagerWorker {
             // ==*== Services ==*==
             (Post, ["node", "services", DefaultAddress::UPPERCASE_SERVICE]) => encode_response(
                 &header,
-                self.start_uppercase_service(ctx, Decodable::decode(&body)?),
+                self.start_uppercase_service(Decodable::decode(&body)?),
             ),
             (Post, ["node", "services", DefaultAddress::ECHO_SERVICE]) => encode_response(
                 &header,
-                self.start_echoer_service(ctx, Decodable::decode(&body)?)
-                    .await,
+                self.start_echoer_service(Decodable::decode(&body)?).await,
             ),
-            (Post, ["node", "services", DefaultAddress::HOP_SERVICE]) => encode_response(
-                &header,
-                self.start_hop_service(ctx, Decodable::decode(&body)?),
-            ),
+            (Post, ["node", "services", DefaultAddress::HOP_SERVICE]) => {
+                encode_response(&header, self.start_hop_service(Decodable::decode(&body)?))
+            }
             (Post, ["node", "services", DefaultAddress::KAFKA_OUTLET]) => encode_response(
                 &header,
-                self.start_kafka_outlet_service(ctx, Decodable::decode(&body)?)
+                self.start_kafka_outlet_service(Decodable::decode(&body)?)
                     .await,
             ),
             (Delete, ["node", "services", DefaultAddress::KAFKA_OUTLET]) => encode_response(
                 &header,
-                self.delete_kafka_service(ctx, Decodable::decode(&body)?, KafkaServiceKind::Outlet)
+                self.delete_kafka_service(Decodable::decode(&body)?, KafkaServiceKind::Outlet)
                     .await,
             ),
             (Post, ["node", "services", DefaultAddress::KAFKA_INLET]) => encode_response(
                 &header,
-                self.start_kafka_inlet_service(ctx, Decodable::decode(&body)?)
+                self.start_kafka_inlet_service(Decodable::decode(&body)?)
                     .await,
             ),
             (Delete, ["node", "services", DefaultAddress::KAFKA_INLET]) => encode_response(
                 &header,
-                self.delete_kafka_service(ctx, Decodable::decode(&body)?, KafkaServiceKind::Inlet)
+                self.delete_kafka_service(Decodable::decode(&body)?, KafkaServiceKind::Inlet)
                     .await,
             ),
             (Post, ["node", "services", DefaultAddress::HTTP_HEADERS_SERVICE]) => encode_response(
                 &header,
-                self.start_http_header_service(ctx, Decodable::decode(&body)?)
+                self.start_http_header_service(Decodable::decode(&body)?)
                     .await,
             ),
             (Delete, ["node", "services", DefaultAddress::HTTP_HEADERS_SERVICE]) => {
                 encode_response(
                     &header,
-                    self.delete_http_overwrite_header_service(ctx, Decodable::decode(&body)?)
+                    self.delete_http_overwrite_header_service(Decodable::decode(&body)?)
                         .await,
                 )
             }
             (Post, ["node", "services", DefaultAddress::LEASE_MANAGER]) => encode_response(
                 &header,
-                self.start_influxdb_lease_issuer_service(ctx, Decodable::decode(&body)?)
+                self.start_influxdb_lease_issuer_service(Decodable::decode(&body)?)
                     .await,
             ),
             (Delete, ["node", "services", DefaultAddress::LEASE_MANAGER]) => encode_response(
                 &header,
-                self.delete_influxdb_lease_issuer_service(ctx, Decodable::decode(&body)?),
+                self.delete_influxdb_lease_issuer_service(Decodable::decode(&body)?),
             ),
             (Get, ["node", "services"]) => encode_response(&header, self.list_services()),
             (Get, ["node", "services", service_type]) => {
@@ -200,8 +193,7 @@ impl NodeManagerWorker {
             }
             (Post, ["node", "relay"]) => encode_response(
                 &header,
-                self.create_relay(ctx, &header, Decodable::decode(&body)?)
-                    .await,
+                self.create_relay(&header, Decodable::decode(&body)?).await,
             ),
 
             // ==*== Inlets & Outlets ==*==
@@ -214,14 +206,12 @@ impl NodeManagerWorker {
                 let addr: Address = addr.to_string().into();
                 encode_response(&header, self.show_outlet(&addr))
             }
-            (Post, ["node", "inlet"]) => encode_response(
-                &header,
-                self.create_inlet(ctx, Decodable::decode(&body)?).await,
-            ),
-            (Post, ["node", "outlet"]) => encode_response(
-                &header,
-                self.create_outlet(ctx, Decodable::decode(&body)?).await,
-            ),
+            (Post, ["node", "inlet"]) => {
+                encode_response(&header, self.create_inlet(Decodable::decode(&body)?).await)
+            }
+            (Post, ["node", "outlet"]) => {
+                encode_response(&header, self.create_outlet(Decodable::decode(&body)?).await)
+            }
             (Delete, ["node", "outlet", addr]) => {
                 let addr: Address = addr.to_string().into();
                 encode_response(&header, self.delete_outlet(&addr).await)
@@ -234,23 +224,22 @@ impl NodeManagerWorker {
             // ==*== InfluxDB Inlets & Outlets  ==*==
             (Post, ["node", "influxdb_inlet"]) => encode_response(
                 &header,
-                self.start_influxdb_inlet_service(ctx, Decodable::decode(&body)?)
+                self.start_influxdb_inlet_service(Decodable::decode(&body)?)
                     .await,
             ),
             (Post, ["node", "influxdb_outlet"]) => encode_response(
                 &header,
-                self.start_influxdb_outlet_service(ctx, Decodable::decode(&body)?)
+                self.start_influxdb_outlet_service(Decodable::decode(&body)?)
                     .await,
             ),
 
             // ==*== Flow Controls ==*==
-            (Post, ["node", "flow_controls", "add_consumer"]) => encode_response(
-                &header,
-                self.add_consumer(ctx, Decodable::decode(&body)?).await,
-            ),
+            (Post, ["node", "flow_controls", "add_consumer"]) => {
+                encode_response(&header, self.add_consumer(Decodable::decode(&body)?).await)
+            }
 
             // ==*== Workers ==*==
-            (Get, ["node", "workers"]) => encode_response(&header, self.list_workers(ctx).await),
+            (Get, ["node", "workers"]) => encode_response(&header, self.list_workers().await),
 
             // ==*== Policies ==*==
             (Post, ["policy", action]) => {
@@ -283,8 +272,7 @@ impl NodeManagerWorker {
                 let send_message: SendMessage<Vec<u8>> = Decodable::decode(&body)?;
                 encode_response(
                     &header,
-                    self.send_message::<Vec<u8>, Vec<u8>>(ctx, send_message)
-                        .await,
+                    self.send_message::<Vec<u8>, Vec<u8>>(send_message).await,
                 )
             }
 
@@ -321,7 +309,7 @@ impl Worker for NodeManagerWorker {
         let return_route = msg.return_route().clone();
         let request = msg.into_body()?;
         let request_header = request.header().clone();
-        let r = match self.handle_request(ctx, request).await {
+        let r = match self.handle_request(request).await {
             Ok(r) => r,
             Err(err) => {
                 error! {

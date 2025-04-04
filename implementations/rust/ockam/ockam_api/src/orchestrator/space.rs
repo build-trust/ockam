@@ -181,54 +181,35 @@ impl CreateSpace {
 
 #[async_trait]
 pub trait Spaces {
-    async fn create_space(
-        &self,
-        ctx: &Context,
-        name: &str,
-        users: Vec<&str>,
-    ) -> miette::Result<Space>;
+    async fn create_space(&self, name: &str, users: Vec<&str>) -> miette::Result<Space>;
 
-    async fn get_space(&self, ctx: &Context, space_id: &str) -> miette::Result<Space>;
+    async fn get_space(&self, space_id: &str) -> miette::Result<Space>;
 
-    async fn get_space_by_name(&self, ctx: &Context, space_name: &str) -> miette::Result<Space>;
+    async fn get_space_by_name(&self, space_name: &str) -> miette::Result<Space>;
 
-    async fn delete_space(&self, ctx: &Context, space_id: &str) -> miette::Result<()>;
+    async fn delete_space(&self, space_id: &str) -> miette::Result<()>;
 
-    async fn delete_space_by_name(&self, ctx: &Context, space_name: &str) -> miette::Result<()>;
+    async fn delete_space_by_name(&self, space_name: &str) -> miette::Result<()>;
 
-    async fn get_spaces(&self, ctx: &Context) -> miette::Result<Vec<Space>>;
+    async fn get_spaces(&self) -> miette::Result<Vec<Space>>;
 
     async fn add_space_admin(
         &self,
-        ctx: &Context,
         space_id: &str,
         email: &EmailAddress,
     ) -> miette::Result<AdminInfo>;
 
-    async fn list_space_admins(
-        &self,
-        ctx: &Context,
-        space_id: &str,
-    ) -> miette::Result<Vec<AdminInfo>>;
+    async fn list_space_admins(&self, space_id: &str) -> miette::Result<Vec<AdminInfo>>;
 
-    async fn delete_space_admin(
-        &self,
-        ctx: &Context,
-        space_id: &str,
-        email: &EmailAddress,
-    ) -> miette::Result<()>;
+    async fn delete_space_admin(&self, space_id: &str, email: &EmailAddress) -> miette::Result<()>;
 }
 
 #[async_trait]
 impl Spaces for InMemoryNode {
     #[instrument(skip_all, fields(space_name = name), level = Level::TRACE)]
-    async fn create_space(
-        &self,
-        ctx: &Context,
-        name: &str,
-        users: Vec<&str>,
-    ) -> miette::Result<Space> {
+    async fn create_space(&self, name: &str, users: Vec<&str>) -> miette::Result<Space> {
         let controller = self.create_controller().await?;
+        let ctx = self.tcp_transport.ctx();
         let space = controller.create_space(ctx, name, users).await?;
         self.cli_state
             .store_space(
@@ -242,8 +223,9 @@ impl Spaces for InMemoryNode {
     }
 
     #[instrument(skip_all, fields(space_id = space_id), level = Level::TRACE)]
-    async fn get_space(&self, ctx: &Context, space_id: &str) -> miette::Result<Space> {
+    async fn get_space(&self, space_id: &str) -> miette::Result<Space> {
         let controller = self.create_controller().await?;
+        let ctx = self.tcp_transport.ctx();
         let space = controller.get_space(ctx, space_id).await?;
         self.cli_state
             .store_space(
@@ -257,17 +239,17 @@ impl Spaces for InMemoryNode {
     }
 
     #[instrument(skip_all, fields(space_name = space_name), level = Level::TRACE)]
-    async fn get_space_by_name(&self, ctx: &Context, space_name: &str) -> miette::Result<Space> {
+    async fn get_space_by_name(&self, space_name: &str) -> miette::Result<Space> {
         let space_id = self
             .cli_state
             .get_space_by_name(space_name)
             .await?
             .space_id();
-        self.get_space(ctx, &space_id).await
+        self.get_space(&space_id).await
     }
 
     #[instrument(skip_all, fields(space_id = space_id), level = Level::TRACE)]
-    async fn delete_space(&self, ctx: &Context, space_id: &str) -> miette::Result<()> {
+    async fn delete_space(&self, space_id: &str) -> miette::Result<()> {
         let space_projects = self
             .cli_state
             .projects()
@@ -277,29 +259,31 @@ impl Spaces for InMemoryNode {
             .filter(|p| p.space_id() == space_id)
             .collect::<Vec<Project>>();
         for project in space_projects {
-            self.delete_project(ctx, project.space_id(), project.project_id())
+            self.delete_project(project.space_id(), project.project_id())
                 .await?;
         }
 
         let controller = self.create_controller().await?;
+        let ctx = self.tcp_transport.ctx();
         controller.delete_space(ctx, space_id).await?;
         self.cli_state.delete_space(space_id).await?;
         Ok(())
     }
 
     #[instrument(skip_all, fields(space_name = space_name), level = Level::TRACE)]
-    async fn delete_space_by_name(&self, ctx: &Context, space_name: &str) -> miette::Result<()> {
+    async fn delete_space_by_name(&self, space_name: &str) -> miette::Result<()> {
         let space_id = self
             .cli_state
             .get_space_by_name(space_name)
             .await?
             .space_id();
-        self.delete_space(ctx, &space_id).await
+        self.delete_space(&space_id).await
     }
 
     #[instrument(skip_all, level = Level::TRACE)]
-    async fn get_spaces(&self, ctx: &Context) -> miette::Result<Vec<Space>> {
+    async fn get_spaces(&self) -> miette::Result<Vec<Space>> {
         let controller = self.create_controller().await?;
+        let ctx = self.tcp_transport.ctx();
         let spaces = controller.list_spaces(ctx).await?;
         for space in &spaces {
             self.cli_state
@@ -316,34 +300,27 @@ impl Spaces for InMemoryNode {
 
     async fn add_space_admin(
         &self,
-        ctx: &Context,
         space_id: &str,
         email: &EmailAddress,
     ) -> miette::Result<AdminInfo> {
         let controller = self.create_controller().await?;
+        let ctx = self.tcp_transport.ctx();
         let res = controller.add_space_admin(ctx, space_id, email).await?;
-        self.get_space(ctx, space_id).await?;
+        self.get_space(space_id).await?;
         Ok(res)
     }
 
-    async fn list_space_admins(
-        &self,
-        ctx: &Context,
-        space_id: &str,
-    ) -> miette::Result<Vec<AdminInfo>> {
+    async fn list_space_admins(&self, space_id: &str) -> miette::Result<Vec<AdminInfo>> {
         let controller = self.create_controller().await?;
+        let ctx = self.tcp_transport.ctx();
         controller.list_space_admins(ctx, space_id).await
     }
 
-    async fn delete_space_admin(
-        &self,
-        ctx: &Context,
-        space_id: &str,
-        email: &EmailAddress,
-    ) -> miette::Result<()> {
+    async fn delete_space_admin(&self, space_id: &str, email: &EmailAddress) -> miette::Result<()> {
         let controller = self.create_controller().await?;
+        let ctx = self.tcp_transport.ctx();
         controller.delete_space_admin(ctx, space_id, email).await?;
-        self.get_space(ctx, space_id).await?;
+        self.get_space(space_id).await?;
         Ok(())
     }
 }

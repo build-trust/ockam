@@ -126,7 +126,6 @@ impl Command for CreateCommand {
                 ));
             }
             node.create_influxdb_outlet(
-                ctx,
                 cmd.to.clone().into(),
                 cmd.tls || cmd.to.is_tls(),
                 cmd.name.clone().map(Address::from).as_ref(),

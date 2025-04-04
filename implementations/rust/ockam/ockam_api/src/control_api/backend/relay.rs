@@ -11,19 +11,17 @@ use http::{Method, StatusCode};
 use ockam::identity::Identifier;
 use ockam_core::compat::rand::random_string;
 use ockam_multiaddr::MultiAddr;
-use ockam_node::Context;
 use std::sync::Arc;
 
 impl HttpControlNodeApiBackend {
     pub(super) async fn handle_relay(
         &self,
-        context: &Context,
         method: Method,
         resource_id: Option<&str>,
         body: Option<Vec<u8>>,
     ) -> Result<ControlApiHttpResponse, ControlApiError> {
         match method {
-            Method::POST => handle_relay_create(context, &self.node_manager, body).await,
+            Method::POST => handle_relay_create(&self.node_manager, body).await,
             Method::GET => match resource_id {
                 None => handle_relay_list(&self.node_manager).await,
                 Some(id) => handle_relay_get(&self.node_manager, id).await,
@@ -71,7 +69,6 @@ have an `ockam-relay` attribute set with the relay name.",
     )
 )]
 async fn handle_relay_create(
-    context: &Context,
     node_manager: &Arc<NodeManager>,
     body: Option<Vec<u8>>,
 ) -> Result<ControlApiHttpResponse, ControlApiError> {
@@ -102,7 +99,6 @@ async fn handle_relay_create(
 
     let result = node_manager
         .create_relay(
-            context,
             &to,
             name,
             authorized,

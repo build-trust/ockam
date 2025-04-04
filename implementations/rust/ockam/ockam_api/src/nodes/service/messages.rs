@@ -6,7 +6,7 @@ use minicbor::{encode, CborLen, Decode, Decoder, Encode, Encoder};
 use ockam_core::api::{Error, Request, Response};
 use ockam_core::{self, async_trait, Decodable, Encodable, Encoded, Message, Result};
 use ockam_multiaddr::MultiAddr;
-use ockam_node::{Context, MessageSendReceiveOptions};
+use ockam_node::MessageSendReceiveOptions;
 use std::str::FromStr;
 use std::time::Duration;
 use tracing::Level;
@@ -17,7 +17,6 @@ const TARGET: &str = "ockam_api::message";
 pub trait Messages {
     async fn send_message<T: Message, R: Message>(
         &self,
-        ctx: &Context,
         to: &MultiAddr,
         message: T,
         timeout: Option<Duration>,
@@ -29,13 +28,13 @@ impl Messages for NodeManager {
     #[instrument(skip_all, level = Level::TRACE)]
     async fn send_message<T: Message, R: Message>(
         &self,
-        ctx: &Context,
         to: &MultiAddr,
         message: T,
         timeout: Option<Duration>,
     ) -> miette::Result<R> {
+        let ctx = self.ctx();
         let connection = self
-            .make_connection(ctx, to, self.identifier(), None, timeout)
+            .make_connection(to, self.identifier(), None, timeout)
             .await
             .into_diagnostic()?;
         let route = connection.route().into_diagnostic()?;
@@ -60,11 +59,11 @@ impl Messages for BackgroundNodeClient {
     #[instrument(skip_all, level = Level::TRACE)]
     async fn send_message<T: Message, R: Message>(
         &self,
-        ctx: &Context,
         to: &MultiAddr,
         message: T,
         timeout: Option<Duration>,
     ) -> miette::Result<R> {
+        let ctx = self.tcp_transport.ctx();
         let request = Request::post("v0/message").body(SendMessage::new(to, message));
         Ok(self.clone().set_timeout(timeout).ask(ctx, request).await?)
     }
@@ -73,16 +72,12 @@ impl Messages for BackgroundNodeClient {
 impl NodeManagerWorker {
     pub(crate) async fn send_message<T: Message, R: Message>(
         &self,
-        ctx: &Context,
         send_message: SendMessage<T>,
     ) -> Result<Response<R>, Response<Error>> {
         let multiaddr = send_message.multiaddr()?;
         let msg = send_message.message;
 
-        let res = self
-            .node_manager
-            .send_message(ctx, &multiaddr, msg, None)
-            .await;
+        let res = self.node_manager.send_message(&multiaddr, msg, None).await;
         match res {
             Ok(r) => Ok(Response::ok().body(r)),
             Err(err) => {

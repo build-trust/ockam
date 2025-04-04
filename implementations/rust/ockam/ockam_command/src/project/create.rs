@@ -43,10 +43,10 @@ impl CreateCommand {
     pub(crate) async fn run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         let node = InMemoryNode::start(ctx, opts.state.clone()).await?;
         let project = node
-            .create_project(ctx, &self.space_name, &self.project_name, vec![])
+            .create_project(&self.space_name, &self.project_name, vec![])
             .await?;
-        let project = check_for_project_completion(&opts, ctx, &node, project).await?;
-        let project = check_project_readiness(&opts, ctx, &node, project).await?;
+        let project = check_for_project_completion(&opts, &node, project).await?;
+        let project = check_project_readiness(&opts, &node, project).await?;
         opts.terminal
             .to_stdout()
             .plain(project.item()?)

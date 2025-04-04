@@ -28,7 +28,7 @@ impl InfoCommand {
 
     pub async fn run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         let node = InMemoryNode::start(ctx, opts.state.clone()).await?;
-        let project = node.get_project_by_name(ctx, &self.name).await?;
+        let project = node.get_project_by_name(&self.name).await?;
         opts.terminal
             .to_stdout()
             .plain(project.item()?)

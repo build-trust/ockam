@@ -1,6 +1,5 @@
 use ockam::{route, Result};
 use ockam_core::api::{Error, Response};
-use ockam_node::Context;
 use tracing::Level;
 
 use crate::nodes::models::portal::{CreateInlet, InletStatus, InletStatusList};
@@ -15,7 +14,6 @@ impl NodeManagerWorker {
     #[instrument(skip_all, level = Level::TRACE)]
     pub(crate) async fn create_inlet(
         &self,
-        ctx: &Context,
         create_inlet: CreateInlet,
     ) -> Result<Response<InletStatus>, Response<Error>> {
         let CreateInlet {
@@ -39,7 +37,6 @@ impl NodeManagerWorker {
         match self
             .node_manager
             .create_inlet(
-                ctx,
                 listen_addr,
                 prefix_route,
                 route![],

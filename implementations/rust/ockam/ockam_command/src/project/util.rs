@@ -77,7 +77,6 @@ pub async fn get_projects_secure_channels_from_config_lookup(
         debug!("creating a secure channel to {project_access_route}");
         let secure_channel = node
             .create_secure_channel(
-                ctx,
                 &project_access_route,
                 project_identifier,
                 identity_name.clone(),
@@ -98,7 +97,6 @@ pub async fn get_projects_secure_channels_from_config_lookup(
 
 pub async fn check_project_readiness(
     opts: &CommandGlobalOpts,
-    ctx: &Context,
     node: &InMemoryNode,
     project: Project,
 ) -> Result<Project> {
@@ -107,13 +105,11 @@ pub async fn check_project_readiness(
         .take((ORCHESTRATOR_AWAIT_TIMEOUT.as_millis() / 5000) as usize);
 
     let pb = opts.terminal.spinner();
+    let project = check_project_ready(node, project, retry_strategy.clone(), pb.clone()).await?;
     let project =
-        check_project_ready(ctx, node, project, retry_strategy.clone(), pb.clone()).await?;
+        check_project_node_accessible(node, project, retry_strategy.clone(), pb.clone()).await?;
     let project =
-        check_project_node_accessible(ctx, node, project, retry_strategy.clone(), pb.clone())
-            .await?;
-    let project =
-        check_authority_node_accessible(ctx, node, project, retry_strategy, pb.clone()).await?;
+        check_authority_node_accessible(node, project, retry_strategy, pb.clone()).await?;
 
     if let Some(spinner) = pb.as_ref() {
         spinner.finish_and_clear();
@@ -122,7 +118,6 @@ pub async fn check_project_readiness(
 }
 
 async fn check_project_ready(
-    ctx: &Context,
     node: &InMemoryNode,
     project: Project,
     retry_strategy: Take<FixedInterval>,
@@ -141,7 +136,7 @@ async fn check_project_ready(
     let project: Project = Retry::spawn(retry_strategy.clone(), || async {
         // Handle the project show request result
         // so we can provide better errors in the case orchestrator does not respond timely
-        let project = node.get_project(ctx, project_id).await?;
+        let project = node.get_project(project_id).await?;
         let result: miette::Result<Project> = if project.is_ready() {
             Ok(project)
         } else {
@@ -154,7 +149,6 @@ async fn check_project_ready(
 }
 
 async fn check_project_node_accessible(
-    ctx: &Context,
     node: &InMemoryNode,
     project: Project,
     retry_strategy: Take<FixedInterval>,
@@ -194,6 +188,7 @@ async fn check_project_node_accessible(
         spinner.set_message("Establishing secure channel to project...");
     }
 
+    let ctx = node.ctx();
     Retry::spawn(retry_strategy.clone(), || async {
         if project_node.check_secure_channel(ctx).await.is_ok() {
             Ok(())
@@ -207,19 +202,19 @@ async fn check_project_node_accessible(
 }
 
 async fn check_authority_node_accessible(
-    ctx: &Context,
     node: &InMemoryNode,
     project: Project,
     retry_strategy: Take<FixedInterval>,
     spinner_option: Option<ProgressBar>,
 ) -> Result<Project> {
     let authority_node = node
-        .create_authority_client_with_project(ctx, &project, None, false)
+        .create_authority_client_with_project(&project, None, false)
         .await?;
 
     if let Some(spinner) = spinner_option.as_ref() {
         spinner.set_message("Establishing secure channel to project authority...");
     }
+    let ctx = node.ctx();
     Retry::spawn(retry_strategy.clone(), || async {
         if authority_node.check_secure_channel(ctx).await.is_ok() {
             Ok(())

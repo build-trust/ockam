@@ -4,7 +4,6 @@ use std::sync::Arc;
 use miette::IntoDiagnostic;
 use tracing::{debug, info, trace, warn};
 
-use ockam::Context;
 use ockam_api::cli_state::CliState;
 use ockam_api::nodes::models::relay::{RelayInfo, ReturnTiming};
 use ockam_api::nodes::InMemoryNode;
@@ -19,7 +18,6 @@ impl AppState {
     pub async fn refresh_relay(&self) {
         let cli_state = self.state().await;
         let node_manager = self.node_manager().await;
-        let context = self.context();
 
         if !self.is_enrolled().await.unwrap_or(false) {
             // During the enrollment phase the status would be enrollment-related
@@ -51,7 +49,7 @@ impl AppState {
         }
 
         let result = self
-            .create_relay_impl(&context, cli_state, node_manager.clone())
+            .create_relay_impl(cli_state, node_manager.clone())
             .await;
 
         if let Err(e) = result {
@@ -64,7 +62,6 @@ impl AppState {
     /// Once it's created, a `Session` worker will monitor it and recreate it whenever it's unresponsive
     async fn create_relay_impl(
         &self,
-        context: &Context,
         cli_state: Arc<CliState>,
         node_manager: Arc<InMemoryNode>,
     ) -> Result<()> {
@@ -85,7 +82,6 @@ impl AppState {
                     let relay_alias = relay_alias(cli_state).await?;
                     let relay = node_manager
                         .create_relay(
-                            context,
                             &project_address,
                             relay_alias.clone(),
                             None,

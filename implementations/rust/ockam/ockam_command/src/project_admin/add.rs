@@ -43,7 +43,7 @@ impl Command for AddCommand {
         )
         .await?;
         let admin = node
-            .add_project_admin(ctx, project.project_id(), &self.email)
+            .add_project_admin(project.project_id(), &self.email)
             .await?;
 
         opts.terminal

@@ -75,7 +75,6 @@ impl KafkaMessageResponseInterceptor for InletInterceptorImpl {
                 ApiKey::FindCoordinator => {
                     return self
                         .handle_find_coordinator_response(
-                            context,
                             &mut buffer,
                             &self.inlet_map,
                             &request_info,
@@ -87,7 +86,6 @@ impl KafkaMessageResponseInterceptor for InletInterceptorImpl {
                 ApiKey::Metadata => {
                     return self
                         .handle_metadata_response(
-                            context,
                             &mut buffer,
                             &self.inlet_map,
                             request_info,
@@ -183,7 +181,6 @@ impl InletInterceptorImpl {
     // to dedicated tcp inlet ports
     async fn handle_metadata_response(
         &self,
-        context: &mut Context,
         buffer: &mut Bytes,
         inlet_map: &KafkaInletController,
         request_info: RequestInfo,
@@ -213,9 +210,7 @@ impl InletInterceptorImpl {
         trace!("metadata response before: {:?}", &response);
 
         for broker in response.brokers.iter_mut() {
-            let inlet_address = inlet_map
-                .assert_inlet_for_broker(context, broker.node_id.0)
-                .await?;
+            let inlet_address = inlet_map.assert_inlet_for_broker(broker.node_id.0).await?;
 
             trace!(
                 "inlet_address: {} for broker {}",
@@ -238,7 +233,6 @@ impl InletInterceptorImpl {
 
     async fn handle_find_coordinator_response(
         &self,
-        context: &mut Context,
         buffer: &mut Bytes,
         inlet_map: &KafkaInletController,
         request_info: &RequestInfo,
@@ -253,7 +247,7 @@ impl InletInterceptorImpl {
         if request_info.request_api_version >= 4 {
             for coordinator in response.coordinators.iter_mut() {
                 let inlet_address = inlet_map
-                    .assert_inlet_for_broker(context, coordinator.node_id.0)
+                    .assert_inlet_for_broker(coordinator.node_id.0)
                     .await?;
 
                 coordinator.host = StrBytes::from_string(inlet_address.hostname());
@@ -261,7 +255,7 @@ impl InletInterceptorImpl {
             }
         } else {
             let inlet_address = inlet_map
-                .assert_inlet_for_broker(context, response.node_id.0)
+                .assert_inlet_for_broker(response.node_id.0)
                 .await?;
 
             response.host = StrBytes::from_string(inlet_address.hostname());
