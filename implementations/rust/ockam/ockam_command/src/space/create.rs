@@ -57,12 +57,8 @@ impl Command for CreateCommand {
             if let Some(pb) = pb.as_ref() {
                 pb.set_message("Creating a Space for you...");
             }
-            node.create_space(
-                ctx,
-                &self.name,
-                self.admins.iter().map(|a| a.as_ref()).collect(),
-            )
-            .await?
+            node.create_space(&self.name, self.admins.iter().map(|a| a.as_ref()).collect())
+                .await?
         };
         if let Ok(msg) = space.subscription_status_message() {
             opts.terminal.write_line(msg)?;

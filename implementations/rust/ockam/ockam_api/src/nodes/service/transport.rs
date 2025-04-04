@@ -3,7 +3,6 @@ use std::net::SocketAddr;
 use ockam::tcp::{TcpConnectionOptions, TcpListenerOptions};
 use ockam::Result;
 use ockam_core::api::{Error, Response};
-use ockam_node::Context;
 
 use super::{NodeManager, NodeManagerWorker};
 use crate::nodes::models::transport::{
@@ -39,11 +38,8 @@ impl NodeManager {
         Some(listener.into())
     }
 
-    async fn create_tcp_connection(
-        &self,
-        address: String,
-        ctx: &Context,
-    ) -> Result<TransportStatus> {
+    async fn create_tcp_connection(&self, address: String) -> Result<TransportStatus> {
+        let ctx = self.ctx();
         let options = TcpConnectionOptions::new();
 
         // Add all Hop workers as consumers for Demo purposes
@@ -135,14 +131,13 @@ impl NodeManagerWorker {
 
     pub(super) async fn create_tcp_connection(
         &self,
-        ctx: &Context,
         create: CreateTcpConnection,
     ) -> Result<Response<TransportStatus>, Response<Error>> {
         let CreateTcpConnection { addr, .. } = create;
         info!("Handling request to create a new TCP connection: {addr}");
 
         self.node_manager
-            .create_tcp_connection(addr.to_string(), ctx)
+            .create_tcp_connection(addr.to_string())
             .await
             .map(|status| Response::ok().body(status))
             .map_err(|msg| {

@@ -76,7 +76,7 @@ impl Command for SendCommand {
         let result = if let Some(node) = &self.from {
             let client =
                 BackgroundNodeClient::create_to_node(ctx, opts.state.clone(), node.as_str())?;
-            self.send_message(&client, ctx, &to).await?
+            self.send_message(&client, &to).await?
         } else {
             let identity_name = opts
                 .state
@@ -112,7 +112,7 @@ impl Command for SendCommand {
             let to = clean_projects_multiaddr(to, projects_sc)?;
             info!("sending to {to}");
             let n: &NodeManager = &node_manager;
-            self.send_message(n, ctx, &to).await?
+            self.send_message(n, &to).await?
         };
 
         opts.terminal.to_stdout().plain(result).write_line()?;
@@ -121,24 +121,19 @@ impl Command for SendCommand {
 }
 
 impl SendCommand {
-    async fn send_message(
-        self,
-        client: &impl Messages,
-        ctx: &Context,
-        to: &MultiAddr,
-    ) -> crate::Result<String> {
+    async fn send_message(self, client: &impl Messages, to: &MultiAddr) -> crate::Result<String> {
         if self.hex {
             let to_send = hex::decode(self.message.clone())
                 .into_diagnostic()
                 .context("The message is not a valid hex string")?;
             let response: Vec<u8> = client
-                .send_message(ctx, to, to_send, Some(self.timeout.timeout))
+                .send_message(to, to_send, Some(self.timeout.timeout))
                 .await
                 .map_err(Error::Retry)?;
             Ok(hex::encode(response))
         } else {
             client
-                .send_message(ctx, to, self.message, Some(self.timeout.timeout))
+                .send_message(to, self.message, Some(self.timeout.timeout))
                 .await
                 .map_err(Error::Retry)
                 .into_diagnostic()

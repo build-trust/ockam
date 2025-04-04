@@ -108,7 +108,7 @@ impl DeleteCommandTui for DeleteTui {
     async fn list_items_names(&self) -> miette::Result<Vec<String>> {
         Ok(self
             .node
-            .list_project_admins(&self.ctx, self.project.project_id())
+            .list_project_admins(self.project.project_id())
             .await?
             .into_iter()
             .map(|a| a.email)
@@ -118,7 +118,6 @@ impl DeleteCommandTui for DeleteTui {
     async fn delete_single(&self, item_name: &str) -> miette::Result<()> {
         self.node
             .delete_project_admin(
-                &self.ctx,
                 self.project.project_id(),
                 &EmailAddress::parse(item_name).into_diagnostic()?,
             )

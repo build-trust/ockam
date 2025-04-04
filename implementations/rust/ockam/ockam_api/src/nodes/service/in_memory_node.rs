@@ -191,7 +191,8 @@ impl InMemoryNode {
         self
     }
 
-    pub async fn stop(&self, ctx: &Context) -> Result<()> {
+    pub async fn stop(&self) -> Result<()> {
+        let ctx = self.ctx();
         for session in self.registry.inlets.values() {
             session.session.lock().await.stop().await;
         }
@@ -251,7 +252,6 @@ impl InMemoryNode {
 
     pub async fn create_authority_client_with_project(
         &self,
-        ctx: &Context,
         project: &Project,
         caller_identity_name: Option<String>,
         skip_controller_call: bool,
@@ -259,7 +259,6 @@ impl InMemoryNode {
         let client = self
             .node_manager
             .create_authority_client_with_project(
-                ctx,
                 project,
                 caller_identity_name,
                 skip_controller_call,
@@ -276,7 +275,6 @@ impl InMemoryNode {
 
     pub async fn create_authority_client_with_authority(
         &self,
-        ctx: &Context,
         authority_identifier: &Identifier,
         authority_route: &MultiAddr,
         caller_identity_name: Option<String>,
@@ -284,7 +282,6 @@ impl InMemoryNode {
         let client = self
             .node_manager
             .create_authority_client_with_authority(
-                ctx,
                 authority_identifier,
                 authority_route,
                 caller_identity_name,

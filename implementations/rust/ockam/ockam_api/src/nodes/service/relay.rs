@@ -34,7 +34,6 @@ use crate::{fmt_info, fmt_ok, fmt_warn};
 impl NodeManagerWorker {
     pub async fn create_relay(
         &self,
-        ctx: &Context,
         req: &RequestHeader,
         create_relay: CreateRelay,
     ) -> Result<Response<RelayInfo>, Response<Error>> {
@@ -49,7 +48,6 @@ impl NodeManagerWorker {
         match self
             .node_manager
             .create_relay(
-                ctx,
                 &address,
                 name.clone(),
                 authorized,
@@ -141,7 +139,6 @@ impl NodeManager {
     /// when the route is unresponsive
     pub async fn create_relay(
         self: &Arc<Self>,
-        ctx: &Context,
         address: &MultiAddr,
         alias: String,
         authorized: Option<Identifier>,
@@ -158,6 +155,7 @@ impl NodeManager {
             ));
         }
 
+        let ctx = self.ctx();
         let replacer = RelaySessionReplacer {
             node_manager: Arc::downgrade(self),
             context: ctx.try_clone()?,
@@ -262,7 +260,6 @@ impl NodeManager {
 impl InMemoryNode {
     pub async fn create_relay(
         &self,
-        ctx: &Context,
         address: &MultiAddr,
         alias: String,
         authorized: Option<Identifier>,
@@ -270,14 +267,7 @@ impl InMemoryNode {
         return_timing: ReturnTiming,
     ) -> Result<RelayInfo> {
         self.node_manager
-            .create_relay(
-                ctx,
-                address,
-                alias,
-                authorized,
-                relay_address,
-                return_timing,
-            )
+            .create_relay(address, alias, authorized, relay_address, return_timing)
             .await
     }
 
@@ -316,7 +306,6 @@ impl SessionReplacer for RelaySessionReplacer {
 
         let connection = node_manager
             .make_connection(
-                &self.context,
                 &self.addr.clone(),
                 node_manager.identifier(),
                 self.authorized.clone(),
@@ -359,7 +348,7 @@ impl SessionReplacer for RelaySessionReplacer {
         };
 
         if let Some(connection) = self.connection.take() {
-            let result = connection.close(&self.context, &node_manager);
+            let result = connection.close(&node_manager);
             if let Err(err) = result {
                 error!(?err, "Failed to close connection");
             }
@@ -406,7 +395,6 @@ impl SessionReplacer for RelaySessionReplacer {
 pub trait Relays {
     async fn create_relay(
         &self,
-        ctx: &Context,
         address: &MultiAddr,
         alias: String,
         authorized: Option<Identifier>,
@@ -419,13 +407,13 @@ pub trait Relays {
 impl Relays for BackgroundNodeClient {
     async fn create_relay(
         &self,
-        ctx: &Context,
         address: &MultiAddr,
         alias: String,
         authorized: Option<Identifier>,
         relay_address: Option<String>,
         return_timing: ReturnTiming,
     ) -> miette::Result<RelayInfo> {
+        let ctx = self.tcp_transport.ctx();
         let body = CreateRelay::new(
             address.clone(),
             alias,
@@ -441,7 +429,6 @@ impl Relays for BackgroundNodeClient {
 pub trait SecureChannelsCreation {
     async fn create_secure_channel(
         &self,
-        ctx: &Context,
         addr: &MultiAddr,
         authorized: Identifier,
         identity_name: Option<String>,
@@ -454,7 +441,6 @@ pub trait SecureChannelsCreation {
 impl SecureChannelsCreation for InMemoryNode {
     async fn create_secure_channel(
         &self,
-        ctx: &Context,
         addr: &MultiAddr,
         authorized: Identifier,
         identity_name: Option<String>,
@@ -463,7 +449,6 @@ impl SecureChannelsCreation for InMemoryNode {
     ) -> miette::Result<Address> {
         self.node_manager
             .create_secure_channel(
-                ctx,
                 addr.clone(),
                 identity_name,
                 Some(vec![authorized]),
@@ -481,7 +466,6 @@ impl SecureChannelsCreation for InMemoryNode {
 impl SecureChannelsCreation for BackgroundNodeClient {
     async fn create_secure_channel(
         &self,
-        ctx: &Context,
         addr: &MultiAddr,
         authorized: Identifier,
         identity_name: Option<String>,
@@ -494,6 +478,7 @@ impl SecureChannelsCreation for BackgroundNodeClient {
             identity_name,
             credential,
         );
+        let ctx = self.tcp_transport.ctx();
         let request = Request::post("/node/secure_channel").body(body);
         let response: CreateSecureChannelResponse = if let Some(t) = timeout {
             self.ask_with_timeout(ctx, request, t).await?

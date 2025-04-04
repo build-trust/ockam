@@ -27,11 +27,9 @@ impl State {
             for _ in 0..batch_size {
                 let node = self.node.clone();
                 let project_addr = self.config.project_addr();
-                let context = self.context.clone();
                 join_set.spawn(async move {
                     let id = Self::random_id();
                     node.create_relay(
-                        &context,
                         &project_addr,
                         id.clone(),
                         None,

@@ -208,7 +208,6 @@ impl CreateCommand {
                                 Address::from((LOCAL, cfg.address.clone())),
                                 cfg.authorized_identifiers.clone(),
                                 cfg.identity.clone(),
-                                ctx,
                                 SecureChannelType::KeyExchangeAndMessages,
                             )
                             .await?;

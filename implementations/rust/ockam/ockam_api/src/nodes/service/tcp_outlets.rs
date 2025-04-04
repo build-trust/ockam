@@ -5,7 +5,6 @@ use ockam_abac::{Action, PolicyExpression, Resource, ResourceType};
 use ockam_core::api::{Error, Request, Response};
 use ockam_core::async_trait;
 use ockam_core::errcode::{Kind, Origin};
-use ockam_node::Context;
 use tracing::Level;
 
 use crate::nodes::models::portal::{
@@ -21,7 +20,6 @@ impl NodeManagerWorker {
     #[instrument(skip_all, level = Level::TRACE)]
     pub(super) async fn create_outlet(
         &self,
-        ctx: &Context,
         create_outlet: CreateOutlet,
     ) -> Result<Response<OutletStatus>, Response<Error>> {
         let CreateOutlet {
@@ -39,7 +37,6 @@ impl NodeManagerWorker {
         match self
             .node_manager
             .create_outlet(
-                ctx,
                 hostname_port,
                 tls,
                 worker_addr,
@@ -100,7 +97,6 @@ impl NodeManager {
     #[instrument(skip_all, level = Level::TRACE)]
     pub async fn create_outlet(
         &self,
-        ctx: &Context,
         to: HostnamePort,
         tls: bool,
         worker_addr: Option<Address>,
@@ -112,6 +108,7 @@ impl NodeManager {
         enable_mptcp: bool,
     ) -> Result<OutletStatus> {
         let worker_addr = self.registry.outlets.generate_worker_addr(worker_addr);
+        let ctx = self.ctx();
 
         debug!(%to, address = %worker_addr, "creating outlet");
 
@@ -131,7 +128,6 @@ impl NodeManager {
             }
             OutletAccessControl::WithPolicyExpression(expression) => {
                 self.access_control(
-                    ctx,
                     self.project_authority(),
                     Resource::new(worker_addr.address(), ResourceType::TcpOutlet),
                     Action::HandleMessage,
@@ -259,7 +255,6 @@ pub trait Outlets {
     #[allow(clippy::too_many_arguments)]
     async fn create_outlet(
         &self,
-        ctx: &Context,
         to: HostnamePort,
         tls: bool,
         from: Option<&Address>,
@@ -276,7 +271,6 @@ impl Outlets for BackgroundNodeClient {
     #[instrument(skip_all, fields(to = % to, from = ? from), level = Level::TRACE)]
     async fn create_outlet(
         &self,
-        ctx: &Context,
         to: HostnamePort,
         tls: bool,
         from: Option<&Address>,
@@ -286,6 +280,7 @@ impl Outlets for BackgroundNodeClient {
         enable_nagle: bool,
         enable_mptcp: bool,
     ) -> miette::Result<OutletStatus> {
+        let ctx = self.tcp_transport.ctx();
         let mut payload = CreateOutlet::new(
             to,
             tls,

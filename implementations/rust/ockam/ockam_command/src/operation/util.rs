@@ -6,13 +6,11 @@ use ockam_api::nodes::InMemoryNode;
 use ockam_api::orchestrator::operation::Operations;
 use ockam_api::orchestrator::project::{Project, ProjectsOrchestratorApi};
 use ockam_api::{fmt_log, fmt_para};
-use ockam_node::Context;
 
 use crate::CommandGlobalOpts;
 
 pub async fn check_for_project_completion(
     opts: &CommandGlobalOpts,
-    ctx: &Context,
     node: &InMemoryNode,
     project: Project,
 ) -> miette::Result<Project> {
@@ -31,7 +29,7 @@ pub async fn check_for_project_completion(
         spinner.set_message(message);
     }
     let project = node
-        .wait_until_project_creation_operation_is_complete(ctx, project)
+        .wait_until_project_creation_operation_is_complete(project)
         .await?;
 
     if let Some(spinner) = pb.as_ref() {
@@ -44,7 +42,6 @@ pub async fn check_for_project_completion(
 #[allow(unused)]
 pub async fn check_for_operation_completion(
     opts: &CommandGlobalOpts,
-    ctx: &Context,
     node: &InMemoryNode,
     operation_id: &str,
     operation_name: &str,
@@ -62,6 +59,7 @@ pub async fn check_for_operation_completion(
         );
         spinner.set_message(message);
     }
+    let ctx = node.ctx();
     let result = node
         .wait_until_operation_is_complete(ctx, operation_id)
         .await;

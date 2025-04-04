@@ -3,7 +3,6 @@ use crate::orchestrator::email_address::EmailAddress;
 use crate::orchestrator::project::models::{AdminInfo, OrchestratorVersionInfo};
 use crate::orchestrator::project::{Project, ProjectsOrchestratorApi};
 use ockam_core::async_trait;
-use ockam_node::Context;
 use tracing::Level;
 
 #[async_trait]
@@ -11,11 +10,11 @@ impl ProjectsOrchestratorApi for InMemoryNode {
     #[instrument(skip_all, fields(project_name = project_name, space_name = space_name), level = Level::TRACE)]
     async fn create_project(
         &self,
-        ctx: &Context,
         space_name: &str,
         project_name: &str,
         users: Vec<String>,
     ) -> miette::Result<Project> {
+        let ctx = self.ctx();
         let space = self.cli_state.get_space_by_name(space_name).await?;
         let controller = self.create_controller().await?;
         let project = controller
@@ -30,10 +29,11 @@ impl ProjectsOrchestratorApi for InMemoryNode {
     }
 
     #[instrument(skip_all, fields(project_id = project_id), level = Level::TRACE)]
-    async fn get_project(&self, ctx: &Context, project_id: &str) -> miette::Result<Project> {
+    async fn get_project(&self, project_id: &str) -> miette::Result<Project> {
         let controller = self.create_controller().await?;
 
         // try to refresh the project from the controller
+        let ctx = self.ctx();
         match controller.get_project(ctx, project_id).await {
             Ok(project) => Ok(self
                 .cli_state
@@ -50,7 +50,6 @@ impl ProjectsOrchestratorApi for InMemoryNode {
     #[instrument(skip_all, fields(project_name = project_name), level = Level::TRACE)]
     async fn get_project_by_name_or_default(
         &self,
-        ctx: &Context,
         project_name: &Option<String>,
     ) -> miette::Result<Project> {
         let project_id = self
@@ -60,15 +59,11 @@ impl ProjectsOrchestratorApi for InMemoryNode {
             .await?
             .project_id()
             .to_string();
-        self.get_project(ctx, &project_id).await
+        self.get_project(&project_id).await
     }
 
     #[instrument(skip_all, fields(project_name = project_name), level = Level::TRACE)]
-    async fn get_project_by_name(
-        &self,
-        ctx: &Context,
-        project_name: &str,
-    ) -> miette::Result<Project> {
+    async fn get_project_by_name(&self, project_name: &str) -> miette::Result<Project> {
         let project_id = self
             .cli_state
             .projects()
@@ -76,17 +71,13 @@ impl ProjectsOrchestratorApi for InMemoryNode {
             .await?
             .project_id()
             .to_string();
-        self.get_project(ctx, &project_id).await
+        self.get_project(&project_id).await
     }
 
     #[instrument(skip_all, fields(project_id = project_id, space_id = space_id), level = Level::TRACE)]
-    async fn delete_project(
-        &self,
-        ctx: &Context,
-        space_id: &str,
-        project_id: &str,
-    ) -> miette::Result<()> {
+    async fn delete_project(&self, space_id: &str, project_id: &str) -> miette::Result<()> {
         let controller = self.create_controller().await?;
+        let ctx = self.ctx();
         controller.delete_project(ctx, space_id, project_id).await?;
         self.cli_state.reset_project_journey(project_id).await?;
         Ok(self.cli_state.projects().delete_project(project_id).await?)
@@ -95,7 +86,6 @@ impl ProjectsOrchestratorApi for InMemoryNode {
     #[instrument(skip_all, fields(project_name = project_name, space_name = space_name), level = Level::TRACE)]
     async fn delete_project_by_name(
         &self,
-        ctx: &Context,
         space_name: &str,
         project_name: &str,
     ) -> miette::Result<()> {
@@ -105,15 +95,13 @@ impl ProjectsOrchestratorApi for InMemoryNode {
             .projects()
             .get_project_by_name(project_name)
             .await?;
-        self.delete_project(ctx, &space.space_id(), project.project_id())
+        self.delete_project(&space.space_id(), project.project_id())
             .await
     }
 
     #[instrument(skip_all, level = Level::TRACE)]
-    async fn get_orchestrator_version_info(
-        &self,
-        ctx: &Context,
-    ) -> miette::Result<OrchestratorVersionInfo> {
+    async fn get_orchestrator_version_info(&self) -> miette::Result<OrchestratorVersionInfo> {
+        let ctx = self.ctx();
         Ok(self
             .create_controller()
             .await?
@@ -122,7 +110,7 @@ impl ProjectsOrchestratorApi for InMemoryNode {
     }
 
     #[instrument(skip_all, level = Level::TRACE)]
-    async fn get_admin_projects(&self, ctx: &Context) -> miette::Result<Vec<Project>> {
+    async fn get_admin_projects(&self) -> miette::Result<Vec<Project>> {
         // If there is no user in the database, the identity used an enrollment ticket
         // but it didn't enroll to the Orchestrator. Therefore, it won't have any admin projects.
         let user = match self.cli_state.get_default_user().await {
@@ -130,10 +118,11 @@ impl ProjectsOrchestratorApi for InMemoryNode {
             Err(_) => return Ok(vec![]),
         };
         // Try to refresh the list of projects with the controller
+        let ctx = self.ctx();
         match self.create_controller().await?.list_projects(ctx).await {
             Ok(project_models) => {
                 for project_model in project_models {
-                    self.get_project(ctx, &project_model.id).await?;
+                    self.get_project(&project_model.id).await?;
                 }
             }
             Err(e) => warn!("could not get the list of projects from the controller {e:?}"),
@@ -155,9 +144,9 @@ impl ProjectsOrchestratorApi for InMemoryNode {
     #[instrument(skip_all, fields(project_id = project.project_id()), level = Level::TRACE)]
     async fn wait_until_project_creation_operation_is_complete(
         &self,
-        ctx: &Context,
         project: Project,
     ) -> miette::Result<Project> {
+        let ctx = self.ctx();
         let project = self
             .create_controller()
             .await?
@@ -174,48 +163,41 @@ impl ProjectsOrchestratorApi for InMemoryNode {
     /// Wait until the project is ready to be used
     /// At this stage the project authority node must be up and running
     #[instrument(skip_all, fields(project_id = project.project_id()), level = Level::TRACE)]
-    async fn wait_until_project_is_ready(
-        &self,
-        ctx: &Context,
-        project: Project,
-    ) -> miette::Result<Project> {
+    async fn wait_until_project_is_ready(&self, project: Project) -> miette::Result<Project> {
         self.node_manager
-            .wait_until_project_is_ready(ctx, &project)
+            .wait_until_project_is_ready(&project)
             .await
     }
 
     async fn add_project_admin(
         &self,
-        ctx: &Context,
         project_id: &str,
         email: &EmailAddress,
     ) -> miette::Result<AdminInfo> {
+        let ctx = self.ctx();
         let controller = self.create_controller().await?;
         let res = controller.add_project_admin(ctx, project_id, email).await?;
-        self.get_project(ctx, project_id).await?;
+        self.get_project(project_id).await?;
         Ok(res)
     }
 
-    async fn list_project_admins(
-        &self,
-        ctx: &Context,
-        project_id: &str,
-    ) -> miette::Result<Vec<AdminInfo>> {
+    async fn list_project_admins(&self, project_id: &str) -> miette::Result<Vec<AdminInfo>> {
+        let ctx = self.ctx();
         let controller = self.create_controller().await?;
         controller.list_project_admins(ctx, project_id).await
     }
 
     async fn delete_project_admin(
         &self,
-        ctx: &Context,
         project_id: &str,
         email: &EmailAddress,
     ) -> miette::Result<()> {
+        let ctx = self.ctx();
         let controller = self.create_controller().await?;
         controller
             .delete_project_admin(ctx, project_id, email)
             .await?;
-        self.get_project(ctx, project_id).await?;
+        self.get_project(project_id).await?;
         Ok(())
     }
 }

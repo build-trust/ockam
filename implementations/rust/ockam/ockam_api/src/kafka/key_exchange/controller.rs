@@ -29,7 +29,7 @@ impl KafkaKeyExchangeController for KafkaKeyExchangeControllerImpl {
         content: Vec<u8>,
     ) -> ockam_core::Result<KafkaEncryptedContent> {
         let secure_channel_entry = self
-            .get_or_create_secure_channel(context, topic_name, partition_index)
+            .get_or_create_secure_channel(topic_name, partition_index)
             .await?;
 
         let consumer_decryptor_address = secure_channel_entry.their_decryptor_address();
@@ -90,7 +90,7 @@ impl KafkaKeyExchangeController for KafkaKeyExchangeControllerImpl {
 
     async fn publish_consumer(
         &self,
-        context: &mut Context,
+        _context: &mut Context,
         topic_name: &str,
         partitions: Vec<i32>,
     ) -> ockam_core::Result<()> {
@@ -108,7 +108,6 @@ impl KafkaKeyExchangeController for KafkaKeyExchangeControllerImpl {
                     let relay_info = inner
                         .node_manager
                         .create_relay(
-                            context,
                             &where_to_publish.clone(),
                             alias.clone(),
                             None,

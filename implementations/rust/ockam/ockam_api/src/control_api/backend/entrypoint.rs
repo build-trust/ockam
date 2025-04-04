@@ -92,23 +92,21 @@ impl Worker for HttpControlNodeApiBackend {
 
         let result: Result<ControlApiHttpResponse, ControlApiError> = match resource_kind {
             Some(ResourceKind::TcpInlets) => {
-                self.handle_tcp_inlet(context, method, resource_id, request.body)
+                self.handle_tcp_inlet(method, resource_id, request.body)
                     .await
             }
             Some(ResourceKind::TcpOutlets) => {
-                self.handle_tcp_outlet(context, method, resource_id, request.body)
+                self.handle_tcp_outlet(method, resource_id, request.body)
                     .await
             }
             Some(ResourceKind::Relays) => {
-                self.handle_relay(context, method, resource_id, request.body)
-                    .await
+                self.handle_relay(method, resource_id, request.body).await
             }
             Some(ResourceKind::Tickets) => {
-                self.handle_ticket(context, method, resource_id, request.body)
-                    .await
+                self.handle_ticket(method, resource_id, request.body).await
             }
             Some(ResourceKind::AuthorityMembers) => {
-                self.handle_authority_member(context, method, resource_id, request.body)
+                self.handle_authority_member(method, resource_id, request.body)
                     .await
             }
             None => {

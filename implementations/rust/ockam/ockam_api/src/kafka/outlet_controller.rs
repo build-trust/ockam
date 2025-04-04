@@ -7,7 +7,6 @@ use ockam_abac::PolicyExpression;
 use ockam_core::compat::collections::HashMap;
 use ockam_core::compat::sync::Arc;
 use ockam_core::{Address, Result};
-use ockam_node::Context;
 use std::fmt::Debug;
 use std::str::FromStr;
 
@@ -60,7 +59,6 @@ impl KafkaOutletController {
     /// After that, it'll just return the address
     pub(crate) async fn assert_outlet_for_broker(
         &self,
-        context: &Context,
         broker_id: BrokerId,
         address: String,
     ) -> Result<Address> {
@@ -70,7 +68,6 @@ impl KafkaOutletController {
             let hostname_port = self
                 .node_manager
                 .create_outlet(
-                    context,
                     HostnamePort::from_str(&address)?,
                     self.tls,
                     Some(kafka_outlet_address(broker_id)),

@@ -29,7 +29,6 @@ async fn inlet_outlet_local_successful(context: &mut Context) -> ockam::Result<(
     let outlet_status = node_manager_handle
         .node_manager
         .create_outlet(
-            context,
             echo_server_handle.chosen_addr.clone(),
             false,
             Some(Address::from_string("outlet")),
@@ -48,7 +47,6 @@ async fn inlet_outlet_local_successful(context: &mut Context) -> ockam::Result<(
     let inlet_status = node_manager_handle
         .node_manager
         .create_inlet(
-            context,
             HostnamePort::localhost(0),
             route![],
             route![],
@@ -111,7 +109,6 @@ fn portal_node_goes_down_reconnect() {
             let _outlet_status = second_node
                 .node_manager
                 .create_outlet(
-                    &second_node.context,
                     echo_server_handle.chosen_addr.clone(),
                     false,
                     Some(Address::from_string("outlet")),
@@ -130,7 +127,6 @@ fn portal_node_goes_down_reconnect() {
             let inlet_status = first_node
                 .node_manager
                 .create_inlet(
-                    &first_node.context,
                     HostnamePort::localhost(0),
                     route![],
                     route![],
@@ -188,7 +184,6 @@ fn portal_node_goes_down_reconnect() {
             let _outlet_status = third_node
                 .node_manager
                 .create_outlet(
-                    &third_node.context,
                     echo_server_handle.chosen_addr.clone(),
                     false,
                     Some(Address::from_string("outlet")),
@@ -266,7 +261,6 @@ fn portal_low_bandwidth_connection_keep_working_for_60s() {
             let _outlet_status = second_node
                 .node_manager
                 .create_outlet(
-                    &second_node.context,
                     echo_server_handle.chosen_addr.clone(),
                     false,
                     Some(Address::from_string("outlet")),
@@ -297,7 +291,6 @@ fn portal_low_bandwidth_connection_keep_working_for_60s() {
             let inlet_status = first_node
                 .node_manager
                 .create_inlet(
-                    &first_node.context,
                     HostnamePort::localhost(0),
                     route![],
                     route![],
@@ -393,7 +386,6 @@ fn portal_heavy_load_exchanged() {
             let _outlet_status = second_node
                 .node_manager
                 .create_outlet(
-                    &second_node.context,
                     echo_server_handle.chosen_addr.clone(),
                     false,
                     Some(Address::from_string("outlet")),
@@ -417,7 +409,6 @@ fn portal_heavy_load_exchanged() {
             let inlet_status = first_node
                 .node_manager
                 .create_inlet(
-                    &first_node.context,
                     HostnamePort::localhost(0),
                     route![],
                     route![],
@@ -545,7 +536,6 @@ fn test_portal_payload_transfer(outgoing_disruption: Disruption, incoming_disrup
             let _outlet_status = second_node
                 .node_manager
                 .create_outlet(
-                    &second_node.context,
                     echo_server_handle.chosen_addr.clone(),
                     false,
                     Some(Address::from_string("outlet")),
@@ -576,7 +566,6 @@ fn test_portal_payload_transfer(outgoing_disruption: Disruption, incoming_disrup
             let inlet_status = first_node
                 .node_manager
                 .create_inlet(
-                    &first_node.context,
                     HostnamePort::localhost(0),
                     route![],
                     route![],

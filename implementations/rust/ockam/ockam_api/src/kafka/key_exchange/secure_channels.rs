@@ -16,14 +16,12 @@ impl KafkaKeyExchangeControllerImpl {
     /// Creates a secure channel for the given destination.
     async fn create_secure_channel(
         inner: &MutexGuard<'_, InnerSecureChannelController>,
-        context: &Context,
         mut destination: MultiAddr,
     ) -> Result<Address> {
         destination.push_back(Service::new(DefaultAddress::SECURE_CHANNEL_LISTENER))?;
         let secure_channel = inner
             .node_manager
             .create_secure_channel(
-                context,
                 destination,
                 None,
                 None,
@@ -38,14 +36,12 @@ impl KafkaKeyExchangeControllerImpl {
     /// Creates a secure channel for the given destination, for key exchange only.
     async fn create_key_exchange_only_secure_channel(
         inner: &MutexGuard<'_, InnerSecureChannelController>,
-        context: &Context,
         mut destination: MultiAddr,
     ) -> Result<Address> {
         destination.push_back(Service::new(DefaultAddress::KEY_EXCHANGER_LISTENER))?;
         let secure_channel = inner
             .node_manager
             .create_secure_channel(
-                context,
                 destination,
                 None,
                 None,
@@ -61,7 +57,6 @@ impl KafkaKeyExchangeControllerImpl {
     /// Returns the relative secure channel entry.
     pub(crate) async fn get_or_create_secure_channel(
         &self,
-        context: &mut Context,
         topic_name: &str,
         partition: i32,
     ) -> Result<SecureChannelRegistryEntry> {
@@ -114,12 +109,9 @@ impl KafkaKeyExchangeControllerImpl {
                     }
                 };
 
-                let producer_encryptor_address = Self::create_key_exchange_only_secure_channel(
-                    &inner,
-                    context,
-                    destination.clone(),
-                )
-                .await?;
+                let producer_encryptor_address =
+                    Self::create_key_exchange_only_secure_channel(&inner, destination.clone())
+                        .await?;
 
                 if let Some(entry) = inner
                     .secure_channels
@@ -129,19 +121,17 @@ impl KafkaKeyExchangeControllerImpl {
                     if let Err(error) = Self::validate_consumer_credentials(&inner, &entry).await {
                         inner
                             .node_manager
-                            .delete_secure_channel(context, &producer_encryptor_address)?;
+                            .delete_secure_channel(&producer_encryptor_address)?;
                         return Err(error);
                     };
 
                     // creates a dedicated secure channel to the consumer to keep the
                     // credentials up to date
                     if !inner.identity_encryptor_map.contains_key(entry.their_id()) {
-                        if let Err(err) =
-                            Self::create_secure_channel(&inner, context, destination).await
-                        {
+                        if let Err(err) = Self::create_secure_channel(&inner, destination).await {
                             inner
                                 .node_manager
-                                .delete_secure_channel(context, &producer_encryptor_address)?;
+                                .delete_secure_channel(&producer_encryptor_address)?;
                             return Err(err);
                         }
                     }

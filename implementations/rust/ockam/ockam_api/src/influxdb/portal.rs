@@ -11,7 +11,7 @@ use minicbor::{CborLen, Decode, Encode};
 use ockam::flow_control::FlowControls;
 use ockam::identity::Identifier;
 use ockam::Message;
-use ockam::{Address, Context, Result};
+use ockam::{Address, Result};
 use ockam_abac::PolicyExpression;
 use ockam_abac::{Action, Resource, ResourceType};
 use ockam_core::api::{Error, Reply, Request, Response};
@@ -30,7 +30,6 @@ use tracing::Level;
 impl NodeManagerWorker {
     pub(crate) async fn start_influxdb_outlet_service(
         &self,
-        ctx: &Context,
         body: CreateInfluxDBOutlet,
     ) -> Result<Response<OutletStatus>, Response<Error>> {
         debug!("Starting InfluxDB Outlet service");
@@ -55,7 +54,6 @@ impl NodeManagerWorker {
                 let outlet_addr: Address = format!("{}_outlet", address.address()).into();
                 // Start the interceptor
                 self.create_http_outlet_interceptor(
-                    ctx,
                     address.clone(),
                     outlet_addr.clone(),
                     policy_expression.clone(),
@@ -83,7 +81,7 @@ impl NodeManagerWorker {
                     policy_expression: policy_expression.clone(),
                 };
                 self.node_manager
-                    .start_influxdb_lease_issuer_service(ctx, lease_issuer_address.clone(), req)
+                    .start_influxdb_lease_issuer_service(lease_issuer_address.clone(), req)
                     .await
                     .map_err(|e| Response::bad_request_no_request(&format!("{e:?}")))?;
                 address
@@ -93,7 +91,6 @@ impl NodeManagerWorker {
         match self
             .node_manager
             .create_outlet(
-                ctx,
                 hostname_port,
                 tls,
                 Some(outlet_address),
@@ -113,7 +110,6 @@ impl NodeManagerWorker {
 
     pub(crate) async fn start_influxdb_inlet_service(
         &self,
-        ctx: &Context,
         body: CreateInfluxDBInlet,
     ) -> Result<Response<InletStatus>, Response<Error>> {
         let CreateInlet {
@@ -164,7 +160,6 @@ impl NodeManagerWorker {
                 // Start an interceptor pointing to the lease issuer service
                 let interceptor_addr = self
                     .create_http_auth_interceptor(
-                        ctx,
                         &alias,
                         policy_expression.clone(),
                         lease_issuer_route,
@@ -186,7 +181,6 @@ impl NodeManagerWorker {
         match self
             .node_manager
             .create_inlet(
-                ctx,
                 listen_addr,
                 prefix_route,
                 suffix_route,
@@ -214,13 +208,13 @@ impl NodeManagerWorker {
 
     async fn create_http_outlet_interceptor(
         &self,
-        ctx: &Context,
         interceptor_address: Address,
         outlet_address: Address,
         outlet_policy_expression: Option<PolicyExpression>,
         token_to_use: String,
     ) -> Result<(), Error> {
         debug!(%interceptor_address, %outlet_address, ?outlet_policy_expression, %token_to_use, "Creating http outlet interceptor");
+        let ctx = self.node_manager.tcp_transport.ctx();
         let default_secure_channel_listener_flow_control_id = ctx
             .flow_controls()
             .get_flow_control_with_spawner(&DefaultAddress::SECURE_CHANNEL_LISTENER.into())
@@ -271,11 +265,11 @@ impl NodeManagerWorker {
 
     async fn create_http_auth_interceptor(
         &self,
-        ctx: &Context,
         inlet_alias: &String,
         inlet_policy_expression: Option<PolicyExpression>,
         lease_issuer_route: MultiAddr,
     ) -> Result<Address, Error> {
+        let ctx = self.node_manager.tcp_transport.ctx();
         let interceptor_address: Address = (inlet_alias.to_owned() + "_http_interceptor").into();
         let policy_access_control = self
             .node_manager
@@ -308,7 +302,6 @@ pub trait InfluxDBPortals {
     #[allow(clippy::too_many_arguments)]
     async fn create_influxdb_inlet(
         &self,
-        ctx: &Context,
         listen_addr: &HostnamePort,
         outlet_addr: &MultiAddr,
         alias: &str,
@@ -327,7 +320,6 @@ pub trait InfluxDBPortals {
     #[allow(clippy::too_many_arguments)]
     async fn create_influxdb_outlet(
         &self,
-        ctx: &Context,
         to: HostnamePort,
         tls: bool,
         from: Option<&Address>,
@@ -338,17 +330,17 @@ pub trait InfluxDBPortals {
 
 #[async_trait]
 impl InfluxDBPortals for BackgroundNodeClient {
-    #[instrument(skip(self, ctx), level = Level::TRACE)]
+    #[instrument(skip(self), level = Level::TRACE)]
     #[allow(clippy::too_many_arguments)]
     async fn create_influxdb_outlet(
         &self,
-        ctx: &Context,
         to: HostnamePort,
         tls: bool,
         from: Option<&Address>,
         policy_expression: Option<PolicyExpression>,
         influxdb_config: InfluxDBOutletConfig,
     ) -> miette::Result<OutletStatus> {
+        let ctx = self.tcp_transport.ctx();
         let mut outlet_payload =
             CreateOutlet::new(to, tls, from.cloned(), true, false, false, false, false);
         if let Some(policy_expression) = policy_expression {
@@ -359,11 +351,10 @@ impl InfluxDBPortals for BackgroundNodeClient {
         self.ask(ctx, req).await
     }
 
-    #[instrument(skip(self, ctx), level = Level::TRACE)]
+    #[instrument(skip(self), level = Level::TRACE)]
     #[allow(clippy::too_many_arguments)]
     async fn create_influxdb_inlet(
         &self,
-        ctx: &Context,
         listen_addr: &HostnamePort,
         outlet_addr: &MultiAddr,
         alias: &str,
@@ -378,6 +369,7 @@ impl InfluxDBPortals for BackgroundNodeClient {
         lease_usage: LeaseUsage,
         lease_issuer_route: Option<MultiAddr>,
     ) -> miette::Result<Reply<InletStatus>> {
+        let ctx = self.tcp_transport.ctx();
         let request = {
             let inlet_payload = create_inlet_payload(
                 listen_addr,

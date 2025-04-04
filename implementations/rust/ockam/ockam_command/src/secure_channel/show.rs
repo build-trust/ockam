@@ -73,7 +73,6 @@ impl Command for ShowCommand {
 
                     let secure_channel = node
                         .create_secure_channel(
-                            ctx,
                             self.at.clone(),
                             Some(identity.name()),
                             None,

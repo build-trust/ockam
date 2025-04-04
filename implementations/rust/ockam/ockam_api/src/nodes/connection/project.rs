@@ -6,7 +6,6 @@ use crate::{RemoteMultiaddrResolver, RemoteMultiaddrResolverConnection, ReverseL
 use ockam_core::{async_trait, Error, Route};
 use ockam_multiaddr::proto::Project;
 use ockam_multiaddr::{Match, MultiAddr, Protocol};
-use ockam_node::Context;
 
 use crate::nodes::service::SecureChannelType;
 use ockam::identity::Identifier;
@@ -35,7 +34,6 @@ impl Instantiator for ProjectInstantiator {
 
     async fn instantiate(
         &self,
-        ctx: &Context,
         node_manager: &NodeManager,
         _transport_route: Route,
         extracted: (MultiAddr, MultiAddr, MultiAddr),
@@ -69,7 +67,6 @@ impl Instantiator for ProjectInstantiator {
 
         let sc = node_manager
             .create_secure_channel_internal(
-                ctx,
                 transport_res.route,
                 &self.identifier.clone(),
                 Some(vec![project_identifier]),

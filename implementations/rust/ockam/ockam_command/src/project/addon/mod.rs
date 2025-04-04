@@ -103,14 +103,12 @@ impl ConfigureAddonCommand {
 
 async fn check_configuration_completion(
     opts: &CommandGlobalOpts,
-    ctx: &Context,
     node: &InMemoryNode,
     project_id: &str,
     operation_id: &str,
 ) -> Result<()> {
-    check_for_operation_completion(opts, ctx, node, operation_id, "the addon configuration")
-        .await?;
-    let project = node.get_project(ctx, project_id).await?;
-    let _ = check_project_readiness(opts, ctx, node, project).await?;
+    check_for_operation_completion(opts, node, operation_id, "the addon configuration").await?;
+    let project = node.get_project(project_id).await?;
+    let _ = check_project_readiness(opts, node, project).await?;
     Ok(())
 }

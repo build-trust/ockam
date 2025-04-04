@@ -10,7 +10,6 @@ use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{Route, TryClone};
 use ockam_multiaddr::MultiAddr;
 use ockam_node::compat::asynchronous::Mutex;
-use ockam_node::Context;
 use ockam_transport_core::HostnamePort;
 
 use crate::nodes::models::portal::InletStatus;
@@ -26,7 +25,6 @@ impl NodeManager {
     #[instrument(skip_all, level = Level::TRACE)]
     pub async fn create_inlet(
         self: &Arc<Self>,
-        ctx: &Context,
         listen_address: HostnamePort,
         prefix_route: Route,
         suffix_route: Route,
@@ -111,6 +109,7 @@ impl NodeManager {
             }
         }
 
+        let ctx = self.ctx();
         let replacer = InletSessionReplacer {
             node_manager: Arc::downgrade(self),
             udp_transport,

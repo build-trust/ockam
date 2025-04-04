@@ -48,7 +48,6 @@ impl Command for ShowCommand {
 }
 
 pub struct ShowTui {
-    ctx: Context,
     opts: CommandGlobalOpts,
     project_name: Option<String>,
     node: InMemoryNode,
@@ -62,7 +61,6 @@ impl ShowTui {
     ) -> miette::Result<()> {
         let node = InMemoryNode::start(&ctx, opts.state.clone()).await?;
         let tui = Self {
-            ctx,
             opts,
             project_name,
             node,
@@ -84,7 +82,7 @@ impl ShowCommandTui for ShowTui {
     async fn list_items_names(&self) -> miette::Result<Vec<String>> {
         Ok(self
             .node
-            .get_admin_projects(&self.ctx)
+            .get_admin_projects()
             .await
             .map_err(Error::Retry)?
             .iter()
@@ -111,7 +109,7 @@ impl ShowCommandTui for ShowTui {
     async fn show_single(&self, item_name: &str) -> miette::Result<()> {
         let project = self
             .node
-            .get_project_by_name(&self.ctx, item_name)
+            .get_project_by_name(item_name)
             .await
             .map_err(Error::Retry)?;
 

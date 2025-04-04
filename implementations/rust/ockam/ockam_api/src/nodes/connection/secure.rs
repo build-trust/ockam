@@ -6,10 +6,9 @@ use crate::{LocalMultiaddrResolver, ReverseLocalConverter};
 
 use crate::nodes::service::SecureChannelType;
 use ockam::identity::Identifier;
-use ockam_core::{async_trait, Error, Route, TryClone};
+use ockam_core::{async_trait, Error, Route};
 use ockam_multiaddr::proto::Secure;
 use ockam_multiaddr::{Match, MultiAddr, Protocol};
-use ockam_node::Context;
 
 /// Creates secure connection from existing transport
 pub(crate) struct SecureChannelInstantiator {
@@ -40,7 +39,6 @@ impl Instantiator for SecureChannelInstantiator {
 
     async fn instantiate(
         &self,
-        ctx: &Context,
         node_manager: &NodeManager,
         transport_route: Route,
         extracted: (MultiAddr, MultiAddr, MultiAddr),
@@ -49,10 +47,8 @@ impl Instantiator for SecureChannelInstantiator {
         debug!(%secure_piece, %transport_route, "creating secure channel");
         let route = LocalMultiaddrResolver::resolve(&secure_piece)?;
 
-        let sc_ctx = ctx.try_clone()?;
         let sc = node_manager
             .create_secure_channel_internal(
-                &sc_ctx,
                 //the transport route is needed to reach the secure channel listener
                 //since it can be in another node
                 transport_route + route,

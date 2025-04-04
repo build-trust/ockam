@@ -26,12 +26,12 @@ use std::time::Duration;
 impl HttpControlNodeApiBackend {
     pub(super) async fn handle_ticket(
         &self,
-        context: &Context,
         method: Method,
         resource_id: Option<&str>,
         body: Option<Vec<u8>>,
     ) -> Result<ControlApiHttpResponse, ControlApiError> {
         let resource_name = ResourceKind::Tickets.name();
+        let context = self.node_manager.ctx();
         match method {
             Method::POST => {
                 if let Some(resource_id) = resource_id {

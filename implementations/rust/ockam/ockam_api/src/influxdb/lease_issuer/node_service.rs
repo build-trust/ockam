@@ -20,17 +20,12 @@ use std::time::Duration;
 impl NodeManagerWorker {
     pub(crate) async fn start_influxdb_lease_issuer_service(
         &self,
-        context: &Context,
         body: StartServiceRequest<StartInfluxDBLeaseIssuerRequest>,
     ) -> Result<Response, Response<Error>> {
         let request = body.request().clone();
         match self
             .node_manager
-            .start_influxdb_lease_issuer_service(
-                context,
-                Address::from_string(body.address()),
-                request,
-            )
+            .start_influxdb_lease_issuer_service(Address::from_string(body.address()), request)
             .await
         {
             Ok(_) => Ok(Response::ok()),
@@ -40,13 +35,12 @@ impl NodeManagerWorker {
 
     pub(crate) fn delete_influxdb_lease_issuer_service(
         &self,
-        context: &Context,
         req: DeleteServiceRequest,
     ) -> Result<Response, Response<Error>> {
         let address = req.address();
         match self
             .node_manager
-            .delete_influxdb_lease_issuer_service(context, &address)
+            .delete_influxdb_lease_issuer_service(&address)
         {
             Ok(Some(_)) => Ok(Response::ok()),
             Ok(None) => Err(Response::not_found_no_request(&format!(
@@ -60,12 +54,12 @@ impl NodeManagerWorker {
 impl InMemoryNode {
     pub(crate) async fn start_influxdb_lease_issuer_service(
         &self,
-        context: &Context,
         address: Address,
         req: StartInfluxDBLeaseIssuerRequest,
     ) -> Result<(), Error> {
         debug!(%address, influxdb_address = %req.influxdb_address, "Starting influxdb lease issuer service");
 
+        let context = self.ctx();
         let default_secure_channel_listener_flow_control_id = context
             .flow_controls()
             .get_flow_control_with_spawner(&DefaultAddress::SECURE_CHANNEL_LISTENER.into())
@@ -78,7 +72,6 @@ impl InMemoryNode {
 
         let (incoming_ac, outgoing_ac) = self
             .access_control(
-                context,
                 self.project_authority(),
                 Resource::new(address.address(), ResourceType::InfluxDBLessor),
                 Action::HandleMessage,
@@ -110,12 +103,9 @@ impl InMemoryNode {
         Ok(())
     }
 
-    fn delete_influxdb_lease_issuer_service(
-        &self,
-        context: &Context,
-        address: &Address,
-    ) -> Result<Option<()>, Error> {
+    fn delete_influxdb_lease_issuer_service(&self, address: &Address) -> Result<Option<()>, Error> {
         debug!(address = %address,"Deleting influxdb lease issuer service");
+        let context = self.ctx();
         match self.registry.influxdb_services.get(address) {
             None => Ok(None),
             Some(_) => {
@@ -176,7 +166,7 @@ pub trait InfluxDBTokenLessorNodeServiceTrait {
 #[async_trait]
 impl InfluxDBTokenLessorNodeServiceTrait for InMemoryNode {
     async fn create_token(&self, ctx: &Context, at: &MultiAddr) -> miette::Result<LeaseToken> {
-        let client = self.node_manager.make_client(ctx, at, None).await?;
+        let client = self.node_manager.make_client(at, None).await?;
         let reply = client
             .ask(ctx, Request::post("/"))
             .await
@@ -190,7 +180,7 @@ impl InfluxDBTokenLessorNodeServiceTrait for InMemoryNode {
         at: &MultiAddr,
         token_id: &str,
     ) -> miette::Result<LeaseToken> {
-        let client = self.node_manager.make_client(ctx, at, None).await?;
+        let client = self.node_manager.make_client(at, None).await?;
         let reply = client
             .ask(ctx, Request::get(format!("/{token_id}")))
             .await
@@ -204,7 +194,7 @@ impl InfluxDBTokenLessorNodeServiceTrait for InMemoryNode {
         at: &MultiAddr,
         token_id: &str,
     ) -> miette::Result<()> {
-        let client = self.node_manager.make_client(ctx, at, None).await?;
+        let client = self.node_manager.make_client(at, None).await?;
         let reply = client
             .tell(ctx, Request::delete(format!("/{token_id}")))
             .await
@@ -213,7 +203,7 @@ impl InfluxDBTokenLessorNodeServiceTrait for InMemoryNode {
     }
 
     async fn list_tokens(&self, ctx: &Context, at: &MultiAddr) -> miette::Result<Vec<LeaseToken>> {
-        let client = self.node_manager.make_client(ctx, at, None).await?;
+        let client = self.node_manager.make_client(at, None).await?;
         let lease_token_list: LeaseTokenList = client
             .ask(ctx, Request::get("/"))
             .await

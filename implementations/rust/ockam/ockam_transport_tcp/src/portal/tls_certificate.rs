@@ -2,7 +2,6 @@ use core::fmt::{Debug, Display, Formatter};
 use log::warn;
 use minicbor::{Decode, Encode};
 use ockam_core::async_trait;
-use ockam_node::Context;
 use serde::{Deserialize, Serialize};
 use std::ops::Sub;
 use std::sync::Arc;
@@ -35,7 +34,7 @@ pub struct TlsCertificate {
 /// to the TCP transport.
 pub trait TlsCertificateProvider: Send + Sync + Display + Debug + 'static {
     /// Returns a TLS certificate
-    async fn get_certificate(&self, context: &Context) -> ockam_core::Result<TlsCertificate>;
+    async fn get_certificate(&self) -> ockam_core::Result<TlsCertificate>;
 }
 
 /// This interface is used to make the testing simpler.
@@ -115,7 +114,7 @@ impl<T: Clock> Debug for TlsCertificateCache<T> {
 
 #[async_trait]
 impl<T: Clock> TlsCertificateProvider for TlsCertificateCache<T> {
-    async fn get_certificate(&self, context: &Context) -> ockam_core::Result<TlsCertificate> {
+    async fn get_certificate(&self) -> ockam_core::Result<TlsCertificate> {
         let mut guard = self.last_certificate.lock().await;
 
         let now = self.clock.now();
@@ -132,7 +131,7 @@ impl<T: Clock> TlsCertificateProvider for TlsCertificateCache<T> {
             }
         }
 
-        let certificate = match self.certificate_provider.get_certificate(context).await {
+        let certificate = match self.certificate_provider.get_certificate().await {
             Ok(certificate) => {
                 *guard = Some(CacheEntry {
                     timestamp: now,
@@ -183,7 +182,7 @@ pub mod test {
 
     #[async_trait]
     impl TlsCertificateProvider for TestCertificateProvider {
-        async fn get_certificate(&self, _context: &Context) -> ockam_core::Result<TlsCertificate> {
+        async fn get_certificate(&self) -> ockam_core::Result<TlsCertificate> {
             let counter = self.counter.fetch_add(1, Ordering::Relaxed);
             if self.return_certificate.load(Ordering::Relaxed) {
                 Ok(TlsCertificate {
@@ -211,7 +210,7 @@ pub mod test {
     }
 
     #[ockam_macros::test]
-    async fn test_tls_certificate(context: &mut Context) -> ockam_core::Result<()> {
+    async fn test_tls_certificate(_context: &mut Context) -> ockam_core::Result<()> {
         let return_certificate = Arc::new(AtomicBool::new(true));
         let get_certificate_counter = Arc::new(AtomicU8::new(0));
         let certificate_provider = Arc::new(TestCertificateProvider {
@@ -231,7 +230,7 @@ pub mod test {
 
         assert_eq!(get_certificate_counter.load(Ordering::Relaxed), 0);
 
-        let certificate = cache.get_certificate(context).await.unwrap();
+        let certificate = cache.get_certificate().await.unwrap();
         assert_eq!(certificate.full_chain_pem, b"test-0");
         assert_eq!(certificate.private_key_pem, b"test-0");
         assert_eq!(get_certificate_counter.load(Ordering::Relaxed), 1);
@@ -240,21 +239,21 @@ pub mod test {
         now.lock()
             .unwrap()
             .add_assign(Duration::from_secs(60 * 9 + 59));
-        let certificate = cache.get_certificate(context).await.unwrap();
+        let certificate = cache.get_certificate().await.unwrap();
         assert_eq!(certificate.full_chain_pem, b"test-0");
         assert_eq!(certificate.private_key_pem, b"test-0");
         assert_eq!(get_certificate_counter.load(Ordering::Relaxed), 1);
 
         // 1 more second, and the certificate should be refreshed
         now.lock().unwrap().add_assign(Duration::from_secs(1));
-        let certificate = cache.get_certificate(context).await.unwrap();
+        let certificate = cache.get_certificate().await.unwrap();
         assert_eq!(certificate.full_chain_pem, b"test-1");
         assert_eq!(certificate.private_key_pem, b"test-1");
         assert_eq!(get_certificate_counter.load(Ordering::Relaxed), 2);
 
         // 1 more second, and the certificate should be refreshed
         now.lock().unwrap().add_assign(Duration::from_secs(1));
-        let certificate = cache.get_certificate(context).await.unwrap();
+        let certificate = cache.get_certificate().await.unwrap();
         assert_eq!(certificate.full_chain_pem, b"test-1");
         assert_eq!(certificate.private_key_pem, b"test-1");
         assert_eq!(get_certificate_counter.load(Ordering::Relaxed), 2);
@@ -262,7 +261,7 @@ pub mod test {
         // advance the time by 10 minutes, this time the certificate provider will fail
         now.lock().unwrap().add_assign(Duration::from_secs(60 * 10));
         return_certificate.store(false, Ordering::Relaxed);
-        let certificate = cache.get_certificate(context).await.unwrap();
+        let certificate = cache.get_certificate().await.unwrap();
         assert_eq!(certificate.full_chain_pem, b"test-1");
         assert_eq!(certificate.private_key_pem, b"test-1");
         assert_eq!(get_certificate_counter.load(Ordering::Relaxed), 3);
@@ -270,14 +269,14 @@ pub mod test {
         // advance the time by 59 seconds, the old certificate is returned without another
         // refresh attempt
         now.lock().unwrap().add_assign(Duration::from_secs(59));
-        let certificate = cache.get_certificate(context).await.unwrap();
+        let certificate = cache.get_certificate().await.unwrap();
         assert_eq!(certificate.full_chain_pem, b"test-1");
         assert_eq!(certificate.private_key_pem, b"test-1");
         assert_eq!(get_certificate_counter.load(Ordering::Relaxed), 3);
 
         // advance the time by 1 second, another failed refresh attempt
         now.lock().unwrap().add_assign(Duration::from_secs(1));
-        let certificate = cache.get_certificate(context).await.unwrap();
+        let certificate = cache.get_certificate().await.unwrap();
         assert_eq!(certificate.full_chain_pem, b"test-1");
         assert_eq!(certificate.private_key_pem, b"test-1");
         assert_eq!(get_certificate_counter.load(Ordering::Relaxed), 4);
@@ -285,7 +284,7 @@ pub mod test {
         // advance the time by 60 second, a successful refresh
         now.lock().unwrap().add_assign(Duration::from_secs(60));
         return_certificate.store(true, Ordering::Relaxed);
-        let certificate = cache.get_certificate(context).await.unwrap();
+        let certificate = cache.get_certificate().await.unwrap();
         assert_eq!(certificate.full_chain_pem, b"test-4");
         assert_eq!(certificate.private_key_pem, b"test-4");
         assert_eq!(get_certificate_counter.load(Ordering::Relaxed), 5);
@@ -295,7 +294,7 @@ pub mod test {
             .unwrap()
             .add_assign(Duration::from_secs(9 * 60 + 59));
         return_certificate.store(true, Ordering::Relaxed);
-        let certificate = cache.get_certificate(context).await.unwrap();
+        let certificate = cache.get_certificate().await.unwrap();
         assert_eq!(certificate.full_chain_pem, b"test-4");
         assert_eq!(certificate.private_key_pem, b"test-4");
         assert_eq!(get_certificate_counter.load(Ordering::Relaxed), 5);

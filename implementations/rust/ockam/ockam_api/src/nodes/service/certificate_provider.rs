@@ -3,7 +3,7 @@ use minicbor::{Decode, Decoder, Encode};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{Any, NeutralMessage, Routed};
 use ockam_multiaddr::MultiAddr;
-use ockam_node::{Context, MessageSendReceiveOptions};
+use ockam_node::MessageSendReceiveOptions;
 use ockam_transport_tcp::{TlsCertificate, TlsCertificateProvider};
 use std::fmt::{Debug, Display, Formatter};
 use std::sync::Weak;
@@ -56,20 +56,14 @@ enum ReplyKind {
 
 #[async_trait]
 impl TlsCertificateProvider for ProjectCertificateProvider {
-    async fn get_certificate(&self, context: &Context) -> ockam_core::Result<TlsCertificate> {
+    async fn get_certificate(&self) -> ockam_core::Result<TlsCertificate> {
         debug!("requesting TLS certificate from: {}", self.to);
         let node_manager = self.node_manager.upgrade().ok_or_else(|| {
             ockam_core::Error::new(Origin::Transport, Kind::Invalid, "NodeManager shut down")
         })?;
         let connection = {
             node_manager
-                .make_connection(
-                    context,
-                    &self.to,
-                    node_manager.node_identifier.clone(),
-                    None,
-                    None,
-                )
+                .make_connection(&self.to, node_manager.node_identifier.clone(), None, None)
                 .await?
         };
 
@@ -81,6 +75,7 @@ impl TlsCertificateProvider for ProjectCertificateProvider {
             buffer
         };
 
+        let context = node_manager.ctx();
         let reply: Routed<Any> = context
             .send_and_receive_extended(connection.route()?, NeutralMessage::from(payload), options)
             .await?;

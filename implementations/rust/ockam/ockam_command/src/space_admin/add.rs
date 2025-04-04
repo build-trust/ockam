@@ -37,9 +37,7 @@ impl Command for AddCommand {
             self.identity_opts.identity_name,
         )
         .await?;
-        let admin = node
-            .add_space_admin(ctx, &space.space_id(), &self.email)
-            .await?;
+        let admin = node.add_space_admin(&space.space_id(), &self.email).await?;
 
         opts.terminal
             .to_stdout()

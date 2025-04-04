@@ -35,7 +35,6 @@ impl AppState {
             return;
         }
         let node_manager = self.node_manager().await;
-        let context = self.context();
         for tcp_outlet in self.model(|m| m.get_tcp_outlets().to_vec()).await {
             let access_control = match self
                 .create_invitations_access_control(tcp_outlet.worker_address.clone())
@@ -68,7 +67,6 @@ impl AppState {
             debug!(worker_addr = %tcp_outlet.worker_address, "Restoring outlet");
             let _ = node_manager
                 .create_outlet(
-                    &context,
                     tcp_outlet.to,
                     false,
                     Some(tcp_outlet.worker_address.clone()),

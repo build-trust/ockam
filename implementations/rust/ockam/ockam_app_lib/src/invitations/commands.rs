@@ -1,6 +1,5 @@
 use miette::IntoDiagnostic;
 use ockam::transport::HostnamePort;
-use ockam::Context;
 use ockam_api::orchestrator::email_address::EmailAddress;
 use ockam_api::orchestrator::share::{CreateServiceInvitation, InvitationListKind, Invitations};
 use ockam_core::Address;
@@ -187,7 +186,6 @@ impl AppState {
 
     pub async fn create_service_invitation_by_alias(
         &self,
-        ctx: &Context,
         recipient_email: EmailAddress,
         outlet_worker_addr: &Address,
     ) -> Result<(), String> {
@@ -200,7 +198,7 @@ impl AppState {
             .map(|o| o.to);
 
         if let Some(to) = to {
-            self.create_service_invitation_by_socket_addr(ctx, recipient_email, to)
+            self.create_service_invitation_by_socket_addr(recipient_email, to)
                 .await
         } else {
             Err(format!("Cannot find service '{}'", outlet_worker_addr))
@@ -209,7 +207,6 @@ impl AppState {
 
     pub async fn create_service_invitation_by_socket_addr(
         &self,
-        ctx: &Context,
         recipient_email: EmailAddress,
         to: HostnamePort,
     ) -> Result<(), String> {
@@ -227,7 +224,7 @@ impl AppState {
         }?;
 
         let enrollment_ticket = self
-            .create_enrollment_ticket(ctx, &project_id, &recipient_email)
+            .create_enrollment_ticket(&project_id, &recipient_email)
             .await
             .map_err(|e| e.to_string())?;
 

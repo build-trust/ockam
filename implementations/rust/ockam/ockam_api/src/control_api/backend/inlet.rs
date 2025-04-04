@@ -15,19 +15,17 @@ use ockam_core::compat::rand::random_string;
 use ockam_core::errcode::Kind;
 use ockam_core::Route;
 use ockam_multiaddr::MultiAddr;
-use ockam_node::Context;
 use std::sync::Arc;
 
 impl HttpControlNodeApiBackend {
     pub(super) async fn handle_tcp_inlet(
         &self,
-        context: &Context,
         method: Method,
         resource_id: Option<&str>,
         body: Option<Vec<u8>>,
     ) -> Result<ControlApiHttpResponse, ControlApiError> {
         match method {
-            Method::POST => handle_tcp_inlet_create(context, &self.node_manager, body).await,
+            Method::POST => handle_tcp_inlet_create(&self.node_manager, body).await,
             Method::GET => match resource_id {
                 None => handle_tcp_inlet_list(&self.node_manager).await,
                 Some(id) => handle_tcp_inlet_get(&self.node_manager, id).await,
@@ -77,7 +75,6 @@ The creation will be asynchronous and the initial status will be `down`.",
     )
 )]
 async fn handle_tcp_inlet_create(
-    context: &Context,
     node_manager: &Arc<NodeManager>,
     body: Option<Vec<u8>>,
 ) -> Result<ControlApiHttpResponse, ControlApiError> {
@@ -154,7 +151,6 @@ async fn handle_tcp_inlet_create(
 
     let result = node_manager
         .create_inlet(
-            context,
             request.from,
             Route::default(),
             Route::default(),

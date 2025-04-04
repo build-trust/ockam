@@ -36,7 +36,7 @@ impl ListCommand {
         let node = InMemoryNode::start(ctx, opts.state.clone()).await?;
         let is_finished: Mutex<bool> = Mutex::new(false);
         let get_projects = async {
-            let projects = node.get_admin_projects(ctx).await?;
+            let projects = node.get_admin_projects().await?;
             *is_finished.lock().await = true;
             Ok(projects)
         }

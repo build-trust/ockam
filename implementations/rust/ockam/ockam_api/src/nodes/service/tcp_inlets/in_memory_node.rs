@@ -3,7 +3,6 @@ use ockam::Result;
 use ockam_abac::PolicyExpression;
 use ockam_core::Route;
 use ockam_multiaddr::MultiAddr;
-use ockam_node::Context;
 use ockam_transport_core::HostnamePort;
 use std::time::Duration;
 use tracing::Level;
@@ -16,7 +15,6 @@ impl InMemoryNode {
     #[instrument(skip_all, level = Level::TRACE)]
     pub async fn create_inlet(
         &self,
-        ctx: &Context,
         listen_addr: HostnamePort,
         prefix_route: Route,
         suffix_route: Route,
@@ -37,7 +35,6 @@ impl InMemoryNode {
     ) -> Result<InletStatus> {
         self.node_manager
             .create_inlet(
-                ctx,
                 listen_addr.clone(),
                 prefix_route.clone(),
                 suffix_route.clone(),

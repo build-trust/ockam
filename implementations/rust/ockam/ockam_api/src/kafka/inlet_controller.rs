@@ -10,7 +10,6 @@ use ockam_core::errcode::{Kind, Origin};
 use ockam_core::Error;
 use ockam_core::{Result, Route};
 use ockam_multiaddr::MultiAddr;
-use ockam_node::Context;
 use ockam_transport_core::HostnamePort;
 use std::fmt::Debug;
 use std::sync::Weak;
@@ -101,7 +100,6 @@ impl KafkaInletController {
     /// After that, it'll just return the address
     pub(crate) async fn assert_inlet_for_broker(
         &self,
-        context: &Context,
         broker_id: BrokerId,
     ) -> Result<HostnamePort> {
         let mut inner = self.inner.lock().await;
@@ -126,7 +124,6 @@ impl KafkaInletController {
 
             node_manager
                 .create_inlet(
-                    context,
                     inlet_bind_address.clone(),
                     inner.local_interceptor_route.clone(),
                     inner.remote_interceptor_route.clone() + kafka_outlet_address(broker_id),

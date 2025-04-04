@@ -42,22 +42,20 @@ impl Command for ShowCommand {
     }
 }
 
-pub struct ShowTui<'a> {
-    ctx: &'a Context,
+pub struct ShowTui {
     opts: CommandGlobalOpts,
     space_name: Option<String>,
     node: InMemoryNode,
 }
 
-impl<'a> ShowTui<'a> {
+impl ShowTui {
     pub async fn run(
-        ctx: &'a Context,
+        ctx: &Context,
         opts: CommandGlobalOpts,
         cmd: ShowCommand,
     ) -> miette::Result<()> {
         let node = InMemoryNode::start(ctx, opts.state.clone()).await?;
         let tui = Self {
-            ctx,
             opts,
             space_name: cmd.name,
             node,
@@ -67,7 +65,7 @@ impl<'a> ShowTui<'a> {
 }
 
 #[ockam_core::async_trait]
-impl ShowCommandTui for ShowTui<'_> {
+impl ShowCommandTui for ShowTui {
     const ITEM_NAME: PluralTerm = PluralTerm::Space;
 
     fn cmd_arg_item_name(&self) -> Option<String> {
@@ -89,7 +87,7 @@ impl ShowCommandTui for ShowTui<'_> {
     async fn list_items_names(&self) -> miette::Result<Vec<String>> {
         Ok(self
             .node
-            .get_spaces(self.ctx)
+            .get_spaces()
             .await?
             .iter()
             .map(|s| s.space_name())
@@ -97,7 +95,7 @@ impl ShowCommandTui for ShowTui<'_> {
     }
 
     async fn show_single(&self, item_name: &str) -> miette::Result<()> {
-        let space = self.node.get_space_by_name(self.ctx, item_name).await?;
+        let space = self.node.get_space_by_name(item_name).await?;
         self.terminal()
             .to_stdout()
             .plain(space.item()?)

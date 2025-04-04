@@ -147,13 +147,11 @@ pub struct HttpHeadersInterceptorRequest {
 impl NodeManagerWorker {
     pub async fn start_http_header_service(
         &self,
-        context: &Context,
         request: StartServiceRequest<HttpHeadersInterceptorRequest>,
     ) -> ockam_core::Result<Response<()>, Response<ockam_core::api::Error>> {
         let result = self
             .node_manager
             .start_http_header_service(
-                context,
                 Address::from_string(request.address()),
                 request.request().headers.clone(),
             )
@@ -167,12 +165,11 @@ impl NodeManagerWorker {
 
     pub async fn delete_http_overwrite_header_service(
         &self,
-        context: &Context,
         request: DeleteServiceRequest,
     ) -> ockam_core::Result<Response<()>, Response<ockam_core::api::Error>> {
         let result = self
             .node_manager
-            .delete_http_overwrite_header_service(context, &Address::from_string(request.address()))
+            .delete_http_overwrite_header_service(&Address::from_string(request.address()))
             .await;
 
         match result {
@@ -185,7 +182,6 @@ impl NodeManagerWorker {
 impl NodeManager {
     pub async fn start_http_header_service(
         &self,
-        context: &Context,
         listener_address: Address,
         headers: Vec<(String, String)>,
     ) -> ockam_core::Result<()> {
@@ -203,6 +199,7 @@ impl NodeManager {
             None
         };
 
+        let context = self.ctx();
         StaticHttpHeadersInterceptor::start_listener(
             context,
             listener_address.clone(),
@@ -220,9 +217,9 @@ impl NodeManager {
 
     pub async fn delete_http_overwrite_header_service(
         &self,
-        context: &Context,
         listener_address: &Address,
     ) -> ockam_core::Result<()> {
+        let context = self.ctx();
         context.stop_address(listener_address)?;
 
         self.registry
@@ -266,7 +263,6 @@ mod test {
         let connection = handler
             .node_manager
             .make_connection(
-                context,
                 &format!(
                     "/service/http_interceptor/service/{}",
                     context.primary_address().address()
