@@ -81,6 +81,10 @@ impl ProjectsSqlxDatabase {
             .unique()
             .collect();
 
+        if non_admin_emails.is_empty() {
+            return Ok(false);
+        }
+
         // Check if any of the emails are in the user table
         let q = format!(
             r#"SELECT EXISTS(SELECT 1 FROM "user" WHERE LOWER(email) IN ({}))"#,
@@ -89,6 +93,7 @@ impl ProjectsSqlxDatabase {
                 .map(|e| format!("'{}'", e))
                 .join(", ")
         );
+
         let shared: Boolean = query_scalar(&q).fetch_one(transaction).await.into_core()?;
         Ok(shared.to_bool())
     }

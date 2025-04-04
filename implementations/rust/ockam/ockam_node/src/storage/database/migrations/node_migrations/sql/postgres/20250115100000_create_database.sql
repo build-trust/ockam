@@ -324,7 +324,7 @@ CREATE TABLE "user"
     name           TEXT    NOT NULL, -- User name
     picture        TEXT    NOT NULL, -- Link to a user picture
     updated_at     TEXT    NOT NULL, -- ISO-8601 date: when this user information was last updated
-    email_verified INTEGER NOT NULL, -- Boolean indicating if the user email has been verified (0 means true)
+    email_verified BOOLEAN NOT NULL, -- Boolean indicating if the user email has been verified (0 means true)
     is_default     BOOLEAN NOT NULL  -- Boolean indicating if this user is the default user locally (0 means true)
 );
 
@@ -337,6 +337,26 @@ CREATE TABLE identity_enrollment
     email       TEXT                     -- User email used for the enrollment
 );
 
+----------
+-- ADDONS
+----------
+
+-- This table stores the data necessary to configure the Okta addon
+CREATE TABLE okta_config
+(
+    project_id      TEXT NOT NULL, -- Project id of the project using the addon
+    tenant_base_url TEXT NOT NULL, -- Base URL of the tenant
+    client_id       TEXT NOT NULL, -- Client id
+    certificate     TEXT NOT NULL, -- Certificate
+    attributes      TEXT           -- Comma-separated list of attribute names
+);
+
+-- This table stores the data necessary to configure the Kafka addon
+CREATE TABLE kafka_config
+(
+    project_id       TEXT NOT NULL, -- Project id of the project using the addon
+    bootstrap_server TEXT NOT NULL  -- URL of the bootstrap server
+);
 
 ------------------
 -- RUST MIGRATIONS
