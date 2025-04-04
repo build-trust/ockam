@@ -70,6 +70,10 @@ pub use ockam_core::{
     Encoded, Error, LocalMessage, Mailbox, Mailboxes, Message, Processor, ProtocolId, Result,
     Route, Routed, TransportMessage, TryClone, Worker,
 };
+
+#[cfg(feature = "std")]
+pub use ockam_core::env;
+
 pub use ockam_identity as identity;
 // ---
 // Export the ockam macros that aren't coming from ockam_core.

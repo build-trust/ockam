@@ -85,7 +85,7 @@ impl NodeManager {
 
         debug!("create default resource type policies");
         cli_state
-            .policies(&general_options.node_name)
+            .policies(&node_name)
             .store_default_resource_type_policies()
             .await?;
 
@@ -667,6 +667,11 @@ impl NodeManager {
             env,
             authority,
         ))
+    }
+
+    /// Secure channel on address "api"
+    pub fn api_sc_listener(&self) -> &Option<SecureChannelListener> {
+        &self.api_sc_listener
     }
 }
 
