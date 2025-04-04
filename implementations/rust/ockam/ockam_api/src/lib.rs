@@ -63,3 +63,7 @@ pub use session::connection_status::ConnectionStatus;
 pub use ui::*;
 pub use util::*;
 pub use version::*;
+
+pub mod multiaddr {
+    pub use ockam_multiaddr::MultiAddr;
+}
