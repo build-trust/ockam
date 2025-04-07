@@ -178,4 +178,4 @@ Ockam sponsors open source builders who are making it possible for software to b
 - [Documentation](https://docs.ockam.io/)
 - [Contribute to Ockam](https://github.com/build-trust/.github/blob/main/CONTRIBUTING.md#contributing-to-ockam-on-github)
 - [Build Trust community Discord server](https://discord.gg/RAbjRr3kds)
-- [Ockam Orchestrator on AWS Marketplace](https://aws.amazon.com/marketplace/pp/prodview-wsd42efzcpsxk)
+- [Ockam Orchestrator on AWS Marketplace](https://aws.amazon.com/marketplace/pp/prodview-m3url7jixicii?sr=0-1&ref_=beagle&applicationId=AWSMPContessa)
