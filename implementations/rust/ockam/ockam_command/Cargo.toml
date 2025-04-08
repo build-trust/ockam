@@ -92,7 +92,7 @@ serde_yaml = "0.9"
 shellexpand = { version = "3.1.0", default-features = false, features = ["base-0"] }
 syntect = { version = "5.2.0", default-features = false, features = ["default-syntaxes", "regex-onig"] }
 thiserror = "2.0.9"
-tokio = { version = "1.41.0", features = ["full"] }
+tokio = { version = "1.43.1", features = ["full"] }
 tokio-retry = "0.3"
 tracing = { version = "0.1", default-features = false }
 url = "2.5.2"
