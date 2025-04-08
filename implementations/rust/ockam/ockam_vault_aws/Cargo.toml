@@ -68,7 +68,7 @@ thiserror = { version = "2.0.9" }
 tracing = { version = "0.1", default-features = false }
 
 [dev-dependencies]
-tokio = { version = "1.41", features = ["full"] }
+tokio = { version = "1.43", features = ["full"] }
 
 [package.metadata.cargo-machete]
 ignored = ["ockam_macros", "ockam_node"]
