@@ -58,15 +58,16 @@ impl IdentitiesRepository for IdentitiesSqlxDatabase {
 
         let query2 = query(
             r#"
-        INSERT INTO named_identity (identifier, name, vault_name, is_default)
-        VALUES ($1, $2, $3, $4)
+        INSERT INTO named_identity (identifier, name, vault_name, is_default, tenant_id)
+        VALUES ($1, $2, $3, $4, $5)
         ON CONFLICT (identifier)
-        DO UPDATE SET name = $2, vault_name = $3, is_default = $4"#,
+        DO UPDATE SET name = $2, vault_name = $3, is_default = $4, tenant_id = $5"#,
         )
         .bind(identifier)
         .bind(name)
         .bind(vault_name)
-        .bind(is_already_default);
+        .bind(is_already_default)
+        .bind(self.database.tenant_id());
         query2.execute(&mut *transaction).await.void()?;
 
         transaction.commit().await.void()?;

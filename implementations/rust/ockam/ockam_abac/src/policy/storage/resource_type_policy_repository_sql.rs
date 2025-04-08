@@ -61,15 +61,16 @@ impl ResourceTypePoliciesRepository for ResourceTypePolicySqlxDatabase {
     ) -> Result<()> {
         let query = query(
             r#"INSERT INTO
-            resource_type_policy (resource_type, action, expression, node_name)
-            VALUES ($1, $2, $3, $4)
+            resource_type_policy (resource_type, action, expression, node_name, tenant_id)
+            VALUES ($1, $2, $3, $4, $5)
             ON CONFLICT (node_name, resource_type, action)
-            DO UPDATE SET expression = $3"#,
+            DO UPDATE SET expression = $3, tenant_id = $5"#,
         )
         .bind(resource_type)
         .bind(action)
         .bind(expression)
-        .bind(&self.node_name);
+        .bind(&self.node_name)
+        .bind(self.database.tenant_id());
         query.execute(&*self.database.pool).await.void()
     }
 

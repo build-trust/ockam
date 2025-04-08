@@ -56,15 +56,16 @@ impl ResourcePoliciesRepository for ResourcePolicySqlxDatabase {
         expression: &Expr,
     ) -> Result<()> {
         let query = query(
-            r#"INSERT INTO resource_policy (resource_name, action, expression, node_name)
-            VALUES ($1, $2, $3, $4)
+            r#"INSERT INTO resource_policy (resource_name, action, expression, node_name, tenant_id)
+            VALUES ($1, $2, $3, $4, $5)
             ON CONFLICT (resource_name, action, node_name)
-            DO UPDATE SET expression = $3"#,
+            DO UPDATE SET expression = $3, tenant_id = $5"#,
         )
         .bind(resource_name)
         .bind(action)
         .bind(expression)
-        .bind(&self.node_name);
+        .bind(&self.node_name)
+        .bind(self.database.tenant_id());
         query.execute(&*self.database.pool).await.void()
     }
 

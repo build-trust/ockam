@@ -63,17 +63,17 @@ impl SecureChannelRepository for SecureChannelSqlxDatabase {
 
     async fn put(&self, secure_channel: PersistedSecureChannel) -> Result<()> {
         let query = query(
-            r#"INSERT INTO secure_channel (role, my_identifier, their_identifier, decryptor_remote_address, decryptor_api_address, decryption_key_handle)
-            VALUES ($1, $2, $3, $4, $5, $6)
+            r#"INSERT INTO secure_channel (role, my_identifier, their_identifier, decryptor_remote_address, decryptor_api_address, decryption_key_handle, tenant_id)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
             ON CONFLICT (decryptor_remote_address)
-            DO UPDATE SET role = $1, my_identifier = $2, their_identifier = $3, decryptor_api_address = $5, decryption_key_handle = $6"#
+            DO UPDATE SET role = $1, my_identifier = $2, their_identifier = $3, decryptor_api_address = $5, decryption_key_handle = $6, tenant_id = $7"#,
             )
             .bind(secure_channel.role().str())
             .bind(secure_channel.my_identifier())
             .bind(secure_channel.their_identifier())
             .bind(secure_channel.decryptor_remote().to_string())
             .bind(secure_channel.decryptor_api().to_string())
-            .bind(secure_channel.decryption_key_handle());
+            .bind(secure_channel.decryption_key_handle()).bind(self.database.tenant_id());
         query.execute(&*self.database.pool).await.void()
     }
 

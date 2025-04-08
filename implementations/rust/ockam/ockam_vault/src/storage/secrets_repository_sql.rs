@@ -65,14 +65,15 @@ impl SecretsRepository for SecretsSqlxDatabase {
 
         let query = query(
             r#"
-            INSERT INTO signing_secret (handle, secret_type, secret)
-            VALUES ($1, $2, $3)
+            INSERT INTO signing_secret (handle, secret_type, secret, tenant_id)
+            VALUES ($1, $2, $3, $4)
             ON CONFLICT (handle)
-            DO UPDATE SET secret_type = $2, secret = $3"#,
+            DO UPDATE SET secret_type = $2, secret = $3, tenant_id = $4"#,
         )
         .bind(handle)
         .bind(secret_type)
-        .bind(secret);
+        .bind(secret)
+        .bind(self.database.tenant_id());
         query.execute(&*self.database.pool).await.void()
     }
 
@@ -114,13 +115,14 @@ impl SecretsRepository for SecretsSqlxDatabase {
     ) -> Result<()> {
         let query = query(
             r#"
-        INSERT INTO x25519_secret (handle, secret)
-        VALUES ($1, $2)
+        INSERT INTO x25519_secret (handle, secret, tenant_id)
+        VALUES ($1, $2, $3)
         ON CONFLICT (handle)
-        DO UPDATE SET secret = $2"#,
+        DO UPDATE SET secret = $2, tenant_id = $3"#,
         )
         .bind(handle)
-        .bind(secret);
+        .bind(secret)
+        .bind(self.database.tenant_id());
         query.execute(&*self.database.pool).await.void()
     }
 
@@ -160,14 +162,15 @@ impl SecretsRepository for SecretsSqlxDatabase {
     ) -> Result<()> {
         let query = query(
             r#"
-                INSERT INTO aead_secret (handle, type, secret)
-                VALUES ($1, $2, $3)
+                INSERT INTO aead_secret (handle, type, secret, tenant_id)
+                VALUES ($1, $2, $3, $4)
                 ON CONFLICT (handle)
-                DO UPDATE SET type = $2, secret = $3"#,
+                DO UPDATE SET type = $2, secret = $3, tenant_id = $4"#,
         )
         .bind(handle)
         .bind(AEAD_TYPE)
-        .bind(secret);
+        .bind(secret)
+        .bind(self.database.tenant_id());
         query.execute(&*self.database.pool).await.void()
     }
 

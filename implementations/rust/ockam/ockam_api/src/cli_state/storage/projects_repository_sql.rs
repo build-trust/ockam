@@ -193,10 +193,10 @@ impl ProjectsRepository for ProjectsSqlxDatabase {
 
         let query2 = query(
             r#"
-            INSERT INTO project (project_id, project_name, is_default, space_id, space_name, project_identifier, project_change_history, access_route, authority_change_history, authority_access_route, version, running, operation_id)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+            INSERT INTO project (project_id, project_name, is_default, space_id, space_name, project_identifier, project_change_history, access_route, authority_change_history, authority_access_route, version, running, operation_id, tenant_id)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
             ON CONFLICT (project_id)
-            DO UPDATE SET project_name = $2, is_default = $3, space_id = $4, space_name = $5, project_identifier = $6, project_change_history = $7, access_route = $8, authority_change_history = $9, authority_access_route = $10, version = $11, running = $12, operation_id = $13"#,
+            DO UPDATE SET project_name = $2, is_default = $3, space_id = $4, space_name = $5, project_identifier = $6, project_change_history = $7, access_route = $8, authority_change_history = $9, authority_access_route = $10, version = $11, running = $12, operation_id = $13, tenant_id = $14"#,
         )
             .bind(&project.id)
             .bind(project_name)
@@ -210,7 +210,7 @@ impl ProjectsRepository for ProjectsSqlxDatabase {
             .bind(project.authority_access_route.as_ref())
             .bind(project.version.as_ref())
             .bind(project.running.as_ref())
-            .bind(project.operation_id.as_ref());
+            .bind(project.operation_id.as_ref()).bind(self.database.tenant_id());
         query2.execute(&mut *transaction).await.void()?;
 
         if is_default {
@@ -225,12 +225,13 @@ impl ProjectsRepository for ProjectsSqlxDatabase {
         for user_email in &project.users {
             let query = query(
                 r#"
-            INSERT INTO user_project (user_email, project_id)
-            VALUES ($1, $2)
+            INSERT INTO user_project (user_email, project_id, tenant_id)
+            VALUES ($1, $2, $3)
             ON CONFLICT DO NOTHING"#,
             )
             .bind(user_email)
-            .bind(&project.id);
+            .bind(&project.id)
+            .bind(self.database.tenant_id());
             query.execute(&mut *transaction).await.void()?;
         }
 
@@ -242,42 +243,44 @@ impl ProjectsRepository for ProjectsSqlxDatabase {
         for user_role in &project.user_roles {
             let query = query(
                 r#"
-            INSERT INTO user_role (user_id, project_id, user_email, role, scope)
-            VALUES ($1, $2, $3, $4, $5)
+            INSERT INTO user_role (user_id, project_id, user_email, role, scope, tenant_id)
+            VALUES ($1, $2, $3, $4, $5, $6)
             ON CONFLICT DO NOTHING"#,
             )
             .bind(user_role.id as i64)
             .bind(&project.id)
             .bind(&user_role.email)
             .bind(&user_role.role)
-            .bind(&user_role.scope);
+            .bind(&user_role.scope)
+            .bind(self.database.tenant_id());
             query.execute(&mut *transaction).await.void()?;
         }
 
         // make sure that the project space is also saved
         let query5 = query(
             r#"
-          INSERT INTO space (space_id, space_name, is_default)
-          VALUES ($1, $2, $3)
+          INSERT INTO space (space_id, space_name, is_default, tenant_id)
+          VALUES ($1, $2, $3, $4)
           ON CONFLICT (space_id)
-          DO UPDATE SET space_name = $2, is_default = $3"#,
+          DO UPDATE SET space_name = $2, is_default = $3, tenant_id = $4"#,
         )
         .bind(&project.space_id)
         .bind(&project.space_name)
-        .bind(true);
+        .bind(true)
+        .bind(self.database.tenant_id());
         query5.execute(&mut *transaction).await.void()?;
 
         // store the okta configuration if any
         if let Some(okta_config) = &project.okta_config {
             let query = query(r#"
-                INSERT INTO okta_config (project_id, tenant_base_url, client_id, certificate, attributes)
-                VALUES ($1, $2, $3, $4, $5)
+                INSERT INTO okta_config (project_id, tenant_base_url, client_id, certificate, attributes, tenant_id)
+                VALUES ($1, $2, $3, $4, $5, $6)
                 ON CONFLICT DO NOTHING"#)
                 .bind(&project.id)
                 .bind(&okta_config.tenant_base_url)
                 .bind(&okta_config.client_id)
                 .bind(&okta_config.certificate)
-                .bind(okta_config.attributes.join(",").to_string());
+                .bind(okta_config.attributes.join(",").to_string()).bind(self.database.tenant_id());
             query.execute(&mut *transaction).await.void()?;
         }
 
@@ -285,12 +288,13 @@ impl ProjectsRepository for ProjectsSqlxDatabase {
         if let Some(kafka_config) = &project.kafka_config {
             let query = query(
                 r#"
-                INSERT INTO kafka_config (project_id, bootstrap_server)
-                VALUES ($1, $2)
+                INSERT INTO kafka_config (project_id, bootstrap_server, tenant_id)
+                VALUES ($1, $2, $3)
                 ON CONFLICT DO NOTHING"#,
             )
             .bind(&project.id)
-            .bind(&kafka_config.bootstrap_server);
+            .bind(&kafka_config.bootstrap_server)
+            .bind(self.database.tenant_id());
             query.execute(&mut *transaction).await.void()?;
         }
 

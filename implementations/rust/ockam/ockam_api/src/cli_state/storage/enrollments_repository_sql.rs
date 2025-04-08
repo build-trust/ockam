@@ -46,14 +46,15 @@ impl EnrollmentsRepository for EnrollmentsSqlxDatabase {
     async fn set_as_enrolled(&self, identifier: &Identifier, email: &EmailAddress) -> Result<()> {
         let query = query(
             r#"
-                INSERT INTO identity_enrollment (identifier, enrolled_at, email)
-                VALUES ($1, $2, $3)
+                INSERT INTO identity_enrollment (identifier, enrolled_at, email, tenant_id)
+                VALUES ($1, $2, $3, $4)
                 ON CONFLICT (identifier)
-                DO UPDATE SET enrolled_at = $2, email = $3"#,
+                DO UPDATE SET enrolled_at = $2, email = $3, tenant_id = $4"#,
         )
         .bind(identifier)
         .bind(OffsetDateTime::now_utc().unix_timestamp())
-        .bind(email);
+        .bind(email)
+        .bind(self.database.tenant_id());
         Ok(query.execute(&*self.database.pool).await.void()?)
     }
 

@@ -57,15 +57,16 @@ impl TcpPortalsRepository for TcpPortalsSqlxDatabase {
     ) -> ockam_core::Result<()> {
         let query = query(
             r#"
-            INSERT INTO tcp_inlet (node_name, bind_addr, outlet_addr, alias, privileged)
-            VALUES ($1, $2, $3, $4, $5)
+            INSERT INTO tcp_inlet (node_name, bind_addr, outlet_addr, alias, privileged, tenant_id)
+            VALUES ($1, $2, $3, $4, $5, $6)
             ON CONFLICT DO NOTHING"#,
         )
         .bind(node_name)
         .bind(tcp_inlet.bind_addr().to_string())
         .bind(tcp_inlet.outlet_addr().to_string())
         .bind(tcp_inlet.alias())
-        .bind(tcp_inlet.privileged());
+        .bind(tcp_inlet.privileged())
+        .bind(self.database.tenant_id());
         query.execute(&*self.database.pool).await.void()?;
         Ok(())
     }
@@ -102,15 +103,15 @@ impl TcpPortalsRepository for TcpPortalsSqlxDatabase {
     ) -> ockam_core::Result<()> {
         let query = query(
             r#"
-            INSERT INTO tcp_outlet_status (node_name, socket_addr, worker_addr, payload, privileged)
-            VALUES ($1, $2, $3, $4, $5)
+            INSERT INTO tcp_outlet_status (node_name, socket_addr, worker_addr, payload, privileged, tenant_id)
+            VALUES ($1, $2, $3, $4, $5, $6)
             ON CONFLICT DO NOTHING"#,
         )
         .bind(node_name)
         .bind(tcp_outlet_status.to.to_string())
         .bind(tcp_outlet_status.worker_address.to_string())
         .bind(tcp_outlet_status.payload.as_ref())
-        .bind(tcp_outlet_status.privileged);
+        .bind(tcp_outlet_status.privileged).bind(self.database.tenant_id());
         query.execute(&*self.database.pool).await.void()?;
         Ok(())
     }

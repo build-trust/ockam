@@ -80,16 +80,16 @@ impl AuthorityMembersRepository for AuthorityMembersSqlxDatabase {
 
     async fn add_member(&self, authority: &Identifier, member: AuthorityMember) -> Result<()> {
         let query = query(r#"
-             INSERT INTO authority_member (identifier, added_by, added_at, is_pre_trusted, attributes, authority_id)
-             VALUES ($1, $2, $3, $4, $5, $6)
+             INSERT INTO authority_member (identifier, added_by, added_at, is_pre_trusted, attributes, authority_id, tenant_id)
+             VALUES ($1, $2, $3, $4, $5, $6, $7)
              ON CONFLICT (identifier)
-             DO UPDATE SET added_by = $2, added_at = $3, is_pre_trusted = $4, attributes = $5, authority_id = $6"#)
+             DO UPDATE SET added_by = $2, added_at = $3, is_pre_trusted = $4, attributes = $5, authority_id = $6, tenant_id = $7"#)
             .bind(member.identifier())
             .bind(member.added_by())
             .bind(member.added_at())
             .bind(member.is_pre_trusted())
             .bind(ockam_core::cbor_encode_preallocate(member.attributes())?)
-            .bind(authority);
+            .bind(authority).bind(self.database.tenant_id());
 
         query.execute(&*self.database.pool).await.void()
     }
@@ -109,16 +109,16 @@ impl AuthorityMembersRepository for AuthorityMembersSqlxDatabase {
         for (identifier, pre_trusted_identity) in pre_trusted_identities.deref() {
             let query2 =
                 query(r#"
-                      INSERT INTO authority_member (identifier, added_by, added_at, is_pre_trusted, attributes, authority_id)
-                      VALUES ($1, $2, $3, $4, $5, $6)
+                      INSERT INTO authority_member (identifier, added_by, added_at, is_pre_trusted, attributes, authority_id, tenant_id)
+                      VALUES ($1, $2, $3, $4, $5, $6, $7)
                       ON CONFLICT (identifier)
-                      DO UPDATE SET added_by = $2, added_at = $3, is_pre_trusted = $4, attributes = $5, authority_id = $6"#)
+                      DO UPDATE SET added_by = $2, added_at = $3, is_pre_trusted = $4, attributes = $5, authority_id = $6, tenant_id = $7"#)
                     .bind(identifier)
                     .bind(pre_trusted_identity.attested_by())
                     .bind(pre_trusted_identity.added_at())
                     .bind(true)
                     .bind(ockam_core::cbor_encode_preallocate(pre_trusted_identity.attrs())?)
-                    .bind(authority);
+                    .bind(authority).bind(self.database.tenant_id());
 
             query2.execute(&mut *transaction).await.void()?;
         }

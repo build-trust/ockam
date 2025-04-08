@@ -1,6 +1,6 @@
 use crate::database::migrations::migration_support::migration_status::MigrationStatus;
 use crate::database::migrations::migration_support::rust_migration::RustMigration;
-use crate::database::postgres::migration_20250116100000_sqlite_initialization::InitializeFromSqlite;
+use crate::database::postgres::migration_20250407100000_sqlite_initialization::InitializeFromSqlite;
 use crate::database::MigrationResult::MigrationSuccess;
 use crate::database::{FromSqlxError, MigrationFailure, MigrationResult, SqlxDatabase, ToVoid};
 use core::fmt::{Display, Formatter};

@@ -47,15 +47,15 @@ impl JourneysRepository for JourneysSqlxDatabase {
             .map(|c| c.to_string());
         let query = query(
             r#"
-            INSERT INTO project_journey (project_id, opentelemetry_context, start_datetime, previous_opentelemetry_context)
-            VALUES ($1, $2, $3, $4)
+            INSERT INTO project_journey (project_id, opentelemetry_context, start_datetime, previous_opentelemetry_context, tenant_id)
+            VALUES ($1, $2, $3, $4, $5)
             ON CONFLICT (opentelemetry_context)
-            DO UPDATE SET project_id = $1, start_datetime = $3, previous_opentelemetry_context = $4"#,
+            DO UPDATE SET project_id = $1, start_datetime = $3, previous_opentelemetry_context = $4, tenant_id = $5"#,
         )
         .bind(project_journey.project_id())
         .bind(project_journey.opentelemetry_context().to_string())
         .bind(project_journey.start().to_rfc3339())
-        .bind(previous);
+        .bind(previous).bind(self.database.tenant_id());
         query.execute(&*self.database.pool).await.void()
     }
 
@@ -89,10 +89,10 @@ impl JourneysRepository for JourneysSqlxDatabase {
     async fn store_host_journey(&self, host_journey: Journey) -> Result<()> {
         let query = query(
             r#"
-         INSERT INTO host_journey (opentelemetry_context, start_datetime, previous_opentelemetry_context)
-         VALUES ($1, $2, $3)
+         INSERT INTO host_journey (opentelemetry_context, start_datetime, previous_opentelemetry_context, tenant_id)
+         VALUES ($1, $2, $3, $4)
          ON CONFLICT (opentelemetry_context)
-         DO UPDATE SET start_datetime = $2, previous_opentelemetry_context = $3"#,
+         DO UPDATE SET start_datetime = $2, previous_opentelemetry_context = $3, tenant_id = $4"#,
         )
         .bind(host_journey.opentelemetry_context().to_string())
         .bind(host_journey.start().to_rfc3339())
@@ -100,7 +100,7 @@ impl JourneysRepository for JourneysSqlxDatabase {
             host_journey
                 .previous_opentelemetry_context()
                 .map(|c| c.to_string()),
-        );
+        ).bind(self.database.tenant_id());
         query.execute(&*self.database.pool).await.void()
     }
 

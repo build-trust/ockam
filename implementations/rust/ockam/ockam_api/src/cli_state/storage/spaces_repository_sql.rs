@@ -82,14 +82,15 @@ impl SpacesRepository for SpacesSqlxDatabase {
 
         let query2 = query(
             r#"
-             INSERT INTO space (space_id, space_name, is_default)
-             VALUES ($1, $2, $3)
+             INSERT INTO space (space_id, space_name, is_default, tenant_id)
+             VALUES ($1, $2, $3, $4)
              ON CONFLICT (space_id)
-             DO UPDATE SET space_name = $2, is_default = $3"#,
+             DO UPDATE SET space_name = $2, is_default = $3, tenant_id = $4"#,
         )
         .bind(&space.id)
         .bind(&space.name)
-        .bind(is_default);
+        .bind(is_default)
+        .bind(self.database.tenant_id());
         query2.execute(&mut *transaction).await.void()?;
 
         if is_default {
@@ -104,12 +105,13 @@ impl SpacesRepository for SpacesSqlxDatabase {
         for user_email in &space.users {
             let query4 = query(
                 r#"
-              INSERT INTO user_space (user_email, space_id)
-              VALUES ($1, $2)
+              INSERT INTO user_space (user_email, space_id, tenant_id)
+              VALUES ($1, $2, $3)
               ON CONFLICT DO NOTHING"#,
             )
             .bind(user_email)
-            .bind(&space.id);
+            .bind(&space.id)
+            .bind(self.database.tenant_id());
             query4.execute(&mut *transaction).await.void()?;
         }
 
@@ -118,18 +120,18 @@ impl SpacesRepository for SpacesSqlxDatabase {
             let start_date = subscription.start_date();
             let end_date = subscription.end_date();
             let query = query(
-                r"
-             INSERT INTO subscription (space_id, name, is_free_trial, marketplace, start_date, end_date)
-             VALUES ($1, $2, $3, $4, $5, $6)
+                r#"
+             INSERT INTO subscription (space_id, name, is_free_trial, marketplace, start_date, end_date, tenant_id)
+             VALUES ($1, $2, $3, $4, $5, $6, $7)
              ON CONFLICT (space_id)
-             DO UPDATE SET name = $2, is_free_trial = $3, marketplace = $4, start_date = $5, end_date = $6",
+             DO UPDATE SET name = $2, is_free_trial = $3, marketplace = $4, start_date = $5, end_date = $6, tenant_id = $7"#,
             )
                 .bind(&space.id)
                 .bind(subscription.name.to_string())
                 .bind(subscription.is_free_trial)
                 .bind(&subscription.marketplace)
                 .bind(start_date.map(|d| d.into_inner().unix_timestamp()))
-                .bind(end_date.map(|d| d.into_inner().unix_timestamp()));
+                .bind(end_date.map(|d| d.into_inner().unix_timestamp())).bind(self.database.tenant_id());
             query.execute(&mut *transaction).await.void()?;
         }
         // remove the subscription
