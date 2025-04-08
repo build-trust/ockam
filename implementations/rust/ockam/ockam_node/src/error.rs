@@ -23,6 +23,8 @@ pub enum NodeError {
     WorkerState(WorkerReason),
     /// A failure occurred because of invalid address router state
     RouterState(RouterReason),
+    /// Couldn't update state during message sending
+    SendUpgrade(Address),
 }
 
 impl NodeError {
@@ -82,6 +84,10 @@ impl fmt::Display for NodeError {
                 Self::NodeState(reason) => format!("failed because node state: {}", reason),
                 Self::WorkerState(reason) => format!("failed because worker state: {}", reason),
                 Self::RouterState(reason) => format!("failed because router state: {}", reason),
+                Self::SendUpgrade(address) => format!(
+                    "failed to update state during sending from primary address: {}",
+                    address
+                ),
             }
         )
     }

@@ -1,14 +1,12 @@
 use crate::context::MessageWait;
 use crate::error::*;
 use crate::{debugger, Context, MessageReceiveOptions, DEFAULT_TIMEOUT};
-use cfg_if::cfg_if;
 use core::time::Duration;
 use ockam_core::compat::{sync::Arc, vec::Vec};
 use ockam_core::{
     errcode::{Kind, Origin},
-    route, Address, AllOutgoingAccessControl, AllowAll, AllowOnwardAddress, Error,
-    IncomingAccessControl, LocalMessage, Mailboxes, Message, OutgoingAccessControl, RelayMessage,
-    Result, Route, Routed,
+    Address, AllOutgoingAccessControl, AllowAll, AllowOnwardAddress, Error, IncomingAccessControl,
+    LocalMessage, Mailboxes, Message, OutgoingAccessControl, RelayMessage, Result, Route, Routed,
 };
 use ockam_core::{LocalInfo, Mailbox};
 
@@ -139,12 +137,14 @@ impl Context {
         );
 
         if let Some(flow_control_id) = self
+            .state
             .flow_controls
             .find_flow_control_with_producer_address(&next)
             .map(|x| x.flow_control_id().clone())
         {
             // To be able to receive the response
-            self.flow_controls.add_consumer(&address, &flow_control_id);
+            self.flow_controls()
+                .add_consumer(&address, &flow_control_id);
         }
 
         let mut child_ctx = self.new_detached_with_mailboxes(mailboxes)?;
@@ -171,7 +171,7 @@ impl Context {
         M: Message + Send + 'static,
     {
         let addr = addr.into();
-        if self.mailboxes.contains(&addr) {
+        if self.mailboxes().contains(&addr) {
             self.send_from_address(addr, msg, from.into()).await
         } else {
             Err(NodeError::NodeState(NodeReason::Unknown).internal())
@@ -242,13 +242,14 @@ impl Context {
         R: Into<Route>,
         M: Message,
     {
-        self.send_from_address_impl(
-            route.into(),
-            msg,
-            self.primary_address().clone(),
-            local_info,
-        )
-        .await
+        self.state
+            .send_from_address_impl(
+                route.into(),
+                msg,
+                self.primary_address().clone(),
+                local_info,
+            )
+            .await
     }
 
     /// Send a message to an address or via a fully-qualified route
@@ -274,80 +275,9 @@ impl Context {
         R: Into<Route>,
         M: Message,
     {
-        self.send_from_address_impl(route.into(), msg, sending_address, Vec::new())
+        self.state
+            .send_from_address_impl(route.into(), msg, sending_address, Vec::new())
             .await
-    }
-
-    async fn send_from_address_impl<M>(
-        &self,
-        route: Route,
-        msg: M,
-        sending_address: Address,
-        local_info: Vec<LocalInfo>,
-    ) -> Result<()>
-    where
-        M: Message,
-    {
-        // Check if the sender address exists
-        if !self.mailboxes.contains(&sending_address) {
-            return Err(Error::new_without_cause(Origin::Node, Kind::Invalid));
-        }
-
-        // First resolve the next hop in the route
-        let addr = match route.next() {
-            Ok(next) => next.clone(),
-            Err(err) => {
-                // TODO: communicate bad routes to calling function
-                error!("Invalid route for message sent from {}", sending_address);
-                return Err(err);
-            }
-        };
-
-        let sender = self.router()?.resolve(&addr)?;
-
-        // Pack the payload into a TransportMessage
-        let payload = msg.encode().map_err(|_| NodeError::Data.internal())?;
-
-        // Pack transport message into a LocalMessage wrapper
-        cfg_if! {
-            if #[cfg(feature = "std")] {
-                let local_msg = LocalMessage::new()
-                    // make sure to set the latest tracing context, to get the latest span id
-                    .with_tracing_context(self.tracing_context().update())
-                    .with_onward_route(route)
-                    .with_return_route(route![sending_address.clone()])
-                    .with_payload(payload)
-                    .with_local_info(local_info);
-            } else {
-                let local_msg = LocalMessage::new()
-                    .with_onward_route(route)
-                    .with_return_route(route![sending_address.clone()])
-                    .with_payload(payload)
-                    .with_local_info(local_info);
-            }
-        }
-
-        // Pack local message into a RelayMessage wrapper
-        let relay_msg = RelayMessage::new(sending_address, addr, local_msg);
-
-        debugger::log_outgoing_message(self, &relay_msg);
-
-        if !self.mailboxes.is_outgoing_authorized(&relay_msg).await? {
-            warn!(
-                "Message sent from {} to {} did not pass outgoing access control",
-                relay_msg.source(),
-                relay_msg.destination()
-            );
-            return Ok(());
-        }
-
-        // Send the packed user message with associated route
-        sender
-            .send(relay_msg)
-            .await
-            .map_err(NodeError::from_send_err)?;
-
-        Ok(())
     }
 
     /// Forward a transport message to its next routing destination
@@ -385,7 +315,7 @@ impl Context {
         sending_address: Address,
     ) -> Result<()> {
         // Check if the sender address exists
-        if !self.mailboxes.contains(&sending_address) {
+        if !self.mailboxes().contains(&sending_address) {
             return Err(Error::new_without_cause(Origin::Node, Kind::Invalid));
         }
 
@@ -406,9 +336,9 @@ impl Context {
         // Pack the transport message into a RelayMessage wrapper
         let relay_msg = RelayMessage::new(sending_address, addr, local_msg);
 
-        debugger::log_outgoing_message(self, &relay_msg);
+        debugger::log_outgoing_message(self.primary_address(), &relay_msg);
 
-        if !self.mailboxes.is_outgoing_authorized(&relay_msg).await? {
+        if !self.mailboxes().is_outgoing_authorized(&relay_msg).await? {
             warn!(
                 "Message forwarded from {} to {} did not pass outgoing access control",
                 relay_msg.source(),

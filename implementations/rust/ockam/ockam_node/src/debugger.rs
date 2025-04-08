@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use crate::Context;
-use ockam_core::RelayMessage;
+use ockam_core::{Address, RelayMessage};
 
 #[cfg(feature = "debugger")]
 use ockam_core::{Address, Mailbox, Mailboxes};
@@ -121,15 +121,15 @@ pub fn log_incoming_message(_receiving_ctx: &Context, _relay_msg: &RelayMessage)
 
 /// Log outgoing message traffic
 #[cfg(feature = "debugger")]
-pub fn log_outgoing_message(sending_ctx: &Context, relay_msg: &RelayMessage) {
+pub fn log_outgoing_message(primary_address: &Address, relay_msg: &RelayMessage) {
     static COUNTER: AtomicU32 = AtomicU32::new(0);
 
     tracing::trace!(
         "log_outgoing_message #{:03}: {} ({}) -> {}",
         COUNTER.fetch_add(1, Ordering::Relaxed),
-        relay_msg.source(),            // sending address
-        sending_ctx.primary_address(), // actual sending context address
-        relay_msg.destination(),       // receiving address
+        relay_msg.source(),      // sending address
+        primary_address,         // actual sending context address
+        relay_msg.destination(), // receiving address
     );
 
     instance()
@@ -143,7 +143,7 @@ pub fn log_outgoing_message(sending_ctx: &Context, relay_msg: &RelayMessage) {
 
 /// No-op
 #[cfg(not(feature = "debugger"))]
-pub fn log_outgoing_message(_sending_ctx: &Context, _relay_msg: &RelayMessage) {}
+pub fn log_outgoing_message(_primary_address: &Address, _relay_msg: &RelayMessage) {}
 
 /// Log Context creation
 ///
