@@ -64,7 +64,7 @@ impl Context {
                 trace!(address=%self.primary_address(), "received new message!");
 
                 // First we update the mailbox fill metrics
-                self.mailbox_count.fetch_sub(1, Ordering::Acquire);
+                self.state.mailbox_count.fetch_sub(1, Ordering::Acquire);
 
                 msg
             }) {
@@ -76,7 +76,7 @@ impl Context {
 
             debugger::log_incoming_message(self, &relay_msg);
 
-            if !self.mailboxes.is_incoming_authorized(&relay_msg).await? {
+            if !self.mailboxes().is_incoming_authorized(&relay_msg).await? {
                 warn!(
                     "Message received from {} for {} did not pass incoming access control",
                     relay_msg.source(),

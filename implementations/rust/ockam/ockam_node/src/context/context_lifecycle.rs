@@ -15,6 +15,7 @@ use ockam_core::{
 use ockam_transport_core::Transport;
 
 use crate::channel_types::{message_channel, oneshot_channel, OneshotReceiver};
+use crate::context::ContextState;
 use crate::router::Router;
 use crate::{debugger, Context, ContextMode};
 use crate::{relay::CtrlSignal, router::SenderPair};
@@ -75,18 +76,24 @@ impl Context {
     ) -> (Self, SenderPair, OneshotReceiver<CtrlSignal>) {
         let (mailbox_tx, receiver) = message_channel();
         let (ctrl_tx, ctrl_rx) = oneshot_channel();
+
+        let send_state = ContextState {
+            mailboxes,
+            router,
+            // TODO: Recheck if it's correct and what it counts
+            mailbox_count: Arc::new(0.into()),
+            flow_controls: flow_controls.clone(),
+            #[cfg(feature = "std")]
+            tracing_context: RwLock::new(tracing_context),
+        };
+
         (
             Self {
-                runtime_handle,
-                router,
-                mailboxes,
-                mode,
                 receiver,
-                mailbox_count: Arc::new(0.into()),
+                state: Arc::new(send_state),
                 transports,
-                flow_controls: flow_controls.clone(),
-                #[cfg(feature = "std")]
-                tracing_context,
+                runtime_handle,
+                mode,
             },
             SenderPair {
                 msgs: mailbox_tx,
@@ -131,7 +138,7 @@ impl Context {
             mailboxes,
             mode,
             self.transports.clone(),
-            &self.flow_controls,
+            &self.state.flow_controls,
             #[cfg(feature = "std")]
             OpenTelemetryContext::current(),
         )
@@ -235,7 +242,7 @@ impl Context {
             sender,
             true,
             Default::default(),
-            self.mailbox_count.clone(),
+            self.state.mailbox_count.clone(),
         )?;
 
         Ok(ctx)
