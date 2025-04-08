@@ -20,6 +20,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS name_index ON _rust_migrations (name);
 --  - the encoded history of all the key rotations for this identity
 CREATE TABLE identity
 (
+    tenant_id      TEXT NOT NULL, -- Tenant identifier
     identifier     TEXT NOT NULL UNIQUE,
     change_history TEXT NOT NULL
 );
@@ -27,6 +28,7 @@ CREATE TABLE identity
 -- This table some local metadata about identities
 CREATE TABLE named_identity
 (
+    tenant_id  TEXT NOT NULL,        -- Tenant identifier
     identifier TEXT NOT NULL UNIQUE, -- Identity identifier
     name       TEXT UNIQUE,          -- user-specified name
     vault_name TEXT NOT NULL,        -- name of the vault used to store the identity keys
@@ -37,6 +39,7 @@ CREATE TABLE named_identity
 -- This table lists attributes associated to a given identity
 CREATE TABLE identity_attributes
 (
+    tenant_id   TEXT    NOT NULL, -- Tenant identifier
     identifier  TEXT PRIMARY KEY, -- identity possessing those attributes
     attributes  BYTEA   NOT NULL, -- serialized list of attribute names and values for the identity
     added       INTEGER NOT NULL, -- UNIX timestamp in seconds: when those attributes were inserted in the database
@@ -58,12 +61,13 @@ CREATE INDEX identity_node_name_index ON identity_attributes (node_name);
 -- This table stores credentials as received by the application
 CREATE TABLE credential
 (
+    tenant_id          TEXT  NOT NULL, -- Tenant identifier
     subject_identifier TEXT  NOT NULL,
     issuer_identifier  TEXT  NOT NULL,
     scope              TEXT  NOT NULL,
     credential         BYTEA NOT NULL,
     expires_at         INTEGER,
-    node_name          TEXT  NOT NULL -- node name to isolate credential that each node has
+    node_name          TEXT  NOT NULL  -- node name to isolate credential that each node has
 );
 
 CREATE UNIQUE INDEX credential_issuer_subject_scope_index ON credential (issuer_identifier, subject_identifier, scope);
@@ -72,6 +76,7 @@ CREATE UNIQUE INDEX credential_issuer_subject_index ON credential (issuer_identi
 -- This table stores purpose keys that have been created by a given identity
 CREATE TABLE purpose_key
 (
+    tenant_id               TEXT  NOT NULL, -- Tenant identifier
     identifier              TEXT  NOT NULL, -- Identity identifier
     purpose                 TEXT  NOT NULL, -- Purpose of the key: SecureChannels, or Credentials
     purpose_key_attestation BYTEA NOT NULL  -- Encoded attestation: attestation data and attestation signature
@@ -86,6 +91,7 @@ CREATE UNIQUE INDEX purpose_key_index ON purpose_key (identifier, purpose);
 -- This table stores vault metadata when several vaults have been created locally
 CREATE TABLE vault
 (
+    tenant_id  TEXT NOT NULL,    -- Tenant identifier
     name       TEXT PRIMARY KEY, -- User-specified name for a vault
     path       TEXT NULL,        -- If the path is specified, then the secrets are stored in a SQLite file. Otherwise secrets are stored in the *-secrets tables below.
     is_default BOOLEAN,          -- boolean indicating if this vault is the default one (0 means true)
@@ -95,6 +101,7 @@ CREATE TABLE vault
 -- This table stores secrets for signing data
 CREATE TABLE signing_secret
 (
+    tenant_id   TEXT  NOT NULL,    -- Tenant identifier
     handle      BYTEA PRIMARY KEY, -- Secret handle
     secret_type TEXT  NOT NULL,    -- Secret type (EdDSACurve25519 or ECDSASHA256CurveP256)
     secret      BYTEA NOT NULL     -- Secret binary
@@ -103,8 +110,9 @@ CREATE TABLE signing_secret
 -- This table stores secrets for encrypting / decrypting data
 CREATE TABLE x25519_secret
 (
-    handle BYTEA PRIMARY KEY, -- Secret handle
-    secret BYTEA NOT NULL     -- Secret binary
+    tenant_id TEXT  NOT NULL,    -- Tenant identifier
+    handle    BYTEA PRIMARY KEY, -- Secret handle
+    secret    BYTEA NOT NULL     -- Secret binary
 );
 
 -------------
@@ -113,6 +121,7 @@ CREATE TABLE x25519_secret
 
 CREATE TABLE authority_member
 (
+    tenant_id      TEXT    NOT NULL, -- Tenant identifier
     identifier     TEXT    NOT NULL UNIQUE,
     added_by       TEXT    NOT NULL,
     added_at       INTEGER NOT NULL,
@@ -128,6 +137,7 @@ CREATE INDEX authority_member_is_pre_trusted_index ON authority_member (is_pre_t
 -- it's not sensitive so can be logged and used to track a lifecycle of a specific enrollment token.
 CREATE TABLE authority_enrollment_token
 (
+    tenant_id     TEXT    NOT NULL, -- Tenant identifier
     one_time_code TEXT    NOT NULL UNIQUE,
     issued_by     TEXT    NOT NULL,
     created_at    INTEGER NOT NULL,
@@ -149,6 +159,7 @@ CREATE INDEX authority_enrollment_token_expires_at_index ON authority_enrollment
 -- to assess if a given action can be performed on a given resource
 CREATE TABLE resource_policy
 (
+    tenant_id     TEXT NOT NULL, -- Tenant identifier
     resource_name TEXT NOT NULL, -- resource name
     action        TEXT NOT NULL, -- action name
     expression    TEXT NOT NULL, -- encoded expression to evaluate
@@ -160,6 +171,7 @@ CREATE UNIQUE INDEX resource_policy_index ON resource_policy (node_name, resourc
 -- Create a new table for resource type policies
 CREATE TABLE resource_type_policy
 (
+    tenant_id     TEXT NOT NULL, -- Tenant identifier
     resource_type TEXT NOT NULL, -- resource type
     action        TEXT NOT NULL, -- action name
     expression    TEXT NOT NULL, -- encoded expression to evaluate
@@ -170,6 +182,7 @@ CREATE UNIQUE INDEX resource_type_policy_index ON resource_type_policy (node_nam
 -- Create a new table for resource to resource type mapping
 CREATE TABLE resource
 (
+    tenant_id     TEXT NOT NULL, -- Tenant identifier
     resource_name TEXT NOT NULL, -- resource name
     resource_type TEXT,          -- resource type
     node_name     TEXT NOT NULL  -- node name
@@ -179,6 +192,7 @@ CREATE UNIQUE INDEX resource_index ON resource (node_name, resource_name);
 -- This table stores the current state of a TCP outlet
 CREATE TABLE tcp_outlet_status
 (
+    tenant_id   TEXT NOT NULL,        -- Tenant identifier
     node_name   TEXT NOT NULL,        -- Node where that tcp outlet has been created
     socket_addr TEXT NOT NULL,        -- Socket address that the outlet connects to
     worker_addr TEXT NOT NULL,        -- Worker address for the outlet itself
@@ -189,6 +203,7 @@ CREATE TABLE tcp_outlet_status
 -- This table stores the current state of a TCP inlet
 CREATE TABLE tcp_inlet
 (
+    tenant_id   TEXT NOT NULL,        -- Tenant identifier
     node_name   TEXT NOT NULL,        -- Node where that tcp inlet has been created
     bind_addr   TEXT NOT NULL,        -- Input address to connect to
     outlet_addr TEXT NOT NULL,        -- MultiAddress to the outlet
@@ -203,6 +218,7 @@ CREATE TABLE tcp_inlet
 -- This table stores information about local nodes
 CREATE TABLE node
 (
+    tenant_id            TEXT    NOT NULL, -- Tenant identifier
     name                 TEXT PRIMARY KEY, -- Node name
     identifier           TEXT    NOT NULL, -- Identifier of the default identity associated to the node
     verbosity            INTEGER NOT NULL, -- Verbosity level used for logging
@@ -220,6 +236,7 @@ CREATE TABLE node
 -- This table stores secure channels in order to restore them on a restart
 CREATE TABLE secure_channel
 (
+    tenant_id                TEXT  NOT NULL, -- Tenant identifier
     role                     TEXT  NOT NULL,
     my_identifier            TEXT  NOT NULL,
     their_identifier         TEXT  NOT NULL,
@@ -234,20 +251,10 @@ CREATE UNIQUE INDEX secure_channel_decryptor_api_address_index ON secure_channel
 -- This table stores aead secrets
 CREATE TABLE aead_secret
 (
-    handle BYTEA PRIMARY KEY, -- Secret handle
-    type   TEXT  NOT NULL,    -- Secret type
-    secret BYTEA NOT NULL     -- Secret binary
-);
-
------------------
--- USER JOURNEYS
------------------
-
-CREATE TABLE host_journey
-(
-    opentelemetry_context          TEXT NOT NULL UNIQUE,
-    start_datetime                 TEXT NOT NULL,
-    previous_opentelemetry_context TEXT
+    tenant_id TEXT  NOT NULL,    -- Tenant identifier
+    handle    BYTEA PRIMARY KEY, -- Secret handle
+    type      TEXT  NOT NULL,    -- Secret type
+    secret    BYTEA NOT NULL     -- Secret binary
 );
 
 ---------------------------
@@ -257,6 +264,7 @@ CREATE TABLE host_journey
 -- This table stores data about projects as returned by the Controller
 CREATE TABLE project
 (
+    tenant_id                TEXT    NOT NULL, -- Tenant identifier
     project_id               TEXT PRIMARY KEY, -- Id of the project
     project_name             TEXT    NOT NULL, -- Name of the project
     is_default               BOOLEAN NOT NULL, -- Boolean indicating if this project is the default one (0 means true)
@@ -275,6 +283,7 @@ CREATE TABLE project
 -- This table provides the list of users associated to a given project
 CREATE TABLE user_project
 (
+    tenant_id  TEXT NOT NULL, -- Tenant identifier
     user_email TEXT NOT NULL, -- User email
     project_id TEXT NOT NULL  -- Project id
 );
@@ -282,6 +291,7 @@ CREATE TABLE user_project
 -- This table provides additional information for users associated to a project or a space
 CREATE TABLE user_role
 (
+    tenant_id  TEXT    NOT NULL, -- Tenant identifier
     user_id    INTEGER NOT NULL, -- User id
     project_id TEXT    NOT NULL, -- Project id
     user_email TEXT    NOT NULL, -- User email
@@ -292,6 +302,7 @@ CREATE TABLE user_role
 -- This table stores data about spaces as returned by the controller
 CREATE TABLE space
 (
+    tenant_id  TEXT    NOT NULL, -- Tenant identifier
     space_id   TEXT PRIMARY KEY, -- Identifier of the space
     space_name TEXT    NOT NULL, -- Name of the space
     is_default BOOLEAN NOT NULL  -- Boolean indicating if this project is the default one (0 means true)
@@ -300,6 +311,7 @@ CREATE TABLE space
 -- This table provides the list of users associated to a given project
 CREATE TABLE user_space
 (
+    tenant_id  TEXT NOT NULL, -- Tenant identifier
     user_email TEXT NOT NULL, -- User email
     space_id   TEXT NOT NULL  -- Space id
 );
@@ -307,6 +319,7 @@ CREATE TABLE user_space
 -- This table stores the subscription for a given space
 CREATE TABLE subscription
 (
+    tenant_id     TEXT    NOT NULL, -- Tenant identifier
     space_id      TEXT PRIMARY KEY, -- Space id
     name          TEXT    NOT NULL, -- Name of the subscription
     is_free_trial BOOLEAN NOT NULL, -- Boolean indicating if the subscription is a free trial
@@ -318,6 +331,7 @@ CREATE TABLE subscription
 -- This table provides additional information for users after they have been authenticated
 CREATE TABLE "user"
 (
+    tenant_id      TEXT    NOT NULL, -- Tenant identifier
     email          TEXT PRIMARY KEY, -- User email
     sub            TEXT    NOT NULL, -- (Sub)ject: unique identifier for the user
     nickname       TEXT    NOT NULL, -- User nickname (or handle)
@@ -332,6 +346,7 @@ CREATE TABLE "user"
 -- In the current project
 CREATE TABLE identity_enrollment
 (
+    tenant_id   TEXT    NOT NULL,        -- Tenant identifier
     identifier  TEXT    NOT NULL UNIQUE, -- Identifier of the identity
     enrolled_at INTEGER NOT NULL,        -- UNIX timestamp in seconds
     email       TEXT                     -- User email used for the enrollment
@@ -344,6 +359,7 @@ CREATE TABLE identity_enrollment
 -- This table stores the data necessary to configure the Okta addon
 CREATE TABLE okta_config
 (
+    tenant_id       TEXT NOT NULL, -- Tenant identifier
     project_id      TEXT NOT NULL, -- Project id of the project using the addon
     tenant_base_url TEXT NOT NULL, -- Base URL of the tenant
     client_id       TEXT NOT NULL, -- Client id
@@ -354,18 +370,7 @@ CREATE TABLE okta_config
 -- This table stores the data necessary to configure the Kafka addon
 CREATE TABLE kafka_config
 (
+    tenant_id        TEXT NOT NULL, -- Tenant identifier
     project_id       TEXT NOT NULL, -- Project id of the project using the addon
     bootstrap_server TEXT NOT NULL  -- URL of the bootstrap server
 );
-
-------------------
--- RUST MIGRATIONS
-------------------
-
-CREATE TABLE IF NOT EXISTS _rust_migrations
-(
-    name   TEXT      NOT NULL,
-    run_on TIMESTAMP NOT NULL
-);
-
-CREATE UNIQUE INDEX IF NOT EXISTS name_index ON _rust_migrations (name);

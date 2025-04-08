@@ -82,7 +82,7 @@ impl ChangeHistoryRepository for ChangeHistorySqlxDatabase {
             None => true,
         };
         if do_insert {
-            Self::insert_query(identity.identifier(), identity.change_history())
+            self.insert_query(identity.identifier(), identity.change_history())
                 .execute(&mut *transaction)
                 .await
                 .void()?
@@ -95,7 +95,7 @@ impl ChangeHistoryRepository for ChangeHistorySqlxDatabase {
         identifier: &Identifier,
         change_history: ChangeHistory,
     ) -> Result<()> {
-        Self::insert_query(identifier, &change_history)
+        self.insert_query(identifier, &change_history)
             .execute(&*self.database.pool)
             .await
             .void()
@@ -133,18 +133,20 @@ impl ChangeHistoryRepository for ChangeHistorySqlxDatabase {
 
 impl ChangeHistorySqlxDatabase {
     fn insert_query<'a>(
+        &self,
         identifier: &'a Identifier,
         change_history: &'a ChangeHistory,
     ) -> Query<'a, Any, AnyArguments<'a>> {
         query(
             r#"
-            INSERT INTO identity (identifier, change_history)
-            VALUES ($1, $2)
+            INSERT INTO identity (identifier, change_history, tenant_id)
+            VALUES ($1, $2, $3)
             ON CONFLICT (identifier)
-            DO UPDATE SET change_history = $2"#,
+            DO UPDATE SET change_history = $2, tenant_id = $3"#,
         )
         .bind(identifier)
         .bind(change_history)
+        .bind(self.database.tenant_id())
     }
 }
 

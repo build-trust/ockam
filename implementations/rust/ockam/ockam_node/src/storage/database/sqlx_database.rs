@@ -27,6 +27,9 @@ use ockam_core::compat::rand::random_string;
 use ockam_core::compat::sync::Arc;
 use ockam_core::{Error, Result};
 
+/// This value is used for tenant_id columns when the tenant id is not relevant.
+pub const NO_TENANT_ID: &str = "no-tenant-id";
+
 /// The SqlxDatabase struct is used to create a database:
 ///   - at a given path
 ///   - with a given schema / or migrations applied to an existing schema
@@ -141,6 +144,15 @@ impl SqlxDatabase {
         configuration: &DatabaseConfiguration,
     ) -> Result<Self> {
         Self::create_impl(configuration, None::<ApplicationMigrationSet>).await
+    }
+
+    /// Get the tenant id for this database
+    pub fn tenant_id(&self) -> String {
+        match &self.configuration {
+            DatabaseConfiguration::SqliteInMemory { .. } => NO_TENANT_ID.to_string(),
+            DatabaseConfiguration::SqlitePersistent { .. } => NO_TENANT_ID.to_string(),
+            DatabaseConfiguration::Postgres { connection_url, .. } => connection_url.user(),
+        }
     }
 
     async fn create_impl(
@@ -720,11 +732,12 @@ pub mod tests {
 
     // HELPERS
     async fn insert_identity(db: &SqlxDatabase) -> Result<AnyQueryResult> {
-        sqlx::query("INSERT INTO named_identity (identifier, name, vault_name, is_default) VALUES ($1, $2, $3, $4)")
+        sqlx::query("INSERT INTO named_identity (identifier, name, vault_name, is_default, tenant_id) VALUES ($1, $2, $3, $4, $5)")
             .bind("Ifa804b7fca12a19eed206ae180b5b576860ae651")
             .bind("identity-1")
             .bind("vault-1")
             .bind(true)
+            .bind(db.tenant_id())
             .execute(&*db.pool)
             .await
             .into_core()

@@ -54,14 +54,15 @@ impl ResourcesRepository for ResourcesSqlxDatabase {
     async fn store_resource(&self, resource: &Resource) -> Result<()> {
         let query = query(
             r#"
-            INSERT INTO resource (resource_name, resource_type, node_name)
-            VALUES ($1, $2, $3)
+            INSERT INTO resource (resource_name, resource_type, node_name, tenant_id)
+            VALUES ($1, $2, $3, $4)
             ON CONFLICT (resource_name, node_name)
             DO UPDATE SET resource_type = $2"#,
         )
         .bind(&resource.resource_name)
         .bind(&resource.resource_type)
-        .bind(&self.node_name);
+        .bind(&self.node_name)
+        .bind(self.database.tenant_id());
         query.execute(&*self.database.pool).await.void()
     }
 

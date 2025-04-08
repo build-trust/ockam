@@ -75,16 +75,16 @@ impl IdentityAttributesRepository for IdentityAttributesSqlxDatabase {
     async fn put_attributes(&self, subject: &Identifier, entry: AttributesEntry) -> Result<()> {
         let query = query(
             r#"
-            INSERT INTO identity_attributes (identifier, attributes, added, expires, attested_by, node_name)
-            VALUES ($1, $2, $3, $4, $5, $6)
+            INSERT INTO identity_attributes (identifier, attributes, added, expires, attested_by, node_name, tenant_id)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
             ON CONFLICT (identifier, node_name)
-            DO UPDATE SET attributes = $2, added = $3, expires = $4, attested_by = $5, node_name = $6"#)
+            DO UPDATE SET attributes = $2, added = $3, expires = $4, attested_by = $5, node_name = $6, tenant_id = $7"#)
             .bind(subject)
             .bind(&entry)
             .bind(entry.added_at())
             .bind(entry.expires_at())
             .bind(entry.attested_by())
-            .bind(&self.node_name);
+            .bind(&self.node_name).bind(self.database.tenant_id());
         query.execute(&*self.database.pool).await.void()
     }
 

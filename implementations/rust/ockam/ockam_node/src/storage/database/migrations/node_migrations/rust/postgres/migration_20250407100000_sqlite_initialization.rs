@@ -1,4 +1,6 @@
-use crate::database::{Boolean, FromSqlxError, RustMigration, SqlxDatabase, ToVoid, Version};
+use crate::database::{
+    Boolean, FromSqlxError, RustMigration, SqlxDatabase, ToVoid, Version, NO_TENANT_ID,
+};
 use ockam_core::{async_trait, Result};
 use sqlx::*;
 
@@ -50,39 +52,55 @@ impl InitializeFromSqlite {
                 .path()
                 .unwrap_or("no sqlite database path".into())
         );
-        Self::migrate_aead_secrets(sqlite_database.clone(), connection).await?;
-        Self::migrate_authority_enrollment_tokens(sqlite_database.clone(), connection).await?;
-        Self::migrate_credentials(sqlite_database.clone(), connection).await?;
-        Self::migrate_identities(sqlite_database.clone(), connection).await?;
-        Self::migrate_identity_attributes(sqlite_database.clone(), connection).await?;
-        Self::migrate_members(sqlite_database.clone(), connection).await?;
-        Self::migrate_named_identities(sqlite_database.clone(), connection).await?;
-        Self::migrate_purpose_keys(sqlite_database.clone(), connection).await?;
-        Self::migrate_signing_secrets(sqlite_database.clone(), connection).await?;
-        Self::migrate_x25519_secrets(sqlite_database.clone(), connection).await?;
+        let tenant_id = Self::get_tenant_id(sqlite_database.clone()).await?;
+        Self::migrate_aead_secrets(sqlite_database.clone(), connection, &tenant_id).await?;
+        Self::migrate_authority_enrollment_tokens(sqlite_database.clone(), connection, &tenant_id)
+            .await?;
+        Self::migrate_credentials(sqlite_database.clone(), connection, &tenant_id).await?;
+        Self::migrate_identities(sqlite_database.clone(), connection, &tenant_id).await?;
+        Self::migrate_identity_attributes(sqlite_database.clone(), connection, &tenant_id).await?;
+        Self::migrate_members(sqlite_database.clone(), connection, &tenant_id).await?;
+        Self::migrate_named_identities(sqlite_database.clone(), connection, &tenant_id).await?;
+        Self::migrate_purpose_keys(sqlite_database.clone(), connection, &tenant_id).await?;
+        Self::migrate_signing_secrets(sqlite_database.clone(), connection, &tenant_id).await?;
+        Self::migrate_x25519_secrets(sqlite_database.clone(), connection, &tenant_id).await?;
         Ok(())
+    }
+
+    async fn get_tenant_id(sqlite_database: SqlxDatabase) -> Result<String> {
+        let row = query("SELECT name FROM node WHERE is_authority = true")
+            .fetch_optional(&*sqlite_database.pool)
+            .await
+            .into_core()?;
+        let tenant_id: Option<String> = row.map(|r| r.get(0));
+        Ok(tenant_id.unwrap_or(NO_TENANT_ID.to_string()))
     }
 
     async fn migrate_aead_secrets(
         sqlite_database: SqlxDatabase,
         connection: &mut AnyConnection,
+        tenant_id: &str,
     ) -> Result<()> {
-        let get_secrets = query_as("SELECT handle, type as secret_type, secret FROM aead_secret");
-
-        let secrets: Vec<AeadSecretRow> = get_secrets
+        let get_secrets = format!(
+            "SELECT '{tenant_id}' as tenant_id, handle, type as secret_type, secret FROM aead_secret"
+        );
+        let secrets: Vec<AeadSecretRow> = query_as(&get_secrets)
             .fetch_all(&*sqlite_database.pool)
             .await
             .into_core()?;
 
         let mut transaction = Connection::begin(&mut *connection).await.into_core()?;
         for secret in secrets {
-            query("INSERT INTO aead_secret (handle, type, secret) VALUES ($1, $2, $3)")
-                .bind(secret.handle)
-                .bind(secret.secret_type)
-                .bind(secret.secret)
-                .execute(&mut *transaction)
-                .await
-                .void()?;
+            query(
+                "INSERT INTO aead_secret (tenant_id, handle, type, secret) VALUES ($1, $2, $3, $4)",
+            )
+            .bind(secret.tenant_id)
+            .bind(secret.handle)
+            .bind(secret.secret_type)
+            .bind(secret.secret)
+            .execute(&mut *transaction)
+            .await
+            .void()?;
         }
         transaction.commit().await.void()?;
         Ok(())
@@ -91,17 +109,19 @@ impl InitializeFromSqlite {
     async fn migrate_authority_enrollment_tokens(
         sqlite_database: SqlxDatabase,
         connection: &mut AnyConnection,
+        tenant_id: &str,
     ) -> Result<()> {
-        let get_tokens = query_as("SELECT one_time_code, reference, issued_by, created_at, expires_at, ttl_count, attributes FROM authority_enrollment_token");
+        let get_tokens = format!("SELECT '{tenant_id}' as tenant_id, one_time_code, reference, issued_by, created_at, expires_at, ttl_count, attributes FROM authority_enrollment_token");
 
-        let tokens: Vec<AuthorityEnrollmentTicketRow> = get_tokens
+        let tokens: Vec<AuthorityEnrollmentTicketRow> = query_as(&get_tokens)
             .fetch_all(&*sqlite_database.pool)
             .await
             .into_core()?;
 
         let mut transaction = Connection::begin(&mut *connection).await.into_core()?;
         for token in tokens {
-            query("INSERT INTO authority_enrollment_token (one_time_code, reference, issued_by, created_at, expires_at, ttl_count, attributes) VALUES ($1, $2, $3, $4, $5, $6, $7)")
+            query("INSERT INTO authority_enrollment_token (tenant_id, one_time_code, reference, issued_by, created_at, expires_at, ttl_count, attributes) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)")
+                .bind(token.tenant_id)
                 .bind(token.one_time_code)
                 .bind(token.reference)
                 .bind(token.issued_by)
@@ -120,17 +140,19 @@ impl InitializeFromSqlite {
     async fn migrate_credentials(
         sqlite_database: SqlxDatabase,
         connection: &mut AnyConnection,
+        tenant_id: &str,
     ) -> Result<()> {
-        let get_credentials = query_as("SELECT subject_identifier, issuer_identifier, scope, credential, expires_at, node_name FROM credential");
+        let get_credentials = format!("SELECT '{tenant_id}' as tenant_id, subject_identifier, issuer_identifier, scope, credential, expires_at, node_name FROM credential");
 
-        let credentials: Vec<CredentialRow> = get_credentials
+        let credentials: Vec<CredentialRow> = query_as(&get_credentials)
             .fetch_all(&*sqlite_database.pool)
             .await
             .into_core()?;
 
         let mut transaction = Connection::begin(&mut *connection).await.into_core()?;
         for credential in credentials {
-            query("INSERT INTO credential (subject_identifier, issuer_identifier, scope, credential, expires_at, node_name) VALUES ($1, $2, $3, $4, $5, $6)")
+            query("INSERT INTO credential (tenant_id, subject_identifier, issuer_identifier, scope, credential, expires_at, node_name) VALUES ($1, $2, $3, $4, $5, $6, $7)")
+                .bind(credential.tenant_id)
                 .bind(credential.subject_identifier)
                 .bind(credential.issuer_identifier)
                 .bind(credential.scope)
@@ -148,22 +170,27 @@ impl InitializeFromSqlite {
     async fn migrate_identities(
         sqlite_database: SqlxDatabase,
         connection: &mut AnyConnection,
+        tenant_id: &str,
     ) -> Result<()> {
-        let get_identities = query_as("SELECT identifier, change_history FROM identity");
+        let get_identities =
+            format!("SELECT '{tenant_id}' as tenant_id, identifier, change_history FROM identity");
 
-        let identities: Vec<IdentityRow> = get_identities
+        let identities: Vec<IdentityRow> = query_as(&get_identities)
             .fetch_all(&*sqlite_database.pool)
             .await
             .into_core()?;
 
         let mut transaction = Connection::begin(&mut *connection).await.into_core()?;
         for identity in identities {
-            query("INSERT INTO identity (identifier, change_history) VALUES ($1, $2)")
-                .bind(identity.identifier)
-                .bind(identity.change_history)
-                .execute(&mut *transaction)
-                .await
-                .void()?;
+            query(
+                "INSERT INTO identity (tenant_id, identifier, change_history) VALUES ($1, $2, $3)",
+            )
+            .bind(identity.tenant_id)
+            .bind(identity.identifier)
+            .bind(identity.change_history)
+            .execute(&mut *transaction)
+            .await
+            .void()?;
         }
         transaction.commit().await.void()?;
         Ok(())
@@ -172,17 +199,19 @@ impl InitializeFromSqlite {
     async fn migrate_identity_attributes(
         sqlite_database: SqlxDatabase,
         connection: &mut AnyConnection,
+        tenant_id: &str,
     ) -> Result<()> {
-        let get_attributes = query_as("SELECT identifier, attributes, added, expires, attested_by, node_name FROM identity_attributes");
+        let get_attributes = format!("SELECT '{tenant_id}' as tenant_id, identifier, attributes, added, expires, attested_by, node_name FROM identity_attributes");
 
-        let attributes_rows: Vec<IdentityAttributesRow> = get_attributes
+        let attributes_rows: Vec<IdentityAttributesRow> = query_as(&get_attributes)
             .fetch_all(&*sqlite_database.pool)
             .await
             .into_core()?;
 
         let mut transaction = Connection::begin(&mut *connection).await.into_core()?;
         for attributes in attributes_rows {
-            query("INSERT INTO identity_attributes (identifier, attributes, added, expires, attested_by, node_name) VALUES ($1, $2, $3, $4, $5, $6)")
+            query("INSERT INTO identity_attributes (tenant_id, identifier, attributes, added, expires, attested_by, node_name) VALUES ($1, $2, $3, $4, $5, $6, $7)")
+                .bind(attributes.tenant_id)
                 .bind(attributes.identifier)
                 .bind(attributes.attributes)
                 .bind(attributes.added)
@@ -200,19 +229,21 @@ impl InitializeFromSqlite {
     async fn migrate_members(
         sqlite_database: SqlxDatabase,
         connection: &mut AnyConnection,
+        tenant_id: &str,
     ) -> Result<()> {
-        let get_members = query_as("SELECT identifier, added_by, added_at, is_pre_trusted, attributes, authority_id FROM authority_member");
+        let get_members = format!("SELECT '{tenant_id}' as tenant_id, identifier, added_by, added_at, is_pre_trusted, attributes, authority_id FROM authority_member");
 
-        let members: Vec<AuthorityMemberRow> = get_members
+        let members: Vec<AuthorityMemberRow> = query_as(&get_members)
             .fetch_all(&*sqlite_database.pool)
             .await
             .into_core()?;
 
         let mut transaction = Connection::begin(&mut *connection).await.into_core()?;
         for member in members {
-            query(r#"INSERT INTO authority_member (identifier, added_by, added_at, is_pre_trusted, attributes, authority_id)
-                 VALUES ($1, $2, $3, $4, $5, $6)
+            query(r#"INSERT INTO authority_member (tenant_id, identifier, added_by, added_at, is_pre_trusted, attributes, authority_id)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7)
                  "#)
+                .bind(member.tenant_id)
                 .bind(member.identifier)
                 .bind(member.added_by)
                 .bind(member.added_at)
@@ -229,11 +260,13 @@ impl InitializeFromSqlite {
     async fn migrate_named_identities(
         sqlite_database: SqlxDatabase,
         connection: &mut AnyConnection,
+        tenant_id: &str,
     ) -> Result<()> {
-        let get_identities =
-            query_as("SELECT identifier, name, vault_name, is_default FROM named_identity");
+        let get_identities = format!(
+            "SELECT '{tenant_id}' as tenant_id, identifier, name, vault_name, is_default FROM named_identity"
+        );
 
-        let identities: Vec<NamedIdentityRow> = get_identities
+        let identities: Vec<NamedIdentityRow> = query_as(&get_identities)
             .fetch_all(&*sqlite_database.pool)
             .await
             .into_core()?;
@@ -242,7 +275,8 @@ impl InitializeFromSqlite {
         let excluded_identities = ["authority", "ockam-opentelemetry-outlet"];
         for identity in identities {
             if !excluded_identities.contains(&identity.name.as_str()) {
-                query("INSERT INTO named_identity (identifier, name, vault_name, is_default) VALUES ($1, $2, $3, $4)")
+                query("INSERT INTO named_identity (tenant_id, identifier, name, vault_name, is_default) VALUES ($1, $2, $3, $4, $5)")
+                    .bind(identity.tenant_id)
                     .bind(identity.identifier)
                     .bind(identity.name)
                     .bind("default")
@@ -260,18 +294,21 @@ impl InitializeFromSqlite {
     async fn migrate_purpose_keys(
         sqlite_database: SqlxDatabase,
         connection: &mut AnyConnection,
+        tenant_id: &str,
     ) -> Result<()> {
-        let get_purpose_keys =
-            query_as("SELECT identifier, purpose, purpose_key_attestation FROM purpose_key");
+        let get_purpose_keys = format!(
+            "SELECT '{tenant_id}' as tenant_id, identifier, purpose, purpose_key_attestation FROM purpose_key"
+        );
 
-        let purpose_keys: Vec<PurposeKeyRow> = get_purpose_keys
+        let purpose_keys: Vec<PurposeKeyRow> = query_as(&get_purpose_keys)
             .fetch_all(&*sqlite_database.pool)
             .await
             .into_core()?;
 
         let mut transaction = Connection::begin(&mut *connection).await.into_core()?;
         for purpose_key in purpose_keys {
-            query("INSERT INTO purpose_key (identifier, purpose, purpose_key_attestation) VALUES ($1, $2, $3)")
+            query("INSERT INTO purpose_key (tenant_id, identifier, purpose, purpose_key_attestation) VALUES ($1, $2, $3, $4)")
+                .bind(purpose_key.tenant_id)
                 .bind(purpose_key.identifier)
                 .bind(purpose_key.purpose)
                 .bind(purpose_key.purpose_key_attestation)
@@ -286,17 +323,21 @@ impl InitializeFromSqlite {
     async fn migrate_signing_secrets(
         sqlite_database: SqlxDatabase,
         connection: &mut AnyConnection,
+        tenant_id: &str,
     ) -> Result<()> {
-        let get_secrets = query_as("SELECT handle, secret_type, secret FROM signing_secret");
+        let get_secrets = format!(
+            "SELECT '{tenant_id}' as tenant_id, handle, secret_type, secret FROM signing_secret"
+        );
 
-        let secrets: Vec<SigningSecretRow> = get_secrets
+        let secrets: Vec<SigningSecretRow> = query_as(&get_secrets)
             .fetch_all(&*sqlite_database.pool)
             .await
             .into_core()?;
 
         let mut transaction = Connection::begin(&mut *connection).await.into_core()?;
         for secret in secrets {
-            query("INSERT INTO signing_secret (handle, secret_type, secret) VALUES ($1, $2, $3)")
+            query("INSERT INTO signing_secret (tenant_id, handle, secret_type, secret) VALUES ($1, $2, $3, $4)")
+                .bind(secret.tenant_id)
                 .bind(secret.handle)
                 .bind(secret.secret_type)
                 .bind(secret.secret)
@@ -311,17 +352,20 @@ impl InitializeFromSqlite {
     async fn migrate_x25519_secrets(
         sqlite_database: SqlxDatabase,
         connection: &mut AnyConnection,
+        tenant_id: &str,
     ) -> Result<()> {
-        let get_secrets = query_as("SELECT handle, secret FROM x25519_secret");
+        let get_secrets =
+            format!("SELECT '{tenant_id}' as tenant_id, handle, secret FROM x25519_secret");
 
-        let secrets: Vec<X25519SecretRow> = get_secrets
+        let secrets: Vec<X25519SecretRow> = query_as(&get_secrets)
             .fetch_all(&*sqlite_database.pool)
             .await
             .into_core()?;
 
         let mut transaction = Connection::begin(&mut *connection).await.into_core()?;
         for secret in secrets {
-            query("INSERT INTO x25519_secret (handle, secret) VALUES ($1, $2)")
+            query("INSERT INTO x25519_secret (tenant_id, handle, secret) VALUES ($1, $2, $3)")
+                .bind(secret.tenant_id)
                 .bind(secret.handle)
                 .bind(secret.secret)
                 .execute(&mut *transaction)
@@ -397,7 +441,7 @@ mod test {
     async fn insert_aead_secrets(sqlite_database: SqlxDatabase) -> Result<()> {
         for index in &["1", "2"] {
             let q = format!(
-                "INSERT INTO aead_secret (handle, type, secret) VALUES ($1, 'secret_{index}', $2)"
+                "INSERT INTO aead_secret (tenant_id, handle, type, secret) VALUES ('tenant', $1, 'secret_{index}', $2)"
             );
             let handle = format!("handle_{index}");
             let secret = format!("secret_{index}");
@@ -408,7 +452,8 @@ mod test {
     }
 
     async fn check_aead_secrets(postgres_database: SqlxDatabase) -> Result<()> {
-        let query = query_as("SELECT handle, type as secret_type, secret FROM aead_secret");
+        let query =
+            query_as("SELECT tenant_id, handle, type as secret_type, secret FROM aead_secret");
         let secrets: Vec<AeadSecretRow> = query
             .fetch_all(&*postgres_database.pool)
             .await
@@ -427,8 +472,8 @@ mod test {
     async fn insert_authority_enrollment_tokens(sqlite_database: SqlxDatabase) -> Result<()> {
         for index in &["1", "2"] {
             let q = format!(
-                r#"INSERT INTO authority_enrollment_token (one_time_code, reference, issued_by, created_at, expires_at, ttl_count, attributes)
-                   VALUES ('code_{index}', 'reference_{index}', 'issued_by_{index}', 10, 20, 20, $1)"#
+                r#"INSERT INTO authority_enrollment_token (tenant_id, one_time_code, reference, issued_by, created_at, expires_at, ttl_count, attributes)
+                   VALUES ('tenant', 'code_{index}', 'reference_{index}', 'issued_by_{index}', 10, 20, 20, $1)"#
             );
             let attributes = format!("attributes_{index}");
             let query = query(&q).bind(attributes.as_bytes());
@@ -438,7 +483,7 @@ mod test {
     }
 
     async fn check_authority_enrollment_tokens(postgres_database: SqlxDatabase) -> Result<()> {
-        let query = query_as("SELECT one_time_code, reference, issued_by, created_at, expires_at, ttl_count, attributes FROM authority_enrollment_token");
+        let query = query_as("SELECT tenant_id, one_time_code, reference, issued_by, created_at, expires_at, ttl_count, attributes FROM authority_enrollment_token");
         let tickets: Vec<AuthorityEnrollmentTicketRow> = query
             .fetch_all(&*postgres_database.pool)
             .await
@@ -457,8 +502,8 @@ mod test {
     async fn insert_credentials(sqlite_database: SqlxDatabase) -> Result<()> {
         for index in &["1", "2"] {
             let q = format!(
-                r#"INSERT INTO credential (subject_identifier, issuer_identifier, scope, credential, expires_at, node_name)
-                VALUES ('subject_identifier_{index}', 'issuer_identifier_{index}', 'scope_{index}', $1, 0, 'node_name_{index}')"#
+                r#"INSERT INTO credential (tenant_id, subject_identifier, issuer_identifier, scope, credential, expires_at, node_name)
+                VALUES ('tenant', 'subject_identifier_{index}', 'issuer_identifier_{index}', 'scope_{index}', $1, 0, 'node_name_{index}')"#
             );
             query(&q)
                 .bind(format!("'credential_{index}'").as_bytes())
@@ -470,7 +515,7 @@ mod test {
     }
 
     async fn check_credentials(postgres_database: SqlxDatabase) -> Result<()> {
-        let query = query_as("SELECT subject_identifier, issuer_identifier, scope, credential, expires_at, node_name FROM credential");
+        let query = query_as("SELECT tenant_id, subject_identifier, issuer_identifier, scope, credential, expires_at, node_name FROM credential");
         let credentials: Vec<CredentialRow> = query
             .fetch_all(&*postgres_database.pool)
             .await
@@ -489,7 +534,7 @@ mod test {
     async fn insert_identities(sqlite_database: SqlxDatabase) -> Result<()> {
         for index in &["1", "2"] {
             let query =
-                query(r#"INSERT INTO identity (identifier, change_history) VALUES ($1, $2)"#)
+                query(r#"INSERT INTO identity (tenant_id, identifier, change_history) VALUES ('tenant', $1, $2)"#)
                     .bind(format!("identity_{index}"))
                     .bind(format!("change_history_{index}"));
             query.execute(&*sqlite_database.pool).await.void()?;
@@ -498,7 +543,7 @@ mod test {
     }
 
     async fn check_identities(postgres_database: SqlxDatabase) -> Result<()> {
-        let query = query_as("SELECT identifier, change_history FROM identity");
+        let query = query_as("SELECT tenant_id, identifier, change_history FROM identity");
         let identities: Vec<IdentityRow> = query
             .fetch_all(&*postgres_database.pool)
             .await
@@ -522,8 +567,8 @@ mod test {
     async fn insert_identity_attributes(sqlite_database: SqlxDatabase) -> Result<()> {
         for index in &["1", "2"] {
             let q = format!(
-                r#"INSERT INTO identity_attributes (identifier, attributes, added, expires, attested_by, node_name)
-                         VALUES ('identity_{index}', $1, 0, 10, 'attested_by_{index}', 'node_name_{index}')"#
+                r#"INSERT INTO identity_attributes (tenant_id, identifier, attributes, added, expires, attested_by, node_name)
+                         VALUES ('tenant', 'identity_{index}', $1, 0, 10, 'attested_by_{index}', 'node_name_{index}')"#
             );
             query(&q)
                 .bind(format!("attributes_{index}").as_bytes())
@@ -535,7 +580,7 @@ mod test {
     }
 
     async fn check_identity_attributes(postgres_database: SqlxDatabase) -> Result<()> {
-        let query = query_as("SELECT identifier, attributes, added, expires, attested_by, node_name FROM identity_attributes");
+        let query = query_as("SELECT tenant_id, identifier, attributes, added, expires, attested_by, node_name FROM identity_attributes");
         let attributes: Vec<IdentityAttributesRow> = query
             .fetch_all(&*postgres_database.pool)
             .await
@@ -556,8 +601,8 @@ mod test {
         let mut attributes = BTreeMap::new();
         attributes.insert("key", "value");
         for index in &["1", "2"] {
-            let query = query(r#"INSERT INTO authority_member (identifier, added_by, added_at, is_pre_trusted, attributes, authority_id)
-                 VALUES ($1, $2, $3, $4, $5, $6)"#)
+            let query = query(r#"INSERT INTO authority_member (tenant_id, identifier, added_by, added_at, is_pre_trusted, attributes, authority_id)
+                 VALUES ('tenant', $1, $2, $3, $4, $5, $6)"#)
                 .bind(format!("member_{index}"))
                 .bind(format!("issuer_{index}"))
                 .bind(0)
@@ -570,7 +615,7 @@ mod test {
     }
 
     async fn check_members(postgres_database: SqlxDatabase) -> Result<()> {
-        let query = query_as("SELECT identifier, added_by, added_at, is_pre_trusted, attributes, authority_id FROM authority_member");
+        let query = query_as("SELECT tenant_id, identifier, added_by, added_at, is_pre_trusted, attributes, authority_id FROM authority_member");
         let members: Vec<AuthorityMemberRow> = query
             .fetch_all(&*postgres_database.pool)
             .await
@@ -589,7 +634,7 @@ mod test {
     async fn insert_named_identities(sqlite_database: SqlxDatabase) -> Result<()> {
         for name in &["authority", "ockam-opentelemetry-outlet"] {
             let query =
-                query(r#"INSERT INTO named_identity (identifier, name, vault_name, is_default) VALUES ($1, $2, $3, $4)"#)
+                query(r#"INSERT INTO named_identity (tenant_id, identifier, name, vault_name, is_default) VALUES ('tenant', $1, $2, $3, $4)"#)
                     .bind(format!("identity_{name}"))
                     .bind(name)
                     .bind("default")
@@ -598,7 +643,7 @@ mod test {
         }
         for index in &["1", "2"] {
             let query =
-                query(r#"INSERT INTO named_identity (identifier, name, vault_name, is_default) VALUES ($1, $2, $3, $4)"#)
+                query(r#"INSERT INTO named_identity (tenant_id, identifier, name, vault_name, is_default) VALUES ('tenant', $1, $2, $3, $4)"#)
                     .bind(format!("identity_{index}"))
                     .bind(format!("name_{index}"))
                     .bind("default")
@@ -609,7 +654,9 @@ mod test {
     }
 
     async fn check_named_identities(postgres_database: SqlxDatabase) -> Result<()> {
-        let query = query_as("SELECT identifier, name, vault_name, is_default FROM named_identity");
+        let query = query_as(
+            "SELECT tenant_id, identifier, name, vault_name, is_default FROM named_identity",
+        );
         let identities: Vec<NamedIdentityRow> = query
             .fetch_all(&*postgres_database.pool)
             .await
@@ -636,8 +683,8 @@ mod test {
     async fn insert_purpose_keys(sqlite_database: SqlxDatabase) -> Result<()> {
         for index in &["1", "2"] {
             let q = format!(
-                r#"INSERT INTO purpose_key (identifier, purpose, purpose_key_attestation)
-                VALUES ('identifier_{index}', 'purpose_{index}', $1)"#
+                r#"INSERT INTO purpose_key (tenant_id, identifier, purpose, purpose_key_attestation)
+                VALUES ('tenant', 'identifier_{index}', 'purpose_{index}', $1)"#
             );
             query(&q)
                 .bind(format!("purpose_key_attestation_{index}").as_bytes())
@@ -649,8 +696,9 @@ mod test {
     }
 
     async fn check_purpose_keys(postgres_database: SqlxDatabase) -> Result<()> {
-        let query =
-            query_as("SELECT identifier, purpose, purpose_key_attestation FROM purpose_key");
+        let query = query_as(
+            "SELECT tenant_id, identifier, purpose, purpose_key_attestation FROM purpose_key",
+        );
         let keys: Vec<PurposeKeyRow> = query
             .fetch_all(&*postgres_database.pool)
             .await
@@ -668,7 +716,7 @@ mod test {
     async fn insert_signing_secrets(sqlite_database: SqlxDatabase) -> Result<()> {
         for index in &["1", "2"] {
             let q = format!(
-                "INSERT INTO signing_secret (handle, secret_type, secret) VALUES ($1, 'secret_{index}', $2)"
+                "INSERT INTO signing_secret (tenant_id, handle, secret_type, secret) VALUES ('tenant', $1, 'secret_{index}', $2)"
             );
             let handle = format!("handle_{index}");
             let secret = format!("secret_{index}");
@@ -679,7 +727,7 @@ mod test {
     }
 
     async fn check_signing_secrets(postgres_database: SqlxDatabase) -> Result<()> {
-        let query = query_as("SELECT handle, secret_type, secret FROM signing_secret");
+        let query = query_as("SELECT tenant_id, handle, secret_type, secret FROM signing_secret");
         let secrets: Vec<SigningSecretRow> = query
             .fetch_all(&*postgres_database.pool)
             .await
@@ -697,7 +745,8 @@ mod test {
 
     async fn insert_x25519_secrets(sqlite_database: SqlxDatabase) -> Result<()> {
         for index in &["1", "2"] {
-            let q = "INSERT INTO x25519_secret (handle, secret) VALUES ($1, $2)";
+            let q =
+                "INSERT INTO x25519_secret (tenant_id, handle, secret) VALUES ('tenant', $1, $2)";
             let handle = format!("handle_{index}");
             let secret = format!("secret_{index}");
             let query = query(q).bind(handle.as_bytes()).bind(secret.as_bytes());
@@ -707,7 +756,7 @@ mod test {
     }
 
     async fn check_x25519_secrets(postgres_database: SqlxDatabase) -> Result<()> {
-        let query = query_as("SELECT handle, secret FROM x25519_secret");
+        let query = query_as("SELECT tenant_id, handle, secret FROM x25519_secret");
         let secrets: Vec<X25519SecretRow> = query
             .fetch_all(&*postgres_database.pool)
             .await
@@ -729,6 +778,7 @@ mod test {
 
 #[derive(sqlx::FromRow)]
 pub(crate) struct AeadSecretRow {
+    tenant_id: String,
     handle: Vec<u8>,
     secret_type: String,
     secret: Vec<u8>,
@@ -736,6 +786,7 @@ pub(crate) struct AeadSecretRow {
 
 #[derive(sqlx::FromRow)]
 pub(crate) struct AuthorityEnrollmentTicketRow {
+    tenant_id: String,
     one_time_code: String,
     reference: Option<String>,
     issued_by: String,
@@ -747,6 +798,7 @@ pub(crate) struct AuthorityEnrollmentTicketRow {
 
 #[derive(sqlx::FromRow)]
 pub(crate) struct AuthorityMemberRow {
+    tenant_id: String,
     identifier: String,
     added_by: String,
     added_at: i64,
@@ -757,6 +809,7 @@ pub(crate) struct AuthorityMemberRow {
 
 #[derive(sqlx::FromRow)]
 pub(crate) struct CredentialRow {
+    tenant_id: String,
     subject_identifier: String,
     issuer_identifier: String,
     scope: String,
@@ -767,12 +820,14 @@ pub(crate) struct CredentialRow {
 
 #[derive(sqlx::FromRow)]
 pub(crate) struct IdentityRow {
+    tenant_id: String,
     identifier: String,
     change_history: String,
 }
 
 #[derive(sqlx::FromRow)]
 pub(crate) struct IdentityAttributesRow {
+    tenant_id: String,
     identifier: String,
     attributes: Vec<u8>,
     added: i64,
@@ -785,6 +840,7 @@ pub(crate) struct IdentityAttributesRow {
 #[allow(dead_code)]
 #[derive(sqlx::FromRow)]
 pub(crate) struct NamedIdentityRow {
+    tenant_id: String,
     identifier: String,
     name: String,
     vault_name: String,
@@ -793,6 +849,7 @@ pub(crate) struct NamedIdentityRow {
 
 #[derive(sqlx::FromRow)]
 pub(crate) struct PurposeKeyRow {
+    tenant_id: String,
     identifier: String,
     purpose: String,
     purpose_key_attestation: Vec<u8>,
@@ -800,6 +857,7 @@ pub(crate) struct PurposeKeyRow {
 
 #[derive(sqlx::FromRow)]
 pub(crate) struct SigningSecretRow {
+    tenant_id: String,
     handle: Vec<u8>,
     secret_type: String,
     secret: Vec<u8>,
@@ -807,6 +865,7 @@ pub(crate) struct SigningSecretRow {
 
 #[derive(sqlx::FromRow)]
 pub(crate) struct X25519SecretRow {
+    tenant_id: String,
     handle: Vec<u8>,
     secret: Vec<u8>,
 }

@@ -56,14 +56,15 @@ impl PurposeKeysRepository for PurposeKeysSqlxDatabase {
     ) -> Result<()> {
         let query = query(
             r#"
-            INSERT INTO purpose_key (identifier, purpose, purpose_key_attestation)
-            VALUES ($1, $2, $3)
+            INSERT INTO purpose_key (identifier, purpose, purpose_key_attestation, tenant_id)
+            VALUES ($1, $2, $3, $4)
             ON CONFLICT (identifier, purpose)
-            DO UPDATE SET purpose_key_attestation = $3"#,
+            DO UPDATE SET purpose_key_attestation = $3, tenant_id = $4"#,
         )
         .bind(subject)
         .bind(purpose)
-        .bind(purpose_key_attestation);
+        .bind(purpose_key_attestation)
+        .bind(self.database.tenant_id());
         query.execute(&*self.database.pool).await.void()
     }
 

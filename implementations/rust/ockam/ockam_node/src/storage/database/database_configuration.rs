@@ -1,3 +1,4 @@
+use core::fmt::{Display, Formatter};
 use ockam_core::compat::rand::random_string;
 use ockam_core::env::get_env;
 use ockam_core::errcode::{Kind, Origin};
@@ -38,8 +39,8 @@ pub enum DatabaseConfiguration {
     },
     /// Configuration for a Postgres database
     Postgres {
-        /// Connection string of the form postgres://[{user}:{password}@]{host}:{port}/{database_name}
-        connection_string: String,
+        /// Connection URL of the form postgres://[{user}:{password}@]{host}:{port}/{database_name}
+        connection_url: ConnectionUrl,
         /// Path to a SQLite database that needs to be migrated to the Postgres database.
         legacy_sqlite_path: Option<PathBuf>,
     },
@@ -94,7 +95,7 @@ impl DatabaseConfiguration {
     ) -> Result<Option<DatabaseConfiguration>> {
         if let Some(connection_string) = get_database_connection_url()? {
             Ok(Some(DatabaseConfiguration::Postgres {
-                connection_string: connection_string.to_owned(),
+                connection_url: parse_connection_string(&connection_string)?,
                 legacy_sqlite_path: sqlite_path,
             }))
         } else {
@@ -162,9 +163,7 @@ impl DatabaseConfiguration {
             DatabaseConfiguration::SqlitePersistent { path, .. } => {
                 Self::create_sqlite_on_disk_connection_string(path)
             }
-            DatabaseConfiguration::Postgres {
-                connection_string, ..
-            } => connection_string.clone(),
+            DatabaseConfiguration::Postgres { connection_url, .. } => connection_url.to_string(),
         }
     }
 
@@ -259,26 +258,53 @@ fn get_database_connection_url() -> Result<Option<String>> {
             format!("postgres://{user}:{url_encoded_password}@{instance}")
         }
     };
-    check_connection_string_format(&connection_string)?;
+    parse_connection_string(&connection_string)?;
     Ok(Some(connection_string))
 }
 
-/// Check the format of a database connection string as `postgres://[{user}:{password}@]{host}:{port}/{database_name}`
+/// A connection URL for a Postgres database
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ConnectionUrl {
+    user: String,
+    password: String,
+    host: String,
+    port: u16,
+    database_name: String,
+}
+
+impl Display for ConnectionUrl {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        let url = format!(
+            "postgres://{}:{}@{}:{}/{}",
+            self.user, self.password, self.host, self.port, self.database_name
+        );
+        f.write_str(&url)
+    }
+}
+
+impl ConnectionUrl {
+    /// Return the connection user
+    pub fn user(&self) -> String {
+        self.user.clone()
+    }
+}
+
+/// Check the format of a database connection string as `postgres://{user}:{password}@{host}:{port}/{database_name}`
 /// For now we only support postgres.
-fn check_connection_string_format(connection_string: &str) -> Result<()> {
+pub fn parse_connection_string(connection_string: &str) -> Result<ConnectionUrl> {
     if let Some(no_prefix) = connection_string.strip_prefix("postgres://") {
-        let host_port_db_name = match no_prefix.split('@').collect::<Vec<_>>()[..] {
-            [host_port_db_name] => host_port_db_name,
+        let (user, password, host_port_db_name) = match no_prefix.split('@').collect::<Vec<_>>()[..]
+        {
             [user_and_password, host_port_db_name] => {
-                let user_and_password = user_and_password.split(':').collect::<Vec<_>>();
-                if user_and_password.len() != 2 {
-                    return Err(Error::new(
+                let user_and_password = &user_and_password.split(':').collect::<Vec<_>>()[..];
+                match user_and_password {
+                    [user, password] => (user.to_string(), password.to_string(), host_port_db_name),
+                    _ => {return Err(Error::new(
                         Origin::Api,
                         Kind::Invalid,
                         "A database connection URL must specify the user and password as user:password".to_string(),
-                    ));
+                    ))}
                 }
-                host_port_db_name
             }
             _ => {
                 return Err(Error::new(
@@ -288,24 +314,44 @@ fn check_connection_string_format(connection_string: &str) -> Result<()> {
                 ));
             }
         };
-        match host_port_db_name.split('/').collect::<Vec<_>>()[..] {
-            [host_port, _] => {
-                let host_port = host_port.split(':').collect::<Vec<_>>();
-                if host_port.len() != 2 {
-                    return Err(Error::new(
-                        Origin::Api,
-                        Kind::Invalid,
-                        "A database connection URL must have a host and a port specified as host:port".to_string(),
-                    ));
+        let (host, port, database_name) = match host_port_db_name.split('/').collect::<Vec<_>>()[..] {
+            [host_port, database_name] => {
+                let host_port = &host_port.split(':').collect::<Vec<_>>()[..];
+                match host_port {
+                    [host, port] =>
+                        if let Ok(p) = port.parse::<u16>() {
+                          (host.to_string(), p, database_name.to_string())
+                        } else {
+                            return Err(Error::new(
+                                Origin::Api,
+                                Kind::Invalid,
+                                "The database port must be a u16 value".to_string(),
+                            ))
+                        }
+
+                    _ => {
+                        return Err(Error::new(
+                            Origin::Api,
+                            Kind::Invalid,
+                            "A database connection URL must have a host and a port specified as host:port".to_string(),
+                        ))
+
+                    }
                 }
-                Ok(())
             }
-            _ => Err(Error::new(
+            _ => return Err(Error::new(
                 Origin::Api,
                 Kind::Invalid,
                 "A database connection URL must have a host, a port and a database name as host:port/database_name".to_string(),
             )),
-        }
+        };
+        Ok(ConnectionUrl {
+            user,
+            password,
+            host,
+            port,
+            database_name,
+        })
     } else {
         Err(Error::new(
             Origin::Api,
@@ -322,6 +368,7 @@ mod tests {
 
     #[test]
     fn test_make_connection_url_from_separate_env_variables() -> Result<()> {
+        env::remove_var(OCKAM_DATABASE_CONNECTION_URL);
         env::set_var(OCKAM_DATABASE_INSTANCE, "localhost:5432/ockam");
         env::set_var(OCKAM_DATABASE_USER, "pgadmin");
         env::set_var(OCKAM_DATABASE_PASSWORD, "xR::7Zp(h|<g<Q*t:5T");
@@ -333,12 +380,10 @@ mod tests {
             ),
             "the password is url encoded"
         );
-        Ok(())
-    }
 
-    #[test]
-    fn test_make_connection_url_from_separate_env_variables_user_and_password() -> Result<()> {
-        env::set_var(OCKAM_DATABASE_INSTANCE, "localhost:5432/ockam");
+        // Now from the username_and_password variable
+        env::remove_var(OCKAM_DATABASE_USER);
+        env::remove_var(OCKAM_DATABASE_PASSWORD);
         env::set_var(
             OCKAM_DATABASE_USERNAME_AND_PASSWORD,
             r#"{"username":"pgadmin", "password":"xR::7Zp(h|<g<Q*t:5T"}"#,
@@ -356,36 +401,36 @@ mod tests {
 
     #[test]
     fn test_valid_connection_strings() -> Result<()> {
-        assert!(
-            check_connection_string_format("postgres://user:pass@localhost:5432/dbname").is_ok()
-        );
-        assert!(check_connection_string_format("postgres://localhost:5432/dbname").is_ok());
+        assert!(parse_connection_string("postgres://user:pass@localhost:5432/dbname").is_ok());
         Ok(())
     }
 
     #[test]
     fn test_invalid_connection_strings() {
         assert!(
-            check_connection_string_format("mysql://localhost:5432/dbname").is_err(),
+            parse_connection_string("postgres://localhost:5432/dbname").is_err(),
             "incorrect protocol"
         );
         assert!(
-            check_connection_string_format("postgres://user@localhost:5432/dbname").is_err(),
+            parse_connection_string("mysql://localhost:5432/dbname").is_err(),
+            "incorrect protocol"
+        );
+        assert!(
+            parse_connection_string("postgres://user@localhost:5432/dbname").is_err(),
             "missing password"
         );
         assert!(
-            check_connection_string_format("postgres://user:pass@host@localhost:5432/dbname")
-                .is_err(),
+            parse_connection_string("postgres://user:pass@host@localhost:5432/dbname").is_err(),
             "multiple @ symbols"
         );
         assert!(
-            check_connection_string_format("postgres://user:pass@localhost/dbname").is_err(),
+            parse_connection_string("postgres://user:pass@localhost/dbname").is_err(),
             "missing port"
         );
         assert!(
-            check_connection_string_format("postgres://user:pass@localhost:5432").is_err(),
+            parse_connection_string("postgres://user:pass@localhost:5432").is_err(),
             "missing database name"
         );
-        assert!(check_connection_string_format("").is_err(), "empty string");
+        assert!(parse_connection_string("").is_err(), "empty string");
     }
 }

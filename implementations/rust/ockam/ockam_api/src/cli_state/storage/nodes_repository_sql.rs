@@ -45,10 +45,10 @@ impl NodesSqlxDatabase {
 impl NodesRepository for NodesSqlxDatabase {
     async fn store_node(&self, node_info: &NodeInfo) -> Result<()> {
         let query = query(r#"
-        INSERT INTO node (name, identifier, verbosity, is_default, is_authority, tcp_listener_address, pid, http_server_address)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        INSERT INTO node (name, identifier, verbosity, is_default, is_authority, tcp_listener_address, pid, http_server_address, tenant_id)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
         ON CONFLICT (name)
-        DO UPDATE SET identifier = $2, verbosity = $3, is_default = $4, is_authority = $5, tcp_listener_address = $6, pid = $7, http_server_address = $8"#)
+        DO UPDATE SET identifier = $2, verbosity = $3, is_default = $4, is_authority = $5, tcp_listener_address = $6, pid = $7, http_server_address = $8, tenant_id = $9"#)
             .bind(node_info.name())
             .bind(node_info.identifier())
             .bind(node_info.verbosity() as i16)
@@ -66,7 +66,7 @@ impl NodesRepository for NodesSqlxDatabase {
                     .status_endpoint_address()
                     .as_ref()
                     .map(|a| a.to_string()),
-            );
+            ).bind(self.database.tenant_id());
         query.execute(&*self.database.pool).await.void()?;
         if node_info.is_default() {
             self.set_default_node(&node_info.name()).await?;

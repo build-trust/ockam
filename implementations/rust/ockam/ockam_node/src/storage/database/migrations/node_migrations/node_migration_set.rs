@@ -6,7 +6,7 @@ use crate::database::migrations::sqlite::migration_20240212100000_split_policies
 use crate::database::migrations::sqlite::migration_20240313100000_remove_orphan_resources::RemoveOrphanResources;
 use crate::database::migrations::sqlite::migration_20240503100000_update_policy_expressions::UpdatePolicyExpressions;
 use crate::database::migrations::{Migrator, RustMigration};
-use crate::database::postgres::migration_20250116100000_sqlite_initialization::InitializeFromSqlite;
+use crate::database::postgres::migration_20250407100000_sqlite_initialization::InitializeFromSqlite;
 use crate::database::sqlite::migration_20250114100000_members_authority_id::SetAuthorityId;
 use crate::database::{DatabaseConfiguration, DatabaseType, SqlxDatabase};
 use crate::migrate;

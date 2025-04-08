@@ -52,15 +52,15 @@ impl ModelStateRepository for ModelStateSqlxDatabase {
         for tcp_outlet_status in &model_state.tcp_outlets {
             let query = query(
                 r#"
-                 INSERT INTO tcp_outlet_status (node_name, socket_addr, worker_addr, payload, privileged)
-                 VALUES ($1, $2, $3, $4, $5)
+                 INSERT INTO tcp_outlet_status (node_name, socket_addr, worker_addr, payload, privileged, tenant_id)
+                 VALUES ($1, $2, $3, $4, $5, $6)
                  ON CONFLICT DO NOTHING"#,
             )
             .bind(node_name)
             .bind(tcp_outlet_status.to.to_string())
             .bind(tcp_outlet_status.worker_address.to_string())
             .bind(tcp_outlet_status.payload.as_ref())
-            .bind(tcp_outlet_status.privileged);
+            .bind(tcp_outlet_status.privileged).bind(self.database.tenant_id());
             query.execute(&mut *transaction).await.void()?;
         }
 
@@ -74,14 +74,15 @@ impl ModelStateRepository for ModelStateSqlxDatabase {
         for incoming_service in &model_state.incoming_services {
             let query = query(
                 r#"
-                 INSERT INTO incoming_service (invitation_id, enabled, name)
-                 VALUES ($1, $2, $3)
+                 INSERT INTO incoming_service (invitation_id, enabled, name, tenant_id)
+                 VALUES ($1, $2, $3, $4)
                  ON CONFLICT (invitation_id)
-                 DO UPDATE SET enabled = $2, name = $3"#,
+                 DO UPDATE SET enabled = $2, name = $3, tenant_id = $4"#,
             )
             .bind(&incoming_service.invitation_id)
             .bind(incoming_service.enabled)
-            .bind(incoming_service.name.as_ref());
+            .bind(incoming_service.name.as_ref())
+            .bind(self.database.tenant_id());
             query.execute(&mut *transaction).await.void()?;
         }
         transaction.commit().await.void()?;
