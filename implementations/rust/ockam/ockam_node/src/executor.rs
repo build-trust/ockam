@@ -28,6 +28,7 @@ use ockam_core::{
 /// This type is a small wrapper around an inner async runtime (`tokio` by
 /// default) and the Ockam router. In most cases it is recommended you use the
 /// `ockam::node` function annotation instead!
+#[derive(Clone)]
 pub struct Executor {
     /// Reference to the runtime needed to spawn tasks
     runtime: Arc<Runtime>,
