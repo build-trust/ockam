@@ -374,3 +374,65 @@ CREATE TABLE kafka_config
     project_id       TEXT NOT NULL, -- Project id of the project using the addon
     bootstrap_server TEXT NOT NULL  -- URL of the bootstrap server
 );
+
+------------
+-- POLICIES
+------------
+
+ALTER TABLE aead_secret ENABLE ROW LEVEL SECURITY;
+ALTER TABLE authority_enrollment_token ENABLE ROW LEVEL SECURITY;
+ALTER TABLE authority_member ENABLE ROW LEVEL SECURITY;
+ALTER TABLE credential ENABLE ROW LEVEL SECURITY;
+ALTER TABLE identity ENABLE ROW LEVEL SECURITY;
+ALTER TABLE identity_attributes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE identity_enrollment ENABLE ROW LEVEL SECURITY;
+ALTER TABLE kafka_config ENABLE ROW LEVEL SECURITY;
+ALTER TABLE named_identity ENABLE ROW LEVEL SECURITY;
+ALTER TABLE node ENABLE ROW LEVEL SECURITY;
+ALTER TABLE okta_config ENABLE ROW LEVEL SECURITY;
+ALTER TABLE project ENABLE ROW LEVEL SECURITY;
+ALTER TABLE purpose_key ENABLE ROW LEVEL SECURITY;
+ALTER TABLE resource ENABLE ROW LEVEL SECURITY;
+ALTER TABLE resource_policy ENABLE ROW LEVEL SECURITY;
+ALTER TABLE resource_type_policy ENABLE ROW LEVEL SECURITY;
+ALTER TABLE secure_channel ENABLE ROW LEVEL SECURITY;
+ALTER TABLE signing_secret ENABLE ROW LEVEL SECURITY;
+ALTER TABLE space ENABLE ROW LEVEL SECURITY;
+ALTER TABLE subscription ENABLE ROW LEVEL SECURITY;
+ALTER TABLE tcp_inlet ENABLE ROW LEVEL SECURITY;
+ALTER TABLE tcp_outlet_status ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "user" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_project ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_role ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_space ENABLE ROW LEVEL SECURITY;
+ALTER TABLE vault ENABLE ROW LEVEL SECURITY;
+ALTER TABLE x25519_secret ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY aead_secret_policy ON aead_secret USING (tenant_id = current_user);
+CREATE POLICY authority_enrollment_token_policy ON authority_enrollment_token USING (tenant_id = current_user);
+CREATE POLICY authority_member_policy ON authority_member USING (tenant_id = current_user);
+CREATE POLICY credential_policy ON credential USING (tenant_id = current_user);
+CREATE POLICY identity_policy ON identity USING (tenant_id = current_user);
+CREATE POLICY identity_attributes_policy ON identity_attributes USING (tenant_id = current_user);
+CREATE POLICY identity_enrollment_policy ON identity_enrollment USING (tenant_id = current_user);
+CREATE POLICY kafka_config_policy ON kafka_config USING (tenant_id = current_user);
+CREATE POLICY named_identity_policy ON named_identity USING (tenant_id = current_user);
+CREATE POLICY node_policy ON node USING (tenant_id = current_user);
+CREATE POLICY okta_config_policy ON okta_config USING (tenant_id = current_user);
+CREATE POLICY project_policy ON project USING (tenant_id = current_user);
+CREATE POLICY purpose_key_policy ON purpose_key USING (tenant_id = current_user);
+CREATE POLICY resource_policy ON resource USING (tenant_id = current_user);
+CREATE POLICY resource_policy_policy ON resource_policy USING (tenant_id = current_user);
+CREATE POLICY resource_type_policy_policy ON resource_type_policy USING (tenant_id = current_user);
+CREATE POLICY secure_channel_policy ON secure_channel USING (tenant_id = current_user);
+CREATE POLICY signing_secret_policy ON signing_secret USING (tenant_id = current_user);
+CREATE POLICY space_policy ON space USING (tenant_id = current_user);
+CREATE POLICY subscription_policy ON subscription USING (tenant_id = current_user);
+CREATE POLICY tcp_inlet_policy ON tcp_inlet USING (tenant_id = current_user);
+CREATE POLICY tcp_outlet_status_policy ON tcp_outlet_status USING (tenant_id = current_user);
+CREATE POLICY user_policy ON "user" USING (tenant_id = current_user);
+CREATE POLICY user_project_policy ON user_project USING (tenant_id = current_user);
+CREATE POLICY user_role_policy ON user_role USING (tenant_id = current_user);
+CREATE POLICY user_space_policy ON user_space USING (tenant_id = current_user);
+CREATE POLICY vault_policy ON vault USING (tenant_id = current_user);
+CREATE POLICY x25519_secret_policy ON x25519_secret USING (tenant_id = current_user);
