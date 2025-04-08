@@ -171,10 +171,10 @@ CREATE UNIQUE INDEX resource_type_policy_index ON resource_type_policy (node_nam
 CREATE TABLE resource
 (
     resource_name TEXT NOT NULL, -- resource name
-    resource_type TEXT NOT NULL, -- resource type
+    resource_type TEXT,          -- resource type
     node_name     TEXT NOT NULL  -- node name
 );
-CREATE UNIQUE INDEX resource_index ON resource (node_name, resource_name, resource_type);
+CREATE UNIQUE INDEX resource_index ON resource (node_name, resource_name);
 
 -- This table stores the current state of a TCP outlet
 CREATE TABLE tcp_outlet_status

@@ -199,7 +199,7 @@ impl NodeManager {
         let (incoming_ac, outgoing_ac) = self
             .access_control(
                 self.project_authority(),
-                Resource::new(addr.address(), ResourceType::Echoer),
+                Resource::new(addr.address(), Some(ResourceType::Echoer)),
                 Action::HandleMessage,
                 None,
             )

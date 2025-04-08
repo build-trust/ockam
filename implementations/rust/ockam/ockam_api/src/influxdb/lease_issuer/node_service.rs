@@ -73,7 +73,7 @@ impl InMemoryNode {
         let (incoming_ac, outgoing_ac) = self
             .access_control(
                 self.project_authority(),
-                Resource::new(address.address(), ResourceType::InfluxDBLessor),
+                Resource::new(address.address(), Some(ResourceType::InfluxDBLessor)),
                 Action::HandleMessage,
                 req.policy_expression,
             )

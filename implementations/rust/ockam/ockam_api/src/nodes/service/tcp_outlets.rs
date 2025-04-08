@@ -129,7 +129,7 @@ impl NodeManager {
             OutletAccessControl::WithPolicyExpression(expression) => {
                 self.access_control(
                     self.project_authority(),
-                    Resource::new(worker_addr.address(), ResourceType::TcpOutlet),
+                    Resource::new(worker_addr.address(), Some(ResourceType::TcpOutlet)),
                     Action::HandleMessage,
                     expression,
                 )

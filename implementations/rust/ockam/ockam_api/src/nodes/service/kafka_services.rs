@@ -127,7 +127,7 @@ impl InMemoryNode {
                 self.project_authority().clone(),
                 Resource::new(
                     format!("kafka-consumer-{}", interceptor_address.address()),
-                    ResourceType::KafkaConsumer,
+                    Some(ResourceType::KafkaConsumer),
                 ),
                 Action::HandleMessage,
                 consumer_policy_expression,
@@ -139,7 +139,7 @@ impl InMemoryNode {
                 self.project_authority().clone(),
                 Resource::new(
                     format!("kafka-producer-{}", interceptor_address.address()),
-                    ResourceType::KafkaProducer,
+                    Some(ResourceType::KafkaProducer),
                 ),
                 Action::HandleMessage,
                 producer_policy_expression,
@@ -224,7 +224,10 @@ impl InMemoryNode {
         let policy_access_control = self
             .policy_access_control(
                 self.project_authority().clone(),
-                Resource::new(interceptor_address.to_string(), ResourceType::TcpInlet),
+                Resource::new(
+                    interceptor_address.to_string(),
+                    Some(ResourceType::TcpInlet),
+                ),
                 Action::HandleMessage,
                 inlet_policy_expression,
             )
@@ -270,7 +273,7 @@ impl InMemoryNode {
         let policy_access_control = self
             .policy_access_control(
                 self.project_authority().clone(),
-                Resource::new(service_address.to_string(), ResourceType::TcpOutlet),
+                Resource::new(service_address.to_string(), Some(ResourceType::TcpOutlet)),
                 Action::HandleMessage,
                 outlet_policy_expression.clone(),
             )

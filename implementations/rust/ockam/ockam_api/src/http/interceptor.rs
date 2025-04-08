@@ -189,7 +189,7 @@ impl NodeManager {
             Some(
                 self.policy_access_control(
                     Some(project_authority),
-                    Resource::new(listener_address.to_string(), ResourceType::TcpInlet),
+                    Resource::new(listener_address.to_string(), Some(ResourceType::TcpInlet)),
                     Action::HandleMessage,
                     None,
                 )

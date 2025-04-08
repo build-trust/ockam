@@ -61,7 +61,10 @@ async fn create_kafka_service(
         .node_manager
         .policy_access_control(
             Some(project_authority.clone()),
-            Resource::new(listener_address.address(), ResourceType::KafkaConsumer),
+            Resource::new(
+                listener_address.address(),
+                Some(ResourceType::KafkaConsumer),
+            ),
             Action::HandleMessage,
             None,
         )
@@ -71,7 +74,10 @@ async fn create_kafka_service(
         .node_manager
         .policy_access_control(
             Some(project_authority.clone()),
-            Resource::new(listener_address.address(), ResourceType::KafkaProducer),
+            Resource::new(
+                listener_address.address(),
+                Some(ResourceType::KafkaProducer),
+            ),
             Action::HandleMessage,
             None,
         )
