@@ -56,7 +56,8 @@ impl ResourcesRepository for ResourcesSqlxDatabase {
             r#"
             INSERT INTO resource (resource_name, resource_type, node_name)
             VALUES ($1, $2, $3)
-            ON CONFLICT DO NOTHING"#,
+            ON CONFLICT (resource_name, node_name)
+            DO UPDATE SET resource_type = $2"#,
         )
         .bind(&resource.resource_name)
         .bind(&resource.resource_type)
@@ -121,12 +122,16 @@ impl sqlx::Encode<'_, Any> for ResourceName {
 #[allow(dead_code)]
 struct ResourceRow {
     resource_name: String,
-    resource_type: String,
+    resource_type: Option<String>,
 }
 
 impl ResourceRow {
-    fn resource_type(&self) -> Result<ResourceType> {
-        Ok(ResourceType::from_str(&self.resource_type)?)
+    fn resource_type(&self) -> Result<Option<ResourceType>> {
+        if let Some(resource_type) = &self.resource_type {
+            Ok(Some(ResourceType::from_str(resource_type.as_str())?))
+        } else {
+            Ok(None)
+        }
     }
 }
 
@@ -154,14 +159,34 @@ mod test {
         // create mapping between resource and resource type
         let rt = ResourceType::TcpOutlet;
         let rn1 = ResourceName::new(&random_string());
-        let r1 = Resource::new(rn1.clone(), rt.clone());
+        let r1 = Resource::new(rn1.clone(), Some(rt.clone()));
         repository.store_resource(&r1).await?;
         assert_eq!(repository.get_resource(&rn1).await?.unwrap(), r1);
 
         // create another entry for a new resource name
         let rn2 = ResourceName::new(&random_string());
-        let r2 = Resource::new(rn2.clone(), rt.clone());
+        let r2 = Resource::new(rn2.clone(), Some(rt.clone()));
         repository.store_resource(&r2).await?;
+
+        // create another entry with empty type
+        let rn3 = ResourceName::new(&random_string());
+        let r3 = Resource::new(rn3.clone(), None);
+        repository.store_resource(&r3).await?;
+
+        let rns2 = repository.get_resource(&rn2).await?.unwrap();
+        let rns3 = repository.get_resource(&rn3).await?.unwrap();
+        assert_eq!(rns2, r2);
+        assert_eq!(rns3, r3);
+
+        // duplicate resource name
+        let rn4 = ResourceName::new(&random_string());
+        let r4 = Resource::new(rn4.clone(), None);
+        let r5 = Resource::new(rn4.clone(), Some(ResourceType::Echoer));
+        repository.store_resource(&r4).await?;
+        repository.store_resource(&r5).await?;
+
+        let rns5 = repository.get_resource(&rn4).await?.unwrap();
+        assert_eq!(rns5, r5);
 
         // we can delete a given entry
         repository.delete_resource(&rn1).await?;

@@ -44,7 +44,7 @@ mod test {
 
         let consumer_policy_access_control = policies.make_policy_access_control(
             secure_channels.identities().identities_attributes(),
-            Resource::new("arbitrary-resource-name", ResourceType::KafkaConsumer),
+            Resource::new("arbitrary-resource-name", Some(ResourceType::KafkaConsumer)),
             Action::HandleMessage,
             Env::new(),
             Some(handle.node_manager.identifier()),
@@ -52,7 +52,7 @@ mod test {
 
         let producer_policy_access_control = policies.make_policy_access_control(
             secure_channels.identities().identities_attributes(),
-            Resource::new("arbitrary-resource-name", ResourceType::KafkaProducer),
+            Resource::new("arbitrary-resource-name", Some(ResourceType::KafkaProducer)),
             Action::HandleMessage,
             Env::new(),
             Some(handle.node_manager.identifier()),

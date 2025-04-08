@@ -120,7 +120,7 @@ impl NodeManager {
             suffix_route,
             authorized,
             wait_for_outlet_duration: wait_for_outlet_duration.unwrap_or(MAX_CONNECT_TIME),
-            resource: Resource::new(alias.clone(), ResourceType::TcpInlet),
+            resource: Resource::new(alias.clone(), Some(ResourceType::TcpInlet)),
             policy_expression,
             secure_channel_identifier,
             disable_tcp_fallback,

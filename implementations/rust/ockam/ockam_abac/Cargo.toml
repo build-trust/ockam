@@ -60,6 +60,7 @@ wast = { version = "220.0.0", default-features = false, optional = true }
 winnow = { version = "0.6.25", default-features = false, optional = true, features = ["alloc"] }
 
 [dev-dependencies]
+ockam_identity = { version = "0.134.0", path = "../ockam_identity" }
 quickcheck = "1.0.3"
 rand = "0.8.5"
 serde_json = "1.0.133"

@@ -251,7 +251,7 @@ impl NodeManager {
             let policy_access_control = self
                 .policy_access_control(
                     self.project_authority.clone(),
-                    Resource::new(DefaultAddress::RELAY_SERVICE, ResourceType::Relay),
+                    Resource::new(DefaultAddress::RELAY_SERVICE, Some(ResourceType::Relay)),
                     Action::HandleMessage,
                     None,
                 )
@@ -562,7 +562,7 @@ impl NodeManager {
         .into_diagnostic()
     }
 
-    pub(crate) async fn access_control(
+    pub async fn access_control(
         &self,
         authority: Option<Identifier>,
         resource: Resource,
@@ -573,9 +573,6 @@ impl NodeManager {
         Arc<dyn OutgoingAccessControl>,
     )> {
         let ctx = self.ctx();
-        let resource_name_str = resource.resource_name.as_str();
-        let resource_type_str = resource.resource_type.to_string();
-        let action_str = action.as_ref();
         if authority.is_some() || expression.is_some() {
             let policy_access_control = self
                 .policy_access_control(authority, resource, action, expression)
@@ -595,6 +592,9 @@ impl NodeManager {
                 }
             }
         } else {
+            let resource_name_str = resource.resource_name.as_str();
+            let resource_type_str = resource.resource_type.map(|t| t.to_string());
+            let action_str = action.as_ref();
             // If no expression is given, assume it's AllowAll, but only if no authority
             // was set neither. Why: not sure, but to behave as it was previously if there
             // is an authority set.  If there is no authority, but still some expression,
@@ -605,6 +605,7 @@ impl NodeManager {
                 action = action_str,
                 "no policy access control set"
             }
+
             Ok((Arc::new(AllowAll), Arc::new(AllowAll)))
         }
     }

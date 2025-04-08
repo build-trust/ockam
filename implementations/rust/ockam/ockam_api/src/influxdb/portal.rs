@@ -226,7 +226,7 @@ impl NodeManagerWorker {
             .node_manager
             .policy_access_control(
                 self.node_manager.project_authority().clone(),
-                Resource::new(outlet_address.to_string(), ResourceType::TcpOutlet),
+                Resource::new(outlet_address.to_string(), Some(ResourceType::TcpOutlet)),
                 Action::HandleMessage,
                 outlet_policy_expression.clone(),
             )
@@ -275,7 +275,10 @@ impl NodeManagerWorker {
             .node_manager
             .policy_access_control(
                 self.node_manager.project_authority().clone(),
-                Resource::new(interceptor_address.to_string(), ResourceType::TcpInlet),
+                Resource::new(
+                    interceptor_address.to_string(),
+                    Some(ResourceType::TcpInlet),
+                ),
                 Action::HandleMessage,
                 inlet_policy_expression,
             )

@@ -11,11 +11,14 @@ use strum::{AsRefStr, Display, EnumIter, EnumString, IntoEnumIterator};
 #[cbor(map)]
 pub struct Resource {
     #[n(1)] pub resource_name: ResourceName,
-    #[n(2)] pub resource_type: ResourceType,
+    #[n(2)] pub resource_type: Option<ResourceType>,
 }
 
 impl Resource {
-    pub fn new(resource_name: impl Into<ResourceName>, resource_type: ResourceType) -> Self {
+    pub fn new(
+        resource_name: impl Into<ResourceName>,
+        resource_type: Option<ResourceType>,
+    ) -> Self {
         Self {
             resource_name: resource_name.into(),
             resource_type,
@@ -27,7 +30,7 @@ impl Display for Resource {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         write!(
             f,
-            "(name: {}, type: {})",
+            "(name: {}, type: {:?})",
             self.resource_name, self.resource_type
         )
     }

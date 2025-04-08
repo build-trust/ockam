@@ -298,7 +298,7 @@ async fn setup_only_worker(context: &mut Context, handle: &NodeManagerHandle) ->
 
     let consumer_policy_access_control = policies.make_policy_access_control(
         secure_channels.identities().identities_attributes(),
-        Resource::new("arbitrary-resource-name", ResourceType::KafkaConsumer),
+        Resource::new("arbitrary-resource-name", Some(ResourceType::KafkaConsumer)),
         Action::HandleMessage,
         Env::new(),
         Some(authority_identifier.clone()),
@@ -306,7 +306,7 @@ async fn setup_only_worker(context: &mut Context, handle: &NodeManagerHandle) ->
 
     let producer_policy_access_control = policies.make_policy_access_control(
         secure_channels.identities().identities_attributes(),
-        Resource::new("arbitrary-resource-name", ResourceType::KafkaProducer),
+        Resource::new("arbitrary-resource-name", Some(ResourceType::KafkaProducer)),
         Action::HandleMessage,
         Env::new(),
         Some(authority_identifier.clone()),
@@ -384,7 +384,7 @@ async fn kafka_portal_worker__metadata_exchange__response_changed(
         .node_manager
         .policy_access_control(
             Some(project_authority.clone()),
-            Resource::new("arbitrary-resource-name", ResourceType::KafkaConsumer),
+            Resource::new("arbitrary-resource-name", Some(ResourceType::KafkaConsumer)),
             Action::HandleMessage,
             None,
         )
@@ -394,7 +394,7 @@ async fn kafka_portal_worker__metadata_exchange__response_changed(
         .node_manager
         .policy_access_control(
             Some(project_authority.clone()),
-            Resource::new("arbitrary-resource-name", ResourceType::KafkaProducer),
+            Resource::new("arbitrary-resource-name", Some(ResourceType::KafkaProducer)),
             Action::HandleMessage,
             None,
         )

@@ -38,7 +38,7 @@ impl Policies {
         authority: Option<Identifier>,
     ) -> PolicyAccessControl {
         debug!(
-            "set a policy access control for resource '{}' of type '{}' and action '{}'",
+            "set a policy access control for resource '{}' of type '{:?}' and action '{}'",
             &resource.resource_name, &resource.resource_type, &action
         );
         PolicyAccessControl::new(
@@ -128,11 +128,13 @@ impl Policies {
 
         // If there is no policy for the resource name, try to get
         // the policy for the resource type associated to the resource name.
-        if let Some(policy) = self
-            .get_policy_for_resource_type(&resource.resource_type, action)
-            .await?
-        {
-            return Ok(Some(policy.expression));
+        if let Some(resource_type) = resource.resource_type.as_ref() {
+            if let Some(policy) = self
+                .get_policy_for_resource_type(resource_type, action)
+                .await?
+            {
+                return Ok(Some(policy.expression));
+            }
         }
 
         Ok(None)
