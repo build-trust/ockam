@@ -8,7 +8,7 @@ use ockam_transport_ble::driver::BleClient;
 use ockam_transport_ble::{BleTransport, BLE};
 
 fn main() -> Result<()> {
-    let (ctx, mut exe) = ockam_node::NodeBuilder::new().build();
+    let (ctx, exe) = ockam_node::NodeBuilder::new().build();
     exe.execute(async move { async_main(ctx).await })
         .unwrap()
         .unwrap();

@@ -714,7 +714,7 @@ pub mod tests {
 
         // prepare the nodes
         let node_builder1 = NodeBuilder::new().with_logging(logging);
-        let (ctx1, mut executor1) = node_builder1.build();
+        let (ctx1, executor1) = node_builder1.build();
         let node_builder2 = NodeBuilder::new()
             .with_runtime(executor1.get_runtime())
             .with_logging(logging);

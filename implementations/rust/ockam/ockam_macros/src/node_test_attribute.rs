@@ -29,7 +29,7 @@ use crate::internals::{ast, ast::FnVariable, check, ctx::Context, symbol::*};
 ///     use core::time::Duration;
 ///     use ockam_core::{Error, errcode::{Origin, Kind}};
 ///     use ockam::{NodeBuilder, compat::{tokio::time::timeout, futures::FutureExt}};
-///     let (mut ctx, mut executor) = NodeBuilder::new().build();
+///     let (mut ctx, executor) = NodeBuilder::new().build();
 ///     executor
 ///         .execute(async move {
 ///             match AssertUnwindSafe(async {
@@ -101,7 +101,7 @@ fn output(mut cont: Container) -> TokenStream {
             }
 
             // we don't exit on a panic because we want to catch the panic and report it from within the test.
-            let (mut #ctx_ident, mut executor) = NodeBuilder::new().no_exit_on_panic().build();
+            let (mut #ctx_ident, executor) = NodeBuilder::new().no_exit_on_panic().build();
             executor
                 .execute(async move {
                     // Wraps the test function call in a `catch_unwind` to catch possible panics.

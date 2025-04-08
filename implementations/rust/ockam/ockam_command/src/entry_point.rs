@@ -59,7 +59,7 @@ pub fn run() -> miette::Result<()> {
 
     let node_builder = NodeBuilder::new().no_logging();
 
-    let (ctx, mut executor) = node_builder.build();
+    let (ctx, executor) = node_builder.build();
 
     executor.execute(async move {
         let res = match command_res {
