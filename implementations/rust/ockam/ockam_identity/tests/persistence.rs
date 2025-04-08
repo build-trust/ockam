@@ -156,7 +156,7 @@ fn test_persistence() -> ockam_core::Result<()> {
         encrypted_msg2_bob: Vec<u8>,
     }
 
-    let (ctx1, mut executor1) = NodeBuilder::new().build();
+    let (ctx1, executor1) = NodeBuilder::new().build();
     let data = executor1
         .execute(async move {
             let data = std::panic::AssertUnwindSafe(async {
@@ -286,7 +286,7 @@ fn test_persistence() -> ockam_core::Result<()> {
         .unwrap()
         .unwrap();
 
-    let (ctx2, mut executor2) = NodeBuilder::new().build();
+    let (ctx2, executor2) = NodeBuilder::new().build();
     executor2
         .execute(async move {
             let res = std::panic::AssertUnwindSafe(async {

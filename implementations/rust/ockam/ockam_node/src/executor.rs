@@ -68,7 +68,7 @@ impl Executor {
     /// Any errors encountered by the router or provided application
     /// code will be returned from this function.
     #[cfg(feature = "std")]
-    pub fn execute<F, T, E>(&mut self, future: F) -> Result<F::Output>
+    pub fn execute<F, T, E>(&self, future: F) -> Result<F::Output>
     where
         F: Future<Output = core::result::Result<T, E>> + Send + 'static,
         T: Send + 'static,
@@ -131,7 +131,7 @@ impl Executor {
     /// Any errors encountered by the router or provided application
     /// code will be returned from this function.
     // TODO @antoinevg - support @thomm join & merge with std version
-    pub fn execute<F>(&mut self, future: F) -> Result<()>
+    pub fn execute<F>(&self, future: F) -> Result<()>
     where
         F: Future + Send + 'static,
         F::Output: Send + 'static,

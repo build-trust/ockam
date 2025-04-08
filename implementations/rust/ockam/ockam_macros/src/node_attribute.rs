@@ -58,7 +58,7 @@ fn output(cont: Container) -> TokenStream {
             fn main() #ret_type {
                 use #ockam_crate::{NodeBuilder, Executor};
 
-                let (#ctx_mut #ctx_ident, mut executor) = NodeBuilder::new().build() as (#ctx_path, Executor);
+                let (#ctx_mut #ctx_ident, executor) = NodeBuilder::new().build() as (#ctx_path, Executor);
                 executor.execute(async move #body)#err_handling
             }
         }

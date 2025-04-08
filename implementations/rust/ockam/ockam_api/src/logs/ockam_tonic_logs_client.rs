@@ -126,7 +126,7 @@ mod tests {
         let port = random_port();
         start_node_with_grpc_forwarder_service(runtime.clone(), port);
 
-        let (ctx, mut executor) = NodeBuilder::new()
+        let (ctx, executor) = NodeBuilder::new()
             .with_logging(LOGGING)
             .with_runtime(runtime)
             .build();
