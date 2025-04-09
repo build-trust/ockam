@@ -21,7 +21,7 @@ impl fmt::Display for Ping {
 
 impl Encodable for Ping {
     fn encode(self) -> Result<Vec<u8>> {
-        ockam_core::cbor_encode_preallocate(self).map_err(Error::from)
+        ockam_core::cbor_encode_preallocate(self)
     }
 }
 

@@ -25,3 +25,12 @@ nix develop ./tools/nix#elixir
 nix develop ./tools/nix#rust
 nix develop ./tools/nix#rust_nightly
 ```
+
+# Updating Rust version
+To update Rust version, update version in the rust-toolchain.toml file, change directory to the nix folder and call the `nix flake update` command.
+
+From the root directory,
+```shell
+cd ./tools/nix
+nix flake update
+```
