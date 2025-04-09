@@ -237,13 +237,15 @@ impl SqlxDatabase {
             // Only run the postgres migrations if the database has never been created.
             // This is mostly for tests. In production the database schema must be created separately
             // during the first deployment.
-            let migrate_database = if configuration.database_type() == DatabaseType::Postgres {
+            let migrate_database = if configuration.database_type() == DatabaseType::Postgres
+                && configuration.is_admin_user()
+            {
                 let database_schema_already_created: bool = sqlx::query("SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'identity')")
                     .fetch_one(&*database.pool)
                     .await.into_core()?.get(0);
                 !database_schema_already_created
             } else {
-                true
+                configuration.is_admin_user()
             };
 
             if migrate_database {
@@ -637,6 +639,7 @@ pub mod tests {
     use crate::database::Boolean;
     use sqlx::any::AnyQueryResult;
     use sqlx::FromRow;
+    use sqlx_core::query::query;
 
     /// This is a sanity check to test that the database can be created with a file path
     /// and that migrations are running ok, at least for one table
@@ -730,9 +733,55 @@ pub mod tests {
         Ok(())
     }
 
+    #[tokio::test]
+    async fn test_row_level_access() -> Result<()> {
+        // Make sure we use Postgres for this test
+        // The connection URL should use the postgres admin
+        let database_configuration = DatabaseConfiguration::postgres()?;
+        if database_configuration.is_none() {
+            return Ok(());
+        };
+        let admin_database_configuration = database_configuration.unwrap();
+        let admin_user = admin_database_configuration.user().unwrap();
+        let alice_database_configuration =
+            admin_database_configuration.switch_to_user("alice", "alice");
+        let bob_database_configuration = admin_database_configuration.switch_to_user("bob", "bob");
+
+        // Create databases for each user. The admin database creation deletes any existing table.
+        let admin_database = SqlxDatabase::create_new_postgres().await?;
+        create_user(&admin_database, "alice").await?;
+        create_user(&admin_database, "bob").await?;
+
+        let alice_database = SqlxDatabase::create(&alice_database_configuration).await?;
+        let bob_database = SqlxDatabase::create(&bob_database_configuration).await?;
+
+        // Each user can create their own node
+        create_node(&admin_database, &admin_user).await?;
+        create_node(&alice_database, "alice").await?;
+        create_node(&bob_database, "bob").await?;
+
+        // Alice cannot see bob's node, and vice versa
+        // But the admin can see all nodes
+        let admin_nodes = list_nodes(&admin_database).await?;
+        let alice_nodes = list_nodes(&alice_database).await?;
+        let bob_nodes = list_nodes(&bob_database).await?;
+
+        assert_eq!(
+            admin_nodes,
+            vec![
+                format!("node-{admin_user}"),
+                "node-alice".to_string(),
+                "node-bob".to_string()
+            ]
+        );
+        assert_eq!(alice_nodes, vec!["node-alice".to_string()]);
+        assert_eq!(bob_nodes, vec!["node-bob".to_string()]);
+        Ok(())
+    }
+
     // HELPERS
     async fn insert_identity(db: &SqlxDatabase) -> Result<AnyQueryResult> {
-        sqlx::query("INSERT INTO named_identity (identifier, name, vault_name, is_default, tenant_id) VALUES ($1, $2, $3, $4, $5)")
+        query("INSERT INTO named_identity (identifier, name, vault_name, is_default, tenant_id) VALUES ($1, $2, $3, $4, $5)")
             .bind("Ifa804b7fca12a19eed206ae180b5b576860ae651")
             .bind("identity-1")
             .bind("vault-1")
@@ -749,5 +798,38 @@ pub mod tests {
         name: String,
         vault_name: String,
         is_default: Boolean,
+    }
+
+    async fn create_user(db: &SqlxDatabase, user: &str) -> Result<()> {
+        let q = format!("CREATE ROLE {user} with LOGIN PASSWORD '{user}'");
+        query(&q).bind(user).execute(&*db.pool).await.void()?;
+
+        let q = format!("GRANT USAGE ON SCHEMA public TO {user}");
+        query(&q).bind(user).execute(&*db.pool).await.void()?;
+
+        let q = format!(
+            "GRANT INSERT, UPDATE, SELECT, DELETE ON ALL TABLES IN SCHEMA public TO {user}"
+        );
+        query(&q).bind(user).execute(&*db.pool).await.void()?;
+
+        Ok(())
+    }
+
+    async fn create_node(db: &SqlxDatabase, user: &str) -> Result<()> {
+        let query = query(
+            r#"
+        INSERT INTO node (name, identifier, verbosity, is_default, is_authority, tcp_listener_address, pid, http_server_address, tenant_id) VALUES ($1, $2, 1, true, false, 'localhost', 1000, 'web', $3) "#,
+        )
+            .bind(format!("node-{user}"))
+            .bind(format!("identifier-{user}"))
+            .bind(user);
+        query.execute(&*db.pool).await.void()?;
+        Ok(())
+    }
+
+    async fn list_nodes(db: &SqlxDatabase) -> Result<Vec<String>> {
+        let query = query("SELECT name FROM node");
+        let rows = query.fetch_all(&*db.pool).await.into_core()?;
+        Ok(rows.iter().map(|r| r.get(0)).collect())
     }
 }

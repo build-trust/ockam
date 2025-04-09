@@ -34,15 +34,17 @@ impl MigrateDatabaseCommand {
     pub async fn run(&self, _ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         match DatabaseConfiguration::postgres()? {
             Some(configuration) => {
-                let db = SqlxDatabase::create_no_migration(&configuration).await?;
-                let migration_set = NodeMigrationSet::new(configuration.database_type());
-                let migrator = migration_set.create_migrator()?;
-                if !self.dry_run {
-                    migrator.migrate(&db.pool).await?;
-                };
+                if configuration.is_admin_user() {
+                    let db = SqlxDatabase::create_no_migration(&configuration).await?;
+                    let migration_set = NodeMigrationSet::new(configuration.database_type());
+                    let migrator = migration_set.create_migrator()?;
+                    if !self.dry_run {
+                        migrator.migrate(&db.pool).await?;
+                    };
 
-                let status = migrator.migration_status(&db.pool).await?;
-                opts.terminal.to_stdout().plain(&status).json_obj(&status)?.machine(status.up_to_date()).write_line()?;
+                    let status = migrator.migration_status(&db.pool).await?;
+                    opts.terminal.to_stdout().plain(&status).json_obj(&status)?.machine(status.up_to_date()).write_line()?;
+                }
 
                 Ok(())
             },
