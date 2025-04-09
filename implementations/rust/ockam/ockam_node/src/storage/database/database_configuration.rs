@@ -20,6 +20,8 @@ pub const OCKAM_DATABASE_USER: &str = "OCKAM_DATABASE_USER";
 pub const OCKAM_DATABASE_PASSWORD: &str = "OCKAM_DATABASE_PASSWORD";
 /// Database user + password in the format {"username":"pgadmin", "password":"s3cr3t"}
 pub const OCKAM_DATABASE_USERNAME_AND_PASSWORD: &str = "OCKAM_DATABASE_USERNAME_AND_PASSWORD";
+/// Name of the database admin user
+pub const OCKAM_DATABASE_ADMIN_USERNAME: &str = "OCKAM_DATABASE_ADMIN_USERNAME";
 
 /// Configuration for the database.
 /// We either use Sqlite or Postgres
@@ -43,6 +45,8 @@ pub enum DatabaseConfiguration {
         connection_url: ConnectionUrl,
         /// Path to a SQLite database that needs to be migrated to the Postgres database.
         legacy_sqlite_path: Option<PathBuf>,
+        /// Name of the database admin user
+        admin_user: String,
     },
 }
 
@@ -94,9 +98,13 @@ impl DatabaseConfiguration {
         sqlite_path: Option<PathBuf>,
     ) -> Result<Option<DatabaseConfiguration>> {
         if let Some(connection_string) = get_database_connection_url()? {
+            let admin_user =
+                get_env::<String>(OCKAM_DATABASE_ADMIN_USERNAME)?.unwrap_or("postgres".to_string());
+
             Ok(Some(DatabaseConfiguration::Postgres {
                 connection_url: parse_connection_string(&connection_string)?,
                 legacy_sqlite_path: sqlite_path,
+                admin_user,
             }))
         } else {
             Ok(None)
@@ -140,6 +148,45 @@ impl DatabaseConfiguration {
             DatabaseConfiguration::SqliteInMemory { .. } => DatabaseType::Sqlite,
             DatabaseConfiguration::SqlitePersistent { .. } => DatabaseType::Sqlite,
             DatabaseConfiguration::Postgres { .. } => DatabaseType::Postgres,
+        }
+    }
+
+    /// Return the connection user if it is defined
+    pub fn user(&self) -> Option<String> {
+        match self {
+            DatabaseConfiguration::SqliteInMemory { .. } => None,
+            DatabaseConfiguration::SqlitePersistent { .. } => None,
+            DatabaseConfiguration::Postgres { connection_url, .. } => Some(connection_url.user()),
+        }
+    }
+
+    /// Change the user if this is a Postgres configuration
+    pub fn switch_to_user(&self, user: &str, password: &str) -> DatabaseConfiguration {
+        match self {
+            DatabaseConfiguration::SqliteInMemory { .. } => self.clone(),
+            DatabaseConfiguration::SqlitePersistent { .. } => self.clone(),
+            DatabaseConfiguration::Postgres {
+                connection_url,
+                legacy_sqlite_path,
+                admin_user,
+            } => DatabaseConfiguration::Postgres {
+                connection_url: connection_url.switch_to_user(user, password),
+                legacy_sqlite_path: legacy_sqlite_path.clone(),
+                admin_user: admin_user.clone(),
+            },
+        }
+    }
+
+    /// Return the connection user if it is defined
+    pub fn is_admin_user(&self) -> bool {
+        match self {
+            DatabaseConfiguration::SqliteInMemory { .. } => true,
+            DatabaseConfiguration::SqlitePersistent { .. } => true,
+            DatabaseConfiguration::Postgres {
+                admin_user,
+                connection_url,
+                ..
+            } => connection_url.user() == *admin_user,
         }
     }
 
@@ -286,6 +333,15 @@ impl ConnectionUrl {
     /// Return the connection user
     pub fn user(&self) -> String {
         self.user.clone()
+    }
+
+    /// Set a different user and password on this connection
+    pub fn switch_to_user(&self, user: &str, password: &str) -> Self {
+        Self {
+            user: user.to_string(),
+            password: password.to_string(),
+            ..self.clone()
+        }
     }
 }
 

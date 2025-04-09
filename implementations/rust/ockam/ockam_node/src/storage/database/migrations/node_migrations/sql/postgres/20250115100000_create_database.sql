@@ -375,9 +375,9 @@ CREATE TABLE kafka_config
     bootstrap_server TEXT NOT NULL  -- URL of the bootstrap server
 );
 
-------------
--- POLICIES
-------------
+-------------------------
+-- MULTI-TENANT POLICIES
+-------------------------
 
 ALTER TABLE aead_secret ENABLE ROW LEVEL SECURITY;
 ALTER TABLE authority_enrollment_token ENABLE ROW LEVEL SECURITY;
@@ -435,4 +435,7 @@ CREATE POLICY user_project_policy ON user_project USING (tenant_id = current_use
 CREATE POLICY user_role_policy ON user_role USING (tenant_id = current_user);
 CREATE POLICY user_space_policy ON user_space USING (tenant_id = current_user);
 CREATE POLICY vault_policy ON vault USING (tenant_id = current_user);
+-- Vault definitions are shared between all tenants. In practice there's only the default vault defined here.
+-- And each tenant creates their own keys without seeing other's keys in the keys tables.
+CREATE POLICY vault_select_policy ON vault FOR SELECT USING (true);
 CREATE POLICY x25519_secret_policy ON x25519_secret USING (tenant_id = current_user);
