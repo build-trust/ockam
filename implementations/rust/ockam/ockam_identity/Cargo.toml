@@ -73,7 +73,7 @@ aws-lc = ["ockam_vault?/aws-lc"]
 rust-crypto = ["ockam_vault?/rust-crypto"]
 
 [dependencies]
-async-trait = "0.1.82"
+async-trait = "0.1.88"
 cfg-if = "1.0.0"
 chrono = { version = "0.4.38", default-features = false }
 delegate = "0.13.0"
