@@ -1,13 +1,13 @@
-use std::net::TcpStream;
-use std::path::PathBuf;
-use std::sync::Arc;
-
+use async_trait::async_trait;
 use clap::builder::NonEmptyStringValueParser;
 use clap::Args;
 use colorful::Colorful;
 use miette::{miette, Context as _, IntoDiagnostic};
 use rustls::{ClientConfig, ClientConnection, Connection, RootCertStore, Stream};
 use rustls_pki_types::ServerName;
+use std::net::TcpStream;
+use std::path::PathBuf;
+use std::sync::Arc;
 
 use ockam::Context;
 use ockam_api::enroll::oidc_service::OidcService;
@@ -20,6 +20,7 @@ use ockam_api::orchestrator::project::models::OktaConfig;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::Error;
 
+use crate::node_command::InMemoryNodeCommand;
 use crate::project::addon::check_configuration_completion;
 use crate::{docs, CommandGlobalOpts, Result};
 
@@ -81,28 +82,38 @@ pub struct AddonConfigureOktaSubcommand {
     attributes: Vec<String>,
 }
 
-impl AddonConfigureOktaSubcommand {
-    pub fn name(&self) -> String {
-        "project addon configure okta".into()
-    }
+#[derive(Clone)]
+struct AddonConfigureOktaNodeCommand {
+    opts: CommandGlobalOpts,
+    command: AddonConfigureOktaSubcommand,
+}
 
-    pub async fn run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
-        let project_id = opts
+impl AddonConfigureOktaNodeCommand {
+    pub fn new(opts: CommandGlobalOpts, command: AddonConfigureOktaSubcommand) -> Self {
+        Self { opts, command }
+    }
+}
+
+#[async_trait]
+impl InMemoryNodeCommand for AddonConfigureOktaNodeCommand {
+    async fn run(&self, node: Arc<InMemoryNode>) -> miette::Result<()> {
+        let project_id = self
+            .opts
             .state
             .projects()
-            .get_project_by_name(&self.project_name)
+            .get_project_by_name(&self.command.project_name)
             .await?
             .project_id()
             .to_string();
 
-        let base_url = Url::parse(self.tenant.as_str())
+        let base_url = Url::parse(self.command.tenant.as_str())
             .into_diagnostic()
             .context("could not parse tenant url")?;
         let domain = base_url
             .host_str()
             .ok_or(miette!("could not read domain from tenant url"))?;
 
-        let certificate = match (&self.certificate, &self.certificate_path) {
+        let certificate = match (&self.command.certificate, &self.command.certificate_path) {
             (Some(c), _) => c.to_string(),
             (_, Some(p)) => std::fs::read_to_string(p).into_diagnostic()?,
             _ => query_certificate_chain(domain)?,
@@ -111,8 +122,8 @@ impl AddonConfigureOktaSubcommand {
         let okta_config = OktaConfig::new(
             base_url,
             certificate,
-            self.client_id.clone(),
-            self.attributes.clone(),
+            self.command.client_id.clone(),
+            self.command.attributes.clone(),
         );
 
         // Validate okta configuration
@@ -122,18 +133,31 @@ impl AddonConfigureOktaSubcommand {
         auth0.validate_provider_config().await?;
 
         // Do request
-        let node = InMemoryNode::start(ctx, opts.state.clone()).await?;
         let controller = node.create_controller().await?;
 
         let response = controller
-            .configure_okta_addon(ctx, &project_id, okta_config)
+            .configure_okta_addon(node.ctx(), &project_id, okta_config)
             .await?;
-        check_configuration_completion(&opts, &node, &project_id, &response.operation_id).await?;
+        check_configuration_completion(&self.opts, &node, &project_id, &response.operation_id)
+            .await?;
 
-        opts.terminal
+        self.opts
+            .terminal
             .write_line(fmt_ok!("Okta addon configured successfully"))?;
 
         Ok(())
+    }
+}
+
+impl AddonConfigureOktaSubcommand {
+    pub fn name(&self) -> String {
+        "project addon configure okta".into()
+    }
+
+    pub async fn run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        AddonConfigureOktaNodeCommand::new(opts.clone(), self.clone())
+            .execute(ctx, opts.state)
+            .await
     }
 }
 

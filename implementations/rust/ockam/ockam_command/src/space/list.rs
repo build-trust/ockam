@@ -1,10 +1,12 @@
 use async_trait::async_trait;
 use clap::Args;
+use std::sync::Arc;
 
 use ockam::Context;
 use ockam_api::nodes::InMemoryNode;
 use ockam_api::orchestrator::space::Spaces;
 
+use crate::node_command::InMemoryNodeCommand;
 use crate::shared_args::IdentityOpts;
 use crate::{docs, Command, CommandGlobalOpts};
 
@@ -24,31 +26,49 @@ pub struct ListCommand {
     pub identity_opts: IdentityOpts,
 }
 
+#[derive(Clone)]
+struct ListNodeCommand {
+    opts: CommandGlobalOpts,
+}
+impl ListNodeCommand {
+    pub fn new(opts: CommandGlobalOpts) -> Self {
+        Self { opts }
+    }
+}
 #[async_trait]
-impl Command for ListCommand {
-    const NAME: &'static str = "space list";
-
-    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
-        let node = InMemoryNode::start(ctx, opts.state.clone()).await?;
-
+impl InMemoryNodeCommand for ListNodeCommand {
+    async fn run(&self, node: Arc<InMemoryNode>) -> miette::Result<()> {
         let spaces = {
-            let pb = opts.terminal.spinner();
+            let pb = self.opts.terminal.spinner();
             if let Some(pb) = pb.as_ref() {
                 pb.set_message("Listing spaces...");
             }
             node.get_spaces().await?
         };
 
-        let plain = opts.terminal.build_list(
+        let plain = self.opts.terminal.build_list(
             &spaces,
             "No spaces found. Run 'ockam enroll' to get a space and a project",
         )?;
 
-        opts.terminal
+        self.opts
+            .terminal
+            .clone()
             .to_stdout()
             .plain(plain)
             .json_obj(&spaces)?
             .write_line()?;
         Ok(())
+    }
+}
+
+#[async_trait]
+impl Command for ListCommand {
+    const NAME: &'static str = "space list";
+
+    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+        ListNodeCommand::new(opts.clone())
+            .execute(ctx, opts.state)
+            .await
     }
 }

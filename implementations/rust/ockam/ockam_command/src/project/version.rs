@@ -1,12 +1,15 @@
+use async_trait::async_trait;
 use clap::Args;
 use colorful::Colorful;
 use miette::IntoDiagnostic;
+use std::sync::Arc;
 
 use ockam::Context;
 use ockam_api::colors::color_primary;
 use ockam_api::fmt_ok;
 use ockam_api::nodes::InMemoryNode;
 
+use crate::node_command::InMemoryNodeCommand;
 use crate::shared_args::IdentityOpts;
 use crate::{docs, CommandGlobalOpts};
 
@@ -24,16 +27,23 @@ pub struct VersionCommand {
     pub identity_opts: IdentityOpts,
 }
 
-impl VersionCommand {
-    pub fn name(&self) -> String {
-        "project version".into()
-    }
+#[derive(Clone)]
+struct VersionNodeCommand {
+    opts: CommandGlobalOpts,
+}
 
-    pub async fn run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+impl VersionNodeCommand {
+    pub fn new(opts: CommandGlobalOpts) -> Self {
+        Self { opts }
+    }
+}
+
+#[async_trait]
+impl InMemoryNodeCommand for VersionNodeCommand {
+    async fn run(&self, node: Arc<InMemoryNode>) -> miette::Result<()> {
         // Send request
-        let node = InMemoryNode::start(ctx, opts.state.clone()).await?;
         let controller = node.create_controller().await?;
-        let project_version = controller.get_orchestrator_version_info(ctx).await?;
+        let project_version = controller.get_orchestrator_version_info(node.ctx()).await?;
 
         let json = serde_json::to_string(&project_version).into_diagnostic()?;
         let project_version = project_version
@@ -44,12 +54,26 @@ impl VersionCommand {
             color_primary(project_version.clone())
         );
 
-        opts.terminal
+        self.opts
+            .terminal
+            .clone()
             .to_stdout()
             .plain(plain)
             .machine(project_version)
             .json(json)
             .write_line()?;
         Ok(())
+    }
+}
+
+impl VersionCommand {
+    pub fn name(&self) -> String {
+        "project version".into()
+    }
+
+    pub async fn run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        VersionNodeCommand::new(opts.clone())
+            .execute(ctx, opts.state)
+            .await
     }
 }

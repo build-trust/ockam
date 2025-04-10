@@ -1,19 +1,18 @@
 use async_trait::async_trait;
 use clap::Args;
-use miette::IntoDiagnostic;
+use std::sync::Arc;
 use tracing::{instrument, Level};
 
+use crate::node_command::InMemoryNodeCommand;
+use crate::shared_args::{IdentityOpts, RetryOpts};
+use crate::terminal::tui::ShowCommandTui;
+use crate::tui::PluralTerm;
+use crate::{docs, Command, CommandGlobalOpts, Error};
 use ockam::Context;
 use ockam_api::nodes::InMemoryNode;
 use ockam_api::orchestrator::project::ProjectsOrchestratorApi;
 use ockam_api::output::Output;
 use ockam_api::terminal::{Terminal, TerminalStream};
-use ockam_core::TryClone;
-
-use crate::shared_args::{IdentityOpts, RetryOpts};
-use crate::terminal::tui::ShowCommandTui;
-use crate::tui::PluralTerm;
-use crate::{docs, Command, CommandGlobalOpts, Error};
 
 const LONG_ABOUT: &str = include_str!("./static/show/long_about.txt");
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
@@ -43,33 +42,43 @@ impl Command for ShowCommand {
     const NAME: &'static str = "project show";
 
     async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
-        Ok(ShowTui::run(ctx.try_clone().into_diagnostic()?, opts, self.name.clone()).await?)
+        ShowTuiNodeCommand::new(opts.clone(), self.clone())
+            .execute(ctx, opts.state)
+            .await
     }
 }
 
-pub struct ShowTui {
+#[derive(Clone)]
+pub struct ShowTuiNodeCommand {
     opts: CommandGlobalOpts,
-    project_name: Option<String>,
-    node: InMemoryNode,
+    command: ShowCommand,
 }
 
-impl ShowTui {
-    pub async fn run(
-        ctx: Context,
-        opts: CommandGlobalOpts,
-        project_name: Option<String>,
-    ) -> miette::Result<()> {
-        let node = InMemoryNode::start(&ctx, opts.state.clone()).await?;
-        let tui = Self {
-            opts,
-            project_name,
+impl ShowTuiNodeCommand {
+    pub fn new(opts: CommandGlobalOpts, command: ShowCommand) -> Self {
+        Self { opts, command }
+    }
+}
+
+#[async_trait]
+impl InMemoryNodeCommand for ShowTuiNodeCommand {
+    async fn run(&self, node: Arc<InMemoryNode>) -> miette::Result<()> {
+        let tui = ShowTui {
+            opts: self.opts.clone(),
+            project_name: self.command.name.clone(),
             node,
         };
         tui.show().await
     }
 }
 
-#[ockam_core::async_trait]
+struct ShowTui {
+    opts: CommandGlobalOpts,
+    project_name: Option<String>,
+    node: Arc<InMemoryNode>,
+}
+
+#[async_trait]
 impl ShowCommandTui for ShowTui {
     const ITEM_NAME: PluralTerm = PluralTerm::Project;
 

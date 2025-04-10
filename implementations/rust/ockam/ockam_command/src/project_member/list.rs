@@ -1,15 +1,16 @@
 use async_trait::async_trait;
 use clap::Args;
+use std::sync::Arc;
 
+use super::MemberOutput;
+use crate::node_command::InMemoryNodeCommand;
+use crate::shared_args::IdentityOpts;
+use crate::{docs, Command, CommandGlobalOpts, Result};
 use ockam::Context;
 use ockam_api::authenticator::direct::{
     Members, OCKAM_ROLE_ATTRIBUTE_ENROLLER_VALUE, OCKAM_ROLE_ATTRIBUTE_KEY,
 };
-
-use crate::shared_args::IdentityOpts;
-use crate::{docs, Command, CommandGlobalOpts, Result};
-
-use super::{authority_client, MemberOutput};
+use ockam_api::nodes::InMemoryNode;
 
 const LONG_ABOUT: &str = include_str!("./static/list/long_about.txt");
 
@@ -31,20 +32,37 @@ pub struct ListCommand {
     enrollers: bool,
 }
 
-#[async_trait]
-impl Command for ListCommand {
-    const NAME: &'static str = "project-member list";
+#[derive(Clone)]
+struct ListNodeCommand {
+    opts: CommandGlobalOpts,
+    command: ListCommand,
+}
 
-    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> Result<()> {
-        let (authority_node_client, _) =
-            authority_client(ctx, &opts, &self.identity_opts, &self.project_name).await?;
+impl ListNodeCommand {
+    pub fn new(opts: CommandGlobalOpts, command: ListCommand) -> Self {
+        Self { opts, command }
+    }
+}
+
+#[async_trait]
+impl InMemoryNodeCommand for ListNodeCommand {
+    fn project_name(&self) -> Option<String> {
+        self.command.project_name.clone()
+    }
+
+    fn identity_name(&self) -> Option<String> {
+        self.command.identity_opts.identity_name.clone()
+    }
+
+    async fn run(&self, node: Arc<InMemoryNode>) -> miette::Result<()> {
+        let authority_node_client = self.authority_client(node.clone()).await?;
 
         let members = authority_node_client
-            .list_members(ctx)
+            .list_members(node.ctx())
             .await?
             .into_iter()
             .filter(|(_, a)| {
-                !self.enrollers
+                !self.command.enrollers
                     || a.deserialized_key_value_attrs().contains(&format!(
                         "{}={}",
                         OCKAM_ROLE_ATTRIBUTE_KEY, OCKAM_ROLE_ATTRIBUTE_ENROLLER_VALUE
@@ -53,15 +71,29 @@ impl Command for ListCommand {
             .map(|(i, a)| MemberOutput::new(i, a))
             .collect::<Vec<_>>();
 
-        let plain = opts
+        let plain = self
+            .opts
             .terminal
             .build_list(&members, "No members found on the Authority node")?;
-        opts.terminal
+        self.opts
+            .terminal
+            .clone()
             .to_stdout()
             .plain(plain)
             .json_obj(&members)?
             .write_line()?;
 
         Ok(())
+    }
+}
+
+#[async_trait]
+impl Command for ListCommand {
+    const NAME: &'static str = "project-member list";
+
+    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> Result<()> {
+        ListNodeCommand::new(opts.clone(), self.clone())
+            .execute(ctx, opts.state)
+            .await
     }
 }

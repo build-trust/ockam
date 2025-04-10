@@ -1,9 +1,10 @@
-use std::path::PathBuf;
-
+use async_trait::async_trait;
 use clap::builder::NonEmptyStringValueParser;
 use clap::Args;
 use colorful::Colorful;
 use miette::{miette, IntoDiagnostic};
+use std::path::PathBuf;
+use std::sync::Arc;
 
 use ockam::Context;
 use ockam_api::fmt_ok;
@@ -11,6 +12,7 @@ use ockam_api::nodes::InMemoryNode;
 use ockam_api::orchestrator::addon::Addons;
 use ockam_api::orchestrator::project::models::InfluxDBTokenLeaseManagerConfig;
 
+use crate::node_command::InMemoryNodeCommand;
 use crate::project::addon::check_configuration_completion;
 use crate::{docs, CommandGlobalOpts};
 
@@ -112,21 +114,31 @@ pub struct AddonConfigureInfluxdbSubcommand {
     admin_access_role: Option<String>,
 }
 
-impl AddonConfigureInfluxdbSubcommand {
-    pub fn name(&self) -> String {
-        "project addon configure influxdb".into()
-    }
+#[derive(Clone)]
+pub struct AddonConfigureInfluxdbNodeCommand {
+    opts: CommandGlobalOpts,
+    command: AddonConfigureInfluxdbSubcommand,
+}
 
-    pub async fn run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
-        let project_id = opts
+impl AddonConfigureInfluxdbNodeCommand {
+    pub fn new(opts: CommandGlobalOpts, command: AddonConfigureInfluxdbSubcommand) -> Self {
+        Self { opts, command }
+    }
+}
+
+#[async_trait]
+impl InMemoryNodeCommand for AddonConfigureInfluxdbNodeCommand {
+    async fn run(&self, node: Arc<InMemoryNode>) -> miette::Result<()> {
+        let project_id = self
+            .opts
             .state
             .projects()
-            .get_project_by_name(&self.project_name)
+            .get_project_by_name(&self.command.project_name)
             .await?
             .project_id()
             .to_string();
 
-        let perms = match (&self.permissions, &self.permissions_path) {
+        let perms = match (&self.command.permissions, &self.command.permissions_path) {
             (_, Some(p)) => std::fs::read_to_string(p).into_diagnostic()?,
             (Some(perms), _) => perms.to_string(),
             _ => {
@@ -137,25 +149,38 @@ impl AddonConfigureInfluxdbSubcommand {
         };
 
         let config = InfluxDBTokenLeaseManagerConfig::new(
-            self.endpoint_url.clone(),
-            self.token.clone(),
-            self.org_id.clone(),
+            self.command.endpoint_url.clone(),
+            self.command.token.clone(),
+            self.command.org_id.clone(),
             perms,
-            self.max_ttl_secs,
-            self.user_access_role.clone(),
-            self.admin_access_role.clone(),
+            self.command.max_ttl_secs,
+            self.command.user_access_role.clone(),
+            self.command.admin_access_role.clone(),
         );
 
-        let node = InMemoryNode::start(ctx, opts.state.clone()).await?;
         let controller = node.create_controller().await?;
 
         let response = controller
-            .configure_influxdb_addon(ctx, &project_id, config)
+            .configure_influxdb_addon(node.ctx(), &project_id, config)
             .await?;
-        check_configuration_completion(&opts, &node, &project_id, &response.operation_id).await?;
+        check_configuration_completion(&self.opts, &node, &project_id, &response.operation_id)
+            .await?;
 
-        opts.terminal
+        self.opts
+            .terminal
             .write_line(fmt_ok!("InfluxDB addon configured successfully"))?;
         Ok(())
+    }
+}
+
+impl AddonConfigureInfluxdbSubcommand {
+    pub fn name(&self) -> String {
+        "project addon configure influxdb".into()
+    }
+
+    pub async fn run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        AddonConfigureInfluxdbNodeCommand::new(opts.clone(), self.clone())
+            .execute(ctx, opts.state)
+            .await
     }
 }

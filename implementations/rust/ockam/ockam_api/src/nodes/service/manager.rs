@@ -665,6 +665,11 @@ impl NodeManager {
     pub fn ctx(&self) -> &Context {
         self.tcp_transport.ctx()
     }
+
+    /// CliState
+    pub fn state(&self) -> Arc<CliState> {
+        self.cli_state.clone()
+    }
 }
 
 #[derive(Debug)]

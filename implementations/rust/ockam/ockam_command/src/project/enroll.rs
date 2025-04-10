@@ -11,6 +11,7 @@ use serde::Serialize;
 
 use crate::credential::CredentialOutput;
 use crate::enroll::OidcServiceExt;
+use crate::node_command::InMemoryNodeCommand;
 use crate::shared_args::{IdentityOpts, RetryOpts, TrustOpts};
 use crate::util::parsers::duration_parser;
 use crate::value_parsers::parse_enrollment_ticket;
@@ -81,71 +82,100 @@ impl Debug for EnrollCommand {
     }
 }
 
-#[async_trait]
-impl Command for EnrollCommand {
-    const NAME: &'static str = "project enroll";
+#[derive(Clone)]
+struct EnrollNodeCommand {
+    opts: CommandGlobalOpts,
+    command: EnrollCommand,
+}
 
-    fn retry_opts(&self) -> Option<RetryOpts> {
-        Some(self.retry_opts.clone())
+impl EnrollNodeCommand {
+    pub fn new(opts: CommandGlobalOpts, command: EnrollCommand) -> Self {
+        Self { opts, command }
+    }
+}
+
+#[async_trait]
+impl InMemoryNodeCommand for EnrollNodeCommand {
+    fn project_name(&self) -> Option<String> {
+        self.command.trust_opts.project_name.clone()
     }
 
-    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+    fn timeout(&self) -> Option<Duration> {
+        Some(self.command.timeout)
+    }
+
+    async fn init(&self) -> miette::Result<()> {
         // Store project if an enrollment ticket is passed
-        let (project, enrollment_ticket) = if let Some(enrollment_ticket) = &self.enrollment_ticket
-        {
-            let enrollment_ticket = parse_enrollment_ticket(&opts, enrollment_ticket).await?;
-            let project = opts
+        if let Some(enrollment_ticket) = &self.command.enrollment_ticket {
+            let enrollment_ticket = parse_enrollment_ticket(&self.opts, enrollment_ticket).await?;
+            self.opts
                 .state
                 .projects()
                 .import_and_store_project(enrollment_ticket.project()?)
                 .await?;
-            (project, Some(enrollment_ticket))
         } else {
-            let enrollment_ticket = None;
-            let project = opts.state
-                .projects().get_project_by_name_or_default(&self.trust_opts.project_name)
+            self.opts.state
+                .projects().get_project_by_name_or_default(&self.command.trust_opts.project_name)
                 .await
                 .context("A default project or project parameter is required. Run 'ockam project list' to get a list of available projects. You might also need to pass an enrollment ticket or path to the command.")?;
-            (project, enrollment_ticket)
         };
 
         // Create authority client
-        let identity = opts
+        self.opts
             .state
-            .get_named_identity_or_default(&self.identity_opts.identity_name)
+            .get_named_identity_or_default(&self.command.identity_opts.identity_name)
             .await?;
-        let node = InMemoryNode::start_with_project_name(
-            ctx,
-            opts.state.clone(),
-            Some(project.name().to_string()),
-        )
-        .await?
-        .with_timeout(self.timeout);
+        Ok(())
+    }
+
+    async fn run(&self, node: Arc<InMemoryNode>) -> miette::Result<()> {
+        let project = self
+            .opts
+            .state
+            .projects()
+            .get_project_by_name_or_default(&self.project_name())
+            .await?;
+        let identity = self
+            .opts
+            .state
+            .get_named_identity_or_default(&self.command.identity_opts.identity_name)
+            .await?;
+
         let authority_node_client = node
             .create_authority_client_with_project(&project, Some(identity.name()), false)
             .await?;
 
         // Enroll if applicable
-        if self.okta {
-            self.use_okta(ctx, &opts, &authority_node_client).await?;
-        } else if let Some(enrollment_ticket) = enrollment_ticket {
-            self.use_enrollment_ticket(ctx, &opts, &authority_node_client, enrollment_ticket)
+        if self.command.okta {
+            self.command
+                .use_okta(node.ctx(), &self.opts, &authority_node_client)
+                .await?;
+        } else if let Some(enrollment_ticket) = self.command.enrollment_ticket.as_deref() {
+            let enrollment_ticket = parse_enrollment_ticket(&self.opts, enrollment_ticket).await?;
+            self.command
+                .use_enrollment_ticket(
+                    node.ctx(),
+                    &self.opts,
+                    &authority_node_client,
+                    enrollment_ticket,
+                )
                 .await?;
         }
 
         // Issue credential
-        let credential = if opts.state.is_using_in_memory_database()? || self.skip_credential_issue
+        let credential = if self.opts.state.is_using_in_memory_database()?
+            || self.command.skip_credential_issue
         {
             // When using an in-memory database, the credential issued in this command will be discarded,
             // so we skip this step
             None
         } else {
-            let pb = opts.terminal.spinner();
+            let pb = self.opts.terminal.spinner();
             if let Some(pb) = pb.as_ref() {
                 pb.set_message("Issuing credential...");
             }
             let credential = authority_node_client
-                .issue_credential(ctx)
+                .issue_credential(node.ctx())
                 .await
                 .map_err(Error::Retry)
                 .into_diagnostic()
@@ -155,17 +185,19 @@ impl Command for EnrollCommand {
 
         // Get the project name to display to the user.
         let project_name = {
-            let project = opts
+            let project = self
+                .opts
                 .state
                 .projects()
-                .get_project_by_name_or_default(&self.trust_opts.project_name.clone())
+                .get_project_by_name_or_default(&self.command.trust_opts.project_name.clone())
                 .await?;
             project.name().to_string()
         };
 
         // Output
         let output = ProjectEnrollOutput::new(identity, project_name, credential);
-        opts.terminal
+        self.opts
+            .terminal
             .clone()
             .to_stdout()
             .plain(output.item()?)
@@ -173,6 +205,21 @@ impl Command for EnrollCommand {
             .write_line()?;
 
         Ok(())
+    }
+}
+
+#[async_trait]
+impl Command for EnrollCommand {
+    const NAME: &'static str = "project enroll";
+
+    fn retry_opts(&self) -> Option<RetryOpts> {
+        Some(self.retry_opts.clone())
+    }
+
+    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+        EnrollNodeCommand::new(opts.clone(), self.clone())
+            .execute(ctx, opts.state)
+            .await
     }
 }
 

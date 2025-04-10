@@ -1,3 +1,4 @@
+use crate::node_command::InMemoryNodeCommand;
 use crate::shared_args::IdentityOpts;
 use crate::tui::{DeleteCommandTui, PluralTerm};
 use crate::{Command, CommandGlobalOpts};
@@ -43,38 +44,40 @@ impl Command for DeleteCommand {
     const NAME: &'static str = "space-admin delete";
 
     async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
-        Ok(DeleteTui::run(ctx, opts, self).await?)
+        DeleteNodeCommand::new(opts.clone(), self.clone())
+            .execute(ctx, opts.state)
+            .await
     }
 }
 
-#[derive(TryClone)]
-pub struct DeleteTui {
-    ctx: Context,
+#[derive(Clone)]
+struct DeleteNodeCommand {
     opts: CommandGlobalOpts,
-    node: Arc<InMemoryNode>,
-    cmd: DeleteCommand,
-    space: Space,
-    identity_enrolled_email: Option<EmailAddress>,
+    command: DeleteCommand,
 }
 
-impl DeleteTui {
-    pub async fn run(
-        ctx: &Context,
-        opts: CommandGlobalOpts,
-        cmd: DeleteCommand,
-    ) -> miette::Result<()> {
-        let space = opts.state.get_space_by_name_or_default(&cmd.name).await?;
-        let node = InMemoryNode::start_with_identity(
-            ctx,
-            opts.state.clone(),
-            cmd.identity_opts.identity_name.clone(),
-        )
-        .await?;
-        let identity_name = opts
+impl DeleteNodeCommand {
+    pub fn new(opts: CommandGlobalOpts, command: DeleteCommand) -> Self {
+        Self { opts, command }
+    }
+}
+
+#[async_trait]
+impl InMemoryNodeCommand for DeleteNodeCommand {
+    fn identity_name(&self) -> Option<String> {
+        self.command.identity_opts.identity_name.clone()
+    }
+
+    async fn run(&self, node: Arc<InMemoryNode>) -> miette::Result<()> {
+        let space = self
+            .opts
             .state
-            .get_identity_name_or_default(&cmd.identity_opts.identity_name)
+            .get_space_by_name_or_default(&self.command.name)
             .await?;
-        let identity_enrollment = opts
+
+        let identity_name = self.get_identity(node.clone()).await?.name();
+        let identity_enrollment = self
+            .opts
             .state
             .get_identity_enrollment(&identity_name)
             .await?
@@ -83,11 +86,10 @@ impl DeleteTui {
             return Err(miette!("The identity {identity_name} is not enrolled"));
         }
 
-        let tui = Self {
-            ctx: ctx.try_clone()?,
-            opts,
-            node: Arc::new(node),
-            cmd,
+        let tui = DeleteTui {
+            opts: self.opts.clone(),
+            node: node.clone(),
+            command: self.command.clone(),
             space,
             identity_enrolled_email: identity_enrollment.status().email().cloned(),
         };
@@ -95,20 +97,29 @@ impl DeleteTui {
     }
 }
 
+#[derive(TryClone)]
+pub struct DeleteTui {
+    opts: CommandGlobalOpts,
+    node: Arc<InMemoryNode>,
+    command: DeleteCommand,
+    space: Space,
+    identity_enrolled_email: Option<EmailAddress>,
+}
+
 #[ockam_core::async_trait]
 impl DeleteCommandTui for DeleteTui {
     const ITEM_NAME: PluralTerm = PluralTerm::SpaceAdmin;
 
     fn cmd_arg_item_name(&self) -> Option<String> {
-        self.cmd.email.as_ref().map(|e| e.to_string())
+        self.command.email.as_ref().map(|e| e.to_string())
     }
 
     fn cmd_arg_delete_all(&self) -> bool {
-        self.cmd.all
+        self.command.all
     }
 
     fn cmd_arg_confirm_deletion(&self) -> bool {
-        self.cmd.yes
+        self.command.yes
     }
 
     fn terminal(&self) -> Terminal<TerminalStream<Term>> {

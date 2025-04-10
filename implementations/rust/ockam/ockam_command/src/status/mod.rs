@@ -1,10 +1,11 @@
 use async_trait::async_trait;
-use std::fmt::Display;
-
 use clap::Args;
 use colorful::Colorful;
 use miette::IntoDiagnostic;
 use serde::Serialize;
+use std::fmt::Display;
+use std::sync::Arc;
+use std::time::Duration;
 use tracing::warn;
 
 use crate::docs;
@@ -14,6 +15,7 @@ use crate::version::Version;
 use crate::Result;
 use crate::{Command, CommandGlobalOpts};
 
+use crate::node_command::InMemoryNodeCommand;
 use ockam::Context;
 use ockam_api::cli_state::{EnrollmentFilter, IdentityEnrollment};
 use ockam_api::colors::color_primary;
@@ -39,24 +41,38 @@ pub struct StatusCommand {
     timeout: TimeoutArg,
 }
 
-#[async_trait]
-impl Command for StatusCommand {
-    const NAME: &'static str = "status";
+#[derive(Clone)]
+struct StatusNodeCommand {
+    opts: CommandGlobalOpts,
+    command: StatusCommand,
+}
 
-    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> Result<()> {
-        let identities_details = self.get_identities_details(&opts).await?;
-        let nodes = self.get_nodes_resources(ctx, &opts).await?;
-        let node = InMemoryNode::start(ctx, opts.state.clone())
-            .await?
-            .with_timeout(self.timeout.timeout);
+impl StatusNodeCommand {
+    pub fn new(opts: CommandGlobalOpts, command: StatusCommand) -> Self {
+        Self { opts, command }
+    }
+}
+
+#[async_trait]
+impl InMemoryNodeCommand for StatusNodeCommand {
+    fn timeout(&self) -> Option<Duration> {
+        Some(self.command.timeout.timeout)
+    }
+
+    async fn run(&self, node: Arc<InMemoryNode>) -> miette::Result<()> {
+        let identities_details = self.command.get_identities_details(&self.opts).await?;
+        let nodes = self
+            .command
+            .get_nodes_resources(node.ctx(), &self.opts)
+            .await?;
         let controller = node.create_controller().await?;
         let orchestrator_version = controller
-            .get_orchestrator_version_info(ctx)
+            .get_orchestrator_version_info(node.ctx())
             .await
             .map_err(|e| warn!(%e, "Failed to retrieve orchestrator version"))
             .unwrap_or_default();
-        let spaces = opts.state.get_spaces().await?;
-        let projects = opts.state.projects().get_projects().await?;
+        let spaces = self.opts.state.get_spaces().await?;
+        let projects = self.opts.state.projects().get_projects().await?;
         let status = StatusData::from_parts(
             orchestrator_version,
             spaces,
@@ -64,12 +80,25 @@ impl Command for StatusCommand {
             identities_details,
             nodes,
         )?;
-        opts.terminal
+        self.opts
+            .terminal
+            .clone()
             .to_stdout()
             .plain(&status)
             .json(serde_json::to_string(&status).into_diagnostic()?)
             .write_line()?;
         Ok(())
+    }
+}
+
+#[async_trait]
+impl Command for StatusCommand {
+    const NAME: &'static str = "status";
+
+    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> Result<()> {
+        StatusNodeCommand::new(opts.clone(), self.clone())
+            .execute(ctx, opts.state)
+            .await
     }
 }
 

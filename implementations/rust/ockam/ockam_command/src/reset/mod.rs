@@ -1,6 +1,8 @@
+use async_trait::async_trait;
 use clap::Args;
 use colorful::Colorful;
 use miette::{miette, WrapErr};
+use std::sync::Arc;
 use tracing::error;
 
 use crate::CommandGlobalOpts;
@@ -14,6 +16,7 @@ use ockam_node::Context;
 
 use crate::branding::BrandingCompileEnvVars;
 use crate::docs;
+use crate::node_command::InMemoryNodeCommand;
 
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/after_long_help.txt");
@@ -96,39 +99,58 @@ impl ResetCommand {
     }
 }
 
+#[derive(Clone)]
+struct DeleteOrchestratorNodeCommand {
+    opts: CommandGlobalOpts,
+}
+
+impl DeleteOrchestratorNodeCommand {
+    pub fn new(opts: CommandGlobalOpts) -> Self {
+        Self { opts }
+    }
+}
+
+#[async_trait]
+impl InMemoryNodeCommand for DeleteOrchestratorNodeCommand {
+    async fn run(&self, node: Arc<InMemoryNode>) -> miette::Result<()> {
+        let spaces = node
+            .get_spaces()
+            .await
+            .wrap_err("Failed to retrieve spaces from the Orchestrator")?;
+        if spaces.is_empty() {
+            return Ok(());
+        }
+        let pb = self.opts.terminal.spinner();
+        if let Some(s) = pb.as_ref() {
+            s.set_message("Deleting spaces from the Orchestrator..")
+        };
+        for space in spaces {
+            if let Some(s) = pb.as_ref() {
+                s.set_message(format!(
+                    "Deleting space {}...",
+                    color!(space.name, OckamColor::PrimaryResource)
+                ))
+            };
+            node.delete_space(&space.id).await?;
+            if let Some(s) = pb.as_ref() {
+                s.set_message(format!(
+                    "Space {} deleted from the Orchestrator",
+                    color!(space.name, OckamColor::PrimaryResource)
+                ))
+            };
+        }
+        if let Some(s) = pb {
+            s.finish_with_message("Orchestrator spaces deleted")
+        }
+        Ok(())
+    }
+}
+
 async fn delete_orchestrator_resources_impl(
     ctx: &Context,
     opts: CommandGlobalOpts,
 ) -> miette::Result<()> {
-    let node = InMemoryNode::start(ctx, opts.state.clone()).await?;
-    let spaces = node
-        .get_spaces()
+    DeleteOrchestratorNodeCommand::new(opts.clone())
+        .execute(ctx, opts.state)
         .await
-        .wrap_err("Failed to retrieve spaces from the Orchestrator")?;
-    if spaces.is_empty() {
-        return Ok(());
-    }
-    let pb = opts.terminal.spinner();
-    if let Some(s) = pb.as_ref() {
-        s.set_message("Deleting spaces from the Orchestrator..")
-    };
-    for space in spaces {
-        if let Some(s) = pb.as_ref() {
-            s.set_message(format!(
-                "Deleting space {}...",
-                color!(space.name, OckamColor::PrimaryResource)
-            ))
-        };
-        node.delete_space(&space.id).await?;
-        if let Some(s) = pb.as_ref() {
-            s.set_message(format!(
-                "Space {} deleted from the Orchestrator",
-                color!(space.name, OckamColor::PrimaryResource)
-            ))
-        };
-    }
-    if let Some(s) = pb {
-        s.finish_with_message("Orchestrator spaces deleted")
-    }
-    Ok(())
 }

@@ -1,3 +1,4 @@
+use crate::node_command::InMemoryNodeCommand;
 use crate::shared_args::{IdentityOpts, TimeoutArg, TrustOpts};
 use crate::util::clean_nodes_multiaddr;
 use crate::{docs, Command, CommandGlobalOpts};
@@ -9,6 +10,8 @@ use ockam_api::influxdb::lease_issuer::InfluxDBTokenLessorNodeServiceTrait;
 use ockam_api::nodes::InMemoryNode;
 use ockam_api::output::Output;
 use ockam_multiaddr::MultiAddr;
+use std::sync::Arc;
+use std::time::Duration;
 
 const HELP_DETAIL: &str = "";
 
@@ -34,29 +37,52 @@ pub struct ShowCommand {
     trust_opts: TrustOpts,
 }
 
+impl ShowCommand {
+    async fn parse_args(mut self, opts: &CommandGlobalOpts) -> crate::Result<Self> {
+        self.at = super::resolve_at_arg(&self.at, opts.state.clone()).await?;
+        Ok(self)
+    }
+}
+
+#[derive(Clone)]
+struct ShowNodeCommand {
+    opts: CommandGlobalOpts,
+    command: ShowCommand,
+}
+
+impl ShowNodeCommand {
+    pub fn new(opts: CommandGlobalOpts, command: ShowCommand) -> Self {
+        Self { opts, command }
+    }
+}
+
 #[async_trait]
-impl Command for ShowCommand {
-    const NAME: &'static str = "lease show";
+impl InMemoryNodeCommand for ShowNodeCommand {
+    fn project_name(&self) -> Option<String> {
+        self.command.trust_opts.project_name.clone()
+    }
 
-    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
-        let cmd = self.parse_args(&opts).await?;
+    fn identity_name(&self) -> Option<String> {
+        self.command.identity_opts.identity_name.clone()
+    }
 
-        let node = InMemoryNode::start_with_identity_and_project_name(
-            ctx,
-            opts.state.clone(),
-            cmd.identity_opts.identity_name.clone(),
-            cmd.trust_opts.project_name.clone(),
-        )
-        .await?
-        .with_timeout(cmd.timeout.timeout);
+    fn timeout(&self) -> Option<Duration> {
+        Some(self.command.timeout.timeout)
+    }
 
-        opts.terminal
+    async fn run(&self, node: Arc<InMemoryNode>) -> miette::Result<()> {
+        let cmd = self.command.clone().parse_args(&self.opts).await?;
+
+        self.opts
+            .terminal
             .write_line(fmt_log!("Retrieving influxdb token...\n"))?;
 
-        let (at, _meta) = clean_nodes_multiaddr(&cmd.at, opts.state.clone()).await?;
-        let res = node.get_token(ctx, &at, &cmd.token_id).await?;
+        let (at, _meta) = clean_nodes_multiaddr(&cmd.at, self.opts.state.clone()).await?;
+        let res = node.get_token(node.ctx(), &at, &cmd.token_id).await?;
 
-        opts.terminal
+        self.opts
+            .terminal
+            .clone()
             .to_stdout()
             .machine(res.token.to_string())
             .plain(res.item()?)
@@ -67,9 +93,13 @@ impl Command for ShowCommand {
     }
 }
 
-impl ShowCommand {
-    async fn parse_args(mut self, opts: &CommandGlobalOpts) -> crate::Result<Self> {
-        self.at = super::resolve_at_arg(&self.at, opts.state.clone()).await?;
-        Ok(self)
+#[async_trait]
+impl Command for ShowCommand {
+    const NAME: &'static str = "lease show";
+
+    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+        ShowNodeCommand::new(opts.clone(), self.clone())
+            .execute(ctx, opts.state)
+            .await
     }
 }

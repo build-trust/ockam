@@ -1,9 +1,4 @@
-use std::collections::HashMap;
-use std::io::stdin;
-use std::process;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
-
+use async_trait::async_trait;
 use clap::Args;
 use colorful::Colorful;
 use miette::{miette, IntoDiagnostic, WrapErr};
@@ -11,12 +6,18 @@ use r3bl_rs_utils_core::UnicodeString;
 use r3bl_tui::{
     ColorWheel, ColorWheelConfig, ColorWheelSpeed, GradientGenerationPolicy, TextColorizationPolicy,
 };
+use std::collections::HashMap;
+use std::io::stdin;
+use std::process;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio::try_join;
 use tracing::{error, info, instrument, warn, Level};
 
 use crate::enroll::OidcServiceExt;
 use crate::error::Error;
+use crate::node_command::InMemoryNodeCommand;
 use crate::operation::util::check_for_project_completion;
 use crate::project::util::check_project_readiness;
 use crate::{docs, CommandGlobalOpts, Result};
@@ -33,8 +34,7 @@ use ockam_api::orchestrator::space::{Space, Spaces};
 use ockam_api::orchestrator::subscription::subscription_page;
 use ockam_api::orchestrator::ControllerClient;
 use ockam_api::terminal::notification::NotificationHandler;
-use ockam_api::{fmt_err, fmt_log, fmt_ok, fmt_warn};
-use ockam_api::{fmt_separator, CliState};
+use ockam_api::{fmt_err, fmt_log, fmt_ok, fmt_separator, fmt_warn};
 
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/after_long_help.txt");
@@ -78,62 +78,151 @@ pub struct EnrollCommand {
     pub skip_orchestrator_resources_creation: bool,
 }
 
-impl EnrollCommand {
-    pub fn name(&self) -> String {
-        "enroll".to_string()
+#[derive(Clone)]
+struct EnrollNodeCommand {
+    opts: CommandGlobalOpts,
+    command: EnrollCommand,
+}
+
+impl EnrollNodeCommand {
+    fn new(opts: CommandGlobalOpts, command: EnrollCommand) -> Self {
+        Self { opts, command }
     }
 
-    pub async fn run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
-        if opts.global_args.output_format().is_json() {
-            return Err(miette::miette!(
-            "This command is interactive and requires you to open a web browser to complete enrollment. \
-            Please try running it again without '--output json'."
-        ));
+    /// Check if the identity is already enrolled and display a message to the user.
+    async fn is_already_enrolled(&self) -> miette::Result<bool> {
+        let mut is_already_enrolled = !self
+            .opts
+            .state
+            .identity_should_enroll(&self.command.identity, false)
+            .await?;
+        if is_already_enrolled {
+            match &self.command.identity {
+                // Use default identity.
+                None => {
+                    if let Ok(named_identity) =
+                        self.opts.state.get_or_create_default_named_identity().await
+                    {
+                        let name = named_identity.name();
+                        let identifier = named_identity.identifier();
+                        let message = format!(
+                            "Your {} Identity {}\nwith Identifier {}\nis already enrolled as one of the Identities associated with your Ockam account.",
+                            "default".to_string().dim(),
+                            color_primary(name),
+                            color_primary(identifier.to_string())
+                        );
+                        message.split('\n').for_each(|line| {
+                            self.opts.terminal.write_line(fmt_log!("{}", line)).unwrap();
+                        });
+                    }
+                }
+                // Identity specified.
+                Some(ref name) => {
+                    let named_identity = self.opts.state.get_named_identity(name).await?;
+                    let name = named_identity.name();
+                    let identifier = named_identity.identifier();
+                    let message = format!(
+                        "Your Identity {}\nwith Identifier {}\nis already enrolled as one of the Identities associated with your Ockam account.",
+                        color_primary(name),
+                        color_primary(identifier.to_string())
+                    );
+                    message.split('\n').for_each(|line| {
+                        self.opts.terminal.write_line(fmt_log!("{}", line)).unwrap();
+                    });
+                }
+            };
         }
-        self.run_impl(ctx, opts.clone()).await?;
-        Ok(())
+
+        // Check if the default space is available and has a valid subscription
+        let default_space = match self.opts.state.get_default_space().await {
+            Ok(space) => space,
+            Err(_) => {
+                // If there is no default space, we want to continue with the enrollment process
+                return Ok(false);
+            }
+        };
+        is_already_enrolled &= default_space.has_valid_subscription();
+
+        Ok(is_already_enrolled)
     }
 
-    // Creates one span in the trace
-    #[instrument(
-        skip_all, // Drop all args that passed in, as Context doesn't play nice
-        fields(
-        enroller = ? self.identity, // https://docs.rs/tracing/latest/tracing/
-        authorization_code_flow = % self.authorization_code_flow,
-        force = % self.force,
-        skip_orchestrator_resources_creation = % self.skip_orchestrator_resources_creation,
-        ), level = Level::TRACE)]
-    async fn run_impl(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
-        ctrlc_handler(opts.clone());
+    async fn enroll_identity(&self, node: Arc<InMemoryNode>) -> miette::Result<UserInfo> {
+        if !self
+            .opts
+            .state
+            .identity_should_enroll(&self.command.identity, self.command.force)
+            .await?
+        {
+            if let Ok(user_info) = self.opts.state.get_default_user().await {
+                return Ok(user_info);
+            }
+        }
 
-        if self.is_already_enrolled(opts.state.clone(), &opts).await? {
+        self.opts.terminal.write_line(fmt_log!(
+            "Enrolling your Identity with Ockam Orchestrator..."
+        ))?;
+
+        // Run OIDC service
+        let oidc_service = OidcService::new()?;
+        let token = if self.command.authorization_code_flow {
+            oidc_service.get_token_with_pkce().await.into_diagnostic()?
+        } else {
+            oidc_service.get_token_interactively(&self.opts).await?
+        };
+
+        // Store user info retrieved from OIDC service
+        let user_info = oidc_service
+            .wait_for_email_verification(&token, Some(&self.opts.terminal))
+            .await?;
+        self.opts.state.store_user(&user_info).await?;
+
+        // Enroll the identity with the Orchestrator
+        let controller = node.create_controller().await?;
+        enroll_with_node(&controller, node.ctx(), token)
+            .await
+            .wrap_err("Failed to enroll your local Identity with Ockam Orchestrator")?;
+        self.opts
+            .state
+            .set_identifier_as_enrolled(&node.identifier(), &user_info.email)
+            .await
+            .wrap_err("Unable to set your local Identity as enrolled")?;
+
+        Ok(user_info)
+    }
+}
+
+#[async_trait]
+impl InMemoryNodeCommand for EnrollNodeCommand {
+    async fn init(&self) -> miette::Result<()> {
+        ctrlc_handler(self.opts.clone());
+
+        if self.is_already_enrolled().await? {
             return Ok(());
         }
 
-        display_header(&opts);
+        display_header(&self.opts);
 
-        let identity = {
-            let _notification_handler =
-                NotificationHandler::start(opts.state.clone(), opts.terminal.clone());
-            opts.state
-                .get_named_identity_or_default(&self.identity)
-                .await?
-        };
+        let _notification_handler =
+            NotificationHandler::start(self.opts.state.clone(), self.opts.terminal.clone());
+        self.opts
+            .state
+            .get_named_identity_or_default(&self.command.identity)
+            .await?;
+        Ok(())
+    }
 
-        let identity_name = identity.name();
-        let identifier = identity.identifier();
-        let node =
-            InMemoryNode::start_with_identity(ctx, opts.state.clone(), Some(identity_name.clone()))
-                .await?;
+    async fn run(&self, node: Arc<InMemoryNode>) -> miette::Result<()> {
+        let user_info = self.enroll_identity(node.clone()).await?;
 
-        let user_info = self.enroll_identity(ctx, &opts, &node).await?;
-
-        if let Err(error) =
-            retrieve_user_space_and_project(&opts, &node, self.skip_orchestrator_resources_creation)
-                .await
+        if let Err(error) = retrieve_user_space_and_project(
+            &self.opts,
+            &node,
+            self.command.skip_orchestrator_resources_creation,
+        )
+        .await
         {
             // Display output to user
-            opts.terminal
+            self.opts.terminal
                 .write_line("")?
                 .write_line(fmt_warn!(
                     "There was a problem retrieving your space and project: {}",
@@ -164,19 +253,27 @@ impl EnrollCommand {
         attributes.insert(USER_EMAIL, user_info.email.to_string());
         // this event formally only happens on the host journey
         // but we add it here for better rendering of the project journey
-        opts.state
+        self.opts
+            .state
             .add_journey_event(JourneyEvent::ok("enroll".to_string()), attributes.clone())
             .await?;
-        opts.state
+        self.opts
+            .state
             .add_journey_event(JourneyEvent::Enrolled, attributes)
             .await?;
 
+        let identity = self
+            .opts
+            .state
+            .get_named_identity_or_default(&self.command.identity)
+            .await?;
+
         // Output
-        opts.terminal
+        self.opts.terminal
             .write_line(fmt_log!(
                 "Your Identity {}, with Identifier {} is now enrolled with Ockam Orchestrator.",
-                color_primary(identity_name),
-                color_primary(identifier.to_string())
+                color_primary(identity.name()),
+                color_primary(identity.identifier().to_string())
             ))?
             .write_line(fmt_log!(
                 "You also now have an Orchestrator Project that offers a Project Membership Authority service and a Relay service.\n"
@@ -191,111 +288,34 @@ impl EnrollCommand {
 
         Ok(())
     }
+}
 
-    /// Check if the identity is already enrolled and display a message to the user.
-    async fn is_already_enrolled(
-        &self,
-        cli_state: Arc<CliState>,
-        opts: &CommandGlobalOpts,
-    ) -> miette::Result<bool> {
-        let mut is_already_enrolled = !cli_state
-            .identity_should_enroll(&self.identity, false)
-            .await?;
-        if is_already_enrolled {
-            match &self.identity {
-                // Use default identity.
-                None => {
-                    if let Ok(named_identity) =
-                        cli_state.get_or_create_default_named_identity().await
-                    {
-                        let name = named_identity.name();
-                        let identifier = named_identity.identifier();
-                        let message = format!(
-                            "Your {} Identity {}\nwith Identifier {}\nis already enrolled as one of the Identities associated with your Ockam account.",
-                            "default".to_string().dim(),
-                            color_primary(name),
-                            color_primary(identifier.to_string())
-                        );
-                        message.split('\n').for_each(|line| {
-                            opts.terminal.write_line(fmt_log!("{}", line)).unwrap();
-                        });
-                    }
-                }
-                // Identity specified.
-                Some(ref name) => {
-                    let named_identity = cli_state.get_named_identity(name).await?;
-                    let name = named_identity.name();
-                    let identifier = named_identity.identifier();
-                    let message = format!(
-                        "Your Identity {}\nwith Identifier {}\nis already enrolled as one of the Identities associated with your Ockam account.",
-                        color_primary(name),
-                        color_primary(identifier.to_string())
-                    );
-                    message.split('\n').for_each(|line| {
-                        opts.terminal.write_line(fmt_log!("{}", line)).unwrap();
-                    });
-                }
-            };
-        }
-
-        // Check if the default space is available and has a valid subscription
-        let default_space = match cli_state.get_default_space().await {
-            Ok(space) => space,
-            Err(_) => {
-                // If there is no default space, we want to continue with the enrollment process
-                return Ok(false);
-            }
-        };
-        is_already_enrolled &= default_space.has_valid_subscription();
-
-        Ok(is_already_enrolled)
+impl EnrollCommand {
+    pub fn name(&self) -> String {
+        "enroll".to_string()
     }
 
-    async fn enroll_identity(
-        &self,
-        ctx: &Context,
-        opts: &CommandGlobalOpts,
-        node: &InMemoryNode,
-    ) -> miette::Result<UserInfo> {
-        if !opts
-            .state
-            .identity_should_enroll(&self.identity, self.force)
-            .await?
-        {
-            if let Ok(user_info) = opts.state.get_default_user().await {
-                return Ok(user_info);
-            }
+    // Creates one span in the trace
+    #[instrument(
+        skip_all, // Drop all args that passed in, as Context doesn't play nice
+        fields(
+        enroller = ? self.identity, // https://docs.rs/tracing/latest/tracing/
+        authorization_code_flow = % self.authorization_code_flow,
+        force = % self.force,
+        skip_orchestrator_resources_creation = % self.skip_orchestrator_resources_creation,
+        ), level = Level::TRACE)]
+    pub async fn run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        if opts.global_args.output_format().is_json() {
+            return Err(miette::miette!(
+            "This command is interactive and requires you to open a web browser to complete enrollment. \
+            Please try running it again without '--output json'."
+        ));
         }
 
-        opts.terminal.write_line(fmt_log!(
-            "Enrolling your Identity with Ockam Orchestrator..."
-        ))?;
-
-        // Run OIDC service
-        let oidc_service = OidcService::new()?;
-        let token = if self.authorization_code_flow {
-            oidc_service.get_token_with_pkce().await.into_diagnostic()?
-        } else {
-            oidc_service.get_token_interactively(opts).await?
-        };
-
-        // Store user info retrieved from OIDC service
-        let user_info = oidc_service
-            .wait_for_email_verification(&token, Some(&opts.terminal))
+        EnrollNodeCommand::new(opts.clone(), self.clone())
+            .execute(ctx, opts.state)
             .await?;
-        opts.state.store_user(&user_info).await?;
-
-        // Enroll the identity with the Orchestrator
-        let controller = node.create_controller().await?;
-        enroll_with_node(&controller, ctx, token)
-            .await
-            .wrap_err("Failed to enroll your local Identity with Ockam Orchestrator")?;
-        opts.state
-            .set_identifier_as_enrolled(&node.identifier(), &user_info.email)
-            .await
-            .wrap_err("Unable to set your local Identity as enrolled")?;
-
-        Ok(user_info)
+        Ok(())
     }
 }
 

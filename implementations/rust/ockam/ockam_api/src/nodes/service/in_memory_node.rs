@@ -1,7 +1,7 @@
+use std::future::Future;
 use std::ops::Deref;
 use std::time::Duration;
 
-use futures::executor;
 use miette::IntoDiagnostic;
 use tracing::Level;
 
@@ -11,6 +11,7 @@ use ockam::tcp::{TcpListenerOptions, TcpTransport};
 use ockam::{Context, Result};
 use ockam_core::compat::{string::String, sync::Arc};
 use ockam_core::errcode::Kind;
+use ockam_core::TryClone;
 use ockam_multiaddr::MultiAddr;
 
 use crate::cli_state::random_name;
@@ -55,80 +56,37 @@ impl Deref for InMemoryNode {
     }
 }
 
-impl Drop for InMemoryNode {
-    fn drop(&mut self) {
-        // Most of the InMemoryNodes should clean-up their resources when their process
-        // stops. Except if they have been started with the `ockam node create` command
-        // because in that case they can be restarted
-        if !self.persistent {
-            // TODO: Should be a better way to do that, e.g. send a signal to a background async
-            //  task to do the job, or shutdown the node manually before dropping this value
-            executor::block_on(async {
-                let result = self.cli_state.remove_node(&self.node_name).await;
-                if let Err(err) = result {
-                    // code: 1032 maps to SQLITE_READONLY_DBMOVED - meaning the database has been
-                    // moved to another directory, most likely already deleted
-                    if !err.to_string().contains("code: 1032") {
-                        error!("Cannot delete the node {}: {err:?}", self.node_name);
-                    }
-                }
-            });
-        }
-    }
-}
-
 impl InMemoryNode {
+    /// Return the current Context
+    pub fn ctx(&self) -> &Context {
+        self.node_manager.ctx()
+    }
+
+    pub fn state(&self) -> Arc<CliState> {
+        self.node_manager.state()
+    }
+
     /// Return a clone of the inner NodeManager
     pub fn inner_clone(&self) -> Arc<NodeManager> {
         self.node_manager.clone()
     }
 
-    /// Start an in memory node
-    pub async fn start(ctx: &Context, cli_state: Arc<CliState>) -> miette::Result<Self> {
-        Self::start_with_project_name(ctx, cli_state, None).await
-    }
-
-    /// Start an in memory node with some project
-    pub async fn start_with_project_name(
-        ctx: &Context,
-        cli_state: Arc<CliState>,
-        project_name: Option<String>,
-    ) -> miette::Result<Self> {
-        let default_identity_name = cli_state
-            .get_or_create_default_named_identity()
-            .await?
-            .name();
-        Self::start_node(
-            ctx,
-            cli_state,
-            &default_identity_name,
-            None,
-            project_name,
-            None,
-            None,
-        )
-        .await
-    }
-
-    /// Start an in memory node with some identity and project
-    pub async fn start_with_identity_and_project_name(
-        ctx: &Context,
-        cli_state: Arc<CliState>,
-        identity: Option<String>,
-        project_name: Option<String>,
-    ) -> miette::Result<Self> {
-        let identity = cli_state.get_identity_name_or_default(&identity).await?;
-        Self::start_node(ctx, cli_state, &identity, None, project_name, None, None).await
-    }
-
-    /// Start an in memory node with a specific identity
-    pub async fn start_with_identity(
-        ctx: &Context,
-        cli_state: Arc<CliState>,
-        identity: Option<String>,
-    ) -> miette::Result<InMemoryNode> {
-        let identity = cli_state.get_identity_name_or_default(&identity).await?;
-        Self::start_node(ctx, cli_state, &identity, None, None, None, None).await
+    /// Shutdown an in memory node
+    pub(crate) async fn shutdown(&self) -> miette::Result<()> {
+        // Most of the InMemoryNodes should clean-up their resources when their process
+        // stops. Except if they have been started with the `ockam node create` command
+        // because in that case they can be restarted
+        if !self.persistent {
+            let result = self.cli_state.remove_node(&self.node_name).await;
+            if let Err(err) = result {
+                // code: 1032 maps to SQLITE_READONLY_DBMOVED - meaning the database has been
+                // moved to another directory, most likely already deleted
+                if !err.to_string().contains("code: 1032") {
+                    error!("Cannot delete the node {}: {err:?}", self.node_name);
+                }
+            };
+        };
+        Ok(())
     }
 
     /// Start an in memory node
@@ -322,6 +280,114 @@ impl InMemoryNode {
     }
 }
 
+pub struct InMemoryNodeBuilder {
+    ctx: Context,
+    cli_state: Arc<CliState>,
+    identity_name: Option<String>,
+    project_name: Option<String>,
+    timeout: Option<Duration>,
+    status_endpoint: Option<BindAddress>,
+    authority_identity: Option<ChangeHistory>,
+    authority_route: Option<MultiAddr>,
+}
+
+impl InMemoryNodeBuilder {
+    pub fn create(ctx: &Context, cli_state: Arc<CliState>) -> Result<Self> {
+        Ok(Self {
+            ctx: ctx.try_clone()?,
+            cli_state: cli_state.clone(),
+            identity_name: None,
+            project_name: None,
+            timeout: None,
+            status_endpoint: None,
+            authority_identity: None,
+            authority_route: None,
+        })
+    }
+
+    pub fn with_identity_name(self, identity_name: Option<String>) -> Self {
+        Self {
+            identity_name,
+            ..self
+        }
+    }
+
+    pub fn with_project_name(self, project_name: Option<String>) -> Self {
+        Self {
+            project_name,
+            ..self
+        }
+    }
+
+    pub fn with_timeout(self, timeout: Option<Duration>) -> Self {
+        Self { timeout, ..self }
+    }
+
+    pub fn with_status_endpoint(self, status_endpoint: Option<BindAddress>) -> Self {
+        Self {
+            status_endpoint,
+            ..self
+        }
+    }
+
+    pub fn with_authority_identity(self, authority_identity: Option<ChangeHistory>) -> Self {
+        Self {
+            authority_identity,
+            ..self
+        }
+    }
+
+    pub fn with_authority_route(self, authority_route: Option<MultiAddr>) -> Self {
+        Self {
+            authority_route,
+            ..self
+        }
+    }
+
+    pub async fn start(&self) -> miette::Result<Arc<InMemoryNode>> {
+        let identity_name = if self.identity_name.is_none() {
+            self.cli_state
+                .get_or_create_default_named_identity()
+                .await?
+                .name()
+        } else {
+            self.cli_state
+                .get_identity_name_or_default(&self.identity_name)
+                .await?
+        };
+        let node = InMemoryNode::start_node(
+            &self.ctx,
+            self.cli_state.clone(),
+            &identity_name,
+            self.status_endpoint.clone(),
+            self.project_name.clone(),
+            self.authority_identity.clone(),
+            self.authority_route.clone(),
+        )
+        .await?;
+
+        let node = if let Some(timeout) = self.timeout {
+            node.with_timeout(timeout)
+        } else {
+            node
+        };
+        Ok(Arc::new(node))
+    }
+
+    pub async fn run<F, R>(
+        &self,
+        future: impl (Fn(Arc<InMemoryNode>) -> F) + Send,
+    ) -> miette::Result<R>
+    where
+        F: Future<Output = miette::Result<R>>,
+    {
+        let node = self.start().await?;
+        let result = future(node.clone()).await;
+        node.shutdown().await?;
+        result
+    }
+}
+
 pub struct NodeManagerDefaults {
     pub node_name: String,
     pub tcp_listener_address: String,
@@ -344,13 +410,20 @@ mod tests {
     async fn test_start_twice(ctx: &mut Context) -> Result<()> {
         let cli = Arc::new(CliState::test().await?);
 
-        let node_manager1 = InMemoryNode::start(ctx, cli.clone()).await;
+        let node_manager1 = start(ctx, cli.clone()).await;
         assert!(node_manager1.is_ok());
 
-        let node_manager2 = InMemoryNode::start(ctx, cli).await;
+        let node_manager2 = start(ctx, cli).await;
         if let Err(e) = node_manager2 {
             panic!("cannot start the node manager a second time: {e:?}");
         }
         Ok(())
+    }
+
+    // HELPERS
+    async fn start(ctx: &Context, cli_state: Arc<CliState>) -> miette::Result<Arc<InMemoryNode>> {
+        InMemoryNodeBuilder::create(ctx, cli_state.clone())?
+            .start()
+            .await
     }
 }

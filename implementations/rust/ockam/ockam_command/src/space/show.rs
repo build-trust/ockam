@@ -1,6 +1,7 @@
 use async_trait::async_trait;
 use clap::Args;
 use console::Term;
+use std::sync::Arc;
 
 use crate::{docs, Command, CommandGlobalOpts};
 use ockam::Context;
@@ -8,6 +9,7 @@ use ockam_api::nodes::InMemoryNode;
 use ockam_api::orchestrator::space::Spaces;
 use ockam_api::terminal::{Terminal, TerminalStream};
 
+use crate::node_command::InMemoryNodeCommand;
 use crate::shared_args::IdentityOpts;
 use crate::terminal::tui::ShowCommandTui;
 use crate::tui::PluralTerm;
@@ -38,30 +40,40 @@ impl Command for ShowCommand {
     const NAME: &'static str = "space show";
 
     async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
-        Ok(ShowTui::run(ctx, opts, self).await?)
+        ShowNodeCommand::new(opts.clone(), self.clone())
+            .execute(ctx, opts.state)
+            .await
+    }
+}
+
+#[derive(Clone)]
+struct ShowNodeCommand {
+    opts: CommandGlobalOpts,
+    command: ShowCommand,
+}
+
+impl ShowNodeCommand {
+    pub fn new(opts: CommandGlobalOpts, cmd: ShowCommand) -> Self {
+        Self { opts, command: cmd }
+    }
+}
+
+#[async_trait]
+impl InMemoryNodeCommand for ShowNodeCommand {
+    async fn run(&self, node: Arc<InMemoryNode>) -> miette::Result<()> {
+        let tui = ShowTui {
+            opts: self.opts.clone(),
+            space_name: self.command.name.clone(),
+            node,
+        };
+        tui.show().await
     }
 }
 
 pub struct ShowTui {
     opts: CommandGlobalOpts,
     space_name: Option<String>,
-    node: InMemoryNode,
-}
-
-impl ShowTui {
-    pub async fn run(
-        ctx: &Context,
-        opts: CommandGlobalOpts,
-        cmd: ShowCommand,
-    ) -> miette::Result<()> {
-        let node = InMemoryNode::start(ctx, opts.state.clone()).await?;
-        let tui = Self {
-            opts,
-            space_name: cmd.name,
-            node,
-        };
-        tui.show().await
-    }
+    node: Arc<InMemoryNode>,
 }
 
 #[ockam_core::async_trait]

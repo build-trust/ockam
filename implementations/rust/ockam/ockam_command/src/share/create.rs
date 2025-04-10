@@ -1,6 +1,8 @@
+use async_trait::async_trait;
 use clap::Args;
 use colorful::Colorful;
 use miette::IntoDiagnostic;
+use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio::try_join;
 use tracing::debug;
@@ -11,6 +13,7 @@ use ockam_api::nodes::InMemoryNode;
 use ockam_api::orchestrator::email_address::EmailAddress;
 use ockam_api::orchestrator::share::{Invitations, RoleInShare, ShareScope};
 
+use crate::node_command::InMemoryNodeCommand;
 use crate::shared_args::IdentityOpts;
 use crate::{docs, CommandGlobalOpts};
 
@@ -34,35 +37,46 @@ pub struct CreateCommand {
     pub expires_at: Option<String>,
 }
 
-impl CreateCommand {
-    pub fn name(&self) -> String {
-        "create invitation".into()
-    }
+#[derive(Clone)]
+struct CreateNodeCommand {
+    opts: CommandGlobalOpts,
+    command: CreateCommand,
+}
 
-    pub async fn run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+impl CreateNodeCommand {
+    pub fn new(opts: CommandGlobalOpts, command: CreateCommand) -> Self {
+        Self { opts, command }
+    }
+}
+
+#[async_trait]
+impl InMemoryNodeCommand for CreateNodeCommand {
+    async fn run(&self, node: Arc<InMemoryNode>) -> miette::Result<()> {
         let is_finished: Mutex<bool> = Mutex::new(false);
-        let node = InMemoryNode::start(ctx, opts.state.clone()).await?;
         let controller = node.create_controller().await?;
 
         let get_sent_invitation = async {
             let invitation = controller
                 .create_invitation(
-                    ctx,
-                    self.expires_at.clone(),
-                    self.grant_role.clone(),
-                    self.recipient_email.clone(),
+                    node.ctx(),
+                    self.command.expires_at.clone(),
+                    self.command.grant_role.clone(),
+                    self.command.recipient_email.clone(),
                     None,
-                    self.scope.clone(),
-                    self.target_id.clone(),
+                    self.command.scope.clone(),
+                    self.command.target_id.clone(),
                 )
                 .await?;
             *is_finished.lock().await = true;
             Ok(invitation)
         };
 
-        let output_messages = vec![format!("Creating invitation...\n",)];
+        let output_messages = vec!["Creating invitation...\n".to_string()];
 
-        let progress_output = opts.terminal.loop_messages(&output_messages, &is_finished);
+        let progress_output = self
+            .opts
+            .terminal
+            .loop_messages(&output_messages, &is_finished);
 
         let (sent, _) = try_join!(get_sent_invitation, progress_output)?;
 
@@ -77,12 +91,26 @@ impl CreateCommand {
             sent.recipient_email
         );
         let json = serde_json::to_string(&sent).into_diagnostic()?;
-        opts.terminal
+        self.opts
+            .terminal
+            .clone()
             .to_stdout()
             .plain(plain)
             .json(json)
             .write_line()?;
 
         Ok(())
+    }
+}
+
+impl CreateCommand {
+    pub fn name(&self) -> String {
+        "create invitation".into()
+    }
+
+    pub async fn run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        CreateNodeCommand::new(opts.clone(), self.clone())
+            .execute(ctx, opts.state)
+            .await
     }
 }

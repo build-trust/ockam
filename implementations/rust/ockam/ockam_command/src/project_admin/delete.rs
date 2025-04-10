@@ -1,3 +1,4 @@
+use crate::node_command::InMemoryNodeCommand;
 use crate::shared_args::IdentityOpts;
 use crate::tui::{DeleteCommandTui, PluralTerm};
 use crate::{Command, CommandGlobalOpts};
@@ -43,46 +44,52 @@ impl Command for DeleteCommand {
     const NAME: &'static str = "project-admin delete";
 
     async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
-        Ok(DeleteTui::run(ctx, opts, self).await?)
+        DeleteNodeCommand::new(opts.clone(), self.clone())
+            .execute(ctx, opts.state)
+            .await
+    }
+}
+
+#[derive(Clone)]
+struct DeleteNodeCommand {
+    opts: CommandGlobalOpts,
+    command: DeleteCommand,
+}
+
+impl DeleteNodeCommand {
+    pub fn new(opts: CommandGlobalOpts, command: DeleteCommand) -> Self {
+        Self { opts, command }
+    }
+}
+
+#[async_trait]
+impl InMemoryNodeCommand for DeleteNodeCommand {
+    fn project_name(&self) -> Option<String> {
+        self.command.name.clone()
+    }
+
+    fn identity_name(&self) -> Option<String> {
+        self.command.identity_opts.identity_name.clone()
+    }
+
+    async fn run(&self, node: Arc<InMemoryNode>) -> miette::Result<()> {
+        let project = self.get_project(node.clone()).await?;
+        let tui = DeleteTui {
+            opts: self.opts.clone(),
+            node: node.clone(),
+            command: self.command.clone(),
+            project: project.clone(),
+        };
+        tui.delete().await
     }
 }
 
 #[derive(TryClone)]
 pub struct DeleteTui {
-    ctx: Context,
     opts: CommandGlobalOpts,
+    command: DeleteCommand,
     node: Arc<InMemoryNode>,
-    cmd: DeleteCommand,
     project: Project,
-}
-
-impl DeleteTui {
-    pub async fn run(
-        ctx: &Context,
-        opts: CommandGlobalOpts,
-        cmd: DeleteCommand,
-    ) -> miette::Result<()> {
-        let project = opts
-            .state
-            .projects()
-            .get_project_by_name_or_default(&cmd.name)
-            .await?;
-        let node = InMemoryNode::start_with_identity_and_project_name(
-            ctx,
-            opts.state.clone(),
-            cmd.identity_opts.identity_name.clone(),
-            Some(project.project_name().to_string()),
-        )
-        .await?;
-        let tui = Self {
-            ctx: ctx.try_clone()?,
-            opts,
-            node: Arc::new(node),
-            cmd,
-            project,
-        };
-        tui.delete().await
-    }
 }
 
 #[ockam_core::async_trait]
@@ -90,15 +97,15 @@ impl DeleteCommandTui for DeleteTui {
     const ITEM_NAME: PluralTerm = PluralTerm::ProjectAdmin;
 
     fn cmd_arg_item_name(&self) -> Option<String> {
-        self.cmd.email.as_ref().map(|e| e.to_string())
+        self.command.email.as_ref().map(|e| e.to_string())
     }
 
     fn cmd_arg_delete_all(&self) -> bool {
-        self.cmd.all
+        self.command.all
     }
 
     fn cmd_arg_confirm_deletion(&self) -> bool {
-        self.cmd.yes
+        self.command.yes
     }
 
     fn terminal(&self) -> Terminal<TerminalStream<Term>> {

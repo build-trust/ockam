@@ -10,6 +10,7 @@ use ockam_api::nodes::{BackgroundNodeClient, InMemoryNode};
 use ockam_api::{CliState, ReverseLocalConverter};
 use ockam_core::Address;
 
+use crate::node_command::InMemoryNodeCommand;
 use crate::shared_args::{IdentityOpts, TimeoutArg};
 use crate::{docs, util::api, Command, CommandGlobalOpts};
 use ockam_api::output::Output;
@@ -40,75 +41,96 @@ pub struct ShowCommand {
     pub timeout: TimeoutArg,
 }
 
+#[derive(Clone)]
+struct ShowNodeCommand {
+    opts: CommandGlobalOpts,
+    command: ShowCommand,
+}
+
+impl ShowNodeCommand {
+    pub fn new(opts: CommandGlobalOpts, command: ShowCommand) -> Self {
+        Self { opts, command }
+    }
+}
+
 #[async_trait]
-impl Command for ShowCommand {
-    const NAME: &'static str = "secure-channel show";
+impl InMemoryNodeCommand for ShowNodeCommand {
+    fn identity_name(&self) -> Option<String> {
+        self.command.identity_opts.identity_name.clone()
+    }
 
-    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
-        let response =
-            match extract_node_name_and_service_from_multiaddr(&self.at, opts.state.clone()).await?
-            {
-                // Get the secure channel from a local node
-                Some((node_name, sc_address)) => {
-                    let node =
-                        BackgroundNodeClient::create(ctx, opts.state.clone(), &Some(node_name))
-                            .await?;
-                    let response: ShowSecureChannelResponse =
-                        node.ask(ctx, api::show_secure_channel(&sc_address)).await?;
-                    response
-                }
-                // Get the secure channel given a multiaddr
-                None => {
-                    let identity = opts
-                        .state
-                        .get_named_identity_or_default(&self.identity_opts.identity_name)
+    async fn run(&self, node: Arc<InMemoryNode>) -> miette::Result<()> {
+        let response = match extract_node_name_and_service_from_multiaddr(
+            &self.command.at.clone(),
+            node.state(),
+        )
+        .await?
+        {
+            // Get the secure channel from a local node
+            Some((node_name, sc_address)) => {
+                let node_client =
+                    BackgroundNodeClient::create(node.ctx(), node.state(), &Some(node_name))
                         .await?;
+                let response: ShowSecureChannelResponse = node_client
+                    .ask(node.ctx(), api::show_secure_channel(&sc_address))
+                    .await?;
+                response
+            }
+            // Get the secure channel given a multiaddr
+            None => {
+                let identity = self.get_identity(node.clone()).await?;
 
-                    let node = InMemoryNode::start_with_identity(
-                        ctx,
-                        opts.state.clone(),
+                let secure_channel = node
+                    .create_secure_channel(
+                        self.command.at.clone(),
                         Some(identity.name()),
+                        None,
+                        None,
+                        Some(self.command.timeout.timeout),
+                        SecureChannelType::KeyExchangeAndMessages,
                     )
                     .await?;
 
-                    let secure_channel = node
-                        .create_secure_channel(
-                            self.at.clone(),
-                            Some(identity.name()),
-                            None,
-                            None,
-                            Some(self.timeout.timeout),
-                            SecureChannelType::KeyExchangeAndMessages,
-                        )
-                        .await?;
+                let peer_identifier = secure_channel.their_identifier();
 
-                    let peer_identifier = secure_channel.their_identifier();
+                let change_history = node
+                    .secure_channels()
+                    .identities()
+                    .get_change_history(peer_identifier)
+                    .await?;
 
-                    let change_history = node
-                        .secure_channels()
-                        .identities()
-                        .get_change_history(peer_identifier)
-                        .await?;
-
-                    ShowSecureChannelResponse {
-                        address: ReverseLocalConverter::convert_address(
-                            secure_channel.encryptor_address(),
-                        )?,
-                        route: self.at,
-                        authorized_identifiers: None,
-                        flow_control_id: secure_channel.flow_control_id().clone(),
-                        their_identifier: secure_channel.their_identifier().clone(),
-                        their_change_history: Some(change_history.export_as_string()?),
-                    }
+                ShowSecureChannelResponse {
+                    address: ReverseLocalConverter::convert_address(
+                        secure_channel.encryptor_address(),
+                    )?,
+                    route: self.command.at.clone(),
+                    authorized_identifiers: None,
+                    flow_control_id: secure_channel.flow_control_id().clone(),
+                    their_identifier: secure_channel.their_identifier().clone(),
+                    their_change_history: Some(change_history.export_as_string()?),
                 }
-            };
+            }
+        };
 
-        opts.terminal
+        self.opts
+            .terminal
+            .clone()
             .to_stdout()
             .plain(response.item()?)
             .json_obj(response)?
             .write_line()?;
         Ok(())
+    }
+}
+
+#[async_trait]
+impl Command for ShowCommand {
+    const NAME: &'static str = "secure-channel show";
+
+    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        ShowNodeCommand::new(opts.clone(), self.clone())
+            .execute(ctx, opts.state)
+            .await
     }
 }
 
