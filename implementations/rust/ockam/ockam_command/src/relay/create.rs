@@ -239,7 +239,7 @@ impl CreateCommand {
 mod tests {
     use super::*;
     use crate::run::parser::resource::utils::parse_cmd_from_args;
-    use ockam_api::nodes::InMemoryNode;
+    use ockam_api::nodes::InMemoryNodeBuilder;
 
     #[test]
     fn command_can_be_parsed_from_name() {
@@ -280,7 +280,10 @@ mod tests {
         assert_eq!(res, addr);
 
         // The user provides the name of a node
-        let node = InMemoryNode::start(ctx, state.clone()).await.unwrap();
+        let node = InMemoryNodeBuilder::create(ctx, state.clone())?
+            .start()
+            .await
+            .unwrap();
         let res = CreateCommand::parse_arg_at(state, &node.node_name(), default_project_name)
             .await
             .unwrap()

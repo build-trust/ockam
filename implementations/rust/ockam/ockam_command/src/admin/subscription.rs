@@ -1,17 +1,17 @@
-use std::path::PathBuf;
-
+use crate::node_command::InMemoryNodeCommand;
+use crate::shared_args::IdentityOpts;
+use crate::subscription::get_subscription_by_id_or_space_id;
+use crate::{docs, CommandGlobalOpts};
+use async_trait::async_trait;
 use clap::builder::NonEmptyStringValueParser;
 use clap::{Args, Subcommand};
 use miette::{Context as _, IntoDiagnostic};
-
 use ockam::Context;
 use ockam_api::nodes::InMemoryNode;
 use ockam_api::orchestrator::subscription::Subscriptions;
 use ockam_api::output::Output;
-
-use crate::shared_args::IdentityOpts;
-use crate::subscription::get_subscription_by_id_or_space_id;
-use crate::{docs, CommandGlobalOpts};
+use std::path::PathBuf;
+use std::sync::Arc;
 
 const HELP_DETAIL: &str = "";
 
@@ -130,13 +130,21 @@ enum SubscriptionUpdateSubcommand {
     },
 }
 
-impl SubscriptionCommand {
-    pub fn name(&self) -> String {
-        "admin subscription".into()
-    }
+#[derive(Clone)]
+struct SubscriptionNodeCommand {
+    opts: CommandGlobalOpts,
+    subcommand: SubscriptionSubcommand,
+}
 
-    pub async fn run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
-        let node = InMemoryNode::start(ctx, opts.state.clone()).await?;
+impl SubscriptionNodeCommand {
+    fn new(opts: CommandGlobalOpts, subcommand: SubscriptionSubcommand) -> Self {
+        Self { opts, subcommand }
+    }
+}
+
+#[async_trait]
+impl InMemoryNodeCommand for SubscriptionNodeCommand {
+    async fn run(&self, node: Arc<InMemoryNode>) -> miette::Result<()> {
         let controller = node.create_controller().await?;
 
         match &self.subcommand {
@@ -149,16 +157,17 @@ impl SubscriptionCommand {
                     .context(format!("failed to read {:?}", &json))?;
 
                 let response = controller
-                    .activate_subscription(ctx, space.clone(), json)
+                    .activate_subscription(node.ctx(), space.clone(), json)
                     .await?;
-                opts.terminal.write_line(&response.item()?)?
+                self.opts.terminal.write_line(&response.item()?)?
             }
             SubscriptionSubcommand::List => {
-                let response = controller.get_subscriptions(ctx).await?;
-                let output = opts
+                let response = controller.get_subscriptions(node.ctx()).await?;
+                let output = self
+                    .opts
                     .terminal
                     .build_list(&response, "No Subscriptions found")?;
-                opts.terminal.write_line(output)?
+                self.opts.terminal.write_line(output)?
             }
             SubscriptionSubcommand::Unsubscribe {
                 subscription_id,
@@ -166,17 +175,18 @@ impl SubscriptionCommand {
             } => {
                 match get_subscription_by_id_or_space_id(
                     &controller,
-                    ctx,
+                    node.ctx(),
                     subscription_id.clone(),
                     space_id.clone(),
                 )
                 .await?
                 {
                     Some(subscription) => {
-                        let response = controller.unsubscribe(ctx, subscription.id).await?;
-                        opts.terminal.write_line(&response.item()?)?
+                        let response = controller.unsubscribe(node.ctx(), subscription.id).await?;
+                        self.opts.terminal.write_line(&response.item()?)?
                     }
-                    None => opts
+                    None => self
+                        .opts
                         .terminal
                         .write_line("Please specify either a space id or a subscription id")?,
                 }
@@ -194,7 +204,7 @@ impl SubscriptionCommand {
                             .context(format!("failed to read {:?}", &json))?;
                         match get_subscription_by_id_or_space_id(
                             &controller,
-                            ctx,
+                            node.ctx(),
                             subscription_id.clone(),
                             space_id.clone(),
                         )
@@ -202,11 +212,15 @@ impl SubscriptionCommand {
                         {
                             Some(subscription) => {
                                 let response = controller
-                                    .update_subscription_contact_info(ctx, subscription.id, json)
+                                    .update_subscription_contact_info(
+                                        node.ctx(),
+                                        subscription.id,
+                                        json,
+                                    )
                                     .await?;
-                                opts.terminal.write_line(&response.item()?)?
+                                self.opts.terminal.write_line(&response.item()?)?
                             }
-                            None => opts.terminal.write_line(
+                            None => self.opts.terminal.write_line(
                                 "Please specify either a space id or a subscription id",
                             )?,
                         }
@@ -218,7 +232,7 @@ impl SubscriptionCommand {
                     } => {
                         match get_subscription_by_id_or_space_id(
                             &controller,
-                            ctx,
+                            node.ctx(),
                             subscription_id.clone(),
                             space_id.clone(),
                         )
@@ -227,14 +241,14 @@ impl SubscriptionCommand {
                             Some(subscription) => {
                                 let response = controller
                                     .update_subscription_space(
-                                        ctx,
+                                        node.ctx(),
                                         subscription.id,
                                         new_space_id.clone(),
                                     )
                                     .await?;
-                                opts.terminal.write_line(&response.item()?)?
+                                self.opts.terminal.write_line(&response.item()?)?
                             }
-                            None => opts.terminal.write_line(
+                            None => self.opts.terminal.write_line(
                                 "Please specify either a space id or a subscription id",
                             )?,
                         }
@@ -243,5 +257,17 @@ impl SubscriptionCommand {
             }
         };
         Ok(())
+    }
+}
+
+impl SubscriptionCommand {
+    pub fn name(&self) -> String {
+        "admin subscription".into()
+    }
+
+    pub async fn run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        SubscriptionNodeCommand::new(opts.clone(), self.subcommand.clone())
+            .execute(ctx, opts.state)
+            .await
     }
 }

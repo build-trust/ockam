@@ -1,5 +1,7 @@
+use async_trait::async_trait;
 use clap::Args;
 use miette::IntoDiagnostic;
+use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio::try_join;
 
@@ -7,6 +9,7 @@ use ockam::Context;
 use ockam_api::nodes::InMemoryNode;
 use ockam_api::orchestrator::share::{InvitationListKind, Invitations};
 
+use crate::node_command::InMemoryNodeCommand;
 use crate::shared_args::IdentityOpts;
 use crate::{docs, CommandGlobalOpts};
 
@@ -23,35 +26,49 @@ pub struct ListCommand {
     // pub kind: InvitationListKind,
 }
 
-impl ListCommand {
-    pub fn name(&self) -> String {
-        "list invitations".into()
-    }
+#[derive(Clone)]
+struct ListNodeCommand {
+    opts: CommandGlobalOpts,
+}
 
-    pub async fn run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+impl ListNodeCommand {
+    pub fn new(opts: CommandGlobalOpts) -> Self {
+        Self { opts }
+    }
+}
+
+#[async_trait]
+impl InMemoryNodeCommand for ListNodeCommand {
+    async fn run(&self, node: Arc<InMemoryNode>) -> miette::Result<()> {
         let is_finished: Mutex<bool> = Mutex::new(false);
-        let node = InMemoryNode::start(ctx, opts.state.clone()).await?;
         let controller = node.create_controller().await?;
 
         let get_invitations = async {
             let invitations = controller
-                .list_invitations(ctx, InvitationListKind::All)
+                .list_invitations(node.ctx(), InvitationListKind::All)
                 .await?;
             *is_finished.lock().await = true;
             Ok(invitations)
         };
 
-        let output_messages = vec![format!("Listing shares...\n",)];
+        let output_messages = vec!["Listing shares...\n".to_string()];
 
-        let progress_output = opts.terminal.loop_messages(&output_messages, &is_finished);
+        let progress_output = self
+            .opts
+            .terminal
+            .loop_messages(&output_messages, &is_finished);
 
         let (shares, _) = try_join!(get_invitations, progress_output)?;
 
         if let Some(sent) = shares.sent.as_ref() {
-            let opts = opts.clone();
-            let plain = opts.terminal.build_list(sent, "No sent shares found.")?;
+            let plain = self
+                .opts
+                .terminal
+                .build_list(sent, "No sent shares found.")?;
             let json = serde_json::to_string(sent).into_diagnostic()?;
-            opts.terminal
+            self.opts
+                .terminal
+                .clone()
                 .to_stdout()
                 .plain(plain)
                 .json(json)
@@ -59,12 +76,14 @@ impl ListCommand {
         }
 
         if let Some(received) = shares.received.as_ref() {
-            let opts = opts.clone();
-            let plain = opts
+            let plain = self
+                .opts
                 .terminal
                 .build_list(received, "No received shares found.")?;
             let json = serde_json::to_string(received).into_diagnostic()?;
-            opts.terminal
+            self.opts
+                .terminal
+                .clone()
                 .to_stdout()
                 .plain(plain)
                 .json(json)
@@ -72,5 +91,16 @@ impl ListCommand {
         }
 
         Ok(())
+    }
+}
+impl ListCommand {
+    pub fn name(&self) -> String {
+        "list invitations".into()
+    }
+
+    pub async fn run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        ListNodeCommand::new(opts.clone())
+            .execute(ctx, opts.state)
+            .await
     }
 }

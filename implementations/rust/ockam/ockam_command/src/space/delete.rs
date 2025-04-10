@@ -4,6 +4,7 @@ use colorful::Colorful;
 use console::Term;
 use std::sync::Arc;
 
+use crate::node_command::InMemoryNodeCommand;
 use crate::shared_args::IdentityOpts;
 use crate::terminal::tui::DeleteCommandTui;
 use crate::tui::PluralTerm;
@@ -44,33 +45,41 @@ impl Command for DeleteCommand {
     const NAME: &'static str = "space delete";
 
     async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
-        Ok(DeleteTui::run(ctx, opts, self).await?)
+        DeleteNodeCommand::new(opts.clone(), self.clone())
+            .execute(ctx, opts.state)
+            .await
+    }
+}
+
+#[derive(Clone)]
+struct DeleteNodeCommand {
+    opts: CommandGlobalOpts,
+    command: DeleteCommand,
+}
+
+impl DeleteNodeCommand {
+    pub fn new(opts: CommandGlobalOpts, command: DeleteCommand) -> Self {
+        Self { opts, command }
+    }
+}
+
+#[async_trait]
+impl InMemoryNodeCommand for DeleteNodeCommand {
+    async fn run(&self, node: Arc<InMemoryNode>) -> miette::Result<()> {
+        let tui = DeleteTui {
+            opts: self.opts.clone(),
+            cmd: self.command.clone(),
+            node,
+        };
+        tui.delete().await
     }
 }
 
 #[derive(TryClone)]
 pub struct DeleteTui {
-    ctx: Context,
     opts: CommandGlobalOpts,
-    node: Arc<InMemoryNode>,
     cmd: DeleteCommand,
-}
-
-impl DeleteTui {
-    pub async fn run(
-        ctx: &Context,
-        opts: CommandGlobalOpts,
-        cmd: DeleteCommand,
-    ) -> miette::Result<()> {
-        let node = InMemoryNode::start(ctx, opts.state.clone()).await?;
-        let tui = Self {
-            ctx: ctx.try_clone()?,
-            opts,
-            node: Arc::new(node),
-            cmd,
-        };
-        tui.delete().await
-    }
+    node: Arc<InMemoryNode>,
 }
 
 #[ockam_core::async_trait]

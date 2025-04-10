@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 use std::str::FromStr;
+use std::sync::Arc;
 use std::time::Duration;
 
 use async_trait::async_trait;
@@ -8,6 +9,7 @@ use colorful::Colorful;
 use miette::{miette, IntoDiagnostic};
 use tracing::debug;
 
+use crate::node_command::InMemoryNodeCommand;
 use crate::shared_args::{IdentityOpts, RetryOpts, TrustOpts};
 use crate::util::parsers::{duration_parser, duration_to_human_format};
 use crate::{docs, Command, CommandGlobalOpts, Error, Result};
@@ -87,25 +89,34 @@ pub struct TicketCommand {
     skip_controller_call: bool,
 }
 
-#[async_trait]
-impl Command for TicketCommand {
-    const NAME: &'static str = "project ticket";
+#[derive(Clone)]
+struct TicketNodeCommand {
+    opts: CommandGlobalOpts,
+    command: TicketCommand,
+}
 
-    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> Result<()> {
-        let cmd = self.parse_args(&opts).await?;
-        let identity = opts
+impl TicketNodeCommand {
+    pub fn new(opts: CommandGlobalOpts, command: TicketCommand) -> Self {
+        Self { opts, command }
+    }
+}
+
+#[async_trait]
+impl InMemoryNodeCommand for TicketNodeCommand {
+    fn project_name(&self) -> Option<String> {
+        self.command.trust_opts.project_name.clone()
+    }
+
+    async fn run(&self, node: Arc<InMemoryNode>) -> miette::Result<()> {
+        let cmd = self.command.clone().parse_args(&self.opts).await?;
+        let identity = self
+            .opts
             .state
             .get_identity_name_or_default(&cmd.identity_opts.identity_name)
             .await?;
 
-        let node = InMemoryNode::start_with_project_name(
-            ctx,
-            opts.state.clone(),
-            cmd.trust_opts.project_name.clone(),
-        )
-        .await?;
-
-        let project = opts
+        let project = self
+            .opts
             .state
             .projects()
             .get_project_by_name_or_default(&cmd.trust_opts.project_name)
@@ -125,12 +136,17 @@ impl Command for TicketCommand {
         // Request an enrollment token that a future member can use to get a
         // credential.
         let token = {
-            let pb = opts.terminal.spinner();
+            let pb = self.opts.terminal.spinner();
             if let Some(pb) = pb.as_ref() {
                 pb.set_message("Creating an enrollment ticket...");
             }
             authority_node_client
-                .create_token(ctx, attributes.clone(), cmd.expires_in, cmd.usage_count)
+                .create_token(
+                    node.ctx(),
+                    attributes.clone(),
+                    cmd.expires_in,
+                    cmd.usage_count,
+                )
                 .await
                 .map_err(Error::Retry)?
         };
@@ -194,7 +210,7 @@ impl Command for TicketCommand {
             attributes_msg += "\n";
             attributes_msg
         };
-        opts.terminal.write_line(
+        self.opts.terminal.write_line(
             fmt_ok!("Created enrollment ticket\n\n")
                 + &attributes_msg
                 + &fmt_info!(
@@ -214,7 +230,9 @@ impl Command for TicketCommand {
                 ),
         )?;
 
-        opts.terminal
+        self.opts
+            .terminal
+            .clone()
             .to_stdout()
             .plain(format!("\n{encoded_ticket}"))
             .machine(encoded_ticket)
@@ -222,6 +240,17 @@ impl Command for TicketCommand {
             .write_line()?;
 
         Ok(())
+    }
+}
+
+#[async_trait]
+impl Command for TicketCommand {
+    const NAME: &'static str = "project ticket";
+
+    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> Result<()> {
+        TicketNodeCommand::new(opts.clone(), self.clone())
+            .execute(ctx, opts.state)
+            .await
     }
 }
 

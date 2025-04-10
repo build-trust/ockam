@@ -1,6 +1,8 @@
+use async_trait::async_trait;
 use clap::builder::NonEmptyStringValueParser;
 use clap::Args;
 use colorful::Colorful;
+use std::sync::Arc;
 
 pub use aiven::AddonConfigureAivenSubcommand;
 pub use confluent::AddonConfigureConfluentSubcommand;
@@ -12,6 +14,7 @@ use ockam_api::orchestrator::addon::{Addons, KafkaConfig};
 pub use redpanda::AddonConfigureRedpandaSubcommand;
 pub use warpstream::AddonConfigureWarpstreamSubcommand;
 
+use crate::node_command::InMemoryNodeCommand;
 use crate::project::addon::check_configuration_completion;
 use crate::{docs, CommandGlobalOpts};
 
@@ -57,6 +60,56 @@ pub struct AddonConfigureKafkaSubcommand {
     config: KafkaCommandConfig,
 }
 
+#[derive(Clone)]
+struct AddonConfigureKafkaNodeCommand {
+    opts: CommandGlobalOpts,
+    command: AddonConfigureKafkaSubcommand,
+    addon_name: String,
+}
+
+impl AddonConfigureKafkaNodeCommand {
+    pub fn new(
+        opts: CommandGlobalOpts,
+        command: AddonConfigureKafkaSubcommand,
+        addon_name: &str,
+    ) -> Self {
+        Self {
+            opts,
+            command,
+            addon_name: addon_name.to_string(),
+        }
+    }
+}
+
+#[async_trait]
+impl InMemoryNodeCommand for AddonConfigureKafkaNodeCommand {
+    async fn run(&self, node: Arc<InMemoryNode>) -> miette::Result<()> {
+        let project_id = self
+            .opts
+            .state
+            .projects()
+            .get_project_by_name(&self.command.config.project_name.clone())
+            .await?
+            .project_id()
+            .to_string();
+        let config = KafkaConfig::new(self.command.config.bootstrap_server.clone());
+
+        let controller = node.create_controller().await?;
+
+        let response = controller
+            .configure_confluent_addon(node.ctx(), &project_id, config)
+            .await?;
+        check_configuration_completion(&self.opts, &node, &project_id, &response.operation_id)
+            .await?;
+
+        self.opts
+            .terminal
+            .write_line(fmt_ok!("{} addon configured successfully", self.addon_name))?;
+
+        Ok(())
+    }
+}
+
 impl AddonConfigureKafkaSubcommand {
     pub fn name(&self) -> String {
         "configure kafka addon".into()
@@ -68,26 +121,8 @@ impl AddonConfigureKafkaSubcommand {
         opts: CommandGlobalOpts,
         addon_name: &str,
     ) -> miette::Result<()> {
-        let project_id = opts
-            .state
-            .projects()
-            .get_project_by_name(&self.config.project_name.clone())
-            .await?
-            .project_id()
-            .to_string();
-        let config = KafkaConfig::new(self.config.bootstrap_server.clone());
-
-        let node = InMemoryNode::start(ctx, opts.state.clone()).await?;
-        let controller = node.create_controller().await?;
-
-        let response = controller
-            .configure_confluent_addon(ctx, &project_id, config)
-            .await?;
-        check_configuration_completion(&opts, &node, &project_id, &response.operation_id).await?;
-
-        opts.terminal
-            .write_line(fmt_ok!("{} addon configured successfully", addon_name))?;
-
-        Ok(())
+        AddonConfigureKafkaNodeCommand::new(opts.clone(), self.clone(), addon_name)
+            .execute(ctx, opts.state)
+            .await
     }
 }

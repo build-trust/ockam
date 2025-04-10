@@ -1,4 +1,4 @@
-use super::authority_client;
+use crate::node_command::InMemoryNodeCommand;
 use crate::shared_args::IdentityOpts;
 use crate::{docs, Command, CommandGlobalOpts};
 use async_trait::async_trait;
@@ -9,10 +9,12 @@ use ockam::identity::Identifier;
 use ockam::Context;
 use ockam_api::authenticator::direct::Members;
 use ockam_api::colors::color_primary;
+use ockam_api::nodes::InMemoryNode;
 use ockam_api::{fmt_info, fmt_ok};
 use ockam_core::TryClone;
 use serde::Serialize;
 use std::fmt::Display;
+use std::sync::Arc;
 use std::time::Duration;
 use tokio::task::JoinSet;
 use tokio::time::sleep;
@@ -44,38 +46,65 @@ pub struct DeleteCommand {
     all: bool,
 }
 
-#[async_trait]
-impl Command for DeleteCommand {
-    const NAME: &'static str = "project-member delete";
+#[derive(Clone)]
+struct DeleteNodeCommand {
+    opts: CommandGlobalOpts,
+    command: DeleteCommand,
+}
 
-    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
-        if self.member.is_none() && !self.all {
+impl DeleteNodeCommand {
+    pub fn new(opts: CommandGlobalOpts, command: DeleteCommand) -> Self {
+        Self { opts, command }
+    }
+}
+
+#[async_trait]
+impl InMemoryNodeCommand for DeleteNodeCommand {
+    fn project_name(&self) -> Option<String> {
+        self.command.project_name.clone()
+    }
+
+    fn identity_name(&self) -> Option<String> {
+        self.command.identity_opts.identity_name.clone()
+    }
+
+    async fn run(&self, node: Arc<InMemoryNode>) -> miette::Result<()> {
+        if self.command.member.is_none() && !self.command.all {
             return Err(miette!(
                 "You need to specify either an identifier to delete or use the --all flag to delete all the members from a project."
             ));
         }
 
-        let (authority_node_client, project_name) =
-            authority_client(ctx, &opts, &self.identity_opts, &self.project_name).await?;
-
-        let identity = opts
-            .state
-            .get_named_identity_or_default(&self.identity_opts.identity_name)
+        let authority_node_client = self.authority_client(node.clone()).await?;
+        let project = node
+            .state()
+            .projects()
+            .get_project_by_name_or_default(&self.project_name())
             .await?;
 
+        let identity = self
+            .opts
+            .state
+            .get_named_identity_or_default(&self.command.identity_opts.identity_name)
+            .await?;
+
+        let project_name = project.name();
         let mut output = DeleteMemberOutput {
-            project: project_name.clone(),
+            project: project_name.to_string(),
             identifiers: vec![],
         };
 
         // Delete the passed member
-        if let Some(member) = &self.member {
-            authority_node_client.delete_member(ctx, member).await?;
+        if let Some(member) = &self.command.member {
+            authority_node_client
+                .delete_member(node.ctx(), member)
+                .await?;
             output.identifiers.push(member.clone());
         }
         // Try to delete all members except the current default identity
-        else if self.all {
-            if !opts
+        else if self.command.all {
+            if !self
+                .opts
                 .state
                 .is_identity_enrolled(&Some(identity.name()))
                 .await?
@@ -85,9 +114,9 @@ impl Command for DeleteCommand {
                     ));
             }
             let self_identifier = identity.identifier();
-            let member_identifiers = authority_node_client.list_member_ids(ctx).await?;
+            let member_identifiers = authority_node_client.list_member_ids(node.ctx()).await?;
             if !member_identifiers.is_empty() {
-                opts.terminal.write_line(fmt_info!(
+                self.opts.terminal.write_line(fmt_info!(
                     "Found {} members in the Project {}",
                     member_identifiers.len(),
                     project_name
@@ -99,7 +128,7 @@ impl Command for DeleteCommand {
                 .filter(|id| id != &self_identifier)
                 .collect::<Vec<_>>();
 
-            let pb = opts.terminal.spinner();
+            let pb = self.opts.terminal.spinner();
             if let Some(pb) = &pb {
                 pb.set_message("Deleting members...");
             }
@@ -107,7 +136,7 @@ impl Command for DeleteCommand {
                 let mut set: JoinSet<Option<Identifier>> = JoinSet::new();
                 for identifier in chunk {
                     let authority_node_client = authority_node_client.clone();
-                    let ctx = ctx.try_clone()?;
+                    let ctx = node.ctx().try_clone()?;
                     set.spawn(async move {
                         sleep(tokio_retry::strategy::jitter(Duration::from_millis(500))).await;
                         if let Err(e) = authority_node_client.delete_member(&ctx, &identifier).await
@@ -132,13 +161,26 @@ impl Command for DeleteCommand {
             unreachable!("Either a member or the --all flag should be set");
         }
 
-        opts.terminal
+        self.opts
+            .terminal
+            .clone()
             .to_stdout()
             .plain(output.to_string())
             .json_obj(&output)?
             .write_line()?;
 
         Ok(())
+    }
+}
+
+#[async_trait]
+impl Command for DeleteCommand {
+    const NAME: &'static str = "project-member delete";
+
+    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+        DeleteNodeCommand::new(opts.clone(), self.clone())
+            .execute(ctx, opts.state)
+            .await
     }
 }
 

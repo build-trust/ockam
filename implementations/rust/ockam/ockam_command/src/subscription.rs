@@ -1,14 +1,16 @@
+use async_trait::async_trait;
 use clap::builder::NonEmptyStringValueParser;
 use clap::{Args, Subcommand};
 use miette::miette;
-
 use ockam::Context;
 use ockam_api::orchestrator::subscription::{SubscriptionLegacy, Subscriptions};
 use ockam_api::orchestrator::ControllerClient;
+use std::sync::Arc;
 
 use ockam_api::nodes::InMemoryNode;
 use ockam_api::output::Output;
 
+use crate::node_command::InMemoryNodeCommand;
 use crate::shared_args::IdentityOpts;
 use crate::{docs, CommandGlobalOpts, Result};
 
@@ -44,6 +46,48 @@ pub enum SubscriptionSubcommand {
     },
 }
 
+#[derive(Clone)]
+struct SubscriptionNodeCommand {
+    opts: CommandGlobalOpts,
+    command: SubscriptionCommand,
+}
+
+impl SubscriptionNodeCommand {
+    pub fn new(opts: CommandGlobalOpts, command: SubscriptionCommand) -> Self {
+        Self { opts, command }
+    }
+}
+
+#[async_trait]
+impl InMemoryNodeCommand for SubscriptionNodeCommand {
+    async fn run(&self, node: Arc<InMemoryNode>) -> miette::Result<()> {
+        let controller = node.create_controller().await?;
+
+        match &self.command.subcommand {
+            SubscriptionSubcommand::Show {
+                subscription_id,
+                space_id,
+            } => {
+                match get_subscription_by_id_or_space_id(
+                    &controller,
+                    node.ctx(),
+                    subscription_id.clone(),
+                    space_id.clone(),
+                )
+                .await?
+                {
+                    Some(subscription) => self.opts.terminal.write_line(&subscription.item()?)?,
+                    None => self
+                        .opts
+                        .terminal
+                        .write_line("Please specify either a space id or a subscription id")?,
+                }
+            }
+        };
+        Ok(())
+    }
+}
+
 impl SubscriptionCommand {
     pub fn name(&self) -> String {
         match &self.subcommand {
@@ -53,30 +97,9 @@ impl SubscriptionCommand {
     }
 
     pub async fn run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
-        let node = InMemoryNode::start(ctx, opts.state.clone()).await?;
-        let controller = node.create_controller().await?;
-
-        match &self.subcommand {
-            SubscriptionSubcommand::Show {
-                subscription_id,
-                space_id,
-            } => {
-                match get_subscription_by_id_or_space_id(
-                    &controller,
-                    ctx,
-                    subscription_id.clone(),
-                    space_id.clone(),
-                )
-                .await?
-                {
-                    Some(subscription) => opts.terminal.write_line(&subscription.item()?)?,
-                    None => opts
-                        .terminal
-                        .write_line("Please specify either a space id or a subscription id")?,
-                }
-            }
-        };
-        Ok(())
+        SubscriptionNodeCommand::new(opts.clone(), self.clone())
+            .execute(ctx, opts.state)
+            .await
     }
 }
 

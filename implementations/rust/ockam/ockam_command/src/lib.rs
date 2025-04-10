@@ -52,6 +52,7 @@ mod markdown;
 mod message;
 mod migrate_database;
 pub mod node;
+mod node_command;
 mod operation;
 mod output;
 pub mod pager;

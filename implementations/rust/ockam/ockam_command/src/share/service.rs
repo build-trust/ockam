@@ -1,6 +1,8 @@
+use async_trait::async_trait;
 use clap::Args;
 use colorful::Colorful;
 use miette::IntoDiagnostic;
+use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio::try_join;
 use tracing::debug;
@@ -12,6 +14,7 @@ use ockam_api::nodes::InMemoryNode;
 use ockam_api::orchestrator::email_address::EmailAddress;
 use ockam_api::orchestrator::share::{CreateServiceInvitation, Invitations};
 
+use crate::node_command::InMemoryNodeCommand;
 use crate::shared_args::IdentityOpts;
 use crate::{docs, CommandGlobalOpts};
 
@@ -41,39 +44,50 @@ pub struct ServiceCreateCommand {
     pub expires_at: Option<String>,
 }
 
-impl ServiceCreateCommand {
-    pub fn name(&self) -> String {
-        "create shared service".into()
-    }
+#[derive(Clone)]
+struct ServiceCreateNodeCommand {
+    opts: CommandGlobalOpts,
+    command: ServiceCreateCommand,
+}
 
-    pub async fn run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+impl ServiceCreateNodeCommand {
+    pub fn new(opts: CommandGlobalOpts, command: ServiceCreateCommand) -> Self {
+        Self { opts, command }
+    }
+}
+
+#[async_trait]
+impl InMemoryNodeCommand for ServiceCreateNodeCommand {
+    async fn run(&self, node: Arc<InMemoryNode>) -> miette::Result<()> {
         let is_finished: Mutex<bool> = Mutex::new(false);
-        let node = InMemoryNode::start(ctx, opts.state.clone()).await?;
         let controller = node.create_controller().await?;
 
         let get_sent_invitation = async {
             let invitation = controller
                 .create_service_invitation(
-                    ctx,
-                    self.expires_at.clone(),
-                    self.project_id.clone(),
-                    self.recipient_email.clone(),
-                    self.project_identity.clone(),
-                    self.project_route.clone(),
-                    self.project_authority_identity.clone(),
-                    self.project_authority_route.clone(),
-                    self.shared_node_identity.clone(),
-                    self.shared_node_route.clone(),
-                    self.enrollment_ticket.clone(),
+                    node.ctx(),
+                    self.command.expires_at.clone(),
+                    self.command.project_id.clone(),
+                    self.command.recipient_email.clone(),
+                    self.command.project_identity.clone(),
+                    self.command.project_route.clone(),
+                    self.command.project_authority_identity.clone(),
+                    self.command.project_authority_route.clone(),
+                    self.command.shared_node_identity.clone(),
+                    self.command.shared_node_route.clone(),
+                    self.command.enrollment_ticket.clone(),
                 )
                 .await?;
             *is_finished.lock().await = true;
             Ok(invitation)
         };
 
-        let output_messages = vec![format!("Creating invitation...\n",)];
+        let output_messages = vec!["Creating invitation...\n".to_string()];
 
-        let progress_output = opts.terminal.loop_messages(&output_messages, &is_finished);
+        let progress_output = self
+            .opts
+            .terminal
+            .loop_messages(&output_messages, &is_finished);
 
         let (sent, _) = try_join!(get_sent_invitation, progress_output)?;
 
@@ -88,13 +102,27 @@ impl ServiceCreateCommand {
             sent.recipient_email
         );
         let json = serde_json::to_string(&sent).into_diagnostic()?;
-        opts.terminal
+        self.opts
+            .terminal
+            .clone()
             .to_stdout()
             .plain(plain)
             .json(json)
             .write_line()?;
 
         Ok(())
+    }
+}
+
+impl ServiceCreateCommand {
+    pub fn name(&self) -> String {
+        "create shared service".into()
+    }
+
+    pub async fn run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        ServiceCreateNodeCommand::new(opts.clone(), self.clone())
+            .execute(ctx, opts.state)
+            .await
     }
 }
 

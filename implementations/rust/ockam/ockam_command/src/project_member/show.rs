@@ -2,17 +2,19 @@ use async_trait::async_trait;
 use clap::Args;
 use console::Term;
 use miette::{miette, IntoDiagnostic};
-use std::str::FromStr;
-
 use ockam::identity::Identifier;
 use ockam::Context;
 use ockam_api::authenticator::direct::Members;
+use ockam_api::nodes::InMemoryNode;
 use ockam_api::orchestrator::AuthorityNodeClient;
 use ockam_api::output::Output;
 use ockam_api::terminal::{Terminal, TerminalStream};
 use ockam_core::TryClone;
+use std::str::FromStr;
+use std::sync::Arc;
 
-use crate::project_member::{authority_client, MemberOutput};
+use crate::node_command::InMemoryNodeCommand;
+use crate::project_member::MemberOutput;
 use crate::shared_args::IdentityOpts;
 use crate::tui::{PluralTerm, ShowCommandTui};
 use crate::{docs, Command, CommandGlobalOpts};
@@ -40,12 +42,47 @@ pub struct ShowCommand {
     member: Option<Identifier>,
 }
 
+#[derive(Clone)]
+struct ShowNodeCommand {
+    opts: CommandGlobalOpts,
+    command: ShowCommand,
+}
+
+impl ShowNodeCommand {
+    pub fn new(opts: CommandGlobalOpts, command: ShowCommand) -> Self {
+        Self { opts, command }
+    }
+}
+
+#[async_trait]
+impl InMemoryNodeCommand for ShowNodeCommand {
+    fn project_name(&self) -> Option<String> {
+        self.command.project_name.clone()
+    }
+
+    fn identity_name(&self) -> Option<String> {
+        self.command.identity_opts.identity_name.clone()
+    }
+
+    async fn run(&self, node: Arc<InMemoryNode>) -> miette::Result<()> {
+        let tui = ShowTui {
+            ctx: node.ctx().try_clone().into_diagnostic()?,
+            opts: self.opts.clone(),
+            member: self.command.member.clone(),
+            client: self.authority_client(node).await?,
+        };
+        tui.show().await
+    }
+}
+
 #[async_trait]
 impl Command for ShowCommand {
     const NAME: &'static str = "project-member show";
 
     async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
-        Ok(ShowTui::run(ctx.try_clone().into_diagnostic()?, opts, self).await?)
+        ShowNodeCommand::new(opts.clone(), self.clone())
+            .execute(ctx, opts.state)
+            .await
     }
 }
 
@@ -54,24 +91,6 @@ pub struct ShowTui {
     opts: CommandGlobalOpts,
     member: Option<Identifier>,
     client: AuthorityNodeClient,
-}
-
-impl ShowTui {
-    pub async fn run(
-        ctx: Context,
-        opts: CommandGlobalOpts,
-        cmd: ShowCommand,
-    ) -> miette::Result<()> {
-        let (authority_node_client, _) =
-            authority_client(&ctx, &opts, &cmd.identity_opts, &cmd.project_name).await?;
-        let tui = Self {
-            ctx,
-            opts,
-            member: cmd.member,
-            client: authority_node_client,
-        };
-        tui.show().await
-    }
 }
 
 #[async_trait]

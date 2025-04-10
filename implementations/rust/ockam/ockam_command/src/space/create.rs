@@ -1,6 +1,7 @@
 use async_trait::async_trait;
 use clap::Args;
 use miette::miette;
+use std::sync::Arc;
 
 use ockam::Context;
 use ockam_api::cli_state::random_name;
@@ -8,6 +9,7 @@ use ockam_api::nodes::InMemoryNode;
 use ockam_api::orchestrator::space::Spaces;
 use ockam_api::output::Output;
 
+use crate::node_command::InMemoryNodeCommand;
 use crate::shared_args::IdentityOpts;
 use crate::util::validators::cloud_resource_name_validator;
 use crate::{docs, Command, CommandGlobalOpts, Result};
@@ -35,14 +37,25 @@ pub struct CreateCommand {
     pub identity_opts: IdentityOpts,
 }
 
-#[async_trait]
-impl Command for CreateCommand {
-    const NAME: &'static str = "space create";
+#[derive(Clone)]
+struct CreateNodeCommand {
+    opts: CommandGlobalOpts,
+    command: CreateCommand,
+}
 
-    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> Result<()> {
-        if !opts
+impl CreateNodeCommand {
+    pub fn new(opts: CommandGlobalOpts, command: CreateCommand) -> Self {
+        Self { opts, command }
+    }
+}
+
+#[async_trait]
+impl InMemoryNodeCommand for CreateNodeCommand {
+    async fn run(&self, node: Arc<InMemoryNode>) -> miette::Result<()> {
+        if !self
+            .opts
             .state
-            .is_identity_enrolled(&self.identity_opts.identity_name)
+            .is_identity_enrolled(&self.command.identity_opts.identity_name)
             .await?
         {
             return Err(miette!(
@@ -50,25 +63,39 @@ impl Command for CreateCommand {
             ));
         };
 
-        let node = InMemoryNode::start(ctx, opts.state.clone()).await?;
-
         let space = {
-            let pb = opts.terminal.spinner();
+            let pb = self.opts.terminal.spinner();
             if let Some(pb) = pb.as_ref() {
                 pb.set_message("Creating a Space for you...");
             }
-            node.create_space(&self.name, self.admins.iter().map(|a| a.as_ref()).collect())
-                .await?
+            node.create_space(
+                &self.command.name,
+                self.command.admins.iter().map(|a| a.as_ref()).collect(),
+            )
+            .await?
         };
         if let Ok(msg) = space.subscription_status_message() {
-            opts.terminal.write_line(msg)?;
+            self.opts.terminal.write_line(msg)?;
         }
-        opts.terminal
+        self.opts
+            .terminal
+            .clone()
             .to_stdout()
             .plain(space.item()?)
             .json_obj(&space)?
             .write_line()?;
         Ok(())
+    }
+}
+
+#[async_trait]
+impl Command for CreateCommand {
+    const NAME: &'static str = "space create";
+
+    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> Result<()> {
+        CreateNodeCommand::new(opts.clone(), self.clone())
+            .execute(ctx, opts.state)
+            .await
     }
 }
 

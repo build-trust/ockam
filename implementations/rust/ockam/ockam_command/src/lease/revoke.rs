@@ -1,3 +1,4 @@
+use crate::node_command::InMemoryNodeCommand;
 use crate::shared_args::{IdentityOpts, TimeoutArg, TrustOpts};
 use crate::util::clean_nodes_multiaddr;
 use crate::{docs, Command, CommandGlobalOpts};
@@ -10,6 +11,8 @@ use ockam_api::influxdb::lease_issuer::InfluxDBTokenLessorNodeServiceTrait;
 use ockam_api::nodes::InMemoryNode;
 use ockam_api::{fmt_log, fmt_ok};
 use ockam_multiaddr::MultiAddr;
+use std::sync::Arc;
+use std::time::Duration;
 
 const HELP_DETAIL: &str = "";
 
@@ -35,29 +38,44 @@ pub struct RevokeCommand {
     trust_opts: TrustOpts,
 }
 
+#[derive(Clone)]
+struct RevokeNodeCommand {
+    opts: CommandGlobalOpts,
+    command: RevokeCommand,
+}
+
+impl RevokeNodeCommand {
+    pub fn new(opts: CommandGlobalOpts, command: RevokeCommand) -> Self {
+        Self { opts, command }
+    }
+}
+
 #[async_trait]
-impl Command for RevokeCommand {
-    const NAME: &'static str = "lease revoke";
+impl InMemoryNodeCommand for RevokeNodeCommand {
+    fn project_name(&self) -> Option<String> {
+        self.command.trust_opts.project_name.clone()
+    }
 
-    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
-        let cmd = self.parse_args(&opts).await?;
+    fn identity_name(&self) -> Option<String> {
+        self.command.identity_opts.identity_name.clone()
+    }
 
-        let node = InMemoryNode::start_with_identity_and_project_name(
-            ctx,
-            opts.state.clone(),
-            cmd.identity_opts.identity_name.clone(),
-            cmd.trust_opts.project_name.clone(),
-        )
-        .await?
-        .with_timeout(cmd.timeout.timeout);
+    fn timeout(&self) -> Option<Duration> {
+        Some(self.command.timeout.timeout)
+    }
 
-        opts.terminal
+    async fn run(&self, node: Arc<InMemoryNode>) -> miette::Result<()> {
+        let cmd = self.command.clone().parse_args(&self.opts).await?;
+        self.opts
+            .terminal
             .write_line(fmt_log!("Revoking influxdb token {}...\n", cmd.token_id))?;
 
-        let (at, _meta) = clean_nodes_multiaddr(&cmd.at, opts.state.clone()).await?;
-        node.revoke_token(ctx, &at, &cmd.token_id).await?;
+        let (at, _meta) = clean_nodes_multiaddr(&cmd.at, self.opts.state.clone()).await?;
+        node.revoke_token(node.ctx(), &at, &cmd.token_id).await?;
 
-        opts.terminal
+        self.opts
+            .terminal
+            .clone()
             .to_stdout()
             .plain(fmt_ok!(
                 "Token with id {} has been revoked.",
@@ -68,6 +86,17 @@ impl Command for RevokeCommand {
             .write_line()?;
 
         Ok(())
+    }
+}
+
+#[async_trait]
+impl Command for RevokeCommand {
+    const NAME: &'static str = "lease revoke";
+
+    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+        RevokeNodeCommand::new(opts.clone(), self.clone())
+            .execute(ctx, opts.state)
+            .await
     }
 }
 

@@ -1,10 +1,13 @@
+use async_trait::async_trait;
 use clap::Args;
+use std::sync::Arc;
 
 use ockam::Context;
 use ockam_api::cli_state::random_name;
 use ockam_api::nodes::InMemoryNode;
 use ockam_api::orchestrator::project::ProjectsOrchestratorApi;
 
+use crate::node_command::InMemoryNodeCommand;
 use crate::operation::util::check_for_project_completion;
 use crate::project::util::check_project_readiness;
 use crate::shared_args::IdentityOpts;
@@ -35,23 +38,45 @@ pub struct CreateCommand {
     //TODO:  list of admins
 }
 
+#[derive(Clone)]
+struct CreateNodeCommand {
+    opts: CommandGlobalOpts,
+    command: CreateCommand,
+}
+
+impl CreateNodeCommand {
+    pub fn new(opts: CommandGlobalOpts, command: CreateCommand) -> Self {
+        Self { opts, command }
+    }
+}
+
+#[async_trait]
+impl InMemoryNodeCommand for CreateNodeCommand {
+    async fn run(&self, node: Arc<InMemoryNode>) -> miette::Result<()> {
+        let project = node
+            .create_project(&self.command.space_name, &self.command.project_name, vec![])
+            .await?;
+        let project = check_for_project_completion(&self.opts, &node, project).await?;
+        let project = check_project_readiness(&self.opts, &node, project).await?;
+        self.opts
+            .terminal
+            .clone()
+            .to_stdout()
+            .plain(project.item()?)
+            .json(serde_json::json!(&project))
+            .write_line()?;
+        Ok(())
+    }
+}
+
 impl CreateCommand {
     pub fn name(&self) -> String {
         "project create".into()
     }
 
     pub(crate) async fn run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
-        let node = InMemoryNode::start(ctx, opts.state.clone()).await?;
-        let project = node
-            .create_project(&self.space_name, &self.project_name, vec![])
-            .await?;
-        let project = check_for_project_completion(&opts, &node, project).await?;
-        let project = check_project_readiness(&opts, &node, project).await?;
-        opts.terminal
-            .to_stdout()
-            .plain(project.item()?)
-            .json(serde_json::json!(&project))
-            .write_line()?;
-        Ok(())
+        CreateNodeCommand::new(opts.clone(), self.clone())
+            .execute(ctx, opts.state)
+            .await
     }
 }

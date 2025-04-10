@@ -1,6 +1,8 @@
+use async_trait::async_trait;
 use clap::Args;
 use miette::IntoDiagnostic;
 use opentelemetry::trace::FutureExt;
+use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio::try_join;
 
@@ -8,6 +10,7 @@ use ockam::Context;
 use ockam_api::nodes::InMemoryNode;
 use ockam_api::orchestrator::project::ProjectsOrchestratorApi;
 
+use crate::node_command::InMemoryNodeCommand;
 use crate::shared_args::IdentityOpts;
 use crate::{docs, CommandGlobalOpts};
 
@@ -27,13 +30,20 @@ pub struct ListCommand {
     pub identity_opts: IdentityOpts,
 }
 
-impl ListCommand {
-    pub fn name(&self) -> String {
-        "project list".into()
-    }
+#[derive(Clone)]
+struct ListNodeCommand {
+    opts: CommandGlobalOpts,
+}
 
-    pub async fn run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
-        let node = InMemoryNode::start(ctx, opts.state.clone()).await?;
+impl ListNodeCommand {
+    pub fn new(opts: CommandGlobalOpts) -> Self {
+        Self { opts }
+    }
+}
+
+#[async_trait]
+impl InMemoryNodeCommand for ListNodeCommand {
+    async fn run(&self, node: Arc<InMemoryNode>) -> miette::Result<()> {
         let is_finished: Mutex<bool> = Mutex::new(false);
         let get_projects = async {
             let projects = node.get_admin_projects().await?;
@@ -42,19 +52,39 @@ impl ListCommand {
         }
         .with_current_context();
 
-        let output_messages = vec![format!("Listing projects...\n",)];
-        let progress_output = opts.terminal.loop_messages(&output_messages, &is_finished);
+        let output_messages = vec!["Listing projects...\n".to_string()];
+        let progress_output = self
+            .opts
+            .terminal
+            .loop_messages(&output_messages, &is_finished);
 
         let (projects, _) = try_join!(get_projects, progress_output)?;
 
-        let plain = &opts.terminal.build_list(&projects, "No projects found")?;
+        let plain = self
+            .opts
+            .terminal
+            .build_list(&projects, "No projects found")?;
         let json = serde_json::to_string(&projects).into_diagnostic()?;
 
-        opts.terminal
+        self.opts
+            .terminal
+            .clone()
             .to_stdout()
             .plain(plain)
             .json(json)
             .write_line()?;
         Ok(())
+    }
+}
+
+impl ListCommand {
+    pub fn name(&self) -> String {
+        "project list".into()
+    }
+
+    pub async fn run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        ListNodeCommand::new(opts.clone())
+            .execute(ctx, opts.state)
+            .await
     }
 }

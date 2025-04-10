@@ -1,19 +1,20 @@
+use crate::node_command::InMemoryNodeCommand;
+use crate::project_member::create_member_attributes;
+use crate::shared_args::{IdentityOpts, RetryOpts};
+use crate::{docs, Command, CommandGlobalOpts, Error};
 use async_trait::async_trait;
 use clap::Args;
 use colorful::Colorful;
-use serde::Serialize;
-use std::collections::BTreeMap;
-use std::fmt::Display;
-
 use ockam::identity::Identifier;
 use ockam::Context;
 use ockam_api::authenticator::direct::Members;
 use ockam_api::colors::color_primary;
+use ockam_api::nodes::InMemoryNode;
 use ockam_api::{fmt_log, fmt_ok};
-
-use crate::project_member::{authority_client, create_member_attributes};
-use crate::shared_args::{IdentityOpts, RetryOpts};
-use crate::{docs, Command, CommandGlobalOpts, Error};
+use serde::Serialize;
+use std::collections::BTreeMap;
+use std::fmt::Display;
+use std::sync::Arc;
 
 const LONG_ABOUT: &str = include_str!("./static/add/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/add/after_long_help.txt");
@@ -63,6 +64,65 @@ pub struct AddCommand {
     retry_opts: RetryOpts,
 }
 
+#[derive(Clone)]
+struct AddNodeCommand {
+    opts: CommandGlobalOpts,
+    command: AddCommand,
+}
+
+impl AddNodeCommand {
+    pub fn new(opts: CommandGlobalOpts, command: AddCommand) -> Self {
+        Self { opts, command }
+    }
+}
+
+#[async_trait]
+impl InMemoryNodeCommand for AddNodeCommand {
+    fn project_name(&self) -> Option<String> {
+        self.command.project_name.clone()
+    }
+
+    fn identity_name(&self) -> Option<String> {
+        self.command.identity_opts.identity_name.clone()
+    }
+
+    async fn run(&self, node: Arc<InMemoryNode>) -> miette::Result<()> {
+        let authority_node_client = self.authority_client(node.clone()).await?;
+        let project = node
+            .state()
+            .projects()
+            .get_project_by_name_or_default(&self.command.project_name)
+            .await?;
+
+        let attributes = create_member_attributes(
+            &self.command.attributes,
+            &self.command.allowed_relay_name,
+            self.command.enroller,
+        )?;
+
+        authority_node_client
+            .add_member(node.ctx(), self.command.member.clone(), attributes.clone())
+            .await
+            .map_err(Error::Retry)?;
+
+        let output = AddMemberOutput {
+            project: project.name().to_string(),
+            identifier: self.command.member.clone(),
+            attributes,
+        };
+
+        self.opts
+            .terminal
+            .clone()
+            .to_stdout()
+            .plain(output.to_string())
+            .json_obj(&output)?
+            .write_line()?;
+
+        Ok(())
+    }
+}
+
 #[async_trait]
 impl Command for AddCommand {
     const NAME: &'static str = "project-member add";
@@ -72,30 +132,9 @@ impl Command for AddCommand {
     }
 
     async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
-        let (authority_node_client, project_name) =
-            authority_client(ctx, &opts, &self.identity_opts, &self.project_name).await?;
-
-        let attributes =
-            create_member_attributes(&self.attributes, &self.allowed_relay_name, self.enroller)?;
-
-        authority_node_client
-            .add_member(ctx, self.member.clone(), attributes.clone())
+        AddNodeCommand::new(opts.clone(), self.clone())
+            .execute(ctx, opts.state)
             .await
-            .map_err(Error::Retry)?;
-
-        let output = AddMemberOutput {
-            project: project_name,
-            identifier: self.member.clone(),
-            attributes,
-        };
-
-        opts.terminal
-            .to_stdout()
-            .plain(output.to_string())
-            .json_obj(&output)?
-            .write_line()?;
-
-        Ok(())
     }
 }
 

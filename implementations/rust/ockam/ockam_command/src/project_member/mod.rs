@@ -12,19 +12,13 @@ use ockam_api::authenticator::direct::{
     OCKAM_ROLE_ATTRIBUTE_ENROLLER_VALUE, OCKAM_ROLE_ATTRIBUTE_KEY,
 };
 use ockam_api::colors::{color_primary, color_warn};
-use ockam_api::nodes::{InMemoryNode, NodeManager};
-use ockam_api::orchestrator::project::Project;
-use ockam_api::orchestrator::AuthorityNodeClient;
 use ockam_api::output::Output;
 use ockam_api::terminal::fmt;
-use ockam_api::CliState;
 use ockam_node::Context;
 use serde::Serialize;
 use std::fmt::Write;
-use std::sync::Arc;
 
 use crate::project_member::show::ShowCommand;
-use crate::shared_args::IdentityOpts;
 use crate::{docs, Command, CommandGlobalOpts};
 
 mod add;
@@ -82,39 +76,6 @@ pub enum ProjectMemberSubcommand {
     Show(ShowCommand),
     #[command(display_order = 800)]
     Delete(DeleteCommand),
-}
-
-pub(super) async fn authority_client(
-    ctx: &Context,
-    opts: &CommandGlobalOpts,
-    identity_opts: &IdentityOpts,
-    project_name: &Option<String>,
-) -> crate::Result<(AuthorityNodeClient, String)> {
-    let node = InMemoryNode::start_with_project_name(ctx, opts.state.clone(), project_name.clone())
-        .await?;
-    let project = opts
-        .state
-        .projects()
-        .get_project_by_name_or_default(project_name)
-        .await?;
-    Ok((
-        create_authority_client(&node, opts.state.clone(), identity_opts, &project).await?,
-        project.name().to_string(),
-    ))
-}
-
-pub(super) async fn create_authority_client(
-    node: &NodeManager,
-    cli_state: Arc<CliState>,
-    identity_opts: &IdentityOpts,
-    project: &Project,
-) -> crate::Result<AuthorityNodeClient> {
-    let identity = cli_state
-        .get_identity_name_or_default(&identity_opts.identity_name)
-        .await?;
-
-    node.create_authority_client_with_project(project, Some(identity), false)
-        .await
 }
 
 pub(crate) fn create_member_attributes(

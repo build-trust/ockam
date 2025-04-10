@@ -1,10 +1,13 @@
+use async_trait::async_trait;
 use clap::builder::NonEmptyStringValueParser;
 use clap::Args;
+use std::sync::Arc;
 
 use ockam::Context;
 use ockam_api::nodes::InMemoryNode;
 use ockam_api::orchestrator::addon::Addons;
 
+use crate::node_command::InMemoryNodeCommand;
 use crate::CommandGlobalOpts;
 
 /// List available addons for a project
@@ -20,14 +23,18 @@ pub struct AddonListSubcommand {
     project_name: String,
 }
 
-impl AddonListSubcommand {
-    pub fn name(&self) -> String {
-        "project addon list".into()
-    }
+#[derive(Clone)]
+struct AddonListNodeCommand {
+    opts: CommandGlobalOpts,
+    command: AddonListSubcommand,
+}
 
-    pub async fn run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
-        let project_name = self.project_name.clone();
-        let project_id = opts
+#[async_trait]
+impl InMemoryNodeCommand for AddonListNodeCommand {
+    async fn run(&self, node: Arc<InMemoryNode>) -> miette::Result<()> {
+        let project_name = self.command.project_name.clone();
+        let project_id = self
+            .opts
             .state
             .projects()
             .get_project_by_name(&project_name)
@@ -35,15 +42,37 @@ impl AddonListSubcommand {
             .project_id()
             .to_string();
 
-        let node = InMemoryNode::start(ctx, opts.state.clone()).await?;
         let controller = node.create_controller().await?;
 
-        let addons = controller.list_addons(ctx, &project_id).await?;
-        let output = opts.terminal.build_list(
+        let addons = controller.list_addons(node.ctx(), &project_id).await?;
+        let output = self.opts.terminal.build_list(
             &addons,
             &format!("No addons enabled for project {project_name}"),
         )?;
-        opts.terminal.to_stdout().plain(output).write_line()?;
+        self.opts
+            .terminal
+            .clone()
+            .to_stdout()
+            .plain(output)
+            .write_line()?;
         Ok(())
+    }
+}
+
+impl AddonListNodeCommand {
+    pub fn new(opts: CommandGlobalOpts, command: AddonListSubcommand) -> Self {
+        Self { opts, command }
+    }
+}
+
+impl AddonListSubcommand {
+    pub fn name(&self) -> String {
+        "project addon list".into()
+    }
+
+    pub async fn run(&self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        AddonListNodeCommand::new(opts.clone(), self.clone())
+            .execute(ctx, opts.state)
+            .await
     }
 }

@@ -1,3 +1,4 @@
+use crate::node_command::InMemoryNodeCommand;
 use crate::shared_args::{IdentityOpts, TimeoutArg, TrustOpts};
 use crate::{docs, Command, CommandGlobalOpts};
 use async_trait::async_trait;
@@ -9,6 +10,8 @@ use ockam_api::nodes::InMemoryNode;
 use ockam_api::{fmt_log, fmt_ok};
 use ockam_multiaddr::MultiAddr;
 use ockam_node::Context;
+use std::sync::Arc;
+use std::time::Duration;
 
 const HELP_DETAIL: &str = "";
 
@@ -30,26 +33,40 @@ pub struct CreateCommand {
     trust_opts: TrustOpts,
 }
 
+#[derive(Clone)]
+struct CreateNodeCommand {
+    opts: CommandGlobalOpts,
+    command: CreateCommand,
+}
+
+impl CreateNodeCommand {
+    pub fn new(opts: CommandGlobalOpts, command: CreateCommand) -> Self {
+        Self { opts, command }
+    }
+}
+
 #[async_trait]
-impl Command for CreateCommand {
-    const NAME: &'static str = "lease create";
+impl InMemoryNodeCommand for CreateNodeCommand {
+    fn project_name(&self) -> Option<String> {
+        self.command.trust_opts.project_name.clone()
+    }
 
-    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
-        let cmd = self.parse_args(&opts).await?;
+    fn identity_name(&self) -> Option<String> {
+        self.command.identity_opts.identity_name.clone()
+    }
 
-        let node = InMemoryNode::start_with_identity_and_project_name(
-            ctx,
-            opts.state.clone(),
-            cmd.identity_opts.identity_name.clone(),
-            cmd.trust_opts.project_name.clone(),
-        )
-        .await?
-        .with_timeout(cmd.timeout.timeout);
+    fn timeout(&self) -> Option<Duration> {
+        Some(self.command.timeout.timeout)
+    }
 
-        opts.terminal
+    async fn run(&self, node: Arc<InMemoryNode>) -> miette::Result<()> {
+        let cmd = self.command.clone().parse_args(&self.opts).await?;
+
+        self.opts
+            .terminal
             .write_line(fmt_log!("Creating influxdb token...\n"))?;
 
-        let res = node.create_token(ctx, &cmd.at).await?;
+        let res = node.create_token(node.ctx(), &cmd.at).await?;
 
         let plain = fmt_ok!("A token with id {}\n", color_primary(&res.id))
             + &fmt_log!(
@@ -58,7 +75,9 @@ impl Command for CreateCommand {
             )
             + &fmt_log!("and will expire at {}", color_primary(res.expires_at()?));
 
-        opts.terminal
+        self.opts
+            .terminal
+            .clone()
             .to_stdout()
             .machine(&res.token)
             .plain(plain)
@@ -66,6 +85,17 @@ impl Command for CreateCommand {
             .write_line()?;
 
         Ok(())
+    }
+}
+
+#[async_trait]
+impl Command for CreateCommand {
+    const NAME: &'static str = "lease create";
+
+    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> crate::Result<()> {
+        CreateNodeCommand::new(opts.clone(), self.clone())
+            .execute(ctx, opts.state)
+            .await
     }
 }
 
