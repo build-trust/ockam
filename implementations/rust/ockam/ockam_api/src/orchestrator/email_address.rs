@@ -51,6 +51,20 @@ impl EmailAddress {
             format!("incorrect regular expression {e:?}"),
         )
     }
+
+    pub fn domain(&self) -> Result<String> {
+        self.0
+            .split('@')
+            .last()
+            .ok_or_else(|| {
+                Error::new(
+                    Origin::Api,
+                    Kind::Invalid,
+                    "email address does not contain a domain",
+                )
+            })
+            .map(|s| s.to_string())
+    }
 }
 
 /// Lowercase comparison for email addresses
