@@ -242,7 +242,7 @@ impl NodeManagerWorker {
             interceptor_address.clone(),
             Some(spawner_flow_control_id.clone()),
             http_interceptor_factory,
-            Arc::new(policy_access_control.create_outgoing(ctx)?),
+            Arc::new(policy_access_control.create_outgoing(ctx.get_router_context())?),
             Arc::new(policy_access_control.create_incoming()),
             read_portal_payload_length(),
         )?;
@@ -293,7 +293,7 @@ impl NodeManagerWorker {
             interceptor_address.clone(),
             http_interceptor_factory,
             Arc::new(policy_access_control.create_incoming()),
-            Arc::new(policy_access_control.create_outgoing(ctx)?),
+            Arc::new(policy_access_control.create_outgoing(ctx.get_router_context())?),
             read_portal_payload_length(),
         )?;
         Ok(interceptor_address)

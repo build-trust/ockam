@@ -4,11 +4,11 @@ use core::fmt::{Debug, Formatter};
 use ockam_core::compat::boxed::Box;
 use ockam_core::{async_trait, RelayMessage};
 use ockam_core::{OutgoingAccessControl, Result};
-use ockam_node::Context;
+use ockam_node::ContextRouter;
 use tracing::debug;
 
 pub struct OutgoingPolicyAccessControl {
-    pub(super) ctx: Context,
+    pub(super) ctx: ContextRouter,
     pub(super) policy_access_control: PolicyAccessControl,
 }
 

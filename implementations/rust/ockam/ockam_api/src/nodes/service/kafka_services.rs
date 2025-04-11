@@ -243,7 +243,7 @@ impl InMemoryNode {
                 encrypted_fields,
             )),
             Arc::new(policy_access_control.create_incoming()),
-            Arc::new(policy_access_control.create_outgoing(context)?),
+            Arc::new(policy_access_control.create_outgoing(context.get_router_context())?),
             read_portal_payload_length(),
         )?;
 
@@ -295,7 +295,7 @@ impl InMemoryNode {
                 outlet_controller.clone(),
                 spawner_flow_control_id.clone(),
             )),
-            Arc::new(policy_access_control.create_outgoing(context)?),
+            Arc::new(policy_access_control.create_outgoing(context.get_router_context())?),
             Arc::new(policy_access_control.create_incoming()),
             read_portal_payload_length(),
         )?;

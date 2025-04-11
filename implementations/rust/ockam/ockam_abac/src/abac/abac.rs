@@ -13,7 +13,7 @@ use crate::{eval, Env, Expr};
 use ockam_core::compat::format;
 use ockam_core::compat::string::ToString;
 use ockam_identity::{Identifier, IdentitiesAttributes};
-use ockam_node::Context;
+use ockam_node::ContextRouter;
 use tracing::{debug, warn};
 
 /// Prefix we use to check for subject attributes
@@ -60,7 +60,7 @@ impl Abac {
 
 impl Abac {
     pub fn get_outgoing_identifier(
-        ctx: &Context,
+        ctx: &ContextRouter,
         relay_msg: &RelayMessage,
     ) -> Result<Option<Identifier>> {
         let metadata = if let Some((_address, metadata)) =

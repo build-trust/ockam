@@ -31,7 +31,8 @@ use ockam::udp::{
 use ockam::{RelayService, RelayServiceOptions};
 use ockam_abac::expr::str;
 use ockam_abac::{
-    Action, Env, Policies, PolicyAccessControl, PolicyExpression, Resource, ResourceType, Resources,
+    Action, Env, IncomingAbac, OutgoingAbac, Policies, PolicyAccessControl, PolicyExpression,
+    Resource, ResourceType, Resources,
 };
 use ockam_core::flow_control::FlowControlId;
 use ockam_core::{
@@ -572,7 +573,7 @@ impl NodeManager {
         Arc<dyn IncomingAccessControl>,
         Arc<dyn OutgoingAccessControl>,
     )> {
-        let ctx = self.ctx();
+        let ctx = self.ctx().get_router_context();
         if authority.is_some() || expression.is_some() {
             let policy_access_control = self
                 .policy_access_control(authority, resource, action, expression)
@@ -654,6 +655,31 @@ impl NodeManager {
             env,
             authority,
         ))
+    }
+
+    pub async fn create_abac(
+        &self,
+        authority: Option<Identifier>,
+        expression: PolicyExpression,
+    ) -> ockam_core::Result<(
+        Arc<dyn IncomingAccessControl>,
+        Arc<dyn OutgoingAccessControl>,
+    )> {
+        let expression = expression.to_expression();
+        let incoming = IncomingAbac::create(
+            self.secure_channels.identities().identities_attributes(),
+            authority.clone(),
+            expression.clone(),
+        );
+
+        let outgoing = OutgoingAbac::create(
+            self.ctx().get_router_context(),
+            self.secure_channels.identities().identities_attributes(),
+            authority,
+            expression,
+        )?;
+
+        Ok((Arc::new(incoming), Arc::new(outgoing)))
     }
 
     /// Secure channel on address "api"
