@@ -2,6 +2,7 @@
 mod context;
 mod context_lifecycle;
 mod context_mode;
+mod context_router;
 mod context_send;
 mod context_state;
 mod has_context;
@@ -15,6 +16,7 @@ mod worker_lifecycle;
 
 pub use context::*;
 pub use context_mode::*;
+pub use context_router::*;
 pub use context_send::*;
 pub(crate) use context_state::*;
 pub use has_context::*;
