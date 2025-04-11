@@ -1,21 +1,22 @@
-use std::collections::HashMap;
-use std::io::stdin;
-use std::process;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
-
+use async_trait::async_trait;
 use colorful::Colorful;
 use miette::{miette, IntoDiagnostic, WrapErr};
 use r3bl_rs_utils_core::UnicodeString;
 use r3bl_tui::{
     ColorWheel, ColorWheelConfig, ColorWheelSpeed, GradientGenerationPolicy, TextColorizationPolicy,
 };
+use std::collections::HashMap;
+use std::io::stdin;
+use std::process;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio::try_join;
 use tracing::{error, info, instrument, warn, Level};
 
 use crate::enroll::OidcServiceExt;
 use crate::error::Error;
+use crate::node_command::InMemoryNodeCommand;
 use crate::operation::util::check_for_project_completion;
 use crate::project::util::check_project_readiness;
 use crate::{CommandGlobalOpts, Result};
@@ -34,6 +35,7 @@ use ockam_api::orchestrator::ControllerClient;
 use ockam_api::terminal::notification::NotificationHandler;
 use ockam_api::{fmt_err, fmt_log, fmt_ok, fmt_separator, fmt_warn};
 
+#[derive(Clone)]
 pub struct EnrollHandler {
     pub opts: CommandGlobalOpts,
     pub identity_name: Option<String>,
@@ -43,24 +45,9 @@ pub struct EnrollHandler {
     pub is_ai_cloud_account: bool,
 }
 
-impl EnrollHandler {
-    // Creates one span in the trace
-    #[instrument(
-        skip_all, // Drop all args that passed in, as Context doesn't play nice
-        fields(
-        enroller = ? self.identity_name, // https://docs.rs/tracing/latest/tracing/
-        authorization_code_flow = % self.authorization_code_flow,
-        force = % self.force,
-        skip_orchestrator_resources_creation = % self.skip_orchestrator_resources_creation,
-        ), level = Level::TRACE)]
-    pub async fn run(&self, ctx: &Context) -> miette::Result<()> {
-        if self.opts.global_args.output_format().is_json() {
-            return Err(miette::miette!(
-                "This command is interactive and requires you to open a web browser to complete enrollment. \
-                Please try running it again without '--output json'."
-            ));
-        }
-
+#[async_trait]
+impl InMemoryNodeCommand for EnrollHandler {
+    async fn init(&self) -> miette::Result<()> {
         self.ctrlc_handler();
 
         if self.is_already_enrolled().await? {
@@ -69,25 +56,17 @@ impl EnrollHandler {
 
         self.display_header();
 
-        let identity = {
-            let _notification_handler =
-                NotificationHandler::start(self.opts.state.clone(), self.opts.terminal.clone());
-            self.opts
-                .state
-                .get_named_identity_or_default(&self.identity_name)
-                .await?
-        };
+        let _notification_handler =
+            NotificationHandler::start(self.opts.state.clone(), self.opts.terminal.clone());
+        self.opts
+            .state
+            .get_named_identity_or_default(&self.identity_name)
+            .await?;
+        Ok(())
+    }
 
-        let identity_name = identity.name();
-        let identifier = identity.identifier();
-        let node = InMemoryNode::start_with_identity(
-            ctx,
-            self.opts.state.clone(),
-            Some(identity_name.clone()),
-        )
-        .await?;
-
-        let user_info = self.enroll_identity(ctx, &node).await?;
+    async fn run(&self, node: Arc<InMemoryNode>) -> miette::Result<()> {
+        let user_info = self.enroll_identity(&node).await?;
 
         if let Err(error) = self.retrieve_user_space_and_project(&node).await {
             // Display output to user
@@ -131,12 +110,18 @@ impl EnrollHandler {
             .add_journey_event(JourneyEvent::Enrolled, attributes)
             .await?;
 
+        let identity = self
+            .opts
+            .state
+            .get_named_identity_or_default(&self.identity_name)
+            .await?;
+
         // Output
         self.opts.terminal
             .write_line(fmt_log!(
                 "Your Identity {}, with Identifier {} is now enrolled with Ockam Orchestrator.",
-                color_primary(identity_name),
-                color_primary(identifier.to_string())
+                color_primary(identity.name()),
+                color_primary(identity.identifier().to_string())
             ))?
             .write_line(fmt_log!(
                 "You also now have an Orchestrator Project that offers a Project Membership Authority service and a Relay service.\n"
@@ -149,6 +134,28 @@ impl EnrollHandler {
                 color_uri("https://docs.ockam.io")
             ))?;
 
+        Ok(())
+    }
+}
+
+impl EnrollHandler {
+    // Creates one span in the trace
+    #[instrument(
+        skip_all, // Drop all args that passed in, as Context doesn't play nice
+        fields(
+        enroller = ? self.identity_name, // https://docs.rs/tracing/latest/tracing/
+        authorization_code_flow = % self.authorization_code_flow,
+        force = % self.force,
+        skip_orchestrator_resources_creation = % self.skip_orchestrator_resources_creation,
+        ), level = Level::TRACE)]
+    pub async fn handle(&self, ctx: &Context) -> miette::Result<()> {
+        if self.opts.global_args.output_format().is_json() {
+            return Err(miette::miette!(
+                "This command is interactive and requires you to open a web browser to complete enrollment. \
+                Please try running it again without '--output json'."
+            ));
+        }
+        self.execute(ctx, self.opts.state.clone()).await?;
         Ok(())
     }
 
@@ -209,11 +216,7 @@ impl EnrollHandler {
         Ok(is_already_enrolled)
     }
 
-    pub(crate) async fn enroll_identity(
-        &self,
-        ctx: &Context,
-        node: &InMemoryNode,
-    ) -> miette::Result<UserInfo> {
+    pub(crate) async fn enroll_identity(&self, node: &InMemoryNode) -> miette::Result<UserInfo> {
         if !self
             .opts
             .state
@@ -245,7 +248,7 @@ impl EnrollHandler {
 
         // Enroll the identity with the Orchestrator
         let controller = node.create_controller().await?;
-        self.enroll_with_node(ctx, &controller, token)
+        self.enroll_with_node(node.ctx(), &controller, token)
             .await
             .wrap_err("Failed to enroll your local Identity with Ockam Orchestrator")?;
         self.opts
