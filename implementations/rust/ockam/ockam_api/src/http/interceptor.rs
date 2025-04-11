@@ -53,7 +53,8 @@ impl StaticHttpHeadersInterceptor {
         let outgoing_access_control: Arc<dyn OutgoingAccessControl>;
         if let Some(policy_access_control) = policy_access_control {
             incoming_access_control = Arc::new(policy_access_control.create_incoming());
-            outgoing_access_control = Arc::new(policy_access_control.create_outgoing(context)?);
+            outgoing_access_control =
+                Arc::new(policy_access_control.create_outgoing(context.get_router_context())?);
         } else {
             incoming_access_control = Arc::new(AllowAll);
             outgoing_access_control = Arc::new(AllowAll);

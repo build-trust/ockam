@@ -401,7 +401,7 @@ impl NodeManager {
                     policy_expression.to_expression(),
                 ));
                 outgoing_access_control = Arc::new(OutgoingAbac::create(
-                    context,
+                    context.get_router_context(),
                     self.secure_channels.identities().identities_attributes(),
                     self.project_authority(),
                     policy_expression.to_expression(),

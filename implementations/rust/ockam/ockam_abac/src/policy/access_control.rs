@@ -4,9 +4,9 @@ use crate::{Action, Env, Policies, Resource};
 use core::fmt;
 use core::fmt::{Debug, Formatter};
 use ockam_core::compat::sync::Arc;
-use ockam_core::{Address, DenyAll, Result};
+use ockam_core::Result;
 use ockam_identity::{Identifier, IdentitiesAttributes};
-use ockam_node::Context;
+use ockam_node::ContextRouter;
 use tracing::debug;
 
 /// Evaluates a policy expression against an environment of attributes.
@@ -62,13 +62,7 @@ impl PolicyAccessControl {
         }
     }
 
-    pub fn create_outgoing(&self, ctx: &Context) -> Result<OutgoingPolicyAccessControl> {
-        let ctx = ctx.new_detached(
-            Address::random_tagged("OutgoingPolicyAbac"),
-            DenyAll,
-            DenyAll,
-        )?;
-
+    pub fn create_outgoing(&self, ctx: ContextRouter) -> Result<OutgoingPolicyAccessControl> {
         Ok(OutgoingPolicyAccessControl {
             ctx,
             policy_access_control: self.clone(),

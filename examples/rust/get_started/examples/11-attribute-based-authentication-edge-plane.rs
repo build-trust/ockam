@@ -98,7 +98,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
         "control",
     );
     let outgoing_access_control = OutgoingAbac::create_name_value(
-        node.context(),
+        node.context().get_router_context(),
         identities().await?.identities_attributes(),
         Some(project.authority_identifier()),
         "component",

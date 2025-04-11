@@ -7,13 +7,14 @@ use core::sync::atomic::AtomicUsize;
 use ockam_core::compat::collections::HashMap;
 use ockam_core::compat::sync::Weak;
 use ockam_core::compat::sync::{Arc, RwLock};
+use ockam_core::compat::vec::Vec;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::flow_control::FlowControls;
 #[cfg(feature = "std")]
 use ockam_core::OpenTelemetryContext;
 use ockam_core::{
-    Address, Error, IncomingAccessControl, Mailboxes, Message, OutgoingAccessControl, Processor,
-    Result, Route, Routed, TransportType, Worker,
+    Address, AddressMetadata, Error, IncomingAccessControl, Mailboxes, Message,
+    OutgoingAccessControl, Processor, Result, Route, Routed, TransportType, Worker,
 };
 use ockam_transport_core::Transport;
 
@@ -289,6 +290,31 @@ impl ContextRouter {
             self.tracing_context.clone(),
         )
         .await
+    }
+}
+
+impl ContextRouter {
+    /// Return a list of all available worker addresses on a node
+    pub fn list_workers(&self) -> Result<Vec<Address>> {
+        Ok(self.router()?.list_workers())
+    }
+
+    /// Return true if a worker is already registered at this address
+    pub fn is_worker_registered_at(&self, address: &Address) -> Result<bool> {
+        Ok(self.router()?.is_worker_registered_at(address))
+    }
+
+    /// Finds the terminal address of a route, if present
+    pub fn find_terminal_address<'a>(
+        &self,
+        addresses: impl Iterator<Item = &'a Address>,
+    ) -> Result<Option<(&'a Address, AddressMetadata)>> {
+        Ok(self.router()?.find_terminal_address(addresses))
+    }
+
+    /// Read metadata for the provided address
+    pub fn get_metadata(&self, address: &Address) -> Result<Option<AddressMetadata>> {
+        Ok(self.router()?.get_address_metadata(address))
     }
 }
 

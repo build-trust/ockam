@@ -91,7 +91,7 @@ async fn main(ctx: Context) -> Result<()> {
         "production",
     );
     let allow_production_outgoing = OutgoingAbac::create_name_value(
-        &ctx,
+        ctx.get_router_context(),
         node.identities_attributes(),
         Some(issuer),
         "cluster",
