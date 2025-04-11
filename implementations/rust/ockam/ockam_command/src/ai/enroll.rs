@@ -49,7 +49,7 @@ impl Command for EnrollCommand {
             skip_orchestrator_resources_creation: true,
             is_ai_cloud_account: true,
         };
-        handler.run(ctx).await?;
+        handler.handle(ctx).await?;
         Ok(())
     }
 }
