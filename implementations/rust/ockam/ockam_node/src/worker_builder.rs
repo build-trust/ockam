@@ -1,5 +1,5 @@
-use crate::{debugger, ContextMode, WorkerShutdownPriority};
 use crate::{relay::WorkerRelay, Context};
+use crate::{ContextMode, ContextRouter, WorkerShutdownPriority};
 use ockam_core::compat::string::String;
 use ockam_core::compat::sync::Arc;
 use ockam_core::{
@@ -98,7 +98,12 @@ where
 {
     /// Consume this builder and start a new Ockam [`Worker`] from the given context
     pub fn start(self, context: &Context) -> Result<()> {
-        start(context, self.mailboxes, self.shutdown_priority, self.worker)
+        start(
+            &context.get_router_context(),
+            self.mailboxes,
+            self.shutdown_priority,
+            self.worker,
+        )
     }
 
     pub fn with_shutdown_priority(mut self, shutdown_priority: WorkerShutdownPriority) -> Self {
@@ -158,6 +163,11 @@ where
 
     /// Consume this builder and start a new Ockam [`Worker`] from the given context
     pub fn start(self, context: &Context) -> Result<()> {
+        self.start_using_router_context(&context.get_router_context())
+    }
+
+    /// Consume this builder and start a new Ockam [`Worker`] from the given context
+    pub fn start_using_router_context(self, context: &ContextRouter) -> Result<()> {
         start(
             context,
             Mailboxes::new(
@@ -218,7 +228,7 @@ where
 
 /// Consume this builder and start a new Ockam [`Worker`] from the given context
 fn start<W>(
-    context: &Context,
+    context: &ContextRouter,
     mailboxes: Mailboxes,
     shutdown_priority: WorkerShutdownPriority,
     worker: W,
@@ -235,8 +245,6 @@ where
 
     // Pass it to the context
     let (ctx, sender, ctrl_rx) = context.new_with_mailboxes(mailboxes, ContextMode::Attached);
-
-    debugger::log_inherit_context("WORKER", context, &ctx);
 
     let router = context.router()?;
     router.add_worker(

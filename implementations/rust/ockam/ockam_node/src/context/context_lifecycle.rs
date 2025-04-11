@@ -1,5 +1,6 @@
 #[cfg(not(feature = "std"))]
 use crate::tokio;
+use core::sync::atomic::AtomicUsize;
 use core::time::Duration;
 use ockam_core::compat::collections::HashMap;
 use ockam_core::compat::sync::Weak;
@@ -17,8 +18,8 @@ use ockam_transport_core::Transport;
 use crate::channel_types::{message_channel, oneshot_channel, OneshotReceiver};
 use crate::context::ContextState;
 use crate::router::Router;
-use crate::{debugger, Context, ContextMode};
 use crate::{relay::CtrlSignal, router::SenderPair};
+use crate::{Context, ContextMode};
 use tokio::runtime::Handle;
 
 impl Drop for Context {
@@ -65,7 +66,7 @@ impl Context {
     /// `async_drop_sender` must be provided when creating a detached
     /// Context type (i.e. not backed by a worker relay).
     #[allow(clippy::too_many_arguments)]
-    fn new(
+    pub(super) fn new(
         runtime_handle: Handle,
         router: Weak<Router>,
         mailboxes: Mailboxes,
@@ -127,23 +128,6 @@ impl Context {
         )
     }
 
-    pub(crate) fn new_with_mailboxes(
-        &self,
-        mailboxes: Mailboxes,
-        mode: ContextMode,
-    ) -> (Context, SenderPair, OneshotReceiver<CtrlSignal>) {
-        Self::new(
-            self.runtime().clone(),
-            self.router_weak(),
-            mailboxes,
-            mode,
-            self.transports.clone(),
-            &self.state.flow_controls,
-            #[cfg(feature = "std")]
-            OpenTelemetryContext::current(),
-        )
-    }
-
     /// Utility function to sleep tasks from other crates
     #[doc(hidden)]
     pub async fn sleep(&self, duration: Duration) {
@@ -180,11 +164,44 @@ impl Context {
         }
     }
 
-    /// TODO basically we can just rename `Self::new_detached_impl()`
+    /// Create a new [`Context`] instance with dedicated Mailbox(es)
     pub fn new_detached_with_mailboxes(&self, mailboxes: Mailboxes) -> Result<Context> {
-        let ctx = self.new_detached_impl(mailboxes)?;
+        Self::new_detached_with_mailboxes_impl(
+            self.runtime().clone(),
+            self.router()?,
+            self.transports.clone(),
+            self.flow_controls(),
+            mailboxes,
+            self.mailbox_count(),
+        )
+    }
 
-        debugger::log_inherit_context("DETACHED_WITH_MB", self, &ctx);
+    pub(crate) fn new_detached_with_mailboxes_impl(
+        runtime: Handle,
+        router: Arc<Router>,
+        transports: Arc<RwLock<HashMap<TransportType, Arc<dyn Transport>>>>,
+        flow_controls: &FlowControls,
+        mailboxes: Mailboxes,
+        mailbox_count: Arc<AtomicUsize>,
+    ) -> Result<Context> {
+        let (ctx, sender, _) = Context::new(
+            runtime,
+            Arc::downgrade(&router),
+            mailboxes,
+            ContextMode::Detached,
+            transports,
+            flow_controls,
+            #[cfg(feature = "std")]
+            OpenTelemetryContext::current(),
+        );
+
+        router.add_worker(
+            ctx.mailboxes(),
+            sender,
+            true,
+            Default::default(),
+            mailbox_count,
+        )?;
 
         Ok(ctx)
     }
@@ -226,24 +243,7 @@ impl Context {
         outgoing: impl OutgoingAccessControl,
     ) -> Result<Context> {
         let mailboxes = Mailboxes::primary(address.into(), Arc::new(incoming), Arc::new(outgoing));
-        let ctx = self.new_detached_impl(mailboxes)?;
-
-        debugger::log_inherit_context("DETACHED", self, &ctx);
-
-        Ok(ctx)
-    }
-
-    fn new_detached_impl(&self, mailboxes: Mailboxes) -> Result<Context> {
-        // Create a new context and get access to the mailbox senders
-        let (ctx, sender, _) = self.new_with_mailboxes(mailboxes, ContextMode::Detached);
-
-        self.router()?.add_worker(
-            ctx.mailboxes(),
-            sender,
-            true,
-            Default::default(),
-            self.state.mailbox_count.clone(),
-        )?;
+        let ctx = self.new_detached_with_mailboxes(mailboxes)?;
 
         Ok(ctx)
     }
@@ -263,12 +263,13 @@ mod tests {
         ctx.register_transport(transport_type, transport.clone());
 
         // after a copy with new mailboxes the list of transports should be intact
-        let mailboxes = Mailboxes::new(Mailbox::deny_all("address"), vec![]);
-        let (copy, _, _) = ctx.new_with_mailboxes(mailboxes.clone(), ContextMode::Attached);
+        let mailboxes1 = Mailboxes::new(Mailbox::deny_all("address1"), vec![]);
+        let copy = ctx.new_detached_with_mailboxes(mailboxes1)?;
         assert!(copy.is_transport_registered(transport_type));
 
         // after a detached copy with new mailboxes the list of transports should be intact
-        let (copy, _, _) = ctx.new_with_mailboxes(mailboxes, ContextMode::Attached);
+        let mailboxes2 = Mailboxes::new(Mailbox::deny_all("address2"), vec![]);
+        let copy = ctx.new_detached_with_mailboxes(mailboxes2)?;
         assert!(copy.is_transport_registered(transport_type));
         Ok(())
     }

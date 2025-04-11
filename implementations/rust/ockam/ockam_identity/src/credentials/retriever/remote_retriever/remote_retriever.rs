@@ -30,9 +30,6 @@ pub const DEFAULT_MIN_REFRESH_CREDENTIAL_INTERVAL: Duration = Duration::from_sec
 /// Default timeout for requesting credential from the authority
 pub const DEFAULT_CREDENTIAL_REQUEST_TIMEOUT: Duration = Duration::from_secs(15);
 
-/// Start refresh in the background before it expires
-pub const DEFAULT_CREDENTIAL_PROACTIVE_REFRESH_GAP: TimestampInSeconds = TimestampInSeconds(60);
-
 /// Timing options for retrieving remote credentials
 #[derive(Clone, Copy)]
 pub struct RemoteCredentialRetrieverTimingOptions {

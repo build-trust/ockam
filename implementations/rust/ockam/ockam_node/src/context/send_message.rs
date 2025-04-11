@@ -1,20 +1,34 @@
 use crate::context::MessageWait;
 use crate::error::*;
+use crate::router::Router;
+#[cfg(not(feature = "std"))]
+use crate::tokio;
 use crate::{debugger, Context, MessageReceiveOptions, DEFAULT_TIMEOUT};
+
+use core::sync::atomic::AtomicUsize;
 use core::time::Duration;
-use ockam_core::compat::{sync::Arc, vec::Vec};
+use ockam_core::compat::collections::HashMap;
+use ockam_core::compat::sync::{Arc, RwLock};
+use ockam_core::compat::vec::Vec;
+use ockam_core::flow_control::FlowControls;
 use ockam_core::{
     errcode::{Kind, Origin},
     Address, AllOutgoingAccessControl, AllowAll, AllowOnwardAddress, Error, IncomingAccessControl,
     LocalMessage, Mailboxes, Message, OutgoingAccessControl, RelayMessage, Result, Route, Routed,
+    TransportType,
 };
 use ockam_core::{LocalInfo, Mailbox};
+use ockam_transport_core::Transport;
+use tokio::runtime::Handle;
+
+#[cfg(feature = "std")]
+use ockam_core::OpenTelemetryContext;
 
 /// Full set of options to `send_and_receive_extended` function
 pub struct MessageSendReceiveOptions {
-    message_wait: MessageWait,
-    incoming_access_control: Option<Arc<dyn IncomingAccessControl>>,
-    outgoing_access_control: Option<Arc<dyn OutgoingAccessControl>>,
+    pub(super) message_wait: MessageWait,
+    pub(super) incoming_access_control: Option<Arc<dyn IncomingAccessControl>>,
+    pub(super) outgoing_access_control: Option<Arc<dyn OutgoingAccessControl>>,
 }
 
 impl Default for MessageSendReceiveOptions {
@@ -104,8 +118,37 @@ impl Context {
         T: Message,
         R: Message,
     {
-        let route: Route = route.into();
+        Self::send_and_receive_extended_impl(
+            self.runtime().clone(),
+            self.router()?,
+            self.transports.clone(),
+            self.flow_controls(),
+            self.mailbox_count(),
+            route.into(),
+            msg,
+            options,
+            #[cfg(feature = "std")]
+            self.tracing_context(),
+        )
+        .await
+    }
 
+    #[allow(clippy::too_many_arguments)]
+    pub(super) async fn send_and_receive_extended_impl<T, R>(
+        runtime: Handle,
+        router: Arc<Router>,
+        transports: Arc<RwLock<HashMap<TransportType, Arc<dyn Transport>>>>,
+        flow_controls: &FlowControls,
+        mailbox_count: Arc<AtomicUsize>,
+        route: Route,
+        msg: T,
+        options: MessageSendReceiveOptions,
+        #[cfg(feature = "std")] tracing_context: OpenTelemetryContext,
+    ) -> Result<Routed<R>>
+    where
+        T: Message,
+        R: Message,
+    {
         let next = route.next()?.clone();
         let address = Address::random_tagged("Context.send_and_receive.detached");
 
@@ -136,21 +179,25 @@ impl Context {
             vec![],
         );
 
-        if let Some(flow_control_id) = self
-            .state
-            .flow_controls
+        if let Some(flow_control_id) = flow_controls
             .find_flow_control_with_producer_address(&next)
             .map(|x| x.flow_control_id().clone())
         {
             // To be able to receive the response
-            self.flow_controls()
-                .add_consumer(&address, &flow_control_id);
+            flow_controls.add_consumer(&address, &flow_control_id);
         }
 
-        let mut child_ctx = self.new_detached_with_mailboxes(mailboxes)?;
+        let mut child_ctx = Self::new_detached_with_mailboxes_impl(
+            runtime,
+            router,
+            transports,
+            flow_controls,
+            mailboxes,
+            mailbox_count,
+        )?;
 
         #[cfg(feature = "std")]
-        child_ctx.set_tracing_context(self.tracing_context());
+        child_ctx.set_tracing_context(tracing_context);
 
         child_ctx.send(route, msg).await?;
         child_ctx

@@ -22,8 +22,6 @@ use core::{
 #[cfg(feature = "debugger")]
 #[derive(Default)]
 struct Debugger {
-    /// Map context inheritance from parent main `Mailbox` to child [`Mailboxes`]
-    inherited_mb: Arc<RwLock<HashMap<Mailbox, Vec<Mailboxes>>>>,
     /// Map message destination to source
     incoming: Arc<RwLock<HashMap<Address, Vec<Address>>>>,
     /// Map message destination `Mailbox` to source [`Mailbox`]
@@ -144,44 +142,6 @@ pub fn log_outgoing_message(primary_address: &Address, relay_msg: &RelayMessage)
 /// No-op
 #[cfg(not(feature = "debugger"))]
 pub fn log_outgoing_message(_primary_address: &Address, _relay_msg: &RelayMessage) {}
-
-/// Log Context creation
-///
-/// This debug function builds an inheritance tree of the contexts
-/// within a node.
-///
-/// Useful for:
-///
-/// 1. Figuring out the access control inheritance structure for a
-///    node.
-/// 2. Getting a rough idea of the "worker context" for a group of
-///    contexts created by a top-level worker or processor interface
-/// 3. Tracking down "orphan" contexts that could be vulnerable to
-///    hostile messages
-#[cfg(feature = "debugger")]
-pub fn log_inherit_context(tag: &str, parent: &Context, child: &Context) {
-    static COUNTER: AtomicU32 = AtomicU32::new(0);
-
-    tracing::trace!(
-        "log_inherit_context #{:03}\n{:?}\nBegat {}\n{:?}\n",
-        COUNTER.fetch_add(1, Ordering::Relaxed),
-        parent.mailboxes(),
-        tag,
-        child.mailboxes(),
-    );
-
-    instance()
-        .inherited_mb
-        .write()
-        .unwrap()
-        .entry(parent.mailboxes().primary_mailbox().clone())
-        .or_default()
-        .push(child.mailboxes().clone());
-}
-
-/// No-op
-#[cfg(not(feature = "debugger"))]
-pub fn log_inherit_context(_tag: &str, _parent: &Context, _child: &Context) {}
 
 /// TODO
 pub fn _log_start_worker() {

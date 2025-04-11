@@ -1,5 +1,5 @@
 use crate::tokio::runtime::Runtime;
-use crate::{debugger, Context, Executor};
+use crate::{Context, Executor};
 use ockam_core::compat::sync::Arc;
 use ockam_core::flow_control::FlowControls;
 #[cfg(feature = "std")]
@@ -141,8 +141,6 @@ impl NodeBuilder {
             #[cfg(feature = "std")]
             OpenTelemetryContext::current(),
         );
-
-        debugger::log_inherit_context("NODE", &ctx, &ctx);
 
         // Register this mailbox handle with the executor
         router
