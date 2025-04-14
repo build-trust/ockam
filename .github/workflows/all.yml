@@ -45,11 +45,14 @@ jobs:
     name: All - lint_editorconfig
     runs-on: ubuntu-22.04
     container: # gitlab.com/greut/eclint
-      image: greut/eclint:v0.3.3@sha256:95e9a3dcbd236bae6569625cd403175cbde3705303774e7baca418b6442b8d77
+      image: greut/eclint:v0.5@sha256:138a6088655781ff0d4d60efb27e4992a392eb526cd0dcf437d75a3437e138a4
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           ref: ${{ github.event.inputs.commit_sha }}
+      - name: Mark repo as safe
+        shell: sh
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - shell: sh
         run: eclint -color=always
 
