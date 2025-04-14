@@ -375,6 +375,29 @@ CREATE TABLE kafka_config
     bootstrap_server TEXT NOT NULL  -- URL of the bootstrap server
 );
 
+
+-----------------
+-- USER JOURNEYS
+-----------------
+
+CREATE TABLE project_journey
+(
+    tenant_id                      TEXT NOT NULL,
+    project_id                     TEXT NOT NULL,
+    opentelemetry_context          TEXT NOT NULL UNIQUE,
+    start_datetime                 TEXT NOT NULL,
+    previous_opentelemetry_context TEXT
+);
+
+CREATE TABLE host_journey
+(
+    tenant_id                      TEXT NOT NULL,
+    opentelemetry_context          TEXT NOT NULL UNIQUE,
+    start_datetime                 TEXT NOT NULL,
+    previous_opentelemetry_context TEXT
+);
+
+
 -------------------------
 -- MULTI-TENANT POLICIES
 -------------------------
