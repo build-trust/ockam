@@ -13,6 +13,7 @@ use ockam_core::env::FromString;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{route, Address, AllowAll, Error, NeutralMessage};
 use ockam_multiaddr::MultiAddr;
+use ockam_node::OCKAM_LOG_LEVEL;
 use ockam_transport_core::HostnamePort;
 
 /// These tests serve as a benchmark for the message roundtrip latency.
@@ -24,7 +25,7 @@ use ockam_transport_core::HostnamePort;
 pub fn measure_message_latency_two_nodes() {
     let runtime = Arc::new(Runtime::new().unwrap());
     let runtime_cloned = runtime.clone();
-    std::env::remove_var("OCKAM_LOG_LEVEL");
+    std::env::remove_var(OCKAM_LOG_LEVEL);
 
     let result: ockam::Result<()> = runtime_cloned.block_on(async move {
         let test_body = async move {
@@ -119,7 +120,7 @@ pub fn measure_message_latency_two_nodes() {
 pub fn measure_buffer_latency_two_nodes_portal() {
     let runtime = Arc::new(Runtime::new().unwrap());
     let runtime_cloned = runtime.clone();
-    std::env::remove_var("OCKAM_LOG_LEVEL");
+    std::env::remove_var(OCKAM_LOG_LEVEL);
 
     let result: ockam::Result<()> = runtime_cloned.block_on(async move {
         let test_body = async move {

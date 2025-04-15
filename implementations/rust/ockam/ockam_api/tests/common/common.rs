@@ -25,7 +25,7 @@ use tracing::debug;
 // with freshly created Authority Identifier and temporary files for storage and vault
 pub async fn default_configuration() -> Result<Configuration> {
     let database_path = NamedTempFile::new().unwrap().keep().unwrap().1;
-    let database_configuration = DatabaseConfiguration::sqlite(database_path.as_path());
+    let database_configuration = DatabaseConfiguration::sqlite(database_path.as_path())?;
     let port = thread_rng().gen_range(10000..65535);
 
     let mut configuration = create_configuration(

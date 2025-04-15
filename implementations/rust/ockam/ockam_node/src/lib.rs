@@ -76,7 +76,7 @@ pub use processor_builder::ProcessorBuilder;
 pub use storage::database;
 pub use worker_builder::WorkerBuilder;
 
-pub use node::{NodeBuilder, NullWorker};
+pub use node::{NodeBuilder, NullWorker, OCKAM_LOG_LEVEL};
 
 #[cfg(feature = "std")]
 use core::future::Future;

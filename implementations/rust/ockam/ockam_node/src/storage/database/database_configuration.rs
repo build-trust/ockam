@@ -1,12 +1,13 @@
 use core::fmt::{Display, Formatter};
 use ockam_core::compat::rand::random_string;
-use ockam_core::env::get_env;
+use ockam_core::env::{get_env, get_env_with_default};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{Error, Result};
 use percent_encoding::NON_ALPHANUMERIC;
 use serde_json::Value;
 use std::fs::create_dir_all;
 use std::path::{Path, PathBuf};
+use tracing::log::LevelFilter;
 
 /// Use an in-memory SQLite database
 pub const OCKAM_SQLITE_IN_MEMORY: &str = "OCKAM_SQLITE_IN_MEMORY";
@@ -22,11 +23,48 @@ pub const OCKAM_DATABASE_PASSWORD: &str = "OCKAM_DATABASE_PASSWORD";
 pub const OCKAM_DATABASE_USERNAME_AND_PASSWORD: &str = "OCKAM_DATABASE_USERNAME_AND_PASSWORD";
 /// Name of the database admin user
 pub const OCKAM_DATABASE_ADMIN_USERNAME: &str = "OCKAM_DATABASE_ADMIN_USERNAME";
+/// Log level for sql statements. Accepted values, see LevelVar. For example: trace, debug, info, warn, error
+pub const OCKAM_SQL_LOG_LEVEL: &str = "OCKAM_SQL_LOG_LEVEL";
 
 /// Configuration for the database.
 /// We either use Sqlite or Postgres
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum DatabaseConfiguration {
+pub struct DatabaseConfiguration {
+    mode: DatabaseConfigurationMode,
+    statements_log_level: LevelFilter,
+}
+
+impl DatabaseConfiguration {
+    /// Constructor
+    pub fn new(mode: DatabaseConfigurationMode, statements_log_level: LevelFilter) -> Self {
+        Self {
+            mode,
+            statements_log_level,
+        }
+    }
+
+    /// Create with a mode and default log level
+    pub fn create(mode: DatabaseConfigurationMode) -> Result<Self> {
+        let statements_log_level = Self::get_env_statements_log_level()?;
+
+        Ok(Self::new(mode, statements_log_level))
+    }
+
+    /// Mode
+    pub fn mode(&self) -> &DatabaseConfigurationMode {
+        &self.mode
+    }
+
+    /// Statements log level
+    pub fn statements_log_level(&self) -> LevelFilter {
+        self.statements_log_level
+    }
+}
+
+/// Configuration for the database.
+/// We either use Sqlite or Postgres
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum DatabaseConfigurationMode {
     /// Configuration for a SQLite database
     SqlitePersistent {
         /// Database file path if the database is stored on disk
@@ -87,6 +125,10 @@ impl DatabaseUser {
 }
 
 impl DatabaseConfiguration {
+    fn get_env_statements_log_level() -> Result<LevelFilter> {
+        get_env_with_default(OCKAM_SQL_LOG_LEVEL, LevelFilter::Trace)
+    }
+
     /// Create a postgres database configuration from an environment variable.
     pub fn postgres() -> Result<Option<DatabaseConfiguration>> {
         Self::postgres_with_legacy_sqlite_path(None)
@@ -101,88 +143,104 @@ impl DatabaseConfiguration {
             let admin_user =
                 get_env::<String>(OCKAM_DATABASE_ADMIN_USERNAME)?.unwrap_or("postgres".to_string());
 
-            Ok(Some(DatabaseConfiguration::Postgres {
+            let mode = DatabaseConfigurationMode::Postgres {
                 connection_url: parse_connection_string(&connection_string)?,
                 legacy_sqlite_path: sqlite_path,
                 admin_user,
-            }))
+            };
+
+            let configuration = DatabaseConfiguration::create(mode)?;
+
+            Ok(Some(configuration))
         } else {
             Ok(None)
         }
     }
 
     /// Create a local sqlite configuration
-    pub fn sqlite(path: impl AsRef<Path>) -> DatabaseConfiguration {
-        DatabaseConfiguration::SqlitePersistent {
+    pub fn sqlite(path: impl AsRef<Path>) -> Result<Self> {
+        let mode = DatabaseConfigurationMode::SqlitePersistent {
             path: path.as_ref().to_path_buf(),
             single_connection: false,
-        }
+        };
+
+        Self::create(mode)
     }
 
     /// Create an in-memory sqlite configuration
-    pub fn sqlite_in_memory() -> DatabaseConfiguration {
-        DatabaseConfiguration::SqliteInMemory {
+    pub fn sqlite_in_memory() -> Result<Self> {
+        let mode = DatabaseConfigurationMode::SqliteInMemory {
             single_connection: false,
-        }
+        };
+
+        Self::create(mode)
     }
 
     /// Create a single connection sqlite configuration
     pub fn single_connection(&self) -> Self {
-        match self {
-            DatabaseConfiguration::SqlitePersistent { path, .. } => {
-                DatabaseConfiguration::SqlitePersistent {
+        let mode = match self.mode() {
+            DatabaseConfigurationMode::SqlitePersistent { path, .. } => {
+                DatabaseConfigurationMode::SqlitePersistent {
                     path: path.clone(),
                     single_connection: true,
                 }
             }
-            DatabaseConfiguration::SqliteInMemory { .. } => DatabaseConfiguration::SqliteInMemory {
-                single_connection: true,
-            },
-            _ => self.clone(),
-        }
+            DatabaseConfigurationMode::SqliteInMemory { .. } => {
+                DatabaseConfigurationMode::SqliteInMemory {
+                    single_connection: true,
+                }
+            }
+            _ => self.mode.clone(),
+        };
+
+        Self::new(mode, self.statements_log_level)
     }
 
     /// Return the type of database that has been configured
     pub fn database_type(&self) -> DatabaseType {
-        match self {
-            DatabaseConfiguration::SqliteInMemory { .. } => DatabaseType::Sqlite,
-            DatabaseConfiguration::SqlitePersistent { .. } => DatabaseType::Sqlite,
-            DatabaseConfiguration::Postgres { .. } => DatabaseType::Postgres,
+        match self.mode() {
+            DatabaseConfigurationMode::SqliteInMemory { .. } => DatabaseType::Sqlite,
+            DatabaseConfigurationMode::SqlitePersistent { .. } => DatabaseType::Sqlite,
+            DatabaseConfigurationMode::Postgres { .. } => DatabaseType::Postgres,
         }
     }
 
     /// Return the connection user if it is defined
     pub fn user(&self) -> Option<String> {
-        match self {
-            DatabaseConfiguration::SqliteInMemory { .. } => None,
-            DatabaseConfiguration::SqlitePersistent { .. } => None,
-            DatabaseConfiguration::Postgres { connection_url, .. } => Some(connection_url.user()),
+        match self.mode() {
+            DatabaseConfigurationMode::SqliteInMemory { .. } => None,
+            DatabaseConfigurationMode::SqlitePersistent { .. } => None,
+            DatabaseConfigurationMode::Postgres { connection_url, .. } => {
+                Some(connection_url.user())
+            }
         }
     }
 
     /// Change the user if this is a Postgres configuration
-    pub fn switch_to_user(&self, user: &str, password: &str) -> DatabaseConfiguration {
-        match self {
-            DatabaseConfiguration::SqliteInMemory { .. } => self.clone(),
-            DatabaseConfiguration::SqlitePersistent { .. } => self.clone(),
-            DatabaseConfiguration::Postgres {
+    pub fn switch_to_user(&self, user: &str, password: &str) -> Self {
+        let mode = match self.mode() {
+            DatabaseConfigurationMode::SqliteInMemory { .. } => self.mode.clone(),
+            DatabaseConfigurationMode::SqlitePersistent { .. } => self.mode.clone(),
+            DatabaseConfigurationMode::Postgres {
                 connection_url,
                 legacy_sqlite_path,
                 admin_user,
-            } => DatabaseConfiguration::Postgres {
+            } => DatabaseConfigurationMode::Postgres {
                 connection_url: connection_url.switch_to_user(user, password),
                 legacy_sqlite_path: legacy_sqlite_path.clone(),
                 admin_user: admin_user.clone(),
             },
-        }
+        };
+
+        Self::new(mode, self.statements_log_level)
     }
 
     /// Return the connection user if it is defined
     pub fn is_admin_user(&self) -> bool {
-        match self {
-            DatabaseConfiguration::SqliteInMemory { .. } => true,
-            DatabaseConfiguration::SqlitePersistent { .. } => true,
-            DatabaseConfiguration::Postgres {
+        match self.mode() {
+            DatabaseConfigurationMode::SqliteInMemory { .. } => true,
+            DatabaseConfigurationMode::SqlitePersistent { .. } => true,
+            DatabaseConfigurationMode::Postgres {
                 admin_user,
                 connection_url,
                 ..
@@ -192,10 +250,10 @@ impl DatabaseConfiguration {
 
     /// Return the legacy sqlite path if any
     pub fn legacy_sqlite_path(&self) -> Option<PathBuf> {
-        match self {
-            DatabaseConfiguration::SqliteInMemory { .. } => None,
-            DatabaseConfiguration::SqlitePersistent { .. } => None,
-            DatabaseConfiguration::Postgres {
+        match self.mode() {
+            DatabaseConfigurationMode::SqliteInMemory { .. } => None,
+            DatabaseConfigurationMode::SqlitePersistent { .. } => None,
+            DatabaseConfigurationMode::Postgres {
                 legacy_sqlite_path, ..
             } => legacy_sqlite_path.clone(),
         }
@@ -203,20 +261,22 @@ impl DatabaseConfiguration {
 
     /// Return the type of database that has been configured
     pub fn connection_string(&self) -> String {
-        match self {
-            DatabaseConfiguration::SqliteInMemory { .. } => {
+        match self.mode() {
+            DatabaseConfigurationMode::SqliteInMemory { .. } => {
                 Self::create_sqlite_in_memory_connection_string()
             }
-            DatabaseConfiguration::SqlitePersistent { path, .. } => {
+            DatabaseConfigurationMode::SqlitePersistent { path, .. } => {
                 Self::create_sqlite_on_disk_connection_string(path)
             }
-            DatabaseConfiguration::Postgres { connection_url, .. } => connection_url.to_string(),
+            DatabaseConfigurationMode::Postgres { connection_url, .. } => {
+                connection_url.to_string()
+            }
         }
     }
 
     /// Create a directory for the SQLite database file if necessary
     pub fn create_directory_if_necessary(&self) -> Result<()> {
-        if let DatabaseConfiguration::SqlitePersistent { path, .. } = self {
+        if let DatabaseConfigurationMode::SqlitePersistent { path, .. } = self.mode() {
             if let Some(parent) = path.parent() {
                 if !parent.exists() {
                     create_dir_all(parent)
@@ -234,8 +294,8 @@ impl DatabaseConfiguration {
 
     /// Return the database path if the database is a SQLite file.
     pub fn path(&self) -> Option<PathBuf> {
-        match self {
-            DatabaseConfiguration::SqlitePersistent { path, .. } => Some(path.clone()),
+        match self.mode() {
+            DatabaseConfigurationMode::SqlitePersistent { path, .. } => Some(path.clone()),
             _ => None,
         }
     }
@@ -488,5 +548,11 @@ mod tests {
             "missing database name"
         );
         assert!(parse_connection_string("").is_err(), "empty string");
+    }
+
+    #[test]
+    fn test_log_level_statements() {
+        let configuration = DatabaseConfiguration::sqlite_in_memory().unwrap();
+        assert_eq!(configuration.statements_log_level, LevelFilter::Trace)
     }
 }

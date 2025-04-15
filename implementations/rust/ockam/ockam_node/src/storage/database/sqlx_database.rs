@@ -22,7 +22,7 @@ use crate::database::database_configuration::DatabaseConfiguration;
 use crate::database::migrations::application_migration_set::ApplicationMigrationSet;
 use crate::database::migrations::node_migration_set::NodeMigrationSet;
 use crate::database::migrations::MigrationSet;
-use crate::database::{DatabaseType, MigrationStatus};
+use crate::database::{DatabaseConfigurationMode, DatabaseType, MigrationStatus};
 use ockam_core::compat::rand::random_string;
 use ockam_core::compat::sync::Arc;
 use ockam_core::{Error, Result};
@@ -81,17 +81,17 @@ impl SqlxDatabase {
 
     /// Constructor for a sqlite database
     pub async fn create_sqlite(path: impl AsRef<Path>) -> Result<Self> {
-        Self::create(&DatabaseConfiguration::sqlite(path)).await
+        Self::create(&DatabaseConfiguration::sqlite(path)?).await
     }
 
     /// Constructor for a sqlite database with no migrations
     pub async fn create_sqlite_no_migration(path: impl AsRef<Path>) -> Result<Self> {
-        Self::create_no_migration(&DatabaseConfiguration::sqlite(path)).await
+        Self::create_no_migration(&DatabaseConfiguration::sqlite(path)?).await
     }
 
     /// Constructor for a sqlite application database
     pub async fn create_application_sqlite(path: impl AsRef<Path>) -> Result<Self> {
-        Self::create_application_database(&DatabaseConfiguration::sqlite(path)).await
+        Self::create_application_database(&DatabaseConfiguration::sqlite(path)?).await
     }
 
     /// Constructor for a postgres database that doesn't apply migrations
@@ -148,10 +148,10 @@ impl SqlxDatabase {
 
     /// Get the tenant id for this database
     pub fn tenant_id(&self) -> String {
-        match &self.configuration {
-            DatabaseConfiguration::SqliteInMemory { .. } => NO_TENANT_ID.to_string(),
-            DatabaseConfiguration::SqlitePersistent { .. } => NO_TENANT_ID.to_string(),
-            DatabaseConfiguration::Postgres { connection_url, .. } => connection_url.user(),
+        match self.configuration.mode() {
+            DatabaseConfigurationMode::SqliteInMemory { .. } => NO_TENANT_ID.to_string(),
+            DatabaseConfigurationMode::SqlitePersistent { .. } => NO_TENANT_ID.to_string(),
+            DatabaseConfigurationMode::Postgres { connection_url, .. } => connection_url.user(),
         }
     }
 
@@ -281,7 +281,7 @@ impl SqlxDatabase {
         migration_set: impl MigrationSet,
     ) -> Result<Self> {
         debug!("create an in memory database for {usage}");
-        let configuration = DatabaseConfiguration::sqlite_in_memory();
+        let configuration = DatabaseConfiguration::sqlite_in_memory()?;
         let pool = Self::create_in_memory_connection_pool().await?;
         let migrator = migration_set.create_migrator()?;
         migrator.migrate(&pool).await?;
@@ -297,8 +297,8 @@ impl SqlxDatabase {
     /// and the database user needs to retry several times.
     pub fn needs_retry(&self) -> bool {
         matches!(
-            self.configuration,
-            DatabaseConfiguration::SqlitePersistent { .. }
+            self.configuration.mode(),
+            DatabaseConfigurationMode::SqlitePersistent { .. }
         )
     }
 
@@ -317,20 +317,21 @@ impl SqlxDatabase {
         install_default_drivers();
         let connection_string = configuration.connection_string();
         debug!("connecting to {connection_string}");
+
         let options = AnyConnectOptions::from_str(&connection_string)
             .map_err(Self::map_sql_err)?
-            .log_statements(LevelFilter::Trace)
+            .log_statements(configuration.statements_log_level())
             .log_slow_statements(LevelFilter::Trace, Duration::from_secs(1));
 
         // sqlx default is 10, 16 is closer to the typical number of threads spawn
         // by tokio within a node, but has no particular reason
         const MAX_POOL_SIZE: u32 = 16;
 
-        let max_pool_size = match configuration {
-            DatabaseConfiguration::SqlitePersistent {
+        let max_pool_size = match configuration.mode() {
+            DatabaseConfigurationMode::SqlitePersistent {
                 single_connection, ..
             }
-            | DatabaseConfiguration::SqliteInMemory { single_connection } => {
+            | DatabaseConfigurationMode::SqliteInMemory { single_connection } => {
                 if *single_connection {
                     1
                 } else {
@@ -381,7 +382,8 @@ PRAGMA busy_timeout = 10000;
 
     /// Create a connection for a SQLite database
     pub async fn create_sqlite_single_connection_pool(path: impl AsRef<Path>) -> Result<Pool<Any>> {
-        Self::create_connection_pool(&DatabaseConfiguration::sqlite(path).single_connection()).await
+        Self::create_connection_pool(&DatabaseConfiguration::sqlite(path)?.single_connection())
+            .await
     }
 
     pub(crate) async fn create_in_memory_connection_pool() -> Result<Pool<Any>> {
@@ -709,7 +711,7 @@ pub mod tests {
     async fn test_create_pool_with_relative_and_absolute_paths() -> Result<()> {
         install_default_drivers();
         let relative = Path::new("relative");
-        let connection_string = DatabaseConfiguration::sqlite(relative).connection_string();
+        let connection_string = DatabaseConfiguration::sqlite(relative)?.connection_string();
         let options =
             AnyConnectOptions::from_str(&connection_string).map_err(SqlxDatabase::map_sql_err)?;
 
@@ -719,7 +721,7 @@ pub mod tests {
         assert!(pool.is_ok());
 
         let absolute = std::fs::canonicalize(relative).unwrap();
-        let connection_string = DatabaseConfiguration::sqlite(&absolute).connection_string();
+        let connection_string = DatabaseConfiguration::sqlite(&absolute)?.connection_string();
         let options =
             AnyConnectOptions::from_str(&connection_string).map_err(SqlxDatabase::map_sql_err)?;
 
