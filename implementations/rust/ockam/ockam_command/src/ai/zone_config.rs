@@ -131,9 +131,11 @@ pods:
         imagePullPolicy: Always
         args: ["echo-agent", "${ENROLLMENT_TICKET}"]
     portal:
-      - attributes:
+      attributes:
         - name: role
           value: echo
+      tcp-outlets:
+        - to: localhost:8080
 "#;
 
         let config = serde_yaml::from_str::<ZoneConfig>(yaml).unwrap();

@@ -1,11 +1,13 @@
+use crate::ai::utils::get_customer_name;
+use crate::ai::zone_config::ZoneConfig;
 use crate::node_command::InMemoryNodeCommand;
-use crate::run::parser::resource::zone_config::ZoneConfig;
 use crate::{docs, Command, CommandGlobalOpts, Result};
 use async_trait::async_trait;
 use clap::Args;
 use colorful::Colorful;
 use miette::IntoDiagnostic;
 use ockam_api::colors::color_primary;
+use ockam_api::nodes::service::ai_platform::AI_API_BASE_URL_ENV;
 use ockam_api::nodes::InMemoryNode;
 use ockam_api::orchestrator::ai_platform::api::AiPlatformApi;
 use ockam_api::orchestrator::ai_platform::models::EcrCredentials;
@@ -26,14 +28,19 @@ before_help = docs::before_help(PREVIEW_TAG),
 after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct DeployCommand {
-    /// The name of the zone to deploy in the Ockam AI Platform
+    /// The name of the Customer that will be used to set up the Zone.
+    /// If not set, it will be retrieved from the enrolled user data.
+    #[arg(long)]
+    pub customer: Option<String>,
+
+    /// The name of the Zone to deploy in the Ockam AI Platform
     #[arg(long)]
     pub zone_name: String,
 
-    /// The path to the zone configuration file, in yaml or json format.
+    /// The path to the Zone configuration file, in yaml or json format.
     ///
     /// If not set, the `./zone.json` file from the current directory will be used.
-    #[arg(long)]
+    #[arg(long, visible_alias = "config")]
     pub zone_config: Option<String>,
 
     /// The region of the AWS ECR to use.
@@ -46,6 +53,11 @@ pub struct DeployCommand {
     /// Whether to use a public AWS ECR
     #[arg(long)]
     pub use_public_ecr: bool,
+
+    /// The API endpoint of the Ockam AI Platform.
+    /// Defaults to `http://localhost:30080`.
+    #[arg(long)]
+    pub api_endpoint: Option<String>,
 }
 
 #[derive(Clone)]
@@ -56,8 +68,15 @@ struct DeployNodeCommand {
 
 #[async_trait]
 impl InMemoryNodeCommand for DeployNodeCommand {
+    async fn init(&self) -> miette::Result<()> {
+        if let Some(api_endpoint) = &self.command.api_endpoint {
+            std::env::set_var(AI_API_BASE_URL_ENV, api_endpoint);
+        }
+        Ok(())
+    }
+
     async fn run(&self, node: Arc<InMemoryNode>) -> miette::Result<()> {
-        let customer_name = self.command.get_customer_name(&self.opts).await?;
+        let customer_name = get_customer_name(&self.opts, self.command.customer.as_deref()).await?;
         let zone_config = self
             .command
             .process_images(&node, &self.opts, &customer_name)
@@ -84,21 +103,6 @@ impl Command for DeployCommand {
 }
 
 impl DeployCommand {
-    async fn get_customer_name(&self, opts: &CommandGlobalOpts) -> Result<String> {
-        let customer = opts
-            .state
-            .get_default_user()
-            .await?
-            .email
-            .domain()?
-            .replace('.', "-");
-        opts.terminal.write_line(fmt_log!(
-            "Retrieved customer {} from enrolled user data\n",
-            color_primary(&customer),
-        ))?;
-        Ok(customer)
-    }
-
     async fn process_images(
         &self,
         node: &InMemoryNode,
@@ -108,7 +112,14 @@ impl DeployCommand {
         let zone_config_path = self.zone_config.as_deref().unwrap_or("./zone.json");
         let mut zone_config = ZoneConfig::from_file(zone_config_path)?;
 
-        for image_name in zone_config.get_local_images_names() {
+        let config_images = zone_config.get_local_images_names();
+        if config_images.is_empty() {
+            opts.terminal
+                .write_line(fmt_log!("No local images found in zone config"))?;
+            return Ok(zone_config);
+        }
+
+        for image_name in config_images {
             let ecr_creds = self
                 .provision_ecr(node, opts, customer, &image_name)
                 .await?;

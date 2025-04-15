@@ -28,4 +28,3 @@ mod tcp_outlets;
 mod traits;
 pub(crate) mod utils;
 mod vaults;
-pub mod zone_config;

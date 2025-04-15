@@ -90,7 +90,7 @@ pub struct TimeoutArg {
     pub(crate) timeout: Duration,
 }
 
-#[derive(Debug, Clone, Args)]
+#[derive(Debug, Clone, Default, Args)]
 pub struct OptionalTimeoutArg {
     /// Override the default timeout duration that the command will wait for a response
     #[arg(long, value_name = "TIMEOUT", default_value = "10s", value_parser = duration_parser)]

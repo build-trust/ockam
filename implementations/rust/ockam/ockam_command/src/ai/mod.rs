@@ -1,14 +1,18 @@
+mod connect;
 mod deploy;
 mod enroll;
 mod ticket;
+pub mod utils;
+mod zone_config;
 
 use clap::{Args, Subcommand};
 
 use deploy::DeployCommand;
 use enroll::EnrollCommand;
 use ockam_node::Context;
-use ticket::TicketCommand;
+use ticket::AiTicketCommand;
 
+use crate::ai::connect::ConnectCommand;
 use crate::{docs, Command, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
@@ -37,6 +41,7 @@ impl AiCommand {
             AiSubcommand::Enroll(c) => c.run(ctx, opts).await,
             AiSubcommand::Ticket(c) => c.run(ctx, opts).await,
             AiSubcommand::Deploy(c) => c.run(ctx, opts).await,
+            AiSubcommand::Connect(c) => c.run(ctx, opts).await,
         }
     }
 }
@@ -45,8 +50,9 @@ impl AiCommand {
 #[allow(clippy::large_enum_variant)]
 pub enum AiSubcommand {
     Enroll(EnrollCommand),
-    Ticket(TicketCommand),
+    Ticket(AiTicketCommand),
     Deploy(DeployCommand),
+    Connect(ConnectCommand),
 }
 
 impl AiSubcommand {
@@ -55,6 +61,7 @@ impl AiSubcommand {
             AiSubcommand::Enroll(c) => c.name(),
             AiSubcommand::Ticket(c) => c.name(),
             AiSubcommand::Deploy(c) => c.name(),
+            AiSubcommand::Connect(c) => c.name(),
         }
     }
 }

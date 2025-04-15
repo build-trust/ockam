@@ -72,7 +72,7 @@ pub enum OckamSubcommand {
     #[command(name = command::name("enroll"), hide = command::hide("enroll"))]
     Enroll(EnrollCommand),
 
-    #[command(name = command::name("ai"), hide = command::hide("ai"))]
+    #[command(name = command::name("ai"), hide = true)]
     Ai(AiCommand),
 
     #[command(name = command::name("node"), hide = command::hide("node"))]
