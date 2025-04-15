@@ -94,10 +94,10 @@ fn output(mut cont: Container) -> TokenStream {
             use core::panic::AssertUnwindSafe;
             use core::time::Duration;
             use ockam_core::{Error, errcode::{Origin, Kind}};
-            use #ockam_crate::{NodeBuilder, compat::{tokio::time::timeout, futures::FutureExt}};
+            use #ockam_crate::{NodeBuilder, compat::{tokio::time::timeout, futures::FutureExt}, OCKAM_LOG_LEVEL};
             // don't enable logs in tests by default
-            if ockam_core::env::get_env::<String>("OCKAM_LOG_LEVEL").unwrap().is_none() {
-                std::env::remove_var("OCKAM_LOG_LEVEL");
+            if ockam_core::env::get_env::<String>(OCKAM_LOG_LEVEL).unwrap().is_none() {
+                std::env::remove_var(OCKAM_LOG_LEVEL);
             }
 
             // we don't exit on a panic because we want to catch the panic and report it from within the test.

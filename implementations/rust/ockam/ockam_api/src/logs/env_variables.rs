@@ -5,9 +5,6 @@
 /// Decides if logs should be created. Accepted values, see FromString<bool>. For example; true, false, 1, 0
 pub(crate) const OCKAM_LOGGING: &str = "OCKAM_LOGGING";
 
-/// Required log level. Accepted values, see LevelVar. For example: trace, debug, info, warn, error
-pub(crate) const OCKAM_LOG_LEVEL: &str = "OCKAM_LOG_LEVEL";
-
 //
 //LOG FILE CONFIGURATION
 //

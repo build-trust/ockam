@@ -6,6 +6,8 @@ use once_cell::sync::OnceCell;
 use regex::Regex;
 use std::path::PathBuf;
 use std::time::Duration;
+use tracing::log::LevelFilter;
+use tracing::Level;
 
 /// For-internal-use trait for types that can be parsed from string
 pub trait FromString: Sized {
@@ -97,6 +99,24 @@ impl FromString for u64 {
 impl FromString for PathBuf {
     fn from_string(s: &str) -> Result<Self> {
         Ok(PathBuf::from(&s))
+    }
+}
+
+impl FromString for LevelFilter {
+    fn from_string(s: &str) -> Result<Self> {
+        let level = LevelFilter::from_str(s)
+            .map_err(|e| Error::new(Origin::Api, Kind::Serialization, format!("{e:?}")))?;
+
+        Ok(level)
+    }
+}
+
+impl FromString for Level {
+    fn from_string(s: &str) -> Result<Self> {
+        let level = Level::from_str(s)
+            .map_err(|e| Error::new(Origin::Api, Kind::Serialization, format!("{e:?}")))?;
+
+        Ok(level)
     }
 }
 

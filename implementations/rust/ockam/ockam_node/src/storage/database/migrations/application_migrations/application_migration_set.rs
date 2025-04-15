@@ -39,7 +39,7 @@ mod tests {
     async fn test() -> Result<()> {
         let db_file = NamedTempFile::new().unwrap();
 
-        let db = SqlxDatabase::create_no_migration(&DatabaseConfiguration::sqlite(db_file.path()))
+        let db = SqlxDatabase::create_no_migration(&DatabaseConfiguration::sqlite(db_file.path())?)
             .await?;
 
         ApplicationMigrationSet::new(DatabaseType::Sqlite)

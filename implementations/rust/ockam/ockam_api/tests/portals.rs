@@ -8,7 +8,7 @@ use ockam_core::compat::rand::RngCore;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::{route, Address, AllowAll, Error};
 use ockam_multiaddr::MultiAddr;
-use ockam_node::Context;
+use ockam_node::{Context, OCKAM_LOG_LEVEL};
 use ockam_transport_core::HostnamePort;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -96,7 +96,7 @@ fn portal_node_goes_down_reconnect() {
     let runtime = Arc::new(Runtime::new().unwrap());
     let handle = runtime.handle();
     let runtime_cloned = runtime.clone();
-    std::env::remove_var("OCKAM_LOG_LEVEL");
+    std::env::remove_var(OCKAM_LOG_LEVEL);
 
     let result: ockam::Result<()> = handle.block_on(async move {
         let test_body = async move {
@@ -248,7 +248,7 @@ fn portal_low_bandwidth_connection_keep_working_for_60s() {
     let runtime = Arc::new(Runtime::new().unwrap());
     let handle = runtime.handle();
     let runtime_cloned = runtime.clone();
-    std::env::remove_var("OCKAM_LOG_LEVEL");
+    std::env::remove_var(OCKAM_LOG_LEVEL);
 
     let result: ockam::Result<()> = handle.block_on(async move {
         let test_body = async move {
@@ -373,7 +373,7 @@ fn portal_heavy_load_exchanged() {
     let runtime = Arc::new(Runtime::new().unwrap());
     let handle = runtime.handle();
     let runtime_cloned = runtime.clone();
-    std::env::remove_var("OCKAM_LOG_LEVEL");
+    std::env::remove_var(OCKAM_LOG_LEVEL);
 
     let result: ockam::Result<()> = handle.block_on(async move {
         let test_body = async move {
@@ -523,7 +523,7 @@ fn test_portal_payload_transfer(outgoing_disruption: Disruption, incoming_disrup
     let runtime = Arc::new(Runtime::new().unwrap());
     let handle = runtime.handle();
     let runtime_cloned = runtime.clone();
-    std::env::remove_var("OCKAM_LOG_LEVEL");
+    std::env::remove_var(OCKAM_LOG_LEVEL);
 
     let result: ockam::Result<_> = handle.block_on(async move {
         let test_body = async move {

@@ -1,14 +1,13 @@
-use crate::config::LevelVar;
+use super::{Colored, LoggingEnabled, OckamUserLogFormat};
 use crate::logs::default_values::*;
 use crate::logs::env_variables::*;
+use crate::logs::LogFormat;
 use ockam_core::env::{get_env, get_env_with_default, FromString};
+use ockam_node::OCKAM_LOG_LEVEL;
 use std::fmt::{Display, Formatter};
 use std::path::PathBuf;
 use tracing_core::Level;
 use tracing_subscriber::EnvFilter;
-
-use super::{Colored, LoggingEnabled, OckamUserLogFormat};
-use crate::logs::LogFormat;
 
 /// List of all the configuration parameters relevant for configuring the logs
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -301,13 +300,7 @@ impl LogLevelWithCratesFilter {
     /// Return the log level based on the log level environment variable.
     /// Default to DEBUG.
     fn get_log_level_from_env() -> ockam_core::Result<Level> {
-        get_env_with_default(
-            OCKAM_LOG_LEVEL,
-            LevelVar {
-                level: Level::DEBUG,
-            },
-        )
-        .map(|l| l.level)
+        get_env_with_default(OCKAM_LOG_LEVEL, Level::DEBUG)
     }
 
     pub fn add_crates(self, new: Vec<impl Into<String>>) -> Self {

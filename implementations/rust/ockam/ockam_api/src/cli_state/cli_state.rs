@@ -4,7 +4,7 @@ use tokio::sync::broadcast::{channel, Receiver, Sender};
 
 use ockam::SqlxDatabase;
 use ockam_core::env::get_env_with_default;
-use ockam_node::database::{DatabaseConfiguration, DatabaseType};
+use ockam_node::database::{DatabaseConfiguration, DatabaseConfigurationMode, DatabaseType};
 
 use crate::cli_state::error::Result;
 use crate::cli_state::CliStateError;
@@ -70,8 +70,8 @@ impl CliState {
     }
 
     pub fn is_using_in_memory_database(&self) -> Result<bool> {
-        match self.database_configuration()? {
-            DatabaseConfiguration::SqliteInMemory { .. } => Ok(true),
+        match self.database_configuration()?.mode() {
+            DatabaseConfigurationMode::SqliteInMemory { .. } => Ok(true),
             _ => Ok(false),
         }
     }
@@ -284,10 +284,10 @@ impl CliState {
                     sqlite_path.clone(),
                 ))? {
                     Some(configuration) => Ok(configuration),
-                    None => Ok(DatabaseConfiguration::sqlite(sqlite_path)),
+                    None => Ok(DatabaseConfiguration::sqlite(sqlite_path)?),
                 }
             }
-            CliStateMode::InMemory => Ok(DatabaseConfiguration::sqlite_in_memory()),
+            CliStateMode::InMemory => Ok(DatabaseConfiguration::sqlite_in_memory()?),
         }
     }
 
@@ -300,8 +300,8 @@ impl CliState {
             None => match mode {
                 CliStateMode::Persistent(root_path) => Ok(DatabaseConfiguration::sqlite(
                     root_path.join("application_database.sqlite3"),
-                )),
-                CliStateMode::InMemory => Ok(DatabaseConfiguration::sqlite_in_memory()),
+                )?),
+                CliStateMode::InMemory => Ok(DatabaseConfiguration::sqlite_in_memory()?),
             },
         }
     }

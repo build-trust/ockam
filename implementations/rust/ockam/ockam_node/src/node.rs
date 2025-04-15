@@ -5,6 +5,9 @@ use ockam_core::flow_control::FlowControls;
 #[cfg(feature = "std")]
 use ockam_core::OpenTelemetryContext;
 
+/// Required log level. Accepted values, see LevelVar. For example: trace, debug, info, warn, error
+pub const OCKAM_LOG_LEVEL: &str = "OCKAM_LOG_LEVEL";
+
 /// A minimal worker implementation that does nothing
 pub struct NullWorker;
 
@@ -168,7 +171,7 @@ fn setup_tracing() {
         use tracing_subscriber::{filter::LevelFilter, fmt, prelude::*, EnvFilter};
         static ONCE: std::sync::Once = std::sync::Once::new();
         ONCE.call_once(|| {
-            let filter = EnvFilter::try_from_env("OCKAM_LOG_LEVEL").unwrap_or_else(|_| {
+            let filter = EnvFilter::try_from_env(OCKAM_LOG_LEVEL).unwrap_or_else(|_| {
                 EnvFilter::default()
                     .add_directive(LevelFilter::INFO.into())
                     .add_directive("ockam_node=info".parse().unwrap())
