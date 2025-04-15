@@ -16,13 +16,13 @@ long_about = docs::about(LONG_ABOUT),
 before_help = docs::before_help(PREVIEW_TAG),
 after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
-pub struct TicketCommand {
+pub struct AiTicketCommand {
     #[command(flatten)]
     inner: crate::project::TicketCommand,
 }
 
 #[async_trait]
-impl Command for TicketCommand {
+impl Command for AiTicketCommand {
     const NAME: &'static str = "ai ticket";
 
     async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> Result<()> {

@@ -14,7 +14,7 @@ use stop::StopCommand;
 
 use crate::{docs, Command, CommandGlobalOpts};
 
-mod create;
+pub(crate) mod create;
 mod default;
 mod delete;
 mod list;

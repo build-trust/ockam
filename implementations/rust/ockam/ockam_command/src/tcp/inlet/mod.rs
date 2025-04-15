@@ -1,6 +1,6 @@
 use clap::{Args, Subcommand};
 
-use create::CreateCommand;
+pub(crate) use create::CreateCommand;
 use delete::DeleteCommand;
 pub(crate) use list::ListCommand;
 pub(crate) use show::ShowCommand;

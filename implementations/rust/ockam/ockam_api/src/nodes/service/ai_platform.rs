@@ -3,12 +3,23 @@ use crate::orchestrator::ai_platform::api::AiPlatformApi;
 use crate::orchestrator::ai_platform::models::{EcrCredentials, Zone};
 use ockam_core::async_trait;
 use ockam_core::compat::collections::HashMap;
+use ockam_core::env::get_env_with_default_ignore_error;
+use once_cell::sync::Lazy;
+
+pub const AI_API_BASE_URL_ENV: &str = "AI_API_BASE_URL";
+static AI_API_BASE_URL: Lazy<String> = Lazy::new(|| {
+    let v = get_env_with_default_ignore_error(
+        AI_API_BASE_URL_ENV,
+        "http://localhost:30080".to_string(),
+    );
+    debug!(url=%v, "using AI API base URL");
+    v
+});
 
 #[async_trait]
 impl AiPlatformApi for InMemoryNode {
     async fn create_zone(&self, customer: &str, zone_name: &str) -> miette::Result<Zone> {
-        let api_base_url = "http://localhost:30080".to_string();
-        let url = format!("{}/api/{}/zone", api_base_url, customer);
+        let url = format!("{}/api/{}/zone", *AI_API_BASE_URL, customer);
 
         let body = serde_json::json!({
             "zone": zone_name,
@@ -43,8 +54,7 @@ impl AiPlatformApi for InMemoryNode {
     }
 
     async fn delete_zone(&self, customer: &str, zone_name: &str) -> miette::Result<()> {
-        let api_base_url = "http://localhost:30080".to_string();
-        let url = format!("{}/api/{}/zone/{}", api_base_url, customer, zone_name);
+        let url = format!("{}/api/{}/zone/{}", *AI_API_BASE_URL, customer, zone_name);
 
         let client = reqwest::Client::new();
         let response = client
@@ -85,8 +95,10 @@ impl AiPlatformApi for InMemoryNode {
         zone_name: &str,
         zone_config: &serde_json::Value,
     ) -> miette::Result<()> {
-        let api_base_url = "http://localhost:30080".to_string();
-        let url = format!("{}/api/{}/zone/{}/pods", api_base_url, customer, zone_name);
+        let url = format!(
+            "{}/api/{}/zone/{}/pods",
+            *AI_API_BASE_URL, customer, zone_name
+        );
 
         let client = reqwest::Client::new();
         let response = client
@@ -115,10 +127,9 @@ impl AiPlatformApi for InMemoryNode {
         secret_name: &str,
         secret_fields: HashMap<String, String>,
     ) -> miette::Result<()> {
-        let api_base_url = "http://localhost:30080".to_string();
         let url = format!(
             "{}/api/{}/zone/{}/secret",
-            api_base_url, customer, zone_name
+            *AI_API_BASE_URL, customer, zone_name
         );
 
         let body = serde_json::json!({
@@ -166,9 +177,7 @@ impl AiPlatformApi for InMemoryNode {
         region: Option<&str>,
         is_public: Option<bool>,
     ) -> miette::Result<EcrCredentials> {
-        let api_base_url = "http://localhost:30080".to_string();
-
-        let url = format!("{}/api/{}/ecr", api_base_url, customer);
+        let url = format!("{}/api/{}/ecr", *AI_API_BASE_URL, customer);
 
         let mut body = serde_json::json!({
             "image_name": image_name,
