@@ -82,7 +82,7 @@ pub use ockam_macros::{node, test};
 #[cfg(feature = "std")]
 pub use ockam_node::database::*;
 pub use ockam_node::{
-    debugger, Context, ContextSend, DelayedEvent, Executor, MessageReceiveOptions,
+    debugger, Context, ContextRouter, ContextSend, DelayedEvent, Executor, MessageReceiveOptions,
     MessageSendReceiveOptions, NodeBuilder, WorkerBuilder, OCKAM_LOG_LEVEL,
 };
 #[cfg(feature = "ockam_transport_tcp")]
