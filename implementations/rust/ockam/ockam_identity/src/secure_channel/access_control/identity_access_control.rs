@@ -1,7 +1,8 @@
 use ockam_core::access_control::IncomingAccessControl;
+use ockam_core::async_trait;
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::vec::Vec;
-use ockam_core::{async_trait, SecureChannelLocalInfo};
+use ockam_core::identity::SecureChannelLocalInfo;
 use ockam_core::{RelayMessage, Result};
 
 use crate::models::Identifier;

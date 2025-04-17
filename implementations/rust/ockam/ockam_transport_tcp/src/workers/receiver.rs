@@ -235,7 +235,7 @@ impl Processor for TcpRecvProcessor {
             }
         };
 
-        let local_message = LocalMessage::from(transport_message);
+        let local_message = LocalMessage::try_from(transport_message)?;
         if !local_message.has_next_on_onward_route() {
             trace!("Got heartbeat message from: {}", self.socket_address);
             return Ok(true);

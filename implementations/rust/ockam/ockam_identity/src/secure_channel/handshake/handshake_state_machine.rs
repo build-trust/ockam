@@ -123,7 +123,7 @@ impl CommonStateMachine {
     }
 
     /// Verify the identity sent by the other party: the Purpose Key and the credentials must be valid
-    /// If everything is valid, store the identity identifier which will used to make the
+    /// If everything is valid, store the identifier which will used to make the
     /// final state machine result
     pub(super) async fn process_identity_payload(
         &mut self,
@@ -166,7 +166,7 @@ impl CommonStateMachine {
 
 impl CommonStateMachine {
     /// Verify the identity sent by the other party: the Purpose Key and the credentials must be valid
-    /// If everything is valid, store the identity identifier which will used to make the
+    /// If everything is valid, store the identifier which will used to make the
     /// final state machine result
     #[allow(clippy::too_many_arguments)]
     pub(crate) async fn process_identity_payload_static(

@@ -1,5 +1,7 @@
 use crate::workers::Addresses;
-use crate::{TcpConnectionMode, TcpProtocolVersion, TcpRegistry, TcpSenderInfo, MAX_MESSAGE_SIZE};
+use crate::{
+    TcpConnectionMode, TcpProtocolVersion, TcpRegistry, TcpSenderInfo, MAX_MESSAGE_SIZE, TCP,
+};
 use ockam_core::flow_control::FlowControlId;
 use ockam_core::{
     async_trait,
@@ -11,6 +13,7 @@ use ockam_core::{Any, Decodable, Mailbox, Mailboxes, Message, Result, Routed, Wo
 use ockam_node::{Context, WorkerBuilder, WorkerShutdownPriority};
 
 use crate::transport_message::TcpTransportMessage;
+use ockam_core::transport::TransportMetadata;
 use ockam_transport_core::TransportError;
 use serde::{Deserialize, Serialize};
 use tokio::io::AsyncWriteExt;
@@ -104,7 +107,7 @@ impl TcpSendWorker {
             addresses.sender_address().clone(),
             Some(AddressMetadata {
                 is_terminal: true,
-                attributes: vec![],
+                attributes: vec![TransportMetadata::attribute(TCP)],
             }),
             Arc::new(AllowAll),
             Arc::new(DenyAll),

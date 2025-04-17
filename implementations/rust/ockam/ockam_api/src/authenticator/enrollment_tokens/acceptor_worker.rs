@@ -5,7 +5,8 @@ use either::Either;
 use ockam::identity::Identifier;
 use ockam_core::api::{Method, Request, Response};
 use ockam_core::compat::sync::Arc;
-use ockam_core::{Decodable, Result, Routed, SecureChannelLocalInfo, Worker};
+use ockam_core::identity::SecureChannelLocalInfo;
+use ockam_core::{Decodable, Result, Routed, Worker};
 use ockam_node::Context;
 use tracing::trace;
 

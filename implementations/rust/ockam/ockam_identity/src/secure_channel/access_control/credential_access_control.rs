@@ -2,8 +2,9 @@ use core::fmt::{Debug, Formatter};
 use ockam_core::access_control::IncomingAccessControl;
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::{boxed::Box, vec::Vec};
+use ockam_core::identity::SecureChannelLocalInfo;
+use ockam_core::Result;
 use ockam_core::{async_trait, RelayMessage};
-use ockam_core::{Result, SecureChannelLocalInfo};
 
 use crate::{Identifier, IdentitiesAttributes};
 

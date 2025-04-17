@@ -1,6 +1,7 @@
 use crate::privileged_portal::packet::RawSocketReadResult;
 use crate::privileged_portal::{ConnectionIdentifier, Port};
-use ockam_core::{Address, LocalInfoIdentifier, Route};
+use ockam_core::identity::LocalInfoIdentifier;
+use ockam_core::{Address, Route};
 use std::collections::HashMap;
 use std::net::Ipv4Addr;
 use std::sync::{Arc, RwLock};

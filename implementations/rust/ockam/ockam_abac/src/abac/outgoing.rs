@@ -9,13 +9,12 @@ use ockam_core::Result;
 use ockam_core::{async_trait, OutgoingAccessControl};
 
 use crate::abac::Abac;
-use crate::abac::SUBJECT_KEY;
+use crate::abac::ABAC_SUBJECT_KEY;
 use crate::Expr::*;
 use crate::{Env, Expr};
 use ockam_core::compat::format;
 use ockam_identity::{Identifier, IdentitiesAttributes};
 use ockam_node::ContextRouter;
-use tracing::debug;
 
 pub struct OutgoingAbac {
     ctx: ContextRouter,
@@ -61,7 +60,7 @@ impl OutgoingAbac {
     ) -> Result<Self> {
         let expression = List(vec![
             Ident("=".into()),
-            Ident(format!("{SUBJECT_KEY}.{attribute_name}")),
+            Ident(format!("{ABAC_SUBJECT_KEY}.{attribute_name}")),
             Str(attribute_value.into()),
         ]);
         Self::create(ctx, identities_attributes, authority, expression)
@@ -79,20 +78,14 @@ impl OutgoingAbac {
 
     /// Returns true if the sender of the message is validated by the expression stored in AbacAccessControl
     pub async fn is_authorized_impl(&self, relay_msg: &RelayMessage) -> Result<bool> {
-        let identifier = match Abac::get_outgoing_identifier(&self.ctx, relay_msg)? {
-            Some(identifier) => identifier,
-            None => {
-                debug! {
-                    policy = %self.expression,
-                    "identity identifier not found; access denied"
-                }
-
-                return Ok(false);
-            }
-        };
+        let outgoing_info = Abac::get_outgoing_info(&self.ctx, relay_msg)?;
 
         self.abac
-            .is_identity_authorized(&identifier, &self.expression)
+            .is_authorized(
+                outgoing_info.receiver_identifier.as_ref(),
+                outgoing_info.message_sent_to_the_same_node,
+                &self.expression,
+            )
             .await
     }
 }

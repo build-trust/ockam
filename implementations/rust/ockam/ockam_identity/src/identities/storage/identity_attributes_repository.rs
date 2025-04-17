@@ -10,14 +10,14 @@ use ockam_node::retry;
 /// This trait supports the persistence of attributes associated to identities
 #[async_trait]
 pub trait IdentityAttributesRepository: Send + Sync + 'static {
-    /// Get the attributes associated with the given identity identifier
+    /// Get the attributes associated with the given identifier
     async fn get_attributes(
         &self,
         subject: &Identifier,
         attested_by: &Identifier,
     ) -> Result<Option<AttributesEntry>>;
 
-    /// Set the attributes associated with the given identity identifier.
+    /// Set the attributes associated with the given identifier.
     /// Previous values gets overridden.
     async fn put_attributes(&self, subject: &Identifier, entry: AttributesEntry) -> Result<()>;
 

@@ -15,7 +15,7 @@ use ockam_node::retry;
 ///  - associate a vault name to an identity so that we know where the identity private keys can be found
 ///
 /// By default the get/delete functions use the identity name as a parameter.
-/// When they use the identity identifier instead, this is indicated in the function name:
+/// When they use the identifier instead, this is indicated in the function name:
 /// e.g. get_named_identity_by_identifier()
 ///
 #[async_trait]

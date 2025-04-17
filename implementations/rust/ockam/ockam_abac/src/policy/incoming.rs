@@ -36,21 +36,15 @@ impl IncomingAccessControl for IncomingPolicyAccessControl {
             return Ok(false);
         };
 
-        let identifier = match Abac::get_incoming_identifier(relay_msg) {
-            Some(identifier) => identifier,
-            None => {
-                debug! {
-                    policy = %expression,
-                    "identity identifier not found; access denied"
-                }
-
-                return Ok(false);
-            }
-        };
+        let incoming_info = Abac::get_incoming_info(relay_msg)?;
 
         self.policy_access_control
             .abac
-            .is_identity_authorized(&identifier, &expression)
+            .is_authorized(
+                incoming_info.sender_identifier.as_ref(),
+                incoming_info.message_received_from_the_same_node,
+                &expression,
+            )
             .await
     }
 }

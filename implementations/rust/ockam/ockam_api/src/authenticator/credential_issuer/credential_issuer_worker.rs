@@ -9,7 +9,8 @@ use ockam_core::api::{Method, Request, Response};
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::vec::Vec;
-use ockam_core::{Result, Routed, SecureChannelLocalInfo, Worker};
+use ockam_core::identity::SecureChannelLocalInfo;
+use ockam_core::{Result, Routed, Worker};
 use ockam_node::Context;
 
 /// This struct runs as a Worker to issue credentials based on a request/response protocol

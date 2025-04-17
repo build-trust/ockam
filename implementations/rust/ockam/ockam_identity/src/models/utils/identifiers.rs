@@ -6,12 +6,13 @@ use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use ockam_core::compat::{string::String, vec::Vec};
 #[cfg(feature = "std")]
 use ockam_core::env::FromString;
-use ockam_core::{Error, LocalInfoIdentifier, Result};
+use ockam_core::identity::LocalInfoIdentifier;
+use ockam_core::{Error, Result};
 
 use crate::models::{ChangeHash, CHANGE_HASH_LEN, IDENTIFIER_LEN};
 use crate::{Identifier, IdentityError};
 
-use ockam_core::LOCAL_INFO_IDENTIFIER_LEN;
+use ockam_core::identity::LOCAL_INFO_IDENTIFIER_LEN;
 use static_assertions::const_assert_eq;
 
 const_assert_eq!(LOCAL_INFO_IDENTIFIER_LEN, IDENTIFIER_LEN);

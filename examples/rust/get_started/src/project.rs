@@ -22,7 +22,7 @@ pub struct Project {
 
 /// Accessors for a Project
 impl Project {
-    /// Return the identity identifier of the project
+    /// Return the identifier of the project
     pub fn identifier(&self) -> Identifier {
         self.project_identifier.clone()
     }

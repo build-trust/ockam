@@ -45,21 +45,15 @@ impl OutgoingAccessControl for OutgoingPolicyAccessControl {
             return Ok(false);
         };
 
-        let identifier = match Abac::get_outgoing_identifier(&self.ctx, relay_msg)? {
-            Some(identifier) => identifier,
-            None => {
-                debug! {
-                    policy = %expression,
-                    "identity identifier not found; access denied"
-                }
-
-                return Ok(false);
-            }
-        };
+        let outgoing_info = Abac::get_outgoing_info(&self.ctx, relay_msg)?;
 
         self.policy_access_control
             .abac
-            .is_identity_authorized(&identifier, &expression)
+            .is_authorized(
+                outgoing_info.receiver_identifier.as_ref(),
+                outgoing_info.message_sent_to_the_same_node,
+                &expression,
+            )
             .await
     }
 }

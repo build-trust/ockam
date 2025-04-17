@@ -80,7 +80,6 @@ pub mod env;
 pub mod bare;
 mod cbor;
 mod error;
-mod identity;
 mod message;
 mod processor;
 mod routing;
@@ -90,12 +89,16 @@ mod worker;
 pub use access_control::*;
 pub use cbor::*;
 pub use error::*;
-pub use identity::*;
 pub use message::*;
 pub use processor::*;
 pub use routing::*;
 pub use uint::*;
 pub use worker::*;
+
+/// Identity
+pub mod identity;
+/// Transport
+pub mod transport;
 
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 #[doc(hidden)]

@@ -1,10 +1,8 @@
 use crate::privileged_portal::packet::RawSocketReadResult;
 use crate::privileged_portal::{Inlet, InletConnection, OckamPortalPacket, Outlet, PortalMode};
 use log::{debug, trace, warn};
-use ockam_core::{
-    async_trait, cbor_encode_preallocate, route, LocalInfoIdentifier, LocalMessage, Processor,
-    Result,
-};
+use ockam_core::identity::LocalInfoIdentifier;
+use ockam_core::{async_trait, cbor_encode_preallocate, route, LocalMessage, Processor, Result};
 use ockam_node::Context;
 use ockam_transport_core::TransportError;
 use rand::random;

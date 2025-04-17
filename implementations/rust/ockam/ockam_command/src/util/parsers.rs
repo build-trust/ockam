@@ -79,7 +79,7 @@ pub(crate) fn http_header_parser(input: &str) -> Result<(String, String)> {
 /// Helper fn for parsing an identifier from user input by using
 /// [`ockam_identity::Identifier::from_str()`]
 pub(crate) fn identity_identifier_parser(input: &str) -> Result<Identifier> {
-    Identifier::from_str(input).wrap_err(format!("Invalid identity identifier: {input}"))
+    Identifier::from_str(input).wrap_err(format!("Invalid identifier: {input}"))
 }
 
 /// Helper fn for parsing an InternetAddress from user input by using

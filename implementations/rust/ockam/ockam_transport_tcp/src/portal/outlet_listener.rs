@@ -1,9 +1,9 @@
 use crate::portal::addresses::{Addresses, PortalType};
 use crate::portal::outlet_listener_registry::{MapKey, OutletListenerRegistry};
 use crate::{portal::TcpPortalWorker, PortalMessage, TcpOutletOptions, TcpRegistry};
+use ockam_core::identity::SecureChannelLocalInfo;
 use ockam_core::{
-    async_trait, route, Address, AllowAll, LocalMessage, NeutralMessage, Result, Routed,
-    SecureChannelLocalInfo, Worker,
+    async_trait, route, Address, AllowAll, LocalMessage, NeutralMessage, Result, Routed, Worker,
 };
 use ockam_node::{Context, WorkerBuilder};
 use ockam_transport_core::{HostnamePort, TransportError};

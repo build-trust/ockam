@@ -173,7 +173,7 @@ impl KafkaKeyExchangeControllerImpl {
     ) -> Result<()> {
         let authorized = inner
             .consumer_policy_access_control
-            .is_identity_authorized(entry.their_id())
+            .is_authorized(Some(entry.their_id()), false)
             .await?;
         if authorized {
             Ok(())
@@ -232,7 +232,7 @@ impl KafkaKeyExchangeControllerImpl {
 
         let authorized = inner
             .producer_policy_access_control
-            .is_identity_authorized(&their_identifier)
+            .is_authorized(Some(&their_identifier), false)
             .await?;
 
         if authorized {

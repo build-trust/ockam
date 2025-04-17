@@ -8,12 +8,11 @@ use ockam_core::Result;
 use ockam_core::{IncomingAccessControl, RelayMessage};
 
 use crate::abac::Abac;
-use crate::abac::SUBJECT_KEY;
+use crate::abac::ABAC_SUBJECT_KEY;
 use crate::Expr::*;
 use crate::{Env, Expr};
 use ockam_core::compat::format;
 use ockam_identity::{Identifier, IdentitiesAttributes};
-use tracing::debug;
 
 #[derive(Debug)]
 pub struct IncomingAbac {
@@ -44,7 +43,7 @@ impl IncomingAbac {
     ) -> Self {
         let expression = List(vec![
             Ident("=".into()),
-            Ident(format!("{SUBJECT_KEY}.{attribute_name}")),
+            Ident(format!("{ABAC_SUBJECT_KEY}.{attribute_name}")),
             Str(attribute_value.into()),
         ]);
         Self::create(identities_attributes, authority, expression)
@@ -61,20 +60,14 @@ impl IncomingAbac {
 
     /// Returns true if the sender of the message is validated by the expression stored in AbacAccessControl
     pub async fn is_authorized_impl(&self, relay_msg: &RelayMessage) -> Result<bool> {
-        let identifier = match Abac::get_incoming_identifier(relay_msg) {
-            Some(identifier) => identifier,
-            None => {
-                debug! {
-                    policy = %self.expression,
-                    "identity identifier not found; access denied"
-                }
-
-                return Ok(false);
-            }
-        };
+        let incoming_info = Abac::get_incoming_info(relay_msg)?;
 
         self.abac
-            .is_identity_authorized(&identifier, &self.expression)
+            .is_authorized(
+                incoming_info.sender_identifier.as_ref(),
+                incoming_info.message_received_from_the_same_node,
+                &self.expression,
+            )
             .await
     }
 

@@ -1,6 +1,8 @@
+use crate::TCP;
 use cfg_if::cfg_if;
 use minicbor::{CborLen, Decode, Encode};
 use ockam_core::compat::string::String;
+use ockam_core::transport::TransportLocalInfo;
 #[cfg(feature = "std")]
 use ockam_core::OpenTelemetryContext;
 use ockam_core::{CowBytes, LocalMessage, Route};
@@ -50,8 +52,10 @@ impl<'a> TcpTransportMessage<'a> {
     }
 }
 
-impl From<TcpTransportMessage<'_>> for LocalMessage {
-    fn from(value: TcpTransportMessage) -> Self {
+impl TryFrom<TcpTransportMessage<'_>> for LocalMessage {
+    type Error = ockam_core::Error;
+
+    fn try_from(value: TcpTransportMessage) -> Result<Self, Self::Error> {
         let local_message = LocalMessage::new();
 
         #[cfg(feature = "std")]
@@ -62,10 +66,15 @@ impl From<TcpTransportMessage<'_>> for LocalMessage {
                 local_message
             };
 
-        local_message
+        // Mark message LocalInfo with TransportLocalInfo,
+        // replacing any pre-existing entries
+        let local_info = TransportLocalInfo::mark(vec![], TCP)?;
+
+        Ok(local_message
             .with_onward_route(value.onward_route)
             .with_return_route(value.return_route)
             .with_payload(value.payload.into_owned())
+            .with_local_info(local_info))
     }
 }
 

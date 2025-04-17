@@ -69,7 +69,11 @@ impl PolicyAccessControl {
         })
     }
 
-    pub async fn is_identity_authorized(&self, identifier: &Identifier) -> Result<bool> {
+    pub async fn is_authorized(
+        &self,
+        identifier: Option<&Identifier>,
+        message_is_local: bool,
+    ) -> Result<bool> {
         // Load the policy expression for resource and action:
         let expression = if let Some(expr) = self
             .policies
@@ -88,7 +92,7 @@ impl PolicyAccessControl {
         };
 
         self.abac
-            .is_identity_authorized(identifier, &expression)
+            .is_authorized(identifier, message_is_local, &expression)
             .await
     }
 }

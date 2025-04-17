@@ -8,7 +8,7 @@ use crate::state::AppState;
 use miette::IntoDiagnostic;
 use ockam::abac::expr::{eq, ident, str};
 use ockam::abac::PolicyExpression::FullExpression;
-use ockam::abac::SUBJECT_KEY;
+use ockam::abac::ABAC_SUBJECT_KEY;
 use ockam::transport::HostnamePort;
 use ockam_api::address::get_free_address;
 use ockam_api::authenticator::direct::{
@@ -192,7 +192,7 @@ impl AppState {
         // is the enroller of its project and not any enrolled
         // identity.
         let expr = eq([
-            ident(format!("{}.{}", SUBJECT_KEY, OCKAM_ROLE_ATTRIBUTE_KEY)),
+            ident(format!("{}.{}", ABAC_SUBJECT_KEY, OCKAM_ROLE_ATTRIBUTE_KEY)),
             str(OCKAM_ROLE_ATTRIBUTE_ENROLLER_VALUE),
         ]);
 
