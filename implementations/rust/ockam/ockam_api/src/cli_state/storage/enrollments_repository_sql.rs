@@ -48,7 +48,7 @@ impl EnrollmentsRepository for EnrollmentsSqlxDatabase {
             r#"
                 INSERT INTO identity_enrollment (identifier, enrolled_at, email, tenant_id)
                 VALUES ($1, $2, $3, $4)
-                ON CONFLICT (identifier)
+                ON CONFLICT (tenant_id, identifier)
                 DO UPDATE SET enrolled_at = $2, email = $3, tenant_id = $4"#,
         )
         .bind(identifier)

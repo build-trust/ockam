@@ -76,7 +76,7 @@ impl ModelStateRepository for ModelStateSqlxDatabase {
                 r#"
                  INSERT INTO incoming_service (invitation_id, enabled, name, tenant_id)
                  VALUES ($1, $2, $3, $4)
-                 ON CONFLICT (invitation_id)
+                 ON CONFLICT (tenant_id, invitation_id)
                  DO UPDATE SET enabled = $2, name = $3, tenant_id = $4"#,
             )
             .bind(&incoming_service.invitation_id)

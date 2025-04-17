@@ -47,7 +47,7 @@ impl NodesRepository for NodesSqlxDatabase {
         let query = query(r#"
         INSERT INTO node (name, identifier, verbosity, is_default, is_authority, tcp_listener_address, pid, http_server_address, tenant_id)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-        ON CONFLICT (name)
+        ON CONFLICT (tenant_id, name)
         DO UPDATE SET identifier = $2, verbosity = $3, is_default = $4, is_authority = $5, tcp_listener_address = $6, pid = $7, http_server_address = $8, tenant_id = $9"#)
             .bind(node_info.name())
             .bind(node_info.identifier())

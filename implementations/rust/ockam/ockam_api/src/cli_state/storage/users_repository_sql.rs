@@ -94,7 +94,7 @@ impl UsersRepository for UsersSqlxDatabase {
         let query2 = query(r#"
             INSERT INTO "user" (email, sub, nickname, name, picture, updated_at, email_verified, is_default, tenant_id)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-            ON CONFLICT (email)
+            ON CONFLICT (tenant_id, email)
             DO UPDATE SET sub = $2, nickname = $3, name = $4, picture = $5, updated_at = $6, email_verified = $7, is_default = $8, tenant_id = $9"#)
             .bind(&email)
             .bind(&user.sub)

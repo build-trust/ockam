@@ -58,7 +58,7 @@ impl ResourcePoliciesRepository for ResourcePolicySqlxDatabase {
         let query = query(
             r#"INSERT INTO resource_policy (resource_name, action, expression, node_name, tenant_id)
             VALUES ($1, $2, $3, $4, $5)
-            ON CONFLICT (resource_name, action, node_name)
+            ON CONFLICT (tenant_id, resource_name, action, node_name)
             DO UPDATE SET expression = $3, tenant_id = $5"#,
         )
         .bind(resource_name)

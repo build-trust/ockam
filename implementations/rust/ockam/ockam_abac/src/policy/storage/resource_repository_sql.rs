@@ -56,7 +56,7 @@ impl ResourcesRepository for ResourcesSqlxDatabase {
             r#"
             INSERT INTO resource (resource_name, resource_type, node_name, tenant_id)
             VALUES ($1, $2, $3, $4)
-            ON CONFLICT (resource_name, node_name)
+            ON CONFLICT (tenant_id, resource_name, node_name)
             DO UPDATE SET resource_type = $2"#,
         )
         .bind(&resource.resource_name)

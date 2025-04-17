@@ -84,7 +84,7 @@ impl SpacesRepository for SpacesSqlxDatabase {
             r#"
              INSERT INTO space (space_id, space_name, is_default, tenant_id)
              VALUES ($1, $2, $3, $4)
-             ON CONFLICT (space_id)
+             ON CONFLICT (tenant_id, space_id)
              DO UPDATE SET space_name = $2, is_default = $3, tenant_id = $4"#,
         )
         .bind(&space.id)
@@ -123,7 +123,7 @@ impl SpacesRepository for SpacesSqlxDatabase {
                 r#"
              INSERT INTO subscription (space_id, name, is_free_trial, marketplace, start_date, end_date, tenant_id)
              VALUES ($1, $2, $3, $4, $5, $6, $7)
-             ON CONFLICT (space_id)
+             ON CONFLICT (tenant_id, space_id)
              DO UPDATE SET name = $2, is_free_trial = $3, marketplace = $4, start_date = $5, end_date = $6, tenant_id = $7"#,
             )
                 .bind(&space.id)

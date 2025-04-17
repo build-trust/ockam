@@ -67,7 +67,7 @@ impl SecretsRepository for SecretsSqlxDatabase {
             r#"
             INSERT INTO signing_secret (handle, secret_type, secret, tenant_id)
             VALUES ($1, $2, $3, $4)
-            ON CONFLICT (handle)
+            ON CONFLICT (tenant_id, handle)
             DO UPDATE SET secret_type = $2, secret = $3, tenant_id = $4"#,
         )
         .bind(handle)
@@ -117,7 +117,7 @@ impl SecretsRepository for SecretsSqlxDatabase {
             r#"
         INSERT INTO x25519_secret (handle, secret, tenant_id)
         VALUES ($1, $2, $3)
-        ON CONFLICT (handle)
+        ON CONFLICT (tenant_id, handle)
         DO UPDATE SET secret = $2, tenant_id = $3"#,
         )
         .bind(handle)
@@ -164,7 +164,7 @@ impl SecretsRepository for SecretsSqlxDatabase {
             r#"
                 INSERT INTO aead_secret (handle, type, secret, tenant_id)
                 VALUES ($1, $2, $3, $4)
-                ON CONFLICT (handle)
+                ON CONFLICT (tenant_id, handle)
                 DO UPDATE SET type = $2, secret = $3, tenant_id = $4"#,
         )
         .bind(handle)

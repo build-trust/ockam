@@ -141,7 +141,7 @@ impl ChangeHistorySqlxDatabase {
             r#"
             INSERT INTO identity (identifier, change_history, tenant_id)
             VALUES ($1, $2, $3)
-            ON CONFLICT (identifier)
+            ON CONFLICT (tenant_id, identifier)
             DO UPDATE SET change_history = $2, tenant_id = $3"#,
         )
         .bind(identifier)

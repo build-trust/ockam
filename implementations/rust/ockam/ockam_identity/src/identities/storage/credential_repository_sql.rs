@@ -105,7 +105,7 @@ impl CredentialRepository for CredentialSqlxDatabase {
         let query = query(
             r#"INSERT INTO credential (subject_identifier, issuer_identifier, scope, credential, expires_at, node_name, tenant_id)
             VALUES ($1, $2, $3, $4, $5, $6, $7)
-            ON CONFLICT (subject_identifier, issuer_identifier, scope)
+            ON CONFLICT (tenant_id, subject_identifier, issuer_identifier, scope)
             DO UPDATE SET credential = $4, expires_at = $5, node_name = $6, tenant_id = $7"#)
             .bind(subject)
             .bind(issuer)

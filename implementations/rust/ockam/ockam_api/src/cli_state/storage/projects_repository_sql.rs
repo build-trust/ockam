@@ -195,7 +195,7 @@ impl ProjectsRepository for ProjectsSqlxDatabase {
             r#"
             INSERT INTO project (project_id, project_name, is_default, space_id, space_name, project_identifier, project_change_history, access_route, authority_change_history, authority_access_route, version, running, operation_id, tenant_id)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
-            ON CONFLICT (project_id)
+            ON CONFLICT (tenant_id, project_id)
             DO UPDATE SET project_name = $2, is_default = $3, space_id = $4, space_name = $5, project_identifier = $6, project_change_history = $7, access_route = $8, authority_change_history = $9, authority_access_route = $10, version = $11, running = $12, operation_id = $13, tenant_id = $14"#,
         )
             .bind(&project.id)
@@ -261,7 +261,7 @@ impl ProjectsRepository for ProjectsSqlxDatabase {
             r#"
           INSERT INTO space (space_id, space_name, is_default, tenant_id)
           VALUES ($1, $2, $3, $4)
-          ON CONFLICT (space_id)
+          ON CONFLICT (tenant_id, space_id)
           DO UPDATE SET space_name = $2, is_default = $3, tenant_id = $4"#,
         )
         .bind(&project.space_id)
