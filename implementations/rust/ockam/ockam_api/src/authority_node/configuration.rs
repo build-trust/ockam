@@ -62,7 +62,7 @@ pub struct Configuration {
 
 /// Local and private functions for the authority configuration
 impl Configuration {
-    /// Return the authority identity identifier
+    /// Return the authority identifier
     pub(crate) fn identifier(&self) -> Identifier {
         self.identifier.clone()
     }

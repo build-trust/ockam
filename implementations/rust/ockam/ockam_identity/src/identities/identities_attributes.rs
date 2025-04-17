@@ -37,7 +37,7 @@ impl IdentitiesAttributes {
         self.repository.get_attributes(subject, attested_by).await
     }
 
-    /// Set the attributes associated with the given identity identifier.
+    /// Set the attributes associated with the given identifier.
     /// Previous values gets overridden.
     #[instrument(skip_all, fields(subject = %subject, entry = %entry), level = Level::TRACE)]
     pub async fn put_attributes(&self, subject: &Identifier, entry: AttributesEntry) -> Result<()> {

@@ -1,6 +1,7 @@
 use core::sync::atomic::Ordering;
 use ockam_core::compat::sync::Arc;
-use ockam_core::{Any, Result, Route, Routed, SecureChannelLocalInfo};
+use ockam_core::identity::SecureChannelLocalInfo;
+use ockam_core::{Any, Result, Route, Routed};
 use ockam_core::{Decodable, LocalMessage};
 use ockam_node::Context;
 

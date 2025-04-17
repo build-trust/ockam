@@ -183,7 +183,7 @@ pub struct IncomingService {
     enabled: bool,
     // all remaining fields were extracted from the access details
     project_id: String,
-    // the identity identifier of the destination node, used to reconstruct the full route
+    // the identifier of the destination node, used to reconstruct the full route
     shared_node_identifier: Identifier,
     // this is used as the outlet service name, and it's needed
     // to reconstruct the full route

@@ -4856,6 +4856,7 @@ dependencies = [
  "delegate",
  "hex",
  "minicbor",
+ "ockam_abac",
  "ockam_core",
  "ockam_macros",
  "ockam_node",

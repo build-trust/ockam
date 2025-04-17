@@ -1,4 +1,4 @@
-use crate::{Expr, SUBJECT_KEY};
+use crate::{Expr, ABAC_MESSAGE_KEY, ABAC_SUBJECT_KEY};
 #[cfg(feature = "std")]
 use core::str::FromStr;
 use minicbor::{CborLen, Decode, Encode};
@@ -50,6 +50,8 @@ pub enum BooleanExpr {
     Not(#[n(0)] Box<BooleanExpr>),
     #[n(6)]
     Empty,
+    #[n(7)]
+    MessageAttribute(#[n(0)] String),
 }
 
 impl PartialEq for BooleanExpr {
@@ -63,6 +65,7 @@ impl PartialEq for BooleanExpr {
             (BooleanExpr::Or(e1, e2), BooleanExpr::Or(e3, e4)) => e1 == e3 && e2 == e4,
             (BooleanExpr::And(e1, e2), BooleanExpr::And(e3, e4)) => e1 == e3 && e2 == e4,
             (BooleanExpr::Not(e1), BooleanExpr::Not(e2)) => e1 == e2,
+            (BooleanExpr::MessageAttribute(a1), BooleanExpr::MessageAttribute(a2)) => a1 == a2,
             _ => false,
         }
     }
@@ -88,6 +91,7 @@ impl Display for BooleanExpr {
                 BooleanExpr::And(e1, e2) => format!("({e1} and {e2})"),
                 BooleanExpr::Not(e) => format!("(not {e})"),
                 BooleanExpr::Empty => "".to_string(),
+                BooleanExpr::MessageAttribute(s) => format!("{ABAC_MESSAGE_KEY}.{s}"),
             }
         }
 
@@ -113,6 +117,7 @@ impl Display for BooleanExpr {
             )),
             BooleanExpr::Not(e) => f.write_str(&format!("not {}", to_nested_string(e))),
             BooleanExpr::Empty => f.write_str(""),
+            BooleanExpr::MessageAttribute(s) => f.write_str(&format!("{ABAC_MESSAGE_KEY}.{s}")),
         }
     }
 }
@@ -163,9 +168,14 @@ impl BooleanExpr {
         BooleanExpr::NameValue(s.to_string(), v.to_string())
     }
 
-    /// Create an identity identifier to be used in a boolean expression.
+    /// Create an identifier to be used in a boolean expression.
     pub fn identifier(s: &str) -> BooleanExpr {
         BooleanExpr::Identifier(s.to_string())
+    }
+
+    /// Create an identifier to be used in a boolean expression.
+    pub fn message_attribute(s: &str) -> BooleanExpr {
+        BooleanExpr::MessageAttribute(s.to_string())
     }
 
     /// Create the disjunction of 2 boolean expressions.
@@ -198,17 +208,22 @@ impl BooleanExpr {
         match self {
             BooleanExpr::Name(n) => List(vec![
                 Ident("=".to_string()),
-                Ident(format!("{}.{}", SUBJECT_KEY, n)),
+                Ident(format!("{}.{}", ABAC_SUBJECT_KEY, n)),
                 Str("true".to_string()),
             ]),
             BooleanExpr::NameValue(n, v) => List(vec![
                 Ident("=".to_string()),
-                Ident(format!("{}.{}", SUBJECT_KEY, n)),
+                Ident(format!("{}.{}", ABAC_SUBJECT_KEY, n)),
                 Str(v.to_string()),
+            ]),
+            BooleanExpr::MessageAttribute(s) => List(vec![
+                Ident("=".to_string()),
+                Ident(format!("{ABAC_MESSAGE_KEY}.{s}")),
+                Bool(true),
             ]),
             BooleanExpr::Identifier(i) => List(vec![
                 Ident("=".to_string()),
-                Ident(format!("{}.identifier", SUBJECT_KEY)),
+                Ident(format!("{}.identifier", ABAC_SUBJECT_KEY)),
                 Str(i.to_string()),
             ]),
             BooleanExpr::Or(e1, e2) => List(vec![
@@ -280,6 +295,7 @@ impl Not for BooleanExpr {
 #[cfg(feature = "std")]
 mod parsers {
     use crate::boolean_expr::{BooleanExpr, NAME_FORMAT};
+    use crate::ABAC_MESSAGE_KEY;
     use ockam_core::env::FromString;
     use ockam_identity::Identifier;
     use winnow::ascii::multispace0;
@@ -354,6 +370,12 @@ mod parsers {
         // if the name is a valid ockam identifier, return it
         if Identifier::from_string(&name).is_ok() {
             return Ok(BooleanExpr::identifier(&name));
+        }
+
+        if name.starts_with(&format!("{}.", ABAC_MESSAGE_KEY)) {
+            return Ok(BooleanExpr::message_attribute(
+                &name[ABAC_MESSAGE_KEY.len() + 1..],
+            ));
         }
 
         // otherwise, it's a name
@@ -529,6 +551,16 @@ mod tests {
     }
 
     #[test]
+    fn parse_identifier() {
+        test_parse_identifier("Icd6ac465f7883bdd99f58650bed6e516e0bd0af2ca2f48cbc77f40698bf1ba2b");
+    }
+
+    #[test]
+    fn parse_message_attribute() {
+        test_parse_message_attribute("message.is_local", "is_local");
+    }
+
+    #[test]
     fn parse_boolean_expr() {
         test_parse_expr(
             &mut "a and b",
@@ -691,6 +723,26 @@ mod tests {
             Ok(actual) => panic!("there should be an error '{expected}', when parsing {input_copy}. This expression was parsed instead {actual:?}"),
             Err(e) => assert!(e.to_string().contains(expected), "actual error message:\n{e}\nexpected message:\n{expected}"),
         }
+    }
+
+    /// Test the parsing of an Identifier
+    fn test_parse_identifier(input: &str) {
+        let i = input.to_string();
+        test_parse(
+            &mut name,
+            &mut i.as_str(),
+            BooleanExpr::Identifier(input.to_string()),
+        )
+    }
+
+    /// Test the parsing of a name
+    fn test_parse_message_attribute(input: &str, expected: &str) {
+        let i = input.to_string();
+        test_parse(
+            &mut name,
+            &mut i.as_str(),
+            BooleanExpr::MessageAttribute(expected.to_string()),
+        )
     }
 
     fn test_parse_name_value(input: &str) {

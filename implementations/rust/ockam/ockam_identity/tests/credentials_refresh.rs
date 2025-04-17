@@ -3,7 +3,8 @@ use std::time::Duration;
 
 use ockam_core::api::Response;
 use ockam_core::compat::sync::Arc;
-use ockam_core::{async_trait, Any, Routed, SecureChannelLocalInfo, TryClone, Worker};
+use ockam_core::identity::SecureChannelLocalInfo;
+use ockam_core::{async_trait, Any, Routed, TryClone, Worker};
 use ockam_core::{route, Result};
 use ockam_identity::models::CredentialSchemaIdentifier;
 use ockam_identity::secure_channels::secure_channels;

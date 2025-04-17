@@ -3,9 +3,10 @@ use core::time::Duration;
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::sync::{Arc, RwLock};
 use ockam_core::errcode::{Kind, Origin};
+use ockam_core::identity::SecureChannelMetadata;
 use ockam_core::{
     AddressMetadata, AllowAll, Any, DenyAll, Error, Mailbox, Mailboxes, NeutralMessage,
-    OutgoingAccessControl, Route, Routed, SecureChannelMetadata,
+    OutgoingAccessControl, Route, Routed,
 };
 use ockam_core::{Result, Worker};
 use ockam_node::callback::CallbackSender;

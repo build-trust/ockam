@@ -4,9 +4,8 @@ use crate::privileged_portal::{
     OutletConnectionReturnRoute, Port, TcpPacketWriter, TcpTransportEbpfSupport,
 };
 use log::{debug, trace};
-use ockam_core::{
-    async_trait, Any, LocalInfoIdentifier, Result, Route, Routed, SecureChannelLocalInfo, Worker,
-};
+use ockam_core::identity::{LocalInfoIdentifier, SecureChannelLocalInfo};
+use ockam_core::{async_trait, Any, Result, Route, Routed, Worker};
 use ockam_node::Context;
 use ockam_transport_core::TransportError;
 use std::net::Ipv4Addr;

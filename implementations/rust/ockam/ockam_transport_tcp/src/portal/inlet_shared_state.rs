@@ -1,4 +1,5 @@
-use ockam_core::{LocalInfoIdentifier, Result, Route, SecureChannelMetadata};
+use ockam_core::identity::{LocalInfoIdentifier, SecureChannelMetadata};
+use ockam_core::{Result, Route};
 use ockam_node::Context;
 
 /// State shared between `TcpInletListenProcessor` and `TcpInlet` to allow manipulating its state

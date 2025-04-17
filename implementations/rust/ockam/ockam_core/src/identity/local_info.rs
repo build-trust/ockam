@@ -1,8 +1,7 @@
 use crate::compat::vec::Vec;
 use crate::errcode::{Kind, Origin};
-use crate::{
-    Error, LocalInfo, LocalInfoIdentifier, LocalMessage, Result, SECURE_CHANNEL_IDENTIFIER,
-};
+use crate::identity::{LocalInfoIdentifier, SECURE_CHANNEL_IDENTIFIER};
+use crate::{Error, LocalInfo, LocalMessage, Result};
 
 /// SecureChannel LocalInfo used for LocalMessage
 pub struct SecureChannelLocalInfo {

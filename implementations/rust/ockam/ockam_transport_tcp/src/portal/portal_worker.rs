@@ -7,10 +7,10 @@ use crate::{portal::TcpPortalRecvProcessor, PortalInternalMessage, PortalMessage
 use core::fmt::{Display, Formatter};
 use ockam_core::compat::{boxed::Box, sync::Arc};
 use ockam_core::env::get_env;
+use ockam_core::identity::{LocalInfoIdentifier, SecureChannelLocalInfo};
 use ockam_core::{
     async_trait, AllowAll, AllowOnwardAddress, AllowSourceAddress, Decodable, DenyAll,
-    IncomingAccessControl, LocalInfoIdentifier, Mailbox, Mailboxes, OutgoingAccessControl,
-    SecureChannelLocalInfo, OCKAM_TRACER_NAME,
+    IncomingAccessControl, Mailbox, Mailboxes, OutgoingAccessControl, OCKAM_TRACER_NAME,
 };
 use ockam_core::{Any, Result, Route, Routed, Worker};
 use ockam_node::{Context, ProcessorBuilder, WorkerBuilder, WorkerShutdownPriority};

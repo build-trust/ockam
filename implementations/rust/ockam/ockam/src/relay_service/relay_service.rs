@@ -4,9 +4,8 @@ use crate::{Context, RelayServiceOptions};
 use alloc::string::String;
 use ockam_core::compat::boxed::Box;
 use ockam_core::compat::sync::Arc;
-use ockam_core::{
-    Address, DenyAll, Encodable, Mailbox, Mailboxes, Result, Routed, SecureChannelLocalInfo, Worker,
-};
+use ockam_core::identity::SecureChannelLocalInfo;
+use ockam_core::{Address, DenyAll, Encodable, Mailbox, Mailboxes, Result, Routed, Worker};
 use ockam_node::WorkerBuilder;
 
 /// Alias worker to register remote workers under local names.

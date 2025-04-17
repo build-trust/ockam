@@ -144,7 +144,7 @@ impl AttributesEntry {
         self.added_at
     }
 
-    /// Who attested this attributes for this identity identifier
+    /// Who attested this attributes for this identifier
     pub fn attested_by(&self) -> Option<Identifier> {
         self.attested_by.to_owned()
     }

@@ -51,7 +51,7 @@ pub struct Authority {
 ///   - create an Authority
 ///   - start services
 impl Authority {
-    /// Return the identity identifier for this authority
+    /// Return the identifier for this authority
     pub fn identifier(&self) -> Identifier {
         self.identifier.clone()
     }

@@ -4,9 +4,9 @@ use ockam::abac::Abac;
 use ockam::identity::{Identifier, IdentitiesAttributes};
 use ockam::Context;
 use ockam_core::errcode::Origin;
+use ockam_core::identity::SecureChannelLocalInfo;
 use ockam_core::{
     async_trait, Address, DenyAll, IncomingAccessControl, OutgoingAccessControl, RelayMessage,
-    SecureChannelLocalInfo,
 };
 use std::fmt::Debug;
 use std::sync::Arc;
@@ -188,15 +188,15 @@ pub struct InvitationOutgoingAccessControl {
 #[async_trait]
 impl OutgoingAccessControl for InvitationOutgoingAccessControl {
     async fn is_authorized(&self, relay_message: &RelayMessage) -> ockam_core::Result<bool> {
-        let identifier =
-            match Abac::get_outgoing_identifier(&self.ctx.get_router_context(), relay_message)? {
-                Some(identifier) => identifier,
-                None => {
-                    debug!("identity identifier not found; access denied");
+        let outgoing_info = Abac::get_outgoing_info(&self.ctx.get_router_context(), relay_message)?;
+        let identifier = match outgoing_info.receiver_identifier {
+            Some(identifier) => identifier,
+            None => {
+                debug!("identifier not found; access denied");
 
-                    return Ok(false);
-                }
-            };
+                return Ok(false);
+            }
+        };
 
         self.invitation_access_control
             .is_authorized(&identifier)

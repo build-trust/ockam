@@ -443,7 +443,7 @@ impl NamedIdentity {
         }
     }
 
-    /// Return the identity identifier
+    /// Return the identifier
     pub fn identifier(&self) -> Identifier {
         self.identifier.clone()
     }

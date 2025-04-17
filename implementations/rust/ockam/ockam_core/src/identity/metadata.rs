@@ -1,6 +1,7 @@
 use crate::compat::string::{String, ToString};
 use crate::errcode::{Kind, Origin};
-use crate::{AddressMetadata, Error, LocalInfoIdentifier, Result, SECURE_CHANNEL_IDENTIFIER};
+use crate::identity::{LocalInfoIdentifier, SECURE_CHANNEL_IDENTIFIER};
+use crate::{AddressMetadata, Error, Result};
 
 /// SecureChannel Metadata used for Terminal Address
 pub struct SecureChannelMetadata {

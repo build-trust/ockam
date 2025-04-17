@@ -30,7 +30,7 @@ async fn main(ctx: Context) -> Result<()> {
     let tcp = node.create_tcp_transport()?;
 
     // Create an Identity representing the client
-    // We preload the client vault with a change history and secret key corresponding to the identity identifier
+    // We preload the client vault with a change history and secret key corresponding to the identifier
     // Ie70dc5545d64724880257acb32b8851e7dd1dd57076838991bc343165df71bfe
     // which is an identifier known to the credential issuer, with some preset attributes
     //
