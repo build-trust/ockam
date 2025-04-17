@@ -63,7 +63,7 @@ impl ResourceTypePoliciesRepository for ResourceTypePolicySqlxDatabase {
             r#"INSERT INTO
             resource_type_policy (resource_type, action, expression, node_name, tenant_id)
             VALUES ($1, $2, $3, $4, $5)
-            ON CONFLICT (node_name, resource_type, action)
+            ON CONFLICT (tenant_id, node_name, resource_type, action)
             DO UPDATE SET expression = $3, tenant_id = $5"#,
         )
         .bind(resource_type)

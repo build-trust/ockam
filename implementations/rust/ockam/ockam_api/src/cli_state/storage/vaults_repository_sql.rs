@@ -50,7 +50,7 @@ impl VaultsRepository for VaultsSqlxDatabase {
         INSERT INTO
             vault (name, path, is_default, is_kms, tenant_id)
             VALUES ($1, $2, $3, $4, $5)
-            ON CONFLICT (name)
+            ON CONFLICT (tenant_id, name)
             DO UPDATE SET path = $2, is_default = $3, is_kms = $4, tenant_id = $5"#,
         )
         .bind(name)

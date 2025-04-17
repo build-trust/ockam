@@ -49,7 +49,7 @@ impl JourneysRepository for JourneysSqlxDatabase {
             r#"
             INSERT INTO project_journey (project_id, opentelemetry_context, start_datetime, previous_opentelemetry_context, tenant_id)
             VALUES ($1, $2, $3, $4, $5)
-            ON CONFLICT (opentelemetry_context)
+            ON CONFLICT (tenant_id, project_id, opentelemetry_context)
             DO UPDATE SET project_id = $1, start_datetime = $3, previous_opentelemetry_context = $4, tenant_id = $5"#,
         )
         .bind(project_journey.project_id())
@@ -91,7 +91,7 @@ impl JourneysRepository for JourneysSqlxDatabase {
             r#"
          INSERT INTO host_journey (opentelemetry_context, start_datetime, previous_opentelemetry_context, tenant_id)
          VALUES ($1, $2, $3, $4)
-         ON CONFLICT (opentelemetry_context)
+         ON CONFLICT (tenant_id, opentelemetry_context)
          DO UPDATE SET start_datetime = $2, previous_opentelemetry_context = $3, tenant_id = $4"#,
         )
         .bind(host_journey.opentelemetry_context().to_string())

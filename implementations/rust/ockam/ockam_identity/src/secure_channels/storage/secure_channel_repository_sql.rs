@@ -65,7 +65,7 @@ impl SecureChannelRepository for SecureChannelSqlxDatabase {
         let query = query(
             r#"INSERT INTO secure_channel (role, my_identifier, their_identifier, decryptor_remote_address, decryptor_api_address, decryption_key_handle, tenant_id)
             VALUES ($1, $2, $3, $4, $5, $6, $7)
-            ON CONFLICT (decryptor_remote_address)
+            ON CONFLICT (tenant_id, decryptor_remote_address)
             DO UPDATE SET role = $1, my_identifier = $2, their_identifier = $3, decryptor_api_address = $5, decryption_key_handle = $6, tenant_id = $7"#,
             )
             .bind(secure_channel.role().str())

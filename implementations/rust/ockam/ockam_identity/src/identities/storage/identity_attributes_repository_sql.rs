@@ -77,7 +77,7 @@ impl IdentityAttributesRepository for IdentityAttributesSqlxDatabase {
             r#"
             INSERT INTO identity_attributes (identifier, attributes, added, expires, attested_by, node_name, tenant_id)
             VALUES ($1, $2, $3, $4, $5, $6, $7)
-            ON CONFLICT (identifier, node_name)
+            ON CONFLICT (tenant_id, identifier, node_name)
             DO UPDATE SET attributes = $2, added = $3, expires = $4, attested_by = $5, node_name = $6, tenant_id = $7"#)
             .bind(subject)
             .bind(&entry)

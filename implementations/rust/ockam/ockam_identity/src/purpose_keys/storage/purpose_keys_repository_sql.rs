@@ -58,7 +58,7 @@ impl PurposeKeysRepository for PurposeKeysSqlxDatabase {
             r#"
             INSERT INTO purpose_key (identifier, purpose, purpose_key_attestation, tenant_id)
             VALUES ($1, $2, $3, $4)
-            ON CONFLICT (identifier, purpose)
+            ON CONFLICT (tenant_id, identifier, purpose)
             DO UPDATE SET purpose_key_attestation = $3, tenant_id = $4"#,
         )
         .bind(subject)

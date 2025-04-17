@@ -60,7 +60,7 @@ impl IdentitiesRepository for IdentitiesSqlxDatabase {
             r#"
         INSERT INTO named_identity (identifier, name, vault_name, is_default, tenant_id)
         VALUES ($1, $2, $3, $4, $5)
-        ON CONFLICT (identifier)
+        ON CONFLICT (tenant_id, identifier)
         DO UPDATE SET name = $2, vault_name = $3, is_default = $4, tenant_id = $5"#,
         )
         .bind(identifier)

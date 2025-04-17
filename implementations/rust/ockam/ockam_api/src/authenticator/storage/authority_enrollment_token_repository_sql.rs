@@ -105,7 +105,7 @@ impl AuthorityEnrollmentTokenRepository for AuthorityEnrollmentTokenSqlxDatabase
             r#"
             INSERT INTO authority_enrollment_token (one_time_code, reference, issued_by, created_at, expires_at, ttl_count, attributes, tenant_id)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-            ON CONFLICT (one_time_code)
+            ON CONFLICT (tenant_id, one_time_code)
             DO UPDATE SET reference = $2, issued_by = $3, created_at = $4, expires_at = $5, ttl_count = $6, attributes = $7, tenant_id = $8"#,
         )
             .bind(token.one_time_code)

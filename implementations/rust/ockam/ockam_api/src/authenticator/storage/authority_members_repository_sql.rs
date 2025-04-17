@@ -82,7 +82,7 @@ impl AuthorityMembersRepository for AuthorityMembersSqlxDatabase {
         let query = query(r#"
              INSERT INTO authority_member (identifier, added_by, added_at, is_pre_trusted, attributes, authority_id, tenant_id)
              VALUES ($1, $2, $3, $4, $5, $6, $7)
-             ON CONFLICT (identifier)
+             ON CONFLICT (tenant_id, identifier)
              DO UPDATE SET added_by = $2, added_at = $3, is_pre_trusted = $4, attributes = $5, authority_id = $6, tenant_id = $7"#)
             .bind(member.identifier())
             .bind(member.added_by())
@@ -111,7 +111,7 @@ impl AuthorityMembersRepository for AuthorityMembersSqlxDatabase {
                 query(r#"
                       INSERT INTO authority_member (identifier, added_by, added_at, is_pre_trusted, attributes, authority_id, tenant_id)
                       VALUES ($1, $2, $3, $4, $5, $6, $7)
-                      ON CONFLICT (identifier)
+                      ON CONFLICT (tenant_id, identifier)
                       DO UPDATE SET added_by = $2, added_at = $3, is_pre_trusted = $4, attributes = $5, authority_id = $6, tenant_id = $7"#)
                     .bind(identifier)
                     .bind(pre_trusted_identity.attested_by())
