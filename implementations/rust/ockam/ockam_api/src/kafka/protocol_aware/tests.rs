@@ -30,7 +30,7 @@ mod test {
         let handle = crate::test_utils::start_manager_for_tests(context, None, None).await?;
 
         let inlet_map = KafkaInletController::new(
-            (*handle.node_manager).clone(),
+            handle.node_manager.inner_clone(),
             MultiAddr::default(),
             route![],
             route![],
@@ -59,7 +59,7 @@ mod test {
         );
 
         let secure_channel_controller = KafkaKeyExchangeControllerImpl::new(
-            (*handle.node_manager).clone(),
+            handle.node_manager.inner_clone(),
             secure_channels,
             ConsumerResolution::None,
             ConsumerPublishing::None,

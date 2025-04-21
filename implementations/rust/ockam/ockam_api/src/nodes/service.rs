@@ -19,7 +19,6 @@ pub mod tcp_outlets;
 mod transport;
 pub mod workers;
 
-pub mod ai_platform;
 mod certificate_provider;
 mod http;
 mod interceptors;

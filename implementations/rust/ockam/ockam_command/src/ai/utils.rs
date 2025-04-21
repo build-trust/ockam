@@ -1,26 +1,13 @@
-use crate::CommandGlobalOpts;
-use ockam_api::colors::color_primary;
-use ockam_api::fmt_log;
+use ockam_api::nodes::InMemoryNode;
+use ockam_api::orchestrator::ai_platform::api::AiPlatformApi;
 
-pub async fn get_customer_name(
-    opts: &CommandGlobalOpts,
-    customer: Option<&str>,
-) -> miette::Result<String> {
-    match customer {
-        Some(customer) => Ok(customer.to_string()),
-        None => {
-            let customer = opts
-                .state
-                .get_default_user()
-                .await?
-                .email
-                .domain()?
-                .replace('.', "-");
-            opts.terminal.write_line(fmt_log!(
-                "Retrieved customer {} from enrolled user data\n",
-                color_primary(&customer),
-            ))?;
-            Ok(customer)
-        }
+pub async fn get_api_client(
+    node: &InMemoryNode,
+    use_http_api: bool,
+) -> miette::Result<Box<dyn AiPlatformApi + Send + Sync + 'static>> {
+    if use_http_api {
+        Ok(Box::new(node.create_controller().await?))
+    } else {
+        Ok(Box::new(node.clone()))
     }
 }
