@@ -68,6 +68,7 @@ impl From<UdpRoutingMessage<'_>> for LocalMessage {
         #[cfg(feature = "std")]
         let local_message = local_message.with_tracing_context(value.tracing_context());
 
+        // TODO: Add proper LocalInfo
         local_message
             .with_onward_route(value.onward_route)
             .with_return_route(value.return_route)

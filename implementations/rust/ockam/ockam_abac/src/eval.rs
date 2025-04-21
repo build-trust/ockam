@@ -296,7 +296,8 @@ where
 #[cfg(test)]
 mod tests {
     use crate::{
-        eval, subject_has_credential_attribute, subject_has_credential_policy_expression, Env, Expr,
+        eval, subject_has_credential_attribute, subject_has_credential_policy_expression, Env,
+        Expr, PolicyExpression, ALL, NONE,
     };
 
     #[test]
@@ -323,5 +324,34 @@ mod tests {
 
         let res = eval(&check_credential_expression, &environment).unwrap();
         matches!(res, Expr::Bool(true));
+    }
+
+    #[test]
+    fn test_all() {
+        let environment = Env::new();
+
+        let all = PolicyExpression::try_from(ALL).unwrap();
+
+        let res = eval(&all.to_expression(), &environment).unwrap();
+
+        assert_eq!(res, Expr::Bool(true));
+    }
+
+    #[test]
+    fn test_none() {
+        let environment = Env::new();
+
+        let none = PolicyExpression::try_from(NONE).unwrap();
+
+        let res = eval(&none.to_expression(), &environment).unwrap();
+
+        assert_eq!(res, Expr::Bool(false));
+    }
+
+    #[test]
+    fn test_incorrect() {
+        let res = PolicyExpression::try_from("component.db or");
+
+        assert!(res.is_err());
     }
 }

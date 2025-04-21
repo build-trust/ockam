@@ -31,8 +31,8 @@ use ockam::udp::{
 use ockam::{RelayService, RelayServiceOptions};
 use ockam_abac::expr::str;
 use ockam_abac::{
-    Action, Env, IncomingAbac, OutgoingAbac, Policies, PolicyAccessControl, PolicyExpression,
-    Resource, ResourceType, Resources,
+    Action, Env, Expr, IncomingAbac, OutgoingAbac, Policies, PolicyAccessControl, Resource,
+    ResourceType, Resources,
 };
 use ockam_core::flow_control::FlowControlId;
 use ockam_core::{
@@ -568,7 +568,7 @@ impl NodeManager {
         authority: Option<Identifier>,
         resource: Resource,
         action: Action,
-        expression: Option<PolicyExpression>,
+        expression: Option<Expr>,
     ) -> ockam_core::Result<(
         Arc<dyn IncomingAccessControl>,
         Arc<dyn OutgoingAccessControl>,
@@ -624,7 +624,7 @@ impl NodeManager {
         authority: Option<Identifier>,
         resource: Resource,
         action: Action,
-        expression: Option<PolicyExpression>,
+        expression: Option<Expr>,
     ) -> ockam_core::Result<PolicyAccessControl> {
         let resource_name_str = resource.resource_name.as_str();
         let action_str = action.as_ref();
@@ -638,11 +638,7 @@ impl NodeManager {
         let policies = self.policies();
         if let Some(expression) = expression {
             policies
-                .store_policy_for_resource_name(
-                    &resource.resource_name,
-                    &action,
-                    &expression.into(),
-                )
+                .store_policy_for_resource_name(&resource.resource_name, &action, &expression)
                 .await?;
         }
         self.resources().store_resource(&resource).await?;
@@ -660,12 +656,11 @@ impl NodeManager {
     pub async fn create_abac(
         &self,
         authority: Option<Identifier>,
-        expression: PolicyExpression,
+        expression: Expr,
     ) -> ockam_core::Result<(
         Arc<dyn IncomingAccessControl>,
         Arc<dyn OutgoingAccessControl>,
     )> {
-        let expression = expression.to_expression();
         let incoming = IncomingAbac::create(
             self.secure_channels.identities().identities_attributes(),
             authority.clone(),

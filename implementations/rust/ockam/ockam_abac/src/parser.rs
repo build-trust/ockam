@@ -190,14 +190,21 @@ pub fn parse(s: &str) -> Result<Option<Expr>, ParseError> {
             Some(Expr::List(vals))
         }
     };
-    match expression {
-        Some(e) => if is_operation(&e) {
-            Ok(Some(e))
-        } else {
-            Err(ParseError::message(format!("The first identifier of the expression: `{s}` must be an operation. The available operations are: {}", OPERATORS.join(", "))))
-        },
-        None => Ok(None),
+
+    let expression = match expression {
+        None => return Ok(None),
+        Some(e) => e,
+    };
+
+    if is_operation(&expression) {
+        return Ok(Some(expression));
     }
+
+    if let Expr::Bool(_) = &expression {
+        return Ok(Some(expression));
+    }
+
+    Err(ParseError::message(format!("The first identifier of the expression: `{s}` must be a const boolean or an operation. The available operations are: {}", OPERATORS.join(", "))))
 }
 
 /// Return true if this expression starts with an operation
