@@ -1,4 +1,4 @@
-use crate::ai::utils::get_customer_name;
+use crate::ai::utils::get_api_client;
 use crate::ai::zone_config::ZoneConfig;
 use crate::node_command::InMemoryNodeCommand;
 use crate::{docs, Command, CommandGlobalOpts, Result};
@@ -7,10 +7,10 @@ use clap::Args;
 use colorful::Colorful;
 use miette::IntoDiagnostic;
 use ockam_api::colors::color_primary;
-use ockam_api::nodes::service::ai_platform::AI_API_BASE_URL_ENV;
 use ockam_api::nodes::InMemoryNode;
 use ockam_api::orchestrator::ai_platform::api::AiPlatformApi;
-use ockam_api::orchestrator::ai_platform::models::EcrCredentials;
+use ockam_api::orchestrator::ai_platform::node_service_client::AI_API_BASE_URL_ENV;
+use ockam_api::orchestrator::ai_platform::responses::EcrCredentials;
 use ockam_api::{fmt_log, fmt_ok};
 use ockam_node::Context;
 use std::process::Stdio;
@@ -28,11 +28,6 @@ before_help = docs::before_help(PREVIEW_TAG),
 after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct DeployCommand {
-    /// The name of the Customer that will be used to set up the Zone.
-    /// If not set, it will be retrieved from the enrolled user data.
-    #[arg(long)]
-    pub customer: Option<String>,
-
     /// The name of the Zone to deploy in the Ockam AI Platform
     #[arg(long)]
     pub zone_name: String,
@@ -43,16 +38,20 @@ pub struct DeployCommand {
     #[arg(long, visible_alias = "config")]
     pub zone_config: Option<String>,
 
-    /// The region of the AWS ECR to use.
-    ///
-    /// If using a public AWS ECR, the region will be set to "us-east-1", which is the
-    /// only region that supports public ECRs.
-    #[arg(long)]
-    pub ecr_region: Option<String>,
-
     /// Whether to use a public AWS ECR
     #[arg(long)]
     pub use_public_ecr: bool,
+
+    // === Specific args for the HTTP API endpoint
+    /// Force the command to use the HTTP API.
+    /// By default, the command will use the Orchestrator API.
+    #[arg(long)]
+    pub use_http_api: bool,
+
+    /// The Cluster that will be used to set up the Zone.
+    /// If not set, it will be retrieved from the enrolled user data.
+    #[arg(long)]
+    pub cluster: Option<String>,
 
     /// The API endpoint of the Ockam AI Platform.
     /// Defaults to `http://localhost:30080`.
@@ -76,13 +75,15 @@ impl InMemoryNodeCommand for DeployNodeCommand {
     }
 
     async fn run(&self, node: Arc<InMemoryNode>) -> miette::Result<()> {
-        let customer_name = get_customer_name(&self.opts, self.command.customer.as_deref()).await?;
+        let ctx = node.ctx();
+        let api_client = get_api_client(&node, self.command.use_http_api).await?;
+        let cluster = api_client.get_cluster(ctx, &self.command.zone_name).await?;
         let zone_config = self
             .command
-            .process_images(&node, &self.opts, &customer_name)
+            .process_images(ctx, &self.opts, &*api_client, &cluster)
             .await?;
         self.command
-            .deploy_zone(&node, &self.opts, &customer_name, zone_config)
+            .deploy_zone(ctx, &self.opts, &*api_client, &cluster, zone_config)
             .await?;
         Ok(())
     }
@@ -105,9 +106,10 @@ impl Command for DeployCommand {
 impl DeployCommand {
     async fn process_images(
         &self,
-        node: &InMemoryNode,
+        ctx: &Context,
         opts: &CommandGlobalOpts,
-        customer: &str,
+        api_client: &(dyn AiPlatformApi + Send + Sync + 'static),
+        cluster: &str,
     ) -> Result<ZoneConfig> {
         let zone_config_path = self.zone_config.as_deref().unwrap_or("./zone.json");
         let mut zone_config = ZoneConfig::from_file(zone_config_path)?;
@@ -121,11 +123,11 @@ impl DeployCommand {
 
         for image_name in config_images {
             let ecr_creds = self
-                .provision_ecr(node, opts, customer, &image_name)
+                .provision_ecr(ctx, opts, api_client, cluster, &image_name)
                 .await?;
             self.push_image(opts, &image_name, &ecr_creds).await?;
             // TODO: remove the role
-            // node.delete_ecr_role(customer, &self.zone_name, &image_name)
+            // node.delete_ecr_role(cluster, &self.zone_name, &image_name)
             //     .await?;
             zone_config.replace_image_name(&image_name, &ecr_creds.repository_uri)?;
         }
@@ -134,9 +136,10 @@ impl DeployCommand {
 
     async fn provision_ecr(
         &self,
-        node: &InMemoryNode,
+        ctx: &Context,
         opts: &CommandGlobalOpts,
-        customer: &str,
+        api_client: &(dyn AiPlatformApi + Send + Sync + 'static),
+        cluster: &str,
         image_name: &str,
     ) -> Result<EcrCredentials> {
         let spinner = opts.terminal.spinner();
@@ -146,13 +149,8 @@ impl DeployCommand {
                 color_primary(image_name),
             ));
         }
-        let region = if self.use_public_ecr {
-            Some("us-east-1")
-        } else {
-            self.ecr_region.as_deref()
-        };
-        let ecr_creds = node
-            .provision_ecr(customer, image_name, region, Some(self.use_public_ecr))
+        let ecr_creds = api_client
+            .provision_ecr(ctx, cluster, image_name, Some(self.use_public_ecr))
             .await?;
         if let Some(spinner) = spinner {
             spinner.finish_and_clear();
@@ -260,9 +258,10 @@ impl DeployCommand {
 
     async fn deploy_zone(
         &self,
-        node: &InMemoryNode,
+        ctx: &Context,
         opts: &CommandGlobalOpts,
-        customer: &str,
+        api_client: &(dyn AiPlatformApi + Send + Sync + 'static),
+        cluster: &str,
         zone_config: ZoneConfig,
     ) -> Result<()> {
         let spinner = opts.terminal.spinner();
@@ -275,13 +274,16 @@ impl DeployCommand {
 
         // TODO: do we want to recreate the zone every time?
         //  Is there another way of reapplying the configuration for an existing zone?
-        let _ = node.delete_zone(customer, &self.zone_name).await;
-        node.create_zone(customer, &self.zone_name).await?;
+        let _ = api_client.delete_zone(ctx, cluster, &self.zone_name).await;
+        api_client
+            .create_zone(ctx, cluster, &self.zone_name)
+            .await?;
         // TODO: how do we pass the secrets to the command? maybe as a json/yaml file?
-        // node.create_secret(customer, &self.zone_name, secret_name, secret_fields).await?;
+        // api_client.create_secret(ctx, cluster, &self.zone_name, secret_name, secret_fields).await?;
 
         let zone_config_json = serde_json::to_value(&zone_config).into_diagnostic()?;
-        node.deploy_zone(customer, &self.zone_name, &zone_config_json)
+        api_client
+            .deploy_zone(ctx, cluster, &self.zone_name, &zone_config_json)
             .await?;
 
         if let Some(spinner) = spinner {

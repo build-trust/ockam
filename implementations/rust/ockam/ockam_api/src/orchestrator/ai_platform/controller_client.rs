@@ -1,0 +1,153 @@
+use crate::orchestrator::ai_platform::api::AiPlatformApi;
+use crate::orchestrator::ai_platform::requests::{
+    CreateSecret, CreateZone, DeployZone, ListZones, ProvisionEcr,
+};
+use crate::orchestrator::ai_platform::responses::{
+    EcrCredentials, Secret, SecretList, Zone, ZoneList,
+};
+use crate::orchestrator::{ControllerClient, HasSecureClient};
+use miette::IntoDiagnostic;
+use ockam_core::api::Request;
+use ockam_core::async_trait;
+use ockam_core::compat::collections::HashMap;
+use ockam_node::Context;
+
+#[async_trait]
+impl AiPlatformApi for ControllerClient {
+    async fn create_zone(&self, ctx: &Context, customer: &str, name: &str) -> miette::Result<Zone> {
+        trace!(%customer, zone_name = name, "creating zone");
+        let req =
+            Request::post(format!("/v0/zone/{customer}")).body(CreateZone::new(name.to_string()));
+        self.get_secure_client()
+            .ask(ctx, "zones", req)
+            .await
+            .into_diagnostic()?
+            .miette_success("create zone")
+    }
+
+    async fn list_zones(&self, ctx: &Context, customer: &str) -> miette::Result<Vec<Zone>> {
+        trace!(%customer, "listing zones");
+        let req = Request::post("/v0").body(ListZones::new(customer.to_string()));
+        let zones: ZoneList = self
+            .get_secure_client()
+            .ask(ctx, "zones", req)
+            .await
+            .into_diagnostic()?
+            .miette_success("get zones")?;
+        Ok(zones.0)
+    }
+
+    async fn delete_zone(
+        &self,
+        ctx: &Context,
+        customer: &str,
+        zone_name: &str,
+    ) -> miette::Result<()> {
+        trace!(%customer, zone_name = zone_name, "deleting zone");
+        let req = Request::delete(format!("/v0/zone/{zone_name}"));
+        self.get_secure_client()
+            .tell(ctx, "zones", req)
+            .await
+            .into_diagnostic()?
+            .miette_success("delete zone")
+    }
+
+    async fn deploy_zone(
+        &self,
+        ctx: &Context,
+        customer: &str,
+        zone_name: &str,
+        zone_config: &serde_json::Value,
+    ) -> miette::Result<()> {
+        trace!(%customer, zone_name = zone_name, "deploying zone");
+        let req =
+            Request::post(format!("/v0/zone/{zone_name}/pods")).body(DeployZone::new(zone_config)?);
+        self.get_secure_client()
+            .tell(ctx, "zones", req)
+            .await
+            .into_diagnostic()?
+            .miette_success("deploy zone")
+    }
+
+    async fn create_secret(
+        &self,
+        ctx: &Context,
+        customer: &str,
+        zone_name: &str,
+        secret_name: &str,
+        secret_fields: HashMap<String, String>,
+    ) -> miette::Result<()> {
+        trace!(%customer, %zone_name, %secret_name, "creating secret");
+        let req = Request::post(format!("/v0/zone/{zone_name}"))
+            .body(CreateSecret::new(secret_name, secret_fields)?);
+        self.get_secure_client()
+            .tell(ctx, "secrets", req)
+            .await
+            .into_diagnostic()?
+            .miette_success("create secret")
+    }
+
+    async fn list_secrets(
+        &self,
+        ctx: &Context,
+        customer: &str,
+        zone_name: &str,
+    ) -> miette::Result<Vec<Secret>> {
+        trace!(%customer, %zone_name, "listing secrets");
+        let req = Request::post(format!("/v0/zone/{zone_name}"));
+        let secrets: SecretList = self
+            .get_secure_client()
+            .ask(ctx, "secrets", req)
+            .await
+            .into_diagnostic()?
+            .miette_success("get secrets")?;
+        Ok(secrets.0)
+    }
+
+    async fn delete_secret(
+        &self,
+        ctx: &Context,
+        customer: &str,
+        zone_name: &str,
+        secret_name: &str,
+    ) -> miette::Result<()> {
+        trace!(%customer, %zone_name, %secret_name, "deleting secret");
+        let req = Request::delete(format!("/v0/zone/{zone_name}"));
+        self.get_secure_client()
+            .tell(ctx, "secrets", req)
+            .await
+            .into_diagnostic()?
+            .miette_success("delete secret")
+    }
+
+    async fn get_cluster(&self, ctx: &Context, zone_name: &str) -> miette::Result<String> {
+        trace!(%zone_name, "getting cluster");
+        let req = Request::get("/v0");
+        let cluster: String = self
+            .get_secure_client()
+            .ask(ctx, "clusters", req)
+            .await
+            .into_diagnostic()?
+            .miette_success("get cluster")?;
+        Ok(cluster)
+    }
+
+    async fn provision_ecr(
+        &self,
+        ctx: &Context,
+        customer: &str,
+        image_name: &str,
+        is_public: Option<bool>,
+    ) -> miette::Result<EcrCredentials> {
+        trace!(%customer, image_name = image_name, "provisioning ecr");
+        let req = Request::post("/v0/ecr")
+            .body(ProvisionEcr::new(image_name, is_public.unwrap_or(false)));
+        let ecr_creds: EcrCredentials = self
+            .get_secure_client()
+            .ask(ctx, "clusters", req)
+            .await
+            .into_diagnostic()?
+            .miette_success("provision ecr")?;
+        Ok(ecr_creds)
+    }
+}

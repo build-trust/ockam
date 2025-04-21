@@ -84,7 +84,7 @@ async fn create_kafka_service(
         .await?;
 
     let secure_channel_controller = KafkaKeyExchangeControllerImpl::new(
-        (*handle.node_manager).clone(),
+        handle.node_manager.inner_clone(),
         handle.secure_channels.clone(),
         ConsumerResolution::ViaRelay(MultiAddr::try_from("/service/api")?),
         ConsumerPublishing::None,
@@ -96,7 +96,7 @@ async fn create_kafka_service(
     interceptor_multiaddr.push_back(Service::new(listener_address.address()))?;
 
     let inlet_controller = KafkaInletController::new(
-        (*handle.node_manager).clone(),
+        handle.node_manager.inner_clone(),
         interceptor_multiaddr,
         route![],
         route![],

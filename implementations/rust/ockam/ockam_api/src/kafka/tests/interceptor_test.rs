@@ -269,7 +269,7 @@ async fn kafka_portal_worker__almost_over_limit_than_limit_kafka_message__two_ka
 
 async fn setup_only_worker(context: &mut Context, handle: &NodeManagerHandle) -> Address {
     let inlet_map = KafkaInletController::new(
-        (*handle.node_manager).clone(),
+        handle.node_manager.inner_clone(),
         MultiAddr::default(),
         route![],
         route![],
@@ -313,7 +313,7 @@ async fn setup_only_worker(context: &mut Context, handle: &NodeManagerHandle) ->
     );
 
     let secure_channel_controller = KafkaKeyExchangeControllerImpl::new(
-        (*handle.node_manager).clone(),
+        handle.node_manager.inner_clone(),
         secure_channels,
         ConsumerResolution::ViaRelay(MultiAddr::default()),
         ConsumerPublishing::None,
@@ -401,7 +401,7 @@ async fn kafka_portal_worker__metadata_exchange__response_changed(
         .await?;
 
     let secure_channel_controller = KafkaKeyExchangeControllerImpl::new(
-        (*handle.node_manager).clone(),
+        handle.node_manager.inner_clone(),
         handle.secure_channels.clone(),
         ConsumerResolution::ViaRelay(MultiAddr::default()),
         ConsumerPublishing::None,
@@ -410,7 +410,7 @@ async fn kafka_portal_worker__metadata_exchange__response_changed(
     );
 
     let inlet_map = KafkaInletController::new(
-        (*handle.node_manager).clone(),
+        handle.node_manager.inner_clone(),
         MultiAddr::default(),
         route![],
         route![],

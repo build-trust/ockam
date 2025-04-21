@@ -40,6 +40,7 @@ use crate::orchestrator::{
 ///  - you want to create a client to send requests to the authority node, with the `create_authority_client` method
 ///
 ///
+#[derive(Clone)]
 pub struct InMemoryNode {
     pub(crate) node_manager: Arc<NodeManager>,
     persistent: bool,
