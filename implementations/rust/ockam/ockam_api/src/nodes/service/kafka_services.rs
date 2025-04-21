@@ -130,7 +130,7 @@ impl InMemoryNode {
                     Some(ResourceType::KafkaConsumer),
                 ),
                 Action::HandleMessage,
-                consumer_policy_expression,
+                consumer_policy_expression.map(Into::into),
             )
             .await?;
 
@@ -142,7 +142,7 @@ impl InMemoryNode {
                     Some(ResourceType::KafkaProducer),
                 ),
                 Action::HandleMessage,
-                producer_policy_expression,
+                producer_policy_expression.map(Into::into),
             )
             .await?;
 
@@ -229,7 +229,7 @@ impl InMemoryNode {
                     Some(ResourceType::TcpInlet),
                 ),
                 Action::HandleMessage,
-                inlet_policy_expression,
+                inlet_policy_expression.map(Into::into),
             )
             .await?;
 
@@ -275,7 +275,7 @@ impl InMemoryNode {
                 self.project_authority().clone(),
                 Resource::new(service_address.to_string(), Some(ResourceType::TcpOutlet)),
                 Action::HandleMessage,
-                outlet_policy_expression.clone(),
+                outlet_policy_expression.clone().map(Into::into),
             )
             .await?;
 

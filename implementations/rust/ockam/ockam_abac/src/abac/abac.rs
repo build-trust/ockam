@@ -152,6 +152,8 @@ impl Abac {
 
         if message_is_local {
             environment.put(message_is_local_attribute().to_string(), Expr::CONST_TRUE);
+        } else {
+            environment.put(message_is_local_attribute().to_string(), Expr::CONST_FALSE);
         }
 
         if let Some(identifier) = identifier {

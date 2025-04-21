@@ -182,6 +182,7 @@ impl UdpPunctureReceiverWorker {
                 let return_route = self.addresses.sender_address().clone() + return_route;
 
                 // Update routing & payload
+                // TODO: Add proper LocalInfo
                 let local_message = LocalMessage::new()
                     .with_onward_route(onward_route)
                     .with_return_route(return_route)

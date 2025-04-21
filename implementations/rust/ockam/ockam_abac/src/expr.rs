@@ -607,7 +607,7 @@ mod tests {
 
     #[test]
     fn first_identifier_must_be_an_operation() {
-        test_failure("a or b", &format!("The first identifier of the expression: `a or b` must be an operation. The available operations are: {}", OPERATORS.join(", ")));
+        test_failure("a or b", &format!("The first identifier of the expression: `a or b` must be a const boolean or an operation. The available operations are: {}", OPERATORS.join(", ")));
     }
 
     // HELPERS

@@ -102,7 +102,7 @@ impl InletSessionReplacer {
                 authority,
                 self.resource.clone(),
                 Action::HandleMessage,
-                self.policy_expression.clone(),
+                self.policy_expression.clone().map(Into::into),
             )
             .await
     }

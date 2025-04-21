@@ -73,6 +73,7 @@ impl Worker for RelayService {
             SecureChannelLocalInfo::find_info(message.local_message()).ok();
 
         let forward_route = message.return_route().clone();
+        let local_info = message.local_message().local_info().to_vec();
         let requested_relay_address = message.into_body()?;
 
         let requested_relay_name = if requested_relay_address == "register" {
@@ -144,6 +145,7 @@ impl Worker for RelayService {
             final_relay_address,
             forward_route,
             payload.to_vec(),
+            local_info,
             self.options.relays_incoming_access_control.clone(),
         )?;
 

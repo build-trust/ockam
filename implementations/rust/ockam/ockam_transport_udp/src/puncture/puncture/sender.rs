@@ -41,6 +41,7 @@ impl UdpPunctureSenderWorker {
             payload: msg.payload,
         };
 
+        // TODO: Add proper LocalInfo
         let msg = LocalMessage::new()
             .with_onward_route(peer_route)
             .with_payload(wrapped_payload.encode()?);

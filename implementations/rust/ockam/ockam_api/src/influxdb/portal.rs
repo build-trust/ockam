@@ -228,7 +228,7 @@ impl NodeManagerWorker {
                 self.node_manager.project_authority().clone(),
                 Resource::new(outlet_address.to_string(), Some(ResourceType::TcpOutlet)),
                 Action::HandleMessage,
-                outlet_policy_expression.clone(),
+                outlet_policy_expression.clone().map(Into::into),
             )
             .await?;
 
@@ -280,7 +280,7 @@ impl NodeManagerWorker {
                     Some(ResourceType::TcpInlet),
                 ),
                 Action::HandleMessage,
-                inlet_policy_expression,
+                inlet_policy_expression.map(Into::into),
             )
             .await?;
 

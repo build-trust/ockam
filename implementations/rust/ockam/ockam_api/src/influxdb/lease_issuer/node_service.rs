@@ -75,7 +75,7 @@ impl InMemoryNode {
                 self.project_authority(),
                 Resource::new(address.address(), Some(ResourceType::InfluxDBLessor)),
                 Action::HandleMessage,
-                req.policy_expression,
+                req.policy_expression.map(Into::into),
             )
             .await?;
 

@@ -2,8 +2,8 @@ use crate::Context;
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::{boxed::Box, vec::Vec};
 use ockam_core::{
-    route, Address, AllowAll, AllowOnwardAddress, Any, IncomingAccessControl, LocalMessage,
-    OutgoingAccessControl, Result, Route, Routed, Worker,
+    route, Address, AllowAll, AllowOnwardAddress, Any, IncomingAccessControl, LocalInfo,
+    LocalMessage, OutgoingAccessControl, Result, Route, Routed, Worker,
 };
 use ockam_node::WorkerBuilder;
 use tracing::info;
@@ -13,7 +13,7 @@ pub(super) struct Relay {
     // this option will be `None` after this worker is initialized, because
     // while initializing, the worker will send the payload contained in this
     // field to the `forward_route`, to indicate a successful connection
-    payload: Option<Vec<u8>>,
+    first_message: Option<(Vec<u8>, Vec<LocalInfo>)>,
 }
 
 impl Relay {
@@ -22,6 +22,7 @@ impl Relay {
         address: Address,
         forward_route: Route,
         registration_payload: Vec<u8>,
+        local_info: Vec<LocalInfo>,
         incoming_access_control: Arc<dyn IncomingAccessControl>,
     ) -> Result<()> {
         info!("Created new alias {} for {}", address, forward_route);
@@ -37,7 +38,7 @@ impl Relay {
 
         let relay = Self {
             forward_route,
-            payload: Some(registration_payload.clone()),
+            first_message: Some((registration_payload, local_info)),
         };
 
         WorkerBuilder::new(relay)
@@ -56,8 +57,8 @@ impl Worker for Relay {
     type Message = Any;
 
     async fn initialize(&mut self, ctx: &mut Self::Context) -> Result<()> {
-        let payload = self
-            .payload
+        let first_message = self
+            .first_message
             .take()
             .expect("payload must be available on init");
 
@@ -65,7 +66,8 @@ impl Worker for Relay {
             LocalMessage::new()
                 .with_onward_route(self.forward_route.clone())
                 .with_return_route(route![ctx.primary_address().clone()])
-                .with_payload(payload),
+                .with_payload(first_message.0)
+                .with_local_info(first_message.1),
         )
         .await?;
 

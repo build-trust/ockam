@@ -21,6 +21,14 @@ use Expr::*;
 const NAME_FORMAT: &str =
     "an alphanumerical name, separated with '.', '-' or '_'. The first character cannot be a digit or a '.'";
 
+/// Defines policy that allows all messages to pass through. The policy should not contain
+/// any additional characters.
+pub const ALL: &str = "all";
+
+/// Defines policy that doesn't allow any messages to pass through. The policy should not contain
+/// any additional characters.
+pub const NONE: &str = "none";
+
 /// A BooleanExpr models a boolean expression made of:
 ///
 ///  - Names.
@@ -52,6 +60,10 @@ pub enum BooleanExpr {
     Empty,
     #[n(7)]
     MessageAttribute(#[n(0)] String),
+    #[n(8)]
+    All,
+    #[n(9)]
+    None,
 }
 
 impl PartialEq for BooleanExpr {
@@ -66,6 +78,9 @@ impl PartialEq for BooleanExpr {
             (BooleanExpr::And(e1, e2), BooleanExpr::And(e3, e4)) => e1 == e3 && e2 == e4,
             (BooleanExpr::Not(e1), BooleanExpr::Not(e2)) => e1 == e2,
             (BooleanExpr::MessageAttribute(a1), BooleanExpr::MessageAttribute(a2)) => a1 == a2,
+            (BooleanExpr::Empty, BooleanExpr::Empty) => true,
+            (BooleanExpr::All, BooleanExpr::All) => true,
+            (BooleanExpr::None, BooleanExpr::None) => true,
             _ => false,
         }
     }
@@ -92,6 +107,8 @@ impl Display for BooleanExpr {
                 BooleanExpr::Not(e) => format!("(not {e})"),
                 BooleanExpr::Empty => "".to_string(),
                 BooleanExpr::MessageAttribute(s) => format!("{ABAC_MESSAGE_KEY}.{s}"),
+                BooleanExpr::All => ALL.to_string(),
+                BooleanExpr::None => NONE.to_string(),
             }
         }
 
@@ -118,6 +135,8 @@ impl Display for BooleanExpr {
             BooleanExpr::Not(e) => f.write_str(&format!("not {}", to_nested_string(e))),
             BooleanExpr::Empty => f.write_str(""),
             BooleanExpr::MessageAttribute(s) => f.write_str(&format!("{ABAC_MESSAGE_KEY}.{s}")),
+            BooleanExpr::All => f.write_str(ALL),
+            BooleanExpr::None => f.write_str(NONE),
         }
     }
 }
@@ -238,6 +257,8 @@ impl BooleanExpr {
             ]),
             BooleanExpr::Not(e) => List(vec![Ident("not".to_string()), e.to_expression()]),
             BooleanExpr::Empty => List(vec![]),
+            BooleanExpr::All => Bool(true),
+            BooleanExpr::None => Bool(false),
         }
     }
 
@@ -311,9 +332,12 @@ mod parsers {
             separated(1.., and_expr, or).parse_next(i)
         }
 
-        Ok(or_separated
+        let res = or_separated
             .context(StrContext::Expected("expression (or expression)*".into()))
-            .parse_next(i)?
+            .parse_next(i);
+        let res = res?;
+
+        Ok(res
             .into_iter()
             .reduce(BooleanExpr::or)
             .unwrap_or(BooleanExpr::empty()))
@@ -376,6 +400,12 @@ mod parsers {
             return Ok(BooleanExpr::message_attribute(
                 &name[ABAC_MESSAGE_KEY.len() + 1..],
             ));
+        }
+
+        match name.as_str() {
+            super::ALL => return Ok(BooleanExpr::All),
+            super::NONE => return Ok(BooleanExpr::None),
+            _ => {}
         }
 
         // otherwise, it's a name
@@ -461,6 +491,31 @@ mod tests {
     use winnow::Parser;
 
     #[test]
+    fn parse_empty() {
+        assert!(BooleanExpr::try_from("").is_err());
+
+        assert!(Expr::try_from("").is_err());
+    }
+
+    #[test]
+    fn parse_all() {
+        let l = BooleanExpr::try_from(ALL).unwrap();
+        assert_eq!(l, BooleanExpr::All);
+
+        let l = l.to_expression();
+        assert_eq!(l, Expr::CONST_TRUE);
+    }
+
+    #[test]
+    fn parse_none() {
+        let l = BooleanExpr::try_from(NONE).unwrap();
+        assert_eq!(l, BooleanExpr::None);
+
+        let l = l.to_expression();
+        assert_eq!(l, Expr::CONST_FALSE);
+    }
+
+    #[test]
     fn boolean_expr_to_expr() {
         let boolean_expr = BooleanExpr::name("a");
         let expr = parse("(= subject.a \"true\")").unwrap().unwrap();
@@ -487,8 +542,8 @@ mod tests {
         let expr = parse(
             "and (or (= subject.a \"true\") (= subject.identifier \"I228786ae\") (not (= subject.c \"d\")))",
         )
-        .unwrap()
-        .unwrap();
+            .unwrap()
+            .unwrap();
         assert_eq!(boolean_expr.to_expression(), expr);
     }
 

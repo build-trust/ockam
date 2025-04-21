@@ -131,7 +131,7 @@ impl NodeManager {
                     self.project_authority(),
                     Resource::new(worker_addr.address(), Some(ResourceType::TcpOutlet)),
                     Action::HandleMessage,
-                    expression,
+                    expression.map(Into::into),
                 )
                 .await?
             }
