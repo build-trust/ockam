@@ -355,7 +355,7 @@ impl EnrollHandler {
             // if let AiEnrollStatus::EnrolledSuccessfully(c) = &reply {
             //     cluster = Some(c.to_string());
             // }
-            cluster = Some(controller.get_cluster(ctx).await?); // TODO: remove once enroll_ai_with_oidc_token is fixed
+            cluster = Some(controller.get_cluster(ctx).await?.into_inner()); // TODO: remove once enroll_ai_with_oidc_token is fixed
             reply.into()
         } else {
             controller.enroll_with_oidc_token(ctx, token).await?

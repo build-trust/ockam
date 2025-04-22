@@ -1,4 +1,4 @@
-use crate::orchestrator::ai_platform::responses::{EcrCredentials, Secret, Zone};
+use crate::orchestrator::ai_platform::responses::{Cluster, EcrCredentials, Secret, Zone};
 use ockam_core::async_trait;
 use ockam_core::compat::collections::HashMap;
 use ockam_node::Context;
@@ -53,7 +53,7 @@ pub trait AiPlatformApi {
         secret_name: &str,
     ) -> miette::Result<()>;
 
-    async fn get_cluster(&self, ctx: &Context) -> miette::Result<String>;
+    async fn get_cluster(&self, ctx: &Context) -> miette::Result<Cluster>;
 
     async fn provision_ecr(
         &self,
