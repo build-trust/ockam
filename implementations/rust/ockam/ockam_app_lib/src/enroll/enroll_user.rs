@@ -121,7 +121,7 @@ impl AppState {
         {
             let controller = self.controller().await.into_diagnostic()?;
             controller
-                .enroll_with_oidc_token(&self.context(), token, false)
+                .enroll_with_oidc_token(&self.context(), token)
                 .await?;
         }
         self.update_orchestrator_status(OrchestratorStatus::RetrievingSpace);

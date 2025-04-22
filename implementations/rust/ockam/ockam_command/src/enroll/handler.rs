@@ -23,7 +23,7 @@ use crate::{CommandGlobalOpts, Result};
 use ockam::Context;
 use ockam_api::cli_state::journeys::{JourneyEvent, USER_EMAIL, USER_NAME};
 use ockam_api::colors::{color_primary, color_uri, color_warn, OckamColor};
-use ockam_api::enroll::enrollment::{EnrollStatus, Enrollment};
+use ockam_api::enroll::enrollment::{AiEnrollStatus, EnrollStatus, Enrollment};
 use ockam_api::enroll::oidc_service::OidcService;
 use ockam_api::nodes::InMemoryNode;
 use ockam_api::orchestrator::enroll::auth0::*;
@@ -66,7 +66,7 @@ impl InMemoryNodeCommand for EnrollHandler {
     }
 
     async fn run(&self, node: Arc<InMemoryNode>) -> miette::Result<()> {
-        let user_info = self.enroll_identity(&node).await?;
+        let (user_info, cluster) = self.enroll_identity(&node).await?;
 
         if let Err(error) = self.retrieve_user_space_and_project(&node).await {
             // Display output to user
@@ -117,12 +117,17 @@ impl InMemoryNodeCommand for EnrollHandler {
             .await?;
 
         // Output
+        self.opts.terminal.write_line(fmt_log!(
+            "Your Identity {}, with Identifier {} is now enrolled with Ockam Orchestrator.",
+            color_primary(identity.name()),
+            color_primary(identity.identifier().to_string())
+        ))?;
+        if let Some(cluster) = cluster {
+            self.opts.terminal.write_line(fmt_log!(
+                "Your Cluster associated to the Ockam AI Platform is {cluster}"
+            ))?;
+        }
         self.opts.terminal
-            .write_line(fmt_log!(
-                "Your Identity {}, with Identifier {} is now enrolled with Ockam Orchestrator.",
-                color_primary(identity.name()),
-                color_primary(identity.identifier().to_string())
-            ))?
             .write_line(fmt_log!(
                 "You also now have an Orchestrator Project that offers a Project Membership Authority service and a Relay service.\n"
             ))?
@@ -216,7 +221,10 @@ impl EnrollHandler {
         Ok(is_already_enrolled)
     }
 
-    pub(crate) async fn enroll_identity(&self, node: &InMemoryNode) -> miette::Result<UserInfo> {
+    pub(crate) async fn enroll_identity(
+        &self,
+        node: &InMemoryNode,
+    ) -> miette::Result<(UserInfo, Option<String>)> {
         if !self
             .opts
             .state
@@ -224,7 +232,7 @@ impl EnrollHandler {
             .await?
         {
             if let Ok(user_info) = self.opts.state.get_default_user().await {
-                return Ok(user_info);
+                return Ok((user_info, None));
             }
         }
 
@@ -248,7 +256,8 @@ impl EnrollHandler {
 
         // Enroll the identity with the Orchestrator
         let controller = node.create_controller().await?;
-        self.enroll_with_node(node.ctx(), &controller, token)
+        let cluster = self
+            .enroll_with_node(node.ctx(), &controller, token)
             .await
             .wrap_err("Failed to enroll your local Identity with Ockam Orchestrator")?;
         self.opts
@@ -257,7 +266,7 @@ impl EnrollHandler {
             .await
             .wrap_err("Unable to set your local Identity as enrolled")?;
 
-        Ok(user_info)
+        Ok((user_info, cluster))
     }
 
     fn display_header(&self) {
@@ -338,18 +347,25 @@ impl EnrollHandler {
         ctx: &Context,
         controller: &ControllerClient,
         token: OidcToken,
-    ) -> miette::Result<()> {
-        let reply = controller
-            .enroll_with_oidc_token(ctx, token, self.is_ai_cloud_account)
-            .await?;
+    ) -> miette::Result<Option<String>> {
+        let mut cluster: Option<String> = None;
+        let reply = if self.is_ai_cloud_account {
+            let reply = controller.enroll_ai_with_oidc_token(ctx, token).await?;
+            if let AiEnrollStatus::EnrolledSuccessfully(c) = &reply {
+                cluster = Some(c.to_string());
+            }
+            reply.into()
+        } else {
+            controller.enroll_with_oidc_token(ctx, token).await?
+        };
         match reply {
             EnrollStatus::EnrolledSuccessfully => {
                 info!("Enrolled successfully");
-                Ok(())
+                Ok(cluster)
             }
             EnrollStatus::AlreadyEnrolled => {
                 info!("Already enrolled");
-                Ok(())
+                Ok(cluster)
             }
             EnrollStatus::UnexpectedStatus(error, status) => {
                 warn!(%error, %status, "Unexpected status while enrolling");
