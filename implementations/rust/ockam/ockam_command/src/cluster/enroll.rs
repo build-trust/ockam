@@ -38,7 +38,7 @@ pub struct EnrollCommand {
 
 #[async_trait]
 impl Command for EnrollCommand {
-    const NAME: &'static str = "ai enroll";
+    const NAME: &'static str = "cluster enroll";
 
     async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         let handler = EnrollHandler {

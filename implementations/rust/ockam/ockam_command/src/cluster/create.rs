@@ -1,5 +1,5 @@
-use crate::ai::utils::get_api_client;
-use crate::ai::zone_config::ZoneConfig;
+use crate::cluster::utils::get_api_client;
+use crate::cluster::zone_config::ZoneConfig;
 use crate::node_command::InMemoryNodeCommand;
 use crate::{docs, Command, CommandGlobalOpts, Result};
 use async_trait::async_trait;
@@ -16,9 +16,9 @@ use ockam_node::Context;
 use std::process::Stdio;
 use std::sync::Arc;
 
-const LONG_ABOUT: &str = include_str!("./static/deploy/long_about.txt");
+const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
-const AFTER_LONG_HELP: &str = include_str!("./static/deploy/after_long_help.txt");
+const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
 
 /// Deploy an Ockam AI Agent into a Zone
 #[derive(Clone, Debug, Args)]
@@ -27,7 +27,7 @@ long_about = docs::about(LONG_ABOUT),
 before_help = docs::before_help(PREVIEW_TAG),
 after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
-pub struct DeployCommand {
+pub struct CreateCommand {
     /// The name of the Zone to deploy in the Ockam AI Platform
     #[arg(long)]
     pub zone_name: String,
@@ -62,7 +62,7 @@ pub struct DeployCommand {
 #[derive(Clone)]
 struct DeployNodeCommand {
     opts: CommandGlobalOpts,
-    command: DeployCommand,
+    command: CreateCommand,
 }
 
 #[async_trait]
@@ -90,8 +90,8 @@ impl InMemoryNodeCommand for DeployNodeCommand {
 }
 
 #[async_trait]
-impl Command for DeployCommand {
-    const NAME: &'static str = "ai deploy";
+impl Command for CreateCommand {
+    const NAME: &'static str = "cluster deploy";
 
     async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> Result<()> {
         let command = DeployNodeCommand {
@@ -103,7 +103,7 @@ impl Command for DeployCommand {
     }
 }
 
-impl DeployCommand {
+impl CreateCommand {
     async fn process_images(
         &self,
         ctx: &Context,
