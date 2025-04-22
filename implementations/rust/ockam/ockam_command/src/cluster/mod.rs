@@ -1,6 +1,7 @@
 mod create;
 mod delete;
 mod enroll;
+mod init;
 mod inlet;
 mod outlet;
 mod ticket;
@@ -15,6 +16,7 @@ use ockam_node::Context;
 use ticket::AiTicketCommand;
 
 use crate::cluster::delete::DeleteCommand;
+use crate::cluster::init::InitCommand;
 use crate::cluster::inlet::InletCommand;
 use crate::cluster::outlet::OutletCommand;
 use crate::{docs, Command, CommandGlobalOpts};
@@ -42,6 +44,7 @@ impl ClusterCommand {
 
     pub async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
+            ClusterSubcommand::Init(c) => c.run(ctx, opts).await,
             ClusterSubcommand::Enroll(c) => c.run(ctx, opts).await,
             ClusterSubcommand::Ticket(c) => c.run(ctx, opts).await,
             ClusterSubcommand::Create(c) => c.run(ctx, opts).await,
@@ -55,6 +58,7 @@ impl ClusterCommand {
 #[derive(Clone, Debug, Subcommand)]
 #[allow(clippy::large_enum_variant)]
 pub enum ClusterSubcommand {
+    Init(InitCommand),
     Enroll(EnrollCommand),
     Ticket(AiTicketCommand),
     Create(CreateCommand),
@@ -66,6 +70,7 @@ pub enum ClusterSubcommand {
 impl ClusterSubcommand {
     pub fn name(&self) -> String {
         match self {
+            ClusterSubcommand::Init(c) => c.name(),
             ClusterSubcommand::Enroll(c) => c.name(),
             ClusterSubcommand::Ticket(c) => c.name(),
             ClusterSubcommand::Create(c) => c.name(),
