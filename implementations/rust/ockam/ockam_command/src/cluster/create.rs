@@ -43,15 +43,15 @@ pub struct CreateCommand {
     pub use_public_ecr: bool,
 
     // === Specific args for the HTTP API endpoint
-    /// Force the command to use the HTTP API.
-    /// By default, the command will use the Orchestrator API.
-    #[arg(long)]
-    pub use_http_api: bool,
-
     /// The Cluster that will be used to set up the Zone.
     /// If not set, it will be retrieved from the enrolled user data.
     #[arg(long)]
     pub cluster: Option<String>,
+
+    /// Force the command to use the HTTP API.
+    /// By default, the command will use the Orchestrator API.
+    #[arg(long)]
+    pub use_http_api: bool,
 
     /// The API endpoint of the Ockam AI Platform.
     /// Defaults to `http://localhost:30080`.
@@ -76,8 +76,12 @@ impl InMemoryNodeCommand for CreateNodeCommand {
 
     async fn run(&self, node: Arc<InMemoryNode>) -> miette::Result<()> {
         let ctx = node.ctx();
-        let api_client = get_api_client(&node, self.command.use_http_api).await?;
-        let cluster = api_client.get_cluster(ctx).await?.into_inner();
+        let use_http_api = self.command.use_http_api || self.command.api_endpoint.is_some();
+        let api_client = get_api_client(&node, use_http_api).await?;
+        let cluster = match &self.command.cluster {
+            None => api_client.get_cluster(ctx).await?.into_inner(),
+            Some(cluster) => cluster.to_string(),
+        };
         let zone_config = self
             .command
             .process_images(ctx, &self.opts, &*api_client, &cluster)
@@ -281,7 +285,7 @@ impl CreateCommand {
         api_client
             .create_zone(ctx, cluster, &self.zone_name)
             .await?;
-        // TODO: how do we pass the secrets to the command? maybe as a json/yaml file?
+        // TODO: how do we pass the secrets to the command?
         // api_client.create_secret(ctx, cluster, &self.zone_name, secret_name, secret_fields).await?;
 
         let zone_config_json = serde_json::to_value(&zone_config).into_diagnostic()?;
