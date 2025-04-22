@@ -61,7 +61,7 @@ impl InMemoryNodeCommand for DeployNodeCommand {
     async fn run(&self, node: Arc<InMemoryNode>) -> miette::Result<()> {
         let ctx = node.ctx();
         let api_client = get_api_client(&node, self.command.use_http_api).await?;
-        let cluster = api_client.get_cluster(ctx, &self.command.zone_name).await?;
+        let cluster = api_client.get_cluster(ctx).await?;
         api_client
             .delete_zone(ctx, &cluster, &self.command.zone_name)
             .await?;

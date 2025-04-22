@@ -23,9 +23,10 @@ use crate::{CommandGlobalOpts, Result};
 use ockam::Context;
 use ockam_api::cli_state::journeys::{JourneyEvent, USER_EMAIL, USER_NAME};
 use ockam_api::colors::{color_primary, color_uri, color_warn, OckamColor};
-use ockam_api::enroll::enrollment::{AiEnrollStatus, EnrollStatus, Enrollment};
+use ockam_api::enroll::enrollment::{EnrollStatus, Enrollment};
 use ockam_api::enroll::oidc_service::OidcService;
 use ockam_api::nodes::InMemoryNode;
+use ockam_api::orchestrator::ai_platform::api::AiPlatformApi;
 use ockam_api::orchestrator::enroll::auth0::*;
 use ockam_api::orchestrator::project::Project;
 use ockam_api::orchestrator::project::ProjectsOrchestratorApi;
@@ -351,9 +352,10 @@ impl EnrollHandler {
         let mut cluster: Option<String> = None;
         let reply = if self.is_ai_cloud_account {
             let reply = controller.enroll_ai_with_oidc_token(ctx, token).await?;
-            if let AiEnrollStatus::EnrolledSuccessfully(c) = &reply {
-                cluster = Some(c.to_string());
-            }
+            // if let AiEnrollStatus::EnrolledSuccessfully(c) = &reply {
+            //     cluster = Some(c.to_string());
+            // }
+            cluster = Some(controller.get_cluster(ctx).await?); // TODO: remove once enroll_ai_with_oidc_token is fixed
             reply.into()
         } else {
             controller.enroll_with_oidc_token(ctx, token).await?

@@ -53,7 +53,7 @@ pub trait AiPlatformApi {
         secret_name: &str,
     ) -> miette::Result<()>;
 
-    async fn get_cluster(&self, ctx: &Context, zone_name: &str) -> miette::Result<String>;
+    async fn get_cluster(&self, ctx: &Context) -> miette::Result<String>;
 
     async fn provision_ecr(
         &self,

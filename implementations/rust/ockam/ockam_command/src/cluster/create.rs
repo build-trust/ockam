@@ -77,7 +77,7 @@ impl InMemoryNodeCommand for CreateNodeCommand {
     async fn run(&self, node: Arc<InMemoryNode>) -> miette::Result<()> {
         let ctx = node.ctx();
         let api_client = get_api_client(&node, self.command.use_http_api).await?;
-        let cluster = api_client.get_cluster(ctx, &self.command.zone_name).await?;
+        let cluster = api_client.get_cluster(ctx).await?;
         let zone_config = self
             .command
             .process_images(ctx, &self.opts, &*api_client, &cluster)
@@ -145,7 +145,8 @@ impl CreateCommand {
         let spinner = opts.terminal.spinner();
         if let Some(spinner) = spinner.as_ref() {
             spinner.set_message(format!(
-                "Provisioning ECR for image {}...",
+                "Provisioning ECR in cluster {} for image {}...",
+                color_primary(cluster),
                 color_primary(image_name),
             ));
         }
@@ -156,7 +157,8 @@ impl CreateCommand {
             spinner.finish_and_clear();
         }
         opts.terminal.write_line(fmt_log!(
-            "Provisioned ECR for image {} at {}",
+            "Provisioned ECR in cluster {} for image {} at {}",
+            color_primary(cluster),
             color_primary(image_name),
             color_primary(&ecr_creds.repository_uri)
         ))?;
@@ -267,8 +269,9 @@ impl CreateCommand {
         let spinner = opts.terminal.spinner();
         if let Some(spinner) = spinner.as_ref() {
             spinner.set_message(format!(
-                "Deploying zone {}...",
+                "Deploying zone {} in cluster {}...",
                 color_primary(&self.zone_name),
+                color_primary(cluster),
             ));
         }
 
@@ -289,8 +292,11 @@ impl CreateCommand {
         if let Some(spinner) = spinner {
             spinner.finish_and_clear();
         }
-        opts.terminal
-            .write_line(fmt_ok!("Deployed zone {}", color_primary(&self.zone_name),))?;
+        opts.terminal.write_line(fmt_ok!(
+            "Deployed zone {} in cluster {}",
+            color_primary(&self.zone_name),
+            color_primary(cluster)
+        ))?;
 
         Ok(())
     }
