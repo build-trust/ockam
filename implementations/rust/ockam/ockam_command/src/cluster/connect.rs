@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use std::sync::Arc;
 
-use crate::ai::utils::get_api_client;
+use crate::cluster::utils::get_api_client;
 use crate::node::config::ConfigArgs;
 use crate::node_command::InMemoryNodeCommand;
 use crate::tcp::inlet::create::tcp_inlet_default_from_addr;
@@ -102,7 +102,7 @@ impl InMemoryNodeCommand for ConnectNodeCommand {
 
 #[async_trait]
 impl Command for ConnectCommand {
-    const NAME: &'static str = "ai connect";
+    const NAME: &'static str = "cluster connect";
 
     async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> Result<()> {
         let command = ConnectNodeCommand {

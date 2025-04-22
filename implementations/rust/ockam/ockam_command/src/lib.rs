@@ -28,10 +28,10 @@ pub use subcommand::*;
 pub use terminal::*;
 
 mod admin;
-mod ai;
 mod arguments;
 mod authority;
 pub mod branding;
+mod cluster;
 mod command;
 mod command_events;
 mod command_global_opts;

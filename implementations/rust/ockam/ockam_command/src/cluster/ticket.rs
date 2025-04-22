@@ -23,7 +23,7 @@ pub struct AiTicketCommand {
 
 #[async_trait]
 impl Command for AiTicketCommand {
-    const NAME: &'static str = "ai ticket";
+    const NAME: &'static str = "cluster ticket";
 
     async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> Result<()> {
         self.inner.run(ctx, opts).await
