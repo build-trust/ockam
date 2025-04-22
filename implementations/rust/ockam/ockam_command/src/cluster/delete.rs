@@ -27,15 +27,15 @@ pub struct DeleteCommand {
     pub zone_name: String,
 
     // === Specific args for the HTTP API endpoint
-    /// Force the command to use the HTTP API.
-    /// By default, the command will use the Orchestrator API.
-    #[arg(long)]
-    pub use_http_api: bool,
-
     /// The Cluster that will be used to set up the Zone.
     /// If not set, it will be retrieved from the enrolled user data.
     #[arg(long)]
     pub cluster: Option<String>,
+
+    /// Force the command to use the HTTP API.
+    /// By default, the command will use the Orchestrator API.
+    #[arg(long)]
+    pub use_http_api: bool,
 
     /// The API endpoint of the Ockam AI Platform.
     /// Defaults to `http://localhost:30080`.
@@ -60,8 +60,12 @@ impl InMemoryNodeCommand for DeployNodeCommand {
 
     async fn run(&self, node: Arc<InMemoryNode>) -> miette::Result<()> {
         let ctx = node.ctx();
-        let api_client = get_api_client(&node, self.command.use_http_api).await?;
-        let cluster = api_client.get_cluster(ctx).await?.into_inner();
+        let use_http_api = self.command.use_http_api || self.command.api_endpoint.is_some();
+        let api_client = get_api_client(&node, use_http_api).await?;
+        let cluster = match &self.command.cluster {
+            None => api_client.get_cluster(ctx).await?.into_inner(),
+            Some(cluster) => cluster.to_string(),
+        };
         api_client
             .delete_zone(ctx, &cluster, &self.command.zone_name)
             .await?;

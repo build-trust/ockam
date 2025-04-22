@@ -48,7 +48,23 @@ impl AiPlatformApi for ControllerClient {
             .tell(ctx, "zones", req)
             .await
             .into_diagnostic()?
-            .miette_success("delete zone")
+            .miette_success("delete zone")?;
+
+        // Check if the zone was deleted successfully by attempting to list zones
+        let max_timeout = std::time::Duration::from_secs(20);
+        let start_time = std::time::Instant::now();
+        loop {
+            let zones = self.list_zones(ctx, cluster).await?;
+            if zones.iter().all(|zone| zone.zone != zone_name) {
+                break;
+            }
+            if start_time.elapsed() > max_timeout {
+                return Err(miette::miette!("Timeout while waiting for zone deletion"));
+            }
+            tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+        }
+
+        Ok(())
     }
 
     async fn deploy_zone(

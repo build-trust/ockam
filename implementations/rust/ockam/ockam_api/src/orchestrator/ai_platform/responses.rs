@@ -44,6 +44,7 @@ impl Display for Cluster {
 #[cbor(map)]
 pub struct Zone {
     #[n(1)] pub zone: String,
+    #[serde(alias="customer")]
     #[n(2)] pub cluster: String,
 }
 
@@ -113,7 +114,8 @@ impl Decodable for SecretList {
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct EcrCredentials {
-    #[n(1)] pub customer: String,
+    #[serde(alias="customer")]
+    #[n(1)] pub cluster: String,
     #[n(2)] pub image_name: String,
     #[n(3)] pub repository_uri: String,
     #[n(4)] pub auth_token: String,

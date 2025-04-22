@@ -28,14 +28,6 @@ before_help = docs::before_help(PREVIEW_TAG),
 after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct OutletCommand {
-    /// The Cluster that hosts the Zone.
-    #[arg(long)]
-    pub cluster: Option<String>,
-
-    /// The name of the Zone to connect to
-    #[arg(long)]
-    pub zone_name: String,
-
     // == Node Options ==
     #[arg(long, env = "ENROLLMENT_TICKET", value_name = "ENROLLMENT TICKET")]
     #[arg(help = docs::about("\
@@ -70,12 +62,6 @@ pub struct OutletCommand {
         id = "POLICY_EXPRESSION"
     )]
     pub allow: Option<PolicyExpression>,
-
-    // === Specific args for the HTTP API endpoint
-    /// Force the command to use the HTTP API.
-    /// By default, the command will use the Orchestrator API.
-    #[arg(long)]
-    pub use_http_api: bool,
 }
 
 #[derive(Clone)]

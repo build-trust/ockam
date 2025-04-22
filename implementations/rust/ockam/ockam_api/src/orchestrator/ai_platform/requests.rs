@@ -149,6 +149,7 @@ impl DeleteSecret {
 pub struct ProvisionEcr {
     #[n(1)] pub image_name: String,
     #[n(2)] pub is_public: bool,
+    #[n(3)] pub region: String,
 }
 
 impl Encodable for ProvisionEcr {
@@ -165,9 +166,16 @@ impl Decodable for ProvisionEcr {
 
 impl ProvisionEcr {
     pub fn new(image_name: &str, is_public: bool) -> Self {
+        // TODO: remove once latest provisioner gets deployed
+        let region = if is_public {
+            "us-east-1".to_string()
+        } else {
+            "us-west-2".to_string()
+        };
         Self {
             image_name: image_name.to_string(),
             is_public,
+            region,
         }
     }
 }

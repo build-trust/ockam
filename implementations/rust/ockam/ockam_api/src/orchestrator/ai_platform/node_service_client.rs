@@ -212,10 +212,14 @@ impl AiPlatformApi for InMemoryNode {
         is_public: Option<bool>,
     ) -> miette::Result<EcrCredentials> {
         let url = format!("{}/api/{}/ecr", *AI_API_BASE_URL, cluster);
+        let is_public = is_public.unwrap_or(false);
+        // TODO: remove once latest provisioner gets deployed
+        let region = if is_public { "us-east-1" } else { "us-west-2" };
 
         let body = serde_json::json!({
             "image_name": image_name,
-            "is_public": is_public.unwrap_or(false),
+            "is_public": is_public,
+            "region": region,
         });
 
         let client = reqwest::Client::new();
