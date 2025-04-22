@@ -13,9 +13,9 @@ use ockam::transport::SchemeHostnamePort;
 use ockam_api::nodes::InMemoryNode;
 use ockam_node::Context;
 
-const LONG_ABOUT: &str = include_str!("./static/connect/long_about.txt");
+const LONG_ABOUT: &str = include_str!("./static/inlet/long_about.txt");
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
-const AFTER_LONG_HELP: &str = include_str!("./static/connect/after_long_help.txt");
+const AFTER_LONG_HELP: &str = include_str!("./static/inlet/after_long_help.txt");
 
 /// Connect to a service provided by an Ockam AI Agent
 #[derive(Clone, Debug, Args)]
@@ -24,7 +24,7 @@ long_about = docs::about(LONG_ABOUT),
 before_help = docs::before_help(PREVIEW_TAG),
 after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
-pub struct ConnectCommand {
+pub struct InletCommand {
     /// The Cluster that hosts the Zone.
     #[arg(long)]
     pub cluster: Option<String>,
@@ -63,7 +63,7 @@ pub struct ConnectCommand {
 #[derive(Clone)]
 struct ConnectNodeCommand {
     opts: CommandGlobalOpts,
-    command: ConnectCommand,
+    command: InletCommand,
 }
 
 #[async_trait]
@@ -101,8 +101,8 @@ impl InMemoryNodeCommand for ConnectNodeCommand {
 }
 
 #[async_trait]
-impl Command for ConnectCommand {
-    const NAME: &'static str = "cluster connect";
+impl Command for InletCommand {
+    const NAME: &'static str = "cluster inlet";
 
     async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> Result<()> {
         let command = ConnectNodeCommand {
