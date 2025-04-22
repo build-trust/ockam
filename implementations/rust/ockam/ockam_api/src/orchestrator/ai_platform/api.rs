@@ -8,7 +8,7 @@ pub trait AiPlatformApi {
     async fn create_zone(
         &self,
         ctx: &Context,
-        customer: &str,
+        cluster: &str,
         zone_name: &str,
     ) -> miette::Result<Zone>;
 
@@ -17,14 +17,14 @@ pub trait AiPlatformApi {
     async fn delete_zone(
         &self,
         ctx: &Context,
-        customer: &str,
+        cluster: &str,
         zone_name: &str,
     ) -> miette::Result<()>;
 
     async fn deploy_zone(
         &self,
         ctx: &Context,
-        customer: &str,
+        cluster: &str,
         zone_name: &str,
         zone_config: &serde_json::Value,
     ) -> miette::Result<()>;
@@ -32,7 +32,7 @@ pub trait AiPlatformApi {
     async fn create_secret(
         &self,
         ctx: &Context,
-        customer: &str,
+        cluster: &str,
         zone_name: &str,
         secret_name: &str,
         secret_fields: HashMap<String, String>,
@@ -41,14 +41,14 @@ pub trait AiPlatformApi {
     async fn list_secrets(
         &self,
         ctx: &Context,
-        customer: &str,
+        cluster: &str,
         zone_name: &str,
     ) -> miette::Result<Vec<Secret>>;
 
     async fn delete_secret(
         &self,
         ctx: &Context,
-        customer: &str,
+        cluster: &str,
         zone_name: &str,
         secret_name: &str,
     ) -> miette::Result<()>;
@@ -58,7 +58,7 @@ pub trait AiPlatformApi {
     async fn provision_ecr(
         &self,
         ctx: &Context,
-        customer: &str,
+        cluster: &str,
         image_name: &str,
         is_public: Option<bool>,
     ) -> miette::Result<EcrCredentials>;

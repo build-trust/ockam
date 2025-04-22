@@ -60,13 +60,13 @@ pub struct CreateCommand {
 }
 
 #[derive(Clone)]
-struct DeployNodeCommand {
+struct CreateNodeCommand {
     opts: CommandGlobalOpts,
     command: CreateCommand,
 }
 
 #[async_trait]
-impl InMemoryNodeCommand for DeployNodeCommand {
+impl InMemoryNodeCommand for CreateNodeCommand {
     async fn init(&self) -> miette::Result<()> {
         if let Some(api_endpoint) = &self.command.api_endpoint {
             std::env::set_var(AI_API_BASE_URL_ENV, api_endpoint);
@@ -91,10 +91,10 @@ impl InMemoryNodeCommand for DeployNodeCommand {
 
 #[async_trait]
 impl Command for CreateCommand {
-    const NAME: &'static str = "cluster deploy";
+    const NAME: &'static str = "cluster create";
 
     async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> Result<()> {
-        let command = DeployNodeCommand {
+        let command = CreateNodeCommand {
             opts: opts.clone(),
             command: self.clone(),
         };

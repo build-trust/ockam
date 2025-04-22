@@ -1,6 +1,8 @@
 mod create;
+mod delete;
 mod enroll;
 mod inlet;
+mod outlet;
 mod ticket;
 pub mod utils;
 mod zone_config;
@@ -12,7 +14,9 @@ use enroll::EnrollCommand;
 use ockam_node::Context;
 use ticket::AiTicketCommand;
 
+use crate::cluster::delete::DeleteCommand;
 use crate::cluster::inlet::InletCommand;
+use crate::cluster::outlet::OutletCommand;
 use crate::{docs, Command, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
@@ -40,8 +44,10 @@ impl ClusterCommand {
         match self.subcommand {
             ClusterSubcommand::Enroll(c) => c.run(ctx, opts).await,
             ClusterSubcommand::Ticket(c) => c.run(ctx, opts).await,
-            ClusterSubcommand::Deploy(c) => c.run(ctx, opts).await,
+            ClusterSubcommand::Create(c) => c.run(ctx, opts).await,
+            ClusterSubcommand::Delete(c) => c.run(ctx, opts).await,
             ClusterSubcommand::Inlet(c) => c.run(ctx, opts).await,
+            ClusterSubcommand::Outlet(c) => c.run(ctx, opts).await,
         }
     }
 }
@@ -51,8 +57,10 @@ impl ClusterCommand {
 pub enum ClusterSubcommand {
     Enroll(EnrollCommand),
     Ticket(AiTicketCommand),
-    Deploy(CreateCommand),
+    Create(CreateCommand),
+    Delete(DeleteCommand),
     Inlet(InletCommand),
+    Outlet(OutletCommand),
 }
 
 impl ClusterSubcommand {
@@ -60,8 +68,10 @@ impl ClusterSubcommand {
         match self {
             ClusterSubcommand::Enroll(c) => c.name(),
             ClusterSubcommand::Ticket(c) => c.name(),
-            ClusterSubcommand::Deploy(c) => c.name(),
+            ClusterSubcommand::Create(c) => c.name(),
+            ClusterSubcommand::Delete(c) => c.name(),
             ClusterSubcommand::Inlet(c) => c.name(),
+            ClusterSubcommand::Outlet(c) => c.name(),
         }
     }
 }
