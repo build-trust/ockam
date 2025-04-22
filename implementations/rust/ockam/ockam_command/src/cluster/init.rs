@@ -8,7 +8,7 @@ use ockam_api::fmt_ok;
 use ockam_node::Context;
 use std::fs;
 use std::path::PathBuf;
-use std::process::{Command as ProcessCommand, Stdio};
+use std::process::Stdio;
 
 const LONG_ABOUT: &str = include_str!("./static/init/long_about.txt");
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");

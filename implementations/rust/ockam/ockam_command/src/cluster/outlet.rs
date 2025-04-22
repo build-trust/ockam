@@ -11,6 +11,7 @@ use miette::IntoDiagnostic;
 use ockam::transport::SchemeHostnamePort;
 use ockam_abac::PolicyExpression;
 use ockam_api::address::extract_address_value;
+use ockam_api::cli_state::OCKAM_HOME;
 use ockam_api::nodes::InMemoryNode;
 use ockam_api::CliState;
 use ockam_node::Context;
@@ -110,7 +111,7 @@ impl InMemoryNodeCommand for OutletNodeCommand {
             ..Default::default()
         };
         let tmp_dir = tempfile::tempdir().into_diagnostic()?;
-        std::env::set_var("OCKAM_HOME", tmp_dir.path());
+        std::env::set_var(OCKAM_HOME, tmp_dir.path());
         let mut opts = self.opts.clone();
         opts.state = Arc::new(CliState::new(false).await?);
         node_cmd.run(node.ctx(), opts).await
