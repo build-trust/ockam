@@ -135,7 +135,7 @@ impl Enrollment for SecureClient {
         ctx: &Context,
         token: OidcToken,
     ) -> miette::Result<EnrollStatus> {
-        let req = Request::post("v0/enroll").body(AuthenticateOidcToken::new(token));
+        let req = Request::post("v0/enroll").body(AuthenticateOidcToken::new(token, false));
         trace!(target: TARGET, "executing auth0 flow");
         let reply = self
             .tell(ctx, "auth0_authenticator", req)
@@ -160,14 +160,14 @@ impl Enrollment for SecureClient {
         ctx: &Context,
         token: OidcToken,
     ) -> miette::Result<AiEnrollStatus> {
-        let req = Request::post("v0/ai/enroll").body(AuthenticateOidcToken::new(token));
+        let req = Request::post("v0/enroll").body(AuthenticateOidcToken::new(token, true));
         trace!(target: TARGET, "executing ai auth0 flow");
         let reply = self
-            .ask(ctx, "auth0_authenticator", req)
+            .tell(ctx, "auth0_authenticator", req)
             .await
             .into_diagnostic()?;
         match reply {
-            Reply::Successful(cluster) => Ok(AiEnrollStatus::EnrolledSuccessfully(cluster)),
+            Reply::Successful(_) => Ok(AiEnrollStatus::EnrolledSuccessfully("TODO".to_string())),
             Reply::Failed(e, Some(s)) => {
                 error!("enrolling with a token returned an error: {e:?}");
                 Ok(AiEnrollStatus::UnexpectedStatus(e.to_string(), s))
@@ -185,7 +185,7 @@ impl Enrollment for SecureClient {
         ctx: &Context,
         token: OidcToken,
     ) -> miette::Result<()> {
-        let req = Request::post("v0/enroll").body(AuthenticateOidcToken::new(token));
+        let req = Request::post("v0/enroll").body(AuthenticateOidcToken::new(token, false));
         trace!(target: TARGET, "executing auth0 flow");
         self.tell(ctx, DefaultAddress::OKTA_IDENTITY_PROVIDER, req)
             .await

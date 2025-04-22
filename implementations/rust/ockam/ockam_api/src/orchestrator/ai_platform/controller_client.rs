@@ -16,8 +16,7 @@ use ockam_node::Context;
 impl AiPlatformApi for ControllerClient {
     async fn create_zone(&self, ctx: &Context, cluster: &str, name: &str) -> miette::Result<Zone> {
         trace!(%cluster, zone_name = name, "creating zone");
-        let req =
-            Request::post(format!("/v0/zone/{cluster}")).body(CreateZone::new(name.to_string()));
+        let req = Request::post("/v0").body(CreateZone::new(name.to_string()));
         self.get_secure_client()
             .ask(ctx, "zones", req)
             .await
@@ -27,7 +26,7 @@ impl AiPlatformApi for ControllerClient {
 
     async fn list_zones(&self, ctx: &Context, cluster: &str) -> miette::Result<Vec<Zone>> {
         trace!(%cluster, "listing zones");
-        let req = Request::post("/v0").body(ListZones::new(cluster.to_string()));
+        let req = Request::get("/v0").body(ListZones::new(cluster.to_string()));
         let zones: ZoneList = self
             .get_secure_client()
             .ask(ctx, "zones", req)
@@ -120,8 +119,8 @@ impl AiPlatformApi for ControllerClient {
             .miette_success("delete secret")
     }
 
-    async fn get_cluster(&self, ctx: &Context, zone_name: &str) -> miette::Result<String> {
-        trace!(%zone_name, "getting cluster");
+    async fn get_cluster(&self, ctx: &Context) -> miette::Result<String> {
+        trace!("getting cluster");
         let req = Request::get("/v0");
         let cluster: String = self
             .get_secure_client()

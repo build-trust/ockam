@@ -193,7 +193,7 @@ impl AiPlatformApi for InMemoryNode {
         todo!()
     }
 
-    async fn get_cluster(&self, _ctx: &Context, _zone_name: &str) -> miette::Result<String> {
+    async fn get_cluster(&self, _ctx: &Context) -> miette::Result<String> {
         Ok(self
             .cli_state
             .get_default_user()

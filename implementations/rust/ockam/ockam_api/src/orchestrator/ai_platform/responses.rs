@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 #[cbor(map)]
 pub struct Zone {
     #[n(1)] pub zone: String,
-    #[n(2)] pub customer: String,
+    #[n(2)] pub cluster: String,
 }
 
 impl Encodable for Zone {
