@@ -1,6 +1,6 @@
 use crate::nodes::InMemoryNode;
 use crate::orchestrator::ai_platform::api::AiPlatformApi;
-use crate::orchestrator::ai_platform::responses::{EcrCredentials, Secret, Zone};
+use crate::orchestrator::ai_platform::responses::{Cluster, EcrCredentials, Secret, Zone};
 use ockam_core::async_trait;
 use ockam_core::compat::collections::HashMap;
 use ockam_core::env::get_env_with_default_ignore_error;
@@ -193,14 +193,15 @@ impl AiPlatformApi for InMemoryNode {
         todo!()
     }
 
-    async fn get_cluster(&self, _ctx: &Context) -> miette::Result<String> {
-        Ok(self
+    async fn get_cluster(&self, _ctx: &Context) -> miette::Result<Cluster> {
+        let cluster = self
             .cli_state
             .get_default_user()
             .await?
             .email
             .domain()?
-            .replace('.', "-"))
+            .replace('.', "-");
+        Ok(Cluster::new(cluster))
     }
 
     async fn provision_ecr(

@@ -87,7 +87,7 @@ impl InMemoryNodeCommand for InletNodeCommand {
     async fn run(&self, node: Arc<InMemoryNode>) -> miette::Result<()> {
         let api_client = get_api_client(&node, self.command.use_http_api).await?;
         let cluster = match &self.command.cluster {
-            None => api_client.get_cluster(node.ctx()).await?,
+            None => api_client.get_cluster(node.ctx()).await?.into_inner(),
             Some(cluster) => cluster.to_string(),
         };
         let relay_name = format!(

@@ -3,7 +3,7 @@ use crate::orchestrator::ai_platform::requests::{
     CreateSecret, CreateZone, DeployZone, ListZones, ProvisionEcr,
 };
 use crate::orchestrator::ai_platform::responses::{
-    EcrCredentials, Secret, SecretList, Zone, ZoneList,
+    Cluster, EcrCredentials, Secret, SecretList, Zone, ZoneList,
 };
 use crate::orchestrator::{ControllerClient, HasSecureClient};
 use miette::IntoDiagnostic;
@@ -119,10 +119,10 @@ impl AiPlatformApi for ControllerClient {
             .miette_success("delete secret")
     }
 
-    async fn get_cluster(&self, ctx: &Context) -> miette::Result<String> {
+    async fn get_cluster(&self, ctx: &Context) -> miette::Result<Cluster> {
         trace!("getting cluster");
         let req = Request::get("/v0");
-        let cluster: String = self
+        let cluster: Cluster = self
             .get_secure_client()
             .ask(ctx, "clusters", req)
             .await

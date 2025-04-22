@@ -77,7 +77,7 @@ impl InMemoryNodeCommand for CreateNodeCommand {
     async fn run(&self, node: Arc<InMemoryNode>) -> miette::Result<()> {
         let ctx = node.ctx();
         let api_client = get_api_client(&node, self.command.use_http_api).await?;
-        let cluster = api_client.get_cluster(ctx).await?;
+        let cluster = api_client.get_cluster(ctx).await?.into_inner();
         let zone_config = self
             .command
             .process_images(ctx, &self.opts, &*api_client, &cluster)
