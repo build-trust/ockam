@@ -1,10 +1,8 @@
 use async_trait::async_trait;
 use std::sync::Arc;
 
-use crate::cluster::utils::get_api_client;
 use crate::node::config::ConfigArgs;
 use crate::node_command::InMemoryNodeCommand;
-use crate::tcp::inlet::create::tcp_inlet_default_from_addr;
 use crate::util::foreground_args::ForegroundArgs;
 use crate::util::parsers::hostname_parser;
 use crate::{docs, Command, CommandGlobalOpts, Result};
@@ -12,13 +10,14 @@ use clap::Args;
 use miette::IntoDiagnostic;
 use ockam::transport::SchemeHostnamePort;
 use ockam_abac::PolicyExpression;
+use ockam_api::address::extract_address_value;
 use ockam_api::nodes::InMemoryNode;
 use ockam_api::CliState;
 use ockam_node::Context;
 
-const LONG_ABOUT: &str = include_str!("./static/inlet/long_about.txt");
+const LONG_ABOUT: &str = include_str!("./static/outlet/long_about.txt");
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
-const AFTER_LONG_HELP: &str = include_str!("./static/inlet/after_long_help.txt");
+const AFTER_LONG_HELP: &str = include_str!("./static/outlet/after_long_help.txt");
 
 /// Connect to a service provided by an Ockam AI Agent
 #[derive(Clone, Debug, Args)]
@@ -27,7 +26,7 @@ long_about = docs::about(LONG_ABOUT),
 before_help = docs::before_help(PREVIEW_TAG),
 after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
-pub struct InletCommand {
+pub struct OutletCommand {
     /// The Cluster that hosts the Zone.
     #[arg(long)]
     pub cluster: Option<String>,
@@ -35,10 +34,6 @@ pub struct InletCommand {
     /// The name of the Zone to connect to
     #[arg(long)]
     pub zone_name: String,
-
-    /// References the name of TCP Outlet created in the Zone and the Relay name.
-    #[arg(long)]
-    pub pod: String,
 
     // == Node Options ==
     #[arg(long, env = "ENROLLMENT_TICKET", value_name = "ENROLLMENT TICKET")]
@@ -49,21 +44,28 @@ pub struct InletCommand {
     "))]
     pub enrollment_ticket: String,
 
-    // == TCP Inlet Options ==
-    /// Address on which to accept TCP connections, in the format `<scheme>://<host>:<port>`.
-    /// At least the port must be provided. The default scheme is `tcp` and the default host is `127.0.0.1`.
-    /// If the argument is not set, a random port will be used on the default address `tcp://127.0.0.1`.
-    #[arg(long, display_order = 900, id = "SOCKET_ADDRESS", hide_default_value = true, default_value_t = tcp_inlet_default_from_addr(), value_parser = hostname_parser)]
-    pub from: SchemeHostnamePort,
+    // == TCP Outlet Options ==
+    /// Service address of your TCP Outlet, which is part of a route used in other commands.
+    /// This unique address identifies the TCP Outlet worker on the Node on your local machine.
+    /// Examples are `/service/my-outlet` or `my-outlet`.
+    /// If not provided, `outlet` will be used, or a random address will be generated if `outlet` is taken.
+    /// You will need this address when creating a TCP Inlet using `ockam tcp-inlet create`.
+    #[arg(long, display_order = 902, id = "OUTLET_ADDRESS", value_parser = extract_address_value)]
+    pub from: Option<String>,
+
+    /// Network address where your application is listening to.
+    /// Your TCP Outlet will forward raw TCP traffic to this destination.
+    #[arg(long, id = "SOCKET_ADDRESS", display_order = 900, value_parser = hostname_parser)]
+    pub to: SchemeHostnamePort,
 
     #[arg(help = docs::about("\
-     Policy expression that will be used for access control to the TCP Inlet. \
-     If you don't provide it, the policy set for the \"tcp-inlet\" resource type will be used. \
-     \n\nYou can check the fallback policy with `ockam policy show --resource-type tcp-inlet`."))]
+    Policy expression that will be used for access control to the TCP Outlet. \
+    If you don't provide it, the policy set for the \"tcp-outlet\" resource type will be used. \
+    \n\nYou can check the fallback policy with `ockam policy show --resource-type tcp-outlet`"))]
     #[arg(
         long,
         visible_alias = "expression",
-        display_order = 900,
+        display_order = 904,
         id = "POLICY_EXPRESSION"
     )]
     pub allow: Option<PolicyExpression>,
@@ -76,31 +78,24 @@ pub struct InletCommand {
 }
 
 #[derive(Clone)]
-struct InletNodeCommand {
+struct OutletNodeCommand {
     opts: CommandGlobalOpts,
-    command: InletCommand,
+    command: OutletCommand,
 }
 
 #[async_trait]
-impl InMemoryNodeCommand for InletNodeCommand {
+impl InMemoryNodeCommand for OutletNodeCommand {
     async fn run(&self, node: Arc<InMemoryNode>) -> miette::Result<()> {
-        let api_client = get_api_client(&node, self.command.use_http_api).await?;
-        let cluster = api_client
-            .get_cluster(node.ctx(), &self.command.zone_name)
-            .await?;
-        let relay_name = format!(
-            "{}-{}-{}",
-            cluster, self.command.zone_name, self.command.pod
-        );
         let mut node_config = serde_json::json!({
-            "tcp-inlet": {
-                "from": self.command.from.to_string(),
-                "to": self.command.pod,
-                "via": relay_name
+            "tcp-outlet": {
+                "to": self.command.to.to_string(),
             }
         });
+        if let Some(from) = &self.command.from {
+            node_config["tcp-outlet"]["from"] = from.to_string().into();
+        }
         if let Some(allow) = &self.command.allow {
-            node_config["tcp-inlet"]["allow"] = allow.to_string().into();
+            node_config["tcp-outlet"]["allow"] = allow.to_string().into();
         }
         let node_cmd = crate::node::create::CreateCommand {
             name: node_config.to_string(),
@@ -123,11 +118,11 @@ impl InMemoryNodeCommand for InletNodeCommand {
 }
 
 #[async_trait]
-impl Command for InletCommand {
-    const NAME: &'static str = "cluster inlet";
+impl Command for OutletCommand {
+    const NAME: &'static str = "cluster outlet";
 
     async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> Result<()> {
-        let command = InletNodeCommand {
+        let command = OutletNodeCommand {
             opts: opts.clone(),
             command: self.clone(),
         };

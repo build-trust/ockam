@@ -22,10 +22,10 @@ impl AiPlatformApi for InMemoryNode {
     async fn create_zone(
         &self,
         _ctx: &Context,
-        customer: &str,
+        cluster: &str,
         zone_name: &str,
     ) -> miette::Result<Zone> {
-        let url = format!("{}/api/{}/zone", *AI_API_BASE_URL, customer);
+        let url = format!("{}/api/{}/zone", *AI_API_BASE_URL, cluster);
 
         let body = serde_json::json!({
             "zone": zone_name,
@@ -55,10 +55,10 @@ impl AiPlatformApi for InMemoryNode {
         Ok(zone)
     }
 
-    async fn list_zones(&self, ctx: &Context, customer: &str) -> miette::Result<Vec<Zone>> {
+    async fn list_zones(&self, ctx: &Context, cluster: &str) -> miette::Result<Vec<Zone>> {
         let controller = self.create_controller().await?;
         controller
-            .list_zones(ctx, customer)
+            .list_zones(ctx, cluster)
             .await
             .map_err(|e| miette::miette!("Failed to list zones: {}", e))
     }
@@ -66,10 +66,10 @@ impl AiPlatformApi for InMemoryNode {
     async fn delete_zone(
         &self,
         ctx: &Context,
-        customer: &str,
+        cluster: &str,
         zone_name: &str,
     ) -> miette::Result<()> {
-        let url = format!("{}/api/{}/zone/{}", *AI_API_BASE_URL, customer, zone_name);
+        let url = format!("{}/api/{}/zone/{}", *AI_API_BASE_URL, cluster, zone_name);
 
         let client = reqwest::Client::new();
         let response = client
@@ -91,7 +91,7 @@ impl AiPlatformApi for InMemoryNode {
         let max_timeout = std::time::Duration::from_secs(20);
         let start_time = std::time::Instant::now();
         loop {
-            let zones = self.list_zones(ctx, customer).await?;
+            let zones = self.list_zones(ctx, cluster).await?;
             if zones.iter().all(|zone| zone.zone != zone_name) {
                 break;
             }
@@ -107,13 +107,13 @@ impl AiPlatformApi for InMemoryNode {
     async fn deploy_zone(
         &self,
         _ctx: &Context,
-        customer: &str,
+        cluster: &str,
         zone_name: &str,
         zone_config: &serde_json::Value,
     ) -> miette::Result<()> {
         let url = format!(
             "{}/api/{}/zone/{}/pods",
-            *AI_API_BASE_URL, customer, zone_name
+            *AI_API_BASE_URL, cluster, zone_name
         );
 
         let client = reqwest::Client::new();
@@ -139,14 +139,14 @@ impl AiPlatformApi for InMemoryNode {
     async fn create_secret(
         &self,
         _ctx: &Context,
-        customer: &str,
+        cluster: &str,
         zone_name: &str,
         secret_name: &str,
         secret_fields: HashMap<String, String>,
     ) -> miette::Result<()> {
         let url = format!(
             "{}/api/{}/zone/{}/secret",
-            *AI_API_BASE_URL, customer, zone_name
+            *AI_API_BASE_URL, cluster, zone_name
         );
 
         let body = serde_json::json!({
@@ -177,7 +177,7 @@ impl AiPlatformApi for InMemoryNode {
     async fn list_secrets(
         &self,
         _ctx: &Context,
-        _customer: &str,
+        _cluster: &str,
         _zone_name: &str,
     ) -> miette::Result<Vec<Secret>> {
         todo!()
@@ -186,7 +186,7 @@ impl AiPlatformApi for InMemoryNode {
     async fn delete_secret(
         &self,
         _ctx: &Context,
-        _customer: &str,
+        _cluster: &str,
         _zone_name: &str,
         _secret_name: &str,
     ) -> miette::Result<()> {
@@ -206,11 +206,11 @@ impl AiPlatformApi for InMemoryNode {
     async fn provision_ecr(
         &self,
         __ctx: &Context,
-        customer: &str,
+        cluster: &str,
         image_name: &str,
         is_public: Option<bool>,
     ) -> miette::Result<EcrCredentials> {
-        let url = format!("{}/api/{}/ecr", *AI_API_BASE_URL, customer);
+        let url = format!("{}/api/{}/ecr", *AI_API_BASE_URL, cluster);
 
         let body = serde_json::json!({
             "image_name": image_name,

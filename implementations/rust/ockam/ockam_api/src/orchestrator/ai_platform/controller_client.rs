@@ -14,10 +14,10 @@ use ockam_node::Context;
 
 #[async_trait]
 impl AiPlatformApi for ControllerClient {
-    async fn create_zone(&self, ctx: &Context, customer: &str, name: &str) -> miette::Result<Zone> {
-        trace!(%customer, zone_name = name, "creating zone");
+    async fn create_zone(&self, ctx: &Context, cluster: &str, name: &str) -> miette::Result<Zone> {
+        trace!(%cluster, zone_name = name, "creating zone");
         let req =
-            Request::post(format!("/v0/zone/{customer}")).body(CreateZone::new(name.to_string()));
+            Request::post(format!("/v0/zone/{cluster}")).body(CreateZone::new(name.to_string()));
         self.get_secure_client()
             .ask(ctx, "zones", req)
             .await
@@ -25,9 +25,9 @@ impl AiPlatformApi for ControllerClient {
             .miette_success("create zone")
     }
 
-    async fn list_zones(&self, ctx: &Context, customer: &str) -> miette::Result<Vec<Zone>> {
-        trace!(%customer, "listing zones");
-        let req = Request::post("/v0").body(ListZones::new(customer.to_string()));
+    async fn list_zones(&self, ctx: &Context, cluster: &str) -> miette::Result<Vec<Zone>> {
+        trace!(%cluster, "listing zones");
+        let req = Request::post("/v0").body(ListZones::new(cluster.to_string()));
         let zones: ZoneList = self
             .get_secure_client()
             .ask(ctx, "zones", req)
@@ -40,10 +40,10 @@ impl AiPlatformApi for ControllerClient {
     async fn delete_zone(
         &self,
         ctx: &Context,
-        customer: &str,
+        cluster: &str,
         zone_name: &str,
     ) -> miette::Result<()> {
-        trace!(%customer, zone_name = zone_name, "deleting zone");
+        trace!(%cluster, zone_name = zone_name, "deleting zone");
         let req = Request::delete(format!("/v0/zone/{zone_name}"));
         self.get_secure_client()
             .tell(ctx, "zones", req)
@@ -55,11 +55,11 @@ impl AiPlatformApi for ControllerClient {
     async fn deploy_zone(
         &self,
         ctx: &Context,
-        customer: &str,
+        cluster: &str,
         zone_name: &str,
         zone_config: &serde_json::Value,
     ) -> miette::Result<()> {
-        trace!(%customer, zone_name = zone_name, "deploying zone");
+        trace!(%cluster, zone_name = zone_name, "deploying zone");
         let req =
             Request::post(format!("/v0/zone/{zone_name}/pods")).body(DeployZone::new(zone_config)?);
         self.get_secure_client()
@@ -72,12 +72,12 @@ impl AiPlatformApi for ControllerClient {
     async fn create_secret(
         &self,
         ctx: &Context,
-        customer: &str,
+        cluster: &str,
         zone_name: &str,
         secret_name: &str,
         secret_fields: HashMap<String, String>,
     ) -> miette::Result<()> {
-        trace!(%customer, %zone_name, %secret_name, "creating secret");
+        trace!(%cluster, %zone_name, %secret_name, "creating secret");
         let req = Request::post(format!("/v0/zone/{zone_name}"))
             .body(CreateSecret::new(secret_name, secret_fields)?);
         self.get_secure_client()
@@ -90,10 +90,10 @@ impl AiPlatformApi for ControllerClient {
     async fn list_secrets(
         &self,
         ctx: &Context,
-        customer: &str,
+        cluster: &str,
         zone_name: &str,
     ) -> miette::Result<Vec<Secret>> {
-        trace!(%customer, %zone_name, "listing secrets");
+        trace!(%cluster, %zone_name, "listing secrets");
         let req = Request::post(format!("/v0/zone/{zone_name}"));
         let secrets: SecretList = self
             .get_secure_client()
@@ -107,11 +107,11 @@ impl AiPlatformApi for ControllerClient {
     async fn delete_secret(
         &self,
         ctx: &Context,
-        customer: &str,
+        cluster: &str,
         zone_name: &str,
         secret_name: &str,
     ) -> miette::Result<()> {
-        trace!(%customer, %zone_name, %secret_name, "deleting secret");
+        trace!(%cluster, %zone_name, %secret_name, "deleting secret");
         let req = Request::delete(format!("/v0/zone/{zone_name}"));
         self.get_secure_client()
             .tell(ctx, "secrets", req)
@@ -135,11 +135,11 @@ impl AiPlatformApi for ControllerClient {
     async fn provision_ecr(
         &self,
         ctx: &Context,
-        customer: &str,
+        cluster: &str,
         image_name: &str,
         is_public: Option<bool>,
     ) -> miette::Result<EcrCredentials> {
-        trace!(%customer, image_name = image_name, "provisioning ecr");
+        trace!(%cluster, image_name = image_name, "provisioning ecr");
         let req = Request::post("/v0/ecr")
             .body(ProvisionEcr::new(image_name, is_public.unwrap_or(false)));
         let ecr_creds: EcrCredentials = self
