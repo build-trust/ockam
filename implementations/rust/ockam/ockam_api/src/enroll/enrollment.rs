@@ -21,20 +21,43 @@ pub enum EnrollStatus {
     FailedNoStatus(String),
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum AiEnrollStatus {
+    EnrolledSuccessfully(String),
+    AlreadyEnrolled,
+    UnexpectedStatus(String, Status),
+    FailedNoStatus(String),
+}
+
+impl From<AiEnrollStatus> for EnrollStatus {
+    fn from(val: AiEnrollStatus) -> Self {
+        match val {
+            AiEnrollStatus::EnrolledSuccessfully(_) => EnrollStatus::EnrolledSuccessfully,
+            AiEnrollStatus::AlreadyEnrolled => EnrollStatus::AlreadyEnrolled,
+            AiEnrollStatus::UnexpectedStatus(e, s) => EnrollStatus::UnexpectedStatus(e, s),
+            AiEnrollStatus::FailedNoStatus(e) => EnrollStatus::FailedNoStatus(e),
+        }
+    }
+}
+
 #[async_trait]
 pub trait Enrollment {
     async fn enroll_with_oidc_token(
         &self,
         ctx: &Context,
         token: OidcToken,
-        is_ai_cloud_account: bool,
     ) -> miette::Result<EnrollStatus>;
+
+    async fn enroll_ai_with_oidc_token(
+        &self,
+        ctx: &Context,
+        token: OidcToken,
+    ) -> miette::Result<AiEnrollStatus>;
 
     async fn enroll_with_oidc_token_okta(
         &self,
         ctx: &Context,
         token: OidcToken,
-        is_ai_enrollment: bool,
     ) -> miette::Result<()>;
 
     async fn present_token(
@@ -57,10 +80,19 @@ impl<T: HasSecureClient + Send + Sync> Enrollment for T {
         &self,
         ctx: &Context,
         token: OidcToken,
-        is_ai_cloud_account: bool,
     ) -> miette::Result<EnrollStatus> {
         self.get_secure_client()
-            .enroll_with_oidc_token(ctx, token, is_ai_cloud_account)
+            .enroll_with_oidc_token(ctx, token)
+            .await
+    }
+
+    async fn enroll_ai_with_oidc_token(
+        &self,
+        ctx: &Context,
+        token: OidcToken,
+    ) -> miette::Result<AiEnrollStatus> {
+        self.get_secure_client()
+            .enroll_ai_with_oidc_token(ctx, token)
             .await
     }
 
@@ -68,10 +100,9 @@ impl<T: HasSecureClient + Send + Sync> Enrollment for T {
         &self,
         ctx: &Context,
         token: OidcToken,
-        is_ai_enrollment: bool,
     ) -> miette::Result<()> {
         self.get_secure_client()
-            .enroll_with_oidc_token_okta(ctx, token, is_ai_enrollment)
+            .enroll_with_oidc_token_okta(ctx, token)
             .await
     }
 
@@ -103,10 +134,8 @@ impl Enrollment for SecureClient {
         &self,
         ctx: &Context,
         token: OidcToken,
-        is_ai_cloud_account: bool,
     ) -> miette::Result<EnrollStatus> {
-        let req =
-            Request::post("v0/enroll").body(AuthenticateOidcToken::new(token, is_ai_cloud_account));
+        let req = Request::post("v0/enroll").body(AuthenticateOidcToken::new(token));
         trace!(target: TARGET, "executing auth0 flow");
         let reply = self
             .tell(ctx, "auth0_authenticator", req)
@@ -126,14 +155,37 @@ impl Enrollment for SecureClient {
     }
 
     #[instrument(skip_all, level = Level::TRACE)]
+    async fn enroll_ai_with_oidc_token(
+        &self,
+        ctx: &Context,
+        token: OidcToken,
+    ) -> miette::Result<AiEnrollStatus> {
+        let req = Request::post("v0/ai/enroll").body(AuthenticateOidcToken::new(token));
+        trace!(target: TARGET, "executing auth0 flow");
+        let reply = self
+            .ask(ctx, "auth0_authenticator", req)
+            .await
+            .into_diagnostic()?;
+        match reply {
+            Reply::Successful(cluster) => Ok(AiEnrollStatus::EnrolledSuccessfully(cluster)),
+            Reply::Failed(e, Some(s)) => {
+                error!("enrolling with a token returned an error: {e:?}");
+                Ok(AiEnrollStatus::UnexpectedStatus(e.to_string(), s))
+            }
+            Reply::Failed(e, _) => {
+                error!("enrolling with a token returned an error: {e:?}");
+                Ok(AiEnrollStatus::FailedNoStatus(e.to_string()))
+            }
+        }
+    }
+
+    #[instrument(skip_all, level = Level::TRACE)]
     async fn enroll_with_oidc_token_okta(
         &self,
         ctx: &Context,
         token: OidcToken,
-        is_ai_enrollment: bool,
     ) -> miette::Result<()> {
-        let req =
-            Request::post("v0/enroll").body(AuthenticateOidcToken::new(token, is_ai_enrollment));
+        let req = Request::post("v0/enroll").body(AuthenticateOidcToken::new(token));
         trace!(target: TARGET, "executing auth0 flow");
         self.tell(ctx, DefaultAddress::OKTA_IDENTITY_PROVIDER, req)
             .await

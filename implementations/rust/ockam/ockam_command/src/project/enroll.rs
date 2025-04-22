@@ -289,7 +289,7 @@ impl EnrollCommand {
         let auth0 = OidcService::new_with_provider(Arc::new(OktaOidcProvider::new(okta_config)));
         let token = auth0.get_token_interactively(opts).await?;
         authority_node_client
-            .enroll_with_oidc_token_okta(ctx, token, false)
+            .enroll_with_oidc_token_okta(ctx, token)
             .await
             .map_err(Error::Retry)?;
         Ok(())
