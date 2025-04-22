@@ -161,7 +161,7 @@ impl Enrollment for SecureClient {
         token: OidcToken,
     ) -> miette::Result<AiEnrollStatus> {
         let req = Request::post("v0/ai/enroll").body(AuthenticateOidcToken::new(token));
-        trace!(target: TARGET, "executing auth0 flow");
+        trace!(target: TARGET, "executing ai auth0 flow");
         let reply = self
             .ask(ctx, "auth0_authenticator", req)
             .await
