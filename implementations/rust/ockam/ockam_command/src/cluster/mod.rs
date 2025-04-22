@@ -1,6 +1,6 @@
-mod connect;
 mod create;
 mod enroll;
+mod inlet;
 mod ticket;
 pub mod utils;
 mod zone_config;
@@ -12,7 +12,7 @@ use enroll::EnrollCommand;
 use ockam_node::Context;
 use ticket::AiTicketCommand;
 
-use crate::cluster::connect::ConnectCommand;
+use crate::cluster::inlet::InletCommand;
 use crate::{docs, Command, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
@@ -41,7 +41,7 @@ impl ClusterCommand {
             ClusterSubcommand::Enroll(c) => c.run(ctx, opts).await,
             ClusterSubcommand::Ticket(c) => c.run(ctx, opts).await,
             ClusterSubcommand::Deploy(c) => c.run(ctx, opts).await,
-            ClusterSubcommand::Connect(c) => c.run(ctx, opts).await,
+            ClusterSubcommand::Inlet(c) => c.run(ctx, opts).await,
         }
     }
 }
@@ -52,7 +52,7 @@ pub enum ClusterSubcommand {
     Enroll(EnrollCommand),
     Ticket(AiTicketCommand),
     Deploy(CreateCommand),
-    Connect(ConnectCommand),
+    Inlet(InletCommand),
 }
 
 impl ClusterSubcommand {
@@ -61,7 +61,7 @@ impl ClusterSubcommand {
             ClusterSubcommand::Enroll(c) => c.name(),
             ClusterSubcommand::Ticket(c) => c.name(),
             ClusterSubcommand::Deploy(c) => c.name(),
-            ClusterSubcommand::Connect(c) => c.name(),
+            ClusterSubcommand::Inlet(c) => c.name(),
         }
     }
 }
