@@ -12,6 +12,7 @@ use clap::Args;
 use miette::IntoDiagnostic;
 use ockam::transport::SchemeHostnamePort;
 use ockam_abac::PolicyExpression;
+use ockam_api::cli_state::OCKAM_HOME;
 use ockam_api::nodes::InMemoryNode;
 use ockam_api::CliState;
 use ockam_node::Context;
@@ -85,9 +86,14 @@ struct InletNodeCommand {
 impl InMemoryNodeCommand for InletNodeCommand {
     async fn run(&self, node: Arc<InMemoryNode>) -> miette::Result<()> {
         let api_client = get_api_client(&node, self.command.use_http_api).await?;
-        let cluster = api_client
-            .get_cluster(node.ctx(), &self.command.zone_name)
-            .await?;
+        let cluster = match &self.command.cluster {
+            None => {
+                api_client
+                    .get_cluster(node.ctx(), &self.command.zone_name)
+                    .await?
+            }
+            Some(cluster) => cluster.to_string(),
+        };
         let relay_name = format!(
             "{}-{}-{}",
             cluster, self.command.zone_name, self.command.pod
@@ -115,7 +121,7 @@ impl InMemoryNodeCommand for InletNodeCommand {
             ..Default::default()
         };
         let tmp_dir = tempfile::tempdir().into_diagnostic()?;
-        std::env::set_var("OCKAM_HOME", tmp_dir.path());
+        std::env::set_var(OCKAM_HOME, tmp_dir.path());
         let mut opts = self.opts.clone();
         opts.state = Arc::new(CliState::new(false).await?);
         node_cmd.run(node.ctx(), opts).await
