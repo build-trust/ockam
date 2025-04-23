@@ -136,9 +136,7 @@ impl CliState {
     pub async fn reset(&self) -> Result<()> {
         if Self::make_database_configuration(&self.mode)?.database_type() == DatabaseType::Postgres
         {
-            Err(CliStateError::InvalidOperation(
-                "Cannot reset the database when using Postgres".to_string(),
-            ))
+            Ok(self.database().truncate_all_postgres_tables().await?)
         } else {
             self.delete_all_named_identities().await?;
             self.delete_all_nodes().await?;

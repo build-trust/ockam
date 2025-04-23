@@ -450,19 +450,29 @@ PRAGMA busy_timeout = 10000;
         match self.configuration.database_type() {
             DatabaseType::Sqlite => Ok(()),
             DatabaseType::Postgres => {
-                sqlx::query(
-                    format!(r#"DO $$
-                   DECLARE
-                       r RECORD;
-                   BEGIN
-                       FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = 'public' {}) LOOP
-                           EXECUTE '{} TABLE ' || quote_ident(r.tablename) || ' CASCADE';
-                       END LOOP;
-                   END $$;"#, filter.unwrap_or(""), clean.as_str(),
-                    ).as_str())
-                    .execute(&*self.pool)
-                    .await
-                    .void()
+                match clean {
+                    Clean::Drop => {
+                        sqlx::query(
+                            format!(r#"DO $$
+                                       DECLARE
+                                           r RECORD;
+                                       BEGIN
+                                           FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = 'public' {}) LOOP
+                                               EXECUTE 'DROP TABLE ' || quote_ident(r.tablename) || ' CASCADE';
+                                           END LOOP;
+                                       END $$;"#, filter.unwrap_or(""),
+                            ).as_str())
+                            .execute(&*self.pool)
+                            .await
+                            .void()
+
+                    },
+                    Clean::Truncate => {
+                        sqlx::query("CALL delete_tenant_tables();").execute(&*self.pool)
+                            .await
+                            .void()
+                    }
+                }
             }
         }
     }
@@ -471,15 +481,6 @@ PRAGMA busy_timeout = 10000;
 enum Clean {
     Drop,
     Truncate,
-}
-
-impl Clean {
-    fn as_str(&self) -> &str {
-        match self {
-            Clean::Drop => "DROP",
-            Clean::Truncate => "TRUNCATE",
-        }
-    }
 }
 
 /// This function can be used to run some test code with the 2 SQLite databases implementations
@@ -660,10 +661,8 @@ pub mod tests {
     #[tokio::test]
     async fn test_create_postgres_database() -> Result<()> {
         if let Some(configuration) = DatabaseConfiguration::postgres()? {
-            let db = SqlxDatabase::create_no_migration(&configuration).await?;
-            db.drop_all_postgres_tables().await?;
-
             let db = SqlxDatabase::create(&configuration).await?;
+            db.truncate_all_postgres_tables().await?;
             let inserted = insert_identity(&db).await.unwrap();
             assert_eq!(inserted.rows_affected(), 1);
         }
@@ -778,6 +777,19 @@ pub mod tests {
         );
         assert_eq!(alice_nodes, vec!["node-alice".to_string()]);
         assert_eq!(bob_nodes, vec!["node-bob".to_string()]);
+
+        // Now delete the data but only for alice
+        alice_database.truncate_all_postgres_tables().await?;
+        let admin_nodes = list_nodes(&admin_database).await?;
+        let alice_nodes = list_nodes(&alice_database).await?;
+        let bob_nodes = list_nodes(&bob_database).await?;
+
+        assert_eq!(
+            admin_nodes,
+            vec![format!("node-{admin_user}"), "node-bob".to_string()]
+        );
+        assert!(alice_nodes.is_empty());
+        assert_eq!(bob_nodes, vec!["node-bob".to_string()]);
         Ok(())
     }
 
@@ -803,7 +815,19 @@ pub mod tests {
     }
 
     async fn create_user(db: &SqlxDatabase, user: &str) -> Result<()> {
-        let q = format!("CREATE ROLE {user} with LOGIN PASSWORD '{user}'");
+        let q = format!(
+            r#"
+        DO $$
+           BEGIN
+              IF NOT EXISTS (
+                 SELECT FROM pg_catalog.pg_roles
+                 WHERE rolname = '{user}'
+              ) THEN
+                 CREATE USER {user} WITH PASSWORD '{user}';
+              END IF;
+           END
+        $$;"#
+        );
         query(&q).bind(user).execute(&*db.pool).await.void()?;
 
         let q = format!("GRANT USAGE ON SCHEMA public TO {user}");
