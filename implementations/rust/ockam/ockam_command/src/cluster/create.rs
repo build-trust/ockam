@@ -143,9 +143,8 @@ impl CreateCommand {
 
     async fn build_local_image(&self, opts: &CommandGlobalOpts, image_name: &str) -> Result<()> {
         // Given an image name, try to build the Dockerfile image at "./images/{image_name}/Dockerfile"
-        let dockerfile_dir = format!("./images/{}/", image_name);
-        let dockerfile_path = format!("./images/{}/Dockerfile", image_name);
-        if !std::path::Path::new(&dockerfile_path).exists() {
+        let dockerfile_dir = format!("./images/{}", image_name);
+        if !std::path::Path::new(&dockerfile_dir).exists() {
             return Ok(());
         }
         let spinner = opts.terminal.spinner();
@@ -159,8 +158,6 @@ impl CreateCommand {
             .arg("build")
             .arg("-t")
             .arg(image_name)
-            .arg("-f")
-            .arg(&dockerfile_path)
             .arg(".")
             .current_dir(dockerfile_dir)
             .output()
