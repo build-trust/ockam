@@ -1,7 +1,6 @@
 use async_trait::async_trait;
 use std::sync::Arc;
 
-use crate::cluster::utils::get_api_client;
 use crate::node::config::ConfigArgs;
 use crate::node_command::InMemoryNodeCommand;
 use crate::tcp::inlet::create::tcp_inlet_default_from_addr;
