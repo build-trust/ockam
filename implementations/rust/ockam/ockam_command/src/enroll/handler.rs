@@ -68,31 +68,33 @@ impl InMemoryNodeCommand for EnrollHandler {
     async fn run(&self, node: Arc<InMemoryNode>) -> miette::Result<()> {
         let (user_info, cluster) = self.enroll_identity(&node).await?;
 
-        if let Err(error) = self.retrieve_user_space_and_project(&node).await {
-            // Display output to user
-            self.opts.terminal
-                .write_line("")?
-                .write_line(fmt_warn!(
-                    "There was a problem retrieving your space and project: {}",
-                    color_primary(error.to_string())
-                ))?
-                .write_line(fmt_log!(
-                    "If this problem persists, please report this issue, with a copy of your logs, to {}\n",
-                    color_uri("https://github.com/build-trust/ockam/issues")
-                ))?;
+        if !self.is_ai_cloud_account {
+            if let Err(error) = self.retrieve_user_space_and_project(&node).await {
+                // Display output to user
+                self.opts.terminal
+                    .write_line("")?
+                    .write_line(fmt_warn!(
+                        "There was a problem retrieving your space and project: {}",
+                        color_primary(error.to_string())
+                    ))?
+                    .write_line(fmt_log!(
+                        "If this problem persists, please report this issue, with a copy of your logs, to {}\n",
+                        color_uri("https://github.com/build-trust/ockam/issues")
+                    ))?;
 
-            // Log output to operator
-            error!(
-                "Unable to retrieve your Orchestrator resources. Try running `ockam enroll` again or \
-                create them manually using the `ockam space` and `ockam project` commands."
-            );
-            error!("{error}");
+                // Log output to operator
+                error!(
+                    "Unable to retrieve your Orchestrator resources. Try running `ockam enroll` again or \
+                    create them manually using the `ockam space` and `ockam project` commands."
+                );
+                error!("{error}");
 
-            // Exit the command with an error
-            return Err(error.wrap_err(format!(
-                "There was a problem, please try to enroll again using {}.",
-                color_primary("ockam enroll")
-            )));
+                // Exit the command with an error
+                return Err(error.wrap_err(format!(
+                    "There was a problem, please try to enroll again using {}.",
+                    color_primary("ockam enroll")
+                )));
+            }
         }
 
         // Tracing
@@ -127,18 +129,20 @@ impl InMemoryNodeCommand for EnrollHandler {
                 "Your Cluster associated to the Ockam AI Platform is {cluster}"
             ))?;
         }
-        self.opts.terminal
-            .write_line(fmt_log!(
-                "You also now have an Orchestrator Project that offers a Project Membership Authority service and a Relay service.\n"
-            ))?
-            .write_line(fmt_log!(
-                "Please explore our documentation to learn how you can use Ockam"
-            ))?
-            .write_line(fmt_log!(
-                "to create encrypted Portals to remote services, databases, and more {}",
-                color_uri("https://docs.ockam.io")
-            ))?;
 
+        if !self.is_ai_cloud_account {
+            self.opts.terminal
+                .write_line(fmt_log!(
+                    "You also now have an Orchestrator Project that offers a Project Membership Authority service and a Relay service.\n"
+                ))?
+                .write_line(fmt_log!(
+                    "Please explore our documentation to learn how you can use Ockam"
+                ))?
+                .write_line(fmt_log!(
+                    "to create encrypted Portals to remote services, databases, and more {}",
+                    color_uri("https://docs.ockam.io")
+                ))?;
+        }
         Ok(())
     }
 }
