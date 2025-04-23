@@ -1,4 +1,4 @@
-use miette::IntoDiagnostic;
+use miette::{IntoDiagnostic, WrapErr};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
@@ -25,7 +25,12 @@ pub struct Container {
 
 impl ZoneConfig {
     pub fn from_file(path: impl AsRef<std::path::Path>) -> Result<Self, miette::Error> {
-        let content = std::fs::read_to_string(path).into_diagnostic()?;
+        let content = std::fs::read_to_string(&path)
+            .into_diagnostic()
+            .wrap_err(format!(
+                "Failed to read zone config file at {}",
+                path.as_ref().display()
+            ))?;
         if content.starts_with("{") {
             serde_json::from_str::<Self>(&content)
                 .map_err(|e| miette::miette!(format!("Failed to parse JSON zone config: {}", e)))
