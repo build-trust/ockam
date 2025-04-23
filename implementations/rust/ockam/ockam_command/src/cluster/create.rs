@@ -21,7 +21,7 @@ const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
 
 /// Deploy an Ockam AI Agent into a Zone
-#[derive(Clone, Debug, Args)]
+#[derive(Clone, Debug, Args, Default)]
 #[command(
 long_about = docs::about(LONG_ABOUT),
 before_help = docs::before_help(PREVIEW_TAG),
@@ -34,7 +34,7 @@ pub struct CreateCommand {
 
     /// The path to the Zone configuration file, in yaml or json format.
     ///
-    /// If not set, the `./zone.json` file from the current directory will be used.
+    /// If not set, the `./ockam.yaml` file from the current directory will be used.
     #[arg(long, visible_alias = "config")]
     pub zone_config: Option<String>,
 
@@ -115,7 +115,7 @@ impl CreateCommand {
         api_client: &(dyn AiPlatformApi + Send + Sync + 'static),
         cluster: &str,
     ) -> Result<ZoneConfig> {
-        let zone_config_path = self.zone_config.as_deref().unwrap_or("./zone.json");
+        let zone_config_path = self.zone_config.as_deref().unwrap_or("./ockam.yaml");
         let mut zone_config = ZoneConfig::from_file(zone_config_path)?;
 
         let config_images = zone_config.get_local_images_names();
@@ -126,6 +126,8 @@ impl CreateCommand {
         }
 
         for image_name in config_images {
+            self.build_local_image(opts, &image_name).await?;
+
             let ecr_creds = self
                 .provision_ecr(ctx, opts, api_client, cluster, &image_name)
                 .await?;
@@ -135,7 +137,41 @@ impl CreateCommand {
             //     .await?;
             zone_config.replace_image_name(&image_name, &ecr_creds.repository_uri)?;
         }
+
         Ok(zone_config)
+    }
+
+    async fn build_local_image(&self, opts: &CommandGlobalOpts, image_name: &str) -> Result<()> {
+        // Given an image name, try to build the Dockerfile image at "./images/{image_name}/Dockerfile"
+        let dockerfile_path = format!("./images/{}/Dockerfile", image_name);
+        if !std::path::Path::new(&dockerfile_path).exists() {
+            return Ok(());
+        }
+        let spinner = opts.terminal.spinner();
+        if let Some(spinner) = spinner.as_ref() {
+            spinner.set_message(format!(
+                "Building local image {}...",
+                color_primary(image_name),
+            ));
+        }
+        let output = tokio::process::Command::new("docker")
+            .arg("build")
+            .arg("-t")
+            .arg(image_name)
+            .arg("-f")
+            .arg(&dockerfile_path)
+            .arg(".")
+            .output()
+            .await
+            .into_diagnostic()?;
+        if !output.status.success() {
+            return Err(miette::Error::msg(format!(
+                "Failed to build image {}: {}",
+                image_name,
+                String::from_utf8_lossy(&output.stderr)
+            )));
+        }
+        Ok(())
     }
 
     async fn provision_ecr(

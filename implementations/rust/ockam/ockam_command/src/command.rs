@@ -36,7 +36,7 @@ use crate::util::exitcode;
 /// Top-level command, with:
 ///  - Global arguments
 ///  - A specific subcommand
-#[derive(Debug, Parser)]
+#[derive(Debug, Parser, Default)]
 #[command(
 name = BrandingCompileEnvVars::bin_name(),
 term_width = 100,
@@ -47,6 +47,8 @@ version,
 long_version = Version::clappy(),
 next_help_heading = "Global Options",
 disable_help_flag = true,
+arg_required_else_help = false,
+subcommand_required = false,
 )]
 pub struct OckamCommand {
     #[command(subcommand)]
@@ -57,134 +59,6 @@ pub struct OckamCommand {
 }
 
 impl OckamCommand {
-    async fn init_cli_state(&self, in_memory: bool) -> CliState {
-        match CliState::new(in_memory).await {
-            Ok(state) => state,
-            Err(err) => {
-                // If the user is trying to run `ockam reset` and the local state is corrupted,
-                // we can try to hard reset the local state.
-                if let OckamSubcommand::Reset(c) = &self.subcommand {
-                    c.hard_reset();
-                    println!(
-                        "{}",
-                        fmt_ok!(
-                            "Local {} configuration deleted",
-                            BrandingCompileEnvVars::bin_name()
-                        )
-                    );
-                    exit(exitcode::OK);
-                }
-                eprintln!("{}", fmt_err!("Failed to initialize local state"));
-                eprintln!(
-                    "{}",
-                    fmt_log!(
-                        "Consider upgrading to the latest version of {} Command",
-                        BrandingCompileEnvVars::bin_name()
-                    )
-                );
-                let ockam_home = std::env::var("OCKAM_HOME")
-                    .unwrap_or(BrandingCompileEnvVars::home_dir().to_string());
-                eprintln!(
-                    "{}",
-                    fmt_log!(
-                        "You can also try removing the local state using {} \
-                        or deleting the directory at {}",
-                        color_primary("ockam reset"),
-                        color_primary(ockam_home)
-                    )
-                );
-                eprintln!("\n{:?}", miette!(err.to_string()));
-                exit(exitcode::SOFTWARE);
-            }
-        }
-    }
-
-    /// Set up a logger and a tracer for the current node
-    /// If the node is a background node we always enable logging, regardless of environment variables
-    fn setup_logging_tracing(
-        &self,
-        cli_state: Arc<CliState>,
-        logging_configuration: &LoggingConfiguration,
-        exporting_configuration: &ExportingConfiguration,
-        ctx: &Context,
-    ) -> Option<TracingGuard> {
-        if !logging_configuration.is_enabled() && !exporting_configuration.is_enabled() {
-            return None;
-        };
-
-        let app_name = if self.subcommand.is_local_node() {
-            "local node"
-        } else {
-            "cli"
-        };
-        let tracing_guard = LoggingTracing::setup(
-            cli_state,
-            logging_configuration,
-            exporting_configuration,
-            app_name,
-            self.subcommand.node_name(),
-            ctx,
-        );
-
-        Some(tracing_guard)
-    }
-
-    /// Create the logging configuration, depending on the command to execute
-    fn make_logging_configuration(&self, is_tty: bool) -> miette::Result<LoggingConfiguration> {
-        if self.subcommand.is_background_node() {
-            Ok(LoggingConfiguration::background(self.subcommand.log_path()).into_diagnostic()?)
-        } else {
-            let verbose = self.global_args.verbose;
-            let mut level_and_crates =
-                LogLevelWithCratesFilter::from_verbose(verbose).into_diagnostic()?;
-            let mut log_path = if level_and_crates.explicit_verbose_flag {
-                None
-            } else {
-                Some(CliState::command_log_path(self.subcommand.name().as_str())?)
-            };
-            let mut logging_enabled = logging_enabled()?;
-            let mut default_log_format = LogFormat::Default;
-            if self.subcommand.is_foreground_node() && verbose == 0 {
-                log_path = None;
-                logging_enabled = LoggingEnabled::On;
-                level_and_crates.crates_filter =
-                    CratesFilter::Selected(vec![OckamUserLogFormat::TARGET.to_string()]);
-                default_log_format = LogFormat::User;
-            }
-            let colored = if !self.global_args.no_color && is_tty && log_path.is_none() {
-                Colored::On
-            } else {
-                Colored::Off
-            };
-            Ok(logging_configuration(
-                level_and_crates,
-                log_path,
-                colored,
-                default_log_format,
-                logging_enabled,
-            )
-            .into_diagnostic()?)
-        }
-    }
-
-    /// Create the exporting configuration, depending on the command to execute
-    async fn make_exporting_configuration(
-        &self,
-        state: &CliState,
-        ctx: &Context,
-    ) -> miette::Result<ExportingConfiguration> {
-        if self.subcommand.is_background_node() {
-            ExportingConfiguration::background(state, ctx)
-                .await
-                .into_diagnostic()
-        } else {
-            ExportingConfiguration::foreground(state, ctx)
-                .await
-                .into_diagnostic()
-        }
-    }
-
-    /// Run the command
     pub async fn run(self, ctx: &Context, arguments: &[String]) -> miette::Result<()> {
         // If test_argument_parser is true, command arguments are checked
         // but the command is not executed. This is useful to test arguments
@@ -319,6 +193,133 @@ impl OckamCommand {
         };
 
         result
+    }
+
+    async fn init_cli_state(&self, in_memory: bool) -> CliState {
+        match CliState::new(in_memory).await {
+            Ok(state) => state,
+            Err(err) => {
+                // If the user is trying to run `ockam reset` and the local state is corrupted,
+                // we can try to hard reset the local state.
+                if let OckamSubcommand::Reset(c) = &self.subcommand {
+                    c.hard_reset();
+                    println!(
+                        "{}",
+                        fmt_ok!(
+                            "Local {} configuration deleted",
+                            BrandingCompileEnvVars::bin_name()
+                        )
+                    );
+                    exit(exitcode::OK);
+                }
+                eprintln!("{}", fmt_err!("Failed to initialize local state"));
+                eprintln!(
+                    "{}",
+                    fmt_log!(
+                        "Consider upgrading to the latest version of {} Command",
+                        BrandingCompileEnvVars::bin_name()
+                    )
+                );
+                let ockam_home = std::env::var("OCKAM_HOME")
+                    .unwrap_or(BrandingCompileEnvVars::home_dir().to_string());
+                eprintln!(
+                    "{}",
+                    fmt_log!(
+                        "You can also try removing the local state using {} \
+                        or deleting the directory at {}",
+                        color_primary("ockam reset"),
+                        color_primary(ockam_home)
+                    )
+                );
+                eprintln!("\n{:?}", miette!(err.to_string()));
+                exit(exitcode::SOFTWARE);
+            }
+        }
+    }
+
+    /// Set up a logger and a tracer for the current node
+    /// If the node is a background node we always enable logging, regardless of environment variables
+    fn setup_logging_tracing(
+        &self,
+        cli_state: Arc<CliState>,
+        logging_configuration: &LoggingConfiguration,
+        exporting_configuration: &ExportingConfiguration,
+        ctx: &Context,
+    ) -> Option<TracingGuard> {
+        if !logging_configuration.is_enabled() && !exporting_configuration.is_enabled() {
+            return None;
+        };
+
+        let app_name = if self.subcommand.is_local_node() {
+            "local node"
+        } else {
+            "cli"
+        };
+        let tracing_guard = LoggingTracing::setup(
+            cli_state,
+            logging_configuration,
+            exporting_configuration,
+            app_name,
+            self.subcommand.node_name(),
+            ctx,
+        );
+
+        Some(tracing_guard)
+    }
+
+    /// Create the logging configuration, depending on the command to execute
+    fn make_logging_configuration(&self, is_tty: bool) -> miette::Result<LoggingConfiguration> {
+        if self.subcommand.is_background_node() {
+            Ok(LoggingConfiguration::background(self.subcommand.log_path()).into_diagnostic()?)
+        } else {
+            let verbose = self.global_args.verbose;
+            let mut level_and_crates =
+                LogLevelWithCratesFilter::from_verbose(verbose).into_diagnostic()?;
+            let mut log_path = if level_and_crates.explicit_verbose_flag {
+                None
+            } else {
+                Some(CliState::command_log_path(self.subcommand.name().as_str())?)
+            };
+            let mut logging_enabled = logging_enabled()?;
+            let mut default_log_format = LogFormat::Default;
+            if self.subcommand.is_foreground_node() && verbose == 0 {
+                log_path = None;
+                logging_enabled = LoggingEnabled::On;
+                level_and_crates.crates_filter =
+                    CratesFilter::Selected(vec![OckamUserLogFormat::TARGET.to_string()]);
+                default_log_format = LogFormat::User;
+            }
+            let colored = if !self.global_args.no_color && is_tty && log_path.is_none() {
+                Colored::On
+            } else {
+                Colored::Off
+            };
+            Ok(logging_configuration(
+                level_and_crates,
+                log_path,
+                colored,
+                default_log_format,
+                logging_enabled,
+            )
+            .into_diagnostic()?)
+        }
+    }
+
+    /// Create the exporting configuration, depending on the command to execute
+    async fn make_exporting_configuration(
+        &self,
+        state: &CliState,
+        ctx: &Context,
+    ) -> miette::Result<ExportingConfiguration> {
+        if self.subcommand.is_background_node() {
+            ExportingConfiguration::background(state, ctx)
+                .await
+                .into_diagnostic()
+        } else {
+            ExportingConfiguration::foreground(state, ctx)
+                .await
+                .into_diagnostic()
+        }
     }
 
     #[instrument(skip_all, fields(command = self.subcommand.name()), level = Level::TRACE)]

@@ -10,7 +10,7 @@ use ockam_node::Context;
 use once_cell::sync::Lazy;
 
 pub const AI_API_BASE_URL_ENV: &str = "AI_API_BASE_URL";
-static AI_API_BASE_URL: Lazy<String> = Lazy::new(|| {
+pub static AI_API_BASE_URL: Lazy<String> = Lazy::new(|| {
     let v = get_env_with_default_ignore_error(
         AI_API_BASE_URL_ENV,
         "http://localhost:30080".to_string(),
