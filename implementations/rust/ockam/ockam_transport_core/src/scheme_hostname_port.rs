@@ -10,6 +10,15 @@ pub struct SchemeHostnamePort {
     hostname_port: HostnamePort,
 }
 
+impl Default for SchemeHostnamePort {
+    fn default() -> Self {
+        SchemeHostnamePort {
+            scheme: ValidScheme::Tcp,
+            hostname_port: HostnamePort::localhost(0),
+        }
+    }
+}
+
 impl SchemeHostnamePort {
     pub fn new(
         scheme: impl Into<String>,

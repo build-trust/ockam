@@ -18,13 +18,13 @@ const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/ticket/after_long_help.txt");
 
 /// Generate an enrollment ticket for an Ockam AI Agent
-#[derive(Clone, Debug, Args)]
+#[derive(Clone, Debug, Args, Default)]
 #[command(
 long_about = docs::about(LONG_ABOUT),
 before_help = docs::before_help(PREVIEW_TAG),
 after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
-pub struct AiTicketCommand {
+pub struct TicketCommand {
     // === Specific args for the HTTP API endpoint
     /// The Cluster that will be used
     /// If not set, it will be retrieved from the enrolled user data.
@@ -47,21 +47,21 @@ pub struct AiTicketCommand {
 
     /// Attributes in `key=value` format to be attached to the member. You can specify this option multiple times for multiple attributes
     #[arg(short, long = "attribute", value_name = "ATTRIBUTE")]
-    attributes: Vec<String>,
+    pub attributes: Vec<String>,
 
     /// Name of the relay that the identity using the ticket will be allowed to create. This name is transformed into attributes to prevent collisions when creating relay names. For example: `--relay foo` is shorthand for `--attribute ockam-relay=foo`
     #[arg(long = "relay", value_name = "ENROLLEE_ALLOWED_RELAY_NAME")]
-    allowed_relay_name: Option<String>,
+    pub allowed_relay_name: Option<String>,
 }
 
 #[derive(Clone)]
 struct TicketNodeCommand {
     opts: CommandGlobalOpts,
-    command: AiTicketCommand,
+    command: TicketCommand,
 }
 
 #[async_trait]
-impl InMemoryNodeCommand for TicketNodeCommand {
+impl InMemoryNodeCommand<String> for TicketNodeCommand {
     async fn init(&self) -> miette::Result<()> {
         if let Some(api_endpoint) = &self.command.api_endpoint {
             std::env::set_var(AI_API_BASE_URL_ENV, api_endpoint);
@@ -69,7 +69,7 @@ impl InMemoryNodeCommand for TicketNodeCommand {
         Ok(())
     }
 
-    async fn run(&self, node: Arc<InMemoryNode>) -> miette::Result<()> {
+    async fn run(&self, node: Arc<InMemoryNode>) -> miette::Result<String> {
         let ctx = node.ctx();
         let use_http_api = self.command.use_http_api || self.command.api_endpoint.is_some();
         let api_client = get_api_client(&node, use_http_api).await?;
@@ -77,13 +77,22 @@ impl InMemoryNodeCommand for TicketNodeCommand {
             None => api_client.get_cluster(ctx).await?.into_inner(),
             Some(cluster) => cluster.to_string(),
         };
+        let relay = match &self.command.allowed_relay_name {
+            Some(relay) => relay.to_string(),
+            None => format!(
+                "{}-{}-{}",
+                cluster,
+                self.command.zone_name,
+                self.command.zone_name // TODO: review name schema, implementations/rust/ockam/ockam_command/src/cluster/inlet.rs:107
+            ),
+        };
         let ticket = api_client
             .create_enrollment_token(
                 ctx,
                 &cluster,
                 &self.command.zone_name,
                 self.command.attributes()?,
-                self.command.allowed_relay_name.clone(),
+                Some(relay),
             )
             .await?;
 
@@ -95,25 +104,25 @@ impl InMemoryNodeCommand for TicketNodeCommand {
             .machine(&ticket)
             .json(&serde_json::to_string(&ticket).into_diagnostic()?)
             .write_line()?;
-        Ok(())
+        Ok(ticket)
     }
 }
 
 #[async_trait]
-impl Command for AiTicketCommand {
+impl Command<String> for TicketCommand {
     const NAME: &'static str = "cluster ticket";
 
-    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> Result<()> {
+    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> Result<String> {
         let command = TicketNodeCommand {
             opts: opts.clone(),
             command: self.clone(),
         };
-        command.execute(ctx, opts.state.clone()).await?;
-        Ok(())
+        let ticket = command.execute(ctx, opts.state.clone()).await?;
+        Ok(ticket)
     }
 }
 
-impl AiTicketCommand {
+impl TicketCommand {
     //a bit of copy-pasted from project ticket command. But no tls, enroller, etc.
     fn attributes(&self) -> Result<BTreeMap<String, String>> {
         let mut attributes = BTreeMap::new();

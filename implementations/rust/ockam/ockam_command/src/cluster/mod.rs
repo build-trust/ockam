@@ -1,10 +1,10 @@
-mod create;
+pub(crate) mod create;
 mod delete;
-mod enroll;
-mod init;
-mod inlet;
+pub(crate) mod enroll;
+pub(crate) mod init;
+pub(crate) mod inlet;
 mod outlet;
-mod ticket;
+pub(crate) mod ticket;
 pub mod utils;
 mod zone_config;
 
@@ -13,7 +13,7 @@ use clap::{Args, Subcommand};
 use create::CreateCommand;
 use enroll::EnrollCommand;
 use ockam_node::Context;
-use ticket::AiTicketCommand;
+use ticket::TicketCommand;
 
 use crate::cluster::delete::DeleteCommand;
 use crate::cluster::init::InitCommand;
@@ -46,7 +46,7 @@ impl ClusterCommand {
         match self.subcommand {
             ClusterSubcommand::Init(c) => c.run(ctx, opts).await,
             ClusterSubcommand::Enroll(c) => c.run(ctx, opts).await,
-            ClusterSubcommand::Ticket(c) => c.run(ctx, opts).await,
+            ClusterSubcommand::Ticket(c) => c.run(ctx, opts).await.map(|_| ()),
             ClusterSubcommand::Create(c) => c.run(ctx, opts).await,
             ClusterSubcommand::Delete(c) => c.run(ctx, opts).await,
             ClusterSubcommand::Inlet(c) => c.run(ctx, opts).await,
@@ -60,7 +60,7 @@ impl ClusterCommand {
 pub enum ClusterSubcommand {
     Init(InitCommand),
     Enroll(EnrollCommand),
-    Ticket(AiTicketCommand),
+    Ticket(TicketCommand),
     Create(CreateCommand),
     Delete(DeleteCommand),
     Inlet(InletCommand),

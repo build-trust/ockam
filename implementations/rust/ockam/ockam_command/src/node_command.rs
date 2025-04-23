@@ -23,7 +23,9 @@ use std::time::Duration;
 /// for example to create the identity which will be used to create the in-memory node.
 ///
 #[async_trait]
-pub trait InMemoryNodeCommand: Clone + Send + Sync + 'static {
+pub trait InMemoryNodeCommand<T: Send + Sync + 'static = ()>:
+    Clone + Send + Sync + 'static
+{
     /// Optional project name
     fn project_name(&self) -> Option<String> {
         None
@@ -46,10 +48,10 @@ pub trait InMemoryNodeCommand: Clone + Send + Sync + 'static {
 
     /// This method needs to be implemented. It guarantees that the in-memory node is properly shutdown
     /// when the command is finished or raises an error.
-    async fn run(&self, node: Arc<InMemoryNode>) -> miette::Result<()>;
+    async fn run(&self, node: Arc<InMemoryNode>) -> miette::Result<T>;
 
     /// The default execute method ensures that the command code will be executed with a node that is properly shutdown
-    async fn execute(&self, ctx: &Context, state: Arc<CliState>) -> miette::Result<()> {
+    async fn execute(&self, ctx: &Context, state: Arc<CliState>) -> miette::Result<T> {
         self.init().await?;
         let self_clone = Arc::new(self.clone());
         InMemoryNodeBuilder::create(ctx, state)?

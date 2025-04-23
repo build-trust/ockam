@@ -52,6 +52,7 @@ mod manpages;
 mod markdown;
 mod message;
 mod migrate_database;
+mod no_args;
 pub mod node;
 mod node_command;
 mod operation;

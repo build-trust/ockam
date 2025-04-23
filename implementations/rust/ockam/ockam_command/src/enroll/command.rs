@@ -8,7 +8,7 @@ use ockam::Context;
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/after_long_help.txt");
 
-#[derive(Clone, Debug, Args)]
+#[derive(Clone, Debug, Args, Default)]
 #[command(
 about = docs::about("Enroll your Ockam Identity with Ockam Orchestrator"),
 long_about = docs::about(LONG_ABOUT),
