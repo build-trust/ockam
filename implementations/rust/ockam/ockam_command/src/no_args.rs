@@ -20,14 +20,8 @@ impl NoArgsCommand {
 
     pub async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         self.enroll(ctx, &opts).await?;
-        opts.terminal.write_line(fmt_separator!())?;
-
         self.cluster_init(ctx, &opts).await?;
-        opts.terminal.write_line(fmt_separator!())?;
-
         self.cluster_create(ctx, &opts).await?;
-        opts.terminal.write_line(fmt_separator!())?;
-
         let inlet_handle = self.cluster_inlet(ctx, &opts).await?;
         self.open_repl(ctx, &opts, inlet_handle).await?;
 
@@ -43,6 +37,7 @@ impl NoArgsCommand {
         use crate::cluster::enroll::EnrollCommand;
         let enroll_command = EnrollCommand::default();
         enroll_command.run(ctx, opts.clone()).await?;
+        opts.terminal.write_line(fmt_separator!())?;
 
         Ok(())
     }
@@ -61,6 +56,7 @@ impl NoArgsCommand {
             target_path: None,
         };
         init_command.run(ctx, opts.clone()).await?;
+        opts.terminal.write_line(fmt_separator!())?;
 
         Ok(())
     }
@@ -74,6 +70,7 @@ impl NoArgsCommand {
             ..Default::default()
         };
         create_command.run(ctx, opts.clone()).await?;
+        opts.terminal.write_line(fmt_separator!())?;
 
         Ok(())
     }
