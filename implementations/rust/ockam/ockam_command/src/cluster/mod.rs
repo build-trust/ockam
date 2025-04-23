@@ -6,7 +6,7 @@ pub(crate) mod inlet;
 mod outlet;
 pub(crate) mod ticket;
 pub mod utils;
-mod zone_config;
+pub mod zone_config;
 
 use clap::{Args, Subcommand};
 

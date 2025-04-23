@@ -81,22 +81,13 @@ impl InMemoryNodeCommand<String> for TicketNodeCommand {
             }
             Some(cluster) => cluster.to_string(),
         };
-        let relay = match &self.command.allowed_relay_name {
-            Some(relay) => relay.to_string(),
-            None => format!(
-                "{}-{}-{}",
-                cluster,
-                self.command.zone_name,
-                self.command.zone_name // TODO: review name schema, implementations/rust/ockam/ockam_command/src/cluster/inlet.rs:107
-            ),
-        };
         let ticket = api_client
             .create_enrollment_token(
                 ctx,
                 &cluster,
                 &self.command.zone_name,
                 self.command.attributes()?,
-                Some(relay),
+                None,
             )
             .await?;
 
