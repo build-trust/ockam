@@ -64,7 +64,7 @@ impl NoArgsCommand {
     async fn cluster_create(&self, ctx: &Context, opts: &CommandGlobalOpts) -> miette::Result<()> {
         use crate::cluster::create::CreateCommand;
         let create_command = CreateCommand {
-            zone_name: "default".to_string(),
+            zone_name: "ockamtest".to_string(),
             use_public_ecr: true,
             api_endpoint: Some(AI_API_BASE_URL.to_string()),
             ..Default::default()
@@ -82,7 +82,7 @@ impl NoArgsCommand {
     ) -> miette::Result<JoinHandle<Result<()>>> {
         use crate::cluster::ticket::TicketCommand;
         let ticket_command = TicketCommand {
-            zone_name: "default".to_string(),
+            zone_name: "ockamtest".to_string(),
             api_endpoint: Some(AI_API_BASE_URL.to_string()),
             ..Default::default()
         };
@@ -90,8 +90,8 @@ impl NoArgsCommand {
 
         use crate::cluster::inlet::InletCommand;
         let inlet_command = InletCommand {
-            zone_name: "default".to_string(),
-            pod: "default".to_string(),
+            zone_name: "ockamtest".to_string(),
+            pod: "ockamtest".to_string(),
             enrollment_ticket: ticket,
             from: SchemeHostnamePort::from_str("127.0.0.1:31234").into_diagnostic()?,
             api_endpoint: None,
