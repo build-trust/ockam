@@ -79,7 +79,10 @@ impl InMemoryNodeCommand for CreateNodeCommand {
         let use_http_api = self.command.use_http_api || self.command.api_endpoint.is_some();
         let api_client = get_api_client(&node, use_http_api).await?;
         let cluster = match &self.command.cluster {
-            None => api_client.get_cluster(ctx).await?.into_inner(),
+            None => {
+                let controller_client = node.create_controller().await?;
+                controller_client.get_cluster(ctx).await?.into_inner()
+            }
             Some(cluster) => cluster.to_string(),
         };
         let zone_config = self
