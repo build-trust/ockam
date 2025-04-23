@@ -23,7 +23,7 @@ const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/inlet/after_long_help.txt");
 
 /// Connect to a service provided by an Ockam AI Agent
-#[derive(Clone, Debug, Args)]
+#[derive(Clone, Debug, Args, Default)]
 #[command(
 long_about = docs::about(LONG_ABOUT),
 before_help = docs::before_help(PREVIEW_TAG),
@@ -55,7 +55,8 @@ pub struct InletCommand {
     /// Address on which to accept TCP connections, in the format `<scheme>://<host>:<port>`.
     /// At least the port must be provided. The default scheme is `tcp` and the default host is `127.0.0.1`.
     /// If the argument is not set, a random port will be used on the default address `tcp://127.0.0.1`.
-    #[arg(long, display_order = 900, id = "SOCKET_ADDRESS", hide_default_value = true, default_value_t = tcp_inlet_default_from_addr(), value_parser = hostname_parser)]
+    #[arg(long, display_order = 900, id = "SOCKET_ADDRESS", hide_default_value = true, default_value_t = tcp_inlet_default_from_addr(), value_parser = hostname_parser
+    )]
     pub from: SchemeHostnamePort,
 
     #[arg(help = docs::about("\

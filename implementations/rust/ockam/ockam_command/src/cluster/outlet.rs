@@ -37,6 +37,9 @@ pub struct OutletCommand {
     "))]
     pub enrollment_ticket: String,
 
+    #[arg(long)]
+    pub relay: String,
+
     // == TCP Outlet Options ==
     /// Service address of your TCP Outlet, which is part of a route used in other commands.
     /// This unique address identifies the TCP Outlet worker on the Node on your local machine.
@@ -74,9 +77,10 @@ struct OutletNodeCommand {
 impl InMemoryNodeCommand for OutletNodeCommand {
     async fn run(&self, node: Arc<InMemoryNode>) -> miette::Result<()> {
         let mut node_config = serde_json::json!({
+            "relay": self.command.relay.clone(),
             "tcp-outlet": {
                 "to": self.command.to.to_string(),
-            }
+                }
         });
         if let Some(from) = &self.command.from {
             node_config["tcp-outlet"]["from"] = from.to_string().into();
