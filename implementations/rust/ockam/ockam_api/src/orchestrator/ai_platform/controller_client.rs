@@ -1,6 +1,8 @@
+use std::collections::BTreeMap;
+
 use crate::orchestrator::ai_platform::api::AiPlatformApi;
 use crate::orchestrator::ai_platform::requests::{
-    CreateSecret, CreateZone, DeployZone, ListZones, ProvisionEcr,
+    CreateEnrollmentToken, CreateSecret, CreateZone, DeployZone, ListZones, ProvisionEcr,
 };
 use crate::orchestrator::ai_platform::responses::{
     Cluster, EcrCredentials, Secret, SecretList, Zone, ZoneList,
@@ -164,5 +166,25 @@ impl AiPlatformApi for ControllerClient {
             .into_diagnostic()?
             .miette_success("provision ecr")?;
         Ok(ecr_creds)
+    }
+
+    async fn create_enrollment_token(
+        &self,
+        ctx: &Context,
+        cluster: &str,
+        zone_name: &str,
+        attributes: BTreeMap<String, String>,
+        relay: Option<String>,
+    ) -> miette::Result<String> {
+        trace!(%cluster, %zone_name, ?attributes, ?relay, "creating enrollment token");
+        let req = Request::post(format!("/v0/zone/{zone_name}/token"))
+            .body(CreateEnrollmentToken::new(attributes.clone(), relay)?);
+        let token: String = self
+            .get_secure_client()
+            .ask(ctx, "tokens", req)
+            .await
+            .into_diagnostic()?
+            .miette_success("create enrollment token")?;
+        Ok(token)
     }
 }

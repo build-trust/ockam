@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use crate::orchestrator::ai_platform::responses::{Cluster, EcrCredentials, Secret, Zone};
 use ockam_core::async_trait;
 use ockam_core::compat::collections::HashMap;
@@ -52,6 +54,15 @@ pub trait AiPlatformApi {
         zone_name: &str,
         secret_name: &str,
     ) -> miette::Result<()>;
+
+    async fn create_enrollment_token(
+        &self,
+        ctx: &Context,
+        cluster: &str,
+        zone_name: &str,
+        attributes: BTreeMap<String, String>,
+        relay: Option<String>,
+    ) -> miette::Result<String>;
 
     async fn get_cluster(&self, ctx: &Context) -> miette::Result<Cluster>;
 

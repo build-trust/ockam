@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use miette::IntoDiagnostic;
 use minicbor::{CborLen, Decode, Encode};
 use ockam::Message;
@@ -177,5 +179,38 @@ impl ProvisionEcr {
             is_public,
             region,
         }
+    }
+}
+
+#[derive(Encode, Decode, CborLen, Debug, Message)]
+#[cfg_attr(test, derive(Clone))]
+#[rustfmt::skip]
+#[cbor(map)]
+pub struct CreateEnrollmentToken {
+    #[n(1)] pub attributes: Vec<u8>,
+    #[n(2)] pub relay: Option<String>,
+}
+
+impl Encodable for CreateEnrollmentToken {
+    fn encode(self) -> ockam_core::Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for CreateEnrollmentToken {
+    fn decode(e: &[u8]) -> ockam_core::Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
+}
+
+impl CreateEnrollmentToken {
+    pub fn new(
+        attributes: BTreeMap<String, String>,
+        relay: Option<String>,
+    ) -> miette::Result<Self> {
+        Ok(Self {
+            attributes: serde_json::to_vec(&attributes).into_diagnostic()?,
+            relay,
+        })
     }
 }

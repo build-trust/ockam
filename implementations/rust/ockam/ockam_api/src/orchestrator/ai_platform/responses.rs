@@ -132,3 +132,22 @@ impl Decodable for EcrCredentials {
         Ok(minicbor::decode(e)?)
     }
 }
+
+#[derive(Encode, Decode, CborLen, Serialize, Deserialize, Debug, Default, Clone, Message)]
+#[rustfmt::skip]
+#[cbor(map)]
+pub struct Token {
+    #[n(1)] pub token: String,
+}
+
+impl Encodable for Token {
+    fn encode(self) -> ockam_core::Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for Token {
+    fn decode(e: &[u8]) -> ockam_core::Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
+}

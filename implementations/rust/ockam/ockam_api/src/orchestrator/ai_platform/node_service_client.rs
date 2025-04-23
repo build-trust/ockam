@@ -1,6 +1,8 @@
+use std::collections::BTreeMap;
+
 use crate::nodes::InMemoryNode;
 use crate::orchestrator::ai_platform::api::AiPlatformApi;
-use crate::orchestrator::ai_platform::responses::{Cluster, EcrCredentials, Secret, Zone};
+use crate::orchestrator::ai_platform::responses::{Cluster, EcrCredentials, Secret, Token, Zone};
 use ockam_core::async_trait;
 use ockam_core::compat::collections::HashMap;
 use ockam_core::env::get_env_with_default_ignore_error;
@@ -245,5 +247,53 @@ impl AiPlatformApi for InMemoryNode {
             .map_err(|e| miette::miette!("Failed to parse response: {}", e))?;
 
         Ok(ecr_credentials)
+    }
+
+    async fn create_enrollment_token(
+        &self,
+        _ctx: &Context,
+        cluster: &str,
+        zone_name: &str,
+        attributes: BTreeMap<String, String>,
+        relay: Option<String>,
+    ) -> miette::Result<String> {
+        let url = format!(
+            "{}/api/{}/zone/{}/token",
+            *AI_API_BASE_URL, cluster, zone_name
+        );
+
+        let mut body = serde_json::json!({
+            "attributes": attributes
+            .into_iter()
+            .map(|(name, value)| serde_json::json!({ "name": name, "value": value }))
+            .collect::<Vec<_>>(),
+        });
+
+        if let Some(relay_value) = relay {
+            body["relay"] = serde_json::Value::String(relay_value);
+        }
+
+        let client = reqwest::Client::new();
+        let response = client
+            .post(&url)
+            .header("Content-Type", "application/json")
+            .json(&body)
+            .send()
+            .await
+            .map_err(|e| miette::miette!("Failed to send request: {}", e))?;
+
+        if !response.status().is_success() {
+            return Err(miette::miette!(
+                "Failed to create enrollment token: HTTP {}: {}",
+                response.status(),
+                response.text().await.unwrap_or_default()
+            ));
+        }
+        let token = response
+            .json::<Token>()
+            .await
+            .map_err(|e| miette::miette!("Failed to parse response: {}", e))?;
+
+        Ok(token.token)
     }
 }
