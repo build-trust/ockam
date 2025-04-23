@@ -48,7 +48,7 @@ pub struct EnrollHandler {
 #[async_trait]
 impl InMemoryNodeCommand for EnrollHandler {
     async fn init(&self) -> miette::Result<()> {
-        self.ctrlc_handler();
+        // self.ctrlc_handler();
 
         if self.is_already_enrolled().await? {
             return Ok(());
