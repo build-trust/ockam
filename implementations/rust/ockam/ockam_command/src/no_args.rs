@@ -88,10 +88,16 @@ impl NoArgsCommand {
         };
         let ticket = ticket_command.run(ctx, opts.clone()).await?;
 
+        //TODO: this should be the pod name from the configuration.
+        // Return needed data from cluster_create
+        use crate::cluster::zone_config::ZoneConfig;
+        let zone_config = ZoneConfig::from_file("./ockam.yaml")?;
+        let pod_name = zone_config.pods.first().unwrap().name.clone();
+
         use crate::cluster::inlet::InletCommand;
         let inlet_command = InletCommand {
             zone_name: "ockamtest".to_string(),
-            pod: "ockamtest".to_string(),
+            pod: pod_name,
             enrollment_ticket: ticket,
             from: SchemeHostnamePort::from_str("127.0.0.1:31234").into_diagnostic()?,
             api_endpoint: None,
