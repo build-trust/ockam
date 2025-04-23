@@ -6,6 +6,7 @@ use clap::Args;
 use colorful::Colorful;
 use ockam_api::fmt_ok;
 use ockam_api::nodes::InMemoryNode;
+use ockam_api::orchestrator::ai_platform::api::AiPlatformApi;
 use ockam_api::orchestrator::ai_platform::node_service_client::AI_API_BASE_URL_ENV;
 use ockam_node::Context;
 use std::sync::Arc;
@@ -63,7 +64,10 @@ impl InMemoryNodeCommand for DeployNodeCommand {
         let use_http_api = self.command.use_http_api || self.command.api_endpoint.is_some();
         let api_client = get_api_client(&node, use_http_api).await?;
         let cluster = match &self.command.cluster {
-            None => api_client.get_cluster(ctx).await?.into_inner(),
+            None => {
+                let controller_client = node.create_controller().await?;
+                controller_client.get_cluster(ctx).await?.into_inner()
+            }
             Some(cluster) => cluster.to_string(),
         };
         api_client
