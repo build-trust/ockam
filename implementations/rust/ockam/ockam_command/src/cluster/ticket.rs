@@ -4,6 +4,7 @@ use async_trait::async_trait;
 
 use clap::Args;
 use miette::{miette, IntoDiagnostic};
+use ockam_api::orchestrator::ai_platform::api::AiPlatformApi;
 use ockam_api::{
     nodes::InMemoryNode, orchestrator::ai_platform::node_service_client::AI_API_BASE_URL_ENV,
 };
@@ -74,7 +75,10 @@ impl InMemoryNodeCommand<String> for TicketNodeCommand {
         let use_http_api = self.command.use_http_api || self.command.api_endpoint.is_some();
         let api_client = get_api_client(&node, use_http_api).await?;
         let cluster = match &self.command.cluster {
-            None => api_client.get_cluster(ctx).await?.into_inner(),
+            None => {
+                let controller_client = node.create_controller().await?;
+                controller_client.get_cluster(ctx).await?.into_inner()
+            }
             Some(cluster) => cluster.to_string(),
         };
         let relay = match &self.command.allowed_relay_name {
