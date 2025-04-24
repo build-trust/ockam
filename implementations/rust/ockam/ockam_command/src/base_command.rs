@@ -247,8 +247,6 @@ impl BaseCommand {
             Err(_) => {} // Timeout occurred, continue anyway
         }
 
-        println!("Type :quit or :q to exit.");
-
         // Start the interactive REPL
         let repl_handle = tokio::spawn(async move {
             let mut stdin = BufReader::new(tokio::io::stdin());
@@ -256,8 +254,6 @@ impl BaseCommand {
             let mut byte_buffer = [0u8; 1024];
 
             loop {
-                // Print the prompt
-                print!("> ");
                 io::stdout()
                     .flush()
                     .into_diagnostic()
