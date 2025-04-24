@@ -1,6 +1,5 @@
 use crate::branding::BrandingCompileEnvVars;
 use crate::cluster::zone_config::ZoneConfig;
-use crate::util::parsers::hostname_parser;
 use crate::{Command, CommandGlobalOpts, Result};
 use clap::Args;
 use colorful::Colorful;
@@ -9,19 +8,16 @@ use ockam::transport::SchemeHostnamePort;
 use ockam_api::colors::color_primary;
 use ockam_api::orchestrator::ai_platform::node_service_client::AI_API_BASE_URL;
 use ockam_api::{fmt_log, fmt_separator};
+use ockam_core::env::get_env_ignore_error;
 use ockam_core::TryClone;
 use ockam_node::Context;
+use std::str::FromStr;
 use tokio::task::JoinHandle;
 
 #[derive(Clone, Debug, Args, Default)]
 pub struct BaseCommand {
-    #[arg(default_value = "hello", env = "INIT_REPOSITORY")]
     init_repository: String,
-
-    #[arg(default_value = "", env = "ZONE_NAME")]
     zone_name: String,
-
-    #[arg(default_value = "localhost:31234", value_parser = hostname_parser, env = "INLET_ADDRESS")]
     inlet_address: SchemeHostnamePort,
 }
 
@@ -30,7 +26,24 @@ impl BaseCommand {
         BrandingCompileEnvVars::bin_name().to_string()
     }
 
-    async fn parse_args(&mut self, opts: &CommandGlobalOpts) -> Result<()> {
+    async fn parse_args(mut self, opts: &CommandGlobalOpts) -> Result<Self> {
+        // load default values
+        self.init_repository = "hello".to_string();
+        self.zone_name = "".to_string();
+        self.inlet_address = SchemeHostnamePort::from_str("127.0.0.1:31234")?;
+
+        // load env vars
+        if let Some(v) = get_env_ignore_error("INIT_REPOSITORY") {
+            self.init_repository = v;
+        }
+        if let Some(v) = get_env_ignore_error("ZONE_NAME") {
+            self.zone_name = v;
+        }
+        if let Some(v) = get_env_ignore_error::<String>("INLET_ADDRESS") {
+            self.inlet_address = v.parse().into_diagnostic()?;
+        }
+
+        // process default value for zone_name
         if self.zone_name.is_empty() {
             let user_info = opts.state.get_default_user().await?;
             self.zone_name = hex::encode(user_info.email.to_string());
@@ -40,18 +53,16 @@ impl BaseCommand {
             ))?;
         }
 
-        Ok(())
+        Ok(self)
     }
 
-    pub async fn run(mut self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+    pub async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         self.enroll(ctx, &opts).await?;
-
-        self.parse_args(&opts).await?;
-
-        self.cluster_init(ctx, &opts).await?;
-        let zone_config = self.cluster_create(ctx, &opts).await?;
-        let inlet_handle = self.cluster_inlet(ctx, &opts, &zone_config).await?;
-        self.open_repl(ctx, &opts, inlet_handle).await?;
+        let cmd = self.parse_args(&opts).await?;
+        cmd.cluster_init(ctx, &opts).await?;
+        let zone_config = cmd.cluster_create(ctx, &opts).await?;
+        let inlet_handle = cmd.cluster_inlet(ctx, &opts, &zone_config).await?;
+        cmd.open_repl(ctx, &opts, inlet_handle).await?;
 
         Ok(())
     }
