@@ -1,3 +1,4 @@
+use crate::branding::BrandingCompileEnvVars;
 use crate::{Command, CommandGlobalOpts, Result};
 use clap::Args;
 use colorful::Colorful;
@@ -15,7 +16,7 @@ pub struct NoArgsCommand {}
 
 impl NoArgsCommand {
     pub fn name(&self) -> String {
-        "ockam".to_string()
+        BrandingCompileEnvVars::bin_name().to_string()
     }
 
     pub async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
@@ -117,8 +118,10 @@ impl NoArgsCommand {
         inlet_handle: JoinHandle<Result<()>>,
     ) -> miette::Result<()> {
         use std::io::{self, Write};
-        use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+        use std::time::Duration;
+        use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
         use tokio::net::TcpStream;
+        use tokio::time::{sleep, timeout};
 
         // Inlet monitor future
         let (inlet_tx, inlet_rx) = tokio::sync::oneshot::channel::<()>();
@@ -135,32 +138,65 @@ impl NoArgsCommand {
         // Wait until the inlet is ready
         const MAX_RETRIES: u32 = 120; // Try for about 60 seconds (120 * 500ms)
         let mut retries = 0;
-
-        loop {
+        let mut stream = None;
+        while retries < MAX_RETRIES {
             match TcpStream::connect("127.0.0.1:31234").await {
-                Ok(_) => {
+                Ok(s) => {
+                    stream = Some(s);
                     break;
                 }
                 Err(_) => {
                     retries += 1;
-                    if retries >= MAX_RETRIES {
-                        return Err(miette::miette!("Timed out waiting for inlet to be ready"));
-                    }
-                    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+                    sleep(Duration::from_millis(500)).await;
                 }
             }
         }
-
-        // Print the welcome message
-        println!("Welcome to Ockam.\n");
-        println!("You are connected to the inlet at 127.0.0.1:31234.\n");
-        println!("Type :quit or :q to exit.");
+        let stream = match stream {
+            Some(s) => s,
+            None => return Err(miette!("Failed to connect to the TCP Inlet")),
+        };
 
         let (quit_tx, mut quit_rx) = tokio::sync::oneshot::channel();
+        let (mut reader, mut writer) = stream.into_split();
 
-        let input_task = tokio::spawn(async move {
+        // Read initial message from server
+        let mut welcome_buf = Vec::new();
+        let mut tmp_buf = [0u8; 1024];
+        match timeout(Duration::from_secs(5), async {
+            loop {
+                match reader.read(&mut tmp_buf).await {
+                    Ok(0) => break,
+                    Ok(n) => {
+                        welcome_buf.extend_from_slice(&tmp_buf[..n]);
+                        // Check if we've received a complete message
+                        if n < 1024 {
+                            break;
+                        }
+                    }
+                    Err(_) => break,
+                }
+            }
+        })
+        .await
+        {
+            Ok(_) => {
+                if !welcome_buf.is_empty() {
+                    if let Ok(msg) = String::from_utf8(welcome_buf) {
+                        print!("{}", msg);
+                        io::stdout().flush().into_diagnostic()?;
+                    }
+                }
+            }
+            Err(_) => {} // Timeout occurred, continue anyway
+        }
+
+        println!("Type :quit or :q to exit.");
+
+        // Start the interactive REPL
+        let repl_handle = tokio::spawn(async move {
             let mut stdin = BufReader::new(tokio::io::stdin());
-            let mut buffer = String::new();
+            let mut string_buffer = String::new();
+            let mut byte_buffer = [0u8; 1024];
 
             loop {
                 // Print the prompt
@@ -170,16 +206,19 @@ impl NoArgsCommand {
                     .into_diagnostic()
                     .wrap_err("Failed to flush stdout")?;
 
-                // Read a line
-                buffer.clear();
-                if stdin.read_line(&mut buffer).await.into_diagnostic()? == 0 {
+                // Send user input
+                string_buffer.clear();
+                if stdin
+                    .read_line(&mut string_buffer)
+                    .await
+                    .into_diagnostic()?
+                    == 0
+                {
                     // EOF reached
                     break;
                 }
+                let input = string_buffer.trim();
 
-                let input = buffer.trim();
-
-                // Check for quit commands
                 if input == ":quit" || input == ":q" {
                     let _ = quit_tx.send(());
                     break;
@@ -189,13 +228,27 @@ impl NoArgsCommand {
                     continue;
                 }
 
-                // Try to connect to the inlet for each message
-                match TcpStream::connect("127.0.0.1:31234").await {
-                    Ok(mut stream) => {
-                        let _ = stream.write_all(buffer.as_bytes()).await;
+                if let Err(e) = writer.write_all(string_buffer.as_bytes()).await {
+                    eprintln!("Failed to write to server: {e}");
+                    break;
+                }
+
+                // Wait for a response
+                match reader.read(&mut byte_buffer).await {
+                    Ok(0) => {
+                        // Connection closed
+                        println!("\nServer connection closed.");
+                        break;
+                    }
+                    Ok(n) => {
+                        if let Ok(s) = std::str::from_utf8(&byte_buffer[..n]) {
+                            print!("{}", s);
+                            io::stdout().flush().into_diagnostic()?;
+                        }
                     }
                     Err(e) => {
-                        eprintln!("Failed to connect to inlet: {}", e);
+                        eprintln!("\nError reading from server: {}", e);
+                        break;
                     }
                 }
             }
@@ -210,7 +263,7 @@ impl NoArgsCommand {
         }
 
         // Clean up tasks
-        input_task.abort();
+        repl_handle.abort();
 
         Ok(())
     }
