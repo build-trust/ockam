@@ -17,6 +17,7 @@ use ockam_node::Context;
 
 use crate::admin::AdminCommand;
 use crate::authority::{AuthorityCommand, AuthoritySubcommand};
+use crate::base_command::BaseCommand;
 use crate::branding::command;
 use crate::cluster::ClusterCommand;
 use crate::command_global_opts::CommandGlobalOpts;
@@ -38,7 +39,6 @@ use crate::manpages::ManpagesCommand;
 use crate::markdown::MarkdownCommand;
 use crate::message::MessageCommand;
 use crate::migrate_database::MigrateDatabaseCommand;
-use crate::no_args::NoArgsCommand;
 use crate::node::{NodeCommand, NodeSubcommand};
 use crate::policy::PolicyCommand;
 use crate::project::ProjectCommand;
@@ -70,7 +70,7 @@ use crate::Result;
 #[derive(Clone, Debug, Subcommand)]
 #[command(about = docs::about("List of commands which can be executed with `ockam`"))]
 pub enum OckamSubcommand {
-    NoArgsCommand(NoArgsCommand),
+    NoArgsCommand(BaseCommand),
 
     #[command(name = command::name("enroll"), hide = command::hide("enroll"))]
     Enroll(EnrollCommand),
@@ -168,7 +168,7 @@ pub enum OckamSubcommand {
 
 impl Default for OckamSubcommand {
     fn default() -> Self {
-        OckamSubcommand::NoArgsCommand(NoArgsCommand::default())
+        OckamSubcommand::NoArgsCommand(BaseCommand::default())
     }
 }
 

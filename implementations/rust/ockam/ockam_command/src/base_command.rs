@@ -14,7 +14,7 @@ use ockam_node::Context;
 use tokio::task::JoinHandle;
 
 #[derive(Clone, Debug, Args, Default)]
-pub struct NoArgsCommand {
+pub struct BaseCommand {
     #[arg(default_value = "hello", env = "INIT_REPOSITORY")]
     init_repository: String,
 
@@ -25,7 +25,7 @@ pub struct NoArgsCommand {
     inlet_address: SchemeHostnamePort,
 }
 
-impl NoArgsCommand {
+impl BaseCommand {
     pub fn name(&self) -> String {
         BrandingCompileEnvVars::bin_name().to_string()
     }
