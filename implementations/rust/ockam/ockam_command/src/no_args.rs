@@ -4,8 +4,9 @@ use clap::Args;
 use colorful::Colorful;
 use miette::{miette, IntoDiagnostic, WrapErr};
 use ockam::transport::SchemeHostnamePort;
-use ockam_api::fmt_separator;
+use ockam_api::colors::color_primary;
 use ockam_api::orchestrator::ai_platform::node_service_client::AI_API_BASE_URL;
+use ockam_api::{fmt_log, fmt_separator};
 use ockam_core::TryClone;
 use ockam_node::Context;
 use std::str::FromStr;
@@ -15,6 +16,9 @@ use tokio::task::JoinHandle;
 pub struct NoArgsCommand {
     #[arg(default_value = "hello", env = "INIT_REPOSITORY")]
     init_repository: String,
+
+    #[arg(default_value = "", env = "ZONE_NAME")]
+    zone_name: String,
 }
 
 impl NoArgsCommand {
@@ -22,8 +26,24 @@ impl NoArgsCommand {
         BrandingCompileEnvVars::bin_name().to_string()
     }
 
-    pub async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+    async fn parse_args(&mut self, opts: &CommandGlobalOpts) -> Result<()> {
+        if self.zone_name.is_empty() {
+            let user_info = opts.state.get_default_user().await?;
+            self.zone_name = hex::encode(user_info.email.to_string());
+            opts.terminal.write_line(fmt_log!(
+                "Using zone name {}",
+                color_primary(&self.zone_name)
+            ))?;
+        }
+
+        Ok(())
+    }
+
+    pub async fn run(mut self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         self.enroll(ctx, &opts).await?;
+
+        self.parse_args(&opts).await?;
+
         self.cluster_init(ctx, &opts).await?;
         self.cluster_create(ctx, &opts).await?;
         let inlet_handle = self.cluster_inlet(ctx, &opts).await?;
@@ -72,7 +92,7 @@ impl NoArgsCommand {
     async fn cluster_create(&self, ctx: &Context, opts: &CommandGlobalOpts) -> miette::Result<()> {
         use crate::cluster::create::CreateCommand;
         let create_command = CreateCommand {
-            zone_name: "ockamtest".to_string(),
+            zone_name: self.zone_name.clone(),
             use_public_ecr: true,
             api_endpoint: Some(AI_API_BASE_URL.to_string()),
             ..Default::default()
@@ -90,7 +110,7 @@ impl NoArgsCommand {
     ) -> miette::Result<JoinHandle<Result<()>>> {
         use crate::cluster::ticket::TicketCommand;
         let ticket_command = TicketCommand {
-            zone_name: "ockamtest".to_string(),
+            zone_name: self.zone_name.clone(),
             api_endpoint: Some(AI_API_BASE_URL.to_string()),
             ..Default::default()
         };
@@ -104,7 +124,7 @@ impl NoArgsCommand {
 
         use crate::cluster::inlet::InletCommand;
         let inlet_command = InletCommand {
-            zone_name: "ockamtest".to_string(),
+            zone_name: self.zone_name.clone(),
             pod: pod_name,
             enrollment_ticket: ticket,
             from: SchemeHostnamePort::from_str("127.0.0.1:31234").into_diagnostic()?,
