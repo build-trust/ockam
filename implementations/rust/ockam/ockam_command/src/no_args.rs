@@ -30,7 +30,11 @@ impl NoArgsCommand {
     }
 
     async fn enroll(&self, ctx: &Context, opts: &CommandGlobalOpts) -> miette::Result<()> {
-        let is_enrolled = opts.state.is_enrolled().await.is_ok_and(|v| v);
+        let is_enrolled = opts
+            .state
+            .is_default_identity_enrolled()
+            .await
+            .is_ok_and(|v| v);
         if is_enrolled {
             return Ok(());
         }
