@@ -12,7 +12,10 @@ use std::str::FromStr;
 use tokio::task::JoinHandle;
 
 #[derive(Clone, Debug, Args, Default)]
-pub struct NoArgsCommand {}
+pub struct NoArgsCommand {
+    #[arg(default_value = "hello", env = "INIT_REPOSITORY")]
+    init_repository: String,
+}
 
 impl NoArgsCommand {
     pub fn name(&self) -> String {
@@ -57,7 +60,7 @@ impl NoArgsCommand {
 
         use crate::cluster::init::InitCommand;
         let init_command = InitCommand {
-            repository: "build-trust/ockam-cluster-template-hello".to_string(),
+            repository: self.init_repository.clone(),
             target_path: None,
         };
         init_command.run(ctx, opts.clone()).await?;
