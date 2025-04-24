@@ -317,6 +317,21 @@ mod tests {
             assert_eq!(actual, expected);
         }
 
+        let to_string_cases = vec![
+            (
+                HostnamePort::new("localhost", 80)?,
+                "localhost:80".to_string(),
+            ),
+            (
+                HostnamePort::new("33domain", 1234)?,
+                "33domain:1234".to_string(),
+            ),
+        ];
+        for (input, expected) in to_string_cases {
+            let actual = input.to_string();
+            assert_eq!(actual, expected);
+        }
+
         Ok(())
     }
 

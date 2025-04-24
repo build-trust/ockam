@@ -92,7 +92,7 @@ serde_json = { version = "1", optional = true }
 spin = { version = "0.9.8", default-features = false, features = ["mutex", "rwlock", "spin_mutex"], optional = true }
 strum = { version = "0.26.3", default-features = false, features = ["derive"] }
 tinyvec = { version = "1.8.0", features = ["rustc_1_57"] }
-tracing = { version = "0.1", default-features = false }
+tracing = { version = "0.1", default-features = false, features = ["log"] }
 tracing-error = { version = "0.2", default-features = false, optional = true }
 tracing-opentelemetry = { version = "0.28", optional = true }
 tracing-subscriber = { version = "0.3", features = ["fmt", "env-filter"], optional = true }
