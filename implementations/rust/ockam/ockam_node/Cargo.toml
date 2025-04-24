@@ -92,7 +92,7 @@ ockam_core = { path = "../ockam_core", version = "^0.126.0", default-features = 
 ockam_executor = { path = "../ockam_executor", version = "^0.95.0", default-features = false, optional = true }
 ockam_macros = { path = "../ockam_macros", version = "^0.39.0" }
 ockam_transport_core = { path = "../ockam_transport_core", version = "^0.104.0", default-features = false, optional = true }
-opentelemetry = { version = "0.27", features = ["logs", "metrics", "trace"], optional = true }
+opentelemetry = { version = "0.29", features = ["logs", "metrics", "trace"], optional = true }
 percent-encoding = { version = "2.3", default-features = false }
 regex = { version = "1.10.6", default-features = false, optional = true }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
