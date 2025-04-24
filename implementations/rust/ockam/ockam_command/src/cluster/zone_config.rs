@@ -5,6 +5,8 @@ use std::collections::HashMap;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ZoneConfig {
+    #[serde(alias = "zone_name")]
+    pub name: String,
     pub pods: Vec<Pod>,
 }
 
@@ -18,6 +20,7 @@ pub struct Pod {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Container {
+    pub name: String,
     pub image: String,
     #[serde(flatten)]
     pub other_fields: HashMap<String, Value>,
@@ -31,13 +34,46 @@ impl ZoneConfig {
                 "Failed to read zone config file at {}",
                 path.as_ref().display()
             ))?;
-        if content.starts_with("{") {
+        let self_ = if content.starts_with("{") {
             serde_json::from_str::<Self>(&content)
                 .map_err(|e| miette::miette!(format!("Failed to parse JSON zone config: {}", e)))
         } else {
             serde_yaml::from_str::<Self>(&content)
                 .map_err(|e| miette::miette!(format!("Failed to parse YAML zone config: {}", e)))
+        }?;
+        self_.validate()?;
+        Ok(self_)
+    }
+
+    fn validate(&self) -> Result<(), miette::Error> {
+        // Limit zone name to 10 chars
+        if self.name.len() > 10 {
+            return Err(miette::miette!("Zone name exceeds 10 characters"));
         }
+
+        // Limit pod name to 10 chars
+        for pod in &self.pods {
+            if pod.name.len() > 10 {
+                return Err(miette::miette!(format!(
+                    "Pod name '{}' exceeds 10 characters",
+                    pod.name
+                )));
+            }
+        }
+
+        // Limit container name to 10 chars
+        for pod in &self.pods {
+            for container in &pod.containers {
+                if container.name.len() > 10 {
+                    return Err(miette::miette!(format!(
+                        "Container name '{}' exceeds 10 characters",
+                        container.name
+                    )));
+                }
+            }
+        }
+
+        Ok(())
     }
 
     pub fn get_local_images_names(&self) -> Vec<String> {
@@ -111,6 +147,7 @@ mod tests {
     #[test]
     fn test_parse_yaml_zone_config() {
         let yaml = r#"
+name: my-zone
 pods:
   - name: client-agent
     containers:
@@ -146,6 +183,7 @@ pods:
         let config = serde_yaml::from_str::<ZoneConfig>(yaml).unwrap();
 
         // Verify strictly typed fields
+        assert_eq!(config.name, "my-zone");
         assert_eq!(config.pods.len(), 2);
         assert_eq!(config.pods[0].name, "client-agent");
         assert_eq!(config.pods[0].containers[0].image, "client-app");
@@ -168,15 +206,18 @@ pods:
     #[test]
     fn test_get_local_images_names() {
         let zone_config = ZoneConfig {
+            name: "xyz".to_string(),
             pods: vec![
                 Pod {
                     name: "pod1".to_string(),
                     containers: vec![
                         Container {
+                            name: "abc".to_string(),
                             image: "local-image".to_string(),
                             other_fields: HashMap::new(),
                         },
                         Container {
+                            name: "cde".to_string(),
                             image: "local-image:tag".to_string(),
                             other_fields: HashMap::new(),
                         },
@@ -187,14 +228,17 @@ pods:
                     name: "pod2".to_string(),
                     containers: vec![
                         Container {
+                            name: "abc".to_string(),
                             image: "registry.com/remote-image".to_string(),
                             other_fields: HashMap::new(),
                         },
                         Container {
+                            name: "cde".to_string(),
                             image: "username/image:1.0".to_string(),
                             other_fields: HashMap::new(),
                         },
                         Container {
+                            name: "efg".to_string(),
                             image: "another-local".to_string(),
                             other_fields: HashMap::new(),
                         },
@@ -205,10 +249,12 @@ pods:
                     name: "pod3".to_string(),
                     containers: vec![
                         Container {
+                            name: "abc".to_string(),
                             image: " trimmed-local ".to_string(),
                             other_fields: HashMap::new(),
                         },
                         Container {
+                            name: "cde".to_string(),
                             image: "".to_string(), // Empty image name
                             other_fields: HashMap::new(),
                         },
@@ -225,5 +271,116 @@ pods:
         assert!(local_images.contains(&"local-image:tag".to_string()));
         assert!(local_images.contains(&"another-local".to_string()));
         assert!(local_images.contains(&"trimmed-local".to_string()));
+    }
+
+    #[test]
+    fn test_validate_valid_config() {
+        let config = ZoneConfig {
+            name: "valid-zone".to_string(),
+            pods: vec![Pod {
+                name: "pod1".to_string(),
+                containers: vec![Container {
+                    name: "abc".to_string(),
+                    image: "image1".to_string(),
+                    other_fields: HashMap::new(),
+                }],
+                other_fields: HashMap::new(),
+            }],
+        };
+
+        assert!(config.validate().is_ok());
+    }
+
+    #[test]
+    fn test_validate_long_zone_name() {
+        let config = ZoneConfig {
+            name: "this-zone-name-is-too-long".to_string(),
+            pods: vec![Pod {
+                name: "pod1".to_string(),
+                containers: vec![Container {
+                    name: "abc".to_string(),
+                    image: "image1".to_string(),
+                    other_fields: HashMap::new(),
+                }],
+                other_fields: HashMap::new(),
+            }],
+        };
+
+        let result = config.validate();
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Zone name exceeds 10 characters"));
+    }
+
+    #[test]
+    fn test_validate_long_pod_name() {
+        let config = ZoneConfig {
+            name: "zone".to_string(),
+            pods: vec![Pod {
+                name: "pod-name-too-long".to_string(),
+                containers: vec![Container {
+                    name: "abc".to_string(),
+                    image: "image1".to_string(),
+                    other_fields: HashMap::new(),
+                }],
+                other_fields: HashMap::new(),
+            }],
+        };
+
+        let result = config.validate();
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Pod name 'pod-name-too-long' exceeds 10 characters"));
+    }
+
+    #[test]
+    fn test_validate_long_container_name() {
+        let config = ZoneConfig {
+            name: "zone".to_string(),
+            pods: vec![Pod {
+                name: "pod1".to_string(),
+                containers: vec![Container {
+                    name: "container-name-is-too-long".to_string(),
+                    image: "image1".to_string(),
+                    other_fields: HashMap::new(),
+                }],
+                other_fields: HashMap::new(),
+            }],
+        };
+
+        let result = config.validate();
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Container name 'container-name-is-too-long' exceeds 10 characters"));
+    }
+
+    #[test]
+    fn test_validate_multiple_issues() {
+        let config = ZoneConfig {
+            name: "long-zone-name".to_string(),
+            pods: vec![Pod {
+                name: "long-pod-name".to_string(),
+                containers: vec![Container {
+                    name: "container-name-is-too-long".to_string(),
+                    image: "image1".to_string(),
+                    other_fields: HashMap::new(),
+                }],
+                other_fields: HashMap::new(),
+            }],
+        };
+
+        let result = config.validate();
+        assert!(result.is_err());
+        // It should fail on the first validation (zone name)
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Zone name exceeds 10 characters"));
     }
 }

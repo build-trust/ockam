@@ -5,9 +5,8 @@ use clap::Args;
 use colorful::Colorful;
 use miette::{miette, IntoDiagnostic, WrapErr};
 use ockam::transport::SchemeHostnamePort;
-use ockam_api::colors::color_primary;
+use ockam_api::fmt_separator;
 use ockam_api::orchestrator::ai_platform::node_service_client::AI_API_BASE_URL;
-use ockam_api::{fmt_log, fmt_separator};
 use ockam_core::env::get_env_ignore_error;
 use ockam_core::TryClone;
 use ockam_node::Context;
@@ -17,7 +16,6 @@ use tokio::task::JoinHandle;
 #[derive(Clone, Debug, Args, Default)]
 pub struct BaseCommand {
     init_repository: String,
-    zone_name: String,
     inlet_address: SchemeHostnamePort,
 }
 
@@ -26,37 +24,17 @@ impl BaseCommand {
         BrandingCompileEnvVars::bin_name().to_string()
     }
 
-    async fn parse_args(mut self, opts: &CommandGlobalOpts) -> Result<Self> {
+    async fn parse_args(mut self, _opts: &CommandGlobalOpts) -> Result<Self> {
         // load default values
         self.init_repository = "hello".to_string();
-        self.zone_name = "".to_string();
         self.inlet_address = SchemeHostnamePort::from_str("127.0.0.1:31234")?;
 
         // load env vars
         if let Some(v) = get_env_ignore_error("INIT_REPOSITORY") {
             self.init_repository = v;
         }
-        if let Some(v) = get_env_ignore_error("ZONE_NAME") {
-            self.zone_name = v;
-        }
         if let Some(v) = get_env_ignore_error::<String>("INLET_ADDRESS") {
             self.inlet_address = v.parse().into_diagnostic()?;
-        }
-
-        // process default value for zone_name
-        if self.zone_name.is_empty() {
-            let user_info = opts.state.get_default_user().await?;
-            self.zone_name = {
-                use sha2::{Digest, Sha256};
-                let mut hasher = Sha256::new();
-                hasher.update(user_info.email.to_string().as_bytes());
-                let hashed = format!("{:X}", hasher.finalize());
-                hashed.chars().take(16).collect::<String>().to_lowercase()
-            };
-            opts.terminal.write_line(fmt_log!(
-                "Using zone name {}",
-                color_primary(&self.zone_name)
-            ))?;
         }
 
         Ok(self)
@@ -120,7 +98,6 @@ impl BaseCommand {
     ) -> miette::Result<ZoneConfig> {
         use crate::cluster::create::CreateCommand;
         let create_command = CreateCommand {
-            zone_name: self.zone_name.clone(),
             use_public_ecr: true,
             api_endpoint: Some(AI_API_BASE_URL.to_string()),
             ..Default::default()
@@ -139,7 +116,7 @@ impl BaseCommand {
     ) -> miette::Result<JoinHandle<Result<()>>> {
         use crate::cluster::ticket::TicketCommand;
         let ticket_command = TicketCommand {
-            zone_name: self.zone_name.clone(),
+            zone_name: zone_config.name.clone(),
             api_endpoint: Some(AI_API_BASE_URL.to_string()),
             ..Default::default()
         };
@@ -154,7 +131,7 @@ impl BaseCommand {
 
         use crate::cluster::inlet::InletCommand;
         let inlet_command = InletCommand {
-            zone_name: self.zone_name.clone(),
+            zone_name: zone_config.name.clone(),
             pod: pod_name,
             enrollment_ticket: ticket,
             from: self.inlet_address.clone(),
