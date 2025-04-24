@@ -8,7 +8,7 @@ CREATE TABLE identity_new
 );
 
 INSERT INTO identity_new (tenant_id, identifier, change_history)
-SELECT 'tenant-id-default' as tenant_id, identifier, change_history
+SELECT 'no-tenant-id' as tenant_id, identifier, change_history
 FROM identity;
 DROP TABLE identity;
 ALTER TABLE identity_new
@@ -26,7 +26,7 @@ CREATE TABLE named_identity_new
 );
 
 INSERT INTO named_identity_new (tenant_id, identifier, name, vault_name, is_default)
-SELECT 'tenant-id-default' as tenant_id, identifier, name, vault_name, is_default
+SELECT 'no-tenant-id' as tenant_id, identifier, name, vault_name, is_default
 FROM named_identity;
 DROP TABLE named_identity;
 ALTER TABLE named_identity_new
@@ -48,7 +48,7 @@ CREATE TABLE identity_attributes_new
 );
 
 INSERT INTO identity_attributes_new (tenant_id, identifier, attributes, added, expires, attested_by, node_name)
-SELECT 'tenant-id-default' as tenant_id, identifier, attributes, added, expires, attested_by, node_name
+SELECT 'no-tenant-id' as tenant_id, identifier, attributes, added, expires, attested_by, node_name
 FROM identity_attributes;
 DROP TABLE identity_attributes;
 ALTER TABLE identity_attributes_new
@@ -74,7 +74,7 @@ CREATE TABLE credential_new
 );
 
 INSERT INTO credential_new (tenant_id, subject_identifier, issuer_identifier, scope, credential, expires_at, node_name)
-SELECT 'tenant-id-default' as tenant_id, subject_identifier, issuer_identifier, scope, credential, expires_at, node_name
+SELECT 'no-tenant-id' as tenant_id, subject_identifier, issuer_identifier, scope, credential, expires_at, node_name
 FROM credential;
 DROP TABLE credential;
 ALTER TABLE credential_new
@@ -94,7 +94,7 @@ CREATE TABLE purpose_key_new
 );
 
 INSERT INTO purpose_key_new (tenant_id, identifier, purpose, purpose_key_attestation)
-SELECT 'tenant-id-default' as tenant_id, identifier, purpose, purpose_key_attestation
+SELECT 'no-tenant-id' as tenant_id, identifier, purpose, purpose_key_attestation
 FROM purpose_key;
 DROP TABLE purpose_key;
 ALTER TABLE purpose_key_new
@@ -114,7 +114,7 @@ CREATE TABLE vault_new
 );
 
 INSERT INTO vault_new (tenant_id, name, path, is_default, is_kms)
-SELECT 'tenant-id-default' as tenant_id, name, path, is_default, is_kms
+SELECT 'no-tenant-id' as tenant_id, name, path, is_default, is_kms
 FROM vault;
 DROP TABLE vault;
 ALTER TABLE vault_new
@@ -131,7 +131,7 @@ CREATE TABLE signing_secret_new
 );
 
 INSERT INTO signing_secret_new (tenant_id, handle, secret_type, secret)
-SELECT 'tenant-id-default' as tenant_id, handle, secret_type, secret
+SELECT 'no-tenant-id' as tenant_id, handle, secret_type, secret
 FROM signing_secret;
 DROP TABLE signing_secret;
 ALTER TABLE signing_secret_new
@@ -147,7 +147,7 @@ CREATE TABLE x25519_secret_new
 );
 
 INSERT INTO x25519_secret_new (tenant_id, handle, secret)
-SELECT 'tenant-id-default' as tenant_id, handle, secret
+SELECT 'no-tenant-id' as tenant_id, handle, secret
 FROM x25519_secret;
 DROP TABLE x25519_secret;
 ALTER TABLE x25519_secret_new
@@ -167,7 +167,7 @@ CREATE TABLE authority_member_new
 );
 
 INSERT INTO authority_member_new (tenant_id, identifier, added_by, added_at, is_pre_trusted, attributes, authority_id)
-SELECT 'tenant-id-default' as tenant_id, identifier, added_by, added_at, is_pre_trusted, attributes, authority_id
+SELECT 'no-tenant-id' as tenant_id, identifier, added_by, added_at, is_pre_trusted, attributes, authority_id
 FROM authority_member;
 DROP TABLE authority_member;
 ALTER TABLE authority_member_new
@@ -191,7 +191,7 @@ CREATE TABLE authority_enrollment_token_new
 
 INSERT INTO authority_enrollment_token_new (tenant_id, one_time_code, issued_by, created_at, expires_at, ttl_count,
                                             attributes, reference)
-SELECT 'tenant-id-default' as tenant_id,
+SELECT 'no-tenant-id' as tenant_id,
        one_time_code,
        issued_by,
        created_at,
@@ -218,7 +218,7 @@ CREATE TABLE resource_policy_new
 );
 
 INSERT INTO resource_policy_new (tenant_id, resource_name, action, expression, node_name)
-SELECT 'tenant-id-default' as tenant_id, resource_name, action, expression, node_name
+SELECT 'no-tenant-id' as tenant_id, resource_name, action, expression, node_name
 FROM resource_policy;
 DROP TABLE resource_policy;
 ALTER TABLE resource_policy_new
@@ -236,7 +236,7 @@ CREATE TABLE resource_type_policy_new
 );
 
 INSERT INTO resource_type_policy_new (tenant_id, resource_type, action, expression, node_name)
-SELECT 'tenant-id-default' as tenant_id, resource_type, action, expression, node_name
+SELECT 'no-tenant-id' as tenant_id, resource_type, action, expression, node_name
 FROM resource_type_policy;
 DROP TABLE resource_type_policy;
 ALTER TABLE resource_type_policy_new
@@ -253,7 +253,7 @@ CREATE TABLE resource_new
 );
 
 INSERT INTO resource_new (tenant_id, resource_name, resource_type, node_name)
-SELECT 'tenant-id-default' as tenant_id, resource_name, resource_type, node_name
+SELECT 'no-tenant-id' as tenant_id, resource_name, resource_type, node_name
 FROM resource;
 DROP TABLE resource;
 ALTER TABLE resource_new
@@ -272,7 +272,7 @@ CREATE TABLE tcp_outlet_status_new
 );
 
 INSERT INTO tcp_outlet_status_new (tenant_id, node_name, socket_addr, worker_addr, payload, privileged)
-SELECT 'tenant-id-default' as tenant_id, node_name, socket_addr, worker_addr, payload, privileged
+SELECT 'no-tenant-id' as tenant_id, node_name, socket_addr, worker_addr, payload, privileged
 FROM tcp_outlet_status;
 DROP TABLE tcp_outlet_status;
 ALTER TABLE tcp_outlet_status_new
@@ -291,7 +291,7 @@ CREATE TABLE tcp_inlet_new
 );
 
 INSERT INTO tcp_inlet_new (tenant_id, node_name, bind_addr, outlet_addr, alias, privileged)
-SELECT 'tenant-id-default' as tenant_id, node_name, bind_addr, outlet_addr, alias, privileged
+SELECT 'no-tenant-id' as tenant_id, node_name, bind_addr, outlet_addr, alias, privileged
 FROM tcp_inlet;
 DROP TABLE tcp_inlet;
 ALTER TABLE tcp_inlet_new
@@ -314,7 +314,7 @@ CREATE TABLE node_new
 
 INSERT INTO node_new (tenant_id, name, identifier, verbosity, is_default, is_authority, tcp_listener_address, pid,
                       http_server_address)
-SELECT 'tenant-id-default' as tenant_id,
+SELECT 'no-tenant-id' as tenant_id,
        name,
        identifier,
        verbosity,
@@ -343,7 +343,7 @@ CREATE TABLE secure_channel_new
 
 INSERT INTO secure_channel_new (tenant_id, role, my_identifier, their_identifier, decryptor_remote_address,
                                 decryptor_api_address, decryption_key_handle)
-SELECT 'tenant-id-default' as tenant_id,
+SELECT 'no-tenant-id' as tenant_id,
        role,
        my_identifier,
        their_identifier,
@@ -366,7 +366,7 @@ CREATE TABLE aead_secret_new
 );
 
 INSERT INTO aead_secret_new (tenant_id, handle, type, secret)
-SELECT 'tenant-id-default' as tenant_id, handle, type, secret
+SELECT 'no-tenant-id' as tenant_id, handle, type, secret
 FROM aead_secret;
 DROP TABLE aead_secret;
 ALTER TABLE aead_secret_new
@@ -395,7 +395,7 @@ CREATE TABLE project_new
 INSERT INTO project_new (tenant_id, project_id, project_name, is_default, space_id, space_name, project_identifier,
                          project_change_history, access_route, authority_change_history, authority_access_route,
                          version, running, operation_id)
-SELECT 'tenant-id-default' as tenant_id,
+SELECT 'no-tenant-id' as tenant_id,
        project_id,
        project_name,
        is_default,
@@ -424,7 +424,7 @@ CREATE TABLE user_project_new
 );
 
 INSERT INTO user_project_new (tenant_id, user_email, project_id)
-SELECT 'tenant-id-default' as tenant_id, user_email, project_id
+SELECT 'no-tenant-id' as tenant_id, user_email, project_id
 FROM user_project;
 DROP TABLE user_project;
 ALTER TABLE user_project_new
@@ -443,7 +443,7 @@ CREATE TABLE user_role_new
 );
 
 INSERT INTO user_role_new (tenant_id, user_id, project_id, user_email, role, scope)
-SELECT 'tenant-id-default' as tenant_id, user_id, project_id, user_email, role, scope
+SELECT 'no-tenant-id' as tenant_id, user_id, project_id, user_email, role, scope
 FROM user_role;
 DROP TABLE user_role;
 ALTER TABLE user_role_new
@@ -460,7 +460,7 @@ CREATE TABLE space_new
 );
 
 INSERT INTO space_new (tenant_id, space_id, space_name, is_default)
-SELECT 'tenant-id-default' as tenant_id, space_id, space_name, is_default
+SELECT 'no-tenant-id' as tenant_id, space_id, space_name, is_default
 FROM space;
 DROP TABLE space;
 ALTER TABLE space_new
@@ -476,7 +476,7 @@ CREATE TABLE user_space_new
 );
 
 INSERT INTO user_space_new (tenant_id, user_email, space_id)
-SELECT 'tenant-id-default' as tenant_id, user_email, space_id
+SELECT 'no-tenant-id' as tenant_id, user_email, space_id
 FROM user_space;
 DROP TABLE user_space;
 ALTER TABLE user_space_new
@@ -496,7 +496,7 @@ CREATE TABLE subscription_new
 );
 
 INSERT INTO subscription_new (tenant_id, space_id, name, is_free_trial, marketplace, start_date, end_date)
-SELECT 'tenant-id-default' as tenant_id, space_id, name, is_free_trial, marketplace, start_date, end_date
+SELECT 'no-tenant-id' as tenant_id, space_id, name, is_free_trial, marketplace, start_date, end_date
 FROM subscription;
 DROP TABLE subscription;
 ALTER TABLE subscription_new
@@ -517,7 +517,7 @@ CREATE TABLE "user_new"
     PRIMARY KEY (tenant_id, email)
 );
 INSERT INTO "user_new" (tenant_id, email, sub, nickname, name, picture, updated_at, email_verified, is_default)
-SELECT 'tenant-id-default' as tenant_id,
+SELECT 'no-tenant-id' as tenant_id,
        email,
        sub,
        nickname,
@@ -542,7 +542,7 @@ CREATE TABLE identity_enrollment_new
 );
 
 INSERT INTO identity_enrollment_new (tenant_id, identifier, enrolled_at, email)
-SELECT 'tenant-id-default' as tenant_id, identifier, enrolled_at, email
+SELECT 'no-tenant-id' as tenant_id, identifier, enrolled_at, email
 FROM identity_enrollment;
 DROP TABLE identity_enrollment;
 ALTER TABLE identity_enrollment_new
@@ -561,7 +561,7 @@ CREATE TABLE okta_config_new
 );
 
 INSERT INTO okta_config_new (tenant_id, project_id, tenant_base_url, client_id, certificate, attributes)
-SELECT 'tenant-id-default' as tenant_id, project_id, tenant_base_url, client_id, certificate, attributes
+SELECT 'no-tenant-id' as tenant_id, project_id, tenant_base_url, client_id, certificate, attributes
 FROM okta_config;
 DROP TABLE okta_config;
 ALTER TABLE okta_config_new
@@ -576,7 +576,7 @@ CREATE TABLE kafka_config_new
 );
 
 INSERT INTO kafka_config_new (tenant_id, project_id, bootstrap_server)
-SELECT 'tenant-id-default' as tenant_id, project_id, bootstrap_server
+SELECT 'no-tenant-id' as tenant_id, project_id, bootstrap_server
 FROM kafka_config;
 DROP TABLE kafka_config;
 ALTER TABLE kafka_config_new
@@ -593,7 +593,7 @@ CREATE TABLE incoming_service_new
 );
 
 INSERT INTO incoming_service_new (tenant_id, invitation_id, enabled, name)
-SELECT 'tenant-id-default', invitation_id, enabled, name
+SELECT 'no-tenant-id', invitation_id, enabled, name
 FROM incoming_service;
 DROP TABLE incoming_service;
 ALTER TABLE incoming_service_new

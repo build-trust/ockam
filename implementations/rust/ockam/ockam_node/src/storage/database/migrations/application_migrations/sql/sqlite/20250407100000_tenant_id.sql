@@ -11,7 +11,7 @@ CREATE TABLE project_journey_new
 
 INSERT INTO project_journey_new (tenant_id, project_id, opentelemetry_context, start_datetime,
                                  previous_opentelemetry_context)
-SELECT 'tenant-id-default', project_id, opentelemetry_context, start_datetime, previous_opentelemetry_context
+SELECT 'no-tenant-id', project_id, opentelemetry_context, start_datetime, previous_opentelemetry_context
 FROM project_journey;
 DROP TABLE project_journey;
 ALTER TABLE project_journey_new
@@ -28,7 +28,7 @@ CREATE TABLE host_journey_new
 );
 
 INSERT INTO host_journey_new (tenant_id, opentelemetry_context, start_datetime, previous_opentelemetry_context)
-SELECT 'tenant-id-default', opentelemetry_context, start_datetime, previous_opentelemetry_context
+SELECT 'no-tenant-id', opentelemetry_context, start_datetime, previous_opentelemetry_context
 FROM host_journey;
 DROP TABLE host_journey;
 ALTER TABLE host_journey_new
