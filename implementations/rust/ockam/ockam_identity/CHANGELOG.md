@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.135.0 - 2025-04-24
+
+### Added
+
+- Set all the spans at the trace level
+- Set more spans at the trace level
+- Enable mptcp support between nodes and inside portals
+- Add `ContextRouter`
+- Add a tenant_id column to the postgres and sqlite schemas
+- Implement `message.is_local` policy
+- Full separate postgres data by tenant_id
+- Updated dependencies
+
 ## 0.134.0 - 2025-03-20
 
 ### Added

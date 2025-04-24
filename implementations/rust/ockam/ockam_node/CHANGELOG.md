@@ -4,6 +4,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.140.0 - 2025-04-24
+
+### Added
+
+- Create a proper trace for a message sent between an inlet and an outlet
+- Store attribute data in-memory
+- Enable mptcp support between nodes and inside portals
+- Add shared access to sending messages from a `Context`
+- Add `ContextRouter`
+- Add a tenant_id column to the postgres and sqlite schemas
+- Expose `Abac`
+- Add `OCKAM_SQL_LOG_LEVEL` env variable
+- Updated dependencies
+
+### Fixed
+
+- Test row level security
+
 ## 0.139.0 - 2025-03-20
 
 ### Added

@@ -4,6 +4,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.138.0 - 2025-04-24
+
+### Added
+
+- Set more spans at the trace level
+- Create a proper trace for a message sent between an inlet and an outlet
+- Add the proper component name for a local node
+- Fix some clippy warnings
+- Store attribute data in-memory
+- Copy and adapt code from `mptcp-rs`
+- Enable mptcp support between nodes and inside portals
+- Add possibility to change socket buffer size
+- Reduce `Context` usage
+- Implement `message.is_local` policy
+- Updated dependencies
+
+### Fixed
+
+- `node create` with configuration was swallowing an error produced in a subprocess
+
 ## 0.137.0 - 2025-03-20
 
 ### Added
