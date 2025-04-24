@@ -67,7 +67,10 @@ impl BaseCommand {
         }
 
         use crate::cluster::enroll::EnrollCommand;
-        let enroll_command = EnrollCommand::default();
+        let enroll_command = EnrollCommand {
+            disable_ctrlc_signal: true,
+            ..Default::default()
+        };
         enroll_command.run(ctx, opts.clone()).await?;
         opts.terminal.write_line(fmt_separator!())?;
 

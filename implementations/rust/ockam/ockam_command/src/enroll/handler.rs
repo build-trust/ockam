@@ -7,6 +7,8 @@ use r3bl_tui::{
 };
 use std::collections::HashMap;
 use std::io::stdin;
+use std::process;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio::try_join;
@@ -40,13 +42,14 @@ pub struct EnrollHandler {
     pub authorization_code_flow: bool,
     pub force: bool,
     pub skip_orchestrator_resources_creation: bool,
+    pub enable_ctrlc_signal: bool,
     pub is_ai_cloud_account: bool,
 }
 
 #[async_trait]
 impl InMemoryNodeCommand for EnrollHandler {
     async fn init(&self) -> miette::Result<()> {
-        // self.ctrlc_handler();
+        self.ctrlc_handler();
 
         if self.is_already_enrolled().await? {
             return Ok(());
@@ -297,28 +300,32 @@ impl EnrollHandler {
             .write_line(format!("{}\n", colored_header));
     }
 
-    // fn ctrlc_handler(&self) {
-    //     let is_confirmation = Arc::new(AtomicBool::new(false));
-    //     let terminal = self.opts.terminal.clone();
-    //     ctrlc::set_handler(move || {
-    //         if is_confirmation.load(Ordering::Relaxed) {
-    //             let message = fmt_ok!(
-    //             "Received Ctrl+C again. Canceling {}. Please try again.",
-    //             "ockam enroll".bold().light_yellow()
-    //         );
-    //             let _ = terminal.write_line(format!("\n{}", message).as_str());
-    //             process::exit(2);
-    //         } else {
-    //             let message = fmt_warn!(
-    //             "{} is still in progress. Please press Ctrl+C again to stop the enrollment process.",
-    //             "ockam enroll".bold().light_yellow()
-    //         );
-    //             let _ = terminal.write_line(format!("\n{}", message).as_str());
-    //             is_confirmation.store(true, Ordering::Relaxed);
-    //         }
-    //     })
-    //         .expect("Error setting Ctrl-C handler");
-    // }
+    fn ctrlc_handler(&self) {
+        if !self.enable_ctrlc_signal {
+            return;
+        }
+
+        let is_confirmation = Arc::new(AtomicBool::new(false));
+        let terminal = self.opts.terminal.clone();
+        ctrlc::set_handler(move || {
+            if is_confirmation.load(Ordering::Relaxed) {
+                let message = fmt_ok!(
+                "Received Ctrl+C again. Canceling {}. Please try again.",
+                "ockam enroll".bold().light_yellow()
+            );
+                let _ = terminal.write_line(format!("\n{}", message).as_str());
+                process::exit(2);
+            } else {
+                let message = fmt_warn!(
+                "{} is still in progress. Please press Ctrl+C again to stop the enrollment process.",
+                "ockam enroll".bold().light_yellow()
+            );
+                let _ = terminal.write_line(format!("\n{}", message).as_str());
+                is_confirmation.store(true, Ordering::Relaxed);
+            }
+        })
+            .expect("Error setting Ctrl-C handler");
+    }
 
     #[instrument(skip_all, level = Level::TRACE)]
     async fn retrieve_user_space_and_project(
