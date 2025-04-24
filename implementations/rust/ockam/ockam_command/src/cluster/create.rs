@@ -129,12 +129,12 @@ impl CreateCommand {
         }
 
         for image_name in config_images {
-            self.build_local_image(opts, &image_name).await?;
-
             let ecr_creds = self
                 .provision_ecr(ctx, opts, api_client, cluster, &image_name)
                 .await?;
-            self.push_image(opts, &image_name, &ecr_creds).await?;
+            self.docker_login(opts, &ecr_creds).await?;
+            self.build_and_push_local_image(opts, &image_name, &ecr_creds.repository_uri)
+                .await?;
             // TODO: remove the role
             // node.delete_ecr_role(cluster, &self.zone_name, &image_name)
             //     .await?;
@@ -142,38 +142,6 @@ impl CreateCommand {
         }
 
         Ok(zone_config)
-    }
-
-    async fn build_local_image(&self, opts: &CommandGlobalOpts, image_name: &str) -> Result<()> {
-        // Given an image name, try to build the Dockerfile image at "./images/{image_name}/Dockerfile"
-        let dockerfile_dir = format!("./images/{}", image_name);
-        if !std::path::Path::new(&dockerfile_dir).exists() {
-            return Ok(());
-        }
-        let spinner = opts.terminal.spinner();
-        if let Some(spinner) = spinner.as_ref() {
-            spinner.set_message(format!(
-                "Building local image {}...",
-                color_primary(image_name),
-            ));
-        }
-        let output = tokio::process::Command::new("docker")
-            .arg("build")
-            .arg("-t")
-            .arg(image_name)
-            .arg(".")
-            .current_dir(dockerfile_dir)
-            .output()
-            .await
-            .into_diagnostic()?;
-        if !output.status.success() {
-            return Err(miette::Error::msg(format!(
-                "Failed to build image {}: {}",
-                image_name,
-                String::from_utf8_lossy(&output.stderr)
-            )));
-        }
-        Ok(())
     }
 
     async fn provision_ecr(
@@ -208,15 +176,12 @@ impl CreateCommand {
         Ok(ecr_creds)
     }
 
-    async fn push_image(
+    async fn docker_login(
         &self,
         opts: &CommandGlobalOpts,
-        local_image_name: &str,
         ecr_credentials: &EcrCredentials,
     ) -> Result<()> {
         let spinner = opts.terminal.spinner();
-
-        // Login
         if let Some(spinner) = spinner.as_ref() {
             spinner.set_message("Logging docker into ECR...");
         }
@@ -239,64 +204,59 @@ impl CreateCommand {
                 .into_diagnostic()?;
         }
         let output = child.wait_with_output().await.into_diagnostic()?;
+        if let Some(spinner) = spinner.as_ref() {
+            spinner.finish_and_clear();
+        }
         if !output.status.success() {
             return Err(miette::Error::msg(format!(
                 "Failed to login to ECR: {}",
                 String::from_utf8_lossy(&output.stderr)
             )));
         }
+        Ok(())
+    }
 
-        // Tag image
+    async fn build_and_push_local_image(
+        &self,
+        opts: &CommandGlobalOpts,
+        image_name: &str,
+        repository_uri: &str,
+    ) -> Result<()> {
+        // Given an image name, try to build the `Dockerfile` image at "./images/{image_name}/Dockerfile"
+        let dockerfile_dir = format!("./images/{}", image_name);
+        if !std::path::Path::new(&dockerfile_dir).exists() {
+            return Ok(());
+        }
+        let spinner = opts.terminal.spinner();
         if let Some(spinner) = spinner.as_ref() {
             spinner.set_message(format!(
-                "Tagging image {} with ECR's URI...",
-                color_primary(local_image_name),
+                "Building local image {}...",
+                color_primary(image_name),
             ));
         }
         let output = tokio::process::Command::new("docker")
-            .arg("tag")
-            .arg(local_image_name)
-            .arg(&ecr_credentials.repository_uri)
+            .arg("buildx")
+            .arg("build")
+            .arg("--platform")
+            .arg("linux/amd64,linux/arm64")
+            .arg("-t")
+            .arg(repository_uri)
+            .arg("--push")
+            .arg(".")
+            .current_dir(dockerfile_dir)
             .output()
             .await
             .into_diagnostic()?;
-        if !output.status.success() {
-            return Err(miette::Error::msg(format!(
-                "Failed to tag image {}: {}",
-                local_image_name,
-                String::from_utf8_lossy(&output.stderr)
-            )));
-        }
-
-        // Push image
         if let Some(spinner) = spinner.as_ref() {
-            spinner.set_message(format!(
-                "Pushing image {} into ECR...",
-                color_primary(local_image_name),
-            ));
-        }
-
-        let output = tokio::process::Command::new("docker")
-            .arg("push")
-            .arg(&ecr_credentials.repository_uri)
-            .output()
-            .await
-            .into_diagnostic()?;
-        if !output.status.success() {
-            return Err(miette::Error::msg(format!(
-                "Failed to push image {}: {}",
-                local_image_name,
-                String::from_utf8_lossy(&output.stderr)
-            )));
-        }
-        if let Some(spinner) = spinner {
             spinner.finish_and_clear();
         }
-        opts.terminal.write_line(fmt_ok!(
-            "Pushed image {} into ECR\n",
-            color_primary(local_image_name),
-        ))?;
-
+        if !output.status.success() {
+            return Err(miette::Error::msg(format!(
+                "Failed to build image {}: {}",
+                image_name,
+                String::from_utf8_lossy(&output.stderr)
+            )));
+        }
         Ok(())
     }
 
