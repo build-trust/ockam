@@ -28,10 +28,6 @@ before_help = docs::before_help(PREVIEW_TAG),
 after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct CreateCommand {
-    /// The name of the Zone to deploy in the Ockam AI Platform
-    #[arg(long)]
-    pub zone_name: String,
-
     /// The path to the Zone configuration file, in yaml or json format.
     ///
     /// If not set, the `./ockam.yaml` file from the current directory will be used.
@@ -315,23 +311,25 @@ impl CreateCommand {
         if let Some(spinner) = spinner.as_ref() {
             spinner.set_message(format!(
                 "Deploying zone {} in cluster {}...",
-                color_primary(&self.zone_name),
+                color_primary(&zone_config.name),
                 color_primary(cluster),
             ));
         }
 
         // TODO: do we want to recreate the zone every time?
         //  Is there another way of reapplying the configuration for an existing zone?
-        let _ = api_client.delete_zone(ctx, cluster, &self.zone_name).await;
+        let _ = api_client
+            .delete_zone(ctx, cluster, &zone_config.name)
+            .await;
         api_client
-            .create_zone(ctx, cluster, &self.zone_name)
+            .create_zone(ctx, cluster, &zone_config.name)
             .await?;
         // TODO: how do we pass the secrets to the command?
         // api_client.create_secret(ctx, cluster, &self.zone_name, secret_name, secret_fields).await?;
 
         let zone_config_json = serde_json::to_value(zone_config).into_diagnostic()?;
         api_client
-            .deploy_zone(ctx, cluster, &self.zone_name, &zone_config_json)
+            .deploy_zone(ctx, cluster, &zone_config.name, &zone_config_json)
             .await?;
 
         if let Some(spinner) = spinner {
@@ -339,7 +337,7 @@ impl CreateCommand {
         }
         opts.terminal.write_line(fmt_ok!(
             "Deployed zone {} in cluster {}",
-            color_primary(&self.zone_name),
+            color_primary(&zone_config.name),
             color_primary(cluster)
         ))?;
 
