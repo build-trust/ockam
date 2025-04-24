@@ -46,7 +46,13 @@ impl BaseCommand {
         // process default value for zone_name
         if self.zone_name.is_empty() {
             let user_info = opts.state.get_default_user().await?;
-            self.zone_name = hex::encode(user_info.email.to_string());
+            self.zone_name = {
+                use sha2::{Digest, Sha256};
+                let mut hasher = Sha256::new();
+                hasher.update(user_info.email.to_string().as_bytes());
+                let hashed = format!("{:X}", hasher.finalize());
+                hashed.chars().take(16).collect::<String>().to_lowercase()
+            };
             opts.terminal.write_line(fmt_log!(
                 "Using zone name {}",
                 color_primary(&self.zone_name)
