@@ -1,4 +1,5 @@
 use crate::branding::BrandingCompileEnvVars;
+use crate::util::parsers::hostname_parser;
 use crate::{Command, CommandGlobalOpts, Result};
 use clap::Args;
 use colorful::Colorful;
@@ -9,7 +10,6 @@ use ockam_api::orchestrator::ai_platform::node_service_client::AI_API_BASE_URL;
 use ockam_api::{fmt_log, fmt_separator};
 use ockam_core::TryClone;
 use ockam_node::Context;
-use std::str::FromStr;
 use tokio::task::JoinHandle;
 
 #[derive(Clone, Debug, Args, Default)]
@@ -19,6 +19,9 @@ pub struct NoArgsCommand {
 
     #[arg(default_value = "", env = "ZONE_NAME")]
     zone_name: String,
+
+    #[arg(default_value = "localhost:31234", value_parser = hostname_parser, env = "INLET_ADDRESS")]
+    inlet_address: SchemeHostnamePort,
 }
 
 impl NoArgsCommand {
@@ -127,7 +130,7 @@ impl NoArgsCommand {
             zone_name: self.zone_name.clone(),
             pod: pod_name,
             enrollment_ticket: ticket,
-            from: SchemeHostnamePort::from_str("127.0.0.1:31234").into_diagnostic()?,
+            from: self.inlet_address.clone(),
             api_endpoint: None,
             ..Default::default()
         };
@@ -167,7 +170,7 @@ impl NoArgsCommand {
         let mut retries = 0;
         let mut stream = None;
         while retries < MAX_RETRIES {
-            match TcpStream::connect("127.0.0.1:31234").await {
+            match TcpStream::connect(self.inlet_address.hostname_port().to_string()).await {
                 Ok(s) => {
                     stream = Some(s);
                     break;
