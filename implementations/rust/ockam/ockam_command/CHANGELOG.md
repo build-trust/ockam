@@ -4,6 +4,77 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.151.0 - 2025-04-24
+
+### Added
+
+- Unify output of show/list portals commands
+- Set all the spans at the trace level
+- Create only one top-level span
+- Set more spans at the trace level
+- Create a proper trace for a message sent between an inlet and an outlet
+- Add the proper component name for a local node
+- Pass the cli state to the span exporter to access more data
+- Address review comments
+- Unify output of crud tcp-connection commands
+- Enable mptcp support between nodes and inside portals
+- Update outlet http endpoints request structs
+- Update inlet http endpoints requests structs
+- Add "via" field to create inlet endpoint request
+- Reduce `Context` usage
+- Remove the drop instance for the in memory node
+- Implement `message.is_local` policy
+- Add ai subcommands for enroll and ticket
+- Add `ai deploy` command
+- Add `ai connect` command
+- Implement orchestrator api for provisioner service
+- Ai enroll returns cluster
+- Add `cluster outlet` command
+- Add `cluster init` command
+- `cluster inlet` use passed cluster
+- Revert `ai/enroll` endpoint usage
+- Add cluster cbor struct
+- Adjustments for public eks
+- Cluster ticket command going through provisioner
+- Cluster enroll no personal space
+- Add "ockam" command
+- Build docker image using use dockerfile_dir
+- Base command, add env var for init repository
+- Base command, add env var for zone_name, or derive from email
+- Base command, add env var for inlet address, with default value
+- Add epoch tag to docker image
+- Updated dependencies
+
+### Changed
+
+- Rename ai subcommands to `cluster`
+- Rename `cluster connect` to `cluster inlet`
+- Return zone config from `cluster create`
+- Rename "no args" command to "base command"
+- Reenable ctrlc in enroll command
+- Pass zone name in config, instead of as an argument
+
+### Fixed
+
+- `node create` with configuration was swallowing an error produced in a subprocess
+- `node create` with configuration was not exiting properly if node didn't start
+- Test row level security
+- Docker image path
+- Get cluster always from orchestrator
+- Change default values in "ockam"
+- Create cluster inlet using pod from config
+- `cluster create` use buildx to build multiarch images
+- Repl
+- Is_enrolled check
+- Manually parse base command args
+- Hash email using sha256 for the zone name default value
+
+### Removed
+
+- Remove ctrlc_handler in enroll
+- Remove ctrlc_handler in enroll again
+- Remove unnecessary text from repl
+
 ## 0.150.0 - 2025-03-20
 
 ### Added

@@ -4,6 +4,58 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.94.0 - 2025-04-24
+
+### Added
+
+- Unify output of show/list portals commands
+- Set all the spans at the trace level
+- Add an attribute to distinguish user journeys
+- Create only one top-level span
+- Set more spans at the trace level
+- Add more attributes and remove events on spans
+- Pass the cli state to the span exporter to access more data
+- Store attribute data in-memory
+- Address review comments
+- Unify output of crud tcp-connection commands
+- Enable mptcp support between nodes and inside portals
+- Add custom openapi schema for hostnameport to support serde from string
+- On tcp-outlet create request, make kind field optional
+- Update outlet http endpoints request structs
+- Update inlet http endpoints requests structs
+- Use `HostPort` in outlet/inelt api requests
+- Add "via" field to create inlet endpoint request
+- Expose a method to retrieve subject attributes directly from an authority
+- Additional fixes to support project with postgres
+- Expose some apis
+- Reduce `Context` usage
+- Support optional resource_type in policies
+- Remove the drop instance for the in memory node
+- Add a tenant_id column to the postgres and sqlite schemas
+- Expose `Abac`
+- Add `OCKAM_SQL_LOG_LEVEL` env variable
+- Implement `message.is_local` policy
+- Full separate postgres data by tenant_id
+- Add `all` and `none` policies
+- Add ai subcommands for enroll and ticket
+- Add `ai deploy` command
+- Add `ai connect` command
+- Implement orchestrator api for provisioner service
+- Ai enroll returns cluster
+- Add `cluster outlet` command
+- Add `cluster init` command
+- Revert `ai/enroll` endpoint usage
+- Add cluster cbor struct
+- Adjustments for public eks
+- Cluster ticket command going through provisioner
+- Add "ockam" command
+- Updated dependencies
+
+### Changed
+
+- Split http api's `HostPort` into request/response types
+- Descriptions for ticket and relay http api endpoints
+
 ## 0.93.0 - 2025-03-20
 
 ### Added

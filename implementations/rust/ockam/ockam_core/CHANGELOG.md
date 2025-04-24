@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.126.0 - 2025-04-24
+
+### Added
+
+- Create a proper trace for a message sent between an inlet and an outlet
+- Add `OCKAM_SQL_LOG_LEVEL` env variable
+- Implement `message.is_local` policy
+- Add ai subcommands for enroll and ticket
+- Updated dependencies
+
 ## 0.125.0 - 2025-03-03
 
 ### Added
