@@ -58,6 +58,7 @@ impl Command for EnrollCommand {
             authorization_code_flow: self.authorization_code_flow,
             force: self.force,
             skip_orchestrator_resources_creation: self.skip_orchestrator_resources_creation,
+            enable_ctrlc_signal: true,
             is_ai_cloud_account: false,
         };
         handler.handle(ctx).await?;

@@ -34,6 +34,9 @@ pub struct EnrollCommand {
     /// the same account information
     #[arg(long)]
     pub authorization_code_flow: bool,
+
+    #[arg(long, hide = true)]
+    pub disable_ctrlc_signal: bool,
 }
 
 #[async_trait]
@@ -47,6 +50,7 @@ impl Command for EnrollCommand {
             authorization_code_flow: self.authorization_code_flow,
             force: false,
             skip_orchestrator_resources_creation: true,
+            enable_ctrlc_signal: !self.disable_ctrlc_signal,
             is_ai_cloud_account: true,
         };
         handler.handle(ctx).await?;
