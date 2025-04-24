@@ -66,7 +66,7 @@ struct CreateNodeCommand {
 }
 
 #[async_trait]
-impl InMemoryNodeCommand for CreateNodeCommand {
+impl InMemoryNodeCommand<ZoneConfig> for CreateNodeCommand {
     async fn init(&self) -> miette::Result<()> {
         if let Some(api_endpoint) = &self.command.api_endpoint {
             std::env::set_var(AI_API_BASE_URL_ENV, api_endpoint);
@@ -74,7 +74,7 @@ impl InMemoryNodeCommand for CreateNodeCommand {
         Ok(())
     }
 
-    async fn run(&self, node: Arc<InMemoryNode>) -> miette::Result<()> {
+    async fn run(&self, node: Arc<InMemoryNode>) -> miette::Result<ZoneConfig> {
         let ctx = node.ctx();
         let use_http_api = self.command.use_http_api || self.command.api_endpoint.is_some();
         let api_client = get_api_client(&node, use_http_api).await?;
@@ -90,23 +90,23 @@ impl InMemoryNodeCommand for CreateNodeCommand {
             .process_images(ctx, &self.opts, &*api_client, &cluster)
             .await?;
         self.command
-            .deploy_zone(ctx, &self.opts, &*api_client, &cluster, zone_config)
+            .deploy_zone(ctx, &self.opts, &*api_client, &cluster, &zone_config)
             .await?;
-        Ok(())
+        Ok(zone_config)
     }
 }
 
 #[async_trait]
-impl Command for CreateCommand {
+impl Command<ZoneConfig> for CreateCommand {
     const NAME: &'static str = "cluster create";
 
-    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> Result<()> {
+    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> Result<ZoneConfig> {
         let command = CreateNodeCommand {
             opts: opts.clone(),
             command: self.clone(),
         };
-        command.execute(ctx, opts.state.clone()).await?;
-        Ok(())
+        let zone_config = command.execute(ctx, opts.state.clone()).await?;
+        Ok(zone_config)
     }
 }
 
@@ -266,7 +266,7 @@ impl CreateCommand {
         opts: &CommandGlobalOpts,
         api_client: &(dyn AiPlatformApi + Send + Sync + 'static),
         cluster: &str,
-        zone_config: ZoneConfig,
+        zone_config: &ZoneConfig,
     ) -> Result<()> {
         let spinner = opts.terminal.spinner();
         if let Some(spinner) = spinner.as_ref() {
@@ -286,7 +286,7 @@ impl CreateCommand {
         // TODO: how do we pass the secrets to the command?
         // api_client.create_secret(ctx, cluster, &self.zone_name, secret_name, secret_fields).await?;
 
-        let zone_config_json = serde_json::to_value(&zone_config).into_diagnostic()?;
+        let zone_config_json = serde_json::to_value(zone_config).into_diagnostic()?;
         api_client
             .deploy_zone(ctx, cluster, &self.zone_name, &zone_config_json)
             .await?;

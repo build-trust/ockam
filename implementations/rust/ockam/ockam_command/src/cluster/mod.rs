@@ -47,7 +47,7 @@ impl ClusterCommand {
             ClusterSubcommand::Init(c) => c.run(ctx, opts).await,
             ClusterSubcommand::Enroll(c) => c.run(ctx, opts).await,
             ClusterSubcommand::Ticket(c) => c.run(ctx, opts).await.map(|_| ()),
-            ClusterSubcommand::Create(c) => c.run(ctx, opts).await,
+            ClusterSubcommand::Create(c) => c.run(ctx, opts).await.map(|_| ()),
             ClusterSubcommand::Delete(c) => c.run(ctx, opts).await,
             ClusterSubcommand::Inlet(c) => c.run(ctx, opts).await,
             ClusterSubcommand::Outlet(c) => c.run(ctx, opts).await,
