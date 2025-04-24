@@ -1,4 +1,5 @@
 use crate::branding::BrandingCompileEnvVars;
+use crate::cluster::zone_config::ZoneConfig;
 use crate::util::parsers::hostname_parser;
 use crate::{Command, CommandGlobalOpts, Result};
 use clap::Args;
@@ -48,8 +49,8 @@ impl NoArgsCommand {
         self.parse_args(&opts).await?;
 
         self.cluster_init(ctx, &opts).await?;
-        self.cluster_create(ctx, &opts).await?;
-        let inlet_handle = self.cluster_inlet(ctx, &opts).await?;
+        let zone_config = self.cluster_create(ctx, &opts).await?;
+        let inlet_handle = self.cluster_inlet(ctx, &opts, &zone_config).await?;
         self.open_repl(ctx, &opts, inlet_handle).await?;
 
         Ok(())
@@ -92,7 +93,11 @@ impl NoArgsCommand {
         Ok(())
     }
 
-    async fn cluster_create(&self, ctx: &Context, opts: &CommandGlobalOpts) -> miette::Result<()> {
+    async fn cluster_create(
+        &self,
+        ctx: &Context,
+        opts: &CommandGlobalOpts,
+    ) -> miette::Result<ZoneConfig> {
         use crate::cluster::create::CreateCommand;
         let create_command = CreateCommand {
             zone_name: self.zone_name.clone(),
@@ -100,16 +105,17 @@ impl NoArgsCommand {
             api_endpoint: Some(AI_API_BASE_URL.to_string()),
             ..Default::default()
         };
-        create_command.run(ctx, opts.clone()).await?;
+        let zone_config = create_command.run(ctx, opts.clone()).await?;
         opts.terminal.write_line(fmt_separator!())?;
 
-        Ok(())
+        Ok(zone_config)
     }
 
     async fn cluster_inlet(
         &self,
         ctx: &Context,
         opts: &CommandGlobalOpts,
+        zone_config: &ZoneConfig,
     ) -> miette::Result<JoinHandle<Result<()>>> {
         use crate::cluster::ticket::TicketCommand;
         let ticket_command = TicketCommand {
@@ -119,11 +125,12 @@ impl NoArgsCommand {
         };
         let ticket = ticket_command.run(ctx, opts.clone()).await?;
 
-        //TODO: this should be the pod name from the configuration.
-        // Return needed data from cluster_create
-        use crate::cluster::zone_config::ZoneConfig;
-        let zone_config = ZoneConfig::from_file("./ockam.yaml")?;
-        let pod_name = zone_config.pods.first().unwrap().name.clone();
+        let pod_name = zone_config
+            .pods
+            .first()
+            .ok_or_else(|| miette!("No pods found in the parsed zone configuration"))?
+            .name
+            .clone();
 
         use crate::cluster::inlet::InletCommand;
         let inlet_command = InletCommand {
