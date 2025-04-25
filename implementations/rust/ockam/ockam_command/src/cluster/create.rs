@@ -15,6 +15,7 @@ use ockam_api::{fmt_log, fmt_ok};
 use ockam_node::Context;
 use std::process::Stdio;
 use std::sync::Arc;
+use tracing::info;
 
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
@@ -152,8 +153,7 @@ impl CreateCommand {
         let spinner = opts.terminal.spinner();
         if let Some(spinner) = spinner.as_ref() {
             spinner.set_message(format!(
-                "Provisioning ECR in cluster {} for image {}...",
-                color_primary(cluster),
+                "Preparing repository for image {}...",
                 color_primary(image_name),
             ));
         }
@@ -163,12 +163,14 @@ impl CreateCommand {
         if let Some(spinner) = spinner {
             spinner.finish_and_clear();
         }
-        opts.terminal.write_line(fmt_log!(
-            "Provisioned ECR in cluster {} for image {} at {}",
-            color_primary(cluster),
+        opts.terminal.write_line(fmt_ok!(
+            "Repository ready for image {}",
             color_primary(image_name),
-            color_primary(&ecr_creds.repository_uri)
         ))?;
+        info!(
+            "Repository ready for image {} in cluster {} at {}",
+            image_name, cluster, ecr_creds.repository_uri
+        );
 
         Ok(ecr_creds)
     }
@@ -180,7 +182,7 @@ impl CreateCommand {
     ) -> Result<()> {
         let spinner = opts.terminal.spinner();
         if let Some(spinner) = spinner.as_ref() {
-            spinner.set_message("Logging docker into ECR...");
+            spinner.set_message("Logging docker into repository...");
         }
         let mut child = tokio::process::Command::new("docker")
             .arg("login")
@@ -206,7 +208,7 @@ impl CreateCommand {
         }
         if !output.status.success() {
             return Err(miette::Error::msg(format!(
-                "Failed to login to ECR: {}",
+                "Failed to login into repository: {}",
                 String::from_utf8_lossy(&output.stderr)
             )));
         }
@@ -246,7 +248,6 @@ impl CreateCommand {
                 color_primary(&repository_uri_tag)
             ));
         }
-
         let output = tokio::process::Command::new("docker")
             .arg("build")
             .arg("--platform")
@@ -262,6 +263,11 @@ impl CreateCommand {
         if let Some(spinner) = spinner.as_ref() {
             spinner.finish_and_clear();
         }
+        opts.terminal.write_line(fmt_ok!(
+            "Built local image {} with tag {}",
+            color_primary(image_name),
+            color_primary(&repository_uri_tag)
+        ))?;
         if !output.status.success() {
             return Err(miette::Error::msg(format!(
                 "Failed to build image {}: {}",
@@ -271,13 +277,10 @@ impl CreateCommand {
         }
 
         // Push image
+        let spinner = opts.terminal.spinner();
         if let Some(spinner) = spinner.as_ref() {
-            spinner.set_message(format!(
-                "Pushing image {} into ECR...",
-                color_primary(image_name),
-            ));
+            spinner.set_message(format!("Pushing image {}...", color_primary(image_name)));
         }
-
         let output = tokio::process::Command::new("docker")
             .arg("push")
             .arg(&repository_uri_tag)
@@ -294,10 +297,8 @@ impl CreateCommand {
         if let Some(spinner) = spinner {
             spinner.finish_and_clear();
         }
-        opts.terminal.write_line(fmt_ok!(
-            "Pushed image {} into ECR\n",
-            color_primary(image_name),
-        ))?;
+        opts.terminal
+            .write_line(fmt_ok!("Pushed image {}\n", color_primary(image_name)))?;
 
         Ok(repository_uri_tag)
     }
@@ -313,9 +314,8 @@ impl CreateCommand {
         let spinner = opts.terminal.spinner();
         if let Some(spinner) = spinner.as_ref() {
             spinner.set_message(format!(
-                "Deploying zone {} in cluster {}...",
+                "Deploying zone {}...",
                 color_primary(&zone_config.name),
-                color_primary(cluster),
             ));
         }
 
@@ -339,10 +339,10 @@ impl CreateCommand {
             spinner.finish_and_clear();
         }
         opts.terminal.write_line(fmt_ok!(
-            "Deployed zone {} in cluster {}",
+            "Deployed zone {}",
             color_primary(&zone_config.name),
-            color_primary(cluster)
         ))?;
+        info!("Deployed zone {} in cluster {}", zone_config.name, cluster);
 
         Ok(())
     }

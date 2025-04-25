@@ -5,8 +5,9 @@ use clap::Args;
 use colorful::Colorful;
 use miette::{miette, IntoDiagnostic, WrapErr};
 use ockam::transport::SchemeHostnamePort;
-use ockam_api::fmt_separator;
+use ockam_api::colors::color_primary;
 use ockam_api::orchestrator::ai_platform::node_service_client::AI_API_BASE_URL;
+use ockam_api::{fmt_ok, fmt_separator};
 use ockam_core::env::get_env_ignore_error;
 use ockam_core::TryClone;
 use ockam_node::Context;
@@ -46,8 +47,8 @@ impl BaseCommand {
         cmd.cluster_init(ctx, &opts).await?;
         let zone_config = cmd.cluster_create(ctx, &opts).await?;
         let inlet_handle = cmd.cluster_inlet(ctx, &opts, &zone_config).await?;
+        opts.terminal.write_line(fmt_separator!())?;
         cmd.open_repl(ctx, &opts, inlet_handle).await?;
-
         Ok(())
     }
 
@@ -67,7 +68,6 @@ impl BaseCommand {
             ..Default::default()
         };
         enroll_command.run(ctx, opts.clone()).await?;
-        opts.terminal.write_line(fmt_separator!())?;
 
         Ok(())
     }
@@ -86,7 +86,6 @@ impl BaseCommand {
             target_path: None,
         };
         init_command.run(ctx, opts.clone()).await?;
-        opts.terminal.write_line(fmt_separator!())?;
 
         Ok(())
     }
@@ -103,8 +102,6 @@ impl BaseCommand {
             ..Default::default()
         };
         let zone_config = create_command.run(ctx, opts.clone()).await?;
-        opts.terminal.write_line(fmt_separator!())?;
-
         Ok(zone_config)
     }
 
@@ -114,14 +111,6 @@ impl BaseCommand {
         opts: &CommandGlobalOpts,
         zone_config: &ZoneConfig,
     ) -> miette::Result<JoinHandle<Result<()>>> {
-        use crate::cluster::ticket::TicketCommand;
-        let ticket_command = TicketCommand {
-            zone_name: zone_config.name.clone(),
-            api_endpoint: Some(AI_API_BASE_URL.to_string()),
-            ..Default::default()
-        };
-        let ticket = ticket_command.run(ctx, opts.clone()).await?;
-
         let pod_name = zone_config
             .pods
             .first()
@@ -129,18 +118,46 @@ impl BaseCommand {
             .name
             .clone();
 
+        let spinner = opts.terminal.spinner();
+        if let Some(spinner) = &spinner {
+            spinner.set_message(format!(
+                "Opening a Portal to the outlet {} in {}...",
+                color_primary(&pod_name),
+                color_primary(&self.inlet_address)
+            ));
+        }
+
+        // Disable terminal output for the following commands
+        let no_output_opts = opts.clone();
+        no_output_opts.terminal.disable();
+
+        use crate::cluster::ticket::TicketCommand;
+        let ticket_command = TicketCommand {
+            zone_name: zone_config.name.clone(),
+            api_endpoint: Some(AI_API_BASE_URL.to_string()),
+            ..Default::default()
+        };
+        let ticket = ticket_command.run(ctx, no_output_opts.clone()).await?;
+
         use crate::cluster::inlet::InletCommand;
         let inlet_command = InletCommand {
             zone_name: zone_config.name.clone(),
-            pod: pod_name,
+            pod: pod_name.clone(),
             enrollment_ticket: ticket,
             from: self.inlet_address.clone(),
-            api_endpoint: None,
             ..Default::default()
         };
         let ctx = ctx.try_clone()?;
-        let opts = opts.clone();
-        let handle = tokio::spawn(async move { inlet_command.run(&ctx, opts).await });
+        let handle = tokio::spawn(async move { inlet_command.run(&ctx, no_output_opts).await });
+
+        if let Some(spinner) = &spinner {
+            spinner.finish_and_clear();
+        }
+        opts.terminal.write_line(fmt_ok!(
+            "Portal connected to the outlet {} in {}",
+            color_primary(&pod_name),
+            color_primary(&self.inlet_address)
+        ))?;
 
         Ok(handle)
     }
