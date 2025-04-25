@@ -38,7 +38,7 @@ impl AiPlatformApi for InMemoryNode {
             "zone": zone_name,
         });
 
-        let client = reqwest::Client::new();
+        let client = build_http_client().wrap_err(base_error())?;
         let response = client
             .post(&url)
             .header("Content-Type", "application/json")
@@ -66,12 +66,34 @@ impl AiPlatformApi for InMemoryNode {
             .wrap_err(base_error())
     }
 
-    async fn list_zones(&self, ctx: &Context, cluster: &str) -> miette::Result<Vec<Zone>> {
-        let controller = self.create_controller().await?;
+    async fn list_zones(&self, _ctx: &Context, cluster: &str) -> miette::Result<Vec<Zone>> {
         let base_error = || miette!("Failed to list zones in cluster {cluster}");
-        controller
-            .list_zones(ctx, cluster)
+        let url = format!("{}/api/{}/zone", *AI_API_BASE_URL, cluster);
+
+        let client = build_http_client().wrap_err(base_error())?;
+        let response = client
+            .get(&url)
+            .header("Content-Type", "application/json")
+            .send()
             .await
+            .into_diagnostic()
+            .wrap_err("Failed to send request")
+            .wrap_err(base_error())?;
+
+        if !response.status().is_success() {
+            return Err(miette::miette!(
+                "HTTP {}: {}",
+                response.status(),
+                response.text().await.unwrap_or_default()
+            )
+            .wrap_err(base_error()));
+        }
+
+        response
+            .json::<Vec<Zone>>()
+            .await
+            .into_diagnostic()
+            .wrap_err("Failed to parse response")
             .wrap_err(base_error())
     }
 
@@ -84,7 +106,7 @@ impl AiPlatformApi for InMemoryNode {
         let base_error = || miette!("Failed to delete zone {zone_name} in cluster {cluster}");
         let url = format!("{}/api/{}/zone/{}", *AI_API_BASE_URL, cluster, zone_name);
 
-        let client = reqwest::Client::new();
+        let client = build_http_client().wrap_err(base_error())?;
         let response = client
             .delete(&url)
             .header("Content-Type", "application/json")
@@ -134,7 +156,7 @@ impl AiPlatformApi for InMemoryNode {
             *AI_API_BASE_URL, cluster, zone_name
         );
 
-        let client = reqwest::Client::new();
+        let client = build_http_client().wrap_err(base_error())?;
         let response = client
             .post(&url)
             .header("Content-Type", "application/json")
@@ -186,7 +208,7 @@ impl AiPlatformApi for InMemoryNode {
             "fields": secret_fields
         });
 
-        let client = reqwest::Client::new();
+        let client = build_http_client().wrap_err(base_error())?;
         let response = client
             .post(&url)
             .header("Content-Type", "application/json")
@@ -222,7 +244,7 @@ impl AiPlatformApi for InMemoryNode {
             *AI_API_BASE_URL, cluster, zone_name
         );
 
-        let client = reqwest::Client::new();
+        let client = build_http_client().wrap_err(base_error())?;
         let response = client
             .get(&url)
             .header("Content-Type", "application/json")
@@ -273,7 +295,7 @@ impl AiPlatformApi for InMemoryNode {
             *AI_API_BASE_URL, cluster, zone_name, secret_name
         );
 
-        let client = reqwest::Client::new();
+        let client = build_http_client().wrap_err(base_error())?;
         let response = client
             .delete(&url)
             .header("Content-Type", "application/json")
@@ -322,7 +344,7 @@ impl AiPlatformApi for InMemoryNode {
             body["relay"] = serde_json::Value::String(relay_value);
         }
 
-        let client = reqwest::Client::new();
+        let client = build_http_client().wrap_err(base_error())?;
         let response = client
             .post(&url)
             .header("Content-Type", "application/json")
@@ -376,7 +398,7 @@ impl AiPlatformApi for InMemoryNode {
             "region": region,
         });
 
-        let client = reqwest::Client::new();
+        let client = build_http_client().wrap_err(base_error())?;
         let response = client
             .post(&url)
             .header("Content-Type", "application/json")
@@ -403,4 +425,12 @@ impl AiPlatformApi for InMemoryNode {
             .wrap_err("Failed to parse response")
             .wrap_err(base_error())
     }
+}
+
+fn build_http_client() -> miette::Result<reqwest::Client> {
+    reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(5 * 60))
+        .build()
+        .into_diagnostic()
+        .wrap_err("Failed to build HTTP client")
 }
