@@ -92,7 +92,7 @@ impl AiPlatformApi for ControllerClient {
         cluster: &str,
         zone_name: &str,
         secret_name: &str,
-        secret_fields: HashMap<String, String>,
+        secret_fields: &HashMap<String, String>,
     ) -> miette::Result<()> {
         trace!(%cluster, %zone_name, %secret_name, "creating secret");
         let req = Request::post(format!("/v0/zone/{zone_name}"))
@@ -118,7 +118,12 @@ impl AiPlatformApi for ControllerClient {
             .await
             .into_diagnostic()?
             .miette_success("get secrets")?;
-        Ok(secrets.0)
+        let secrets = secrets
+            .secrets
+            .into_iter()
+            .map(|s| Secret { name: s })
+            .collect();
+        Ok(secrets)
     }
 
     async fn delete_secret(
@@ -135,6 +140,26 @@ impl AiPlatformApi for ControllerClient {
             .await
             .into_diagnostic()?
             .miette_success("delete secret")
+    }
+
+    async fn create_enrollment_token(
+        &self,
+        ctx: &Context,
+        cluster: &str,
+        zone_name: &str,
+        attributes: BTreeMap<String, String>,
+        relay: Option<String>,
+    ) -> miette::Result<String> {
+        trace!(%cluster, %zone_name, ?attributes, ?relay, "creating enrollment token");
+        let req = Request::post(format!("/v0/zone/{zone_name}/token"))
+            .body(CreateEnrollmentToken::new(attributes.clone(), relay)?);
+        let token: String = self
+            .get_secure_client()
+            .ask(ctx, "tokens", req)
+            .await
+            .into_diagnostic()?
+            .miette_success("create enrollment token")?;
+        Ok(token)
     }
 
     async fn get_cluster(&self, ctx: &Context) -> miette::Result<Cluster> {
@@ -166,25 +191,5 @@ impl AiPlatformApi for ControllerClient {
             .into_diagnostic()?
             .miette_success("provision ecr")?;
         Ok(ecr_creds)
-    }
-
-    async fn create_enrollment_token(
-        &self,
-        ctx: &Context,
-        cluster: &str,
-        zone_name: &str,
-        attributes: BTreeMap<String, String>,
-        relay: Option<String>,
-    ) -> miette::Result<String> {
-        trace!(%cluster, %zone_name, ?attributes, ?relay, "creating enrollment token");
-        let req = Request::post(format!("/v0/zone/{zone_name}/token"))
-            .body(CreateEnrollmentToken::new(attributes.clone(), relay)?);
-        let token: String = self
-            .get_secure_client()
-            .ask(ctx, "tokens", req)
-            .await
-            .into_diagnostic()?
-            .miette_success("create enrollment token")?;
-        Ok(token)
     }
 }

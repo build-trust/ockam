@@ -1,9 +1,11 @@
+mod common_args;
 pub(crate) mod create;
 mod delete;
 pub(crate) mod enroll;
 pub(crate) mod init;
 pub(crate) mod inlet;
 mod outlet;
+mod secret;
 pub(crate) mod ticket;
 pub mod utils;
 pub mod zone_config;
@@ -19,6 +21,7 @@ use crate::cluster::delete::DeleteCommand;
 use crate::cluster::init::InitCommand;
 use crate::cluster::inlet::InletCommand;
 use crate::cluster::outlet::OutletCommand;
+use crate::cluster::secret::SecretCommand;
 use crate::{docs, Command, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
@@ -46,6 +49,7 @@ impl ClusterCommand {
         match self.subcommand {
             ClusterSubcommand::Init(c) => c.run(ctx, opts).await,
             ClusterSubcommand::Enroll(c) => c.run(ctx, opts).await,
+            ClusterSubcommand::Secret(c) => c.run(ctx, opts).await,
             ClusterSubcommand::Ticket(c) => c.run(ctx, opts).await.map(|_| ()),
             ClusterSubcommand::Create(c) => c.run(ctx, opts).await.map(|_| ()),
             ClusterSubcommand::Delete(c) => c.run(ctx, opts).await,
@@ -60,6 +64,7 @@ impl ClusterCommand {
 pub enum ClusterSubcommand {
     Init(InitCommand),
     Enroll(EnrollCommand),
+    Secret(SecretCommand),
     Ticket(TicketCommand),
     Create(CreateCommand),
     Delete(DeleteCommand),
@@ -72,6 +77,7 @@ impl ClusterSubcommand {
         match self {
             ClusterSubcommand::Init(c) => c.name(),
             ClusterSubcommand::Enroll(c) => c.name(),
+            ClusterSubcommand::Secret(c) => c.name(),
             ClusterSubcommand::Ticket(c) => c.name(),
             ClusterSubcommand::Create(c) => c.name(),
             ClusterSubcommand::Delete(c) => c.name(),

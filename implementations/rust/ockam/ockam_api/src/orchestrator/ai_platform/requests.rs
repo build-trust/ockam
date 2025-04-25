@@ -108,10 +108,10 @@ impl Decodable for CreateSecret {
 }
 
 impl CreateSecret {
-    pub fn new(name: &str, fields: HashMap<String, String>) -> miette::Result<Self> {
+    pub fn new(name: &str, fields: &HashMap<String, String>) -> miette::Result<Self> {
         Ok(Self {
             name: name.to_string(),
-            fields: serde_json::to_vec(&fields).into_diagnostic()?,
+            fields: serde_json::to_vec(fields).into_diagnostic()?,
         })
     }
 }

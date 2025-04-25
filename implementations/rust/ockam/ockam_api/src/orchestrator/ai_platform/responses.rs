@@ -79,7 +79,8 @@ impl Decodable for ZoneList {
 #[derive(Encode, Decode, CborLen, Serialize, Deserialize, Debug, Default, Clone, Message)]
 pub struct Secret {
     #[n(0)]
-    pub(crate) name: String,
+    #[serde(alias = "secret")]
+    pub name: String,
 }
 
 impl Encodable for Secret {
@@ -96,7 +97,10 @@ impl Decodable for Secret {
 
 #[derive(Encode, Decode, CborLen, Serialize, Deserialize, Debug, Default, Clone, Message)]
 #[cbor(transparent)]
-pub struct SecretList(#[n(0)] pub(crate) Vec<Secret>);
+pub struct SecretList {
+    #[n(0)]
+    pub(crate) secrets: Vec<String>,
+}
 
 impl Encodable for SecretList {
     fn encode(self) -> ockam_core::Result<Encoded> {

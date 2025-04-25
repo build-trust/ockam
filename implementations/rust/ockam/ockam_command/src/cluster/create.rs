@@ -221,7 +221,10 @@ impl CreateCommand {
     ) -> Result<String> {
         // Given an image name, try to build the `Dockerfile` image at "./images/{image_name}/Dockerfile"
         let dockerfile_dir = format!("./images/{}", image_name);
-        if !std::path::Path::new(&dockerfile_dir).exists() {
+        if !std::path::Path::new(&dockerfile_dir)
+            .try_exists()
+            .into_diagnostic()?
+        {
             return Ok(String::new());
         }
 

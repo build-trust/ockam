@@ -37,7 +37,7 @@ pub trait AiPlatformApi {
         cluster: &str,
         zone_name: &str,
         secret_name: &str,
-        secret_fields: HashMap<String, String>,
+        secret_fields: &HashMap<String, String>,
     ) -> miette::Result<()>;
 
     async fn list_secrets(
