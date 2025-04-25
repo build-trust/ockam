@@ -57,7 +57,8 @@ pub fn run() -> miette::Result<()> {
 
     let no_args_passed = input.len() <= 1;
     let command_parsing_res = if no_args_passed {
-        Ok(OckamCommand::default())
+        let cmd = OckamCommand::default();
+        Ok(cmd)
     } else {
         OckamCommand::try_parse_from(&input)
     };

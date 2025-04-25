@@ -111,6 +111,7 @@ impl BaseCommand {
         opts: &CommandGlobalOpts,
         zone_config: &ZoneConfig,
     ) -> miette::Result<JoinHandle<Result<()>>> {
+        let zone_name = zone_config.name.clone();
         let pod_name = zone_config
             .pods
             .first()
@@ -128,12 +129,12 @@ impl BaseCommand {
         }
 
         // Disable terminal output for the following commands
-        let no_output_opts = opts.clone();
-        no_output_opts.terminal.disable();
+        let mut no_output_opts = opts.clone();
+        no_output_opts.terminal = opts.terminal.disable();
 
         use crate::cluster::ticket::TicketCommand;
         let ticket_command = TicketCommand {
-            zone_name: zone_config.name.clone(),
+            zone_name: zone_name.clone(),
             api_endpoint: Some(AI_API_BASE_URL.to_string()),
             ..Default::default()
         };
@@ -141,7 +142,7 @@ impl BaseCommand {
 
         use crate::cluster::inlet::InletCommand;
         let inlet_command = InletCommand {
-            zone_name: zone_config.name.clone(),
+            zone_name: zone_name.clone(),
             pod: pod_name.clone(),
             enrollment_ticket: ticket,
             from: self.inlet_address.clone(),
@@ -165,7 +166,7 @@ impl BaseCommand {
     async fn open_repl(
         &self,
         _ctx: &Context,
-        _opts: &CommandGlobalOpts,
+        opts: &CommandGlobalOpts,
         inlet_handle: JoinHandle<Result<()>>,
     ) -> miette::Result<()> {
         use std::io::{self, Write};
@@ -186,118 +187,185 @@ impl BaseCommand {
             }
         };
 
-        // Wait until the inlet is ready
-        const MAX_RETRIES: u32 = 120; // Try for about 60 seconds (120 * 500ms)
-        let mut retries = 0;
-        let mut stream = None;
-        while retries < MAX_RETRIES {
-            match TcpStream::connect(self.inlet_address.hostname_port().to_string()).await {
-                Ok(s) => {
-                    stream = Some(s);
-                    break;
-                }
-                Err(_) => {
-                    retries += 1;
-                    sleep(Duration::from_millis(500)).await;
+        async fn connect_to_inlet(addr: &SchemeHostnamePort) -> miette::Result<TcpStream> {
+            const MAX_RETRIES: u32 = 120; // Try for about 60 seconds (120 * 500ms)
+            let mut retries = 0;
+
+            while retries < MAX_RETRIES {
+                match TcpStream::connect(addr.hostname_port().to_string()).await {
+                    Ok(s) => return Ok(s),
+                    Err(_) => {
+                        retries += 1;
+                        sleep(Duration::from_millis(500)).await;
+                    }
                 }
             }
+            Err(miette!("Failed to connect to the TCP Inlet"))
         }
-        let stream = match stream {
-            Some(s) => s,
-            None => return Err(miette!("Failed to connect to the TCP Inlet")),
-        };
 
-        let (quit_tx, mut quit_rx) = tokio::sync::oneshot::channel();
-        let (mut reader, mut writer) = stream.into_split();
+        async fn read_initial_message(
+            reader: &mut tokio::net::tcp::OwnedReadHalf,
+        ) -> miette::Result<bool> {
+            let mut welcome_buf = Vec::new();
+            let mut tmp_buf = [0u8; 1024];
 
-        // Read initial message from server
-        let mut welcome_buf = Vec::new();
-        let mut tmp_buf = [0u8; 1024];
-        match timeout(Duration::from_secs(5), async {
-            loop {
-                match reader.read(&mut tmp_buf).await {
-                    Ok(0) => break,
-                    Ok(n) => {
-                        welcome_buf.extend_from_slice(&tmp_buf[..n]);
-                        // Check if we've received a complete message
-                        if n < 1024 {
-                            break;
+            match timeout(Duration::from_secs(5), async {
+                loop {
+                    match reader.read(&mut tmp_buf).await {
+                        Ok(0) => break,
+                        Ok(n) => {
+                            welcome_buf.extend_from_slice(&tmp_buf[..n]);
+                            // Check if we've received a complete message
+                            if n < 1024 {
+                                break;
+                            }
+                        }
+                        Err(_) => break,
+                    }
+                }
+            })
+            .await
+            {
+                Ok(_) => {
+                    if !welcome_buf.is_empty() {
+                        if let Ok(msg) = String::from_utf8(welcome_buf) {
+                            print!("{}", msg);
+                            io::stdout().flush().into_diagnostic()?;
+                            return Ok(true);
                         }
                     }
-                    Err(_) => break,
+                    Ok(false)
                 }
+                Err(_) => Ok(false), // Timeout occurred
             }
-        })
-        .await
-        {
-            Ok(_) => {
-                if !welcome_buf.is_empty() {
-                    if let Ok(msg) = String::from_utf8(welcome_buf) {
-                        print!("{}", msg);
-                        io::stdout().flush().into_diagnostic()?;
-                    }
-                }
-            }
-            Err(_) => {} // Timeout occurred, continue anyway
         }
 
+        let (quit_tx, mut quit_rx) = tokio::sync::oneshot::channel();
+        let opts = opts.clone();
+
         // Start the interactive REPL
+        let inlet_address = self.inlet_address.clone();
         let repl_handle = tokio::spawn(async move {
             let mut stdin = BufReader::new(tokio::io::stdin());
             let mut string_buffer = String::new();
             let mut byte_buffer = [0u8; 1024];
 
-            loop {
-                io::stdout()
-                    .flush()
-                    .into_diagnostic()
-                    .wrap_err("Failed to flush stdout")?;
-
-                // Send user input
-                string_buffer.clear();
-                if stdin
-                    .read_line(&mut string_buffer)
-                    .await
-                    .into_diagnostic()?
-                    == 0
-                {
-                    // EOF reached
-                    break;
-                }
-                let input = string_buffer.trim();
-
-                if input == ":quit" || input == ":q" {
-                    let _ = quit_tx.send(());
-                    break;
-                }
-
-                if input.is_empty() {
-                    continue;
-                }
-
-                if let Err(e) = writer.write_all(string_buffer.as_bytes()).await {
-                    eprintln!("Failed to write to server: {e}");
-                    break;
-                }
-
-                // Wait for a response
-                match reader.read(&mut byte_buffer).await {
-                    Ok(0) => {
-                        // Connection closed
-                        println!("\nServer connection closed.");
-                        break;
+            'repl: loop {
+                // 1: Try to connect to the inlet
+                let stream = match connect_to_inlet(&inlet_address).await {
+                    Ok(s) => s,
+                    Err(_e) => {
+                        sleep(Duration::from_secs(1)).await;
+                        continue 'repl;
                     }
-                    Ok(n) => {
-                        if let Ok(s) = std::str::from_utf8(&byte_buffer[..n]) {
-                            print!("{}", s);
-                            io::stdout().flush().into_diagnostic()?;
+                };
+
+                let (mut reader, mut writer) = stream.into_split();
+
+                // 2: Try to read initial message
+                match read_initial_message(&mut reader).await {
+                    Ok(true) => {
+                        // Successfully got initial message, continue to REPL
+                    }
+                    _ => {
+                        sleep(Duration::from_secs(1)).await;
+                        continue 'repl;
+                    }
+                }
+
+                // 3: Start the REPL loop for this connection
+                'connection: loop {
+                    io::stdout()
+                        .flush()
+                        .into_diagnostic()
+                        .wrap_err("Failed to flush stdout")?;
+
+                    // Get user input
+                    string_buffer.clear();
+                    if stdin
+                        .read_line(&mut string_buffer)
+                        .await
+                        .into_diagnostic()?
+                        == 0
+                    {
+                        // EOF reached
+                        break 'repl;
+                    }
+
+                    let input = string_buffer.trim();
+
+                    // 4: Check for quit commands
+                    if input == ":quit" || input == ":q" {
+                        let _ = quit_tx.send(());
+                        break 'repl;
+                    }
+
+                    if input.is_empty() {
+                        continue 'connection;
+                    }
+
+                    // 5: Send command to server
+                    if let Err(_e) = writer.write_all(string_buffer.as_bytes()).await {
+                        println!("Failed to write to server. Reconnecting...");
+                        break 'connection;
+                    }
+
+                    // Wait for response with timeout
+                    match timeout(Duration::from_secs(30), reader.read(&mut byte_buffer)).await {
+                        Ok(Ok(0)) => {
+                            // Connection closed
+                            println!("\nServer connection closed. Reconnecting...");
+                            break 'connection;
+                        }
+                        Ok(Ok(n)) => {
+                            if let Ok(s) = std::str::from_utf8(&byte_buffer[..n]) {
+                                print!("{}", s);
+                                io::stdout().flush().into_diagnostic()?;
+                            }
+                        }
+                        Ok(Err(e)) => {
+                            println!("\nError reading from server: {}", e);
+                            break 'connection;
+                        }
+                        Err(_) => {
+                            // Short timeout reached, notify but keep waiting
+                            let spinner = opts.terminal.spinner();
+                            if let Some(spinner) = &spinner {
+                                spinner.set_message("Waiting for server response...");
+                            }
+                            // Continue with longer timeout
+                            let res =
+                                timeout(Duration::from_secs(5 * 60), reader.read(&mut byte_buffer))
+                                    .await;
+                            if let Some(spinner) = &spinner {
+                                spinner.finish_and_clear();
+                            }
+                            match res {
+                                Ok(Ok(0)) => {
+                                    println!("\nServer connection closed. Reconnecting...");
+                                    break 'connection;
+                                }
+                                Ok(Ok(n)) => {
+                                    if let Ok(s) = std::str::from_utf8(&byte_buffer[..n]) {
+                                        print!("{}", s);
+                                        io::stdout().flush().into_diagnostic()?;
+                                    }
+                                }
+                                Ok(Err(e)) => {
+                                    println!("\nError reading from server: {}", e);
+                                    break 'connection;
+                                }
+                                Err(_) => {
+                                    println!("\nServer response timeout. Reconnecting...");
+                                    break 'connection;
+                                }
+                            }
                         }
                     }
-                    Err(e) => {
-                        eprintln!("\nError reading from server: {}", e);
-                        break;
-                    }
                 }
+
+                // If we break from the connection loop, we'll go back to connecting
+                sleep(Duration::from_secs(1)).await;
             }
 
             Ok::<(), miette::Error>(())
