@@ -55,7 +55,7 @@ pub struct OckamCommand {
     pub(crate) subcommand: OckamSubcommand,
 
     #[command(flatten)]
-    global_args: GlobalArgs,
+    pub global_args: GlobalArgs,
 }
 
 impl OckamCommand {
