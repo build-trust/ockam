@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 0.94.0 - 2025-04-24
+## 0.94.0 - 2025-04-25
 
 ### Added
 
@@ -49,12 +49,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Adjustments for public eks
 - Cluster ticket command going through provisioner
 - Add "ockam" command
+- Add `cluster secret` subcommand
+- Add 5 min timeout to provisioner http api client
 - Updated dependencies
 
 ### Changed
 
 - Split http api's `HostPort` into request/response types
 - Descriptions for ticket and relay http api endpoints
+- Cleanup cluster output
 
 ## 0.93.0 - 2025-03-20
 

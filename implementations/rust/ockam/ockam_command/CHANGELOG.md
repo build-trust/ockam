@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 0.151.0 - 2025-04-24
+## 0.151.0 - 2025-04-25
 
 ### Added
 
@@ -43,6 +43,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Base command, add env var for zone_name, or derive from email
 - Base command, add env var for inlet address, with default value
 - Add epoch tag to docker image
+- Add `cluster secret` subcommand
 - Updated dependencies
 
 ### Changed
@@ -53,6 +54,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Rename "no args" command to "base command"
 - Reenable ctrlc in enroll command
 - Pass zone name in config, instead of as an argument
+- Cleanup cluster output
+- Make repl reconnect
 
 ### Fixed
 
