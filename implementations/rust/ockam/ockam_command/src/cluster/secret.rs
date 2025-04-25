@@ -1,0 +1,284 @@
+use std::sync::Arc;
+
+use super::utils::{get_api_client, get_cluster};
+use crate::cluster::common_args::{HttpApiArgs, ZoneArg};
+use crate::{docs, node_command::InMemoryNodeCommand, Command, CommandGlobalOpts, Result};
+use async_trait::async_trait;
+use clap::Args;
+use colorful::Colorful;
+use miette::{IntoDiagnostic, WrapErr};
+use ockam_api::colors::color_primary;
+use ockam_api::nodes::InMemoryNode;
+use ockam_api::{fmt_log, fmt_ok, fmt_warn};
+use ockam_core::compat::collections::HashMap;
+use ockam_node::Context;
+use serde::{Deserialize, Serialize};
+
+const LONG_ABOUT: &str = include_str!("./static/secret/long_about.txt");
+const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
+const AFTER_LONG_HELP: &str = include_str!("./static/secret/after_long_help.txt");
+
+/// Create secrets for a zone, and retrieves them
+#[derive(Clone, Debug, Args, Default)]
+#[command(
+long_about = docs::about(LONG_ABOUT),
+before_help = docs::before_help(PREVIEW_TAG),
+after_long_help = docs::after_help(AFTER_LONG_HELP)
+)]
+pub struct SecretCommand {
+    /// The path to the secrets file, in yaml or json format.
+    /// If not set, the `./secrets.yaml` file from the current directory will be used.
+    /// If no file is found, the command will just list the existing secrets.
+    pub secrets_path: Option<String>,
+
+    #[command(flatten)]
+    pub zone: ZoneArg,
+
+    #[command(flatten)]
+    pub http_api: HttpApiArgs,
+}
+
+#[derive(Clone)]
+struct SecretNodeCommand {
+    opts: CommandGlobalOpts,
+    command: SecretCommand,
+}
+
+#[async_trait]
+impl InMemoryNodeCommand for SecretNodeCommand {
+    async fn run(&self, node: Arc<InMemoryNode>) -> miette::Result<()> {
+        let ctx = node.ctx();
+        let use_http_api = self.command.http_api.use_http_api();
+        let api_client = get_api_client(&node, use_http_api).await?;
+        let cluster = get_cluster(ctx, &node).await?;
+        let zone_name = self.command.zone.zone_name()?;
+
+        // Push secrets
+        if let Some(secrets) = self.command.parse_secrets_file()? {
+            // Delete existing secrets
+            let spinner = self.opts.terminal.spinner();
+            if let Some(spinner) = &spinner {
+                spinner.set_message("Listing secrets...");
+            }
+            let secrets_to_remove = api_client.list_secrets(ctx, &cluster, &zone_name).await?;
+            if !secrets_to_remove.is_empty() {
+                if let Some(spinner) = &spinner {
+                    spinner.set_message("Deleting existing secrets...");
+                }
+            }
+            for secret in &secrets_to_remove {
+                api_client
+                    .delete_secret(ctx, &cluster, &zone_name, &secret.name)
+                    .await?;
+            }
+
+            // Push secrets from file
+            for secret in &secrets.0 {
+                if let Some(spinner) = &spinner {
+                    spinner.set_message(format!(
+                        "Creating secret {} to zone {} in cluster {}...",
+                        color_primary(&secret.name),
+                        color_primary(&zone_name),
+                        color_primary(&cluster)
+                    ));
+                }
+                api_client
+                    .create_secret(ctx, &cluster, &zone_name, &secret.name, &secret.fields)
+                    .await?;
+            }
+
+            if let Some(spinner) = &spinner {
+                spinner.finish_and_clear();
+            }
+            self.opts
+                .terminal
+                .write_line(fmt_ok!("Secrets created successfully!"))?;
+        }
+
+        // List secrets
+        let spinner = self.opts.terminal.spinner();
+        if let Some(spinner) = &spinner {
+            spinner.set_message("Listing secrets...");
+        }
+        let secrets = api_client.list_secrets(ctx, &cluster, &zone_name).await?;
+        if let Some(spinner) = &spinner {
+            spinner.finish_and_clear();
+        }
+        if secrets.is_empty() {
+            self.opts.terminal.write_line(fmt_warn!(
+                "No secrets found for zone {} in cluster {}",
+                color_primary(&zone_name),
+                color_primary(&cluster)
+            ))?;
+        } else {
+            self.opts.terminal.write_line(fmt_log!(
+                "Secrets for zone {} in cluster {}: {}",
+                color_primary(&zone_name),
+                color_primary(&cluster),
+                secrets
+                    .iter()
+                    .map(|s| format!("{}", color_primary(&s.name)))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ))?;
+        }
+
+        Ok(())
+    }
+}
+
+#[async_trait]
+impl Command for SecretCommand {
+    const NAME: &'static str = "cluster secret";
+
+    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> Result<()> {
+        let command = SecretNodeCommand {
+            opts: opts.clone(),
+            command: self.clone(),
+        };
+        command.execute(ctx, opts.state.clone()).await?;
+        Ok(())
+    }
+}
+
+impl SecretCommand {
+    fn parse_secrets_file(&self) -> Result<Option<Secrets>> {
+        let path = match &self.secrets_path {
+            Some(path) => path,
+            None => {
+                if std::path::Path::new("./secrets.yaml")
+                    .try_exists()
+                    .into_diagnostic()?
+                {
+                    "./secrets.yaml"
+                } else if std::path::Path::new("./secrets.yml")
+                    .try_exists()
+                    .into_diagnostic()?
+                {
+                    "./secrets.yml"
+                } else {
+                    return Ok(None);
+                }
+            }
+        };
+        Ok(Some(Secrets::from_file(path)?))
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct Secrets(Vec<Secret>);
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct Secret {
+    name: String,
+    fields: HashMap<String, String>,
+}
+
+impl Secrets {
+    fn from_file(path: impl AsRef<std::path::Path>) -> Result<Self> {
+        let content = std::fs::read_to_string(&path)
+            .into_diagnostic()
+            .wrap_err(format!(
+                "Failed to read secrets file at {}",
+                path.as_ref().display()
+            ))?;
+        let self_ = if content.starts_with("{") {
+            serde_json::from_str::<Self>(&content)
+                .map_err(|e| miette::miette!(format!("Failed to parse JSON secrets file: {}", e)))
+        } else {
+            serde_yaml::from_str::<Self>(&content)
+                .map_err(|e| miette::miette!(format!("Failed to parse YAML secrets file: {}", e)))
+        }?;
+        Ok(self_)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Write;
+    use tempfile::NamedTempFile;
+
+    fn create_temp_file_with_content(content: &str) -> Result<NamedTempFile> {
+        let mut file = NamedTempFile::new().into_diagnostic()?;
+        file.write_all(content.as_bytes()).into_diagnostic()?;
+        file.flush().into_diagnostic()?;
+        Ok(file)
+    }
+
+    #[test]
+    fn test_parse_yaml_direct_array() -> Result<()> {
+        let yaml_content = r#"
+- name: pg
+  fields:
+    username: u
+    password: p
+"#;
+        let file = create_temp_file_with_content(yaml_content)?;
+        let secrets = Secrets::from_file(file.path())?;
+
+        assert_eq!(secrets.0.len(), 1);
+        assert_eq!(secrets.0[0].name, "pg");
+        assert_eq!(secrets.0[0].fields.get("username"), Some(&"u".to_string()));
+        assert_eq!(secrets.0[0].fields.get("password"), Some(&"p".to_string()));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_yaml_multiple_secrets() -> Result<()> {
+        let yaml_content = r#"
+- name: pg
+  fields:
+    username: u
+    password: p
+- name: redis
+  fields:
+    host: localhost
+    port: "6379"
+"#;
+        let file = create_temp_file_with_content(yaml_content)?;
+        let secrets = Secrets::from_file(file.path())?;
+
+        assert_eq!(secrets.0.len(), 2);
+
+        assert_eq!(secrets.0[0].name, "pg");
+        assert_eq!(secrets.0[0].fields.get("username"), Some(&"u".to_string()));
+
+        assert_eq!(secrets.0[1].name, "redis");
+        assert_eq!(secrets.0[1].fields.get("port"), Some(&"6379".to_string()));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_json_format() -> Result<()> {
+        let json_content = r#"[
+  {
+    "name": "pg",
+    "fields": {
+      "username": "u",
+      "password": "p"
+    }
+  }
+]"#;
+        let file = create_temp_file_with_content(json_content)?;
+        let secrets = Secrets::from_file(file.path())?;
+
+        assert_eq!(secrets.0.len(), 1);
+        assert_eq!(secrets.0[0].name, "pg");
+        assert_eq!(secrets.0[0].fields.get("username"), Some(&"u".to_string()));
+        assert_eq!(secrets.0[0].fields.get("password"), Some(&"p".to_string()));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_invalid_yaml() -> Result<()> {
+        let invalid_yaml = "this is not valid yaml";
+        let file = create_temp_file_with_content(invalid_yaml)?;
+        let result = Secrets::from_file(file.path());
+        assert!(result.is_err());
+        Ok(())
+    }
+}

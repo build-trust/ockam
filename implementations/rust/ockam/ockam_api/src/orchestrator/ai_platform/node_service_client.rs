@@ -1,13 +1,17 @@
-use std::collections::BTreeMap;
-
 use crate::nodes::InMemoryNode;
 use crate::orchestrator::ai_platform::api::AiPlatformApi;
-use crate::orchestrator::ai_platform::responses::{Cluster, EcrCredentials, Secret, Token, Zone};
+use crate::orchestrator::ai_platform::responses::{
+    Cluster, EcrCredentials, Secret, SecretList, Token, Zone,
+};
+use base64_url::base64;
+use base64_url::base64::Engine;
+use miette::{miette, IntoDiagnostic, WrapErr};
 use ockam_core::async_trait;
 use ockam_core::compat::collections::HashMap;
 use ockam_core::env::get_env_with_default_ignore_error;
 use ockam_node::Context;
 use once_cell::sync::Lazy;
+use std::collections::BTreeMap;
 
 pub const AI_API_BASE_URL_ENV: &str = "AI_API_BASE_URL";
 pub static AI_API_BASE_URL: Lazy<String> = Lazy::new(|| {
@@ -27,6 +31,7 @@ impl AiPlatformApi for InMemoryNode {
         cluster: &str,
         zone_name: &str,
     ) -> miette::Result<Zone> {
+        let base_error = || miette!("Failed to create zone {zone_name} in cluster {cluster}");
         let url = format!("{}/api/{}/zone", *AI_API_BASE_URL, cluster);
 
         let body = serde_json::json!({
@@ -40,29 +45,34 @@ impl AiPlatformApi for InMemoryNode {
             .json(&body)
             .send()
             .await
-            .map_err(|e| miette::miette!("Failed to send request: {}", e))?;
+            .into_diagnostic()
+            .wrap_err("Failed to send request")
+            .wrap_err(base_error())?;
 
         if !response.status().is_success() {
             return Err(miette::miette!(
-                "Failed to create zone: HTTP {}: {}",
+                "HTTP {}: {}",
                 response.status(),
                 response.text().await.unwrap_or_default()
-            ));
+            )
+            .wrap_err(base_error()));
         }
-        let zone = response
+
+        response
             .json::<Zone>()
             .await
-            .map_err(|e| miette::miette!("Failed to parse response: {}", e))?;
-
-        Ok(zone)
+            .into_diagnostic()
+            .wrap_err("Failed to parse response")
+            .wrap_err(base_error())
     }
 
     async fn list_zones(&self, ctx: &Context, cluster: &str) -> miette::Result<Vec<Zone>> {
         let controller = self.create_controller().await?;
+        let base_error = || miette!("Failed to list zones in cluster {cluster}");
         controller
             .list_zones(ctx, cluster)
             .await
-            .map_err(|e| miette::miette!("Failed to list zones: {}", e))
+            .wrap_err(base_error())
     }
 
     async fn delete_zone(
@@ -71,6 +81,7 @@ impl AiPlatformApi for InMemoryNode {
         cluster: &str,
         zone_name: &str,
     ) -> miette::Result<()> {
+        let base_error = || miette!("Failed to delete zone {zone_name} in cluster {cluster}");
         let url = format!("{}/api/{}/zone/{}", *AI_API_BASE_URL, cluster, zone_name);
 
         let client = reqwest::Client::new();
@@ -79,14 +90,17 @@ impl AiPlatformApi for InMemoryNode {
             .header("Content-Type", "application/json")
             .send()
             .await
-            .map_err(|e| miette::miette!("Failed to send request: {}", e))?;
+            .into_diagnostic()
+            .wrap_err("Failed to send request")
+            .wrap_err(base_error())?;
 
         if !response.status().is_success() {
             return Err(miette::miette!(
-                "Failed to delete zone: HTTP {}: {}",
+                "HTTP {}: {}",
                 response.status(),
                 response.text().await.unwrap_or_default()
-            ));
+            )
+            .wrap_err(base_error()));
         }
 
         // Check if the zone was deleted successfully by attempting to list zones
@@ -98,7 +112,8 @@ impl AiPlatformApi for InMemoryNode {
                 break;
             }
             if start_time.elapsed() > max_timeout {
-                return Err(miette::miette!("Timeout while waiting for zone deletion"));
+                return Err(miette::miette!("Timeout while waiting for zone deletion")
+                    .wrap_err(base_error()));
             }
             tokio::time::sleep(std::time::Duration::from_secs(1)).await;
         }
@@ -113,6 +128,7 @@ impl AiPlatformApi for InMemoryNode {
         zone_name: &str,
         zone_config: &serde_json::Value,
     ) -> miette::Result<()> {
+        let base_error = || miette!("Failed to deploy zone {zone_name} in cluster {cluster}");
         let url = format!(
             "{}/api/{}/zone/{}/pods",
             *AI_API_BASE_URL, cluster, zone_name
@@ -125,14 +141,17 @@ impl AiPlatformApi for InMemoryNode {
             .json(zone_config)
             .send()
             .await
-            .map_err(|e| miette::miette!("Failed to send request: {}", e))?;
+            .into_diagnostic()
+            .wrap_err("Failed to send request")
+            .wrap_err(base_error())?;
 
         if !response.status().is_success() {
             return Err(miette::miette!(
-                "Failed to deploy zone: HTTP {}: {}",
+                "HTTP {}: {}",
                 response.status(),
                 response.text().await.unwrap_or_default()
-            ));
+            )
+            .wrap_err(base_error()));
         }
 
         Ok(())
@@ -144,12 +163,23 @@ impl AiPlatformApi for InMemoryNode {
         cluster: &str,
         zone_name: &str,
         secret_name: &str,
-        secret_fields: HashMap<String, String>,
+        secret_fields: &HashMap<String, String>,
     ) -> miette::Result<()> {
+        let base_error = || {
+            miette!(
+                "Failed to create secret {secret_name} for cluster {cluster} and zone {zone_name}"
+            )
+        };
         let url = format!(
             "{}/api/{}/zone/{}/secret",
             *AI_API_BASE_URL, cluster, zone_name
         );
+
+        // Convert each value of the secret_fields HashMap to a base64 string
+        let secret_fields = secret_fields
+            .into_iter()
+            .map(|(key, value)| (key, base64::engine::general_purpose::STANDARD.encode(value)))
+            .collect::<HashMap<_, _>>();
 
         let body = serde_json::json!({
             "name": secret_name,
@@ -163,14 +193,17 @@ impl AiPlatformApi for InMemoryNode {
             .json(&body)
             .send()
             .await
-            .map_err(|e| miette::miette!("Failed to send request: {}", e))?;
+            .into_diagnostic()
+            .wrap_err("Failed to send request")
+            .wrap_err(base_error())?;
 
         if !response.status().is_success() {
             return Err(miette::miette!(
-                "Failed to create secret: HTTP {}: {}",
+                "HTTP {}: {}",
                 response.status(),
                 response.text().await.unwrap_or_default()
-            ));
+            )
+            .wrap_err(base_error()));
         }
 
         Ok(())
@@ -179,74 +212,87 @@ impl AiPlatformApi for InMemoryNode {
     async fn list_secrets(
         &self,
         _ctx: &Context,
-        _cluster: &str,
-        _zone_name: &str,
+        cluster: &str,
+        zone_name: &str,
     ) -> miette::Result<Vec<Secret>> {
-        todo!()
+        let base_error =
+            || miette!("Failed to list secrets for cluster {cluster} and zone {zone_name}");
+        let url = format!(
+            "{}/api/{}/zone/{}/secret",
+            *AI_API_BASE_URL, cluster, zone_name
+        );
+
+        let client = reqwest::Client::new();
+        let response = client
+            .get(&url)
+            .header("Content-Type", "application/json")
+            .send()
+            .await
+            .into_diagnostic()
+            .wrap_err("Failed to send request")
+            .wrap_err(base_error())?;
+
+        if !response.status().is_success() {
+            return Err(miette::miette!(
+                "HTTP {}: {}",
+                response.status(),
+                response.text().await.unwrap_or_default()
+            )
+            .wrap_err(base_error()));
+        }
+
+        let secrets = response
+            .json::<SecretList>()
+            .await
+            .into_diagnostic()
+            .wrap_err("Failed to parse secrets")
+            .wrap_err(base_error())?;
+        let secrets = secrets
+            .secrets
+            .into_iter()
+            .map(|s| Secret { name: s })
+            .collect();
+
+        Ok(secrets)
     }
 
     async fn delete_secret(
         &self,
         _ctx: &Context,
-        _cluster: &str,
-        _zone_name: &str,
-        _secret_name: &str,
-    ) -> miette::Result<()> {
-        todo!()
-    }
-
-    async fn get_cluster(&self, _ctx: &Context) -> miette::Result<Cluster> {
-        let cluster = self
-            .cli_state
-            .get_default_user()
-            .await?
-            .email
-            .domain()?
-            .replace('.', "-");
-        Ok(Cluster::new(cluster))
-    }
-
-    async fn provision_ecr(
-        &self,
-        __ctx: &Context,
         cluster: &str,
-        image_name: &str,
-        is_public: Option<bool>,
-    ) -> miette::Result<EcrCredentials> {
-        let url = format!("{}/api/{}/ecr", *AI_API_BASE_URL, cluster);
-        let is_public = is_public.unwrap_or(false);
-        // TODO: remove once latest provisioner gets deployed
-        let region = if is_public { "us-east-1" } else { "us-west-2" };
-
-        let body = serde_json::json!({
-            "image_name": image_name,
-            "is_public": is_public,
-            "region": region,
-        });
+        zone_name: &str,
+        secret_name: &str,
+    ) -> miette::Result<()> {
+        let base_error = || {
+            miette!(
+                "Failed to delete secret {secret_name} for cluster {cluster} and zone {zone_name}"
+            )
+        };
+        let url = format!(
+            "{}/api/{}/zone/{}/secret/{}",
+            *AI_API_BASE_URL, cluster, zone_name, secret_name
+        );
 
         let client = reqwest::Client::new();
         let response = client
-            .post(&url)
+            .delete(&url)
             .header("Content-Type", "application/json")
-            .json(&body)
             .send()
             .await
-            .map_err(|e| miette::miette!("Failed to send request: {}", e))?;
+            .into_diagnostic()
+            .wrap_err("Failed to send request")
+            .wrap_err(base_error())?;
 
         if !response.status().is_success() {
             return Err(miette::miette!(
-                "Failed to provision ECR: HTTP {}: {}",
+                "HTTP {}: {}",
                 response.status(),
                 response.text().await.unwrap_or_default()
-            ));
+            )
+            .wrap_err(base_error()));
         }
 
-        let ecr_credentials = response
-            .json::<EcrCredentials>()
-            .await
-            .map_err(|e| miette::miette!("Failed to parse response: {}", e))?;
-
-        Ok(ecr_credentials)
+        Ok(())
     }
 
     async fn create_enrollment_token(
@@ -257,6 +303,9 @@ impl AiPlatformApi for InMemoryNode {
         attributes: BTreeMap<String, String>,
         relay: Option<String>,
     ) -> miette::Result<String> {
+        let base_error = || {
+            miette!("Failed to create enrollment token for cluster {cluster} and zone {zone_name}")
+        };
         let url = format!(
             "{}/api/{}/zone/{}/token",
             *AI_API_BASE_URL, cluster, zone_name
@@ -280,20 +329,78 @@ impl AiPlatformApi for InMemoryNode {
             .json(&body)
             .send()
             .await
-            .map_err(|e| miette::miette!("Failed to send request: {}", e))?;
+            .into_diagnostic()
+            .wrap_err("Failed to send request")
+            .wrap_err(base_error())?;
 
         if !response.status().is_success() {
             return Err(miette::miette!(
-                "Failed to create enrollment token: HTTP {}: {}",
+                "HTTP {}: {}",
                 response.status(),
                 response.text().await.unwrap_or_default()
-            ));
+            )
+            .wrap_err(base_error()));
         }
+
         let token = response
             .json::<Token>()
             .await
-            .map_err(|e| miette::miette!("Failed to parse response: {}", e))?;
+            .into_diagnostic()
+            .wrap_err("Failed to parse response")
+            .wrap_err(base_error())?;
 
         Ok(token.token)
+    }
+
+    async fn get_cluster(&self, _ctx: &Context) -> miette::Result<Cluster> {
+        unimplemented!("get_cluster is only available through the controller client")
+    }
+
+    async fn provision_ecr(
+        &self,
+        _ctx: &Context,
+        cluster: &str,
+        image_name: &str,
+        is_public: Option<bool>,
+    ) -> miette::Result<EcrCredentials> {
+        let base_error =
+            || miette!("Failed to provision ECR for image {image_name} in cluster {cluster}");
+        let url = format!("{}/api/{}/ecr", *AI_API_BASE_URL, cluster);
+        let is_public = is_public.unwrap_or(false);
+        // TODO: remove once latest provisioner gets deployed
+        let region = if is_public { "us-east-1" } else { "us-west-2" };
+
+        let body = serde_json::json!({
+            "image_name": image_name,
+            "is_public": is_public,
+            "region": region,
+        });
+
+        let client = reqwest::Client::new();
+        let response = client
+            .post(&url)
+            .header("Content-Type", "application/json")
+            .json(&body)
+            .send()
+            .await
+            .into_diagnostic()
+            .wrap_err("Failed to send request")
+            .wrap_err(base_error())?;
+
+        if !response.status().is_success() {
+            return Err(miette::miette!(
+                "HTTP {}: {}",
+                response.status(),
+                response.text().await.unwrap_or_default()
+            )
+            .wrap_err(base_error()));
+        }
+
+        response
+            .json::<EcrCredentials>()
+            .await
+            .into_diagnostic()
+            .wrap_err("Failed to parse response")
+            .wrap_err(base_error())
     }
 }
