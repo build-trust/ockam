@@ -93,23 +93,42 @@ impl Command for InitCommand {
 
 impl InitCommand {
     fn get_repository_url(&self) -> String {
-        let repository = self.repository.trim().trim_end_matches(".git");
-
-        if Url::parse(repository).is_ok() {
-            // An arbitrary URL
-            format!("{}.git", repository)
-        } else if repository.starts_with("git@") {
-            // SSH URL for an arbitrary GitHub repository
-            repository.to_string()
-        } else if repository.contains('/') {
-            // URL for an arbitrary GitHub repository
-            format!("https://github.com/{}.git", repository)
+        let repository = self.repository.trim();
+        if repository.ends_with(".git") {
+            let repository = repository.trim_end_matches(".git");
+            if Url::parse(repository).is_ok() {
+                // An arbitrary URL
+                format!("{}.git", repository)
+            } else if repository.starts_with("git@") {
+                // SSH URL for an arbitrary git repository
+                format!("{}.git", repository)
+            } else if repository.contains('/') {
+                // URL for an arbitrary GitHub repository
+                format!("https://github.com/{}.git", repository)
+            } else {
+                // URL for an ockam template
+                format!(
+                    "https://github.com/build-trust/ockam-cluster-template-{}.git",
+                    repository
+                )
+            }
         } else {
-            // URL for an ockam template
-            format!(
-                "https://github.com/build-trust/ockam-cluster-template-{}.git",
-                repository
-            )
+            if Url::parse(repository).is_ok() {
+                // An arbitrary URL
+                repository.to_string()
+            } else if repository.contains('/') {
+                // URL for an arbitrary GitHub repository
+                format!(
+                    "https://github.com/{}/archive/refs/heads/main.zip",
+                    repository
+                )
+            } else {
+                // URL for an ockam template
+                format!(
+                    "https://github.com/build-trust/ockam-cluster-template-{}/archive/refs/heads/main.zip",
+                    repository
+                )
+            }
         }
     }
 
@@ -136,20 +155,69 @@ impl InitCommand {
     }
 
     async fn clone_repository(&self, repository_url: &str, temp_dir: &TempDir) -> Result<()> {
-        let clone_status = tokio::process::Command::new("git")
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .stdin(Stdio::null())
-            .args(["clone", repository_url, "--depth", "1"])
-            .current_dir(temp_dir.path())
-            .status()
-            .await
-            .into_diagnostic()
-            .wrap_err("Failed to execute git clone command")?;
+        if repository_url.ends_with(".git") {
+            // Clone using git
+            let clone_status = tokio::process::Command::new("git")
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .stdin(Stdio::null())
+                .args(["clone", repository_url, "--depth", "1"])
+                .current_dir(temp_dir.path())
+                .status()
+                .await
+                .into_diagnostic()
+                .wrap_err("Failed to execute git clone command")?;
 
-        if !clone_status.success() {
-            return Err(miette!("Failed to clone repository. Please check if the repository exists and you have internet access."));
+            if !clone_status.success() {
+                return Err(miette!("Failed to clone repository. Please check if the repository exists and you have internet access."));
+            }
+        } else if repository_url.ends_with(".zip") {
+            // Download using curl
+            let archive_path = temp_dir.path().join("repo.zip");
+            let curl_status = tokio::process::Command::new("curl")
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .stdin(Stdio::null())
+                .args([
+                    "--silent",
+                    "--show-error",
+                    "--location", // Follow redirects
+                    "--fail",     // Fail on HTTP errors
+                    "--output",
+                    archive_path.to_str().unwrap(),
+                    repository_url,
+                ])
+                .current_dir(temp_dir.path())
+                .status()
+                .await
+                .into_diagnostic()
+                .wrap_err("Failed to execute curl command")?;
+            if !curl_status.success() {
+                return Err(miette!("Failed to download repository. Please check if the URL is valid and you have internet access."));
+            }
+
+            // Unzip
+            let extract_status = tokio::process::Command::new("unzip")
+                .args([
+                    "-q", // Quiet mode
+                    archive_path.to_str().unwrap(),
+                    "-d",
+                    temp_dir.path().to_str().unwrap(),
+                ])
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .status()
+                .await
+                .into_diagnostic()
+                .wrap_err("Failed to execute unzip command. Please ensure 'unzip' is installed.")?;
+
+            if !extract_status.success() {
+                return Err(miette!("Failed to extract repository archive."));
+            }
+        } else {
+            return Err(miette!("Unsupported repository URL format"));
         }
+
         Ok(())
     }
 
