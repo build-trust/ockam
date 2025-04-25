@@ -31,6 +31,7 @@ use tracing::warn;
 pub struct Terminal<T: TerminalWriter + Debug, WriteMode = ToStdErr> {
     stdout: T,
     stderr: T,
+    disabled: bool,
     logging_options: LoggingOptions,
     quiet: bool,
     no_input: bool,
@@ -130,6 +131,7 @@ impl<W: TerminalWriter + Debug> Terminal<W> {
         Self {
             stdout,
             stderr,
+            disabled: false,
             logging_options,
             quiet,
             no_input,
@@ -228,6 +230,12 @@ impl<W: TerminalWriter + Debug> Terminal<W> {
         clone.quiet = true;
         clone
     }
+
+    pub fn disable(&self) -> Self {
+        let mut clone = self.clone();
+        clone.disabled = true;
+        clone
+    }
 }
 
 // Logging mode
@@ -246,6 +254,9 @@ impl<W: TerminalWriter + Debug> Terminal<W, ToStdErr> {
     ///  - all the messages are logged to the console
     ///  - or quiet is true
     fn can_write_to_stderr(&self) -> bool {
+        if self.disabled {
+            return false;
+        }
         self.logging_options.with_user_format || (!self.logging_to_console() && !self.is_quiet())
     }
 
@@ -304,6 +315,7 @@ impl<W: TerminalWriter + Debug> Terminal<W, ToStdErr> {
         Terminal {
             stdout: self.stdout,
             stderr: self.stderr,
+            disabled: self.disabled,
             logging_options: self.logging_options,
             quiet: self.quiet,
             no_input: self.no_input,
@@ -352,6 +364,9 @@ impl<W: TerminalWriter + Debug> Terminal<W, ToStdOut> {
     /// Return true if we can write to stdout
     /// We can write to stdout unless all the messages are logged to the console
     fn can_write_to_stdout(&self) -> bool {
+        if self.disabled {
+            return false;
+        }
         self.logging_options.with_user_format || !self.logging_to_console()
     }
 
@@ -846,5 +861,216 @@ mod tests {
             .unwrap();
         assert!(output_message.as_str().contains('\u{1b}'));
         assert!(!output_message.as_str().contains('\n'));
+    }
+}
+
+#[cfg(test)]
+mod test_disabled_behavior {
+    use super::*;
+    use std::cell::RefCell;
+    use std::io::{self, Write};
+    use std::rc::Rc;
+
+    // A simple mock writer to capture output for testing
+    #[derive(Clone, Debug)]
+    struct MockWriter {
+        captured: Rc<RefCell<Vec<u8>>>,
+    }
+
+    impl MockWriter {
+        fn new() -> Self {
+            Self {
+                captured: Rc::new(RefCell::new(Vec::new())),
+            }
+        }
+
+        fn get_output(&self) -> String {
+            String::from_utf8_lossy(&self.captured.borrow()).to_string()
+        }
+
+        fn clear_output(&self) {
+            self.captured.borrow_mut().clear();
+        }
+    }
+
+    impl Write for MockWriter {
+        fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+            self.captured.borrow_mut().extend_from_slice(buf);
+            Ok(buf.len())
+        }
+
+        fn flush(&mut self) -> io::Result<()> {
+            Ok(())
+        }
+    }
+
+    impl TerminalWriter for MockWriter {
+        fn stdout(_no_color: bool, _branding: OutputBranding) -> Self {
+            Self::new()
+        }
+
+        fn stderr(_no_color: bool, _branding: OutputBranding) -> Self {
+            Self::new()
+        }
+
+        fn is_tty(&self) -> bool {
+            true
+        }
+
+        fn color(&self) -> bool {
+            false
+        }
+
+        fn write(&mut self, s: impl AsRef<str>) -> Result<()> {
+            Write::write(self, s.as_ref().as_bytes()).map(|_| ())?;
+            Ok(())
+        }
+
+        fn rewrite(&mut self, s: impl AsRef<str>) -> Result<()> {
+            let mut this = self.clone();
+            std::io::Write::write(&mut this, s.as_ref().as_bytes())?;
+            Ok(())
+        }
+
+        fn write_line(&self, s: impl AsRef<str>) -> Result<()> {
+            let mut this = self.clone();
+            std::io::Write::write(&mut this, s.as_ref().as_bytes())?;
+            std::io::Write::write(&mut this, b"\n")?;
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn test_stderr_respects_disabled_flag() {
+        // Create a terminal with logging disabled to simplify testing
+        let logging_options = LoggingOptions {
+            enabled: false,
+            logging_to_file: false,
+            with_user_format: false,
+        };
+
+        // Create a normal terminal
+        let terminal = Terminal::<MockWriter>::new(
+            logging_options.clone(),
+            false, // quiet
+            false, // no_color
+            false, // no_input
+            OutputFormat::Plain,
+            OutputBranding::default(),
+        );
+
+        // Test writing when not disabled
+        terminal.write_line("This should be visible").unwrap();
+        assert!(!terminal.stderr().get_output().is_empty());
+        terminal.stderr.clear_output();
+
+        // Test writing when disabled
+        let disabled_terminal = terminal.disable();
+        disabled_terminal
+            .write_line("This should NOT be visible")
+            .unwrap();
+
+        // Get the captured stderr output
+        let stderr_output = disabled_terminal.stderr().get_output();
+        assert!(
+            stderr_output.is_empty(),
+            "Expected empty output when terminal is disabled, got: '{}'",
+            stderr_output
+        );
+    }
+
+    #[test]
+    fn test_can_write_to_stderr_logic() {
+        // Create a terminal with various logging options
+        let create_terminal = |disabled: bool,
+                               with_user_format: bool,
+                               enabled: bool,
+                               logging_to_file: bool,
+                               quiet: bool| {
+            let mut terminal = Terminal::<MockWriter>::new(
+                LoggingOptions {
+                    enabled,
+                    logging_to_file,
+                    with_user_format,
+                },
+                quiet,
+                false, // no_color
+                false, // no_input
+                OutputFormat::Plain,
+                OutputBranding::default(),
+            );
+            terminal.disabled = disabled;
+            terminal
+        };
+
+        // Test that disabled always means cannot write
+        let terminal = create_terminal(
+            true,  // disabled
+            true,  // with_user_format
+            false, // enabled
+            false, // logging_to_file
+            false, // quiet
+        );
+        assert!(!terminal.can_write_to_stderr());
+
+        // Test normal case where we should be able to write
+        let terminal = create_terminal(
+            false, // disabled
+            true,  // with_user_format
+            false, // enabled
+            false, // logging_to_file
+            false, // quiet
+        );
+        assert!(terminal.can_write_to_stderr());
+
+        // Test quiet mode
+        let terminal = create_terminal(
+            false, // disabled
+            false, // with_user_format
+            false, // enabled
+            false, // logging_to_file
+            true,  // quiet
+        );
+        assert!(!terminal.can_write_to_stderr());
+    }
+
+    #[test]
+    fn test_can_write_to_stdout_logic() {
+        // Create a terminal with various logging options
+        let create_terminal =
+            |disabled: bool, with_user_format: bool, enabled: bool, logging_to_file: bool| {
+                let mut terminal = Terminal::<MockWriter>::new(
+                    LoggingOptions {
+                        enabled,
+                        logging_to_file,
+                        with_user_format,
+                    },
+                    false, // quiet
+                    false, // no_color
+                    false, // no_input
+                    OutputFormat::Plain,
+                    OutputBranding::default(),
+                );
+                terminal.disabled = disabled;
+                terminal.to_stdout()
+            };
+
+        // Test that disabled always means cannot write
+        let terminal = create_terminal(
+            true,  // disabled
+            true,  // with_user_format
+            false, // enabled
+            false, // logging_to_file
+        );
+        assert!(!terminal.can_write_to_stdout());
+
+        // Test normal case where we should be able to write
+        let terminal = create_terminal(
+            false, // disabled
+            true,  // with_user_format
+            false, // enabled
+            false, // logging_to_file
+        );
+        assert!(terminal.can_write_to_stdout());
     }
 }

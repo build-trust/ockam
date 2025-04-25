@@ -1,12 +1,10 @@
-use async_trait::async_trait;
-use std::sync::Arc;
-
 use crate::node::config::ConfigArgs;
 use crate::node_command::InMemoryNodeCommand;
 use crate::tcp::inlet::create::tcp_inlet_default_from_addr;
 use crate::util::foreground_args::ForegroundArgs;
 use crate::util::parsers::hostname_parser;
 use crate::{docs, Command, CommandGlobalOpts, Result};
+use async_trait::async_trait;
 use clap::Args;
 use miette::IntoDiagnostic;
 use ockam::transport::SchemeHostnamePort;
@@ -14,9 +12,9 @@ use ockam_abac::PolicyExpression;
 use ockam_api::cli_state::OCKAM_HOME;
 use ockam_api::nodes::InMemoryNode;
 use ockam_api::orchestrator::ai_platform::api::AiPlatformApi;
-use ockam_api::orchestrator::ai_platform::node_service_client::AI_API_BASE_URL_ENV;
 use ockam_api::CliState;
 use ockam_node::Context;
+use std::sync::Arc;
 
 const LONG_ABOUT: &str = include_str!("./static/inlet/long_about.txt");
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
@@ -70,17 +68,6 @@ pub struct InletCommand {
         id = "POLICY_EXPRESSION"
     )]
     pub allow: Option<PolicyExpression>,
-
-    // === Specific args for the HTTP API endpoint
-    /// Force the command to use the HTTP API.
-    /// By default, the command will use the Orchestrator API.
-    #[arg(long)]
-    pub use_http_api: bool,
-
-    /// The API endpoint of the Ockam AI Platform.
-    /// Defaults to `http://localhost:30080`.
-    #[arg(long)]
-    pub api_endpoint: Option<String>,
 }
 
 #[derive(Clone)]
@@ -91,13 +78,6 @@ struct InletNodeCommand {
 
 #[async_trait]
 impl InMemoryNodeCommand for InletNodeCommand {
-    async fn init(&self) -> miette::Result<()> {
-        if let Some(api_endpoint) = &self.command.api_endpoint {
-            std::env::set_var(AI_API_BASE_URL_ENV, api_endpoint);
-        }
-        Ok(())
-    }
-
     async fn run(&self, node: Arc<InMemoryNode>) -> miette::Result<()> {
         let cluster = match &self.command.cluster {
             None => {
