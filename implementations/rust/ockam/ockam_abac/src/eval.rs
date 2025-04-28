@@ -2,7 +2,7 @@ use core::cmp::Ordering;
 
 use crate::env::Env;
 use crate::error::EvalError;
-use crate::expr::{unit, Expr};
+use crate::expr::{not_found, unit, Expr};
 use ockam_core::compat::string::ToString;
 use ockam_core::compat::vec::Vec;
 
@@ -26,6 +26,8 @@ pub fn eval(expr: &Expr, env: &Env) -> Result<Expr, EvalError> {
         Seq(usize),
     }
 
+    let not_found = not_found();
+
     // Control stack.
     let mut ctrl: Vec<Op> = Vec::new();
     // Arguments stack.
@@ -36,7 +38,10 @@ pub fn eval(expr: &Expr, env: &Env) -> Result<Expr, EvalError> {
 
     while let Some(x) = ctrl.pop() {
         match x {
-            Op::Eval(Expr::Ident(id)) => ctrl.push(Op::Eval(env.get(id)?)),
+            Op::Eval(Expr::Ident(id)) => {
+                let expr = env.get(id).unwrap_or(&not_found);
+                args.push(expr.clone());
+            },
             Op::Eval(Expr::List(xs))  => match &xs[..] {
                 []                    => args.push(unit()),
                 [Expr::Ident(id), ..] => {
@@ -47,7 +52,7 @@ pub fn eval(expr: &Expr, env: &Env) -> Result<Expr, EvalError> {
                             // false value is encountered evaluation stops and
                             // the remaining arguments are just popped off the
                             // control stack. To implement this the `And` operator
-                            // is put behind the first ergument and will later put
+                            // is put behind the first argument and will later put
                             // itself behind each successive argument, stopping
                             // evaluation as soon as an argument evaluates to
                             // false.
@@ -175,7 +180,7 @@ pub fn eval(expr: &Expr, env: &Env) -> Result<Expr, EvalError> {
                         ctrl.push(Op::And(n - 1));
                         ctrl.push(x)
                     }
-                    Expr::Bool(false) => {
+                    Expr::Bool(false) | Expr::NotFound => {
                         for _ in 0 .. n {
                             pop(&mut ctrl);
                         }
@@ -190,7 +195,7 @@ pub fn eval(expr: &Expr, env: &Env) -> Result<Expr, EvalError> {
             Op::Or(0) => {} // the top-level element of the arg stack is the result
             Op::Or(n) => {
                 match pop(&mut args) {
-                    Expr::Bool(false) => {
+                    Expr::Bool(false) | Expr::NotFound => {
                         let x = pop(&mut ctrl);
                         ctrl.push(Op::Or(n - 1));
                         ctrl.push(x)
@@ -210,6 +215,7 @@ pub fn eval(expr: &Expr, env: &Env) -> Result<Expr, EvalError> {
             Op::Not => {
                 match pop(&mut args) {
                     Expr::Bool(b) => args.push(Expr::Bool(!b)),
+                    Expr::NotFound => args.push(Expr::NotFound),
                     other => {
                         let msg = "'not' expects boolean arguments";
                         return Err(EvalError::InvalidType(other, msg))
@@ -221,7 +227,7 @@ pub fn eval(expr: &Expr, env: &Env) -> Result<Expr, EvalError> {
                 let f = pop(&mut ctrl);
                 match pop(&mut args) {
                     Expr::Bool(true)  => ctrl.push(t),
-                    Expr::Bool(false) => ctrl.push(f),
+                    Expr::Bool(false) | Expr::NotFound => ctrl.push(f),
                     other => {
                         let msg = "'if' expects test to evaluate to bool";
                         return Err(EvalError::InvalidType(other, msg))
@@ -240,14 +246,20 @@ pub fn eval(expr: &Expr, env: &Env) -> Result<Expr, EvalError> {
                 let y = pop(&mut args);
                 match s {
                     Expr::Seq(xs) => {
-                        let mut b = false;
-                        for x in &xs {
-                            if y.equals(x)? {
-                                b = true;
-                                break
-                            }
+                        let b = if y == Expr::NotFound {
+                            Expr::NotFound
                         }
-                        args.push(Expr::Bool(b))
+                        else {
+                            let mut b = false;
+                            for x in &xs {
+                                if y.equals(x)? {
+                                    b = true;
+                                }
+                            }
+
+                            Expr::Bool(b)
+                        };
+                        args.push(b)
                     }
                     other => {
                         let msg = "'member?' expects sequence as second argument";
@@ -263,7 +275,13 @@ pub fn eval(expr: &Expr, env: &Env) -> Result<Expr, EvalError> {
     }
 
     debug_assert_eq!(1, args.len());
-    Ok(pop(&mut args))
+
+    let res = pop(&mut args);
+    if let Expr::NotFound = res {
+        return Ok(Expr::Bool(false));
+    }
+
+    Ok(res)
 }
 
 /// Pop off the topmost stack value.
@@ -280,16 +298,26 @@ fn eval_predicate<F>(n: usize, args: &mut Vec<Expr>, f: F) -> Result<(), EvalErr
 where
     F: Fn(&Expr, &Expr) -> Result<bool, EvalError>,
 {
-    let mut b = true;
+    let mut b = Expr::Bool(true);
     let start = args.len() - n;
     for (x, y) in args.iter().skip(start).zip(args.iter().skip(start + 1)) {
+        if let Expr::NotFound = x {
+            b = Expr::NotFound;
+            break;
+        }
+
+        if let Expr::NotFound = y {
+            b = Expr::NotFound;
+            break;
+        }
+
         if !f(x, y)? {
-            b = false;
+            b = Expr::Bool(false);
             break;
         }
     }
     args.truncate(start);
-    args.push(Expr::Bool(b));
+    args.push(b);
     Ok(())
 }
 
@@ -306,9 +334,9 @@ mod tests {
 
         let check_credential_expression = subject_has_credential_policy_expression();
 
-        let res = eval(&check_credential_expression, &environment);
+        let res = eval(&check_credential_expression, &environment).unwrap();
 
-        assert!(res.is_err());
+        assert_eq!(res, Expr::Bool(false));
 
         environment.put(
             subject_has_credential_attribute().to_string(),

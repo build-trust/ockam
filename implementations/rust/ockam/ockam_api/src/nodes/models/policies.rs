@@ -38,7 +38,7 @@ impl SetPolicyRequest {
     }
 }
 
-#[derive(Debug, Encode, Decode, CborLen, PartialEq, Eq, Message)]
+#[derive(Debug, Encode, Decode, CborLen, PartialEq, Message)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct PoliciesList {
@@ -88,7 +88,7 @@ impl PoliciesList {
 
 /// A view for the specific policy types returned by policies repositories. This is used
 /// to simplify the type returned by the NodeManager in the api requests.
-#[derive(Debug, Encode, Decode, CborLen, Serialize, PartialEq, Eq, Message)]
+#[derive(Debug, Encode, Decode, CborLen, Serialize, PartialEq, Message)]
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct Policy {
