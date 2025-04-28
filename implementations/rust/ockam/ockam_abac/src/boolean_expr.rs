@@ -540,7 +540,7 @@ mod tests {
             BooleanExpr::not(BooleanExpr::name_value("c", "d")),
         );
         let expr = parse(
-            "and (or (= subject.a \"true\") (= subject.identifier \"I228786ae\") (not (= subject.c \"d\")))",
+            "and (or (= subject.a \"true\") (= subject.identifier \"I228786ae\")) (not (= subject.c \"d\"))",
         )
             .unwrap()
             .unwrap();

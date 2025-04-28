@@ -17,16 +17,15 @@ pub enum Expr {
     #[n(4)] Bool  (#[n(0)] bool),
     #[n(5)] Ident (#[n(0)] String),
     #[n(6)] Seq   (#[n(0)] Vec<Expr>),
-    #[n(7)] List  (#[n(0)] Vec<Expr>)
+    #[n(7)] List  (#[n(0)] Vec<Expr>),
+    #[n(8)] NotFound,
 }
 
 impl PartialEq for Expr {
     fn eq(&self, other: &Self) -> bool {
-        self.equals(other).is_ok()
+        self.equals(other).unwrap_or(false)
     }
 }
-
-impl Eq for Expr {}
 
 impl Serialize for Expr {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -108,6 +107,7 @@ impl Expr {
                         ctrl.push((a, b))
                     }
                 }
+                // (Expr::NotFound, Expr::NotFound) returns TypeMismatch intentionally
                 (a, b) => return Err(EvalError::TypeMismatch(a.clone(), b.clone()))
             }
         }
@@ -151,6 +151,8 @@ impl Expr {
                         return Ok(result)
                     }
                 }
+                // (Expr::NotFound, _) returns TypeMismatch intentionally
+                // (_, Expr::NotFound) returns TypeMismatch intentionally
                 (a, b) => return Err(EvalError::TypeMismatch(a.clone(), b.clone()))
             }
             if Some(Ordering::Equal) != result {
@@ -183,6 +185,10 @@ impl From<f64> for Expr {
 impl Expr {
     pub const CONST_TRUE: Expr = Expr::Bool(true);
     pub const CONST_FALSE: Expr = Expr::Bool(false);
+}
+
+pub fn not_found() -> Expr {
+    Expr::NotFound
 }
 
 pub fn unit() -> Expr {
@@ -306,9 +312,10 @@ impl fmt::Display for Expr {
                         n -= 1
                     }
                 }
-                Op::ListEnd    => f.write_str(")")?,
-                Op::SeqEnd     => f.write_str("]")?,
-                Op::Whitespace => f.write_str(" ")?,
+                Op::Show(Expr::NotFound) => f.write_str("not-found")?,
+                Op::ListEnd              => f.write_str(")")?,
+                Op::SeqEnd               => f.write_str("]")?,
+                Op::Whitespace           => f.write_str(" ")?,
             }
         }
 

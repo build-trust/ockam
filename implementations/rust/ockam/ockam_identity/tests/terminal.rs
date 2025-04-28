@@ -78,29 +78,63 @@ async fn address_metadata__encryptor__should_be_terminal(ctx: &mut Context) -> R
 async fn policy__local__should_evaluate_correctly(ctx: &mut Context) -> Result<()> {
     let secure_channels = secure_channels().await?;
 
-    let policy = PolicyExpression::from_str("message.is_local")?;
+    let policy1 = PolicyExpression::from_str("message.is_local or cluster=test")?.to_expression();
+    let policy2 = PolicyExpression::from_str("cluster=test or message.is_local")?.to_expression();
 
-    let incoming = IncomingAbac::create(
+    let incoming1 = IncomingAbac::create(
         secure_channels.identities().identities_attributes(),
         None,
-        policy.to_expression(),
+        policy1.clone(),
     );
-    let outgoing = OutgoingAbac::create(
+    let incoming2 = IncomingAbac::create(
+        secure_channels.identities().identities_attributes(),
+        None,
+        policy2.clone(),
+    );
+    let outgoing1 = OutgoingAbac::create(
         ctx.get_router_context(),
         secure_channels.identities().identities_attributes(),
         None,
-        policy.to_expression(),
+        policy1,
+    )?;
+    let outgoing2 = OutgoingAbac::create(
+        ctx.get_router_context(),
+        secure_channels.identities().identities_attributes(),
+        None,
+        policy2,
     )?;
 
-    let mut ctx1 = ctx.new_detached("ctx", incoming, outgoing)?;
+    let mut ctx1 = ctx.new_detached("ctx1", incoming1, outgoing1)?;
+    let mut ctx2 = ctx.new_detached("ctx2", incoming2, outgoing2)?;
 
     ctx.send(ctx1.primary_address().clone(), "".to_string())
         .await?;
-    let msg = ctx1.receive::<String>().await?;
+    let _msg = ctx1
+        .receive_extended::<String>(
+            MessageReceiveOptions::new().with_timeout(Duration::from_secs(1)),
+        )
+        .await?;
+    ctx.send(ctx2.primary_address().clone(), "".to_string())
+        .await?;
+    let msg = ctx2
+        .receive_extended::<String>(
+            MessageReceiveOptions::new().with_timeout(Duration::from_secs(1)),
+        )
+        .await?;
 
     let return_route = msg.return_route().clone();
     ctx1.send(return_route.clone(), "".to_string()).await?;
-    let _msg = ctx.receive::<String>().await?;
+    let _msg = ctx
+        .receive_extended::<String>(
+            MessageReceiveOptions::new().with_timeout(Duration::from_secs(1)),
+        )
+        .await?;
+    ctx2.send(return_route.clone(), "".to_string()).await?;
+    let _msg = ctx
+        .receive_extended::<String>(
+            MessageReceiveOptions::new().with_timeout(Duration::from_secs(1)),
+        )
+        .await?;
 
     Ok(())
 }
