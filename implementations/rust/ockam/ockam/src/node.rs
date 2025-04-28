@@ -228,6 +228,19 @@ impl Node {
         self.context.send_and_receive(route, msg).await
     }
 
+    /// Send a message to an address or via a fully-qualified route
+    /// Specify an access control for the outgoing message.
+    pub async fn send_extended(
+        &self,
+        route: impl Into<Route>,
+        msg: impl Message,
+        outgoing_access_control: Option<Arc<dyn OutgoingAccessControl>>,
+    ) -> Result<()> {
+        self.context
+            .send_extended(route, msg, outgoing_access_control)
+            .await
+    }
+
     /// Send a message to an address or via a fully-qualified route and receive a response
     pub async fn send_and_receive_extended<M>(
         &self,
@@ -389,5 +402,86 @@ impl NodeBuilder {
             context: ctx.try_clone()?,
             secure_channels: self.builder.build(),
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::compat::tokio;
+    use ockam_core::compat::sync::RwLock;
+    use ockam_core::{AllowAll, DenyAll};
+    use std::time::Duration;
+
+    #[crate::test]
+    async fn test_send_extended(ctx: &mut Context) -> Result<()> {
+        // create a detached context allowing the sending and receiving of messages
+        let ctx = ctx.new_detached(Address::random_local(), AllowAll, AllowAll)?;
+        let mut node = node(ctx).await?;
+
+        let receiver = Receiver::new();
+        node.start_worker("receiver", receiver.clone())?;
+
+        // send a message with no access control
+        node.send_extended("receiver", "message 1".to_string(), None)
+            .await?;
+
+        // send a message with an access control allowing all
+        let outgoing_access_control = Arc::new(AllowAll);
+        node.send_extended(
+            "receiver",
+            "message 2".to_string(),
+            Some(outgoing_access_control),
+        )
+        .await?;
+
+        // send a message with an access control denying all
+        let outgoing_access_control = Arc::new(DenyAll);
+        node.send_extended(
+            "receiver",
+            "message 3".to_string(),
+            Some(outgoing_access_control),
+        )
+        .await?;
+
+        // Only messages 1 and 2 should be received
+        // The logs should print a warning saying that message 3 was denied
+        let mut attempts = 0;
+        while receiver.messages().len() < 2 && attempts < 10 {
+            tokio::time::sleep(Duration::from_millis(100)).await;
+            attempts += 1;
+        }
+        assert_eq!(receiver.messages(), vec!["message 1", "message 2"]);
+
+        node.shutdown().await
+    }
+
+    #[derive(Clone)]
+    struct Receiver {
+        messages: Arc<RwLock<Vec<String>>>,
+    }
+
+    impl Receiver {
+        fn new() -> Receiver {
+            Receiver {
+                messages: Arc::new(RwLock::new(Vec::new())),
+            }
+        }
+
+        fn messages(&self) -> Vec<String> {
+            self.messages.read().unwrap().clone()
+        }
+    }
+
+    #[ockam_core::worker]
+    impl Worker for Receiver {
+        type Context = Context;
+        type Message = String;
+
+        async fn handle_message(&mut self, _ctx: &mut Context, msg: Routed<String>) -> Result<()> {
+            let mut msgs = self.messages.write().unwrap();
+            msgs.push(msg.into_body()?);
+            Ok(())
+        }
     }
 }

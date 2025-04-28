@@ -99,6 +99,36 @@ impl Context {
             .into_body()
     }
 
+    /// Using a temporary new context, send a message
+    ///
+    /// This helper function uses [`new_detached`] and [`send`] internally.
+    /// See their documentation for more details.
+    ///
+    /// [`new_detached`]: Self::new_detached
+    /// [`send`]: Self::send
+    pub async fn send_extended<T>(
+        &self,
+        route: impl Into<Route>,
+        msg: T,
+        outgoing_access_control: Option<Arc<dyn OutgoingAccessControl>>,
+    ) -> Result<()>
+    where
+        T: Message,
+    {
+        Self::send_extended_impl(
+            self.runtime().clone(),
+            self.router()?,
+            self.transports.clone(),
+            self.flow_controls(),
+            self.mailbox_count(),
+            route.into(),
+            msg,
+            outgoing_access_control,
+            #[cfg(feature = "std")]
+            self.tracing_context(),
+        )
+        .await
+    }
     /// Using a temporary new context, send a message and then receive a message
     ///
     /// This helper function uses [`new_detached`], [`send`], and
@@ -134,6 +164,37 @@ impl Context {
     }
 
     #[allow(clippy::too_many_arguments)]
+    pub(super) async fn send_extended_impl<T>(
+        runtime: Handle,
+        router: Arc<Router>,
+        transports: Arc<RwLock<HashMap<TransportType, Arc<dyn Transport>>>>,
+        flow_controls: &FlowControls,
+        mailbox_count: Arc<AtomicUsize>,
+        route: Route,
+        msg: T,
+        outgoing_access_control: Option<Arc<dyn OutgoingAccessControl>>,
+        #[cfg(feature = "std")] tracing_context: OpenTelemetryContext,
+    ) -> Result<()>
+    where
+        T: Message,
+    {
+        let child_ctx = Self::make_send_context(
+            runtime,
+            router,
+            transports,
+            flow_controls,
+            mailbox_count,
+            route.next()?.clone(),
+            outgoing_access_control,
+            #[cfg(feature = "std")]
+            tracing_context,
+        )
+        .await?;
+        child_ctx.send(route, msg).await?;
+        Ok(())
+    }
+
+    #[allow(clippy::too_many_arguments)]
     pub(super) async fn send_and_receive_extended_impl<T, R>(
         runtime: Handle,
         router: Arc<Router>,
@@ -149,18 +210,97 @@ impl Context {
         T: Message,
         R: Message,
     {
-        let next = route.next()?.clone();
-        let address = Address::random_tagged("Context.send_and_receive.detached");
+        let mut child_ctx = Self::make_send_and_receive_context(
+            runtime,
+            router,
+            transports,
+            flow_controls,
+            mailbox_count,
+            route.next()?.clone(),
+            options.incoming_access_control.clone(),
+            options.outgoing_access_control.clone(),
+            #[cfg(feature = "std")]
+            tracing_context,
+        )
+        .await?;
+        child_ctx.send(route, msg).await?;
+        child_ctx
+            .receive_extended::<R>(
+                MessageReceiveOptions::new().with_message_wait(options.message_wait),
+            )
+            .await
+    }
 
-        let incoming_access_control =
-            if let Some(incoming_access_control) = options.incoming_access_control {
-                incoming_access_control
-            } else {
-                Arc::new(AllowAll)
-            };
+    #[allow(clippy::too_many_arguments)]
+    pub(super) async fn make_send_context(
+        runtime: Handle,
+        router: Arc<Router>,
+        transports: Arc<RwLock<HashMap<TransportType, Arc<dyn Transport>>>>,
+        flow_controls: &FlowControls,
+        mailbox_count: Arc<AtomicUsize>,
+        next: Address,
+        outgoing_access_control: Option<Arc<dyn OutgoingAccessControl>>,
+        #[cfg(feature = "std")] tracing_context: OpenTelemetryContext,
+    ) -> Result<Context> {
+        let address = Address::random_tagged("Context.send.detached");
 
         let outgoing_access_control: Arc<dyn OutgoingAccessControl> =
-            if let Some(outgoing_access_control) = options.outgoing_access_control {
+            if let Some(outgoing_access_control) = outgoing_access_control {
+                Arc::new(AllOutgoingAccessControl::new(vec![
+                    outgoing_access_control,
+                    Arc::new(AllowOnwardAddress(next.clone())),
+                ]))
+            } else {
+                Arc::new(AllowOnwardAddress(next.clone()))
+            };
+
+        let mailboxes = Mailboxes::new(
+            Mailbox::new(
+                address.clone(),
+                None,
+                Arc::new(AllowAll),
+                outgoing_access_control,
+            ),
+            vec![],
+        );
+
+        let child_ctx = Self::new_detached_with_mailboxes_impl(
+            runtime,
+            router,
+            transports,
+            flow_controls,
+            mailboxes,
+            mailbox_count,
+        )?;
+
+        #[cfg(feature = "std")]
+        child_ctx.set_tracing_context(tracing_context);
+        Ok(child_ctx)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub(super) async fn make_send_and_receive_context(
+        runtime: Handle,
+        router: Arc<Router>,
+        transports: Arc<RwLock<HashMap<TransportType, Arc<dyn Transport>>>>,
+        flow_controls: &FlowControls,
+        mailbox_count: Arc<AtomicUsize>,
+        next: Address,
+        incoming_access_control: Option<Arc<dyn IncomingAccessControl>>,
+        outgoing_access_control: Option<Arc<dyn OutgoingAccessControl>>,
+        #[cfg(feature = "std")] tracing_context: OpenTelemetryContext,
+    ) -> Result<Context> {
+        let address = Address::random_tagged("Context.send_and_receive.detached");
+
+        let incoming_access_control = if let Some(incoming_access_control) = incoming_access_control
+        {
+            incoming_access_control
+        } else {
+            Arc::new(AllowAll)
+        };
+
+        let outgoing_access_control: Arc<dyn OutgoingAccessControl> =
+            if let Some(outgoing_access_control) = outgoing_access_control {
                 Arc::new(AllOutgoingAccessControl::new(vec![
                     outgoing_access_control,
                     Arc::new(AllowOnwardAddress(next.clone())),
@@ -187,7 +327,7 @@ impl Context {
             flow_controls.add_consumer(&address, &flow_control_id);
         }
 
-        let mut child_ctx = Self::new_detached_with_mailboxes_impl(
+        let child_ctx = Self::new_detached_with_mailboxes_impl(
             runtime,
             router,
             transports,
@@ -198,13 +338,7 @@ impl Context {
 
         #[cfg(feature = "std")]
         child_ctx.set_tracing_context(tracing_context);
-
-        child_ctx.send(route, msg).await?;
-        child_ctx
-            .receive_extended::<R>(
-                MessageReceiveOptions::new().with_message_wait(options.message_wait),
-            )
-            .await
+        Ok(child_ctx)
     }
 
     /// Send a message to another address associated with this worker
