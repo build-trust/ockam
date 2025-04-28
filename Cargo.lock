@@ -4579,6 +4579,7 @@ dependencies = [
  "rand_xorshift",
  "serde",
  "serde_json",
+ "tokio",
  "tracing",
  "trybuild",
 ]
