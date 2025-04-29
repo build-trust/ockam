@@ -248,59 +248,129 @@ impl CreateCommand {
                 color_primary(&repository_uri_tag)
             ));
         }
-        let output = tokio::process::Command::new("docker")
-            .arg("build")
-            .arg("--platform")
-            .arg("linux/amd64")
-            .arg("-t")
-            .arg(&repository_uri_tag)
-            .arg(".")
-            .current_dir(dockerfile_dir)
-            .env("DOCKER_BUILDKIT", "0")
-            .output()
-            .await
-            .into_diagnostic()?;
-        if let Some(spinner) = spinner.as_ref() {
-            spinner.finish_and_clear();
-        }
-        opts.terminal.write_line(fmt_ok!(
-            "Built local image {} with tag {}",
-            color_primary(image_name),
-            color_primary(&repository_uri_tag)
-        ))?;
-        if !output.status.success() {
-            return Err(miette::Error::msg(format!(
-                "Failed to build image {}: {}",
+
+        let build_attempts = [
+            // With buildkit enabled
+            (
+                vec![
+                    "build",
+                    "--no-cache",
+                    "--load",
+                    "--platform",
+                    "linux/amd64",
+                    "-t",
+                    &repository_uri_tag,
+                    ".",
+                ],
+                vec![("DOCKER_BUILDKIT", "1")],
+            ),
+            // With buildkit disabled
+            (
+                vec![
+                    "build",
+                    "--no-cache",
+                    "--platform",
+                    "linux/amd64",
+                    "-t",
+                    &repository_uri_tag,
+                    ".",
+                ],
+                vec![("DOCKER_BUILDKIT", "0")],
+            ),
+        ];
+
+        let mut last_error = None;
+
+        // Try each command until one succeeds
+        for (cmd_args, env_vars) in &build_attempts {
+            let mut command = tokio::process::Command::new("docker");
+            for arg in cmd_args {
+                command.arg(arg);
+            }
+            for (env_name, env_value) in env_vars {
+                command.env(env_name, env_value);
+            }
+
+            info!(
+                "Attempting docker build for {} with command: docker {} and env: {:?}",
                 image_name,
-                String::from_utf8_lossy(&output.stderr)
-            )));
+                cmd_args.join(" "),
+                env_vars
+            );
+
+            let output = command
+                .current_dir(&dockerfile_dir)
+                .output()
+                .await
+                .into_diagnostic()?;
+
+            if output.status.success() {
+                // Command succeeded
+                if let Some(spinner) = spinner.as_ref() {
+                    spinner.finish_and_clear();
+                }
+                opts.terminal.write_line(fmt_ok!(
+                    "Built local image {} with tag {}",
+                    color_primary(image_name),
+                    color_primary(&repository_uri_tag)
+                ))?;
+
+                // Push image
+                let push_spinner = opts.terminal.spinner();
+                if let Some(spinner) = push_spinner.as_ref() {
+                    spinner.set_message(format!("Pushing image {}...", color_primary(image_name)));
+                }
+                let push_output = tokio::process::Command::new("docker")
+                    .arg("push")
+                    .arg(&repository_uri_tag)
+                    .output()
+                    .await
+                    .into_diagnostic()?;
+
+                if !push_output.status.success() {
+                    return Err(miette::Error::msg(format!(
+                        "Failed to push image {}: {}",
+                        image_name,
+                        String::from_utf8_lossy(&push_output.stderr)
+                    )));
+                }
+
+                if let Some(spinner) = push_spinner {
+                    spinner.finish_and_clear();
+                }
+
+                opts.terminal
+                    .write_line(fmt_ok!("Pushed image {}\n", color_primary(image_name)))?;
+
+                return Ok(repository_uri_tag);
+            } else {
+                // Store the error for reporting if all commands fail
+                last_error = Some(format!(
+                    "Docker build failed with command 'docker {}' and env vars {:?}: {}",
+                    cmd_args.join(" "),
+                    env_vars,
+                    String::from_utf8_lossy(&output.stderr)
+                ));
+
+                // Log the failed attempt and continue to the next command
+                info!(
+                    "Docker build attempt failed for {}: {}",
+                    image_name,
+                    last_error.as_ref().unwrap()
+                );
+            }
         }
 
-        // Push image
-        let spinner = opts.terminal.spinner();
-        if let Some(spinner) = spinner.as_ref() {
-            spinner.set_message(format!("Pushing image {}...", color_primary(image_name)));
-        }
-        let output = tokio::process::Command::new("docker")
-            .arg("push")
-            .arg(&repository_uri_tag)
-            .output()
-            .await
-            .into_diagnostic()?;
-        if !output.status.success() {
-            return Err(miette::Error::msg(format!(
-                "Failed to push image {}: {}",
-                image_name,
-                String::from_utf8_lossy(&output.stderr)
-            )));
-        }
+        // If we get here, all commands failed
         if let Some(spinner) = spinner {
             spinner.finish_and_clear();
         }
-        opts.terminal
-            .write_line(fmt_ok!("Pushed image {}\n", color_primary(image_name)))?;
 
-        Ok(repository_uri_tag)
+        Err(miette::Error::msg(format!(
+            "Failed to build image {}: {}",
+            image_name,
+            last_error.unwrap_or_else(|| "Unknown error".to_string())
+        )))
     }
 
     async fn deploy_zone(
