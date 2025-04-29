@@ -18,20 +18,11 @@ allow = [
   "Unicode-3.0"
 ]
 exceptions = [
-  { allow = ["LicenseRef-Ring-ISC-OpenSSL"], name = "ring", version = "*" },
-  { allow = ["Unicode-DFS-2016"], name = "unicode-ident", version = "*" },
   { allow = ["Apache-2.0 WITH LLVM-exception"], name = "wast", version = "*" },
   { allow = ["Apache-2.0 WITH LLVM-exception"], name = "wasm-encoder", version = "*" },
   { allow = ["OpenSSL"], name = "aws-lc-sys", version = "*" },
   # used by ockam_app_lib only as a build dependency
   { allow = ["MPL-2.0"], name = "cbindgen", version = "*" },
-]
-
-[[licenses.clarify]]
-name = "ring"
-expression = "LicenseRef-Ring-ISC-OpenSSL"
-license-files = [
-  { path = "LICENSE", hash = 0xbd0eed23 },
 ]
 
 [[licenses.clarify]]
@@ -64,6 +55,11 @@ ignore = [
   # `paste` is unmainted
   # it's  pulled in by `aws-lc`, `kafka-protocol`, `binary-layout`, `stm32h7xx-hal` and `atsamd-hal`
   "RUSTSEC-2024-0436",
+  #
+  # `atomic-polyfill` is unmaintained
+  # it's  pulled in by `heapless`, via `aead v0.5.2`, `aes-gcm v0.10.3`, and `ockam_vault`.
+  # This will be solved when `aead v0.6.0` is released.
+  "RUSTSEC-2023-0089",
 ]
 # Users who require or prefer Git to use SSH cloning instead of HTTPS,
 # such as implemented via "insteadOf" rules in Git config, can still
