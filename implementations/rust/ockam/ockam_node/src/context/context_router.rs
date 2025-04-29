@@ -291,6 +291,52 @@ impl ContextRouter {
         )
         .await
     }
+
+    /// Using a temporary new context, send a message.
+    ///
+    /// This helper function uses [`new_detached`], and [`send`]
+    /// [`receive`] internally. See their documentation for more
+    /// details.
+    ///
+    /// [`new_detached`]: Self::new_detached
+    /// [`send`]: Self::send
+    pub async fn send<T>(&self, route: impl Into<Route>, msg: T) -> Result<()>
+    where
+        T: Message,
+    {
+        self.send_extended::<T>(route, msg, None).await
+    }
+
+    /// Using a temporary new context, send a message.
+    ///
+    /// This helper function uses [`new_detached`], and [`send`]
+    /// internally. See their documentation for more details.
+    ///
+    /// [`new_detached`]: Self::new_detached
+    /// [`send`]: Self::send
+    pub async fn send_extended<T>(
+        &self,
+        route: impl Into<Route>,
+        msg: T,
+        outgoing_access_control: Option<Arc<dyn OutgoingAccessControl>>,
+    ) -> Result<()>
+    where
+        T: Message,
+    {
+        Context::send_extended_impl(
+            self.runtime().clone(),
+            self.router()?,
+            self.transports.clone(),
+            &self.flow_controls,
+            self.mailbox_count(),
+            route.into(),
+            msg,
+            outgoing_access_control,
+            #[cfg(feature = "std")]
+            self.tracing_context.clone(),
+        )
+        .await
+    }
 }
 
 impl ContextRouter {

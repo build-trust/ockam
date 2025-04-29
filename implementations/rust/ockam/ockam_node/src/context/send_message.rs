@@ -13,9 +13,8 @@ use ockam_core::compat::vec::Vec;
 use ockam_core::flow_control::FlowControls;
 use ockam_core::{
     errcode::{Kind, Origin},
-    Address, AllOutgoingAccessControl, AllowAll, AllowOnwardAddress, Error, IncomingAccessControl,
-    LocalMessage, Mailboxes, Message, OutgoingAccessControl, RelayMessage, Result, Route, Routed,
-    TransportType,
+    Address, AllowAll, DenyAll, Error, IncomingAccessControl, LocalMessage, Mailboxes, Message,
+    OutgoingAccessControl, RelayMessage, Result, Route, Routed, TransportType,
 };
 use ockam_core::{LocalInfo, Mailbox};
 use ockam_transport_core::Transport;
@@ -184,7 +183,6 @@ impl Context {
             transports,
             flow_controls,
             mailbox_count,
-            route.next()?.clone(),
             outgoing_access_control,
             #[cfg(feature = "std")]
             tracing_context,
@@ -238,27 +236,17 @@ impl Context {
         transports: Arc<RwLock<HashMap<TransportType, Arc<dyn Transport>>>>,
         flow_controls: &FlowControls,
         mailbox_count: Arc<AtomicUsize>,
-        next: Address,
         outgoing_access_control: Option<Arc<dyn OutgoingAccessControl>>,
         #[cfg(feature = "std")] tracing_context: OpenTelemetryContext,
     ) -> Result<Context> {
         let address = Address::random_tagged("Context.send.detached");
-
-        let outgoing_access_control: Arc<dyn OutgoingAccessControl> =
-            if let Some(outgoing_access_control) = outgoing_access_control {
-                Arc::new(AllOutgoingAccessControl::new(vec![
-                    outgoing_access_control,
-                    Arc::new(AllowOnwardAddress(next.clone())),
-                ]))
-            } else {
-                Arc::new(AllowOnwardAddress(next.clone()))
-            };
+        let outgoing_access_control = outgoing_access_control.unwrap_or_else(|| Arc::new(AllowAll));
 
         let mailboxes = Mailboxes::new(
             Mailbox::new(
                 address.clone(),
                 None,
-                Arc::new(AllowAll),
+                Arc::new(DenyAll),
                 outgoing_access_control,
             ),
             vec![],
@@ -292,22 +280,8 @@ impl Context {
     ) -> Result<Context> {
         let address = Address::random_tagged("Context.send_and_receive.detached");
 
-        let incoming_access_control = if let Some(incoming_access_control) = incoming_access_control
-        {
-            incoming_access_control
-        } else {
-            Arc::new(AllowAll)
-        };
-
-        let outgoing_access_control: Arc<dyn OutgoingAccessControl> =
-            if let Some(outgoing_access_control) = outgoing_access_control {
-                Arc::new(AllOutgoingAccessControl::new(vec![
-                    outgoing_access_control,
-                    Arc::new(AllowOnwardAddress(next.clone())),
-                ]))
-            } else {
-                Arc::new(AllowOnwardAddress(next.clone()))
-            };
+        let incoming_access_control = incoming_access_control.unwrap_or_else(|| Arc::new(AllowAll));
+        let outgoing_access_control = outgoing_access_control.unwrap_or_else(|| Arc::new(AllowAll));
 
         let mailboxes = Mailboxes::new(
             Mailbox::new(
