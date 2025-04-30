@@ -85,7 +85,7 @@ impl Vault {
     /// Create Software Vaults and persist them to a sql database
     #[cfg(feature = "storage")]
     pub fn create_with_database(database: SqlxDatabase) -> Vault {
-        Self::create_with_secrets_repository(Arc::new(SecretsSqlxDatabase::new(database)))
+        Self::create_with_secrets_repository(SecretsSqlxDatabase::make_repository(database))
     }
 
     /// Create Software Vaults with a given secrets repository
