@@ -1,5 +1,5 @@
 use crate::context::ContextState;
-use crate::{Context, NodeError};
+use crate::{Context, MessageSendOptions, NodeError};
 use ockam_core::compat::sync::{Arc, Weak};
 use ockam_core::{Address, Result};
 use ockam_core::{Message, Route};
@@ -68,7 +68,7 @@ impl ContextSend {
             .ok_or(NodeError::SendUpgrade(self.primary_address.clone()).not_found())?;
 
         state
-            .send_from_address_impl(route.into(), msg, self.primary_address.clone(), vec![])
+            .send(route.into(), msg, MessageSendOptions::new())
             .await
     }
 }

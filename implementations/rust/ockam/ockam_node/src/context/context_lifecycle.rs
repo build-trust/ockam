@@ -48,7 +48,6 @@ impl Drop for Context {
 
 impl TryClone for Context {
     fn try_clone(&self) -> Result<Self> {
-        // TODO: @ac ignores parent Access Control. Should be documented somewhere
         self.new_detached(
             Address::random_tagged("Context.try_clone.detached"),
             DenyAll,

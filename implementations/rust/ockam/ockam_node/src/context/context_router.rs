@@ -292,50 +292,56 @@ impl ContextRouter {
         .await
     }
 
-    /// Using a temporary new context, send a message.
+    /// Create a new detached `Context` without spawning a full worker
     ///
-    /// This helper function uses [`new_detached`], and [`send`]
-    /// [`receive`] internally. See their documentation for more
-    /// details.
+    /// Note: this function is very low-level.  For most users
+    /// [`start_worker()`](Self::start_worker) is the recommended way
+    /// to create a new worker context.
     ///
-    /// [`new_detached`]: Self::new_detached
-    /// [`send`]: Self::send
-    pub async fn send<T>(&self, route: impl Into<Route>, msg: T) -> Result<()>
-    where
-        T: Message,
-    {
-        self.send_extended::<T>(route, msg, None).await
+    /// Approximate flow of starting a detached address:
+    ///
+    /// 1. Create and Spawn AsyncDrop::run
+    /// 2. StartWorker message -> Router
+    /// 3. First address is considered a primary_addr (main_addr)
+    /// 4. Check if router.map.address_records_map already has primary_addr
+    /// 5. AddressRecord is created and inserted in router.map
+    /// 6. Iterate over metadata:
+    ///     Check if it belongs to that record
+    ///     Set is_terminal true in router.map.address_metadata_map (if address is terminal)
+    ///     Insert attributes one by one
+    /// 7. For each address we insert pair (Address, primary_addr) into router.map.alias_map, including (primary_addr, primary_addr itself)
+    ///
+    /// Approximate flow of stopping a detached address:
+    ///
+    /// 1. Context::Drop is called when Context is dropped by rust runtime (according to RAII principle)
+    /// 2. async_drop_sender is used to send the Context address
+    /// 3. AsyncDrop sends StopWorker message -> Router
+    /// 4. Get AddressRecord
+    /// 5. router.map.free_address(main_address) is called (given Router state is running):
+    ///     remote main_address from router.map.stopping (it's not their anyway, unless in was a cluster and node was shutting down)
+    ///     Remove AddressRecord from router.map.address_records_map (return error if not found)
+    ///     Remove all alias in router.map.alias_map
+    ///     Remote all meta from router.map.address_metadata
+    pub fn new_detached(
+        &self,
+        address: impl Into<Address>,
+        incoming: impl IncomingAccessControl,
+        outgoing: impl OutgoingAccessControl,
+    ) -> Result<Context> {
+        let mailboxes = Mailboxes::primary(address.into(), Arc::new(incoming), Arc::new(outgoing));
+        self.new_detached_with_mailboxes(mailboxes)
     }
 
-    /// Using a temporary new context, send a message.
-    ///
-    /// This helper function uses [`new_detached`], and [`send`]
-    /// internally. See their documentation for more details.
-    ///
-    /// [`new_detached`]: Self::new_detached
-    /// [`send`]: Self::send
-    pub async fn send_extended<T>(
-        &self,
-        route: impl Into<Route>,
-        msg: T,
-        outgoing_access_control: Option<Arc<dyn OutgoingAccessControl>>,
-    ) -> Result<()>
-    where
-        T: Message,
-    {
-        Context::send_extended_impl(
+    /// Create a new [`Context`] instance with dedicated Mailbox(es)
+    pub fn new_detached_with_mailboxes(&self, mailboxes: Mailboxes) -> Result<Context> {
+        Context::new_detached_with_mailboxes_impl(
             self.runtime().clone(),
             self.router()?,
             self.transports.clone(),
             &self.flow_controls,
+            mailboxes,
             self.mailbox_count(),
-            route.into(),
-            msg,
-            outgoing_access_control,
-            #[cfg(feature = "std")]
-            self.tracing_context.clone(),
         )
-        .await
     }
 }
 

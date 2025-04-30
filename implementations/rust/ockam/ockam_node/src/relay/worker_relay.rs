@@ -57,7 +57,7 @@ where
     /// Report errors as they occur, and signal whether the loop should
     /// continue running or not
     async fn recv_message(&mut self) -> Result<bool> {
-        let relay_msg = match self.ctx.receiver_next().await? {
+        let relay_msg = match self.ctx.receiver_next(None).await? {
             Some(msg) => msg,
             None => {
                 trace!("No more messages for worker {}", self.ctx.primary_address());

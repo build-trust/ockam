@@ -1,14 +1,11 @@
 use crate::router::Router;
-use crate::{debugger, NodeError};
+use crate::{debugger, MessageSendOptions, NodeError};
 use core::sync::atomic::AtomicUsize;
 use ockam_core::compat::sync::{Arc, Weak};
-use ockam_core::compat::vec::Vec;
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::flow_control::FlowControls;
 use ockam_core::Result;
-use ockam_core::{
-    route, Address, Error, LocalInfo, LocalMessage, Mailboxes, Message, RelayMessage, Route,
-};
+use ockam_core::{route, Address, Error, LocalMessage, Mailboxes, Message, RelayMessage, Route};
 
 #[cfg(feature = "std")]
 use ockam_core::compat::sync::RwLock;
@@ -63,20 +60,51 @@ impl ContextState {
         *self.tracing_context.write().unwrap() = OpenTelemetryContext::inject(&context)
     }
 
-    pub(super) async fn send_from_address_impl<M>(
+    pub(super) async fn send<M>(
         &self,
         route: Route,
         msg: M,
-        sending_address: Address,
-        local_info: Vec<LocalInfo>,
+        options: MessageSendOptions,
     ) -> Result<()>
     where
         M: Message,
     {
-        // Check if the sender address exists
-        if !self.mailboxes.contains(&sending_address) {
-            return Err(Error::new_without_cause(Origin::Node, Kind::Invalid));
-        }
+        Self::send_impl(
+            self.mailboxes(),
+            self.primary_address(),
+            self.router()?,
+            route,
+            msg,
+            options,
+            #[cfg(feature = "std")]
+            self.tracing_context(),
+        )
+        .await
+    }
+
+    pub(super) async fn send_impl<M>(
+        mailboxes: &Mailboxes,
+        primary_address: &Address,
+        router: Arc<Router>,
+        route: Route,
+        msg: M,
+        options: MessageSendOptions,
+        #[cfg(feature = "std")] tracing_context: OpenTelemetryContext,
+    ) -> Result<()>
+    where
+        M: Message,
+    {
+        let (sending_address, local_info, override_outgoing_access_control) = options.dissolve();
+        let sending_address = if let Some(sending_address) = sending_address {
+            // Check if the sender address exists
+            if !mailboxes.contains(&sending_address) {
+                return Err(Error::new_without_cause(Origin::Node, Kind::Invalid));
+            }
+
+            sending_address
+        } else {
+            primary_address.clone()
+        };
 
         // First resolve the next hop in the route
         let addr = match route.next() {
@@ -88,7 +116,7 @@ impl ContextState {
             }
         };
 
-        let sender = self.router()?.resolve(&addr)?;
+        let sender = router.resolve(&addr)?;
 
         // Pack the payload into a TransportMessage
         let payload = msg.encode().map_err(|_| NodeError::Data.internal())?;
@@ -102,14 +130,26 @@ impl ContextState {
 
         // make sure to set the latest tracing context, to get the latest span id
         #[cfg(feature = "std")]
-        let local_msg = local_msg.with_tracing_context(self.tracing_context().update());
+        let local_msg = local_msg.with_tracing_context(tracing_context.update());
 
         // Pack local message into a RelayMessage wrapper
         let relay_msg = RelayMessage::new(sending_address, addr, local_msg);
 
-        debugger::log_outgoing_message(self.mailboxes.primary_address(), &relay_msg);
+        debugger::log_outgoing_message(mailboxes.primary_address(), &relay_msg);
 
-        if !self.mailboxes().is_outgoing_authorized(&relay_msg).await? {
+        if let Some(override_outgoing_access_control) = override_outgoing_access_control {
+            if !override_outgoing_access_control
+                .is_authorized(&relay_msg)
+                .await?
+            {
+                warn!(
+                    "Message sent from {} to {} did not pass overridden outgoing access control",
+                    relay_msg.source(),
+                    relay_msg.destination()
+                );
+                return Ok(());
+            }
+        } else if !mailboxes.is_outgoing_authorized(&relay_msg).await? {
             warn!(
                 "Message sent from {} to {} did not pass outgoing access control",
                 relay_msg.source(),

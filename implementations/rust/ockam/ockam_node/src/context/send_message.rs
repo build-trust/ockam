@@ -1,81 +1,22 @@
-use crate::context::MessageWait;
 use crate::error::*;
 use crate::router::Router;
-#[cfg(not(feature = "std"))]
-use crate::tokio;
-use crate::{debugger, Context, MessageReceiveOptions, DEFAULT_TIMEOUT};
+use crate::tokio::runtime::Handle;
+use crate::{debugger, Context, MessageSendOptions, MessageSendReceiveOptions};
 
 use core::sync::atomic::AtomicUsize;
-use core::time::Duration;
 use ockam_core::compat::collections::HashMap;
 use ockam_core::compat::sync::{Arc, RwLock};
-use ockam_core::compat::vec::Vec;
 use ockam_core::flow_control::FlowControls;
 use ockam_core::{
     errcode::{Kind, Origin},
-    Address, AllowAll, DenyAll, Error, IncomingAccessControl, LocalMessage, Mailboxes, Message,
-    OutgoingAccessControl, RelayMessage, Result, Route, Routed, TransportType,
+    Address, Error, LocalMessage, Mailboxes, Message, RelayMessage, Result, Route, Routed,
+    TransportType,
 };
-use ockam_core::{LocalInfo, Mailbox};
+use ockam_core::{AllowAll, Mailbox};
 use ockam_transport_core::Transport;
-use tokio::runtime::Handle;
 
 #[cfg(feature = "std")]
 use ockam_core::OpenTelemetryContext;
-
-/// Full set of options to `send_and_receive_extended` function
-pub struct MessageSendReceiveOptions {
-    pub(super) message_wait: MessageWait,
-    pub(super) incoming_access_control: Option<Arc<dyn IncomingAccessControl>>,
-    pub(super) outgoing_access_control: Option<Arc<dyn OutgoingAccessControl>>,
-}
-
-impl Default for MessageSendReceiveOptions {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl MessageSendReceiveOptions {
-    /// Default options with [`DEFAULT_TIMEOUT`] and no flow control
-    pub fn new() -> Self {
-        Self {
-            message_wait: MessageWait::Timeout(DEFAULT_TIMEOUT),
-            incoming_access_control: None,
-            outgoing_access_control: None,
-        }
-    }
-
-    /// Set custom timeout
-    pub fn with_timeout(mut self, timeout: Duration) -> Self {
-        self.message_wait = MessageWait::Timeout(timeout);
-        self
-    }
-
-    /// Wait for the message forever
-    pub fn without_timeout(mut self) -> Self {
-        self.message_wait = MessageWait::Blocking;
-        self
-    }
-
-    /// Set incoming access control
-    pub fn with_incoming_access_control(
-        mut self,
-        incoming_access_control: Arc<dyn IncomingAccessControl>,
-    ) -> Self {
-        self.incoming_access_control = Some(incoming_access_control);
-        self
-    }
-
-    /// Set outgoing access control
-    pub fn with_outgoing_access_control(
-        mut self,
-        outgoing_access_control: Arc<dyn OutgoingAccessControl>,
-    ) -> Self {
-        self.outgoing_access_control = Some(outgoing_access_control);
-        self
-    }
-}
 
 impl Context {
     /// Using a temporary new context, send a message and then receive a message
@@ -109,24 +50,12 @@ impl Context {
         &self,
         route: impl Into<Route>,
         msg: T,
-        outgoing_access_control: Option<Arc<dyn OutgoingAccessControl>>,
+        options: MessageSendOptions,
     ) -> Result<()>
     where
         T: Message,
     {
-        Self::send_extended_impl(
-            self.runtime().clone(),
-            self.router()?,
-            self.transports.clone(),
-            self.flow_controls(),
-            self.mailbox_count(),
-            route.into(),
-            msg,
-            outgoing_access_control,
-            #[cfg(feature = "std")]
-            self.tracing_context(),
-        )
-        .await
+        self.state.send(route.into(), msg, options).await
     }
     /// Using a temporary new context, send a message and then receive a message
     ///
@@ -163,36 +92,6 @@ impl Context {
     }
 
     #[allow(clippy::too_many_arguments)]
-    pub(super) async fn send_extended_impl<T>(
-        runtime: Handle,
-        router: Arc<Router>,
-        transports: Arc<RwLock<HashMap<TransportType, Arc<dyn Transport>>>>,
-        flow_controls: &FlowControls,
-        mailbox_count: Arc<AtomicUsize>,
-        route: Route,
-        msg: T,
-        outgoing_access_control: Option<Arc<dyn OutgoingAccessControl>>,
-        #[cfg(feature = "std")] tracing_context: OpenTelemetryContext,
-    ) -> Result<()>
-    where
-        T: Message,
-    {
-        let child_ctx = Self::make_send_context(
-            runtime,
-            router,
-            transports,
-            flow_controls,
-            mailbox_count,
-            outgoing_access_control,
-            #[cfg(feature = "std")]
-            tracing_context,
-        )
-        .await?;
-        child_ctx.send(route, msg).await?;
-        Ok(())
-    }
-
-    #[allow(clippy::too_many_arguments)]
     pub(super) async fn send_and_receive_extended_impl<T, R>(
         runtime: Handle,
         router: Arc<Router>,
@@ -215,55 +114,13 @@ impl Context {
             flow_controls,
             mailbox_count,
             route.next()?.clone(),
-            options.incoming_access_control.clone(),
-            options.outgoing_access_control.clone(),
             #[cfg(feature = "std")]
             tracing_context,
         )
         .await?;
-        child_ctx.send(route, msg).await?;
-        child_ctx
-            .receive_extended::<R>(
-                MessageReceiveOptions::new().with_message_wait(options.message_wait),
-            )
-            .await
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    pub(super) async fn make_send_context(
-        runtime: Handle,
-        router: Arc<Router>,
-        transports: Arc<RwLock<HashMap<TransportType, Arc<dyn Transport>>>>,
-        flow_controls: &FlowControls,
-        mailbox_count: Arc<AtomicUsize>,
-        outgoing_access_control: Option<Arc<dyn OutgoingAccessControl>>,
-        #[cfg(feature = "std")] tracing_context: OpenTelemetryContext,
-    ) -> Result<Context> {
-        let address = Address::random_tagged("Context.send.detached");
-        let outgoing_access_control = outgoing_access_control.unwrap_or_else(|| Arc::new(AllowAll));
-
-        let mailboxes = Mailboxes::new(
-            Mailbox::new(
-                address.clone(),
-                None,
-                Arc::new(DenyAll),
-                outgoing_access_control,
-            ),
-            vec![],
-        );
-
-        let child_ctx = Self::new_detached_with_mailboxes_impl(
-            runtime,
-            router,
-            transports,
-            flow_controls,
-            mailboxes,
-            mailbox_count,
-        )?;
-
-        #[cfg(feature = "std")]
-        child_ctx.set_tracing_context(tracing_context);
-        Ok(child_ctx)
+        let (send, receive) = options.dissolve();
+        child_ctx.send_extended(route, msg, send).await?;
+        child_ctx.receive_extended::<R>(receive).await
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -274,21 +131,16 @@ impl Context {
         flow_controls: &FlowControls,
         mailbox_count: Arc<AtomicUsize>,
         next: Address,
-        incoming_access_control: Option<Arc<dyn IncomingAccessControl>>,
-        outgoing_access_control: Option<Arc<dyn OutgoingAccessControl>>,
         #[cfg(feature = "std")] tracing_context: OpenTelemetryContext,
     ) -> Result<Context> {
         let address = Address::random_tagged("Context.send_and_receive.detached");
-
-        let incoming_access_control = incoming_access_control.unwrap_or_else(|| Arc::new(AllowAll));
-        let outgoing_access_control = outgoing_access_control.unwrap_or_else(|| Arc::new(AllowAll));
 
         let mailboxes = Mailboxes::new(
             Mailbox::new(
                 address.clone(),
                 None,
-                incoming_access_control,
-                outgoing_access_control,
+                Arc::new(AllowAll),
+                Arc::new(AllowAll),
             ),
             vec![],
         );
@@ -313,24 +165,6 @@ impl Context {
         #[cfg(feature = "std")]
         child_ctx.set_tracing_context(tracing_context);
         Ok(child_ctx)
-    }
-
-    /// Send a message to another address associated with this worker
-    ///
-    /// This function is a simple wrapper around `Self::send()` which
-    /// validates the address given to it and will reject invalid
-    /// addresses.
-    pub async fn send_to_self<A, M>(&self, from: A, addr: A, msg: M) -> Result<()>
-    where
-        A: Into<Address>,
-        M: Message + Send + 'static,
-    {
-        let addr = addr.into();
-        if self.mailboxes().contains(&addr) {
-            self.send_from_address(addr, msg, from.into()).await
-        } else {
-            Err(NodeError::NodeState(NodeReason::Unknown).internal())
-        }
     }
 
     /// Send a message to an address or via a fully-qualified route
@@ -381,57 +215,7 @@ impl Context {
         R: Into<Route>,
         M: Message,
     {
-        self.send_from_address(route.into(), msg, self.primary_address().clone())
-            .await
-    }
-
-    /// Send a message to an address or via a fully-qualified route
-    /// after attaching the given [`LocalInfo`] to the message.
-    pub async fn send_with_local_info<R, M>(
-        &self,
-        route: R,
-        msg: M,
-        local_info: Vec<LocalInfo>,
-    ) -> Result<()>
-    where
-        R: Into<Route>,
-        M: Message,
-    {
-        self.state
-            .send_from_address_impl(
-                route.into(),
-                msg,
-                self.primary_address().clone(),
-                local_info,
-            )
-            .await
-    }
-
-    /// Send a message to an address or via a fully-qualified route
-    ///
-    /// Routes can be constructed from a set of [`Address`]es, or via
-    /// the [`RouteBuilder`] type.  Routes can contain middleware
-    /// router addresses, which will re-address messages that need to
-    /// be handled by specific domain workers.
-    ///
-    /// [`Address`]: ockam_core::Address
-    /// [`RouteBuilder`]: ockam_core::RouteBuilder
-    ///
-    /// This function additionally takes the sending address
-    /// parameter, to specify which of a worker's (or processor's)
-    /// addresses should be used.
-    pub async fn send_from_address<R, M>(
-        &self,
-        route: R,
-        msg: M,
-        sending_address: Address,
-    ) -> Result<()>
-    where
-        R: Into<Route>,
-        M: Message,
-    {
-        self.state
-            .send_from_address_impl(route.into(), msg, sending_address, Vec::new())
+        self.send_extended(route.into(), msg, MessageSendOptions::new())
             .await
     }
 
@@ -509,5 +293,37 @@ impl Context {
             .map_err(NodeError::from_send_err)?;
 
         Ok(())
+    }
+
+    /// Send a message to an address or via a fully-qualified route
+    ///
+    /// Routes can be constructed from a set of [`Address`]es, or via
+    /// the [`RouteBuilder`] type.  Routes can contain middleware
+    /// router addresses, which will re-address messages that need to
+    /// be handled by specific domain workers.
+    ///
+    /// [`Address`]: ockam_core::Address
+    /// [`RouteBuilder`]: ockam_core::RouteBuilder
+    ///
+    /// This function additionally takes the sending address
+    /// parameter, to specify which of a worker's (or processor's)
+    /// addresses should be used.
+    pub async fn send_from_address<R, M>(
+        &self,
+        route: R,
+        msg: M,
+        sending_address: Address,
+    ) -> Result<()>
+    where
+        R: Into<Route>,
+        M: Message,
+    {
+        self.state
+            .send(
+                route.into(),
+                msg,
+                MessageSendOptions::new().with_sending_address(sending_address),
+            )
+            .await
     }
 }
