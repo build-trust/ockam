@@ -165,15 +165,15 @@ impl Identities {
     pub fn create_with_node(database: SqlxDatabase, node_name: &str) -> IdentitiesBuilder {
         IdentitiesBuilder {
             vault: Vault::create_with_database(database.clone()),
-            change_history_repository: Arc::new(ChangeHistorySqlxDatabase::new(database.clone())),
-            identity_attributes_repository: Arc::new(IdentityAttributesSqlxDatabase::new(
+            change_history_repository: ChangeHistorySqlxDatabase::make_repository(database.clone()),
+            identity_attributes_repository: IdentityAttributesSqlxDatabase::make_repository(
                 database.clone(),
                 node_name,
-            )),
-            purpose_keys_repository: Arc::new(PurposeKeysSqlxDatabase::new(database.clone())),
-            cached_credentials_repository: Arc::new(CredentialSqlxDatabase::new(
+            ),
+            purpose_keys_repository: PurposeKeysSqlxDatabase::make_repository(database.clone()),
+            cached_credentials_repository: CredentialSqlxDatabase::make_repository(
                 database, node_name,
-            )),
+            ),
         }
     }
 }

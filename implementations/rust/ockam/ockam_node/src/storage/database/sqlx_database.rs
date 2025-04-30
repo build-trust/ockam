@@ -293,13 +293,10 @@ impl SqlxDatabase {
         Ok(db)
     }
 
-    /// Return true if the database implementation might lock (which is the case for Sqlite on disk)
-    /// and the database user needs to retry several times.
+    /// Return true if the database implementation might lock (which is the case for Sqlite both on
+    /// disk and in memory), and the database user needs to retry several times.
     pub fn needs_retry(&self) -> bool {
-        matches!(
-            self.configuration.mode(),
-            DatabaseConfigurationMode::SqlitePersistent { .. }
-        )
+        self.configuration.database_type() == DatabaseType::Sqlite
     }
 
     async fn create_at(configuration: &DatabaseConfiguration) -> Result<Self> {
