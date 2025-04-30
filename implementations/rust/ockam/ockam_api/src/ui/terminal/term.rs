@@ -53,6 +53,11 @@ impl TerminalWriter for TerminalStream<Term> {
         self.writer.write_line(&s)?;
         Ok(())
     }
+
+    fn flush(&self) -> Result<()> {
+        self.writer.flush()?;
+        Ok(())
+    }
 }
 
 #[cfg(test)]
