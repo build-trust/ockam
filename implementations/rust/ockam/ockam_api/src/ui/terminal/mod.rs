@@ -63,6 +63,16 @@ impl<T: TerminalWriter + Debug, W> Terminal<T, W> {
         }
     }
 
+    pub fn flush(&self) -> Result<()> {
+        if self.stdout.is_tty() {
+            self.stdout.flush()?;
+        }
+        if self.stderr.is_tty() {
+            self.stderr.flush()?;
+        }
+        Ok(())
+    }
+
     pub fn stdout(&self) -> T {
         self.stdout.clone()
     }
@@ -110,6 +120,7 @@ pub trait TerminalWriter: Clone {
     fn write(&mut self, s: impl AsRef<str>) -> Result<()>;
     fn rewrite(&mut self, s: impl AsRef<str>) -> Result<()>;
     fn write_line(&self, s: impl AsRef<str>) -> Result<()>;
+    fn flush(&self) -> Result<()>;
 }
 
 // Core functions
@@ -936,6 +947,10 @@ mod test_disabled_behavior {
             let mut this = self.clone();
             std::io::Write::write(&mut this, s.as_ref().as_bytes())?;
             std::io::Write::write(&mut this, b"\n")?;
+            Ok(())
+        }
+
+        fn flush(&self) -> Result<()> {
             Ok(())
         }
     }
