@@ -15,7 +15,7 @@ use ockam_node::Context;
 use std::io::{self, Write};
 use std::str::FromStr;
 use std::time::Duration;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
 use tokio::task::JoinHandle;
 use tokio::time::timeout;
 
@@ -179,7 +179,7 @@ impl BaseCommand {
         inlet_handle: JoinHandle<Result<()>>,
     ) -> miette::Result<()> {
         use tokio::net::TcpStream;
-        use tokio::time::{sleep, timeout};
+        use tokio::time::sleep;
 
         // Inlet monitor future
         let (inlet_tx, inlet_rx) = tokio::sync::oneshot::channel::<()>();
@@ -193,10 +193,8 @@ impl BaseCommand {
             }
         });
 
-        // Buffers
-        let stdin = StdinHandler::start();
-
         // stdin quit handler
+        let stdin = StdinHandler::start();
         let mut stdin_rx = stdin.tx.subscribe();
         let stdin_quit = async {
             loop {
@@ -229,40 +227,8 @@ impl BaseCommand {
                 Err(miette!("Failed to connect to the TCP Inlet"))
             }
 
-            async fn read_initial_message(
-                reader: &mut tokio::net::tcp::OwnedReadHalf,
-                read_buffer: &mut [u8],
-            ) -> miette::Result<bool> {
-                match timeout(Duration::from_secs(5), async {
-                    loop {
-                        match reader.read(read_buffer).await {
-                            Ok(0) => break,
-                            Ok(n) => {
-                                let chunk = String::from_utf8_lossy(&read_buffer[..n]).into_owned();
-                                print!("{}", chunk);
-                                io::stdout().flush().into_diagnostic()?;
-
-                                // Exit if we received a partial buffer (n < buffer size)
-                                if n < read_buffer.len() {
-                                    break;
-                                }
-                            }
-                            Err(e) => {
-                                return Err(miette!("Error reading from server: {}", e));
-                            }
-                        }
-                    }
-                    Ok::<(), miette::Error>(())
-                })
-                .await
-                {
-                    Ok(Ok(())) => Ok(true),
-                    Ok(Err(e)) => Err(e),
-                    Err(_) => Ok(false), // Timeout occurred
-                }
-            }
-
-            let mut read_buffer = [0u8; 1024];
+            let mut read_header_buffer = String::new();
+            let mut read_body_buffer = Vec::new();
 
             'repl: loop {
                 // 1: Try to connect to the inlet
@@ -274,14 +240,22 @@ impl BaseCommand {
                     }
                 };
 
-                let (mut reader, mut writer) = stream.into_split();
+                let (reader, mut writer) = stream.into_split();
+                let mut reader = BufReader::new(reader);
 
                 // 2: Try to read initial message
-                match read_initial_message(&mut reader, &mut read_buffer).await {
-                    Ok(true) => {
+                match Self::process_server_response(
+                    &mut reader,
+                    &mut read_header_buffer,
+                    &mut read_body_buffer,
+                    &opts,
+                )
+                .await
+                {
+                    Ok(()) => {
                         // Successfully got initial message, continue to REPL
                     }
-                    _ => {
+                    Err(_) => {
                         sleep(Duration::from_secs(1)).await;
                         continue 'repl;
                     }
@@ -316,12 +290,18 @@ impl BaseCommand {
                         println!("Failed to write to server. Reconnecting...");
                         break 'connection;
                     }
+                    let _ = writer.flush().await;
 
-                    // Process response with streaming output
-                    if Self::process_server_response(&mut reader, &mut read_buffer, &opts)
-                        .await
-                        .is_err()
+                    // Wait for server response and print it
+                    if let Err(err) = Self::process_server_response(
+                        &mut reader,
+                        &mut read_header_buffer,
+                        &mut read_body_buffer,
+                        &opts,
+                    )
+                    .await
                     {
+                        println!("Failed to read from server: {}", err);
                         break 'connection;
                     }
                 }
@@ -346,11 +326,19 @@ impl BaseCommand {
     }
 
     async fn process_server_response(
-        reader: &mut tokio::net::tcp::OwnedReadHalf,
-        read_buffer: &mut [u8],
+        reader: &mut BufReader<tokio::net::tcp::OwnedReadHalf>,
+        read_header_buffer: &mut String,
+        read_body_buffer: &mut Vec<u8>,
         opts: &CommandGlobalOpts,
     ) -> miette::Result<()> {
-        match Self::print_server_response(reader, read_buffer, Duration::from_secs(30)).await? {
+        match Self::print_server_response(
+            reader,
+            read_header_buffer,
+            read_body_buffer,
+            Duration::from_secs(30),
+        )
+        .await?
+        {
             ReadStatus::ConnectionClosed => {
                 println!("\nServer connection closed. Reconnecting...");
                 Err(miette!("Server connection closed"))
@@ -368,9 +356,13 @@ impl BaseCommand {
                 }
 
                 // Continue with longer timeout
-                let res =
-                    Self::print_server_response(reader, read_buffer, Duration::from_secs(5 * 60))
-                        .await;
+                let res = Self::print_server_response(
+                    reader,
+                    read_header_buffer,
+                    read_body_buffer,
+                    Duration::from_secs(5 * 60),
+                )
+                .await;
 
                 if let Some(spinner) = &spinner {
                     spinner.finish_and_clear();
@@ -396,134 +388,38 @@ impl BaseCommand {
     }
 
     async fn print_server_response(
-        reader: &mut tokio::net::tcp::OwnedReadHalf,
-        read_buffer: &mut [u8],
+        reader: &mut BufReader<tokio::net::tcp::OwnedReadHalf>,
+        read_header_buffer: &mut String,
+        read_body_buffer: &mut Vec<u8>,
         timeout_duration: Duration,
     ) -> Result<ReadStatus> {
-        // Use timeout only for the initial read
-        Ok(
-            match timeout(timeout_duration, reader.read(read_buffer)).await {
-                Ok(Ok(0)) => ReadStatus::ConnectionClosed,
-                Ok(Ok(n)) => {
-                    // Process the first chunk
-                    let chunk = String::from_utf8_lossy(&read_buffer[0..n]).into_owned();
-                    print!("{}", chunk);
-                    io::stdout().flush().into_diagnostic()?;
-
-                    if !is_server_end_sequence(&chunk) {
-                        // Read more data
-                        loop {
-                            match reader.read(read_buffer).await {
-                                Ok(0) => return Ok(ReadStatus::ConnectionClosed),
-                                Ok(n) => {
-                                    let chunk =
-                                        String::from_utf8_lossy(&read_buffer[0..n]).into_owned();
-                                    print!("{}", chunk);
-                                    io::stdout().flush().into_diagnostic()?;
-                                    // Check for end sequence
-                                    if is_server_end_sequence(&chunk) {
-                                        break;
-                                    }
-                                }
-                                Err(e) => return Ok(ReadStatus::IoError(e)),
-                            }
-                        }
-                    }
-
-                    ReadStatus::Success
-                }
-                Ok(Err(e)) => ReadStatus::IoError(e),
-                Err(_) => ReadStatus::Timeout,
-            },
-        )
-    }
-
-    #[allow(dead_code)]
-    async fn dummy_inlet(
-        &self,
-        opts: &CommandGlobalOpts,
-    ) -> miette::Result<JoinHandle<Result<()>>> {
-        use tokio::net::TcpListener;
-
-        let spinner = opts.terminal.spinner();
-        if let Some(spinner) = &spinner {
-            spinner.set_message(format!(
-                "Starting dummy echo inlet on {}...",
-                color_primary(&self.inlet_address)
-            ));
-        }
-
-        // Start a TCP server that echoes back any input
-        let addr = self.inlet_address.hostname_port().to_string();
-        let inlet_handle = tokio::spawn(async move {
-            // Create TCP listener
-            let listener = TcpListener::bind(&addr)
-                .await
-                .into_diagnostic()
-                .wrap_err(format!("Failed to bind to {}", addr))?;
-
-            loop {
-                // Accept connections
-                let (socket, _) = listener
-                    .accept()
-                    .await
+        // Use timeout only for the header read
+        read_header_buffer.clear();
+        match timeout(timeout_duration, reader.read_line(read_header_buffer)).await {
+            Ok(Ok(0)) => Ok(ReadStatus::ConnectionClosed),
+            Ok(Ok(_n)) => {
+                // Process the header as a line containing the body length
+                let body_len: usize = read_header_buffer
+                    .trim()
+                    .parse()
                     .into_diagnostic()
-                    .wrap_err("Failed to accept connection")?;
+                    .wrap_err(format!(
+                        "Failed to parse header line as an integer: {read_header_buffer}"
+                    ))?;
 
-                // Handle each connection in a separate task
-                tokio::spawn(async move {
-                    if let Err(err) = Self::handle_connection(socket).await {
-                        eprintln!("Connection error: {:?}", err);
-                    }
-                });
+                // Process the body
+                read_body_buffer.resize(body_len, 0);
+                reader
+                    .read_exact(read_body_buffer)
+                    .await
+                    .into_diagnostic()?;
+                let body = String::from_utf8_lossy(read_body_buffer).into_owned();
+                print!("{}", body);
+                io::stdout().flush().into_diagnostic()?;
+                Ok(ReadStatus::Success)
             }
-        });
-
-        if let Some(spinner) = &spinner {
-            spinner.finish_and_clear();
-        }
-        opts.terminal.write_line(fmt_ok!(
-            "Dummy echo inlet started on {}",
-            color_primary(&self.inlet_address)
-        ))?;
-
-        Ok(inlet_handle)
-    }
-
-    // Helper function to handle individual connections
-    #[allow(dead_code)]
-    async fn handle_connection(mut socket: tokio::net::TcpStream) -> miette::Result<()> {
-        use tokio::io::{AsyncReadExt, AsyncWriteExt};
-
-        // Send welcome message
-        let welcome =
-            "Welcome to the dummy echo inlet. Type anything and it will be echoed back.\n";
-        socket
-            .write_all(welcome.as_bytes())
-            .await
-            .into_diagnostic()?;
-
-        let mut buffer = [0; 8192];
-
-        // Read from socket in a loop
-        loop {
-            // Read data from socket
-            let n = match socket.read(&mut buffer).await {
-                Ok(0) => return Ok(()), // Connection closed
-                Ok(n) => n,
-                Err(e) => return Err(miette!("Failed to read from socket: {}", e)),
-            };
-
-            // Echo data back prefixed with "Echo: "
-            let received = String::from_utf8_lossy(&buffer[..n]);
-            let response = format!("Echo: {}\n", received.trim_end());
-
-            // Write response back to client
-            socket
-                .write_all(response.as_bytes())
-                .await
-                .into_diagnostic()
-                .wrap_err("Failed to write to socket")?;
+            Ok(Err(e)) => Ok(ReadStatus::IoError(e)),
+            Err(_) => Ok(ReadStatus::Timeout),
         }
     }
 }
@@ -557,30 +453,20 @@ impl StdinHandler {
 
         // Spawn a task to read from stdin
         tokio::spawn(async move {
-            let mut stdin = tokio::io::stdin();
-            let mut read_buffer = [0u8; 1024];
-            let mut accumulated_input = Vec::new();
+            let mut stdin = BufReader::new(tokio::io::stdin());
+            let mut read_buffer = String::new();
 
             loop {
-                match stdin.read(&mut read_buffer).await {
+                match stdin.read_line(&mut read_buffer).await {
                     Ok(0) => break, // EOF (0 bytes read)
-                    Ok(n) => {
-                        // Append the new input to our accumulated buffer
-                        accumulated_input.extend_from_slice(&read_buffer[..n]);
-
-                        // Send the data if the input ends with a newline - TODO: doesn't support multiline input
-                        if accumulated_input.ends_with(b"\n") {
-                            let input = String::from_utf8_lossy(&accumulated_input).into_owned();
-                            if is_quit_sequence(&input) {
-                                let _ = tx.send(input);
-                                drop(tx);
-                                break;
-                            }
-                            let _ = tx.send(input);
-                            // Clear the accumulated input after processing
-                            accumulated_input.clear();
+                    Ok(_n) => {
+                        if is_quit_sequence(&read_buffer) {
+                            let _ = tx.send(read_buffer.clone());
+                            drop(tx);
+                            break;
                         }
-                        // If the message length is greater or equal than the buffer sie, continue accumulating
+                        let _ = tx.send(read_buffer.clone());
+                        read_buffer.clear();
                     }
                     Err(e) => {
                         eprintln!("Error reading from stdin: {}", e);
@@ -598,6 +484,101 @@ fn is_quit_sequence(input: &str) -> bool {
     input.trim() == ":quit" || input.trim() == ":q"
 }
 
-fn is_server_end_sequence(input: &str) -> bool {
-    input.ends_with("\n\n> ")
+#[allow(dead_code)]
+pub(super) mod dummy_server {
+    use super::*;
+
+    impl BaseCommand {
+        /// Start a TCP server that echoes back any input
+        pub(super) async fn dummy_inlet(
+            &self,
+            opts: &CommandGlobalOpts,
+        ) -> miette::Result<JoinHandle<Result<()>>> {
+            use tokio::net::TcpListener;
+
+            let addr = self.inlet_address.hostname_port().to_string();
+            let inlet_handle = tokio::spawn(async move {
+                let listener = TcpListener::bind(&addr)
+                    .await
+                    .into_diagnostic()
+                    .wrap_err(format!("Failed to bind to {}", addr))?;
+                loop {
+                    let (socket, _) = listener
+                        .accept()
+                        .await
+                        .into_diagnostic()
+                        .wrap_err("Failed to accept connection")?;
+                    tokio::spawn(async move {
+                        if let Err(err) = Self::handle_connection(socket).await {
+                            eprintln!("Connection error: {:?}", err);
+                        }
+                    });
+                }
+            });
+
+            opts.terminal.write_line(fmt_ok!(
+                "Dummy echo inlet started on {}",
+                color_primary(&self.inlet_address)
+            ))?;
+
+            Ok(inlet_handle)
+        }
+
+        async fn handle_connection(socket: tokio::net::TcpStream) -> miette::Result<()> {
+            let (reader, mut writer) = socket.into_split();
+            let mut reader = BufReader::new(reader);
+
+            // Initial message
+            let welcome =
+                "Welcome to the dummy echo inlet. Type anything and it will be echoed back.\n";
+            Self::send_formatted_response(&mut writer, welcome).await?;
+
+            let mut buffer = String::new();
+
+            loop {
+                buffer.clear();
+                match reader.read_line(&mut buffer).await {
+                    Ok(0) => {
+                        return Ok(());
+                    }
+                    Ok(_n) => {}
+                    Err(e) => {
+                        return Err(miette!("Failed to read from socket: {}", e));
+                    }
+                };
+
+                if buffer.trim().is_empty() {
+                    continue;
+                }
+
+                // Echo data back
+                let message = format!("Echo: {}", buffer);
+                Self::send_formatted_response(&mut writer, &message).await?;
+            }
+        }
+
+        async fn send_formatted_response(
+            writer: &mut tokio::net::tcp::OwnedWriteHalf,
+            message: &str,
+        ) -> miette::Result<()> {
+            // First line contains just the length
+            let header = format!("{}\n", message.len());
+            writer
+                .write_all(header.as_bytes())
+                .await
+                .into_diagnostic()
+                .wrap_err("Failed to write header to socket")?;
+            writer
+                .write_all(message.as_bytes())
+                .await
+                .into_diagnostic()
+                .wrap_err("Failed to write message to socket")?;
+            writer
+                .flush()
+                .await
+                .into_diagnostic()
+                .wrap_err("Failed to flush message")?;
+            Ok(())
+        }
+    }
 }
