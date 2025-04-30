@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 0.140.0 - 2025-04-24
+## 0.140.0 - 2025-04-30
 
 ### Added
 
@@ -16,11 +16,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add a tenant_id column to the postgres and sqlite schemas
 - Expose `Abac`
 - Add `OCKAM_SQL_LOG_LEVEL` env variable
+- When resetting with the postgres database delete the tenant tables data
+- Add a send_extended method to allow sending messages with an outgoing access control
+- Add send methods to the context router
 - Updated dependencies
 
 ### Fixed
 
 - Test row level security
+- Always use auto retry when using sqlite
 
 ## 0.139.0 - 2025-03-20
 
