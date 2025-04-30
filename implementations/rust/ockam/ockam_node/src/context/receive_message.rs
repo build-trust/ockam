@@ -1,64 +1,20 @@
 use core::sync::atomic::Ordering;
-use core::time::Duration;
 
-use ockam_core::{Message, RelayMessage, Result, Routed};
+use ockam_core::compat::sync::Arc;
+use ockam_core::{IncomingAccessControl, Message, RelayMessage, Result, Routed};
 
-use crate::debugger;
+use crate::context::message_options::MessageWait;
 use crate::error::*;
 use crate::tokio::time::timeout;
-use crate::{Context, DEFAULT_TIMEOUT};
-
-pub(super) enum MessageWait {
-    Timeout(Duration),
-    Blocking,
-}
-
-/// Full set of options to `send_and_receive_extended` function
-pub struct MessageReceiveOptions {
-    message_wait: MessageWait,
-}
-
-impl Default for MessageReceiveOptions {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl MessageReceiveOptions {
-    /// Default options with [`DEFAULT_TIMEOUT`]
-    pub fn new() -> Self {
-        Self {
-            message_wait: MessageWait::Timeout(DEFAULT_TIMEOUT),
-        }
-    }
-
-    pub(super) fn with_message_wait(mut self, message_wait: MessageWait) -> Self {
-        self.message_wait = message_wait;
-        self
-    }
-
-    /// Set custom timeout
-    pub fn with_timeout(mut self, timeout: Duration) -> Self {
-        self.message_wait = MessageWait::Timeout(timeout);
-        self
-    }
-
-    /// Set custom timeout in seconds
-    pub fn with_timeout_secs(mut self, timeout: u64) -> Self {
-        self.message_wait = MessageWait::Timeout(Duration::from_secs(timeout));
-        self
-    }
-
-    /// Wait for the message forever
-    pub fn without_timeout(mut self) -> Self {
-        self.message_wait = MessageWait::Blocking;
-        self
-    }
-}
+use crate::Context;
+use crate::{debugger, MessageReceiveOptions};
 
 impl Context {
     /// Wait for the next message from the mailbox
-    pub(crate) async fn receiver_next(&mut self) -> Result<Option<RelayMessage>> {
+    pub(crate) async fn receiver_next(
+        &mut self,
+        override_incoming_access_control: Option<Arc<dyn IncomingAccessControl>>,
+    ) -> Result<Option<RelayMessage>> {
         loop {
             let relay_msg = if let Some(msg) = self.receiver.recv().await.map(|msg| {
                 trace!(address=%self.primary_address(), "received new message!");
@@ -76,7 +32,21 @@ impl Context {
 
             debugger::log_incoming_message(self, &relay_msg);
 
-            if !self.mailboxes().is_incoming_authorized(&relay_msg).await? {
+            if let Some(incoming_access_control) = &override_incoming_access_control {
+                if !incoming_access_control.is_authorized(&relay_msg).await? {
+                    warn!(
+                        "Message received from {} for {} did not pass incoming access control",
+                        relay_msg.source(),
+                        relay_msg.destination()
+                    );
+                    debug!(
+                        "Message return_route: {:?} onward_route: {:?}",
+                        relay_msg.return_route(),
+                        relay_msg.onward_route()
+                    );
+                    continue;
+                }
+            } else if !self.mailboxes().is_incoming_authorized(&relay_msg).await? {
                 warn!(
                     "Message received from {} for {} did not pass incoming access control",
                     relay_msg.source(),
@@ -95,9 +65,12 @@ impl Context {
     }
 
     /// A convenience function to get a Routed message from the Mailbox
-    async fn next_from_mailbox<M: Message>(&mut self) -> Result<Routed<M>> {
+    async fn next_from_mailbox<M: Message>(
+        &mut self,
+        override_incoming_access_control: Option<Arc<dyn IncomingAccessControl>>,
+    ) -> Result<Routed<M>> {
         let msg = self
-            .receiver_next()
+            .receiver_next(override_incoming_access_control)
             .await?
             .ok_or_else(|| NodeError::Data.not_found())?;
         let destination_addr = msg.destination().clone();
@@ -126,13 +99,17 @@ impl Context {
         &mut self,
         options: MessageReceiveOptions,
     ) -> Result<Routed<M>> {
-        match options.message_wait {
-            MessageWait::Timeout(timeout_duration) => {
-                timeout(timeout_duration, async { self.next_from_mailbox().await })
+        match options.message_wait() {
+            MessageWait::Timeout(timeout_duration) => timeout(*timeout_duration, async {
+                self.next_from_mailbox(options.incoming_access_control().clone())
                     .await
-                    .map_err(|_| NodeError::Data.with_timeout(timeout_duration))?
+            })
+            .await
+            .map_err(|_| NodeError::Data.with_timeout(*timeout_duration))?,
+            MessageWait::Blocking => {
+                self.next_from_mailbox(options.incoming_access_control().clone())
+                    .await
             }
-            MessageWait::Blocking => self.next_from_mailbox().await,
         }
     }
 }

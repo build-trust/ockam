@@ -9,7 +9,9 @@ use ockam_identity::{
     CredentialRepository, IdentitiesAttributes, IdentitiesVerification,
     IdentityAttributesRepository, PurposeKeys, Vault,
 };
-use ockam_node::{Context, HasContext, MessageReceiveOptions, MessageSendReceiveOptions};
+use ockam_node::{
+    Context, HasContext, MessageReceiveOptions, MessageSendOptions, MessageSendReceiveOptions,
+};
 use ockam_vault::storage::SecretsRepository;
 use ockam_vault::SigningSecretKeyHandle;
 
@@ -234,11 +236,9 @@ impl Node {
         &self,
         route: impl Into<Route>,
         msg: impl Message,
-        outgoing_access_control: Option<Arc<dyn OutgoingAccessControl>>,
+        options: MessageSendOptions,
     ) -> Result<()> {
-        self.context
-            .send_extended(route, msg, outgoing_access_control)
-            .await
+        self.context.send_extended(route, msg, options).await
     }
 
     /// Send a message to an address or via a fully-qualified route and receive a response
@@ -420,7 +420,7 @@ mod tests {
         let mut node = node(ctx).await?;
 
         // send a message with no access control
-        node.send_extended(receiver_route.clone(), "message 1".to_string(), None)
+        node.send(receiver_route.clone(), "message 1".to_string())
             .await?;
         let message1: String = receiver
             .receive_extended(MessageReceiveOptions::new().with_timeout(Duration::from_secs(1)))
@@ -432,7 +432,7 @@ mod tests {
         node.send_extended(
             receiver_route.clone(),
             "message 2".to_string(),
-            Some(outgoing_access_control),
+            MessageSendOptions::new().with_outgoing_access_control(outgoing_access_control),
         )
         .await?;
         let message2: String = receiver
@@ -445,7 +445,7 @@ mod tests {
         node.send_extended(
             receiver_route,
             "message 3".to_string(),
-            Some(outgoing_access_control),
+            MessageSendOptions::new().with_outgoing_access_control(outgoing_access_control),
         )
         .await?;
         let not_received = receiver
