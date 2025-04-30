@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 0.94.0 - 2025-04-25
+## 0.94.0 - 2025-04-30
 
 ### Added
 
@@ -51,6 +51,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add "ockam" command
 - Add `cluster secret` subcommand
 - Add 5 min timeout to provisioner http api client
+- When resetting with the postgres database delete the tenant tables data
 - Updated dependencies
 
 ### Changed
@@ -58,6 +59,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Split http api's `HostPort` into request/response types
 - Descriptions for ticket and relay http api endpoints
 - Cleanup cluster output
+- In the cluster repl, use terminal to handle output
 
 ## 0.93.0 - 2025-03-20
 

@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 0.151.0 - 2025-04-25
+## 0.151.0 - 2025-04-30
 
 ### Added
 
@@ -44,6 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Base command, add env var for inlet address, with default value
 - Add epoch tag to docker image
 - Add `cluster secret` subcommand
+- Add `OCKAM_USE_DOCKER_CACHE` env var used in `cluster create` command
 - Updated dependencies
 
 ### Changed
@@ -56,6 +57,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Pass zone name in config, instead of as an argument
 - Cleanup cluster output
 - Make repl reconnect
+- Improve cluster repl
+- Process server response as header+body
+- In the cluster repl, use terminal to handle output
 
 ### Fixed
 
