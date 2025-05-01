@@ -1,4 +1,6 @@
-use crate::cluster::utils::get_api_client;
+use crate::cluster::common_args::{HttpApiArgs, SecretsConfigArg, ZoneConfigArg};
+use crate::cluster::secret::SecretCommand;
+use crate::cluster::utils::{get_api_client, get_cluster};
 use crate::cluster::zone_config::ZoneConfig;
 use crate::node_command::InMemoryNodeCommand;
 use crate::{docs, Command, CommandGlobalOpts, Result};
@@ -9,7 +11,6 @@ use miette::IntoDiagnostic;
 use ockam_api::colors::color_primary;
 use ockam_api::nodes::InMemoryNode;
 use ockam_api::orchestrator::ai_platform::api::AiPlatformApi;
-use ockam_api::orchestrator::ai_platform::node_service_client::AI_API_BASE_URL_ENV;
 use ockam_api::orchestrator::ai_platform::responses::EcrCredentials;
 use ockam_api::{fmt_log, fmt_ok};
 use ockam_core::env::get_env_ignore_error;
@@ -30,11 +31,11 @@ before_help = docs::before_help(PREVIEW_TAG),
 after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct CreateCommand {
-    /// The path to the Zone configuration file, in yaml or json format.
-    ///
-    /// If not set, the `./ockam.yaml` file from the current directory will be used.
-    #[arg(long, visible_alias = "config")]
-    pub zone_config: Option<String>,
+    #[command(flatten)]
+    pub zone_config: ZoneConfigArg,
+
+    #[command(flatten)]
+    pub secrets_config: SecretsConfigArg,
 
     /// Whether to use a public AWS ECR
     #[arg(long)]
@@ -45,21 +46,8 @@ pub struct CreateCommand {
     #[arg(long)]
     pub use_docker_cache: bool,
 
-    // === Specific args for the HTTP API endpoint
-    /// The Cluster that will be used to set up the Zone.
-    /// If not set, it will be retrieved from the enrolled user data.
-    #[arg(long)]
-    pub cluster: Option<String>,
-
-    /// Force the command to use the HTTP API.
-    /// By default, the command will use the Orchestrator API.
-    #[arg(long)]
-    pub use_http_api: bool,
-
-    /// The API endpoint of the Ockam AI Platform.
-    /// Defaults to `http://localhost:30080`.
-    #[arg(long)]
-    pub api_endpoint: Option<String>,
+    #[command(flatten)]
+    pub http_api: HttpApiArgs,
 }
 
 #[derive(Clone)]
@@ -70,24 +58,11 @@ struct CreateNodeCommand {
 
 #[async_trait]
 impl InMemoryNodeCommand<ZoneConfig> for CreateNodeCommand {
-    async fn init(&self) -> miette::Result<()> {
-        if let Some(api_endpoint) = &self.command.api_endpoint {
-            std::env::set_var(AI_API_BASE_URL_ENV, api_endpoint);
-        }
-        Ok(())
-    }
-
     async fn run(&self, node: Arc<InMemoryNode>) -> miette::Result<ZoneConfig> {
         let ctx = node.ctx();
-        let use_http_api = self.command.use_http_api || self.command.api_endpoint.is_some();
+        let use_http_api = self.command.http_api.use_http_api();
         let api_client = get_api_client(&node, use_http_api).await?;
-        let cluster = match &self.command.cluster {
-            None => {
-                let controller_client = node.create_controller().await?;
-                controller_client.get_cluster(ctx).await?.into_inner()
-            }
-            Some(cluster) => cluster.to_string(),
-        };
+        let cluster = get_cluster(ctx, &node).await?;
         let zone_config = self
             .command
             .process_images(ctx, &self.opts, &*api_client, &cluster)
@@ -124,7 +99,11 @@ impl CreateCommand {
         api_client: &(dyn AiPlatformApi + Send + Sync + 'static),
         cluster: &str,
     ) -> Result<ZoneConfig> {
-        let zone_config_path = self.zone_config.as_deref().unwrap_or("./ockam.yaml");
+        let zone_config_path = self
+            .zone_config
+            .zone_config
+            .as_deref()
+            .unwrap_or("./ockam.yaml");
         let mut zone_config = ZoneConfig::from_file(zone_config_path)?;
 
         let config_images = zone_config.get_local_images_names();
@@ -399,16 +378,23 @@ impl CreateCommand {
             ));
         }
 
-        // TODO: do we want to recreate the zone every time?
-        //  Is there another way of reapplying the configuration for an existing zone?
         let _ = api_client
             .delete_zone(ctx, cluster, &zone_config.name)
             .await;
         api_client
             .create_zone(ctx, cluster, &zone_config.name)
             .await?;
-        // TODO: how do we pass the secrets to the command?
-        // api_client.create_secret(ctx, cluster, &self.zone_name, secret_name, secret_fields).await?;
+        {
+            let mut opts = opts.clone();
+            opts.terminal = opts.terminal.disable();
+            SecretCommand {
+                secrets_config: self.secrets_config.clone(),
+                zone: self.zone_config.clone().into(),
+                http_api: self.http_api.clone(),
+            }
+            .push_secrets(ctx, &opts, api_client, cluster, &zone_config.name)
+            .await?;
+        }
 
         let zone_config_json = serde_json::to_value(zone_config).into_diagnostic()?;
         api_client

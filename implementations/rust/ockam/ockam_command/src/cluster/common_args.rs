@@ -5,24 +5,39 @@ use ockam_api::orchestrator::ai_platform::node_service_client::AI_API_BASE_URL_E
 use ockam_core::env::get_env_ignore_error;
 
 #[derive(Clone, Debug, Args, Default)]
-#[group(multiple = false)]
-pub struct ZoneArg {
-    /// The name of the Zone
-    #[arg(long)]
-    pub zone_name: Option<String>,
-
+pub struct ZoneConfigArg {
     /// The path to the Zone configuration file, in yaml or json format.
     /// If not set, the `./ockam.yaml` file from the current directory will be used.
     #[arg(long, visible_alias = "config")]
     pub zone_config: Option<String>,
 }
 
-impl ZoneArg {
+#[derive(Clone, Debug, Args, Default)]
+#[group(multiple = false)]
+pub struct ZoneNameOrConfigArg {
+    /// The name of the Zone
+    #[arg(long)]
+    pub zone_name: Option<String>,
+
+    #[command(flatten)]
+    pub zone_config: ZoneConfigArg,
+}
+
+impl From<ZoneConfigArg> for ZoneNameOrConfigArg {
+    fn from(zone_config: ZoneConfigArg) -> Self {
+        Self {
+            zone_name: None,
+            zone_config,
+        }
+    }
+}
+
+impl ZoneNameOrConfigArg {
     pub fn zone_name(&self) -> crate::Result<String> {
         if let Some(zone_name) = &self.zone_name {
             return Ok(zone_name.clone());
         }
-        let zone_config_path = match &self.zone_config {
+        let zone_config_path = match &self.zone_config.zone_config {
             Some(path) => path,
             None => {
                 if std::path::Path::new("./ockam.yaml")
@@ -68,4 +83,13 @@ impl HttpApiArgs {
             || self.api_endpoint.is_some()
             || get_env_ignore_error::<String>(AI_API_BASE_URL_ENV).is_some()
     }
+}
+
+#[derive(Clone, Debug, Args, Default)]
+pub struct SecretsConfigArg {
+    /// The path to the secrets file, in yaml or json format.
+    /// If not set, the `./secrets.yaml` file from the current directory will be used.
+    /// If no file is found, the command will just list the existing secrets.
+    #[arg(long, visible_alias = "secrets")]
+    pub secrets_config: Option<String>,
 }

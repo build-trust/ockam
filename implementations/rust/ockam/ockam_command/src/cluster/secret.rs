@@ -1,7 +1,5 @@
-use std::sync::Arc;
-
 use super::utils::{get_api_client, get_cluster};
-use crate::cluster::common_args::{HttpApiArgs, ZoneArg};
+use crate::cluster::common_args::{HttpApiArgs, SecretsConfigArg, ZoneNameOrConfigArg};
 use crate::{docs, node_command::InMemoryNodeCommand, Command, CommandGlobalOpts, Result};
 use async_trait::async_trait;
 use clap::Args;
@@ -9,10 +7,12 @@ use colorful::Colorful;
 use miette::{IntoDiagnostic, WrapErr};
 use ockam_api::colors::color_primary;
 use ockam_api::nodes::InMemoryNode;
+use ockam_api::orchestrator::ai_platform::api::AiPlatformApi;
 use ockam_api::{fmt_log, fmt_ok, fmt_warn};
 use ockam_core::compat::collections::HashMap;
 use ockam_node::Context;
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 
 const LONG_ABOUT: &str = include_str!("./static/secret/long_about.txt");
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
@@ -26,13 +26,11 @@ before_help = docs::before_help(PREVIEW_TAG),
 after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct SecretCommand {
-    /// The path to the secrets file, in yaml or json format.
-    /// If not set, the `./secrets.yaml` file from the current directory will be used.
-    /// If no file is found, the command will just list the existing secrets.
-    pub secrets_path: Option<String>,
+    #[command(flatten)]
+    pub secrets_config: SecretsConfigArg,
 
     #[command(flatten)]
-    pub zone: ZoneArg,
+    pub zone: ZoneNameOrConfigArg,
 
     #[command(flatten)]
     pub http_api: HttpApiArgs,
@@ -54,46 +52,9 @@ impl InMemoryNodeCommand for SecretNodeCommand {
         let zone_name = self.command.zone.zone_name()?;
 
         // Push secrets
-        if let Some(secrets) = self.command.parse_secrets_file()? {
-            // Delete existing secrets
-            let spinner = self.opts.terminal.spinner();
-            if let Some(spinner) = &spinner {
-                spinner.set_message("Listing secrets...");
-            }
-            let secrets_to_remove = api_client.list_secrets(ctx, &cluster, &zone_name).await?;
-            if !secrets_to_remove.is_empty() {
-                if let Some(spinner) = &spinner {
-                    spinner.set_message("Deleting existing secrets...");
-                }
-            }
-            for secret in &secrets_to_remove {
-                api_client
-                    .delete_secret(ctx, &cluster, &zone_name, &secret.name)
-                    .await?;
-            }
-
-            // Push secrets from file
-            for secret in &secrets.0 {
-                if let Some(spinner) = &spinner {
-                    spinner.set_message(format!(
-                        "Creating secret {} to zone {} in cluster {}...",
-                        color_primary(&secret.name),
-                        color_primary(&zone_name),
-                        color_primary(&cluster)
-                    ));
-                }
-                api_client
-                    .create_secret(ctx, &cluster, &zone_name, &secret.name, &secret.fields)
-                    .await?;
-            }
-
-            if let Some(spinner) = &spinner {
-                spinner.finish_and_clear();
-            }
-            self.opts
-                .terminal
-                .write_line(fmt_ok!("Secrets created successfully!"))?;
-        }
+        self.command
+            .push_secrets(ctx, &self.opts, &*api_client, &cluster, &zone_name)
+            .await?;
 
         // List secrets
         let spinner = self.opts.terminal.spinner();
@@ -106,7 +67,7 @@ impl InMemoryNodeCommand for SecretNodeCommand {
         }
         if secrets.is_empty() {
             self.opts.terminal.write_line(fmt_warn!(
-                "No secrets found for zone {} in cluster {}",
+                "No secrets defined for zone {} in cluster {}",
                 color_primary(&zone_name),
                 color_primary(&cluster)
             ))?;
@@ -142,8 +103,64 @@ impl Command for SecretCommand {
 }
 
 impl SecretCommand {
+    pub async fn push_secrets(
+        &self,
+        ctx: &Context,
+        opts: &CommandGlobalOpts,
+        api_client: &(dyn AiPlatformApi + Send + Sync + 'static),
+        cluster: &str,
+        zone_name: &str,
+    ) -> Result<()> {
+        let secrets = match self.parse_secrets_file()? {
+            Some(secrets) => secrets,
+            None => {
+                return Ok(());
+            }
+        };
+
+        // Delete existing secrets
+        let spinner = opts.terminal.spinner();
+        if let Some(spinner) = &spinner {
+            spinner.set_message("Listing secrets...");
+        }
+        let secrets_to_remove = api_client.list_secrets(ctx, cluster, zone_name).await?;
+        if !secrets_to_remove.is_empty() {
+            if let Some(spinner) = &spinner {
+                spinner.set_message("Deleting existing secrets...");
+            }
+        }
+        for secret in &secrets_to_remove {
+            api_client
+                .delete_secret(ctx, cluster, zone_name, &secret.name)
+                .await?;
+        }
+
+        // Push secrets from file
+        for secret in &secrets.0 {
+            if let Some(spinner) = &spinner {
+                spinner.set_message(format!(
+                    "Creating secret {} to zone {} in cluster {}...",
+                    color_primary(&secret.name),
+                    color_primary(zone_name),
+                    color_primary(cluster)
+                ));
+            }
+            api_client
+                .create_secret(ctx, cluster, zone_name, &secret.name, &secret.fields)
+                .await?;
+        }
+
+        if let Some(spinner) = &spinner {
+            spinner.finish_and_clear();
+        }
+        opts.terminal
+            .write_line(fmt_ok!("Secrets created successfully!"))?;
+
+        Ok(())
+    }
+
     fn parse_secrets_file(&self) -> Result<Option<Secrets>> {
-        let path = match &self.secrets_path {
+        let path = match &self.secrets_config.secrets_config {
             Some(path) => path,
             None => {
                 if std::path::Path::new("./secrets.yaml")
