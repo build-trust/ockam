@@ -1,5 +1,5 @@
 use crate::branding::BrandingCompileEnvVars;
-use crate::cluster::common_args::HttpApiArgs;
+use crate::cluster::common_args::{HttpApiArgs, ZoneNameOrConfigArg};
 use crate::cluster::zone_config::ZoneConfig;
 use crate::{Command, CommandGlobalOpts, Result};
 use clap::Args;
@@ -110,10 +110,7 @@ impl BaseCommand {
         use crate::cluster::create::CreateCommand;
         let create_command = CreateCommand {
             use_public_ecr: true,
-            http_api: HttpApiArgs {
-                api_endpoint: Some(AI_API_BASE_URL.to_string()),
-                ..Default::default()
-            },
+            http_api: HttpApiArgs::from_api_endpoint(AI_API_BASE_URL.to_string()),
             ..Default::default()
         };
         let zone_config = create_command.run(ctx, opts.clone()).await?;
@@ -149,15 +146,15 @@ impl BaseCommand {
 
         use crate::cluster::ticket::TicketCommand;
         let ticket_command = TicketCommand {
-            zone_name: zone_name.clone(),
-            api_endpoint: Some(AI_API_BASE_URL.to_string()),
+            zone: ZoneNameOrConfigArg::from_zone_name(zone_name.clone()),
+            http_api: HttpApiArgs::from_api_endpoint(AI_API_BASE_URL.to_string()),
             ..Default::default()
         };
         let ticket = ticket_command.run(ctx, no_output_opts.clone()).await?;
 
         use crate::cluster::inlet::InletCommand;
         let inlet_command = InletCommand {
-            zone_name: zone_name.clone(),
+            zone: ZoneNameOrConfigArg::from_zone_name(zone_name.clone()),
             pod: pod_name.clone(),
             enrollment_ticket: ticket,
             from: self.inlet_address.clone(),
