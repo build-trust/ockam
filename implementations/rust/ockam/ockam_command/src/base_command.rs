@@ -3,16 +3,17 @@ use crate::cluster::zone_config::ZoneConfig;
 use crate::{Command, CommandGlobalOpts, Result};
 use clap::Args;
 use colorful::Colorful;
+use indicatif::ProgressBar;
 use miette::{miette, IntoDiagnostic, WrapErr};
 use ockam::transport::SchemeHostnamePort;
 use ockam_api::address::get_free_address;
 use ockam_api::colors::color_primary;
 use ockam_api::orchestrator::ai_platform::node_service_client::AI_API_BASE_URL;
-use ockam_api::terminal::Terminal;
 use ockam_api::{fmt_ok, fmt_separator};
 use ockam_core::env::get_env_ignore_error;
 use ockam_core::TryClone;
 use ockam_node::Context;
+use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 use std::time::Duration;
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
@@ -189,7 +190,7 @@ impl BaseCommand {
                 Ok(result) => result,
                 Err(err) => {
                     let _ = inlet_tx.send(());
-                    Err(miette!("{err:?}"))
+                    Err(miette!("{err}"))
                 }
             }
         });
@@ -214,6 +215,7 @@ impl BaseCommand {
         let repl_handle = tokio::spawn(async move {
             async fn connect_to_inlet(addr: &SchemeHostnamePort) -> miette::Result<TcpStream> {
                 const MAX_RETRIES: u32 = 120; // Try for about 60 seconds (120 * 500ms)
+                let duration = Duration::from_millis(500);
                 let mut retries = 0;
 
                 while retries < MAX_RETRIES {
@@ -221,7 +223,7 @@ impl BaseCommand {
                         Ok(s) => return Ok(s),
                         Err(_) => {
                             retries += 1;
-                            sleep(Duration::from_millis(500)).await;
+                            sleep(duration).await;
                         }
                     }
                 }
@@ -230,7 +232,7 @@ impl BaseCommand {
 
             let mut read_header_buffer = String::new();
             let mut read_body_buffer = Vec::new();
-
+            let mut initial_message_spinner: Option<ProgressBar> = None;
             'repl: loop {
                 // 1: Try to connect to the inlet
                 let stream = match connect_to_inlet(&inlet_address).await {
@@ -245,21 +247,27 @@ impl BaseCommand {
                 let mut reader = BufReader::new(reader);
 
                 // 2: Try to read initial message
-                match Self::process_server_response(
-                    &opts,
+                match Self::wait_until_server_is_ready(
                     &mut reader,
                     &mut read_header_buffer,
                     &mut read_body_buffer,
                 )
                 .await
                 {
-                    Ok(()) => {
+                    Ok(res) => {
                         // Successfully got initial message, continue to REPL
+                        if let Some(spinner) = initial_message_spinner.take() {
+                            spinner.finish_and_clear();
+                        }
+                        opts.terminal.write(res)?;
                     }
-                    Err(e) => {
-                        debug!("Failed to read from server: {:?}", e);
-                        opts.terminal
-                            .write_line("Failed to read from server. Reconnecting...")?;
+                    Err(_e) => {
+                        if initial_message_spinner.is_none() {
+                            initial_message_spinner = opts.terminal.spinner();
+                        }
+                        if let Some(spinner) = &initial_message_spinner {
+                            spinner.set_message("Waiting for server to be ready...");
+                        }
                         sleep(Duration::from_secs(1)).await;
                         continue 'repl;
                     }
@@ -267,8 +275,6 @@ impl BaseCommand {
 
                 // 3: Start the REPL loop for this connection
                 'connection: loop {
-                    Terminal::flush(&opts.terminal)?;
-
                     // Get user input
                     let user_input = match stdin_rx.recv().await {
                         Ok(i) => i,
@@ -282,13 +288,17 @@ impl BaseCommand {
                         continue 'connection;
                     }
 
+                    if is_reconnect_sequence(&user_input) {
+                        break 'connection;
+                    }
+
                     if is_quit_sequence(&user_input) {
                         break 'repl;
                     }
 
                     // Send input to server
                     if let Err(e) = writer.write_all(user_input.as_bytes()).await {
-                        debug!("Failed to write to server: {:?}", e);
+                        debug!("failed to write to server: {:?}", e);
                         opts.terminal
                             .write_line("Failed to write to server. Reconnecting...")?;
                         break 'connection;
@@ -304,9 +314,9 @@ impl BaseCommand {
                     )
                     .await
                     {
-                        debug!("Failed to read from server: {:?}", e);
-                        opts.terminal
-                            .write_line("Failed to read from server. Reconnecting...")?;
+                        opts.terminal.write_line(format!(
+                            "Failed to read from server ({e}). Reconnecting...",
+                        ))?;
                         break 'connection;
                     }
                 }
@@ -329,25 +339,39 @@ impl BaseCommand {
 
         Ok(())
     }
+    async fn wait_until_server_is_ready(
+        reader: &mut BufReader<tokio::net::tcp::OwnedReadHalf>,
+        read_header_buffer: &mut String,
+        read_body_buffer: &mut Vec<u8>,
+    ) -> std::result::Result<String, String> {
+        match Self::read_server_response(
+            reader,
+            read_header_buffer,
+            read_body_buffer,
+            Duration::from_secs(5),
+        )
+        .await
+        {
+            ReadStatus::Success(res) => Ok(res),
+            status => Err(status.to_string()),
+        }
+    }
 
     async fn process_server_response(
         opts: &CommandGlobalOpts,
         reader: &mut BufReader<tokio::net::tcp::OwnedReadHalf>,
         read_header_buffer: &mut String,
         read_body_buffer: &mut Vec<u8>,
-    ) -> miette::Result<()> {
-        match Self::print_server_response(
-            opts,
+    ) -> std::result::Result<(), String> {
+        let res = match Self::read_server_response(
             reader,
             read_header_buffer,
             read_body_buffer,
             Duration::from_secs(30),
         )
-        .await?
+        .await
         {
-            ReadStatus::ConnectionClosed => Err(miette!("Server connection closed")),
-            ReadStatus::Success => Ok(()),
-            ReadStatus::IoError(e) => Err(miette!(e).wrap_err("Error reading from server")),
+            ReadStatus::Success(res) => Ok(res),
             ReadStatus::Timeout => {
                 // Short timeout reached, notify but keep waiting
                 let spinner = opts.terminal.spinner();
@@ -356,8 +380,7 @@ impl BaseCommand {
                 }
 
                 // Continue with longer timeout
-                let res = Self::print_server_response(
-                    opts,
+                let status = Self::read_server_response(
                     reader,
                     read_header_buffer,
                     read_body_buffer,
@@ -369,49 +392,51 @@ impl BaseCommand {
                     spinner.finish_and_clear();
                 }
 
-                match res? {
-                    ReadStatus::ConnectionClosed => Err(miette!("Server connection closed")),
-                    ReadStatus::Success => Ok(()),
-                    ReadStatus::IoError(e) => Err(miette!(e).wrap_err("Error reading from server")),
-                    ReadStatus::Timeout => Err(miette!("Server response timeout")),
+                match status {
+                    ReadStatus::Success(res) => Ok(res),
+                    status => Err(status.to_string()),
                 }
             }
-        }
+            status => Err(status.to_string()),
+        }?;
+        opts.terminal.write(&res).map_err(|e| e.to_string())?;
+        Ok(())
     }
 
-    async fn print_server_response(
-        opts: &CommandGlobalOpts,
+    async fn read_server_response(
         reader: &mut BufReader<tokio::net::tcp::OwnedReadHalf>,
         read_header_buffer: &mut String,
         read_body_buffer: &mut Vec<u8>,
         timeout_duration: Duration,
-    ) -> Result<ReadStatus> {
+    ) -> ReadStatus {
         // Use timeout only for the header read
         read_header_buffer.clear();
         match timeout(timeout_duration, reader.read_line(read_header_buffer)).await {
-            Ok(Ok(0)) => Ok(ReadStatus::ConnectionClosed),
+            Ok(Ok(0)) => ReadStatus::ConnectionClosed,
             Ok(Ok(_n)) => {
                 // Process the header as a line containing the body length
-                let body_len: usize = read_header_buffer
-                    .trim()
-                    .parse()
-                    .into_diagnostic()
-                    .wrap_err(format!(
-                        "Failed to parse header line as an integer: {read_header_buffer}"
-                    ))?;
+                let body_len: usize = match read_header_buffer.trim().parse() {
+                    Ok(v) => v,
+                    Err(e) => {
+                        debug!("failed to read header length: {e}");
+                        return ReadStatus::Error("header parsing".to_string());
+                    }
+                };
 
                 // Process the body
                 read_body_buffer.resize(body_len, 0);
-                reader
-                    .read_exact(read_body_buffer)
-                    .await
-                    .into_diagnostic()?;
+                if let Err(e) = reader.read_exact(read_body_buffer).await {
+                    debug!("failed to read body: {e}");
+                    return ReadStatus::Error("body parsing".to_string());
+                };
                 let body = String::from_utf8_lossy(read_body_buffer).into_owned();
-                opts.terminal.write(&body)?;
-                Ok(ReadStatus::Success)
+                ReadStatus::Success(body)
             }
-            Ok(Err(e)) => Ok(ReadStatus::IoError(e)),
-            Err(_) => Ok(ReadStatus::Timeout),
+            Ok(Err(e)) => {
+                debug!("failed to read from server: {e}");
+                ReadStatus::Error("server".to_string())
+            }
+            Err(_) => ReadStatus::Timeout,
         }
     }
 }
@@ -420,16 +445,27 @@ impl BaseCommand {
 #[derive(Debug)]
 enum ReadStatus {
     /// Successfully read data
-    Success,
+    Success(String),
 
     /// Server connection was closed
     ConnectionClosed,
 
     /// Error occurred during reading
-    IoError(std::io::Error),
+    Error(String),
 
     /// Initial read operation timed out
     Timeout,
+}
+
+impl Display for ReadStatus {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ReadStatus::Success(_) => write!(f, "success"),
+            ReadStatus::ConnectionClosed => write!(f, "connection closed"),
+            ReadStatus::Error(e) => write!(f, "{e}"),
+            ReadStatus::Timeout => write!(f, "timeout"),
+        }
+    }
 }
 
 struct StdinHandler {}
@@ -449,16 +485,19 @@ impl StdinHandler {
             let mut read_buffer = String::new();
 
             loop {
+                read_buffer.clear();
                 match stdin.read_line(&mut read_buffer).await {
                     Ok(0) => break, // EOF (0 bytes read)
                     Ok(_n) => {
+                        if read_buffer.trim().is_empty() {
+                            continue;
+                        }
                         if is_quit_sequence(&read_buffer) {
                             let _ = tx.send(read_buffer.clone());
                             drop(tx);
                             break;
                         }
                         let _ = tx.send(read_buffer.clone());
-                        read_buffer.clear();
                     }
                     Err(e) => {
                         eprintln!("Error reading from stdin: {}", e);
@@ -470,6 +509,10 @@ impl StdinHandler {
 
         StdinHandle { tx: returned_tx }
     }
+}
+
+fn is_reconnect_sequence(input: &str) -> bool {
+    input.trim() == ":reconnect" || input.trim() == ":r"
 }
 
 fn is_quit_sequence(input: &str) -> bool {
