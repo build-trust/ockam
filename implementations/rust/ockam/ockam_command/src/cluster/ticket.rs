@@ -4,15 +4,12 @@ use async_trait::async_trait;
 
 use clap::Args;
 use miette::{miette, IntoDiagnostic};
-use ockam_api::orchestrator::ai_platform::api::AiPlatformApi;
-use ockam_api::{
-    nodes::InMemoryNode, orchestrator::ai_platform::node_service_client::AI_API_BASE_URL_ENV,
-};
+use ockam_api::nodes::InMemoryNode;
 use ockam_node::Context;
 
+use super::utils::{get_api_client, get_cluster};
+use crate::cluster::common_args::{HttpApiArgs, ZoneNameOrConfigArg};
 use crate::{docs, node_command::InMemoryNodeCommand, Command, CommandGlobalOpts, Result};
-
-use super::utils::get_api_client;
 
 const LONG_ABOUT: &str = include_str!("./static/ticket/long_about.txt");
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
@@ -26,25 +23,11 @@ before_help = docs::before_help(PREVIEW_TAG),
 after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct TicketCommand {
-    // === Specific args for the HTTP API endpoint
-    /// The Cluster that will be used
-    /// If not set, it will be retrieved from the enrolled user data.
-    #[arg(long)]
-    pub cluster: Option<String>,
+    #[command(flatten)]
+    pub zone: ZoneNameOrConfigArg,
 
-    /// The name of the Zone
-    #[arg(long)]
-    pub zone_name: String,
-
-    /// Force the command to use the HTTP API.
-    /// By default, the command will use the Orchestrator API.
-    #[arg(long)]
-    pub use_http_api: bool,
-
-    /// The API endpoint of the Ockam AI Platform.
-    /// Defaults to `http://localhost:30080`.
-    #[arg(long)]
-    pub api_endpoint: Option<String>,
+    #[command(flatten)]
+    pub http_api: HttpApiArgs,
 
     /// Attributes in `key=value` format to be attached to the member. You can specify this option multiple times for multiple attributes
     #[arg(short, long = "attribute", value_name = "ATTRIBUTE")]
@@ -63,32 +46,14 @@ struct TicketNodeCommand {
 
 #[async_trait]
 impl InMemoryNodeCommand<String> for TicketNodeCommand {
-    async fn init(&self) -> miette::Result<()> {
-        if let Some(api_endpoint) = &self.command.api_endpoint {
-            std::env::set_var(AI_API_BASE_URL_ENV, api_endpoint);
-        }
-        Ok(())
-    }
-
     async fn run(&self, node: Arc<InMemoryNode>) -> miette::Result<String> {
         let ctx = node.ctx();
-        let use_http_api = self.command.use_http_api || self.command.api_endpoint.is_some();
+        let use_http_api = self.command.http_api.use_http_api();
         let api_client = get_api_client(&node, use_http_api).await?;
-        let cluster = match &self.command.cluster {
-            None => {
-                let controller_client = node.create_controller().await?;
-                controller_client.get_cluster(ctx).await?.into_inner()
-            }
-            Some(cluster) => cluster.to_string(),
-        };
+        let cluster = get_cluster(ctx, &node).await?;
+        let zone_name = self.command.zone.zone_name()?;
         let ticket = api_client
-            .create_enrollment_token(
-                ctx,
-                &cluster,
-                &self.command.zone_name,
-                self.command.attributes()?,
-                None,
-            )
+            .create_enrollment_token(ctx, &cluster, &zone_name, self.command.attributes()?, None)
             .await?;
 
         self.opts

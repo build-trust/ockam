@@ -33,6 +33,13 @@ impl From<ZoneConfigArg> for ZoneNameOrConfigArg {
 }
 
 impl ZoneNameOrConfigArg {
+    pub fn from_zone_name(zone_name: String) -> Self {
+        Self {
+            zone_name: Some(zone_name),
+            zone_config: ZoneConfigArg::default(),
+        }
+    }
+
     pub fn zone_name(&self) -> crate::Result<String> {
         if let Some(zone_name) = &self.zone_name {
             return Ok(zone_name.clone());
@@ -75,6 +82,13 @@ pub struct HttpApiArgs {
 }
 
 impl HttpApiArgs {
+    pub fn from_api_endpoint(api_endpoint: String) -> Self {
+        Self {
+            use_http_api: true,
+            api_endpoint: Some(api_endpoint),
+        }
+    }
+
     pub fn use_http_api(&self) -> bool {
         if let Some(api_endpoint) = &self.api_endpoint {
             std::env::set_var(AI_API_BASE_URL_ENV, api_endpoint);

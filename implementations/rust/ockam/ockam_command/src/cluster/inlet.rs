@@ -1,3 +1,5 @@
+use crate::cluster::common_args::ZoneNameOrConfigArg;
+use crate::cluster::utils::get_cluster;
 use crate::node::config::ConfigArgs;
 use crate::node_command::InMemoryNodeCommand;
 use crate::tcp::inlet::create::tcp_inlet_default_from_addr;
@@ -11,7 +13,6 @@ use ockam::transport::SchemeHostnamePort;
 use ockam_abac::PolicyExpression;
 use ockam_api::cli_state::OCKAM_HOME;
 use ockam_api::nodes::InMemoryNode;
-use ockam_api::orchestrator::ai_platform::api::AiPlatformApi;
 use ockam_api::CliState;
 use ockam_node::Context;
 use std::sync::Arc;
@@ -28,13 +29,8 @@ before_help = docs::before_help(PREVIEW_TAG),
 after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct InletCommand {
-    /// The Cluster that hosts the Zone.
-    #[arg(long)]
-    pub cluster: Option<String>,
-
-    /// The name of the Zone to connect to
-    #[arg(long)]
-    pub zone_name: String,
+    #[command(flatten)]
+    pub zone: ZoneNameOrConfigArg,
 
     /// References the name of TCP Outlet created in the Zone and the Relay name.
     #[arg(long)]
@@ -79,20 +75,10 @@ struct InletNodeCommand {
 #[async_trait]
 impl InMemoryNodeCommand for InletNodeCommand {
     async fn run(&self, node: Arc<InMemoryNode>) -> miette::Result<()> {
-        let cluster = match &self.command.cluster {
-            None => {
-                let controller_client = node.create_controller().await?;
-                controller_client
-                    .get_cluster(node.ctx())
-                    .await?
-                    .into_inner()
-            }
-            Some(cluster) => cluster.to_string(),
-        };
-        let relay_name = format!(
-            "{}-{}-{}",
-            cluster, self.command.zone_name, self.command.pod
-        );
+        let ctx = node.ctx();
+        let cluster = get_cluster(ctx, &node).await?;
+        let zone_name = self.command.zone.zone_name()?;
+        let relay_name = format!("{}-{}-{}", cluster, zone_name, self.command.pod);
         let mut node_config = serde_json::json!({
             "tcp-inlet": {
                 "from": self.command.from.to_string(),
