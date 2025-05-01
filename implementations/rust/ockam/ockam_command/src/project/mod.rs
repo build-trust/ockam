@@ -16,6 +16,7 @@ pub(crate) mod enroll;
 mod import;
 mod info;
 mod list;
+mod relays;
 mod show;
 mod ticket;
 #[allow(unused)]
@@ -25,6 +26,7 @@ mod version;
 pub use addon::AddonCommand;
 pub use create::CreateCommand;
 pub use delete::DeleteCommand;
+pub use relays::ListRelaysCommand;
 pub use ticket::TicketCommand;
 
 use ockam_node::Context;
@@ -55,6 +57,7 @@ pub enum ProjectSubcommand {
     Create(CreateCommand),
     Delete(DeleteCommand),
     Addon(AddonCommand),
+    Relays(ListRelaysCommand),
 }
 
 impl ProjectCommand {
@@ -70,6 +73,7 @@ impl ProjectCommand {
             ProjectSubcommand::Create(c) => c.run(ctx, opts).await,
             ProjectSubcommand::Delete(c) => c.run(ctx, opts).await,
             ProjectSubcommand::Addon(c) => c.run(ctx, opts).await,
+            ProjectSubcommand::Relays(c) => c.run(ctx, opts).await,
         }
     }
 
@@ -85,6 +89,7 @@ impl ProjectCommand {
             ProjectSubcommand::Create(c) => c.name(),
             ProjectSubcommand::Delete(c) => c.name(),
             ProjectSubcommand::Addon(c) => c.name(),
+            ProjectSubcommand::Relays(c) => c.name(),
         }
     }
 }

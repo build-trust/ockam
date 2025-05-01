@@ -4,6 +4,7 @@ mod controller_client;
 mod operations;
 #[allow(clippy::module_inception)]
 mod project;
+mod project_client;
 mod projects_orchestrator_api;
 
 pub use project::*;
