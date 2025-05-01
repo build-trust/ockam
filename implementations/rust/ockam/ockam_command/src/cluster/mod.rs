@@ -1,11 +1,11 @@
-mod common_args;
+pub mod common_args;
 pub(crate) mod create;
 mod delete;
 pub(crate) mod enroll;
 pub(crate) mod init;
 pub(crate) mod inlet;
 mod outlet;
-mod secret;
+pub(crate) mod secret;
 pub(crate) mod ticket;
 pub mod utils;
 pub mod zone_config;

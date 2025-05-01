@@ -1,4 +1,5 @@
 use crate::branding::BrandingCompileEnvVars;
+use crate::cluster::common_args::HttpApiArgs;
 use crate::cluster::zone_config::ZoneConfig;
 use crate::{Command, CommandGlobalOpts, Result};
 use clap::Args;
@@ -109,7 +110,10 @@ impl BaseCommand {
         use crate::cluster::create::CreateCommand;
         let create_command = CreateCommand {
             use_public_ecr: true,
-            api_endpoint: Some(AI_API_BASE_URL.to_string()),
+            http_api: HttpApiArgs {
+                api_endpoint: Some(AI_API_BASE_URL.to_string()),
+                ..Default::default()
+            },
             ..Default::default()
         };
         let zone_config = create_command.run(ctx, opts.clone()).await?;
