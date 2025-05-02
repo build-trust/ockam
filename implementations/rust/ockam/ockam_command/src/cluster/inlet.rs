@@ -1,5 +1,4 @@
-use crate::cluster::common_args::ZoneNameOrConfigArg;
-use crate::cluster::utils::get_cluster;
+use crate::cluster::common_args::{ClusterArg, ZoneNameOrConfigArg};
 use crate::node::config::ConfigArgs;
 use crate::node_command::InMemoryNodeCommand;
 use crate::tcp::inlet::create::tcp_inlet_default_from_addr;
@@ -29,6 +28,9 @@ before_help = docs::before_help(PREVIEW_TAG),
 after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct InletCommand {
+    #[command(flatten)]
+    pub cluster: ClusterArg,
+
     #[command(flatten)]
     pub zone: ZoneNameOrConfigArg,
 
@@ -76,7 +78,7 @@ struct InletNodeCommand {
 impl InMemoryNodeCommand for InletNodeCommand {
     async fn run(&self, node: Arc<InMemoryNode>) -> miette::Result<()> {
         let ctx = node.ctx();
-        let cluster = get_cluster(ctx, &node).await?;
+        let cluster = self.command.cluster.get_cluster(ctx, &node).await?;
         let zone_name = self.command.zone.zone_name()?;
         let relay_name = format!("{}-{}-{}", cluster, zone_name, self.command.pod);
         let mut node_config = serde_json::json!({
