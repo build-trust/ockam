@@ -67,7 +67,7 @@ impl InMemoryNodeCommand for EnrollHandler {
     }
 
     async fn run(&self, node: Arc<InMemoryNode>) -> miette::Result<()> {
-        let (user_info, cluster) = self.enroll_identity(&node).await?;
+        let user_info = self.enroll_identity(&node).await?;
 
         if !self.is_ai_cloud_account {
             if let Err(error) = self.retrieve_user_space_and_project(&node).await {
@@ -125,11 +125,6 @@ impl InMemoryNodeCommand for EnrollHandler {
             color_primary(identity.name()),
             color_primary(identity.identifier().to_string())
         ))?;
-        if let Some(cluster) = cluster {
-            self.opts.terminal.write_line(fmt_log!(
-                "Your Cluster associated to the Ockam AI Platform is {cluster}"
-            ))?;
-        }
 
         if !self.is_ai_cloud_account {
             self.opts.terminal
@@ -226,10 +221,7 @@ impl EnrollHandler {
         Ok(is_already_enrolled)
     }
 
-    pub(crate) async fn enroll_identity(
-        &self,
-        node: &InMemoryNode,
-    ) -> miette::Result<(UserInfo, Option<String>)> {
+    pub(crate) async fn enroll_identity(&self, node: &InMemoryNode) -> miette::Result<UserInfo> {
         if !self
             .opts
             .state
@@ -237,7 +229,7 @@ impl EnrollHandler {
             .await?
         {
             if let Ok(user_info) = self.opts.state.get_default_user().await {
-                return Ok((user_info, None));
+                return Ok(user_info);
             }
         }
 
@@ -261,8 +253,7 @@ impl EnrollHandler {
 
         // Enroll the identity with the Orchestrator
         let controller = node.create_controller().await?;
-        let cluster = self
-            .enroll_with_node(node.ctx(), &controller, token)
+        self.enroll_with_node(node.ctx(), &controller, token)
             .await
             .wrap_err("Failed to enroll your local Identity with Ockam Orchestrator")?;
         self.opts
@@ -271,7 +262,7 @@ impl EnrollHandler {
             .await
             .wrap_err("Unable to set your local Identity as enrolled")?;
 
-        Ok((user_info, cluster))
+        Ok(user_info)
     }
 
     fn display_header(&self) {
@@ -356,14 +347,9 @@ impl EnrollHandler {
         ctx: &Context,
         controller: &ControllerClient,
         token: OidcToken,
-    ) -> miette::Result<Option<String>> {
-        let cluster: Option<String> = None;
+    ) -> miette::Result<()> {
         let reply = if self.is_ai_cloud_account {
             let reply = controller.enroll_ai_with_oidc_token(ctx, token).await?;
-            // if let AiEnrollStatus::EnrolledSuccessfully(c) = &reply {
-            //     cluster = Some(c.to_string());
-            // }
-            // cluster = Some(controller.get_cluster(ctx).await?.into_inner()); // TODO: remove once enroll_ai_with_oidc_token is fixed
             reply.into()
         } else {
             controller.enroll_with_oidc_token(ctx, token).await?
@@ -371,11 +357,11 @@ impl EnrollHandler {
         match reply {
             EnrollStatus::EnrolledSuccessfully => {
                 info!("Enrolled successfully");
-                Ok(cluster)
+                Ok(())
             }
             EnrollStatus::AlreadyEnrolled => {
                 info!("Already enrolled");
-                Ok(cluster)
+                Ok(())
             }
             EnrollStatus::UnexpectedStatus(error, status) => {
                 warn!(%error, %status, "Unexpected status while enrolling");
