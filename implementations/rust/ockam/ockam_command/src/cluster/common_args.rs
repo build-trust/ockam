@@ -1,8 +1,27 @@
+use crate::cluster::utils::get_cluster;
 use crate::cluster::zone_config::ZoneConfig;
 use clap::Args;
 use miette::{miette, IntoDiagnostic};
+use ockam_api::nodes::InMemoryNode;
 use ockam_api::orchestrator::ai_platform::node_service_client::AI_API_BASE_URL_ENV;
 use ockam_core::env::get_env_ignore_error;
+use ockam_node::Context;
+
+#[derive(Clone, Debug, Args, Default)]
+pub struct ClusterArg {
+    /// The Cluster that hosts the Zone.
+    #[arg(long)]
+    pub cluster: Option<String>,
+}
+
+impl ClusterArg {
+    pub async fn get_cluster(&self, ctx: &Context, node: &InMemoryNode) -> miette::Result<String> {
+        if let Some(cluster) = &self.cluster {
+            return Ok(cluster.clone());
+        }
+        get_cluster(ctx, node).await
+    }
+}
 
 #[derive(Clone, Debug, Args, Default)]
 pub struct ZoneConfigArg {
