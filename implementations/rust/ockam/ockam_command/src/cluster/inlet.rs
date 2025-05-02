@@ -91,6 +91,7 @@ impl InMemoryNodeCommand for InletNodeCommand {
         if let Some(allow) = &self.command.allow {
             node_config["tcp-inlet"]["allow"] = allow.to_string().into();
         }
+        let in_memory = false;
         let node_cmd = crate::node::create::CreateCommand {
             name: node_config.to_string(),
             config_args: ConfigArgs {
@@ -101,12 +102,13 @@ impl InMemoryNodeCommand for InletNodeCommand {
                 foreground: true,
                 ..Default::default()
             },
+            in_memory,
             ..Default::default()
         };
         let tmp_dir = tempfile::tempdir().into_diagnostic()?;
         std::env::set_var(OCKAM_HOME, tmp_dir.path());
         let mut opts = self.opts.clone();
-        opts.state = Arc::new(CliState::new(false).await?);
+        opts.state = Arc::new(CliState::new(in_memory).await?);
         node_cmd.run(node.ctx(), opts).await
     }
 }
