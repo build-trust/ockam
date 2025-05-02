@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 0.151.0 - 2025-04-30
+## 0.151.0 - 2025-05-02
 
 ### Added
 
@@ -45,6 +45,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add epoch tag to docker image
 - Add `cluster secret` subcommand
 - Add `OCKAM_USE_DOCKER_CACHE` env var used in `cluster create` command
+- List relays on project nodes
+- Push secrets on `cluster create` command
+- Add `cluster` back to `cluster inlet` command
+- Zone config return error if has duplicated pods or containers
 - Updated dependencies
 
 ### Changed
@@ -60,6 +64,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improve cluster repl
 - Process server response as header+body
 - In the cluster repl, use terminal to handle output
+- Cluster arguments
 
 ### Fixed
 
@@ -75,6 +80,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Is_enrolled check
 - Manually parse base command args
 - Hash email using sha256 for the zone name default value
+- Repl initial message handling
+- Pass relay name in `cluster ticket` command
 
 ### Removed
 
