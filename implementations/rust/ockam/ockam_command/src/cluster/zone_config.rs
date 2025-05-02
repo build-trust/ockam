@@ -73,6 +73,26 @@ impl ZoneConfig {
             }
         }
 
+        // Check for duplicate pod names or container names
+        let mut pod_names = HashMap::new();
+        for pod in &self.pods {
+            if let Some(existing) = pod_names.insert(&pod.name, pod) {
+                return Err(miette::miette!(format!(
+                    "Duplicate pod name '{}' found in zone configuration",
+                    existing.name
+                )));
+            }
+            let mut container_names = HashMap::new();
+            for container in &pod.containers {
+                if let Some(existing) = container_names.insert(&container.name, container) {
+                    return Err(miette::miette!(format!(
+                        "Duplicate container name '{}' found in pod '{}'",
+                        existing.name, pod.name
+                    )));
+                }
+            }
+        }
+
         Ok(())
     }
 
@@ -358,6 +378,69 @@ pods:
             .unwrap_err()
             .to_string()
             .contains("Container name 'container-name-is-too-long' exceeds 10 characters"));
+    }
+
+    #[test]
+    fn test_validate_duplicate_names() {
+        // Test duplicate pod names
+        let config_duplicate_pods = ZoneConfig {
+            name: "zone".to_string(),
+            pods: vec![
+                Pod {
+                    name: "pod1".to_string(),
+                    containers: vec![Container {
+                        name: "container1".to_string(),
+                        image: "image1".to_string(),
+                        other_fields: HashMap::new(),
+                    }],
+                    other_fields: HashMap::new(),
+                },
+                Pod {
+                    name: "pod1".to_string(), // Duplicate pod name
+                    containers: vec![Container {
+                        name: "container2".to_string(),
+                        image: "image2".to_string(),
+                        other_fields: HashMap::new(),
+                    }],
+                    other_fields: HashMap::new(),
+                },
+            ],
+        };
+
+        let result = config_duplicate_pods.validate();
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Duplicate pod name 'pod1' found"));
+
+        // Test duplicate container names within a pod
+        let config_duplicate_containers = ZoneConfig {
+            name: "zone".to_string(),
+            pods: vec![Pod {
+                name: "pod1".to_string(),
+                containers: vec![
+                    Container {
+                        name: "container1".to_string(),
+                        image: "image1".to_string(),
+                        other_fields: HashMap::new(),
+                    },
+                    Container {
+                        name: "container1".to_string(), // Duplicate container name
+                        image: "image2".to_string(),
+                        other_fields: HashMap::new(),
+                    },
+                ],
+                other_fields: HashMap::new(),
+            }],
+        };
+
+        let result = config_duplicate_containers.validate();
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Duplicate container name 'container1' found in pod 'pod1'"));
     }
 
     #[test]
