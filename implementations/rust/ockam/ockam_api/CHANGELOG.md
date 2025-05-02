@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 0.94.0 - 2025-04-30
+## 0.94.0 - 2025-05-02
 
 ### Added
 
@@ -52,6 +52,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add `cluster secret` subcommand
 - Add 5 min timeout to provisioner http api client
 - When resetting with the postgres database delete the tenant tables data
+- Evaluate policies with non-existing attribute keys
+- List relays on project nodes
 - Updated dependencies
 
 ### Changed
