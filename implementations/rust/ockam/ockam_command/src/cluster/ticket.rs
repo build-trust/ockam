@@ -53,7 +53,13 @@ impl InMemoryNodeCommand<String> for TicketNodeCommand {
         let cluster = get_cluster(ctx, &node).await?;
         let zone_name = self.command.zone.zone_name()?;
         let ticket = api_client
-            .create_enrollment_token(ctx, &cluster, &zone_name, self.command.attributes()?, None)
+            .create_enrollment_token(
+                ctx,
+                &cluster,
+                &zone_name,
+                self.command.attributes()?,
+                self.command.allowed_relay_name.clone(),
+            )
             .await?;
 
         self.opts
