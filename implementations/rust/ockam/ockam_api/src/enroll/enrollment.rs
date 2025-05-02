@@ -23,7 +23,7 @@ pub enum EnrollStatus {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum AiEnrollStatus {
-    EnrolledSuccessfully(String),
+    EnrolledSuccessfully,
     AlreadyEnrolled,
     UnexpectedStatus(String, Status),
     FailedNoStatus(String),
@@ -32,7 +32,7 @@ pub enum AiEnrollStatus {
 impl From<AiEnrollStatus> for EnrollStatus {
     fn from(val: AiEnrollStatus) -> Self {
         match val {
-            AiEnrollStatus::EnrolledSuccessfully(_) => EnrollStatus::EnrolledSuccessfully,
+            AiEnrollStatus::EnrolledSuccessfully => EnrollStatus::EnrolledSuccessfully,
             AiEnrollStatus::AlreadyEnrolled => EnrollStatus::AlreadyEnrolled,
             AiEnrollStatus::UnexpectedStatus(e, s) => EnrollStatus::UnexpectedStatus(e, s),
             AiEnrollStatus::FailedNoStatus(e) => EnrollStatus::FailedNoStatus(e),
@@ -167,7 +167,7 @@ impl Enrollment for SecureClient {
             .await
             .into_diagnostic()?;
         match reply {
-            Reply::Successful(_) => Ok(AiEnrollStatus::EnrolledSuccessfully("TODO".to_string())),
+            Reply::Successful(_) => Ok(AiEnrollStatus::EnrolledSuccessfully),
             Reply::Failed(e, Some(s)) => {
                 error!("enrolling with a token returned an error: {e:?}");
                 Ok(AiEnrollStatus::UnexpectedStatus(e.to_string(), s))
