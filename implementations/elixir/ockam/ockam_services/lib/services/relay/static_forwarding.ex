@@ -28,14 +28,6 @@ defmodule Ockam.Services.Relay.StaticForwarding do
 
   require Logger
 
-  # Shutdown the relay if no messages are received for this time
-  # This works because the rust side, when a node creates a relay,
-  # there is something that ping itself _through_ the relay each
-  # 10 seconds.  So no activity through the relay
-  # means (likely) the other side is dead.  A cleaner apprach would
-  # be welcomed here.
-  @idle_timeout 20_000
-
   @spec list_running_relays() :: [{Ockam.Address.t(), map()}]
   def list_running_relays() do
     Ockam.Node.Registry.select_by_attribute(:service, :relay)
@@ -126,7 +118,6 @@ defmodule Ockam.Services.Relay.StaticForwarding do
         Forwarder.create(
           Keyword.merge(forwarder_options,
             address: forwarder_address,
-            idle_timeout: @idle_timeout,
             relay_options: [
               alias: alias_str,
               route: route,

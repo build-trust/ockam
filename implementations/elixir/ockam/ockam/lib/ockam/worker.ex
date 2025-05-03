@@ -129,6 +129,10 @@ defmodule Ockam.Worker do
         Ockam.Worker.handle_idle_timeout(state)
       end
 
+      def handle_info({:DOWN, _ref, :process, _pid, _reason} = down, state) do
+        handle_monitor_down(down, state)
+      end
+
       @doc false
       @impl true
       def handle_continue(:post_init, options) do
@@ -151,7 +155,16 @@ defmodule Ockam.Worker do
         Ockam.Worker.is_authorized(message, state)
       end
 
-      defoverridable setup: 2, address_prefix: 1, is_authorized: 2, create: 2
+      @doc false
+      def handle_monitor_down(_down, state) do
+        {:noreply, state}
+      end
+
+      defoverridable setup: 2,
+                     address_prefix: 1,
+                     is_authorized: 2,
+                     create: 2,
+                     handle_monitor_down: 2
     end
   end
 

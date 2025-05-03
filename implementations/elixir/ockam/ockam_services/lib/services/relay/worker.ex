@@ -20,29 +20,45 @@ defmodule Ockam.Services.Relay.Worker do
     target_identifier = Keyword.get(relay_options, :target_identifier)
     notify = Keyword.get(relay_options, :notify, false)
     route = Keyword.get(relay_options, :route)
-    {:ok, ts} = DateTime.now("Etc/UTC")
 
-    regitry_metadata = %{
-      service: :relay,
-      tags: user_defined_tags,
-      target_identifier: target_identifier,
-      created_at: ts,
-      updated_at: ts
-    }
+    case monitor(route) do
+      {:ok, ref} ->
+        {:ok, ts} = DateTime.now("Etc/UTC")
 
-    maybe_notify_target(notify, route, alias_str, state.address)
+        regitry_metadata = %{
+          service: :relay,
+          tags: user_defined_tags,
+          target_identifier: target_identifier,
+          created_at: ts,
+          updated_at: ts
+        }
 
-    {:ok, regitry_metadata,
-     Map.merge(state, %{alias: alias_str, route: route, target_identifier: target_identifier})}
+        maybe_notify_target(notify, route, alias_str, state.address)
+
+        {:ok, regitry_metadata,
+         Map.merge(state, %{
+           alias: alias_str,
+           route: route,
+           target_identifier: target_identifier,
+           monitor_ref: ref
+         })}
+
+      :error ->
+        Logger.warning("monitoring #{inspect(route)} failed, addr not found")
+        {:error, :monitoring_failed}
+    end
   end
 
   @impl true
   def handle_call(
         {:update_route, route, target_identifier, user_defined_tags, notify},
         _from,
-        %{alias: alias_str} = state
+        %{alias: alias_str, monitor_ref: ref} = state
       ) do
+    true = Process.demonitor(ref, [:flush])
+    ref = monitor(route)
     state = Map.put(state, :route, route)
+    state = Map.put(state, :monitor_ref, ref)
     {:ok, ts} = DateTime.now("Etc/UTC")
     # Update metadata attributes
     :ok =
@@ -87,5 +103,35 @@ defmodule Ockam.Services.Relay.Worker do
   def handle_message(msg, state) do
     Logger.warning("message #{inspect(msg)} received without target route setup, discarded")
     {:ok, state}
+  end
+
+  def handle_monitor_down(
+        {:DOWN, ref, :process, _pid, reason},
+        %{monitor_ref: current_ref} = state
+      )
+      when ref == current_ref do
+    Logger.warning("Terminating relay worker,  route terminated with reason: #{inspect(reason)}")
+    {:stop, reason, state}
+  end
+
+  def handle_monitor_down(
+        {:DOWN, ref, :process, pid, reason},
+        %{monitor_ref: current_ref} = state
+      ) do
+    Logger.info(
+      "Ignoring outdated monitor notification. Reason: #{inspect(reason)} Pid: #{inspect(pid)} Ref: #{inspect(ref)}.  Current ref: #{inspect(current_ref)}"
+    )
+
+    {:noreply, state}
+  end
+
+  defp monitor([addr | _route]) do
+    case Ockam.Node.whereis(addr) do
+      nil ->
+        :error
+
+      pid ->
+        {:ok, Process.monitor(pid)}
+    end
   end
 end
