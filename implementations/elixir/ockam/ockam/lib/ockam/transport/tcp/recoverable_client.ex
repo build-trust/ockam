@@ -80,12 +80,12 @@ defmodule Ockam.Transport.TCP.RecoverableClient do
     {:noreply, refresh_client(state)}
   end
 
-  def handle_info({:DOWN, ref, :process, _pid, _reason} = down, %{monitor_ref: ref} = state) do
+  def handle_monitor_down({:DOWN, ref, :process, _pid, _reason} = down, %{monitor_ref: ref} = state) do
     Logger.debug("DOWN for current client: #{inspect(down)} state: #{inspect(state)}")
     {:noreply, schedule_refresh_client(state)}
   end
 
-  def handle_info({:DOWN, _ref, _type, _pid, _reason} = down, state) do
+  def handle_monitor_down({:DOWN, _ref, _type, _pid, _reason} = down, state) do
     Logger.debug("DOWN for old client: #{inspect(down)} state: #{inspect(state)}")
     {:noreply, state}
   end

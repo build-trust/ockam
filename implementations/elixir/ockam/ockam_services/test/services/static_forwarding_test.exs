@@ -34,7 +34,9 @@ defmodule Test.Services.StaticForwardingTest do
           static_keypair: listener_keypair,
           static_key_attestation: attestation
         ],
-        authorities: [authority]
+        authorities: [authority],
+        # Needed to test the relay termination
+        idle_timeout: 2000
       )
 
     # TODO: rework the relationship on credential exchange API, attribute storage and secure channel
@@ -211,6 +213,59 @@ defmodule Test.Services.StaticForwardingTest do
       refute_register_relay(channel_carol_2, service_address, "anyalias", [test_address_carol])
 
     Ockam.Node.stop(forwarder_address)
+    assert_eventually([] = StaticForwardingService.list_running_relays())
+  end
+
+  test "relay terminated if forwarder route stops", %{
+    authority: authority,
+    alice: alice,
+    listener: listener,
+    service_addr: service_address
+  } do
+    {:ok, test_address_alice} = Node.register_random_address()
+
+    alias_str = "test_static_forwarding_alias"
+
+    forwarder_address = "forward_to_" <> alias_str
+
+    on_exit(fn ->
+      Node.stop(forwarder_address)
+      Node.unregister_address(test_address_alice)
+    end)
+
+    {:ok, channel_alice} =
+      create_channel_with_credential(authority, alice, listener, %{
+        "ockam-relay" => alias_str
+      })
+
+    {:ok, ^forwarder_address} =
+      assert_register_relay(channel_alice, service_address, alias_str, [test_address_alice])
+
+    assert_message_pass_through_relay(forwarder_address, [test_address_alice])
+
+    # Metadata on the relay point to alice
+    alice_id = Identity.get_identifier(alice)
+
+    assert_eventually(
+      [%Relay{addr: ^forwarder_address, target_identifier: ^alice_id}] =
+        StaticForwardingService.list_running_relays()
+    )
+
+    ref = Process.monitor(Ockam.Node.whereis(forwarder_address))
+
+    # Terminate alice' channel.  This "client" side of the secure channel.
+    # The "server" side will be terminated due to inactivity because of the idle_timeout on the
+    # listener defined on the test setup. The relay must be terminated in reaction to that.
+    Ockam.Node.stop(channel_alice)
+
+    receive do
+      {:DOWN, ^ref, :process, _pid, _reason} ->
+        :ok
+    after
+      5000 ->
+        raise "Timeout waiting for relay termination"
+    end
+
     assert_eventually([] = StaticForwardingService.list_running_relays())
   end
 end
