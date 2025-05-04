@@ -289,6 +289,8 @@ struct RelaySessionReplacer {
     authorized: Option<Identifier>,
 }
 
+const DEFAULT_RELAY_CONNECT_TIMEOUT: Duration = Duration::from_secs(30);
+
 #[async_trait]
 impl SessionReplacer for RelaySessionReplacer {
     async fn create(&mut self) -> Result<ReplacerOutcome> {
@@ -309,7 +311,7 @@ impl SessionReplacer for RelaySessionReplacer {
                 &self.addr.clone(),
                 node_manager.identifier(),
                 self.authorized.clone(),
-                None,
+                Some(DEFAULT_RELAY_CONNECT_TIMEOUT),
             )
             .await?;
         let connection = self.connection.insert(connection);
