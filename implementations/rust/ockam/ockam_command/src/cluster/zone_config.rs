@@ -14,6 +14,41 @@ pub struct ZoneConfig {
 pub struct Pod {
     pub name: String,
     pub containers: Vec<Container>,
+    #[serde(default, alias = "portal")]
+    pub portals: Portals,
+    #[serde(flatten)]
+    pub other_fields: HashMap<String, Value>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct Portals {
+    #[serde(default, alias = "inlet", alias = "tcp-inlets", alias = "tcp-inlet")]
+    pub inlets: Vec<Inlet>,
+    #[serde(
+        default,
+        alias = "outlet",
+        alias = "tcp-outlets",
+        alias = "tcp-outlets"
+    )]
+    pub outlets: Vec<Outlet>,
+    #[serde(flatten)]
+    pub other_fields: HashMap<String, Value>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Inlet {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    pub from: String,
+    #[serde(flatten)]
+    pub other_fields: HashMap<String, Value>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Outlet {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    pub to: String,
     #[serde(flatten)]
     pub other_fields: HashMap<String, Value>,
 }
@@ -158,6 +193,53 @@ impl ZoneConfig {
 
         Ok(())
     }
+
+    /// Returns the name of the "main" pod, which is either:
+    /// - The only pod if there's just one pod
+    /// - The pod named "main" if it exists
+    /// - Error otherwise
+    pub fn get_main_pod(&self) -> miette::Result<&Pod> {
+        if self.pods.is_empty() {
+            return Err(miette::miette!("No pods defined in zone configuration"));
+        }
+        if self.pods.len() == 1 {
+            // If there's only one pod, return it
+            Ok(&self.pods[0])
+        } else {
+            // Try to find a pod named "main"
+            self.pods
+                .iter()
+                .find(|pod| pod.name == "main")
+                .ok_or_else(|| miette::miette!("Multiple pods defined, but none is named 'main'"))
+        }
+    }
+}
+
+impl Pod {
+    pub fn get_outlets(&self) -> PodOutlets {
+        // Collect all outlets
+        let mut repl = None;
+        let mut rest = Vec::new();
+        for outlet in &self.portals.outlets {
+            if outlet.name.as_deref() == Some("repl") {
+                repl = Some(outlet.clone());
+            } else {
+                rest.push(outlet.clone());
+            }
+        }
+
+        // If there is only one outlet, return it as the repl
+        if rest.len() == 1 {
+            repl = Some(rest.remove(0));
+        }
+
+        PodOutlets { repl, rest }
+    }
+}
+
+pub struct PodOutlets {
+    pub repl: Option<Outlet>,
+    pub rest: Vec<Outlet>,
 }
 
 #[cfg(test)]
@@ -169,35 +251,35 @@ mod tests {
         let yaml = r#"
 name: my-zone
 pods:
+- name: client-agent
+  expose-port: 3000,
+  containers:
   - name: client-agent
-    containers:
-      - name: client-agent
-        image: client-app
-        ockam-ticket:
-          attributes:
-            - name: role
-              value: client
-          relay: true
-        imagePullPolicy: Always
-        args: ["client-agent", "${ENROLLMENT_TICKET}", "${ZONE_DOMAIN}-echo-agent"]
-    expose-port: 3000,
+    image: client-app
+    ockam-ticket:
+      attributes:
+        - name: role
+          value: client
+      relay: true
+    imagePullPolicy: Always
+    args: ["client-agent", "${ENROLLMENT_TICKET}", "${ZONE_DOMAIN}-echo-agent"]
+- name: echo-agent
+  containers:
   - name: echo-agent
-    containers:
-      - name: echo-agent
-        image: echo-app
-        ockam-ticket:
-          attributes:
-            - name: role
-              value: echo
-          relay: true
-        imagePullPolicy: Always
-        args: ["echo-agent", "${ENROLLMENT_TICKET}"]
-    portal:
+    image: echo-app
+    ockam-ticket:
       attributes:
         - name: role
           value: echo
-      tcp-outlets:
-        - to: localhost:8080
+      relay: true
+    imagePullPolicy: Always
+    args: ["echo-agent", "${ENROLLMENT_TICKET}"]
+  portal:
+    attributes:
+      - name: role
+        value: echo
+    tcp-outlets:
+      - to: localhost:8080
 "#;
 
         let config = serde_yaml::from_str::<ZoneConfig>(yaml).unwrap();
@@ -207,6 +289,25 @@ pods:
         assert_eq!(config.pods.len(), 2);
         assert_eq!(config.pods[0].name, "client-agent");
         assert_eq!(config.pods[0].containers[0].image, "client-app");
+
+        // Check the portal field
+        let portal = &config.pods[1].portals;
+        assert_eq!(portal.inlets.len(), 0);
+        assert_eq!(portal.outlets.len(), 1);
+        let outlet = &portal.outlets[0];
+        assert_eq!(outlet.to, "localhost:8080");
+        assert_eq!(outlet.name, None);
+        assert_eq!(outlet.to, "localhost:8080");
+        assert_eq!(
+            portal
+                .other_fields
+                .get("attributes")
+                .unwrap()
+                .as_array()
+                .unwrap()
+                .len(),
+            1
+        );
 
         // Check the deepest dynamic field
         let ticket = config.pods[0].containers[0]
@@ -242,6 +343,7 @@ pods:
                             other_fields: HashMap::new(),
                         },
                     ],
+                    portals: Default::default(),
                     other_fields: HashMap::new(),
                 },
                 Pod {
@@ -263,6 +365,7 @@ pods:
                             other_fields: HashMap::new(),
                         },
                     ],
+                    portals: Default::default(),
                     other_fields: HashMap::new(),
                 },
                 Pod {
@@ -279,6 +382,7 @@ pods:
                             other_fields: HashMap::new(),
                         },
                     ],
+                    portals: Default::default(),
                     other_fields: HashMap::new(),
                 },
             ],
@@ -304,6 +408,7 @@ pods:
                     image: "image1".to_string(),
                     other_fields: HashMap::new(),
                 }],
+                portals: Default::default(),
                 other_fields: HashMap::new(),
             }],
         };
@@ -322,6 +427,7 @@ pods:
                     image: "image1".to_string(),
                     other_fields: HashMap::new(),
                 }],
+                portals: Default::default(),
                 other_fields: HashMap::new(),
             }],
         };
@@ -345,6 +451,7 @@ pods:
                     image: "image1".to_string(),
                     other_fields: HashMap::new(),
                 }],
+                portals: Default::default(),
                 other_fields: HashMap::new(),
             }],
         };
@@ -368,6 +475,7 @@ pods:
                     image: "image1".to_string(),
                     other_fields: HashMap::new(),
                 }],
+                portals: Default::default(),
                 other_fields: HashMap::new(),
             }],
         };
@@ -393,6 +501,7 @@ pods:
                         image: "image1".to_string(),
                         other_fields: HashMap::new(),
                     }],
+                    portals: Default::default(),
                     other_fields: HashMap::new(),
                 },
                 Pod {
@@ -402,6 +511,7 @@ pods:
                         image: "image2".to_string(),
                         other_fields: HashMap::new(),
                     }],
+                    portals: Default::default(),
                     other_fields: HashMap::new(),
                 },
             ],
@@ -431,6 +541,7 @@ pods:
                         other_fields: HashMap::new(),
                     },
                 ],
+                portals: Default::default(),
                 other_fields: HashMap::new(),
             }],
         };
@@ -454,6 +565,7 @@ pods:
                     image: "image1".to_string(),
                     other_fields: HashMap::new(),
                 }],
+                portals: Default::default(),
                 other_fields: HashMap::new(),
             }],
         };
@@ -465,5 +577,471 @@ pods:
             .unwrap_err()
             .to_string()
             .contains("Zone name exceeds 10 characters"));
+    }
+
+    #[test]
+    fn test_parse_yaml_with_portals() {
+        let yaml = r#"
+name: test-zone
+pods:
+- name: pod1
+  containers:
+  - name: app
+    image: app-image
+  portals:
+    inlets:
+    - name: web
+      from: external:8080
+    - from: external:9000
+    outlets:
+    - name: db
+      to: postgres:5432
+    - to: redis:6379
+"#;
+
+        let config = serde_yaml::from_str::<ZoneConfig>(yaml).unwrap();
+
+        // Verify portals are correctly parsed
+        let pod = &config.pods[0];
+        assert_eq!(pod.portals.inlets.len(), 2);
+        assert_eq!(pod.portals.outlets.len(), 2);
+
+        // Verify inlet fields
+        assert_eq!(pod.portals.inlets[0].name, Some("web".to_string()));
+        assert_eq!(pod.portals.inlets[0].from, "external:8080");
+        assert_eq!(pod.portals.inlets[1].name, None);
+        assert_eq!(pod.portals.inlets[1].from, "external:9000");
+
+        // Verify outlet fields
+        assert_eq!(pod.portals.outlets[0].name, Some("db".to_string()));
+        assert_eq!(pod.portals.outlets[0].to, "postgres:5432");
+        assert_eq!(pod.portals.outlets[1].name, None);
+        assert_eq!(pod.portals.outlets[1].to, "redis:6379");
+    }
+
+    #[test]
+    fn test_parse_yaml_with_tcp_alias() {
+        let yaml = r#"
+name: test-zone
+pods:
+- name: pod1
+  containers:
+  - name: app
+    image: app-image
+  portals:
+    tcp-inlets:
+    - name: http
+      from: external:80
+    tcp-outlets:
+    - name: api
+      to: service:3000
+"#;
+
+        let config = serde_yaml::from_str::<ZoneConfig>(yaml).unwrap();
+
+        // Verify alias works for tcp-inlets/outlets
+        let pod = &config.pods[0];
+        assert_eq!(pod.portals.inlets.len(), 1);
+        assert_eq!(pod.portals.outlets.len(), 1);
+
+        assert_eq!(pod.portals.inlets[0].name, Some("http".to_string()));
+        assert_eq!(pod.portals.inlets[0].from, "external:80");
+
+        assert_eq!(pod.portals.outlets[0].name, Some("api".to_string()));
+        assert_eq!(pod.portals.outlets[0].to, "service:3000");
+    }
+
+    #[test]
+    fn test_default_portals() {
+        let yaml = r#"
+name: test-zone
+pods:
+- name: pod1
+  containers:
+  - name: app
+    image: app-image
+"#;
+
+        let config = serde_yaml::from_str::<ZoneConfig>(yaml).unwrap();
+
+        // Verify default empty portals
+        let pod = &config.pods[0];
+        assert!(pod.portals.inlets.is_empty());
+        assert!(pod.portals.outlets.is_empty());
+    }
+
+    #[test]
+    fn test_other_fields_in_portals() {
+        let yaml = r#"
+name: test-zone
+pods:
+- name: pod1
+  containers:
+  - name: app
+    image: app-image
+  portals:
+    inlets:
+    - name: web
+      from: external:8080
+      protocol: http
+      custom_field: value1
+    outlets:
+    - to: service:5000
+      secure: true
+      custom_field: value2
+"#;
+
+        let config = serde_yaml::from_str::<ZoneConfig>(yaml).unwrap();
+
+        // Verify other_fields in inlets/outlets
+        let pod = &config.pods[0];
+        let inlet = &pod.portals.inlets[0];
+        let outlet = &pod.portals.outlets[0];
+
+        // Check custom fields are preserved in other_fields
+        assert!(inlet.other_fields.contains_key("protocol"));
+        assert_eq!(inlet.other_fields["protocol"], "http");
+        assert!(inlet.other_fields.contains_key("custom_field"));
+        assert_eq!(inlet.other_fields["custom_field"], "value1");
+
+        assert!(outlet.other_fields.contains_key("secure"));
+        assert_eq!(outlet.other_fields["secure"], true);
+        assert!(outlet.other_fields.contains_key("custom_field"));
+        assert_eq!(outlet.other_fields["custom_field"], "value2");
+    }
+
+    #[test]
+    fn test_serialization_with_portals() {
+        // Create a config with portals
+        let mut config = ZoneConfig {
+            name: "zone".to_string(),
+            pods: vec![Pod {
+                name: "pod1".to_string(),
+                containers: vec![Container {
+                    name: "app".to_string(),
+                    image: "image1".to_string(),
+                    other_fields: HashMap::new(),
+                }],
+                portals: Portals {
+                    inlets: vec![
+                        Inlet {
+                            name: Some("api".to_string()),
+                            from: "external:3000".to_string(),
+                            other_fields: HashMap::new(),
+                        },
+                        Inlet {
+                            name: None,
+                            from: "ext:8080".to_string(),
+                            other_fields: HashMap::new(),
+                        },
+                    ],
+                    outlets: vec![Outlet {
+                        name: Some("db".to_string()),
+                        to: "postgres:5432".to_string(),
+                        other_fields: HashMap::new(),
+                    }],
+                    other_fields: Default::default(),
+                },
+                other_fields: HashMap::new(),
+            }],
+        };
+
+        // Add some other_fields
+        let mut custom_field = HashMap::new();
+        custom_field.insert("protocol".to_string(), Value::String("tcp".to_string()));
+        config.pods[0].portals.inlets[0].other_fields = custom_field;
+
+        // Serialize and deserialize
+        let serialized = serde_yaml::to_string(&config).unwrap();
+        let deserialized: ZoneConfig = serde_yaml::from_str(&serialized).unwrap();
+
+        // Verify everything matches
+        assert_eq!(deserialized.pods[0].portals.inlets.len(), 2);
+        assert_eq!(deserialized.pods[0].portals.outlets.len(), 1);
+
+        let inlet1 = &deserialized.pods[0].portals.inlets[0];
+        assert_eq!(inlet1.name, Some("api".to_string()));
+        assert_eq!(inlet1.from, "external:3000");
+        assert_eq!(inlet1.other_fields["protocol"], "tcp");
+
+        let inlet2 = &deserialized.pods[0].portals.inlets[1];
+        assert_eq!(inlet2.name, None);
+        assert_eq!(inlet2.from, "ext:8080");
+
+        let outlet = &deserialized.pods[0].portals.outlets[0];
+        assert_eq!(outlet.name, Some("db".to_string()));
+        assert_eq!(outlet.to, "postgres:5432");
+    }
+
+    #[test]
+    fn test_get_main_pod() {
+        // Test case: only one pod exists
+        let yaml_single_pod = r#"
+        name: test-zone
+        pods:
+        - name: single-pod
+          containers:
+          - name: app
+            image: app-image
+        "#;
+
+        let config = serde_yaml::from_str::<ZoneConfig>(yaml_single_pod).unwrap();
+        let main_pod = config.get_main_pod().unwrap();
+        assert_eq!(main_pod.name, "single-pod");
+
+        // Test case: multiple pods, one named "main"
+        let yaml_with_main = r#"
+        name: test-zone
+        pods:
+        - name: pod1
+          containers:
+          - name: app1
+            image: app1-image
+        - name: main
+          containers:
+          - name: app2
+            image: app2-image
+        - name: pod3
+          containers:
+          - name: app3
+            image: app3-image
+        "#;
+
+        let config = serde_yaml::from_str::<ZoneConfig>(yaml_with_main).unwrap();
+        let main_pod = config.get_main_pod().unwrap();
+        assert_eq!(main_pod.name, "main");
+
+        // Test case: multiple pods, none named "main"
+        let yaml_without_main = r#"
+        name: test-zone
+        pods:
+        - name: pod1
+          containers:
+          - name: app1
+            image: app1-image
+        - name: pod2
+          containers:
+          - name: app2
+            image: app2-image
+        "#;
+
+        let config = serde_yaml::from_str::<ZoneConfig>(yaml_without_main).unwrap();
+        let err = config.get_main_pod().unwrap_err();
+        assert_eq!(
+            err.to_string(),
+            "Multiple pods defined, but none is named 'main'"
+        );
+
+        // Test case: no pods
+        let yaml_no_pods = r#"
+        name: test-zone
+        pods: []
+        "#;
+
+        let config = serde_yaml::from_str::<ZoneConfig>(yaml_no_pods).unwrap();
+        let err = config.get_main_pod().unwrap_err();
+        assert_eq!(err.to_string(), "No pods defined in zone configuration");
+    }
+
+    #[test]
+    fn test_pod_get_outlets_with_repl() {
+        // Setup pod with multiple outlets including a "repl" outlet
+        let pod = Pod {
+            name: "test-pod".to_string(),
+            containers: vec![Container {
+                name: "app".to_string(),
+                image: "app-image".to_string(),
+                other_fields: HashMap::new(),
+            }],
+            portals: Portals {
+                inlets: vec![],
+                outlets: vec![
+                    Outlet {
+                        name: Some("db".to_string()),
+                        to: "postgres:5432".to_string(),
+                        other_fields: HashMap::new(),
+                    },
+                    Outlet {
+                        name: Some("repl".to_string()),
+                        to: "console:1234".to_string(),
+                        other_fields: HashMap::new(),
+                    },
+                    Outlet {
+                        name: Some("cache".to_string()),
+                        to: "redis:6379".to_string(),
+                        other_fields: HashMap::new(),
+                    },
+                ],
+                other_fields: HashMap::new(),
+            },
+            other_fields: HashMap::new(),
+        };
+
+        let outlets = pod.get_outlets();
+
+        // The "repl" outlet should be separated
+        assert!(outlets.repl.is_some());
+        let repl = outlets.repl.unwrap();
+        assert_eq!(repl.name, Some("repl".to_string()));
+        assert_eq!(repl.to, "console:1234");
+
+        // The rest vector should have the other two outlets
+        assert_eq!(outlets.rest.len(), 2);
+        assert!(outlets
+            .rest
+            .iter()
+            .any(|o| o.name == Some("db".to_string())));
+        assert!(outlets
+            .rest
+            .iter()
+            .any(|o| o.name == Some("cache".to_string())));
+    }
+
+    #[test]
+    fn test_pod_get_outlets_single_outlet() {
+        // Setup pod with a single outlet (not named "repl")
+        let pod = Pod {
+            name: "test-pod".to_string(),
+            containers: vec![Container {
+                name: "app".to_string(),
+                image: "app-image".to_string(),
+                other_fields: HashMap::new(),
+            }],
+            portals: Portals {
+                inlets: vec![],
+                outlets: vec![Outlet {
+                    name: Some("single".to_string()),
+                    to: "service:8080".to_string(),
+                    other_fields: HashMap::new(),
+                }],
+                other_fields: HashMap::new(),
+            },
+            other_fields: HashMap::new(),
+        };
+
+        let outlets = pod.get_outlets();
+
+        // When there's only one outlet, it should be used as the repl
+        assert!(outlets.repl.is_some());
+        let repl = outlets.repl.unwrap();
+        assert_eq!(repl.name, Some("single".to_string()));
+        assert_eq!(repl.to, "service:8080");
+
+        // The rest vector should be empty
+        assert_eq!(outlets.rest.len(), 0);
+    }
+
+    #[test]
+    fn test_pod_get_outlets_unnamed_outlets() {
+        // Setup pod with unnamed outlets
+        let pod = Pod {
+            name: "test-pod".to_string(),
+            containers: vec![Container {
+                name: "app".to_string(),
+                image: "app-image".to_string(),
+                other_fields: HashMap::new(),
+            }],
+            portals: Portals {
+                inlets: vec![],
+                outlets: vec![
+                    Outlet {
+                        name: None,
+                        to: "service1:8080".to_string(),
+                        other_fields: HashMap::new(),
+                    },
+                    Outlet {
+                        name: None,
+                        to: "service2:9090".to_string(),
+                        other_fields: HashMap::new(),
+                    },
+                ],
+                other_fields: HashMap::new(),
+            },
+            other_fields: HashMap::new(),
+        };
+
+        let outlets = pod.get_outlets();
+
+        // No "repl" outlet exists
+        assert!(outlets.repl.is_none());
+
+        // The rest vector should have the other outlet
+        assert_eq!(outlets.rest.len(), 2);
+        assert_eq!(outlets.rest[0].to, "service1:8080");
+        assert_eq!(outlets.rest[1].to, "service2:9090");
+    }
+
+    #[test]
+    fn test_pod_get_outlets_no_outlets() {
+        // Setup pod with no outlets
+        let pod = Pod {
+            name: "test-pod".to_string(),
+            containers: vec![Container {
+                name: "app".to_string(),
+                image: "app-image".to_string(),
+                other_fields: HashMap::new(),
+            }],
+            portals: Portals {
+                inlets: vec![],
+                outlets: vec![],
+                other_fields: HashMap::new(),
+            },
+            other_fields: HashMap::new(),
+        };
+
+        let outlets = pod.get_outlets();
+
+        // No outlets means no repl
+        assert!(outlets.repl.is_none());
+
+        // The rest vector should be empty
+        assert_eq!(outlets.rest.len(), 0);
+    }
+
+    #[test]
+    fn test_pod_get_outlets_multiple_no_repl() {
+        // Setup pod with multiple outlets but no "repl"
+        let pod = Pod {
+            name: "test-pod".to_string(),
+            containers: vec![Container {
+                name: "app".to_string(),
+                image: "app-image".to_string(),
+                other_fields: HashMap::new(),
+            }],
+            portals: Portals {
+                inlets: vec![],
+                outlets: vec![
+                    Outlet {
+                        name: Some("db".to_string()),
+                        to: "postgres:5432".to_string(),
+                        other_fields: HashMap::new(),
+                    },
+                    Outlet {
+                        name: Some("cache".to_string()),
+                        to: "redis:6379".to_string(),
+                        other_fields: HashMap::new(),
+                    },
+                ],
+                other_fields: HashMap::new(),
+            },
+            other_fields: HashMap::new(),
+        };
+
+        let outlets = pod.get_outlets();
+
+        // No "repl" outlet exists, and since there are multiple outlets,
+        // none gets chosen for repl (first one doesn't become repl)
+        assert!(outlets.repl.is_none());
+
+        // The rest vector should have both outlets
+        assert_eq!(outlets.rest.len(), 2);
+        assert!(outlets
+            .rest
+            .iter()
+            .any(|o| o.name == Some("db".to_string())));
+        assert!(outlets
+            .rest
+            .iter()
+            .any(|o| o.name == Some("cache".to_string())));
     }
 }

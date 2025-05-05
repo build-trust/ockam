@@ -385,6 +385,7 @@ impl CreateCommand {
             child_process: self.child_process,
             exit_on_eof: false,
             foreground: self.foreground,
+            no_ctrlc_handler: false,
         };
         wait_for_exit_signal(
             &foreground_args,

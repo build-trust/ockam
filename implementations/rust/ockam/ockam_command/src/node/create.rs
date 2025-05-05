@@ -195,6 +195,7 @@ impl Default for CreateCommand {
             opentelemetry_context: None,
             foreground_args: ForegroundArgs {
                 foreground: false,
+                no_ctrlc_handler: false,
                 exit_on_eof: false,
                 child_process: false,
             },
