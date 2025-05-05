@@ -1,4 +1,5 @@
-use crate::cluster::common_args::{ClusterArg, ZoneNameOrConfigArg};
+use crate::cluster::common_args::{ClusterArg, HttpApiArgs, ZoneNameOrConfigArg};
+use crate::cluster::utils::get_api_client;
 use crate::node::config::ConfigArgs;
 use crate::node_command::InMemoryNodeCommand;
 use crate::tcp::inlet::create::tcp_inlet_default_from_addr;
@@ -7,13 +8,15 @@ use crate::util::parsers::hostname_parser;
 use crate::{docs, Command, CommandGlobalOpts, Result};
 use async_trait::async_trait;
 use clap::Args;
-use miette::IntoDiagnostic;
+use miette::{IntoDiagnostic, WrapErr};
 use ockam::transport::SchemeHostnamePort;
 use ockam_abac::PolicyExpression;
 use ockam_api::cli_state::OCKAM_HOME;
 use ockam_api::nodes::InMemoryNode;
+use ockam_api::orchestrator::ai_platform::api::AiPlatformApi;
 use ockam_api::CliState;
 use ockam_node::Context;
+use std::collections::BTreeMap;
 use std::sync::Arc;
 
 const LONG_ABOUT: &str = include_str!("./static/inlet/long_about.txt");
@@ -45,11 +48,14 @@ pub struct InletCommand {
     When passed, the identity will be given a project membership credential. \
     Check the `project ticket` command for more information about enrollment tickets.
     "))]
-    pub enrollment_ticket: String,
+    pub enrollment_ticket: Option<String>,
 
     /// Disable the Ctrl-C handler.
     #[arg(long)]
     pub no_ctrlc_handler: bool,
+
+    #[command(flatten)]
+    pub http_api: HttpApiArgs,
 
     // == TCP Inlet Options ==
     /// Address on which to accept TCP connections, in the format `<scheme>://<host>:<port>`.
@@ -86,8 +92,13 @@ struct InletNodeCommand {
 impl InMemoryNodeCommand for InletNodeCommand {
     async fn run(&self, node: Arc<InMemoryNode>) -> miette::Result<()> {
         let ctx = node.ctx();
+        let use_http_api = self.command.http_api.use_http_api();
+        let api_client = get_api_client(&node, use_http_api).await?;
         let cluster = self.command.cluster.get_cluster(ctx, &node).await?;
         let zone_name = self.command.zone.zone_name()?;
+        let enrollment_ticket = self
+            .get_enrollment_ticket(ctx, &*api_client, &cluster, &zone_name)
+            .await?;
         let relay_name = format!("{}-{}-{}", cluster, zone_name, self.command.pod);
         let outlet_name = self.command.to.as_ref().unwrap_or(&self.command.pod);
         let mut node_config = serde_json::json!({
@@ -104,7 +115,7 @@ impl InMemoryNodeCommand for InletNodeCommand {
         let node_cmd = crate::node::create::CreateCommand {
             name: node_config.to_string(),
             config_args: ConfigArgs {
-                enrollment_ticket: Some(self.command.enrollment_ticket.clone()),
+                enrollment_ticket: Some(enrollment_ticket),
                 ..Default::default()
             },
             foreground_args: ForegroundArgs {
@@ -134,5 +145,22 @@ impl Command for InletCommand {
         };
         command.execute(ctx, opts.state.clone()).await?;
         Ok(())
+    }
+}
+
+impl InletNodeCommand {
+    async fn get_enrollment_ticket(
+        &self,
+        ctx: &Context,
+        api_client: &(dyn AiPlatformApi + Send + Sync + 'static),
+        cluster: &str,
+        zone_name: &str,
+    ) -> Result<String> {
+        if let Some(t) = &self.command.enrollment_ticket {
+            return Ok(t.clone());
+        }
+        api_client
+            .create_enrollment_token(ctx, cluster, zone_name, BTreeMap::default(), None)
+            .await.wrap_err("Failed to generate an enrollment ticket for the inlet. Please provide one with the --enrollment-ticket argument")
     }
 }
