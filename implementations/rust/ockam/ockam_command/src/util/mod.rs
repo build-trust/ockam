@@ -1,3 +1,4 @@
+use crate::{CommandGlobalOpts, Result};
 use colorful::Colorful;
 use miette::miette;
 use ockam_api::cli_state::CliState;
@@ -11,8 +12,7 @@ use std::{
     net::{SocketAddr, TcpListener},
     path::Path,
 };
-
-use crate::{CommandGlobalOpts, Result};
+use tracing::trace;
 
 #[allow(unused)]
 pub mod api;
@@ -76,7 +76,11 @@ pub fn port_is_free_guard(address: &SocketAddr) -> Result<()> {
         return Ok(());
     }
     let ip = address.ip();
-    if TcpListener::bind((ip, port)).is_err() {
+    if let Err(e) = TcpListener::bind((ip, port)) {
+        trace!(
+            ?e,
+            "another process is already listening on port {port} at {ip}"
+        );
         Err(miette!(
             "Another process is already listening on port {port}!"
         ))?;
@@ -124,20 +128,20 @@ mod tests {
         cli_state
             .set_tcp_listener_address(
                 "n1",
-                &SocketAddr::from_str("127.0.0.0:4000").unwrap().into(),
+                &SocketAddr::from_str("127.0.0.1:4000").unwrap().into(),
             )
             .await?;
 
         let test_cases = vec![
             (
                 MultiAddr::from_str("/node/n1")?,
-                Ok("/ip4/127.0.0.0/tcp/4000"),
+                Ok("/ip4/127.0.0.1/tcp/4000"),
             ),
             (MultiAddr::from_str("/project/p1")?, Ok("/project/p1")),
             (MultiAddr::from_str("/service/s1")?, Ok("/service/s1")),
             (
                 MultiAddr::from_str("/project/p1/node/n1/service/echo")?,
-                Ok("/project/p1/ip4/127.0.0.0/tcp/4000/service/echo"),
+                Ok("/project/p1/ip4/127.0.0.1/tcp/4000/service/echo"),
             ),
             (MultiAddr::from_str("/node/n2")?, Err(())),
         ];

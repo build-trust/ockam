@@ -1,7 +1,9 @@
 use miette::{IntoDiagnostic, WrapErr};
+use ockam::transport::SchemeHostnamePort;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
+use std::str::FromStr;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ZoneConfig {
@@ -44,7 +46,7 @@ pub struct Inlet {
     pub other_fields: HashMap<String, Value>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct Outlet {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
@@ -240,6 +242,14 @@ impl Pod {
 pub struct PodOutlets {
     pub repl: Option<Outlet>,
     pub rest: Vec<Outlet>,
+}
+
+impl Outlet {
+    pub fn get_port(&self) -> Option<u16> {
+        SchemeHostnamePort::from_str(&self.to)
+            .ok()
+            .map(|v| v.port())
+    }
 }
 
 #[cfg(test)]
