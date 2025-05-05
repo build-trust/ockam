@@ -153,8 +153,11 @@ impl SecretCommand {
         if let Some(spinner) = &spinner {
             spinner.finish_and_clear();
         }
-        opts.terminal
-            .write_line(fmt_ok!("Secrets created successfully!"))?;
+        opts.terminal.write_line(fmt_ok!(
+            "Pushed secrets to zone {} in cluster {}",
+            color_primary(zone_name),
+            color_primary(cluster)
+        ))?;
 
         Ok(())
     }
