@@ -211,7 +211,7 @@ impl ZoneConfig {
             // Try to find a pod named "main"
             self.pods
                 .iter()
-                .find(|pod| pod.name == "main")
+                .find(|pod| pod.name == "main-pod")
                 .ok_or_else(|| miette::miette!("Multiple pods defined, but none is named 'main'"))
         }
     }
