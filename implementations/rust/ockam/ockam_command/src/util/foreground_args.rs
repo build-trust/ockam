@@ -14,6 +14,10 @@ pub struct ForegroundArgs {
     #[arg(long, short)]
     pub foreground: bool,
 
+    /// Disable the Ctrl-C handler for the foreground node.
+    #[arg(long, requires = "foreground")]
+    pub no_ctrlc_handler: bool,
+
     /// When running a node in foreground mode, exit the process when receiving EOF on stdin.
     #[arg(long, short, requires = "foreground")]
     pub exit_on_eof: bool,
@@ -44,7 +48,7 @@ pub async fn wait_for_exit_signal(
     }
 
     // Register a handler for SIGINT, SIGTERM, SIGHUP
-    {
+    if !args.no_ctrlc_handler {
         let tx = tx.clone();
         let terminal = opts.terminal.clone();
         // To avoid handling multiple CTRL+C signals at the same time

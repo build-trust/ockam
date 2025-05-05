@@ -47,6 +47,10 @@ pub struct InletCommand {
     "))]
     pub enrollment_ticket: String,
 
+    /// Disable the Ctrl-C handler.
+    #[arg(long)]
+    pub no_ctrlc_handler: bool,
+
     // == TCP Inlet Options ==
     /// Address on which to accept TCP connections, in the format `<scheme>://<host>:<port>`.
     /// At least the port must be provided. The default scheme is `tcp` and the default host is `127.0.0.1`.
@@ -54,6 +58,10 @@ pub struct InletCommand {
     #[arg(long, display_order = 900, id = "SOCKET_ADDRESS", hide_default_value = true, default_value_t = tcp_inlet_default_from_addr(), value_parser = hostname_parser
     )]
     pub from: SchemeHostnamePort,
+
+    /// Name of the TCP Outlet service to connect to.
+    #[arg(long, id = "ROUTE")]
+    pub to: Option<String>,
 
     #[arg(help = docs::about("\
      Policy expression that will be used for access control to the TCP Inlet. \
@@ -81,17 +89,18 @@ impl InMemoryNodeCommand for InletNodeCommand {
         let cluster = self.command.cluster.get_cluster(ctx, &node).await?;
         let zone_name = self.command.zone.zone_name()?;
         let relay_name = format!("{}-{}-{}", cluster, zone_name, self.command.pod);
+        let outlet_name = self.command.to.as_ref().unwrap_or(&self.command.pod);
         let mut node_config = serde_json::json!({
             "tcp-inlet": {
                 "from": self.command.from.to_string(),
-                "to": self.command.pod,
+                "to": outlet_name,
                 "via": relay_name
             }
         });
         if let Some(allow) = &self.command.allow {
             node_config["tcp-inlet"]["allow"] = allow.to_string().into();
         }
-        let in_memory = false;
+        let in_memory = true;
         let node_cmd = crate::node::create::CreateCommand {
             name: node_config.to_string(),
             config_args: ConfigArgs {
@@ -100,6 +109,7 @@ impl InMemoryNodeCommand for InletNodeCommand {
             },
             foreground_args: ForegroundArgs {
                 foreground: true,
+                no_ctrlc_handler: self.command.no_ctrlc_handler,
                 ..Default::default()
             },
             in_memory,

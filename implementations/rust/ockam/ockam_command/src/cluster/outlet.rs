@@ -88,7 +88,7 @@ impl InMemoryNodeCommand for OutletNodeCommand {
         if let Some(allow) = &self.command.allow {
             node_config["tcp-outlet"]["allow"] = allow.to_string().into();
         }
-        let in_memory = false;
+        let in_memory = true;
         let node_cmd = crate::node::create::CreateCommand {
             name: node_config.to_string(),
             config_args: ConfigArgs {
