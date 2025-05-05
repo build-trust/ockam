@@ -141,7 +141,7 @@ impl CreateCommand {
         let spinner = opts.terminal.spinner();
         if let Some(spinner) = spinner.as_ref() {
             spinner.set_message(format!(
-                "Preparing repository for image {}...",
+                "Creating a repository for the {} image...",
                 color_primary(image_name),
             ));
         }
@@ -152,11 +152,11 @@ impl CreateCommand {
             spinner.finish_and_clear();
         }
         opts.terminal.write_line(fmt_ok!(
-            "Repository ready for image {}",
+            "Created a repository for the {} image\n",
             color_primary(image_name),
         ))?;
         info!(
-            "Repository ready for image {} in cluster {} at {}",
+            "Created a repository for the image {} in cluster {} at {}",
             image_name, cluster, ecr_creds.repository_uri
         );
 
@@ -231,7 +231,7 @@ impl CreateCommand {
         let spinner = opts.terminal.spinner();
         if let Some(spinner) = spinner.as_ref() {
             spinner.set_message(format!(
-                "Building local image {} with tag {}...",
+                "Building image {} with tag {}...",
                 color_primary(image_name),
                 color_primary(&repository_uri_tag)
             ));
@@ -405,7 +405,7 @@ impl CreateCommand {
             spinner.finish_and_clear();
         }
         opts.terminal.write_line(fmt_ok!(
-            "Deployed zone {}",
+            "Deployed zone {}\n",
             color_primary(&zone_config.name),
         ))?;
         info!("Deployed zone {} in cluster {}", zone_config.name, cluster);

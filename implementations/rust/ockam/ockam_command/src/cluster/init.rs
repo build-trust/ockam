@@ -82,7 +82,7 @@ impl Command for InitCommand {
         opts.terminal
             .to_stdout()
             .plain(fmt_ok!(
-                "Successfully initialized template at {}",
+                "Initialized template at {}",
                 color_primary(target_path.display())
             ))
             .write_line()?;
