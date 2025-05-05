@@ -206,7 +206,7 @@ impl BaseCommand {
         if let Some(spinner) = &spinner {
             spinner.set_message(format!(
                 "Opening a Portal to the outlet {} from {}...",
-                color_primary(pod_name),
+                color_primary(to),
                 color_primary(from.to_string())
             ));
         }
@@ -241,7 +241,7 @@ impl BaseCommand {
         }
         opts.terminal.write_line(fmt_ok!(
             "Portal connected to the outlet {} in {}",
-            color_primary(pod_name),
+            color_primary(to),
             color_primary(from.to_string())
         ))?;
 
