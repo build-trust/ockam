@@ -1,6 +1,7 @@
 use crate::branding::BrandingCompileEnvVars;
 use crate::cluster::common_args::{HttpApiArgs, ZoneNameOrConfigArg};
-use crate::cluster::zone_config::ZoneConfig;
+use crate::cluster::zone_config::{Outlet, ZoneConfig};
+use crate::util::port_is_free_guard;
 use crate::{Command, CommandGlobalOpts, Result};
 use clap::Args;
 use colorful::Colorful;
@@ -15,6 +16,7 @@ use ockam_core::env::get_env_ignore_error;
 use ockam_core::TryClone;
 use ockam_node::Context;
 use std::fmt::{Display, Formatter};
+use std::net::SocketAddr;
 use std::str::FromStr;
 use std::time::Duration;
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
@@ -25,7 +27,6 @@ use tracing::debug;
 #[derive(Clone, Debug, Args, Default)]
 pub struct BaseCommand {
     init_repository: String,
-    inlet_address: SchemeHostnamePort,
 }
 
 impl BaseCommand {
@@ -36,17 +37,10 @@ impl BaseCommand {
     async fn parse_args(mut self, _opts: &CommandGlobalOpts) -> Result<Self> {
         // load default values
         self.init_repository = "hello".to_string();
-        self.inlet_address = {
-            let address = get_free_address()?;
-            SchemeHostnamePort::from_str(&address.to_string())?
-        };
 
         // load env vars
         if let Some(v) = get_env_ignore_error("INIT_REPOSITORY") {
             self.init_repository = v;
-        }
-        if let Some(v) = get_env_ignore_error::<String>("INLET_ADDRESS") {
-            self.inlet_address = v.parse().into_diagnostic()?;
         }
 
         Ok(self)
@@ -57,12 +51,11 @@ impl BaseCommand {
         let cmd = self.parse_args(&opts).await?;
         cmd.cluster_init(ctx, &opts).await?;
         let zone_config = cmd.cluster_create(ctx, &opts).await?;
-        let (repl_inlet_handle, rest_inlet_handles) =
-            cmd.cluster_inlets(ctx, &opts, &zone_config).await?;
-        // let (repl_inlet_handle, rest_inlet_handles) = cmd.dummy_inlet(&opts).await?;
+        let (repl_data, rest_inlet_handles) = cmd.cluster_inlets(ctx, &opts, &zone_config).await?;
+        // let (repl_data, rest_inlet_handles) = cmd.dummy_inlet(&opts).await?;
         opts.terminal.write_line(fmt_separator!())?;
-        if let Some(handle) = repl_inlet_handle {
-            cmd.open_repl(ctx, &opts, handle).await?;
+        if let Some((address, handle)) = repl_data {
+            cmd.open_repl(ctx, &opts, address, handle).await?;
         } else {
             // No REPL outlet. Create a ctrlc handler and wait for it to be triggered
             let (tx, mut rx) = tokio::sync::mpsc::channel(2);
@@ -101,6 +94,7 @@ impl BaseCommand {
             ..Default::default()
         };
         enroll_command.run(ctx, opts.clone()).await?;
+        opts.terminal.write_line("")?;
 
         Ok(())
     }
@@ -119,6 +113,7 @@ impl BaseCommand {
             target_path: None,
         };
         init_command.run(ctx, opts.clone()).await?;
+        opts.terminal.write_line("")?;
 
         Ok(())
     }
@@ -143,45 +138,76 @@ impl BaseCommand {
         ctx: &Context,
         opts: &CommandGlobalOpts,
         zone_config: &ZoneConfig,
-    ) -> miette::Result<(Option<JoinHandle<Result<()>>>, Vec<JoinHandle<Result<()>>>)> {
+    ) -> miette::Result<(
+        Option<(SchemeHostnamePort, JoinHandle<Result<()>>)>,
+        Vec<JoinHandle<Result<()>>>,
+    )> {
         let mut handles = Vec::new();
         let main_pod = zone_config.get_main_pod()?;
         let main_pod_outlets = main_pod.get_outlets();
-        let repl_handle = match main_pod_outlets.repl {
+        let repl_data = match main_pod_outlets.repl {
             None => None,
-            Some(ref repl_outlet) => {
+            Some(repl_outlet) => {
+                let from = Self::get_address_for_inlet(&repl_outlet)?;
                 let to = repl_outlet.name.as_ref().unwrap_or(&main_pod.name);
                 let handle = self
-                    .cluster_inlet(ctx, opts, &zone_config.name, &main_pod.name, to, false)
+                    .cluster_inlet(
+                        ctx,
+                        opts,
+                        &zone_config.name,
+                        &main_pod.name,
+                        from.clone(),
+                        to,
+                        false,
+                    )
                     .await?;
-                Some(handle)
+                Some((from, handle))
             }
         };
         for outlet in main_pod_outlets.rest {
             let to = outlet.name.as_ref().unwrap_or(&main_pod.name);
+            let from = Self::get_address_for_inlet(&outlet)?;
             let handle = self
-                .cluster_inlet(ctx, opts, &zone_config.name, &main_pod.name, to, true)
+                .cluster_inlet(ctx, opts, &zone_config.name, &main_pod.name, from, to, true)
                 .await?;
             handles.push(handle);
         }
-        Ok((repl_handle, handles))
+        Ok((repl_data, handles))
     }
 
+    fn get_address_for_inlet(outlet: &Outlet) -> miette::Result<SchemeHostnamePort> {
+        let outlet_port = match outlet.get_port() {
+            Some(port) => {
+                let socket_addr =
+                    SocketAddr::from_str(&format!("127.0.0.1:{port}")).into_diagnostic()?;
+                if port_is_free_guard(&socket_addr).is_ok() {
+                    port
+                } else {
+                    get_free_address()?.port()
+                }
+            }
+            None => get_free_address()?.port(),
+        };
+        SchemeHostnamePort::from_str(&format!("localhost:{outlet_port}")).into_diagnostic()
+    }
+
+    #[allow(clippy::too_many_arguments)]
     async fn cluster_inlet(
         &self,
         ctx: &Context,
         opts: &CommandGlobalOpts,
         zone_name: &str,
         pod_name: &str,
+        from: SchemeHostnamePort,
         to: &str,
         no_ctrlc_handler: bool,
     ) -> miette::Result<JoinHandle<Result<()>>> {
         let spinner = opts.terminal.spinner();
         if let Some(spinner) = &spinner {
             spinner.set_message(format!(
-                "Opening a Portal to the outlet {} in {}...",
+                "Opening a Portal to the outlet {} from {}...",
                 color_primary(pod_name),
-                color_primary(&self.inlet_address)
+                color_primary(from.to_string())
             ));
         }
 
@@ -201,8 +227,8 @@ impl BaseCommand {
         let inlet_command = InletCommand {
             zone: ZoneNameOrConfigArg::from_zone_name(zone_name.to_string()),
             pod: pod_name.to_string(),
-            enrollment_ticket: ticket,
-            from: self.inlet_address.clone(),
+            enrollment_ticket: Some(ticket),
+            from: from.clone(),
             to: Some(to.to_string()),
             no_ctrlc_handler,
             ..Default::default()
@@ -216,7 +242,7 @@ impl BaseCommand {
         opts.terminal.write_line(fmt_ok!(
             "Portal connected to the outlet {} in {}",
             color_primary(pod_name),
-            color_primary(&self.inlet_address)
+            color_primary(from.to_string())
         ))?;
 
         Ok(handle)
@@ -226,6 +252,7 @@ impl BaseCommand {
         &self,
         _ctx: &Context,
         opts: &CommandGlobalOpts,
+        inlet_address: SchemeHostnamePort,
         inlet_handle: JoinHandle<Result<()>>,
     ) -> miette::Result<()> {
         use tokio::net::TcpStream;
@@ -258,7 +285,6 @@ impl BaseCommand {
 
         // Start the interactive REPL
         let opts = opts.clone();
-        let inlet_address = self.inlet_address.clone();
         let mut stdin_rx = stdin.tx.subscribe();
         let repl_handle = tokio::spawn(async move {
             async fn connect_to_inlet(addr: &SchemeHostnamePort) -> miette::Result<TcpStream> {
@@ -576,10 +602,11 @@ pub(super) mod dummy_server {
         pub(super) async fn dummy_inlet(
             &self,
             opts: &CommandGlobalOpts,
+            inlet_address: SchemeHostnamePort,
         ) -> miette::Result<(Option<JoinHandle<Result<()>>>, Vec<JoinHandle<Result<()>>>)> {
             use tokio::net::TcpListener;
 
-            let addr = self.inlet_address.hostname_port().to_string();
+            let addr = inlet_address.hostname_port().to_string();
             let inlet_handle = tokio::spawn(async move {
                 let listener = TcpListener::bind(&addr)
                     .await
@@ -601,7 +628,7 @@ pub(super) mod dummy_server {
 
             opts.terminal.write_line(fmt_ok!(
                 "Dummy echo inlet started on {}",
-                color_primary(&self.inlet_address)
+                color_primary(inlet_address.to_string())
             ))?;
 
             // Ok((Some(inlet_handle), vec![]))
@@ -664,5 +691,53 @@ pub(super) mod dummy_server {
                 .wrap_err("Failed to flush message")?;
             Ok(())
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::cluster::zone_config::Outlet;
+    use std::net::TcpListener;
+
+    #[test]
+    fn test_get_address_for_outlet_with_port() -> miette::Result<()> {
+        // Find a free port for testing
+        let listener = TcpListener::bind("127.0.0.1:0").into_diagnostic()?;
+        let test_port = listener.local_addr().into_diagnostic()?.port();
+        // Drop listener to free the port
+        drop(listener);
+        std::thread::sleep(Duration::from_secs(1));
+
+        // Create an outlet with a specific port
+        let outlet = Outlet {
+            name: Some("test-outlet".to_string()),
+            to: format!("localhost:{}", test_port),
+            ..Default::default()
+        };
+
+        let address = BaseCommand::get_address_for_inlet(&outlet)?;
+        assert_eq!(address.port(), test_port);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_get_address_for_outlet_with_occupied_port() -> miette::Result<()> {
+        // Bind to a port and keep it occupied
+        let listener = TcpListener::bind("127.0.0.1:0").into_diagnostic()?;
+        let occupied_port = listener.local_addr().into_diagnostic()?.port();
+
+        // Create an outlet with the occupied port
+        let outlet = Outlet {
+            name: Some("test-outlet".to_string()),
+            to: format!("localhost:{}", occupied_port),
+            ..Default::default()
+        };
+
+        let address = BaseCommand::get_address_for_inlet(&outlet)?;
+        assert_ne!(address.port(), occupied_port);
+
+        Ok(())
     }
 }
