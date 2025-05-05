@@ -21,32 +21,26 @@ defmodule Ockam.Services.Relay.Worker do
     notify = Keyword.get(relay_options, :notify, false)
     route = Keyword.get(relay_options, :route)
 
-    case monitor(route) do
-      {:ok, ref} ->
-        {:ok, ts} = DateTime.now("Etc/UTC")
+    ref = monitor(route)
+    {:ok, ts} = DateTime.now("Etc/UTC")
 
-        regitry_metadata = %{
-          service: :relay,
-          tags: user_defined_tags,
-          target_identifier: target_identifier,
-          created_at: ts,
-          updated_at: ts
-        }
+    regitry_metadata = %{
+      service: :relay,
+      tags: user_defined_tags,
+      target_identifier: target_identifier,
+      created_at: ts,
+      updated_at: ts
+    }
 
-        maybe_notify_target(notify, route, alias_str, state.address)
+    maybe_notify_target(notify, route, alias_str, state.address)
 
-        {:ok, regitry_metadata,
-         Map.merge(state, %{
-           alias: alias_str,
-           route: route,
-           target_identifier: target_identifier,
-           monitor_ref: ref
-         })}
-
-      :error ->
-        Logger.warning("monitoring #{inspect(route)} failed, addr not found")
-        {:error, :monitoring_failed}
-    end
+    {:ok, regitry_metadata,
+     Map.merge(state, %{
+       alias: alias_str,
+       route: route,
+       target_identifier: target_identifier,
+       monitor_ref: ref
+     })}
   end
 
   @impl true
@@ -111,7 +105,7 @@ defmodule Ockam.Services.Relay.Worker do
       )
       when ref == current_ref do
     Logger.warning("Terminating relay worker,  route terminated with reason: #{inspect(reason)}")
-    {:stop, reason, state}
+    {:stop, :normal, state}
   end
 
   def handle_monitor_down(
@@ -126,12 +120,6 @@ defmodule Ockam.Services.Relay.Worker do
   end
 
   defp monitor([addr | _route]) do
-    case Ockam.Node.whereis(addr) do
-      nil ->
-        :error
-
-      pid ->
-        {:ok, Process.monitor(pid)}
-    end
+    Process.monitor(Ockam.Node.whereis(addr))
   end
 end
