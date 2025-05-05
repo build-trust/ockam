@@ -231,7 +231,7 @@ impl Pod {
         }
 
         // If there is only one outlet, return it as the repl
-        if rest.len() == 1 {
+        if repl.is_none() && rest.len() == 1 {
             repl = Some(rest.remove(0));
         }
 
@@ -905,6 +905,37 @@ pods:
             .rest
             .iter()
             .any(|o| o.name == Some("cache".to_string())));
+    }
+
+    #[test]
+    fn test_pod_get_outlets_multiple_yaml() {
+        let config = r"
+name: example05
+pods:
+  - name: main-pod
+    containers:
+      - name: main
+        image: main
+        args: [localhost:9000, localhost:9001]
+    portals:
+      outlets:
+        - name: repl
+          to: localhost:9000
+        - name: http
+          to: localhost:9001
+          ";
+
+        let parsed = serde_yaml::from_str::<ZoneConfig>(config).unwrap();
+        let pod = &parsed.pods[0];
+        let outlets = pod.get_outlets();
+        assert_eq!(
+            outlets.repl.as_ref().unwrap().name,
+            Some("repl".to_string())
+        );
+        assert_eq!(outlets.repl.as_ref().unwrap().to, "localhost:9000");
+        assert_eq!(outlets.rest.len(), 1);
+        assert_eq!(outlets.rest[0].name, Some("http".to_string()));
+        assert_eq!(outlets.rest[0].to, "localhost:9001");
     }
 
     #[test]
