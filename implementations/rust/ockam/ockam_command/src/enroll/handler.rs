@@ -120,25 +120,33 @@ impl InMemoryNodeCommand for EnrollHandler {
             .await?;
 
         // Output
-        self.opts.terminal.write_line(fmt_log!(
-            "Your Identity {}, with Identifier {} is now enrolled with Ockam Orchestrator.",
+        let mut plain = fmt_log!(
+            "Your Identity {}, with Identifier {} is now enrolled with Ockam Orchestrator.\n",
             color_primary(identity.name()),
             color_primary(identity.identifier().to_string())
-        ))?;
+        );
 
         if !self.is_ai_cloud_account {
-            self.opts.terminal
-                .write_line(fmt_log!(
-                    "You also now have an Orchestrator Project that offers a Project Membership Authority service and a Relay service.\n"
-                ))?
-                .write_line(fmt_log!(
+            plain = plain + &fmt_log!(
+                "You also now have an Orchestrator Project that offers a Project Membership Authority service and a Relay service.\n"
+                ) +
+                &fmt_log!(
                     "Please explore our documentation to learn how you can use Ockam"
-                ))?
-                .write_line(fmt_log!(
+                ) +
+                &fmt_log!(
                     "to create encrypted Portals to remote services, databases, and more {}",
                     color_uri("https://docs.ockam.io")
-                ))?;
+                );
         }
+
+        self.opts
+            .terminal
+            .clone()
+            .to_stdout()
+            .plain(plain)
+            .machine(identity.identifier().to_string())
+            .write_line()?;
+
         Ok(())
     }
 }
