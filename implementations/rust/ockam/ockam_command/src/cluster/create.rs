@@ -170,7 +170,7 @@ impl CreateCommand {
     ) -> Result<()> {
         let spinner = opts.terminal.spinner();
         if let Some(spinner) = spinner.as_ref() {
-            spinner.set_message("Logging docker into repository...");
+            spinner.set_message("Giving docker access to the repository...");
         }
         let mut child = tokio::process::Command::new("docker")
             .arg("login")
@@ -405,8 +405,9 @@ impl CreateCommand {
             spinner.finish_and_clear();
         }
         opts.terminal.write_line(fmt_ok!(
-            "Deployed zone {}\n",
+            "Deployed zone {} in cluster {}\n",
             color_primary(&zone_config.name),
+            color_primary(cluster)
         ))?;
         info!("Deployed zone {} in cluster {}", zone_config.name, cluster);
 

@@ -1,13 +1,10 @@
-use clap::{Command, Parser};
-use miette::IntoDiagnostic;
-use std::process::exit;
-use std::sync::Arc;
-
 use crate::branding::BrandingCompileEnvVars;
 use crate::{
     add_command_error_event, get_env_attributes, has_help_flag, has_version_flag, pager,
     replace_hyphen_with_stdin, util::exitcode, version::Version, OckamCommand,
 };
+use clap::{Command, Parser};
+use miette::IntoDiagnostic;
 use ockam_api::cli_state::{CliState, CliStateMode};
 use ockam_api::logs::{
     logging_configuration, logging_enabled, Colored, ExportingConfiguration, LogFormat,
@@ -15,6 +12,12 @@ use ockam_api::logs::{
 };
 use ockam_api::output::Output;
 use ockam_node::{Context, NodeBuilder};
+use once_cell::sync::OnceCell;
+use std::process::exit;
+use std::sync::Arc;
+use tokio::runtime::Runtime;
+
+pub static RUNTIME: OnceCell<Arc<Runtime>> = OnceCell::new();
 
 /// Main method for running the command executable:
 ///
@@ -66,6 +69,10 @@ pub fn run() -> miette::Result<()> {
     let node_builder = NodeBuilder::new().no_logging();
 
     let (ctx, executor) = node_builder.build();
+    let rt = executor.get_runtime();
+    RUNTIME
+        .set(rt.clone())
+        .map_err(|_| miette::miette!("Failed to set the runtime"))?;
 
     executor.execute(async move {
         let res = match command_parsing_res {
