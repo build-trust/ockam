@@ -197,6 +197,9 @@ impl NodeConfig {
         if cmd.foreground_args.exit_on_eof != default_cmd_args.foreground_args.exit_on_eof {
             self.node.exit_on_eof = Some(cmd.foreground_args.exit_on_eof.into());
         }
+        if let Some(tcp_callback_port) = cmd.tcp_callback_port {
+            self.node.tcp_callback_port = Some((tcp_callback_port as isize).into());
+        }
         if cmd.tcp_listener_address != default_cmd_args.tcp_listener_address {
             self.node.tcp_listener_address = Some(cmd.tcp_listener_address.clone().into());
         }
@@ -256,7 +259,7 @@ impl NodeConfig {
 
         // Next, run the 'node create' command in a separate tokio task,
         // where the foreground node will run until stopped
-        let (node_handle, callback) = {
+        let (node_handle, callback, parent_tcp_callback_port) = {
             let mut node_command = self
                 .node
                 .into_parsed_commands()?
@@ -265,12 +268,13 @@ impl NodeConfig {
                 .ok_or(miette!("A node command should be defined"))?;
             let opts = opts.clone();
             let ctx = ctx.try_clone()?;
+            let parent_tcp_callback_port = node_command.tcp_callback_port;
             let callback = NodeCallback::create().await?;
             node_command.tcp_callback_port = Some(callback.callback_port());
             let node_handle =
                 tokio::spawn(async move { crate::Command::run(node_command, &ctx, opts).await });
 
-            (node_handle, callback)
+            (node_handle, callback, parent_tcp_callback_port)
         };
 
         // Create a oneshot channel to signal if the node failed to start
@@ -305,6 +309,9 @@ impl NodeConfig {
                         self.kafka_inlet.into_parsed_commands(node_name)?.into(),
                     ];
                     Self::run_commands_sections(ctx, opts, other_sections).await?;
+                    if let Some(outer_tcp_callback_port) = parent_tcp_callback_port {
+                        NodeCallback::signal(outer_tcp_callback_port).await?;
+                    }
                     Ok::<(), miette::Error>(())
                 }
                 // If we receive a signal from the node, it means it failed to start.

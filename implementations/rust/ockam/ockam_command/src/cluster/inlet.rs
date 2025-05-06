@@ -1,6 +1,8 @@
 use crate::cluster::common_args::{ClusterArg, HttpApiArgs, ZoneNameOrConfigArg};
 use crate::cluster::utils::get_api_client;
 use crate::node::config::ConfigArgs;
+use crate::node::node_callback::NodeCallback;
+use crate::node::util::wait_for_node_callback_future;
 use crate::node_command::InMemoryNodeCommand;
 use crate::tcp::inlet::create::tcp_inlet_default_from_addr;
 use crate::util::foreground_args::ForegroundArgs;
@@ -112,6 +114,7 @@ impl InMemoryNodeCommand for InletNodeCommand {
             node_config["tcp-inlet"]["allow"] = allow.to_string().into();
         }
         let in_memory = true;
+        let node_callback = NodeCallback::create().await?;
         let node_cmd = crate::node::create::CreateCommand {
             name: node_config.to_string(),
             config_args: ConfigArgs {
@@ -124,13 +127,19 @@ impl InMemoryNodeCommand for InletNodeCommand {
                 ..Default::default()
             },
             in_memory,
+            tcp_callback_port: Some(node_callback.callback_port()),
             ..Default::default()
         };
-        let tmp_dir = tempfile::tempdir().into_diagnostic()?;
-        std::env::set_var(OCKAM_HOME, tmp_dir.path());
         let mut opts = self.opts.clone();
-        opts.state = Arc::new(CliState::new(in_memory).await?);
-        node_cmd.run(node.ctx(), opts).await
+        let handle = tokio::spawn(async move {
+            let tmp_dir = tempfile::tempdir().into_diagnostic()?;
+            std::env::set_var(OCKAM_HOME, tmp_dir.path());
+            opts.state = Arc::new(CliState::new(in_memory).await?);
+            node_cmd.run(node.ctx(), opts).await?;
+            Ok(())
+        });
+        wait_for_node_callback_future(handle, node_callback).await?;
+        Ok(())
     }
 }
 

@@ -52,14 +52,14 @@ impl BaseCommand {
         cmd.cluster_init(ctx, &opts).await?;
         let zone_config = cmd.cluster_create(ctx, &opts).await?;
         // let zone_config = ZoneConfig::from_file("ockam.yaml")?;
-        let (repl_data, rest_inlet_handles) = cmd.cluster_inlets(ctx, &opts, &zone_config).await?;
+        let repl_address = cmd.cluster_inlets(ctx, &opts, &zone_config).await?;
         // let (repl_data, rest_inlet_handles) = cmd.dummy_inlet(&opts).await?;
         opts.terminal.write_line(fmt_separator!())?;
-        if let Some((address, handle)) = repl_data {
-            cmd.open_repl(ctx, &opts, address, handle).await?;
+        if let Some(address) = repl_address {
+            cmd.open_repl(ctx, &opts, address).await?;
         } else {
-            // No REPL outlet. Create a ctrlc handler and wait for it to be triggered
-            let (tx, mut rx) = tokio::sync::mpsc::channel(2);
+            // No REPL outlet. Create a ctrlc handler and wait for it to be triggered before exiting the command
+            let (tx, mut rx) = tokio::sync::mpsc::channel(1);
             let mut processed = false;
             ctrlc::set_handler(move || {
                 if !processed {
@@ -72,9 +72,6 @@ impl BaseCommand {
                 "Press Ctrl+C to stop the inlets and exit the command"
             ))?;
             rx.recv().await;
-        }
-        for handle in rest_inlet_handles {
-            handle.abort();
         }
         Ok(())
     }
@@ -139,40 +136,33 @@ impl BaseCommand {
         ctx: &Context,
         opts: &CommandGlobalOpts,
         zone_config: &ZoneConfig,
-    ) -> miette::Result<(
-        Option<(SchemeHostnamePort, JoinHandle<Result<()>>)>,
-        Vec<JoinHandle<Result<()>>>,
-    )> {
-        let mut handles = Vec::new();
+    ) -> miette::Result<Option<SchemeHostnamePort>> {
         let main_pod = zone_config.get_main_pod()?;
         let main_pod_outlets = main_pod.get_outlets();
-        let repl_data = match main_pod_outlets.repl {
+        let repl_address = match main_pod_outlets.repl {
             None => None,
             Some(repl_outlet) => {
                 let from = Self::get_address_for_inlet(&repl_outlet)?;
                 let to = repl_outlet.name.as_ref().unwrap_or(&main_pod.name);
-                let handle = self
-                    .cluster_inlet(
-                        ctx,
-                        opts,
-                        &zone_config.name,
-                        &main_pod.name,
-                        from.clone(),
-                        to,
-                    )
-                    .await?;
-                Some((from, handle))
+                self.cluster_inlet(
+                    ctx,
+                    opts,
+                    &zone_config.name,
+                    &main_pod.name,
+                    from.clone(),
+                    to,
+                )
+                .await?;
+                Some(from)
             }
         };
         for outlet in main_pod_outlets.rest {
-            let to = outlet.name.as_ref().unwrap_or(&main_pod.name);
             let from = Self::get_address_for_inlet(&outlet)?;
-            let handle = self
-                .cluster_inlet(ctx, opts, &zone_config.name, &main_pod.name, from, to)
+            let to = outlet.name.as_ref().unwrap_or(&main_pod.name);
+            self.cluster_inlet(ctx, opts, &zone_config.name, &main_pod.name, from, to)
                 .await?;
-            handles.push(handle);
         }
-        Ok((repl_data, handles))
+        Ok(repl_address)
     }
 
     fn get_address_for_inlet(outlet: &Outlet) -> miette::Result<SchemeHostnamePort> {
@@ -200,7 +190,7 @@ impl BaseCommand {
         pod_name: &str,
         from: SchemeHostnamePort,
         to: &str,
-    ) -> miette::Result<JoinHandle<Result<()>>> {
+    ) -> miette::Result<()> {
         let spinner = opts.terminal.spinner();
         if let Some(spinner) = &spinner {
             spinner.set_message(format!(
@@ -233,7 +223,7 @@ impl BaseCommand {
             ..Default::default()
         };
         let ctx = ctx.try_clone()?;
-        let handle = tokio::spawn(async move { inlet_command.run(&ctx, no_output_opts).await });
+        inlet_command.run(&ctx, no_output_opts).await?;
 
         if let Some(spinner) = &spinner {
             spinner.finish_and_clear();
@@ -244,7 +234,7 @@ impl BaseCommand {
             color_primary(from.to_string())
         ))?;
 
-        Ok(handle)
+        Ok(())
     }
 
     async fn open_repl(
@@ -252,22 +242,9 @@ impl BaseCommand {
         _ctx: &Context,
         opts: &CommandGlobalOpts,
         inlet_address: SchemeHostnamePort,
-        inlet_handle: JoinHandle<Result<()>>,
     ) -> miette::Result<()> {
         use tokio::net::TcpStream;
         use tokio::time::sleep;
-
-        // Inlet monitor future
-        let (inlet_tx, inlet_rx) = tokio::sync::oneshot::channel::<()>();
-        let _inlet_monitor = tokio::spawn(async move {
-            match inlet_handle.await {
-                Ok(result) => result,
-                Err(err) => {
-                    let _ = inlet_tx.send(());
-                    Err(miette!("{err}"))
-                }
-            }
-        });
 
         // stdin quit handler
         let stdin = StdinHandler::start(opts.clone());
@@ -402,7 +379,6 @@ impl BaseCommand {
         });
 
         tokio::select! {
-            _ = inlet_rx => {},
             _ = stdin_quit => {},
             _ = repl_handle => {},
         }
@@ -553,8 +529,12 @@ impl StdinHandler {
         tokio::spawn(async move {
             // Ctrl+C handler to exit stdin loop
             let (cancel_tx, cancel_rx) = tokio::sync::broadcast::channel::<()>(1);
+            let mut processed = false;
             ctrlc::set_handler(move || {
-                let _ = cancel_tx.send(());
+                if !processed {
+                    let _ = cancel_tx.send(());
+                    processed = true;
+                }
             })
             .expect("Error setting Ctrl+C handler");
 

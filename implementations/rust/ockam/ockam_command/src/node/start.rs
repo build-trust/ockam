@@ -10,7 +10,7 @@ use ockam_node::Context;
 
 use crate::node::node_callback::NodeCallback;
 use crate::node::show::get_node_resources;
-use crate::node::util::{spawn_node, wait_for_node_callback};
+use crate::node::util::{spawn_node, wait_for_node_callback_process};
 use crate::node::CreateCommand;
 use crate::{docs, CommandGlobalOpts};
 
@@ -179,7 +179,7 @@ async fn run_node(
         cmd
     };
     let handle = spawn_node(opts, cmd)?;
-    wait_for_node_callback(handle, node_callback).await?;
+    wait_for_node_callback_process(handle, node_callback).await?;
 
     let node = BackgroundNodeClient::create_to_node(ctx, opts.state.clone(), node_name)?;
 
