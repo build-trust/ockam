@@ -51,6 +51,7 @@ impl BaseCommand {
         let cmd = self.parse_args(&opts).await?;
         cmd.cluster_init(ctx, &opts).await?;
         let zone_config = cmd.cluster_create(ctx, &opts).await?;
+        // let zone_config = ZoneConfig::from_file("ockam.yaml")?;
         let (repl_data, rest_inlet_handles) = cmd.cluster_inlets(ctx, &opts, &zone_config).await?;
         // let (repl_data, rest_inlet_handles) = cmd.dummy_inlet(&opts).await?;
         opts.terminal.write_line(fmt_separator!())?;
@@ -158,7 +159,6 @@ impl BaseCommand {
                         &main_pod.name,
                         from.clone(),
                         to,
-                        false,
                     )
                     .await?;
                 Some((from, handle))
@@ -168,7 +168,7 @@ impl BaseCommand {
             let to = outlet.name.as_ref().unwrap_or(&main_pod.name);
             let from = Self::get_address_for_inlet(&outlet)?;
             let handle = self
-                .cluster_inlet(ctx, opts, &zone_config.name, &main_pod.name, from, to, true)
+                .cluster_inlet(ctx, opts, &zone_config.name, &main_pod.name, from, to)
                 .await?;
             handles.push(handle);
         }
@@ -200,7 +200,6 @@ impl BaseCommand {
         pod_name: &str,
         from: SchemeHostnamePort,
         to: &str,
-        no_ctrlc_handler: bool,
     ) -> miette::Result<JoinHandle<Result<()>>> {
         let spinner = opts.terminal.spinner();
         if let Some(spinner) = &spinner {
@@ -230,7 +229,7 @@ impl BaseCommand {
             enrollment_ticket: Some(ticket),
             from: from.clone(),
             to: Some(to.to_string()),
-            no_ctrlc_handler,
+            no_ctrlc_handler: true,
             ..Default::default()
         };
         let ctx = ctx.try_clone()?;
@@ -271,14 +270,12 @@ impl BaseCommand {
         });
 
         // stdin quit handler
-        let stdin = StdinHandler::start();
+        let stdin = StdinHandler::start(opts.clone());
         let mut stdin_rx = stdin.tx.subscribe();
         let stdin_quit = async {
-            loop {
-                if let Ok(input) = stdin_rx.recv().await {
-                    if is_quit_sequence(&input) {
-                        break;
-                    }
+            while let Ok(input) = stdin_rx.recv().await {
+                if is_quit_sequence(&input) {
+                    break;
                 }
             }
         };
@@ -367,6 +364,8 @@ impl BaseCommand {
                     }
 
                     if is_quit_sequence(&user_input) {
+                        let _ = writer.write_all(user_input.as_bytes()).await;
+                        let _ = writer.flush().await;
                         break 'repl;
                     }
 
@@ -402,14 +401,11 @@ impl BaseCommand {
             Ok::<(), miette::Error>(())
         });
 
-        // Wait for exit signals
         tokio::select! {
+            _ = inlet_rx => {},
             _ = stdin_quit => {},
-            _result = inlet_rx => {},
+            _ = repl_handle => {},
         }
-
-        // Clean up tasks
-        repl_handle.abort();
 
         Ok(())
     }
@@ -549,29 +545,44 @@ struct StdinHandle {
 }
 
 impl StdinHandler {
-    fn start() -> StdinHandle {
+    fn start(opts: CommandGlobalOpts) -> StdinHandle {
         let (tx, _) = tokio::sync::broadcast::channel(64);
         let returned_tx = tx.clone();
 
         // Spawn a task to read from stdin
         tokio::spawn(async move {
+            // Ctrl+C handler to exit stdin loop
+            let (cancel_tx, cancel_rx) = tokio::sync::broadcast::channel::<()>(1);
+            ctrlc::set_handler(move || {
+                let _ = cancel_tx.send(());
+            })
+            .expect("Error setting Ctrl+C handler");
+
             let mut stdin = BufReader::new(tokio::io::stdin());
             let mut read_buffer = String::new();
 
             loop {
                 read_buffer.clear();
-                match stdin.read_line(&mut read_buffer).await {
-                    Ok(0) => break, // EOF (0 bytes read)
+                let mut cancel_rx = cancel_rx.resubscribe();
+                let read_result = tokio::select! {
+                    result = stdin.read_line(&mut read_buffer) => result,
+                    _ = cancel_rx.recv() => {
+                        read_buffer = ":q\n".to_string();
+                        let _ = opts.terminal.write_line("\n\nPress enter to exit");
+                        Ok(1)
+                    },
+                };
+
+                match read_result {
+                    Ok(0) => break, // EOF
                     Ok(_n) => {
                         if read_buffer.trim().is_empty() {
                             continue;
                         }
+                        let _ = tx.send(read_buffer.clone());
                         if is_quit_sequence(&read_buffer) {
-                            let _ = tx.send(read_buffer.clone());
-                            drop(tx);
                             break;
                         }
-                        let _ = tx.send(read_buffer.clone());
                     }
                     Err(e) => {
                         eprintln!("Error reading from stdin: {}", e);
@@ -579,6 +590,8 @@ impl StdinHandler {
                     }
                 }
             }
+
+            drop(tx);
         });
 
         StdinHandle { tx: returned_tx }

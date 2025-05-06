@@ -20,6 +20,8 @@ pub struct Node {
     pub foreground: Option<ArgValue>,
     #[serde(alias = "child-process")]
     pub child_process: Option<ArgValue>,
+    #[serde(alias = "no-ctrlc-handler")]
+    pub no_ctrlc_handler: Option<ArgValue>,
     #[serde(alias = "exit-on-eof")]
     pub exit_on_eof: Option<ArgValue>,
     #[serde(alias = "tcp-listener-address")]
@@ -64,6 +66,9 @@ impl Resource<CreateCommand> for Node {
         }
         if let Some(exit_on_eof) = self.exit_on_eof {
             args.insert("exit-on-eof".into(), exit_on_eof);
+        }
+        if let Some(no_ctrlc_handler) = self.no_ctrlc_handler {
+            args.insert("no-ctrlc-handler".into(), no_ctrlc_handler);
         }
         if let Some(tcp_listener_address) = self.tcp_listener_address {
             args.insert("tcp-listener-address".into(), tcp_listener_address);

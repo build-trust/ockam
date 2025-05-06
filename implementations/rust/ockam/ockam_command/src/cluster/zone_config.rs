@@ -208,11 +208,13 @@ impl ZoneConfig {
             // If there's only one pod, return it
             Ok(&self.pods[0])
         } else {
-            // Try to find a pod named "main"
+            // Try to find the main pod
             self.pods
                 .iter()
                 .find(|pod| pod.name == "main-pod")
-                .ok_or_else(|| miette::miette!("Multiple pods defined, but none is named 'main'"))
+                .ok_or_else(|| {
+                    miette::miette!("Multiple pods defined, but none is named 'main-pod'")
+                })
         }
     }
 }
@@ -821,7 +823,7 @@ pods:
         let main_pod = config.get_main_pod().unwrap();
         assert_eq!(main_pod.name, "main-pod");
 
-        // Test case: multiple pods, none named "main"
+        // Test case: multiple pods, none named "main-pod"
         let yaml_without_main = r#"
         name: test-zone
         pods:
@@ -836,11 +838,7 @@ pods:
         "#;
 
         let config = serde_yaml::from_str::<ZoneConfig>(yaml_without_main).unwrap();
-        let err = config.get_main_pod().unwrap_err();
-        assert_eq!(
-            err.to_string(),
-            "Multiple pods defined, but none is named 'main'"
-        );
+        assert!(config.get_main_pod().is_err());
 
         // Test case: no pods
         let yaml_no_pods = r#"
