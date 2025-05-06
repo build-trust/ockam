@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 0.151.0 - 2025-05-02
+## 0.151.0 - 2025-05-06
 
 ### Added
 
@@ -49,6 +49,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Push secrets on `cluster create` command
 - Add `cluster` back to `cluster inlet` command
 - Zone config return error if has duplicated pods or containers
+- In `ockam` command, create inlets for every outlet found in the config
+- In `cluster inlet`, automatically generate enrollment ticket if not passed
+- Improve cluster commands output copy
+- In `ockam`, assign outlet's port to the inlet if possible
+- Use "main-pod" as the main pod name instead of "main"
 - Updated dependencies
 
 ### Changed
@@ -82,6 +87,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Hash email using sha256 for the zone name default value
 - Repl initial message handling
 - Pass relay name in `cluster ticket` command
+- Copy when creating an inlet in "ockam" command
+- Parse outlets from zone config properly
+- Improve `cluster secret` copy
+- Fix test_get_main_pod
 
 ### Removed
 
