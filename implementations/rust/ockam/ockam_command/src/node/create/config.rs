@@ -190,6 +190,10 @@ impl NodeConfig {
         if cmd.foreground_args.child_process != default_cmd_args.foreground_args.child_process {
             self.node.child_process = Some(cmd.foreground_args.child_process.into());
         }
+        if cmd.foreground_args.no_ctrlc_handler != default_cmd_args.foreground_args.no_ctrlc_handler
+        {
+            self.node.no_ctrlc_handler = Some(cmd.foreground_args.no_ctrlc_handler.into());
+        }
         if cmd.foreground_args.exit_on_eof != default_cmd_args.foreground_args.exit_on_eof {
             self.node.exit_on_eof = Some(cmd.foreground_args.exit_on_eof.into());
         }

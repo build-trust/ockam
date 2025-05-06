@@ -127,6 +127,9 @@ pub fn spawn_node(opts: &CommandGlobalOpts, cmd: CreateCommand) -> miette::Resul
         args.push(format!("{}={}", key, value));
     }
 
+    if foreground_args.no_ctrlc_handler {
+        args.push("--no-ctrlc-handler".to_string());
+    }
     if foreground_args.exit_on_eof {
         args.push("--exit-on-eof".to_string());
     }
