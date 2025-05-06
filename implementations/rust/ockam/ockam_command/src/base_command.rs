@@ -50,8 +50,8 @@ impl BaseCommand {
         self.enroll(ctx, &opts).await?;
         let cmd = self.parse_args(&opts).await?;
         cmd.cluster_init(ctx, &opts).await?;
-        // let zone_config = cmd.cluster_create(ctx, &opts).await?;
-        let zone_config = ZoneConfig::from_file("ockam.yaml")?;
+        let zone_config = cmd.cluster_create(ctx, &opts).await?;
+        // let zone_config = ZoneConfig::from_file("ockam.yaml")?;
         let (_executors, repl_address) = cmd.cluster_inlets(ctx, &opts, &zone_config).await?;
         // let (repl_data, rest_inlet_handles) = cmd.dummy_inlet(&opts).await?;
         opts.terminal.write_line(fmt_separator!())?;
