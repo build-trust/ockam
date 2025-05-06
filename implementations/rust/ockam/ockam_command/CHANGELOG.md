@@ -70,6 +70,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Process server response as header+body
 - In the cluster repl, use terminal to handle output
 - Cluster arguments
+- In "cluster inlet/outlet" wait until it's fully created before returning
+- In "ockam" use a new context for each inlet
+- In "ockam" use a new context for each inlet
 
 ### Fixed
 
@@ -91,6 +94,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Parse outlets from zone config properly
 - Improve `cluster secret` copy
 - Fix test_get_main_pod
+- Ctrlc handling in "cluster inlet"
 
 ### Removed
 
