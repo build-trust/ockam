@@ -51,7 +51,6 @@ fn run_02_inlet_outlet_separate_processes() -> Result<(), Error> {
 }
 
 #[test]
-#[ignore]
 fn run_03_inlet_outlet_separate_processes_secure_channel() -> Result<(), Error> {
     let routing_port = find_available_port();
     let inlet_port = find_available_port();
