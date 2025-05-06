@@ -74,7 +74,7 @@
 
     In my case `SecureChannel.initiator.decryptor.remote_36` Address was reachable, since this is the Secure Channel using the TCP connection we intercepted, but messages to this worker are checked cryptographically.
 
-    Also `TcpSendWorker_tx_addr_responder_62` and `TcpRecvProcessor_responder_64` were not found since it's the TCP connection used to handle `ockam worker list` command and it's termninated immediately after you see the result in the command line.
+    Also `TcpSendWorker_tx_addr_responder_62` and `TcpRecvProcessor_responder_64` were not found since it's the TCP connection used to handle `ockam worker list` command and it's terminated immediately after you see the result in the command line.
 
 1. Don't forget to clean your `/etc/hosts`
 

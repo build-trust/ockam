@@ -90,7 +90,7 @@ It is also possible to just execute one test by specifying to function line numb
 mix test test/ockam/identity_test.exs:19
 ```
 
-This is particularly useful when a test fail because you can just copy and paste the file name and line number from
+This is particularly useful when a test fails because you can just copy and paste the file name and line number from
 the test failure.
 
 ## Documentation
@@ -100,7 +100,7 @@ The documentation for a given package can be generated with:
 mix docs
 ```
 
-The generated documented can be opened in a browser with:
+The generated documentation can be opened in a browser with:
 ```
 open _build/docs/index.html
 ```

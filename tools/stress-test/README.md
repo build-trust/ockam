@@ -77,7 +77,7 @@ Sample output:
 | In-fli    | Messages in flight, sent but not yet received                                               |
 | B. sent   | Total amount of bytes sent                                                                  |
 | B. recv   | Total amount of bytes received                                                              |
-| Spe. sent | Avarage outgoing speed of the last 10 seconds, in bits per second                           |
-| Spe. recv | Avarage incoming speed of the last 10 seconds, in bits per second                           |
+| Spe. sent | Average outgoing speed of the last 10 seconds, in bits per second                           |
+| Spe. recv | Average incoming speed of the last 10 seconds, in bits per second                           |
 | M. OOO    | Messages out of order, it can also detect a lost packet if the following packet is received |
 | Errors    | Number of errors during relay or portal creation                                            |

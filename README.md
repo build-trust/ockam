@@ -78,7 +78,7 @@ ockam relay create
 # connections, and where it should forward that traffic to.
 ockam tcp-inlet create --from 7000
 
-# Access the application service, that may be in a remote private network though
+# Access the application service, that may be in a remote private network through
 # the end-to-end encrypted secure channel, via your private and encrypted cloud relay.
 curl --head 127.0.0.1:7000
 ```

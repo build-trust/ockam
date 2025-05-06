@@ -4,7 +4,7 @@ This Rust project shows how to create workers on different nodes to handle file 
 
 - `examples/receiver.rs` creates a node to receive files
   - it opens a secure channel listener
-  - it creates a relay to so that files can be transferred without the node being exposed on a public network
+  - it creates a relay so that files can be transferred without the node being exposed on a public network
 
 - `examples/sender.rs` creates a node to send files
   - it connects to the relay
