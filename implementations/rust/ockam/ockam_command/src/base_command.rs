@@ -1,6 +1,7 @@
 use crate::branding::BrandingCompileEnvVars;
 use crate::cluster::common_args::{HttpApiArgs, ZoneNameOrConfigArg};
 use crate::cluster::zone_config::{Outlet, ZoneConfig};
+use crate::entry_point::RUNTIME;
 use crate::util::port_is_free_guard;
 use crate::{Command, CommandGlobalOpts, Result};
 use clap::Args;
@@ -13,8 +14,7 @@ use ockam_api::colors::color_primary;
 use ockam_api::orchestrator::ai_platform::node_service_client::AI_API_BASE_URL;
 use ockam_api::{fmt_log, fmt_ok, fmt_separator};
 use ockam_core::env::get_env_ignore_error;
-use ockam_core::TryClone;
-use ockam_node::Context;
+use ockam_node::{Context, Executor, NodeBuilder};
 use std::fmt::{Display, Formatter};
 use std::net::SocketAddr;
 use std::str::FromStr;
@@ -50,9 +50,9 @@ impl BaseCommand {
         self.enroll(ctx, &opts).await?;
         let cmd = self.parse_args(&opts).await?;
         cmd.cluster_init(ctx, &opts).await?;
-        let zone_config = cmd.cluster_create(ctx, &opts).await?;
-        // let zone_config = ZoneConfig::from_file("ockam.yaml")?;
-        let repl_address = cmd.cluster_inlets(ctx, &opts, &zone_config).await?;
+        // let zone_config = cmd.cluster_create(ctx, &opts).await?;
+        let zone_config = ZoneConfig::from_file("ockam.yaml")?;
+        let (_executors, repl_address) = cmd.cluster_inlets(ctx, &opts, &zone_config).await?;
         // let (repl_data, rest_inlet_handles) = cmd.dummy_inlet(&opts).await?;
         opts.terminal.write_line(fmt_separator!())?;
         if let Some(address) = repl_address {
@@ -136,7 +136,8 @@ impl BaseCommand {
         ctx: &Context,
         opts: &CommandGlobalOpts,
         zone_config: &ZoneConfig,
-    ) -> miette::Result<Option<SchemeHostnamePort>> {
+    ) -> miette::Result<(Vec<Executor>, Option<SchemeHostnamePort>)> {
+        let mut executors = Vec::new();
         let main_pod = zone_config.get_main_pod()?;
         let main_pod_outlets = main_pod.get_outlets();
         let repl_address = match main_pod_outlets.repl {
@@ -144,25 +145,29 @@ impl BaseCommand {
             Some(repl_outlet) => {
                 let from = Self::get_address_for_inlet(&repl_outlet)?;
                 let to = repl_outlet.name.as_ref().unwrap_or(&main_pod.name);
-                self.cluster_inlet(
-                    ctx,
-                    opts,
-                    &zone_config.name,
-                    &main_pod.name,
-                    from.clone(),
-                    to,
-                )
-                .await?;
+                let executor = self
+                    .cluster_inlet(
+                        ctx,
+                        opts,
+                        &zone_config.name,
+                        &main_pod.name,
+                        from.clone(),
+                        to,
+                    )
+                    .await?;
+                executors.push(executor);
                 Some(from)
             }
         };
         for outlet in main_pod_outlets.rest {
             let from = Self::get_address_for_inlet(&outlet)?;
             let to = outlet.name.as_ref().unwrap_or(&main_pod.name);
-            self.cluster_inlet(ctx, opts, &zone_config.name, &main_pod.name, from, to)
+            let executor = self
+                .cluster_inlet(ctx, opts, &zone_config.name, &main_pod.name, from, to)
                 .await?;
+            executors.push(executor);
         }
-        Ok(repl_address)
+        Ok((executors, repl_address))
     }
 
     fn get_address_for_inlet(outlet: &Outlet) -> miette::Result<SchemeHostnamePort> {
@@ -190,7 +195,7 @@ impl BaseCommand {
         pod_name: &str,
         from: SchemeHostnamePort,
         to: &str,
-    ) -> miette::Result<()> {
+    ) -> miette::Result<Executor> {
         let spinner = opts.terminal.spinner();
         if let Some(spinner) = &spinner {
             spinner.set_message(format!(
@@ -222,7 +227,16 @@ impl BaseCommand {
             no_ctrlc_handler: true,
             ..Default::default()
         };
-        let ctx = ctx.try_clone()?;
+        let (ctx, executor) = {
+            let rt = RUNTIME
+                .get()
+                .ok_or_else(|| miette!("Failed to get the runtime"))?
+                .clone();
+            NodeBuilder::new()
+                .with_runtime(rt)
+                .with_logging(false)
+                .build()
+        };
         inlet_command.run(&ctx, no_output_opts).await?;
 
         if let Some(spinner) = &spinner {
@@ -234,7 +248,7 @@ impl BaseCommand {
             color_primary(from.to_string())
         ))?;
 
-        Ok(())
+        Ok(executor)
     }
 
     async fn open_repl(
@@ -247,7 +261,7 @@ impl BaseCommand {
         use tokio::time::sleep;
 
         // stdin quit handler
-        let stdin = StdinHandler::start(opts.clone());
+        let stdin = StdinHandler::start();
         let mut stdin_rx = stdin.tx.subscribe();
         let stdin_quit = async {
             while let Ok(input) = stdin_rx.recv().await {
@@ -521,7 +535,7 @@ struct StdinHandle {
 }
 
 impl StdinHandler {
-    fn start(opts: CommandGlobalOpts) -> StdinHandle {
+    fn start() -> StdinHandle {
         let (tx, _) = tokio::sync::broadcast::channel(64);
         let returned_tx = tx.clone();
 
@@ -548,7 +562,6 @@ impl StdinHandler {
                     result = stdin.read_line(&mut read_buffer) => result,
                     _ = cancel_rx.recv() => {
                         read_buffer = ":q\n".to_string();
-                        let _ = opts.terminal.write_line("\n\nPress enter to exit");
                         Ok(1)
                     },
                 };
@@ -695,10 +708,8 @@ mod tests {
 
     #[test]
     fn test_get_address_for_outlet_with_port() -> miette::Result<()> {
-        // Find a free port for testing
         let listener = TcpListener::bind("127.0.0.1:0").into_diagnostic()?;
         let test_port = listener.local_addr().into_diagnostic()?.port();
-        // Drop listener to free the port
         drop(listener);
         std::thread::sleep(Duration::from_secs(1));
 
