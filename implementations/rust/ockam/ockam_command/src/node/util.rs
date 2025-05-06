@@ -12,6 +12,7 @@ use std::env::current_exe;
 use std::net::Ipv4Addr;
 use std::process::Stdio;
 use tokio::process::{Child, Command as TokioCommand};
+use tokio::task::JoinHandle;
 use tracing::{debug, info, trace};
 
 pub struct NodeManagerDefaults {
@@ -248,7 +249,7 @@ fn subprocess_stdio(quiet: bool) -> Stdio {
     // the parent process, which would limit the output flexibility.
 }
 
-pub async fn wait_for_node_callback(
+pub async fn wait_for_node_callback_process(
     mut handle: Child,
     node_callback: NodeCallback,
 ) -> miette::Result<()> {
@@ -269,4 +270,24 @@ pub async fn wait_for_node_callback(
         }
     }
     Ok(())
+}
+
+pub async fn wait_for_node_callback_future(
+    handle: JoinHandle<miette::Result<()>>,
+    node_callback: NodeCallback,
+) -> miette::Result<()> {
+    debug!(
+        callback_port = node_callback.callback_port(),
+        "waiting for node to be ready"
+    );
+    tokio::select! {
+        res = handle => {
+            trace!(?res, "node output drained");
+            res.into_diagnostic()?
+        }
+        res = node_callback.wait_for_signal() => {
+            trace!("node callback received");
+            res
+        }
+    }
 }

@@ -44,6 +44,8 @@ pub struct Node {
     pub udp_listener_address: Option<ArgValue>,
     #[serde(alias = "in-memory")]
     pub in_memory: Option<ArgValue>,
+    #[serde(alias = "tcp-callback-port")]
+    pub tcp_callback_port: Option<ArgValue>,
 }
 
 impl Resource<CreateCommand> for Node {
@@ -110,6 +112,9 @@ impl Resource<CreateCommand> for Node {
         }
         if let Some(in_memory) = self.in_memory {
             args.insert("in-memory".into(), in_memory);
+        }
+        if let Some(tcp_callback_port) = self.tcp_callback_port {
+            args.insert("tcp-callback-port".into(), tcp_callback_port);
         }
 
         if args.is_empty() {

@@ -19,7 +19,7 @@ use ockam_core::compat::collections::BTreeMap;
 use ockam_core::compat::fmt;
 
 use crate::node::node_callback::NodeCallback;
-use crate::node::util::{run_ockam, wait_for_node_callback};
+use crate::node::util::{run_ockam, wait_for_node_callback_process};
 use crate::util::foreground_args::{wait_for_exit_signal, ForegroundArgs};
 use crate::util::parsers::internet_address_parser;
 use crate::{branding, docs, CommandGlobalOpts, Result};
@@ -223,7 +223,7 @@ impl CreateCommand {
         args.push(node_callback.callback_port().to_string());
 
         let handle = run_ockam(args, opts.global_args.quiet)?;
-        wait_for_node_callback(handle, node_callback).await?;
+        wait_for_node_callback_process(handle, node_callback).await?;
 
         Ok(())
     }

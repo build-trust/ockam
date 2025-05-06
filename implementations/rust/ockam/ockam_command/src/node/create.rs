@@ -221,7 +221,6 @@ impl Command for CreateCommand {
                     .span()
                     .set_attribute(KeyValue::new("background", "true"));
             }
-
             self.foreground_mode(ctx, opts).await
         } else {
             self.background_mode(opts).await

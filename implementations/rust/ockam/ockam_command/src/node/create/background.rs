@@ -6,7 +6,7 @@ use ockam_api::logs::CurrentSpan;
 use ockam_core::OpenTelemetryContext;
 
 use crate::node::node_callback::NodeCallback;
-use crate::node::util::{spawn_node, wait_for_node_callback};
+use crate::node::util::{spawn_node, wait_for_node_callback_process};
 use crate::node::CreateCommand;
 use crate::CommandGlobalOpts;
 
@@ -39,7 +39,7 @@ impl CreateCommand {
         // Run foreground node in a separate process
         // Output is handled in the foreground execution
         let handle = spawn_node(&opts, cmd)?;
-        wait_for_node_callback(handle, node_callback).await?;
+        wait_for_node_callback_process(handle, node_callback).await?;
 
         opts.state
             .add_journey_event(JourneyEvent::NodeCreated, [(NODE_NAME, node_name)].into())
