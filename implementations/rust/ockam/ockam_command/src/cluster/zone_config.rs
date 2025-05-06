@@ -799,7 +799,7 @@ pods:
         let main_pod = config.get_main_pod().unwrap();
         assert_eq!(main_pod.name, "single-pod");
 
-        // Test case: multiple pods, one named "main"
+        // Test case: multiple pods, one named "main-pod"
         let yaml_with_main = r#"
         name: test-zone
         pods:
@@ -807,7 +807,7 @@ pods:
           containers:
           - name: app1
             image: app1-image
-        - name: main
+        - name: main-pod
           containers:
           - name: app2
             image: app2-image
@@ -819,7 +819,7 @@ pods:
 
         let config = serde_yaml::from_str::<ZoneConfig>(yaml_with_main).unwrap();
         let main_pod = config.get_main_pod().unwrap();
-        assert_eq!(main_pod.name, "main");
+        assert_eq!(main_pod.name, "main-pod");
 
         // Test case: multiple pods, none named "main"
         let yaml_without_main = r#"
