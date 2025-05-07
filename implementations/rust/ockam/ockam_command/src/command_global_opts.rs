@@ -2,7 +2,6 @@ use console::Term;
 use std::sync::Arc;
 use tracing::debug;
 
-use crate::subcommand::OckamSubcommand;
 use crate::version::Version;
 use crate::GlobalArgs;
 use ockam_api::terminal::{Terminal, TerminalStream};
@@ -43,10 +42,10 @@ impl CommandGlobalOpts {
     }
 
     /// Log the inputs and configurations used to execute the command
-    pub(crate) fn log_inputs(&self, arguments: &[String], cmd: &OckamSubcommand) {
+    pub(crate) fn log_inputs(&self, arguments: &[String], cmd_name: &str) {
         debug!("Arguments: {}", arguments.join(" "));
         debug!("Global arguments: {:#?}", &self.global_args);
-        debug!("Command: {:#?}", &cmd);
+        debug!("Command: {:#?}", &cmd_name);
         debug!("Version: {}", Version::new().no_color());
     }
 

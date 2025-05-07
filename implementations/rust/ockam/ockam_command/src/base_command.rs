@@ -13,7 +13,6 @@ use ockam_api::address::get_free_address;
 use ockam_api::colors::color_primary;
 use ockam_api::orchestrator::ai_platform::node_service_client::AI_API_BASE_URL;
 use ockam_api::{fmt_log, fmt_ok, fmt_separator};
-use ockam_core::env::get_env_ignore_error;
 use ockam_node::{Context, Executor, NodeBuilder};
 use std::fmt::{Display, Formatter};
 use std::net::SocketAddr;
@@ -26,6 +25,10 @@ use tracing::debug;
 
 #[derive(Clone, Debug, Args, Default)]
 pub struct BaseCommand {
+    #[arg(long)]
+    ignore_docker_cache: bool,
+
+    #[arg(long, default_value = "hello", env = "INIT_REPOSITORY")]
     init_repository: String,
 }
 
@@ -34,15 +37,7 @@ impl BaseCommand {
         BrandingCompileEnvVars::bin_name().to_string()
     }
 
-    async fn parse_args(mut self, _opts: &CommandGlobalOpts) -> Result<Self> {
-        // load default values
-        self.init_repository = "hello".to_string();
-
-        // load env vars
-        if let Some(v) = get_env_ignore_error("INIT_REPOSITORY") {
-            self.init_repository = v;
-        }
-
+    async fn parse_args(self, _opts: &CommandGlobalOpts) -> Result<Self> {
         Ok(self)
     }
 
@@ -125,6 +120,7 @@ impl BaseCommand {
         let create_command = CreateCommand {
             use_public_ecr: true,
             http_api: HttpApiArgs::from_api_endpoint(AI_API_BASE_URL.to_string()),
+            ignore_docker_cache: self.ignore_docker_cache,
             ..Default::default()
         };
         let zone_config = create_command.run(ctx, opts.clone()).await?;

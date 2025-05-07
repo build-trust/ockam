@@ -13,7 +13,6 @@ use ockam_api::nodes::InMemoryNode;
 use ockam_api::orchestrator::ai_platform::api::AiPlatformApi;
 use ockam_api::orchestrator::ai_platform::responses::EcrCredentials;
 use ockam_api::{fmt_log, fmt_ok};
-use ockam_core::env::get_env_ignore_error;
 use ockam_node::Context;
 use std::process::Stdio;
 use std::sync::Arc;
@@ -42,9 +41,9 @@ pub struct CreateCommand {
     pub use_public_ecr: bool,
 
     /// Whether to use the Docker cache when building the image.
-    /// It can be set using the `OCKAM_USE_DOCKER_CACHE` environment variable.
-    #[arg(long)]
-    pub use_docker_cache: bool,
+    /// It can be set using the `OCKAM_IGNORE_DOCKER_CACHE` environment variable.
+    #[arg(long, env = "OCKAM_IGNORE_DOCKER_CACHE")]
+    pub ignore_docker_cache: bool,
 
     #[command(flatten)]
     pub http_api: HttpApiArgs,
@@ -79,9 +78,6 @@ impl Command<ZoneConfig> for CreateCommand {
     const NAME: &'static str = "cluster create";
 
     async fn run(mut self, ctx: &Context, opts: CommandGlobalOpts) -> Result<ZoneConfig> {
-        if let Some(v) = get_env_ignore_error::<bool>("OCKAM_USE_DOCKER_CACHE") {
-            self.use_docker_cache = v;
-        }
         let command = CreateNodeCommand {
             opts: opts.clone(),
             command: self.clone(),
@@ -273,7 +269,7 @@ impl CreateCommand {
             for arg in cmd_args {
                 command.arg(arg);
             }
-            if !self.use_docker_cache {
+            if self.ignore_docker_cache {
                 command.arg("--no-cache");
             }
             for (env_name, env_value) in env_vars {

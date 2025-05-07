@@ -58,13 +58,7 @@ pub fn run() -> miette::Result<()> {
         input
     };
 
-    let no_args_passed = input.len() <= 1;
-    let command_parsing_res = if no_args_passed {
-        let cmd = OckamCommand::default();
-        Ok(cmd)
-    } else {
-        OckamCommand::try_parse_from(&input)
-    };
+    let command_parsing_res = OckamCommand::try_parse_from(&input);
 
     let node_builder = NodeBuilder::new().no_logging();
 
