@@ -62,10 +62,22 @@ impl InMemoryNodeCommand<ZoneConfig> for CreateNodeCommand {
         let use_http_api = self.command.http_api.use_http_api();
         let api_client = get_api_client(&node, use_http_api).await?;
         let cluster = get_cluster(ctx, &node).await?;
-        let zone_config = self
-            .command
-            .process_images(ctx, &self.opts, &*api_client, &cluster)
-            .await?;
+        let parsed_zone_config = self.command.parse_zone_config()?;
+
+        // Delete the zone is relatively expensive operation, so we do it in parallel with the image processing
+        let zone_config_future = self.command.process_images(
+            ctx,
+            parsed_zone_config.clone(),
+            &self.opts,
+            &*api_client,
+            &cluster,
+        );
+        let delete_zone_future = api_client.delete_zone(ctx, &cluster, &parsed_zone_config.name);
+
+        let (zone_config, _) = tokio::join!(zone_config_future, delete_zone_future);
+        // We don't check the result of the delete zone operation, it can fail if the zone doesn't exist
+        let zone_config = zone_config?;
+
         self.command
             .deploy_zone(ctx, &self.opts, &*api_client, &cluster, &zone_config)
             .await?;
@@ -88,20 +100,23 @@ impl Command<ZoneConfig> for CreateCommand {
 }
 
 impl CreateCommand {
-    async fn process_images(
-        &self,
-        ctx: &Context,
-        opts: &CommandGlobalOpts,
-        api_client: &(dyn AiPlatformApi + Send + Sync + 'static),
-        cluster: &str,
-    ) -> Result<ZoneConfig> {
+    fn parse_zone_config(&self) -> Result<ZoneConfig> {
         let zone_config_path = self
             .zone_config
             .zone_config
             .as_deref()
             .unwrap_or("./ockam.yaml");
-        let mut zone_config = ZoneConfig::from_file(zone_config_path)?;
+        ZoneConfig::from_file(zone_config_path)
+    }
 
+    async fn process_images(
+        &self,
+        ctx: &Context,
+        mut zone_config: ZoneConfig,
+        opts: &CommandGlobalOpts,
+        api_client: &(dyn AiPlatformApi + Send + Sync + 'static),
+        cluster: &str,
+    ) -> Result<ZoneConfig> {
         let config_images = zone_config.get_local_images_names();
         if config_images.is_empty() {
             opts.terminal
@@ -109,6 +124,7 @@ impl CreateCommand {
             return Ok(zone_config);
         }
 
+        // TODO: these likely should be done in parallel
         for image_name in config_images {
             let ecr_creds = self
                 .provision_ecr(ctx, opts, api_client, cluster, &image_name)
@@ -374,9 +390,6 @@ impl CreateCommand {
             ));
         }
 
-        let _ = api_client
-            .delete_zone(ctx, cluster, &zone_config.name)
-            .await;
         api_client
             .create_zone(ctx, cluster, &zone_config.name)
             .await?;

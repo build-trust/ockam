@@ -30,6 +30,10 @@ pub struct BaseCommand {
 
     #[arg(long, default_value = "hello", env = "INIT_REPOSITORY")]
     init_repository: String,
+
+    /// Whether to use a public AWS ECR
+    #[arg(long)]
+    pub use_public_ecr: bool,
 }
 
 impl BaseCommand {
@@ -118,7 +122,7 @@ impl BaseCommand {
     ) -> miette::Result<ZoneConfig> {
         use crate::cluster::create::CreateCommand;
         let create_command = CreateCommand {
-            use_public_ecr: true,
+            use_public_ecr: self.use_public_ecr,
             http_api: HttpApiArgs::from_api_endpoint(AI_API_BASE_URL.to_string()),
             ignore_docker_cache: self.ignore_docker_cache,
             ..Default::default()
