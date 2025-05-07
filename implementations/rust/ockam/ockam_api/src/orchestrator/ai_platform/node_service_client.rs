@@ -1,7 +1,7 @@
 use crate::nodes::InMemoryNode;
 use crate::orchestrator::ai_platform::api::AiPlatformApi;
 use crate::orchestrator::ai_platform::responses::{
-    Cluster, EcrCredentials, Secret, SecretList, Token, Zone,
+    Cluster, EcrCredentials, Secret, SecretList, Token, Zone, ZoneList,
 };
 use base64_url::base64;
 use base64_url::base64::Engine;
@@ -66,7 +66,7 @@ impl AiPlatformApi for InMemoryNode {
             .wrap_err(base_error())
     }
 
-    async fn list_zones(&self, _ctx: &Context, cluster: &str) -> miette::Result<Vec<Zone>> {
+    async fn list_zones(&self, _ctx: &Context, cluster: &str) -> miette::Result<Vec<String>> {
         let base_error = || miette!("Failed to list zones in cluster {cluster}");
         let url = format!("{}/api/{}/zone", *AI_API_BASE_URL, cluster);
 
@@ -89,12 +89,14 @@ impl AiPlatformApi for InMemoryNode {
             .wrap_err(base_error()));
         }
 
-        response
-            .json::<Vec<Zone>>()
+        let res = response
+            .json::<ZoneList>()
             .await
             .into_diagnostic()
             .wrap_err("Failed to parse response")
-            .wrap_err(base_error())
+            .wrap_err(base_error())?;
+
+        Ok(res.zones)
     }
 
     async fn delete_zone(
@@ -130,7 +132,7 @@ impl AiPlatformApi for InMemoryNode {
         let start_time = std::time::Instant::now();
         loop {
             let zones = self.list_zones(ctx, cluster).await?;
-            if zones.iter().all(|zone| zone.zone != zone_name) {
+            if zones.iter().all(|zone| zone != zone_name) {
                 break;
             }
             if start_time.elapsed() > max_timeout {

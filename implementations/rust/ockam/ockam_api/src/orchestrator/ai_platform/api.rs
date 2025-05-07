@@ -14,7 +14,7 @@ pub trait AiPlatformApi {
         zone_name: &str,
     ) -> miette::Result<Zone>;
 
-    async fn list_zones(&self, ctx: &Context, customer: &str) -> miette::Result<Vec<Zone>>;
+    async fn list_zones(&self, ctx: &Context, cluster: &str) -> miette::Result<Vec<String>>;
 
     async fn delete_zone(
         &self,

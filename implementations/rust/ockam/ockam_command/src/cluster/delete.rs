@@ -5,6 +5,7 @@ use crate::{docs, Command, CommandGlobalOpts, Result};
 use async_trait::async_trait;
 use clap::Args;
 use colorful::Colorful;
+use ockam_api::colors::color_primary;
 use ockam_api::fmt_ok;
 use ockam_api::nodes::InMemoryNode;
 use ockam_node::Context;
@@ -43,12 +44,22 @@ impl InMemoryNodeCommand for DeployNodeCommand {
         let api_client = get_api_client(&node, use_http_api).await?;
         let cluster = get_cluster(ctx, &node).await?;
         let zone_name = self.command.zone.zone_name()?;
+        let spinner = self.opts.terminal.spinner();
+        if let Some(spinner) = spinner.as_ref() {
+            spinner.set_message(format!("Deleting zone {}...", color_primary(&zone_name)));
+        }
         api_client.delete_zone(ctx, &cluster, &zone_name).await?;
+        if let Some(spinner) = spinner {
+            spinner.finish_and_clear();
+        }
         self.opts
             .terminal
             .clone()
             .to_stdout()
-            .plain(fmt_ok!("Zone {} deleted successfully", &zone_name))
+            .plain(fmt_ok!(
+                "Zone {} deleted successfully",
+                color_primary(&zone_name)
+            ))
             .write_line()?;
         Ok(())
     }

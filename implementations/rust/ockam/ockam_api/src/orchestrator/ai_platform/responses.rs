@@ -62,7 +62,10 @@ impl Decodable for Zone {
 
 #[derive(Encode, Decode, CborLen, Serialize, Deserialize, Debug, Default, Clone, Message)]
 #[cbor(transparent)]
-pub struct ZoneList(#[n(0)] pub(crate) Vec<Zone>);
+pub struct ZoneList {
+    #[n(0)]
+    pub(crate) zones: Vec<String>,
+}
 
 impl Encodable for ZoneList {
     fn encode(self) -> ockam_core::Result<Encoded> {

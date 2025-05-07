@@ -26,7 +26,7 @@ impl AiPlatformApi for ControllerClient {
             .miette_success("create zone")
     }
 
-    async fn list_zones(&self, ctx: &Context, cluster: &str) -> miette::Result<Vec<Zone>> {
+    async fn list_zones(&self, ctx: &Context, cluster: &str) -> miette::Result<Vec<String>> {
         trace!(%cluster, "listing zones");
         let req = Request::get("/v0").body(ListZones::new(cluster.to_string()));
         let zones: ZoneList = self
@@ -35,7 +35,7 @@ impl AiPlatformApi for ControllerClient {
             .await
             .into_diagnostic()?
             .miette_success("get zones")?;
-        Ok(zones.0)
+        Ok(zones.zones)
     }
 
     async fn delete_zone(
@@ -57,7 +57,7 @@ impl AiPlatformApi for ControllerClient {
         let start_time = std::time::Instant::now();
         loop {
             let zones = self.list_zones(ctx, cluster).await?;
-            if zones.iter().all(|zone| zone.zone != zone_name) {
+            if zones.iter().all(|zone| zone != zone_name) {
                 break;
             }
             if start_time.elapsed() > max_timeout {
