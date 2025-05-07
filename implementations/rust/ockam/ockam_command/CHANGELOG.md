@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 0.151.0 - 2025-05-06
+## 0.151.0 - 2025-05-07
 
 ### Added
 
@@ -54,6 +54,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improve cluster commands output copy
 - In `ockam`, assign outlet's port to the inlet if possible
 - Use "main-pod" as the main pod name instead of "main"
+- Add `background` argument to `cluster inlet/outlet`
+- Add `cluster show` command to retrieve the user's cluster id
+- Improvements to cluster outlet command
+- Let the inlet cmd create the ticket
 - Updated dependencies
 
 ### Changed
@@ -73,6 +77,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - In "cluster inlet/outlet" wait until it's fully created before returning
 - In "ockam" use a new context for each inlet
 - In "ockam" use a new context for each inlet
+- Process "ockam" as a clap command, enabling passing arguments to it
 
 ### Fixed
 
@@ -95,6 +100,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improve `cluster secret` copy
 - Fix test_get_main_pod
 - Ctrlc handling in "cluster inlet"
+- `cluster delete` command
 
 ### Removed
 
