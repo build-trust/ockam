@@ -1,5 +1,5 @@
 use crate::branding::BrandingCompileEnvVars;
-use crate::cluster::common_args::{HttpApiArgs, ZoneNameOrConfigArg};
+use crate::cluster::common_args::{EnrollmentTicketConfigArg, HttpApiArgs, ZoneNameOrConfigArg};
 use crate::cluster::zone_config::{Outlet, ZoneConfig};
 use crate::entry_point::RUNTIME;
 use crate::util::port_is_free_guard;
@@ -185,7 +185,7 @@ impl BaseCommand {
     #[allow(clippy::too_many_arguments)]
     async fn cluster_inlet(
         &self,
-        ctx: &Context,
+        _ctx: &Context,
         opts: &CommandGlobalOpts,
         zone_name: &str,
         pod_name: &str,
@@ -205,19 +205,14 @@ impl BaseCommand {
         let mut no_output_opts = opts.clone();
         no_output_opts.terminal = opts.terminal.disable();
 
-        use crate::cluster::ticket::TicketCommand;
-        let ticket_command = TicketCommand {
-            zone: ZoneNameOrConfigArg::from_zone_name(zone_name.to_string()),
-            http_api: HttpApiArgs::from_api_endpoint(AI_API_BASE_URL.to_string()),
-            ..Default::default()
-        };
-        let ticket = ticket_command.run(ctx, no_output_opts.clone()).await?;
-
         use crate::cluster::inlet::InletCommand;
         let inlet_command = InletCommand {
             zone: ZoneNameOrConfigArg::from_zone_name(zone_name.to_string()),
+            http_api: HttpApiArgs::from_api_endpoint(AI_API_BASE_URL.to_string()),
             pod: pod_name.to_string(),
-            enrollment_ticket: Some(ticket),
+            enrollment_ticket: EnrollmentTicketConfigArg {
+                enrollment_ticket: None,
+            },
             from: from.clone(),
             to: Some(to.to_string()),
             background: true,
