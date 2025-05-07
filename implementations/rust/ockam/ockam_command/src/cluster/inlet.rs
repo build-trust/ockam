@@ -52,6 +52,9 @@ pub struct InletCommand {
     "))]
     pub enrollment_ticket: Option<String>,
 
+    #[arg(long)]
+    pub background: bool,
+
     /// Disable the Ctrl-C handler.
     #[arg(long)]
     pub no_ctrlc_handler: bool,
@@ -114,7 +117,11 @@ impl InMemoryNodeCommand for InletNodeCommand {
             node_config["tcp-inlet"]["allow"] = allow.to_string().into();
         }
         let in_memory = true;
-        let node_callback = NodeCallback::create().await?;
+        let node_callback = if self.command.background {
+            Some(NodeCallback::create().await?)
+        } else {
+            None
+        };
         let node_cmd = crate::node::create::CreateCommand {
             name: node_config.to_string(),
             config_args: ConfigArgs {
@@ -127,7 +134,7 @@ impl InMemoryNodeCommand for InletNodeCommand {
                 ..Default::default()
             },
             in_memory,
-            tcp_callback_port: Some(node_callback.callback_port()),
+            tcp_callback_port: node_callback.as_ref().map(|n| n.callback_port()),
             ..Default::default()
         };
         let mut opts = self.opts.clone();
@@ -138,7 +145,11 @@ impl InMemoryNodeCommand for InletNodeCommand {
             node_cmd.run(node.ctx(), opts).await?;
             Ok(())
         });
-        wait_for_node_callback_future(handle, node_callback).await?;
+        if let Some(node_callback) = node_callback {
+            wait_for_node_callback_future(handle, node_callback).await?;
+        } else {
+            handle.await.into_diagnostic()??;
+        }
         Ok(())
     }
 }
