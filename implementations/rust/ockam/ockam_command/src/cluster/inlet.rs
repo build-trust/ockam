@@ -1,4 +1,6 @@
-use crate::cluster::common_args::{ClusterArg, HttpApiArgs, ZoneNameOrConfigArg};
+use crate::cluster::common_args::{
+    ClusterArg, EnrollmentTicketConfigArg, HttpApiArgs, ZoneNameOrConfigArg,
+};
 use crate::cluster::utils::get_api_client;
 use crate::node::config::ConfigArgs;
 use crate::node::node_callback::NodeCallback;
@@ -10,15 +12,13 @@ use crate::util::parsers::hostname_parser;
 use crate::{docs, Command, CommandGlobalOpts, Result};
 use async_trait::async_trait;
 use clap::Args;
-use miette::{IntoDiagnostic, WrapErr};
+use miette::IntoDiagnostic;
 use ockam::transport::SchemeHostnamePort;
 use ockam_abac::PolicyExpression;
 use ockam_api::cli_state::OCKAM_HOME;
 use ockam_api::nodes::InMemoryNode;
-use ockam_api::orchestrator::ai_platform::api::AiPlatformApi;
 use ockam_api::CliState;
 use ockam_node::Context;
-use std::collections::BTreeMap;
 use std::sync::Arc;
 
 const LONG_ABOUT: &str = include_str!("./static/inlet/long_about.txt");
@@ -44,13 +44,8 @@ pub struct InletCommand {
     pub pod: String,
 
     // == Node Options ==
-    #[arg(long, env = "ENROLLMENT_TICKET", value_name = "ENROLLMENT TICKET")]
-    #[arg(help = docs::about("\
-    A path, URL or inlined hex-encoded enrollment ticket to use for the Ockam Identity associated to this node. \
-    When passed, the identity will be given a project membership credential. \
-    Check the `project ticket` command for more information about enrollment tickets.
-    "))]
-    pub enrollment_ticket: Option<String>,
+    #[command(flatten)]
+    pub enrollment_ticket: EnrollmentTicketConfigArg,
 
     #[arg(long)]
     pub background: bool,
@@ -102,7 +97,9 @@ impl InMemoryNodeCommand for InletNodeCommand {
         let cluster = self.command.cluster.get_cluster(ctx, &node).await?;
         let zone_name = self.command.zone.zone_name()?;
         let enrollment_ticket = self
-            .get_enrollment_ticket(ctx, &*api_client, &cluster, &zone_name)
+            .command
+            .enrollment_ticket
+            .get(ctx, &*api_client, &cluster, &zone_name, None)
             .await?;
         let relay_name = format!("{}-{}-{}", cluster, zone_name, self.command.pod);
         let outlet_name = self.command.to.as_ref().unwrap_or(&self.command.pod);
@@ -165,22 +162,5 @@ impl Command for InletCommand {
         };
         command.execute(ctx, opts.state.clone()).await?;
         Ok(())
-    }
-}
-
-impl InletNodeCommand {
-    async fn get_enrollment_ticket(
-        &self,
-        ctx: &Context,
-        api_client: &(dyn AiPlatformApi + Send + Sync + 'static),
-        cluster: &str,
-        zone_name: &str,
-    ) -> Result<String> {
-        if let Some(t) = &self.command.enrollment_ticket {
-            return Ok(t.clone());
-        }
-        api_client
-            .create_enrollment_token(ctx, cluster, zone_name, BTreeMap::default(), None)
-            .await.wrap_err("Failed to generate an enrollment ticket for the inlet. Please provide one with the --enrollment-ticket argument")
     }
 }

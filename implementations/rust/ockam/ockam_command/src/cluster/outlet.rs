@@ -1,3 +1,7 @@
+use crate::cluster::common_args::{
+    ClusterArg, EnrollmentTicketConfigArg, HttpApiArgs, ZoneNameOrConfigArg,
+};
+use crate::cluster::utils::get_api_client;
 use async_trait::async_trait;
 use std::sync::Arc;
 
@@ -30,27 +34,31 @@ before_help = docs::before_help(PREVIEW_TAG),
 after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct OutletCommand {
-    // == Node Options ==
-    #[arg(long, env = "ENROLLMENT_TICKET", value_name = "ENROLLMENT TICKET")]
-    #[arg(help = docs::about("\
-    A path, URL or inlined hex-encoded enrollment ticket to use for the Ockam Identity associated to this node. \
-    When passed, the identity will be given a project membership credential. \
-    Check the `project ticket` command for more information about enrollment tickets.
-    "))]
-    pub enrollment_ticket: String,
+    #[command(flatten)]
+    pub cluster: ClusterArg,
 
+    #[command(flatten)]
+    pub zone: ZoneNameOrConfigArg,
+
+    // == Node Options ==
+    #[command(flatten)]
+    pub enrollment_ticket: EnrollmentTicketConfigArg,
+
+    /// Relay to register at.
     #[arg(long)]
     pub relay: String,
 
     #[arg(long)]
     pub background: bool,
 
+    #[command(flatten)]
+    pub http_api: HttpApiArgs,
+
     // == TCP Outlet Options ==
     /// Service address of your TCP Outlet, which is part of a route used in other commands.
     /// This unique address identifies the TCP Outlet worker on the Node on your local machine.
     /// Examples are `/service/my-outlet` or `my-outlet`.
-    /// If not provided, `outlet` will be used, or a random address will be generated if `outlet` is taken.
-    /// You will need this address when creating a TCP Inlet using `ockam tcp-inlet create`.
+    /// If not provided, the name of the relay will be used.
     #[arg(long, display_order = 902, id = "OUTLET_ADDRESS", value_parser = extract_address_value)]
     pub from: Option<String>,
 
@@ -81,15 +89,35 @@ struct OutletNodeCommand {
 #[async_trait]
 impl InMemoryNodeCommand for OutletNodeCommand {
     async fn run(&self, node: Arc<InMemoryNode>) -> miette::Result<()> {
+        let ctx = node.ctx();
+        let use_http_api = self.command.http_api.use_http_api();
+        let api_client = get_api_client(&node, use_http_api).await?;
+
+        // TODO: the cluster and zone are only needed here if the enrollment ticket is not provided
+        // *but* at some point we will need them to set the default policy on the outlet
+        let cluster = self.command.cluster.get_cluster(ctx, &node).await?;
+        let zone_name = self.command.zone.zone_name()?;
+        let relay_name = format!("{}-{}-{}", cluster, zone_name, self.command.relay);
+        let enrollment_ticket = self
+            .command
+            .enrollment_ticket
+            .get(
+                ctx,
+                &*api_client,
+                &cluster,
+                &zone_name,
+                Some(self.command.relay.clone()),
+            )
+            .await?;
         let mut node_config = serde_json::json!({
-            "relay": self.command.relay.clone(),
+            "relay": relay_name,
             "tcp-outlet": {
                 "to": self.command.to.to_string(),
                 }
         });
-        if let Some(from) = &self.command.from {
-            node_config["tcp-outlet"]["from"] = from.to_string().into();
-        }
+        let from = &self.command.from.as_ref().unwrap_or(&self.command.relay);
+        node_config["tcp-outlet"]["from"] = from.to_string().into();
+
         if let Some(allow) = &self.command.allow {
             node_config["tcp-outlet"]["allow"] = allow.to_string().into();
         }
@@ -102,7 +130,7 @@ impl InMemoryNodeCommand for OutletNodeCommand {
         let node_cmd = crate::node::create::CreateCommand {
             name: node_config.to_string(),
             config_args: ConfigArgs {
-                enrollment_ticket: Some(self.command.enrollment_ticket.clone()),
+                enrollment_ticket: Some(enrollment_ticket),
                 ..Default::default()
             },
             foreground_args: ForegroundArgs {
