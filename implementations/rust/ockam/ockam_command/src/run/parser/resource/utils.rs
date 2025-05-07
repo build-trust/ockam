@@ -1,5 +1,5 @@
 use clap::Parser;
-use miette::IntoDiagnostic;
+use miette::{miette, IntoDiagnostic};
 use once_cell::sync::Lazy;
 
 use crate::{OckamCommand, OckamSubcommand};
@@ -22,7 +22,8 @@ pub fn parse_cmd_from_args(cmd: &str, args: &[String]) -> miette::Result<OckamSu
         .chain(cmd.split(' '))
         .chain(args.iter().map(|s| s.as_str()))
         .collect::<Vec<_>>();
-    Ok(OckamCommand::try_parse_from(args)
+    OckamCommand::try_parse_from(args)
         .into_diagnostic()?
-        .subcommand)
+        .subcommand
+        .ok_or(miette!("Failed to parse as a subcommand"))
 }

@@ -1,3 +1,4 @@
+use crate::base_command::BaseCommand;
 use crate::branding::{load_compile_time_vars, BrandingCompileEnvVars, OUTPUT_BRANDING};
 use crate::command_events::add_command_event;
 use crate::command_global_opts::CommandGlobalOpts;
@@ -51,11 +52,14 @@ arg_required_else_help = false,
 subcommand_required = false,
 )]
 pub struct OckamCommand {
-    #[command(subcommand)]
-    pub(crate) subcommand: OckamSubcommand,
-
     #[command(flatten)]
     pub global_args: GlobalArgs,
+
+    #[command(flatten)]
+    pub base_command_args: BaseCommand,
+
+    #[command(subcommand)]
+    pub(crate) subcommand: Option<OckamSubcommand>,
 }
 
 impl OckamCommand {
@@ -73,11 +77,8 @@ impl OckamCommand {
         // This allows us to customize how we format the error messages and their content.
         let _hook_result = miette::set_hook(Box::new(|_| Box::new(ErrorReportHandler::new())));
 
-        let command_name = self.subcommand.name();
-
         let mut in_memory = false;
-
-        if let OckamSubcommand::Node(cmd) = &self.subcommand {
+        if let Some(OckamSubcommand::Node(cmd)) = &self.subcommand {
             if let crate::node::NodeSubcommand::Create(c) = &cmd.subcommand {
                 in_memory = c.in_memory;
             }
@@ -117,9 +118,12 @@ impl OckamCommand {
         debug!("{:#?}", logging_configuration);
         debug!("{:#?}", exporting_configuration);
 
+        let command_name = self.name();
         let tracer = global::tracer(OCKAM_TRACER_NAME);
-
-        let span = if let Some(opentelemetry_context) = self.subcommand.get_opentelemetry_context()
+        let span = if let Some(opentelemetry_context) = self
+            .subcommand
+            .as_ref()
+            .and_then(|c| c.get_opentelemetry_context())
         {
             let span_builder =
                 SpanBuilder::from_name(command_name.clone()).with_links(vec![Link::new(
@@ -162,8 +166,7 @@ impl OckamCommand {
         );
 
         let options = CommandGlobalOpts::new(self.global_args.clone(), cli_state, terminal);
-
-        options.log_inputs(arguments, &self.subcommand);
+        options.log_inputs(arguments, &self.name());
 
         if let Err(err) = check_if_an_upgrade_is_available(&options).await {
             warn!("Failed to check for upgrade, error={err}");
@@ -201,7 +204,7 @@ impl OckamCommand {
             Err(err) => {
                 // If the user is trying to run `ockam reset` and the local state is corrupted,
                 // we can try to hard reset the local state.
-                if let OckamSubcommand::Reset(c) = &self.subcommand {
+                if let Some(OckamSubcommand::Reset(c)) = &self.subcommand {
                     c.hard_reset();
                     println!(
                         "{}",
@@ -250,7 +253,12 @@ impl OckamCommand {
             return None;
         };
 
-        let app_name = if self.subcommand.is_local_node() {
+        let app_name = if self
+            .subcommand
+            .as_ref()
+            .map(|c| c.is_local_node())
+            .unwrap_or_default()
+        {
             "local node"
         } else {
             "cli"
@@ -260,7 +268,7 @@ impl OckamCommand {
             logging_configuration,
             exporting_configuration,
             app_name,
-            self.subcommand.node_name(),
+            self.subcommand.as_ref().and_then(|c| c.node_name()),
             ctx,
         );
 
@@ -269,8 +277,14 @@ impl OckamCommand {
 
     /// Create the logging configuration, depending on the command to execute
     fn make_logging_configuration(&self, is_tty: bool) -> miette::Result<LoggingConfiguration> {
-        if self.subcommand.is_background_node() {
-            Ok(LoggingConfiguration::background(self.subcommand.log_path()).into_diagnostic()?)
+        let subcommand = self.subcommand.as_ref();
+
+        if subcommand
+            .map(|c| c.is_background_node())
+            .unwrap_or_default()
+        {
+            let log_path = subcommand.map(|c| c.log_path()).unwrap_or_default();
+            Ok(LoggingConfiguration::background(log_path).into_diagnostic()?)
         } else {
             let verbose = self.global_args.verbose;
             let mut level_and_crates =
@@ -278,11 +292,14 @@ impl OckamCommand {
             let mut log_path = if level_and_crates.explicit_verbose_flag {
                 None
             } else {
-                Some(CliState::command_log_path(self.subcommand.name().as_str())?)
+                Some(CliState::command_log_path(self.name().as_str())?)
             };
             let mut logging_enabled = logging_enabled()?;
             let mut default_log_format = LogFormat::Default;
-            if self.subcommand.is_foreground_node() && verbose == 0 {
+            let is_foreground_node = subcommand
+                .map(|c| c.is_foreground_node())
+                .unwrap_or_default();
+            if is_foreground_node && verbose == 0 {
                 log_path = None;
                 logging_enabled = LoggingEnabled::On;
                 level_and_crates.crates_filter =
@@ -311,7 +328,12 @@ impl OckamCommand {
         state: &CliState,
         ctx: &Context,
     ) -> miette::Result<ExportingConfiguration> {
-        if self.subcommand.is_background_node() {
+        if self
+            .subcommand
+            .as_ref()
+            .map(|c| c.is_background_node())
+            .unwrap_or_default()
+        {
             ExportingConfiguration::background(state, ctx)
                 .await
                 .into_diagnostic()
@@ -322,7 +344,7 @@ impl OckamCommand {
         }
     }
 
-    #[instrument(skip_all, fields(command = self.subcommand.name()), level = Level::TRACE)]
+    #[instrument(skip_all, fields(command = self.name()), level = Level::TRACE)]
     async fn run_command(
         self,
         ctx: &Context,
@@ -331,6 +353,18 @@ impl OckamCommand {
         arguments: &[String],
     ) -> miette::Result<()> {
         add_command_event(opts.state.clone(), command_name, arguments.join(" ")).await?;
-        self.subcommand.run(ctx, opts).await
+        if let Some(subcommand) = self.subcommand {
+            subcommand.run(ctx, opts).await
+        } else {
+            self.base_command_args.run(ctx, opts).await
+        }
+    }
+
+    fn name(&self) -> String {
+        if let Some(subcommand) = &self.subcommand {
+            subcommand.name()
+        } else {
+            self.base_command_args.name()
+        }
     }
 }

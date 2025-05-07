@@ -17,7 +17,6 @@ use ockam_node::Context;
 
 use crate::admin::AdminCommand;
 use crate::authority::{AuthorityCommand, AuthoritySubcommand};
-use crate::base_command::BaseCommand;
 use crate::branding::command;
 use crate::cluster::ClusterCommand;
 use crate::command_global_opts::CommandGlobalOpts;
@@ -70,8 +69,6 @@ use crate::Result;
 #[derive(Clone, Debug, Subcommand)]
 #[command(about = docs::about("List of commands which can be executed with `ockam`"))]
 pub enum OckamSubcommand {
-    BaseCommand(BaseCommand),
-
     #[command(name = command::name("enroll"), hide = command::hide("enroll"))]
     Enroll(EnrollCommand),
 
@@ -166,18 +163,10 @@ pub enum OckamSubcommand {
     Share(ShareCommand),
 }
 
-impl Default for OckamSubcommand {
-    fn default() -> Self {
-        OckamSubcommand::BaseCommand(BaseCommand::default())
-    }
-}
-
 impl OckamSubcommand {
     /// Run the subcommand
     pub async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self {
-            OckamSubcommand::BaseCommand(c) => c.run(ctx, opts).await,
-
             OckamSubcommand::Enroll(c) => c.run(ctx, opts).await,
             OckamSubcommand::Cluster(c) => c.run(ctx, opts).await,
 
@@ -337,7 +326,6 @@ impl OckamSubcommand {
     /// Return the subcommand name
     pub fn name(&self) -> String {
         match self {
-            OckamSubcommand::BaseCommand(c) => c.name(),
             OckamSubcommand::Enroll(c) => c.name(),
             OckamSubcommand::Cluster(c) => c.name(),
             OckamSubcommand::Node(c) => c.name(),
