@@ -133,8 +133,6 @@ pub struct SecretsConfigArg {
 
 #[derive(Clone, Debug, Args, Default)]
 pub struct EnrollmentTicketConfigArg {
-    /// Enrollment ticket
-    /// If not set, one will be created
     #[arg(long, env = "ENROLLMENT_TICKET", value_name = "ENROLLMENT TICKET")]
     #[arg(help = docs::about("\
     A path, URL or inlined hex-encoded enrollment ticket to use for the Ockam Identity associated to this node. \
