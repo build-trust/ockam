@@ -1,8 +1,12 @@
+use std::collections::BTreeMap;
+
 use crate::cluster::utils::get_cluster;
 use crate::cluster::zone_config::ZoneConfig;
+use crate::docs;
 use clap::Args;
-use miette::{miette, IntoDiagnostic};
+use miette::{miette, Context as _, IntoDiagnostic};
 use ockam_api::nodes::InMemoryNode;
+use ockam_api::orchestrator::ai_platform::api::AiPlatformApi;
 use ockam_api::orchestrator::ai_platform::node_service_client::AI_API_BASE_URL_ENV;
 use ockam_core::env::get_env_ignore_error;
 use ockam_node::Context;
@@ -125,4 +129,34 @@ pub struct SecretsConfigArg {
     /// If no file is found, the command will just list the existing secrets.
     #[arg(long, visible_alias = "secrets")]
     pub secrets_config: Option<String>,
+}
+
+#[derive(Clone, Debug, Args, Default)]
+pub struct EnrollmentTicketConfigArg {
+    /// Enrollment ticket
+    /// If not set, one will be created
+    #[arg(long, env = "ENROLLMENT_TICKET", value_name = "ENROLLMENT TICKET")]
+    #[arg(help = docs::about("\
+    A path, URL or inlined hex-encoded enrollment ticket to use for the Ockam Identity associated to this node. \
+    If ommited one will be created automatically with default attributes
+    "))]
+    pub enrollment_ticket: Option<String>,
+}
+
+impl EnrollmentTicketConfigArg {
+    pub async fn get(
+        &self,
+        ctx: &Context,
+        api_client: &(dyn AiPlatformApi + Send + Sync + 'static),
+        cluster: &str,
+        zone_name: &str,
+        relay: Option<String>,
+    ) -> crate::Result<String> {
+        if let Some(t) = &self.enrollment_ticket {
+            return Ok(t.clone());
+        }
+        api_client
+            .create_enrollment_token(ctx, cluster, zone_name, BTreeMap::default(), relay)
+            .await.wrap_err("Failed to generate an enrollment ticket for the inlet. Please provide one with the --enrollment-ticket argument")
+    }
 }
