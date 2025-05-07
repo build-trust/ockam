@@ -224,6 +224,7 @@ impl BaseCommand {
             enrollment_ticket: Some(ticket),
             from: from.clone(),
             to: Some(to.to_string()),
+            background: true,
             no_ctrlc_handler: true,
             ..Default::default()
         };
