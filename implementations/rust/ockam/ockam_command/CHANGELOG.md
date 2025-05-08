@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 0.151.0 - 2025-05-07
+## 0.151.0 - 2025-05-08
 
 ### Added
 
@@ -58,6 +58,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add `cluster show` command to retrieve the user's cluster id
 - Improvements to cluster outlet command
 - Let the inlet cmd create the ticket
+- Delete the zone in parallel with image processing
+- Add zones to `cluster show` output
+- Support multi-line input inside repl by escaping with `"""`
+- Single token for all ecr repos
 - Updated dependencies
 
 ### Changed
@@ -101,6 +105,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix test_get_main_pod
 - Ctrlc handling in "cluster inlet"
 - `cluster delete` command
+- Parse zone configs with a single outlet properly
 
 ### Removed
 

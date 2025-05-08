@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 0.94.0 - 2025-05-07
+## 0.94.0 - 2025-05-08
 
 ### Added
 
@@ -54,6 +54,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - When resetting with the postgres database delete the tenant tables data
 - Evaluate policies with non-existing attribute keys
 - List relays on project nodes
+- Single token for all ecr repos
 - Updated dependencies
 
 ### Changed
