@@ -2,7 +2,10 @@ use minicbor::{CborLen, Decode, Encode};
 use ockam::Message;
 use ockam_core::{cbor_encode_preallocate, Decodable, Encodable, Encoded};
 use serde::{Deserialize, Serialize};
-use std::fmt::{Display, Formatter};
+use std::{
+    collections::BTreeMap,
+    fmt::{Display, Formatter},
+};
 
 #[derive(Encode, Decode, CborLen, Serialize, Deserialize, Debug, Default, Clone, Message)]
 #[rustfmt::skip]
@@ -123,8 +126,7 @@ impl Decodable for SecretList {
 pub struct EcrCredentials {
     #[serde(alias="customer")]
     #[n(1)] pub cluster: String,
-    #[n(2)] pub image_name: String,
-    #[n(3)] pub repository_uri: String,
+    #[n(2)] pub images: BTreeMap<String, String>,
     #[n(4)] pub auth_token: String,
 }
 

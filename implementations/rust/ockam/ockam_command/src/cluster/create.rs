@@ -124,21 +124,21 @@ impl CreateCommand {
             return Ok(zone_config);
         }
 
-        // TODO: these likely should be done in parallel
-        for image_name in config_images {
-            let ecr_creds = self
-                .provision_ecr(ctx, opts, api_client, cluster, &image_name)
-                .await?;
-            self.docker_login(opts, &ecr_creds).await?;
-            let repository_url_tag = self
-                .build_and_push_local_image(opts, &image_name, &ecr_creds.repository_uri)
-                .await?;
-            // TODO: remove the role
-            // node.delete_ecr_role(cluster, &self.zone_name, &image_name)
-            //     .await?;
-            zone_config.replace_image_name(&image_name, &repository_url_tag)?;
-        }
+        let ecr_credentials = self
+            .provision_ecr(ctx, opts, api_client, cluster, config_images)
+            .await?;
+        self.docker_login(opts, &ecr_credentials).await?;
 
+        // TODO: these likely should be done in parallel
+        for (image_name, repository_uri) in ecr_credentials.images.iter() {
+            let repository_url_tag = self
+                .build_and_push_local_image(opts, image_name, repository_uri)
+                .await?;
+            zone_config.replace_image_name(image_name, &repository_url_tag)?;
+        }
+        // TODO: remove the role
+        // node.delete_ecr_role(cluster, &self.zone_name, &image_name)
+        //     .await?;
         Ok(zone_config)
     }
 
@@ -148,29 +148,32 @@ impl CreateCommand {
         opts: &CommandGlobalOpts,
         api_client: &(dyn AiPlatformApi + Send + Sync + 'static),
         cluster: &str,
-        image_name: &str,
+        image_names: Vec<String>,
     ) -> Result<EcrCredentials> {
         let spinner = opts.terminal.spinner();
         if let Some(spinner) = spinner.as_ref() {
             spinner.set_message(format!(
-                "Creating a repository for the {} image...",
-                color_primary(image_name),
+                "Creating repositories for the images {} ...",
+                color_primary(image_names.join(" , ")),
             ));
         }
         let ecr_creds = api_client
-            .provision_ecr(ctx, cluster, image_name, Some(self.use_public_ecr))
+            .provision_ecr(ctx, cluster, image_names, Some(self.use_public_ecr))
             .await?;
         if let Some(spinner) = spinner {
             spinner.finish_and_clear();
         }
-        opts.terminal.write_line(fmt_ok!(
-            "Created a repository for the {} image\n",
-            color_primary(image_name),
-        ))?;
-        info!(
-            "Created a repository for the image {} in cluster {} at {}",
-            image_name, cluster, ecr_creds.repository_uri
-        );
+        for (image_name, uri) in ecr_creds.images.iter() {
+            opts.terminal.write_line(fmt_ok!(
+                "Created a repository for the {} image at {}\n",
+                color_primary(image_name),
+                color_primary(uri),
+            ))?;
+            info!(
+                "Created a repository for the image {} in cluster {} at {}",
+                image_name, cluster, uri
+            );
+        }
 
         Ok(ecr_creds)
     }
@@ -181,36 +184,38 @@ impl CreateCommand {
         ecr_credentials: &EcrCredentials,
     ) -> Result<()> {
         let spinner = opts.terminal.spinner();
-        if let Some(spinner) = spinner.as_ref() {
-            spinner.set_message("Giving docker access to the repository...");
-        }
-        let mut child = tokio::process::Command::new("docker")
-            .arg("login")
-            .arg("-u")
-            .arg("AWS")
-            .arg("--password-stdin")
-            .arg(&ecr_credentials.repository_uri)
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()
-            .into_diagnostic()?;
-        if let Some(mut stdin) = child.stdin.take() {
-            use tokio::io::AsyncWriteExt;
-            stdin
-                .write_all(ecr_credentials.auth_token.as_bytes())
-                .await
+        for (_image_name, uri) in ecr_credentials.images.iter() {
+            if let Some(spinner) = spinner.as_ref() {
+                spinner.set_message(fmt_ok!("Giving docker access to the repository {}...", uri));
+            }
+            let mut child = tokio::process::Command::new("docker")
+                .arg("login")
+                .arg("-u")
+                .arg("AWS")
+                .arg("--password-stdin")
+                .arg(uri)
+                .stdin(Stdio::piped())
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .spawn()
                 .into_diagnostic()?;
-        }
-        let output = child.wait_with_output().await.into_diagnostic()?;
-        if let Some(spinner) = spinner.as_ref() {
-            spinner.finish_and_clear();
-        }
-        if !output.status.success() {
-            return Err(miette::Error::msg(format!(
-                "Failed to login into repository: {}",
-                String::from_utf8_lossy(&output.stderr)
-            )));
+            if let Some(mut stdin) = child.stdin.take() {
+                use tokio::io::AsyncWriteExt;
+                stdin
+                    .write_all(ecr_credentials.auth_token.as_bytes())
+                    .await
+                    .into_diagnostic()?;
+            }
+            let output = child.wait_with_output().await.into_diagnostic()?;
+            if let Some(spinner) = spinner.as_ref() {
+                spinner.finish_and_clear();
+            }
+            if !output.status.success() {
+                return Err(miette::Error::msg(format!(
+                    "Failed to login into repository: {}",
+                    String::from_utf8_lossy(&output.stderr)
+                )));
+            }
         }
         Ok(())
     }

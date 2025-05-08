@@ -384,18 +384,17 @@ impl AiPlatformApi for InMemoryNode {
         &self,
         _ctx: &Context,
         cluster: &str,
-        image_name: &str,
+        image_names: Vec<String>,
         is_public: Option<bool>,
     ) -> miette::Result<EcrCredentials> {
-        let base_error =
-            || miette!("Failed to provision ECR for image {image_name} in cluster {cluster}");
+        let base_error = || miette!("Failed to provision ECR for images in cluster {cluster}");
         let url = format!("{}/api/{}/ecr", *AI_API_BASE_URL, cluster);
         let is_public = is_public.unwrap_or(false);
         // TODO: remove once latest provisioner gets deployed
         let region = if is_public { "us-east-1" } else { "us-west-2" };
 
         let body = serde_json::json!({
-            "image_name": image_name,
+            "image_names": image_names,
             "is_public": is_public,
             "region": region,
         });

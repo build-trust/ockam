@@ -178,12 +178,12 @@ impl AiPlatformApi for ControllerClient {
         &self,
         ctx: &Context,
         cluster: &str,
-        image_name: &str,
+        image_names: Vec<String>,
         is_public: Option<bool>,
     ) -> miette::Result<EcrCredentials> {
-        trace!(%cluster, image_name = image_name, "provisioning ecr");
+        trace!(%cluster, "provisioning ecr");
         let req = Request::post("/v0/ecr")
-            .body(ProvisionEcr::new(image_name, is_public.unwrap_or(false)));
+            .body(ProvisionEcr::new(image_names, is_public.unwrap_or(false)));
         let ecr_creds: EcrCredentials = self
             .get_secure_client()
             .ask(ctx, "clusters", req)
