@@ -531,6 +531,26 @@ struct StdinHandle {
 }
 
 impl StdinHandler {
+    async fn read_input(
+        stdin: &mut BufReader<tokio::io::Stdin>,
+        read_buffer: &mut String,
+    ) -> std::io::Result<usize> {
+        let n = stdin.read_line(read_buffer).await?;
+
+        let separator = "\"\"\"\n";
+        if read_buffer == separator {
+            loop {
+                stdin.read_line(read_buffer).await?;
+
+                if read_buffer.ends_with(separator) {
+                    break;
+                }
+            }
+        }
+
+        Ok(n)
+    }
+
     fn start() -> StdinHandle {
         let (tx, _) = tokio::sync::broadcast::channel(64);
         let returned_tx = tx.clone();
@@ -555,7 +575,7 @@ impl StdinHandler {
                 read_buffer.clear();
                 let mut cancel_rx = cancel_rx.resubscribe();
                 let read_result = tokio::select! {
-                    result = stdin.read_line(&mut read_buffer) => result,
+                    result = Self::read_input(&mut stdin, &mut read_buffer) => result,
                     _ = cancel_rx.recv() => {
                         read_buffer = ":q\n".to_string();
                         Ok(1)
