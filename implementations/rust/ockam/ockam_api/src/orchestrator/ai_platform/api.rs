@@ -70,7 +70,7 @@ pub trait AiPlatformApi {
         &self,
         ctx: &Context,
         cluster: &str,
-        image_name: &str,
+        image_names: Vec<String>,
         is_public: Option<bool>,
     ) -> miette::Result<EcrCredentials>;
 }

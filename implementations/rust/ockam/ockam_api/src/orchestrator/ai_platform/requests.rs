@@ -149,7 +149,7 @@ impl DeleteSecret {
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct ProvisionEcr {
-    #[n(1)] pub image_name: String,
+    #[n(1)] pub image_names: Vec<String>,
     #[n(2)] pub is_public: bool,
     #[n(3)] pub region: String,
 }
@@ -167,7 +167,7 @@ impl Decodable for ProvisionEcr {
 }
 
 impl ProvisionEcr {
-    pub fn new(image_name: &str, is_public: bool) -> Self {
+    pub fn new(image_names: Vec<String>, is_public: bool) -> Self {
         // TODO: remove once latest provisioner gets deployed
         let region = if is_public {
             "us-east-1".to_string()
@@ -175,7 +175,7 @@ impl ProvisionEcr {
             "us-west-2".to_string()
         };
         Self {
-            image_name: image_name.to_string(),
+            image_names,
             is_public,
             region,
         }
