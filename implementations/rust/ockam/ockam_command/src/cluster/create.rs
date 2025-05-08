@@ -7,15 +7,18 @@ use crate::{docs, Command, CommandGlobalOpts, Result};
 use async_trait::async_trait;
 use clap::Args;
 use colorful::Colorful;
-use miette::IntoDiagnostic;
+use indicatif::MultiProgress;
+use miette::{IntoDiagnostic, WrapErr};
 use ockam_api::colors::color_primary;
 use ockam_api::nodes::InMemoryNode;
 use ockam_api::orchestrator::ai_platform::api::AiPlatformApi;
 use ockam_api::orchestrator::ai_platform::responses::EcrCredentials;
 use ockam_api::{fmt_log, fmt_ok};
+use ockam_core::TryClone;
 use ockam_node::Context;
 use std::process::Stdio;
 use std::sync::Arc;
+use tokio::task::JoinSet;
 use tracing::info;
 
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
@@ -62,25 +65,24 @@ impl InMemoryNodeCommand<ZoneConfig> for CreateNodeCommand {
         let use_http_api = self.command.http_api.use_http_api();
         let api_client = get_api_client(&node, use_http_api).await?;
         let cluster = get_cluster(ctx, &node).await?;
-        let parsed_zone_config = self.command.parse_zone_config()?;
+        let zone_config = self.command.zone_config.zone_config()?;
+        let zone_name = zone_config.name.clone();
 
-        // Delete the zone is relatively expensive operation, so we do it in parallel with the image processing
-        let zone_config_future = self.command.process_images(
-            ctx,
-            parsed_zone_config.clone(),
-            &self.opts,
-            &*api_client,
-            &cluster,
-        );
-        let delete_zone_future = api_client.delete_zone(ctx, &cluster, &parsed_zone_config.name);
+        // Delete the zone is a relatively expensive operation, so we run it in parallel with the image processing
+        let process_images_fut =
+            self.command
+                .process_images(ctx, zone_config, &self.opts, api_client.clone(), &cluster);
+        let delete_zone_fut = api_client.delete_zone(ctx, &cluster, &zone_name);
 
-        let (zone_config, _) = tokio::join!(zone_config_future, delete_zone_future);
         // We don't check the result of the delete zone operation, it can fail if the zone doesn't exist
-        let zone_config = zone_config?;
+        let (process_images_res, _delete_zone_res) =
+            tokio::join!(process_images_fut, delete_zone_fut);
+        let zone_config = process_images_res?;
 
         self.command
             .deploy_zone(ctx, &self.opts, &*api_client, &cluster, &zone_config)
             .await?;
+
         Ok(zone_config)
     }
 }
@@ -100,21 +102,12 @@ impl Command<ZoneConfig> for CreateCommand {
 }
 
 impl CreateCommand {
-    fn parse_zone_config(&self) -> Result<ZoneConfig> {
-        let zone_config_path = self
-            .zone_config
-            .zone_config
-            .as_deref()
-            .unwrap_or("./ockam.yaml");
-        ZoneConfig::from_file(zone_config_path)
-    }
-
     async fn process_images(
         &self,
         ctx: &Context,
         mut zone_config: ZoneConfig,
         opts: &CommandGlobalOpts,
-        api_client: &(dyn AiPlatformApi + Send + Sync + 'static),
+        api_client: Arc<dyn AiPlatformApi + Send + Sync + 'static>,
         cluster: &str,
     ) -> Result<ZoneConfig> {
         let config_images = zone_config.get_local_images_names();
@@ -124,21 +117,47 @@ impl CreateCommand {
             return Ok(zone_config);
         }
 
-        // TODO: these likely should be done in parallel
+        // Provision ECR credentials for each image in parallel
+        let mut set: JoinSet<Result<(EcrCredentials, String)>> = JoinSet::new();
+        let mp = opts.terminal.multi_spinner();
         for image_name in config_images {
-            let ecr_creds = self
-                .provision_ecr(ctx, opts, api_client, cluster, &image_name)
-                .await?;
-            self.docker_login(opts, &ecr_creds).await?;
-            let repository_url_tag = self
-                .build_and_push_local_image(opts, &image_name, &ecr_creds.repository_uri)
-                .await?;
-            // TODO: remove the role
-            // node.delete_ecr_role(cluster, &self.zone_name, &image_name)
-            //     .await?;
-            zone_config.replace_image_name(&image_name, &repository_url_tag)?;
+            let _self = self.clone();
+            let ctx = ctx.try_clone()?;
+            let opts = opts.clone();
+            let api_client = api_client.clone();
+            let cluster = cluster.to_string();
+            let mp = mp.clone();
+            let future = async move {
+                let ecr_creds = _self
+                    .provision_ecr(&ctx, &opts, &*api_client, &cluster, &image_name, mp)
+                    .await?;
+                Ok((ecr_creds, image_name))
+            };
+            set.spawn(future);
         }
-
+        while let Some(res) = set.join_next().await {
+            match res {
+                Ok(Ok((ecr_creds, image_name))) => {
+                    // Login to ECR and build the image
+                    // The login operation can't be parallelized because of how docker stores credentials
+                    self.docker_login(opts, &ecr_creds).await?;
+                    let repository_url_tag = self
+                        .build_and_push_local_image(opts, &image_name, &ecr_creds.repository_uri)
+                        .await?;
+                    // TODO: remove the role
+                    // node.delete_ecr_role(cluster, &self.zone_name, &image_name)
+                    //     .await?;
+                    zone_config.replace_image_name(&image_name, &repository_url_tag)?;
+                }
+                Ok(err) => {
+                    err?;
+                }
+                err => {
+                    err.into_diagnostic()
+                        .wrap_err("Failed to process images")??;
+                }
+            }
+        }
         Ok(zone_config)
     }
 
@@ -149,13 +168,16 @@ impl CreateCommand {
         api_client: &(dyn AiPlatformApi + Send + Sync + 'static),
         cluster: &str,
         image_name: &str,
+        multi_spinner: Option<MultiProgress>,
     ) -> Result<EcrCredentials> {
-        let spinner = opts.terminal.spinner();
-        if let Some(spinner) = spinner.as_ref() {
-            spinner.set_message(format!(
+        let mut spinner = opts.terminal.spinner();
+        if let (Some(mp), Some(sp)) = (multi_spinner.as_ref(), spinner.take()) {
+            let sp = mp.add(sp);
+            sp.set_message(format!(
                 "Creating a repository for the {} image...",
                 color_primary(image_name),
             ));
+            spinner = Some(sp);
         }
         let ecr_creds = api_client
             .provision_ecr(ctx, cluster, image_name, Some(self.use_public_ecr))

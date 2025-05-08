@@ -119,7 +119,7 @@ impl<T: TerminalWriter + Debug + Send + 'static> NotificationHandler<T> {
                 let _ = self.terminal.write_line(contents);
             }
             Notification::Progress(contents) => {
-                if self.terminal.can_use_progress_bar() {
+                if self.terminal.can_use_tty_widgets() {
                     if self.progress_bar.is_none() {
                         self.progress_bar = self.terminal.spinner();
                     }

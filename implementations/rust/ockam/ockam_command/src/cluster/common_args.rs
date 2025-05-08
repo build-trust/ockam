@@ -1,5 +1,3 @@
-use std::collections::BTreeMap;
-
 use crate::cluster::utils::get_cluster;
 use crate::cluster::zone_config::ZoneConfig;
 use crate::docs;
@@ -10,6 +8,8 @@ use ockam_api::orchestrator::ai_platform::api::AiPlatformApi;
 use ockam_api::orchestrator::ai_platform::node_service_client::AI_API_BASE_URL_ENV;
 use ockam_core::env::get_env_ignore_error;
 use ockam_node::Context;
+use std::collections::BTreeMap;
+use std::path::PathBuf;
 
 #[derive(Clone, Debug, Args, Default)]
 pub struct ClusterArg {
@@ -33,6 +33,35 @@ pub struct ZoneConfigArg {
     /// If not set, the `./ockam.yaml` file from the current directory will be used.
     #[arg(long, visible_alias = "config")]
     pub zone_config: Option<String>,
+}
+
+impl ZoneConfigArg {
+    pub fn zone_config_path(&self) -> crate::Result<PathBuf> {
+        match &self.zone_config {
+            Some(path) => Ok(PathBuf::from(path)),
+            None => {
+                let paths = vec![PathBuf::from("./ockam.yaml"), PathBuf::from("./ockam.yml")];
+                for path in paths {
+                    if path.try_exists().into_diagnostic()? {
+                        return Ok(path);
+                    }
+                }
+                Err(miette!(
+                    "Zone config file not found. Please provide a zone name or a zone config file."
+                ))
+            }
+        }
+    }
+
+    pub fn zone_config(&self) -> crate::Result<ZoneConfig> {
+        let zone_config_path = self.zone_config_path()?;
+        ZoneConfig::from_file(&zone_config_path)
+            .map_err(|e| miette!("Failed to load zone config file: {}", e))
+    }
+
+    pub fn zone_name(&self) -> crate::Result<String> {
+        Ok(self.zone_config()?.name)
+    }
 }
 
 #[derive(Clone, Debug, Args, Default)]
@@ -67,26 +96,7 @@ impl ZoneNameOrConfigArg {
         if let Some(zone_name) = &self.zone_name {
             return Ok(zone_name.clone());
         }
-        let zone_config_path = match &self.zone_config.zone_config {
-            Some(path) => path,
-            None => {
-                if std::path::Path::new("./ockam.yaml")
-                    .try_exists()
-                    .into_diagnostic()?
-                {
-                    "./ockam.yaml"
-                } else if std::path::Path::new("./ockam.yml")
-                    .try_exists()
-                    .into_diagnostic()?
-                {
-                    "./ockam.yml"
-                } else {
-                    return Err(miette!("Zone config file not found. Please provide a zone name or a zone config file."));
-                }
-            }
-        };
-        let zone_config = ZoneConfig::from_file(zone_config_path)?;
-        Ok(zone_config.name)
+        self.zone_config.zone_name()
     }
 }
 

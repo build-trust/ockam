@@ -11,7 +11,7 @@ use crate::output::OutputBranding;
 use crate::ui::output::OutputFormat;
 use crate::{Result, UiError};
 use colorful::Colorful;
-use indicatif::{ProgressBar, ProgressDrawTarget, ProgressStyle};
+use indicatif::{MultiProgress, ProgressBar, ProgressDrawTarget, ProgressStyle};
 use jaq_interpret::{Ctx, FilterT, ParseCtx, RcIter, Val};
 use miette::{miette, IntoDiagnostic};
 use ockam_core::env::get_env_with_default;
@@ -422,12 +422,12 @@ impl<W: TerminalWriter + Debug> Terminal<W, ToStdOut> {
 
 // Extensions
 impl<W: TerminalWriter + Debug> Terminal<W> {
-    pub fn can_use_progress_bar(&self) -> bool {
+    pub fn can_use_tty_widgets(&self) -> bool {
         self.stderr.is_tty() && self.can_write_to_stderr()
     }
 
     pub fn spinner(&self) -> Option<ProgressBar> {
-        if !self.can_use_progress_bar() {
+        if !self.can_use_tty_widgets() {
             return None;
         }
 
@@ -446,6 +446,16 @@ impl<W: TerminalWriter + Debug> Terminal<W> {
                 .tick_strings(ticker_ref),
         );
         Some(pb)
+    }
+
+    pub fn multi_spinner(&self) -> Option<MultiProgress> {
+        if !self.can_use_tty_widgets() {
+            return None;
+        }
+
+        let mp = MultiProgress::new();
+        mp.set_draw_target(ProgressDrawTarget::stderr());
+        Some(mp)
     }
 
     pub async fn loop_messages(
