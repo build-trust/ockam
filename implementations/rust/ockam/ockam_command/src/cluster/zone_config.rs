@@ -232,8 +232,8 @@ impl Pod {
             }
         }
 
-        // If there is only one outlet, return it as the repl
-        if repl.is_none() && rest.len() == 1 {
+        // If there is only one unnamed outlet, return it as the repl
+        if repl.is_none() && rest.len() == 1 && rest[0].name.is_none() {
             repl = Some(rest.remove(0));
         }
 
@@ -937,8 +937,8 @@ pods:
     }
 
     #[test]
-    fn test_pod_get_outlets_single_outlet() {
-        // Setup pod with a single outlet (not named "repl")
+    fn test_pod_get_outlets_single_outlet_named() {
+        // Setup pod with a single named outlet (not named "repl")
         let pod = Pod {
             name: "test-pod".to_string(),
             containers: vec![Container {
@@ -960,10 +960,44 @@ pods:
 
         let outlets = pod.get_outlets();
 
+        // When there's only one named outlet, it should not be used as the repl
+        assert!(outlets.repl.is_none());
+
+        // The rest vector should be empty
+        assert_eq!(outlets.rest.len(), 1);
+        assert_eq!(outlets.rest.len(), 1);
+        assert_eq!(outlets.rest[0].name, Some("single".to_string()));
+        assert_eq!(outlets.rest[0].to, "service:8080");
+    }
+
+    #[test]
+    fn test_pod_get_outlets_single_outlet_unnamed() {
+        // Setup pod with a single unnamed outlet (not named "repl")
+        let pod = Pod {
+            name: "test-pod".to_string(),
+            containers: vec![Container {
+                name: "app".to_string(),
+                image: "app-image".to_string(),
+                other_fields: HashMap::new(),
+            }],
+            portals: Portals {
+                inlets: vec![],
+                outlets: vec![Outlet {
+                    name: None,
+                    to: "service:8080".to_string(),
+                    other_fields: HashMap::new(),
+                }],
+                other_fields: HashMap::new(),
+            },
+            other_fields: HashMap::new(),
+        };
+
+        let outlets = pod.get_outlets();
+
         // When there's only one outlet, it should be used as the repl
         assert!(outlets.repl.is_some());
         let repl = outlets.repl.unwrap();
-        assert_eq!(repl.name, Some("single".to_string()));
+        assert_eq!(repl.name, None);
         assert_eq!(repl.to, "service:8080");
 
         // The rest vector should be empty
