@@ -808,8 +808,8 @@ mod test {
             Some(email) => email,
             None => match role {
                 RoleInShare::Admin => "me@ockam.io",
-                RoleInShare::Service => "service@ockam.com",
-                RoleInShare::Guest => "guest@ockam.com",
+                RoleInShare::Service => "service@ockam.io",
+                RoleInShare::Guest => "guest@ockam.io",
             },
         }
         .try_into()
