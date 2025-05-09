@@ -4594,8 +4594,8 @@ dependencies = [
  "quickcheck",
  "rand",
  "regex",
- "rustyline",
- "rustyline-derive",
+ "rustyline 14.0.0",
+ "rustyline-derive 0.10.0",
  "serde",
  "serde_json",
  "sqlx",
@@ -4768,6 +4768,7 @@ dependencies = [
  "rustls 0.23.20",
  "rustls-native-certs 0.8.1",
  "rustls-pki-types",
+ "rustyline 15.0.0",
  "semver 1.0.24",
  "serde",
  "serde_json",
@@ -6416,10 +6417,44 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustyline"
+version = "15.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2ee1e066dc922e513bda599c6ccb5f3bb2b0ea5870a579448f2622993f0a9a2f"
+dependencies = [
+ "bitflags 2.6.0",
+ "cfg-if",
+ "clipboard-win 5.4.0",
+ "fd-lock",
+ "home",
+ "libc",
+ "log",
+ "memchr",
+ "nix 0.29.0",
+ "radix_trie",
+ "rustyline-derive 0.11.0",
+ "unicode-segmentation",
+ "unicode-width 0.2.0",
+ "utf8parse",
+ "windows-sys 0.59.0",
+]
+
+[[package]]
 name = "rustyline-derive"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e5af959c8bf6af1aff6d2b463a57f71aae53d1332da58419e30ad8dc7011d951"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.100",
+]
+
+[[package]]
+name = "rustyline-derive"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "327e9d075f6df7e25fbf594f1be7ef55cf0d567a6cb5112eeccbbd51ceb48e0d"
 dependencies = [
  "proc-macro2",
  "quote",
