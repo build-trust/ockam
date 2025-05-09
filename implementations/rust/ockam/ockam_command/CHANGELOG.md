@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 0.151.0 - 2025-05-08
+## 0.151.0 - 2025-05-09
 
 ### Added
 
@@ -82,6 +82,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - In "ockam" use a new context for each inlet
 - In "ockam" use a new context for each inlet
 - Process "ockam" as a clap command, enabling passing arguments to it
+- Cleanup output of `cluster create` command
 
 ### Fixed
 
