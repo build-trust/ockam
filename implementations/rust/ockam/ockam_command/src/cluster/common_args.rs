@@ -55,6 +55,13 @@ impl From<ZoneConfigArg> for ZoneNameOrConfigArg {
     }
 }
 
+impl ZoneConfigArg {
+    pub fn parse_zone_config(&self) -> crate::Result<ZoneConfig> {
+        let zone_config_path = self.zone_config.as_deref().unwrap_or("./ockam.yaml");
+        ZoneConfig::from_file(zone_config_path)
+    }
+}
+
 impl ZoneNameOrConfigArg {
     pub fn from_zone_name(zone_name: String) -> Self {
         Self {
