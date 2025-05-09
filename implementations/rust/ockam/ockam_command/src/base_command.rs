@@ -14,11 +14,16 @@ use ockam_api::colors::color_primary;
 use ockam_api::orchestrator::ai_platform::node_service_client::AI_API_BASE_URL;
 use ockam_api::{fmt_log, fmt_ok, fmt_separator};
 use ockam_node::{Context, Executor, NodeBuilder};
+use rustyline::config::Configurer;
+use rustyline::error::ReadlineError;
+use rustyline::validate::{ValidationContext, ValidationResult, Validator};
+use rustyline::{Completer, Editor, Helper, Highlighter, Hinter};
 use std::fmt::{Display, Formatter};
 use std::net::SocketAddr;
 use std::str::FromStr;
 use std::time::Duration;
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
+use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::task::JoinHandle;
 use tokio::time::timeout;
 use tracing::debug;
@@ -256,20 +261,20 @@ impl BaseCommand {
         use tokio::net::TcpStream;
         use tokio::time::sleep;
 
-        // stdin quit handler
-        let stdin = StdinHandler::start();
-        let mut stdin_rx = stdin.tx.subscribe();
-        let stdin_quit = async {
-            while let Ok(input) = stdin_rx.recv().await {
-                if is_quit_sequence(&input) {
-                    break;
-                }
+        let (quit_tx, mut quit_rx) = tokio::sync::mpsc::channel(1);
+        let mut processed = false;
+        ctrlc::set_handler(move || {
+            if !processed {
+                let _ = quit_tx.blocking_send(());
+                processed = true
             }
-        };
+        })
+        .expect("Error setting exit signal handler");
+
+        let mut stdin = RustylineHandler::start();
 
         // Start the interactive REPL
         let opts = opts.clone();
-        let mut stdin_rx = stdin.tx.subscribe();
         let repl_handle = tokio::spawn(async move {
             async fn connect_to_inlet(addr: &SchemeHostnamePort) -> miette::Result<TcpStream> {
                 const MAX_RETRIES: u32 = 120; // Try for about 60 seconds (120 * 500ms)
@@ -334,9 +339,9 @@ impl BaseCommand {
                 // 3: Start the REPL loop for this connection
                 'connection: loop {
                     // Get user input
-                    let user_input = match stdin_rx.recv().await {
-                        Ok(i) => i,
-                        Err(_) => {
+                    let user_input = match stdin.read_line().await {
+                        Some(i) => i,
+                        None => {
                             // stdin channel closed, exit REPL
                             break 'repl;
                         }
@@ -348,12 +353,6 @@ impl BaseCommand {
 
                     if is_reconnect_sequence(&user_input) {
                         break 'connection;
-                    }
-
-                    if is_quit_sequence(&user_input) {
-                        let _ = writer.write_all(user_input.as_bytes()).await;
-                        let _ = writer.flush().await;
-                        break 'repl;
                     }
 
                     // Send input to server
@@ -389,12 +388,13 @@ impl BaseCommand {
         });
 
         tokio::select! {
-            _ = stdin_quit => {},
+            _ = quit_rx.recv() => {},
             _ = repl_handle => {},
         }
 
         Ok(())
     }
+
     async fn wait_until_server_is_ready(
         reader: &mut BufReader<tokio::net::tcp::OwnedReadHalf>,
         read_header_buffer: &mut String,
@@ -524,86 +524,98 @@ impl Display for ReadStatus {
     }
 }
 
-struct StdinHandler {}
+struct RustylineHandler {}
 
-struct StdinHandle {
-    tx: tokio::sync::broadcast::Sender<String>,
+struct RustylineHandle {
+    lines: Receiver<String>,
+    next: Sender<()>,
 }
 
-impl StdinHandler {
-    async fn read_input(
-        stdin: &mut BufReader<tokio::io::Stdin>,
-        read_buffer: &mut String,
-    ) -> std::io::Result<usize> {
-        let n = stdin.read_line(read_buffer).await?;
+impl RustylineHandle {
+    async fn read_line(&mut self) -> Option<String> {
+        match self.next.send(()).await {
+            Ok(_) => self.lines.recv().await.map(|line| line + "\n"),
+            Err(_) => {
+                // Channel closed, exit REPL
+                None
+            }
+        }
+    }
+}
 
-        let separator = "\"\"\"\n";
-        if read_buffer == separator {
-            loop {
-                stdin.read_line(read_buffer).await?;
+#[derive(Hinter, Completer, Highlighter)]
+struct MultiLineValidatorHelper {}
+impl Validator for MultiLineValidatorHelper {
+    fn validate(
+        &self,
+        ctx: &mut ValidationContext,
+    ) -> std::result::Result<ValidationResult, ReadlineError> {
+        let input = ctx.input();
+        if input.starts_with("\"\"\"") {
+            if input.ends_with("\n\"\"\"") {
+                return Ok(ValidationResult::Valid(None));
+            } else {
+                return Ok(ValidationResult::Incomplete);
+            }
+        }
+        Ok(ValidationResult::Valid(None))
+    }
 
-                if read_buffer.ends_with(separator) {
+    fn validate_while_typing(&self) -> bool {
+        false
+    }
+}
+impl Helper for MultiLineValidatorHelper {}
+
+impl RustylineHandler {
+    fn start() -> RustylineHandle {
+        let (next_s, next_r) = tokio::sync::mpsc::channel(1);
+        let (lines_s, lines_r) = tokio::sync::mpsc::channel(1);
+
+        // We run rustyline on their own blocking thread. The thread wait for an input line to be requested,
+        // then read it, and deliver it. While waiting for agent response there is no line requested, so readline
+        // is not active. If the thread thread terminate, the entire REPL exit.
+        let _join_handle = tokio::task::spawn_blocking(move || {
+            let _ = RustylineHandler::run_repl(next_r, lines_s);
+        });
+        RustylineHandle {
+            lines: lines_r,
+            next: next_s,
+        }
+    }
+
+    fn run_repl(mut next_r: Receiver<()>, lines_s: Sender<String>) -> std::result::Result<(), ()> {
+        fn rustyline_error(err: ReadlineError) {
+            eprintln!("Repl error  {:?}", err);
+        }
+        let mut rl = Editor::new().map_err(rustyline_error)?;
+        rl.set_max_history_size(50).map_err(rustyline_error)?;
+        let helper = MultiLineValidatorHelper {};
+        rl.set_helper(Some(helper));
+        rl.load_history("history.txt").map_err(rustyline_error)?;
+        loop {
+            // If we can't read from the channel, exit
+            next_r.blocking_recv().unwrap();
+            let readline = rl.readline("> ");
+            match readline {
+                Ok(line) => {
+                    if is_quit_sequence(&line) {
+                        break;
+                    }
+                    rl.add_history_entry(line.as_str())
+                        .map_err(rustyline_error)?;
+                    let _ = lines_s.blocking_send(line);
+                    let _ = rl.save_history("history.txt");
+                }
+                Err(ReadlineError::Interrupted) => break,
+                Err(ReadlineError::Eof) => break,
+                Err(err) => {
+                    eprintln!("Error reading user input: {:?}", err);
                     break;
                 }
             }
         }
-
-        Ok(n)
-    }
-
-    fn start() -> StdinHandle {
-        let (tx, _) = tokio::sync::broadcast::channel(64);
-        let returned_tx = tx.clone();
-
-        // Spawn a task to read from stdin
-        tokio::spawn(async move {
-            // Ctrl+C handler to exit stdin loop
-            let (cancel_tx, cancel_rx) = tokio::sync::broadcast::channel::<()>(1);
-            let mut processed = false;
-            ctrlc::set_handler(move || {
-                if !processed {
-                    let _ = cancel_tx.send(());
-                    processed = true;
-                }
-            })
-            .expect("Error setting Ctrl+C handler");
-
-            let mut stdin = BufReader::new(tokio::io::stdin());
-            let mut read_buffer = String::new();
-
-            loop {
-                read_buffer.clear();
-                let mut cancel_rx = cancel_rx.resubscribe();
-                let read_result = tokio::select! {
-                    result = Self::read_input(&mut stdin, &mut read_buffer) => result,
-                    _ = cancel_rx.recv() => {
-                        read_buffer = ":q\n".to_string();
-                        Ok(1)
-                    },
-                };
-
-                match read_result {
-                    Ok(0) => break, // EOF
-                    Ok(_n) => {
-                        if read_buffer.trim().is_empty() {
-                            continue;
-                        }
-                        let _ = tx.send(read_buffer.clone());
-                        if is_quit_sequence(&read_buffer) {
-                            break;
-                        }
-                    }
-                    Err(e) => {
-                        eprintln!("Error reading from stdin: {}", e);
-                        break;
-                    }
-                }
-            }
-
-            drop(tx);
-        });
-
-        StdinHandle { tx: returned_tx }
+        Ok(())
     }
 }
 
