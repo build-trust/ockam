@@ -26,7 +26,7 @@ fn binary_name() {
     println!("cargo:rerun-if-env-changed=COMPILE_OCKAM_COMMAND_BRAND_NAME");
 
     let support_email = env::var("COMPILE_OCKAM_COMMAND_SUPPORT_EMAIL")
-        .unwrap_or(format!("support@{}.com", bin_name));
+        .unwrap_or(format!("support@{}.io", bin_name));
     println!("cargo:rustc-env=COMPILE_OCKAM_COMMAND_SUPPORT_EMAIL={support_email}");
     println!("cargo:rerun-if-env-changed=COMPILE_OCKAM_COMMAND_SUPPORT_EMAIL");
 
