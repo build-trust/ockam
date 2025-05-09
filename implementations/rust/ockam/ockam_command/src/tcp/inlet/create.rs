@@ -222,7 +222,7 @@ impl Command for CreateCommand {
                                 "Created a new HTTP Interceptor Service bound to {}\n",
                                 color_primary(overwrite_http_header_address.to_string()),
                             );
-                            pb.set_message(fmt_ok!("{}", created_message));
+                            pb.set_message(created_message);
                         }
                     }
                     Err(_) => Err(miette!("Failed to create interceptor"))?,

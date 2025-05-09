@@ -239,7 +239,7 @@ impl BaseCommand {
             spinner.finish_and_clear();
         }
         opts.terminal.write_line(fmt_ok!(
-            "Portal connected to the outlet {} in {}",
+            "Portal connected to the outlet {} from {}",
             color_primary(to),
             color_primary(from.to_string())
         ))?;

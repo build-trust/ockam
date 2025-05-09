@@ -16,7 +16,7 @@ use ockam_api::{fmt_log, fmt_ok};
 use ockam_node::Context;
 use std::process::Stdio;
 use std::sync::Arc;
-use tracing::info;
+use tracing::{debug, info};
 
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
@@ -63,6 +63,12 @@ impl InMemoryNodeCommand<ZoneConfig> for CreateNodeCommand {
         let api_client = get_api_client(&node, use_http_api).await?;
         let cluster = get_cluster(ctx, &node).await?;
         let parsed_zone_config = self.command.parse_zone_config()?;
+
+        self.opts.terminal.write_line(fmt_log!(
+            "Deploying zone {} in cluster {}...\n",
+            color_primary(&parsed_zone_config.name),
+            color_primary(&cluster),
+        ))?;
 
         // Delete the zone is relatively expensive operation, so we do it in parallel with the image processing
         let zone_config_future = self.command.process_images(
@@ -150,11 +156,22 @@ impl CreateCommand {
         cluster: &str,
         image_names: Vec<String>,
     ) -> Result<EcrCredentials> {
+        let images_len = image_names.len();
+        let images_output = image_names
+            .iter()
+            .map(|name| color_primary(name).to_string())
+            .collect::<Vec<_>>()
+            .join(", ");
+        let images_output = if images_len > 1 {
+            format!("images {images_output}")
+        } else {
+            format!("image {images_output}")
+        };
         let spinner = opts.terminal.spinner();
         if let Some(spinner) = spinner.as_ref() {
             spinner.set_message(format!(
-                "Creating repositories for the images {} ...",
-                color_primary(image_names.join(" , ")),
+                "Creating repositories for the {}...",
+                &images_output
             ));
         }
         let ecr_creds = api_client
@@ -163,15 +180,14 @@ impl CreateCommand {
         if let Some(spinner) = spinner {
             spinner.finish_and_clear();
         }
+        opts.terminal
+            .write_line(fmt_ok!("Created a repository for the {}\n", images_output,))?;
         for (image_name, uri) in ecr_creds.images.iter() {
-            opts.terminal.write_line(fmt_ok!(
-                "Created a repository for the {} image at {}\n",
-                color_primary(image_name),
-                color_primary(uri),
-            ))?;
             info!(
                 "Created a repository for the image {} in cluster {} at {}",
-                image_name, cluster, uri
+                color_primary(image_name),
+                cluster,
+                uri
             );
         }
 
@@ -186,7 +202,7 @@ impl CreateCommand {
         let spinner = opts.terminal.spinner();
         for (_image_name, uri) in ecr_credentials.images.iter() {
             if let Some(spinner) = spinner.as_ref() {
-                spinner.set_message(fmt_ok!("Giving docker access to the repository {}...", uri));
+                spinner.set_message("Giving docker access to the repository...");
             }
             let mut child = tokio::process::Command::new("docker")
                 .arg("login")
@@ -247,11 +263,7 @@ impl CreateCommand {
 
         let spinner = opts.terminal.spinner();
         if let Some(spinner) = spinner.as_ref() {
-            spinner.set_message(format!(
-                "Building image {} with tag {}...",
-                color_primary(image_name),
-                color_primary(&repository_uri_tag)
-            ));
+            spinner.set_message(format!("Building image {}...", color_primary(image_name)));
         }
 
         let build_attempts = [
@@ -298,7 +310,7 @@ impl CreateCommand {
             }
 
             info!(
-                "Attempting docker build for {} with command: docker {} and env: {:?}",
+                "Attempting docker build for {} with command: `docker {}` and env: `{:?}`",
                 image_name,
                 cmd_args.join(" "),
                 env_vars
@@ -315,11 +327,13 @@ impl CreateCommand {
                 if let Some(spinner) = spinner.as_ref() {
                     spinner.finish_and_clear();
                 }
-                opts.terminal.write_line(fmt_ok!(
-                    "Built local image {} with tag {}",
-                    color_primary(image_name),
+                opts.terminal
+                    .write_line(fmt_ok!("Built image {}", color_primary(image_name),))?;
+                debug!(
+                    "Built image {} with tag {}",
+                    image_name,
                     color_primary(&repository_uri_tag)
-                ))?;
+                );
 
                 // Push image
                 let push_spinner = opts.terminal.spinner();
