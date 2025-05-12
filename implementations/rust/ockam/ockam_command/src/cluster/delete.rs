@@ -31,13 +31,13 @@ pub struct DeleteCommand {
 }
 
 #[derive(Clone)]
-struct DeployNodeCommand {
+struct DeleteNodeCommand {
     opts: CommandGlobalOpts,
     command: DeleteCommand,
 }
 
 #[async_trait]
-impl InMemoryNodeCommand for DeployNodeCommand {
+impl InMemoryNodeCommand for DeleteNodeCommand {
     async fn run(&self, node: Arc<InMemoryNode>) -> miette::Result<()> {
         let ctx = node.ctx();
         let use_http_api = self.command.http_api.use_http_api();
@@ -70,7 +70,7 @@ impl Command for DeleteCommand {
     const NAME: &'static str = "cluster delete";
 
     async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> Result<()> {
-        let command = DeployNodeCommand {
+        let command = DeleteNodeCommand {
             opts: opts.clone(),
             command: self.clone(),
         };
