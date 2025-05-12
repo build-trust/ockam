@@ -11,12 +11,13 @@ use miette::IntoDiagnostic;
 use ockam_api::colors::color_primary;
 use ockam_api::nodes::InMemoryNode;
 use ockam_api::orchestrator::ai_platform::api::AiPlatformApi;
-use ockam_api::orchestrator::ai_platform::responses::EcrCredentials;
+use ockam_api::orchestrator::ai_platform::responses::EcrCredential;
 use ockam_api::{fmt_log, fmt_ok};
 use ockam_node::Context;
 use std::process::Stdio;
 use std::sync::Arc;
-use tracing::{debug, info};
+use tokio::task::JoinSet;
+use tracing::info;
 
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
@@ -123,28 +124,35 @@ impl CreateCommand {
         api_client: &(dyn AiPlatformApi + Send + Sync + 'static),
         cluster: &str,
     ) -> Result<ZoneConfig> {
-        let config_images = zone_config.get_local_images_names();
-        if config_images.is_empty() {
+        let images_names = zone_config.get_local_images_names();
+        if images_names.is_empty() {
             opts.terminal
                 .write_line(fmt_log!("No local images found in zone config"))?;
             return Ok(zone_config);
         }
 
-        let ecr_credentials = self
-            .provision_ecr(ctx, opts, api_client, cluster, config_images)
+        // Provision ECR credentials
+        let ecr_cred = self
+            .provision_ecr(ctx, opts, api_client, cluster, images_names.clone())
             .await?;
-        self.docker_login(opts, &ecr_credentials).await?;
 
-        // TODO: these likely should be done in parallel
-        for (image_name, repository_uri) in ecr_credentials.images.iter() {
-            let repository_url_tag = self
-                .build_and_push_local_image(opts, image_name, repository_uri)
+        // Build images in parallel
+        let build_res = self.build_docker_images(opts, &ecr_cred).await?;
+
+        // Login to ECR and push the images
+        for res in build_res {
+            let (image_name, repository_uri_tag) = res?;
+            // The login operation can't be parallelized because of how docker stores credentials
+            self.docker_login(opts, &ecr_cred).await?;
+            self.push_local_image(opts, &image_name, &repository_uri_tag)
                 .await?;
-            zone_config.replace_image_name(image_name, &repository_url_tag)?;
+            // TODO: remove the role
+            // node.delete_ecr_role(cluster, &self.zone_name, &image_name)
+            //     .await?;
+            zone_config.replace_image_name(&image_name, &repository_uri_tag)?;
         }
-        // TODO: remove the role
-        // node.delete_ecr_role(cluster, &self.zone_name, &image_name)
-        //     .await?;
+        opts.terminal.write_line("")?;
+
         Ok(zone_config)
     }
 
@@ -155,33 +163,26 @@ impl CreateCommand {
         api_client: &(dyn AiPlatformApi + Send + Sync + 'static),
         cluster: &str,
         image_names: Vec<String>,
-    ) -> Result<EcrCredentials> {
-        let images_len = image_names.len();
-        let images_output = image_names
-            .iter()
-            .map(|name| color_primary(name).to_string())
-            .collect::<Vec<_>>()
-            .join(", ");
-        let images_output = if images_len > 1 {
-            format!("images {images_output}")
-        } else {
-            format!("image {images_output}")
-        };
+    ) -> Result<EcrCredential> {
+        let images_names_formatter = ImagesNamesFormatter::new(image_names.clone());
+
         let spinner = opts.terminal.spinner();
         if let Some(spinner) = spinner.as_ref() {
             spinner.set_message(format!(
                 "Creating repositories for the {}...",
-                &images_output
+                images_names_formatter.format()
             ));
         }
         let ecr_creds = api_client
-            .provision_ecr(ctx, cluster, image_names, Some(self.use_public_ecr))
+            .provision_ecr(ctx, cluster, image_names.clone(), Some(self.use_public_ecr))
             .await?;
         if let Some(spinner) = spinner {
             spinner.finish_and_clear();
         }
-        opts.terminal
-            .write_line(fmt_ok!("Created a repository for the {}\n", images_output,))?;
+        opts.terminal.write_line(fmt_ok!(
+            "Created a repository for the {}\n",
+            images_names_formatter.format()
+        ))?;
         for (image_name, uri) in ecr_creds.images.iter() {
             info!(
                 "Created a repository for the image {} in cluster {} at {}",
@@ -194,10 +195,61 @@ impl CreateCommand {
         Ok(ecr_creds)
     }
 
+    async fn build_docker_images(
+        &self,
+        opts: &CommandGlobalOpts,
+        ecr_cred: &EcrCredential,
+    ) -> Result<Vec<Result<(String, String)>>> {
+        let mut images_names_formatter =
+            ImagesNamesFormatter::new(ecr_cred.images.keys().cloned().collect());
+        images_names_formatter.dim();
+
+        let spinner = opts.terminal.spinner();
+        if let Some(spinner) = spinner.as_ref() {
+            spinner.set_message(format!(
+                "Building docker {}...",
+                images_names_formatter.format()
+            ));
+        }
+        let mut set: JoinSet<Result<(String, String)>> = JoinSet::new();
+        for (image_name, repository_uri) in ecr_cred.images.iter() {
+            let _self = self.clone();
+            let image_name = image_name.clone();
+            let repository_uri = repository_uri.clone();
+            set.spawn(async move {
+                let repository_uri_tag = _self
+                    .build_local_image(&image_name, &repository_uri)
+                    .await?;
+                Ok((image_name, repository_uri_tag))
+            });
+        }
+        let mut build_res = vec![];
+        while let Some(res) = set.join_next().await {
+            let res = res.into_diagnostic()?;
+            if let Ok((image_name, _)) = &res {
+                images_names_formatter
+                    .update_name(image_name, color_primary(image_name).to_string());
+                if let Some(spinner) = spinner.as_ref() {
+                    spinner.set_message(format!(
+                        "Building docker {}...",
+                        images_names_formatter.format()
+                    ));
+                }
+            }
+            build_res.push(res);
+        }
+        if let Some(spinner) = spinner {
+            spinner.finish_and_clear();
+        }
+        opts.terminal
+            .write_line(fmt_ok!("Built docker {}", &images_names_formatter.format()))?;
+        Ok(build_res)
+    }
+
     async fn docker_login(
         &self,
         opts: &CommandGlobalOpts,
-        ecr_credentials: &EcrCredentials,
+        ecr_credentials: &EcrCredential,
     ) -> Result<()> {
         let spinner = opts.terminal.spinner();
         for (_image_name, uri) in ecr_credentials.images.iter() {
@@ -236,12 +288,7 @@ impl CreateCommand {
         Ok(())
     }
 
-    async fn build_and_push_local_image(
-        &self,
-        opts: &CommandGlobalOpts,
-        image_name: &str,
-        repository_uri: &str,
-    ) -> Result<String> {
+    async fn build_local_image(&self, image_name: &str, repository_uri: &str) -> Result<String> {
         // Given an image name, try to build the `Dockerfile` image at "./images/{image_name}/Dockerfile"
         let dockerfile_dir = format!("./images/{}", image_name);
         if !std::path::Path::new(&dockerfile_dir)
@@ -260,11 +307,6 @@ impl CreateCommand {
                 .into_diagnostic()?
                 .as_secs()
         );
-
-        let spinner = opts.terminal.spinner();
-        if let Some(spinner) = spinner.as_ref() {
-            spinner.set_message(format!("Building image {}...", color_primary(image_name)));
-        }
 
         let build_attempts = [
             // With buildkit enabled
@@ -310,9 +352,9 @@ impl CreateCommand {
             }
 
             info!(
-                "Attempting docker build for {} with command: `docker {}` and env: `{:?}`",
+                "attempting docker build for {} with command: '{}' and env: {:?}",
                 image_name,
-                cmd_args.join(" "),
+                color_primary(format!("docker {}", cmd_args.join(" "))),
                 env_vars
             );
 
@@ -323,67 +365,28 @@ impl CreateCommand {
                 .into_diagnostic()?;
 
             if output.status.success() {
-                // Command succeeded
-                if let Some(spinner) = spinner.as_ref() {
-                    spinner.finish_and_clear();
-                }
-                opts.terminal
-                    .write_line(fmt_ok!("Built image {}", color_primary(image_name),))?;
-                debug!(
-                    "Built image {} with tag {}",
-                    image_name,
+                info!(
+                    "built local image {} with tag {}",
+                    color_primary(image_name),
                     color_primary(&repository_uri_tag)
                 );
-
-                // Push image
-                let push_spinner = opts.terminal.spinner();
-                if let Some(spinner) = push_spinner.as_ref() {
-                    spinner.set_message(format!("Pushing image {}...", color_primary(image_name)));
-                }
-                let push_output = tokio::process::Command::new("docker")
-                    .arg("push")
-                    .arg(&repository_uri_tag)
-                    .output()
-                    .await
-                    .into_diagnostic()?;
-
-                if !push_output.status.success() {
-                    return Err(miette::Error::msg(format!(
-                        "Failed to push image {}: {}",
-                        image_name,
-                        String::from_utf8_lossy(&push_output.stderr)
-                    )));
-                }
-
-                if let Some(spinner) = push_spinner {
-                    spinner.finish_and_clear();
-                }
-
-                opts.terminal
-                    .write_line(fmt_ok!("Pushed image {}\n", color_primary(image_name)))?;
-
                 return Ok(repository_uri_tag);
             } else {
                 // Store the error for reporting if all commands fail
                 last_error = Some(format!(
-                    "Docker build failed with command 'docker {}' and env vars {:?}: {}",
-                    cmd_args.join(" "),
+                    "Docker build failed with command '{}' and env vars {:?}: {}",
+                    color_primary(format!("docker {}", cmd_args.join(" "))),
                     env_vars,
                     String::from_utf8_lossy(&output.stderr)
                 ));
 
                 // Log the failed attempt and continue to the next command
                 info!(
-                    "Docker build attempt failed for {}: {}",
+                    "docker build attempt failed for {}: {}",
                     image_name,
                     last_error.as_ref().unwrap()
                 );
             }
-        }
-
-        // If we get here, all commands failed
-        if let Some(spinner) = spinner {
-            spinner.finish_and_clear();
         }
 
         Err(miette::Error::msg(format!(
@@ -391,6 +394,42 @@ impl CreateCommand {
             image_name,
             last_error.unwrap_or_else(|| "Unknown error".to_string())
         )))
+    }
+
+    async fn push_local_image(
+        &self,
+        opts: &CommandGlobalOpts,
+        image_name: &str,
+        repository_uri_tag: &str,
+    ) -> Result<()> {
+        let spinner = opts.terminal.spinner();
+        if let Some(spinner) = spinner.as_ref() {
+            spinner.set_message(format!("Pushing image {}...", color_primary(image_name)));
+        }
+
+        let push_output = tokio::process::Command::new("docker")
+            .arg("push")
+            .arg(repository_uri_tag)
+            .output()
+            .await
+            .into_diagnostic()?;
+
+        if !push_output.status.success() {
+            return Err(miette::Error::msg(format!(
+                "Failed to push image {}: {}",
+                image_name,
+                String::from_utf8_lossy(&push_output.stderr)
+            )));
+        }
+
+        if let Some(spinner) = spinner {
+            spinner.finish_and_clear();
+        }
+
+        opts.terminal
+            .write_line(fmt_ok!("Pushed image {}", color_primary(image_name)))?;
+
+        Ok(())
     }
 
     async fn deploy_zone(
@@ -440,5 +479,44 @@ impl CreateCommand {
         info!("Deployed zone {} in cluster {}", zone_config.name, cluster);
 
         Ok(())
+    }
+}
+
+struct ImagesNamesFormatter {
+    names: Vec<String>,
+}
+
+impl ImagesNamesFormatter {
+    fn new(names: Vec<String>) -> Self {
+        let names = names
+            .into_iter()
+            .map(|n| color_primary(n).to_string())
+            .collect();
+        Self { names }
+    }
+
+    fn dim(&mut self) {
+        for n in self.names.iter_mut() {
+            *n = strip_ansi_escapes::strip_str(&mut *n)
+                .dark_gray()
+                .to_string();
+        }
+    }
+
+    fn update_name(&mut self, name: &str, new_name: String) {
+        for n in self.names.iter_mut() {
+            if strip_ansi_escapes::strip_str(&mut *n).eq(name) {
+                *n = new_name.clone();
+            }
+        }
+    }
+
+    fn format(&self) -> String {
+        let images_len = self.names.len();
+        if images_len > 1 {
+            format!("images {}", self.names.join(", "))
+        } else {
+            format!("image {}", self.names.join(", "))
+        }
     }
 }

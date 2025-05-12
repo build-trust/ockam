@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use crate::orchestrator::ai_platform::responses::{Cluster, EcrCredentials, Secret, Zone};
+use crate::orchestrator::ai_platform::responses::{Cluster, EcrCredential, Secret, Zone};
 use ockam_core::async_trait;
 use ockam_core::compat::collections::HashMap;
 use ockam_node::Context;
@@ -72,5 +72,5 @@ pub trait AiPlatformApi {
         cluster: &str,
         image_names: Vec<String>,
         is_public: Option<bool>,
-    ) -> miette::Result<EcrCredentials>;
+    ) -> miette::Result<EcrCredential>;
 }

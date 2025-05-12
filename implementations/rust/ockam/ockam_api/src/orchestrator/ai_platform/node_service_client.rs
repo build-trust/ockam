@@ -1,7 +1,7 @@
 use crate::nodes::InMemoryNode;
 use crate::orchestrator::ai_platform::api::AiPlatformApi;
 use crate::orchestrator::ai_platform::responses::{
-    Cluster, EcrCredentials, Secret, SecretList, Token, Zone, ZoneList,
+    Cluster, EcrCredential, Secret, SecretList, Token, Zone, ZoneList,
 };
 use base64_url::base64;
 use base64_url::base64::Engine;
@@ -386,7 +386,7 @@ impl AiPlatformApi for InMemoryNode {
         cluster: &str,
         image_names: Vec<String>,
         is_public: Option<bool>,
-    ) -> miette::Result<EcrCredentials> {
+    ) -> miette::Result<EcrCredential> {
         let base_error = || miette!("Failed to provision ECR for images in cluster {cluster}");
         let url = format!("{}/api/{}/ecr", *AI_API_BASE_URL, cluster);
         let is_public = is_public.unwrap_or(false);
@@ -420,7 +420,7 @@ impl AiPlatformApi for InMemoryNode {
         }
 
         response
-            .json::<EcrCredentials>()
+            .json::<EcrCredential>()
             .await
             .into_diagnostic()
             .wrap_err("Failed to parse response")
