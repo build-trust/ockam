@@ -123,20 +123,20 @@ impl Decodable for SecretList {
 #[derive(Encode, Decode, CborLen, Serialize, Deserialize, Debug, Default, Clone, Message)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct EcrCredentials {
+pub struct EcrCredential {
     #[serde(alias="customer")]
     #[n(1)] pub cluster: String,
-    #[n(2)] pub images: BTreeMap<String, String>,
+    #[n(2)] pub images: BTreeMap<String, String>, // pairs of (image name, ECR URI)
     #[n(4)] pub auth_token: String,
 }
 
-impl Encodable for EcrCredentials {
+impl Encodable for EcrCredential {
     fn encode(self) -> ockam_core::Result<Encoded> {
         cbor_encode_preallocate(self)
     }
 }
 
-impl Decodable for EcrCredentials {
+impl Decodable for EcrCredential {
     fn decode(e: &[u8]) -> ockam_core::Result<Self> {
         Ok(minicbor::decode(e)?)
     }

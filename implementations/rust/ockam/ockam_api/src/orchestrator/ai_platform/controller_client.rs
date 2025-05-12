@@ -5,7 +5,7 @@ use crate::orchestrator::ai_platform::requests::{
     CreateEnrollmentToken, CreateSecret, CreateZone, DeployZone, ListZones, ProvisionEcr,
 };
 use crate::orchestrator::ai_platform::responses::{
-    Cluster, EcrCredentials, Secret, SecretList, Zone, ZoneList,
+    Cluster, EcrCredential, Secret, SecretList, Zone, ZoneList,
 };
 use crate::orchestrator::{ControllerClient, HasSecureClient};
 use miette::IntoDiagnostic;
@@ -180,11 +180,11 @@ impl AiPlatformApi for ControllerClient {
         cluster: &str,
         image_names: Vec<String>,
         is_public: Option<bool>,
-    ) -> miette::Result<EcrCredentials> {
+    ) -> miette::Result<EcrCredential> {
         trace!(%cluster, "provisioning ecr");
         let req = Request::post("/v0/ecr")
             .body(ProvisionEcr::new(image_names, is_public.unwrap_or(false)));
-        let ecr_creds: EcrCredentials = self
+        let ecr_creds: EcrCredential = self
             .get_secure_client()
             .ask(ctx, "clusters", req)
             .await

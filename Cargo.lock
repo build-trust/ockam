@@ -4775,6 +4775,7 @@ dependencies = [
  "serde_yaml",
  "serial_test",
  "shellexpand",
+ "strip-ansi-escapes",
  "syntect",
  "tempfile",
  "thiserror 2.0.9",
