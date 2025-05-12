@@ -1,3 +1,4 @@
+pub(crate) mod attach;
 pub mod common_args;
 pub(crate) mod create;
 mod delete;
@@ -18,6 +19,7 @@ use enroll::EnrollCommand;
 use ockam_node::Context;
 use ticket::TicketCommand;
 
+use crate::cluster::attach::AttachCommand;
 use crate::cluster::delete::DeleteCommand;
 use crate::cluster::init::InitCommand;
 use crate::cluster::inlet::InletCommand;
@@ -55,6 +57,7 @@ impl ClusterCommand {
             ClusterSubcommand::Ticket(c) => c.run(ctx, opts).await.map(|_| ()),
             ClusterSubcommand::Create(c) => c.run(ctx, opts).await.map(|_| ()),
             ClusterSubcommand::Show(c) => c.run(ctx, opts).await,
+            ClusterSubcommand::Attach(c) => c.run(ctx, opts).await,
             ClusterSubcommand::Delete(c) => c.run(ctx, opts).await,
             ClusterSubcommand::Inlet(c) => c.run(ctx, opts).await,
             ClusterSubcommand::Outlet(c) => c.run(ctx, opts).await,
@@ -71,6 +74,7 @@ pub enum ClusterSubcommand {
     Ticket(TicketCommand),
     Create(CreateCommand),
     Show(ShowCommand),
+    Attach(AttachCommand),
     Delete(DeleteCommand),
     Inlet(InletCommand),
     Outlet(OutletCommand),
@@ -85,6 +89,7 @@ impl ClusterSubcommand {
             ClusterSubcommand::Ticket(c) => c.name(),
             ClusterSubcommand::Create(c) => c.name(),
             ClusterSubcommand::Show(c) => c.name(),
+            ClusterSubcommand::Attach(c) => c.name(),
             ClusterSubcommand::Delete(c) => c.name(),
             ClusterSubcommand::Inlet(c) => c.name(),
             ClusterSubcommand::Outlet(c) => c.name(),
