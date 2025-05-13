@@ -16,8 +16,13 @@ use ockam_api::colors::color_primary;
 use ockam_api::orchestrator::ai_platform::node_service_client::AI_API_BASE_URL;
 use ockam_api::{fmt_log, fmt_ok, fmt_separator};
 use ockam_node::{Context, Executor, NodeBuilder};
+use rustyline::config::Configurer;
+use rustyline::error::ReadlineError;
+use rustyline::validate::{ValidationContext, ValidationResult, Validator};
+use rustyline::{Completer, Editor, Helper, Highlighter, Hinter};
 use std::fmt::{Display, Formatter};
 use std::net::SocketAddr;
+use std::path::PathBuf;
 use std::str::FromStr;
 use std::time::Duration;
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
@@ -200,20 +205,27 @@ impl AttachCommand {
         use tokio::net::TcpStream;
         use tokio::time::sleep;
 
-        // stdin quit handler
-        let stdin = StdinHandler::start();
-        let mut stdin_rx = stdin.tx.subscribe();
-        let stdin_quit = async {
-            while let Ok(input) = stdin_rx.recv().await {
-                if is_quit_sequence(&input) {
-                    break;
-                }
+        let (quit_tx, quit_rx) = tokio::sync::oneshot::channel();
+        let mut quit_tx = Some(quit_tx);
+        ctrlc::set_handler(move || {
+            if let Some(quit_tx) = quit_tx.take() {
+                let _ = quit_tx.send(());
             }
-        };
+        })
+        .expect("Error setting exit signal handler");
+
+        let (next_tx, next_rx) = tokio::sync::mpsc::channel(16);
+        let (lines_tx, lines_rx) = tokio::sync::mpsc::channel(16);
+        let mut stdin = RustylineHandle { lines_rx, next_tx };
+        let stdin_handle: JoinHandle<Result<()>> = tokio::task::spawn(async move {
+            if let Err(e) = RustylineHandler::run_repl(next_rx, lines_tx, None).await {
+                eprintln!("{:?}", e);
+            }
+            Ok(())
+        });
 
         // Start the interactive REPL
         let opts = opts.clone();
-        let mut stdin_rx = stdin.tx.subscribe();
         let repl_handle = tokio::spawn(async move {
             async fn connect_to_inlet(addr: &SchemeHostnamePort) -> miette::Result<TcpStream> {
                 const MAX_RETRIES: u32 = 120; // Try for about 60 seconds (120 * 500ms)
@@ -278,9 +290,9 @@ impl AttachCommand {
                 // 3: Start the REPL loop for this connection
                 'connection: loop {
                     // Get user input
-                    let user_input = match stdin_rx.recv().await {
-                        Ok(i) => i,
-                        Err(_) => {
+                    let user_input = match stdin.read_line().await {
+                        Some(i) => i,
+                        None => {
                             // stdin channel closed, exit REPL
                             break 'repl;
                         }
@@ -333,7 +345,8 @@ impl AttachCommand {
         });
 
         tokio::select! {
-            _ = stdin_quit => {},
+            _ = stdin_handle => {}
+            _ = quit_rx => {},
             _ = repl_handle => {},
         }
 
@@ -468,95 +481,155 @@ impl Display for ReadStatus {
     }
 }
 
-struct StdinHandler {}
+struct RustylineHandler {}
 
-struct StdinHandle {
-    tx: tokio::sync::broadcast::Sender<String>,
+struct RustylineHandle {
+    lines_rx: tokio::sync::mpsc::Receiver<String>,
+    next_tx: tokio::sync::mpsc::Sender<()>,
 }
 
-impl StdinHandler {
-    async fn read_input(
-        stdin: &mut BufReader<tokio::io::Stdin>,
-        read_buffer: &mut String,
-    ) -> std::io::Result<usize> {
-        let n = stdin.read_line(read_buffer).await?;
+impl RustylineHandle {
+    async fn read_line(&mut self) -> Option<String> {
+        match self.next_tx.send(()).await {
+            Ok(_) => self.lines_rx.recv().await.map(|line| line + "\n"),
+            Err(_) => {
+                // Channel closed, exit REPL
+                None
+            }
+        }
+    }
+}
 
-        let separator = "\"\"\"\n";
-        if read_buffer == separator {
-            loop {
-                stdin.read_line(read_buffer).await?;
+#[derive(Hinter, Completer, Highlighter)]
+struct MultiLineValidatorHelper {}
+impl Validator for MultiLineValidatorHelper {
+    fn validate(
+        &self,
+        ctx: &mut ValidationContext,
+    ) -> std::result::Result<ValidationResult, ReadlineError> {
+        let input = ctx.input();
+        // We don't get the final \n here, so the first time will be just the marker,
+        // then on later calls inside this multiline input, it does have the newline between the
+        // marker and whatever the next line is.
+        if input.starts_with("\"\"\"\n") || input.eq("\"\"\"") {
+            return if input.ends_with("\n\"\"\"") || is_quit_sequence(input) {
+                Ok(ValidationResult::Valid(None))
+            } else {
+                Ok(ValidationResult::Incomplete)
+            };
+        }
+        Ok(ValidationResult::Valid(None))
+    }
 
-                if read_buffer.ends_with(separator) {
+    fn validate_while_typing(&self) -> bool {
+        false
+    }
+}
+impl Helper for MultiLineValidatorHelper {}
+
+impl RustylineHandler {
+    async fn run_repl(
+        mut next_rx: tokio::sync::mpsc::Receiver<()>,
+        lines_tx: tokio::sync::mpsc::Sender<String>,
+        history_file_path: Option<PathBuf>,
+    ) -> Result<()> {
+        let history_file_path = Self::get_history_file_path(history_file_path)?;
+        let mut rl = Editor::new()
+            .into_diagnostic()
+            .wrap_err("Failed to initialize REPL")?;
+        rl.set_max_history_size(50).into_diagnostic()?;
+        let helper = MultiLineValidatorHelper {};
+        rl.set_helper(Some(helper));
+        rl.load_history(&history_file_path).into_diagnostic()?;
+
+        loop {
+            // If we can't read from the channel, exit
+            if next_rx.recv().await.is_none() {
+                break;
+            };
+
+            // We run rustyline on their own blocking thread. The thread waits for an input line to be requested,
+            // then reads it, and delivers it. While waiting for agent response, there is no line requested,
+            // so readline is not active. If the thread terminates, the entire REPL exits.
+            let readline = tokio::task::block_in_place(|| rl.readline("> "));
+            match readline {
+                Ok(line) => {
+                    if is_quit_sequence(&line) {
+                        break;
+                    }
+                    rl.add_history_entry(line.as_str()).into_diagnostic()?;
+                    if lines_tx.send(line).await.is_err() {
+                        break;
+                    }
+                    let _ = rl.append_history(&history_file_path);
+                }
+                Err(err) => {
+                    debug!("Failed to read line: {:?}", err);
                     break;
                 }
             }
         }
-
-        Ok(n)
+        Ok(())
     }
 
-    fn start() -> StdinHandle {
-        let (tx, _) = tokio::sync::broadcast::channel(64);
-        let returned_tx = tx.clone();
-
-        // Spawn a task to read from stdin
-        tokio::spawn(async move {
-            // Ctrl+C handler to exit stdin loop
-            let (cancel_tx, cancel_rx) = tokio::sync::broadcast::channel::<()>(1);
-            let mut processed = false;
-            ctrlc::set_handler(move || {
-                if !processed {
-                    let _ = cancel_tx.send(());
-                    processed = true;
+    fn get_history_file_path(history_file_path: Option<PathBuf>) -> Result<PathBuf> {
+        let create_history_file = |path: &PathBuf| -> Result<()> {
+            if !path.exists() {
+                if let Some(parent) = path.parent() {
+                    if !parent.exists() {
+                        std::fs::create_dir_all(parent)
+                            .into_diagnostic()
+                            .wrap_err("Failed to create history directory for REPL")?;
+                    }
                 }
-            })
-            .expect("Error setting Ctrl+C handler");
+                std::fs::File::create(path)
+                    .into_diagnostic()
+                    .wrap_err("Failed to create history file for REPL")?;
 
-            let mut stdin = BufReader::new(tokio::io::stdin());
-            let mut read_buffer = String::new();
-
-            loop {
-                read_buffer.clear();
-                let mut cancel_rx = cancel_rx.resubscribe();
-                let read_result = tokio::select! {
-                    result = Self::read_input(&mut stdin, &mut read_buffer) => result,
-                    _ = cancel_rx.recv() => {
-                        read_buffer = ":q\n".to_string();
-                        Ok(1)
-                    },
-                };
-
-                match read_result {
-                    Ok(0) => break, // EOF
-                    Ok(_n) => {
-                        if read_buffer.trim().is_empty() {
-                            continue;
-                        }
-                        let _ = tx.send(read_buffer.clone());
-                        if is_quit_sequence(&read_buffer) {
-                            break;
-                        }
-                    }
-                    Err(e) => {
-                        eprintln!("Error reading from stdin: {}", e);
-                        break;
-                    }
+                #[cfg(unix)]
+                {
+                    use std::os::unix::fs::PermissionsExt;
+                    let permissions = std::fs::Permissions::from_mode(0o600);
+                    std::fs::set_permissions(path, permissions)
+                        .into_diagnostic()
+                        .wrap_err("Failed to set permissions on history file")?;
                 }
             }
-
-            drop(tx);
-        });
-
-        StdinHandle { tx: returned_tx }
+            Ok(())
+        };
+        match history_file_path {
+            Some(path) => {
+                if !path.exists() {
+                    create_history_file(&path)?;
+                }
+                Ok(path)
+            }
+            None => {
+                let default_path = std::env::current_dir()
+                    .into_diagnostic()
+                    .wrap_err("Failed to get current directory")?
+                    .join(".repl/history.txt");
+                create_history_file(&default_path)?;
+                Ok(default_path)
+            }
+        }
     }
 }
 
 fn is_reconnect_sequence(input: &str) -> bool {
-    input.trim() == ":reconnect" || input.trim() == ":r"
+    let i = input.trim();
+    let seq = [":reconnect", ":r"];
+    seq.contains(&i)
 }
 
 fn is_quit_sequence(input: &str) -> bool {
-    input.trim() == ":quit" || input.trim() == ":q"
+    let i = input.trim();
+    let seq = [":quit", ":q"];
+    if seq.contains(&i) {
+        return true;
+    }
+    let last_line = i.lines().last().unwrap_or("").trim();
+    seq.contains(&last_line)
 }
 
 #[allow(dead_code)]
