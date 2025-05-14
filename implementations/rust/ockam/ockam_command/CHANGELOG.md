@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 0.151.0 - 2025-05-12
+## 0.151.0 - 2025-05-14
 
 ### Added
 
@@ -63,6 +63,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Support multi-line input inside repl by escaping with `"""`
 - Single token for all ecr repos
 - Add "cluster attach" command
+- In `cluster create`, parallelize `docker build` calls
+- In `cluster create`, use `--pull` argument when building docker images
 - Updated dependencies
 
 ### Changed
@@ -84,6 +86,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - In "ockam" use a new context for each inlet
 - Process "ockam" as a clap command, enabling passing arguments to it
 - Cleanup output of `cluster create` command
+- Rebase on top of develop, moving the repl changes into the `cluster attach` command
 
 ### Fixed
 
