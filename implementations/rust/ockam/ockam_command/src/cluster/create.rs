@@ -246,48 +246,6 @@ impl CreateCommand {
         Ok(build_res)
     }
 
-    async fn docker_login(
-        &self,
-        opts: &CommandGlobalOpts,
-        ecr_credentials: &EcrCredential,
-    ) -> Result<()> {
-        let spinner = opts.terminal.spinner();
-        for (_image_name, uri) in ecr_credentials.images.iter() {
-            if let Some(spinner) = spinner.as_ref() {
-                spinner.set_message("Giving docker access to the repository...");
-            }
-            let mut child = tokio::process::Command::new("docker")
-                .arg("login")
-                .arg("-u")
-                .arg("AWS")
-                .arg("--password-stdin")
-                .arg(uri)
-                .stdin(Stdio::piped())
-                .stdout(Stdio::piped())
-                .stderr(Stdio::piped())
-                .spawn()
-                .into_diagnostic()?;
-            if let Some(mut stdin) = child.stdin.take() {
-                use tokio::io::AsyncWriteExt;
-                stdin
-                    .write_all(ecr_credentials.auth_token.as_bytes())
-                    .await
-                    .into_diagnostic()?;
-            }
-            let output = child.wait_with_output().await.into_diagnostic()?;
-            if let Some(spinner) = spinner.as_ref() {
-                spinner.finish_and_clear();
-            }
-            if !output.status.success() {
-                return Err(miette::Error::msg(format!(
-                    "Failed to login into repository: {}",
-                    String::from_utf8_lossy(&output.stderr)
-                )));
-            }
-        }
-        Ok(())
-    }
-
     async fn build_local_image(&self, image_name: &str, repository_uri: &str) -> Result<String> {
         // Given an image name, try to build the `Dockerfile` image at "./images/{image_name}/Dockerfile"
         let dockerfile_dir = format!("./images/{}", image_name);
@@ -314,6 +272,7 @@ impl CreateCommand {
                 vec![
                     "build",
                     "--load",
+                    "--pull",
                     "--platform",
                     "linux/amd64",
                     "-t",
@@ -326,6 +285,7 @@ impl CreateCommand {
             (
                 vec![
                     "build",
+                    "--pull",
                     "--platform",
                     "linux/amd64",
                     "-t",
@@ -394,6 +354,48 @@ impl CreateCommand {
             image_name,
             last_error.unwrap_or_else(|| "Unknown error".to_string())
         )))
+    }
+
+    async fn docker_login(
+        &self,
+        opts: &CommandGlobalOpts,
+        ecr_credentials: &EcrCredential,
+    ) -> Result<()> {
+        let spinner = opts.terminal.spinner();
+        for (_image_name, uri) in ecr_credentials.images.iter() {
+            if let Some(spinner) = spinner.as_ref() {
+                spinner.set_message("Giving docker access to the repository...");
+            }
+            let mut child = tokio::process::Command::new("docker")
+                .arg("login")
+                .arg("-u")
+                .arg("AWS")
+                .arg("--password-stdin")
+                .arg(uri)
+                .stdin(Stdio::piped())
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .spawn()
+                .into_diagnostic()?;
+            if let Some(mut stdin) = child.stdin.take() {
+                use tokio::io::AsyncWriteExt;
+                stdin
+                    .write_all(ecr_credentials.auth_token.as_bytes())
+                    .await
+                    .into_diagnostic()?;
+            }
+            let output = child.wait_with_output().await.into_diagnostic()?;
+            if let Some(spinner) = spinner.as_ref() {
+                spinner.finish_and_clear();
+            }
+            if !output.status.success() {
+                return Err(miette::Error::msg(format!(
+                    "Failed to login into repository: {}",
+                    String::from_utf8_lossy(&output.stderr)
+                )));
+            }
+        }
+        Ok(())
     }
 
     async fn push_local_image(
