@@ -34,7 +34,7 @@ const LONG_ABOUT: &str = include_str!("./static/attach/long_about.txt");
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/attach/after_long_help.txt");
 
-/// Open a REPL to an Outlet of an Ockam AI Zone
+/// Open a repl to an Outlet of an Ockam AI Zone
 #[derive(Clone, Debug, Args, Default)]
 #[command(
 long_about = docs::about(LONG_ABOUT),
@@ -61,7 +61,7 @@ impl Command for AttachCommand {
         if let Some(address) = repl_address {
             self.open_repl(ctx, &opts, address).await?;
         } else {
-            // No REPL outlet. Create a ctrlc handler and wait for it to be triggered before exiting the command
+            // No repl outlet. Create a ctrlc handler and wait for it to be triggered before exiting the command
             let (tx, rx) = tokio::sync::oneshot::channel();
             let mut tx = Some(tx);
             ctrlc::set_handler(move || {
@@ -71,13 +71,12 @@ impl Command for AttachCommand {
             })
             .expect("Error setting exit signal handler");
             let portals_str = if executors.len() > 1 {
-                "portals"
+                "all portals"
             } else {
-                "portal"
+                "the portal"
             };
-            opts.terminal.write_line(fmt_log!(
-                "Press Ctrl+C to stop the {portals_str} and exit the command"
-            ))?;
+            opts.terminal
+                .write_line(fmt_log!("Press Ctrl+C to stop {portals_str} and exit"))?;
             let _ = rx.await;
         }
         Ok(())
@@ -153,8 +152,9 @@ impl AttachCommand {
         let spinner = opts.terminal.spinner();
         if let Some(spinner) = &spinner {
             spinner.set_message(format!(
-                "Opening a portal to the outlet {} from {}...",
+                "Opening a portal to the outlet {} on {} from {}...",
                 color_primary(to),
+                color_primary(pod_name),
                 color_primary(from.to_string())
             ));
         }
@@ -193,8 +193,9 @@ impl AttachCommand {
             spinner.finish_and_clear();
         }
         opts.terminal.write_line(fmt_ok!(
-            "Portal connected to the outlet {} from {}",
+            "Opened a portal to the outlet {} on {} from {}",
             color_primary(to),
+            color_primary(pod_name),
             color_primary(from.to_string())
         ))?;
 
@@ -229,7 +230,7 @@ impl AttachCommand {
             Ok(())
         });
 
-        // Start the interactive REPL
+        // Start the interactive repl
         let opts = opts.clone();
         let repl_handle = tokio::spawn(async move {
             async fn connect_to_inlet(addr: &SchemeHostnamePort) -> miette::Result<TcpStream> {
@@ -274,7 +275,7 @@ impl AttachCommand {
                 .await
                 {
                     Ok(res) => {
-                        // Successfully got initial message, continue to REPL
+                        // Successfully got initial message, continue to repl
                         if let Some(spinner) = initial_message_spinner.take() {
                             spinner.finish_and_clear();
                         }
@@ -285,20 +286,20 @@ impl AttachCommand {
                             initial_message_spinner = opts.terminal.spinner();
                         }
                         if let Some(spinner) = &initial_message_spinner {
-                            spinner.set_message("Waiting for server to be ready...");
+                            spinner.set_message("Waiting for repl to be ready...");
                         }
                         sleep(Duration::from_secs(1)).await;
                         continue 'repl;
                     }
                 }
 
-                // 3: Start the REPL loop for this connection
+                // 3: Start the repl loop for this connection
                 'connection: loop {
                     // Get user input
                     let user_input = match stdin.read_line().await {
                         Some(i) => i,
                         None => {
-                            // stdin channel closed, exit REPL
+                            // stdin channel closed, exit repl
                             break 'repl;
                         }
                     };
@@ -394,7 +395,7 @@ impl AttachCommand {
                 // Short timeout reached, notify but keep waiting
                 let spinner = opts.terminal.spinner();
                 if let Some(spinner) = &spinner {
-                    spinner.set_message("Waiting for server response...");
+                    spinner.set_message("Waiting for repl response...");
                 }
 
                 // Continue with longer timeout
@@ -498,7 +499,7 @@ impl RustylineHandle {
         match self.next_tx.send(()).await {
             Ok(_) => self.lines_rx.recv().await.map(|line| line + "\n"),
             Err(_) => {
-                // Channel closed, exit REPL
+                // Channel closed, exit repl
                 None
             }
         }
@@ -541,7 +542,7 @@ impl RustylineHandler {
         let history_file_path = Self::get_history_file_path(history_file_path)?;
         let mut rl = Editor::new()
             .into_diagnostic()
-            .wrap_err("Failed to initialize REPL")?;
+            .wrap_err("Failed to initialize repl")?;
         rl.set_max_history_size(50).into_diagnostic()?;
         let helper = MultiLineValidatorHelper {};
         rl.set_helper(Some(helper));
@@ -555,7 +556,7 @@ impl RustylineHandler {
 
             // We run rustyline on their own blocking thread. The thread waits for an input line to be requested,
             // then reads it, and delivers it. While waiting for agent response, there is no line requested,
-            // so readline is not active. If the thread terminates, the entire REPL exits.
+            // so readline is not active. If the thread terminates, the entire repl exits.
             let readline = tokio::task::block_in_place(|| rl.readline("> "));
             match readline {
                 Ok(line) => {
@@ -584,12 +585,12 @@ impl RustylineHandler {
                     if !parent.exists() {
                         std::fs::create_dir_all(parent)
                             .into_diagnostic()
-                            .wrap_err("Failed to create history directory for REPL")?;
+                            .wrap_err("Failed to create history directory for repl")?;
                     }
                 }
                 std::fs::File::create(path)
                     .into_diagnostic()
-                    .wrap_err("Failed to create history file for REPL")?;
+                    .wrap_err("Failed to create history file for repl")?;
 
                 #[cfg(unix)]
                 {

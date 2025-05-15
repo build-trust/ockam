@@ -205,7 +205,7 @@ impl CreateCommand {
             spinner.finish_and_clear();
         }
         opts.terminal.write_line(fmt_ok!(
-            "Created a repository for the {}\n",
+            "Created a repository for the {}",
             images_names_formatter.format()
         ))?;
         for (image_name, uri) in ecr_creds.images.iter() {
