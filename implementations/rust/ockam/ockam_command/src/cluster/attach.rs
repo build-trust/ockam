@@ -55,7 +55,7 @@ impl Command for AttachCommand {
 
     async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> Result<()> {
         let zone_config = self.zone.zone_config()?;
-        let (_executors, repl_address) = self.cluster_inlets(ctx, &opts, &zone_config).await?;
+        let (executors, repl_address) = self.cluster_inlets(ctx, &opts, &zone_config).await?;
         // let (repl_data, rest_inlet_handles) = cmd.dummy_inlet(&opts).await?;
         opts.terminal.write_line(fmt_separator!())?;
         if let Some(address) = repl_address {
@@ -70,8 +70,13 @@ impl Command for AttachCommand {
                 }
             })
             .expect("Error setting exit signal handler");
+            let portals_str = if executors.len() > 1 {
+                "portals"
+            } else {
+                "portal"
+            };
             opts.terminal.write_line(fmt_log!(
-                "Press Ctrl+C to stop the inlets and exit the command"
+                "Press Ctrl+C to stop the {portals_str} and exit the command"
             ))?;
             let _ = rx.await;
         }
@@ -148,7 +153,7 @@ impl AttachCommand {
         let spinner = opts.terminal.spinner();
         if let Some(spinner) = &spinner {
             spinner.set_message(format!(
-                "Opening a Portal to the outlet {} from {}...",
+                "Opening a portal to the outlet {} from {}...",
                 color_primary(to),
                 color_primary(from.to_string())
             ));

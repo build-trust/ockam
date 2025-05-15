@@ -7,6 +7,7 @@ use crate::{docs, Command, CommandGlobalOpts, Result};
 use async_trait::async_trait;
 use clap::Args;
 use colorful::Colorful;
+use indicatif::ProgressBar;
 use miette::IntoDiagnostic;
 use ockam_api::colors::color_primary;
 use ockam_api::nodes::InMemoryNode;
@@ -17,7 +18,7 @@ use ockam_node::Context;
 use std::process::Stdio;
 use std::sync::Arc;
 use tokio::task::JoinSet;
-use tracing::info;
+use tracing::{debug, info};
 
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
@@ -136,21 +137,45 @@ impl CreateCommand {
             .provision_ecr(ctx, opts, api_client, cluster, images_names.clone())
             .await?;
 
-        // Build images in parallel
-        let build_res = self.build_docker_images(opts, &ecr_cred).await?;
+        // Login and build images in parallel.
+        // When the images are cached, the login operation will take longer than the build operation,
+        // so we share a spinner to wait for both operations.
+        let spinner = opts.terminal.spinner();
+        let login_task = {
+            let _self = self.clone();
+            let ecr_cred = ecr_cred.clone();
+            tokio::task::spawn(async move {
+                // The login operations can't be parallelized, but we can run it in a separate task
+                _self.docker_login(&ecr_cred).await
+            })
+        };
+        let build_task = self.build_docker_images(spinner.as_ref(), &ecr_cred);
+        let tasks_res = tokio::join!(login_task, build_task);
+        tasks_res.0.into_diagnostic()??;
+        let (images_names_formatter, images_data_res) = tasks_res.1?;
+        let mut images_data = vec![];
+        for image_data_res in images_data_res {
+            let image_data = image_data_res?;
+            images_data.push(image_data);
+        }
+        if let Some(spinner) = spinner {
+            spinner.finish_and_clear();
+        }
+        opts.terminal
+            .write_line(fmt_ok!("Built {}", &images_names_formatter.format()))?;
 
-        // Login to ECR and push the images
-        for res in build_res {
-            let (image_name, repository_uri_tag) = res?;
-            // The login operation can't be parallelized because of how docker stores credentials
-            self.docker_login(opts, &ecr_cred).await?;
-            self.push_local_image(opts, &image_name, &repository_uri_tag)
-                .await?;
+        // Update zone config
+        for image_data in &images_data {
             // TODO: remove the role
             // node.delete_ecr_role(cluster, &self.zone_name, &image_name)
             //     .await?;
-            zone_config.replace_image_name(&image_name, &repository_uri_tag)?;
+            zone_config
+                .replace_image_name(&image_data.image_name, &image_data.repository_uri_tag)?;
         }
+
+        // Push the images
+        self.push_local_images(opts, &images_data).await?;
+
         opts.terminal.write_line("")?;
 
         Ok(zone_config)
@@ -197,21 +222,18 @@ impl CreateCommand {
 
     async fn build_docker_images(
         &self,
-        opts: &CommandGlobalOpts,
+        spinner: Option<&ProgressBar>,
         ecr_cred: &EcrCredential,
-    ) -> Result<Vec<Result<(String, String)>>> {
+    ) -> Result<(ImagesNamesFormatter, Vec<Result<ImageData>>)> {
         let mut images_names_formatter =
             ImagesNamesFormatter::new(ecr_cred.images.keys().cloned().collect());
         images_names_formatter.dim();
 
-        let spinner = opts.terminal.spinner();
         if let Some(spinner) = spinner.as_ref() {
-            spinner.set_message(format!(
-                "Building docker {}...",
-                images_names_formatter.format()
-            ));
+            spinner.set_message(format!("Building {}...", images_names_formatter.format()));
         }
-        let mut set: JoinSet<Result<(String, String)>> = JoinSet::new();
+
+        let mut set: JoinSet<Result<ImageData>> = JoinSet::new();
         for (image_name, repository_uri) in ecr_cred.images.iter() {
             let _self = self.clone();
             let image_name = image_name.clone();
@@ -220,30 +242,27 @@ impl CreateCommand {
                 let repository_uri_tag = _self
                     .build_local_image(&image_name, &repository_uri)
                     .await?;
-                Ok((image_name, repository_uri_tag))
+                Ok(ImageData {
+                    image_name,
+                    repository_uri_tag,
+                })
             });
         }
         let mut build_res = vec![];
         while let Some(res) = set.join_next().await {
-            let res = res.into_diagnostic()?;
-            if let Ok((image_name, _)) = &res {
-                images_names_formatter
-                    .update_name(image_name, color_primary(image_name).to_string());
+            let image_data = res.into_diagnostic()?;
+            if let Ok(image_data) = &image_data {
+                images_names_formatter.update_name(
+                    &image_data.image_name,
+                    color_primary(&image_data.image_name).to_string(),
+                );
                 if let Some(spinner) = spinner.as_ref() {
-                    spinner.set_message(format!(
-                        "Building docker {}...",
-                        images_names_formatter.format()
-                    ));
+                    spinner.set_message(format!("Building {}...", images_names_formatter.format()));
                 }
             }
-            build_res.push(res);
+            build_res.push(image_data);
         }
-        if let Some(spinner) = spinner {
-            spinner.finish_and_clear();
-        }
-        opts.terminal
-            .write_line(fmt_ok!("Built docker {}", &images_names_formatter.format()))?;
-        Ok(build_res)
+        Ok((images_names_formatter, build_res))
     }
 
     async fn build_local_image(&self, image_name: &str, repository_uri: &str) -> Result<String> {
@@ -356,16 +375,13 @@ impl CreateCommand {
         )))
     }
 
-    async fn docker_login(
-        &self,
-        opts: &CommandGlobalOpts,
-        ecr_credentials: &EcrCredential,
-    ) -> Result<()> {
-        let spinner = opts.terminal.spinner();
+    async fn docker_login(&self, ecr_credentials: &EcrCredential) -> Result<()> {
+        debug!(
+            "logging into ECR with credentials: {}",
+            ecr_credentials.auth_token
+        );
         for (_image_name, uri) in ecr_credentials.images.iter() {
-            if let Some(spinner) = spinner.as_ref() {
-                spinner.set_message("Giving docker access to the repository...");
-            }
+            debug!("logging into ECR with uri: {}", color_primary(uri));
             let mut child = tokio::process::Command::new("docker")
                 .arg("login")
                 .arg("-u")
@@ -385,9 +401,6 @@ impl CreateCommand {
                     .into_diagnostic()?;
             }
             let output = child.wait_with_output().await.into_diagnostic()?;
-            if let Some(spinner) = spinner.as_ref() {
-                spinner.finish_and_clear();
-            }
             if !output.status.success() {
                 return Err(miette::Error::msg(format!(
                     "Failed to login into repository: {}",
@@ -395,27 +408,57 @@ impl CreateCommand {
                 )));
             }
         }
+        info!("logged into ECR successfully");
         Ok(())
     }
 
-    async fn push_local_image(
+    async fn push_local_images(
         &self,
         opts: &CommandGlobalOpts,
-        image_name: &str,
-        repository_uri_tag: &str,
+        images_data: &[ImageData],
     ) -> Result<()> {
+        let mut images_names_formatter =
+            ImagesNamesFormatter::new(images_data.iter().map(|x| x.image_name.clone()).collect());
+        images_names_formatter.dim();
+
         let spinner = opts.terminal.spinner();
         if let Some(spinner) = spinner.as_ref() {
-            spinner.set_message(format!("Pushing image {}...", color_primary(image_name)));
+            spinner.set_message(format!("Pushing {}...", images_names_formatter.format()));
         }
 
+        let mut set: JoinSet<Result<String>> = JoinSet::new();
+        for image_data in images_data.iter() {
+            let _self = self.clone();
+            let image_data = image_data.clone();
+            set.spawn(async move {
+                _self
+                    .push_local_image(&image_data.image_name, &image_data.repository_uri_tag)
+                    .await?;
+                Ok(image_data.image_name)
+            });
+        }
+        while let Some(res) = set.join_next().await {
+            let image_name = res.into_diagnostic()??;
+            images_names_formatter.update_name(&image_name, color_primary(&image_name).to_string());
+            if let Some(spinner) = spinner.as_ref() {
+                spinner.set_message(format!("Pushing {}...", images_names_formatter.format()));
+            }
+        }
+        if let Some(spinner) = spinner {
+            spinner.finish_and_clear();
+        }
+        opts.terminal
+            .write_line(fmt_ok!("Pushed {}", &images_names_formatter.format()))?;
+        Ok(())
+    }
+
+    async fn push_local_image(&self, image_name: &str, repository_uri_tag: &str) -> Result<()> {
         let push_output = tokio::process::Command::new("docker")
             .arg("push")
             .arg(repository_uri_tag)
             .output()
             .await
             .into_diagnostic()?;
-
         if !push_output.status.success() {
             return Err(miette::Error::msg(format!(
                 "Failed to push image {}: {}",
@@ -423,14 +466,6 @@ impl CreateCommand {
                 String::from_utf8_lossy(&push_output.stderr)
             )));
         }
-
-        if let Some(spinner) = spinner {
-            spinner.finish_and_clear();
-        }
-
-        opts.terminal
-            .write_line(fmt_ok!("Pushed image {}", color_primary(image_name)))?;
-
         Ok(())
     }
 
@@ -484,16 +519,23 @@ impl CreateCommand {
     }
 }
 
+#[derive(Clone)]
+struct ImageData {
+    image_name: String,
+    repository_uri_tag: String,
+}
+
 struct ImagesNamesFormatter {
     names: Vec<String>,
 }
 
 impl ImagesNamesFormatter {
     fn new(names: Vec<String>) -> Self {
-        let names = names
+        let mut names: Vec<String> = names
             .into_iter()
             .map(|n| color_primary(n).to_string())
             .collect();
+        names.sort();
         Self { names }
     }
 
@@ -515,10 +557,11 @@ impl ImagesNamesFormatter {
 
     fn format(&self) -> String {
         let images_len = self.names.len();
+        let names = self.names.join(", ");
         if images_len > 1 {
-            format!("images {}", self.names.join(", "))
+            format!("images {}", &names)
         } else {
-            format!("image {}", self.names.join(", "))
+            format!("image {}", &names)
         }
     }
 }
