@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 0.151.0 - 2025-05-14
+## 0.151.0 - 2025-05-16
 
 ### Added
 
@@ -65,6 +65,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add "cluster attach" command
 - In `cluster create`, parallelize `docker build` calls
 - In `cluster create`, use `--pull` argument when building docker images
+- In `cluster create`, parallelize `docker push` step
 - Updated dependencies
 
 ### Changed
@@ -111,6 +112,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Ctrlc handling in "cluster inlet"
 - `cluster delete` command
 - Parse zone configs with a single outlet properly
+- Improvements for the `cluster` commands output
 
 ### Removed
 
