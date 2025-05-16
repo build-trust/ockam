@@ -101,6 +101,7 @@ tokio-retry = "0.3"
 tracing = { version = "0.1", default-features = false }
 url = "2.5.2"
 which = "7.0.2"
+zip-extract = "0.2.3"
 
 [dev-dependencies]
 assert_cmd = "2"
