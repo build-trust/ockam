@@ -1,0 +1,24 @@
+# docker run --rm -v ${PWD}:/work -w /work cgr.dev/chainguard/apko build unstructured_python.yaml -k melange.rsa.pub ghcr.io/build-trust/ockam-python-unstructured:latest unstructured_base_image.tar
+# Builds the base image which comprises of tools to host Ockam AI examples that use the unstructured pdf library.
+contents:
+  keyring:
+    - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+  repositories:
+    - https://packages.wolfi.dev/os
+  packages:
+    - ca-certificates-bundle
+    - glibc
+    - bash
+    - ncurses
+    - ncurses-dev
+    - ncurses-terminfo-base
+    - glibc-dev
+    - gcc
+    - python-3.13
+    - python-3.13-dev
+    - ffmpeg
+    - mesa-dev
+    - glib-dev
+
+archs:
+  - x86_64
