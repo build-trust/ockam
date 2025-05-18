@@ -394,17 +394,19 @@ mod test {
         // create a sqlite database and insert some data
         let db_file = NamedTempFile::new().unwrap();
         let db_file = db_file.path();
-        let sqlite_database = SqlxDatabase::create_sqlite(db_file).await?;
-        insert_aead_secrets(sqlite_database.clone()).await?;
-        insert_authority_enrollment_tokens(sqlite_database.clone()).await?;
-        insert_credentials(sqlite_database.clone()).await?;
-        insert_identities(sqlite_database.clone()).await?;
-        insert_identity_attributes(sqlite_database.clone()).await?;
-        insert_members(sqlite_database.clone()).await?;
-        insert_named_identities(sqlite_database.clone()).await?;
-        insert_purpose_keys(sqlite_database.clone()).await?;
-        insert_signing_secrets(sqlite_database.clone()).await?;
-        insert_x25519_secrets(sqlite_database.clone()).await?;
+        {
+            let sqlite_database = SqlxDatabase::create_sqlite(db_file).await?;
+            insert_aead_secrets(sqlite_database.clone()).await?;
+            insert_authority_enrollment_tokens(sqlite_database.clone()).await?;
+            insert_credentials(sqlite_database.clone()).await?;
+            insert_identities(sqlite_database.clone()).await?;
+            insert_identity_attributes(sqlite_database.clone()).await?;
+            insert_members(sqlite_database.clone()).await?;
+            insert_named_identities(sqlite_database.clone()).await?;
+            insert_purpose_keys(sqlite_database.clone()).await?;
+            insert_signing_secrets(sqlite_database.clone()).await?;
+            insert_x25519_secrets(sqlite_database.clone()).await?;
+        }
 
         // clean the existing postgres database
         let postgres_database = SqlxDatabase::create_postgres_no_migration(None).await?;

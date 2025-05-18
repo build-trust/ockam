@@ -9,7 +9,6 @@ use ockam_core::errcode::{Kind, Origin};
 use sqlx::any::{install_default_drivers, AnyConnectOptions};
 use sqlx::pool::PoolOptions;
 use sqlx::{Any, ConnectOptions, Pool};
-use sqlx_core::any::AnyConnection;
 use sqlx_core::executor::Executor;
 use sqlx_core::row::Row;
 use tempfile::NamedTempFile;
@@ -23,9 +22,12 @@ use crate::database::migrations::application_migration_set::ApplicationMigration
 use crate::database::migrations::node_migration_set::NodeMigrationSet;
 use crate::database::migrations::MigrationSet;
 use crate::database::{DatabaseConfigurationMode, DatabaseType, MigrationStatus};
-use ockam_core::compat::rand::random_string;
 use ockam_core::compat::sync::Arc;
+use ockam_core::env::get_env_with_default;
 use ockam_core::{Error, Result};
+
+/// Maximum number of connections to the database
+pub const OCKAM_DATABASE_MAX_POOL_SIZE: &str = "OCKAM_DATABASE_MAX_POOL_SIZE";
 
 /// This value is used for tenant_id columns when the tenant id is not relevant.
 pub const NO_TENANT_ID: &str = "no-tenant-id";
@@ -282,7 +284,7 @@ impl SqlxDatabase {
     ) -> Result<Self> {
         debug!("create an in memory database for {usage}");
         let configuration = DatabaseConfiguration::sqlite_in_memory()?;
-        let pool = Self::create_in_memory_connection_pool().await?;
+        let pool = Self::create_in_memory_connection_pool(&configuration).await?;
         let migrator = migration_set.create_migrator()?;
         migrator.migrate(&pool).await?;
         // FIXME: We should be careful if we run multiple nodes in one process
@@ -297,6 +299,7 @@ impl SqlxDatabase {
     /// disk and in memory), and the database user needs to retry several times.
     pub fn needs_retry(&self) -> bool {
         self.configuration.database_type() == DatabaseType::Sqlite
+            && !self.configuration.is_single_connection()
     }
 
     async fn create_at(configuration: &DatabaseConfiguration) -> Result<Self> {
@@ -308,66 +311,109 @@ impl SqlxDatabase {
         })
     }
 
-    pub(crate) async fn create_connection_pool(
-        configuration: &DatabaseConfiguration,
-    ) -> Result<Pool<Any>> {
-        install_default_drivers();
+    fn pool_options(configuration: &DatabaseConfiguration) -> Result<PoolOptions<Any>> {
+        let database_type = configuration.database_type();
+
+        let max_pool_size = if configuration.is_single_connection() {
+            1
+        } else {
+            // sqlx default is 10, 16 is closer to the typical number of threads spawn
+            // by tokio within a node, but has no particular reason
+            get_env_with_default(OCKAM_DATABASE_MAX_POOL_SIZE, 16)?
+        };
+
+        let pool_options = PoolOptions::<Any>::new()
+            .max_connections(max_pool_size)
+            .min_connections(1);
+
+        let pool_options = if configuration.is_in_memory() {
+            pool_options.idle_timeout(None).max_lifetime(None)
+        } else {
+            pool_options
+        };
+
+        let pool_options = match database_type {
+            DatabaseType::Sqlite => {
+                let pool_options = if !configuration.is_in_memory() {
+                    // Set configuration for SQLite, see https://www.sqlite.org/pragma.html
+
+                    // synchronous = EXTRA - trade performance for durability and reliability
+                    let synchronous = "EXTRA";
+                    let locking_mode;
+                    let busy_timeout;
+
+                    if max_pool_size == 1 {
+                        // TODO: Would be nice locking_mode = EXCLUSIVE - there is only one connection to the database
+                        // TODO: Would be nice busy_timeout = 10 - should not be triggered because there is only one connection
+
+                        locking_mode = "NORMAL";
+                        busy_timeout = 10000;
+                    } else {
+                        // locking_mode = NORMAL - it's important because WAL mode changes behavior
+                        //                         if locking_mode is set to EXCLUSIVE *before* WAL is set
+                        // busy_timeout = 10000 - wait for 10 seconds before failing a query due to exclusive lock
+                        locking_mode = "NORMAL";
+                        busy_timeout = 10000;
+                    };
+
+                    let query = format!(
+                        r#"
+PRAGMA synchronous = {synchronous};
+PRAGMA locking_mode = {locking_mode};
+PRAGMA busy_timeout = {busy_timeout};"#
+                    );
+
+                    // SQLite's configuration is specific for each connection, and needs to be set every time
+
+                    pool_options.after_connect(
+                        move |connection: &mut sqlx::AnyConnection, _metadata| {
+                            let query = query.clone();
+                            Box::pin(async move {
+                                let _ = connection
+                                    .execute(&*query)
+                                    .await
+                                    .expect("Failed to set SQLite configuration");
+
+                                Ok(())
+                            })
+                        },
+                    )
+                } else {
+                    pool_options
+                };
+
+                if max_pool_size == 1 {
+                    pool_options
+                        .acquire_timeout(Duration::from_secs(60))
+                        .acquire_slow_threshold(Duration::from_secs(30))
+                } else {
+                    pool_options
+                }
+            }
+            _ => pool_options,
+        };
+
+        Ok(pool_options)
+    }
+
+    fn connection_options(configuration: &DatabaseConfiguration) -> Result<AnyConnectOptions> {
         let connection_string = configuration.connection_string();
         debug!("connecting to {connection_string}");
 
         let options = AnyConnectOptions::from_str(&connection_string)
             .map_err(Self::map_sql_err)?
             .log_statements(configuration.statements_log_level())
-            .log_slow_statements(LevelFilter::Trace, Duration::from_secs(1));
+            .log_slow_statements(LevelFilter::Warn, Duration::from_secs(1));
 
-        // sqlx default is 10, 16 is closer to the typical number of threads spawn
-        // by tokio within a node, but has no particular reason
-        const MAX_POOL_SIZE: u32 = 16;
+        Ok(options)
+    }
 
-        let max_pool_size = match configuration.mode() {
-            DatabaseConfigurationMode::SqlitePersistent {
-                single_connection, ..
-            }
-            | DatabaseConfigurationMode::SqliteInMemory { single_connection } => {
-                if *single_connection {
-                    1
-                } else {
-                    MAX_POOL_SIZE
-                }
-            }
-            _ => MAX_POOL_SIZE,
-        };
-
-        let pool_options = PoolOptions::new()
-            .max_connections(max_pool_size)
-            .min_connections(1);
-
-        let pool_options = if configuration.database_type() == DatabaseType::Sqlite {
-            // SQLite's configuration is specific for each connection, and needs to be set every time
-            pool_options.after_connect(|connection: &mut AnyConnection, _metadata| {
-                Box::pin(async move {
-                    // Set configuration for SQLite, see https://www.sqlite.org/pragma.html
-                    // synchronous = EXTRA - trade performance for durability and reliability
-                    // locking_mode = NORMAL - it's important because WAL mode changes behavior
-                    //                         if locking_mode is set to EXCLUSIVE *before* WAL is set
-                    // busy_timeout = 10000 - wait for 10 seconds before failing a query due to exclusive lock
-                    let _ = connection
-                        .execute(
-                            r#"
-PRAGMA synchronous = EXTRA;
-PRAGMA locking_mode = NORMAL;
-PRAGMA busy_timeout = 10000;
-                "#,
-                        )
-                        .await
-                        .expect("Failed to set SQLite configuration");
-
-                    Ok(())
-                })
-            })
-        } else {
-            pool_options
-        };
+    pub(crate) async fn create_connection_pool(
+        configuration: &DatabaseConfiguration,
+    ) -> Result<Pool<Any>> {
+        install_default_drivers();
+        let options = Self::connection_options(configuration)?;
+        let pool_options = Self::pool_options(configuration)?;
 
         let pool = pool_options
             .connect_with(options)
@@ -383,18 +429,12 @@ PRAGMA busy_timeout = 10000;
             .await
     }
 
-    pub(crate) async fn create_in_memory_connection_pool() -> Result<Pool<Any>> {
+    pub(crate) async fn create_in_memory_connection_pool(
+        configuration: &DatabaseConfiguration,
+    ) -> Result<Pool<Any>> {
         install_default_drivers();
-        // SQLite in-memory DB get wiped if there is no connection to it.
-        // The below setting tries to ensure there is always an open connection
-        let file_name = random_string();
-        let options = AnyConnectOptions::from_str(
-            format!("sqlite:file:{file_name}?mode=memory&cache=shared").as_str(),
-        )
-        .map_err(Self::map_sql_err)?
-        .log_statements(LevelFilter::Trace)
-        .log_slow_statements(LevelFilter::Trace, Duration::from_secs(1));
-        let pool_options = PoolOptions::new().idle_timeout(None).max_lifetime(None);
+        let options = Self::connection_options(configuration)?;
+        let pool_options = Self::pool_options(configuration)?;
 
         let pool = pool_options
             .connect_with(options)
