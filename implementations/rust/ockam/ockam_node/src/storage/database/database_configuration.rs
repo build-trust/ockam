@@ -55,6 +55,25 @@ impl DatabaseConfiguration {
         &self.mode
     }
 
+    /// If can't have more than 1 connection in the pool
+    pub fn is_single_connection(&self) -> bool {
+        match self.mode() {
+            DatabaseConfigurationMode::SqlitePersistent {
+                single_connection, ..
+            } => *single_connection,
+            DatabaseConfigurationMode::SqliteInMemory { single_connection } => *single_connection,
+            _ => false,
+        }
+    }
+
+    /// If in-memory mode is used
+    pub fn is_in_memory(&self) -> bool {
+        matches!(
+            self.mode(),
+            DatabaseConfigurationMode::SqliteInMemory { .. }
+        )
+    }
+
     /// Statements log level
     pub fn statements_log_level(&self) -> LevelFilter {
         self.statements_log_level
@@ -301,6 +320,8 @@ impl DatabaseConfiguration {
     }
 
     fn create_sqlite_in_memory_connection_string() -> String {
+        // SQLite in-memory DB get wiped if there is no connection to it.
+        // The below setting tries to ensure there is always an open connection
         let file_name = random_string();
         format!("sqlite:file:{file_name}?mode=memory&cache=shared")
     }

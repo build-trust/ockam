@@ -37,15 +37,6 @@ impl SpacesSqlxDatabase {
         Ok(Self::new(SqlxDatabase::in_memory("spaces").await?))
     }
 
-    async fn query_subscription(&self, space_id: &str) -> Result<Option<Subscription>> {
-        let query = query_as("SELECT space_id, name, is_free_trial, marketplace, start_date, end_date FROM subscription WHERE space_id = $1").bind(space_id);
-        let row: Option<SubscriptionRow> = query
-            .fetch_optional(&*self.database.pool)
-            .await
-            .into_core()?;
-        row.map(|r| r.subscription()).transpose()
-    }
-
     async fn set_as_default(&self, space_id: &str, transaction: &mut AnyConnection) -> Result<()> {
         // set the space as the default one
         let query1 = query("UPDATE space SET is_default = $1 WHERE space_id = $2")
@@ -176,7 +167,11 @@ impl SpacesRepository for SpacesSqlxDatabase {
                 space.users = users;
 
                 // retrieve the subscription
-                space.subscription = self.query_subscription(&space.id).await?;
+                // FIXME: Copy&paste
+                let query3 = query_as("SELECT space_id, name, is_free_trial, marketplace, start_date, end_date FROM subscription WHERE space_id = $1").bind(&space.id);
+                let row: Option<SubscriptionRow> =
+                    query3.fetch_optional(&mut *transaction).await.into_core()?;
+                space.subscription = row.map(|r| r.subscription()).transpose()?;
 
                 Some(space)
             }
@@ -199,7 +194,13 @@ impl SpacesRepository for SpacesSqlxDatabase {
                     .bind(&row.space_id);
             let rows: Vec<UserSpaceRow> = query2.fetch_all(&mut *transaction).await.into_core()?;
             let users = rows.into_iter().map(|r| r.user_email).collect();
-            let subscription = self.query_subscription(&row.space_id).await?;
+
+            // FIXME: Copy&paste
+            let query3 = query_as("SELECT space_id, name, is_free_trial, marketplace, start_date, end_date FROM subscription WHERE space_id = $1").bind(&row.space_id);
+            let subscription_row: Option<SubscriptionRow> =
+                query3.fetch_optional(&mut *transaction).await.into_core()?;
+            let subscription = subscription_row.map(|r| r.subscription()).transpose()?;
+
             let mut space = row.space();
             space.users = users;
             space.subscription = subscription;
@@ -338,6 +339,17 @@ mod test {
     use ockam_node::database::with_sqlite_dbs;
     use std::ops::Add;
     use time::ext::NumericalDuration;
+
+    impl SpacesSqlxDatabase {
+        async fn query_subscription(&self, space_id: &str) -> Result<Option<Subscription>> {
+            let query = query_as("SELECT space_id, name, is_free_trial, marketplace, start_date, end_date FROM subscription WHERE space_id = $1").bind(space_id);
+            let row: Option<SubscriptionRow> = query
+                .fetch_optional(&*self.database.pool)
+                .await
+                .into_core()?;
+            row.map(|r| r.subscription()).transpose()
+        }
+    }
 
     #[tokio::test]
     async fn test_repository() -> Result<()> {

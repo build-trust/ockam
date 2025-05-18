@@ -326,14 +326,17 @@ impl Migrator {
         // to know if that import happened already
         if migration.name() == InitializeFromSqlite::name() {
             if let Some(sqlite_db) = &self.legacy_sqlite_database {
-                let mut sqlite_connection = sqlite_db.pool.acquire().await.into_core()?;
-                if !self
-                    .has_migrated(&mut sqlite_connection, migration.name())
-                    .await?
-                {
+                let has_migrated = {
+                    let mut sqlite_connection = sqlite_db.pool.acquire().await.into_core()?;
+                    self.has_migrated(&mut sqlite_connection, migration.name())
+                        .await?
+                };
+
+                if !has_migrated {
                     migration
                         .migrate(self.legacy_sqlite_database.clone(), connection)
                         .await?;
+                    let mut sqlite_connection = sqlite_db.pool.acquire().await.into_core()?;
                     self.mark_as_migrated(&mut sqlite_connection, migration.name())
                         .await?;
                 };
