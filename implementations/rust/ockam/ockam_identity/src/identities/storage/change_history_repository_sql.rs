@@ -49,8 +49,9 @@ impl ChangeHistoryRepository for ChangeHistorySqlxDatabase {
     async fn update_identity(&self, identity: &Identity, ignore_older: bool) -> Result<()> {
         let mut transaction = self.database.begin().await.into_core()?;
         let query1 =
-            query_as("SELECT identifier, change_history FROM identity WHERE identifier = $1")
-                .bind(identity.identifier());
+            query_as("SELECT identifier, change_history FROM identity WHERE identifier = $1 and tenant_id = $2")
+                .bind(identity.identifier())
+                .bind(self.database.tenant_id());
         let row: Option<ChangeHistoryRow> =
             query1.fetch_optional(&mut *transaction).await.into_core()?;
 
@@ -103,11 +104,15 @@ impl ChangeHistoryRepository for ChangeHistorySqlxDatabase {
 
     async fn delete_change_history(&self, identifier: &Identifier) -> Result<()> {
         let mut transaction = self.database.begin().await.into_core()?;
-        let query1 = query("DELETE FROM identity where identifier = $1").bind(identifier);
+        let query1 = query("DELETE FROM identity where identifier = $1 and tenant_id = $2")
+            .bind(identifier)
+            .bind(self.database.tenant_id());
         query1.execute(&mut *transaction).await.void()?;
 
         let query2 =
-            query("DELETE FROM identity_attributes where identifier = $1").bind(identifier);
+            query("DELETE FROM identity_attributes where identifier = $1 and tenant_id = $2")
+                .bind(identifier)
+                .bind(self.database.tenant_id());
         query2.execute(&mut *transaction).await.void()?;
         transaction.commit().await.void()?;
         Ok(())
@@ -115,8 +120,9 @@ impl ChangeHistoryRepository for ChangeHistorySqlxDatabase {
 
     async fn get_change_history(&self, identifier: &Identifier) -> Result<Option<ChangeHistory>> {
         let query =
-            query_as("SELECT identifier, change_history FROM identity WHERE identifier = $1")
-                .bind(identifier);
+            query_as("SELECT identifier, change_history FROM identity WHERE identifier = $1 and tenant_id = $2")
+                .bind(identifier)
+                .bind(self.database.tenant_id());
         let row: Option<ChangeHistoryRow> = query
             .fetch_optional(&*self.database.pool)
             .await
@@ -125,7 +131,9 @@ impl ChangeHistoryRepository for ChangeHistorySqlxDatabase {
     }
 
     async fn get_change_histories(&self) -> Result<Vec<ChangeHistory>> {
-        let query = query_as("SELECT identifier, change_history FROM identity");
+        let query =
+            query_as("SELECT identifier, change_history FROM identity where tenant_id = $1")
+                .bind(self.database.tenant_id());
         let row: Vec<ChangeHistoryRow> = query.fetch_all(&*self.database.pool).await.into_core()?;
         row.iter().map(|r| r.change_history()).collect()
     }
