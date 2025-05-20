@@ -6,6 +6,7 @@ pub(crate) mod enroll;
 pub(crate) mod init;
 pub(crate) mod inlet;
 mod outlet;
+pub mod repl;
 pub(crate) mod secret;
 mod show;
 pub(crate) mod ticket;
@@ -24,6 +25,7 @@ use crate::cluster::delete::DeleteCommand;
 use crate::cluster::init::InitCommand;
 use crate::cluster::inlet::InletCommand;
 use crate::cluster::outlet::OutletCommand;
+use crate::cluster::repl::ReplCommand;
 use crate::cluster::secret::SecretCommand;
 use crate::cluster::show::ShowCommand;
 use crate::{docs, Command, CommandGlobalOpts};
@@ -61,6 +63,7 @@ impl ClusterCommand {
             ClusterSubcommand::Delete(c) => c.run(ctx, opts).await,
             ClusterSubcommand::Inlet(c) => c.run(ctx, opts).await,
             ClusterSubcommand::Outlet(c) => c.run(ctx, opts).await,
+            ClusterSubcommand::Repl(c) => c.run(ctx, opts).await,
         }
     }
 }
@@ -78,6 +81,7 @@ pub enum ClusterSubcommand {
     Delete(DeleteCommand),
     Inlet(InletCommand),
     Outlet(OutletCommand),
+    Repl(ReplCommand),
 }
 
 impl ClusterSubcommand {
@@ -93,6 +97,7 @@ impl ClusterSubcommand {
             ClusterSubcommand::Delete(c) => c.name(),
             ClusterSubcommand::Inlet(c) => c.name(),
             ClusterSubcommand::Outlet(c) => c.name(),
+            ClusterSubcommand::Repl(c) => c.name(),
         }
     }
 }
