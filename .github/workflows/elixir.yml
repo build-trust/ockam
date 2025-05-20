@@ -51,6 +51,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: true
 
+env:
+  OCKAM_DATABASE_MAX_POOL_SIZE: 1
+
 defaults:
   run:
     shell: nix develop ../../tools/nix#elixir --command bash {0}
