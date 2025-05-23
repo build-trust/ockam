@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 0.140.0 - 2025-05-02
+## 0.140.0 - 2025-05-23
 
 ### Added
 
@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add a send_extended method to allow sending messages with an outgoing access control
 - Add send methods to the context router
 - Add more ways to send and receive messages using `Context`
+- Add `OCKAM_DATABASE_MAX_POOL_SIZE`
 - Updated dependencies
 
 ### Fixed
