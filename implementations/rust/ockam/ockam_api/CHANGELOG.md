@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 0.94.0 - 2025-05-14
+## 0.94.0 - 2025-05-23
 
 ### Added
 
@@ -56,6 +56,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - List relays on project nodes
 - Single token for all ecr repos
 - In `cluster create`, parallelize `docker build` calls
+- Add `OCKAM_DATABASE_MAX_POOL_SIZE`
 - Updated dependencies
 
 ### Changed
