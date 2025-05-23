@@ -201,6 +201,7 @@ This file contains attributions for any 3rd-party open source code used in this 
 | fdeflate | MIT, Apache-2.0 | https://crates.io/crates/fdeflate |
 | ff | MIT, Apache-2.0 | https://crates.io/crates/ff |
 | fiat-crypto | MIT, Apache-2.0, BSD-1-Clause | https://crates.io/crates/fiat-crypto |
+| filetime | MIT, Apache-2.0 | https://crates.io/crates/filetime |
 | flate2 | MIT, Apache-2.0 | https://crates.io/crates/flate2 |
 | flume | Apache-2.0, MIT | https://crates.io/crates/flume |
 | fnv | Apache-2.0, MIT | https://crates.io/crates/fnv |
@@ -211,6 +212,7 @@ This file contains attributions for any 3rd-party open source code used in this 
 | form_urlencoded | MIT, Apache-2.0 | https://crates.io/crates/form_urlencoded |
 | fs2 | MIT, Apache-2.0 | https://crates.io/crates/fs2 |
 | fs_extra | MIT | https://crates.io/crates/fs_extra |
+| fsevent-sys | MIT | https://crates.io/crates/fsevent-sys |
 | fugit | MIT, Apache-2.0 | https://crates.io/crates/fugit |
 | fugit-timer | MIT, Apache-2.0 | https://crates.io/crates/fugit-timer |
 | futures | MIT, Apache-2.0 | https://crates.io/crates/futures |
@@ -272,6 +274,8 @@ This file contains attributions for any 3rd-party open source code used in this 
 | indexmap | Apache-2.0, MIT | https://crates.io/crates/indexmap |
 | indicatif | MIT | https://crates.io/crates/indicatif |
 | indoc | MIT, Apache-2.0 | https://crates.io/crates/indoc |
+| inotify | ISC | https://crates.io/crates/inotify |
+| inotify-sys | ISC | https://crates.io/crates/inotify-sys |
 | inout | MIT, Apache-2.0 | https://crates.io/crates/inout |
 | inventory | MIT, Apache-2.0 | https://crates.io/crates/inventory |
 | iovec | MIT, Apache-2.0 | https://crates.io/crates/iovec |
@@ -295,6 +299,8 @@ This file contains attributions for any 3rd-party open source code used in this 
 | jpeg-decoder | MIT, Apache-2.0 | https://crates.io/crates/jpeg-decoder |
 | js-sys | MIT, Apache-2.0 | https://crates.io/crates/js-sys |
 | kafka-protocol | MIT, Apache-2.0 | https://crates.io/crates/kafka-protocol |
+| kqueue | MIT | https://crates.io/crates/kqueue |
+| kqueue-sys | MIT | https://crates.io/crates/kqueue-sys |
 | kv-log-macro | MIT, Apache-2.0 | https://crates.io/crates/kv-log-macro |
 | lazy-bytes-cast | BSL-1.0 | https://crates.io/crates/lazy-bytes-cast |
 | lazy_static | MIT, Apache-2.0 | https://crates.io/crates/lazy_static |
@@ -305,6 +311,7 @@ This file contains attributions for any 3rd-party open source code used in this 
 | libloading | ISC | https://crates.io/crates/libloading |
 | libm | MIT, Apache-2.0 | https://crates.io/crates/libm |
 | libmimalloc-sys | MIT | https://crates.io/crates/libmimalloc-sys |
+| libredox | MIT | https://crates.io/crates/libredox |
 | libsqlite3-sys | MIT | https://crates.io/crates/libsqlite3-sys |
 | linked-hash-map | MIT, Apache-2.0 | https://crates.io/crates/linked-hash-map |
 | linux-raw-sys | Apache-2.0 WITH LLVM-exception, Apache-2.0, MIT | https://crates.io/crates/linux-raw-sys |
@@ -337,6 +344,8 @@ This file contains attributions for any 3rd-party open source code used in this 
 | nibble_vec | MIT | https://crates.io/crates/nibble_vec |
 | nix | MIT | https://crates.io/crates/nix |
 | nom | MIT | https://crates.io/crates/nom |
+| notify | CC0-1.0 | https://crates.io/crates/notify |
+| notify-types | MIT, Apache-2.0 | https://crates.io/crates/notify-types |
 | ntapi | Apache-2.0, MIT | https://crates.io/crates/ntapi |
 | nu-ansi-term | MIT | https://crates.io/crates/nu-ansi-term |
 | num-conv | MIT, Apache-2.0 | https://crates.io/crates/num-conv |

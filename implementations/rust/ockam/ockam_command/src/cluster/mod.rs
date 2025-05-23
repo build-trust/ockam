@@ -1,6 +1,7 @@
 pub(crate) mod attach;
 pub mod common_args;
 pub(crate) mod create;
+pub(crate) mod ctrlc;
 mod delete;
 pub(crate) mod enroll;
 pub(crate) mod init;

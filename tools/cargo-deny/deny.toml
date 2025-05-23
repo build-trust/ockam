@@ -23,6 +23,8 @@ exceptions = [
   { allow = ["OpenSSL"], name = "aws-lc-sys", version = "*" },
   # used by ockam_app_lib only as a build dependency
   { allow = ["MPL-2.0"], name = "cbindgen", version = "*" },
+  # used by ockam_command, for the `notify` crate
+  { allow = ["CC0-1.0"], name = "notify", version = "*" },
 ]
 
 [[licenses.clarify]]

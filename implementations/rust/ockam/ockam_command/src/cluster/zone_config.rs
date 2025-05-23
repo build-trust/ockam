@@ -66,6 +66,8 @@ pub struct Container {
 }
 
 impl ZoneConfig {
+    const MAIN_POD_NAME: &'static str = "main-pod";
+
     pub fn from_file(path: impl AsRef<std::path::Path>) -> Result<Self, miette::Error> {
         let content = std::fs::read_to_string(&path)
             .into_diagnostic()
@@ -198,9 +200,9 @@ impl ZoneConfig {
         Ok(())
     }
 
-    /// Returns the name of the "main" pod, which is either:
+    /// Returns the name of the main pod, which is either:
     /// - The only pod if there's just one pod
-    /// - The pod named "main" if it exists
+    /// - The main pod if it exists
     /// - Error otherwise
     pub fn get_main_pod(&self) -> miette::Result<&Pod> {
         if self.pods.is_empty() {
@@ -213,9 +215,12 @@ impl ZoneConfig {
             // Try to find the main pod
             self.pods
                 .iter()
-                .find(|pod| pod.name == "main-pod")
+                .find(|pod| pod.name == Self::MAIN_POD_NAME)
                 .ok_or_else(|| {
-                    miette::miette!("Multiple pods defined, but none is named 'main-pod'")
+                    miette::miette!(format!(
+                        "Multiple pods defined, but none is named '{}'",
+                        Self::MAIN_POD_NAME
+                    ))
                 })
         }
     }
@@ -843,7 +848,7 @@ pods:
 
         let config = serde_yaml::from_str::<ZoneConfig>(yaml_with_main).unwrap();
         let main_pod = config.get_main_pod().unwrap();
-        assert_eq!(main_pod.name, "main-pod");
+        assert_eq!(main_pod.name, ZoneConfig::MAIN_POD_NAME);
 
         // Test case: multiple pods, none named "main-pod"
         let yaml_without_main = r#"

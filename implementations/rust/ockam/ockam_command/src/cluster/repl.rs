@@ -1,3 +1,4 @@
+use crate::cluster::ctrlc::ClusterCtrlcHandler;
 use crate::util::parsers::hostname_parser;
 use crate::{docs, Command, CommandGlobalOpts, Result};
 use async_trait::async_trait;
@@ -42,10 +43,10 @@ pub struct ReplCommand {
 impl Command for ReplCommand {
     const NAME: &'static str = "repl";
 
-    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> Result<()> {
+    async fn run(self, _ctx: &Context, opts: CommandGlobalOpts) -> Result<()> {
         opts.terminal.write_line(fmt_separator!())?;
         let to = self.to.clone();
-        self.open_repl(ctx, &opts, to).await?;
+        self.open_repl(&opts, to, None).await?;
         Ok(())
     }
 }
@@ -53,21 +54,25 @@ impl Command for ReplCommand {
 impl ReplCommand {
     pub async fn open_repl(
         &self,
-        _ctx: &Context,
         opts: &CommandGlobalOpts,
         inlet_address: SchemeHostnamePort,
+        restart_tx: Option<tokio::sync::broadcast::Sender<String>>,
     ) -> miette::Result<()> {
         use tokio::net::TcpStream;
         use tokio::time::sleep;
 
-        let (quit_tx, quit_rx) = tokio::sync::oneshot::channel();
-        let mut quit_tx = Some(quit_tx);
-        ctrlc::set_handler(move || {
-            if let Some(quit_tx) = quit_tx.take() {
-                let _ = quit_tx.send(());
+        let restart_handle = match restart_tx {
+            Some(tx) => {
+                let mut rx = tx.subscribe();
+                tokio::spawn(async move {
+                    let _ = rx.recv().await;
+                    Ok(())
+                })
             }
-        })
-        .expect("Error setting exit signal handler");
+            None => tokio::spawn(std::future::pending::<miette::Result<()>>()),
+        };
+
+        let mut quit_rx = ClusterCtrlcHandler::rx();
 
         let (next_tx, next_rx) = tokio::sync::mpsc::channel(16);
         let (lines_tx, lines_rx) = tokio::sync::mpsc::channel(16);
@@ -80,7 +85,12 @@ impl ReplCommand {
         });
 
         // Start the interactive repl
-        let opts = opts.clone();
+        let mut initial_message_spinner = opts.terminal.spinner();
+        if let Some(spinner) = &initial_message_spinner {
+            spinner.set_message("Waiting for repl to be ready...");
+        }
+        let mut _initial_message_spinner = initial_message_spinner.clone();
+        let _opts = opts.clone();
         let repl_handle = tokio::spawn(async move {
             async fn connect_to_inlet(addr: &SchemeHostnamePort) -> miette::Result<TcpStream> {
                 const MAX_RETRIES: u32 = 120; // Try for about 60 seconds (120 * 500ms)
@@ -101,7 +111,6 @@ impl ReplCommand {
 
             let mut read_header_buffer = String::new();
             let mut read_body_buffer = Vec::new();
-            let mut initial_message_spinner: Option<ProgressBar> = None;
             'repl: loop {
                 // 1: Try to connect to the inlet
                 let stream = match connect_to_inlet(&inlet_address).await {
@@ -125,16 +134,16 @@ impl ReplCommand {
                 {
                     Ok(res) => {
                         // Successfully got initial message, continue to repl
-                        if let Some(spinner) = initial_message_spinner.take() {
+                        if let Some(spinner) = _initial_message_spinner.take() {
                             spinner.finish_and_clear();
                         }
-                        opts.terminal.write(res)?;
+                        _opts.terminal.write(res)?;
                     }
                     Err(_e) => {
-                        if initial_message_spinner.is_none() {
-                            initial_message_spinner = opts.terminal.spinner();
+                        if _initial_message_spinner.is_none() {
+                            _initial_message_spinner = _opts.terminal.spinner();
                         }
-                        if let Some(spinner) = &initial_message_spinner {
+                        if let Some(spinner) = &_initial_message_spinner {
                             spinner.set_message("Waiting for repl to be ready...");
                         }
                         sleep(Duration::from_secs(1)).await;
@@ -170,7 +179,8 @@ impl ReplCommand {
                     // Send input to server
                     if let Err(e) = writer.write_all(user_input.as_bytes()).await {
                         debug!("failed to write to server: {:?}", e);
-                        opts.terminal
+                        _opts
+                            .terminal
                             .write_line("Failed to write to server. Reconnecting...")?;
                         break 'connection;
                     }
@@ -178,14 +188,14 @@ impl ReplCommand {
 
                     // Wait for server response and print it
                     if let Err(e) = Self::process_server_response(
-                        &opts,
+                        &_opts,
                         &mut reader,
                         &mut read_header_buffer,
                         &mut read_body_buffer,
                     )
                     .await
                     {
-                        opts.terminal.write_line(format!(
+                        _opts.terminal.write_line(format!(
                             "Failed to read from server ({e}). Reconnecting...",
                         ))?;
                         break 'connection;
@@ -200,9 +210,14 @@ impl ReplCommand {
         });
 
         tokio::select! {
-            _ = stdin_handle => {}
-            _ = quit_rx => {},
+            _ = quit_rx.recv() => {},
+            _ = restart_handle => {},
+            _ = stdin_handle => {},
             _ = repl_handle => {},
+        }
+
+        if let Some(spinner) = initial_message_spinner.take() {
+            spinner.finish_and_clear();
         }
 
         Ok(())
