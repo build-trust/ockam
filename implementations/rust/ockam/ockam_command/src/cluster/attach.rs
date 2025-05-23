@@ -1,6 +1,7 @@
 use crate::cluster::common_args::{
     EnrollmentTicketConfigArg, HttpApiArgs, ZoneConfigArg, ZoneNameOrConfigArg,
 };
+use crate::cluster::ctrlc::ClusterCtrlcHandler;
 use crate::cluster::repl::ReplCommand;
 use crate::cluster::zone_config::{Outlet, ZoneConfig};
 use crate::entry_point::RUNTIME;
@@ -44,26 +45,29 @@ pub struct AttachCommand {
 impl Command for AttachCommand {
     const NAME: &'static str = "cluster attach";
 
-    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> Result<()> {
+    async fn run(self, _ctx: &Context, opts: CommandGlobalOpts) -> Result<()> {
+        self.run_impl(opts, None).await
+    }
+}
+
+impl AttachCommand {
+    pub(crate) async fn run_impl(
+        self,
+        opts: CommandGlobalOpts,
+        restart_tx: Option<tokio::sync::broadcast::Sender<String>>,
+    ) -> Result<()> {
         let zone_config = self.zone.zone_config()?;
-        let (executors, repl_address) = self.cluster_inlets(ctx, &opts, &zone_config).await?;
+        let (executors, repl_address) = self.cluster_inlets(&opts, &zone_config).await?;
         // let (repl_data, rest_inlet_handles) = cmd.dummy_inlet(&opts).await?;
         opts.terminal.write_line(fmt_separator!())?;
         if let Some(address) = repl_address {
             let repl_command = ReplCommand {
                 to: address.clone(),
             };
-            repl_command.open_repl(ctx, &opts, address).await?;
+            repl_command.open_repl(&opts, address, restart_tx).await?;
         } else {
             // No repl outlet. Create a ctrlc handler and wait for it to be triggered before exiting the command
-            let (tx, rx) = tokio::sync::oneshot::channel();
-            let mut tx = Some(tx);
-            ctrlc::set_handler(move || {
-                if let Some(tx) = tx.take() {
-                    let _ = tx.send(());
-                }
-            })
-            .expect("Error setting exit signal handler");
+            let mut rx = ClusterCtrlcHandler::rx();
             let portals_str = if executors.len() > 1 {
                 "all portals"
             } else {
@@ -71,16 +75,13 @@ impl Command for AttachCommand {
             };
             opts.terminal
                 .write_line(fmt_log!("Press Ctrl+C to stop {portals_str} and exit"))?;
-            let _ = rx.await;
+            let _ = rx.recv().await;
         }
         Ok(())
     }
-}
 
-impl AttachCommand {
     async fn cluster_inlets(
         &self,
-        ctx: &Context,
         opts: &CommandGlobalOpts,
         zone_config: &ZoneConfig,
     ) -> miette::Result<(Vec<Executor>, Option<SchemeHostnamePort>)> {
@@ -92,7 +93,7 @@ impl AttachCommand {
             let to = outlet.name.as_ref().unwrap_or(&main_pod.name);
             let pod_name = outlet.pod_name.as_ref().unwrap_or(&main_pod.name);
             let executor = self
-                .cluster_inlet(ctx, opts, &zone_config.name, pod_name, from.clone(), to)
+                .cluster_inlet(opts, &zone_config.name, pod_name, from.clone(), to)
                 .await?;
             Ok::<(Executor, Option<SchemeHostnamePort>), miette::Error>((executor, Some(from)))
         };
@@ -135,7 +136,6 @@ impl AttachCommand {
     #[allow(clippy::too_many_arguments)]
     async fn cluster_inlet(
         &self,
-        _ctx: &Context,
         opts: &CommandGlobalOpts,
         zone_name: &str,
         pod_name: &str,
