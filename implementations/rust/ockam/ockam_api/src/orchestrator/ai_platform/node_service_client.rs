@@ -1,7 +1,7 @@
 use crate::nodes::InMemoryNode;
 use crate::orchestrator::ai_platform::api::AiPlatformApi;
 use crate::orchestrator::ai_platform::responses::{
-    Cluster, EcrCredential, Secret, SecretList, Token, Zone, ZoneList,
+    Cluster, EcrCredential, Secret, SecretNameList, Ticket, Zone, ZoneNameList,
 };
 use base64_url::base64;
 use base64_url::base64::Engine;
@@ -27,10 +27,14 @@ pub static AI_API_BASE_URL: Lazy<String> = Lazy::new(|| {
 impl AiPlatformApi for InMemoryNode {
     async fn create_zone(
         &self,
-        _ctx: &Context,
-        cluster: &str,
+        ctx: &Context,
+        cluster: Option<&str>,
         zone_name: &str,
     ) -> miette::Result<Zone> {
+        let cluster = match cluster {
+            Some(c) => c.to_string(),
+            None => self.get_cluster(ctx).await?.into_inner(),
+        };
         let base_error = || miette!("Failed to create zone {zone_name} in cluster {cluster}");
         let url = format!("{}/api/{}/zone", *AI_API_BASE_URL, cluster);
 
@@ -66,7 +70,15 @@ impl AiPlatformApi for InMemoryNode {
             .wrap_err(base_error())
     }
 
-    async fn list_zones(&self, _ctx: &Context, cluster: &str) -> miette::Result<Vec<String>> {
+    async fn list_zones(
+        &self,
+        ctx: &Context,
+        cluster: Option<&str>,
+    ) -> miette::Result<Vec<String>> {
+        let cluster = match cluster {
+            Some(c) => c.to_string(),
+            None => self.get_cluster(ctx).await?.into_inner(),
+        };
         let base_error = || miette!("Failed to list zones in cluster {cluster}");
         let url = format!("{}/api/{}/zone", *AI_API_BASE_URL, cluster);
 
@@ -90,7 +102,7 @@ impl AiPlatformApi for InMemoryNode {
         }
 
         let res = response
-            .json::<ZoneList>()
+            .json::<ZoneNameList>()
             .await
             .into_diagnostic()
             .wrap_err("Failed to parse response")
@@ -102,11 +114,15 @@ impl AiPlatformApi for InMemoryNode {
     async fn delete_zone(
         &self,
         ctx: &Context,
-        cluster: &str,
+        cluster: Option<&str>,
         zone_name: &str,
     ) -> miette::Result<()> {
+        let cluster = match cluster {
+            Some(c) => c.to_string(),
+            None => self.get_cluster(ctx).await?.into_inner(),
+        };
         let base_error = || miette!("Failed to delete zone {zone_name} in cluster {cluster}");
-        let url = format!("{}/api/{}/zone/{}", *AI_API_BASE_URL, cluster, zone_name);
+        let url = format!("{}/api/{}/zone/{}", *AI_API_BASE_URL, &cluster, zone_name);
 
         let client = build_http_client().wrap_err(base_error())?;
         let response = client
@@ -131,7 +147,7 @@ impl AiPlatformApi for InMemoryNode {
         let max_timeout = std::time::Duration::from_secs(20);
         let start_time = std::time::Instant::now();
         loop {
-            let zones = self.list_zones(ctx, cluster).await?;
+            let zones = self.list_zones(ctx, Some(&cluster)).await?;
             if zones.iter().all(|zone| zone != zone_name) {
                 break;
             }
@@ -147,11 +163,15 @@ impl AiPlatformApi for InMemoryNode {
 
     async fn deploy_zone(
         &self,
-        _ctx: &Context,
-        cluster: &str,
+        ctx: &Context,
+        cluster: Option<&str>,
         zone_name: &str,
         zone_config: &serde_json::Value,
     ) -> miette::Result<()> {
+        let cluster = match cluster {
+            Some(c) => c.to_string(),
+            None => self.get_cluster(ctx).await?.into_inner(),
+        };
         let base_error = || miette!("Failed to deploy zone {zone_name} in cluster {cluster}");
         let url = format!(
             "{}/api/{}/zone/{}/pods",
@@ -183,12 +203,16 @@ impl AiPlatformApi for InMemoryNode {
 
     async fn create_secret(
         &self,
-        _ctx: &Context,
-        cluster: &str,
+        ctx: &Context,
+        cluster: Option<&str>,
         zone_name: &str,
         secret_name: &str,
         secret_fields: &HashMap<String, String>,
     ) -> miette::Result<()> {
+        let cluster = match cluster {
+            Some(c) => c.to_string(),
+            None => self.get_cluster(ctx).await?.into_inner(),
+        };
         let base_error = || {
             miette!(
                 "Failed to create secret {secret_name} for cluster {cluster} and zone {zone_name}"
@@ -235,10 +259,14 @@ impl AiPlatformApi for InMemoryNode {
 
     async fn list_secrets(
         &self,
-        _ctx: &Context,
-        cluster: &str,
+        ctx: &Context,
+        cluster: Option<&str>,
         zone_name: &str,
     ) -> miette::Result<Vec<Secret>> {
+        let cluster = match cluster {
+            Some(c) => c.to_string(),
+            None => self.get_cluster(ctx).await?.into_inner(),
+        };
         let base_error =
             || miette!("Failed to list secrets for cluster {cluster} and zone {zone_name}");
         let url = format!(
@@ -266,7 +294,7 @@ impl AiPlatformApi for InMemoryNode {
         }
 
         let secrets = response
-            .json::<SecretList>()
+            .json::<SecretNameList>()
             .await
             .into_diagnostic()
             .wrap_err("Failed to parse secrets")
@@ -282,11 +310,15 @@ impl AiPlatformApi for InMemoryNode {
 
     async fn delete_secret(
         &self,
-        _ctx: &Context,
-        cluster: &str,
+        ctx: &Context,
+        cluster: Option<&str>,
         zone_name: &str,
         secret_name: &str,
     ) -> miette::Result<()> {
+        let cluster = match cluster {
+            Some(c) => c.to_string(),
+            None => self.get_cluster(ctx).await?.into_inner(),
+        };
         let base_error = || {
             miette!(
                 "Failed to delete secret {secret_name} for cluster {cluster} and zone {zone_name}"
@@ -319,14 +351,18 @@ impl AiPlatformApi for InMemoryNode {
         Ok(())
     }
 
-    async fn create_enrollment_token(
+    async fn create_enrollment_ticket(
         &self,
-        _ctx: &Context,
-        cluster: &str,
+        ctx: &Context,
+        cluster: Option<&str>,
         zone_name: &str,
         attributes: BTreeMap<String, String>,
         relay: Option<String>,
     ) -> miette::Result<String> {
+        let cluster = match cluster {
+            Some(c) => c.to_string(),
+            None => self.get_cluster(ctx).await?.into_inner(),
+        };
         let base_error = || {
             miette!("Failed to create enrollment token for cluster {cluster} and zone {zone_name}")
         };
@@ -366,14 +402,14 @@ impl AiPlatformApi for InMemoryNode {
             .wrap_err(base_error()));
         }
 
-        let token = response
-            .json::<Token>()
+        let ticket = response
+            .json::<Ticket>()
             .await
             .into_diagnostic()
             .wrap_err("Failed to parse response")
             .wrap_err(base_error())?;
 
-        Ok(token.token)
+        Ok(ticket.ticket)
     }
 
     async fn get_cluster(&self, _ctx: &Context) -> miette::Result<Cluster> {
@@ -382,11 +418,15 @@ impl AiPlatformApi for InMemoryNode {
 
     async fn provision_ecr(
         &self,
-        _ctx: &Context,
-        cluster: &str,
+        ctx: &Context,
+        cluster: Option<&str>,
         image_names: Vec<String>,
         is_public: Option<bool>,
     ) -> miette::Result<EcrCredential> {
+        let cluster = match cluster {
+            Some(c) => c.to_string(),
+            None => self.get_cluster(ctx).await?.into_inner(),
+        };
         let base_error = || miette!("Failed to provision ECR for images in cluster {cluster}");
         let url = format!("{}/api/{}/ecr", *AI_API_BASE_URL, cluster);
         let is_public = is_public.unwrap_or(false);

@@ -47,7 +47,6 @@ impl Display for Cluster {
 #[cbor(map)]
 pub struct Zone {
     #[n(1)] pub zone: String,
-    #[serde(alias="customer")]
     #[n(2)] pub cluster: String,
 }
 
@@ -65,9 +64,28 @@ impl Decodable for Zone {
 
 #[derive(Encode, Decode, CborLen, Serialize, Deserialize, Debug, Default, Clone, Message)]
 #[cbor(transparent)]
-pub struct ZoneList {
+pub struct ZoneNameList {
     #[n(0)]
     pub(crate) zones: Vec<String>,
+}
+
+impl Encodable for ZoneNameList {
+    fn encode(self) -> ockam_core::Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for ZoneNameList {
+    fn decode(e: &[u8]) -> ockam_core::Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
+}
+
+#[derive(Encode, Decode, CborLen, Serialize, Deserialize, Debug, Default, Clone, Message)]
+#[cbor(transparent)]
+pub struct ZoneList {
+    #[n(0)]
+    pub(crate) zones: Vec<Zone>,
 }
 
 impl Encodable for ZoneList {
@@ -103,9 +121,28 @@ impl Decodable for Secret {
 
 #[derive(Encode, Decode, CborLen, Serialize, Deserialize, Debug, Default, Clone, Message)]
 #[cbor(transparent)]
-pub struct SecretList {
+pub struct SecretNameList {
     #[n(0)]
     pub(crate) secrets: Vec<String>,
+}
+
+impl Encodable for SecretNameList {
+    fn encode(self) -> ockam_core::Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for SecretNameList {
+    fn decode(e: &[u8]) -> ockam_core::Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
+}
+
+#[derive(Encode, Decode, CborLen, Serialize, Deserialize, Debug, Default, Clone, Message)]
+#[cbor(transparent)]
+pub struct SecretList {
+    #[n(0)]
+    pub(crate) secrets: Vec<Secret>,
 }
 
 impl Encodable for SecretList {
@@ -145,17 +182,17 @@ impl Decodable for EcrCredential {
 #[derive(Encode, Decode, CborLen, Serialize, Deserialize, Debug, Default, Clone, Message)]
 #[rustfmt::skip]
 #[cbor(map)]
-pub struct Token {
-    #[n(1)] pub token: String,
+pub struct Ticket {
+    #[n(1)] pub ticket: String,
 }
 
-impl Encodable for Token {
+impl Encodable for Ticket {
     fn encode(self) -> ockam_core::Result<Encoded> {
         cbor_encode_preallocate(self)
     }
 }
 
-impl Decodable for Token {
+impl Decodable for Ticket {
     fn decode(e: &[u8]) -> ockam_core::Result<Self> {
         Ok(minicbor::decode(e)?)
     }

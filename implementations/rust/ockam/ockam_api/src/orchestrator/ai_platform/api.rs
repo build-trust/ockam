@@ -10,23 +10,24 @@ pub trait AiPlatformApi {
     async fn create_zone(
         &self,
         ctx: &Context,
-        cluster: &str,
+        cluster: Option<&str>,
         zone_name: &str,
     ) -> miette::Result<Zone>;
 
-    async fn list_zones(&self, ctx: &Context, cluster: &str) -> miette::Result<Vec<String>>;
+    async fn list_zones(&self, ctx: &Context, cluster: Option<&str>)
+        -> miette::Result<Vec<String>>;
 
     async fn delete_zone(
         &self,
         ctx: &Context,
-        cluster: &str,
+        cluster: Option<&str>,
         zone_name: &str,
     ) -> miette::Result<()>;
 
     async fn deploy_zone(
         &self,
         ctx: &Context,
-        cluster: &str,
+        cluster: Option<&str>,
         zone_name: &str,
         zone_config: &serde_json::Value,
     ) -> miette::Result<()>;
@@ -34,7 +35,7 @@ pub trait AiPlatformApi {
     async fn create_secret(
         &self,
         ctx: &Context,
-        cluster: &str,
+        cluster: Option<&str>,
         zone_name: &str,
         secret_name: &str,
         secret_fields: &HashMap<String, String>,
@@ -43,22 +44,22 @@ pub trait AiPlatformApi {
     async fn list_secrets(
         &self,
         ctx: &Context,
-        cluster: &str,
+        cluster: Option<&str>,
         zone_name: &str,
     ) -> miette::Result<Vec<Secret>>;
 
     async fn delete_secret(
         &self,
         ctx: &Context,
-        cluster: &str,
+        cluster: Option<&str>,
         zone_name: &str,
         secret_name: &str,
     ) -> miette::Result<()>;
 
-    async fn create_enrollment_token(
+    async fn create_enrollment_ticket(
         &self,
         ctx: &Context,
-        cluster: &str,
+        cluster: Option<&str>,
         zone_name: &str,
         attributes: BTreeMap<String, String>,
         relay: Option<String>,
@@ -69,7 +70,7 @@ pub trait AiPlatformApi {
     async fn provision_ecr(
         &self,
         ctx: &Context,
-        cluster: &str,
+        cluster: Option<&str>,
         image_names: Vec<String>,
         is_public: Option<bool>,
     ) -> miette::Result<EcrCredential>;
