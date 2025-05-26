@@ -72,7 +72,7 @@ pub enum OckamSubcommand {
     #[command(name = command::name("enroll"), hide = command::hide("enroll"))]
     Enroll(EnrollCommand),
 
-    #[command(name = command::name("cluster"), hide = true)]
+    #[command(name = command::name("cluster"), hide = command::hide("cluster"))]
     Cluster(ClusterCommand),
 
     #[command(name = command::name("node"), hide = command::hide("node"))]
