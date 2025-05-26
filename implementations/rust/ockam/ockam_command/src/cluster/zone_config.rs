@@ -51,6 +51,8 @@ pub struct Outlet {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
     pub to: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub pod_name: Option<String>,
     #[serde(flatten)]
     pub other_fields: HashMap<String, Value>,
 }
@@ -221,28 +223,49 @@ impl ZoneConfig {
 
 impl Pod {
     pub fn get_outlets(&self) -> PodOutlets {
-        // Collect all outlets
         let mut repl = None;
+        let mut http = Outlet {
+            name: Some("http".to_string()),
+            to: "127.0.0.1:8000".to_string(),
+            ..Default::default()
+        };
+        let mut logs = Outlet {
+            name: Some("logs".to_string()),
+            to: "127.0.0.1:6000".to_string(),
+            pod_name: Some("logs-pod".to_string()),
+            ..Default::default()
+        };
         let mut rest = Vec::new();
+
         for outlet in &self.portals.outlets {
-            if outlet.name.as_deref() == Some("repl") {
-                repl = Some(outlet.clone());
-            } else {
-                rest.push(outlet.clone());
+            match outlet.name.as_deref() {
+                Some("repl") => repl = Some(outlet.clone()),
+                Some("http") => http = outlet.clone(),
+                Some("logs") => logs = outlet.clone(),
+                _ => rest.push(outlet.clone()),
             }
         }
 
         // If there is only one unnamed outlet, return it as the repl
         if repl.is_none() && rest.len() == 1 && rest[0].name.is_none() {
-            repl = Some(rest.remove(0));
+            let mut outlet = rest.remove(0);
+            outlet.name = Some("repl".to_string());
+            repl = Some(outlet);
         }
 
-        PodOutlets { repl, rest }
+        PodOutlets {
+            repl,
+            http,
+            logs,
+            rest,
+        }
     }
 }
 
 pub struct PodOutlets {
     pub repl: Option<Outlet>,
+    pub http: Outlet,
+    pub logs: Outlet,
     pub rest: Vec<Outlet>,
 }
 
@@ -750,7 +773,7 @@ pods:
                     outlets: vec![Outlet {
                         name: Some("db".to_string()),
                         to: "postgres:5432".to_string(),
-                        other_fields: HashMap::new(),
+                        ..Default::default()
                     }],
                     other_fields: Default::default(),
                 },
@@ -867,17 +890,17 @@ pods:
                     Outlet {
                         name: Some("db".to_string()),
                         to: "postgres:5432".to_string(),
-                        other_fields: HashMap::new(),
+                        ..Default::default()
                     },
                     Outlet {
                         name: Some("repl".to_string()),
                         to: "console:1234".to_string(),
-                        other_fields: HashMap::new(),
+                        ..Default::default()
                     },
                     Outlet {
                         name: Some("cache".to_string()),
                         to: "redis:6379".to_string(),
-                        other_fields: HashMap::new(),
+                        ..Default::default()
                     },
                 ],
                 other_fields: HashMap::new(),
@@ -919,7 +942,7 @@ pods:
       outlets:
         - name: repl
           to: localhost:9000
-        - name: http
+        - name: custom
           to: localhost:9001
           ";
 
@@ -932,7 +955,7 @@ pods:
         );
         assert_eq!(outlets.repl.as_ref().unwrap().to, "localhost:9000");
         assert_eq!(outlets.rest.len(), 1);
-        assert_eq!(outlets.rest[0].name, Some("http".to_string()));
+        assert_eq!(outlets.rest[0].name, Some("custom".to_string()));
         assert_eq!(outlets.rest[0].to, "localhost:9001");
     }
 
@@ -951,7 +974,7 @@ pods:
                 outlets: vec![Outlet {
                     name: Some("single".to_string()),
                     to: "service:8080".to_string(),
-                    other_fields: HashMap::new(),
+                    ..Default::default()
                 }],
                 other_fields: HashMap::new(),
             },
@@ -985,7 +1008,7 @@ pods:
                 outlets: vec![Outlet {
                     name: None,
                     to: "service:8080".to_string(),
-                    other_fields: HashMap::new(),
+                    ..Default::default()
                 }],
                 other_fields: HashMap::new(),
             },
@@ -997,7 +1020,7 @@ pods:
         // When there's only one outlet, it should be used as the repl
         assert!(outlets.repl.is_some());
         let repl = outlets.repl.unwrap();
-        assert_eq!(repl.name, None);
+        assert_eq!(repl.name, Some("repl".to_string()));
         assert_eq!(repl.to, "service:8080");
 
         // The rest vector should be empty
@@ -1018,14 +1041,12 @@ pods:
                 inlets: vec![],
                 outlets: vec![
                     Outlet {
-                        name: None,
                         to: "service1:8080".to_string(),
-                        other_fields: HashMap::new(),
+                        ..Default::default()
                     },
                     Outlet {
-                        name: None,
                         to: "service2:9090".to_string(),
-                        other_fields: HashMap::new(),
+                        ..Default::default()
                     },
                 ],
                 other_fields: HashMap::new(),
@@ -1087,12 +1108,12 @@ pods:
                     Outlet {
                         name: Some("db".to_string()),
                         to: "postgres:5432".to_string(),
-                        other_fields: HashMap::new(),
+                        ..Default::default()
                     },
                     Outlet {
                         name: Some("cache".to_string()),
                         to: "redis:6379".to_string(),
-                        other_fields: HashMap::new(),
+                        ..Default::default()
                     },
                 ],
                 other_fields: HashMap::new(),
@@ -1116,5 +1137,148 @@ pods:
             .rest
             .iter()
             .any(|o| o.name == Some("cache".to_string())));
+    }
+
+    #[test]
+    fn test_pod_get_outlets_with_http_and_logs() {
+        // Setup pod with http and logs outlets explicitly defined
+        let pod = Pod {
+            name: "test-pod".to_string(),
+            containers: vec![Container {
+                name: "app".to_string(),
+                image: "app-image".to_string(),
+                other_fields: HashMap::new(),
+            }],
+            portals: Portals {
+                inlets: vec![],
+                outlets: vec![
+                    Outlet {
+                        name: Some("http".to_string()),
+                        to: "custom-host:8080".to_string(),
+                        ..Default::default()
+                    },
+                    Outlet {
+                        name: Some("logs".to_string()),
+                        to: "logger:1234".to_string(),
+                        pod_name: Some("logging-service".to_string()),
+                        other_fields: HashMap::new(),
+                    },
+                ],
+                other_fields: HashMap::new(),
+            },
+            other_fields: HashMap::new(),
+        };
+
+        let outlets = pod.get_outlets();
+
+        // Verify the http outlet was correctly assigned
+        assert_eq!(outlets.http.name, Some("http".to_string()));
+        assert_eq!(outlets.http.to, "custom-host:8080");
+        assert!(outlets.http.pod_name.is_none());
+
+        // Verify the logs outlet was correctly assigned
+        assert_eq!(outlets.logs.name, Some("logs".to_string()));
+        assert_eq!(outlets.logs.to, "logger:1234");
+        assert_eq!(outlets.logs.pod_name, Some("logging-service".to_string()));
+
+        // Verify rest contains no items
+        assert_eq!(outlets.rest.len(), 0);
+    }
+
+    #[test]
+    fn test_pod_get_outlets_default_http_and_logs() {
+        // Setup pod with no outlets
+        let pod = Pod {
+            name: "test-pod".to_string(),
+            containers: vec![Container {
+                name: "app".to_string(),
+                image: "app-image".to_string(),
+                other_fields: HashMap::new(),
+            }],
+            portals: Portals {
+                inlets: vec![],
+                outlets: vec![],
+                other_fields: HashMap::new(),
+            },
+            other_fields: HashMap::new(),
+        };
+
+        let outlets = pod.get_outlets();
+
+        // Verify http has default values
+        assert_eq!(outlets.http.name, Some("http".to_string()));
+        assert_eq!(outlets.http.to, "127.0.0.1:8000");
+        assert_eq!(outlets.http.pod_name, None);
+
+        // Verify logs has default values
+        assert_eq!(outlets.logs.name, Some("logs".to_string()));
+        assert_eq!(outlets.logs.to, "127.0.0.1:6000");
+        assert_eq!(outlets.logs.pod_name, Some("logs-pod".to_string()));
+
+        // Verify other outlets
+        assert!(outlets.repl.is_none());
+        assert_eq!(outlets.rest.len(), 0);
+    }
+
+    #[test]
+    fn test_pod_get_outlets_mixed_configuration() {
+        // Setup pod with only http outlet defined, logs should be default
+        let pod = Pod {
+            name: "test-pod".to_string(),
+            containers: vec![Container {
+                name: "app".to_string(),
+                image: "app-image".to_string(),
+                other_fields: HashMap::new(),
+            }],
+            portals: Portals {
+                inlets: vec![],
+                outlets: vec![
+                    Outlet {
+                        name: Some("http".to_string()),
+                        to: "custom-host:8080".to_string(),
+                        pod_name: None,
+                        other_fields: HashMap::new(),
+                    },
+                    Outlet {
+                        name: Some("repl".to_string()),
+                        to: "repl-service:5000".to_string(),
+                        pod_name: None,
+                        other_fields: HashMap::new(),
+                    },
+                    Outlet {
+                        name: Some("other".to_string()),
+                        to: "other-service:9999".to_string(),
+                        pod_name: None,
+                        other_fields: HashMap::new(),
+                    },
+                ],
+                other_fields: HashMap::new(),
+            },
+            other_fields: HashMap::new(),
+        };
+
+        let outlets = pod.get_outlets();
+
+        // Verify http was set from config
+        assert_eq!(outlets.http.name, Some("http".to_string()));
+        assert_eq!(outlets.http.to, "custom-host:8080");
+
+        // Verify logs has default values
+        assert_eq!(outlets.logs.name, Some("logs".to_string()));
+        assert_eq!(outlets.logs.to, "127.0.0.1:6000");
+        assert_eq!(outlets.logs.pod_name, Some("logs-pod".to_string()));
+
+        // Verify repl was set from config
+        assert!(outlets.repl.is_some());
+        assert_eq!(
+            outlets.repl.as_ref().unwrap().name,
+            Some("repl".to_string())
+        );
+        assert_eq!(outlets.repl.as_ref().unwrap().to, "repl-service:5000");
+
+        // Verify other outlet is in rest
+        assert_eq!(outlets.rest.len(), 1);
+        assert_eq!(outlets.rest[0].name, Some("other".to_string()));
+        assert_eq!(outlets.rest[0].to, "other-service:9999");
     }
 }
