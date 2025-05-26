@@ -34,7 +34,7 @@ fn binary_name() {
     println!("cargo:rustc-env=COMPILE_OCKAM_HOME={home_dir}");
     println!("cargo:rerun-if-env-changed=COMPILE_OCKAM_HOME");
 
-    let commands = env::var("COMPILE_OCKAM_COMMANDS").unwrap_or("".to_string());
+    let commands = env::var("COMPILE_OCKAM_COMMANDS").unwrap_or("cluster".to_string());
     println!("cargo:rustc-env=COMPILE_OCKAM_COMMANDS={commands}");
     println!("cargo:rerun-if-env-changed=COMPILE_OCKAM_COMMANDS");
 
