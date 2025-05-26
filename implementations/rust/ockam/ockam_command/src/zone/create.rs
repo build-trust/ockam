@@ -81,7 +81,8 @@ impl InMemoryNodeCommand<ZoneConfig> for CreateNodeCommand {
             &*api_client,
             &cluster,
         );
-        let delete_zone_future = api_client.delete_zone(ctx, &cluster, &parsed_zone_config.name);
+        let delete_zone_future =
+            api_client.delete_zone(ctx, Some(&cluster), &parsed_zone_config.name);
 
         let (zone_config, _) = tokio::join!(zone_config_future, delete_zone_future);
         // We don't check the result of the delete zone operation, it can fail if the zone doesn't exist
@@ -200,7 +201,12 @@ impl CreateCommand {
             ));
         }
         let ecr_creds = api_client
-            .provision_ecr(ctx, cluster, image_names.clone(), Some(self.use_public_ecr))
+            .provision_ecr(
+                ctx,
+                Some(cluster),
+                image_names.clone(),
+                Some(self.use_public_ecr),
+            )
             .await?;
         if let Some(spinner) = spinner {
             spinner.finish_and_clear();
@@ -507,7 +513,7 @@ impl CreateCommand {
         }
 
         api_client
-            .create_zone(ctx, cluster, &zone_config.name)
+            .create_zone(ctx, Some(cluster), &zone_config.name)
             .await?;
         {
             let mut opts = opts.clone();
@@ -523,7 +529,7 @@ impl CreateCommand {
 
         let zone_config_json = serde_json::to_value(zone_config).into_diagnostic()?;
         api_client
-            .deploy_zone(ctx, cluster, &zone_config.name, &zone_config_json)
+            .deploy_zone(ctx, Some(cluster), &zone_config.name, &zone_config_json)
             .await?;
 
         if let Some(spinner) = spinner {

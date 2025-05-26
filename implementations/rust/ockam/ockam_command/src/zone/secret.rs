@@ -62,7 +62,9 @@ impl InMemoryNodeCommand for SecretNodeCommand {
         if let Some(spinner) = &spinner {
             spinner.set_message("Listing secrets...");
         }
-        let secrets = api_client.list_secrets(ctx, &cluster, &zone_name).await?;
+        let secrets = api_client
+            .list_secrets(ctx, Some(&cluster), &zone_name)
+            .await?;
         if let Some(spinner) = &spinner {
             spinner.finish_and_clear();
         }
@@ -124,7 +126,9 @@ impl SecretCommand {
         if let Some(spinner) = &spinner {
             spinner.set_message("Listing secrets...");
         }
-        let secrets_to_remove = api_client.list_secrets(ctx, cluster, zone_name).await?;
+        let secrets_to_remove = api_client
+            .list_secrets(ctx, Some(cluster), zone_name)
+            .await?;
         if !secrets_to_remove.is_empty() {
             if let Some(spinner) = &spinner {
                 spinner.set_message("Deleting existing secrets...");
@@ -132,7 +136,7 @@ impl SecretCommand {
         }
         for secret in &secrets_to_remove {
             api_client
-                .delete_secret(ctx, cluster, zone_name, &secret.name)
+                .delete_secret(ctx, Some(cluster), zone_name, &secret.name)
                 .await?;
         }
 
@@ -147,7 +151,7 @@ impl SecretCommand {
                 ));
             }
             api_client
-                .create_secret(ctx, cluster, zone_name, &secret.name, &secret.fields)
+                .create_secret(ctx, Some(cluster), zone_name, &secret.name, &secret.fields)
                 .await?;
         }
 

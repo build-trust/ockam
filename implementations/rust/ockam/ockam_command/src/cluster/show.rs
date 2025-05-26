@@ -41,7 +41,7 @@ impl InMemoryNodeCommand for DeployNodeCommand {
         let use_http_api = self.command.http_api.use_http_api();
         let api_client = get_api_client(&node, use_http_api).await?;
         let cluster = get_cluster(ctx, &node).await?;
-        let zones = api_client.list_zones(ctx, &cluster).await?;
+        let zones = api_client.list_zones(ctx, Some(&cluster)).await?;
         let output = ShowOutput {
             cluster: cluster.clone(),
             zones: zones.clone(),
