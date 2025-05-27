@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 0.151.0 - 2025-05-23
+## 0.151.0 - 2025-05-27
 
 ### Added
 
@@ -67,6 +67,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - In `cluster create`, use `--pull` argument when building docker images
 - In `cluster create`, parallelize `docker push` step
 - Extract a cluster repl command for local development
+- Hide all commands from "help" except `cluster`
+- In `ockam`, create inlets to http and logs servers by default
+- Add `--watch` argument to `ockam` command to react to changes in the config or images
+- In `cluster init`, support downloading templates from zip urls
 - Updated dependencies
 
 ### Changed
@@ -114,6 +118,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `cluster delete` command
 - Parse zone configs with a single outlet properly
 - Improvements for the `cluster` commands output
+- Revert default name for repl outlet
 
 ### Removed
 
