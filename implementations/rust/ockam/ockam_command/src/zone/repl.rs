@@ -1,5 +1,9 @@
-use crate::cluster::ctrlc::ClusterCtrlcHandler;
+use crate::cluster::common_args::HttpApiArgs;
+use crate::entry_point::RUNTIME;
 use crate::util::parsers::hostname_parser;
+use crate::util::port_is_free_guard;
+use crate::zone::common_args::{EnrollmentTicketConfigArg, ZoneConfigArg, ZoneNameOrConfigArg};
+use crate::zone::zone_config::{Outlet, ZoneConfig};
 use crate::{docs, Command, CommandGlobalOpts, Result};
 use async_trait::async_trait;
 use clap::Args;
@@ -7,14 +11,19 @@ use colorful::Colorful;
 use indicatif::ProgressBar;
 use miette::{miette, IntoDiagnostic, WrapErr};
 use ockam::transport::SchemeHostnamePort;
-use ockam_api::fmt_separator;
-use ockam_node::Context;
+use ockam_api::address::get_free_address;
+use ockam_api::colors::color_primary;
+use ockam_api::orchestrator::ai_platform::node_service_client::AI_API_BASE_URL;
+use ockam_api::{fmt_log, fmt_ok, fmt_separator};
+use ockam_node::{Context, Executor, NodeBuilder};
 use rustyline::config::Configurer;
 use rustyline::error::ReadlineError;
 use rustyline::validate::{ValidationContext, ValidationResult, Validator};
 use rustyline::{Completer, Editor, Helper, Highlighter, Hinter};
 use std::fmt::{Display, Formatter};
+use std::net::SocketAddr;
 use std::path::PathBuf;
+use std::str::FromStr;
 use std::time::Duration;
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
 use tokio::task::JoinHandle;
@@ -25,7 +34,7 @@ const LONG_ABOUT: &str = include_str!("./static/repl/long_about.txt");
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/repl/after_long_help.txt");
 
-/// Open a repl client to a locally running Ockam AI Agent
+/// Open a repl to an Outlet of an Ockam AI Zone
 #[derive(Clone, Debug, Args, Default)]
 #[command(
 long_about = docs::about(LONG_ABOUT),
@@ -33,25 +42,175 @@ before_help = docs::before_help(PREVIEW_TAG),
 after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct ReplCommand {
-    /// Network address where your application is listening to.
-    /// Your TCP Outlet will forward raw TCP traffic to this destination.
+    #[command(flatten)]
+    pub zone: ZoneConfigArg,
+
+    #[command(flatten)]
+    pub http_api: HttpApiArgs,
+
+    /// Network address where your repl server is listening to.
     #[arg(long, id = "SOCKET_ADDRESS", display_order = 900, value_parser = hostname_parser)]
-    pub to: SchemeHostnamePort,
+    pub to: Option<SchemeHostnamePort>,
 }
 
 #[async_trait]
 impl Command for ReplCommand {
     const NAME: &'static str = "zone repl";
 
-    async fn run(self, _ctx: &Context, opts: CommandGlobalOpts) -> Result<()> {
-        opts.terminal.write_line(fmt_separator!())?;
-        let to = self.to.clone();
-        self.open_repl(&opts, to, None).await?;
+    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> Result<()> {
+        if let Some(address) = &self.to {
+            // Open the repl to the given address without creating any inlets
+            self.open_repl(ctx, &opts, address.clone()).await?;
+        } else {
+            let zone_config = self.zone.zone_config()?;
+            let (executors, repl_address) = self.cluster_inlets(ctx, &opts, &zone_config).await?;
+            // let (repl_data, rest_inlet_handles) = cmd.dummy_inlet(&opts).await?;
+            opts.terminal.write_line(fmt_separator!())?;
+            if let Some(address) = repl_address {
+                self.open_repl(ctx, &opts, address).await?;
+            } else {
+                // No repl outlet. Create a ctrlc handler and wait for it to be triggered before exiting the command
+                let (tx, rx) = tokio::sync::oneshot::channel();
+                let mut tx = Some(tx);
+                ctrlc::set_handler(move || {
+                    if let Some(tx) = tx.take() {
+                        let _ = tx.send(());
+                    }
+                })
+                .expect("Error setting exit signal handler");
+                let portals_str = if executors.len() > 1 {
+                    "all portals"
+                } else {
+                    "the portal"
+                };
+                opts.terminal
+                    .write_line(fmt_log!("Press Ctrl+C to stop {portals_str} and exit"))?;
+                let _ = rx.await;
+            }
+        }
         Ok(())
     }
 }
 
 impl ReplCommand {
+    async fn cluster_inlets(
+        &self,
+        ctx: &Context,
+        opts: &CommandGlobalOpts,
+        zone_config: &ZoneConfig,
+    ) -> miette::Result<(Vec<Executor>, Option<SchemeHostnamePort>)> {
+        let mut executors = Vec::new();
+        let main_pod = zone_config.get_main_pod()?;
+        let main_pod_outlets = main_pod.get_outlets();
+        let repl_address = match main_pod_outlets.repl {
+            None => None,
+            Some(repl_outlet) => {
+                let from = Self::get_address_for_inlet(&repl_outlet)?;
+                let to = repl_outlet.name.as_ref().unwrap_or(&main_pod.name);
+                let executor = self
+                    .cluster_inlet(
+                        ctx,
+                        opts,
+                        &zone_config.name,
+                        &main_pod.name,
+                        from.clone(),
+                        to,
+                    )
+                    .await?;
+                executors.push(executor);
+                Some(from)
+            }
+        };
+        for outlet in main_pod_outlets.rest {
+            let from = Self::get_address_for_inlet(&outlet)?;
+            let to = outlet.name.as_ref().unwrap_or(&main_pod.name);
+            let executor = self
+                .cluster_inlet(ctx, opts, &zone_config.name, &main_pod.name, from, to)
+                .await?;
+            executors.push(executor);
+        }
+        Ok((executors, repl_address))
+    }
+
+    fn get_address_for_inlet(outlet: &Outlet) -> miette::Result<SchemeHostnamePort> {
+        let outlet_port = match outlet.get_port() {
+            Some(port) => {
+                let socket_addr =
+                    SocketAddr::from_str(&format!("127.0.0.1:{port}")).into_diagnostic()?;
+                if port_is_free_guard(&socket_addr).is_ok() {
+                    port
+                } else {
+                    get_free_address()?.port()
+                }
+            }
+            None => get_free_address()?.port(),
+        };
+        SchemeHostnamePort::from_str(&format!("localhost:{outlet_port}")).into_diagnostic()
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    async fn cluster_inlet(
+        &self,
+        _ctx: &Context,
+        opts: &CommandGlobalOpts,
+        zone_name: &str,
+        pod_name: &str,
+        from: SchemeHostnamePort,
+        to: &str,
+    ) -> miette::Result<Executor> {
+        let spinner = opts.terminal.spinner();
+        if let Some(spinner) = &spinner {
+            spinner.set_message(format!(
+                "Opening a portal to the outlet {} on {} from {}...",
+                color_primary(to),
+                color_primary(pod_name),
+                color_primary(from.to_string())
+            ));
+        }
+
+        // Disable terminal output for the following commands
+        let mut no_output_opts = opts.clone();
+        no_output_opts.terminal = opts.terminal.disable();
+
+        use crate::zone::inlet::InletCommand;
+        let inlet_command = InletCommand {
+            zone: ZoneNameOrConfigArg::from_zone_name(zone_name.to_string()),
+            http_api: HttpApiArgs::from_api_endpoint(AI_API_BASE_URL.to_string()),
+            pod: pod_name.to_string(),
+            enrollment_ticket: EnrollmentTicketConfigArg {
+                enrollment_ticket: None,
+            },
+            from: from.clone(),
+            to: Some(to.to_string()),
+            background: true,
+            no_ctrlc_handler: true,
+            ..Default::default()
+        };
+        let (ctx, executor) = {
+            let rt = RUNTIME
+                .get()
+                .ok_or_else(|| miette!("Failed to get the runtime"))?
+                .clone();
+            NodeBuilder::new()
+                .with_runtime(rt)
+                .with_logging(false)
+                .build()
+        };
+        inlet_command.run(&ctx, no_output_opts).await?;
+
+        if let Some(spinner) = &spinner {
+            spinner.finish_and_clear();
+        }
+        opts.terminal.write_line(fmt_ok!(
+            "Opened a portal to the outlet {} on {} from {}",
+            color_primary(to),
+            color_primary(pod_name),
+            color_primary(from.to_string())
+        ))?;
+
+        Ok(executor)
+    }
+
     pub async fn open_repl(
         &self,
         opts: &CommandGlobalOpts,
@@ -400,6 +559,7 @@ impl Validator for MultiLineValidatorHelper {
         false
     }
 }
+
 impl Helper for MultiLineValidatorHelper {}
 
 impl RustylineHandler {
@@ -505,4 +665,152 @@ fn is_quit_sequence(input: &str) -> bool {
     }
     let last_line = i.lines().last().unwrap_or("").trim();
     seq.contains(&last_line)
+}
+
+#[allow(dead_code)]
+pub(super) mod dummy_server {
+    use super::*;
+
+    impl ReplCommand {
+        /// Start a TCP server that echoes back any input
+        pub(super) async fn dummy_inlet(
+            &self,
+            opts: &CommandGlobalOpts,
+            inlet_address: SchemeHostnamePort,
+        ) -> miette::Result<(Option<JoinHandle<Result<()>>>, Vec<JoinHandle<Result<()>>>)> {
+            use tokio::net::TcpListener;
+
+            let addr = inlet_address.hostname_port().to_string();
+            let inlet_handle = tokio::spawn(async move {
+                let listener = TcpListener::bind(&addr)
+                    .await
+                    .into_diagnostic()
+                    .wrap_err(format!("Failed to bind to {}", addr))?;
+                loop {
+                    let (socket, _) = listener
+                        .accept()
+                        .await
+                        .into_diagnostic()
+                        .wrap_err("Failed to accept connection")?;
+                    tokio::spawn(async move {
+                        if let Err(err) = Self::handle_connection(socket).await {
+                            eprintln!("Connection error: {:?}", err);
+                        }
+                    });
+                }
+            });
+
+            opts.terminal.write_line(fmt_ok!(
+                "Dummy echo inlet started on {}",
+                color_primary(inlet_address.to_string())
+            ))?;
+
+            // Ok((Some(inlet_handle), vec![]))
+            Ok((None, vec![inlet_handle]))
+        }
+
+        async fn handle_connection(socket: tokio::net::TcpStream) -> miette::Result<()> {
+            let (reader, mut writer) = socket.into_split();
+            let mut reader = BufReader::new(reader);
+
+            // Initial message
+            let welcome =
+                "Welcome to the dummy echo inlet. Type anything and it will be echoed back.\n";
+            Self::send_formatted_response(&mut writer, welcome).await?;
+
+            let mut buffer = String::new();
+
+            loop {
+                buffer.clear();
+                match reader.read_line(&mut buffer).await {
+                    Ok(0) => {
+                        return Ok(());
+                    }
+                    Ok(_n) => {}
+                    Err(e) => {
+                        return Err(miette!("Failed to read from socket: {}", e));
+                    }
+                };
+
+                if buffer.trim().is_empty() {
+                    continue;
+                }
+
+                // Echo data back
+                let message = format!("Echo: {}", buffer);
+                Self::send_formatted_response(&mut writer, &message).await?;
+            }
+        }
+
+        async fn send_formatted_response(
+            writer: &mut tokio::net::tcp::OwnedWriteHalf,
+            message: &str,
+        ) -> miette::Result<()> {
+            // First line contains just the length
+            let header = format!("{}\n", message.len());
+            writer
+                .write_all(header.as_bytes())
+                .await
+                .into_diagnostic()
+                .wrap_err("Failed to write header to socket")?;
+            writer
+                .write_all(message.as_bytes())
+                .await
+                .into_diagnostic()
+                .wrap_err("Failed to write message to socket")?;
+            writer
+                .flush()
+                .await
+                .into_diagnostic()
+                .wrap_err("Failed to flush message")?;
+            Ok(())
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::zone::zone_config::Outlet;
+    use std::net::TcpListener;
+    use tokio::time::Duration;
+
+    #[test]
+    fn test_get_address_for_outlet_with_port() -> miette::Result<()> {
+        let listener = TcpListener::bind("127.0.0.1:0").into_diagnostic()?;
+        let test_port = listener.local_addr().into_diagnostic()?.port();
+        drop(listener);
+        std::thread::sleep(Duration::from_secs(1));
+
+        // Create an outlet with a specific port
+        let outlet = Outlet {
+            name: Some("test-outlet".to_string()),
+            to: format!("localhost:{}", test_port),
+            ..Default::default()
+        };
+
+        let address = ReplCommand::get_address_for_inlet(&outlet)?;
+        assert_eq!(address.port(), test_port);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_get_address_for_outlet_with_occupied_port() -> miette::Result<()> {
+        // Bind to a port and keep it occupied
+        let listener = TcpListener::bind("127.0.0.1:0").into_diagnostic()?;
+        let occupied_port = listener.local_addr().into_diagnostic()?.port();
+
+        // Create an outlet with the occupied port
+        let outlet = Outlet {
+            name: Some("test-outlet".to_string()),
+            to: format!("localhost:{}", occupied_port),
+            ..Default::default()
+        };
+
+        let address = ReplCommand::get_address_for_inlet(&outlet)?;
+        assert_ne!(address.port(), occupied_port);
+
+        Ok(())
+    }
 }
