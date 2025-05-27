@@ -22,7 +22,7 @@ pub struct BaseCommand {
     watch: bool,
 
     #[arg(long)]
-    ignore_docker_cache: bool,
+    no_docker_cache: bool,
 
     #[arg(long, default_value = "hello", env = "INIT_REPOSITORY")]
     init_repository: String,
@@ -30,6 +30,14 @@ pub struct BaseCommand {
     /// Whether to use a public AWS ECR
     #[arg(long)]
     pub use_public_ecr: bool,
+
+    /// Skip the creation of the inlet to the http outlet.
+    #[arg(long)]
+    no_http: bool,
+
+    /// Skip the creation of the inlet to the logs outlet.
+    #[arg(long)]
+    no_logs: bool,
 }
 
 impl BaseCommand {
@@ -62,7 +70,7 @@ impl BaseCommand {
                 let _opts = opts.clone();
                 let run_cluster_handle = tokio::spawn(async move {
                     _cmd.cluster_create(&_ctx, &_opts).await?;
-                    _cmd.cluster_attach(&_opts, Some(restart_tx)).await?;
+                    _cmd.cluster_repl(&_opts, Some(restart_tx)).await?;
                     Ok::<(), miette::Error>(())
                 });
                 tokio::select! {
@@ -132,17 +140,19 @@ impl BaseCommand {
         let create_command = CreateCommand {
             use_public_ecr: self.use_public_ecr,
             http_api: HttpApiArgs::from_api_endpoint(AI_API_BASE_URL.to_string()),
-            ignore_docker_cache: self.ignore_docker_cache,
+            no_docker_cache: self.no_docker_cache,
             ..Default::default()
         };
         let zone_config = create_command.run(ctx, opts.clone()).await?;
         Ok(zone_config)
     }
 
-    async fn cluster_attach(self, ctx: &Context, opts: &CommandGlobalOpts) -> Result<()> {
+    async fn cluster_repl(self, ctx: &Context, opts: &CommandGlobalOpts) -> Result<()> {
         use crate::zone::repl::ReplCommand;
         let attach_command = ReplCommand {
             http_api: HttpApiArgs::from_api_endpoint(AI_API_BASE_URL.to_string()),
+            no_http: self.no_http,
+            no_logs: self.no_logs,
             ..Default::default()
         };
         attach_command.run_impl(opts.clone(), restart_tx).await

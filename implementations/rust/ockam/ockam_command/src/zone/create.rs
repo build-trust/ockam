@@ -46,7 +46,7 @@ pub struct CreateCommand {
     /// Whether to use the Docker cache when building the image.
     /// It can be set using the `OCKAM_IGNORE_DOCKER_CACHE` environment variable.
     #[arg(long, env = "OCKAM_IGNORE_DOCKER_CACHE")]
-    pub ignore_docker_cache: bool,
+    pub no_docker_cache: bool,
 
     #[command(flatten)]
     pub http_api: HttpApiArgs,
@@ -324,7 +324,7 @@ impl CreateCommand {
             for arg in cmd_args {
                 command.arg(arg);
             }
-            if self.ignore_docker_cache {
+            if self.no_docker_cache {
                 command.arg("--no-cache");
             }
             for (env_name, env_value) in env_vars {
