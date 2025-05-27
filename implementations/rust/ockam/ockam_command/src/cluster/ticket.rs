@@ -8,7 +8,8 @@ use ockam_api::nodes::InMemoryNode;
 use ockam_node::Context;
 
 use super::utils::{get_api_client, get_cluster};
-use crate::cluster::common_args::{HttpApiArgs, ZoneNameOrConfigArg};
+use crate::cluster::common_args::HttpApiArgs;
+use crate::zone::common_args::ZoneNameOrConfigArg;
 use crate::{docs, node_command::InMemoryNodeCommand, Command, CommandGlobalOpts, Result};
 
 const LONG_ABOUT: &str = include_str!("./static/ticket/long_about.txt");

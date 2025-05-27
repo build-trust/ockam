@@ -38,7 +38,7 @@ pub struct InitCommand {
 
 #[async_trait]
 impl Command for InitCommand {
-    const NAME: &'static str = "cluster init";
+    const NAME: &'static str = "zone init";
 
     async fn run(self, _ctx: &Context, opts: CommandGlobalOpts) -> Result<()> {
         let spinner = opts.terminal.spinner();

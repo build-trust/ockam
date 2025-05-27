@@ -41,7 +41,7 @@ pub struct ReplCommand {
 
 #[async_trait]
 impl Command for ReplCommand {
-    const NAME: &'static str = "repl";
+    const NAME: &'static str = "zone repl";
 
     async fn run(self, _ctx: &Context, opts: CommandGlobalOpts) -> Result<()> {
         opts.terminal.write_line(fmt_separator!())?;

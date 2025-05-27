@@ -1,0 +1,118 @@
+use crate::docs;
+use crate::zone::zone_config::ZoneConfig;
+use clap::Args;
+use miette::{miette, Context as _, IntoDiagnostic};
+use ockam_api::orchestrator::ai_platform::api::AiPlatformApi;
+use ockam_node::Context;
+use std::collections::BTreeMap;
+use std::path::PathBuf;
+
+#[derive(Clone, Debug, Args, Default)]
+pub struct ZoneConfigArg {
+    /// The path to the Zone configuration file, in yaml or json format.
+    /// If not set, the `./ockam.yaml` file from the current directory will be used.
+    #[arg(long, visible_alias = "config")]
+    pub zone_config: Option<String>,
+}
+
+impl ZoneConfigArg {
+    pub fn zone_config_path(&self) -> crate::Result<PathBuf> {
+        match &self.zone_config {
+            Some(path) => Ok(PathBuf::from(path)),
+            None => {
+                let paths = vec![PathBuf::from("./ockam.yaml"), PathBuf::from("./ockam.yml")];
+                for path in paths {
+                    if path.try_exists().into_diagnostic()? {
+                        return Ok(path);
+                    }
+                }
+                Err(miette!(
+                    "Zone config file not found. Please provide a zone name or a zone config file."
+                ))
+            }
+        }
+    }
+
+    pub fn zone_config(&self) -> crate::Result<ZoneConfig> {
+        let zone_config_path = self.zone_config_path()?;
+        ZoneConfig::from_file(&zone_config_path)
+            .map_err(|e| miette!("Failed to load zone config file: {}", e))
+    }
+
+    pub fn zone_name(&self) -> crate::Result<String> {
+        Ok(self.zone_config()?.name)
+    }
+}
+
+#[derive(Clone, Debug, Args, Default)]
+#[group(multiple = false)]
+pub struct ZoneNameOrConfigArg {
+    /// The name of the Zone
+    #[arg(long)]
+    pub zone_name: Option<String>,
+
+    #[command(flatten)]
+    pub zone_config: ZoneConfigArg,
+}
+
+impl From<ZoneConfigArg> for ZoneNameOrConfigArg {
+    fn from(zone_config: ZoneConfigArg) -> Self {
+        Self {
+            zone_name: None,
+            zone_config,
+        }
+    }
+}
+
+impl ZoneNameOrConfigArg {
+    pub fn from_zone_name(zone_name: String) -> Self {
+        Self {
+            zone_name: Some(zone_name),
+            zone_config: ZoneConfigArg::default(),
+        }
+    }
+
+    pub fn zone_name(&self) -> crate::Result<String> {
+        if let Some(zone_name) = &self.zone_name {
+            return Ok(zone_name.clone());
+        }
+        self.zone_config.zone_name()
+    }
+}
+
+#[derive(Clone, Debug, Args, Default)]
+pub struct SecretsConfigArg {
+    /// The path to the secrets file, in yaml or json format.
+    /// If not set, the `./secrets.yaml` file from the current directory will be used.
+    /// If no file is found, the command will just list the existing secrets.
+    #[arg(long, visible_alias = "secrets")]
+    pub secrets_config: Option<String>,
+}
+
+#[derive(Clone, Debug, Args, Default)]
+pub struct EnrollmentTicketConfigArg {
+    #[arg(long, env = "ENROLLMENT_TICKET", value_name = "ENROLLMENT TICKET")]
+    #[arg(help = docs::about("\
+    A path, URL or inlined hex-encoded enrollment ticket to use for the Ockam Identity associated to this node. \
+    If ommited one will be created automatically with default attributes
+    "))]
+    pub enrollment_ticket: Option<String>,
+}
+
+impl EnrollmentTicketConfigArg {
+    pub async fn get(
+        &self,
+        ctx: &Context,
+        api_client: &(dyn AiPlatformApi + Send + Sync + 'static),
+        cluster: &str,
+        zone_name: &str,
+        relay: Option<String>,
+    ) -> crate::Result<String> {
+        if let Some(t) = &self.enrollment_ticket {
+            return Ok(t.clone());
+        }
+        api_client
+            .create_enrollment_token(ctx, cluster, zone_name, BTreeMap::default(), relay)
+            .await.wrap_err("Failed to generate an enrollment ticket for the inlet. Please provide one with the --enrollment-ticket argument")
+    }
+}

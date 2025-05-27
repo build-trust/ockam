@@ -63,6 +63,7 @@ use crate::tcp::listener::TcpListenerCommand;
 use crate::tcp::outlet::TcpOutletCommand;
 use crate::vault::VaultCommand;
 use crate::worker::WorkerCommand;
+use crate::zone::ZoneCommand;
 use crate::Error;
 use crate::Result;
 
@@ -74,6 +75,8 @@ pub enum OckamSubcommand {
 
     #[command(name = command::name("cluster"), hide = command::hide("cluster"))]
     Cluster(ClusterCommand),
+    #[command(name = command::name("zone"), hide = command::hide("zone"))]
+    Zone(ZoneCommand),
 
     #[command(name = command::name("node"), hide = command::hide("node"))]
     Node(NodeCommand),
@@ -169,6 +172,7 @@ impl OckamSubcommand {
         match self {
             OckamSubcommand::Enroll(c) => c.run(ctx, opts).await,
             OckamSubcommand::Cluster(c) => c.run(ctx, opts).await,
+            OckamSubcommand::Zone(c) => c.run(ctx, opts).await,
 
             OckamSubcommand::Node(c) => c.run(ctx, opts).await,
             OckamSubcommand::Vault(c) => c.run(ctx, opts).await,
@@ -328,6 +332,7 @@ impl OckamSubcommand {
         match self {
             OckamSubcommand::Enroll(c) => c.name(),
             OckamSubcommand::Cluster(c) => c.name(),
+            OckamSubcommand::Zone(c) => c.name(),
             OckamSubcommand::Node(c) => c.name(),
             OckamSubcommand::Vault(c) => c.name(),
             OckamSubcommand::Identity(c) => c.name(),
