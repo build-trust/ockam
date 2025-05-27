@@ -84,4 +84,4 @@ pub mod value_parsers;
 mod vault;
 mod version;
 mod worker;
-mod zone;
+pub mod zone;

@@ -51,6 +51,14 @@ pub struct ReplCommand {
     /// Network address where your repl server is listening to.
     #[arg(long, id = "SOCKET_ADDRESS", display_order = 900, value_parser = hostname_parser)]
     pub to: Option<SchemeHostnamePort>,
+
+    /// Skip the creation of the inlet to the http outlet.
+    #[arg(long)]
+    pub no_http: bool,
+
+    /// Skip the creation of the inlet to the logs outlet.
+    #[arg(long)]
+    pub no_logs: bool,
 }
 
 #[async_trait]
@@ -102,31 +110,32 @@ impl ReplCommand {
         let mut executors = Vec::new();
         let main_pod = zone_config.get_main_pod()?;
         let main_pod_outlets = main_pod.get_outlets();
+        let create_inlet = |outlet: Outlet| async move {
+            let from = Self::get_address_for_inlet(&outlet)?;
+            let to = outlet.name.as_ref().unwrap_or(&main_pod.name);
+            let pod_name = outlet.pod_name.as_ref().unwrap_or(&main_pod.name);
+            let executor = self
+                .cluster_inlet(ctx, opts, &zone_config.name, pod_name, from.clone(), to)
+                .await?;
+            Ok::<(Executor, Option<SchemeHostnamePort>), miette::Error>((executor, Some(from)))
+        };
         let repl_address = match main_pod_outlets.repl {
             None => None,
             Some(repl_outlet) => {
-                let from = Self::get_address_for_inlet(&repl_outlet)?;
-                let to = repl_outlet.name.as_ref().unwrap_or(&main_pod.name);
-                let executor = self
-                    .cluster_inlet(
-                        ctx,
-                        opts,
-                        &zone_config.name,
-                        &main_pod.name,
-                        from.clone(),
-                        to,
-                    )
-                    .await?;
+                let (executor, repl_address) = create_inlet(repl_outlet).await?;
                 executors.push(executor);
-                Some(from)
+                repl_address
             }
         };
-        for outlet in main_pod_outlets.rest {
-            let from = Self::get_address_for_inlet(&outlet)?;
-            let to = outlet.name.as_ref().unwrap_or(&main_pod.name);
-            let executor = self
-                .cluster_inlet(ctx, opts, &zone_config.name, &main_pod.name, from, to)
-                .await?;
+        let mut rest = main_pod_outlets.rest;
+        if !self.no_http {
+            rest.push(main_pod_outlets.http);
+        }
+        if !self.no_logs {
+            rest.push(main_pod_outlets.logs);
+        }
+        for outlet in rest {
+            let (executor, _) = create_inlet(outlet).await?;
             executors.push(executor);
         }
         Ok((executors, repl_address))
