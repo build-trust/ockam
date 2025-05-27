@@ -1,11 +1,10 @@
-pub(crate) mod attach;
 pub(crate) mod common_args;
 pub(crate) mod create;
 mod delete;
 pub(crate) mod init;
 pub(crate) mod inlet;
 mod outlet;
-pub mod repl;
+pub(crate) mod repl;
 pub(crate) mod secret;
 pub mod zone_config;
 
@@ -15,7 +14,6 @@ use create::CreateCommand;
 use init::InitCommand;
 use ockam_node::Context;
 
-use crate::zone::attach::AttachCommand;
 use crate::zone::delete::DeleteCommand;
 use crate::zone::inlet::InletCommand;
 use crate::zone::outlet::OutletCommand;
@@ -64,7 +62,7 @@ pub enum ZoneSubcommand {
     Init(InitCommand),
     Secret(SecretCommand),
     Create(CreateCommand),
-    Attach(AttachCommand),
+    Attach(ReplCommand),
     Delete(DeleteCommand),
     Inlet(InletCommand),
     Outlet(OutletCommand),

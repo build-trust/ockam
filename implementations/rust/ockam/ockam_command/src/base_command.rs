@@ -140,8 +140,8 @@ impl BaseCommand {
     }
 
     async fn cluster_attach(self, ctx: &Context, opts: &CommandGlobalOpts) -> Result<()> {
-        use crate::zone::attach::AttachCommand;
-        let attach_command = AttachCommand {
+        use crate::zone::repl::ReplCommand;
+        let attach_command = ReplCommand {
             http_api: HttpApiArgs::from_api_endpoint(AI_API_BASE_URL.to_string()),
             ..Default::default()
         };
