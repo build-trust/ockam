@@ -248,8 +248,7 @@ impl Pod {
 
         // If there is only one unnamed outlet, return it as the repl
         if repl.is_none() && rest.len() == 1 && rest[0].name.is_none() {
-            let mut outlet = rest.remove(0);
-            outlet.name = Some("repl".to_string());
+            let outlet = rest.remove(0);
             repl = Some(outlet);
         }
 
@@ -1020,7 +1019,7 @@ pods:
         // When there's only one outlet, it should be used as the repl
         assert!(outlets.repl.is_some());
         let repl = outlets.repl.unwrap();
-        assert_eq!(repl.name, Some("repl".to_string()));
+        assert_eq!(repl.name, None);
         assert_eq!(repl.to, "service:8080");
 
         // The rest vector should be empty
