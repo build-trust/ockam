@@ -1,5 +1,6 @@
-use super::utils::{get_api_client, get_cluster};
-use crate::cluster::common_args::{HttpApiArgs, SecretsConfigArg, ZoneNameOrConfigArg};
+use crate::cluster::common_args::HttpApiArgs;
+use crate::cluster::utils::{get_api_client, get_cluster};
+use crate::zone::common_args::{SecretsConfigArg, ZoneNameOrConfigArg};
 use crate::{docs, node_command::InMemoryNodeCommand, Command, CommandGlobalOpts, Result};
 use async_trait::async_trait;
 use clap::Args;
@@ -90,7 +91,7 @@ impl InMemoryNodeCommand for SecretNodeCommand {
 
 #[async_trait]
 impl Command for SecretCommand {
-    const NAME: &'static str = "cluster secret";
+    const NAME: &'static str = "zone secret";
 
     async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> Result<()> {
         let command = SecretNodeCommand {

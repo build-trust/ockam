@@ -1,6 +1,7 @@
-use crate::cluster::common_args::{HttpApiArgs, ZoneNameOrConfigArg};
+use crate::cluster::common_args::HttpApiArgs;
 use crate::cluster::utils::{get_api_client, get_cluster};
 use crate::node_command::InMemoryNodeCommand;
+use crate::zone::common_args::ZoneNameOrConfigArg;
 use crate::{docs, Command, CommandGlobalOpts, Result};
 use async_trait::async_trait;
 use clap::Args;
@@ -67,7 +68,7 @@ impl InMemoryNodeCommand for DeleteNodeCommand {
 
 #[async_trait]
 impl Command for DeleteCommand {
-    const NAME: &'static str = "cluster delete";
+    const NAME: &'static str = "zone delete";
 
     async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> Result<()> {
         let command = DeleteNodeCommand {

@@ -1,11 +1,9 @@
-use crate::cluster::common_args::{
-    EnrollmentTicketConfigArg, HttpApiArgs, ZoneConfigArg, ZoneNameOrConfigArg,
-};
-use crate::cluster::ctrlc::ClusterCtrlcHandler;
-use crate::cluster::repl::ReplCommand;
-use crate::cluster::zone_config::{Outlet, ZoneConfig};
+use crate::cluster::common_args::HttpApiArgs;
 use crate::entry_point::RUNTIME;
 use crate::util::port_is_free_guard;
+use crate::zone::common_args::{EnrollmentTicketConfigArg, ZoneConfigArg, ZoneNameOrConfigArg};
+use crate::zone::repl::ReplCommand;
+use crate::zone::zone_config::{Outlet, ZoneConfig};
 use crate::{docs, Command, CommandGlobalOpts, Result};
 use async_trait::async_trait;
 use clap::Args;
@@ -21,6 +19,7 @@ use std::net::SocketAddr;
 use std::str::FromStr;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::task::JoinHandle;
+use crate::cluster::ctrlc::ClusterCtrlcHandler;
 
 const LONG_ABOUT: &str = include_str!("./static/attach/long_about.txt");
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
@@ -43,7 +42,7 @@ pub struct AttachCommand {
 
 #[async_trait]
 impl Command for AttachCommand {
-    const NAME: &'static str = "cluster attach";
+    const NAME: &'static str = "zone attach";
 
     async fn run(self, _ctx: &Context, opts: CommandGlobalOpts) -> Result<()> {
         self.run_impl(opts, None).await
@@ -156,7 +155,7 @@ impl AttachCommand {
         let mut no_output_opts = opts.clone();
         no_output_opts.terminal = opts.terminal.disable();
 
-        use crate::cluster::inlet::InletCommand;
+        use crate::zone::inlet::InletCommand;
         let inlet_command = InletCommand {
             zone: ZoneNameOrConfigArg::from_zone_name(zone_name.to_string()),
             http_api: HttpApiArgs::from_api_endpoint(AI_API_BASE_URL.to_string()),
@@ -300,7 +299,7 @@ pub(super) mod dummy_server {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cluster::zone_config::Outlet;
+    use crate::zone::zone_config::Outlet;
     use std::net::TcpListener;
     use tokio::time::Duration;
 

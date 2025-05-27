@@ -1,7 +1,6 @@
 use crate::branding::BrandingCompileEnvVars;
-use crate::cluster::common_args::{HttpApiArgs, ZoneConfigArg};
-use crate::cluster::ctrlc::ClusterCtrlcHandler;
-use crate::cluster::zone_config::ZoneConfig;
+use crate::cluster::common_args::HttpApiArgs;
+use crate::zone::zone_config::ZoneConfig;
 use crate::{Command, CommandGlobalOpts, Result};
 use clap::Args;
 use colorful::Colorful;
@@ -14,6 +13,8 @@ use ockam_node::Context;
 use std::path::PathBuf;
 use std::time::Duration;
 use tracing::warn;
+use crate::cluster::ctrlc::ClusterCtrlcHandler;
+use crate::zone::common_args::ZoneConfigArg;
 
 #[derive(Clone, Debug, Args, Default)]
 pub struct BaseCommand {
@@ -111,7 +112,7 @@ impl BaseCommand {
             return Ok(());
         }
 
-        use crate::cluster::init::InitCommand;
+        use crate::zone::init::InitCommand;
         let init_command = InitCommand {
             repository: self.init_repository.clone(),
             target_path: None,
@@ -127,7 +128,7 @@ impl BaseCommand {
         ctx: &Context,
         opts: &CommandGlobalOpts,
     ) -> miette::Result<ZoneConfig> {
-        use crate::cluster::create::CreateCommand;
+        use crate::zone::create::CreateCommand;
         let create_command = CreateCommand {
             use_public_ecr: self.use_public_ecr,
             http_api: HttpApiArgs::from_api_endpoint(AI_API_BASE_URL.to_string()),
@@ -138,12 +139,8 @@ impl BaseCommand {
         Ok(zone_config)
     }
 
-    async fn cluster_attach(
-        self,
-        opts: &CommandGlobalOpts,
-        restart_tx: Option<tokio::sync::broadcast::Sender<String>>,
-    ) -> Result<()> {
-        use crate::cluster::attach::AttachCommand;
+    async fn cluster_attach(self, ctx: &Context, opts: &CommandGlobalOpts) -> Result<()> {
+        use crate::zone::attach::AttachCommand;
         let attach_command = AttachCommand {
             http_api: HttpApiArgs::from_api_endpoint(AI_API_BASE_URL.to_string()),
             ..Default::default()
