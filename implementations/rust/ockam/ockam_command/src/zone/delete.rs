@@ -1,14 +1,19 @@
 use crate::cluster::common_args::HttpApiArgs;
 use crate::cluster::utils::{get_api_client, get_cluster};
 use crate::node_command::InMemoryNodeCommand;
+use crate::tui::{DeleteCommandTui, PluralTerm};
 use crate::zone::common_args::ZoneNameOrConfigArg;
 use crate::{docs, Command, CommandGlobalOpts, Result};
 use async_trait::async_trait;
 use clap::Args;
 use colorful::Colorful;
+use console::Term;
 use ockam_api::colors::color_primary;
 use ockam_api::fmt_ok;
 use ockam_api::nodes::InMemoryNode;
+use ockam_api::orchestrator::ai_platform::api::AiPlatformApi;
+use ockam_api::terminal::{Terminal, TerminalStream};
+use ockam_core::TryClone;
 use ockam_node::Context;
 use std::sync::Arc;
 
@@ -29,6 +34,14 @@ pub struct DeleteCommand {
 
     #[command(flatten)]
     pub http_api: HttpApiArgs,
+
+    /// Delete all zones in the cluster
+    #[arg(long)]
+    pub all: bool,
+
+    /// Confirm the deletion without prompting
+    #[arg(long, short)]
+    pub yes: bool,
 }
 
 #[derive(Clone)]
@@ -44,24 +57,14 @@ impl InMemoryNodeCommand for DeleteNodeCommand {
         let use_http_api = self.command.http_api.use_http_api();
         let api_client = get_api_client(&node, use_http_api).await?;
         let cluster = get_cluster(ctx, &node).await?;
-        let zone_name = self.command.zone.zone_name()?;
-        let spinner = self.opts.terminal.spinner();
-        if let Some(spinner) = spinner.as_ref() {
-            spinner.set_message(format!("Deleting zone {}...", color_primary(&zone_name)));
-        }
-        api_client.delete_zone(ctx, &cluster, &zone_name).await?;
-        if let Some(spinner) = spinner {
-            spinner.finish_and_clear();
-        }
-        self.opts
-            .terminal
-            .clone()
-            .to_stdout()
-            .plain(fmt_ok!(
-                "Zone {} deleted successfully",
-                color_primary(&zone_name)
-            ))
-            .write_line()?;
+        DeleteTui::run(
+            ctx,
+            self.opts.clone(),
+            self.command.clone(),
+            api_client,
+            cluster,
+        )
+        .await?;
         Ok(())
     }
 }
@@ -76,6 +79,80 @@ impl Command for DeleteCommand {
             command: self.clone(),
         };
         command.execute(ctx, opts.state.clone()).await?;
+        Ok(())
+    }
+}
+
+#[derive(TryClone)]
+struct DeleteTui {
+    ctx: Context,
+    opts: CommandGlobalOpts,
+    cmd: DeleteCommand,
+    api_client: Arc<Box<dyn AiPlatformApi + Send + Sync + 'static>>,
+    cluster: String,
+}
+
+impl DeleteTui {
+    pub async fn run(
+        ctx: &Context,
+        opts: CommandGlobalOpts,
+        cmd: DeleteCommand,
+        api_client: Box<dyn AiPlatformApi + Send + Sync + 'static>,
+        cluster: String,
+    ) -> miette::Result<()> {
+        let tui = Self {
+            ctx: ctx.try_clone()?,
+            opts,
+            cmd,
+            api_client: Arc::new(api_client),
+            cluster,
+        };
+        tui.delete().await
+    }
+}
+
+#[ockam_core::async_trait]
+impl DeleteCommandTui for DeleteTui {
+    const ITEM_NAME: PluralTerm = PluralTerm::Zone;
+
+    fn cmd_arg_item_name(&self) -> Option<String> {
+        self.cmd.zone.zone_name().ok()
+    }
+
+    fn cmd_arg_delete_all(&self) -> bool {
+        self.cmd.all
+    }
+
+    fn cmd_arg_confirm_deletion(&self) -> bool {
+        self.cmd.yes
+    }
+
+    fn terminal(&self) -> Terminal<TerminalStream<Term>> {
+        self.opts.terminal.clone()
+    }
+
+    async fn list_items_names(&self) -> miette::Result<Vec<String>> {
+        self.api_client.list_zones(&self.ctx, &self.cluster).await
+    }
+
+    async fn delete_single(&self, item_name: &str) -> miette::Result<()> {
+        let spinner = self.opts.terminal.spinner();
+        if let Some(spinner) = spinner.as_ref() {
+            spinner.set_message(format!("Deleting zone {}...", color_primary(item_name)));
+        }
+        self.api_client
+            .delete_zone(&self.ctx, &self.cluster, item_name)
+            .await?;
+        if let Some(spinner) = spinner {
+            spinner.finish_and_clear();
+        }
+        self.terminal()
+            .to_stdout()
+            .plain(fmt_ok!(
+                "Zone {} deleted successfully",
+                color_primary(item_name)
+            ))
+            .write_line()?;
         Ok(())
     }
 }
