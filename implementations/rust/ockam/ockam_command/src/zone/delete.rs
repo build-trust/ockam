@@ -132,7 +132,9 @@ impl DeleteCommandTui for DeleteTui {
     }
 
     async fn list_items_names(&self) -> miette::Result<Vec<String>> {
-        self.api_client.list_zones(&self.ctx, &self.cluster).await
+        self.api_client
+            .list_zones(&self.ctx, Some(&self.cluster))
+            .await
     }
 
     async fn delete_single(&self, item_name: &str) -> miette::Result<()> {
@@ -141,7 +143,7 @@ impl DeleteCommandTui for DeleteTui {
             spinner.set_message(format!("Deleting zone {}...", color_primary(item_name)));
         }
         self.api_client
-            .delete_zone(&self.ctx, &self.cluster, item_name)
+            .delete_zone(&self.ctx, Some(&self.cluster), item_name)
             .await?;
         if let Some(spinner) = spinner {
             spinner.finish_and_clear();
