@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 0.151.0 - 2025-05-27
+## 0.151.0 - 2025-05-28
 
 ### Added
 
@@ -71,6 +71,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - In `ockam`, create inlets to http and logs servers by default
 - Add `--watch` argument to `ockam` command to react to changes in the config or images
 - In `cluster init`, support downloading templates from zip urls
+- Add arguments to skip the logs/http portal creation
+- Add tui ux to `zone delete`
 - Updated dependencies
 
 ### Changed
@@ -93,6 +95,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Process "ockam" as a clap command, enabling passing arguments to it
 - Cleanup output of `cluster create` command
 - Rebase on top of develop, moving the repl changes into the `cluster attach` command
+- Split cluster commands into cluster/zone subcommands
+- Merge repl/attach subcommands
 
 ### Fixed
 
