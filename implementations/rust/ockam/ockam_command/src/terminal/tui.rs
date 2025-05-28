@@ -300,6 +300,7 @@ pub enum PluralTerm {
     KafkaOutlet,
     Policy,
     Member,
+    Zone,
 }
 
 impl PluralTerm {
@@ -320,6 +321,7 @@ impl PluralTerm {
             PluralTerm::KafkaOutlet => "kafka outlet",
             PluralTerm::Policy => "policy",
             PluralTerm::Member => "member",
+            PluralTerm::Zone => "zone",
         }
     }
 
@@ -340,6 +342,7 @@ impl PluralTerm {
             PluralTerm::KafkaOutlet => "kafka outlets",
             PluralTerm::Policy => "policies",
             PluralTerm::Member => "members",
+            PluralTerm::Zone => "zones",
         }
     }
 }
