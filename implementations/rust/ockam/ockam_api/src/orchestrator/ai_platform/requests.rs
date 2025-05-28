@@ -63,7 +63,7 @@ impl ListZones {
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct DeployZone {
-    #[n(1)] pub manifest: Vec<u8>,
+    #[n(1)] pub manifest: String,
 }
 
 impl Encodable for DeployZone {
@@ -81,7 +81,7 @@ impl Decodable for DeployZone {
 impl DeployZone {
     pub fn new(manifest: &serde_json::Value) -> miette::Result<Self> {
         Ok(Self {
-            manifest: serde_json::to_vec(manifest).into_diagnostic()?,
+            manifest: serde_json::to_string(manifest).into_diagnostic()?,
         })
     }
 }
@@ -92,7 +92,7 @@ impl DeployZone {
 #[cbor(map)]
 pub struct CreateSecret {
     #[n(1)] pub name: String,
-    #[n(2)] pub fields: Vec<u8>,
+    #[n(2)] pub fields: String,
 }
 
 impl Encodable for CreateSecret {
@@ -111,7 +111,7 @@ impl CreateSecret {
     pub fn new(name: &str, fields: &HashMap<String, String>) -> miette::Result<Self> {
         Ok(Self {
             name: name.to_string(),
-            fields: serde_json::to_vec(fields).into_diagnostic()?,
+            fields: serde_json::to_string(fields).into_diagnostic()?,
         })
     }
 }
@@ -179,7 +179,7 @@ impl ProvisionEcr {
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct CreateEnrollmentToken {
-    #[n(1)] pub attributes: Vec<u8>,
+    #[n(1)] pub attributes: String,
     #[n(2)] pub relay: Option<String>,
 }
 
@@ -201,7 +201,7 @@ impl CreateEnrollmentToken {
         relay: Option<String>,
     ) -> miette::Result<Self> {
         Ok(Self {
-            attributes: serde_json::to_vec(&attributes).into_diagnostic()?,
+            attributes: serde_json::to_string(&attributes).into_diagnostic()?,
             relay,
         })
     }
