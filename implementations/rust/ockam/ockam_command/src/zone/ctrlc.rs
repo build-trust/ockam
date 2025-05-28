@@ -2,9 +2,9 @@ use once_cell::sync::OnceCell;
 
 static CTRLC_HANDLER: OnceCell<tokio::sync::broadcast::Sender<()>> = OnceCell::new();
 
-pub struct ClusterCtrlcHandler;
+pub struct ZoneCtrlcHandler;
 
-impl ClusterCtrlcHandler {
+impl ZoneCtrlcHandler {
     pub fn rx() -> tokio::sync::broadcast::Receiver<()> {
         let quit_tx = CTRLC_HANDLER.get_or_init(|| {
             let (quit_tx, _quit_rx) = tokio::sync::broadcast::channel(16);

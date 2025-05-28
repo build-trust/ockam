@@ -1,7 +1,7 @@
 use crate::branding::BrandingCompileEnvVars;
 use crate::cluster::common_args::HttpApiArgs;
-use crate::cluster::ctrlc::ClusterCtrlcHandler;
 use crate::zone::common_args::ZoneConfigArg;
+use crate::zone::ctrlc::ZoneCtrlcHandler;
 use crate::zone::repl::ReplExitCondition;
 use crate::zone::zone_config::ZoneConfig;
 use crate::{Command, CommandGlobalOpts, Result};
@@ -51,7 +51,7 @@ impl BaseCommand {
     }
 
     pub async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
-        let mut quit_rx = ClusterCtrlcHandler::rx();
+        let mut quit_rx = ZoneCtrlcHandler::rx();
         let res = tokio::select! {
             _ = quit_rx.recv() => Ok(()),
             res = self.run_impl(ctx, &opts) => res,
@@ -63,12 +63,12 @@ impl BaseCommand {
     }
 
     pub async fn run_impl(&self, ctx: &Context, opts: &CommandGlobalOpts) -> miette::Result<()> {
-        let mut quit_rx = ClusterCtrlcHandler::rx();
+        let mut quit_rx = ZoneCtrlcHandler::rx();
         self.enroll(ctx, opts).await?;
-        self.cluster_init(ctx, opts).await?;
+        self.zone_init(ctx, opts).await?;
         if !self.watch {
-            self.cluster_create(ctx, opts).await?;
-            self.cluster_repl(opts, None).await?;
+            self.zone_create(ctx, opts).await?;
+            self.zone_repl(opts, None).await?;
         } else {
             let watcher_handle = DirectoryWatcher::run(
                 std::env::current_dir()
@@ -80,16 +80,16 @@ impl BaseCommand {
                 let _self = self.clone();
                 let _ctx = ctx.try_clone()?;
                 let _opts = opts.clone();
-                let run_cluster_handle = tokio::spawn(async move {
-                    _self.cluster_create(&_ctx, &_opts).await?;
-                    let res = _self.cluster_repl(&_opts, Some(restart_tx)).await?;
+                let run_zone_handle = tokio::spawn(async move {
+                    _self.zone_create(&_ctx, &_opts).await?;
+                    let res = _self.zone_repl(&_opts, Some(restart_tx)).await?;
                     Ok::<ReplExitCondition, miette::Error>(res)
                 });
                 tokio::select! {
                     _ = quit_rx.recv() => {
                         break;
                     }
-                    res = run_cluster_handle => {
+                    res = run_zone_handle => {
                         match res {
                             Ok(Ok(ReplExitCondition::Exit)) => break,
                             Ok(Ok(ReplExitCondition::Restart)) => continue,
@@ -97,7 +97,7 @@ impl BaseCommand {
                                 return Err(e);
                             }
                             Err(e) => {
-                                return Err(miette!("Failed to run cluster").wrap_err(e));
+                                return Err(miette!(e));
                             }
                         }
                     },
@@ -133,7 +133,7 @@ impl BaseCommand {
         Ok(())
     }
 
-    async fn cluster_init(&self, ctx: &Context, opts: &CommandGlobalOpts) -> miette::Result<()> {
+    async fn zone_init(&self, ctx: &Context, opts: &CommandGlobalOpts) -> miette::Result<()> {
         let current_dir = std::env::current_dir()
             .into_diagnostic()
             .wrap_err("Failed to get current directory")?;
@@ -152,7 +152,7 @@ impl BaseCommand {
         Ok(())
     }
 
-    async fn cluster_create(
+    async fn zone_create(
         &self,
         ctx: &Context,
         opts: &CommandGlobalOpts,
@@ -168,7 +168,7 @@ impl BaseCommand {
         Ok(zone_config)
     }
 
-    async fn cluster_repl(
+    async fn zone_repl(
         &self,
         opts: &CommandGlobalOpts,
         restart_tx: Option<tokio::sync::broadcast::Sender<String>>,
