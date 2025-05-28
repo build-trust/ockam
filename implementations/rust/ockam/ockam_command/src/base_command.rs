@@ -10,7 +10,6 @@ use colorful::Colorful;
 use miette::{miette, IntoDiagnostic, WrapErr};
 use notify::Watcher;
 use ockam_api::fmt_warn;
-use ockam_api::orchestrator::ai_platform::node_service_client::AI_API_BASE_URL;
 use ockam_core::TryClone;
 use ockam_node::Context;
 use std::path::PathBuf;
@@ -19,18 +18,24 @@ use tracing::warn;
 
 #[derive(Clone, Debug, Args, Default)]
 pub struct BaseCommand {
-    #[arg(long)]
-    watch: bool,
-
-    #[arg(long)]
-    no_docker_cache: bool,
-
-    #[arg(long, default_value = "hello", env = "INIT_REPOSITORY")]
-    init_repository: String,
-
     /// Whether to use a public AWS ECR
     #[arg(long)]
     pub use_public_ecr: bool,
+
+    /// Whether to use the Docker cache when building the image.
+    /// It can be set using the `OCKAM_IGNORE_DOCKER_CACHE` environment variable.
+    #[arg(long, env = "OCKAM_IGNORE_DOCKER_CACHE")]
+    pub no_docker_cache: bool,
+
+    #[command(flatten)]
+    pub http_api: HttpApiArgs,
+
+    /// The name of the template project to download.
+    /// It can be either a GitHub repository like `build-trust/ockam-cluster-template-hello`,
+    /// a full URL like `git@github.com:build-trust/ockam-cluster-template-hello`,
+    /// or an Ockam repository name that exists at `build-trust/ockam-cluster-template-<NAME>`
+    #[arg(long, default_value = "hello", env = "INIT_REPOSITORY")]
+    init_repository: String,
 
     /// Skip the creation of the inlet to the http outlet.
     #[arg(long)]
@@ -39,6 +44,10 @@ pub struct BaseCommand {
     /// Skip the creation of the inlet to the logs outlet.
     #[arg(long)]
     no_logs: bool,
+
+    /// Watch the current directory for changes and redeploy the zone when changes are detected.
+    #[arg(long)]
+    watch: bool,
 
     /// Remove the zone after the command is finished
     #[arg(long)]
@@ -160,7 +169,7 @@ impl BaseCommand {
         use crate::zone::create::CreateCommand;
         let cmd = CreateCommand {
             use_public_ecr: self.use_public_ecr,
-            http_api: HttpApiArgs::from_api_endpoint(AI_API_BASE_URL.to_string()),
+            http_api: self.http_api.clone(),
             no_docker_cache: self.no_docker_cache,
             ..Default::default()
         };
@@ -175,7 +184,7 @@ impl BaseCommand {
     ) -> Result<ReplExitCondition> {
         use crate::zone::repl::ReplCommand;
         let cmd = ReplCommand {
-            http_api: HttpApiArgs::from_api_endpoint(AI_API_BASE_URL.to_string()),
+            http_api: self.http_api,
             no_http: self.no_http,
             no_logs: self.no_logs,
             ..Default::default()
