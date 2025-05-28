@@ -1,5 +1,7 @@
 use crate::branding::BrandingCompileEnvVars;
 use crate::cluster::common_args::HttpApiArgs;
+use crate::cluster::ctrlc::ClusterCtrlcHandler;
+use crate::zone::common_args::ZoneConfigArg;
 use crate::zone::zone_config::ZoneConfig;
 use crate::{Command, CommandGlobalOpts, Result};
 use clap::Args;
@@ -13,8 +15,6 @@ use ockam_node::Context;
 use std::path::PathBuf;
 use std::time::Duration;
 use tracing::warn;
-use crate::cluster::ctrlc::ClusterCtrlcHandler;
-use crate::zone::common_args::ZoneConfigArg;
 
 #[derive(Clone, Debug, Args, Default)]
 pub struct BaseCommand {
@@ -55,7 +55,7 @@ impl BaseCommand {
         cmd.cluster_init(ctx, &opts).await?;
         if !cmd.watch {
             cmd.cluster_create(ctx, &opts).await?;
-            cmd.cluster_attach(&opts, None).await?;
+            cmd.cluster_repl(&opts, None).await?;
         } else {
             let watcher_handle = DirectoryWatcher::run(
                 std::env::current_dir()
@@ -121,11 +121,11 @@ impl BaseCommand {
         }
 
         use crate::zone::init::InitCommand;
-        let init_command = InitCommand {
+        let cmd = InitCommand {
             repository: self.init_repository.clone(),
             target_path: None,
         };
-        init_command.run(ctx, opts.clone()).await?;
+        cmd.run(ctx, opts.clone()).await?;
         opts.terminal.write_line("")?;
 
         Ok(())
@@ -137,25 +137,29 @@ impl BaseCommand {
         opts: &CommandGlobalOpts,
     ) -> miette::Result<ZoneConfig> {
         use crate::zone::create::CreateCommand;
-        let create_command = CreateCommand {
+        let cmd = CreateCommand {
             use_public_ecr: self.use_public_ecr,
             http_api: HttpApiArgs::from_api_endpoint(AI_API_BASE_URL.to_string()),
             no_docker_cache: self.no_docker_cache,
             ..Default::default()
         };
-        let zone_config = create_command.run(ctx, opts.clone()).await?;
+        let zone_config = cmd.run(ctx, opts.clone()).await?;
         Ok(zone_config)
     }
 
-    async fn cluster_repl(self, ctx: &Context, opts: &CommandGlobalOpts) -> Result<()> {
+    async fn cluster_repl(
+        self,
+        opts: &CommandGlobalOpts,
+        restart_tx: Option<tokio::sync::broadcast::Sender<String>>,
+    ) -> Result<()> {
         use crate::zone::repl::ReplCommand;
-        let attach_command = ReplCommand {
+        let cmd = ReplCommand {
             http_api: HttpApiArgs::from_api_endpoint(AI_API_BASE_URL.to_string()),
             no_http: self.no_http,
             no_logs: self.no_logs,
             ..Default::default()
         };
-        attach_command.run_impl(opts.clone(), restart_tx).await
+        cmd.run_impl(opts.clone(), restart_tx).await
     }
 }
 

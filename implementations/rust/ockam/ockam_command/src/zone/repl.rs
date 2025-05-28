@@ -1,4 +1,5 @@
 use crate::cluster::common_args::HttpApiArgs;
+use crate::cluster::ctrlc::ClusterCtrlcHandler;
 use crate::entry_point::RUNTIME;
 use crate::util::parsers::hostname_parser;
 use crate::util::port_is_free_guard;
@@ -65,17 +66,27 @@ pub struct ReplCommand {
 impl Command for ReplCommand {
     const NAME: &'static str = "zone repl";
 
-    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> Result<()> {
+    async fn run(self, _ctx: &Context, opts: CommandGlobalOpts) -> Result<()> {
+        self.run_impl(opts, None).await
+    }
+}
+
+impl ReplCommand {
+    pub async fn run_impl(
+        self,
+        opts: CommandGlobalOpts,
+        restart_tx: Option<tokio::sync::broadcast::Sender<String>>,
+    ) -> Result<()> {
         if let Some(address) = &self.to {
             // Open the repl to the given address without creating any inlets
-            self.open_repl(ctx, &opts, address.clone()).await?;
+            self.open_repl(&opts, address.clone(), restart_tx).await?;
         } else {
             let zone_config = self.zone.zone_config()?;
-            let (executors, repl_address) = self.cluster_inlets(ctx, &opts, &zone_config).await?;
+            let (executors, repl_address) = self.cluster_inlets(&opts, &zone_config).await?;
             // let (repl_data, rest_inlet_handles) = cmd.dummy_inlet(&opts).await?;
             opts.terminal.write_line(fmt_separator!())?;
             if let Some(address) = repl_address {
-                self.open_repl(ctx, &opts, address).await?;
+                self.open_repl(&opts, address, restart_tx).await?;
             } else {
                 // No repl outlet. Create a ctrlc handler and wait for it to be triggered before exiting the command
                 let (tx, rx) = tokio::sync::oneshot::channel();
@@ -98,12 +109,9 @@ impl Command for ReplCommand {
         }
         Ok(())
     }
-}
 
-impl ReplCommand {
     async fn cluster_inlets(
         &self,
-        ctx: &Context,
         opts: &CommandGlobalOpts,
         zone_config: &ZoneConfig,
     ) -> miette::Result<(Vec<Executor>, Option<SchemeHostnamePort>)> {
@@ -115,7 +123,7 @@ impl ReplCommand {
             let to = outlet.name.as_ref().unwrap_or(&main_pod.name);
             let pod_name = outlet.pod_name.as_ref().unwrap_or(&main_pod.name);
             let executor = self
-                .cluster_inlet(ctx, opts, &zone_config.name, pod_name, from.clone(), to)
+                .cluster_inlet(opts, &zone_config.name, pod_name, from.clone(), to)
                 .await?;
             Ok::<(Executor, Option<SchemeHostnamePort>), miette::Error>((executor, Some(from)))
         };
@@ -160,7 +168,6 @@ impl ReplCommand {
     #[allow(clippy::too_many_arguments)]
     async fn cluster_inlet(
         &self,
-        _ctx: &Context,
         opts: &CommandGlobalOpts,
         zone_name: &str,
         pod_name: &str,
