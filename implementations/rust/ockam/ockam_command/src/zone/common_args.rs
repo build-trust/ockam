@@ -112,7 +112,7 @@ impl EnrollmentTicketConfigArg {
             return Ok(t.clone());
         }
         api_client
-            .create_enrollment_token(ctx, cluster, zone_name, BTreeMap::default(), relay)
+            .create_enrollment_ticket(ctx, Some(cluster), zone_name, BTreeMap::default(), relay)
             .await.wrap_err("Failed to generate an enrollment ticket for the inlet. Please provide one with the --enrollment-ticket argument")
     }
 }
