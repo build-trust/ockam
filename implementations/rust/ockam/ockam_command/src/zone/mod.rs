@@ -47,11 +47,10 @@ impl ZoneCommand {
             ZoneSubcommand::Init(c) => c.run(ctx, opts).await,
             ZoneSubcommand::Secret(c) => c.run(ctx, opts).await,
             ZoneSubcommand::Create(c) => c.run(ctx, opts).await.map(|_| ()),
-            ZoneSubcommand::Attach(c) => c.run(ctx, opts).await,
             ZoneSubcommand::Delete(c) => c.run(ctx, opts).await,
             ZoneSubcommand::Inlet(c) => c.run(ctx, opts).await,
             ZoneSubcommand::Outlet(c) => c.run(ctx, opts).await,
-            ZoneSubcommand::Repl(c) => c.run(ctx, opts).await,
+            ZoneSubcommand::Repl(c) => c.run(ctx, opts).await.map(|_| ()),
         }
     }
 }
@@ -62,7 +61,6 @@ pub enum ZoneSubcommand {
     Init(InitCommand),
     Secret(SecretCommand),
     Create(CreateCommand),
-    Attach(ReplCommand),
     Delete(DeleteCommand),
     Inlet(InletCommand),
     Outlet(OutletCommand),
@@ -75,7 +73,6 @@ impl ZoneSubcommand {
             ZoneSubcommand::Init(c) => c.name(),
             ZoneSubcommand::Secret(c) => c.name(),
             ZoneSubcommand::Create(c) => c.name(),
-            ZoneSubcommand::Attach(c) => c.name(),
             ZoneSubcommand::Delete(c) => c.name(),
             ZoneSubcommand::Inlet(c) => c.name(),
             ZoneSubcommand::Outlet(c) => c.name(),
