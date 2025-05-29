@@ -68,6 +68,19 @@ pub struct Container {
 impl ZoneConfig {
     const MAIN_POD_NAME: &'static str = "main-pod";
 
+    pub fn from_contents(content: &str) -> Result<Self, miette::Error> {
+        let mut _self = if content.starts_with("{") {
+            serde_json::from_str::<Self>(content)
+                .map_err(|e| miette::miette!(format!("Failed to parse JSON zone config: {}", e)))
+        } else {
+            serde_yaml::from_str::<Self>(content)
+                .map_err(|e| miette::miette!(format!("Failed to parse YAML zone config: {}", e)))
+        }?;
+        _self.validate()?;
+        _self.fill_in_defaults()?;
+        Ok(_self)
+    }
+
     pub fn from_file(path: impl AsRef<std::path::Path>) -> Result<Self, miette::Error> {
         let content = std::fs::read_to_string(&path)
             .into_diagnostic()
@@ -75,15 +88,7 @@ impl ZoneConfig {
                 "Failed to read zone config file at {}",
                 path.as_ref().display()
             ))?;
-        let self_ = if content.starts_with("{") {
-            serde_json::from_str::<Self>(&content)
-                .map_err(|e| miette::miette!(format!("Failed to parse JSON zone config: {}", e)))
-        } else {
-            serde_yaml::from_str::<Self>(&content)
-                .map_err(|e| miette::miette!(format!("Failed to parse YAML zone config: {}", e)))
-        }?;
-        self_.validate()?;
-        Ok(self_)
+        Self::from_contents(&content)
     }
 
     fn validate(&self) -> Result<(), miette::Error> {
@@ -134,6 +139,45 @@ impl ZoneConfig {
             }
         }
 
+        Ok(())
+    }
+
+    fn fill_in_defaults(&mut self) -> Result<(), miette::Error> {
+        let mut http = None;
+        let mut logs = None;
+        let main_pod = self.get_main_pod()?.clone();
+        for outlet in &main_pod.portals.outlets {
+            match outlet.name.as_deref() {
+                Some("http") => http = Some(outlet.clone()),
+                Some("logs") => logs = Some(outlet.clone()),
+                _ => {}
+            }
+        }
+        if http.is_none() {
+            self.pods
+                .iter_mut()
+                .filter(|pod| pod.name == main_pod.name)
+                .for_each(|pod| {
+                    pod.portals.outlets.push(Outlet {
+                        name: Some("http".to_string()),
+                        to: "127.0.0.1:8000".to_string(),
+                        ..Default::default()
+                    })
+                });
+        }
+        if logs.is_none() {
+            self.pods
+                .iter_mut()
+                .filter(|pod| pod.name == main_pod.name)
+                .for_each(|pod| {
+                    pod.portals.outlets.push(Outlet {
+                        name: Some("logs".to_string()),
+                        to: "127.0.0.1:6000".to_string(),
+                        pod_name: Some("logs-pod".to_string()),
+                        ..Default::default()
+                    })
+                });
+        }
         Ok(())
     }
 
@@ -229,17 +273,8 @@ impl ZoneConfig {
 impl Pod {
     pub fn get_outlets(&self) -> PodOutlets {
         let mut repl = None;
-        let mut http = Outlet {
-            name: Some("http".to_string()),
-            to: "127.0.0.1:8000".to_string(),
-            ..Default::default()
-        };
-        let mut logs = Outlet {
-            name: Some("logs".to_string()),
-            to: "127.0.0.1:6000".to_string(),
-            pod_name: Some("logs-pod".to_string()),
-            ..Default::default()
-        };
+        let mut http = Outlet::default();
+        let mut logs = Outlet::default();
         let mut rest = Vec::new();
 
         for outlet in &self.portals.outlets {
@@ -290,10 +325,10 @@ mod tests {
         let yaml = r#"
 name: my-zone
 pods:
-- name: client-agent
+- name: main-pod
   expose-port: 3000,
   containers:
-  - name: client-agent
+  - name: client
     image: client-app
     ockam-ticket:
       attributes:
@@ -302,9 +337,9 @@ pods:
       relay: true
     imagePullPolicy: Always
     args: ["client-agent", "${ENROLLMENT_TICKET}", "${ZONE_DOMAIN}-echo-agent"]
-- name: echo-agent
+- name: echo
   containers:
-  - name: echo-agent
+  - name: echo
     image: echo-app
     ockam-ticket:
       attributes:
@@ -321,15 +356,16 @@ pods:
       - to: localhost:8080
 "#;
 
-        let config = serde_yaml::from_str::<ZoneConfig>(yaml).unwrap();
+        let config = ZoneConfig::from_contents(yaml).unwrap();
 
         // Verify strictly typed fields
         assert_eq!(config.name, "my-zone");
         assert_eq!(config.pods.len(), 2);
-        assert_eq!(config.pods[0].name, "client-agent");
+        assert_eq!(config.pods[0].name, "main-pod");
         assert_eq!(config.pods[0].containers[0].image, "client-app");
+        assert_eq!(config.pods[0].portals.outlets.len(), 2);
 
-        // Check the portal field
+        // Check the portal field in the echo pod (not main)
         let portal = &config.pods[1].portals;
         assert_eq!(portal.inlets.len(), 0);
         assert_eq!(portal.outlets.len(), 1);
@@ -638,12 +674,12 @@ pods:
     - to: redis:6379
 "#;
 
-        let config = serde_yaml::from_str::<ZoneConfig>(yaml).unwrap();
+        let config = ZoneConfig::from_contents(yaml).unwrap();
 
         // Verify portals are correctly parsed
         let pod = &config.pods[0];
         assert_eq!(pod.portals.inlets.len(), 2);
-        assert_eq!(pod.portals.outlets.len(), 2);
+        assert_eq!(pod.portals.outlets.len(), 4);
 
         // Verify inlet fields
         assert_eq!(pod.portals.inlets[0].name, Some("web".to_string()));
@@ -676,12 +712,12 @@ pods:
       to: service:3000
 "#;
 
-        let config = serde_yaml::from_str::<ZoneConfig>(yaml).unwrap();
+        let config = ZoneConfig::from_contents(yaml).unwrap();
 
         // Verify alias works for tcp-inlets/outlets
         let pod = &config.pods[0];
         assert_eq!(pod.portals.inlets.len(), 1);
-        assert_eq!(pod.portals.outlets.len(), 1);
+        assert_eq!(pod.portals.outlets.len(), 3);
 
         assert_eq!(pod.portals.inlets[0].name, Some("http".to_string()));
         assert_eq!(pod.portals.inlets[0].from, "external:80");
@@ -701,12 +737,14 @@ pods:
     image: app-image
 "#;
 
-        let config = serde_yaml::from_str::<ZoneConfig>(yaml).unwrap();
+        let config = ZoneConfig::from_contents(yaml).unwrap();
 
-        // Verify default empty portals
+        // Verify default portals
         let pod = &config.pods[0];
         assert!(pod.portals.inlets.is_empty());
-        assert!(pod.portals.outlets.is_empty());
+        assert_eq!(pod.portals.outlets.len(), 2);
+        assert_eq!(pod.portals.outlets[0].name, Some("http".to_string()));
+        assert_eq!(pod.portals.outlets[1].name, Some("logs".to_string()));
     }
 
     #[test]
@@ -730,7 +768,7 @@ pods:
       custom_field: value2
 "#;
 
-        let config = serde_yaml::from_str::<ZoneConfig>(yaml).unwrap();
+        let config = ZoneConfig::from_contents(yaml).unwrap();
 
         // Verify other_fields in inlets/outlets
         let pod = &config.pods[0];
@@ -814,7 +852,7 @@ pods:
 
     #[test]
     fn test_get_main_pod() {
-        // Test case: only one pod exists
+        // only one pod exists
         let yaml_single_pod = r#"
         name: test-zone
         pods:
@@ -824,11 +862,11 @@ pods:
             image: app-image
         "#;
 
-        let config = serde_yaml::from_str::<ZoneConfig>(yaml_single_pod).unwrap();
+        let config = ZoneConfig::from_contents(yaml_single_pod).unwrap();
         let main_pod = config.get_main_pod().unwrap();
         assert_eq!(main_pod.name, "single-pod");
 
-        // Test case: multiple pods, one named "main-pod"
+        // multiple pods, one named "main-pod"
         let yaml_with_main = r#"
         name: test-zone
         pods:
@@ -846,11 +884,11 @@ pods:
             image: app3-image
         "#;
 
-        let config = serde_yaml::from_str::<ZoneConfig>(yaml_with_main).unwrap();
+        let config = ZoneConfig::from_contents(yaml_with_main).unwrap();
         let main_pod = config.get_main_pod().unwrap();
         assert_eq!(main_pod.name, ZoneConfig::MAIN_POD_NAME);
 
-        // Test case: multiple pods, none named "main-pod"
+        // multiple pods, none named "main-pod"
         let yaml_without_main = r#"
         name: test-zone
         pods:
@@ -864,18 +902,17 @@ pods:
             image: app2-image
         "#;
 
-        let config = serde_yaml::from_str::<ZoneConfig>(yaml_without_main).unwrap();
-        assert!(config.get_main_pod().is_err());
+        let config = ZoneConfig::from_contents(yaml_without_main);
+        assert!(config.is_err());
 
-        // Test case: no pods
+        // no pods
         let yaml_no_pods = r#"
         name: test-zone
         pods: []
         "#;
 
-        let config = serde_yaml::from_str::<ZoneConfig>(yaml_no_pods).unwrap();
-        let err = config.get_main_pod().unwrap_err();
-        assert_eq!(err.to_string(), "No pods defined in zone configuration");
+        let config = ZoneConfig::from_contents(yaml_no_pods);
+        assert!(config.is_err());
     }
 
     #[test]
@@ -950,7 +987,7 @@ pods:
           to: localhost:9001
           ";
 
-        let parsed = serde_yaml::from_str::<ZoneConfig>(config).unwrap();
+        let parsed = ZoneConfig::from_contents(config).unwrap();
         let pod = &parsed.pods[0];
         let outlets = pod.get_outlets();
         assert_eq!(
@@ -1144,7 +1181,7 @@ pods:
     }
 
     #[test]
-    fn test_pod_get_outlets_with_http_and_logs() {
+    fn test_pod_get_outlets_with_explicit_http_and_logs() {
         // Setup pod with http and logs outlets explicitly defined
         let pod = Pod {
             name: "test-pod".to_string(),
@@ -1187,102 +1224,5 @@ pods:
 
         // Verify rest contains no items
         assert_eq!(outlets.rest.len(), 0);
-    }
-
-    #[test]
-    fn test_pod_get_outlets_default_http_and_logs() {
-        // Setup pod with no outlets
-        let pod = Pod {
-            name: "test-pod".to_string(),
-            containers: vec![Container {
-                name: "app".to_string(),
-                image: "app-image".to_string(),
-                other_fields: HashMap::new(),
-            }],
-            portals: Portals {
-                inlets: vec![],
-                outlets: vec![],
-                other_fields: HashMap::new(),
-            },
-            other_fields: HashMap::new(),
-        };
-
-        let outlets = pod.get_outlets();
-
-        // Verify http has default values
-        assert_eq!(outlets.http.name, Some("http".to_string()));
-        assert_eq!(outlets.http.to, "127.0.0.1:8000");
-        assert_eq!(outlets.http.pod_name, None);
-
-        // Verify logs has default values
-        assert_eq!(outlets.logs.name, Some("logs".to_string()));
-        assert_eq!(outlets.logs.to, "127.0.0.1:6000");
-        assert_eq!(outlets.logs.pod_name, Some("logs-pod".to_string()));
-
-        // Verify other outlets
-        assert!(outlets.repl.is_none());
-        assert_eq!(outlets.rest.len(), 0);
-    }
-
-    #[test]
-    fn test_pod_get_outlets_mixed_configuration() {
-        // Setup pod with only http outlet defined, logs should be default
-        let pod = Pod {
-            name: "test-pod".to_string(),
-            containers: vec![Container {
-                name: "app".to_string(),
-                image: "app-image".to_string(),
-                other_fields: HashMap::new(),
-            }],
-            portals: Portals {
-                inlets: vec![],
-                outlets: vec![
-                    Outlet {
-                        name: Some("http".to_string()),
-                        to: "custom-host:8080".to_string(),
-                        pod_name: None,
-                        other_fields: HashMap::new(),
-                    },
-                    Outlet {
-                        name: Some("repl".to_string()),
-                        to: "repl-service:5000".to_string(),
-                        pod_name: None,
-                        other_fields: HashMap::new(),
-                    },
-                    Outlet {
-                        name: Some("other".to_string()),
-                        to: "other-service:9999".to_string(),
-                        pod_name: None,
-                        other_fields: HashMap::new(),
-                    },
-                ],
-                other_fields: HashMap::new(),
-            },
-            other_fields: HashMap::new(),
-        };
-
-        let outlets = pod.get_outlets();
-
-        // Verify http was set from config
-        assert_eq!(outlets.http.name, Some("http".to_string()));
-        assert_eq!(outlets.http.to, "custom-host:8080");
-
-        // Verify logs has default values
-        assert_eq!(outlets.logs.name, Some("logs".to_string()));
-        assert_eq!(outlets.logs.to, "127.0.0.1:6000");
-        assert_eq!(outlets.logs.pod_name, Some("logs-pod".to_string()));
-
-        // Verify repl was set from config
-        assert!(outlets.repl.is_some());
-        assert_eq!(
-            outlets.repl.as_ref().unwrap().name,
-            Some("repl".to_string())
-        );
-        assert_eq!(outlets.repl.as_ref().unwrap().to, "repl-service:5000");
-
-        // Verify other outlet is in rest
-        assert_eq!(outlets.rest.len(), 1);
-        assert_eq!(outlets.rest[0].name, Some("other".to_string()));
-        assert_eq!(outlets.rest[0].to, "other-service:9999");
     }
 }
