@@ -73,7 +73,7 @@ impl InMemoryNodeCommand<ZoneConfig> for CreateNodeCommand {
             color_primary(&cluster),
         ))?;
 
-        // Delete the zone is relatively expensive operation, so we do it in parallel with the image processing
+        // Delete the zone is a relatively slow operation, so we do it in parallel with the image processing
         let zone_config_future = self.command.process_images(
             ctx,
             parsed_zone_config.clone(),
@@ -435,6 +435,9 @@ impl CreateCommand {
                 _self
                     .push_local_image(&image_data.image_name, &image_data.repository_uri_tag)
                     .await?;
+                _self
+                    .delete_local_image(&image_data.image_name, &image_data.repository_uri_tag)
+                    .await?;
                 Ok(image_data.image_name)
             });
         }
@@ -465,6 +468,23 @@ impl CreateCommand {
                 "Failed to push image {}: {}",
                 image_name,
                 String::from_utf8_lossy(&push_output.stderr)
+            )));
+        }
+        Ok(())
+    }
+
+    async fn delete_local_image(&self, image_name: &str, repository_uri_tag: &str) -> Result<()> {
+        let delete_output = tokio::process::Command::new("docker")
+            .arg("rmi")
+            .arg(repository_uri_tag)
+            .output()
+            .await
+            .into_diagnostic()?;
+        if !delete_output.status.success() {
+            return Err(miette::Error::msg(format!(
+                "Failed to delete local image {}: {}",
+                image_name,
+                String::from_utf8_lossy(&delete_output.stderr)
             )));
         }
         Ok(())
