@@ -2,6 +2,7 @@ use crate::branding::BrandingCompileEnvVars;
 use crate::cluster::common_args::HttpApiArgs;
 use crate::cluster::ctrlc::ClusterCtrlcHandler;
 use crate::zone::common_args::ZoneConfigArg;
+use crate::zone::repl::ReplExitCondition;
 use crate::zone::zone_config::ZoneConfig;
 use crate::{Command, CommandGlobalOpts, Result};
 use clap::Args;
@@ -51,14 +52,14 @@ impl BaseCommand {
 
     pub async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         let mut quit_rx = ClusterCtrlcHandler::rx();
-        tokio::select! {
-            _ = quit_rx.recv() => {},
-            _ = self.run_impl(ctx, &opts) => {},
-        }
+        let res = tokio::select! {
+            _ = quit_rx.recv() => Ok(()),
+            res = self.run_impl(ctx, &opts) => res,
+        };
         if self.rm {
             let _ = self.delete_zone(ctx, &opts).await;
         }
-        Ok(())
+        res
     }
 
     pub async fn run_impl(&self, ctx: &Context, opts: &CommandGlobalOpts) -> miette::Result<()> {
@@ -81,15 +82,24 @@ impl BaseCommand {
                 let _opts = opts.clone();
                 let run_cluster_handle = tokio::spawn(async move {
                     _self.cluster_create(&_ctx, &_opts).await?;
-                    _self.cluster_repl(&_opts, Some(restart_tx)).await?;
-                    Ok::<(), miette::Error>(())
+                    let res = _self.cluster_repl(&_opts, Some(restart_tx)).await?;
+                    Ok::<ReplExitCondition, miette::Error>(res)
                 });
                 tokio::select! {
                     _ = quit_rx.recv() => {
                         break;
                     }
-                    _ = run_cluster_handle => {
-                        break;
+                    res = run_cluster_handle => {
+                        match res {
+                            Ok(Ok(ReplExitCondition::Exit)) => break,
+                            Ok(Ok(ReplExitCondition::Restart)) => continue,
+                            Ok(Err(e)) => {
+                                return Err(e);
+                            }
+                            Err(e) => {
+                                return Err(miette!("Failed to run cluster").wrap_err(e));
+                            }
+                        }
                     },
                     result = watcher_handle.recv() => {
                         let output = result?;
@@ -162,7 +172,7 @@ impl BaseCommand {
         &self,
         opts: &CommandGlobalOpts,
         restart_tx: Option<tokio::sync::broadcast::Sender<String>>,
-    ) -> Result<()> {
+    ) -> Result<ReplExitCondition> {
         use crate::zone::repl::ReplCommand;
         let cmd = ReplCommand {
             http_api: HttpApiArgs::from_api_endpoint(AI_API_BASE_URL.to_string()),

@@ -63,10 +63,10 @@ pub struct ReplCommand {
 }
 
 #[async_trait]
-impl Command for ReplCommand {
+impl Command<ReplExitCondition> for ReplCommand {
     const NAME: &'static str = "zone repl";
 
-    async fn run(self, _ctx: &Context, opts: CommandGlobalOpts) -> Result<()> {
+    async fn run(self, _ctx: &Context, opts: CommandGlobalOpts) -> Result<ReplExitCondition> {
         self.run_impl(opts, None).await
     }
 }
@@ -76,17 +76,17 @@ impl ReplCommand {
         self,
         opts: CommandGlobalOpts,
         restart_tx: Option<tokio::sync::broadcast::Sender<String>>,
-    ) -> Result<()> {
+    ) -> Result<ReplExitCondition> {
         if let Some(address) = &self.to {
             // Open the repl to the given address without creating any inlets
-            self.open_repl(&opts, address.clone(), restart_tx).await?;
+            self.open_repl(&opts, address.clone(), restart_tx).await
         } else {
             let zone_config = self.zone.zone_config()?;
             let (executors, repl_address) = self.cluster_inlets(&opts, &zone_config).await?;
             // let (repl_data, rest_inlet_handles) = cmd.dummy_inlet(&opts).await?;
             opts.terminal.write_line(fmt_separator!())?;
             if let Some(address) = repl_address {
-                self.open_repl(&opts, address, restart_tx).await?;
+                self.open_repl(&opts, address, restart_tx).await
             } else {
                 // No repl outlet. Wait for ctrlc to exit the command
                 let mut quit_rx = ClusterCtrlcHandler::rx();
@@ -98,9 +98,9 @@ impl ReplCommand {
                 opts.terminal
                     .write_line(fmt_log!("Press Ctrl+C to stop {portals_str} and exit"))?;
                 let _ = quit_rx.recv().await;
+                Ok(ReplExitCondition::Exit)
             }
         }
-        Ok(())
     }
 
     async fn cluster_inlets(
@@ -225,7 +225,7 @@ impl ReplCommand {
         opts: &CommandGlobalOpts,
         inlet_address: SchemeHostnamePort,
         restart_tx: Option<tokio::sync::broadcast::Sender<String>>,
-    ) -> miette::Result<()> {
+    ) -> miette::Result<ReplExitCondition> {
         use tokio::net::TcpStream;
         use tokio::time::sleep;
 
@@ -377,18 +377,24 @@ impl ReplCommand {
             Ok::<(), miette::Error>(())
         });
 
-        tokio::select! {
-            _ = quit_rx.recv() => {},
-            _ = restart_handle => {},
-            _ = stdin_handle => {},
-            _ = repl_handle => {},
-        }
+        let status = tokio::select! {
+            _ = quit_rx.recv() => ReplExitCondition::Exit,
+            _ = restart_handle => ReplExitCondition::Restart,
+            res = stdin_handle => {
+                res.into_diagnostic()??;
+                ReplExitCondition::Exit
+            },
+            res = repl_handle => {
+                res.into_diagnostic()??;
+                ReplExitCondition::Exit
+            },
+        };
 
         if let Some(spinner) = initial_message_spinner.take() {
             spinner.finish_and_clear();
         }
 
-        Ok(())
+        Ok(status)
     }
     async fn wait_until_server_is_ready(
         reader: &mut BufReader<tokio::net::tcp::OwnedReadHalf>,
@@ -491,6 +497,12 @@ impl ReplCommand {
             Err(_) => ReadStatus::Timeout,
         }
     }
+}
+
+#[derive(Debug)]
+pub enum ReplExitCondition {
+    Exit,
+    Restart,
 }
 
 /// Models the possible outcomes when reading server responses
