@@ -88,15 +88,8 @@ impl ReplCommand {
             if let Some(address) = repl_address {
                 self.open_repl(&opts, address, restart_tx).await?;
             } else {
-                // No repl outlet. Create a ctrlc handler and wait for it to be triggered before exiting the command
-                let (tx, rx) = tokio::sync::oneshot::channel();
-                let mut tx = Some(tx);
-                ctrlc::set_handler(move || {
-                    if let Some(tx) = tx.take() {
-                        let _ = tx.send(());
-                    }
-                })
-                .expect("Error setting exit signal handler");
+                // No repl outlet. Wait for ctrlc to exit the command
+                let mut quit_rx = ClusterCtrlcHandler::rx();
                 let portals_str = if executors.len() > 1 {
                     "all portals"
                 } else {
@@ -104,7 +97,7 @@ impl ReplCommand {
                 };
                 opts.terminal
                     .write_line(fmt_log!("Press Ctrl+C to stop {portals_str} and exit"))?;
-                let _ = rx.await;
+                let _ = quit_rx.recv().await;
             }
         }
         Ok(())
