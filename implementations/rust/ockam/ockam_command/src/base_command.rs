@@ -243,40 +243,71 @@ impl DirectoryWatcher {
             .into_diagnostic()?;
         let mut watcher_rx = self.tx.subscribe();
 
-        let mut last_send_time = std::time::Instant::now() - Duration::from_secs(10);
-        let debounce_period = Duration::from_secs(1);
+        let debounce_period = Duration::from_secs(10);
+        let mut pending_message: Option<String> = None;
+        let mut debounce_timer: Option<tokio::time::Instant> = None;
 
-        let mut message = None;
         let images_path = self.root_dir.join("images");
-        while let Ok(event) = watcher_rx.recv().await {
-            let now = std::time::Instant::now();
-            for path in &event.paths {
-                // Check for modifications of the zone config file
-                if path.file_name().is_some_and(|name| {
-                    name.to_string_lossy().as_ref() == self.zone_config_file_name
-                }) && path.parent().is_some_and(|parent| parent == self.root_dir)
-                {
-                    if let notify::EventKind::Modify(_) = event.kind {
-                        message = Some("Detected changes in the zone config file".to_string());
-                        break;
+        loop {
+            tokio::select! {
+                event_result = watcher_rx.recv() => {
+                    match event_result {
+                        Ok(event) => {
+                            let mut should_restart = false;
+
+                            for path in &event.paths {
+                                // Check for modifications of the zone config file
+                                if path.file_name().is_some_and(|name| {
+                                    name.to_string_lossy().as_ref() == self.zone_config_file_name
+                                }) && path.parent().is_some_and(|parent| parent == self.root_dir)
+                                {
+                                    if let notify::EventKind::Modify(_) = event.kind {
+                                        pending_message = Some("Detected changes in the zone config file".to_string());
+                                        should_restart = true;
+                                        break;
+                                    }
+                                }
+                                // Check for creation or modification of files in the images directory
+                                if path.starts_with(&images_path) {
+                                    if let notify::EventKind::Create(_) | notify::EventKind::Modify(_) = event.kind
+                                    {
+                                        pending_message = Some("Detected changes in the images directory".to_string());
+                                        should_restart = true;
+                                        break;
+                                    }
+                                }
+                            }
+
+                            if should_restart {
+                                // Reset the countdown timer when new changes are detected
+                                debounce_timer = Some(tokio::time::Instant::now() + debounce_period);
+                            }
+                        },
+                        Err(e) => {
+                            warn!("Failed to receive file system event: {}", e);
+                            break;
+                        }
                     }
-                }
-                // Check for creation or modification of files in the images directory
-                if path.starts_with(&images_path) {
-                    if let notify::EventKind::Create(_) | notify::EventKind::Modify(_) = event.kind
-                    {
-                        message = Some("Detected changes in the images directory".to_string());
-                        break;
+                },
+                // Check if it's time to send the restart signal
+                _ = async {
+                    if let Some(timer) = debounce_timer {
+                        tokio::time::sleep_until(timer).await;
+                        Ok::<(), miette::Error>(())
+                    } else {
+                        // If there's no timer set, this branch will never complete
+                        std::future::pending::<()>().await;
+                        Ok(())
                     }
-                }
-            }
-            if let Some(message) = message.take() {
-                if now.duration_since(last_send_time) >= debounce_period {
-                    if let Err(e) = restart_tx.send(message) {
-                        warn!(%e, "failed to send restart signal");
-                        break;
+                } => {
+                    if let Some(message) = pending_message.take() {
+                        if let Err(e) = restart_tx.send(message) {
+                            warn!(%e, "failed to send restart signal");
+                            break;
+                        }
                     }
-                    last_send_time = now;
+                    // Reset the timer after sending
+                    debounce_timer = None;
                 }
             }
         }
