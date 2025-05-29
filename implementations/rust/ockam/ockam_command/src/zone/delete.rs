@@ -22,7 +22,7 @@ const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/delete/after_long_help.txt");
 
 /// Deletes an Ockam AI Zone
-#[derive(Clone, Debug, Args)]
+#[derive(Clone, Debug, Args, Default)]
 #[command(
 long_about = docs::about(LONG_ABOUT),
 before_help = docs::before_help(PREVIEW_TAG),

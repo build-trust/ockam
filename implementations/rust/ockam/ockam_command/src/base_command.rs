@@ -38,6 +38,10 @@ pub struct BaseCommand {
     /// Skip the creation of the inlet to the logs outlet.
     #[arg(long)]
     no_logs: bool,
+
+    /// Remove the zone after the command is finished
+    #[arg(long)]
+    pub rm: bool,
 }
 
 impl BaseCommand {
@@ -45,17 +49,25 @@ impl BaseCommand {
         BrandingCompileEnvVars::bin_name().to_string()
     }
 
-    async fn parse_args(self, _opts: &CommandGlobalOpts) -> Result<Self> {
-        Ok(self)
+    pub async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
+        let mut quit_rx = ClusterCtrlcHandler::rx();
+        tokio::select! {
+            _ = quit_rx.recv() => {},
+            _ = self.run_impl(ctx, &opts) => {},
+        }
+        if self.rm {
+            let _ = self.delete_zone(ctx, &opts).await;
+        }
+        Ok(())
     }
 
-    pub async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
-        self.enroll(ctx, &opts).await?;
-        let cmd = self.parse_args(&opts).await?;
-        cmd.cluster_init(ctx, &opts).await?;
-        if !cmd.watch {
-            cmd.cluster_create(ctx, &opts).await?;
-            cmd.cluster_repl(&opts, None).await?;
+    pub async fn run_impl(&self, ctx: &Context, opts: &CommandGlobalOpts) -> miette::Result<()> {
+        let mut quit_rx = ClusterCtrlcHandler::rx();
+        self.enroll(ctx, opts).await?;
+        self.cluster_init(ctx, opts).await?;
+        if !self.watch {
+            self.cluster_create(ctx, opts).await?;
+            self.cluster_repl(opts, None).await?;
         } else {
             let watcher_handle = DirectoryWatcher::run(
                 std::env::current_dir()
@@ -63,14 +75,13 @@ impl BaseCommand {
                     .wrap_err("Failed to get current directory")?,
             )?;
             loop {
-                let mut quit_rx = ClusterCtrlcHandler::rx();
                 let restart_tx = watcher_handle.tx.clone();
-                let _cmd = cmd.clone();
+                let _self = self.clone();
                 let _ctx = ctx.try_clone()?;
                 let _opts = opts.clone();
                 let run_cluster_handle = tokio::spawn(async move {
-                    _cmd.cluster_create(&_ctx, &_opts).await?;
-                    _cmd.cluster_repl(&_opts, Some(restart_tx)).await?;
+                    _self.cluster_create(&_ctx, &_opts).await?;
+                    _self.cluster_repl(&_opts, Some(restart_tx)).await?;
                     Ok::<(), miette::Error>(())
                 });
                 tokio::select! {
@@ -148,7 +159,7 @@ impl BaseCommand {
     }
 
     async fn cluster_repl(
-        self,
+        &self,
         opts: &CommandGlobalOpts,
         restart_tx: Option<tokio::sync::broadcast::Sender<String>>,
     ) -> Result<()> {
@@ -160,6 +171,16 @@ impl BaseCommand {
             ..Default::default()
         };
         cmd.run_impl(opts.clone(), restart_tx).await
+    }
+
+    async fn delete_zone(&self, ctx: &Context, opts: &CommandGlobalOpts) -> miette::Result<()> {
+        use crate::zone::delete::DeleteCommand;
+        let cmd = DeleteCommand {
+            yes: true,
+            ..Default::default()
+        };
+        cmd.run(ctx, opts.clone()).await?;
+        Ok(())
     }
 }
 

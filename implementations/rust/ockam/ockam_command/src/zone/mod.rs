@@ -1,6 +1,6 @@
 pub(crate) mod common_args;
 pub(crate) mod create;
-mod delete;
+pub(crate) mod delete;
 pub(crate) mod init;
 pub(crate) mod inlet;
 mod outlet;
