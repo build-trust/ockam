@@ -1,6 +1,6 @@
 
 <a href="https://discord.gg/RAbjRr3kds"><img alt="Discord" src="https://img.shields.io/discord/1074960884490833952?label=Discord&logo=discord&style=flat&logoColor=white"></a>
-<a href="https://x.com/ockam"><img alt="Twitter" src="https://img.shields.io/twitter/follow/ockam"></a>
+<a href="https://x.com/Ockam"><img alt="Twitter" src="https://img.shields.io/twitter/follow/ockam"></a>
 
 # Trust for Data-in-Motion
 
