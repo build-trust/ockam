@@ -125,7 +125,7 @@ impl AiPlatformApi for ControllerClient {
         zone_name: &str,
     ) -> miette::Result<Vec<Secret>> {
         trace!(%zone_name, "listing secrets");
-        let req = Request::post(format!("/v0/zone/{zone_name}"));
+        let req = Request::get(format!("/v0/zone/{zone_name}"));
         let secrets: SecretList = self
             .get_secure_client()
             .ask(ctx, "secrets", req)

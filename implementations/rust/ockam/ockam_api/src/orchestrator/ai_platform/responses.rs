@@ -101,8 +101,9 @@ impl Decodable for ZoneList {
 }
 
 #[derive(Encode, Decode, CborLen, Serialize, Deserialize, Debug, Default, Clone, Message)]
+#[cbor(map)]
 pub struct Secret {
-    #[n(0)]
+    #[n(1)]
     #[serde(alias = "secret")]
     pub name: String,
 }
