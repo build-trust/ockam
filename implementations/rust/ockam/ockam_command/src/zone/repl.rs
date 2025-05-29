@@ -14,7 +14,6 @@ use miette::{miette, IntoDiagnostic, WrapErr};
 use ockam::transport::SchemeHostnamePort;
 use ockam_api::address::get_free_address;
 use ockam_api::colors::color_primary;
-use ockam_api::orchestrator::ai_platform::node_service_client::AI_API_BASE_URL;
 use ockam_api::{fmt_log, fmt_ok, fmt_separator};
 use ockam_node::{Context, Executor, NodeBuilder};
 use rustyline::config::Configurer;
@@ -184,7 +183,7 @@ impl ReplCommand {
         use crate::zone::inlet::InletCommand;
         let inlet_command = InletCommand {
             zone: ZoneNameOrConfigArg::from_zone_name(zone_name.to_string()),
-            http_api: HttpApiArgs::from_api_endpoint(AI_API_BASE_URL.to_string()),
+            http_api: self.http_api.clone(),
             pod: pod_name.to_string(),
             enrollment_ticket: EnrollmentTicketConfigArg {
                 enrollment_ticket: None,
