@@ -184,6 +184,7 @@ impl Decodable for EcrCredential {
 #[rustfmt::skip]
 #[cbor(map)]
 pub struct Ticket {
+    #[serde(alias="token")]
     #[n(1)] pub ticket: String,
 }
 
