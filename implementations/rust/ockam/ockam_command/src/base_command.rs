@@ -70,13 +70,7 @@ impl BaseCommand {
     }
 
     pub async fn run_impl(&self, ctx: &Context, opts: &CommandGlobalOpts) -> miette::Result<()> {
-        let mut quit_rx = ZoneCtrlcHandler::rx();
-        self.enroll(ctx, opts).await?;
-        self.zone_init(ctx, opts).await?;
-        if !self.watch {
-            self.zone_create(ctx, opts).await?;
-            self.zone_repl(opts, None).await?;
-        } else {
+        if self.watch {
             let watcher_handle = DirectoryWatcher::run(
                 std::env::current_dir()
                     .into_diagnostic()
@@ -88,14 +82,13 @@ impl BaseCommand {
                 let _ctx = ctx.try_clone()?;
                 let _opts = opts.clone();
                 let run_zone_handle = tokio::spawn(async move {
+                    _self.enroll(&_ctx, &_opts).await?;
+                    _self.zone_init(&_ctx, &_opts).await?;
                     _self.zone_create(&_ctx, &_opts).await?;
                     let res = _self.zone_repl(&_opts, Some(restart_tx)).await?;
                     Ok::<ReplExitCondition, miette::Error>(res)
                 });
                 tokio::select! {
-                    _ = quit_rx.recv() => {
-                        break;
-                    }
                     res = run_zone_handle => {
                         match res {
                             Ok(Ok(ReplExitCondition::Exit)) => break,
@@ -116,6 +109,11 @@ impl BaseCommand {
                     }
                 }
             }
+        } else {
+            self.enroll(ctx, opts).await?;
+            self.zone_init(ctx, opts).await?;
+            self.zone_create(ctx, opts).await?;
+            self.zone_repl(opts, None).await?;
         }
         Ok(())
     }
