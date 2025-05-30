@@ -57,6 +57,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Single token for all ecr repos
 - In `cluster create`, parallelize `docker build` calls
 - Add `OCKAM_DATABASE_MAX_POOL_SIZE`
+- Add alias for ticket response struct field
 - Updated dependencies
 
 ### Changed
