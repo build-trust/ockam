@@ -35,6 +35,11 @@ impl TerminalWriter for TerminalStream<Term> {
         !self.no_color
     }
 
+    fn clear_screen(&self) -> Result<()> {
+        self.writer.clear_screen()?;
+        Ok(())
+    }
+
     fn write(&mut self, s: impl AsRef<str>) -> Result<()> {
         let s = self.prepare_msg(s)?;
         self.writer.write_all(s.as_bytes())?;
