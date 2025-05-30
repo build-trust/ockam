@@ -117,6 +117,7 @@ pub trait TerminalWriter: Clone {
     fn is_tty(&self) -> bool;
     fn color(&self) -> bool;
 
+    fn clear_screen(&self) -> Result<()>;
     fn write(&mut self, s: impl AsRef<str>) -> Result<()>;
     fn rewrite(&mut self, s: impl AsRef<str>) -> Result<()>;
     fn write_line(&self, s: impl AsRef<str>) -> Result<()>;
@@ -269,6 +270,13 @@ impl<W: TerminalWriter + Debug> Terminal<W, ToStdErr> {
             return false;
         }
         self.logging_options.with_user_format || (!self.logging_to_console() && !self.is_quiet())
+    }
+
+    pub fn clear_screen(&self) -> Result<()> {
+        if self.can_write_to_stderr() {
+            self.stderr.clear_screen()?;
+        }
+        Ok(())
     }
 
     pub fn write(&self, msg: impl AsRef<str>) -> Result<()> {
@@ -930,6 +938,10 @@ mod test_disabled_behavior {
 
         fn color(&self) -> bool {
             false
+        }
+
+        fn clear_screen(&self) -> Result<()> {
+            Ok(())
         }
 
         fn write(&mut self, s: impl AsRef<str>) -> Result<()> {

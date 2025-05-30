@@ -110,6 +110,7 @@ impl BaseCommand {
                     },
                     result = watcher_handle.recv() => {
                         let output = result?;
+                        opts.terminal.clear_screen()?;
                         opts.terminal.write_line("\n".to_string() + &fmt_warn!("{output}\n"))?;
                         continue;
                     }
