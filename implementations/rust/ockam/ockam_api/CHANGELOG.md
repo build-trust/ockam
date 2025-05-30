@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 0.94.0 - 2025-05-23
+## 0.94.0 - 2025-05-30
 
 ### Added
 
@@ -69,6 +69,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - `cluster delete` command
+- Cluster endpoints requests/responses for orchestrator implementation
+- In zone controller requests, send json data as string instead of vec
+- List_secrets response parsing
 
 ## 0.93.0 - 2025-03-20
 

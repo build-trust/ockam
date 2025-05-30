@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 0.151.0 - 2025-05-29
+## 0.151.0 - 2025-05-30
 
 ### Added
 
@@ -76,6 +76,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Remove local image after it's been pushed
 - Add `--rm` arg to `ockam` to delete the zone before exiting
 - (--watch) add 10 second delay before restarting
+- Add `http_api` arguments to base command
+- Validate secrets key values as base64 encodable
 - Updated dependencies
 
 ### Changed
@@ -129,6 +131,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Use shared ctrlc handler in no repl branch
 - `--watch` restart signaling
 - Pass zone config with the default outlets defined
+- Cluster endpoints requests/responses for orchestrator implementation
+- List_secrets response parsing
 
 ### Removed
 
