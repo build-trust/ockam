@@ -184,7 +184,7 @@ impl BaseCommand {
     ) -> Result<ReplExitCondition> {
         use crate::zone::repl::ReplCommand;
         let cmd = ReplCommand {
-            http_api: self.http_api,
+            http_api: self.http_api.clone(),
             no_http: self.no_http,
             no_logs: self.no_logs,
             ..Default::default()

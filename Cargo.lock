@@ -4913,6 +4913,7 @@ dependencies = [
  "arboard",
  "assert_cmd",
  "async-trait",
+ "base64ct",
  "cfg_aliases 0.2.1",
  "clap",
  "clap_complete",
