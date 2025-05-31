@@ -172,7 +172,7 @@ impl ZoneConfig {
                 .for_each(|pod| {
                     pod.portals.outlets.push(Outlet {
                         name: Some("logs".to_string()),
-                        to: "127.0.0.1:6000".to_string(),
+                        to: "127.0.0.1:3000".to_string(),
                         pod_name: Some("logs-pod".to_string()),
                         ..Default::default()
                     })
