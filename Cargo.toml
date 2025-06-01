@@ -1,11 +1,11 @@
 [workspace]
 resolver = "2"
 members = [
-  "examples/rust/rendezvous",
-  "examples/rust/file_transfer",
-  "examples/rust/get_started",
-  "examples/rust/tcp_inlet_and_outlet",
-  "examples/rust/mitm_node",
+  "implementations/rust/examples/rendezvous",
+  "implementations/rust/examples/file_transfer",
+  "implementations/rust/examples/get_started",
+  "implementations/rust/examples/tcp_inlet_and_outlet",
+  "implementations/rust/examples/mitm_node",
   "implementations/rust/ockam/*",
   "tools/docs/example_blocks",
   "tools/docs/example_test_helper",

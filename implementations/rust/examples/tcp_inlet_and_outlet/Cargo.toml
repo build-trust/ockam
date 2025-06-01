@@ -1,0 +1,14 @@
+[package]
+name = "tcp_inlet_and_outlet"
+version = "0.1.0"
+authors = ["Ockam Developers"]
+edition = "2021"
+license = "Apache-2.0"
+publish = false
+rust-version = "1.70.0"
+
+[dependencies]
+ockam = { path = "../../ockam/ockam" }
+
+[dev-dependencies]
+example_test_helper = { path = "../../../../tools/docs/example_test_helper" }

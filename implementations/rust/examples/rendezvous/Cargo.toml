@@ -1,0 +1,21 @@
+[package]
+name = "rendezvous"
+version = "0.1.0"
+authors = ["Ockam Developers"]
+edition = "2021"
+license = "Apache-2.0"
+publish = false
+rust-version = "1.70.0"
+
+[dependencies]
+ockam = { path = "../../ockam/ockam" }
+ockam_core = { path = "../../ockam/ockam_core" }
+ockam_macros = { path = "../../ockam/ockam_macros" }
+ockam_node = { path = "../../ockam/ockam_node" }
+ockam_transport_udp = { path = "../../ockam/ockam_transport_udp" }
+
+[[bin]]
+name = "client"
+
+[[bin]]
+name = "echo_server"
