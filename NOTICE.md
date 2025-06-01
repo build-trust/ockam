@@ -101,7 +101,6 @@ This file contains attributions for any 3rd-party open source code used in this 
 | bzip2 | MIT, Apache-2.0 | https://crates.io/crates/bzip2 |
 | caps | MIT, Apache-2.0 | https://crates.io/crates/caps |
 | cast | MIT, Apache-2.0 | https://crates.io/crates/cast |
-| cbindgen | MPL-2.0 | https://crates.io/crates/cbindgen |
 | cc | MIT, Apache-2.0 | https://crates.io/crates/cc |
 | cesu8 | Apache-2.0, MIT | https://crates.io/crates/cesu8 |
 | cexpr | Apache-2.0, MIT | https://crates.io/crates/cexpr |
