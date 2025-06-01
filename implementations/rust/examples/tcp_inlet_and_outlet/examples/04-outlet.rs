@@ -1,0 +1,61 @@
+use ockam::identity::SecureChannelListenerOptions;
+use ockam::remote::RemoteRelayOptions;
+use ockam::tcp::{TcpConnectionOptions, TcpOutletOptions, TcpTransportExtension};
+use ockam::{node, Context, Result};
+
+#[ockam::node]
+async fn main(ctx: Context) -> Result<()> {
+    // Initialize the TCP Transport.
+    let node = node(ctx).await?;
+    let tcp = node.create_tcp_transport()?;
+
+    let e = node.create_identity().await?;
+
+    let tcp_options = TcpConnectionOptions::new();
+    let tcp_flow_control_id = tcp_options.flow_control_id();
+
+    let secure_channel_listener_options = SecureChannelListenerOptions::new().as_consumer(&tcp_flow_control_id);
+    let secure_channel_flow_control_id = secure_channel_listener_options.spawner_flow_control_id();
+    node.create_secure_channel_listener(&e, "secure_channel_listener", secure_channel_listener_options)?;
+
+    // Expect first command line argument to be the TCP address of a target TCP server.
+    // For example: 127.0.0.1:4002
+    //
+    // Create a TCP Transport Outlet - at Ockam Worker address "outlet" -
+    // that will connect, as a TCP client, to the target TCP server.
+    //
+    // This Outlet will:
+    // 1. Unwrap the payload of any Ockam Routing Message that it receives from an Inlet
+    //    and send it as raw TCP data to the target TCP server. First such message from
+    //    an Inlet is used to remember the route back the Inlet.
+    //
+    // 2. Wrap any raw TCP data it receives, from the target TCP server,
+    //    as payload of a new Ockam Routing Message. This Ockam Routing Message will have
+    //    its onward_route be set to the route to an Inlet that is knows about because of
+    //    a previous message from the Inlet.
+
+    let outlet_target = std::env::args().nth(1).expect("no outlet target given");
+    tcp.create_outlet(
+        "outlet",
+        outlet_target.try_into()?,
+        TcpOutletOptions::new().as_consumer(&secure_channel_flow_control_id),
+    )?;
+
+    // To allow Inlet Node and others to initiate an end-to-end secure channel with this program
+    // we connect with 1.node.ockam.network:4000 as a TCP client and ask the forwarding
+    // service on that node to create a relay for us.
+    //
+    // All messages that arrive at that forwarding address will be sent to this program
+    // using the TCP connection we created as a client.
+    let node_in_orchestrator = tcp.connect("1.node.ockam.network:4000", tcp_options).await?;
+    let relay = node
+        .create_relay(node_in_orchestrator, RemoteRelayOptions::new())
+        .await?;
+    println!("\n[✓] RemoteRelay was created on the node at: 1.node.ockam.network:4000");
+    println!("Forwarding address in Hub is:");
+    println!("{}", relay.remote_address());
+
+    // We won't call ctx.shutdown_node() here,
+    // so this program will keep running until you interrupt it with Ctrl-C.
+    Ok(())
+}
