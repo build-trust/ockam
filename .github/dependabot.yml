@@ -1,7 +1,5 @@
-
 version: 2
 updates:
-
   # Maintain dependencies of docker images
   - package-ecosystem: "docker"
     directory: "/"
@@ -29,17 +27,6 @@ updates:
     labels:
       - "Type: Dependencies"
       - "Implementation: Rust"
-
-  # Maintain dependencies of typescript packages
-  - package-ecosystem: "npm"
-    directory: "/implementations/typescript"
-    commit-message:
-      prefix: "build:"
-    schedule:
-      interval: "daily"
-    labels:
-      - "Type: Dependencies"
-      - "Implementation: Typescript"
 
   # Maintain dependencies of elixir applications
   - package-ecosystem: "mix"
