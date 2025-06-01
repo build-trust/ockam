@@ -3,20 +3,8 @@
 
 ## Install Ockam Command
 
-If you use Homebrew, you can install Ockam Command using brew.
-
 ```bash
-# Tap and install Ockam Command
-brew install build-trust/ockam/ockam
-```
-
-This will download a precompiled binary and add it to your path.
-
-If you don’t use Homebrew, you can also install Ockam Command
-on Linux and MacOS systems using curl.
-
-```bash
-curl --proto '=https' --tlsv1.2 -sSfL https://install.command.ockam.io | bash
+curl -sSfL install.command.ockam.io | bash && source "$HOME/.ockam/env"
 ```
 
 ## License
