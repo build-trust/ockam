@@ -226,7 +226,6 @@ defmodule Ockam.Kafka.Interceptor do
             <<old_header::binary-size(old_header_binary_size), _request_data::binary>> = request
 
             case reconstruct_request(old_header, updated_request_content) do
-              {:ok, new_request} -> {:ok, new_request, state}
               {:error, reason} -> {:error, reason, state}
             end
 

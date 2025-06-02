@@ -39,9 +39,6 @@ defmodule Ockam.Kafka.Interceptor.MetadataHandler do
     case create_broker_inlets(response, base_port) do
       {:ok, new_response} ->
         {:ok, new_response, state}
-
-      {:error, reason} ->
-        {:error, reason}
     end
   end
 

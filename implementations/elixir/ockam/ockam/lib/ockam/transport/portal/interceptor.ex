@@ -145,9 +145,6 @@ defmodule Ockam.Transport.Portal.Interceptor do
         forward_payloads(direction, message, payloads, state)
         send_disconnect(state)
         {:stop, reason, state}
-
-      {:error, reason} ->
-        {:error, reason}
     end
   end
 

@@ -153,7 +153,7 @@ defmodule Ockam.Examples.Stream.BiDirectional.SecureChannel do
   defp create_secure_channel_listener() do
     {:ok, identity} = Ockam.Identity.create()
     {:ok, keypair} = SecureChannel.Crypto.generate_dh_keypair()
-    {:ok, attestation} = Ockam.Identity.attest_purpose_key(identity, keypair.secret)
+    {:ok, attestation} = Ockam.Identity.attest_purpose_key(identity, keypair.private)
 
     SecureChannel.create_listener(
       address: "SC_listener",
@@ -165,7 +165,7 @@ defmodule Ockam.Examples.Stream.BiDirectional.SecureChannel do
   defp create_secure_channel(route_to_listener) do
     {:ok, identity} = Ockam.Identity.create()
     {:ok, keypair} = SecureChannel.Crypto.generate_dh_keypair()
-    {:ok, attestation} = Ockam.Identity.attest_purpose_key(identity, keypair.secret)
+    {:ok, attestation} = Ockam.Identity.attest_purpose_key(identity, keypair.private)
 
     {:ok, c} =
       SecureChannel.create_channel(
