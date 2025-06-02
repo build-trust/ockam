@@ -24,4 +24,4 @@ notice_file_update:
 
 .PHONY: \
 	build build_release test lint clean very_clean \
-	elixir_% rust_% nix_rust_%  nix_elixir_% \
+	elixir_% rust_% nix_rust_% nix_elixir_%
