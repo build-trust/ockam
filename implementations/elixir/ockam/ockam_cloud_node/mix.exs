@@ -50,12 +50,6 @@ defmodule Ockam.CloudNode.MixProject do
       {:ex_doc, "~> 0.25", only: :dev, runtime: false},
       {:ockam_services, path: "../ockam_services"},
       {:ockam_kafka, path: "../ockam_kafka"},
-      {:telemetry, "~> 1.0", override: true},
-      {:telemetry_poller, "~> 1.0"},
-      {:telemetry_metrics, "~> 0.6.1"},
-      {:telemetry_metrics_prometheus, "~> 1.1.0"},
-      # Needed to avoid conflict on ranch version used by cowboy (telemetry_metrics_prometheus dep)
-      {:ranch, "~> 2.1.0", override: true},
       {:sched_ex, "~> 1.0"}
     ]
   end

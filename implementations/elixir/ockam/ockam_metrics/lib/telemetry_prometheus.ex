@@ -26,12 +26,11 @@ defmodule Ockam.Metrics.Prometheus do
     %{
       id: TelemetryMetricsPrometheus,
       start: {
-        TelemetryMetricsPrometheus,
+        TelemetryMetricsPrometheus.Core,
         :start_link,
         [
           [
-            metrics: prepare_tags(metrics, shared_tags),
-            port: String.to_integer(Application.fetch_env!(:ockam_metrics, :prometheus_port))
+            metrics: prepare_tags(metrics, shared_tags)
           ]
         ]
       }
