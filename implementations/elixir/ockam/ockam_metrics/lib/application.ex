@@ -13,7 +13,7 @@ defmodule Ockam.Metrics.Application do
   def start(_type, _args) do
     children =
       if Application.get_env(:ockam_metrics, :prometheus_port, nil) do
-        [Ockam.Metrics.Prometheus]
+        [Ockam.Metrics.Prometheus, Ockam.Metrics.Exporter.child_spec([])]
       else
         []
       end ++
