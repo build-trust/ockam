@@ -76,6 +76,8 @@ jobs:
           semgrep --verbose --config="r2c" --config="tools/semgrep/rules/example.yaml"
 
   # Check notice file for update
+  # To update NOTICE file, run the following command:
+  # cargo deny --all-features list --config=tools/cargo-deny/deny.toml --layout=crate --format json | ./tools/scripts/release/parseCrates.sh
   notice_update:
     name: All - notice_update
     runs-on: ubuntu-22.04
