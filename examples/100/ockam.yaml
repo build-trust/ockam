@@ -1,0 +1,20 @@
+name: example100
+pods:
+  - name: main-pod
+    size: big
+    expose-port: 9001
+    containers:
+      - name: main
+        image: main
+        args: [0.0.0.0:9001]
+    portals:
+      outlets:
+        - name: http
+          to: localhost:9001
+
+  - name: runner-pod
+    size: big
+    clones: 5
+    containers:
+      - name: runner
+        image: runner
