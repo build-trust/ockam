@@ -140,7 +140,7 @@ defmodule Ockam.Kafka.Interceptor.OutletManager.Test do
 
     ## Connect to inlet port 11_001
     {:ok, socket} =
-      :gen_tcp.connect('localhost', 11_001, [:binary, {:packet, 2}, {:active, false}])
+      :gen_tcp.connect(~c'localhost', 11_001, [:binary, {:packet, 2}, {:active, false}])
 
     ## Send message to inlet
     :ok = :gen_tcp.send(socket, "HI")

@@ -164,7 +164,7 @@ defmodule Ockam.Kafka.Interceptor.Test do
 
     {:ok, sock} =
       :gen_tcp.connect(
-        'localhost',
+        ~c'localhost',
         bootstrap_port,
         [{:active, false}, :binary, {:packet, 0}],
         connect_timeout
