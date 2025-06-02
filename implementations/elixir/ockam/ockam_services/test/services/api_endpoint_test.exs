@@ -25,9 +25,9 @@ defmodule Ockam.Services.API.Tests.EndpointAPI do
   # for example, to perform authentication.  Here we just pass a "role" in the url as it's easier to setup
   # the test.
   @impl true
-  def authorize(:all, _req, _bindings), do: true
+  def authorize(:all, _req, _bindings), do: {true, %{}}
   def authorize(:member, _req, %{id: "a", role: "member"}), do: {true, %{extra: "EXTRA"}}
-  def authorize(:admin, _req, %{id: "a", role: "admin"}), do: true
+  def authorize(:admin, _req, %{id: "a", role: "admin"}), do: {true, %{}}
   def authorize(_auth_type, _req, _bindings), do: false
 end
 

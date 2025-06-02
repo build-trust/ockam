@@ -11,7 +11,7 @@ defmodule Mix.Tasks.CompileRules do
     dir = :code.priv_dir(:ockam_abac)
     file = Path.join(dir, "attribute_rule_grammar.peg")
     IO.puts("Generating parser")
-    :neotoma.file(to_charlist(file), output: 'src')
+    :neotoma.file(to_charlist(file), output: ~c'src')
     Mix.Task.rerun("compile.erlang")
   end
 end

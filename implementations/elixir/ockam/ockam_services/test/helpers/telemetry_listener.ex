@@ -31,6 +31,7 @@ defmodule Ockam.Services.Tests.TelemetryListener do
   end
 
   def get_metrics(table) do
+    :ets.all() |> IO.inspect()
     :ets.tab2list(table)
   end
 end

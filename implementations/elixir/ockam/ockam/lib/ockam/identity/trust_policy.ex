@@ -58,20 +58,21 @@ defmodule Ockam.Identity.TrustPolicy do
         case Identity.compare_identity_change_history(contact, known_contact) do
           {:ok, :equal} ->
             :ok
+            # while Identity.compare_identity_change_history is unimpemented,
+            # none of these can happen
+            # {:ok, :newer} ->
+            #   ## TODO: do we want to update the contact if it's changed?
+            #   known_identities_mod.set_identity(contact_id, contact, extra_arg)
 
-          {:ok, :newer} ->
-            ## TODO: do we want to update the contact if it's changed?
-            known_identities_mod.set_identity(contact_id, contact, extra_arg)
+            # {:ok, :conflict} ->
+            #   {:error,
+            #    {:trust_policy, :known_identity, {:identity_conflict, contact, known_contact}}}
 
-          {:ok, :conflict} ->
-            {:error,
-             {:trust_policy, :known_identity, {:identity_conflict, contact, known_contact}}}
+            # {:ok, :older} ->
+            #   {:error, {:trust_policy, :known_identity, {:identity_is_old, contact, known_contact}}}
 
-          {:ok, :older} ->
-            {:error, {:trust_policy, :known_identity, {:identity_is_old, contact, known_contact}}}
-
-          {:error, err} ->
-            {:error, {:trust_policy, :known_identity, {:api_error, err}}}
+            # {:error, err} ->
+            #   {:error, {:trust_policy, :known_identity, {:api_error, err}}}
         end
 
       {:error, :not_found} ->
@@ -103,19 +104,21 @@ defmodule Ockam.Identity.TrustPolicy do
           {:ok, :equal} ->
             :ok
 
-          {:ok, :newer} ->
-            known_identities_mod.set_identity(contact_id, contact, extra_arg)
+            # while Identity.compare_identity_change_history is unimpemented,
+            # none of these can happen
+            # {:ok, :newer} ->
+            #   known_identities_mod.set_identity(contact_id, contact, extra_arg)
 
-          {:ok, :conflict} ->
-            {:error,
-             {:trust_policy, :cached_identity, {:identity_conflict, contact, known_contact}}}
+            # {:ok, :conflict} ->
+            #   {:error,
+            #    {:trust_policy, :cached_identity, {:identity_conflict, contact, known_contact}}}
 
-          {:ok, :older} ->
-            {:error,
-             {:trust_policy, :cached_identity, {:identity_is_old, contact, known_contact}}}
+            # {:ok, :older} ->
+            #   {:error,
+            #    {:trust_policy, :cached_identity, {:identity_is_old, contact, known_contact}}}
 
-          {:error, err} ->
-            {:error, {:trust_policy, :cached_identity, {:api_error, err}}}
+            # {:error, err} ->
+            #   {:error, {:trust_policy, :cached_identity, {:api_error, err}}}
         end
 
       {:error, :not_found} ->

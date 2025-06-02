@@ -44,7 +44,7 @@ defmodule Ockam.Transport.TCP.TransportMessage do
     end
   end
 
-  @spec decode(binary()) :: {:ok, Message.t()} | {:error, any()}
+  @spec decode(binary()) :: {:ok, Message.t()} | {:error, {:error_decoding_msg, any()}}
   def decode(data) do
     case TCPMessage.decode_strict(data) do
       {:ok, msg} ->
