@@ -36,7 +36,7 @@ defmodule Ockam.Services.Authorization.Tests do
   end
 
   test "Worker requiring local message", %{channel_listener: channel_listener} do
-    {:ok, echoer} = Echo.create(authorization: [:is_local])
+    {:ok, echoer} = Echo.create(authorization: [:local?])
 
     {:ok, me} = Ockam.Node.register_random_address()
 
@@ -84,7 +84,7 @@ defmodule Ockam.Services.Authorization.Tests do
   end
 
   test "Identity secure channel initiator authorization", %{channel_listener: channel_listener} do
-    {:ok, channel} = create_channel([channel_listener], [:is_local])
+    {:ok, channel} = create_channel([channel_listener], [:local?])
 
     {:ok, me} = Ockam.Node.register_random_address()
     Ockam.Router.route("initiator from local", [me], [me])
@@ -113,7 +113,7 @@ defmodule Ockam.Services.Authorization.Tests do
           static_keypair: listener_keypair,
           static_key_attestation: attestation
         ],
-        responder_authorization: [:is_local]
+        responder_authorization: [:local?]
       )
 
     {:ok, bob_channel} = create_channel([listener])
@@ -154,7 +154,7 @@ defmodule Ockam.Services.Authorization.Tests do
 
   test "forwarder authorization" do
     {:ok, service} =
-      Ockam.Services.Forwarding.create(forwarder_options: [authorization: [:is_local]])
+      Ockam.Services.Forwarding.create(forwarder_options: [authorization: [:local?]])
 
     {:ok, test_address} = Ockam.Node.register_random_address()
 

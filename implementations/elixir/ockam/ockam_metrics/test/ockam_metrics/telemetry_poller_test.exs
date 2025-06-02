@@ -98,15 +98,15 @@ defmodule Ockam.Metrics.TelemetryPoller.Tests do
     %{
       handshake_initiators: [],
       handshake_responders: [],
-      data_initiators: [_initiator, _rest],
-      data_responders: [_responder, _rest]
+      data_initiators: [_initiator, _initiators],
+      data_responders: [_responder, _responders]
     } = TelemetryPoller.secure_channels()
 
     SecureChannel.disconnect(channel)
 
     # Be sure to wait until both initiator and responder have really stopped
-    assert_receive {:DOWN, ^ref1, _process, _pid, _reason}
-    assert_receive {:DOWN, ^ref2, _process, _pid, _reason}
+    assert_receive {:DOWN, ^ref1, _process1, _pid1, _reason1}
+    assert_receive {:DOWN, ^ref2, _process2, _pid2, _reason2}
 
     %{
       handshake_initiators: [],
