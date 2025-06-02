@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title></title>
+        <style>
+            body {
+                font-family: sans-serif;
+                margin: 0;
+                overflow-y: auto;
+                overflow-x: auto;
+                height: 100vh;
+            }
+            #container {
+                white-space: nowrap;
+                overflow-y: visible;
+                overflow-x: visible;
+                padding: 10px;
+                box-sizing: border-box;
+                display: flex;
+                flex-wrap: nowrap;
+                align-items: flex-start;
+                height: auto;
+            }
+            .node-column {
+                display: inline-block;
+                vertical-align: top;
+                margin-right: 6px;
+                margin-bottom: 10px;
+                background: #fff;
+                padding: 4px 2px 6px;
+                box-sizing: content-box;
+                width: max-content;
+            }
+            .node-label {
+                text-align: center;
+                font-weight: bold;
+                margin-bottom: 6px;
+                font-size: 12px;
+                white-space: normal;
+                width: 100%;
+                position: sticky;
+                top: 0;
+                background: #fff;
+                z-index: 10;
+            }
+            svg {
+                display: block;
+                background: #fff;
+            }
+            button {
+                margin: 10px;
+                padding: 6px 12px;
+                font-size: 14px;
+            }
+            @keyframes pulse {
+                0% {
+                    box-shadow: 0 0 0 0 rgba(0, 123, 255, 0.7);
+                }
+                70% {
+                    box-shadow: 0 0 0 10px rgba(0, 123, 255, 0);
+                }
+                100% {
+                    box-shadow: 0 0 0 0 rgba(0, 123, 255, 0);
+                }
+            }
+            .pulse {
+                animation: pulse 1.5s infinite;
+                border-color: #007bff;
+                outline: none;
+            }
+        </style>
+    </head>
+    <body>
+        <button id="run-btn">Run</button>
+        <div id="container"></div>
+        <script src="https://d3js.org/d3.v7.min.js"></script>
+        <script>
+            const circleDiameter = 6;
+            const circleMargin = 3;
+            const perRow = 16;
+
+            const container = d3.select("#container");
+
+            function render(data) {
+                const grouped = {};
+                for (const worker of data.workers) {
+                    if (!grouped[worker.runner_name]) {
+                        grouped[worker.runner_name] = [];
+                    }
+                    grouped[worker.runner_name].push(worker.worker_name);
+                }
+
+                const container = d3.select("#container");
+
+                const nodeColumns = container.selectAll(".node-column").data(Object.entries(grouped), (d) => d[0]);
+                nodeColumns.exit().remove();
+
+                const nodeColumnsEnter = nodeColumns.enter().append("div").attr("class", "node-column");
+                nodeColumnsEnter.append("div").attr("class", "node-label");
+                nodeColumnsEnter.append("svg");
+
+                const nodeColumnsMerge = nodeColumnsEnter.merge(nodeColumns);
+                nodeColumnsMerge.each(function ([nodeName, workers]) {
+                    const rowCount = Math.ceil(workers.length / perRow);
+                    const svgWidth = perRow * (circleDiameter + circleMargin) + circleMargin;
+                    const svgHeight = rowCount * (circleDiameter + circleMargin) + circleMargin;
+
+                    const nodeDiv = d3.select(this);
+                    nodeDiv.select(".node-label").text(nodeName.split("-").slice(2).join("-"));
+                    nodeDiv.style("width", svgWidth + "px");
+                    const svg = nodeDiv.select("svg").attr("width", svgWidth).attr("height", svgHeight);
+
+                    const circles = svg.selectAll("circle").data(workers, (d) => d);
+                    circles.exit().remove();
+
+                    const circlesEnter = circles.enter().append("circle");
+                    const circlesMerge = circlesEnter.merge(circles);
+                    circlesMerge
+                        .attr(
+                            "cx",
+                            (d, i) =>
+                                (i % perRow) * (circleDiameter + circleMargin) + circleMargin + circleDiameter / 2,
+                        )
+                        .attr(
+                            "cy",
+                            (d, i) =>
+                                Math.floor(i / perRow) * (circleDiameter + circleMargin) +
+                                circleMargin +
+                                circleDiameter / 2,
+                        )
+                        .attr("r", circleDiameter / 2)
+                        .attr("fill", (d) => "#" + d.slice(0, 6))
+                        .on("mouseenter", function (event, d) {
+                            d3.select(this)
+                                .raise()
+                                .transition()
+                                .duration(300)
+                                .attr("r", 3 * circleDiameter);
+                        })
+                        .on("mouseleave", function (event, d) {
+                            d3.select(this)
+                                .transition()
+                                .duration(300)
+                                .attr("r", circleDiameter / 2);
+                        })
+                        .on("click", function (event, d) {
+                            run(nodeName, d);
+                        });
+
+                    circles.select("title").remove();
+                    circlesMerge.append("title").text((d) => d);
+                });
+            }
+
+            document.getElementById("run-btn").addEventListener("click", async function () {
+                const button = this;
+                button.classList.add("pulse");
+                try {
+                    const response = await fetch("/analyze", { method: "POST" });
+                    const response_json = await response.json();
+                    console.log("Analysis: ", response_json);
+                } catch (error) {
+                    console.error("Error fetching /analyze:", error);
+                } finally {
+                    button.classList.remove("pulse");
+                }
+            });
+
+            async function fetchWorkers() {
+                while (true) {
+                    try {
+                        const response = await fetch("/runners/workers");
+                        if (response.ok) {
+                            const response_json = await response.json();
+                            console.log("Workers: ", response_json);
+                            render(response_json);
+                        }
+                    } catch (e) {
+                        console.error("Error fetching /runners/workers:", e);
+                    }
+                    await new Promise((r) => setTimeout(r, 200));
+                }
+            }
+
+            fetchWorkers();
+        </script>
+    </body>
+</html>
