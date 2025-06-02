@@ -51,7 +51,7 @@ release-image-amd64-latest:
 build-logs-server-image-amd64:
 	$(eval SHORT_COMMIT_HASH := $(shell git rev-parse --short HEAD))
 	docker build -t ockam-python-logs-server \
-        --file python/kubernetes/logs_server/Dockerfile python/kubernetes/logs_server
+		--file python/kubernetes/logs_server/Dockerfile python/kubernetes/logs_server
 
 	docker build --platform linux/amd64 \
 		-t ghcr.io/build-trust/ockam-python-logs-server:latest \
