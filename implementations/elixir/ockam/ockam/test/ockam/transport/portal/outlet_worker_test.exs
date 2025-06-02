@@ -22,7 +22,7 @@ defmodule Ockam.Transport.Portal.OutletWorker.Tests do
       {:ok, worker} =
         OutletWorker.create([
           {:init_message, ping},
-          {:target_host, 'localhost'},
+          {:target_host, ~c'localhost'},
           {:target_port, echo_port}
         ])
 
@@ -59,7 +59,7 @@ defmodule Ockam.Transport.Portal.OutletWorker.Tests do
       {:ok, worker} =
         OutletWorker.create([
           {:init_message, ping},
-          {:target_host, 'localhost'},
+          {:target_host, ~c'localhost'},
           {:target_port, echo_port}
         ])
 
