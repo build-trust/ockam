@@ -1,5 +1,5 @@
 Changelog-INCOMING.md
-.env
+*.env
 .vagrant
 .envrc
 .builder
