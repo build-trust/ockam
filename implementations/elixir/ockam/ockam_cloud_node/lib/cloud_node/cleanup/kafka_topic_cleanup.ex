@@ -24,7 +24,7 @@ if Code.ensure_loaded?(Ockam.Kafka) do
       |> Enum.filter(fn topic ->
         idle_topic?(topic, expired_time, options)
       end)
-      |> Enum.map(fn {topic_name, _} -> topic_name end)
+      |> Enum.map(fn {topic_name, _topic} -> topic_name end)
     end
 
     def cleanup_idle_topics(idle_time, options) do

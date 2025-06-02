@@ -58,7 +58,7 @@ defmodule Ockam.Metrics.MixProject do
       {:telemetry_metrics, "~> 0.6.1"},
       {:telemetry_metrics_prometheus, "~> 1.1.0"},
       # Needed to avoid conflict on ranch version used by cowboy (telemetry_metrics_prometheus dep)
-      {:ranch, "~> 2.2.0", override: true},
+      {:ranch, "~> 2.2.0", override: true}
     ]
   end
 

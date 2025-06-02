@@ -33,7 +33,7 @@ defmodule Ockam.Services.Proxy do
     forward_route_option = Keyword.fetch!(options, :forward_route)
 
     with {:ok, [first_address | route_tail]} <- forward_route_config(forward_route_option) do
-      case TCPAddress.is_tcp_address(first_address) do
+      case TCPAddress.tcp_address?(first_address) do
         true ->
           client_address = "PROXY_CLIENT_" <> state.address
 
@@ -86,7 +86,7 @@ defmodule Ockam.Services.Proxy do
 
   @impl true
   def handle_outer_message(message, state) do
-    [_ | rest] = message.onward_route
+    [_head | rest] = message.onward_route
     forward_route = Map.get(state, :forward_route) ++ rest
     inner_address = Map.get(state, :inner_address)
 
@@ -100,7 +100,7 @@ defmodule Ockam.Services.Proxy do
   @impl true
   def handle_inner_message(message, state) do
     outer_address = Map.get(state, :address)
-    [_ | rest] = message.return_route
+    [_head | rest] = message.return_route
     return_route = [outer_address] ++ rest
 
     forwarded_message = Message.forward(message) |> Map.put(:return_route, return_route)

@@ -79,7 +79,10 @@ defmodule Ockam.Identity do
   # TODO: rename to attest_secure_channel_key
   @spec attest_purpose_key(contact :: t(), secret_key :: %{private: binary(), public: binary()}) ::
           {:ok, proof()} | {:error, any()}
-  def attest_purpose_key(%Identity{identifier: identifier}, %{private: secret_key, public: _}) do
+  def attest_purpose_key(%Identity{identifier: identifier}, %{
+        private: secret_key,
+        public: _public
+      }) do
     case OckamRustElixirNifs.Native.attest_secure_channel_key(
            Identifier.to_str(identifier),
            secret_key

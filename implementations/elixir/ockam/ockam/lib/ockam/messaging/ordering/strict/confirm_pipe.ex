@@ -50,7 +50,7 @@ defmodule Ockam.Messaging.Ordering.Strict.ConfirmPipe.Sender do
 
   @impl true
   def handle_inner_message(message, state) do
-    case is_valid_confirm?(message, state) do
+    case valid_confirm?(message, state) do
       true ->
         confirm(state)
 
@@ -70,7 +70,7 @@ defmodule Ockam.Messaging.Ordering.Strict.ConfirmPipe.Sender do
     end
   end
 
-  def is_valid_confirm?(message, state) do
+  def valid_confirm?(message, state) do
     payload = Message.payload(message)
     {:ok, ref, ""} = :bare.decode(payload, :uint)
 

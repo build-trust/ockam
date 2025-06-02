@@ -5,7 +5,7 @@ defmodule Ockam.Telemetry.Tests do
 
   describe "emit_event/2" do
     test "invokes handler" do
-      {function_name, _} = __ENV__.function
+      {function_name, _arity} = __ENV__.function
       tester_pid = self()
 
       handler = fn event_name, measurements, metadata, config ->
@@ -25,7 +25,7 @@ defmodule Ockam.Telemetry.Tests do
     end
 
     test "invoked handler receives measurements and metadata" do
-      {function_name, _} = __ENV__.function
+      {function_name, _arity} = __ENV__.function
       tester_pid = self()
 
       handler = fn event_name, measurements, metadata, config ->
@@ -48,7 +48,7 @@ defmodule Ockam.Telemetry.Tests do
 
   describe "emit_start_event/2" do
     test "invokes handler" do
-      {function_name, _} = __ENV__.function
+      {function_name, _arity} = __ENV__.function
       tester_pid = self()
 
       handler = fn event_name, measurements, metadata, config ->
@@ -68,7 +68,7 @@ defmodule Ockam.Telemetry.Tests do
     end
 
     test "invoked handler receives extra measurements and metadata" do
-      {function_name, _} = __ENV__.function
+      {function_name, _arity} = __ENV__.function
       tester_pid = self()
 
       handler = fn event_name, measurements, metadata, config ->
@@ -90,7 +90,7 @@ defmodule Ockam.Telemetry.Tests do
 
   describe "emit_stop_event/2" do
     test "invokes handler" do
-      {function_name, _} = __ENV__.function
+      {function_name, _arity} = __ENV__.function
       tester_pid = self()
 
       handler = fn event_name, measurements, metadata, config ->
@@ -114,7 +114,7 @@ defmodule Ockam.Telemetry.Tests do
 
   describe "emit_exception_event/2" do
     test "invokes handler" do
-      {function_name, _} = __ENV__.function
+      {function_name, _arity} = __ENV__.function
       tester_pid = self()
 
       handler = fn event_name, measurements, metadata, config ->

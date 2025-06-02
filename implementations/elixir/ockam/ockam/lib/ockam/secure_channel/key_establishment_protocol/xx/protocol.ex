@@ -44,7 +44,7 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol do
     end
   end
 
-  def setup(%{public: _, private: _} = static_keypair, options) do
+  def setup(%{public: _public, private: _private} = static_keypair, options) do
     protocol_state = %__MODULE__{
       pending_handshake: [:message1, :message2, :message3],
       s: static_keypair
@@ -81,7 +81,7 @@ defmodule Ockam.SecureChannel.KeyEstablishmentProtocol.XX.Protocol do
     end
   end
 
-  defp next(%{pending_handshake: [_ | _]} = state) do
+  defp next(%{pending_handshake: [_msg | _rest]} = state) do
     {:ok, {:continue, state}}
   end
 

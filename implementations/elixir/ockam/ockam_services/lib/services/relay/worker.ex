@@ -88,7 +88,7 @@ defmodule Ockam.Services.Relay.Worker do
   defp maybe_notify_target(false, _route, _alias_str, _address), do: :ok
 
   @impl true
-  def handle_message(message, %{route: [_ | _] = route} = state) do
+  def handle_message(message, %{route: [_head | _rest] = route} = state) do
     [_me | onward_route] = Message.onward_route(message)
     Ockam.Router.route(Message.set_onward_route(message, route ++ onward_route))
     {:ok, state}

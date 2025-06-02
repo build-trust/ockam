@@ -18,5 +18,5 @@ defmodule Ockam.Healthcheck.TestAPIEndpoint do
 
   @impl true
   def authorize(:test, _req, _bindings), do: {true, %{}}
-  def authorize(_, _req, _bindings), do: false
+  def authorize(_type, _req, _bindings), do: false
 end

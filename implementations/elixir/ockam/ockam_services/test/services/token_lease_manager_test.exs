@@ -168,7 +168,7 @@ defmodule Ockam.Services.TokenLeaseManager.Test do
     assert {:ok, ^bob_lease1} = Lease.decode_strict(body)
 
     # Alice can't retrieve bob' lease
-    assert {:ok, %{status: 404, body: _}} =
+    assert {:ok, %{status: 404, body: _body}} =
              Client.sync_request(:get, "/#{bob_lease_1_id}", nil, [alice_channel, lm])
   end
 

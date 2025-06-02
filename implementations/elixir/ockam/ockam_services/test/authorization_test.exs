@@ -124,7 +124,7 @@ defmodule Ockam.Services.Authorization.Tests do
     receive do
       %Ockam.Message{
         onward_route: [^me],
-        return_route: [responder | _]
+        return_route: [responder | _rest]
       } ->
         Ockam.Router.route(%Ockam.Message{
           payload: "responder from channel",

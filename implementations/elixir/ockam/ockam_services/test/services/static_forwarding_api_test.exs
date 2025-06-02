@@ -133,7 +133,7 @@ defmodule Test.Services.StaticForwardingApiTest do
 
     {:ok, resp} = Client.sync_request(:get, "/", nil, [bob_channel, service_address])
     assert %{status: 200, body: body} = resp
-    assert {:ok, [_, _]} = Relay.decode_list_strict(body)
+    assert {:ok, [_head, _rest]} = Relay.decode_list_strict(body)
 
     # Alice allowed to overtake bob' relay at alias_str_1
     req = %CreateRelayRequest{alias: alias_str_1, tags: %{"name" => "test_relay1_alice"}}

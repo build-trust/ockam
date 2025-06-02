@@ -33,7 +33,7 @@ defmodule Ockam.Services.Service do
       [address] ->
         {:ok, address}
 
-      [_ | _] ->
+      [_address | _rest] ->
         try do
           {:ok, Ockam.Worker.get_address(pid)}
         catch

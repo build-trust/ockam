@@ -103,7 +103,7 @@ defmodule Ockam.Bare.Variant do
         {:ok, decoded}
 
       {:ok, decoded_tag, rest} ->
-        {_, subschema} = List.keyfind(ss, decoded_tag, 0)
+        {_key, subschema} = List.keyfind(ss, decoded_tag, 0)
 
         with {:ok, decoded_value, ""} <- Extended.decode(rest, subschema) do
           {:ok, {decoded_tag, decoded_value}}
@@ -122,7 +122,7 @@ defmodule Ockam.Bare.Variant do
 
   def to_bare_schema(schema), do: schema
 
-  def enum_member({tag, _}), do: tag
+  def enum_member({tag, _value}), do: tag
   def enum_member(tag), do: tag
 
   def enum_value({_tag, value}), do: value
@@ -173,7 +173,7 @@ defmodule Ockam.Bare.Tuple do
   end
 
   @spec decode(binary(), extended_schema()) :: {:ok, [:undefined], <<>>}
-  def decode(<<>>, {:tuple, [{:optional, _}]} = _schema) do
+  def decode(<<>>, {:tuple, [{:optional, _any}]} = _schema) do
     {:ok, [:undefined], <<>>}
   end
 
@@ -228,11 +228,11 @@ defmodule Ockam.Bare.Extended do
           schema() | [{atom(), schema()}] | {:variant, [atom() | {atom(), schema()}]}
 
   ## TODO: this might be moved to BARE lib
-  def encode(data, {:variant, _} = schema), do: Variant.encode(data, schema)
-  def encode(data, {:tuple, _} = schema), do: Tuple.encode(data, schema)
+  def encode(data, {:variant, _subschema} = schema), do: Variant.encode(data, schema)
+  def encode(data, {:tuple, _subschema} = schema), do: Tuple.encode(data, schema)
   def encode(data, schema), do: Union.encode(data, schema)
 
-  def decode(data, {:variant, _} = schema), do: Variant.decode(data, schema)
-  def decode(data, {:tuple, _} = schema), do: Tuple.decode(data, schema)
+  def decode(data, {:variant, _subschema} = schema), do: Variant.decode(data, schema)
+  def decode(data, {:tuple, _subschema} = schema), do: Tuple.decode(data, schema)
   def decode(data, schema), do: Union.decode(data, schema)
 end
