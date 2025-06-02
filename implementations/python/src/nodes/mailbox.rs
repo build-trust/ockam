@@ -28,38 +28,27 @@ impl PyMailbox {
 
 #[pymethods]
 impl PyMailbox {
-    #[pyo3(signature = (destination, message, node=None, policy=None))]
+    #[pyo3(signature = (node, destination, message, policy=None))]
+    fn send_to_remote<'a>(
+        &self,
+        py: Python<'a>,
+        node: String,
+        destination: String,
+        message: String,
+        policy: Option<String>,
+    ) -> PyResult<Bound<'a, PyAny>> {
+        self.send_to_remote_impl(py, Some(node), destination, message, policy)
+    }
+
+    #[pyo3(signature = (destination, message, policy=None))]
     fn send<'a>(
         &self,
         py: Python<'a>,
         destination: String,
         message: String,
-        node: Option<String>,
         policy: Option<String>,
     ) -> PyResult<Bound<'a, PyAny>> {
-        let policy = self.node.policy(policy).map_err(py_error)?;
-        let self_clone = self.clone();
-        let node_clone = self.node.clone();
-        let node_manager = self.node.node_manager_clone();
-
-        future_into_py(py, async move {
-            node_clone
-                .with_route(node, destination, move |route| async move {
-                    let (_, outgoing_ac) = node_manager
-                        .create_abac(node_manager.project_authority(), policy)
-                        .await?;
-
-                    let ctx = self_clone.ctx.read().await;
-                    ctx.send_extended(
-                        route,
-                        message,
-                        MessageSendOptions::new().with_outgoing_access_control(outgoing_ac),
-                    )
-                    .await
-                })
-                .await
-                .map_err(py_error)
-        })
+        self.send_to_remote_impl(py, None, destination, message, policy)
     }
 
     #[pyo3(signature = (policy=None, timeout=None))]
@@ -101,6 +90,41 @@ impl PyMailbox {
                 .map_err(py_error)?;
 
             result.into_body().map_err(py_error)
+        })
+    }
+}
+
+impl PyMailbox {
+    fn send_to_remote_impl<'a>(
+        &self,
+        py: Python<'a>,
+        node: Option<String>,
+        destination: String,
+        message: String,
+        policy: Option<String>,
+    ) -> PyResult<Bound<'a, PyAny>> {
+        let policy = self.node.policy(policy).map_err(py_error)?;
+        let self_clone = self.clone();
+        let node_clone = self.node.clone();
+        let node_manager = self.node.node_manager_clone();
+
+        future_into_py(py, async move {
+            node_clone
+                .with_route(node, destination, move |route| async move {
+                    let (_, outgoing_ac) = node_manager
+                        .create_abac(node_manager.project_authority(), policy)
+                        .await?;
+
+                    let ctx = self_clone.ctx.read().await;
+                    ctx.send_extended(
+                        route,
+                        message,
+                        MessageSendOptions::new().with_outgoing_access_control(outgoing_ac),
+                    )
+                    .await
+                })
+                .await
+                .map_err(py_error)
         })
     }
 }

@@ -2,6 +2,7 @@ import secrets
 
 from .operation import FlowOperation, END
 from .flow_state import FlowState, FlowEdge, vertex_to_id
+from ..nodes import LocalNodeProtocol
 from ..nodes.message import (
     ConversationSnippet,
     Error,
@@ -39,7 +40,7 @@ class Flow:
         self.state.add(vertex, edge)
 
     @staticmethod
-    async def start(node, flow):
+    async def start(node: LocalNodeProtocol, flow):
         name = flow.name
         worker = FlowWorker(
             name, node, flow, iteration_limit=flow.iteration_limit, iteration_timeout=flow.iteration_timeout
@@ -49,7 +50,7 @@ class Flow:
 
 
 class FlowWorker:
-    def __init__(self, name, node, flow, iteration_limit, iteration_timeout):
+    def __init__(self, name: str, node: LocalNodeProtocol, flow: Flow, iteration_limit: int, iteration_timeout: int):
         self.name = name
         self.node = node
         self.flow = flow
@@ -79,7 +80,7 @@ class FlowWorker:
 
     async def handle__get_identifier_request(self, message: GetIdentifierRequest) -> GetIdentifierResponse:
         name_snake_case = self.name.lower().replace(" ", "_")
-        node_identifier = self.node.identifier()
+        node_identifier = await self.node.identifier()
         agent_identifier = f"{node_identifier}/{name_snake_case}"
         return GetIdentifierResponse(message.scope, message.conversation, agent_identifier)
 

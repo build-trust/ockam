@@ -3,7 +3,7 @@ from typing import List
 from scipy.spatial.distance import cosine
 
 from .search import SearchHit, TextPiece
-from .interface import Storage
+from .protocol import Storage
 
 
 class InMemory(Storage):

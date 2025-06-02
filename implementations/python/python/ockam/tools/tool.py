@@ -6,7 +6,7 @@ from typing import get_type_hints, Optional
 from functools import wraps
 from docstring_parser import parse
 
-from .interface import InvokableTool
+from .protocol import InvokableTool
 
 
 class Tool(InvokableTool):

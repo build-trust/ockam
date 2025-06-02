@@ -2,7 +2,7 @@ import json
 import re
 from typing import Optional
 
-from .interface import InvokableTool
+from .protocol import InvokableTool
 
 
 class McpTool(InvokableTool):

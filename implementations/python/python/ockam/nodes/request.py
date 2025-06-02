@@ -1,3 +1,13 @@
+class IdentifierRequest:
+    pass
+
+
+class IdentifierResponse:
+    def __init__(self, status, identifier):
+        self.status = status
+        self.identifier = identifier
+
+
 class StartAgentRequest:
     def __init__(self, instructions, name, model, tools, planner, exposed_as, knowledge, max_knowledge_size):
         self.instructions = instructions
@@ -33,10 +43,11 @@ class StartAgentsResponse:
 
 
 class StartWorkerRequest:
-    def __init__(self, name, worker, policy):
+    def __init__(self, name, worker, policy, exposed_as):
         self.name = name
         self.worker = worker
         self.policy = policy
+        self.exposed_as = exposed_as
 
 
 class StartWorkerResponse:
@@ -72,3 +83,13 @@ class ListWorkersResponse:
     def __init__(self, status, workers):
         self.status = status
         self.workers = workers
+
+
+class ListNodesPrivRequest:
+    pass
+
+
+class ListNodesPrivResponse:
+    def __init__(self, status, nodes):
+        self.status = status
+        self.nodes = nodes

@@ -14,12 +14,9 @@ from ockam import Node, RemoteNode
 
 
 async def main(node):
-    reply = await node.send_and_receive(node=sys.argv[1], destination="echoer", message="hello")
-    print(reply)
-
     remote_node = RemoteNode(node, sys.argv[1])
     for i in range(5):
-        reply = await remote_node.send_and_receive(destination="echoer", message="hello")
+        reply = await remote_node.send_and_receive("echoer", "hello")
         print(f"{i}> {reply}")
 
 

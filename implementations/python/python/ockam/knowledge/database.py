@@ -6,7 +6,7 @@ import urllib.parse
 import psycopg
 
 from .search import TextPiece, SearchHit
-from .interface import Storage
+from .protocol import Storage
 
 # Relevant database schema:
 # CREATE EXTENSION IF NOT EXISTS vector;

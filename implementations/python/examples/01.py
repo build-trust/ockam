@@ -14,13 +14,13 @@ class Echoer:
 
 async def main(node):
     await node.start_worker("echoer", Echoer())
-    reply = await node.send_and_receive(destination="echoer", message="hello")
+    reply = await node.send_and_receive("echoer", "hello")
     info(f"Reply received: {reply}")
 
     sender = await node.create_mailbox("sender")
     receiver = await node.create_mailbox("receiver")
 
-    await sender.send(destination="receiver", message="test")
+    await sender.send("receiver", "test")
 
     msg = await receiver.receive(timeout=1)
     info(f"Received: {msg}")

@@ -1,5 +1,5 @@
 from .knowledge import SearchableKnowledge, Knowledge, KnowledgeAggregator
-from .interface import KnowledgeProvider
+from .protocol import KnowledgeProvider
 from .search import SearchHit, SearchResults, TextPiece
 from .in_memory import InMemory
 from .database import Database

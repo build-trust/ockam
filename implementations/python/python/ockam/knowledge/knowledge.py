@@ -5,7 +5,7 @@ from typing import Optional, List
 
 from .chunkers import Chunker, NaiveChunker
 from .extractors import TextExtractor, create_extractor
-from .interface import KnowledgeProvider, Storage
+from .protocol import KnowledgeProvider, Storage
 from .in_memory import InMemory
 from .search import TextPiece, SearchHit
 from ..models import Model
