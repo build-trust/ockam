@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Union, Any
 
-from .node import Node
+from .local import LocalNodeProtocol
 from .remote import RemoteNode
 
 from ..ockam_in_rust_for_python import Mailbox
@@ -61,8 +61,6 @@ class ToolCallResponseMessage:
 
 ConversationMessage = Union[UserMessage, SystemMessage, AssistantMessage, ToolCallResponseMessage]
 
-LocalOrRemoteNode = Union[Node, RemoteNode]
-
 
 class ReferenceType(Enum):
     AGENT = "agent"
@@ -85,15 +83,27 @@ class ReceiveReference:
         return response.messages
 
 
+# TODO: There is some overlap in functionality between Reference class and Local/Remote node classes
 class Reference:
+    # TODO: Policies
     name: str
-    node: LocalOrRemoteNode
-    type: ReferenceType
+    node: LocalNodeProtocol
+    reference_type: ReferenceType
+
+    def __init__(self, name: str, node: LocalNodeProtocol | RemoteNode, reference_type: ReferenceType):
+        self.name = name
+        self.reference_type = reference_type
+
+        if isinstance(node, RemoteNode):
+            self.node = node.node_that_this_object_is_on
+            self.name_of_remote_node = node.name_of_remote_node
+        else:
+            self.node = node
+            self.name_of_remote_node = None
 
     async def identifier(self, scope="", conversation=""):
-        request = GetIdentifierRequest(scope, conversation)
-        async for response in self.send_and_receive_request(request):
-            yield response.identifier
+        response = await self.send_and_receive_request(GetIdentifierRequest(scope, conversation))
+        return response.identifier
 
     async def send(self, message, scope="", conversation="", timeout=None):
         request = ConversationSnippet(scope, conversation, [UserMessage(message)])
@@ -119,7 +129,11 @@ class Reference:
 
         address = secrets.token_hex(12)
         mailbox = await self.node.create_mailbox(address)
-        await mailbox.send(destination=self.name, message=message_json)
+
+        if self.name_of_remote_node:
+            await mailbox.send_to_remote(self.name_of_remote_node, self.name, message_json)
+        else:
+            await mailbox.send(self.name, message_json)
 
         return ReceiveReference(mailbox, converter)
 
@@ -128,7 +142,14 @@ class Reference:
             converter = MessageConverter.create(self.node)
 
         message_json = converter.message_to_json(message)
-        response_json = await self.node.send_and_receive(destination=self.name, message=message_json, timeout=timeout)
+
+        if self.name_of_remote_node:
+            response_json = await self.node.send_and_receive_to_remote(
+                self.name_of_remote_node, self.name, message_json, timeout=timeout
+            )
+        else:
+            response_json = await self.node.send_and_receive(self.name, message_json, timeout=timeout)
+
         response = converter.message_from_json(response_json)
         if isinstance(response, Error):
             raise Exception(response.message)
@@ -139,7 +160,12 @@ class Reference:
             converter = MessageConverter(self.node)
         message_json = converter.message_to_json(message)
         mailbox = await self.node.create_mailbox("message")
-        await mailbox.send(destination=self.name, message=message_json)
+
+        if self.name_of_remote_node:
+            await mailbox.send_to_remote(self.name_of_remote_node, self.name, message_json)
+        else:
+            await mailbox.send(self.name, message_json)
+
         expected_part_nb = 1
         out_of_order_messages = []
         finished = False
@@ -171,25 +197,33 @@ class Reference:
         return self.node.name
 
 
-@dataclass
 class AgentReference(Reference):
-    name: str
-    node: LocalOrRemoteNode
-    type: ReferenceType = ReferenceType.AGENT
+    def __init__(
+        self,
+        name: str,
+        node: LocalNodeProtocol | RemoteNode,
+    ):
+        super().__init__(name, node, ReferenceType.AGENT)
 
 
 @dataclass
 class FlowReference(Reference):
-    name: str
-    node: LocalOrRemoteNode
-    type: ReferenceType = ReferenceType.FLOW
+    def __init__(
+        self,
+        name: str,
+        node: LocalNodeProtocol | RemoteNode,
+    ):
+        super().__init__(name, node, ReferenceType.FLOW)
 
 
 @dataclass
 class SquadReference(Reference):
-    name: str
-    node: LocalOrRemoteNode
-    type: ReferenceType = ReferenceType.SQUAD
+    def __init__(
+        self,
+        name: str,
+        node: LocalNodeProtocol | RemoteNode,
+    ):
+        super().__init__(name, node, ReferenceType.SQUAD)
 
 
 class MessageType(Enum):
@@ -284,18 +318,18 @@ Message = Union[
     Error,
 ]
 
-CACHE = {}
+CACHE = None
 
 
 class MessageConverter:
     @staticmethod
-    def create(node: Node):
+    def create(node: LocalNodeProtocol):
         global CACHE
-        if node in CACHE:
-            return CACHE[node]
-        instance = MessageConverter(node)
-        CACHE[node] = instance
-        return instance
+        if CACHE:
+            return CACHE
+
+        CACHE = MessageConverter(node)
+        return CACHE
 
     def __init__(self, node):
         self.node = node

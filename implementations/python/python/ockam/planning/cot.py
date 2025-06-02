@@ -2,7 +2,7 @@ from typing import Optional, List
 
 from ockam.nodes.message import UserMessage
 
-from .interface import Planner, Plan
+from .protocol import Planner, Plan
 from ..nodes.message import ConversationMessage, SystemMessage, AssistantMessage
 from ..models import Model
 

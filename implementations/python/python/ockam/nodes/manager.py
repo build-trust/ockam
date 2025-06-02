@@ -1,18 +1,21 @@
 import dill
 import base64
 
+from .local import LocalNode
 from ..nodes.request import StartAgentResponse, StartAgentRequest
 from ..nodes.request import StartAgentsResponse, StartAgentsRequest
 from ..nodes.request import StartWorkerResponse, StartWorkerRequest
 from ..nodes.request import StopWorkerRequest, StopWorkerResponse
 from ..nodes.request import ListAgentsRequest, ListAgentsResponse
 from ..nodes.request import ListWorkersRequest, ListWorkersResponse
+from ..nodes.request import IdentifierRequest, IdentifierResponse
+from ..nodes.request import ListNodesPrivRequest, ListNodesPrivResponse
 
 REMOTE_MANAGER_ADDRESS = "remote_manager"
 
 
 class RemoteManager:
-    def __init__(self, node):
+    def __init__(self, node: LocalNode):
         self.node = node
 
     async def start(self):
@@ -29,6 +32,8 @@ class RemoteManager:
                 StopWorkerRequest: self.handle__stop_worker,
                 ListAgentsRequest: self.handle__list_agents,
                 ListWorkersRequest: self.handle__list_workers,
+                IdentifierRequest: self.handle__identifier,
+                ListNodesPrivRequest: self.handle__list_nodes_priv,
             }
 
             handler = handlers.get(type(request))
@@ -43,6 +48,9 @@ class RemoteManager:
             response = encode_message(response)
 
             await context.reply(response)
+
+    async def handle__identifier(self, _request: IdentifierRequest) -> IdentifierResponse:
+        return IdentifierResponse("ok", await self.node.identifier())
 
     async def handle__start_agent(self, request: StartAgentRequest) -> StartAgentResponse:
         from ..agents import Agent
@@ -79,99 +87,79 @@ class RemoteManager:
 
     async def handle__start_worker(self, request: StartWorkerRequest) -> StartWorkerResponse:
         request.worker.node = self.node
-        self.node.start_worker(request.name, request.worker, request.policy)
+        await self.node.start_worker(request.name, request.worker, request.policy, request.exposed_as)
 
         return StartWorkerResponse("ok")
 
     async def handle__stop_worker(self, request: StopWorkerRequest):
-        self.node.stop_worker(request.name)
+        await self.node.stop_worker(request.name)
 
         return StopWorkerResponse("ok")
 
     async def handle__list_agents(self, _request: ListAgentsRequest):
-        agents = self.node.list_agents()
-
-        return ListAgentsResponse("ok", {"agents": agents})
+        return ListAgentsResponse("ok", await self.node.list_agents())
 
     async def handle__list_workers(self, _request: ListWorkersRequest):
-        workers = await self.node.list_workers()
+        return ListWorkersResponse("ok", await self.node.list_workers())
 
-        return ListWorkersResponse("ok", {"workers": workers})
+    async def handle__list_nodes_priv(self, _request: ListNodesPrivRequest):
+        return ListNodesPrivResponse("ok", await self.node.list_nodes_priv())
 
 
 class RemoteManagerClient:
     def __init__(self, node):
         self.node = node
 
+    async def send_request(self, request):
+        request = encode_message(request)
+
+        # TODO: Policies
+        response = await self.node.send_and_receive(REMOTE_MANAGER_ADDRESS, request)
+
+        response = decode_message(response)
+
+        if response.status != "ok":
+            raise RuntimeError(f"Remote node response status: {response.status}")
+
+        return response
+
+    async def identifier(self):
+        response = await self.send_request(IdentifierRequest())
+
+        return response.identifier
+
     async def start_agent(self, instructions, name, model, tools, planner, exposed_as, knowledge, max_knowledge_size):
-        request = encode_message(
+        await self.send_request(
             StartAgentRequest(instructions, name, model, tools, planner, exposed_as, knowledge, max_knowledge_size)
         )
 
-        response = await self.node.send_and_receive(destination=REMOTE_MANAGER_ADDRESS, message=request)
-
-        response = decode_message(response)
-
-        if response.status != "ok":
-            raise RuntimeError(f"Remote node start_agent status: {response.status}")
-
     async def start_agents(self, instructions, number_of_agents, model, tools, planner, knowledge, max_knowledge_size):
-        request = encode_message(
+        response = await self.send_request(
             StartAgentsRequest(instructions, number_of_agents, model, tools, planner, knowledge, max_knowledge_size)
         )
 
-        response = await self.node.send_and_receive(destination=REMOTE_MANAGER_ADDRESS, message=request)
-
-        response = decode_message(response)
-
-        if response.status != "ok":
-            raise RuntimeError(f"Remote node start_agents status: {response.status}")
-
         return response.names
 
-    async def start_worker(self, name, worker, policy):
-        request = encode_message(StartWorkerRequest(name, worker, policy))
-
-        response = await self.node.send_and_receive(destination=REMOTE_MANAGER_ADDRESS, message=request)
-
-        response = decode_message(response)
-
-        if response.status != "ok":
-            raise RuntimeError(f"Remote node start_worker status: {response.status}")
+    async def start_worker(self, name, worker, policy, exposed_as):
+        await self.send_request(StartWorkerRequest(name, worker, policy, exposed_as))
 
     async def stop_worker(self, name):
-        request = encode_message(StopWorkerRequest(name))
-
-        response = await self.node.send_and_receive(destination=REMOTE_MANAGER_ADDRESS, message=request)
-
-        response = decode_message(response)
-
-        if response.status != "ok":
-            raise RuntimeError(f"Remote node stop_agent status: {response.status}")
+        await self.send_request(StopWorkerRequest(name))
 
     async def list_agents(self) -> list:
-        request = encode_message(ListAgentsRequest())
+        response = await self.send_request(ListAgentsRequest())
 
-        response = await self.node.send_and_receive(destination=REMOTE_MANAGER_ADDRESS, message=request)
-
-        response = decode_message(response)
-
-        if response.status != "ok":
-            raise RuntimeError(f"Remote node list_agents status: {response.status}")
-
-        return response.agents["agents"]
+        return response.agents
 
     async def list_workers(self) -> list:
-        request = encode_message(ListWorkersRequest())
+        response = await self.send_request(ListWorkersRequest())
 
-        response = await self.node.send_and_receive(destination=REMOTE_MANAGER_ADDRESS, message=request)
+        return response.workers
 
-        response = decode_message(response)
+    async def list_nodes_priv(self):
+        response = await self.send_request(ListNodesPrivRequest())
 
-        if response.status != "ok":
-            raise RuntimeError(f"Remote node list_workers status: {response.status}")
-
-        return response.workers["workers"]
+        return response.nodes
 
 
 def encode_message(message):

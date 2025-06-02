@@ -6,8 +6,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Union
 
-from ..nodes.message import LocalOrRemoteNode
-
+from ..nodes import NodeProtocol
 from ..ockam_in_rust_for_python import debug
 
 
@@ -18,7 +17,7 @@ class NmapWorker:
         self.converter = create_worker_converter()
 
     @staticmethod
-    async def start(node: LocalOrRemoteNode):
+    async def start(node: NodeProtocol):
         await node.start_worker(NmapWorker.ADDRESS, NmapWorker())
 
     # TODO: Make it a spawner so we can parallelize execution
@@ -109,14 +108,14 @@ class NmapClient:
         request = NmapRequestGetManual(request_type=NmapRequestType.GET_MANUAL.value)
         request = self.converter.unstructure(request)
         request = json.dumps(request)
-        response = await self.node.send_and_receive(destination=NmapWorker.ADDRESS, message=request, timeout=timeout)
+        response = await self.node.send_and_receive(NmapWorker.ADDRESS, request, timeout=timeout)
         return self.parse_response(response)
 
     async def run_command(self, command, timeout=None):
         request = NmapRequestRunCommand(body=command, request_type=NmapRequestType.RUN_COMMAND.value)
         request = self.converter.unstructure(request)
         request = json.dumps(request)
-        response = await self.node.send_and_receive(destination=NmapWorker.ADDRESS, message=request, timeout=timeout)
+        response = await self.node.send_and_receive(NmapWorker.ADDRESS, request, timeout=timeout)
         return self.parse_response(response)
 
     def parse_response(self, response):

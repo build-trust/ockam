@@ -1,4 +1,4 @@
-from .interface import Planner
+from .protocol import Planner
 from .cot import CoTPlanner
 from .react import ReActPlanner
 from .dynamic import DynamicPlanner

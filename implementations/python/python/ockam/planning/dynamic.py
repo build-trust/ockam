@@ -1,5 +1,5 @@
 from typing import Optional, List
-from .interface import Planner, Plan
+from .protocol import Planner, Plan
 from ..nodes.message import ConversationMessage, SystemMessage, UserMessage
 from ..models import Model
 

@@ -13,7 +13,7 @@ def test_simple_node():
 async def main_simple_node(node):
     await node.start_worker("echoer", Echoer())
     message = "hello"
-    reply = await node.send_and_receive(destination="echoer", message="hello")
+    reply = await node.send_and_receive("echoer", "hello")
     assert reply == message
 
 

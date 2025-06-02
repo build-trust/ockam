@@ -4,10 +4,11 @@ import secrets
 import litellm
 from typing import Awaitable, Callable, Optional
 
+from .local import LocalNode
 from .manager import RemoteManager
 
 from ..ockam_in_rust_for_python import Node as RustNode, info
-from ..nodes.interface import LocalNode
+from ..nodes.protocol import LocalNodeProtocol
 
 
 class Node:
@@ -48,6 +49,7 @@ class Node:
             main = wait_until_interrupted_decorator(main)
 
         async def start_node(node):
+            node = LocalNode(node)
             await RemoteManager(node).start()
 
             if http_server is None:

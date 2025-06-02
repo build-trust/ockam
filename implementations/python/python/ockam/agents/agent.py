@@ -5,14 +5,13 @@ from typing import Optional, AsyncGenerator
 import regex as re
 import secrets
 
-from ..nodes import RemoteNode
+from ..nodes import RemoteNode, LocalNodeProtocol
 from ..planning import Planner
 
 from ..knowledge import SearchResults, KnowledgeProvider
 from ..memory import Memory
 from ..models import Model
-from ..nodes import NodeInterface
-from ..nodes.node import Node
+from ..nodes import NodeProtocol
 from ..nodes.message import (
     ConversationSnippet,
     StreamedConversationSnippet,
@@ -35,7 +34,7 @@ from ..ockam_in_rust_for_python import info, warn, debug
 class Agent:
     def __init__(
         self,
-        node: Node,
+        node: LocalNodeProtocol,
         name: str,
         instructions: str,
         model: Model,
@@ -96,7 +95,7 @@ class Agent:
 
     async def handle__get_identifier_request(self, message: GetIdentifierRequest) -> GetIdentifierResponse:
         name_snake_case = self.name.lower().replace(" ", "_")
-        node_identifier = self.node.identifier()
+        node_identifier = await self.node.identifier()
         agent_identifier = f"{node_identifier}/{name_snake_case}"
         return GetIdentifierResponse(message.scope, message.conversation, agent_identifier)
 
@@ -316,7 +315,7 @@ class Agent:
 
     @staticmethod
     async def start(
-        node: NodeInterface,
+        node: NodeProtocol,
         instructions: str,
         name: Optional[str] = None,
         model: Model = Model(name="llama3.2"),
@@ -332,28 +331,26 @@ class Agent:
         if exposed_as is not None and re.match(r"^[a-z0-9_-]+$", name) is None:
             raise ValueError("Agent name may only contain [a-z0-9_-] when exposed")
 
-        if node.is_remote:
+        if isinstance(node, LocalNodeProtocol):
+            await Agent.start_agent_impl(
+                node, instructions, name, model, tools, planner, exposed_as, knowledge, max_knowledge_size
+            )
+        elif isinstance(node, RemoteNode):
             await node.start_agent(instructions, name, model, tools, planner, exposed_as, knowledge, max_knowledge_size)
 
             info(f"Successfully started agent {name} on a remote node")
         else:
-            await Agent.start_agent_impl(
-                node, instructions, name, model, tools, planner, exposed_as, knowledge, max_knowledge_size
-            )
+            raise ValueError("Node must be either a LocalNodeProtocol or a RemoteNode")
 
         return AgentReference(name, node)
 
     @staticmethod
     async def stop(node, name):
-        # RemoteNode stop_worker is async, while the local node stop_worker is not
-        if node.is_remote:
-            await node.stop_worker(name)
-        else:
-            node.stop_worker(name)
+        await node.stop_worker(name)
 
     @staticmethod
     async def start_many(
-        node: NodeInterface,
+        node: NodeProtocol,
         instructions: str,
         number_of_agents: int,
         model: Model = Model(name="llama3.2"),
@@ -364,7 +361,14 @@ class Agent:
     ):
         agents = []
 
-        if isinstance(node, RemoteNode):
+        if isinstance(node, LocalNodeProtocol):
+            for i in range(number_of_agents):
+                name = secrets.token_hex(12)
+                await Agent.start_agent_impl(
+                    node, instructions, name, model, tools, planner, None, knowledge, max_knowledge_size
+                )
+                agents.append(AgentReference(name, node))
+        elif isinstance(node, RemoteNode):
             names = await node.start_agents(
                 instructions, number_of_agents, model, tools, planner, knowledge, max_knowledge_size
             )
@@ -374,18 +378,13 @@ class Agent:
 
             info("Successfully started agents on a remote node")
         else:
-            for i in range(number_of_agents):
-                name = secrets.token_hex(12)
-                await Agent.start_agent_impl(
-                    node, instructions, name, model, tools, planner, None, knowledge, max_knowledge_size
-                )
-                agents.append(AgentReference(name, node))
+            raise ValueError("Node must be either a LocalNodeProtocol or a RemoteNode")
 
         return agents
 
     @staticmethod
     async def start_agent_impl(
-        node: NodeInterface,
+        node: LocalNodeProtocol,
         instructions: str,
         name: Optional[str],
         model: Model,

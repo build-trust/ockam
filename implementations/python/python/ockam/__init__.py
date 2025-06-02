@@ -4,7 +4,7 @@ from .flows import Flow, FlowOperation, START, END
 from .nodes.message import FlowReference
 from .memory import Memory
 from .models import Model
-from .nodes import Node, RemoteNode, LocalNode, Mailbox, Worker, Context
+from .nodes import Node, RemoteNode, LocalNode, LocalNodeProtocol, MailboxProtocol, WorkerProtocol, ContextProtocol
 from .nodes.manager import RemoteManager
 from .nodes.request import StartAgentRequest, StartAgentResponse
 from .planning import CoTPlanner, ReActPlanner, DynamicPlanner
@@ -26,7 +26,7 @@ from .knowledge import (
 )
 from .gather import gather
 
-from .ockam_in_rust_for_python import McpClient, McpServer, info, warn, error, debug
+from .ockam_in_rust_for_python import Mailbox, McpClient, McpServer, info, warn, error, debug
 
 __doc__ = ""
 __all__ = [
@@ -62,14 +62,14 @@ __all__ = [
     # from .nodes
     "Node",
     "RemoteNode",
-    "RemoteNode",
+    "LocalNode",
     "RemoteManager",
     "StartAgentRequest",
     "StartAgentResponse",
-    "LocalNode",
-    "Mailbox",
-    "Worker",
-    "Context",
+    "LocalNodeProtocol",
+    "MailboxProtocol",
+    "WorkerProtocol",
+    "ContextProtocol",
     # from .planning
     "CoTPlanner",
     "ReActPlanner",

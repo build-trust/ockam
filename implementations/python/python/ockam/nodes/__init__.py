@@ -1,13 +1,15 @@
 from .node import Node
 from .remote import RemoteNode
-from .interface import NodeInterface, LocalNode, Mailbox, Worker, Context
+from .protocol import NodeProtocol, LocalNodeProtocol, MailboxProtocol, WorkerProtocol, ContextProtocol
+from .local import LocalNode
 
 __all__ = [
     "Node",
     "RemoteNode",
-    "NodeInterface",
     "LocalNode",
-    "Mailbox",
-    "Worker",
-    "Context",
+    "NodeProtocol",
+    "LocalNodeProtocol",
+    "MailboxProtocol",
+    "WorkerProtocol",
+    "ContextProtocol",
 ]

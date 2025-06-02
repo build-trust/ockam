@@ -313,7 +313,7 @@ impl PyNode {
         })
     }
 
-    #[pyo3(signature = (destination, message, policy=None, timeout=None, node=None))]
+    #[pyo3(signature = (destination, message, policy=None, timeout=None))]
     fn send_and_receive<'a>(
         &self,
         py: Python<'a>,
@@ -321,33 +321,21 @@ impl PyNode {
         message: String,
         #[allow(unused_variables)] policy: Option<String>,
         timeout: Option<u64>,
-        node: Option<String>,
     ) -> PyResult<Bound<'a, PyAny>> {
-        let context = self.ctx().get_router_context();
-        let self_clone = self.clone();
+        self.send_and_receive_impl(py, None, destination, message, policy, timeout)
+    }
 
-        future_into_py(py, async move {
-            self_clone
-                .with_route(node, destination, move |route| async move {
-                    let (incoming_ac, outgoing_ac) = (Arc::new(AllowAll), Arc::new(AllowAll));
-
-                    let options = MessageSendReceiveOptions::new()
-                        .with_incoming_access_control(incoming_ac)
-                        .with_outgoing_access_control(outgoing_ac);
-
-                    let options = if let Some(timeout) = timeout {
-                        options.with_timeout(Duration::from_secs(timeout))
-                    } else {
-                        options
-                    };
-                    context
-                        .send_and_receive_extended::<String, String>(route, message, options)
-                        .await?
-                        .into_body()
-                })
-                .await
-                .map_err(py_error)
-        })
+    #[pyo3(signature = (node, destination, message, policy=None, timeout=None))]
+    fn send_and_receive_to_remote<'a>(
+        &self,
+        py: Python<'a>,
+        node: String,
+        destination: String,
+        message: String,
+        #[allow(unused_variables)] policy: Option<String>,
+        timeout: Option<u64>,
+    ) -> PyResult<Bound<'a, PyAny>> {
+        self.send_and_receive_impl(py, Some(node), destination, message, policy, timeout)
     }
 
     #[pyo3(signature=(address, policy=None))]
@@ -442,8 +430,11 @@ impl PyNode {
         })
     }
 
-    pub fn identifier(&self) -> PyResult<String> {
-        Ok(self.node_manager.identifier().to_string())
+    pub fn identifier(&self, py: Python<'_>) -> PyResult<PyObject> {
+        let identifier = self.node_manager.identifier().to_string();
+        to_pyobject(py, &identifier)
+            .map(|v| v.unbind())
+            .map_err(py_error)
     }
 
     pub fn list_agents<'a>(&self, py: Python<'a>) -> PyResult<Bound<'a, PyAny>> {
@@ -936,5 +927,42 @@ impl PyNode {
         let key = &(project_name, node_name);
         let mut cache = cache.write().await;
         cache.remove(key);
+    }
+
+    fn send_and_receive_impl<'a>(
+        &self,
+        py: Python<'a>,
+        node: Option<String>,
+        destination: String,
+        message: String,
+        #[allow(unused_variables)] policy: Option<String>,
+        timeout: Option<u64>,
+    ) -> PyResult<Bound<'a, PyAny>> {
+        let context = self.ctx().get_router_context();
+        let self_clone = self.clone();
+
+        future_into_py(py, async move {
+            self_clone
+                .with_route(node, destination, move |route| async move {
+                    let (incoming_ac, outgoing_ac) = (Arc::new(AllowAll), Arc::new(AllowAll));
+
+                    let options = MessageSendReceiveOptions::new()
+                        .with_incoming_access_control(incoming_ac)
+                        .with_outgoing_access_control(outgoing_ac);
+
+                    let options = if let Some(timeout) = timeout {
+                        options.with_timeout(Duration::from_secs(timeout))
+                    } else {
+                        options
+                    };
+
+                    context
+                        .send_and_receive_extended::<String, String>(route, message, options)
+                        .await?
+                        .into_body()
+                })
+                .await
+                .map_err(py_error)
+        })
     }
 }

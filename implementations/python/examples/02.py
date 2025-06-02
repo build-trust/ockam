@@ -17,7 +17,7 @@ class Echoer:
 
 async def main(node):
     await node.start_worker("echoer", Echoer())
-    reply = await node.send_and_receive(destination="echoer", message="hello")
+    reply = await node.send_and_receive("echoer", "hello")
     info(f"Reply received: {reply}")
 
 
