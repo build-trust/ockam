@@ -2,7 +2,7 @@ from ockam import Agent, Node, Repl
 from sys import argv
 
 """
-  This example is like example 11 but show that another model can be used.
+    This example is like example 11 but shows that another model can be used.
 """
 
 

@@ -3,10 +3,10 @@ import sys
 from ockam import AgentReference, Node, RemoteNode
 
 """
-  This example shows how to reference an agent started remotely (see 10-server.py, where the agent is created and started)
-  and send it messages.
+    This example shows how to reference an agent started remotely (see 10-server.py, where the agent is created
+    and started) and send it messages.
 
-  Note the use of the `allow` attribute to specify that we only want to communicate with an agent on the same cluster as us.
+    Note the use of the `allow` attribute to specify that we only want to communicate with an agent on the same cluster as us.
 """
 
 

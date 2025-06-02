@@ -1,7 +1,7 @@
 from ockam import Agent, Model, Node, SearchableKnowledge
 
 """
-  This example shows how a model can be enriched with knowledge coming from documents retrieved online.
+    This example shows how a model can be enriched with knowledge coming from documents retrieved online.
 """
 
 

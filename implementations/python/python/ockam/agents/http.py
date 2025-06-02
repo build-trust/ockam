@@ -14,7 +14,7 @@ from ..nodes.message import GetConversationsRequest
 from ..ockam_in_rust_for_python import info, error
 
 """
-  This class starts an HTTP server allowing a user to interact with a node and its agents.
+    This class starts an HTTP server allowing a user to interact with a node and its agents.
 """
 
 HOST = "127.0.0.1"

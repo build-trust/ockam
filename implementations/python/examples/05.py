@@ -1,13 +1,13 @@
 from ockam import Agent, Model, Node
 
 """
-  This example shows how to start an agent locally given a node.
-  The agent has:
-    - A name.
-    - Some instructions
-    - A model to use.
+    This example shows how to start an agent locally given a node.
+    The agent has:
+        - A name.
+        - Some instructions
+        - A model to use.
 
-  The agent can be sent a message and will respond with a message, using its instructions and its model to do so.
+    The agent can be sent a message and will respond with a message, using its instructions and its model to do so.
 """
 
 

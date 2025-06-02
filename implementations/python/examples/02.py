@@ -1,11 +1,11 @@
 from ockam import Node, info
 
 """
-  This example shows that it is possible to start a worker written in Python,
-  send a message to it, and get a response.
+    This example shows that it is possible to start a worker written in Python,
+    send a message to it, and get a response.
 
-  The node is started with a name and relay, which means that an identity will be created for that node.
-  and it will be enrolled to the project mentioned in the ticket.
+    The node is started with a name and relay, which means that an identity will be created for that node.
+    and it will be enrolled to the project mentioned in the ticket.
 """
 
 

@@ -3,10 +3,10 @@ from ockam import Agent, McpClient, McpTool, Model, Node, RemoteNode
 import sys
 
 """
-  This example shows how to:
+    This example shows how to:
 
-  - Start two agents remotely on a node hosting a MCP server
-  - Start a local agent that will use the 2 remote agents as tools, in order to answer requests.
+    - Start two agents remotely on a node hosting an MCP server
+    - Start a local agent that will use the two remote agents as tools, in order to answer requests.
 """
 
 

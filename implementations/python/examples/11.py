@@ -1,8 +1,8 @@
 from ockam import Agent, Node, Repl, Model
 
 """
-  This example shows how to start a repl to interact with an agent in the command line.
-  Queries can be received until the user types "quit" or CTRL-C.
+    This example shows how to start a repl to interact with an agent in the command line.
+    Queries can be received until the user types "quit" or CTRL-C.
 """
 
 

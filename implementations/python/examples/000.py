@@ -9,8 +9,8 @@ async def main(node):
 You are an information security agent.
 
 When you're given a question, decide if it's related to one of the categories or not:
-  - `network`: vulnerabilities in networks, internet, cloud, etc.
-  - `code`: vulnerabilities in code snippets
+    - `network`: vulnerabilities in networks, internet, cloud, etc.
+    - `code`: vulnerabilities in code snippets
 
 If it is related to one of the categories above, decide which category it is related to the most, then output the category name: `network` or `code`.
 If it is not related to any of the categories above - output `other`.

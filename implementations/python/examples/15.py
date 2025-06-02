@@ -2,39 +2,38 @@ from ockam import Agent, Node, HttpServer, Repl, Model
 from api_15 import Api
 
 """
-  This example shows how a HTTP server can be started to interact with some agents deployed on a node.
-  An API with custom routes can also be defined.
+    This example shows how a HTTP server can be started to interact with some agents deployed on a node.
+    An API with custom routes can also be defined.
 
-  Pre-requisites:
+    Pre-requisites:
 
-  To run this example locally you need to start:
+    To run this example locally you need to start:
 
-  - `sh> ollama serve > /dev/null 2>&1`
-  - `sh> uv run examples/15.py`
+    - `sh> ollama serve > /dev/null 2>&1`
+    - `sh> uv run examples/15.py`
 
-  Example queries:
+    Example queries:
 
-  # retrieve the list of all agents
-  http localhost:8000/agents
+    # retrieve the list of all agents
+    http localhost:8000/agents
 
-  # send a request to a specific agent
-  http POST localhost:8000/agents/henry message="What is a LBO?"
+    # send a request to a specific agent
+    http POST localhost:8000/agents/henry message="What is a LBO?"
 
-  # retrieve the list of all tools
-  http localhost:8000/tools
+    # retrieve the list of all tools
+    http localhost:8000/tools
 
-  # retrieve the global conversations for a given agent
-  http localhost:8000/agents/henry/conversations
+    # retrieve the global conversations for a given agent
+    http localhost:8000/agents/henry/conversations
 
-  # retrieve the global conversations for a given agent and a given scope
-  http localhost:8000/agents/henry/scopes/acme/conversations
+    # retrieve the global conversations for a given agent and a given scope
+    http localhost:8000/agents/henry/scopes/acme/conversations
 
-  # retrieve the conversation for a given agent, scope and conversation id
-  http localhost:8000/agents/henry/scopes/acme/conversations/1
+    # retrieve the conversation for a given agent, scope and conversation id
+    http localhost:8000/agents/henry/scopes/acme/conversations/1
 
-  # call the custom API
-  http POST localhost:8000/analysis?network=acme
-
+    # call the custom API
+    http POST localhost:8000/analysis?network=acme
 """
 
 

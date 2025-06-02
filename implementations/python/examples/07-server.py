@@ -1,9 +1,9 @@
 from ockam import Node, McpServer
 
 """
-  Second part of example 07. This simply starts a McpServer worker and makes it accessible via tcp.
-  The RemoteManager is responsible for creating agents on that node when a StartAgent request is received.
-  Once an agent is started the McpServer will direct messages to it if that agent is exposed as a tool.
+    Second part of example 07. This simply starts a McpServer worker and makes it accessible via tcp.
+    The RemoteManager is responsible for creating agents on that node when a StartAgent request is received.
+    Once an agent is started, the McpServer will direct messages to it if that agent is exposed as a tool.
 """
 
 Node.start(mcp_server=McpServer(listen_address="127.0.0.1:8000"))
