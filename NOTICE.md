@@ -426,6 +426,13 @@ This file contains attributions for any 3rd-party open source code used in this 
 | proc-macro2 | MIT, Apache-2.0 | https://crates.io/crates/proc-macro2 |
 | prost | Apache-2.0 | https://crates.io/crates/prost |
 | prost-derive | Apache-2.0 | https://crates.io/crates/prost-derive |
+| pyo3 | MIT, Apache-2.0 | https://crates.io/crates/pyo3 |
+| pyo3-async-runtimes | Apache-2.0 | https://github.com/davide-baldo/pyo3-async-runtimes.git?branch=davide-baldo%2Favoid-gil-in-async-threads |
+| pyo3-async-runtimes-macros | Apache-2.0 | https://github.com/davide-baldo/pyo3-async-runtimes.git?branch=davide-baldo%2Favoid-gil-in-async-threads |
+| pyo3-build-config | MIT, Apache-2.0 | https://crates.io/crates/pyo3-build-config |
+| pyo3-ffi | MIT, Apache-2.0 | https://crates.io/crates/pyo3-ffi |
+| pyo3-macros | MIT, Apache-2.0 | https://crates.io/crates/pyo3-macros |
+| pyo3-macros-backend | MIT, Apache-2.0 | https://crates.io/crates/pyo3-macros-backend |
 | quick-xml | MIT | https://crates.io/crates/quick-xml |
 | quote | MIT, Apache-2.0 | https://crates.io/crates/quote |
 | r3bl_ansi_color | Apache-2.0 | https://crates.io/crates/r3bl_ansi_color |
@@ -452,6 +459,8 @@ This file contains attributions for any 3rd-party open source code used in this 
 | rfc6979 | Apache-2.0, MIT | https://crates.io/crates/rfc6979 |
 | ring | Apache-2.0, ISC | https://crates.io/crates/ring |
 | riscv | ISC | https://crates.io/crates/riscv |
+| rmcp | MIT, Apache-2.0 | https://crates.io/crates/rmcp |
+| rmcp-macros | MIT, Apache-2.0 | https://crates.io/crates/rmcp-macros |
 | roff | MIT, Apache-2.0 | https://crates.io/crates/roff |
 | rustc-demangle | MIT, Apache-2.0 | https://crates.io/crates/rustc-demangle |
 | rustc-hash | Apache-2.0, MIT | https://crates.io/crates/rustc-hash |
@@ -470,6 +479,8 @@ This file contains attributions for any 3rd-party open source code used in this 
 | ryu | Apache-2.0, BSL-1.0 | https://crates.io/crates/ryu |
 | same-file | Unlicense, MIT | https://crates.io/crates/same-file |
 | schannel | MIT | https://crates.io/crates/schannel |
+| schemars | MIT | https://crates.io/crates/schemars |
+| schemars_derive | MIT | https://crates.io/crates/schemars_derive |
 | scoped-tls | MIT, Apache-2.0 | https://crates.io/crates/scoped-tls |
 | scopeguard | MIT, Apache-2.0 | https://crates.io/crates/scopeguard |
 | sct | Apache-2.0, ISC, MIT | https://crates.io/crates/sct |
@@ -480,10 +491,13 @@ This file contains attributions for any 3rd-party open source code used in this 
 | semver-parser | MIT, Apache-2.0 | https://crates.io/crates/semver-parser |
 | seq-macro | MIT, Apache-2.0 | https://crates.io/crates/seq-macro |
 | serde | MIT, Apache-2.0 | https://crates.io/crates/serde |
+| serde-pyobject | MIT, Apache-2.0 | https://crates.io/crates/serde-pyobject |
 | serde-xml-rs | MIT | https://crates.io/crates/serde-xml-rs |
 | serde_bare | MIT, Apache-2.0 | https://crates.io/crates/serde_bare |
 | serde_derive | MIT, Apache-2.0 | https://crates.io/crates/serde_derive |
+| serde_derive_internals | MIT, Apache-2.0 | https://crates.io/crates/serde_derive_internals |
 | serde_json | MIT, Apache-2.0 | https://crates.io/crates/serde_json |
+| serde_path_to_error | MIT, Apache-2.0 | https://crates.io/crates/serde_path_to_error |
 | serde_spanned | MIT, Apache-2.0 | https://crates.io/crates/serde_spanned |
 | serde_urlencoded | MIT, Apache-2.0 | https://crates.io/crates/serde_urlencoded |
 | sha1 | MIT, Apache-2.0 | https://crates.io/crates/sha1 |
@@ -516,6 +530,7 @@ This file contains attributions for any 3rd-party open source code used in this 
 | sqlx-macros-core | MIT, Apache-2.0 | https://crates.io/crates/sqlx-macros-core |
 | sqlx-postgres | MIT, Apache-2.0 | https://crates.io/crates/sqlx-postgres |
 | sqlx-sqlite | MIT, Apache-2.0 | https://crates.io/crates/sqlx-sqlite |
+| sse-stream | MIT, Apache-2.0 | https://crates.io/crates/sse-stream |
 | stable_deref_trait | MIT, Apache-2.0 | https://crates.io/crates/stable_deref_trait |
 | static_assertions | MIT, Apache-2.0 | https://crates.io/crates/static_assertions |
 | stm32-device-signature | MIT, Apache-2.0 | https://crates.io/crates/stm32-device-signature |
@@ -540,6 +555,7 @@ This file contains attributions for any 3rd-party open source code used in this 
 | syntect | MIT | https://crates.io/crates/syntect |
 | sysctl | MIT | https://crates.io/crates/sysctl |
 | sysinfo | MIT | https://crates.io/crates/sysinfo |
+| target-lexicon | Apache-2.0 WITH LLVM-exception | https://crates.io/crates/target-lexicon |
 | tempfile | MIT, Apache-2.0 | https://crates.io/crates/tempfile |
 | termbg | MIT, Apache-2.0 | https://crates.io/crates/termbg |
 | termcolor | Unlicense, MIT | https://crates.io/crates/termcolor |
@@ -590,6 +606,7 @@ This file contains attributions for any 3rd-party open source code used in this 
 | unicode-properties | MIT, Apache-2.0 | https://crates.io/crates/unicode-properties |
 | unicode-segmentation | MIT, Apache-2.0 | https://crates.io/crates/unicode-segmentation |
 | unicode-width | MIT, Apache-2.0 | https://crates.io/crates/unicode-width |
+| unindent | MIT, Apache-2.0 | https://crates.io/crates/unindent |
 | universal-hash | MIT, Apache-2.0 | https://crates.io/crates/universal-hash |
 | unsafe-libyaml | MIT | https://crates.io/crates/unsafe-libyaml |
 | unsigned-varint | MIT | https://crates.io/crates/unsigned-varint |
@@ -623,6 +640,7 @@ This file contains attributions for any 3rd-party open source code used in this 
 | wasm-bindgen-macro-support | MIT, Apache-2.0 | https://crates.io/crates/wasm-bindgen-macro-support |
 | wasm-bindgen-shared | MIT, Apache-2.0 | https://crates.io/crates/wasm-bindgen-shared |
 | wasm-encoder | Apache-2.0 WITH LLVM-exception, Apache-2.0, MIT | https://crates.io/crates/wasm-encoder |
+| wasm-streams | MIT, Apache-2.0 | https://crates.io/crates/wasm-streams |
 | wast | Apache-2.0 WITH LLVM-exception, Apache-2.0, MIT | https://crates.io/crates/wast |
 | wayland-client | MIT | https://crates.io/crates/wayland-client |
 | wayland-commons | MIT | https://crates.io/crates/wayland-commons |
@@ -632,6 +650,7 @@ This file contains attributions for any 3rd-party open source code used in this 
 | wayland-sys | MIT | https://crates.io/crates/wayland-sys |
 | web-sys | MIT, Apache-2.0 | https://crates.io/crates/web-sys |
 | web-time | MIT, Apache-2.0 | https://crates.io/crates/web-time |
+| webpki-roots | CDLA-Permissive-2.0 | https://crates.io/crates/webpki-roots |
 | weezl | MIT, Apache-2.0 | https://crates.io/crates/weezl |
 | which | MIT | https://crates.io/crates/which |
 | whoami | Apache-2.0, BSL-1.0, MIT | https://crates.io/crates/whoami |
