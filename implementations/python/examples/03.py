@@ -1,8 +1,8 @@
 from ockam import Model, Node, info
 
 """
-  This example shows that, in addition to starting workers written in Python,
-  Many different models can be invoked (this example just uses one, the full list is provided in models/model.py).
+    This example shows that, in addition to starting workers written in Python,
+    Many different models can be invoked (this example just uses one, the full list is provided in models/model.py).
 """
 
 

@@ -259,8 +259,8 @@ class Agent:
         """
         This function converts the model response into an AssistantMessage.
         When streaming is used the function also returns:
-          - the current part number
-          - a boolean indicating if this is the last part of the response
+            - the current part number
+            - a boolean indicating if this is the last part of the response
         """
         if response is None or not hasattr(response, "choices") or not response.choices:
             e = ValueError(f"The model returned a response with an unexpected structure - {response}")

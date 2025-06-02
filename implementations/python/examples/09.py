@@ -1,8 +1,8 @@
 from ockam import Agent, Model, Node, Tool
 
 """
-  This example shows the difference between querying a model using local tools and
-  using a remote agent to do the same kind of querying on a remote node (files 09-client.py and 09-server.py).
+    This example shows the difference between querying a model using local tools and
+    using a remote agent to do the same kind of querying on a remote node (files 09-client.py and 09-server.py).
 """
 
 

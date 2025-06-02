@@ -1,8 +1,9 @@
 from ockam import Agent, Model, Node
 
 """
-  Second part of example 10.
-  This starts a remote agent and only allows communication coming from agents in the same cluster (as specified on the enrollment ticket).
+    Second part of example 10.
+    This starts a remote agent and only allows communication coming from agents in the same cluster (as specified
+    on the enrollment ticket).
 """
 
 

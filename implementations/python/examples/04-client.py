@@ -3,13 +3,13 @@ import sys
 from ockam import Node, RemoteNode
 
 """
-  This example shows how an enrolled can send messages to a remote node:
+    This example shows how an enrolled node can send messages to a remote node:
 
-  - 04-echo.py starts a node with an Echoer worker
-  - Then we can either:
-    - Send a message from the local node to the Echoer worker
-    - Send a message from a remote node wrapping the local node to the Echoer worker.
-      Remote node will be more useful in example 7, where we show that we can send and execute code remotely.
+    - 04-echo.py starts a node with an Echoer worker
+    - Then we can either:
+        - Send a message from the local node to the Echoer worker
+        - Send a message from a remote node wrapping the local node to the Echoer worker.
+    Remote node will be more useful in example 7, where we show that we can send and execute code remotely.
 """
 
 

@@ -1,8 +1,8 @@
 from ockam import Agent, Model, Node, Tool
 
 """
-  This example shows how add tools to an agent.
-  In this case we add 2 simple functions. The agent will use the model to learn how to use the provided tools.
+    This example shows how to add tools to an agent.
+    In this case we add two simple functions. The agent will use the model to learn how to use the provided tools.
 """
 
 

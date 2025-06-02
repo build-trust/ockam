@@ -1,8 +1,8 @@
 from ockam import Agent, Model, Node, CoTPlanner
 
 """
-  This example shows how to use a planning strategy ("Chain of Thought" or COT) to solve a complex task.
-  As you can see the planning phase can use a different model than the execution phase
+    This example shows how to use a planning strategy ("Chain of Thought" or COT) to solve a complex task.
+    As you can see, the planning phase can use a different model than the execution phase
 """
 
 

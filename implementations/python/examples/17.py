@@ -1,7 +1,7 @@
 from ockam import Agent, Model, Node, Squad
 
 """
-  This example shows how squads work
+    This example shows how squads work
 """
 
 

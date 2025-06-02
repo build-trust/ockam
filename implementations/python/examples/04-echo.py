@@ -1,7 +1,7 @@
 from ockam import Node, info
 
 """
-  Second part of example 04. This simply starts an Echoer worker.
+    Second part of example 04. This simply starts an Echoer worker.
 """
 
 
