@@ -21,11 +21,11 @@ format:
 	uv run ruff format examples python
 
 release-linux:
-	docker run --rm -v "$(shell pwd)":/io --platform linux/amd64 ghcr.io/pyo3/maturin build --release --target x86_64-unknown-linux-gnu
-	docker run --rm -v "$(shell pwd)":/io --platform linux/arm64 ghcr.io/pyo3/maturin build --release --target aarch64-unknown-linux-gnu
+	docker run --rm -v "$(shell pwd)/..":/io --platform linux/amd64 ghcr.io/pyo3/maturin build --release --target x86_64-unknown-linux-gnu --manifest-path /io/python/Cargo.toml
+	docker run --rm -v "$(shell pwd)/..":/io --platform linux/arm64 ghcr.io/pyo3/maturin build --release --target aarch64-unknown-linux-gnu --manifest-path /io/python/Cargo.toml
 
 build-image-amd64:
-	docker run --rm -v "$(shell pwd)":/io --platform linux/amd64 ghcr.io/pyo3/maturin build --release --target x86_64-unknown-linux-gnu
+	docker run --rm -v "$(shell pwd)/..":/io --platform linux/amd64 ghcr.io/pyo3/maturin build --release --target x86_64-unknown-linux-gnu --manifest-path /io/python/Cargo.toml
 	$(eval SHORT_COMMIT_HASH := $(shell git rev-parse --short HEAD))
 
 	docker pull cgr.dev/chainguard/python:latest-dev
