@@ -36,7 +36,8 @@ defmodule OckamKafka.MixProject do
       {:ockam_services, path: "../ockam_services"},
       {:brod,
        git: "https://github.com/hairyhum/brod.git", branch: "kpro-connection-timeout-3.15"},
-      {:snappyer, "~> 1.2", override: true}
+      {:snappyer, "~> 1.2.10", override: true},
+      {:crc32cer, "~> 0.1.2", override: true}
       # {:brod, "~> 3.14.0"},
     ]
   end
