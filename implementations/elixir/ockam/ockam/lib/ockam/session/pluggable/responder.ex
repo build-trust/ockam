@@ -73,7 +73,7 @@ defmodule Ockam.Session.Pluggable.Responder do
         {:ok, state}
 
       ## TODO: match Ockam.Message?
-      %{payload: _} = message ->
+      %{payload: _payload} = message ->
         handle_handshake_message(message, state)
     end
   end

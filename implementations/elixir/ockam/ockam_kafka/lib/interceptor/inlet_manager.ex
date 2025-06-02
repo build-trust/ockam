@@ -113,7 +113,7 @@ defmodule Ockam.Kafka.Interceptor.InletManager do
         try do
           GenServer.stop(pid)
         catch
-          :exit, {:noproc, _} ->
+          :exit, {:noproc, _any} ->
             :ok
         end
 

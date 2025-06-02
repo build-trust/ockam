@@ -167,7 +167,10 @@ defmodule Ockam.Session.Pluggable.Initiator do
     end
   end
 
-  def handle_message(message, %{stage: :data, data_state: _, data_worker_mod: _} = state) do
+  def handle_message(
+        message,
+        %{stage: :data, data_state: _data_state, data_worker_mod: _mod} = state
+      ) do
     Session.handle_data_message(message, state)
   end
 

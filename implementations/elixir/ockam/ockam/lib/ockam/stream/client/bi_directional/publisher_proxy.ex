@@ -41,7 +41,7 @@ defmodule Ockam.Stream.Client.BiDirectional.PublisherProxy do
   end
 
   @impl true
-  def handle_message(%{payload: _} = message, %{publisher_address: _} = state) do
+  def handle_message(%{payload: _payload} = message, %{publisher_address: _address} = state) do
     %{
       consumer_stream: consumer_stream,
       address: self_address,
@@ -73,7 +73,7 @@ defmodule Ockam.Stream.Client.BiDirectional.PublisherProxy do
     {:ok, state}
   end
 
-  def handle_message(%Ockam.Message{payload: _} = message, state) do
+  def handle_message(%Ockam.Message{payload: _payload} = message, state) do
     ## Delay message processing
     send(self(), message)
     {:ok, state}

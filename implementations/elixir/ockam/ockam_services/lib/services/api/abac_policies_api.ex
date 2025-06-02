@@ -83,7 +83,7 @@ defmodule Ockam.Services.API.ABAC.PoliciesApi do
       {:ok, action_id} ->
         fun.(action_id)
 
-      {:error, {:invalid_action_id, _}} ->
+      {:error, {:invalid_action_id, _e}} ->
         {:error, {:bad_request, :invalid_path}}
     end
   end

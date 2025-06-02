@@ -62,7 +62,7 @@ defmodule Ockam.API.Response do
         body_present = byte_size(body) > 0
 
         case {header.has_body, body_present} do
-          {true, _} ->
+          {true, _body_present} ->
             {:ok,
              %Response{
                id: header.id,

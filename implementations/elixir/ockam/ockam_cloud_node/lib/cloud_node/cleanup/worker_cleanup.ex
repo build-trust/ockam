@@ -21,7 +21,7 @@ defmodule Ockam.CloudNode.Cleanup.WorkerCleanup do
 
     filter_fun = fn {_name, state} ->
       case Map.get(state, :forward_route) do
-        [first_address | _] ->
+        [first_address | _rest] ->
           not address_live?(first_address)
 
         _other ->
@@ -76,7 +76,7 @@ defmodule Ockam.CloudNode.Cleanup.WorkerCleanup do
   end
 
   def stop_workers(workers) do
-    Enum.each(workers, fn {name, _} ->
+    Enum.each(workers, fn {name, _state} ->
       Ockam.Node.stop(name)
     end)
   end

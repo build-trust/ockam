@@ -92,7 +92,12 @@ defmodule Ockam.Stream.Index.KafkaOffset do
           [
             %{
               partition_responses: [
-                %{error_code: :no_error, metadata: _, offset: offset, partition: ^partition}
+                %{
+                  error_code: :no_error,
+                  metadata: _metadata,
+                  offset: offset,
+                  partition: ^partition
+                }
               ],
               topic: ^topic
             }

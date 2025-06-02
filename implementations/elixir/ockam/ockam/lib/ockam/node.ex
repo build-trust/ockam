@@ -131,7 +131,7 @@ defmodule Ockam.Node do
   # An attempt to use explicit ack when overloaded is tricky to get right on the current codebase,
   # as it introduce deadlocks.
   def maybe_slowdown_sender(destination_pid) do
-    {_, queue_len} = Process.info(destination_pid, :message_queue_len)
+    {:message_queue_len, queue_len} = Process.info(destination_pid, :message_queue_len)
 
     if queue_len > @queue_size_high_watermark do
       sleep_ms = min(@max_sleep, round(:rand.uniform() * @slowdown_factor ** queue_len))
@@ -222,7 +222,7 @@ defmodule Ockam.Node do
     GenServer.stop(pid)
   catch
     ## It's OK if the worker is already stopped
-    :exit, {:noproc, _} ->
+    :exit, {:noproc, _reason} ->
       :ok
   end
 

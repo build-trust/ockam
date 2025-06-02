@@ -42,8 +42,8 @@ defmodule Ockam.Services.Provider do
 
     {ok_results, errors} =
       Enum.split_with(spec_results, fn
-        {:ok, _} -> true
-        {:error, _} -> false
+        {:ok, _specs} -> true
+        {:error, _e} -> false
       end)
 
     child_specs = Enum.flat_map(ok_results, fn {:ok, specs} -> specs end)
@@ -65,7 +65,7 @@ defmodule Ockam.Services.Provider do
         {:ok, specs}
 
       {:error, {:unknown_service, service_name}} ->
-        case is_service_module?(service_name) do
+        case service_module?(service_name) do
           true ->
             {:ok, [module_child_spec(service_name, service_args)]}
 
@@ -75,7 +75,7 @@ defmodule Ockam.Services.Provider do
     end
   end
 
-  defp is_service_module?(service_name) do
+  defp service_module?(service_name) do
     case Code.ensure_loaded(service_name) do
       {:module, _module} ->
         function_exported?(service_name, :child_spec, 1)

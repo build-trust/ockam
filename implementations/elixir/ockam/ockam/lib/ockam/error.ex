@@ -18,7 +18,7 @@ defmodule Ockam.Error do
         caller_module = __CALLER__.module
 
         quote do
-          {:current_stacktrace, [_ | stacktrace]} = Process.info(self(), :current_stacktrace)
+          {:current_stacktrace, [_head | stacktrace]} = Process.info(self(), :current_stacktrace)
 
           metadata = %{stacktrace: stacktrace, module: unquote(caller_module)}
           %unquote(error_module){reason: unquote(reason), metadata: metadata}

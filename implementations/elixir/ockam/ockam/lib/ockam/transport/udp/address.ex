@@ -16,12 +16,12 @@ defmodule Ockam.Transport.UDPAddress do
     %Address{type: @address_type, value: value}
   end
 
-  def is_udp_address(address) do
+  def udp_address?(address) do
     Address.type(address) == @address_type
   end
 
   def to_ip_port(address) do
-    case is_udp_address(address) do
+    case udp_address?(address) do
       true ->
         parse_ip_port(Address.value(address))
 

@@ -1,4 +1,6 @@
 defmodule Ockam.Services.Relay.Types do
+  @moduledoc false
+
   defmodule CreateRelayRequest do
     @moduledoc false
     use TypedStruct

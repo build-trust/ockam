@@ -15,10 +15,10 @@ defmodule Ockam.Services.API.Tests.EndpointAPI do
 
   def list(_req, %{bindings: %{}, auth_data: %{}, state: v}), do: {:ok, v}
 
-  def show(_req, %{bindings: %{id: id}, auth_data: %{extra: auth_data}, state: _}),
+  def show(_req, %{bindings: %{id: id}, auth_data: %{extra: auth_data}, state: _state}),
     do: {:ok, id <> auth_data}
 
-  def edit(%Request{body: body}, %{bindings: %{id: _id}, auth_data: %{}, state: _}),
+  def edit(%Request{body: body}, %{bindings: %{id: _id}, auth_data: %{}, state: _state}),
     do: {:ok, body}
 
   # Note: an actual implementation will look at the identity information attached to the request,
