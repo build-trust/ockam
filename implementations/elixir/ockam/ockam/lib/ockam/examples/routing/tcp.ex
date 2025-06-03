@@ -39,8 +39,11 @@ defmodule Ockam.Examples.Routing.TCP do
     })
 
     receive do
-      %{onward_route: [^my_address], return_route: [tcp_client | _], payload: "Hello localhost!"} =
-          reply ->
+      %{
+        onward_route: [^my_address],
+        return_route: [tcp_client | _rest],
+        payload: "Hello localhost!"
+      } = reply ->
         Logger.info("Received message: #{inspect(reply)}")
         {:ok, tcp_client}
     end

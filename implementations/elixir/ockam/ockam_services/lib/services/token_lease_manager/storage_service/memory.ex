@@ -25,7 +25,7 @@ defmodule Ockam.Services.TokenLeaseManager.StorageService.Memory do
   @impl true
   def get(table, issued_for, lease_id) do
     case :ets.lookup(table, {issued_for, lease_id}) do
-      [{_, lease}] -> {:ok, lease}
+      [{_key, lease}] -> {:ok, lease}
       [] -> {:ok, nil}
     end
   end

@@ -55,13 +55,13 @@ defmodule Ockam.Services.MixProject do
       {:ockam, path: "../ockam"},
       {:ockam_metrics, path: "../ockam_metrics"},
       {:ockam_abac, path: "../ockam_abac"},
-      {:ranch, "~> 2.1.0", override: true},
+      {:ranch, "~> 2.2.0", override: true},
       ## Token lease manager
       {:httpoison, "~> 2.1"},
       {:poison, "~> 5.0.0"},
 
       ## Used for Ockam.Services.API.Endpoint' dispatch table implementation
-      {:cowboy, "~> 2.10.0"}
+      {:cowboy, "~> 2.13.0"}
     ]
   end
 

@@ -295,7 +295,7 @@ impl RepositoryDownloader {
                     .repository_url
                     .trim_end_matches(".git")
                     .split('/')
-                    .last()
+                    .next_back()
                     .ok_or_else(|| miette!("Failed to parse repository name from URL"))?;
                 self.temp_dir.path().join(repo_name)
             }

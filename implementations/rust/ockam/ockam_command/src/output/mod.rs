@@ -238,6 +238,7 @@ impl Output for IdentifierDisplay {
     }
 }
 
+#[allow(dead_code)]
 pub struct IdentityDisplay(pub Identity);
 
 impl Serialize for IdentityDisplay {

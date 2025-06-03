@@ -25,7 +25,7 @@ defmodule Ockam.SecureChannel.EncryptedTransportProtocol.AeadAesGcm do
         ) do
       with {:ok, ciphertext} <- Crypto.aead_aes_gcm_encrypt(k, nonce, ad, plaintext),
            {:ok, next_nonce} <- AeadAesGcm.increment_nonce(nonce),
-           {:ok, next_k, _} <- rotate_if_needed(next_nonce, k, rekey_each) do
+           {:ok, next_k, _rotated} <- rotate_if_needed(next_nonce, k, rekey_each) do
         {:ok, <<nonce::unsigned-big-integer-size(64), ciphertext::binary>>,
          %Encryptor{state | nonce: next_nonce, k: next_k}}
       end
@@ -177,7 +177,7 @@ defmodule Ockam.SecureChannel.EncryptedTransportProtocol.AeadAesGcm do
   end
 
   def rekey(k) do
-    with {:ok, <<new_k::binary-size(32), _::binary>>} <-
+    with {:ok, <<new_k::binary-size(32), _rest::binary>>} <-
            Crypto.aead_aes_gcm_encrypt(k, @max_nonce, <<>>, <<0::32*8>>) do
       {:ok, new_k}
     end

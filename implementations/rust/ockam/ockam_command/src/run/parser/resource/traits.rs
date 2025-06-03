@@ -8,6 +8,7 @@ use tracing::debug;
 ///
 /// The resource is the layer between the configuration data and the parsed command.
 pub trait Resource<C: ParsedCommand>: Sized + Send + Sync + 'static {
+    #[allow(dead_code)]
     const COMMAND_NAME: &'static str;
 
     fn args(self) -> Vec<String> {

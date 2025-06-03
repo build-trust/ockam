@@ -488,7 +488,7 @@ impl Session {
                         warn!(key = %key, "session unresponsive. replacing");
                     }
 
-                    if initial_connect_was_called && pings.len() > 0 {
+                    if initial_connect_was_called && !pings.is_empty() {
                         replacer.on_session_down().await;
                     }
 

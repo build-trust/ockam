@@ -40,7 +40,7 @@ defmodule Ockam.Topic do
 
   alias Ockam.Topics
 
-  def init(%{topic_name: _} = state) do
+  def init(%{topic_name: _name} = state) do
     # @TODO use ets for messages
     # @TODO register consumers with their own DynamicSupervisor
     # @TODO queued_messages is unbounded and really ought to be a pluggable backend with an ets table.

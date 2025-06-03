@@ -47,7 +47,7 @@ defmodule Ockam.Examples.Forwarding.ServiceApi do
   defp resolve_self_address(nil) do
     case Ockam.Node.list_addresses(self()) do
       [] -> {:error, :not_registered_worker}
-      [address | _] -> {:ok, address}
+      [address | _rest] -> {:ok, address}
     end
   end
 

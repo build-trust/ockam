@@ -17,5 +17,6 @@ defmodule Ockam.Healthcheck.TestAPIEndpoint do
   def healthcheck_error(_req, _data), do: {:error, "Error"}
 
   @impl true
-  def authorize(:test, _req, _bindings), do: true
+  def authorize(:test, _req, _bindings), do: {true, %{}}
+  def authorize(_type, _req, _bindings), do: false
 end

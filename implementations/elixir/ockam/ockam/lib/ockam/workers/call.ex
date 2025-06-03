@@ -72,7 +72,7 @@ defmodule Ockam.Workers.Call do
   end
 
   @impl true
-  def handle_message(%{payload: _} = message, state) do
+  def handle_message(%{payload: _payload} = message, state) do
     state = Map.update(state, :messages, [message], fn messages -> messages ++ [message] end)
 
     maybe_reply(state)

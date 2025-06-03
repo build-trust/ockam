@@ -100,7 +100,7 @@ fn adjust(s: String, desired_size: usize, filler: char) -> String {
     let current_size = result.len();
     // make sure that there exactly the desired number of characters
     if current_size < desired_size {
-        result.extend(std::iter::repeat(filler).take(desired_size - current_size));
+        result.extend(std::iter::repeat_n(filler, desired_size - current_size));
     };
     result[0..desired_size].to_string()
 }

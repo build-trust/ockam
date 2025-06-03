@@ -87,7 +87,7 @@ defmodule Ockam.Transport.UDP.Listener do
   end
 
   defp decode_and_send_to_router(udp_message, state) do
-    {function_name, _} = __ENV__.function
+    {function_name, _arity} = __ENV__.function
     {:udp, _socket, from_ip, from_port, packet} = udp_message
 
     case Wire.decode(packet, :udp) do
@@ -108,7 +108,7 @@ defmodule Ockam.Transport.UDP.Listener do
   end
 
   defp encode_and_send_over_udp(message, %{socket: socket} = state) do
-    {function_name, _} = __ENV__.function
+    {function_name, _arity} = __ENV__.function
 
     with {:ok, destination, message} <- pick_destination_and_set_onward_route(message),
          {:ok, encoded_message} <- Wire.encode(message),
@@ -127,7 +127,7 @@ defmodule Ockam.Transport.UDP.Listener do
       |> Message.onward_route()
       |> List.pop_at(0)
 
-    with true <- UDPAddress.is_udp_address(dest_address),
+    with true <- UDPAddress.udp_address?(dest_address),
          {:ok, {ip, port}} <- UDPAddress.to_ip_port(dest_address) do
       {:ok, %{ip: ip, port: port}, %{message | onward_route: onward_route}}
     else

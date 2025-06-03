@@ -62,7 +62,7 @@ defmodule Ockam.SecureChannel.Tests do
       end
     end
 
-    {:ok, _} =
+    {:ok, _pid} =
       Task.start_link(fn ->
         Node.register_address("man_in_the_middle")
         man_in_the_middle(drop_evens)
@@ -94,7 +94,7 @@ defmodule Ockam.SecureChannel.Tests do
       end
     end)
 
-    refute_receive(_, 100)
+    refute_receive(_any, 100)
   end
 
   test "secure channel replay attack" do
@@ -103,7 +103,7 @@ defmodule Ockam.SecureChannel.Tests do
       [m, m]
     end
 
-    {:ok, _} =
+    {:ok, _pid} =
       Task.start_link(fn ->
         Node.register_address("man_in_the_middle")
         man_in_the_middle(replay)
@@ -133,7 +133,7 @@ defmodule Ockam.SecureChannel.Tests do
       end
     end)
 
-    refute_receive(_, 100)
+    refute_receive(_any, 100)
   end
 
   test "secure channel trash packets" do
@@ -146,7 +146,7 @@ defmodule Ockam.SecureChannel.Tests do
       end
     end
 
-    {:ok, _} =
+    {:ok, _pid} =
       Task.start_link(fn ->
         Node.register_address("man_in_the_middle")
         man_in_the_middle(replay)
@@ -178,7 +178,7 @@ defmodule Ockam.SecureChannel.Tests do
       end
     end)
 
-    refute_receive(_, 100)
+    refute_receive(_any, 100)
   end
 
   test "tunneled secure channel works" do
@@ -276,7 +276,7 @@ defmodule Ockam.SecureChannel.Tests do
 
     # Hacky way to get the receiver' pid, so we can monitor it and ensure it get terminated
     # after disconnection
-    [receiver_addr, _] = return_route
+    [receiver_addr, _rest] = return_route
     receiver_pid = Ockam.Node.whereis(receiver_addr)
     ref2 = Process.monitor(receiver_pid)
 
@@ -285,15 +285,15 @@ defmodule Ockam.SecureChannel.Tests do
     assert_receive %Ockam.Message{
       onward_route: [^me],
       payload: "PONG!",
-      return_route: [^channel | _],
+      return_route: [^channel | _rest],
       local_metadata: %{identity_id: id, identity: _identity, channel: :secure_channel}
     }
 
     assert id == Identity.get_identifier(alice)
 
     SecureChannel.disconnect(channel)
-    assert_receive {:DOWN, ^ref1, _, _, _}
-    assert_receive {:DOWN, ^ref2, _, _, _}
+    assert_receive {:DOWN, ^ref1, _process, _pid, _reason}
+    assert_receive {:DOWN, ^ref2, _process, _pid, _reason}
   end
 
   test "identity channel inner address is protected", %{alice: alice, bob: bob} do
@@ -460,7 +460,7 @@ defmodule Ockam.SecureChannel.Tests do
     {:ok, wrong_credential} = Identity.issue_credential(wrong_authority, bob_id, attributes, 100)
 
     # {:ok, channel} =
-    {:error, _} =
+    {:error, _e} =
       SecureChannel.create_channel(
         [
           identity: bob,
@@ -507,7 +507,7 @@ defmodule Ockam.SecureChannel.Tests do
     }
 
     # Credential by wrong authority on server side
-    {:error, _} =
+    {:error, _e} =
       SecureChannel.create_channel(
         [
           identity: bob,

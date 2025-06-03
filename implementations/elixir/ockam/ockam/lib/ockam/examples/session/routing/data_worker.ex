@@ -21,7 +21,7 @@ defmodule Ockam.Examples.Session.Routing.DataWorker do
 
   @impl true
   def handle_outer_message(message, state) do
-    [_ | onward_route] = Message.onward_route(message)
+    [_head | onward_route] = Message.onward_route(message)
     ## TODO: add forward_through?
     Ockam.Worker.route(Message.set_onward_route(message, state.route ++ onward_route), state)
 

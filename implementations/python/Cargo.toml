@@ -2,6 +2,7 @@
 name = "ockam_in_rust_for_python"
 version = "0.1.0"
 edition = "2024"
+license = "Apache-2.0"
 
 [lib]
 name = "ockam"
@@ -13,7 +14,7 @@ miette = "7.5.0"
 ockam = { path = "../rust/ockam/ockam", version = "^0.151.0" }
 ockam_api = { path = "../rust/ockam/ockam_api", version = "^0.94.0" }
 once_cell = "1.21.3"
-pyo3 = { version = "0.24.1", features = ["abi3-py311", "experimental-async", "serde"] }
+pyo3 = { version = "0.24.1", features = ["abi3-py312", "experimental-async", "serde"] }
 pyo3-async-runtimes = { git = "https://github.com/davide-baldo/pyo3-async-runtimes.git", branch = "davide-baldo/avoid-gil-in-async-threads", features = ["attributes", "tokio-runtime"] }
 rmcp = { version = "0.1.5", features = ["transport-sse", "client", "transport-sse-server", "server"] }
 serde = "1.0.219"

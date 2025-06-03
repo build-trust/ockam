@@ -6,10 +6,10 @@ _: {
     system,
     ...
   }: {
-    packages.uploadserver = pkgs.python311Packages.buildPythonPackage rec {
+    packages.uploadserver = pkgs.python312Packages.buildPythonPackage rec {
       pname = "uploadserver";
       version = "5.2.0";
-      src = pkgs.python311Packages.fetchPypi {
+      src = pkgs.python312Packages.fetchPypi {
         inherit pname version;
         sha256 = "sha256-M2gHbyj7HAbe0nuQeV5fwuejend5/Ksb15oaUzQXUfU=";
       };
@@ -29,6 +29,8 @@ _: {
         parallel
         which
         socat
+        python312Full
+        uv
       ] ++ lib.optionals stdenv.isLinux [
         nettools
       ];

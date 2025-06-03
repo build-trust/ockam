@@ -56,7 +56,7 @@ defmodule Ockam.Stream.Client.Publisher do
   end
 
   @impl true
-  def handle_message(%{payload: _} = message, state) do
+  def handle_message(%{payload: _payload} = message, state) do
     payload = Message.payload(message)
 
     case decode_payload(payload) do

@@ -91,28 +91,28 @@ defmodule Ockam.Metrics.TelemetryPoller.Tests do
     assert_receive %Ockam.Message{payload: "hello1", return_route: return_route}
     assert_receive %Ockam.Message{payload: "hello2"}
 
-    [receiver_addr, _] = return_route
+    [receiver_addr, _rest] = return_route
     receiver_pid = Ockam.Node.whereis(receiver_addr)
     ref2 = Process.monitor(receiver_pid)
 
     %{
       handshake_initiators: [],
       handshake_responders: [],
-      data_initiators: [_, _],
-      data_responders: [_, _]
+      data_initiators: [_initiator, _initiators],
+      data_responders: [_responder, _responders]
     } = TelemetryPoller.secure_channels()
 
     SecureChannel.disconnect(channel)
 
     # Be sure to wait until both initiator and responder have really stopped
-    assert_receive {:DOWN, ^ref1, _, _, _}
-    assert_receive {:DOWN, ^ref2, _, _, _}
+    assert_receive {:DOWN, ^ref1, _process1, _pid1, _reason1}
+    assert_receive {:DOWN, ^ref2, _process2, _pid2, _reason2}
 
     %{
       handshake_initiators: [],
       handshake_responders: [],
-      data_initiators: [_],
-      data_responders: [_]
+      data_initiators: [_initiator],
+      data_responders: [_responder]
     } = TelemetryPoller.secure_channels()
   end
 end

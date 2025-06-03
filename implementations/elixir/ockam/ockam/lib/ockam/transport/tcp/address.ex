@@ -12,7 +12,7 @@ defmodule Ockam.Transport.TCPAddress do
 
   @spec to_host_port(t()) :: {:ok, {String.t(), integer()}} | {:error, any()}
   def to_host_port(address) do
-    case is_tcp_address(address) do
+    case tcp_address?(address) do
       true ->
         parse_host_port(Address.value(address))
 
@@ -60,7 +60,7 @@ defmodule Ockam.Transport.TCPAddress do
     format_host_port(host, port)
   end
 
-  def is_tcp_address(address) do
+  def tcp_address?(address) do
     Address.type(address) == @address_type
   end
 end
