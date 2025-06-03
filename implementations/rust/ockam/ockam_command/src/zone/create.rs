@@ -1,7 +1,7 @@
 use crate::cluster::common_args::HttpApiArgs;
 use crate::cluster::utils::{get_api_client, get_cluster};
 use crate::node_command::InMemoryNodeCommand;
-use crate::zone::common_args::{SecretsConfigArg, ZoneConfigArg};
+use crate::zone::common_args::{DockerBuildArgs, SecretsConfigArg, ZoneConfigArg};
 use crate::zone::secret::SecretCommand;
 use crate::zone::zone_config::ZoneConfig;
 use crate::{docs, Command, CommandGlobalOpts, Result};
@@ -43,10 +43,8 @@ pub struct CreateCommand {
     #[arg(long)]
     pub use_public_ecr: bool,
 
-    /// Whether to use the Docker cache when building the image.
-    /// It can be set using the `OCKAM_IGNORE_DOCKER_CACHE` environment variable.
-    #[arg(long, env = "OCKAM_IGNORE_DOCKER_CACHE")]
-    pub no_docker_cache: bool,
+    #[command(flatten)]
+    pub docker_build: DockerBuildArgs,
 
     #[command(flatten)]
     pub http_api: HttpApiArgs,
@@ -178,8 +176,9 @@ impl CreateCommand {
         // Push the images
         let res = self.push_local_images(opts, &images_data).await;
         for image_data in images_data.iter() {
-            self.delete_local_image(&image_data.image_name, &image_data.repository_uri_tag)
-                .await?;
+            let _ = self
+                .delete_local_image(&image_data.image_name, &image_data.repository_uri_tag)
+                .await;
         }
         res?;
 
@@ -303,7 +302,6 @@ impl CreateCommand {
                 vec![
                     "build",
                     "--load",
-                    "--pull",
                     "--platform",
                     "linux/amd64",
                     "-t",
@@ -316,7 +314,6 @@ impl CreateCommand {
             (
                 vec![
                     "build",
-                    "--pull",
                     "--platform",
                     "linux/amd64",
                     "-t",
@@ -335,8 +332,11 @@ impl CreateCommand {
             for arg in cmd_args {
                 command.arg(arg);
             }
-            if self.no_docker_cache {
+            if self.docker_build.no_cache {
                 command.arg("--no-cache");
+            }
+            if !self.docker_build.no_pull {
+                command.arg("--pull");
             }
             for (env_name, env_value) in env_vars {
                 match env_value {

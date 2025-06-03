@@ -1,6 +1,6 @@
 use crate::branding::BrandingCompileEnvVars;
 use crate::cluster::common_args::HttpApiArgs;
-use crate::zone::common_args::ZoneConfigArg;
+use crate::zone::common_args::{DockerBuildArgs, ZoneConfigArg};
 use crate::zone::ctrlc::ZoneCtrlcHandler;
 use crate::zone::repl::ReplExitCondition;
 use crate::zone::zone_config::ZoneConfig;
@@ -22,10 +22,8 @@ pub struct BaseCommand {
     #[arg(long)]
     pub use_public_ecr: bool,
 
-    /// Whether to use the Docker cache when building the image.
-    /// It can be set using the `OCKAM_IGNORE_DOCKER_CACHE` environment variable.
-    #[arg(long, env = "OCKAM_IGNORE_DOCKER_CACHE")]
-    pub no_docker_cache: bool,
+    #[command(flatten)]
+    pub docker_build: DockerBuildArgs,
 
     #[command(flatten)]
     pub http_api: HttpApiArgs,
@@ -170,7 +168,7 @@ impl BaseCommand {
         let cmd = CreateCommand {
             use_public_ecr: self.use_public_ecr,
             http_api: self.http_api.clone(),
-            no_docker_cache: self.no_docker_cache,
+            docker_build: self.docker_build.clone(),
             ..Default::default()
         };
         let zone_config = cmd.run(ctx, opts.clone()).await?;
