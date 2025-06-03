@@ -21,8 +21,8 @@
         }: {
           devShells.elixir = pkgs.mkShell {
             packages = with pkgs; [
-              erlang_28
-              elixir_1_17
+              erlang_27
+              elixir_1_18
             ] ++ lib.optional cfg.languageServer elixir-ls;
 
             # ockam_vault_software uses a Rust NIF
