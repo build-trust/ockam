@@ -101,7 +101,7 @@ defmodule Ockam.Services.Relay.StaticForwarding do
         :ok
 
       attrs ->
-        Logger.warn(
+        Logger.warning(
           "Identifier #{inspect(identifier)} (#{inspect(attrs)}) not authorized to act on #{alias_str}"
         )
 

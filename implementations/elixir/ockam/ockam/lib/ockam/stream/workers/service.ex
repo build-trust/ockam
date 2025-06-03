@@ -161,7 +161,7 @@ defmodule Ockam.Stream.Workers.Service do
     random_string = "generated_" <> Base.encode16(:crypto.strong_rand_bytes(4), case: :lower)
 
     case find_stream({random_string, 0}, state) do
-      {:ok, _} -> create_stream_name(state)
+      {:ok, _pid} -> create_stream_name(state)
       :error -> random_string
     end
   end

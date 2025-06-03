@@ -107,7 +107,7 @@ defmodule Ockam.Transport.TCP.Client do
 
         Ockam.Worker.route(forwarded_message, state)
 
-      {:error, %Wire.DecodeError{} = e} ->
+      {:error, {:error_decoding_msg, %Wire.DecodeError{}} = e} ->
         raise e
 
       e ->
@@ -123,11 +123,11 @@ defmodule Ockam.Transport.TCP.Client do
     {:noreply, state}
   end
 
-  def handle_info({:tcp_closed, _}, state) do
+  def handle_info({:tcp_closed, _msg}, state) do
     {:stop, :normal, state}
   end
 
-  def handle_info({:tcp_error, _}, state) do
+  def handle_info({:tcp_error, _msg}, state) do
     {:stop, :normal, state}
   end
 

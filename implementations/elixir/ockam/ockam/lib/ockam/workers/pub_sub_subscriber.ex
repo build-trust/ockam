@@ -44,7 +44,7 @@ defmodule Ockam.Workers.PubSubSubscriber do
   end
 
   @impl true
-  def handle_message(%{payload: _} = message, %{name: name, topic: topic} = state) do
+  def handle_message(%{payload: _payload} = message, %{name: name, topic: topic} = state) do
     [_me | onward_route] = Message.onward_route(message)
 
     case onward_route do

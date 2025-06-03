@@ -10,7 +10,7 @@ defmodule Ockam.Transport.UDP.Tests do
 
       info = Port.info(socket)
 
-      assert 'udp_inet' = Keyword.get(info, :name)
+      assert ~c'udp_inet' = Keyword.get(info, :name)
     end
   end
 end

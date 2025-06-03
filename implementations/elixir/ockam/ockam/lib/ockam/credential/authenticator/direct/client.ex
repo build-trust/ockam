@@ -98,7 +98,7 @@ defmodule Ockam.Credential.Authenticator.Direct.Client do
       {:ok, %ApiResponse{status: status, body: body}} ->
         {:error, {:api_error, status, body}}
 
-      {:error, _} = error ->
+      {:error, _e} = error ->
         error
     end
   end
@@ -112,7 +112,7 @@ defmodule Ockam.Credential.Authenticator.Direct.Client do
       {:ok, %ApiResponse{status: status, body: body}} ->
         {:error, {:api_error, status, body}}
 
-      {:error, _} = error ->
+      {:error, _e} = error ->
         error
     end
   end
@@ -128,7 +128,7 @@ defmodule Ockam.Credential.Authenticator.Direct.Client do
       {:ok, %ApiResponse{status: status, body: body}} ->
         {:error, {:api_error, status, body}}
 
-      {:error, _} = error ->
+      {:error, _e} = error ->
         error
     end
   end
@@ -142,7 +142,7 @@ defmodule Ockam.Credential.Authenticator.Direct.Client do
       {:ok, %ApiResponse{status: status, body: body}} ->
         {:error, {:api_error, status, body}}
 
-      {:error, _} = error ->
+      {:error, _e} = error ->
         error
     end
   end

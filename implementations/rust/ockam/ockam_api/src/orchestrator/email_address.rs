@@ -55,7 +55,7 @@ impl EmailAddress {
     pub fn domain(&self) -> Result<String> {
         self.0
             .split('@')
-            .last()
+            .next_back()
             .ok_or_else(|| {
                 Error::new(
                     Origin::Api,

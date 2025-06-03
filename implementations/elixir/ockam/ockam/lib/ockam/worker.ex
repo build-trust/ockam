@@ -18,7 +18,7 @@ defmodule Ockam.Worker do
               | {:error, reason :: any()}
               | {:stop, reason :: any(), state :: map()}
 
-  @callback is_authorized(message :: Ockam.Message.t(), state :: map()) ::
+  @callback authorized?(message :: Ockam.Message.t(), state :: map()) ::
               :ok | {:error, reason :: any()}
 
   @callback address_prefix(options :: Keyword.t()) :: String.t()
@@ -151,8 +151,8 @@ defmodule Ockam.Worker do
       def address_prefix(_options), do: ""
 
       @doc false
-      def is_authorized(message, state) do
-        Ockam.Worker.is_authorized(message, state)
+      def authorized?(message, state) do
+        Ockam.Worker.authorized?(message, state)
       end
 
       @doc false
@@ -162,7 +162,7 @@ defmodule Ockam.Worker do
 
       defoverridable setup: 2,
                      address_prefix: 1,
-                     is_authorized: 2,
+                     authorized?: 2,
                      create: 2,
                      handle_monitor_down: 2
     end
@@ -316,7 +316,7 @@ defmodule Ockam.Worker do
   end
 
   def handle_idle_timeout(state) do
-    case is_idle?(state) do
+    case idle?(state) do
       true ->
         Logger.warning("Worker #{state.address} is idle. Terminating.")
         {:stop, {:shutdown, :idle_timeout}, state}
@@ -326,7 +326,7 @@ defmodule Ockam.Worker do
     end
   end
 
-  def is_idle?(state) do
+  def idle?(state) do
     idle_timeout = Map.get(state, :idle_timeout, :infinity)
 
     now = System.monotonic_time(:millisecond)
@@ -360,7 +360,7 @@ defmodule Ockam.Worker do
   def handle_message(module, message, state) do
     return_value =
       with_handle_message_metric(module, message, state, fn ->
-        case module.is_authorized(message, state) do
+        case module.authorized?(message, state) do
           :ok ->
             module.handle_message(message, state)
 
@@ -386,9 +386,9 @@ defmodule Ockam.Worker do
 
   ## Default authorization implementation
 
-  def is_authorized(message, state) do
+  def authorized?(message, state) do
     ## Address check is default authorization rule for all workers
-    ## It can be overridden by implementing custom is_authorized function
+    ## It can be overridden by implementing custom authorized? function
     with :ok <- Authorization.to_my_address(message, state) do
       Ockam.Worker.Authorization.with_state_config(message, state)
     end
@@ -470,7 +470,10 @@ defmodule Ockam.Worker do
 
   defp emit_handle_message_start(metadata) do
     start_time =
-      Telemetry.emit_start_event([Map.get(metadata, :module), :handle_message], metadata: metadata)
+      Telemetry.emit_start_event(
+        [Map.get(metadata, :module), :handle_message],
+        metadata: metadata
+      )
 
     Telemetry.emit_event([Ockam.Worker, :handle_message, :start],
       metadata: metadata,

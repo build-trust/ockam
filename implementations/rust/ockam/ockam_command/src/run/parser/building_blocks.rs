@@ -45,6 +45,7 @@ pub trait ArgsToCommands: Sized {
     }
 
     /// Returns the number of commands that can be created from the section of the configuration file.
+    #[allow(dead_code)]
     fn len(&self) -> usize;
 }
 

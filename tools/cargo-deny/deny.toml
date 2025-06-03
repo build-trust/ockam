@@ -18,11 +18,11 @@ allow = [
   "Unicode-3.0"
 ]
 exceptions = [
+  { allow = ["Apache-2.0 WITH LLVM-exception"], name = "target-lexicon", version = "*" },
   { allow = ["Apache-2.0 WITH LLVM-exception"], name = "wast", version = "*" },
   { allow = ["Apache-2.0 WITH LLVM-exception"], name = "wasm-encoder", version = "*" },
+  { allow = ["CDLA-Permissive-2.0"], name = "webpki-roots", version = "*" },
   { allow = ["OpenSSL"], name = "aws-lc-sys", version = "*" },
-  # used by ockam_app_lib only as a build dependency
-  { allow = ["MPL-2.0"], name = "cbindgen", version = "*" },
   # used by ockam_command, for the `notify` crate
   { allow = ["CC0-1.0"], name = "notify", version = "*" },
 ]

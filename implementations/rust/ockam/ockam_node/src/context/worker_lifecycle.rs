@@ -44,15 +44,15 @@ impl Context {
     /// 3. Check if router.map.address_records_map already has primary_addr
     /// 4. AddressRecord is created and inserted in router.map
     /// 5. Iterate over metadata:
-    ///     Check if it belongs to that record
-    ///     Set is_terminal true in router.map.address_metadata_map (if address is terminal)
-    ///     Insert attributes one by one
+    ///    Check if it belongs to that record
+    ///    Set is_terminal true in router.map.address_metadata_map (if address is terminal)
+    ///    Insert attributes one by one
     /// 6. For each address we insert pair (Address, primary_addr) into router.map.alias_map, including (primary_addr, primary_addr itself)
     /// 7. WorkerRelay is spawned as a tokio task:
-    ///     WorkerRelay calls initialize
-    ///     WorkerRelay calls Worker::handle_message for each message until either
-    ///         stop signal is received (CtrlSignal::InterruptStop to AddressRecord::ctrl_tx)
-    ///         there are no messages coming to that receiver (the sender side is dropped)
+    ///    WorkerRelay calls initialize
+    ///    WorkerRelay calls Worker::handle_message for each message until either
+    ///    stop signal is received (CtrlSignal::InterruptStop to AddressRecord::ctrl_tx)
+    ///    there are no messages coming to that receiver (the sender side is dropped)
     pub fn start_worker<W>(&self, address: impl Into<Address>, worker: W) -> Result<()>
     where
         W: Worker<Context = Context>,
@@ -127,13 +127,13 @@ impl Context {
     /// 3. Check if router.map.address_records_map already has primary_addr
     /// 4. AddressRecord is created and inserted in router.map
     /// 5. Iterate over metadata:
-    ///     Check if it belongs to that record
-    ///     Set is_terminal true in router.map.address_metadata_map (if address is terminal)
-    ///     Insert attributes one by one
+    ///    Check if it belongs to that record
+    ///    Set is_terminal true in router.map.address_metadata_map (if address is terminal)
+    ///    Insert attributes one by one
     /// 6. For each address we insert pair (Address, primary_addr) into router.map.alias_map, including (primary_addr, primary_addr itself)
     /// 7. ProcessorRelay is spawned as a tokio task:
-    ///     ProcessorRelay calls Processor::initialize
-    ///     ProcessorRelay calls Processor::process until either false is returned or stop signal is received (CtrlSignal::InterruptStop to AddressRecord::ctrl_tx)
+    ///    ProcessorRelay calls Processor::initialize
+    ///    ProcessorRelay calls Processor::process until either false is returned or stop signal is received (CtrlSignal::InterruptStop to AddressRecord::ctrl_tx)
     pub fn start_processor<P>(&self, address: impl Into<Address>, processor: P) -> Result<()>
     where
         P: Processor<Context = Context>,

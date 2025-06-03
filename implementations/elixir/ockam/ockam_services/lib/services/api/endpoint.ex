@@ -88,14 +88,8 @@ defmodule Ockam.Services.API.Endpoint do
               false ->
                 {:error, 401}
 
-              true ->
-                dispatch(handler, req, bindings, %{}, state)
-
               {true, extra_data} ->
                 dispatch(handler, req, bindings, extra_data, state)
-
-              {:error, reason} ->
-                {:error, reason}
             end
 
           :error ->
@@ -135,7 +129,7 @@ defmodule Ockam.Services.API.Endpoint do
         do: {:ok, endpoint_state}
 
       @impl true
-      def authorize(_auth_type, _req, _bindings), do: true
+      def authorize(_auth_type, _req, _bindings), do: {true, %{}}
 
       defoverridable authorize: 3
     end

@@ -54,7 +54,7 @@ defmodule Ockam.MixProject do
       {:ockam_typed_cbor, path: "../ockam_typed_cbor"},
       {:gen_state_machine, "~> 3.0"},
       {:telemetry, "~> 1.0", optional: true},
-      {:ranch, "~> 2.1", optional: true},
+      {:ranch, "~> 2.2", optional: true},
       {:ex_doc, "~> 0.25", only: :dev, runtime: false},
       {:credo, "~> 1.6", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.1", only: [:dev], runtime: false},

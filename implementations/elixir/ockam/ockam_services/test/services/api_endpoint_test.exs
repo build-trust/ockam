@@ -15,19 +15,19 @@ defmodule Ockam.Services.API.Tests.EndpointAPI do
 
   def list(_req, %{bindings: %{}, auth_data: %{}, state: v}), do: {:ok, v}
 
-  def show(_req, %{bindings: %{id: id}, auth_data: %{extra: auth_data}, state: _}),
+  def show(_req, %{bindings: %{id: id}, auth_data: %{extra: auth_data}, state: _state}),
     do: {:ok, id <> auth_data}
 
-  def edit(%Request{body: body}, %{bindings: %{id: _id}, auth_data: %{}, state: _}),
+  def edit(%Request{body: body}, %{bindings: %{id: _id}, auth_data: %{}, state: _state}),
     do: {:ok, body}
 
   # Note: an actual implementation will look at the identity information attached to the request,
   # for example, to perform authentication.  Here we just pass a "role" in the url as it's easier to setup
   # the test.
   @impl true
-  def authorize(:all, _req, _bindings), do: true
+  def authorize(:all, _req, _bindings), do: {true, %{}}
   def authorize(:member, _req, %{id: "a", role: "member"}), do: {true, %{extra: "EXTRA"}}
-  def authorize(:admin, _req, %{id: "a", role: "admin"}), do: true
+  def authorize(:admin, _req, %{id: "a", role: "admin"}), do: {true, %{}}
   def authorize(_auth_type, _req, _bindings), do: false
 end
 

@@ -63,7 +63,7 @@ defmodule Ockam.SecureChannel.EncryptedTransportProtocol.AeadAesGcmTests do
 
     # repeated nonces are detected
     Enum.each(msgs, fn {_plain, ciphertext} ->
-      {:error, _} = Decryptor.decrypt(<<>>, ciphertext, decryptor)
+      {:error, _e} = Decryptor.decrypt(<<>>, ciphertext, decryptor)
     end)
 
     # good messages continue to be decrypted
@@ -94,17 +94,17 @@ defmodule Ockam.SecureChannel.EncryptedTransportProtocol.AeadAesGcmTests do
     {plaintext, ciphertext} = Enum.at(msgs, 1)
     {:ok, ^plaintext, decryptor} = Decryptor.decrypt(<<>>, ciphertext, decryptor)
 
-    {_, ciphertext} = Enum.at(msgs, 0)
-    {:error, _} = Decryptor.decrypt(<<>>, ciphertext, decryptor)
+    {_plaintext, ciphertext} = Enum.at(msgs, 0)
+    {:error, _e} = Decryptor.decrypt(<<>>, ciphertext, decryptor)
 
     {_plaintext, ciphertext} = Enum.at(msgs, key_renewal_interval + 2)
-    {:error, _} = Decryptor.decrypt(<<>>, ciphertext, decryptor)
+    {:error, _e} = Decryptor.decrypt(<<>>, ciphertext, decryptor)
 
     {plaintext, ciphertext} = Enum.at(msgs, key_renewal_interval + 1)
     {:ok, ^plaintext, decryptor} = Decryptor.decrypt(<<>>, ciphertext, decryptor)
 
     {_plaintext, ciphertext} = Enum.at(msgs, 1)
-    {:error, _} = Decryptor.decrypt(<<>>, ciphertext, decryptor)
+    {:error, _e} = Decryptor.decrypt(<<>>, ciphertext, decryptor)
 
     {plaintext, ciphertext} = Enum.at(msgs, key_renewal_interval + 2)
     {:ok, ^plaintext, decryptor} = Decryptor.decrypt(<<>>, ciphertext, decryptor)
@@ -112,15 +112,15 @@ defmodule Ockam.SecureChannel.EncryptedTransportProtocol.AeadAesGcmTests do
     {:ok, ^plaintext, decryptor} = Decryptor.decrypt(<<>>, ciphertext, decryptor)
 
     {_plaintext, ciphertext} = Enum.at(msgs, key_renewal_interval + 1)
-    {:error, _} = Decryptor.decrypt(<<>>, ciphertext, decryptor)
+    {:error, _e} = Decryptor.decrypt(<<>>, ciphertext, decryptor)
     {_plaintext, ciphertext} = Enum.at(msgs, key_renewal_interval + 2)
-    {:error, _} = Decryptor.decrypt(<<>>, ciphertext, decryptor)
+    {:error, _e} = Decryptor.decrypt(<<>>, ciphertext, decryptor)
 
     {plaintext, ciphertext} = Enum.at(msgs, 2 * key_renewal_interval)
     {:ok, ^plaintext, decryptor} = Decryptor.decrypt(<<>>, ciphertext, decryptor)
 
     {_plaintext, ciphertext} = Enum.at(msgs, key_renewal_interval - 1)
-    {:error, _} = Decryptor.decrypt(<<>>, ciphertext, decryptor)
+    {:error, _e} = Decryptor.decrypt(<<>>, ciphertext, decryptor)
 
     {plaintext, ciphertext} = Enum.at(msgs, 3 * key_renewal_interval)
     {:ok, ^plaintext, decryptor} = Decryptor.decrypt(<<>>, ciphertext, decryptor)

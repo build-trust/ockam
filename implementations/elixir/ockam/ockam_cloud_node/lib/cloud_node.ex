@@ -26,7 +26,7 @@ defmodule Ockam.CloudNode do
     case {crontab, idle_timeout} do
       {tab, timeout} when is_binary(tab) and is_integer(timeout) ->
         case Crontab.CronExpression.Parser.parse(tab) do
-          {:ok, _} ->
+          {:ok, _parsed} ->
             [
               %{
                 id: "cleanup",

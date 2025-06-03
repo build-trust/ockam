@@ -44,7 +44,7 @@ defmodule Ockam.Transport.TCP.Handler do
 
         {:ok, address} = Ockam.Node.register_random_address(@address_prefix, __MODULE__)
 
-        {function_name, _} = __ENV__.function
+        {function_name, _arity} = __ENV__.function
         Telemetry.emit_event(function_name)
 
         authorization = Keyword.get(handler_options, :authorization, [])
@@ -106,7 +106,7 @@ defmodule Ockam.Transport.TCP.Handler do
         {:tcp, socket, data},
         %{socket: socket, address: address, idle_timeout: idle_timeout} = state
       ) do
-    {function_name, _} = __ENV__.function
+    {function_name, _arity} = __ENV__.function
 
     data_size = byte_size(data)
 
@@ -134,7 +134,7 @@ defmodule Ockam.Transport.TCP.Handler do
 
   def handle_info({:tcp_closed, socket}, %{socket: socket, transport: transport} = state) do
     transport.close(socket)
-    {function_name, _} = __ENV__.function
+    {function_name, _arity} = __ENV__.function
     Telemetry.emit_event(function_name, metadata: %{name: "transport_close"})
     {:stop, :normal, state}
   end
@@ -150,7 +150,7 @@ defmodule Ockam.Transport.TCP.Handler do
       ) do
     reply =
       Ockam.Worker.with_handle_message_metric(__MODULE__, message, state, fn ->
-        case is_authorized(message, state) do
+        case authorized?(message, state) do
           :ok ->
             handle_message(message, state)
 
@@ -174,7 +174,7 @@ defmodule Ockam.Transport.TCP.Handler do
     {:noreply, state, idle_timeout}
   end
 
-  def is_authorized(message, state) do
+  def authorized?(message, state) do
     Ockam.Worker.Authorization.with_state_config(message, state)
   end
 

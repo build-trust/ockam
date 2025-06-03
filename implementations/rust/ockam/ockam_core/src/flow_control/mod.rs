@@ -5,13 +5,13 @@
 //! Flow Control implies 3 roles:
 //!
 //! - Producers, that produce messages (that usually originate on other nodes), which are
-//!     potentially malicious and should be limited in terms of which workers they can reach.
-//!     Tcp Receiver is an examples of a Producer.
+//!   potentially malicious and should be limited in terms of which workers they can reach.
+//!   Tcp Receiver is an examples of a Producer.
 //! - Consumers, that are allowed to consume potentially malicious messages from Producers.
-//!     Secure Channel Decryptor is an example of Consumer.
+//!   Secure Channel Decryptor is an example of Consumer.
 //! - Spawners, that spawn Consumers and/or Producers
-//!     Tcp Listener is an example of Spawner that spawns Producers
-//!     Secure Channel Listener is an example of Spawner that spawns both Producers and Consumers.
+//!   Tcp Listener is an example of Spawner that spawns Producers
+//!   Secure Channel Listener is an example of Spawner that spawns both Producers and Consumers.
 //!
 //! Each Flow Control is identified by a unique random [`FlowControlId`].
 //! Producers, Consumers and Spawners are identified by their messaging [`Address`](crate::Address).

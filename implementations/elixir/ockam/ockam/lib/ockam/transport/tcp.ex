@@ -120,7 +120,7 @@ defmodule Ockam.Transport.TCP do
   defp get_destination(message) do
     [dest_address | _onward_route] = Message.onward_route(message)
 
-    with true <- TCPAddress.is_tcp_address(dest_address),
+    with true <- TCPAddress.tcp_address?(dest_address),
          {:ok, destination} <- TCPAddress.to_host_port(dest_address) do
       {:ok, destination}
     else

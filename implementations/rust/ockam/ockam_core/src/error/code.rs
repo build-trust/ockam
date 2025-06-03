@@ -157,15 +157,15 @@ pub enum Origin {
 /// - [`Kind::Io`], [`Kind::Protocol`], and [`Kind::Other`] should only be used
 ///   if there's no more specific option.
 ///
-///     For example, a network timeout is a type of IO error, however it should
-///     use [`Kind::Timeout`] rather than [`Kind::Io`].
+///   For example, a network timeout is a type of IO error, however it should
+///   use [`Kind::Timeout`] rather than [`Kind::Io`].
 ///
 /// - [`Kind::Invalid`] should be used when the input will never be valid (at
 ///   least in this version of the software), rather than input which is invalid
 ///   because of the current system state.
 ///
-///     For example, an unknown identifier should use [`Kind::NotFound`] (for
-///     example `ockam_vault_core`'s `Secret`) rather than [`Kind::Invalid`],
+///   For example, an unknown identifier should use [`Kind::NotFound`] (for
+///   example `ockam_vault_core`'s `Secret`) rather than [`Kind::Invalid`],
 ///
 /// - [`Kind::Cancelled`], [`Kind::Timeout`], and [`Kind::Shutdown`] all sound
 ///   similar, but:

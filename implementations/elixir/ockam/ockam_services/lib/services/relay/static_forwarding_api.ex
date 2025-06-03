@@ -41,7 +41,7 @@ defmodule Ockam.Services.Relay.StaticForwardingAPI do
 
   def list(_req, %{
         auth_data: %{identifier: _identifier},
-        state: _
+        state: _state
       }) do
     Relay.encode_list(Base.list_running_relays())
   end
@@ -96,7 +96,7 @@ defmodule Ockam.Services.Relay.StaticForwardingAPI do
   def get(_req, %{
         bindings: %{addr: addr},
         auth_data: %{identifier: _identifier},
-        state: _
+        state: _state
       }) do
     case Base.relay_info(addr) do
       {:ok, relay} ->

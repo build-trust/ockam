@@ -4,14 +4,14 @@ defmodule Ockam.Worker.Authorization do
 
   Usage:
   ```
-  def is_authorized(message, _state)
+  def authorized?(message, _state)
     Authorization.from_addresses(message, ["one", "two"])
   end
   ```
 
   Pipelining helpers:
   ```
-  def is_authorized(message, state)
+  def authorized?(message, state)
     Authorization.from_addresses(message, ["one", "two"])
     |> Authorization.to_my_address(message, state)
   end
@@ -162,7 +162,7 @@ defmodule Ockam.Worker.Authorization do
     end)
   end
 
-  def is_local(prev \\ :ok, message, _state) do
+  def local?(prev \\ :ok, message, _state) do
     chain(prev, fn ->
       case Message.local_metadata_value(message, :source) do
         :local -> :ok
@@ -210,7 +210,7 @@ defmodule Ockam.Worker.Authorization do
         expand_config(config, message, state) |> check_with_config()
 
       map when is_map(map) ->
-        [destination | _] = Message.onward_route(message)
+        [destination | _rest] = Message.onward_route(message)
 
         case Map.get(config, destination) do
           nil ->

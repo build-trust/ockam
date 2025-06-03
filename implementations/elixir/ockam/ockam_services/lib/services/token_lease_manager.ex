@@ -112,7 +112,7 @@ defmodule Ockam.Services.TokenLeaseManager do
 
     with {:ok, cloud_service_config} <- cloud_service_module.init(cloud_options),
          {:ok, leases} <- cloud_service_module.get_all(cloud_service_config),
-         _ <- Logger.info("Loading #{Enum.count(leases)} leases from backend service"),
+         :ok <- Logger.info("Loading #{Enum.count(leases)} leases from backend service"),
          {:ok, storage_service_config} <- storage_service_module.init(leases: leases) do
       ttl = options[:ttl]
       Enum.each(leases, &schedule_expire/1)
