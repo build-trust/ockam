@@ -116,3 +116,16 @@ impl EnrollmentTicketConfigArg {
             .await.wrap_err("Failed to generate an enrollment ticket for the inlet. Please provide one with the --enrollment-ticket argument")
     }
 }
+
+#[derive(Clone, Debug, Args, Default)]
+pub struct DockerBuildArgs {
+    /// Whether to use the Docker cache when building the image.
+    /// It can be set using the `OCKAM_DOCKER_NO_CACHE` environment variable.
+    #[arg(long, env = "OCKAM_DOCKER_NO_CACHE")]
+    pub no_cache: bool,
+
+    /// Whether to build the image with the `--pull` option.
+    /// It can be set using the `OCKAM_DOCKER_NO_PULL` environment variable.
+    #[arg(long, hide = true, env = "OCKAM_DOCKER_NO_PULL")]
+    pub no_pull: bool,
+}
