@@ -25,7 +25,7 @@ use crate::{docs, Command, CommandGlobalOpts};
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/after_long_help.txt");
 
-/// Manage your Ockam AI Zones
+/// Manage Zones
 #[derive(Clone, Debug, Args)]
 #[command(
     arg_required_else_help = true,

@@ -25,23 +25,21 @@ static FOOTER: Lazy<String> = Lazy::new(|| {
         "
 Learn More:
 
-Use 'ockam <SUBCOMMAND> --help' for more information about a subcommand.
-Where <SUBCOMMAND> might be: 'node', 'status', 'enroll', etc.
-Learn more about Command: https://command.ockam.io/manual/
-Learn more about Ockam: https://docs.ockam.io/reference/command
+Use `ockam <SUBCOMMAND> --help` for more information about a subcommand (e.g., 'cluster' or 'zone').
+
+Learn more about Command: https://docs.ockam.ai/command/
+Learn more about Ockam: https://docs.ockam.ai/
 
 Feedback:
 
-If you have questions, as you explore, join us on the contributors
-discord channel https://discord.ockam.io"
+If you have questions, as you explore, join us on the Discord channel https://discord.ockam.io"
             .to_string()
     } else {
         format!(
             "
 Learn More:
 
-Use 'ockam <SUBCOMMAND> --help' for more information about a subcommand.
-Where <SUBCOMMAND> might be: 'node', 'status', 'enroll', etc.
+Use `ockam <SUBCOMMAND> --help` for more information about a subcommand (e.g., 'cluster' or 'zone').
 
 Feedback:
 
@@ -76,12 +74,16 @@ pub(crate) fn before_help(text: &str) -> &'static str {
 
 pub(crate) fn after_help(text: &str) -> &'static str {
     let mut processed = String::new();
-    if *IS_MARKDOWN {
-        processed.push_str("### Examples\n\n");
-        processed.push_str(text);
-    } else {
-        processed.push_str("Examples:\n\n");
-        processed.push_str(text);
+    if !text.trim().is_empty() {
+        if *IS_MARKDOWN {
+            processed.push_str("### Examples\n\n");
+            processed.push_str(text);
+        } else {
+            processed.push_str("Examples:\n\n");
+            processed.push_str(text);
+        }
+    }
+    if !*IS_MARKDOWN {
         processed.push_str(&FOOTER);
     }
     render(processed.as_str())

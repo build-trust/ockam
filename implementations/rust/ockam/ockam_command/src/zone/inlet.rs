@@ -24,7 +24,7 @@ const LONG_ABOUT: &str = include_str!("./static/inlet/long_about.txt");
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/inlet/after_long_help.txt");
 
-/// Connect to a service provided by an Ockam AI Agent
+/// Open a portal inlet
 #[derive(Clone, Debug, Args, Default)]
 #[command(
 long_about = docs::about(LONG_ABOUT),
