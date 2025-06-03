@@ -1,0 +1,51 @@
+name: example101
+pods:
+  - name: main-pod
+    size: big
+    containers:
+      - name: main
+        image: main
+        args: [localhost:9001]
+        env:
+          - name: BOX_CLIENT_ID
+            valueFrom:
+              secretKeyRef:
+                name: box
+                key: client_id
+          - name: BOX_CLIENT_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: box
+                key: client_secret
+          - name: BOX_ENTERPRISE_ID
+            valueFrom:
+              secretKeyRef:
+                name: box
+                key: enterprise_id
+    portals:
+      outlets:
+        - name: http
+          to: localhost:9001
+
+  - name: runner-pod
+    size: big
+    clones: 5
+    containers:
+      - name: runner
+        image: runner
+        env:
+          - name: BOX_CLIENT_ID
+            valueFrom:
+              secretKeyRef:
+                name: box
+                key: client_id
+          - name: BOX_CLIENT_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: box
+                key: client_secret
+          - name: BOX_ENTERPRISE_ID
+            valueFrom:
+              secretKeyRef:
+                name: box
+                key: enterprise_id

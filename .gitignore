@@ -19,3 +19,4 @@ vendor
 # nix build
 /result*
 .home
+secrets.yaml
