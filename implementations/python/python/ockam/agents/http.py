@@ -18,7 +18,7 @@ from ..ockam_in_rust_for_python import info, error
 """
 
 HOST = "0.0.0.0"
-PORT = 9001
+PORT = 8000
 
 
 class HttpServer:
