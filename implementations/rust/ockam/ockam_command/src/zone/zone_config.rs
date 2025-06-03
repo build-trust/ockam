@@ -15,6 +15,8 @@ pub struct ZoneConfig {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Pod {
     pub name: String,
+    #[serde(default)]
+    pub public: bool,
     pub containers: Vec<Container>,
     #[serde(default, alias = "portal")]
     pub portals: Portals,
@@ -268,6 +270,17 @@ impl ZoneConfig {
                 })
         }
     }
+
+    pub fn get_http_url(&self, cluster_name: &str) -> Option<String> {
+        if self.get_main_pod().ok()?.public {
+            Some(format!(
+                "https://{}-{}.ai.ockam.network",
+                cluster_name, self.name
+            ))
+        } else {
+            None
+        }
+    }
 }
 
 impl Pod {
@@ -406,6 +419,7 @@ pods:
             pods: vec![
                 Pod {
                     name: "pod1".to_string(),
+                    public: false,
                     containers: vec![
                         Container {
                             name: "abc".to_string(),
@@ -423,6 +437,7 @@ pods:
                 },
                 Pod {
                     name: "pod2".to_string(),
+                    public: false,
                     containers: vec![
                         Container {
                             name: "abc".to_string(),
@@ -445,6 +460,7 @@ pods:
                 },
                 Pod {
                     name: "pod3".to_string(),
+                    public: false,
                     containers: vec![
                         Container {
                             name: "abc".to_string(),
@@ -478,6 +494,7 @@ pods:
             name: "valid-zone".to_string(),
             pods: vec![Pod {
                 name: "pod1".to_string(),
+                public: false,
                 containers: vec![Container {
                     name: "abc".to_string(),
                     image: "image1".to_string(),
@@ -497,6 +514,7 @@ pods:
             name: "this-zone-name-is-too-long".to_string(),
             pods: vec![Pod {
                 name: "pod1".to_string(),
+                public: false,
                 containers: vec![Container {
                     name: "abc".to_string(),
                     image: "image1".to_string(),
@@ -521,6 +539,7 @@ pods:
             name: "zone".to_string(),
             pods: vec![Pod {
                 name: "pod-name-too-long".to_string(),
+                public: false,
                 containers: vec![Container {
                     name: "abc".to_string(),
                     image: "image1".to_string(),
@@ -545,6 +564,7 @@ pods:
             name: "zone".to_string(),
             pods: vec![Pod {
                 name: "pod1".to_string(),
+                public: false,
                 containers: vec![Container {
                     name: "container-name-is-too-long".to_string(),
                     image: "image1".to_string(),
@@ -571,6 +591,7 @@ pods:
             pods: vec![
                 Pod {
                     name: "pod1".to_string(),
+                    public: false,
                     containers: vec![Container {
                         name: "container1".to_string(),
                         image: "image1".to_string(),
@@ -581,6 +602,7 @@ pods:
                 },
                 Pod {
                     name: "pod1".to_string(), // Duplicate pod name
+                    public: false,
                     containers: vec![Container {
                         name: "container2".to_string(),
                         image: "image2".to_string(),
@@ -604,6 +626,7 @@ pods:
             name: "zone".to_string(),
             pods: vec![Pod {
                 name: "pod1".to_string(),
+                public: false,
                 containers: vec![
                     Container {
                         name: "container1".to_string(),
@@ -635,6 +658,7 @@ pods:
             name: "long-zone-name".to_string(),
             pods: vec![Pod {
                 name: "long-pod-name".to_string(),
+                public: false,
                 containers: vec![Container {
                     name: "container-name-is-too-long".to_string(),
                     image: "image1".to_string(),
@@ -794,6 +818,7 @@ pods:
             name: "zone".to_string(),
             pods: vec![Pod {
                 name: "pod1".to_string(),
+                public: false,
                 containers: vec![Container {
                     name: "app".to_string(),
                     image: "image1".to_string(),
@@ -920,6 +945,7 @@ pods:
         // Setup pod with multiple outlets including a "repl" outlet
         let pod = Pod {
             name: "test-pod".to_string(),
+            public: false,
             containers: vec![Container {
                 name: "app".to_string(),
                 image: "app-image".to_string(),
@@ -1005,6 +1031,7 @@ pods:
         // Setup pod with a single named outlet (not named "repl")
         let pod = Pod {
             name: "test-pod".to_string(),
+            public: false,
             containers: vec![Container {
                 name: "app".to_string(),
                 image: "app-image".to_string(),
@@ -1039,6 +1066,7 @@ pods:
         // Setup pod with a single unnamed outlet (not named "repl")
         let pod = Pod {
             name: "test-pod".to_string(),
+            public: false,
             containers: vec![Container {
                 name: "app".to_string(),
                 image: "app-image".to_string(),
@@ -1073,6 +1101,7 @@ pods:
         // Setup pod with unnamed outlets
         let pod = Pod {
             name: "test-pod".to_string(),
+            public: false,
             containers: vec![Container {
                 name: "app".to_string(),
                 image: "app-image".to_string(),
@@ -1111,6 +1140,7 @@ pods:
         // Setup pod with no outlets
         let pod = Pod {
             name: "test-pod".to_string(),
+            public: false,
             containers: vec![Container {
                 name: "app".to_string(),
                 image: "app-image".to_string(),
@@ -1138,6 +1168,7 @@ pods:
         // Setup pod with multiple outlets but no "repl"
         let pod = Pod {
             name: "test-pod".to_string(),
+            public: false,
             containers: vec![Container {
                 name: "app".to_string(),
                 image: "app-image".to_string(),
@@ -1185,6 +1216,7 @@ pods:
         // Setup pod with http and logs outlets explicitly defined
         let pod = Pod {
             name: "test-pod".to_string(),
+            public: false,
             containers: vec![Container {
                 name: "app".to_string(),
                 image: "app-image".to_string(),
