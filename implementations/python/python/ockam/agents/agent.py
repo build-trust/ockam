@@ -400,7 +400,7 @@ class Agent:
         else:
             raise ValueError("Node must be either a LocalNodeProtocol or a RemoteNode")
 
-        return AgentReference(name, node)
+        return AgentReference(name, node, exposed_as)
 
     @staticmethod
     async def stop(node, name):

@@ -5,12 +5,13 @@ import secrets
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Union, Any
+from typing import Union, Any, Optional
 
 from .local import LocalNodeProtocol
 from .remote import RemoteNode
 
 from ..ockam_in_rust_for_python import Mailbox
+from ..tools.protocol import InvokableTool
 
 
 class ConversationRole(Enum):
@@ -216,13 +217,58 @@ class Reference:
         return self.node.name
 
 
-class AgentReference(Reference):
-    def __init__(
-        self,
-        name: str,
-        node: LocalNodeProtocol | RemoteNode,
-    ):
+class AgentReference(Reference, InvokableTool):
+    def __init__(self, name: str, node: LocalNodeProtocol | RemoteNode, exposed_as: Optional[str] = None):
         super().__init__(name, node, ReferenceType.AGENT)
+        self.exposed_as = exposed_as
+
+    async def spec(self) -> dict:
+        if self.exposed_as is None:
+            raise ValueError("To expose an agent as a tool, the 'exposed_as' parameter must be populated.")
+
+        return {
+            "type": "function",
+            "function": {
+                "name": self.name,
+                "description": self.exposed_as,
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "prompt": {
+                            "type": "string",
+                            "description": "An explicit prompt to the tool, similar to an AI chat.",
+                            "examples": [
+                                "What is the weather like today?",
+                                "Tell me a joke.",
+                                "How do I make a cup of coffee?",
+                            ],
+                        },
+                    },
+                    "required": ["prompt"],
+                },
+            },
+        }
+
+    async def invoke(self, json_argument: Optional[str]) -> str:
+        parsed_argument = json.loads(json_argument)
+        if "prompt" not in parsed_argument:
+            raise ValueError("The 'prompt' parameter is required for invoking the agent.")
+        prompt = str(parsed_argument["prompt"])
+
+        reply = await self.send_and_receive_request(
+            ConversationSnippet(
+                messages=[UserMessage(content=prompt)],
+            )
+        )
+        reply: ConversationSnippet
+
+        if isinstance(reply, Error):
+            return f"Agent error: '{reply.message}'"
+
+        if len(reply.messages) > 0:
+            return reply.messages[-1].content
+        else:
+            return f"Agent error: 'empty response'"
 
 
 @dataclass
