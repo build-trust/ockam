@@ -146,7 +146,9 @@ impl PyNode {
         let _ = pyo3_async_runtimes::tokio::init_with_runtime(get_runtime_ref());
 
         let node = get_runtime().block_on(async move {
-            let node_builder = NodeBuilder::new().with_runtime(get_runtime());
+            let node_builder = NodeBuilder::new()
+                .with_runtime(get_runtime())
+                .with_logging(false);
             let (ctx, executor) = node_builder.build();
 
             let node = if let Some(ticket) = ticket {
