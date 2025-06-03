@@ -1,7 +1,7 @@
 use crate::cluster::common_args::HttpApiArgs;
 use crate::cluster::utils::{get_api_client, get_cluster};
 use crate::node_command::InMemoryNodeCommand;
-use crate::zone::common_args::{DockerBuildArgs, SecretsConfigArg, ZoneConfigArg};
+use crate::zone::common_args::{DockerBuildArgs, SecretsConfigArg, ZoneConfigArg, ZoneInletsArgs};
 use crate::zone::secret::SecretCommand;
 use crate::zone::zone_config::ZoneConfig;
 use crate::{docs, Command, CommandGlobalOpts, Result};
@@ -48,6 +48,9 @@ pub struct CreateCommand {
 
     #[command(flatten)]
     pub http_api: HttpApiArgs,
+
+    #[command(flatten)]
+    pub inlets: ZoneInletsArgs,
 }
 
 #[derive(Clone)]
@@ -546,6 +549,20 @@ impl CreateCommand {
             color_primary(cluster)
         ))?;
         info!("Deployed zone {} in cluster {}", zone_config.name, cluster);
+
+        // Print the http server URL, if enabled
+        if !self.inlets.no_http {
+            if let Some(http_url) = zone_config.get_http_url(cluster) {
+                opts.terminal.write_line(
+                    fmt_log!(
+                        "The http server on the {} is available at:\n",
+                        color_primary(&zone_config.get_main_pod()?.name),
+                    ) + &fmt_log!("{}", color_primary(http_url)),
+                )?;
+            }
+        }
+
+        opts.terminal.write_line("")?;
 
         Ok(())
     }

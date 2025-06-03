@@ -129,3 +129,14 @@ pub struct DockerBuildArgs {
     #[arg(long, hide = true, env = "OCKAM_DOCKER_NO_PULL")]
     pub no_pull: bool,
 }
+
+#[derive(Clone, Debug, Args, Default)]
+pub struct ZoneInletsArgs {
+    /// Skip the creation of the inlet to the http outlet.
+    #[arg(long)]
+    pub no_http: bool,
+
+    /// Skip the creation of the inlet to the logs outlet.
+    #[arg(long)]
+    pub no_logs: bool,
+}

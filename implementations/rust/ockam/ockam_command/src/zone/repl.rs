@@ -2,7 +2,9 @@ use crate::cluster::common_args::HttpApiArgs;
 use crate::entry_point::RUNTIME;
 use crate::util::parsers::hostname_parser;
 use crate::util::port_is_free_guard;
-use crate::zone::common_args::{EnrollmentTicketConfigArg, ZoneConfigArg, ZoneNameOrConfigArg};
+use crate::zone::common_args::{
+    EnrollmentTicketConfigArg, ZoneConfigArg, ZoneInletsArgs, ZoneNameOrConfigArg,
+};
 use crate::zone::ctrlc::ZoneCtrlcHandler;
 use crate::zone::zone_config::{Outlet, ZoneConfig};
 use crate::{docs, Command, CommandGlobalOpts, Result};
@@ -48,17 +50,12 @@ pub struct ReplCommand {
     #[command(flatten)]
     pub http_api: HttpApiArgs,
 
+    #[command(flatten)]
+    pub inlets: ZoneInletsArgs,
+
     /// Network address where your repl server is listening to.
     #[arg(long, id = "SOCKET_ADDRESS", display_order = 900, value_parser = hostname_parser)]
     pub to: Option<SchemeHostnamePort>,
-
-    /// Skip the creation of the inlet to the http outlet.
-    #[arg(long)]
-    pub no_http: bool,
-
-    /// Skip the creation of the inlet to the logs outlet.
-    #[arg(long)]
-    pub no_logs: bool,
 }
 
 #[async_trait]
@@ -128,10 +125,10 @@ impl ReplCommand {
             }
         };
         let mut rest = main_pod_outlets.rest;
-        if !self.no_http {
+        if !self.inlets.no_http {
             rest.push(main_pod_outlets.http);
         }
-        if !self.no_logs {
+        if !self.inlets.no_logs {
             rest.push(main_pod_outlets.logs);
         }
         for outlet in rest {

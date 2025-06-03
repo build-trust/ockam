@@ -1,6 +1,6 @@
 use crate::branding::BrandingCompileEnvVars;
 use crate::cluster::common_args::HttpApiArgs;
-use crate::zone::common_args::{DockerBuildArgs, ZoneConfigArg};
+use crate::zone::common_args::{DockerBuildArgs, ZoneConfigArg, ZoneInletsArgs};
 use crate::zone::ctrlc::ZoneCtrlcHandler;
 use crate::zone::repl::ReplExitCondition;
 use crate::zone::zone_config::ZoneConfig;
@@ -28,20 +28,15 @@ pub struct BaseCommand {
     #[command(flatten)]
     pub http_api: HttpApiArgs,
 
+    #[command(flatten)]
+    pub inlets: ZoneInletsArgs,
+
     /// The name of the template project to download.
     /// It can be either a GitHub repository like `build-trust/ockam-cluster-template-hello`,
     /// a full URL like `git@github.com:build-trust/ockam-cluster-template-hello`,
     /// or an Ockam repository name that exists at `build-trust/ockam-cluster-template-<NAME>`
     #[arg(long, default_value = "hello", env = "INIT_REPOSITORY")]
     init_repository: String,
-
-    /// Skip the creation of the inlet to the http outlet.
-    #[arg(long)]
-    no_http: bool,
-
-    /// Skip the creation of the inlet to the logs outlet.
-    #[arg(long)]
-    no_logs: bool,
 
     /// Watch the current directory for changes and redeploy the zone when changes are detected.
     #[arg(long)]
@@ -168,6 +163,7 @@ impl BaseCommand {
             use_public_ecr: self.use_public_ecr,
             http_api: self.http_api.clone(),
             docker_build: self.docker_build.clone(),
+            inlets: self.inlets.clone(),
             ..Default::default()
         };
         let zone_config = cmd.run(ctx, opts.clone()).await?;
@@ -182,8 +178,7 @@ impl BaseCommand {
         use crate::zone::repl::ReplCommand;
         let cmd = ReplCommand {
             http_api: self.http_api.clone(),
-            no_http: self.no_http,
-            no_logs: self.no_logs,
+            inlets: self.inlets.clone(),
             ..Default::default()
         };
         cmd.run_impl(opts.clone(), restart_tx).await
