@@ -25,13 +25,13 @@ impl ClusterArg {
 pub struct HttpApiArgs {
     /// Force the command to use the HTTP API.
     /// By default, the command will use the Orchestrator API.
-    #[arg(long)]
+    #[arg(long, hide = true)]
     pub use_http_api: bool,
 
     /// The API endpoint of the Ockam AI Platform.
     /// Can be set using the `AI_API_BASE_URL` environment variable.
     /// Defaults to `http://localhost:30080`.
-    #[arg(long)]
+    #[arg(long, hide = true)]
     pub api_endpoint: Option<String>,
 }
 

@@ -48,7 +48,7 @@ impl ZoneConfigArg {
 #[group(multiple = false)]
 pub struct ZoneNameOrConfigArg {
     /// The name of the Zone
-    #[arg(long)]
+    #[arg(long = "zone")]
     pub zone_name: Option<String>,
 
     #[command(flatten)]

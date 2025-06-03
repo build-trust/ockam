@@ -30,11 +30,14 @@ pub struct TicketCommand {
     #[command(flatten)]
     pub http_api: HttpApiArgs,
 
-    /// Attributes in `key=value` format to be attached to the member. You can specify this option multiple times for multiple attributes
+    /// Attributes in `key=value` format to be attached to the member.
+    /// You can specify this option multiple times for multiple attributes
     #[arg(short, long = "attribute", value_name = "ATTRIBUTE")]
     pub attributes: Vec<String>,
 
-    /// Name of the relay that the identity using the ticket will be allowed to create. This name is transformed into attributes to prevent collisions when creating relay names. For example: `--relay foo` is shorthand for `--attribute ockam-relay=foo`
+    /// Name of the relay that the identity using the ticket will be allowed to create.
+    /// This name is transformed into attributes to prevent collisions when creating relay names.
+    /// For example: `--relay foo` is shorthand for `--attribute ockam-relay=foo`
     #[arg(long = "relay", value_name = "ENROLLEE_ALLOWED_RELAY_NAME")]
     pub allowed_relay_name: Option<String>,
 }
