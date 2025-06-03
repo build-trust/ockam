@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 0.151.0 - 2025-06-02
+## 0.151.0 - 2025-06-03
 
 ### Added
 
@@ -79,6 +79,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add `http_api` arguments to base command
 - Validate secrets key values as base64 encodable
 - Use 3000 as the default port to expose the logs server
+- Add `--no-pull` argument to `ockam` and `ockam zone create`
+- `--watch`, clear screen after receiving an event
 - Updated dependencies
 
 ### Changed
@@ -103,6 +105,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Rebase on top of develop, moving the repl changes into the `cluster attach` command
 - Split cluster commands into cluster/zone subcommands
 - Merge repl/attach subcommands
+- Update erlang, elixir, rust, and python versions
+- Update help text in command
+- Zone ctrlc handler
 
 ### Fixed
 
@@ -140,6 +145,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Remove ctrlc_handler in enroll
 - Remove ctrlc_handler in enroll again
 - Remove unnecessary text from repl
+- Delete local images after all have been pushed
 
 ## 0.150.0 - 2025-03-20
 
