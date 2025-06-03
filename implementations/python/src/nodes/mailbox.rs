@@ -108,6 +108,16 @@ impl PyMailbox {
                     let outgoing_ac = Arc::new(AllowAll);
 
                     let ctx = self_clone.ctx.read().await;
+                    let next = route.next().cloned()?;
+                    if let Some(flow_control_id) = ctx
+                        .flow_controls()
+                        .find_flow_control_with_producer_address(&next)
+                        .map(|x| x.flow_control_id().clone())
+                    {
+                        // To be able to receive the response
+                        ctx.flow_controls()
+                            .add_consumer(ctx.primary_address(), &flow_control_id);
+                    }
                     ctx.send_extended(
                         route,
                         message,

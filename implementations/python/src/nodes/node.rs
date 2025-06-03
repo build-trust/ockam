@@ -869,9 +869,13 @@ impl PyNode {
                     )
                     .await?;
                 let route = connection.route()?;
-                let result = fut(route).await;
-                _ = connection.close(&self.node_manager);
-                result
+
+                // FIXME
+                // let result = fut(route).await;
+                // _ = connection.close(&self.node_manager);
+                // result
+
+                fut(route).await
             }
         } else {
             fut(destination.into()).await
