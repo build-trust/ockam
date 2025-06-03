@@ -2,6 +2,7 @@ pub(crate) mod common_args;
 pub(crate) mod create;
 pub(crate) mod ctrlc;
 pub mod delete;
+pub(crate) mod deploy;
 pub mod get_cluster_name;
 pub(crate) mod init;
 pub(crate) mod inlet;
@@ -13,6 +14,7 @@ pub mod zone_config;
 use clap::{Args, Subcommand};
 
 use create::CreateCommand;
+use deploy::DeployCommand;
 use init::InitCommand;
 use ockam_node::Context;
 
@@ -49,6 +51,7 @@ impl ZoneCommand {
             ZoneSubcommand::Init(c) => c.run(ctx, opts).await.map(|_| ()),
             ZoneSubcommand::Secret(c) => c.run(ctx, opts).await,
             ZoneSubcommand::Create(c) => c.run(ctx, opts).await.map(|_| ()),
+            ZoneSubcommand::Deploy(c) => c.run(ctx, opts).await.map(|_| ()),
             ZoneSubcommand::Delete(c) => c.run(ctx, opts).await,
             ZoneSubcommand::Inlet(c) => c.run(ctx, opts).await,
             ZoneSubcommand::Outlet(c) => c.run(ctx, opts).await,
@@ -62,10 +65,13 @@ impl ZoneCommand {
 pub enum ZoneSubcommand {
     Init(InitCommand),
     Secret(SecretCommand),
+    #[command(hide = true)]
     Create(CreateCommand),
+    Deploy(DeployCommand),
     Delete(DeleteCommand),
     Inlet(InletCommand),
     Outlet(OutletCommand),
+    #[command(hide = true)]
     Repl(ReplCommand),
 }
 
@@ -75,6 +81,7 @@ impl ZoneSubcommand {
             ZoneSubcommand::Init(c) => c.name(),
             ZoneSubcommand::Secret(c) => c.name(),
             ZoneSubcommand::Create(c) => c.name(),
+            ZoneSubcommand::Deploy(c) => c.name(),
             ZoneSubcommand::Delete(c) => c.name(),
             ZoneSubcommand::Inlet(c) => c.name(),
             ZoneSubcommand::Outlet(c) => c.name(),

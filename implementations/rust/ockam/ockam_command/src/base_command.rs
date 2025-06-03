@@ -79,7 +79,7 @@ impl BaseCommand {
                 let run_zone_handle = tokio::spawn(async move {
                     _self.enroll(&_ctx, &_opts).await?;
                     _self.zone_init(&_ctx, &_opts).await?;
-                    _self.zone_create(&_ctx, &_opts).await?;
+                    _self.zone_deploy(&_ctx, &_opts).await?;
                     let res = _self.zone_repl(&_opts, &_ctx, Some(restart_tx)).await?;
                     Ok::<ReplExitCondition, miette::Error>(res)
                 });
@@ -107,7 +107,7 @@ impl BaseCommand {
         } else {
             self.enroll(ctx, opts).await?;
             self.zone_init(ctx, opts).await?;
-            self.zone_create(ctx, opts).await?;
+            self.zone_deploy(ctx, opts).await?;
             self.zone_repl(opts, ctx, None).await?;
         }
         Ok(())
@@ -146,13 +146,13 @@ impl BaseCommand {
         Ok(())
     }
 
-    async fn zone_create(
+    async fn zone_deploy(
         &self,
         ctx: &Context,
         opts: &CommandGlobalOpts,
     ) -> miette::Result<ZoneConfig> {
-        use crate::zone::create::CreateCommand;
-        let cmd = CreateCommand {
+        use crate::zone::deploy::DeployCommand;
+        let cmd = DeployCommand {
             use_public_ecr: self.use_public_ecr,
             http_api: self.http_api.clone(),
             docker_build: self.docker_build.clone(),
