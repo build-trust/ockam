@@ -11,6 +11,8 @@ CLI Behavior
 - NO_INPUT: a `boolean` that, if set, the CLI won't ask the user for input.
   Otherwise, let the terminal decide based the terminal features (tty).
 - PAGER: a `string` that defines the pager to use for long help/usage messages. Defaults to `less`.
+- OCKAM_DOCKER_NO_CACHE: a `boolean` to disable using the Docker cache when building images.
+- OCKAM_DOCKER_NO_PULL: a `boolean` to not pull the Docker images when building them.
 
 Logging
 - OCKAM_LOG (deprecated, use OCKAM_LOGGING and OCKAM_LOG_LEVEL instead): a `string` that defines the verbosity of the logs when the `--verbose` argument is not passed: `info`, `warn`, `error`, `debug` or `trace`.
