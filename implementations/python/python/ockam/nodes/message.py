@@ -243,6 +243,24 @@ class ConversationSnippet:
     messages: list[ConversationMessage] = field(default_factory=list)
     type: MessageType = MessageType.CONVERSATION_SNIPPET
 
+    def compact_assistant_messages(self):
+        messages = self.messages
+        all_messages = []
+        assistant_message = None
+        for m in messages:
+            if isinstance(m, AssistantMessage):
+                if assistant_message is None:
+                    assistant_message = m
+                else:
+                    assistant_message.content += m.content
+            else:
+                all_messages.append(m)
+
+        if assistant_message is not None:
+            all_messages.append(assistant_message)
+        self.messages = all_messages
+        return self
+
 
 @dataclass
 class StreamedConversationSnippet:
