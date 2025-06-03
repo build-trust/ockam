@@ -17,8 +17,8 @@ from ..ockam_in_rust_for_python import info, error
     This class starts an HTTP server allowing a user to interact with a node and its agents.
 """
 
-HOST = "127.0.0.1"
-PORT = 8000
+HOST = "0.0.0.0"
+PORT = 9001
 
 
 class HttpServer:
