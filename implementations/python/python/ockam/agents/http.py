@@ -1,6 +1,7 @@
 import asyncio
 import json
 import os
+import logging
 import uvicorn
 
 from dataclasses import asdict, is_dataclass
@@ -12,6 +13,7 @@ from ..agents import AgentReference
 from ..nodes.message import GetConversationsRequest, ConversationMessage, AssistantMessage, StreamedConversationSnippet
 from ..ockam_in_rust_for_python import info, error
 
+logger = logging.getLogger("http")
 
 """
     This class starts an HTTP server allowing a user to interact with a node and its agents.
@@ -22,7 +24,7 @@ PORT = 8000
 
 
 class HttpServer:
-    def __init__(self, listen_address=f"{HOST}:{PORT}", log_level: str = "debug", api=None):
+    def __init__(self, listen_address=f"{HOST}:{PORT}", log_level: str = "error", api=None):
         self.node = None
         self.host = HOST
         self.port = PORT
@@ -43,34 +45,34 @@ class HttpServer:
 
         @self.app.get("/agents")
         async def get_agents(node=Depends(self.get_node)):
-            info("getting the agents")
+            logger.info("get agents")
             return {"agents": await node.list_agents()}
 
         @self.app.get("/workers")
         async def get_workers(node=Depends(self.get_node)):
-            info("getting the workers")
+            logger.info("get workers")
             return {"workers": await node.list_workers()}
 
         @self.app.get("/agents/{name}")
         async def get_agent_by_name(name: str, node=Depends(self.get_node)):
-            info(f"getting agent by name: {name}")
+            logger.info(f"get agent by name: {name}")
             return await find_agent(node, name)
 
         @self.app.get("/agents/{name}/conversations")
         async def get_conversations_by_agent_name(name: str, node=Depends(self.get_node)):
-            info(f"getting conversations by agent {name}")
+            logger.info(f"get conversations by agent name: {name}")
             return await get_agent_by_name_and_scope_and_conversation_impl(name, None, None, node)
 
         @self.app.get("/agents/{name}/scopes/{scope}/conversations")
         async def get_conversations_by_agent_name_and_scope(name: str, scope: str, node=Depends(self.get_node)):
-            info(f"getting conversations by agent {name} and scope {scope}")
+            logger.info(f"get conversations by agent {name} and scope {scope}")
             return await get_agent_by_name_and_scope_and_conversation_impl(name, scope, None, node)
 
         @self.app.get("/agents/{name}/scopes/{scope}/conversations/{conversation}")
         async def get_agent_by_name_and_scope_and_conversation(
             name: str, scope: str, conversation: str, node=Depends(self.get_node)
         ):
-            info(f"getting conversations by agent {name}, scope {scope} and conversation {conversation}")
+            logger.info(f"getting conversations by agent {name}, scope {scope} and conversation {conversation}")
             return await get_agent_by_name_and_scope_and_conversation_impl(name, scope, conversation, node)
 
         async def get_agent_by_name_and_scope_and_conversation_impl(
@@ -85,12 +87,12 @@ class HttpServer:
                 response = await agent.send_and_receive_request(query)
                 return response
             except Exception as e:
-                error(f"Failed to get the conversations for agent '{name}': {e}")
+                logger.error(f"Failed to get the conversations for agent '{name}': {e}")
                 raise HTTPException(status_code=500, detail="Failed to get the conversations for agent '{name}'")
 
         @self.app.post("/agents/{name}")
-        async def send_message_to_agent(name: str, message: Request, stream: bool = False, content_size: int = 50, timeout: int = 60, node=Depends(self.get_node)):
-            info(f"Sending a message to agent '{name}'")
+        async def send_message_to_agent(name: str, message: Request, stream: bool = False, node=Depends(self.get_node)):
+            logger.info(f"Send a message to agent '{name}'")
             await find_agent(node, name)
 
             try:
@@ -135,17 +137,17 @@ class HttpServer:
                 else:
                     return await agent.send(msg, scope, conversation, timeout=timeout)
             except Exception as e:
-                error(f"Failed to send message to agent '{name}': {e}")
+                logger.error(f"Failed to send message to agent '{name}': {e}")
                 raise HTTPException(status_code=500, detail="Failed to send message")
 
         @self.app.get("/tools")
         async def get_tools(node=Depends(self.get_node)):
-            info("getting the exposed tools")
+            logger.info("get the exposed tools")
             return node.list_tools()
 
         @self.app.get("/tools/{name}")
         async def get_tool_by_name(name: str, node=Depends(self.get_node)):
-            info(f"getting tool by name: {name}")
+            logger.info(f"get tool by name: {name}")
             return find_tool(node, name)
 
         # mount the custom routes
