@@ -1,7 +1,2 @@
-Orchestrate end-to-end encryption, mutual authentication, key management,
-credential management, and authorization policy enforcement — at scale.
-
-Modern applications are distributed and have an unwieldy number of
-interconnections that must trustfully exchange data. Ockam makes it simple
-to build secure by-design applications that have granular control over every
-trust and access decision.
+Build, Run, Connect, Secure, Manage, Scale to billions of agents that are interoperable with
+everything, everywhere, all-at-once — with one platform.
